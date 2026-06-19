@@ -76,6 +76,40 @@ def resolve_builtin_glyph(resources: bytes, context: int, glyph_index: int) -> d
     }
 
 
+def resolve_inline_glyph(resources: bytes | bytearray, context: int, glyph_index: int) -> dict[str, int | bytes]:
+    base = context & 0x00FFFFFF
+    record = base + 0x40 + (glyph_index & 0xFF) * 8
+    if record + 8 > len(resources):
+        raise AssertionError(f"inline glyph record 0x{record:06x} is outside the fixture resource buffer")
+    render_span = resources[record]
+    rows = resources[record + 1]
+    bitmap = base + u32(resources, record + 4)
+    if render_span <= 0:
+        raise AssertionError("inline glyph fixture requires a positive byte span")
+    if bitmap + rows * render_span > len(resources):
+        raise AssertionError(f"inline glyph bitmap 0x{bitmap:06x} is outside the fixture resource buffer")
+    return {
+        "base": base,
+        "entry": record,
+        "bitmap": bitmap,
+        "delta": u32(resources, record + 4),
+        "mode": 1,
+        "rows": rows,
+        "width": render_span * 8,
+        "span": render_span,
+        "render_span": render_span,
+        "source_kind": "inline",
+    }
+
+
+def resolve_compact_glyph(resources: bytes | bytearray, context: int, glyph_index: int) -> dict[str, int | bytes]:
+    if context & 0x40000000:
+        glyph = resolve_builtin_glyph(bytes(resources), context, glyph_index)
+        glyph["source_kind"] = "builtin"
+        return glyph
+    return resolve_inline_glyph(resources, context, glyph_index)
+
+
 def glyph_bitmap_rows(resources: bytes, glyph: dict[str, int | bytes]) -> list[str]:
     mode = int(glyph["mode"])
     if mode != 1:
@@ -255,7 +289,7 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
         glyph_index = payload[pos]
         coord = u16(payload, pos + 1)
         pos += 3
-        glyph = resolve_builtin_glyph(resources, context, glyph_index)
+        glyph = resolve_compact_glyph(resources, context, glyph_index)
         mode = int(glyph["mode"])
         if mode != 1:
             raise AssertionError(f"compact mode-0 fixture does not implement glyph mode {mode}")
@@ -291,6 +325,68 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
         })
         max_width = max(max_width, x + width)
         max_bottom = max(max_bottom, row_index + rows)
+    return {
+        "count": count,
+        "rendered": rendered,
+        "rows": bitmap_bytes_to_rows(dest, max_bottom, max_width, dest_stride),
+    }
+
+
+def render_compact_segmented_payload_via_1f1f0(data: bytes, resources: bytes | bytearray, context: int, payload: bytes, dest_stride: int = 0x20, band_rows: int = 16) -> dict[str, object]:
+    count = u16(payload, 0)
+    pos = 2
+    rendered: list[dict[str, int]] = []
+    dest = bytearray(band_rows * dest_stride)
+    max_width = 0
+    max_bottom = 0
+    for _ in range(count):
+        glyph_index = payload[pos]
+        segment = payload[pos + 1]
+        coord = u16(payload, pos + 2)
+        pos += 4
+        glyph = resolve_compact_glyph(resources, context, glyph_index)
+        render_span = int(glyph["render_span"])
+        if render_span & 1:
+            raise AssertionError("segmented compact fixture only models even-span A2 source rows")
+        row_skip = segment << 7
+        rows_total = int(glyph["rows"])
+        if row_skip >= rows_total:
+            raise AssertionError("segmented compact fixture segment starts beyond glyph rows")
+        rows_here = min(rows_total - row_skip, 0x80)
+        row_index = (coord >> 12) & 0x0F
+        subbyte = (coord >> 8) & 0x0F
+        byte_pair_offset = (coord & 0x00FF) * 2
+        x = byte_pair_offset * 8 + subbyte
+        if row_index + rows_here > band_rows:
+            raise AssertionError("segmented compact fixture crosses the synthetic band")
+        bitmap = int(glyph["bitmap"])
+        source_offset = row_skip * render_span
+        source = resources[bitmap + source_offset : bitmap + source_offset + rows_here * render_span]
+        result = simulate_row_copy(data, u32(data, 0x1F08E + render_span * 4), rows_here, stride=dest_stride)
+        for write in result.writes:
+            if write.source != "A2":
+                raise AssertionError(f"unexpected {write.source} write for compact segmented glyph")
+            if write.src + write.size > len(source):
+                raise AssertionError(f"source read past compact segmented glyph bitmap at +0x{write.src:x}")
+        write_bitmap_bits(dest, dest_stride, source, rows_here, render_span, x, row_index)
+        decoded = coord_decode(coord, band_base=0, payload_offset=0)
+        rendered.append({
+            "glyph": glyph_index,
+            "segment": segment,
+            "coord": coord,
+            "row_skip": row_skip,
+            "source_offset": source_offset,
+            "rows": rows_here,
+            "span": render_span,
+            "width": int(glyph["width"]),
+            "dest_base": decoded["a1"],
+            "x": x,
+            "y": row_index,
+            "a001": decoded["a001"],
+            "helper": u32(data, 0x1F08E + render_span * 4),
+        })
+        max_width = max(max_width, x + int(glyph["width"]))
+        max_bottom = max(max_bottom, row_index + rows_here)
     return {
         "count": count,
         "rendered": rendered,
@@ -716,14 +812,31 @@ def position_unflagged_text_source_via_d3b2(
     }
 
 
-def queue_text_source_via_12f2e(resources: bytes, source: dict[str, int]) -> dict[str, object]:
-    if source["flag"] == 0:
-        raise AssertionError("inline/downloaded text source records are not implemented")
+def text_source_metrics_via_12f2e(resources: bytes, source: dict[str, object]) -> dict[str, int]:
+    if int(source["flag"]):
+        glyph_entry = int(source["glyph_entry"])
+        return {
+            "width": u16(resources, glyph_entry + 8),
+            "rows": u16(resources, glyph_entry + 6),
+            "wide_threshold": 0x80,
+        }
+
+    inline_record = source.get("inline_record")
+    if not isinstance(inline_record, bytes) or len(inline_record) < 2:
+        raise AssertionError("inline/downloaded text source records need inline_record bytes")
+    return {
+        "width": inline_record[0],
+        "rows": inline_record[1],
+        "wide_threshold": 0x10,
+    }
+
+
+def queue_text_source_via_12f2e(resources: bytes, source: dict[str, object]) -> dict[str, object]:
     selector = source["context_slot"] & 0x0F
-    glyph_entry = source["glyph_entry"]
-    width = u16(resources, glyph_entry + 8)
-    rows = u16(resources, glyph_entry + 6)
-    if width > 0x80:
+    metrics = text_source_metrics_via_12f2e(resources, source)
+    width = metrics["width"]
+    rows = metrics["rows"]
+    if width > metrics["wide_threshold"]:
         selector |= 0x1000
     if rows > 0x80:
         selector |= 0x2000
@@ -814,22 +927,20 @@ def bucket_find_or_alloc_via_1387c(
     }
 
 
-def queue_text_source_to_page_record_via_12f2e(resources: bytes, page_record: dict[str, object], source: dict[str, int]) -> dict[str, object]:
-    if source["flag"] == 0:
-        raise AssertionError("inline/downloaded text source records are not implemented")
+def queue_text_source_to_page_record_via_12f2e(resources: bytes, page_record: dict[str, object], source: dict[str, object]) -> dict[str, object]:
     bucket_array = page_record.setdefault("bucket_array", {})
     if not isinstance(bucket_array, dict):
         raise AssertionError("page record bucket_array must be a dict")
 
     selector = source["context_slot"] & 0x0F
-    glyph_entry = source["glyph_entry"]
-    width = u16(resources, glyph_entry + 8)
-    rows = u16(resources, glyph_entry + 6)
+    metrics = text_source_metrics_via_12f2e(resources, source)
+    width = metrics["width"]
+    rows = metrics["rows"]
     coord = compact_text_coord(source["x"], source["y"])
     bucket_index = source["y"] >> 4
     glyph = source["mapped"] & 0xFF
 
-    if width > 0x80:
+    if width > metrics["wide_threshold"]:
         selector |= 0x1000
     events: list[dict[str, object]] = []
     if rows > 0x80:
@@ -940,18 +1051,23 @@ def combine_short_text_buckets(buckets: list[dict[str, object]]) -> dict[str, ob
     }
 
 
-def render_compact_text_bucket_object(data: bytes, resources: bytes, contexts: tuple[int, ...], obj: bytes) -> dict[str, object]:
-    selector = obj[4]
+def render_compact_text_bucket_object(data: bytes, resources: bytes | bytearray, contexts: tuple[int, ...], obj: bytes) -> dict[str, object]:
+    selector = u16(obj, 4)
     context_slot = obj[5] & 0x0F
-    if selector & 0x30:
-        raise AssertionError("compact text bucket fixture only implements mode 0")
     if context_slot >= len(contexts):
         raise AssertionError(f"context slot {context_slot} is not available")
     payload = obj[6:]
-    rendered = render_compact_mode0_payload(data, resources, contexts[context_slot], payload)
-    rendered["selector"] = u16(obj, 4)
+    compact_mode = selector & 0x3000
+    if compact_mode == 0x0000:
+        rendered = render_compact_mode0_payload(data, resources, contexts[context_slot], payload)
+    elif compact_mode == 0x2000:
+        rendered = render_compact_segmented_payload_via_1f1f0(data, resources, contexts[context_slot], payload)
+    else:
+        raise AssertionError("compact text bucket fixture only implements compact modes 0 and 2")
+    rendered["selector"] = selector
     rendered["context_slot"] = context_slot
     rendered["payload"] = payload
+    rendered["compact_mode"] = compact_mode >> 12
     return rendered
 
 
@@ -2736,6 +2852,136 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "orientation_extent": 0,
         "context_metric_flag": 0,
         "source_x_offset": 5,
+    }))
+    unflagged_positioned_source = unflagged_fixture["source"]
+    assert isinstance(unflagged_positioned_source, dict)
+    unflagged_short_source = dict(unflagged_positioned_source)
+    unflagged_short_source["inline_record"] = inline_record
+    unflagged_short_bucket = queue_text_source_via_12f2e(resources, unflagged_short_source)
+    checks.append(assert_equal("0x12f2e-modeled unflagged short bucket object fields", {key: unflagged_short_bucket[key] for key in ("path", "object", "bucket_index", "selector", "coord", "glyph", "rows", "width")}, {
+        "path": "short",
+        "object": bytes.fromhex("00 00 00 00 00 03 00 01 01 66 01"),
+        "bucket_index": 1,
+        "selector": 0x0003,
+        "coord": 0x6601,
+        "glyph": 0x01,
+        "rows": 3,
+        "width": 2,
+    }))
+    unflagged_page_record: dict[str, object] = {"bucket_array": {}, "context_slots": [0, 0, 0, 0]}
+    unflagged_page_result = queue_text_source_to_page_record_via_12f2e(resources, unflagged_page_record, unflagged_short_source)
+    unflagged_page_bucket_array = unflagged_page_record["bucket_array"]
+    assert isinstance(unflagged_page_bucket_array, dict)
+    unflagged_page_object = bytes(unflagged_page_bucket_array[1][0])
+    checks.append(assert_equal("0x1387c page-record unflagged short bucket object", {
+        key: unflagged_page_result[key]
+        for key in ("path", "allocated", "chain_index", "count_before", "count_after", "bucket_index", "selector", "coord", "glyph", "rows", "width", "capacity", "object_size")
+    } | {
+        "object_prefix": unflagged_page_object[:11],
+    }, {
+        "path": "short-page-record",
+        "allocated": True,
+        "chain_index": 0,
+        "count_before": 0,
+        "count_after": 1,
+        "bucket_index": 1,
+        "selector": 0x0003,
+        "coord": 0x6601,
+        "glyph": 0x01,
+        "rows": 3,
+        "width": 2,
+        "capacity": 0x0A,
+        "object_size": 0x26,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 03 00 01 01 66 01"),
+    }))
+    unflagged_wide_source = dict(unflagged_positioned_source)
+    unflagged_wide_source["inline_record"] = bytes.fromhex("11 03 04")
+    unflagged_wide_bucket = queue_text_source_via_12f2e(resources, unflagged_wide_source)
+    checks.append(assert_equal("0x12f2e-modeled unflagged width byte selects compact mode bit", {key: unflagged_wide_bucket[key] for key in ("path", "object", "bucket_index", "selector", "coord", "glyph", "rows", "width")}, {
+        "path": "short",
+        "object": bytes.fromhex("00 00 00 00 10 03 00 01 01 66 01"),
+        "bucket_index": 1,
+        "selector": 0x1003,
+        "coord": 0x6601,
+        "glyph": 0x01,
+        "rows": 3,
+        "width": 0x11,
+    }))
+    unflagged_tall_source = dict(unflagged_positioned_source)
+    unflagged_tall_source["inline_record"] = bytes.fromhex("02 81 04")
+    unflagged_tall_bucket = queue_text_source_via_12f2e(resources, unflagged_tall_source)
+    checks.append(assert_equal("0x12f2e-modeled unflagged tall inline bucket objects", {
+        key: unflagged_tall_bucket[key]
+        for key in ("path", "object_size", "capacity", "entry_size", "selector", "coord", "glyph", "rows", "width", "objects")
+    }, {
+        "path": "segmented",
+        "object_size": 0x28,
+        "capacity": 0x08,
+        "entry_size": 4,
+        "selector": 0x2003,
+        "coord": 0x6601,
+        "glyph": 0x01,
+        "rows": 0x81,
+        "width": 0x02,
+        "objects": [
+            {"bucket_index": 9, "segment": 1, "object": bytes.fromhex("00 00 00 00 20 03 00 01 01 01 66 01")},
+            {"bucket_index": 1, "segment": 0, "object": bytes.fromhex("00 00 00 00 20 03 00 01 01 00 66 01")},
+        ],
+    }))
+    inline_render_resources = bytearray(0x300)
+    inline_context = 0x00000100
+    inline_record_offset = inline_context + 0x40 + 1 * 8
+    inline_bitmap_delta = 0x80
+    inline_bitmap = inline_context + inline_bitmap_delta
+    inline_render_resources[inline_record_offset] = 0x02
+    inline_render_resources[inline_record_offset + 1] = 0x81
+    inline_render_resources[inline_record_offset + 4:inline_record_offset + 8] = inline_bitmap_delta.to_bytes(4, "big")
+    inline_render_resources[inline_bitmap + 0x100:inline_bitmap + 0x102] = bytes.fromhex("aa 55")
+    unflagged_segmented_object = unflagged_tall_bucket["objects"][0]["object"]
+    unflagged_segmented_rendered = render_compact_text_bucket_object(
+        data,
+        inline_render_resources,
+        (0, 0, 0, inline_context),
+        unflagged_segmented_object,
+    )
+    checks.append(assert_equal("0x1f1f0 renders segmented inline compact payload row", {
+        "selector": unflagged_segmented_rendered["selector"],
+        "context_slot": unflagged_segmented_rendered["context_slot"],
+        "compact_mode": unflagged_segmented_rendered["compact_mode"],
+        "payload": unflagged_segmented_rendered["payload"],
+        "count": unflagged_segmented_rendered["count"],
+        "rendered": unflagged_segmented_rendered["rendered"],
+        "rows": unflagged_segmented_rendered["rows"],
+    }, {
+        "selector": 0x2003,
+        "context_slot": 3,
+        "compact_mode": 2,
+        "payload": bytes.fromhex("00 01 01 01 66 01"),
+        "count": 1,
+        "rendered": [{
+            "glyph": 1,
+            "segment": 1,
+            "coord": 0x6601,
+            "row_skip": 0x80,
+            "source_offset": 0x100,
+            "rows": 1,
+            "span": 2,
+            "width": 16,
+            "dest_base": 0xC2,
+            "x": 22,
+            "y": 6,
+            "a001": 0x16,
+            "helper": u32(data, 0x1F08E + 2 * 4),
+        }],
+        "rows": [
+            "." * 38,
+            "." * 38,
+            "." * 38,
+            "." * 38,
+            "." * 38,
+            "." * 38,
+            "." * 22 + "#.#.#.#..#.#.#.#",
+        ],
     }))
     unflagged_overflow_fixture = position_unflagged_text_source_via_d3b2(
         inline_source,
@@ -5084,15 +5330,38 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## `0xd3b2` Unflagged Positioning Fixture")
     lines.append("")
-    lines.append("This fixture pins the unflagged/inline positioning arithmetic at `0xd3b2` with a synthetic inline source record. It intentionally stops before `0x12f2e`, because the inline/downloaded compact payload layout is not implemented yet. The inline record bytes are `02 03 04`, so record byte 2 contributes signed value `4` in both branches.")
+    lines.append("This fixture pins the unflagged/inline positioning arithmetic at `0xd3b2` with a synthetic inline source record, then continues through the unflagged branch of `0x12f2e`. For unflagged sources, record byte `+0` is the width threshold byte, byte `+1` is the row count used for short/segmented selection, and byte `+2` feeds the signed positioning arithmetic.")
     lines.append("")
     unflagged_source_report = unflagged_fixture["source"]
     assert isinstance(unflagged_source_report, dict)
     lines.append(f"- context metric flag clear: cursor `(10,20)`, printable offset `7`, source x-offset `5` -> x `{unflagged_source_report['x']}`, y `{unflagged_source_report['y']}`, context slot `{unflagged_source_report['context_slot']}`, overflow correction `{unflagged_fixture['overflow_correction']}`")
+    lines.append(f"- unflagged short object bytes from record `02 03 04`: `{' '.join(f'{byte:02x}' for byte in unflagged_short_bucket['object'])}`")
+    lines.append(f"- unflagged page-record short object prefix: `{' '.join(f'{byte:02x}' for byte in unflagged_page_object[:11])}`")
+    lines.append("- record byte `+0 = 0x11` sets selector bit `0x1000`, producing object bytes: `%s`" % (
+        " ".join(f"{byte:02x}" for byte in unflagged_wide_bucket["object"]),
+    ))
+    lines.append("- record byte `+1 = 0x81` selects segmented entries with selector `0x%04x`:" % (
+        unflagged_tall_bucket["selector"],
+    ))
+    for obj in unflagged_tall_bucket["objects"]:
+        assert isinstance(obj, dict)
+        lines.append("- bucket `%d`, segment `%d`: `%s`" % (
+            obj["bucket_index"],
+            obj["segment"],
+            " ".join(f"{byte:02x}" for byte in obj["object"]),
+        ))
+    lines.append("- synthetic inline render record at context `0x%08x` maps glyph `1` to span `2`, rows `0x81`, bitmap delta `0x%02x`; the segment-1 object renders row `128` from bytes `aa 55` through `0x1f1f0`:" % (
+        inline_context,
+        inline_bitmap_delta,
+    ))
+    segmented_rows = unflagged_segmented_rendered["rows"]
+    assert isinstance(segmented_rows, list)
+    for row in segmented_rows:
+        lines.append(f"`{row}`")
     unflagged_overflow_source_report = unflagged_overflow_fixture["source"]
     assert isinstance(unflagged_overflow_source_report, dict)
     lines.append(f"- context metric flag set plus left overflow: cursor `(10,20)`, printable offset `20`, source x-offset `-15` -> x `{unflagged_overflow_source_report['x']}`, y `{unflagged_overflow_source_report['y']}`, context slot `{unflagged_overflow_source_report['context_slot']}`, overflow correction `0x{int(unflagged_overflow_fixture['overflow_correction']):08x}`")
-    lines.append("- remaining gap: replace this synthetic positioning fixture with real parser-produced inline/downloaded source objects and implement their `0x12f2e` payload path.")
+    lines.append("- remaining gap: replace the synthetic inline source/render records with a real parser-produced inline/downloaded source object and add compact mode-1/wide inline renderer coverage.")
     lines.append("")
 
     lines.append("## Segmented Text Bucket Producer Fixture")

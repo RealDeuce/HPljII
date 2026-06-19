@@ -1060,6 +1060,12 @@ def start_raster_graphics_via_1075a(state: dict[str, int], parameter: int) -> di
     return state
 
 
+def end_raster_graphics_via_107fa(state: dict[str, int]) -> dict[str, int]:
+    state = dict(state)
+    state["active"] = 0
+    return state
+
+
 def parse_pcl_decimal_parameter(stream: bytes, pos: int) -> tuple[int, int]:
     sign = 1
     if pos < len(stream) and stream[pos] in (ord("+"), ord("-")):
@@ -1089,7 +1095,10 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
             raise AssertionError(f"raster command stream only models ESC * commands at offset {start}")
         group = stream[pos + 1]
         pos += 2
-        parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+        if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+            parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+        else:
+            parameter = 0
         if pos >= len(stream):
             raise AssertionError("raster command stream missing final byte")
         final = stream[pos]
@@ -1122,6 +1131,22 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
                 "origin_long": state["origin_long"],
                 "baseline_word": state["baseline_word"],
                 "limit": state["limit"],
+            })
+            continue
+
+        if group == ord("r") and final == ord("B"):
+            before = dict(state)
+            state = end_raster_graphics_via_107fa(state)
+            events.append({
+                "kind": "end-raster",
+                "sequence": sequence,
+                "parameter": parameter,
+                "active_before": before["active"],
+                "active_after": state["active"],
+                "mode": state["mode"],
+                "scale": state["scale"],
+                "limit": state["limit"],
+                "row_y": state["row_y"],
             })
             continue
 
@@ -3047,6 +3072,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "limit": 32,
         },
     }))
+    parser_raster_end = end_raster_graphics_via_107fa(parser_raster_start)
+    checks.append(assert_equal("0x107fa ESC *r#B clears raster active flag only", {
+        key: parser_raster_end[key]
+        for key in ("active", "origin_long", "baseline_word", "mode", "scale", "limit", "row_y")
+    }, {
+        "active": 0,
+        "origin_long": 0x00100000,
+        "baseline_word": 16,
+        "mode": 0,
+        "scale": 1,
+        "limit": 30,
+        "row_y": 0,
+    }))
     parser_raster_page_record: dict[str, object] = {"bucket_array": {}}
     parser_raster_page_result = queue_raster_row_to_page_record_via_13070(
         parser_raster_page_record,
@@ -3147,6 +3185,330 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     }, {
         "object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
         "rows": ["................####........#####.#.#.#..#.#.#.#"],
+    }))
+    raster_mode1_command_stream = b"\x1b*t150R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f")
+    raster_mode1_stream_result = render_raster_command_data_stream_via_121cc_105d0(
+        data,
+        raster_mode1_command_stream,
+        raster_graphics_state(page_extent=255, cursor_axis0=0x00100000, cursor_axis1=0x00200000),
+    )
+    raster_mode1_stream_rendered = raster_mode1_stream_result["rendered"]
+    assert isinstance(raster_mode1_stream_rendered, dict)
+    checks.append(assert_equal("modeled raster command stream selects 150-dpi mode-1 state", {
+        "events": [
+            {
+                key: event[key]
+                for key in (
+                    ("kind", "parameter", "mode_after", "scale", "limit")
+                    if event["kind"] == "raster-resolution"
+                    else ("kind", "parameter", "active_after", "origin_long", "baseline_word", "limit")
+                    if event["kind"] == "start-raster"
+                    else ("kind", "parameter", "delayed_handler", "payload_offset", "payload", "transfer_state", "row_y_after")
+                )
+            }
+            for event in raster_mode1_stream_result["events"]
+        ],
+        "final_state": {
+            key: raster_mode1_stream_result["final_state"][key]
+            for key in ("active", "baseline_word", "mode", "scale", "limit", "row_y")
+        },
+    }, {
+        "events": [
+            {"kind": "raster-resolution", "parameter": 150, "mode_after": 1, "scale": 2, "limit": 16},
+            {"kind": "start-raster", "parameter": 0, "active_after": 1, "origin_long": 0, "baseline_word": 0, "limit": 16},
+            {
+                "kind": "raster-transfer",
+                "parameter": 2,
+                "delayed_handler": 0x0105D0,
+                "payload_offset": 17,
+                "payload": bytes.fromhex("f0 0f"),
+                "transfer_state": {"x": 0, "y": 0, "byte_count": 2, "mode": 1},
+                "row_y_after": 1,
+            },
+        ],
+        "final_state": {
+            "active": 1,
+            "baseline_word": 0,
+            "mode": 1,
+            "scale": 2,
+            "limit": 16,
+            "row_y": 1,
+        },
+    }))
+    checks.append(assert_equal("modeled raster command stream queues and renders 150-dpi mode-1 payload", {
+        "object": raster_mode1_stream_result["object"],
+        "rows": raster_mode1_stream_rendered["rows"],
+    }, {
+        "object": bytes.fromhex("00 00 00 00 80 01 00 02 00 00 f0 0f"),
+        "rows": [
+            "########................########",
+            "########................########",
+        ],
+    }))
+    raster_mode2_command_stream = b"\x1b*t100R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f")
+    raster_mode2_stream_result = render_raster_command_data_stream_via_121cc_105d0(
+        data,
+        raster_mode2_command_stream,
+        raster_graphics_state(page_extent=255, cursor_axis0=0x00100000, cursor_axis1=0x00200000),
+    )
+    raster_mode2_stream_rendered = raster_mode2_stream_result["rendered"]
+    assert isinstance(raster_mode2_stream_rendered, dict)
+    checks.append(assert_equal("modeled raster command stream selects 100-dpi mode-2 state", {
+        "events": [
+            {
+                key: event[key]
+                for key in (
+                    ("kind", "parameter", "mode_after", "scale", "limit")
+                    if event["kind"] == "raster-resolution"
+                    else ("kind", "parameter", "active_after", "origin_long", "baseline_word", "limit")
+                    if event["kind"] == "start-raster"
+                    else ("kind", "parameter", "delayed_handler", "payload_offset", "payload", "transfer_state", "row_y_after")
+                )
+            }
+            for event in raster_mode2_stream_result["events"]
+        ],
+        "final_state": {
+            key: raster_mode2_stream_result["final_state"][key]
+            for key in ("active", "baseline_word", "mode", "scale", "limit", "row_y")
+        },
+    }, {
+        "events": [
+            {"kind": "raster-resolution", "parameter": 100, "mode_after": 2, "scale": 3, "limit": 11},
+            {"kind": "start-raster", "parameter": 0, "active_after": 1, "origin_long": 0, "baseline_word": 0, "limit": 11},
+            {
+                "kind": "raster-transfer",
+                "parameter": 2,
+                "delayed_handler": 0x0105D0,
+                "payload_offset": 17,
+                "payload": bytes.fromhex("f0 0f"),
+                "transfer_state": {"x": 0, "y": 0, "byte_count": 2, "mode": 2},
+                "row_y_after": 1,
+            },
+        ],
+        "final_state": {
+            "active": 1,
+            "baseline_word": 0,
+            "mode": 2,
+            "scale": 3,
+            "limit": 11,
+            "row_y": 1,
+        },
+    }))
+    checks.append(assert_equal("modeled raster command stream queues and renders 100-dpi mode-2 payload", {
+        "object": raster_mode2_stream_result["object"],
+        "rows": raster_mode2_stream_rendered["rows"],
+    }, {
+        "object": bytes.fromhex("00 00 00 00 80 02 00 02 00 00 f0 0f"),
+        "rows": [
+            "############................############........",
+            "############................############........",
+            "############................############........",
+        ],
+    }))
+    raster_mode3_command_stream = b"\x1b*t75R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f")
+    raster_mode3_stream_result = render_raster_command_data_stream_via_121cc_105d0(
+        data,
+        raster_mode3_command_stream,
+        raster_graphics_state(page_extent=255, cursor_axis0=0x00100000, cursor_axis1=0x00200000),
+    )
+    raster_mode3_stream_rendered = raster_mode3_stream_result["rendered"]
+    assert isinstance(raster_mode3_stream_rendered, dict)
+    checks.append(assert_equal("modeled raster command stream selects 75-dpi mode-3 state", {
+        "events": [
+            {
+                key: event[key]
+                for key in (
+                    ("kind", "parameter", "mode_after", "scale", "limit")
+                    if event["kind"] == "raster-resolution"
+                    else ("kind", "parameter", "active_after", "origin_long", "baseline_word", "limit")
+                    if event["kind"] == "start-raster"
+                    else ("kind", "parameter", "delayed_handler", "payload_offset", "payload", "transfer_state", "row_y_after")
+                )
+            }
+            for event in raster_mode3_stream_result["events"]
+        ],
+        "final_state": {
+            key: raster_mode3_stream_result["final_state"][key]
+            for key in ("active", "baseline_word", "mode", "scale", "limit", "row_y")
+        },
+    }, {
+        "events": [
+            {"kind": "raster-resolution", "parameter": 75, "mode_after": 3, "scale": 4, "limit": 8},
+            {"kind": "start-raster", "parameter": 0, "active_after": 1, "origin_long": 0, "baseline_word": 0, "limit": 8},
+            {
+                "kind": "raster-transfer",
+                "parameter": 2,
+                "delayed_handler": 0x0105D0,
+                "payload_offset": 16,
+                "payload": bytes.fromhex("f0 0f"),
+                "transfer_state": {"x": 0, "y": 0, "byte_count": 2, "mode": 3},
+                "row_y_after": 1,
+            },
+        ],
+        "final_state": {
+            "active": 1,
+            "baseline_word": 0,
+            "mode": 3,
+            "scale": 4,
+            "limit": 8,
+            "row_y": 1,
+        },
+    }))
+    checks.append(assert_equal("modeled raster command stream queues and renders 75-dpi mode-3 payload", {
+        "object": raster_mode3_stream_result["object"],
+        "rows": raster_mode3_stream_rendered["rows"],
+    }, {
+        "object": bytes.fromhex("00 00 00 00 80 03 00 02 00 00 f0 0f"),
+        "rows": [
+            "################................................################",
+            "################................................################",
+            "################................................################",
+            "################................................################",
+        ],
+    }))
+    raster_multirow_command_stream = b"\x1b*t300R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f") + b"\x1b*b2W" + bytes.fromhex("0f f0")
+    raster_multirow_stream_result = render_raster_command_data_stream_via_121cc_105d0(
+        data,
+        raster_multirow_command_stream,
+        raster_graphics_state(page_extent=255, cursor_axis0=0x00100000, cursor_axis1=0x00200000),
+    )
+    raster_multirow_page_record = raster_multirow_stream_result["page_record"]
+    assert isinstance(raster_multirow_page_record, dict)
+    raster_multirow_bucket_array = raster_multirow_page_record["bucket_array"]
+    assert isinstance(raster_multirow_bucket_array, dict)
+    raster_multirow_chain = [bytes(obj) for obj in raster_multirow_bucket_array[0]]
+    raster_multirow_rendered = [render_encoded_raster_object_via_1f88e(data, obj) for obj in reversed(raster_multirow_chain)]
+    checks.append(assert_equal("modeled raster command stream queues consecutive ESC *b#W rows", {
+        "transfer_events": [
+            {
+                key: event[key]
+                for key in ("parameter", "payload_offset", "payload", "transfer_state", "row_y_after")
+            }
+            for event in raster_multirow_stream_result["events"]
+            if event["kind"] == "raster-transfer"
+        ],
+        "final_state": {
+            key: raster_multirow_stream_result["final_state"][key]
+            for key in ("active", "baseline_word", "mode", "scale", "limit", "row_y")
+        },
+        "chain": raster_multirow_chain,
+    }, {
+        "transfer_events": [
+            {
+                "parameter": 2,
+                "payload_offset": 17,
+                "payload": bytes.fromhex("f0 0f"),
+                "transfer_state": {"x": 0, "y": 0, "byte_count": 2, "mode": 0},
+                "row_y_after": 1,
+            },
+            {
+                "parameter": 2,
+                "payload_offset": 24,
+                "payload": bytes.fromhex("0f f0"),
+                "transfer_state": {"x": 0, "y": 1, "byte_count": 2, "mode": 0},
+                "row_y_after": 2,
+            },
+        ],
+        "final_state": {
+            "active": 1,
+            "baseline_word": 0,
+            "mode": 0,
+            "scale": 1,
+            "limit": 32,
+            "row_y": 2,
+        },
+        "chain": [
+            bytes.fromhex("00 00 00 00 80 00 00 02 10 00 0f f0"),
+            bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
+        ],
+    }))
+    checks.append(assert_equal("modeled raster command stream renders consecutive queued rows", {
+        "rendered": [
+            {
+                key: rendered[key]
+                for key in ("coord", "x", "y", "payload", "rows")
+            }
+            for rendered in raster_multirow_rendered
+        ],
+    }, {
+        "rendered": [
+            {
+                "coord": 0x0000,
+                "x": 0,
+                "y": 0,
+                "payload": bytes.fromhex("f0 0f"),
+                "rows": ["####........####"],
+            },
+            {
+                "coord": 0x1000,
+                "x": 0,
+                "y": 1,
+                "payload": bytes.fromhex("0f f0"),
+                "rows": ["................", "....########...."],
+            },
+        ],
+    }))
+    raster_end_command_stream = b"\x1b*t300R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f") + b"\x1b*rB\x1b*t150R"
+    raster_end_stream_result = render_raster_command_data_stream_via_121cc_105d0(
+        data,
+        raster_end_command_stream,
+        raster_graphics_state(page_extent=255, cursor_axis0=0x00100000, cursor_axis1=0x00200000),
+    )
+    raster_end_event_summary: list[dict[str, object]] = []
+    for event in raster_end_stream_result["events"]:
+        if event["kind"] == "raster-resolution":
+            raster_end_event_summary.append({
+                key: event[key]
+                for key in ("kind", "parameter", "mode_before", "mode_after", "scale", "limit")
+            })
+        elif event["kind"] == "start-raster":
+            raster_end_event_summary.append({
+                key: event[key]
+                for key in ("kind", "parameter", "active_before", "active_after", "origin_long", "baseline_word", "limit")
+            })
+        elif event["kind"] == "raster-transfer":
+            raster_end_event_summary.append({
+                key: event[key]
+                for key in ("kind", "parameter", "payload_offset", "payload", "transfer_state", "row_y_after")
+            })
+        elif event["kind"] == "end-raster":
+            raster_end_event_summary.append({
+                key: event[key]
+                for key in ("kind", "parameter", "active_before", "active_after", "mode", "scale", "limit", "row_y")
+            })
+        else:
+            raise AssertionError(f"unexpected raster end stream event {event['kind']}")
+    checks.append(assert_equal("modeled raster command stream parses ESC *rB and re-enables resolution changes", {
+        "events": raster_end_event_summary,
+        "final_state": {
+            key: raster_end_stream_result["final_state"][key]
+            for key in ("active", "baseline_word", "mode", "scale", "limit", "row_y")
+        },
+        "object": raster_end_stream_result["object"],
+    }, {
+        "events": [
+            {"kind": "raster-resolution", "parameter": 300, "mode_before": 3, "mode_after": 0, "scale": 1, "limit": 32},
+            {"kind": "start-raster", "parameter": 0, "active_before": 0, "active_after": 1, "origin_long": 0, "baseline_word": 0, "limit": 32},
+            {
+                "kind": "raster-transfer",
+                "parameter": 2,
+                "payload_offset": 17,
+                "payload": bytes.fromhex("f0 0f"),
+                "transfer_state": {"x": 0, "y": 0, "byte_count": 2, "mode": 0},
+                "row_y_after": 1,
+            },
+            {"kind": "end-raster", "parameter": 0, "active_before": 1, "active_after": 0, "mode": 0, "scale": 1, "limit": 32, "row_y": 1},
+            {"kind": "raster-resolution", "parameter": 150, "mode_before": 0, "mode_after": 1, "scale": 2, "limit": 16},
+        ],
+        "final_state": {
+            "active": 0,
+            "baseline_word": 0,
+            "mode": 1,
+            "scale": 2,
+            "limit": 16,
+            "row_y": 1,
+        },
+        "object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
     }))
     raster_page_record: dict[str, object] = {"bucket_array": {}}
     raster_page_result = queue_raster_row_to_page_record_via_13070(
@@ -4375,6 +4737,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("")
     lines.append("- `ESC *r1A` with orientation `0` seeds raster origin from cursor-axis longword `0x00100000`, giving baseline word `16`, mode `0`, scale `1`, and limit `30` for extent `255`.")
     lines.append("- `ESC *r0A` starts at the left edge, giving origin `0`, baseline word `0`, mode `0`, scale `1`, and limit `32` for extent `255`.")
+    lines.append("- `ESC *rB` handler `0x107fa` clears only the raster active byte, leaving origin/baseline/mode/scale/limit/row counters untouched in this state fixture.")
     lines.append(f"- parser-derived transfer object bytes: `{' '.join(f'{byte:02x}' for byte in parser_raster_object)}`")
     lines.append("- parser-derived rendered row:")
     lines.extend(f"`{row}`" for row in parser_raster_rendered["rows"])
@@ -4383,7 +4746,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## Modeled Raster Command/Data Stream Fixture")
     lines.append("")
-    lines.append("This fixture starts from actual PCL command bytes for `ESC *t300R`, `ESC *r1A`, and `ESC *b4W`, then models the delayed payload boundary that `0x121cc` records for handler `0x105d0`. It is still not a full firmware parser run, but it proves the byte stream selects the parser-derived raster state before queueing and rendering the `ESC *b#W` payload.")
+    lines.append("This fixture starts from actual PCL command bytes, then models the delayed payload boundary that `0x121cc` records for handler `0x105d0`. It is still not a full firmware parser run, but it proves the byte stream selects parser-derived raster state before queueing and rendering the `ESC *b#W` payload. The 300/150/100/75-dpi streams pin byte-stream-selected modes 0..3.")
     lines.append("")
     lines.append(f"- stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_command_stream)}`")
     lines.append("- parsed events:")
@@ -4413,6 +4776,159 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- queued object bytes: `{' '.join(f'{byte:02x}' for byte in raster_stream_result['object'])}`")
     lines.append("- rendered stream row:")
     lines.extend(f"`{row}`" for row in raster_stream_rendered["rows"])
+    lines.append("")
+    lines.append(f"- mode-1 stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode1_command_stream)}`")
+    lines.append("- mode-1 parsed events:")
+    for event in raster_mode1_stream_result["events"]:
+        if event["kind"] == "raster-resolution":
+            lines.append("- `ESC *t%dR`: mode `%d`, scale `%d`, limit `%d`" % (
+                event["parameter"],
+                event["mode_after"],
+                event["scale"],
+                event["limit"],
+            ))
+        elif event["kind"] == "start-raster":
+            lines.append("- `ESC *r%dA`: origin `0x%08x`, baseline word `%d`, limit `%d`" % (
+                event["parameter"],
+                event["origin_long"],
+                event["baseline_word"],
+                event["limit"],
+            ))
+        elif event["kind"] == "raster-transfer":
+            lines.append("- `ESC *b%dW`: delayed handler `0x%06x`, payload offset `%d`, payload `%s`, transfer state `%s`" % (
+                event["parameter"],
+                event["delayed_handler"],
+                event["payload_offset"],
+                " ".join(f"{byte:02x}" for byte in event["payload"]),
+                event["transfer_state"],
+            ))
+    lines.append(f"- mode-1 queued object bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode1_stream_result['object'])}`")
+    lines.append("- mode-1 rendered stream rows:")
+    lines.extend(f"`{row}`" for row in raster_mode1_stream_rendered["rows"])
+    lines.append("")
+    lines.append(f"- mode-2 stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode2_command_stream)}`")
+    lines.append("- mode-2 parsed events:")
+    for event in raster_mode2_stream_result["events"]:
+        if event["kind"] == "raster-resolution":
+            lines.append("- `ESC *t%dR`: mode `%d`, scale `%d`, limit `%d`" % (
+                event["parameter"],
+                event["mode_after"],
+                event["scale"],
+                event["limit"],
+            ))
+        elif event["kind"] == "start-raster":
+            lines.append("- `ESC *r%dA`: origin `0x%08x`, baseline word `%d`, limit `%d`" % (
+                event["parameter"],
+                event["origin_long"],
+                event["baseline_word"],
+                event["limit"],
+            ))
+        elif event["kind"] == "raster-transfer":
+            lines.append("- `ESC *b%dW`: delayed handler `0x%06x`, payload offset `%d`, payload `%s`, transfer state `%s`" % (
+                event["parameter"],
+                event["delayed_handler"],
+                event["payload_offset"],
+                " ".join(f"{byte:02x}" for byte in event["payload"]),
+                event["transfer_state"],
+            ))
+    lines.append(f"- mode-2 queued object bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode2_stream_result['object'])}`")
+    lines.append("- mode-2 rendered stream rows:")
+    lines.extend(f"`{row}`" for row in raster_mode2_stream_rendered["rows"])
+    lines.append("")
+    lines.append(f"- mode-3 stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode3_command_stream)}`")
+    lines.append("- mode-3 parsed events:")
+    for event in raster_mode3_stream_result["events"]:
+        if event["kind"] == "raster-resolution":
+            lines.append("- `ESC *t%dR`: mode `%d`, scale `%d`, limit `%d`" % (
+                event["parameter"],
+                event["mode_after"],
+                event["scale"],
+                event["limit"],
+            ))
+        elif event["kind"] == "start-raster":
+            lines.append("- `ESC *r%dA`: origin `0x%08x`, baseline word `%d`, limit `%d`" % (
+                event["parameter"],
+                event["origin_long"],
+                event["baseline_word"],
+                event["limit"],
+            ))
+        elif event["kind"] == "raster-transfer":
+            lines.append("- `ESC *b%dW`: delayed handler `0x%06x`, payload offset `%d`, payload `%s`, transfer state `%s`" % (
+                event["parameter"],
+                event["delayed_handler"],
+                event["payload_offset"],
+                " ".join(f"{byte:02x}" for byte in event["payload"]),
+                event["transfer_state"],
+            ))
+    lines.append(f"- mode-3 queued object bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode3_stream_result['object'])}`")
+    lines.append("- mode-3 rendered stream rows:")
+    lines.extend(f"`{row}`" for row in raster_mode3_stream_rendered["rows"])
+    lines.append("")
+    lines.append(f"- multi-row stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_multirow_command_stream)}`")
+    lines.append("- multi-row transfer events:")
+    for event in raster_multirow_stream_result["events"]:
+        if event["kind"] == "raster-transfer":
+            lines.append("- payload offset `%d`, payload `%s`, transfer state `%s`, row_y after `%d`" % (
+                event["payload_offset"],
+                " ".join(f"{byte:02x}" for byte in event["payload"]),
+                event["transfer_state"],
+                event["row_y_after"],
+            ))
+    lines.append("- multi-row queued chain, newest first:")
+    lines.extend(f"`{' '.join(f'{byte:02x}' for byte in obj)}`" for obj in raster_multirow_chain)
+    lines.append("- multi-row rendered rows, source order:")
+    for rendered in raster_multirow_rendered:
+        lines.append("- coord `0x%04x`, y `%d`, payload `%s`" % (
+            rendered["coord"],
+            rendered["y"],
+            " ".join(f"{byte:02x}" for byte in rendered["payload"]),
+        ))
+        lines.extend(f"`{row}`" for row in rendered["rows"])
+    lines.append("")
+    lines.append(f"- raster-end stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_end_command_stream)}`")
+    lines.append("- raster-end parsed events:")
+    for event in raster_end_stream_result["events"]:
+        if event["kind"] == "raster-resolution":
+            lines.append("- `ESC *t%dR`: mode `%d -> %d`, scale `%d`, limit `%d`" % (
+                event["parameter"],
+                event["mode_before"],
+                event["mode_after"],
+                event["scale"],
+                event["limit"],
+            ))
+        elif event["kind"] == "start-raster":
+            lines.append("- `ESC *r%dA`: active `%d -> %d`, origin `0x%08x`, baseline word `%d`, limit `%d`" % (
+                event["parameter"],
+                event["active_before"],
+                event["active_after"],
+                event["origin_long"],
+                event["baseline_word"],
+                event["limit"],
+            ))
+        elif event["kind"] == "raster-transfer":
+            lines.append("- `ESC *b%dW`: payload offset `%d`, payload `%s`, transfer state `%s`, row_y after `%d`" % (
+                event["parameter"],
+                event["payload_offset"],
+                " ".join(f"{byte:02x}" for byte in event["payload"]),
+                event["transfer_state"],
+                event["row_y_after"],
+            ))
+        elif event["kind"] == "end-raster":
+            lines.append("- `ESC *rB`: active `%d -> %d`, mode `%d`, scale `%d`, limit `%d`, row_y `%d`" % (
+                event["active_before"],
+                event["active_after"],
+                event["mode"],
+                event["scale"],
+                event["limit"],
+                event["row_y"],
+            ))
+    lines.append("- raster-end final state: active `%d`, mode `%d`, scale `%d`, limit `%d`, row_y `%d`" % (
+        raster_end_stream_result["final_state"]["active"],
+        raster_end_stream_result["final_state"]["mode"],
+        raster_end_stream_result["final_state"]["scale"],
+        raster_end_stream_result["final_state"]["limit"],
+        raster_end_stream_result["final_state"]["row_y"],
+    ))
     lines.append("- remaining gap: run the same byte stream through the live parser/data-chain machinery instead of this modeled command recognizer.")
     lines.append("")
 

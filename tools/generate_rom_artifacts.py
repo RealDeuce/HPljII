@@ -1,0 +1,211 @@
+#!/usr/bin/env python3
+"""Verify LaserJet II ROM dumps and regenerate local derived artifacts."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import subprocess
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+MANIFEST = ROOT / "data" / "rom_manifest.json"
+GENERATED = ROOT / "generated"
+UNIDASM = ROOT.parent / "mame" / "unidasm"
+
+
+def sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def write_if_changed(path: Path, data: bytes | str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    old = path.read_bytes() if path.exists() else None
+    new = data.encode("utf-8") if isinstance(data, str) else data
+    if old != new:
+        path.write_bytes(new)
+
+
+def load_manifest() -> dict:
+    return json.loads(MANIFEST.read_text(encoding="utf-8"))
+
+
+def verify_raw_roms(manifest: dict) -> dict[str, Path]:
+    by_location: dict[str, Path] = {}
+    for rom in manifest["raw_roms"]:
+        path = ROOT / rom["filename"]
+        if not path.exists():
+            raise FileNotFoundError(path)
+        actual_size = path.stat().st_size
+        if actual_size != rom["size_bytes"]:
+            raise RuntimeError(f"{path.name}: size {actual_size}, expected {rom['size_bytes']}")
+        actual_hash = sha256(path)
+        if actual_hash != rom["sha256"]:
+            raise RuntimeError(f"{path.name}: sha256 {actual_hash}, expected {rom['sha256']}")
+        by_location[rom["board_location"]] = path
+    return by_location
+
+
+def interleave(first: Path, second: Path) -> bytes:
+    a = first.read_bytes()
+    b = second.read_bytes()
+    if len(a) != len(b):
+        raise RuntimeError(f"Cannot interleave unequal ROMs: {first.name}, {second.name}")
+    out = bytearray(len(a) * 2)
+    out[0::2] = a
+    out[1::2] = b
+    return bytes(out)
+
+
+def generate_interleaves(manifest: dict, by_location: dict[str, Path]) -> dict[str, Path]:
+    generated: dict[str, Path] = {}
+    for entry in manifest["interleaves"]:
+        first_loc, second_loc = entry["byte_order"]
+        data = interleave(by_location[first_loc], by_location[second_loc])
+        actual_hash = hashlib.sha256(data).hexdigest()
+        if actual_hash != entry["sha256"]:
+            raise RuntimeError(f"{entry['name']}: sha256 {actual_hash}, expected {entry['sha256']}")
+        out_path = ROOT / entry["generated_file"]
+        write_if_changed(out_path, data)
+        generated[entry["name"]] = out_path
+    return generated
+
+
+def generate_vector_notes(firmware: Path) -> None:
+    data = firmware.read_bytes()
+    names = {
+        0: "initial_ssp",
+        1: "reset_pc",
+        2: "bus_error",
+        3: "address_error",
+        4: "illegal_instruction",
+        5: "zero_divide",
+        6: "chk",
+        7: "trapv",
+        8: "privilege_violation",
+        9: "trace",
+        10: "line_1010",
+        11: "line_1111",
+    }
+    lines = [
+        "# IC30/IC13 68000 Vector Table",
+        "",
+        "Values are decoded as big-endian 68000 longwords from generated/roms/ic30_ic13.bin.",
+        "",
+    ]
+    for vector in range(0x40):
+        offset = vector * 4
+        value = int.from_bytes(data[offset : offset + 4], "big")
+        label = names.get(vector, f"vector_{vector:02d}")
+        lines.append(f"{vector:02d}  @{offset:06x}  {value:08x}  {label}")
+    lines.append("")
+    write_if_changed(GENERATED / "analysis" / "ic30_ic13_vectors.txt", "\n".join(lines))
+
+
+def generate_resource_header_notes(resources: Path) -> None:
+    data = resources.read_bytes()
+    text = "".join(chr(b) if 32 <= b < 127 else "." for b in data[:0x180])
+    lines = [
+        "# IC32/IC15 Resource Header Probe",
+        "",
+        "Printable ASCII projection of the first 0x180 bytes from generated/roms/ic32_ic15.bin.",
+        "",
+    ]
+    for offset in range(0, len(text), 64):
+        lines.append(f"{offset:06x}: {text[offset:offset + 64]}")
+    lines.append("")
+    write_if_changed(GENERATED / "analysis" / "ic32_ic15_header.txt", "\n".join(lines))
+
+
+def generate_disassembly(firmware: Path) -> None:
+    if not UNIDASM.exists():
+        write_if_changed(
+            GENERATED / "disasm" / "README.txt",
+            f"unidasm was not found at {UNIDASM}; disassembly was not generated.\n",
+        )
+        return
+    windows = [
+        ("ic30_ic13_reset_000110.lst", "0x110", "0x110", "0x500"),
+        ("ic30_ic13_cart_resource_scan_0003e8.lst", "0x3e8", "0x3e8", "0x260"),
+        ("ic30_ic13_trampoline_handlers_000c7e.lst", "0xc7e", "0xc7e", "0x280"),
+        ("ic30_ic13_error_report_00128c.lst", "0x128c", "0x128c", "0x120"),
+        ("ic30_ic13_host_byte_fetch_00a904.lst", "0xa904", "0xa904", "0x1d0"),
+        ("ic30_ic13_a801_a601_io_00a4e8.lst", "0xa4e8", "0xa4e8", "0x180"),
+        ("ic30_ic13_esc_e_reset_00cc52.lst", "0xcc52", "0xcc52", "0x140"),
+        ("ic30_ic13_control_code_handlers_00f02c.lst", "0xf02c", "0xf02c", "0x300"),
+        ("ic30_ic13_page_root_finalize_00ff1e.lst", "0xff1e", "0xff1e", "0x170"),
+        ("ic30_ic13_page_geometry_tables_009d16.lst", "0x9d16", "0x9d16", "0x190"),
+        ("ic30_ic13_page_size_handler_00fc74.lst", "0xfc74", "0xfc74", "0x260"),
+        ("ic30_ic13_orientation_handler_010220.lst", "0x10220", "0x10220", "0x270"),
+        ("ic30_ic13_coordinate_math_0104d8.lst", "0x104d8", "0x104d8", "0xb0"),
+        ("ic30_ic13_raster_handlers_0105d0.lst", "0x105d0", "0x105d0", "0x300"),
+        ("ic30_ic13_rectangle_graphics_010898.lst", "0x10898", "0x10898", "0x260"),
+        ("ic30_ic13_main_parser_loop_011774.lst", "0x11774", "0x11774", "0x430"),
+        ("ic30_ic13_payload_dispatch_011f82.lst", "0x11f82", "0x11f82", "0x470"),
+        ("ic30_ic13_text_span_flush_012714.lst", "0x12714", "0x12714", "0x100"),
+        ("ic30_ic13_text_object_queue_012f2e.lst", "0x12f2e", "0x12f2e", "0x150"),
+        ("ic30_ic13_raster_object_queue_013070.lst", "0x13070", "0x13070", "0x330"),
+        ("ic30_ic13_display_list_helpers_013386.lst", "0x13386", "0x13386", "0x610"),
+        ("ic30_ic13_object_compare_013a48.lst", "0x13a48", "0x13a48", "0x4c0"),
+        ("ic30_ic13_active_object_scan_014398.lst", "0x14398", "0x14398", "0x300"),
+        ("ic30_ic13_active_object_dispatch_014ba4.lst", "0x14ba4", "0x14ba4", "0x580"),
+        ("ic30_ic13_page_root_font_slot_scan_0196c4.lst", "0x196c4", "0x196c4", "0x70"),
+        ("ic30_ic13_page_scheduler_019dd2.lst", "0x19dd2", "0x19dd2", "0xe0"),
+        ("ic30_ic13_font_candidate_filters_01519a.lst", "0x1519a", "0x1519a", "0x6b0"),
+        ("ic30_ic13_font_candidate_activate_01569c.lst", "0x1569c", "0x1569c", "0x1b0"),
+        ("ic30_ic13_font_resource_object_add_016c14.lst", "0x16c14", "0x16c14", "0x1a0"),
+        ("ic30_ic13_font_resource_scan_01a2e4.lst", "0x1a2e4", "0x1a2e4", "0x380"),
+        ("ic30_ic13_font_candidate_classify_01a9be.lst", "0x1a9be", "0x1a9be", "0x1d0"),
+        ("ic30_ic13_font_page_setup_01e0b2.lst", "0x1e0b2", "0x1e0b2", "0xf0"),
+        ("ic30_ic13_font_page_setup_alt_01e8e6.lst", "0x1e8e6", "0x1e8e6", "0xc0"),
+        ("ic30_ic13_page_record_to_render_record_01ed84.lst", "0x1ed84", "0x1ed84", "0x120"),
+        ("ic30_ic13_bitmap_state_setup_01ee9e.lst", "0x1ee9e", "0x1ee9e", "0x160"),
+        ("ic30_ic13_bitmap_bucket_walk_01ef6a.lst", "0x1ef6a", "0x1ef6a", "0x190"),
+        ("ic30_ic13_bitmap_compact_object_renderers_01f024.lst", "0x1f024", "0x1f024", "0x3b0"),
+        ("ic30_ic13_bitmap_draw_core_01f3d4.lst", "0x1f3d4", "0x1f3d4", "0x690"),
+        ("ic30_ic13_bitmap_encoded_span_modes_01f88e.lst", "0x1f88e", "0x1f88e", "0x1d0"),
+        ("ic30_ic13_bitmap_row_copy_tables_01fa5c.lst", "0x1fa5c", "0x1fa5c", "0x4c0"),
+        ("ic30_ic13_glyph_row_copy_helper_02f27c.lst", "0x2f27c", "0x2f27c", "0x250"),
+        ("ic30_ic13_pcl_escape_parser_00da9a.lst", "0xda9a", "0xda9a", "0x520"),
+    ]
+    for out_name, basepc, skip, count in windows:
+        result = subprocess.run(
+            [
+                str(UNIDASM),
+                str(firmware),
+                "-arch",
+                "m68000",
+                "-basepc",
+                basepc,
+                "-skip",
+                skip,
+                "-count",
+                count,
+            ],
+            cwd=ROOT,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        write_if_changed(GENERATED / "disasm" / out_name, result.stdout)
+
+
+def main() -> None:
+    manifest = load_manifest()
+    by_location = verify_raw_roms(manifest)
+    generated = generate_interleaves(manifest, by_location)
+    generate_vector_notes(generated["firmware_68000"])
+    generate_resource_header_notes(generated["resources_data"])
+    generate_disassembly(generated["firmware_68000"])
+    for name, path in generated.items():
+        print(f"{name}: {path.relative_to(ROOT)} {sha256(path)}")
+
+
+if __name__ == "__main__":
+    main()

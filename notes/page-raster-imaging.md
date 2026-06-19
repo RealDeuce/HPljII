@@ -1,0 +1,300 @@
+# Page Geometry and Raster Imaging Notes
+
+Sources: `generated/analysis/ic30_ic13_page_geometry_tables.md`; `generated/analysis/ic30_ic13_parser_xrefs.md`; `generated/analysis/ic30_ic13_page_root_references.md`; `generated/analysis/ic30_ic13_render_path_references.md`; `generated/analysis/ic30_ic13_render_dispatch_tables.md`; `generated/analysis/ic30_ic13_render_subrenderers.md`; `generated/analysis/ic30_ic13_render_expansion_fixtures.md`; `generated/analysis/ic30_ic13_render_destination_fixtures.md`; `generated/analysis/ic30_ic13_render_row_copy_fixtures.md`; `generated/analysis/ic30_ic13_font_context_bridge.md`; `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`; `generated/disasm/ic30_ic13_orientation_handler_010220.lst`; `generated/disasm/ic30_ic13_coordinate_math_0104d8.lst`; `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`; `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`; `generated/disasm/ic30_ic13_text_span_flush_012714.lst`; `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`; `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`; `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`; `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`; `generated/disasm/ic30_ic13_page_root_font_slot_scan_0196c4.lst`; `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`; `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`; `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`; `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`; `generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`; `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`; `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`; `generated/disasm/ic30_ic13_glyph_row_copy_helper_02f27c.lst`; `notes/pcl-command-map.md`; `notes/resource-rom.md`.
+
+These notes track firmware behavior that directly affects page pixels. Names are provisional where the ROM state variables are not fully cross-referenced yet.
+
+## Page Size Tables
+
+The page-size command handler `ESC &l#A` at `0x00fc74` maps PCL page-size parameters into internal page codes, stores the code at `0x782da2`, then rebuilds page geometry.
+
+The lookup helpers at `0x009d16`, `0x009d4e`, `0x009d86`, and `0x009dbe` mask the internal code with `0x7f` and index eleven word entries. The generated table report records all current values.
+
+Important confirmed mappings:
+
+| PCL page size | Internal code | Masked index | a112 / `0x9d16` | a128 / `0x9d4e` | a13e / `0x9d86` | a154 / `0x9dbe` |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | `0x06` | 6 | 2025 | 3030 | 2175 | 3150 |
+| 2 | `0x02` | 2 | 2400 | 3180 | 2550 | 3300 |
+| 3 | `0x05` | 5 | 2400 | 4080 | 2550 | 4200 |
+| 26 | `0x01` | 1 | 2338 | 3389 | 2480 | 3507 |
+| 80 | `0x88` | 8 | 1012 | 2130 | 1162 | 2250 |
+| 81 | `0x87` | 7 | 1087 | 2730 | 1237 | 2850 |
+| 90 | `0x89` | 9 | 1157 | 2480 | 1299 | 2598 |
+| 91 | `0x8a` | 10 | 1771 | 2586 | 1913 | 2704 |
+
+Current interpretation:
+
+- `0x9d4e` writes `0x782db2`; raster transfer bounds check against this value.
+- `0x9d16` writes `0x782db4`; raster-start code uses this value while computing a remaining byte/line limit.
+- `0x9d86` and `0x9dbe` feed orientation-specific physical or margin extents. For letter, they produce 2550 and 3300, matching 8.5 by 11 inches at 300 dpi.
+- The `a112` and `a128` values are smaller than physical paper and currently look like logical/printable extents.
+
+## Orientation
+
+`ESC &l#O` at `0x010220` accepts values below `2`. If the requested orientation differs from `0x782da3`, it updates `0x782da3`, rebuilds page geometry, and refreshes current cursor/font state.
+
+Orientation-sensitive geometry work includes:
+
+- `0xf9ac`: chooses table `0x9dbe` for orientation 0 and table `0x9d86` for orientation 1, storing the result at `0x782dba`.
+- `0xf87e`: sets `0x782dbe` to `0x003c` in orientation 0 and `0x0032` in orientation 1, then swaps `0x782db2` / `0x782db4` into `0x782db6` / `0x782db8` depending on orientation.
+- `0x103ea`: reloads orientation-specific values into `0x782daa`, `0x782dac`, `0x782dae`, and `0x782db0`.
+
+The coordinate helper group at `0x0104d8..0x010550` converts between whole coordinates and a packed fixed-point form with 12 subunits per whole unit. `0x10518` adds signed whole/fraction pairs and clamps the whole part to `0x7ffe`.
+
+## Raster Graphics State
+
+Raster-related PCL handlers:
+
+| Command | Handler | Current role |
+| --- | --- | --- |
+| `ESC *t#R` | `0x010808` | raster resolution |
+| `ESC *r#A` | `0x01075a` | start raster graphics |
+| `ESC *r#B` | `0x0107fa` | end raster graphics |
+| `ESC *b#W` | `0x011f82` -> delayed handler `0x0105d0` | transfer raster row bytes |
+
+The raster state block is rooted at `0x783170` in the handlers.
+
+Observed fields:
+
+| Offset | Access | Current interpretation |
+| ---: | --- | --- |
+| `+0x00` | word | start/baseline coordinate word copied from field `+0x0a` |
+| `+0x02` | word | whole coordinate derived from current packed coordinate during row transfer |
+| `+0x04` | word | bytes accepted or clipped for current row |
+| `+0x06` | word | excess bytes beyond accepted row count |
+| `+0x08` | word | resolution scale minus one |
+| `+0x0a` | long | start/baseline coordinate copied from current cursor state |
+| `+0x0e` | word | raster scale: 1, 2, 3, or 4 |
+| `+0x10` | word | maximum accepted byte count derived from page extent and raster scale |
+| `+0x12` | byte | raster-active / initialized flag |
+
+`ESC *t#R` maps the requested resolution into a scale:
+
+| Requested value range | Stored scale |
+| --- | ---: |
+| `> 150` | 1 |
+| `101..150` | 2 |
+| `76..100` | 3 |
+| `<= 75` | 4 |
+
+This is consistent with a `300 dpi / requested dpi` scale for 300, 150, 100, and 75 dpi raster modes.
+
+`ESC *r#A` initializes the state block only if field `+0x12` is clear. With parameter `1`, it seeds field `+0x0a` from one current cursor coordinate; otherwise it clears it. Which cursor variable is used depends on orientation:
+
+- orientation 0: seed from `0x782c8a`;
+- orientation 1: seed from `0x782c8e`.
+
+It then computes field `+0x10` from page extent, the baseline word, and `scale * 8`. This looks like a clipped maximum byte count for subsequent row transfers, but the exact axis naming is still open.
+
+`ESC *b#W` does not call the transfer routine immediately. Handler `0x011f82` stores delayed handler pointer `0x0105d0` through `0x0121cc`; the later payload dispatcher restores the parsed six-byte command record and calls the saved handler when the data is ready.
+
+The transfer routine at `0x0105d0`:
+
+- reads the byte count parameter from the parsed command record;
+- sets raster field `+0x12`;
+- clips or skips input bytes by repeatedly calling `0xdace`;
+- calls `0x10084` to ensure a page/image buffer is allocated;
+- calls `0x13070` with the raster state block when row data is in bounds;
+- advances current cursor state after the row transfer and clamps against `0x782dc6`.
+
+## Page Object Queues
+
+The transfer routine does not draw directly into a final bitmap. It queues a raster row object under the current page root at `0x78297a`.
+
+`0x10084` ensures the current page object root exists. On first allocation, it:
+
+- calls allocator `0x9a9a`;
+- stores the root pointer in `0x78297a`;
+- clears stream-allocation state `0x782a70`;
+- seeds stream cursor pointers `0x782a72` and `0x782a76`;
+- clears 256 longwords through the pointer at page-root offset `+0x1c`.
+
+Current page-root fields:
+
+| Root offset | Current interpretation |
+| ---: | --- |
+| `+0x1c` | array of bucket heads indexed by `0x782a7c` |
+| `+0x20` | start of the 0x100-byte chunk chain used by display-list object storage |
+| `+0x24` | linked-list head used by rectangle/rule-like objects |
+| `+0x28` | second linked-list head used by another rectangle/rule mode |
+| `+0x2c..+0x68` | 16 current-font context record slots copied from the `0x782ee6` / `0x782ef6` family |
+
+`0x132b6` and `0x1381c` implement a small stream allocator over 0x100-byte chunks:
+
+- `0x782a70`: bytes remaining in the current chunk.
+- `0x782a72`: pointer to the link field of the current chunk.
+- `0x782a76`: next free byte in the current chunk.
+- new chunks are allocated via `0x1710` and chained through their first longword, leaving `0xfc` payload bytes.
+
+`0x13070` converts the raster state block into bucket coordinates:
+
+- stores a bucket/index value at `0x782a7c`;
+- stores a packed coordinate/key at `0x782a7e`;
+- allocates a bucket object through `0x13250`;
+- links that object under `page_root+0x1c + 4 * 0x782a7c`;
+- stores raster row payload bytes immediately after the object header.
+
+The bucket object layout, as currently observed for raster rows:
+
+| Object offset | Meaning |
+| ---: | --- |
+| `+0x00` | next pointer in bucket chain |
+| `+0x04` | object class/key byte, initialized to `0x80` by `0x13250` |
+| `+0x05` | row scale/type byte copied from the raster state argument |
+| `+0x06` | allocator chunk byte count or payload capacity marker |
+| `+0x08` | packed coordinate/key from `0x782a7e` |
+| `+0x0a` | start of raster payload bytes copied from the host stream |
+
+`0x138de` is the first confirmed payload-storage routine for raster data. It reads bytes through host byte routine `0xa904`, handles embedded `0x1a 0x58` by calling `0xd99a`, writes bytes to the object payload pointer, and decrements the source raster-state byte count at offset `+0x04`.
+
+Rectangle/rule-like graphics share the same storage system but use the linked lists rooted at page offsets `+0x24` and `+0x28`. The entry `0x13386` calls `0x134d6` to compute the same packed ordering keys, then inserts an object via `0x133aa`. Follow-up routines around `0x13520..0x1381c` handle the second rectangle/rule mode and allocate entries through the same 0x100-byte stream allocator.
+
+Text also enters the page-object queue layer rather than drawing directly. The text-span flush path at `0x12714` packages a pending span into the rectangle/rule-like queue by calling `0x13520`; if insertion reports no room it marks page-root flags at `root+0x14` and retries after `0xff1e` / `0x10084`. The text object builder at `0x12f2e` computes the same `0x782a7c` bucket index and packed coordinate key, then allocates queue entries through `0x1387c`. Its entries store character/font payload data after a short object header, parallel to raster row payload storage.
+
+This confirms a common page-object model:
+
+| Producer | Entry routine | Queue root |
+| --- | --- | --- |
+| raster rows | `0x13070` | page-root `+0x1c` bucket array |
+| text / glyph spans | `0x12714`, `0x12f2e` | page-root `+0x1c` bucket array and shared display-list storage |
+| rectangles / rules | `0x13386`, `0x13520` | page-root `+0x24` / `+0x28` linked lists plus shared display-list storage |
+
+## Render/Banding Bridge
+
+The first confirmed bridge from queued page/control records toward the bitmap renderer is `0x1ed84..0x1ee9c`.
+
+`0x1ed84` copies metadata from the active page/control record at `0x780eae` into a selected work record, then calls `0x1edc6`. The surrounding alternator at `0x1ecd6` publishes the selected work record at `0x783a18` and calls `0x1ee9e` when record geometry changes.
+
+`0x1edc6` copies queue/list pointers from the source record into the destination render record:
+
+| Source record offset | Destination render-record offset | Current interpretation |
+| ---: | ---: | --- |
+| `+0x1c` | `+0x18` | bucket-head array copied from page/control record |
+| `+0x24` | `+0x1c` | linked object list copied from page/control record |
+| `+0x28` | `+0x20` | second linked object list copied from page/control record |
+| `+0x2c..+0x68` | `+0x24..+0x60` | 16 current-font context record pointers |
+
+After copying, `0x1edc6` normalizes objects in the destination lists: it sets flag bit `0x10` in object byte `+5`; for the `dest+0x1c` list it copies word `+0x0a` to `+0x0c`; for the `dest+0x20` list it copies word `+8` to `+0x0a` and sets bytes `+0x0c=1`, `+0x0d=8`.
+
+`generated/analysis/ic30_ic13_font_context_bridge.md` refines the `+0x2c` interpretation: `0xc428` / `0xc4fc` install pointers to current-font context records in these 16 page-root slots, not raw glyph pointers. `0x1edc6` copies them to render-record slots, and compact text/glyph objects use byte `+5` low nibble to select one of the copied render-record slots before `0x1f008` loads it into `0x783a2c`.
+
+`0x1ee9e` initializes bitmap render state. It stores the active record width word times four into `0x783a1c`, which is used later as a line stride. It also stores buffer base `0x7810b4` into the render record, derives a band/row value from `0x7810b8`, and fills a 16-word offset table at `0x7839f8`.
+
+The render entry `0x1ef6a` temporarily loads the current render record from `0x783a18` into `A6`. It then:
+
+- calls `0x1ef86` to compute `0x783a22`, `0x783a20`, and the current band destination base `0x783a28`;
+- calls `0x1efc2` to index the bucket-head array at render-record `+0x18` by the current band/row word, walk the object chain, and dispatch object classes;
+- calls `0x1f446`, a table-driven special-object dispatcher;
+- calls `0x1f756`, which walks the render-record `+0x20` list and writes fixed-width/rule-like bitmap spans.
+
+The first confirmed bitmap-writing routines are in `0x1f4e0..0x1fa5a`. They write 16-bit words to destinations derived from `0x783a28` or `0x7810b4`, advance rows by stride `0x783a1c`, and use mask/expansion tables around `0x2fefe..0x30b14`.
+
+Key current anchors:
+
+| Routine | Current role |
+| --- | --- |
+| `0x1f626` | computes destination pointer `A1` from object coordinates, `0x783a20`, `0x783a28`, `0x7839f8`, `0x783a1c`, and `0x7810b4` |
+| `0x1f4e0` | word/mask bitmap writer selected by table `0x1f4a0` |
+| `0x1f596` | solid-mask bitmap writer selected by table `0x1f4a0` |
+| `0x1f756` / `0x1f7b0` | fixed-width/rule-like list writer from render-record `+0x20` |
+| `0x1f812` / `0x1f862` | segment-list writer selected from bucket-chain objects |
+| `0x1f88e` | encoded-span writer selected from bucket-chain objects |
+
+### Object Class Dispatch
+
+The bucket-chain dispatcher at `0x1efc2` walks render-record `+0x18`, which is the page/control bucket array copied from source offset `+0x1c`. For each bucket object, it advances `A1` to object offset `+4`, masks object byte `+4` with `0xc0`, and uses the result as the first class split:
+
+| Object byte `+4` high bits | Render path | Current producer mapping |
+| --- | --- | --- |
+| `0x00..0x3f` | compact branch `0x1effe`; table `0x1f024` selected by byte `+4` bits `0x10/0x20` | text/glyph bucket objects from `0x12f2e` / `0x1387c` |
+| `0x40..0x7f` | segment-list writer `0x1f812` / `0x1f862` | producer not yet pinned down |
+| `0x80..0xff` | encoded-span writer `0x1f88e`; table `0x1f8ca` selected by byte `+5 & 0x03` | raster rows from `0x13070` / `0x13250`, because `0x13250` initializes byte `+4` to `0x80` |
+
+Confirmed producer-to-renderer mappings:
+
+| Producer | Queue/list path | Selector fields | Renderer path |
+| --- | --- | --- | --- |
+| raster rows | page-root `+0x1c` bucket array -> render-record `+0x18` | `0x13250` writes `object[4]=0x80`; `object[5]` is the low byte of the first `0x13250` argument sourced from raster-state word `+0x08`; `object[6]=capacity`; `object[8]=packed key`; payload starts at `+0x0a` | `0x1efc2` high-bit branch -> `0x1f88e` encoded-span renderer |
+| text/glyph buckets | page-root `+0x1c` bucket array -> render-record `+0x18` | `0x1387c` writes the selector word at `object+4`; `0x12f2e` sets bits `0x1000`/`0x2000`, which become byte `+4` bits `0x10`/`0x20`; byte `+5` low nibble selects a render-record context slot copied from source `+0x2c` to render `+0x24` | `0x1efc2` compact branch -> `0x1effe` -> table `0x1f024` |
+| rectangle/rule list | page-root `+0x24` -> render-record `+0x1c` | `0x133aa` writes byte `+4` from `0x782a7d`, ORs source word `+8` into byte `+5`, and stores dimensions at `+8/+0x0a`; bridge `0x1edc6` copies word `+0x0a` to `+0x0c` | list renderer `0x1f446`; table `0x1f4a0` selected by `object[5] & 0x0f` |
+| second rule/text-span list | page-root `+0x28` -> render-record `+0x20` | `0x136d2` writes byte `+4` from `0x782a7d`, byte `+5` from source `+1`, word `+6` from packed key, and word `+8`; bridge `0x1edc6` copies `+8` to `+0x0a` and sets `+0x0c=1`, `+0x0d=8` | fixed-width/rule writer `0x1f756` / `0x1f7b0` |
+
+### Subrenderer Payloads
+
+The compact text/glyph branch resolves a font/glyph context through `0x783a2c`. That value is loaded from a render-record context slot copied from page-root `+0x2c`; the slot points at a current-font context record whose first longword is the selected resource address plus flag bits. Helper `0x1f354` tests bit 30 of that context longword to distinguish two resource layouts:
+
+- bit 30 set: context base plus word `+8` points to an offset table; the glyph index selects a long offset into a glyph entry;
+- bit 30 clear: context base plus `0x40 + 8*glyph_index` is an inline glyph record with a long bitmap offset.
+
+Both forms return a glyph bitmap pointer in `A2`, a byte/word span count in `D1`, a row/count field in `D3`, and sometimes a secondary plane/row pointer in `A3`.
+
+Compact object mode behavior:
+
+| Selector bits from object byte `+4` | Target | Payload entry shape | Current behavior |
+| --- | --- | --- | --- |
+| `0x00` | `0x1f034` | glyph byte, coordinate word | renders each glyph through table `0x1f08e` |
+| `0x10` | `0x1f0d2` | glyph byte, coordinate word | renders wide glyphs in 16-pixel chunks via `0x2f27c`, then a remainder through table `0x1f1ac` |
+| `0x20` | `0x1f1f0` | glyph byte, vertical/plane byte, coordinate word | offsets glyph bitmap data by `byte*0x80`, clips height to `0x80`, then renders through table `0x1f08e` |
+| `0x30` | `0x1f264` | glyph byte, vertical/plane byte, coordinate word | combines the `byte*0x80` plane adjustment with the wide-glyph chunk/remainder path |
+
+Encoded raster span mode behavior:
+
+| `object[5] & 0x03` | Target | Payload behavior |
+| ---: | --- | --- |
+| 0 | `0x1f8da` | copy literal words from payload to destination |
+| 1 | `0x1f8e6` | expand each payload byte through word table `0x30914` and write the result to two adjacent row/band destinations |
+| 2 | `0x1f920` | expand payload bytes through longword table `0x30b14` and write to up to three row/band destinations, with row selection driven by clipped `D3` state |
+| 3 | `0x1f9c6` | expand each payload byte through table `0x30914` into a longword and write to four row/band destinations |
+
+The generated fixture report `generated/analysis/ic30_ic13_render_expansion_fixtures.md` now pins down deterministic sample expansions for these encoded raster modes:
+
+- mode 0 literal word-copy payloads;
+- mode 1 byte-to-word expansion through `0x30914`;
+- mode 2 byte-to-long expansion through `0x30b14`;
+- mode 3 cascaded byte expansion through `0x30914`.
+
+The generated fixture report `generated/analysis/ic30_ic13_render_destination_fixtures.md` now pins down synthetic-state expectations for:
+
+- `0x1f3d4` packed coordinate decode into row index, byte-pair offset, `0xa001` sub-byte flag, and destination pointer;
+- `0x1f414` count splitting at the current band boundary;
+- the main `0x1f626` destination branches: current band, shifted current band, and fallback buffer.
+
+The generated fixture report `generated/analysis/ic30_ic13_render_row_copy_fixtures.md` now decodes the compact glyph row-copy tables into deterministic A1/A2/A3 write traces:
+
+- `0x1f08e` maps glyph byte widths 1..16 to helper routines and row-count tables;
+- `0x1f1ac` maps wide-glyph remainder widths 1..16 after full 16-byte chunks;
+- `0x2f27c` renders full 16-byte chunks using `0x2f2ac`, with `0x783a46` as the current horizontal phase;
+- odd byte widths copy the trailing byte from `A3`, while even byte widths are word copies from `A2`.
+
+The executable harness `tools/render_fixture_harness.py` combines the encoded-raster expansion, destination/clipping arithmetic, row-copy behavior, and first real resource-glyph resolutions into a single ROM-backed self-test. It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently verifies 22 checks covering expansion modes 0..3, destination helper cases, main compact glyph rows, wide-glyph remainder rows, the `0x2f27c` full-width chunk helper, and built-in `0x1f354` glyph resolution for contexts `0x4008004c`, `0x44080418`, and `0x440946b4`.
+
+This is still not enough for pixel-perfect reproduction by itself. The next unresolved step is to connect the text object glyph-index byte and symbol-set mapping to those real resource entries, then run complete glyph bitmaps through the row-copy writers and integrate the primitive writers with real page objects from the parser/imaging path.
+
+## Rejected Compositor Lead
+
+The `0x78287c` / `0x7827b8` / `0x7828a8` path is not the page-object compositor. It is a font/resource candidate selector.
+
+Why this lead is rejected for raster/page imaging:
+
+- `0x1a2e4` initializes candidate-list counts `0x782790..0x78279e` and candidate-list pointers `0x7827a0..0x7827b4`.
+- `0x1a616` scans resource address ranges and looks for resource records such as `HEAD`, `FONT`, `TABL`, `tabl`, and `DUMY`.
+- `0x1a9be` classifies font resources and updates the candidate-list counts/pointers.
+- `0x1569c` copies one font candidate-list pointer/count pair into `0x78287c` / `0x7827b8`.
+- `0x14398`, `0x1440c`, and `0x14c64` select and snapshot current font-resource candidates, updating font range/state tables around `0x783132..0x78313c`.
+
+This path is still important for text rendering and built-in font selection, but it does not consume the page-root raster/rectangle queues described above.
+
+Other checked leads:
+
+- `0xff1e` finalizes or resets the current page root, tests page-root flags at `root+0x14`, calls parser/scheduler helpers, updates root state fields, and can clear `0x78297a`. It does not walk queue roots `+0x1c`, `+0x24`, or `+0x28`.
+- Direct `0x78297a` references are now indexed in `generated/analysis/ic30_ic13_page_root_references.md`. The known direct references resolve to page-object producers, page-root initialization/finalization, font-slot handling at root `+0x2c`, or pool management. The bridge to rendering is instead through page/control records copied by `0x1edc6`.
+- The later `0x196c4` lead scans page-root `+0x2c` font slots and calls `0x1ba6c` if a slot matches; it is not a bucket-chain consumer.
+- `0x780ea6` and nearby aliases are the fixed 0x6c-byte page/control record pool used by allocator `0x9a9a`. They are not independent final image buffers.
+
+## Next Targets
+
+- Extend the executable renderer fixture harness from real `0x1f354` glyph resolution to complete rendered glyph bitmap comparisons using extracted `IC32,IC15` rows.
+- Name the cursor coordinate variables `0x782c8a` and `0x782c8e` by comparing CR/LF/FF behavior with raster start/transfer behavior.
+- Finish rectangle handlers at `0x010898` and the width/height handlers around `0x010a40..0x010e68`; these now appear to share page-object storage with raster, not a direct framebuffer write.
+- Compare the page geometry constants against manual printable-area diagrams and self-test output.

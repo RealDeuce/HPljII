@@ -1,0 +1,99 @@
+{
+  "system": "HP LaserJet II / HP 33440 formatter",
+  "rom_device": {
+    "package": "DIP28",
+    "device_family": "Toshiba TC531000P",
+    "organization": "128K x 8 mask ROM",
+    "datasheet": "TC531000AP.PDF",
+    "read_profile": "LQ500_4C_A16_PIN22@DIP28",
+    "notes": "TC531000 pin 20 is a mask option for CE or /CE. These parts read correctly with active-low /CE; active-high CE returned erased-looking data."
+  },
+  "raw_roms": [
+    {
+      "board_location": "IC13",
+      "chip_marking": "SH7-9236-01",
+      "filename": "ic13_sh7-9236-01_tc531000p.bin",
+      "size_bytes": 131072,
+      "sha256": "0e6fa34f0d25763ac1b687f1a24d07190ddc04057690b3e3846c114284db42d5",
+      "verification": "read1 and read2 matched byte-for-byte",
+      "tail_marker": "SH7-9236-01000"
+    },
+    {
+      "board_location": "IC15",
+      "chip_marking": "SH7-9234-01",
+      "filename": "ic15_sh7-9234-01_tc531000p.bin",
+      "size_bytes": 131072,
+      "sha256": "623396d62a450794e4e0c6356009921ca7fb04a7cb7d2e15a35554630c697396",
+      "verification": "two reads matched byte-for-byte",
+      "tail_marker": "SH7-9234-01"
+    },
+    {
+      "board_location": "IC30",
+      "chip_marking": "SH7-9235-0100",
+      "filename": "ic30_sh7-9235-0100_tc531000p.bin",
+      "size_bytes": 131072,
+      "sha256": "63959a0ad8a4185f6a127afa23dfc89b1f0d7dd04a2a84da853abb30ffd1aeb6",
+      "verification": "three reads matched byte-for-byte",
+      "tail_marker": "SH7-9235-01000"
+    },
+    {
+      "board_location": "IC32",
+      "chip_marking": "SH7-9233-01",
+      "filename": "ic32_sh7-9233-01_tc531000p.bin",
+      "size_bytes": 131072,
+      "sha256": "7f9abfe55629770b0f4bcd0e3bc671143d4cca6ec666edfac34d9e0587ae6452",
+      "verification": "read4 and read5 matched byte-for-byte; earlier noisy reads retained as unverified local files",
+      "tail_marker": "SH7-9233-01"
+    }
+  ],
+  "interleaves": [
+    {
+      "name": "firmware_68000",
+      "byte_order": [
+        "IC30",
+        "IC13"
+      ],
+      "source_files": [
+        "ic30_sh7-9235-0100_tc531000p.bin",
+        "ic13_sh7-9236-01_tc531000p.bin"
+      ],
+      "generated_file": "generated/roms/ic30_ic13.bin",
+      "size_bytes": 262144,
+      "sha256": "feeaf8d651b593af72b65d76fe6b85ee7d191278570438caeac49e0b74dbd079",
+      "evidence": "68000 vector table has initial SP 0x00800000 and reset PC 0x00000110; MAME unidasm produces sane m68000 startup code at 0x110."
+    },
+    {
+      "name": "resources_data",
+      "byte_order": [
+        "IC32",
+        "IC15"
+      ],
+      "source_files": [
+        "ic32_sh7-9233-01_tc531000p.bin",
+        "ic15_sh7-9234-01_tc531000p.bin"
+      ],
+      "generated_file": "generated/roms/ic32_ic15.bin",
+      "size_bytes": 262144,
+      "sha256": "dd4ca68e1790dc81dfdb4c364a0bc5e449f4c53e1bfc39a1536c26369eab935c",
+      "evidence": "Interleave reconstructs readable header and copyright strings; MAME m68000 disassembly does not look like executable reset/startup code."
+    }
+  ],
+  "negative_order_probes": [
+    {
+      "byte_order": [
+        "IC13",
+        "IC30"
+      ],
+      "sha256": "586a71e3f9b50f6c7a3f6a15e94e6d4c50655d99f233e4e007e919b4ceddc28c",
+      "reason_rejected": "Reset vector/order is not valid 68000 startup."
+    },
+    {
+      "byte_order": [
+        "IC15",
+        "IC32"
+      ],
+      "sha256": "16e4ea937a2c9f089789fb16d80f230829ef2ad1dd36fb1f16455cb3b9c965ff",
+      "reason_rejected": "Resource header strings are garbled in this order."
+    }
+  ]
+}

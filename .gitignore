@@ -1,0 +1,10 @@
+# Local ROM dump artifacts. Keep raw reads, verified images, and interleaves
+# out of the repository; track manifests/scripts/notes instead.
+*.bin
+*.BIN
+
+# Generated local analysis output derived from ROM contents.
+generated/
+
+# Local Python bytecode caches from analysis scripts.
+__pycache__/

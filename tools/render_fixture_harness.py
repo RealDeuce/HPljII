@@ -74,12 +74,119 @@ def glyph_bitmap_rows(resources: bytes, glyph: dict[str, int | bytes]) -> list[s
     rows = int(glyph["rows"])
     width = int(glyph["width"])
     render_span = int(glyph["render_span"])
+    bitmap_bytes = resources[bitmap : bitmap + rows * render_span]
+    return bitmap_bytes_to_rows(bitmap_bytes, rows, width, render_span)
+
+
+def bitmap_bytes_to_rows(bitmap: bytes | bytearray, rows: int, width: int, stride: int) -> list[str]:
     out: list[str] = []
     for row_index in range(rows):
-        row = resources[bitmap + row_index * render_span : bitmap + (row_index + 1) * render_span]
+        row = bitmap[row_index * stride : (row_index + 1) * stride]
         bits = "".join("#" if (byte >> (7 - bit)) & 1 else "." for byte in row for bit in range(8))
         out.append(bits[:width])
     return out
+
+
+def render_glyph_rows_via_main_row_copy(data: bytes, resources: bytes, glyph: dict[str, int | bytes], dest_stride: int = 0x20) -> list[str]:
+    mode = int(glyph["mode"])
+    if mode != 1:
+        raise AssertionError(f"mode {mode} row-copy renderer is not implemented")
+    rows = int(glyph["rows"])
+    width = int(glyph["width"])
+    render_span = int(glyph["render_span"])
+    if render_span < 1 or render_span > 16:
+        raise AssertionError(f"main row-copy table cannot render span {render_span}")
+    if render_span & 1 and render_span != 1:
+        raise AssertionError("odd multi-byte spans need the A3 trailing-byte fixture before rendering")
+
+    bitmap = int(glyph["bitmap"])
+    source = resources[bitmap : bitmap + rows * render_span]
+    dest = bytearray(rows * dest_stride)
+    result = simulate_row_copy(data, u32(data, 0x1F08E + render_span * 4), rows, stride=dest_stride)
+    for write in result.writes:
+        if write.source != "A2":
+            raise AssertionError(f"unexpected {write.source} write for mode-1 glyph row-copy")
+        if write.src + write.size > len(source):
+            raise AssertionError(f"source read past glyph bitmap at +0x{write.src:x}")
+        if write.dst + write.size > len(dest):
+            raise AssertionError(f"destination write past fixture buffer at +0x{write.dst:x}")
+        dest[write.dst : write.dst + write.size] = source[write.src : write.src + write.size]
+    return bitmap_bytes_to_rows(dest, rows, width, dest_stride)
+
+
+def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, payload: bytes, dest_stride: int = 0x20, band_rows: int = 64) -> dict[str, object]:
+    count = u16(payload, 0)
+    pos = 2
+    rendered: list[dict[str, int]] = []
+    dest = bytearray(band_rows * dest_stride)
+    max_width = 0
+    max_bottom = 0
+    for _ in range(count):
+        glyph_index = payload[pos]
+        coord = u16(payload, pos + 1)
+        pos += 3
+        subbyte = (coord >> 8) & 0x0F
+        if subbyte:
+            raise AssertionError("compact mode-0 fixture does not implement sub-byte phase yet")
+        glyph = resolve_builtin_glyph(resources, context, glyph_index)
+        rows = int(glyph["rows"])
+        width = int(glyph["width"])
+        render_span = int(glyph["render_span"])
+        if (coord >> 12) + rows > band_rows:
+            raise AssertionError("compact mode-0 fixture does not implement band-crossing continuation yet")
+        source = resources[int(glyph["bitmap"]) : int(glyph["bitmap"]) + rows * render_span]
+        dest_base = ((coord >> 12) & 0x0F) * dest_stride + (coord & 0x00FF) * 2
+        result = simulate_row_copy(data, u32(data, 0x1F08E + render_span * 4), rows, stride=dest_stride)
+        for write in result.writes:
+            if write.source != "A2":
+                raise AssertionError(f"unexpected {write.source} write for compact mode-0 glyph")
+            start = dest_base + write.dst
+            dest[start : start + write.size] = source[write.src : write.src + write.size]
+        rendered.append({
+            "glyph": glyph_index,
+            "coord": coord,
+            "dest_base": dest_base,
+            "span": render_span,
+            "rows": rows,
+            "width": width,
+            "helper": u32(data, 0x1F08E + render_span * 4),
+        })
+        max_width = max(max_width, (coord & 0x00FF) * 16 + width)
+        max_bottom = max(max_bottom, ((coord >> 12) & 0x0F) + rows)
+    return {
+        "count": count,
+        "rendered": rendered,
+        "rows": bitmap_bytes_to_rows(dest, max_bottom, max_width, dest_stride),
+    }
+
+
+def compact_text_coord(x: int, y: int) -> int:
+    return ((y & 0x0F) << 12) | ((x & 0x0F) << 8) | ((x >> 4) & 0x00FF)
+
+
+def build_short_text_bucket_object(glyph: int, x: int, y: int, context_slot: int = 0) -> bytes:
+    selector = context_slot & 0x0F
+    obj = bytearray(0x0B)
+    obj[4:6] = selector.to_bytes(2, "big")
+    obj[6:8] = (1).to_bytes(2, "big")
+    obj[8] = glyph & 0xFF
+    obj[9:11] = compact_text_coord(x, y).to_bytes(2, "big")
+    return bytes(obj)
+
+
+def render_compact_text_bucket_object(data: bytes, resources: bytes, contexts: tuple[int, ...], obj: bytes) -> dict[str, object]:
+    selector = obj[4]
+    context_slot = obj[5] & 0x0F
+    if selector & 0x30:
+        raise AssertionError("compact text bucket fixture only implements mode 0")
+    if context_slot >= len(contexts):
+        raise AssertionError(f"context slot {context_slot} is not available")
+    payload = obj[6:]
+    rendered = render_compact_mode0_payload(data, resources, contexts[context_slot], payload)
+    rendered["selector"] = u16(obj, 4)
+    rendered["context_slot"] = context_slot
+    rendered["payload"] = payload
+    return rendered
 
 
 def expand_mode0(payload: bytes) -> list[int]:
@@ -373,6 +480,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ".#######.",
         "..#####..",
     ]))
+    checks.append(assert_equal("resource context 0x4008004c glyph 0 main row-copy rendered rows", render_glyph_rows_via_main_row_copy(data, resources, default_glyph0), default_glyph0_rows))
 
     courier_glyph0 = resolve_builtin_glyph(resources, 0x44080418, 0)
     checks.append(assert_equal("resource context 0x44080418 glyph 0 fields", {key: courier_glyph0[key] for key in ("base", "table", "entry", "bitmap", "delta", "mode", "rows", "width", "render_span")}, {
@@ -418,6 +526,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "........############........",
         "...........######...........",
     ]))
+    checks.append(assert_equal("resource context 0x44080418 glyph 0 main row-copy rendered rows", render_glyph_rows_via_main_row_copy(data, resources, courier_glyph0), courier_glyph0_rows))
 
     line_printer_glyph0 = resolve_builtin_glyph(resources, 0x440946B4, 0)
     checks.append(assert_equal("resource context 0x440946b4 glyph 0 fields", {key: line_printer_glyph0[key] for key in ("base", "table", "entry", "bitmap", "delta", "mode", "rows", "width", "render_span")}, {
@@ -450,6 +559,65 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "....########....",
         "......####......",
     ]))
+    checks.append(assert_equal("resource context 0x440946b4 glyph 0 main row-copy rendered rows", render_glyph_rows_via_main_row_copy(data, resources, line_printer_glyph0), line_printer_glyph0_rows))
+
+    line_printer_glyph32 = resolve_builtin_glyph(resources, 0x440946B4, 32)
+    checks.append(assert_equal("resource context 0x440946b4 glyph 32 fields", {key: line_printer_glyph32[key] for key in ("base", "table", "entry", "bitmap", "delta", "mode", "rows", "width", "render_span")}, {
+        "base": 0x0146B4,
+        "table": 0x0146FE,
+        "entry": 0x015330,
+        "bitmap": 0x01533A,
+        "delta": 10,
+        "mode": 1,
+        "rows": 22,
+        "width": 4,
+        "render_span": 1,
+    }))
+    line_printer_glyph32_rows = glyph_bitmap_rows(resources, line_printer_glyph32)
+    checks.append(assert_equal("resource context 0x440946b4 glyph 32 full bitmap rows", line_printer_glyph32_rows, [
+        "####",
+        "....",
+        "####",
+        "....",
+        "####",
+        "....",
+        "####",
+        "....",
+        "####",
+        "....",
+        "####",
+        "....",
+        "####",
+        "....",
+        "####",
+        "....",
+        "####",
+        "....",
+        "####",
+        "....",
+        "####",
+        "....",
+    ]))
+    checks.append(assert_equal("resource context 0x440946b4 glyph 32 main row-copy rendered rows", render_glyph_rows_via_main_row_copy(data, resources, line_printer_glyph32), line_printer_glyph32_rows))
+
+    compact_text_object = build_short_text_bucket_object(glyph=32, x=0, y=0, context_slot=0)
+    compact_mode0 = render_compact_text_bucket_object(data, resources, (0x440946B4,), compact_text_object)
+    checks.append(assert_equal("compact text bucket object fixture metadata", {key: compact_mode0[key] for key in ("selector", "context_slot", "count", "rendered", "payload")}, {
+        "selector": 0,
+        "context_slot": 0,
+        "count": 1,
+        "rendered": [{
+            "glyph": 32,
+            "coord": 0,
+            "dest_base": 0,
+            "span": 1,
+            "rows": 22,
+            "width": 4,
+            "helper": 0x01FA5C,
+        }],
+        "payload": bytes.fromhex("00 01 20 00 00"),
+    }))
+    checks.append(assert_equal("compact text bucket object fixture rendered rows", compact_mode0["rows"], line_printer_glyph32_rows))
 
     lines.append("## Built-In Glyph Bitmap Fixtures")
     lines.append("")
@@ -459,6 +627,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ("context `0x4008004c`, glyph `0`", default_glyph0, default_glyph0_rows),
         ("context `0x44080418`, glyph `0`", courier_glyph0, courier_glyph0_rows),
         ("context `0x440946b4`, glyph `0`", line_printer_glyph0, line_printer_glyph0_rows),
+        ("context `0x440946b4`, glyph `32`", line_printer_glyph32, line_printer_glyph32_rows),
     ):
         lines.append(f"### {title}")
         lines.append("")
@@ -466,6 +635,39 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         lines.append("")
         lines.extend(f"`{row}`" for row in rows)
         lines.append("")
+
+    lines.append("## Main Row-Copy Integration Fixtures")
+    lines.append("")
+    lines.append("These fixtures feed the same resource glyph bytes through the main compact-glyph row-copy table at `0x1f08e`. The destination buffer uses a synthetic `0x20` byte row stride, matching the existing row-copy fixtures, and the reconstructed destination rows must match the direct resource decode above.")
+    lines.append("")
+    lines.append("| Context | Glyph | Span | Helper | Result |")
+    lines.append("| ---: | ---: | ---: | ---: | --- |")
+    for context, glyph_index, glyph in (
+        (0x4008004C, 0, default_glyph0),
+        (0x44080418, 0, courier_glyph0),
+        (0x440946B4, 0, line_printer_glyph0),
+        (0x440946B4, 32, line_printer_glyph32),
+    ):
+        span = int(glyph["render_span"])
+        lines.append(f"| `0x{context:08x}` | `{glyph_index}` | `{span}` | `0x{u32(data, 0x1F08E + span * 4):06x}` | decoded destination rows match resource rows |")
+    lines.append("")
+
+    lines.append("## Compact Text Bucket Fixture")
+    lines.append("")
+    lines.append("This fixture executes the short compact text bucket shape emitted by `0x12f2e` for the renderer `0x1effe` / `0x1f034` path: object selector word at `+4`, payload count word at `+6`, then one `{glyph byte, coordinate word}` entry at `+8`. It uses render context slot `0` pointing at `0x440946b4`, glyph `32`, coordinate `0x0000`, and an unclipped synthetic band so the rows should match the glyph-32 row-copy fixture exactly.")
+    lines.append("")
+    lines.append(f"- object bytes: `{' '.join(f'{byte:02x}' for byte in compact_text_object)}`")
+    lines.append(f"- payload bytes: `{' '.join(f'{byte:02x}' for byte in compact_mode0['payload'])}`")
+    lines.append(f"- selector: `0x{int(compact_mode0['selector']):04x}`, context slot `{compact_mode0['context_slot']}`")
+    rendered_entry = compact_mode0["rendered"][0]
+    assert isinstance(rendered_entry, dict)
+    lines.append(
+        f"- rendered entry: glyph `{rendered_entry['glyph']}`, coord `0x{int(rendered_entry['coord']):04x}`, "
+        f"dest base `+0x{int(rendered_entry['dest_base']):02x}`, span `{rendered_entry['span']}`, helper `0x{int(rendered_entry['helper']):06x}`"
+    )
+    lines.append("- rendered rows:")
+    lines.extend(f"`{row}`" for row in compact_mode0["rows"])
+    lines.append("")
 
     lines.append(f"checks: {len(checks)}")
     lines.append("")

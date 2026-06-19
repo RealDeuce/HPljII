@@ -686,7 +686,7 @@ def text_glyph_index_flow_report(firmware: bytes, resources: bytes) -> str:
     lines.append("- To render built-in text exactly, reproduce the firmware's active map table for the selected primary/secondary font slot, including `0x14f16` symbol-set patching.")
     lines.append("- The compact glyph payload byte is not necessarily the original host byte. It is the mapped byte stored at text object `+0x0b` and copied by `0x12f2e`.")
     lines.append("- The renderer-side glyph identity is `(context longword, mapped byte)`. For built-in contexts the context low 24 bits map to `IC32,IC15` offset `address - 0x80000`, bit 30 selects the offset table, and each table entry is a relative 32-bit offset from the record start.")
-    lines.append("- The `0x14fce` symbol-set patch tables and their Technical Reference names are decoded in `ic30_ic13_symbol_set_patch_tables.md`; remaining work is to capture the host parser path that invokes `0x1393a` for printable bytes and feed full resource glyph rows through the row-copy harness.")
+    lines.append("- The `0x14fce` symbol-set patch tables and their Technical Reference names are decoded in `ic30_ic13_symbol_set_patch_tables.md`; remaining work is to capture the host parser path that invokes `0x1393a` for printable bytes, broaden row-copy fixtures beyond the current mode-1 built-in examples, and replace the synthetic short text bucket fixture with parser-produced page-object payloads.")
     lines.append("")
     return "\n".join(lines)
 

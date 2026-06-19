@@ -271,9 +271,9 @@ The generated fixture report `generated/analysis/ic30_ic13_render_row_copy_fixtu
 - `0x2f27c` renders full 16-byte chunks using `0x2f2ac`, with `0x783a46` as the current horizontal phase;
 - odd byte widths copy the trailing byte from `A3`, while even byte widths are word copies from `A2`.
 
-The executable harness `tools/render_fixture_harness.py` combines the encoded-raster expansion, destination/clipping arithmetic, row-copy behavior, real resource-glyph resolutions, and complete mode-1 resource bitmap row decoding into a single ROM-backed self-test. It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently verifies 25 checks covering expansion modes 0..3, destination helper cases, main compact glyph rows, wide-glyph remainder rows, the `0x2f27c` full-width chunk helper, built-in `0x1f354` glyph resolution, and full decoded glyph rows for contexts `0x4008004c`, `0x44080418`, and `0x440946b4`.
+The executable harness `tools/render_fixture_harness.py` combines the encoded-raster expansion, destination/clipping arithmetic, row-copy behavior, real resource-glyph resolutions, complete mode-1 resource bitmap row decoding, main row-copy rendering of those resource rows, and one compact text bucket object fixture into a single ROM-backed self-test. It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently verifies 33 checks covering expansion modes 0..3, destination helper cases, main compact glyph rows, wide-glyph remainder rows, the `0x2f27c` full-width chunk helper, built-in `0x1f354` glyph resolution, full decoded glyph rows, `0x1f08e` main row-copy destination rows for four real glyphs across contexts `0x4008004c`, `0x44080418`, and `0x440946b4`, and an unclipped byte-aligned short `0x12f2e` text bucket object with selector word `0x0000`, count `1`, glyph `32`, and coord `0x0000`. Those real glyphs cover mode-1 render spans 1, 2, and 4.
 
-This is still not enough for pixel-perfect reproduction by itself. The next unresolved step is to trace the parser call path into `0x1393a`, broaden the complete glyph-row fixtures, and integrate those decoded resource rows with the row-copy writers and real page objects from the parser/imaging path.
+This is still not enough for pixel-perfect reproduction by itself. The next unresolved step is to trace the parser call path into `0x1393a`, broaden the complete glyph-row fixtures to wide/non-mode-1 cases, and replace the synthetic text bucket object with parser-produced page objects from the text/imaging path. The firmware-scanned built-in tables checked so far do not expose a mode-2 glyph that would exercise the `A3` trailing-plane row-copy path.
 
 ## Rejected Compositor Lead
 
@@ -298,7 +298,7 @@ Other checked leads:
 
 ## Next Targets
 
-- Integrate complete `IC32,IC15` glyph-row fixtures with the executable row-copy/page-object harness, then broaden beyond the three current mode-1 built-in examples.
+- Replace the synthetic short text bucket object fixture with real parser-produced page-object payloads, then broaden beyond the four current mode-1 built-in examples.
 - Name the cursor coordinate variables `0x782c8a` and `0x782c8e` by comparing CR/LF/FF behavior with raster start/transfer behavior.
 - Finish rectangle handlers at `0x010898` and the width/height handlers around `0x010a40..0x010e68`; these now appear to share page-object storage with raster, not a direct framebuffer write.
 - Compare the page geometry constants against manual printable-area diagrams and self-test output.

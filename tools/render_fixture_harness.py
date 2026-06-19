@@ -1060,6 +1060,120 @@ def start_raster_graphics_via_1075a(state: dict[str, int], parameter: int) -> di
     return state
 
 
+def parse_pcl_decimal_parameter(stream: bytes, pos: int) -> tuple[int, int]:
+    sign = 1
+    if pos < len(stream) and stream[pos] in (ord("+"), ord("-")):
+        sign = -1 if stream[pos] == ord("-") else 1
+        pos += 1
+    if pos >= len(stream) or not chr(stream[pos]).isdigit():
+        raise AssertionError("PCL command fixture requires an integer parameter")
+    value = 0
+    while pos < len(stream) and chr(stream[pos]).isdigit():
+        value = value * 10 + stream[pos] - ord("0")
+        pos += 1
+    return sign * value, pos
+
+
+def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes, initial_state: dict[str, int]) -> dict[str, object]:
+    state = dict(initial_state)
+    page_record: dict[str, object] = {"bucket_array": {}}
+    events: list[dict[str, object]] = []
+    queued: list[dict[str, object]] = []
+    pos = 0
+    while pos < len(stream):
+        if stream[pos] != 0x1B:
+            raise AssertionError(f"raster command stream expected ESC at offset {pos}")
+        start = pos
+        pos += 1
+        if pos + 1 >= len(stream) or stream[pos] != ord("*"):
+            raise AssertionError(f"raster command stream only models ESC * commands at offset {start}")
+        group = stream[pos + 1]
+        pos += 2
+        parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+        if pos >= len(stream):
+            raise AssertionError("raster command stream missing final byte")
+        final = stream[pos]
+        pos += 1
+        sequence = stream[start:pos]
+
+        if group == ord("t") and final == ord("R"):
+            before = dict(state)
+            state = apply_raster_resolution_via_10808(state, parameter)
+            events.append({
+                "kind": "raster-resolution",
+                "sequence": sequence,
+                "parameter": parameter,
+                "mode_before": before["mode"],
+                "mode_after": state["mode"],
+                "scale": state["scale"],
+                "limit": state["limit"],
+            })
+            continue
+
+        if group == ord("r") and final == ord("A"):
+            before = dict(state)
+            state = start_raster_graphics_via_1075a(state, parameter)
+            events.append({
+                "kind": "start-raster",
+                "sequence": sequence,
+                "parameter": parameter,
+                "active_before": before["active"],
+                "active_after": state["active"],
+                "origin_long": state["origin_long"],
+                "baseline_word": state["baseline_word"],
+                "limit": state["limit"],
+            })
+            continue
+
+        if group == ord("b") and final == ord("W"):
+            byte_count = abs(parameter)
+            payload_start = pos
+            payload_end = pos + byte_count
+            if payload_end > len(stream):
+                raise AssertionError("raster command stream payload shorter than ESC *b#W byte count")
+            payload = stream[payload_start:payload_end]
+            pos = payload_end
+            transfer_state = {
+                "x": state["baseline_word"],
+                "y": state["row_y"],
+                "byte_count": byte_count,
+                "mode": state["mode"],
+            }
+            result = queue_raster_row_to_page_record_via_13070(page_record, transfer_state, payload)
+            state["row_y"] += 1
+            event = {
+                "kind": "raster-transfer",
+                "sequence": sequence,
+                "parameter": parameter,
+                "delayed_handler": 0x0105D0,
+                "payload_offset": payload_start,
+                "payload": payload,
+                "transfer_state": transfer_state,
+                "result": result,
+                "row_y_after": state["row_y"],
+            }
+            events.append(event)
+            queued.append(event)
+            continue
+
+        raise AssertionError(f"unsupported raster command ESC *{chr(group)}#{chr(final)} at offset {start}")
+
+    bucket_array = page_record["bucket_array"]
+    assert isinstance(bucket_array, dict)
+    bucket_index = queued[-1]["result"]["bucket_index"] if queued else 0
+    chain = bucket_array.get(bucket_index, [])
+    obj = bytes(chain[0]) if chain else b""
+    rendered = render_encoded_raster_object_via_1f88e(data, obj) if obj else None
+    return {
+        "stream": stream,
+        "events": events,
+        "page_record": page_record,
+        "object": obj,
+        "rendered": rendered,
+        "final_state": state,
+    }
+
+
 def queue_raster_row_to_page_record_via_13070(
     page_record: dict[str, object],
     raster_state: dict[str, int],
@@ -1126,26 +1240,32 @@ def render_encoded_raster_object_via_1f88e(data: bytes, obj: bytes, dest_stride:
     decoded = coord_decode(coord, band_base=0, payload_offset=0)
     row = int(decoded["row_index"])
     x = int(decoded["byte_pair_offset"]) * 8 + ((coord >> 8) & 0x0F)
-    if mode != 0 and decoded["a001"] != 0:
+    if mode not in (0, 2) and decoded["a001"] != 0:
         raise AssertionError("encoded raster fixture currently models byte-aligned rows only")
     if row >= band_rows:
         raise AssertionError("encoded raster row starts outside the synthetic band")
 
     dest = bytearray(band_rows * dest_stride)
+    fallback_dest = bytearray(0)
     dest_offset = row * dest_stride + int(decoded["byte_pair_offset"])
+    rows_in_band = 0
+    remaining_after_band = 0
     if mode == 0:
         if byte_count & 1:
             raise AssertionError("mode-0 encoded raster fixture expects an even byte count")
+        rows = 1
+        rows_in_band = min(rows, band_rows - row)
+        remaining_after_band = rows - rows_in_band
         if decoded["a001"] == 0:
             dest[dest_offset : dest_offset + byte_count] = payload
         else:
             write_bitmap_bits(dest, dest_stride, payload, 1, byte_count, x, row)
         width = byte_count * 8
-        rows = 1
     elif mode == 1:
         rows = 2
         if row + rows > band_rows:
             raise AssertionError("mode-1 encoded raster fixture crosses the synthetic band")
+        rows_in_band = rows
         for index, byte in enumerate(payload):
             word = u16(data, 0x30914 + byte * 2)
             word_bytes = word.to_bytes(2, "big")
@@ -1158,20 +1278,37 @@ def render_encoded_raster_object_via_1f88e(data: bytes, obj: bytes, dest_stride:
         rows = 3
         if byte_count & 1:
             raise AssertionError("mode-2 encoded raster fixture expects an even byte count")
-        if row + rows > band_rows:
-            raise AssertionError("mode-2 encoded raster fixture crosses the synthetic band")
+        rows_in_band = min(rows, band_rows - row)
+        remaining_after_band = rows - rows_in_band
+        fallback_dest = bytearray(remaining_after_band * dest_stride)
+        expanded_span = (byte_count // 2) * 6
+        expanded = bytearray(rows * expanded_span)
         for pass_offset, source_start in ((0, 0), (2, 1)):
             for index, byte in enumerate(payload[source_start::2]):
                 long_bytes = u32(data, 0x30B14 + byte * 4).to_bytes(4, "big")
-                offset = int(decoded["byte_pair_offset"]) + pass_offset + index * 6
+                offset = pass_offset + index * 6
                 for row_offset in range(rows):
-                    start = (row + row_offset) * dest_stride + offset
-                    dest[start : start + 4] = long_bytes
+                    start = row_offset * expanded_span + offset
+                    expanded[start : start + 4] = long_bytes
+        if decoded["a001"] == 0:
+            for row_offset in range(rows_in_band):
+                start = (row + row_offset) * dest_stride + int(decoded["byte_pair_offset"])
+                source = row_offset * expanded_span
+                dest[start : start + expanded_span] = expanded[source : source + expanded_span]
+            for fallback_row in range(remaining_after_band):
+                source = (rows_in_band + fallback_row) * expanded_span
+                start = fallback_row * dest_stride + int(decoded["byte_pair_offset"])
+                fallback_dest[start : start + expanded_span] = expanded[source : source + expanded_span]
+        else:
+            write_bitmap_bits(dest, dest_stride, expanded, rows_in_band, expanded_span, x, row)
+            fallback_source = expanded[rows_in_band * expanded_span :]
+            write_bitmap_bits(fallback_dest, dest_stride, fallback_source, remaining_after_band, expanded_span, x, 0)
         width = (byte_count // 2) * 48
     elif mode == 3:
         rows = 4
         if row + rows > band_rows:
             raise AssertionError("mode-3 encoded raster fixture crosses the synthetic band")
+        rows_in_band = rows
         for index, byte in enumerate(payload):
             first = u16(data, 0x30914 + byte * 2)
             high = u16(data, 0x30914 + ((first >> 8) & 0xFF) * 2)
@@ -1193,8 +1330,11 @@ def render_encoded_raster_object_via_1f88e(data: bytes, obj: bytes, dest_stride:
         "dest_base": dest_offset,
         "x": x,
         "y": row,
+        "rows_in_band": rows_in_band,
+        "remaining_after_band": remaining_after_band,
         "payload": payload,
-        "rows": bitmap_bytes_to_rows(dest, row + rows, x + width, dest_stride),
+        "rows": bitmap_bytes_to_rows(dest, row + rows_in_band, x + width, dest_stride),
+        "fallback_rows": bitmap_bytes_to_rows(fallback_dest, remaining_after_band, x + width, dest_stride),
     }
 
 
@@ -2952,6 +3092,62 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
         "rows": ["................####........#####.#.#.#..#.#.#.#"],
     }))
+    raster_command_stream = b"\x1b*t300R\x1b*r1A\x1b*b4W" + bytes.fromhex("f0 0f aa 55")
+    raster_stream_result = render_raster_command_data_stream_via_121cc_105d0(
+        data,
+        raster_command_stream,
+        raster_graphics_state(page_extent=255, cursor_axis0=0x00100000, cursor_axis1=0x00200000),
+    )
+    raster_stream_rendered = raster_stream_result["rendered"]
+    assert isinstance(raster_stream_rendered, dict)
+    checks.append(assert_equal("modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W payload boundary", {
+        "events": [
+            {
+                key: event[key]
+                for key in (
+                    ("kind", "parameter", "mode_after", "scale", "limit")
+                    if event["kind"] == "raster-resolution"
+                    else ("kind", "parameter", "active_after", "origin_long", "baseline_word", "limit")
+                    if event["kind"] == "start-raster"
+                    else ("kind", "parameter", "delayed_handler", "payload_offset", "payload", "transfer_state", "row_y_after")
+                )
+            }
+            for event in raster_stream_result["events"]
+        ],
+        "final_state": {
+            key: raster_stream_result["final_state"][key]
+            for key in ("active", "baseline_word", "mode", "scale", "limit", "row_y")
+        },
+    }, {
+        "events": [
+            {"kind": "raster-resolution", "parameter": 300, "mode_after": 0, "scale": 1, "limit": 32},
+            {"kind": "start-raster", "parameter": 1, "active_after": 1, "origin_long": 0x00100000, "baseline_word": 16, "limit": 30},
+            {
+                "kind": "raster-transfer",
+                "parameter": 4,
+                "delayed_handler": 0x0105D0,
+                "payload_offset": 17,
+                "payload": bytes.fromhex("f0 0f aa 55"),
+                "transfer_state": {"x": 16, "y": 0, "byte_count": 4, "mode": 0},
+                "row_y_after": 1,
+            },
+        ],
+        "final_state": {
+            "active": 1,
+            "baseline_word": 16,
+            "mode": 0,
+            "scale": 1,
+            "limit": 30,
+            "row_y": 1,
+        },
+    }))
+    checks.append(assert_equal("modeled raster command stream queues and renders ESC *b4W payload", {
+        "object": raster_stream_result["object"],
+        "rows": raster_stream_rendered["rows"],
+    }, {
+        "object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
+        "rows": ["................####........#####.#.#.#..#.#.#.#"],
+    }))
     raster_page_record: dict[str, object] = {"bucket_array": {}}
     raster_page_result = queue_raster_row_to_page_record_via_13070(
         raster_page_record,
@@ -3143,6 +3339,108 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "payload": bytes.fromhex("f0 0f"),
         "rows": [
             "................############................############........",
+            "................############................############........",
+            "................############................############........",
+        ],
+    }))
+    raster_mode2_shifted_page_record: dict[str, object] = {"bucket_array": {}}
+    raster_mode2_shifted_page_result = queue_raster_row_to_page_record_via_13070(
+        raster_mode2_shifted_page_record,
+        {"x": 20, "y": 0, "byte_count": 2, "mode": 2},
+        bytes.fromhex("f0 0f"),
+    )
+    raster_mode2_shifted_bucket_array = raster_mode2_shifted_page_record["bucket_array"]
+    assert isinstance(raster_mode2_shifted_bucket_array, dict)
+    raster_mode2_shifted_object = bytes(raster_mode2_shifted_bucket_array[0][0])
+    raster_mode2_shifted_rendered = render_encoded_raster_object_via_1f88e(data, raster_mode2_shifted_object)
+    checks.append(assert_equal("0x13070/0x13250 raster mode-2 row queues non-byte-aligned encoded-span object", {
+        "result": {
+            key: raster_mode2_shifted_page_result[key]
+            for key in ("path", "allocated", "bucket_index", "key", "mode", "byte_count_before", "byte_count_after", "capacity", "object_size")
+        },
+        "object": raster_mode2_shifted_object,
+    }, {
+        "result": {
+            "path": "raster-page-record",
+            "allocated": True,
+            "bucket_index": 0,
+            "key": 0x0401,
+            "mode": 2,
+            "byte_count_before": 2,
+            "byte_count_after": 0,
+            "capacity": 2,
+            "object_size": 0x0C,
+        },
+        "object": bytes.fromhex("00 00 00 00 80 02 00 02 04 01 f0 0f"),
+    }))
+    checks.append(assert_equal("0x1f88e mode-2 raster object renders sub-byte shifted expanded rows", {
+        key: raster_mode2_shifted_rendered[key]
+        for key in ("mode", "helper", "byte_count", "coord", "dest_base", "x", "y", "rows_in_band", "remaining_after_band", "payload", "rows")
+    }, {
+        "mode": 2,
+        "helper": 0x01F920,
+        "byte_count": 2,
+        "coord": 0x0401,
+        "dest_base": 0x02,
+        "x": 20,
+        "y": 0,
+        "rows_in_band": 3,
+        "remaining_after_band": 0,
+        "payload": bytes.fromhex("f0 0f"),
+        "rows": [
+            "....................############................############........",
+            "....................############................############........",
+            "....................############................############........",
+        ],
+    }))
+    raster_mode2_clipped_page_record: dict[str, object] = {"bucket_array": {}}
+    raster_mode2_clipped_page_result = queue_raster_row_to_page_record_via_13070(
+        raster_mode2_clipped_page_record,
+        {"x": 16, "y": 15, "byte_count": 2, "mode": 2},
+        bytes.fromhex("f0 0f"),
+    )
+    raster_mode2_clipped_bucket_array = raster_mode2_clipped_page_record["bucket_array"]
+    assert isinstance(raster_mode2_clipped_bucket_array, dict)
+    raster_mode2_clipped_object = bytes(raster_mode2_clipped_bucket_array[0][0])
+    raster_mode2_clipped_rendered = render_encoded_raster_object_via_1f88e(data, raster_mode2_clipped_object, band_rows=16)
+    checks.append(assert_equal("0x13070/0x13250 raster mode-2 row queues band-clipped encoded-span object", {
+        "result": {
+            key: raster_mode2_clipped_page_result[key]
+            for key in ("path", "allocated", "bucket_index", "key", "mode", "byte_count_before", "byte_count_after", "capacity", "object_size")
+        },
+        "object": raster_mode2_clipped_object,
+    }, {
+        "result": {
+            "path": "raster-page-record",
+            "allocated": True,
+            "bucket_index": 0,
+            "key": 0xF001,
+            "mode": 2,
+            "byte_count_before": 2,
+            "byte_count_after": 0,
+            "capacity": 2,
+            "object_size": 0x0C,
+        },
+        "object": bytes.fromhex("00 00 00 00 80 02 00 02 f0 01 f0 0f"),
+    }))
+    checks.append(assert_equal("0x1f88e mode-2 raster object clips current-band rows and continues in fallback buffer", {
+        key: raster_mode2_clipped_rendered[key]
+        for key in ("mode", "helper", "byte_count", "coord", "dest_base", "x", "y", "rows_in_band", "remaining_after_band", "payload", "rows", "fallback_rows")
+    }, {
+        "mode": 2,
+        "helper": 0x01F920,
+        "byte_count": 2,
+        "coord": 0xF001,
+        "dest_base": 0x1E2,
+        "x": 16,
+        "y": 15,
+        "rows_in_band": 1,
+        "remaining_after_band": 2,
+        "payload": bytes.fromhex("f0 0f"),
+        "rows": ["." * 64] * 15 + [
+            "................############................############........",
+        ],
+        "fallback_rows": [
             "................############................############........",
             "................############................############........",
         ],
@@ -4080,7 +4378,42 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- parser-derived transfer object bytes: `{' '.join(f'{byte:02x}' for byte in parser_raster_object)}`")
     lines.append("- parser-derived rendered row:")
     lines.extend(f"`{row}`" for row in parser_raster_rendered["rows"])
-    lines.append("- remaining gap: drive the same state transition through the live command parser and delayed payload handler `0x121cc` / `0x105d0`.")
+    lines.append("- remaining gap: replace the modeled command/data stream fixture below with a full live parser run through `0x121cc` / `0x105d0`.")
+    lines.append("")
+
+    lines.append("## Modeled Raster Command/Data Stream Fixture")
+    lines.append("")
+    lines.append("This fixture starts from actual PCL command bytes for `ESC *t300R`, `ESC *r1A`, and `ESC *b4W`, then models the delayed payload boundary that `0x121cc` records for handler `0x105d0`. It is still not a full firmware parser run, but it proves the byte stream selects the parser-derived raster state before queueing and rendering the `ESC *b#W` payload.")
+    lines.append("")
+    lines.append(f"- stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_command_stream)}`")
+    lines.append("- parsed events:")
+    for event in raster_stream_result["events"]:
+        if event["kind"] == "raster-resolution":
+            lines.append("- `ESC *t%dR`: mode `%d`, scale `%d`, limit `%d`" % (
+                event["parameter"],
+                event["mode_after"],
+                event["scale"],
+                event["limit"],
+            ))
+        elif event["kind"] == "start-raster":
+            lines.append("- `ESC *r%dA`: origin `0x%08x`, baseline word `%d`, limit `%d`" % (
+                event["parameter"],
+                event["origin_long"],
+                event["baseline_word"],
+                event["limit"],
+            ))
+        elif event["kind"] == "raster-transfer":
+            lines.append("- `ESC *b%dW`: delayed handler `0x%06x`, payload offset `%d`, payload `%s`, transfer state `%s`" % (
+                event["parameter"],
+                event["delayed_handler"],
+                event["payload_offset"],
+                " ".join(f"{byte:02x}" for byte in event["payload"]),
+                event["transfer_state"],
+            ))
+    lines.append(f"- queued object bytes: `{' '.join(f'{byte:02x}' for byte in raster_stream_result['object'])}`")
+    lines.append("- rendered stream row:")
+    lines.extend(f"`{row}`" for row in raster_stream_rendered["rows"])
+    lines.append("- remaining gap: run the same byte stream through the live parser/data-chain machinery instead of this modeled command recognizer.")
     lines.append("")
 
     lines.append("## Raster Row Page-Record Fixture")
@@ -4108,10 +4441,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- mode-2 queued raster object bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode2_object)}`")
     lines.append("- rendered mode-2 expanded rows:")
     lines.extend(f"`{row}`" for row in raster_mode2_rendered["rows"])
+    lines.append(f"- non-byte-aligned mode-2 queued raster object bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode2_shifted_object)}`")
+    lines.append("- rendered sub-byte shifted mode-2 rows:")
+    lines.extend(f"`{row}`" for row in raster_mode2_shifted_rendered["rows"])
+    lines.append(f"- band-clipped mode-2 queued raster object bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode2_clipped_object)}`")
+    lines.append("- band-clipped mode-2 current-band rows: `%d`, remaining after band: `%d`" % (
+        raster_mode2_clipped_rendered["rows_in_band"],
+        raster_mode2_clipped_rendered["remaining_after_band"],
+    ))
+    lines.append("- band-clipped mode-2 visible row:")
+    lines.extend(f"`{row}`" for row in raster_mode2_clipped_rendered["rows"][-int(raster_mode2_clipped_rendered["rows_in_band"]):])
+    lines.append("- band-clipped mode-2 fallback rows:")
+    lines.extend(f"`{row}`" for row in raster_mode2_clipped_rendered["fallback_rows"])
     lines.append(f"- mode-3 queued raster object bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode3_object)}`")
     lines.append("- rendered mode-3 expanded rows:")
     lines.extend(f"`{row}`" for row in raster_mode3_rendered["rows"])
-    lines.append("- remaining gap: drive `ESC *r#A` / `ESC *b#W` through the parser-derived raster state and broaden mode-2 raster coverage to clipped and non-byte-aligned coordinates.")
+    lines.append("- remaining gap: replace the modeled raster command/data stream with a full live parser/data-chain run through `0x121cc` / `0x105d0`.")
     lines.append("")
 
     lines.append("## `0xd824` Positioned Text Bucket Fixture")

@@ -998,6 +998,134 @@ def render_bridged_compact_bucket_object(data: bytes, resources: bytes, render_r
     return render_compact_text_bucket_object(data, resources, context_slots, obj)
 
 
+def queue_raster_row_to_page_record_via_13070(
+    page_record: dict[str, object],
+    raster_state: dict[str, int],
+    payload: bytes,
+    horizontal_offset: int = 0,
+) -> dict[str, object]:
+    bucket_array = page_record.setdefault("bucket_array", {})
+    if not isinstance(bucket_array, dict):
+        raise AssertionError("page record bucket_array must be a dict")
+
+    x = int(raster_state["x"]) + int(horizontal_offset)
+    y = int(raster_state["y"])
+    byte_count = int(raster_state["byte_count"])
+    mode = int(raster_state["mode"]) & 0xFF
+    if byte_count < 0:
+        raise AssertionError("raster byte count must be non-negative")
+    if len(payload) < byte_count:
+        raise AssertionError("raster payload fixture shorter than requested byte count")
+
+    bucket_index = y >> 4
+    key = ((y << 12) & 0xF000) | ((x & 0x0F) << 8) | ((x >> 4) & 0x00FF)
+    capacity = byte_count + (byte_count & 1)
+    object_size = 0x0A + capacity
+
+    chain = bucket_array.setdefault(bucket_index, [])
+    obj = bytearray(object_size)
+    obj[4] = 0x80
+    obj[5] = mode
+    chain.insert(0, obj)
+
+    copy_count = min(byte_count, capacity)
+    obj[6:8] = capacity.to_bytes(2, "big")
+    obj[8:10] = key.to_bytes(2, "big")
+    obj[10 : 10 + copy_count] = payload[:copy_count]
+    remaining_count = byte_count - copy_count
+
+    return {
+        "path": "raster-page-record",
+        "allocated": True,
+        "bucket_index": bucket_index,
+        "key": key,
+        "mode": mode,
+        "byte_count_before": byte_count,
+        "byte_count_after": remaining_count,
+        "capacity": capacity,
+        "object_size": object_size,
+        "payload": payload[:copy_count],
+        "object": bytes(obj),
+    }
+
+
+def render_encoded_raster_object_via_1f88e(data: bytes, obj: bytes, dest_stride: int = 0x20, band_rows: int = 16) -> dict[str, object]:
+    if len(obj) < 0x0A:
+        raise AssertionError("encoded raster object must include header through +0x09")
+    if obj[4] & 0xC0 != 0x80:
+        raise AssertionError("encoded raster fixture requires object byte +4 high bits 0x80")
+    mode = obj[5] & 0x03
+    byte_count = u16(obj, 6)
+    coord = u16(obj, 8)
+    payload = obj[10 : 10 + byte_count]
+    if len(payload) < byte_count:
+        raise AssertionError("encoded raster payload is shorter than byte count")
+
+    decoded = coord_decode(coord, band_base=0, payload_offset=0)
+    row = int(decoded["row_index"])
+    x = int(decoded["byte_pair_offset"]) * 8 + ((coord >> 8) & 0x0F)
+    if decoded["a001"] != 0:
+        raise AssertionError("encoded raster fixture currently models byte-aligned rows only")
+    if row >= band_rows:
+        raise AssertionError("encoded raster row starts outside the synthetic band")
+
+    dest = bytearray(band_rows * dest_stride)
+    dest_offset = row * dest_stride + int(decoded["byte_pair_offset"])
+    if mode == 0:
+        if byte_count & 1:
+            raise AssertionError("mode-0 encoded raster fixture expects an even byte count")
+        dest[dest_offset : dest_offset + byte_count] = payload
+        width = byte_count * 8
+        rows = 1
+    elif mode == 1:
+        rows = 2
+        if row + rows > band_rows:
+            raise AssertionError("mode-1 encoded raster fixture crosses the synthetic band")
+        for index, byte in enumerate(payload):
+            word = u16(data, 0x30914 + byte * 2)
+            word_bytes = word.to_bytes(2, "big")
+            offset = int(decoded["byte_pair_offset"]) + index * 2
+            for row_offset in range(rows):
+                start = (row + row_offset) * dest_stride + offset
+                dest[start : start + 2] = word_bytes
+        width = byte_count * 16
+    elif mode == 3:
+        rows = 4
+        if row + rows > band_rows:
+            raise AssertionError("mode-3 encoded raster fixture crosses the synthetic band")
+        for index, byte in enumerate(payload):
+            first = u16(data, 0x30914 + byte * 2)
+            high = u16(data, 0x30914 + ((first >> 8) & 0xFF) * 2)
+            low = u16(data, 0x30914 + (first & 0xFF) * 2)
+            long_bytes = ((high << 16) | low).to_bytes(4, "big")
+            offset = int(decoded["byte_pair_offset"]) + index * 4
+            for row_offset in range(rows):
+                start = (row + row_offset) * dest_stride + offset
+                dest[start : start + 4] = long_bytes
+        width = byte_count * 32
+    else:
+        raise AssertionError("queued encoded raster object fixture currently renders modes 0, 1, and 3 only")
+
+    return {
+        "mode": mode,
+        "helper": u32(data, 0x1F8CA + mode * 4),
+        "byte_count": byte_count,
+        "coord": coord,
+        "dest_base": dest_offset,
+        "x": x,
+        "y": row,
+        "payload": payload,
+        "rows": bitmap_bytes_to_rows(dest, row + rows, x + width, dest_stride),
+    }
+
+
+def render_bridged_encoded_raster_object(data: bytes, render_record: dict[str, object]) -> dict[str, object]:
+    obj = render_record["bucket_root"]
+    if not isinstance(obj, bytes):
+        raise AssertionError("bridged raster render-record fixture needs one encoded raster object")
+    return render_encoded_raster_object_via_1f88e(data, obj)
+
+
 def render_single_printable_stream(
     data: bytes,
     resources: bytes,
@@ -2655,6 +2783,158 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "fixed_list": [bytes.fromhex("00 00 00 00 00 14 00 00 ab cd ab cd 01 08")],
         "rows": page_record_short_rendered["rows"],
     }))
+    raster_page_record: dict[str, object] = {"bucket_array": {}}
+    raster_page_result = queue_raster_row_to_page_record_via_13070(
+        raster_page_record,
+        {"x": 16, "y": 0, "byte_count": 4, "mode": 0},
+        bytes.fromhex("f0 0f aa 55"),
+    )
+    raster_bucket_array = raster_page_record["bucket_array"]
+    assert isinstance(raster_bucket_array, dict)
+    raster_chain = raster_bucket_array[0]
+    raster_object = bytes(raster_chain[0])
+    raster_rendered = render_encoded_raster_object_via_1f88e(data, raster_object)
+    checks.append(assert_equal("0x13070/0x13250 raster row queues encoded-span object", {
+        "result": {
+            key: raster_page_result[key]
+            for key in ("path", "allocated", "bucket_index", "key", "mode", "byte_count_before", "byte_count_after", "capacity", "object_size")
+        },
+        "chain_length": len(raster_chain),
+        "object": raster_object,
+    }, {
+        "result": {
+            "path": "raster-page-record",
+            "allocated": True,
+            "bucket_index": 0,
+            "key": 0x0001,
+            "mode": 0,
+            "byte_count_before": 4,
+            "byte_count_after": 0,
+            "capacity": 4,
+            "object_size": 0x0E,
+        },
+        "chain_length": 1,
+        "object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
+    }))
+    checks.append(assert_equal("0x1f88e mode-0 raster object renders queued literal row", {
+        key: raster_rendered[key]
+        for key in ("mode", "helper", "byte_count", "coord", "dest_base", "x", "y", "payload", "rows")
+    }, {
+        "mode": 0,
+        "helper": 0x01F8DA,
+        "byte_count": 4,
+        "coord": 0x0001,
+        "dest_base": 0x02,
+        "x": 16,
+        "y": 0,
+        "payload": bytes.fromhex("f0 0f aa 55"),
+        "rows": ["................####........#####.#.#.#..#.#.#.#"],
+    }))
+    bridged_raster_record = bridge_page_record_via_1edc6({"bucket_root": raster_object})
+    bridged_raster_rendered = render_bridged_encoded_raster_object(data, bridged_raster_record)
+    checks.append(assert_equal("0x1edc6 page-record bridge preserves queued raster object", {
+        "bucket_root": bridged_raster_record["bucket_root"],
+        "rows": bridged_raster_rendered["rows"],
+    }, {
+        "bucket_root": raster_object,
+        "rows": raster_rendered["rows"],
+    }))
+    raster_mode1_page_record: dict[str, object] = {"bucket_array": {}}
+    raster_mode1_page_result = queue_raster_row_to_page_record_via_13070(
+        raster_mode1_page_record,
+        {"x": 16, "y": 0, "byte_count": 2, "mode": 1},
+        bytes.fromhex("f0 0f"),
+    )
+    raster_mode1_bucket_array = raster_mode1_page_record["bucket_array"]
+    assert isinstance(raster_mode1_bucket_array, dict)
+    raster_mode1_object = bytes(raster_mode1_bucket_array[0][0])
+    raster_mode1_rendered = render_encoded_raster_object_via_1f88e(data, raster_mode1_object)
+    checks.append(assert_equal("0x13070/0x13250 raster mode-1 row queues encoded-span object", {
+        "result": {
+            key: raster_mode1_page_result[key]
+            for key in ("path", "allocated", "bucket_index", "key", "mode", "byte_count_before", "byte_count_after", "capacity", "object_size")
+        },
+        "object": raster_mode1_object,
+    }, {
+        "result": {
+            "path": "raster-page-record",
+            "allocated": True,
+            "bucket_index": 0,
+            "key": 0x0001,
+            "mode": 1,
+            "byte_count_before": 2,
+            "byte_count_after": 0,
+            "capacity": 2,
+            "object_size": 0x0C,
+        },
+        "object": bytes.fromhex("00 00 00 00 80 01 00 02 00 01 f0 0f"),
+    }))
+    checks.append(assert_equal("0x1f88e mode-1 raster object expands queued bytes into two rows", {
+        key: raster_mode1_rendered[key]
+        for key in ("mode", "helper", "byte_count", "coord", "dest_base", "x", "y", "payload", "rows")
+    }, {
+        "mode": 1,
+        "helper": 0x01F8E6,
+        "byte_count": 2,
+        "coord": 0x0001,
+        "dest_base": 0x02,
+        "x": 16,
+        "y": 0,
+        "payload": bytes.fromhex("f0 0f"),
+        "rows": [
+            "................########................########",
+            "................########................########",
+        ],
+    }))
+    raster_mode3_page_record: dict[str, object] = {"bucket_array": {}}
+    raster_mode3_page_result = queue_raster_row_to_page_record_via_13070(
+        raster_mode3_page_record,
+        {"x": 16, "y": 0, "byte_count": 2, "mode": 3},
+        bytes.fromhex("f0 0f"),
+    )
+    raster_mode3_bucket_array = raster_mode3_page_record["bucket_array"]
+    assert isinstance(raster_mode3_bucket_array, dict)
+    raster_mode3_object = bytes(raster_mode3_bucket_array[0][0])
+    raster_mode3_rendered = render_encoded_raster_object_via_1f88e(data, raster_mode3_object)
+    checks.append(assert_equal("0x13070/0x13250 raster mode-3 row queues encoded-span object", {
+        "result": {
+            key: raster_mode3_page_result[key]
+            for key in ("path", "allocated", "bucket_index", "key", "mode", "byte_count_before", "byte_count_after", "capacity", "object_size")
+        },
+        "object": raster_mode3_object,
+    }, {
+        "result": {
+            "path": "raster-page-record",
+            "allocated": True,
+            "bucket_index": 0,
+            "key": 0x0001,
+            "mode": 3,
+            "byte_count_before": 2,
+            "byte_count_after": 0,
+            "capacity": 2,
+            "object_size": 0x0C,
+        },
+        "object": bytes.fromhex("00 00 00 00 80 03 00 02 00 01 f0 0f"),
+    }))
+    checks.append(assert_equal("0x1f88e mode-3 raster object expands queued bytes into four rows", {
+        key: raster_mode3_rendered[key]
+        for key in ("mode", "helper", "byte_count", "coord", "dest_base", "x", "y", "payload", "rows")
+    }, {
+        "mode": 3,
+        "helper": 0x01F9C6,
+        "byte_count": 2,
+        "coord": 0x0001,
+        "dest_base": 0x02,
+        "x": 16,
+        "y": 0,
+        "payload": bytes.fromhex("f0 0f"),
+        "rows": [
+            "................################................................################",
+            "................################................................################",
+            "................################................................################",
+            "................################................................################",
+        ],
+    }))
     positioned_text_object = positioned_bucket["object"]
     assert isinstance(positioned_text_object, bytes)
     positioned_mode0 = render_compact_text_bucket_object(data, resources, (0x440946B4,), positioned_text_object)
@@ -3523,6 +3803,31 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- normalized `+0x28`/render `+0x20` fixed-list node: `{' '.join(f'{byte:02x}' for byte in bridged_page_record['fixed_list'][0])}`")
     lines.append("- bridged compact rows match the page-record queued rows above.")
     lines.append("- remaining gap: replace this synthetic page/control record with a parser-produced page root and compare the finalized record published by `0xff1e`.")
+    lines.append("")
+
+    lines.append("## Raster Row Page-Record Fixture")
+    lines.append("")
+    lines.append("This fixture models one byte-aligned raster row through the page-object path used by `0x105d0`: `0x13070` computes the bucket/key fields from the raster state, `0x13250` allocates and links an encoded-span object under page-root `+0x1c`, `0x138de` copies host payload bytes into object `+0x0a`, and `0x1f88e` mode 0 renders the literal row after the `0x1edc6` bridge copies the bucket root into render-record `+0x18`.")
+    lines.append("")
+    lines.append(f"- raster state: x `16`, y `0`, byte count `4`, mode `0`, payload `{' '.join(f'{byte:02x}' for byte in raster_page_result['payload'])}`")
+    lines.append(f"- queued raster object bytes: `{' '.join(f'{byte:02x}' for byte in raster_object)}`")
+    lines.append("- object fields: class `0x80`, mode byte `0x%02x`, byte count `%d`, coord `0x%04x`, bucket `%d`, key `0x%04x`" % (
+        raster_page_result["mode"],
+        raster_page_result["capacity"],
+        raster_page_result["key"],
+        raster_page_result["bucket_index"],
+        raster_page_result["key"],
+    ))
+    lines.append("- rendered mode-0 literal row:")
+    lines.extend(f"`{row}`" for row in raster_rendered["rows"])
+    lines.append("- bridged raster rows match the queued raster object render.")
+    lines.append(f"- mode-1 queued raster object bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode1_object)}`")
+    lines.append("- rendered mode-1 expanded rows:")
+    lines.extend(f"`{row}`" for row in raster_mode1_rendered["rows"])
+    lines.append(f"- mode-3 queued raster object bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode3_object)}`")
+    lines.append("- rendered mode-3 expanded rows:")
+    lines.extend(f"`{row}`" for row in raster_mode3_rendered["rows"])
+    lines.append("- remaining gap: drive `ESC *r#A` / `ESC *b#W` through the parser-produced raster state and broaden queued raster fixtures to encoded mode 2 and non-byte-aligned coordinates.")
     lines.append("")
 
     lines.append("## `0xd824` Positioned Text Bucket Fixture")

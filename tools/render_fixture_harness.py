@@ -78,6 +78,89 @@ def glyph_bitmap_rows(resources: bytes, glyph: dict[str, int | bytes]) -> list[s
     return bitmap_bytes_to_rows(bitmap_bytes, rows, width, render_span)
 
 
+def built_in_base_map(resources: bytes, context: int, host_char: int) -> dict[str, int]:
+    if not (context & 0x40000000):
+        raise AssertionError(f"context 0x{context:08x} does not select the built-in offset-table form")
+    base = (context & 0x00FFFFFF) - 0x80000
+    first_char = u16(resources, base + 0x0E)
+    last_char = u16(resources, base + 0x10)
+    mapped = host_char - first_char if first_char <= host_char <= last_char else 0
+    return {
+        "base": base,
+        "first_char": first_char,
+        "last_char": last_char,
+        "host_char": host_char,
+        "mapped": mapped & 0xFF,
+    }
+
+
+def build_text_source_object_from_1393a(resources: bytes, context: int, host_char: int, x: int, y: int, context_slot: int = 0) -> dict[str, int]:
+    mapping = built_in_base_map(resources, context, host_char)
+    glyph = resolve_builtin_glyph(resources, context, mapping["mapped"])
+    return {
+        "context": context,
+        "host_char": host_char,
+        "mapped": mapping["mapped"],
+        "glyph_entry": int(glyph["entry"]),
+        "glyph_width": int(glyph["width"]),
+        "glyph_rows": int(glyph["rows"]),
+        "flag": 1,
+        "x": x,
+        "y": y,
+        "context_slot": context_slot & 0x0F,
+    }
+
+
+def scanned_builtin_record_bases(resources: bytes) -> list[int]:
+    bases: list[int] = []
+    cursor = 0
+    seen = 0
+    while cursor + 12 <= len(resources) and seen < 256:
+        marker = u32(resources, cursor)
+        if marker == 0x48454144:  # HEAD
+            length = u32(resources, cursor + 4)
+            if length <= 0:
+                break
+            cursor += length
+            seen += 1
+            continue
+        if marker in (0x00000014, 0x00000015):
+            length = u32(resources, cursor + 4)
+            if length <= 0:
+                break
+            bases.append(cursor)
+            cursor += length
+            seen += 1
+            continue
+        break
+    return bases
+
+
+def tall_builtin_glyph_targets(resources: bytes) -> list[dict[str, int]]:
+    targets: list[dict[str, int]] = []
+    for base in scanned_builtin_record_bases(resources):
+        first_char = u16(resources, base + 0x0E)
+        last_char = u16(resources, base + 0x10)
+        table = base + u16(resources, base + 8)
+        for glyph_index in range(last_char - first_char + 1):
+            entry = base + u32(resources, table + glyph_index * 4)
+            delta = resources[entry + 4]
+            mode = resources[entry + 5]
+            rows = u16(resources, entry + 6)
+            width = u16(resources, entry + 8)
+            if rows > 0x80:
+                targets.append({
+                    "base": base,
+                    "glyph": glyph_index,
+                    "entry": entry,
+                    "delta": delta,
+                    "mode": mode,
+                    "rows": rows,
+                    "width": width,
+                })
+    return targets
+
+
 def bitmap_bytes_to_rows(bitmap: bytes | bytearray, rows: int, width: int, stride: int) -> list[str]:
     out: list[str] = []
     for row_index in range(rows):
@@ -164,14 +247,62 @@ def compact_text_coord(x: int, y: int) -> int:
     return ((y & 0x0F) << 12) | ((x & 0x0F) << 8) | ((x >> 4) & 0x00FF)
 
 
-def build_short_text_bucket_object(glyph: int, x: int, y: int, context_slot: int = 0) -> bytes:
-    selector = context_slot & 0x0F
+def queue_text_source_via_12f2e(resources: bytes, source: dict[str, int]) -> dict[str, object]:
+    if source["flag"] == 0:
+        raise AssertionError("inline/downloaded text source records are not implemented")
+    selector = source["context_slot"] & 0x0F
+    glyph_entry = source["glyph_entry"]
+    width = u16(resources, glyph_entry + 8)
+    rows = u16(resources, glyph_entry + 6)
+    if width > 0x80:
+        selector |= 0x1000
+    if rows > 0x80:
+        selector |= 0x2000
+        segment = (rows - 1) >> 7
+        objects: list[dict[str, int | bytes]] = []
+        while segment >= 0:
+            obj = bytearray(0x0C)
+            obj[4:6] = selector.to_bytes(2, "big")
+            obj[6:8] = (1).to_bytes(2, "big")
+            obj[8] = source["mapped"] & 0xFF
+            obj[9] = segment & 0xFF
+            obj[10:12] = compact_text_coord(source["x"], source["y"]).to_bytes(2, "big")
+            objects.append({
+                "bucket_index": (source["y"] >> 4) + segment * 8,
+                "segment": segment,
+                "object": bytes(obj),
+            })
+            segment -= 1
+        return {
+            "path": "segmented",
+            "objects": objects,
+            "object_size": 0x28,
+            "capacity": 0x08,
+            "entry_size": 4,
+            "selector": selector,
+            "coord": compact_text_coord(source["x"], source["y"]),
+            "glyph": source["mapped"] & 0xFF,
+            "rows": rows,
+            "width": width,
+        }
     obj = bytearray(0x0B)
     obj[4:6] = selector.to_bytes(2, "big")
     obj[6:8] = (1).to_bytes(2, "big")
-    obj[8] = glyph & 0xFF
-    obj[9:11] = compact_text_coord(x, y).to_bytes(2, "big")
-    return bytes(obj)
+    obj[8] = source["mapped"] & 0xFF
+    obj[9:11] = compact_text_coord(source["x"], source["y"]).to_bytes(2, "big")
+    return {
+        "path": "short",
+        "object": bytes(obj),
+        "object_size": 0x26,
+        "capacity": 0x0A,
+        "entry_size": 3,
+        "bucket_index": source["y"] >> 4,
+        "selector": selector,
+        "coord": compact_text_coord(source["x"], source["y"]),
+        "glyph": source["mapped"] & 0xFF,
+        "rows": rows,
+        "width": width,
+    }
 
 
 def render_compact_text_bucket_object(data: bytes, resources: bytes, contexts: tuple[int, ...], obj: bytes) -> dict[str, object]:
@@ -600,7 +731,99 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ]))
     checks.append(assert_equal("resource context 0x440946b4 glyph 32 main row-copy rendered rows", render_glyph_rows_via_main_row_copy(data, resources, line_printer_glyph32), line_printer_glyph32_rows))
 
-    compact_text_object = build_short_text_bucket_object(glyph=32, x=0, y=0, context_slot=0)
+    line_printer_mapping = built_in_base_map(resources, 0x440946B4, 0x21)
+    checks.append(assert_equal("line-printer built-in base map host 0x21 to glyph 32", line_printer_mapping, {
+        "base": 0x0146B4,
+        "first_char": 0x01,
+        "last_char": 0xFF,
+        "host_char": 0x21,
+        "mapped": 0x20,
+    }))
+    text_source = build_text_source_object_from_1393a(resources, 0x440946B4, 0x21, x=0, y=0, context_slot=0)
+    checks.append(assert_equal("0x1393a-modeled text source object fields", text_source, {
+        "context": 0x440946B4,
+        "host_char": 0x21,
+        "mapped": 0x20,
+        "glyph_entry": 0x015330,
+        "glyph_width": 4,
+        "glyph_rows": 22,
+        "flag": 1,
+        "x": 0,
+        "y": 0,
+        "context_slot": 0,
+    }))
+    produced_bucket = queue_text_source_via_12f2e(resources, text_source)
+    checks.append(assert_equal("0x12f2e-modeled short bucket object fields", {key: produced_bucket[key] for key in ("path", "object", "object_size", "capacity", "entry_size", "bucket_index", "selector", "coord", "glyph", "rows", "width")}, {
+        "path": "short",
+        "object": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 00"),
+        "object_size": 0x26,
+        "capacity": 0x0A,
+        "entry_size": 3,
+        "bucket_index": 0,
+        "selector": 0,
+        "coord": 0,
+        "glyph": 0x20,
+        "rows": 22,
+        "width": 4,
+    }))
+
+    tall_text_source = build_text_source_object_from_1393a(resources, 0x440946B4, 0x20, x=0, y=0, context_slot=0)
+    checks.append(assert_equal("0x1393a-modeled tall text source object fields", tall_text_source, {
+        "context": 0x440946B4,
+        "host_char": 0x20,
+        "mapped": 0x1F,
+        "glyph_entry": 0x0146B4,
+        "glyph_width": 74,
+        "glyph_rows": 1108,
+        "flag": 1,
+        "x": 0,
+        "y": 0,
+        "context_slot": 0,
+    }))
+    tall_bucket = queue_text_source_via_12f2e(resources, tall_text_source)
+    checks.append(assert_equal("0x12f2e-modeled segmented bucket metadata", {key: tall_bucket[key] for key in ("path", "object_size", "capacity", "entry_size", "selector", "coord", "glyph", "rows", "width")}, {
+        "path": "segmented",
+        "object_size": 0x28,
+        "capacity": 0x08,
+        "entry_size": 4,
+        "selector": 0x2000,
+        "coord": 0,
+        "glyph": 0x1F,
+        "rows": 1108,
+        "width": 74,
+    }))
+    checks.append(assert_equal("0x12f2e-modeled segmented bucket objects", tall_bucket["objects"], [
+        {"bucket_index": 64, "segment": 8, "object": bytes.fromhex("00 00 00 00 20 00 00 01 1f 08 00 00")},
+        {"bucket_index": 56, "segment": 7, "object": bytes.fromhex("00 00 00 00 20 00 00 01 1f 07 00 00")},
+        {"bucket_index": 48, "segment": 6, "object": bytes.fromhex("00 00 00 00 20 00 00 01 1f 06 00 00")},
+        {"bucket_index": 40, "segment": 5, "object": bytes.fromhex("00 00 00 00 20 00 00 01 1f 05 00 00")},
+        {"bucket_index": 32, "segment": 4, "object": bytes.fromhex("00 00 00 00 20 00 00 01 1f 04 00 00")},
+        {"bucket_index": 24, "segment": 3, "object": bytes.fromhex("00 00 00 00 20 00 00 01 1f 03 00 00")},
+        {"bucket_index": 16, "segment": 2, "object": bytes.fromhex("00 00 00 00 20 00 00 01 1f 02 00 00")},
+        {"bucket_index": 8, "segment": 1, "object": bytes.fromhex("00 00 00 00 20 00 00 01 1f 01 00 00")},
+        {"bucket_index": 0, "segment": 0, "object": bytes.fromhex("00 00 00 00 20 00 00 01 1f 00 00 00")},
+    ]))
+    tall_targets = tall_builtin_glyph_targets(resources)
+    checks.append(assert_equal("firmware-scanned tall built-in glyph target summary", {
+        "count": len(tall_targets),
+        "nonzero_delta": sum(1 for target in tall_targets if target["delta"] != 0),
+        "modes": sorted({target["mode"] for target in tall_targets}),
+        "widths": sorted({target["width"] for target in tall_targets}),
+        "rows": sorted({target["rows"] for target in tall_targets}),
+        "unique_entries": len({target["entry"] for target in tall_targets}),
+        "unique_bases": len({target["base"] for target in tall_targets}),
+    }, {
+        "count": 420,
+        "nonzero_delta": 0,
+        "modes": [0],
+        "widths": [74],
+        "rows": [972, 976, 1104, 1108, 19900, 20062, 35584, 37624, 37818, 38600],
+        "unique_entries": 24,
+        "unique_bases": 24,
+    }))
+
+    compact_text_object = produced_bucket["object"]
+    assert isinstance(compact_text_object, bytes)
     compact_mode0 = render_compact_text_bucket_object(data, resources, (0x440946B4,), compact_text_object)
     checks.append(assert_equal("compact text bucket object fixture metadata", {key: compact_mode0[key] for key in ("selector", "context_slot", "count", "rendered", "payload")}, {
         "selector": 0,
@@ -654,8 +877,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## Compact Text Bucket Fixture")
     lines.append("")
-    lines.append("This fixture executes the short compact text bucket shape emitted by `0x12f2e` for the renderer `0x1effe` / `0x1f034` path: object selector word at `+4`, payload count word at `+6`, then one `{glyph byte, coordinate word}` entry at `+8`. It uses render context slot `0` pointing at `0x440946b4`, glyph `32`, coordinate `0x0000`, and an unclipped synthetic band so the rows should match the glyph-32 row-copy fixture exactly.")
+    lines.append("This fixture starts with the base built-in character map that `0x14d9c` creates for `LINE_PRINTER`: host byte `0x21` maps to glyph byte `0x20`. The `0x1393a` source-object model records context `0x440946b4`, glyph entry `0x015330`, flag `1`, `x=0`, `y=0`, and context slot `0`; the `0x12f2e` producer model then emits the short compact text bucket consumed by renderer `0x1effe` / `0x1f034`. The render band is still synthetic and unclipped, but the compact object bytes now come from the modeled source fields rather than a hand-written glyph/coordinate pair.")
     lines.append("")
+    lines.append(f"- base map: host `0x{text_source['host_char']:02x}` -> glyph `0x{text_source['mapped']:02x}`")
+    lines.append(f"- source fields: context `0x{text_source['context']:08x}`, glyph entry `0x{text_source['glyph_entry']:06x}`, width `{text_source['glyph_width']}`, rows `{text_source['glyph_rows']}`, flag `{text_source['flag']}`, x `{text_source['x']}`, y `{text_source['y']}`, context slot `{text_source['context_slot']}`")
+    lines.append(f"- producer path: `{produced_bucket['path']}`, bucket index `{produced_bucket['bucket_index']}`, object size `0x{int(produced_bucket['object_size']):02x}`, capacity `{produced_bucket['capacity']}`, entry size `{produced_bucket['entry_size']}`")
     lines.append(f"- object bytes: `{' '.join(f'{byte:02x}' for byte in compact_text_object)}`")
     lines.append(f"- payload bytes: `{' '.join(f'{byte:02x}' for byte in compact_mode0['payload'])}`")
     lines.append(f"- selector: `0x{int(compact_mode0['selector']):04x}`, context slot `{compact_mode0['context_slot']}`")
@@ -667,6 +893,24 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     lines.append("- rendered rows:")
     lines.extend(f"`{row}`" for row in compact_mode0["rows"])
+    lines.append("")
+
+    lines.append("## Segmented Text Bucket Producer Fixture")
+    lines.append("")
+    lines.append("The same producer model also covers the `0x12f2e` segmented path where the glyph height word exceeds `0x80`. For `LINE_PRINTER`, host byte `0x20` maps to glyph byte `0x1f`; the resolved table target is the record base `0x0146b4`, whose height word is `0x0454` and width word is `0x004a`. `0x12f2e` therefore sets selector bit `0x2000`, computes segment index `(rows - 1) >> 7 = 8`, and emits one four-byte entry per segment while stepping the bucket index down by eight.")
+    lines.append("")
+    lines.append(f"- source fields: context `0x{tall_text_source['context']:08x}`, host `0x{tall_text_source['host_char']:02x}`, glyph `0x{tall_text_source['mapped']:02x}`, glyph entry `0x{tall_text_source['glyph_entry']:06x}`, width `{tall_text_source['glyph_width']}`, rows `{tall_text_source['glyph_rows']}`")
+    lines.append(f"- producer path: `{tall_bucket['path']}`, selector `0x{int(tall_bucket['selector']):04x}`, object size `0x{int(tall_bucket['object_size']):02x}`, capacity `{tall_bucket['capacity']}`, entry size `{tall_bucket['entry_size']}`")
+    lines.append(f"- firmware-scanned tall target summary: `{len(tall_targets)}` targets across `{len({target['base'] for target in tall_targets})}` records; every target has delta `0`, mode `0`, and width `74`, so the verified built-in resources do not yet provide a normal bitmap-entry fixture for rendering `0x1f1f0`")
+    lines.append("| Bucket | Segment byte | Object bytes |")
+    lines.append("| ---: | ---: | --- |")
+    tall_objects = tall_bucket["objects"]
+    assert isinstance(tall_objects, list)
+    for obj in tall_objects:
+        assert isinstance(obj, dict)
+        object_bytes = obj["object"]
+        assert isinstance(object_bytes, bytes)
+        lines.append(f"| `{obj['bucket_index']}` | `{obj['segment']}` | `{' '.join(f'{byte:02x}' for byte in object_bytes)}` |")
     lines.append("")
 
     lines.append(f"checks: {len(checks)}")

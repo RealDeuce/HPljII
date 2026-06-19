@@ -105,7 +105,7 @@ The CR/LF/FF/HT/BS handlers update state around `0x782c8a`, `0x782c8e`, `0x782dd
 
 `tools/render_fixture_harness.py` now has synthetic packed-state fixtures for the `ESC &k#G` bit map plus CR/LF/FF/HT/BS cursor/page effects. It also has narrow byte-stream fixtures for `ESC &k1G` followed by CR, `ESC &k2G` followed by LF, and `ESC &k0G` followed by HT/BS. These prove the direct-control subset from actual PCL/control bytes, but they still need to be broadened into the full firmware parser path with printable text, reset, and page-object allocation.
 
-For normal printable text, the harness now drives a one-byte stream `0x21` (`!`) through the modeled `0x1393a` source-object builder, `0xd824` positioning handoff, `0x12f2e` compact queue producer, and compact-glyph renderer. This is still a narrow normal-mode fixture, not a full parser state emulator.
+For normal printable text, the harness now drives a one-byte stream `0x21` (`!`) through the modeled `0x1393a` source-object builder, `0xd824` positioning handoff, `0x12f2e` compact queue producer, and compact-glyph renderer. It also has a two-byte `!!` fixture that advances the packed horizontal cursor through the simple `0xd550` default-advance branch between bytes and combines the two entries into one short compact text object. The initialized `LINE_PRINTER` metric fixture derives HMI `0x00120000` from resource longword `0x00480000` through the `0x10550` conversion path and queues the second glyph at compact coord `0x0202`, exposing the remaining sub-byte renderer gap. This is still a narrow normal-mode fixture, not a full parser state emulator.
 
 ## Top-Level ESC Dispatch
 
@@ -192,4 +192,4 @@ The `cmpi.w #0x000c` at `0x0001053a` is not the PCL form-feed handler. The surro
 - Decode the six-byte tokenizer records and 12-byte command/data pool records.
 - Follow `ESC & f` handling into macro definition/execution state.
 - Replace the synthetic `ESC E` fixtures with fixtures that start from parser-produced page objects and prove the `0xff1e` finalization/publication path before reset clears the current page root.
-- Broaden the one-byte printable text fixture into simple multi-byte text streams, then add one macro command once handler destinations are named.
+- Implement sub-byte compact mode-0 rendering for real-HMI text coordinates, broaden printable text into mixed parser streams, then add one macro command once handler destinations are named.

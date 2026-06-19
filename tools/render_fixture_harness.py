@@ -104,6 +104,25 @@ def built_in_base_map(resources: bytes, context: int, host_char: int) -> dict[st
     }
 
 
+def metric_long_via_10550(value: int) -> int:
+    d7 = (int(value) & 0xFFFFFFFF) >> 2
+    low_product = (d7 & 0xFFFF) * 12
+    return (d7 & 0xFFFF0000) | ((low_product >> 16) & 0xFFFF)
+
+
+def builtin_flagged_hmi_from_context(resources: bytes, context: int) -> dict[str, int]:
+    if not (context & 0x40000000):
+        raise AssertionError(f"context 0x{context:08x} does not select the built-in offset-table form")
+    base = (context & 0x00FFFFFF) - 0x80000
+    raw = u32(resources, base + 0x24)
+    return {
+        "base": base,
+        "metric_flag": resources[base + 0x21],
+        "raw_metric": raw,
+        "hmi": metric_long_via_10550(raw),
+    }
+
+
 def build_text_source_object_from_1393a(resources: bytes, context: int, host_char: int, x: int, y: int, context_slot: int = 0) -> dict[str, int]:
     mapping = built_in_base_map(resources, context, host_char)
     glyph = resolve_builtin_glyph(resources, context, mapping["mapped"])
@@ -729,6 +748,52 @@ def queue_text_source_via_12f2e(resources: bytes, source: dict[str, int]) -> dic
     }
 
 
+def advance_flagged_text_cursor_via_d550(cursor_x: int, default_advance: int) -> dict[str, int]:
+    d5 = int(cursor_x) + int(default_advance)
+    if (d5 & 0xFFFF) >= 12:
+        d5 -= 12
+    return {
+        "cursor_before": cursor_x,
+        "default_advance": default_advance,
+        "cursor_after": d5,
+    }
+
+
+def combine_short_text_buckets(buckets: list[dict[str, object]]) -> dict[str, object]:
+    if not buckets:
+        raise AssertionError("short text bucket combiner needs at least one bucket")
+    first = buckets[0]
+    selector = int(first["selector"])
+    bucket_index = int(first["bucket_index"])
+    entries = bytearray()
+    glyphs: list[int] = []
+    coords: list[int] = []
+    for bucket in buckets:
+        if bucket["path"] != "short":
+            raise AssertionError("multi-printable stream fixture only combines short text buckets")
+        if int(bucket["selector"]) != selector or int(bucket["bucket_index"]) != bucket_index:
+            raise AssertionError("multi-printable stream fixture only combines same-selector/same-bucket text entries")
+        glyph = int(bucket["glyph"]) & 0xFF
+        coord = int(bucket["coord"]) & 0xFFFF
+        entries.append(glyph)
+        entries.extend(coord.to_bytes(2, "big"))
+        glyphs.append(glyph)
+        coords.append(coord)
+    obj = bytearray(8 + len(entries))
+    obj[4:6] = selector.to_bytes(2, "big")
+    obj[6:8] = len(buckets).to_bytes(2, "big")
+    obj[8:] = entries
+    return {
+        "path": "short-combined",
+        "object": bytes(obj),
+        "selector": selector,
+        "bucket_index": bucket_index,
+        "count": len(buckets),
+        "glyphs": glyphs,
+        "coords": coords,
+    }
+
+
 def render_compact_text_bucket_object(data: bytes, resources: bytes, contexts: tuple[int, ...], obj: bytes) -> dict[str, object]:
     selector = obj[4]
     context_slot = obj[5] & 0x0F
@@ -770,6 +835,59 @@ def render_single_printable_stream(
         "positioned": positioned,
         "bucket": bucket,
         "rendered": rendered,
+    }
+
+
+def render_multi_printable_stream(
+    data: bytes,
+    resources: bytes,
+    stream: bytes,
+    context: int,
+    cursor_x: int,
+    cursor_y: int,
+    default_advance: int,
+    context_slot: int = 0,
+    render_output: bool = True,
+) -> dict[str, object]:
+    if not stream or any(byte < 0x20 or byte == 0x7F for byte in stream):
+        raise AssertionError("multi-printable stream fixture only models normal printable bytes")
+    cursor = int(cursor_x)
+    cursor_y_whole = unpack12(cursor_y)[0]
+    entries: list[dict[str, object]] = []
+    buckets: list[dict[str, object]] = []
+    advances: list[dict[str, int]] = []
+    for byte in stream:
+        source = build_text_source_object_from_1393a(resources, context, byte, x=0, y=0, context_slot=context_slot)
+        positioned = position_flagged_text_source_via_d824(resources, source, cursor_x=unpack12(cursor)[0], cursor_y=cursor_y_whole)
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        bucket = queue_text_source_via_12f2e(resources, positioned_source)
+        bucket_object = bucket["object"]
+        if not isinstance(bucket_object, bytes):
+            raise AssertionError("multi-printable stream fixture only models short compact text objects")
+        buckets.append(bucket)
+        entries.append({
+            "byte": byte,
+            "source": source,
+            "positioned": positioned,
+            "bucket": bucket,
+        })
+        advance = advance_flagged_text_cursor_via_d550(cursor, default_advance)
+        advances.append(advance)
+        cursor = advance["cursor_after"]
+    combined = combine_short_text_buckets(buckets)
+    rendered = None
+    if render_output:
+        obj = combined["object"]
+        assert isinstance(obj, bytes)
+        rendered = render_compact_text_bucket_object(data, resources, (context,), obj)
+    return {
+        "stream": stream,
+        "entries": entries,
+        "advances": advances,
+        "combined": combined,
+        "rendered": rendered,
+        "final_cursor_x": cursor,
     }
 
 
@@ -1873,6 +1991,99 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "rendered": {key: positioned_mode0[key] for key in ("selector", "context_slot", "count", "rendered", "payload")},
     }))
     checks.append(assert_equal("single printable byte stream renders expected rows", printable_stream_rendered["rows"], positioned_mode0["rows"]))
+    multi_printable_stream = render_multi_printable_stream(
+        data,
+        resources,
+        b"!!",
+        0x440946B4,
+        cursor_x=pack12(10),
+        cursor_y=pack12(21),
+        default_advance=pack12(16),
+    )
+    multi_printable_combined = multi_printable_stream["combined"]
+    multi_printable_rendered = multi_printable_stream["rendered"]
+    assert isinstance(multi_printable_combined, dict)
+    assert isinstance(multi_printable_rendered, dict)
+    checks.append(assert_equal("two printable byte stream combines compact text entries", {
+        "stream": multi_printable_stream["stream"],
+        "advances": multi_printable_stream["advances"],
+        "combined": {
+            key: multi_printable_combined[key]
+            for key in ("object", "selector", "bucket_index", "count", "glyphs", "coords")
+        },
+        "rendered": {key: multi_printable_rendered[key] for key in ("selector", "context_slot", "count", "payload")},
+        "final_cursor_x": multi_printable_stream["final_cursor_x"],
+    }, {
+        "stream": b"!!",
+        "advances": [
+            {"cursor_before": pack12(10), "default_advance": pack12(16), "cursor_after": pack12(26)},
+            {"cursor_before": pack12(26), "default_advance": pack12(16), "cursor_after": pack12(42)},
+        ],
+        "combined": {
+            "object": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01 20 00 02"),
+            "selector": 0,
+            "bucket_index": 0,
+            "count": 2,
+            "glyphs": [0x20, 0x20],
+            "coords": [0x0001, 0x0002],
+        },
+        "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 2,
+            "payload": bytes.fromhex("00 02 20 00 01 20 00 02"),
+        },
+        "final_cursor_x": pack12(42),
+    }))
+    checks.append(assert_equal("two printable byte stream renders advanced glyph rows", multi_printable_rendered["rows"], [
+        "................####............####" if row == "####" else "." * 36
+        for row in line_printer_glyph32_rows
+    ]))
+    line_printer_hmi = builtin_flagged_hmi_from_context(resources, 0x440946B4)
+    checks.append(assert_equal("line-printer flagged HMI metric via 0x10550", line_printer_hmi, {
+        "base": 0x0146B4,
+        "metric_flag": 0,
+        "raw_metric": 0x00480000,
+        "hmi": pack12(18),
+    }))
+    metric_printable_stream = render_multi_printable_stream(
+        data,
+        resources,
+        b"!!",
+        0x440946B4,
+        cursor_x=pack12(10),
+        cursor_y=pack12(21),
+        default_advance=line_printer_hmi["hmi"],
+        render_output=False,
+    )
+    metric_printable_combined = metric_printable_stream["combined"]
+    assert isinstance(metric_printable_combined, dict)
+    checks.append(assert_equal("two printable byte stream with line-printer HMI queues subbyte entry", {
+        "stream": metric_printable_stream["stream"],
+        "advances": metric_printable_stream["advances"],
+        "combined": {
+            key: metric_printable_combined[key]
+            for key in ("object", "selector", "bucket_index", "count", "glyphs", "coords")
+        },
+        "rendered": metric_printable_stream["rendered"],
+        "final_cursor_x": metric_printable_stream["final_cursor_x"],
+    }, {
+        "stream": b"!!",
+        "advances": [
+            {"cursor_before": pack12(10), "default_advance": pack12(18), "cursor_after": pack12(28)},
+            {"cursor_before": pack12(28), "default_advance": pack12(18), "cursor_after": pack12(46)},
+        ],
+        "combined": {
+            "object": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01 20 02 02"),
+            "selector": 0,
+            "bucket_index": 0,
+            "count": 2,
+            "glyphs": [0x20, 0x20],
+            "coords": [0x0001, 0x0202],
+        },
+        "rendered": None,
+        "final_cursor_x": pack12(46),
+    }))
 
     lines.append("## Built-In Glyph Bitmap Fixtures")
     lines.append("")
@@ -1996,6 +2207,27 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- compact object bytes: `{' '.join(f'{byte:02x}' for byte in positioned_text_object)}`")
     lines.append("- rendered rows match the `0xd824` positioned text fixture above.")
     lines.append("- remaining gap: broaden this from a one-byte normal printable path into a parser stream that can mix printable text, direct control codes, reset, and page-object allocation without fixture-only state.")
+    lines.append("")
+
+    lines.append("## Two Printable Byte Stream Fixture")
+    lines.append("")
+    lines.append("This fixture keeps the same normal printable path but repeats it for stream bytes `21 21` (`!!`). Between bytes it models the simple `0xd550` default-advance branch: alternate metrics and previous-width centering are disabled, the drawable source is present, precheck succeeds, and the packed cursor is advanced by `0x00100000` so both compact coordinates stay byte-aligned for the current renderer fixture.")
+    lines.append("")
+    lines.append("- stream bytes: `21 21`")
+    lines.append(f"- cursor advances: `0x{pack12(10):08x}` -> `0x{pack12(26):08x}` -> `0x{pack12(42):08x}`")
+    lines.append(f"- combined compact object bytes: `{' '.join(f'{byte:02x}' for byte in multi_printable_combined['object'])}`")
+    lines.append("- compact entries: glyph `0x20` at coords `0x0001` and `0x0002`")
+    lines.append("- rendered rows:")
+    lines.extend(f"`{row}`" for row in multi_printable_rendered["rows"])
+    lines.append("- this byte-aligned advance is a renderer control fixture; it is not the initialized `LINE_PRINTER` HMI.")
+    lines.append("")
+    lines.append("The initialized `LINE_PRINTER` built-in metric path follows the `0x10550` conversion branch used by current-font refresh code: resource longword `0x00480000` at context offset `+0x24` becomes HMI/default advance `0x00120000`. Reusing the same `!!` stream with that advance queues the second glyph at compact coord `0x0202`, which has sub-byte phase `2`; this pins the next renderer gap without pretending the current mode-0 renderer can draw it yet.")
+    lines.append("")
+    lines.append(f"- metric source: context `0x{0x440946B4:08x}`, resource base `0x{line_printer_hmi['base']:06x}`, byte `+0x21 = 0x{line_printer_hmi['metric_flag']:02x}`, long `+0x24 = 0x{line_printer_hmi['raw_metric']:08x}`")
+    lines.append(f"- `0x10550` result: `0x{line_printer_hmi['hmi']:08x}`")
+    lines.append(f"- real-HMI compact object bytes: `{' '.join(f'{byte:02x}' for byte in metric_printable_combined['object'])}`")
+    lines.append("- real-HMI compact entries: glyph `0x20` at coords `0x0001` and `0x0202`")
+    lines.append("- remaining gap: implement sub-byte compact mode-0 rendering, then allow mixed printable/control/reset streams to allocate and finalize page objects.")
     lines.append("")
 
     lines.append("## `0xd3b2` Unflagged Positioning Fixture")

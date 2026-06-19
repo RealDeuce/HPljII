@@ -1200,6 +1200,134 @@ def render_mixed_printable_control_stream(
     }
 
 
+def render_mixed_printable_control_page_record_stream(
+    data: bytes,
+    resources: bytes,
+    stream: bytes,
+    context: int,
+    state: dict[str, int],
+    default_advance: int,
+    context_slot: int = 0,
+) -> dict[str, object]:
+    state = dict(state)
+    page_record: dict[str, object] = {"bucket_array": {}, "context_slots": [context]}
+    events: list[dict[str, object]] = []
+    pos = 0
+    while pos < len(stream):
+        byte = stream[pos]
+        if byte == 0x1B:
+            if pos + 1 < len(stream) and stream[pos + 1] == ord("E"):
+                before = dict(state)
+                state = apply_esc_e_reset(state)
+                events.append({
+                    "kind": "reset",
+                    "offset": pos,
+                    "sequence": stream[pos : pos + 2],
+                    "current_page_root_before": before["current_page_root"],
+                    "current_page_root_after": state["current_page_root"],
+                    "page_publications": state["page_publications"],
+                    "page_root_clears": state["page_root_clears"],
+                    "span_flushes": state["span_flushes"],
+                    "post_flushes": state["post_flushes"],
+                    "hmi": state["hmi"],
+                    "orientation": state["orientation"],
+                    "data_chain_ptr": state["data_chain_ptr"],
+                    "reset_status": state["reset_status"],
+                })
+                pos += 2
+                continue
+            if pos + 3 >= len(stream) or stream[pos + 1 : pos + 3] != b"&k":
+                raise AssertionError(f"page-record mixed stream only models ESC &k#G and ESC E at offset {pos}")
+            start = pos
+            pos += 3
+            sign = 1
+            if pos < len(stream) and stream[pos] in (ord("+"), ord("-")):
+                sign = -1 if stream[pos] == ord("-") else 1
+                pos += 1
+            if pos >= len(stream) or not chr(stream[pos]).isdigit():
+                raise AssertionError("page-record mixed stream ESC &k#G needs an integer parameter")
+            value = 0
+            while pos < len(stream) and chr(stream[pos]).isdigit():
+                value = value * 10 + stream[pos] - ord("0")
+                pos += 1
+            if pos >= len(stream) or stream[pos] != ord("G"):
+                raise AssertionError("page-record mixed stream only models ESC &k#G final byte")
+            state["line_termination"] = line_termination_mode_bits(sign * value)
+            pos += 1
+            events.append({
+                "kind": "escape",
+                "offset": start,
+                "sequence": stream[start:pos],
+                "line_termination": state["line_termination"],
+            })
+            continue
+        if byte in (0x08, 0x09, 0x0A, 0x0C, 0x0D):
+            before = dict(state)
+            state = apply_direct_control_code(state, byte)
+            events.append({
+                "kind": "control",
+                "offset": pos,
+                "byte": byte,
+                "cursor_before": (before["cursor_x"], before["cursor_y"]),
+                "cursor_after": (state["cursor_x"], state["cursor_y"]),
+                "page_roots": state["page_roots"],
+                "span_flushes": state["span_flushes"],
+            })
+            pos += 1
+            continue
+        if byte < 0x20 or byte == 0x7F:
+            raise AssertionError(f"unsupported page-record mixed stream byte 0x{byte:02x} at offset {pos}")
+
+        source = build_text_source_object_from_1393a(resources, context, byte, x=0, y=0, context_slot=context_slot)
+        positioned = position_flagged_text_source_via_d824(
+            resources,
+            source,
+            cursor_x=unpack12(state["cursor_x"])[0],
+            cursor_y=unpack12(state["cursor_y"])[0],
+        )
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        page_result = queue_text_source_to_page_record_via_12f2e(resources, page_record, positioned_source)
+        advance = advance_flagged_text_cursor_via_d550(state["cursor_x"], default_advance)
+        state["cursor_x"] = advance["cursor_after"]
+        events.append({
+            "kind": "printable",
+            "offset": pos,
+            "byte": byte,
+            "cursor_before": advance["cursor_before"],
+            "cursor_after": advance["cursor_after"],
+            "source": source,
+            "positioned": positioned,
+            "page_result": page_result,
+        })
+        pos += 1
+
+    bucket_array = page_record["bucket_array"]
+    assert isinstance(bucket_array, dict)
+    nonempty_buckets = sorted(bucket for bucket, chain in bucket_array.items() if chain)
+    if len(nonempty_buckets) != 1:
+        raise AssertionError("page-record mixed stream fixture expects one short compact bucket")
+    chain = bucket_array[nonempty_buckets[0]]
+    if len(chain) != 1:
+        raise AssertionError("page-record mixed stream fixture expects one compact object in the bucket")
+    bucket_object = bytes(chain[0])
+    bridged_record = bridge_page_record_via_1edc6({
+        "bucket_root": bucket_object,
+        "context_slots": [context],
+    })
+    rendered = render_bridged_compact_bucket_object(data, resources, bridged_record)
+    return {
+        "stream": stream,
+        "events": events,
+        "page_record": page_record,
+        "bucket_index": nonempty_buckets[0],
+        "bucket_object": bucket_object,
+        "bridged_record": bridged_record,
+        "rendered": rendered,
+        "final_state": state,
+    }
+
+
 def expand_mode0(payload: bytes) -> list[int]:
     return [int.from_bytes(payload[i : i + 2], "big") for i in range(0, len(payload), 2)]
 
@@ -2308,6 +2436,113 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         {"bucket_index": 8, "segment": 1, "object": bytes.fromhex("00 00 00 00 20 00 00 01 1f 01 00 00")},
         {"bucket_index": 0, "segment": 0, "object": bytes.fromhex("00 00 00 00 20 00 00 01 1f 00 00 00")},
     ]))
+    tall_page_record: dict[str, object] = {"bucket_array": {}, "context_slots": [0x440946B4]}
+    tall_page_first = queue_text_source_to_page_record_via_12f2e(resources, tall_page_record, tall_text_source)
+    tall_page_bucket_array = tall_page_record["bucket_array"]
+    assert isinstance(tall_page_bucket_array, dict)
+    expected_tall_segment_pairs = [
+        {"bucket_index": 64, "segment": 8},
+        {"bucket_index": 56, "segment": 7},
+        {"bucket_index": 48, "segment": 6},
+        {"bucket_index": 40, "segment": 5},
+        {"bucket_index": 32, "segment": 4},
+        {"bucket_index": 24, "segment": 3},
+        {"bucket_index": 16, "segment": 2},
+        {"bucket_index": 8, "segment": 1},
+        {"bucket_index": 0, "segment": 0},
+    ]
+    tall_page_first_prefixes = [
+        bytes(tall_page_bucket_array[pair["bucket_index"]][0][:12])
+        for pair in expected_tall_segment_pairs
+    ]
+    tall_page_second = queue_text_source_to_page_record_via_12f2e(resources, tall_page_record, tall_text_source)
+    tall_page_first_events = tall_page_first["events"]
+    tall_page_second_events = tall_page_second["events"]
+    assert isinstance(tall_page_first_events, list)
+    assert isinstance(tall_page_second_events, list)
+    checks.append(assert_equal("0x1387c page-record segmented allocator places tall glyph buckets", {
+        "metadata": {
+            key: tall_page_first[key]
+            for key in ("path", "selector", "coord", "glyph", "rows", "width")
+        },
+        "events": [
+            {
+                key: event[key]
+                for key in ("bucket_index", "segment", "allocated", "chain_index", "count_before", "count_after", "capacity", "object_size", "selector")
+            }
+            for event in tall_page_first_events
+        ],
+        "prefixes": tall_page_first_prefixes,
+    }, {
+        "metadata": {
+            "path": "segmented-page-record",
+            "selector": 0x2000,
+            "coord": 0,
+            "glyph": 0x1F,
+            "rows": 1108,
+            "width": 74,
+        },
+        "events": [
+            pair | {
+                "allocated": True,
+                "chain_index": 0,
+                "count_before": 0,
+                "count_after": 1,
+                "capacity": 8,
+                "object_size": 0x28,
+                "selector": 0x2000,
+            }
+            for pair in expected_tall_segment_pairs
+        ],
+        "prefixes": [
+            bytes.fromhex("00 00 00 00 20 00 00 01 1f 08 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 01 1f 07 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 01 1f 06 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 01 1f 05 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 01 1f 04 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 01 1f 03 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 01 1f 02 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 01 1f 01 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 01 1f 00 00 00"),
+        ],
+    }))
+    checks.append(assert_equal("0x1387c page-record segmented allocator reuses tall glyph buckets", {
+        "events": [
+            {
+                key: event[key]
+                for key in ("bucket_index", "segment", "allocated", "chain_index", "count_before", "count_after", "capacity", "object_size", "selector")
+            }
+            for event in tall_page_second_events
+        ],
+        "prefixes": [
+            bytes(tall_page_bucket_array[pair["bucket_index"]][0][:16])
+            for pair in expected_tall_segment_pairs
+        ],
+    }, {
+        "events": [
+            pair | {
+                "allocated": False,
+                "chain_index": 0,
+                "count_before": 1,
+                "count_after": 2,
+                "capacity": 8,
+                "object_size": 0x28,
+                "selector": 0x2000,
+            }
+            for pair in expected_tall_segment_pairs
+        ],
+        "prefixes": [
+            bytes.fromhex("00 00 00 00 20 00 00 02 1f 08 00 00 1f 08 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 02 1f 07 00 00 1f 07 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 02 1f 06 00 00 1f 06 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 02 1f 05 00 00 1f 05 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 02 1f 04 00 00 1f 04 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 02 1f 03 00 00 1f 03 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 02 1f 02 00 00 1f 02 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 02 1f 01 00 00 1f 01 00 00"),
+            bytes.fromhex("00 00 00 00 20 00 00 02 1f 00 00 00 1f 00 00 00"),
+        ],
+    }))
     tall_targets = tall_builtin_glyph_targets(resources)
     checks.append(assert_equal("firmware-scanned tall built-in glyph target summary", {
         "count": len(tall_targets),
@@ -2741,6 +2976,144 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     row_bits[11 + bit] = value
         expected_mixed_rows.append("".join("#" if bit else "." for bit in row_bits))
     checks.append(assert_equal("mixed printable/control stream renders post-CR glyph rows", mixed_rendered["rows"], expected_mixed_rows))
+    mixed_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&k1G!\r!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            vmi=pack12(3),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    mixed_page_record_object = mixed_page_record_stream["bucket_object"]
+    mixed_page_record_rendered = mixed_page_record_stream["rendered"]
+    mixed_page_record_bridged = mixed_page_record_stream["bridged_record"]
+    assert isinstance(mixed_page_record_object, bytes)
+    assert isinstance(mixed_page_record_rendered, dict)
+    assert isinstance(mixed_page_record_bridged, dict)
+    mixed_page_record_event_summary: list[dict[str, object]] = []
+    mixed_page_record_events = mixed_page_record_stream["events"]
+    assert isinstance(mixed_page_record_events, list)
+    for event in mixed_page_record_events:
+        assert isinstance(event, dict)
+        if event["kind"] == "escape":
+            mixed_page_record_event_summary.append({
+                "kind": "escape",
+                "sequence": event["sequence"],
+                "line_termination": event["line_termination"],
+            })
+        elif event["kind"] == "control":
+            mixed_page_record_event_summary.append({
+                "kind": "control",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "page_roots": event["page_roots"],
+                "span_flushes": event["span_flushes"],
+            })
+        else:
+            page_result = event["page_result"]
+            positioned = event["positioned"]
+            assert isinstance(page_result, dict)
+            assert isinstance(positioned, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            mixed_page_record_event_summary.append({
+                "kind": "printable",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": page_result["coord"],
+                "allocated": page_result["allocated"],
+                "count_before": page_result["count_before"],
+                "count_after": page_result["count_after"],
+                "bucket_index": page_result["bucket_index"],
+            })
+    checks.append(assert_equal("mixed printable/control page-record stream queues through 0x1387c", {
+        "stream": mixed_page_record_stream["stream"],
+        "events": mixed_page_record_event_summary,
+        "bucket_index": mixed_page_record_stream["bucket_index"],
+        "object_prefix": mixed_page_record_object[:14],
+        "object_size": len(mixed_page_record_object),
+        "final_state": select_keys(mixed_page_record_stream["final_state"], ("cursor_x", "cursor_y", "line_termination", "page_roots", "span_flushes", "post_flushes")),
+    }, {
+        "stream": b"\x1b&k1G!\r!",
+        "events": [
+            {"kind": "escape", "sequence": b"\x1b&k1G", "line_termination": 0x80},
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 0),
+                "coord": 0x0001,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+            },
+            {
+                "kind": "control",
+                "byte": 0x0D,
+                "cursor_before": (pack12(28), pack12(21)),
+                "cursor_after": (pack12(5), pack12(24)),
+                "page_roots": 1,
+                "span_flushes": 1,
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(5),
+                "cursor_after": pack12(23),
+                "positioned_xy": (11, 3),
+                "coord": 0x3B00,
+                "allocated": False,
+                "count_before": 1,
+                "count_after": 2,
+                "bucket_index": 0,
+            },
+        ],
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01 20 3b 00"),
+        "object_size": 0x26,
+        "final_state": {
+            "cursor_x": pack12(23),
+            "cursor_y": pack12(24),
+            "line_termination": 0x80,
+            "page_roots": 1,
+            "span_flushes": 1,
+            "post_flushes": 1,
+        },
+    }))
+    checks.append(assert_equal("mixed printable/control page-record bridge renders post-CR glyph rows", {
+        "bucket_root": mixed_page_record_bridged["bucket_root"],
+        "context_slots": mixed_page_record_bridged["context_slots"][:2],
+        "rendered": {
+            key: mixed_page_record_rendered[key]
+            for key in ("selector", "context_slot", "count", "rendered", "payload")
+        },
+        "rows": mixed_page_record_rendered["rows"],
+    }, {
+        "bucket_root": mixed_page_record_object,
+        "context_slots": (0x440946B4, 0),
+        "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 2,
+            "rendered": mixed_rendered["rendered"],
+            "payload": bytes.fromhex("00 02 20 00 01 20 3b 00") + bytes(0x18),
+        },
+        "rows": expected_mixed_rows,
+    }))
     mixed_reset_stream = render_mixed_printable_control_stream(
         data,
         resources,
@@ -2889,6 +3262,151 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
     checks.append(assert_equal("mixed printable/reset stream keeps pre-reset text rows renderable", mixed_reset_rendered["rows"], positioned_mode0["rows"]))
+    mixed_reset_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"!\x1bE",
+        0x440946B4,
+        reset_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            font_hmi_clear=line_printer_hmi["hmi"],
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    mixed_reset_page_record_object = mixed_reset_page_record_stream["bucket_object"]
+    mixed_reset_page_record_rendered = mixed_reset_page_record_stream["rendered"]
+    mixed_reset_page_record_bridged = mixed_reset_page_record_stream["bridged_record"]
+    assert isinstance(mixed_reset_page_record_object, bytes)
+    assert isinstance(mixed_reset_page_record_rendered, dict)
+    assert isinstance(mixed_reset_page_record_bridged, dict)
+    mixed_reset_page_record_event_summary: list[dict[str, object]] = []
+    mixed_reset_page_record_events = mixed_reset_page_record_stream["events"]
+    assert isinstance(mixed_reset_page_record_events, list)
+    for event in mixed_reset_page_record_events:
+        assert isinstance(event, dict)
+        if event["kind"] == "printable":
+            page_result = event["page_result"]
+            positioned = event["positioned"]
+            assert isinstance(page_result, dict)
+            assert isinstance(positioned, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            mixed_reset_page_record_event_summary.append({
+                "kind": "printable",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": page_result["coord"],
+                "allocated": page_result["allocated"],
+                "count_before": page_result["count_before"],
+                "count_after": page_result["count_after"],
+                "bucket_index": page_result["bucket_index"],
+            })
+        else:
+            mixed_reset_page_record_event_summary.append({
+                "kind": "reset",
+                "sequence": event["sequence"],
+                "current_page_root_before": event["current_page_root_before"],
+                "current_page_root_after": event["current_page_root_after"],
+                "page_publications": event["page_publications"],
+                "page_root_clears": event["page_root_clears"],
+                "span_flushes": event["span_flushes"],
+                "post_flushes": event["post_flushes"],
+                "hmi": event["hmi"],
+                "orientation": event["orientation"],
+                "data_chain_ptr": event["data_chain_ptr"],
+                "reset_status": event["reset_status"],
+            })
+    checks.append(assert_equal("mixed printable/reset page-record stream queues through 0x1387c before reset", {
+        "stream": mixed_reset_page_record_stream["stream"],
+        "events": mixed_reset_page_record_event_summary,
+        "bucket_index": mixed_reset_page_record_stream["bucket_index"],
+        "object_prefix": mixed_reset_page_record_object[:11],
+        "object_size": len(mixed_reset_page_record_object),
+        "final_state": select_keys(mixed_reset_page_record_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "current_page_root",
+            "page_publications",
+            "page_root_clears",
+            "span_flushes",
+            "post_flushes",
+            "pending_width",
+            "hmi",
+            "orientation",
+            "data_chain_ptr",
+            "reset_status",
+        )),
+    }, {
+        "stream": b"!\x1bE",
+        "events": [
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 0),
+                "coord": 0x0001,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+            },
+            {
+                "kind": "reset",
+                "sequence": b"\x1bE",
+                "current_page_root_before": 1,
+                "current_page_root_after": 0,
+                "page_publications": 1,
+                "page_root_clears": 1,
+                "span_flushes": 1,
+                "post_flushes": 1,
+                "hmi": line_printer_hmi["hmi"],
+                "orientation": 0,
+                "data_chain_ptr": 0x782D3E,
+                "reset_status": 0,
+            },
+        ],
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+        "object_size": 0x26,
+        "final_state": {
+            "cursor_x": pack12(28),
+            "cursor_y": pack12(21),
+            "current_page_root": 0,
+            "page_publications": 1,
+            "page_root_clears": 1,
+            "span_flushes": 1,
+            "post_flushes": 1,
+            "pending_width": 0,
+            "hmi": line_printer_hmi["hmi"],
+            "orientation": 0,
+            "data_chain_ptr": 0x782D3E,
+            "reset_status": 0,
+        },
+    }))
+    checks.append(assert_equal("mixed printable/reset page-record bridge keeps pre-reset rows renderable", {
+        "bucket_root": mixed_reset_page_record_bridged["bucket_root"],
+        "context_slots": mixed_reset_page_record_bridged["context_slots"][:2],
+        "rendered": {
+            key: mixed_reset_page_record_rendered[key]
+            for key in ("selector", "context_slot", "count", "rendered", "payload")
+        },
+        "rows": mixed_reset_page_record_rendered["rows"],
+    }, {
+        "bucket_root": mixed_reset_page_record_object,
+        "context_slots": (0x440946B4, 0),
+        "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 1,
+            "rendered": mixed_reset_rendered["rendered"],
+            "payload": bytes.fromhex("00 01 20 00 01") + bytes(0x1B),
+        },
+        "rows": positioned_mode0["rows"],
+    }))
 
     lines.append("## Built-In Glyph Bitmap Fixtures")
     lines.append("")
@@ -3090,6 +3608,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.extend(f"`{row}`" for row in mixed_rendered["rows"])
     lines.append("- note: the shifted second glyph writes a full one-byte span, so its blank rows clear pixels `x=11..18` and can erase part of an earlier glyph in the same bucket.")
     lines.append("")
+    lines.append("The same mixed stream is now also queued through the page-record allocator shape as the stream is processed, rather than being combined after the fact. The first printable byte allocates bucket `0` through `0x1387c`; after CR+LF, the second printable byte reuses that object and increments the count to `2`. Bridging the resulting full `0x26` object through `0x1edc6` renders the same post-CR rows.")
+    lines.append("")
+    lines.append(f"- page-record stream object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_page_record_object)}`")
+    lines.append(f"- page-record bridged context slots `[0..1]`: `0x{mixed_page_record_bridged['context_slots'][0]:08x}`, `0x{mixed_page_record_bridged['context_slots'][1]:08x}`")
+    lines.append("")
     lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric.")
     lines.append("")
     lines.append("- mixed reset stream bytes: `21 1b 45`")
@@ -3104,6 +3627,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         mixed_reset_final_state["data_chain_ptr"],
         mixed_reset_final_state["reset_status"],
     ))
+    lines.append(f"- page-record reset object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_reset_page_record_object)}`")
+    lines.append("- page-record reset bridged rows match the pre-reset compact text rows.")
     lines.append("- remaining gap: replace these fixture-only source/bucket/page-root states with parser-produced page objects and compare the finalized page/control records.")
     lines.append("")
 
@@ -3126,6 +3651,23 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("")
     lines.append(f"- source fields: context `0x{tall_text_source['context']:08x}`, host `0x{tall_text_source['host_char']:02x}`, glyph `0x{tall_text_source['mapped']:02x}`, glyph entry `0x{tall_text_source['glyph_entry']:06x}`, width `{tall_text_source['glyph_width']}`, rows `{tall_text_source['glyph_rows']}`")
     lines.append(f"- producer path: `{tall_bucket['path']}`, selector `0x{int(tall_bucket['selector']):04x}`, object size `0x{int(tall_bucket['object_size']):02x}`, capacity `{tall_bucket['capacity']}`, entry size `{tall_bucket['entry_size']}`")
+    first_segment_event = tall_page_first_events[0]
+    second_segment_event = tall_page_second_events[0]
+    assert isinstance(first_segment_event, dict)
+    assert isinstance(second_segment_event, dict)
+    lines.append("- page-record allocator first pass: `%d` segment objects allocated through `0x1387c`; first bucket `%d`/segment `%d` count `%d -> %d`" % (
+        len(tall_page_first_events),
+        first_segment_event["bucket_index"],
+        first_segment_event["segment"],
+        first_segment_event["count_before"],
+        first_segment_event["count_after"],
+    ))
+    lines.append("- page-record allocator second pass: same selector `0x%04x` reuses all segment buckets; first bucket count `%d -> %d` and prefix `%s`" % (
+        tall_page_second["selector"],
+        second_segment_event["count_before"],
+        second_segment_event["count_after"],
+        " ".join(f"{byte:02x}" for byte in tall_page_bucket_array[64][0][:16]),
+    ))
     lines.append(f"- firmware-scanned tall target summary: `{len(tall_targets)}` targets across `{len({target['base'] for target in tall_targets})}` records; every target has delta `0`, mode `0`, and width `74`, so the verified built-in resources do not yet provide a normal bitmap-entry fixture for rendering `0x1f1f0`")
     lines.append("| Bucket | Segment byte | Object bytes |")
     lines.append("| ---: | ---: | --- |")

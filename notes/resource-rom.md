@@ -1,6 +1,6 @@
 # Resource ROM Notes
 
-Sources: `generated/roms/ic32_ic15.bin`; `generated/analysis/ic32_ic15_strings.txt`; `generated/analysis/ic32_ic15_resource_markers.txt`; `generated/analysis/ic32_ic15_font_records.md`; `generated/analysis/ic32_ic15_resource_glyph_probe.md`; `generated/analysis/ic30_ic13_font_context_bridge.md`; `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`; `generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`; `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`; `generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst`.
+Sources: `generated/roms/ic32_ic15.bin`; `generated/analysis/ic32_ic15_strings.txt`; `generated/analysis/ic32_ic15_resource_markers.txt`; `generated/analysis/ic32_ic15_font_records.md`; `generated/analysis/ic32_ic15_resource_glyph_probe.md`; `generated/analysis/ic30_ic13_font_context_bridge.md`; `generated/analysis/ic30_ic13_text_glyph_index_flow.md`; `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`; `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`; `generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`; `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`; `generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst`; `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`.
 
 The `IC32,IC15` interleave is not the reset firmware pair. It begins with a `HEAD` signature and contains repeated built-in font names and dense offset tables. Treat it as the current source for built-in font directories, metrics, and glyph data.
 
@@ -103,15 +103,32 @@ Example candidate entries from the probe:
 | `0x44080418` | 0 | `0x00007792` | `0x007baa` | `0x007bb4` | 29 | 28 | 4 | `00 1f 80 00 00 ff f0 00` |
 | `0x440946b4` | 0 | `0x0000407c` | `0x018730` | `0x01873a` | 16 | 16 | 2 | `03 c0 0f f0 38 1c 30 0c` |
 
-The old high-word interpretation was wrong. The entries are not absolute high words; they are full relative long offsets from the selected record start. Character-to-glyph indexing still depends on the text object payload and symbol-set mapping, but the selected context longword now maps directly to concrete resource records and glyph-entry pointers.
+The old high-word interpretation was wrong. The entries are not absolute high words; they are full relative long offsets from the selected record start. The selected context longword now maps directly to concrete resource records and glyph-entry pointers; the text-object glyph index and symbol-set patch mechanics are summarized below.
 
 The firmware-side bridge to the renderer is now traced through the first real glyph entries: selected candidate longwords are copied into current-font context records at `0x782ee6` / `0x782ef6`, those context-record pointers are installed in page-root `+0x2c` slots, `0x1edc6` copies the slots to render-record `+0x24`, the compact glyph renderer loads a selected slot into `0x783a2c`, and `0x1f354` resolves the glyph table relative to the selected `IC32,IC15` record.
+
+## Character to Glyph Index
+
+The compact renderer does not index built-in font tables directly with the incoming host byte. Routine `0x1393a` maps the original character through one of two 256-byte tables:
+
+| Selector | Map table | Context record |
+| --- | --- | --- |
+| `0x782f06 == 0` | `0x782f32` | `0x782ee6` |
+| `0x782f06 != 0` | `0x783032` | `0x782ef6` |
+
+The mapped byte is stored as text object word `+0x0a`; its low byte at object `+0x0b` is later copied by `0x12f2e` into each compact payload entry. That byte is the glyph index consumed by `0x1f354`.
+
+For bit-30 built-in contexts, `0x14d9c` initializes the active map from selected record words `+0x0e` and `+0x10`: characters before the first code map to zero, characters in range map to incrementing glyph indices starting at zero, and characters after the last code map to zero. `0x14f16` then applies symbol-set-specific remaps for normalized symbol set `0x0115` (`8U`, Roman-8), using active symbol-set words at `0x783144` / `0x783146`.
+
+The generated `generated/analysis/ic30_ic13_symbol_set_patch_tables.md` report decodes the `0x14fce` table into 18 patch records. Each record is keyed by a PCL symbol-set code and Technical Reference name: ISO 2 IRV (`2U`), ISO 4 United Kingdom (`1E`), ISO 25/69 French (`0F`/`1F`), HP/ISO German (`0G`/`1G`), ISO 15 Italian (`0I`), ISO 14 JIS ASCII (`0K`), ISO 57 Chinese (`2K`), ISO 10/11 Swedish (`3S`/`0S`), HP/ISO Spanish (`1S`/`2S`/`6S`), ISO 16/84 Portuguese (`4S`/`5S`), and ISO 60/61 Norwegian (`0D`/`1D`). The patch records contain byte pairs applied as `map[dst] = map[src]`. Special active values `0x0005` (`0E`, HP Roman Extension) and `0x0015` (`0U`, ISO 6 ASCII) use hard-coded half-map behavior instead of a patch table.
+
+This makes the current renderer identity `(context longword, mapped glyph byte)`. For example, the unnamed built-in record at context `0x4008004c` has a base range `0x21..0xfe`, so before `0x14f16` patching, host byte `0x21` maps to glyph index `0`. The first `COURIER` and `LINE_PRINTER` records have base ranges `0x01..0xff`, so their pre-patch base mapping starts at byte `0x01 -> glyph 0`.
 
 ## Extraction Targets
 
 1. Decode the `HEAD` record scanner in firmware routine `0x0000041a`.
 2. Finish naming the firmware-scanned record metadata fields rather than relying on string labels alone.
-3. Trace character-code and symbol-set mapping into the glyph index byte consumed by compact text objects.
+3. Trace the `0x783144` / `0x783146` active values back to the symbol-set PCL handlers.
 4. Feed more real glyph entries through the executable row-copy harness and compare complete rendered glyph bitmaps.
 5. Extract enough metadata for each `COURIER` and `LINE_PRINTER` record to identify point size, pitch, orientation, style, symbol set, cell size, and baseline.
 6. Locate the glyph bitmap payloads and write a deterministic extractor from the verified `IC32,IC15` hash.

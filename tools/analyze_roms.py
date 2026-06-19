@@ -109,6 +109,58 @@ def u32(data: bytes, offset: int) -> int:
     return int.from_bytes(data[offset : offset + 4], "big")
 
 
+def find_all(data: bytes, needle: bytes) -> list[int]:
+    offsets: list[int] = []
+    start = 0
+    while True:
+        pos = data.find(needle, start)
+        if pos < 0:
+            break
+        offsets.append(pos)
+        start = pos + 1
+    return offsets
+
+
+def jsr_abs_refs(data: bytes, target: int) -> list[int]:
+    return find_all(data, b"\x4e\xb9" + target.to_bytes(4, "big"))
+
+
+def pcl_symbol_set_code(value: int) -> str:
+    number, suffix = divmod(value, 32)
+    if 1 <= suffix <= 26:
+        return f"{number}{chr(64 + suffix)}"
+    return f"0x{value:04x}"
+
+
+SYMBOL_SET_NAMES = {
+    0x0004: "ISO 60: Norwegian version 1",
+    0x0005: "HP Roman Extension",
+    0x0006: "ISO 25: French",
+    0x0007: "HP German",
+    0x0009: "ISO 15: Italian",
+    0x000B: "ISO 14: JIS ASCII",
+    0x0013: "ISO 11: Swedish",
+    0x0015: "ISO 6: ASCII",
+    0x0024: "ISO 61: Norwegian version 2",
+    0x0025: "ISO 4: United Kingdom",
+    0x0026: "ISO 69: French",
+    0x0027: "ISO 21: German",
+    0x004B: "ISO 57: Chinese",
+    0x0053: "ISO 17: Spanish",
+    0x0055: "ISO 2: International Reference Version",
+    0x0073: "ISO 10: Swedish",
+    0x0093: "ISO 16: Portuguese",
+    0x00B3: "ISO 84: Portuguese",
+    0x00D3: "ISO 85: Spanish",
+    0x0115: "HP Roman-8",
+    0x0033: "HP Spanish",
+}
+
+
+def symbol_set_name(value: int) -> str:
+    return SYMBOL_SET_NAMES.get(value, "(unidentified)")
+
+
 def resource_marker_report(data: bytes) -> str:
     markers = find_named_markers(data, [b"HEAD", b"COURIER", b"LINE_PRINTER", b"SH7-9233-01", b"SH7-9234-01"])
     lines = ["# IC32/IC15 Resource Marker Index", ""]
@@ -522,7 +574,202 @@ def font_context_bridge_report(data: bytes) -> str:
     lines.append("")
     lines.append("- A render context slot is a pointer to a current-font context record (`0x782ee6` or `0x782ef6` family), whose first longword is the selected candidate/resource longword plus flag bits.")
     lines.append("- Page-root `+0x2c` does not hold raw glyph bitmap pointers. It holds up to 16 current-font context record pointers, which are copied to render-record `+0x24` before compact glyph rendering.")
-    lines.append("- The selected resource longword still needs one more bridge: trace how the first longword in `0x782ee6`/`0x782ef6` maps onto the structured `IC32,IC15` font records and plausible `0x1f354` glyph entries documented in `ic32_ic15_resource_glyph_probe.md`.")
+    lines.append("- For built-in contexts, that bridge is now resolved: the selected context low 24 bits map to an `IC32,IC15` offset by subtracting `0x80000`, bit 30 selects the offset-table form, and table entries are relative 32-bit glyph-entry offsets from the selected record start.")
+    lines.append("- The remaining font/text gap is upstream of `0x1f354`: reproduce the primary/secondary character-to-glyph maps at `0x782f32` / `0x783032`, including symbol-set patching, so host bytes feed the same compact glyph index documented in `ic30_ic13_text_glyph_index_flow.md`.")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def text_glyph_index_flow_report(firmware: bytes, resources: bytes) -> str:
+    routines = [
+        (0x0000D4AC, "built-in text metrics/span update"),
+        (0x0000D824, "text source object positioning and queue handoff"),
+        (0x0000D8FC, "alternate text source object queue handoff"),
+        (0x00012F2E, "compact text/glyph bucket producer"),
+        (0x0001393A, "character-code to glyph-index capture"),
+        (0x00014D9C, "built-in range map initializer"),
+        (0x00014E24, "inline/downloaded validity map initializer"),
+        (0x00014EB6, "inline/downloaded glyph-validity probe"),
+        (0x00014F16, "symbol-set map patcher"),
+        (0x0001F354, "renderer glyph/context resolver"),
+    ]
+
+    table_refs = [
+        (0x00782F06, "primary/secondary text-map selector"),
+        (0x00782F32, "primary 256-byte character-to-glyph map"),
+        (0x00783032, "secondary 256-byte character-to-glyph map"),
+        (0x00782EE6, "primary current-font context record"),
+        (0x00782EF6, "secondary current-font context record"),
+        (0x00783132, "primary high-character/symbol-set flag"),
+        (0x00783133, "secondary high-character/symbol-set flag"),
+        (0x00783134, "primary mapped character range"),
+        (0x0078313A, "secondary mapped character range"),
+        (0x00783144, "primary active symbol-set word"),
+        (0x00783146, "secondary active symbol-set word"),
+    ]
+
+    def fmt_refs(refs: list[int]) -> str:
+        if not refs:
+            return "(none)"
+        text = ", ".join(f"`0x{ref:06x}`" for ref in refs[:12])
+        if len(refs) > 12:
+            text += f", ... ({len(refs)} total)"
+        return text
+
+    records = firmware_scanned_font_records(resources)
+    example_records = [
+        next((record for record in records if record["name"] == "(unnamed)" and int(record["record_start"]) == 0x00004C), None),
+        next((record for record in records if record["name"] == "COURIER" and int(record["record_start"]) == 0x000418), None),
+        next((record for record in records if record["name"] == "LINE_PRINTER" and int(record["record_start"]) == 0x0146B4), None),
+    ]
+
+    lines = ["# IC30/IC13 Text Glyph-Index Flow", ""]
+    lines.append("Generated from instruction windows around `0x1393a`, `0x12f2e`, and the font-map initializers, plus byte scans of the verified firmware image.")
+    lines.append("This report tracks the byte that starts each compact text payload entry and becomes the `D1` glyph index consumed by renderer helper `0x1f354`.")
+    lines.append("")
+
+    lines.append("## Confirmed Flow")
+    lines.append("")
+    lines.append("| Step | Firmware evidence | Meaning for reproduction |")
+    lines.append("| ---: | --- | --- |")
+    lines.append("| 1 | `0x14c64` dispatches selected font activation through `0x14d9c` for bit-30 built-in contexts, or `0x14e24` for inline/downloaded contexts, then `0x14f16` and `0x1440c` | selected font changes rebuild one of the 256-byte character-to-glyph maps before text is queued |")
+    lines.append("| 2 | `0x14d9c` chooses `0x782f32` or `0x783032` from `0x7828de`, reads selected record words `+0x0e` and `+0x10`, zero-fills before/after that range, and writes incrementing bytes through the range | built-in records get a base map where host character `first_char+n` maps to glyph index `n` before symbol-set patching |")
+    lines.append("| 3 | `0x14e24` clears/map-fills the same 256-byte table through `0x14eb6`, which validates fixed records at `context_base+0x40+8*glyph` | inline/downloaded contexts use the same map bytes, but only for glyph slots that have valid records |")
+    lines.append("| 4 | `0x14f16` applies symbol-set `0x0115` (`8U`, HP Roman-8) handling from `0x783144`/`0x783146`: copy upper 0x80 down for `0x0005` (`0E`, HP Roman Extension), leave lower half for `0x0015` (`0U`, ISO 6 ASCII), or apply named byte-pair patch tables from `0x14fce` | symbol-set aliases are not a renderer concern; they alter the map byte before text object creation |")
+    lines.append("| 5 | `0x1393a` selects map/context pair from `0x782f06`: primary `0x782f32` + `0x782ee6`, or secondary `0x783032` + `0x782ef6`; then reads `D6 = byte[map + original_char]` | original host character code is converted to a compact glyph index at text-object build time |")
+    lines.append("| 6 | `0x1393a` stores the mapped byte as word at text object `+0x0a`, copies the current context longword to text object `+0`, and copies the context flag byte to text object `+0x10` | text object byte `+0x0b` is the low byte of the mapped glyph index, and the object carries the selected font resource context |")
+    lines.append("| 7 | if the context flag byte is nonzero, `0x1393a` range-checks the original character and resolves text object `+4` through the same offset-table formula used by `0x1f354`: base + word `+8`, long table entry indexed by mapped byte, then add base | built-in text objects already point at the concrete resource glyph entry for metrics, proving the mapped byte indexes the same table used by the renderer |")
+    lines.append("| 8 | if the context flag byte is zero, `0x1393a` sets text object `+4 = context_base + 0x40 + 8*mapped_byte` | inline/downloaded text objects use the fixed-record layout later handled by `0x1f354` when bit 30 is clear |")
+    lines.append("| 9 | `0xd824` / `0xd8fc` fill source positioning fields `+0x12`, `+0x14`, `+0x16`, mark the selected font slot live, then call `0x12f2e` | positioned text source objects are converted into compact page-bucket objects |")
+    lines.append("| 10 | `0x12f2e` appends source byte `+0x0b` as the first byte of every compact payload entry at `0x1302a` and `0x1304e` | compact payload entry byte 0 is the glyph index byte produced by the character map |")
+    lines.append("| 11 | compact renderers `0x1f034`, `0x1f0d2`, `0x1f1f0`, and `0x1f264` call `0x1f354` with that byte in `D1` after loading a render-record context slot into `0x783a2c` | renderer glyph selection is fully keyed by `(selected context longword, mapped glyph byte)` |")
+    lines.append("")
+
+    lines.append("## Absolute JSR Call-Site Scan")
+    lines.append("")
+    lines.append("This scan finds `JSR absolute long` opcodes (`4eb9`) that target the named routines. It does not include PC-relative calls.")
+    lines.append("")
+    lines.append("| Target | Role | Absolute JSR references |")
+    lines.append("| ---: | --- | --- |")
+    for target, role in routines:
+        lines.append(f"| `0x{target:06x}` | {role} | {fmt_refs(jsr_abs_refs(firmware, target))} |")
+    lines.append("")
+
+    lines.append("## Table and State References")
+    lines.append("")
+    lines.append("| Absolute address | Role | Longword literal references |")
+    lines.append("| ---: | --- | --- |")
+    for address, role in table_refs:
+        lines.append(f"| `0x{address:08x}` | {role} | {fmt_refs(find_all(firmware, address.to_bytes(4, 'big')))} |")
+    lines.append("")
+
+    lines.append("## Built-In Base-Map Examples")
+    lines.append("")
+    lines.append("These are the base mappings created by `0x14d9c` before `0x14f16` applies symbol-set patches.")
+    lines.append("")
+    lines.append("| Context | Record | Character range | Example mapped bytes |")
+    lines.append("| ---: | --- | --- | --- |")
+    for record in [record for record in example_records if record is not None]:
+        first = int(record["first_char"])
+        last = int(record["last_char"])
+        examples: list[str] = []
+        for char in range(first, min(last + 1, first + 4)):
+            examples.append(f"`0x{char:02x}->0x{char - first:02x}`")
+        lines.append(
+            f"| `0x{int(record['context_longword']):08x}` | `{record['name']}` @`0x{int(record['record_start']):06x}` | "
+            f"`0x{first:02x}`..`0x{last:02x}` | {', '.join(examples)} |"
+        )
+    lines.append("")
+
+    lines.append("## Current Reproduction Contract")
+    lines.append("")
+    lines.append("- To render built-in text exactly, reproduce the firmware's active map table for the selected primary/secondary font slot, including `0x14f16` symbol-set patching.")
+    lines.append("- The compact glyph payload byte is not necessarily the original host byte. It is the mapped byte stored at text object `+0x0b` and copied by `0x12f2e`.")
+    lines.append("- The renderer-side glyph identity is `(context longword, mapped byte)`. For built-in contexts the context low 24 bits map to `IC32,IC15` offset `address - 0x80000`, bit 30 selects the offset table, and each table entry is a relative 32-bit offset from the record start.")
+    lines.append("- The `0x14fce` symbol-set patch tables and their Technical Reference names are decoded in `ic30_ic13_symbol_set_patch_tables.md`; remaining work is to capture the host parser path that invokes `0x1393a` for printable bytes and feed full resource glyph rows through the row-copy harness.")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def symbol_set_patch_table_report(data: bytes) -> str:
+    table = 0x14FCE
+    entry_count = 18
+
+    def patch_pairs(pointer: int) -> list[tuple[int, int]]:
+        if pointer < 0 or pointer + 2 > len(data):
+            return []
+        count = u16(data, pointer)
+        pairs: list[tuple[int, int]] = []
+        pos = pointer + 2
+        for _ in range(count):
+            if pos + 2 > len(data):
+                break
+            pairs.append((data[pos], data[pos + 1]))
+            pos += 2
+        return pairs
+
+    entries: list[dict[str, int | list[tuple[int, int]]]] = []
+    for index in range(entry_count):
+        pos = table + index * 6
+        symbol_value = u16(data, pos)
+        pointer = u32(data, pos + 2)
+        entries.append({"index": index, "symbol_value": symbol_value, "pointer": pointer, "pairs": patch_pairs(pointer)})
+
+    lines = ["# IC30/IC13 Symbol-Set Patch Tables", ""]
+    lines.append("Generated from the data table rooted at `0x14fce`, consumed by `0x14f16` after built-in font map initialization.")
+    lines.append("")
+    lines.append("Symbol-set names are from the LaserJet Series II Technical Reference, Table 8-1 / Table 10-2. Routine `0x14f16` only enters this path when the selected font normalizes to symbol set `0x0115` (`8U`, HP Roman-8). It then reads the active requested symbol-set word from `0x783144` or `0x783146` and handles it as follows:")
+    lines.append("")
+    lines.append("- `0x0005` (`0E`, HP Roman Extension): copy the upper 128 map bytes down over the lower 128 bytes, then clear the upper 128 bytes.")
+    lines.append("- `0x0015` (`0U`, ISO 6: ASCII): leave the lower map half alone, clear the upper 128 bytes.")
+    lines.append("- table hit at `0x14fce`: apply byte pairs from the selected patch table, then clear the upper 128 bytes.")
+    lines.append("- no table hit: leave the map as initialized by `0x14d9c`/`0x14e24`.")
+    lines.append("")
+    lines.append("Each patch pair is interpreted by `0x14fa0..0x14fa4` as `map[dst] = map[src]`. This remaps host character `dst` to the glyph index that the active map had for character `src`.")
+    lines.append("")
+
+    lines.append("## Patch Table Index")
+    lines.append("")
+    lines.append("| Entry | Symbol value | PCL code | Manual name | Patch table | Pair count |")
+    lines.append("| ---: | ---: | --- | --- | ---: | ---: |")
+    for entry in entries:
+        symbol_value = int(entry["symbol_value"])
+        pointer = int(entry["pointer"])
+        pairs = entry["pairs"]
+        assert isinstance(pairs, list)
+        lines.append(f"| {int(entry['index'])} | `0x{symbol_value:04x}` | `{pcl_symbol_set_code(symbol_value)}` | {symbol_set_name(symbol_value)} | `0x{pointer:06x}` | {len(pairs)} |")
+    lines.append("")
+
+    lines.append("## Patch Pair Details")
+    lines.append("")
+    for entry in entries:
+        symbol_value = int(entry["symbol_value"])
+        pointer = int(entry["pointer"])
+        pairs = entry["pairs"]
+        assert isinstance(pairs, list)
+        lines.append(f"### `{pcl_symbol_set_code(symbol_value)}` (`0x{symbol_value:04x}`), {symbol_set_name(symbol_value)} @`0x{pointer:06x}`")
+        lines.append("")
+        lines.append("| Pair | Destination char | Source char | Effect |")
+        lines.append("| ---: | ---: | ---: | --- |")
+        for pair_index, (dst, src) in enumerate(pairs):
+            lines.append(f"| {pair_index} | `0x{dst:02x}` | `0x{src:02x}` | `map[0x{dst:02x}] = map[0x{src:02x}]` |")
+        lines.append("")
+
+    lines.append("## Example Effects on Built-In Base Maps")
+    lines.append("")
+    lines.append("For the first `COURIER` and `LINE_PRINTER` records, the pre-patch base range is `0x01..0xff`, so `map[x] = x - 1` for nonzero bytes. Under that base map, a pair `dst,src` makes host byte `dst` select glyph index `src - 1`.")
+    lines.append("")
+    lines.append("| Symbol | Manual name | First four remaps under `0x01..0xff` base |")
+    lines.append("| --- | --- | --- |")
+    for entry in entries:
+        symbol_value = int(entry["symbol_value"])
+        pairs = entry["pairs"]
+        assert isinstance(pairs, list)
+        examples: list[str] = []
+        for dst, src in pairs[:4]:
+            glyph = 0 if src == 0 else src - 1
+            examples.append(f"`0x{dst:02x}->glyph 0x{glyph:02x}`")
+        lines.append(f"| `{pcl_symbol_set_code(symbol_value)}` | {symbol_set_name(symbol_value)} | {', '.join(examples) if examples else '(none)'} |")
     lines.append("")
     return "\n".join(lines)
 
@@ -1898,6 +2145,8 @@ def main() -> None:
     write_if_changed(ANALYSIS / "ic30_ic13_render_dispatch_tables.md", render_dispatch_table_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_render_subrenderers.md", render_subrenderer_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_font_context_bridge.md", font_context_bridge_report(firmware))
+    write_if_changed(ANALYSIS / "ic30_ic13_text_glyph_index_flow.md", text_glyph_index_flow_report(firmware, resources))
+    write_if_changed(ANALYSIS / "ic30_ic13_symbol_set_patch_tables.md", symbol_set_patch_table_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_render_expansion_fixtures.md", render_expansion_fixture_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_render_destination_fixtures.md", render_destination_fixture_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_render_row_copy_fixtures.md", render_row_copy_fixture_report(firmware))

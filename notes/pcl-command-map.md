@@ -101,7 +101,7 @@ Page geometry and the first raster transfer path are now tracked in `notes/page-
 
 ## Next RE Targets
 
-- Feed the executable renderer harness with full parser-produced page-object payloads, building on the current one-byte and two-byte printable stream fixtures, real-HMI sub-byte compact coordinate fixture, producer-modeled short/segmented text bucket objects, `0xd824`-positioned text fixture, synthetic `0xd3b2` positioning fixture, resource-ROM glyph, and `0x1f08e` row-copy fixtures.
+- Feed the executable renderer harness with full parser-produced page-object payloads, building on the current one-byte, two-byte, and mixed printable/control/reset stream fixtures, real-HMI sub-byte compact render fixture, producer-modeled short/segmented text bucket objects, `0xd824`-positioned text fixture, synthetic `0xd3b2` positioning fixture, resource-ROM glyph, and `0x1f08e` row-copy fixtures.
 - Replace the synthetic `ESC E` fixtures with parser-produced page-object fixtures to prove partial-page finalization and reset-visible page/control state from real queued objects.
 - Broaden the narrow direct-control byte-stream fixtures into the full firmware parser path, then compare those against page size, orientation, and raster behavior to finish naming `0x782c8a` and `0x782c8e`.
 - Compare page geometry constants from `generated/analysis/ic30_ic13_page_geometry_tables.md` against manual printable-area figures.

@@ -199,6 +199,24 @@ def bitmap_bytes_to_rows(bitmap: bytes | bytearray, rows: int, width: int, strid
     return out
 
 
+def write_bitmap_bits(dest: bytearray, dest_stride: int, source: bytes, rows: int, span: int, x: int, y: int) -> None:
+    for row_index in range(rows):
+        row_base = row_index * span
+        dest_row = (y + row_index) * dest_stride
+        for bit_index in range(span * 8):
+            src_byte = source[row_base + bit_index // 8]
+            src_mask = 0x80 >> (bit_index & 7)
+            pixel = x + bit_index
+            dest_offset = dest_row + pixel // 8
+            if dest_offset >= len(dest):
+                raise AssertionError("shifted bitmap write exceeds destination fixture buffer")
+            dest_mask = 0x80 >> (pixel & 7)
+            if src_byte & src_mask:
+                dest[dest_offset] |= dest_mask
+            else:
+                dest[dest_offset] &= ~dest_mask
+
+
 def render_glyph_rows_via_main_row_copy(data: bytes, resources: bytes, glyph: dict[str, int | bytes], dest_stride: int = 0x20) -> list[str]:
     mode = int(glyph["mode"])
     if mode != 1:
@@ -237,34 +255,42 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
         glyph_index = payload[pos]
         coord = u16(payload, pos + 1)
         pos += 3
-        subbyte = (coord >> 8) & 0x0F
-        if subbyte:
-            raise AssertionError("compact mode-0 fixture does not implement sub-byte phase yet")
         glyph = resolve_builtin_glyph(resources, context, glyph_index)
+        mode = int(glyph["mode"])
+        if mode != 1:
+            raise AssertionError(f"compact mode-0 fixture does not implement glyph mode {mode}")
         rows = int(glyph["rows"])
         width = int(glyph["width"])
         render_span = int(glyph["render_span"])
-        if (coord >> 12) + rows > band_rows:
+        row_index = (coord >> 12) & 0x0F
+        subbyte = (coord >> 8) & 0x0F
+        byte_pair_offset = (coord & 0x00FF) * 2
+        x = byte_pair_offset * 8 + subbyte
+        if row_index + rows > band_rows:
             raise AssertionError("compact mode-0 fixture does not implement band-crossing continuation yet")
         source = resources[int(glyph["bitmap"]) : int(glyph["bitmap"]) + rows * render_span]
-        dest_base = ((coord >> 12) & 0x0F) * dest_stride + (coord & 0x00FF) * 2
         result = simulate_row_copy(data, u32(data, 0x1F08E + render_span * 4), rows, stride=dest_stride)
         for write in result.writes:
             if write.source != "A2":
                 raise AssertionError(f"unexpected {write.source} write for compact mode-0 glyph")
-            start = dest_base + write.dst
-            dest[start : start + write.size] = source[write.src : write.src + write.size]
+            if write.src + write.size > len(source):
+                raise AssertionError(f"source read past compact mode-0 glyph bitmap at +0x{write.src:x}")
+        write_bitmap_bits(dest, dest_stride, source, rows, render_span, x, row_index)
+        decoded = coord_decode(coord, band_base=0, payload_offset=0)
         rendered.append({
             "glyph": glyph_index,
             "coord": coord,
-            "dest_base": dest_base,
+            "dest_base": decoded["a1"],
+            "x": x,
+            "y": row_index,
+            "a001": decoded["a001"],
             "span": render_span,
             "rows": rows,
             "width": width,
             "helper": u32(data, 0x1F08E + render_span * 4),
         })
-        max_width = max(max_width, (coord & 0x00FF) * 16 + width)
-        max_bottom = max(max_bottom, ((coord >> 12) & 0x0F) + rows)
+        max_width = max(max_width, x + width)
+        max_bottom = max(max_bottom, row_index + rows)
     return {
         "count": count,
         "rendered": rendered,
@@ -888,6 +914,126 @@ def render_multi_printable_stream(
         "combined": combined,
         "rendered": rendered,
         "final_cursor_x": cursor,
+    }
+
+
+def render_mixed_printable_control_stream(
+    data: bytes,
+    resources: bytes,
+    stream: bytes,
+    context: int,
+    state: dict[str, int],
+    default_advance: int,
+    context_slot: int = 0,
+) -> dict[str, object]:
+    state = dict(state)
+    events: list[dict[str, object]] = []
+    buckets: list[dict[str, object]] = []
+    pos = 0
+    while pos < len(stream):
+        byte = stream[pos]
+        if byte == 0x1B:
+            if pos + 1 < len(stream) and stream[pos + 1] == ord("E"):
+                before = dict(state)
+                state = apply_esc_e_reset(state)
+                events.append({
+                    "kind": "reset",
+                    "offset": pos,
+                    "sequence": stream[pos : pos + 2],
+                    "current_page_root_before": before["current_page_root"],
+                    "current_page_root_after": state["current_page_root"],
+                    "page_publications": state["page_publications"],
+                    "page_root_clears": state["page_root_clears"],
+                    "span_flushes": state["span_flushes"],
+                    "post_flushes": state["post_flushes"],
+                    "hmi": state["hmi"],
+                    "orientation": state["orientation"],
+                    "data_chain_ptr": state["data_chain_ptr"],
+                    "reset_status": state["reset_status"],
+                })
+                pos += 2
+                continue
+            if pos + 3 >= len(stream) or stream[pos + 1 : pos + 3] != b"&k":
+                raise AssertionError(f"mixed printable/control stream only models ESC &k#G and ESC E at offset {pos}")
+            start = pos
+            pos += 3
+            sign = 1
+            if pos < len(stream) and stream[pos] in (ord("+"), ord("-")):
+                sign = -1 if stream[pos] == ord("-") else 1
+                pos += 1
+            if pos >= len(stream) or not chr(stream[pos]).isdigit():
+                raise AssertionError("mixed printable/control ESC &k#G needs an integer parameter")
+            value = 0
+            while pos < len(stream) and chr(stream[pos]).isdigit():
+                value = value * 10 + stream[pos] - ord("0")
+                pos += 1
+            if pos >= len(stream) or stream[pos] != ord("G"):
+                raise AssertionError("mixed printable/control stream only models ESC &k#G final byte")
+            state["line_termination"] = line_termination_mode_bits(sign * value)
+            pos += 1
+            events.append({
+                "kind": "escape",
+                "offset": start,
+                "sequence": stream[start:pos],
+                "line_termination": state["line_termination"],
+            })
+            continue
+        if byte in (0x08, 0x09, 0x0A, 0x0C, 0x0D):
+            before = dict(state)
+            state = apply_direct_control_code(state, byte)
+            events.append({
+                "kind": "control",
+                "offset": pos,
+                "byte": byte,
+                "cursor_before": (before["cursor_x"], before["cursor_y"]),
+                "cursor_after": (state["cursor_x"], state["cursor_y"]),
+                "line_termination": state["line_termination"],
+                "page_roots": state["page_roots"],
+                "span_flushes": state["span_flushes"],
+            })
+            pos += 1
+            continue
+        if byte < 0x20 or byte == 0x7F:
+            raise AssertionError(f"unsupported mixed printable/control byte 0x{byte:02x} at offset {pos}")
+
+        source = build_text_source_object_from_1393a(resources, context, byte, x=0, y=0, context_slot=context_slot)
+        positioned = position_flagged_text_source_via_d824(
+            resources,
+            source,
+            cursor_x=unpack12(state["cursor_x"])[0],
+            cursor_y=unpack12(state["cursor_y"])[0],
+        )
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        bucket = queue_text_source_via_12f2e(resources, positioned_source)
+        bucket_object = bucket["object"]
+        if not isinstance(bucket_object, bytes):
+            raise AssertionError("mixed printable/control fixture only models short compact text objects")
+        buckets.append(bucket)
+        advance = advance_flagged_text_cursor_via_d550(state["cursor_x"], default_advance)
+        state["cursor_x"] = advance["cursor_after"]
+        events.append({
+            "kind": "printable",
+            "offset": pos,
+            "byte": byte,
+            "cursor_before": advance["cursor_before"],
+            "cursor_after": advance["cursor_after"],
+            "source": source,
+            "positioned": positioned,
+            "bucket": bucket,
+        })
+        pos += 1
+
+    combined = combine_short_text_buckets(buckets)
+    obj = combined["object"]
+    assert isinstance(obj, bytes)
+    rendered = render_compact_text_bucket_object(data, resources, (context,), obj)
+    return {
+        "stream": stream,
+        "events": events,
+        "combined": combined,
+        "rendered": rendered,
+        "final_state": state,
     }
 
 
@@ -1956,6 +2102,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "glyph": 32,
             "coord": 0,
             "dest_base": 0,
+            "x": 0,
+            "y": 0,
+            "a001": 0,
             "span": 1,
             "rows": 22,
             "width": 4,
@@ -2054,18 +2203,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         cursor_x=pack12(10),
         cursor_y=pack12(21),
         default_advance=line_printer_hmi["hmi"],
-        render_output=False,
     )
     metric_printable_combined = metric_printable_stream["combined"]
+    metric_printable_rendered = metric_printable_stream["rendered"]
     assert isinstance(metric_printable_combined, dict)
-    checks.append(assert_equal("two printable byte stream with line-printer HMI queues subbyte entry", {
+    assert isinstance(metric_printable_rendered, dict)
+    checks.append(assert_equal("two printable byte stream with line-printer HMI renders subbyte entry", {
         "stream": metric_printable_stream["stream"],
         "advances": metric_printable_stream["advances"],
         "combined": {
             key: metric_printable_combined[key]
             for key in ("object", "selector", "bucket_index", "count", "glyphs", "coords")
         },
-        "rendered": metric_printable_stream["rendered"],
+        "rendered": {
+            key: metric_printable_rendered[key]
+            for key in ("selector", "context_slot", "count", "rendered", "payload")
+        },
         "final_cursor_x": metric_printable_stream["final_cursor_x"],
     }, {
         "stream": b"!!",
@@ -2081,9 +2234,354 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "glyphs": [0x20, 0x20],
             "coords": [0x0001, 0x0202],
         },
-        "rendered": None,
+        "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 2,
+            "rendered": [
+                {
+                    "glyph": 0x20,
+                    "coord": 0x0001,
+                    "dest_base": 0x02,
+                    "x": 16,
+                    "y": 0,
+                    "a001": 0x00,
+                    "span": 1,
+                    "rows": 22,
+                    "width": 4,
+                    "helper": 0x01FA5C,
+                },
+                {
+                    "glyph": 0x20,
+                    "coord": 0x0202,
+                    "dest_base": 0x04,
+                    "x": 34,
+                    "y": 0,
+                    "a001": 0x12,
+                    "span": 1,
+                    "rows": 22,
+                    "width": 4,
+                    "helper": 0x01FA5C,
+                },
+            ],
+            "payload": bytes.fromhex("00 02 20 00 01 20 02 02"),
+        },
         "final_cursor_x": pack12(46),
     }))
+    checks.append(assert_equal("two printable byte stream with line-printer HMI renders subbyte rows", metric_printable_rendered["rows"], [
+        "................####..............####" if row == "####" else "." * 38
+        for row in line_printer_glyph32_rows
+    ]))
+    mixed_stream = render_mixed_printable_control_stream(
+        data,
+        resources,
+        b"\x1b&k1G!\r!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            vmi=pack12(3),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    mixed_combined = mixed_stream["combined"]
+    mixed_rendered = mixed_stream["rendered"]
+    mixed_final_state = mixed_stream["final_state"]
+    assert isinstance(mixed_combined, dict)
+    assert isinstance(mixed_rendered, dict)
+    assert isinstance(mixed_final_state, dict)
+    mixed_events = mixed_stream["events"]
+    assert isinstance(mixed_events, list)
+    mixed_event_summary: list[dict[str, object]] = []
+    for event in mixed_events:
+        assert isinstance(event, dict)
+        if event["kind"] == "escape":
+            mixed_event_summary.append({
+                "kind": "escape",
+                "sequence": event["sequence"],
+                "line_termination": event["line_termination"],
+            })
+        elif event["kind"] == "control":
+            mixed_event_summary.append({
+                "kind": "control",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "page_roots": event["page_roots"],
+                "span_flushes": event["span_flushes"],
+            })
+        else:
+            bucket = event["bucket"]
+            positioned = event["positioned"]
+            assert isinstance(bucket, dict)
+            assert isinstance(positioned, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            mixed_event_summary.append({
+                "kind": "printable",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": bucket["coord"],
+            })
+    checks.append(assert_equal("mixed printable/control stream applies CR+LF before second glyph", {
+        "stream": mixed_stream["stream"],
+        "events": mixed_event_summary,
+        "combined": {
+            key: mixed_combined[key]
+            for key in ("object", "selector", "bucket_index", "count", "glyphs", "coords")
+        },
+        "rendered": {
+            key: mixed_rendered[key]
+            for key in ("selector", "context_slot", "count", "rendered", "payload")
+        },
+        "final_state": select_keys(mixed_final_state, ("cursor_x", "cursor_y", "line_termination", "page_roots", "span_flushes", "post_flushes")),
+    }, {
+        "stream": b"\x1b&k1G!\r!",
+        "events": [
+            {"kind": "escape", "sequence": b"\x1b&k1G", "line_termination": 0x80},
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 0),
+                "coord": 0x0001,
+            },
+            {
+                "kind": "control",
+                "byte": 0x0D,
+                "cursor_before": (pack12(28), pack12(21)),
+                "cursor_after": (pack12(5), pack12(24)),
+                "page_roots": 1,
+                "span_flushes": 1,
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(5),
+                "cursor_after": pack12(23),
+                "positioned_xy": (11, 3),
+                "coord": 0x3B00,
+            },
+        ],
+        "combined": {
+            "object": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01 20 3b 00"),
+            "selector": 0,
+            "bucket_index": 0,
+            "count": 2,
+            "glyphs": [0x20, 0x20],
+            "coords": [0x0001, 0x3B00],
+        },
+        "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 2,
+            "rendered": [
+                {
+                    "glyph": 0x20,
+                    "coord": 0x0001,
+                    "dest_base": 0x02,
+                    "x": 16,
+                    "y": 0,
+                    "a001": 0x00,
+                    "span": 1,
+                    "rows": 22,
+                    "width": 4,
+                    "helper": 0x01FA5C,
+                },
+                {
+                    "glyph": 0x20,
+                    "coord": 0x3B00,
+                    "dest_base": 0x60,
+                    "x": 11,
+                    "y": 3,
+                    "a001": 0x1B,
+                    "span": 1,
+                    "rows": 22,
+                    "width": 4,
+                    "helper": 0x01FA5C,
+                },
+            ],
+            "payload": bytes.fromhex("00 02 20 00 01 20 3b 00"),
+        },
+        "final_state": {
+            "cursor_x": pack12(23),
+            "cursor_y": pack12(24),
+            "line_termination": 0x80,
+            "page_roots": 1,
+            "span_flushes": 1,
+            "post_flushes": 1,
+        },
+    }))
+    expected_mixed_rows: list[str] = []
+    for row_index in range(25):
+        row_bits = [False] * 20
+        if row_index < len(line_printer_glyph32_rows) and line_printer_glyph32_rows[row_index] == "####":
+            for bit in range(4):
+                row_bits[16 + bit] = True
+        shifted_index = row_index - 3
+        if 0 <= shifted_index < len(line_printer_glyph32_rows):
+            shifted_bits = [line_printer_glyph32_rows[shifted_index] == "####" and bit < 4 for bit in range(8)]
+            for bit, value in enumerate(shifted_bits):
+                if 11 + bit < len(row_bits):
+                    row_bits[11 + bit] = value
+        expected_mixed_rows.append("".join("#" if bit else "." for bit in row_bits))
+    checks.append(assert_equal("mixed printable/control stream renders post-CR glyph rows", mixed_rendered["rows"], expected_mixed_rows))
+    mixed_reset_stream = render_mixed_printable_control_stream(
+        data,
+        resources,
+        b"!\x1bE",
+        0x440946B4,
+        reset_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            font_hmi_clear=line_printer_hmi["hmi"],
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    mixed_reset_combined = mixed_reset_stream["combined"]
+    mixed_reset_rendered = mixed_reset_stream["rendered"]
+    mixed_reset_final_state = mixed_reset_stream["final_state"]
+    assert isinstance(mixed_reset_combined, dict)
+    assert isinstance(mixed_reset_rendered, dict)
+    assert isinstance(mixed_reset_final_state, dict)
+    mixed_reset_events = mixed_reset_stream["events"]
+    assert isinstance(mixed_reset_events, list)
+    mixed_reset_event_summary: list[dict[str, object]] = []
+    for event in mixed_reset_events:
+        assert isinstance(event, dict)
+        if event["kind"] == "printable":
+            bucket = event["bucket"]
+            positioned = event["positioned"]
+            assert isinstance(bucket, dict)
+            assert isinstance(positioned, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            mixed_reset_event_summary.append({
+                "kind": "printable",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": bucket["coord"],
+            })
+        else:
+            mixed_reset_event_summary.append({
+                "kind": "reset",
+                "sequence": event["sequence"],
+                "current_page_root_before": event["current_page_root_before"],
+                "current_page_root_after": event["current_page_root_after"],
+                "page_publications": event["page_publications"],
+                "page_root_clears": event["page_root_clears"],
+                "span_flushes": event["span_flushes"],
+                "post_flushes": event["post_flushes"],
+                "hmi": event["hmi"],
+                "orientation": event["orientation"],
+                "data_chain_ptr": event["data_chain_ptr"],
+                "reset_status": event["reset_status"],
+            })
+    checks.append(assert_equal("mixed printable/reset stream publishes page root after text", {
+        "stream": mixed_reset_stream["stream"],
+        "events": mixed_reset_event_summary,
+        "combined": {
+            key: mixed_reset_combined[key]
+            for key in ("object", "selector", "bucket_index", "count", "glyphs", "coords")
+        },
+        "rendered": {
+            key: mixed_reset_rendered[key]
+            for key in ("selector", "context_slot", "count", "rendered", "payload")
+        },
+        "final_state": select_keys(mixed_reset_final_state, (
+            "cursor_x",
+            "cursor_y",
+            "current_page_root",
+            "page_publications",
+            "page_root_clears",
+            "span_flushes",
+            "post_flushes",
+            "pending_width",
+            "hmi",
+            "orientation",
+            "data_chain_ptr",
+            "reset_status",
+        )),
+    }, {
+        "stream": b"!\x1bE",
+        "events": [
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 0),
+                "coord": 0x0001,
+            },
+            {
+                "kind": "reset",
+                "sequence": b"\x1bE",
+                "current_page_root_before": 1,
+                "current_page_root_after": 0,
+                "page_publications": 1,
+                "page_root_clears": 1,
+                "span_flushes": 1,
+                "post_flushes": 1,
+                "hmi": line_printer_hmi["hmi"],
+                "orientation": 0,
+                "data_chain_ptr": 0x782D3E,
+                "reset_status": 0,
+            },
+        ],
+        "combined": {
+            "object": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "selector": 0,
+            "bucket_index": 0,
+            "count": 1,
+            "glyphs": [0x20],
+            "coords": [0x0001],
+        },
+        "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 1,
+            "rendered": [
+                {
+                    "glyph": 0x20,
+                    "coord": 0x0001,
+                    "dest_base": 0x02,
+                    "x": 16,
+                    "y": 0,
+                    "a001": 0x00,
+                    "span": 1,
+                    "rows": 22,
+                    "width": 4,
+                    "helper": 0x01FA5C,
+                },
+            ],
+            "payload": bytes.fromhex("00 01 20 00 01"),
+        },
+        "final_state": {
+            "cursor_x": pack12(28),
+            "cursor_y": pack12(21),
+            "current_page_root": 0,
+            "page_publications": 1,
+            "page_root_clears": 1,
+            "span_flushes": 1,
+            "post_flushes": 1,
+            "pending_width": 0,
+            "hmi": line_printer_hmi["hmi"],
+            "orientation": 0,
+            "data_chain_ptr": 0x782D3E,
+            "reset_status": 0,
+        },
+    }))
+    checks.append(assert_equal("mixed printable/reset stream keeps pre-reset text rows renderable", mixed_reset_rendered["rows"], positioned_mode0["rows"]))
 
     lines.append("## Built-In Glyph Bitmap Fixtures")
     lines.append("")
@@ -2129,7 +2627,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- HT from x `17`, left margin `5`, and HMI `1` advances to the next eight-column stop at x `21`; a second fixture clamps HT to page width `90` when the cursor is already beyond the right limit.")
     lines.append("- BS subtracts HMI, clamps at the left margin when it would cross it, and in alternate metrics mode subtracts the previous-width word instead.")
     lines.append("- Byte-stream fixtures now drive the same model from actual PCL/control bytes: `ESC &k1G` followed by CR applies CR+LF, `ESC &k2G` followed by LF applies CR+LF, and `ESC &k0G` followed by HT/BS advances to x `21` then backs up to x `20`.")
-    lines.append("- The fixture parser intentionally recognizes only `ESC &k#G`, `ESC E`, and direct control bytes; printable text, combined escape sequences, and real page-object allocation still need fuller parser-driven fixtures.")
+    lines.append("- The direct-control fixture parser intentionally recognizes only `ESC &k#G`, `ESC E`, and direct control bytes; mixed printable/control/reset coverage is added separately for narrow normal-mode streams, while combined escape sequences and real page-object allocation still need fuller parser-driven fixtures.")
     lines.append("")
 
     lines.append("## `ESC E` Reset Fixtures")
@@ -2206,7 +2704,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- source object from `0x1393a`: context `0x{printable_stream_source['context']:08x}`, host `0x{printable_stream_source['host_char']:02x}`, mapped glyph `0x{printable_stream_source['mapped']:02x}`, glyph entry `0x{printable_stream_source['glyph_entry']:06x}`, flag `{printable_stream_source['flag']}`")
     lines.append(f"- compact object bytes: `{' '.join(f'{byte:02x}' for byte in positioned_text_object)}`")
     lines.append("- rendered rows match the `0xd824` positioned text fixture above.")
-    lines.append("- remaining gap: broaden this from a one-byte normal printable path into a parser stream that can mix printable text, direct control codes, reset, and page-object allocation without fixture-only state.")
+    lines.append("- remaining gap: broaden this from fixture-only source/bucket state into full parser-produced page objects.")
     lines.append("")
 
     lines.append("## Two Printable Byte Stream Fixture")
@@ -2221,13 +2719,45 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.extend(f"`{row}`" for row in multi_printable_rendered["rows"])
     lines.append("- this byte-aligned advance is a renderer control fixture; it is not the initialized `LINE_PRINTER` HMI.")
     lines.append("")
-    lines.append("The initialized `LINE_PRINTER` built-in metric path follows the `0x10550` conversion branch used by current-font refresh code: resource longword `0x00480000` at context offset `+0x24` becomes HMI/default advance `0x00120000`. Reusing the same `!!` stream with that advance queues the second glyph at compact coord `0x0202`, which has sub-byte phase `2`; this pins the next renderer gap without pretending the current mode-0 renderer can draw it yet.")
+    lines.append("The initialized `LINE_PRINTER` built-in metric path follows the `0x10550` conversion branch used by current-font refresh code: resource longword `0x00480000` at context offset `+0x24` becomes HMI/default advance `0x00120000`. Reusing the same `!!` stream with that advance queues the second glyph at compact coord `0x0202`; renderer helper `0x1f3d4` decodes that as byte base `+0x04` plus `$a001 = 0x12`, so the fixture draws the second glyph at pixel x `34`.")
     lines.append("")
     lines.append(f"- metric source: context `0x{0x440946B4:08x}`, resource base `0x{line_printer_hmi['base']:06x}`, byte `+0x21 = 0x{line_printer_hmi['metric_flag']:02x}`, long `+0x24 = 0x{line_printer_hmi['raw_metric']:08x}`")
     lines.append(f"- `0x10550` result: `0x{line_printer_hmi['hmi']:08x}`")
     lines.append(f"- real-HMI compact object bytes: `{' '.join(f'{byte:02x}' for byte in metric_printable_combined['object'])}`")
     lines.append("- real-HMI compact entries: glyph `0x20` at coords `0x0001` and `0x0202`")
-    lines.append("- remaining gap: implement sub-byte compact mode-0 rendering, then allow mixed printable/control/reset streams to allocate and finalize page objects.")
+    lines.append("- real-HMI rendered rows:")
+    lines.extend(f"`{row}`" for row in metric_printable_rendered["rows"])
+    lines.append("")
+    lines.append("A first mixed printable/control stream fixture now drives `ESC &k1G`, printable `!`, CR, then printable `!` through one pass. The `ESC &k1G` byte stream stores line-termination mode `0x80`; CR therefore resets x to the left margin and also applies LF/VMI before the second printable byte is positioned. With left margin `5`, VMI `3`, and initialized `LINE_PRINTER` HMI `0x00120000`, the second glyph queues at source `(11,3)` / compact coord `0x3b00`, decoded by `0x1f3d4` as `$a001 = 0x1b`.")
+    lines.append("")
+    lines.append("- mixed stream bytes: `1b 26 6b 31 47 21 0d 21`")
+    lines.append(f"- mixed compact object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_combined['object'])}`")
+    lines.append("- mixed compact entries: glyph `0x20` at coords `0x0001` and `0x3b00`")
+    lines.append("- mixed final cursor: x `0x%08x`, y `0x%08x`, page roots `%d`, span flushes `%d`" % (
+        mixed_final_state["cursor_x"],
+        mixed_final_state["cursor_y"],
+        mixed_final_state["page_roots"],
+        mixed_final_state["span_flushes"],
+    ))
+    lines.append("- mixed rendered rows:")
+    lines.extend(f"`{row}`" for row in mixed_rendered["rows"])
+    lines.append("- note: the shifted second glyph writes a full one-byte span, so its blank rows clear pixels `x=11..18` and can erase part of an earlier glyph in the same bucket.")
+    lines.append("")
+    lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric.")
+    lines.append("")
+    lines.append("- mixed reset stream bytes: `21 1b 45`")
+    lines.append(f"- mixed reset compact object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_reset_combined['object'])}`")
+    lines.append("- mixed reset compact entry: glyph `0x20` at coord `0x0001`")
+    lines.append("- mixed reset final state: current page root `%d`, publications `%d`, root clears `%d`, span flushes `%d`, HMI `0x%08x`, data-chain pointer `0x%06x`, reset status `%d`" % (
+        mixed_reset_final_state["current_page_root"],
+        mixed_reset_final_state["page_publications"],
+        mixed_reset_final_state["page_root_clears"],
+        mixed_reset_final_state["span_flushes"],
+        mixed_reset_final_state["hmi"],
+        mixed_reset_final_state["data_chain_ptr"],
+        mixed_reset_final_state["reset_status"],
+    ))
+    lines.append("- remaining gap: replace these fixture-only source/bucket/page-root states with parser-produced page objects and compare the finalized page/control records.")
     lines.append("")
 
     lines.append("## `0xd3b2` Unflagged Positioning Fixture")

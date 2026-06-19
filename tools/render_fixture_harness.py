@@ -17,6 +17,16 @@ def u16(data: bytes, offset: int) -> int:
     return int.from_bytes(data[offset : offset + 2], "big")
 
 
+def s16(data: bytes, offset: int) -> int:
+    value = u16(data, offset)
+    return value - 0x10000 if value & 0x8000 else value
+
+
+def s8(value: int) -> int:
+    value &= 0xFF
+    return value - 0x100 if value & 0x80 else value
+
+
 def u32(data: bytes, offset: int) -> int:
     return int.from_bytes(data[offset : offset + 4], "big")
 
@@ -245,6 +255,106 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
 
 def compact_text_coord(x: int, y: int) -> int:
     return ((y & 0x0F) << 12) | ((x & 0x0F) << 8) | ((x >> 4) & 0x00FF)
+
+
+def position_flagged_text_source_via_d824(
+    resources: bytes,
+    source: dict[str, int],
+    cursor_x: int,
+    cursor_y: int,
+    printable_offset: int = 0,
+    orientation: int = 0,
+    orientation_extent: int = 0,
+    source_x_offset: int = 0,
+) -> dict[str, object]:
+    d5 = int(cursor_x)
+    d7 = d5 + int(source_x_offset)
+    overflow_correction = d7
+    if d7 < 0:
+        overflow_correction = (-d7) << 16
+        d5 = -int(source_x_offset)
+    else:
+        overflow_correction = 0
+
+    if orientation == 0:
+        d4 = int(cursor_y)
+    else:
+        d4 = int(orientation_extent) - d5
+        d5 = int(cursor_y)
+
+    glyph_entry = source["glyph_entry"]
+    d5 = d5 + int(printable_offset) + s16(resources, glyph_entry)
+    d4 = d4 - s16(resources, glyph_entry + 2)
+
+    positioned = dict(source)
+    positioned["x"] = d5
+    positioned["y"] = d4
+    positioned["context_slot"] = source["context_slot"] & 0x0F
+    return {
+        "source": positioned,
+        "overflow_correction": overflow_correction,
+        "glyph_x_offset": s16(resources, glyph_entry),
+        "glyph_y_offset": s16(resources, glyph_entry + 2),
+        "cursor_x": cursor_x,
+        "cursor_y": cursor_y,
+        "printable_offset": printable_offset,
+        "orientation": orientation,
+        "orientation_extent": orientation_extent,
+        "source_x_offset": source_x_offset,
+    }
+
+
+def position_unflagged_text_source_via_d3b2(
+    source: dict[str, int],
+    inline_record: bytes,
+    cursor_x: int,
+    cursor_y: int,
+    printable_offset: int = 0,
+    orientation: int = 0,
+    orientation_extent: int = 0,
+    context_metric_flag: int = 0,
+    source_x_offset: int = 0,
+) -> dict[str, object]:
+    if len(inline_record) < 3:
+        raise AssertionError("inline source record fixture needs at least three bytes")
+    d5 = int(cursor_x) + int(source_x_offset)
+    if d5 < 0:
+        overflow_correction = (-d5) << 16
+        d5 = 0
+    else:
+        overflow_correction = 0
+
+    if orientation == 0:
+        d4 = int(cursor_y)
+    else:
+        d4 = int(orientation_extent) - d5
+        d5 = int(cursor_y)
+
+    d5 += int(printable_offset)
+    if context_metric_flag:
+        d4 -= inline_record[1] - 1
+        d5 += s8(inline_record[2]) + 1 - (inline_record[0] << 3)
+    else:
+        d4 += s8(inline_record[2]) + 1 - inline_record[1]
+
+    positioned = dict(source)
+    positioned["x"] = d5
+    positioned["y"] = d4
+    positioned["context_slot"] = source["context_slot"] & 0x0F
+    return {
+        "source": positioned,
+        "overflow_correction": overflow_correction,
+        "record0": inline_record[0],
+        "record1": inline_record[1],
+        "record2_signed": s8(inline_record[2]),
+        "cursor_x": cursor_x,
+        "cursor_y": cursor_y,
+        "printable_offset": printable_offset,
+        "orientation": orientation,
+        "orientation_extent": orientation_extent,
+        "context_metric_flag": context_metric_flag,
+        "source_x_offset": source_x_offset,
+    }
 
 
 def queue_text_source_via_12f2e(resources: bytes, source: dict[str, int]) -> dict[str, object]:
@@ -766,6 +876,162 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "rows": 22,
         "width": 4,
     }))
+    positioned_fixture = position_flagged_text_source_via_d824(resources, text_source, cursor_x=10, cursor_y=21)
+    checks.append(assert_equal("0xd824-modeled positioned text source fields", positioned_fixture, {
+        "source": {
+            "context": 0x440946B4,
+            "host_char": 0x21,
+            "mapped": 0x20,
+            "glyph_entry": 0x015330,
+            "glyph_width": 4,
+            "glyph_rows": 22,
+            "flag": 1,
+            "x": 16,
+            "y": 0,
+            "context_slot": 0,
+        },
+        "overflow_correction": 0,
+        "glyph_x_offset": 6,
+        "glyph_y_offset": 21,
+        "cursor_x": 10,
+        "cursor_y": 21,
+        "printable_offset": 0,
+        "orientation": 0,
+        "orientation_extent": 0,
+        "source_x_offset": 0,
+    }))
+    positioned_source = positioned_fixture["source"]
+    assert isinstance(positioned_source, dict)
+    positioned_bucket = queue_text_source_via_12f2e(resources, positioned_source)
+    checks.append(assert_equal("0xd824-positioned short bucket object fields", {key: positioned_bucket[key] for key in ("path", "object", "bucket_index", "selector", "coord", "glyph", "rows", "width")}, {
+        "path": "short",
+        "object": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+        "bucket_index": 0,
+        "selector": 0,
+        "coord": 0x0001,
+        "glyph": 0x20,
+        "rows": 22,
+        "width": 4,
+    }))
+    overflow_positioned_fixture = position_flagged_text_source_via_d824(resources, text_source, cursor_x=10, cursor_y=21, source_x_offset=-26)
+    checks.append(assert_equal("0xd824-modeled negative-overflow positioned source fields", overflow_positioned_fixture, {
+        "source": {
+            "context": 0x440946B4,
+            "host_char": 0x21,
+            "mapped": 0x20,
+            "glyph_entry": 0x015330,
+            "glyph_width": 4,
+            "glyph_rows": 22,
+            "flag": 1,
+            "x": 32,
+            "y": 0,
+            "context_slot": 0,
+        },
+        "overflow_correction": 0x00100000,
+        "glyph_x_offset": 6,
+        "glyph_y_offset": 21,
+        "cursor_x": 10,
+        "cursor_y": 21,
+        "printable_offset": 0,
+        "orientation": 0,
+        "orientation_extent": 0,
+        "source_x_offset": -26,
+    }))
+    overflow_positioned_source = overflow_positioned_fixture["source"]
+    assert isinstance(overflow_positioned_source, dict)
+    overflow_positioned_bucket = queue_text_source_via_12f2e(resources, overflow_positioned_source)
+    checks.append(assert_equal("0xd824-negative-overflow short bucket object fields", {key: overflow_positioned_bucket[key] for key in ("path", "object", "bucket_index", "selector", "coord", "glyph", "rows", "width")}, {
+        "path": "short",
+        "object": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 02"),
+        "bucket_index": 0,
+        "selector": 0,
+        "coord": 0x0002,
+        "glyph": 0x20,
+        "rows": 22,
+        "width": 4,
+    }))
+
+    inline_source = {
+        "context": 0x00000000,
+        "host_char": 0x41,
+        "mapped": 0x01,
+        "glyph_entry": 0,
+        "glyph_width": 0,
+        "glyph_rows": 0,
+        "flag": 0,
+        "x": 0,
+        "y": 0,
+        "context_slot": 3,
+    }
+    inline_record = bytes.fromhex("02 03 04")
+    unflagged_fixture = position_unflagged_text_source_via_d3b2(
+        inline_source,
+        inline_record,
+        cursor_x=10,
+        cursor_y=20,
+        printable_offset=7,
+        context_metric_flag=0,
+        source_x_offset=5,
+    )
+    checks.append(assert_equal("0xd3b2-modeled unflagged source fields", unflagged_fixture, {
+        "source": {
+            "context": 0x00000000,
+            "host_char": 0x41,
+            "mapped": 0x01,
+            "glyph_entry": 0,
+            "glyph_width": 0,
+            "glyph_rows": 0,
+            "flag": 0,
+            "x": 22,
+            "y": 22,
+            "context_slot": 3,
+        },
+        "overflow_correction": 0,
+        "record0": 0x02,
+        "record1": 0x03,
+        "record2_signed": 0x04,
+        "cursor_x": 10,
+        "cursor_y": 20,
+        "printable_offset": 7,
+        "orientation": 0,
+        "orientation_extent": 0,
+        "context_metric_flag": 0,
+        "source_x_offset": 5,
+    }))
+    unflagged_overflow_fixture = position_unflagged_text_source_via_d3b2(
+        inline_source,
+        inline_record,
+        cursor_x=10,
+        cursor_y=20,
+        printable_offset=20,
+        context_metric_flag=1,
+        source_x_offset=-15,
+    )
+    checks.append(assert_equal("0xd3b2-modeled unflagged overflow source fields", unflagged_overflow_fixture, {
+        "source": {
+            "context": 0x00000000,
+            "host_char": 0x41,
+            "mapped": 0x01,
+            "glyph_entry": 0,
+            "glyph_width": 0,
+            "glyph_rows": 0,
+            "flag": 0,
+            "x": 9,
+            "y": 18,
+            "context_slot": 3,
+        },
+        "overflow_correction": 0x00050000,
+        "record0": 0x02,
+        "record1": 0x03,
+        "record2_signed": 0x04,
+        "cursor_x": 10,
+        "cursor_y": 20,
+        "printable_offset": 20,
+        "orientation": 0,
+        "orientation_extent": 0,
+        "context_metric_flag": 1,
+        "source_x_offset": -15,
+    }))
 
     tall_text_source = build_text_source_object_from_1393a(resources, 0x440946B4, 0x20, x=0, y=0, context_slot=0)
     checks.append(assert_equal("0x1393a-modeled tall text source object fields", tall_text_source, {
@@ -841,6 +1107,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "payload": bytes.fromhex("00 01 20 00 00"),
     }))
     checks.append(assert_equal("compact text bucket object fixture rendered rows", compact_mode0["rows"], line_printer_glyph32_rows))
+    positioned_text_object = positioned_bucket["object"]
+    assert isinstance(positioned_text_object, bytes)
+    positioned_mode0 = render_compact_text_bucket_object(data, resources, (0x440946B4,), positioned_text_object)
+    checks.append(assert_equal("0xd824-positioned compact text rendered rows", positioned_mode0["rows"], [f"................{row}" for row in line_printer_glyph32_rows]))
+    overflow_positioned_text_object = overflow_positioned_bucket["object"]
+    assert isinstance(overflow_positioned_text_object, bytes)
+    overflow_positioned_mode0 = render_compact_text_bucket_object(data, resources, (0x440946B4,), overflow_positioned_text_object)
+    checks.append(assert_equal("0xd824-negative-overflow compact text rendered rows", overflow_positioned_mode0["rows"], [f"................................{row}" for row in line_printer_glyph32_rows]))
 
     lines.append("## Built-In Glyph Bitmap Fixtures")
     lines.append("")
@@ -893,6 +1167,55 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     lines.append("- rendered rows:")
     lines.extend(f"`{row}`" for row in compact_mode0["rows"])
+    lines.append("")
+
+    lines.append("## `0xd824` Positioned Text Bucket Fixture")
+    lines.append("")
+    lines.append("This fixture models the flagged/built-in positioning handoff at `0xd824` before running the same `0x12f2e` producer model. With `LINE_PRINTER` host byte `0x21`, source x-offset `0`, cursor x `10`, cursor y `21`, orientation `0`, and printable offset `0`, the real glyph-entry words at `0x015330` add x offset `6` and subtract y offset `21`; `0xd824` therefore writes source coordinates `x=16`, `y=0`, context slot `0`, then `0x12f2e` emits compact coord `0x0001`.")
+    lines.append("")
+    positioned_source_report = positioned_fixture["source"]
+    assert isinstance(positioned_source_report, dict)
+    lines.append(f"- positioned source: x `{positioned_source_report['x']}`, y `{positioned_source_report['y']}`, context slot `{positioned_source_report['context_slot']}`, overflow correction `{positioned_fixture['overflow_correction']}`")
+    lines.append(f"- glyph offsets: x `{positioned_fixture['glyph_x_offset']}`, y `{positioned_fixture['glyph_y_offset']}`")
+    lines.append(f"- object bytes: `{' '.join(f'{byte:02x}' for byte in positioned_text_object)}`")
+    lines.append(f"- payload bytes: `{' '.join(f'{byte:02x}' for byte in positioned_mode0['payload'])}`")
+    positioned_rendered = positioned_mode0["rendered"][0]
+    assert isinstance(positioned_rendered, dict)
+    lines.append(
+        f"- rendered entry: glyph `{positioned_rendered['glyph']}`, coord `0x{int(positioned_rendered['coord']):04x}`, "
+        f"dest base `+0x{int(positioned_rendered['dest_base']):02x}`, span `{positioned_rendered['span']}`, helper `0x{int(positioned_rendered['helper']):06x}`"
+    )
+    lines.append("- rendered rows:")
+    lines.extend(f"`{row}`" for row in positioned_mode0["rows"])
+    lines.append("")
+    lines.append("The same model also exercises the negative-left overflow branch. With cursor x `10` and source x-offset `-26`, `0xd824` sees `cursor_x + source_x_offset = -16`, returns overflow correction `0x00100000`, rewrites the working cursor to `26`, then adds the glyph x offset `6` to queue source x `32`. That produces compact coord `0x0002`, still byte-aligned for the current renderer fixture.")
+    lines.append("")
+    overflow_source_report = overflow_positioned_fixture["source"]
+    assert isinstance(overflow_source_report, dict)
+    lines.append(f"- overflow positioned source: x `{overflow_source_report['x']}`, y `{overflow_source_report['y']}`, context slot `{overflow_source_report['context_slot']}`, overflow correction `0x{int(overflow_positioned_fixture['overflow_correction']):08x}`")
+    lines.append(f"- overflow object bytes: `{' '.join(f'{byte:02x}' for byte in overflow_positioned_text_object)}`")
+    lines.append(f"- overflow payload bytes: `{' '.join(f'{byte:02x}' for byte in overflow_positioned_mode0['payload'])}`")
+    overflow_rendered = overflow_positioned_mode0["rendered"][0]
+    assert isinstance(overflow_rendered, dict)
+    lines.append(
+        f"- overflow rendered entry: glyph `{overflow_rendered['glyph']}`, coord `0x{int(overflow_rendered['coord']):04x}`, "
+        f"dest base `+0x{int(overflow_rendered['dest_base']):02x}`, span `{overflow_rendered['span']}`, helper `0x{int(overflow_rendered['helper']):06x}`"
+    )
+    lines.append("- overflow rendered rows:")
+    lines.extend(f"`{row}`" for row in overflow_positioned_mode0["rows"])
+    lines.append("")
+
+    lines.append("## `0xd3b2` Unflagged Positioning Fixture")
+    lines.append("")
+    lines.append("This fixture pins the unflagged/inline positioning arithmetic at `0xd3b2` with a synthetic inline source record. It intentionally stops before `0x12f2e`, because the inline/downloaded compact payload layout is not implemented yet. The inline record bytes are `02 03 04`, so record byte 2 contributes signed value `4` in both branches.")
+    lines.append("")
+    unflagged_source_report = unflagged_fixture["source"]
+    assert isinstance(unflagged_source_report, dict)
+    lines.append(f"- context metric flag clear: cursor `(10,20)`, printable offset `7`, source x-offset `5` -> x `{unflagged_source_report['x']}`, y `{unflagged_source_report['y']}`, context slot `{unflagged_source_report['context_slot']}`, overflow correction `{unflagged_fixture['overflow_correction']}`")
+    unflagged_overflow_source_report = unflagged_overflow_fixture["source"]
+    assert isinstance(unflagged_overflow_source_report, dict)
+    lines.append(f"- context metric flag set plus left overflow: cursor `(10,20)`, printable offset `20`, source x-offset `-15` -> x `{unflagged_overflow_source_report['x']}`, y `{unflagged_overflow_source_report['y']}`, context slot `{unflagged_overflow_source_report['context_slot']}`, overflow correction `0x{int(unflagged_overflow_fixture['overflow_correction']):08x}`")
+    lines.append("- remaining gap: replace this synthetic positioning fixture with real parser-produced inline/downloaded source objects and implement their `0x12f2e` payload path.")
     lines.append("")
 
     lines.append("## Segmented Text Bucket Producer Fixture")

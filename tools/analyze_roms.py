@@ -640,7 +640,7 @@ def text_glyph_index_flow_report(firmware: bytes, resources: bytes) -> str:
     lines.append("| 6 | `0x1393a` stores the mapped byte as word at text object `+0x0a`, copies the current context longword to text object `+0`, and copies the context flag byte to text object `+0x10` | text object byte `+0x0b` is the low byte of the mapped glyph index, and the object carries the selected font resource context |")
     lines.append("| 7 | if the context flag byte is nonzero, `0x1393a` range-checks the original character and resolves text object `+4` through the same offset-table formula used by `0x1f354`: base + word `+8`, long table entry indexed by mapped byte, then add base | built-in text objects already point at the concrete resource glyph entry for metrics, proving the mapped byte indexes the same table used by the renderer |")
     lines.append("| 8 | if the context flag byte is zero, `0x1393a` sets text object `+4 = context_base + 0x40 + 8*mapped_byte` | inline/downloaded text objects use the fixed-record layout later handled by `0x1f354` when bit 30 is clear |")
-    lines.append("| 9 | `0xd824` / `0xd8fc` fill source positioning fields `+0x12`, `+0x14`, `+0x16`, mark the selected font slot live, then call `0x12f2e` | positioned text source objects are converted into compact page-bucket objects |")
+    lines.append("| 9 | the paired queue handoffs `0xd3b2` / `0xd824` fill source positioning fields `+0x12`, `+0x14`, `+0x16`, mark the selected font slot live, then call `0x12f2e`; the paired span updates `0xd4ac` / `0xd8fc` operate on the selected context record afterward | positioned text source objects are converted into compact page-bucket objects, then text span/bounds state is updated separately |")
     lines.append("| 10 | `0x12f2e` appends source byte `+0x0b` as the first byte of every compact payload entry at `0x1302a` and `0x1304e` | compact payload entry byte 0 is the glyph index byte produced by the character map |")
     lines.append("| 11 | compact renderers `0x1f034`, `0x1f0d2`, `0x1f1f0`, and `0x1f264` call `0x1f354` with that byte in `D1` after loading a render-record context slot into `0x783a2c` | renderer glyph selection is fully keyed by `(selected context longword, mapped glyph byte)` |")
     lines.append("")
@@ -686,7 +686,263 @@ def text_glyph_index_flow_report(firmware: bytes, resources: bytes) -> str:
     lines.append("- To render built-in text exactly, reproduce the firmware's active map table for the selected primary/secondary font slot, including `0x14f16` symbol-set patching.")
     lines.append("- The compact glyph payload byte is not necessarily the original host byte. It is the mapped byte stored at text object `+0x0b` and copied by `0x12f2e`.")
     lines.append("- The renderer-side glyph identity is `(context longword, mapped byte)`. For built-in contexts the context low 24 bits map to `IC32,IC15` offset `address - 0x80000`, bit 30 selects the offset table, and each table entry is a relative 32-bit offset from the record start.")
-    lines.append("- The `0x14fce` symbol-set patch tables and their Technical Reference names are decoded in `ic30_ic13_symbol_set_patch_tables.md`; `tools/render_fixture_harness.py` now models a base-map -> `0x1393a` source-object -> `0x12f2e` short bucket path for `LINE_PRINTER` host byte `0x21`, a segmented `0x2000` producer path for host byte `0x20`, and a scan proving the firmware-scanned tall built-in targets are mode-0/delta-0 record headers rather than normal bitmap entries. Remaining work is to capture the live host parser path that invokes `0x1393a`, find or construct a real `0x1f1f0` bitmap-entry fixture, broaden row-copy fixtures beyond the current mode-1 built-in examples, and replace the producer-modeled text bucket fixtures with full parser-produced page-object payloads.")
+    lines.append("- The `0x14fce` symbol-set patch tables and their Technical Reference names are decoded in `ic30_ic13_symbol_set_patch_tables.md`; the live host parser path into `0x1393a` is documented in `ic30_ic13_printable_text_path.md`; paired cursor/queue/span paths after `0x1393a` are documented in `ic30_ic13_text_cursor_span_flow.md`; `tools/render_fixture_harness.py` now models a base-map -> `0x1393a` source-object -> `0xd824` positioning -> `0x12f2e` short bucket path for `LINE_PRINTER` host byte `0x21`, including the negative-left overflow branch, synthetic `0xd3b2` unflagged positioning arithmetic for both context-metric branches, a segmented `0x2000` producer path for host byte `0x20`, and a scan proving the firmware-scanned tall built-in targets are mode-0/delta-0 record headers rather than normal bitmap entries. Remaining work is to replace synthetic `0xd3b2` positioning fixtures with real parser-produced inline/downloaded source objects, implement their inline `0x12f2e` payload path, find or construct a real `0x1f1f0` bitmap-entry fixture, broaden row-copy fixtures beyond the current mode-1 built-in examples, and replace the producer-modeled text bucket fixtures with full parser-produced page-object payloads.")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def printable_text_path_report(firmware: bytes) -> str:
+    routines = [
+        (0x0000A904, "raw host byte fetch"),
+        (0x0000DA9A, "normal parser byte fetch / ESC wrapper"),
+        (0x00011774, "main parser loop"),
+        (0x0000D04A, "printable text entry"),
+        (0x0001393A, "host byte to text source object"),
+        (0x0000D140, "flag-zero text advance/metrics path"),
+        (0x0000D550, "built-in/flagged text advance and queue path"),
+        (0x0000D824, "positioned source object queue handoff"),
+        (0x0000D8FC, "post-advance context span/bounds update path"),
+        (0x00012F2E, "compact text/glyph bucket producer"),
+    ]
+
+    state_addresses = [
+        (0x00782999, "main parser mode/state byte"),
+        (0x00782C18, "alternate/data parser mode flag"),
+        (0x00782D7E, "printable text source-object scratch buffer"),
+        (0x00782F06, "primary/secondary text-map selector"),
+        (0x00783132, "primary high-character/symbol-set flag"),
+        (0x00783133, "secondary high-character/symbol-set flag"),
+        (0x00782A6D, "printable text pending/spacing flag cleared by `0xd04a`"),
+        (0x00782A6E, "text clipping/queue precheck result word"),
+        (0x00782C8A, "current text cursor x-like coordinate"),
+        (0x00782C8E, "current text cursor y-like coordinate"),
+        (0x00783184, "text vertical-bounds update enable flag"),
+        (0x00783185, "text descent/offset adjustment flag"),
+        (0x00783186, "text span low-x flush threshold"),
+        (0x00783188, "text span high-x watermark"),
+        (0x0078318A, "text span high-y watermark"),
+        (0x0078297A, "current page-root pointer"),
+        (0x0078297E, "current page-root font slot index"),
+        (0x0078297F, "page-root font slot live flags"),
+    ]
+
+    def fmt_refs(refs: list[int]) -> str:
+        if not refs:
+            return "(none)"
+        text = ", ".join(f"`0x{ref:06x}`" for ref in refs[:12])
+        if len(refs) > 12:
+            text += f", ... ({len(refs)} total)"
+        return text
+
+    lines = ["# IC30/IC13 Printable Text Path", ""]
+    lines.append("Generated from instruction windows around `0x11774`, `0xda9a`, and `0xd04a`, plus absolute-call and state-literal scans of the verified firmware image.")
+    lines.append("This report tracks how a normal host printable byte reaches the text source-object builder and, for the flagged built-in path, the compact page-object producer.")
+    lines.append("")
+
+    lines.append("## Confirmed Host-Byte Route")
+    lines.append("")
+    lines.append("| Step | Firmware evidence | Meaning for reproduction |")
+    lines.append("| ---: | --- | --- |")
+    lines.append("| 1 | `0x11774` initializes its byte-source pointer to `0xda9a`, then repeatedly calls it at `0x117d2` and saves the returned byte in `D5` | the normal PCL parser works from bytes fetched through the `0xda9a` wrapper |")
+    lines.append("| 2 | `0xda9a` calls raw byte fetch `0xa904`; if the byte is not ESC (`0x1b`), it returns it directly in `D7` | ordinary printable bytes flow from the host interface to the parser without command-token decoding |")
+    lines.append("| 3 | if `0xda9a` sees ESC, it fetches the following byte; `ESC ? 0x11` is skipped, otherwise the following byte is echoed/recorded through `0x9ec0` and `D7` is forced back to `0x1b` | command parsing begins from an ESC token, while printable data remains a single returned byte |")
+    lines.append("| 4 | in parser state `0x782999 == 0`, if the command-dispatch table does not claim the byte and alternate/data mode `0x782c18` is clear, the normal printable branch calls `0xd04a` at `0x11880` | unescaped text bytes in the normal parser mode enter the printable text routine |")
+    lines.append("| 5 | the high-character/symbol path at `0x118d6..0x11900` also calls `0xd04a` when the selected context flag byte at `0x782eeb + 0x10*0x782f06` equals `1` | some non-ASCII/active-symbol bytes can still route through the same printable text builder |")
+    lines.append("| 6 | `0xd04a` uses scratch text source object `0x782d7e`; for bytes above `0xff` it calls `0xd99a` and falls back to `0x7f` on failure | the source-object entry always receives a bounded character code |")
+    lines.append("| 7 | for bytes above `0x7f`, if both high-character flags `0x783132` and `0x783133` are clear, `0xd04a` masks the byte to 7 bits; on the primary map it wraps the operation with `0xc6b8` / `0xc68a` | high-bit input can be normalized before character-map lookup, depending on active symbol/font state |")
+    lines.append("| 8 | `0xd04a` calls `0x1393a(host_byte, 0x782d7e)` at `0xd0ae` | this is the live parser path into the previously documented host-byte to glyph-index source-object builder |")
+    lines.append("| 9 | after `0x1393a`, `0xd04a` tests source byte `+0x10`; zero branches to `0xd140`, nonzero branches to `0xd550`; both paths clear `0x782a6d` before return | source-object context flags select the following text metrics/queue path |")
+    lines.append("| 10 | `0xd550` calls `0xd6bc`, updates cursor arithmetic, ensures a page root through `0x10084` when source `+4` is nonzero, and when `0x782a6e == 0` calls `0xd824` at `0xd66e` | the flagged/built-in path has a confirmed pre-advance compact page-object handoff |")
+    lines.append("| 11 | `0xd824` writes source words `+0x12` and `+0x14` from current cursor/page geometry, writes source word `+0x16 = byte[0x78297e]`, marks `0x78297f + slot`, and calls `0x12f2e` at `0xd47a`; on allocation failure it marks page-root `+0x15.0`, calls `0xff1e` and `0x10084`, then retries | a live printable source object can become the same compact text/glyph bucket object consumed by the renderer |")
+    lines.append("| 12 | after cursor update, `0xd550` calls `0xd8fc((source+0))` at `0xd690` when `0x782a6e == 0`; `0xd8fc` checks context fields `+0x16/+0x18/+0x1a` against current y, page extent `0x782db6`, and span watermarks `0x783186/0x783188/0x78318a`, flushing through `0x12714` / `0x126e2` if the current x falls below the low threshold | the flagged printable path queues through `0xd824` and then updates text span/bounds state through the selected context record |")
+    lines.append("| 13 | the fixed-space helper `0xd0f0` calls `0x1393a(0x20, 0x782d7e)`; if the source flag is nonzero it clears source `+4` before entering `0xd550`, otherwise it uses `0xd140` | firmware has a space-specific source-object path that shares the same branch structure but suppresses the built-in glyph-entry pointer in one case |")
+    lines.append("")
+
+    lines.append("## Source Object Fields Touched by the Live Path")
+    lines.append("")
+    lines.append("| Field | Writer | Current interpretation |")
+    lines.append("| ---: | --- | --- |")
+    lines.append("| `+0x00` | `0x1393a` | selected current-font context longword |")
+    lines.append("| `+0x04` | `0x1393a`, `0xd0f0` | built-in glyph-entry pointer or inline fixed-record pointer; `0xd0f0` can clear it before `0xd550` |")
+    lines.append("| `+0x0a/+0x0b` | `0x1393a` | mapped compact glyph index word/low byte copied later by `0x12f2e` |")
+    lines.append("| `+0x10` | `0x1393a` | context flag byte tested by `0xd04a` to select `0xd140` or `0xd550` |")
+    lines.append("| `+0x12` | `0xd824` | x-like positioned source coordinate used by `0x12f2e` |")
+    lines.append("| `+0x14` | `0xd824` | y-like positioned source coordinate used by `0x12f2e` |")
+    lines.append("| `+0x16` | `0xd824` | page-root/render context slot index copied from `0x78297e` and consumed by `0x12f2e`; this is distinct from context record `+0x16` read by `0xd8fc` |")
+    lines.append("")
+    lines.append("## Context Record Fields Touched by Span Updates")
+    lines.append("")
+    lines.append("| Field | Reader | Current interpretation |")
+    lines.append("| ---: | --- | --- |")
+    lines.append("| `+0x16` | `0xd8fc` | y-like lower bound for flagged/built-in span update |")
+    lines.append("| `+0x18` | `0xd8fc` | height/extent contribution checked against page extent `0x782db6` |")
+    lines.append("| `+0x1a` | `0xd8fc` | optional offset subtracted from the y watermark when `0x783185` is set |")
+    lines.append("| `+0x2b` | `0xd4ac` | optional offset added to the y watermark when `0x783185` is set and nonzero |")
+    lines.append("| `+0x2c` | `0xd4ac` | y-like lower bound for unflagged/inline span update |")
+    lines.append("| `+0x2d` | `0xd4ac` | height/extent contribution checked against page extent `0x782db6` |")
+    lines.append("")
+
+    lines.append("## Absolute JSR Call-Site Scan")
+    lines.append("")
+    lines.append("This scan finds `JSR absolute long` opcodes (`4eb9`) that target the named routines. It does not include PC-relative calls.")
+    lines.append("")
+    lines.append("| Target | Role | Absolute JSR references |")
+    lines.append("| ---: | --- | --- |")
+    for target, role in routines:
+        lines.append(f"| `0x{target:06x}` | {role} | {fmt_refs(jsr_abs_refs(firmware, target))} |")
+    lines.append("")
+
+    lines.append("## State References")
+    lines.append("")
+    lines.append("| Absolute address | Role | Longword literal references |")
+    lines.append("| ---: | --- | --- |")
+    for address, role in state_addresses:
+        lines.append(f"| `0x{address:08x}` | {role} | {fmt_refs(find_all(firmware, address.to_bytes(4, 'big')))} |")
+    lines.append("")
+
+    lines.append("## Current Reproduction Contract")
+    lines.append("")
+    lines.append("- A normal printable host byte reaches `0x1393a` through `0xa904` -> `0xda9a` -> `0x11774` -> `0xd04a` when parser state `0x782999` is zero and alternate/data parser mode `0x782c18` is clear.")
+    lines.append("- The live parser path uses the same mapped glyph byte and context fields documented in `ic30_ic13_text_glyph_index_flow.md`; the next byte-to-pixel model must therefore drive `0xd04a`/`0x1393a`, not feed renderer glyph bytes directly from the host stream.")
+    lines.append("- The paired cursor/queue/span behavior after `0x1393a` is detailed in `ic30_ic13_text_cursor_span_flow.md`. The remaining integration gap is to turn that arithmetic into executable fixtures with real parser-produced source objects before replacing the current producer-modeled text bucket fixtures.")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def text_cursor_span_report(firmware: bytes) -> str:
+    routines = [
+        (0x0000D140, "unflagged/inline text advance entry"),
+        (0x0000D28A, "unflagged text bounds precheck"),
+        (0x0000D3B2, "unflagged positioned source queue handoff"),
+        (0x0000D4AC, "unflagged text span/bounds update"),
+        (0x0000D550, "flagged/built-in text advance entry"),
+        (0x0000D6BC, "flagged text bounds precheck"),
+        (0x0000D824, "flagged positioned source queue handoff"),
+        (0x0000D8FC, "flagged text span/bounds update"),
+        (0x00010510, "fixed-point compare/subtract helper"),
+        (0x00010518, "fixed-point add helper"),
+        (0x00010550, "fixed-point metric conversion helper"),
+        (0x0000F054, "conditional page/text state recovery helper"),
+        (0x00010084, "ensure page root"),
+        (0x000126E2, "post-flush text state reset/update"),
+        (0x00012714, "pending text span flush"),
+        (0x00012F2E, "compact text/glyph bucket producer"),
+    ]
+
+    state_addresses = [
+        (0x0078297A, "current page-root pointer"),
+        (0x0078297E, "current page-root font slot index"),
+        (0x0078297F, "page-root font slot live flags"),
+        (0x00782A58, "text pending-width latch flag"),
+        (0x00782A5A, "latched previous text width"),
+        (0x00782A5C, "latched previous text advance"),
+        (0x00782A6E, "text precheck result word"),
+        (0x00782C8A, "current text cursor x-like coordinate"),
+        (0x00782C8E, "current text cursor y-like coordinate"),
+        (0x00782DA3, "orientation byte"),
+        (0x00782DB2, "orientation/page extent used by positioned text"),
+        (0x00782DB6, "page vertical extent for text bounds"),
+        (0x00782DB8, "page horizontal extent for text wrap/clip"),
+        (0x00782DC0, "top/left printable offset used by text queue handoff"),
+        (0x00782DDA, "fixed-point current line/text limit"),
+        (0x0078315C, "default text advance"),
+        (0x00783184, "text vertical-bounds update enable flag"),
+        (0x00783185, "text descent/offset adjustment flag"),
+        (0x00783186, "text span low-x flush threshold"),
+        (0x00783188, "text span high-x watermark"),
+        (0x0078318A, "text span high-y watermark"),
+        (0x0078318E, "alternate metrics/kerning mode flag"),
+        (0x00783190, "text auto-recovery/clip retry flag"),
+    ]
+
+    def fmt_refs(refs: list[int]) -> str:
+        if not refs:
+            return "(none)"
+        text = ", ".join(f"`0x{ref:06x}`" for ref in refs[:12])
+        if len(refs) > 12:
+            text += f", ... ({len(refs)} total)"
+        return text
+
+    lines = ["# IC30/IC13 Text Cursor and Span Flow", ""]
+    lines.append("Generated from the printable-text window around `0xd140..0xd8fc` plus absolute-call and state-literal scans of the verified firmware image.")
+    lines.append("This report narrows the text reproduction boundary after `0x1393a`: how source-object metrics advance the text cursor, produce compact page buckets, and update text span watermarks.")
+    lines.append("")
+
+    lines.append("## Paired Text Paths")
+    lines.append("")
+    lines.append("| Path | Entry | Precheck | Queue handoff | Span/bounds update | Current role |")
+    lines.append("| --- | ---: | ---: | ---: | ---: | --- |")
+    lines.append("| unflagged / inline | `0xd140` | `0xd28a` | `0xd3b2` | `0xd4ac` | used when source object byte `+0x10` is clear |")
+    lines.append("| flagged / built-in | `0xd550` | `0xd6bc` | `0xd824` | `0xd8fc` | used when source object byte `+0x10` is nonzero |")
+    lines.append("")
+
+    lines.append("## Confirmed Arithmetic and Side Effects")
+    lines.append("")
+    lines.append("| Step | Firmware evidence | Reproduction meaning |")
+    lines.append("| ---: | --- | --- |")
+    lines.append("| 1 | Both `0xd140` and `0xd550` call a path-specific precheck (`0xd28a` or `0xd6bc`) and store its result in `0x782a6e` | a nonzero precheck suppresses queue and span-update side effects for the current character |")
+    lines.append("| 2 | Both entries seed `D5` from current cursor `0x782c8a` and derive an advance `D4` either from the active text metrics, from the latched previous width/advance pair `0x782a5a/0x782a5c`, or from default advance `0x78315c` | horizontal cursor movement is metric-driven, with special centering/kerning behavior when `0x78318e` and `0x782a58` are active |")
+    lines.append("| 3 | When `0x782a58` is set, both entries add half of `(latched_width - current_width)` to `0x782c8a`, rounding the arithmetic right shift toward zero for odd negative deltas | repeated text can be centered against the previous character width before the main advance is applied |")
+    lines.append("| 4 | Both entries add `D4` to cursor `D5`, then if the low 16 bits are `>= 12`, subtract `12` from `D5` | text cursor coordinates use a 12-subunit fixed-point-like residue; crossing the residue boundary normalizes the whole cursor value |")
+    lines.append("| 5 | If the source has drawable content (`source+4` nonzero for `0xd550`, source word `+0x0a` nonzero for `0xd140`), the code ensures page root `0x78297a` through `0x10084` before queueing | printable text only allocates compact page objects when a drawable source record/glyph word is present |")
+    lines.append("| 6 | If `0x782a6e == 0`, `0xd140` calls `0xd3b2` and `0xd550` calls `0xd824`; each handoff writes source `+0x12/+0x14/+0x16`, marks `0x78297f + slot`, and calls `0x12f2e`, retrying via `0xff1e` / `0x10084` on allocation failure | both source-object classes converge into the same compact text bucket producer |")
+    lines.append("| 7 | `0xd3b2` handles unflagged source positioning with byte metrics at source record `+1/+2` and the context-record byte at context `+0x16`; `0xd824` handles flagged source positioning with word metrics at source record `+0/+2` | the two paths use different source-record layouts before producing the same `0x12f2e` source coordinate fields |")
+    lines.append("| 8 | Both handoffs account for negative left overflow by returning a fixed-point correction in `D7`; the caller adds that value back into the local cursor candidate before repeating limit checks | clipped-left text changes the queued source coordinate and the cursor update together |")
+    lines.append("| 9 | After final cursor clamping, both entries write `0x782c8a = D5` and clear `0x782a58` | the text cursor is committed only after queue/limit handling has stabilized |")
+    lines.append("| 10 | If `0x782a6e == 0`, `0xd140` calls `0xd4ac((source+0))` and `0xd550` calls `0xd8fc((source+0))`; both check the current y coordinate against context-record lower-bound/height fields and `0x782db6`, update `0x78318a` and `0x783188`, and flush through `0x12714` / `0x126e2` when current x is below `0x783186` | span/bounds state is maintained from the selected context record after successful printable text placement and can force pending span emission |")
+    lines.append("")
+
+    lines.append("## Source Field Use")
+    lines.append("")
+    lines.append("| Field | Unflagged path | Flagged path |")
+    lines.append("| ---: | --- | --- |")
+    lines.append("| `+0x00` | context pointer; `0xd3b2` reads context byte `+0x16` | context pointer; `0xd824` does not test context byte `+0x16` |")
+    lines.append("| `+0x04` | inline/fixed source record pointer used by `0xd140`, `0xd28a`, and `0xd3b2` | concrete built-in glyph-entry pointer used by `0xd550`, `0xd6bc`, and `0xd824` |")
+    lines.append("| `+0x08` | signed horizontal offset/advance contribution used by `0xd3b2` | signed horizontal offset/advance contribution used by `0xd824` |")
+    lines.append("| `+0x0a/+0x0b` | glyph index word/byte; word zero suppresses page-root allocation in `0xd140` | glyph index word/byte; copied by `0x12f2e` after `0xd824` |")
+    lines.append("| `+0x12` | written by `0xd3b2` as the x-like source coordinate | written by `0xd824` as the x-like source coordinate |")
+    lines.append("| `+0x14` | written by `0xd3b2` as the y-like source coordinate | written by `0xd824` as the y-like source coordinate |")
+    lines.append("| `+0x16` | written by `0xd3b2` as context slot for `0x12f2e` | written by `0xd824` as context slot for `0x12f2e` |")
+    lines.append("")
+
+    lines.append("## Context Record Field Use")
+    lines.append("")
+    lines.append("The span-update calls pass `(source+0)`, not the source object itself, so these fields belong to the selected context record.")
+    lines.append("")
+    lines.append("| Context field | Reader | Current interpretation |")
+    lines.append("| ---: | --- | --- |")
+    lines.append("| `+0x16` | `0xd8fc` | y-like lower bound for flagged/built-in span update |")
+    lines.append("| `+0x18` | `0xd8fc` | height/extent contribution checked against page extent `0x782db6` |")
+    lines.append("| `+0x1a` | `0xd8fc` | optional offset subtracted from y watermark when `0x783185` is set |")
+    lines.append("| `+0x2b` | `0xd4ac` | optional offset added to y watermark when `0x783185` is set and nonzero |")
+    lines.append("| `+0x2c` | `0xd4ac` | y-like lower bound for unflagged/inline span update |")
+    lines.append("| `+0x2d` | `0xd4ac` | height/extent contribution checked against page extent `0x782db6` |")
+    lines.append("")
+
+    lines.append("## Absolute JSR Call-Site Scan")
+    lines.append("")
+    lines.append("This scan finds `JSR absolute long` opcodes (`4eb9`) that target the named routines. It does not include PC-relative calls.")
+    lines.append("")
+    lines.append("| Target | Role | Absolute JSR references |")
+    lines.append("| ---: | --- | --- |")
+    for target, role in routines:
+        lines.append(f"| `0x{target:06x}` | {role} | {fmt_refs(jsr_abs_refs(firmware, target))} |")
+    lines.append("")
+
+    lines.append("## State References")
+    lines.append("")
+    lines.append("| Absolute address | Role | Longword literal references |")
+    lines.append("| ---: | --- | --- |")
+    for address, role in state_addresses:
+        lines.append(f"| `0x{address:08x}` | {role} | {fmt_refs(find_all(firmware, address.to_bytes(4, 'big')))} |")
+    lines.append("")
+
+    lines.append("## Current Reproduction Contract")
+    lines.append("")
+    lines.append("- A faithful text model must run the active source object through the same paired path selected by source byte `+0x10`; feeding `0x12f2e` directly is only a producer-level fixture.")
+    lines.append("- The cursor `0x782c8a` is updated after path-specific metric extraction, fixed-point residue normalization by 12 subunits, optional left/right clipping correction, and queue retry handling.")
+    lines.append("- The compact text bucket payload still depends on the mapped glyph byte from `0x1393a`, but exact pixel placement also depends on source fields `+0x12/+0x14/+0x16` produced by `0xd3b2` or `0xd824` and on context-record span flush side effects in `0xd4ac` / `0xd8fc`.")
+    lines.append("- The flagged `0xd824` positioning path, including the negative-left overflow branch, has executable queue/render fixtures in `tools/render_fixture_harness.py`; synthetic `0xd3b2` fixtures cover both unflagged positioning branches but do not yet implement inline/downloaded `0x12f2e` payloads. Remaining work is to use real parser-produced source objects, implement the inline/downloaded payload path, and name the coordinate axes by comparing orientation, CR/LF/FF, and raster placement behavior.")
     lines.append("")
     return "\n".join(lines)
 
@@ -2355,6 +2611,8 @@ def main() -> None:
     write_if_changed(ANALYSIS / "ic30_ic13_render_subrenderers.md", render_subrenderer_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_font_context_bridge.md", font_context_bridge_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_text_glyph_index_flow.md", text_glyph_index_flow_report(firmware, resources))
+    write_if_changed(ANALYSIS / "ic30_ic13_printable_text_path.md", printable_text_path_report(firmware))
+    write_if_changed(ANALYSIS / "ic30_ic13_text_cursor_span_flow.md", text_cursor_span_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_active_symbol_set_flow.md", active_symbol_set_flow_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_symbol_set_patch_tables.md", symbol_set_patch_table_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_render_expansion_fixtures.md", render_expansion_fixture_report(firmware))

@@ -998,6 +998,68 @@ def render_bridged_compact_bucket_object(data: bytes, resources: bytes, render_r
     return render_compact_text_bucket_object(data, resources, context_slots, obj)
 
 
+def raster_graphics_state(**overrides: int) -> dict[str, int]:
+    state = {
+        "baseline_word": 0,
+        "row_y": 0,
+        "mode": 3,
+        "origin_long": 0,
+        "scale": 4,
+        "limit": 0,
+        "active": 0,
+        "orientation": 0,
+        "cursor_axis0": 0,
+        "cursor_axis1": 0,
+        "page_extent": 255,
+    }
+    state.update(overrides)
+    return state
+
+
+def recompute_raster_limit_via_3324a(state: dict[str, int]) -> int:
+    denominator = int(state["scale"]) << 3
+    if denominator <= 0:
+        raise AssertionError("raster scale denominator must be positive")
+    numerator = int(state["page_extent"]) - int(state["baseline_word"]) + 1
+    if numerator <= 0:
+        return 0
+    return (numerator + denominator - 1) // denominator
+
+
+def apply_raster_resolution_via_10808(state: dict[str, int], parameter: int) -> dict[str, int]:
+    state = dict(state)
+    if state["active"]:
+        return state
+    value = abs(int(parameter))
+    if value > 150:
+        scale = 1
+    elif value > 100:
+        scale = 2
+    elif value > 75:
+        scale = 3
+    else:
+        scale = 4
+    state["scale"] = scale
+    state["limit"] = recompute_raster_limit_via_3324a(state)
+    state["mode"] = scale - 1
+    return state
+
+
+def start_raster_graphics_via_1075a(state: dict[str, int], parameter: int) -> dict[str, int]:
+    state = dict(state)
+    if state["active"]:
+        return state
+    state["active"] = 1
+    value = abs(int(parameter))
+    if value == 1:
+        state["origin_long"] = int(state["cursor_axis1"] if state["orientation"] else state["cursor_axis0"])
+    else:
+        state["origin_long"] = 0
+    state["baseline_word"] = (int(state["origin_long"]) >> 16) & 0xFFFF
+    state["limit"] = recompute_raster_limit_via_3324a(state)
+    return state
+
+
 def queue_raster_row_to_page_record_via_13070(
     page_record: dict[str, object],
     raster_state: dict[str, int],
@@ -1064,7 +1126,7 @@ def render_encoded_raster_object_via_1f88e(data: bytes, obj: bytes, dest_stride:
     decoded = coord_decode(coord, band_base=0, payload_offset=0)
     row = int(decoded["row_index"])
     x = int(decoded["byte_pair_offset"]) * 8 + ((coord >> 8) & 0x0F)
-    if decoded["a001"] != 0:
+    if mode != 0 and decoded["a001"] != 0:
         raise AssertionError("encoded raster fixture currently models byte-aligned rows only")
     if row >= band_rows:
         raise AssertionError("encoded raster row starts outside the synthetic band")
@@ -1074,7 +1136,10 @@ def render_encoded_raster_object_via_1f88e(data: bytes, obj: bytes, dest_stride:
     if mode == 0:
         if byte_count & 1:
             raise AssertionError("mode-0 encoded raster fixture expects an even byte count")
-        dest[dest_offset : dest_offset + byte_count] = payload
+        if decoded["a001"] == 0:
+            dest[dest_offset : dest_offset + byte_count] = payload
+        else:
+            write_bitmap_bits(dest, dest_stride, payload, 1, byte_count, x, row)
         width = byte_count * 8
         rows = 1
     elif mode == 1:
@@ -1089,6 +1154,20 @@ def render_encoded_raster_object_via_1f88e(data: bytes, obj: bytes, dest_stride:
                 start = (row + row_offset) * dest_stride + offset
                 dest[start : start + 2] = word_bytes
         width = byte_count * 16
+    elif mode == 2:
+        rows = 3
+        if byte_count & 1:
+            raise AssertionError("mode-2 encoded raster fixture expects an even byte count")
+        if row + rows > band_rows:
+            raise AssertionError("mode-2 encoded raster fixture crosses the synthetic band")
+        for pass_offset, source_start in ((0, 0), (2, 1)):
+            for index, byte in enumerate(payload[source_start::2]):
+                long_bytes = u32(data, 0x30B14 + byte * 4).to_bytes(4, "big")
+                offset = int(decoded["byte_pair_offset"]) + pass_offset + index * 6
+                for row_offset in range(rows):
+                    start = (row + row_offset) * dest_stride + offset
+                    dest[start : start + 4] = long_bytes
+        width = (byte_count // 2) * 48
     elif mode == 3:
         rows = 4
         if row + rows > band_rows:
@@ -1104,7 +1183,7 @@ def render_encoded_raster_object_via_1f88e(data: bytes, obj: bytes, dest_stride:
                 dest[start : start + 4] = long_bytes
         width = byte_count * 32
     else:
-        raise AssertionError("queued encoded raster object fixture currently renders modes 0, 1, and 3 only")
+        raise AssertionError("queued encoded raster object fixture currently renders modes 0..3 only")
 
     return {
         "mode": mode,
@@ -2783,6 +2862,96 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "fixed_list": [bytes.fromhex("00 00 00 00 00 14 00 00 ab cd ab cd 01 08")],
         "rows": page_record_short_rendered["rows"],
     }))
+    parser_raster_resolution_cases = [
+        (300, {"mode": 0, "scale": 1, "limit": 32}),
+        (150, {"mode": 1, "scale": 2, "limit": 16}),
+        (100, {"mode": 2, "scale": 3, "limit": 11}),
+        (75, {"mode": 3, "scale": 4, "limit": 8}),
+    ]
+    checks.append(assert_equal("0x10808 ESC *t#R selects raster mode and scale thresholds", [
+        {
+            "parameter": parameter,
+            "mode": apply_raster_resolution_via_10808(raster_graphics_state(page_extent=255), parameter)["mode"],
+            "scale": apply_raster_resolution_via_10808(raster_graphics_state(page_extent=255), parameter)["scale"],
+            "limit": apply_raster_resolution_via_10808(raster_graphics_state(page_extent=255), parameter)["limit"],
+        }
+        for parameter, _expected in parser_raster_resolution_cases
+    ], [
+        {"parameter": parameter, **expected}
+        for parameter, expected in parser_raster_resolution_cases
+    ]))
+    parser_raster_start_base = apply_raster_resolution_via_10808(
+        raster_graphics_state(page_extent=255, cursor_axis0=0x00100000, cursor_axis1=0x00200000),
+        300,
+    )
+    parser_raster_start = start_raster_graphics_via_1075a(parser_raster_start_base, 1)
+    parser_raster_start_left = start_raster_graphics_via_1075a(parser_raster_start_base, 0)
+    checks.append(assert_equal("0x1075a ESC *r#A seeds raster baseline from cursor or left edge", {
+        "current_cursor": {key: parser_raster_start[key] for key in ("active", "origin_long", "baseline_word", "mode", "scale", "limit")},
+        "left_edge": {key: parser_raster_start_left[key] for key in ("active", "origin_long", "baseline_word", "mode", "scale", "limit")},
+    }, {
+        "current_cursor": {
+            "active": 1,
+            "origin_long": 0x00100000,
+            "baseline_word": 16,
+            "mode": 0,
+            "scale": 1,
+            "limit": 30,
+        },
+        "left_edge": {
+            "active": 1,
+            "origin_long": 0,
+            "baseline_word": 0,
+            "mode": 0,
+            "scale": 1,
+            "limit": 32,
+        },
+    }))
+    parser_raster_page_record: dict[str, object] = {"bucket_array": {}}
+    parser_raster_page_result = queue_raster_row_to_page_record_via_13070(
+        parser_raster_page_record,
+        {
+            "x": parser_raster_start["baseline_word"],
+            "y": parser_raster_start["row_y"],
+            "byte_count": 4,
+            "mode": parser_raster_start["mode"],
+        },
+        bytes.fromhex("f0 0f aa 55"),
+    )
+    parser_raster_bucket_array = parser_raster_page_record["bucket_array"]
+    assert isinstance(parser_raster_bucket_array, dict)
+    parser_raster_object = bytes(parser_raster_bucket_array[0][0])
+    parser_raster_rendered = render_encoded_raster_object_via_1f88e(data, parser_raster_object)
+    checks.append(assert_equal("parser-derived ESC *t300R / ESC *r1A state queues mode-0 raster row", {
+        "state": {key: parser_raster_start[key] for key in ("active", "baseline_word", "mode", "scale", "limit")},
+        "result": {
+            key: parser_raster_page_result[key]
+            for key in ("path", "allocated", "bucket_index", "key", "mode", "byte_count_before", "byte_count_after", "capacity", "object_size")
+        },
+        "object": parser_raster_object,
+        "rows": parser_raster_rendered["rows"],
+    }, {
+        "state": {
+            "active": 1,
+            "baseline_word": 16,
+            "mode": 0,
+            "scale": 1,
+            "limit": 30,
+        },
+        "result": {
+            "path": "raster-page-record",
+            "allocated": True,
+            "bucket_index": 0,
+            "key": 0x0001,
+            "mode": 0,
+            "byte_count_before": 4,
+            "byte_count_after": 0,
+            "capacity": 4,
+            "object_size": 0x0E,
+        },
+        "object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
+        "rows": ["................####........#####.#.#.#..#.#.#.#"],
+    }))
     raster_page_record: dict[str, object] = {"bucket_array": {}}
     raster_page_result = queue_raster_row_to_page_record_via_13070(
         raster_page_record,
@@ -2839,6 +3008,50 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "bucket_root": raster_object,
         "rows": raster_rendered["rows"],
     }))
+    raster_shifted_page_record: dict[str, object] = {"bucket_array": {}}
+    raster_shifted_page_result = queue_raster_row_to_page_record_via_13070(
+        raster_shifted_page_record,
+        {"x": 20, "y": 0, "byte_count": 2, "mode": 0},
+        bytes.fromhex("c3 3c"),
+    )
+    raster_shifted_bucket_array = raster_shifted_page_record["bucket_array"]
+    assert isinstance(raster_shifted_bucket_array, dict)
+    raster_shifted_object = bytes(raster_shifted_bucket_array[0][0])
+    raster_shifted_rendered = render_encoded_raster_object_via_1f88e(data, raster_shifted_object)
+    checks.append(assert_equal("0x13070/0x13250 raster row queues non-byte-aligned encoded-span object", {
+        "result": {
+            key: raster_shifted_page_result[key]
+            for key in ("path", "allocated", "bucket_index", "key", "mode", "byte_count_before", "byte_count_after", "capacity", "object_size")
+        },
+        "object": raster_shifted_object,
+    }, {
+        "result": {
+            "path": "raster-page-record",
+            "allocated": True,
+            "bucket_index": 0,
+            "key": 0x0401,
+            "mode": 0,
+            "byte_count_before": 2,
+            "byte_count_after": 0,
+            "capacity": 2,
+            "object_size": 0x0C,
+        },
+        "object": bytes.fromhex("00 00 00 00 80 00 00 02 04 01 c3 3c"),
+    }))
+    checks.append(assert_equal("0x1f88e mode-0 raster object renders sub-byte shifted literal row", {
+        key: raster_shifted_rendered[key]
+        for key in ("mode", "helper", "byte_count", "coord", "dest_base", "x", "y", "payload", "rows")
+    }, {
+        "mode": 0,
+        "helper": 0x01F8DA,
+        "byte_count": 2,
+        "coord": 0x0401,
+        "dest_base": 0x02,
+        "x": 20,
+        "y": 0,
+        "payload": bytes.fromhex("c3 3c"),
+        "rows": ["....................##....##..####.."],
+    }))
     raster_mode1_page_record: dict[str, object] = {"bucket_array": {}}
     raster_mode1_page_result = queue_raster_row_to_page_record_via_13070(
         raster_mode1_page_record,
@@ -2884,6 +3097,54 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "rows": [
             "................########................########",
             "................########................########",
+        ],
+    }))
+    raster_mode2_page_record: dict[str, object] = {"bucket_array": {}}
+    raster_mode2_page_result = queue_raster_row_to_page_record_via_13070(
+        raster_mode2_page_record,
+        {"x": 16, "y": 0, "byte_count": 2, "mode": 2},
+        bytes.fromhex("f0 0f"),
+    )
+    raster_mode2_bucket_array = raster_mode2_page_record["bucket_array"]
+    assert isinstance(raster_mode2_bucket_array, dict)
+    raster_mode2_object = bytes(raster_mode2_bucket_array[0][0])
+    raster_mode2_rendered = render_encoded_raster_object_via_1f88e(data, raster_mode2_object)
+    checks.append(assert_equal("0x13070/0x13250 raster mode-2 row queues encoded-span object", {
+        "result": {
+            key: raster_mode2_page_result[key]
+            for key in ("path", "allocated", "bucket_index", "key", "mode", "byte_count_before", "byte_count_after", "capacity", "object_size")
+        },
+        "object": raster_mode2_object,
+    }, {
+        "result": {
+            "path": "raster-page-record",
+            "allocated": True,
+            "bucket_index": 0,
+            "key": 0x0001,
+            "mode": 2,
+            "byte_count_before": 2,
+            "byte_count_after": 0,
+            "capacity": 2,
+            "object_size": 0x0C,
+        },
+        "object": bytes.fromhex("00 00 00 00 80 02 00 02 00 01 f0 0f"),
+    }))
+    checks.append(assert_equal("0x1f88e mode-2 raster object expands queued byte pair into three rows", {
+        key: raster_mode2_rendered[key]
+        for key in ("mode", "helper", "byte_count", "coord", "dest_base", "x", "y", "payload", "rows")
+    }, {
+        "mode": 2,
+        "helper": 0x01F920,
+        "byte_count": 2,
+        "coord": 0x0001,
+        "dest_base": 0x02,
+        "x": 16,
+        "y": 0,
+        "payload": bytes.fromhex("f0 0f"),
+        "rows": [
+            "................############................############........",
+            "................############................############........",
+            "................############................############........",
         ],
     }))
     raster_mode3_page_record: dict[str, object] = {"bucket_array": {}}
@@ -3805,6 +4066,23 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- remaining gap: replace this synthetic page/control record with a parser-produced page root and compare the finalized record published by `0xff1e`.")
     lines.append("")
 
+    lines.append("## Parser-Derived Raster State Fixture")
+    lines.append("")
+    lines.append("This fixture models the raster state fields written by `ESC *t#R` handler `0x10808` and `ESC *r#A` handler `0x1075a` before the existing `0x13070` row-object queue path. It is still a state model rather than a full parser run through `0x121cc` / `0x105d0`, but the encoded raster mode comes from the resolution command threshold instead of being hand-picked.")
+    lines.append("")
+    lines.append("| Parameter | Encoded mode | Scale word | Limit for extent 255 |")
+    lines.append("| ---: | ---: | ---: | ---: |")
+    for parameter, expected in parser_raster_resolution_cases:
+        lines.append(f"| `{parameter}` | `{expected['mode']}` | `{expected['scale']}` | `{expected['limit']}` |")
+    lines.append("")
+    lines.append("- `ESC *r1A` with orientation `0` seeds raster origin from cursor-axis longword `0x00100000`, giving baseline word `16`, mode `0`, scale `1`, and limit `30` for extent `255`.")
+    lines.append("- `ESC *r0A` starts at the left edge, giving origin `0`, baseline word `0`, mode `0`, scale `1`, and limit `32` for extent `255`.")
+    lines.append(f"- parser-derived transfer object bytes: `{' '.join(f'{byte:02x}' for byte in parser_raster_object)}`")
+    lines.append("- parser-derived rendered row:")
+    lines.extend(f"`{row}`" for row in parser_raster_rendered["rows"])
+    lines.append("- remaining gap: drive the same state transition through the live command parser and delayed payload handler `0x121cc` / `0x105d0`.")
+    lines.append("")
+
     lines.append("## Raster Row Page-Record Fixture")
     lines.append("")
     lines.append("This fixture models one byte-aligned raster row through the page-object path used by `0x105d0`: `0x13070` computes the bucket/key fields from the raster state, `0x13250` allocates and links an encoded-span object under page-root `+0x1c`, `0x138de` copies host payload bytes into object `+0x0a`, and `0x1f88e` mode 0 renders the literal row after the `0x1edc6` bridge copies the bucket root into render-record `+0x18`.")
@@ -3821,13 +4099,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- rendered mode-0 literal row:")
     lines.extend(f"`{row}`" for row in raster_rendered["rows"])
     lines.append("- bridged raster rows match the queued raster object render.")
+    lines.append(f"- non-byte-aligned mode-0 queued raster object bytes: `{' '.join(f'{byte:02x}' for byte in raster_shifted_object)}`")
+    lines.append("- rendered sub-byte shifted mode-0 row:")
+    lines.extend(f"`{row}`" for row in raster_shifted_rendered["rows"])
     lines.append(f"- mode-1 queued raster object bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode1_object)}`")
     lines.append("- rendered mode-1 expanded rows:")
     lines.extend(f"`{row}`" for row in raster_mode1_rendered["rows"])
+    lines.append(f"- mode-2 queued raster object bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode2_object)}`")
+    lines.append("- rendered mode-2 expanded rows:")
+    lines.extend(f"`{row}`" for row in raster_mode2_rendered["rows"])
     lines.append(f"- mode-3 queued raster object bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode3_object)}`")
     lines.append("- rendered mode-3 expanded rows:")
     lines.extend(f"`{row}`" for row in raster_mode3_rendered["rows"])
-    lines.append("- remaining gap: drive `ESC *r#A` / `ESC *b#W` through the parser-produced raster state and broaden queued raster fixtures to encoded mode 2 and non-byte-aligned coordinates.")
+    lines.append("- remaining gap: drive `ESC *r#A` / `ESC *b#W` through the parser-derived raster state and broaden mode-2 raster coverage to clipped and non-byte-aligned coordinates.")
     lines.append("")
 
     lines.append("## `0xd824` Positioned Text Bucket Fixture")

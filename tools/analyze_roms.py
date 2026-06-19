@@ -2492,6 +2492,177 @@ def parser_command_map_report(data: bytes) -> str:
     return "\n".join(lines)
 
 
+def host_byte_fetch_flow_report(data: bytes) -> str:
+    def fmt_refs(refs: list[int]) -> str:
+        if not refs:
+            return "(none)"
+        text = ", ".join(f"`0x{ref:06x}`" for ref in refs[:16])
+        if len(refs) > 16:
+            text += f", ... ({len(refs)} total)"
+        return text
+
+    state_addresses = [
+        (0x007821CD, "fetch blocked / service-needed flag tested before all sources"),
+        (0x00780E66, "buffer-source bitfield; bits are cleared as stacked sources drain"),
+        (0x00780E3B, "forces immediate `D7=-1` return when `0x780e66` is set"),
+        (0x00783E8C, "first LIFO byte count"),
+        (0x00783E8E, "first LIFO byte pointer; bytes are read with predecrement"),
+        (0x00782D76, "current data-chain/control pointer; field `+4` selects helper `0x9f6a` or end marker"),
+        (0x00783E76, "second LIFO byte count"),
+        (0x00783E78, "second LIFO byte pointer; bytes are read with predecrement"),
+        (0x00783E54, "ring-buffer byte count"),
+        (0x00783E56, "ring-buffer read pointer"),
+        (0x00780E40, "direct hardware input mode selector"),
+        (0x00780E2E, "alternate direct-input status/error accumulator"),
+        (0x007828EC, "direct-input handshake state byte"),
+        (0x007821C4, "direct-input timeout/service state cleared after successful handshakes"),
+        (0x007821CC, "set while service helper `0x10cc(0x780202)` runs before retrying fetch"),
+        (0x007828FA, "`0x8e01/0x8801/0x8c01` mode control shadow written to `0xaa01`"),
+        (0x007828FB, "`0xfffee005/0xfffee001` mode control shadow written to `0xfffee009`"),
+    ]
+
+    lines = ["# IC30/IC13 Host Byte Fetch Flow", ""]
+    lines.append("Generated from routine `0x0000a904`, its local branches through `0x0000abf0`, and absolute-call/state-reference scans of the verified firmware image.")
+    lines.append("This report tracks the normalized byte source that feeds the PCL parser and raster/download payload readers. Names remain provisional where MMIO register roles are not board-confirmed.")
+    lines.append("")
+
+    lines.append("## Source Priority")
+    lines.append("")
+    lines.append("| Order | Entry/condition | Firmware behavior | Reproduction meaning |")
+    lines.append("| ---: | --- | --- | --- |")
+    lines.append("| 1 | `0x7821cd != 0` at `0xa904` | branches to `0xaa88`, sets `0x7821cc`, calls `0x10cc(0x780202)`, clears `0x7821cc`, then retries `0xa904` | service/error work can run before any byte source is consumed |")
+    lines.append("| 2 | `0x780e66 != 0` and `0x780e3b != 0` | returns `D7 = -1` immediately | callers must treat negative `D7` as no-byte/end/error, as several payload readers already do |")
+    lines.append("| 3 | `0x783e8c != 0` | reads byte from `--0x783e8e`, decrements `0x783e8c`, returns | first stacked pushback/source buffer has priority over live hardware input |")
+    lines.append("| 4 | `(*0x782d76)+4 != 0` | if field is not `-1`, calls `0x9f6a` and returns; if field is `-1`, clears it, calls `0xe22c`, and retries | current data-chain source can supply bytes or signal a chain transition before other buffers |")
+    lines.append("| 5 | `0x783e76 != 0` | reads byte from `--0x783e78`, decrements `0x783e76`, returns | second stacked byte source is consumed after the data-chain source |")
+    lines.append("| 6 | `0x780e40 == 0` and `0x783e54 != 0` | reads byte from ring pointer `0x783e56`, wraps after `0x783e53` back to `0x783a4c`, decrements `0x783e54`, returns | buffered ring input is used before direct hardware fallback when direct mode is not selected |")
+    lines.append("| 7 | `0x780e40 == 1` | enters direct path `0xa9f0` using short MMIO registers `0x8e01`, `0x8801`, `0x8c01`, plus `0xa601`/`0xaa01` handshakes | one hardware input backend polls status bit 4, reads one byte, waits for acknowledge bit 0 to clear, then toggles control lines |")
+    lines.append("| 8 | `0x780e40 != 0 && != 1` | enters direct path `0xaaa6` using long MMIO registers `0xfffee005`, `0xfffee001`, `0xfffee009` | alternate hardware input backend polls ready/error bits, reads one byte, and updates a separate control shadow |")
+    lines.append("")
+
+    lines.append("## Direct Hardware Input Modes")
+    lines.append("")
+    lines.append("| Selector | Status/data/control evidence | Success path | Timeout/error path |")
+    lines.append("| --- | --- | --- | --- |")
+    lines.append("| `0x780e40 == 1` | `0xa9f4` reads `0x8e01` bit `0x10`; `0xaa06` reads data byte from `0x8801`; `0xaa26` waits for `0x8c01` bit 0 to clear; `0xaa3a..0xaa64` writes `0xa601` and `0xaa01` from shadow `0x7828fa` | byte is masked to 8 bits in `D7`; `0x1a` is reported through `0x9ec0` and preserved as `0x1a`; handshake clears `0x7828ec` and `0x7821c4` | if `0x8e01.4` is not seen before `D0=0x2710` expires, branches through service helper at `0xaa88` and retries |")
+    lines.append("| `0x780e40 != 0 && != 1` | `0xaae4` reads `0xfffee005`; bit 0 means data ready; bits 7/6 are error/status cases; `0xab08` reads data byte from `0xfffee001`; `0xab2e..0xab44` writes shadow `0x7828fb` to `0xfffee009` | byte is masked to 8 bits in `D7`; `0x1a` is reported through `0x9ec0` and preserved as `0x1a`; success sets `0x7828ec=1`, sets control-shadow bit 6, and clears `0x7821c4` | bit 7 ORs `0x80` into `0x780e2e`; bit 6 ORs `0x40` into `0x780e2e`; timeout or status/error branches through service helper at `0xab70` and retries |")
+    lines.append("| cleanup helper `0xab8e` | called from `0x35de` after helper `0xa39a` returns zero; mode 1 toggles `0xaa01`/`0xa601` from `0x7828fa`, mode 2 applies `bclr #0x40,D0` to `0x7828fb` before writing `0xfffee009` | normalizes handshake state after external service code | not a byte source by itself |")
+    lines.append("")
+
+    lines.append("## Callers and Payload Consumers")
+    lines.append("")
+    lines.append(f"- Direct absolute `JSR 0xa904` callers: {fmt_refs(jsr_abs_refs(data, 0x0000A904))}.")
+    lines.append("- Confirmed caller roles from focused listings:")
+    lines.append("  - `0xda9a`, `0xdaa6`, and `0xdab2`: normal ESC-aware parser byte wrapper.")
+    lines.append("  - `0xdace` and `0xdada`: `0x1a 0x58` control probe used by raster/download payload paths.")
+    lines.append("  - `0x12142` / `0x12152`, `0x124bc` / `0x124cc`, and `0x12582` / `0x12592`: parser payload/text repeat readers that also treat `0x1a 0x58` specially.")
+    lines.append("  - `0x138fa` / `0x13904`: raster payload copy path `0x138de` that stores host bytes into queued raster row objects.")
+    lines.append("  - `0x168dc`, `0x168fe`, `0x16960`, `0x1697a`, `0x169ca`, and `0x169e0`: downloaded/font-resource payload readers that keep continuation state under `0x7827c6..0x7827d8` and byte budget `0x783140`.")
+    lines.append("")
+
+    lines.append("## State Reference Scan")
+    lines.append("")
+    lines.append("| Address | Current role | Longword literal references |")
+    lines.append("| ---: | --- | --- |")
+    for address, role in state_addresses:
+        lines.append(f"| `0x{address:08x}` | {role} | {fmt_refs(find_all(data, address.to_bytes(4, 'big')))} |")
+    lines.append("")
+
+    lines.append("## Current Reproduction Contract")
+    lines.append("")
+    lines.append("- A byte-stream emulator can feed parser/imaging work above `0xa904` by returning normalized `D7` bytes in the same order as the priority table, while preserving `D7=-1` as a no-byte/end/error return for callers that test it.")
+    lines.append("- Exact host-interface emulation still needs board/manual correlation for `0x8e01/0x8801/0x8c01`, `0xa601/0xaa01`, and `0xfffee005/0xfffee001/0xfffee009`; current ROM evidence only proves the polling, data, handshake, and status-bit behavior.")
+    lines.append("- Both direct modes special-case input byte `0x1a` through `0x9ec0`, and higher-level payload readers also interpret `0x1a 0x58` by calling `0xd99a`; byte-stream reproduction must preserve that control path rather than treating all payload bytes as opaque.")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def direct_control_code_flow_report(data: bytes) -> str:
+    def fmt_refs(refs: list[int]) -> str:
+        if not refs:
+            return "(none)"
+        text = ", ".join(f"`0x{ref:06x}`" for ref in refs[:16])
+        if len(refs) > 16:
+            text += f", ... ({len(refs)} total)"
+        return text
+
+    state_addresses = [
+        (0x0078299E, "parser six-byte record cursor rewound by parsed cursor-position handlers"),
+        (0x00782A57, "right-margin/line-limit latch set when horizontal cursor reaches `0x782dda`"),
+        (0x00782A58, "pending previous-width latch cleared before text span flushes and set by BS"),
+        (0x00782A5A, "latched previous text width used by BS when alternate metrics flag is set"),
+        (0x00782A6D, "printable/pending text flag cleared by control-code cursor moves; FF sets it to `0xff` after page eject"),
+        (0x00782C8A, "current horizontal text cursor, reset by CR and changed by HT/BS"),
+        (0x00782C8E, "current vertical text cursor, advanced by LF and reset/recomputed by FF"),
+        (0x00782DB8, "horizontal page extent used to clamp HT and horizontal positioning"),
+        (0x00782DCE, "top/vertical offset added by FF helper `0xf124`"),
+        (0x00782DD6, "left-margin/default horizontal cursor copied into `0x782c8a` by CR helper `0xf06e`"),
+        (0x00782DDA, "right-margin/current horizontal limit used by HT and helper `0xf4ca`"),
+        (0x0078315C, "default horizontal motion / HMI value used by HT and BS"),
+        (0x00783160, "line advance / VMI value added by LF and FF helpers"),
+        (0x00783184, "pending text span flush enable tested by `0xf34a`"),
+        (0x0078318E, "alternate previous-width mode tested by BS"),
+        (0x0078318F, "line-termination mode byte written by `ESC &k#G` and tested by CR/LF/FF"),
+        (0x00783191, "vertical overflow recovery enable tested by `0xf36c`"),
+    ]
+
+    lines = ["# IC30/IC13 Direct Control-Code Flow", ""]
+    lines.append("Generated from handlers `0xf02c..0xf55e`, line-termination handler `0xedf8`, and state-reference scans of the verified firmware image.")
+    lines.append("This report tracks direct parser mode-0 control codes that change cursor/page state before text or raster objects are queued.")
+    lines.append("")
+
+    lines.append("## Line-Termination Mode")
+    lines.append("")
+    lines.append("PCL `ESC &k#G` reaches handler `0xedf8`, which stores absolute values into `0x78318f`:")
+    lines.append("")
+    lines.append("| `#` | Stored byte | Firmware effect bits | PCL meaning |")
+    lines.append("| ---: | ---: | --- | --- |")
+    lines.append("| 0 | `0x00` | no extra CR/LF/FF coupling | CR=CR, LF=LF, FF=FF |")
+    lines.append("| 1 | `0x80` | CR tests bit 7 and also calls LF advance | CR=CR+LF |")
+    lines.append("| 2 | `0x60` | LF tests bit 6 and FF tests bit 5, both also call CR reset | LF=CR+LF, FF=CR+FF |")
+    lines.append("| 3 | `0xe0` | bits 7, 6, and 5 all set | CR=CR+LF, LF=CR+LF, FF=CR+FF |")
+    lines.append("")
+
+    lines.append("## Direct Control Handlers")
+    lines.append("")
+    lines.append("| Byte | Handler | Confirmed side effects | Pixel-reproduction consequence |")
+    lines.append("| ---: | ---: | --- | --- |")
+    lines.append("| CR `0x0d` | `0xf02c` | calls CR helper `0xf06e`, then `0xf34a`; if `0x78318f.7` is set, calls LF helper `0xf0b2` | resets horizontal text cursor to left/default margin and may also advance vertically depending on `ESC &k#G` |")
+    lines.append("| LF `0x0a` | `0xf08c` | if `0x78318f.6` is set, calls CR helper `0xf06e`; always calls `0xf34a` and LF helper `0xf0b2` | advances vertical cursor by line advance `0x783160`, with optional horizontal reset |")
+    lines.append("| FF `0x0c` | `0xf0f0` | if `0x78318f.5` is set, calls CR helper `0xf06e`; calls `0xf34a`, ensures page root through `0x10084`, calls page/eject helper `0xf124`, then writes `0x782a6d = 0xff` | finalizes current page/root state and recomputes vertical cursor for the next page context, with optional horizontal reset |")
+    lines.append("| HT `0x09` | `0xf1cc` | converts default HMI `0x78315c`; computes next eight-column stop from `0x782c8a - 0x782dd6`, clamps against `0x782dda` or `0x782db8 << 16`, writes `0x782c8a`, then calls `0xd8fc` or `0xd4ac` for active context span update | horizontal cursor jumps to firmware tab stop and can flush/update text span bounds before the next printable byte |")
+    lines.append("| BS `0x08` | `0xf2a8` | subtracts either previous width `0x782a5a << 16` when `0x78318e` is set or default HMI `0x78315c`; clamps at `0` and crossing `0x782dd6`; writes `0x782c8a`, sets `0x782a58=1`, clears `0x782a57/0x782a6d`, then calls `0xd8fc` or `0xd4ac` | horizontal cursor backs up using current text metrics while preserving a pending previous-width state for the following printable character |")
+    lines.append("")
+
+    lines.append("## Shared Helpers")
+    lines.append("")
+    lines.append("| Helper | Confirmed behavior |")
+    lines.append("| ---: | --- |")
+    lines.append("| `0xf06e` | copies `0x782dd6` to `0x782c8a`, clears `0x782a57` and `0x782a6d` |")
+    lines.append("| `0xf34a` | clears `0x782a58`; if `0x783184` is nonzero, flushes pending text span through `0x12714` and `0x126e2` |")
+    lines.append("| `0xf0b2` | ensures page root through `0x10084`, adds `0x783160` to `0x782c8e` via `0x10518`, calls `0xf36c`, optionally calls `0x1048c`, and clears `0x782a6d` |")
+    lines.append("| `0xf124` | calls page-root finalize `0xff1e`, derives a fixed-point vertical value from `0x783160`, constants `0x12` and `0x19`, and `0x782dce`, writes `0x782c8e`, and clears `0x782a6d` |")
+    lines.append("| `0xf36c` | compares vertical cursor `0x782c8e` against limit/state `0x782dc2`; when `0x783191` is set and limit is exceeded, calls `0xf124` and returns zero |")
+    lines.append("| `0xf4ca` | shared horizontal-position commit helper used by ESC-positioning handlers; optionally adds to `0x782c8a`, clamps between `0` and `0x782db8 << 16`, writes `0x782c8a`, updates `0x782a57`, clears `0x782a6d`, and calls `0xd8fc` or `0xd4ac` |")
+    lines.append("")
+
+    lines.append("## State Reference Scan")
+    lines.append("")
+    lines.append("| Address | Current role | Longword literal references |")
+    lines.append("| ---: | --- | --- |")
+    for address, role in state_addresses:
+        lines.append(f"| `0x{address:08x}` | {role} | {fmt_refs(find_all(data, address.to_bytes(4, 'big')))} |")
+    lines.append("")
+
+    lines.append("## Current Reproduction Contract")
+    lines.append("")
+    lines.append("- A byte-stream model must apply `ESC &k#G` before interpreting CR/LF/FF because the firmware stores the mode as bit flags in `0x78318f` and the direct control handlers test those bits at runtime.")
+    lines.append("- CR/LF/FF/HT/BS do not only change cursor coordinates; they can flush pending text spans, ensure/finalize page roots, and invoke the same context span update routines `0xd4ac` / `0xd8fc` used after printable text.")
+    lines.append("- Axis names remain provisional, but `tools/render_fixture_harness.py` now has synthetic state fixtures for the line-termination map plus CR/LF/FF/HT/BS cursor/page effects; the remaining step is replacing those with parser-driven byte-stream fixtures.")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def page_geometry_table_report(data: bytes) -> str:
     word_tables = [
         ("height_or_vertical_extent", 0x00A112, "read by `0x009d16`, stored at `0x782db4` by `ESC &l#A`"),
@@ -2604,6 +2775,8 @@ def main() -> None:
     write_if_changed(ANALYSIS / "ic30_ic13_long_reference_scan.md", categorized_long_references(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_cmpi_byte_candidates.md", cmpi_byte_candidates(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_parser_xrefs.md", xref_report(firmware))
+    write_if_changed(ANALYSIS / "ic30_ic13_host_byte_fetch_flow.md", host_byte_fetch_flow_report(firmware))
+    write_if_changed(ANALYSIS / "ic30_ic13_direct_control_code_flow.md", direct_control_code_flow_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_literal_patterns.md", byte_pattern_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_page_root_references.md", page_root_reference_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_render_path_references.md", render_path_reference_report(firmware))

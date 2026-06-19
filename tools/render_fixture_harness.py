@@ -257,6 +257,162 @@ def compact_text_coord(x: int, y: int) -> int:
     return ((y & 0x0F) << 12) | ((x & 0x0F) << 8) | ((x >> 4) & 0x00FF)
 
 
+def pack12(whole: int, frac: int = 0) -> int:
+    if not 0 <= frac < 12:
+        raise AssertionError(f"packed 12-subunit fraction out of range: {frac}")
+    return ((whole & 0xFFFF) << 16) | (frac & 0xFFFF)
+
+
+def unpack12(value: int) -> tuple[int, int]:
+    whole = (value >> 16) & 0xFFFF
+    if whole & 0x8000:
+        whole -= 0x10000
+    frac = value & 0xFFFF
+    if frac & 0x8000:
+        frac -= 0x10000
+    return whole, frac
+
+
+def packed12_to_subunits(value: int) -> int:
+    whole, frac = unpack12(value)
+    return whole * 12 + frac
+
+
+def subunits_to_packed12(value: int) -> int:
+    whole, frac = divmod(value, 12)
+    return pack12(whole, frac)
+
+
+def add_packed12(left: int, right: int) -> int:
+    return subunits_to_packed12(packed12_to_subunits(left) + packed12_to_subunits(right))
+
+
+def sub_packed12(left: int, right: int) -> int:
+    return subunits_to_packed12(packed12_to_subunits(left) - packed12_to_subunits(right))
+
+
+def line_termination_mode_bits(parameter: int) -> int:
+    value = abs(int(parameter))
+    if value == 0:
+        return 0x00
+    if value == 1:
+        return 0x80
+    if value == 2:
+        return 0x60
+    if value == 3:
+        return 0xE0
+    raise AssertionError("ESC &k#G fixture only models accepted values 0..3")
+
+
+def control_fixture_state(**overrides: int) -> dict[str, int]:
+    state = {
+        "cursor_x": pack12(10),
+        "cursor_y": pack12(20),
+        "left_margin": pack12(5),
+        "right_limit": pack12(100),
+        "page_width": 120,
+        "hmi": pack12(2),
+        "vmi": pack12(3),
+        "pending_width": 1,
+        "right_limit_latch": 1,
+        "pending_text": 1,
+        "line_termination": 0,
+        "span_flush_enable": 0,
+        "alternate_metrics": 0,
+        "previous_width_word": 0,
+        "page_roots": 0,
+        "page_finalizes": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "span_updates": 0,
+    }
+    state.update(overrides)
+    return state
+
+
+def control_cr_helper(state: dict[str, int]) -> None:
+    state["cursor_x"] = state["left_margin"]
+    state["right_limit_latch"] = 0
+    state["pending_text"] = 0
+
+
+def control_text_flush_helper(state: dict[str, int]) -> None:
+    state["pending_width"] = 0
+    if state["span_flush_enable"]:
+        state["span_flushes"] += 1
+        state["post_flushes"] += 1
+
+
+def control_lf_helper(state: dict[str, int]) -> None:
+    state["page_roots"] += 1
+    state["cursor_y"] = add_packed12(state["cursor_y"], state["vmi"])
+    state["pending_text"] = 0
+
+
+def control_ff_helper(state: dict[str, int]) -> None:
+    state["page_finalizes"] += 1
+    state["pending_text"] = 0
+
+
+def control_span_update(state: dict[str, int]) -> None:
+    state["span_updates"] += 1
+
+
+def apply_direct_control_code(state: dict[str, int], code: int) -> dict[str, int]:
+    state = dict(state)
+    if code == 0x0D:  # CR
+        control_cr_helper(state)
+        control_text_flush_helper(state)
+        if state["line_termination"] & 0x80:
+            control_lf_helper(state)
+    elif code == 0x0A:  # LF
+        if state["line_termination"] & 0x40:
+            control_cr_helper(state)
+        control_text_flush_helper(state)
+        control_lf_helper(state)
+    elif code == 0x0C:  # FF
+        if state["line_termination"] & 0x20:
+            control_cr_helper(state)
+        control_text_flush_helper(state)
+        state["page_roots"] += 1
+        control_ff_helper(state)
+        state["pending_text"] = 0xFF
+    elif code == 0x09:  # HT
+        hmi_subunits = packed12_to_subunits(state["hmi"])
+        if hmi_subunits == 0:
+            return state
+        if state["cursor_x"] < state["left_margin"]:
+            next_cursor = state["left_margin"]
+        else:
+            distance = packed12_to_subunits(sub_packed12(state["cursor_x"], state["left_margin"]))
+            tab_index = ((distance // hmi_subunits) & ~0x07) + 8
+            next_cursor = add_packed12(state["left_margin"], subunits_to_packed12(tab_index * hmi_subunits))
+        limit = pack12(state["page_width"]) if state["cursor_x"] > state["right_limit"] else state["right_limit"]
+        if next_cursor > limit:
+            next_cursor = limit
+        state["cursor_x"] = next_cursor
+        state["right_limit_latch"] = 1 if next_cursor == state["right_limit"] else 0
+        state["pending_text"] = 0
+        control_span_update(state)
+    elif code == 0x08:  # BS
+        amount = pack12(state["previous_width_word"]) if state["alternate_metrics"] else state["hmi"]
+        next_cursor = sub_packed12(state["cursor_x"], amount)
+        next_subunits = packed12_to_subunits(next_cursor)
+        left_subunits = packed12_to_subunits(state["left_margin"])
+        if state["cursor_x"] >= state["left_margin"] and next_subunits < left_subunits:
+            next_cursor = state["left_margin"]
+        if next_subunits < 0:
+            next_cursor = 0
+        state["cursor_x"] = next_cursor
+        state["pending_width"] = 1
+        state["right_limit_latch"] = 0
+        state["pending_text"] = 0
+        control_span_update(state)
+    else:
+        raise AssertionError(f"unsupported direct control fixture byte 0x{code:02x}")
+    return state
+
+
 def position_flagged_text_source_via_d824(
     resources: bytes,
     source: dict[str, int],
@@ -627,6 +783,10 @@ def assert_equal(name: str, actual: object, expected: object) -> str:
     return f"- {name}: ok"
 
 
+def select_keys(values: dict[str, int], keys: tuple[str, ...]) -> dict[str, int]:
+    return {key: values[key] for key in keys}
+
+
 def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines = ["# IC30/IC13 Executable Renderer Fixture Harness", ""]
     lines.append("This report is emitted by `tools/render_fixture_harness.py` after executing ROM-derived fixture models.")
@@ -643,6 +803,188 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     checks.append(assert_equal("band clip 0x7000 count 5", clip_count(0x7000, 5, 8), 0x00040001))
     checks.append(assert_equal("destination shifted current band", dest_1f626_case(0x3234, 2, 3), {"branch": "shifted current band", "a1": 0x1002C8, "d2": 2, "d3": 3}))
     checks.append(assert_equal("destination fallback buffer", dest_1f626_case(0x1234, 12, 5), {"branch": "fallback buffer", "a1": 0x200C68, "d2": 11, "d3": 5}))
+
+    checks.append(assert_equal("ESC &k#G line termination mode bits", {value: line_termination_mode_bits(value) for value in range(4)}, {0: 0x00, 1: 0x80, 2: 0x60, 3: 0xE0}))
+    control_fields = ("cursor_x", "cursor_y", "pending_width", "right_limit_latch", "pending_text", "page_roots", "page_finalizes", "span_flushes", "post_flushes", "span_updates")
+    cr_default = apply_direct_control_code(control_fixture_state(
+        cursor_x=pack12(42, 3),
+        cursor_y=pack12(20),
+        left_margin=pack12(7, 2),
+        pending_width=1,
+        right_limit_latch=1,
+        pending_text=1,
+        line_termination=0x00,
+        span_flush_enable=1,
+    ), 0x0D)
+    checks.append(assert_equal("CR resets horizontal cursor and flushes pending text span", select_keys(cr_default, control_fields), {
+        "cursor_x": pack12(7, 2),
+        "cursor_y": pack12(20),
+        "pending_width": 0,
+        "right_limit_latch": 0,
+        "pending_text": 0,
+        "page_roots": 0,
+        "page_finalizes": 0,
+        "span_flushes": 1,
+        "post_flushes": 1,
+        "span_updates": 0,
+    }))
+    cr_lf = apply_direct_control_code(control_fixture_state(
+        cursor_x=pack12(42),
+        cursor_y=pack12(20, 11),
+        left_margin=pack12(7),
+        vmi=pack12(0, 2),
+        line_termination=0x80,
+    ), 0x0D)
+    checks.append(assert_equal("CR line-termination mode 1 also advances vertical cursor", select_keys(cr_lf, control_fields), {
+        "cursor_x": pack12(7),
+        "cursor_y": pack12(21, 1),
+        "pending_width": 0,
+        "right_limit_latch": 0,
+        "pending_text": 0,
+        "page_roots": 1,
+        "page_finalizes": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "span_updates": 0,
+    }))
+    lf_mode2 = apply_direct_control_code(control_fixture_state(
+        cursor_x=pack12(42),
+        cursor_y=pack12(10),
+        left_margin=pack12(6),
+        vmi=pack12(1),
+        pending_width=1,
+        right_limit_latch=1,
+        pending_text=1,
+        line_termination=0x60,
+    ), 0x0A)
+    checks.append(assert_equal("LF line-termination mode 2 resets horizontal cursor", select_keys(lf_mode2, control_fields), {
+        "cursor_x": pack12(6),
+        "cursor_y": pack12(11),
+        "pending_width": 0,
+        "right_limit_latch": 0,
+        "pending_text": 0,
+        "page_roots": 1,
+        "page_finalizes": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "span_updates": 0,
+    }))
+    ff_mode2 = apply_direct_control_code(control_fixture_state(
+        cursor_x=pack12(42),
+        left_margin=pack12(6),
+        pending_width=1,
+        right_limit_latch=1,
+        pending_text=1,
+        line_termination=0x20,
+        span_flush_enable=1,
+    ), 0x0C)
+    checks.append(assert_equal("FF line-termination mode 2 resets horizontal cursor and marks page eject", select_keys(ff_mode2, control_fields), {
+        "cursor_x": pack12(6),
+        "cursor_y": pack12(20),
+        "pending_width": 0,
+        "right_limit_latch": 0,
+        "pending_text": 0xFF,
+        "page_roots": 1,
+        "page_finalizes": 1,
+        "span_flushes": 1,
+        "post_flushes": 1,
+        "span_updates": 0,
+    }))
+    ht_next_stop = apply_direct_control_code(control_fixture_state(
+        cursor_x=pack12(17),
+        left_margin=pack12(5),
+        hmi=pack12(1),
+        right_limit=pack12(100),
+        page_width=120,
+        pending_text=1,
+    ), 0x09)
+    checks.append(assert_equal("HT advances to next eight-column stop", select_keys(ht_next_stop, control_fields), {
+        "cursor_x": pack12(21),
+        "cursor_y": pack12(20),
+        "pending_width": 1,
+        "right_limit_latch": 0,
+        "pending_text": 0,
+        "page_roots": 0,
+        "page_finalizes": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "span_updates": 1,
+    }))
+    ht_clamp = apply_direct_control_code(control_fixture_state(
+        cursor_x=pack12(110),
+        left_margin=pack12(0),
+        hmi=pack12(1),
+        right_limit=pack12(100),
+        page_width=90,
+        pending_text=1,
+    ), 0x09)
+    checks.append(assert_equal("HT clamps to page width when already beyond right limit", select_keys(ht_clamp, control_fields), {
+        "cursor_x": pack12(90),
+        "cursor_y": pack12(20),
+        "pending_width": 1,
+        "right_limit_latch": 0,
+        "pending_text": 0,
+        "page_roots": 0,
+        "page_finalizes": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "span_updates": 1,
+    }))
+    bs_default = apply_direct_control_code(control_fixture_state(
+        cursor_x=pack12(20),
+        left_margin=pack12(5),
+        hmi=pack12(2),
+        pending_text=1,
+        right_limit_latch=1,
+    ), 0x08)
+    checks.append(assert_equal("BS subtracts HMI and sets pending previous-width latch", select_keys(bs_default, control_fields), {
+        "cursor_x": pack12(18),
+        "cursor_y": pack12(20),
+        "pending_width": 1,
+        "right_limit_latch": 0,
+        "pending_text": 0,
+        "page_roots": 0,
+        "page_finalizes": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "span_updates": 1,
+    }))
+    bs_left_clamp = apply_direct_control_code(control_fixture_state(
+        cursor_x=pack12(6),
+        left_margin=pack12(5),
+        hmi=pack12(3),
+    ), 0x08)
+    checks.append(assert_equal("BS clamps at left margin when crossing it", select_keys(bs_left_clamp, control_fields), {
+        "cursor_x": pack12(5),
+        "cursor_y": pack12(20),
+        "pending_width": 1,
+        "right_limit_latch": 0,
+        "pending_text": 0,
+        "page_roots": 0,
+        "page_finalizes": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "span_updates": 1,
+    }))
+    bs_previous_width = apply_direct_control_code(control_fixture_state(
+        cursor_x=pack12(30),
+        left_margin=pack12(5),
+        hmi=pack12(2),
+        alternate_metrics=1,
+        previous_width_word=4,
+    ), 0x08)
+    checks.append(assert_equal("BS alternate metrics subtracts previous width word", select_keys(bs_previous_width, control_fields), {
+        "cursor_x": pack12(26),
+        "cursor_y": pack12(20),
+        "pending_width": 1,
+        "right_limit_latch": 0,
+        "pending_text": 0,
+        "page_roots": 0,
+        "page_finalizes": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "span_updates": 1,
+    }))
 
     width3 = simulate_row_copy(data, u32(data, 0x1F08E + 3 * 4), 3)
     checks.append(assert_equal("main row-copy width 3 rows 3 writes", [write.text() for write in width3.writes], [
@@ -1147,6 +1489,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ):
         span = int(glyph["render_span"])
         lines.append(f"| `0x{context:08x}` | `{glyph_index}` | `{span}` | `0x{u32(data, 0x1F08E + span * 4):06x}` | decoded destination rows match resource rows |")
+    lines.append("")
+
+    lines.append("## Direct Control-Code Cursor Fixtures")
+    lines.append("")
+    lines.append("These fixtures model the packed 12-subunit cursor/page state touched by `0xf02c..0xf55e`. They are synthetic state fixtures, not a full parser byte-stream run yet, but they pin the ROM-derived side effects that text streams need before page-object rendering.")
+    lines.append("")
+    lines.append("- `ESC &k#G` line-termination bits: `0 -> 0x00`, `1 -> 0x80`, `2 -> 0x60`, `3 -> 0xe0`.")
+    lines.append("- CR resets x to the left margin and flushes a pending text span; in mode 1 it also advances y from `20+11/12` by `2/12` to `21+1/12`.")
+    lines.append("- LF in mode 2 performs the CR-style x reset before advancing y by VMI.")
+    lines.append("- FF in mode 2 performs the CR-style x reset, flushes pending text, ensures/finalizes a page root marker, and leaves pending text/page-eject state as `0xff`.")
+    lines.append("- HT from x `17`, left margin `5`, and HMI `1` advances to the next eight-column stop at x `21`; a second fixture clamps HT to page width `90` when the cursor is already beyond the right limit.")
+    lines.append("- BS subtracts HMI, clamps at the left margin when it would cross it, and in alternate metrics mode subtracts the previous-width word instead.")
     lines.append("")
 
     lines.append("## Compact Text Bucket Fixture")

@@ -1,12 +1,12 @@
 # PCL Parser Firmware Notes
 
-Sources: `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`; `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`; `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`; `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`; `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`; `generated/analysis/ic30_ic13_parser_dispatch_tables.md`; `generated/analysis/ic30_ic13_parser_xrefs.md`; `generated/analysis/ic30_ic13_cmpi_byte_candidates.md`.
+Sources: `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`; `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`; `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`; `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`; `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`; `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`; `generated/analysis/ic30_ic13_direct_control_code_flow.md`; `generated/analysis/ic30_ic13_parser_dispatch_tables.md`; `generated/analysis/ic30_ic13_parser_xrefs.md`; `generated/analysis/ic30_ic13_cmpi_byte_candidates.md`.
 
 These are current anchors for the path from host bytes into PCL command records. Names are provisional until caller/callee cross-references are broader.
 
 ## Host Byte Fetch Anchor
 
-Routine `0x0000a904` returns the next input byte in `D7`. It checks several buffered sources first:
+`generated/analysis/ic30_ic13_host_byte_fetch_flow.md` now splits routine `0x0000a904` into a priority-ordered normalized byte source. It returns the next input byte in `D7`, or `D7=-1` in the one immediate no-byte/error branch where `0x780e66` and `0x780e3b` are both set. It checks several buffered sources first:
 
 - State flag `0x7821cd`.
 - Mode/status flag `0x780e66`.
@@ -15,7 +15,7 @@ Routine `0x0000a904` returns the next input byte in `D7`. It checks several buff
 - Another buffer count/pointer at `0x783e76` / `0x783e78`.
 - Ring-buffer-looking count/pointer at `0x783e54` / `0x783e56`, wrapping between `0x783a4c` and `0x783e53`.
 
-One direct hardware input path starts at `0x0000a9f0`:
+One direct hardware input path starts at `0x0000a9f0` when mode selector `0x780e40 == 1`:
 
 1. Polls `0x8e01` until bit `0x10` is set, with timeout counter `0x2710`.
 2. Reads input byte from `0x8801` into `D7`.
@@ -23,7 +23,9 @@ One direct hardware input path starts at `0x0000a9f0`:
 4. Waits for bit 0 of `0x8c01` to clear.
 5. Toggles output/control registers including `0xa601`, `0xaa01`, and state byte `0x7828fa`.
 
-Current interpretation: `0x8801`, `0x8c01`, and `0x8e01` are host-interface or formatter I/O status/data registers. This is a strong starting point for following Centronics/serial input into the normalized PCL byte stream.
+A second direct input path starts at `0x0000aaa6` when `0x780e40` is nonzero but not `1`. It polls `0xfffee005`, treats bit 0 as data-ready, ORs status bits 7 and 6 into `0x780e2e` as `0x80` and `0x40`, reads the byte from `0xfffee001`, and writes handshake shadow `0x7828fb` to `0xfffee009`. The cleanup helper at `0xab8e` is called from `0x35de` and normalizes either the `0xaa01`/`0xa601` mode-1 handshake or the `0xfffee009` mode-2 handshake with the literal `bclr #0x40,D0` operation seen at `0xabe0`.
+
+Current interpretation: these are host-interface or formatter I/O status/data registers. The ROM evidence proves polling/data/handshake behavior, but the exact physical interface names still need board or manual correlation.
 
 ## ESC Byte Handling
 
@@ -97,7 +99,11 @@ Normal mode 0 has these direct control-code entries:
 | `0x07` | BEL | no handler in table |
 | `0x00` | NUL | no handler in table |
 
-The CR/LF/FF handlers update state around `0x782c8a`, `0x782c8e`, `0x782dd6`, `0x783160`, and `0x78318f`, with helper calls into the coordinate arithmetic block around `0x104d8..0x10518`. These are the first cursor/page-position anchors for pixel placement.
+`generated/analysis/ic30_ic13_direct_control_code_flow.md` now traces these handlers into cursor/page-visible side effects. The line-termination command `ESC &k#G` writes bit patterns to `0x78318f`: `0` stores `0x00`, `1` stores `0x80`, `2` stores `0x60`, and `3` stores `0xe0`. CR tests bit 7 to optionally also advance vertically, LF tests bit 6 to optionally also reset horizontally, and FF tests bit 5 to optionally also reset horizontally before page finalization.
+
+The CR/LF/FF/HT/BS handlers update state around `0x782c8a`, `0x782c8e`, `0x782dd6`, `0x782dda`, `0x78315c`, `0x783160`, and `0x78318f`, with helper calls into the coordinate arithmetic block around `0x104d8..0x10518`. They can also flush text spans through `0x12714` / `0x126e2`, ensure/finalize page roots through `0x10084` / `0xff1e`, and update active font context spans through `0xd4ac` / `0xd8fc`.
+
+`tools/render_fixture_harness.py` now has synthetic packed-state fixtures for the `ESC &k#G` bit map plus CR/LF/FF/HT/BS cursor/page effects. These fixtures still need to be replaced by parser-driven byte-stream fixtures before they can prove full host-stream behavior.
 
 ## Top-Level ESC Dispatch
 
@@ -177,9 +183,9 @@ The `cmpi.w #0x000c` at `0x0001053a` is not the PCL form-feed handler. The surro
 
 ## Next RE Targets
 
-- Find callers of `0xdaf0`, `0xdd08`, and `0xa904`.
+- Find callers of `0xdaf0` and `0xdd08`, and keep expanding the named roles for the `0xa904` callers listed in `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
 - Decode all normal and alternate parser table handlers into PCL command names.
 - Decode the six-byte tokenizer records and 12-byte command/data pool records.
 - Follow `ESC & f` handling into macro definition/execution state.
-- Follow direct control-code handlers into exact cursor/page state updates: CR, LF, FF, BS, HT, and `ESC E`.
+- Replace the synthetic direct control-code cursor/page fixtures with parser-driven byte-stream fixtures, then extend the same treatment to `ESC E`.
 - Build byte-stream fixtures for simple text, `ESC E`, and one macro command once handler destinations are named.

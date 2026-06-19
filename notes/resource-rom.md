@@ -1,6 +1,6 @@
 # Resource ROM Notes
 
-Sources: `generated/roms/ic32_ic15.bin`; `generated/analysis/ic32_ic15_strings.txt`; `generated/analysis/ic32_ic15_resource_markers.txt`; `generated/analysis/ic32_ic15_font_records.md`; `generated/analysis/ic32_ic15_resource_glyph_probe.md`; `generated/analysis/ic30_ic13_font_context_bridge.md`; `generated/analysis/ic30_ic13_text_glyph_index_flow.md`; `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`; `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`; `generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`; `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`; `generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst`; `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`.
+Sources: `generated/roms/ic32_ic15.bin`; `generated/analysis/ic32_ic15_strings.txt`; `generated/analysis/ic32_ic15_resource_markers.txt`; `generated/analysis/ic32_ic15_font_records.md`; `generated/analysis/ic32_ic15_resource_glyph_probe.md`; `generated/analysis/ic30_ic13_font_context_bridge.md`; `generated/analysis/ic30_ic13_text_glyph_index_flow.md`; `generated/analysis/ic30_ic13_active_symbol_set_flow.md`; `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`; `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`; `generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`; `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`; `generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst`; `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`; `generated/disasm/ic30_ic13_font_id_select_017708.lst`; `generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`; `generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`; `generated/disasm/ic30_ic13_font_update_common_00c580.lst`.
 
 The `IC32,IC15` interleave is not the reset firmware pair. It begins with a `HEAD` signature and contains repeated built-in font names and dense offset tables. Treat it as the current source for built-in font directories, metrics, and glyph data.
 
@@ -122,14 +122,16 @@ For bit-30 built-in contexts, `0x14d9c` initializes the active map from selected
 
 The generated `generated/analysis/ic30_ic13_symbol_set_patch_tables.md` report decodes the `0x14fce` table into 18 patch records. Each record is keyed by a PCL symbol-set code and Technical Reference name: ISO 2 IRV (`2U`), ISO 4 United Kingdom (`1E`), ISO 25/69 French (`0F`/`1F`), HP/ISO German (`0G`/`1G`), ISO 15 Italian (`0I`), ISO 14 JIS ASCII (`0K`), ISO 57 Chinese (`2K`), ISO 10/11 Swedish (`3S`/`0S`), HP/ISO Spanish (`1S`/`2S`/`6S`), ISO 16/84 Portuguese (`4S`/`5S`), and ISO 60/61 Norwegian (`0D`/`1D`). The patch records contain byte pairs applied as `map[dst] = map[src]`. Special active values `0x0005` (`0E`, HP Roman Extension) and `0x0015` (`0U`, ISO 6 ASCII) use hard-coded half-map behavior instead of a patch table.
 
+The generated `generated/analysis/ic30_ic13_active_symbol_set_flow.md` report traces those active words back to the host parser. `ESC (` uses setup handler `0x1201e` and slot word `0`; `ESC )` uses `0x12008` and slot word `1`; both terminal paths call `0x120be`, which calls `0x1be22` and then the common refresh `0xc580`. For normal symbol-set finals, `0x1be22` computes the PCL word as `(parameter << 5) + final_byte - 0x40`, so `ESC (8U` becomes requested word `0x0115` at `0x782ef4`, while the secondary slot uses `0x782f04`. Final `X` restores the previous requested symbol word and calls `0x17708` for font-ID selection. Final `@` uses a numeric subtable: the manual-documented `3@` takes the default-font path, while firmware-supported `@0..@2` read/copy requested words from the four-entry table at `0x782f1c/20/24/28`. The similar table at `0x782f0c/10/14/18` is built separately and consumed by `0x156de` only as a candidate-selection fallback. Font activation at `0x156de` turns requested words into active selected words at `0x783144` / `0x783146`, after fallback/default handling and candidate compatibility checks.
+
 This makes the current renderer identity `(context longword, mapped glyph byte)`. For example, the unnamed built-in record at context `0x4008004c` has a base range `0x21..0xfe`, so before `0x14f16` patching, host byte `0x21` maps to glyph index `0`. The first `COURIER` and `LINE_PRINTER` records have base ranges `0x01..0xff`, so their pre-patch base mapping starts at byte `0x01 -> glyph 0`.
 
 ## Extraction Targets
 
 1. Decode the `HEAD` record scanner in firmware routine `0x0000041a`.
 2. Finish naming the firmware-scanned record metadata fields rather than relying on string labels alone.
-3. Trace the `0x783144` / `0x783146` active values back to the symbol-set PCL handlers.
-4. Feed more real glyph entries through the executable row-copy harness and compare complete rendered glyph bitmaps.
+3. Confirm whether the firmware-supported `0x1be22` `@0..@2` variants are exposed by any host-visible command dialect, or are only internal-compatible table variants.
+4. Feed the decoded real glyph-row fixtures through the executable row-copy/page-object harness and broaden coverage beyond the three current mode-1 built-in examples.
 5. Extract enough metadata for each `COURIER` and `LINE_PRINTER` record to identify point size, pitch, orientation, style, symbol set, cell size, and baseline.
 6. Locate the glyph bitmap payloads and write a deterministic extractor from the verified `IC32,IC15` hash.
 
@@ -160,6 +162,6 @@ Current candidate-list state:
 | `0x7827b8` | active candidate-list count |
 | `0x7828a8` | selected candidate slot pointer |
 
-`0x1569c` activates one of the candidate lists by copying a pointer/count pair to `0x78287c` / `0x7827b8` and setting bit 15 in each list entry. `0x156de` then filters the active list against current font criteria, using helpers such as `0x15890` and `0x158be` to normalize typeface/symbol-set-like values.
+`0x1569c` activates one of the candidate lists by copying a pointer/count pair to `0x78287c` / `0x7827b8` and setting bit 15 in each list entry. `0x156de` then filters the active list against current font criteria. For symbol sets, it reads requested words from `0x782ef4` or `0x782f04`, normalizes them through `0x15850`, compares candidate words returned by `0x15890` / `0x158be`, accepts the small compatibility table at `0x15840`, and stores the active selected word into `0x783144` or `0x783146`.
 
 Filtering helpers around `0x1519a`, `0x153c6`, `0x147f4`, and `0x148f8` prune the active list by attributes such as pitch, style, symbol set, and current orientation-specific state. This directly affects text rendering because it determines the built-in font record used for glyph metrics and bitmaps.

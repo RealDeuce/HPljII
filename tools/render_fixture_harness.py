@@ -66,6 +66,22 @@ def resolve_builtin_glyph(resources: bytes, context: int, glyph_index: int) -> d
     }
 
 
+def glyph_bitmap_rows(resources: bytes, glyph: dict[str, int | bytes]) -> list[str]:
+    mode = int(glyph["mode"])
+    if mode != 1:
+        raise AssertionError(f"mode {mode} glyph bitmap decoder is not implemented")
+    bitmap = int(glyph["bitmap"])
+    rows = int(glyph["rows"])
+    width = int(glyph["width"])
+    render_span = int(glyph["render_span"])
+    out: list[str] = []
+    for row_index in range(rows):
+        row = resources[bitmap + row_index * render_span : bitmap + (row_index + 1) * render_span]
+        bits = "".join("#" if (byte >> (7 - bit)) & 1 else "." for byte in row for bit in range(8))
+        out.append(bits[:width])
+    return out
+
+
 def expand_mode0(payload: bytes) -> list[int]:
     return [int.from_bytes(payload[i : i + 2], "big") for i in range(0, len(payload), 2)]
 
@@ -322,6 +338,41 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "render_span": 2,
     }))
     checks.append(assert_equal("resource context 0x4008004c glyph 0 bitmap sample", bytes(default_glyph0["sample"]).hex(" "), "1c 00 3e 00 3e 00 3e 00 3e 00 3e 00 3e 00 3e 00"))
+    default_glyph0_rows = glyph_bitmap_rows(resources, default_glyph0)
+    checks.append(assert_equal("resource context 0x4008004c glyph 0 full bitmap rows", default_glyph0_rows, [
+        "...###...",
+        "..#####..",
+        "..#####..",
+        "..#####..",
+        "..#####..",
+        "..#####..",
+        "..#####..",
+        "..#####..",
+        "..#####..",
+        "...###...",
+        "..#####..",
+        "..#####..",
+        "...###...",
+        "..#####..",
+        "...###...",
+        "..#####..",
+        "...###...",
+        "...###...",
+        "...###...",
+        "...###...",
+        "...###...",
+        ".........",
+        ".........",
+        ".........",
+        ".........",
+        "..#####..",
+        ".#######.",
+        "#########",
+        "#########",
+        "#########",
+        ".#######.",
+        "..#####..",
+    ]))
 
     courier_glyph0 = resolve_builtin_glyph(resources, 0x44080418, 0)
     checks.append(assert_equal("resource context 0x44080418 glyph 0 fields", {key: courier_glyph0[key] for key in ("base", "table", "entry", "bitmap", "delta", "mode", "rows", "width", "render_span")}, {
@@ -335,6 +386,38 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "width": 28,
         "render_span": 4,
     }))
+    courier_glyph0_rows = glyph_bitmap_rows(resources, courier_glyph0)
+    checks.append(assert_equal("resource context 0x44080418 glyph 0 full bitmap rows", courier_glyph0_rows, [
+        "...........######...........",
+        "........############........",
+        ".......####......####.......",
+        ".....###............###.....",
+        "....##................##....",
+        "...##..................##...",
+        "..##....................##..",
+        "..##....................##..",
+        ".##......................##.",
+        ".##......................##.",
+        ".##......#........#......##.",
+        "##......###......###......##",
+        "##.......#........#.......##",
+        "##........................##",
+        "##........................##",
+        "##........................##",
+        "##........................##",
+        "##........................##",
+        ".##......................##.",
+        ".##.....##........##.....##.",
+        ".##......##......##......##.",
+        "..##......########......##..",
+        "..##.......######.......##..",
+        "...##..................##...",
+        "....##................##....",
+        ".....###............###.....",
+        ".......###........###.......",
+        "........############........",
+        "...........######...........",
+    ]))
 
     line_printer_glyph0 = resolve_builtin_glyph(resources, 0x440946B4, 0)
     checks.append(assert_equal("resource context 0x440946b4 glyph 0 fields", {key: line_printer_glyph0[key] for key in ("base", "table", "entry", "bitmap", "delta", "mode", "rows", "width", "render_span")}, {
@@ -348,6 +431,41 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "width": 16,
         "render_span": 2,
     }))
+    line_printer_glyph0_rows = glyph_bitmap_rows(resources, line_printer_glyph0)
+    checks.append(assert_equal("resource context 0x440946b4 glyph 0 full bitmap rows", line_printer_glyph0_rows, [
+        "......####......",
+        "....########....",
+        "..###......###..",
+        "..##........##..",
+        ".##..........##.",
+        ".##..........##.",
+        "##.####..####.##",
+        "##..##....##..##",
+        "##............##",
+        "##............##",
+        ".##..#....#..##.",
+        ".##..######..##.",
+        "..##..####..##..",
+        "..###......###..",
+        "....########....",
+        "......####......",
+    ]))
+
+    lines.append("## Built-In Glyph Bitmap Fixtures")
+    lines.append("")
+    lines.append("These rows are decoded from the resource-ROM bytes returned by the same built-in offset-table path that renderer helper `0x1f354` uses. `#` is a set pixel and `.` is a clear pixel; rows are clipped to the glyph width field.")
+    lines.append("")
+    for title, glyph, rows in (
+        ("context `0x4008004c`, glyph `0`", default_glyph0, default_glyph0_rows),
+        ("context `0x44080418`, glyph `0`", courier_glyph0, courier_glyph0_rows),
+        ("context `0x440946b4`, glyph `0`", line_printer_glyph0, line_printer_glyph0_rows),
+    ):
+        lines.append(f"### {title}")
+        lines.append("")
+        lines.append(f"entry `0x{int(glyph['entry']):06x}`, bitmap `0x{int(glyph['bitmap']):06x}`, width `{int(glyph['width'])}`, rows `{int(glyph['rows'])}`, span `{int(glyph['render_span'])}`")
+        lines.append("")
+        lines.extend(f"`{row}`" for row in rows)
+        lines.append("")
 
     lines.append(f"checks: {len(checks)}")
     lines.append("")

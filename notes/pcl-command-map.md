@@ -61,6 +61,8 @@ These command-to-handler anchors are current priorities for pixel-perfect render
 | `ESC *c#V` | `0x010ae0` | rectangle height in decipoints |
 | `ESC *c#D` | `0x015a56` | assign font ID |
 | `ESC *c#F` | `0x016df6` | font control |
+| `ESC (#A..^` | `0x0120be` | primary font-designation family: symbol set, `#X` font ID, and `3@` default font |
+| `ESC )#A..^` | `0x0120be` | secondary font-designation family: symbol set, `#X` font ID, and `3@` default font |
 | `ESC (s#P` / `ESC )s#P` | `0x012082` | primary/secondary spacing |
 | `ESC (s#H` / `ESC )s#H` | `0x012096` | primary/secondary pitch |
 | `ESC (s#V` / `ESC )s#V` | `0x012046` | primary/secondary point size |
@@ -91,6 +93,8 @@ It then rebuilds page-related state, including `0x782da2`, `0x782db2`, `0x782db4
 
 Primary and secondary font-selection commands share the same final handler stubs, with the `ESC (` versus `ESC )` distinction preserved by setup routines before mode 4. The final handlers call lower-level font-state routines around `0xc6ec..0xc930` and then common routine `0xc580`.
 
+Primary and secondary font-designation commands use the same parser shape. `ESC (` calls setup `0x1201e`, which pushes slot word `0`; `ESC )` calls setup `0x12008`, which pushes slot word `1`; final bytes `@` through `^` dispatch to `0x120be`. That wrapper calls `0x1be22`, which computes the provisional PCL symbol word as `(parameter << 5) + final_byte - 0x40` and stores it at `0x782ef4 + 0x10*slot`. Normal symbol-set finals keep that word and call common refresh `0xc580`; final `X` restores the previous requested symbol word and calls `0x17708` for `ESC (#X` / `ESC )#X` font-ID selection; final `@` runs a numeric table where `3@` is the documented default-font command and `@0..@2` are firmware-supported table/copy variants. The active selected words later consumed by glyph-map patching are `0x783144` and `0x783146`; this path is detailed in `generated/analysis/ic30_ic13_active_symbol_set_flow.md`.
+
 Page geometry and the first raster transfer path are now tracked in `notes/page-raster-imaging.md`. The important anchors are that `0x105d0` clips/consumes raster payload bytes, ensures the page/image root exists through `0x10084`, calls `0x13070` with the raster state block rooted at `0x783170`, and then `0x138de` copies host bytes into the queued raster object payload. Text and rectangle/rule objects converge into the same page-object storage through `0x12714` / `0x12f2e` and `0x13386` / `0x13520`. The render bridge now runs through page/control records copied by `0x1edc6` into work records; `0x1efc2` classifies bucket objects so raster rows dispatch to `0x1f88e`, compact text/glyph objects dispatch through `0x1effe`, and rule lists render through `0x1f446` / `0x1f756`. Compact glyph and encoded raster span modes are summarized in `generated/analysis/ic30_ic13_render_subrenderers.md`; deterministic encoded raster expansion fixtures are generated in `generated/analysis/ic30_ic13_render_expansion_fixtures.md`; destination/clipping fixtures are generated in `generated/analysis/ic30_ic13_render_destination_fixtures.md`; compact glyph row-copy fixtures are generated in `generated/analysis/ic30_ic13_render_row_copy_fixtures.md`; `tools/render_fixture_harness.py` executes these primitive fixtures together.
 
 ## Next RE Targets
@@ -99,4 +103,5 @@ Page geometry and the first raster transfer path are now tracked in `notes/page-
 - Name cursor variables `0x782c8a` and `0x782c8e` by comparing CR/LF/FF, page size, orientation, and raster behavior.
 - Compare page geometry constants from `generated/analysis/ic30_ic13_page_geometry_tables.md` against manual printable-area figures.
 - Trace font handler stubs `0x012046..0x0120aa` into built-in resource ROM font selection and metrics lookup.
+- Confirm whether the firmware-supported `0x1be22` `@0..@2` variants are exposed by any host-visible command dialect.
 - Trace macro control handler `0x00dd08` into `ESC &f#X` behavior and interaction with the alternate/data parser table.

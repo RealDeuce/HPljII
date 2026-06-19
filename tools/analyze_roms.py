@@ -691,6 +691,215 @@ def text_glyph_index_flow_report(firmware: bytes, resources: bytes) -> str:
     return "\n".join(lines)
 
 
+def active_symbol_set_flow_report(data: bytes) -> str:
+    routines = [
+        (0x000120BE, "symbol-set terminal wrapper"),
+        (0x0001BE22, "PCL symbol-set word handler"),
+        (0x00017708, "primary/secondary font ID selection"),
+        (0x0001AC0A, "default-font command symbol table builder"),
+        (0x0001AF36, "font-selection fallback symbol table builder"),
+        (0x0001B04C, "default/fallback symbol table refresh wrapper"),
+        (0x0000C580, "common font/symbol update refresh"),
+        (0x00013EB8, "selected font/object refresh from common updater"),
+        (0x0000C428, "current-font context installer"),
+        (0x000156DE, "font candidate filter against requested symbol set"),
+        (0x00015850, "requested symbol-set normalizer"),
+        (0x00015890, "built-in candidate symbol-set reader"),
+        (0x000158BE, "inline/downloaded candidate symbol-set reader"),
+        (0x00014F16, "active character-map symbol patcher"),
+    ]
+
+    state_addresses = [
+        (0x0078299A, "parser continuation handler pointer"),
+        (0x0078299E, "parser command-record stack pointer"),
+        (0x00782EF4, "primary requested symbol-set word"),
+        (0x00782F04, "secondary requested symbol-set word"),
+        (0x0078289E, "temporary primary/secondary default-font slot selector"),
+        (0x0078289F, "temporary orientation/font-list selector"),
+        (0x007828A0, "temporary or selected candidate-list pointer"),
+        (0x007828A4, "candidate/default symbol-set word scratch"),
+        (0x007828A8, "selected candidate slot pointer"),
+        (0x00783144, "primary active selected symbol-set word"),
+        (0x00783146, "secondary active selected symbol-set word"),
+        (0x00782F08, "primary remembered active symbol-set fallback"),
+        (0x00782F0A, "secondary remembered active symbol-set fallback"),
+        (0x00782F0C, "font-selection fallback symbol table: orientation 0 primary"),
+        (0x00782F10, "font-selection fallback symbol table: orientation 0 secondary"),
+        (0x00782F14, "font-selection fallback symbol table: orientation 1 primary"),
+        (0x00782F18, "font-selection fallback symbol table: orientation 1 secondary"),
+        (0x00782F1C, "`@0`/`@1` default-font table: orientation 0 primary"),
+        (0x00782F20, "`@0`/`@1` default-font table: orientation 0 secondary"),
+        (0x00782F24, "`@0`/`@1` default-font table: orientation 1 primary"),
+        (0x00782F28, "`@0`/`@1` default-font table: orientation 1 secondary"),
+        (0x00782F2C, "font/symbol update dirty flag"),
+        (0x00782F2D, "font/symbol update in-progress flag"),
+        (0x00782F06, "primary/secondary selected text slot"),
+        (0x007828DE, "font-selection slot currently being rebuilt"),
+    ]
+
+    def fmt_refs(refs: list[int], limit: int = 10) -> str:
+        if not refs:
+            return "(none)"
+        text = ", ".join(f"`0x{ref:06x}`" for ref in refs[:limit])
+        if len(refs) > limit:
+            text += f", ... ({len(refs)} total)"
+        return text
+
+    compat_pairs: list[tuple[int, int]] = []
+    for pos in range(0x15840, 0x1584C, 4):
+        compat_pairs.append((u16(data, pos), u16(data, pos + 2)))
+
+    def dispatch_table(table: int) -> tuple[list[tuple[int, int]], int]:
+        entries: list[tuple[int, int]] = []
+        pos = table
+        while True:
+            target = u32(data, pos)
+            pos += 4
+            if target == 0:
+                return entries, u32(data, pos)
+            match = u32(data, pos)
+            pos += 4
+            entries.append((match, target))
+
+    final_entries, final_default = dispatch_table(0x1BE0A)
+    at_entries, at_default = dispatch_table(0x1BDE2)
+
+    normal_examples = [
+        (0, ord("U"), 0x0015, "0U"),
+        (8, ord("U"), 0x0115, "8U"),
+        (0, ord("E"), 0x0005, "0E"),
+        (2, ord("U"), 0x0055, "2U"),
+    ]
+
+    lines = ["# IC30/IC13 Active Symbol-Set Flow", ""]
+    lines.append("Generated from focused firmware windows around the PCL parser, symbol-set handler `0x1be22`, common font refresh `0xc580`, and font candidate activation `0x156de`.")
+    lines.append("This report tracks how host commands such as `ESC (8U` and `ESC )0B` become the active symbol-set words that rebuild the primary/secondary character-to-glyph maps.")
+    lines.append("")
+
+    lines.append("## Parser Entry Points")
+    lines.append("")
+    lines.append("| Host command family | Setup handler | Slot setup evidence | Terminal dispatch |")
+    lines.append("| --- | ---: | --- | --- |")
+    lines.append("| `ESC (` primary font-designation family | `0x1201e` | calls `0x11f26`, which pushes parser record byte `0x80` and word `0` | final bytes `@`..`^` dispatch to `0x120be` |")
+    lines.append("| `ESC )` secondary font-designation family | `0x12008` | calls `0x11efe`, which pushes parser record byte `0x80` and word `1` | final bytes `@`..`^` dispatch to `0x120be` |")
+    lines.append("| terminal wrapper | `0x120be` | calls `0x1be22`, then common refresh `0xc580` | shared path for normal symbol-set selection, `X` font-ID selection, and `@` default/table variants |")
+    lines.append("")
+
+    lines.append("## Symbol-Set Word Construction")
+    lines.append("")
+    lines.append("Routine `0x1be22` pops the parsed command record, reads the final byte into `D3`, reads the numeric parameter into `D5`, and reads the slot word into `D4`. For ordinary symbol-set final letters, it computes:")
+    lines.append("")
+    lines.append("```text")
+    lines.append("symbol_word = (abs(parameter) << 5) + final_byte - 0x40")
+    lines.append("requested_slot = 0x782ef4 + 0x10 * slot")
+    lines.append("word[requested_slot] = symbol_word")
+    lines.append("```")
+    lines.append("")
+    lines.append("The `0x10 * slot` stride makes `0x782ef4` the primary requested symbol-set word and `0x782f04` the secondary requested symbol-set word. This matches PCL's symbol-set notation: the number is the high component and `A..Z` maps to suffix values `1..26`.")
+    lines.append("")
+    lines.append("| PCL code | Parameter | Final byte | Computed word | Manual name in current table |")
+    lines.append("| --- | ---: | ---: | ---: | --- |")
+    for parameter, final_byte, expected, label in normal_examples:
+        computed = (parameter << 5) + final_byte - 0x40
+        lines.append(f"| `{label}` | `{parameter}` | `0x{final_byte:02x}` | `0x{computed:04x}` | {symbol_set_name(expected)} |")
+    lines.append("")
+    lines.append("The computed word is intentionally provisional for two final-byte cases. Final `X` restores the previous requested symbol word and selects a font by ID. Final `@` runs a numeric sub-dispatch whose documented `3@` case selects default font characteristics.")
+    lines.append("")
+
+    lines.append("## Final-Byte Special Cases")
+    lines.append("")
+    lines.append("The common dispatch helper `0x33298` reads `{target, match}` longword pairs until a zero target, then jumps to the default target that follows. The final-byte table at `0x1be0a` decodes as:")
+    lines.append("")
+    lines.append("| Match | Target | Firmware effect |")
+    lines.append("| ---: | ---: | --- |")
+    final_descriptions = {
+        0x58: "final `X`: restore the saved requested symbol word, set `0x78287b`, call `0x17708(slot, parameter)` for font-ID selection, then set dirty flag `0x782f2c = 2` and `0x782f2d = 1`",
+        0x40: "final `@`: dispatch the numeric parameter through table `0x1bde2`",
+    }
+    for match, target in final_entries:
+        lines.append(f"| `0x{match:02x}` | `0x{target:06x}` | {final_descriptions.get(match, '(unidentified)')} |")
+    lines.append(f"| default | `0x{final_default:06x}` | mark `0x782f2c`/`0x782f2d` dirty using the requested symbol word already stored at `0x782ef4 + 0x10*slot` |")
+    lines.append("")
+
+    lines.append("The final `@` numeric table at `0x1bde2` decodes as:")
+    lines.append("")
+    lines.append("| Parameter | Target | Firmware effect |")
+    lines.append("| ---: | ---: | --- |")
+    at_descriptions = {
+        0: "set requested word from `0x782f1c + 8*orientation + 4*slot`, then mark maps dirty",
+        1: "set requested word from `0x782f1c + 8*orientation`, ignoring the primary/secondary slot offset, then mark maps dirty",
+        2: "for primary slot, restore the old requested word; for secondary slot, copy primary requested word `0x782ef4`; then mark maps dirty",
+        3: "default-font path: use `0x1b250`/`0x1ad66` to find or synthesize a candidate, temporarily install `0x7828a4` as the active symbol word for the slot, call `0x1b2fe`, restore the previous active/context state, then mark maps dirty",
+    }
+    for match, target in at_entries:
+        lines.append(f"| `{match}` | `0x{target:06x}` | {at_descriptions.get(match, '(unidentified)')} |")
+    lines.append(f"| default | `0x{at_default:06x}` | restore the old requested word and return without setting the dirty flags |")
+    lines.append("")
+
+    lines.append("## Default and Fallback Symbol Tables")
+    lines.append("")
+    lines.append("The LaserJet II Technical Reference documents `ESC (3@` / `ESC )3@` as the Default Font command and states that it sets all font characteristics except orientation to the user default font. The same manual text does not name `@0`, `@1`, or `@2`; the behavior below is therefore firmware-derived.")
+    lines.append("")
+    lines.append("| Table | Builder | Consumer | Layout | Firmware meaning |")
+    lines.append("| --- | ---: | ---: | --- | --- |")
+    lines.append("| `0x782f0c`, `0x782f10`, `0x782f14`, `0x782f18` | `0x1af36` | `0x156de` fallback at `0x1577e` | orientation 0 primary, orientation 0 secondary, orientation 1 primary, orientation 1 secondary | candidate-selection fallback words used after remembered active words `0x782f08`/`0x782f0a` do not satisfy current selection |")
+    lines.append("| `0x782f1c`, `0x782f20`, `0x782f24`, `0x782f28` | `0x1ac0a` | `0x1be22` final-`@` table | same four-entry orientation/slot layout | default-font command words used by `@0` and `@1`; `@3` uses the candidate found by `0x1b250`/`0x1ad66` more directly |")
+    lines.append("")
+    lines.append("When `0x1b250` finds a current default candidate, `0x1ac0a` clones its scratch word `0x7828a4` into all four `0x782f1c..0x782f28` entries. Otherwise it toggles temporary orientation/list selectors `0x78289f` and `0x78289e`, calls `0x1ab84`, and records one word per orientation/slot. `0x1af36` performs the parallel setup for the `0x782f0c..0x782f18` fallback table using `0x1ad66`.")
+    lines.append("")
+
+    lines.append("## Refresh and Active Selection")
+    lines.append("")
+    lines.append("| Step | Firmware evidence | Reproduction meaning |")
+    lines.append("| ---: | --- | --- |")
+    lines.append("| 1 | `0x1be22` writes the requested word into `0x782ef4 + 0x10*slot` and marks `0x782f2c`/`0x782f2d` | host symbol-set command changes the requested font-selection criteria, not just a renderer flag |")
+    lines.append("| 2 | `0x120be` immediately calls `0xc580` | symbol-set commands run the same common refresh used by other font-selection commands |")
+    lines.append("| 3 | `0xc580` reads the slot from the parser record, checks dirty flag `0x782f2c`, and calls `0x13eb8` and/or `0xc428` depending on current slot state | requested symbol-set changes can rebuild selected font context and reinstall it into page-root font slots |")
+    lines.append("| 4 | `0x156de` reads `0x782ef4` for primary or `0x782f04` for secondary, normalizes it through `0x15850`, and scans the active candidate list | the requested PCL word becomes the filter key for built-in/downloaded font candidates |")
+    lines.append("| 5 | `0x156de` writes the selected active word to `0x783144` for primary or `0x783146` for secondary after fallback/default handling | these are the active words consumed later by character-map setup |")
+    lines.append("| 6 | `0x1440c` snapshots `0x783144`/`0x783146` into selected-font state records at `0x783148`/`0x783152` offset `+4` | active object comparison can reject cached state when the symbol set changes |")
+    lines.append("| 7 | `0x14f16` reads `0x783144` or `0x783146` after base map initialization | Roman-8 built-in maps are patched according to the active requested symbol set before text objects are queued |")
+    lines.append("| 8 | `0xc580` and the orientation handler `0x10220` copy active words into `0x782f08`/`0x782f0a` | these remembered values are fallback/default inputs if current candidate selection cannot satisfy the requested word |")
+    lines.append("")
+
+    lines.append("## Compatibility Pair Table")
+    lines.append("")
+    lines.append("At `0x15742`, candidate symbol word `D7` is swapped into the high word and requested symbol word `D3` is copied into the low word, then compared against longwords at `0x15840`. These pairs allow a candidate with one symbol-set word to satisfy a related requested word.")
+    lines.append("")
+    lines.append("| Entry | Candidate word | Candidate code | Requested word | Requested code |")
+    lines.append("| ---: | ---: | --- | ---: | --- |")
+    for index, (candidate, requested) in enumerate(compat_pairs):
+        lines.append(f"| {index} | `0x{candidate:04x}` | `{pcl_symbol_set_code(candidate)}` | `0x{requested:04x}` | `{pcl_symbol_set_code(requested)}` |")
+    lines.append("")
+
+    lines.append("## Absolute JSR Call-Site Scan")
+    lines.append("")
+    lines.append("| Target | Role | Absolute JSR references |")
+    lines.append("| ---: | --- | --- |")
+    for target, role in routines:
+        lines.append(f"| `0x{target:06x}` | {role} | {fmt_refs(jsr_abs_refs(data, target))} |")
+    lines.append("")
+
+    lines.append("## State Address References")
+    lines.append("")
+    lines.append("| Address | Role | Longword literal references |")
+    lines.append("| ---: | --- | --- |")
+    for address, role in state_addresses:
+        lines.append(f"| `0x{address:08x}` | {role} | {fmt_refs(find_all(data, address.to_bytes(4, 'big')))} |")
+    lines.append("")
+
+    lines.append("## Current Reproduction Contract")
+    lines.append("")
+    lines.append("- Parse primary `ESC (` and secondary `ESC )` symbol-set commands into PCL words with `(number << 5) + suffix`, where suffix `A..Z` is `1..26`, except for final `X` and `@` special cases.")
+    lines.append("- Treat `ESC (#X` / `ESC )#X` as font-ID selection through `0x17708`; it restores the prior requested symbol word rather than accepting the provisional `X` symbol word.")
+    lines.append("- Treat `ESC (3@` / `ESC )3@` as default-font selection; the firmware also implements `@` parameters `0..2` as table/copy variants documented above.")
+    lines.append("- Treat `0x782ef4`/`0x782f04` as requested criteria and `0x783144`/`0x783146` as the active post-selection words.")
+    lines.append("- Rebuild the selected primary/secondary character-to-glyph map after symbol-set changes, then apply the `0x14f16` patch rules documented in `ic30_ic13_symbol_set_patch_tables.md`.")
+    lines.append("- Do not feed host bytes directly to `0x1f354`; the queued compact glyph byte must come from the active map selected by this flow.")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def symbol_set_patch_table_report(data: bytes) -> str:
     table = 0x14FCE
     entry_count = 18
@@ -2146,6 +2355,7 @@ def main() -> None:
     write_if_changed(ANALYSIS / "ic30_ic13_render_subrenderers.md", render_subrenderer_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_font_context_bridge.md", font_context_bridge_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_text_glyph_index_flow.md", text_glyph_index_flow_report(firmware, resources))
+    write_if_changed(ANALYSIS / "ic30_ic13_active_symbol_set_flow.md", active_symbol_set_flow_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_symbol_set_patch_tables.md", symbol_set_patch_table_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_render_expansion_fixtures.md", render_expansion_fixture_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_render_destination_fixtures.md", render_destination_fixture_report(firmware))

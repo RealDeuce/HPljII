@@ -774,6 +774,126 @@ def queue_text_source_via_12f2e(resources: bytes, source: dict[str, int]) -> dic
     }
 
 
+def bucket_find_or_alloc_via_1387c(
+    bucket_array: dict[int, list[bytearray]],
+    bucket_index: int,
+    selector: int,
+    capacity: int,
+    object_size: int,
+) -> dict[str, object]:
+    chain = bucket_array.setdefault(bucket_index, [])
+    for index, obj in enumerate(chain):
+        if u16(obj, 4) == (selector & 0xFFFF):
+            count = u16(obj, 6)
+            if count < capacity:
+                return {
+                    "object": obj,
+                    "allocated": False,
+                    "chain_index": index,
+                    "count_before": count,
+                    "bucket_index": bucket_index,
+                    "selector": selector & 0xFFFF,
+                    "capacity": capacity,
+                    "object_size": object_size,
+                }
+        elif index == len(chain) - 1:
+            break
+
+    obj = bytearray(object_size)
+    obj[4:6] = (selector & 0xFFFF).to_bytes(2, "big")
+    chain.insert(0, obj)
+    return {
+        "object": obj,
+        "allocated": True,
+        "chain_index": 0,
+        "count_before": 0,
+        "bucket_index": bucket_index,
+        "selector": selector & 0xFFFF,
+        "capacity": capacity,
+        "object_size": object_size,
+    }
+
+
+def queue_text_source_to_page_record_via_12f2e(resources: bytes, page_record: dict[str, object], source: dict[str, int]) -> dict[str, object]:
+    if source["flag"] == 0:
+        raise AssertionError("inline/downloaded text source records are not implemented")
+    bucket_array = page_record.setdefault("bucket_array", {})
+    if not isinstance(bucket_array, dict):
+        raise AssertionError("page record bucket_array must be a dict")
+
+    selector = source["context_slot"] & 0x0F
+    glyph_entry = source["glyph_entry"]
+    width = u16(resources, glyph_entry + 8)
+    rows = u16(resources, glyph_entry + 6)
+    coord = compact_text_coord(source["x"], source["y"])
+    bucket_index = source["y"] >> 4
+    glyph = source["mapped"] & 0xFF
+
+    if width > 0x80:
+        selector |= 0x1000
+    events: list[dict[str, object]] = []
+    if rows > 0x80:
+        selector |= 0x2000
+        segment = (rows - 1) >> 7
+        while segment >= 0:
+            segment_bucket_index = bucket_index + segment * 8
+            alloc = bucket_find_or_alloc_via_1387c(bucket_array, segment_bucket_index, selector, 0x08, 0x28)
+            obj = alloc["object"]
+            if not isinstance(obj, bytearray):
+                raise AssertionError("bucket allocator did not return a mutable object")
+            count = int(alloc["count_before"])
+            entry = 8 + count * 4
+            obj[6:8] = (count + 1).to_bytes(2, "big")
+            obj[entry] = glyph
+            obj[entry + 1] = segment & 0xFF
+            obj[entry + 2 : entry + 4] = coord.to_bytes(2, "big")
+            events.append({
+                key: alloc[key]
+                for key in ("allocated", "chain_index", "count_before", "bucket_index", "selector", "capacity", "object_size")
+            } | {
+                "count_after": count + 1,
+                "segment": segment,
+                "object": bytes(obj),
+            })
+            segment -= 1
+        return {
+            "path": "segmented-page-record",
+            "events": events,
+            "selector": selector,
+            "coord": coord,
+            "glyph": glyph,
+            "rows": rows,
+            "width": width,
+        }
+
+    alloc = bucket_find_or_alloc_via_1387c(bucket_array, bucket_index, selector, 0x0A, 0x26)
+    obj = alloc["object"]
+    if not isinstance(obj, bytearray):
+        raise AssertionError("bucket allocator did not return a mutable object")
+    count = int(alloc["count_before"])
+    entry = 8 + count * 3
+    obj[6:8] = (count + 1).to_bytes(2, "big")
+    obj[entry] = glyph
+    obj[entry + 1 : entry + 3] = coord.to_bytes(2, "big")
+    return {
+        "path": "short-page-record",
+        "allocated": alloc["allocated"],
+        "chain_index": alloc["chain_index"],
+        "count_before": count,
+        "count_after": count + 1,
+        "object": bytes(obj),
+        "object_size": 0x26,
+        "capacity": 0x0A,
+        "entry_size": 3,
+        "bucket_index": bucket_index,
+        "selector": selector,
+        "coord": coord,
+        "glyph": glyph,
+        "rows": rows,
+        "width": width,
+    }
+
+
 def advance_flagged_text_cursor_via_d550(cursor_x: int, default_advance: int) -> dict[str, int]:
     d5 = int(cursor_x) + int(default_advance)
     if (d5 & 0xFFFF) >= 12:
@@ -833,6 +953,49 @@ def render_compact_text_bucket_object(data: bytes, resources: bytes, contexts: t
     rendered["context_slot"] = context_slot
     rendered["payload"] = payload
     return rendered
+
+
+def bridge_page_record_via_1edc6(page_record: dict[str, object]) -> dict[str, object]:
+    """Model the page/control record to render-record copy at 0x1edc6."""
+    context_slots = list(page_record.get("context_slots", []))
+    if len(context_slots) > 16:
+        raise AssertionError("0x1edc6 copies exactly 16 context slots")
+    context_slots += [0] * (16 - len(context_slots))
+
+    compact_bucket_root = page_record.get("bucket_root")
+    rule_list = [bytearray(node) for node in page_record.get("rule_list", [])]
+    fixed_list = [bytearray(node) for node in page_record.get("fixed_list", [])]
+
+    for node in rule_list:
+        if len(node) < 0x0E:
+            raise AssertionError("rule/list bridge node must include bytes through +0x0d")
+        node[5] |= 0x10
+        node[0x0C:0x0E] = node[0x0A:0x0C]
+
+    for node in fixed_list:
+        if len(node) < 0x0E:
+            raise AssertionError("fixed-width bridge node must include bytes through +0x0d")
+        node[5] |= 0x10
+        node[0x0A:0x0C] = node[0x08:0x0A]
+        node[0x0C] = 1
+        node[0x0D] = 8
+
+    return {
+        "bucket_root": compact_bucket_root,
+        "rule_list": [bytes(node) for node in rule_list],
+        "fixed_list": [bytes(node) for node in fixed_list],
+        "context_slots": tuple(context_slots),
+    }
+
+
+def render_bridged_compact_bucket_object(data: bytes, resources: bytes, render_record: dict[str, object]) -> dict[str, object]:
+    obj = render_record["bucket_root"]
+    context_slots = render_record["context_slots"]
+    if not isinstance(obj, bytes):
+        raise AssertionError("bridged render-record fixture needs one compact bucket object")
+    if not isinstance(context_slots, tuple):
+        raise AssertionError("bridged render-record fixture needs context slots")
+    return render_compact_text_bucket_object(data, resources, context_slots, obj)
 
 
 def render_single_printable_stream(
@@ -1879,6 +2042,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "rows": 22,
         "width": 4,
     }))
+    page_record_bucket_fixture: dict[str, object] = {"bucket_array": {}, "context_slots": [0x440946B4]}
+    page_record_first = queue_text_source_to_page_record_via_12f2e(resources, page_record_bucket_fixture, text_source)
     positioned_fixture = position_flagged_text_source_via_d824(resources, text_source, cursor_x=10, cursor_y=21)
     checks.append(assert_equal("0xd824-modeled positioned text source fields", positioned_fixture, {
         "source": {
@@ -1906,6 +2071,77 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     positioned_source = positioned_fixture["source"]
     assert isinstance(positioned_source, dict)
     positioned_bucket = queue_text_source_via_12f2e(resources, positioned_source)
+    page_record_second = queue_text_source_to_page_record_via_12f2e(resources, page_record_bucket_fixture, positioned_source)
+    page_record_bucket_array = page_record_bucket_fixture["bucket_array"]
+    assert isinstance(page_record_bucket_array, dict)
+    page_record_chain = page_record_bucket_array[0]
+    checks.append(assert_equal("0x1387c page-record bucket allocator reuses matching short object", {
+        "first": {
+            key: page_record_first[key]
+            for key in ("path", "allocated", "chain_index", "count_before", "count_after", "bucket_index", "selector", "coord", "glyph")
+        },
+        "second": {
+            key: page_record_second[key]
+            for key in ("path", "allocated", "chain_index", "count_before", "count_after", "bucket_index", "selector", "coord", "glyph")
+        },
+        "chain_length": len(page_record_chain),
+        "object_prefix": bytes(page_record_chain[0][:14]),
+    }, {
+        "first": {
+            "path": "short-page-record",
+            "allocated": True,
+            "chain_index": 0,
+            "count_before": 0,
+            "count_after": 1,
+            "bucket_index": 0,
+            "selector": 0,
+            "coord": 0x0000,
+            "glyph": 0x20,
+        },
+        "second": {
+            "path": "short-page-record",
+            "allocated": False,
+            "chain_index": 0,
+            "count_before": 1,
+            "count_after": 2,
+            "bucket_index": 0,
+            "selector": 0,
+            "coord": 0x0001,
+            "glyph": 0x20,
+        },
+        "chain_length": 1,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 00 20 00 01"),
+    }))
+    full_chain_object = bytearray(0x26)
+    full_chain_object[4:6] = (0).to_bytes(2, "big")
+    full_chain_object[6:8] = (10).to_bytes(2, "big")
+    full_page_record: dict[str, object] = {"bucket_array": {0: [full_chain_object]}, "context_slots": [0x440946B4]}
+    full_page_result = queue_text_source_to_page_record_via_12f2e(resources, full_page_record, text_source)
+    full_bucket_array = full_page_record["bucket_array"]
+    assert isinstance(full_bucket_array, dict)
+    full_chain = full_bucket_array[0]
+    checks.append(assert_equal("0x1387c page-record bucket allocator links new head when full", {
+        "result": {
+            key: full_page_result[key]
+            for key in ("allocated", "chain_index", "count_before", "count_after", "bucket_index", "selector", "coord")
+        },
+        "chain_length": len(full_chain),
+        "head_prefix": bytes(full_chain[0][:11]),
+        "old_count": u16(full_chain[1], 6),
+    }, {
+        "result": {
+            "allocated": True,
+            "chain_index": 0,
+            "count_before": 0,
+            "count_after": 1,
+            "bucket_index": 0,
+            "selector": 0,
+            "coord": 0,
+        },
+        "chain_length": 2,
+        "head_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 00"),
+        "old_count": 10,
+    }))
     checks.append(assert_equal("0xd824-positioned short bucket object fields", {key: positioned_bucket[key] for key in ("path", "object", "bucket_index", "selector", "coord", "glyph", "rows", "width")}, {
         "path": "short",
         "object": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
@@ -2113,6 +2349,77 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "payload": bytes.fromhex("00 01 20 00 00"),
     }))
     checks.append(assert_equal("compact text bucket object fixture rendered rows", compact_mode0["rows"], line_printer_glyph32_rows))
+    page_record_short_rendered = render_compact_text_bucket_object(data, resources, (0x440946B4,), bytes(page_record_chain[0]))
+    checks.append(assert_equal("0x1387c page-record queued short object renders reused entries", {
+        "rendered": {key: page_record_short_rendered[key] for key in ("selector", "context_slot", "count", "rendered", "payload")},
+        "rows": page_record_short_rendered["rows"],
+    }, {
+        "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 2,
+            "rendered": [
+                {
+                    "glyph": 0x20,
+                    "coord": 0x0000,
+                    "dest_base": 0x00,
+                    "x": 0,
+                    "y": 0,
+                    "a001": 0x00,
+                    "span": 1,
+                    "rows": 22,
+                    "width": 4,
+                    "helper": 0x01FA5C,
+                },
+                {
+                    "glyph": 0x20,
+                    "coord": 0x0001,
+                    "dest_base": 0x02,
+                    "x": 16,
+                    "y": 0,
+                    "a001": 0x00,
+                    "span": 1,
+                    "rows": 22,
+                    "width": 4,
+                    "helper": 0x01FA5C,
+                },
+            ],
+            "payload": bytes.fromhex("00 02 20 00 00 20 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"),
+        },
+        "rows": [
+            "####............####" if row == "####" else "." * 20
+            for row in line_printer_glyph32_rows
+        ],
+    }))
+    bridged_page_record = bridge_page_record_via_1edc6({
+        "bucket_root": bytes(page_record_chain[0]),
+        "rule_list": [
+            bytes.fromhex("00 00 00 00 00 03 00 00 00 00 12 34 00 00"),
+        ],
+        "fixed_list": [
+            bytes.fromhex("00 00 00 00 00 04 00 00 ab cd 00 00 00 00"),
+        ],
+        "context_slots": [0x440946B4],
+    })
+    bridged_rendered = render_bridged_compact_bucket_object(data, resources, bridged_page_record)
+    checks.append(assert_equal("0x1edc6 page-record bridge copies compact bucket and context slots", {
+        "bucket_root": bridged_page_record["bucket_root"],
+        "context_slots": bridged_page_record["context_slots"][:2],
+        "rendered": {key: bridged_rendered[key] for key in ("selector", "context_slot", "count", "rendered", "payload")},
+    }, {
+        "bucket_root": bytes(page_record_chain[0]),
+        "context_slots": (0x440946B4, 0),
+        "rendered": {key: page_record_short_rendered[key] for key in ("selector", "context_slot", "count", "rendered", "payload")},
+    }))
+    checks.append(assert_equal("0x1edc6 page-record bridge normalizes rule and fixed lists", {
+        "rule_list": bridged_page_record["rule_list"],
+        "fixed_list": bridged_page_record["fixed_list"],
+        "rows": bridged_rendered["rows"],
+    }, {
+        "rule_list": [bytes.fromhex("00 00 00 00 00 13 00 00 00 00 12 34 12 34")],
+        "fixed_list": [bytes.fromhex("00 00 00 00 00 14 00 00 ab cd ab cd 01 08")],
+        "rows": page_record_short_rendered["rows"],
+    }))
     positioned_text_object = positioned_bucket["object"]
     assert isinstance(positioned_text_object, bytes)
     positioned_mode0 = render_compact_text_bucket_object(data, resources, (0x440946B4,), positioned_text_object)
@@ -2658,6 +2965,46 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     lines.append("- rendered rows:")
     lines.extend(f"`{row}`" for row in compact_mode0["rows"])
+    lines.append("")
+
+    lines.append("## `0x1387c` Page-Record Compact Bucket Allocator Fixture")
+    lines.append("")
+    lines.append("This fixture moves the short text bucket one step closer to the real page-root shape. It models `0x1387c`, which indexes the page-root `+0x1c` bucket array by `0x782a7c`, walks the bucket chain looking for the same selector word at object `+4`, reuses that object when count `+6` is below the caller-supplied capacity, or allocates and links a new object at the bucket head when the matching object is full or missing.")
+    lines.append("")
+    lines.append("- first allocation: allocated `%s`, bucket `%d`, selector `0x%04x`, count `%d -> %d`, coord `0x%04x`" % (
+        page_record_first["allocated"],
+        page_record_first["bucket_index"],
+        page_record_first["selector"],
+        page_record_first["count_before"],
+        page_record_first["count_after"],
+        page_record_first["coord"],
+    ))
+    lines.append("- second same-selector insertion: allocated `%s`, chain index `%d`, count `%d -> %d`, coord `0x%04x`" % (
+        page_record_second["allocated"],
+        page_record_second["chain_index"],
+        page_record_second["count_before"],
+        page_record_second["count_after"],
+        page_record_second["coord"],
+    ))
+    lines.append(f"- reused object bytes: `{' '.join(f'{byte:02x}' for byte in page_record_chain[0])}`")
+    lines.append("- full-object case: a prefilled count-10 object causes `0x1387c` to allocate a new head object while leaving the old object second in the chain.")
+    lines.append("- page-record queued rows:")
+    lines.extend(f"`{row}`" for row in page_record_short_rendered["rows"])
+    lines.append("")
+
+    lines.append("## `0x1edc6` Page-Record Bridge Fixture")
+    lines.append("")
+    lines.append("This fixture models the render-record bridge at `0x1edc6` after a compact text bucket has been queued under a page/control record through the `0x1387c` model above. The firmware copies page-root `+0x1c` to render-record `+0x18`, page-root `+0x24` to render-record `+0x1c`, page-root `+0x28` to render-record `+0x20`, and the 16 font/context slots from page-root `+0x2c..+0x68` to render-record `+0x24..+0x60`. It then normalizes the two rule/list chains in-place before band rendering.")
+    lines.append("")
+    lines.append(f"- bridged compact bucket root: `{' '.join(f'{byte:02x}' for byte in bridged_page_record['bucket_root'])}`")
+    lines.append("- bridged context slots `[0..1]`: `0x%08x`, `0x%08x`" % (
+        bridged_page_record["context_slots"][0],
+        bridged_page_record["context_slots"][1],
+    ))
+    lines.append(f"- normalized `+0x24`/render `+0x1c` rule-list node: `{' '.join(f'{byte:02x}' for byte in bridged_page_record['rule_list'][0])}`")
+    lines.append(f"- normalized `+0x28`/render `+0x20` fixed-list node: `{' '.join(f'{byte:02x}' for byte in bridged_page_record['fixed_list'][0])}`")
+    lines.append("- bridged compact rows match the page-record queued rows above.")
+    lines.append("- remaining gap: replace this synthetic page/control record with a parser-produced page root and compare the finalized record published by `0xff1e`.")
     lines.append("")
 
     lines.append("## `0xd824` Positioned Text Bucket Fixture")

@@ -413,6 +413,164 @@ def apply_direct_control_code(state: dict[str, int], code: int) -> dict[str, int
     return state
 
 
+def reset_fixture_state(**overrides: int) -> dict[str, int]:
+    state = {
+        "environment_gate": 0,
+        "alternate_mode": 1,
+        "alternate_parser_byte": 1,
+        "orientation": 1,
+        "vertical_offset_source": 60,
+        "top_offset": 0,
+        "vertical_offset_word": 7,
+        "raster_active": 1,
+        "raster_origin": 33,
+        "raster_baseline": 44,
+        "raster_scale_minus_one": 0,
+        "raster_scale": 0,
+        "raster_limit": 0,
+        "page_extent": 3180,
+        "font_context_flag": 0,
+        "font_metric_flag_clear": 0x12,
+        "font_metric_flag_set": 0x34,
+        "font_hmi_clear": pack12(1),
+        "font_hmi_set": pack12(2),
+        "active_primary_symbol": 0x0115,
+        "active_secondary_symbol": 0x0125,
+        "glyph_map_selector": 1,
+        "primary_symbol_snapshot": 0,
+        "secondary_symbol_snapshot": 0,
+        "alternate_metrics": 0,
+        "hmi": 0,
+        "data_chain_ptr": 0,
+        "current_object_ptr": 0x123456,
+        "parser_selector": 0x55,
+        "page_parser_state": 1,
+        "text_accum0": 1,
+        "text_accum1": 2,
+        "text_accum2": 3,
+        "text_accum3": 4,
+        "parser_record_cursor": 0,
+        "parser_records_cleared": 0,
+        "data_chain_records_freed": 0,
+        "pool_records_pruned": 0,
+        "reset_status": 0xff,
+        "span_flush_enable": 1,
+        "pending_width": 1,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "active_record_waits": 0,
+        "page_root_present": 1,
+        "page_root_class": 1,
+        "page_root_flags": 0,
+        "page_publications": 0,
+        "page_root_clears": 0,
+        "current_page_root": 1,
+        "published_pool_record": 0,
+        "page_publication_flag": 0,
+        "transient_page_byte": 1,
+        "cursor_transient_a": 1,
+        "cursor_transient_b": 1,
+    }
+    state.update(overrides)
+    return state
+
+
+def apply_esc_e_reset(state: dict[str, int]) -> dict[str, int]:
+    state = dict(state)
+    if state["environment_gate"] == 0:
+        state["alternate_mode"] = 0
+
+    control_text_flush_helper(state)
+    state["active_record_waits"] += 1
+
+    if not state["page_root_present"] or state["page_root_class"] != 1:
+        state["current_page_root"] = 0
+        state["page_root_clears"] += 1
+    else:
+        state["transient_page_byte"] = 0
+        state["cursor_transient_a"] = 0
+        state["cursor_transient_b"] = 0
+        state["page_publications"] += 1
+        state["published_pool_record"] = 1
+        state["page_publication_flag"] = 1
+        state["current_page_root"] = 0
+        state["page_root_clears"] += 1
+
+    state["orientation"] = 0
+    state["top_offset"] = 0x96 - state["vertical_offset_source"]
+    state["vertical_offset_word"] = 0
+    state["raster_active"] = 0
+    state["raster_origin"] = 0
+    state["raster_baseline"] = 0
+    state["raster_scale_minus_one"] = 3
+    state["raster_scale"] = 4
+    raster_denominator = state["raster_scale"] << 3
+    state["raster_limit"] = ((state["page_extent"] - state["raster_origin"]) + 1 + raster_denominator - 1) // raster_denominator
+
+    state["glyph_map_selector"] = 0
+    if state["font_context_flag"]:
+        state["alternate_metrics"] = state["font_metric_flag_set"]
+        state["hmi"] = state["font_hmi_set"]
+    else:
+        state["alternate_metrics"] = state["font_metric_flag_clear"]
+        state["hmi"] = state["font_hmi_clear"]
+    state["primary_symbol_snapshot"] = state["active_primary_symbol"]
+    state["secondary_symbol_snapshot"] = state["active_secondary_symbol"]
+
+    state["data_chain_ptr"] = 0x782D3E
+    state["data_chain_records_freed"] += 1
+    state["current_object_ptr"] = 0
+    state["parser_selector"] = 0
+    state["alternate_mode"] = 0
+    state["alternate_parser_byte"] = 0
+    state["page_parser_state"] = 0
+    state["text_accum0"] = 0
+    state["text_accum1"] = 0
+    state["text_accum2"] = 0
+    state["text_accum3"] = 0
+    state["parser_record_cursor"] = 0x782C1E
+    state["parser_records_cleared"] = 8
+    state["pool_records_pruned"] += 1
+    state["reset_status"] = 0
+    return state
+
+
+def apply_direct_control_stream(state: dict[str, int], stream: bytes) -> dict[str, int]:
+    state = dict(state)
+    pos = 0
+    while pos < len(stream):
+        byte = stream[pos]
+        if byte == 0x1B:
+            if pos + 1 < len(stream) and stream[pos + 1] == ord("E"):
+                state = apply_esc_e_reset(state)
+                pos += 2
+                continue
+            if pos + 3 >= len(stream) or stream[pos + 1 : pos + 3] != b"&k":
+                raise AssertionError(f"unsupported ESC sequence at stream offset {pos}")
+            pos += 3
+            sign = 1
+            if pos < len(stream) and stream[pos] in (ord("+"), ord("-")):
+                sign = -1 if stream[pos] == ord("-") else 1
+                pos += 1
+            if pos >= len(stream) or not chr(stream[pos]).isdigit():
+                raise AssertionError("ESC &k#G fixture requires an integer parameter")
+            value = 0
+            while pos < len(stream) and chr(stream[pos]).isdigit():
+                value = value * 10 + stream[pos] - ord("0")
+                pos += 1
+            if pos >= len(stream) or stream[pos] != ord("G"):
+                raise AssertionError("ESC &k#G fixture only models final byte G")
+            state["line_termination"] = line_termination_mode_bits(sign * value)
+            pos += 1
+            continue
+        if byte in (0x08, 0x09, 0x0A, 0x0C, 0x0D):
+            state = apply_direct_control_code(state, byte)
+            pos += 1
+            continue
+        raise AssertionError(f"unsupported direct control stream byte 0x{byte:02x} at offset {pos}")
+    return state
+
+
 def position_flagged_text_source_via_d824(
     resources: bytes,
     source: dict[str, int],
@@ -584,6 +742,35 @@ def render_compact_text_bucket_object(data: bytes, resources: bytes, contexts: t
     rendered["context_slot"] = context_slot
     rendered["payload"] = payload
     return rendered
+
+
+def render_single_printable_stream(
+    data: bytes,
+    resources: bytes,
+    stream: bytes,
+    context: int,
+    cursor_x: int,
+    cursor_y: int,
+    context_slot: int = 0,
+) -> dict[str, object]:
+    if len(stream) != 1 or stream[0] < 0x20 or stream[0] == 0x7F:
+        raise AssertionError("printable stream fixture currently models exactly one normal printable byte")
+    source = build_text_source_object_from_1393a(resources, context, stream[0], x=0, y=0, context_slot=context_slot)
+    positioned = position_flagged_text_source_via_d824(resources, source, cursor_x=cursor_x, cursor_y=cursor_y)
+    positioned_source = positioned["source"]
+    assert isinstance(positioned_source, dict)
+    bucket = queue_text_source_via_12f2e(resources, positioned_source)
+    obj = bucket["object"]
+    if not isinstance(obj, bytes):
+        raise AssertionError("printable stream fixture only models short compact text objects")
+    rendered = render_compact_text_bucket_object(data, resources, (context,), obj)
+    return {
+        "stream": stream,
+        "source": source,
+        "positioned": positioned,
+        "bucket": bucket,
+        "rendered": rendered,
+    }
 
 
 def expand_mode0(payload: bytes) -> list[int]:
@@ -984,6 +1171,216 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "span_flushes": 0,
         "post_flushes": 0,
         "span_updates": 1,
+    }))
+    control_stream_fields = control_fields + ("line_termination",)
+    stream_cr_lf = apply_direct_control_stream(control_fixture_state(
+        cursor_x=pack12(42),
+        cursor_y=pack12(20, 11),
+        left_margin=pack12(7),
+        vmi=pack12(0, 2),
+    ), b"\x1b&k1G\r")
+    checks.append(assert_equal("control stream ESC &k1G then CR applies CR+LF", select_keys(stream_cr_lf, control_stream_fields), {
+        "cursor_x": pack12(7),
+        "cursor_y": pack12(21, 1),
+        "pending_width": 0,
+        "right_limit_latch": 0,
+        "pending_text": 0,
+        "page_roots": 1,
+        "page_finalizes": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "span_updates": 0,
+        "line_termination": 0x80,
+    }))
+    stream_lf = apply_direct_control_stream(control_fixture_state(
+        cursor_x=pack12(42),
+        cursor_y=pack12(10),
+        left_margin=pack12(6),
+        vmi=pack12(1),
+        pending_width=1,
+        right_limit_latch=1,
+        pending_text=1,
+    ), b"\x1b&k2G\n")
+    checks.append(assert_equal("control stream ESC &k2G then LF applies CR+LF", select_keys(stream_lf, control_stream_fields), {
+        "cursor_x": pack12(6),
+        "cursor_y": pack12(11),
+        "pending_width": 0,
+        "right_limit_latch": 0,
+        "pending_text": 0,
+        "page_roots": 1,
+        "page_finalizes": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "span_updates": 0,
+        "line_termination": 0x60,
+    }))
+    stream_ht_bs = apply_direct_control_stream(control_fixture_state(
+        cursor_x=pack12(17),
+        left_margin=pack12(5),
+        hmi=pack12(1),
+        right_limit=pack12(100),
+        page_width=120,
+        pending_text=1,
+    ), b"\x1b&k0G\t\b")
+    checks.append(assert_equal("control stream HT then BS updates tab and previous-width state", select_keys(stream_ht_bs, control_stream_fields), {
+        "cursor_x": pack12(20),
+        "cursor_y": pack12(20),
+        "pending_width": 1,
+        "right_limit_latch": 0,
+        "pending_text": 0,
+        "page_roots": 0,
+        "page_finalizes": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "span_updates": 2,
+        "line_termination": 0x00,
+    }))
+    reset_fields = (
+        "alternate_mode",
+        "alternate_parser_byte",
+        "orientation",
+        "top_offset",
+        "vertical_offset_word",
+        "raster_active",
+        "raster_origin",
+        "raster_baseline",
+        "raster_scale_minus_one",
+        "raster_scale",
+        "raster_limit",
+        "glyph_map_selector",
+        "alternate_metrics",
+        "hmi",
+        "primary_symbol_snapshot",
+        "secondary_symbol_snapshot",
+        "data_chain_ptr",
+        "current_object_ptr",
+        "parser_selector",
+        "page_parser_state",
+        "text_accum0",
+        "text_accum1",
+        "text_accum2",
+        "text_accum3",
+        "parser_record_cursor",
+        "parser_records_cleared",
+        "data_chain_records_freed",
+        "pool_records_pruned",
+        "reset_status",
+        "pending_width",
+        "span_flushes",
+        "post_flushes",
+        "active_record_waits",
+        "current_page_root",
+        "page_publications",
+        "page_root_clears",
+        "published_pool_record",
+        "page_publication_flag",
+        "transient_page_byte",
+        "cursor_transient_a",
+        "cursor_transient_b",
+    )
+    reset_valid_page = apply_direct_control_stream(reset_fixture_state(
+        vertical_offset_source=50,
+        page_extent=3180,
+        font_context_flag=0,
+        font_metric_flag_clear=0x12,
+        font_hmi_clear=pack12(1, 6),
+        active_primary_symbol=0x0115,
+        active_secondary_symbol=0x0125,
+        page_root_present=1,
+        page_root_class=1,
+        span_flush_enable=1,
+    ), b"\x1bE")
+    checks.append(assert_equal("ESC E stream publishes valid page root and resets environment/parser state", select_keys(reset_valid_page, reset_fields), {
+        "alternate_mode": 0,
+        "alternate_parser_byte": 0,
+        "orientation": 0,
+        "top_offset": 100,
+        "vertical_offset_word": 0,
+        "raster_active": 0,
+        "raster_origin": 0,
+        "raster_baseline": 0,
+        "raster_scale_minus_one": 3,
+        "raster_scale": 4,
+        "raster_limit": 100,
+        "glyph_map_selector": 0,
+        "alternate_metrics": 0x12,
+        "hmi": pack12(1, 6),
+        "primary_symbol_snapshot": 0x0115,
+        "secondary_symbol_snapshot": 0x0125,
+        "data_chain_ptr": 0x782D3E,
+        "current_object_ptr": 0,
+        "parser_selector": 0,
+        "page_parser_state": 0,
+        "text_accum0": 0,
+        "text_accum1": 0,
+        "text_accum2": 0,
+        "text_accum3": 0,
+        "parser_record_cursor": 0x782C1E,
+        "parser_records_cleared": 8,
+        "data_chain_records_freed": 1,
+        "pool_records_pruned": 1,
+        "reset_status": 0,
+        "pending_width": 0,
+        "span_flushes": 1,
+        "post_flushes": 1,
+        "active_record_waits": 1,
+        "current_page_root": 0,
+        "page_publications": 1,
+        "page_root_clears": 1,
+        "published_pool_record": 1,
+        "page_publication_flag": 1,
+        "transient_page_byte": 0,
+        "cursor_transient_a": 0,
+        "cursor_transient_b": 0,
+    }))
+    reset_no_page = apply_direct_control_stream(reset_fixture_state(
+        environment_gate=1,
+        alternate_mode=1,
+        page_root_present=0,
+        page_root_class=0,
+        font_context_flag=1,
+        font_metric_flag_set=0x34,
+        font_hmi_set=pack12(2, 3),
+        active_primary_symbol=0x0455,
+        active_secondary_symbol=0x0555,
+        span_flush_enable=0,
+    ), b"\x1bE")
+    checks.append(assert_equal("ESC E stream clears missing page root without publication", select_keys(reset_no_page, (
+        "alternate_mode",
+        "alternate_parser_byte",
+        "glyph_map_selector",
+        "alternate_metrics",
+        "hmi",
+        "primary_symbol_snapshot",
+        "secondary_symbol_snapshot",
+        "pending_width",
+        "span_flushes",
+        "post_flushes",
+        "active_record_waits",
+        "current_page_root",
+        "page_publications",
+        "page_root_clears",
+        "published_pool_record",
+        "page_publication_flag",
+        "reset_status",
+    )), {
+        "alternate_mode": 0,
+        "alternate_parser_byte": 0,
+        "glyph_map_selector": 0,
+        "alternate_metrics": 0x34,
+        "hmi": pack12(2, 3),
+        "primary_symbol_snapshot": 0x0455,
+        "secondary_symbol_snapshot": 0x0555,
+        "pending_width": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "active_record_waits": 1,
+        "current_page_root": 0,
+        "page_publications": 0,
+        "page_root_clears": 1,
+        "published_pool_record": 0,
+        "page_publication_flag": 0,
+        "reset_status": 0,
     }))
 
     width3 = simulate_row_copy(data, u32(data, 0x1F08E + 3 * 4), 3)
@@ -1457,6 +1854,25 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(overflow_positioned_text_object, bytes)
     overflow_positioned_mode0 = render_compact_text_bucket_object(data, resources, (0x440946B4,), overflow_positioned_text_object)
     checks.append(assert_equal("0xd824-negative-overflow compact text rendered rows", overflow_positioned_mode0["rows"], [f"................................{row}" for row in line_printer_glyph32_rows]))
+    printable_stream = render_single_printable_stream(data, resources, b"!", 0x440946B4, cursor_x=10, cursor_y=21)
+    printable_stream_source = printable_stream["source"]
+    printable_stream_bucket = printable_stream["bucket"]
+    printable_stream_rendered = printable_stream["rendered"]
+    assert isinstance(printable_stream_source, dict)
+    assert isinstance(printable_stream_bucket, dict)
+    assert isinstance(printable_stream_rendered, dict)
+    checks.append(assert_equal("single printable byte stream builds positioned compact text object", {
+        "stream": printable_stream["stream"],
+        "source": printable_stream_source,
+        "bucket_object": printable_stream_bucket["object"],
+        "rendered": {key: printable_stream_rendered[key] for key in ("selector", "context_slot", "count", "rendered", "payload")},
+    }, {
+        "stream": b"!",
+        "source": text_source,
+        "bucket_object": positioned_text_object,
+        "rendered": {key: positioned_mode0[key] for key in ("selector", "context_slot", "count", "rendered", "payload")},
+    }))
+    checks.append(assert_equal("single printable byte stream renders expected rows", printable_stream_rendered["rows"], positioned_mode0["rows"]))
 
     lines.append("## Built-In Glyph Bitmap Fixtures")
     lines.append("")
@@ -1501,6 +1917,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- FF in mode 2 performs the CR-style x reset, flushes pending text, ensures/finalizes a page root marker, and leaves pending text/page-eject state as `0xff`.")
     lines.append("- HT from x `17`, left margin `5`, and HMI `1` advances to the next eight-column stop at x `21`; a second fixture clamps HT to page width `90` when the cursor is already beyond the right limit.")
     lines.append("- BS subtracts HMI, clamps at the left margin when it would cross it, and in alternate metrics mode subtracts the previous-width word instead.")
+    lines.append("- Byte-stream fixtures now drive the same model from actual PCL/control bytes: `ESC &k1G` followed by CR applies CR+LF, `ESC &k2G` followed by LF applies CR+LF, and `ESC &k0G` followed by HT/BS advances to x `21` then backs up to x `20`.")
+    lines.append("- The fixture parser intentionally recognizes only `ESC &k#G`, `ESC E`, and direct control bytes; printable text, combined escape sequences, and real page-object allocation still need fuller parser-driven fixtures.")
+    lines.append("")
+
+    lines.append("## `ESC E` Reset Fixtures")
+    lines.append("")
+    lines.append("These fixtures model the reset sequence documented in `generated/analysis/ic30_ic13_esc_e_reset_flow.md`. They are synthetic state fixtures driven by the actual byte stream `ESC E`; they do not yet start from parser-produced page objects.")
+    lines.append("")
+    lines.append("- Valid page-root case: flushes pending text span, runs the active-record wait hook, publishes the current page/control record, sets the publication flag, clears transient page bytes, then clears the current page root.")
+    lines.append("- Missing/invalid page-root case: clears the current page root without publication.")
+    lines.append("- Both cases reset orientation to portrait, recompute the vertical offset from `0x96 - source`, clear the related vertical offset word, reinitialize raster state to scale minus one `3` / scale `4`, refresh HMI and symbol snapshots from the current-font context, reset the parser/data-chain pointer to `0x782d3e`, clear parser/text accumulation state, prune command/data records, and clear reset status `0x782a93`.")
+    lines.append("- Remaining gap: replace these synthetic reset-state fixtures with fixtures that enter through the full parser and compare the finalized page/control records produced by a real pending page.")
     lines.append("")
 
     lines.append("## Compact Text Bucket Fixture")
@@ -1557,6 +1985,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     lines.append("- overflow rendered rows:")
     lines.extend(f"`{row}`" for row in overflow_positioned_mode0["rows"])
+    lines.append("")
+
+    lines.append("## Single Printable Byte Stream Fixture")
+    lines.append("")
+    lines.append("This fixture starts one step earlier than the producer-modeled text bucket: the host byte stream is `21` (`!`). Under the documented normal parser conditions, that byte reaches `0xd04a`, enters `0x1393a`, maps through the active `LINE_PRINTER` character map to glyph byte `0x20`, takes the flagged/built-in `0xd824` path with cursor `(10,21)`, emits the same short `0x12f2e` compact object as the positioned fixture, and renders through `0x1effe` / `0x1f034`.")
+    lines.append("")
+    lines.append("- stream bytes: `21`")
+    lines.append(f"- source object from `0x1393a`: context `0x{printable_stream_source['context']:08x}`, host `0x{printable_stream_source['host_char']:02x}`, mapped glyph `0x{printable_stream_source['mapped']:02x}`, glyph entry `0x{printable_stream_source['glyph_entry']:06x}`, flag `{printable_stream_source['flag']}`")
+    lines.append(f"- compact object bytes: `{' '.join(f'{byte:02x}' for byte in positioned_text_object)}`")
+    lines.append("- rendered rows match the `0xd824` positioned text fixture above.")
+    lines.append("- remaining gap: broaden this from a one-byte normal printable path into a parser stream that can mix printable text, direct control codes, reset, and page-object allocation without fixture-only state.")
     lines.append("")
 
     lines.append("## `0xd3b2` Unflagged Positioning Fixture")

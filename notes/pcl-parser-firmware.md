@@ -1,6 +1,6 @@
 # PCL Parser Firmware Notes
 
-Sources: `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`; `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`; `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`; `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`; `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`; `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`; `generated/analysis/ic30_ic13_direct_control_code_flow.md`; `generated/analysis/ic30_ic13_parser_dispatch_tables.md`; `generated/analysis/ic30_ic13_parser_xrefs.md`; `generated/analysis/ic30_ic13_cmpi_byte_candidates.md`.
+Sources: `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`; `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`; `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`; `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`; `generated/disasm/ic30_ic13_esc_e_metric_refresh_00cbd4.lst`; `generated/disasm/ic30_ic13_esc_e_environment_reset_00cda2.lst`; `generated/disasm/ic30_ic13_esc_e_parser_state_reset_00e146.lst`; `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`; `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`; `generated/analysis/ic30_ic13_direct_control_code_flow.md`; `generated/analysis/ic30_ic13_esc_e_reset_flow.md`; `generated/analysis/ic30_ic13_parser_dispatch_tables.md`; `generated/analysis/ic30_ic13_parser_xrefs.md`; `generated/analysis/ic30_ic13_cmpi_byte_candidates.md`.
 
 These are current anchors for the path from host bytes into PCL command records. Names are provisional until caller/callee cross-references are broader.
 
@@ -103,7 +103,9 @@ Normal mode 0 has these direct control-code entries:
 
 The CR/LF/FF/HT/BS handlers update state around `0x782c8a`, `0x782c8e`, `0x782dd6`, `0x782dda`, `0x78315c`, `0x783160`, and `0x78318f`, with helper calls into the coordinate arithmetic block around `0x104d8..0x10518`. They can also flush text spans through `0x12714` / `0x126e2`, ensure/finalize page roots through `0x10084` / `0xff1e`, and update active font context spans through `0xd4ac` / `0xd8fc`.
 
-`tools/render_fixture_harness.py` now has synthetic packed-state fixtures for the `ESC &k#G` bit map plus CR/LF/FF/HT/BS cursor/page effects. These fixtures still need to be replaced by parser-driven byte-stream fixtures before they can prove full host-stream behavior.
+`tools/render_fixture_harness.py` now has synthetic packed-state fixtures for the `ESC &k#G` bit map plus CR/LF/FF/HT/BS cursor/page effects. It also has narrow byte-stream fixtures for `ESC &k1G` followed by CR, `ESC &k2G` followed by LF, and `ESC &k0G` followed by HT/BS. These prove the direct-control subset from actual PCL/control bytes, but they still need to be broadened into the full firmware parser path with printable text, reset, and page-object allocation.
+
+For normal printable text, the harness now drives a one-byte stream `0x21` (`!`) through the modeled `0x1393a` source-object builder, `0xd824` positioning handoff, `0x12f2e` compact queue producer, and compact-glyph renderer. This is still a narrow normal-mode fixture, not a full parser state emulator.
 
 ## Top-Level ESC Dispatch
 
@@ -121,7 +123,9 @@ After `ESC`, parser mode 1 maps bytes to command families:
 | `ESC z` | 0 | `0x00cd86` |
 | `ESC Y` | 0 | `0x012536` |
 
-`ESC E` calls `0x00cc52`, which calls `0x00cc70`, `0x00cbd4`, and `0x00e146`, then clears `0x782a93`. The `0x00cc70` path clears parser/data state when appropriate and calls multiple environment/page reset helpers, including `0xf34a`, `0xff1e`, `0x9ac2`, `0xcda2`, `0xf952`, `0xf9ac`, `0xf87e`, `0xea16`, `0xe9ba`, `0xf8fc`, `0xfe54`, `0x12b96`, and `0x103ea`. This is the firmware anchor for PCL reset.
+`generated/analysis/ic30_ic13_esc_e_reset_flow.md` now traces `ESC E` beyond the top-level dispatch. `0x00cc52` calls `0x00cc70`, `0x00cbd4`, and `0x00e146`, then clears `0x782a93`. `0xcc70` flushes pending text spans, calls page-root finalizer `0xff1e`, waits for active page/control records through `0x9ac2`, rebuilds page/environment state, and reinitializes raster block `0x783170`. `0xcbd4` refreshes HMI/default text motion and active symbol snapshots from current-font context state. `0xe146` resets parser/data-chain state, clears transient parser records and text accumulation bytes, and prunes command/data pool records. This is the firmware anchor for PCL software reset and its partial-page finalization behavior.
+
+`tools/render_fixture_harness.py` now has synthetic `ESC E` byte-stream fixtures for both reset page-root cases: valid roots are published before the current root is cleared, while missing/invalid roots clear without publication. These fixtures still need parser-produced page objects before they can prove the full firmware reset path.
 
 ## Parsed-Command Dispatch
 
@@ -187,5 +191,5 @@ The `cmpi.w #0x000c` at `0x0001053a` is not the PCL form-feed handler. The surro
 - Decode all normal and alternate parser table handlers into PCL command names.
 - Decode the six-byte tokenizer records and 12-byte command/data pool records.
 - Follow `ESC & f` handling into macro definition/execution state.
-- Replace the synthetic direct control-code cursor/page fixtures with parser-driven byte-stream fixtures, then extend the same treatment to `ESC E`.
-- Build byte-stream fixtures for simple text, `ESC E`, and one macro command once handler destinations are named.
+- Replace the synthetic `ESC E` fixtures with fixtures that start from parser-produced page objects and prove the `0xff1e` finalization/publication path before reset clears the current page root.
+- Broaden the one-byte printable text fixture into simple multi-byte text streams, then add one macro command once handler destinations are named.

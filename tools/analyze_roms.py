@@ -686,7 +686,7 @@ def text_glyph_index_flow_report(firmware: bytes, resources: bytes) -> str:
     lines.append("- To render built-in text exactly, reproduce the firmware's active map table for the selected primary/secondary font slot, including `0x14f16` symbol-set patching.")
     lines.append("- The compact glyph payload byte is not necessarily the original host byte. It is the mapped byte stored at text object `+0x0b` and copied by `0x12f2e`.")
     lines.append("- The renderer-side glyph identity is `(context longword, mapped byte)`. For built-in contexts the context low 24 bits map to `IC32,IC15` offset `address - 0x80000`, bit 30 selects the offset table, and each table entry is a relative 32-bit offset from the record start.")
-    lines.append("- The `0x14fce` symbol-set patch tables and their Technical Reference names are decoded in `ic30_ic13_symbol_set_patch_tables.md`; the live host parser path into `0x1393a` is documented in `ic30_ic13_printable_text_path.md`; paired cursor/queue/span paths after `0x1393a` are documented in `ic30_ic13_text_cursor_span_flow.md`; `tools/render_fixture_harness.py` now models a base-map -> `0x1393a` source-object -> `0xd824` positioning -> `0x12f2e` short bucket path for `LINE_PRINTER` host byte `0x21`, including the negative-left overflow branch, synthetic `0xd3b2` unflagged positioning arithmetic for both context-metric branches, a segmented `0x2000` producer path for host byte `0x20`, and a scan proving the firmware-scanned tall built-in targets are mode-0/delta-0 record headers rather than normal bitmap entries. Remaining work is to replace synthetic `0xd3b2` positioning fixtures with real parser-produced inline/downloaded source objects, implement their inline `0x12f2e` payload path, find or construct a real `0x1f1f0` bitmap-entry fixture, broaden row-copy fixtures beyond the current mode-1 built-in examples, and replace the producer-modeled text bucket fixtures with full parser-produced page-object payloads.")
+    lines.append("- The `0x14fce` symbol-set patch tables and their Technical Reference names are decoded in `ic30_ic13_symbol_set_patch_tables.md`; the live host parser path into `0x1393a` is documented in `ic30_ic13_printable_text_path.md`; paired cursor/queue/span paths after `0x1393a` are documented in `ic30_ic13_text_cursor_span_flow.md`; `tools/render_fixture_harness.py` now models a base-map -> `0x1393a` source-object -> `0xd824` positioning -> `0x12f2e` short bucket path for `LINE_PRINTER` host byte `0x21`, includes a one-byte normal printable stream fixture for byte `0x21` through source mapping, positioning, queueing, and rendering, covers the negative-left overflow branch, adds synthetic `0xd3b2` unflagged positioning arithmetic for both context-metric branches, models a segmented `0x2000` producer path for host byte `0x20`, and scans that the firmware-scanned tall built-in targets are mode-0/delta-0 record headers rather than normal bitmap entries. Remaining work is to replace synthetic `0xd3b2` positioning fixtures with real parser-produced inline/downloaded source objects, implement their inline `0x12f2e` payload path, find or construct a real `0x1f1f0` bitmap-entry fixture, broaden row-copy fixtures beyond the current mode-1 built-in examples, and broaden the one-byte stream fixture into full parser-produced page-object payloads.")
     lines.append("")
     return "\n".join(lines)
 
@@ -804,7 +804,7 @@ def printable_text_path_report(firmware: bytes) -> str:
     lines.append("")
     lines.append("- A normal printable host byte reaches `0x1393a` through `0xa904` -> `0xda9a` -> `0x11774` -> `0xd04a` when parser state `0x782999` is zero and alternate/data parser mode `0x782c18` is clear.")
     lines.append("- The live parser path uses the same mapped glyph byte and context fields documented in `ic30_ic13_text_glyph_index_flow.md`; the next byte-to-pixel model must therefore drive `0xd04a`/`0x1393a`, not feed renderer glyph bytes directly from the host stream.")
-    lines.append("- The paired cursor/queue/span behavior after `0x1393a` is detailed in `ic30_ic13_text_cursor_span_flow.md`. The remaining integration gap is to turn that arithmetic into executable fixtures with real parser-produced source objects before replacing the current producer-modeled text bucket fixtures.")
+    lines.append("- The paired cursor/queue/span behavior after `0x1393a` is detailed in `ic30_ic13_text_cursor_span_flow.md`; `tools/render_fixture_harness.py` now has a one-byte normal printable stream fixture for `0x21` -> glyph `0x20` through `0xd824`, `0x12f2e`, and rendering. The remaining integration gap is to broaden that narrow path into multi-byte parser streams with real parser-produced page objects before replacing the current producer-modeled text bucket fixtures.")
     lines.append("")
     return "\n".join(lines)
 
@@ -942,7 +942,7 @@ def text_cursor_span_report(firmware: bytes) -> str:
     lines.append("- A faithful text model must run the active source object through the same paired path selected by source byte `+0x10`; feeding `0x12f2e` directly is only a producer-level fixture.")
     lines.append("- The cursor `0x782c8a` is updated after path-specific metric extraction, fixed-point residue normalization by 12 subunits, optional left/right clipping correction, and queue retry handling.")
     lines.append("- The compact text bucket payload still depends on the mapped glyph byte from `0x1393a`, but exact pixel placement also depends on source fields `+0x12/+0x14/+0x16` produced by `0xd3b2` or `0xd824` and on context-record span flush side effects in `0xd4ac` / `0xd8fc`.")
-    lines.append("- The flagged `0xd824` positioning path, including the negative-left overflow branch, has executable queue/render fixtures in `tools/render_fixture_harness.py`; synthetic `0xd3b2` fixtures cover both unflagged positioning branches but do not yet implement inline/downloaded `0x12f2e` payloads. Remaining work is to use real parser-produced source objects, implement the inline/downloaded payload path, and name the coordinate axes by comparing orientation, CR/LF/FF, and raster placement behavior.")
+    lines.append("- The flagged `0xd824` positioning path, including the negative-left overflow branch, has executable queue/render fixtures in `tools/render_fixture_harness.py`, and a one-byte normal printable stream fixture now carries host byte `0x21` through `0x1393a`, `0xd824`, `0x12f2e`, and rendering. Synthetic `0xd3b2` fixtures cover both unflagged positioning branches but do not yet implement inline/downloaded `0x12f2e` payloads. Remaining work is to use real parser-produced source objects, implement the inline/downloaded payload path, and name the coordinate axes by comparing orientation, CR/LF/FF, and raster placement behavior.")
     lines.append("")
     return "\n".join(lines)
 
@@ -2658,7 +2658,113 @@ def direct_control_code_flow_report(data: bytes) -> str:
     lines.append("")
     lines.append("- A byte-stream model must apply `ESC &k#G` before interpreting CR/LF/FF because the firmware stores the mode as bit flags in `0x78318f` and the direct control handlers test those bits at runtime.")
     lines.append("- CR/LF/FF/HT/BS do not only change cursor coordinates; they can flush pending text spans, ensure/finalize page roots, and invoke the same context span update routines `0xd4ac` / `0xd8fc` used after printable text.")
-    lines.append("- Axis names remain provisional, but `tools/render_fixture_harness.py` now has synthetic state fixtures for the line-termination map plus CR/LF/FF/HT/BS cursor/page effects; the remaining step is replacing those with parser-driven byte-stream fixtures.")
+    lines.append("- Axis names remain provisional, but `tools/render_fixture_harness.py` now has synthetic state fixtures for the line-termination map plus CR/LF/FF/HT/BS cursor/page effects, plus narrow byte-stream fixtures for `ESC &k1G`+CR, `ESC &k2G`+LF, and `ESC &k0G`+HT/BS. The remaining step is expanding this into the full firmware parser path with printable text, reset, and page-object allocation.")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def esc_e_reset_flow_report(data: bytes) -> str:
+    def fmt_refs(refs: list[int]) -> str:
+        if not refs:
+            return "(none)"
+        text = ", ".join(f"`0x{ref:06x}`" for ref in refs[:16])
+        if len(refs) > 16:
+            text += f", ... ({len(refs)} total)"
+        return text
+
+    state_addresses = [
+        (0x007810B2, "reset/environment gate tested by `0xcc70`; when clear, reset clears alternate/data parser mode"),
+        (0x00782C18, "alternate/data parser mode cleared by `0xcc70` and again by parser-state reset `0xe146`"),
+        (0x00783170, "raster graphics state block reset by `0xcc70`"),
+        (0x00782DA3, "orientation byte cleared by the main `0xcc70` environment rebuild path"),
+        (0x00782DCE, "top/vertical offset recomputed as `0x96 - 0x782dbe` during reset/page-size rebuild"),
+        (0x00782DD0, "related vertical/page offset word cleared during reset/page-size rebuild"),
+        (0x0078315C, "HMI/default horizontal motion recomputed by `0xcbd4` from current font metrics"),
+        (0x0078318E, "alternate previous-width/text-metric flag refreshed by `0xcbd4`"),
+        (0x00782F06, "primary/secondary glyph-map selector cleared by `0xcbd4`"),
+        (0x00782F08, "active primary symbol word snapshot copied from `0x783144` by `0xcbd4`"),
+        (0x00782F0A, "active secondary symbol word snapshot copied from `0x783146` by `0xcbd4`"),
+        (0x00782D76, "current parser/data-chain pointer reset to `0x782d3e` by `0xe146`"),
+        (0x00782D7A, "current parser/data-chain object pointer cleared by `0xe146`"),
+        (0x00783164, "parsed-command selector/current state word cleared by `0xe146`"),
+        (0x00782A92, "parser/page finalization state cleared by `0xe146`; also tested by `0xff1e`"),
+        (0x00782A93, "top-level `ESC E` completion/status byte cleared after `0xe146`"),
+        (0x00782A94, "saved command/data key used by `0xff1e` when finalizing a partial page"),
+        (0x00783196, "text accumulation byte cleared by `0xe146`"),
+        (0x00783197, "text accumulation byte cleared by `0xe146`"),
+        (0x00783198, "text accumulation byte cleared by `0xe146`"),
+        (0x00783199, "text accumulation byte cleared by `0xe146`"),
+        (0x00782C1E, "base of eight 10-byte parser/control records cleared by `0xe146`"),
+        (0x00782C6E, "parser/control record cursor reset to `0x782c1e` by `0xe146`"),
+        (0x0078297A, "current page root finalized or cleared by `0xff1e`, called early by `0xcc70`"),
+        (0x00780EA6, "current page/control pool record published by `0xff1e` finalization path"),
+        (0x00782996, "page/control publication flag set by `0xff1e` finalization path"),
+    ]
+
+    lines = ["# IC30/IC13 ESC E Reset Flow", ""]
+    lines.append("Generated from `0xcc52`, `0xcc70`, helper windows around `0xcbd4`, `0xcda2`, `0xe146`, and the page-root finalizer `0xff1e` in the verified firmware image.")
+    lines.append("This report tracks the host-visible PCL software reset boundary. Names remain provisional where the underlying helper routines are not fully decoded.")
+    lines.append("")
+
+    lines.append("## Entry Sequence")
+    lines.append("")
+    lines.append("| Step | Firmware evidence | Confirmed reset role |")
+    lines.append("| ---: | --- | --- |")
+    lines.append("| 1 | `0xcc52 -> jsr 0xcc70` | performs the main environment/page/raster reset work |")
+    lines.append("| 2 | `0xcc5c -> bsr 0xcbd4` | refreshes current-font metric state used by text motion after reset |")
+    lines.append("| 3 | `0xcc60 -> jsr 0xe146` | resets parser/data-chain state and clears transient parser records |")
+    lines.append("| 4 | `0xcc66 -> clr.b 0x782a93` | clears a reset/status byte after parser reset completes |")
+    lines.append("")
+
+    lines.append("## Main Environment Reset `0xcc70`")
+    lines.append("")
+    lines.append("- Loads the raster graphics state block base `0x783170` into `A5`.")
+    lines.append("- If `0x7810b2` is clear, clears alternate/data parser mode byte `0x782c18` before any page work.")
+    lines.append("- Calls direct-control text flush helper `0xf34a`, page-root finalizer `0xff1e`, and active page/control-record wait helper `0x9ac2`.")
+    lines.append("- In the normal environment rebuild path, clears orientation byte `0x782da3`, calls `0xcda2`, `0xf952`, `0xf9ac`, and `0xf87e`, then recomputes `0x782dce = 0x96 - 0x782dbe` and clears `0x782dd0`.")
+    lines.append("- Calls follow-up environment/font/page helpers `0xea16`, `0xe9ba`, `0xf8fc`, `0xfe54`, `0x12b96`, and `0x103ea`.")
+    lines.append("- Reinitializes raster state at `0x783170`: clears byte `+0x12`, word `+0x00`, and long `+0x0a`; writes word `+0x08 = 3` and word `+0x0e = 4`; derives word `+0x10` from page extent `0x782db4`, baseline word `+0x00`, and scale word `+0x08`.")
+    lines.append("- If `0x7810b2` is clear and `0x780e3c == 1`, it copies `0x7821a2` to `0x780e8f` and ORs bit `1` into `0x780e26` via helper `0x9b5e`; otherwise it can route through `0x1bba6` before the same rebuild path.")
+    lines.append("")
+
+    lines.append("## Font Metric Refresh `0xcbd4`")
+    lines.append("")
+    lines.append("- Starts from current-font context base `0x782ee6` and clears glyph-map selector `0x782f06`.")
+    lines.append("- If context byte `+4` is clear, copies source byte `+0x19` into `0x78318e`, converts source word `+0x1a` through helpers `0x3324a` and `0x104d8`, and stores the result in HMI/default-motion longword `0x78315c`.")
+    lines.append("- If context byte `+4` is set, copies source byte `+0x21` into `0x78318e`, converts source longword at `+0x24` through `0x10550`, and stores the result in `0x78315c`.")
+    lines.append("- Copies active symbol words `0x783144` and `0x783146` into requested/snapshot words `0x782f08` and `0x782f0a`.")
+    lines.append("")
+
+    lines.append("## Parser/Data Reset `0xe146`")
+    lines.append("")
+    lines.append("- Sets current data-chain pointer `0x782d76` to base `0x782d3e`, calls helper `0xe1e4`, then clears current object pointer `0x782d7a`.")
+    lines.append("- Clears selector/state word `0x783164`, alternate/data parser bytes `0x782c18` and `0x782c19`, page/parser state byte `0x782a92`, and text accumulation bytes `0x783196..0x783199`.")
+    lines.append("- Clears eight 10-byte records starting at `0x782c1e` and resets cursor pointer `0x782c6e` to `0x782c1e`.")
+    lines.append("- Calls `0xe996(0x782ee2, 0x78319a, 0x7831a2)`, then calls `0xdf80` to clear command/data pool records whose byte `+0x0a` is zero.")
+    lines.append("- Helper `0xe1e4` walks data-chain records from `0x782d76` through `0x782d68`, marks byte `+8 = 4`, clears byte `+9`, frees any `+0x0a` 0x100-byte allocation through `0x18b4`, and clears the allocation pointer.")
+    lines.append("")
+
+    lines.append("## Page-Root Finalize Hook `0xff1e`")
+    lines.append("")
+    lines.append("- `0xcc70` calls `0xff1e` before rebuilding the print environment. This is the ROM hook that matches the PCL requirement that `ESC E` prints/finalizes a partial page rather than merely discarding it.")
+    lines.append("- If current page root `0x78297a` is null, or its byte `+4` is not `1`, `0xff1e` clears `0x78297a` and returns.")
+    lines.append("- If parser/page state `0x782a92 == 1` and root flags permit more work, it uses saved key `0x782a94`, may call `0xe4f4`, re-enters parser loop `0x11774`, and ensures a page root through `0x10084` before continuing.")
+    lines.append("- The final publication path clears transient bytes `0x78297e`, `0x782c72`, and `0x782c73`, updates root fields, copies the root's backing pool record to `0x780ea6`, sets `0x782996 = 1`, and then clears `0x78297a`.")
+    lines.append("")
+
+    lines.append("## State Reference Scan")
+    lines.append("")
+    lines.append("| Address | Current reset role | Longword literal references |")
+    lines.append("| ---: | --- | --- |")
+    for address, role in state_addresses:
+        lines.append(f"| `0x{address:08x}` | {role} | {fmt_refs(find_all(data, address.to_bytes(4, 'big')))} |")
+    lines.append("")
+
+    lines.append("## Current Reproduction Contract")
+    lines.append("")
+    lines.append("- A byte-stream model must treat `ESC E` as a page/environment boundary: flush pending text spans, run the page-root finalization path, rebuild page geometry/font metrics, reset raster graphics state, and clear parser/data-chain state.")
+    lines.append("- The ROM evidence distinguishes `ESC E` from a simple hard clear: `0xff1e` can publish/finalize the current page root before `0x78297a` is cleared.")
+    lines.append("- `tools/render_fixture_harness.py` now has synthetic `ESC E` byte-stream fixtures for valid-page-root publication and missing-root clearing. Exact reset reproduction still needs fixtures that start from parser-produced page objects and compare the resulting finalized page/control records.")
     lines.append("")
     return "\n".join(lines)
 
@@ -2777,6 +2883,7 @@ def main() -> None:
     write_if_changed(ANALYSIS / "ic30_ic13_parser_xrefs.md", xref_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_host_byte_fetch_flow.md", host_byte_fetch_flow_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_direct_control_code_flow.md", direct_control_code_flow_report(firmware))
+    write_if_changed(ANALYSIS / "ic30_ic13_esc_e_reset_flow.md", esc_e_reset_flow_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_literal_patterns.md", byte_pattern_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_page_root_references.md", page_root_reference_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_render_path_references.md", render_path_reference_report(firmware))

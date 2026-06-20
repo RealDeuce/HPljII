@@ -59,7 +59,7 @@ Observed behavior:
 - Stores the terminating byte at `record+1`.
 - Treats `:` and `;` as command-combining continuation markers by returning `D7 = 0`.
 
-This matches PCL escape syntax closely enough to treat `0xdaf0`/`0xdb74` as the first confirmed PCL tokenizer anchor. `tools/render_fixture_harness.py` now pins six-byte records for `300r150R`, signed fractional values with four stored fractional digits, semicolon continuation returning `D7 = 0`, `0x121cc`/`0x12218` delayed payload snapshot/restore for a raster `ESC *b4W` record, and the alternate/data-mode `0x1228a`/`0x12358` byte-count consumers including `0xdace` handling of payload control `1a 58`.
+This matches PCL escape syntax closely enough to treat `0xdaf0`/`0xdb74` as the first confirmed PCL tokenizer anchor. `tools/render_fixture_harness.py` now pins six-byte records for `300r150R`, signed fractional values with four stored fractional digits, semicolon continuation returning `D7 = 0`, `0x121cc`/`0x12218` delayed payload snapshot/restore for a raster `ESC *b4W` record, and the alternate/data-mode `0x1228a`/`0x12358` byte-count consumers including `0xdace` handling of payload control `1a 58`. Raster parser coverage now also ties the `ESC *t300R` / `ESC *r0A` / `ESC *b4W` dispatch/restore path to the modeled `0x105d0` capped-transfer and beyond-extent drain gates.
 
 ## Main Parser Loop
 

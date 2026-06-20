@@ -15274,6 +15274,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "row_y_after": 1,
     }))
     raster_capped_command_stream = b"\x1b*t300R\x1b*r0A\x1b*b4W" + bytes.fromhex("f0 0f aa 55")
+    raster_capped_dispatch_trace = trace_raster_parser_dispatch_via_11774(data, raster_capped_command_stream)
     raster_capped_stream_result = render_raster_command_data_stream_via_121cc_105d0(
         data,
         raster_capped_command_stream,
@@ -15369,6 +15370,68 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "limit": 2,
             "row_y": 20,
         },
+    }))
+    raster_capped_dispatch_commands = raster_capped_dispatch_trace["commands"]
+    assert isinstance(raster_capped_dispatch_commands, list)
+    checks.append(assert_equal("raster parser trace feeds capped and drained transfer gates", {
+        "stream": raster_capped_command_stream,
+        "parser_handlers": [
+            command["final_dispatch"]["handler"]
+            for command in raster_capped_dispatch_commands
+        ],
+        "parser_payload_offset": raster_capped_dispatch_commands[-1]["payload_offset"],
+        "parser_payload": raster_capped_dispatch_commands[-1]["payload"],
+        "parser_restore": raster_capped_dispatch_commands[-1]["restore_after_final"],
+        "capped_restore": raster_capped_transfer["restore_dispatch"],
+        "capped_restored_record": raster_capped_transfer["restored_record"],
+        "capped_gate": {
+            key: raster_capped_transfer[key]
+            for key in ("gate_path", "gate_queued", "gate_drained", "stored_byte_count", "overflow_count", "gate_limit", "row_advanced", "row_y_after")
+        },
+        "capped_object": raster_capped_stream_result["object"],
+        "drained_restore": raster_skip_transfer["restore_dispatch"],
+        "drained_restored_record": raster_skip_transfer["restored_record"],
+        "drained_gate": {
+            key: raster_skip_transfer[key]
+            for key in ("gate_path", "gate_queued", "gate_drained", "stored_byte_count", "overflow_count", "gate_limit", "row_advanced", "row_y_after")
+        },
+        "drained_object": raster_skip_stream_result["object"],
+        "drained_chain": raster_skip_stream_result["chain"],
+        "drained_rendered": raster_skip_stream_result["rendered"],
+    }, {
+        "stream": b"\x1b*t300R\x1b*r0A\x1b*b4W" + bytes.fromhex("f0 0f aa 55"),
+        "parser_handlers": [0x010808, 0x01075A, 0x011F82],
+        "parser_payload_offset": 17,
+        "parser_payload": bytes.fromhex("f0 0f aa 55"),
+        "parser_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+        "capped_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+        "capped_restored_record": bytes.fromhex("80 57 00 04 00 00"),
+        "capped_gate": {
+            "gate_path": "queued-capped",
+            "gate_queued": True,
+            "gate_drained": 0,
+            "stored_byte_count": 2,
+            "overflow_count": 2,
+            "gate_limit": 2,
+            "row_advanced": True,
+            "row_y_after": 1,
+        },
+        "capped_object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
+        "drained_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+        "drained_restored_record": bytes.fromhex("80 57 00 04 00 00"),
+        "drained_gate": {
+            "gate_path": "skip-row-beyond-extent",
+            "gate_queued": False,
+            "gate_drained": 4,
+            "stored_byte_count": 0,
+            "overflow_count": 0,
+            "gate_limit": None,
+            "row_advanced": False,
+            "row_y_after": 20,
+        },
+        "drained_object": b"",
+        "drained_chain": [],
+        "drained_rendered": None,
     }))
     raster_mode1_command_stream = b"\x1b*t150R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f")
     raster_mode1_stream_result = render_raster_command_data_stream_via_121cc_105d0(
@@ -20498,7 +20561,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("## ROM Parser Dispatch Trace Fixture")
     lines.append("")
     lines.append("This fixture walks the primary raster stream through the ROM dispatch table used by main parser loop `0x11774`. It proves the byte sequence reaches prefix handlers `0x11eb6` / `0x11ec8` / `0x11eda`, final handlers `0x10808`, `0x1075a`, and `0x11f82`, then returns to mode 0 where `0x12218` restores the delayed `ESC *b4W` record and dispatches handler `0x105d0` before payload bytes are consumed.")
-    lines.append("A paired cross-boundary check now ties that parser trace to the modeled command/data stream: the restored record, payload offset, queued raster object, `0x1edc6` bridge, rendered row, and final row counter all match for the same byte stream.")
+    lines.append("A paired cross-boundary check now ties that parser trace to the modeled command/data stream: the restored record, payload offset, queued raster object, `0x1edc6` bridge, rendered row, and final row counter all match for the same byte stream. A second parser-to-gate edge check uses the `ESC *t300R` / `ESC *r0A` / `ESC *b4W` stream to prove the same ROM parser handlers and `0x105d0` restore feed both capped queueing and beyond-extent drain/no-row-advance outcomes.")
     lines.append("")
     lines.append(f"- dispatch stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_command_stream)}`")
     lines.append("- dispatch path:")
@@ -20577,6 +20640,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         raster_skip_transfer["row_y_after"],
         len(raster_skip_stream_result["object"]),
     ))
+    lines.append("- raster parser-to-gate edge boundary: the same `ESC *t300R` / `ESC *r0A` / `ESC *b4W` parser trace reaches handlers `0x10808`, `0x1075a`, and `0x11f82`, restores handler `0x105d0`, then the capped fixture stores only the first two payload bytes while the beyond-extent fixture drains all four bytes without queueing or advancing `row_y`.")
     lines.append("")
     lines.append(f"- mode-1 stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode1_command_stream)}`")
     lines.append("- mode-1 parsed events:")

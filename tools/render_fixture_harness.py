@@ -3866,6 +3866,49 @@ def queue_text_source_to_page_record_via_12f2e(resources: bytes, page_record: di
     }
 
 
+def compact_bucket_root_from_page_record(page_record: dict[str, object]) -> dict[str, object]:
+    bucket_array = page_record.get("bucket_array", {})
+    if not isinstance(bucket_array, dict):
+        raise AssertionError("page record bucket_array must be a dict")
+    nonempty_buckets = sorted(bucket for bucket, chain in bucket_array.items() if chain)
+    if len(nonempty_buckets) != 1:
+        raise AssertionError("page-record compact fixture expects one nonempty bucket")
+    chain = bucket_array[nonempty_buckets[0]]
+    if not isinstance(chain, list) or len(chain) != 1:
+        raise AssertionError("page-record compact fixture expects one compact object in the bucket")
+    return {
+        "bucket_index": nonempty_buckets[0],
+        "bucket_root": bytes(chain[0]),
+    }
+
+
+def finalize_page_record_via_ff1e(page_record: dict[str, object], state: dict[str, int]) -> dict[str, object]:
+    if not state["page_root_present"] or state["page_root_class"] != 1:
+        return {
+            "published": False,
+            "current_page_root_after": 0,
+            "page_root_clears": int(state.get("page_root_clears", 0)) + 1,
+        }
+
+    bucket = compact_bucket_root_from_page_record(page_record)
+    context_slots = list(page_record.get("context_slots", []))
+    published_pool_record = {
+        "bucket_root": bucket["bucket_root"],
+        "context_slots": context_slots,
+    }
+    return {
+        "published": True,
+        "bucket_index": bucket["bucket_index"],
+        "published_pool_record": published_pool_record,
+        "transient_page_byte": 0,
+        "cursor_transient_a": 0,
+        "cursor_transient_b": 0,
+        "page_publication_flag": 1,
+        "current_page_root_after": 0,
+        "page_root_clears": int(state.get("page_root_clears", 0)) + 1,
+    }
+
+
 def advance_flagged_text_cursor_via_d550(cursor_x: int, default_advance: int) -> dict[str, int]:
     d5 = int(cursor_x) + int(default_advance)
     if (d5 & 0xFFFF) >= 12:
@@ -5134,17 +5177,24 @@ def render_mixed_printable_control_page_record_stream(
     state = dict(state)
     page_record: dict[str, object] = {"bucket_array": {}, "context_slots": [context]}
     events: list[dict[str, object]] = []
+    published_page_record: dict[str, object] | None = None
     pos = 0
     while pos < len(stream):
         byte = stream[pos]
         if byte == 0x1B:
             if pos + 1 < len(stream) and stream[pos + 1] == ord("E"):
                 before = dict(state)
+                finalized = finalize_page_record_via_ff1e(page_record, state)
+                if finalized["published"]:
+                    published_pool_record = finalized["published_pool_record"]
+                    assert isinstance(published_pool_record, dict)
+                    published_page_record = published_pool_record
                 state = apply_esc_e_reset(state)
                 events.append({
                     "kind": "reset",
                     "offset": pos,
                     "sequence": stream[pos : pos + 2],
+                    "finalized_page_record": finalized,
                     "current_page_root_before": before["current_page_root"],
                     "current_page_root_after": state["current_page_root"],
                     "page_publications": state["page_publications"],
@@ -5238,6 +5288,11 @@ def render_mixed_printable_control_page_record_stream(
         "context_slots": [context],
     })
     rendered = render_bridged_compact_bucket_object(data, resources, bridged_record)
+    published_bridged_record = None
+    published_rendered = None
+    if published_page_record is not None:
+        published_bridged_record = bridge_page_record_via_1edc6(published_page_record)
+        published_rendered = render_bridged_compact_bucket_object(data, resources, published_bridged_record)
     return {
         "stream": stream,
         "events": events,
@@ -5246,6 +5301,9 @@ def render_mixed_printable_control_page_record_stream(
         "bucket_object": bucket_object,
         "bridged_record": bridged_record,
         "rendered": rendered,
+        "published_page_record": published_page_record,
+        "published_bridged_record": published_bridged_record,
+        "published_rendered": published_rendered,
         "final_state": state,
     }
 
@@ -11881,12 +11939,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     mixed_reset_page_record_object = mixed_reset_page_record_stream["bucket_object"]
     mixed_reset_page_record_rendered = mixed_reset_page_record_stream["rendered"]
     mixed_reset_page_record_bridged = mixed_reset_page_record_stream["bridged_record"]
+    mixed_reset_published_page_record = mixed_reset_page_record_stream["published_page_record"]
+    mixed_reset_published_bridged = mixed_reset_page_record_stream["published_bridged_record"]
+    mixed_reset_published_rendered = mixed_reset_page_record_stream["published_rendered"]
     assert isinstance(mixed_reset_page_record_object, bytes)
     assert isinstance(mixed_reset_page_record_rendered, dict)
     assert isinstance(mixed_reset_page_record_bridged, dict)
+    assert isinstance(mixed_reset_published_page_record, dict)
+    assert isinstance(mixed_reset_published_bridged, dict)
+    assert isinstance(mixed_reset_published_rendered, dict)
     mixed_reset_page_record_event_summary: list[dict[str, object]] = []
     mixed_reset_page_record_events = mixed_reset_page_record_stream["events"]
     assert isinstance(mixed_reset_page_record_events, list)
+    mixed_reset_finalized_summary: dict[str, object] | None = None
     for event in mixed_reset_page_record_events:
         assert isinstance(event, dict)
         if event["kind"] == "printable":
@@ -11909,6 +11974,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "bucket_index": page_result["bucket_index"],
             })
         else:
+            finalized = event["finalized_page_record"]
+            assert isinstance(finalized, dict)
+            published_pool_record = finalized["published_pool_record"]
+            assert isinstance(published_pool_record, dict)
+            mixed_reset_finalized_summary = {
+                "published": finalized["published"],
+                "bucket_index": finalized["bucket_index"],
+                "bucket_root_prefix": published_pool_record["bucket_root"][:11],
+                "context_slots": published_pool_record["context_slots"],
+                "transient_page_byte": finalized["transient_page_byte"],
+                "cursor_transient_a": finalized["cursor_transient_a"],
+                "cursor_transient_b": finalized["cursor_transient_b"],
+                "page_publication_flag": finalized["page_publication_flag"],
+                "current_page_root_after": finalized["current_page_root_after"],
+                "page_root_clears": finalized["page_root_clears"],
+            }
             mixed_reset_page_record_event_summary.append({
                 "kind": "reset",
                 "sequence": event["sequence"],
@@ -12003,6 +12084,51 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "bucket_root": mixed_reset_page_record_object,
         "context_slots": (0x440946B4, 0),
         "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 1,
+            "rendered": mixed_reset_rendered["rendered"],
+            "payload": bytes.fromhex("00 01 20 00 01") + bytes(0x1B),
+        },
+        "rows": positioned_mode0["rows"],
+    }))
+    checks.append(assert_equal("mixed printable/reset page-record finalization publishes bridged record", {
+        "finalized": mixed_reset_finalized_summary,
+        "published_record": {
+            "bucket_root": mixed_reset_published_page_record["bucket_root"],
+            "context_slots": mixed_reset_published_page_record["context_slots"],
+        },
+        "published_bridge": {
+            "bucket_root": mixed_reset_published_bridged["bucket_root"],
+            "context_slots": mixed_reset_published_bridged["context_slots"][:2],
+        },
+        "published_rendered": {
+            key: mixed_reset_published_rendered[key]
+            for key in ("selector", "context_slot", "count", "rendered", "payload")
+        },
+        "rows": mixed_reset_published_rendered["rows"],
+    }, {
+        "finalized": {
+            "published": True,
+            "bucket_index": 0,
+            "bucket_root_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "context_slots": [0x440946B4],
+            "transient_page_byte": 0,
+            "cursor_transient_a": 0,
+            "cursor_transient_b": 0,
+            "page_publication_flag": 1,
+            "current_page_root_after": 0,
+            "page_root_clears": 1,
+        },
+        "published_record": {
+            "bucket_root": mixed_reset_page_record_object,
+            "context_slots": [0x440946B4],
+        },
+        "published_bridge": {
+            "bucket_root": mixed_reset_page_record_object,
+            "context_slots": (0x440946B4, 0),
+        },
+        "published_rendered": {
             "selector": 0,
             "context_slot": 0,
             "count": 1,
@@ -12727,7 +12853,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- page-record stream object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_page_record_object)}`")
     lines.append(f"- page-record bridged context slots `[0..1]`: `0x{mixed_page_record_bridged['context_slots'][0]:08x}`, `0x{mixed_page_record_bridged['context_slots'][1]:08x}`")
     lines.append("")
-    lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric.")
+    lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now also models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`.")
     lines.append("")
     lines.append("- mixed reset stream bytes: `21 1b 45`")
     lines.append(f"- mixed reset compact object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_reset_combined['object'])}`")
@@ -12743,7 +12869,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append(f"- page-record reset object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_reset_page_record_object)}`")
     lines.append("- page-record reset bridged rows match the pre-reset compact text rows.")
-    lines.append("- remaining gap: replace these fixture-only source/bucket/page-root states with parser-produced page objects and compare the finalized page/control records.")
+    lines.append(f"- published page-record bucket bytes: `{' '.join(f'{byte:02x}' for byte in mixed_reset_published_page_record['bucket_root'])}`")
+    lines.append("- published page-record bridge rows match the pre-reset compact text rows.")
+    lines.append("- remaining gap: replace these fixture-only source/bucket/page-root states with page roots allocated by a fuller parser model.")
     lines.append("")
 
     lines.append("## `0xd3b2` Unflagged Positioning Fixture")

@@ -11525,6 +11525,78 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         }],
         "composed_rows": expected_text_rule_composed_rows,
     }))
+    text_rule_raster_page_record: dict[str, object] = {"bucket_array": {}}
+    text_rule_raster_result = queue_raster_row_to_page_record_via_13070(
+        text_rule_raster_page_record,
+        {"x": 0, "y": 12, "byte_count": 2, "mode": 0},
+        bytes.fromhex("c3 3c"),
+    )
+    text_rule_raster_bucket_array = text_rule_raster_page_record["bucket_array"]
+    assert isinstance(text_rule_raster_bucket_array, dict)
+    text_rule_raster_object = bytes(text_rule_raster_bucket_array[0][0])
+    text_rule_raster_bridged = bridge_page_record_via_1edc6({"bucket_root": text_rule_raster_object})
+    text_rule_raster_rendered = render_bridged_encoded_raster_object(data, text_rule_raster_bridged)
+    text_rule_raster_composed_rows = compose_set_pixel_rows(
+        [text_rule_text["rows"], text_rule_rules["rows"], text_rule_raster_rendered["rows"]],
+        width=40,
+        rows=28,
+    )
+    expected_text_rule_raster_composed_rows: list[str] = []
+    raster_row_bits = "##....##..####.."
+    for row_index in range(28):
+        row = ["."] * 40
+        if row_index < len(line_printer_glyph32_rows):
+            for x, pixel in enumerate(line_printer_glyph32_rows[row_index]):
+                if pixel == "#":
+                    row[16 + x] = "#"
+        if row_index == 12:
+            for x, pixel in enumerate(raster_row_bits):
+                if pixel == "#":
+                    row[x] = "#"
+        if 24 <= row_index < 27:
+            row[24:36] = ["#"] * 12
+        expected_text_rule_raster_composed_rows.append("".join(row))
+    checks.append(assert_equal("bridged text, rule, and raster layers compose into one page band", {
+        "text_bucket_root": text_rule_bridged["bucket_root"],
+        "rule_object": text_rule_bridged["rule_list"][0],
+        "raster_result": {
+            key: text_rule_raster_result[key]
+            for key in ("path", "allocated", "bucket_index", "key", "mode", "byte_count_before", "byte_count_after", "capacity", "object_size")
+        },
+        "raster_bucket_root": text_rule_raster_bridged["bucket_root"],
+        "raster_rendered": {
+            key: text_rule_raster_rendered[key]
+            for key in ("mode", "helper", "byte_count", "coord", "dest_base", "x", "y", "payload", "rows")
+        },
+        "composed_rows": text_rule_raster_composed_rows,
+    }, {
+        "text_bucket_root": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+        "rule_object": bytes.fromhex("00 00 00 00 01 17 88 01 00 0c 00 03 00 03"),
+        "raster_result": {
+            "path": "raster-page-record",
+            "allocated": True,
+            "bucket_index": 0,
+            "key": 0xC000,
+            "mode": 0,
+            "byte_count_before": 2,
+            "byte_count_after": 0,
+            "capacity": 2,
+            "object_size": 0x0C,
+        },
+        "raster_bucket_root": bytes.fromhex("00 00 00 00 80 00 00 02 c0 00 c3 3c"),
+        "raster_rendered": {
+            "mode": 0,
+            "helper": 0x01F8DA,
+            "byte_count": 2,
+            "coord": 0xC000,
+            "dest_base": 0x180,
+            "x": 0,
+            "y": 12,
+            "payload": bytes.fromhex("c3 3c"),
+            "rows": ["." * 16] * 12 + [raster_row_bits],
+        },
+        "composed_rows": expected_text_rule_raster_composed_rows,
+    }))
     overflow_positioned_text_object = overflow_positioned_bucket["object"]
     assert isinstance(overflow_positioned_text_object, bytes)
     overflow_positioned_mode0 = render_compact_text_bucket_object(data, resources, (0x440946B4,), overflow_positioned_text_object)
@@ -12722,6 +12794,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- text+rule composed sample rows:")
     lines.extend(f"`{row}`" for row in text_rule_composed_rows[:4])
     lines.extend(f"`{row}`" for row in text_rule_composed_rows[24:27])
+    lines.append("- a raster layer fixture renders a mode-0 row at x `0`, y `12` through its own `0x1edc6` raster bridge, then composes it with the text+rule band without claiming the heterogeneous bucket-chain merge is fully decoded.")
+    lines.append(f"- text+rule+raster composed row 12: `{text_rule_raster_composed_rows[12]}`")
     lines.append("- remaining gap: replace this synthetic page/control record with a parser-produced page root and compare the finalized record published by `0xff1e`.")
     lines.append("")
 

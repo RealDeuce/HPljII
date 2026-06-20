@@ -592,6 +592,76 @@ def apply_orientation_via_10220(data: bytes, state: dict[str, int], parameter: i
     return state
 
 
+def page_geometry_handler(final: int) -> int:
+    final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+    if final_upper == ord("A"):
+        return 0x00FC74
+    if final_upper == ord("O"):
+        return 0x010220
+    raise AssertionError(f"unsupported ESC &l page-geometry final byte {chr(final)!r}")
+
+
+def page_geometry_event_state(state: dict[str, int]) -> dict[str, int]:
+    keys = (
+        "page_code",
+        "orientation",
+        "width",
+        "height",
+        "active_width",
+        "active_height",
+        "margin_reference",
+        "vertical_offset_source",
+        "top_offset",
+        "pending_text_flushes",
+        "page_finalizations",
+    )
+    return {key: int(state[key]) for key in keys if key in state}
+
+
+def apply_page_geometry_stream_via_fc74_10220(data: bytes, state: dict[str, int], stream: bytes) -> dict[str, object]:
+    state = dict(state)
+    stream_events: list[dict[str, object]] = []
+    pos = 0
+    while pos < len(stream):
+        start = pos
+        if pos + 3 >= len(stream) or stream[pos : pos + 3] != b"\x1b&l":
+            raise AssertionError(f"page-geometry stream only models ESC &l#A/#O at offset {pos}")
+        pos += 3
+        while True:
+            command_start = start if pos == start + 3 else pos
+            parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            if pos >= len(stream):
+                raise AssertionError("page-geometry stream missing final byte")
+            final = stream[pos]
+            pos += 1
+            final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+            before = page_geometry_event_state(state)
+            if final_upper == ord("A"):
+                state = apply_page_size_via_fc74(data, state, parameter)
+            elif final_upper == ord("O"):
+                state = apply_orientation_via_10220(data, state, parameter)
+            else:
+                raise AssertionError(f"page-geometry stream unsupported final byte {chr(final)!r}")
+            record = bytes([
+                0x81 if parameter < 0 else 0x80,
+                final,
+            ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
+            stream_events.append({
+                "sequence": stream[command_start:pos],
+                "record": record,
+                "parameter": parameter,
+                "handler": page_geometry_handler(final),
+                "before": before,
+                "after": page_geometry_event_state(state),
+                "chained": bool(ord("a") <= final <= ord("z")),
+            })
+            if not (ord("a") <= final <= ord("z")):
+                break
+    state["stream"] = stream
+    state["stream_events"] = stream_events
+    return state
+
+
 def macro_record(payload: bytes = b"", macro_id: int = 0, permanent: bool = False) -> dict[str, object]:
     return {
         "id": macro_id & 0xFFFF,
@@ -5586,6 +5656,123 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "same_orientation": 1,
         "invalid_orientation": 2,
+    }))
+    page_geometry_stream = apply_page_geometry_stream_via_fc74_10220(data, page_geometry_state(), b"\x1b&l1a1O")
+    checks.append(assert_equal("0xfc74/0x10220 chained ESC &l stream selects page size then orientation handlers", {
+        "state": select_keys(page_geometry_stream, (
+            "stream",
+            "page_code",
+            "orientation",
+            "width",
+            "height",
+            "margin_reference",
+            "active_width",
+            "active_height",
+            "vertical_offset_source",
+            "negative_vertical_offset",
+            "printable_extent",
+            "top_offset",
+            "portrait_landscape_threshold_6",
+            "portrait_landscape_threshold_2",
+            "portrait_landscape_threshold_1",
+            "portrait_landscape_threshold_5",
+            "pending_text_flushes",
+            "page_finalizations",
+            "page_change_flag",
+            "print_engine_status",
+        )),
+        "stream_events": page_geometry_stream["stream_events"],
+    }, {
+        "state": {
+            "stream": b"\x1b&l1a1O",
+            "page_code": 6,
+            "orientation": 1,
+            "width": 3030,
+            "height": 2025,
+            "margin_reference": 2175,
+            "active_width": 2025,
+            "active_height": 3030,
+            "vertical_offset_source": 50,
+            "negative_vertical_offset": -50,
+            "printable_extent": 2125,
+            "top_offset": 100,
+            "portrait_landscape_threshold_6": 2175,
+            "portrait_landscape_threshold_2": 2550,
+            "portrait_landscape_threshold_1": 2480,
+            "portrait_landscape_threshold_5": 2550,
+            "pending_text_flushes": 2,
+            "page_finalizations": 2,
+            "page_change_flag": 1,
+            "print_engine_status": 0,
+        },
+        "stream_events": [
+            {
+                "sequence": b"\x1b&l1a",
+                "record": b"\x80a\x00\x01\x00\x00",
+                "parameter": 1,
+                "handler": 0x00FC74,
+                "before": {
+                    "page_code": 2,
+                    "orientation": 0,
+                    "width": 0,
+                    "height": 0,
+                    "active_width": 0,
+                    "active_height": 0,
+                    "margin_reference": 0,
+                    "vertical_offset_source": 0,
+                    "top_offset": 0,
+                    "pending_text_flushes": 0,
+                    "page_finalizations": 0,
+                },
+                "after": {
+                    "page_code": 6,
+                    "orientation": 0,
+                    "width": 3030,
+                    "height": 2025,
+                    "active_width": 3030,
+                    "active_height": 2025,
+                    "margin_reference": 3150,
+                    "vertical_offset_source": 60,
+                    "top_offset": 90,
+                    "pending_text_flushes": 1,
+                    "page_finalizations": 1,
+                },
+                "chained": True,
+            },
+            {
+                "sequence": b"1O",
+                "record": b"\x80O\x00\x01\x00\x00",
+                "parameter": 1,
+                "handler": 0x010220,
+                "before": {
+                    "page_code": 6,
+                    "orientation": 0,
+                    "width": 3030,
+                    "height": 2025,
+                    "active_width": 3030,
+                    "active_height": 2025,
+                    "margin_reference": 3150,
+                    "vertical_offset_source": 60,
+                    "top_offset": 90,
+                    "pending_text_flushes": 1,
+                    "page_finalizations": 1,
+                },
+                "after": {
+                    "page_code": 6,
+                    "orientation": 1,
+                    "width": 3030,
+                    "height": 2025,
+                    "active_width": 2025,
+                    "active_height": 3030,
+                    "margin_reference": 2175,
+                    "vertical_offset_source": 50,
+                    "top_offset": 100,
+                    "pending_text_flushes": 2,
+                    "page_finalizations": 2,
+                },
+                "chained": False,
+            },
+        ],
     }))
 
     macro_id_state = assign_macro_id_via_e112(bytes.fromhex("81 59 ff 85 00 00"))
@@ -11577,11 +11764,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("")
     lines.append("- Page-code lookup masks the internal code with `0x7f`; PCL `80` stores internal code `0x88`, which reads table index `8`.")
     lines.append("- `ESC &l#A` maps PCL values `1`, `2`, `3`, `26`, `80`, `81`, `90`, and `91` to internal page codes, finalizes pending page state, updates width/height words, then recomputes portrait or landscape extents.")
-    lines.append("- `ESC &l#O` accepts only values `0` and `1`; changing orientation finalizes pending page state, swaps active width/height in landscape, changes the vertical offset source from `60` to `50`, and reloads the orientation margin thresholds through `0x103ea`.")
+    lines.append("- `ESC &l#O` accepts only values `0` and `1`; changing orientation finalizes pending page state, swaps active width/height in landscape, changes the vertical offset source from `60` to `50`, and reloads the orientation margin thresholds through `0x103ea`. A byte-stream fixture now drives chained `ESC &l1a1O` through handlers `0xfc74` and `0x10220`.")
     lines.append("")
     lines.append(f"- Letter portrait from `ESC &l1A`: code `{letter_page['page_code']}`, width `{letter_page['width']}`, height `{letter_page['height']}`, margin `{letter_page['margin_reference']}`, top offset `{letter_page['top_offset']}`")
     lines.append(f"- PCL 80 envelope lookup: code `0x{pcl80_page['page_code']:02x}`, width `{pcl80_page['width']}`, height `{pcl80_page['height']}`, margin `{pcl80_page['margin_reference']}`")
     lines.append(f"- Letter landscape from `ESC &l1O`: active `{landscape_letter['active_width']}x{landscape_letter['active_height']}`, margin `{landscape_letter['margin_reference']}`, printable extent `{landscape_letter['printable_extent']}`, top offset `{landscape_letter['top_offset']}`")
+    lines.append(f"- page-geometry stream events: `{page_geometry_stream['stream_events']}`")
     lines.append(f"- Landscape thresholds loaded by `0x103ea`: `{[landscape_letter[key] for key in ('portrait_landscape_threshold_6', 'portrait_landscape_threshold_2', 'portrait_landscape_threshold_1', 'portrait_landscape_threshold_5')]}`")
     lines.append("")
 

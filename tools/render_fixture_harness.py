@@ -20260,6 +20260,124 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         ],
     }))
+    raster_multirow_dispatch_trace = trace_raster_parser_dispatch_via_11774(data, raster_multirow_command_stream)
+    raster_multirow_dispatch_commands = raster_multirow_dispatch_trace["commands"]
+    assert isinstance(raster_multirow_dispatch_commands, list)
+    raster_multirow_transfer_events = [
+        event for event in raster_multirow_stream_result["events"]
+        if event["kind"] == "raster-transfer"
+    ]
+    checks.append(assert_equal("raster multi-row parser trace feeds consecutive queued objects", {
+        "stream": raster_multirow_command_stream,
+        "commands": [
+            {
+                "sequence": command["sequence"],
+                "handler": command["final_dispatch"]["handler"],
+                "record": command["record"],
+                "mode_after_final": command["mode_after_final"],
+                "restore_after_final": command["restore_after_final"],
+                "restored_record": command["restored_record"],
+                "payload_offset": command.get("payload_offset"),
+                "payload": command.get("payload"),
+            }
+            for command in raster_multirow_dispatch_commands
+        ],
+        "model_transfers": [
+            {
+                key: event[key]
+                for key in ("sequence", "restored_record", "payload_offset", "payload", "transfer_state", "row_y_after")
+            }
+            for event in raster_multirow_transfer_events
+        ],
+        "chain": raster_multirow_chain,
+        "rendered": [
+            {
+                key: rendered[key]
+                for key in ("coord", "payload", "rows")
+            }
+            for rendered in raster_multirow_rendered
+        ],
+        "final_row_y": raster_multirow_stream_result["final_state"]["row_y"],
+    }, {
+        "stream": b"\x1b*t300R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f") + b"\x1b*b2W" + bytes.fromhex("0f f0"),
+        "commands": [
+            {
+                "sequence": b"\x1b*t300R",
+                "handler": 0x010808,
+                "record": bytes.fromhex("80 52 01 2c 00 00"),
+                "mode_after_final": 0,
+                "restore_after_final": None,
+                "restored_record": None,
+                "payload_offset": None,
+                "payload": None,
+            },
+            {
+                "sequence": b"\x1b*r0A",
+                "handler": 0x01075A,
+                "record": bytes.fromhex("80 41 00 00 00 00"),
+                "mode_after_final": 0,
+                "restore_after_final": None,
+                "restored_record": None,
+                "payload_offset": None,
+                "payload": None,
+            },
+            {
+                "sequence": b"\x1b*b2W",
+                "handler": 0x011F82,
+                "record": bytes.fromhex("80 57 00 02 00 00"),
+                "mode_after_final": 0,
+                "restore_after_final": {"kind": "direct-handler", "handler": 0x0105D0},
+                "restored_record": bytes.fromhex("80 57 00 02 00 00"),
+                "payload_offset": 17,
+                "payload": bytes.fromhex("f0 0f"),
+            },
+            {
+                "sequence": b"\x1b*b2W",
+                "handler": 0x011F82,
+                "record": bytes.fromhex("80 57 00 02 00 00"),
+                "mode_after_final": 0,
+                "restore_after_final": {"kind": "direct-handler", "handler": 0x0105D0},
+                "restored_record": bytes.fromhex("80 57 00 02 00 00"),
+                "payload_offset": 24,
+                "payload": bytes.fromhex("0f f0"),
+            },
+        ],
+        "model_transfers": [
+            {
+                "sequence": b"\x1b*b2W",
+                "restored_record": bytes.fromhex("80 57 00 02 00 00"),
+                "payload_offset": 17,
+                "payload": bytes.fromhex("f0 0f"),
+                "transfer_state": {"x": 0, "y": 0, "byte_count": 2, "mode": 0},
+                "row_y_after": 1,
+            },
+            {
+                "sequence": b"\x1b*b2W",
+                "restored_record": bytes.fromhex("80 57 00 02 00 00"),
+                "payload_offset": 24,
+                "payload": bytes.fromhex("0f f0"),
+                "transfer_state": {"x": 0, "y": 1, "byte_count": 2, "mode": 0},
+                "row_y_after": 2,
+            },
+        ],
+        "chain": [
+            bytes.fromhex("00 00 00 00 80 00 00 02 10 00 0f f0"),
+            bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
+        ],
+        "rendered": [
+            {
+                "coord": 0x0000,
+                "payload": bytes.fromhex("f0 0f"),
+                "rows": ["####........####"],
+            },
+            {
+                "coord": 0x1000,
+                "payload": bytes.fromhex("0f f0"),
+                "rows": ["................", "....########...."],
+            },
+        ],
+        "final_row_y": 2,
+    }))
     raster_end_command_stream = b"\x1b*t300R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f") + b"\x1b*rB\x1b*t150R"
     raster_end_stream_result = render_raster_command_data_stream_via_121cc_105d0(
         data,
@@ -25418,6 +25536,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             summary["parser_payload_offset"],
             " ".join(f"{byte:02x}" for byte in summary["queued_object"]),
         ))
+    lines.append("- multi-row parser boundary: two consecutive uppercase `ESC *b2W` commands restore independent `80 57 00 02 00 00` records, consume payloads at offsets `17` and `24`, advance modeled `row_y` to `2`, and queue page-record objects at coords `0x0000` and `0x1000`.")
     lines.append("- chained transfer parser boundary: `ESC *b2w2W` keeps parser mode in the `*b` family after lowercase `w`, preserves delayed record `80 77 00 02 00 00`, restores that same record at uppercase `W`, and consumes payload bytes only after offset `19`.")
     lines.append("")
     lines.append(f"- mode-1 stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode1_command_stream)}`")

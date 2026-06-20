@@ -3072,7 +3072,7 @@ def rectangle_graphics_flow_report(data: bytes) -> str:
     lines.append("- `0x10b80` rejects rectangles starting beyond the printable extents, clips negative starts and overlong width/height, handles landscape coordinate swapping, ensures a page root through `0x10084`, then queues source record `0x782a88` through `0x13386`.")
     lines.append("- `0x13386` runs `0x134d6` to compute bucket word `0x782a7c` and compact rule key `0x782a7e` from source x/y plus `0x782dc0`; `0x133aa` stores the low bucket byte at object `+4` and inserts a 14-byte object under page-root `+0x24`.")
     lines.append("- `0x1edc6` later copies page-root `+0x24` to render-record `+0x1c`, ORs object byte `+5` with `0x10`, and copies height word `+0x0a` to `+0x0c` before `0x1f446` dispatch.")
-    lines.append("- `0x1f446` walks the bridged rule list for each five-bucket render band. Selector `7` dispatches to solid helper `0x1f596`, which decodes the packed key through `0x1f626`/`$a001` sub-byte positioning and writes full `0xffff` words plus a trailing mask from table `0x308be`.")
+    lines.append("- `0x1f446` walks the bridged rule list for each five-bucket render band. Selector `7` dispatches to solid helper `0x1f596`, which decodes the packed key through `0x1f626`/`$a001` sub-byte positioning and writes full `0xffff` words plus a trailing mask from table `0x308be`; the other selectors dispatch to pattern helper `0x1f4e0`, which uses the pointer table at `0x2fefe` and the same mask helper `0x1f6ee`.")
     lines.append("")
     lines.append("## State Reference Scan")
     lines.append("")
@@ -3085,7 +3085,7 @@ def rectangle_graphics_flow_report(data: bytes) -> str:
     lines.append("")
     lines.append("- A byte-stream model must preserve rectangle width/height state across commands until `ESC *c#P` consumes it; reset/rebuild paths clear `0x78316a`, `0x783166`, and `0x78316e`.")
     lines.append("- Dot sizes and decipoint sizes are not interchangeable at fractional boundaries: decipoint handlers round up with the firmware's `+11` subunit bias before storing the packed value.")
-    lines.append("- `tools/render_fixture_harness.py` now pins dot/decipoint size stores, `ESC *c#G` absolute/clear behavior, `ESC *c#P` selector mapping, portrait rule-list object queueing/bridge normalization, solid black selector-7 rendering through `0x1f446`/`0x1f596`, and negative-left clipping. Remaining work is to render gray/pattern selectors through `0x1f4e0` and compare pixel patterns.")
+    lines.append("- `tools/render_fixture_harness.py` now pins dot/decipoint size stores, `ESC *c#G` absolute/clear behavior, `ESC *c#P` selector mapping, portrait rule-list object queueing/bridge normalization, solid black selector-7 rendering through `0x1f446`/`0x1f596`, gray selector-0 rendering through `0x1f446`/`0x1f4e0`, and negative-left clipping. Remaining work is to render the rest of the gray/pattern selector matrix and compare pixel patterns.")
     lines.append("")
     return "\n".join(lines)
 

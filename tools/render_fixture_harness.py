@@ -3430,13 +3430,33 @@ def decode_rule_key(key: int, bucket_delta: int = 0) -> dict[str, int]:
     }
 
 
-def render_solid_rule_object_via_1f596(data: bytes, obj: bytes | bytearray, band_word: int = 0, dest_stride: int = 0x20, band_rows: int = 80) -> dict[str, object]:
+def rule_masks_via_1f6ee(data: bytes, subbyte: int, width: int) -> dict[str, int]:
+    phase = int(subbyte) & 0x0F
+    first_word_bits = 16 - phase
+    left_mask = u16(data, 0x3089E + phase * 2)
+    right_mask = 0
+    if int(width) >= 16:
+        right_index = (int(width) - first_word_bits) & 0x0F
+        right_mask = u16(data, 0x308BE + right_index * 2)
+    else:
+        right_index = phase + int(width) - 16
+        if right_index >= 0:
+            right_mask = u16(data, 0x308BE + right_index * 2)
+        else:
+            left_mask &= u16(data, 0x308BE + (right_index + 16) * 2)
+    interior_words = (int(width) - first_word_bits) >> 4
+    if interior_words < 0:
+        interior_words = 0
+    return {
+        "left_mask": left_mask,
+        "right_mask": right_mask,
+        "interior_words": interior_words,
+    }
+
+
+def prepare_rule_object_for_band(obj: bytes | bytearray, band_word: int = 0) -> dict[str, object]:
     node = bytearray(obj)
-    selector = node[5] & 0x0F
-    if selector != 7:
-        raise AssertionError("0x1f596 fixture only renders solid selector 7")
     key = u16(node, 6)
-    width = u16(node, 8)
     remaining = int.from_bytes(node[0x0C:0x0E], "big", signed=True)
     bucket_delta = (node[4] - int(band_word)) & 0xFF
     bridged_current_band = bool(node[5] & 0x10)
@@ -3454,7 +3474,27 @@ def render_solid_rule_object_via_1f596(data: bytes, obj: bytes | bytearray, band
         available_rows = 0x50 - ((key >> 12) & 0x0F)
         rows_to_draw = min(remaining, max(available_rows, 0))
         node[0x0C:0x0E] = ((remaining - available_rows) & 0xFFFF).to_bytes(2, "big")
+    return {
+        "node": node,
+        "key": key,
+        "bucket_delta": bucket_delta,
+        "remaining_before": remaining,
+        "available_rows": available_rows,
+        "rows_to_draw": rows_to_draw,
+    }
 
+
+def render_solid_rule_object_via_1f596(data: bytes, obj: bytes | bytearray, band_word: int = 0, dest_stride: int = 0x20, band_rows: int = 80) -> dict[str, object]:
+    prepared = prepare_rule_object_for_band(obj, band_word)
+    node = prepared["node"]
+    assert isinstance(node, bytearray)
+    selector = node[5] & 0x0F
+    if selector != 7:
+        raise AssertionError("0x1f596 fixture only renders solid selector 7")
+    key = int(prepared["key"])
+    width = u16(node, 8)
+    bucket_delta = int(prepared["bucket_delta"])
+    rows_to_draw = int(prepared["rows_to_draw"])
     decoded = decode_rule_key(key, bucket_delta)
     dest = bytearray(band_rows * dest_stride)
     if rows_to_draw:
@@ -3485,12 +3525,60 @@ def render_solid_rule_object_via_1f596(data: bytes, obj: bytes | bytearray, band
         "bucket_delta": bucket_delta,
         "decoded": decoded,
         "width": width,
-        "remaining_before": remaining,
-        "available_rows": available_rows,
+        "remaining_before": int(prepared["remaining_before"]),
+        "available_rows": int(prepared["available_rows"]),
         "rows_drawn": rows_to_draw,
         "full_words": full_words,
         "partial_bits": partial_bits,
         "partial_mask": partial_mask,
+        "mutated_object": bytes(node),
+        "rows": bitmap_bytes_to_rows(dest, max_bottom, max_width, dest_stride),
+    }
+
+
+def render_pattern_rule_object_via_1f4e0(data: bytes, obj: bytes | bytearray, band_word: int = 0, dest_stride: int = 0x20, band_rows: int = 80) -> dict[str, object]:
+    prepared = prepare_rule_object_for_band(obj, band_word)
+    node = prepared["node"]
+    assert isinstance(node, bytearray)
+    selector = node[5] & 0x0F
+    if selector == 7:
+        raise AssertionError("0x1f4e0 fixture does not render solid selector 7")
+    key = int(prepared["key"])
+    width = u16(node, 8)
+    bucket_delta = int(prepared["bucket_delta"])
+    rows_to_draw = int(prepared["rows_to_draw"])
+    decoded = decode_rule_key(key, bucket_delta)
+    masks = rule_masks_via_1f6ee(data, int(decoded["subbyte"]), width)
+    pattern_base = u32(data, 0x2FEFE + selector * 4)
+    pattern_start = pattern_base + int(decoded["row_low"]) * 2
+    pattern_words = [u16(data, pattern_start + row * 2) for row in range(rows_to_draw)]
+    span = (width + 15) // 16 * 2
+    dest = bytearray(band_rows * dest_stride)
+    source = bytearray(rows_to_draw * span)
+    for row, word in enumerate(pattern_words):
+        for bit in range(width):
+            if word & (0x8000 >> (bit & 0x0F)):
+                source[row * span + bit // 8] |= 0x80 >> (bit & 7)
+    if rows_to_draw:
+        write_bitmap_bits(dest, dest_stride, bytes(source), rows_to_draw, span, int(decoded["x"]), int(decoded["y"]))
+    max_bottom = min(band_rows, int(decoded["y"]) + rows_to_draw)
+    max_width = int(decoded["x"]) + width
+    return {
+        "selector": selector,
+        "helper": 0x1F4E0,
+        "key": key,
+        "bucket_delta": bucket_delta,
+        "decoded": decoded,
+        "width": width,
+        "remaining_before": int(prepared["remaining_before"]),
+        "available_rows": int(prepared["available_rows"]),
+        "rows_drawn": rows_to_draw,
+        "pattern_base": pattern_base,
+        "pattern_start": pattern_start,
+        "pattern_words": pattern_words,
+        "left_mask": masks["left_mask"],
+        "interior_words": masks["interior_words"],
+        "right_mask": masks["right_mask"],
         "mutated_object": bytes(node),
         "rows": bitmap_bytes_to_rows(dest, max_bottom, max_width, dest_stride),
     }
@@ -3510,23 +3598,19 @@ def render_rule_list_via_1f446(data: bytes, render_record: dict[str, object], ba
         if int.from_bytes(obj[0x0C:0x0E], "big", signed=True) <= 0:
             continue
         selector = obj[5] & 0x0F
-        if selector != 7:
-            raise AssertionError("0x1f446 fixture currently renders only solid selector 7")
-        item = render_solid_rule_object_via_1f596(data, obj, band_word=band_word, dest_stride=dest_stride, band_rows=band_rows)
+        if selector == 7:
+            item = render_solid_rule_object_via_1f596(data, obj, band_word=band_word, dest_stride=dest_stride, band_rows=band_rows)
+        else:
+            item = render_pattern_rule_object_via_1f4e0(data, obj, band_word=band_word, dest_stride=dest_stride, band_rows=band_rows)
         rendered.append(item)
-        decoded = item["decoded"]
-        assert isinstance(decoded, dict)
-        rows_drawn = int(item["rows_drawn"])
-        width = int(item["width"])
-        if rows_drawn:
-            span = (width + 15) // 16 * 2
-            source = bytearray(rows_drawn * span)
-            for y in range(rows_drawn):
-                for bit in range(width):
-                    source[y * span + bit // 8] |= 0x80 >> (bit & 7)
-            write_bitmap_bits(dest, dest_stride, bytes(source), rows_drawn, span, int(decoded["x"]), int(decoded["y"]))
-            max_bottom = max(max_bottom, int(decoded["y"]) + rows_drawn)
-            max_width = max(max_width, int(decoded["x"]) + width)
+        rows = item["rows"]
+        assert isinstance(rows, list)
+        for row_index, row in enumerate(rows):
+            for x, pixel in enumerate(row):
+                if pixel == "#":
+                    dest[row_index * dest_stride + x // 8] |= 0x80 >> (x & 7)
+        max_bottom = max(max_bottom, len(rows))
+        max_width = max(max_width, max((len(row) for row in rows), default=0))
     return {
         "band_word": band_word,
         "rendered": rendered,
@@ -7993,6 +8077,51 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         }],
         "tail_rows": ["." * 22] + ["." * 10 + "#" * 12] * 5,
     }))
+    rectangle_fill_gray_threshold = apply_fill_rectangle_via_10898(rectangle_command_state(
+        width=pack12(8),
+        height=pack12(4),
+        cursor_x=pack12(0),
+        cursor_y=pack12(0),
+        area_fill_id=2,
+    ), 2)
+    rectangle_fill_gray_threshold_bridged = bridge_page_record_via_1edc6(rectangle_fill_gray_threshold["page_record"])
+    rectangle_fill_gray_threshold_rendered = render_rule_list_via_1f446(data, rectangle_fill_gray_threshold_bridged)
+    checks.append(assert_equal("0x1f446/0x1f4e0 renders gray selector pattern pixels", {
+        "selector": rectangle_fill_gray_threshold["fill_selector"],
+        "object": rectangle_fill_gray_threshold["events"][-1]["object"],
+        "bridged": rectangle_fill_gray_threshold_bridged["rule_list"],
+        "rendered": [
+            {
+                key: entry[key]
+                for key in ("selector", "helper", "key", "bucket_delta", "decoded", "width", "remaining_before", "available_rows", "rows_drawn", "pattern_base", "pattern_start", "pattern_words", "left_mask", "interior_words", "right_mask", "mutated_object")
+            }
+            for entry in rectangle_fill_gray_threshold_rendered["rendered"]
+        ],
+        "rows": rectangle_fill_gray_threshold_rendered["rows"],
+    }, {
+        "selector": 0,
+        "object": bytes.fromhex("00 00 00 00 00 00 00 00 00 08 00 04 00 00"),
+        "bridged": [bytes.fromhex("00 00 00 00 00 10 00 00 00 08 00 04 00 04")],
+        "rendered": [{
+            "selector": 0,
+            "helper": 0x1F4E0,
+            "key": 0x0000,
+            "bucket_delta": 0,
+            "decoded": {"x": 0, "y": 0, "row_low": 0, "subbyte": 0, "byte_pair_offset": 0},
+            "width": 8,
+            "remaining_before": 4,
+            "available_rows": 80,
+            "rows_drawn": 4,
+            "pattern_base": 0x02FF3E,
+            "pattern_start": 0x02FF3E,
+            "pattern_words": [0x8080, 0x0000, 0x0000, 0x0000],
+            "left_mask": 0xFF00,
+            "interior_words": 0,
+            "right_mask": 0x0000,
+            "mutated_object": bytes.fromhex("00 00 00 00 00 00 00 00 00 08 00 04 ff b4"),
+        }],
+        "rows": ["#.......", "........", "........", "........"],
+    }))
     rectangle_fill_clipped = apply_fill_rectangle_via_10898(rectangle_command_state(
         width=pack12(10),
         height=pack12(5),
@@ -9946,6 +10075,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append("- rendered black-rule visible rows:")
     lines.extend(f"`{row}`" for row in rectangle_fill_black_rendered["rows"][19:])
+    gray_rule = rectangle_fill_gray_threshold_rendered["rendered"][0]
+    lines.append("- gray selector `%d` dispatches through pattern helper `0x%06x`; pattern base `0x%06x`, start `0x%06x`, first words `%s`, left mask `0x%04x`, right mask `0x%04x`." % (
+        gray_rule["selector"],
+        gray_rule["helper"],
+        gray_rule["pattern_base"],
+        gray_rule["pattern_start"],
+        ", ".join("0x%04x" % word for word in gray_rule["pattern_words"]),
+        gray_rule["left_mask"],
+        gray_rule["right_mask"],
+    ))
+    lines.append("- rendered gray-rule rows:")
+    lines.extend(f"`{row}`" for row in rectangle_fill_gray_threshold_rendered["rows"])
     lines.append("- `0x10b80` clipping fixture starts at x `-3` with width `10`, queues x `0` width `7`, and emits object `%s`." % (
         " ".join(f"{byte:02x}" for byte in rectangle_fill_clipped["events"][-1]["object"]),
     ))

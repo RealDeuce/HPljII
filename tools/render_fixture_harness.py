@@ -333,6 +333,19 @@ def delay_payload_handler_via_121cc(record: bytes, handler: int) -> dict[str, ob
     }
 
 
+def schedule_payload_handler_via_121cc(pending: dict[str, object], record: bytes, handler: int) -> dict[str, object]:
+    if int(pending.get("pending_flag", 0)) == 1:
+        return {
+            "scheduled": False,
+            "pending": pending,
+        }
+    delayed = delay_payload_handler_via_121cc(record, handler)
+    return {
+        "scheduled": True,
+        "pending": delayed,
+    }
+
+
 def restore_delayed_payload_via_12218(pending: dict[str, object], alternate_mode: bool = False, cursor: int = 0x7829A2) -> dict[str, object]:
     if int(pending.get("pending_flag", 0)) != 1:
         return {
@@ -442,16 +455,23 @@ def trace_raster_parser_dispatch_via_11774(data: bytes, stream: bytes) -> dict[s
                 "mode_after_final": mode,
             }
             if final_event["handler"] == 0x011F82:
-                pending = delay_payload_handler_via_121cc(record, 0x0105D0)
+                scheduled = schedule_payload_handler_via_121cc(pending, record, 0x0105D0)
+                pending = scheduled["pending"]
                 command["delayed_snapshot_bytes"] = pending["snapshot_bytes"]
+                command["delayed_scheduled"] = scheduled["scheduled"]
             if mode == 0:
                 restored = restore_delayed_payload_via_12218(pending)
                 command["restore_after_final"] = restored["dispatch"]
+                command["restored_record"] = restored.get("record")
                 pending = restored["pending_after"]
             else:
                 command["restore_after_final"] = None
-            if final_event["handler"] == 0x011F82:
-                byte_count = abs(parameter)
+                command["restored_record"] = None
+            if final_event["handler"] == 0x011F82 and mode == 0:
+                restored_record = command["restored_record"]
+                if not isinstance(restored_record, bytes):
+                    raise AssertionError("parser trace expected restored ESC *b#W record before payload")
+                byte_count = abs(s16(restored_record, 2))
                 payload_start = pos
                 payload_end = pos + byte_count
                 if payload_end > len(stream):
@@ -5273,6 +5293,7 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
     page_record: dict[str, object] = {"bucket_array": {}}
     events: list[dict[str, object]] = []
     queued: list[dict[str, object]] = []
+    pending: dict[str, object] = {"pending_flag": 0, "handler": 0, "snapshot_record": b""}
     pos = 0
     while pos < len(stream):
         if stream[pos] != 0x1B:
@@ -5339,19 +5360,35 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
                     "chained": bool(ord("a") <= final <= ord("z")),
                 })
             elif group == ord("b") and final_upper == ord("W"):
-                byte_count = abs(parameter)
-                payload_start = pos
-                payload_end = pos + byte_count
-                if payload_end > len(stream):
-                    raise AssertionError("raster command stream payload shorter than ESC *b#W byte count")
-                payload = stream[payload_start:payload_end]
-                pos = payload_end
                 parsed_record = bytes([
                     0x81 if parameter < 0 else 0x80,
                     final,
                 ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
-                delayed = delay_payload_handler_via_121cc(parsed_record, 0x0105D0)
-                restored = restore_delayed_payload_via_12218(delayed)
+                scheduled = schedule_payload_handler_via_121cc(pending, parsed_record, 0x0105D0)
+                pending = scheduled["pending"]
+                delayed_snapshot = pending["snapshot_bytes"]
+                if ord("a") <= final <= ord("z"):
+                    events.append({
+                        "kind": "raster-transfer-pending",
+                        "sequence": sequence,
+                        "parameter": parameter,
+                        "parsed_record": parsed_record,
+                        "delayed_snapshot_bytes": delayed_snapshot,
+                        "delayed_scheduled": scheduled["scheduled"],
+                        "delayed_handler": 0x0105D0,
+                        "chained": True,
+                    })
+                    continue
+                restored = restore_delayed_payload_via_12218(pending)
+                pending = restored["pending_after"]
+                restored_record = restored["record"]
+                byte_count = abs(s16(restored_record, 2))
+                payload_start = pos
+                payload_end = pos + byte_count
+                if payload_end > len(stream):
+                    raise AssertionError("raster command stream payload shorter than restored ESC *b#W byte count")
+                payload = stream[payload_start:payload_end]
+                pos = payload_end
                 transfer_state = {
                     "x": state["baseline_word"],
                     "y": state["row_y"],
@@ -5365,7 +5402,8 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
                     "sequence": sequence,
                     "parameter": parameter,
                     "parsed_record": parsed_record,
-                    "delayed_snapshot_bytes": delayed["snapshot_bytes"],
+                    "delayed_snapshot_bytes": delayed_snapshot,
+                    "delayed_scheduled": scheduled["scheduled"],
                     "restore_dispatch": restored["dispatch"],
                     "restored_record": restored["record"],
                     "delayed_handler": 0x0105D0,
@@ -12943,7 +12981,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "row_y": 0,
         },
     }))
-    raster_chained_transfer_stream = b"\x1b*t300R\x1b*r0A\x1b*b2w" + bytes.fromhex("f0 0f") + b"2W" + bytes.fromhex("0f f0")
+    raster_chained_transfer_stream = b"\x1b*t300R\x1b*r0A\x1b*b2w2W" + bytes.fromhex("f0 0f")
     raster_chained_transfer_result = render_raster_command_data_stream_via_121cc_105d0(
         data,
         raster_chained_transfer_stream,
@@ -12955,14 +12993,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(raster_chained_transfer_bucket_array, dict)
     raster_chained_transfer_chain = [bytes(obj) for obj in raster_chained_transfer_bucket_array[0]]
     raster_chained_transfer_rendered = [render_encoded_raster_object_via_1f88e(data, obj) for obj in reversed(raster_chained_transfer_chain)]
-    checks.append(assert_equal("modeled raster command stream keeps ESC *b group open across lowercase w payload", {
-        "transfer_events": [
+    checks.append(assert_equal("modeled raster command stream defers lowercase ESC *b w payload until uppercase terminator", {
+        "events": [
             {
                 key: event[key]
-                for key in ("sequence", "parameter", "payload_offset", "payload", "transfer_state", "row_y_after", "chained")
+                for key in (
+                    ("kind", "sequence", "parameter", "parsed_record", "delayed_snapshot_bytes", "delayed_scheduled", "chained")
+                    if event["kind"] == "raster-transfer-pending"
+                    else ("kind", "sequence", "parameter", "parsed_record", "delayed_snapshot_bytes", "delayed_scheduled", "restore_dispatch", "restored_record", "payload_offset", "payload", "transfer_state", "row_y_after", "chained")
+                )
             }
             for event in raster_chained_transfer_result["events"]
-            if event["kind"] == "raster-transfer"
+            if event["kind"] in ("raster-transfer-pending", "raster-transfer")
         ],
         "chain": raster_chained_transfer_chain,
         "rendered": [
@@ -12973,28 +13015,33 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             for rendered in raster_chained_transfer_rendered
         ],
     }, {
-        "transfer_events": [
+        "events": [
             {
+                "kind": "raster-transfer-pending",
                 "sequence": b"\x1b*b2w",
                 "parameter": 2,
-                "payload_offset": 17,
-                "payload": bytes.fromhex("f0 0f"),
-                "transfer_state": {"x": 0, "y": 0, "byte_count": 2, "mode": 0},
-                "row_y_after": 1,
+                "parsed_record": bytes.fromhex("80 77 00 02 00 00"),
+                "delayed_snapshot_bytes": bytes.fromhex("01 00 01 05 d0 80 77 00 02 00 00"),
+                "delayed_scheduled": True,
                 "chained": True,
             },
             {
+                "kind": "raster-transfer",
                 "sequence": b"2W",
                 "parameter": 2,
-                "payload_offset": 21,
-                "payload": bytes.fromhex("0f f0"),
-                "transfer_state": {"x": 0, "y": 1, "byte_count": 2, "mode": 0},
-                "row_y_after": 2,
+                "parsed_record": bytes.fromhex("80 57 00 02 00 00"),
+                "delayed_snapshot_bytes": bytes.fromhex("01 00 01 05 d0 80 77 00 02 00 00"),
+                "delayed_scheduled": False,
+                "restore_dispatch": {"kind": "direct-handler", "handler": 0x0105D0},
+                "restored_record": bytes.fromhex("80 77 00 02 00 00"),
+                "payload_offset": 19,
+                "payload": bytes.fromhex("f0 0f"),
+                "transfer_state": {"x": 0, "y": 0, "byte_count": 2, "mode": 0},
+                "row_y_after": 1,
                 "chained": False,
             },
         ],
         "chain": [
-            bytes.fromhex("00 00 00 00 80 00 00 02 10 00 0f f0"),
             bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
         ],
         "rendered": [
@@ -13004,13 +13051,6 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "y": 0,
                 "payload": bytes.fromhex("f0 0f"),
                 "rows": ["####........####"],
-            },
-            {
-                "coord": 0x1000,
-                "x": 0,
-                "y": 1,
-                "payload": bytes.fromhex("0f f0"),
-                "rows": ["................", "....########...."],
             },
         ],
     }))
@@ -15710,7 +15750,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- chained `ESC *b` stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_chained_transfer_stream)}`")
     lines.append("- chained `ESC *b` transfer events:")
     for event in raster_chained_transfer_result["events"]:
-        if event["kind"] == "raster-transfer":
+        if event["kind"] == "raster-transfer-pending":
+            lines.append("- sequence `%s` records delayed snapshot `%s` and remains in parser mode for the uppercase terminator." % (
+                event["sequence"],
+                " ".join(f"{byte:02x}" for byte in event["delayed_snapshot_bytes"]),
+            ))
+        elif event["kind"] == "raster-transfer":
             lines.append("- sequence `%s`, payload offset `%d`, payload `%s`, row_y after `%d`, chained `%s`" % (
                 event["sequence"],
                 event["payload_offset"],

@@ -22,6 +22,8 @@ Goal: track the ROM facts needed to reproduce LaserJet II output from the same h
 | Font candidate selection | resource scanner `0x1a2e4..0x1ab82` builds font candidate lists; selectors around `0x14398..0x156de` choose/filter current font resources via `0x78287c`, `0x7827b8`, and `0x7828a8`; selected candidate longwords are copied into current-font context records at `0x782ee6` / `0x782ef6`, installed into page-root `+0x2c` slots, copied to render-record `+0x24`, and loaded into `0x783a2c` before `0x1f354`; built-in selected-context low 24-bit addresses map to `IC32,IC15` offsets by subtracting `0x80000`, and table entries are relative 32-bit glyph-entry offsets from that record start | Anchored as font/resource path and render-context bridge, rejected as raster compositor |
 | Formatter manuals | Existing notes summarize PCL Level IV, I/O, formatter, NVRAM, page geometry, and errors | Anchored |
 
+Raster lowercase-final shorthand note: references to `ESC *b2w`/`2W` mean the combined stream `ESC *b2w2W`, where lowercase `w` records the delayed transfer while parser mode stays in the `*b` family, and the raster payload is consumed only after the uppercase `W` terminator triggers the `0x12218` restore/dispatch boundary.
+
 ## Host Interface to Parser
 
 Known from manuals:

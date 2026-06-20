@@ -5498,6 +5498,56 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "record0": {"id": 123, "payload": b"!\r", "permanent": False},
         "final": {"current_macro_id": 123, "parser_mode": 0, "overlay_macro_id": 123},
     }))
+    macro_stream_permanent_delete = render_macro_command_stream_via_e112_dd08(
+        b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f10X\x1b&f7X"
+    )
+    macro_stream_temporary_delete = render_macro_command_stream_via_e112_dd08(
+        b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f10X\x1b&f9X\x1b&f7X"
+    )
+    macro_stream_permanent_records = macro_stream_permanent_delete["state"]["records"]
+    macro_stream_temporary_records = macro_stream_temporary_delete["state"]["records"]
+    assert isinstance(macro_stream_permanent_records, list)
+    assert isinstance(macro_stream_temporary_records, list)
+    checks.append(assert_equal("macro command stream toggles permanence before delete-temporary", {
+        "permanent_events": [
+            {
+                key: event[key]
+                for key in ("kind", "sequence", "parameter", "handler", "chained")
+                if key in event
+            }
+            for event in macro_stream_permanent_delete["events"]
+        ],
+        "temporary_events": [
+            {
+                key: event[key]
+                for key in ("kind", "sequence", "parameter", "handler", "chained")
+                if key in event
+            }
+            for event in macro_stream_temporary_delete["events"]
+        ],
+        "permanent_record0": macro_stream_permanent_records[0],
+        "temporary_record0": macro_stream_temporary_records[0],
+    }, {
+        "permanent_events": [
+            {"kind": "macro-id", "sequence": b"\x1b&f123Y", "parameter": 123, "handler": 0x00E112, "chained": False},
+            {"kind": "macro-start", "sequence": b"\x1b&f0X", "parameter": 0, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-definition-payload", "sequence": b"!\r", "handler": "alternate-data"},
+            {"kind": "macro-stop-kept", "sequence": b"\x1b&f1X", "parameter": 1, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-make-permanent", "sequence": b"\x1b&f10X", "parameter": 10, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-delete-temporary", "sequence": b"\x1b&f7X", "parameter": 7, "handler": 0x00DD08, "chained": False},
+        ],
+        "temporary_events": [
+            {"kind": "macro-id", "sequence": b"\x1b&f123Y", "parameter": 123, "handler": 0x00E112, "chained": False},
+            {"kind": "macro-start", "sequence": b"\x1b&f0X", "parameter": 0, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-definition-payload", "sequence": b"!\r", "handler": "alternate-data"},
+            {"kind": "macro-stop-kept", "sequence": b"\x1b&f1X", "parameter": 1, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-make-permanent", "sequence": b"\x1b&f10X", "parameter": 10, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-make-temporary", "sequence": b"\x1b&f9X", "parameter": 9, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-delete-temporary", "sequence": b"\x1b&f7X", "parameter": 7, "handler": 0x00DD08, "chained": False},
+        ],
+        "permanent_record0": {"id": 123, "payload": b"!\r", "permanent": True},
+        "temporary_record0": {"id": 0, "payload": b"", "permanent": False},
+    }))
     macro_frame_payload = macro_stream_execute["state"]["data_chain_frames"][0]["payload"]
     macro_fetch_state = host_byte_fetch_state(data_chain=list(macro_frame_payload), direct_mode=0)
     macro_fetch_first = host_byte_fetch_via_a904(macro_fetch_state)
@@ -10895,6 +10945,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- macro overlay stream `%s` enables overlay id `%d`, then disables parser overlay mode." % (
         " ".join(f"{byte:02x}" for byte in macro_stream_overlay["stream"]),
         macro_stream_overlay["state"]["overlay_macro_id"],
+    ))
+    lines.append("- macro permanence/delete streams prove selector `10` survives delete-temporary and selector `9` makes the same record removable: `%s` / `%s`." % (
+        macro_stream_permanent_delete["state"]["records"][0],
+        macro_stream_temporary_delete["state"]["records"][0],
     ))
     lines.append("- macro execute frame payload fetches through `0xa904` as data-chain bytes `%s`." % (
         " ".join(f"0x{int(fetch['d7']):02x}" for fetch in (macro_fetch_first, macro_fetch_second)),

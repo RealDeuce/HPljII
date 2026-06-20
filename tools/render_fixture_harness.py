@@ -17081,6 +17081,149 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_record_root_allocations": 1,
         },
     }))
+    vertical_cursor_position_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&a1R!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(20),
+            hmi=line_printer_hmi["hmi"],
+            vmi=pack12(50),
+            top_offset=pack12(0),
+            min_y=pack12(0),
+            max_y=pack12(300),
+            pending_text=1,
+            span_flush_enable=1,
+            events=[],
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    vertical_cursor_position_page_record_object = vertical_cursor_position_page_record_stream["bucket_object"]
+    vertical_cursor_position_page_record_rendered = vertical_cursor_position_page_record_stream["rendered"]
+    vertical_cursor_position_page_record_bridged = vertical_cursor_position_page_record_stream["bridged_record"]
+    assert isinstance(vertical_cursor_position_page_record_object, bytes)
+    assert isinstance(vertical_cursor_position_page_record_rendered, dict)
+    assert isinstance(vertical_cursor_position_page_record_bridged, dict)
+    vertical_cursor_position_page_record_event_summary: list[dict[str, object]] = []
+    vertical_cursor_position_page_record_events = vertical_cursor_position_page_record_stream["events"]
+    assert isinstance(vertical_cursor_position_page_record_events, list)
+    for event in vertical_cursor_position_page_record_events:
+        assert isinstance(event, dict)
+        if event["kind"] == "cursor-position":
+            vertical_cursor_position_page_record_event_summary.append({
+                "kind": event["kind"],
+                "sequence": event["sequence"],
+                "record": event["record"],
+                "parameter": event["parameter"],
+                "fraction": event["fraction"],
+                "relative": event["relative"],
+                "handler": event["handler"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "event": event["event"],
+            })
+        else:
+            page_result = event["page_result"]
+            positioned = event["positioned"]
+            assert isinstance(page_result, dict)
+            assert isinstance(positioned, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            vertical_cursor_position_page_record_event_summary.append({
+                "kind": event["kind"],
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": page_result["coord"],
+                "allocated": page_result["allocated"],
+                "count_before": page_result["count_before"],
+                "count_after": page_result["count_after"],
+                "bucket_index": page_result["bucket_index"],
+            })
+    vertical_cursor_position_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&a1R!")
+    expected_vertical_cursor_position_rows = [
+        "." * 20,
+    ] + [
+        "." * 16 + "####" if row == "####" else "." * 20
+        for row in line_printer_glyph32_rows
+    ]
+    checks.append(assert_equal("vertical cursor position parser trace feeds page-record queue", {
+        "stream": vertical_cursor_position_page_record_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in vertical_cursor_position_parser_trace["events"]
+        ],
+        "parser_final_mode": vertical_cursor_position_parser_trace["final_mode"],
+        "events": vertical_cursor_position_page_record_event_summary,
+        "root_allocations": vertical_cursor_position_page_record_stream["final_state"]["page_record_root_allocations"],
+        "bucket_index": vertical_cursor_position_page_record_stream["bucket_index"],
+        "object_prefix": vertical_cursor_position_page_record_object[:11],
+        "bridged_context_slots": vertical_cursor_position_page_record_bridged["context_slots"][:2],
+        "rendered_rows": vertical_cursor_position_page_record_rendered["rows"],
+        "final_state": select_keys(vertical_cursor_position_page_record_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "pending_text",
+            "page_roots",
+            "span_flushes",
+            "post_flushes",
+            "page_record_root_allocations",
+        )),
+    }, {
+        "stream": b"\x1b&a1R!",
+        "parser_events": [
+            {"kind": "command", "handler": 0x00F560, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+        ],
+        "parser_final_mode": 0,
+        "events": [
+            {
+                "kind": "cursor-position",
+                "sequence": b"\x1b&a1R",
+                "record": bytes.fromhex("80 52 00 01 00 00"),
+                "parameter": 1,
+                "fraction": 0,
+                "relative": False,
+                "handler": 0x00F560,
+                "cursor_before": {"x": pack12(10), "y": pack12(20)},
+                "cursor_after": {"x": pack12(10), "y": pack12(86)},
+                "event": {"kind": "vertical-position", "relative": False, "amount": pack12(86), "cursor_y": pack12(86), "clamp_max": True},
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 65),
+                "coord": 0x1001,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 4,
+            },
+        ],
+        "root_allocations": 1,
+        "bucket_index": 4,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 10 01"),
+        "bridged_context_slots": (0x440946B4, 0),
+        "rendered_rows": expected_vertical_cursor_position_rows,
+        "final_state": {
+            "cursor_x": pack12(28),
+            "cursor_y": pack12(86),
+            "pending_text": 0,
+            "page_roots": 1,
+            "span_flushes": 1,
+            "post_flushes": 1,
+            "page_record_root_allocations": 1,
+        },
+    }))
     vertical_layout_page_record_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,
@@ -19464,6 +19607,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- mixed parser-to-page-record boundary: the same stream routes through handlers `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, allocates one page-record root, reuses bucket `0`, and renders the same bridged rows.")
     lines.append("- margin parser-to-page-record boundary: stream `1b 26 61 31 4c 21` routes `ESC &a1L` through handler `0xeb58`, moves the cursor/left margin to one initialized `LINE_PRINTER` HMI column, then queues printable `!` through `0xd04a` at compact coord `0x0801` and renders the bridged glyph at pixel x `24`.")
     lines.append("- cursor-position parser-to-page-record boundary: stream `1b 26 61 32 43 21` routes `ESC &a2C` through handler `0xf39e`, moves the cursor to two initialized `LINE_PRINTER` HMI columns, then queues printable `!` through `0xd04a` at compact coord `0x0a02` and renders the bridged glyph at pixel x `42`.")
+    lines.append("- vertical cursor-position parser-to-page-record boundary: stream `1b 26 61 31 52 21` routes `ESC &a1R` through handler `0xf560`, moves the vertical cursor to one initialized VMI row plus firmware absolute-row bias, then queues printable `!` through `0xd04a` at compact coord `0x1001` in bucket `4` and renders the bridged glyph with one blank row before the glyph body.")
     lines.append("- vertical-layout parser-to-page-record boundary: stream `1b 26 6c 33 45 21` routes `ESC &l3E` through handler `0xece2`, refreshes the pending vertical cursor from top margin row 3, then queues printable `!` through `0xd04a` at compact coord `0x9001` in bucket `6` and renders the bridged glyph with nine blank rows before the glyph body.")
     lines.append("")
     lines.append("A ROM parser trace now anchors the publication streams before the modeled page-record layer: `21 1b 45` routes printable `!` through the mode-0 `0xd04a` branch and `ESC E` through handler `0xcc52`; `1b 26 6b 32 47 21 0c` routes `ESC &k2G` through handler `0xedf8`, printable `!` through `0xd04a`, and FF through handler `0xf0f0`; `21 1b 26 6c 31 41` and `21 1b 26 6c 31 4f` route printable `!` through `0xd04a` before page-size `ESC &l1A` reaches `0xfc74` and orientation `ESC &l1O` reaches `0x10220`.")

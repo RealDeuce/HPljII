@@ -16847,6 +16847,157 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "bridged_context_slots": (0x440946B4, 0),
         "rendered_rows": expected_mixed_rows,
     }))
+    ht_bs_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&k0G\t\b!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(17),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            hmi=pack12(1),
+            right_limit=pack12(100),
+            page_width=120,
+            pending_text=1,
+            span_flush_enable=1,
+            events=[],
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    ht_bs_page_record_object = ht_bs_page_record_stream["bucket_object"]
+    ht_bs_page_record_rendered = ht_bs_page_record_stream["rendered"]
+    ht_bs_page_record_bridged = ht_bs_page_record_stream["bridged_record"]
+    assert isinstance(ht_bs_page_record_object, bytes)
+    assert isinstance(ht_bs_page_record_rendered, dict)
+    assert isinstance(ht_bs_page_record_bridged, dict)
+    ht_bs_page_record_event_summary: list[dict[str, object]] = []
+    ht_bs_page_record_events = ht_bs_page_record_stream["events"]
+    assert isinstance(ht_bs_page_record_events, list)
+    for event in ht_bs_page_record_events:
+        assert isinstance(event, dict)
+        if event["kind"] == "escape":
+            ht_bs_page_record_event_summary.append({
+                "kind": "escape",
+                "sequence": event["sequence"],
+                "line_termination": event["line_termination"],
+            })
+        elif event["kind"] == "control":
+            ht_bs_page_record_event_summary.append({
+                "kind": "control",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "page_roots": event["page_roots"],
+                "span_flushes": event["span_flushes"],
+            })
+        else:
+            page_result = event["page_result"]
+            positioned = event["positioned"]
+            assert isinstance(page_result, dict)
+            assert isinstance(positioned, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            ht_bs_page_record_event_summary.append({
+                "kind": "printable",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": page_result["coord"],
+                "allocated": page_result["allocated"],
+                "count_before": page_result["count_before"],
+                "count_after": page_result["count_after"],
+                "bucket_index": page_result["bucket_index"],
+            })
+    ht_bs_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k0G\t\b!")
+    expected_ht_bs_rows = [
+        "." * 26 + "####" if row == "####" else "." * 30
+        for row in line_printer_glyph32_rows
+    ]
+    checks.append(assert_equal("HT/BS parser trace feeds page-record queue", {
+        "stream": ht_bs_page_record_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in ht_bs_parser_trace["events"]
+        ],
+        "parser_final_mode": ht_bs_parser_trace["final_mode"],
+        "events": ht_bs_page_record_event_summary,
+        "root_allocations": ht_bs_page_record_stream["final_state"]["page_record_root_allocations"],
+        "bucket_index": ht_bs_page_record_stream["bucket_index"],
+        "object_prefix": ht_bs_page_record_object[:11],
+        "bridged_context_slots": ht_bs_page_record_bridged["context_slots"][:2],
+        "rendered_rows": ht_bs_page_record_rendered["rows"],
+        "final_state": select_keys(ht_bs_page_record_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "pending_text",
+            "pending_width",
+            "span_updates",
+            "span_flushes",
+            "post_flushes",
+            "page_record_root_allocations",
+        )),
+    }, {
+        "stream": b"\x1b&k0G\t\b!",
+        "parser_events": [
+            {"kind": "command", "handler": 0x00EDF8, "mode_after": 0},
+            {"kind": "control", "handler": 0x00F1CC, "mode_after": 0},
+            {"kind": "control", "handler": 0x00F2A8, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+        ],
+        "parser_final_mode": 0,
+        "events": [
+            {"kind": "escape", "sequence": b"\x1b&k0G", "line_termination": 0},
+            {
+                "kind": "control",
+                "byte": 0x09,
+                "cursor_before": (pack12(17), pack12(21)),
+                "cursor_after": (pack12(21), pack12(21)),
+                "page_roots": 0,
+                "span_flushes": 0,
+            },
+            {
+                "kind": "control",
+                "byte": 0x08,
+                "cursor_before": (pack12(21), pack12(21)),
+                "cursor_after": (pack12(20), pack12(21)),
+                "page_roots": 0,
+                "span_flushes": 0,
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(20),
+                "cursor_after": pack12(38),
+                "positioned_xy": (26, 0),
+                "coord": 0x0A01,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+            },
+        ],
+        "root_allocations": 1,
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 0a 01"),
+        "bridged_context_slots": (0x440946B4, 0),
+        "rendered_rows": expected_ht_bs_rows,
+        "final_state": {
+            "cursor_x": pack12(38),
+            "cursor_y": pack12(21),
+            "pending_text": 0,
+            "pending_width": 1,
+            "span_updates": 2,
+            "span_flushes": 0,
+            "post_flushes": 0,
+            "page_record_root_allocations": 1,
+        },
+    }))
     margin_page_record_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,
@@ -20574,6 +20725,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- page-record stream object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_page_record_object)}`")
     lines.append(f"- page-record bridged context slots `[0..1]`: `0x{mixed_page_record_bridged['context_slots'][0]:08x}`, `0x{mixed_page_record_bridged['context_slots'][1]:08x}`")
     lines.append("- mixed parser-to-page-record boundary: the same stream routes through handlers `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, allocates one page-record root, reuses bucket `0`, and renders the same bridged rows.")
+    lines.append("- HT/BS parser-to-page-record boundary: stream `1b 26 6b 30 47 09 08 21` routes `ESC &k0G` through handler `0xedf8`, HT through `0xf1cc`, BS through `0xf2a8`, and printable `!` through `0xd04a`; HT advances the cursor to x `21`, BS backs it up to x `20`, then the bridged glyph queues at compact coord `0x0a01` and renders at pixel x `26`.")
     lines.append("- margin parser-to-page-record boundary: stream `1b 26 61 31 4c 21` routes `ESC &a1L` through handler `0xeb58`, moves the cursor/left margin to one initialized `LINE_PRINTER` HMI column, then queues printable `!` through `0xd04a` at compact coord `0x0801` and renders the bridged glyph at pixel x `24`.")
     lines.append("- right-margin parser-to-page-record boundary: stream `1b 26 61 31 4d 21` routes `ESC &a1M` through handler `0xec0c`, moves the cursor/right margin left to two initialized `LINE_PRINTER` HMI columns, then queues printable `!` through `0xd04a` at compact coord `0x0a02` and renders the bridged glyph at pixel x `42`.")
     lines.append("- chained-margin parser-to-page-record boundary: stream `1b 26 61 36 6c 39 4d 21` routes lowercase-final `ESC &a6l` through handler `0xeb58`, keeps parser mode `12` for `9M` through handler `0xec0c`, then queues printable `!` through `0xd04a` at compact coord `0x0207` and renders the bridged glyph at pixel x `114`.")

@@ -8077,6 +8077,73 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         }],
         "tail_rows": ["." * 22] + ["." * 10 + "#" * 12] * 5,
     }))
+    rectangle_fill_solid_crossing = apply_fill_rectangle_via_10898(rectangle_command_state(
+        width=pack12(6),
+        height=pack12(5),
+        cursor_x=pack12(2),
+        cursor_y=pack12(78),
+        page_height=120,
+    ), 0)
+    rectangle_fill_solid_crossing_bridged = bridge_page_record_via_1edc6(rectangle_fill_solid_crossing["page_record"])
+    rectangle_fill_solid_crossing_first = render_rule_list_via_1f446(data, rectangle_fill_solid_crossing_bridged, band_word=0)
+    rectangle_fill_solid_crossing_second = render_rule_list_via_1f446(data, {
+        "rule_list": [rectangle_fill_solid_crossing_first["rendered"][0]["mutated_object"]],
+    }, band_word=5)
+    checks.append(assert_equal("0x1f596 carries solid rule remainder across render bands", {
+        "object": rectangle_fill_solid_crossing["events"][-1]["object"],
+        "source": rectangle_fill_solid_crossing["events"][-1]["source"],
+        "bridged": rectangle_fill_solid_crossing_bridged["rule_list"],
+        "first_band": [
+            {
+                key: entry[key]
+                for key in ("selector", "helper", "key", "bucket_delta", "decoded", "width", "remaining_before", "available_rows", "rows_drawn", "partial_bits", "partial_mask", "mutated_object")
+            }
+            for entry in rectangle_fill_solid_crossing_first["rendered"]
+        ],
+        "first_tail_rows": rectangle_fill_solid_crossing_first["rows"][76:],
+        "second_band": [
+            {
+                key: entry[key]
+                for key in ("selector", "helper", "key", "bucket_delta", "decoded", "width", "remaining_before", "available_rows", "rows_drawn", "partial_bits", "partial_mask", "mutated_object")
+            }
+            for entry in rectangle_fill_solid_crossing_second["rendered"]
+        ],
+        "second_rows": rectangle_fill_solid_crossing_second["rows"],
+    }, {
+        "object": bytes.fromhex("00 00 00 00 04 07 e2 00 00 06 00 05 00 00"),
+        "source": {"x": 2, "y": 78, "width": 6, "height": 5},
+        "bridged": [bytes.fromhex("00 00 00 00 04 17 e2 00 00 06 00 05 00 05")],
+        "first_band": [{
+            "selector": 7,
+            "helper": 0x1F596,
+            "key": 0xE200,
+            "bucket_delta": 4,
+            "decoded": {"x": 2, "y": 78, "row_low": 14, "subbyte": 2, "byte_pair_offset": 0},
+            "width": 6,
+            "remaining_before": 5,
+            "available_rows": 2,
+            "rows_drawn": 2,
+            "partial_bits": 6,
+            "partial_mask": 0xFC00,
+            "mutated_object": bytes.fromhex("00 00 00 00 04 07 e2 00 00 06 00 05 00 03"),
+        }],
+        "first_tail_rows": ["........", "........", "..######", "..######"],
+        "second_band": [{
+            "selector": 7,
+            "helper": 0x1F596,
+            "key": 0x0200,
+            "bucket_delta": 0,
+            "decoded": {"x": 2, "y": 0, "row_low": 0, "subbyte": 2, "byte_pair_offset": 0},
+            "width": 6,
+            "remaining_before": 3,
+            "available_rows": 80,
+            "rows_drawn": 3,
+            "partial_bits": 6,
+            "partial_mask": 0xFC00,
+            "mutated_object": bytes.fromhex("00 00 00 00 04 07 e2 00 00 06 00 05 ff b3"),
+        }],
+        "second_rows": ["..######", "..######", "..######"],
+    }))
     rectangle_fill_gray_threshold = apply_fill_rectangle_via_10898(rectangle_command_state(
         width=pack12(8),
         height=pack12(4),
@@ -10259,6 +10326,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append("- rendered black-rule visible rows:")
     lines.extend(f"`{row}`" for row in rectangle_fill_black_rendered["rows"][19:])
+    first_crossing = rectangle_fill_solid_crossing_first["rendered"][0]
+    second_crossing = rectangle_fill_solid_crossing_second["rendered"][0]
+    lines.append("- band-crossing solid rule starts at y `%d` with height `%d`: first band draws `%d` rows, leaves `%d` rows in object `+0x0c`, and next band draws `%d` rows from y `%d`." % (
+        first_crossing["decoded"]["y"],
+        first_crossing["remaining_before"],
+        first_crossing["rows_drawn"],
+        second_crossing["remaining_before"],
+        second_crossing["rows_drawn"],
+        second_crossing["decoded"]["y"],
+    ))
     gray_rule = rectangle_fill_gray_threshold_rendered["rendered"][0]
     lines.append("- gray selector `%d` dispatches through pattern helper `0x%06x`; pattern base `0x%06x`, start `0x%06x`, first words `%s`, left mask `0x%04x`, right mask `0x%04x`." % (
         gray_rule["selector"],

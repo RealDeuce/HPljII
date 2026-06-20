@@ -5425,6 +5425,43 @@ def finalize_page_record_via_ff1e(page_record: dict[str, object], state: dict[st
     }
 
 
+def retry_rectangle_rule_after_no_room_via_10d22(
+    current_page_record: dict[str, object],
+    state: dict[str, int],
+    source: dict[str, int],
+) -> dict[str, object]:
+    """Model the 0x10d22..0x10d3e rectangle/rule no-room retry path."""
+    state = dict(state)
+    state["page_root_flags_14"] = int(state.get("page_root_flags_14", 0)) | 1
+    retry_flags_14 = int(state["page_root_flags_14"])
+    finalized = finalize_page_record_via_ff1e(current_page_record, state)
+    if finalized["published"]:
+        state["page_publications"] = int(state.get("page_publications", 0)) + 1
+        state["published_pool_record"] = 1
+        state["page_publication_flag"] = int(finalized["page_publication_flag"])
+    state["current_page_root"] = int(finalized["current_page_root_after"])
+    state["page_root_present"] = 0
+    state["page_root_class"] = 0
+    state["page_root_clears"] = int(finalized["page_root_clears"])
+
+    fresh_root = ensure_page_record_root_for_queue(state)
+    retry_page_record: dict[str, object] = {
+        "rule_list": [],
+        "context_slots": list(current_page_record.get("context_slots", [])),
+    }
+    retry_result = queue_rectangle_rule_via_13386(retry_page_record, source)
+    return {
+        "no_room": True,
+        "retry_page_root_flags_14": retry_flags_14,
+        "page_root_flags_14_after_fresh_root": int(state.get("page_root_flags_14", 0)),
+        "finalized": finalized,
+        "fresh_root": fresh_root,
+        "retry_page_record": retry_page_record,
+        "retry_result": retry_result,
+        "state": state,
+    }
+
+
 def advance_flagged_text_cursor_via_d550(cursor_x: int, default_advance: int) -> dict[str, int]:
     d5 = int(cursor_x) + int(default_advance)
     if (d5 & 0xFFFF) >= 12:
@@ -14080,6 +14117,56 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "object": bytes.fromhex("00 00 00 00 00 07 40 00 00 07 00 05 00 00"),
         "source": {"x": 0, "y": 4, "width": 7, "height": 5},
     }))
+    rectangle_retry_current_record: dict[str, object] = {"bucket_array": {}, "context_slots": [0x440946B4]}
+    rectangle_retry_text_source = build_text_source_object_from_1393a(resources, 0x440946B4, 0x21, x=0, y=0, context_slot=0)
+    queue_text_source_to_page_record_via_12f2e(resources, rectangle_retry_current_record, rectangle_retry_text_source)
+    rectangle_retry = retry_rectangle_rule_after_no_room_via_10d22(
+        rectangle_retry_current_record,
+        {
+            "current_page_root": ABSTRACT_PAGE_ROOT_PTR,
+            "page_root_present": 1,
+            "page_root_class": 1,
+            "page_root_flags_14": 0,
+            "page_root_clears": 0,
+            "page_record_root_allocations": 1,
+        },
+        {"x": 2, "y": 4, "width": 6, "height": 5, "flags": 7},
+    )
+    rectangle_retry_published = rectangle_retry["finalized"]["published_pool_record"]
+    assert isinstance(rectangle_retry_published, dict)
+    rectangle_retry_bridged = bridge_page_record_via_1edc6(rectangle_retry["retry_page_record"])
+    rectangle_retry_rendered = render_rule_list_via_1f446(data, rectangle_retry_bridged)
+    checks.append(assert_equal("0x10d22 rectangle/rule no-room retry finalizes root then retries", {
+        "no_room": rectangle_retry["no_room"],
+        "retry_page_root_flags_14": rectangle_retry["retry_page_root_flags_14"],
+        "page_root_flags_14_after_fresh_root": rectangle_retry["page_root_flags_14_after_fresh_root"],
+        "published_bucket_prefix": rectangle_retry_published["bucket_root"][:11],
+        "fresh_root_created": rectangle_retry["fresh_root"]["page_root_created"],
+        "page_record_root_allocations": rectangle_retry["fresh_root"]["page_record_root_allocations"],
+        "retry_object": rectangle_retry["retry_result"]["object"],
+        "bridged": rectangle_retry_bridged["rule_list"],
+        "rows": rectangle_retry_rendered["rows"][:9],
+    }, {
+        "no_room": True,
+        "retry_page_root_flags_14": 1,
+        "page_root_flags_14_after_fresh_root": 0,
+        "published_bucket_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 00"),
+        "fresh_root_created": True,
+        "page_record_root_allocations": 2,
+        "retry_object": bytes.fromhex("00 00 00 00 00 07 42 00 00 06 00 05 00 00"),
+        "bridged": [bytes.fromhex("00 00 00 00 00 17 42 00 00 06 00 05 00 05")],
+        "rows": [
+            "........",
+            "........",
+            "........",
+            "........",
+            "..######",
+            "..######",
+            "..######",
+            "..######",
+            "..######",
+        ],
+    }))
     parser_raster_resolution_cases = [
         (300, {"mode": 0, "scale": 1, "limit": 32}),
         (150, {"mode": 1, "scale": 2, "limit": 16}),
@@ -17580,6 +17667,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.extend(f"`{row}`" for row in rectangle_fill_pattern_shifted_rendered["rows"])
     lines.append("- `0x10b80` clipping fixture starts at x `-3` with width `10`, queues x `0` width `7`, and emits object `%s`." % (
         " ".join(f"{byte:02x}" for byte in rectangle_fill_clipped["events"][-1]["object"]),
+    ))
+    lines.append("- `0x10d22` no-room retry fixture starts with an existing compact text bucket, marks retry flag `0x%04x`, publishes that bucket through `0xff1e`, allocates a fresh root through `0x10084`, and retries the selector-7 rule object `%s`." % (
+        rectangle_retry["retry_page_root_flags_14"],
+        " ".join(f"{byte:02x}" for byte in rectangle_retry["retry_result"]["object"]),
     ))
     lines.append("- bridged compact rows match the page-record queued rows above.")
     lines.append("- a non-overlapping text+rule composition fixture renders compact text at x `16`, y `0` and a selector-7 solid rule at x `24`, y `24` from the same bridged render record, then composes them into one fixed 40-pixel band.")

@@ -458,6 +458,40 @@ def font_payload_split_plane_copy_via_16942(stream: bytes, rows: int, prefix_spa
 
 FONT_RECORD_BASE = 0x782640
 FONT_RECORD_SIZE = 10
+FONT_RESOURCE_VALIDATE_TABLE: tuple[tuple[int, int], ...] = (
+    (0x159F6, 0x17358),
+    (0x1599C, 0x17358),
+    (0x1599C, 0x17362),
+    (0x159F6, 0x17358),
+    (0x159D4, 0x173D0),
+    (0x159D4, 0x173FE),
+    (0x159D4, 0x17430),
+    (0x1599C, 0x1749E),
+    (0x1599C, 0x174CC),
+    (0x159D4, 0x17502),
+    (0x159D4, 0x1751A),
+    (0x159D4, 0x1754A),
+    (0x159D4, 0x1757A),
+    (0x1599C, 0x17358),
+    (0x1599C, 0x175C2),
+    (0x159B6, 0x175DA),
+    (0x1599C, 0x17612),
+    (0x1599C, 0x17358),
+    (0x1599C, 0x17358),
+    (0x1599C, 0x17358),
+    (0x1599C, 0x17358),
+    (0x159B6, 0x1762A),
+    (0x1599C, 0x17358),
+    (0x159F6, 0x17358),
+    (0x159F6, 0x17358),
+    (0x159D4, 0x17642),
+    (0x159D4, 0x17358),
+    (0x1599C, 0x17690),
+    (0x1599C, 0x176C2),
+    (0x159D4, 0x17358),
+    (0x159D4, 0x17358),
+    (0x159D4, 0x17358),
+)
 
 
 def font_resource_record_scan_via_172c0(records: list[dict[str, int]], current_id: int) -> dict[str, object]:
@@ -671,6 +705,212 @@ def mark_current_font_record_via_17108(records: list[dict[str, int]], current_id
         "records": updated_records,
         "counters": updated_counters,
         "changed": changed,
+    }
+
+
+def font_resource_validate_via_16fae(validator_statuses: list[int], symbol_stream: bytes, budget: int) -> dict[str, object]:
+    table_base = 0x16EAE
+    copied = bytearray()
+    visited: list[dict[str, int]] = []
+    for index in range(32):
+        table_address = table_base + index * 8
+        d5 = index + 1
+        status = int(validator_statuses[index]) if index < len(validator_statuses) else 0
+        visited.append({
+            "index": index,
+            "d5": d5,
+            "table_address": table_address,
+            "status": status,
+        })
+        if status != 1:
+            return {
+                "status": 0,
+                "failed_index": index,
+                "failed_d5": d5,
+                "visited": visited,
+                "budget": budget,
+                "symbol_count": 0,
+                "symbol_bytes": bytes(copied),
+            }
+
+    remaining_budget = int(budget)
+    stream_index = 0
+    while remaining_budget > 0 and len(copied) < 16 and stream_index < len(symbol_stream):
+        copied.append(symbol_stream[stream_index])
+        stream_index += 1
+        remaining_budget -= 1
+
+    return {
+        "status": 1,
+        "failed_index": None,
+        "failed_d5": None,
+        "visited": visited,
+        "budget": remaining_budget,
+        "symbol_count": len(copied),
+        "symbol_bytes": bytes(copied),
+    }
+
+
+def _signed_word(value: int) -> int:
+    value &= 0xFFFF
+    return value - 0x10000 if value & 0x8000 else value
+
+
+def _signed_byte(value: int) -> int:
+    value &= 0xFF
+    return value - 0x100 if value & 0x80 else value
+
+
+def font_resource_validate_table_stream_via_16fae(staging: bytes | bytearray, stream: bytes, budget: int) -> dict[str, object]:
+    updated = bytearray(staging)
+    if len(updated) < 0x32:
+        raise AssertionError("font resource validation staging buffer must include copied byte +0x31")
+    cursor = 0
+    remaining_budget = int(budget)
+    payload_units = 0x100
+    visited: list[dict[str, int]] = []
+
+    def read_byte() -> int:
+        nonlocal cursor, remaining_budget
+        if remaining_budget <= 0:
+            return 0
+        value = stream[cursor] if cursor < len(stream) else 0
+        cursor += 1
+        remaining_budget -= 1
+        return value
+
+    def read_value(reader: int) -> int:
+        if reader == 0x1599C:
+            return read_byte()
+        if reader == 0x159B6:
+            return _signed_byte(read_byte())
+        high = read_byte()
+        low = read_byte()
+        word = (high << 8) | low
+        if reader == 0x159D4:
+            return word
+        if reader == 0x159F6:
+            return _signed_word(word)
+        raise AssertionError(f"unmodeled 0x16fae reader 0x{reader:06x}")
+
+    def apply_predicate(predicate: int, value: int) -> int:
+        nonlocal payload_units
+        if predicate == 0x17358:
+            return 1
+        if predicate == 0x17362:
+            setup = font_resource_setup_type_via_17362(updated, value)
+            updated[:] = setup["staging"]
+            payload_units = int(setup["payload_units"])
+            return int(setup["status"])
+        if predicate == 0x173D0:
+            if value > 0x1067:
+                return 0
+            updated[0x16:0x18] = (value & 0xFFFF).to_bytes(2, "big")
+            return 1
+        if predicate == 0x173FE:
+            if value <= 0 or value > 0x1068:
+                return 0
+            updated[0x12:0x14] = (value & 0xFFFF).to_bytes(2, "big")
+            return 1
+        if predicate == 0x17430:
+            if value <= 0 or value > 0x1068:
+                return 0
+            updated[0x14:0x16] = (value & 0xFFFF).to_bytes(2, "big")
+            first_code = u16(updated, 0x16)
+            if first_code > value - 1:
+                return 0
+            updated[0x18:0x1A] = ((value - first_code - 1) & 0xFFFF).to_bytes(2, "big")
+            return 1
+        if predicate == 0x1749E:
+            if value > 1:
+                return 0
+            updated[0x20] = value & 0xFF
+            return 1
+        if predicate == 0x174CC:
+            updated[0x21] = 0 if value == 0 else 1
+            return 1
+        if predicate == 0x17502:
+            updated[0x22:0x24] = (value & 0xFFFF).to_bytes(2, "big")
+            return 1
+        if predicate == 0x1751A:
+            updated[0x24:0x26] = (min(value, 0x41A0) & 0xFFFF).to_bytes(2, "big")
+            return 1
+        if predicate == 0x1754A:
+            updated[0x28:0x2A] = (min(value, 0x2AAA) & 0xFFFF).to_bytes(2, "big")
+            return 1
+        if predicate == 0x1757A:
+            rounded = (value + 2) >> 2
+            height = u16(updated, 0x14)
+            if rounded > height:
+                rounded = height
+            updated[0x2C:0x2E] = ((rounded << 2) & 0xFFFF).to_bytes(2, "big")
+            return 1
+        if predicate == 0x175C2:
+            updated[0x2F] = value & 0xFF
+            return 1
+        if predicate == 0x175DA:
+            clamped = max(-7, min(7, value))
+            updated[0x30] = clamped & 0xFF
+            return 1
+        if predicate == 0x17612:
+            updated[0x31] = value & 0xFF
+            return 1
+        if predicate == 0x1762A:
+            updated[0x1A:0x1C] = (value & 0xFFFF).to_bytes(2, "big")
+            return 1
+        if predicate == 0x17642:
+            updated[0x0E:0x10] = b"\x00\x00"
+            updated[0x10:0x12] = (0x007F if updated[0x0C] == 0 else 0x00FF).to_bytes(2, "big")
+            return 1
+        if predicate == 0x17690:
+            updated[0x26] = 0 if u16(updated, 0x24) >= 0x41A0 else value & 0xFF
+            return 1
+        if predicate == 0x176C2:
+            clamped = value
+            if u16(updated, 0x28) >= 0x2AAA and clamped > 0x80:
+                clamped = 0x80
+            updated[0x2A] = clamped & 0xFF
+            return 1
+        raise AssertionError(f"unmodeled 0x16fae predicate 0x{predicate:06x}")
+
+    for index, (reader, predicate) in enumerate(FONT_RESOURCE_VALIDATE_TABLE):
+        value = read_value(reader)
+        status = apply_predicate(predicate, value)
+        visited.append({
+            "index": index,
+            "reader": reader,
+            "predicate": predicate,
+            "value": value,
+            "status": status,
+            "budget": remaining_budget,
+        })
+        if status != 1:
+            return {
+                "status": 0,
+                "failed_index": index,
+                "visited": visited,
+                "staging": bytes(updated),
+                "payload_units": payload_units,
+                "budget": remaining_budget,
+                "bytes_consumed": cursor,
+                "symbol_count": 0,
+                "symbol_bytes": b"",
+            }
+
+    symbol_bytes = bytearray()
+    while remaining_budget > 0 and len(symbol_bytes) < 16:
+        symbol_bytes.append(read_byte())
+
+    return {
+        "status": 1,
+        "failed_index": None,
+        "visited": visited,
+        "staging": bytes(updated),
+        "payload_units": payload_units,
+        "budget": remaining_budget,
+        "bytes_consumed": cursor,
+        "symbol_count": len(symbol_bytes),
+        "symbol_bytes": bytes(symbol_bytes),
     }
 
 
@@ -4114,6 +4354,128 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    font_validate_ok = font_resource_validate_via_16fae([1] * 32, bytes(range(0x30, 0x50)), 20)
+    font_validate_fail = font_resource_validate_via_16fae([1] * 7 + [0] + [1] * 24, bytes(range(0x30, 0x50)), 20)
+    font_validate_zero_budget = font_resource_validate_via_16fae([1] * 32, bytes(range(0x30, 0x50)), 0)
+    checks.append(assert_equal("0x16fae-modeled font resource validation and symbol-byte staging", {
+        "ok": {
+            "status": font_validate_ok["status"],
+            "visited": len(font_validate_ok["visited"]),
+            "first_table_address": font_validate_ok["visited"][0]["table_address"],
+            "last_d5": font_validate_ok["visited"][-1]["d5"],
+            "symbol_count": font_validate_ok["symbol_count"],
+            "symbol_bytes": font_validate_ok["symbol_bytes"],
+            "budget": font_validate_ok["budget"],
+        },
+        "fail": {
+            "status": font_validate_fail["status"],
+            "failed_index": font_validate_fail["failed_index"],
+            "failed_d5": font_validate_fail["failed_d5"],
+            "visited": len(font_validate_fail["visited"]),
+            "symbol_count": font_validate_fail["symbol_count"],
+            "budget": font_validate_fail["budget"],
+        },
+        "zero_budget": {
+            "status": font_validate_zero_budget["status"],
+            "visited": len(font_validate_zero_budget["visited"]),
+            "symbol_count": font_validate_zero_budget["symbol_count"],
+            "symbol_bytes": font_validate_zero_budget["symbol_bytes"],
+            "budget": font_validate_zero_budget["budget"],
+        },
+    }, {
+        "ok": {
+            "status": 1,
+            "visited": 32,
+            "first_table_address": 0x16EAE,
+            "last_d5": 32,
+            "symbol_count": 16,
+            "symbol_bytes": bytes(range(0x30, 0x40)),
+            "budget": 4,
+        },
+        "fail": {
+            "status": 0,
+            "failed_index": 7,
+            "failed_d5": 8,
+            "visited": 8,
+            "symbol_count": 0,
+            "budget": 20,
+        },
+        "zero_budget": {
+            "status": 1,
+            "visited": 32,
+            "symbol_count": 0,
+            "symbol_bytes": b"",
+            "budget": 0,
+        },
+    }))
+
+    font_validate_stream = bytes.fromhex(
+        "00 01 02 00 ff ff 00 04 00 06 00 09 01 05 12 34"
+        " 50 00 30 00 00 20 99 ab f0 cd 01 02 03 04 05 06"
+        " 00 07 00 08 00 00 00 09 ee f0 00 0a 00 0b 00 0c"
+        " 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f 50"
+    )
+    font_validate_table = font_resource_validate_table_stream_via_16fae(bytearray(0x40), font_validate_stream, 80)
+    font_validate_table_staging = font_validate_table["staging"]
+    assert isinstance(font_validate_table_staging, bytes)
+    checks.append(assert_equal("0x16fae table-driven validation predicates populate staged header fields", {
+        "status": font_validate_table["status"],
+        "visited": len(font_validate_table["visited"]),
+        "bytes_consumed": font_validate_table["bytes_consumed"],
+        "budget": font_validate_table["budget"],
+        "payload_units": font_validate_table["payload_units"],
+        "staging_fields": {
+            "byte0c": font_validate_table_staging[0x0C],
+            "word0e": u16(font_validate_table_staging, 0x0E),
+            "word10": u16(font_validate_table_staging, 0x10),
+            "word12": u16(font_validate_table_staging, 0x12),
+            "word14": u16(font_validate_table_staging, 0x14),
+            "word16": u16(font_validate_table_staging, 0x16),
+            "word18": u16(font_validate_table_staging, 0x18),
+            "word1a": u16(font_validate_table_staging, 0x1A),
+            "byte20": font_validate_table_staging[0x20],
+            "byte21": font_validate_table_staging[0x21],
+            "word22": u16(font_validate_table_staging, 0x22),
+            "word24": u16(font_validate_table_staging, 0x24),
+            "byte26": font_validate_table_staging[0x26],
+            "word28": u16(font_validate_table_staging, 0x28),
+            "byte2a": font_validate_table_staging[0x2A],
+            "word2c": u16(font_validate_table_staging, 0x2C),
+            "byte2f": font_validate_table_staging[0x2F],
+            "byte30": font_validate_table_staging[0x30],
+            "byte31": font_validate_table_staging[0x31],
+        },
+        "symbols": font_validate_table["symbol_bytes"],
+    }, {
+        "status": 1,
+        "visited": 32,
+        "bytes_consumed": 64,
+        "budget": 16,
+        "payload_units": 0x80,
+        "staging_fields": {
+            "byte0c": 0,
+            "word0e": 0,
+            "word10": 0x007F,
+            "word12": 0x0006,
+            "word14": 0x0009,
+            "word16": 0x0004,
+            "word18": 0x0004,
+            "word1a": 0x0005,
+            "byte20": 1,
+            "byte21": 1,
+            "word22": 0x1234,
+            "word24": 0x41A0,
+            "byte26": 0,
+            "word28": 0x2AAA,
+            "byte2a": 0x80,
+            "word2c": 0x0020,
+            "byte2f": 0xAB,
+            "byte30": 0xF9,
+            "byte31": 0xCD,
+        },
+        "symbols": bytes.fromhex("41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f 50"),
+    }))
+
     font_staging = bytearray(0x40)
     font_staging[0:4] = (0xDEADBEEF).to_bytes(4, "big")
     font_staging[4:8] = (0x01020304).to_bytes(4, "big")
@@ -4231,6 +4593,133 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "allocation_size": 0,
             "staging": bytes(font_setup_type_0["staging"]),
             "payload": None,
+        },
+    }))
+
+    table_payload_allocated = font_resource_find_allocate_via_17026(
+        font_validate_table_staging,
+        int(font_validate_table["payload_units"]),
+        True,
+        font_validate_table["symbol_bytes"],
+    )
+    table_payload_info = table_payload_allocated["payload"]
+    assert isinstance(table_payload_info, dict)
+    table_payload_bytes = table_payload_info["payload"]
+    assert isinstance(table_payload_bytes, bytes)
+    table_payload_memory = bytearray(table_payload_bytes)
+    table_payload_record = 0x40 + 1 * 8
+    table_payload_bitmap = 0x00A0
+    table_payload_memory[table_payload_record:table_payload_record + 8] = bytes.fromhex("02 03 04 00 00 00 00 a0")
+    table_payload_memory[table_payload_bitmap:table_payload_bitmap + 6] = bytes.fromhex("aa 55 f0 0f c3 3c")
+    table_payload_map = inline_map_via_14e24(table_payload_memory, 0)
+    table_payload_map_table = table_payload_map["table"]
+    assert isinstance(table_payload_map_table, bytes)
+    table_payload_source = build_inline_text_source_object_from_1393a(
+        table_payload_memory,
+        0,
+        table_payload_map_table,
+        0x21,
+        x=0,
+        y=0,
+        context_slot=3,
+    )
+    table_payload_positioned = position_unflagged_text_source_via_d3b2(
+        table_payload_source,
+        bytes(table_payload_source["inline_record"]),
+        cursor_x=10,
+        cursor_y=20,
+        printable_offset=7,
+        context_metric_flag=0,
+        source_x_offset=5,
+    )
+    table_payload_positioned_source = table_payload_positioned["source"]
+    assert isinstance(table_payload_positioned_source, dict)
+    table_payload_bucket = queue_text_source_via_12f2e(table_payload_memory, table_payload_positioned_source)
+    table_payload_rendered = render_compact_text_bucket_object(
+        data,
+        table_payload_memory,
+        (0, 0, 0, 0),
+        table_payload_bucket["object"],
+    )
+    checks.append(assert_equal("0x16fae/0x1719c-backed inline payload maps, queues, and renders one fixed record", {
+        "allocation": {
+            "status": table_payload_allocated["status"],
+            "allocation_size": table_payload_allocated["allocation_size"],
+            "payload_units": font_validate_table["payload_units"],
+            "header_word8": u16(table_payload_memory, 8),
+            "byte0c": table_payload_memory[0x0C],
+            "word10": u16(table_payload_memory, 0x10),
+            "word12": u16(table_payload_memory, 0x12),
+            "word14": u16(table_payload_memory, 0x14),
+            "word16": u16(table_payload_memory, 0x16),
+            "word18": u16(table_payload_memory, 0x18),
+            "extra_offset": int.from_bytes(table_payload_memory[0x38:0x3C], "big"),
+            "extra_count": u16(table_payload_memory, int(table_payload_info["extra_offset"])),
+        },
+        "map_source": {
+            "host_0x21": table_payload_map_table[0x21],
+            "glyph_entry": table_payload_source["glyph_entry"],
+            "inline_record": table_payload_source["inline_record"],
+            "valid_record": table_payload_source["valid_record"],
+            "bitmap": table_payload_source["bitmap"],
+        },
+        "bucket": {
+            key: table_payload_bucket[key]
+            for key in ("path", "object", "bucket_index", "selector", "coord", "glyph", "rows", "width")
+        },
+        "render": {
+            "selector": table_payload_rendered["selector"],
+            "context_slot": table_payload_rendered["context_slot"],
+            "payload": table_payload_rendered["payload"],
+            "rows": table_payload_rendered["rows"],
+        },
+    }, {
+        "allocation": {
+            "status": 1,
+            "allocation_size": 10,
+            "payload_units": 0x80,
+            "header_word8": 0x004A,
+            "byte0c": 0,
+            "word10": 0x007F,
+            "word12": 0x0006,
+            "word14": 0x0009,
+            "word16": 0x0004,
+            "word18": 0x0004,
+            "extra_offset": 0x024A,
+            "extra_count": 16,
+        },
+        "map_source": {
+            "host_0x21": 1,
+            "glyph_entry": 0x00000048,
+            "inline_record": bytes.fromhex("02 03 04 00 00 00 00 a0"),
+            "valid_record": True,
+            "bitmap": 0x000000A0,
+        },
+        "bucket": {
+            "path": "short",
+            "object": bytes.fromhex("00 00 00 00 00 03 00 01 01 66 01"),
+            "bucket_index": 1,
+            "selector": 0x0003,
+            "coord": 0x6601,
+            "glyph": 0x01,
+            "rows": 3,
+            "width": 2,
+        },
+        "render": {
+            "selector": 0x0003,
+            "context_slot": 3,
+            "payload": bytes.fromhex("00 01 01 66 01"),
+            "rows": [
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 22 + "#.#.#.#..#.#.#.#",
+                "." * 22 + "####........####",
+                "." * 22 + "##....##..####..",
+            ],
         },
     }))
 
@@ -6992,8 +7481,33 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_mark["counters"],
     ))
     lines.append("")
-    lines.append("The allocation/header side of that path is now pinned through `0x17362`, `0x17026`, and `0x1719c`. Setup helper `0x17362` writes staged byte `+0x0c` from the requested type and sets `0x7827ba` to `0x80` for type `0` or `0x100` for types `1`/`2`. `0x17026` then computes the allocation size as `((0x7827ba << 2) + 0x9b) >> 6`, writes staged long `+0 = 0x15` and long `+4 = size`, calls the allocator with class `1` and alignment `0x40`, and initializes the allocated record through `0x1719c`.")
+    lines.append("The allocation/header side of that path is now pinned through `0x16fae`, `0x17362`, `0x17026`, and `0x1719c`. Validator `0x16fae` walks the 32-entry validation table at `0x16eae` in 8-byte steps, fails immediately if a predicate returns anything other than `1`, and on success copies up to 16 symbol bytes from `0x1599c` into `0x782842` while byte budget `0x783140` remains positive, storing the count in `0x782856`. Setup helper `0x17362` writes staged byte `+0x0c` from the requested type and sets `0x7827ba` to `0x80` for type `0` or `0x100` for types `1`/`2`. `0x17026` then computes the allocation size as `((0x7827ba << 2) + 0x9b) >> 6`, writes staged long `+0 = 0x15` and long `+4 = size`, calls the allocator with class `1` and alignment `0x40`, and initializes the allocated record through `0x1719c`.")
     lines.append("")
+    lines.append("- validation fixtures: all 32 table entries passing copy `%d` symbol bytes `%s` and leave budget `%d`; a failed entry at index `%d` returns status `%d` after `%d` visits; zero budget still validates but copies `%d` bytes." % (
+        font_validate_ok["symbol_count"],
+        " ".join(f"{byte:02x}" for byte in font_validate_ok["symbol_bytes"]),
+        font_validate_ok["budget"],
+        font_validate_fail["failed_index"],
+        font_validate_fail["status"],
+        len(font_validate_fail["visited"]),
+        font_validate_zero_budget["symbol_count"],
+    ))
+    lines.append("- table-driven validation stream: `%d` decoded table entries consume `%d` bytes before the symbol tail, leave budget `%d`, set type byte `+0x0c = %d`, range words `+0x12/+0x14/+0x16/+0x18 = 0x%04x/0x%04x/0x%04x/0x%04x`, clamp spacing words `+0x24/+0x28 = 0x%04x/0x%04x`, clamp bytes `+0x26/+0x2a/+0x30 = %02x/%02x/%02x`, and copy symbols `%s`." % (
+        len(font_validate_table["visited"]),
+        font_validate_table["bytes_consumed"] - font_validate_table["symbol_count"],
+        font_validate_table["budget"],
+        font_validate_table_staging[0x0C],
+        u16(font_validate_table_staging, 0x12),
+        u16(font_validate_table_staging, 0x14),
+        u16(font_validate_table_staging, 0x16),
+        u16(font_validate_table_staging, 0x18),
+        u16(font_validate_table_staging, 0x24),
+        u16(font_validate_table_staging, 0x28),
+        font_validate_table_staging[0x26],
+        font_validate_table_staging[0x2A],
+        font_validate_table_staging[0x30],
+        " ".join(f"{byte:02x}" for byte in font_validate_table["symbol_bytes"]),
+    ))
     lines.append("- setup type fixtures: type `0` -> byte `+0x0c = %d`, units `0x%03x`; type `2` -> byte `+0x0c = %d`, units `0x%03x`; unsupported type returns status `%d` without changing byte `+0x0c`." % (
         font_setup_type_0["staging"][0x0C],
         font_setup_type_0["payload_units"],
@@ -7026,6 +7540,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         u16(font_payload_bytes, int(font_payload_info["extra_offset"])),
         " ".join(f"{byte:02x}" for byte in font_payload_bytes[int(font_payload_info["extra_offset"]) + 2:int(font_payload_info["extra_offset"]) + 2 + int(font_payload_info["symbol_count"])]),
         int(font_payload_info["extra_offset"]),
+    ))
+    lines.append("- payload-backed inline fixture: the table-driven `0x16fae` staging allocates a `0x1719c` payload with header word `+8 = 0x%04x`, type byte `+0x0c = %d`, extra symbol count `%d`, then a fixed record placed at the `0x14eb6` scanned offset `+0x40 + 8*1 = 0x%04x` maps host `0x21` to glyph `1`, queues object `%s`, and renders the same mode-0 rows from bitmap `0x%04x`." % (
+        u16(table_payload_memory, 8),
+        table_payload_memory[0x0C],
+        u16(table_payload_memory, int(table_payload_info["extra_offset"])),
+        table_payload_record,
+        " ".join(f"{byte:02x}" for byte in table_payload_bucket["object"]),
+        table_payload_source["bitmap"],
     ))
     lines.append("")
     unflagged_source_report = unflagged_fixture["source"]

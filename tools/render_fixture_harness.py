@@ -14525,6 +14525,44 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "bucket_root": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
         "rows": raster_stream_rendered["rows"],
     }))
+    raster_stream_transfer_event = [
+        event for event in raster_stream_result["events"]
+        if event["kind"] == "raster-transfer"
+    ][0]
+    raster_dispatch_commands = raster_dispatch_trace["commands"]
+    assert isinstance(raster_dispatch_commands, list)
+    checks.append(assert_equal("raster stream ties parser dispatch to queued page object", {
+        "stream": raster_command_stream,
+        "parser_handlers": [
+            command["final_dispatch"]["handler"]
+            for command in raster_dispatch_commands
+        ],
+        "parser_payload_offset": raster_dispatch_commands[-1]["payload_offset"],
+        "parser_payload": raster_dispatch_commands[-1]["payload"],
+        "parser_restore": raster_dispatch_commands[-1]["restore_after_final"],
+        "model_restore": raster_stream_transfer_event["restore_dispatch"],
+        "model_restored_record": raster_stream_transfer_event["restored_record"],
+        "model_payload_offset": raster_stream_transfer_event["payload_offset"],
+        "model_payload": raster_stream_transfer_event["payload"],
+        "queued_object": raster_stream_result["object"],
+        "bridged_object": raster_stream_bridged["bucket_root"],
+        "rendered_rows": raster_stream_bridged_rendered["rows"],
+        "row_y_after": raster_stream_result["final_state"]["row_y"],
+    }, {
+        "stream": b"\x1b*t300R\x1b*r1A\x1b*b4W" + bytes.fromhex("f0 0f aa 55"),
+        "parser_handlers": [0x010808, 0x01075A, 0x011F82],
+        "parser_payload_offset": 17,
+        "parser_payload": bytes.fromhex("f0 0f aa 55"),
+        "parser_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+        "model_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+        "model_restored_record": bytes.fromhex("80 57 00 04 00 00"),
+        "model_payload_offset": 17,
+        "model_payload": bytes.fromhex("f0 0f aa 55"),
+        "queued_object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
+        "bridged_object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
+        "rendered_rows": ["................####........#####.#.#.#..#.#.#.#"],
+        "row_y_after": 1,
+    }))
     raster_capped_command_stream = b"\x1b*t300R\x1b*r0A\x1b*b4W" + bytes.fromhex("f0 0f aa 55")
     raster_capped_stream_result = render_raster_command_data_stream_via_121cc_105d0(
         data,
@@ -17796,6 +17834,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("## ROM Parser Dispatch Trace Fixture")
     lines.append("")
     lines.append("This fixture walks the primary raster stream through the ROM dispatch table used by main parser loop `0x11774`. It proves the byte sequence reaches prefix handlers `0x11eb6` / `0x11ec8` / `0x11eda`, final handlers `0x10808`, `0x1075a`, and `0x11f82`, then returns to mode 0 where `0x12218` restores the delayed `ESC *b4W` record and dispatches handler `0x105d0` before payload bytes are consumed.")
+    lines.append("A paired cross-boundary check now ties that parser trace to the modeled command/data stream: the restored record, payload offset, queued raster object, `0x1edc6` bridge, rendered row, and final row counter all match for the same byte stream.")
     lines.append("")
     lines.append(f"- dispatch stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_command_stream)}`")
     lines.append("- dispatch path:")

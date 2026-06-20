@@ -34,10 +34,10 @@ These command-to-handler anchors are current priorities for pixel-perfect render
 | BS `0x08` | `0x00f2a8` | backspace cursor behavior |
 | `ESC &l#A` | `0x00fc74` | page size; maps PCL values to internal paper codes |
 | `ESC &l#O` | `0x010220` | orientation; rebuilds page geometry and cursor state |
-| `ESC &l#C` | `0x00cb00` | VMI |
-| `ESC &l#D` | `0x00c992` | lines per inch |
-| `ESC &l#E` | `0x00ece2` | top margin |
-| `ESC &l#F` | `0x00ea9e` | text length |
+| `ESC &l#C` | `0x00cb00` | VMI in 1/48-inch units into `0x783160` |
+| `ESC &l#D` | `0x00c992` | lines per inch; accepted set maps to line advance `0x783160` |
+| `ESC &l#E` | `0x00ece2` | top margin; writes top offset `0x782dce` |
+| `ESC &l#F` | `0x00ea9e` | text length; writes bottom/text-length limit `0x782dd2` |
 | `ESC &l#H` | `0x00ef62` | paper source and page eject |
 | `ESC &a#L` | `0x00eb58` | left margin; absolute HMI columns into `0x782dd6` |
 | `ESC &a#M` | `0x00ec0c` | right margin; `abs(parameter) + 1` HMI columns into `0x782dda` |
@@ -86,6 +86,10 @@ These command-to-handler anchors are current priorities for pixel-perfect render
 It then rebuilds page-related state, including `0x782da2`, `0x782db2`, `0x782db4`, `0x782dc0`, `0x782dce`, and `0x782dd0`, and calls shared reset/layout helpers also seen in `ESC E`. Executable fixtures now pin letter `ESC &l1A` as internal code `6`, width `3030`, height `2025`, portrait margin `3150`, top offset `90`, and PCL `80` as internal code `0x88` masking to geometry-table index `8`.
 
 `ESC &l#O` at `0x010220` accepts orientation values below `2`, updates `0x782da3`, rebuilds page geometry, updates `0x783160`, and reloads current font/metrics state through tables rooted near `0x782ee6` / `0x782ef6`. The letter landscape fixture pins active extents `2025x3030`, landscape margin `2175`, printable extent `2125`, top offset `100`, and the `0x103ea` threshold sequence `2175, 2550, 2480, 2550`.
+
+`ESC &l#D` at `0x00c992` accepts absolute LPI values `1,2,3,4,6,8,12,16,24,48`, treats zero as `12`, converts to packed line advance as `3600 / LPI` twelfths, stores `0x783160`, and sets modified-layout byte `0x782ee1`. `ESC &l#C` at `0x00cb00` converts absolute VMI in 1/48-inch units using 75 packed subunits per unit, accepts fractional values, stores `0x783160`, and leaves `0x782ee1` clear when the converted VMI is zero. Both handlers reject values beyond page extent `0x782dba` and, when pending text byte `0x782a6d` is set, refresh vertical cursor `0x782c8e` to `0x782dce + VMI * 18 / 25`.
+
+`ESC &l#E` at `0x00ece2` scales top-margin lines through current VMI, rejects zero VMI or positions at/beyond page extent `0x782dba`, writes top offset `0x782dce = top_margin - 0x782dbe`, recomputes default text-length bottom via helper `0xea16`, and refreshes pending vertical cursor with the same `VMI * 18 / 25` offset. `ESC &l#F` at `0x00ea9e` scales text-length lines through VMI, rejects lengths beyond the remaining page below current top margin, writes `0x782dd2 = 0x782dce + text_length`, and uses `0xea16` to restore the default bottom when the parameter is zero.
 
 `ESC &a#L` at `0x00eb58` converts the absolute parsed column count through current HMI `0x78315c`, rejects values beyond `0x782dda - HMI`, and writes the accepted value to left margin `0x782dd6`. When the accepted margin is right of current cursor `0x782c8a` or pending text is marked, it also moves the cursor and flushes pending spans through `0x12714` / `0x126e2` when span flushing is enabled. `ESC &a#M` at `0x00ec0c` converts `abs(parameter) + 1` columns through HMI, rejects values before `0x782dd6 + HMI`, clamps beyond page width `0x782db8`, writes right margin `0x782dda`, and can move `0x782c8a` left while setting right-limit latch `0x782a57`.
 

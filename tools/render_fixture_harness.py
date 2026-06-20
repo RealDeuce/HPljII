@@ -2747,6 +2747,141 @@ def apply_cursor_position_command(state: dict[str, int], command: str, integer: 
     raise AssertionError(f"unsupported cursor-position command {command!r}")
 
 
+def vertical_layout_state(**overrides: int) -> dict[str, int]:
+    state = {
+        "vmi": pack12(50),
+        "page_extent": 300,
+        "vertical_offset_source": 60,
+        "top_offset": pack12(90),
+        "text_length_bottom": pack12(240),
+        "cursor_y": pack12(20),
+        "pending_text": 0,
+        "modified_layout": 0,
+        "layout_refreshes": 0,
+        "events": [],
+    }
+    state.update(overrides)
+    return state
+
+
+def pending_text_cursor_for_vmi(top_offset: int, vmi: int) -> int:
+    return add_packed12(int(top_offset), subunits_to_packed12(trunc_div(packed12_to_subunits(int(vmi)) * 18, 25)))
+
+
+def default_text_length_bottom(top_offset: int, vertical_offset_source: int, page_extent: int) -> int:
+    physical_top = add_packed12(int(top_offset), pack12(int(vertical_offset_source)))
+    lower_threshold = pack12(int(page_extent) - 0x96)
+    excess = sub_packed12(physical_top, lower_threshold)
+    if packed12_to_subunits(excess) <= 0:
+        return pack12(int(page_extent) - int(vertical_offset_source))
+    return add_packed12(int(top_offset), excess)
+
+
+def convert_lpi_to_vmi(parameter: int) -> int | None:
+    lines_per_inch = abs(int(parameter))
+    if lines_per_inch == 0:
+        lines_per_inch = 12
+    if lines_per_inch not in (1, 2, 3, 4, 6, 8, 12, 16, 24, 48):
+        return None
+    return subunits_to_packed12(3600 // lines_per_inch)
+
+
+def apply_lines_per_inch_via_c992(state: dict[str, int], parameter: int) -> dict[str, int]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    new_vmi = convert_lpi_to_vmi(parameter)
+    if new_vmi is None:
+        events.append({"kind": "lines-per-inch-ignored", "reason": "unsupported-value", "parameter": abs(int(parameter))})
+        updated["events"] = events
+        return updated
+    if new_vmi > pack12(int(updated["page_extent"])):
+        events.append({"kind": "lines-per-inch-ignored", "reason": "beyond-page-extent", "candidate": new_vmi})
+        updated["events"] = events
+        return updated
+    updated["vmi"] = new_vmi
+    if int(updated.get("pending_text", 0)):
+        updated["cursor_y"] = pending_text_cursor_for_vmi(int(updated["top_offset"]), new_vmi)
+        events.append({"kind": "vertical-cursor-refresh", "cursor_y": int(updated["cursor_y"])})
+    updated["modified_layout"] = 1
+    events.append({"kind": "lines-per-inch", "vmi": new_vmi})
+    updated["events"] = events
+    return updated
+
+
+def apply_vmi_via_cb00(state: dict[str, int], integer: int, fraction: int = 0) -> dict[str, int]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    whole = int(integer)
+    frac = int(fraction)
+    if whole < 0:
+        whole = -whole
+        frac = -frac
+    if whole > 0x150:
+        events.append({"kind": "vmi-ignored", "reason": "integer-too-large", "parameter": whole})
+        updated["events"] = events
+        return updated
+    new_vmi = parsed_decimal_scaled_to_packed12(whole, frac, 0x4B)
+    if new_vmi > pack12(int(updated["page_extent"])):
+        events.append({"kind": "vmi-ignored", "reason": "beyond-page-extent", "candidate": new_vmi})
+        updated["events"] = events
+        return updated
+    updated["vmi"] = new_vmi
+    if int(updated.get("pending_text", 0)):
+        updated["cursor_y"] = pending_text_cursor_for_vmi(int(updated["top_offset"]), new_vmi)
+        events.append({"kind": "vertical-cursor-refresh", "cursor_y": int(updated["cursor_y"])})
+    if packed12_to_subunits(new_vmi) != 0:
+        updated["modified_layout"] = 1
+    events.append({"kind": "vmi", "vmi": new_vmi})
+    updated["events"] = events
+    return updated
+
+
+def apply_text_length_via_ea9e(state: dict[str, int], parameter: int) -> dict[str, int]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    vmi_subunits = packed12_to_subunits(int(updated["vmi"]))
+    if vmi_subunits == 0:
+        events.append({"kind": "text-length-ignored", "reason": "zero-vmi"})
+        updated["events"] = events
+        return updated
+    text_extent = parsed_decimal_scaled_to_packed12(abs(int(parameter)), 0, vmi_subunits)
+    if packed12_to_subunits(text_extent) == 0:
+        updated["text_length_bottom"] = default_text_length_bottom(int(updated["top_offset"]), int(updated["vertical_offset_source"]), int(updated["page_extent"]))
+        events.append({"kind": "text-length-default", "bottom": int(updated["text_length_bottom"])})
+    else:
+        physical_top = add_packed12(int(updated["top_offset"]), pack12(int(updated["vertical_offset_source"])))
+        max_text = sub_packed12(pack12(int(updated["page_extent"])), physical_top)
+        if text_extent > max_text:
+            events.append({"kind": "text-length-ignored", "reason": "beyond-page-bottom", "candidate": text_extent, "max": max_text})
+            updated["events"] = events
+            return updated
+        updated["text_length_bottom"] = add_packed12(int(updated["top_offset"]), text_extent)
+        events.append({"kind": "text-length", "bottom": int(updated["text_length_bottom"])})
+    updated["layout_refreshes"] = int(updated.get("layout_refreshes", 0)) + 1
+    updated["events"] = events
+    return updated
+
+
+def apply_top_margin_via_ece2(state: dict[str, int], parameter: int) -> dict[str, int]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    vmi_subunits = packed12_to_subunits(int(updated["vmi"]))
+    new_top = parsed_decimal_scaled_to_packed12(abs(int(parameter)), 0, vmi_subunits)
+    if new_top >= pack12(int(updated["page_extent"])) or vmi_subunits == 0:
+        events.append({"kind": "top-margin-ignored", "reason": "beyond-page-extent-or-zero-vmi", "candidate": new_top})
+        updated["events"] = events
+        return updated
+    updated["top_offset"] = sub_packed12(new_top, pack12(int(updated["vertical_offset_source"])))
+    updated["text_length_bottom"] = default_text_length_bottom(int(updated["top_offset"]), int(updated["vertical_offset_source"]), int(updated["page_extent"]))
+    if int(updated.get("pending_text", 0)) > 0:
+        updated["cursor_y"] = pending_text_cursor_for_vmi(int(updated["top_offset"]), int(updated["vmi"]))
+        events.append({"kind": "vertical-cursor-refresh", "cursor_y": int(updated["cursor_y"])})
+    updated["layout_refreshes"] = int(updated.get("layout_refreshes", 0)) + 1
+    events.append({"kind": "top-margin", "top_offset": int(updated["top_offset"]), "text_length_bottom": int(updated["text_length_bottom"])})
+    updated["events"] = events
+    return updated
+
+
 def margin_state(**overrides: int) -> dict[str, int]:
     state = {
         "cursor_x": pack12(10),
@@ -5118,6 +5253,83 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "pending_width": 0,
         "pending_text": 0,
         "page_roots": 1,
+    }))
+    lpi_six = apply_lines_per_inch_via_c992(vertical_layout_state(pending_text=1), 6)
+    lpi_zero_default = apply_lines_per_inch_via_c992(vertical_layout_state(), 0)
+    lpi_ignored = apply_lines_per_inch_via_c992(vertical_layout_state(), 5)
+    checks.append(assert_equal("0xc992 ESC &l#D accepts ROM LPI set and refreshes pending vertical cursor", {
+        "six": select_keys(lpi_six, ("vmi", "cursor_y", "modified_layout")),
+        "zero_default": select_keys(lpi_zero_default, ("vmi", "modified_layout")),
+        "ignored": {
+            **select_keys(lpi_ignored, ("vmi", "modified_layout")),
+            "last_event": lpi_ignored["events"][-1],
+        },
+    }, {
+        "six": {"vmi": pack12(50), "cursor_y": pack12(126), "modified_layout": 1},
+        "zero_default": {"vmi": pack12(25), "modified_layout": 1},
+        "ignored": {
+            "vmi": pack12(50),
+            "modified_layout": 0,
+            "last_event": {"kind": "lines-per-inch-ignored", "reason": "unsupported-value", "parameter": 5},
+        },
+    }))
+    vmi_eight = apply_vmi_via_cb00(vertical_layout_state(pending_text=1), 8)
+    vmi_fraction = apply_vmi_via_cb00(vertical_layout_state(), 1, 5000)
+    vmi_zero = apply_vmi_via_cb00(vertical_layout_state(), 0)
+    vmi_ignored = apply_vmi_via_cb00(vertical_layout_state(page_extent=40), 8)
+    checks.append(assert_equal("0xcb00 ESC &l#C converts 1/48-inch VMI and keeps zero unmodified", {
+        "eight": select_keys(vmi_eight, ("vmi", "cursor_y", "modified_layout")),
+        "fraction": select_keys(vmi_fraction, ("vmi", "modified_layout")),
+        "zero": select_keys(vmi_zero, ("vmi", "modified_layout")),
+        "ignored": {
+            **select_keys(vmi_ignored, ("vmi", "modified_layout")),
+            "last_event": vmi_ignored["events"][-1],
+        },
+    }, {
+        "eight": {"vmi": pack12(50), "cursor_y": pack12(126), "modified_layout": 1},
+        "fraction": {"vmi": pack12(9, 4), "modified_layout": 1},
+        "zero": {"vmi": pack12(0), "modified_layout": 0},
+        "ignored": {
+            "vmi": pack12(50),
+            "modified_layout": 0,
+            "last_event": {"kind": "vmi-ignored", "reason": "beyond-page-extent", "candidate": pack12(50)},
+        },
+    }))
+    text_length_two = apply_text_length_via_ea9e(vertical_layout_state(), 2)
+    text_length_default = apply_text_length_via_ea9e(vertical_layout_state(text_length_bottom=0), 0)
+    text_length_ignored = apply_text_length_via_ea9e(vertical_layout_state(), 4)
+    checks.append(assert_equal("0xea9e ESC &l#F sets text length bottom or restores default", {
+        "two": select_keys(text_length_two, ("text_length_bottom", "layout_refreshes")),
+        "default": select_keys(text_length_default, ("text_length_bottom", "layout_refreshes")),
+        "ignored": {
+            **select_keys(text_length_ignored, ("text_length_bottom", "layout_refreshes")),
+            "last_event": text_length_ignored["events"][-1],
+        },
+    }, {
+        "two": {"text_length_bottom": pack12(190), "layout_refreshes": 1},
+        "default": {"text_length_bottom": pack12(240), "layout_refreshes": 1},
+        "ignored": {
+            "text_length_bottom": pack12(240),
+            "layout_refreshes": 0,
+            "last_event": {"kind": "text-length-ignored", "reason": "beyond-page-bottom", "candidate": pack12(200), "max": pack12(150)},
+        },
+    }))
+    top_margin_three = apply_top_margin_via_ece2(vertical_layout_state(pending_text=1, top_offset=pack12(0), text_length_bottom=0), 3)
+    top_margin_ignored = apply_top_margin_via_ece2(vertical_layout_state(), 7)
+    checks.append(assert_equal("0xece2 ESC &l#E sets top margin, default text length, and pending cursor", {
+        "three": select_keys(top_margin_three, ("top_offset", "text_length_bottom", "cursor_y", "layout_refreshes")),
+        "ignored": {
+            **select_keys(top_margin_ignored, ("top_offset", "text_length_bottom", "layout_refreshes")),
+            "last_event": top_margin_ignored["events"][-1],
+        },
+    }, {
+        "three": {"top_offset": pack12(90), "text_length_bottom": pack12(240), "cursor_y": pack12(126), "layout_refreshes": 1},
+        "ignored": {
+            "top_offset": pack12(90),
+            "text_length_bottom": pack12(240),
+            "layout_refreshes": 0,
+            "last_event": {"kind": "top-margin-ignored", "reason": "beyond-page-extent-or-zero-vmi", "candidate": pack12(350)},
+        },
     }))
     left_margin_move = apply_left_margin_via_eb58(margin_state(
         cursor_x=pack12(10),
@@ -9221,6 +9433,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- `ESC &f0S` pushes the horizontal cursor and the vertical cursor plus `0x782dbe` onto the cursor stack; `ESC &f1S` pops, restores horizontal position clamped to active extent minus `1/12`, restores vertical position after subtracting `0x782dbe` and clamps to printable extent minus `1/12`, then clears pending/right-limit flags.")
     lines.append("- `ESC &a#C` converts columns through current HMI, `ESC &a#H` converts decipoints as five packed subunits per decipoint, and both commit through horizontal helper `0xf4ca` with absolute/relative handling and page-width clamps.")
     lines.append("- `ESC &a#R` converts rows through current VMI; absolute rows add the firmware's `0.7200` row bias before using the top offset, while relative rows add to the current vertical cursor. `ESC &a#V` uses the same five-subunit decipoint conversion. Both commit through vertical helper `0xf6e2` and clamp to vertical bounds where the handler does so.")
+    lines.append("- `ESC &l#D` accepts only the ROM LPI set `1,2,3,4,6,8,12,16,24,48`, treats zero as 12 LPI, and writes line advance `0x783160`; `ESC &l#C` converts VMI in 1/48-inch units using 75 packed subunits per unit and allows zero without setting the modified-layout flag.")
+    lines.append("- `ESC &l#E` sets top offset `0x782dce` from VMI lines minus vertical offset source `0x782dbe`, then recomputes default text-length bottom `0x782dd2`; `ESC &l#F` stores explicit text-length bottom as top offset plus VMI-scaled lines, or restores the default when the parameter is zero.")
     lines.append("- `ESC &a#L` stores an absolute left margin in HMI columns when it does not pass `right_margin - HMI`; it moves the cursor and flushes pending spans only when the new margin is right of the current cursor or pending text is marked.")
     lines.append("- `ESC &a#M` stores `abs(parameter) + 1` HMI columns as the right margin, rejects values before `left_margin + HMI`, clamps beyond page width, and moves the cursor/right-limit latch when the new right margin is left of the current cursor.")
     lines.append("- The direct-control fixture parser intentionally recognizes only `ESC &k#G`, `ESC E`, and direct control bytes; mixed printable/control/reset coverage is added separately for narrow normal-mode streams, while combined escape sequences and real page-object allocation still need fuller parser-driven fixtures.")
@@ -9232,6 +9446,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- `ESC &a72H`: x `0x{int(decipoint_right['cursor_x']):08x}`, clamped `ESC &a500H` x `0x{int(decipoint_clamped['cursor_x']):08x}`")
     lines.append(f"- `ESC &a2R`: y `0x{int(row_absolute['cursor_y']):08x}`, relative `ESC &a+1R` y `0x{int(row_relative['cursor_y']):08x}`")
     lines.append(f"- `ESC &a72V`: clamped y `0x{int(vertical_decipoint['cursor_y']):08x}`")
+    lines.append(f"- `ESC &l6D`: VMI `0x{int(lpi_six['vmi']):08x}`, pending cursor y `0x{int(lpi_six['cursor_y']):08x}`")
+    lines.append(f"- `ESC &l8C`: VMI `0x{int(vmi_eight['vmi']):08x}`, `ESC &l1.5C` VMI `0x{int(vmi_fraction['vmi']):08x}`")
+    lines.append(f"- `ESC &l3E`: top offset `0x{int(top_margin_three['top_offset']):08x}`, text bottom `0x{int(top_margin_three['text_length_bottom']):08x}`")
+    lines.append(f"- `ESC &l2F`: text bottom `0x{int(text_length_two['text_length_bottom']):08x}`, `ESC &l0F` default bottom `0x{int(text_length_default['text_length_bottom']):08x}`")
     lines.append(f"- `ESC &a6L`: left margin `0x{int(left_margin_move['left_margin']):08x}`, cursor `0x{int(left_margin_move['cursor_x']):08x}`")
     lines.append(f"- `ESC &a9M`: right margin `0x{int(right_margin_move['right_margin']):08x}`, cursor `0x{int(right_margin_move['cursor_x']):08x}`")
     lines.append("")

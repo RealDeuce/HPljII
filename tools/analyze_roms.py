@@ -1690,7 +1690,8 @@ def page_root_finalization_report(data: bytes) -> str:
         ("text span flush retry path", [0x0127BE]),
         ("page geometry and layout changes", [0x00FA68, 0x00FB10, 0x00FCAA, 0x00FD6E, 0x010262]),
         ("raster transfer page-boundary path", [0x0106E6]),
-        ("unclassified follow-up leads", [0x010D32, 0x01BA76]),
+        ("rectangle/rule queue retry path", [0x010D32]),
+        ("font-slot/default update flush path", [0x01BA76]),
     ]
 
     lines = ["# IC30/IC13 Page-Root Finalization Flow", ""]
@@ -1752,7 +1753,7 @@ def page_root_finalization_report(data: bytes) -> str:
     lines.append("")
     lines.append("- A page-root reproduction must distinguish the no-publication clear path from the active-root publication path: only active roots with byte `+4 == 1` are promoted to state `2` and exposed through `0x780ea6`.")
     lines.append("- The finalizer is not a pure state copy. In the `0x782a92 == 1` case it can restore saved command/data state, re-enter the parser at `0x11774`, and ensure a root again before publication.")
-    lines.append("- Reset, FF, page-size, orientation, text retry, and raster page-boundary paths all share this finalizer; byte-perfect reproduction should therefore compare the same published root shape at this boundary before rendering through `0x1edc6`.")
+    lines.append("- Reset, FF, page-size, orientation, text retry, rectangle/rule queue retry, font-slot/default update, and raster page-boundary paths all share this finalizer; byte-perfect reproduction should therefore compare the same published root shape at this boundary before rendering through `0x1edc6`.")
     lines.append("- `tools/render_fixture_harness.py` already models valid-root publication, missing-root clear, and mixed printable reset/FF/page-geometry publication. The remaining fidelity gap is to replace those fixture-only source/root objects with roots produced by the full parser and allocator path.")
     lines.append("")
     return "\n".join(lines)
@@ -3250,6 +3251,7 @@ def rectangle_graphics_flow_report(data: bytes) -> str:
     lines.append("## Queue Path")
     lines.append("")
     lines.append("- `0x10b80` rejects rectangles starting beyond the printable extents, clips negative starts and overlong width/height, handles landscape coordinate swapping, ensures a page root through `0x10084`, then queues source record `0x782a88` through `0x13386`.")
+    lines.append("- If `0x13386` reports no room, `0x10d22..0x10d3e` sets page-root flag bit `root+0x15.0`, finalizes the current root through `0xff1e`, ensures a fresh root through `0x10084`, and retries the same source record. This is the rectangle/rule counterpart to the text queue retry paths.")
     lines.append("- `0x13386` runs `0x134d6` to compute bucket word `0x782a7c` and compact rule key `0x782a7e` from source x/y plus `0x782dc0`; `0x133aa` stores the low bucket byte at object `+4` and inserts a 14-byte object under page-root `+0x24`.")
     lines.append("- `0x1edc6` later copies page-root `+0x24` to render-record `+0x1c`, ORs object byte `+5` with `0x10`, and copies height word `+0x0a` to `+0x0c` before `0x1f446` dispatch.")
     lines.append("- `0x1f446` walks the bridged rule list for each five-bucket render band. Selector `7` dispatches to solid helper `0x1f596`, which decodes the packed key through `0x1f626`/`$a001` sub-byte positioning and writes full `0xffff` words plus a trailing mask from table `0x308be`; the other selectors dispatch to pattern helper `0x1f4e0`, which uses the pointer table at `0x2fefe` and the same mask helper `0x1f6ee`.")

@@ -3194,6 +3194,60 @@ def apply_right_margin_via_ec0c(state: dict[str, int], parameter: int) -> dict[s
     return updated
 
 
+def margin_handler(final: int) -> int:
+    final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+    if final_upper == ord("L"):
+        return 0x00EB58
+    if final_upper == ord("M"):
+        return 0x00EC0C
+    raise AssertionError(f"unsupported ESC &a margin final byte {chr(final)!r}")
+
+
+def apply_margin_stream_via_eb58_ec0c(state: dict[str, int], stream: bytes) -> dict[str, object]:
+    state = dict(state)
+    stream_events: list[dict[str, object]] = []
+    pos = 0
+    while pos < len(stream):
+        start = pos
+        if pos + 3 >= len(stream) or stream[pos : pos + 3] != b"\x1b&a":
+            raise AssertionError(f"margin stream only models ESC &a#L/#M at offset {pos}")
+        pos += 3
+        while True:
+            command_start = start if pos == start + 3 else pos
+            parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            if pos >= len(stream):
+                raise AssertionError("margin stream missing final byte")
+            final = stream[pos]
+            pos += 1
+            final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+            if final_upper == ord("L"):
+                before = dict(state)
+                state = apply_left_margin_via_eb58(state, parameter)
+            elif final_upper == ord("M"):
+                before = dict(state)
+                state = apply_right_margin_via_ec0c(state, parameter)
+            else:
+                raise AssertionError(f"margin stream unsupported final byte {chr(final)!r}")
+            record = bytes([
+                0x81 if parameter < 0 else 0x80,
+                final,
+            ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
+            stream_events.append({
+                "sequence": stream[command_start:pos],
+                "record": record,
+                "parameter": parameter,
+                "handler": margin_handler(final),
+                "cursor_before": int(before["cursor_x"]),
+                "events": state["events"][len(before.get("events", [])):],
+                "chained": bool(ord("a") <= final <= ord("z")),
+            })
+            if not (ord("a") <= final <= ord("z")):
+                break
+    state["stream"] = stream
+    state["stream_events"] = stream_events
+    return state
+
+
 def position_flagged_text_source_via_d824(
     resources: bytes,
     source: dict[str, int],
@@ -6800,6 +6854,59 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "cursor_x": pack12(10),
             "last_event": {"kind": "right-margin-ignored", "reason": "before-left-margin", "candidate": pack12(22), "min": pack12(32)},
         },
+    }))
+    margin_stream = apply_margin_stream_via_eb58_ec0c(margin_state(
+        cursor_x=pack12(50),
+        left_margin=pack12(5),
+        right_margin=pack12(80),
+        page_width=100,
+        hmi=pack12(2),
+        right_limit_latch=1,
+    ), b"\x1b&a6l9M")
+    checks.append(assert_equal("margin stream ESC &a6l9M selects 0xeb58 then 0xec0c", {
+        "stream": margin_stream["stream"],
+        "stream_events": margin_stream["stream_events"],
+        "left_margin": margin_stream["left_margin"],
+        "right_margin": margin_stream["right_margin"],
+        "cursor_x": margin_stream["cursor_x"],
+        "right_limit_latch": margin_stream["right_limit_latch"],
+        "span_updates": margin_stream["span_updates"],
+        "events": margin_stream["events"],
+    }, {
+        "stream": b"\x1b&a6l9M",
+        "stream_events": [
+            {
+                "sequence": b"\x1b&a6l",
+                "record": bytes.fromhex("80 6c 00 06 00 00"),
+                "parameter": 6,
+                "handler": 0x00EB58,
+                "cursor_before": pack12(50),
+                "events": [{"kind": "left-margin", "margin": pack12(12)}],
+                "chained": True,
+            },
+            {
+                "sequence": b"9M",
+                "record": bytes.fromhex("80 4d 00 09 00 00"),
+                "parameter": 9,
+                "handler": 0x00EC0C,
+                "cursor_before": pack12(50),
+                "events": [
+                    {"kind": "right-margin-cursor-move", "cursor_x": pack12(20)},
+                    {"kind": "right-margin", "margin": pack12(20)},
+                ],
+                "chained": False,
+            },
+        ],
+        "left_margin": pack12(12),
+        "right_margin": pack12(20),
+        "cursor_x": pack12(20),
+        "right_limit_latch": 1,
+        "span_updates": 1,
+        "events": [
+            {"kind": "left-margin", "margin": pack12(12)},
+            {"kind": "right-margin-cursor-move", "cursor_x": pack12(20)},
+            {"kind": "right-margin", "margin": pack12(20)},
+        ],
     }))
     reset_fields = (
         "alternate_mode",
@@ -11429,7 +11536,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- `ESC &l#D` accepts only the ROM LPI set `1,2,3,4,6,8,12,16,24,48`, treats zero as 12 LPI, and writes line advance `0x783160`; `ESC &l#C` converts VMI in 1/48-inch units using 75 packed subunits per unit and allows zero without setting the modified-layout flag.")
     lines.append("- `ESC &l#E` sets top offset `0x782dce` from VMI lines minus vertical offset source `0x782dbe`, then recomputes default text-length bottom `0x782dd2`; `ESC &l#F` stores explicit text-length bottom as top offset plus VMI-scaled lines, or restores the default when the parameter is zero.")
     lines.append("- `ESC &a#L` stores an absolute left margin in HMI columns when it does not pass `right_margin - HMI`; it moves the cursor and flushes pending spans only when the new margin is right of the current cursor or pending text is marked.")
-    lines.append("- `ESC &a#M` stores `abs(parameter) + 1` HMI columns as the right margin, rejects values before `left_margin + HMI`, clamps beyond page width, and moves the cursor/right-limit latch when the new right margin is left of the current cursor.")
+    lines.append("- `ESC &a#M` stores `abs(parameter) + 1` HMI columns as the right margin, rejects values before `left_margin + HMI`, clamps beyond page width, and moves the cursor/right-limit latch when the new right margin is left of the current cursor. A byte-stream fixture now drives chained `ESC &a6l9M` through handlers `0xeb58` and `0xec0c`.")
     lines.append("- The direct-control fixture parser intentionally recognizes only `ESC &k#G`, `ESC E`, and direct control bytes; mixed printable/control/reset coverage is added separately for narrow normal-mode streams, while combined escape sequences and real page-object allocation still need fuller parser-driven fixtures.")
     lines.append("")
     lines.append(f"- cursor stack push entry: `{cursor_stack_pushed['stack'][0]}`")
@@ -11447,6 +11554,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- `ESC &l2F`: text bottom `0x{int(text_length_two['text_length_bottom']):08x}`, `ESC &l0F` default bottom `0x{int(text_length_default['text_length_bottom']):08x}`")
     lines.append(f"- `ESC &a6L`: left margin `0x{int(left_margin_move['left_margin']):08x}`, cursor `0x{int(left_margin_move['cursor_x']):08x}`")
     lines.append(f"- `ESC &a9M`: right margin `0x{int(right_margin_move['right_margin']):08x}`, cursor `0x{int(right_margin_move['cursor_x']):08x}`")
+    lines.append(f"- margin stream events: `{margin_stream['stream_events']}`")
     lines.append("")
 
     lines.append("## `ESC E` Reset Fixtures")

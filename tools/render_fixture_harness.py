@@ -2291,6 +2291,25 @@ def compose_set_pixel_rows(layers: list[list[str]], width: int, rows: int) -> li
     return ["".join(row) for row in dest]
 
 
+def expected_line_printer_rule_raster_band_rows(glyph_rows: list[str], include_raster: bool) -> list[str]:
+    rows: list[str] = []
+    raster_row_bits = "##....##..####.."
+    for row_index in range(28):
+        row = ["."] * 40
+        if row_index < len(glyph_rows):
+            for x, pixel in enumerate(glyph_rows[row_index]):
+                if pixel == "#":
+                    row[16 + x] = "#"
+        if include_raster and row_index == 12:
+            for x, pixel in enumerate(raster_row_bits):
+                if pixel == "#":
+                    row[x] = "#"
+        if 24 <= row_index < 27:
+            row[24:36] = ["#"] * 12
+        rows.append("".join(row))
+    return rows
+
+
 def write_bitmap_bits(dest: bytearray, dest_stride: int, source: bytes, rows: int, span: int, x: int, y: int) -> None:
     for row_index in range(rows):
         row_base = row_index * span
@@ -6655,6 +6674,115 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "span_flushes": 1,
             "post_flushes": 1,
         },
+    }))
+    macro_band_rule_record: dict[str, object] = {}
+    macro_band_rule = queue_rectangle_rule_via_13386(macro_band_rule_record, {
+        "x": 24,
+        "y": 24,
+        "width": 12,
+        "height": 3,
+        "flags": 7,
+    })
+    macro_band_rule_bridged = bridge_page_record_via_1edc6(macro_band_rule_record)
+    macro_band_rule_rendered = render_rule_list_via_1f446(data, macro_band_rule_bridged, band_rows=32)
+    macro_band_raster_page_record: dict[str, object] = {"bucket_array": {}}
+    macro_band_raster_result = queue_raster_row_to_page_record_via_13070(
+        macro_band_raster_page_record,
+        {"x": 0, "y": 12, "byte_count": 2, "mode": 0},
+        bytes.fromhex("c3 3c"),
+    )
+    macro_band_raster_bucket_array = macro_band_raster_page_record["bucket_array"]
+    assert isinstance(macro_band_raster_bucket_array, dict)
+    macro_band_raster_object = bytes(macro_band_raster_bucket_array[0][0])
+    macro_band_raster_bridged = bridge_page_record_via_1edc6({"bucket_root": macro_band_raster_object})
+    macro_band_raster_rendered = render_bridged_encoded_raster_object(data, macro_band_raster_bridged)
+    macro_band_composed_rows = compose_set_pixel_rows(
+        [macro_payload_page_record_rendered["rows"], macro_band_rule_rendered["rows"], macro_band_raster_rendered["rows"]],
+        width=40,
+        rows=28,
+    )
+    expected_macro_band_composed_rows = compose_set_pixel_rows(
+        [
+            macro_payload_rendered["rows"],
+            ["." * 40] * 24 + ["." * 24 + "#" * 12 + "." * 4] * 3,
+            ["." * 40] * 12 + ["##....##..####.." + "." * 24],
+        ],
+        width=40,
+        rows=28,
+    )
+    checks.append(assert_equal("macro execute page-record layer composes with rule and raster band", {
+        "frame": macro_stream_execute["state"]["data_chain_frames"][0],
+        "text_bucket_root": macro_payload_page_record_bridged["bucket_root"],
+        "text_rendered": {
+            key: macro_payload_page_record_rendered[key]
+            for key in ("selector", "context_slot", "count", "rendered", "payload")
+        },
+        "queued_rule": macro_band_rule["object"],
+        "bridged_rule": macro_band_rule_bridged["rule_list"][0],
+        "rule_rendered": [
+            {
+                key: entry[key]
+                for key in ("selector", "helper", "key", "bucket_delta", "decoded", "width", "remaining_before", "rows_drawn", "mutated_object")
+            }
+            for entry in macro_band_rule_rendered["rendered"]
+        ],
+        "raster_result": {
+            key: macro_band_raster_result[key]
+            for key in ("path", "allocated", "bucket_index", "key", "mode", "byte_count_before", "byte_count_after", "capacity", "object_size")
+        },
+        "raster_bucket_root": macro_band_raster_bridged["bucket_root"],
+        "raster_rendered": {
+            key: macro_band_raster_rendered[key]
+            for key in ("mode", "helper", "byte_count", "coord", "dest_base", "x", "y", "payload", "rows")
+        },
+        "composed_rows": macro_band_composed_rows,
+    }, {
+        "frame": {"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"},
+        "text_bucket_root": macro_payload_page_record_object,
+        "text_rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 1,
+            "rendered": macro_payload_rendered["rendered"],
+            "payload": bytes.fromhex("00 01 20 00 01") + bytes(0x1B),
+        },
+        "queued_rule": bytes.fromhex("00 00 00 00 01 07 88 01 00 0c 00 03 00 00"),
+        "bridged_rule": bytes.fromhex("00 00 00 00 01 17 88 01 00 0c 00 03 00 03"),
+        "rule_rendered": [{
+            "selector": 7,
+            "helper": 0x1F596,
+            "key": 0x8801,
+            "bucket_delta": 1,
+            "decoded": {"x": 24, "y": 24, "row_low": 8, "subbyte": 8, "byte_pair_offset": 2},
+            "width": 12,
+            "remaining_before": 3,
+            "rows_drawn": 3,
+            "mutated_object": bytes.fromhex("00 00 00 00 01 07 88 01 00 0c 00 03 ff cb"),
+        }],
+        "raster_result": {
+            "path": "raster-page-record",
+            "allocated": True,
+            "bucket_index": 0,
+            "key": 0xC000,
+            "mode": 0,
+            "byte_count_before": 2,
+            "byte_count_after": 0,
+            "capacity": 2,
+            "object_size": 0x0C,
+        },
+        "raster_bucket_root": bytes.fromhex("00 00 00 00 80 00 00 02 c0 00 c3 3c"),
+        "raster_rendered": {
+            "mode": 0,
+            "helper": 0x01F8DA,
+            "byte_count": 2,
+            "coord": 0xC000,
+            "dest_base": 0x180,
+            "x": 0,
+            "y": 12,
+            "payload": bytes.fromhex("c3 3c"),
+            "rows": ["." * 16] * 12 + ["##....##..####.."],
+        },
+        "composed_rows": expected_macro_band_composed_rows,
     }))
     macro_with_payload = macro_state(
         current_macro_id=123,
@@ -11482,16 +11610,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         width=40,
         rows=28,
     )
-    expected_text_rule_composed_rows: list[str] = []
-    for row_index in range(28):
-        row = ["."] * 40
-        if row_index < len(line_printer_glyph32_rows):
-            for x, pixel in enumerate(line_printer_glyph32_rows[row_index]):
-                if pixel == "#":
-                    row[16 + x] = "#"
-        if 24 <= row_index < 27:
-            row[24:36] = ["#"] * 12
-        expected_text_rule_composed_rows.append("".join(row))
+    expected_text_rule_composed_rows = expected_line_printer_rule_raster_band_rows(line_printer_glyph32_rows, include_raster=False)
     checks.append(assert_equal("bridged compact text and rule objects compose into one page band", {
         "bucket_root": text_rule_bridged["bucket_root"],
         "context_slot0": text_rule_bridged["context_slots"][0],
@@ -11541,21 +11660,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         width=40,
         rows=28,
     )
-    expected_text_rule_raster_composed_rows: list[str] = []
     raster_row_bits = "##....##..####.."
-    for row_index in range(28):
-        row = ["."] * 40
-        if row_index < len(line_printer_glyph32_rows):
-            for x, pixel in enumerate(line_printer_glyph32_rows[row_index]):
-                if pixel == "#":
-                    row[16 + x] = "#"
-        if row_index == 12:
-            for x, pixel in enumerate(raster_row_bits):
-                if pixel == "#":
-                    row[x] = "#"
-        if 24 <= row_index < 27:
-            row[24:36] = ["#"] * 12
-        expected_text_rule_raster_composed_rows.append("".join(row))
+    expected_text_rule_raster_composed_rows = expected_line_printer_rule_raster_band_rows(line_printer_glyph32_rows, include_raster=True)
     checks.append(assert_equal("bridged text, rule, and raster layers compose into one page band", {
         "text_bucket_root": text_rule_bridged["bucket_root"],
         "rule_object": text_rule_bridged["rule_list"][0],
@@ -12524,6 +12630,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- macro execute payload page-record object `%s` bridges through `0x1edc6` and renders the same rows." % (
         " ".join(f"{byte:02x}" for byte in macro_payload_page_record_object[:14]),
     ))
+    lines.append(f"- macro execute payload page-record layer composes with a selector-7 rule and mode-0 raster row; composed row 12: `{macro_band_composed_rows[12]}`")
     lines.append(f"- lowercase start payload: `{macro_start['records'][0]['payload']!r}`, stop event `{macro_stop_empty['events'][-1]}`")
     lines.append(f"- execute frame: `{macro_execute['data_chain_frames'][0]}`")
     lines.append(f"- call frame: `{macro_call['data_chain_frames'][0]}`")

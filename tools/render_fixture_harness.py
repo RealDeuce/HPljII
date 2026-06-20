@@ -746,22 +746,22 @@ def apply_macro_control_via_dd08(state: dict[str, object], parameter: int, final
         return updated
 
     if selector == 6:
-        updated["records"] = [macro_record() for _ in range(32)]
+        for record_index in range(len(updated["records"])):
+            clear_macro_record_via_dfba(updated, record_index)
         updated["parser_mode"] = 0
         updated["events"].append({"kind": "macro-delete-all"})
         return updated
 
     if selector == 7:
-        updated["records"] = [
-            dict(record) if bool(dict(record).get("permanent", False)) else macro_record()
-            for record in updated["records"]
-        ]
+        for record_index, record in enumerate(list(updated["records"])):
+            if not bool(dict(record).get("permanent", False)):
+                clear_macro_record_via_dfba(updated, record_index)
         updated["events"].append({"kind": "macro-delete-temporary"})
         return updated
 
     if selector == 8:
         if index is not None:
-            updated["records"][index] = macro_record()
+            clear_macro_record_via_dfba(updated, index)
             updated["events"].append({"kind": "macro-delete-current", "index": index})
         return updated
 
@@ -5547,6 +5547,74 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "permanent_record0": {"id": 123, "payload": b"!\r", "permanent": True},
         "temporary_record0": {"id": 0, "payload": b"", "permanent": False},
+    }))
+    macro_stream_delete_current = render_macro_command_stream_via_e112_dd08(
+        b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X"
+        b"\x1b&f124Y\x1b&f0X?\r\x1b&f1X"
+        b"\x1b&f123Y\x1b&f8X"
+    )
+    macro_stream_delete_all = render_macro_command_stream_via_e112_dd08(
+        b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X"
+        b"\x1b&f124Y\x1b&f0X?\r\x1b&f1X"
+        b"\x1b&f6X"
+    )
+    macro_stream_delete_current_records = macro_stream_delete_current["state"]["records"]
+    macro_stream_delete_all_records = macro_stream_delete_all["state"]["records"]
+    assert isinstance(macro_stream_delete_current_records, list)
+    assert isinstance(macro_stream_delete_all_records, list)
+    checks.append(assert_equal("macro command stream deletes current record or all records", {
+        "delete_current_events": [
+            {
+                key: event[key]
+                for key in ("kind", "sequence", "parameter", "handler", "chained")
+                if key in event
+            }
+            for event in macro_stream_delete_current["events"]
+        ],
+        "delete_all_events": [
+            {
+                key: event[key]
+                for key in ("kind", "sequence", "parameter", "handler", "chained")
+                if key in event
+            }
+            for event in macro_stream_delete_all["events"]
+        ],
+        "delete_current_records": macro_stream_delete_current_records[:2],
+        "delete_all_records": macro_stream_delete_all_records[:2],
+        "delete_all_final": select_keys(macro_stream_delete_all["state"], ("current_macro_id", "parser_mode")),
+    }, {
+        "delete_current_events": [
+            {"kind": "macro-id", "sequence": b"\x1b&f123Y", "parameter": 123, "handler": 0x00E112, "chained": False},
+            {"kind": "macro-start", "sequence": b"\x1b&f0X", "parameter": 0, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-definition-payload", "sequence": b"!\r", "handler": "alternate-data"},
+            {"kind": "macro-stop-kept", "sequence": b"\x1b&f1X", "parameter": 1, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-id", "sequence": b"\x1b&f124Y", "parameter": 124, "handler": 0x00E112, "chained": False},
+            {"kind": "macro-start", "sequence": b"\x1b&f0X", "parameter": 0, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-definition-payload", "sequence": b"?\r", "handler": "alternate-data"},
+            {"kind": "macro-stop-kept", "sequence": b"\x1b&f1X", "parameter": 1, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-id", "sequence": b"\x1b&f123Y", "parameter": 123, "handler": 0x00E112, "chained": False},
+            {"kind": "macro-delete-current", "sequence": b"\x1b&f8X", "parameter": 8, "handler": 0x00DD08, "chained": False},
+        ],
+        "delete_all_events": [
+            {"kind": "macro-id", "sequence": b"\x1b&f123Y", "parameter": 123, "handler": 0x00E112, "chained": False},
+            {"kind": "macro-start", "sequence": b"\x1b&f0X", "parameter": 0, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-definition-payload", "sequence": b"!\r", "handler": "alternate-data"},
+            {"kind": "macro-stop-kept", "sequence": b"\x1b&f1X", "parameter": 1, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-id", "sequence": b"\x1b&f124Y", "parameter": 124, "handler": 0x00E112, "chained": False},
+            {"kind": "macro-start", "sequence": b"\x1b&f0X", "parameter": 0, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-definition-payload", "sequence": b"?\r", "handler": "alternate-data"},
+            {"kind": "macro-stop-kept", "sequence": b"\x1b&f1X", "parameter": 1, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-delete-all", "sequence": b"\x1b&f6X", "parameter": 6, "handler": 0x00DD08, "chained": False},
+        ],
+        "delete_current_records": [
+            {"id": 0, "payload": b"", "permanent": False},
+            {"id": 124, "payload": b"?\r", "permanent": False},
+        ],
+        "delete_all_records": [
+            {"id": 0, "payload": b"", "permanent": False},
+            {"id": 0, "payload": b"", "permanent": False},
+        ],
+        "delete_all_final": {"current_macro_id": 124, "parser_mode": 0},
     }))
     macro_frame_payload = macro_stream_execute["state"]["data_chain_frames"][0]["payload"]
     macro_fetch_state = host_byte_fetch_state(data_chain=list(macro_frame_payload), direct_mode=0)
@@ -10949,6 +11017,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- macro permanence/delete streams prove selector `10` survives delete-temporary and selector `9` makes the same record removable: `%s` / `%s`." % (
         macro_stream_permanent_delete["state"]["records"][0],
         macro_stream_temporary_delete["state"]["records"][0],
+    ))
+    lines.append("- macro delete-current/all streams prove selector `8` clears only the selected id while selector `6` clears the pool head records: `%s` / `%s`." % (
+        macro_stream_delete_current["state"]["records"][:2],
+        macro_stream_delete_all["state"]["records"][:2],
     ))
     lines.append("- macro execute frame payload fetches through `0xa904` as data-chain bytes `%s`." % (
         " ".join(f"0x{int(fetch['d7']):02x}" for fetch in (macro_fetch_first, macro_fetch_second)),

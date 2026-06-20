@@ -456,6 +456,317 @@ def font_payload_split_plane_copy_via_16942(stream: bytes, rows: int, prefix_spa
     }
 
 
+FONT_RECORD_BASE = 0x782640
+FONT_RECORD_SIZE = 10
+
+
+def font_resource_record_scan_via_172c0(records: list[dict[str, int]], current_id: int) -> dict[str, object]:
+    current_id &= 0xFFFF
+    for index, record in enumerate(records):
+        if (int(record.get("id", 0)) & 0xFFFF) == current_id and int(record.get("payload", 0)) != 0:
+            return {
+                "status": 0,
+                "index": index,
+                "address": FONT_RECORD_BASE + index * FONT_RECORD_SIZE,
+                "record": dict(record),
+            }
+    for index, record in enumerate(records):
+        if (int(record.get("id", 0)) & 0xFFFF) == 0 and int(record.get("payload", 0)) == 0:
+            return {
+                "status": 1,
+                "index": index,
+                "address": FONT_RECORD_BASE + index * FONT_RECORD_SIZE,
+                "record": dict(record),
+            }
+    return {
+        "status": 2,
+        "index": None,
+        "address": None,
+        "record": None,
+    }
+
+
+def font_counter_defaults() -> dict[str, int]:
+    return {
+        "0x78278e": 0,
+        "0x782790": 0,
+        "0x782796": 0,
+        "0x782798": 0,
+        "0x78279e": 0,
+        "0x78278a": 0,
+        "0x782782": 0,
+    }
+
+
+def font_cursor_defaults() -> dict[str, int]:
+    return {
+        "0x7827ac": 0,
+        "0x7827b0": 0,
+        "0x7827b4": 0,
+    }
+
+
+def clear_download_continuation_state(continuation: dict[str, int]) -> dict[str, int]:
+    cleared = dict(continuation)
+    for key in ("flag", "payload", "word_0x7827c8", "dest", "trailing_dest", "remaining", "d4_counter", "d3_counter"):
+        cleared[key] = 0
+    return cleared
+
+
+def downloaded_font_object_add_bookkeeping_via_16c14(
+    records: list[dict[str, int]],
+    *,
+    current_id: int,
+    new_payload: int,
+    byte20: int,
+    byte0c: int,
+    counters: dict[str, int] | None = None,
+    cursors: dict[str, int] | None = None,
+    continuation: dict[str, int] | None = None,
+    parser_mode: int = 0,
+    initial_candidate_flags: int = 0,
+    allocation_ok: bool = True,
+) -> dict[str, object]:
+    updated_records = [dict(record) for record in records]
+    updated_counters = font_counter_defaults()
+    if counters:
+        updated_counters.update(counters)
+    updated_cursors = font_cursor_defaults()
+    if cursors:
+        updated_cursors.update(cursors)
+    updated_continuation = dict(continuation) if continuation else None
+
+    budget_action = "accept"
+    scan = font_resource_record_scan_via_172c0(updated_records, current_id)
+    if parser_mode == 2:
+        budget_action = "skip-parser-mode"
+    elif scan["status"] == 2:
+        budget_action = "skip-no-record-slot"
+    elif int(updated_counters["0x78278e"]) >= 0xC0:
+        budget_action = "skip-candidate-limit"
+    elif not allocation_ok:
+        budget_action = "skip-allocation-failed"
+
+    if budget_action != "accept":
+        return {
+            "status": int(scan["status"]) if parser_mode != 2 else None,
+            "scan": scan,
+            "records": updated_records,
+            "counters": updated_counters,
+            "cursors": updated_cursors,
+            "continuation": updated_continuation,
+            "budget_action": budget_action,
+            "candidate_flags": None,
+            "replacement": None,
+            "record_index": None,
+        }
+
+    record_index = scan["index"]
+    assert isinstance(record_index, int)
+    replacement = None
+    if scan["status"] == 0:
+        old_payload = int(updated_records[record_index].get("payload", 0)) & 0x00FFFFFF
+        continuation_cleared = bool(
+            updated_continuation
+            and int(updated_continuation.get("flag", 0)) == 1
+            and (int(updated_continuation.get("payload", 0)) & 0x00FFFFFF) == old_payload
+        )
+        if continuation_cleared and updated_continuation is not None:
+            updated_continuation = clear_download_continuation_state(updated_continuation)
+        replacement = {
+            "record_index": record_index,
+            "released_payload": old_payload,
+            "release_called": True,
+            "continuation_cleared": continuation_cleared,
+        }
+
+    candidate_flags = int(initial_candidate_flags) & 0xFFFFFFFF
+    candidate_flags &= ~(1 << 3)
+    candidate_flags &= 0xCFFFFFFF
+    candidate_flags |= 1 << 6
+    candidate_flags &= ~(1 << 7)
+    if (byte0c & 0xFF) == 2:
+        candidate_flags |= 1 << 2
+    else:
+        candidate_flags &= ~(1 << 2)
+
+    if (byte20 & 0xFF) == 1:
+        for key in ("0x7827ac", "0x7827b0", "0x7827b4"):
+            updated_cursors[key] = int(updated_cursors[key]) + 4
+        updated_counters["0x782790"] = int(updated_counters["0x782790"]) + 1
+        updated_counters["0x782796"] = int(updated_counters["0x782796"]) + 1
+        counter_branch = "byte20-one"
+    else:
+        updated_counters["0x78279e"] = int(updated_counters["0x78279e"]) + 1
+        updated_counters["0x782798"] = int(updated_counters["0x782798"]) + 1
+        counter_branch = "byte20-other"
+    updated_counters["0x78278e"] = int(updated_counters["0x78278e"]) + 1
+    updated_counters["0x78278a"] = int(updated_counters["0x78278a"]) + 1
+    updated_counters["0x782782"] = int(updated_counters["0x782782"]) + 1
+
+    record = updated_records[record_index]
+    record["id"] = current_id & 0xFFFF
+    record["flags"] = int(record.get("flags", 0)) & ~0xE0
+    record["payload"] = new_payload & 0x00FFFFFF
+
+    return {
+        "status": int(scan["status"]),
+        "scan": scan,
+        "records": updated_records,
+        "counters": updated_counters,
+        "cursors": updated_cursors,
+        "continuation": updated_continuation,
+        "budget_action": budget_action,
+        "candidate_flags": candidate_flags,
+        "replacement": replacement,
+        "record_index": record_index,
+        "counter_branch": counter_branch,
+    }
+
+
+def font_payload_record_lookup_via_170be(records: list[dict[str, int]], payload: int) -> dict[str, object]:
+    masked_payload = int(payload) & 0x00FFFFFF
+    for index, record in enumerate(records):
+        if (int(record.get("payload", 0)) & 0x00FFFFFF) == masked_payload:
+            record_id = int(record.get("id", 0)) & 0xFFFF
+            if record_id & 0x8000:
+                record_id -= 0x10000
+            return {
+                "status": record_id,
+                "index": index,
+                "address": FONT_RECORD_BASE + index * FONT_RECORD_SIZE,
+                "record": dict(record),
+                "masked_payload": masked_payload,
+            }
+    return {
+        "status": -1,
+        "index": None,
+        "address": None,
+        "record": None,
+        "masked_payload": masked_payload,
+    }
+
+
+def mark_current_font_record_via_17108(records: list[dict[str, int]], current_id: int, counters: dict[str, int] | None = None) -> dict[str, object]:
+    updated_records = [dict(record) for record in records]
+    updated_counters = {
+        "0x782782": 0,
+        "0x782786": 0,
+    }
+    if counters:
+        updated_counters.update(counters)
+    scan = font_resource_record_scan_via_172c0(updated_records, current_id)
+    changed = False
+    if scan["status"] == 0:
+        index = scan["index"]
+        assert isinstance(index, int)
+        flags = int(updated_records[index].get("flags", 0))
+        if not (flags & 0x40):
+            updated_records[index]["flags"] = flags | 0x40
+            updated_counters["0x782782"] = int(updated_counters["0x782782"]) - 1
+            updated_counters["0x782786"] = int(updated_counters["0x782786"]) + 1
+            changed = True
+    return {
+        "scan": scan,
+        "records": updated_records,
+        "counters": updated_counters,
+        "changed": changed,
+    }
+
+
+def font_resource_setup_type_via_17362(staging: bytes | bytearray, setup_type: int) -> dict[str, object]:
+    updated = bytearray(staging)
+    if len(updated) < 0x0D:
+        raise AssertionError("font resource setup staging buffer must include byte +0x0c")
+    if setup_type == 2:
+        updated[0x0C] = 2
+        payload_units = 0x100
+        status = 1
+    elif setup_type == 1:
+        updated[0x0C] = 1
+        payload_units = 0x100
+        status = 1
+    elif setup_type == 0:
+        updated[0x0C] = 0
+        payload_units = 0x80
+        status = 1
+    else:
+        payload_units = 0x100
+        status = 0
+    return {
+        "status": status,
+        "staging": bytes(updated),
+        "payload_units": payload_units,
+    }
+
+
+def font_resource_allocation_size_via_17026(payload_units: int) -> int:
+    return (((int(payload_units) << 2) + 0x9B) >> 6)
+
+
+def font_resource_payload_initializer_via_1719c(staging: bytes | bytearray, payload_units: int, symbol_bytes: bytes = b"") -> dict[str, object]:
+    if len(staging) < 0x32:
+        raise AssertionError("font resource initializer staging buffer must include copied byte +0x31")
+    symbol_count = len(symbol_bytes)
+    extra_offset = 0
+    if symbol_count:
+        extra_offset = 0x4A + (int(payload_units) << 2)
+    total_size = max(0x3C, extra_offset + 2 + symbol_count)
+    payload = bytearray(total_size)
+
+    payload[0:4] = staging[0:4]
+    payload[4:8] = staging[4:8]
+    payload[8:10] = (0x004A).to_bytes(2, "big")
+    payload[0x0C] = staging[0x0C]
+    for offset in (0x0E, 0x10, 0x12, 0x14, 0x16, 0x18, 0x1A):
+        payload[offset:offset + 2] = staging[offset:offset + 2]
+    payload[0x20] = staging[0x20]
+    payload[0x21] = staging[0x21]
+    payload[0x22:0x24] = staging[0x22:0x24]
+    payload[0x24:0x26] = staging[0x24:0x26]
+    payload[0x26] = staging[0x26]
+    payload[0x28:0x2A] = staging[0x28:0x2A]
+    payload[0x2A] = staging[0x2A]
+    payload[0x2C:0x2E] = staging[0x2C:0x2E]
+    payload[0x2F] = staging[0x2F]
+    payload[0x30] = staging[0x30]
+    payload[0x31] = staging[0x31]
+
+    if symbol_count:
+        payload[0x38:0x3C] = extra_offset.to_bytes(4, "big")
+        payload[extra_offset:extra_offset + 2] = symbol_count.to_bytes(2, "big")
+        payload[extra_offset + 2:extra_offset + 2 + symbol_count] = symbol_bytes
+
+    return {
+        "payload": bytes(payload),
+        "base_header_size": 0x4A,
+        "extra_offset": extra_offset,
+        "symbol_count": symbol_count,
+        "symbol_bytes": symbol_bytes,
+    }
+
+
+def font_resource_find_allocate_via_17026(staging: bytes | bytearray, payload_units: int, valid: bool, symbol_bytes: bytes = b"") -> dict[str, object]:
+    if not valid:
+        return {
+            "status": 0,
+            "allocation_size": 0,
+            "staging": bytes(staging),
+            "payload": None,
+        }
+    updated = bytearray(staging)
+    allocation_size = font_resource_allocation_size_via_17026(payload_units)
+    updated[0:4] = (0x15).to_bytes(4, "big")
+    updated[4:8] = allocation_size.to_bytes(4, "big")
+    initialized = font_resource_payload_initializer_via_1719c(updated, payload_units, symbol_bytes)
+    return {
+        "status": 1,
+        "allocation_size": allocation_size,
+        "staging": bytes(updated),
+        "payload": initialized,
+    }
+
+
 def scanned_builtin_record_bases(resources: bytes) -> list[int]:
     bases: list[int] = []
     cursor = 0
@@ -3537,6 +3848,392 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "phase": "done",
     }))
 
+    font_records = [
+        {"id": 0x1234, "flags": 0xE0, "payload": 0x123456},
+        {"id": 0x0000, "flags": 0x00, "payload": 0x000000},
+        {"id": 0x2222, "flags": 0x00, "payload": 0x333333},
+    ]
+    font_scan_existing = font_resource_record_scan_via_172c0(font_records, 0x1234)
+    font_scan_free = font_resource_record_scan_via_172c0(font_records, 0x7777)
+    font_scan_full = font_resource_record_scan_via_172c0([
+        {"id": 0x1111, "flags": 0x00, "payload": 0x111111},
+        {"id": 0x2222, "flags": 0x00, "payload": 0x222222},
+    ], 0x7777)
+    checks.append(assert_equal("0x172c0-modeled font resource record scan statuses", {
+        "existing": {key: font_scan_existing[key] for key in ("status", "index", "address", "record")},
+        "free": {key: font_scan_free[key] for key in ("status", "index", "address", "record")},
+        "full": {key: font_scan_full[key] for key in ("status", "index", "address", "record")},
+    }, {
+        "existing": {
+            "status": 0,
+            "index": 0,
+            "address": 0x782640,
+            "record": {"id": 0x1234, "flags": 0xE0, "payload": 0x123456},
+        },
+        "free": {
+            "status": 1,
+            "index": 1,
+            "address": 0x78264A,
+            "record": {"id": 0x0000, "flags": 0x00, "payload": 0x000000},
+        },
+        "full": {
+            "status": 2,
+            "index": None,
+            "address": None,
+            "record": None,
+        },
+    }))
+
+    font_replace = downloaded_font_object_add_bookkeeping_via_16c14(
+        font_records,
+        current_id=0x1234,
+        new_payload=0x456789,
+        byte20=1,
+        byte0c=2,
+        counters={"0x78278e": 5, "0x78278a": 11, "0x782782": 7},
+        cursors={"0x7827ac": 0x20, "0x7827b0": 0x30, "0x7827b4": 0x40},
+        continuation={
+            "flag": 1,
+            "payload": 0x123456,
+            "word_0x7827c8": 0x55,
+            "dest": 0x111111,
+            "trailing_dest": 0x222222,
+            "remaining": 3,
+            "d4_counter": 4,
+            "d3_counter": 5,
+        },
+        initial_candidate_flags=0x30000088,
+    )
+    checks.append(assert_equal("0x16c14-modeled downloaded font replacement bookkeeping", {
+        "status": font_replace["status"],
+        "record_index": font_replace["record_index"],
+        "record": font_replace["records"][0],
+        "candidate_flags": font_replace["candidate_flags"],
+        "counter_branch": font_replace["counter_branch"],
+        "counters": font_replace["counters"],
+        "cursors": font_replace["cursors"],
+        "replacement": font_replace["replacement"],
+        "continuation": font_replace["continuation"],
+    }, {
+        "status": 0,
+        "record_index": 0,
+        "record": {"id": 0x1234, "flags": 0x00, "payload": 0x456789},
+        "candidate_flags": 0x44,
+        "counter_branch": "byte20-one",
+        "counters": {
+            "0x78278e": 6,
+            "0x782790": 1,
+            "0x782796": 1,
+            "0x782798": 0,
+            "0x78279e": 0,
+            "0x78278a": 12,
+            "0x782782": 8,
+        },
+        "cursors": {
+            "0x7827ac": 0x24,
+            "0x7827b0": 0x34,
+            "0x7827b4": 0x44,
+        },
+        "replacement": {
+            "record_index": 0,
+            "released_payload": 0x123456,
+            "release_called": True,
+            "continuation_cleared": True,
+        },
+        "continuation": {
+            "flag": 0,
+            "payload": 0,
+            "word_0x7827c8": 0,
+            "dest": 0,
+            "trailing_dest": 0,
+            "remaining": 0,
+            "d4_counter": 0,
+            "d3_counter": 0,
+        },
+    }))
+
+    font_insert = downloaded_font_object_add_bookkeeping_via_16c14(
+        font_records,
+        current_id=0x7777,
+        new_payload=0x111111,
+        byte20=0,
+        byte0c=1,
+        initial_candidate_flags=0x3000008C,
+    )
+    checks.append(assert_equal("0x16c14-modeled downloaded font free-slot bookkeeping", {
+        "status": font_insert["status"],
+        "record_index": font_insert["record_index"],
+        "record": font_insert["records"][1],
+        "candidate_flags": font_insert["candidate_flags"],
+        "counter_branch": font_insert["counter_branch"],
+        "counters": font_insert["counters"],
+        "cursors": font_insert["cursors"],
+        "replacement": font_insert["replacement"],
+    }, {
+        "status": 1,
+        "record_index": 1,
+        "record": {"id": 0x7777, "flags": 0x00, "payload": 0x111111},
+        "candidate_flags": 0x40,
+        "counter_branch": "byte20-other",
+        "counters": {
+            "0x78278e": 1,
+            "0x782790": 0,
+            "0x782796": 0,
+            "0x782798": 1,
+            "0x78279e": 1,
+            "0x78278a": 1,
+            "0x782782": 1,
+        },
+        "cursors": {
+            "0x7827ac": 0,
+            "0x7827b0": 0,
+            "0x7827b4": 0,
+        },
+        "replacement": None,
+    }))
+
+    font_no_slot = downloaded_font_object_add_bookkeeping_via_16c14(
+        [
+            {"id": 0x1111, "flags": 0xE0, "payload": 0x111111},
+            {"id": 0x2222, "flags": 0x00, "payload": 0x222222},
+        ],
+        current_id=0x7777,
+        new_payload=0x333333,
+        byte20=1,
+        byte0c=2,
+    )
+    checks.append(assert_equal("0x16c14-modeled downloaded font no-slot budget skip", {
+        "status": font_no_slot["status"],
+        "budget_action": font_no_slot["budget_action"],
+        "record_index": font_no_slot["record_index"],
+        "records": font_no_slot["records"],
+        "counters": font_no_slot["counters"],
+        "candidate_flags": font_no_slot["candidate_flags"],
+    }, {
+        "status": 2,
+        "budget_action": "skip-no-record-slot",
+        "record_index": None,
+        "records": [
+            {"id": 0x1111, "flags": 0xE0, "payload": 0x111111},
+            {"id": 0x2222, "flags": 0x00, "payload": 0x222222},
+        ],
+        "counters": {
+            "0x78278e": 0,
+            "0x782790": 0,
+            "0x782796": 0,
+            "0x782798": 0,
+            "0x78279e": 0,
+            "0x78278a": 0,
+            "0x782782": 0,
+        },
+        "candidate_flags": None,
+    }))
+
+    font_payload_lookup_hit = font_payload_record_lookup_via_170be(font_records, 0x99123456)
+    font_payload_lookup_miss = font_payload_record_lookup_via_170be(font_records, 0x00AAAAAA)
+    checks.append(assert_equal("0x170be-modeled font payload record lookup", {
+        "hit": {
+            key: font_payload_lookup_hit[key]
+            for key in ("status", "index", "address", "record", "masked_payload")
+        },
+        "miss": {
+            key: font_payload_lookup_miss[key]
+            for key in ("status", "index", "address", "record", "masked_payload")
+        },
+    }, {
+        "hit": {
+            "status": 0x1234,
+            "index": 0,
+            "address": 0x782640,
+            "record": {"id": 0x1234, "flags": 0xE0, "payload": 0x123456},
+            "masked_payload": 0x123456,
+        },
+        "miss": {
+            "status": -1,
+            "index": None,
+            "address": None,
+            "record": None,
+            "masked_payload": 0xAAAAAA,
+        },
+    }))
+
+    font_mark = mark_current_font_record_via_17108(
+        [
+            {"id": 0x1234, "flags": 0x00, "payload": 0x123456},
+            {"id": 0x5678, "flags": 0x40, "payload": 0x567890},
+        ],
+        0x1234,
+        {"0x782782": 7, "0x782786": 2},
+    )
+    font_mark_already = mark_current_font_record_via_17108(
+        [
+            {"id": 0x1234, "flags": 0x40, "payload": 0x123456},
+        ],
+        0x1234,
+        {"0x782782": 7, "0x782786": 2},
+    )
+    font_mark_missing = mark_current_font_record_via_17108(
+        [
+            {"id": 0x1234, "flags": 0x00, "payload": 0x123456},
+            {"id": 0x0000, "flags": 0x00, "payload": 0x000000},
+        ],
+        0x9999,
+        {"0x782782": 7, "0x782786": 2},
+    )
+    checks.append(assert_equal("0x17108-modeled current font record mark/count transfer", {
+        "marked": {
+            "changed": font_mark["changed"],
+            "record": font_mark["records"][0],
+            "counters": font_mark["counters"],
+        },
+        "already": {
+            "changed": font_mark_already["changed"],
+            "record": font_mark_already["records"][0],
+            "counters": font_mark_already["counters"],
+        },
+        "missing": {
+            "changed": font_mark_missing["changed"],
+            "counters": font_mark_missing["counters"],
+            "scan_status": font_mark_missing["scan"]["status"],
+        },
+    }, {
+        "marked": {
+            "changed": True,
+            "record": {"id": 0x1234, "flags": 0x40, "payload": 0x123456},
+            "counters": {"0x782782": 6, "0x782786": 3},
+        },
+        "already": {
+            "changed": False,
+            "record": {"id": 0x1234, "flags": 0x40, "payload": 0x123456},
+            "counters": {"0x782782": 7, "0x782786": 2},
+        },
+        "missing": {
+            "changed": False,
+            "counters": {"0x782782": 7, "0x782786": 2},
+            "scan_status": 1,
+        },
+    }))
+
+    font_staging = bytearray(0x40)
+    font_staging[0:4] = (0xDEADBEEF).to_bytes(4, "big")
+    font_staging[4:8] = (0x01020304).to_bytes(4, "big")
+    font_staging[0x0C] = 0x99
+    for offset, value in (
+        (0x0E, 0x1111),
+        (0x10, 0x2222),
+        (0x12, 0x3333),
+        (0x14, 0x4444),
+        (0x16, 0x5555),
+        (0x18, 0x6666),
+        (0x1A, 0x7777),
+        (0x22, 0x8888),
+        (0x24, 0x9999),
+        (0x28, 0xAAAA),
+        (0x2C, 0xBBBB),
+    ):
+        font_staging[offset:offset + 2] = value.to_bytes(2, "big")
+    for offset, value in ((0x20, 0xC0), (0x21, 0xC1), (0x26, 0xC6), (0x2A, 0xCA), (0x2F, 0xCF), (0x30, 0xD0), (0x31, 0xD1)):
+        font_staging[offset] = value
+    font_setup_type_0 = font_resource_setup_type_via_17362(font_staging, 0)
+    font_setup_type_2 = font_resource_setup_type_via_17362(font_staging, 2)
+    font_setup_type_bad = font_resource_setup_type_via_17362(font_staging, 3)
+    checks.append(assert_equal("0x17362-modeled font resource setup type", {
+        "type0": {
+            "status": font_setup_type_0["status"],
+            "byte0c": font_setup_type_0["staging"][0x0C],
+            "payload_units": font_setup_type_0["payload_units"],
+        },
+        "type2": {
+            "status": font_setup_type_2["status"],
+            "byte0c": font_setup_type_2["staging"][0x0C],
+            "payload_units": font_setup_type_2["payload_units"],
+        },
+        "bad": {
+            "status": font_setup_type_bad["status"],
+            "byte0c": font_setup_type_bad["staging"][0x0C],
+            "payload_units": font_setup_type_bad["payload_units"],
+        },
+    }, {
+        "type0": {
+            "status": 1,
+            "byte0c": 0,
+            "payload_units": 0x80,
+        },
+        "type2": {
+            "status": 1,
+            "byte0c": 2,
+            "payload_units": 0x100,
+        },
+        "bad": {
+            "status": 0,
+            "byte0c": 0x99,
+            "payload_units": 0x100,
+        },
+    }))
+
+    font_allocated = font_resource_find_allocate_via_17026(font_setup_type_0["staging"], int(font_setup_type_0["payload_units"]), True, bytes.fromhex("41 42 43"))
+    font_payload_info = font_allocated["payload"]
+    assert isinstance(font_payload_info, dict)
+    font_payload_bytes = font_payload_info["payload"]
+    assert isinstance(font_payload_bytes, bytes)
+    font_alloc_failed = font_resource_find_allocate_via_17026(font_setup_type_0["staging"], int(font_setup_type_0["payload_units"]), False)
+    checks.append(assert_equal("0x17026/0x1719c-modeled font resource allocation and header initialization", {
+        "allocation": {
+            "status": font_allocated["status"],
+            "allocation_size": font_allocated["allocation_size"],
+            "staging_type": int.from_bytes(font_allocated["staging"][0:4], "big"),
+            "staging_size": int.from_bytes(font_allocated["staging"][4:8], "big"),
+        },
+        "payload_fields": {
+            "long0": int.from_bytes(font_payload_bytes[0:4], "big"),
+            "long4": int.from_bytes(font_payload_bytes[4:8], "big"),
+            "word8": u16(font_payload_bytes, 8),
+            "byte0c": font_payload_bytes[0x0C],
+            "word0e": u16(font_payload_bytes, 0x0E),
+            "word10": u16(font_payload_bytes, 0x10),
+            "byte20": font_payload_bytes[0x20],
+            "byte21": font_payload_bytes[0x21],
+            "word22": u16(font_payload_bytes, 0x22),
+            "byte2f": font_payload_bytes[0x2F],
+            "byte30": font_payload_bytes[0x30],
+            "byte31": font_payload_bytes[0x31],
+            "extra_offset": int.from_bytes(font_payload_bytes[0x38:0x3C], "big"),
+            "extra_count": u16(font_payload_bytes, int(font_payload_info["extra_offset"])),
+            "extra_bytes": font_payload_bytes[int(font_payload_info["extra_offset"]) + 2:int(font_payload_info["extra_offset"]) + 5],
+        },
+        "invalid": font_alloc_failed,
+    }, {
+        "allocation": {
+            "status": 1,
+            "allocation_size": 10,
+            "staging_type": 0x15,
+            "staging_size": 10,
+        },
+        "payload_fields": {
+            "long0": 0x15,
+            "long4": 10,
+            "word8": 0x004A,
+            "byte0c": 0,
+            "word0e": 0x1111,
+            "word10": 0x2222,
+            "byte20": 0xC0,
+            "byte21": 0xC1,
+            "word22": 0x8888,
+            "byte2f": 0xCF,
+            "byte30": 0xD0,
+            "byte31": 0xD1,
+            "extra_offset": 0x024A,
+            "extra_count": 3,
+            "extra_bytes": bytes.fromhex("41 42 43"),
+        },
+        "invalid": {
+            "status": 0,
+            "allocation_size": 0,
+            "staging": bytes(font_setup_type_0["staging"]),
+            "payload": None,
+        },
+    }))
+
     inline_source = {
         "context": 0x00000000,
         "host_char": 0x41,
@@ -6242,6 +6939,94 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- split-plane copy: prefix `{' '.join(f'{byte:02x}' for byte in font_split_payload['prefix'])}`, trailing `{' '.join(f'{byte:02x}' for byte in font_split_payload['trailing'])}`")
     lines.append(f"- split-plane continuation before trailing byte: status `{font_split_continuation['status']}`, state `{font_split_continuation['continuation']}`")
     lines.append(f"- split-plane copy with `1a 58`: prefix `{' '.join(f'{byte:02x}' for byte in font_split_control['prefix'])}`, trailing `{' '.join(f'{byte:02x}' for byte in font_split_control['trailing'])}`, control hits `{font_split_control['control_hits']}`")
+    lines.append("")
+    lines.append("The next modeled step is the current downloaded-font record bookkeeping at `0x172c0` and `0x16c14`. The record scan treats each `0x782640..0x782776` slot as a 10-byte entry: word `+0` is the current font/resource id, byte/word area `+2` carries flags that `0x16c14` clears at bits 5..7, and long `+6` points at the allocated payload. Status `0` means an existing id with nonzero payload was found, status `1` means a free zero-id/zero-payload slot was found, and status `2` makes `0x16c14` consume/skip the byte budget instead of installing a payload.")
+    lines.append("")
+    lines.append("- `0x172c0` scan fixtures: existing id `0x1234` -> status `%d` at slot `%s`; missing id with free slot -> status `%d` at slot `%s`; missing id with no free slot -> status `%d`." % (
+        font_scan_existing["status"],
+        font_scan_existing["index"],
+        font_scan_free["status"],
+        font_scan_free["index"],
+        font_scan_full["status"],
+    ))
+    font_replace_record = font_replace["records"][0]
+    assert isinstance(font_replace_record, dict)
+    lines.append("- replacement path: existing slot `%s` releases payload `0x%06x`, clears matching continuation state `%s`, installs payload `0x%06x`, clears record flag bits 5..7 to `0x%02x`, and writes candidate flags `0x%08x` with downloaded bit 6 set and byte `+0x0c == 2` bit 2 set." % (
+        font_replace["record_index"],
+        font_replace["replacement"]["released_payload"],
+        font_replace["replacement"]["continuation_cleared"],
+        font_replace_record["payload"],
+        font_replace_record["flags"],
+        font_replace["candidate_flags"],
+    ))
+    lines.append("- byte `+0x20 == 1` counter branch after replacement: counters `%s`, cursors `%s`." % (
+        font_replace["counters"],
+        font_replace["cursors"],
+    ))
+    font_insert_record = font_insert["records"][1]
+    assert isinstance(font_insert_record, dict)
+    lines.append("- free-slot path: slot `%s` receives id `0x%04x` and payload `0x%06x`; byte `+0x20 != 1` increments counters `%s` with candidate flags `0x%08x`." % (
+        font_insert["record_index"],
+        font_insert_record["id"],
+        font_insert_record["payload"],
+        font_insert["counters"],
+        font_insert["candidate_flags"],
+    ))
+    lines.append("- no-slot path: status `%s` leaves records unchanged and reports budget action `%s`." % (
+        font_no_slot["status"],
+        font_no_slot["budget_action"],
+    ))
+    lines.append("")
+    lines.append("Two adjacent helpers are now modeled as well. `0x170be` masks the candidate payload pointer to 24 bits, scans the same 10-byte current-record table by payload long `+6`, returns the matching signed id word, and stores the record pointer for callers. `0x17108` reuses `0x172c0`; when the current id already has a payload and flag bit 6 at record byte `+2` is clear, it sets that bit, decrements `0x782782`, and increments `0x782786`.")
+    lines.append("")
+    lines.append("- payload lookup: payload `0x99123456` masks to `0x%06x`, finds slot `%s`, and returns id `0x%04x`; missing payload returns `%d`." % (
+        font_payload_lookup_hit["masked_payload"],
+        font_payload_lookup_hit["index"],
+        font_payload_lookup_hit["status"],
+        font_payload_lookup_miss["status"],
+    ))
+    marked_record = font_mark["records"][0]
+    assert isinstance(marked_record, dict)
+    lines.append("- current-record mark: id `0x1234` changes flag byte from `0x00` to `0x%02x`, with counters `%s`; already-marked and missing/free-slot cases leave counters unchanged." % (
+        marked_record["flags"],
+        font_mark["counters"],
+    ))
+    lines.append("")
+    lines.append("The allocation/header side of that path is now pinned through `0x17362`, `0x17026`, and `0x1719c`. Setup helper `0x17362` writes staged byte `+0x0c` from the requested type and sets `0x7827ba` to `0x80` for type `0` or `0x100` for types `1`/`2`. `0x17026` then computes the allocation size as `((0x7827ba << 2) + 0x9b) >> 6`, writes staged long `+0 = 0x15` and long `+4 = size`, calls the allocator with class `1` and alignment `0x40`, and initializes the allocated record through `0x1719c`.")
+    lines.append("")
+    lines.append("- setup type fixtures: type `0` -> byte `+0x0c = %d`, units `0x%03x`; type `2` -> byte `+0x0c = %d`, units `0x%03x`; unsupported type returns status `%d` without changing byte `+0x0c`." % (
+        font_setup_type_0["staging"][0x0C],
+        font_setup_type_0["payload_units"],
+        font_setup_type_2["staging"][0x0C],
+        font_setup_type_2["payload_units"],
+        font_setup_type_bad["status"],
+    ))
+    lines.append("- allocation fixture: units `0x%03x` produce allocation size `%d`, staged long `+0 = 0x%08x`, staged long `+4 = %d`; invalid validation returns status `%d` and no payload." % (
+        font_setup_type_0["payload_units"],
+        font_allocated["allocation_size"],
+        int.from_bytes(font_allocated["staging"][0:4], "big"),
+        int.from_bytes(font_allocated["staging"][4:8], "big"),
+        font_alloc_failed["status"],
+    ))
+    lines.append("- `0x1719c` sparse header copy fixture: payload long `+0 = 0x%08x`, long `+4 = %d`, word `+8 = 0x%04x`, byte `+0x0c = %d`, word `+0x0e = 0x%04x`, byte `+0x20 = 0x%02x`, byte `+0x21 = 0x%02x`, word `+0x22 = 0x%04x`, bytes `+0x2f..+0x31 = %02x %02x %02x`." % (
+        int.from_bytes(font_payload_bytes[0:4], "big"),
+        int.from_bytes(font_payload_bytes[4:8], "big"),
+        u16(font_payload_bytes, 8),
+        font_payload_bytes[0x0C],
+        u16(font_payload_bytes, 0x0E),
+        font_payload_bytes[0x20],
+        font_payload_bytes[0x21],
+        u16(font_payload_bytes, 0x22),
+        font_payload_bytes[0x2F],
+        font_payload_bytes[0x30],
+        font_payload_bytes[0x31],
+    ))
+    lines.append("- optional symbol bytes: `0x1719c` writes long `+0x38 = 0x%04x`, then count `%d` and bytes `%s` at `payload + 0x%04x`." % (
+        int.from_bytes(font_payload_bytes[0x38:0x3C], "big"),
+        u16(font_payload_bytes, int(font_payload_info["extra_offset"])),
+        " ".join(f"{byte:02x}" for byte in font_payload_bytes[int(font_payload_info["extra_offset"]) + 2:int(font_payload_info["extra_offset"]) + 2 + int(font_payload_info["symbol_count"])]),
+        int(font_payload_info["extra_offset"]),
+    ))
     lines.append("")
     unflagged_source_report = unflagged_fixture["source"]
     assert isinstance(unflagged_source_report, dict)

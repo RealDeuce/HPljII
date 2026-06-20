@@ -8,3 +8,4 @@ generated/
 
 # Local Python bytecode caches from analysis scripts.
 __pycache__/
+*.py[cod]

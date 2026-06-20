@@ -4278,6 +4278,23 @@ def queue_text_source_to_page_record_via_12f2e(resources: bytes, page_record: di
     }
 
 
+def ensure_page_record_root_for_queue(state: dict[str, int]) -> dict[str, object]:
+    current_before = int(state.get("current_page_root", 0))
+    present_before = int(state.get("page_root_present", 0))
+    created = not present_before or current_before == 0
+    if created:
+        state["page_root_present"] = 1
+        state["page_root_class"] = 1
+        state["current_page_root"] = 1
+        state["page_record_root_allocations"] = int(state.get("page_record_root_allocations", 0)) + 1
+    return {
+        "page_root_created": created,
+        "current_page_root_before": current_before,
+        "current_page_root_after": int(state.get("current_page_root", 0)),
+        "page_record_root_allocations": int(state.get("page_record_root_allocations", 0)),
+    }
+
+
 def compact_bucket_root_from_page_record(page_record: dict[str, object]) -> dict[str, object]:
     bucket_array = page_record.get("bucket_array", {})
     if not isinstance(bucket_array, dict):
@@ -5759,6 +5776,7 @@ def render_mixed_printable_control_page_record_stream(
         )
         positioned_source = positioned["source"]
         assert isinstance(positioned_source, dict)
+        page_root = ensure_page_record_root_for_queue(state)
         page_result = queue_text_source_to_page_record_via_12f2e(resources, page_record, positioned_source)
         advance = advance_flagged_text_cursor_via_d550(state["cursor_x"], default_advance)
         state["cursor_x"] = advance["cursor_after"]
@@ -5771,6 +5789,7 @@ def render_mixed_printable_control_page_record_stream(
             "source": source,
             "positioned": positioned,
             "page_result": page_result,
+            "page_root": page_root,
         })
         pos += 1
 
@@ -5893,6 +5912,7 @@ def render_printable_page_geometry_page_record_stream(
         )
         positioned_source = positioned["source"]
         assert isinstance(positioned_source, dict)
+        page_root = ensure_page_record_root_for_queue(text_state)
         page_result = queue_text_source_to_page_record_via_12f2e(resources, page_record, positioned_source)
         advance = advance_flagged_text_cursor_via_d550(text_state["cursor_x"], default_advance)
         text_state["cursor_x"] = advance["cursor_after"]
@@ -5905,6 +5925,7 @@ def render_printable_page_geometry_page_record_stream(
             "source": source,
             "positioned": positioned,
             "page_result": page_result,
+            "page_root": page_root,
         })
         pos += 1
 
@@ -13863,6 +13884,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             cursor_x=pack12(10),
             cursor_y=pack12(21),
             font_hmi_clear=line_printer_hmi["hmi"],
+            page_root_present=0,
+            current_page_root=0,
         ),
         default_advance=line_printer_hmi["hmi"],
     )
@@ -13887,8 +13910,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         if event["kind"] == "printable":
             page_result = event["page_result"]
             positioned = event["positioned"]
+            page_root = event["page_root"]
             assert isinstance(page_result, dict)
             assert isinstance(positioned, dict)
+            assert isinstance(page_root, dict)
             positioned_source = positioned["source"]
             assert isinstance(positioned_source, dict)
             mixed_reset_page_record_event_summary.append({
@@ -13902,6 +13927,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "count_before": page_result["count_before"],
                 "count_after": page_result["count_after"],
                 "bucket_index": page_result["bucket_index"],
+                "page_root_created": page_root["page_root_created"],
+                "current_page_root_before": page_root["current_page_root_before"],
+                "current_page_root_after": page_root["current_page_root_after"],
+                "page_record_root_allocations": page_root["page_record_root_allocations"],
             })
         else:
             finalized = event["finalized_page_record"]
@@ -13953,6 +13982,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "orientation",
             "data_chain_ptr",
             "reset_status",
+            "page_record_root_allocations",
         )),
     }, {
         "stream": b"!\x1bE",
@@ -13968,6 +13998,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "count_before": 0,
                 "count_after": 1,
                 "bucket_index": 0,
+                "page_root_created": True,
+                "current_page_root_before": 0,
+                "current_page_root_after": 1,
+                "page_record_root_allocations": 1,
             },
             {
                 "kind": "reset",
@@ -14000,6 +14034,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "orientation": 0,
             "data_chain_ptr": 0x782D3E,
             "reset_status": 0,
+            "page_record_root_allocations": 1,
         },
     }))
     checks.append(assert_equal("mixed printable/reset page-record bridge keeps pre-reset rows renderable", {
@@ -14080,9 +14115,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             pending_width=1,
             pending_text=1,
             span_flush_enable=1,
-            page_root_present=1,
+            page_root_present=0,
             page_root_class=1,
-            current_page_root=1,
+            current_page_root=0,
             page_publications=0,
             page_root_clears=0,
             published_pool_record=0,
@@ -14120,8 +14155,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         elif event["kind"] == "printable":
             page_result = event["page_result"]
             positioned = event["positioned"]
+            page_root = event["page_root"]
             assert isinstance(page_result, dict)
             assert isinstance(positioned, dict)
+            assert isinstance(page_root, dict)
             positioned_source = positioned["source"]
             assert isinstance(positioned_source, dict)
             ff_page_record_event_summary.append({
@@ -14135,6 +14172,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "count_before": page_result["count_before"],
                 "count_after": page_result["count_after"],
                 "bucket_index": page_result["bucket_index"],
+                "page_root_created": page_root["page_root_created"],
+                "current_page_root_before": page_root["current_page_root_before"],
+                "current_page_root_after": page_root["current_page_root_after"],
+                "page_record_root_allocations": page_root["page_record_root_allocations"],
             })
         else:
             finalized = event["finalized_page_record"]
@@ -14186,6 +14227,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "span_flushes",
             "post_flushes",
             "page_publication_flag",
+            "page_record_root_allocations",
         )),
     }, {
         "stream": b"\x1b&k2G!\f",
@@ -14206,6 +14248,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "count_before": 0,
                 "count_after": 1,
                 "bucket_index": 0,
+                "page_root_created": True,
+                "current_page_root_before": 0,
+                "current_page_root_after": 1,
+                "page_record_root_allocations": 1,
             },
             {
                 "kind": "control",
@@ -14238,6 +14284,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "span_flushes": 1,
             "post_flushes": 1,
             "page_publication_flag": 1,
+            "page_record_root_allocations": 1,
         },
     }))
     checks.append(assert_equal("mixed printable/FF page-record finalization publishes bridged record", {
@@ -14302,9 +14349,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             cursor_x=pack12(10),
             cursor_y=pack12(21),
             hmi=line_printer_hmi["hmi"],
-            page_root_present=1,
+            page_root_present=0,
             page_root_class=1,
-            current_page_root=1,
+            current_page_root=0,
             page_publications=0,
             page_root_clears=0,
             published_pool_record=0,
@@ -14334,8 +14381,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         if event["kind"] == "printable":
             page_result = event["page_result"]
             positioned = event["positioned"]
+            page_root = event["page_root"]
             assert isinstance(page_result, dict)
             assert isinstance(positioned, dict)
+            assert isinstance(page_root, dict)
             positioned_source = positioned["source"]
             assert isinstance(positioned_source, dict)
             page_geometry_page_record_event_summary.append({
@@ -14349,6 +14398,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "count_before": page_result["count_before"],
                 "count_after": page_result["count_after"],
                 "bucket_index": page_result["bucket_index"],
+                "page_root_created": page_root["page_root_created"],
+                "current_page_root_before": page_root["current_page_root_before"],
+                "current_page_root_after": page_root["current_page_root_after"],
+                "page_record_root_allocations": page_root["page_record_root_allocations"],
             })
         else:
             finalized = event["finalized_page_record"]
@@ -14401,6 +14454,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_publications",
             "page_root_clears",
             "page_publication_flag",
+            "page_record_root_allocations",
         )),
         "final_geometry_state": select_keys(page_geometry_final_geometry, (
             "page_code",
@@ -14430,6 +14484,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "count_before": 0,
                 "count_after": 1,
                 "bucket_index": 0,
+                "page_root_created": True,
+                "current_page_root_before": 0,
+                "current_page_root_after": 1,
+                "page_record_root_allocations": 1,
             },
             {
                 "kind": "page-geometry",
@@ -14460,6 +14518,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_publications": 1,
             "page_root_clears": 1,
             "page_publication_flag": 1,
+            "page_record_root_allocations": 1,
         },
         "final_geometry_state": {
             "page_code": 6,
@@ -14535,9 +14594,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             cursor_x=pack12(10),
             cursor_y=pack12(21),
             hmi=line_printer_hmi["hmi"],
-            page_root_present=1,
+            page_root_present=0,
             page_root_class=1,
-            current_page_root=1,
+            current_page_root=0,
             page_publications=0,
             page_root_clears=0,
             published_pool_record=0,
@@ -14567,8 +14626,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         if event["kind"] == "printable":
             page_result = event["page_result"]
             positioned = event["positioned"]
+            page_root = event["page_root"]
             assert isinstance(page_result, dict)
             assert isinstance(positioned, dict)
+            assert isinstance(page_root, dict)
             positioned_source = positioned["source"]
             assert isinstance(positioned_source, dict)
             orientation_page_record_event_summary.append({
@@ -14582,6 +14643,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "count_before": page_result["count_before"],
                 "count_after": page_result["count_after"],
                 "bucket_index": page_result["bucket_index"],
+                "page_root_created": page_root["page_root_created"],
+                "current_page_root_before": page_root["current_page_root_before"],
+                "current_page_root_after": page_root["current_page_root_after"],
+                "page_record_root_allocations": page_root["page_record_root_allocations"],
             })
         else:
             finalized = event["finalized_page_record"]
@@ -14638,6 +14703,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_publications",
             "page_root_clears",
             "page_publication_flag",
+            "page_record_root_allocations",
         )),
         "final_geometry_state": select_keys(orientation_final_geometry, (
             "page_code",
@@ -14671,6 +14737,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "count_before": 0,
                 "count_after": 1,
                 "bucket_index": 0,
+                "page_root_created": True,
+                "current_page_root_before": 0,
+                "current_page_root_after": 1,
+                "page_record_root_allocations": 1,
             },
             {
                 "kind": "page-geometry",
@@ -14705,6 +14775,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_publications": 1,
             "page_root_clears": 1,
             "page_publication_flag": 1,
+            "page_record_root_allocations": 1,
         },
         "final_geometry_state": {
             "page_code": 6,
@@ -14831,10 +14902,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- Letter landscape from `ESC &l1O`: active `{landscape_letter['active_width']}x{landscape_letter['active_height']}`, margin `{landscape_letter['margin_reference']}`, printable extent `{landscape_letter['printable_extent']}`, top offset `{landscape_letter['top_offset']}`")
     lines.append(f"- page-geometry stream events: `{page_geometry_stream['stream_events']}`")
     lines.append(f"- Landscape thresholds loaded by `0x103ea`: `{[landscape_letter[key] for key in ('portrait_landscape_threshold_6', 'portrait_landscape_threshold_2', 'portrait_landscape_threshold_1', 'portrait_landscape_threshold_5')]}`")
-    lines.append("- A mixed printable/page-size page-record stream drives `!` then `ESC &l1A`; the page-size handler's `0xf34a`/`0xff1e` boundary publishes the queued compact text bucket before storing the new page code and recomputing geometry.")
+    lines.append("- A mixed printable/page-size page-record stream starts without a current page root, drives `!` then `ESC &l1A`, allocates the page-record root on the printable queue step, and publishes the queued compact text bucket through the page-size handler's `0xf34a`/`0xff1e` boundary before storing the new page code and recomputing geometry.")
     lines.append(f"- page-size publication object bytes: `{' '.join(f'{byte:02x}' for byte in page_geometry_page_record_object)}`")
     lines.append("- page-size published page-record bridge rows match the pre-geometry compact text rows.")
-    lines.append("- A mixed printable/orientation page-record stream starts from letter portrait, drives `!` then `ESC &l1O`, and publishes the queued compact text bucket through the orientation handler's `0xf34a`/`0xff1e` boundary before switching to landscape geometry.")
+    lines.append("- A mixed printable/orientation page-record stream starts from letter portrait with no current page root, drives `!` then `ESC &l1O`, allocates the page-record root on the printable queue step, and publishes the queued compact text bucket through the orientation handler's `0xf34a`/`0xff1e` boundary before switching to landscape geometry.")
     lines.append(f"- orientation publication object bytes: `{' '.join(f'{byte:02x}' for byte in orientation_page_record_object)}`")
     lines.append("- orientation published page-record bridge rows match the pre-landscape compact text rows.")
     lines.append("")
@@ -15549,7 +15620,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- page-record stream object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_page_record_object)}`")
     lines.append(f"- page-record bridged context slots `[0..1]`: `0x{mixed_page_record_bridged['context_slots'][0]:08x}`, `0x{mixed_page_record_bridged['context_slots'][1]:08x}`")
     lines.append("")
-    lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now also models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`.")
+    lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now starts without a current page root, marks the first printable as the page-record root allocation point, models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`.")
     lines.append("")
     lines.append("- mixed reset stream bytes: `21 1b 45`")
     lines.append(f"- mixed reset compact object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_reset_combined['object'])}`")
@@ -15568,7 +15639,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- published page-record bucket bytes: `{' '.join(f'{byte:02x}' for byte in mixed_reset_published_page_record['bucket_root'])}`")
     lines.append("- published page-record bridge rows match the pre-reset compact text rows.")
     lines.append("")
-    lines.append("A mixed printable/FF page-record stream drives `ESC &k2G`, printable `!`, then FF. The FF handler applies the mode-2 CR-style horizontal reset, flushes pending text, ensures a page root marker, finalizes the valid root through modeled `0xff1e`, marks page eject with pending text `0xff`, and publishes the queued compact text bucket before clearing the current root. Bridging the published record through `0x1edc6` renders the same rows as the pre-eject compact text object.")
+    lines.append("A mixed printable/FF page-record stream drives `ESC &k2G`, printable `!`, then FF from no current page root. The printable queue step allocates the page-record root; the FF handler applies the mode-2 CR-style horizontal reset, flushes pending text, finalizes the valid root through modeled `0xff1e`, marks page eject with pending text `0xff`, and publishes the queued compact text bucket before clearing the current root. Bridging the published record through `0x1edc6` renders the same rows as the pre-eject compact text object.")
     lines.append("")
     lines.append("- mixed FF stream bytes: `1b 26 6b 32 47 21 0c`")
     lines.append(f"- page-record FF object bytes: `{' '.join(f'{byte:02x}' for byte in ff_page_record_object)}`")
@@ -15583,7 +15654,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append(f"- published FF page-record bucket bytes: `{' '.join(f'{byte:02x}' for byte in ff_published_page_record['bucket_root'])}`")
     lines.append("- published FF page-record bridge rows match the pre-eject compact text rows.")
-    lines.append("- remaining gap: replace these fixture-only source/bucket/page-root states with page roots allocated by a fuller parser model.")
+    lines.append("- remaining gap: replace the fixture-only source and bucket states with fuller parser-produced page objects; the first printable queue step now marks page-record root allocation for the reset, FF, page-size, and orientation publication fixtures.")
     lines.append("")
 
     lines.append("## `0xd3b2` Unflagged Positioning Fixture")

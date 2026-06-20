@@ -149,7 +149,7 @@ The routines around `0x1a2e4..0x1ab82` build candidate lists for font/resource s
 
 `0x1a616` scans resource regions, using `0x782884` as the current scan cursor. It recognizes or skips records with signatures including `HEAD`, `FONT`, `TABL`, `tabl`, and `DUMY`. `0x1a9be` classifies accepted font records, sets flags on the candidate object returned by `0x1bc38`, and increments the candidate-list counts/cursors according to orientation/class and address range.
 
-`0x1a9be` uses the caller argument to distinguish two accepted-record shapes. For `FONT` records (`arg == 0`), byte `+0x32` supplies candidate flag bits 28..29 and bits 6 and 2 are cleared. For records reached through the `HEAD`/typed path (`arg != 0`), byte `+0x0d` supplies bits 28..29, bit 6 is set, and bit 2 mirrors whether byte `+0x0c == 2`. It always increments total count `0x78278e`.
+`0x1a9be` uses the caller argument to distinguish two accepted-record shapes. For `FONT` records (`arg == 0`), byte `+0x32` supplies candidate flag bits 28..29 and high-byte flags `0x40000000` / `0x04000000` are cleared. For records reached through the `HEAD`/typed path (`arg != 0`), byte `+0x0d` supplies bits 28..29, high-byte flag `0x40000000` is set, and `0x04000000` mirrors whether byte `+0x0c == 2`. It always increments total count `0x78278e`.
 
 The class byte then partitions the shared pointer-list window:
 
@@ -163,6 +163,8 @@ The class byte then partitions the shared pointer-list window:
 | `0` | `0x200000..0x5ffffe` | `0x78279c` | `0x7827b4` |
 
 Other class values are retained in the total count but do not advance these class/range windows. In the decoded `0x1a9be` body, initializer-cleared counters `0x782796` and `0x78279e` are not incremented; similarly named increments in the harness belong to downloaded-font bookkeeping rather than this built-in resource scan path.
+
+For the verified `IC32,IC15` built-in resource image, the concrete `HEAD`-path scan accepts 24 records: twelve class `0` records and twelve class `1` records, all in the low built-in resource window `0x080000..0x0ffffe`. The resulting counter state is total `0x78278e = 24`, class-one low/range `0x782792 = 12` / `0x782794 = 0`, and class-zero low/range `0x78279a = 12` / `0x78279c = 0`; final cursor windows are `0x7827a0 = 0x782324`, `0x7827a4 = 0x782354`, `0x7827a8 = 0x782354`, `0x7827ac = 0x782354`, `0x7827b0 = 0x782384`, and `0x7827b4 = 0x782384`.
 
 Current candidate-list state:
 

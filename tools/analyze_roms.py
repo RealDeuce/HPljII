@@ -260,6 +260,77 @@ def firmware_scanned_font_records(data: bytes) -> list[dict[str, int | str | Non
     return records
 
 
+def firmware_scanned_candidate_partitions(records: list[dict[str, int | str | None]]) -> dict[str, object]:
+    base = 0x782324
+    counters = {
+        "0x78278e": 0,
+        "0x782790": 0,
+        "0x782792": 0,
+        "0x782794": 0,
+        "0x782796": 0,
+        "0x782798": 0,
+        "0x78279a": 0,
+        "0x78279c": 0,
+        "0x78279e": 0,
+    }
+    cursors = {
+        "0x7827a0": base,
+        "0x7827a4": base,
+        "0x7827a8": base,
+        "0x7827ac": base,
+        "0x7827b0": base,
+        "0x7827b4": base,
+    }
+    events: list[dict[str, int | str | bool]] = []
+    for index, record in enumerate(records):
+        address = int(record["firmware_address"]) & 0x00FFFFFF
+        class_byte = int(record["class_byte"]) & 0xFF
+        low_resource_window = 0x080000 <= address <= 0x0FFFFE
+        extension_window = 0x200000 <= address <= 0x5FFFFE
+        counters["0x78278e"] += 1
+        counter_branch = "other"
+
+        if class_byte == 1:
+            counters["0x782790"] += 1
+            counter_branch = "class-one"
+            if low_resource_window:
+                counters["0x782792"] += 1
+                for key in ("0x7827a4", "0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4"):
+                    cursors[key] += 4
+            if extension_window:
+                counters["0x782794"] += 1
+                for key in ("0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4"):
+                    cursors[key] += 4
+        elif class_byte == 0:
+            counters["0x782798"] += 1
+            counter_branch = "class-zero"
+            if low_resource_window:
+                counters["0x78279a"] += 1
+                for key in ("0x7827b0", "0x7827b4"):
+                    cursors[key] += 4
+            if extension_window:
+                counters["0x78279c"] += 1
+                cursors["0x7827b4"] += 4
+
+        events.append({
+            "index": index,
+            "name": str(record["name"]),
+            "record_start": int(record["record_start"]),
+            "firmware_address": int(record["firmware_address"]),
+            "context_longword": int(record["context_longword"]),
+            "class_byte": class_byte,
+            "low_resource_window": low_resource_window,
+            "extension_window": extension_window,
+            "counter_branch": counter_branch,
+        })
+    return {
+        "base": base,
+        "counters": counters,
+        "cursors": cursors,
+        "events": events,
+    }
+
+
 def decode_font_record(data: bytes, name: str, offset: int, next_same: int | None) -> list[str]:
     record_start = font_record_start_for_name(name, offset)
     header_words = [u16(data, record_start + i * 2) for i in range(0, 24)]
@@ -305,6 +376,8 @@ def decode_font_record(data: bytes, name: str, offset: int, next_same: int | Non
 
 def font_record_report(data: bytes) -> str:
     records = font_record_offsets(data)
+    header_records = firmware_scanned_font_records(data)
+    partitions = firmware_scanned_candidate_partitions(header_records)
     by_name: dict[str, list[int]] = {}
     for name, offset in records:
         by_name.setdefault(name, []).append(offset)
@@ -317,6 +390,44 @@ def font_record_report(data: bytes) -> str:
     lines.append("String search is useful for labeling records, but the firmware stores the selected context as the record start address, not the string address.")
     lines.append("For named built-in records, the record start is the even address immediately after the name/padding and begins with longword `0x00000014` or `0x00000015`.")
     lines.append("Other name hits are likely embedded in glyph bitmap/data payloads.")
+    lines.append("")
+    lines.append("## Firmware-Scanned Candidate Partitions")
+    lines.append("")
+    lines.append("This table follows the same sequential resource scan shape as firmware routines `0x1a616` and `0x1a9be`: `HEAD` records are skipped by length, accepted type `0x14`/`0x15` font records are validated, and their record-start firmware addresses feed the candidate list.")
+    lines.append("")
+    counters = partitions["counters"]
+    cursors = partitions["cursors"]
+    assert isinstance(counters, dict)
+    assert isinstance(cursors, dict)
+    lines.append("- accepted records: `%d`" % int(counters["0x78278e"]))
+    lines.append("- class `1` records: total `%d`, built-in low-window `%d`, extension-window `%d`" % (
+        int(counters["0x782790"]),
+        int(counters["0x782792"]),
+        int(counters["0x782794"]),
+    ))
+    lines.append("- class `0` records: total `%d`, built-in low-window `%d`, extension-window `%d`" % (
+        int(counters["0x782798"]),
+        int(counters["0x78279a"]),
+        int(counters["0x78279c"]),
+    ))
+    lines.append("- final cursor windows: `%s`" % ", ".join(
+        f"{key}=0x{int(cursors[key]):06x}"
+        for key in ("0x7827a0", "0x7827a4", "0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4")
+    ))
+    lines.append("")
+    lines.append("| Scan index | Name | Record start | Firmware address | Context longword | Class | Partition |")
+    lines.append("| ---: | --- | ---: | ---: | ---: | ---: | --- |")
+    for event in partitions["events"]:
+        assert isinstance(event, dict)
+        lines.append(
+            f"| {int(event['index'])} | `{event['name']}` | `0x{int(event['record_start']):06x}` | "
+            f"`0x{int(event['firmware_address']):06x}` | `0x{int(event['context_longword']):08x}` | "
+            f"`{int(event['class_byte'])}` | {event['counter_branch']} |"
+        )
+    lines.append("")
+    lines.append("The verified built-in ROM image contributes only low-window records here: twelve class `0` records and twelve class `1` records. The extension-window counters remain zero until cartridge or external resource ranges are scanned.")
+    lines.append("")
+    lines.append("## String-Labeled Candidate Records")
     lines.append("")
     lines.append("| Name | Name offset | Header-like | Record start | Firmware address | Length | Next same-name delta | Offset table |")
     lines.append("| --- | --- | --- | --- | ---: | ---: | ---: | --- |")
@@ -1126,7 +1237,7 @@ def active_symbol_set_flow_report(data: bytes) -> str:
     lines.append("| `0x782f1c`, `0x782f20`, `0x782f24`, `0x782f28` | `0x1ac0a` | `0x1be22` final-`@` table | same four-entry orientation/slot layout | default-font command words used by `@0` and `@1`; `@3` uses the candidate found by `0x1b250`/`0x1ad66` more directly |")
     lines.append("")
     lines.append("When `0x1b250` finds a current default candidate, `0x1ac0a` clones its scratch word `0x7828a4` into all four `0x782f1c..0x782f28` entries. Otherwise it toggles temporary orientation/list selectors `0x78289f` and `0x78289e`, calls `0x1ab84`, and records one word per orientation/slot. `0x1af36` performs the parallel setup for the `0x782f0c..0x782f18` fallback table using `0x1ad66`.")
-    lines.append("The executable harness now models both `0x1ac0a` branches and both `0x1af36` fallback branches: current-candidate mode copies `0x7828a4` into the relevant slots, while synthesized mode records one word per `0x78289f` orientation and `0x78289e` primary/secondary selector. It also pins the `0x1b250` outer current-default candidate path: `0x78219c == 0xff` disables it, otherwise `0x1b50e` supplies a resource address and word, `0x1b4c0` maps that low-24 address back to a canonical candidate slot, and `0x7827ac` decides the restored `0x78289f` orientation flag. `0x1b50e` is now pinned as a fast-probe-or-two-pass resolver: requested index `0` can accept `0x1b8ea`, while the scan path uses `0x1b750`/`0x1b7b2`/`0x1b8b6` to classify range, special-symbol, and downloaded candidates and to suppress the already-current Roman-8 slot; non-special requested words can count a Roman-8 candidate twice, with the duplicate ordinal writing the requested word instead of candidate word `0x0115`. `0x1ab84` is now pinned as the synthesized default search that tries `0x1adaa(1)` and `0x1adaa(2)` under the current orientation, flips `0x78289f` only after both miss, repeats both range searches, and finally falls through to `0x1ae7e`. It also pins the `0x1ad66` control flow: try `0x1adaa(1)` for `0x200000..0x3ffffe`, try `0x1adaa(2)` for `0x400000..0x5ffffe`, and fall back through `0x1ae7e` to either a `0x1b060` match or the bit-30-selected `0x15890`/`0x158be` base-candidate reader. `0x1bbfe` is now modeled as the bit-30 dispatcher into `0x15890`/`0x158be`, and `0x1b060` is modeled as the default-candidate predicate over orientation, pitch `0x03e8`, height `0x04b0`, style bytes, spacing byte `3`, and requested-symbol fallback rules. The remaining live-state gap is the real parser/font-state candidate records feeding those searches, not the table writes, `@` parser exposure, `0x1b250`/`0x1b50e` result plumbing, `0x1ab84`/`0x1ad66` list/range/fallback control flow, or the `0x1bbfe`/`0x1b060` helper logic.")
+    lines.append("The executable harness now models both `0x1ac0a` branches and both `0x1af36` fallback branches: current-candidate mode copies `0x7828a4` into the relevant slots, while synthesized mode records one word per `0x78289f` orientation and `0x78289e` primary/secondary selector. It also pins the `0x1b250` outer current-default candidate path: `0x78219c == 0xff` disables it, otherwise `0x1b50e` supplies a resource address and word, `0x1b4c0` maps that low-24 address back to a canonical candidate slot, and `0x7827ac` decides the restored `0x78289f` orientation flag. `0x1b50e` is now pinned as a fast-probe-or-two-pass resolver: requested index `0` can accept `0x1b8ea`, while the scan path uses `0x1b750`/`0x1b7b2`/`0x1b8b6` to classify range, special-symbol, and downloaded candidates and to suppress the already-current Roman-8 slot; non-special requested words can count a Roman-8 candidate twice, with the duplicate ordinal writing the requested word instead of candidate word `0x0115`. `0x1ab84` is now pinned as the synthesized default search that tries `0x1adaa(1)` and `0x1adaa(2)` under the current orientation, flips `0x78289f` only after both miss, repeats both range searches, and finally falls through to `0x1ae7e`. It also pins the `0x1ad66` control flow: try `0x1adaa(1)` for `0x200000..0x3ffffe`, try `0x1adaa(2)` for `0x400000..0x5ffffe`, and fall back through `0x1ae7e` to either a `0x1b060` match or the bit-30-selected `0x15890`/`0x158be` base-candidate reader. `0x1bbfe` is now modeled as the bit-30 dispatcher into `0x15890`/`0x158be`, and `0x1b060` is modeled as the default-candidate predicate over orientation, pitch `0x03e8`, height `0x04b0`, style bytes, spacing byte `3`, and requested-symbol fallback rules. The remaining live-state gap is selection and filtering over the concrete `0x1a9be` candidate windows, not the table writes, `@` parser exposure, scanner partitioning, built-in record identities, `0x1b250`/`0x1b50e` result plumbing, `0x1ab84`/`0x1ad66` list/range/fallback control flow, or the `0x1bbfe`/`0x1b060` helper logic.")
     lines.append("")
 
     lines.append("## Refresh and Active Selection")
@@ -1177,6 +1288,7 @@ def active_symbol_set_flow_report(data: bytes) -> str:
     lines.append("- `tools/render_fixture_harness.py` now traces host-visible `ESC (7X`, `ESC )0@`, `ESC (1@`, `ESC )2@`, `ESC (3@`, and `ESC )3@` streams through parser setup handlers `0x1201e`/`0x12008` and terminal handler `0x120be`, then checks the modeled `0x1be22` special-case targets `0x1c066`, `0x1bed4`, `0x1bf0a`, `0x1bf36`, and `0x1bf74`.")
     lines.append("- Reproduce `0x1ac0a` and `0x1af36` table writes before applying `@0`/`@1` or font-selection fallback behavior; the harness now checks the current-candidate and synthesized-candidate table shapes.")
     lines.append("- Reproduce `0x1a9be` scanner-side candidate-list partitioning before default-font searches: every accepted record increments `0x78278e`; class `1` increments `0x782790` and splits low built-in-resource candidates into `0x782792` and cartridge/extension-range candidates into `0x782794`; class `0` increments `0x782798` and splits the same ranges into `0x78279a` and `0x78279c`; the cursor windows at `0x7827a0..0x7827b4` advance cumulatively across those partitions.")
+    lines.append("- For the verified `IC32,IC15` resource ROM, the built-in scan contributes 24 concrete `HEAD`-path records: twelve class `0` and twelve class `1`, all in the low built-in resource window. The extension-range counters stay zero until cartridge/external resource ranges are scanned.")
     lines.append("- Reproduce `0x1ad66` as a three-stage default-font candidate search: range class 1, then range class 2, then `0x1ae7e` fallback. Range hits filter candidate high-nibble flags by primary/secondary slot mask and low-24-bit resource address range before `0x1bbfe` dispatches symbol-word reads to `0x15890` for bit-30 built-ins or `0x158be` for inline/downloaded candidates. Fallback first accepts a `0x1b060` match, where the helper validates orientation, pitch, height, style, and spacing, then accepts either exact requested-symbol matches or Roman-8 fallback for non-excluded requested words; accepted `0x1b060` candidates write the requested word from `0x7821a0` to `0x7828a4`.")
     lines.append("- Treat `0x782ef4`/`0x782f04` as requested criteria and `0x783144`/`0x783146` as the active post-selection words.")
     lines.append("- Rebuild the selected primary/secondary character-to-glyph map after symbol-set changes, then apply the `0x14f16` patch rules documented in `ic30_ic13_symbol_set_patch_tables.md`; `tools/render_fixture_harness.py` now drives `ESC (2U` and `ESC )0E` through both the ROM parser trace and symbol-set stream model, then applies the resulting `0x0055` patch-table and `0x0005` Roman Extension map rules to the `LINE_PRINTER` base map.")

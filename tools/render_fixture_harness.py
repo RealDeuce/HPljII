@@ -3578,18 +3578,18 @@ def classify_scanned_font_candidates_via_1a9be(
             high_flag_byte = int(record.get("font_byte_0x32", 0)) & 0x03
             flags &= 0xCFFFFFFF
             flags |= high_flag_byte << 28
-            flags &= ~(1 << 6)
-            flags &= ~(1 << 2)
+            flags &= ~0x40000000
+            flags &= ~0x04000000
             flag_source = "FONT/+0x32"
         else:
             high_flag_byte = int(record.get("type_byte_0x0d", 0)) & 0x03
             flags &= 0xCFFFFFFF
             flags |= high_flag_byte << 28
-            flags |= 1 << 6
+            flags |= 0x40000000
             if (int(record.get("type_byte_0x0c", 0)) & 0xFF) == 2:
-                flags |= 1 << 2
+                flags |= 0x04000000
             else:
-                flags &= ~(1 << 2)
+                flags &= ~0x04000000
             flag_source = "HEAD-type/+0x0d"
 
         counters["0x78278e"] += 1
@@ -3644,6 +3644,41 @@ def classify_scanned_font_candidates_via_1a9be(
         "cursors": cursors,
         "events": events,
     }
+
+
+def firmware_scanned_builtin_candidates(resources: bytes) -> list[dict[str, int]]:
+    records: list[dict[str, int]] = []
+    cursor = 0
+    seen = 0
+    while cursor + 0x28 <= len(resources) and seen < 256:
+        marker = u32(resources, cursor)
+        if marker == 0x48454144:
+            length = u32(resources, cursor + 4)
+            if length <= 0:
+                break
+            cursor += length
+            continue
+        if marker in (0x00000014, 0x00000015):
+            length = u32(resources, cursor + 4)
+            if length <= 0 or cursor + length > len(resources):
+                break
+            firmware_address = 0x80000 + cursor
+            records.append({
+                "address": firmware_address,
+                "record_start": cursor,
+                "d4_class": resources[cursor + 0x20],
+                "source_arg": 1,
+                "type_byte_0x0d": resources[cursor + 0x0D],
+                "type_byte_0x0c": resources[cursor + 0x0C],
+                "initial_flags": firmware_address,
+            })
+            cursor += length
+            seen += 1
+            continue
+        if marker in (0x00000000, 0xFFFFFFFF):
+            break
+        cursor += 2
+    return records
 
 
 def clear_download_continuation_state(continuation: dict[str, int]) -> dict[str, int]:
@@ -11808,11 +11843,69 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "0x7827b4": 0x782334,
         },
         "events": [
-            {"helper": 0x01A9BE, "index": 0, "address": 0x090000, "d4_class": 1, "source_arg": 1, "flag_source": "HEAD-type/+0x0d", "candidate_flags": 0x100000CC, "low_resource_window": True, "extension_window": False, "counter_branch": "class-one", "cursor_advances": ["0x7827a4", "0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4"]},
-            {"helper": 0x01A9BE, "index": 1, "address": 0x250000, "d4_class": 1, "source_arg": 1, "flag_source": "HEAD-type/+0x0d", "candidate_flags": 0x20000040, "low_resource_window": False, "extension_window": True, "counter_branch": "class-one", "cursor_advances": ["0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4"]},
-            {"helper": 0x01A9BE, "index": 2, "address": 0x090010, "d4_class": 0, "source_arg": 0, "flag_source": "FONT/+0x32", "candidate_flags": 0x30000000, "low_resource_window": True, "extension_window": False, "counter_branch": "class-zero", "cursor_advances": ["0x7827b0", "0x7827b4"]},
-            {"helper": 0x01A9BE, "index": 3, "address": 0x450000, "d4_class": 0, "source_arg": 0, "flag_source": "FONT/+0x32", "candidate_flags": 0xC0000000, "low_resource_window": False, "extension_window": True, "counter_branch": "class-zero", "cursor_advances": ["0x7827b4"]},
-            {"helper": 0x01A9BE, "index": 4, "address": 0x600000, "d4_class": 2, "source_arg": 1, "flag_source": "HEAD-type/+0x0d", "candidate_flags": 0x00000044, "low_resource_window": False, "extension_window": False, "counter_branch": "class-other", "cursor_advances": []},
+            {"helper": 0x01A9BE, "index": 0, "address": 0x090000, "d4_class": 1, "source_arg": 1, "flag_source": "HEAD-type/+0x0d", "candidate_flags": 0x54000088, "low_resource_window": True, "extension_window": False, "counter_branch": "class-one", "cursor_advances": ["0x7827a4", "0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4"]},
+            {"helper": 0x01A9BE, "index": 1, "address": 0x250000, "d4_class": 1, "source_arg": 1, "flag_source": "HEAD-type/+0x0d", "candidate_flags": 0x60000000, "low_resource_window": False, "extension_window": True, "counter_branch": "class-one", "cursor_advances": ["0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4"]},
+            {"helper": 0x01A9BE, "index": 2, "address": 0x090010, "d4_class": 0, "source_arg": 0, "flag_source": "FONT/+0x32", "candidate_flags": 0x30000044, "low_resource_window": True, "extension_window": False, "counter_branch": "class-zero", "cursor_advances": ["0x7827b0", "0x7827b4"]},
+            {"helper": 0x01A9BE, "index": 3, "address": 0x450000, "d4_class": 0, "source_arg": 0, "flag_source": "FONT/+0x32", "candidate_flags": 0x80000044, "low_resource_window": False, "extension_window": True, "counter_branch": "class-zero", "cursor_advances": ["0x7827b4"]},
+            {"helper": 0x01A9BE, "index": 4, "address": 0x600000, "d4_class": 2, "source_arg": 1, "flag_source": "HEAD-type/+0x0d", "candidate_flags": 0x44000000, "low_resource_window": False, "extension_window": False, "counter_branch": "class-other", "cursor_advances": []},
+        ],
+    }))
+    actual_scanned_builtin_candidates = firmware_scanned_builtin_candidates(resources)
+    actual_candidate_partition = classify_scanned_font_candidates_via_1a9be(actual_scanned_builtin_candidates)
+    actual_candidate_events = actual_candidate_partition["events"]
+    assert isinstance(actual_candidate_events, list)
+    checks.append(assert_equal("actual IC32/IC15 built-in records feed 0x1a9be partitions", {
+        "record_count": len(actual_scanned_builtin_candidates),
+        "counters": actual_candidate_partition["counters"],
+        "cursors": actual_candidate_partition["cursors"],
+        "first_records": [
+            {
+                "record_start": actual_scanned_builtin_candidates[index]["record_start"],
+                "address": actual_scanned_builtin_candidates[index]["address"],
+                "d4_class": actual_scanned_builtin_candidates[index]["d4_class"],
+                "candidate_flags": actual_candidate_events[index]["candidate_flags"],
+            }
+            for index in range(4)
+        ],
+        "last_records": [
+            {
+                "record_start": record["record_start"],
+                "address": record["address"],
+                "d4_class": record["d4_class"],
+                "candidate_flags": actual_candidate_events[len(actual_scanned_builtin_candidates) - 2 + index]["candidate_flags"],
+            }
+            for index, record in enumerate(actual_scanned_builtin_candidates[-2:])
+        ],
+    }, {
+        "record_count": 24,
+        "counters": {
+            "0x78278e": 24,
+            "0x782790": 12,
+            "0x782792": 12,
+            "0x782794": 0,
+            "0x782796": 0,
+            "0x782798": 12,
+            "0x78279a": 12,
+            "0x78279c": 0,
+            "0x78279e": 0,
+        },
+        "cursors": {
+            "0x7827a0": 0x782324,
+            "0x7827a4": 0x782354,
+            "0x7827a8": 0x782354,
+            "0x7827ac": 0x782354,
+            "0x7827b0": 0x782384,
+            "0x7827b4": 0x782384,
+        },
+        "first_records": [
+            {"record_start": 0x00004C, "address": 0x08004C, "d4_class": 0, "candidate_flags": 0x4008004C},
+            {"record_start": 0x000418, "address": 0x080418, "d4_class": 0, "candidate_flags": 0x44080418},
+            {"record_start": 0x000868, "address": 0x080868, "d4_class": 0, "candidate_flags": 0x44080868},
+            {"record_start": 0x000CB8, "address": 0x080CB8, "d4_class": 0, "candidate_flags": 0x40080CB8},
+        ],
+        "last_records": [
+            {"record_start": 0x02DCCE, "address": 0x0ADCCE, "d4_class": 1, "candidate_flags": 0x440ADCCE},
+            {"record_start": 0x02E122, "address": 0x0AE122, "d4_class": 1, "candidate_flags": 0x400AE122},
         ],
     }))
     default_font_tables_found = default_font_symbol_tables_via_1ac0a_1af36(
@@ -22375,6 +22468,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             f"{key}=0x{int(scanned_candidate_partition['cursors'][key]):06x}"
             for key in ("0x7827a0", "0x7827a4", "0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4")
         ),
+    ))
+    lines.append("- actual `IC32,IC15` built-in candidate scan: `%d` accepted `HEAD`-path records, class-one low/range counts `%d`/`%d`, class-zero low/range counts `%d`/`%d`, first context `0x%08x`, last context `0x%08x`." % (
+        len(actual_scanned_builtin_candidates),
+        actual_candidate_partition["counters"]["0x782792"],
+        actual_candidate_partition["counters"]["0x782794"],
+        actual_candidate_partition["counters"]["0x78279a"],
+        actual_candidate_partition["counters"]["0x78279c"],
+        actual_candidate_events[0]["candidate_flags"],
+        actual_candidate_events[-1]["candidate_flags"],
     ))
     lines.append("- default-font table builders: `0x1ac0a` current-candidate mode copies word `0x%04x` into all four `@0`/`@1` table slots, while synthesized mode writes `%s`; `0x1af36` builds fallback slots `%s` for the corresponding `0x156de` candidate-selection fallback." % (
         default_font_tables_found["current_symbol"],

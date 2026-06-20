@@ -6967,6 +6967,42 @@ def render_mixed_printable_control_page_record_stream(
                     if not (ord("a") <= final <= ord("z")):
                         break
                 continue
+            if stream[pos + 1 : pos + 3] == b"&f":
+                start = pos
+                pos += 3
+                sign = 1
+                if pos < len(stream) and stream[pos] in (ord("+"), ord("-")):
+                    sign = -1 if stream[pos] == ord("-") else 1
+                    pos += 1
+                if pos >= len(stream) or not chr(stream[pos]).isdigit():
+                    raise AssertionError("page-record mixed stream ESC &f#S needs an integer parameter")
+                value = 0
+                while pos < len(stream) and chr(stream[pos]).isdigit():
+                    value = value * 10 + stream[pos] - ord("0")
+                    pos += 1
+                if pos >= len(stream) or stream[pos] != ord("S"):
+                    raise AssertionError("page-record mixed stream only models ESC &f#S final byte")
+                final = stream[pos]
+                pos += 1
+                parameter = sign * value
+                before = dict(state)
+                state = apply_cursor_push_pop_via_f75e(state, parameter)
+                events.append({
+                    "kind": "cursor-stack",
+                    "offset": start,
+                    "sequence": stream[start:pos],
+                    "record": bytes([
+                        0x81 if parameter < 0 else 0x80,
+                        final,
+                    ]) + signed_word_bytes(parameter) + signed_word_bytes(0),
+                    "parameter": parameter,
+                    "handler": 0x00F75E,
+                    "cursor_before": {"x": before["cursor_x"], "y": before["cursor_y"]},
+                    "cursor_after": {"x": state["cursor_x"], "y": state["cursor_y"]},
+                    "stack_depth": state.get("stack_depth", len(state.get("stack", []))),
+                    "event": state["events"][-1],
+                })
+                continue
             if stream[pos + 1 : pos + 3] == b"&l":
                 group_start = pos
                 pos += 3
@@ -7015,7 +7051,7 @@ def render_mixed_printable_control_page_record_stream(
                     if not (ord("a") <= final <= ord("z")):
                         break
                 continue
-            raise AssertionError(f"page-record mixed stream only models ESC &k#G, ESC &a#L/#M/#C/#H/#R/#V, ESC &l#C/#D/#E/#F, and ESC E at offset {pos}")
+            raise AssertionError(f"page-record mixed stream only models ESC &k#G, ESC &a#L/#M/#C/#H/#R/#V, ESC &f#S, ESC &l#C/#D/#E/#F, and ESC E at offset {pos}")
         if byte in (0x08, 0x09, 0x0A, 0x0C, 0x0D):
             before = dict(state)
             finalized = None
@@ -17376,6 +17412,186 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_record_root_allocations": 1,
         },
     }))
+    cursor_stack_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&f0S\x1b&a2C\x1b&f1S!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            active_width=300,
+            right_limit=pack12(300),
+            vertical_offset_source=60,
+            active_height=300,
+            printable_extent=300,
+            pending_text=1,
+            pending_span_flush_enable=1,
+            events=[],
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    cursor_stack_page_record_object = cursor_stack_page_record_stream["bucket_object"]
+    cursor_stack_page_record_rendered = cursor_stack_page_record_stream["rendered"]
+    cursor_stack_page_record_bridged = cursor_stack_page_record_stream["bridged_record"]
+    assert isinstance(cursor_stack_page_record_object, bytes)
+    assert isinstance(cursor_stack_page_record_rendered, dict)
+    assert isinstance(cursor_stack_page_record_bridged, dict)
+    cursor_stack_page_record_event_summary: list[dict[str, object]] = []
+    cursor_stack_page_record_events = cursor_stack_page_record_stream["events"]
+    assert isinstance(cursor_stack_page_record_events, list)
+    for event in cursor_stack_page_record_events:
+        assert isinstance(event, dict)
+        if event["kind"] == "cursor-stack":
+            cursor_stack_page_record_event_summary.append({
+                "kind": event["kind"],
+                "sequence": event["sequence"],
+                "record": event["record"],
+                "parameter": event["parameter"],
+                "handler": event["handler"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "stack_depth": event["stack_depth"],
+                "event": event["event"],
+            })
+        elif event["kind"] == "cursor-position":
+            cursor_stack_page_record_event_summary.append({
+                "kind": event["kind"],
+                "sequence": event["sequence"],
+                "record": event["record"],
+                "parameter": event["parameter"],
+                "fraction": event["fraction"],
+                "relative": event["relative"],
+                "handler": event["handler"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "event": event["event"],
+            })
+        else:
+            page_result = event["page_result"]
+            positioned = event["positioned"]
+            assert isinstance(page_result, dict)
+            assert isinstance(positioned, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            cursor_stack_page_record_event_summary.append({
+                "kind": event["kind"],
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": page_result["coord"],
+                "allocated": page_result["allocated"],
+                "count_before": page_result["count_before"],
+                "count_after": page_result["count_after"],
+                "bucket_index": page_result["bucket_index"],
+            })
+    cursor_stack_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&f0S\x1b&a2C\x1b&f1S!")
+    expected_cursor_stack_rows = [
+        "." * 16 + "####" if row == "####" else "." * 20
+        for row in line_printer_glyph32_rows
+    ]
+    checks.append(assert_equal("cursor stack parser trace feeds page-record queue", {
+        "stream": cursor_stack_page_record_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in cursor_stack_parser_trace["events"]
+        ],
+        "parser_final_mode": cursor_stack_parser_trace["final_mode"],
+        "events": cursor_stack_page_record_event_summary,
+        "root_allocations": cursor_stack_page_record_stream["final_state"]["page_record_root_allocations"],
+        "bucket_index": cursor_stack_page_record_stream["bucket_index"],
+        "object_prefix": cursor_stack_page_record_object[:11],
+        "bridged_context_slots": cursor_stack_page_record_bridged["context_slots"][:2],
+        "rendered_rows": cursor_stack_page_record_rendered["rows"],
+        "final_state": select_keys(cursor_stack_page_record_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "stack_depth",
+            "pending_text",
+            "span_updates",
+            "span_flushes",
+            "post_flushes",
+            "page_record_root_allocations",
+        )),
+    }, {
+        "stream": b"\x1b&f0S\x1b&a2C\x1b&f1S!",
+        "parser_events": [
+            {"kind": "command", "handler": 0x00F75E, "mode_after": 0},
+            {"kind": "command", "handler": 0x00F39E, "mode_after": 0},
+            {"kind": "command", "handler": 0x00F75E, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+        ],
+        "parser_final_mode": 0,
+        "events": [
+            {
+                "kind": "cursor-stack",
+                "sequence": b"\x1b&f0S",
+                "record": bytes.fromhex("80 53 00 00 00 00"),
+                "parameter": 0,
+                "handler": 0x00F75E,
+                "cursor_before": {"x": pack12(10), "y": pack12(21)},
+                "cursor_after": {"x": pack12(10), "y": pack12(21)},
+                "stack_depth": 1,
+                "event": {"kind": "cursor-push", "depth": 1, "entry": {"x": pack12(10), "stored_y": pack12(81)}},
+            },
+            {
+                "kind": "cursor-position",
+                "sequence": b"\x1b&a2C",
+                "record": bytes.fromhex("80 43 00 02 00 00"),
+                "parameter": 2,
+                "fraction": 0,
+                "relative": False,
+                "handler": 0x00F39E,
+                "cursor_before": {"x": pack12(10), "y": pack12(21)},
+                "cursor_after": {"x": pack12(36), "y": pack12(21)},
+                "event": {"kind": "horizontal-position", "relative": False, "amount": pack12(36), "cursor_x": pack12(36)},
+            },
+            {
+                "kind": "cursor-stack",
+                "sequence": b"\x1b&f1S",
+                "record": bytes.fromhex("80 53 00 01 00 00"),
+                "parameter": 1,
+                "handler": 0x00F75E,
+                "cursor_before": {"x": pack12(36), "y": pack12(21)},
+                "cursor_after": {"x": pack12(10), "y": pack12(21)},
+                "stack_depth": 0,
+                "event": {"kind": "cursor-pop", "depth": 0, "entry": {"x": pack12(10), "stored_y": pack12(81)}, "max_x": pack12(299, 11), "max_y": pack12(299, 11)},
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 0),
+                "coord": 0x0001,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+            },
+        ],
+        "root_allocations": 1,
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+        "bridged_context_slots": (0x440946B4, 0),
+        "rendered_rows": expected_cursor_stack_rows,
+        "final_state": {
+            "cursor_x": pack12(28),
+            "cursor_y": pack12(21),
+            "stack_depth": 0,
+            "pending_text": 0,
+            "span_updates": 1,
+            "span_flushes": 1,
+            "post_flushes": 1,
+            "page_record_root_allocations": 1,
+        },
+    }))
     mixed_publication_parser_trace = {
         "reset": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1bE"),
         "ff": trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k2G!\f"),
@@ -19609,6 +19825,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- cursor-position parser-to-page-record boundary: stream `1b 26 61 32 43 21` routes `ESC &a2C` through handler `0xf39e`, moves the cursor to two initialized `LINE_PRINTER` HMI columns, then queues printable `!` through `0xd04a` at compact coord `0x0a02` and renders the bridged glyph at pixel x `42`.")
     lines.append("- vertical cursor-position parser-to-page-record boundary: stream `1b 26 61 31 52 21` routes `ESC &a1R` through handler `0xf560`, moves the vertical cursor to one initialized VMI row plus firmware absolute-row bias, then queues printable `!` through `0xd04a` at compact coord `0x1001` in bucket `4` and renders the bridged glyph with one blank row before the glyph body.")
     lines.append("- vertical-layout parser-to-page-record boundary: stream `1b 26 6c 33 45 21` routes `ESC &l3E` through handler `0xece2`, refreshes the pending vertical cursor from top margin row 3, then queues printable `!` through `0xd04a` at compact coord `0x9001` in bucket `6` and renders the bridged glyph with nine blank rows before the glyph body.")
+    lines.append("- cursor-stack parser-to-page-record boundary: stream `1b 26 66 30 53 1b 26 61 32 43 1b 26 66 31 53 21` routes `ESC &f0S`, `ESC &a2C`, and `ESC &f1S` through handlers `0xf75e`, `0xf39e`, and `0xf75e`; the pop restores the original cursor before printable `!` queues through `0xd04a` at compact coord `0x0001` and renders the bridged glyph at the original origin.")
     lines.append("")
     lines.append("A ROM parser trace now anchors the publication streams before the modeled page-record layer: `21 1b 45` routes printable `!` through the mode-0 `0xd04a` branch and `ESC E` through handler `0xcc52`; `1b 26 6b 32 47 21 0c` routes `ESC &k2G` through handler `0xedf8`, printable `!` through `0xd04a`, and FF through handler `0xf0f0`; `21 1b 26 6c 31 41` and `21 1b 26 6c 31 4f` route printable `!` through `0xd04a` before page-size `ESC &l1A` reaches `0xfc74` and orientation `ESC &l1O` reaches `0x10220`.")
     lines.append("The publication-boundary fixture ties those parser handler sequences to the modeled page-record side for the same four byte streams: each allocates one root on printable `!`, publishes one compact bucket through `0xff1e`, clears the current root, and renders the published rows after the `0x1edc6` bridge.")

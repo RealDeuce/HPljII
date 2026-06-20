@@ -3121,6 +3121,69 @@ def apply_top_margin_via_ece2(state: dict[str, int], parameter: int) -> dict[str
     return updated
 
 
+def vertical_layout_handler(final: int) -> int:
+    final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+    if final_upper == ord("C"):
+        return 0x00CB00
+    if final_upper == ord("D"):
+        return 0x00C992
+    if final_upper == ord("E"):
+        return 0x00ECE2
+    if final_upper == ord("F"):
+        return 0x00EA9E
+    raise AssertionError(f"unsupported ESC &l vertical-layout final byte {chr(final)!r}")
+
+
+def apply_vertical_layout_stream_via_cb00_c992_ece2_ea9e(state: dict[str, int], stream: bytes) -> dict[str, object]:
+    state = dict(state)
+    stream_events: list[dict[str, object]] = []
+    pos = 0
+    while pos < len(stream):
+        start = pos
+        if pos + 3 >= len(stream) or stream[pos : pos + 3] != b"\x1b&l":
+            raise AssertionError(f"vertical-layout stream only models ESC &l#C/#D/#E/#F at offset {pos}")
+        pos += 3
+        while True:
+            command_start = start if pos == start + 3 else pos
+            integer, fraction, relative, pos = parse_pcl_decimal_fraction_parameter(stream, pos)
+            if pos >= len(stream):
+                raise AssertionError("vertical-layout stream missing final byte")
+            final = stream[pos]
+            pos += 1
+            final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+            before = dict(state)
+            if final_upper == ord("C"):
+                state = apply_vmi_via_cb00(state, integer, fraction)
+            elif final_upper == ord("D"):
+                state = apply_lines_per_inch_via_c992(state, integer)
+            elif final_upper == ord("E"):
+                state = apply_top_margin_via_ece2(state, integer)
+            elif final_upper == ord("F"):
+                state = apply_text_length_via_ea9e(state, integer)
+            else:
+                raise AssertionError(f"vertical-layout stream unsupported final byte {chr(final)!r}")
+            record = bytes([
+                0x81 if relative else 0x80,
+                final,
+            ]) + signed_word_bytes(integer) + signed_word_bytes(fraction)
+            stream_events.append({
+                "sequence": stream[command_start:pos],
+                "record": record,
+                "parameter": integer,
+                "fraction": fraction,
+                "relative": relative,
+                "handler": vertical_layout_handler(final),
+                "cursor_before": int(before["cursor_y"]),
+                "events": state["events"][len(before.get("events", [])):],
+                "chained": bool(ord("a") <= final <= ord("z")),
+            })
+            if not (ord("a") <= final <= ord("z")):
+                break
+    state["stream"] = stream
+    state["stream_events"] = stream_events
+    return state
+
+
 def margin_state(**overrides: int) -> dict[str, int]:
     state = {
         "cursor_x": pack12(10),
@@ -6791,6 +6854,101 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "layout_refreshes": 0,
             "last_event": {"kind": "top-margin-ignored", "reason": "beyond-page-extent-or-zero-vmi", "candidate": pack12(350)},
         },
+    }))
+    vertical_layout_stream = apply_vertical_layout_stream_via_cb00_c992_ece2_ea9e(
+        vertical_layout_state(pending_text=1, top_offset=pack12(0), text_length_bottom=0),
+        b"\x1b&l8c6d3e2F",
+    )
+    checks.append(assert_equal("0xcb00/0xc992/0xece2/0xea9e chained ESC &l stream selects vertical layout handlers", {
+        "state": select_keys(vertical_layout_stream, (
+            "stream",
+            "vmi",
+            "top_offset",
+            "text_length_bottom",
+            "cursor_y",
+            "pending_text",
+            "modified_layout",
+            "layout_refreshes",
+            "events",
+        )),
+        "stream_events": vertical_layout_stream["stream_events"],
+    }, {
+        "state": {
+            "stream": b"\x1b&l8c6d3e2F",
+            "vmi": pack12(50),
+            "top_offset": pack12(90),
+            "text_length_bottom": pack12(190),
+            "cursor_y": pack12(126),
+            "pending_text": 1,
+            "modified_layout": 1,
+            "layout_refreshes": 2,
+            "events": [
+                {"kind": "vertical-cursor-refresh", "cursor_y": pack12(36)},
+                {"kind": "vmi", "vmi": pack12(50)},
+                {"kind": "vertical-cursor-refresh", "cursor_y": pack12(36)},
+                {"kind": "lines-per-inch", "vmi": pack12(50)},
+                {"kind": "vertical-cursor-refresh", "cursor_y": pack12(126)},
+                {"kind": "top-margin", "top_offset": pack12(90), "text_length_bottom": pack12(240)},
+                {"kind": "text-length", "bottom": pack12(190)},
+            ],
+        },
+        "stream_events": [
+            {
+                "sequence": b"\x1b&l8c",
+                "record": b"\x80c\x00\x08\x00\x00",
+                "parameter": 8,
+                "fraction": 0,
+                "relative": False,
+                "handler": 0x00CB00,
+                "cursor_before": pack12(20),
+                "events": [
+                    {"kind": "vertical-cursor-refresh", "cursor_y": pack12(36)},
+                    {"kind": "vmi", "vmi": pack12(50)},
+                ],
+                "chained": True,
+            },
+            {
+                "sequence": b"6d",
+                "record": b"\x80d\x00\x06\x00\x00",
+                "parameter": 6,
+                "fraction": 0,
+                "relative": False,
+                "handler": 0x00C992,
+                "cursor_before": pack12(36),
+                "events": [
+                    {"kind": "vertical-cursor-refresh", "cursor_y": pack12(36)},
+                    {"kind": "lines-per-inch", "vmi": pack12(50)},
+                ],
+                "chained": True,
+            },
+            {
+                "sequence": b"3e",
+                "record": b"\x80e\x00\x03\x00\x00",
+                "parameter": 3,
+                "fraction": 0,
+                "relative": False,
+                "handler": 0x00ECE2,
+                "cursor_before": pack12(36),
+                "events": [
+                    {"kind": "vertical-cursor-refresh", "cursor_y": pack12(126)},
+                    {"kind": "top-margin", "top_offset": pack12(90), "text_length_bottom": pack12(240)},
+                ],
+                "chained": True,
+            },
+            {
+                "sequence": b"2F",
+                "record": b"\x80F\x00\x02\x00\x00",
+                "parameter": 2,
+                "fraction": 0,
+                "relative": False,
+                "handler": 0x00EA9E,
+                "cursor_before": pack12(126),
+                "events": [
+                    {"kind": "text-length", "bottom": pack12(190)},
+                ],
+                "chained": False,
+            },
+        ],
     }))
     left_margin_move = apply_left_margin_via_eb58(margin_state(
         cursor_x=pack12(10),
@@ -11534,7 +11692,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- `ESC &a#C` converts columns through current HMI, `ESC &a#H` converts decipoints as five packed subunits per decipoint, and both commit through horizontal helper `0xf4ca` with absolute/relative handling and page-width clamps.")
     lines.append("- `ESC &a#R` converts rows through current VMI; absolute rows add the firmware's `0.7200` row bias before using the top offset, while relative rows add to the current vertical cursor. `ESC &a#V` uses the same five-subunit decipoint conversion. Both commit through vertical helper `0xf6e2` and clamp to vertical bounds where the handler does so. A byte-stream fixture now drives chained `ESC &a3.5c+1R` through handlers `0xf39e` and `0xf560`.")
     lines.append("- `ESC &l#D` accepts only the ROM LPI set `1,2,3,4,6,8,12,16,24,48`, treats zero as 12 LPI, and writes line advance `0x783160`; `ESC &l#C` converts VMI in 1/48-inch units using 75 packed subunits per unit and allows zero without setting the modified-layout flag.")
-    lines.append("- `ESC &l#E` sets top offset `0x782dce` from VMI lines minus vertical offset source `0x782dbe`, then recomputes default text-length bottom `0x782dd2`; `ESC &l#F` stores explicit text-length bottom as top offset plus VMI-scaled lines, or restores the default when the parameter is zero.")
+    lines.append("- `ESC &l#E` sets top offset `0x782dce` from VMI lines minus vertical offset source `0x782dbe`, then recomputes default text-length bottom `0x782dd2`; `ESC &l#F` stores explicit text-length bottom as top offset plus VMI-scaled lines, or restores the default when the parameter is zero. A byte-stream fixture now drives chained `ESC &l8c6d3e2F` through handlers `0xcb00`, `0xc992`, `0xece2`, and `0xea9e`.")
     lines.append("- `ESC &a#L` stores an absolute left margin in HMI columns when it does not pass `right_margin - HMI`; it moves the cursor and flushes pending spans only when the new margin is right of the current cursor or pending text is marked.")
     lines.append("- `ESC &a#M` stores `abs(parameter) + 1` HMI columns as the right margin, rejects values before `left_margin + HMI`, clamps beyond page width, and moves the cursor/right-limit latch when the new right margin is left of the current cursor. A byte-stream fixture now drives chained `ESC &a6l9M` through handlers `0xeb58` and `0xec0c`.")
     lines.append("- The direct-control fixture parser intentionally recognizes only `ESC &k#G`, `ESC E`, and direct control bytes; mixed printable/control/reset coverage is added separately for narrow normal-mode streams, while combined escape sequences and real page-object allocation still need fuller parser-driven fixtures.")
@@ -11552,6 +11710,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- `ESC &l8C`: VMI `0x{int(vmi_eight['vmi']):08x}`, `ESC &l1.5C` VMI `0x{int(vmi_fraction['vmi']):08x}`")
     lines.append(f"- `ESC &l3E`: top offset `0x{int(top_margin_three['top_offset']):08x}`, text bottom `0x{int(top_margin_three['text_length_bottom']):08x}`")
     lines.append(f"- `ESC &l2F`: text bottom `0x{int(text_length_two['text_length_bottom']):08x}`, `ESC &l0F` default bottom `0x{int(text_length_default['text_length_bottom']):08x}`")
+    lines.append(f"- vertical-layout stream events: `{vertical_layout_stream['stream_events']}`")
     lines.append(f"- `ESC &a6L`: left margin `0x{int(left_margin_move['left_margin']):08x}`, cursor `0x{int(left_margin_move['cursor_x']):08x}`")
     lines.append(f"- `ESC &a9M`: right margin `0x{int(right_margin_move['right_margin']):08x}`, cursor `0x{int(right_margin_move['cursor_x']):08x}`")
     lines.append(f"- margin stream events: `{margin_stream['stream_events']}`")

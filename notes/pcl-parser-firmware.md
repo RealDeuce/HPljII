@@ -171,7 +171,7 @@ Uppercase-final `ESC &f0X` seeds a single zero byte instead. Selector `1` stops 
 
 Selectors `2` and `3` require an existing record with payload bytes and call `0x0000e418` with mode byte `2` for execute or `3` for call. `0xe418` builds the next 14-byte data-chain frame from the macro record payload pointer and byte count, stores byte `+8 = 4`, stores byte `+9 = mode`, sets host gate bit 1 when the byte count is nonzero, and advances `0x782d76`. Call mode also saves the current font-context pair into the context stack around `0x782c6e`; execute and call use different environment snapshot buffers.
 
-`tools/render_fixture_harness.py` has executable fixtures for `0xe112`, the `0xdd08` start/stop/delete/overlay/permanent selector behavior, and the `0xe418` execute/call data-chain frame shape. These fixtures model direct command side effects and the replay frame contract; they do not yet replay macro payload bytes through the live parser.
+`tools/render_fixture_harness.py` has executable fixtures for `0xe112`, the `0xdd08` start/stop/delete/overlay/permanent selector behavior, and the `0xe418` execute/call data-chain frame shape. A chained `ESC &f-123y0x1X` byte-stream fixture now proves signed macro-id normalization, lowercase start auto-prefix behavior, and stop cleanup from command bytes. These fixtures model direct command side effects and the replay frame contract; they do not yet replay macro payload bytes through the live parser.
 
 Top-level `ESC &` enters mode 5. The normal table currently identifies these subfamilies:
 

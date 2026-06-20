@@ -781,6 +781,77 @@ def apply_macro_control_via_dd08(state: dict[str, object], parameter: int, final
     return updated
 
 
+def render_macro_command_stream_via_e112_dd08(stream: bytes, initial_state: dict[str, object] | None = None) -> dict[str, object]:
+    state = macro_state() if initial_state is None else dict(initial_state)
+    state["records"] = [dict(record) for record in state["records"]]
+    state["data_chain_frames"] = list(state.get("data_chain_frames", []))
+    state["events"] = list(state.get("events", []))
+    stream_events: list[dict[str, object]] = []
+    pos = 0
+    while pos < len(stream):
+        if stream[pos] != 0x1B:
+            raise AssertionError(f"macro command stream expected ESC at offset {pos}")
+        start = pos
+        pos += 1
+        if pos + 1 >= len(stream) or stream[pos] != ord("&") or stream[pos + 1] != ord("f"):
+            raise AssertionError(f"macro command stream only models ESC &f commands at offset {start}")
+        pos += 2
+        while True:
+            command_start = start if pos == start + 3 else pos
+            if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+                parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            else:
+                parameter = 0
+            if pos >= len(stream):
+                raise AssertionError("macro command stream missing final byte")
+            final = stream[pos]
+            pos += 1
+            final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+            sequence = stream[command_start:pos]
+            before_count = len(state.get("events", []))
+
+            if final_upper == ord("Y"):
+                record = bytes([0x80, final]) + signed_word_bytes(parameter) + b"\x00\x00"
+                state = assign_macro_id_via_e112(record, state)
+                event = {
+                    "kind": "macro-id",
+                    "sequence": sequence,
+                    "parameter": parameter,
+                    "handler": 0x00E112,
+                    "chained": bool(ord("a") <= final <= ord("z")),
+                    "current_macro_id": state["current_macro_id"],
+                }
+                stream_events.append(event)
+                events = list(state.get("events", []))
+                events.append(event)
+                state["events"] = events
+            elif final_upper == ord("X"):
+                state = apply_macro_control_via_dd08(state, parameter, final_byte=final)
+                events = list(state.get("events", []))
+                for event_index in range(before_count, len(events)):
+                    event = dict(events[event_index])
+                    event.update({
+                        "sequence": sequence,
+                        "parameter": parameter,
+                        "handler": 0x00DD08,
+                        "chained": bool(ord("a") <= final <= ord("z")),
+                    })
+                    events[event_index] = event
+                    stream_events.append(event)
+                state["events"] = events
+            else:
+                raise AssertionError(f"unsupported macro command ESC &f#{chr(final)} at offset {command_start}")
+
+            if not (ord("a") <= final <= ord("z")):
+                break
+
+    return {
+        "stream": stream,
+        "events": stream_events,
+        "state": state,
+    }
+
+
 def resolve_builtin_glyph(resources: bytes, context: int, glyph_index: int) -> dict[str, int | bytes]:
     if not (context & 0x40000000):
         raise AssertionError(f"context 0x{context:08x} does not select the built-in offset-table form")
@@ -5278,6 +5349,30 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "record0": {"id": 0, "payload": b"", "permanent": False},
             "last_event": {"kind": "macro-stop-cleared-empty", "index": 0},
         },
+    }))
+    macro_stream_empty = render_macro_command_stream_via_e112_dd08(b"\x1b&f-123y0x1X")
+    macro_stream_records = macro_stream_empty["state"]["records"]
+    assert isinstance(macro_stream_records, list)
+    checks.append(assert_equal("macro command stream assigns id and starts/stops empty definition", {
+        "stream": macro_stream_empty["stream"],
+        "events": [
+            {
+                key: event[key]
+                for key in ("kind", "sequence", "parameter", "handler", "chained")
+            }
+            for event in macro_stream_empty["events"]
+        ],
+        "final": select_keys(macro_stream_empty["state"], ("current_macro_id", "alternate_mode", "macro_error")),
+        "record0": macro_stream_records[0],
+    }, {
+        "stream": b"\x1b&f-123y0x1X",
+        "events": [
+            {"kind": "macro-id", "sequence": b"\x1b&f-123y", "parameter": -123, "handler": 0x00E112, "chained": True},
+            {"kind": "macro-start", "sequence": b"0x", "parameter": 0, "handler": 0x00DD08, "chained": True},
+            {"kind": "macro-stop-cleared-empty", "sequence": b"1X", "parameter": 1, "handler": 0x00DD08, "chained": False},
+        ],
+        "final": {"current_macro_id": 123, "alternate_mode": 0, "macro_error": 0},
+        "record0": {"id": 0, "payload": b"", "permanent": False},
     }))
     macro_with_payload = macro_state(
         current_macro_id=123,
@@ -10413,6 +10508,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- Selectors `4`/`5` enable/disable overlay state, `6`/`7`/`8` delete all/temporary/current macros, and `9`/`10` toggle the temporary/permanent byte at record `+0x0a`.")
     lines.append("")
     lines.append(f"- assigned macro id: `{macro_id_state['current_macro_id']}`")
+    lines.append("- chained macro stream `%s` assigns id `%d`, starts lowercase definition mode through `0xdd08`, then stops and clears the auto-prefix-only record." % (
+        " ".join(f"{byte:02x}" for byte in macro_stream_empty["stream"]),
+        macro_stream_empty["state"]["current_macro_id"],
+    ))
     lines.append(f"- lowercase start payload: `{macro_start['records'][0]['payload']!r}`, stop event `{macro_stop_empty['events'][-1]}`")
     lines.append(f"- execute frame: `{macro_execute['data_chain_frames'][0]}`")
     lines.append(f"- call frame: `{macro_call['data_chain_frames'][0]}`")

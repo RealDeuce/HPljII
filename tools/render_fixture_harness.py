@@ -251,6 +251,27 @@ def write_bitmap_bits(dest: bytearray, dest_stride: int, source: bytes, rows: in
                 dest[dest_offset] &= ~dest_mask
 
 
+def glyph_source_bytes_for_rows(resources: bytes | bytearray, glyph: dict[str, int | bytes], row_skip: int = 0, rows: int | None = None) -> bytes:
+    total_rows = int(glyph["rows"])
+    span = int(glyph["render_span"])
+    if rows is None:
+        rows = total_rows - row_skip
+    if row_skip < 0 or rows < 0 or row_skip + rows > total_rows:
+        raise AssertionError("glyph source row range is outside the glyph")
+    bitmap = int(glyph["bitmap"])
+    if span & 1 and span > 1 and glyph.get("source_kind") == "inline":
+        prefix_span = span - 1
+        a2_base = bitmap
+        a3_base = bitmap + prefix_span * total_rows
+        out = bytearray()
+        for row in range(row_skip, row_skip + rows):
+            out.extend(resources[a2_base + row * prefix_span : a2_base + (row + 1) * prefix_span])
+            out.extend(resources[a3_base + row : a3_base + row + 1])
+        return bytes(out)
+    start = bitmap + row_skip * span
+    return bytes(resources[start : start + rows * span])
+
+
 def render_glyph_rows_via_main_row_copy(data: bytes, resources: bytes, glyph: dict[str, int | bytes], dest_stride: int = 0x20) -> list[str]:
     mode = int(glyph["mode"])
     if mode != 1:
@@ -325,6 +346,179 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
         })
         max_width = max(max_width, x + width)
         max_bottom = max(max_bottom, row_index + rows)
+    return {
+        "count": count,
+        "rendered": rendered,
+        "rows": bitmap_bytes_to_rows(dest, max_bottom, max_width, dest_stride),
+    }
+
+
+def render_compact_wide_payload_via_1f0d2(data: bytes, resources: bytes | bytearray, context: int, payload: bytes, dest_stride: int = 0x20, band_rows: int = 64) -> dict[str, object]:
+    count = u16(payload, 0)
+    pos = 2
+    rendered: list[dict[str, int | str]] = []
+    dest = bytearray(band_rows * dest_stride)
+    max_width = 0
+    max_bottom = 0
+    for _ in range(count):
+        glyph_index = payload[pos]
+        coord = u16(payload, pos + 1)
+        pos += 3
+        glyph = resolve_compact_glyph(resources, context, glyph_index)
+        mode = int(glyph["mode"])
+        if mode != 1:
+            raise AssertionError(f"compact wide fixture does not implement glyph mode {mode}")
+        rows = int(glyph["rows"])
+        width = int(glyph["width"])
+        render_span = int(glyph["render_span"])
+        if render_span <= 0x10:
+            raise AssertionError("compact wide fixture expects a span wider than one 16-byte chunk")
+        row_index = (coord >> 12) & 0x0F
+        subbyte = (coord >> 8) & 0x0F
+        byte_pair_offset = (coord & 0x00FF) * 2
+        x = byte_pair_offset * 8 + subbyte
+        if row_index + rows > band_rows:
+            raise AssertionError("compact wide fixture does not implement band-crossing continuation yet")
+
+        full_chunks = render_span >> 4
+        remainder = render_span & 0x0F
+        full_row_skip = render_span - (0x11 if remainder & 1 else 0x10)
+        remainder_row_skip = render_span - remainder if remainder else 0
+        trailing_plane = bool(render_span & 1 and render_span > 1 and glyph.get("source_kind") == "inline")
+        a2_source_len = (render_span - 1) * rows if trailing_plane else render_span * rows
+        a3_source_len = rows if trailing_plane else 0
+
+        for chunk in range(full_chunks):
+            result = simulate_row_copy(data, 0x2F27C, rows, stride=dest_stride, phase=chunk * 0x10, source_row_delta=full_row_skip)
+            for write in result.writes:
+                if write.source != "A2":
+                    raise AssertionError(f"unexpected {write.source} write for compact wide full chunk")
+                if write.src + write.size > a2_source_len:
+                    raise AssertionError(f"source read past compact wide A2 bitmap at +0x{write.src:x}")
+        remainder_helper = 0
+        if remainder:
+            remainder_helper = u32(data, 0x1F1AC + remainder * 4)
+            result = simulate_row_copy(data, remainder_helper, rows, stride=dest_stride, phase=full_chunks * 0x10, source_row_delta=remainder_row_skip)
+            for write in result.writes:
+                source_len = a3_source_len if write.source == "A3" else a2_source_len
+                if write.src + write.size > source_len:
+                    raise AssertionError(f"source read past compact wide {write.source} bitmap at +0x{write.src:x}")
+
+        source = glyph_source_bytes_for_rows(resources, glyph)
+        write_bitmap_bits(dest, dest_stride, source, rows, render_span, x, row_index)
+        decoded = coord_decode(coord, band_base=0, payload_offset=0)
+        rendered.append({
+            "glyph": glyph_index,
+            "coord": coord,
+            "rows": rows,
+            "span": render_span,
+            "width": width,
+            "full_chunks": full_chunks,
+            "remainder": remainder,
+            "full_row_skip": full_row_skip,
+            "remainder_row_skip": remainder_row_skip,
+            "full_chunk_helper": 0x2F27C,
+            "remainder_helper": remainder_helper,
+            "dest_base": decoded["a1"],
+            "x": x,
+            "y": row_index,
+            "a001": decoded["a001"],
+            "source_layout": "inline-trailing-plane" if trailing_plane else "linear",
+        })
+        max_width = max(max_width, x + width)
+        max_bottom = max(max_bottom, row_index + rows)
+    return {
+        "count": count,
+        "rendered": rendered,
+        "rows": bitmap_bytes_to_rows(dest, max_bottom, max_width, dest_stride),
+    }
+
+
+def render_compact_segmented_wide_payload_via_1f264(data: bytes, resources: bytes | bytearray, context: int, payload: bytes, dest_stride: int = 0x20, band_rows: int = 16) -> dict[str, object]:
+    count = u16(payload, 0)
+    pos = 2
+    rendered: list[dict[str, int | str]] = []
+    dest = bytearray(band_rows * dest_stride)
+    max_width = 0
+    max_bottom = 0
+    for _ in range(count):
+        glyph_index = payload[pos]
+        segment = payload[pos + 1]
+        coord = u16(payload, pos + 2)
+        pos += 4
+        glyph = resolve_compact_glyph(resources, context, glyph_index)
+        mode = int(glyph["mode"])
+        if mode != 1:
+            raise AssertionError(f"compact segmented-wide fixture does not implement glyph mode {mode}")
+        render_span = int(glyph["render_span"])
+        if render_span <= 0x10:
+            raise AssertionError("compact segmented-wide fixture expects a span wider than one 16-byte chunk")
+        rows_total = int(glyph["rows"])
+        row_skip = segment << 7
+        if row_skip >= rows_total:
+            raise AssertionError("compact segmented-wide fixture segment starts beyond glyph rows")
+        rows_here = min(rows_total - row_skip, 0x80)
+        row_index = (coord >> 12) & 0x0F
+        subbyte = (coord >> 8) & 0x0F
+        byte_pair_offset = (coord & 0x00FF) * 2
+        x = byte_pair_offset * 8 + subbyte
+        if row_index + rows_here > band_rows:
+            raise AssertionError("compact segmented-wide fixture crosses the synthetic band")
+
+        full_chunks = render_span >> 4
+        remainder = render_span & 0x0F
+        full_row_skip = render_span - (0x11 if remainder & 1 else 0x10)
+        remainder_row_skip = render_span - remainder if remainder else 0
+        trailing_plane = bool(render_span & 1 and render_span > 1 and glyph.get("source_kind") == "inline")
+        a2_row_span = render_span - 1 if trailing_plane else render_span
+        a2_source_offset = row_skip * a2_row_span
+        a3_source_offset = row_skip if trailing_plane else 0
+        a2_source_len = a2_row_span * rows_here
+        a3_source_len = rows_here if trailing_plane else 0
+
+        for chunk in range(full_chunks):
+            result = simulate_row_copy(data, 0x2F27C, rows_here, stride=dest_stride, phase=chunk * 0x10, source_row_delta=full_row_skip)
+            for write in result.writes:
+                if write.source != "A2":
+                    raise AssertionError(f"unexpected {write.source} write for compact segmented-wide full chunk")
+                if write.src + write.size > a2_source_len:
+                    raise AssertionError(f"source read past compact segmented-wide A2 bitmap at +0x{write.src:x}")
+        remainder_helper = 0
+        if remainder:
+            remainder_helper = u32(data, 0x1F1AC + remainder * 4)
+            result = simulate_row_copy(data, remainder_helper, rows_here, stride=dest_stride, phase=full_chunks * 0x10, source_row_delta=remainder_row_skip)
+            for write in result.writes:
+                source_len = a3_source_len if write.source == "A3" else a2_source_len
+                if write.src + write.size > source_len:
+                    raise AssertionError(f"source read past compact segmented-wide {write.source} bitmap at +0x{write.src:x}")
+
+        source = glyph_source_bytes_for_rows(resources, glyph, row_skip=row_skip, rows=rows_here)
+        write_bitmap_bits(dest, dest_stride, source, rows_here, render_span, x, row_index)
+        decoded = coord_decode(coord, band_base=0, payload_offset=0)
+        rendered.append({
+            "glyph": glyph_index,
+            "segment": segment,
+            "coord": coord,
+            "row_skip": row_skip,
+            "a2_source_offset": a2_source_offset,
+            "a3_source_offset": a3_source_offset,
+            "rows": rows_here,
+            "span": render_span,
+            "width": int(glyph["width"]),
+            "full_chunks": full_chunks,
+            "remainder": remainder,
+            "full_row_skip": full_row_skip,
+            "remainder_row_skip": remainder_row_skip,
+            "full_chunk_helper": 0x2F27C,
+            "remainder_helper": remainder_helper,
+            "dest_base": decoded["a1"],
+            "x": x,
+            "y": row_index,
+            "a001": decoded["a001"],
+            "source_layout": "inline-trailing-plane" if trailing_plane else "linear",
+        })
+        max_width = max(max_width, x + int(glyph["width"]))
+        max_bottom = max(max_bottom, row_index + rows_here)
     return {
         "count": count,
         "rendered": rendered,
@@ -1060,10 +1254,14 @@ def render_compact_text_bucket_object(data: bytes, resources: bytes | bytearray,
     compact_mode = selector & 0x3000
     if compact_mode == 0x0000:
         rendered = render_compact_mode0_payload(data, resources, contexts[context_slot], payload)
+    elif compact_mode == 0x1000:
+        rendered = render_compact_wide_payload_via_1f0d2(data, resources, contexts[context_slot], payload)
     elif compact_mode == 0x2000:
         rendered = render_compact_segmented_payload_via_1f1f0(data, resources, contexts[context_slot], payload)
+    elif compact_mode == 0x3000:
+        rendered = render_compact_segmented_wide_payload_via_1f264(data, resources, contexts[context_slot], payload)
     else:
-        raise AssertionError("compact text bucket fixture only implements compact modes 0 and 2")
+        raise AssertionError("unknown compact text bucket mode")
     rendered["selector"] = selector
     rendered["context_slot"] = context_slot
     rendered["payload"] = payload
@@ -2907,6 +3105,66 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "rows": 3,
         "width": 0x11,
     }))
+    wide_inline_render_resources = bytearray(0x300)
+    wide_inline_context = 0x00000100
+    wide_inline_record_offset = wide_inline_context + 0x40 + 1 * 8
+    wide_inline_bitmap_delta = 0x80
+    wide_inline_bitmap = wide_inline_context + wide_inline_bitmap_delta
+    wide_inline_render_resources[wide_inline_record_offset] = 0x11
+    wide_inline_render_resources[wide_inline_record_offset + 1] = 0x03
+    wide_inline_render_resources[wide_inline_record_offset + 4:wide_inline_record_offset + 8] = wide_inline_bitmap_delta.to_bytes(4, "big")
+    wide_inline_render_resources[wide_inline_bitmap:wide_inline_bitmap + 0x30] = (b"\xff" * 0x10) + (b"\x00" * 0x10) + (b"\xaa" * 0x10)
+    wide_inline_render_resources[wide_inline_bitmap + 0x30:wide_inline_bitmap + 0x33] = bytes.fromhex("ff 00 55")
+    unflagged_wide_rendered = render_compact_text_bucket_object(
+        data,
+        wide_inline_render_resources,
+        (0, 0, 0, wide_inline_context),
+        unflagged_wide_bucket["object"],
+    )
+    checks.append(assert_equal("0x1f0d2 renders wide inline compact payload row", {
+        "selector": unflagged_wide_rendered["selector"],
+        "context_slot": unflagged_wide_rendered["context_slot"],
+        "compact_mode": unflagged_wide_rendered["compact_mode"],
+        "payload": unflagged_wide_rendered["payload"],
+        "count": unflagged_wide_rendered["count"],
+        "rendered": unflagged_wide_rendered["rendered"],
+        "rows": unflagged_wide_rendered["rows"],
+    }, {
+        "selector": 0x1003,
+        "context_slot": 3,
+        "compact_mode": 1,
+        "payload": bytes.fromhex("00 01 01 66 01"),
+        "count": 1,
+        "rendered": [{
+            "glyph": 1,
+            "coord": 0x6601,
+            "rows": 3,
+            "span": 0x11,
+            "width": 0x88,
+            "full_chunks": 1,
+            "remainder": 1,
+            "full_row_skip": 0,
+            "remainder_row_skip": 0x10,
+            "full_chunk_helper": 0x2F27C,
+            "remainder_helper": u32(data, 0x1F1AC + 1 * 4),
+            "dest_base": 0xC2,
+            "x": 22,
+            "y": 6,
+            "a001": 0x16,
+            "source_layout": "inline-trailing-plane",
+        }],
+        "rows": [
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 22 + "#" * 136,
+            "." * 158,
+            "." * 22 + "#." * 64 + ".#.#.#.#",
+        ],
+    }))
     unflagged_tall_source = dict(unflagged_positioned_source)
     unflagged_tall_source["inline_record"] = bytes.fromhex("02 81 04")
     unflagged_tall_bucket = queue_text_source_via_12f2e(resources, unflagged_tall_source)
@@ -2926,6 +3184,90 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "objects": [
             {"bucket_index": 9, "segment": 1, "object": bytes.fromhex("00 00 00 00 20 03 00 01 01 01 66 01")},
             {"bucket_index": 1, "segment": 0, "object": bytes.fromhex("00 00 00 00 20 03 00 01 01 00 66 01")},
+        ],
+    }))
+    unflagged_wide_tall_source = dict(unflagged_positioned_source)
+    unflagged_wide_tall_source["inline_record"] = bytes.fromhex("11 81 04")
+    unflagged_wide_tall_bucket = queue_text_source_via_12f2e(resources, unflagged_wide_tall_source)
+    checks.append(assert_equal("0x12f2e-modeled unflagged wide tall inline bucket objects", {
+        key: unflagged_wide_tall_bucket[key]
+        for key in ("path", "object_size", "capacity", "entry_size", "selector", "coord", "glyph", "rows", "width", "objects")
+    }, {
+        "path": "segmented",
+        "object_size": 0x28,
+        "capacity": 0x08,
+        "entry_size": 4,
+        "selector": 0x3003,
+        "coord": 0x6601,
+        "glyph": 0x01,
+        "rows": 0x81,
+        "width": 0x11,
+        "objects": [
+            {"bucket_index": 9, "segment": 1, "object": bytes.fromhex("00 00 00 00 30 03 00 01 01 01 66 01")},
+            {"bucket_index": 1, "segment": 0, "object": bytes.fromhex("00 00 00 00 30 03 00 01 01 00 66 01")},
+        ],
+    }))
+    segmented_wide_inline_render_resources = bytearray(0x1000)
+    segmented_wide_inline_context = 0x00000100
+    segmented_wide_record_offset = segmented_wide_inline_context + 0x40 + 1 * 8
+    segmented_wide_bitmap_delta = 0x100
+    segmented_wide_bitmap = segmented_wide_inline_context + segmented_wide_bitmap_delta
+    segmented_wide_inline_render_resources[segmented_wide_record_offset] = 0x11
+    segmented_wide_inline_render_resources[segmented_wide_record_offset + 1] = 0x81
+    segmented_wide_inline_render_resources[segmented_wide_record_offset + 4:segmented_wide_record_offset + 8] = segmented_wide_bitmap_delta.to_bytes(4, "big")
+    segmented_wide_inline_render_resources[segmented_wide_bitmap + 0x80 * 0x10:segmented_wide_bitmap + 0x81 * 0x10] = b"\xaa" * 0x10
+    segmented_wide_inline_render_resources[segmented_wide_bitmap + 0x81 * 0x10 + 0x80] = 0x55
+    unflagged_segmented_wide_object = unflagged_wide_tall_bucket["objects"][0]["object"]
+    unflagged_segmented_wide_rendered = render_compact_text_bucket_object(
+        data,
+        segmented_wide_inline_render_resources,
+        (0, 0, 0, segmented_wide_inline_context),
+        unflagged_segmented_wide_object,
+    )
+    checks.append(assert_equal("0x1f264 renders segmented wide inline compact payload row", {
+        "selector": unflagged_segmented_wide_rendered["selector"],
+        "context_slot": unflagged_segmented_wide_rendered["context_slot"],
+        "compact_mode": unflagged_segmented_wide_rendered["compact_mode"],
+        "payload": unflagged_segmented_wide_rendered["payload"],
+        "count": unflagged_segmented_wide_rendered["count"],
+        "rendered": unflagged_segmented_wide_rendered["rendered"],
+        "rows": unflagged_segmented_wide_rendered["rows"],
+    }, {
+        "selector": 0x3003,
+        "context_slot": 3,
+        "compact_mode": 3,
+        "payload": bytes.fromhex("00 01 01 01 66 01"),
+        "count": 1,
+        "rendered": [{
+            "glyph": 1,
+            "segment": 1,
+            "coord": 0x6601,
+            "row_skip": 0x80,
+            "a2_source_offset": 0x800,
+            "a3_source_offset": 0x80,
+            "rows": 1,
+            "span": 0x11,
+            "width": 0x88,
+            "full_chunks": 1,
+            "remainder": 1,
+            "full_row_skip": 0,
+            "remainder_row_skip": 0x10,
+            "full_chunk_helper": 0x2F27C,
+            "remainder_helper": u32(data, 0x1F1AC + 1 * 4),
+            "dest_base": 0xC2,
+            "x": 22,
+            "y": 6,
+            "a001": 0x16,
+            "source_layout": "inline-trailing-plane",
+        }],
+        "rows": [
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 22 + "#." * 64 + ".#.#.#.#",
         ],
     }))
     inline_render_resources = bytearray(0x300)
@@ -5340,6 +5682,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- record byte `+0 = 0x11` sets selector bit `0x1000`, producing object bytes: `%s`" % (
         " ".join(f"{byte:02x}" for byte in unflagged_wide_bucket["object"]),
     ))
+    wide_rendered = unflagged_wide_rendered["rendered"]
+    assert isinstance(wide_rendered, list)
+    wide_render_entry = wide_rendered[0]
+    assert isinstance(wide_render_entry, dict)
+    lines.append("- synthetic wide inline render record at context `0x%08x` maps glyph `1` to span `0x11`, rows `3`, and split A2/A3 bitmap planes; the selector-`0x1000` object renders through `0x1f0d2` as `%d` full 16-byte chunk plus `%d` trailing byte using helpers `0x%06x` and `0x%06x`." % (
+        wide_inline_context,
+        wide_render_entry["full_chunks"],
+        wide_render_entry["remainder"],
+        wide_render_entry["full_chunk_helper"],
+        wide_render_entry["remainder_helper"],
+    ))
     lines.append("- record byte `+1 = 0x81` selects segmented entries with selector `0x%04x`:" % (
         unflagged_tall_bucket["selector"],
     ))
@@ -5358,10 +5711,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(segmented_rows, list)
     for row in segmented_rows:
         lines.append(f"`{row}`")
+    segmented_wide_rendered = unflagged_segmented_wide_rendered["rendered"]
+    assert isinstance(segmented_wide_rendered, list)
+    segmented_wide_entry = segmented_wide_rendered[0]
+    assert isinstance(segmented_wide_entry, dict)
+    lines.append("- record bytes `+0 = 0x11`, `+1 = 0x81` select combined selector `0x%04x`; the segment-1 object renders row `128` through `0x1f264` with split A2/A3 planes, helpers `0x%06x` and `0x%06x`, and object bytes `%s`." % (
+        unflagged_wide_tall_bucket["selector"],
+        segmented_wide_entry["full_chunk_helper"],
+        segmented_wide_entry["remainder_helper"],
+        " ".join(f"{byte:02x}" for byte in unflagged_segmented_wide_object),
+    ))
     unflagged_overflow_source_report = unflagged_overflow_fixture["source"]
     assert isinstance(unflagged_overflow_source_report, dict)
     lines.append(f"- context metric flag set plus left overflow: cursor `(10,20)`, printable offset `20`, source x-offset `-15` -> x `{unflagged_overflow_source_report['x']}`, y `{unflagged_overflow_source_report['y']}`, context slot `{unflagged_overflow_source_report['context_slot']}`, overflow correction `0x{int(unflagged_overflow_fixture['overflow_correction']):08x}`")
-    lines.append("- remaining gap: replace the synthetic inline source/render records with a real parser-produced inline/downloaded source object and add compact mode-1/wide inline renderer coverage.")
+    lines.append("- remaining gap: replace the synthetic inline source/render records with a real parser-produced inline/downloaded source object.")
     lines.append("")
 
     lines.append("## Segmented Text Bucket Producer Fixture")

@@ -131,7 +131,7 @@ This makes the current renderer identity `(context longword, mapped glyph byte)`
 1. Decode the `HEAD` record scanner in firmware routine `0x0000041a`.
 2. Finish naming the firmware-scanned record metadata fields rather than relying on string labels alone.
 3. Confirm whether the firmware-supported `0x1be22` `@0..@2` variants are exposed by any host-visible command dialect, or are only internal-compatible table variants.
-4. Replace the remaining selected/synthetic inline fixed-record memory, especially the `0x1f264` segmented-wide case, with records populated by the real font-download parser and a decoded larger payload-allocation path; then replace producer-modeled text bucket fixtures with full parser-produced page-object payloads.
+4. Replace the constructed font-download object bytes, especially the `0x16498` downloaded-pointer `0x1f264` segmented-wide case, with records populated by the real font-download parser byte stream; then replace producer-modeled text bucket fixtures with full parser-produced page-object payloads.
 5. Extract enough metadata for each `COURIER` and `LINE_PRINTER` record to identify point size, pitch, orientation, style, symbol set, cell size, and baseline.
 6. Locate the glyph bitmap payloads and write a deterministic extractor from the verified `IC32,IC15` hash.
 

@@ -1025,11 +1025,49 @@ def resolve_inline_glyph(resources: bytes | bytearray, context: int, glyph_index
     }
 
 
+def resolve_downloaded_pointer_glyph(resources: bytes | bytearray, context: int, glyph_index: int) -> dict[str, int | bytes] | None:
+    base = context & 0x00FFFFFF
+    table_entry = base + 0x4A + (glyph_index & 0xFF) * 4
+    if table_entry + 4 > len(resources):
+        return None
+    record_delta = u32(resources, table_entry)
+    record = base + record_delta
+    if record_delta == 0 or record + 12 > len(resources):
+        return None
+    bitmap_delta = resources[record + 4]
+    mode = resources[record + 5]
+    rows = u16(resources, record + 6)
+    width = u16(resources, record + 8)
+    if bitmap_delta == 0 or mode != 1 or rows == 0 or width == 0:
+        return None
+    render_span = (width + 7) // 8
+    bitmap = record + bitmap_delta
+    if bitmap + rows * render_span > len(resources):
+        return None
+    return {
+        "base": base,
+        "entry": record,
+        "bitmap": bitmap,
+        "delta": bitmap_delta,
+        "mode": mode,
+        "rows": rows,
+        "width": width,
+        "span": render_span,
+        "render_span": render_span,
+        "source_kind": "downloaded-pointer",
+        "table_entry": table_entry,
+        "record_delta": record_delta,
+    }
+
+
 def resolve_compact_glyph(resources: bytes | bytearray, context: int, glyph_index: int) -> dict[str, int | bytes]:
     if context & 0x40000000:
         glyph = resolve_builtin_glyph(bytes(resources), context, glyph_index)
         glyph["source_kind"] = "builtin"
         return glyph
+    downloaded = resolve_downloaded_pointer_glyph(resources, context, glyph_index)
+    if downloaded is not None:
+        return downloaded
     return resolve_inline_glyph(resources, context, glyph_index)
 
 
@@ -1568,6 +1606,87 @@ def font_payload_split_plane_copy_via_16942(stream: bytes, rows: int, prefix_spa
         "continuation": None,
         "control_hits": control_hits,
         "phase": "done",
+    }
+
+
+def font_download_char_object_via_16498(
+    header: bytes | bytearray,
+    char_code: int,
+    record_words: tuple[int, int, int, int],
+    mode: int,
+    width: int,
+    rows: int,
+    stream: bytes,
+    byte_budget: int,
+    object_offset: int,
+) -> dict[str, object]:
+    updated = bytearray(header)
+    base = 0
+    char_code &= 0xFF
+    type_byte = updated[0x0C] if len(updated) > 0x0C else 0
+    if char_code > 0x7F and type_byte < 1:
+        return {"status": 0, "reason": "char-outside-header-type"}
+    table_entry = base + 0x4A + char_code * 4
+    if table_entry + 4 > len(updated):
+        updated.extend(b"\x00" * (table_entry + 4 - len(updated)))
+    span = (int(width) + 7) >> 3
+    if span <= 0 or rows <= 0 or mode != 1:
+        return {"status": 0, "reason": "unsupported-record-shape"}
+    copy_result: dict[str, object]
+    bitmap = bytearray()
+    split_plane = bool(span & 1 and span > 1)
+    if split_plane:
+        copy_result = font_payload_split_plane_copy_via_16942(stream, rows, span - 1, byte_budget)
+        if copy_result["status"] != 1:
+            return {
+                "status": copy_result["status"],
+                "reason": "payload-copy-incomplete",
+                "copy": copy_result,
+            }
+        bitmap.extend(bytes(copy_result["prefix"]))
+        bitmap.extend(bytes(copy_result["trailing"]))
+    else:
+        copy_result = font_payload_linear_copy_via_168dc(stream, rows * span, byte_budget)
+        if copy_result["status"] != 1:
+            return {
+                "status": copy_result["status"],
+                "reason": "payload-copy-incomplete",
+                "copy": copy_result,
+            }
+        bitmap.extend(bytes(copy_result["dest"]))
+
+    payload_bytes = len(bitmap)
+    allocation_size = (0x4B + payload_bytes) >> 6
+    object_size = allocation_size * 0x40
+    if object_size < 0x0C + payload_bytes:
+        raise AssertionError("modeled 0x16498 allocation does not cover the copied payload")
+    char_object = bytearray(object_size)
+    word0, word2, word6, word10 = (value & 0xFFFF for value in record_words)
+    char_object[0:2] = word0.to_bytes(2, "big")
+    char_object[2:4] = word2.to_bytes(2, "big")
+    char_object[4] = 0x0C
+    char_object[5] = mode & 0xFF
+    char_object[6:8] = word6.to_bytes(2, "big")
+    char_object[8:10] = (width & 0xFFFF).to_bytes(2, "big")
+    char_object[10:12] = word10.to_bytes(2, "big")
+    char_object[0x0C:0x0C + payload_bytes] = bitmap
+    if object_offset + object_size > len(updated):
+        updated.extend(b"\x00" * (object_offset + object_size - len(updated)))
+    updated[object_offset:object_offset + object_size] = char_object
+    updated[table_entry:table_entry + 4] = object_offset.to_bytes(4, "big")
+    return {
+        "status": 1,
+        "header": bytes(updated),
+        "table_entry": table_entry,
+        "record_delta": object_offset,
+        "record": bytes(char_object[:12]),
+        "bitmap_offset": object_offset + 0x0C,
+        "bitmap_size": payload_bytes,
+        "allocation_size": allocation_size,
+        "object_size": object_size,
+        "span": span,
+        "split_plane": split_plane,
+        "copy": copy_result,
     }
 
 
@@ -2403,7 +2522,7 @@ def glyph_source_bytes_for_rows(resources: bytes | bytearray, glyph: dict[str, i
     if row_skip < 0 or rows < 0 or row_skip + rows > total_rows:
         raise AssertionError("glyph source row range is outside the glyph")
     bitmap = int(glyph["bitmap"])
-    if span & 1 and span > 1 and glyph.get("source_kind") == "inline":
+    if span & 1 and span > 1 and glyph.get("source_kind") in ("inline", "downloaded-pointer"):
         prefix_span = span - 1
         a2_base = bitmap
         a3_base = bitmap + prefix_span * total_rows
@@ -2571,7 +2690,7 @@ def render_compact_wide_payload_via_1f0d2(data: bytes, resources: bytes | bytear
         remainder = render_span & 0x0F
         full_row_skip = render_span - (0x11 if remainder & 1 else 0x10)
         remainder_row_skip = render_span - remainder if remainder else 0
-        trailing_plane = bool(render_span & 1 and render_span > 1 and glyph.get("source_kind") == "inline")
+        trailing_plane = bool(render_span & 1 and render_span > 1 and glyph.get("source_kind") in ("inline", "downloaded-pointer"))
         a2_source_len = (render_span - 1) * rows if trailing_plane else render_span * rows
         a3_source_len = rows if trailing_plane else 0
 
@@ -2656,7 +2775,7 @@ def render_compact_segmented_wide_payload_via_1f264(data: bytes, resources: byte
         remainder = render_span & 0x0F
         full_row_skip = render_span - (0x11 if remainder & 1 else 0x10)
         remainder_row_skip = render_span - remainder if remainder else 0
-        trailing_plane = bool(render_span & 1 and render_span > 1 and glyph.get("source_kind") == "inline")
+        trailing_plane = bool(render_span & 1 and render_span > 1 and glyph.get("source_kind") in ("inline", "downloaded-pointer"))
         a2_row_span = render_span - 1 if trailing_plane else render_span
         a2_source_offset = row_skip * a2_row_span
         a3_source_offset = row_skip if trailing_plane else 0
@@ -10188,6 +10307,125 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    downloaded_segmented_wide_stream = bytearray()
+    for row in range(0x81):
+        downloaded_segmented_wide_stream.extend(b"\xaa" * 0x10 if row == 0x80 else b"\x00" * 0x10)
+        downloaded_segmented_wide_stream.append(0x55 if row == 0x80 else 0x00)
+    downloaded_segmented_wide_payload = font_download_char_object_via_16498(
+        table_payload_type2_bytes,
+        0x25,
+        (0x0000, 0x0000, 0x0081, 0x0000),
+        mode=1,
+        width=0x0088,
+        rows=0x0081,
+        stream=bytes(downloaded_segmented_wide_stream),
+        byte_budget=len(downloaded_segmented_wide_stream),
+        object_offset=0x0500,
+    )
+    downloaded_segmented_wide_memory = bytearray(downloaded_segmented_wide_payload["header"])
+    downloaded_segmented_wide_glyph = resolve_downloaded_pointer_glyph(downloaded_segmented_wide_memory, 0, 0x25)
+    assert downloaded_segmented_wide_glyph is not None
+    downloaded_segmented_wide_object = bytes.fromhex("00 00 00 00 30 03 00 01 25 01 66 01")
+    downloaded_segmented_wide_rendered = render_compact_text_bucket_object(
+        data,
+        downloaded_segmented_wide_memory,
+        (0, 0, 0, 0),
+        downloaded_segmented_wide_object,
+    )
+    checks.append(assert_equal("0x16498-backed downloaded character object renders segmented-wide compact row", {
+        "payload": {
+            key: downloaded_segmented_wide_payload[key]
+            for key in ("status", "table_entry", "record_delta", "record", "bitmap_offset", "bitmap_size", "allocation_size", "object_size", "span", "split_plane")
+        },
+        "copy": {
+            key: downloaded_segmented_wide_payload["copy"][key]
+            for key in ("status", "stream_pos", "byte_budget", "control_hits", "phase")
+        },
+        "glyph": {
+            key: downloaded_segmented_wide_glyph[key]
+            for key in ("base", "entry", "bitmap", "delta", "mode", "rows", "width", "span", "render_span", "source_kind", "table_entry", "record_delta")
+        },
+        "render": {
+            "selector": downloaded_segmented_wide_rendered["selector"],
+            "context_slot": downloaded_segmented_wide_rendered["context_slot"],
+            "compact_mode": downloaded_segmented_wide_rendered["compact_mode"],
+            "payload": downloaded_segmented_wide_rendered["payload"],
+            "rendered": downloaded_segmented_wide_rendered["rendered"],
+            "rows": downloaded_segmented_wide_rendered["rows"],
+        },
+    }, {
+        "payload": {
+            "status": 1,
+            "table_entry": 0x00DE,
+            "record_delta": 0x0500,
+            "record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 88 00 00"),
+            "bitmap_offset": 0x050C,
+            "bitmap_size": 0x0891,
+            "allocation_size": 35,
+            "object_size": 0x08C0,
+            "span": 0x11,
+            "split_plane": True,
+        },
+        "copy": {
+            "status": 1,
+            "stream_pos": 0x0891,
+            "byte_budget": 0,
+            "control_hits": 0,
+            "phase": "done",
+        },
+        "glyph": {
+            "base": 0,
+            "entry": 0x0500,
+            "bitmap": 0x050C,
+            "delta": 0x0C,
+            "mode": 1,
+            "rows": 0x81,
+            "width": 0x88,
+            "span": 0x11,
+            "render_span": 0x11,
+            "source_kind": "downloaded-pointer",
+            "table_entry": 0x00DE,
+            "record_delta": 0x0500,
+        },
+        "render": {
+            "selector": 0x3003,
+            "context_slot": 3,
+            "compact_mode": 3,
+            "payload": bytes.fromhex("00 01 25 01 66 01"),
+            "rendered": [{
+                "glyph": 0x25,
+                "segment": 1,
+                "coord": 0x6601,
+                "row_skip": 0x80,
+                "a2_source_offset": 0x800,
+                "a3_source_offset": 0x80,
+                "rows": 1,
+                "span": 0x11,
+                "width": 0x88,
+                "full_chunks": 1,
+                "remainder": 1,
+                "full_row_skip": 0,
+                "remainder_row_skip": 0x10,
+                "full_chunk_helper": 0x2F27C,
+                "remainder_helper": u32(data, 0x1F1AC + 1 * 4),
+                "dest_base": 0xC2,
+                "x": 22,
+                "y": 6,
+                "a001": 0x16,
+                "source_layout": "inline-trailing-plane",
+            }],
+            "rows": [
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 22 + "#." * 64 + ".#.#.#.#",
+            ],
+        },
+    }))
+
     inline_source = {
         "context": 0x00000000,
         "host_char": 0x41,
@@ -14250,9 +14488,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " ".join(f"{byte:02x}" for byte in table_payload_bucket["object"]),
         table_payload_source["bitmap"],
     ))
-    lines.append("- type-2 payload-backed inline fixture: `0x17362` setup type `2` allocates payload units `0x%03x` / allocation size `%d`, then fixed records for host `0x23` and `0x24` render through `0x1f0d2` and `0x1f1f0`; the constructed `0x1f264` segmented-wide fixture still needs a decoded larger payload-allocation path before it can move out of selected fixture memory." % (
+    lines.append("- type-2 payload-backed inline fixture: `0x17362` setup type `2` allocates payload units `0x%03x` / allocation size `%d`, then fixed records for host `0x23` and `0x24` render through `0x1f0d2` and `0x1f1f0`; that header allocation is not large enough for the `0x1f264` segmented-wide bitmap payload." % (
         table_payload_type2_setup["payload_units"],
         table_payload_type2_allocated["allocation_size"],
+    ))
+    lines.append("- downloaded character-object fixture: `0x16498` allocates a separate class-1 object for glyph `0x25`, computes allocation size `%d` / object size `0x%04x`, stores pointer-table entry `0x%04x` at header `+0x4a + 4*0x25`, writes record `%s`, and copies `0x%04x` split-plane payload bytes through `0x16874`/`0x16942`; the compact object `%s` resolves as `%s` and renders the `0x1f264` segmented-wide row." % (
+        downloaded_segmented_wide_payload["allocation_size"],
+        downloaded_segmented_wide_payload["object_size"],
+        downloaded_segmented_wide_payload["table_entry"],
+        " ".join(f"{byte:02x}" for byte in downloaded_segmented_wide_payload["record"]),
+        downloaded_segmented_wide_payload["bitmap_size"],
+        " ".join(f"{byte:02x}" for byte in downloaded_segmented_wide_object),
+        downloaded_segmented_wide_glyph["source_kind"],
     ))
     lines.append("")
     unflagged_source_report = unflagged_fixture["source"]
@@ -14305,7 +14552,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     unflagged_overflow_source_report = unflagged_overflow_fixture["source"]
     assert isinstance(unflagged_overflow_source_report, dict)
     lines.append(f"- context metric flag set plus left overflow: cursor `(10,20)`, printable offset `20`, source x-offset `-15` -> x `{unflagged_overflow_source_report['x']}`, y `{unflagged_overflow_source_report['y']}`, context slot `{unflagged_overflow_source_report['context_slot']}`, overflow correction `0x{int(unflagged_overflow_fixture['overflow_correction']):08x}`")
-    lines.append("- remaining gap: replace the remaining selected-memory `0x1f264` segmented-wide fixed-record case with records populated by the real font-download parser and a decoded larger payload-allocation path, then carry those parser-produced page objects into the bridge/render path.")
+    lines.append("- remaining gap: replace the constructed font-download object bytes with a full live font-download parser byte stream, then carry the parser-produced source/page objects into the bridge/render path.")
     lines.append("")
 
     lines.append("## Segmented Text Bucket Producer Fixture")

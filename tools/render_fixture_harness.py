@@ -2265,6 +2265,156 @@ def default_font_symbol_tables_via_1ac0a_1af36(
     }
 
 
+SYMBOL_BYTE_TO_WORD = {
+    0x85: 0x0001,
+    0x8D: 0x0002,
+    0x8B: 0x0003,
+    0x45: 0x0004,
+    0x8E: 0x0005,
+    0x41: 0x0025,
+    0x52: 0x0006,
+    0x4B: 0x0007,
+    0x87: 0x0008,
+    0x59: 0x0009,
+    0x4A: 0x000B,
+    0x49: 0x002B,
+    0x8C: 0x002C,
+    0x88: 0x000F,
+    0x89: 0x002F,
+    0x86: 0x0010,
+    0x8A: 0x0012,
+    0x4E: 0x0032,
+    0x43: 0x0013,
+    0x5A: 0x0033,
+    0x42: 0x0015,
+    0x8F: 0x00B3,
+    0x5F: 0x0016,
+    0x84: 0x001A,
+    0x80: 0x010B,
+    0x83: 0x010C,
+    0x82: 0x010D,
+    0x81: 0x0115,
+}
+
+
+def builtin_candidate_symbol_via_15890(candidate: dict[str, int]) -> dict[str, object]:
+    explicit_word = int(candidate.get("builtin_word_0x22", 0)) & 0xFFFF
+    if explicit_word:
+        return {"word": explicit_word, "reader": "0x15890", "source": "+0x22-word"}
+    symbol_byte = int(candidate.get("builtin_byte_0x3c", 0)) & 0xFF
+    return {
+        "word": SYMBOL_BYTE_TO_WORD.get(symbol_byte, 0),
+        "reader": "0x15890",
+        "source": "+0x3c-table",
+        "symbol_byte": symbol_byte,
+    }
+
+
+def inline_candidate_symbol_via_158be(candidate: dict[str, int]) -> dict[str, object]:
+    symbol_byte = int(candidate.get("inline_byte_0x17", 0)) & 0xFF
+    if symbol_byte == 0:
+        return {
+            "word": int(candidate.get("inline_word_0x14", 0)) & 0xFFFF,
+            "reader": "0x158be",
+            "source": "+0x14-word",
+        }
+    if symbol_byte in SYMBOL_BYTE_TO_WORD:
+        return {
+            "word": SYMBOL_BYTE_TO_WORD[symbol_byte],
+            "reader": "0x158be",
+            "source": "+0x17-table",
+            "symbol_byte": symbol_byte,
+        }
+    high = symbol_byte & 0xF0
+    low_word = (symbol_byte & 0x0F) << 5
+    if high == 0xD0:
+        word = low_word + 0x0011
+    elif high == 0xE0:
+        word = low_word + 0x0015
+    elif high == 0xC0:
+        word = low_word + 0x0018
+    elif high == 0xF0:
+        word = low_word + 0x0019
+    else:
+        word = 0
+    return {
+        "word": word & 0xFFFF,
+        "reader": "0x158be",
+        "source": "+0x17-encoded",
+        "symbol_byte": symbol_byte,
+    }
+
+
+def default_font_candidate_symbol_via_1bbfe(candidate: dict[str, int]) -> dict[str, object]:
+    longword = int(candidate["longword"]) & 0xFFFFFFFF
+    if (longword >> 30) & 1:
+        result = builtin_candidate_symbol_via_15890(candidate)
+    else:
+        result = inline_candidate_symbol_via_158be(candidate)
+    return {
+        "word": int(result["word"]) & 0xFFFF,
+        "source": "0x1bbfe",
+        "reader": result["reader"],
+        "reader_source": result["source"],
+    }
+
+
+def default_font_match_via_1b060(
+    candidate: dict[str, int],
+    *,
+    selector_78289f: int,
+    requested_symbol: int,
+) -> dict[str, object]:
+    longword = int(candidate["longword"]) & 0xFFFFFFFF
+    is_builtin = ((longword >> 30) & 1) == 1
+    orientation = int(selector_78289f) & 1
+    requested = int(requested_symbol) & 0xFFFF
+    if is_builtin:
+        checks = {
+            "orientation": int(candidate.get("builtin_byte_0x20", -1)) == orientation,
+            "pitch": int(candidate.get("builtin_pitch_via_13b76", -1)) == 0x03E8,
+            "height": int(candidate.get("builtin_height_via_13bca", -1)) == 0x04B0,
+            "style_0x2f": int(candidate.get("builtin_byte_0x2f", 0)) == 0,
+            "style_0x30": int(candidate.get("builtin_byte_0x30", 0)) == 0,
+            "spacing": int(candidate.get("builtin_byte_0x31", -1)) == 3,
+        }
+        symbol = builtin_candidate_symbol_via_15890(candidate)
+    else:
+        checks = {
+            "orientation": int(candidate.get("inline_byte_0x16", -1)) == orientation,
+            "pitch": int(candidate.get("inline_word_0x1a", -1)) == 0x03E8,
+            "height": int(candidate.get("inline_word_0x20", -1)) == 0x04B0,
+            "style_0x26": int(candidate.get("inline_byte_0x26", 0)) == 0,
+            "style_0x27": int(candidate.get("inline_byte_0x27", 0)) == 0,
+            "spacing": int(candidate.get("inline_byte_0x18", -1)) == 3,
+        }
+        symbol = inline_candidate_symbol_via_158be(candidate)
+
+    structural_match = all(checks.values())
+    candidate_word = int(symbol["word"]) & 0xFFFF
+    exact_match = candidate_word == requested
+    roman8_fallback = (
+        requested not in (0x0175, 0x0155, 0x000E)
+        and candidate_word == 0x0115
+    )
+    selected = structural_match and (exact_match or roman8_fallback)
+    if exact_match:
+        match_kind = "exact"
+    elif roman8_fallback:
+        match_kind = "roman8-fallback"
+    else:
+        match_kind = "none"
+    return {
+        "selected": selected,
+        "word": requested if selected else 0,
+        "candidate_word": candidate_word,
+        "reader": symbol["reader"],
+        "reader_source": symbol["source"],
+        "checks": checks,
+        "match_kind": match_kind,
+    }
+
+
 def default_font_range_candidate_search_via_1adaa(
     candidates: list[dict[str, int]],
     *,
@@ -2304,11 +2454,14 @@ def default_font_range_candidate_search_via_1adaa(
         }
         events.append(event)
         if selected:
+            symbol = default_font_candidate_symbol_via_1bbfe(candidate)
             return {
                 "selected_pointer": int(candidate["slot_pointer"]),
                 "selected_longword": longword,
-                "word": int(candidate["symbol"]) & 0xFFFF,
+                "word": int(symbol["word"]) & 0xFFFF,
                 "source": "0x1bbfe",
+                "reader": symbol["reader"],
+                "reader_source": symbol["reader_source"],
                 "events": events,
             }
 
@@ -2317,6 +2470,8 @@ def default_font_range_candidate_search_via_1adaa(
         "selected_longword": 0,
         "word": 0,
         "source": None,
+        "reader": None,
+        "reader_source": None,
         "events": events,
     }
 
@@ -2325,18 +2480,28 @@ def default_font_fallback_candidate_via_1ae7e(
     candidates: list[dict[str, int]],
     *,
     selector_78289f: int,
+    requested_symbol: int,
 ) -> dict[str, object]:
     events: list[dict[str, object]] = []
     for index, candidate in enumerate(candidates):
         longword = int(candidate["longword"]) & 0xFFFFFFFF
-        selected = int(candidate.get("default_match", 0)) == 1
+        match = default_font_match_via_1b060(
+            candidate,
+            selector_78289f=selector_78289f,
+            requested_symbol=requested_symbol,
+        )
+        selected = bool(match["selected"])
         event = {
             "helper": 0x01AE7E,
             "probe": "0x1b060",
             "index": index,
             "slot_pointer": int(candidate["slot_pointer"]),
             "longword": longword,
-            "default_match": int(candidate.get("default_match", 0)),
+            "default_match": 1 if selected else 0,
+            "candidate_word": match["candidate_word"],
+            "reader": match["reader"],
+            "reader_source": match["reader_source"],
+            "match_kind": match["match_kind"],
             "selected": selected,
         }
         events.append(event)
@@ -2344,8 +2509,10 @@ def default_font_fallback_candidate_via_1ae7e(
             return {
                 "selected_pointer": int(candidate["slot_pointer"]),
                 "selected_longword": longword,
-                "word": int(candidate["symbol"]) & 0xFFFF,
+                "word": int(match["word"]) & 0xFFFF,
                 "source": "0x1b060",
+                "reader": match["reader"],
+                "reader_source": match["reader_source"],
                 "events": events,
             }
 
@@ -2355,12 +2522,15 @@ def default_font_fallback_candidate_via_1ae7e(
             "selected_longword": 0,
             "word": 0,
             "source": None,
+            "reader": None,
+            "reader_source": None,
             "events": events,
         }
 
     base = candidates[0]
     longword = int(base["longword"]) & 0xFFFFFFFF
-    source = "0x15890" if ((longword >> 30) & 1) else "0x158be"
+    symbol = default_font_candidate_symbol_via_1bbfe(base)
+    source = str(symbol["reader"])
     events.append({
         "helper": 0x01AE7E,
         "probe": "base-candidate-reader",
@@ -2368,13 +2538,16 @@ def default_font_fallback_candidate_via_1ae7e(
         "slot_pointer": int(base["slot_pointer"]),
         "longword": longword,
         "source": source,
+        "reader_source": symbol["reader_source"],
         "selected": True,
     })
     return {
         "selected_pointer": int(base["slot_pointer"]),
         "selected_longword": longword,
-        "word": int(base["symbol"]) & 0xFFFF,
+        "word": int(symbol["word"]) & 0xFFFF,
         "source": source,
+        "reader": source,
+        "reader_source": symbol["reader_source"],
         "events": events,
     }
 
@@ -2385,6 +2558,7 @@ def default_font_candidate_search_via_1ad66(
     fallback_candidates: list[dict[str, int]],
     selector_78289f: int,
     selector_78289e: int,
+    requested_symbol: int = 0x0115,
 ) -> dict[str, object]:
     range_1 = default_font_range_candidate_search_via_1adaa(
         range_candidates,
@@ -2401,6 +2575,8 @@ def default_font_candidate_search_via_1ad66(
             "selected_longword": range_1["selected_longword"],
             "word": range_1["word"],
             "source": range_1["source"],
+            "reader": range_1["reader"],
+            "reader_source": range_1["reader_source"],
             "range_1_events": range_1["events"],
             "range_2_events": [],
             "fallback_events": [],
@@ -2421,6 +2597,8 @@ def default_font_candidate_search_via_1ad66(
             "selected_longword": range_2["selected_longword"],
             "word": range_2["word"],
             "source": range_2["source"],
+            "reader": range_2["reader"],
+            "reader_source": range_2["reader_source"],
             "range_1_events": range_1["events"],
             "range_2_events": range_2["events"],
             "fallback_events": [],
@@ -2429,6 +2607,7 @@ def default_font_candidate_search_via_1ad66(
     fallback = default_font_fallback_candidate_via_1ae7e(
         fallback_candidates,
         selector_78289f=selector_78289f,
+        requested_symbol=requested_symbol,
     )
     source = fallback["source"]
     if source == "0x1b060":
@@ -2446,6 +2625,8 @@ def default_font_candidate_search_via_1ad66(
         "selected_longword": fallback["selected_longword"],
         "word": fallback["word"],
         "source": source,
+        "reader": fallback["reader"],
+        "reader_source": fallback["reader_source"],
         "range_1_events": range_1["events"],
         "range_2_events": range_2["events"],
         "fallback_events": fallback["events"],
@@ -11144,7 +11325,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         range_candidates=[
             {"slot_pointer": 0x2000, "longword": 0x10010000, "symbol": 0x0015},
             {"slot_pointer": 0x2004, "longword": 0x20250000, "symbol": 0x0055},
-            {"slot_pointer": 0x2008, "longword": 0x30260000, "symbol": 0x0115},
+            {"slot_pointer": 0x2008, "longword": 0x30260000, "inline_byte_0x17": 0x81},
         ],
         fallback_candidates=[],
     )
@@ -11153,19 +11334,36 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         selector_78289e=1,
         range_candidates=[
             {"slot_pointer": 0x2100, "longword": 0x10250000, "symbol": 0x0015},
-            {"slot_pointer": 0x2104, "longword": 0x30450000, "symbol": 0x0055},
+            {"slot_pointer": 0x2104, "longword": 0x30450000, "inline_word_0x14": 0x0055},
         ],
         fallback_candidates=[],
     )
     default_candidate_fallback_match = default_font_candidate_search_via_1ad66(
         selector_78289f=0,
         selector_78289e=0,
+        requested_symbol=0x0005,
         range_candidates=[
             {"slot_pointer": 0x2200, "longword": 0x10010000, "symbol": 0x0015},
         ],
         fallback_candidates=[
-            {"slot_pointer": 0x3000, "longword": 0x4008004C, "symbol": 0x0115, "default_match": 0},
-            {"slot_pointer": 0x3004, "longword": 0x00000100, "symbol": 0x0005, "default_match": 1},
+            {
+                "slot_pointer": 0x3000,
+                "longword": 0x4008004C,
+                "builtin_byte_0x20": 1,
+                "builtin_pitch_via_13b76": 0x03E8,
+                "builtin_height_via_13bca": 0x04B0,
+                "builtin_byte_0x31": 3,
+                "builtin_byte_0x3c": 0x81,
+            },
+            {
+                "slot_pointer": 0x3004,
+                "longword": 0x00000100,
+                "inline_byte_0x16": 0,
+                "inline_word_0x1a": 0x03E8,
+                "inline_word_0x20": 0x04B0,
+                "inline_byte_0x18": 3,
+                "inline_word_0x14": 0x0005,
+            },
         ],
     )
     default_candidate_fallback_builtin = default_font_candidate_search_via_1ad66(
@@ -11173,7 +11371,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         selector_78289e=0,
         range_candidates=[],
         fallback_candidates=[
-            {"slot_pointer": 0x3100, "longword": 0x4008004C, "symbol": 0x0115, "default_match": 0},
+            {
+                "slot_pointer": 0x3100,
+                "longword": 0x4008004C,
+                "builtin_byte_0x20": 1,
+                "builtin_byte_0x3c": 0x81,
+            },
         ],
     )
     default_candidate_fallback_inline = default_font_candidate_search_via_1ad66(
@@ -11181,7 +11384,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         selector_78289e=1,
         range_candidates=[],
         fallback_candidates=[
-            {"slot_pointer": 0x3200, "longword": 0x00000100, "symbol": 0x00D5, "default_match": 0},
+            {
+                "slot_pointer": 0x3200,
+                "longword": 0x00000100,
+                "inline_byte_0x16": 0,
+                "inline_byte_0x17": 0xE6,
+            },
         ],
     )
     checks.append(assert_equal("0x1ad66/0x1adaa/0x1ae7e default-font candidate search", {
@@ -11195,6 +11403,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "selected_longword",
                 "word",
                 "source",
+                "reader",
+                "reader_source",
             )),
             "range_1_events": default_candidate_range_1["range_1_events"],
         },
@@ -11208,6 +11418,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "selected_longword",
                 "word",
                 "source",
+                "reader",
+                "reader_source",
             )),
             "range_1_events": default_candidate_range_2["range_1_events"],
             "range_2_events": default_candidate_range_2["range_2_events"],
@@ -11222,6 +11434,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "selected_longword",
                 "word",
                 "source",
+                "reader",
+                "reader_source",
             )),
             "fallback_events": default_candidate_fallback_match["fallback_events"],
         },
@@ -11231,6 +11445,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "selected_longword",
             "word",
             "source",
+            "reader_source",
         )),
         "fallback_inline": select_keys(default_candidate_fallback_inline, (
             "path",
@@ -11238,6 +11453,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "selected_longword",
             "word",
             "source",
+            "reader_source",
         )),
     }, {
         "range_1": {
@@ -11250,6 +11466,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "selected_longword": 0x30260000,
                 "word": 0x0115,
                 "source": "0x1bbfe",
+                "reader": "0x158be",
+                "reader_source": "+0x17-table",
             },
             "range_1_events": [
                 {"helper": 0x01ADAA, "search_kind": 1, "index": 0, "slot_pointer": 0x2000, "longword": 0x10010000, "flag": 1, "slot_mask": 1, "slot_match": True, "address": 0x010000, "range_low": 0x200000, "range_high": 0x3FFFFE, "range_match": False, "selected": False},
@@ -11267,6 +11485,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "selected_longword": 0x30450000,
                 "word": 0x0055,
                 "source": "0x1bbfe",
+                "reader": "0x158be",
+                "reader_source": "+0x14-word",
             },
             "range_1_events": [
                 {"helper": 0x01ADAA, "search_kind": 1, "index": 0, "slot_pointer": 0x2100, "longword": 0x10250000, "flag": 1, "slot_mask": 2, "slot_match": False, "address": 0x250000, "range_low": 0x200000, "range_high": 0x3FFFFE, "range_match": True, "selected": False},
@@ -11287,10 +11507,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "selected_longword": 0x00000100,
                 "word": 0x0005,
                 "source": "0x1b060",
+                "reader": "0x158be",
+                "reader_source": "+0x14-word",
             },
             "fallback_events": [
-                {"helper": 0x01AE7E, "probe": "0x1b060", "index": 0, "slot_pointer": 0x3000, "longword": 0x4008004C, "default_match": 0, "selected": False},
-                {"helper": 0x01AE7E, "probe": "0x1b060", "index": 1, "slot_pointer": 0x3004, "longword": 0x00000100, "default_match": 1, "selected": True},
+                {"helper": 0x01AE7E, "probe": "0x1b060", "index": 0, "slot_pointer": 0x3000, "longword": 0x4008004C, "default_match": 0, "candidate_word": 0x0115, "reader": "0x15890", "reader_source": "+0x3c-table", "match_kind": "roman8-fallback", "selected": False},
+                {"helper": 0x01AE7E, "probe": "0x1b060", "index": 1, "slot_pointer": 0x3004, "longword": 0x00000100, "default_match": 1, "candidate_word": 0x0005, "reader": "0x158be", "reader_source": "+0x14-word", "match_kind": "exact", "selected": True},
             ],
         },
         "fallback_builtin": {
@@ -11299,6 +11521,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "selected_longword": 0x4008004C,
             "word": 0x0115,
             "source": "0x15890",
+            "reader_source": "+0x3c-table",
         },
         "fallback_inline": {
             "path": "fallback-base-reader",
@@ -11306,6 +11529,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "selected_longword": 0x00000100,
             "word": 0x00D5,
             "source": "0x158be",
+            "reader_source": "+0x17-encoded",
         },
     }))
     symbol_special_stream_bytes = b"\x1b(7X\x1b)0@\x1b(1@\x1b)2@\x1b(3@\x1b)3@"
@@ -21148,7 +21372,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " / ".join(f"0x{int(word):04x}" for word in default_font_tables_synthesized["default_symbols"]),
         " / ".join(f"0x{int(word):04x}" for word in default_font_tables_synthesized["fallback_symbols"]),
     ))
-    lines.append("- default-font candidate search: `0x1ad66` first tries `0x1adaa(1)` and then `0x1adaa(2)` before `0x1ae7e`; the fixture pins primary-slot range-1 word `0x%04x`, secondary-slot range-2 word `0x%04x`, fallback `0x1b060` word `0x%04x`, and base-candidate reader sources `%s` / `%s`." % (
+    lines.append("- default-font candidate search: `0x1ad66` first tries `0x1adaa(1)` and then `0x1adaa(2)` before `0x1ae7e`; `0x1bbfe` now derives range-hit words through the bit-30-selected symbol readers, and `0x1b060` validates default candidates by orientation, pitch `0x03e8`, height `0x04b0`, style bytes, spacing byte `3`, and requested-symbol fallback rules. The fixture pins primary-slot range-1 word `0x%04x`, secondary-slot range-2 word `0x%04x`, fallback `0x1b060` requested word `0x%04x`, and base-candidate reader sources `%s` / `%s`." % (
         default_candidate_range_1["word"],
         default_candidate_range_2["word"],
         default_candidate_fallback_match["word"],

@@ -214,6 +214,35 @@ def host_byte_fetch_via_a904(initial: dict[str, object]) -> dict[str, object]:
     raise AssertionError("host byte fetch model did not converge")
 
 
+def fetch_stream_via_a904(initial: dict[str, object], byte_count: int) -> dict[str, object]:
+    state = dict(initial)
+    values: list[int] = []
+    sources: list[str] = []
+    events: list[dict[str, object]] = []
+    for index in range(byte_count):
+        result = host_byte_fetch_via_a904(state)
+        value = int(result["d7"])
+        if value < 0:
+            raise AssertionError(f"0xa904 stream fetch returned no byte at index {index}")
+        state = result["state"]
+        if not isinstance(state, dict):
+            raise AssertionError("0xa904 stream fetch did not return a state dictionary")
+        values.append(value & 0xFF)
+        sources.append(str(result["source"]))
+        events.append({
+            "index": index,
+            "value": value & 0xFF,
+            "source": result["source"],
+            "events": result["events"],
+        })
+    return {
+        "stream": bytes(values),
+        "sources": sources,
+        "events": events,
+        "state": state,
+    }
+
+
 def signed_word_bytes(value: int) -> bytes:
     value &= 0xFFFF
     return value.to_bytes(2, "big")
@@ -21721,6 +21750,47 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "bridged_context_slots": (0x440946B4, 0),
         "rendered_rows": expected_mixed_rows,
     }))
+    host_fetched_mixed_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(b"\x1b&k1G!\r!"), direct_mode=0),
+        len(b"\x1b&k1G!\r!"),
+    )
+    checks.append(assert_equal("host-fetched mixed control stream reaches parser and page-record render", {
+        "fetched_stream": host_fetched_mixed_stream["stream"],
+        "fetch_sources": host_fetched_mixed_stream["sources"],
+        "fetch_events": [
+            {
+                key: event[key]
+                for key in ("index", "value", "source")
+            }
+            for event in host_fetched_mixed_stream["events"]
+        ],
+        "remaining_ring": host_fetched_mixed_stream["state"]["ring"],
+        "parser_handlers": [
+            event["handler"]
+            for event in mixed_control_parser_trace["events"]
+        ],
+        "root_allocations": mixed_page_record_stream["final_state"]["page_record_root_allocations"],
+        "object_prefix": mixed_page_record_object[:14],
+        "rendered_rows": mixed_page_record_rendered["rows"],
+    }, {
+        "fetched_stream": b"\x1b&k1G!\r!",
+        "fetch_sources": ["ring"] * 8,
+        "fetch_events": [
+            {"index": 0, "value": 0x1B, "source": "ring"},
+            {"index": 1, "value": 0x26, "source": "ring"},
+            {"index": 2, "value": 0x6B, "source": "ring"},
+            {"index": 3, "value": 0x31, "source": "ring"},
+            {"index": 4, "value": 0x47, "source": "ring"},
+            {"index": 5, "value": 0x21, "source": "ring"},
+            {"index": 6, "value": 0x0D, "source": "ring"},
+            {"index": 7, "value": 0x21, "source": "ring"},
+        ],
+        "remaining_ring": [],
+        "parser_handlers": [0x00EDF8, 0x00D04A, 0x00F02C, 0x00D04A],
+        "root_allocations": 1,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01 20 3b 00"),
+        "rendered_rows": expected_mixed_rows,
+    }))
     lf_page_record_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,
@@ -24877,6 +24947,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- In buffered mode `0x780e40 == 0`, the ring source wins before direct hardware fallback.")
     lines.append("- Direct mode `1` returns the `0x8801` byte after `0x8e01.4` is ready, preserves `0x1a` while reporting it through `0x9ec0`, and clears the handshake/timeout state.")
     lines.append("- Direct mode `2` returns the `0xfffee001` byte when `0xfffee005.0` is ready, sets `0x7828ec`, clears the timeout state, and sets bit 6 in the `0x7828fb` control shadow.")
+    lines.append("- A ring-fed `ESC &k1G!\\r!` stream now carries the exact fetched bytes through the ROM parser trace, page-record root allocation, compact bucket queue, `0x1edc6` bridge, and final rendered rows.")
     lines.append("")
     lines.append("| Fixture | Source | D7 | Events |")
     lines.append("| --- | --- | ---: | --- |")
@@ -24889,6 +24960,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ("direct mode 2", host_fetch_mode2),
     ):
         lines.append(f"| {title} | `{result['source']}` | `{int(result['d7']):d}` | `{result['events']}` |")
+    lines.append(f"- host-fetched mixed stream bytes: `{' '.join(f'{byte:02x}' for byte in host_fetched_mixed_stream['stream'])}`; queued object prefix `{' '.join(f'{byte:02x}' for byte in mixed_page_record_object[:14])}`")
     lines.append("")
 
     lines.append("## PCL Tokenizer and Delayed Payload Fixtures")

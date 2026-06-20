@@ -796,7 +796,8 @@ def font_context_bridge_report(data: bytes) -> str:
     lines.append("- Page-root `+0x2c` does not hold raw glyph bitmap pointers. It holds up to 16 current-font context record pointers, which are copied to render-record `+0x24` before compact glyph rendering.")
     lines.append("- For built-in contexts, that bridge is now resolved: the selected context low 24 bits map to an `IC32,IC15` offset by subtracting `0x80000`, bit 30 selects the offset-table form, and table entries are relative 32-bit glyph-entry offsets from the selected record start.")
     lines.append("- The concrete `0x14c64` built-in cache-miss fixture selects record `0x009fb0`, narrows its `0x21..0xfe` base range to `0x21..0x7e` for active Roman Extension word `0x0005`, patches map byte `0x21` to glyph `0x80`, clears the upper half, and snapshots state at `0x783148` through `0x1440c`.")
-    lines.append("- The remaining font/text gap is upstream of `0x1f354`: reproduce the primary/secondary character-to-glyph maps at `0x782f32` / `0x783032`, including symbol-set patching, so host bytes feed the same compact glyph index documented in `ic30_ic13_text_glyph_index_flow.md`.")
+    lines.append("- The synthetic `0x14c64` inline/downloaded cache-miss fixture writes selected byte `+0x0e` to `0x783132`, rebuilds map `0x782f32` through `0x14e24` / `0x14eb6`, maps host `0x21` to glyph `1`, and snapshots inline state byte `+8 = 1` at `0x783148` through `0x1440c`.")
+    lines.append("- The remaining font/text gap is live parser/font-state coverage for those map rebuilds and candidate filters, so host bytes select the same compact glyph index documented in `ic30_ic13_text_glyph_index_flow.md` without synthetic selected records.")
     lines.append("")
     return "\n".join(lines)
 

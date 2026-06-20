@@ -4479,6 +4479,32 @@ def selected_builtin_snapshot_via_1440c(
     }
 
 
+def selected_inline_snapshot_via_1440c(
+    memory: bytes,
+    selected: dict[str, int],
+    *,
+    primary_secondary_selector: int,
+    active_symbol_word: int,
+    ram_start: int = 0x780EFA,
+) -> dict[str, object]:
+    longword = int(selected["longword"]) & 0xFFFFFFFF
+    address = longword & 0x00FFFFFF
+    if address + 0x18 > len(memory):
+        raise AssertionError(f"inline selected record 0x{address:06x} is outside the synthetic memory image")
+    symbol = inline_candidate_symbol_via_158be(selected)
+    return {
+        "helper": 0x01440C,
+        "state_address": 0x783152 if int(primary_secondary_selector) else 0x783148,
+        "byte_0_type": 0,
+        "word_2_symbol": int(symbol["word"]) & 0xFFFF,
+        "word_4_active_symbol": int(active_symbol_word) & 0xFFFF,
+        "byte_8_selected_flag": memory[address + 0x0E],
+        "byte_9_before_ram": 1 if address < int(ram_start) else 0,
+        "reader": symbol["reader"],
+        "reader_source": symbol["source"],
+    }
+
+
 def dispatch_selected_builtin_font_via_14c64(
     data: bytes,
     resources: bytes,
@@ -4561,6 +4587,82 @@ def dispatch_selected_builtin_font_via_14c64(
         },
         "snapshot": snapshot,
         "calls": ["0x13a48", "0x15890", "0x14d9c", "0x14f16", "0x1440c"],
+    }
+
+
+def dispatch_selected_inline_font_via_14c64(
+    data: bytes,
+    memory: bytes,
+    selected: dict[str, int],
+    *,
+    primary_secondary_selector: int,
+    active_primary_symbol: int,
+    active_secondary_symbol: int,
+    cached_state_matches: bool = False,
+) -> dict[str, object]:
+    slot = 1 if int(primary_secondary_selector) else 0
+    active_word = (int(active_secondary_symbol) if slot else int(active_primary_symbol)) & 0xFFFF
+    if cached_state_matches:
+        return {
+            "helper": 0x014C64,
+            "path": "cached-hit",
+            "slot": "secondary" if slot else "primary",
+            "calls": ["0x13a48"],
+        }
+
+    longword = int(selected["longword"]) & 0xFFFFFFFF
+    if (longword >> 30) & 1:
+        raise AssertionError("dispatch_selected_inline_font_via_14c64 requires a bit-30-clear inline/downloaded candidate")
+    address = longword & 0x00FFFFFF
+    if address + 0x18 > len(memory):
+        raise AssertionError(f"inline selected record 0x{address:06x} is outside the synthetic memory image")
+
+    selected_flag = memory[address + 0x0E]
+    base_map = inline_map_via_14e24(memory, address, extended_half_enabled=selected_flag != 0)
+    base_table = base_map["table"]
+    assert isinstance(base_table, bytes)
+    symbol = inline_candidate_symbol_via_158be(selected)
+    selected_symbol = int(symbol["word"]) & 0xFFFF
+    patch = apply_symbol_set_patch_via_14f16(data, base_table, active_word)
+    patched_table = patch["table"]
+    assert isinstance(patched_table, bytes)
+    snapshot = selected_inline_snapshot_via_1440c(
+        memory,
+        selected,
+        primary_secondary_selector=slot,
+        active_symbol_word=active_word,
+    )
+    validity = base_map["validity"]
+    assert isinstance(validity, list)
+    return {
+        "helper": 0x014C64,
+        "path": "inline-cache-miss",
+        "slot": "secondary" if slot else "primary",
+        "selected_slot_pointer": int(selected["slot_pointer"]),
+        "selected_longword": longword,
+        "record_start": address,
+        "selected_symbol": selected_symbol,
+        "active_symbol": active_word,
+        "selected_flag_register": 0x783133 if slot else 0x783132,
+        "selected_flag": selected_flag,
+        "map_address": 0x783032 if slot else 0x782F32,
+        "extended_half_enabled": selected_flag != 0,
+        "probe_count": len(validity),
+        "base_map_samples": {
+            "0x20": base_table[0x20],
+            "0x21": base_table[0x21],
+            "0x22": base_table[0x22],
+            "0xa1": base_table[0xA1],
+        },
+        "patch_kind": patch["kind"],
+        "patched_map_samples": {
+            "0x20": patched_table[0x20],
+            "0x21": patched_table[0x21],
+            "0x22": patched_table[0x22],
+            "0xa1": patched_table[0xA1],
+        },
+        "snapshot": snapshot,
+        "calls": ["0x13a48", "0x14e24", "0x14eb6", "0x14f16", "0x158be", "0x1440c"],
     }
 
 
@@ -14342,6 +14444,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     selected_inline_context = 0x00000100
     selected_inline_memory = bytearray(0x1000)
+    selected_inline_memory[selected_inline_context + 0x0E] = 1
+    selected_inline_memory[selected_inline_context + 0x14:selected_inline_context + 0x16] = (0x0115).to_bytes(2, "big")
     selected_inline_record = selected_inline_context + 0x40 + 1 * 8
     selected_inline_bitmap_delta = 0x80
     selected_inline_bitmap = selected_inline_context + selected_inline_bitmap_delta
@@ -14370,6 +14474,68 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(selected_inline_map_table, bytes)
     selected_inline_validity = selected_inline_map["validity"]
     assert isinstance(selected_inline_validity, list)
+    selected_inline_candidate = {
+        "slot_pointer": 0x782900,
+        "longword": selected_inline_context,
+        "record_start": selected_inline_context,
+        "inline_word_0x14": 0x0115,
+        "inline_byte_0x17": 0,
+    }
+    dispatched_selected_inline = dispatch_selected_inline_font_via_14c64(
+        data,
+        selected_inline_memory,
+        selected_inline_candidate,
+        primary_secondary_selector=0,
+        active_primary_symbol=0x0115,
+        active_secondary_symbol=0x0115,
+    )
+    checks.append(assert_equal("0x14c64 dispatches selected inline/downloaded font", {
+        "path": dispatched_selected_inline["path"],
+        "slot": dispatched_selected_inline["slot"],
+        "selected_slot_pointer": dispatched_selected_inline["selected_slot_pointer"],
+        "selected_longword": dispatched_selected_inline["selected_longword"],
+        "record_start": dispatched_selected_inline["record_start"],
+        "selected_symbol": dispatched_selected_inline["selected_symbol"],
+        "active_symbol": dispatched_selected_inline["active_symbol"],
+        "selected_flag_register": dispatched_selected_inline["selected_flag_register"],
+        "selected_flag": dispatched_selected_inline["selected_flag"],
+        "map_address": dispatched_selected_inline["map_address"],
+        "extended_half_enabled": dispatched_selected_inline["extended_half_enabled"],
+        "probe_count": dispatched_selected_inline["probe_count"],
+        "base_map_samples": dispatched_selected_inline["base_map_samples"],
+        "patch_kind": dispatched_selected_inline["patch_kind"],
+        "patched_map_samples": dispatched_selected_inline["patched_map_samples"],
+        "snapshot": dispatched_selected_inline["snapshot"],
+        "calls": dispatched_selected_inline["calls"],
+    }, {
+        "path": "inline-cache-miss",
+        "slot": "primary",
+        "selected_slot_pointer": 0x782900,
+        "selected_longword": 0x00000100,
+        "record_start": 0x00000100,
+        "selected_symbol": 0x0115,
+        "active_symbol": 0x0115,
+        "selected_flag_register": 0x783132,
+        "selected_flag": 1,
+        "map_address": 0x782F32,
+        "extended_half_enabled": True,
+        "probe_count": 0xC0,
+        "base_map_samples": {"0x20": 0x00, "0x21": 0x01, "0x22": 0x00, "0xa1": 0x00},
+        "patch_kind": "unchanged",
+        "patched_map_samples": {"0x20": 0x00, "0x21": 0x01, "0x22": 0x00, "0xa1": 0x00},
+        "snapshot": {
+            "helper": 0x01440C,
+            "state_address": 0x783148,
+            "byte_0_type": 0,
+            "word_2_symbol": 0x0115,
+            "word_4_active_symbol": 0x0115,
+            "byte_8_selected_flag": 1,
+            "byte_9_before_ram": 1,
+            "reader": "0x158be",
+            "reader_source": "+0x14-word",
+        },
+        "calls": ["0x13a48", "0x14e24", "0x14eb6", "0x14f16", "0x158be", "0x1440c"],
+    }))
     checks.append(assert_equal("0x14e24-modeled inline/downloaded map entries", {
         "context": selected_inline_map["context"],
         "base": selected_inline_map["base"],
@@ -23747,6 +23913,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         dispatched_class_zero_primary["active_symbol"],
         dispatched_class_zero_primary["patch_kind"],
         dispatched_class_zero_primary["snapshot"]["state_address"],  # type: ignore[index]
+    ))
+    lines.append("- selected inline/downloaded dispatch: `0x14c64` bit-30-clear cache-miss handling writes selected record byte `+0x0e` to flag register `0x%06x = %d`, rebuilds map `0x%06x` through `0x14e24`/`0x14eb6` with extended-half probing `%s`, applies active symbol `0x%04x` through `%s` handling, and snapshots inline state byte `+8 = %d` at `0x%06x` through `0x1440c`." % (
+        dispatched_selected_inline["selected_flag_register"],
+        dispatched_selected_inline["selected_flag"],
+        dispatched_selected_inline["map_address"],
+        dispatched_selected_inline["extended_half_enabled"],
+        dispatched_selected_inline["active_symbol"],
+        dispatched_selected_inline["patch_kind"],
+        dispatched_selected_inline["snapshot"]["byte_8_selected_flag"],  # type: ignore[index]
+        dispatched_selected_inline["snapshot"]["state_address"],  # type: ignore[index]
     ))
     lines.append("- height filter: `0x1519a` reads primary/secondary requested height from `0x782ef2`/`0x782f02`, keeps active candidates in requested +/- `0x19` when possible, otherwise uses `0x1533e` to select nearest lower/upper heights; class-zero requested `0x04b0` keeps `%d` slots `%s`, while requested `0x0384` falls back to nearest height `0x%04x` and keeps `%d` slots `%s`." % (
         height_filter_range["active_count_7827b8"],

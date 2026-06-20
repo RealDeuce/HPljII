@@ -15834,8 +15834,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     mixed_publication_parser_trace = {
         "reset": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1bE"),
         "ff": trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k2G!\f"),
+        "page_size": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1b&l1A"),
+        "orientation": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1b&l1O"),
     }
-    checks.append(assert_equal("0x11774 parser path routes mixed publication streams", mixed_publication_parser_trace, {
+    expected_mixed_publication_parser_trace = {
         "reset": {
             "stream": b"!\x1bE",
             "events": [
@@ -15899,6 +15901,80 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
             "final_mode": 0,
         },
+        "page_size": {
+            "stream": b"!\x1b&l1A",
+            "events": [
+                {
+                    "kind": "printable",
+                    "offset": 0,
+                    "byte": 0x21,
+                    "mode_before": 0,
+                    "branch": 0x11880,
+                    "handler": 0x00D04A,
+                    "mode_after": 0,
+                },
+                {
+                    "kind": "command",
+                    "sequence": b"\x1b&l1A",
+                    "prefix": ord("&"),
+                    "group": ord("l"),
+                    "parameter": 1,
+                    "record": bytes.fromhex("80 41 00 01 00 00"),
+                    "dispatches": [
+                        {"offset": 1, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+                        {"offset": 2, "byte": ord("&"), "mode_before": 1, "next_mode": 5, "handler": 0x011EC8},
+                        {"offset": 3, "byte": ord("l"), "mode_before": 5, "next_mode": 10, "handler": 0x011EDA},
+                        {"offset": 5, "byte": ord("A"), "mode_before": 10, "next_mode": 0, "handler": 0x00FC74},
+                    ],
+                    "handler": 0x00FC74,
+                    "mode_after": 0,
+                },
+            ],
+            "final_mode": 0,
+        },
+        "orientation": {
+            "stream": b"!\x1b&l1O",
+            "events": [
+                {
+                    "kind": "printable",
+                    "offset": 0,
+                    "byte": 0x21,
+                    "mode_before": 0,
+                    "branch": 0x11880,
+                    "handler": 0x00D04A,
+                    "mode_after": 0,
+                },
+                {
+                    "kind": "command",
+                    "sequence": b"\x1b&l1O",
+                    "prefix": ord("&"),
+                    "group": ord("l"),
+                    "parameter": 1,
+                    "record": bytes.fromhex("80 4f 00 01 00 00"),
+                    "dispatches": [
+                        {"offset": 1, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+                        {"offset": 2, "byte": ord("&"), "mode_before": 1, "next_mode": 5, "handler": 0x011EC8},
+                        {"offset": 3, "byte": ord("l"), "mode_before": 5, "next_mode": 10, "handler": 0x011EDA},
+                        {"offset": 5, "byte": ord("O"), "mode_before": 10, "next_mode": 0, "handler": 0x010220},
+                    ],
+                    "handler": 0x010220,
+                    "mode_after": 0,
+                },
+            ],
+            "final_mode": 0,
+        },
+    }
+    checks.append(assert_equal(
+        "0x11774 parser path routes mixed publication streams",
+        mixed_publication_parser_trace,
+        expected_mixed_publication_parser_trace,
+    ))
+    checks.append(assert_equal("0x11774 parser path routes geometry publication streams", {
+        key: mixed_publication_parser_trace[key]
+        for key in ("page_size", "orientation")
+    }, {
+        key: expected_mixed_publication_parser_trace[key]
+        for key in ("page_size", "orientation")
     }))
     mixed_reset_stream = render_mixed_printable_control_stream(
         data,
@@ -17879,7 +17955,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- page-record stream object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_page_record_object)}`")
     lines.append(f"- page-record bridged context slots `[0..1]`: `0x{mixed_page_record_bridged['context_slots'][0]:08x}`, `0x{mixed_page_record_bridged['context_slots'][1]:08x}`")
     lines.append("")
-    lines.append("A ROM parser trace now anchors the publication streams before the modeled page-record layer: `21 1b 45` routes printable `!` through the mode-0 `0xd04a` branch and `ESC E` through handler `0xcc52`; `1b 26 6b 32 47 21 0c` routes `ESC &k2G` through handler `0xedf8`, printable `!` through `0xd04a`, and FF through handler `0xf0f0`.")
+    lines.append("A ROM parser trace now anchors the publication streams before the modeled page-record layer: `21 1b 45` routes printable `!` through the mode-0 `0xd04a` branch and `ESC E` through handler `0xcc52`; `1b 26 6b 32 47 21 0c` routes `ESC &k2G` through handler `0xedf8`, printable `!` through `0xd04a`, and FF through handler `0xf0f0`; `21 1b 26 6c 31 41` and `21 1b 26 6c 31 4f` route printable `!` through `0xd04a` before page-size `ESC &l1A` reaches `0xfc74` and orientation `ESC &l1O` reaches `0x10220`.")
     lines.append("")
     lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now starts without a current page root, marks the first printable as the page-record root allocation point, models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`.")
     lines.append("")

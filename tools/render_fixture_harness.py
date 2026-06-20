@@ -8451,6 +8451,189 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "bucket_root": macro_payload_page_record_object,
         "rows": macro_payload_rendered["rows"],
     }))
+    macro_control_payload_stream = render_macro_command_stream_via_e112_dd08(
+        b"\x1b&f125Y\x1b&f0X\x1b&k1G!\r!\x1b&f1X\x1b&f2X"
+    )
+    macro_control_payload_records = macro_control_payload_stream["state"]["records"]
+    assert isinstance(macro_control_payload_records, list)
+    macro_control_frame = macro_control_payload_stream["state"]["data_chain_frames"][0]
+    macro_control_replay = replay_macro_frame_payload_via_a904(macro_control_frame, outer_byte=0x5A)
+    macro_control_replay_outer = macro_control_replay["outer_fetch"]
+    assert isinstance(macro_control_replay_outer, dict)
+    macro_control_payload_direct = render_mixed_printable_control_stream(
+        data,
+        resources,
+        bytes(macro_control_replay["stream"]),
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            vmi=pack12(3),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    macro_control_payload_page_record = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        bytes(macro_control_replay["stream"]),
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            vmi=pack12(3),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    macro_control_payload_direct_rendered = macro_control_payload_direct["rendered"]
+    macro_control_payload_page_rendered = macro_control_payload_page_record["rendered"]
+    macro_control_payload_page_object = macro_control_payload_page_record["bucket_object"]
+    assert isinstance(macro_control_payload_direct_rendered, dict)
+    assert isinstance(macro_control_payload_page_rendered, dict)
+    assert isinstance(macro_control_payload_page_object, bytes)
+    macro_control_page_events: list[dict[str, object]] = []
+    for event in macro_control_payload_page_record["events"]:
+        assert isinstance(event, dict)
+        if event["kind"] == "escape":
+            macro_control_page_events.append({
+                "kind": "escape",
+                "sequence": event["sequence"],
+                "line_termination": event["line_termination"],
+            })
+        elif event["kind"] == "control":
+            macro_control_page_events.append({
+                "kind": "control",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "page_roots": event["page_roots"],
+                "span_flushes": event["span_flushes"],
+            })
+        else:
+            page_result = event["page_result"]
+            positioned = event["positioned"]
+            assert isinstance(page_result, dict)
+            assert isinstance(positioned, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            macro_control_page_events.append({
+                "kind": "printable",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": page_result["coord"],
+                "allocated": page_result["allocated"],
+                "count_before": page_result["count_before"],
+                "count_after": page_result["count_after"],
+                "bucket_index": page_result["bucket_index"],
+            })
+    checks.append(assert_equal("macro execute mixed control payload replays through page-record stream", {
+        "macro_events": [
+            {
+                key: event[key]
+                for key in ("kind", "sequence", "parameter", "handler", "chained")
+                if key in event
+            }
+            for event in macro_control_payload_stream["events"]
+        ],
+        "record0": macro_control_payload_records[0],
+        "frame": macro_control_frame,
+        "fetch_stream": macro_control_replay["stream"],
+        "fetch_sources": [
+            {
+                "d7": fetch["d7"],
+                "source": fetch["source"],
+                "events": fetch["events"],
+            }
+            for fetch in macro_control_replay["fetches"]
+        ],
+        "outer_fetch": macro_control_replay_outer,
+        "page_events": macro_control_page_events,
+        "object_prefix": macro_control_payload_page_object[:14],
+        "object_size": len(macro_control_payload_page_object),
+        "page_rows": macro_control_payload_page_rendered["rows"],
+        "direct_rows": macro_control_payload_direct_rendered["rows"],
+        "final_state": select_keys(macro_control_payload_page_record["final_state"], ("cursor_x", "cursor_y", "line_termination", "page_roots", "span_flushes", "post_flushes")),
+    }, {
+        "macro_events": [
+            {"kind": "macro-id", "sequence": b"\x1b&f125Y", "parameter": 125, "handler": 0x00E112, "chained": False},
+            {"kind": "macro-start", "sequence": b"\x1b&f0X", "parameter": 0, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-definition-payload", "sequence": b"\x1b&k1G!\r!", "handler": "alternate-data"},
+            {"kind": "macro-stop-kept", "sequence": b"\x1b&f1X", "parameter": 1, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-data-chain", "sequence": b"\x1b&f2X", "parameter": 2, "handler": 0x00DD08, "chained": False},
+        ],
+        "record0": {"id": 125, "payload": b"\x1b&k1G!\r!", "permanent": False},
+        "frame": {"payload": b"\x1b&k1G!\r!", "byte_count": 8, "byte_8": 4, "byte_9": 2, "environment": "execute"},
+        "fetch_stream": b"\x1b&k1G!\r!",
+        "fetch_sources": [
+            {"d7": 0x1B, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 7}]},
+            {"d7": ord("&"), "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 6}]},
+            {"d7": ord("k"), "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 5}]},
+            {"d7": ord("1"), "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 4}]},
+            {"d7": ord("G"), "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 3}]},
+            {"d7": ord("!"), "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 2}]},
+            {"d7": 0x0D, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 1}]},
+            {"d7": ord("!"), "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 0}]},
+        ],
+        "outer_fetch": {"d7": 0x5A, "source": "second-lifo", "events": [{"kind": "data-chain-transition", "helper": 0xE22C}, {"kind": "second-lifo", "remaining": 0}]},
+        "page_events": [
+            {"kind": "escape", "sequence": b"\x1b&k1G", "line_termination": 0x80},
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 0),
+                "coord": 0x0001,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+            },
+            {
+                "kind": "control",
+                "byte": 0x0D,
+                "cursor_before": (pack12(28), pack12(21)),
+                "cursor_after": (pack12(5), pack12(24)),
+                "page_roots": 1,
+                "span_flushes": 1,
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(5),
+                "cursor_after": pack12(23),
+                "positioned_xy": (11, 3),
+                "coord": 0x3B00,
+                "allocated": False,
+                "count_before": 1,
+                "count_after": 2,
+                "bucket_index": 0,
+            },
+        ],
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01 20 3b 00"),
+        "object_size": 0x26,
+        "page_rows": macro_control_payload_direct_rendered["rows"],
+        "direct_rows": macro_control_payload_direct_rendered["rows"],
+        "final_state": {
+            "cursor_x": pack12(23),
+            "cursor_y": pack12(24),
+            "line_termination": 0x80,
+            "page_roots": 1,
+            "span_flushes": 1,
+            "post_flushes": 1,
+        },
+    }))
     macro_band_rule_record: dict[str, object] = {}
     macro_band_rule = queue_rectangle_rule_via_13386(macro_band_rule_record, {
         "x": 24,
@@ -16794,6 +16977,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- macro execute replay stream `%s` feeds the page-record fixture; object `%s` bridges through `0x1edc6` and renders the same rows." % (
         " ".join(f"{byte:02x}" for byte in macro_frame_replay["stream"]),
         " ".join(f"{byte:02x}" for byte in macro_payload_page_record_object[:14]),
+    ))
+    lines.append("- macro mixed-control payload `%s` replays from the data-chain frame into the same page-record stream as host bytes; object `%s` renders rows matching the direct mixed-stream model." % (
+        " ".join(f"{byte:02x}" for byte in macro_control_replay["stream"]),
+        " ".join(f"{byte:02x}" for byte in macro_control_payload_page_object[:14]),
     ))
     lines.append(f"- macro execute payload page-record layer composes with a selector-7 rule and mode-0 raster row; composed row 12: `{macro_band_composed_rows[12]}`")
     lines.append(f"- lowercase start payload: `{macro_start['records'][0]['payload']!r}`, stop event `{macro_stop_empty['events'][-1]}`")

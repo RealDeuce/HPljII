@@ -5445,6 +5445,33 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "frames": [{"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"}],
         "host_gate_bit1": 1,
     }))
+    macro_frame_payload = macro_stream_execute["state"]["data_chain_frames"][0]["payload"]
+    macro_fetch_state = host_byte_fetch_state(data_chain=list(macro_frame_payload), direct_mode=0)
+    macro_fetch_first = host_byte_fetch_via_a904(macro_fetch_state)
+    macro_fetch_second = host_byte_fetch_via_a904(macro_fetch_first["state"])
+    checks.append(assert_equal("macro execute frame payload feeds 0xa904 data-chain bytes", {
+        "frame": macro_stream_execute["state"]["data_chain_frames"][0],
+        "fetches": [
+            {
+                "d7": macro_fetch_first["d7"],
+                "source": macro_fetch_first["source"],
+                "events": macro_fetch_first["events"],
+            },
+            {
+                "d7": macro_fetch_second["d7"],
+                "source": macro_fetch_second["source"],
+                "events": macro_fetch_second["events"],
+            },
+        ],
+        "remaining": macro_fetch_second["state"]["data_chain"],
+    }, {
+        "frame": {"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"},
+        "fetches": [
+            {"d7": 0x21, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 1}]},
+            {"d7": 0x0D, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 0}]},
+        ],
+        "remaining": [],
+    }))
     macro_with_payload = macro_state(
         current_macro_id=123,
         records=[macro_record(b"!\r", 123)] + [macro_record() for _ in range(31)],
@@ -10587,6 +10614,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " ".join(f"{byte:02x}" for byte in macro_stream_execute["stream"]),
         " ".join(f"{byte:02x}" for byte in macro_stream_execute["state"]["data_chain_frames"][0]["payload"]),
         macro_stream_execute["state"]["data_chain_frames"][0],
+    ))
+    lines.append("- macro execute frame payload fetches through `0xa904` as data-chain bytes `%s`." % (
+        " ".join(f"0x{int(fetch['d7']):02x}" for fetch in (macro_fetch_first, macro_fetch_second)),
     ))
     lines.append(f"- lowercase start payload: `{macro_start['records'][0]['payload']!r}`, stop event `{macro_stop_empty['events'][-1]}`")
     lines.append(f"- execute frame: `{macro_execute['data_chain_frames'][0]}`")

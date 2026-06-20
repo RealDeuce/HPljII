@@ -3531,6 +3531,121 @@ def font_cursor_defaults() -> dict[str, int]:
     }
 
 
+FONT_CANDIDATE_LIST_BASE = 0x782324
+
+
+def scanned_font_candidate_counter_defaults() -> dict[str, int]:
+    return {
+        "0x78278e": 0,
+        "0x782790": 0,
+        "0x782792": 0,
+        "0x782794": 0,
+        "0x782796": 0,
+        "0x782798": 0,
+        "0x78279a": 0,
+        "0x78279c": 0,
+        "0x78279e": 0,
+    }
+
+
+def scanned_font_candidate_cursor_defaults(base: int = FONT_CANDIDATE_LIST_BASE) -> dict[str, int]:
+    return {
+        "0x7827a0": base,
+        "0x7827a4": base,
+        "0x7827a8": base,
+        "0x7827ac": base,
+        "0x7827b0": base,
+        "0x7827b4": base,
+    }
+
+
+def classify_scanned_font_candidates_via_1a9be(
+    records: list[dict[str, int]],
+    *,
+    base: int = FONT_CANDIDATE_LIST_BASE,
+) -> dict[str, object]:
+    counters = scanned_font_candidate_counter_defaults()
+    cursors = scanned_font_candidate_cursor_defaults(base)
+    events: list[dict[str, object]] = []
+
+    for index, record in enumerate(records):
+        address = int(record["address"]) & 0x00FFFFFF
+        d4_class = int(record["d4_class"]) & 0xFF
+        source_arg = int(record.get("source_arg", 0))
+        flags = int(record.get("initial_flags", 0)) & 0xFFFFFFFF
+
+        if source_arg == 0:
+            high_flag_byte = int(record.get("font_byte_0x32", 0)) & 0x03
+            flags &= 0xCFFFFFFF
+            flags |= high_flag_byte << 28
+            flags &= ~(1 << 6)
+            flags &= ~(1 << 2)
+            flag_source = "FONT/+0x32"
+        else:
+            high_flag_byte = int(record.get("type_byte_0x0d", 0)) & 0x03
+            flags &= 0xCFFFFFFF
+            flags |= high_flag_byte << 28
+            flags |= 1 << 6
+            if (int(record.get("type_byte_0x0c", 0)) & 0xFF) == 2:
+                flags |= 1 << 2
+            else:
+                flags &= ~(1 << 2)
+            flag_source = "HEAD-type/+0x0d"
+
+        counters["0x78278e"] += 1
+        low_resource_window = 0x080000 <= address <= 0x0FFFFE
+        extension_window = 0x200000 <= address <= 0x5FFFFE
+        cursor_advances: list[str] = []
+        counter_branch = "class-other"
+
+        if d4_class == 1:
+            counters["0x782790"] += 1
+            counter_branch = "class-one"
+            if low_resource_window:
+                counters["0x782792"] += 1
+                for key in ("0x7827a4", "0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4"):
+                    cursors[key] += 4
+                    cursor_advances.append(key)
+            if extension_window:
+                counters["0x782794"] += 1
+                for key in ("0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4"):
+                    cursors[key] += 4
+                    cursor_advances.append(key)
+        elif d4_class == 0:
+            counters["0x782798"] += 1
+            counter_branch = "class-zero"
+            if low_resource_window:
+                counters["0x78279a"] += 1
+                for key in ("0x7827b0", "0x7827b4"):
+                    cursors[key] += 4
+                    cursor_advances.append(key)
+            if extension_window:
+                counters["0x78279c"] += 1
+                cursors["0x7827b4"] += 4
+                cursor_advances.append("0x7827b4")
+
+        events.append({
+            "helper": 0x01A9BE,
+            "index": index,
+            "address": address,
+            "d4_class": d4_class,
+            "source_arg": source_arg,
+            "flag_source": flag_source,
+            "candidate_flags": flags,
+            "low_resource_window": low_resource_window,
+            "extension_window": extension_window,
+            "counter_branch": counter_branch,
+            "cursor_advances": cursor_advances,
+        })
+
+    return {
+        "base": base,
+        "counters": counters,
+        "cursors": cursors,
+        "events": events,
+    }
+
+
 def clear_download_continuation_state(continuation: dict[str, int]) -> dict[str, int]:
     cleared = dict(continuation)
     for key in ("flag", "payload", "word_0x7827c8", "dest", "trailing_dest", "remaining", "d4_counter", "d3_counter"):
@@ -11660,6 +11775,45 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "upper_cleared": 0,
         },
         "final_mode": 0,
+    }))
+    scanned_candidate_partition = classify_scanned_font_candidates_via_1a9be([
+        {"address": 0x090000, "d4_class": 1, "source_arg": 1, "type_byte_0x0d": 1, "type_byte_0x0c": 2, "initial_flags": 0x30000088},
+        {"address": 0x250000, "d4_class": 1, "source_arg": 1, "type_byte_0x0d": 2, "type_byte_0x0c": 0},
+        {"address": 0x090010, "d4_class": 0, "source_arg": 0, "font_byte_0x32": 3, "initial_flags": 0x00000044},
+        {"address": 0x450000, "d4_class": 0, "source_arg": 0, "font_byte_0x32": 0, "initial_flags": 0xF0000044},
+        {"address": 0x600000, "d4_class": 2, "source_arg": 1, "type_byte_0x0d": 0, "type_byte_0x0c": 2},
+    ])
+    checks.append(assert_equal("0x1a9be scanned font candidate list partitioning", {
+        "counters": scanned_candidate_partition["counters"],
+        "cursors": scanned_candidate_partition["cursors"],
+        "events": scanned_candidate_partition["events"],
+    }, {
+        "counters": {
+            "0x78278e": 5,
+            "0x782790": 2,
+            "0x782792": 1,
+            "0x782794": 1,
+            "0x782796": 0,
+            "0x782798": 2,
+            "0x78279a": 1,
+            "0x78279c": 1,
+            "0x78279e": 0,
+        },
+        "cursors": {
+            "0x7827a0": 0x782324,
+            "0x7827a4": 0x782328,
+            "0x7827a8": 0x78232C,
+            "0x7827ac": 0x78232C,
+            "0x7827b0": 0x782330,
+            "0x7827b4": 0x782334,
+        },
+        "events": [
+            {"helper": 0x01A9BE, "index": 0, "address": 0x090000, "d4_class": 1, "source_arg": 1, "flag_source": "HEAD-type/+0x0d", "candidate_flags": 0x100000CC, "low_resource_window": True, "extension_window": False, "counter_branch": "class-one", "cursor_advances": ["0x7827a4", "0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4"]},
+            {"helper": 0x01A9BE, "index": 1, "address": 0x250000, "d4_class": 1, "source_arg": 1, "flag_source": "HEAD-type/+0x0d", "candidate_flags": 0x20000040, "low_resource_window": False, "extension_window": True, "counter_branch": "class-one", "cursor_advances": ["0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4"]},
+            {"helper": 0x01A9BE, "index": 2, "address": 0x090010, "d4_class": 0, "source_arg": 0, "flag_source": "FONT/+0x32", "candidate_flags": 0x30000000, "low_resource_window": True, "extension_window": False, "counter_branch": "class-zero", "cursor_advances": ["0x7827b0", "0x7827b4"]},
+            {"helper": 0x01A9BE, "index": 3, "address": 0x450000, "d4_class": 0, "source_arg": 0, "flag_source": "FONT/+0x32", "candidate_flags": 0xC0000000, "low_resource_window": False, "extension_window": True, "counter_branch": "class-zero", "cursor_advances": ["0x7827b4"]},
+            {"helper": 0x01A9BE, "index": 4, "address": 0x600000, "d4_class": 2, "source_arg": 1, "flag_source": "HEAD-type/+0x0d", "candidate_flags": 0x00000044, "low_resource_window": False, "extension_window": False, "counter_branch": "class-other", "cursor_advances": []},
+        ],
     }))
     default_font_tables_found = default_font_symbol_tables_via_1ac0a_1af36(
         current_found=True,
@@ -22211,6 +22365,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- base map: host `0x{text_source['host_char']:02x}` -> glyph `0x{text_source['mapped']:02x}`")
     lines.append(f"- symbol-set stream events: `{symbol_stream['stream_events']}`")
     lines.append("- symbol-set parser-to-map boundary: stream `1b 28 32 55 1b 29 30 45` routes primary setup `0x1201e`, secondary setup `0x12008`, and terminal handler `0x120be`, then the modeled active words `0x0055` and `0x0005` feed the patch-table and Roman Extension map updates below.")
+    lines.append("- scanned candidate-list partitioning: `0x1a9be` leaves total `%d`, class-one low/range counts `%d`/`%d`, class-zero low/range counts `%d`/`%d`, and cursor windows `%s`; this pins the list starts used later by current/default font searches." % (
+        scanned_candidate_partition["counters"]["0x78278e"],
+        scanned_candidate_partition["counters"]["0x782792"],
+        scanned_candidate_partition["counters"]["0x782794"],
+        scanned_candidate_partition["counters"]["0x78279a"],
+        scanned_candidate_partition["counters"]["0x78279c"],
+        " / ".join(
+            f"{key}=0x{int(scanned_candidate_partition['cursors'][key]):06x}"
+            for key in ("0x7827a0", "0x7827a4", "0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4")
+        ),
+    ))
     lines.append("- default-font table builders: `0x1ac0a` current-candidate mode copies word `0x%04x` into all four `@0`/`@1` table slots, while synthesized mode writes `%s`; `0x1af36` builds fallback slots `%s` for the corresponding `0x156de` candidate-selection fallback." % (
         default_font_tables_found["current_symbol"],
         " / ".join(f"0x{int(word):04x}" for word in default_font_tables_synthesized["default_symbols"]),

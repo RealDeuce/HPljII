@@ -5472,6 +5472,32 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "frames": [{"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 3, "environment": "call"}],
         "host_gate_bit1": 1,
     }))
+    macro_stream_overlay = render_macro_command_stream_via_e112_dd08(b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f4X\x1b&f5X")
+    macro_stream_overlay_records = macro_stream_overlay["state"]["records"]
+    assert isinstance(macro_stream_overlay_records, list)
+    checks.append(assert_equal("macro command stream enables and disables overlay state", {
+        "events": [
+            {
+                key: event[key]
+                for key in ("kind", "sequence", "parameter", "handler", "chained")
+                if key in event
+            }
+            for event in macro_stream_overlay["events"]
+        ],
+        "record0": macro_stream_overlay_records[0],
+        "final": select_keys(macro_stream_overlay["state"], ("current_macro_id", "parser_mode", "overlay_macro_id")),
+    }, {
+        "events": [
+            {"kind": "macro-id", "sequence": b"\x1b&f123Y", "parameter": 123, "handler": 0x00E112, "chained": False},
+            {"kind": "macro-start", "sequence": b"\x1b&f0X", "parameter": 0, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-definition-payload", "sequence": b"!\r", "handler": "alternate-data"},
+            {"kind": "macro-stop-kept", "sequence": b"\x1b&f1X", "parameter": 1, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-overlay-enable", "sequence": b"\x1b&f4X", "parameter": 4, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-overlay-disable", "sequence": b"\x1b&f5X", "parameter": 5, "handler": 0x00DD08, "chained": False},
+        ],
+        "record0": {"id": 123, "payload": b"!\r", "permanent": False},
+        "final": {"current_macro_id": 123, "parser_mode": 0, "overlay_macro_id": 123},
+    }))
     macro_frame_payload = macro_stream_execute["state"]["data_chain_frames"][0]["payload"]
     macro_fetch_state = host_byte_fetch_state(data_chain=list(macro_frame_payload), direct_mode=0)
     macro_fetch_first = host_byte_fetch_via_a904(macro_fetch_state)
@@ -10865,6 +10891,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- macro call stream `%s` pushes call frame `%s`." % (
         " ".join(f"{byte:02x}" for byte in macro_stream_call["stream"]),
         macro_stream_call["state"]["data_chain_frames"][0],
+    ))
+    lines.append("- macro overlay stream `%s` enables overlay id `%d`, then disables parser overlay mode." % (
+        " ".join(f"{byte:02x}" for byte in macro_stream_overlay["stream"]),
+        macro_stream_overlay["state"]["overlay_macro_id"],
     ))
     lines.append("- macro execute frame payload fetches through `0xa904` as data-chain bytes `%s`." % (
         " ".join(f"0x{int(fetch['d7']):02x}" for fetch in (macro_fetch_first, macro_fetch_second)),

@@ -2297,6 +2297,13 @@ def sub_packed12(left: int, right: int) -> int:
     return subunits_to_packed12(packed12_to_subunits(left) - packed12_to_subunits(right))
 
 
+def trunc_div(numerator: int, denominator: int) -> int:
+    if denominator == 0:
+        raise AssertionError("division by zero")
+    sign = -1 if numerator < 0 else 1
+    return sign * (abs(numerator) // abs(denominator))
+
+
 def line_termination_mode_bits(parameter: int) -> int:
     value = abs(int(parameter))
     if value == 0:
@@ -2642,6 +2649,102 @@ def apply_cursor_push_pop_via_f75e(state: dict[str, object], parameter: int) -> 
     updated["events"] = events
     updated["stack_depth"] = len(stack)
     return updated
+
+
+def cursor_position_state(**overrides: int) -> dict[str, int]:
+    state = {
+        "cursor_x": pack12(10),
+        "cursor_y": pack12(20),
+        "hmi": pack12(2),
+        "vmi": pack12(12),
+        "active_width": 100,
+        "right_limit": pack12(80),
+        "right_limit_latch": 0,
+        "pending_width": 1,
+        "pending_text": 1,
+        "span_flush_enable": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "span_updates": 0,
+        "page_roots": 0,
+        "top_offset": pack12(90),
+        "min_y": pack12(0),
+        "max_y": pack12(3090),
+        "overflow_recoveries": 0,
+        "events": [],
+    }
+    state.update(overrides)
+    return state
+
+
+def parsed_decimal_scaled_to_packed12(integer: int, fraction: int, scale_subunits: int) -> int:
+    # Parser fractions are signed four-decimal words; 0x332ee/0x3324a truncates toward zero.
+    total_10000 = int(integer) * 10000 + int(fraction)
+    subunits = trunc_div(total_10000 * int(scale_subunits), 10000)
+    return subunits_to_packed12(subunits)
+
+
+def apply_horizontal_position_via_f4ca(state: dict[str, int], amount: int, relative: bool) -> dict[str, int]:
+    updated = dict(state)
+    value = int(amount)
+    if relative:
+        value = add_packed12(int(updated["cursor_x"]), value)
+    if packed12_to_subunits(value) < 0:
+        value = pack12(0)
+    max_x = pack12(int(updated["active_width"]))
+    if value > max_x:
+        value = max_x
+    updated["cursor_x"] = value
+    updated["right_limit_latch"] = 1 if value == int(updated["right_limit"]) else 0
+    updated["pending_text"] = 0
+    updated["span_updates"] = int(updated.get("span_updates", 0)) + 1
+    events = list(updated.get("events", []))
+    events.append({"kind": "horizontal-position", "relative": bool(relative), "amount": int(amount), "cursor_x": value})
+    updated["events"] = events
+    return updated
+
+
+def apply_vertical_position_via_f6e2(state: dict[str, int], amount: int, relative: bool, *, clamp_max: bool) -> dict[str, int]:
+    updated = dict(state)
+    updated["page_roots"] = int(updated.get("page_roots", 0)) + 1
+    updated["pending_width"] = 0
+    if int(updated.get("span_flush_enable", 0)):
+        updated["span_flushes"] = int(updated.get("span_flushes", 0)) + 1
+        updated["post_flushes"] = int(updated.get("post_flushes", 0)) + 1
+    if relative:
+        value = add_packed12(int(updated["cursor_y"]), int(amount))
+    else:
+        value = add_packed12(int(updated["top_offset"]), int(amount))
+    if value < int(updated["min_y"]):
+        value = int(updated["min_y"])
+    updated["cursor_y"] = value
+    updated["pending_text"] = 0
+    if relative and value > int(updated["max_y"]):
+        updated["overflow_recoveries"] = int(updated.get("overflow_recoveries", 0)) + 1
+    if clamp_max and value > int(updated["max_y"]):
+        value = int(updated["max_y"])
+        updated["cursor_y"] = value
+    events = list(updated.get("events", []))
+    events.append({"kind": "vertical-position", "relative": bool(relative), "amount": int(amount), "cursor_y": value, "clamp_max": bool(clamp_max)})
+    updated["events"] = events
+    return updated
+
+
+def apply_cursor_position_command(state: dict[str, int], command: str, integer: int, fraction: int = 0, *, relative: bool = False) -> dict[str, int]:
+    if command == "C":
+        amount = parsed_decimal_scaled_to_packed12(integer, fraction, packed12_to_subunits(int(state["hmi"])))
+        return apply_horizontal_position_via_f4ca(state, amount, relative)
+    if command == "H":
+        amount = parsed_decimal_scaled_to_packed12(integer, fraction, 5)
+        return apply_horizontal_position_via_f4ca(state, amount, relative)
+    if command == "R":
+        adjusted_fraction = int(fraction) if relative else int(fraction) + 7200
+        amount = parsed_decimal_scaled_to_packed12(integer, adjusted_fraction, packed12_to_subunits(int(state["vmi"])))
+        return apply_vertical_position_via_f6e2(state, amount, relative, clamp_max=not relative)
+    if command == "V":
+        amount = parsed_decimal_scaled_to_packed12(integer, fraction, 5)
+        return apply_vertical_position_via_f6e2(state, amount, relative, clamp_max=True)
+    raise AssertionError(f"unsupported cursor-position command {command!r}")
 
 
 def position_flagged_text_source_via_d824(
@@ -4875,6 +4978,73 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "stack_depth": 0,
             "last_event": {"kind": "cursor-pop-ignored", "reason": "stack-empty"},
         },
+    }))
+    column_absolute = apply_cursor_position_command(cursor_position_state(
+        cursor_x=pack12(10),
+        hmi=pack12(2),
+        active_width=100,
+        right_limit=pack12(30),
+        pending_text=1,
+    ), "C", 3, 5000, relative=False)
+    column_relative = apply_cursor_position_command(cursor_position_state(
+        cursor_x=pack12(10),
+        hmi=pack12(2),
+        active_width=100,
+    ), "C", 3, 5000, relative=True)
+    checks.append(assert_equal("0xf39e ESC &a#C converts columns through HMI and relative flag", {
+        "absolute": select_keys(column_absolute, ("cursor_x", "right_limit_latch", "pending_text", "span_updates")),
+        "relative": select_keys(column_relative, ("cursor_x", "right_limit_latch", "pending_text", "span_updates")),
+    }, {
+        "absolute": {"cursor_x": pack12(7), "right_limit_latch": 0, "pending_text": 0, "span_updates": 1},
+        "relative": {"cursor_x": pack12(17), "right_limit_latch": 0, "pending_text": 0, "span_updates": 1},
+    }))
+    decipoint_right = apply_cursor_position_command(cursor_position_state(
+        active_width=100,
+        right_limit=pack12(30),
+    ), "H", 72, 0, relative=False)
+    decipoint_clamped = apply_cursor_position_command(cursor_position_state(
+        active_width=100,
+        right_limit=pack12(30),
+    ), "H", 500, 0, relative=False)
+    checks.append(assert_equal("0xf416 ESC &a#H converts decipoints and clamps horizontal cursor", {
+        "right": select_keys(decipoint_right, ("cursor_x", "right_limit_latch", "pending_text", "span_updates")),
+        "clamped": select_keys(decipoint_clamped, ("cursor_x", "right_limit_latch", "pending_text", "span_updates")),
+    }, {
+        "right": {"cursor_x": pack12(30), "right_limit_latch": 1, "pending_text": 0, "span_updates": 1},
+        "clamped": {"cursor_x": pack12(100), "right_limit_latch": 0, "pending_text": 0, "span_updates": 1},
+    }))
+    row_absolute = apply_cursor_position_command(cursor_position_state(
+        cursor_y=pack12(20),
+        vmi=pack12(12),
+        top_offset=pack12(90),
+        min_y=pack12(0),
+        max_y=pack12(200),
+        span_flush_enable=1,
+    ), "R", 2, 0, relative=False)
+    row_relative = apply_cursor_position_command(cursor_position_state(
+        cursor_y=pack12(20),
+        vmi=pack12(12),
+        top_offset=pack12(90),
+        min_y=pack12(0),
+        max_y=pack12(200),
+    ), "R", 1, 0, relative=True)
+    checks.append(assert_equal("0xf560 ESC &a#R uses VMI with absolute top offset and relative cursor base", {
+        "absolute": select_keys(row_absolute, ("cursor_y", "pending_width", "pending_text", "span_flushes", "post_flushes", "page_roots")),
+        "relative": select_keys(row_relative, ("cursor_y", "pending_width", "pending_text", "span_flushes", "post_flushes", "page_roots")),
+    }, {
+        "absolute": {"cursor_y": pack12(122, 7), "pending_width": 0, "pending_text": 0, "span_flushes": 1, "post_flushes": 1, "page_roots": 1},
+        "relative": {"cursor_y": pack12(32), "pending_width": 0, "pending_text": 0, "span_flushes": 0, "post_flushes": 0, "page_roots": 1},
+    }))
+    vertical_decipoint = apply_cursor_position_command(cursor_position_state(
+        top_offset=pack12(90),
+        min_y=pack12(0),
+        max_y=pack12(110),
+    ), "V", 72, 0, relative=False)
+    checks.append(assert_equal("0xf60a ESC &a#V converts decipoints and clamps vertical cursor", select_keys(vertical_decipoint, ("cursor_y", "pending_width", "pending_text", "page_roots")), {
+        "cursor_y": pack12(110),
+        "pending_width": 0,
+        "pending_text": 0,
+        "page_roots": 1,
     }))
     reset_fields = (
         "alternate_mode",
@@ -8913,11 +9083,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- BS subtracts HMI, clamps at the left margin when it would cross it, and in alternate metrics mode subtracts the previous-width word instead.")
     lines.append("- Byte-stream fixtures now drive the same model from actual PCL/control bytes: `ESC &k1G` followed by CR applies CR+LF, `ESC &k2G` followed by LF applies CR+LF, and `ESC &k0G` followed by HT/BS advances to x `21` then backs up to x `20`.")
     lines.append("- `ESC &f0S` pushes the horizontal cursor and the vertical cursor plus `0x782dbe` onto the cursor stack; `ESC &f1S` pops, restores horizontal position clamped to active extent minus `1/12`, restores vertical position after subtracting `0x782dbe` and clamps to printable extent minus `1/12`, then clears pending/right-limit flags.")
+    lines.append("- `ESC &a#C` converts columns through current HMI, `ESC &a#H` converts decipoints as five packed subunits per decipoint, and both commit through horizontal helper `0xf4ca` with absolute/relative handling and page-width clamps.")
+    lines.append("- `ESC &a#R` converts rows through current VMI; absolute rows add the firmware's `0.7200` row bias before using the top offset, while relative rows add to the current vertical cursor. `ESC &a#V` uses the same five-subunit decipoint conversion. Both commit through vertical helper `0xf6e2` and clamp to vertical bounds where the handler does so.")
     lines.append("- The direct-control fixture parser intentionally recognizes only `ESC &k#G`, `ESC E`, and direct control bytes; mixed printable/control/reset coverage is added separately for narrow normal-mode streams, while combined escape sequences and real page-object allocation still need fuller parser-driven fixtures.")
     lines.append("")
     lines.append(f"- cursor stack push entry: `{cursor_stack_pushed['stack'][0]}`")
     lines.append(f"- cursor stack pop cursor: x `0x{int(cursor_stack_popped['cursor_x']):08x}`, y `0x{int(cursor_stack_popped['cursor_y']):08x}`")
     lines.append(f"- cursor stack clamped pop: x `0x{int(cursor_stack_clamped['cursor_x']):08x}`, y `0x{int(cursor_stack_clamped['cursor_y']):08x}`")
+    lines.append(f"- `ESC &a3.5C`: absolute x `0x{int(column_absolute['cursor_x']):08x}`, relative x `0x{int(column_relative['cursor_x']):08x}`")
+    lines.append(f"- `ESC &a72H`: x `0x{int(decipoint_right['cursor_x']):08x}`, clamped `ESC &a500H` x `0x{int(decipoint_clamped['cursor_x']):08x}`")
+    lines.append(f"- `ESC &a2R`: y `0x{int(row_absolute['cursor_y']):08x}`, relative `ESC &a+1R` y `0x{int(row_relative['cursor_y']):08x}`")
+    lines.append(f"- `ESC &a72V`: clamped y `0x{int(vertical_decipoint['cursor_y']):08x}`")
     lines.append("")
 
     lines.append("## `ESC E` Reset Fixtures")

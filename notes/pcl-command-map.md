@@ -41,10 +41,10 @@ These command-to-handler anchors are current priorities for pixel-perfect render
 | `ESC &l#H` | `0x00ef62` | paper source and page eject |
 | `ESC &a#L` | `0x00eb58` | left margin |
 | `ESC &a#M` | `0x00ec0c` | right margin |
-| `ESC &a#C` | `0x00f39e` | horizontal column position |
-| `ESC &a#H` | `0x00f416` | horizontal decipoint position |
-| `ESC &a#R` | `0x00f560` | vertical row position |
-| `ESC &a#V` | `0x00f60a` | vertical decipoint position |
+| `ESC &a#C` | `0x00f39e` | horizontal column position through current HMI and helper `0xf4ca` |
+| `ESC &a#H` | `0x00f416` | horizontal decipoint position; five packed subunits per decipoint |
+| `ESC &a#R` | `0x00f560` | vertical row position through current VMI, top offset, and helper `0xf6e2` |
+| `ESC &a#V` | `0x00f60a` | vertical decipoint position; five packed subunits per decipoint |
 | `ESC &k#H` | `0x00ca8c` | HMI |
 | `ESC &k#G` | `0x00edf8` | CR/LF/FF line-termination mode |
 | `ESC &f#S` | `0x00f75e` | cursor stack at `0x782c96..0x782d36`; selector `0` pushes, selector `1` pops |
@@ -86,6 +86,10 @@ These command-to-handler anchors are current priorities for pixel-perfect render
 It then rebuilds page-related state, including `0x782da2`, `0x782db2`, `0x782db4`, `0x782dc0`, `0x782dce`, and `0x782dd0`, and calls shared reset/layout helpers also seen in `ESC E`. Executable fixtures now pin letter `ESC &l1A` as internal code `6`, width `3030`, height `2025`, portrait margin `3150`, top offset `90`, and PCL `80` as internal code `0x88` masking to geometry-table index `8`.
 
 `ESC &l#O` at `0x010220` accepts orientation values below `2`, updates `0x782da3`, rebuilds page geometry, updates `0x783160`, and reloads current font/metrics state through tables rooted near `0x782ee6` / `0x782ef6`. The letter landscape fixture pins active extents `2025x3030`, landscape margin `2175`, printable extent `2125`, top offset `100`, and the `0x103ea` threshold sequence `2175, 2550, 2480, 2550`.
+
+`ESC &a#C` at `0x00f39e` and `ESC &a#H` at `0x00f416` both convert the parsed decimal parameter into packed twelfths and commit through `0xf4ca`, which applies relative moves when parsed-record bit 0 is set, clamps between zero and `0x782db8`, updates the right-limit latch against `0x782dda`, clears pending text, and updates active span state. `ESC &a#C` scales through current HMI `0x78315c`; `ESC &a#H` uses five packed subunits per decipoint.
+
+`ESC &a#R` at `0x00f560` and `ESC &a#V` at `0x00f60a` commit through vertical helper `0xf6e2`, which ensures a page root, clears/flushes pending text state, adds either current vertical cursor `0x782c8e` for relative moves or top offset `0x782dce` for absolute moves, clamps against lower bound `0x782dca`, and writes `0x782c8e`. The row command scales through VMI `0x783160` and adds fractional `0.7200` for absolute row moves before conversion; the decipoint command uses five packed subunits per decipoint and clamps to `0x782dc6`.
 
 `ESC *r#A` at `0x01075a` starts raster graphics by setting state in the block rooted at `0x783170`; it seeds a raster baseline from `0x782c8a` or `0x782c8e` depending on current mode.
 

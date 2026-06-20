@@ -2434,14 +2434,21 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
     assert isinstance(bucket_array, dict)
     bucket_index = queued[-1]["result"]["bucket_index"] if queued else 0
     chain = bucket_array.get(bucket_index, [])
-    obj = bytes(chain[0]) if chain else b""
+    chain_objects = [bytes(item) for item in chain]
+    obj = chain_objects[0] if chain_objects else b""
     rendered = render_encoded_raster_object_via_1f88e(data, obj) if obj else None
+    bridged = bridge_page_record_via_1edc6({"bucket_root": obj}) if obj else None
+    bridged_rendered = render_bridged_encoded_raster_object(data, bridged) if bridged else None
     return {
         "stream": stream,
         "events": events,
         "page_record": page_record,
+        "bucket_index": bucket_index,
+        "chain": chain_objects,
         "object": obj,
         "rendered": rendered,
+        "bridged": bridged,
+        "bridged_rendered": bridged_rendered,
         "final_state": state,
     }
 
@@ -5735,11 +5742,26 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
     checks.append(assert_equal("modeled raster command stream queues and renders ESC *b4W payload", {
+        "bucket_index": raster_stream_result["bucket_index"],
+        "chain": raster_stream_result["chain"],
         "object": raster_stream_result["object"],
         "rows": raster_stream_rendered["rows"],
     }, {
+        "bucket_index": 0,
+        "chain": [bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55")],
         "object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
         "rows": ["................####........#####.#.#.#..#.#.#.#"],
+    }))
+    raster_stream_bridged = raster_stream_result["bridged"]
+    raster_stream_bridged_rendered = raster_stream_result["bridged_rendered"]
+    assert isinstance(raster_stream_bridged, dict)
+    assert isinstance(raster_stream_bridged_rendered, dict)
+    checks.append(assert_equal("modeled raster command stream bridges queued ESC *b4W page object", {
+        "bucket_root": raster_stream_bridged["bucket_root"],
+        "rows": raster_stream_bridged_rendered["rows"],
+    }, {
+        "bucket_root": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
+        "rows": raster_stream_rendered["rows"],
     }))
     raster_mode1_command_stream = b"\x1b*t150R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f")
     raster_mode1_stream_result = render_raster_command_data_stream_via_121cc_105d0(
@@ -7331,6 +7353,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- queued object bytes: `{' '.join(f'{byte:02x}' for byte in raster_stream_result['object'])}`")
     lines.append("- rendered stream row:")
     lines.extend(f"`{row}`" for row in raster_stream_rendered["rows"])
+    lines.append("- bridged command-stream page object survives `0x1edc6` and renders the same row.")
     lines.append("")
     lines.append(f"- mode-1 stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode1_command_stream)}`")
     lines.append("- mode-1 parsed events:")

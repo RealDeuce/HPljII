@@ -2543,16 +2543,19 @@ KNOWN_PCL_COMMANDS = {
     (0x1b, 0x2a, 0x63, 0x56): "Rectangle height decipoints",
     (0x1b, 0x2a, 0x63, 0x50): "Fill rectangle",
     (0x1b, 0x2a, 0x63, 0x44): "Assign font ID",
+    (0x1b, 0x2a, 0x63, 0x45): "Character code",
     (0x1b, 0x2a, 0x63, 0x46): "Font control",
     (0x1b, 0x28, 0x73, 0x50): "Primary spacing",
     (0x1b, 0x28, 0x73, 0x48): "Primary pitch",
     (0x1b, 0x28, 0x73, 0x56): "Primary point size",
+    (0x1b, 0x28, 0x73, 0x57): "Download font/character data",
     (0x1b, 0x28, 0x73, 0x53): "Primary style",
     (0x1b, 0x28, 0x73, 0x42): "Primary stroke weight",
     (0x1b, 0x28, 0x73, 0x54): "Primary typeface",
     (0x1b, 0x29, 0x73, 0x50): "Secondary spacing",
     (0x1b, 0x29, 0x73, 0x48): "Secondary pitch",
     (0x1b, 0x29, 0x73, 0x56): "Secondary point size",
+    (0x1b, 0x29, 0x73, 0x57): "Download font/character data",
     (0x1b, 0x29, 0x73, 0x53): "Secondary style",
     (0x1b, 0x29, 0x73, 0x42): "Secondary stroke weight",
     (0x1b, 0x29, 0x73, 0x54): "Secondary typeface",
@@ -2625,9 +2628,9 @@ def font_control_flow_report(data: bytes) -> str:
     }
 
     state_addresses = [
-        (0x0078299E, "parser record cursor rewound by `0x15a56` and `0x16df6` before reading the parsed parameter"),
+        (0x0078299E, "parser record cursor rewound by font/download handlers before reading the parsed parameter"),
         (0x00782F2E, "current font id written by `ESC *c#D` and consumed by font-control helpers"),
-        (0x00782F30, "current character/code word consumed by the value-3 helper `0x17b5c`"),
+        (0x00782F30, "current character/code word written by `ESC *c#E` and consumed by character payload/control helpers"),
         (0x00782A92, "mode/status byte that suppresses font-control values 0, 1, 2, 3, and 6 when it equals `2`"),
         (0x00782640, "start of 32 current downloaded-font records, 10 bytes each"),
         (0x00782782, "unmarked/current downloaded-font count adjusted by `0x17108` and `0x17150`"),
@@ -2637,6 +2640,9 @@ def font_control_flow_report(data: bytes) -> str:
 
     routines = [
         (0x015A56, "`ESC *c#D` assign-font-id handler"),
+        (0x015A18, "`ESC *c#E` character-code handler"),
+        (0x011F96, "`ESC )s#W` / `ESC (s#W` delayed font payload selector"),
+        (0x015D0A, "zero-count font/download descriptor delayed-payload handler"),
         (0x016DF6, "`ESC *c#F` font-control dispatcher"),
         (0x0179DA, "all-record font-control walker"),
         (0x0187FE, "current-record release/delete wrapper"),
@@ -2648,15 +2654,25 @@ def font_control_flow_report(data: bytes) -> str:
     ]
 
     lines = ["# IC30/IC13 Font ID and Font-Control Flow", ""]
-    lines.append("Generated from the verified firmware image and focused disassembly around `0x15a56`, `0x16df6`, and the immediate font-control targets.")
-    lines.append("This is the host-command edge for downloaded-font bookkeeping: `ESC *c#D` selects the current font id, while `ESC *c#F` dispatches control values that delete, mark, unmark, or refresh current downloaded-font records.")
+    lines.append("Generated from the verified firmware image and focused disassembly around `0x15a18`, `0x15a56`, `0x11f96`, `0x16df6`, and the immediate font-control targets.")
+    lines.append("This is the host-command edge for downloaded-font bookkeeping: `ESC *c#D` selects the current font id, `ESC *c#E` selects the current character/code word, `ESC )s#W` / `ESC (s#W` schedules the binary payload consumer, and `ESC *c#F` dispatches control values that delete, mark, unmark, or refresh current downloaded-font records.")
     lines.append("")
 
-    lines.append("## Assign Font ID")
+    lines.append("## Font and Character Selection")
     lines.append("")
     lines.append("| Handler | Firmware behavior | Reproduction meaning |")
     lines.append("| --- | --- | --- |")
     lines.append("| `0x15a56` (`ESC *c#D`) | rewinds parser record cursor `0x78299e` by six bytes, reads the parsed signed word at `+2`, stores its absolute value in `0x782f2e`, and maps `-32768` to `0x7fff` | subsequent downloaded-font control and payload commands operate on this normalized current font id |")
+    lines.append("| `0x15a18` (`ESC *c#E`) | rewinds parser record cursor `0x78299e` by six bytes, reads the parsed signed word at `+2`, stores its absolute value in `0x782f30`, and maps `-32768` to `0x7fff` | later `ESC )s#W` character payloads and `ESC *c3F` cleanup select the same character/code word |")
+    lines.append("")
+
+    lines.append("## Font Payload Selector")
+    lines.append("")
+    lines.append("| Handler | Firmware behavior | Reproduction meaning |")
+    lines.append("| --- | --- | --- |")
+    lines.append("| `0x11f96` (`ESC )s#W` / `ESC (s#W`) | inspects the parsed byte-count parameter from the six-byte record: count `0` schedules delayed handler `0x15d0a`, and any nonzero count schedules delayed handler `0x16c14` through `0x121cc` | zero-length `W` enters the descriptor/setup path; nonzero `W` enters downloaded font/character payload installation |")
+    lines.append("| `0x15d0a` | stores the absolute parsed count in `0x783140`, rejects counts below `3`, then parses font/download descriptor bytes from the delayed payload stream | descriptor bytes populate staged font-resource fields before lower allocation helpers run |")
+    lines.append("| `0x16c14` | stores the absolute parsed count in `0x783140`, scans or allocates the current downloaded-font record slot, and either skips that many payload bytes or installs the allocated payload pointer | nonzero `ESC )s#W` payload bytes become the current font resource or character object used by later text rendering |")
     lines.append("")
 
     lines.append("## Font-Control Jump Table")
@@ -2688,9 +2704,10 @@ def font_control_flow_report(data: bytes) -> str:
 
     lines.append("## Current Reproduction Contract")
     lines.append("")
-    lines.append("- A byte-stream reproduction must preserve the global current font id at `0x782f2e`; `ESC *c#D` normalization happens before `ESC *c#F`, `ESC (#X` / `ESC )#X`, and downloaded payload installation consult current records.")
+    lines.append("- A byte-stream reproduction must preserve the global current font id at `0x782f2e` and current character/code word at `0x782f30`; `ESC *c#D` and `ESC *c#E` normalization happen before `ESC *c#F`, `ESC (#X` / `ESC )#X`, and downloaded payload installation consult current records.")
+    lines.append("- `ESC )s0W` / `ESC (s0W` are not ordinary zero-byte skips: `0x11f96` schedules descriptor handler `0x15d0a`; nonzero `W` counts schedule `0x16c14`, whose lower paths include the already modeled `0x16498` downloaded character-object allocation and `0x16874` payload copy.")
     lines.append("- Font-control values `0`, `1`, `2`, `3`, and `6` are suppressed when `0x782a92 == 2`; values `4` and `5` still run the downloaded-record mark/unmark helpers.")
-    lines.append("- The concrete payload-install path remains `0x16c14` -> `0x17026` -> `0x1719c` -> `0x1bc38`, but this report names the PCL command edge that selects which current downloaded-font records those lower helpers mutate.")
+    lines.append("- The concrete font-resource payload-install path remains `0x16c14` -> `0x17026` -> `0x1719c` -> `0x1bc38`, while character payload installation reaches the `0x16498` object path; this report now names the PCL command edge that selects which current downloaded-font records and character objects those lower helpers mutate.")
     lines.append("")
     return "\n".join(lines)
 

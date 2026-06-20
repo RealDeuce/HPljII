@@ -1781,6 +1781,36 @@ def clear_download_continuation_state(continuation: dict[str, int]) -> dict[str,
     return cleared
 
 
+def font_character_code_from_15a18(parameter: int) -> dict[str, int]:
+    value = int(parameter)
+    if value < 0:
+        value = -value
+    if value == 0x8000:
+        value = 0x7FFF
+    return {
+        "current_character": value & 0xFFFF,
+        "stored_word": value & 0xFFFF,
+    }
+
+
+def font_payload_dispatch_via_11f96(parameter: int) -> dict[str, int | str]:
+    handler = 0x15D0A if (parameter & 0xFFFF) == 0 else 0x16C14
+    return {
+        "parameter": parameter & 0xFFFF,
+        "handler": handler,
+        "meaning": "font-header/download-descriptor payload" if handler == 0x15D0A else "downloaded-font/character payload",
+    }
+
+
+def font_payload_budget_from_delayed_command(parameter: int) -> dict[str, int]:
+    budget = int(parameter)
+    if budget < 0:
+        budget = -budget
+    return {
+        "byte_budget": budget,
+    }
+
+
 def downloaded_font_object_add_bookkeeping_via_16c14(
     records: list[dict[str, int]],
     *,
@@ -9273,6 +9303,35 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "phase": "done",
     }))
 
+    font_character_code = font_character_code_from_15a18(-0x8000)
+    font_payload_dispatch_header = font_payload_dispatch_via_11f96(0)
+    font_payload_dispatch_character = font_payload_dispatch_via_11f96(0x0891)
+    font_payload_budget = font_payload_budget_from_delayed_command(-0x0891)
+    checks.append(assert_equal("0x15a18/0x11f96-modeled font payload command edge", {
+        "character_code": font_character_code,
+        "zero_payload": font_payload_dispatch_header,
+        "nonzero_payload": font_payload_dispatch_character,
+        "budget": font_payload_budget,
+    }, {
+        "character_code": {
+            "current_character": 0x7FFF,
+            "stored_word": 0x7FFF,
+        },
+        "zero_payload": {
+            "parameter": 0,
+            "handler": 0x15D0A,
+            "meaning": "font-header/download-descriptor payload",
+        },
+        "nonzero_payload": {
+            "parameter": 0x0891,
+            "handler": 0x16C14,
+            "meaning": "downloaded-font/character payload",
+        },
+        "budget": {
+            "byte_budget": 0x0891,
+        },
+    }))
+
     font_records = [
         {"id": 0x1234, "flags": 0xE0, "payload": 0x123456},
         {"id": 0x0000, "flags": 0x00, "payload": 0x000000},
@@ -14354,6 +14413,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- split-plane copy: prefix `{' '.join(f'{byte:02x}' for byte in font_split_payload['prefix'])}`, trailing `{' '.join(f'{byte:02x}' for byte in font_split_payload['trailing'])}`")
     lines.append(f"- split-plane continuation before trailing byte: status `{font_split_continuation['status']}`, state `{font_split_continuation['continuation']}`")
     lines.append(f"- split-plane copy with `1a 58`: prefix `{' '.join(f'{byte:02x}' for byte in font_split_control['prefix'])}`, trailing `{' '.join(f'{byte:02x}' for byte in font_split_control['trailing'])}`, control hits `{font_split_control['control_hits']}`")
+    lines.append("- command edge fixtures: `ESC *c#E` handler `0x15a18` stores absolute character/code word `0x%04x` in `0x782f30`; `ESC )s0W` reaches `0x11f96` and schedules delayed handler `0x%05x`, while nonzero `ESC )s#W` schedules delayed handler `0x%05x` with absolute byte budget `0x%04x`." % (
+        font_character_code["stored_word"],
+        font_payload_dispatch_header["handler"],
+        font_payload_dispatch_character["handler"],
+        font_payload_budget["byte_budget"],
+    ))
     lines.append("")
     lines.append("The next modeled step is the current downloaded-font record bookkeeping at `0x172c0` and `0x16c14`. The record scan treats each `0x782640..0x782776` slot as a 10-byte entry: word `+0` is the current font/resource id, byte/word area `+2` carries flags that `0x16c14` clears at bits 5..7, and long `+6` points at the allocated payload. Status `0` means an existing id with nonzero payload was found, status `1` means a free zero-id/zero-payload slot was found, and status `2` makes `0x16c14` consume/skip the byte budget instead of installing a payload.")
     lines.append("")

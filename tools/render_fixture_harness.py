@@ -2272,6 +2272,73 @@ def tall_builtin_glyph_targets(resources: bytes) -> list[dict[str, int]]:
     return targets
 
 
+def builtin_glyph_record_summary(resources: bytes) -> dict[str, object]:
+    mode_counts: dict[int, int] = {}
+    mode1_span_counts: dict[int, int] = {}
+    mode1_render_span_counts: dict[int, int] = {}
+    mode0_rows: set[int] = set()
+    mode0_widths: set[int] = set()
+    mode0_entries: set[int] = set()
+    mode0_bases: set[int] = set()
+    record_count = 0
+    mode1_max_width = 0
+    mode1_max_rows = 0
+    mode1_odd_raw_span_count = 0
+    wide_render_span_count = 0
+    non_mode1_nonzero_delta_count = 0
+
+    bases = scanned_builtin_record_bases(resources)
+    for base in bases:
+        context = 0x40000000 | (base + 0x80000)
+        first_char = u16(resources, base + 0x0E)
+        last_char = u16(resources, base + 0x10)
+        for glyph_index in range(max(0, last_char - first_char + 1)):
+            glyph = resolve_builtin_glyph(resources, context, glyph_index)
+            mode = int(glyph["mode"])
+            delta = int(glyph["delta"])
+            rows = int(glyph["rows"])
+            width = int(glyph["width"])
+            span = int(glyph["span"])
+            render_span = int(glyph["render_span"])
+            entry = int(glyph["entry"])
+            record_count += 1
+            mode_counts[mode] = mode_counts.get(mode, 0) + 1
+            if render_span > 0x10:
+                wide_render_span_count += 1
+            if mode != 1 and delta != 0:
+                non_mode1_nonzero_delta_count += 1
+            if mode == 1:
+                mode1_span_counts[span] = mode1_span_counts.get(span, 0) + 1
+                mode1_render_span_counts[render_span] = mode1_render_span_counts.get(render_span, 0) + 1
+                mode1_max_width = max(mode1_max_width, width)
+                mode1_max_rows = max(mode1_max_rows, rows)
+                if span & 1 and span != 1:
+                    mode1_odd_raw_span_count += 1
+            elif mode == 0:
+                mode0_rows.add(rows)
+                mode0_widths.add(width)
+                mode0_entries.add(entry)
+                mode0_bases.add(base)
+
+    return {
+        "record_bases": len(bases),
+        "glyph_records": record_count,
+        "mode_counts": sorted(mode_counts.items()),
+        "mode1_span_counts": sorted(mode1_span_counts.items()),
+        "mode1_render_span_counts": sorted(mode1_render_span_counts.items()),
+        "mode1_max_width": mode1_max_width,
+        "mode1_max_rows": mode1_max_rows,
+        "mode1_odd_raw_span_count": mode1_odd_raw_span_count,
+        "wide_render_span_gt16_count": wide_render_span_count,
+        "non_mode1_nonzero_delta_count": non_mode1_nonzero_delta_count,
+        "mode0_zero_delta_count": mode_counts.get(0, 0) - non_mode1_nonzero_delta_count,
+        "mode0_unique_entries": len(mode0_entries),
+        "mode0_unique_bases": len(mode0_bases),
+        "mode0_rows": sorted(mode0_rows),
+        "mode0_widths": sorted(mode0_widths),
+    }
+
+
 def bitmap_bytes_to_rows(bitmap: bytes | bytearray, rows: int, width: int, stride: int) -> list[str]:
     out: list[str] = []
     for row_index in range(rows):
@@ -8117,6 +8184,24 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         ],
     }))
+    builtin_glyph_summary = builtin_glyph_record_summary(resources)
+    checks.append(assert_equal("firmware-scanned built-in glyph coverage summary", builtin_glyph_summary, {
+        "record_bases": 24,
+        "glyph_records": 5730,
+        "mode_counts": [(0, 420), (1, 5310)],
+        "mode1_span_counts": [(1, 244), (2, 1080), (3, 1484), (4, 1864), (5, 512), (6, 40), (7, 86)],
+        "mode1_render_span_counts": [(1, 244), (2, 1080), (4, 3348), (6, 552), (8, 86)],
+        "mode1_max_width": 50,
+        "mode1_max_rows": 50,
+        "mode1_odd_raw_span_count": 2082,
+        "wide_render_span_gt16_count": 0,
+        "non_mode1_nonzero_delta_count": 0,
+        "mode0_zero_delta_count": 420,
+        "mode0_unique_entries": 24,
+        "mode0_unique_bases": 24,
+        "mode0_rows": [972, 976, 1104, 1108, 19900, 20062, 35584, 37624, 37818, 38600],
+        "mode0_widths": [74],
+    }))
 
     line_printer_mapping = built_in_base_map(resources, 0x440946B4, 0x21)
     checks.append(assert_equal("line-printer built-in base map host 0x21 to glyph 32", line_printer_mapping, {
@@ -12691,6 +12776,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             )
         )
     lines.append("")
+    lines.append("- Full built-in glyph scan: `%d` glyph records across `%d` resource records; mode counts `%s`, mode-1 render spans `%s`, max mode-1 width `%d`, and max mode-1 rows `%d`." % (
+        builtin_glyph_summary["glyph_records"],
+        builtin_glyph_summary["record_bases"],
+        builtin_glyph_summary["mode_counts"],
+        builtin_glyph_summary["mode1_render_span_counts"],
+        builtin_glyph_summary["mode1_max_width"],
+        builtin_glyph_summary["mode1_max_rows"],
+    ))
+    lines.append("- The same scan finds `%d` render spans wider than 16 bytes and `%d` non-mode-1 entries with nonzero bitmap deltas; the `%d` mode-0 entries are zero-delta aliases at one entry per resource record, so the verified built-in ROMs do not provide a normal bitmap-entry fixture for `0x1f0d2`, `0x1f1f0`, or `0x1f264`." % (
+        builtin_glyph_summary["wide_render_span_gt16_count"],
+        builtin_glyph_summary["non_mode1_nonzero_delta_count"],
+        builtin_glyph_summary["mode0_zero_delta_count"],
+    ))
+    lines.append("")
 
     lines.append("## Direct Control-Code Cursor Fixtures")
     lines.append("")
@@ -13535,7 +13634,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         second_segment_event["count_after"],
         " ".join(f"{byte:02x}" for byte in tall_page_bucket_array[64][0][:16]),
     ))
-    lines.append(f"- firmware-scanned tall target summary: `{len(tall_targets)}` targets across `{len({target['base'] for target in tall_targets})}` records; every target has delta `0`, mode `0`, and width `74`, so the verified built-in resources do not yet provide a normal bitmap-entry fixture for rendering `0x1f1f0`")
+    lines.append(f"- firmware-scanned tall target summary: `{len(tall_targets)}` targets across `{len({target['base'] for target in tall_targets})}` records; every target has delta `0`, mode `0`, and width `74`, so the verified built-in resources do not provide normal bitmap-entry fixtures for `0x1f0d2`, `0x1f1f0`, or `0x1f264`.")
     lines.append("| Bucket | Segment byte | Object bytes |")
     lines.append("| ---: | ---: | --- |")
     tall_objects = tall_bucket["objects"]

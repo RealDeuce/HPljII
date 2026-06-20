@@ -498,6 +498,64 @@ def trace_mixed_text_control_parser_path_via_11774(data: bytes, stream: bytes) -
     }
 
 
+def trace_symbol_set_parser_dispatch_via_11774(data: bytes, stream: bytes) -> dict[str, object]:
+    mode = 0
+    pos = 0
+    dispatches: list[dict[str, object]] = []
+    commands: list[dict[str, object]] = []
+
+    def dispatch(byte: int, offset: int) -> dict[str, object]:
+        nonlocal mode
+        entry = parser_dispatch_entry_via_11774(data, mode, byte)
+        event = dict(entry)
+        event["offset"] = offset
+        dispatches.append(event)
+        mode = int(entry["next_mode"])
+        return event
+
+    while pos < len(stream):
+        start = pos
+        if pos + 2 >= len(stream) or stream[pos] != 0x1B:
+            raise AssertionError(f"symbol-set parser trace expected ESC at offset {pos}")
+        command_dispatches = [dispatch(stream[pos], pos)]
+        pos += 1
+        prefix = stream[pos]
+        if prefix not in (ord("("), ord(")")):
+            raise AssertionError(f"symbol-set parser trace expected ESC ( or ESC ) at offset {pos}")
+        slot = 0 if prefix == ord("(") else 1
+        command_dispatches.append(dispatch(prefix, pos))
+        pos += 1
+        if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+            parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+        else:
+            parameter = 0
+        if pos >= len(stream):
+            raise AssertionError("symbol-set parser trace missing final byte")
+        final = stream[pos]
+        if not (ord("@") <= final <= ord("^")):
+            raise AssertionError(f"symbol-set parser trace unsupported final byte {chr(final)!r}")
+        command_dispatches.append(dispatch(final, pos))
+        pos += 1
+        commands.append({
+            "sequence": stream[start:pos],
+            "slot": slot,
+            "parameter": parameter,
+            "final": final,
+            "record": bytes([0x80 if parameter >= 0 else 0x81, final]) + signed_word_bytes(parameter) + signed_word_bytes(slot),
+            "setup_handler": command_dispatches[1]["handler"],
+            "terminal_handler": command_dispatches[-1]["handler"],
+            "mode_after_final": mode,
+            "dispatches": command_dispatches,
+        })
+
+    return {
+        "stream": stream,
+        "dispatches": dispatches,
+        "commands": commands,
+        "final_mode": mode,
+    }
+
+
 def trace_raster_parser_dispatch_via_11774(data: bytes, stream: bytes) -> dict[str, object]:
     mode = 0
     pos = 0
@@ -10558,7 +10616,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "host_char": 0x21,
         "mapped": 0x20,
     }))
-    symbol_stream = apply_symbol_set_stream_via_120be_1be22(symbol_set_state(), b"\x1b(2U\x1b)0E")
+    symbol_stream_bytes = b"\x1b(2U\x1b)0E"
+    symbol_dispatch_trace = trace_symbol_set_parser_dispatch_via_11774(data, symbol_stream_bytes)
+    symbol_stream = apply_symbol_set_stream_via_120be_1be22(symbol_set_state(), symbol_stream_bytes)
     line_printer_base_table = built_in_base_map_table(resources, 0x440946B4)
     symbol_stream_primary_patch = apply_symbol_set_patch_via_14f16(
         data,
@@ -10661,6 +10721,64 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "bang": 0xA0,
             "upper_cleared": 0,
         },
+    }))
+    symbol_dispatch_commands = symbol_dispatch_trace["commands"]
+    assert isinstance(symbol_dispatch_commands, list)
+    checks.append(assert_equal("symbol-set parser trace feeds active map patches", {
+        "stream": symbol_dispatch_trace["stream"],
+        "command_handlers": [
+            [dispatch["handler"] for dispatch in command["dispatches"]]
+            for command in symbol_dispatch_commands
+        ],
+        "records": [command["record"] for command in symbol_dispatch_commands],
+        "slots": [command["slot"] for command in symbol_dispatch_commands],
+        "parameters": [command["parameter"] for command in symbol_dispatch_commands],
+        "finals": [command["final"] for command in symbol_dispatch_commands],
+        "model_setup_handlers": [event["setup_handler"] for event in symbol_stream["stream_events"]],
+        "model_terminal_handlers": [event["terminal_handler"] for event in symbol_stream["stream_events"]],
+        "active_symbols": symbol_stream["active_symbols"],
+        "primary_patch": {
+            "kind": symbol_stream_primary_patch["kind"],
+            "symbol_word": symbol_stream_primary_patch["symbol_word"],
+            "pairs": symbol_stream_primary_patch["pairs"],
+            "dollar": symbol_stream_primary_table[0x24],
+        },
+        "secondary_patch": {
+            "kind": symbol_stream_secondary_patch["kind"],
+            "symbol_word": symbol_stream_secondary_patch["symbol_word"],
+            "bang": symbol_stream_secondary_table[0x21],
+            "upper_cleared": symbol_stream_secondary_table[0xA1],
+        },
+        "final_mode": symbol_dispatch_trace["final_mode"],
+    }, {
+        "stream": b"\x1b(2U\x1b)0E",
+        "command_handlers": [
+            [0x011EB6, 0x01201E, 0x0120BE],
+            [0x011EB6, 0x012008, 0x0120BE],
+        ],
+        "records": [
+            bytes.fromhex("80 55 00 02 00 00"),
+            bytes.fromhex("80 45 00 00 00 01"),
+        ],
+        "slots": [0, 1],
+        "parameters": [2, 0],
+        "finals": [ord("U"), ord("E")],
+        "model_setup_handlers": [0x01201E, 0x012008],
+        "model_terminal_handlers": [0x0120BE, 0x0120BE],
+        "active_symbols": [0x0055, 0x0005],
+        "primary_patch": {
+            "kind": "patch-table",
+            "symbol_word": 0x0055,
+            "pairs": [(0x24, 0xBA), (0x5E, 0xAA), (0x60, 0xA9), (0x7E, 0xB0)],
+            "dollar": 0xB9,
+        },
+        "secondary_patch": {
+            "kind": "roman-extension",
+            "symbol_word": 0x0005,
+            "bang": 0xA0,
+            "upper_cleared": 0,
+        },
+        "final_mode": 0,
     }))
     text_source = build_text_source_object_from_1393a(resources, 0x440946B4, 0x21, x=0, y=0, context_slot=0)
     checks.append(assert_equal("0x1393a-modeled text source object fields", text_source, {
@@ -20341,6 +20459,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("")
     lines.append(f"- base map: host `0x{text_source['host_char']:02x}` -> glyph `0x{text_source['mapped']:02x}`")
     lines.append(f"- symbol-set stream events: `{symbol_stream['stream_events']}`")
+    lines.append("- symbol-set parser-to-map boundary: stream `1b 28 32 55 1b 29 30 45` routes primary setup `0x1201e`, secondary setup `0x12008`, and terminal handler `0x120be`, then the modeled active words `0x0055` and `0x0005` feed the patch-table and Roman Extension map updates below.")
     lines.append("- `ESC (2U` selects primary word `0x%04x` and patches `LINE_PRINTER` map byte `0x24 -> 0x%02x`; `ESC )0E` selects secondary word `0x%04x` and copies upper-half map byte `0xa1 -> 0x%02x` before clearing the upper half." % (
         symbol_stream["active_symbols"][0],
         symbol_stream_primary_table[0x24],

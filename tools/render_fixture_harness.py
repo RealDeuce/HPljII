@@ -1987,6 +1987,140 @@ def font_payload_budget_from_delayed_command(parameter: int) -> dict[str, int]:
     }
 
 
+def render_font_download_char_command_stream_via_121cc_16498(
+    stream: bytes,
+    header: bytes | bytearray,
+    *,
+    char_code: int,
+    record_words: tuple[int, int, int, int],
+    mode: int,
+    width: int,
+    rows: int,
+    object_offset: int,
+) -> dict[str, object]:
+    updated_header = bytes(header)
+    pending: dict[str, object] = {"pending_flag": 0, "handler": 0, "snapshot_record": b""}
+    events: list[dict[str, object]] = []
+    pos = 0
+    while pos < len(stream):
+        if stream[pos] != 0x1B:
+            raise AssertionError(f"font command stream expected ESC at offset {pos}")
+        start = pos
+        pos += 1
+        if pos + 1 >= len(stream) or stream[pos] not in (ord("("), ord(")")):
+            raise AssertionError(f"font command stream only models ESC (s/ESC )s commands at offset {start}")
+        prefix = stream[pos]
+        group = stream[pos + 1]
+        if group != ord("s"):
+            raise AssertionError(f"font command stream only models group s at offset {start}")
+        pos += 2
+        slot = 1 if prefix == ord(")") else 0
+        while True:
+            command_start = start if pos == start + 3 else pos
+            if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+                parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            else:
+                parameter = 0
+            if pos >= len(stream):
+                raise AssertionError("font command stream missing final byte")
+            final = stream[pos]
+            pos += 1
+            final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+            if final_upper != ord("W"):
+                raise AssertionError(f"font command stream only models ESC )s#W payloads, got 0x{final:02x}")
+
+            sequence = stream[command_start:pos]
+            parsed_record = bytes([
+                0x81 if parameter < 0 else 0x80,
+                final,
+            ]) + signed_word_bytes(parameter) + signed_word_bytes(slot)
+            dispatch = font_payload_dispatch_via_11f96(parameter)
+            handler = int(dispatch["handler"])
+            scheduled = schedule_payload_handler_via_121cc(pending, parsed_record, handler)
+            pending = scheduled["pending"]
+            delayed_snapshot = pending["snapshot_bytes"]
+            if ord("a") <= final <= ord("z"):
+                events.append({
+                    "kind": "font-payload-pending",
+                    "sequence": sequence,
+                    "parameter": parameter,
+                    "parsed_record": parsed_record,
+                    "delayed_snapshot_bytes": delayed_snapshot,
+                    "delayed_scheduled": scheduled["scheduled"],
+                    "delayed_handler": handler,
+                    "dispatch": dispatch,
+                    "chained": True,
+                })
+                continue
+
+            restored = restore_delayed_payload_via_12218(pending)
+            pending = restored["pending_after"]
+            restored_record = restored["record"]
+            byte_budget = abs(s16(restored_record, 2))
+            payload_start = pos
+            payload_end = pos + byte_budget
+            if payload_end > len(stream):
+                raise AssertionError("font command stream payload shorter than restored ESC )s#W byte count")
+            payload = stream[payload_start:payload_end]
+            pos = payload_end
+
+            if handler != 0x16C14:
+                events.append({
+                    "kind": "font-descriptor-payload",
+                    "sequence": sequence,
+                    "parameter": parameter,
+                    "parsed_record": parsed_record,
+                    "delayed_snapshot_bytes": delayed_snapshot,
+                    "delayed_scheduled": scheduled["scheduled"],
+                    "restore_dispatch": restored["dispatch"],
+                    "restored_record": restored["record"],
+                    "delayed_handler": handler,
+                    "payload_offset": payload_start,
+                    "payload": payload,
+                    "chained": False,
+                })
+                break
+
+            installed = font_download_char_object_via_16498(
+                updated_header,
+                char_code,
+                record_words,
+                mode=mode,
+                width=width,
+                rows=rows,
+                stream=payload,
+                byte_budget=byte_budget,
+                object_offset=object_offset,
+            )
+            if int(installed["status"]) == 1:
+                updated_header = bytes(installed["header"])
+            events.append({
+                "kind": "font-character-payload",
+                "sequence": sequence,
+                "parameter": parameter,
+                "parsed_record": parsed_record,
+                "delayed_snapshot_bytes": delayed_snapshot,
+                "delayed_scheduled": scheduled["scheduled"],
+                "restore_dispatch": restored["dispatch"],
+                "restored_record": restored["record"],
+                "delayed_handler": handler,
+                "payload_offset": payload_start,
+                "payload": payload,
+                "payload_length": len(payload),
+                "byte_budget": byte_budget,
+                "install": installed,
+                "chained": False,
+            })
+            break
+
+    return {
+        "events": events,
+        "final_header": updated_header,
+        "pending": pending,
+        "stream_pos": pos,
+    }
+
+
 def font_descriptor_route_via_15d0a(
     stream: bytes,
     *,
@@ -11169,17 +11303,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     for row in range(0x81):
         downloaded_segmented_wide_stream.extend(b"\xaa" * 0x10 if row == 0x80 else b"\x00" * 0x10)
         downloaded_segmented_wide_stream.append(0x55 if row == 0x80 else 0x00)
-    downloaded_segmented_wide_payload = font_download_char_object_via_16498(
+    downloaded_segmented_wide_command_stream = b"\x1b)s2193W" + bytes(downloaded_segmented_wide_stream)
+    downloaded_segmented_wide_command = render_font_download_char_command_stream_via_121cc_16498(
+        downloaded_segmented_wide_command_stream,
         table_payload_type2_bytes,
-        0x25,
-        (0x0000, 0x0000, 0x0081, 0x0000),
+        char_code=0x25,
+        record_words=(0x0000, 0x0000, 0x0081, 0x0000),
         mode=1,
         width=0x0088,
         rows=0x0081,
-        stream=bytes(downloaded_segmented_wide_stream),
-        byte_budget=len(downloaded_segmented_wide_stream),
         object_offset=0x0500,
     )
+    downloaded_segmented_wide_event = downloaded_segmented_wide_command["events"][0]
+    assert isinstance(downloaded_segmented_wide_event, dict)
+    downloaded_segmented_wide_payload = downloaded_segmented_wide_event["install"]
+    assert isinstance(downloaded_segmented_wide_payload, dict)
     downloaded_segmented_wide_memory = bytearray(downloaded_segmented_wide_payload["header"])
     downloaded_segmented_wide_glyph = resolve_downloaded_pointer_glyph(downloaded_segmented_wide_memory, 0, 0x25)
     assert downloaded_segmented_wide_glyph is not None
@@ -11191,6 +11329,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         downloaded_segmented_wide_object,
     )
     checks.append(assert_equal("0x16498-backed downloaded character object renders segmented-wide compact row", {
+        "command": {
+            key: downloaded_segmented_wide_event[key]
+            for key in ("kind", "sequence", "parameter", "parsed_record", "delayed_snapshot_bytes", "delayed_scheduled", "restore_dispatch", "restored_record", "delayed_handler", "payload_offset", "payload_length", "byte_budget")
+        },
+        "stream_pos": downloaded_segmented_wide_command["stream_pos"],
+        "pending": downloaded_segmented_wide_command["pending"],
         "payload": {
             key: downloaded_segmented_wide_payload[key]
             for key in ("status", "table_entry", "record_delta", "record", "bitmap_offset", "bitmap_size", "allocation_size", "object_size", "span", "split_plane")
@@ -11212,6 +11356,26 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "rows": downloaded_segmented_wide_rendered["rows"],
         },
     }, {
+        "command": {
+            "kind": "font-character-payload",
+            "sequence": b"\x1b)s2193W",
+            "parameter": 0x0891,
+            "parsed_record": b"\x80W\x08\x91\x00\x01",
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x6c\x14\x80W\x08\x91\x00\x01",
+            "delayed_scheduled": True,
+            "restore_dispatch": {"kind": "direct-handler", "handler": 0x16C14},
+            "restored_record": b"\x80W\x08\x91\x00\x01",
+            "delayed_handler": 0x16C14,
+            "payload_offset": 8,
+            "payload_length": 0x0891,
+            "byte_budget": 0x0891,
+        },
+        "stream_pos": len(downloaded_segmented_wide_command_stream),
+        "pending": {
+            "pending_flag": 0,
+            "handler": 0,
+            "snapshot_record": b"\x80W\x08\x91\x00\x01",
+        },
         "payload": {
             "status": 1,
             "table_entry": 0x00DE,
@@ -16510,7 +16674,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_type2_setup["payload_units"],
         table_payload_type2_allocated["allocation_size"],
     ))
-    lines.append("- downloaded character-object fixture: `0x16498` allocates a separate class-1 object for glyph `0x25`, computes allocation size `%d` / object size `0x%04x`, stores pointer-table entry `0x%04x` at header `+0x4a + 4*0x25`, writes record `%s`, and copies `0x%04x` split-plane payload bytes through `0x16874`/`0x16942`; the compact object `%s` resolves as `%s` and renders the `0x1f264` segmented-wide row." % (
+    lines.append("- downloaded character command stream: `%s` reaches delayed handler `0x%05x` through `0x121cc`, restores record `%s`, and starts payload at offset `%d` with byte budget `0x%04x`." % (
+        " ".join(f"{byte:02x}" for byte in downloaded_segmented_wide_event["sequence"]),
+        downloaded_segmented_wide_event["delayed_handler"],
+        " ".join(f"{byte:02x}" for byte in downloaded_segmented_wide_event["restored_record"]),
+        downloaded_segmented_wide_event["payload_offset"],
+        downloaded_segmented_wide_event["byte_budget"],
+    ))
+    lines.append("- downloaded character-object fixture: that command stream feeds `0x16498`, which allocates a separate class-1 object for glyph `0x25`, computes allocation size `%d` / object size `0x%04x`, stores pointer-table entry `0x%04x` at header `+0x4a + 4*0x25`, writes record `%s`, and copies `0x%04x` split-plane payload bytes through `0x16874`/`0x16942`; the compact object `%s` resolves as `%s` and renders the `0x1f264` segmented-wide row." % (
         downloaded_segmented_wide_payload["allocation_size"],
         downloaded_segmented_wide_payload["object_size"],
         downloaded_segmented_wide_payload["table_entry"],
@@ -16570,7 +16741,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     unflagged_overflow_source_report = unflagged_overflow_fixture["source"]
     assert isinstance(unflagged_overflow_source_report, dict)
     lines.append(f"- context metric flag set plus left overflow: cursor `(10,20)`, printable offset `20`, source x-offset `-15` -> x `{unflagged_overflow_source_report['x']}`, y `{unflagged_overflow_source_report['y']}`, context slot `{unflagged_overflow_source_report['context_slot']}`, overflow correction `0x{int(unflagged_overflow_fixture['overflow_correction']):08x}`")
-    lines.append("- remaining gap: replace the constructed font-download object bytes with a full live font-download parser byte stream, then carry the parser-produced source/page objects into the bridge/render path.")
+    lines.append("- remaining gap: replace the modeled font command/data wrapper with a full live parser-state run that populates current records and source/page objects before carrying them into the bridge/render path.")
     lines.append("")
 
     lines.append("## Segmented Text Bucket Producer Fixture")

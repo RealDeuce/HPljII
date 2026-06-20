@@ -20427,6 +20427,118 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         ],
     }))
+    raster_chained_transfer_trace = trace_raster_parser_dispatch_via_11774(data, raster_chained_transfer_stream)
+    raster_chained_transfer_commands = raster_chained_transfer_trace["commands"]
+    assert isinstance(raster_chained_transfer_commands, list)
+    raster_chained_transfer_events = [
+        event for event in raster_chained_transfer_result["events"]
+        if event["kind"] in ("raster-transfer-pending", "raster-transfer")
+    ]
+    checks.append(assert_equal("raster chained transfer parser trace preserves lowercase delayed record", {
+        "stream": raster_chained_transfer_stream,
+        "commands": [
+            {
+                "sequence": command["sequence"],
+                "handler": command["final_dispatch"]["handler"],
+                "record": command["record"],
+                "mode_after_final": command["mode_after_final"],
+                "delayed_snapshot_bytes": command.get("delayed_snapshot_bytes"),
+                "delayed_scheduled": command.get("delayed_scheduled"),
+                "restore_after_final": command["restore_after_final"],
+                "restored_record": command["restored_record"],
+                "payload_offset": command.get("payload_offset"),
+                "payload": command.get("payload"),
+            }
+            for command in raster_chained_transfer_commands
+        ],
+        "model_events": [
+            {
+                key: event[key]
+                for key in (
+                    ("kind", "sequence", "parsed_record", "delayed_snapshot_bytes", "delayed_scheduled")
+                    if event["kind"] == "raster-transfer-pending"
+                    else ("kind", "sequence", "parsed_record", "delayed_snapshot_bytes", "delayed_scheduled", "restore_dispatch", "restored_record", "payload_offset", "payload")
+                )
+            }
+            for event in raster_chained_transfer_events
+        ],
+        "queued_object": raster_chained_transfer_chain[0],
+        "rendered_rows": raster_chained_transfer_rendered[0]["rows"],
+    }, {
+        "stream": b"\x1b*t300R\x1b*r0A\x1b*b2w2W" + bytes.fromhex("f0 0f"),
+        "commands": [
+            {
+                "sequence": b"\x1b*t300R",
+                "handler": 0x010808,
+                "record": bytes.fromhex("80 52 01 2c 00 00"),
+                "mode_after_final": 0,
+                "delayed_snapshot_bytes": None,
+                "delayed_scheduled": None,
+                "restore_after_final": None,
+                "restored_record": None,
+                "payload_offset": None,
+                "payload": None,
+            },
+            {
+                "sequence": b"\x1b*r0A",
+                "handler": 0x01075A,
+                "record": bytes.fromhex("80 41 00 00 00 00"),
+                "mode_after_final": 0,
+                "delayed_snapshot_bytes": None,
+                "delayed_scheduled": None,
+                "restore_after_final": None,
+                "restored_record": None,
+                "payload_offset": None,
+                "payload": None,
+            },
+            {
+                "sequence": b"\x1b*b2w",
+                "handler": 0x011F82,
+                "record": bytes.fromhex("80 77 00 02 00 00"),
+                "mode_after_final": 14,
+                "delayed_snapshot_bytes": bytes.fromhex("01 00 01 05 d0 80 77 00 02 00 00"),
+                "delayed_scheduled": True,
+                "restore_after_final": None,
+                "restored_record": None,
+                "payload_offset": None,
+                "payload": None,
+            },
+            {
+                "sequence": b"2W",
+                "handler": 0x011F82,
+                "record": bytes.fromhex("80 57 00 02 00 00"),
+                "mode_after_final": 0,
+                "delayed_snapshot_bytes": bytes.fromhex("01 00 01 05 d0 80 77 00 02 00 00"),
+                "delayed_scheduled": False,
+                "restore_after_final": {"kind": "direct-handler", "handler": 0x0105D0},
+                "restored_record": bytes.fromhex("80 77 00 02 00 00"),
+                "payload_offset": 19,
+                "payload": bytes.fromhex("f0 0f"),
+            },
+        ],
+        "model_events": [
+            {
+                "kind": "raster-transfer-pending",
+                "sequence": b"\x1b*b2w",
+                "parsed_record": bytes.fromhex("80 77 00 02 00 00"),
+                "delayed_snapshot_bytes": bytes.fromhex("01 00 01 05 d0 80 77 00 02 00 00"),
+                "delayed_scheduled": True,
+            },
+            {
+                "kind": "raster-transfer",
+                "sequence": b"2W",
+                "parsed_record": bytes.fromhex("80 57 00 02 00 00"),
+                "delayed_snapshot_bytes": bytes.fromhex("01 00 01 05 d0 80 77 00 02 00 00"),
+                "delayed_scheduled": False,
+                "restore_dispatch": {"kind": "direct-handler", "handler": 0x0105D0},
+                "restored_record": bytes.fromhex("80 77 00 02 00 00"),
+                "payload_offset": 19,
+                "payload": bytes.fromhex("f0 0f"),
+            },
+        ],
+        "queued_object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
+        "rendered_rows": ["####........####"],
+    }))
     raster_page_record: dict[str, object] = {"bucket_array": {}}
     raster_page_result = queue_raster_row_to_page_record_via_13070(
         raster_page_record,
@@ -25306,6 +25418,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             summary["parser_payload_offset"],
             " ".join(f"{byte:02x}" for byte in summary["queued_object"]),
         ))
+    lines.append("- chained transfer parser boundary: `ESC *b2w2W` keeps parser mode in the `*b` family after lowercase `w`, preserves delayed record `80 77 00 02 00 00`, restores that same record at uppercase `W`, and consumes payload bytes only after offset `19`.")
     lines.append("")
     lines.append(f"- mode-1 stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode1_command_stream)}`")
     lines.append("- mode-1 parsed events:")

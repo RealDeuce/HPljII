@@ -902,6 +902,141 @@ def trace_macro_parser_dispatch_via_11774(
     }
 
 
+def trace_macro_definition_parser_dispatch_via_11774(
+    data: bytes,
+    stream: bytes,
+    initial_state: dict[str, object] | None = None,
+) -> dict[str, object]:
+    mode = 0
+    pos = 0
+    dispatches: list[dict[str, object]] = []
+    commands: list[dict[str, object]] = []
+    state = macro_state() if initial_state is None else dict(initial_state)
+    state["records"] = [dict(record) for record in state["records"]]
+    state["data_chain_frames"] = list(state.get("data_chain_frames", []))
+    state["events"] = list(state.get("events", []))
+
+    def dispatch(byte: int, offset: int, alternate: bool) -> dict[str, object]:
+        nonlocal mode
+        entry = parser_dispatch_entry_via_11774(data, mode, byte, alternate=alternate)
+        event = dict(entry)
+        event["offset"] = offset
+        event["alternate"] = alternate
+        dispatches.append(event)
+        mode = int(entry["next_mode"])
+        return event
+
+    while pos < len(stream):
+        alternate = int(state.get("alternate_mode", 0)) == 1
+        if alternate and (
+            stream[pos] != 0x1B
+            or pos + 2 >= len(stream)
+            or stream[pos + 1] != ord("&")
+            or stream[pos + 2] != ord("f")
+        ):
+            payload_start = pos
+            payload = bytearray()
+            payload_dispatches: list[dict[str, object]] = []
+            while pos < len(stream) and not (
+                stream[pos] == 0x1B
+                and pos + 2 < len(stream)
+                and stream[pos + 1] == ord("&")
+                and stream[pos + 2] == ord("f")
+            ):
+                byte = stream[pos]
+                alternate_entry = parser_dispatch_entry_via_11774(data, mode, byte, alternate=True)
+                normal_entry = parser_dispatch_entry_via_11774(data, mode, byte, alternate=False)
+                payload_dispatches.append({
+                    "offset": pos,
+                    "byte": byte,
+                    "mode_before": mode,
+                    "alternate_handler": alternate_entry["handler"],
+                    "alternate_next_mode": alternate_entry["next_mode"],
+                    "normal_handler": normal_entry["handler"],
+                    "normal_next_mode": normal_entry["next_mode"],
+                })
+                payload.append(byte)
+                pos += 1
+            before_count = len(state.get("events", []))
+            state = append_macro_definition_payload(state, bytes(payload))
+            events = list(state.get("events", []))
+            commands.append({
+                "kind": "alternate-payload",
+                "sequence": stream[payload_start:pos],
+                "payload_dispatches": payload_dispatches,
+                "state_events": [dict(event) for event in events[before_count:]],
+            })
+            continue
+
+        if stream[pos] != 0x1B:
+            raise AssertionError(f"macro definition parser trace expected ESC at offset {pos}")
+        escape_offset = pos
+        if pos + 2 >= len(stream):
+            raise AssertionError("macro definition parser trace expected ESC prefix and group bytes")
+        dispatch(0x1B, escape_offset, alternate)
+        pos += 1
+        prefix = stream[pos]
+        dispatch(prefix, pos, alternate)
+        pos += 1
+        group = stream[pos]
+        dispatch(group, pos, alternate)
+        pos += 1
+        if prefix != ord("&") or group != ord("f"):
+            raise AssertionError("macro definition parser trace only models ESC &f commands")
+
+        while True:
+            command_start = escape_offset if pos == escape_offset + 3 else pos
+            if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+                parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            else:
+                parameter = 0
+            if pos >= len(stream):
+                raise AssertionError("macro definition parser trace missing final byte")
+            final_offset = pos
+            final = stream[pos]
+            pos += 1
+            final_event = dispatch(final, final_offset, alternate)
+            final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+            record = bytes([
+                0x81 if parameter < 0 else 0x80,
+                final,
+            ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
+            before_count = len(state.get("events", []))
+            if final_upper == ord("Y"):
+                state = assign_macro_id_via_e112(record, state)
+                event = {
+                    "kind": "macro-id",
+                    "current_macro_id": state["current_macro_id"],
+                }
+                events = list(state.get("events", []))
+                events.append(event)
+                state["events"] = events
+            elif final_upper == ord("X"):
+                state = apply_macro_control_via_dd08(state, parameter, final_byte=final)
+            else:
+                raise AssertionError(f"unsupported macro definition parser trace final 0x{final:02x}")
+            events = list(state.get("events", []))
+            commands.append({
+                "kind": "macro-command",
+                "sequence": stream[command_start:pos],
+                "parameter": parameter,
+                "record": record,
+                "final_dispatch": final_event,
+                "mode_after_final": mode,
+                "state_events": [dict(event) for event in events[before_count:]],
+                "alternate": alternate,
+            })
+            if mode == 0:
+                break
+
+    return {
+        "dispatches": dispatches,
+        "commands": commands,
+        "final_mode": mode,
+        "state": state,
+    }
+
+
 def data_payload_byte_via_dace(stream: bytes, pos: int) -> dict[str, object]:
     if pos >= len(stream):
         return {"value": -1, "pos": pos, "control_hits": 0}
@@ -7684,6 +7819,121 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "final": {"current_macro_id": 123, "alternate_mode": 0, "macro_error": 0},
         "record0": {"id": 0, "payload": b"", "permanent": False},
+    }))
+    macro_definition_dispatch = trace_macro_definition_parser_dispatch_via_11774(
+        data,
+        b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X",
+    )
+    macro_definition_dispatch_records = macro_definition_dispatch["state"]["records"]
+    assert isinstance(macro_definition_dispatch_records, list)
+    checks.append(assert_equal("0x116f6 alternate parser routes macro stop but suppresses payload controls", {
+        "dispatches": [
+            {
+                key: event[key]
+                for key in ("offset", "byte", "mode_before", "next_mode", "handler", "alternate")
+            }
+            for event in macro_definition_dispatch["dispatches"]
+        ],
+        "commands": [
+            {
+                "kind": command["kind"],
+                "sequence": command["sequence"],
+                "parameter": command.get("parameter"),
+                "record": command.get("record"),
+                "handler": command.get("final_dispatch", {}).get("handler"),
+                "alternate": command.get("alternate"),
+                "payload_dispatches": command.get("payload_dispatches"),
+                "state_events": command["state_events"],
+            }
+            for command in macro_definition_dispatch["commands"]
+        ],
+        "final": select_keys(macro_definition_dispatch["state"], ("current_macro_id", "alternate_mode", "macro_error")),
+        "record0": macro_definition_dispatch_records[0],
+        "final_mode": macro_definition_dispatch["final_mode"],
+    }, {
+        "dispatches": [
+            {"offset": 0, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6, "alternate": False},
+            {"offset": 1, "byte": ord("&"), "mode_before": 1, "next_mode": 5, "handler": 0x011EC8, "alternate": False},
+            {"offset": 2, "byte": ord("f"), "mode_before": 5, "next_mode": 17, "handler": 0x011EDA, "alternate": False},
+            {"offset": 6, "byte": ord("Y"), "mode_before": 17, "next_mode": 0, "handler": 0x00E112, "alternate": False},
+            {"offset": 7, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6, "alternate": False},
+            {"offset": 8, "byte": ord("&"), "mode_before": 1, "next_mode": 5, "handler": 0x011EC8, "alternate": False},
+            {"offset": 9, "byte": ord("f"), "mode_before": 5, "next_mode": 17, "handler": 0x011EDA, "alternate": False},
+            {"offset": 11, "byte": ord("X"), "mode_before": 17, "next_mode": 0, "handler": 0x00DD08, "alternate": False},
+            {"offset": 14, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6, "alternate": True},
+            {"offset": 15, "byte": ord("&"), "mode_before": 1, "next_mode": 5, "handler": 0x011EC8, "alternate": True},
+            {"offset": 16, "byte": ord("f"), "mode_before": 5, "next_mode": 17, "handler": 0x011EDA, "alternate": True},
+            {"offset": 18, "byte": ord("X"), "mode_before": 17, "next_mode": 0, "handler": 0x00DD08, "alternate": True},
+        ],
+        "commands": [
+            {
+                "kind": "macro-command",
+                "sequence": b"\x1b&f123Y",
+                "parameter": 123,
+                "record": b"\x80Y\x00{\x00\x00",
+                "handler": 0x00E112,
+                "alternate": False,
+                "payload_dispatches": None,
+                "state_events": [{"kind": "macro-id", "current_macro_id": 123}],
+            },
+            {
+                "kind": "macro-command",
+                "sequence": b"\x1b&f0X",
+                "parameter": 0,
+                "record": b"\x80X\x00\x00\x00\x00",
+                "handler": 0x00DD08,
+                "alternate": False,
+                "payload_dispatches": None,
+                "state_events": [{"kind": "macro-start", "status": 0, "index": 0, "auto_prefix": False}],
+            },
+            {
+                "kind": "alternate-payload",
+                "sequence": b"!\r",
+                "parameter": None,
+                "record": None,
+                "handler": None,
+                "alternate": None,
+                "payload_dispatches": [
+                    {
+                        "offset": 12,
+                        "byte": ord("!"),
+                        "mode_before": 0,
+                        "alternate_handler": None,
+                        "alternate_next_mode": 0,
+                        "normal_handler": None,
+                        "normal_next_mode": 0,
+                    },
+                    {
+                        "offset": 13,
+                        "byte": 0x0D,
+                        "mode_before": 0,
+                        "alternate_handler": None,
+                        "alternate_next_mode": 0,
+                        "normal_handler": 0x00F02C,
+                        "normal_next_mode": 0,
+                    },
+                ],
+                "state_events": [{
+                    "kind": "macro-definition-payload",
+                    "index": 0,
+                    "payload": b"!\r",
+                    "record_payload": b"!\r",
+                }],
+            },
+            {
+                "kind": "macro-command",
+                "sequence": b"\x1b&f1X",
+                "parameter": 1,
+                "record": b"\x80X\x00\x01\x00\x00",
+                "handler": 0x00DD08,
+                "alternate": True,
+                "payload_dispatches": None,
+                "state_events": [{"kind": "macro-stop-kept", "index": 0, "payload": b"!\r"}],
+            },
+        ],
+        "final": {"current_macro_id": 123, "alternate_mode": 0, "macro_error": 0},
+        "record0": {"id": 123, "payload": b"!\r", "permanent": False},
+        "final_mode": 0,
     }))
     macro_stream_execute = render_macro_command_stream_via_e112_dd08(b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f2X")
     macro_stream_execute_records = macro_stream_execute["state"]["records"]
@@ -16501,6 +16751,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " -> ".join(str(event["mode_before"]) for event in macro_dispatch_empty["dispatches"]) + f" -> {macro_dispatch_empty['final_mode']}",
         ", ".join(f"0x{int(command['final_dispatch']['handler']):x}" for command in macro_dispatch_empty["commands"]),
         ", ".join(" ".join(f"{byte:02x}" for byte in command["record"]) for command in macro_dispatch_empty["commands"]),
+    ))
+    lines.append("- macro definition dispatch trace proves `ESC &f1X` exits through alternate table `0x116f6` handler `0xdd08`, while payload bytes `%s` are stored and not claimed by alternate table handlers; normal CR would have selected `0xf02c` outside alternate mode." % (
+        " ".join(f"{byte:02x}" for byte in macro_definition_dispatch["commands"][2]["sequence"]),
     ))
     lines.append("- macro definition stream `%s` stores payload `%s`, stops with the record kept, then `ESC &f2X` pushes execute frame `%s`." % (
         " ".join(f"{byte:02x}" for byte in macro_stream_execute["stream"]),

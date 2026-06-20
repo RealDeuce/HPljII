@@ -112,6 +112,8 @@ Rectangle graphics command edges are decoded in `generated/analysis/ic30_ic13_re
 
 The `ESC &f-123y0x1X` fixture is now also traced through ROM parser modes `0 -> 1 -> 5 -> 17 -> 17 -> 17 -> 0`, selecting `0xe112`, `0xdd08`, and `0xdd08` for records `81 79 ff 85 00 00`, `80 78 00 00 00 00`, and `80 58 00 01 00 00`.
 
+The macro-definition fixture also proves the alternate/data parser table behavior after `ESC &f0X`: payload bytes `21 0d` are stored with no alternate-table handlers, the normal CR handler `0xf02c` is suppressed, and `ESC &f1X` still walks alternate table `0x116f6` to `0xdd08` to stop definition mode.
+
 `ESC &f#S` at `0x00f75e` uses the absolute parsed word as a cursor-stack selector. Selector `0` pushes the current horizontal cursor `0x782c8a` and the current vertical cursor plus `0x782dbe` as an 8-byte entry while the next-free pointer is below `0x782d36`; selector `1` pops while above stack base `0x782c96`, restores horizontal and vertical positions with current page-extent clamps, clears pending/right-limit flags, and flushes pending spans when enabled. Executable fixtures now pin push, pop, clamp, full-stack, empty-stack, and byte-stream `ESC &f0S`/`ESC &f1S` selector-path cases.
 
 Primary and secondary font-selection commands share the same final handler stubs, with the `ESC (` versus `ESC )` distinction preserved by setup routines before mode 4. The final handlers call lower-level font-state routines around `0xc6ec..0xc930` and then common routine `0xc580`.

@@ -17232,6 +17232,90 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "rows": positioned_mode0["rows"],
     }))
+    def parser_handler_summary(trace: dict[str, object]) -> list[int]:
+        events = trace["events"]
+        assert isinstance(events, list)
+        handlers: list[int] = []
+        for trace_event in events:
+            assert isinstance(trace_event, dict)
+            handlers.append(int(trace_event["handler"]))
+        return handlers
+
+    checks.append(assert_equal("publication streams tie parser handlers to page-record publication boundary", {
+        "reset": {
+            "stream": mixed_reset_page_record_stream["stream"],
+            "parser_handlers": parser_handler_summary(mixed_publication_parser_trace["reset"]),
+            "parser_final_mode": mixed_publication_parser_trace["reset"]["final_mode"],
+            "root_allocations": mixed_reset_page_record_stream["final_state"]["page_record_root_allocations"],
+            "page_publications": mixed_reset_page_record_stream["final_state"]["page_publications"],
+            "published_prefix": mixed_reset_published_page_record["bucket_root"][:11],
+            "published_rows": mixed_reset_published_rendered["rows"][:4],
+        },
+        "ff": {
+            "stream": ff_page_record_stream["stream"],
+            "parser_handlers": parser_handler_summary(mixed_publication_parser_trace["ff"]),
+            "parser_final_mode": mixed_publication_parser_trace["ff"]["final_mode"],
+            "root_allocations": ff_page_record_stream["final_state"]["page_record_root_allocations"],
+            "page_publications": ff_page_record_stream["final_state"]["page_publications"],
+            "published_prefix": ff_published_page_record["bucket_root"][:11],
+            "published_rows": ff_published_rendered["rows"][:4],
+        },
+        "page_size": {
+            "stream": page_geometry_page_record_stream["stream"],
+            "parser_handlers": parser_handler_summary(mixed_publication_parser_trace["page_size"]),
+            "parser_final_mode": mixed_publication_parser_trace["page_size"]["final_mode"],
+            "root_allocations": page_geometry_final_text["page_record_root_allocations"],
+            "page_publications": page_geometry_final_text["page_publications"],
+            "published_prefix": page_geometry_published_page_record["bucket_root"][:11],
+            "published_rows": page_geometry_published_rendered["rows"][:4],
+        },
+        "orientation": {
+            "stream": orientation_page_record_stream["stream"],
+            "parser_handlers": parser_handler_summary(mixed_publication_parser_trace["orientation"]),
+            "parser_final_mode": mixed_publication_parser_trace["orientation"]["final_mode"],
+            "root_allocations": orientation_final_text["page_record_root_allocations"],
+            "page_publications": orientation_final_text["page_publications"],
+            "published_prefix": orientation_published_page_record["bucket_root"][:11],
+            "published_rows": orientation_published_rendered["rows"][:4],
+        },
+    }, {
+        "reset": {
+            "stream": b"!\x1bE",
+            "parser_handlers": [0x00D04A, 0x00CC52],
+            "parser_final_mode": 0,
+            "root_allocations": 1,
+            "page_publications": 1,
+            "published_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
+        "ff": {
+            "stream": b"\x1b&k2G!\f",
+            "parser_handlers": [0x00EDF8, 0x00D04A, 0x00F0F0],
+            "parser_final_mode": 0,
+            "root_allocations": 1,
+            "page_publications": 1,
+            "published_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
+        "page_size": {
+            "stream": b"!\x1b&l1A",
+            "parser_handlers": [0x00D04A, 0x00FC74],
+            "parser_final_mode": 0,
+            "root_allocations": 1,
+            "page_publications": 1,
+            "published_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
+        "orientation": {
+            "stream": b"!\x1b&l1O",
+            "parser_handlers": [0x00D04A, 0x010220],
+            "parser_final_mode": 0,
+            "root_allocations": 1,
+            "page_publications": 1,
+            "published_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
+    }))
 
     lines.append("## Host Byte Fetch Fixtures")
     lines.append("")
@@ -18103,6 +18187,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- page-record bridged context slots `[0..1]`: `0x{mixed_page_record_bridged['context_slots'][0]:08x}`, `0x{mixed_page_record_bridged['context_slots'][1]:08x}`")
     lines.append("")
     lines.append("A ROM parser trace now anchors the publication streams before the modeled page-record layer: `21 1b 45` routes printable `!` through the mode-0 `0xd04a` branch and `ESC E` through handler `0xcc52`; `1b 26 6b 32 47 21 0c` routes `ESC &k2G` through handler `0xedf8`, printable `!` through `0xd04a`, and FF through handler `0xf0f0`; `21 1b 26 6c 31 41` and `21 1b 26 6c 31 4f` route printable `!` through `0xd04a` before page-size `ESC &l1A` reaches `0xfc74` and orientation `ESC &l1O` reaches `0x10220`.")
+    lines.append("The publication-boundary fixture ties those parser handler sequences to the modeled page-record side for the same four byte streams: each allocates one root on printable `!`, publishes one compact bucket through `0xff1e`, clears the current root, and renders the published rows after the `0x1edc6` bridge.")
     lines.append("")
     lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now starts without a current page root, marks the first printable as the page-record root allocation point, models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`.")
     lines.append("")

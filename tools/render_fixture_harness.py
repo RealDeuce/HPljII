@@ -2747,6 +2747,79 @@ def apply_cursor_position_command(state: dict[str, int], command: str, integer: 
     raise AssertionError(f"unsupported cursor-position command {command!r}")
 
 
+def margin_state(**overrides: int) -> dict[str, int]:
+    state = {
+        "cursor_x": pack12(10),
+        "left_margin": pack12(5),
+        "right_margin": pack12(80),
+        "page_width": 100,
+        "hmi": pack12(2),
+        "pending_text": 0,
+        "span_flush_enable": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "span_updates": 0,
+        "right_limit_latch": 0,
+        "events": [],
+    }
+    state.update(overrides)
+    return state
+
+
+def convert_margin_columns_to_packed12(parameter: int, hmi: int, *, right_margin: bool = False) -> int:
+    columns = abs(int(parameter))
+    if right_margin:
+        columns += 1
+    return parsed_decimal_scaled_to_packed12(columns, 0, packed12_to_subunits(int(hmi)))
+
+
+def apply_left_margin_via_eb58(state: dict[str, int], parameter: int) -> dict[str, int]:
+    updated = dict(state)
+    new_left = convert_margin_columns_to_packed12(parameter, int(updated["hmi"]))
+    max_left = sub_packed12(int(updated["right_margin"]), int(updated["hmi"]))
+    events = list(updated.get("events", []))
+    if new_left > max_left:
+        events.append({"kind": "left-margin-ignored", "reason": "beyond-right-margin", "candidate": new_left, "max": max_left})
+        updated["events"] = events
+        return updated
+    if new_left > int(updated["cursor_x"]) or int(updated.get("pending_text", 0)) > 0:
+        if int(updated.get("span_flush_enable", 0)):
+            updated["span_flushes"] = int(updated.get("span_flushes", 0)) + 1
+            updated["post_flushes"] = int(updated.get("post_flushes", 0)) + 1
+        updated["cursor_x"] = new_left
+        events.append({"kind": "left-margin-cursor-move", "cursor_x": new_left})
+    updated["left_margin"] = new_left
+    if int(updated["right_margin"]) != new_left:
+        updated["right_limit_latch"] = 0
+    events.append({"kind": "left-margin", "margin": new_left})
+    updated["events"] = events
+    return updated
+
+
+def apply_right_margin_via_ec0c(state: dict[str, int], parameter: int) -> dict[str, int]:
+    updated = dict(state)
+    new_right = convert_margin_columns_to_packed12(parameter, int(updated["hmi"]), right_margin=True)
+    min_right = add_packed12(int(updated["left_margin"]), int(updated["hmi"]))
+    events = list(updated.get("events", []))
+    if new_right < min_right:
+        events.append({"kind": "right-margin-ignored", "reason": "before-left-margin", "candidate": new_right, "min": min_right})
+        updated["events"] = events
+        return updated
+    max_right = pack12(int(updated["page_width"]))
+    if new_right > max_right:
+        new_right = max_right
+        events.append({"kind": "right-margin-clamped", "max": max_right})
+    if new_right < int(updated["cursor_x"]):
+        updated["cursor_x"] = new_right
+        updated["span_updates"] = int(updated.get("span_updates", 0)) + 1
+        updated["right_limit_latch"] = 1
+        events.append({"kind": "right-margin-cursor-move", "cursor_x": new_right})
+    updated["right_margin"] = new_right
+    events.append({"kind": "right-margin", "margin": new_right})
+    updated["events"] = events
+    return updated
+
+
 def position_flagged_text_source_via_d824(
     resources: bytes,
     source: dict[str, int],
@@ -5045,6 +5118,69 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "pending_width": 0,
         "pending_text": 0,
         "page_roots": 1,
+    }))
+    left_margin_move = apply_left_margin_via_eb58(margin_state(
+        cursor_x=pack12(10),
+        right_margin=pack12(80),
+        hmi=pack12(2),
+        pending_text=1,
+        span_flush_enable=1,
+        right_limit_latch=1,
+    ), 6)
+    left_margin_ignored = apply_left_margin_via_eb58(margin_state(
+        cursor_x=pack12(10),
+        right_margin=pack12(20),
+        hmi=pack12(2),
+    ), 12)
+    checks.append(assert_equal("0xeb58 ESC &a#L sets left margin and moves cursor only when needed", {
+        "move": select_keys(left_margin_move, ("left_margin", "cursor_x", "span_flushes", "post_flushes", "right_limit_latch")),
+        "ignored": {
+            **select_keys(left_margin_ignored, ("left_margin", "cursor_x", "right_margin")),
+            "last_event": left_margin_ignored["events"][-1],
+        },
+    }, {
+        "move": {"left_margin": pack12(12), "cursor_x": pack12(12), "span_flushes": 1, "post_flushes": 1, "right_limit_latch": 0},
+        "ignored": {
+            "left_margin": pack12(5),
+            "cursor_x": pack12(10),
+            "right_margin": pack12(20),
+            "last_event": {"kind": "left-margin-ignored", "reason": "beyond-right-margin", "candidate": pack12(24), "max": pack12(18)},
+        },
+    }))
+    right_margin_move = apply_right_margin_via_ec0c(margin_state(
+        cursor_x=pack12(50),
+        left_margin=pack12(5),
+        page_width=100,
+        hmi=pack12(2),
+    ), 9)
+    right_margin_clamped = apply_right_margin_via_ec0c(margin_state(
+        cursor_x=pack12(50),
+        left_margin=pack12(5),
+        page_width=40,
+        hmi=pack12(2),
+    ), 30)
+    right_margin_ignored = apply_right_margin_via_ec0c(margin_state(
+        cursor_x=pack12(10),
+        left_margin=pack12(30),
+        page_width=100,
+        hmi=pack12(2),
+    ), 10)
+    checks.append(assert_equal("0xec0c ESC &a#M applies plus-one column, clamps, and moves cursor at right edge", {
+        "move": select_keys(right_margin_move, ("right_margin", "cursor_x", "right_limit_latch", "span_updates")),
+        "clamped": select_keys(right_margin_clamped, ("right_margin", "cursor_x", "right_limit_latch", "span_updates")),
+        "ignored": {
+            **select_keys(right_margin_ignored, ("left_margin", "right_margin", "cursor_x")),
+            "last_event": right_margin_ignored["events"][-1],
+        },
+    }, {
+        "move": {"right_margin": pack12(20), "cursor_x": pack12(20), "right_limit_latch": 1, "span_updates": 1},
+        "clamped": {"right_margin": pack12(40), "cursor_x": pack12(40), "right_limit_latch": 1, "span_updates": 1},
+        "ignored": {
+            "left_margin": pack12(30),
+            "right_margin": pack12(80),
+            "cursor_x": pack12(10),
+            "last_event": {"kind": "right-margin-ignored", "reason": "before-left-margin", "candidate": pack12(22), "min": pack12(32)},
+        },
     }))
     reset_fields = (
         "alternate_mode",
@@ -9085,6 +9221,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- `ESC &f0S` pushes the horizontal cursor and the vertical cursor plus `0x782dbe` onto the cursor stack; `ESC &f1S` pops, restores horizontal position clamped to active extent minus `1/12`, restores vertical position after subtracting `0x782dbe` and clamps to printable extent minus `1/12`, then clears pending/right-limit flags.")
     lines.append("- `ESC &a#C` converts columns through current HMI, `ESC &a#H` converts decipoints as five packed subunits per decipoint, and both commit through horizontal helper `0xf4ca` with absolute/relative handling and page-width clamps.")
     lines.append("- `ESC &a#R` converts rows through current VMI; absolute rows add the firmware's `0.7200` row bias before using the top offset, while relative rows add to the current vertical cursor. `ESC &a#V` uses the same five-subunit decipoint conversion. Both commit through vertical helper `0xf6e2` and clamp to vertical bounds where the handler does so.")
+    lines.append("- `ESC &a#L` stores an absolute left margin in HMI columns when it does not pass `right_margin - HMI`; it moves the cursor and flushes pending spans only when the new margin is right of the current cursor or pending text is marked.")
+    lines.append("- `ESC &a#M` stores `abs(parameter) + 1` HMI columns as the right margin, rejects values before `left_margin + HMI`, clamps beyond page width, and moves the cursor/right-limit latch when the new right margin is left of the current cursor.")
     lines.append("- The direct-control fixture parser intentionally recognizes only `ESC &k#G`, `ESC E`, and direct control bytes; mixed printable/control/reset coverage is added separately for narrow normal-mode streams, while combined escape sequences and real page-object allocation still need fuller parser-driven fixtures.")
     lines.append("")
     lines.append(f"- cursor stack push entry: `{cursor_stack_pushed['stack'][0]}`")
@@ -9094,6 +9232,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- `ESC &a72H`: x `0x{int(decipoint_right['cursor_x']):08x}`, clamped `ESC &a500H` x `0x{int(decipoint_clamped['cursor_x']):08x}`")
     lines.append(f"- `ESC &a2R`: y `0x{int(row_absolute['cursor_y']):08x}`, relative `ESC &a+1R` y `0x{int(row_relative['cursor_y']):08x}`")
     lines.append(f"- `ESC &a72V`: clamped y `0x{int(vertical_decipoint['cursor_y']):08x}`")
+    lines.append(f"- `ESC &a6L`: left margin `0x{int(left_margin_move['left_margin']):08x}`, cursor `0x{int(left_margin_move['cursor_x']):08x}`")
+    lines.append(f"- `ESC &a9M`: right margin `0x{int(right_margin_move['right_margin']):08x}`, cursor `0x{int(right_margin_move['cursor_x']):08x}`")
     lines.append("")
 
     lines.append("## `ESC E` Reset Fixtures")

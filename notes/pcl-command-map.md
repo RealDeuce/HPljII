@@ -39,8 +39,8 @@ These command-to-handler anchors are current priorities for pixel-perfect render
 | `ESC &l#E` | `0x00ece2` | top margin |
 | `ESC &l#F` | `0x00ea9e` | text length |
 | `ESC &l#H` | `0x00ef62` | paper source and page eject |
-| `ESC &a#L` | `0x00eb58` | left margin |
-| `ESC &a#M` | `0x00ec0c` | right margin |
+| `ESC &a#L` | `0x00eb58` | left margin; absolute HMI columns into `0x782dd6` |
+| `ESC &a#M` | `0x00ec0c` | right margin; `abs(parameter) + 1` HMI columns into `0x782dda` |
 | `ESC &a#C` | `0x00f39e` | horizontal column position through current HMI and helper `0xf4ca` |
 | `ESC &a#H` | `0x00f416` | horizontal decipoint position; five packed subunits per decipoint |
 | `ESC &a#R` | `0x00f560` | vertical row position through current VMI, top offset, and helper `0xf6e2` |
@@ -86,6 +86,8 @@ These command-to-handler anchors are current priorities for pixel-perfect render
 It then rebuilds page-related state, including `0x782da2`, `0x782db2`, `0x782db4`, `0x782dc0`, `0x782dce`, and `0x782dd0`, and calls shared reset/layout helpers also seen in `ESC E`. Executable fixtures now pin letter `ESC &l1A` as internal code `6`, width `3030`, height `2025`, portrait margin `3150`, top offset `90`, and PCL `80` as internal code `0x88` masking to geometry-table index `8`.
 
 `ESC &l#O` at `0x010220` accepts orientation values below `2`, updates `0x782da3`, rebuilds page geometry, updates `0x783160`, and reloads current font/metrics state through tables rooted near `0x782ee6` / `0x782ef6`. The letter landscape fixture pins active extents `2025x3030`, landscape margin `2175`, printable extent `2125`, top offset `100`, and the `0x103ea` threshold sequence `2175, 2550, 2480, 2550`.
+
+`ESC &a#L` at `0x00eb58` converts the absolute parsed column count through current HMI `0x78315c`, rejects values beyond `0x782dda - HMI`, and writes the accepted value to left margin `0x782dd6`. When the accepted margin is right of current cursor `0x782c8a` or pending text is marked, it also moves the cursor and flushes pending spans through `0x12714` / `0x126e2` when span flushing is enabled. `ESC &a#M` at `0x00ec0c` converts `abs(parameter) + 1` columns through HMI, rejects values before `0x782dd6 + HMI`, clamps beyond page width `0x782db8`, writes right margin `0x782dda`, and can move `0x782c8a` left while setting right-limit latch `0x782a57`.
 
 `ESC &a#C` at `0x00f39e` and `ESC &a#H` at `0x00f416` both convert the parsed decimal parameter into packed twelfths and commit through `0xf4ca`, which applies relative moves when parsed-record bit 0 is set, clamps between zero and `0x782db8`, updates the right-limit latch against `0x782dda`, clears pending text, and updates active span state. `ESC &a#C` scales through current HMI `0x78315c`; `ESC &a#H` uses five packed subunits per decipoint.
 

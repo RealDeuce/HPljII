@@ -2265,6 +2265,193 @@ def default_font_symbol_tables_via_1ac0a_1af36(
     }
 
 
+def default_font_range_candidate_search_via_1adaa(
+    candidates: list[dict[str, int]],
+    *,
+    selector_78289e: int,
+    search_kind: int,
+) -> dict[str, object]:
+    slot_mask = 1 if int(selector_78289e) == 0 else 2
+    if int(search_kind) == 1:
+        low_address, high_address = 0x200000, 0x3FFFFE
+    elif int(search_kind) == 2:
+        low_address, high_address = 0x400000, 0x5FFFFE
+    else:
+        raise AssertionError("0x1adaa range search kind must be 1 or 2")
+
+    events: list[dict[str, object]] = []
+    for index, candidate in enumerate(candidates):
+        longword = int(candidate["longword"]) & 0xFFFFFFFF
+        flag = (longword >> 28) & 3
+        address = longword & 0x00FFFFFF
+        slot_match = (flag & slot_mask) != 0
+        range_match = low_address <= address <= high_address
+        selected = slot_match and range_match
+        event = {
+            "helper": 0x01ADAA,
+            "search_kind": int(search_kind),
+            "index": index,
+            "slot_pointer": int(candidate["slot_pointer"]),
+            "longword": longword,
+            "flag": flag,
+            "slot_mask": slot_mask,
+            "slot_match": slot_match,
+            "address": address,
+            "range_low": low_address,
+            "range_high": high_address,
+            "range_match": range_match,
+            "selected": selected,
+        }
+        events.append(event)
+        if selected:
+            return {
+                "selected_pointer": int(candidate["slot_pointer"]),
+                "selected_longword": longword,
+                "word": int(candidate["symbol"]) & 0xFFFF,
+                "source": "0x1bbfe",
+                "events": events,
+            }
+
+    return {
+        "selected_pointer": 0,
+        "selected_longword": 0,
+        "word": 0,
+        "source": None,
+        "events": events,
+    }
+
+
+def default_font_fallback_candidate_via_1ae7e(
+    candidates: list[dict[str, int]],
+    *,
+    selector_78289f: int,
+) -> dict[str, object]:
+    events: list[dict[str, object]] = []
+    for index, candidate in enumerate(candidates):
+        longword = int(candidate["longword"]) & 0xFFFFFFFF
+        selected = int(candidate.get("default_match", 0)) == 1
+        event = {
+            "helper": 0x01AE7E,
+            "probe": "0x1b060",
+            "index": index,
+            "slot_pointer": int(candidate["slot_pointer"]),
+            "longword": longword,
+            "default_match": int(candidate.get("default_match", 0)),
+            "selected": selected,
+        }
+        events.append(event)
+        if selected:
+            return {
+                "selected_pointer": int(candidate["slot_pointer"]),
+                "selected_longword": longword,
+                "word": int(candidate["symbol"]) & 0xFFFF,
+                "source": "0x1b060",
+                "events": events,
+            }
+
+    if not candidates:
+        return {
+            "selected_pointer": 0,
+            "selected_longword": 0,
+            "word": 0,
+            "source": None,
+            "events": events,
+        }
+
+    base = candidates[0]
+    longword = int(base["longword"]) & 0xFFFFFFFF
+    source = "0x15890" if ((longword >> 30) & 1) else "0x158be"
+    events.append({
+        "helper": 0x01AE7E,
+        "probe": "base-candidate-reader",
+        "selector_78289f": int(selector_78289f) & 1,
+        "slot_pointer": int(base["slot_pointer"]),
+        "longword": longword,
+        "source": source,
+        "selected": True,
+    })
+    return {
+        "selected_pointer": int(base["slot_pointer"]),
+        "selected_longword": longword,
+        "word": int(base["symbol"]) & 0xFFFF,
+        "source": source,
+        "events": events,
+    }
+
+
+def default_font_candidate_search_via_1ad66(
+    *,
+    range_candidates: list[dict[str, int]],
+    fallback_candidates: list[dict[str, int]],
+    selector_78289f: int,
+    selector_78289e: int,
+) -> dict[str, object]:
+    range_1 = default_font_range_candidate_search_via_1adaa(
+        range_candidates,
+        selector_78289e=selector_78289e,
+        search_kind=1,
+    )
+    if int(range_1["selected_pointer"]) != 0:
+        return {
+            "helper": 0x01AD66,
+            "selector_78289f": int(selector_78289f) & 1,
+            "selector_78289e": int(selector_78289e) & 1,
+            "path": "range-1",
+            "selected_pointer": range_1["selected_pointer"],
+            "selected_longword": range_1["selected_longword"],
+            "word": range_1["word"],
+            "source": range_1["source"],
+            "range_1_events": range_1["events"],
+            "range_2_events": [],
+            "fallback_events": [],
+        }
+
+    range_2 = default_font_range_candidate_search_via_1adaa(
+        range_candidates,
+        selector_78289e=selector_78289e,
+        search_kind=2,
+    )
+    if int(range_2["selected_pointer"]) != 0:
+        return {
+            "helper": 0x01AD66,
+            "selector_78289f": int(selector_78289f) & 1,
+            "selector_78289e": int(selector_78289e) & 1,
+            "path": "range-2",
+            "selected_pointer": range_2["selected_pointer"],
+            "selected_longword": range_2["selected_longword"],
+            "word": range_2["word"],
+            "source": range_2["source"],
+            "range_1_events": range_1["events"],
+            "range_2_events": range_2["events"],
+            "fallback_events": [],
+        }
+
+    fallback = default_font_fallback_candidate_via_1ae7e(
+        fallback_candidates,
+        selector_78289f=selector_78289f,
+    )
+    source = fallback["source"]
+    if source == "0x1b060":
+        path = "fallback-default-match"
+    elif source in ("0x15890", "0x158be"):
+        path = "fallback-base-reader"
+    else:
+        path = "not-found"
+    return {
+        "helper": 0x01AD66,
+        "selector_78289f": int(selector_78289f) & 1,
+        "selector_78289e": int(selector_78289e) & 1,
+        "path": path,
+        "selected_pointer": fallback["selected_pointer"],
+        "selected_longword": fallback["selected_longword"],
+        "word": fallback["word"],
+        "source": source,
+        "range_1_events": range_1["events"],
+        "range_2_events": range_2["events"],
+        "fallback_events": fallback["events"],
+    }
+
+
 def metric_long_via_10550(value: int) -> int:
     d7 = (int(value) & 0xFFFFFFFF) >> 2
     low_product = (d7 & 0xFFFF) * 12
@@ -10950,6 +11137,176 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {"builder": 0x01AF36, "source": "0x1ad66-synthesized", "selector_78289f": 1, "selector_78289e": 0, "orientation": 1, "slot": 0, "address": 0x00782F14, "word": 0x0085},
             {"builder": 0x01AF36, "source": "0x1ad66-synthesized", "selector_78289f": 1, "selector_78289e": 1, "orientation": 1, "slot": 1, "address": 0x00782F18, "word": 0x00A5},
         ],
+    }))
+    default_candidate_range_1 = default_font_candidate_search_via_1ad66(
+        selector_78289f=0,
+        selector_78289e=0,
+        range_candidates=[
+            {"slot_pointer": 0x2000, "longword": 0x10010000, "symbol": 0x0015},
+            {"slot_pointer": 0x2004, "longword": 0x20250000, "symbol": 0x0055},
+            {"slot_pointer": 0x2008, "longword": 0x30260000, "symbol": 0x0115},
+        ],
+        fallback_candidates=[],
+    )
+    default_candidate_range_2 = default_font_candidate_search_via_1ad66(
+        selector_78289f=0,
+        selector_78289e=1,
+        range_candidates=[
+            {"slot_pointer": 0x2100, "longword": 0x10250000, "symbol": 0x0015},
+            {"slot_pointer": 0x2104, "longword": 0x30450000, "symbol": 0x0055},
+        ],
+        fallback_candidates=[],
+    )
+    default_candidate_fallback_match = default_font_candidate_search_via_1ad66(
+        selector_78289f=0,
+        selector_78289e=0,
+        range_candidates=[
+            {"slot_pointer": 0x2200, "longword": 0x10010000, "symbol": 0x0015},
+        ],
+        fallback_candidates=[
+            {"slot_pointer": 0x3000, "longword": 0x4008004C, "symbol": 0x0115, "default_match": 0},
+            {"slot_pointer": 0x3004, "longword": 0x00000100, "symbol": 0x0005, "default_match": 1},
+        ],
+    )
+    default_candidate_fallback_builtin = default_font_candidate_search_via_1ad66(
+        selector_78289f=0,
+        selector_78289e=0,
+        range_candidates=[],
+        fallback_candidates=[
+            {"slot_pointer": 0x3100, "longword": 0x4008004C, "symbol": 0x0115, "default_match": 0},
+        ],
+    )
+    default_candidate_fallback_inline = default_font_candidate_search_via_1ad66(
+        selector_78289f=1,
+        selector_78289e=1,
+        range_candidates=[],
+        fallback_candidates=[
+            {"slot_pointer": 0x3200, "longword": 0x00000100, "symbol": 0x00D5, "default_match": 0},
+        ],
+    )
+    checks.append(assert_equal("0x1ad66/0x1adaa/0x1ae7e default-font candidate search", {
+        "range_1": {
+            "summary": select_keys(default_candidate_range_1, (
+                "helper",
+                "selector_78289f",
+                "selector_78289e",
+                "path",
+                "selected_pointer",
+                "selected_longword",
+                "word",
+                "source",
+            )),
+            "range_1_events": default_candidate_range_1["range_1_events"],
+        },
+        "range_2": {
+            "summary": select_keys(default_candidate_range_2, (
+                "helper",
+                "selector_78289f",
+                "selector_78289e",
+                "path",
+                "selected_pointer",
+                "selected_longword",
+                "word",
+                "source",
+            )),
+            "range_1_events": default_candidate_range_2["range_1_events"],
+            "range_2_events": default_candidate_range_2["range_2_events"],
+        },
+        "fallback_match": {
+            "summary": select_keys(default_candidate_fallback_match, (
+                "helper",
+                "selector_78289f",
+                "selector_78289e",
+                "path",
+                "selected_pointer",
+                "selected_longword",
+                "word",
+                "source",
+            )),
+            "fallback_events": default_candidate_fallback_match["fallback_events"],
+        },
+        "fallback_builtin": select_keys(default_candidate_fallback_builtin, (
+            "path",
+            "selected_pointer",
+            "selected_longword",
+            "word",
+            "source",
+        )),
+        "fallback_inline": select_keys(default_candidate_fallback_inline, (
+            "path",
+            "selected_pointer",
+            "selected_longword",
+            "word",
+            "source",
+        )),
+    }, {
+        "range_1": {
+            "summary": {
+                "helper": 0x01AD66,
+                "selector_78289f": 0,
+                "selector_78289e": 0,
+                "path": "range-1",
+                "selected_pointer": 0x2008,
+                "selected_longword": 0x30260000,
+                "word": 0x0115,
+                "source": "0x1bbfe",
+            },
+            "range_1_events": [
+                {"helper": 0x01ADAA, "search_kind": 1, "index": 0, "slot_pointer": 0x2000, "longword": 0x10010000, "flag": 1, "slot_mask": 1, "slot_match": True, "address": 0x010000, "range_low": 0x200000, "range_high": 0x3FFFFE, "range_match": False, "selected": False},
+                {"helper": 0x01ADAA, "search_kind": 1, "index": 1, "slot_pointer": 0x2004, "longword": 0x20250000, "flag": 2, "slot_mask": 1, "slot_match": False, "address": 0x250000, "range_low": 0x200000, "range_high": 0x3FFFFE, "range_match": True, "selected": False},
+                {"helper": 0x01ADAA, "search_kind": 1, "index": 2, "slot_pointer": 0x2008, "longword": 0x30260000, "flag": 3, "slot_mask": 1, "slot_match": True, "address": 0x260000, "range_low": 0x200000, "range_high": 0x3FFFFE, "range_match": True, "selected": True},
+            ],
+        },
+        "range_2": {
+            "summary": {
+                "helper": 0x01AD66,
+                "selector_78289f": 0,
+                "selector_78289e": 1,
+                "path": "range-2",
+                "selected_pointer": 0x2104,
+                "selected_longword": 0x30450000,
+                "word": 0x0055,
+                "source": "0x1bbfe",
+            },
+            "range_1_events": [
+                {"helper": 0x01ADAA, "search_kind": 1, "index": 0, "slot_pointer": 0x2100, "longword": 0x10250000, "flag": 1, "slot_mask": 2, "slot_match": False, "address": 0x250000, "range_low": 0x200000, "range_high": 0x3FFFFE, "range_match": True, "selected": False},
+                {"helper": 0x01ADAA, "search_kind": 1, "index": 1, "slot_pointer": 0x2104, "longword": 0x30450000, "flag": 3, "slot_mask": 2, "slot_match": True, "address": 0x450000, "range_low": 0x200000, "range_high": 0x3FFFFE, "range_match": False, "selected": False},
+            ],
+            "range_2_events": [
+                {"helper": 0x01ADAA, "search_kind": 2, "index": 0, "slot_pointer": 0x2100, "longword": 0x10250000, "flag": 1, "slot_mask": 2, "slot_match": False, "address": 0x250000, "range_low": 0x400000, "range_high": 0x5FFFFE, "range_match": False, "selected": False},
+                {"helper": 0x01ADAA, "search_kind": 2, "index": 1, "slot_pointer": 0x2104, "longword": 0x30450000, "flag": 3, "slot_mask": 2, "slot_match": True, "address": 0x450000, "range_low": 0x400000, "range_high": 0x5FFFFE, "range_match": True, "selected": True},
+            ],
+        },
+        "fallback_match": {
+            "summary": {
+                "helper": 0x01AD66,
+                "selector_78289f": 0,
+                "selector_78289e": 0,
+                "path": "fallback-default-match",
+                "selected_pointer": 0x3004,
+                "selected_longword": 0x00000100,
+                "word": 0x0005,
+                "source": "0x1b060",
+            },
+            "fallback_events": [
+                {"helper": 0x01AE7E, "probe": "0x1b060", "index": 0, "slot_pointer": 0x3000, "longword": 0x4008004C, "default_match": 0, "selected": False},
+                {"helper": 0x01AE7E, "probe": "0x1b060", "index": 1, "slot_pointer": 0x3004, "longword": 0x00000100, "default_match": 1, "selected": True},
+            ],
+        },
+        "fallback_builtin": {
+            "path": "fallback-base-reader",
+            "selected_pointer": 0x3100,
+            "selected_longword": 0x4008004C,
+            "word": 0x0115,
+            "source": "0x15890",
+        },
+        "fallback_inline": {
+            "path": "fallback-base-reader",
+            "selected_pointer": 0x3200,
+            "selected_longword": 0x00000100,
+            "word": 0x00D5,
+            "source": "0x158be",
+        },
     }))
     symbol_special_stream_bytes = b"\x1b(7X\x1b)0@\x1b(1@\x1b)2@\x1b(3@\x1b)3@"
     symbol_special_dispatch_trace = trace_symbol_set_parser_dispatch_via_11774(data, symbol_special_stream_bytes)
@@ -20790,6 +21147,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         default_font_tables_found["current_symbol"],
         " / ".join(f"0x{int(word):04x}" for word in default_font_tables_synthesized["default_symbols"]),
         " / ".join(f"0x{int(word):04x}" for word in default_font_tables_synthesized["fallback_symbols"]),
+    ))
+    lines.append("- default-font candidate search: `0x1ad66` first tries `0x1adaa(1)` and then `0x1adaa(2)` before `0x1ae7e`; the fixture pins primary-slot range-1 word `0x%04x`, secondary-slot range-2 word `0x%04x`, fallback `0x1b060` word `0x%04x`, and base-candidate reader sources `%s` / `%s`." % (
+        default_candidate_range_1["word"],
+        default_candidate_range_2["word"],
+        default_candidate_fallback_match["word"],
+        default_candidate_fallback_builtin["source"],
+        default_candidate_fallback_inline["source"],
     ))
     lines.append("- symbol-set special-case parser boundary: stream `1b 28 37 58 1b 29 30 40 1b 28 31 40 1b 29 32 40 1b 28 33 40 1b 29 33 40` routes final `X` and `@` through terminal handler `0x120be`; the model keeps the previous requested word while calling font-id helper `0x17708` for `X`, reads the `0x1ac0a` default-symbol table for `@0`/`@1`, copies primary to secondary for `@2`, and uses the current-candidate default-font word for `@3`, ending with active words `0x%04x` / `0x%04x`." % (
         symbol_special_stream["active_symbols"][0],

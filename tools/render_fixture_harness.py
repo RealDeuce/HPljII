@@ -14824,7 +14824,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_root_clears": 0,
             "page_record_root_allocations": 1,
         },
-        {"x": 2, "y": 4, "width": 6, "height": 5, "flags": 7},
+        {"x": 10, "y": 20, "width": 12, "height": 5, "flags": 7},
     )
     rectangle_retry_published = rectangle_retry["finalized"]["published_pool_record"]
     assert isinstance(rectangle_retry_published, dict)
@@ -14839,7 +14839,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "page_record_root_allocations": rectangle_retry["fresh_root"]["page_record_root_allocations"],
         "retry_object": rectangle_retry["retry_result"]["object"],
         "bridged": rectangle_retry_bridged["rule_list"],
-        "rows": rectangle_retry_rendered["rows"][:9],
+        "tail_rows": rectangle_retry_rendered["rows"][19:],
     }, {
         "no_room": True,
         "retry_page_root_flags_14": 1,
@@ -14847,19 +14847,35 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "published_bucket_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 00"),
         "fresh_root_created": True,
         "page_record_root_allocations": 2,
-        "retry_object": bytes.fromhex("00 00 00 00 00 07 42 00 00 06 00 05 00 00"),
-        "bridged": [bytes.fromhex("00 00 00 00 00 17 42 00 00 06 00 05 00 05")],
-        "rows": [
-            "........",
-            "........",
-            "........",
-            "........",
-            "..######",
-            "..######",
-            "..######",
-            "..######",
-            "..######",
+        "retry_object": bytes.fromhex("00 00 00 00 01 07 4a 00 00 0c 00 05 00 00"),
+        "bridged": [bytes.fromhex("00 00 00 00 01 17 4a 00 00 0c 00 05 00 05")],
+        "tail_rows": ["." * 22] + ["." * 10 + "#" * 12] * 5,
+    }))
+    checks.append(assert_equal("rectangle parser trace feeds no-room retry path", {
+        "stream": b"\x1b*c12a5b0P",
+        "parser_handlers": [
+            command["final_dispatch"]["handler"]
+            for command in rectangle_dispatch_trace["commands"]
         ],
+        "parser_final": select_keys(rectangle_dispatch_trace["state"], ("width", "height", "fill_selector", "page_roots")),
+        "parser_rule_object": rectangle_dispatch_trace["commands"][-1]["state_events"][0]["object"],
+        "published_bucket_prefix": rectangle_retry_published["bucket_root"][:11],
+        "retry_flags": rectangle_retry["retry_page_root_flags_14"],
+        "fresh_root_created": rectangle_retry["fresh_root"]["page_root_created"],
+        "retry_object": rectangle_retry["retry_result"]["object"],
+        "bridged": rectangle_retry_bridged["rule_list"],
+        "tail_rows": rectangle_retry_rendered["rows"][19:],
+    }, {
+        "stream": b"\x1b*c12a5b0P",
+        "parser_handlers": [0x010E68, 0x010E22, 0x010898],
+        "parser_final": {"width": pack12(12), "height": pack12(5), "fill_selector": 7, "page_roots": 1},
+        "parser_rule_object": bytes.fromhex("00 00 00 00 01 07 4a 00 00 0c 00 05 00 00"),
+        "published_bucket_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 00"),
+        "retry_flags": 1,
+        "fresh_root_created": True,
+        "retry_object": bytes.fromhex("00 00 00 00 01 07 4a 00 00 0c 00 05 00 00"),
+        "bridged": [bytes.fromhex("00 00 00 00 01 17 4a 00 00 0c 00 05 00 05")],
+        "tail_rows": ["." * 22] + ["." * 10 + "#" * 12] * 5,
     }))
     parser_raster_resolution_cases = [
         (300, {"mode": 0, "scale": 1, "limit": 32}),
@@ -20441,6 +20457,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         rectangle_retry["retry_page_root_flags_14"],
         " ".join(f"{byte:02x}" for byte in rectangle_retry["retry_result"]["object"]),
     ))
+    lines.append("- rectangle parser-to-retry boundary: the same `ESC *c12a5b0P` parser trace reaches handlers `0x10e68`, `0x10e22`, and `0x10898`, then the no-room path publishes the existing compact text bucket before retrying and rendering that selector-7 rule object from a fresh root.")
     lines.append("- bridged compact rows match the page-record queued rows above.")
     lines.append("- a non-overlapping text+rule composition fixture renders compact text at x `16`, y `0` and a selector-7 solid rule at x `24`, y `24` from the same bridged render record, then composes them into one fixed 40-pixel band.")
     lines.append("- text+rule composed sample rows:")

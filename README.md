@@ -92,7 +92,7 @@ inputs:
 | Board | Chip marking | Local filename | Role after interleave |
 | --- | --- | --- | --- |
 | IC13 | `SH7-9236-01` | `ic13_sh7-9236-01_tc531000p.bin` | odd/even partner for executable firmware pair |
-| IC30 | `SH7-9235-01` | `ic30_sh7-9235-0100_tc531000p.bin` | odd/even partner for executable firmware pair |
+| IC30 | `SH7-9235-01` | `ic30_sh7-9235-01_tc531000p.bin` | odd/even partner for executable firmware pair |
 | IC15 | `SH7-9234-01` | `ic15_sh7-9234-01_tc531000p.bin` | odd/even partner for resource/font pair |
 | IC32 | `SH7-9233-01` | `ic32_sh7-9233-01_tc531000p.bin` | odd/even partner for resource/font pair |
 

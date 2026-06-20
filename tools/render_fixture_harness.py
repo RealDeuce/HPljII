@@ -5037,6 +5037,73 @@ def end_raster_graphics_via_107fa(state: dict[str, int]) -> dict[str, int]:
     return state
 
 
+def raster_transfer_gate_via_105d0(
+    page_record: dict[str, object],
+    raster_state: dict[str, int],
+    parameter: int,
+    payload: bytes,
+) -> dict[str, object]:
+    state = dict(raster_state)
+    byte_count = abs(int(parameter))
+    state["active"] = 1
+    row_y = int(state["row_y"])
+    page_extent = int(state.get("page_extent", 0xFFFF))
+    limit = max(int(state.get("limit", byte_count)), 0)
+
+    if len(payload) < byte_count:
+        raise AssertionError("0x105d0 transfer fixture payload shorter than parsed byte count")
+
+    if row_y > page_extent:
+        return {
+            "path": "skip-row-beyond-extent",
+            "queued": False,
+            "drained": byte_count,
+            "active": state["active"],
+            "byte_count": byte_count,
+            "stored_byte_count": 0,
+            "overflow_count": 0,
+            "row_y": row_y,
+            "page_extent": page_extent,
+        }
+
+    if row_y < 0:
+        return {
+            "path": "skip-negative-row",
+            "queued": False,
+            "drained": byte_count,
+            "active": state["active"],
+            "byte_count": byte_count,
+            "stored_byte_count": 0,
+            "overflow_count": 0,
+            "row_y": row_y,
+            "page_extent": page_extent,
+        }
+
+    stored_byte_count = min(byte_count, limit)
+    overflow_count = byte_count - stored_byte_count
+    transfer_state = {
+        "x": int(state["baseline_word"]),
+        "y": row_y,
+        "byte_count": stored_byte_count,
+        "mode": int(state["mode"]),
+    }
+    result = queue_raster_row_to_page_record_via_13070(page_record, transfer_state, payload[:stored_byte_count])
+    return {
+        "path": "queued-capped" if overflow_count else "queued",
+        "queued": True,
+        "drained": 0,
+        "active": state["active"],
+        "byte_count": byte_count,
+        "stored_byte_count": stored_byte_count,
+        "overflow_count": overflow_count,
+        "row_y": row_y,
+        "page_extent": page_extent,
+        "limit": limit,
+        "transfer_state": transfer_state,
+        "result": result,
+    }
+
+
 def parse_pcl_decimal_parameter(stream: bytes, pos: int) -> tuple[int, int]:
     sign = 1
     if pos < len(stream) and stream[pos] in (ord("+"), ord("-")):
@@ -11959,6 +12026,97 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
         "rows": ["................####........#####.#.#.#..#.#.#.#"],
     }))
+    raster_gate_beyond_page_record: dict[str, object] = {"bucket_array": {}}
+    raster_gate_beyond = raster_transfer_gate_via_105d0(
+        raster_gate_beyond_page_record,
+        raster_graphics_state(active=1, baseline_word=16, row_y=20, page_extent=15, mode=0, limit=4),
+        4,
+        bytes.fromhex("f0 0f aa 55"),
+    )
+    raster_gate_negative_page_record: dict[str, object] = {"bucket_array": {}}
+    raster_gate_negative = raster_transfer_gate_via_105d0(
+        raster_gate_negative_page_record,
+        raster_graphics_state(active=1, baseline_word=16, row_y=-1, page_extent=15, mode=0, limit=4),
+        4,
+        bytes.fromhex("f0 0f aa 55"),
+    )
+    raster_gate_capped_page_record: dict[str, object] = {"bucket_array": {}}
+    raster_gate_capped = raster_transfer_gate_via_105d0(
+        raster_gate_capped_page_record,
+        raster_graphics_state(active=1, baseline_word=16, row_y=0, page_extent=15, mode=0, limit=2),
+        4,
+        bytes.fromhex("f0 0f aa 55"),
+    )
+    raster_gate_capped_bucket_array = raster_gate_capped_page_record["bucket_array"]
+    assert isinstance(raster_gate_capped_bucket_array, dict)
+    checks.append(assert_equal("0x105d0-modeled raster transfer skip and cap gate", {
+        "beyond": {
+            key: raster_gate_beyond[key]
+            for key in ("path", "queued", "drained", "byte_count", "stored_byte_count", "overflow_count", "row_y", "page_extent")
+        },
+        "negative": {
+            key: raster_gate_negative[key]
+            for key in ("path", "queued", "drained", "byte_count", "stored_byte_count", "overflow_count", "row_y", "page_extent")
+        },
+        "capped": {
+            key: raster_gate_capped[key]
+            for key in ("path", "queued", "drained", "byte_count", "stored_byte_count", "overflow_count", "row_y", "page_extent", "limit")
+        },
+        "capped_result": {
+            key: raster_gate_capped["result"][key]
+            for key in ("path", "bucket_index", "key", "mode", "byte_count_before", "byte_count_after", "capacity", "object_size", "payload", "object")
+        },
+        "beyond_bucket_count": len(raster_gate_beyond_page_record["bucket_array"]),
+        "negative_bucket_count": len(raster_gate_negative_page_record["bucket_array"]),
+        "capped_chain": [bytes(item) for item in raster_gate_capped_bucket_array[0]],
+    }, {
+        "beyond": {
+            "path": "skip-row-beyond-extent",
+            "queued": False,
+            "drained": 4,
+            "byte_count": 4,
+            "stored_byte_count": 0,
+            "overflow_count": 0,
+            "row_y": 20,
+            "page_extent": 15,
+        },
+        "negative": {
+            "path": "skip-negative-row",
+            "queued": False,
+            "drained": 4,
+            "byte_count": 4,
+            "stored_byte_count": 0,
+            "overflow_count": 0,
+            "row_y": -1,
+            "page_extent": 15,
+        },
+        "capped": {
+            "path": "queued-capped",
+            "queued": True,
+            "drained": 0,
+            "byte_count": 4,
+            "stored_byte_count": 2,
+            "overflow_count": 2,
+            "row_y": 0,
+            "page_extent": 15,
+            "limit": 2,
+        },
+        "capped_result": {
+            "path": "raster-page-record",
+            "bucket_index": 0,
+            "key": 0x0001,
+            "mode": 0,
+            "byte_count_before": 2,
+            "byte_count_after": 0,
+            "capacity": 2,
+            "object_size": 0x0C,
+            "payload": bytes.fromhex("f0 0f"),
+            "object": bytes.fromhex("00 00 00 00 80 00 00 02 00 01 f0 0f"),
+        },
+        "beyond_bucket_count": 0,
+        "negative_bucket_count": 0,
+        "capped_chain": [bytes.fromhex("00 00 00 00 80 00 00 02 00 01 f0 0f")],
+    }))
     raster_command_stream = b"\x1b*t300R\x1b*r1A\x1b*b4W" + bytes.fromhex("f0 0f aa 55")
     raster_stream_result = render_raster_command_data_stream_via_121cc_105d0(
         data,
@@ -14149,6 +14307,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- `ESC *r0A` starts at the left edge, giving origin `0`, baseline word `0`, mode `0`, scale `1`, and limit `32` for extent `255`.")
     lines.append("- `ESC *rB` handler `0x107fa` clears only the raster active byte, leaving origin/baseline/mode/scale/limit/row counters untouched in this state fixture.")
     lines.append(f"- parser-derived transfer object bytes: `{' '.join(f'{byte:02x}' for byte in parser_raster_object)}`")
+    lines.append("- `0x105d0` transfer gate fixture: row beyond extent drains `%d` bytes without queueing, negative row drains `%d` bytes without queueing, and byte count `%d` with limit `%d` queues only `%d` bytes as object `%s` while recording overflow `%d`." % (
+        raster_gate_beyond["drained"],
+        raster_gate_negative["drained"],
+        raster_gate_capped["byte_count"],
+        raster_gate_capped["limit"],
+        raster_gate_capped["stored_byte_count"],
+        " ".join(f"{byte:02x}" for byte in raster_gate_capped["result"]["object"]),
+        raster_gate_capped["overflow_count"],
+    ))
     lines.append("- parser-derived rendered row:")
     lines.extend(f"`{row}`" for row in parser_raster_rendered["rows"])
     lines.append("- remaining gap: replace the modeled command/data stream fixture below with a full live parser run through `0x121cc` / `0x105d0`.")

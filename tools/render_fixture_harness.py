@@ -12713,6 +12713,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         rows=0x0081,
         object_offset=0x0500,
     )
+    downloaded_segmented_wide_dispatch_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        downloaded_segmented_wide_command_stream,
+    )
+    downloaded_segmented_wide_dispatch_commands = downloaded_segmented_wide_dispatch_trace["commands"]
+    assert isinstance(downloaded_segmented_wide_dispatch_commands, list)
+    downloaded_segmented_wide_dispatch_command = downloaded_segmented_wide_dispatch_commands[0]
+    assert isinstance(downloaded_segmented_wide_dispatch_command, dict)
+    downloaded_segmented_wide_dispatch_payload = downloaded_segmented_wide_dispatch_command["payload"]
+    assert isinstance(downloaded_segmented_wide_dispatch_payload, bytes)
     downloaded_segmented_wide_event = downloaded_segmented_wide_command["events"][0]
     assert isinstance(downloaded_segmented_wide_event, dict)
     downloaded_segmented_wide_payload = downloaded_segmented_wide_event["install"]
@@ -12835,6 +12845,107 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "a001": 0x16,
                 "source_layout": "inline-trailing-plane",
             }],
+            "rows": [
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 22 + "#." * 64 + ".#.#.#.#",
+            ],
+        },
+    }))
+    checks.append(assert_equal("downloaded character stream ties ROM parser dispatch to rendered object", {
+        "parser": {
+            "dispatch_handlers": [
+                event["handler"]
+                for event in downloaded_segmented_wide_dispatch_trace["dispatches"]
+            ],
+            "dispatch_modes": [
+                event["next_mode"]
+                for event in downloaded_segmented_wide_dispatch_trace["dispatches"]
+            ],
+            "sequence": downloaded_segmented_wide_dispatch_command["sequence"],
+            "record": downloaded_segmented_wide_dispatch_command["record"],
+            "font_payload_dispatch": downloaded_segmented_wide_dispatch_command["font_payload_dispatch"],
+            "delayed_snapshot_bytes": downloaded_segmented_wide_dispatch_command["delayed_snapshot_bytes"],
+            "restore_after_final": downloaded_segmented_wide_dispatch_command["restore_after_final"],
+            "restored_record": downloaded_segmented_wide_dispatch_command["restored_record"],
+            "payload_offset": downloaded_segmented_wide_dispatch_command["payload_offset"],
+            "payload_length": len(downloaded_segmented_wide_dispatch_payload),
+            "payload_prefix": downloaded_segmented_wide_dispatch_payload[:17],
+            "payload_suffix": downloaded_segmented_wide_dispatch_payload[-17:],
+            "final_mode": downloaded_segmented_wide_dispatch_trace["final_mode"],
+        },
+        "model": {
+            "restore_dispatch": downloaded_segmented_wide_event["restore_dispatch"],
+            "restored_record": downloaded_segmented_wide_event["restored_record"],
+            "payload_offset": downloaded_segmented_wide_event["payload_offset"],
+            "payload_length": downloaded_segmented_wide_event["payload_length"],
+            "byte_budget": downloaded_segmented_wide_event["byte_budget"],
+        },
+        "object": {
+            "table_entry": downloaded_segmented_wide_payload["table_entry"],
+            "record": downloaded_segmented_wide_payload["record"],
+            "bitmap_offset": downloaded_segmented_wide_payload["bitmap_offset"],
+            "bitmap_size": downloaded_segmented_wide_payload["bitmap_size"],
+            "split_plane": downloaded_segmented_wide_payload["split_plane"],
+            "compact_object": downloaded_segmented_wide_object,
+        },
+        "render": {
+            "glyph": {
+                key: downloaded_segmented_wide_glyph[key]
+                for key in ("source_kind", "mode", "rows", "width", "span", "render_span")
+            },
+            "selector": downloaded_segmented_wide_rendered["selector"],
+            "rows": downloaded_segmented_wide_rendered["rows"],
+        },
+    }, {
+        "parser": {
+            "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "dispatch_modes": [1, 4, 13, 0],
+            "sequence": b"\x1b)s2193W",
+            "record": b"\x80W\x08\x91\x00\x01",
+            "font_payload_dispatch": {
+                "parameter": 0x0891,
+                "handler": 0x16C14,
+                "meaning": "downloaded-font/character payload",
+            },
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x6c\x14\x80W\x08\x91\x00\x01",
+            "restore_after_final": {"kind": "direct-handler", "handler": 0x16C14},
+            "restored_record": b"\x80W\x08\x91\x00\x01",
+            "payload_offset": 8,
+            "payload_length": 0x0891,
+            "payload_prefix": b"\x00" * 17,
+            "payload_suffix": b"\xaa" * 16 + b"\x55",
+            "final_mode": 0,
+        },
+        "model": {
+            "restore_dispatch": {"kind": "direct-handler", "handler": 0x16C14},
+            "restored_record": b"\x80W\x08\x91\x00\x01",
+            "payload_offset": 8,
+            "payload_length": 0x0891,
+            "byte_budget": 0x0891,
+        },
+        "object": {
+            "table_entry": 0x00DE,
+            "record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 88 00 00"),
+            "bitmap_offset": 0x050C,
+            "bitmap_size": 0x0891,
+            "split_plane": True,
+            "compact_object": bytes.fromhex("00 00 00 00 30 03 00 01 25 01 66 01"),
+        },
+        "render": {
+            "glyph": {
+                "source_kind": "downloaded-pointer",
+                "mode": 1,
+                "rows": 0x81,
+                "width": 0x88,
+                "span": 0x11,
+                "render_span": 0x11,
+            },
+            "selector": 0x3003,
             "rows": [
                 "." * 158,
                 "." * 158,
@@ -18516,6 +18627,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " ".join(f"{byte:02x}" for byte in downloaded_segmented_wide_event["restored_record"]),
         downloaded_segmented_wide_event["payload_offset"],
         downloaded_segmented_wide_event["byte_budget"],
+    ))
+    lines.append("- downloaded character parser/object boundary: the same `ESC )s2193W` stream walks `0x11774` modes `%s`, selects final handler `0x%05x`, restores delayed handler `0x%05x`, proves payload offset `%d` / length `0x%04x`, and carries the split-plane tail `%s` into the `0x16498` object rendered below." % (
+        " -> ".join(str(event["next_mode"]) for event in downloaded_segmented_wide_dispatch_trace["dispatches"]),
+        downloaded_segmented_wide_dispatch_command["final_dispatch"]["handler"],
+        downloaded_segmented_wide_dispatch_command["restore_after_final"]["handler"],
+        downloaded_segmented_wide_dispatch_command["payload_offset"],
+        len(downloaded_segmented_wide_dispatch_payload),
+        " ".join(f"{byte:02x}" for byte in downloaded_segmented_wide_dispatch_payload[-17:]),
     ))
     lines.append("- downloaded character-object fixture: that command stream feeds `0x16498`, which allocates a separate class-1 object for glyph `0x25`, computes allocation size `%d` / object size `0x%04x`, stores pointer-table entry `0x%04x` at header `+0x4a + 4*0x25`, writes record `%s`, and copies `0x%04x` split-plane payload bytes through `0x16874`/`0x16942`; the compact object `%s` resolves as `%s` and renders the `0x1f264` segmented-wide row." % (
         downloaded_segmented_wide_payload["allocation_size"],

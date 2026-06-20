@@ -460,6 +460,138 @@ def alternate_payload_dispatch_via_12358(
     }
 
 
+PAGE_GEOMETRY_TABLES = {
+    "height": 0x00A112,
+    "width": 0x00A128,
+    "landscape_margin": 0x00A13E,
+    "portrait_margin": 0x00A154,
+}
+
+
+def page_geometry_lookup_via_9dxx(data: bytes, table: str, page_code: int) -> int:
+    index = int(page_code) & 0x7F
+    if index >= 0x0B:
+        return 0
+    return u16(data, PAGE_GEOMETRY_TABLES[table] + index * 2)
+
+
+def page_center_remainder_via_9e56(height: int) -> int:
+    return (0x051F - (int(height) >> 1)) % 0x10
+
+
+def page_geometry_state(**overrides: int) -> dict[str, int]:
+    state = {
+        "page_code": 2,
+        "orientation": 0,
+        "default_page_code": 2,
+        "pending_text_flushes": 0,
+        "page_finalizations": 0,
+        "active_record_waits": 0,
+        "page_change_flag": 0,
+        "print_engine_status": 1,
+        "width": 0,
+        "height": 0,
+        "margin_reference": 0,
+        "active_width": 0,
+        "active_height": 0,
+        "vertical_offset_source": 0,
+        "negative_vertical_offset": 0,
+        "secondary_vertical_offset": 0,
+        "printable_extent": 0,
+        "top_offset": 0,
+        "top_offset_fraction": 0,
+        "center_remainder": 0,
+        "portrait_landscape_threshold_6": 0,
+        "portrait_landscape_threshold_2": 0,
+        "portrait_landscape_threshold_1": 0,
+        "portrait_landscape_threshold_5": 0,
+    }
+    state.update(overrides)
+    return state
+
+
+def map_page_size_parameter_via_fc74(parameter: int, has_parameter: bool = True, default_page_code: int = 2) -> int | None:
+    if not has_parameter:
+        return int(default_page_code) if int(default_page_code) != 0 else 2
+    value = abs(int(parameter))
+    mapping = {
+        1: 6,
+        2: 2,
+        3: 5,
+        26: 1,
+        80: 0x88,
+        81: 0x87,
+        90: 0x89,
+        91: 0x8A,
+    }
+    return mapping.get(value)
+
+
+def apply_page_geometry_tables(data: bytes, state: dict[str, int]) -> dict[str, int]:
+    state = dict(state)
+    page_code = int(state["page_code"])
+    orientation = int(state["orientation"])
+    state["width"] = page_geometry_lookup_via_9dxx(data, "width", page_code)
+    state["height"] = page_geometry_lookup_via_9dxx(data, "height", page_code)
+    margin_table = "landscape_margin" if orientation else "portrait_margin"
+    state["margin_reference"] = page_geometry_lookup_via_9dxx(data, margin_table, page_code)
+    if orientation:
+        state["vertical_offset_source"] = 0x32
+        state["active_width"] = state["height"]
+        state["active_height"] = state["width"]
+    else:
+        state["vertical_offset_source"] = 0x3C
+        state["active_width"] = state["width"]
+        state["active_height"] = state["height"]
+    state["negative_vertical_offset"] = -int(state["vertical_offset_source"])
+    state["secondary_vertical_offset"] = 0
+    state["printable_extent"] = int(state["margin_reference"]) - int(state["vertical_offset_source"])
+    state["top_offset"] = 0x96 - int(state["vertical_offset_source"])
+    state["top_offset_fraction"] = 0
+    state["center_remainder"] = page_center_remainder_via_9e56(int(state["height"]))
+    return state
+
+
+def apply_orientation_thresholds_via_103ea(data: bytes, state: dict[str, int]) -> dict[str, int]:
+    state = dict(state)
+    table = "landscape_margin" if int(state["orientation"]) else "portrait_margin"
+    state["portrait_landscape_threshold_6"] = page_geometry_lookup_via_9dxx(data, table, 6)
+    state["portrait_landscape_threshold_2"] = page_geometry_lookup_via_9dxx(data, table, 2)
+    state["portrait_landscape_threshold_1"] = page_geometry_lookup_via_9dxx(data, table, 1)
+    state["portrait_landscape_threshold_5"] = page_geometry_lookup_via_9dxx(data, table, 5)
+    return state
+
+
+def apply_page_size_via_fc74(data: bytes, state: dict[str, int], parameter: int = 0, has_parameter: bool = True) -> dict[str, int]:
+    state = dict(state)
+    internal_code = map_page_size_parameter_via_fc74(parameter, has_parameter, state["default_page_code"])
+    if internal_code is None:
+        state["ignored_page_size_parameter"] = abs(int(parameter))
+        return state
+    state["pending_text_flushes"] += 1
+    state["page_finalizations"] += 1
+    if not has_parameter:
+        state["active_record_waits"] += 1
+    state["page_change_flag"] = 1
+    state["print_engine_status"] = 0
+    state["page_code"] = internal_code
+    return apply_page_geometry_tables(data, state)
+
+
+def apply_orientation_via_10220(data: bytes, state: dict[str, int], parameter: int) -> dict[str, int]:
+    state = dict(state)
+    orientation = abs(int(parameter))
+    if orientation >= 2 or orientation == int(state["orientation"]):
+        state["ignored_orientation_parameter"] = orientation
+        return state
+    state["pending_text_flushes"] += 1
+    state["page_finalizations"] += 1
+    state["orientation"] = orientation
+    state = apply_page_geometry_tables(data, state)
+    state = apply_orientation_thresholds_via_103ea(data, state)
+    return state
+
+
 def macro_record(payload: bytes = b"", macro_id: int = 0, permanent: bool = False) -> dict[str, object]:
     return {
         "id": macro_id & 0xFFFF,
@@ -4111,6 +4243,125 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "remaining": -3,
             "control_hits": 0,
         },
+    }))
+
+    checks.append(assert_equal("0x9d16/0x9d4e/0x9d86/0x9dbe page geometry lookups mask page code", {
+        "letter_height": page_geometry_lookup_via_9dxx(data, "height", 6),
+        "letter_width": page_geometry_lookup_via_9dxx(data, "width", 6),
+        "pcl80_height": page_geometry_lookup_via_9dxx(data, "height", 0x88),
+        "pcl80_width": page_geometry_lookup_via_9dxx(data, "width", 0x88),
+        "invalid": page_geometry_lookup_via_9dxx(data, "width", 0x7F),
+        "letter_portrait_margin": page_geometry_lookup_via_9dxx(data, "portrait_margin", 6),
+        "letter_landscape_margin": page_geometry_lookup_via_9dxx(data, "landscape_margin", 6),
+        "center_remainder": page_center_remainder_via_9e56(2025),
+    }, {
+        "letter_height": 2025,
+        "letter_width": 3030,
+        "pcl80_height": 1012,
+        "pcl80_width": 2130,
+        "invalid": 0,
+        "letter_portrait_margin": 3150,
+        "letter_landscape_margin": 2175,
+        "center_remainder": 11,
+    }))
+    letter_page = apply_page_size_via_fc74(data, page_geometry_state(), 1)
+    pcl80_page = apply_page_size_via_fc74(data, page_geometry_state(), 80)
+    default_page = apply_page_size_via_fc74(data, page_geometry_state(default_page_code=0), has_parameter=False)
+    invalid_page = apply_page_size_via_fc74(data, page_geometry_state(page_code=6), 99)
+    checks.append(assert_equal("0xfc74 ESC &l#A maps page size and recomputes portrait geometry", {
+        "letter": {
+            key: letter_page[key]
+            for key in (
+                "page_code",
+                "width",
+                "height",
+                "margin_reference",
+                "active_width",
+                "active_height",
+                "vertical_offset_source",
+                "negative_vertical_offset",
+                "printable_extent",
+                "top_offset",
+                "center_remainder",
+                "pending_text_flushes",
+                "page_finalizations",
+                "page_change_flag",
+                "print_engine_status",
+            )
+        },
+        "pcl80": {key: pcl80_page[key] for key in ("page_code", "width", "height", "margin_reference")},
+        "default": {key: default_page[key] for key in ("page_code", "active_record_waits")},
+        "invalid": {key: invalid_page[key] for key in ("page_code", "ignored_page_size_parameter")},
+    }, {
+        "letter": {
+            "page_code": 6,
+            "width": 3030,
+            "height": 2025,
+            "margin_reference": 3150,
+            "active_width": 3030,
+            "active_height": 2025,
+            "vertical_offset_source": 60,
+            "negative_vertical_offset": -60,
+            "printable_extent": 3090,
+            "top_offset": 90,
+            "center_remainder": 11,
+            "pending_text_flushes": 1,
+            "page_finalizations": 1,
+            "page_change_flag": 1,
+            "print_engine_status": 0,
+        },
+        "pcl80": {"page_code": 0x88, "width": 2130, "height": 1012, "margin_reference": 2250},
+        "default": {"page_code": 2, "active_record_waits": 1},
+        "invalid": {"page_code": 6, "ignored_page_size_parameter": 99},
+    }))
+    landscape_letter = apply_orientation_via_10220(data, letter_page, 1)
+    same_orientation = apply_orientation_via_10220(data, landscape_letter, 1)
+    invalid_orientation = apply_orientation_via_10220(data, landscape_letter, 2)
+    checks.append(assert_equal("0x10220 ESC &l#O swaps active extents and selects orientation margins", {
+        "landscape": {
+            key: landscape_letter[key]
+            for key in (
+                "orientation",
+                "width",
+                "height",
+                "margin_reference",
+                "active_width",
+                "active_height",
+                "vertical_offset_source",
+                "negative_vertical_offset",
+                "printable_extent",
+                "top_offset",
+                "portrait_landscape_threshold_6",
+                "portrait_landscape_threshold_2",
+                "portrait_landscape_threshold_1",
+                "portrait_landscape_threshold_5",
+                "pending_text_flushes",
+                "page_finalizations",
+            )
+        },
+        "same_orientation": same_orientation["ignored_orientation_parameter"],
+        "invalid_orientation": invalid_orientation["ignored_orientation_parameter"],
+    }, {
+        "landscape": {
+            "orientation": 1,
+            "width": 3030,
+            "height": 2025,
+            "margin_reference": 2175,
+            "active_width": 2025,
+            "active_height": 3030,
+            "vertical_offset_source": 50,
+            "negative_vertical_offset": -50,
+            "printable_extent": 2125,
+            "top_offset": 100,
+            "portrait_landscape_threshold_6": 2175,
+            "portrait_landscape_threshold_2": 2550,
+            "portrait_landscape_threshold_1": 2480,
+            "portrait_landscape_threshold_5": 2550,
+            "pending_text_flushes": 2,
+            "page_finalizations": 2,
+        },
+        "same_orientation": 1,
+        "invalid_orientation": 2,
     }))
 
     macro_id_state = assign_macro_id_via_e112(bytes.fromhex("81 59 ff 85 00 00"))
@@ -8432,6 +8683,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- delayed raster transfer snapshot: `{' '.join(f'{byte:02x}' for byte in delayed_raster_transfer['snapshot_bytes'])}`")
     lines.append(f"- alternate wrapper consume values: `{alternate_payload_wrapper['values']}`, echoed `{alternate_payload_wrapper['echoed']}`, control hits `{alternate_payload_wrapper['control_hits']}`")
     lines.append(f"- alternate direct consume values: `{alternate_payload_direct['values']}`, echoed `{alternate_payload_direct['echoed']}`, negative-count values `{alternate_payload_direct_negative['values']}`")
+    lines.append("")
+
+    lines.append("## Page Geometry Command Fixtures")
+    lines.append("")
+    lines.append("These fixtures model the ROM table lookups at `0x9d16`/`0x9d4e`/`0x9d86`/`0x9dbe`, the `ESC &l#A` page-size handler at `0xfc74`, and the `ESC &l#O` orientation handler at `0x10220`.")
+    lines.append("")
+    lines.append("- Page-code lookup masks the internal code with `0x7f`; PCL `80` stores internal code `0x88`, which reads table index `8`.")
+    lines.append("- `ESC &l#A` maps PCL values `1`, `2`, `3`, `26`, `80`, `81`, `90`, and `91` to internal page codes, finalizes pending page state, updates width/height words, then recomputes portrait or landscape extents.")
+    lines.append("- `ESC &l#O` accepts only values `0` and `1`; changing orientation finalizes pending page state, swaps active width/height in landscape, changes the vertical offset source from `60` to `50`, and reloads the orientation margin thresholds through `0x103ea`.")
+    lines.append("")
+    lines.append(f"- Letter portrait from `ESC &l1A`: code `{letter_page['page_code']}`, width `{letter_page['width']}`, height `{letter_page['height']}`, margin `{letter_page['margin_reference']}`, top offset `{letter_page['top_offset']}`")
+    lines.append(f"- PCL 80 envelope lookup: code `0x{pcl80_page['page_code']:02x}`, width `{pcl80_page['width']}`, height `{pcl80_page['height']}`, margin `{pcl80_page['margin_reference']}`")
+    lines.append(f"- Letter landscape from `ESC &l1O`: active `{landscape_letter['active_width']}x{landscape_letter['active_height']}`, margin `{landscape_letter['margin_reference']}`, printable extent `{landscape_letter['printable_extent']}`, top offset `{landscape_letter['top_offset']}`")
+    lines.append(f"- Landscape thresholds loaded by `0x103ea`: `{[landscape_letter[key] for key in ('portrait_landscape_threshold_6', 'portrait_landscape_threshold_2', 'portrait_landscape_threshold_1', 'portrait_landscape_threshold_5')]}`")
     lines.append("")
 
     lines.append("## Macro Command and Data-Chain Fixtures")

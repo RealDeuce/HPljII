@@ -3010,7 +3010,9 @@ def page_geometry_table_report(data: bytes) -> str:
     lines.append("")
     for name, base, desc in word_tables:
         lines.append(f"- `{name}` @`0x{base:06x}`: {desc}.")
-    lines.append("- `0x009e56` computes `(0x051f - ceil(argument / 2))`, then calls helper `0x033238`; `ESC &l#A` feeds it the `0x782db4` table value and stores the result at `0x782dc0`.")
+    lines.append("- `ESC &l#A` handler `0x00fc74` maps PCL page-size values `1`, `2`, `3`, `26`, `80`, `81`, `90`, and `91` to internal page codes, writes `0x782da2`, stores width at `0x782db2` through `0x009d4e`, stores height at `0x782db4` through `0x009d16`, and then recomputes orientation-dependent extents.")
+    lines.append("- `ESC &l#O` handler `0x010220` accepts only absolute values `0` and `1`, writes orientation byte `0x782da3`, calls the same margin/extent helpers, and reloads four orientation threshold words through `0x0103ea`.")
+    lines.append("- `0x009e56` computes `(0x051f - floor(argument / 2)) mod 16` through signed remainder helper `0x033238`; `ESC &l#A` feeds it the `0x782db4` table value and stores the result at `0x782dc0`.")
     lines.append("- Coordinate helpers at `0x0104d8..0x010550` convert between a packed 12-subunit fixed-point form and integer coordinates; raster code uses these helpers around `0x0105d0..0x010758`.")
     lines.append("")
     return "\n".join(lines)

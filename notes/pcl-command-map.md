@@ -83,9 +83,9 @@ These command-to-handler anchors are current priorities for pixel-perfect render
 - `90` -> internal `0x89`
 - `91` -> internal `0x8a`
 
-It then rebuilds page-related state, including `0x782da2`, `0x782db2`, `0x782db4`, `0x782dc0`, `0x782dce`, and `0x782dd0`, and calls shared reset/layout helpers also seen in `ESC E`.
+It then rebuilds page-related state, including `0x782da2`, `0x782db2`, `0x782db4`, `0x782dc0`, `0x782dce`, and `0x782dd0`, and calls shared reset/layout helpers also seen in `ESC E`. Executable fixtures now pin letter `ESC &l1A` as internal code `6`, width `3030`, height `2025`, portrait margin `3150`, top offset `90`, and PCL `80` as internal code `0x88` masking to geometry-table index `8`.
 
-`ESC &l#O` at `0x010220` accepts orientation values below `2`, updates `0x782da3`, rebuilds page geometry, updates `0x783160`, and reloads current font/metrics state through tables rooted near `0x782ee6` / `0x782ef6`.
+`ESC &l#O` at `0x010220` accepts orientation values below `2`, updates `0x782da3`, rebuilds page geometry, updates `0x783160`, and reloads current font/metrics state through tables rooted near `0x782ee6` / `0x782ef6`. The letter landscape fixture pins active extents `2025x3030`, landscape margin `2175`, printable extent `2125`, top offset `100`, and the `0x103ea` threshold sequence `2175, 2550, 2480, 2550`.
 
 `ESC *r#A` at `0x01075a` starts raster graphics by setting state in the block rooted at `0x783170`; it seeds a raster baseline from `0x782c8a` or `0x782c8e` depending on current mode.
 

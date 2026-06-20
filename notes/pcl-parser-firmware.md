@@ -212,6 +212,6 @@ The `cmpi.w #0x000c` at `0x0001053a` is not the PCL form-feed handler. The surro
 - Find callers of `0xdaf0` and `0xdd08`, and keep expanding the named roles for the `0xa904` callers listed in `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
 - Decode all normal and alternate parser table handlers into PCL command names.
 - Decode the six-byte tokenizer records and 12-byte command/data pool records.
-- Replace the modeled `ESC &f#X` macro-control fixtures with full macro replay through the live parser/data-chain path.
+- Replace the modeled `ESC &f#X` macro-control fixtures with full macro replay through the live parser/data-chain path, building on the current simple execute replay that drains `!\r` through `0xa904`, parser handlers `0xd04a`/`0xf02c`, and the page-record bridge.
 - Replace the synthetic `ESC E` roots with fuller parser-allocated page objects; the current page-record reset fixture already proves the modeled `0xff1e` publication record bridges and renders the queued compact bucket before reset clears the current page root.
 - Extend the mixed-stream page-record fixture into real parser-produced page-object allocation/finalization, then add a parser-driven macro command/replay fixture.

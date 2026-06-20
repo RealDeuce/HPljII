@@ -5241,14 +5241,14 @@ def downloaded_font_object_add_bookkeeping_via_16c14(
         updated_candidates = list(candidate_insert["candidates"])  # type: ignore[arg-type]
         candidate_flags = int(updated_candidates[int(candidate_insert["insert_index"])]) & 0xFFFFFFFF
 
-    candidate_flags &= ~(1 << 3)
+    candidate_flags &= ~(1 << 27)
     candidate_flags &= 0xCFFFFFFF
-    candidate_flags |= 1 << 6
-    candidate_flags &= ~(1 << 7)
+    candidate_flags |= 1 << 30
+    candidate_flags &= ~(1 << 31)
     if (byte0c & 0xFF) == 2:
-        candidate_flags |= 1 << 2
+        candidate_flags |= 1 << 26
     else:
-        candidate_flags &= ~(1 << 2)
+        candidate_flags &= ~(1 << 26)
     if updated_candidates is not None and candidate_insert is not None:
         updated_candidates[int(candidate_insert["insert_index"])] = candidate_flags
 
@@ -15879,7 +15879,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "status": 0,
         "record_index": 0,
         "record": {"id": 0x1234, "flags": 0x00, "payload": 0x456789},
-        "candidate_flags": 0x44,
+        "candidate_flags": 0x44000088,
         "counter_branch": "byte20-one",
         "counters": {
             "0x78278e": 6,
@@ -15945,14 +15945,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     }, {
         "status": 0,
         "record": {"id": 0x1234, "flags": 0x00, "payload": 0x220000},
-        "candidate_flags": 0x00220044,
+        "candidate_flags": 0x44220000,
         "candidate_insert": {
             "status": "inserted",
             "branch": "class-one",
             "insert_index": 1,
             "slot_pointer": FONT_CANDIDATE_LIST_BASE + 4,
         },
-        "candidates": [0x00210000, 0x00220044, 0x00230000, 0x00410000],
+        "candidates": [0x00210000, 0x44220000, 0x00230000, 0x00410000],
         "counters": {
             "0x78278e": 4,
             "0x782790": 3,
@@ -15991,7 +15991,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "status": 1,
         "record_index": 1,
         "record": {"id": 0x7777, "flags": 0x00, "payload": 0x111111},
-        "candidate_flags": 0x40,
+        "candidate_flags": 0x4000008C,
         "counter_branch": "byte20-other",
         "counters": {
             "0x78278e": 1,
@@ -25106,7 +25106,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     font_replace_record = font_replace["records"][0]
     assert isinstance(font_replace_record, dict)
-    lines.append("- replacement path: existing slot `%s` releases payload `0x%06x`, clears matching continuation state `%s`, installs payload `0x%06x`, clears record flag bits 5..7 to `0x%02x`, and writes candidate flags `0x%08x` with downloaded bit 6 set and byte `+0x0c == 2` bit 2 set." % (
+    lines.append("- replacement path: existing slot `%s` releases payload `0x%06x`, clears matching continuation state `%s`, installs payload `0x%06x`, clears record flag bits 5..7 to `0x%02x`, and writes candidate flags `0x%08x` with high-byte bit 6 set and byte `+0x0c == 2` high-byte bit 2 set." % (
         font_replace["record_index"],
         font_replace["replacement"]["released_payload"],
         font_replace["replacement"]["continuation_cleared"],

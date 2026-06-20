@@ -2167,6 +2167,104 @@ def apply_symbol_set_stream_via_120be_1be22(state: dict[str, object], stream: by
     return state
 
 
+def default_font_symbol_tables_via_1ac0a_1af36(
+    *,
+    current_found: bool,
+    current_orientation: int,
+    current_symbol: int,
+    default_candidates: list[int],
+    fallback_candidates: list[int],
+) -> dict[str, object]:
+    if len(default_candidates) != 4 or len(fallback_candidates) != 4:
+        raise AssertionError("default font table fixtures require four orientation/slot words")
+    orientation = int(current_orientation) & 1
+    current_word = int(current_symbol) & 0xFFFF
+
+    default_symbols = [0, 0, 0, 0]
+    default_events: list[dict[str, object]] = []
+    if current_found:
+        for index, address in enumerate((0x00782F1C, 0x00782F20, 0x00782F24, 0x00782F28)):
+            default_symbols[index] = current_word
+            default_events.append({
+                "builder": 0x01AC0A,
+                "source": "0x1b250-current",
+                "orientation": index // 2,
+                "slot": index & 1,
+                "address": address,
+                "word": current_word,
+            })
+    else:
+        for orientation_index in (0, 1):
+            for slot in (0, 1):
+                index = orientation_index * 2 + slot
+                default_symbols[index] = int(default_candidates[index]) & 0xFFFF
+                default_events.append({
+                    "builder": 0x01AC0A,
+                    "source": "0x1ab84-synthesized",
+                    "selector_78289f": orientation_index,
+                    "selector_78289e": slot,
+                    "orientation": orientation_index,
+                    "slot": slot,
+                    "address": 0x00782F1C + index * 4,
+                    "word": default_symbols[index],
+                })
+
+    fallback_symbols = [0, 0, 0, 0]
+    fallback_events: list[dict[str, object]] = []
+    if current_found:
+        for slot in (0, 1):
+            index = orientation * 2 + slot
+            fallback_symbols[index] = current_word
+            fallback_events.append({
+                "builder": 0x01AF36,
+                "source": "0x1b250-current",
+                "selector_78289f": orientation,
+                "orientation": orientation,
+                "slot": slot,
+                "address": 0x00782F0C + index * 4,
+                "word": current_word,
+            })
+        other_orientation = 1 - orientation
+        for slot in (0, 1):
+            index = other_orientation * 2 + slot
+            fallback_symbols[index] = int(fallback_candidates[index]) & 0xFFFF
+            fallback_events.append({
+                "builder": 0x01AF36,
+                "source": "0x1ad66-opposite-orientation",
+                "selector_78289f": other_orientation,
+                "selector_78289e": slot,
+                "orientation": other_orientation,
+                "slot": slot,
+                "address": 0x00782F0C + index * 4,
+                "word": fallback_symbols[index],
+            })
+    else:
+        for orientation_index in (0, 1):
+            for slot in (0, 1):
+                index = orientation_index * 2 + slot
+                fallback_symbols[index] = int(fallback_candidates[index]) & 0xFFFF
+                fallback_events.append({
+                    "builder": 0x01AF36,
+                    "source": "0x1ad66-synthesized",
+                    "selector_78289f": orientation_index,
+                    "selector_78289e": slot,
+                    "orientation": orientation_index,
+                    "slot": slot,
+                    "address": 0x00782F0C + index * 4,
+                    "word": fallback_symbols[index],
+                })
+
+    return {
+        "current_found": bool(current_found),
+        "current_orientation": orientation,
+        "current_symbol": current_word,
+        "default_symbols": default_symbols,
+        "default_events": default_events,
+        "fallback_symbols": fallback_symbols,
+        "fallback_events": fallback_events,
+    }
+
+
 def metric_long_via_10550(value: int) -> int:
     d7 = (int(value) & 0xFFFFFFFF) >> 2
     low_product = (d7 & 0xFFFF) * 12
@@ -10780,15 +10878,88 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "final_mode": 0,
     }))
+    default_font_tables_found = default_font_symbol_tables_via_1ac0a_1af36(
+        current_found=True,
+        current_orientation=1,
+        current_symbol=0x02C1,
+        default_candidates=[0x0115, 0x0015, 0x0055, 0x0005],
+        fallback_candidates=[0x0115, 0x0015, 0x0055, 0x0005],
+    )
+    default_font_tables_synthesized = default_font_symbol_tables_via_1ac0a_1af36(
+        current_found=False,
+        current_orientation=1,
+        current_symbol=0x02C1,
+        default_candidates=[0x0115, 0x0015, 0x0055, 0x0005],
+        fallback_candidates=[0x0115, 0x0015, 0x0085, 0x00A5],
+    )
+    checks.append(assert_equal("0x1ac0a/0x1af36 default-font table builders", {
+        "current_found": select_keys(default_font_tables_found, (
+            "current_found",
+            "current_orientation",
+            "current_symbol",
+            "default_symbols",
+            "fallback_symbols",
+        )),
+        "current_found_default_events": default_font_tables_found["default_events"],
+        "current_found_fallback_events": default_font_tables_found["fallback_events"],
+        "synthesized": select_keys(default_font_tables_synthesized, (
+            "current_found",
+            "current_orientation",
+            "current_symbol",
+            "default_symbols",
+            "fallback_symbols",
+        )),
+        "synthesized_default_events": default_font_tables_synthesized["default_events"],
+        "synthesized_fallback_events": default_font_tables_synthesized["fallback_events"],
+    }, {
+        "current_found": {
+            "current_found": True,
+            "current_orientation": 1,
+            "current_symbol": 0x02C1,
+            "default_symbols": [0x02C1, 0x02C1, 0x02C1, 0x02C1],
+            "fallback_symbols": [0x0115, 0x0015, 0x02C1, 0x02C1],
+        },
+        "current_found_default_events": [
+            {"builder": 0x01AC0A, "source": "0x1b250-current", "orientation": 0, "slot": 0, "address": 0x00782F1C, "word": 0x02C1},
+            {"builder": 0x01AC0A, "source": "0x1b250-current", "orientation": 0, "slot": 1, "address": 0x00782F20, "word": 0x02C1},
+            {"builder": 0x01AC0A, "source": "0x1b250-current", "orientation": 1, "slot": 0, "address": 0x00782F24, "word": 0x02C1},
+            {"builder": 0x01AC0A, "source": "0x1b250-current", "orientation": 1, "slot": 1, "address": 0x00782F28, "word": 0x02C1},
+        ],
+        "current_found_fallback_events": [
+            {"builder": 0x01AF36, "source": "0x1b250-current", "selector_78289f": 1, "orientation": 1, "slot": 0, "address": 0x00782F14, "word": 0x02C1},
+            {"builder": 0x01AF36, "source": "0x1b250-current", "selector_78289f": 1, "orientation": 1, "slot": 1, "address": 0x00782F18, "word": 0x02C1},
+            {"builder": 0x01AF36, "source": "0x1ad66-opposite-orientation", "selector_78289f": 0, "selector_78289e": 0, "orientation": 0, "slot": 0, "address": 0x00782F0C, "word": 0x0115},
+            {"builder": 0x01AF36, "source": "0x1ad66-opposite-orientation", "selector_78289f": 0, "selector_78289e": 1, "orientation": 0, "slot": 1, "address": 0x00782F10, "word": 0x0015},
+        ],
+        "synthesized": {
+            "current_found": False,
+            "current_orientation": 1,
+            "current_symbol": 0x02C1,
+            "default_symbols": [0x0115, 0x0015, 0x0055, 0x0005],
+            "fallback_symbols": [0x0115, 0x0015, 0x0085, 0x00A5],
+        },
+        "synthesized_default_events": [
+            {"builder": 0x01AC0A, "source": "0x1ab84-synthesized", "selector_78289f": 0, "selector_78289e": 0, "orientation": 0, "slot": 0, "address": 0x00782F1C, "word": 0x0115},
+            {"builder": 0x01AC0A, "source": "0x1ab84-synthesized", "selector_78289f": 0, "selector_78289e": 1, "orientation": 0, "slot": 1, "address": 0x00782F20, "word": 0x0015},
+            {"builder": 0x01AC0A, "source": "0x1ab84-synthesized", "selector_78289f": 1, "selector_78289e": 0, "orientation": 1, "slot": 0, "address": 0x00782F24, "word": 0x0055},
+            {"builder": 0x01AC0A, "source": "0x1ab84-synthesized", "selector_78289f": 1, "selector_78289e": 1, "orientation": 1, "slot": 1, "address": 0x00782F28, "word": 0x0005},
+        ],
+        "synthesized_fallback_events": [
+            {"builder": 0x01AF36, "source": "0x1ad66-synthesized", "selector_78289f": 0, "selector_78289e": 0, "orientation": 0, "slot": 0, "address": 0x00782F0C, "word": 0x0115},
+            {"builder": 0x01AF36, "source": "0x1ad66-synthesized", "selector_78289f": 0, "selector_78289e": 1, "orientation": 0, "slot": 1, "address": 0x00782F10, "word": 0x0015},
+            {"builder": 0x01AF36, "source": "0x1ad66-synthesized", "selector_78289f": 1, "selector_78289e": 0, "orientation": 1, "slot": 0, "address": 0x00782F14, "word": 0x0085},
+            {"builder": 0x01AF36, "source": "0x1ad66-synthesized", "selector_78289f": 1, "selector_78289e": 1, "orientation": 1, "slot": 1, "address": 0x00782F18, "word": 0x00A5},
+        ],
+    }))
     symbol_special_stream_bytes = b"\x1b(7X\x1b)0@\x1b(1@\x1b)2@\x1b(3@\x1b)3@"
     symbol_special_dispatch_trace = trace_symbol_set_parser_dispatch_via_11774(data, symbol_special_stream_bytes)
     symbol_special_stream = apply_symbol_set_stream_via_120be_1be22(symbol_set_state(
         requested_symbols=[0x0055, 0x0005],
         active_symbols=[0x0055, 0x0005],
         remembered_symbols=[0x0055, 0x0005],
-        default_symbols=[0x0115, 0x0015, 0x0055, 0x0005],
+        default_symbols=default_font_tables_synthesized["default_symbols"],
         orientation=1,
-        default_font_symbol=0x02C1,
+        default_font_symbol=default_font_tables_found["current_symbol"],
     ), symbol_special_stream_bytes)
     symbol_special_dispatch_commands = symbol_special_dispatch_trace["commands"]
     assert isinstance(symbol_special_dispatch_commands, list)
@@ -20615,7 +20786,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- base map: host `0x{text_source['host_char']:02x}` -> glyph `0x{text_source['mapped']:02x}`")
     lines.append(f"- symbol-set stream events: `{symbol_stream['stream_events']}`")
     lines.append("- symbol-set parser-to-map boundary: stream `1b 28 32 55 1b 29 30 45` routes primary setup `0x1201e`, secondary setup `0x12008`, and terminal handler `0x120be`, then the modeled active words `0x0055` and `0x0005` feed the patch-table and Roman Extension map updates below.")
-    lines.append("- symbol-set special-case parser boundary: stream `1b 28 37 58 1b 29 30 40 1b 28 31 40 1b 29 32 40 1b 28 33 40 1b 29 33 40` routes final `X` and `@` through terminal handler `0x120be`; the model keeps the previous requested word while calling font-id helper `0x17708` for `X`, reads default-symbol table entries for `@0`/`@1`, copies primary to secondary for `@2`, and uses the modeled default-font word for `@3`, ending with active words `0x%04x` / `0x%04x`." % (
+    lines.append("- default-font table builders: `0x1ac0a` current-candidate mode copies word `0x%04x` into all four `@0`/`@1` table slots, while synthesized mode writes `%s`; `0x1af36` builds fallback slots `%s` for the corresponding `0x156de` candidate-selection fallback." % (
+        default_font_tables_found["current_symbol"],
+        " / ".join(f"0x{int(word):04x}" for word in default_font_tables_synthesized["default_symbols"]),
+        " / ".join(f"0x{int(word):04x}" for word in default_font_tables_synthesized["fallback_symbols"]),
+    ))
+    lines.append("- symbol-set special-case parser boundary: stream `1b 28 37 58 1b 29 30 40 1b 28 31 40 1b 29 32 40 1b 28 33 40 1b 29 33 40` routes final `X` and `@` through terminal handler `0x120be`; the model keeps the previous requested word while calling font-id helper `0x17708` for `X`, reads the `0x1ac0a` default-symbol table for `@0`/`@1`, copies primary to secondary for `@2`, and uses the current-candidate default-font word for `@3`, ending with active words `0x%04x` / `0x%04x`." % (
         symbol_special_stream["active_symbols"][0],
         symbol_special_stream["active_symbols"][1],
     ))

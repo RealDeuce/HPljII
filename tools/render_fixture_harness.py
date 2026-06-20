@@ -717,6 +717,99 @@ def trace_font_control_parser_dispatch_via_11774(
     }
 
 
+def trace_rectangle_parser_dispatch_via_11774(data: bytes, stream: bytes, initial_state: dict[str, object]) -> dict[str, object]:
+    mode = 0
+    pos = 0
+    dispatches: list[dict[str, object]] = []
+    commands: list[dict[str, object]] = []
+    state = dict(initial_state)
+
+    def dispatch(byte: int, offset: int) -> dict[str, object]:
+        nonlocal mode
+        entry = parser_dispatch_entry_via_11774(data, mode, byte)
+        event = dict(entry)
+        event["offset"] = offset
+        dispatches.append(event)
+        mode = int(entry["next_mode"])
+        return event
+
+    while pos < len(stream):
+        if stream[pos] != 0x1B:
+            raise AssertionError(f"rectangle parser trace expected ESC at offset {pos}")
+        escape_offset = pos
+        if pos + 2 >= len(stream):
+            raise AssertionError("rectangle parser trace expected ESC prefix and group bytes")
+        dispatch(0x1B, escape_offset)
+        pos += 1
+        prefix = stream[pos]
+        dispatch(prefix, pos)
+        pos += 1
+        group = stream[pos]
+        dispatch(group, pos)
+        pos += 1
+        if prefix != ord("*") or group != ord("c"):
+            raise AssertionError("rectangle parser trace only models ESC *c commands")
+
+        while True:
+            command_start = escape_offset if pos == escape_offset + 3 else pos
+            if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+                parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            else:
+                parameter = 0
+            if pos >= len(stream):
+                raise AssertionError("rectangle parser trace missing final byte")
+            final_offset = pos
+            final = stream[pos]
+            pos += 1
+            final_event = dispatch(final, final_offset)
+            final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+            before_count = len(state.get("events", []))
+            if final_upper == ord("A"):
+                state = apply_rectangle_size_dots(state, "width", parameter)
+            elif final_upper == ord("B"):
+                state = apply_rectangle_size_dots(state, "height", parameter)
+            elif final_upper == ord("H"):
+                state = apply_rectangle_size_decipoints(state, "width", parameter)
+            elif final_upper == ord("V"):
+                state = apply_rectangle_size_decipoints(state, "height", parameter)
+            elif final_upper == ord("G"):
+                state = apply_rectangle_area_fill_id_via_10dce(state, parameter)
+            elif final_upper == ord("P"):
+                state = apply_fill_rectangle_via_10898(state, parameter)
+            else:
+                raise AssertionError(f"unsupported rectangle parser trace final 0x{final:02x}")
+            events = list(state.get("events", []))
+            new_events = [dict(event) for event in events[before_count:]]
+            record = bytes([
+                0x81 if parameter < 0 else 0x80,
+                final,
+            ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
+            commands.append({
+                "sequence": stream[command_start:pos],
+                "parameter": parameter,
+                "record": record,
+                "final_dispatch": final_event,
+                "mode_after_final": mode,
+                "state_events": new_events,
+            })
+            if mode == 0:
+                break
+
+    page_record = state.get("page_record", {})
+    assert isinstance(page_record, dict)
+    bridged = bridge_page_record_via_1edc6(page_record) if page_record else {"rule_list": []}
+    rendered = render_rule_list_via_1f446(data, bridged) if bridged.get("rule_list") else None
+    return {
+        "dispatches": dispatches,
+        "commands": commands,
+        "final_mode": mode,
+        "state": state,
+        "page_record": page_record,
+        "bridged": bridged,
+        "rendered": rendered,
+    }
+
+
 def data_payload_byte_via_dace(stream: bytes, pos: int) -> dict[str, object]:
     if pos >= len(stream):
         return {"value": -1, "pos": pos, "control_hits": 0}
@@ -12711,6 +12804,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         page_width=100,
         page_height=80,
     ))
+    rectangle_dispatch_trace = trace_rectangle_parser_dispatch_via_11774(data, b"\x1b*c12a5b0P", rectangle_command_state(
+        cursor_x=pack12(10),
+        cursor_y=pack12(20),
+        page_width=100,
+        page_height=80,
+    ))
     rectangle_stream_rendered = rectangle_stream_black["rendered"]
     assert isinstance(rectangle_stream_rendered, dict)
     checks.append(assert_equal("rectangle command stream queues chained ESC *c rule object", {
@@ -12737,6 +12836,69 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "final": {"width": pack12(12), "height": pack12(5), "fill_selector": 7, "page_roots": 1},
         "object": bytes.fromhex("00 00 00 00 01 07 4a 00 00 0c 00 05 00 00"),
         "source": {"x": 10, "y": 20, "width": 12, "height": 5},
+        "bridged": [bytes.fromhex("00 00 00 00 01 17 4a 00 00 0c 00 05 00 05")],
+        "tail_rows": ["." * 22] + ["." * 10 + "#" * 12] * 5,
+    }))
+    rectangle_dispatch_rendered = rectangle_dispatch_trace["rendered"]
+    assert isinstance(rectangle_dispatch_rendered, dict)
+    checks.append(assert_equal("0x11774 ROM dispatch table routes chained ESC *c rule stream", {
+        "dispatches": [
+            {key: event[key] for key in ("offset", "byte", "mode_before", "next_mode", "handler")}
+            for event in rectangle_dispatch_trace["dispatches"]
+        ],
+        "commands": [
+            {
+                "sequence": command["sequence"],
+                "parameter": command["parameter"],
+                "record": command["record"],
+                "mode_after_final": command["mode_after_final"],
+                "state_events": command["state_events"],
+            }
+            for command in rectangle_dispatch_trace["commands"]
+        ],
+        "final": select_keys(rectangle_dispatch_trace["state"], ("width", "height", "fill_selector", "page_roots")),
+        "bridged": rectangle_dispatch_trace["bridged"]["rule_list"],
+        "tail_rows": rectangle_dispatch_rendered["rows"][19:],
+    }, {
+        "dispatches": [
+            {"offset": 0, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+            {"offset": 1, "byte": 0x2A, "mode_before": 1, "next_mode": 3, "handler": 0x011EC8},
+            {"offset": 2, "byte": 0x63, "mode_before": 3, "next_mode": 16, "handler": 0x011EDA},
+            {"offset": 5, "byte": 0x61, "mode_before": 16, "next_mode": 16, "handler": 0x010E68},
+            {"offset": 7, "byte": 0x62, "mode_before": 16, "next_mode": 16, "handler": 0x010E22},
+            {"offset": 9, "byte": 0x50, "mode_before": 16, "next_mode": 0, "handler": 0x010898},
+        ],
+        "commands": [
+            {
+                "sequence": b"\x1b*c12a",
+                "parameter": 12,
+                "record": b"\x80a\x00\x0c\x00\x00",
+                "mode_after_final": 16,
+                "state_events": [{"kind": "rectangle-width-dots", "width": pack12(12)}],
+            },
+            {
+                "sequence": b"5b",
+                "parameter": 5,
+                "record": b"\x80b\x00\x05\x00\x00",
+                "mode_after_final": 16,
+                "state_events": [{"kind": "rectangle-height-dots", "height": pack12(5)}],
+            },
+            {
+                "sequence": b"0P",
+                "parameter": 0,
+                "record": b"\x80P\x00\x00\x00\x00",
+                "mode_after_final": 0,
+                "state_events": [{
+                    "kind": "rectangle-filled",
+                    "selector": 7,
+                    "source": {"x": 10, "y": 20, "width": 12, "height": 5},
+                    "saved_x": 0,
+                    "saved_y": 0,
+                    "object": bytes.fromhex("00 00 00 00 01 07 4a 00 00 0c 00 05 00 00"),
+                }],
+            },
+        ],
+        "final": {"width": pack12(12), "height": pack12(5), "fill_selector": 7, "page_roots": 1},
         "bridged": [bytes.fromhex("00 00 00 00 01 17 4a 00 00 0c 00 05 00 05")],
         "tail_rows": ["." * 22] + ["." * 10 + "#" * 12] * 5,
     }))
@@ -16447,6 +16609,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- chained rectangle stream `%s` queues the same selector-7 rule object through handlers `%s` and renders the same solid pixels after bridge normalization." % (
         " ".join(f"{byte:02x}" for byte in rectangle_stream_black["stream"]),
         ", ".join("0x%06x" % event["handler"] for event in rectangle_stream_black["events"]),
+    ))
+    lines.append("- ROM dispatch trace for the same stream walks parser modes `0 -> 1 -> 3 -> 16 -> 16 -> 16 -> 0` through handlers `0x11eb6`, `0x11ec8`, `0x11eda`, `0x10e68`, `0x10e22`, and `0x10898`, then queues the bridged rule `%s`." % (
+        " ".join(f"{byte:02x}" for byte in rectangle_dispatch_trace["bridged"]["rule_list"][0]),
     ))
     solid_rule = rectangle_fill_black_rendered["rendered"][0]
     lines.append("- `0x1f446` dispatches that bridged black rule to solid helper `0x%06x`; key `0x%04x` decodes to x `%d`, y `%d`, width `%d`, rows `%d`, and partial mask `0x%04x`." % (

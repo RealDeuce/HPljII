@@ -247,6 +247,8 @@ def firmware_scanned_font_records(data: bytes) -> list[dict[str, int | str | Non
                     "height_b": u16(data, cursor + 0x1C),
                     "width_b": u16(data, cursor + 0x1E),
                     "class_byte": data[cursor + 0x20],
+                    "symbol_word_0x22": u16(data, cursor + 0x22),
+                    "symbol_byte_0x3c": data[cursor + 0x3C],
                     "style_byte": byte_d,
                     "context_longword": context_flags | firmware_address,
                 }
@@ -419,6 +421,20 @@ def font_record_report(data: bytes) -> str:
         int(counters["0x782798"]),
         int(cursors["0x7827a0"]),
         int(counters["0x782790"]),
+    ))
+    class_zero_symbols = [
+        int(record["symbol_word_0x22"])
+        for record in header_records
+        if int(record["class_byte"]) == 0
+    ]
+    class_one_symbols = [
+        int(record["symbol_word_0x22"])
+        for record in header_records
+        if int(record["class_byte"]) == 1
+    ]
+    lines.append("- `0x156de` concrete symbol filtering: the built-in class-zero window starts with record `+0x22` words %s, and class-one starts with %s; a primary `0x0115` filter therefore keeps the three Roman-8 entries in the active window, moves `0x78287c` to the first survivor, and reduces `0x7827b8` from 12 to 3." % (
+        " / ".join(f"`0x{word:04x}`" for word in class_zero_symbols[:4]),
+        " / ".join(f"`0x{word:04x}`" for word in class_one_symbols[:4]),
     ))
     lines.append("")
     lines.append("| Scan index | Name | Record start | Firmware address | Context longword | Class | Partition |")
@@ -1253,11 +1269,12 @@ def active_symbol_set_flow_report(data: bytes) -> str:
     lines.append("| 1 | `0x1be22` writes the requested word into `0x782ef4 + 0x10*slot` and marks `0x782f2c`/`0x782f2d` | host symbol-set command changes the requested font-selection criteria, not just a renderer flag |")
     lines.append("| 2 | `0x120be` immediately calls `0xc580` | symbol-set commands run the same common refresh used by other font-selection commands |")
     lines.append("| 3 | `0xc580` reads the slot from the parser record, checks dirty flag `0x782f2c`, and calls `0x13eb8` and/or `0xc428` depending on current slot state | requested symbol-set changes can rebuild selected font context and reinstall it into page-root font slots |")
-    lines.append("| 4 | `0x156de` reads `0x782ef4` for primary or `0x782f04` for secondary, normalizes it through `0x15850`, and scans the active candidate list | the requested PCL word becomes the filter key for built-in/downloaded font candidates |")
-    lines.append("| 5 | `0x156de` writes the selected active word to `0x783144` for primary or `0x783146` for secondary after fallback/default handling | these are the active words consumed later by character-map setup |")
-    lines.append("| 6 | `0x1440c` snapshots `0x783144`/`0x783146` into selected-font state records at `0x783148`/`0x783152` offset `+4` | active object comparison can reject cached state when the symbol set changes |")
-    lines.append("| 7 | `0x14f16` reads `0x783144` or `0x783146` after base map initialization | Roman-8 built-in maps are patched according to the active requested symbol set before text objects are queued |")
-    lines.append("| 8 | `0xc580` and the orientation handler `0x10220` copy active words into `0x782f08`/`0x782f0a` | these remembered values are fallback/default inputs if current candidate selection cannot satisfy the requested word |")
+    lines.append("| 4 | `0x156de` reads `0x782ef4` for primary or `0x782f04` for secondary, uses `0x783f00` as the initial normalized-symbol flag, and scans the active candidate list | the requested PCL word becomes the filter key for built-in/downloaded font candidates |")
+    lines.append("| 5 | If the requested word has no active match, `0x156de` retries the remembered word from `0x782f08`/`0x782f0a`; if that is unchanged or still misses, it loads the `0x782f0c..18` fallback-table word and normalizes that fallback through `0x15850` | fallback/default handling changes the active word before final pruning |")
+    lines.append("| 6 | `0x156de` writes the selected active word to `0x783144` for primary or `0x783146` for secondary, then makes a second active-list pass that clears bit 31 on rejects, moves `0x78287c` to the first survivor, and shrinks `0x7827b8` | these are the active words and surviving candidates consumed later by character-map setup |")
+    lines.append("| 7 | `0x1440c` snapshots `0x783144`/`0x783146` into selected-font state records at `0x783148`/`0x783152` offset `+4` | active object comparison can reject cached state when the symbol set changes |")
+    lines.append("| 8 | `0x14f16` reads `0x783144` or `0x783146` after base map initialization | Roman-8 built-in maps are patched according to the active requested symbol set before text objects are queued |")
+    lines.append("| 9 | `0xc580` and the orientation handler `0x10220` copy active words into `0x782f08`/`0x782f0a` | these remembered values are fallback/default inputs if current candidate selection cannot satisfy the requested word |")
     lines.append("")
 
     lines.append("## Compatibility Pair Table")
@@ -1296,6 +1313,7 @@ def active_symbol_set_flow_report(data: bytes) -> str:
     lines.append("- Reproduce `0x1a9be` scanner-side candidate-list partitioning before default-font searches: every accepted record increments `0x78278e`; class `1` increments `0x782790` and splits low built-in-resource candidates into `0x782792` and cartridge/extension-range candidates into `0x782794`; class `0` increments `0x782798` and splits the same ranges into `0x78279a` and `0x78279c`; the cursor windows at `0x7827a0..0x7827b4` advance cumulatively across those partitions.")
     lines.append("- For the verified `IC32,IC15` resource ROM, the built-in scan contributes 24 concrete `HEAD`-path records: twelve class `0` and twelve class `1`, all in the low built-in resource window. The extension-range counters stay zero until cartridge/external resource ranges are scanned.")
     lines.append("- Reproduce `0x1569c` active-list setup: `0x782da3 == 0` selects class-zero pointer/count `0x7827ac`/`0x782798`, while nonzero selects class-one pointer/count `0x7827a0`/`0x782790`; for the verified built-ins these become `0x782354`/`12` and `0x782324`/`12`, and selected entries are marked with active bit `0x80000000`.")
+    lines.append("- Reproduce `0x156de` as a two-pass active-list filter: find a satisfiable requested/remembered/fallback symbol word using exact match, normalized Roman-8 match, or the compatibility pairs at `0x15840`; then clear the active bit on rejected entries, move `0x78287c` to the first retained slot, and write the retained count to `0x7827b8`. The harness now pins class-zero primary `0x0115` over the real built-ins as slots `0x782354/0x782364/0x782374`, and a class-one secondary miss falling through to fallback word `0x000e` as slots `0x782330/0x782340/0x782350`.")
     lines.append("- Reproduce `0x1ad66` as a three-stage default-font candidate search: range class 1, then range class 2, then `0x1ae7e` fallback. Range hits filter candidate high-nibble flags by primary/secondary slot mask and low-24-bit resource address range before `0x1bbfe` dispatches symbol-word reads to `0x15890` for bit-30 built-ins or `0x158be` for inline/downloaded candidates. Fallback first accepts a `0x1b060` match, where the helper validates orientation, pitch, height, style, and spacing, then accepts either exact requested-symbol matches or Roman-8 fallback for non-excluded requested words; accepted `0x1b060` candidates write the requested word from `0x7821a0` to `0x7828a4`.")
     lines.append("- Treat `0x782ef4`/`0x782f04` as requested criteria and `0x783144`/`0x783146` as the active post-selection words.")
     lines.append("- Rebuild the selected primary/secondary character-to-glyph map after symbol-set changes, then apply the `0x14f16` patch rules documented in `ic30_ic13_symbol_set_patch_tables.md`; `tools/render_fixture_harness.py` now drives `ESC (2U` and `ESC )0E` through both the ROM parser trace and symbol-set stream model, then applies the resulting `0x0055` patch-table and `0x0005` Roman Extension map rules to the `LINE_PRINTER` base map.")

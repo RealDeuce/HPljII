@@ -2617,6 +2617,41 @@ SYMBOL_BYTE_TO_WORD = {
 }
 
 
+NORMALIZED_SYMBOL_WORDS_15850 = {
+    0x0015,
+    0x0025,
+    0x0006,
+    0x0026,
+    0x0007,
+    0x0027,
+    0x0009,
+    0x000B,
+    0x004B,
+    0x0073,
+    0x0013,
+    0x0033,
+    0x0053,
+    0x00D3,
+    0x0093,
+    0x00B3,
+    0x0004,
+    0x0024,
+    0x0005,
+    0x0055,
+}
+
+SYMBOL_COMPATIBILITY_PAIRS_15840 = {
+    (0x0001, 0x000D),
+    (0x000D, 0x0001),
+    (0x0002, 0x000C),
+    (0x000C, 0x0002),
+}
+
+
+def normalized_symbol_flag_via_15850(symbol_word: int) -> int:
+    return 1 if (int(symbol_word) & 0xFFFF) in NORMALIZED_SYMBOL_WORDS_15850 else 0
+
+
 def builtin_candidate_symbol_via_15890(candidate: dict[str, int]) -> dict[str, object]:
     explicit_word = int(candidate.get("builtin_word_0x22", 0)) & 0xFFFF
     if explicit_word:
@@ -3670,6 +3705,8 @@ def firmware_scanned_builtin_candidates(resources: bytes) -> list[dict[str, int]
                 "source_arg": 1,
                 "type_byte_0x0d": resources[cursor + 0x0D],
                 "type_byte_0x0c": resources[cursor + 0x0C],
+                "builtin_word_0x22": u16(resources, cursor + 0x22),
+                "builtin_byte_0x3c": resources[cursor + 0x3C],
                 "initial_flags": firmware_address,
             })
             cursor += length
@@ -3696,6 +3733,8 @@ def builtin_candidate_windows_from_scanned_records(
             "record_start": int(record["record_start"]),
             "address": int(record["address"]),
             "longword": int(event["candidate_flags"]),
+            "builtin_word_0x22": int(record.get("builtin_word_0x22", 0)),
+            "builtin_byte_0x3c": int(record.get("builtin_byte_0x3c", 0)),
         }
         d4_class = int(record["d4_class"])
         address = int(record["address"]) & 0x00FFFFFF
@@ -3754,6 +3793,134 @@ def activate_candidate_window_via_1569c(windows: dict[str, object], class_select
         "active_count_7827b8": len(selected),
         "entries": selected,
         "events": events,
+    }
+
+
+def active_symbol_candidate_match_via_156de(
+    candidate_word: int,
+    requested_word: int,
+    normalized_flag: int,
+) -> bool:
+    candidate = int(candidate_word) & 0xFFFF
+    requested = int(requested_word) & 0xFFFF
+    if candidate == requested:
+        return True
+    if int(normalized_flag) != 0 and candidate == 0x0115:
+        return True
+    return (candidate, requested) in SYMBOL_COMPATIBILITY_PAIRS_15840
+
+
+def filter_active_candidates_via_156de(
+    activation: dict[str, object],
+    *,
+    primary_secondary_selector: int,
+    requested_primary: int,
+    requested_secondary: int,
+    initial_normalized_flag_783f00: int,
+    remembered_primary_782f08: int,
+    remembered_secondary_782f0a: int,
+    fallback_table_782f0c: dict[tuple[int, int], int],
+    class_selector_byte_782da3: int,
+) -> dict[str, object]:
+    slot = 1 if int(primary_secondary_selector) != 0 else 0
+    requested = (int(requested_secondary) if slot else int(requested_primary)) & 0xFFFF
+    normalized_flag = int(initial_normalized_flag_783f00) & 0xFFFF
+    entries = [dict(entry) for entry in activation["entries"]]  # type: ignore[index]
+
+    def symbol_for(entry: dict[str, int]) -> dict[str, object]:
+        longword = int(entry["longword"]) & 0xFFFFFFFF
+        if (longword >> 30) & 1:
+            return builtin_candidate_symbol_via_15890(entry)
+        return inline_candidate_symbol_via_158be(entry)
+
+    def first_pass_has_match(word: int, flag: int, pass_name: str) -> tuple[bool, list[dict[str, object]]]:
+        events: list[dict[str, object]] = []
+        for index, entry in enumerate(entries):
+            longword = int(entry["longword"]) & 0xFFFFFFFF
+            if longword & 0x80000000 == 0:
+                continue
+            symbol = symbol_for(entry)
+            candidate_word = int(symbol["word"]) & 0xFFFF
+            matched = active_symbol_candidate_match_via_156de(candidate_word, word, flag)
+            events.append({
+                "helper": 0x0156DE,
+                "pass": pass_name,
+                "index": index,
+                "slot_pointer": int(entry["slot_pointer"]),
+                "record_start": int(entry["record_start"]),
+                "longword": longword,
+                "candidate_word": candidate_word,
+                "requested_word": word,
+                "normalized_flag": flag,
+                "reader": symbol["reader"],
+                "reader_source": symbol["source"],
+                "matched": matched,
+            })
+            if matched:
+                return True, events
+        return False, events
+
+    events: list[dict[str, object]] = []
+    matched, pass_events = first_pass_has_match(requested, normalized_flag, "requested")
+    events.extend(pass_events)
+    active_word_source = "requested"
+    if not matched:
+        remembered = (int(remembered_secondary_782f0a) if slot else int(remembered_primary_782f08)) & 0xFFFF
+        if remembered != requested:
+            requested = remembered
+            normalized_flag = normalized_symbol_flag_via_15850(requested)
+            active_word_source = "remembered"
+            matched, pass_events = first_pass_has_match(requested, normalized_flag, "remembered")
+            events.extend(pass_events)
+    if not matched:
+        table_key = (1 if int(class_selector_byte_782da3) != 0 else 0, slot)
+        requested = int(fallback_table_782f0c[table_key]) & 0xFFFF
+        normalized_flag = normalized_symbol_flag_via_15850(requested)
+        active_word_source = "fallback-table"
+
+    survivors: list[dict[str, int]] = []
+    first_survivor_pointer = 0
+    prune_events: list[dict[str, object]] = []
+    for index, entry in enumerate(entries):
+        longword = int(entry["longword"]) & 0xFFFFFFFF
+        if longword & 0x80000000 == 0:
+            continue
+        symbol = symbol_for(entry)
+        candidate_word = int(symbol["word"]) & 0xFFFF
+        matched = active_symbol_candidate_match_via_156de(candidate_word, requested, normalized_flag)
+        before = longword
+        after = before if matched else before & 0x7FFFFFFF
+        entry["longword"] = after
+        if matched:
+            if first_survivor_pointer == 0:
+                first_survivor_pointer = int(entry["slot_pointer"])
+            survivors.append(entry)
+        prune_events.append({
+            "helper": 0x0156DE,
+            "pass": "prune",
+            "index": index,
+            "slot_pointer": int(entry["slot_pointer"]),
+            "record_start": int(entry["record_start"]),
+            "candidate_word": candidate_word,
+            "requested_word": requested,
+            "normalized_flag": normalized_flag,
+            "before": before,
+            "after": after,
+            "matched": matched,
+        })
+
+    events.extend(prune_events)
+    return {
+        "slot": "secondary" if slot else "primary",
+        "active_word_source": active_word_source,
+        "active_word": requested,
+        "active_word_register": 0x783146 if slot else 0x783144,
+        "active_pointer_78287c": first_survivor_pointer,
+        "active_count_7827b8": len(survivors),
+        "survivor_slot_pointers": [int(entry["slot_pointer"]) for entry in survivors],
+        "survivor_record_starts": [int(entry["record_start"]) for entry in survivors],
+        "events": events,
+        "prune_events": prune_events,
     }
 
 
@@ -12019,6 +12186,83 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "active_count_7827b8": 12,
             "first_event": {"helper": 0x01569C, "index": 0, "slot_pointer": 0x782324, "record_start": 0x019D18, "before": 0x40099D18, "after": 0xC0099D18},
             "last_event": {"helper": 0x01569C, "index": 11, "slot_pointer": 0x782350, "record_start": 0x02E122, "before": 0x400AE122, "after": 0xC00AE122},
+        },
+    }))
+    fallback_table_782f0c = {
+        (0, 0): 0x0115,
+        (0, 1): 0x0015,
+        (1, 0): 0x0085,
+        (1, 1): 0x000E,
+    }
+    filtered_class_zero_primary = filter_active_candidates_via_156de(
+        activated_class_zero,
+        primary_secondary_selector=0,
+        requested_primary=0x0115,
+        requested_secondary=0x0005,
+        initial_normalized_flag_783f00=0,
+        remembered_primary_782f08=0x0115,
+        remembered_secondary_782f0a=0x0005,
+        fallback_table_782f0c=fallback_table_782f0c,
+        class_selector_byte_782da3=0,
+    )
+    filtered_class_one_secondary_fallback = filter_active_candidates_via_156de(
+        activated_class_one,
+        primary_secondary_selector=1,
+        requested_primary=0x0115,
+        requested_secondary=0x9999,
+        initial_normalized_flag_783f00=0,
+        remembered_primary_782f08=0x0115,
+        remembered_secondary_782f0a=0x9999,
+        fallback_table_782f0c=fallback_table_782f0c,
+        class_selector_byte_782da3=1,
+    )
+    checks.append(assert_equal("0x156de filters concrete active candidate windows", {
+        "class_zero_primary": {
+            "slot": filtered_class_zero_primary["slot"],
+            "active_word_source": filtered_class_zero_primary["active_word_source"],
+            "active_word": filtered_class_zero_primary["active_word"],
+            "active_word_register": filtered_class_zero_primary["active_word_register"],
+            "active_pointer_78287c": filtered_class_zero_primary["active_pointer_78287c"],
+            "active_count_7827b8": filtered_class_zero_primary["active_count_7827b8"],
+            "survivor_slot_pointers": filtered_class_zero_primary["survivor_slot_pointers"],
+            "survivor_record_starts": filtered_class_zero_primary["survivor_record_starts"],
+            "first_prune": filtered_class_zero_primary["prune_events"][0],
+            "first_reject": filtered_class_zero_primary["prune_events"][1],
+        },
+        "class_one_secondary_fallback": {
+            "slot": filtered_class_one_secondary_fallback["slot"],
+            "active_word_source": filtered_class_one_secondary_fallback["active_word_source"],
+            "active_word": filtered_class_one_secondary_fallback["active_word"],
+            "active_word_register": filtered_class_one_secondary_fallback["active_word_register"],
+            "active_pointer_78287c": filtered_class_one_secondary_fallback["active_pointer_78287c"],
+            "active_count_7827b8": filtered_class_one_secondary_fallback["active_count_7827b8"],
+            "survivor_slot_pointers": filtered_class_one_secondary_fallback["survivor_slot_pointers"],
+            "survivor_record_starts": filtered_class_one_secondary_fallback["survivor_record_starts"],
+            "last_prune": filtered_class_one_secondary_fallback["prune_events"][-1],
+        },
+    }, {
+        "class_zero_primary": {
+            "slot": "primary",
+            "active_word_source": "requested",
+            "active_word": 0x0115,
+            "active_word_register": 0x783144,
+            "active_pointer_78287c": 0x782354,
+            "active_count_7827b8": 3,
+            "survivor_slot_pointers": [0x782354, 0x782364, 0x782374],
+            "survivor_record_starts": [0x00004C, 0x009FB0, 0x0142E4],
+            "first_prune": {"helper": 0x0156DE, "pass": "prune", "index": 0, "slot_pointer": 0x782354, "record_start": 0x00004C, "candidate_word": 0x0115, "requested_word": 0x0115, "normalized_flag": 0, "before": 0xC008004C, "after": 0xC008004C, "matched": True},
+            "first_reject": {"helper": 0x0156DE, "pass": "prune", "index": 1, "slot_pointer": 0x782358, "record_start": 0x000418, "candidate_word": 0x0155, "requested_word": 0x0115, "normalized_flag": 0, "before": 0xC4080418, "after": 0x44080418, "matched": False},
+        },
+        "class_one_secondary_fallback": {
+            "slot": "secondary",
+            "active_word_source": "fallback-table",
+            "active_word": 0x000E,
+            "active_word_register": 0x783146,
+            "active_pointer_78287c": 0x782330,
+            "active_count_7827b8": 3,
+            "survivor_slot_pointers": [0x782330, 0x782340, 0x782350],
+            "survivor_record_starts": [0x01A984, 0x0240F0, 0x02E122],
+            "last_prune": {"helper": 0x0156DE, "pass": "prune", "index": 11, "slot_pointer": 0x782350, "record_start": 0x02E122, "candidate_word": 0x000E, "requested_word": 0x000E, "normalized_flag": 0, "before": 0xC00AE122, "after": 0xC00AE122, "matched": True},
         },
     }))
     default_font_tables_found = default_font_symbol_tables_via_1ac0a_1af36(
@@ -22596,6 +22840,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         activated_class_zero["active_count_7827b8"],
         activated_class_one["active_pointer_78287c"],
         activated_class_one["active_count_7827b8"],
+    ))
+    lines.append("- active symbol filter: `0x156de` keeps only matching active entries, clears rejected active bits, moves `0x78287c` to the first survivor, and shrinks `0x7827b8`; class-zero primary `0x0115` keeps slots `%s`/records `%s`, while a class-one secondary miss falls through to fallback-table word `0x%04x` and keeps slots `%s`." % (
+        ", ".join("0x%06x" % int(slot) for slot in filtered_class_zero_primary["survivor_slot_pointers"]),
+        ", ".join("0x%06x" % int(start) for start in filtered_class_zero_primary["survivor_record_starts"]),
+        filtered_class_one_secondary_fallback["active_word"],
+        ", ".join("0x%06x" % int(slot) for slot in filtered_class_one_secondary_fallback["survivor_slot_pointers"]),
     ))
     lines.append("- default-font table builders: `0x1ac0a` current-candidate mode copies word `0x%04x` into all four `@0`/`@1` table slots, while synthesized mode writes `%s`; `0x1af36` builds fallback slots `%s` for the corresponding `0x156de` candidate-selection fallback." % (
         default_font_tables_found["current_symbol"],

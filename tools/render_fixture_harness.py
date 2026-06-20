@@ -2039,6 +2039,27 @@ def apply_symbol_set_patch_via_14f16(data: bytes, table: bytes, active_symbol_wo
     return {"kind": "unchanged", "symbol_word": word, "table": bytes(patched), "pairs": []}
 
 
+def apply_selected_symbol_set_patch_via_14f16(
+    data: bytes,
+    table: bytes,
+    *,
+    selected_symbol_word: int,
+    active_symbol_word: int,
+) -> dict[str, object]:
+    selected = int(selected_symbol_word) & 0xFFFF
+    if selected != 0x0115:
+        return {
+            "kind": "selected-symbol-not-roman8",
+            "selected_symbol_word": selected,
+            "symbol_word": int(active_symbol_word) & 0xFFFF,
+            "table": bytes(table),
+            "pairs": [],
+        }
+    patched = apply_symbol_set_patch_via_14f16(data, table, active_symbol_word)
+    patched["selected_symbol_word"] = selected
+    return patched
+
+
 def symbol_set_state(**overrides: object) -> dict[str, object]:
     state: dict[str, object] = {
         "requested_symbols": [0x0115, 0x0115],
@@ -4546,7 +4567,12 @@ def dispatch_selected_builtin_font_via_14c64(
         range_reason = "record-range"
 
     base_map = built_in_base_map_table(resources, longword)
-    patch = apply_symbol_set_patch_via_14f16(data, base_map, active_word)
+    patch = apply_selected_symbol_set_patch_via_14f16(
+        data,
+        base_map,
+        selected_symbol_word=selected_symbol,
+        active_symbol_word=active_word,
+    )
     patched_table = patch["table"]
     assert isinstance(patched_table, bytes)
     selected_flag = 0 if resources[record_start + 0x0C] == 0 else 1
@@ -4623,7 +4649,12 @@ def dispatch_selected_inline_font_via_14c64(
     assert isinstance(base_table, bytes)
     symbol = inline_candidate_symbol_via_158be(selected)
     selected_symbol = int(symbol["word"]) & 0xFFFF
-    patch = apply_symbol_set_patch_via_14f16(data, base_table, active_word)
+    patch = apply_selected_symbol_set_patch_via_14f16(
+        data,
+        base_table,
+        selected_symbol_word=selected_symbol,
+        active_symbol_word=active_word,
+    )
     patched_table = patch["table"]
     assert isinstance(patched_table, bytes)
     snapshot = selected_inline_snapshot_via_1440c(
@@ -16326,6 +16357,68 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     table_payload_map = inline_map_via_14e24(table_payload_memory, 0)
     table_payload_map_table = table_payload_map["table"]
     assert isinstance(table_payload_map_table, bytes)
+    table_payload_dispatch_candidate = {
+        "slot_pointer": 0x782904,
+        "longword": 0,
+        "record_start": 0,
+        "inline_word_0x14": u16(table_payload_memory, 0x14),
+        "inline_byte_0x17": table_payload_memory[0x17],
+    }
+    table_payload_dispatch = dispatch_selected_inline_font_via_14c64(
+        data,
+        table_payload_memory,
+        table_payload_dispatch_candidate,
+        primary_secondary_selector=0,
+        active_primary_symbol=0x0000,
+        active_secondary_symbol=0x0115,
+    )
+    checks.append(assert_equal("0x1719c-backed inline payload dispatches through 0x14c64", {
+        "path": table_payload_dispatch["path"],
+        "slot": table_payload_dispatch["slot"],
+        "selected_slot_pointer": table_payload_dispatch["selected_slot_pointer"],
+        "selected_longword": table_payload_dispatch["selected_longword"],
+        "record_start": table_payload_dispatch["record_start"],
+        "selected_symbol": table_payload_dispatch["selected_symbol"],
+        "active_symbol": table_payload_dispatch["active_symbol"],
+        "selected_flag_register": table_payload_dispatch["selected_flag_register"],
+        "selected_flag": table_payload_dispatch["selected_flag"],
+        "map_address": table_payload_dispatch["map_address"],
+        "extended_half_enabled": table_payload_dispatch["extended_half_enabled"],
+        "probe_count": table_payload_dispatch["probe_count"],
+        "base_map_samples": table_payload_dispatch["base_map_samples"],
+        "patch_kind": table_payload_dispatch["patch_kind"],
+        "patched_map_samples": table_payload_dispatch["patched_map_samples"],
+        "snapshot": table_payload_dispatch["snapshot"],
+        "calls": table_payload_dispatch["calls"],
+    }, {
+        "path": "inline-cache-miss",
+        "slot": "primary",
+        "selected_slot_pointer": 0x782904,
+        "selected_longword": 0,
+        "record_start": 0,
+        "selected_symbol": 0x0000,
+        "active_symbol": 0x0000,
+        "selected_flag_register": 0x783132,
+        "selected_flag": 0,
+        "map_address": 0x782F32,
+        "extended_half_enabled": False,
+        "probe_count": 0x60,
+        "base_map_samples": {"0x20": 0x00, "0x21": 0x01, "0x22": 0x00, "0xa1": 0x00},
+        "patch_kind": "selected-symbol-not-roman8",
+        "patched_map_samples": {"0x20": 0x00, "0x21": 0x01, "0x22": 0x00, "0xa1": 0x00},
+        "snapshot": {
+            "helper": 0x01440C,
+            "state_address": 0x783148,
+            "byte_0_type": 0,
+            "word_2_symbol": 0x0000,
+            "word_4_active_symbol": 0x0000,
+            "byte_8_selected_flag": 0,
+            "byte_9_before_ram": 1,
+            "reader": "0x158be",
+            "reader_source": "+0x17-encoded",
+        },
+        "calls": ["0x13a48", "0x14e24", "0x14eb6", "0x14f16", "0x158be", "0x1440c"],
+    }))
     table_payload_source = build_inline_text_source_object_from_1393a(
         table_payload_memory,
         0,
@@ -24873,6 +24966,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_record,
         " ".join(f"{byte:02x}" for byte in table_payload_bucket["object"]),
         table_payload_source["bitmap"],
+    ))
+    lines.append("- payload-backed `0x14c64` dispatch: that same `0x1719c` payload is selected as a bit-30-clear inline record, writes flag `0x%06x = %d`, rebuilds map `0x%06x` through `0x14e24`/`0x14eb6`, maps host `0x21` to glyph `%d`, and snapshots `0x158be` symbol `0x%04x` from `%s`; because the selected symbol is not Roman-8, `0x14f16` leaves the map unchanged." % (
+        table_payload_dispatch["selected_flag_register"],
+        table_payload_dispatch["selected_flag"],
+        table_payload_dispatch["map_address"],
+        table_payload_dispatch["patched_map_samples"]["0x21"],  # type: ignore[index]
+        table_payload_dispatch["selected_symbol"],
+        table_payload_dispatch["snapshot"]["reader_source"],  # type: ignore[index]
     ))
     lines.append("- type-2 payload-backed inline fixture: `0x17362` setup type `2` allocates payload units `0x%03x` / allocation size `%d`, then fixed records for host `0x23` and `0x24` render through `0x1f0d2` and `0x1f1f0`; that header allocation is not large enough for the `0x1f264` segmented-wide bitmap payload." % (
         table_payload_type2_setup["payload_units"],

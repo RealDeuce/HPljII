@@ -8639,6 +8639,58 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "post_flushes": 1,
         },
     }))
+    macro_call_replay = replay_macro_frame_payload_via_a904(
+        macro_stream_call["state"]["data_chain_frames"][0],
+        outer_byte=0x5A,
+    )
+    macro_call_replay_outer = macro_call_replay["outer_fetch"]
+    assert isinstance(macro_call_replay_outer, dict)
+    macro_call_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, bytes(macro_call_replay["stream"]))
+    checks.append(assert_equal("macro call data-chain parser trace feeds page-record stream", {
+        "frame": macro_call_replay["frame"],
+        "fetch_stream": macro_call_replay["stream"],
+        "fetches": macro_call_replay["fetches"],
+        "outer_fetch": macro_call_replay_outer,
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in macro_call_parser_trace["events"]
+        ],
+        "parser_final_mode": macro_call_parser_trace["final_mode"],
+        "page_record_stream": macro_payload_page_record_stream["stream"],
+        "object_prefix": macro_payload_page_record_object[:14],
+        "bucket_root": macro_payload_page_record_bridged["bucket_root"],
+        "rendered_rows": macro_payload_page_record_rendered["rows"],
+        "final_state": select_keys(macro_payload_page_record_stream["final_state"], ("cursor_x", "cursor_y", "line_termination", "page_roots", "span_flushes", "post_flushes")),
+    }, {
+        "frame": {"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 3, "environment": "call"},
+        "fetch_stream": b"!\r",
+        "fetches": [
+            {"d7": 0x21, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 1}]},
+            {"d7": 0x0D, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 0}]},
+        ],
+        "outer_fetch": {"d7": 0x5A, "source": "second-lifo", "events": [{"kind": "data-chain-transition", "helper": 0xE22C}, {"kind": "second-lifo", "remaining": 0}]},
+        "parser_events": [
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+            {"kind": "control", "handler": 0x00F02C, "mode_after": 0},
+        ],
+        "parser_final_mode": 0,
+        "page_record_stream": b"!\r",
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01 00 00 00"),
+        "bucket_root": macro_payload_page_record_object,
+        "rendered_rows": macro_payload_rendered["rows"],
+        "final_state": {
+            "cursor_x": pack12(5),
+            "cursor_y": pack12(21),
+            "line_termination": 0,
+            "page_roots": 0,
+            "span_flushes": 1,
+            "post_flushes": 1,
+        },
+    }))
     macro_control_payload_stream = render_macro_command_stream_via_e112_dd08(
         b"\x1b&f125Y\x1b&f0X\x1b&k1G!\r!\x1b&f1X\x1b&f2X"
     )
@@ -18107,6 +18159,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append("- macro execute parser-to-page-record boundary: replayed stream `%s` routes through handlers `0xd04a` and `0xf02c`, then feeds the same bridged page-record object and rows." % (
         " ".join(f"{byte:02x}" for byte in macro_frame_replay["stream"]),
+    ))
+    lines.append("- macro call parser-to-page-record boundary: call frame stream `%s` routes through handlers `0xd04a` and `0xf02c`, then feeds the same bridged page-record object and rows as execute." % (
+        " ".join(f"{byte:02x}" for byte in macro_call_replay["stream"]),
     ))
     lines.append("- macro mixed-control payload `%s` replays from the data-chain frame into the same page-record stream as host bytes; object `%s` renders rows matching the direct mixed-stream model." % (
         " ".join(f"{byte:02x}" for byte in macro_control_replay["stream"]),

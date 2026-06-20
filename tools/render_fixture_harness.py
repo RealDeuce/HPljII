@@ -20047,6 +20047,137 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "################................................################",
         ],
     }))
+    raster_mode_dispatch_cases = [
+        {
+            "name": "mode-1",
+            "stream": raster_mode1_command_stream,
+            "result": raster_mode1_stream_result,
+            "rendered": raster_mode1_stream_rendered,
+        },
+        {
+            "name": "mode-2",
+            "stream": raster_mode2_command_stream,
+            "result": raster_mode2_stream_result,
+            "rendered": raster_mode2_stream_rendered,
+        },
+        {
+            "name": "mode-3",
+            "stream": raster_mode3_command_stream,
+            "result": raster_mode3_stream_result,
+            "rendered": raster_mode3_stream_rendered,
+        },
+    ]
+    raster_mode_dispatch_summaries: list[dict[str, object]] = []
+    for case in raster_mode_dispatch_cases:
+        trace = trace_raster_parser_dispatch_via_11774(data, case["stream"])
+        commands = trace["commands"]
+        assert isinstance(commands, list)
+        result = case["result"]
+        assert isinstance(result, dict)
+        transfer_events = [
+            event for event in result["events"]
+            if event["kind"] == "raster-transfer"
+        ]
+        assert len(transfer_events) == 1
+        transfer_event = transfer_events[0]
+        rendered = case["rendered"]
+        assert isinstance(rendered, dict)
+        raster_mode_dispatch_summaries.append({
+            "name": case["name"],
+            "stream": case["stream"],
+            "parser_handlers": [
+                command["final_dispatch"]["handler"]
+                for command in commands
+            ],
+            "parser_records": [
+                command["record"]
+                for command in commands
+            ],
+            "parser_restore": commands[-1]["restore_after_final"],
+            "parser_restored_record": commands[-1]["restored_record"],
+            "parser_payload_offset": commands[-1]["payload_offset"],
+            "parser_payload": commands[-1]["payload"],
+            "model_restore": transfer_event["restore_dispatch"],
+            "model_restored_record": transfer_event["restored_record"],
+            "model_payload_offset": transfer_event["payload_offset"],
+            "model_payload": transfer_event["payload"],
+            "queued_object": result["object"],
+            "rendered_rows": rendered["rows"],
+        })
+    checks.append(assert_equal("raster mode streams tie ROM parser dispatch to modeled queued objects", raster_mode_dispatch_summaries, [
+        {
+            "name": "mode-1",
+            "stream": b"\x1b*t150R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f"),
+            "parser_handlers": [0x010808, 0x01075A, 0x011F82],
+            "parser_records": [
+                bytes.fromhex("80 52 00 96 00 00"),
+                bytes.fromhex("80 41 00 00 00 00"),
+                bytes.fromhex("80 57 00 02 00 00"),
+            ],
+            "parser_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+            "parser_restored_record": bytes.fromhex("80 57 00 02 00 00"),
+            "parser_payload_offset": 17,
+            "parser_payload": bytes.fromhex("f0 0f"),
+            "model_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+            "model_restored_record": bytes.fromhex("80 57 00 02 00 00"),
+            "model_payload_offset": 17,
+            "model_payload": bytes.fromhex("f0 0f"),
+            "queued_object": bytes.fromhex("00 00 00 00 80 01 00 02 00 00 f0 0f"),
+            "rendered_rows": [
+                "########................########",
+                "########................########",
+            ],
+        },
+        {
+            "name": "mode-2",
+            "stream": b"\x1b*t100R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f"),
+            "parser_handlers": [0x010808, 0x01075A, 0x011F82],
+            "parser_records": [
+                bytes.fromhex("80 52 00 64 00 00"),
+                bytes.fromhex("80 41 00 00 00 00"),
+                bytes.fromhex("80 57 00 02 00 00"),
+            ],
+            "parser_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+            "parser_restored_record": bytes.fromhex("80 57 00 02 00 00"),
+            "parser_payload_offset": 17,
+            "parser_payload": bytes.fromhex("f0 0f"),
+            "model_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+            "model_restored_record": bytes.fromhex("80 57 00 02 00 00"),
+            "model_payload_offset": 17,
+            "model_payload": bytes.fromhex("f0 0f"),
+            "queued_object": bytes.fromhex("00 00 00 00 80 02 00 02 00 00 f0 0f"),
+            "rendered_rows": [
+                "############................############........",
+                "############................############........",
+                "############................############........",
+            ],
+        },
+        {
+            "name": "mode-3",
+            "stream": b"\x1b*t75R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f"),
+            "parser_handlers": [0x010808, 0x01075A, 0x011F82],
+            "parser_records": [
+                bytes.fromhex("80 52 00 4b 00 00"),
+                bytes.fromhex("80 41 00 00 00 00"),
+                bytes.fromhex("80 57 00 02 00 00"),
+            ],
+            "parser_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+            "parser_restored_record": bytes.fromhex("80 57 00 02 00 00"),
+            "parser_payload_offset": 16,
+            "parser_payload": bytes.fromhex("f0 0f"),
+            "model_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+            "model_restored_record": bytes.fromhex("80 57 00 02 00 00"),
+            "model_payload_offset": 16,
+            "model_payload": bytes.fromhex("f0 0f"),
+            "queued_object": bytes.fromhex("00 00 00 00 80 03 00 02 00 00 f0 0f"),
+            "rendered_rows": [
+                "################................................################",
+                "################................................################",
+                "################................................################",
+                "################................................################",
+            ],
+        },
+    ]))
     raster_multirow_command_stream = b"\x1b*t300R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f") + b"\x1b*b2W" + bytes.fromhex("0f f0")
     raster_multirow_stream_result = render_raster_command_data_stream_via_121cc_105d0(
         data,
@@ -25167,6 +25298,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         len(raster_skip_stream_result["object"]),
     ))
     lines.append("- raster parser-to-gate edge boundary: the same `ESC *t300R` / `ESC *r0A` / `ESC *b4W` parser trace reaches handlers `0x10808`, `0x1075a`, and `0x11f82`, restores handler `0x105d0`, then the capped fixture stores only the first two payload bytes while the beyond-extent fixture drains all four bytes without queueing or advancing `row_y`.")
+    lines.append("- lower-resolution parser boundary: `ESC *t150R`, `ESC *t100R`, and `ESC *t75R` streams now also pass through the ROM `0x11774` parser table to handlers `0x10808`, `0x1075a`, and `0x11f82`; each restored `0x105d0` transfer record matches the modeled payload offset, queued mode object, and rendered expansion rows.")
+    for summary in raster_mode_dispatch_summaries:
+        lines.append("- `%s` parser records `%s`, payload offset `%d`, queued object `%s`" % (
+            summary["name"],
+            "; ".join(" ".join(f"{byte:02x}" for byte in record) for record in summary["parser_records"]),
+            summary["parser_payload_offset"],
+            " ".join(f"{byte:02x}" for byte in summary["queued_object"]),
+        ))
     lines.append("")
     lines.append(f"- mode-1 stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode1_command_stream)}`")
     lines.append("- mode-1 parsed events:")

@@ -8769,6 +8769,8 @@ def raster_transfer_gate_via_105d0(
             "overflow_count": 0,
             "row_y": row_y,
             "page_extent": page_extent,
+            "page_root": None,
+            "state_after": state,
         }
 
     if row_y < 0:
@@ -8782,10 +8784,13 @@ def raster_transfer_gate_via_105d0(
             "overflow_count": 0,
             "row_y": row_y,
             "page_extent": page_extent,
+            "page_root": None,
+            "state_after": state,
         }
 
     stored_byte_count = min(byte_count, limit)
     overflow_count = byte_count - stored_byte_count
+    page_root = ensure_page_record_root_for_queue(state)
     transfer_state = {
         "x": int(state["baseline_word"]),
         "y": row_y,
@@ -8806,6 +8811,8 @@ def raster_transfer_gate_via_105d0(
         "limit": limit,
         "transfer_state": transfer_state,
         "result": result,
+        "page_root": page_root,
+        "state_after": state,
     }
 
 
@@ -8925,6 +8932,7 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
                 payload = stream[payload_start:payload_end]
                 pos = payload_end
                 gate = raster_transfer_gate_via_105d0(page_record, state, byte_count, payload)
+                state = dict(gate["state_after"])
                 transfer_state = gate.get("transfer_state")
                 result = gate.get("result")
                 row_advanced = gate["path"] != "skip-row-beyond-extent"
@@ -8950,6 +8958,7 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
                     "overflow_count": gate["overflow_count"],
                     "page_extent": gate["page_extent"],
                     "gate_limit": gate.get("limit"),
+                    "page_root": gate["page_root"],
                     "result": result,
                     "row_advanced": row_advanced,
                     "row_y_after": state["row_y"],
@@ -19479,6 +19488,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             key: raster_gate_capped[key]
             for key in ("path", "queued", "drained", "byte_count", "stored_byte_count", "overflow_count", "row_y", "page_extent", "limit")
         },
+        "beyond_page_root": raster_gate_beyond["page_root"],
+        "negative_page_root": raster_gate_negative["page_root"],
+        "capped_page_root": {
+            key: raster_gate_capped["page_root"][key]
+            for key in ("page_root_created", "current_page_root_after", "page_record_root_allocations", "page_root_byte_4", "stream_link_ptr_782a72", "page_root_bucket_clear_longwords")
+        },
         "capped_result": {
             key: raster_gate_capped["result"][key]
             for key in ("path", "bucket_index", "key", "mode", "byte_count_before", "byte_count_after", "capacity", "object_size", "payload", "object")
@@ -19517,6 +19532,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "row_y": 0,
             "page_extent": 15,
             "limit": 2,
+        },
+        "beyond_page_root": None,
+        "negative_page_root": None,
+        "capped_page_root": {
+            "page_root_created": True,
+            "current_page_root_after": ABSTRACT_PAGE_ROOT_PTR,
+            "page_record_root_allocations": 1,
+            "page_root_byte_4": 1,
+            "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+            "page_root_bucket_clear_longwords": 0x100,
         },
         "capped_result": {
             "path": "raster-page-record",
@@ -19702,6 +19727,45 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         event for event in raster_stream_result["events"]
         if event["kind"] == "raster-transfer"
     ][0]
+    raster_stream_page_root = raster_stream_transfer_event["page_root"]
+    assert isinstance(raster_stream_page_root, dict)
+    checks.append(assert_equal("raster transfer ensures page root before queueing row object", {
+        "page_root": {
+            key: raster_stream_page_root[key]
+            for key in (
+                "page_root_created",
+                "current_page_root_before",
+                "current_page_root_after",
+                "page_record_root_allocations",
+                "active_record_waited",
+                "page_root_byte_4",
+                "stream_link_ptr_782a72",
+                "page_root_bucket_clear_longwords",
+                "page_root_context_slot0",
+            )
+        },
+        "final_state": {
+            key: raster_stream_result["final_state"][key]
+            for key in ("current_page_root", "page_record_root_allocations", "page_root_bucket_clear_longwords")
+        },
+    }, {
+        "page_root": {
+            "page_root_created": True,
+            "current_page_root_before": 0,
+            "current_page_root_after": ABSTRACT_PAGE_ROOT_PTR,
+            "page_record_root_allocations": 1,
+            "active_record_waited": False,
+            "page_root_byte_4": 1,
+            "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+            "page_root_bucket_clear_longwords": 0x100,
+            "page_root_context_slot0": 0,
+        },
+        "final_state": {
+            "current_page_root": ABSTRACT_PAGE_ROOT_PTR,
+            "page_record_root_allocations": 1,
+            "page_root_bucket_clear_longwords": 0x100,
+        },
+    }))
     raster_dispatch_commands = raster_dispatch_trace["commands"]
     assert isinstance(raster_dispatch_commands, list)
     checks.append(assert_equal("raster stream ties parser dispatch to queued page object", {
@@ -19717,6 +19781,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "model_restored_record": raster_stream_transfer_event["restored_record"],
         "model_payload_offset": raster_stream_transfer_event["payload_offset"],
         "model_payload": raster_stream_transfer_event["payload"],
+        "page_root": {
+            key: raster_stream_page_root[key]
+            for key in ("page_root_created", "current_page_root_after", "page_record_root_allocations")
+        },
         "queued_object": raster_stream_result["object"],
         "bridged_object": raster_stream_bridged["bucket_root"],
         "rendered_rows": raster_stream_bridged_rendered["rows"],
@@ -19731,6 +19799,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "model_restored_record": bytes.fromhex("80 57 00 04 00 00"),
         "model_payload_offset": 17,
         "model_payload": bytes.fromhex("f0 0f aa 55"),
+        "page_root": {
+            "page_root_created": True,
+            "current_page_root_after": ABSTRACT_PAGE_ROOT_PTR,
+            "page_record_root_allocations": 1,
+        },
         "queued_object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
         "bridged_object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
         "rendered_rows": ["................####........#####.#.#.#..#.#.#.#"],
@@ -19754,6 +19827,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "parser_payload_offset": raster_dispatch_commands[-1]["payload_offset"],
         "parser_payload": raster_dispatch_commands[-1]["payload"],
+        "page_root": {
+            key: raster_stream_page_root[key]
+            for key in ("page_root_created", "current_page_root_after", "page_record_root_allocations")
+        },
         "queued_object": raster_stream_result["object"],
         "bridged_object": raster_stream_bridged["bucket_root"],
         "rendered_rows": raster_stream_bridged_rendered["rows"],
@@ -19770,6 +19847,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "parser_handlers": [0x010808, 0x01075A, 0x011F82],
         "parser_payload_offset": 17,
         "parser_payload": bytes.fromhex("f0 0f aa 55"),
+        "page_root": {
+            "page_root_created": True,
+            "current_page_root_after": ABSTRACT_PAGE_ROOT_PTR,
+            "page_record_root_allocations": 1,
+        },
         "queued_object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
         "bridged_object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
         "rendered_rows": ["................####........#####.#.#.#..#.#.#.#"],
@@ -25541,7 +25623,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- `ESC *r0A` starts at the left edge, giving origin `0`, baseline word `0`, mode `0`, scale `1`, and limit `32` for extent `255`.")
     lines.append("- `ESC *rB` handler `0x107fa` clears only the raster active byte, leaving origin/baseline/mode/scale/limit/row counters untouched in this state fixture.")
     lines.append(f"- parser-derived transfer object bytes: `{' '.join(f'{byte:02x}' for byte in parser_raster_object)}`")
-    lines.append("- `0x105d0` transfer gate fixture: row beyond extent drains `%d` bytes without queueing, negative row drains `%d` bytes without queueing, and byte count `%d` with limit `%d` queues only `%d` bytes as object `%s` while recording overflow `%d`." % (
+    lines.append("- `0x105d0` transfer gate fixture: row beyond extent drains `%d` bytes without queueing, negative row drains `%d` bytes without queueing, and byte count `%d` with limit `%d` ensures a page root through modeled `0x10084`, queues only `%d` bytes as object `%s`, and records overflow `%d`." % (
         raster_gate_beyond["drained"],
         raster_gate_negative["drained"],
         raster_gate_capped["byte_count"],
@@ -25558,7 +25640,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("## ROM Parser Dispatch Trace Fixture")
     lines.append("")
     lines.append("This fixture walks the primary raster stream through the ROM dispatch table used by main parser loop `0x11774`. It proves the byte sequence reaches prefix handlers `0x11eb6` / `0x11ec8` / `0x11eda`, final handlers `0x10808`, `0x1075a`, and `0x11f82`, then returns to mode 0 where `0x12218` restores the delayed `ESC *b4W` record and dispatches handler `0x105d0` before payload bytes are consumed.")
-    lines.append("A paired cross-boundary check now ties that parser trace to the modeled command/data stream: the restored record, payload offset, queued raster object, `0x1edc6` bridge, rendered row, and final row counter all match for the same byte stream. The same primary stream is also fetched byte-for-byte through the modeled `0xa904` ring source before reaching the parser/object/render boundary. A second parser-to-gate edge check uses the `ESC *t300R` / `ESC *r0A` / `ESC *b4W` stream to prove the same ROM parser handlers and `0x105d0` restore feed both capped queueing and beyond-extent drain/no-row-advance outcomes.")
+    lines.append("A paired cross-boundary check now ties that parser trace to the modeled command/data stream: the restored record, payload offset, page-root allocation, queued raster object, `0x1edc6` bridge, rendered row, and final row counter all match for the same byte stream. The same primary stream is also fetched byte-for-byte through the modeled `0xa904` ring source before reaching the parser/object/render boundary. A second parser-to-gate edge check uses the `ESC *t300R` / `ESC *r0A` / `ESC *b4W` stream to prove the same ROM parser handlers and `0x105d0` restore feed both capped queueing and beyond-extent drain/no-row-advance outcomes.")
     lines.append("")
     lines.append(f"- dispatch stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_command_stream)}`")
     lines.append("- dispatch path:")
@@ -25586,7 +25668,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## Modeled Raster Command/Data Stream Fixture")
     lines.append("")
-    lines.append("This fixture starts from actual PCL command bytes, then models the delayed payload boundary that `0x121cc` records for handler `0x105d0`. It is still not a full CPU/parser-state run, but the primary stream is now paired with the ROM dispatch trace above, and each transfer event carries the six-byte parsed record, the exact `0x121cc` snapshot bytes, and the `0x12218` restore/dispatch result before routing the restored payload through the modeled `0x105d0` gate. The 300/150/100/75-dpi streams pin byte-stream-selected modes 0..3, the capped stream proves the parser/data fixture consumes the full restored byte count while queueing only the gate-accepted byte count, the beyond-extent stream drains payload bytes without queueing or advancing the modeled row state, and same-group lowercase-final sequences now stay in the firmware parser mode until the final uppercase command byte.")
+    lines.append("This fixture starts from actual PCL command bytes, then models the delayed payload boundary that `0x121cc` records for handler `0x105d0`. It is still not a full CPU/parser-state run, but the primary stream is now paired with the ROM dispatch trace above, and each transfer event carries the six-byte parsed record, the exact `0x121cc` snapshot bytes, and the `0x12218` restore/dispatch result before routing the restored payload through the modeled `0x105d0` gate. Queued transfers now carry the modeled `0x10084` page-root allocation record before `0x13070`/`0x13250` link the raster object. The 300/150/100/75-dpi streams pin byte-stream-selected modes 0..3, the capped stream proves the parser/data fixture consumes the full restored byte count while queueing only the gate-accepted byte count, the beyond-extent stream drains payload bytes without queueing or advancing the modeled row state, and same-group lowercase-final sequences now stay in the firmware parser mode until the final uppercase command byte.")
     lines.append("")
     lines.append(f"- stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_command_stream)}`")
     lines.append("- parsed events:")
@@ -25623,6 +25705,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- rendered stream row:")
     lines.extend(f"`{row}`" for row in raster_stream_rendered["rows"])
     lines.append("- bridged command-stream page object survives `0x1edc6` and renders the same row.")
+    lines.append("- primary raster transfer page-root allocation: created `%s`, current root after `%d`, allocation count `%d`, bucket clear longwords `%d`." % (
+        raster_stream_page_root["page_root_created"],
+        raster_stream_page_root["current_page_root_after"],
+        raster_stream_page_root["page_record_root_allocations"],
+        raster_stream_page_root["page_root_bucket_clear_longwords"],
+    ))
     lines.append("- host-fetched raster stream bytes: `%s`; fetched through `0xa904` ring source before queueing object `%s` and rendering `%s`." % (
         " ".join(f"{byte:02x}" for byte in host_fetched_raster_stream["stream"]),
         " ".join(f"{byte:02x}" for byte in raster_stream_result["object"]),

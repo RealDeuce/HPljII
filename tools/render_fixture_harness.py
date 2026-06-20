@@ -2766,6 +2766,41 @@ def apply_cursor_push_pop_via_f75e(state: dict[str, object], parameter: int) -> 
     return updated
 
 
+def apply_cursor_stack_stream_via_f75e(state: dict[str, object], stream: bytes) -> dict[str, object]:
+    state = dict(state)
+    stream_events: list[dict[str, object]] = []
+    pos = 0
+    while pos < len(stream):
+        start = pos
+        if pos + 3 >= len(stream) or stream[pos : pos + 3] != b"\x1b&f":
+            raise AssertionError(f"cursor-stack stream only models ESC &f#S commands at offset {pos}")
+        pos += 3
+        sign = 1
+        if pos < len(stream) and stream[pos] in (ord("+"), ord("-")):
+            sign = -1 if stream[pos] == ord("-") else 1
+            pos += 1
+        if pos >= len(stream) or not chr(stream[pos]).isdigit():
+            raise AssertionError("cursor-stack stream ESC &f#S needs an integer parameter")
+        value = 0
+        while pos < len(stream) and chr(stream[pos]).isdigit():
+            value = value * 10 + stream[pos] - ord("0")
+            pos += 1
+        if pos >= len(stream) or stream[pos] != ord("S"):
+            raise AssertionError("cursor-stack stream only models ESC &f#S final byte")
+        pos += 1
+        parameter = sign * value
+        state = apply_cursor_push_pop_via_f75e(state, parameter)
+        stream_events.append({
+            "sequence": stream[start:pos],
+            "parameter": parameter,
+            "handler": 0x00F75E,
+            "event": state["events"][-1],
+        })
+    state["stream"] = stream
+    state["stream_events"] = stream_events
+    return state
+
+
 def cursor_position_state(**overrides: int) -> dict[str, int]:
     state = {
         "cursor_x": pack12(10),
@@ -6316,6 +6351,54 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "max_x": pack12(2024, 11),
             "max_y": pack12(3089, 11),
         },
+    }))
+    cursor_stack_stream = apply_cursor_stack_stream_via_f75e(cursor_stack_state(
+        cursor_x=pack12(12, 4),
+        cursor_y=pack12(34, 5),
+        vertical_offset_source=60,
+    ), b"\x1b&f0S\x1b&f1S")
+    checks.append(assert_equal("cursor stack stream ESC &f0S / ESC &f1S selects 0xf75e push/pop", {
+        "stream": cursor_stack_stream["stream"],
+        "stream_events": cursor_stack_stream["stream_events"],
+        "cursor_x": cursor_stack_stream["cursor_x"],
+        "cursor_y": cursor_stack_stream["cursor_y"],
+        "stack_depth": cursor_stack_stream["stack_depth"],
+        "events": cursor_stack_stream["events"],
+    }, {
+        "stream": b"\x1b&f0S\x1b&f1S",
+        "stream_events": [
+            {
+                "sequence": b"\x1b&f0S",
+                "parameter": 0,
+                "handler": 0x00F75E,
+                "event": {"kind": "cursor-push", "depth": 1, "entry": {"x": pack12(12, 4), "stored_y": pack12(94, 5)}},
+            },
+            {
+                "sequence": b"\x1b&f1S",
+                "parameter": 1,
+                "handler": 0x00F75E,
+                "event": {
+                    "kind": "cursor-pop",
+                    "depth": 0,
+                    "entry": {"x": pack12(12, 4), "stored_y": pack12(94, 5)},
+                    "max_x": pack12(2024, 11),
+                    "max_y": pack12(3089, 11),
+                },
+            },
+        ],
+        "cursor_x": pack12(12, 4),
+        "cursor_y": pack12(34, 5),
+        "stack_depth": 0,
+        "events": [
+            {"kind": "cursor-push", "depth": 1, "entry": {"x": pack12(12, 4), "stored_y": pack12(94, 5)}},
+            {
+                "kind": "cursor-pop",
+                "depth": 0,
+                "entry": {"x": pack12(12, 4), "stored_y": pack12(94, 5)},
+                "max_x": pack12(2024, 11),
+                "max_y": pack12(3089, 11),
+            },
+        ],
     }))
     cursor_stack_clamped = apply_cursor_push_pop_via_f75e(cursor_stack_state(
         active_height=100,
@@ -11196,7 +11279,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- HT from x `17`, left margin `5`, and HMI `1` advances to the next eight-column stop at x `21`; a second fixture clamps HT to page width `90` when the cursor is already beyond the right limit.")
     lines.append("- BS subtracts HMI, clamps at the left margin when it would cross it, and in alternate metrics mode subtracts the previous-width word instead.")
     lines.append("- Byte-stream fixtures now drive the same model from actual PCL/control bytes: `ESC &k1G` followed by CR applies CR+LF, `ESC &k2G` followed by LF applies CR+LF, `ESC &k2G` followed by FF performs the CR-style reset plus page-eject finalization, `ESC &k3G` followed by CR/LF/FF applies all three combined line-termination bits in sequence, and `ESC &k0G` followed by HT/BS advances to x `21` then backs up to x `20`.")
-    lines.append("- `ESC &f0S` pushes the horizontal cursor and the vertical cursor plus `0x782dbe` onto the cursor stack; `ESC &f1S` pops, restores horizontal position clamped to active extent minus `1/12`, restores vertical position after subtracting `0x782dbe` and clamps to printable extent minus `1/12`, then clears pending/right-limit flags.")
+    lines.append("- `ESC &f0S` pushes the horizontal cursor and the vertical cursor plus `0x782dbe` onto the cursor stack; `ESC &f1S` pops, restores horizontal position clamped to active extent minus `1/12`, restores vertical position after subtracting `0x782dbe` and clamps to printable extent minus `1/12`, then clears pending/right-limit flags. A byte-stream fixture now drives `ESC &f0S` / `ESC &f1S` through the same `0xf75e` selector path.")
     lines.append("- `ESC &a#C` converts columns through current HMI, `ESC &a#H` converts decipoints as five packed subunits per decipoint, and both commit through horizontal helper `0xf4ca` with absolute/relative handling and page-width clamps.")
     lines.append("- `ESC &a#R` converts rows through current VMI; absolute rows add the firmware's `0.7200` row bias before using the top offset, while relative rows add to the current vertical cursor. `ESC &a#V` uses the same five-subunit decipoint conversion. Both commit through vertical helper `0xf6e2` and clamp to vertical bounds where the handler does so.")
     lines.append("- `ESC &l#D` accepts only the ROM LPI set `1,2,3,4,6,8,12,16,24,48`, treats zero as 12 LPI, and writes line advance `0x783160`; `ESC &l#C` converts VMI in 1/48-inch units using 75 packed subunits per unit and allows zero without setting the modified-layout flag.")
@@ -11207,6 +11290,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("")
     lines.append(f"- cursor stack push entry: `{cursor_stack_pushed['stack'][0]}`")
     lines.append(f"- cursor stack pop cursor: x `0x{int(cursor_stack_popped['cursor_x']):08x}`, y `0x{int(cursor_stack_popped['cursor_y']):08x}`")
+    lines.append(f"- cursor stack stream events: `{cursor_stack_stream['stream_events']}`")
     lines.append(f"- cursor stack clamped pop: x `0x{int(cursor_stack_clamped['cursor_x']):08x}`, y `0x{int(cursor_stack_clamped['cursor_y']):08x}`")
     lines.append(f"- `ESC &a3.5C`: absolute x `0x{int(column_absolute['cursor_x']):08x}`, relative x `0x{int(column_relative['cursor_x']):08x}`")
     lines.append(f"- `ESC &a72H`: x `0x{int(decipoint_right['cursor_x']):08x}`, clamped `ESC &a500H` x `0x{int(decipoint_clamped['cursor_x']):08x}`")

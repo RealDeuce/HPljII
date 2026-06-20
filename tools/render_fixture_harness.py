@@ -781,6 +781,30 @@ def apply_macro_control_via_dd08(state: dict[str, object], parameter: int, final
     return updated
 
 
+def append_macro_definition_payload(state: dict[str, object], payload: bytes) -> dict[str, object]:
+    updated = dict(state)
+    updated["records"] = [dict(record) for record in state["records"]]
+    updated["events"] = list(state.get("events", []))
+    current_record = updated.get("current_record")
+    if current_record is None:
+        updated["macro_error"] = 1
+        updated["events"].append({"kind": "macro-definition-payload-dropped", "payload": payload})
+        return updated
+
+    index = int(current_record)
+    existing = bytes(updated["records"][index].get("payload", b""))
+    if existing == b"\x00":
+        existing = b""
+    updated["records"][index]["payload"] = existing + payload
+    updated["events"].append({
+        "kind": "macro-definition-payload",
+        "index": index,
+        "payload": payload,
+        "record_payload": updated["records"][index]["payload"],
+    })
+    return updated
+
+
 def render_macro_command_stream_via_e112_dd08(stream: bytes, initial_state: dict[str, object] | None = None) -> dict[str, object]:
     state = macro_state() if initial_state is None else dict(initial_state)
     state["records"] = [dict(record) for record in state["records"]]
@@ -789,6 +813,26 @@ def render_macro_command_stream_via_e112_dd08(stream: bytes, initial_state: dict
     stream_events: list[dict[str, object]] = []
     pos = 0
     while pos < len(stream):
+        if int(state.get("alternate_mode", 0)) == 1 and (
+            stream[pos] != 0x1B
+            or pos + 2 >= len(stream)
+            or stream[pos + 1] != ord("&")
+            or stream[pos + 2] != ord("f")
+        ):
+            next_macro_command = stream.find(b"\x1b&f", pos + 1)
+            if next_macro_command < 0:
+                next_macro_command = len(stream)
+            payload = stream[pos:next_macro_command]
+            state = append_macro_definition_payload(state, payload)
+            event = dict(state["events"][-1])
+            event.update({
+                "sequence": payload,
+                "handler": "alternate-data",
+            })
+            stream_events.append(event)
+            pos = next_macro_command
+            continue
+
         if stream[pos] != 0x1B:
             raise AssertionError(f"macro command stream expected ESC at offset {pos}")
         start = pos
@@ -5373,6 +5417,33 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "final": {"current_macro_id": 123, "alternate_mode": 0, "macro_error": 0},
         "record0": {"id": 0, "payload": b"", "permanent": False},
+    }))
+    macro_stream_execute = render_macro_command_stream_via_e112_dd08(b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f2X")
+    macro_stream_execute_records = macro_stream_execute["state"]["records"]
+    assert isinstance(macro_stream_execute_records, list)
+    checks.append(assert_equal("macro command stream defines payload and executes data-chain frame", {
+        "events": [
+            {
+                key: event[key]
+                for key in ("kind", "sequence", "parameter", "handler", "chained")
+                if key in event
+            }
+            for event in macro_stream_execute["events"]
+        ],
+        "record0": macro_stream_execute_records[0],
+        "frames": macro_stream_execute["state"]["data_chain_frames"],
+        "host_gate_bit1": macro_stream_execute["state"]["host_gate_bit1"],
+    }, {
+        "events": [
+            {"kind": "macro-id", "sequence": b"\x1b&f123Y", "parameter": 123, "handler": 0x00E112, "chained": False},
+            {"kind": "macro-start", "sequence": b"\x1b&f0X", "parameter": 0, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-definition-payload", "sequence": b"!\r", "handler": "alternate-data"},
+            {"kind": "macro-stop-kept", "sequence": b"\x1b&f1X", "parameter": 1, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-data-chain", "sequence": b"\x1b&f2X", "parameter": 2, "handler": 0x00DD08, "chained": False},
+        ],
+        "record0": {"id": 123, "payload": b"!\r", "permanent": False},
+        "frames": [{"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"}],
+        "host_gate_bit1": 1,
     }))
     macro_with_payload = macro_state(
         current_macro_id=123,
@@ -10511,6 +10582,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- chained macro stream `%s` assigns id `%d`, starts lowercase definition mode through `0xdd08`, then stops and clears the auto-prefix-only record." % (
         " ".join(f"{byte:02x}" for byte in macro_stream_empty["stream"]),
         macro_stream_empty["state"]["current_macro_id"],
+    ))
+    lines.append("- macro definition stream `%s` stores payload `%s`, stops with the record kept, then `ESC &f2X` pushes execute frame `%s`." % (
+        " ".join(f"{byte:02x}" for byte in macro_stream_execute["stream"]),
+        " ".join(f"{byte:02x}" for byte in macro_stream_execute["state"]["data_chain_frames"][0]["payload"]),
+        macro_stream_execute["state"]["data_chain_frames"][0],
     ))
     lines.append(f"- lowercase start payload: `{macro_start['records'][0]['payload']!r}`, stop event `{macro_stop_empty['events'][-1]}`")
     lines.append(f"- execute frame: `{macro_execute['data_chain_frames'][0]}`")

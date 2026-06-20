@@ -2953,6 +2953,101 @@ def default_font_candidate_search_via_1ad66(
     }
 
 
+def default_font_synthesized_search_via_1ab84(
+    *,
+    range_candidates_by_orientation: dict[int, list[dict[str, int]]],
+    fallback_candidates_by_orientation: dict[int, list[dict[str, int]]],
+    selector_78289f: int,
+    selector_78289e: int,
+    requested_symbol: int = 0x0115,
+) -> dict[str, object]:
+    initial_orientation = int(selector_78289f) & 1
+    slot = int(selector_78289e) & 1
+    events: list[dict[str, object]] = []
+
+    def try_range(orientation: int, search_kind: int, phase: str) -> dict[str, object]:
+        result = default_font_range_candidate_search_via_1adaa(
+            range_candidates_by_orientation.get(orientation, []),
+            selector_78289e=slot,
+            search_kind=search_kind,
+        )
+        for event in result["events"]:
+            wrapped = dict(event)
+            wrapped["wrapper"] = 0x01AB84
+            wrapped["phase"] = phase
+            wrapped["selector_78289f"] = orientation
+            wrapped["selector_78289e"] = slot
+            events.append(wrapped)
+        return result
+
+    for search_kind in (1, 2):
+        result = try_range(initial_orientation, search_kind, "initial-orientation")
+        if int(result["selected_pointer"]):
+            return {
+                "selected_pointer": result["selected_pointer"],
+                "selected_longword": result["selected_longword"],
+                "word": result["word"],
+                "source": result["source"],
+                "reader": result["reader"],
+                "reader_source": result["reader_source"],
+                "initial_selector_78289f": initial_orientation,
+                "final_selector_78289f": initial_orientation,
+                "selector_78289e": slot,
+                "phase": "initial-orientation",
+                "events": events,
+            }
+
+    flipped_orientation = 1 - initial_orientation
+    events.append({
+        "wrapper": 0x01AB84,
+        "phase": "flip-orientation",
+        "from_selector_78289f": initial_orientation,
+        "to_selector_78289f": flipped_orientation,
+    })
+    for search_kind in (1, 2):
+        result = try_range(flipped_orientation, search_kind, "flipped-orientation")
+        if int(result["selected_pointer"]):
+            return {
+                "selected_pointer": result["selected_pointer"],
+                "selected_longword": result["selected_longword"],
+                "word": result["word"],
+                "source": result["source"],
+                "reader": result["reader"],
+                "reader_source": result["reader_source"],
+                "initial_selector_78289f": initial_orientation,
+                "final_selector_78289f": flipped_orientation,
+                "selector_78289e": slot,
+                "phase": "flipped-orientation",
+                "events": events,
+            }
+
+    fallback = default_font_fallback_candidate_via_1ae7e(
+        fallback_candidates_by_orientation.get(flipped_orientation, []),
+        selector_78289f=flipped_orientation,
+        requested_symbol=requested_symbol,
+    )
+    for event in fallback["events"]:
+        wrapped = dict(event)
+        wrapped["wrapper"] = 0x01AB84
+        wrapped["phase"] = "flipped-fallback"
+        wrapped["selector_78289f"] = flipped_orientation
+        wrapped["selector_78289e"] = slot
+        events.append(wrapped)
+    return {
+        "selected_pointer": fallback["selected_pointer"],
+        "selected_longword": fallback["selected_longword"],
+        "word": fallback["word"],
+        "source": fallback["source"],
+        "reader": fallback["reader"],
+        "reader_source": fallback["reader_source"],
+        "initial_selector_78289f": initial_orientation,
+        "final_selector_78289f": flipped_orientation,
+        "selector_78289e": slot,
+        "phase": "flipped-fallback" if int(fallback["selected_pointer"]) else "miss",
+        "events": events,
+    }
+
+
 def metric_long_via_10550(value: int) -> int:
     d7 = (int(value) & 0xFFFFFFFF) >> 2
     low_product = (d7 & 0xFFFF) * 12
@@ -11928,6 +12023,145 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {"helper": 0x01B50E, "pass": 0, "index": 0, "ordinal": 1, "slot_pointer": 0x4600, "resource_address": 0x250000, "candidate_word": 0x0115, "reader": "0x158be", "reader_source": "+0x14-word", "class": 0, "admissible_reason": "range-1", "duplicate_reason": "duplicate-roman8-suppressed", "roman8_duplicate_pending": False, "selected": False},
             {"helper": 0x01B50E, "pass": 0, "index": 1, "ordinal": 1, "slot_pointer": 0x4604, "resource_address": 0x260000, "candidate_word": 0x0055, "reader": "0x158be", "reader_source": "+0x14-word", "class": 1, "admissible_reason": "range-1", "duplicate_reason": "admitted", "roman8_duplicate_pending": False, "selected": True, "word": 0x0055},
         ],
+    }))
+    default_synth_initial = default_font_synthesized_search_via_1ab84(
+        selector_78289f=0,
+        selector_78289e=0,
+        range_candidates_by_orientation={
+            0: [
+                {"slot_pointer": 0x4700, "longword": 0x10250000, "inline_word_0x14": 0x0055},
+            ],
+        },
+        fallback_candidates_by_orientation={},
+    )
+    default_synth_flipped_range = default_font_synthesized_search_via_1ab84(
+        selector_78289f=0,
+        selector_78289e=0,
+        range_candidates_by_orientation={
+            1: [
+                {"slot_pointer": 0x4800, "longword": 0x10450000, "inline_byte_0x17": 0x81},
+            ],
+        },
+        fallback_candidates_by_orientation={},
+    )
+    default_synth_flipped_fallback = default_font_synthesized_search_via_1ab84(
+        selector_78289f=0,
+        selector_78289e=0,
+        requested_symbol=0x0005,
+        range_candidates_by_orientation={},
+        fallback_candidates_by_orientation={
+            1: [
+                {
+                    "slot_pointer": 0x4900,
+                    "longword": 0x00000100,
+                    "inline_byte_0x16": 1,
+                    "inline_word_0x1a": 0x03E8,
+                    "inline_word_0x20": 0x04B0,
+                    "inline_byte_0x18": 3,
+                    "inline_word_0x14": 0x0005,
+                },
+            ],
+        },
+    )
+    checks.append(assert_equal("0x1ab84 synthesized default-font search", {
+        "initial": select_keys(default_synth_initial, (
+            "selected_pointer",
+            "selected_longword",
+            "word",
+            "source",
+            "reader",
+            "reader_source",
+            "initial_selector_78289f",
+            "final_selector_78289f",
+            "selector_78289e",
+            "phase",
+        )),
+        "flipped_range": select_keys(default_synth_flipped_range, (
+            "selected_pointer",
+            "selected_longword",
+            "word",
+            "source",
+            "reader",
+            "reader_source",
+            "initial_selector_78289f",
+            "final_selector_78289f",
+            "selector_78289e",
+            "phase",
+        )),
+        "flipped_range_flip_event": default_synth_flipped_range["events"][0],
+        "flipped_fallback": select_keys(default_synth_flipped_fallback, (
+            "selected_pointer",
+            "selected_longword",
+            "word",
+            "source",
+            "reader",
+            "reader_source",
+            "initial_selector_78289f",
+            "final_selector_78289f",
+            "selector_78289e",
+            "phase",
+        )),
+        "flipped_fallback_event": default_synth_flipped_fallback["events"][-1],
+    }, {
+        "initial": {
+            "selected_pointer": 0x4700,
+            "selected_longword": 0x10250000,
+            "word": 0x0055,
+            "source": "0x1bbfe",
+            "reader": "0x158be",
+            "reader_source": "+0x14-word",
+            "initial_selector_78289f": 0,
+            "final_selector_78289f": 0,
+            "selector_78289e": 0,
+            "phase": "initial-orientation",
+        },
+        "flipped_range": {
+            "selected_pointer": 0x4800,
+            "selected_longword": 0x10450000,
+            "word": 0x0115,
+            "source": "0x1bbfe",
+            "reader": "0x158be",
+            "reader_source": "+0x17-table",
+            "initial_selector_78289f": 0,
+            "final_selector_78289f": 1,
+            "selector_78289e": 0,
+            "phase": "flipped-orientation",
+        },
+        "flipped_range_flip_event": {
+            "wrapper": 0x01AB84,
+            "phase": "flip-orientation",
+            "from_selector_78289f": 0,
+            "to_selector_78289f": 1,
+        },
+        "flipped_fallback": {
+            "selected_pointer": 0x4900,
+            "selected_longword": 0x00000100,
+            "word": 0x0005,
+            "source": "0x1b060",
+            "reader": "0x158be",
+            "reader_source": "+0x14-word",
+            "initial_selector_78289f": 0,
+            "final_selector_78289f": 1,
+            "selector_78289e": 0,
+            "phase": "flipped-fallback",
+        },
+        "flipped_fallback_event": {
+            "helper": 0x01AE7E,
+            "probe": "0x1b060",
+            "index": 0,
+            "slot_pointer": 0x4900,
+            "longword": 0x00000100,
+            "default_match": 1,
+            "candidate_word": 0x0005,
+            "reader": "0x158be",
+            "reader_source": "+0x14-word",
+            "match_kind": "exact",
+            "selected": True,
+            "wrapper": 0x01AB84,
+            "phase": "flipped-fallback",
+            "selector_78289f": 1,
+            "selector_78289e": 0,
+        },
     }))
     default_candidate_range_1 = default_font_candidate_search_via_1ad66(
         selector_78289f=0,
@@ -21984,6 +22218,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append("- current-default lookup: `0x1b250` treats `0x78219c == 0xff` as disabled, otherwise asks `0x1b50e` for a resource address and symbol word, maps that low-24 address back into the canonical candidate slot list with `0x1b4c0`, stores the resolved slot in `0x7828a0`, copies the returned word to `0x7828a4`, and sets `0x78289f` to `1` only when the selected slot precedes boundary pointer `0x7827ac`.")
     lines.append("- current-default resolver: `0x1b50e` first accepts the `0x1b8ea` fast probe only for requested index `0`; otherwise it scans two list windows selected by mode `0`, `1`, `2`, or `3`. `0x1b750` classifies each candidate through `0x1b7b2` range/special/downloaded admissibility and `0x1b8b6` current Roman-8 duplicate suppression; non-special requests can count a Roman-8 candidate twice, with the duplicate ordinal writing the requested word instead of `0x0115`.")
+    lines.append("- synthesized default search: `0x1ab84` clears the selected candidate pointer, tries `0x1adaa(1)` and `0x1adaa(2)` under the current `0x78289f`, flips `0x78289f` only after both miss, repeats both range searches, and finally falls through to `0x1ae7e`; a flipped-orientation hit or miss leaves the flipped selector in place for the caller.")
     lines.append("- default-font candidate search: `0x1ad66` first tries `0x1adaa(1)` and then `0x1adaa(2)` before `0x1ae7e`; `0x1bbfe` now derives range-hit words through the bit-30-selected symbol readers, and `0x1b060` validates default candidates by orientation, pitch `0x03e8`, height `0x04b0`, style bytes, spacing byte `3`, and requested-symbol fallback rules. The fixture pins primary-slot range-1 word `0x%04x`, secondary-slot range-2 word `0x%04x`, fallback `0x1b060` requested word `0x%04x`, and base-candidate reader sources `%s` / `%s`." % (
         default_candidate_range_1["word"],
         default_candidate_range_2["word"],

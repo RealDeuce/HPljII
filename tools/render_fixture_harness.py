@@ -16394,6 +16394,40 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "rows": expected_mixed_rows,
     }))
+    mixed_control_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k1G!\r!")
+    checks.append(assert_equal("mixed printable/control parser trace feeds page-record queue", {
+        "stream": mixed_page_record_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in mixed_control_parser_trace["events"]
+        ],
+        "parser_final_mode": mixed_control_parser_trace["final_mode"],
+        "root_allocations": mixed_page_record_stream["final_state"]["page_record_root_allocations"],
+        "page_roots": mixed_page_record_stream["final_state"]["page_roots"],
+        "bucket_index": mixed_page_record_stream["bucket_index"],
+        "object_prefix": mixed_page_record_object[:14],
+        "bridged_context_slots": mixed_page_record_bridged["context_slots"][:2],
+        "rendered_rows": mixed_page_record_rendered["rows"],
+    }, {
+        "stream": b"\x1b&k1G!\r!",
+        "parser_events": [
+            {"kind": "command", "handler": 0x00EDF8, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+            {"kind": "control", "handler": 0x00F02C, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+        ],
+        "parser_final_mode": 0,
+        "root_allocations": 1,
+        "page_roots": 1,
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01 20 3b 00"),
+        "bridged_context_slots": (0x440946B4, 0),
+        "rendered_rows": expected_mixed_rows,
+    }))
     mixed_publication_parser_trace = {
         "reset": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1bE"),
         "ff": trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k2G!\f"),
@@ -18612,6 +18646,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("")
     lines.append(f"- page-record stream object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_page_record_object)}`")
     lines.append(f"- page-record bridged context slots `[0..1]`: `0x{mixed_page_record_bridged['context_slots'][0]:08x}`, `0x{mixed_page_record_bridged['context_slots'][1]:08x}`")
+    lines.append("- mixed parser-to-page-record boundary: the same stream routes through handlers `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, allocates one page-record root, reuses bucket `0`, and renders the same bridged rows.")
     lines.append("")
     lines.append("A ROM parser trace now anchors the publication streams before the modeled page-record layer: `21 1b 45` routes printable `!` through the mode-0 `0xd04a` branch and `ESC E` through handler `0xcc52`; `1b 26 6b 32 47 21 0c` routes `ESC &k2G` through handler `0xedf8`, printable `!` through `0xd04a`, and FF through handler `0xf0f0`; `21 1b 26 6c 31 41` and `21 1b 26 6c 31 4f` route printable `!` through `0xd04a` before page-size `ESC &l1A` reaches `0xfc74` and orientation `ESC &l1O` reaches `0x10220`.")
     lines.append("The publication-boundary fixture ties those parser handler sequences to the modeled page-record side for the same four byte streams: each allocates one root on printable `!`, publishes one compact bucket through `0xff1e`, clears the current root, and renders the published rows after the `0x1edc6` bridge.")

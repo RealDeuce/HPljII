@@ -5616,6 +5616,56 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "delete_all_final": {"current_macro_id": 124, "parser_mode": 0},
     }))
+    macro_stream_alternate_guard = render_macro_command_stream_via_e112_dd08(
+        b"\x1b&f123Y\x1b&f0X\x1b&f4X\x1b&f1X"
+    )
+    macro_stream_active_chain_guard = render_macro_command_stream_via_e112_dd08(
+        b"\x1b&f4X\x1b&f2X",
+        macro_state(
+            current_macro_id=123,
+            current_data_chain_byte_9=2,
+            records=[macro_record(b"!\r", 123)] + [macro_record() for _ in range(31)],
+        ),
+    )
+    macro_stream_alternate_guard_records = macro_stream_alternate_guard["state"]["records"]
+    assert isinstance(macro_stream_alternate_guard_records, list)
+    checks.append(assert_equal("macro command stream respects definition and active-chain guards", {
+        "alternate_events": [
+            {
+                key: event[key]
+                for key in ("kind", "sequence", "parameter", "handler", "chained", "reason")
+                if key in event
+            }
+            for event in macro_stream_alternate_guard["events"]
+        ],
+        "alternate_final": select_keys(macro_stream_alternate_guard["state"], ("alternate_mode", "parser_mode", "macro_error")),
+        "alternate_record0": macro_stream_alternate_guard_records[0],
+        "active_chain_events": [
+            {
+                key: event[key]
+                for key in ("kind", "sequence", "parameter", "handler", "chained", "reason")
+                if key in event
+            }
+            for event in macro_stream_active_chain_guard["events"]
+        ],
+        "active_chain_final": select_keys(macro_stream_active_chain_guard["state"], ("current_macro_id", "parser_mode", "host_gate_bit1", "data_chain_slot")),
+        "active_chain_frames": macro_stream_active_chain_guard["state"]["data_chain_frames"],
+    }, {
+        "alternate_events": [
+            {"kind": "macro-id", "sequence": b"\x1b&f123Y", "parameter": 123, "handler": 0x00E112, "chained": False},
+            {"kind": "macro-start", "sequence": b"\x1b&f0X", "parameter": 0, "handler": 0x00DD08, "chained": False},
+            {"kind": "macro-control-ignored", "sequence": b"\x1b&f4X", "parameter": 4, "handler": 0x00DD08, "chained": False, "reason": "alternate-mode"},
+            {"kind": "macro-stop-cleared-empty", "sequence": b"\x1b&f1X", "parameter": 1, "handler": 0x00DD08, "chained": False},
+        ],
+        "alternate_final": {"alternate_mode": 0, "parser_mode": 0, "macro_error": 0},
+        "alternate_record0": {"id": 0, "payload": b"", "permanent": False},
+        "active_chain_events": [
+            {"kind": "macro-control-ignored", "sequence": b"\x1b&f4X", "parameter": 4, "handler": 0x00DD08, "chained": False, "reason": "active-data-chain"},
+            {"kind": "macro-data-chain", "sequence": b"\x1b&f2X", "parameter": 2, "handler": 0x00DD08, "chained": False},
+        ],
+        "active_chain_final": {"current_macro_id": 123, "parser_mode": 0, "host_gate_bit1": 1, "data_chain_slot": 1},
+        "active_chain_frames": [{"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"}],
+    }))
     macro_frame_payload = macro_stream_execute["state"]["data_chain_frames"][0]["payload"]
     macro_fetch_state = host_byte_fetch_state(data_chain=list(macro_frame_payload), direct_mode=0)
     macro_fetch_first = host_byte_fetch_via_a904(macro_fetch_state)
@@ -11021,6 +11071,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- macro delete-current/all streams prove selector `8` clears only the selected id while selector `6` clears the pool head records: `%s` / `%s`." % (
         macro_stream_delete_current["state"]["records"][:2],
         macro_stream_delete_all["state"]["records"][:2],
+    ))
+    lines.append("- macro guard streams prove definition mode ignores non-stop control and active data-chain mode ignores non-replay control while still allowing execute: `%s` / `%s`." % (
+        macro_stream_alternate_guard["events"][2],
+        macro_stream_active_chain_guard["events"],
     ))
     lines.append("- macro execute frame payload fetches through `0xa904` as data-chain bytes `%s`." % (
         " ".join(f"0x{int(fetch['d7']):02x}" for fetch in (macro_fetch_first, macro_fetch_second)),

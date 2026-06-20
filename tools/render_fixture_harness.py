@@ -5670,6 +5670,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     macro_fetch_state = host_byte_fetch_state(data_chain=list(macro_frame_payload), direct_mode=0)
     macro_fetch_first = host_byte_fetch_via_a904(macro_fetch_state)
     macro_fetch_second = host_byte_fetch_via_a904(macro_fetch_first["state"])
+    macro_fetch_after_payload_state = dict(macro_fetch_second["state"])
+    macro_fetch_after_payload_state["data_chain_end_marker"] = True
+    macro_fetch_after_payload_state["lifo2"] = [0x5A]
+    macro_fetch_after_payload = host_byte_fetch_via_a904(macro_fetch_after_payload_state)
     checks.append(assert_equal("macro execute frame payload feeds 0xa904 data-chain bytes", {
         "frame": macro_stream_execute["state"]["data_chain_frames"][0],
         "fetches": [
@@ -5683,15 +5687,23 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "source": macro_fetch_second["source"],
                 "events": macro_fetch_second["events"],
             },
+            {
+                "d7": macro_fetch_after_payload["d7"],
+                "source": macro_fetch_after_payload["source"],
+                "events": macro_fetch_after_payload["events"],
+            },
         ],
-        "remaining": macro_fetch_second["state"]["data_chain"],
+        "remaining": macro_fetch_after_payload["state"]["data_chain"],
+        "data_chain_transitions": macro_fetch_after_payload["state"]["data_chain_transitions"],
     }, {
         "frame": {"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"},
         "fetches": [
             {"d7": 0x21, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 1}]},
             {"d7": 0x0D, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 0}]},
+            {"d7": 0x5A, "source": "second-lifo", "events": [{"kind": "data-chain-transition", "helper": 0xE22C}, {"kind": "second-lifo", "remaining": 0}]},
         ],
         "remaining": [],
+        "data_chain_transitions": 1,
     }))
     line_printer_hmi = builtin_flagged_hmi_from_context(resources, 0x440946B4)
     macro_payload_printable_stream = render_mixed_printable_control_stream(
@@ -11076,8 +11088,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         macro_stream_alternate_guard["events"][2],
         macro_stream_active_chain_guard["events"],
     ))
-    lines.append("- macro execute frame payload fetches through `0xa904` as data-chain bytes `%s`." % (
+    lines.append("- macro execute frame payload fetches through `0xa904` as data-chain bytes `%s`, then end-marker helper `0xe22c` resumes outer byte `0x%02x`." % (
         " ".join(f"0x{int(fetch['d7']):02x}" for fetch in (macro_fetch_first, macro_fetch_second)),
+        int(macro_fetch_after_payload["d7"]),
     ))
     lines.append("- macro execute payload stream `%s` queues glyphs `%s`, coords `%s`, then CR leaves cursor `0x%08x,0x%08x`." % (
         " ".join(f"{byte:02x}" for byte in macro_payload_printable_stream["stream"]),

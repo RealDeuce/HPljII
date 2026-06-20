@@ -48,8 +48,8 @@ These command-to-handler anchors are current priorities for pixel-perfect render
 | `ESC &k#H` | `0x00ca8c` | HMI |
 | `ESC &k#G` | `0x00edf8` | CR/LF/FF line-termination mode |
 | `ESC &f#S` | `0x00f75e` | cursor push/pop |
-| `ESC &f#Y` | `0x00e112` | macro ID |
-| `ESC &f#X` | `0x00dd08` | macro control |
+| `ESC &f#Y` | `0x00e112` | macro ID; stores absolute parsed word in `0x783164` |
+| `ESC &f#X` | `0x00dd08` | macro control; selectors `0..10` dispatch through the macro record/data-chain table |
 | `ESC *t#R` | `0x010808` | raster resolution |
 | `ESC *r#A` | `0x01075a` | start raster graphics |
 | `ESC *r#B` | `0x0107fa` | end raster graphics |
@@ -93,6 +93,8 @@ It then rebuilds page-related state, including `0x782da2`, `0x782db2`, `0x782db4
 
 `ESC *r#B` at `0x0107fa` clears raster active byte `0x783182`, leaving raster origin/baseline/mode/scale/limit state intact so later resolution commands can take effect.
 
+`ESC &f#Y` at `0x00e112` stores the absolute parsed signed word into current macro id `0x783164`. `ESC &f#X` at `0x00dd08` uses that id with the 32-entry macro record pool at `0x782a98`: selector `0` starts definition, `1` stops definition, `2` executes, `3` calls, `4`/`5` enable/disable overlay, `6` deletes all, `7` deletes temporary, `8` deletes current id, and `9`/`10` mark temporary/permanent. Execute/call route through `0xe418`, which builds a data-chain frame with byte `+8 = 4` and byte `+9 = 2` or `3`. The executable harness now pins these command side effects and frame metadata; full replay of macro payload bytes through the live parser is still open.
+
 Primary and secondary font-selection commands share the same final handler stubs, with the `ESC (` versus `ESC )` distinction preserved by setup routines before mode 4. The final handlers call lower-level font-state routines around `0xc6ec..0xc930` and then common routine `0xc580`.
 
 Primary and secondary font-designation commands use the same parser shape. `ESC (` calls setup `0x1201e`, which pushes slot word `0`; `ESC )` calls setup `0x12008`, which pushes slot word `1`; final bytes `@` through `^` dispatch to `0x120be`. That wrapper calls `0x1be22`, which computes the provisional PCL symbol word as `(parameter << 5) + final_byte - 0x40` and stores it at `0x782ef4 + 0x10*slot`. Normal symbol-set finals keep that word and call common refresh `0xc580`; final `X` restores the previous requested symbol word and calls `0x17708` for `ESC (#X` / `ESC )#X` font-ID selection; final `@` runs a numeric table where `3@` is the documented default-font command and `@0..@2` are firmware-supported table/copy variants. The active selected words later consumed by glyph-map patching are `0x783144` and `0x783146`; this path is detailed in `generated/analysis/ic30_ic13_active_symbol_set_flow.md`.
@@ -111,4 +113,4 @@ Page geometry and the first raster transfer path are now tracked in `notes/page-
 - Compare page geometry constants from `generated/analysis/ic30_ic13_page_geometry_tables.md` against manual printable-area figures.
 - Trace font handler stubs `0x012046..0x0120aa` into built-in resource ROM font selection and metrics lookup.
 - Confirm whether the firmware-supported `0x1be22` `@0..@2` variants are exposed by any host-visible command dialect.
-- Trace macro control handler `0x00dd08` into `ESC &f#X` behavior and interaction with the alternate/data parser table.
+- Replace the modeled `ESC &f#X` macro-control fixtures with full replay of stored macro payload bytes through the live parser/data-chain path.

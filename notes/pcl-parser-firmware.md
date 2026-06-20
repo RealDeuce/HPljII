@@ -131,31 +131,37 @@ After `ESC`, parser mode 1 maps bytes to command families:
 
 ## Parsed-Command Dispatch
 
-After tokenization, routine `0x0000dd08` uses the parameter value from `record+2`, compares it with current state at `0x783164`, and jumps through a table at `0x0000dca8` via common dispatch helper `0x00033298`.
+After tokenization, routine `0x0000e112` implements `ESC &f#Y`: it rewinds the parsed-record cursor by six bytes, reads the signed word at `record+2`, stores its absolute value in current macro id word `0x783164`, and returns.
+
+Routine `0x0000dd08` implements `ESC &f#X`: it rewinds the parsed-record cursor by six bytes, takes the absolute selector value from `record+2`, looks up or allocates a 12-byte macro record through `0x0000e0a4`, and jumps through a table at `0x0000dca8` via common dispatch helper `0x00033298`. Current macro record pointer lives at `0x782d7a`; current data-chain frame pointer lives at `0x782d76`.
 
 The table maps selector values to handlers:
 
-| Selector | Handler |
-| ---: | --- |
-| 10 | `0x0000df36` |
-| 9 | `0x0000df24` |
-| 8 | `0x0000df12` |
-| 7 | `0x0000df08` |
-| 6 | `0x0000defe` |
-| 5 | `0x0000def4` |
-| 4 | `0x0000dec8` |
-| 3 | `0x0000dea2` |
-| 2 | `0x0000de7c` |
-| 1 | `0x0000ddfc` |
-| 0 | `0x0000dd86` |
+| Selector | Handler | Meaning |
+| ---: | --- | --- |
+| 0 | `0x0000dd86` | start macro definition |
+| 1 | `0x0000ddfc` | stop macro definition |
+| 2 | `0x0000de7c` | execute macro |
+| 3 | `0x0000dea2` | call macro |
+| 4 | `0x0000dec8` | enable overlay |
+| 5 | `0x0000def4` | disable overlay |
+| 6 | `0x0000defe` | delete all macros |
+| 7 | `0x0000df08` | delete temporary macros |
+| 8 | `0x0000df12` | delete current macro id |
+| 9 | `0x0000df24` | make current macro temporary |
+| 10 | `0x0000df36` | make current macro permanent |
 
-The selector-1 handler checks an already-tokenized byte sequence for:
+Selector `0` starts definition mode. When invoked by lowercase-final `ESC &f0x`, it seeds the stored byte stream with:
 
 ```text
 ESC & f
 ```
 
-Specifically, it checks bytes at offsets `+4`, `+5`, and `+6` from a command/data pointer for `0x1b`, `0x26`, and `0x66`. This is an important PCL macro-control lead because `ESC & f` is the PCL macro command family.
+Uppercase-final `ESC &f0X` seeds a single zero byte instead. Selector `1` stops definition mode, normalizes chunk-header overhead out of the stored byte count, and clears empty one-byte or auto-prefix-only records; the auto-prefix-only check tests payload bytes `0x1b`, `0x26`, and `0x66` at chunk offsets `+4`, `+5`, and `+6`.
+
+Selectors `2` and `3` require an existing record with payload bytes and call `0x0000e418` with mode byte `2` for execute or `3` for call. `0xe418` builds the next 14-byte data-chain frame from the macro record payload pointer and byte count, stores byte `+8 = 4`, stores byte `+9 = mode`, sets host gate bit 1 when the byte count is nonzero, and advances `0x782d76`. Call mode also saves the current font-context pair into the context stack around `0x782c6e`; execute and call use different environment snapshot buffers.
+
+`tools/render_fixture_harness.py` has executable fixtures for `0xe112`, the `0xdd08` start/stop/delete/overlay/permanent selector behavior, and the `0xe418` execute/call data-chain frame shape. These fixtures model direct command side effects and the replay frame contract; they do not yet replay macro payload bytes through the live parser.
 
 Top-level `ESC &` enters mode 5. The normal table currently identifies these subfamilies:
 
@@ -179,7 +185,7 @@ The parser uses a pool of 32 records at `0x782a98`, each apparently 12 bytes lon
 - `0xdf80` clears only records whose byte at offset `+0x0a` is zero.
 - `0xdfba` clears fields at `+4`, `+8`, `+0x0a`, frees a `0x100` byte allocation via `0x18b4`, and clears the record pointer.
 - `0xe002` appends a byte to a current data chain, allocating `0x100` byte chunks through `0x170c` as needed.
-- `0xe0a4` finds or allocates a record in the 32-entry pool keyed by a word at offset `+8`.
+- `0xe0a4` scans the 32-entry pool keyed by macro id word `+8`: existing records with a nonzero payload pointer return status `1`, the first free record is assigned the requested id and returns status `0`, and a full pool returns status `2`.
 
 These structures need full naming, but they are already concrete enough to drive PCL parser fixture work.
 
@@ -192,6 +198,6 @@ The `cmpi.w #0x000c` at `0x0001053a` is not the PCL form-feed handler. The surro
 - Find callers of `0xdaf0` and `0xdd08`, and keep expanding the named roles for the `0xa904` callers listed in `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
 - Decode all normal and alternate parser table handlers into PCL command names.
 - Decode the six-byte tokenizer records and 12-byte command/data pool records.
-- Follow `ESC & f` handling into macro definition/execution state.
+- Replace the modeled `ESC &f#X` macro-control fixtures with full macro replay through the live parser/data-chain path.
 - Replace the synthetic `ESC E` fixtures with fixtures that start from parser-produced page objects and prove the `0xff1e` finalization/publication path before reset clears the current page root.
-- Extend the mixed-stream page-record fixture into real parser-produced page-object allocation/finalization, then add one macro command once handler destinations are named.
+- Extend the mixed-stream page-record fixture into real parser-produced page-object allocation/finalization, then add a parser-driven macro command/replay fixture.

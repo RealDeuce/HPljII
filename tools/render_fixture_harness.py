@@ -460,6 +460,195 @@ def alternate_payload_dispatch_via_12358(
     }
 
 
+def macro_record(payload: bytes = b"", macro_id: int = 0, permanent: bool = False) -> dict[str, object]:
+    return {
+        "id": macro_id & 0xFFFF,
+        "payload": bytes(payload),
+        "permanent": bool(permanent),
+    }
+
+
+def macro_state(**overrides: object) -> dict[str, object]:
+    state: dict[str, object] = {
+        "current_macro_id": 0,
+        "records": [macro_record() for _ in range(32)],
+        "current_record": None,
+        "alternate_mode": 0,
+        "macro_error": 0,
+        "parser_mode": 0,
+        "overlay_macro_id": 0,
+        "data_chain_frames": [],
+        "host_gate_bit1": 0,
+        "data_chain_slot": 0,
+        "events": [],
+    }
+    state.update(overrides)
+    return state
+
+
+def assign_macro_id_via_e112(record: bytes, state: dict[str, object] | None = None) -> dict[str, object]:
+    if len(record) != 6:
+        raise AssertionError("0xe112 macro id assignment requires one six-byte parsed command record")
+    updated = macro_state() if state is None else dict(state)
+    value = s16(record, 2)
+    if value < 0:
+        value = -value
+    updated["current_macro_id"] = value & 0xFFFF
+    return updated
+
+
+def find_macro_record_via_e0a4(state: dict[str, object], macro_id: int) -> dict[str, object]:
+    records = list(state["records"])
+    first_free: int | None = None
+    for index, record_obj in enumerate(records):
+        record = dict(record_obj)
+        if int(record.get("id", 0)) == (macro_id & 0xFFFF) and bytes(record.get("payload", b"")):
+            return {"status": 1, "index": index, "record": record}
+        if first_free is None and int(record.get("id", 0)) == 0 and not bytes(record.get("payload", b"")):
+            first_free = index
+    if first_free is None:
+        return {"status": 2, "index": None, "record": None}
+    records[first_free] = macro_record(macro_id=macro_id)
+    state["records"] = records
+    return {"status": 0, "index": first_free, "record": records[first_free]}
+
+
+def clear_macro_record_via_dfba(state: dict[str, object], index: int) -> None:
+    records = list(state["records"])
+    old_id = int(records[index].get("id", 0))
+    records[index] = macro_record()
+    state["records"] = records
+    if int(state.get("overlay_macro_id", 0)) == old_id:
+        state["parser_mode"] = 0
+
+
+def execute_macro_data_chain_via_e418(state: dict[str, object], index: int, mode: int) -> dict[str, object]:
+    records = list(state["records"])
+    record = dict(records[index])
+    payload = bytes(record.get("payload", b""))
+    frame = {
+        "payload": payload,
+        "byte_count": len(payload),
+        "byte_8": 4,
+        "byte_9": mode,
+        "environment": "execute" if mode == 2 else "call",
+    }
+    frames = list(state.get("data_chain_frames", []))
+    frames.append(frame)
+    state["data_chain_frames"] = frames
+    state["data_chain_slot"] = int(state.get("data_chain_slot", 0)) + 1
+    if payload:
+        state["host_gate_bit1"] = 1
+    events = list(state.get("events", []))
+    events.append({"kind": "macro-data-chain", "mode": mode, "payload": payload})
+    state["events"] = events
+    return frame
+
+
+def apply_macro_control_via_dd08(state: dict[str, object], parameter: int, final_byte: int = 0x58) -> dict[str, object]:
+    updated = dict(state)
+    updated["records"] = [dict(record) for record in state["records"]]
+    updated["data_chain_frames"] = list(state.get("data_chain_frames", []))
+    updated["events"] = list(state.get("events", []))
+    selector = abs(int(parameter))
+    current_id = int(updated.get("current_macro_id", 0)) & 0xFFFF
+    lookup = find_macro_record_via_e0a4(updated, current_id)
+    status = int(lookup["status"])
+    index = lookup["index"]
+
+    current_chain_active = int(updated.get("current_data_chain_byte_9", 0)) != 0
+    if current_chain_active and selector not in (2, 3):
+        updated["events"].append({"kind": "macro-control-ignored", "selector": selector, "reason": "active-data-chain"})
+        return updated
+    if int(updated.get("alternate_mode", 0)) == 1 and selector != 1:
+        updated["events"].append({"kind": "macro-control-ignored", "selector": selector, "reason": "alternate-mode"})
+        return updated
+
+    if selector == 0:
+        if index is None:
+            updated["macro_error"] = 1
+            updated["alternate_mode"] = 1
+            updated["events"].append({"kind": "macro-start-failed", "status": status})
+            return updated
+        updated["records"][index] = macro_record(
+            b"\x1b&f" if final_byte == 0x78 else b"\x00",
+            macro_id=current_id,
+        )
+        updated["current_record"] = index
+        updated["alternate_mode"] = 1
+        updated["macro_error"] = 0
+        updated["events"].append({"kind": "macro-start", "status": status, "index": index, "auto_prefix": final_byte == 0x78})
+        return updated
+
+    if selector == 1:
+        if int(updated.get("alternate_mode", 0)) != 1:
+            return updated
+        if int(updated.get("macro_error", 0)) == 0 and index is not None:
+            payload = bytes(updated["records"][index].get("payload", b""))
+            if len(payload) == 1 or payload == b"\x1b&f":
+                updated["records"][index] = macro_record()
+                updated["events"].append({"kind": "macro-stop-cleared-empty", "index": index})
+            else:
+                updated["events"].append({"kind": "macro-stop-kept", "index": index, "payload": payload})
+        updated["macro_error"] = 0
+        updated["alternate_mode"] = 0
+        return updated
+
+    if selector in (2, 3):
+        if index is not None and status == 1 and bytes(updated["records"][index].get("payload", b"")):
+            execute_macro_data_chain_via_e418(updated, index, selector)
+        return updated
+
+    if selector == 4:
+        if status == 1:
+            updated["parser_mode"] = 1
+            updated["overlay_macro_id"] = current_id
+            updated["events"].append({"kind": "macro-overlay-enable", "id": current_id})
+        else:
+            updated["parser_mode"] = 0
+        return updated
+
+    if selector == 5:
+        updated["parser_mode"] = 0
+        updated["events"].append({"kind": "macro-overlay-disable"})
+        return updated
+
+    if selector == 6:
+        updated["records"] = [macro_record() for _ in range(32)]
+        updated["parser_mode"] = 0
+        updated["events"].append({"kind": "macro-delete-all"})
+        return updated
+
+    if selector == 7:
+        updated["records"] = [
+            dict(record) if bool(dict(record).get("permanent", False)) else macro_record()
+            for record in updated["records"]
+        ]
+        updated["events"].append({"kind": "macro-delete-temporary"})
+        return updated
+
+    if selector == 8:
+        if index is not None:
+            updated["records"][index] = macro_record()
+            updated["events"].append({"kind": "macro-delete-current", "index": index})
+        return updated
+
+    if selector == 9:
+        if index is not None and status == 1:
+            updated["records"][index]["permanent"] = False
+            updated["events"].append({"kind": "macro-make-temporary", "index": index})
+        return updated
+
+    if selector == 10:
+        if index is not None and status == 1:
+            updated["records"][index]["permanent"] = True
+            updated["events"].append({"kind": "macro-make-permanent", "index": index})
+        return updated
+
+    updated["events"].append({"kind": "macro-control-ignored", "selector": selector, "reason": "selector-out-of-range"})
+    return updated
+
+
 def resolve_builtin_glyph(resources: bytes, context: int, glyph_index: int) -> dict[str, int | bytes]:
     if not (context & 0x40000000):
         raise AssertionError(f"context 0x{context:08x} does not select the built-in offset-table form")
@@ -3922,6 +4111,110 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "remaining": -3,
             "control_hits": 0,
         },
+    }))
+
+    macro_id_state = assign_macro_id_via_e112(bytes.fromhex("81 59 ff 85 00 00"))
+    checks.append(assert_equal("0xe112 stores absolute parsed macro id", {
+        "current_macro_id": macro_id_state["current_macro_id"],
+    }, {
+        "current_macro_id": 123,
+    }))
+    macro_start = apply_macro_control_via_dd08(macro_id_state, 0, final_byte=0x78)
+    macro_stop_empty = apply_macro_control_via_dd08(macro_start, 1)
+    macro_start_upper = apply_macro_control_via_dd08(macro_id_state, 0, final_byte=0x58)
+    macro_stop_upper_empty = apply_macro_control_via_dd08(macro_start_upper, 1)
+    macro_records_after_stop = macro_stop_empty["records"]
+    macro_upper_records_after_stop = macro_stop_upper_empty["records"]
+    assert isinstance(macro_records_after_stop, list)
+    assert isinstance(macro_upper_records_after_stop, list)
+    checks.append(assert_equal("0xdd08 starts and stops empty macro definitions", {
+        "lowercase_start": {
+            "alternate_mode": macro_start["alternate_mode"],
+            "payload": macro_start["records"][0]["payload"],
+            "events": macro_start["events"],
+        },
+        "lowercase_stop": {
+            "alternate_mode": macro_stop_empty["alternate_mode"],
+            "macro_error": macro_stop_empty["macro_error"],
+            "record0": macro_records_after_stop[0],
+            "last_event": macro_stop_empty["events"][-1],
+        },
+        "uppercase_stop": {
+            "record0": macro_upper_records_after_stop[0],
+            "last_event": macro_stop_upper_empty["events"][-1],
+        },
+    }, {
+        "lowercase_start": {
+            "alternate_mode": 1,
+            "payload": b"\x1b&f",
+            "events": [{"kind": "macro-start", "status": 0, "index": 0, "auto_prefix": True}],
+        },
+        "lowercase_stop": {
+            "alternate_mode": 0,
+            "macro_error": 0,
+            "record0": {"id": 0, "payload": b"", "permanent": False},
+            "last_event": {"kind": "macro-stop-cleared-empty", "index": 0},
+        },
+        "uppercase_stop": {
+            "record0": {"id": 0, "payload": b"", "permanent": False},
+            "last_event": {"kind": "macro-stop-cleared-empty", "index": 0},
+        },
+    }))
+    macro_with_payload = macro_state(
+        current_macro_id=123,
+        records=[macro_record(b"!\r", 123)] + [macro_record() for _ in range(31)],
+    )
+    macro_execute = apply_macro_control_via_dd08(macro_with_payload, 2)
+    macro_call = apply_macro_control_via_dd08(macro_with_payload, 3)
+    checks.append(assert_equal("0xdd08 execute and call push macro data-chain frames", {
+        "execute": {
+            "frames": macro_execute["data_chain_frames"],
+            "host_gate_bit1": macro_execute["host_gate_bit1"],
+            "data_chain_slot": macro_execute["data_chain_slot"],
+        },
+        "call": {
+            "frames": macro_call["data_chain_frames"],
+            "host_gate_bit1": macro_call["host_gate_bit1"],
+            "data_chain_slot": macro_call["data_chain_slot"],
+        },
+    }, {
+        "execute": {
+            "frames": [{"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"}],
+            "host_gate_bit1": 1,
+            "data_chain_slot": 1,
+        },
+        "call": {
+            "frames": [{"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 3, "environment": "call"}],
+            "host_gate_bit1": 1,
+            "data_chain_slot": 1,
+        },
+    }))
+    macro_overlay = apply_macro_control_via_dd08(macro_with_payload, 4)
+    macro_overlay_clear = apply_macro_control_via_dd08(macro_overlay, 5)
+    macro_permanent = apply_macro_control_via_dd08(macro_with_payload, 10)
+    macro_delete_temporary = apply_macro_control_via_dd08(macro_permanent, 7)
+    macro_make_temporary = apply_macro_control_via_dd08(macro_permanent, 9)
+    macro_delete_now_temporary = apply_macro_control_via_dd08(macro_make_temporary, 7)
+    checks.append(assert_equal("0xdd08 overlay and temporary/permanent macro controls", {
+        "overlay": {
+            "parser_mode": macro_overlay["parser_mode"],
+            "overlay_macro_id": macro_overlay["overlay_macro_id"],
+        },
+        "overlay_clear": {
+            "parser_mode": macro_overlay_clear["parser_mode"],
+        },
+        "permanent_then_delete_temp": macro_delete_temporary["records"][0],
+        "temporary_then_delete_temp": macro_delete_now_temporary["records"][0],
+    }, {
+        "overlay": {
+            "parser_mode": 1,
+            "overlay_macro_id": 123,
+        },
+        "overlay_clear": {
+            "parser_mode": 0,
+        },
+        "permanent_then_delete_temp": {"id": 123, "payload": b"!\r", "permanent": True},
+        "temporary_then_delete_temp": {"id": 0, "payload": b"", "permanent": False},
     }))
 
     sample = bytes.fromhex("00 01 02 03 04 05 08 0f 10 33 55 aa f0 ff")
@@ -8139,6 +8432,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- delayed raster transfer snapshot: `{' '.join(f'{byte:02x}' for byte in delayed_raster_transfer['snapshot_bytes'])}`")
     lines.append(f"- alternate wrapper consume values: `{alternate_payload_wrapper['values']}`, echoed `{alternate_payload_wrapper['echoed']}`, control hits `{alternate_payload_wrapper['control_hits']}`")
     lines.append(f"- alternate direct consume values: `{alternate_payload_direct['values']}`, echoed `{alternate_payload_direct['echoed']}`, negative-count values `{alternate_payload_direct_negative['values']}`")
+    lines.append("")
+
+    lines.append("## Macro Command and Data-Chain Fixtures")
+    lines.append("")
+    lines.append("These fixtures model the `ESC &f#Y` macro-id handler at `0xe112`, the `ESC &f#X` macro-control dispatch at `0xdd08`, and the macro replay data-chain frame built by `0xe418` for execute/call.")
+    lines.append("")
+    lines.append("- `0xe112` stores the absolute parsed macro id word in `0x783164`.")
+    lines.append("- Selector `0` starts macro definition, clears/reuses the selected 12-byte record, sets alternate/data mode, and for lowercase `x` seeds the stored byte stream with `ESC &f`; selector `1` stops definition and clears empty/auto-prefix-only records.")
+    lines.append("- Selectors `2` and `3` replay an existing macro by pushing a data-chain frame whose byte `+8` is `4` and byte `+9` is the execute/call selector.")
+    lines.append("- Selectors `4`/`5` enable/disable overlay state, `6`/`7`/`8` delete all/temporary/current macros, and `9`/`10` toggle the temporary/permanent byte at record `+0x0a`.")
+    lines.append("")
+    lines.append(f"- assigned macro id: `{macro_id_state['current_macro_id']}`")
+    lines.append(f"- lowercase start payload: `{macro_start['records'][0]['payload']!r}`, stop event `{macro_stop_empty['events'][-1]}`")
+    lines.append(f"- execute frame: `{macro_execute['data_chain_frames'][0]}`")
+    lines.append(f"- call frame: `{macro_call['data_chain_frames'][0]}`")
+    lines.append(f"- permanent survives delete-temporary: `{macro_delete_temporary['records'][0]}`")
     lines.append("")
 
     lines.append("## Built-In Glyph Bitmap Fixtures")

@@ -5318,10 +5318,18 @@ def ensure_page_record_root_for_queue(state: dict[str, int]) -> dict[str, object
     pending_782c73_before = int(state.get("page_root_pending_782c73", 0))
     pending_782c72_before = int(state.get("page_root_pending_782c72", 0))
     stream_next_free_before = int(state.get("stream_next_free_782a76", 0))
+    context_selector = int(state.get("text_map_selector_782f06", 0))
+    context_slot0_source = 0x782EE6 + context_selector * 0x10
     created = current_before == 0
     if created:
         if pending_782c73_before or pending_782c72_before:
             state["active_record_waits"] = int(state.get("active_record_waits", 0)) + 1
+        if context_selector == 0:
+            context_slot0 = int(state.get("primary_context_782ee6", 0))
+        elif context_selector == 1:
+            context_slot0 = int(state.get("secondary_context_782ef6", 0))
+        else:
+            context_slot0 = int(state.get("selected_context_longword", 0))
         state["page_root_pending_782c73"] = 0
         state["page_root_pending_782c72"] = 0
         state["page_root_present"] = 1
@@ -5339,6 +5347,9 @@ def ensure_page_record_root_for_queue(state: dict[str, int]) -> dict[str, object
         state["page_root_rule_head_24"] = 0
         state["page_root_rule_head_28"] = 0
         state["page_root_context_slots_cleared"] = 16
+        state["page_root_context_selector_782f06"] = context_selector
+        state["page_root_context_slot0_source"] = context_slot0_source
+        state["page_root_context_slot0"] = context_slot0
         state["stream_next_free_782a76"] = stream_next_free_before
         state["page_record_root_allocations"] = int(state.get("page_record_root_allocations", 0)) + 1
     return {
@@ -5365,6 +5376,9 @@ def ensure_page_record_root_for_queue(state: dict[str, int]) -> dict[str, object
         "page_root_rule_head_24": int(state.get("page_root_rule_head_24", 0)),
         "page_root_rule_head_28": int(state.get("page_root_rule_head_28", 0)),
         "page_root_context_slots_cleared": int(state.get("page_root_context_slots_cleared", 0)),
+        "page_root_context_selector_782f06": int(state.get("page_root_context_selector_782f06", context_selector)),
+        "page_root_context_slot0_source": int(state.get("page_root_context_slot0_source", context_slot0_source)),
+        "page_root_context_slot0": int(state.get("page_root_context_slot0", 0)),
     }
 
 
@@ -10365,6 +10379,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_root_rule_head_24",
             "page_root_rule_head_28",
             "page_root_context_slots_cleared",
+            "page_root_context_selector_782f06",
+            "page_root_context_slot0_source",
+            "page_root_context_slot0",
         )),
         "existing": page_root_existing,
     }, {
@@ -10392,6 +10409,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_root_rule_head_24": 0,
             "page_root_rule_head_28": 0,
             "page_root_context_slots_cleared": 16,
+            "page_root_context_selector_782f06": 0,
+            "page_root_context_slot0_source": 0x782EE6,
+            "page_root_context_slot0": 0,
         },
         "state_after_first": {
             "current_page_root": ABSTRACT_PAGE_ROOT_PTR,
@@ -10414,6 +10434,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_root_rule_head_24": 0,
             "page_root_rule_head_28": 0,
             "page_root_context_slots_cleared": 16,
+            "page_root_context_selector_782f06": 0,
+            "page_root_context_slot0_source": 0x782EE6,
+            "page_root_context_slot0": 0,
         },
         "existing": {
             "page_root_created": False,
@@ -10439,7 +10462,34 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_root_rule_head_24": 0,
             "page_root_rule_head_28": 0,
             "page_root_context_slots_cleared": 16,
+            "page_root_context_selector_782f06": 0,
+            "page_root_context_slot0_source": 0x782EE6,
+            "page_root_context_slot0": 0,
         },
+    }))
+    page_root_secondary_context_state = {
+        "current_page_root": 0,
+        "page_root_present": 0,
+        "text_map_selector_782f06": 1,
+        "primary_context_782ee6": 0x4008004C,
+        "secondary_context_782ef6": 0x440946B4,
+    }
+    page_root_secondary_context = ensure_page_record_root_for_queue(page_root_secondary_context_state)
+    checks.append(assert_equal("0x10110 page-root initializer installs selected context slot", {
+        key: page_root_secondary_context[key]
+        for key in (
+            "page_root_created",
+            "page_root_context_selector_782f06",
+            "page_root_context_slot0_source",
+            "page_root_context_slot0",
+            "page_root_context_slots_cleared",
+        )
+    }, {
+        "page_root_created": True,
+        "page_root_context_selector_782f06": 1,
+        "page_root_context_slot0_source": 0x782EF6,
+        "page_root_context_slot0": 0x440946B4,
+        "page_root_context_slots_cleared": 16,
     }))
     page_record_bucket_fixture: dict[str, object] = {"bucket_array": {}, "context_slots": [0x440946B4]}
     page_record_first = queue_text_source_to_page_record_via_12f2e(resources, page_record_bucket_fixture, text_source)
@@ -17379,7 +17429,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## `0x1387c` Page-Record Compact Bucket Allocator Fixture")
     lines.append("")
-    lines.append("This fixture moves the short text bucket one step closer to the real page-root shape. It models `0x10084` first-page-root allocation before the `0x1387c` bucket path: a missing current root can run the active-record wait hook, clears pending bytes `0x782c73`/`0x782c72`, marks root byte `+4 = 1`, clears `0x782a70`, stores `0x782a72 = root+0x20`, clears byte `0x782990`, initializes root fields through `0x10110`, and zeros 256 bucket-head longwords through root `+0x1c`. The fixture also pins that `0x782a76` is not seeded by `0x10084`; it remains unchanged until the shared stream allocator creates/uses a chunk.")
+    lines.append("This fixture moves the short text bucket one step closer to the real page-root shape. It models `0x10084` first-page-root allocation before the `0x1387c` bucket path, as documented in `generated/analysis/ic30_ic13_page_root_allocation.md`: a missing current root can run the active-record wait hook, clears pending bytes `0x782c73`/`0x782c72`, marks root byte `+4 = 1`, clears `0x782a70`, stores `0x782a72 = root+0x20`, clears byte `0x782990`, initializes root fields through `0x10110`, installs the selected current-font context into root slot 0, and zeros 256 bucket-head longwords through root `+0x1c`. The fixture also pins that `0x782a76` is not seeded by `0x10084`; it remains unchanged until the shared stream allocator creates/uses a chunk.")
     lines.append("")
     lines.append("- `0x10084` first allocation: created `%s`, active-record wait `%s`, stream remaining `%d`, link pointer `0x%06x`, next-free pointer unchanged `0x%08x`, bucket clear longwords `%d`." % (
         page_root_first["page_root_created"],
@@ -17394,6 +17444,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         page_root_existing["page_record_root_allocations"],
         page_root_existing["current_page_root_before"],
         page_root_existing["current_page_root_after"],
+    ))
+    lines.append("- selected context slot bootstrap: selector `%d` copies source `0x%06x` into root slot 0 as `0x%08x` after clearing `%d` context slots." % (
+        page_root_secondary_context["page_root_context_selector_782f06"],
+        page_root_secondary_context["page_root_context_slot0_source"],
+        page_root_secondary_context["page_root_context_slot0"],
+        page_root_secondary_context["page_root_context_slots_cleared"],
     ))
     lines.append("")
     lines.append("The `0x1387c` model indexes the page-root `+0x1c` bucket array by `0x782a7c`, walks the bucket chain looking for the same selector word at object `+4`, reuses that object when count `+6` is below the caller-supplied capacity, or allocates and links a new object at the bucket head when the matching object is full or missing.")

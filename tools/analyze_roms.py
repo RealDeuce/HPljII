@@ -1603,6 +1603,78 @@ def page_root_reference_report(data: bytes) -> str:
     return "\n".join(lines)
 
 
+def page_root_allocation_report(data: bytes) -> str:
+    def fmt_refs(refs: list[int]) -> str:
+        if not refs:
+            return "(none)"
+        text = ", ".join(f"`0x{ref:06x}`" for ref in refs[:12])
+        if len(refs) > 12:
+            text += f", ... ({len(refs)} total)"
+        return text
+
+    caller_groups = [
+        ("printable text, unflagged and flagged handoffs", [0x00D20A, 0x00D49A, 0x00D63C, 0x00D8EA]),
+        ("display-function/text fallback and post-finalize parser recovery", [0x00D9EC, 0x00DA4C, 0x00FF9A]),
+        ("direct controls and cursor-positioning page advances", [0x00F0B6, 0x00F10C, 0x00F17A, 0x00F2B0, 0x00F576, 0x00F6EE]),
+        ("raster and rectangle producers", [0x0106A4, 0x0106EC, 0x010D0A, 0x010D38]),
+        ("text span flush and font/page setup paths", [0x012788, 0x0127C4, 0x012912, 0x01C2D2, 0x01CA08, 0x01E0EE, 0x01E922]),
+    ]
+
+    lines = ["# IC30/IC13 Page-Root Allocation Flow", ""]
+    lines.append("Generated from the focused disassembly window `generated/disasm/ic30_ic13_page_root_allocate_010084.lst` plus cross-reference scans of the verified firmware image.")
+    lines.append("This report pins the page/control record allocation boundary that text, raster, rules, direct controls, and reset/finalization all depend on before the `0x1edc6` render-record bridge.")
+    lines.append("")
+
+    lines.append("## `0x10084` Ensure-Root Contract")
+    lines.append("")
+    lines.append("| Address | Instruction fact | Reproduction consequence |")
+    lines.append("| ---: | --- | --- |")
+    lines.append("| `0x1008c..0x10094` | loads current root `0x78297a` into `A5`/`D7` and branches to return when nonzero | existing page roots are reused without reinitializing queues, font slots, or stream-storage state |")
+    lines.append("| `0x10096..0x100a6` | tests pending bytes `0x782c73` and `0x782c72`; if either is set, calls `0x9ac2` at `0x100b0` | pending active-record/page work can run before the first root allocation |")
+    lines.append("| `0x100b6..0x100bc` | clears `0x782c73` and `0x782c72` after the wait/helper path | the allocation boundary consumes those pending latches |")
+    lines.append("| `0x100c2` | calls allocator `0x9a9a`; returned `D7` becomes the new root pointer | page roots are allocated from the page/control record pool, not from the later 0x100-byte display-list chunks |")
+    lines.append("| `0x100ca..0x100d6` | wraps root byte `+4 = 1` with `0x15a6` / `0x15ac` | new roots start as active class/state `1` before the initializer runs |")
+    lines.append("| `0x100dc..0x100e6` | clears stream byte count `0x782a70`, computes `A2 = root + 0x20`, and stores it in `0x782a72` | the root's `+0x20` longword is the head link for display-list storage chunks |")
+    lines.append("| `0x100ec..0x100f8` | stores the root in `0x78297a`, calls initializer `0x10110`, and clears `0x782990` | subsequent producers see the initialized current root and a cleared transient byte |")
+    lines.append("| `0x100fe..0x1010e` | loads `A4 = root+0x1c`, clears 256 longwords, then loops back to the fast-return path | compact/raster bucket heads are a 256-entry array at root `+0x1c`; allocation itself does not seed `0x782a76` |")
+    lines.append("")
+
+    lines.append("## `0x10110` Root Initializer")
+    lines.append("")
+    lines.append("| Root field | Instruction fact | Current interpretation |")
+    lines.append("| ---: | --- | --- |")
+    lines.append("| `+0x06` | `0x1013a` copies page-code byte `0x782da2` | root records the current page size code |")
+    lines.append("| `+0x08`, `+0x0a` | `0x10142..0x10146` clear both bytes | root-local publication/status flags start clear |")
+    lines.append("| `+0x0e`, `+0x10` | `0x10124..0x1012a` stores longword `-1` at `+0x10` and clears word `+0x0e` | page-band/start fields are reset before render scheduling |")
+    lines.append("| `+0x14` | `0x1014a` clears the root flags word | finalize/retry flags start clear on a fresh root |")
+    lines.append("| `+0x16` | `0x10158..0x10174` divides extent word `0x782db2` by `0x10` via `0x3324a` and stores the result | render/page width bucket count or band extent is derived from active horizontal extent |")
+    lines.append("| `+0x20` | `0x1014e` clears the display-list chunk head | the stream allocator will link 0x100-byte object-storage chunks here later |")
+    lines.append("| `+0x24`, `+0x28` | `0x10178..0x1017c` clears both list heads | rule/list and fixed-list queues start empty until producers insert objects |")
+    lines.append("| `+0x09` | `0x10186..0x101ae` adds `0x782db4 + 0x782dc0 + 0x20`, divides by `0x20`, and stores the low byte | vertical/band extent derives from page height plus printable offset |")
+    lines.append("| `+0x2c..+0x68` | `0x101d6..0x10212` clears all 16 context slots/live flags, then copies the current selected font-context longword into slot 0 | a fresh root has exactly one active render context until printable/font setup installs more slots |")
+    lines.append("")
+
+    lines.append("## Call-Site Groups")
+    lines.append("")
+    lines.append(f"Absolute `JSR` references to `0x10084`: {fmt_refs(jsr_abs_refs(data, 0x00010084))}.")
+    lines.append("")
+    lines.append("| Producer family | Observed call sites | Reproduction implication |")
+    lines.append("| --- | --- | --- |")
+    for label, refs in caller_groups:
+        observed = [ref for ref in refs if ref in jsr_abs_refs(data, 0x00010084)]
+        lines.append(f"| {label} | {fmt_refs(observed)} | these producers share the same root allocation and bucket/list initialization boundary |")
+    lines.append("")
+
+    lines.append("## Current Reproduction Contract")
+    lines.append("")
+    lines.append("- A byte-stream reproduction must call the root-allocation boundary before any text/raster/rule producer writes under root `+0x1c`, `+0x24`, or `+0x28`; otherwise object identity and render ordering will not match the firmware.")
+    lines.append("- `0x10084` initializes the root and bucket array, but display-list object payload storage is still allocated later through `0x1381c`; the harness fixture therefore deliberately leaves `0x782a76` unchanged after first-root creation.")
+    lines.append("- The existing `tools/render_fixture_harness.py` check `0x10084-modeled page-root allocation side effects` pins these side effects in executable form before queueing short compact text through `0x1387c` and bridging through `0x1edc6`.")
+    lines.append("- The remaining fidelity gap is a live parser-state run that lets `0xd04a`/`0xd824`, `0x105d0`, or `0x10b80` call this allocator with real page/control pool records instead of the current abstract root pointer.")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def render_path_reference_report(data: bytes) -> str:
     tracked = {
         0x0001ED84: (
@@ -3190,6 +3262,7 @@ def main() -> None:
     write_if_changed(ANALYSIS / "ic30_ic13_esc_e_reset_flow.md", esc_e_reset_flow_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_literal_patterns.md", byte_pattern_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_page_root_references.md", page_root_reference_report(firmware))
+    write_if_changed(ANALYSIS / "ic30_ic13_page_root_allocation.md", page_root_allocation_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_render_path_references.md", render_path_reference_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_compact_bucket_allocator.md", compact_bucket_allocator_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_page_record_bridge.md", page_record_bridge_report(firmware))

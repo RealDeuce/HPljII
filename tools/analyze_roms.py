@@ -1675,6 +1675,89 @@ def page_root_allocation_report(data: bytes) -> str:
     return "\n".join(lines)
 
 
+def page_root_finalization_report(data: bytes) -> str:
+    def fmt_refs(refs: list[int]) -> str:
+        if not refs:
+            return "(none)"
+        text = ", ".join(f"`0x{ref:06x}`" for ref in refs[:12])
+        if len(refs) > 12:
+            text += f", ... ({len(refs)} total)"
+        return text
+
+    caller_groups = [
+        ("reset and page/control publication", [0x00CC92, 0x00EF96, 0x00F128]),
+        ("printable text retry/finalize paths", [0x00D494, 0x00D8E4, 0x00DA30, 0x00DA86]),
+        ("text span flush retry path", [0x0127BE]),
+        ("page geometry and layout changes", [0x00FA68, 0x00FB10, 0x00FCAA, 0x00FD6E, 0x010262]),
+        ("raster transfer page-boundary path", [0x0106E6]),
+        ("unclassified follow-up leads", [0x010D32, 0x01BA76]),
+    ]
+
+    lines = ["# IC30/IC13 Page-Root Finalization Flow", ""]
+    lines.append("Generated from `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst` plus cross-reference scans of the verified firmware image.")
+    lines.append("This report pins the publication boundary after a current page root has accumulated text, raster, or rule objects and before reset, FF, or page-geometry changes clear that root.")
+    lines.append("")
+
+    lines.append("## `0xff1e` Finalize Contract")
+    lines.append("")
+    lines.append("| Address | Instruction fact | Reproduction consequence |")
+    lines.append("| ---: | --- | --- |")
+    lines.append("| `0xff26..0xff3e` | tests current root `0x78297a`; if it is null or root byte `+4` is not `1`, branches to `0xffa2` | missing or non-active roots are discarded by clearing `0x78297a` without publication |")
+    lines.append("| `0xff40..0xff66` | when page/parser state byte `0x782a92 == 1`, tests root flags word `+0x14` bit 0; if set, skips the parser-reentry detour | bit 0 marks a root that has already taken the retry/finalize path and should publish without recursive parser work |")
+    lines.append("| `0xff68..0xff72` | passes saved longword `0x782a94` to helper `0xe0a4` | partial command/data state can be restored before finalizing the root |")
+    lines.append("| `0xff74..0xff9a` | if current parser/data-chain object `0x782d7a` exists and its first longword is nonzero, stores `0x782a92 = 2`, calls `0xe4f4`, re-enters parser loop `0x11774`, and ensures a root through `0x10084` | finalization can run pending parser/data-chain bytes before publishing the page record |")
+    lines.append("| `0xffb0..0xffcc` | loads active root into `A5`, clears transient bytes `0x78297e`, `0x782c72`, `0x782c73`, clears root word `+0x18`, and copies root `+0x16` to `+0x1a` | publication snapshots final band/extent metadata and consumes transient root-allocation latches |")
+    lines.append("| `0xffd2..0x1003e` | consumes flags `0x782997`, `0x780e99`, and `0x782998`, setting root byte `+8` or bits 0/1 in root byte `+0x0a` while wrapping writes in `0x15a6`/`0x15ac` | pending page/control status bytes become root-local publication flags before the record is handed off |")
+    lines.append("| `0x10044..0x1005a` | copies `0x782da6` to root byte `+7` and `0x782da4` to root word `+0x0c` | finalized records carry current page/environment metadata in the root header |")
+    lines.append("| `0x10060..0x10080` | writes root byte `+4 = 2`, copies root longword `+0` to `0x780ea6`, sets `0x782996 = 1`, then branches to clear `0x78297a` | active root state `1` becomes published state `2`; the backing pool record is exposed to the page/control scheduler and current-root ownership is dropped |")
+    lines.append("")
+
+    lines.append("## Call-Site Groups")
+    lines.append("")
+    all_refs = jsr_abs_refs(data, 0x0000FF1E)
+    lines.append(f"Absolute `JSR` references to `0xff1e`: {fmt_refs(all_refs)}.")
+    lines.append("")
+    lines.append("| Caller family | Observed call sites | Reproduction implication |")
+    lines.append("| --- | --- | --- |")
+    for label, refs in caller_groups:
+        observed = [ref for ref in refs if ref in all_refs]
+        lines.append(f"| {label} | {fmt_refs(observed)} | these paths share the same publish-or-clear contract before continuing |")
+    lines.append("")
+
+    lines.append("## State Reference Scan")
+    lines.append("")
+    state_addresses = [
+        (0x0078297A, "current page root consumed and cleared by `0xff1e`"),
+        (0x00782A92, "page/parser finalization state tested for the parser-reentry detour"),
+        (0x00782A94, "saved command/data key restored through helper `0xe0a4`"),
+        (0x00782D7A, "current parser/data-chain object tested before re-entering `0x11774`"),
+        (0x0078297E, "transient root/font-slot byte cleared on publication"),
+        (0x00782C72, "pending allocation/finalization latch cleared on publication"),
+        (0x00782C73, "pending allocation/finalization latch cleared on publication"),
+        (0x00782997, "pending status bit copied into root byte `+0x0a` bit 0"),
+        (0x00780E99, "pending status byte copied into root byte `+8`"),
+        (0x00782998, "pending status bit copied into root byte `+0x0a` bit 1"),
+        (0x00782DA6, "page/environment byte copied into finalized root `+7`"),
+        (0x00782DA4, "page/environment word copied into finalized root `+0x0c`"),
+        (0x00780EA6, "published page/control pool record pointer written from root longword `+0`"),
+        (0x00782996, "page/control publication flag set after root state changes to `2`"),
+    ]
+    lines.append("| Address | Current finalization role | Longword literal references |")
+    lines.append("| ---: | --- | --- |")
+    for address, role in state_addresses:
+        lines.append(f"| `0x{address:08x}` | {role} | {fmt_refs(find_all(data, address.to_bytes(4, 'big')))} |")
+    lines.append("")
+
+    lines.append("## Current Reproduction Contract")
+    lines.append("")
+    lines.append("- A page-root reproduction must distinguish the no-publication clear path from the active-root publication path: only active roots with byte `+4 == 1` are promoted to state `2` and exposed through `0x780ea6`.")
+    lines.append("- The finalizer is not a pure state copy. In the `0x782a92 == 1` case it can restore saved command/data state, re-enter the parser at `0x11774`, and ensure a root again before publication.")
+    lines.append("- Reset, FF, page-size, orientation, text retry, and raster page-boundary paths all share this finalizer; byte-perfect reproduction should therefore compare the same published root shape at this boundary before rendering through `0x1edc6`.")
+    lines.append("- `tools/render_fixture_harness.py` already models valid-root publication, missing-root clear, and mixed printable reset/FF/page-geometry publication. The remaining fidelity gap is to replace those fixture-only source/root objects with roots produced by the full parser and allocator path.")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def render_path_reference_report(data: bytes) -> str:
     tracked = {
         0x0001ED84: (
@@ -3263,6 +3346,7 @@ def main() -> None:
     write_if_changed(ANALYSIS / "ic30_ic13_literal_patterns.md", byte_pattern_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_page_root_references.md", page_root_reference_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_page_root_allocation.md", page_root_allocation_report(firmware))
+    write_if_changed(ANALYSIS / "ic30_ic13_page_root_finalization.md", page_root_finalization_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_render_path_references.md", render_path_reference_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_compact_bucket_allocator.md", compact_bucket_allocator_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_page_record_bridge.md", page_record_bridge_report(firmware))

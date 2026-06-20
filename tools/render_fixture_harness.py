@@ -8142,6 +8142,36 @@ def bridge_page_record_via_1edc6(page_record: dict[str, object]) -> dict[str, ob
     }
 
 
+def copy_active_page_record_to_render_record_via_1ed84(page_record: dict[str, object]) -> dict[str, object]:
+    """Model the 0x1ed84 active-record header copy before the 0x1edc6 bridge."""
+    pool_fields = page_record.get("pool_record_fields", {})
+    if not isinstance(pool_fields, dict):
+        pool_fields = {}
+    source_word_18 = int(page_record.get("word_18", pool_fields.get("word_18", 0))) & 0xFFFF
+    source_word_1a = int(page_record.get("word_1a", pool_fields.get("word_1a", 0))) & 0xFFFF
+
+    render_record = bridge_page_record_via_1edc6(page_record)
+    render_fields = dict(render_record["render_record_fields"])
+    render_fields.update({
+        "word_0a": source_word_18,
+        "word_0c": source_word_1a,
+        "word_0e": 0,
+        "word_10": source_word_18,
+        "word_16": source_word_18,
+    })
+    render_record["render_record_fields"] = render_fields
+    render_record["active_record_copy_fields"] = {
+        "source_word_18": source_word_18,
+        "source_word_1a": source_word_1a,
+        "render_word_0a": render_fields["word_0a"],
+        "render_word_0c": render_fields["word_0c"],
+        "render_word_0e": render_fields["word_0e"],
+        "render_word_10": render_fields["word_10"],
+        "render_word_16": render_fields["word_16"],
+    }
+    return render_record
+
+
 def rectangle_rule_key_via_134d6(source: dict[str, int], vertical_offset: int = 0) -> dict[str, int]:
     x = (int(source["x"]) + int(vertical_offset)) & 0xFFFF
     y = int(source["y"]) & 0xFFFF
@@ -18674,6 +18704,44 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "fixed_list_20": [bytes.fromhex("00 00 00 00 00 14 00 00 ab cd ab cd 01 08")],
         "context_slots_24_prefix": (0x440946B4, 0),
     }))
+    active_copy_page_record = {
+        "bucket_root": bytes(page_record_chain[0]),
+        "rule_list": [
+            bytes.fromhex("00 00 00 00 00 03 00 00 00 00 12 34 00 00"),
+        ],
+        "fixed_list": [
+            bytes.fromhex("00 00 00 00 00 04 00 00 ab cd 00 00 00 00"),
+        ],
+        "context_slots": [0x440946B4],
+        "word_18": 0x1234,
+        "word_1a": 0x5678,
+    }
+    active_copied_record = copy_active_page_record_to_render_record_via_1ed84(active_copy_page_record)
+    active_copy_fields = active_copied_record["active_record_copy_fields"]
+    active_render_fields = active_copied_record["render_record_fields"]
+    assert isinstance(active_copy_fields, dict)
+    assert isinstance(active_render_fields, dict)
+    checks.append(assert_equal("0x1ed84 active page-record copy seeds render-record header words", {
+        "active_copy": active_copy_fields,
+        "bucket_root_18": active_render_fields["bucket_root_18"],
+        "rule_list_1c": active_render_fields["rule_list_1c"],
+        "fixed_list_20": active_render_fields["fixed_list_20"],
+        "context_slots_24_prefix": active_render_fields["context_slots_24"][:2],
+    }, {
+        "active_copy": {
+            "source_word_18": 0x1234,
+            "source_word_1a": 0x5678,
+            "render_word_0a": 0x1234,
+            "render_word_0c": 0x5678,
+            "render_word_0e": 0,
+            "render_word_10": 0x1234,
+            "render_word_16": 0x1234,
+        },
+        "bucket_root_18": bytes(page_record_chain[0]),
+        "rule_list_1c": [bytes.fromhex("00 00 00 00 00 13 00 00 00 00 12 34 12 34")],
+        "fixed_list_20": [bytes.fromhex("00 00 00 00 00 14 00 00 ab cd ab cd 01 08")],
+        "context_slots_24_prefix": (0x440946B4, 0),
+    }))
     rule_page_record: dict[str, object] = {}
     rule_result = queue_rectangle_rule_via_13386(
         rule_page_record,
@@ -25630,6 +25698,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- normalized `+0x28`/render `+0x20` fixed-list node: `{' '.join(f'{byte:02x}' for byte in bridged_page_record['fixed_list'][0])}`")
     lines.append("- render-record destination snapshot: source bucket `+0x1c` is visible at render `+0x18`, normalized rule list at render `+0x1c`, normalized fixed list at render `+0x20`, and context slot 0 at render `+0x24 = 0x%08x`." % (
         bridged_page_record["render_record_fields"]["context_slots_24"][0],
+    ))
+    lines.append("- active-record copy snapshot: source words `+0x18 = 0x%04x` and `+0x1a = 0x%04x` become render words `+0x0a = 0x%04x`, `+0x0c = 0x%04x`, `+0x10 = 0x%04x`, `+0x16 = 0x%04x`, with render `+0x0e` cleared before the queue/list bridge." % (
+        active_copy_fields["source_word_18"],
+        active_copy_fields["source_word_1a"],
+        active_copy_fields["render_word_0a"],
+        active_copy_fields["render_word_0c"],
+        active_copy_fields["render_word_10"],
+        active_copy_fields["render_word_16"],
     ))
     lines.append("- producer-shaped rectangle/rule fixtures: `0x13386`/`0x133aa` stores bucket byte `0x%02x`, key `0x%04x`, width `0x%04x`, and height `0x%04x` before bridge byte `+5` becomes `0x%02x`; `0x137a2`/`0x136d2` stores key `0x%04x` and extent `0x%04x` before bridge byte `+5` becomes `0x%02x`." % (
         rule_bridged["rule_list"][0][4],

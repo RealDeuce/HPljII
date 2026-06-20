@@ -267,6 +267,7 @@ def firmware_scanned_font_records(data: bytes) -> list[dict[str, int | str | Non
                     "height_b": u16(data, cursor + 0x1C),
                     "width_b": u16(data, cursor + 0x1E),
                     "class_byte": data[cursor + 0x20],
+                    "spacing_byte_0x21": data[cursor + 0x21],
                     "symbol_word_0x22": u16(data, cursor + 0x22),
                     "symbol_byte_0x3c": data[cursor + 0x3C],
                     "pitch_word_0x24": pitch_word,
@@ -469,6 +470,20 @@ def font_record_report(data: bytes) -> str:
     ]
     lines.append("- `0x1519a` concrete height filtering: built-in class-zero decoded heights are %s; requested height `0x04b0` keeps the eight `1200`-unit candidates via the +/-`0x19` range, while requested `0x0384` misses that range and the nearest-height fallback keeps the four `850`-unit candidates." % (
         " / ".join(f"`{height}`" for height in class_zero_heights),
+    ))
+    class_zero_pitches = [
+        int(record["pitch_13b76"])
+        for record in header_records
+        if int(record["class_byte"]) == 0
+    ]
+    class_zero_spacings = [
+        int(record["spacing_byte_0x21"])
+        for record in header_records
+        if int(record["class_byte"]) == 0
+    ]
+    lines.append("- `0x153c6` concrete spacing/pitch filtering: built-in class-zero spacing bytes are %s and decoded pitches are %s; requested spacing `0` plus pitch `0x03e8` keeps the eight `1000`-unit candidates via the +/-`5` range, while requested pitch `0x04b0` misses that range and `0x1562c` selects the next available pitch `1666`, keeping four candidates." % (
+        " / ".join(f"`{spacing}`" for spacing in class_zero_spacings),
+        " / ".join(f"`{pitch}`" for pitch in class_zero_pitches),
     ))
     lines.append("")
     lines.append("| Scan index | Name | Record start | Firmware address | Context longword | Class | Partition |")

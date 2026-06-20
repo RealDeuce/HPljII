@@ -3721,6 +3721,7 @@ def firmware_scanned_builtin_candidates(resources: bytes) -> list[dict[str, int]
                 "source_arg": 1,
                 "type_byte_0x0d": resources[cursor + 0x0D],
                 "type_byte_0x0c": resources[cursor + 0x0C],
+                "builtin_byte_0x21": resources[cursor + 0x21],
                 "builtin_word_0x22": u16(resources, cursor + 0x22),
                 "builtin_byte_0x3c": resources[cursor + 0x3C],
                 "builtin_word_0x24": u16(resources, cursor + 0x24),
@@ -3753,6 +3754,7 @@ def builtin_candidate_windows_from_scanned_records(
             "record_start": int(record["record_start"]),
             "address": int(record["address"]),
             "longword": int(event["candidate_flags"]),
+            "builtin_byte_0x21": int(record.get("builtin_byte_0x21", 0)),
             "builtin_word_0x22": int(record.get("builtin_word_0x22", 0)),
             "builtin_byte_0x3c": int(record.get("builtin_byte_0x3c", 0)),
             "builtin_word_0x24": int(record.get("builtin_word_0x24", 0)),
@@ -4077,6 +4079,235 @@ def filter_active_candidates_by_height_via_1519a(
         "survivor_record_starts": [int(entry["record_start"]) for entry in survivors],
         "range_probe_events": range_probe_events,
         "prune_events": prune_events,
+    }
+
+
+def candidate_spacing_via_153c6_reader(candidate: dict[str, int]) -> dict[str, object]:
+    longword = int(candidate["longword"]) & 0xFFFFFFFF
+    if (longword >> 30) & 1:
+        return {
+            "spacing": int(candidate.get("builtin_byte_0x21", 0)) & 0xFF,
+            "reader": "built-in +0x21",
+        }
+    return {
+        "spacing": int(candidate.get("inline_byte_0x19", 0)) & 0xFF,
+        "reader": "inline +0x19",
+    }
+
+
+def candidate_pitch_via_153c6_reader(candidate: dict[str, int]) -> dict[str, object]:
+    longword = int(candidate["longword"]) & 0xFFFFFFFF
+    if (longword >> 30) & 1:
+        return {
+            "pitch": builtin_pitch_via_13b76(
+                int(candidate.get("builtin_word_0x24", 0)),
+                int(candidate.get("builtin_byte_0x26", 0)),
+            ),
+            "reader": "0x13b76",
+            "reader_source": "+0x24/+0x26",
+        }
+    return {
+        "pitch": int(candidate.get("inline_word_0x1a", 0)) & 0xFFFF,
+        "reader": "inline +0x1a",
+        "reader_source": "+0x1a",
+    }
+
+
+def active_entries(activation: dict[str, object]) -> list[dict[str, int]]:
+    return [
+        dict(entry)
+        for entry in activation["entries"]  # type: ignore[index]
+        if int(entry["longword"]) & 0x80000000  # type: ignore[index]
+    ]
+
+
+def filter_entries_by_spacing_via_153c6(
+    entries: list[dict[str, int]],
+    requested_spacing: int,
+) -> tuple[list[dict[str, int]], list[dict[str, object]]]:
+    requested = int(requested_spacing) & 0xFF
+    survivors: list[dict[str, int]] = []
+    events: list[dict[str, object]] = []
+    for index, entry in enumerate(entries):
+        spacing = int(candidate_spacing_via_153c6_reader(entry)["spacing"]) & 0xFF
+        before = int(entry["longword"]) & 0xFFFFFFFF
+        matched = spacing == requested
+        after = before if matched else before & 0x7FFFFFFF
+        filtered = dict(entry)
+        filtered["longword"] = after
+        if matched:
+            survivors.append(filtered)
+        events.append({
+            "helper": 0x015488,
+            "index": index,
+            "slot_pointer": int(entry["slot_pointer"]),
+            "record_start": int(entry["record_start"]),
+            "spacing": spacing,
+            "requested_spacing": requested,
+            "before": before,
+            "after": after,
+            "matched": matched,
+        })
+    return survivors, events
+
+
+def nearest_pitch_via_1562c(entries: list[dict[str, int]], requested_pitch: int) -> int:
+    requested = int(requested_pitch) & 0xFFFF
+    lower = 0
+    upper: int | None = None
+    for entry in entries:
+        pitch = int(candidate_pitch_via_153c6_reader(entry)["pitch"]) & 0xFFFF
+        if pitch <= requested:
+            if pitch > lower:
+                lower = pitch
+        elif upper is None or pitch < upper:
+            upper = pitch
+    if upper is not None and upper > 0:
+        return upper
+    return lower
+
+
+def filter_active_candidates_by_spacing_pitch_via_153c6(
+    activation: dict[str, object],
+    *,
+    requested_spacing: int,
+    requested_pitch: int,
+) -> dict[str, object]:
+    entries = active_entries(activation)
+    requested_spacing &= 0xFF
+    spacing_probe_events: list[dict[str, object]] = []
+    spacing_has_match = False
+    for index, entry in enumerate(entries):
+        spacing = int(candidate_spacing_via_153c6_reader(entry)["spacing"]) & 0xFF
+        matched = spacing == requested_spacing
+        spacing_probe_events.append({
+            "helper": 0x015456,
+            "index": index,
+            "slot_pointer": int(entry["slot_pointer"]),
+            "record_start": int(entry["record_start"]),
+            "spacing": spacing,
+            "requested_spacing": requested_spacing,
+            "matched": matched,
+        })
+        if matched:
+            spacing_has_match = True
+            break
+
+    spacing_events: list[dict[str, object]] = []
+    spacing_path = "no-match"
+    if requested_spacing == 1:
+        if spacing_has_match:
+            entries, spacing_events = filter_entries_by_spacing_via_153c6(entries, requested_spacing)
+            spacing_path = "matched-stop"
+            return {
+                "spacing_path": spacing_path,
+                "pitch_path": "skipped",
+                "requested_spacing": requested_spacing,
+                "requested_pitch": int(requested_pitch) & 0xFFFF,
+                "selected_pitch_low": None,
+                "selected_pitch_high": None,
+                "active_pointer_78287c": int(entries[0]["slot_pointer"]) if entries else 0,
+                "active_count_7827b8": len(entries),
+                "survivor_slot_pointers": [int(entry["slot_pointer"]) for entry in entries],
+                "survivor_record_starts": [int(entry["record_start"]) for entry in entries],
+                "spacing_probe_events": spacing_probe_events,
+                "spacing_events": spacing_events,
+                "pitch_probe_events": [],
+                "pitch_events": [],
+            }
+        spacing_path = "one-no-match-continue"
+    elif spacing_has_match:
+        entries, spacing_events = filter_entries_by_spacing_via_153c6(entries, requested_spacing)
+        spacing_path = "matched-continue"
+    else:
+        return {
+            "spacing_path": spacing_path,
+            "pitch_path": "skipped",
+            "requested_spacing": requested_spacing,
+            "requested_pitch": int(requested_pitch) & 0xFFFF,
+            "selected_pitch_low": None,
+            "selected_pitch_high": None,
+            "active_pointer_78287c": int(entries[0]["slot_pointer"]) if entries else 0,
+            "active_count_7827b8": len(entries),
+            "survivor_slot_pointers": [int(entry["slot_pointer"]) for entry in entries],
+            "survivor_record_starts": [int(entry["record_start"]) for entry in entries],
+            "spacing_probe_events": spacing_probe_events,
+            "spacing_events": spacing_events,
+            "pitch_probe_events": [],
+            "pitch_events": [],
+        }
+
+    requested = int(requested_pitch) & 0xFFFF
+    pitch_low = max(0, requested - 5)
+    pitch_high = min(0xFFFF, requested + 5)
+    pitch_probe_events: list[dict[str, object]] = []
+    pitch_has_match = False
+    for index, entry in enumerate(entries):
+        pitch = int(candidate_pitch_via_153c6_reader(entry)["pitch"]) & 0xFFFF
+        matched = pitch_low <= pitch <= pitch_high
+        pitch_probe_events.append({
+            "helper": 0x0154E4,
+            "index": index,
+            "slot_pointer": int(entry["slot_pointer"]),
+            "record_start": int(entry["record_start"]),
+            "pitch": pitch,
+            "low": pitch_low,
+            "high": pitch_high,
+            "matched": matched,
+        })
+        if matched:
+            pitch_has_match = True
+            break
+
+    if pitch_has_match:
+        selected_low, selected_high = pitch_low, pitch_high
+        pitch_path = "range"
+        helper = 0x01553A
+    else:
+        nearest = nearest_pitch_via_1562c(entries, requested)
+        selected_low, selected_high = nearest, nearest
+        pitch_path = "nearest"
+        helper = 0x0155B6
+
+    survivors: list[dict[str, int]] = []
+    pitch_events: list[dict[str, object]] = []
+    for index, entry in enumerate(entries):
+        pitch = int(candidate_pitch_via_153c6_reader(entry)["pitch"]) & 0xFFFF
+        matched = selected_low <= pitch <= selected_high if pitch_path == "range" else pitch == selected_low
+        before = int(entry["longword"]) & 0xFFFFFFFF
+        after = before if matched else before & 0x7FFFFFFF
+        if matched:
+            kept = dict(entry)
+            kept["longword"] = after
+            survivors.append(kept)
+        pitch_events.append({
+            "helper": helper,
+            "index": index,
+            "slot_pointer": int(entry["slot_pointer"]),
+            "record_start": int(entry["record_start"]),
+            "pitch": pitch,
+            "selected_low": selected_low,
+            "selected_high": selected_high,
+            "before": before,
+            "after": after,
+            "matched": matched,
+        })
+
+    return {
+        "spacing_path": spacing_path,
+        "pitch_path": pitch_path,
+        "requested_spacing": requested_spacing,
+        "requested_pitch": requested,
+        "selected_pitch_low": selected_low,
+        "selected_pitch_high": selected_high,
+        "active_pointer_78287c": int(survivors[0]["slot_pointer"]) if survivors else 0,
+        "active_count_7827b8": len(survivors),
+        "survivor_slot_pointers": [int(entry["slot_pointer"]) for entry in survivors],
+        "survivor_record_starts": [int(entry["record_start"]) for entry in survivors],
+        "spacing_probe_events": spacing_probe_events,
+        "spacing_events": spacing_events,
+        "pitch_probe_events": pitch_probe_events,
+        "pitch_events": pitch_events,
     }
 
 
@@ -12478,6 +12709,67 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "active_count_7827b8": 4,
             "survivor_slot_pointers": [0x782374, 0x782378, 0x78237C, 0x782380],
             "first_survivor": {"helper": 0x0152C2, "index": 8, "slot_pointer": 0x782374, "record_start": 0x0142E4, "height": 0x0352, "selected_low": 0x0352, "selected_high": 0x0352, "before": 0xC00942E4, "after": 0xC00942E4, "matched": True},
+        },
+    }))
+    pitch_filter_range = filter_active_candidates_by_spacing_pitch_via_153c6(
+        activated_class_zero,
+        requested_spacing=0,
+        requested_pitch=0x03E8,
+    )
+    pitch_filter_nearest = filter_active_candidates_by_spacing_pitch_via_153c6(
+        activated_class_zero,
+        requested_spacing=0,
+        requested_pitch=0x04B0,
+    )
+    checks.append(assert_equal("0x153c6 filters concrete active candidates by spacing and pitch", {
+        "range": {
+            "spacing_path": pitch_filter_range["spacing_path"],
+            "pitch_path": pitch_filter_range["pitch_path"],
+            "requested_spacing": pitch_filter_range["requested_spacing"],
+            "requested_pitch": pitch_filter_range["requested_pitch"],
+            "selected_pitch_low": pitch_filter_range["selected_pitch_low"],
+            "selected_pitch_high": pitch_filter_range["selected_pitch_high"],
+            "active_pointer_78287c": pitch_filter_range["active_pointer_78287c"],
+            "active_count_7827b8": pitch_filter_range["active_count_7827b8"],
+            "survivor_slot_pointers": pitch_filter_range["survivor_slot_pointers"],
+            "first_reject": pitch_filter_range["pitch_events"][8],
+        },
+        "nearest": {
+            "spacing_path": pitch_filter_nearest["spacing_path"],
+            "pitch_path": pitch_filter_nearest["pitch_path"],
+            "requested_spacing": pitch_filter_nearest["requested_spacing"],
+            "requested_pitch": pitch_filter_nearest["requested_pitch"],
+            "selected_pitch_low": pitch_filter_nearest["selected_pitch_low"],
+            "selected_pitch_high": pitch_filter_nearest["selected_pitch_high"],
+            "active_pointer_78287c": pitch_filter_nearest["active_pointer_78287c"],
+            "active_count_7827b8": pitch_filter_nearest["active_count_7827b8"],
+            "survivor_slot_pointers": pitch_filter_nearest["survivor_slot_pointers"],
+            "first_survivor": pitch_filter_nearest["pitch_events"][8],
+        },
+    }, {
+        "range": {
+            "spacing_path": "matched-continue",
+            "pitch_path": "range",
+            "requested_spacing": 0,
+            "requested_pitch": 0x03E8,
+            "selected_pitch_low": 0x03E3,
+            "selected_pitch_high": 0x03ED,
+            "active_pointer_78287c": 0x782354,
+            "active_count_7827b8": 8,
+            "survivor_slot_pointers": [0x782354, 0x782358, 0x78235C, 0x782360, 0x782364, 0x782368, 0x78236C, 0x782370],
+            "first_reject": {"helper": 0x01553A, "index": 8, "slot_pointer": 0x782374, "record_start": 0x0142E4, "pitch": 0x0682, "selected_low": 0x03E3, "selected_high": 0x03ED, "before": 0xC00942E4, "after": 0x400942E4, "matched": False},
+        },
+        "nearest": {
+            "spacing_path": "matched-continue",
+            "pitch_path": "nearest",
+            "requested_spacing": 0,
+            "requested_pitch": 0x04B0,
+            "selected_pitch_low": 0x0682,
+            "selected_pitch_high": 0x0682,
+            "active_pointer_78287c": 0x782374,
+            "active_count_7827b8": 4,
+            "survivor_slot_pointers": [0x782374, 0x782378, 0x78237C, 0x782380],
+            "first_survivor": {"helper": 0x0155B6, "index": 8, "slot_pointer": 0x782374, "record_start": 0x0142E4, "pitch": 0x0682, "selected_low": 0x0682, "selected_high": 0x0682, "before": 0xC00942E4, "after": 0xC00942E4, "matched": True},
         },
     }))
     default_font_tables_found = default_font_symbol_tables_via_1ac0a_1af36(
@@ -23068,6 +23360,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         height_filter_nearest["selected_low"],
         height_filter_nearest["active_count_7827b8"],
         ", ".join("0x%06x" % int(slot) for slot in height_filter_nearest["survivor_slot_pointers"]),
+    ))
+    lines.append("- spacing/pitch filter: `0x153c6` first probes/prunes spacing from primary/secondary `0x782eef`/`0x782eff` against built-in `+0x21`, then filters pitch from `0x782ef0`/`0x782f00` through `0x13b76`; class-zero spacing `0` and pitch `0x03e8` keeps `%d` slots `%s`, while pitch `0x04b0` falls forward through `0x1562c` to `0x%04x` and keeps `%d` slots `%s`." % (
+        pitch_filter_range["active_count_7827b8"],
+        ", ".join("0x%06x" % int(slot) for slot in pitch_filter_range["survivor_slot_pointers"]),
+        pitch_filter_nearest["selected_pitch_low"],
+        pitch_filter_nearest["active_count_7827b8"],
+        ", ".join("0x%06x" % int(slot) for slot in pitch_filter_nearest["survivor_slot_pointers"]),
     ))
     lines.append("- default-font table builders: `0x1ac0a` current-candidate mode copies word `0x%04x` into all four `@0`/`@1` table slots, while synthesized mode writes `%s`; `0x1af36` builds fallback slots `%s` for the corresponding `0x156de` candidate-selection fallback." % (
         default_font_tables_found["current_symbol"],

@@ -362,6 +362,115 @@ def restore_delayed_payload_via_12218(pending: dict[str, object], alternate_mode
     }
 
 
+def parser_dispatch_entry_via_11774(data: bytes, mode: int, byte: int, alternate: bool = False) -> dict[str, int | None]:
+    pointer_table = 0x116F6 if alternate else 0x112A4
+    start = u32(data, pointer_table + mode * 4)
+    end = u32(data, pointer_table + (mode + 1) * 4)
+    for entry in range(start, end, 6):
+        if data[entry] == (byte & 0xFF):
+            handler = u32(data, entry + 2) & 0xFFFFFF
+            return {
+                "table_entry": entry,
+                "byte": byte & 0xFF,
+                "mode_before": mode,
+                "next_mode": data[entry + 1],
+                "handler": handler if handler else None,
+            }
+    return {
+        "table_entry": None,
+        "byte": byte & 0xFF,
+        "mode_before": mode,
+        "next_mode": mode,
+        "handler": None,
+    }
+
+
+def trace_raster_parser_dispatch_via_11774(data: bytes, stream: bytes) -> dict[str, object]:
+    mode = 0
+    pos = 0
+    dispatches: list[dict[str, object]] = []
+    commands: list[dict[str, object]] = []
+    pending: dict[str, object] = {"pending_flag": 0, "handler": 0, "snapshot_record": b""}
+
+    def dispatch(byte: int, offset: int) -> dict[str, object]:
+        nonlocal mode
+        entry = parser_dispatch_entry_via_11774(data, mode, byte)
+        event = dict(entry)
+        event["offset"] = offset
+        dispatches.append(event)
+        mode = int(entry["next_mode"])
+        return event
+
+    while pos < len(stream):
+        if stream[pos] != 0x1B:
+            raise AssertionError(f"parser trace expected ESC at offset {pos}")
+        escape_offset = pos
+        if pos + 2 >= len(stream):
+            raise AssertionError("parser trace expected ESC prefix and group bytes")
+        dispatch(0x1B, escape_offset)
+        pos += 1
+        dispatch(stream[pos], pos)
+        prefix = stream[pos]
+        pos += 1
+        dispatch(stream[pos], pos)
+        group = stream[pos]
+        pos += 1
+
+        while True:
+            parameter_start = pos
+            if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+                parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            else:
+                parameter = 0
+            if pos >= len(stream):
+                raise AssertionError("parser trace missing final byte")
+            final_offset = pos
+            final = stream[pos]
+            pos += 1
+            final_event = dispatch(final, final_offset)
+            record = bytes([
+                0x81 if parameter < 0 else 0x80,
+                final,
+            ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
+            command: dict[str, object] = {
+                "sequence": stream[escape_offset:pos] if parameter_start == escape_offset + 3 else stream[parameter_start:pos],
+                "prefix": prefix,
+                "group": group,
+                "parameter": parameter,
+                "record": record,
+                "final_dispatch": final_event,
+                "mode_after_final": mode,
+            }
+            if final_event["handler"] == 0x011F82:
+                pending = delay_payload_handler_via_121cc(record, 0x0105D0)
+                command["delayed_snapshot_bytes"] = pending["snapshot_bytes"]
+            if mode == 0:
+                restored = restore_delayed_payload_via_12218(pending)
+                command["restore_after_final"] = restored["dispatch"]
+                pending = restored["pending_after"]
+            else:
+                command["restore_after_final"] = None
+            if final_event["handler"] == 0x011F82:
+                byte_count = abs(parameter)
+                payload_start = pos
+                payload_end = pos + byte_count
+                if payload_end > len(stream):
+                    raise AssertionError("parser trace payload shorter than ESC *b#W byte count")
+                command["payload_offset"] = payload_start
+                command["payload"] = stream[payload_start:payload_end]
+                pos = payload_end
+            commands.append(command)
+            if mode == 0:
+                break
+
+    return {
+        "dispatches": dispatches,
+        "commands": commands,
+        "final_mode": mode,
+        "pending": pending,
+    }
+
+
 def data_payload_byte_via_dace(stream: bytes, pos: int) -> dict[str, object]:
     if pos >= len(stream):
         return {"value": -1, "pos": pos, "control_hits": 0}
@@ -12328,6 +12437,87 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         raster_command_stream,
         raster_graphics_state(page_extent=255, cursor_axis0=0x00100000, cursor_axis1=0x00200000),
     )
+    raster_dispatch_trace = trace_raster_parser_dispatch_via_11774(data, raster_command_stream)
+    checks.append(assert_equal("0x11774 ROM dispatch table routes raster stream to delayed transfer", {
+        "dispatches": [
+            {
+                key: event[key]
+                for key in ("offset", "table_entry", "byte", "mode_before", "next_mode", "handler")
+            }
+            for event in raster_dispatch_trace["dispatches"]
+        ],
+        "commands": [
+            {
+                "sequence": command["sequence"],
+                "record": command["record"],
+                "handler": command["final_dispatch"]["handler"],
+                "mode_after_final": command["mode_after_final"],
+                "delayed_snapshot_bytes": command.get("delayed_snapshot_bytes"),
+                "restore_after_final": command["restore_after_final"],
+                "payload_offset": command.get("payload_offset"),
+                "payload": command.get("payload"),
+            }
+            for command in raster_dispatch_trace["commands"]
+        ],
+        "final_mode": raster_dispatch_trace["final_mode"],
+        "pending": {
+            key: raster_dispatch_trace["pending"][key]
+            for key in ("pending_flag", "handler", "snapshot_record")
+        },
+    }, {
+        "dispatches": [
+            {"offset": 0, "table_entry": 0x010EAE, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+            {"offset": 1, "table_entry": 0x010F20, "byte": ord("*"), "mode_before": 1, "next_mode": 3, "handler": 0x011EC8},
+            {"offset": 2, "table_entry": 0x010F44, "byte": ord("t"), "mode_before": 3, "next_mode": 15, "handler": 0x011EDA},
+            {"offset": 6, "table_entry": 0x0111F0, "byte": ord("R"), "mode_before": 15, "next_mode": 0, "handler": 0x010808},
+            {"offset": 7, "table_entry": 0x010EAE, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+            {"offset": 8, "table_entry": 0x010F20, "byte": ord("*"), "mode_before": 1, "next_mode": 3, "handler": 0x011EC8},
+            {"offset": 9, "table_entry": 0x010F50, "byte": ord("r"), "mode_before": 3, "next_mode": 7, "handler": 0x011EDA},
+            {"offset": 11, "table_entry": 0x011070, "byte": ord("A"), "mode_before": 7, "next_mode": 0, "handler": 0x01075A},
+            {"offset": 12, "table_entry": 0x010EAE, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+            {"offset": 13, "table_entry": 0x010F20, "byte": ord("*"), "mode_before": 1, "next_mode": 3, "handler": 0x011EC8},
+            {"offset": 14, "table_entry": 0x010F62, "byte": ord("b"), "mode_before": 3, "next_mode": 14, "handler": 0x011EDA},
+            {"offset": 16, "table_entry": 0x0111E4, "byte": ord("W"), "mode_before": 14, "next_mode": 0, "handler": 0x011F82},
+        ],
+        "commands": [
+            {
+                "sequence": b"\x1b*t300R",
+                "record": bytes.fromhex("80 52 01 2c 00 00"),
+                "handler": 0x010808,
+                "mode_after_final": 0,
+                "delayed_snapshot_bytes": None,
+                "restore_after_final": None,
+                "payload_offset": None,
+                "payload": None,
+            },
+            {
+                "sequence": b"\x1b*r1A",
+                "record": bytes.fromhex("80 41 00 01 00 00"),
+                "handler": 0x01075A,
+                "mode_after_final": 0,
+                "delayed_snapshot_bytes": None,
+                "restore_after_final": None,
+                "payload_offset": None,
+                "payload": None,
+            },
+            {
+                "sequence": b"\x1b*b4W",
+                "record": bytes.fromhex("80 57 00 04 00 00"),
+                "handler": 0x011F82,
+                "mode_after_final": 0,
+                "delayed_snapshot_bytes": bytes.fromhex("01 00 01 05 d0 80 57 00 04 00 00"),
+                "restore_after_final": {"kind": "direct-handler", "handler": 0x0105D0},
+                "payload_offset": 17,
+                "payload": bytes.fromhex("f0 0f aa 55"),
+            },
+        ],
+        "final_mode": 0,
+        "pending": {
+            "pending_flag": 0,
+            "handler": 0,
+            "snapshot_record": bytes.fromhex("80 57 00 04 00 00"),
+        },
+    }))
     raster_stream_rendered = raster_stream_result["rendered"]
     assert isinstance(raster_stream_rendered, dict)
     checks.append(assert_equal("modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W payload boundary", {
@@ -15291,12 +15481,40 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append("- parser-derived rendered row:")
     lines.extend(f"`{row}`" for row in parser_raster_rendered["rows"])
-    lines.append("- remaining gap: replace the modeled command/data stream fixture below with a full live parser run through `0x121cc` / `0x105d0`.")
+    lines.append("- remaining gap: replace the modeled command/data stream fixture below with a full CPU/parser-state run through `0x121cc` / `0x105d0`.")
+    lines.append("")
+
+    lines.append("## ROM Parser Dispatch Trace Fixture")
+    lines.append("")
+    lines.append("This fixture walks the primary raster stream through the ROM dispatch table used by main parser loop `0x11774`. It proves the byte sequence reaches prefix handlers `0x11eb6` / `0x11ec8` / `0x11eda`, final handlers `0x10808`, `0x1075a`, and `0x11f82`, then returns to mode 0 where `0x12218` restores the delayed `ESC *b4W` record and dispatches handler `0x105d0` before payload bytes are consumed.")
+    lines.append("")
+    lines.append(f"- dispatch stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_command_stream)}`")
+    lines.append("- dispatch path:")
+    for event in raster_dispatch_trace["dispatches"]:
+        handler = event["handler"]
+        lines.append("- offset `%d`, table `0x%06x`, byte `0x%02x`, mode `%d -> %d`, handler `%s`" % (
+            event["offset"],
+            event["table_entry"],
+            event["byte"],
+            event["mode_before"],
+            event["next_mode"],
+            "none" if handler is None else "0x%06x" % handler,
+        ))
+    lines.append("- command records:")
+    for command in raster_dispatch_trace["commands"]:
+        lines.append("- `%s`: record `%s`, final handler `%s`, restore `%s`, payload offset `%s`, payload `%s`" % (
+            " ".join(f"{byte:02x}" for byte in command["sequence"]),
+            " ".join(f"{byte:02x}" for byte in command["record"]),
+            "0x%06x" % command["final_dispatch"]["handler"],
+            command["restore_after_final"],
+            command.get("payload_offset"),
+            "" if command.get("payload") is None else " ".join(f"{byte:02x}" for byte in command["payload"]),
+        ))
     lines.append("")
 
     lines.append("## Modeled Raster Command/Data Stream Fixture")
     lines.append("")
-    lines.append("This fixture starts from actual PCL command bytes, then models the delayed payload boundary that `0x121cc` records for handler `0x105d0`. It is still not a full firmware parser run, but each transfer event now carries the six-byte parsed record, the exact `0x121cc` snapshot bytes, and the `0x12218` restore/dispatch result before queueing and rendering the `ESC *b#W` payload. The 300/150/100/75-dpi streams pin byte-stream-selected modes 0..3, and same-group lowercase-final sequences now stay in the firmware parser mode until the final uppercase command byte.")
+    lines.append("This fixture starts from actual PCL command bytes, then models the delayed payload boundary that `0x121cc` records for handler `0x105d0`. It is still not a full CPU/parser-state run, but the primary stream is now paired with the ROM dispatch trace above, and each transfer event carries the six-byte parsed record, the exact `0x121cc` snapshot bytes, and the `0x12218` restore/dispatch result before queueing and rendering the `ESC *b#W` payload. The 300/150/100/75-dpi streams pin byte-stream-selected modes 0..3, and same-group lowercase-final sequences now stay in the firmware parser mode until the final uppercase command byte.")
     lines.append("")
     lines.append(f"- stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_command_stream)}`")
     lines.append("- parsed events:")

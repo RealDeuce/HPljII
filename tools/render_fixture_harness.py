@@ -5808,6 +5808,135 @@ def render_mixed_printable_control_page_record_stream(
     }
 
 
+def render_printable_page_geometry_page_record_stream(
+    data: bytes,
+    resources: bytes,
+    stream: bytes,
+    context: int,
+    text_state: dict[str, int],
+    geometry_state: dict[str, int],
+    default_advance: int,
+    context_slot: int = 0,
+) -> dict[str, object]:
+    text_state = dict(text_state)
+    geometry_state = dict(geometry_state)
+    page_record: dict[str, object] = {"bucket_array": {}, "context_slots": [context]}
+    events: list[dict[str, object]] = []
+    published_page_record: dict[str, object] | None = None
+    pos = 0
+    while pos < len(stream):
+        byte = stream[pos]
+        if byte == 0x1B:
+            if pos + 3 >= len(stream) or stream[pos + 1 : pos + 3] != b"&l":
+                raise AssertionError(f"page-geometry page-record stream only models ESC &l#A/#O at offset {pos}")
+            group_start = pos
+            pos += 3
+            while True:
+                command_start = group_start if pos == group_start + 3 else pos
+                parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+                if pos >= len(stream):
+                    raise AssertionError("page-geometry page-record stream missing final byte")
+                final = stream[pos]
+                pos += 1
+                final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+                before_geometry = page_geometry_event_state(geometry_state)
+                before_page_root = int(text_state.get("current_page_root", 0))
+                finalized = finalize_page_record_via_ff1e(page_record, text_state)
+                if finalized["published"]:
+                    published_pool_record = finalized["published_pool_record"]
+                    assert isinstance(published_pool_record, dict)
+                    published_page_record = published_pool_record
+                    text_state["page_publications"] = int(text_state.get("page_publications", 0)) + 1
+                    text_state["published_pool_record"] = 1
+                    text_state["page_publication_flag"] = int(finalized["page_publication_flag"])
+                text_state["current_page_root"] = int(finalized["current_page_root_after"])
+                text_state["page_root_present"] = 0
+                text_state["page_root_clears"] = int(finalized["page_root_clears"])
+                if final_upper == ord("A"):
+                    geometry_state = apply_page_size_via_fc74(data, geometry_state, parameter)
+                elif final_upper == ord("O"):
+                    geometry_state = apply_orientation_via_10220(data, geometry_state, parameter)
+                else:
+                    raise AssertionError(f"page-geometry page-record stream unsupported final byte {chr(final)!r}")
+                record = bytes([
+                    0x81 if parameter < 0 else 0x80,
+                    final,
+                ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
+                events.append({
+                    "kind": "page-geometry",
+                    "sequence": stream[command_start:pos],
+                    "record": record,
+                    "parameter": parameter,
+                    "handler": page_geometry_handler(final),
+                    "before_geometry": before_geometry,
+                    "after_geometry": page_geometry_event_state(geometry_state),
+                    "finalized_page_record": finalized,
+                    "current_page_root_before": before_page_root,
+                    "current_page_root_after": text_state["current_page_root"],
+                    "page_publications": text_state.get("page_publications", 0),
+                    "page_root_clears": text_state.get("page_root_clears", 0),
+                    "page_publication_flag": text_state.get("page_publication_flag", 0),
+                    "chained": bool(ord("a") <= final <= ord("z")),
+                })
+                if not (ord("a") <= final <= ord("z")):
+                    break
+            continue
+        if byte < 0x20 or byte == 0x7F:
+            raise AssertionError(f"unsupported page-geometry page-record stream byte 0x{byte:02x} at offset {pos}")
+
+        source = build_text_source_object_from_1393a(resources, context, byte, x=0, y=0, context_slot=context_slot)
+        positioned = position_flagged_text_source_via_d824(
+            resources,
+            source,
+            cursor_x=unpack12(text_state["cursor_x"])[0],
+            cursor_y=unpack12(text_state["cursor_y"])[0],
+        )
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        page_result = queue_text_source_to_page_record_via_12f2e(resources, page_record, positioned_source)
+        advance = advance_flagged_text_cursor_via_d550(text_state["cursor_x"], default_advance)
+        text_state["cursor_x"] = advance["cursor_after"]
+        events.append({
+            "kind": "printable",
+            "offset": pos,
+            "byte": byte,
+            "cursor_before": advance["cursor_before"],
+            "cursor_after": advance["cursor_after"],
+            "source": source,
+            "positioned": positioned,
+            "page_result": page_result,
+        })
+        pos += 1
+
+    bucket = compact_bucket_root_from_page_record(page_record)
+    bucket_object = bucket["bucket_root"]
+    assert isinstance(bucket_object, bytes)
+    bridged_record = bridge_page_record_via_1edc6({
+        "bucket_root": bucket_object,
+        "context_slots": [context],
+    })
+    rendered = render_bridged_compact_bucket_object(data, resources, bridged_record)
+    published_bridged_record = None
+    published_rendered = None
+    if published_page_record is not None:
+        published_bridged_record = bridge_page_record_via_1edc6(published_page_record)
+        published_rendered = render_bridged_compact_bucket_object(data, resources, published_bridged_record)
+    return {
+        "stream": stream,
+        "events": events,
+        "page_record": page_record,
+        "bucket_index": bucket["bucket_index"],
+        "bucket_object": bucket_object,
+        "bridged_record": bridged_record,
+        "rendered": rendered,
+        "published_page_record": published_page_record,
+        "published_bridged_record": published_bridged_record,
+        "published_rendered": published_rendered,
+        "final_text_state": text_state,
+        "final_geometry_state": geometry_state,
+    }
+
+
 def expand_mode0(payload: bytes) -> list[int]:
     return [int.from_bytes(payload[i : i + 2], "big") for i in range(0, len(payload), 2)]
 
@@ -14164,6 +14293,239 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "rows": positioned_mode0["rows"],
     }))
+    page_geometry_page_record_stream = render_printable_page_geometry_page_record_stream(
+        data,
+        resources,
+        b"!\x1b&l1A",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=1,
+            page_publications=0,
+            page_root_clears=0,
+            published_pool_record=0,
+            page_publication_flag=0,
+        ),
+        page_geometry_state(),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    page_geometry_page_record_object = page_geometry_page_record_stream["bucket_object"]
+    page_geometry_page_record_rendered = page_geometry_page_record_stream["rendered"]
+    page_geometry_page_record_bridged = page_geometry_page_record_stream["bridged_record"]
+    page_geometry_published_page_record = page_geometry_page_record_stream["published_page_record"]
+    page_geometry_published_bridged = page_geometry_page_record_stream["published_bridged_record"]
+    page_geometry_published_rendered = page_geometry_page_record_stream["published_rendered"]
+    assert isinstance(page_geometry_page_record_object, bytes)
+    assert isinstance(page_geometry_page_record_rendered, dict)
+    assert isinstance(page_geometry_page_record_bridged, dict)
+    assert isinstance(page_geometry_published_page_record, dict)
+    assert isinstance(page_geometry_published_bridged, dict)
+    assert isinstance(page_geometry_published_rendered, dict)
+    page_geometry_page_record_event_summary: list[dict[str, object]] = []
+    page_geometry_finalized_summary: dict[str, object] | None = None
+    page_geometry_page_record_events = page_geometry_page_record_stream["events"]
+    assert isinstance(page_geometry_page_record_events, list)
+    for event in page_geometry_page_record_events:
+        assert isinstance(event, dict)
+        if event["kind"] == "printable":
+            page_result = event["page_result"]
+            positioned = event["positioned"]
+            assert isinstance(page_result, dict)
+            assert isinstance(positioned, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            page_geometry_page_record_event_summary.append({
+                "kind": "printable",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": page_result["coord"],
+                "allocated": page_result["allocated"],
+                "count_before": page_result["count_before"],
+                "count_after": page_result["count_after"],
+                "bucket_index": page_result["bucket_index"],
+            })
+        else:
+            finalized = event["finalized_page_record"]
+            assert isinstance(finalized, dict)
+            published_pool_record = finalized["published_pool_record"]
+            assert isinstance(published_pool_record, dict)
+            page_geometry_finalized_summary = {
+                "published": finalized["published"],
+                "bucket_index": finalized["bucket_index"],
+                "bucket_root_prefix": published_pool_record["bucket_root"][:11],
+                "context_slots": published_pool_record["context_slots"],
+                "page_publication_flag": finalized["page_publication_flag"],
+                "current_page_root_after": finalized["current_page_root_after"],
+                "page_root_clears": finalized["page_root_clears"],
+            }
+            after_geometry = event["after_geometry"]
+            assert isinstance(after_geometry, dict)
+            page_geometry_page_record_event_summary.append({
+                "kind": "page-geometry",
+                "sequence": event["sequence"],
+                "record": event["record"],
+                "parameter": event["parameter"],
+                "handler": event["handler"],
+                "page_code": after_geometry["page_code"],
+                "orientation": after_geometry["orientation"],
+                "width": after_geometry["width"],
+                "height": after_geometry["height"],
+                "pending_text_flushes": after_geometry["pending_text_flushes"],
+                "page_finalizations": after_geometry["page_finalizations"],
+                "current_page_root_before": event["current_page_root_before"],
+                "current_page_root_after": event["current_page_root_after"],
+                "page_publications": event["page_publications"],
+                "page_root_clears": event["page_root_clears"],
+                "page_publication_flag": event["page_publication_flag"],
+            })
+    page_geometry_final_geometry = page_geometry_page_record_stream["final_geometry_state"]
+    page_geometry_final_text = page_geometry_page_record_stream["final_text_state"]
+    assert isinstance(page_geometry_final_geometry, dict)
+    assert isinstance(page_geometry_final_text, dict)
+    checks.append(assert_equal("mixed printable/page-size page-record stream publishes queued text before geometry change", {
+        "stream": page_geometry_page_record_stream["stream"],
+        "events": page_geometry_page_record_event_summary,
+        "bucket_index": page_geometry_page_record_stream["bucket_index"],
+        "object_prefix": page_geometry_page_record_object[:11],
+        "object_size": len(page_geometry_page_record_object),
+        "final_text_state": select_keys(page_geometry_final_text, (
+            "cursor_x",
+            "current_page_root",
+            "page_root_present",
+            "page_publications",
+            "page_root_clears",
+            "page_publication_flag",
+        )),
+        "final_geometry_state": select_keys(page_geometry_final_geometry, (
+            "page_code",
+            "orientation",
+            "width",
+            "height",
+            "active_width",
+            "active_height",
+            "vertical_offset_source",
+            "top_offset",
+            "pending_text_flushes",
+            "page_finalizations",
+            "page_change_flag",
+            "print_engine_status",
+        )),
+    }, {
+        "stream": b"!\x1b&l1A",
+        "events": [
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 0),
+                "coord": 0x0001,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+            },
+            {
+                "kind": "page-geometry",
+                "sequence": b"\x1b&l1A",
+                "record": b"\x80A\x00\x01\x00\x00",
+                "parameter": 1,
+                "handler": 0x00FC74,
+                "page_code": 6,
+                "orientation": 0,
+                "width": 3030,
+                "height": 2025,
+                "pending_text_flushes": 1,
+                "page_finalizations": 1,
+                "current_page_root_before": 1,
+                "current_page_root_after": 0,
+                "page_publications": 1,
+                "page_root_clears": 1,
+                "page_publication_flag": 1,
+            },
+        ],
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+        "object_size": 0x26,
+        "final_text_state": {
+            "cursor_x": pack12(28),
+            "current_page_root": 0,
+            "page_root_present": 0,
+            "page_publications": 1,
+            "page_root_clears": 1,
+            "page_publication_flag": 1,
+        },
+        "final_geometry_state": {
+            "page_code": 6,
+            "orientation": 0,
+            "width": 3030,
+            "height": 2025,
+            "active_width": 3030,
+            "active_height": 2025,
+            "vertical_offset_source": 60,
+            "top_offset": 90,
+            "pending_text_flushes": 1,
+            "page_finalizations": 1,
+            "page_change_flag": 1,
+            "print_engine_status": 0,
+        },
+    }))
+    checks.append(assert_equal("mixed printable/page-size page-record finalization publishes bridged record", {
+        "finalized": page_geometry_finalized_summary,
+        "pre_publish_bridge": {
+            "bucket_root": page_geometry_page_record_bridged["bucket_root"],
+            "context_slots": page_geometry_page_record_bridged["context_slots"][:2],
+        },
+        "published_record": {
+            "bucket_root": page_geometry_published_page_record["bucket_root"],
+            "context_slots": page_geometry_published_page_record["context_slots"],
+        },
+        "published_bridge": {
+            "bucket_root": page_geometry_published_bridged["bucket_root"],
+            "context_slots": page_geometry_published_bridged["context_slots"][:2],
+        },
+        "published_rendered": {
+            key: page_geometry_published_rendered[key]
+            for key in ("selector", "context_slot", "count", "rendered", "payload")
+        },
+        "rows": page_geometry_published_rendered["rows"],
+    }, {
+        "finalized": {
+            "published": True,
+            "bucket_index": 0,
+            "bucket_root_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "context_slots": [0x440946B4],
+            "page_publication_flag": 1,
+            "current_page_root_after": 0,
+            "page_root_clears": 1,
+        },
+        "pre_publish_bridge": {
+            "bucket_root": page_geometry_page_record_object,
+            "context_slots": (0x440946B4, 0),
+        },
+        "published_record": {
+            "bucket_root": page_geometry_page_record_object,
+            "context_slots": [0x440946B4],
+        },
+        "published_bridge": {
+            "bucket_root": page_geometry_page_record_object,
+            "context_slots": (0x440946B4, 0),
+        },
+        "published_rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 1,
+            "rendered": mixed_reset_rendered["rendered"],
+            "payload": bytes.fromhex("00 01 20 00 01") + bytes(0x1B),
+        },
+        "rows": positioned_mode0["rows"],
+    }))
 
     lines.append("## Host Byte Fetch Fixtures")
     lines.append("")
@@ -14220,6 +14582,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- Letter landscape from `ESC &l1O`: active `{landscape_letter['active_width']}x{landscape_letter['active_height']}`, margin `{landscape_letter['margin_reference']}`, printable extent `{landscape_letter['printable_extent']}`, top offset `{landscape_letter['top_offset']}`")
     lines.append(f"- page-geometry stream events: `{page_geometry_stream['stream_events']}`")
     lines.append(f"- Landscape thresholds loaded by `0x103ea`: `{[landscape_letter[key] for key in ('portrait_landscape_threshold_6', 'portrait_landscape_threshold_2', 'portrait_landscape_threshold_1', 'portrait_landscape_threshold_5')]}`")
+    lines.append("- A mixed printable/page-size page-record stream drives `!` then `ESC &l1A`; the page-size handler's `0xf34a`/`0xff1e` boundary publishes the queued compact text bucket before storing the new page code and recomputing geometry.")
+    lines.append(f"- page-size publication object bytes: `{' '.join(f'{byte:02x}' for byte in page_geometry_page_record_object)}`")
+    lines.append("- page-size published page-record bridge rows match the pre-geometry compact text rows.")
     lines.append("")
 
     lines.append("## Macro Command and Data-Chain Fixtures")

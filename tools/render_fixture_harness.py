@@ -4453,6 +4453,117 @@ def choose_active_candidate_via_14398(activation: dict[str, object]) -> dict[str
     }
 
 
+def selected_builtin_snapshot_via_1440c(
+    resources: bytes,
+    selected: dict[str, int],
+    *,
+    primary_secondary_selector: int,
+    active_symbol_word: int,
+    ram_start: int = 0x780EFA,
+) -> dict[str, object]:
+    longword = int(selected["longword"]) & 0xFFFFFFFF
+    address = longword & 0x00FFFFFF
+    record_start = address - 0x080000
+    symbol = builtin_candidate_symbol_via_15890(selected)
+    return {
+        "helper": 0x01440C,
+        "state_address": 0x783152 if int(primary_secondary_selector) else 0x783148,
+        "byte_0_type": 1,
+        "word_2_symbol": int(symbol["word"]) & 0xFFFF,
+        "word_4_active_symbol": int(active_symbol_word) & 0xFFFF,
+        "byte_6_first_char": resources[record_start + 0x0F],
+        "byte_7_last_char": resources[record_start + 0x11],
+        "byte_9_before_ram": 1 if address < int(ram_start) else 0,
+        "reader": symbol["reader"],
+        "reader_source": symbol["source"],
+    }
+
+
+def dispatch_selected_builtin_font_via_14c64(
+    data: bytes,
+    resources: bytes,
+    selected: dict[str, int],
+    *,
+    primary_secondary_selector: int,
+    active_primary_symbol: int,
+    active_secondary_symbol: int,
+    cached_state_matches: bool = False,
+) -> dict[str, object]:
+    slot = 1 if int(primary_secondary_selector) else 0
+    active_word = (int(active_secondary_symbol) if slot else int(active_primary_symbol)) & 0xFFFF
+    if cached_state_matches:
+        return {
+            "helper": 0x014C64,
+            "path": "cached-hit",
+            "slot": "secondary" if slot else "primary",
+            "calls": ["0x13a48"],
+        }
+
+    longword = int(selected["longword"]) & 0xFFFFFFFF
+    if ((longword >> 30) & 1) == 0:
+        raise AssertionError("dispatch_selected_builtin_font_via_14c64 requires a bit-30 built-in candidate")
+    address = longword & 0x00FFFFFF
+    record_start = address - 0x080000
+    symbol = builtin_candidate_symbol_via_15890(selected)
+    selected_symbol = int(symbol["word"]) & 0xFFFF
+    first_char = u16(resources, record_start + 0x0E)
+    last_char = u16(resources, record_start + 0x10)
+    if selected_symbol == 0x0115 and active_word != 0x0115:
+        if active_word == 0x0005:
+            range_end = (last_char - 0x80) & 0xFFFF
+            range_reason = "roman-extension-upper-half"
+        else:
+            range_end = 0x007F
+            range_reason = "roman8-compatible-lower-half"
+    else:
+        range_end = last_char
+        range_reason = "record-range"
+
+    base_map = built_in_base_map_table(resources, longword)
+    patch = apply_symbol_set_patch_via_14f16(data, base_map, active_word)
+    patched_table = patch["table"]
+    assert isinstance(patched_table, bytes)
+    selected_flag = 0 if resources[record_start + 0x0C] == 0 else 1
+    snapshot = selected_builtin_snapshot_via_1440c(
+        resources,
+        selected,
+        primary_secondary_selector=slot,
+        active_symbol_word=active_word,
+    )
+    return {
+        "helper": 0x014C64,
+        "path": "built-in-cache-miss",
+        "slot": "secondary" if slot else "primary",
+        "selected_slot_pointer": int(selected["slot_pointer"]),
+        "selected_longword": longword,
+        "record_start": record_start,
+        "selected_symbol": selected_symbol,
+        "active_symbol": active_word,
+        "range_register": 0x78313A if slot else 0x783134,
+        "range_start": first_char,
+        "range_end": range_end,
+        "range_reason": range_reason,
+        "selected_flag_register": 0x783133 if slot else 0x783132,
+        "selected_flag": selected_flag,
+        "map_address": 0x783032 if slot else 0x782F32,
+        "base_map_samples": {
+            "0x21": base_map[0x21],
+            "0x7e": base_map[0x7E],
+            "0xa1": base_map[0xA1],
+            "0xfe": base_map[0xFE],
+        },
+        "patch_kind": patch["kind"],
+        "patched_map_samples": {
+            "0x21": patched_table[0x21],
+            "0x7e": patched_table[0x7E],
+            "0x80": patched_table[0x80],
+            "0xa1": patched_table[0xA1],
+        },
+        "snapshot": snapshot,
+        "calls": ["0x13a48", "0x15890", "0x14d9c", "0x14f16", "0x1440c"],
+    }
+
+
 def clear_download_continuation_state(continuation: dict[str, int]) -> dict[str, int]:
     cleared = dict(continuation)
     for key in ("flag", "payload", "word_0x7827c8", "dest", "trailing_dest", "remaining", "d4_counter", "d3_counter"):
@@ -12853,6 +12964,71 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "reason": "field-tuple",
             "action": "keep",
         },
+    }))
+    chosen_class_zero_entry = next(
+        dict(entry)
+        for entry in class_zero_symbol_survivor_activation["entries"]  # type: ignore[index]
+        if int(entry["slot_pointer"]) == int(chosen_class_zero_primary["selected_slot_pointer_7828a8"])
+    )
+    dispatched_class_zero_primary = dispatch_selected_builtin_font_via_14c64(
+        data,
+        resources,
+        chosen_class_zero_entry,
+        primary_secondary_selector=0,
+        active_primary_symbol=0x0005,
+        active_secondary_symbol=0x0115,
+    )
+    checks.append(assert_equal("0x14c64 dispatches concrete selected built-in font", {
+        "path": dispatched_class_zero_primary["path"],
+        "slot": dispatched_class_zero_primary["slot"],
+        "selected_slot_pointer": dispatched_class_zero_primary["selected_slot_pointer"],
+        "selected_longword": dispatched_class_zero_primary["selected_longword"],
+        "record_start": dispatched_class_zero_primary["record_start"],
+        "selected_symbol": dispatched_class_zero_primary["selected_symbol"],
+        "active_symbol": dispatched_class_zero_primary["active_symbol"],
+        "range_register": dispatched_class_zero_primary["range_register"],
+        "range_start": dispatched_class_zero_primary["range_start"],
+        "range_end": dispatched_class_zero_primary["range_end"],
+        "range_reason": dispatched_class_zero_primary["range_reason"],
+        "selected_flag_register": dispatched_class_zero_primary["selected_flag_register"],
+        "selected_flag": dispatched_class_zero_primary["selected_flag"],
+        "map_address": dispatched_class_zero_primary["map_address"],
+        "base_map_samples": dispatched_class_zero_primary["base_map_samples"],
+        "patch_kind": dispatched_class_zero_primary["patch_kind"],
+        "patched_map_samples": dispatched_class_zero_primary["patched_map_samples"],
+        "snapshot": dispatched_class_zero_primary["snapshot"],
+        "calls": dispatched_class_zero_primary["calls"],
+    }, {
+        "path": "built-in-cache-miss",
+        "slot": "primary",
+        "selected_slot_pointer": 0x782364,
+        "selected_longword": 0xC0089FB0,
+        "record_start": 0x009FB0,
+        "selected_symbol": 0x0115,
+        "active_symbol": 0x0005,
+        "range_register": 0x783134,
+        "range_start": 0x0021,
+        "range_end": 0x007E,
+        "range_reason": "roman-extension-upper-half",
+        "selected_flag_register": 0x783132,
+        "selected_flag": 1,
+        "map_address": 0x782F32,
+        "base_map_samples": {"0x21": 0x00, "0x7e": 0x5D, "0xa1": 0x80, "0xfe": 0xDD},
+        "patch_kind": "roman-extension",
+        "patched_map_samples": {"0x21": 0x80, "0x7e": 0xDD, "0x80": 0x00, "0xa1": 0x00},
+        "snapshot": {
+            "helper": 0x01440C,
+            "state_address": 0x783148,
+            "byte_0_type": 1,
+            "word_2_symbol": 0x0115,
+            "word_4_active_symbol": 0x0005,
+            "byte_6_first_char": 0x21,
+            "byte_7_last_char": 0xFE,
+            "byte_9_before_ram": 1,
+            "reader": "0x15890",
+            "reader_source": "+0x22-word",
+        },
+        "calls": ["0x13a48", "0x15890", "0x14d9c", "0x14f16", "0x1440c"],
     }))
     height_filter_range = filter_active_candidates_by_height_via_1519a(
         activated_class_zero,
@@ -23560,6 +23736,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         chosen_class_zero_primary["selected_slot_pointer_7828a8"],
         chosen_class_zero_primary["selected_record_start"],
         chosen_class_zero_primary["events"][1]["candidate_tuple"]["fields"],  # type: ignore[index]
+    ))
+    lines.append("- selected font dispatch: `0x14c64` cache-miss handling for that selected built-in record updates primary range table `0x%06x` to `0x%04x..0x%04x`, selected flag `0x%06x = %d`, rebuilds map `0x%06x` through `0x14d9c`, applies active symbol `0x%04x` through `%s` handling, and snapshots state at `0x%06x` through `0x1440c`." % (
+        dispatched_class_zero_primary["range_register"],
+        dispatched_class_zero_primary["range_start"],
+        dispatched_class_zero_primary["range_end"],
+        dispatched_class_zero_primary["selected_flag_register"],
+        dispatched_class_zero_primary["selected_flag"],
+        dispatched_class_zero_primary["map_address"],
+        dispatched_class_zero_primary["active_symbol"],
+        dispatched_class_zero_primary["patch_kind"],
+        dispatched_class_zero_primary["snapshot"]["state_address"],  # type: ignore[index]
     ))
     lines.append("- height filter: `0x1519a` reads primary/secondary requested height from `0x782ef2`/`0x782f02`, keeps active candidates in requested +/- `0x19` when possible, otherwise uses `0x1533e` to select nearest lower/upper heights; class-zero requested `0x04b0` keeps `%d` slots `%s`, while requested `0x0384` falls back to nearest height `0x%04x` and keeps `%d` slots `%s`." % (
         height_filter_range["active_count_7827b8"],

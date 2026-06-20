@@ -2347,6 +2347,49 @@ def render_glyph_rows_via_main_row_copy(data: bytes, resources: bytes, glyph: di
     return bitmap_bytes_to_rows(dest, rows, width, dest_stride)
 
 
+def builtin_row_copy_span_matrix(data: bytes, resources: bytes, target_spans: tuple[int, ...] = (1, 2, 4, 6, 8)) -> dict[str, object]:
+    samples: dict[int, dict[str, object]] = {}
+    for base in scanned_builtin_record_bases(resources):
+        context = 0x40000000 | (base + 0x80000)
+        first_char = u16(resources, base + 0x0E)
+        last_char = u16(resources, base + 0x10)
+        for glyph_index in range(max(0, last_char - first_char + 1)):
+            glyph = resolve_builtin_glyph(resources, context, glyph_index)
+            if int(glyph["mode"]) != 1 or int(glyph["rows"]) == 0:
+                continue
+            render_span = int(glyph["render_span"])
+            if render_span not in target_spans or render_span in samples:
+                continue
+            direct_rows = glyph_bitmap_rows(resources, glyph)
+            row_copy_rows = render_glyph_rows_via_main_row_copy(data, resources, glyph)
+            samples[render_span] = {
+                "context": context,
+                "glyph": glyph_index,
+                "entry": int(glyph["entry"]),
+                "bitmap": int(glyph["bitmap"]),
+                "width": int(glyph["width"]),
+                "rows": int(glyph["rows"]),
+                "span": int(glyph["span"]),
+                "render_span": render_span,
+                "helper": u32(data, 0x1F08E + render_span * 4),
+                "first_rows": direct_rows[:3],
+                "last_row": direct_rows[-1] if direct_rows else "",
+                "matches": direct_rows == row_copy_rows,
+            }
+            if set(samples) == set(target_spans):
+                break
+        if set(samples) == set(target_spans):
+            break
+    missing = [span for span in target_spans if span not in samples]
+    mismatches = [span for span in target_spans if span in samples and not bool(samples[span]["matches"])]
+    return {
+        "target_spans": target_spans,
+        "missing": missing,
+        "mismatches": mismatches,
+        "samples": [samples[span] for span in target_spans if span in samples],
+    }
+
+
 def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, payload: bytes, dest_stride: int = 0x20, band_rows: int = 64) -> dict[str, object]:
     count = u16(payload, 0)
     pos = 2
@@ -7848,6 +7891,95 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ]))
     checks.append(assert_equal("resource context 0x440946b4 glyph 32 main row-copy rendered rows", render_glyph_rows_via_main_row_copy(data, resources, line_printer_glyph32), line_printer_glyph32_rows))
 
+    row_copy_span_matrix = builtin_row_copy_span_matrix(data, resources)
+    row_copy_span_samples = row_copy_span_matrix["samples"]
+    assert isinstance(row_copy_span_samples, list)
+    checks.append(assert_equal("resource glyph row-copy span matrix matches direct decode", row_copy_span_matrix, {
+        "target_spans": (1, 2, 4, 6, 8),
+        "missing": [],
+        "mismatches": [],
+        "samples": [
+            {
+                "context": 0x4008004C,
+                "glyph": 91,
+                "entry": 0x003916,
+                "bitmap": 0x003920,
+                "width": 3,
+                "rows": 50,
+                "span": 1,
+                "render_span": 1,
+                "helper": 0x01FA5C,
+                "first_rows": ["###", "...", "###"],
+                "last_row": "...",
+                "matches": True,
+            },
+            {
+                "context": 0x4008004C,
+                "glyph": 0,
+                "entry": 0x001088,
+                "bitmap": 0x001092,
+                "width": 9,
+                "rows": 32,
+                "span": 2,
+                "render_span": 2,
+                "helper": 0x01FE76,
+                "first_rows": ["...###...", "..#####..", "..#####.."],
+                "last_row": "..#####..",
+                "matches": True,
+            },
+            {
+                "context": 0x4008004C,
+                "glyph": 1,
+                "entry": 0x0010D2,
+                "bitmap": 0x0010DC,
+                "width": 18,
+                "rows": 17,
+                "span": 3,
+                "render_span": 4,
+                "helper": 0x0207AC,
+                "first_rows": [".#####......#####.", "#######....#######", "#######....#######"],
+                "last_row": "..###........###..",
+                "matches": True,
+            },
+            {
+                "context": 0x40099D18,
+                "glyph": 2,
+                "entry": 0x01ADD4,
+                "bitmap": 0x01ADDE,
+                "width": 38,
+                "rows": 19,
+                "span": 5,
+                "render_span": 6,
+                "helper": 0x0212E4,
+                "first_rows": [
+                    "............###.......###.............",
+                    "............###.......###.............",
+                    "............###.......###.............",
+                ],
+                "last_row": "............###.......###.............",
+                "matches": True,
+            },
+            {
+                "context": 0x40099D18,
+                "glyph": 91,
+                "entry": 0x01D25C,
+                "bitmap": 0x01D266,
+                "width": 50,
+                "rows": 3,
+                "span": 7,
+                "render_span": 8,
+                "helper": 0x02201C,
+                "first_rows": [
+                    "##################################################",
+                    "##################################################",
+                    "##################################################",
+                ],
+                "last_row": "##################################################",
+                "matches": True,
+            },
+        ],
+    }))
+
     line_printer_mapping = built_in_base_map(resources, 0x440946B4, 0x21)
     checks.append(assert_equal("line-printer built-in base map host 0x21 to glyph 32", line_printer_mapping, {
         "base": 0x0146B4,
@@ -12285,6 +12417,28 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ):
         span = int(glyph["render_span"])
         lines.append(f"| `0x{context:08x}` | `{glyph_index}` | `{span}` | `0x{u32(data, 0x1F08E + span * 4):06x}` | decoded destination rows match resource rows |")
+    lines.append("")
+    lines.append("A ROM-scanned row-copy matrix now selects the first mode-1 built-in glyph found for each available render span `1`, `2`, `4`, `6`, and `8`, then compares direct bitmap decode against the `0x1f08e` destination-copy path.")
+    lines.append("")
+    lines.append("| Span | Context | Glyph | Entry | Width | Rows | Helper | First row | Result |")
+    lines.append("| ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |")
+    for sample in row_copy_span_samples:
+        assert isinstance(sample, dict)
+        first_rows = sample["first_rows"]
+        assert isinstance(first_rows, list)
+        lines.append(
+            "| `%d` | `0x%08x` | `%d` | `0x%06x` | `%d` | `%d` | `0x%06x` | `%s` | `%s` |" % (
+                int(sample["render_span"]),
+                int(sample["context"]),
+                int(sample["glyph"]),
+                int(sample["entry"]),
+                int(sample["width"]),
+                int(sample["rows"]),
+                int(sample["helper"]),
+                first_rows[0],
+                "row-copy rows match direct decode" if bool(sample["matches"]) else "mismatch",
+            )
+        )
     lines.append("")
 
     lines.append("## Direct Control-Code Cursor Fixtures")

@@ -1061,6 +1061,198 @@ def built_in_base_map(resources: bytes, context: int, host_char: int) -> dict[st
     }
 
 
+def built_in_base_map_table(resources: bytes, context: int) -> bytes:
+    if not (context & 0x40000000):
+        raise AssertionError(f"context 0x{context:08x} does not select the built-in offset-table form")
+    base = (context & 0x00FFFFFF) - 0x80000
+    first_char = u16(resources, base + 0x0E)
+    last_char = u16(resources, base + 0x10)
+    table = bytearray(0x100)
+    for host in range(max(0, first_char), min(0xFF, last_char) + 1):
+        table[host] = (host - first_char) & 0xFF
+    return bytes(table)
+
+
+def symbol_set_patch_pairs_via_14fce(data: bytes, symbol_word: int) -> dict[str, object]:
+    table = 0x14FCE
+    for index in range(18):
+        pos = table + index * 6
+        if pos + 6 > len(data):
+            break
+        if u16(data, pos) != (int(symbol_word) & 0xFFFF):
+            continue
+        pointer = u32(data, pos + 2)
+        if pointer + 2 > len(data):
+            return {"symbol_word": int(symbol_word) & 0xFFFF, "index": index, "pointer": pointer, "pairs": []}
+        count = u16(data, pointer)
+        pairs: list[tuple[int, int]] = []
+        pair_pos = pointer + 2
+        for _ in range(count):
+            if pair_pos + 2 > len(data):
+                break
+            pairs.append((data[pair_pos], data[pair_pos + 1]))
+            pair_pos += 2
+        return {"symbol_word": int(symbol_word) & 0xFFFF, "index": index, "pointer": pointer, "pairs": pairs}
+    return {"symbol_word": int(symbol_word) & 0xFFFF, "index": -1, "pointer": 0, "pairs": []}
+
+
+def apply_symbol_set_patch_via_14f16(data: bytes, table: bytes, active_symbol_word: int) -> dict[str, object]:
+    if len(table) != 0x100:
+        raise AssertionError("0x14f16 symbol-set patch fixture requires a 256-byte map")
+    patched = bytearray(table)
+    word = int(active_symbol_word) & 0xFFFF
+    if word == 0x0005:
+        patched[:0x80] = patched[0x80:0x100]
+        patched[0x80:0x100] = b"\x00" * 0x80
+        return {"kind": "roman-extension", "symbol_word": word, "table": bytes(patched), "pairs": []}
+    if word == 0x0015:
+        patched[0x80:0x100] = b"\x00" * 0x80
+        return {"kind": "ascii", "symbol_word": word, "table": bytes(patched), "pairs": []}
+    patch_info = symbol_set_patch_pairs_via_14fce(data, word)
+    pairs = list(patch_info["pairs"])
+    if pairs:
+        for dst, src in pairs:
+            patched[dst] = patched[src]
+        patched[0x80:0x100] = b"\x00" * 0x80
+        return {
+            "kind": "patch-table",
+            "symbol_word": word,
+            "table": bytes(patched),
+            "index": patch_info["index"],
+            "pointer": patch_info["pointer"],
+            "pairs": pairs,
+        }
+    return {"kind": "unchanged", "symbol_word": word, "table": bytes(patched), "pairs": []}
+
+
+def symbol_set_state(**overrides: object) -> dict[str, object]:
+    state: dict[str, object] = {
+        "requested_symbols": [0x0115, 0x0115],
+        "active_symbols": [0x0115, 0x0115],
+        "remembered_symbols": [0x0115, 0x0115],
+        "default_symbols": [0x0115, 0x0115, 0x0115, 0x0115],
+        "orientation": 0,
+        "dirty_flag": 0,
+        "dirty_maps": 0,
+        "refreshes": 0,
+        "font_id_calls": [],
+        "events": [],
+    }
+    state.update(overrides)
+    return state
+
+
+def symbol_set_handler(final: int) -> int:
+    if ord("@") <= final <= ord("^"):
+        return 0x0120BE
+    raise AssertionError(f"unsupported symbol-set final byte {chr(final)!r}")
+
+
+def symbol_word_from_pcl(parameter: int, final: int) -> int:
+    return ((abs(int(parameter)) << 5) + int(final) - 0x40) & 0xFFFF
+
+
+def refresh_symbol_state_via_c580(state: dict[str, object], slot: int) -> None:
+    requested = state["requested_symbols"]
+    active = state["active_symbols"]
+    remembered = state["remembered_symbols"]
+    assert isinstance(requested, list)
+    assert isinstance(active, list)
+    assert isinstance(remembered, list)
+    active[slot] = int(requested[slot])
+    remembered[slot] = int(active[slot])
+    state["dirty_flag"] = 0
+    state["dirty_maps"] = 0
+    state["refreshes"] = int(state.get("refreshes", 0)) + 1
+
+
+def apply_symbol_set_stream_via_120be_1be22(state: dict[str, object], stream: bytes) -> dict[str, object]:
+    state = dict(state)
+    state["requested_symbols"] = list(state["requested_symbols"])
+    state["active_symbols"] = list(state["active_symbols"])
+    state["remembered_symbols"] = list(state["remembered_symbols"])
+    state["default_symbols"] = list(state["default_symbols"])
+    state["font_id_calls"] = list(state.get("font_id_calls", []))
+    state["events"] = list(state.get("events", []))
+    pos = 0
+    stream_events: list[dict[str, object]] = []
+    while pos < len(stream):
+        start = pos
+        if pos + 2 >= len(stream) or stream[pos] != 0x1B or stream[pos + 1] not in (ord("("), ord(")")):
+            raise AssertionError(f"symbol-set stream only models ESC (#A..^ / ESC )#A..^ at offset {pos}")
+        slot = 0 if stream[pos + 1] == ord("(") else 1
+        setup_handler = 0x01201E if slot == 0 else 0x012008
+        pos += 2
+        parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+        if pos >= len(stream):
+            raise AssertionError("symbol-set stream missing final byte")
+        final = stream[pos]
+        pos += 1
+        if not (ord("@") <= final <= ord("^")):
+            raise AssertionError(f"symbol-set stream unsupported final byte {chr(final)!r}")
+        requested = state["requested_symbols"]
+        default_symbols = state["default_symbols"]
+        assert isinstance(requested, list)
+        assert isinstance(default_symbols, list)
+        previous_word = int(requested[slot])
+        provisional_word = symbol_word_from_pcl(parameter, final)
+        kind = "symbol-set"
+        handler_target = 0x01C0A4
+        word = provisional_word
+        if final == ord("X"):
+            kind = "font-id"
+            handler_target = 0x01C066
+            word = previous_word
+            state["font_id_calls"].append({"slot": slot, "font_id": abs(int(parameter)), "handler": 0x017708})
+        elif final == ord("@"):
+            selector = abs(int(parameter))
+            if selector == 0:
+                handler_target = 0x01BED4
+                word = int(default_symbols[int(state.get("orientation", 0)) * 2 + slot])
+                kind = "default-table-slot"
+            elif selector == 1:
+                handler_target = 0x01BF0A
+                word = int(default_symbols[int(state.get("orientation", 0)) * 2])
+                kind = "default-table-primary"
+            elif selector == 2:
+                handler_target = 0x01BF36
+                word = previous_word if slot == 0 else int(requested[0])
+                kind = "copy-primary-symbol" if slot == 1 else "restore-primary-symbol"
+            elif selector == 3:
+                handler_target = 0x01BF74
+                word = int(state.get("default_font_symbol", previous_word))
+                kind = "default-font"
+            else:
+                handler_target = 0x01C034
+                word = previous_word
+                kind = "ignored-at-selector"
+        requested[slot] = word
+        state["dirty_flag"] = 2
+        state["dirty_maps"] = 1
+        refresh_symbol_state_via_c580(state, slot)
+        event = {
+            "sequence": stream[start:pos],
+            "record": bytes([0x80, final]) + signed_word_bytes(parameter) + signed_word_bytes(slot),
+            "slot": slot,
+            "setup_handler": setup_handler,
+            "terminal_handler": symbol_set_handler(final),
+            "dispatch_target": handler_target,
+            "parameter": parameter,
+            "final": final,
+            "kind": kind,
+            "previous_word": previous_word,
+            "provisional_word": provisional_word,
+            "requested_word": word,
+            "active_word": int(state["active_symbols"][slot]),
+            "refreshes": int(state["refreshes"]),
+        }
+        state["events"].append(event)
+        stream_events.append(event)
+    state["stream"] = stream
+    state["stream_events"] = stream_events
+    return state
+
+
 def metric_long_via_10550(value: int) -> int:
     d7 = (int(value) & 0xFFFFFFFF) >> 2
     low_product = (d7 & 0xFFFF) * 12
@@ -7606,6 +7798,110 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "host_char": 0x21,
         "mapped": 0x20,
     }))
+    symbol_stream = apply_symbol_set_stream_via_120be_1be22(symbol_set_state(), b"\x1b(2U\x1b)0E")
+    line_printer_base_table = built_in_base_map_table(resources, 0x440946B4)
+    symbol_stream_primary_patch = apply_symbol_set_patch_via_14f16(
+        data,
+        line_printer_base_table,
+        int(symbol_stream["active_symbols"][0]),
+    )
+    symbol_stream_secondary_patch = apply_symbol_set_patch_via_14f16(
+        data,
+        line_printer_base_table,
+        int(symbol_stream["active_symbols"][1]),
+    )
+    symbol_stream_primary_table = symbol_stream_primary_patch["table"]
+    symbol_stream_secondary_table = symbol_stream_secondary_patch["table"]
+    assert isinstance(symbol_stream_primary_table, bytes)
+    assert isinstance(symbol_stream_secondary_table, bytes)
+    checks.append(assert_equal("0x120be/0x1be22 symbol-set stream updates active words and 0x14f16 glyph maps", {
+        "state": select_keys(symbol_stream, (
+            "stream",
+            "requested_symbols",
+            "active_symbols",
+            "remembered_symbols",
+            "dirty_flag",
+            "dirty_maps",
+            "refreshes",
+        )),
+        "stream_events": symbol_stream["stream_events"],
+        "primary_patch": {
+            "kind": symbol_stream_primary_patch["kind"],
+            "symbol_word": symbol_stream_primary_patch["symbol_word"],
+            "index": symbol_stream_primary_patch["index"],
+            "pointer": symbol_stream_primary_patch["pointer"],
+            "pairs": symbol_stream_primary_patch["pairs"],
+            "dollar": symbol_stream_primary_table[0x24],
+            "caret": symbol_stream_primary_table[0x5E],
+            "upper_source_cleared": symbol_stream_primary_table[0xBA],
+        },
+        "secondary_patch": {
+            "kind": symbol_stream_secondary_patch["kind"],
+            "symbol_word": symbol_stream_secondary_patch["symbol_word"],
+            "bang": symbol_stream_secondary_table[0x21],
+            "upper_cleared": symbol_stream_secondary_table[0xA1],
+        },
+    }, {
+        "state": {
+            "stream": b"\x1b(2U\x1b)0E",
+            "requested_symbols": [0x0055, 0x0005],
+            "active_symbols": [0x0055, 0x0005],
+            "remembered_symbols": [0x0055, 0x0005],
+            "dirty_flag": 0,
+            "dirty_maps": 0,
+            "refreshes": 2,
+        },
+        "stream_events": [
+            {
+                "sequence": b"\x1b(2U",
+                "record": b"\x80U\x00\x02\x00\x00",
+                "slot": 0,
+                "setup_handler": 0x01201E,
+                "terminal_handler": 0x0120BE,
+                "dispatch_target": 0x01C0A4,
+                "parameter": 2,
+                "final": ord("U"),
+                "kind": "symbol-set",
+                "previous_word": 0x0115,
+                "provisional_word": 0x0055,
+                "requested_word": 0x0055,
+                "active_word": 0x0055,
+                "refreshes": 1,
+            },
+            {
+                "sequence": b"\x1b)0E",
+                "record": b"\x80E\x00\x00\x00\x01",
+                "slot": 1,
+                "setup_handler": 0x012008,
+                "terminal_handler": 0x0120BE,
+                "dispatch_target": 0x01C0A4,
+                "parameter": 0,
+                "final": ord("E"),
+                "kind": "symbol-set",
+                "previous_word": 0x0115,
+                "provisional_word": 0x0005,
+                "requested_word": 0x0005,
+                "active_word": 0x0005,
+                "refreshes": 2,
+            },
+        ],
+        "primary_patch": {
+            "kind": "patch-table",
+            "symbol_word": 0x0055,
+            "index": 0,
+            "pointer": 0x01503A,
+            "pairs": [(0x24, 0xBA), (0x5E, 0xAA), (0x60, 0xA9), (0x7E, 0xB0)],
+            "dollar": 0xB9,
+            "caret": 0xA9,
+            "upper_source_cleared": 0,
+        },
+        "secondary_patch": {
+            "kind": "roman-extension",
+            "symbol_word": 0x0005,
+            "bang": 0xA0,
+            "upper_cleared": 0,
+        },
+    }))
     text_source = build_text_source_object_from_1393a(resources, 0x440946B4, 0x21, x=0, y=0, context_slot=0)
     checks.append(assert_equal("0x1393a-modeled text source object fields", text_source, {
         "context": 0x440946B4,
@@ -11919,6 +12215,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("This fixture starts with the base built-in character map that `0x14d9c` creates for `LINE_PRINTER`: host byte `0x21` maps to glyph byte `0x20`. The `0x1393a` source-object model records context `0x440946b4`, glyph entry `0x015330`, flag `1`, `x=0`, `y=0`, and context slot `0`; the `0x12f2e` producer model then emits the short compact text bucket consumed by renderer `0x1effe` / `0x1f034`. The render band is still synthetic and unclipped, but the compact object bytes now come from the modeled source fields rather than a hand-written glyph/coordinate pair.")
     lines.append("")
     lines.append(f"- base map: host `0x{text_source['host_char']:02x}` -> glyph `0x{text_source['mapped']:02x}`")
+    lines.append(f"- symbol-set stream events: `{symbol_stream['stream_events']}`")
+    lines.append("- `ESC (2U` selects primary word `0x%04x` and patches `LINE_PRINTER` map byte `0x24 -> 0x%02x`; `ESC )0E` selects secondary word `0x%04x` and copies upper-half map byte `0xa1 -> 0x%02x` before clearing the upper half." % (
+        symbol_stream["active_symbols"][0],
+        symbol_stream_primary_table[0x24],
+        symbol_stream["active_symbols"][1],
+        symbol_stream_secondary_table[0x21],
+    ))
     lines.append(f"- source fields: context `0x{text_source['context']:08x}`, glyph entry `0x{text_source['glyph_entry']:06x}`, width `{text_source['glyph_width']}`, rows `{text_source['glyph_rows']}`, flag `{text_source['flag']}`, x `{text_source['x']}`, y `{text_source['y']}`, context slot `{text_source['context_slot']}`")
     lines.append(f"- producer path: `{produced_bucket['path']}`, bucket index `{produced_bucket['bucket_index']}`, object size `0x{int(produced_bucket['object_size']):02x}`, capacity `{produced_bucket['capacity']}`, entry size `{produced_bucket['entry_size']}`")
     lines.append(f"- object bytes: `{' '.join(f'{byte:02x}' for byte in compact_text_object)}`")

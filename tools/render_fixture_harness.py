@@ -2121,6 +2121,89 @@ def render_font_download_char_command_stream_via_121cc_16498(
     }
 
 
+def render_font_descriptor_command_stream_via_121cc_15d0a(
+    stream: bytes,
+    *,
+    descriptor_byte_budget: int,
+    records: list[dict[str, int]],
+    current_id: int,
+    parser_mode: int = 0,
+    current_object_flags: int = 0,
+    continuation: dict[str, int] | None = None,
+    continuation_object_flags: int = 0,
+) -> dict[str, object]:
+    pending: dict[str, object] = {"pending_flag": 0, "handler": 0, "snapshot_record": b""}
+    if not stream or stream[0] != 0x1B:
+        raise AssertionError("font descriptor command stream expected ESC at offset 0")
+    pos = 1
+    if pos + 1 >= len(stream) or stream[pos] not in (ord("("), ord(")")):
+        raise AssertionError("font descriptor command stream only models ESC (s/ESC )s")
+    prefix = stream[pos]
+    group = stream[pos + 1]
+    if group != ord("s"):
+        raise AssertionError("font descriptor command stream only models group s")
+    pos += 2
+    slot = 1 if prefix == ord(")") else 0
+    if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+        parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+    else:
+        parameter = 0
+    if pos >= len(stream):
+        raise AssertionError("font descriptor command stream missing final byte")
+    final = stream[pos]
+    pos += 1
+    final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+    if final_upper != ord("W"):
+        raise AssertionError(f"font descriptor command stream expected W final, got 0x{final:02x}")
+    parsed_record = bytes([
+        0x81 if parameter < 0 else 0x80,
+        final,
+    ]) + signed_word_bytes(parameter) + signed_word_bytes(slot)
+    dispatch = font_payload_dispatch_via_11f96(parameter)
+    handler = int(dispatch["handler"])
+    if handler != 0x15D0A:
+        raise AssertionError("font descriptor command stream expected zero-count descriptor handler")
+    scheduled = schedule_payload_handler_via_121cc(pending, parsed_record, handler)
+    pending = scheduled["pending"]
+    delayed_snapshot = pending["snapshot_bytes"]
+    restored = restore_delayed_payload_via_12218(pending)
+    pending = restored["pending_after"]
+    descriptor_offset = pos
+    budget = abs(int(descriptor_byte_budget))
+    descriptor_end = descriptor_offset + budget
+    if descriptor_end > len(stream):
+        raise AssertionError("font descriptor command stream shorter than modeled descriptor byte budget")
+    descriptor = stream[descriptor_offset:descriptor_end]
+    route = font_descriptor_route_via_15d0a(
+        descriptor,
+        byte_budget=budget,
+        records=records,
+        current_id=current_id,
+        parser_mode=parser_mode,
+        current_object_flags=current_object_flags,
+        continuation=continuation,
+        continuation_object_flags=continuation_object_flags,
+    )
+    return {
+        "kind": "font-descriptor-command",
+        "sequence": stream[:pos],
+        "parameter": parameter,
+        "parsed_record": parsed_record,
+        "delayed_snapshot_bytes": delayed_snapshot,
+        "delayed_scheduled": scheduled["scheduled"],
+        "restore_dispatch": restored["dispatch"],
+        "restored_record": restored["record"],
+        "delayed_handler": handler,
+        "dispatch": dispatch,
+        "descriptor_offset": descriptor_offset,
+        "descriptor": descriptor,
+        "descriptor_byte_budget": budget,
+        "route": route,
+        "pending": pending,
+        "stream_pos": descriptor_end,
+    }
+
+
 def font_descriptor_route_via_15d0a(
     stream: bytes,
     *,
@@ -10216,6 +10299,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         records=[{"id": 0x1234, "flags": 0x00, "payload": 0x456789}],
         current_id=0x1234,
     )
+    font_descriptor_command_current = render_font_descriptor_command_stream_via_121cc_15d0a(
+        b"\x1b)s0W\x04\x00\xaa\xbb",
+        descriptor_byte_budget=4,
+        records=[{"id": 0x1234, "flags": 0x00, "payload": 0x456789}],
+        current_id=0x1234,
+        current_object_flags=0x40000000,
+    )
+    font_descriptor_command_continuation = render_font_descriptor_command_stream_via_121cc_15d0a(
+        b"\x1b)s0W\x04\x01\xcc",
+        descriptor_byte_budget=3,
+        records=[],
+        current_id=0x1234,
+        continuation={"flag": 1, "payload": 0x654321},
+        continuation_object_flags=0,
+    )
     checks.append(assert_equal("0x15d0a-modeled font descriptor route", {
         "current": {
             key: font_descriptor_current[key]
@@ -10262,6 +10360,81 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "descriptor_kind": 3,
             "consumed_prefix": 1,
             "drained": 3,
+        },
+    }))
+    checks.append(assert_equal("0x121cc/0x15d0a-modeled font descriptor command stream", {
+        "current_command": {
+            key: font_descriptor_command_current[key]
+            for key in ("kind", "sequence", "parameter", "parsed_record", "delayed_snapshot_bytes", "delayed_scheduled", "restore_dispatch", "restored_record", "delayed_handler", "descriptor_offset", "descriptor", "descriptor_byte_budget", "stream_pos")
+        },
+        "current_route": {
+            key: font_descriptor_command_current["route"][key]
+            for key in ("status", "path", "descriptor_kind", "selector", "selector_status", "target_payload", "object_bit30", "handler", "handler_meaning", "consumed_prefix", "drained_after_route")
+        },
+        "continuation_command": {
+            key: font_descriptor_command_continuation[key]
+            for key in ("kind", "sequence", "parameter", "parsed_record", "delayed_snapshot_bytes", "delayed_scheduled", "restore_dispatch", "restored_record", "delayed_handler", "descriptor_offset", "descriptor", "descriptor_byte_budget", "stream_pos")
+        },
+        "continuation_route": {
+            key: font_descriptor_command_continuation["route"][key]
+            for key in ("status", "path", "descriptor_kind", "selector", "selector_status", "target_payload", "object_bit30", "handler", "handler_meaning", "consumed_prefix", "drained_after_route")
+        },
+    }, {
+        "current_command": {
+            "kind": "font-descriptor-command",
+            "sequence": b"\x1b)s0W",
+            "parameter": 0,
+            "parsed_record": b"\x80W\x00\x00\x00\x01",
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x01",
+            "delayed_scheduled": True,
+            "restore_dispatch": {"kind": "direct-handler", "handler": 0x15D0A},
+            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "delayed_handler": 0x15D0A,
+            "descriptor_offset": 5,
+            "descriptor": bytes.fromhex("04 00 aa bb"),
+            "descriptor_byte_budget": 4,
+            "stream_pos": 9,
+        },
+        "current_route": {
+            "status": "route",
+            "path": "current-record",
+            "descriptor_kind": 4,
+            "selector": 0,
+            "selector_status": 1,
+            "target_payload": 0x456789,
+            "object_bit30": 1,
+            "handler": 0x16498,
+            "handler_meaning": "downloaded-character-object",
+            "consumed_prefix": 2,
+            "drained_after_route": 2,
+        },
+        "continuation_command": {
+            "kind": "font-descriptor-command",
+            "sequence": b"\x1b)s0W",
+            "parameter": 0,
+            "parsed_record": b"\x80W\x00\x00\x00\x01",
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x01",
+            "delayed_scheduled": True,
+            "restore_dispatch": {"kind": "direct-handler", "handler": 0x15D0A},
+            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "delayed_handler": 0x15D0A,
+            "descriptor_offset": 5,
+            "descriptor": bytes.fromhex("04 01 cc"),
+            "descriptor_byte_budget": 3,
+            "stream_pos": 8,
+        },
+        "continuation_route": {
+            "status": "route",
+            "path": "continuation",
+            "descriptor_kind": 4,
+            "selector": 1,
+            "selector_status": 2,
+            "target_payload": 0x654321,
+            "object_bit30": 0,
+            "handler": 0x15C4C,
+            "handler_meaning": "resume-downloaded-font-resource-object",
+            "consumed_prefix": 2,
+            "drained_after_route": 1,
         },
     }))
 
@@ -16536,6 +16709,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_descriptor_reject["descriptor_kind"],
         font_descriptor_reject["drained"],
     ))
+    lines.append("- descriptor command streams: `%s` restores record `%s` through delayed handler `0x%05x`; descriptor `%s` with modeled budget `%d` routes to current-record handler `0x%05x`, while descriptor `%s` with budget `%d` routes continuation handler `0x%05x`." % (
+        " ".join(f"{byte:02x}" for byte in font_descriptor_command_current["sequence"]),
+        " ".join(f"{byte:02x}" for byte in font_descriptor_command_current["restored_record"]),
+        font_descriptor_command_current["delayed_handler"],
+        " ".join(f"{byte:02x}" for byte in font_descriptor_command_current["descriptor"]),
+        font_descriptor_command_current["descriptor_byte_budget"],
+        font_descriptor_command_current["route"]["handler"],
+        " ".join(f"{byte:02x}" for byte in font_descriptor_command_continuation["descriptor"]),
+        font_descriptor_command_continuation["descriptor_byte_budget"],
+        font_descriptor_command_continuation["route"]["handler"],
+    ))
     lines.append("")
     lines.append("The next modeled step is the current downloaded-font record bookkeeping at `0x172c0` and `0x16c14`. The record scan treats each `0x782640..0x782776` slot as a 10-byte entry: word `+0` is the current font/resource id, byte/word area `+2` carries flags that `0x16c14` clears at bits 5..7, and long `+6` points at the allocated payload. Status `0` means an existing id with nonzero payload was found, status `1` means a free zero-id/zero-payload slot was found, and status `2` makes `0x16c14` consume/skip the byte budget instead of installing a payload.")
     lines.append("")
@@ -16741,7 +16925,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     unflagged_overflow_source_report = unflagged_overflow_fixture["source"]
     assert isinstance(unflagged_overflow_source_report, dict)
     lines.append(f"- context metric flag set plus left overflow: cursor `(10,20)`, printable offset `20`, source x-offset `-15` -> x `{unflagged_overflow_source_report['x']}`, y `{unflagged_overflow_source_report['y']}`, context slot `{unflagged_overflow_source_report['context_slot']}`, overflow correction `0x{int(unflagged_overflow_fixture['overflow_correction']):08x}`")
-    lines.append("- remaining gap: replace the modeled font command/data wrapper with a full live parser-state run that populates current records and source/page objects before carrying them into the bridge/render path.")
+    lines.append("- remaining gap: replace the modeled font command/data wrappers with a full live parser-state run that populates current records and source/page objects before carrying them into the bridge/render path.")
     lines.append("")
 
     lines.append("## Segmented Text Bucket Producer Fixture")

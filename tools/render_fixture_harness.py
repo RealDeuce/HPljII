@@ -212,6 +212,156 @@ def host_byte_fetch_via_a904(initial: dict[str, object]) -> dict[str, object]:
     raise AssertionError("host byte fetch model did not converge")
 
 
+def signed_word_bytes(value: int) -> bytes:
+    value &= 0xFFFF
+    return value.to_bytes(2, "big")
+
+
+def parse_pcl_numeric_records_via_daf0(stream: bytes, cursor_base: int = 0x7829A2) -> dict[str, object]:
+    pos = 0
+    records: list[dict[str, object]] = []
+    scratch = bytearray()
+    returned_d7: list[int] = []
+    lookahead: int | None = None
+
+    def read_byte() -> int:
+        nonlocal pos
+        if pos >= len(stream):
+            return -1
+        value = stream[pos]
+        pos += 1
+        return value
+
+    def unread_byte() -> None:
+        nonlocal pos
+        if pos > 0:
+            pos -= 1
+
+    while True:
+        flag = 0
+        sign_negative = False
+        integer_value = 0
+        fraction_value = 0
+        value = read_byte()
+        while value == 0x20:
+            value = read_byte()
+        if value in (0x2B, 0x2D):
+            scratch.append(value)
+            flag = 0x81
+            sign_negative = value == 0x2D
+            value = read_byte()
+            while value == 0x20:
+                value = read_byte()
+        if value == 0x2E or 0x30 <= value <= 0x39:
+            flag |= 0x80
+        if value == 0x30:
+            while value == 0x30:
+                scratch.append(value)
+                value = read_byte()
+
+        digit_budget = 6
+        while 0x30 <= value <= 0x39:
+            if digit_budget > 0:
+                scratch.append(value)
+                integer_value = integer_value * 10 + (value & 0x0F)
+                digit_budget -= 1
+            value = read_byte()
+        if integer_value > 0x7FFF:
+            integer_value = 0x7FFF
+        if sign_negative:
+            integer_value = -integer_value
+
+        if value == 0x2E:
+            scratch.append(value)
+            value = read_byte()
+            fraction_budget = 4
+            while fraction_budget > 0:
+                fraction_budget -= 1
+                fraction_value *= 10
+                if 0x30 <= value <= 0x39:
+                    scratch.append(value)
+                    fraction_value += value & 0x0F
+                    value = read_byte()
+            if sign_negative:
+                fraction_value = -fraction_value
+            while 0x30 <= value <= 0x39:
+                value = read_byte()
+
+        if value < 0:
+            final = 0
+        else:
+            final = value & 0xFF
+        returned = 0 if final in (0x3A, 0x3B) else final
+        record_bytes = bytes([flag & 0xFF, final]) + signed_word_bytes(integer_value) + signed_word_bytes(fraction_value)
+        record = {
+            "record": record_bytes,
+            "flag": flag & 0xFF,
+            "final": final,
+            "parameter": integer_value,
+            "fraction": fraction_value,
+            "cursor_before": cursor_base + len(records) * 6,
+            "cursor_after": cursor_base + (len(records) + 1) * 6,
+            "returned_d7": returned,
+        }
+        records.append(record)
+        returned_d7.append(returned)
+
+        lookahead = read_byte()
+        if not (flag & 0x80 and 0x20 <= lookahead <= 0x3F):
+            break
+        unread_byte()
+
+    return {
+        "records": records,
+        "record_bytes": b"".join(bytes(record["record"]) for record in records),
+        "scratch": bytes(scratch),
+        "returned_d7": returned_d7,
+        "cursor": cursor_base + len(records) * 6,
+        "lookahead": lookahead,
+        "stream_pos": pos,
+    }
+
+
+def delay_payload_handler_via_121cc(record: bytes, handler: int) -> dict[str, object]:
+    if len(record) != 6:
+        raise AssertionError("0x121cc delayed handler snapshot requires one six-byte parsed command record")
+    return {
+        "pending_flag": 1,
+        "handler": handler & 0xFFFFFF,
+        "snapshot_record": bytes(record),
+        "snapshot_bytes": bytes([1]) + (handler & 0xFFFFFFFF).to_bytes(4, "big") + record,
+    }
+
+
+def restore_delayed_payload_via_12218(pending: dict[str, object], alternate_mode: bool = False, cursor: int = 0x7829A2) -> dict[str, object]:
+    if int(pending.get("pending_flag", 0)) != 1:
+        return {
+            "restored": False,
+            "cursor_before": cursor,
+            "cursor_after": cursor,
+            "dispatch": None,
+            "pending_after": pending,
+        }
+    record = bytes(pending["snapshot_record"])
+    dispatch: dict[str, int | str]
+    if alternate_mode:
+        dispatch = {"kind": "alternate-data-wrapper", "helper": 0x12358, "wrapper": 0x1228A}
+    else:
+        dispatch = {"kind": "direct-handler", "handler": int(pending["handler"])}
+    return {
+        "restored": True,
+        "record": record,
+        "cursor_before": cursor,
+        "cursor_after": cursor + 6,
+        "dispatch": dispatch,
+        "pending_after": {
+            "pending_flag": 0,
+            "handler": 0,
+            "snapshot_record": record,
+        },
+    }
+
+
 def resolve_builtin_glyph(resources: bytes, context: int, glyph_index: int) -> dict[str, int | bytes]:
     if not (context & 0x40000000):
         raise AssertionError(f"context 0x{context:08x} does not select the built-in offset-table form")
@@ -3544,6 +3694,80 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "handshake_state": 1,
         "timeout_state": 0,
         "mode2_control_shadow": 0x60,
+    }))
+
+    tokenizer_chained_resolution = parse_pcl_numeric_records_via_daf0(b"300r150R\x1b")
+    tokenizer_chained_records = tokenizer_chained_resolution["records"]
+    assert isinstance(tokenizer_chained_records, list)
+    checks.append(assert_equal("0xdaf0 tokenizes lowercase-final numeric chain into two six-byte records", {
+        "record_bytes": tokenizer_chained_resolution["record_bytes"],
+        "scratch": tokenizer_chained_resolution["scratch"],
+        "returned_d7": tokenizer_chained_resolution["returned_d7"],
+        "cursor": tokenizer_chained_resolution["cursor"],
+        "lookahead": tokenizer_chained_resolution["lookahead"],
+    }, {
+        "record_bytes": bytes.fromhex("80 72 01 2c 00 00 80 52 00 96 00 00"),
+        "scratch": b"300150",
+        "returned_d7": [0x72, 0x52],
+        "cursor": 0x7829AE,
+        "lookahead": 0x1B,
+    }))
+
+    tokenizer_signed_fraction = parse_pcl_numeric_records_via_daf0(b" -12.34567W\x1b")
+    checks.append(assert_equal("0xdb74 parses sign, capped fraction digits, and final byte", {
+        "record_bytes": tokenizer_signed_fraction["record_bytes"],
+        "scratch": tokenizer_signed_fraction["scratch"],
+        "returned_d7": tokenizer_signed_fraction["returned_d7"],
+        "cursor": tokenizer_signed_fraction["cursor"],
+        "lookahead": tokenizer_signed_fraction["lookahead"],
+    }, {
+        "record_bytes": bytes.fromhex("81 57 ff f4 f2 80"),
+        "scratch": b"-12.3456",
+        "returned_d7": [0x57],
+        "cursor": 0x7829A8,
+        "lookahead": 0x1B,
+    }))
+
+    tokenizer_semicolon = parse_pcl_numeric_records_via_daf0(b"1;2X\x1b")
+    checks.append(assert_equal("0xdb74 returns D7 zero for semicolon continuation final", {
+        "record_bytes": tokenizer_semicolon["record_bytes"],
+        "returned_d7": tokenizer_semicolon["returned_d7"],
+        "cursor": tokenizer_semicolon["cursor"],
+        "lookahead": tokenizer_semicolon["lookahead"],
+    }, {
+        "record_bytes": bytes.fromhex("80 3b 00 01 00 00 80 58 00 02 00 00"),
+        "returned_d7": [0, 0x58],
+        "cursor": 0x7829AE,
+        "lookahead": 0x1B,
+    }))
+
+    raster_transfer_record = bytes.fromhex("80 57 00 04 00 00")
+    delayed_raster_transfer = delay_payload_handler_via_121cc(raster_transfer_record, 0x105D0)
+    delayed_raster_restore = restore_delayed_payload_via_12218(delayed_raster_transfer)
+    checks.append(assert_equal("0x121cc snapshots delayed payload handler and parsed record", delayed_raster_transfer, {
+        "pending_flag": 1,
+        "handler": 0x105D0,
+        "snapshot_record": raster_transfer_record,
+        "snapshot_bytes": bytes.fromhex("01 00 01 05 d0 80 57 00 04 00 00"),
+    }))
+    checks.append(assert_equal("0x12218 restores delayed parsed record and dispatches saved handler", {
+        "restored": delayed_raster_restore["restored"],
+        "record": delayed_raster_restore["record"],
+        "cursor_before": delayed_raster_restore["cursor_before"],
+        "cursor_after": delayed_raster_restore["cursor_after"],
+        "dispatch": delayed_raster_restore["dispatch"],
+        "pending_after": delayed_raster_restore["pending_after"],
+    }, {
+        "restored": True,
+        "record": raster_transfer_record,
+        "cursor_before": 0x7829A2,
+        "cursor_after": 0x7829A8,
+        "dispatch": {"kind": "direct-handler", "handler": 0x105D0},
+        "pending_after": {
+            "pending_flag": 0,
+            "handler": 0,
+            "snapshot_record": raster_transfer_record,
+        },
     }))
 
     sample = bytes.fromhex("00 01 02 03 04 05 08 0f 10 33 55 aa f0 ff")
@@ -7743,6 +7967,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ("direct mode 2", host_fetch_mode2),
     ):
         lines.append(f"| {title} | `{result['source']}` | `{int(result['d7']):d}` | `{result['events']}` |")
+    lines.append("")
+
+    lines.append("## PCL Tokenizer and Delayed Payload Fixtures")
+    lines.append("")
+    lines.append("These fixtures model the six-byte parsed command records built by `0xdaf0` / `0xdb74` and the delayed payload snapshot used by `0x121cc` before handlers such as raster transfer `0x105d0` consume following data bytes.")
+    lines.append("")
+    lines.append("- `300r150R` produces two records because the first numeric record has flag bit 7 set and the next byte is still in the parameter/intermediate range; the lowercase final stays in the same parser family until the uppercase final.")
+    lines.append("- Signed numeric parsing sets flag byte `0x81`, caps fractional storage to four digits, skips excess fractional digits, and stores signed word fields.")
+    lines.append("- A semicolon final is stored in the record but returns `D7 = 0`, matching the command-combining continuation path.")
+    lines.append("- `0x121cc` snapshots pending flag `1`, the saved handler longword, and the current six-byte parsed command record; `0x12218` restores that record at `0x78299e` and dispatches the saved handler when alternate/data mode is clear.")
+    lines.append("")
+    lines.append(f"- chained resolution record bytes: `{' '.join(f'{byte:02x}' for byte in tokenizer_chained_resolution['record_bytes'])}`")
+    lines.append(f"- signed/fraction record bytes: `{' '.join(f'{byte:02x}' for byte in tokenizer_signed_fraction['record_bytes'])}`, scratch `{tokenizer_signed_fraction['scratch']!r}`")
+    lines.append(f"- semicolon continuation record bytes: `{' '.join(f'{byte:02x}' for byte in tokenizer_semicolon['record_bytes'])}`, returned D7 `{tokenizer_semicolon['returned_d7']}`")
+    lines.append(f"- delayed raster transfer snapshot: `{' '.join(f'{byte:02x}' for byte in delayed_raster_transfer['snapshot_bytes'])}`")
     lines.append("")
 
     lines.append("## Built-In Glyph Bitmap Fixtures")

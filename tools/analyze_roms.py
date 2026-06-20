@@ -3085,7 +3085,7 @@ def rectangle_graphics_flow_report(data: bytes) -> str:
     lines.append("")
     lines.append("- A byte-stream model must preserve rectangle width/height state across commands until `ESC *c#P` consumes it; reset/rebuild paths clear `0x78316a`, `0x783166`, and `0x78316e`.")
     lines.append("- Dot sizes and decipoint sizes are not interchangeable at fractional boundaries: decipoint handlers round up with the firmware's `+11` subunit bias before storing the packed value.")
-    lines.append("- `tools/render_fixture_harness.py` now pins dot/decipoint size stores, `ESC *c#G` absolute/clear behavior, `ESC *c#P` selector mapping, portrait rule-list object queueing/bridge normalization, solid black selector-7 rendering through `0x1f446`/`0x1f596`, solid rule band-crossing continuation, gray selectors `0..6` and HP pattern selectors `8..13` through `0x1f446`/`0x1f4e0`, sub-byte HP pattern masks/pixels, and negative-left clipping. Remaining work is patterned-rule band-crossing and full-page comparisons for these rule paths.")
+    lines.append("- `tools/render_fixture_harness.py` now pins dot/decipoint size stores, `ESC *c#G` absolute/clear behavior, `ESC *c#P` selector mapping, portrait rule-list object queueing/bridge normalization, solid black selector-7 rendering through `0x1f446`/`0x1f596`, solid and patterned rule band-crossing continuation, gray selectors `0..6` and HP pattern selectors `8..13` through `0x1f446`/`0x1f4e0`, sub-byte HP pattern masks/pixels, and negative-left clipping. Remaining work is full-page comparisons for these rule paths.")
     lines.append("")
     return "\n".join(lines)
 

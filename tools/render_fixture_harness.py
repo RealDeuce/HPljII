@@ -8144,6 +8144,84 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         }],
         "second_rows": ["..######", "..######", "..######"],
     }))
+    rectangle_fill_pattern_crossing = apply_fill_rectangle_via_10898(rectangle_command_state(
+        width=pack12(16),
+        height=pack12(5),
+        cursor_x=pack12(0),
+        cursor_y=pack12(78),
+        page_height=120,
+        area_fill_id=6,
+    ), 3)
+    rectangle_fill_pattern_crossing_bridged = bridge_page_record_via_1edc6(rectangle_fill_pattern_crossing["page_record"])
+    rectangle_fill_pattern_crossing_first = render_rule_list_via_1f446(data, rectangle_fill_pattern_crossing_bridged, band_word=0)
+    rectangle_fill_pattern_crossing_second = render_rule_list_via_1f446(data, {
+        "rule_list": [rectangle_fill_pattern_crossing_first["rendered"][0]["mutated_object"]],
+    }, band_word=5)
+    checks.append(assert_equal("0x1f4e0 carries patterned rule remainder across render bands", {
+        "selector": rectangle_fill_pattern_crossing["fill_selector"],
+        "object": rectangle_fill_pattern_crossing["events"][-1]["object"],
+        "source": rectangle_fill_pattern_crossing["events"][-1]["source"],
+        "bridged": rectangle_fill_pattern_crossing_bridged["rule_list"],
+        "first_band": [
+            {
+                key: entry[key]
+                for key in ("selector", "helper", "key", "bucket_delta", "decoded", "width", "remaining_before", "available_rows", "rows_drawn", "pattern_base", "pattern_start", "pattern_words", "left_mask", "interior_words", "right_mask", "mutated_object")
+            }
+            for entry in rectangle_fill_pattern_crossing_first["rendered"]
+        ],
+        "first_tail_rows": rectangle_fill_pattern_crossing_first["rows"][76:],
+        "second_band": [
+            {
+                key: entry[key]
+                for key in ("selector", "helper", "key", "bucket_delta", "decoded", "width", "remaining_before", "available_rows", "rows_drawn", "pattern_base", "pattern_start", "pattern_words", "left_mask", "interior_words", "right_mask", "mutated_object")
+            }
+            for entry in rectangle_fill_pattern_crossing_second["rendered"]
+        ],
+        "second_rows": rectangle_fill_pattern_crossing_second["rows"],
+    }, {
+        "selector": 13,
+        "object": bytes.fromhex("00 00 00 00 04 0d e0 00 00 10 00 05 00 00"),
+        "source": {"x": 0, "y": 78, "width": 16, "height": 5},
+        "bridged": [bytes.fromhex("00 00 00 00 04 1d e0 00 00 10 00 05 00 05")],
+        "first_band": [{
+            "selector": 13,
+            "helper": 0x1F4E0,
+            "key": 0xE000,
+            "bucket_delta": 4,
+            "decoded": {"x": 0, "y": 78, "row_low": 14, "subbyte": 0, "byte_pair_offset": 0},
+            "width": 16,
+            "remaining_before": 5,
+            "available_rows": 2,
+            "rows_drawn": 2,
+            "pattern_base": 0x0306BE,
+            "pattern_start": 0x0306DA,
+            "pattern_words": [0xE007, 0xC003],
+            "left_mask": 0xFFFF,
+            "interior_words": 0,
+            "right_mask": 0x0000,
+            "mutated_object": bytes.fromhex("00 00 00 00 04 0d e0 00 00 10 00 05 00 03"),
+        }],
+        "first_tail_rows": ["................", "................", "###..........###", "##............##"],
+        "second_band": [{
+            "selector": 13,
+            "helper": 0x1F4E0,
+            "key": 0x0000,
+            "bucket_delta": 0,
+            "decoded": {"x": 0, "y": 0, "row_low": 0, "subbyte": 0, "byte_pair_offset": 0},
+            "width": 16,
+            "remaining_before": 3,
+            "available_rows": 80,
+            "rows_drawn": 3,
+            "pattern_base": 0x0306BE,
+            "pattern_start": 0x0306BE,
+            "pattern_words": [0xC003, 0xE007, 0x700E],
+            "left_mask": 0xFFFF,
+            "interior_words": 0,
+            "right_mask": 0x0000,
+            "mutated_object": bytes.fromhex("00 00 00 00 04 0d e0 00 00 10 00 05 ff b3"),
+        }],
+        "second_rows": ["##............##", "###..........###", ".###........###."],
+    }))
     rectangle_fill_gray_threshold = apply_fill_rectangle_via_10898(rectangle_command_state(
         width=pack12(8),
         height=pack12(4),
@@ -10335,6 +10413,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         second_crossing["remaining_before"],
         second_crossing["rows_drawn"],
         second_crossing["decoded"]["y"],
+    ))
+    first_pattern_crossing = rectangle_fill_pattern_crossing_first["rendered"][0]
+    second_pattern_crossing = rectangle_fill_pattern_crossing_second["rendered"][0]
+    lines.append("- band-crossing pattern rule uses selector `%d`: first band starts at pattern row `%d` with words `%s`, leaves `%d` rows, and the next band resumes at pattern row `%d` with words `%s`." % (
+        first_pattern_crossing["selector"],
+        first_pattern_crossing["decoded"]["row_low"],
+        ", ".join("0x%04x" % word for word in first_pattern_crossing["pattern_words"]),
+        second_pattern_crossing["remaining_before"],
+        second_pattern_crossing["decoded"]["row_low"],
+        ", ".join("0x%04x" % word for word in second_pattern_crossing["pattern_words"]),
     ))
     gray_rule = rectangle_fill_gray_threshold_rendered["rendered"][0]
     lines.append("- gray selector `%d` dispatches through pattern helper `0x%06x`; pattern base `0x%06x`, start `0x%06x`, first words `%s`, left mask `0x%04x`, right mask `0x%04x`." % (

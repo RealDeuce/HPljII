@@ -6863,31 +6863,71 @@ def render_mixed_printable_control_page_record_stream(
                 })
                 pos += 2
                 continue
-            if pos + 3 >= len(stream) or stream[pos + 1 : pos + 3] != b"&k":
-                raise AssertionError(f"page-record mixed stream only models ESC &k#G and ESC E at offset {pos}")
-            start = pos
-            pos += 3
-            sign = 1
-            if pos < len(stream) and stream[pos] in (ord("+"), ord("-")):
-                sign = -1 if stream[pos] == ord("-") else 1
+            if pos + 3 >= len(stream):
+                raise AssertionError(f"page-record mixed stream expected ESC command at offset {pos}")
+            if stream[pos + 1 : pos + 3] == b"&k":
+                start = pos
+                pos += 3
+                sign = 1
+                if pos < len(stream) and stream[pos] in (ord("+"), ord("-")):
+                    sign = -1 if stream[pos] == ord("-") else 1
+                    pos += 1
+                if pos >= len(stream) or not chr(stream[pos]).isdigit():
+                    raise AssertionError("page-record mixed stream ESC &k#G needs an integer parameter")
+                value = 0
+                while pos < len(stream) and chr(stream[pos]).isdigit():
+                    value = value * 10 + stream[pos] - ord("0")
+                    pos += 1
+                if pos >= len(stream) or stream[pos] != ord("G"):
+                    raise AssertionError("page-record mixed stream only models ESC &k#G final byte")
+                state["line_termination"] = line_termination_mode_bits(sign * value)
                 pos += 1
-            if pos >= len(stream) or not chr(stream[pos]).isdigit():
-                raise AssertionError("page-record mixed stream ESC &k#G needs an integer parameter")
-            value = 0
-            while pos < len(stream) and chr(stream[pos]).isdigit():
-                value = value * 10 + stream[pos] - ord("0")
-                pos += 1
-            if pos >= len(stream) or stream[pos] != ord("G"):
-                raise AssertionError("page-record mixed stream only models ESC &k#G final byte")
-            state["line_termination"] = line_termination_mode_bits(sign * value)
-            pos += 1
-            events.append({
-                "kind": "escape",
-                "offset": start,
-                "sequence": stream[start:pos],
-                "line_termination": state["line_termination"],
-            })
-            continue
+                events.append({
+                    "kind": "escape",
+                    "offset": start,
+                    "sequence": stream[start:pos],
+                    "line_termination": state["line_termination"],
+                })
+                continue
+            if stream[pos + 1 : pos + 3] == b"&a":
+                group_start = pos
+                pos += 3
+                while True:
+                    command_start = group_start if pos == group_start + 3 else pos
+                    parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+                    if pos >= len(stream):
+                        raise AssertionError("page-record mixed stream ESC &a#L/#M missing final byte")
+                    final = stream[pos]
+                    pos += 1
+                    final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+                    before = dict(state)
+                    if final_upper == ord("L"):
+                        state = apply_left_margin_via_eb58(state, parameter)
+                    elif final_upper == ord("M"):
+                        state = apply_right_margin_via_ec0c(state, parameter)
+                    else:
+                        raise AssertionError(f"page-record mixed stream unsupported ESC &a final byte {chr(final)!r}")
+                    events.append({
+                        "kind": "margin",
+                        "offset": command_start,
+                        "sequence": stream[command_start:pos],
+                        "record": bytes([
+                            0x81 if parameter < 0 else 0x80,
+                            final,
+                        ]) + signed_word_bytes(parameter) + signed_word_bytes(0),
+                        "parameter": parameter,
+                        "handler": margin_handler(final),
+                        "cursor_before": before["cursor_x"],
+                        "cursor_after": state["cursor_x"],
+                        "left_margin": state["left_margin"],
+                        "right_margin": state["right_margin"],
+                        "events": state["events"][len(before.get("events", [])):],
+                        "chained": bool(ord("a") <= final <= ord("z")),
+                    })
+                    if not (ord("a") <= final <= ord("z")):
+                        break
+                continue
+            raise AssertionError(f"page-record mixed stream only models ESC &k#G, ESC &a#L/#M, and ESC E at offset {pos}")
         if byte in (0x08, 0x09, 0x0A, 0x0C, 0x0D):
             before = dict(state)
             finalized = None
@@ -16683,6 +16723,143 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "bridged_context_slots": (0x440946B4, 0),
         "rendered_rows": expected_mixed_rows,
     }))
+    margin_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&a1L!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            right_margin=pack12(300),
+            hmi=line_printer_hmi["hmi"],
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    margin_page_record_object = margin_page_record_stream["bucket_object"]
+    margin_page_record_rendered = margin_page_record_stream["rendered"]
+    margin_page_record_bridged = margin_page_record_stream["bridged_record"]
+    assert isinstance(margin_page_record_object, bytes)
+    assert isinstance(margin_page_record_rendered, dict)
+    assert isinstance(margin_page_record_bridged, dict)
+    margin_page_record_event_summary: list[dict[str, object]] = []
+    margin_page_record_events = margin_page_record_stream["events"]
+    assert isinstance(margin_page_record_events, list)
+    for event in margin_page_record_events:
+        assert isinstance(event, dict)
+        if event["kind"] == "margin":
+            margin_page_record_event_summary.append({
+                "kind": event["kind"],
+                "sequence": event["sequence"],
+                "record": event["record"],
+                "parameter": event["parameter"],
+                "handler": event["handler"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "left_margin": event["left_margin"],
+                "right_margin": event["right_margin"],
+                "events": event["events"],
+            })
+        else:
+            page_result = event["page_result"]
+            positioned = event["positioned"]
+            assert isinstance(page_result, dict)
+            assert isinstance(positioned, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            margin_page_record_event_summary.append({
+                "kind": event["kind"],
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": page_result["coord"],
+                "allocated": page_result["allocated"],
+                "count_before": page_result["count_before"],
+                "count_after": page_result["count_after"],
+                "bucket_index": page_result["bucket_index"],
+            })
+    margin_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&a1L!")
+    expected_margin_rows = [
+        "." * 24 + "####" if row == "####" else "." * 28
+        for row in line_printer_glyph32_rows
+    ]
+    checks.append(assert_equal("margin command parser trace feeds page-record queue", {
+        "stream": margin_page_record_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in margin_parser_trace["events"]
+        ],
+        "parser_final_mode": margin_parser_trace["final_mode"],
+        "events": margin_page_record_event_summary,
+        "root_allocations": margin_page_record_stream["final_state"]["page_record_root_allocations"],
+        "bucket_index": margin_page_record_stream["bucket_index"],
+        "object_prefix": margin_page_record_object[:11],
+        "bridged_context_slots": margin_page_record_bridged["context_slots"][:2],
+        "rendered_rows": margin_page_record_rendered["rows"],
+        "final_state": select_keys(margin_page_record_stream["final_state"], (
+            "cursor_x",
+            "left_margin",
+            "span_flushes",
+            "post_flushes",
+            "page_record_root_allocations",
+        )),
+    }, {
+        "stream": b"\x1b&a1L!",
+        "parser_events": [
+            {"kind": "command", "handler": 0x00EB58, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+        ],
+        "parser_final_mode": 0,
+        "events": [
+            {
+                "kind": "margin",
+                "sequence": b"\x1b&a1L",
+                "record": bytes.fromhex("80 4c 00 01 00 00"),
+                "parameter": 1,
+                "handler": 0x00EB58,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(18),
+                "left_margin": pack12(18),
+                "right_margin": pack12(300),
+                "events": [
+                    {"kind": "left-margin-cursor-move", "cursor_x": pack12(18)},
+                    {"kind": "left-margin", "margin": pack12(18)},
+                ],
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(18),
+                "cursor_after": pack12(36),
+                "positioned_xy": (24, 0),
+                "coord": 0x0801,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+            },
+        ],
+        "root_allocations": 1,
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 08 01"),
+        "bridged_context_slots": (0x440946B4, 0),
+        "rendered_rows": expected_margin_rows,
+        "final_state": {
+            "cursor_x": pack12(36),
+            "left_margin": pack12(18),
+            "span_flushes": 1,
+            "post_flushes": 1,
+            "page_record_root_allocations": 1,
+        },
+    }))
     mixed_publication_parser_trace = {
         "reset": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1bE"),
         "ff": trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k2G!\f"),
@@ -18912,6 +19089,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- page-record stream object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_page_record_object)}`")
     lines.append(f"- page-record bridged context slots `[0..1]`: `0x{mixed_page_record_bridged['context_slots'][0]:08x}`, `0x{mixed_page_record_bridged['context_slots'][1]:08x}`")
     lines.append("- mixed parser-to-page-record boundary: the same stream routes through handlers `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, allocates one page-record root, reuses bucket `0`, and renders the same bridged rows.")
+    lines.append("- margin parser-to-page-record boundary: stream `1b 26 61 31 4c 21` routes `ESC &a1L` through handler `0xeb58`, moves the cursor/left margin to one initialized `LINE_PRINTER` HMI column, then queues printable `!` through `0xd04a` at compact coord `0x0801` and renders the bridged glyph at pixel x `24`.")
     lines.append("")
     lines.append("A ROM parser trace now anchors the publication streams before the modeled page-record layer: `21 1b 45` routes printable `!` through the mode-0 `0xd04a` branch and `ESC E` through handler `0xcc52`; `1b 26 6b 32 47 21 0c` routes `ESC &k2G` through handler `0xedf8`, printable `!` through `0xd04a`, and FF through handler `0xf0f0`; `21 1b 26 6c 31 41` and `21 1b 26 6c 31 4f` route printable `!` through `0xd04a` before page-size `ESC &l1A` reaches `0xfc74` and orientation `ESC &l1O` reaches `0x10220`.")
     lines.append("The publication-boundary fixture ties those parser handler sequences to the modeled page-record side for the same four byte streams: each allocates one root on printable `!`, publishes one compact bucket through `0xff1e`, clears the current root, and renders the published rows after the `0x1edc6` bridge.")

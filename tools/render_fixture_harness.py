@@ -810,6 +810,98 @@ def trace_rectangle_parser_dispatch_via_11774(data: bytes, stream: bytes, initia
     }
 
 
+def trace_macro_parser_dispatch_via_11774(
+    data: bytes,
+    stream: bytes,
+    initial_state: dict[str, object] | None = None,
+) -> dict[str, object]:
+    mode = 0
+    pos = 0
+    dispatches: list[dict[str, object]] = []
+    commands: list[dict[str, object]] = []
+    state = macro_state() if initial_state is None else dict(initial_state)
+    state["records"] = [dict(record) for record in state["records"]]
+    state["data_chain_frames"] = list(state.get("data_chain_frames", []))
+    state["events"] = list(state.get("events", []))
+
+    def dispatch(byte: int, offset: int) -> dict[str, object]:
+        nonlocal mode
+        entry = parser_dispatch_entry_via_11774(data, mode, byte)
+        event = dict(entry)
+        event["offset"] = offset
+        dispatches.append(event)
+        mode = int(entry["next_mode"])
+        return event
+
+    while pos < len(stream):
+        if stream[pos] != 0x1B:
+            raise AssertionError(f"macro parser trace expected ESC at offset {pos}")
+        escape_offset = pos
+        if pos + 2 >= len(stream):
+            raise AssertionError("macro parser trace expected ESC prefix and group bytes")
+        dispatch(0x1B, escape_offset)
+        pos += 1
+        prefix = stream[pos]
+        dispatch(prefix, pos)
+        pos += 1
+        group = stream[pos]
+        dispatch(group, pos)
+        pos += 1
+        if prefix != ord("&") or group != ord("f"):
+            raise AssertionError("macro parser trace only models ESC &f commands")
+
+        while True:
+            command_start = escape_offset if pos == escape_offset + 3 else pos
+            if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+                parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            else:
+                parameter = 0
+            if pos >= len(stream):
+                raise AssertionError("macro parser trace missing final byte")
+            final_offset = pos
+            final = stream[pos]
+            pos += 1
+            final_event = dispatch(final, final_offset)
+            final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+            record = bytes([
+                0x81 if parameter < 0 else 0x80,
+                final,
+            ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
+            before_count = len(state.get("events", []))
+            if final_upper == ord("Y"):
+                state = assign_macro_id_via_e112(record, state)
+                event = {
+                    "kind": "macro-id",
+                    "current_macro_id": state["current_macro_id"],
+                }
+                events = list(state.get("events", []))
+                events.append(event)
+                state["events"] = events
+            elif final_upper == ord("X"):
+                state = apply_macro_control_via_dd08(state, parameter, final_byte=final)
+            else:
+                raise AssertionError(f"unsupported macro parser trace final 0x{final:02x}")
+            events = list(state.get("events", []))
+            new_events = [dict(event) for event in events[before_count:]]
+            commands.append({
+                "sequence": stream[command_start:pos],
+                "parameter": parameter,
+                "record": record,
+                "final_dispatch": final_event,
+                "mode_after_final": mode,
+                "state_events": new_events,
+            })
+            if mode == 0:
+                break
+
+    return {
+        "dispatches": dispatches,
+        "commands": commands,
+        "final_mode": mode,
+        "state": state,
+    }
+
+
 def data_payload_byte_via_dace(stream: bytes, pos: int) -> dict[str, object]:
     if pos >= len(stream):
         return {"value": -1, "pos": pos, "control_hits": 0}
@@ -7508,6 +7600,70 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     macro_stream_empty = render_macro_command_stream_via_e112_dd08(b"\x1b&f-123y0x1X")
     macro_stream_records = macro_stream_empty["state"]["records"]
     assert isinstance(macro_stream_records, list)
+    macro_dispatch_empty = trace_macro_parser_dispatch_via_11774(data, b"\x1b&f-123y0x1X")
+    macro_dispatch_records = macro_dispatch_empty["state"]["records"]
+    assert isinstance(macro_dispatch_records, list)
+    checks.append(assert_equal("0x11774 ROM dispatch table routes chained ESC &f macro stream", {
+        "dispatches": [
+            {
+                key: event[key]
+                for key in ("offset", "byte", "mode_before", "next_mode", "handler")
+            }
+            for event in macro_dispatch_empty["dispatches"]
+        ],
+        "commands": [
+            {
+                "sequence": command["sequence"],
+                "parameter": command["parameter"],
+                "record": command["record"],
+                "handler": command["final_dispatch"]["handler"],
+                "mode_after_final": command["mode_after_final"],
+                "state_events": command["state_events"],
+            }
+            for command in macro_dispatch_empty["commands"]
+        ],
+        "final": select_keys(macro_dispatch_empty["state"], ("current_macro_id", "alternate_mode", "macro_error")),
+        "record0": macro_dispatch_records[0],
+        "final_mode": macro_dispatch_empty["final_mode"],
+    }, {
+        "dispatches": [
+            {"offset": 0, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+            {"offset": 1, "byte": ord("&"), "mode_before": 1, "next_mode": 5, "handler": 0x011EC8},
+            {"offset": 2, "byte": ord("f"), "mode_before": 5, "next_mode": 17, "handler": 0x011EDA},
+            {"offset": 7, "byte": ord("y"), "mode_before": 17, "next_mode": 17, "handler": 0x00E112},
+            {"offset": 9, "byte": ord("x"), "mode_before": 17, "next_mode": 17, "handler": 0x00DD08},
+            {"offset": 11, "byte": ord("X"), "mode_before": 17, "next_mode": 0, "handler": 0x00DD08},
+        ],
+        "commands": [
+            {
+                "sequence": b"\x1b&f-123y",
+                "parameter": -123,
+                "record": b"\x81y\xff\x85\x00\x00",
+                "handler": 0x00E112,
+                "mode_after_final": 17,
+                "state_events": [{"kind": "macro-id", "current_macro_id": 123}],
+            },
+            {
+                "sequence": b"0x",
+                "parameter": 0,
+                "record": b"\x80x\x00\x00\x00\x00",
+                "handler": 0x00DD08,
+                "mode_after_final": 17,
+                "state_events": [{"kind": "macro-start", "status": 0, "index": 0, "auto_prefix": True}],
+            },
+            {
+                "sequence": b"1X",
+                "parameter": 1,
+                "record": b"\x80X\x00\x01\x00\x00",
+                "handler": 0x00DD08,
+                "mode_after_final": 0,
+                "state_events": [{"kind": "macro-stop-cleared-empty", "index": 0}],
+            },
+        ],
+        "final": {"current_macro_id": 123, "alternate_mode": 0, "macro_error": 0},
+        "record0": {"id": 0, "payload": b"", "permanent": False},
+        "final_mode": 0,
+    }))
     checks.append(assert_equal("macro command stream assigns id and starts/stops empty definition", {
         "stream": macro_stream_empty["stream"],
         "events": [
@@ -16340,6 +16496,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- chained macro stream `%s` assigns id `%d`, starts lowercase definition mode through `0xdd08`, then stops and clears the auto-prefix-only record." % (
         " ".join(f"{byte:02x}" for byte in macro_stream_empty["stream"]),
         macro_stream_empty["state"]["current_macro_id"],
+    ))
+    lines.append("- ROM dispatch trace for the same stream walks modes `%s` through handlers `%s`, producing parsed records `%s` before the modeled macro side effects." % (
+        " -> ".join(str(event["mode_before"]) for event in macro_dispatch_empty["dispatches"]) + f" -> {macro_dispatch_empty['final_mode']}",
+        ", ".join(f"0x{int(command['final_dispatch']['handler']):x}" for command in macro_dispatch_empty["commands"]),
+        ", ".join(" ".join(f"{byte:02x}" for byte in command["record"]) for command in macro_dispatch_empty["commands"]),
     ))
     lines.append("- macro definition stream `%s` stores payload `%s`, stops with the record kept, then `ESC &f2X` pushes execute frame `%s`." % (
         " ".join(f"{byte:02x}" for byte in macro_stream_execute["stream"]),

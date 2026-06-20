@@ -602,6 +602,121 @@ def trace_font_parser_dispatch_via_11774(data: bytes, stream: bytes, descriptor_
     }
 
 
+def trace_font_control_parser_dispatch_via_11774(
+    data: bytes,
+    stream: bytes,
+    *,
+    records: list[dict[str, int]],
+    counters: dict[str, int],
+    parser_mode: int,
+) -> dict[str, object]:
+    mode = 0
+    pos = 0
+    dispatches: list[dict[str, object]] = []
+    commands: list[dict[str, object]] = []
+    current_font_id = 0
+    current_character = 0
+    current_records = [dict(record) for record in records]
+    current_counters = dict(counters)
+
+    def dispatch(byte: int, offset: int) -> dict[str, object]:
+        nonlocal mode
+        entry = parser_dispatch_entry_via_11774(data, mode, byte)
+        event = dict(entry)
+        event["offset"] = offset
+        dispatches.append(event)
+        mode = int(entry["next_mode"])
+        return event
+
+    while pos < len(stream):
+        if stream[pos] != 0x1B:
+            raise AssertionError(f"font-control parser trace expected ESC at offset {pos}")
+        escape_offset = pos
+        if pos + 2 >= len(stream):
+            raise AssertionError("font-control parser trace expected ESC prefix and group bytes")
+        dispatch(0x1B, escape_offset)
+        pos += 1
+        prefix = stream[pos]
+        dispatch(prefix, pos)
+        pos += 1
+        group = stream[pos]
+        dispatch(group, pos)
+        pos += 1
+        if prefix != ord("*") or group != ord("c"):
+            raise AssertionError("font-control parser trace only models ESC *c commands")
+
+        while True:
+            parameter_start = pos
+            if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+                parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            else:
+                parameter = 0
+            if pos >= len(stream):
+                raise AssertionError("font-control parser trace missing final byte")
+            final_offset = pos
+            final = stream[pos]
+            pos += 1
+            final_event = dispatch(final, final_offset)
+            record = bytes([
+                0x81 if parameter < 0 else 0x80,
+                final,
+            ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
+            command: dict[str, object] = {
+                "sequence": stream[escape_offset:pos] if parameter_start == escape_offset + 3 else stream[parameter_start:pos],
+                "parameter": parameter,
+                "record": record,
+                "final_dispatch": final_event,
+                "mode_after_final": mode,
+            }
+            handler = final_event["handler"]
+            if handler == 0x015A56:
+                current_font_id = assign_font_id_via_15a56(parameter)
+                command["state_effect"] = {
+                    "kind": "current-font-id",
+                    "stored_word": current_font_id,
+                }
+            elif handler == 0x015A18:
+                character = font_character_code_from_15a18(parameter)
+                current_character = int(character["stored_word"])
+                command["state_effect"] = {
+                    "kind": "current-character-code",
+                    "stored_word": current_character,
+                }
+            elif handler == 0x016DF6:
+                control = font_control_dispatch_via_16df6(
+                    data,
+                    current_records,
+                    current_id=current_font_id,
+                    value=parameter,
+                    parser_mode=parser_mode,
+                    counters=current_counters,
+                )
+                current_records = [dict(record) for record in control["result"]["records"]]
+                current_counters = dict(control["result"]["counters"])
+                command["state_effect"] = {
+                    "kind": "font-control",
+                    "target": control["target"],
+                    "action": control["action"],
+                    "suppressed": control["suppressed"],
+                    "changed": control["result"]["changed"],
+                }
+            else:
+                command["state_effect"] = None
+            commands.append(command)
+            if mode == 0:
+                break
+
+    return {
+        "dispatches": dispatches,
+        "commands": commands,
+        "final_mode": mode,
+        "current_font_id": current_font_id,
+        "current_character": current_character,
+        "records": current_records,
+        "counters": current_counters,
+    }
+
+
 def data_payload_byte_via_dace(stream: bytes, pos: int) -> dict[str, object]:
     if pos >= len(stream):
         return {"value": -1, "pos": pos, "control_hits": 0}
@@ -10364,6 +10479,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     font_payload_budget = font_payload_budget_from_delayed_command(-0x0891)
     font_descriptor_dispatch_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b)s0W\x04\x00\xaa\xbb", descriptor_budget=4)
     font_payload_dispatch_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b)s4WABCD")
+    font_control_dispatch_trace = trace_font_control_parser_dispatch_via_11774(
+        data,
+        b"\x1b*c17d25e5F",
+        records=[{"id": 17, "flags": 0x00, "payload": 0x123456}],
+        counters={"0x782782": 7, "0x782786": 2},
+        parser_mode=0,
+    )
     checks.append(assert_equal("0x15a18/0x11f96-modeled font payload command edge", {
         "character_code": font_character_code,
         "zero_payload": font_payload_dispatch_header,
@@ -10450,6 +10572,68 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "restored_record": b"\x80W\x00\x04\x00\x01",
             "payload_offset": 5,
             "payload": b"ABCD",
+        },
+    }))
+    checks.append(assert_equal("0x11774 ROM dispatch table routes ESC *c font-control chain", {
+        "dispatches": [
+            {key: event[key] for key in ("offset", "byte", "mode_before", "next_mode", "handler")}
+            for event in font_control_dispatch_trace["dispatches"]
+        ],
+        "commands": [
+            {key: command[key] for key in ("sequence", "parameter", "record", "state_effect", "mode_after_final")}
+            for command in font_control_dispatch_trace["commands"]
+        ],
+        "final_state": {
+            "mode": font_control_dispatch_trace["final_mode"],
+            "current_font_id": font_control_dispatch_trace["current_font_id"],
+            "current_character": font_control_dispatch_trace["current_character"],
+            "records": font_control_dispatch_trace["records"],
+            "counters": font_control_dispatch_trace["counters"],
+        },
+    }, {
+        "dispatches": [
+            {"offset": 0, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+            {"offset": 1, "byte": 0x2A, "mode_before": 1, "next_mode": 3, "handler": 0x011EC8},
+            {"offset": 2, "byte": 0x63, "mode_before": 3, "next_mode": 16, "handler": 0x011EDA},
+            {"offset": 5, "byte": 0x64, "mode_before": 16, "next_mode": 16, "handler": 0x015A56},
+            {"offset": 8, "byte": 0x65, "mode_before": 16, "next_mode": 16, "handler": 0x015A18},
+            {"offset": 10, "byte": 0x46, "mode_before": 16, "next_mode": 0, "handler": 0x016DF6},
+        ],
+        "commands": [
+            {
+                "sequence": b"\x1b*c17d",
+                "parameter": 17,
+                "record": b"\x80d\x00\x11\x00\x00",
+                "state_effect": {"kind": "current-font-id", "stored_word": 17},
+                "mode_after_final": 16,
+            },
+            {
+                "sequence": b"25e",
+                "parameter": 25,
+                "record": b"\x80e\x00\x19\x00\x00",
+                "state_effect": {"kind": "current-character-code", "stored_word": 25},
+                "mode_after_final": 16,
+            },
+            {
+                "sequence": b"5F",
+                "parameter": 5,
+                "record": b"\x80F\x00\x05\x00\x00",
+                "state_effect": {
+                    "kind": "font-control",
+                    "target": 0x16E86,
+                    "action": "mark-current",
+                    "suppressed": False,
+                    "changed": True,
+                },
+                "mode_after_final": 0,
+            },
+        ],
+        "final_state": {
+            "mode": 0,
+            "current_font_id": 17,
+            "current_character": 25,
+            "records": [{"id": 17, "flags": 0x40, "payload": 0x123456}],
+            "counters": {"0x782782": 6, "0x782786": 3},
         },
     }))
 
@@ -16872,6 +17056,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_payload_dispatch_header["handler"],
         font_payload_dispatch_character["handler"],
         font_payload_budget["byte_budget"],
+    ))
+    lines.append("- `ESC *c17d25e5F` ROM dispatch trace: parser modes `0 -> 1 -> 3 -> 16 -> 16 -> 16 -> 0` select handlers `0x11eb6`, `0x11ec8`, `0x11eda`, `0x15a56`, `0x15a18`, and `0x16df6`; the chained records set current font id `%d`, current character `%d`, then mark the matching current record with counters `%s`." % (
+        font_control_dispatch_trace["current_font_id"],
+        font_control_dispatch_trace["current_character"],
+        font_control_dispatch_trace["counters"],
     ))
     lines.append("- ROM dispatch trace: `ESC )s0W` and `ESC )s4W` walk parser modes `0 -> 1 -> 4 -> 13 -> 0` through handlers `0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`; `0x11f96` then snapshots delayed handlers `0x%05x` and `0x%05x`, with descriptor offset `%d` and payload offset `%d`." % (
         font_descriptor_dispatch_trace["commands"][0]["font_payload_dispatch"]["handler"],

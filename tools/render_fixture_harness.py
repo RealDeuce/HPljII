@@ -174,6 +174,288 @@ def build_text_source_object_from_1393a(resources: bytes, context: int, host_cha
     }
 
 
+def inline_record_is_valid_via_14eb6(memory: bytes, context: int, glyph: int) -> dict[str, int | bool | bytes]:
+    base = context & 0x00FFFFFF
+    record = base + 0x40 + (glyph & 0xFFFF) * 8
+    if record + 8 > len(memory):
+        return {
+            "base": base,
+            "glyph": glyph & 0xFFFF,
+            "record": record,
+            "record_bytes": b"",
+            "bitmap": 0,
+            "valid": False,
+            "reason": "record-out-of-range",
+        }
+    record_bytes = bytes(memory[record:record + 8])
+    width = record_bytes[0]
+    rows = record_bytes[1]
+    bitmap_delta = int.from_bytes(record_bytes[4:8], "big") & 0x00FFFFFF
+    bitmap = base + bitmap_delta
+    if width == 1 and rows == 2:
+        valid = bitmap + 2 <= len(memory) and int.from_bytes(memory[bitmap:bitmap + 2], "big") != 0
+        return {
+            "base": base,
+            "glyph": glyph & 0xFFFF,
+            "record": record,
+            "record_bytes": record_bytes,
+            "bitmap": bitmap,
+            "valid": valid,
+            "reason": "sentinel-bitmap-word" if valid else "zero-sentinel-bitmap-word",
+        }
+    valid = width != 0 and rows != 0 and bitmap_delta != 0
+    return {
+        "base": base,
+        "glyph": glyph & 0xFFFF,
+        "record": record,
+        "record_bytes": record_bytes,
+        "bitmap": bitmap,
+        "valid": valid,
+        "reason": "nonzero-fixed-record" if valid else "empty-fixed-record",
+    }
+
+
+def inline_map_via_14e24(memory: bytes, context: int, extended_half_enabled: bool = False) -> dict[str, object]:
+    table = [0] * 0x100
+    validity: list[dict[str, int | bool | bytes]] = []
+    for host in range(0x20, 0x80):
+        glyph = host - 0x20
+        probe = inline_record_is_valid_via_14eb6(memory, context, glyph)
+        validity.append(probe)
+        if bool(probe["valid"]):
+            table[host] = glyph
+    if extended_half_enabled:
+        for host in range(0xA0, 0x100):
+            glyph = host - 0x40
+            probe = inline_record_is_valid_via_14eb6(memory, context, glyph)
+            validity.append(probe)
+            if bool(probe["valid"]):
+                table[host] = glyph
+    return {
+        "context": context,
+        "base": context & 0x00FFFFFF,
+        "extended_half_enabled": extended_half_enabled,
+        "table": bytes(table),
+        "validity": validity,
+    }
+
+
+def build_inline_text_source_object_from_1393a(memory: bytes, context: int, map_table: bytes, host_char: int, x: int, y: int, context_slot: int = 0) -> dict[str, object]:
+    mapped = map_table[host_char & 0xFF]
+    base = context & 0x00FFFFFF
+    record = base + 0x40 + mapped * 8
+    if record + 8 > len(memory):
+        raise AssertionError(f"inline/downloaded glyph record 0x{record:x} is outside the synthetic memory image")
+    record_bytes = bytes(memory[record:record + 8])
+    validity = inline_record_is_valid_via_14eb6(memory, context, mapped)
+    return {
+        "context": context,
+        "host_char": host_char & 0xFF,
+        "mapped": mapped,
+        "glyph_entry": record,
+        "glyph_width": record_bytes[0],
+        "glyph_rows": record_bytes[1],
+        "flag": 0,
+        "x": x,
+        "y": y,
+        "context_slot": context_slot & 0x0F,
+        "inline_record": record_bytes,
+        "valid_record": bool(validity["valid"]),
+        "bitmap": int(validity["bitmap"]),
+    }
+
+
+def font_payload_linear_copy_via_168dc(stream: bytes, byte_count: int, byte_budget: int) -> dict[str, object]:
+    pos = 0
+    remaining = int(byte_count)
+    budget = int(byte_budget)
+    dest = bytearray()
+    control_hits = 0
+    while remaining > 0:
+        if budget <= 0:
+            return {
+                "status": 2,
+                "dest": bytes(dest),
+                "stream_pos": pos,
+                "remaining": remaining,
+                "byte_budget": budget,
+                "continuation": {
+                    "flag": 1,
+                    "remaining": remaining,
+                    "dest_offset": len(dest),
+                },
+                "control_hits": control_hits,
+            }
+        if pos >= len(stream):
+            return {
+                "status": 0,
+                "dest": bytes(dest),
+                "stream_pos": pos,
+                "remaining": remaining,
+                "byte_budget": budget,
+                "continuation": None,
+                "control_hits": control_hits,
+            }
+        value = stream[pos]
+        pos += 1
+        if value == 0x1A:
+            if pos >= len(stream):
+                return {
+                    "status": 0,
+                    "dest": bytes(dest),
+                    "stream_pos": pos,
+                    "remaining": remaining,
+                    "byte_budget": budget,
+                    "continuation": None,
+                    "control_hits": control_hits,
+                }
+            value = stream[pos]
+            pos += 1
+            if value == 0x58:
+                control_hits += 1
+                value = 0
+        dest.append(value)
+        budget -= 1
+        remaining -= 1
+    return {
+        "status": 1,
+        "dest": bytes(dest),
+        "stream_pos": pos,
+        "remaining": 0,
+        "byte_budget": budget,
+        "continuation": None,
+        "control_hits": control_hits,
+    }
+
+
+def font_payload_split_plane_copy_via_16942(stream: bytes, rows: int, prefix_span: int, byte_budget: int) -> dict[str, object]:
+    pos = 0
+    budget = int(byte_budget)
+    row_remaining = int(rows)
+    prefix_remaining = int(prefix_span)
+    prefix = bytearray()
+    trailing = bytearray()
+    control_hits = 0
+    phase = "prefix"
+    while row_remaining > 0:
+        if prefix_remaining > 0:
+            if budget <= 0:
+                return {
+                    "status": 2,
+                    "prefix": bytes(prefix),
+                    "trailing": bytes(trailing),
+                    "stream_pos": pos,
+                    "byte_budget": budget,
+                    "continuation": {
+                        "flag": 1,
+                        "prefix_remaining": prefix_remaining - 1,
+                        "row_remaining": row_remaining - 1,
+                        "prefix_offset": len(prefix),
+                        "trailing_offset": len(trailing),
+                    },
+                    "control_hits": control_hits,
+                    "phase": phase,
+                }
+            if pos >= len(stream):
+                return {
+                    "status": 0,
+                    "prefix": bytes(prefix),
+                    "trailing": bytes(trailing),
+                    "stream_pos": pos,
+                    "byte_budget": budget,
+                    "continuation": None,
+                    "control_hits": control_hits,
+                    "phase": phase,
+                }
+            value = stream[pos]
+            pos += 1
+            if value == 0x1A:
+                if pos >= len(stream):
+                    return {
+                        "status": 0,
+                        "prefix": bytes(prefix),
+                        "trailing": bytes(trailing),
+                        "stream_pos": pos,
+                        "byte_budget": budget,
+                        "continuation": None,
+                        "control_hits": control_hits,
+                        "phase": phase,
+                    }
+                value = stream[pos]
+                pos += 1
+                if value == 0x58:
+                    control_hits += 1
+                    value = 0
+            prefix.append(value)
+            budget -= 1
+            prefix_remaining -= 1
+            continue
+
+        phase = "trailing"
+        if budget <= 0:
+            return {
+                "status": 2,
+                "prefix": bytes(prefix),
+                "trailing": bytes(trailing),
+                "stream_pos": pos,
+                "byte_budget": budget,
+                "continuation": {
+                    "flag": 1,
+                    "prefix_remaining": -1,
+                    "row_remaining": row_remaining - 1,
+                    "prefix_offset": len(prefix),
+                    "trailing_offset": len(trailing),
+                },
+                "control_hits": control_hits,
+                "phase": phase,
+            }
+        if pos >= len(stream):
+            return {
+                "status": 0,
+                "prefix": bytes(prefix),
+                "trailing": bytes(trailing),
+                "stream_pos": pos,
+                "byte_budget": budget,
+                "continuation": None,
+                "control_hits": control_hits,
+                "phase": phase,
+            }
+        value = stream[pos]
+        pos += 1
+        if value == 0x1A:
+            if pos >= len(stream):
+                return {
+                    "status": 0,
+                    "prefix": bytes(prefix),
+                    "trailing": bytes(trailing),
+                    "stream_pos": pos,
+                    "byte_budget": budget,
+                    "continuation": None,
+                    "control_hits": control_hits,
+                    "phase": phase,
+                }
+            value = stream[pos]
+            pos += 1
+            if value == 0x58:
+                control_hits += 1
+                value = 0
+        trailing.append(value)
+        budget -= 1
+        row_remaining -= 1
+        prefix_remaining = int(prefix_span)
+        phase = "prefix"
+    return {
+        "status": 1,
+        "prefix": bytes(prefix),
+        "trailing": bytes(trailing),
+        "stream_pos": pos,
+        "byte_budget": budget,
+        "continuation": None,
+        "control_hits": control_hits,
+        "phase": "done",
+    }
+
+
 def scanned_builtin_record_bases(resources: bytes) -> list[int]:
     bases: list[int] = []
     cursor = 0
@@ -3004,6 +3286,257 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "width": 4,
     }))
 
+    selected_inline_context = 0x00000100
+    selected_inline_memory = bytearray(0x300)
+    selected_inline_record = selected_inline_context + 0x40 + 1 * 8
+    selected_inline_bitmap_delta = 0x80
+    selected_inline_bitmap = selected_inline_context + selected_inline_bitmap_delta
+    selected_inline_memory[selected_inline_record:selected_inline_record + 8] = bytes.fromhex("02 03 04 00 00 00 00 80")
+    selected_inline_memory[selected_inline_context + 0x40 + 2 * 8:selected_inline_context + 0x40 + 2 * 8 + 8] = bytes.fromhex("01 02 00 00 00 00 00 90")
+    selected_inline_memory[selected_inline_bitmap:selected_inline_bitmap + 6] = bytes.fromhex("aa 55 f0 0f c3 3c")
+    selected_inline_map = inline_map_via_14e24(selected_inline_memory, selected_inline_context)
+    selected_inline_map_table = selected_inline_map["table"]
+    assert isinstance(selected_inline_map_table, bytes)
+    selected_inline_validity = selected_inline_map["validity"]
+    assert isinstance(selected_inline_validity, list)
+    checks.append(assert_equal("0x14e24-modeled inline/downloaded map entries", {
+        "context": selected_inline_map["context"],
+        "base": selected_inline_map["base"],
+        "host_0x20": selected_inline_map_table[0x20],
+        "host_0x21": selected_inline_map_table[0x21],
+        "host_0x22": selected_inline_map_table[0x22],
+        "glyph1_probe": {
+            key: selected_inline_validity[1][key]
+            for key in ("glyph", "record", "record_bytes", "bitmap", "valid", "reason")
+        },
+        "glyph2_probe": {
+            key: selected_inline_validity[2][key]
+            for key in ("glyph", "record", "record_bytes", "bitmap", "valid", "reason")
+        },
+    }, {
+        "context": 0x00000100,
+        "base": 0x00000100,
+        "host_0x20": 0,
+        "host_0x21": 1,
+        "host_0x22": 0,
+        "glyph1_probe": {
+            "glyph": 1,
+            "record": 0x00000148,
+            "record_bytes": bytes.fromhex("02 03 04 00 00 00 00 80"),
+            "bitmap": 0x00000180,
+            "valid": True,
+            "reason": "nonzero-fixed-record",
+        },
+        "glyph2_probe": {
+            "glyph": 2,
+            "record": 0x00000150,
+            "record_bytes": bytes.fromhex("01 02 00 00 00 00 00 90"),
+            "bitmap": 0x00000190,
+            "valid": False,
+            "reason": "zero-sentinel-bitmap-word",
+        },
+    }))
+    selected_inline_source = build_inline_text_source_object_from_1393a(
+        selected_inline_memory,
+        selected_inline_context,
+        selected_inline_map_table,
+        0x21,
+        x=0,
+        y=0,
+        context_slot=3,
+    )
+    checks.append(assert_equal("0x1393a-modeled selected inline source object fields", {
+        key: selected_inline_source[key]
+        for key in ("context", "host_char", "mapped", "glyph_entry", "glyph_width", "glyph_rows", "flag", "x", "y", "context_slot", "inline_record", "valid_record", "bitmap")
+    }, {
+        "context": 0x00000100,
+        "host_char": 0x21,
+        "mapped": 0x01,
+        "glyph_entry": 0x00000148,
+        "glyph_width": 0x02,
+        "glyph_rows": 0x03,
+        "flag": 0,
+        "x": 0,
+        "y": 0,
+        "context_slot": 3,
+        "inline_record": bytes.fromhex("02 03 04 00 00 00 00 80"),
+        "valid_record": True,
+        "bitmap": 0x00000180,
+    }))
+    selected_inline_positioned = position_unflagged_text_source_via_d3b2(
+        selected_inline_source,
+        bytes(selected_inline_source["inline_record"]),
+        cursor_x=10,
+        cursor_y=20,
+        printable_offset=7,
+        context_metric_flag=0,
+        source_x_offset=5,
+    )
+    selected_inline_positioned_source = selected_inline_positioned["source"]
+    assert isinstance(selected_inline_positioned_source, dict)
+    selected_inline_bucket = queue_text_source_via_12f2e(selected_inline_memory, selected_inline_positioned_source)
+    selected_inline_page_record: dict[str, object] = {"bucket_array": {}, "context_slots": [0, 0, 0, selected_inline_context]}
+    selected_inline_page_result = queue_text_source_to_page_record_via_12f2e(selected_inline_memory, selected_inline_page_record, selected_inline_positioned_source)
+    selected_inline_page_bucket_array = selected_inline_page_record["bucket_array"]
+    assert isinstance(selected_inline_page_bucket_array, dict)
+    selected_inline_page_object = bytes(selected_inline_page_bucket_array[1][0])
+    selected_inline_rendered = render_compact_text_bucket_object(
+        data,
+        selected_inline_memory,
+        (0, 0, 0, selected_inline_context),
+        selected_inline_bucket["object"],
+    )
+    checks.append(assert_equal("selected inline source queues and renders through unflagged path", {
+        "position": {
+            "x": selected_inline_positioned_source["x"],
+            "y": selected_inline_positioned_source["y"],
+            "record0": selected_inline_positioned["record0"],
+            "record1": selected_inline_positioned["record1"],
+            "record2_signed": selected_inline_positioned["record2_signed"],
+        },
+        "bucket": {
+            key: selected_inline_bucket[key]
+            for key in ("path", "object", "bucket_index", "selector", "coord", "glyph", "rows", "width")
+        },
+        "page": {
+            key: selected_inline_page_result[key]
+            for key in ("path", "allocated", "chain_index", "count_before", "count_after", "bucket_index", "selector", "coord", "glyph")
+        } | {
+            "object_prefix": selected_inline_page_object[:11],
+        },
+        "render": {
+            "selector": selected_inline_rendered["selector"],
+            "context_slot": selected_inline_rendered["context_slot"],
+            "compact_mode": selected_inline_rendered["compact_mode"],
+            "payload": selected_inline_rendered["payload"],
+            "rendered": selected_inline_rendered["rendered"],
+            "rows": selected_inline_rendered["rows"],
+        },
+    }, {
+        "position": {
+            "x": 22,
+            "y": 22,
+            "record0": 0x02,
+            "record1": 0x03,
+            "record2_signed": 0x04,
+        },
+        "bucket": {
+            "path": "short",
+            "object": bytes.fromhex("00 00 00 00 00 03 00 01 01 66 01"),
+            "bucket_index": 1,
+            "selector": 0x0003,
+            "coord": 0x6601,
+            "glyph": 0x01,
+            "rows": 3,
+            "width": 2,
+        },
+        "page": {
+            "path": "short-page-record",
+            "allocated": True,
+            "chain_index": 0,
+            "count_before": 0,
+            "count_after": 1,
+            "bucket_index": 1,
+            "selector": 0x0003,
+            "coord": 0x6601,
+            "glyph": 0x01,
+            "object_prefix": bytes.fromhex("00 00 00 00 00 03 00 01 01 66 01"),
+        },
+        "render": {
+            "selector": 0x0003,
+            "context_slot": 3,
+            "compact_mode": 0,
+            "payload": bytes.fromhex("00 01 01 66 01"),
+            "rendered": [{
+                "glyph": 1,
+                "coord": 0x6601,
+                "dest_base": 0xC2,
+                "x": 22,
+                "y": 6,
+                "a001": 0x16,
+                "span": 2,
+                "rows": 3,
+                "width": 16,
+                "helper": u32(data, 0x1F08E + 2 * 4),
+            }],
+            "rows": [
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 22 + "#.#.#.#..#.#.#.#",
+                "." * 22 + "####........####",
+                "." * 22 + "##....##..####..",
+            ],
+        },
+    }))
+
+    font_linear_payload = font_payload_linear_copy_via_168dc(bytes.fromhex("aa 1a 58 bb cc"), byte_count=4, byte_budget=4)
+    checks.append(assert_equal("0x168dc-modeled font payload linear copy handles 0x1a58", font_linear_payload, {
+        "status": 1,
+        "dest": bytes.fromhex("aa 00 bb cc"),
+        "stream_pos": 5,
+        "remaining": 0,
+        "byte_budget": 0,
+        "continuation": None,
+        "control_hits": 1,
+    }))
+    font_linear_continuation = font_payload_linear_copy_via_168dc(bytes.fromhex("aa bb cc dd"), byte_count=4, byte_budget=2)
+    checks.append(assert_equal("0x168dc-modeled font payload linear copy continuation state", font_linear_continuation, {
+        "status": 2,
+        "dest": bytes.fromhex("aa bb"),
+        "stream_pos": 2,
+        "remaining": 2,
+        "byte_budget": 0,
+        "continuation": {
+            "flag": 1,
+            "remaining": 2,
+            "dest_offset": 2,
+        },
+        "control_hits": 0,
+    }))
+    font_split_payload = font_payload_split_plane_copy_via_16942(bytes.fromhex("a0 a1 b0 c0 c1 d0"), rows=2, prefix_span=2, byte_budget=6)
+    checks.append(assert_equal("0x16942-modeled font payload split-plane copy layout", font_split_payload, {
+        "status": 1,
+        "prefix": bytes.fromhex("a0 a1 c0 c1"),
+        "trailing": bytes.fromhex("b0 d0"),
+        "stream_pos": 6,
+        "byte_budget": 0,
+        "continuation": None,
+        "control_hits": 0,
+        "phase": "done",
+    }))
+    font_split_continuation = font_payload_split_plane_copy_via_16942(bytes.fromhex("a0 a1 b0 c0 c1 d0"), rows=2, prefix_span=2, byte_budget=5)
+    checks.append(assert_equal("0x16942-modeled font payload split-plane continuation state", font_split_continuation, {
+        "status": 2,
+        "prefix": bytes.fromhex("a0 a1 c0 c1"),
+        "trailing": bytes.fromhex("b0"),
+        "stream_pos": 5,
+        "byte_budget": 0,
+        "continuation": {
+            "flag": 1,
+            "prefix_remaining": -1,
+            "row_remaining": 0,
+            "prefix_offset": 4,
+            "trailing_offset": 1,
+        },
+        "control_hits": 0,
+        "phase": "trailing",
+    }))
+    font_split_control = font_payload_split_plane_copy_via_16942(bytes.fromhex("a0 1a 58 b0"), rows=1, prefix_span=2, byte_budget=3)
+    checks.append(assert_equal("0x16942-modeled font payload split-plane copy handles 0x1a58", font_split_control, {
+        "status": 1,
+        "prefix": bytes.fromhex("a0 00"),
+        "trailing": bytes.fromhex("b0"),
+        "stream_pos": 4,
+        "byte_budget": 0,
+        "continuation": None,
+        "control_hits": 1,
+        "phase": "done",
+    }))
+
     inline_source = {
         "context": 0x00000000,
         "host_char": 0x41,
@@ -5672,7 +6205,43 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## `0xd3b2` Unflagged Positioning Fixture")
     lines.append("")
-    lines.append("This fixture pins the unflagged/inline positioning arithmetic at `0xd3b2` with a synthetic inline source record, then continues through the unflagged branch of `0x12f2e`. For unflagged sources, record byte `+0` is the width threshold byte, byte `+1` is the row count used for short/segmented selection, and byte `+2` feeds the signed positioning arithmetic.")
+    lines.append("This fixture pins the unflagged/inline positioning arithmetic at `0xd3b2`, then continues through the unflagged branch of `0x12f2e`. The first inline case now starts from a selected inline/downloaded context model: `0x14e24` calls `0x14eb6`-equivalent fixed-record probes, maps host byte `0x21` to glyph `1`, and `0x1393a` builds the source object with record pointer `context_base + 0x40 + 8*glyph`. The later wide/segmented cases still reuse synthetic records to isolate renderer modes. For unflagged sources, record byte `+0` is the width threshold byte, byte `+1` is the row count used for short/segmented selection, and byte `+2` feeds the signed positioning arithmetic.")
+    lines.append("")
+    selected_inline_source_report = selected_inline_source
+    selected_inline_render = selected_inline_rendered["rendered"][0]
+    assert isinstance(selected_inline_render, dict)
+    lines.append("- selected inline map: context `0x%08x`, host `0x21 -> glyph %d`, invalid sentinel host `0x22 -> glyph %d`, glyph-1 record `%s`, bitmap `0x%06x`." % (
+        selected_inline_context,
+        selected_inline_map_table[0x21],
+        selected_inline_map_table[0x22],
+        " ".join(f"{byte:02x}" for byte in selected_inline_source_report["inline_record"]),
+        selected_inline_source_report["bitmap"],
+    ))
+    lines.append("- selected inline source object from `0x1393a`: glyph entry `0x%06x`, flag `%d`, x `%d`, y `%d`, context slot `%d`, valid `%s`." % (
+        selected_inline_source_report["glyph_entry"],
+        selected_inline_source_report["flag"],
+        selected_inline_source_report["x"],
+        selected_inline_source_report["y"],
+        selected_inline_source_report["context_slot"],
+        selected_inline_source_report["valid_record"],
+    ))
+    lines.append("- selected inline positioned object bytes through `0xd3b2`/`0x12f2e`: `%s`; page-record prefix `%s`." % (
+        " ".join(f"{byte:02x}" for byte in selected_inline_bucket["object"]),
+        " ".join(f"{byte:02x}" for byte in selected_inline_page_object[:11]),
+    ))
+    lines.append("- selected inline mode-0 rendered rows from fixed-record bitmap bytes:")
+    selected_inline_rows = selected_inline_rendered["rows"]
+    assert isinstance(selected_inline_rows, list)
+    for row in selected_inline_rows:
+        lines.append(f"`{row}`")
+    lines.append("")
+    lines.append("The font payload reader fixtures model the byte-copy loops immediately before these fixed records are usable. Linear reader `0x168dc` copies host bytes into one destination, treats `0x1a 0x58` as a control escape by calling `0xd99a` and storing a zero payload byte, and records continuation state when byte budget `0x783140` expires. Split-plane reader `0x16942` writes `rows * prefix_span` bytes at `A4`, then one trailing byte per row at `A3 = A4 + rows * prefix_span`; this is the same A2/A3 layout used by odd-width inline render fixtures.")
+    lines.append("")
+    lines.append(f"- linear copy with `1a 58`: `{' '.join(f'{byte:02x}' for byte in font_linear_payload['dest'])}`, status `{font_linear_payload['status']}`, budget `{font_linear_payload['byte_budget']}`, control hits `{font_linear_payload['control_hits']}`")
+    lines.append(f"- linear continuation after two payload bytes: status `{font_linear_continuation['status']}`, remaining `{font_linear_continuation['remaining']}`, state `{font_linear_continuation['continuation']}`")
+    lines.append(f"- split-plane copy: prefix `{' '.join(f'{byte:02x}' for byte in font_split_payload['prefix'])}`, trailing `{' '.join(f'{byte:02x}' for byte in font_split_payload['trailing'])}`")
+    lines.append(f"- split-plane continuation before trailing byte: status `{font_split_continuation['status']}`, state `{font_split_continuation['continuation']}`")
+    lines.append(f"- split-plane copy with `1a 58`: prefix `{' '.join(f'{byte:02x}' for byte in font_split_control['prefix'])}`, trailing `{' '.join(f'{byte:02x}' for byte in font_split_control['trailing'])}`, control hits `{font_split_control['control_hits']}`")
     lines.append("")
     unflagged_source_report = unflagged_fixture["source"]
     assert isinstance(unflagged_source_report, dict)
@@ -5724,7 +6293,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     unflagged_overflow_source_report = unflagged_overflow_fixture["source"]
     assert isinstance(unflagged_overflow_source_report, dict)
     lines.append(f"- context metric flag set plus left overflow: cursor `(10,20)`, printable offset `20`, source x-offset `-15` -> x `{unflagged_overflow_source_report['x']}`, y `{unflagged_overflow_source_report['y']}`, context slot `{unflagged_overflow_source_report['context_slot']}`, overflow correction `0x{int(unflagged_overflow_fixture['overflow_correction']):08x}`")
-    lines.append("- remaining gap: replace the synthetic inline source/render records with a real parser-produced inline/downloaded source object.")
+    lines.append("- remaining gap: replace the synthetic inline fixed-record memory with records populated by the real font-download parser, then carry those parser-produced page objects into the bridge/render path.")
     lines.append("")
 
     lines.append("## Segmented Text Bucket Producer Fixture")

@@ -1975,16 +1975,22 @@ def built_in_base_map(resources: bytes, context: int, host_char: int) -> dict[st
     }
 
 
-def built_in_base_map_table(resources: bytes, context: int) -> bytes:
+def offset_table_base_map_table(memory: bytes | bytearray, context: int, *, base_bias: int = 0) -> bytes:
     if not (context & 0x40000000):
-        raise AssertionError(f"context 0x{context:08x} does not select the built-in offset-table form")
-    base = (context & 0x00FFFFFF) - 0x80000
-    first_char = u16(resources, base + 0x0E)
-    last_char = u16(resources, base + 0x10)
+        raise AssertionError(f"context 0x{context:08x} does not select the offset-table form")
+    base = (context & 0x00FFFFFF) - int(base_bias)
+    first_char = u16(memory, base + 0x0E)
+    last_char = u16(memory, base + 0x10)
     table = bytearray(0x100)
     for host in range(max(0, first_char), min(0xFF, last_char) + 1):
         table[host] = (host - first_char) & 0xFF
     return bytes(table)
+
+
+def built_in_base_map_table(resources: bytes, context: int) -> bytes:
+    if not (context & 0x40000000):
+        raise AssertionError(f"context 0x{context:08x} does not select the built-in offset-table form")
+    return offset_table_base_map_table(resources, context, base_bias=0x80000)
 
 
 def symbol_set_patch_pairs_via_14fce(data: bytes, symbol_word: int) -> dict[str, object]:
@@ -4588,6 +4594,44 @@ def selected_builtin_snapshot_via_1440c(
     }
 
 
+def offset_table_symbol_via_15890(memory: bytes | bytearray, address: int) -> dict[str, object]:
+    explicit_word = u16(memory, address + 0x22)
+    if explicit_word:
+        return {"word": explicit_word, "reader": "0x15890", "source": "+0x22-word"}
+    symbol_byte = u16(memory, address + 0x3C) & 0xFF
+    return {
+        "word": SYMBOL_BYTE_TO_WORD.get(symbol_byte, 0),
+        "reader": "0x15890",
+        "source": "+0x3c-table",
+        "symbol_byte": symbol_byte,
+    }
+
+
+def selected_offset_table_snapshot_via_1440c(
+    memory: bytes | bytearray,
+    selected: dict[str, int],
+    *,
+    primary_secondary_selector: int,
+    active_symbol_word: int,
+    ram_start: int = 0x780EFA,
+) -> dict[str, object]:
+    longword = int(selected["longword"]) & 0xFFFFFFFF
+    address = longword & 0x00FFFFFF
+    symbol = offset_table_symbol_via_15890(memory, address)
+    return {
+        "helper": 0x01440C,
+        "state_address": 0x783152 if int(primary_secondary_selector) else 0x783148,
+        "byte_0_type": 1,
+        "word_2_symbol": int(symbol["word"]) & 0xFFFF,
+        "word_4_active_symbol": int(active_symbol_word) & 0xFFFF,
+        "byte_6_first_char": memory[address + 0x0F],
+        "byte_7_last_char": memory[address + 0x11],
+        "byte_9_before_ram": 1 if address < int(ram_start) else 0,
+        "reader": symbol["reader"],
+        "reader_source": symbol["source"],
+    }
+
+
 def selected_inline_snapshot_via_1440c(
     memory: bytes,
     selected: dict[str, int],
@@ -4614,6 +4658,89 @@ def selected_inline_snapshot_via_1440c(
     }
 
 
+def dispatch_selected_offset_table_font_via_14c64(
+    data: bytes,
+    memory: bytes | bytearray,
+    selected: dict[str, int],
+    *,
+    primary_secondary_selector: int,
+    active_primary_symbol: int,
+    active_secondary_symbol: int,
+) -> dict[str, object]:
+    slot = 1 if int(primary_secondary_selector) else 0
+    active_word = (int(active_secondary_symbol) if slot else int(active_primary_symbol)) & 0xFFFF
+    longword = int(selected["longword"]) & 0xFFFFFFFF
+    if ((longword >> 30) & 1) == 0:
+        raise AssertionError("dispatch_selected_offset_table_font_via_14c64 requires a bit-30 resource candidate")
+    address = longword & 0x00FFFFFF
+    if address + 0x3E > len(memory):
+        raise AssertionError(f"offset-table selected record 0x{address:06x} is outside the synthetic memory image")
+
+    symbol = offset_table_symbol_via_15890(memory, address)
+    selected_symbol = int(symbol["word"]) & 0xFFFF
+    first_char = u16(memory, address + 0x0E)
+    last_char = u16(memory, address + 0x10)
+    if selected_symbol == 0x0115 and active_word != 0x0115:
+        if active_word == 0x0005:
+            range_end = (last_char - 0x80) & 0xFFFF
+            range_reason = "roman-extension-upper-half"
+        else:
+            range_end = 0x007F
+            range_reason = "roman8-compatible-lower-half"
+    else:
+        range_end = last_char
+        range_reason = "record-range"
+
+    base_map = offset_table_base_map_table(memory, longword)
+    patch = apply_selected_symbol_set_patch_via_14f16(
+        data,
+        base_map,
+        selected_symbol_word=selected_symbol,
+        active_symbol_word=active_word,
+    )
+    patched_table = patch["table"]
+    assert isinstance(patched_table, bytes)
+    selected_flag = 0 if memory[address + 0x0C] == 0 else 1
+    snapshot = selected_offset_table_snapshot_via_1440c(
+        memory,
+        selected,
+        primary_secondary_selector=slot,
+        active_symbol_word=active_word,
+    )
+    return {
+        "helper": 0x014C64,
+        "path": "offset-table-cache-miss",
+        "slot": "secondary" if slot else "primary",
+        "selected_slot_pointer": int(selected["slot_pointer"]),
+        "selected_longword": longword,
+        "record_start": address,
+        "selected_symbol": selected_symbol,
+        "active_symbol": active_word,
+        "range_register": 0x78313A if slot else 0x783134,
+        "range_start": first_char,
+        "range_end": range_end,
+        "range_reason": range_reason,
+        "selected_flag_register": 0x783133 if slot else 0x783132,
+        "selected_flag": selected_flag,
+        "map_address": 0x783032 if slot else 0x782F32,
+        "base_map_samples": {
+            "0x00": base_map[0x00],
+            "0x21": base_map[0x21],
+            "0x7f": base_map[0x7F],
+            "0x80": base_map[0x80],
+        },
+        "patch_kind": patch["kind"],
+        "patched_map_samples": {
+            "0x00": patched_table[0x00],
+            "0x21": patched_table[0x21],
+            "0x7f": patched_table[0x7F],
+            "0x80": patched_table[0x80],
+        },
+        "snapshot": snapshot,
+        "calls": ["0x13a48", "0x15890", "0x14d9c", "0x14f16", "0x1440c"],
+    }
+
+
 def dispatch_selected_builtin_font_via_14c64(
     data: bytes,
     resources: bytes,
@@ -4636,7 +4763,7 @@ def dispatch_selected_builtin_font_via_14c64(
 
     longword = int(selected["longword"]) & 0xFFFFFFFF
     if ((longword >> 30) & 1) == 0:
-        raise AssertionError("dispatch_selected_builtin_font_via_14c64 requires a bit-30 built-in candidate")
+        raise AssertionError("dispatch_selected_builtin_font_via_14c64 requires a built-in offset-table candidate")
     address = longword & 0x00FFFFFF
     record_start = address - 0x080000
     symbol = builtin_candidate_symbol_via_15890(selected)
@@ -16599,6 +16726,99 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     table_payload_map = inline_map_via_14e24(table_payload_memory, 0)
     table_payload_map_table = table_payload_map["table"]
     assert isinstance(table_payload_map_table, bytes)
+    table_payload_resource_install = downloaded_font_object_add_bookkeeping_via_16c14(
+        [{"id": 0, "flags": 0, "payload": 0}],
+        current_id=0x1234,
+        new_payload=0,
+        byte20=table_payload_memory[0x20],
+        byte0c=table_payload_memory[0x0C],
+        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        cursors={
+            "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+        },
+        candidates=[0x00000100, 0x00000200, 0x00000300],
+    )
+    table_payload_resource_candidate = {
+        "slot_pointer": table_payload_resource_install["candidate_insert"]["slot_pointer"],  # type: ignore[index]
+        "longword": table_payload_resource_install["candidate_flags"],
+        "record_start": 0,
+    }
+    table_payload_resource_dispatch = dispatch_selected_offset_table_font_via_14c64(
+        data,
+        table_payload_memory,
+        table_payload_resource_candidate,
+        primary_secondary_selector=0,
+        active_primary_symbol=0x0000,
+        active_secondary_symbol=0x0115,
+    )
+    checks.append(assert_equal("0x16c14-installed 0x1719c payload dispatches as bit-30 resource form", {
+        "install": {
+            "candidate_flags": table_payload_resource_install["candidate_flags"],
+            "candidate_insert": {
+                key: table_payload_resource_install["candidate_insert"][key]  # type: ignore[index]
+                for key in ("status", "branch", "insert_index", "slot_pointer")
+            },
+            "candidates": table_payload_resource_install["candidates"],
+        },
+        "dispatch": {
+            key: table_payload_resource_dispatch[key]
+            for key in (
+                "path",
+                "selected_slot_pointer",
+                "selected_longword",
+                "record_start",
+                "selected_symbol",
+                "range_start",
+                "range_end",
+                "selected_flag",
+                "base_map_samples",
+                "patch_kind",
+                "patched_map_samples",
+                "snapshot",
+                "calls",
+            )
+        },
+    }, {
+        "install": {
+            "candidate_flags": 0x40000000,
+            "candidate_insert": {
+                "status": "inserted",
+                "branch": "class-one",
+                "insert_index": 0,
+                "slot_pointer": FONT_CANDIDATE_LIST_BASE,
+            },
+            "candidates": [0x40000000, 0x00000100, 0x00000200, 0x00000300],
+        },
+        "dispatch": {
+            "path": "offset-table-cache-miss",
+            "selected_slot_pointer": FONT_CANDIDATE_LIST_BASE,
+            "selected_longword": 0x40000000,
+            "record_start": 0,
+            "selected_symbol": 0x1234,
+            "range_start": 0x0000,
+            "range_end": 0x007F,
+            "selected_flag": 0,
+            "base_map_samples": {"0x00": 0x00, "0x21": 0x21, "0x7f": 0x7F, "0x80": 0x00},
+            "patch_kind": "selected-symbol-not-roman8",
+            "patched_map_samples": {"0x00": 0x00, "0x21": 0x21, "0x7f": 0x7F, "0x80": 0x00},
+            "snapshot": {
+                "helper": 0x01440C,
+                "state_address": 0x783148,
+                "byte_0_type": 1,
+                "word_2_symbol": 0x1234,
+                "word_4_active_symbol": 0x0000,
+                "byte_6_first_char": 0,
+                "byte_7_last_char": 0x7F,
+                "byte_9_before_ram": 1,
+                "reader": "0x15890",
+                "reader_source": "+0x22-word",
+            },
+            "calls": ["0x13a48", "0x15890", "0x14d9c", "0x14f16", "0x1440c"],
+        },
+    }))
     table_payload_candidate_insert = font_candidate_object_insert_via_1bc38(
         [0x00000100, 0x00000200, 0x00000300],
         0,
@@ -25240,7 +25460,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " ".join(f"{byte:02x}" for byte in table_payload_bucket["object"]),
         table_payload_source["bitmap"],
     ))
-    lines.append("- payload-backed `0x14c64` dispatch: that same `0x1719c` payload enters the candidate list through `0x1bc38`, whose returned slot `0x%06x` selects it as a bit-30-clear inline record, writes flag `0x%06x = %d`, rebuilds map `0x%06x` through `0x14e24`/`0x14eb6`, maps host `0x21` to glyph `%d`, and snapshots `0x158be` symbol `0x%04x` from `%s`; because the selected symbol is not Roman-8, `0x14f16` leaves the map unchanged." % (
+    lines.append("- installed payload-backed resource dispatch: the same `0x1719c` payload goes through integrated `0x16c14`/`0x1bc38`, setting candidate longword `0x%08x`; `0x14c64` then takes the bit-30 offset-table branch, writes range `0x%04x..0x%04x`, rebuilds map `0x%06x` through `0x14d9c`, maps host `0x21` to glyph `%d`, and snapshots `0x15890` symbol `0x%04x` from `%s`." % (
+        table_payload_resource_install["candidate_flags"],
+        table_payload_resource_dispatch["range_start"],
+        table_payload_resource_dispatch["range_end"],
+        table_payload_resource_dispatch["map_address"],
+        table_payload_resource_dispatch["patched_map_samples"]["0x21"],  # type: ignore[index]
+        table_payload_resource_dispatch["selected_symbol"],
+        table_payload_resource_dispatch["snapshot"]["reader_source"],  # type: ignore[index]
+    ))
+    lines.append("- payload-backed fixed-record isolation dispatch: forcing that same `0x1719c` payload through bit-30-clear slot `0x%06x` selects the `0x14e24`/`0x14eb6` fixed-record form, writes flag `0x%06x = %d`, rebuilds map `0x%06x`, maps host `0x21` to glyph `%d`, and snapshots `0x158be` symbol `0x%04x` from `%s`; this remains a fixed-record control case rather than the `0x16c14` installed resource form." % (
         table_payload_candidate_insert["slot_pointer"],
         table_payload_dispatch["selected_flag_register"],
         table_payload_dispatch["selected_flag"],

@@ -9937,6 +9937,257 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    table_payload_type2_setup = font_resource_setup_type_via_17362(font_validate_table_staging, 2)
+    table_payload_type2_allocated = font_resource_find_allocate_via_17026(
+        table_payload_type2_setup["staging"],
+        int(table_payload_type2_setup["payload_units"]),
+        True,
+        font_validate_table["symbol_bytes"],
+    )
+    table_payload_type2_info = table_payload_type2_allocated["payload"]
+    assert isinstance(table_payload_type2_info, dict)
+    table_payload_type2_bytes = table_payload_type2_info["payload"]
+    assert isinstance(table_payload_type2_bytes, bytes)
+    table_payload_type2_memory = bytearray(table_payload_type2_bytes)
+    table_payload_type2_wide_record = 0x40 + 3 * 8
+    table_payload_type2_wide_bitmap = 0x0120
+    table_payload_type2_memory[table_payload_type2_wide_record:table_payload_type2_wide_record + 8] = bytes.fromhex("11 03 04 00 00 00 01 20")
+    table_payload_type2_memory[table_payload_type2_wide_bitmap:table_payload_type2_wide_bitmap + 0x30] = (b"\xff" * 0x10) + (b"\x00" * 0x10) + (b"\xaa" * 0x10)
+    table_payload_type2_memory[table_payload_type2_wide_bitmap + 0x30:table_payload_type2_wide_bitmap + 0x33] = bytes.fromhex("ff 00 55")
+    table_payload_type2_segmented_record = 0x40 + 4 * 8
+    table_payload_type2_segmented_bitmap = 0x0180
+    table_payload_type2_memory[table_payload_type2_segmented_record:table_payload_type2_segmented_record + 8] = bytes.fromhex("02 81 04 00 00 00 01 80")
+    table_payload_type2_memory[table_payload_type2_segmented_bitmap + 0x100:table_payload_type2_segmented_bitmap + 0x102] = bytes.fromhex("aa 55")
+    table_payload_type2_map = inline_map_via_14e24(table_payload_type2_memory, 0)
+    table_payload_type2_map_table = table_payload_type2_map["table"]
+    assert isinstance(table_payload_type2_map_table, bytes)
+    table_payload_wide_source = build_inline_text_source_object_from_1393a(
+        table_payload_type2_memory,
+        0,
+        table_payload_type2_map_table,
+        0x23,
+        x=0,
+        y=0,
+        context_slot=3,
+    )
+    table_payload_wide_positioned = position_unflagged_text_source_via_d3b2(
+        table_payload_wide_source,
+        bytes(table_payload_wide_source["inline_record"]),
+        cursor_x=10,
+        cursor_y=20,
+        printable_offset=7,
+        context_metric_flag=0,
+        source_x_offset=5,
+    )
+    table_payload_wide_positioned_source = table_payload_wide_positioned["source"]
+    assert isinstance(table_payload_wide_positioned_source, dict)
+    table_payload_wide_bucket = queue_text_source_via_12f2e(table_payload_type2_memory, table_payload_wide_positioned_source)
+    table_payload_wide_rendered = render_compact_text_bucket_object(
+        data,
+        table_payload_type2_memory,
+        (0, 0, 0, 0),
+        table_payload_wide_bucket["object"],
+    )
+    table_payload_segmented_source = build_inline_text_source_object_from_1393a(
+        table_payload_type2_memory,
+        0,
+        table_payload_type2_map_table,
+        0x24,
+        x=0,
+        y=0,
+        context_slot=3,
+    )
+    table_payload_segmented_positioned = position_unflagged_text_source_via_d3b2(
+        table_payload_segmented_source,
+        bytes(table_payload_segmented_source["inline_record"]),
+        cursor_x=10,
+        cursor_y=130,
+        printable_offset=7,
+        context_metric_flag=0,
+        source_x_offset=5,
+    )
+    table_payload_segmented_positioned_source = table_payload_segmented_positioned["source"]
+    assert isinstance(table_payload_segmented_positioned_source, dict)
+    table_payload_segmented_bucket = queue_text_source_via_12f2e(table_payload_type2_memory, table_payload_segmented_positioned_source)
+    table_payload_segmented_object = table_payload_segmented_bucket["objects"][0]["object"]
+    table_payload_segmented_rendered = render_compact_text_bucket_object(
+        data,
+        table_payload_type2_memory,
+        (0, 0, 0, 0),
+        table_payload_segmented_object,
+    )
+    checks.append(assert_equal("0x16fae/0x1719c-backed type-2 inline payload maps constructed compact renderer records", {
+        "allocation": {
+            "status": table_payload_type2_allocated["status"],
+            "allocation_size": table_payload_type2_allocated["allocation_size"],
+            "payload_units": table_payload_type2_setup["payload_units"],
+            "byte0c": table_payload_type2_memory[0x0C],
+            "extra_offset": int.from_bytes(table_payload_type2_memory[0x38:0x3C], "big"),
+        },
+        "map": {
+            "host_0x23": table_payload_type2_map_table[0x23],
+            "host_0x24": table_payload_type2_map_table[0x24],
+        },
+        "sources": {
+            "wide": {
+                key: table_payload_wide_source[key]
+                for key in ("host_char", "mapped", "glyph_entry", "glyph_width", "glyph_rows", "inline_record", "valid_record", "bitmap")
+            },
+            "segmented": {
+                key: table_payload_segmented_source[key]
+                for key in ("host_char", "mapped", "glyph_entry", "glyph_width", "glyph_rows", "inline_record", "valid_record", "bitmap")
+            },
+        },
+        "buckets": {
+            "wide": {
+                key: table_payload_wide_bucket[key]
+                for key in ("path", "object", "bucket_index", "selector", "coord", "glyph", "rows", "width")
+            },
+            "segmented": {
+                key: table_payload_segmented_bucket[key]
+                for key in ("path", "object_size", "capacity", "entry_size", "selector", "coord", "glyph", "rows", "width", "objects")
+            },
+        },
+        "render": {
+            "wide": {
+                "selector": table_payload_wide_rendered["selector"],
+                "compact_mode": table_payload_wide_rendered["compact_mode"],
+                "rendered": table_payload_wide_rendered["rendered"],
+                "rows": table_payload_wide_rendered["rows"],
+            },
+            "segmented": {
+                "selector": table_payload_segmented_rendered["selector"],
+                "compact_mode": table_payload_segmented_rendered["compact_mode"],
+                "rendered": table_payload_segmented_rendered["rendered"],
+                "rows": table_payload_segmented_rendered["rows"],
+            },
+        },
+    }, {
+        "allocation": {
+            "status": 1,
+            "allocation_size": 18,
+            "payload_units": 0x100,
+            "byte0c": 2,
+            "extra_offset": 0x044A,
+        },
+        "map": {
+            "host_0x23": 3,
+            "host_0x24": 4,
+        },
+        "sources": {
+            "wide": {
+                "host_char": 0x23,
+                "mapped": 0x03,
+                "glyph_entry": 0x00000058,
+                "glyph_width": 0x11,
+                "glyph_rows": 0x03,
+                "inline_record": bytes.fromhex("11 03 04 00 00 00 01 20"),
+                "valid_record": True,
+                "bitmap": 0x00000120,
+            },
+            "segmented": {
+                "host_char": 0x24,
+                "mapped": 0x04,
+                "glyph_entry": 0x00000060,
+                "glyph_width": 0x02,
+                "glyph_rows": 0x81,
+                "inline_record": bytes.fromhex("02 81 04 00 00 00 01 80"),
+                "valid_record": True,
+                "bitmap": 0x00000180,
+            },
+        },
+        "buckets": {
+            "wide": {
+                "path": "short",
+                "object": bytes.fromhex("00 00 00 00 10 03 00 01 03 66 01"),
+                "bucket_index": 1,
+                "selector": 0x1003,
+                "coord": 0x6601,
+                "glyph": 0x03,
+                "rows": 0x03,
+                "width": 0x11,
+            },
+            "segmented": {
+                "path": "segmented",
+                "object_size": 0x28,
+                "capacity": 0x08,
+                "entry_size": 4,
+                "selector": 0x2003,
+                "coord": 0x6601,
+                "glyph": 0x04,
+                "rows": 0x81,
+                "width": 0x02,
+                "objects": [
+                    {"bucket_index": 8, "segment": 1, "object": bytes.fromhex("00 00 00 00 20 03 00 01 04 01 66 01")},
+                    {"bucket_index": 0, "segment": 0, "object": bytes.fromhex("00 00 00 00 20 03 00 01 04 00 66 01")},
+                ],
+            },
+        },
+        "render": {
+            "wide": {
+                "selector": 0x1003,
+                "compact_mode": 1,
+                "rendered": [{
+                    "glyph": 3,
+                    "coord": 0x6601,
+                    "rows": 3,
+                    "span": 0x11,
+                    "width": 0x88,
+                    "full_chunks": 1,
+                    "remainder": 1,
+                    "full_row_skip": 0,
+                    "remainder_row_skip": 0x10,
+                    "full_chunk_helper": 0x2F27C,
+                    "remainder_helper": u32(data, 0x1F1AC + 1 * 4),
+                    "dest_base": 0xC2,
+                    "x": 22,
+                    "y": 6,
+                    "a001": 0x16,
+                    "source_layout": "inline-trailing-plane",
+                }],
+                "rows": [
+                    "." * 158,
+                    "." * 158,
+                    "." * 158,
+                    "." * 158,
+                    "." * 158,
+                    "." * 158,
+                    "." * 22 + "#" * 136,
+                    "." * 158,
+                    "." * 22 + "#." * 64 + ".#.#.#.#",
+                ],
+            },
+            "segmented": {
+                "selector": 0x2003,
+                "compact_mode": 2,
+                "rendered": [{
+                    "glyph": 4,
+                    "segment": 1,
+                    "coord": 0x6601,
+                    "row_skip": 0x80,
+                    "source_offset": 0x100,
+                    "rows": 1,
+                    "span": 2,
+                    "width": 16,
+                    "dest_base": 0xC2,
+                    "x": 22,
+                    "y": 6,
+                    "a001": 0x16,
+                    "helper": u32(data, 0x1F08E + 2 * 4),
+                }],
+                "rows": [
+                    "." * 38,
+                    "." * 38,
+                    "." * 38,
+                    "." * 38,
+                    "." * 38,
+                    "." * 38,
+                    "." * 22 + "#.#.#.#..#.#.#.#",
+                ],
+            },
+        },
+    }))
+
     inline_source = {
         "context": 0x00000000,
         "host_char": 0x41,
@@ -13999,6 +14250,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " ".join(f"{byte:02x}" for byte in table_payload_bucket["object"]),
         table_payload_source["bitmap"],
     ))
+    lines.append("- type-2 payload-backed inline fixture: `0x17362` setup type `2` allocates payload units `0x%03x` / allocation size `%d`, then fixed records for host `0x23` and `0x24` render through `0x1f0d2` and `0x1f1f0`; the constructed `0x1f264` segmented-wide fixture still needs a decoded larger payload-allocation path before it can move out of selected fixture memory." % (
+        table_payload_type2_setup["payload_units"],
+        table_payload_type2_allocated["allocation_size"],
+    ))
     lines.append("")
     unflagged_source_report = unflagged_fixture["source"]
     assert isinstance(unflagged_source_report, dict)
@@ -14050,7 +14305,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     unflagged_overflow_source_report = unflagged_overflow_fixture["source"]
     assert isinstance(unflagged_overflow_source_report, dict)
     lines.append(f"- context metric flag set plus left overflow: cursor `(10,20)`, printable offset `20`, source x-offset `-15` -> x `{unflagged_overflow_source_report['x']}`, y `{unflagged_overflow_source_report['y']}`, context slot `{unflagged_overflow_source_report['context_slot']}`, overflow correction `0x{int(unflagged_overflow_fixture['overflow_correction']):08x}`")
-    lines.append("- remaining gap: replace the selected and synthetic inline fixed-record memory with records populated by the real font-download parser, then carry those parser-produced page objects into the bridge/render path.")
+    lines.append("- remaining gap: replace the remaining selected-memory `0x1f264` segmented-wide fixed-record case with records populated by the real font-download parser and a decoded larger payload-allocation path, then carry those parser-produced page objects into the bridge/render path.")
     lines.append("")
 
     lines.append("## Segmented Text Bucket Producer Fixture")

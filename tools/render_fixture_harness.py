@@ -3835,6 +3835,81 @@ def apply_fill_rectangle_via_10898(state: dict[str, object], parameter: int | No
     return updated
 
 
+def render_rectangle_command_stream_via_10898(data: bytes, stream: bytes, initial_state: dict[str, object]) -> dict[str, object]:
+    state = dict(initial_state)
+    pos = 0
+    while pos < len(stream):
+        if stream[pos] != 0x1B:
+            raise AssertionError(f"rectangle command stream expected ESC at offset {pos}")
+        start = pos
+        pos += 1
+        if pos + 1 >= len(stream) or stream[pos] != ord("*") or stream[pos + 1] != ord("c"):
+            raise AssertionError(f"rectangle command stream only models ESC *c commands at offset {start}")
+        pos += 2
+        while True:
+            command_start = start if pos == start + 3 else pos
+            if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+                parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            else:
+                parameter = 0
+            if pos >= len(stream):
+                raise AssertionError("rectangle command stream missing final byte")
+            final = stream[pos]
+            pos += 1
+            final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+            sequence = stream[command_start:pos]
+            before_count = len(state.get("events", []))
+
+            if final_upper == ord("A"):
+                state = apply_rectangle_size_dots(state, "width", parameter)
+                handler = 0x010E68
+            elif final_upper == ord("B"):
+                state = apply_rectangle_size_dots(state, "height", parameter)
+                handler = 0x010E22
+            elif final_upper == ord("H"):
+                state = apply_rectangle_size_decipoints(state, "width", parameter)
+                handler = 0x010A40
+            elif final_upper == ord("V"):
+                state = apply_rectangle_size_decipoints(state, "height", parameter)
+                handler = 0x010AE0
+            elif final_upper == ord("G"):
+                state = apply_rectangle_area_fill_id_via_10dce(state, parameter)
+                handler = 0x010DCE
+            elif final_upper == ord("P"):
+                state = apply_fill_rectangle_via_10898(state, parameter)
+                handler = 0x010898
+            else:
+                raise AssertionError(f"unsupported rectangle command ESC *c#{chr(final)} at offset {command_start}")
+
+            events = list(state.get("events", []))
+            for event_index in range(before_count, len(events)):
+                event = dict(events[event_index])
+                event.update({
+                    "sequence": sequence,
+                    "parameter": parameter,
+                    "handler": handler,
+                    "chained": bool(ord("a") <= final <= ord("z")),
+                })
+                events[event_index] = event
+            state["events"] = events
+
+            if not (ord("a") <= final <= ord("z")):
+                break
+
+    page_record = state.get("page_record", {})
+    assert isinstance(page_record, dict)
+    bridged = bridge_page_record_via_1edc6(page_record) if page_record else {"rule_list": []}
+    rendered = render_rule_list_via_1f446(data, bridged) if bridged.get("rule_list") else None
+    return {
+        "stream": stream,
+        "state": state,
+        "events": list(state.get("events", [])),
+        "page_record": page_record,
+        "bridged": bridged,
+        "rendered": rendered,
+    }
+
+
 def render_bridged_compact_bucket_object(data: bytes, resources: bytes, render_record: dict[str, object]) -> dict[str, object]:
     obj = render_record["bucket_root"]
     context_slots = render_record["context_slots"]
@@ -8096,6 +8171,41 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "landscape_pattern_selector": 8,
         "ignored": {"kind": "rectangle-fill-ignored", "parameter": 2, "area_fill_id": 0},
     }))
+    rectangle_stream_black = render_rectangle_command_stream_via_10898(data, b"\x1b*c12a5b0P", rectangle_command_state(
+        cursor_x=pack12(10),
+        cursor_y=pack12(20),
+        page_width=100,
+        page_height=80,
+    ))
+    rectangle_stream_rendered = rectangle_stream_black["rendered"]
+    assert isinstance(rectangle_stream_rendered, dict)
+    checks.append(assert_equal("rectangle command stream queues chained ESC *c rule object", {
+        "stream": rectangle_stream_black["stream"],
+        "events": [
+            {
+                key: event[key]
+                for key in ("kind", "sequence", "parameter", "handler", "chained")
+            }
+            for event in rectangle_stream_black["events"]
+        ],
+        "final": select_keys(rectangle_stream_black["state"], ("width", "height", "fill_selector", "page_roots")),
+        "object": rectangle_stream_black["events"][-1]["object"],
+        "source": rectangle_stream_black["events"][-1]["source"],
+        "bridged": rectangle_stream_black["bridged"]["rule_list"],
+        "tail_rows": rectangle_stream_rendered["rows"][19:],
+    }, {
+        "stream": b"\x1b*c12a5b0P",
+        "events": [
+            {"kind": "rectangle-width-dots", "sequence": b"\x1b*c12a", "parameter": 12, "handler": 0x010E68, "chained": True},
+            {"kind": "rectangle-height-dots", "sequence": b"5b", "parameter": 5, "handler": 0x010E22, "chained": True},
+            {"kind": "rectangle-filled", "sequence": b"0P", "parameter": 0, "handler": 0x010898, "chained": False},
+        ],
+        "final": {"width": pack12(12), "height": pack12(5), "fill_selector": 7, "page_roots": 1},
+        "object": bytes.fromhex("00 00 00 00 01 07 4a 00 00 0c 00 05 00 00"),
+        "source": {"x": 10, "y": 20, "width": 12, "height": 5},
+        "bridged": [bytes.fromhex("00 00 00 00 01 17 4a 00 00 0c 00 05 00 05")],
+        "tail_rows": ["." * 22] + ["." * 10 + "#" * 12] * 5,
+    }))
     checks.append(assert_equal("0x1f446/0x1f596 renders solid black rectangle rule pixels", {
         "rendered": [
             {
@@ -10462,6 +10572,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         rectangle_fill_gray["fill_selector"],
         rectangle_fill_pattern_landscape["fill_selector"],
         " ".join(f"{byte:02x}" for byte in rectangle_fill_black["events"][-1]["object"]),
+    ))
+    lines.append("- chained rectangle stream `%s` queues the same selector-7 rule object through handlers `%s` and renders the same solid pixels after bridge normalization." % (
+        " ".join(f"{byte:02x}" for byte in rectangle_stream_black["stream"]),
+        ", ".join("0x%06x" % event["handler"] for event in rectangle_stream_black["events"]),
     ))
     solid_rule = rectangle_fill_black_rendered["rendered"][0]
     lines.append("- `0x1f446` dispatches that bridged black rule to solid helper `0x%06x`; key `0x%04x` decodes to x `%d`, y `%d`, width `%d`, rows `%d`, and partial mask `0x%04x`." % (

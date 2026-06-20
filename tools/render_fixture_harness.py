@@ -400,6 +400,104 @@ def parser_dispatch_entry_via_11774(data: bytes, mode: int, byte: int, alternate
     }
 
 
+def trace_mixed_text_control_parser_path_via_11774(data: bytes, stream: bytes) -> dict[str, object]:
+    mode = 0
+    pos = 0
+    events: list[dict[str, object]] = []
+
+    def simplified_dispatch(byte: int, offset: int) -> dict[str, object]:
+        nonlocal mode
+        entry = parser_dispatch_entry_via_11774(data, mode, byte)
+        event = {
+            "offset": offset,
+            "byte": byte & 0xFF,
+            "mode_before": entry["mode_before"],
+            "next_mode": entry["next_mode"],
+            "handler": entry["handler"],
+        }
+        mode = int(entry["next_mode"])
+        return event
+
+    while pos < len(stream):
+        byte = stream[pos]
+        if mode == 0 and 0x20 <= byte < 0x7F:
+            events.append({
+                "kind": "printable",
+                "offset": pos,
+                "byte": byte,
+                "mode_before": 0,
+                "branch": 0x11880,
+                "handler": 0x00D04A,
+                "mode_after": 0,
+            })
+            pos += 1
+            continue
+        if byte == 0x1B:
+            start = pos
+            dispatches = [simplified_dispatch(byte, pos)]
+            pos += 1
+            if pos >= len(stream):
+                raise AssertionError("parser path trace expected byte after ESC")
+            if stream[pos] == ord("E"):
+                dispatches.append(simplified_dispatch(stream[pos], pos))
+                pos += 1
+                events.append({
+                    "kind": "command",
+                    "sequence": stream[start:pos],
+                    "dispatches": dispatches,
+                    "handler": dispatches[-1]["handler"],
+                    "mode_after": mode,
+                })
+                continue
+            if pos + 1 >= len(stream):
+                raise AssertionError("parser path trace expected ESC prefix/group bytes")
+            prefix = stream[pos]
+            dispatches.append(simplified_dispatch(prefix, pos))
+            pos += 1
+            group = stream[pos]
+            dispatches.append(simplified_dispatch(group, pos))
+            pos += 1
+            if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+                parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            else:
+                parameter = 0
+            if pos >= len(stream):
+                raise AssertionError("parser path trace missing final byte")
+            final = stream[pos]
+            dispatches.append(simplified_dispatch(final, pos))
+            pos += 1
+            record = bytes([
+                0x81 if parameter < 0 else 0x80,
+                final,
+            ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
+            events.append({
+                "kind": "command",
+                "sequence": stream[start:pos],
+                "prefix": prefix,
+                "group": group,
+                "parameter": parameter,
+                "record": record,
+                "dispatches": dispatches,
+                "handler": dispatches[-1]["handler"],
+                "mode_after": mode,
+            })
+            continue
+        dispatch = simplified_dispatch(byte, pos)
+        pos += 1
+        events.append({
+            "kind": "control",
+            "byte": byte,
+            "dispatch": dispatch,
+            "handler": dispatch["handler"],
+            "mode_after": mode,
+        })
+    return {
+        "stream": stream,
+        "events": events,
+        "final_mode": mode,
+    }
+
+
 def trace_raster_parser_dispatch_via_11774(data: bytes, stream: bytes) -> dict[str, object]:
     mode = 0
     pos = 0
@@ -15733,6 +15831,75 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "rows": expected_mixed_rows,
     }))
+    mixed_publication_parser_trace = {
+        "reset": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1bE"),
+        "ff": trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k2G!\f"),
+    }
+    checks.append(assert_equal("0x11774 parser path routes mixed publication streams", mixed_publication_parser_trace, {
+        "reset": {
+            "stream": b"!\x1bE",
+            "events": [
+                {
+                    "kind": "printable",
+                    "offset": 0,
+                    "byte": 0x21,
+                    "mode_before": 0,
+                    "branch": 0x11880,
+                    "handler": 0x00D04A,
+                    "mode_after": 0,
+                },
+                {
+                    "kind": "command",
+                    "sequence": b"\x1bE",
+                    "dispatches": [
+                        {"offset": 1, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+                        {"offset": 2, "byte": ord("E"), "mode_before": 1, "next_mode": 0, "handler": 0x00CC52},
+                    ],
+                    "handler": 0x00CC52,
+                    "mode_after": 0,
+                },
+            ],
+            "final_mode": 0,
+        },
+        "ff": {
+            "stream": b"\x1b&k2G!\f",
+            "events": [
+                {
+                    "kind": "command",
+                    "sequence": b"\x1b&k2G",
+                    "prefix": ord("&"),
+                    "group": ord("k"),
+                    "parameter": 2,
+                    "record": bytes.fromhex("80 47 00 02 00 00"),
+                    "dispatches": [
+                        {"offset": 0, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+                        {"offset": 1, "byte": ord("&"), "mode_before": 1, "next_mode": 5, "handler": 0x011EC8},
+                        {"offset": 2, "byte": ord("k"), "mode_before": 5, "next_mode": 11, "handler": 0x011EDA},
+                        {"offset": 4, "byte": ord("G"), "mode_before": 11, "next_mode": 0, "handler": 0x00EDF8},
+                    ],
+                    "handler": 0x00EDF8,
+                    "mode_after": 0,
+                },
+                {
+                    "kind": "printable",
+                    "offset": 5,
+                    "byte": 0x21,
+                    "mode_before": 0,
+                    "branch": 0x11880,
+                    "handler": 0x00D04A,
+                    "mode_after": 0,
+                },
+                {
+                    "kind": "control",
+                    "byte": 0x0C,
+                    "dispatch": {"offset": 6, "byte": 0x0C, "mode_before": 0, "next_mode": 0, "handler": 0x00F0F0},
+                    "handler": 0x00F0F0,
+                    "mode_after": 0,
+                },
+            ],
+            "final_mode": 0,
+        },
+    }))
     mixed_reset_stream = render_mixed_printable_control_stream(
         data,
         resources,
@@ -17711,6 +17878,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("")
     lines.append(f"- page-record stream object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_page_record_object)}`")
     lines.append(f"- page-record bridged context slots `[0..1]`: `0x{mixed_page_record_bridged['context_slots'][0]:08x}`, `0x{mixed_page_record_bridged['context_slots'][1]:08x}`")
+    lines.append("")
+    lines.append("A ROM parser trace now anchors the publication streams before the modeled page-record layer: `21 1b 45` routes printable `!` through the mode-0 `0xd04a` branch and `ESC E` through handler `0xcc52`; `1b 26 6b 32 47 21 0c` routes `ESC &k2G` through handler `0xedf8`, printable `!` through `0xd04a`, and FF through handler `0xf0f0`.")
     lines.append("")
     lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now starts without a current page root, marks the first printable as the page-record root allocation point, models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`.")
     lines.append("")

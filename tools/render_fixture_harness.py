@@ -3728,6 +3728,9 @@ def firmware_scanned_builtin_candidates(resources: bytes) -> list[dict[str, int]
                 "builtin_byte_0x26": resources[cursor + 0x26],
                 "builtin_word_0x28": u16(resources, cursor + 0x28),
                 "builtin_byte_0x2a": resources[cursor + 0x2A],
+                "builtin_byte_0x2f": resources[cursor + 0x2F],
+                "builtin_byte_0x30": resources[cursor + 0x30],
+                "builtin_byte_0x31": resources[cursor + 0x31],
                 "initial_flags": firmware_address,
             })
             cursor += length
@@ -3761,6 +3764,9 @@ def builtin_candidate_windows_from_scanned_records(
             "builtin_byte_0x26": int(record.get("builtin_byte_0x26", 0)),
             "builtin_word_0x28": int(record.get("builtin_word_0x28", 0)),
             "builtin_byte_0x2a": int(record.get("builtin_byte_0x2a", 0)),
+            "builtin_byte_0x2f": int(record.get("builtin_byte_0x2f", 0)),
+            "builtin_byte_0x30": int(record.get("builtin_byte_0x30", 0)),
+            "builtin_byte_0x31": int(record.get("builtin_byte_0x31", 0)),
         }
         d4_class = int(record["d4_class"])
         address = int(record["address"]) & 0x00FFFFFF
@@ -4308,6 +4314,142 @@ def filter_active_candidates_by_spacing_pitch_via_153c6(
         "spacing_events": spacing_events,
         "pitch_probe_events": pitch_probe_events,
         "pitch_events": pitch_events,
+    }
+
+
+def resource_class_via_13c06(longword: int, *, ram_start: int = 0x780EFA, ram_end: int = 0x7810B4) -> int:
+    address = int(longword) & 0x00FFFFFF
+    if 0x080000 <= address < 0x0FFFFE:
+        return 1
+    if 0x200000 <= address < 0x5FFFFE:
+        return 2
+    if int(ram_start) <= address < int(ram_end):
+        return 3
+    raise AssertionError(f"0x13c06 resource address outside known windows: 0x{address:06x}")
+
+
+def active_candidate_compare_tuple_via_13c06(candidate: dict[str, int]) -> dict[str, object]:
+    longword = int(candidate["longword"]) & 0xFFFFFFFF
+    if (longword >> 30) & 1:
+        return {
+            "record_kind": "built-in",
+            "helper": 0x01428C,
+            "fields": [
+                builtin_height_via_13bca(
+                    int(candidate.get("builtin_word_0x28", 0)),
+                    int(candidate.get("builtin_byte_0x2a", 0)),
+                ),
+                int(candidate.get("builtin_byte_0x2f", 0)) & 0xFF,
+                s8(int(candidate.get("builtin_byte_0x30", 0))),
+                int(candidate.get("builtin_byte_0x31", 0)) & 0xFF,
+            ],
+        }
+    return {
+        "record_kind": "inline",
+        "helper": 0x013FC6,
+        "fields": [
+            int(candidate.get("inline_word_0x20", 0)) & 0xFFFF,
+            int(candidate.get("inline_byte_0x26", 0)) & 0xFF,
+            s8(int(candidate.get("inline_byte_0x27", 0))),
+            int(candidate.get("inline_byte_0x18", 0)) & 0xFF,
+        ],
+    }
+
+
+def compare_active_candidates_via_13c06(
+    candidate: dict[str, int],
+    current: dict[str, int],
+) -> dict[str, object]:
+    candidate_longword = int(candidate["longword"]) & 0xFFFFFFFF
+    current_longword = int(current["longword"]) & 0xFFFFFFFF
+    candidate_class = resource_class_via_13c06(candidate_longword)
+    current_class = resource_class_via_13c06(current_longword)
+    candidate_record_id = None
+    current_record_id = None
+
+    if candidate_class == 3 and current_class == 3:
+        candidate_record_id = int(candidate.get("downloaded_record_id", 0))
+        current_record_id = int(current.get("downloaded_record_id", 0))
+        if candidate_record_id < current_record_id:
+            candidate_class += 1
+        else:
+            current_class += 1
+
+    if candidate_class < current_class:
+        result = -1
+        reason = "resource-class"
+    elif candidate_class > current_class:
+        result = 1
+        reason = "resource-class"
+    else:
+        candidate_tuple = active_candidate_compare_tuple_via_13c06(candidate)
+        current_tuple = active_candidate_compare_tuple_via_13c06(current)
+        candidate_fields = list(candidate_tuple["fields"])  # type: ignore[arg-type]
+        current_fields = list(current_tuple["fields"])  # type: ignore[arg-type]
+        if candidate_fields < current_fields:
+            result = -1
+        elif candidate_fields > current_fields:
+            result = 1
+        else:
+            result = 0
+        reason = "field-tuple"
+
+    return {
+        "helper": 0x013C06,
+        "candidate_slot_pointer": int(candidate["slot_pointer"]),
+        "current_slot_pointer": int(current["slot_pointer"]),
+        "candidate_record_start": int(candidate.get("record_start", -1)),
+        "current_record_start": int(current.get("record_start", -1)),
+        "candidate_class": candidate_class,
+        "current_class": current_class,
+        "candidate_record_id": candidate_record_id,
+        "current_record_id": current_record_id,
+        "candidate_tuple": active_candidate_compare_tuple_via_13c06(candidate),
+        "current_tuple": active_candidate_compare_tuple_via_13c06(current),
+        "result": result,
+        "reason": reason,
+    }
+
+
+def choose_active_candidate_via_14398(activation: dict[str, object]) -> dict[str, object]:
+    entries = [dict(entry) for entry in activation["entries"]]  # type: ignore[index]
+    active = [
+        entry
+        for entry in entries
+        if int(entry["longword"]) & 0x80000000
+    ]
+    if not active:
+        return {
+            "helper": 0x014398,
+            "selected_slot_pointer_7828a8": 0,
+            "selected_longword": 0,
+            "selected_record_start": None,
+            "events": [{"helper": 0x014398, "error": (0xE7, 0x36), "reason": "no-active-candidates"}],
+        }
+
+    current = active[0]
+    events: list[dict[str, object]] = [{
+        "helper": 0x014398,
+        "action": "seed",
+        "slot_pointer": int(current["slot_pointer"]),
+        "record_start": int(current.get("record_start", -1)),
+        "longword": int(current["longword"]) & 0xFFFFFFFF,
+    }]
+    for candidate in active[1:]:
+        comparison = compare_active_candidates_via_13c06(candidate, current)
+        replace = int(comparison["result"]) == 1
+        event = dict(comparison)
+        event["action"] = "replace" if replace else "keep"
+        events.append(event)
+        if replace:
+            current = candidate
+
+    return {
+        "helper": 0x014398,
+        "selected_slot_pointer_7828a8": int(current["slot_pointer"]),
+        "selected_longword": int(current["longword"]) & 0xFFFFFFFF,
+        "selected_record_start": int(current.get("record_start", -1)),
+        "events": events,
     }
 
 
@@ -12650,6 +12792,66 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "survivor_slot_pointers": [0x782330, 0x782340, 0x782350],
             "survivor_record_starts": [0x01A984, 0x0240F0, 0x02E122],
             "last_prune": {"helper": 0x0156DE, "pass": "prune", "index": 11, "slot_pointer": 0x782350, "record_start": 0x02E122, "candidate_word": 0x000E, "requested_word": 0x000E, "normalized_flag": 0, "before": 0xC00AE122, "after": 0xC00AE122, "matched": True},
+        },
+    }))
+    class_zero_symbol_survivor_slots = set(filtered_class_zero_primary["survivor_slot_pointers"])
+    class_zero_symbol_survivor_activation = {
+        "entries": [
+            {
+                **dict(entry),
+                "longword": (
+                    int(entry["longword"]) | 0x80000000
+                    if int(entry["slot_pointer"]) in class_zero_symbol_survivor_slots
+                    else int(entry["longword"]) & 0x7FFFFFFF
+                ),
+            }
+            for entry in activated_class_zero["entries"]  # type: ignore[index]
+        ],
+    }
+    chosen_class_zero_primary = choose_active_candidate_via_14398(class_zero_symbol_survivor_activation)
+    checks.append(assert_equal("0x14398 chooses concrete active built-in candidate", {
+        "selected_slot_pointer_7828a8": chosen_class_zero_primary["selected_slot_pointer_7828a8"],
+        "selected_longword": chosen_class_zero_primary["selected_longword"],
+        "selected_record_start": chosen_class_zero_primary["selected_record_start"],
+        "seed": chosen_class_zero_primary["events"][0],
+        "first_compare": select_keys(chosen_class_zero_primary["events"][1], (
+            "candidate_slot_pointer", "current_slot_pointer", "candidate_record_start", "current_record_start",
+            "candidate_class", "current_class", "candidate_tuple", "current_tuple", "result", "reason", "action",
+        )),
+        "second_compare": select_keys(chosen_class_zero_primary["events"][2], (
+            "candidate_slot_pointer", "current_slot_pointer", "candidate_record_start", "current_record_start",
+            "candidate_class", "current_class", "candidate_tuple", "current_tuple", "result", "reason", "action",
+        )),
+    }, {
+        "selected_slot_pointer_7828a8": 0x782364,
+        "selected_longword": 0xC0089FB0,
+        "selected_record_start": 0x009FB0,
+        "seed": {"helper": 0x014398, "action": "seed", "slot_pointer": 0x782354, "record_start": 0x00004C, "longword": 0xC008004C},
+        "first_compare": {
+            "candidate_slot_pointer": 0x782364,
+            "current_slot_pointer": 0x782354,
+            "candidate_record_start": 0x009FB0,
+            "current_record_start": 0x00004C,
+            "candidate_class": 1,
+            "current_class": 1,
+            "candidate_tuple": {"record_kind": "built-in", "helper": 0x01428C, "fields": [0x04B0, 0, 3, 3]},
+            "current_tuple": {"record_kind": "built-in", "helper": 0x01428C, "fields": [0x04B0, 0, 0, 3]},
+            "result": 1,
+            "reason": "field-tuple",
+            "action": "replace",
+        },
+        "second_compare": {
+            "candidate_slot_pointer": 0x782374,
+            "current_slot_pointer": 0x782364,
+            "candidate_record_start": 0x0142E4,
+            "current_record_start": 0x009FB0,
+            "candidate_class": 1,
+            "current_class": 1,
+            "candidate_tuple": {"record_kind": "built-in", "helper": 0x01428C, "fields": [0x0352, 0, 0, 0]},
+            "current_tuple": {"record_kind": "built-in", "helper": 0x01428C, "fields": [0x04B0, 0, 3, 3]},
+            "result": -1,
+            "reason": "field-tuple",
+            "action": "keep",
         },
     }))
     height_filter_range = filter_active_candidates_by_height_via_1519a(
@@ -23353,6 +23555,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ", ".join("0x%06x" % int(start) for start in filtered_class_zero_primary["survivor_record_starts"]),
         filtered_class_one_secondary_fallback["active_word"],
         ", ".join("0x%06x" % int(slot) for slot in filtered_class_one_secondary_fallback["survivor_slot_pointers"]),
+    ))
+    lines.append("- active candidate chooser: `0x14398` seeds the first active slot and calls `0x13c06` for each later active slot; resource class is compared first, then same-class built-ins use `0x1428c` to compare decoded height, byte `+0x2f`, signed byte `+0x30`, and byte `+0x31`. For class-zero Roman-8 survivors, this selects slot `0x%06x` / record `0x%06x` because tuple `%s` beats the first survivor and the later 16.66-pitch survivor." % (
+        chosen_class_zero_primary["selected_slot_pointer_7828a8"],
+        chosen_class_zero_primary["selected_record_start"],
+        chosen_class_zero_primary["events"][1]["candidate_tuple"]["fields"],  # type: ignore[index]
     ))
     lines.append("- height filter: `0x1519a` reads primary/secondary requested height from `0x782ef2`/`0x782f02`, keeps active candidates in requested +/- `0x19` when possible, otherwise uses `0x1533e` to select nearest lower/upper heights; class-zero requested `0x04b0` keeps `%d` slots `%s`, while requested `0x0384` falls back to nearest height `0x%04x` and keeps `%d` slots `%s`." % (
         height_filter_range["active_count_7827b8"],

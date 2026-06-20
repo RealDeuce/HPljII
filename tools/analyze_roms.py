@@ -34,6 +34,11 @@ def require_artifacts() -> None:
         raise FileNotFoundError(f"Missing generated ROM artifacts: {names}. Run tools/generate_rom_artifacts.py first.")
 
 
+def s8(value: int) -> int:
+    value &= 0xFF
+    return value - 0x100 if value & 0x80 else value
+
+
 def extract_strings(data: bytes, min_len: int = 4) -> list[tuple[int, str]]:
     out: list[tuple[int, str]] = []
     start: int | None = None
@@ -462,6 +467,39 @@ def font_record_report(data: bytes) -> str:
     lines.append("- `0x156de` concrete symbol filtering: the built-in class-zero window starts with record `+0x22` words %s, and class-one starts with %s; a primary `0x0115` filter therefore keeps the three Roman-8 entries in the active window, moves `0x78287c` to the first survivor, and reduces `0x7827b8` from 12 to 3." % (
         " / ".join(f"`0x{word:04x}`" for word in class_zero_symbols[:4]),
         " / ".join(f"`0x{word:04x}`" for word in class_one_symbols[:4]),
+    ))
+    class_zero_records = [
+        record
+        for record in header_records
+        if int(record["class_byte"]) == 0
+    ]
+    roman8_survivors = [
+        (index, record)
+        for index, record in enumerate(class_zero_records)
+        if int(record["symbol_word_0x22"]) == 0x0115
+    ]
+    roman8_tuples = [
+        (
+            index,
+            record,
+            (
+                int(record["height_13bca"]),
+                data[int(record["record_start"]) + 0x2F],
+                s8(data[int(record["record_start"]) + 0x30]),
+                data[int(record["record_start"]) + 0x31],
+            ),
+        )
+        for index, record in roman8_survivors
+    ]
+    selected_index, selected_record, selected_tuple = max(roman8_tuples, key=lambda item: item[2])
+    selected_slot = int(cursors["0x7827ac"]) + selected_index * 4
+    lines.append("- `0x14398` concrete active chooser: `0x13c06` ranks resource class first, then same-class built-ins use `0x1428c` to compare decoded height, byte `+0x2f`, signed byte `+0x30`, and byte `+0x31`. The class-zero Roman-8 survivor tuples are %s, so the chooser writes selected slot `0x%06x` / record `0x%06x` to `0x7828a8`." % (
+        " / ".join(
+            "`0x%06x:%s`" % (int(record["record_start"]), list(fields))
+            for _index, record, fields in roman8_tuples
+        ),
+        selected_slot,
+        int(selected_record["record_start"]),
     ))
     class_zero_heights = [
         int(record["height_13bca"])

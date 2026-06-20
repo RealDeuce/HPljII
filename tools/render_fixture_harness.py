@@ -3364,13 +3364,13 @@ def rectangle_rule_key_via_134d6(source: dict[str, int], vertical_offset: int = 
     }
 
 
-def queue_rectangle_rule_via_13386(page_record: dict[str, object], source: dict[str, int], *, vertical_offset: int = 0, band_byte: int = 0) -> dict[str, object]:
+def queue_rectangle_rule_via_13386(page_record: dict[str, object], source: dict[str, int], *, vertical_offset: int = 0, band_byte: int | None = None) -> dict[str, object]:
     rule_list = page_record.setdefault("rule_list", [])
     if not isinstance(rule_list, list):
         raise AssertionError("page record rule_list must be a list")
     computed = rectangle_rule_key_via_134d6(source, vertical_offset)
     obj = bytearray(0x0E)
-    obj[4] = band_byte & 0xFF
+    obj[4] = (int(computed["bucket_index"]) if band_byte is None else int(band_byte)) & 0xFF
     obj[5] = int(source.get("flags", 0)) & 0xFF
     obj[6:8] = int(computed["key"]).to_bytes(2, "big")
     obj[8:10] = (int(source["width"]) & 0xFFFF).to_bytes(2, "big")
@@ -3401,13 +3401,13 @@ def fixed_rule_key_via_137a2(source: dict[str, int], vertical_offset: int = 0) -
     }
 
 
-def queue_fixed_rule_via_136d2(page_record: dict[str, object], source: dict[str, int], *, vertical_offset: int = 0, band_byte: int = 0) -> dict[str, object]:
+def queue_fixed_rule_via_136d2(page_record: dict[str, object], source: dict[str, int], *, vertical_offset: int = 0, band_byte: int | None = None) -> dict[str, object]:
     fixed_list = page_record.setdefault("fixed_list", [])
     if not isinstance(fixed_list, list):
         raise AssertionError("page record fixed_list must be a list")
     computed = fixed_rule_key_via_137a2(source, vertical_offset)
     obj = bytearray(0x0E)
-    obj[4] = band_byte & 0xFF
+    obj[4] = (int(computed["bucket_index"]) if band_byte is None else int(band_byte)) & 0xFF
     obj[5] = int(computed["mode"]) & 0xFF
     obj[6:8] = int(computed["key"]).to_bytes(2, "big")
     obj[8:10] = (int(source["extent"]) & 0xFFFF).to_bytes(2, "big")
@@ -3417,6 +3417,120 @@ def queue_fixed_rule_via_136d2(page_record: dict[str, object], source: dict[str,
         "computed": computed,
         "object": bytes(obj),
         "list_length": len(fixed_list),
+    }
+
+
+def decode_rule_key(key: int, bucket_delta: int = 0) -> dict[str, int]:
+    return {
+        "x": ((int(key) & 0x00FF) << 4) | ((int(key) >> 8) & 0x0F),
+        "y": int(bucket_delta) * 16 + ((int(key) >> 12) & 0x0F),
+        "row_low": (int(key) >> 12) & 0x0F,
+        "subbyte": (int(key) >> 8) & 0x0F,
+        "byte_pair_offset": (int(key) & 0x00FF) * 2,
+    }
+
+
+def render_solid_rule_object_via_1f596(data: bytes, obj: bytes | bytearray, band_word: int = 0, dest_stride: int = 0x20, band_rows: int = 80) -> dict[str, object]:
+    node = bytearray(obj)
+    selector = node[5] & 0x0F
+    if selector != 7:
+        raise AssertionError("0x1f596 fixture only renders solid selector 7")
+    key = u16(node, 6)
+    width = u16(node, 8)
+    remaining = int.from_bytes(node[0x0C:0x0E], "big", signed=True)
+    bucket_delta = (node[4] - int(band_word)) & 0xFF
+    bridged_current_band = bool(node[5] & 0x10)
+    if remaining <= 0:
+        rows_to_draw = 0
+        available_rows = 0
+    elif bridged_current_band:
+        node[5] &= ~0x10
+        available_rows = 0x50 - ((key >> 12) & 0x0F) - 0x10 * bucket_delta
+        rows_to_draw = min(remaining, max(available_rows, 0))
+        node[0x0C:0x0E] = ((remaining - available_rows) & 0xFFFF).to_bytes(2, "big")
+    else:
+        key &= 0x0FFF
+        bucket_delta = 0
+        available_rows = 0x50 - ((key >> 12) & 0x0F)
+        rows_to_draw = min(remaining, max(available_rows, 0))
+        node[0x0C:0x0E] = ((remaining - available_rows) & 0xFFFF).to_bytes(2, "big")
+
+    decoded = decode_rule_key(key, bucket_delta)
+    dest = bytearray(band_rows * dest_stride)
+    if rows_to_draw:
+        span = (width + 15) // 16 * 2
+        source = bytearray(rows_to_draw * span)
+        full_words = width >> 4
+        partial_bits = width & 0x0F
+        partial_mask = u16(data, 0x308BE + partial_bits * 2) if partial_bits else 0
+        for row in range(rows_to_draw):
+            pos = row * span
+            for _ in range(full_words):
+                source[pos:pos + 2] = b"\xff\xff"
+                pos += 2
+            if partial_bits:
+                source[pos:pos + 2] = partial_mask.to_bytes(2, "big")
+        write_bitmap_bits(dest, dest_stride, bytes(source), rows_to_draw, span, int(decoded["x"]), int(decoded["y"]))
+    else:
+        full_words = width >> 4
+        partial_bits = width & 0x0F
+        partial_mask = u16(data, 0x308BE + partial_bits * 2) if partial_bits else 0
+
+    max_bottom = min(band_rows, int(decoded["y"]) + rows_to_draw)
+    max_width = int(decoded["x"]) + width
+    return {
+        "selector": selector,
+        "helper": 0x1F596,
+        "key": key,
+        "bucket_delta": bucket_delta,
+        "decoded": decoded,
+        "width": width,
+        "remaining_before": remaining,
+        "available_rows": available_rows,
+        "rows_drawn": rows_to_draw,
+        "full_words": full_words,
+        "partial_bits": partial_bits,
+        "partial_mask": partial_mask,
+        "mutated_object": bytes(node),
+        "rows": bitmap_bytes_to_rows(dest, max_bottom, max_width, dest_stride),
+    }
+
+
+def render_rule_list_via_1f446(data: bytes, render_record: dict[str, object], band_word: int = 0, dest_stride: int = 0x20, band_rows: int = 80) -> dict[str, object]:
+    if band_word % 5:
+        return {"band_word": band_word, "rendered": [], "rows": []}
+    rendered: list[dict[str, object]] = []
+    dest = bytearray(band_rows * dest_stride)
+    max_bottom = 0
+    max_width = 0
+    for raw in render_record.get("rule_list", []):
+        obj = bytes(raw)
+        if obj[4] > band_word + 4:
+            break
+        if int.from_bytes(obj[0x0C:0x0E], "big", signed=True) <= 0:
+            continue
+        selector = obj[5] & 0x0F
+        if selector != 7:
+            raise AssertionError("0x1f446 fixture currently renders only solid selector 7")
+        item = render_solid_rule_object_via_1f596(data, obj, band_word=band_word, dest_stride=dest_stride, band_rows=band_rows)
+        rendered.append(item)
+        decoded = item["decoded"]
+        assert isinstance(decoded, dict)
+        rows_drawn = int(item["rows_drawn"])
+        width = int(item["width"])
+        if rows_drawn:
+            span = (width + 15) // 16 * 2
+            source = bytearray(rows_drawn * span)
+            for y in range(rows_drawn):
+                for bit in range(width):
+                    source[y * span + bit // 8] |= 0x80 >> (bit & 7)
+            write_bitmap_bits(dest, dest_stride, bytes(source), rows_drawn, span, int(decoded["x"]), int(decoded["y"]))
+            max_bottom = max(max_bottom, int(decoded["y"]) + rows_drawn)
+            max_width = max(max_width, int(decoded["x"]) + width)
+    return {
+        "band_word": band_word,
+        "rendered": rendered,
+        "rows": bitmap_bytes_to_rows(dest, max_bottom, max_width, dest_stride),
     }
 
 
@@ -7831,11 +7945,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         height=pack12(5),
         area_fill_id=0,
     ), 2)
+    rectangle_fill_black_bridged = bridge_page_record_via_1edc6(rectangle_fill_black["page_record"])
+    rectangle_fill_black_rendered = render_rule_list_via_1f446(data, rectangle_fill_black_bridged)
     checks.append(assert_equal("0x10898 ESC *c#P maps fill selectors and queues rule object", {
         "black": {
             "selector": rectangle_fill_black["fill_selector"],
             "object": rectangle_fill_black["events"][-1]["object"],
-            "bridged": bridge_page_record_via_1edc6(rectangle_fill_black["page_record"])["rule_list"],
+            "bridged": rectangle_fill_black_bridged["rule_list"],
         },
         "gray_selector": rectangle_fill_gray["fill_selector"],
         "landscape_pattern_selector": rectangle_fill_pattern_landscape["fill_selector"],
@@ -7843,12 +7959,39 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     }, {
         "black": {
             "selector": 7,
-            "object": bytes.fromhex("00 00 00 00 00 07 4a 00 00 0c 00 05 00 00"),
-            "bridged": [bytes.fromhex("00 00 00 00 00 17 4a 00 00 0c 00 05 00 05")],
+            "object": bytes.fromhex("00 00 00 00 01 07 4a 00 00 0c 00 05 00 00"),
+            "bridged": [bytes.fromhex("00 00 00 00 01 17 4a 00 00 0c 00 05 00 05")],
         },
         "gray_selector": 4,
         "landscape_pattern_selector": 8,
         "ignored": {"kind": "rectangle-fill-ignored", "parameter": 2, "area_fill_id": 0},
+    }))
+    checks.append(assert_equal("0x1f446/0x1f596 renders solid black rectangle rule pixels", {
+        "rendered": [
+            {
+                key: entry[key]
+                for key in ("selector", "helper", "key", "bucket_delta", "decoded", "width", "remaining_before", "available_rows", "rows_drawn", "full_words", "partial_bits", "partial_mask", "mutated_object")
+            }
+            for entry in rectangle_fill_black_rendered["rendered"]
+        ],
+        "tail_rows": rectangle_fill_black_rendered["rows"][19:],
+    }, {
+        "rendered": [{
+            "selector": 7,
+            "helper": 0x1F596,
+            "key": 0x4A00,
+            "bucket_delta": 1,
+            "decoded": {"x": 10, "y": 20, "row_low": 4, "subbyte": 10, "byte_pair_offset": 0},
+            "width": 12,
+            "remaining_before": 5,
+            "available_rows": 60,
+            "rows_drawn": 5,
+            "full_words": 0,
+            "partial_bits": 12,
+            "partial_mask": 0xFFF0,
+            "mutated_object": bytes.fromhex("00 00 00 00 01 07 4a 00 00 0c 00 05 ff c9"),
+        }],
+        "tail_rows": ["." * 22] + ["." * 10 + "#" * 12] * 5,
     }))
     rectangle_fill_clipped = apply_fill_rectangle_via_10898(rectangle_command_state(
         width=pack12(10),
@@ -9771,7 +9914,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append(f"- normalized `+0x24`/render `+0x1c` rule-list node: `{' '.join(f'{byte:02x}' for byte in bridged_page_record['rule_list'][0])}`")
     lines.append(f"- normalized `+0x28`/render `+0x20` fixed-list node: `{' '.join(f'{byte:02x}' for byte in bridged_page_record['fixed_list'][0])}`")
-    lines.append("- producer-shaped rectangle/rule fixtures: `0x13386`/`0x133aa` stores key `0x%04x`, width `0x%04x`, and height `0x%04x` before bridge byte `+5` becomes `0x%02x`; `0x137a2`/`0x136d2` stores key `0x%04x` and extent `0x%04x` before bridge byte `+5` becomes `0x%02x`." % (
+    lines.append("- producer-shaped rectangle/rule fixtures: `0x13386`/`0x133aa` stores bucket byte `0x%02x`, key `0x%04x`, width `0x%04x`, and height `0x%04x` before bridge byte `+5` becomes `0x%02x`; `0x137a2`/`0x136d2` stores key `0x%04x` and extent `0x%04x` before bridge byte `+5` becomes `0x%02x`." % (
+        rule_bridged["rule_list"][0][4],
         rule_result["computed"]["key"],
         0x0012,
         0x0034,
@@ -9790,6 +9934,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         rectangle_fill_pattern_landscape["fill_selector"],
         " ".join(f"{byte:02x}" for byte in rectangle_fill_black["events"][-1]["object"]),
     ))
+    solid_rule = rectangle_fill_black_rendered["rendered"][0]
+    lines.append("- `0x1f446` dispatches that bridged black rule to solid helper `0x%06x`; key `0x%04x` decodes to x `%d`, y `%d`, width `%d`, rows `%d`, and partial mask `0x%04x`." % (
+        solid_rule["helper"],
+        solid_rule["key"],
+        solid_rule["decoded"]["x"],
+        solid_rule["decoded"]["y"],
+        solid_rule["width"],
+        solid_rule["rows_drawn"],
+        solid_rule["partial_mask"],
+    ))
+    lines.append("- rendered black-rule visible rows:")
+    lines.extend(f"`{row}`" for row in rectangle_fill_black_rendered["rows"][19:])
     lines.append("- `0x10b80` clipping fixture starts at x `-3` with width `10`, queues x `0` width `7`, and emits object `%s`." % (
         " ".join(f"{byte:02x}" for byte in rectangle_fill_clipped["events"][-1]["object"]),
     ))

@@ -878,6 +878,51 @@ def execute_macro_data_chain_via_e418(state: dict[str, object], index: int, mode
     return frame
 
 
+def replay_macro_frame_payload_via_a904(frame: dict[str, object], outer_byte: int | None = None) -> dict[str, object]:
+    payload = bytes(frame.get("payload", b""))
+    byte_count = int(frame.get("byte_count", len(payload)))
+    if byte_count != len(payload):
+        raise AssertionError("macro data-chain frame byte count must match payload length in fixture")
+
+    state = host_byte_fetch_state(data_chain=list(payload), direct_mode=0)
+    fetches: list[dict[str, object]] = []
+    replayed = bytearray()
+    for _ in range(byte_count):
+        fetch = host_byte_fetch_via_a904(state)
+        fetches.append({
+            "d7": fetch["d7"],
+            "source": fetch["source"],
+            "events": fetch["events"],
+        })
+        if fetch["source"] != "data-chain":
+            raise AssertionError("macro data-chain replay expected payload byte source")
+        replayed.append(int(fetch["d7"]) & 0xFF)
+        state = fetch["state"]
+        assert isinstance(state, dict)
+
+    outer_fetch = None
+    if outer_byte is not None:
+        outer_state = dict(state)
+        outer_state["data_chain_end_marker"] = True
+        outer_state["lifo2"] = [outer_byte & 0xFF]
+        outer = host_byte_fetch_via_a904(outer_state)
+        outer_fetch = {
+            "d7": outer["d7"],
+            "source": outer["source"],
+            "events": outer["events"],
+        }
+        state = outer["state"]
+        assert isinstance(state, dict)
+
+    return {
+        "frame": frame,
+        "stream": bytes(replayed),
+        "fetches": fetches,
+        "outer_fetch": outer_fetch,
+        "state": state,
+    }
+
+
 def apply_macro_control_via_dd08(state: dict[str, object], parameter: int, final_byte: int = 0x58) -> dict[str, object]:
     updated = dict(state)
     updated["records"] = [dict(record) for record in state["records"]]
@@ -7199,36 +7244,23 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "active_chain_frames": [{"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"}],
     }))
     macro_frame_payload = macro_stream_execute["state"]["data_chain_frames"][0]["payload"]
-    macro_fetch_state = host_byte_fetch_state(data_chain=list(macro_frame_payload), direct_mode=0)
-    macro_fetch_first = host_byte_fetch_via_a904(macro_fetch_state)
-    macro_fetch_second = host_byte_fetch_via_a904(macro_fetch_first["state"])
-    macro_fetch_after_payload_state = dict(macro_fetch_second["state"])
-    macro_fetch_after_payload_state["data_chain_end_marker"] = True
-    macro_fetch_after_payload_state["lifo2"] = [0x5A]
-    macro_fetch_after_payload = host_byte_fetch_via_a904(macro_fetch_after_payload_state)
+    macro_frame_replay = replay_macro_frame_payload_via_a904(
+        macro_stream_execute["state"]["data_chain_frames"][0],
+        outer_byte=0x5A,
+    )
+    macro_frame_replay_state = macro_frame_replay["state"]
+    assert isinstance(macro_frame_replay_state, dict)
+    macro_frame_replay_outer = macro_frame_replay["outer_fetch"]
+    assert isinstance(macro_frame_replay_outer, dict)
     checks.append(assert_equal("macro execute frame payload feeds 0xa904 data-chain bytes", {
         "frame": macro_stream_execute["state"]["data_chain_frames"][0],
-        "fetches": [
-            {
-                "d7": macro_fetch_first["d7"],
-                "source": macro_fetch_first["source"],
-                "events": macro_fetch_first["events"],
-            },
-            {
-                "d7": macro_fetch_second["d7"],
-                "source": macro_fetch_second["source"],
-                "events": macro_fetch_second["events"],
-            },
-            {
-                "d7": macro_fetch_after_payload["d7"],
-                "source": macro_fetch_after_payload["source"],
-                "events": macro_fetch_after_payload["events"],
-            },
-        ],
-        "remaining": macro_fetch_after_payload["state"]["data_chain"],
-        "data_chain_transitions": macro_fetch_after_payload["state"]["data_chain_transitions"],
+        "stream": macro_frame_replay["stream"],
+        "fetches": macro_frame_replay["fetches"] + [macro_frame_replay_outer],
+        "remaining": macro_frame_replay_state["data_chain"],
+        "data_chain_transitions": macro_frame_replay_state["data_chain_transitions"],
     }, {
         "frame": {"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"},
+        "stream": b"!\r",
         "fetches": [
             {"d7": 0x21, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 1}]},
             {"d7": 0x0D, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 0}]},
@@ -7241,7 +7273,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     macro_payload_printable_stream = render_mixed_printable_control_stream(
         data,
         resources,
-        bytes(macro_frame_payload),
+        bytes(macro_frame_replay["stream"]),
         0x440946B4,
         control_fixture_state(
             cursor_x=pack12(10),
@@ -7346,7 +7378,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     macro_payload_page_record_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,
-        bytes(macro_frame_payload),
+        bytes(macro_frame_replay["stream"]),
         0x440946B4,
         control_fixture_state(
             cursor_x=pack12(10),
@@ -7456,6 +7488,28 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "span_flushes": 1,
             "post_flushes": 1,
         },
+    }))
+    checks.append(assert_equal("macro execute data-chain replay feeds page-record stream", {
+        "frame": macro_frame_replay["frame"],
+        "fetch_stream": macro_frame_replay["stream"],
+        "fetches": macro_frame_replay["fetches"],
+        "outer_fetch": macro_frame_replay["outer_fetch"],
+        "page_record_stream": macro_payload_page_record_stream["stream"],
+        "object_prefix": macro_payload_page_record_object[:14],
+        "bucket_root": macro_payload_page_record_bridged["bucket_root"],
+        "rows": macro_payload_page_record_rendered["rows"],
+    }, {
+        "frame": {"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"},
+        "fetch_stream": b"!\r",
+        "fetches": [
+            {"d7": 0x21, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 1}]},
+            {"d7": 0x0D, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 0}]},
+        ],
+        "outer_fetch": {"d7": 0x5A, "source": "second-lifo", "events": [{"kind": "data-chain-transition", "helper": 0xE22C}, {"kind": "second-lifo", "remaining": 0}]},
+        "page_record_stream": b"!\r",
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01 00 00 00"),
+        "bucket_root": macro_payload_page_record_object,
+        "rows": macro_payload_rendered["rows"],
     }))
     macro_band_rule_record: dict[str, object] = {}
     macro_band_rule = queue_rectangle_rule_via_13386(macro_band_rule_record, {
@@ -15455,8 +15509,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         macro_stream_active_chain_guard["events"],
     ))
     lines.append("- macro execute frame payload fetches through `0xa904` as data-chain bytes `%s`, then end-marker helper `0xe22c` resumes outer byte `0x%02x`." % (
-        " ".join(f"0x{int(fetch['d7']):02x}" for fetch in (macro_fetch_first, macro_fetch_second)),
-        int(macro_fetch_after_payload["d7"]),
+        " ".join(f"0x{int(fetch['d7']):02x}" for fetch in macro_frame_replay["fetches"]),
+        int(macro_frame_replay_outer["d7"]),
     ))
     lines.append("- macro execute payload stream `%s` queues glyphs `%s`, coords `%s`, then CR leaves cursor `0x%08x,0x%08x`." % (
         " ".join(f"{byte:02x}" for byte in macro_payload_printable_stream["stream"]),
@@ -15465,7 +15519,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         macro_payload_final_state["cursor_x"],
         macro_payload_final_state["cursor_y"],
     ))
-    lines.append("- macro execute payload page-record object `%s` bridges through `0x1edc6` and renders the same rows." % (
+    lines.append("- macro execute replay stream `%s` feeds the page-record fixture; object `%s` bridges through `0x1edc6` and renders the same rows." % (
+        " ".join(f"{byte:02x}" for byte in macro_frame_replay["stream"]),
         " ".join(f"{byte:02x}" for byte in macro_payload_page_record_object[:14]),
     ))
     lines.append(f"- macro execute payload page-record layer composes with a selector-7 rule and mode-0 raster row; composed row 12: `{macro_band_composed_rows[12]}`")

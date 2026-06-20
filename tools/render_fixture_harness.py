@@ -681,6 +681,17 @@ def font_payload_record_lookup_via_170be(records: list[dict[str, int]], payload:
     }
 
 
+def assign_font_id_via_15a56(parsed_word: int) -> int:
+    value = int(parsed_word)
+    if value < -0x8000 or value > 0x7FFF:
+        value = _signed_word(value & 0xFFFF)
+    if value < 0:
+        value = -value
+    if value == 0x8000:
+        value = 0x7FFF
+    return value & 0xFFFF
+
+
 def mark_current_font_record_via_17108(records: list[dict[str, int]], current_id: int, counters: dict[str, int] | None = None) -> dict[str, object]:
     updated_records = [dict(record) for record in records]
     updated_counters = {
@@ -705,6 +716,95 @@ def mark_current_font_record_via_17108(records: list[dict[str, int]], current_id
         "records": updated_records,
         "counters": updated_counters,
         "changed": changed,
+    }
+
+
+def unmark_current_font_record_via_17150(records: list[dict[str, int]], current_id: int, counters: dict[str, int] | None = None) -> dict[str, object]:
+    updated_records = [dict(record) for record in records]
+    updated_counters = {
+        "0x782782": 0,
+        "0x782786": 0,
+    }
+    if counters:
+        updated_counters.update(counters)
+    scan = font_resource_record_scan_via_172c0(updated_records, current_id)
+    changed = False
+    if scan["status"] == 0:
+        index = scan["index"]
+        assert isinstance(index, int)
+        flags = int(updated_records[index].get("flags", 0))
+        if flags & 0x40:
+            updated_records[index]["flags"] = flags & ~0x40
+            updated_counters["0x782782"] = int(updated_counters["0x782782"]) + 1
+            updated_counters["0x782786"] = int(updated_counters["0x782786"]) - 1
+            changed = True
+    return {
+        "scan": scan,
+        "records": updated_records,
+        "counters": updated_counters,
+        "changed": changed,
+    }
+
+
+def font_control_dispatch_table_via_16df6(data: bytes) -> dict[int | str, int]:
+    table: dict[int | str, int] = {}
+    pos = 0x16DB6
+    while True:
+        target = u32(data, pos)
+        value = u32(data, pos + 4)
+        pos += 8
+        if target == 0:
+            table["default"] = value
+            break
+        table[value] = target
+    return table
+
+
+def font_control_dispatch_via_16df6(
+    data: bytes,
+    records: list[dict[str, int]],
+    *,
+    current_id: int,
+    value: int,
+    parser_mode: int,
+    counters: dict[str, int] | None = None,
+) -> dict[str, object]:
+    table = font_control_dispatch_table_via_16df6(data)
+    target = table.get(value, table["default"])
+    suppressed = parser_mode == 2 and value in (0, 1, 2, 3, 6)
+    if target == 0x16E7E:
+        result = unmark_current_font_record_via_17150(records, current_id, counters)
+        action = "unmark-current"
+    elif target == 0x16E86:
+        result = mark_current_font_record_via_17108(records, current_id, counters)
+        action = "mark-current"
+    elif suppressed:
+        result = {
+            "records": [dict(record) for record in records],
+            "counters": dict(counters) if counters else {"0x782782": 0, "0x782786": 0},
+            "changed": False,
+        }
+        action = "suppressed"
+    elif target == table["default"]:
+        result = {
+            "records": [dict(record) for record in records],
+            "counters": dict(counters) if counters else {"0x782782": 0, "0x782786": 0},
+            "changed": False,
+        }
+        action = "noop"
+    else:
+        result = {
+            "records": [dict(record) for record in records],
+            "counters": dict(counters) if counters else {"0x782782": 0, "0x782786": 0},
+            "changed": False,
+        }
+        action = "dispatch-only"
+    return {
+        "value": value,
+        "target": target,
+        "action": action,
+        "suppressed": suppressed,
+        "result": result,
     }
 
 
@@ -4354,6 +4454,154 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    font_unmark = unmark_current_font_record_via_17150(
+        [
+            {"id": 0x1234, "flags": 0x40, "payload": 0x123456},
+            {"id": 0x5678, "flags": 0x00, "payload": 0x567890},
+        ],
+        0x1234,
+        {"0x782782": 6, "0x782786": 3},
+    )
+    font_unmark_already = unmark_current_font_record_via_17150(
+        [
+            {"id": 0x1234, "flags": 0x00, "payload": 0x123456},
+        ],
+        0x1234,
+        {"0x782782": 6, "0x782786": 3},
+    )
+    checks.append(assert_equal("0x17150-modeled current font record unmark/count transfer", {
+        "unmarked": {
+            "changed": font_unmark["changed"],
+            "record": font_unmark["records"][0],
+            "counters": font_unmark["counters"],
+        },
+        "already": {
+            "changed": font_unmark_already["changed"],
+            "record": font_unmark_already["records"][0],
+            "counters": font_unmark_already["counters"],
+        },
+    }, {
+        "unmarked": {
+            "changed": True,
+            "record": {"id": 0x1234, "flags": 0x00, "payload": 0x123456},
+            "counters": {"0x782782": 7, "0x782786": 2},
+        },
+        "already": {
+            "changed": False,
+            "record": {"id": 0x1234, "flags": 0x00, "payload": 0x123456},
+            "counters": {"0x782782": 6, "0x782786": 3},
+        },
+    }))
+
+    font_id_assign = [assign_font_id_via_15a56(value) for value in (0, 17, -17, -0x8000, 0x8001)]
+    checks.append(assert_equal("0x15a56-modeled assign font ID normalization", font_id_assign, [
+        0,
+        17,
+        17,
+        0x7FFF,
+        0x7FFF,
+    ]))
+
+    font_control_mark = font_control_dispatch_via_16df6(
+        data,
+        [{"id": 0x1234, "flags": 0x00, "payload": 0x123456}],
+        current_id=0x1234,
+        value=5,
+        parser_mode=2,
+        counters={"0x782782": 7, "0x782786": 2},
+    )
+    font_control_unmark = font_control_dispatch_via_16df6(
+        data,
+        [{"id": 0x1234, "flags": 0x40, "payload": 0x123456}],
+        current_id=0x1234,
+        value=4,
+        parser_mode=2,
+        counters={"0x782782": 6, "0x782786": 3},
+    )
+    font_control_suppressed = font_control_dispatch_via_16df6(
+        data,
+        [{"id": 0x1234, "flags": 0x40, "payload": 0x123456}],
+        current_id=0x1234,
+        value=2,
+        parser_mode=2,
+        counters={"0x782782": 6, "0x782786": 3},
+    )
+    font_control_noop = font_control_dispatch_via_16df6(
+        data,
+        [{"id": 0x1234, "flags": 0x40, "payload": 0x123456}],
+        current_id=0x1234,
+        value=99,
+        parser_mode=0,
+        counters={"0x782782": 6, "0x782786": 3},
+    )
+    checks.append(assert_equal("0x16df6-modeled font-control dispatch mark/unmark and suppression", {
+        "mark": {
+            "target": font_control_mark["target"],
+            "action": font_control_mark["action"],
+            "suppressed": font_control_mark["suppressed"],
+            "result": {
+                "changed": font_control_mark["result"]["changed"],
+                "record": font_control_mark["result"]["records"][0],
+                "counters": font_control_mark["result"]["counters"],
+            },
+        },
+        "unmark": {
+            "target": font_control_unmark["target"],
+            "action": font_control_unmark["action"],
+            "suppressed": font_control_unmark["suppressed"],
+            "result": {
+                "changed": font_control_unmark["result"]["changed"],
+                "record": font_control_unmark["result"]["records"][0],
+                "counters": font_control_unmark["result"]["counters"],
+            },
+        },
+        "suppressed": {
+            "target": font_control_suppressed["target"],
+            "action": font_control_suppressed["action"],
+            "suppressed": font_control_suppressed["suppressed"],
+            "record": font_control_suppressed["result"]["records"][0],
+        },
+        "noop": {
+            "target": font_control_noop["target"],
+            "action": font_control_noop["action"],
+            "suppressed": font_control_noop["suppressed"],
+            "record": font_control_noop["result"]["records"][0],
+        },
+    }, {
+        "mark": {
+            "target": 0x16E86,
+            "action": "mark-current",
+            "suppressed": False,
+            "result": {
+                "changed": True,
+                "record": {"id": 0x1234, "flags": 0x40, "payload": 0x123456},
+                "counters": {"0x782782": 6, "0x782786": 3},
+            },
+        },
+        "unmark": {
+            "target": 0x16E7E,
+            "action": "unmark-current",
+            "suppressed": False,
+            "result": {
+                "changed": True,
+                "record": {"id": 0x1234, "flags": 0x00, "payload": 0x123456},
+                "counters": {"0x782782": 7, "0x782786": 2},
+            },
+        },
+        "suppressed": {
+            "target": 0x16E4C,
+            "action": "suppressed",
+            "suppressed": True,
+            "record": {"id": 0x1234, "flags": 0x40, "payload": 0x123456},
+        },
+        "noop": {
+            "target": 0x16EAA,
+            "action": "noop",
+            "suppressed": False,
+            "record": {"id": 0x1234, "flags": 0x40, "payload": 0x123456},
+        },
+    }))
+
     font_validate_ok = font_resource_validate_via_16fae([1] * 32, bytes(range(0x30, 0x50)), 20)
     font_validate_fail = font_resource_validate_via_16fae([1] * 7 + [0] + [1] * 24, bytes(range(0x30, 0x50)), 20)
     font_validate_zero_budget = font_resource_validate_via_16fae([1] * 32, bytes(range(0x30, 0x50)), 0)
@@ -7466,7 +7714,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_no_slot["budget_action"],
     ))
     lines.append("")
-    lines.append("Two adjacent helpers are now modeled as well. `0x170be` masks the candidate payload pointer to 24 bits, scans the same 10-byte current-record table by payload long `+6`, returns the matching signed id word, and stores the record pointer for callers. `0x17108` reuses `0x172c0`; when the current id already has a payload and flag bit 6 at record byte `+2` is clear, it sets that bit, decrements `0x782782`, and increments `0x782786`.")
+    lines.append("The adjacent current-record helpers and the host command edge are now modeled as well. `0x170be` masks the candidate payload pointer to 24 bits, scans the same 10-byte current-record table by payload long `+6`, returns the matching signed id word, and stores the record pointer for callers. `0x17108` reuses `0x172c0`; when the current id already has a payload and flag bit 6 at record byte `+2` is clear, it sets that bit, decrements `0x782782`, and increments `0x782786`. `0x17150` is the inverse count-transfer helper. `0x15a56` normalizes the parsed `ESC *c#D` font id, and the `0x16df6` dispatch table routes `ESC *c#F` values to the mark/unmark helpers while suppressing values `0`, `1`, `2`, `3`, and `6` when mode byte `0x782a92 == 2`.")
     lines.append("")
     lines.append("- payload lookup: payload `0x99123456` masks to `0x%06x`, finds slot `%s`, and returns id `0x%04x`; missing payload returns `%d`." % (
         font_payload_lookup_hit["masked_payload"],
@@ -7479,6 +7727,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- current-record mark: id `0x1234` changes flag byte from `0x00` to `0x%02x`, with counters `%s`; already-marked and missing/free-slot cases leave counters unchanged." % (
         marked_record["flags"],
         font_mark["counters"],
+    ))
+    unmarked_record = font_unmark["records"][0]
+    assert isinstance(unmarked_record, dict)
+    lines.append("- current-record unmark: id `0x1234` changes flag byte from `0x40` to `0x%02x`, with counters `%s`; already-unmarked cases leave counters unchanged." % (
+        unmarked_record["flags"],
+        font_unmark["counters"],
+    ))
+    lines.append("- command-edge fixtures: `0x15a56` maps parsed ids `[0, 17, -17, -32768, 0x8001]` to `%s`; `0x16df6` value `5` targets `0x%06x` and marks, value `4` targets `0x%06x` and unmarks, value `2` targets `0x%06x` but is suppressed in parser mode `2`, and unknown value `99` targets no-op `0x%06x`." % (
+        font_id_assign,
+        font_control_mark["target"],
+        font_control_unmark["target"],
+        font_control_suppressed["target"],
+        font_control_noop["target"],
     ))
     lines.append("")
     lines.append("The allocation/header side of that path is now pinned through `0x16fae`, `0x17362`, `0x17026`, and `0x1719c`. Validator `0x16fae` walks the 32-entry validation table at `0x16eae` in 8-byte steps, fails immediately if a predicate returns anything other than `1`, and on success copies up to 16 symbol bytes from `0x1599c` into `0x782842` while byte budget `0x783140` remains positive, storing the count in `0x782856`. Setup helper `0x17362` writes staged byte `+0x0c` from the requested type and sets `0x7827ba` to `0x80` for type `0` or `0x100` for types `1`/`2`. `0x17026` then computes the allocation size as `((0x7827ba << 2) + 0x9b) >> 6`, writes staged long `+0 = 0x15` and long `+4 = size`, calls the allocator with class `1` and alignment `0x40`, and initializes the allocated record through `0x1719c`.")

@@ -11540,6 +11540,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         continuation={"flag": 1, "payload": 0x654321},
         continuation_object_flags=0,
     )
+    font_descriptor_continuation_dispatch_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        b"\x1b)s0W\x04\x01\xcc",
+        descriptor_budget=3,
+    )
+    font_descriptor_current_dispatch_command = font_descriptor_dispatch_trace["commands"][0]
+    assert isinstance(font_descriptor_current_dispatch_command, dict)
+    font_descriptor_continuation_dispatch_command = font_descriptor_continuation_dispatch_trace["commands"][0]
+    assert isinstance(font_descriptor_continuation_dispatch_command, dict)
     checks.append(assert_equal("0x15d0a-modeled font descriptor route", {
         "current": {
             key: font_descriptor_current[key]
@@ -11661,6 +11670,141 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "handler_meaning": "resume-downloaded-font-resource-object",
             "consumed_prefix": 2,
             "drained_after_route": 1,
+        },
+    }))
+    checks.append(assert_equal("font descriptor stream ties ROM parser dispatch to 0x15d0a routes", {
+        "current_parser": {
+            "dispatch_handlers": [
+                event["handler"]
+                for event in font_descriptor_dispatch_trace["dispatches"]
+            ],
+            "dispatch_modes": [
+                event["next_mode"]
+                for event in font_descriptor_dispatch_trace["dispatches"]
+            ],
+            "sequence": font_descriptor_current_dispatch_command["sequence"],
+            "record": font_descriptor_current_dispatch_command["record"],
+            "font_payload_dispatch": font_descriptor_current_dispatch_command["font_payload_dispatch"],
+            "delayed_snapshot_bytes": font_descriptor_current_dispatch_command["delayed_snapshot_bytes"],
+            "restore_after_final": font_descriptor_current_dispatch_command["restore_after_final"],
+            "restored_record": font_descriptor_current_dispatch_command["restored_record"],
+            "descriptor_offset": font_descriptor_current_dispatch_command["descriptor_offset"],
+            "descriptor": font_descriptor_current_dispatch_command["descriptor"],
+            "descriptor_byte_budget": font_descriptor_current_dispatch_command["descriptor_byte_budget"],
+        },
+        "current_model": {
+            "restore_dispatch": font_descriptor_command_current["restore_dispatch"],
+            "restored_record": font_descriptor_command_current["restored_record"],
+            "descriptor_offset": font_descriptor_command_current["descriptor_offset"],
+            "descriptor": font_descriptor_command_current["descriptor"],
+            "descriptor_byte_budget": font_descriptor_command_current["descriptor_byte_budget"],
+            "route": {
+                key: font_descriptor_command_current["route"][key]
+                for key in ("status", "path", "descriptor_kind", "selector", "selector_status", "target_payload", "object_bit30", "handler", "handler_meaning", "drained_after_route")
+            },
+        },
+        "continuation_parser": {
+            "dispatch_handlers": [
+                event["handler"]
+                for event in font_descriptor_continuation_dispatch_trace["dispatches"]
+            ],
+            "dispatch_modes": [
+                event["next_mode"]
+                for event in font_descriptor_continuation_dispatch_trace["dispatches"]
+            ],
+            "sequence": font_descriptor_continuation_dispatch_command["sequence"],
+            "record": font_descriptor_continuation_dispatch_command["record"],
+            "font_payload_dispatch": font_descriptor_continuation_dispatch_command["font_payload_dispatch"],
+            "delayed_snapshot_bytes": font_descriptor_continuation_dispatch_command["delayed_snapshot_bytes"],
+            "restore_after_final": font_descriptor_continuation_dispatch_command["restore_after_final"],
+            "restored_record": font_descriptor_continuation_dispatch_command["restored_record"],
+            "descriptor_offset": font_descriptor_continuation_dispatch_command["descriptor_offset"],
+            "descriptor": font_descriptor_continuation_dispatch_command["descriptor"],
+            "descriptor_byte_budget": font_descriptor_continuation_dispatch_command["descriptor_byte_budget"],
+        },
+        "continuation_model": {
+            "restore_dispatch": font_descriptor_command_continuation["restore_dispatch"],
+            "restored_record": font_descriptor_command_continuation["restored_record"],
+            "descriptor_offset": font_descriptor_command_continuation["descriptor_offset"],
+            "descriptor": font_descriptor_command_continuation["descriptor"],
+            "descriptor_byte_budget": font_descriptor_command_continuation["descriptor_byte_budget"],
+            "route": {
+                key: font_descriptor_command_continuation["route"][key]
+                for key in ("status", "path", "descriptor_kind", "selector", "selector_status", "target_payload", "object_bit30", "handler", "handler_meaning", "drained_after_route")
+            },
+        },
+    }, {
+        "current_parser": {
+            "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "dispatch_modes": [1, 4, 13, 0],
+            "sequence": b"\x1b)s0W",
+            "record": b"\x80W\x00\x00\x00\x01",
+            "font_payload_dispatch": {
+                "parameter": 0,
+                "handler": 0x15D0A,
+                "meaning": "font-header/download-descriptor payload",
+            },
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x01",
+            "restore_after_final": {"kind": "direct-handler", "handler": 0x15D0A},
+            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "descriptor_offset": 5,
+            "descriptor": bytes.fromhex("04 00 aa bb"),
+            "descriptor_byte_budget": 4,
+        },
+        "current_model": {
+            "restore_dispatch": {"kind": "direct-handler", "handler": 0x15D0A},
+            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "descriptor_offset": 5,
+            "descriptor": bytes.fromhex("04 00 aa bb"),
+            "descriptor_byte_budget": 4,
+            "route": {
+                "status": "route",
+                "path": "current-record",
+                "descriptor_kind": 4,
+                "selector": 0,
+                "selector_status": 1,
+                "target_payload": 0x456789,
+                "object_bit30": 1,
+                "handler": 0x16498,
+                "handler_meaning": "downloaded-character-object",
+                "drained_after_route": 2,
+            },
+        },
+        "continuation_parser": {
+            "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "dispatch_modes": [1, 4, 13, 0],
+            "sequence": b"\x1b)s0W",
+            "record": b"\x80W\x00\x00\x00\x01",
+            "font_payload_dispatch": {
+                "parameter": 0,
+                "handler": 0x15D0A,
+                "meaning": "font-header/download-descriptor payload",
+            },
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x01",
+            "restore_after_final": {"kind": "direct-handler", "handler": 0x15D0A},
+            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "descriptor_offset": 5,
+            "descriptor": bytes.fromhex("04 01 cc"),
+            "descriptor_byte_budget": 3,
+        },
+        "continuation_model": {
+            "restore_dispatch": {"kind": "direct-handler", "handler": 0x15D0A},
+            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "descriptor_offset": 5,
+            "descriptor": bytes.fromhex("04 01 cc"),
+            "descriptor_byte_budget": 3,
+            "route": {
+                "status": "route",
+                "path": "continuation",
+                "descriptor_kind": 4,
+                "selector": 1,
+                "selector_status": 2,
+                "target_payload": 0x654321,
+                "object_bit30": 0,
+                "handler": 0x15C4C,
+                "handler_meaning": "resume-downloaded-font-resource-object",
+                "drained_after_route": 1,
+            },
         },
     }))
 
@@ -18481,6 +18625,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_descriptor_command_current["route"]["handler"],
         " ".join(f"{byte:02x}" for byte in font_descriptor_command_continuation["descriptor"]),
         font_descriptor_command_continuation["descriptor_byte_budget"],
+        font_descriptor_command_continuation["route"]["handler"],
+    ))
+    lines.append("- descriptor parser/route boundary: `ESC )s0W` now ties ROM parser modes `%s`, restored delayed handler `0x%05x`, descriptor offsets `%d/%d`, and descriptor bytes `%s` / `%s` to `0x15d0a` current-record handler `0x%05x` and continuation handler `0x%05x`." % (
+        " -> ".join(str(event["next_mode"]) for event in font_descriptor_dispatch_trace["dispatches"]),
+        font_descriptor_current_dispatch_command["restore_after_final"]["handler"],
+        font_descriptor_current_dispatch_command["descriptor_offset"],
+        font_descriptor_continuation_dispatch_command["descriptor_offset"],
+        " ".join(f"{byte:02x}" for byte in font_descriptor_current_dispatch_command["descriptor"]),
+        " ".join(f"{byte:02x}" for byte in font_descriptor_continuation_dispatch_command["descriptor"]),
+        font_descriptor_command_current["route"]["handler"],
         font_descriptor_command_continuation["route"]["handler"],
     ))
     lines.append("")

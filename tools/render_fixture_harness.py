@@ -8685,9 +8685,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     macro_control_payload_direct_rendered = macro_control_payload_direct["rendered"]
     macro_control_payload_page_rendered = macro_control_payload_page_record["rendered"]
     macro_control_payload_page_object = macro_control_payload_page_record["bucket_object"]
+    macro_control_payload_page_bridged = macro_control_payload_page_record["bridged_record"]
     assert isinstance(macro_control_payload_direct_rendered, dict)
     assert isinstance(macro_control_payload_page_rendered, dict)
     assert isinstance(macro_control_payload_page_object, bytes)
+    assert isinstance(macro_control_payload_page_bridged, dict)
     macro_control_page_events: list[dict[str, object]] = []
     for event in macro_control_payload_page_record["events"]:
         assert isinstance(event, dict)
@@ -8813,6 +8815,55 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "object_size": 0x26,
         "page_rows": macro_control_payload_direct_rendered["rows"],
         "direct_rows": macro_control_payload_direct_rendered["rows"],
+        "final_state": {
+            "cursor_x": pack12(23),
+            "cursor_y": pack12(24),
+            "line_termination": 0x80,
+            "page_roots": 1,
+            "span_flushes": 1,
+            "post_flushes": 1,
+        },
+    }))
+    macro_control_payload_parser_trace = trace_mixed_text_control_parser_path_via_11774(
+        data, bytes(macro_control_replay["stream"])
+    )
+    checks.append(assert_equal("macro mixed-control data-chain parser trace feeds page-record stream", {
+        "frame": macro_control_frame,
+        "fetch_stream": macro_control_replay["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in macro_control_payload_parser_trace["events"]
+        ],
+        "parser_final_mode": macro_control_payload_parser_trace["final_mode"],
+        "page_record_stream": macro_control_payload_page_record["stream"],
+        "root_allocations": macro_control_payload_page_record["final_state"]["page_record_root_allocations"],
+        "page_roots": macro_control_payload_page_record["final_state"]["page_roots"],
+        "bucket_index": macro_control_payload_page_record["bucket_index"],
+        "object_prefix": macro_control_payload_page_object[:14],
+        "bridged_context_slots": macro_control_payload_page_bridged["context_slots"][:2],
+        "rendered_rows": macro_control_payload_page_rendered["rows"],
+        "final_state": select_keys(macro_control_payload_page_record["final_state"], ("cursor_x", "cursor_y", "line_termination", "page_roots", "span_flushes", "post_flushes")),
+    }, {
+        "frame": {"payload": b"\x1b&k1G!\r!", "byte_count": 8, "byte_8": 4, "byte_9": 2, "environment": "execute"},
+        "fetch_stream": b"\x1b&k1G!\r!",
+        "parser_events": [
+            {"kind": "command", "handler": 0x00EDF8, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+            {"kind": "control", "handler": 0x00F02C, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+        ],
+        "parser_final_mode": 0,
+        "page_record_stream": b"\x1b&k1G!\r!",
+        "root_allocations": 1,
+        "page_roots": 1,
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01 20 3b 00"),
+        "bridged_context_slots": (0x440946B4, 0),
+        "rendered_rows": macro_control_payload_direct_rendered["rows"],
         "final_state": {
             "cursor_x": pack12(23),
             "cursor_y": pack12(24),
@@ -18060,6 +18111,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- macro mixed-control payload `%s` replays from the data-chain frame into the same page-record stream as host bytes; object `%s` renders rows matching the direct mixed-stream model." % (
         " ".join(f"{byte:02x}" for byte in macro_control_replay["stream"]),
         " ".join(f"{byte:02x}" for byte in macro_control_payload_page_object[:14]),
+    ))
+    lines.append("- macro mixed-control parser-to-page-record boundary: replayed stream `%s` routes through handlers `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, then feeds the same bridged page-record object and rows." % (
+        " ".join(f"{byte:02x}" for byte in macro_control_replay["stream"]),
     ))
     lines.append(f"- macro execute payload page-record layer composes with a selector-7 rule and mode-0 raster row; composed row 12: `{macro_band_composed_rows[12]}`")
     lines.append(f"- lowercase start payload: `{macro_start['records'][0]['payload']!r}`, stop event `{macro_stop_empty['events'][-1]}`")

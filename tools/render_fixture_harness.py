@@ -6237,6 +6237,29 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "span_updates": 0,
         "line_termination": 0x60,
     }))
+    stream_mode3 = apply_direct_control_stream(control_fixture_state(
+        cursor_x=pack12(42),
+        cursor_y=pack12(20),
+        left_margin=pack12(6),
+        vmi=pack12(1),
+        pending_width=1,
+        right_limit_latch=1,
+        pending_text=1,
+        span_flush_enable=1,
+    ), b"\x1b&k3G\r\n\f")
+    checks.append(assert_equal("control stream ESC &k3G applies CR/LF/FF combined line termination", select_keys(stream_mode3, control_stream_fields), {
+        "cursor_x": pack12(6),
+        "cursor_y": pack12(22),
+        "pending_width": 0,
+        "right_limit_latch": 0,
+        "pending_text": 0xFF,
+        "page_roots": 3,
+        "page_finalizes": 1,
+        "span_flushes": 3,
+        "post_flushes": 3,
+        "span_updates": 0,
+        "line_termination": 0xE0,
+    }))
     stream_ht_bs = apply_direct_control_stream(control_fixture_state(
         cursor_x=pack12(17),
         left_margin=pack12(5),
@@ -11172,7 +11195,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- FF in mode 2 performs the CR-style x reset, flushes pending text, ensures/finalizes a page root marker, and leaves pending text/page-eject state as `0xff`.")
     lines.append("- HT from x `17`, left margin `5`, and HMI `1` advances to the next eight-column stop at x `21`; a second fixture clamps HT to page width `90` when the cursor is already beyond the right limit.")
     lines.append("- BS subtracts HMI, clamps at the left margin when it would cross it, and in alternate metrics mode subtracts the previous-width word instead.")
-    lines.append("- Byte-stream fixtures now drive the same model from actual PCL/control bytes: `ESC &k1G` followed by CR applies CR+LF, `ESC &k2G` followed by LF applies CR+LF, `ESC &k2G` followed by FF performs the CR-style reset plus page-eject finalization, and `ESC &k0G` followed by HT/BS advances to x `21` then backs up to x `20`.")
+    lines.append("- Byte-stream fixtures now drive the same model from actual PCL/control bytes: `ESC &k1G` followed by CR applies CR+LF, `ESC &k2G` followed by LF applies CR+LF, `ESC &k2G` followed by FF performs the CR-style reset plus page-eject finalization, `ESC &k3G` followed by CR/LF/FF applies all three combined line-termination bits in sequence, and `ESC &k0G` followed by HT/BS advances to x `21` then backs up to x `20`.")
     lines.append("- `ESC &f0S` pushes the horizontal cursor and the vertical cursor plus `0x782dbe` onto the cursor stack; `ESC &f1S` pops, restores horizontal position clamped to active extent minus `1/12`, restores vertical position after subtracting `0x782dbe` and clamps to printable extent minus `1/12`, then clears pending/right-limit flags.")
     lines.append("- `ESC &a#C` converts columns through current HMI, `ESC &a#H` converts decipoints as five packed subunits per decipoint, and both commit through horizontal helper `0xf4ca` with absolute/relative handling and page-width clamps.")
     lines.append("- `ESC &a#R` converts rows through current VMI; absolute rows add the firmware's `0.7200` row bias before using the top offset, while relative rows add to the current vertical cursor. `ESC &a#V` uses the same five-subunit decipoint conversion. Both commit through vertical helper `0xf6e2` and clamp to vertical bounds where the handler does so.")

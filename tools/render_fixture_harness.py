@@ -3606,6 +3606,94 @@ def font_cursor_defaults() -> dict[str, int]:
 FONT_CANDIDATE_LIST_BASE = 0x782324
 
 
+def font_candidate_object_insert_via_1bc38(
+    candidates: list[int],
+    payload: int,
+    *,
+    d5_arg: int,
+    payload_byte_0x20: int,
+    payload_byte_0x16: int = 0,
+    counters: dict[str, int] | None = None,
+    cursors: dict[str, int] | None = None,
+    base: int = FONT_CANDIDATE_LIST_BASE,
+) -> dict[str, object]:
+    updated_candidates = [int(candidate) & 0xFFFFFFFF for candidate in candidates]
+    updated_counters = font_counter_defaults()
+    if counters:
+        updated_counters.update(counters)
+    total_count = int(updated_counters.get("0x78278e", len(updated_candidates)))
+    if counters is None or "0x78278e" not in counters:
+        total_count = len(updated_candidates)
+
+    updated_cursors = scanned_font_candidate_cursor_defaults(base)
+    if cursors:
+        updated_cursors.update(cursors)
+
+    if total_count >= 0xC0:
+        return {
+            "status": "error",
+            "error": (0xE7, 0x31),
+            "reason": "candidate-limit",
+            "helper": 0x01BC38,
+            "candidates": updated_candidates,
+            "slot_pointer": None,
+        }
+
+    d4_class = (payload_byte_0x20 if d5_arg else payload_byte_0x16) & 0xFF
+    if d4_class not in (0, 1):
+        return {
+            "status": "error",
+            "error": (0xE7, 0x31),
+            "reason": "invalid-class",
+            "helper": 0x01BC38,
+            "d4_class": d4_class,
+            "candidates": updated_candidates,
+            "slot_pointer": None,
+        }
+
+    while len(updated_candidates) < total_count:
+        updated_candidates.append(0)
+
+    def pointer_index(pointer: int) -> int:
+        return max(0, min((int(pointer) - base) // 4, total_count))
+
+    if d4_class == 1:
+        window_start = pointer_index(int(updated_cursors.get("0x7827a0", base)))
+        window_count = int(updated_counters.get("0x782790", 0))
+        branch = "class-one"
+        preshift_tail_count = int(updated_counters.get("0x782798", 0))
+    else:
+        window_start = pointer_index(int(updated_cursors.get("0x7827ac", base)))
+        window_count = int(updated_counters.get("0x782798", 0))
+        branch = "class-zero"
+        preshift_tail_count = 0
+
+    window_end = max(window_start, min(window_start + window_count, total_count))
+    insert_index = window_end
+    payload_low = payload & 0x00FFFFFF
+    while insert_index > window_start:
+        existing_low = updated_candidates[insert_index - 1] & 0x00FFFFFF
+        if existing_low <= payload_low:
+            break
+        insert_index -= 1
+
+    updated_candidates.insert(insert_index, payload & 0xFFFFFFFF)
+    return {
+        "status": "inserted",
+        "helper": 0x01BC38,
+        "d5_arg": int(d5_arg),
+        "d4_class": d4_class,
+        "branch": branch,
+        "preshift_tail_count": preshift_tail_count,
+        "window_start": window_start,
+        "window_count": window_count,
+        "insert_index": insert_index,
+        "slot_pointer": base + insert_index * 4,
+        "payload": payload & 0xFFFFFFFF,
+        "candidates": updated_candidates,
+    }
+
+
 def scanned_font_candidate_counter_defaults() -> dict[str, int]:
     return {
         "0x78278e": 0,
@@ -15864,6 +15952,65 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "candidate_flags": None,
     }))
 
+    font_candidate_insert_class0 = font_candidate_object_insert_via_1bc38(
+        [0x00300000, 0x00500000],
+        0x00400000,
+        d5_arg=1,
+        payload_byte_0x20=0,
+        counters={"0x78278e": 2, "0x782798": 2},
+        cursors={"0x7827ac": FONT_CANDIDATE_LIST_BASE},
+    )
+    font_candidate_insert_class1 = font_candidate_object_insert_via_1bc38(
+        [0x00210000, 0x00230000, 0x00410000],
+        0x00220000,
+        d5_arg=1,
+        payload_byte_0x20=1,
+        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        cursors={"0x7827a0": FONT_CANDIDATE_LIST_BASE},
+    )
+    font_candidate_insert_invalid = font_candidate_object_insert_via_1bc38(
+        [],
+        0x00600000,
+        d5_arg=1,
+        payload_byte_0x20=2,
+    )
+    checks.append(assert_equal("0x1bc38-modeled candidate insertion branches", {
+        "class0": {
+            key: font_candidate_insert_class0[key]
+            for key in ("status", "branch", "insert_index", "slot_pointer", "candidates")
+        },
+        "class1": {
+            key: font_candidate_insert_class1[key]
+            for key in ("status", "branch", "preshift_tail_count", "insert_index", "slot_pointer", "candidates")
+        },
+        "invalid": {
+            key: font_candidate_insert_invalid[key]
+            for key in ("status", "reason", "error", "slot_pointer")
+        },
+    }, {
+        "class0": {
+            "status": "inserted",
+            "branch": "class-zero",
+            "insert_index": 1,
+            "slot_pointer": FONT_CANDIDATE_LIST_BASE + 4,
+            "candidates": [0x00300000, 0x00400000, 0x00500000],
+        },
+        "class1": {
+            "status": "inserted",
+            "branch": "class-one",
+            "preshift_tail_count": 1,
+            "insert_index": 1,
+            "slot_pointer": FONT_CANDIDATE_LIST_BASE + 4,
+            "candidates": [0x00210000, 0x00220000, 0x00230000, 0x00410000],
+        },
+        "invalid": {
+            "status": "error",
+            "reason": "invalid-class",
+            "error": (0xE7, 0x31),
+            "slot_pointer": None,
+        },
+    }))
+
     font_payload_lookup_hit = font_payload_record_lookup_via_170be(font_records, 0x99123456)
     font_payload_lookup_miss = font_payload_record_lookup_via_170be(font_records, 0x00AAAAAA)
     checks.append(assert_equal("0x170be-modeled font payload record lookup", {
@@ -16357,8 +16504,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     table_payload_map = inline_map_via_14e24(table_payload_memory, 0)
     table_payload_map_table = table_payload_map["table"]
     assert isinstance(table_payload_map_table, bytes)
+    table_payload_candidate_insert = font_candidate_object_insert_via_1bc38(
+        [0x00000100, 0x00000200, 0x00000300],
+        0,
+        d5_arg=1,
+        payload_byte_0x20=table_payload_memory[0x20],
+        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        cursors={"0x7827a0": FONT_CANDIDATE_LIST_BASE},
+    )
     table_payload_dispatch_candidate = {
-        "slot_pointer": 0x782904,
+        "slot_pointer": table_payload_candidate_insert["slot_pointer"],
         "longword": 0,
         "record_start": 0,
         "inline_word_0x14": u16(table_payload_memory, 0x14),
@@ -16373,6 +16528,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         active_secondary_symbol=0x0115,
     )
     checks.append(assert_equal("0x1719c-backed inline payload dispatches through 0x14c64", {
+        "candidate_insert": {
+            key: table_payload_candidate_insert[key]
+            for key in ("status", "branch", "insert_index", "slot_pointer", "candidates")
+        },
         "path": table_payload_dispatch["path"],
         "slot": table_payload_dispatch["slot"],
         "selected_slot_pointer": table_payload_dispatch["selected_slot_pointer"],
@@ -16391,9 +16550,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "snapshot": table_payload_dispatch["snapshot"],
         "calls": table_payload_dispatch["calls"],
     }, {
+        "candidate_insert": {
+            "status": "inserted",
+            "branch": "class-one",
+            "insert_index": 0,
+            "slot_pointer": FONT_CANDIDATE_LIST_BASE,
+            "candidates": [0, 0x00000100, 0x00000200, 0x00000300],
+        },
         "path": "inline-cache-miss",
         "slot": "primary",
-        "selected_slot_pointer": 0x782904,
+        "selected_slot_pointer": FONT_CANDIDATE_LIST_BASE,
         "selected_longword": 0,
         "record_start": 0,
         "selected_symbol": 0x0000,
@@ -24870,6 +25036,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_no_slot["status"],
         font_no_slot["budget_action"],
     ))
+    lines.append("- candidate insertion helper `0x1bc38`: class-zero payload `0x00400000` inserts at slot `0x%06x` between `0x00300000` and `0x00500000`; class-one payload `0x00220000` first accounts for `%d` class-zero tail entry, then inserts at slot `0x%06x`; invalid class byte returns error `%s`." % (
+        font_candidate_insert_class0["slot_pointer"],
+        font_candidate_insert_class1["preshift_tail_count"],
+        font_candidate_insert_class1["slot_pointer"],
+        font_candidate_insert_invalid["error"],
+    ))
     lines.append("")
     lines.append("The adjacent current-record helpers and the host command edge are now modeled as well. `0x170be` masks the candidate payload pointer to 24 bits, scans the same 10-byte current-record table by payload long `+6`, returns the matching signed id word, and stores the record pointer for callers. `0x17108` reuses `0x172c0`; when the current id already has a payload and flag bit 6 at record byte `+2` is clear, it sets that bit, decrements `0x782782`, and increments `0x782786`. `0x17150` is the inverse count-transfer helper. `0x15a56` normalizes the parsed `ESC *c#D` font id, and the `0x16df6` dispatch table routes `ESC *c#F` values to the mark/unmark helpers while suppressing values `0`, `1`, `2`, `3`, and `6` when mode byte `0x782a92 == 2`.")
     lines.append("")
@@ -24967,7 +25139,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " ".join(f"{byte:02x}" for byte in table_payload_bucket["object"]),
         table_payload_source["bitmap"],
     ))
-    lines.append("- payload-backed `0x14c64` dispatch: that same `0x1719c` payload is selected as a bit-30-clear inline record, writes flag `0x%06x = %d`, rebuilds map `0x%06x` through `0x14e24`/`0x14eb6`, maps host `0x21` to glyph `%d`, and snapshots `0x158be` symbol `0x%04x` from `%s`; because the selected symbol is not Roman-8, `0x14f16` leaves the map unchanged." % (
+    lines.append("- payload-backed `0x14c64` dispatch: that same `0x1719c` payload enters the candidate list through `0x1bc38`, whose returned slot `0x%06x` selects it as a bit-30-clear inline record, writes flag `0x%06x = %d`, rebuilds map `0x%06x` through `0x14e24`/`0x14eb6`, maps host `0x21` to glyph `%d`, and snapshots `0x158be` symbol `0x%04x` from `%s`; because the selected symbol is not Roman-8, `0x14f16` leaves the map unchanged." % (
+        table_payload_candidate_insert["slot_pointer"],
         table_payload_dispatch["selected_flag_register"],
         table_payload_dispatch["selected_flag"],
         table_payload_dispatch["map_address"],

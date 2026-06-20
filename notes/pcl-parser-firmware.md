@@ -27,6 +27,8 @@ A second direct input path starts at `0x0000aaa6` when `0x780e40` is nonzero but
 
 Current interpretation: these are host-interface or formatter I/O status/data registers. The ROM evidence proves polling/data/handshake behavior, but the exact physical interface names still need board or manual correlation.
 
+`tools/render_fixture_harness.py` now includes executable `0xa904` source-priority fixtures. They cover the immediate `D7=-1` branch, pending service retry, first LIFO priority, data-chain end-marker retry into the second LIFO source, ring-buffer priority while `0x780e40 == 0`, and both direct hardware paths including direct-mode `0x1a` reporting through `0x9ec0` and mode-2 control-shadow bit 6.
+
 ## ESC Byte Handling
 
 Routine `0x0000da9a` calls the byte fetch routine at `0xa904` and returns the next byte in `D7`, with special handling for escape-like sequences:

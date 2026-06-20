@@ -43,6 +43,175 @@ def require_resources() -> bytes:
     return RESOURCES.read_bytes()
 
 
+def host_byte_fetch_state(**overrides: object) -> dict[str, object]:
+    state: dict[str, object] = {
+        "service_needed": False,
+        "buffer_flags": 0,
+        "force_no_byte": False,
+        "lifo1": [],
+        "data_chain": [],
+        "data_chain_end_marker": False,
+        "lifo2": [],
+        "ring": [],
+        "direct_mode": 0,
+        "direct_mode1_status": 0,
+        "direct_mode1_ack": 0,
+        "direct_mode1_data": [],
+        "direct_mode2_status": 0,
+        "direct_mode2_data": [],
+        "mode1_control_shadow": 0x12,
+        "mode2_control_shadow": 0x20,
+        "handshake_state": 0,
+        "timeout_state": 1,
+        "status_error": 0,
+        "service_calls": 0,
+        "control_1a_reports": 0,
+        "data_chain_transitions": 0,
+    }
+    state.update(overrides)
+    return state
+
+
+def host_byte_fetch_via_a904(initial: dict[str, object]) -> dict[str, object]:
+    state = dict(initial)
+    events: list[dict[str, object]] = []
+
+    for _ in range(8):
+        if bool(state.get("service_needed")):
+            state["service_calls"] = int(state.get("service_calls", 0)) + 1
+            state["service_needed"] = False
+            events.append({"kind": "service-retry", "helper": 0x10CC, "argument": 0x780202})
+            continue
+
+        if int(state.get("buffer_flags", 0)) != 0 and bool(state.get("force_no_byte")):
+            return {
+                "d7": -1,
+                "source": "no-byte",
+                "events": events,
+                "state": state,
+            }
+
+        lifo1 = list(state.get("lifo1", []))
+        if lifo1:
+            value = int(lifo1.pop()) & 0xFF
+            state["lifo1"] = lifo1
+            return {
+                "d7": value,
+                "source": "first-lifo",
+                "events": events + [{"kind": "first-lifo", "remaining": len(lifo1)}],
+                "state": state,
+            }
+
+        if bool(state.get("data_chain_end_marker")):
+            state["data_chain_end_marker"] = False
+            state["data_chain_transitions"] = int(state.get("data_chain_transitions", 0)) + 1
+            events.append({"kind": "data-chain-transition", "helper": 0xE22C})
+            continue
+
+        data_chain = list(state.get("data_chain", []))
+        if data_chain:
+            value = int(data_chain.pop(0)) & 0xFF
+            state["data_chain"] = data_chain
+            return {
+                "d7": value,
+                "source": "data-chain",
+                "events": events + [{"kind": "data-chain-byte", "remaining": len(data_chain)}],
+                "state": state,
+            }
+
+        lifo2 = list(state.get("lifo2", []))
+        if lifo2:
+            value = int(lifo2.pop()) & 0xFF
+            state["lifo2"] = lifo2
+            return {
+                "d7": value,
+                "source": "second-lifo",
+                "events": events + [{"kind": "second-lifo", "remaining": len(lifo2)}],
+                "state": state,
+            }
+
+        ring = list(state.get("ring", []))
+        if int(state.get("direct_mode", 0)) == 0 and ring:
+            value = int(ring.pop(0)) & 0xFF
+            state["ring"] = ring
+            return {
+                "d7": value,
+                "source": "ring",
+                "events": events + [{"kind": "ring-byte", "remaining": len(ring)}],
+                "state": state,
+            }
+
+        if int(state.get("direct_mode", 0)) == 1:
+            if (int(state.get("direct_mode1_status", 0)) & 0x10) == 0:
+                state["service_calls"] = int(state.get("service_calls", 0)) + 1
+                events.append({"kind": "mode1-timeout-retry", "helper": 0xAA88})
+                continue
+            direct_data = list(state.get("direct_mode1_data", []))
+            if not direct_data:
+                return {
+                    "d7": -1,
+                    "source": "mode1-empty",
+                    "events": events,
+                    "state": state,
+                }
+            value = int(direct_data.pop(0)) & 0xFF
+            state["direct_mode1_data"] = direct_data
+            if value == 0x1A:
+                state["control_1a_reports"] = int(state.get("control_1a_reports", 0)) + 1
+                events.append({"kind": "control-1a-report", "helper": 0x9EC0})
+            state["handshake_state"] = 0
+            state["timeout_state"] = 0
+            return {
+                "d7": value,
+                "source": "direct-mode-1",
+                "events": events + [{
+                    "kind": "mode1-handshake",
+                    "status": int(state.get("direct_mode1_status", 0)),
+                    "ack": int(state.get("direct_mode1_ack", 0)),
+                    "control_shadow": int(state.get("mode1_control_shadow", 0)) & 0xFF,
+                }],
+                "state": state,
+            }
+
+        status = int(state.get("direct_mode2_status", 0))
+        if (status & 0x01) == 0:
+            if status & 0x80:
+                state["status_error"] = int(state.get("status_error", 0)) | 0x80
+            if status & 0x40:
+                state["status_error"] = int(state.get("status_error", 0)) | 0x40
+            state["service_calls"] = int(state.get("service_calls", 0)) + 1
+            events.append({"kind": "mode2-status-retry", "status_error": int(state.get("status_error", 0))})
+            continue
+        direct_data = list(state.get("direct_mode2_data", []))
+        if not direct_data:
+            return {
+                "d7": -1,
+                "source": "mode2-empty",
+                "events": events,
+                "state": state,
+            }
+        value = int(direct_data.pop(0)) & 0xFF
+        state["direct_mode2_data"] = direct_data
+        if value == 0x1A:
+            state["control_1a_reports"] = int(state.get("control_1a_reports", 0)) + 1
+            events.append({"kind": "control-1a-report", "helper": 0x9EC0})
+        state["handshake_state"] = 1
+        state["timeout_state"] = 0
+        state["mode2_control_shadow"] = int(state.get("mode2_control_shadow", 0)) | 0x40
+        return {
+            "d7": value,
+            "source": "direct-mode-2",
+            "events": events + [{
+                "kind": "mode2-handshake",
+                "status": status,
+                "control_shadow": int(state.get("mode2_control_shadow", 0)) & 0xFF,
+            }],
+            "state": state,
+        }
+
+    raise AssertionError("host byte fetch model did not converge")
+
+
 def resolve_builtin_glyph(resources: bytes, context: int, glyph_index: int) -> dict[str, int | bytes]:
     if not (context & 0x40000000):
         raise AssertionError(f"context 0x{context:08x} does not select the built-in offset-table form")
@@ -3232,6 +3401,150 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("This report is emitted by `tools/render_fixture_harness.py` after executing ROM-derived fixture models.")
     lines.append("")
     checks: list[str] = []
+
+    host_fetch_no_byte = host_byte_fetch_via_a904(host_byte_fetch_state(
+        buffer_flags=1,
+        force_no_byte=True,
+        lifo1=[0x41],
+        data_chain=[0x42],
+        direct_mode=0,
+        ring=[0x43],
+    ))
+    checks.append(assert_equal("0xa904 no-byte branch returns -1 before buffered sources", {
+        "d7": host_fetch_no_byte["d7"],
+        "source": host_fetch_no_byte["source"],
+        "events": host_fetch_no_byte["events"],
+    }, {
+        "d7": -1,
+        "source": "no-byte",
+        "events": [],
+    }))
+
+    host_fetch_priority = host_byte_fetch_via_a904(host_byte_fetch_state(
+        service_needed=True,
+        lifo1=[0x31, 0x42],
+        data_chain=[0x43],
+        lifo2=[0x44],
+        ring=[0x45],
+        direct_mode=0,
+    ))
+    host_fetch_priority_state = host_fetch_priority["state"]
+    assert isinstance(host_fetch_priority_state, dict)
+    checks.append(assert_equal("0xa904 services pending work then prefers first LIFO source", {
+        "d7": host_fetch_priority["d7"],
+        "source": host_fetch_priority["source"],
+        "events": host_fetch_priority["events"],
+        "remaining_lifo1": host_fetch_priority_state["lifo1"],
+        "service_calls": host_fetch_priority_state["service_calls"],
+    }, {
+        "d7": 0x42,
+        "source": "first-lifo",
+        "events": [
+            {"kind": "service-retry", "helper": 0x10CC, "argument": 0x780202},
+            {"kind": "first-lifo", "remaining": 1},
+        ],
+        "remaining_lifo1": [0x31],
+        "service_calls": 1,
+    }))
+
+    host_fetch_data_chain = host_byte_fetch_via_a904(host_byte_fetch_state(
+        data_chain_end_marker=True,
+        lifo2=[0x55],
+        ring=[0x56],
+        direct_mode=0,
+    ))
+    host_fetch_data_chain_state = host_fetch_data_chain["state"]
+    assert isinstance(host_fetch_data_chain_state, dict)
+    checks.append(assert_equal("0xa904 data-chain end marker retries before second LIFO source", {
+        "d7": host_fetch_data_chain["d7"],
+        "source": host_fetch_data_chain["source"],
+        "events": host_fetch_data_chain["events"],
+        "data_chain_transitions": host_fetch_data_chain_state["data_chain_transitions"],
+    }, {
+        "d7": 0x55,
+        "source": "second-lifo",
+        "events": [
+            {"kind": "data-chain-transition", "helper": 0xE22C},
+            {"kind": "second-lifo", "remaining": 0},
+        ],
+        "data_chain_transitions": 1,
+    }))
+
+    host_fetch_ring = host_byte_fetch_via_a904(host_byte_fetch_state(
+        ring=[0x66, 0x67],
+        direct_mode=0,
+        direct_mode1_status=0x10,
+        direct_mode1_data=[0x68],
+    ))
+    host_fetch_ring_state = host_fetch_ring["state"]
+    assert isinstance(host_fetch_ring_state, dict)
+    checks.append(assert_equal("0xa904 buffered ring source wins before direct hardware in mode 0", {
+        "d7": host_fetch_ring["d7"],
+        "source": host_fetch_ring["source"],
+        "events": host_fetch_ring["events"],
+        "remaining_ring": host_fetch_ring_state["ring"],
+    }, {
+        "d7": 0x66,
+        "source": "ring",
+        "events": [{"kind": "ring-byte", "remaining": 1}],
+        "remaining_ring": [0x67],
+    }))
+
+    host_fetch_mode1 = host_byte_fetch_via_a904(host_byte_fetch_state(
+        direct_mode=1,
+        direct_mode1_status=0x10,
+        direct_mode1_ack=0,
+        direct_mode1_data=[0x1A],
+        mode1_control_shadow=0x34,
+        handshake_state=1,
+        timeout_state=1,
+    ))
+    host_fetch_mode1_state = host_fetch_mode1["state"]
+    assert isinstance(host_fetch_mode1_state, dict)
+    checks.append(assert_equal("0xa904 direct mode 1 preserves 0x1a and clears handshake state", {
+        "d7": host_fetch_mode1["d7"],
+        "source": host_fetch_mode1["source"],
+        "events": host_fetch_mode1["events"],
+        "handshake_state": host_fetch_mode1_state["handshake_state"],
+        "timeout_state": host_fetch_mode1_state["timeout_state"],
+        "control_1a_reports": host_fetch_mode1_state["control_1a_reports"],
+    }, {
+        "d7": 0x1A,
+        "source": "direct-mode-1",
+        "events": [
+            {"kind": "control-1a-report", "helper": 0x9EC0},
+            {"kind": "mode1-handshake", "status": 0x10, "ack": 0, "control_shadow": 0x34},
+        ],
+        "handshake_state": 0,
+        "timeout_state": 0,
+        "control_1a_reports": 1,
+    }))
+
+    host_fetch_mode2 = host_byte_fetch_via_a904(host_byte_fetch_state(
+        direct_mode=2,
+        direct_mode2_status=0x01,
+        direct_mode2_data=[0x7E],
+        mode2_control_shadow=0x20,
+        handshake_state=0,
+        timeout_state=1,
+    ))
+    host_fetch_mode2_state = host_fetch_mode2["state"]
+    assert isinstance(host_fetch_mode2_state, dict)
+    checks.append(assert_equal("0xa904 direct mode 2 reads ready byte and sets control-shadow bit 6", {
+        "d7": host_fetch_mode2["d7"],
+        "source": host_fetch_mode2["source"],
+        "events": host_fetch_mode2["events"],
+        "handshake_state": host_fetch_mode2_state["handshake_state"],
+        "timeout_state": host_fetch_mode2_state["timeout_state"],
+        "mode2_control_shadow": host_fetch_mode2_state["mode2_control_shadow"],
+    }, {
+        "d7": 0x7E,
+        "source": "direct-mode-2",
+        "events": [{"kind": "mode2-handshake", "status": 0x01, "control_shadow": 0x60}],
+        "handshake_state": 1,
+        "timeout_state": 0,
+        "mode2_control_shadow": 0x60,
+    }))
 
     sample = bytes.fromhex("00 01 02 03 04 05 08 0f 10 33 55 aa f0 ff")
     checks.append(assert_equal("mode 0 literal words", expand_mode0(bytes.fromhex("12 34 ab cd 00 ff 55 aa")), [0x1234, 0xABCD, 0x00FF, 0x55AA]))
@@ -7407,6 +7720,30 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "rows": positioned_mode0["rows"],
     }))
+
+    lines.append("## Host Byte Fetch Fixtures")
+    lines.append("")
+    lines.append("These fixtures model the normalized byte-source priority of routine `0xa904` before the main parser or payload readers see `D7`. They are not electrical interface emulation, but they pin the order and state side effects needed by a byte-stream reproduction harness.")
+    lines.append("")
+    lines.append("- `0x780e66 != 0` plus `0x780e3b != 0` returns `D7 = -1` before buffered or direct sources are consumed.")
+    lines.append("- A pending `0x7821cd` service flag runs helper `0x10cc(0x780202)` and retries before the first LIFO source is consumed.")
+    lines.append("- A current data-chain end marker runs helper `0xe22c` and retries, then the second LIFO source can provide the byte.")
+    lines.append("- In buffered mode `0x780e40 == 0`, the ring source wins before direct hardware fallback.")
+    lines.append("- Direct mode `1` returns the `0x8801` byte after `0x8e01.4` is ready, preserves `0x1a` while reporting it through `0x9ec0`, and clears the handshake/timeout state.")
+    lines.append("- Direct mode `2` returns the `0xfffee001` byte when `0xfffee005.0` is ready, sets `0x7828ec`, clears the timeout state, and sets bit 6 in the `0x7828fb` control shadow.")
+    lines.append("")
+    lines.append("| Fixture | Source | D7 | Events |")
+    lines.append("| --- | --- | ---: | --- |")
+    for title, result in (
+        ("no-byte branch", host_fetch_no_byte),
+        ("service + first LIFO", host_fetch_priority),
+        ("data-chain transition + second LIFO", host_fetch_data_chain),
+        ("ring source", host_fetch_ring),
+        ("direct mode 1", host_fetch_mode1),
+        ("direct mode 2", host_fetch_mode2),
+    ):
+        lines.append(f"| {title} | `{result['source']}` | `{int(result['d7']):d}` | `{result['events']}` |")
+    lines.append("")
 
     lines.append("## Built-In Glyph Bitmap Fixtures")
     lines.append("")

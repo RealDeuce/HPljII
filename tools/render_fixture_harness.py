@@ -12,6 +12,8 @@ FIRMWARE = ROOT / "generated" / "roms" / "ic30_ic13.bin"
 RESOURCES = ROOT / "generated" / "roms" / "ic32_ic15.bin"
 ANALYSIS = ROOT / "generated" / "analysis"
 
+ABSTRACT_PAGE_ROOT_PTR = 1
+
 
 def u16(data: bytes, offset: int) -> int:
     return int.from_bytes(data[offset : offset + 2], "big")
@@ -4409,18 +4411,56 @@ def queue_text_source_to_page_record_via_12f2e(resources: bytes, page_record: di
 
 def ensure_page_record_root_for_queue(state: dict[str, int]) -> dict[str, object]:
     current_before = int(state.get("current_page_root", 0))
-    present_before = int(state.get("page_root_present", 0))
-    created = not present_before or current_before == 0
+    pending_782c73_before = int(state.get("page_root_pending_782c73", 0))
+    pending_782c72_before = int(state.get("page_root_pending_782c72", 0))
+    stream_next_free_before = int(state.get("stream_next_free_782a76", 0))
+    created = current_before == 0
     if created:
+        if pending_782c73_before or pending_782c72_before:
+            state["active_record_waits"] = int(state.get("active_record_waits", 0)) + 1
+        state["page_root_pending_782c73"] = 0
+        state["page_root_pending_782c72"] = 0
         state["page_root_present"] = 1
         state["page_root_class"] = 1
-        state["current_page_root"] = 1
+        state["current_page_root"] = ABSTRACT_PAGE_ROOT_PTR
+        state["page_root_byte_4"] = 1
+        state["stream_bytes_remaining_782a70"] = 0
+        state["stream_link_ptr_782a72"] = ABSTRACT_PAGE_ROOT_PTR + 0x20
+        state["page_root_bucket_clear_longwords"] = 0x100
+        state["page_root_transient_782990"] = 0
+        state["page_root_field_10"] = 0xFFFFFFFF
+        state["page_root_word_0e"] = 0
+        state["page_root_flags_14"] = 0
+        state["page_root_chunk_head_20"] = 0
+        state["page_root_rule_head_24"] = 0
+        state["page_root_rule_head_28"] = 0
+        state["page_root_context_slots_cleared"] = 16
+        state["stream_next_free_782a76"] = stream_next_free_before
         state["page_record_root_allocations"] = int(state.get("page_record_root_allocations", 0)) + 1
     return {
         "page_root_created": created,
         "current_page_root_before": current_before,
         "current_page_root_after": int(state.get("current_page_root", 0)),
         "page_record_root_allocations": int(state.get("page_record_root_allocations", 0)),
+        "active_record_waited": bool(created and (pending_782c73_before or pending_782c72_before)),
+        "page_root_pending_782c73_before": pending_782c73_before,
+        "page_root_pending_782c72_before": pending_782c72_before,
+        "page_root_pending_782c73_after": int(state.get("page_root_pending_782c73", pending_782c73_before)),
+        "page_root_pending_782c72_after": int(state.get("page_root_pending_782c72", pending_782c72_before)),
+        "page_root_byte_4": int(state.get("page_root_byte_4", 0)),
+        "stream_bytes_remaining_782a70": int(state.get("stream_bytes_remaining_782a70", 0)),
+        "stream_link_ptr_782a72": int(state.get("stream_link_ptr_782a72", 0)),
+        "stream_next_free_782a76_before": stream_next_free_before,
+        "stream_next_free_782a76_after": int(state.get("stream_next_free_782a76", stream_next_free_before)),
+        "page_root_bucket_clear_longwords": int(state.get("page_root_bucket_clear_longwords", 0)),
+        "page_root_transient_782990": int(state.get("page_root_transient_782990", 0)),
+        "page_root_field_10": int(state.get("page_root_field_10", 0)),
+        "page_root_word_0e": int(state.get("page_root_word_0e", 0)),
+        "page_root_flags_14": int(state.get("page_root_flags_14", 0)),
+        "page_root_chunk_head_20": int(state.get("page_root_chunk_head_20", 0)),
+        "page_root_rule_head_24": int(state.get("page_root_rule_head_24", 0)),
+        "page_root_rule_head_28": int(state.get("page_root_rule_head_28", 0)),
+        "page_root_context_slots_cleared": int(state.get("page_root_context_slots_cleared", 0)),
     }
 
 
@@ -9009,6 +9049,115 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "glyph": 0x20,
         "rows": 22,
         "width": 4,
+    }))
+    page_root_first_state = {
+        "current_page_root": 0,
+        "page_root_present": 0,
+        "page_root_pending_782c73": 1,
+        "page_root_pending_782c72": 1,
+        "active_record_waits": 0,
+        "stream_next_free_782a76": 0x00CAFE00,
+    }
+    page_root_first = ensure_page_record_root_for_queue(page_root_first_state)
+    page_root_existing = ensure_page_record_root_for_queue(page_root_first_state)
+    checks.append(assert_equal("0x10084-modeled page-root allocation side effects", {
+        "first": page_root_first,
+        "state_after_first": select_keys(page_root_first_state, (
+            "current_page_root",
+            "page_root_present",
+            "page_root_class",
+            "active_record_waits",
+            "page_root_pending_782c73",
+            "page_root_pending_782c72",
+            "page_record_root_allocations",
+            "page_root_byte_4",
+            "stream_bytes_remaining_782a70",
+            "stream_link_ptr_782a72",
+            "stream_next_free_782a76",
+            "page_root_bucket_clear_longwords",
+            "page_root_transient_782990",
+            "page_root_field_10",
+            "page_root_word_0e",
+            "page_root_flags_14",
+            "page_root_chunk_head_20",
+            "page_root_rule_head_24",
+            "page_root_rule_head_28",
+            "page_root_context_slots_cleared",
+        )),
+        "existing": page_root_existing,
+    }, {
+        "first": {
+            "page_root_created": True,
+            "current_page_root_before": 0,
+            "current_page_root_after": ABSTRACT_PAGE_ROOT_PTR,
+            "page_record_root_allocations": 1,
+            "active_record_waited": True,
+            "page_root_pending_782c73_before": 1,
+            "page_root_pending_782c72_before": 1,
+            "page_root_pending_782c73_after": 0,
+            "page_root_pending_782c72_after": 0,
+            "page_root_byte_4": 1,
+            "stream_bytes_remaining_782a70": 0,
+            "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+            "stream_next_free_782a76_before": 0x00CAFE00,
+            "stream_next_free_782a76_after": 0x00CAFE00,
+            "page_root_bucket_clear_longwords": 0x100,
+            "page_root_transient_782990": 0,
+            "page_root_field_10": 0xFFFFFFFF,
+            "page_root_word_0e": 0,
+            "page_root_flags_14": 0,
+            "page_root_chunk_head_20": 0,
+            "page_root_rule_head_24": 0,
+            "page_root_rule_head_28": 0,
+            "page_root_context_slots_cleared": 16,
+        },
+        "state_after_first": {
+            "current_page_root": ABSTRACT_PAGE_ROOT_PTR,
+            "page_root_present": 1,
+            "page_root_class": 1,
+            "active_record_waits": 1,
+            "page_root_pending_782c73": 0,
+            "page_root_pending_782c72": 0,
+            "page_record_root_allocations": 1,
+            "page_root_byte_4": 1,
+            "stream_bytes_remaining_782a70": 0,
+            "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+            "stream_next_free_782a76": 0x00CAFE00,
+            "page_root_bucket_clear_longwords": 0x100,
+            "page_root_transient_782990": 0,
+            "page_root_field_10": 0xFFFFFFFF,
+            "page_root_word_0e": 0,
+            "page_root_flags_14": 0,
+            "page_root_chunk_head_20": 0,
+            "page_root_rule_head_24": 0,
+            "page_root_rule_head_28": 0,
+            "page_root_context_slots_cleared": 16,
+        },
+        "existing": {
+            "page_root_created": False,
+            "current_page_root_before": ABSTRACT_PAGE_ROOT_PTR,
+            "current_page_root_after": ABSTRACT_PAGE_ROOT_PTR,
+            "page_record_root_allocations": 1,
+            "active_record_waited": False,
+            "page_root_pending_782c73_before": 0,
+            "page_root_pending_782c72_before": 0,
+            "page_root_pending_782c73_after": 0,
+            "page_root_pending_782c72_after": 0,
+            "page_root_byte_4": 1,
+            "stream_bytes_remaining_782a70": 0,
+            "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+            "stream_next_free_782a76_before": 0x00CAFE00,
+            "stream_next_free_782a76_after": 0x00CAFE00,
+            "page_root_bucket_clear_longwords": 0x100,
+            "page_root_transient_782990": 0,
+            "page_root_field_10": 0xFFFFFFFF,
+            "page_root_word_0e": 0,
+            "page_root_flags_14": 0,
+            "page_root_chunk_head_20": 0,
+            "page_root_rule_head_24": 0,
+            "page_root_rule_head_28": 0,
+            "page_root_context_slots_cleared": 16,
+        },
     }))
     page_record_bucket_fixture: dict[str, object] = {"bucket_array": {}, "context_slots": [0x440946B4]}
     page_record_first = queue_text_source_to_page_record_via_12f2e(resources, page_record_bucket_fixture, text_source)
@@ -15361,7 +15510,24 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## `0x1387c` Page-Record Compact Bucket Allocator Fixture")
     lines.append("")
-    lines.append("This fixture moves the short text bucket one step closer to the real page-root shape. It models `0x1387c`, which indexes the page-root `+0x1c` bucket array by `0x782a7c`, walks the bucket chain looking for the same selector word at object `+4`, reuses that object when count `+6` is below the caller-supplied capacity, or allocates and links a new object at the bucket head when the matching object is full or missing.")
+    lines.append("This fixture moves the short text bucket one step closer to the real page-root shape. It models `0x10084` first-page-root allocation before the `0x1387c` bucket path: a missing current root can run the active-record wait hook, clears pending bytes `0x782c73`/`0x782c72`, marks root byte `+4 = 1`, clears `0x782a70`, stores `0x782a72 = root+0x20`, clears byte `0x782990`, initializes root fields through `0x10110`, and zeros 256 bucket-head longwords through root `+0x1c`. The fixture also pins that `0x782a76` is not seeded by `0x10084`; it remains unchanged until the shared stream allocator creates/uses a chunk.")
+    lines.append("")
+    lines.append("- `0x10084` first allocation: created `%s`, active-record wait `%s`, stream remaining `%d`, link pointer `0x%06x`, next-free pointer unchanged `0x%08x`, bucket clear longwords `%d`." % (
+        page_root_first["page_root_created"],
+        page_root_first["active_record_waited"],
+        page_root_first["stream_bytes_remaining_782a70"],
+        page_root_first["stream_link_ptr_782a72"],
+        page_root_first["stream_next_free_782a76_after"],
+        page_root_first["page_root_bucket_clear_longwords"],
+    ))
+    lines.append("- existing-root `0x10084` call: created `%s`, allocations `%d`, current root `%d -> %d`." % (
+        page_root_existing["page_root_created"],
+        page_root_existing["page_record_root_allocations"],
+        page_root_existing["current_page_root_before"],
+        page_root_existing["current_page_root_after"],
+    ))
+    lines.append("")
+    lines.append("The `0x1387c` model indexes the page-root `+0x1c` bucket array by `0x782a7c`, walks the bucket chain looking for the same selector word at object `+4`, reuses that object when count `+6` is below the caller-supplied capacity, or allocates and links a new object at the bucket head when the matching object is full or missing.")
     lines.append("")
     lines.append("- first allocation: allocated `%s`, bucket `%d`, selector `0x%04x`, count `%d -> %d`, coord `0x%04x`" % (
         page_record_first["allocated"],

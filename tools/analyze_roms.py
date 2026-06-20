@@ -2009,8 +2009,9 @@ def page_root_finalization_report(data: bytes) -> str:
     lines.append("")
     lines.append("- A page-root reproduction must distinguish the no-publication clear path from the active-root publication path: only active roots with byte `+4 == 1` are promoted to state `2` and exposed through `0x780ea6`.")
     lines.append("- The finalizer is not a pure state copy. In the `0x782a92 == 1` case it can restore saved command/data state, re-enter the parser at `0x11774`, and ensure a root again before publication.")
+    lines.append("- The published pool record must preserve the root-header fields written by `0xff1e`: state byte `+4`, environment byte `+7`, status byte `+8`, status bits in `+0x0a`, environment word `+0x0c`, the `+0x16` to `+0x1a` copy, cleared `+0x18`, queue root `+0x1c`, rule/fixed roots `+0x24/+0x28`, and context slots from `+0x2c`.")
     lines.append("- Reset, FF, page-size, orientation, text retry, rectangle/rule queue retry, font-slot/default update, and raster page-boundary paths all share this finalizer; byte-perfect reproduction should therefore compare the same published root shape at this boundary before rendering through `0x1edc6`.")
-    lines.append("- `tools/render_fixture_harness.py` already models valid-root publication, missing-root clear, and mixed printable reset/FF/page-geometry publication. The remaining fidelity gap is to replace those fixture-only source/root objects with roots produced by the full parser and allocator path.")
+    lines.append("- `tools/render_fixture_harness.py` already models valid-root publication, missing-root clear, mixed printable reset/FF/page-geometry publication, and the `0xff1e` header-field copies for default and nonzero status/environment state. The remaining fidelity gap is to replace those fixture-only source/root objects with roots produced by the full parser and allocator path.")
     lines.append("")
     return "\n".join(lines)
 

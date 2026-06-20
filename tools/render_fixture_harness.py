@@ -7948,9 +7948,37 @@ def finalize_page_record_via_ff1e(page_record: dict[str, object], state: dict[st
 
     bucket = compact_bucket_root_from_page_record(page_record)
     context_slots = list(page_record.get("context_slots", []))
+    if len(context_slots) > 16:
+        raise AssertionError("0xff1e published pool record has 16 context slots")
+    padded_context_slots = context_slots + [0] * (16 - len(context_slots))
+    root_word_16 = int(state.get("page_root_word_16", 0))
+    pool_record_fields = {
+        "state_byte_4": 2,
+        "environment_byte_7": int(state.get("page_env_byte_782da6", 0)) & 0xFF,
+        "status_byte_8": 1 if int(state.get("pending_status_780e99", 0)) else 0,
+        "status_byte_0a": (
+            (1 if int(state.get("pending_status_782997", 0)) else 0)
+            | (2 if int(state.get("pending_status_782998", 0)) else 0)
+        ),
+        "environment_word_0c": int(state.get("page_env_word_782da4", 0)) & 0xFFFF,
+        "word_16": root_word_16 & 0xFFFF,
+        "word_18": 0,
+        "word_1a": root_word_16 & 0xFFFF,
+        "bucket_root_1c": bucket["bucket_root"],
+        "rule_list_24": [bytes(node) for node in page_record.get("rule_list", [])],
+        "fixed_list_28": [bytes(node) for node in page_record.get("fixed_list", [])],
+        "context_slots_2c": tuple(padded_context_slots),
+        "published_pointer_780ea6": int(state.get(
+            "page_root_pool_record_ptr",
+            state.get("current_page_root", ABSTRACT_PAGE_ROOT_PTR),
+        )),
+    }
     published_pool_record = {
         "bucket_root": bucket["bucket_root"],
+        "rule_list": list(page_record.get("rule_list", [])),
+        "fixed_list": list(page_record.get("fixed_list", [])),
         "context_slots": context_slots,
+        "pool_record_fields": pool_record_fields,
     }
     return {
         "published": True,
@@ -24228,6 +24256,84 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "rows": positioned_mode0["rows"],
     }))
+    mixed_reset_pool_fields = mixed_reset_published_page_record["pool_record_fields"]
+    assert isinstance(mixed_reset_pool_fields, dict)
+    checks.append(assert_equal("mixed printable/reset publication records 0xff1e pool header defaults", {
+        "state_byte_4": mixed_reset_pool_fields["state_byte_4"],
+        "environment_byte_7": mixed_reset_pool_fields["environment_byte_7"],
+        "status_byte_8": mixed_reset_pool_fields["status_byte_8"],
+        "status_byte_0a": mixed_reset_pool_fields["status_byte_0a"],
+        "environment_word_0c": mixed_reset_pool_fields["environment_word_0c"],
+        "word_16": mixed_reset_pool_fields["word_16"],
+        "word_18": mixed_reset_pool_fields["word_18"],
+        "word_1a": mixed_reset_pool_fields["word_1a"],
+        "published_pointer_780ea6": mixed_reset_pool_fields["published_pointer_780ea6"],
+        "bucket_root_1c": mixed_reset_pool_fields["bucket_root_1c"],
+        "context_slots_2c_prefix": mixed_reset_pool_fields["context_slots_2c"][:2],
+    }, {
+        "state_byte_4": 2,
+        "environment_byte_7": 0,
+        "status_byte_8": 0,
+        "status_byte_0a": 0,
+        "environment_word_0c": 0,
+        "word_16": 0,
+        "word_18": 0,
+        "word_1a": 0,
+        "published_pointer_780ea6": ABSTRACT_PAGE_ROOT_PTR,
+        "bucket_root_1c": mixed_reset_page_record_object,
+        "context_slots_2c_prefix": (0x440946B4, 0),
+    }))
+    status_publication = finalize_page_record_via_ff1e(
+        {
+            "bucket_array": {0: [mixed_reset_page_record_object]},
+            "rule_list": [],
+            "fixed_list": [],
+            "context_slots": [0x440946B4],
+        },
+        {
+            "page_root_present": 1,
+            "page_root_class": 1,
+            "current_page_root": ABSTRACT_PAGE_ROOT_PTR,
+            "pending_status_780e99": 1,
+            "pending_status_782997": 1,
+            "pending_status_782998": 1,
+            "page_env_byte_782da6": 0x5A,
+            "page_env_word_782da4": 0x1234,
+            "page_root_word_16": 0x5678,
+            "page_root_clears": 0,
+        },
+    )
+    status_published_record = status_publication["published_pool_record"]
+    assert isinstance(status_published_record, dict)
+    status_pool_fields = status_published_record["pool_record_fields"]
+    assert isinstance(status_pool_fields, dict)
+    checks.append(assert_equal("0xff1e-modeled publication copies status and environment header fields", {
+        "published": status_publication["published"],
+        "state_byte_4": status_pool_fields["state_byte_4"],
+        "environment_byte_7": status_pool_fields["environment_byte_7"],
+        "status_byte_8": status_pool_fields["status_byte_8"],
+        "status_byte_0a": status_pool_fields["status_byte_0a"],
+        "environment_word_0c": status_pool_fields["environment_word_0c"],
+        "word_16": status_pool_fields["word_16"],
+        "word_18": status_pool_fields["word_18"],
+        "word_1a": status_pool_fields["word_1a"],
+        "published_pointer_780ea6": status_pool_fields["published_pointer_780ea6"],
+        "bucket_root_1c": status_pool_fields["bucket_root_1c"],
+        "context_slots_2c_prefix": status_pool_fields["context_slots_2c"][:2],
+    }, {
+        "published": True,
+        "state_byte_4": 2,
+        "environment_byte_7": 0x5A,
+        "status_byte_8": 1,
+        "status_byte_0a": 3,
+        "environment_word_0c": 0x1234,
+        "word_16": 0x5678,
+        "word_18": 0,
+        "word_1a": 0x5678,
+        "published_pointer_780ea6": ABSTRACT_PAGE_ROOT_PTR,
+        "bucket_root_1c": mixed_reset_page_record_object,
+        "context_slots_2c_prefix": (0x440946B4, 0),
+    }))
     ff_page_record_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,
@@ -26087,6 +26193,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- page-record reset object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_reset_page_record_object)}`")
     lines.append("- page-record reset bridged rows match the pre-reset compact text rows.")
     lines.append(f"- published page-record bucket bytes: `{' '.join(f'{byte:02x}' for byte in mixed_reset_published_page_record['bucket_root'])}`")
+    lines.append("- published page-record `0xff1e` header fields: state byte `+4 = %d`, environment byte `+7 = 0x%02x`, status byte `+8 = %d`, status byte `+0x0a = 0x%02x`, environment word `+0x0c = 0x%04x`, word `+0x18 = 0x%04x`, word `+0x1a = 0x%04x`, and published pointer `0x780ea6 = %d`." % (
+        mixed_reset_pool_fields["state_byte_4"],
+        mixed_reset_pool_fields["environment_byte_7"],
+        mixed_reset_pool_fields["status_byte_8"],
+        mixed_reset_pool_fields["status_byte_0a"],
+        mixed_reset_pool_fields["environment_word_0c"],
+        mixed_reset_pool_fields["word_18"],
+        mixed_reset_pool_fields["word_1a"],
+        mixed_reset_pool_fields["published_pointer_780ea6"],
+    ))
+    lines.append("- synthetic nonzero `0xff1e` header fixture copies pending status bits to `+8/+0x0a`, environment state to `+7/+0x0c`, and root word `+0x16` to `+0x1a` while preserving the bucket root at `+0x1c`.")
     lines.append("- published page-record bridge rows match the pre-reset compact text rows.")
     lines.append("")
     lines.append("A mixed printable/FF page-record stream drives `ESC &k2G`, printable `!`, then FF from no current page root. The printable queue step allocates the page-record root; the FF handler applies the mode-2 CR-style horizontal reset, flushes pending text, finalizes the valid root through modeled `0xff1e`, marks page eject with pending text `0xff`, and publishes the queued compact text bucket before clearing the current root. Bridging the published record through `0x1edc6` renders the same rows as the pre-eject compact text object.")

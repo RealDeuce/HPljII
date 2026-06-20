@@ -17685,6 +17685,171 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_record_root_allocations": 1,
         },
     }))
+    chained_cursor_position_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&a2c+1R!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(20),
+            hmi=line_printer_hmi["hmi"],
+            vmi=pack12(50),
+            active_width=300,
+            right_limit=pack12(300),
+            top_offset=pack12(0),
+            min_y=pack12(0),
+            max_y=pack12(300),
+            pending_text=1,
+            span_flush_enable=1,
+            events=[],
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    chained_cursor_position_page_record_object = chained_cursor_position_page_record_stream["bucket_object"]
+    chained_cursor_position_page_record_rendered = chained_cursor_position_page_record_stream["rendered"]
+    chained_cursor_position_page_record_bridged = chained_cursor_position_page_record_stream["bridged_record"]
+    assert isinstance(chained_cursor_position_page_record_object, bytes)
+    assert isinstance(chained_cursor_position_page_record_rendered, dict)
+    assert isinstance(chained_cursor_position_page_record_bridged, dict)
+    chained_cursor_position_page_record_event_summary: list[dict[str, object]] = []
+    chained_cursor_position_page_record_events = chained_cursor_position_page_record_stream["events"]
+    assert isinstance(chained_cursor_position_page_record_events, list)
+    for event in chained_cursor_position_page_record_events:
+        assert isinstance(event, dict)
+        if event["kind"] == "cursor-position":
+            chained_cursor_position_page_record_event_summary.append({
+                "kind": event["kind"],
+                "sequence": event["sequence"],
+                "record": event["record"],
+                "parameter": event["parameter"],
+                "fraction": event["fraction"],
+                "relative": event["relative"],
+                "handler": event["handler"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "event": event["event"],
+                "chained": event["chained"],
+            })
+        else:
+            page_result = event["page_result"]
+            positioned = event["positioned"]
+            assert isinstance(page_result, dict)
+            assert isinstance(positioned, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            chained_cursor_position_page_record_event_summary.append({
+                "kind": event["kind"],
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": page_result["coord"],
+                "allocated": page_result["allocated"],
+                "count_before": page_result["count_before"],
+                "count_after": page_result["count_after"],
+                "bucket_index": page_result["bucket_index"],
+            })
+    chained_cursor_position_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&a2c+1R!")
+    expected_chained_cursor_position_rows = [
+        "." * 46,
+    ] + [
+        "." * 42 + "####" if row == "####" else "." * 46
+        for row in line_printer_glyph32_rows
+    ]
+    checks.append(assert_equal("chained cursor position parser trace feeds page-record queue", {
+        "stream": chained_cursor_position_page_record_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in chained_cursor_position_parser_trace["events"]
+        ],
+        "parser_final_mode": chained_cursor_position_parser_trace["final_mode"],
+        "events": chained_cursor_position_page_record_event_summary,
+        "root_allocations": chained_cursor_position_page_record_stream["final_state"]["page_record_root_allocations"],
+        "bucket_index": chained_cursor_position_page_record_stream["bucket_index"],
+        "object_prefix": chained_cursor_position_page_record_object[:11],
+        "bridged_context_slots": chained_cursor_position_page_record_bridged["context_slots"][:2],
+        "rendered_rows": chained_cursor_position_page_record_rendered["rows"],
+        "final_state": select_keys(chained_cursor_position_page_record_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "pending_text",
+            "page_roots",
+            "span_updates",
+            "span_flushes",
+            "post_flushes",
+            "page_record_root_allocations",
+        )),
+    }, {
+        "stream": b"\x1b&a2c+1R!",
+        "parser_events": [
+            {"kind": "command", "handler": 0x00F39E, "mode_after": 12},
+            {"kind": "control", "handler": None, "mode_after": 12},
+            {"kind": "control", "handler": None, "mode_after": 12},
+            {"kind": "control", "handler": 0x00F560, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+        ],
+        "parser_final_mode": 0,
+        "events": [
+            {
+                "kind": "cursor-position",
+                "sequence": b"\x1b&a2c",
+                "record": bytes.fromhex("80 63 00 02 00 00"),
+                "parameter": 2,
+                "fraction": 0,
+                "relative": False,
+                "handler": 0x00F39E,
+                "cursor_before": {"x": pack12(10), "y": pack12(20)},
+                "cursor_after": {"x": pack12(36), "y": pack12(20)},
+                "event": {"kind": "horizontal-position", "relative": False, "amount": pack12(36), "cursor_x": pack12(36)},
+                "chained": True,
+            },
+            {
+                "kind": "cursor-position",
+                "sequence": b"+1R",
+                "record": bytes.fromhex("81 52 00 01 00 00"),
+                "parameter": 1,
+                "fraction": 0,
+                "relative": True,
+                "handler": 0x00F560,
+                "cursor_before": {"x": pack12(36), "y": pack12(20)},
+                "cursor_after": {"x": pack12(36), "y": pack12(70)},
+                "event": {"kind": "vertical-position", "relative": True, "amount": pack12(50), "cursor_y": pack12(70), "clamp_max": False},
+                "chained": False,
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(36),
+                "cursor_after": pack12(54),
+                "positioned_xy": (42, 49),
+                "coord": 0x1A02,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 3,
+            },
+        ],
+        "root_allocations": 1,
+        "bucket_index": 3,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 1a 02"),
+        "bridged_context_slots": (0x440946B4, 0),
+        "rendered_rows": expected_chained_cursor_position_rows,
+        "final_state": {
+            "cursor_x": pack12(54),
+            "cursor_y": pack12(70),
+            "pending_text": 0,
+            "page_roots": 1,
+            "span_updates": 1,
+            "span_flushes": 1,
+            "post_flushes": 1,
+            "page_record_root_allocations": 1,
+        },
+    }))
     vertical_layout_page_record_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,
@@ -20252,6 +20417,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- horizontal-decipoint parser-to-page-record boundary: stream `1b 26 61 37 32 48 21` routes `ESC &a72H` through handler `0xf416`, converts 72 decipoints into 30 packed cursor units, then queues printable `!` through `0xd04a` at compact coord `0x0402` and renders the bridged glyph at pixel x `36`.")
     lines.append("- vertical cursor-position parser-to-page-record boundary: stream `1b 26 61 31 52 21` routes `ESC &a1R` through handler `0xf560`, moves the vertical cursor to one initialized VMI row plus firmware absolute-row bias, then queues printable `!` through `0xd04a` at compact coord `0x1001` in bucket `4` and renders the bridged glyph with one blank row before the glyph body.")
     lines.append("- vertical-decipoint parser-to-page-record boundary: stream `1b 26 61 37 32 56 21` routes `ESC &a72V` through handler `0xf60a`, converts 72 decipoints into packed vertical cursor y `30`, then queues printable `!` through `0xd04a` at compact coord `0x9001` in bucket `0` and renders the bridged glyph after nine blank rows.")
+    lines.append("- chained cursor-position parser-to-page-record boundary: stream `1b 26 61 32 63 2b 31 52 21` routes lowercase-final `ESC &a2c` through handler `0xf39e`, keeps parser mode `12` for relative `+1R` through handler `0xf560`, then queues printable `!` through `0xd04a` at compact coord `0x1a02` in bucket `3` and renders the bridged glyph after one blank row.")
     lines.append("- vertical-layout parser-to-page-record boundary: stream `1b 26 6c 33 45 21` routes `ESC &l3E` through handler `0xece2`, refreshes the pending vertical cursor from top margin row 3, then queues printable `!` through `0xd04a` at compact coord `0x9001` in bucket `6` and renders the bridged glyph with nine blank rows before the glyph body.")
     lines.append("- cursor-stack parser-to-page-record boundary: stream `1b 26 66 30 53 1b 26 61 32 43 1b 26 66 31 53 21` routes `ESC &f0S`, `ESC &a2C`, and `ESC &f1S` through handlers `0xf75e`, `0xf39e`, and `0xf75e`; the pop restores the original cursor before printable `!` queues through `0xd04a` at compact coord `0x0001` and renders the bridged glyph at the original origin.")
     lines.append("")

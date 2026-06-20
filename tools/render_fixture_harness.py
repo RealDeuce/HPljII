@@ -2235,6 +2235,75 @@ def bridge_page_record_via_1edc6(page_record: dict[str, object]) -> dict[str, ob
     }
 
 
+def rectangle_rule_key_via_134d6(source: dict[str, int], vertical_offset: int = 0) -> dict[str, int]:
+    x = (int(source["x"]) + int(vertical_offset)) & 0xFFFF
+    y = int(source["y"]) & 0xFFFF
+    bucket_index = y >> 4
+    key = ((y << 12) & 0xF000) | ((x & 0x0F) << 8) | ((x >> 4) & 0x00FF)
+    return {
+        "x": x,
+        "y": y,
+        "bucket_index": bucket_index,
+        "key": key,
+    }
+
+
+def queue_rectangle_rule_via_13386(page_record: dict[str, object], source: dict[str, int], *, vertical_offset: int = 0, band_byte: int = 0) -> dict[str, object]:
+    rule_list = page_record.setdefault("rule_list", [])
+    if not isinstance(rule_list, list):
+        raise AssertionError("page record rule_list must be a list")
+    computed = rectangle_rule_key_via_134d6(source, vertical_offset)
+    obj = bytearray(0x0E)
+    obj[4] = band_byte & 0xFF
+    obj[5] = int(source.get("flags", 0)) & 0xFF
+    obj[6:8] = int(computed["key"]).to_bytes(2, "big")
+    obj[8:10] = (int(source["width"]) & 0xFFFF).to_bytes(2, "big")
+    obj[10:12] = (int(source["height"]) & 0xFFFF).to_bytes(2, "big")
+    rule_list.append(bytes(obj))
+    return {
+        "path": "rectangle-rule-list",
+        "computed": computed,
+        "object": bytes(obj),
+        "list_length": len(rule_list),
+    }
+
+
+def fixed_rule_key_via_137a2(source: dict[str, int], vertical_offset: int = 0) -> dict[str, int]:
+    mode = 6 if (int(source.get("mode", 0)) & 1) else 3
+    x = (int(source["x"]) + int(vertical_offset)) & 0xFFFF
+    y = int(source["y"]) & 0xFFFF
+    bucket_index = y >> 4
+    key = ((y << 12) & 0xF000) | ((x & 0x0F) << 8) | ((x >> 4) & 0x00FF)
+    return {
+        "x": x,
+        "y": y,
+        "bucket_index": bucket_index,
+        "key": key,
+        "mode": mode,
+        "selector_hi": 0x40,
+        "selector_lo": 0x00,
+    }
+
+
+def queue_fixed_rule_via_136d2(page_record: dict[str, object], source: dict[str, int], *, vertical_offset: int = 0, band_byte: int = 0) -> dict[str, object]:
+    fixed_list = page_record.setdefault("fixed_list", [])
+    if not isinstance(fixed_list, list):
+        raise AssertionError("page record fixed_list must be a list")
+    computed = fixed_rule_key_via_137a2(source, vertical_offset)
+    obj = bytearray(0x0E)
+    obj[4] = band_byte & 0xFF
+    obj[5] = int(computed["mode"]) & 0xFF
+    obj[6:8] = int(computed["key"]).to_bytes(2, "big")
+    obj[8:10] = (int(source["extent"]) & 0xFFFF).to_bytes(2, "big")
+    fixed_list.append(bytes(obj))
+    return {
+        "path": "fixed-rule-list",
+        "computed": computed,
+        "object": bytes(obj),
+        "list_length": len(fixed_list),
+    }
+
+
 def render_bridged_compact_bucket_object(data: bytes, resources: bytes, render_record: dict[str, object]) -> dict[str, object]:
     obj = render_record["bucket_root"]
     context_slots = render_record["context_slots"]
@@ -5589,6 +5658,53 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "fixed_list": [bytes.fromhex("00 00 00 00 00 14 00 00 ab cd ab cd 01 08")],
         "rows": page_record_short_rendered["rows"],
     }))
+    rule_page_record: dict[str, object] = {}
+    rule_result = queue_rectangle_rule_via_13386(
+        rule_page_record,
+        {"x": 0x0023, "y": 0x0045, "width": 0x0012, "height": 0x0034, "flags": 0x07},
+        vertical_offset=0x0010,
+        band_byte=0x04,
+    )
+    rule_bridged = bridge_page_record_via_1edc6(rule_page_record)
+    checks.append(assert_equal("0x13386/0x133aa-modeled rectangle/rule list object and bridge normalization", {
+        "computed": rule_result["computed"],
+        "object": rule_result["object"],
+        "bridged": rule_bridged["rule_list"],
+    }, {
+        "computed": {
+            "x": 0x0033,
+            "y": 0x0045,
+            "bucket_index": 0x0004,
+            "key": 0x5303,
+        },
+        "object": bytes.fromhex("00 00 00 00 04 07 53 03 00 12 00 34 00 00"),
+        "bridged": [bytes.fromhex("00 00 00 00 04 17 53 03 00 12 00 34 00 34")],
+    }))
+    fixed_rule_page_record: dict[str, object] = {}
+    fixed_rule_result = queue_fixed_rule_via_136d2(
+        fixed_rule_page_record,
+        {"x": 0x0017, "y": 0x0021, "mode": 1, "extent": 0x0044},
+        vertical_offset=0x0009,
+        band_byte=0x02,
+    )
+    fixed_rule_bridged = bridge_page_record_via_1edc6(fixed_rule_page_record)
+    checks.append(assert_equal("0x137a2/0x136d2-modeled fixed-rule list object and bridge normalization", {
+        "computed": fixed_rule_result["computed"],
+        "object": fixed_rule_result["object"],
+        "bridged": fixed_rule_bridged["fixed_list"],
+    }, {
+        "computed": {
+            "x": 0x0020,
+            "y": 0x0021,
+            "bucket_index": 0x0002,
+            "key": 0x1002,
+            "mode": 6,
+            "selector_hi": 0x40,
+            "selector_lo": 0x00,
+        },
+        "object": bytes.fromhex("00 00 00 00 02 06 10 02 00 44 00 00 00 00"),
+        "bridged": [bytes.fromhex("00 00 00 00 02 16 10 02 00 44 00 44 01 08")],
+    }))
     parser_raster_resolution_cases = [
         (300, {"mode": 0, "scale": 1, "limit": 32}),
         (150, {"mode": 1, "scale": 2, "limit": 16}),
@@ -7299,6 +7415,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append(f"- normalized `+0x24`/render `+0x1c` rule-list node: `{' '.join(f'{byte:02x}' for byte in bridged_page_record['rule_list'][0])}`")
     lines.append(f"- normalized `+0x28`/render `+0x20` fixed-list node: `{' '.join(f'{byte:02x}' for byte in bridged_page_record['fixed_list'][0])}`")
+    lines.append("- producer-shaped rectangle/rule fixtures: `0x13386`/`0x133aa` stores key `0x%04x`, width `0x%04x`, and height `0x%04x` before bridge byte `+5` becomes `0x%02x`; `0x137a2`/`0x136d2` stores key `0x%04x` and extent `0x%04x` before bridge byte `+5` becomes `0x%02x`." % (
+        rule_result["computed"]["key"],
+        0x0012,
+        0x0034,
+        rule_bridged["rule_list"][0][5],
+        fixed_rule_result["computed"]["key"],
+        0x0044,
+        fixed_rule_bridged["fixed_list"][0][5],
+    ))
     lines.append("- bridged compact rows match the page-record queued rows above.")
     lines.append("- remaining gap: replace this synthetic page/control record with a parser-produced page root and compare the finalized record published by `0xff1e`.")
     lines.append("")

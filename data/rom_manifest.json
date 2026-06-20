@@ -30,7 +30,7 @@
     {
       "board_location": "IC30",
       "chip_marking": "SH7-9235-01",
-      "filename": "ic30_sh7-9235-0100_tc531000p.bin",
+      "filename": "ic30_sh7-9235-01_tc531000p.bin",
       "size_bytes": 131072,
       "sha256": "63959a0ad8a4185f6a127afa23dfc89b1f0d7dd04a2a84da853abb30ffd1aeb6",
       "verification": "three reads matched byte-for-byte",
@@ -54,7 +54,7 @@
         "IC13"
       ],
       "source_files": [
-        "ic30_sh7-9235-0100_tc531000p.bin",
+        "ic30_sh7-9235-01_tc531000p.bin",
         "ic13_sh7-9236-01_tc531000p.bin"
       ],
       "generated_file": "generated/roms/ic30_ic13.bin",

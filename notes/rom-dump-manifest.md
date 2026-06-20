@@ -18,7 +18,7 @@ The verified ROM images are local-only artifacts and are intentionally ignored b
 | --- | --- | --- | --- | --- |
 | IC13 | SH7-9236-01 | `ic13_sh7-9236-01_tc531000p.bin` | `0e6fa34f0d25763ac1b687f1a24d07190ddc04057690b3e3846c114284db42d5` | read1/read2 matched; tail marker `SH7-9236-01000` |
 | IC15 | SH7-9234-01 | `ic15_sh7-9234-01_tc531000p.bin` | `623396d62a450794e4e0c6356009921ca7fb04a7cb7d2e15a35554630c697396` | two reads matched; tail marker `SH7-9234-01` |
-| IC30 | SH7-9235-01 | `ic30_sh7-9235-0100_tc531000p.bin` | `63959a0ad8a4185f6a127afa23dfc89b1f0d7dd04a2a84da853abb30ffd1aeb6` | three reads matched; ROM tail marker `SH7-9235-01000` |
+| IC30 | SH7-9235-01 | `ic30_sh7-9235-01_tc531000p.bin` | `63959a0ad8a4185f6a127afa23dfc89b1f0d7dd04a2a84da853abb30ffd1aeb6` | three reads matched; ROM tail marker `SH7-9235-01000` |
 | IC32 | SH7-9233-01 | `ic32_sh7-9233-01_tc531000p.bin` | `7f9abfe55629770b0f4bcd0e3bc671143d4cca6ec666edfac34d9e0587ae6452` | read4/read5 matched; earlier reads retained as unverified local files |
 
 All four verified raw images are 131072 bytes.

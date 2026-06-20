@@ -161,6 +161,22 @@ def symbol_set_name(value: int) -> str:
     return SYMBOL_SET_NAMES.get(value, "(unidentified)")
 
 
+def packed_font_metric(word_value: int, byte_value: int) -> int:
+    return (((int(word_value) & 0xFFFF) << 8) | (int(byte_value) & 0xFF)) & 0xFFFFFFFF
+
+
+def builtin_pitch_via_13b76(word_0x24: int, byte_0x26: int) -> int:
+    packed = packed_font_metric(word_0x24, byte_0x26)
+    if packed < 2:
+        return 0xFFFF
+    return min(0xFFFF, 0x01D4C000 // packed)
+
+
+def builtin_height_via_13bca(word_0x28: int, byte_0x2a: int) -> int:
+    packed = packed_font_metric(word_0x28, byte_0x2a)
+    return (packed * 0x00E1) // 0x2580
+
+
 def resource_marker_report(data: bytes) -> str:
     markers = find_named_markers(data, [b"HEAD", b"COURIER", b"LINE_PRINTER", b"SH7-9233-01", b"SH7-9234-01"])
     lines = ["# IC32/IC15 Resource Marker Index", ""]
@@ -227,6 +243,10 @@ def firmware_scanned_font_records(data: bytes) -> list[dict[str, int | str | Non
             name, name_offset = infer_font_record_name(data, cursor)
             byte_c = data[cursor + 0x0C]
             byte_d = data[cursor + 0x0D]
+            pitch_word = u16(data, cursor + 0x24)
+            pitch_byte = data[cursor + 0x26]
+            height_word = u16(data, cursor + 0x28)
+            height_byte = data[cursor + 0x2A]
             context_flags = 0x40000000 | ((byte_d & 0x03) << 28)
             if byte_c == 2:
                 context_flags |= 0x04000000
@@ -249,6 +269,12 @@ def firmware_scanned_font_records(data: bytes) -> list[dict[str, int | str | Non
                     "class_byte": data[cursor + 0x20],
                     "symbol_word_0x22": u16(data, cursor + 0x22),
                     "symbol_byte_0x3c": data[cursor + 0x3C],
+                    "pitch_word_0x24": pitch_word,
+                    "pitch_byte_0x26": pitch_byte,
+                    "height_word_0x28": height_word,
+                    "height_byte_0x2a": height_byte,
+                    "pitch_13b76": builtin_pitch_via_13b76(pitch_word, pitch_byte),
+                    "height_13bca": builtin_height_via_13bca(height_word, height_byte),
                     "style_byte": byte_d,
                     "context_longword": context_flags | firmware_address,
                 }
@@ -435,6 +461,14 @@ def font_record_report(data: bytes) -> str:
     lines.append("- `0x156de` concrete symbol filtering: the built-in class-zero window starts with record `+0x22` words %s, and class-one starts with %s; a primary `0x0115` filter therefore keeps the three Roman-8 entries in the active window, moves `0x78287c` to the first survivor, and reduces `0x7827b8` from 12 to 3." % (
         " / ".join(f"`0x{word:04x}`" for word in class_zero_symbols[:4]),
         " / ".join(f"`0x{word:04x}`" for word in class_one_symbols[:4]),
+    ))
+    class_zero_heights = [
+        int(record["height_13bca"])
+        for record in header_records
+        if int(record["class_byte"]) == 0
+    ]
+    lines.append("- `0x1519a` concrete height filtering: built-in class-zero decoded heights are %s; requested height `0x04b0` keeps the eight `1200`-unit candidates via the +/-`0x19` range, while requested `0x0384` misses that range and the nearest-height fallback keeps the four `850`-unit candidates." % (
+        " / ".join(f"`{height}`" for height in class_zero_heights),
     ))
     lines.append("")
     lines.append("| Scan index | Name | Record start | Firmware address | Context longword | Class | Partition |")

@@ -2652,6 +2652,22 @@ def normalized_symbol_flag_via_15850(symbol_word: int) -> int:
     return 1 if (int(symbol_word) & 0xFFFF) in NORMALIZED_SYMBOL_WORDS_15850 else 0
 
 
+def packed_font_metric(word_value: int, byte_value: int) -> int:
+    return (((int(word_value) & 0xFFFF) << 8) | (int(byte_value) & 0xFF)) & 0xFFFFFFFF
+
+
+def builtin_pitch_via_13b76(word_0x24: int, byte_0x26: int) -> int:
+    packed = packed_font_metric(word_0x24, byte_0x26)
+    if packed < 2:
+        return 0xFFFF
+    return min(0xFFFF, 0x01D4C000 // packed)
+
+
+def builtin_height_via_13bca(word_0x28: int, byte_0x2a: int) -> int:
+    packed = packed_font_metric(word_0x28, byte_0x2a)
+    return (packed * 0x00E1) // 0x2580
+
+
 def builtin_candidate_symbol_via_15890(candidate: dict[str, int]) -> dict[str, object]:
     explicit_word = int(candidate.get("builtin_word_0x22", 0)) & 0xFFFF
     if explicit_word:
@@ -3707,6 +3723,10 @@ def firmware_scanned_builtin_candidates(resources: bytes) -> list[dict[str, int]
                 "type_byte_0x0c": resources[cursor + 0x0C],
                 "builtin_word_0x22": u16(resources, cursor + 0x22),
                 "builtin_byte_0x3c": resources[cursor + 0x3C],
+                "builtin_word_0x24": u16(resources, cursor + 0x24),
+                "builtin_byte_0x26": resources[cursor + 0x26],
+                "builtin_word_0x28": u16(resources, cursor + 0x28),
+                "builtin_byte_0x2a": resources[cursor + 0x2A],
                 "initial_flags": firmware_address,
             })
             cursor += length
@@ -3735,6 +3755,10 @@ def builtin_candidate_windows_from_scanned_records(
             "longword": int(event["candidate_flags"]),
             "builtin_word_0x22": int(record.get("builtin_word_0x22", 0)),
             "builtin_byte_0x3c": int(record.get("builtin_byte_0x3c", 0)),
+            "builtin_word_0x24": int(record.get("builtin_word_0x24", 0)),
+            "builtin_byte_0x26": int(record.get("builtin_byte_0x26", 0)),
+            "builtin_word_0x28": int(record.get("builtin_word_0x28", 0)),
+            "builtin_byte_0x2a": int(record.get("builtin_byte_0x2a", 0)),
         }
         d4_class = int(record["d4_class"])
         address = int(record["address"]) & 0x00FFFFFF
@@ -3920,6 +3944,138 @@ def filter_active_candidates_via_156de(
         "survivor_slot_pointers": [int(entry["slot_pointer"]) for entry in survivors],
         "survivor_record_starts": [int(entry["record_start"]) for entry in survivors],
         "events": events,
+        "prune_events": prune_events,
+    }
+
+
+def candidate_height_via_1519a_reader(candidate: dict[str, int]) -> dict[str, object]:
+    longword = int(candidate["longword"]) & 0xFFFFFFFF
+    if (longword >> 30) & 1:
+        return {
+            "height": builtin_height_via_13bca(
+                int(candidate.get("builtin_word_0x28", 0)),
+                int(candidate.get("builtin_byte_0x2a", 0)),
+            ),
+            "reader": "0x13bca",
+            "reader_source": "+0x28/+0x2a",
+        }
+    return {
+        "height": int(candidate.get("inline_word_0x20", 0)) & 0xFFFF,
+        "reader": "inline +0x20",
+        "reader_source": "+0x20",
+    }
+
+
+def nearest_height_bounds_via_1533e(entries: list[dict[str, int]], requested_height: int) -> tuple[int, int]:
+    requested = int(requested_height) & 0xFFFF
+    lower = 0
+    upper: int | None = None
+    for entry in entries:
+        longword = int(entry["longword"]) & 0xFFFFFFFF
+        if longword & 0x80000000 == 0:
+            continue
+        height = int(candidate_height_via_1519a_reader(entry)["height"]) & 0xFFFF
+        if height <= requested:
+            if height > lower:
+                lower = height
+        else:
+            if upper is None or height < upper:
+                upper = height
+
+    if lower == 0:
+        selected = upper if upper is not None else 0
+        return selected, selected
+    if upper is None:
+        return lower, lower
+    lower_distance = requested - lower
+    upper_distance = upper - requested
+    if lower_distance < upper_distance:
+        return lower, lower
+    if lower_distance > upper_distance:
+        return upper, upper
+    return lower, upper
+
+
+def filter_active_candidates_by_height_via_1519a(
+    activation: dict[str, object],
+    *,
+    requested_height: int,
+) -> dict[str, object]:
+    entries = [dict(entry) for entry in activation["entries"]]  # type: ignore[index]
+    requested = int(requested_height) & 0xFFFF
+    low = max(0, requested - 0x19)
+    high = min(0xFFFF, requested + 0x19)
+
+    range_probe_events: list[dict[str, object]] = []
+    range_has_match = False
+    for index, entry in enumerate(entries):
+        longword = int(entry["longword"]) & 0xFFFFFFFF
+        if longword & 0x80000000 == 0:
+            continue
+        metric = candidate_height_via_1519a_reader(entry)
+        height = int(metric["height"]) & 0xFFFF
+        matched = low <= height <= high
+        range_probe_events.append({
+            "helper": 0x0151F0,
+            "index": index,
+            "slot_pointer": int(entry["slot_pointer"]),
+            "record_start": int(entry["record_start"]),
+            "height": height,
+            "low": low,
+            "high": high,
+            "reader": metric["reader"],
+            "matched": matched,
+        })
+        if matched:
+            range_has_match = True
+            break
+
+    if range_has_match:
+        selected_low, selected_high = low, high
+        path = "range"
+    else:
+        selected_low, selected_high = nearest_height_bounds_via_1533e(entries, requested)
+        path = "nearest"
+
+    survivors: list[dict[str, int]] = []
+    prune_events: list[dict[str, object]] = []
+    for index, entry in enumerate(entries):
+        longword = int(entry["longword"]) & 0xFFFFFFFF
+        if longword & 0x80000000 == 0:
+            continue
+        metric = candidate_height_via_1519a_reader(entry)
+        height = int(metric["height"]) & 0xFFFF
+        matched = selected_low <= height <= selected_high if path == "range" else height in (selected_low, selected_high)
+        before = longword
+        after = before if matched else before & 0x7FFFFFFF
+        entry["longword"] = after
+        if matched:
+            survivors.append(entry)
+        prune_events.append({
+            "helper": 0x015246 if path == "range" else 0x0152C2,
+            "index": index,
+            "slot_pointer": int(entry["slot_pointer"]),
+            "record_start": int(entry["record_start"]),
+            "height": height,
+            "selected_low": selected_low,
+            "selected_high": selected_high,
+            "before": before,
+            "after": after,
+            "matched": matched,
+        })
+
+    return {
+        "path": path,
+        "requested_height": requested,
+        "range_low": low,
+        "range_high": high,
+        "selected_low": selected_low,
+        "selected_high": selected_high,
+        "active_pointer_78287c": int(survivors[0]["slot_pointer"]) if survivors else 0,
+        "active_count_7827b8": len(survivors),
+        "survivor_slot_pointers": [int(entry["slot_pointer"]) for entry in survivors],
+        "survivor_record_starts": [int(entry["record_start"]) for entry in survivors],
+        "range_probe_events": range_probe_events,
         "prune_events": prune_events,
     }
 
@@ -12263,6 +12419,65 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "survivor_slot_pointers": [0x782330, 0x782340, 0x782350],
             "survivor_record_starts": [0x01A984, 0x0240F0, 0x02E122],
             "last_prune": {"helper": 0x0156DE, "pass": "prune", "index": 11, "slot_pointer": 0x782350, "record_start": 0x02E122, "candidate_word": 0x000E, "requested_word": 0x000E, "normalized_flag": 0, "before": 0xC00AE122, "after": 0xC00AE122, "matched": True},
+        },
+    }))
+    height_filter_range = filter_active_candidates_by_height_via_1519a(
+        activated_class_zero,
+        requested_height=0x04B0,
+    )
+    height_filter_nearest = filter_active_candidates_by_height_via_1519a(
+        activated_class_zero,
+        requested_height=0x0384,
+    )
+    checks.append(assert_equal("0x1519a filters concrete active candidates by height", {
+        "range": {
+            "path": height_filter_range["path"],
+            "requested_height": height_filter_range["requested_height"],
+            "range_low": height_filter_range["range_low"],
+            "range_high": height_filter_range["range_high"],
+            "selected_low": height_filter_range["selected_low"],
+            "selected_high": height_filter_range["selected_high"],
+            "active_pointer_78287c": height_filter_range["active_pointer_78287c"],
+            "active_count_7827b8": height_filter_range["active_count_7827b8"],
+            "survivor_slot_pointers": height_filter_range["survivor_slot_pointers"],
+            "first_reject": height_filter_range["prune_events"][8],
+        },
+        "nearest": {
+            "path": height_filter_nearest["path"],
+            "requested_height": height_filter_nearest["requested_height"],
+            "range_low": height_filter_nearest["range_low"],
+            "range_high": height_filter_nearest["range_high"],
+            "selected_low": height_filter_nearest["selected_low"],
+            "selected_high": height_filter_nearest["selected_high"],
+            "active_pointer_78287c": height_filter_nearest["active_pointer_78287c"],
+            "active_count_7827b8": height_filter_nearest["active_count_7827b8"],
+            "survivor_slot_pointers": height_filter_nearest["survivor_slot_pointers"],
+            "first_survivor": height_filter_nearest["prune_events"][8],
+        },
+    }, {
+        "range": {
+            "path": "range",
+            "requested_height": 0x04B0,
+            "range_low": 0x0497,
+            "range_high": 0x04C9,
+            "selected_low": 0x0497,
+            "selected_high": 0x04C9,
+            "active_pointer_78287c": 0x782354,
+            "active_count_7827b8": 8,
+            "survivor_slot_pointers": [0x782354, 0x782358, 0x78235C, 0x782360, 0x782364, 0x782368, 0x78236C, 0x782370],
+            "first_reject": {"helper": 0x015246, "index": 8, "slot_pointer": 0x782374, "record_start": 0x0142E4, "height": 0x0352, "selected_low": 0x0497, "selected_high": 0x04C9, "before": 0xC00942E4, "after": 0x400942E4, "matched": False},
+        },
+        "nearest": {
+            "path": "nearest",
+            "requested_height": 0x0384,
+            "range_low": 0x036B,
+            "range_high": 0x039D,
+            "selected_low": 0x0352,
+            "selected_high": 0x0352,
+            "active_pointer_78287c": 0x782374,
+            "active_count_7827b8": 4,
+            "survivor_slot_pointers": [0x782374, 0x782378, 0x78237C, 0x782380],
+            "first_survivor": {"helper": 0x0152C2, "index": 8, "slot_pointer": 0x782374, "record_start": 0x0142E4, "height": 0x0352, "selected_low": 0x0352, "selected_high": 0x0352, "before": 0xC00942E4, "after": 0xC00942E4, "matched": True},
         },
     }))
     default_font_tables_found = default_font_symbol_tables_via_1ac0a_1af36(
@@ -22846,6 +23061,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ", ".join("0x%06x" % int(start) for start in filtered_class_zero_primary["survivor_record_starts"]),
         filtered_class_one_secondary_fallback["active_word"],
         ", ".join("0x%06x" % int(slot) for slot in filtered_class_one_secondary_fallback["survivor_slot_pointers"]),
+    ))
+    lines.append("- height filter: `0x1519a` reads primary/secondary requested height from `0x782ef2`/`0x782f02`, keeps active candidates in requested +/- `0x19` when possible, otherwise uses `0x1533e` to select nearest lower/upper heights; class-zero requested `0x04b0` keeps `%d` slots `%s`, while requested `0x0384` falls back to nearest height `0x%04x` and keeps `%d` slots `%s`." % (
+        height_filter_range["active_count_7827b8"],
+        ", ".join("0x%06x" % int(slot) for slot in height_filter_range["survivor_slot_pointers"]),
+        height_filter_nearest["selected_low"],
+        height_filter_nearest["active_count_7827b8"],
+        ", ".join("0x%06x" % int(slot) for slot in height_filter_nearest["survivor_slot_pointers"]),
     ))
     lines.append("- default-font table builders: `0x1ac0a` current-candidate mode copies word `0x%04x` into all four `@0`/`@1` table slots, while synthesized mode writes `%s`; `0x1af36` builds fallback slots `%s` for the corresponding `0x156de` candidate-selection fallback." % (
         default_font_tables_found["current_symbol"],

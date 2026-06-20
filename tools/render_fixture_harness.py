@@ -8125,11 +8125,20 @@ def bridge_page_record_via_1edc6(page_record: dict[str, object]) -> dict[str, ob
         node[0x0C] = 1
         node[0x0D] = 8
 
+    bridged_rule_list = [bytes(node) for node in rule_list]
+    bridged_fixed_list = [bytes(node) for node in fixed_list]
+    render_record_fields = {
+        "bucket_root_18": compact_bucket_root,
+        "rule_list_1c": bridged_rule_list,
+        "fixed_list_20": bridged_fixed_list,
+        "context_slots_24": tuple(context_slots),
+    }
     return {
         "bucket_root": compact_bucket_root,
-        "rule_list": [bytes(node) for node in rule_list],
-        "fixed_list": [bytes(node) for node in fixed_list],
+        "rule_list": bridged_rule_list,
+        "fixed_list": bridged_fixed_list,
         "context_slots": tuple(context_slots),
+        "render_record_fields": render_record_fields,
     }
 
 
@@ -18652,6 +18661,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "fixed_list": [bytes.fromhex("00 00 00 00 00 14 00 00 ab cd ab cd 01 08")],
         "rows": page_record_short_rendered["rows"],
     }))
+    bridged_render_fields = bridged_page_record["render_record_fields"]
+    assert isinstance(bridged_render_fields, dict)
+    checks.append(assert_equal("0x1edc6 bridge records render-record destination offsets", {
+        "bucket_root_18": bridged_render_fields["bucket_root_18"],
+        "rule_list_1c": bridged_render_fields["rule_list_1c"],
+        "fixed_list_20": bridged_render_fields["fixed_list_20"],
+        "context_slots_24_prefix": bridged_render_fields["context_slots_24"][:2],
+    }, {
+        "bucket_root_18": bytes(page_record_chain[0]),
+        "rule_list_1c": [bytes.fromhex("00 00 00 00 00 13 00 00 00 00 12 34 12 34")],
+        "fixed_list_20": [bytes.fromhex("00 00 00 00 00 14 00 00 ab cd ab cd 01 08")],
+        "context_slots_24_prefix": (0x440946B4, 0),
+    }))
     rule_page_record: dict[str, object] = {}
     rule_result = queue_rectangle_rule_via_13386(
         rule_page_record,
@@ -25606,6 +25628,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append(f"- normalized `+0x24`/render `+0x1c` rule-list node: `{' '.join(f'{byte:02x}' for byte in bridged_page_record['rule_list'][0])}`")
     lines.append(f"- normalized `+0x28`/render `+0x20` fixed-list node: `{' '.join(f'{byte:02x}' for byte in bridged_page_record['fixed_list'][0])}`")
+    lines.append("- render-record destination snapshot: source bucket `+0x1c` is visible at render `+0x18`, normalized rule list at render `+0x1c`, normalized fixed list at render `+0x20`, and context slot 0 at render `+0x24 = 0x%08x`." % (
+        bridged_page_record["render_record_fields"]["context_slots_24"][0],
+    ))
     lines.append("- producer-shaped rectangle/rule fixtures: `0x13386`/`0x133aa` stores bucket byte `0x%02x`, key `0x%04x`, width `0x%04x`, and height `0x%04x` before bridge byte `+5` becomes `0x%02x`; `0x137a2`/`0x136d2` stores key `0x%04x` and extent `0x%04x` before bridge byte `+5` becomes `0x%02x`." % (
         rule_bridged["rule_list"][0][4],
         rule_result["computed"]["key"],

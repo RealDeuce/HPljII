@@ -2265,6 +2265,101 @@ def default_font_symbol_tables_via_1ac0a_1af36(
     }
 
 
+def candidate_slot_lookup_via_1b4c0(
+    resource_address: int,
+    candidate_slots: list[dict[str, int]],
+) -> dict[str, object]:
+    masked_address = int(resource_address) & 0xFFFFFF
+    events: list[dict[str, int | bool]] = []
+    for index, candidate in enumerate(candidate_slots):
+        candidate_address = int(candidate["longword"]) & 0xFFFFFF
+        selected = candidate_address == masked_address
+        events.append({
+            "helper": 0x01B4C0,
+            "index": index,
+            "slot_pointer": int(candidate["slot_pointer"]),
+            "candidate_address": candidate_address,
+            "wanted_address": masked_address,
+            "selected": selected,
+        })
+        if selected:
+            return {
+                "slot_pointer": int(candidate["slot_pointer"]),
+                "events": events,
+            }
+    return {
+        "slot_pointer": 0,
+        "events": events,
+    }
+
+
+def default_font_current_candidate_via_1b250(
+    *,
+    state_78219b: int,
+    state_78219c: int,
+    resolved_resource_address: int,
+    resolved_symbol_word: int,
+    candidate_slots: list[dict[str, int]],
+    boundary_7827ac: int,
+) -> dict[str, object]:
+    selector = int(state_78219c) & 0xFF
+    kind = int(state_78219b) & 0xFF
+    if selector == 0xFF:
+        return {
+            "found": False,
+            "source": "0x1b250-disabled",
+            "resolver": None,
+            "selected_pointer": 0,
+            "selected_resource_address": 0,
+            "word": 0,
+            "selector_78289f": 0,
+            "events": [
+                {
+                    "helper": 0x01B250,
+                    "state_78219b": kind,
+                    "state_78219c": selector,
+                    "action": "clear-current-default",
+                }
+            ],
+        }
+
+    resolver_address = int(resolved_resource_address) & 0xFFFFFF
+    resolver_word = int(resolved_symbol_word) & 0xFFFF
+    resolver = {
+        "helper": 0x01B50E,
+        "state_78219b": kind,
+        "state_78219c": selector,
+        "resource_address": resolver_address,
+        "word": resolver_word,
+        "resolved": resolver_address != 0,
+    }
+    if resolver_address == 0:
+        return {
+            "found": False,
+            "source": "0x1b250-resolver-miss",
+            "resolver": resolver,
+            "selected_pointer": 0,
+            "selected_resource_address": 0,
+            "word": 0,
+            "selector_78289f": 0,
+            "events": [resolver],
+        }
+
+    slot_lookup = candidate_slot_lookup_via_1b4c0(resolver_address, candidate_slots)
+    selected_pointer = int(slot_lookup["slot_pointer"])
+    selector_78289f = 1 if int(boundary_7827ac) > selected_pointer else 0
+    return {
+        "found": selected_pointer != 0,
+        "source": "0x1b250-current",
+        "resolver": resolver,
+        "selected_pointer": selected_pointer,
+        "selected_resource_address": resolver_address if selected_pointer else 0,
+        "word": resolver_word,
+        "selector_78289f": selector_78289f,
+        "events": [resolver] + list(slot_lookup["events"]),
+    }
+
+
 SYMBOL_BYTE_TO_WORD = {
     0x85: 0x0001,
     0x8D: 0x0002,
@@ -11318,6 +11413,142 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {"builder": 0x01AF36, "source": "0x1ad66-synthesized", "selector_78289f": 1, "selector_78289e": 0, "orientation": 1, "slot": 0, "address": 0x00782F14, "word": 0x0085},
             {"builder": 0x01AF36, "source": "0x1ad66-synthesized", "selector_78289f": 1, "selector_78289e": 1, "orientation": 1, "slot": 1, "address": 0x00782F18, "word": 0x00A5},
         ],
+    }))
+    current_default_disabled = default_font_current_candidate_via_1b250(
+        state_78219b=1,
+        state_78219c=0xFF,
+        resolved_resource_address=0x250000,
+        resolved_symbol_word=0x0055,
+        candidate_slots=[],
+        boundary_7827ac=0x4000,
+    )
+    current_default_resolver_miss = default_font_current_candidate_via_1b250(
+        state_78219b=1,
+        state_78219c=0,
+        resolved_resource_address=0,
+        resolved_symbol_word=0x0055,
+        candidate_slots=[],
+        boundary_7827ac=0x4000,
+    )
+    current_default_orientation_1 = default_font_current_candidate_via_1b250(
+        state_78219b=1,
+        state_78219c=0,
+        resolved_resource_address=0x250000,
+        resolved_symbol_word=0x0055,
+        candidate_slots=[
+            {"slot_pointer": 0x3000, "longword": 0x00260000},
+            {"slot_pointer": 0x3004, "longword": 0x00250000},
+        ],
+        boundary_7827ac=0x4000,
+    )
+    current_default_orientation_0 = default_font_current_candidate_via_1b250(
+        state_78219b=2,
+        state_78219c=1,
+        resolved_resource_address=0x450000,
+        resolved_symbol_word=0x0115,
+        candidate_slots=[
+            {"slot_pointer": 0x5000, "longword": 0x00450000},
+        ],
+        boundary_7827ac=0x4000,
+    )
+    current_default_slot_miss = default_font_current_candidate_via_1b250(
+        state_78219b=2,
+        state_78219c=1,
+        resolved_resource_address=0x450000,
+        resolved_symbol_word=0x0115,
+        candidate_slots=[
+            {"slot_pointer": 0x5000, "longword": 0x00460000},
+        ],
+        boundary_7827ac=0x4000,
+    )
+    checks.append(assert_equal("0x1b250 current-default candidate lookup", {
+        "disabled": select_keys(current_default_disabled, (
+            "found",
+            "source",
+            "selected_pointer",
+            "selected_resource_address",
+            "word",
+            "selector_78289f",
+        )),
+        "resolver_miss": select_keys(current_default_resolver_miss, (
+            "found",
+            "source",
+            "selected_pointer",
+            "selected_resource_address",
+            "word",
+            "selector_78289f",
+        )),
+        "orientation_1": select_keys(current_default_orientation_1, (
+            "found",
+            "source",
+            "selected_pointer",
+            "selected_resource_address",
+            "word",
+            "selector_78289f",
+        )),
+        "orientation_1_events": current_default_orientation_1["events"],
+        "orientation_0": select_keys(current_default_orientation_0, (
+            "found",
+            "source",
+            "selected_pointer",
+            "selected_resource_address",
+            "word",
+            "selector_78289f",
+        )),
+        "slot_miss": select_keys(current_default_slot_miss, (
+            "found",
+            "source",
+            "selected_pointer",
+            "selected_resource_address",
+            "word",
+            "selector_78289f",
+        )),
+    }, {
+        "disabled": {
+            "found": False,
+            "source": "0x1b250-disabled",
+            "selected_pointer": 0,
+            "selected_resource_address": 0,
+            "word": 0,
+            "selector_78289f": 0,
+        },
+        "resolver_miss": {
+            "found": False,
+            "source": "0x1b250-resolver-miss",
+            "selected_pointer": 0,
+            "selected_resource_address": 0,
+            "word": 0,
+            "selector_78289f": 0,
+        },
+        "orientation_1": {
+            "found": True,
+            "source": "0x1b250-current",
+            "selected_pointer": 0x3004,
+            "selected_resource_address": 0x250000,
+            "word": 0x0055,
+            "selector_78289f": 1,
+        },
+        "orientation_1_events": [
+            {"helper": 0x01B50E, "state_78219b": 1, "state_78219c": 0, "resource_address": 0x250000, "word": 0x0055, "resolved": True},
+            {"helper": 0x01B4C0, "index": 0, "slot_pointer": 0x3000, "candidate_address": 0x260000, "wanted_address": 0x250000, "selected": False},
+            {"helper": 0x01B4C0, "index": 1, "slot_pointer": 0x3004, "candidate_address": 0x250000, "wanted_address": 0x250000, "selected": True},
+        ],
+        "orientation_0": {
+            "found": True,
+            "source": "0x1b250-current",
+            "selected_pointer": 0x5000,
+            "selected_resource_address": 0x450000,
+            "word": 0x0115,
+            "selector_78289f": 0,
+        },
+        "slot_miss": {
+            "found": False,
+            "source": "0x1b250-current",
+            "selected_pointer": 0,
+            "selected_resource_address": 0,
+            "word": 0x0115,
+            "selector_78289f": 1,
+        },
     }))
     default_candidate_range_1 = default_font_candidate_search_via_1ad66(
         selector_78289f=0,
@@ -21372,6 +21603,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " / ".join(f"0x{int(word):04x}" for word in default_font_tables_synthesized["default_symbols"]),
         " / ".join(f"0x{int(word):04x}" for word in default_font_tables_synthesized["fallback_symbols"]),
     ))
+    lines.append("- current-default lookup: `0x1b250` treats `0x78219c == 0xff` as disabled, otherwise asks `0x1b50e` for a resource address and symbol word, maps that low-24 address back into the canonical candidate slot list with `0x1b4c0`, stores the resolved slot in `0x7828a0`, copies the returned word to `0x7828a4`, and sets `0x78289f` to `1` only when the selected slot precedes boundary pointer `0x7827ac`.")
     lines.append("- default-font candidate search: `0x1ad66` first tries `0x1adaa(1)` and then `0x1adaa(2)` before `0x1ae7e`; `0x1bbfe` now derives range-hit words through the bit-30-selected symbol readers, and `0x1b060` validates default candidates by orientation, pitch `0x03e8`, height `0x04b0`, style bytes, spacing byte `3`, and requested-symbol fallback rules. The fixture pins primary-slot range-1 word `0x%04x`, secondary-slot range-2 word `0x%04x`, fallback `0x1b060` requested word `0x%04x`, and base-candidate reader sources `%s` / `%s`." % (
         default_candidate_range_1["word"],
         default_candidate_range_2["word"],

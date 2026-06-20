@@ -71,7 +71,7 @@ ROM work needed:
 - Trace font candidate selection/filtering around `0x14398`, `0x14c64`, `0x1519a`, `0x153c6`, and `0x1569c`.
 - Decode the `HEAD` record scanner at firmware routine `0x0000041a`.
 - Use the repeated `COURIER` and `LINE_PRINTER` records as first built-in font extraction fixtures.
-- Replace the modeled `0x1b250` / `0x1ab84` default-font searches with a live parser/font-state fixture that proves the real candidate records feeding `0x1bbfe` / `0x1b060`, and decide how to document the undocumented but parser-exposed `@0..@2` table/copy variants.
+- Replace the modeled `0x1b50e` resolver internals and `0x1ab84` synthesized default-font search with a live parser/font-state fixture that proves the real candidate records feeding `0x1b250`, `0x1bbfe`, and `0x1b060`, and decide how to document the undocumented but parser-exposed `@0..@2` table/copy variants.
 - Replace the current `ESC *c4660d37e5F` current-state boundary, `ESC )s0W` parser/route boundary through `0x15d0a`, and `ESC )s2193W` parser/object boundary through `0x16c14` -> `0x16498` downloaded-pointer `0x1f264` with a full live parser-state run that populates current records/source objects, then replace producer-modeled fixtures with full parser/page-object rendering.
 - Extract glyph metrics and render a known self-test/font sample.
 - Confirm symbol-set mapping for ASCII, Roman-8, line draw, and any built-in alternatives.

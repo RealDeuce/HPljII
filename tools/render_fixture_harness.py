@@ -17534,6 +17534,157 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_record_root_allocations": 1,
         },
     }))
+    vertical_decipoint_cursor_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&a72V!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(20),
+            hmi=line_printer_hmi["hmi"],
+            vmi=pack12(50),
+            top_offset=pack12(0),
+            min_y=pack12(0),
+            max_y=pack12(300),
+            pending_text=1,
+            span_flush_enable=1,
+            events=[],
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    vertical_decipoint_cursor_page_record_object = vertical_decipoint_cursor_page_record_stream["bucket_object"]
+    vertical_decipoint_cursor_page_record_rendered = vertical_decipoint_cursor_page_record_stream["rendered"]
+    vertical_decipoint_cursor_page_record_bridged = vertical_decipoint_cursor_page_record_stream["bridged_record"]
+    assert isinstance(vertical_decipoint_cursor_page_record_object, bytes)
+    assert isinstance(vertical_decipoint_cursor_page_record_rendered, dict)
+    assert isinstance(vertical_decipoint_cursor_page_record_bridged, dict)
+    vertical_decipoint_cursor_page_record_event_summary: list[dict[str, object]] = []
+    vertical_decipoint_cursor_page_record_events = vertical_decipoint_cursor_page_record_stream["events"]
+    assert isinstance(vertical_decipoint_cursor_page_record_events, list)
+    for event in vertical_decipoint_cursor_page_record_events:
+        assert isinstance(event, dict)
+        if event["kind"] == "cursor-position":
+            vertical_decipoint_cursor_page_record_event_summary.append({
+                "kind": event["kind"],
+                "sequence": event["sequence"],
+                "record": event["record"],
+                "parameter": event["parameter"],
+                "fraction": event["fraction"],
+                "relative": event["relative"],
+                "handler": event["handler"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "event": event["event"],
+            })
+        else:
+            page_result = event["page_result"]
+            positioned = event["positioned"]
+            assert isinstance(page_result, dict)
+            assert isinstance(positioned, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            vertical_decipoint_cursor_page_record_event_summary.append({
+                "kind": event["kind"],
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": page_result["coord"],
+                "allocated": page_result["allocated"],
+                "count_before": page_result["count_before"],
+                "count_after": page_result["count_after"],
+                "bucket_index": page_result["bucket_index"],
+            })
+    vertical_decipoint_cursor_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&a72V!")
+    expected_vertical_decipoint_cursor_rows = [
+        "." * 20,
+        "." * 20,
+        "." * 20,
+        "." * 20,
+        "." * 20,
+        "." * 20,
+        "." * 20,
+        "." * 20,
+        "." * 20,
+    ] + [
+        "." * 16 + "####" if row == "####" else "." * 20
+        for row in line_printer_glyph32_rows
+    ]
+    checks.append(assert_equal("vertical decipoint parser trace feeds page-record queue", {
+        "stream": vertical_decipoint_cursor_page_record_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in vertical_decipoint_cursor_parser_trace["events"]
+        ],
+        "parser_final_mode": vertical_decipoint_cursor_parser_trace["final_mode"],
+        "events": vertical_decipoint_cursor_page_record_event_summary,
+        "root_allocations": vertical_decipoint_cursor_page_record_stream["final_state"]["page_record_root_allocations"],
+        "bucket_index": vertical_decipoint_cursor_page_record_stream["bucket_index"],
+        "object_prefix": vertical_decipoint_cursor_page_record_object[:11],
+        "bridged_context_slots": vertical_decipoint_cursor_page_record_bridged["context_slots"][:2],
+        "rendered_rows": vertical_decipoint_cursor_page_record_rendered["rows"],
+        "final_state": select_keys(vertical_decipoint_cursor_page_record_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "pending_text",
+            "page_roots",
+            "span_flushes",
+            "post_flushes",
+            "page_record_root_allocations",
+        )),
+    }, {
+        "stream": b"\x1b&a72V!",
+        "parser_events": [
+            {"kind": "command", "handler": 0x00F60A, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+        ],
+        "parser_final_mode": 0,
+        "events": [
+            {
+                "kind": "cursor-position",
+                "sequence": b"\x1b&a72V",
+                "record": bytes.fromhex("80 56 00 48 00 00"),
+                "parameter": 72,
+                "fraction": 0,
+                "relative": False,
+                "handler": 0x00F60A,
+                "cursor_before": {"x": pack12(10), "y": pack12(20)},
+                "cursor_after": {"x": pack12(10), "y": pack12(30)},
+                "event": {"kind": "vertical-position", "relative": False, "amount": pack12(30), "cursor_y": pack12(30), "clamp_max": True},
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 9),
+                "coord": 0x9001,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+            },
+        ],
+        "root_allocations": 1,
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 90 01"),
+        "bridged_context_slots": (0x440946B4, 0),
+        "rendered_rows": expected_vertical_decipoint_cursor_rows,
+        "final_state": {
+            "cursor_x": pack12(28),
+            "cursor_y": pack12(30),
+            "pending_text": 0,
+            "page_roots": 1,
+            "span_flushes": 1,
+            "post_flushes": 1,
+            "page_record_root_allocations": 1,
+        },
+    }))
     vertical_layout_page_record_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,
@@ -20100,6 +20251,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- cursor-position parser-to-page-record boundary: stream `1b 26 61 32 43 21` routes `ESC &a2C` through handler `0xf39e`, moves the cursor to two initialized `LINE_PRINTER` HMI columns, then queues printable `!` through `0xd04a` at compact coord `0x0a02` and renders the bridged glyph at pixel x `42`.")
     lines.append("- horizontal-decipoint parser-to-page-record boundary: stream `1b 26 61 37 32 48 21` routes `ESC &a72H` through handler `0xf416`, converts 72 decipoints into 30 packed cursor units, then queues printable `!` through `0xd04a` at compact coord `0x0402` and renders the bridged glyph at pixel x `36`.")
     lines.append("- vertical cursor-position parser-to-page-record boundary: stream `1b 26 61 31 52 21` routes `ESC &a1R` through handler `0xf560`, moves the vertical cursor to one initialized VMI row plus firmware absolute-row bias, then queues printable `!` through `0xd04a` at compact coord `0x1001` in bucket `4` and renders the bridged glyph with one blank row before the glyph body.")
+    lines.append("- vertical-decipoint parser-to-page-record boundary: stream `1b 26 61 37 32 56 21` routes `ESC &a72V` through handler `0xf60a`, converts 72 decipoints into packed vertical cursor y `30`, then queues printable `!` through `0xd04a` at compact coord `0x9001` in bucket `0` and renders the bridged glyph after nine blank rows.")
     lines.append("- vertical-layout parser-to-page-record boundary: stream `1b 26 6c 33 45 21` routes `ESC &l3E` through handler `0xece2`, refreshes the pending vertical cursor from top margin row 3, then queues printable `!` through `0xd04a` at compact coord `0x9001` in bucket `6` and renders the bridged glyph with nine blank rows before the glyph body.")
     lines.append("- cursor-stack parser-to-page-record boundary: stream `1b 26 66 30 53 1b 26 61 32 43 1b 26 66 31 53 21` routes `ESC &f0S`, `ESC &a2C`, and `ESC &f1S` through handlers `0xf75e`, `0xf39e`, and `0xf75e`; the pop restores the original cursor before printable `!` queues through `0xd04a` at compact coord `0x0001` and renders the bridged glyph at the original origin.")
     lines.append("")

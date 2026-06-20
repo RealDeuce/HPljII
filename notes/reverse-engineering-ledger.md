@@ -72,7 +72,7 @@ ROM work needed:
 - Decode the `HEAD` record scanner at firmware routine `0x0000041a`.
 - Use the repeated `COURIER` and `LINE_PRINTER` records as first built-in font extraction fixtures.
 - Confirm whether the firmware-supported `0x1be22` `@0..@2` variants are exposed by any host-visible command dialect, or are only internal-compatible table variants.
-- Replace the current `ESC )s0W` parser/route boundary through `0x15d0a` and the current `ESC )s2193W` parser/object boundary through `0x16c14` -> `0x16498` downloaded-pointer `0x1f264` with a full live parser-state run that populates current records/source objects, then replace producer-modeled fixtures with full parser/page-object rendering.
+- Replace the current `ESC *c4660d37e5F` current-state boundary, `ESC )s0W` parser/route boundary through `0x15d0a`, and `ESC )s2193W` parser/object boundary through `0x16c14` -> `0x16498` downloaded-pointer `0x1f264` with a full live parser-state run that populates current records/source objects, then replace producer-modeled fixtures with full parser/page-object rendering.
 - Extract glyph metrics and render a known self-test/font sample.
 - Confirm symbol-set mapping for ASCII, Roman-8, line draw, and any built-in alternatives.
 - Build extraction scripts that emit deterministic fixture data for the renderer.
@@ -85,7 +85,7 @@ Known renderer boundary:
 
 ROM work needed:
 
-- Replace the current `ESC )s0W` parser/route boundary through `0x15d0a` and the current `ESC )s2193W` parser/object boundary through `0x16c14` -> `0x16498` downloaded-pointer `0x1f264` with a full live parser-state run that populates current records/source objects; the verified built-in scan does not provide normal built-in entries for these renderer modes.
+- Replace the current `ESC *c4660d37e5F` current-state boundary, `ESC )s0W` parser/route boundary through `0x15d0a`, and `ESC )s2193W` parser/object boundary through `0x16c14` -> `0x16498` downloaded-pointer `0x1f264` with a full live parser-state run that populates current records/source objects; the verified built-in scan does not provide normal built-in entries for these renderer modes.
 - Integrate executable row-copy behavior with real page objects from the parser/imaging path.
 - Broaden the documented printable and inline/downloaded `0x1393a` / `0xd824` / `0xd3b2` / `0xd550` / `0x12f2e` text-object glyph-index fixtures into real font-download parser records, real HMI/font metrics, glyph indices, and parser-produced page objects.
 - Treat direct `0x78297a` references and pool aliases documented in `generated/analysis/ic30_ic13_page_root_references.md` as checked leads; the shared `0x10084` first-root allocation and `0x10110` context-slot bootstrap are documented in `generated/analysis/ic30_ic13_page_root_allocation.md`; the shared `0xff1e` publish-or-clear boundary is documented in `generated/analysis/ic30_ic13_page_root_finalization.md`; the active render bridge is documented in `generated/analysis/ic30_ic13_render_path_references.md`.

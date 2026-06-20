@@ -11353,6 +11353,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         counters={"0x782782": 7, "0x782786": 2},
         parser_mode=0,
     )
+    font_control_download_target_trace = trace_font_control_parser_dispatch_via_11774(
+        data,
+        b"\x1b*c4660d37e5F",
+        records=[{"id": 0x1234, "flags": 0x00, "payload": 0x456789}],
+        counters={"0x782782": 7, "0x782786": 2},
+        parser_mode=0,
+    )
     checks.append(assert_equal("0x15a18/0x11f96-modeled font payload command edge", {
         "character_code": font_character_code,
         "zero_payload": font_payload_dispatch_header,
@@ -11530,6 +11537,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         descriptor_byte_budget=4,
         records=[{"id": 0x1234, "flags": 0x00, "payload": 0x456789}],
         current_id=0x1234,
+        current_object_flags=0x40000000,
+    )
+    font_descriptor_command_from_control = render_font_descriptor_command_stream_via_121cc_15d0a(
+        b"\x1b)s0W\x04\x00\xaa\xbb",
+        descriptor_byte_budget=4,
+        records=font_control_download_target_trace["records"],
+        current_id=int(font_control_download_target_trace["current_font_id"]),
         current_object_flags=0x40000000,
     )
     font_descriptor_command_continuation = render_font_descriptor_command_stream_via_121cc_15d0a(
@@ -12857,6 +12871,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         rows=0x0081,
         object_offset=0x0500,
     )
+    downloaded_segmented_wide_command_from_control = render_font_download_char_command_stream_via_121cc_16498(
+        downloaded_segmented_wide_command_stream,
+        table_payload_type2_bytes,
+        char_code=int(font_control_download_target_trace["current_character"]),
+        record_words=(0x0000, 0x0000, 0x0081, 0x0000),
+        mode=1,
+        width=0x0088,
+        rows=0x0081,
+        object_offset=0x0500,
+    )
     downloaded_segmented_wide_dispatch_trace = trace_font_parser_dispatch_via_11774(
         data,
         downloaded_segmented_wide_command_stream,
@@ -12871,6 +12895,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(downloaded_segmented_wide_event, dict)
     downloaded_segmented_wide_payload = downloaded_segmented_wide_event["install"]
     assert isinstance(downloaded_segmented_wide_payload, dict)
+    downloaded_segmented_wide_control_event = downloaded_segmented_wide_command_from_control["events"][0]
+    assert isinstance(downloaded_segmented_wide_control_event, dict)
+    downloaded_segmented_wide_control_payload = downloaded_segmented_wide_control_event["install"]
+    assert isinstance(downloaded_segmented_wide_control_payload, dict)
     downloaded_segmented_wide_memory = bytearray(downloaded_segmented_wide_payload["header"])
     downloaded_segmented_wide_glyph = resolve_downloaded_pointer_glyph(downloaded_segmented_wide_memory, 0, 0x25)
     assert downloaded_segmented_wide_glyph is not None
@@ -13099,6 +13127,111 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "." * 158,
                 "." * 22 + "#." * 64 + ".#.#.#.#",
             ],
+        },
+    }))
+    checks.append(assert_equal("font control stream state feeds descriptor route and character payload", {
+        "control": {
+            "dispatch_handlers": [
+                event["handler"]
+                for event in font_control_download_target_trace["dispatches"]
+            ],
+            "dispatch_modes": [
+                event["next_mode"]
+                for event in font_control_download_target_trace["dispatches"]
+            ],
+            "commands": [
+                {key: command[key] for key in ("sequence", "parameter", "record", "state_effect", "mode_after_final")}
+                for command in font_control_download_target_trace["commands"]
+            ],
+            "current_font_id": font_control_download_target_trace["current_font_id"],
+            "current_character": font_control_download_target_trace["current_character"],
+            "records": font_control_download_target_trace["records"],
+            "counters": font_control_download_target_trace["counters"],
+        },
+        "descriptor": {
+            "current_id": font_control_download_target_trace["current_font_id"],
+            "records": font_control_download_target_trace["records"],
+            "sequence": font_descriptor_command_from_control["sequence"],
+            "restored_record": font_descriptor_command_from_control["restored_record"],
+            "descriptor": font_descriptor_command_from_control["descriptor"],
+            "route": {
+                key: font_descriptor_command_from_control["route"][key]
+                for key in ("status", "path", "selector_status", "target_payload", "object_bit30", "handler", "handler_meaning")
+            },
+        },
+        "payload": {
+            "char_code": font_control_download_target_trace["current_character"],
+            "sequence": downloaded_segmented_wide_control_event["sequence"],
+            "restored_record": downloaded_segmented_wide_control_event["restored_record"],
+            "payload_offset": downloaded_segmented_wide_control_event["payload_offset"],
+            "payload_length": downloaded_segmented_wide_control_event["payload_length"],
+            "table_entry": downloaded_segmented_wide_control_payload["table_entry"],
+            "record": downloaded_segmented_wide_control_payload["record"],
+            "bitmap_size": downloaded_segmented_wide_control_payload["bitmap_size"],
+        },
+    }, {
+        "control": {
+            "dispatch_handlers": [0x011EB6, 0x011EC8, 0x011EDA, 0x015A56, 0x015A18, 0x016DF6],
+            "dispatch_modes": [1, 3, 16, 16, 16, 0],
+            "commands": [
+                {
+                    "sequence": b"\x1b*c4660d",
+                    "parameter": 0x1234,
+                    "record": b"\x80d\x12\x34\x00\x00",
+                    "state_effect": {"kind": "current-font-id", "stored_word": 0x1234},
+                    "mode_after_final": 16,
+                },
+                {
+                    "sequence": b"37e",
+                    "parameter": 0x25,
+                    "record": b"\x80e\x00\x25\x00\x00",
+                    "state_effect": {"kind": "current-character-code", "stored_word": 0x25},
+                    "mode_after_final": 16,
+                },
+                {
+                    "sequence": b"5F",
+                    "parameter": 5,
+                    "record": b"\x80F\x00\x05\x00\x00",
+                    "state_effect": {
+                        "kind": "font-control",
+                        "target": 0x16E86,
+                        "action": "mark-current",
+                        "suppressed": False,
+                        "changed": True,
+                    },
+                    "mode_after_final": 0,
+                },
+            ],
+            "current_font_id": 0x1234,
+            "current_character": 0x25,
+            "records": [{"id": 0x1234, "flags": 0x40, "payload": 0x456789}],
+            "counters": {"0x782782": 6, "0x782786": 3},
+        },
+        "descriptor": {
+            "current_id": 0x1234,
+            "records": [{"id": 0x1234, "flags": 0x40, "payload": 0x456789}],
+            "sequence": b"\x1b)s0W",
+            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "descriptor": bytes.fromhex("04 00 aa bb"),
+            "route": {
+                "status": "route",
+                "path": "current-record",
+                "selector_status": 1,
+                "target_payload": 0x456789,
+                "object_bit30": 1,
+                "handler": 0x16498,
+                "handler_meaning": "downloaded-character-object",
+            },
+        },
+        "payload": {
+            "char_code": 0x25,
+            "sequence": b"\x1b)s2193W",
+            "restored_record": b"\x80W\x08\x91\x00\x01",
+            "payload_offset": 8,
+            "payload_length": 0x0891,
+            "table_entry": 0x00DE,
+            "record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 88 00 00"),
+            "bitmap_size": 0x0891,
         },
     }))
 
@@ -18798,6 +18931,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         downloaded_segmented_wide_payload["bitmap_size"],
         " ".join(f"{byte:02x}" for byte in downloaded_segmented_wide_object),
         downloaded_segmented_wide_glyph["source_kind"],
+    ))
+    lines.append("- font-control to install boundary: `ESC *c4660d37e5F` sets current id `0x%04x`, current character `0x%02x`, and mark counters `%s`; those parser-derived values drive the `ESC )s0W` current-record descriptor route to `0x%05x` and the `ESC )s2193W` character payload table entry `0x%04x`." % (
+        font_control_download_target_trace["current_font_id"],
+        font_control_download_target_trace["current_character"],
+        font_control_download_target_trace["counters"],
+        font_descriptor_command_from_control["route"]["handler"],
+        downloaded_segmented_wide_control_payload["table_entry"],
     ))
     lines.append("")
     unflagged_source_report = unflagged_fixture["source"]

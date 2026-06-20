@@ -3132,6 +3132,30 @@ def control_ff_helper(state: dict[str, int]) -> None:
     state["pending_text"] = 0
 
 
+def control_ff_page_record_helper(state: dict[str, int], page_record: dict[str, object]) -> dict[str, object]:
+    state = dict(state)
+    if state["line_termination"] & 0x20:
+        control_cr_helper(state)
+    control_text_flush_helper(state)
+    state["page_roots"] += 1
+    finalized = finalize_page_record_via_ff1e(page_record, state)
+    state["page_finalizes"] += 1
+    state["pending_text"] = 0xFF
+    state["current_page_root"] = int(finalized["current_page_root_after"])
+    state["page_root_clears"] = int(finalized["page_root_clears"])
+    if finalized["published"]:
+        state["transient_page_byte"] = int(finalized["transient_page_byte"])
+        state["cursor_transient_a"] = int(finalized["cursor_transient_a"])
+        state["cursor_transient_b"] = int(finalized["cursor_transient_b"])
+        state["page_publication_flag"] = int(finalized["page_publication_flag"])
+        state["page_publications"] = int(state.get("page_publications", 0)) + 1
+        state["published_pool_record"] = 1
+    return {
+        "state": state,
+        "finalized_page_record": finalized,
+    }
+
+
 def control_span_update(state: dict[str, int]) -> None:
     state["span_updates"] += 1
 
@@ -5690,16 +5714,37 @@ def render_mixed_printable_control_page_record_stream(
             continue
         if byte in (0x08, 0x09, 0x0A, 0x0C, 0x0D):
             before = dict(state)
-            state = apply_direct_control_code(state, byte)
-            events.append({
+            finalized = None
+            if byte == 0x0C and "page_root_present" in state:
+                result = control_ff_page_record_helper(state, page_record)
+                finalized = result["finalized_page_record"]
+                assert isinstance(finalized, dict)
+                state = result["state"]
+                assert isinstance(state, dict)
+                if finalized["published"]:
+                    published_pool_record = finalized["published_pool_record"]
+                    assert isinstance(published_pool_record, dict)
+                    published_page_record = published_pool_record
+            else:
+                state = apply_direct_control_code(state, byte)
+            event = {
                 "kind": "control",
                 "offset": pos,
                 "byte": byte,
                 "cursor_before": (before["cursor_x"], before["cursor_y"]),
                 "cursor_after": (state["cursor_x"], state["cursor_y"]),
                 "page_roots": state["page_roots"],
+                "page_finalizes": state["page_finalizes"],
                 "span_flushes": state["span_flushes"],
-            })
+            }
+            if finalized is not None:
+                event["finalized_page_record"] = finalized
+                event["current_page_root_before"] = before.get("current_page_root", 0)
+                event["current_page_root_after"] = state.get("current_page_root", 0)
+                event["page_publications"] = state.get("page_publications", 0)
+                event["page_root_clears"] = state.get("page_root_clears", 0)
+                event["page_publication_flag"] = state.get("page_publication_flag", 0)
+            events.append(event)
             pos += 1
             continue
         if byte < 0x20 or byte == 0x7F:
@@ -13893,6 +13938,232 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "rows": positioned_mode0["rows"],
     }))
+    ff_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&k2G!\f",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=1,
+            span_flush_enable=1,
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=1,
+            page_publications=0,
+            page_root_clears=0,
+            published_pool_record=0,
+            page_publication_flag=0,
+            transient_page_byte=1,
+            cursor_transient_a=1,
+            cursor_transient_b=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    ff_page_record_object = ff_page_record_stream["bucket_object"]
+    ff_page_record_rendered = ff_page_record_stream["rendered"]
+    ff_page_record_bridged = ff_page_record_stream["bridged_record"]
+    ff_published_page_record = ff_page_record_stream["published_page_record"]
+    ff_published_bridged = ff_page_record_stream["published_bridged_record"]
+    ff_published_rendered = ff_page_record_stream["published_rendered"]
+    assert isinstance(ff_page_record_object, bytes)
+    assert isinstance(ff_page_record_rendered, dict)
+    assert isinstance(ff_page_record_bridged, dict)
+    assert isinstance(ff_published_page_record, dict)
+    assert isinstance(ff_published_bridged, dict)
+    assert isinstance(ff_published_rendered, dict)
+    ff_page_record_event_summary: list[dict[str, object]] = []
+    ff_finalized_summary: dict[str, object] | None = None
+    ff_page_record_events = ff_page_record_stream["events"]
+    assert isinstance(ff_page_record_events, list)
+    for event in ff_page_record_events:
+        assert isinstance(event, dict)
+        if event["kind"] == "escape":
+            ff_page_record_event_summary.append({
+                "kind": "escape",
+                "sequence": event["sequence"],
+                "line_termination": event["line_termination"],
+            })
+        elif event["kind"] == "printable":
+            page_result = event["page_result"]
+            positioned = event["positioned"]
+            assert isinstance(page_result, dict)
+            assert isinstance(positioned, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            ff_page_record_event_summary.append({
+                "kind": "printable",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": page_result["coord"],
+                "allocated": page_result["allocated"],
+                "count_before": page_result["count_before"],
+                "count_after": page_result["count_after"],
+                "bucket_index": page_result["bucket_index"],
+            })
+        else:
+            finalized = event["finalized_page_record"]
+            assert isinstance(finalized, dict)
+            published_pool_record = finalized["published_pool_record"]
+            assert isinstance(published_pool_record, dict)
+            ff_finalized_summary = {
+                "published": finalized["published"],
+                "bucket_index": finalized["bucket_index"],
+                "bucket_root_prefix": published_pool_record["bucket_root"][:11],
+                "context_slots": published_pool_record["context_slots"],
+                "transient_page_byte": finalized["transient_page_byte"],
+                "cursor_transient_a": finalized["cursor_transient_a"],
+                "cursor_transient_b": finalized["cursor_transient_b"],
+                "page_publication_flag": finalized["page_publication_flag"],
+                "current_page_root_after": finalized["current_page_root_after"],
+                "page_root_clears": finalized["page_root_clears"],
+            }
+            ff_page_record_event_summary.append({
+                "kind": "control",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "page_roots": event["page_roots"],
+                "page_finalizes": event["page_finalizes"],
+                "span_flushes": event["span_flushes"],
+                "current_page_root_before": event["current_page_root_before"],
+                "current_page_root_after": event["current_page_root_after"],
+                "page_publications": event["page_publications"],
+                "page_root_clears": event["page_root_clears"],
+                "page_publication_flag": event["page_publication_flag"],
+            })
+    checks.append(assert_equal("mixed printable/FF page-record stream publishes queued text", {
+        "stream": ff_page_record_stream["stream"],
+        "events": ff_page_record_event_summary,
+        "bucket_index": ff_page_record_stream["bucket_index"],
+        "object_prefix": ff_page_record_object[:11],
+        "object_size": len(ff_page_record_object),
+        "final_state": select_keys(ff_page_record_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "line_termination",
+            "pending_text",
+            "page_roots",
+            "page_finalizes",
+            "page_publications",
+            "page_root_clears",
+            "current_page_root",
+            "span_flushes",
+            "post_flushes",
+            "page_publication_flag",
+        )),
+    }, {
+        "stream": b"\x1b&k2G!\f",
+        "events": [
+            {
+                "kind": "escape",
+                "sequence": b"\x1b&k2G",
+                "line_termination": 0x60,
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 0),
+                "coord": 0x0001,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+            },
+            {
+                "kind": "control",
+                "byte": 0x0C,
+                "cursor_before": (pack12(28), pack12(21)),
+                "cursor_after": (pack12(5), pack12(21)),
+                "page_roots": 1,
+                "page_finalizes": 1,
+                "span_flushes": 1,
+                "current_page_root_before": 1,
+                "current_page_root_after": 0,
+                "page_publications": 1,
+                "page_root_clears": 1,
+                "page_publication_flag": 1,
+            },
+        ],
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+        "object_size": 0x26,
+        "final_state": {
+            "cursor_x": pack12(5),
+            "cursor_y": pack12(21),
+            "line_termination": 0x60,
+            "pending_text": 0xFF,
+            "page_roots": 1,
+            "page_finalizes": 1,
+            "page_publications": 1,
+            "page_root_clears": 1,
+            "current_page_root": 0,
+            "span_flushes": 1,
+            "post_flushes": 1,
+            "page_publication_flag": 1,
+        },
+    }))
+    checks.append(assert_equal("mixed printable/FF page-record finalization publishes bridged record", {
+        "finalized": ff_finalized_summary,
+        "pre_publish_bridge": {
+            "bucket_root": ff_page_record_bridged["bucket_root"],
+            "context_slots": ff_page_record_bridged["context_slots"][:2],
+        },
+        "published_record": {
+            "bucket_root": ff_published_page_record["bucket_root"],
+            "context_slots": ff_published_page_record["context_slots"],
+        },
+        "published_bridge": {
+            "bucket_root": ff_published_bridged["bucket_root"],
+            "context_slots": ff_published_bridged["context_slots"][:2],
+        },
+        "published_rendered": {
+            key: ff_published_rendered[key]
+            for key in ("selector", "context_slot", "count", "rendered", "payload")
+        },
+        "rows": ff_published_rendered["rows"],
+    }, {
+        "finalized": {
+            "published": True,
+            "bucket_index": 0,
+            "bucket_root_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "context_slots": [0x440946B4],
+            "transient_page_byte": 0,
+            "cursor_transient_a": 0,
+            "cursor_transient_b": 0,
+            "page_publication_flag": 1,
+            "current_page_root_after": 0,
+            "page_root_clears": 1,
+        },
+        "pre_publish_bridge": {
+            "bucket_root": ff_page_record_object,
+            "context_slots": (0x440946B4, 0),
+        },
+        "published_record": {
+            "bucket_root": ff_page_record_object,
+            "context_slots": [0x440946B4],
+        },
+        "published_bridge": {
+            "bucket_root": ff_page_record_object,
+            "context_slots": (0x440946B4, 0),
+        },
+        "published_rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 1,
+            "rendered": mixed_reset_rendered["rendered"],
+            "payload": bytes.fromhex("00 01 20 00 01") + bytes(0x1B),
+        },
+        "rows": positioned_mode0["rows"],
+    }))
 
     lines.append("## Host Byte Fetch Fixtures")
     lines.append("")
@@ -14679,6 +14950,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- page-record reset bridged rows match the pre-reset compact text rows.")
     lines.append(f"- published page-record bucket bytes: `{' '.join(f'{byte:02x}' for byte in mixed_reset_published_page_record['bucket_root'])}`")
     lines.append("- published page-record bridge rows match the pre-reset compact text rows.")
+    lines.append("")
+    lines.append("A mixed printable/FF page-record stream drives `ESC &k2G`, printable `!`, then FF. The FF handler applies the mode-2 CR-style horizontal reset, flushes pending text, ensures a page root marker, finalizes the valid root through modeled `0xff1e`, marks page eject with pending text `0xff`, and publishes the queued compact text bucket before clearing the current root. Bridging the published record through `0x1edc6` renders the same rows as the pre-eject compact text object.")
+    lines.append("")
+    lines.append("- mixed FF stream bytes: `1b 26 6b 32 47 21 0c`")
+    lines.append(f"- page-record FF object bytes: `{' '.join(f'{byte:02x}' for byte in ff_page_record_object)}`")
+    lines.append("- page-record FF final state: current page root `%d`, publications `%d`, root clears `%d`, page roots `%d`, finalizes `%d`, pending text `0x%02x`, span flushes `%d`" % (
+        ff_page_record_stream["final_state"]["current_page_root"],
+        ff_page_record_stream["final_state"]["page_publications"],
+        ff_page_record_stream["final_state"]["page_root_clears"],
+        ff_page_record_stream["final_state"]["page_roots"],
+        ff_page_record_stream["final_state"]["page_finalizes"],
+        ff_page_record_stream["final_state"]["pending_text"],
+        ff_page_record_stream["final_state"]["span_flushes"],
+    ))
+    lines.append(f"- published FF page-record bucket bytes: `{' '.join(f'{byte:02x}' for byte in ff_published_page_record['bucket_root'])}`")
+    lines.append("- published FF page-record bridge rows match the pre-eject compact text rows.")
     lines.append("- remaining gap: replace these fixture-only source/bucket/page-root states with page roots allocated by a fuller parser model.")
     lines.append("")
 

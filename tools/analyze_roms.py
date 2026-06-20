@@ -3034,6 +3034,61 @@ def page_geometry_table_report(data: bytes) -> str:
     return "\n".join(lines)
 
 
+def rectangle_graphics_flow_report(data: bytes) -> str:
+    def fmt_refs(refs: list[int]) -> str:
+        if not refs:
+            return "(none)"
+        shown = ", ".join(f"`0x{ref:06x}`" for ref in refs[:12])
+        if len(refs) > 12:
+            shown += f", ... ({len(refs)} total)"
+        return shown
+
+    state_addresses = [
+        (0x00782C8A, "current horizontal cursor word used as rectangle start x"),
+        (0x00782C8E, "current vertical cursor word used as rectangle start y"),
+        (0x00782DB6, "vertical page extent used to reject/clip rectangle height"),
+        (0x00782DB8, "horizontal page extent used to reject/clip rectangle width"),
+        (0x00782DC0, "horizontal page/raster phase added into rectangle object key by `0x134d6`"),
+        (0x00783166, "current rectangle height, written by `ESC *c#B/#V`"),
+        (0x0078316A, "current rectangle width, written by `ESC *c#A/#H`"),
+        (0x0078316E, "current area-fill id, written by `ESC *c#G` and consumed by `ESC *c#P`"),
+    ]
+    lines = ["# IC30/IC13 Rectangle Graphics Flow", ""]
+    lines.append("This report tracks the PCL rectangle/rule command edge into the already-modeled page-record rule-list producer. Names remain provisional where exact pattern rendering is still open.")
+    lines.append("")
+    lines.append("## Command Handlers")
+    lines.append("")
+    lines.append("| Command | Handler | Firmware behavior | Reproduction consequence |")
+    lines.append("| --- | ---: | --- | --- |")
+    lines.append("| `ESC *c#A` | `0x10e68` | requires an explicit positive integer dot width, stores it as packed word `0x78316a`, otherwise clears width | dot width state is integer pixels before clipping |")
+    lines.append("| `ESC *c#B` | `0x10e22` | requires an explicit positive integer dot height, stores it as packed word `0x783166`, otherwise clears height | dot height state is integer pixels before clipping |")
+    lines.append("| `ESC *c#H` | `0x10a40` | converts explicit nonnegative decipoints through five 300-dpi subunits per decipoint, rounds up to a pixel by adding eleven subunits before packed conversion, and stores `0x78316a`; missing, negative, or zero values clear width | decipoint width is rounded up before the fill command sees the integer word |")
+    lines.append("| `ESC *c#V` | `0x10ae0` | same decipoint conversion as width and stores `0x783166` | decipoint height is rounded up before clipping/queuing |")
+    lines.append("| `ESC *c#G` | `0x10dce` | stores absolute nonzero area-fill id in `0x78316e`; missing or zero clears it | `ESC *c2P` and `ESC *c3P` use this id as their selector input |")
+    lines.append("| `ESC *c#P` | `0x10898` | maps fill mode `0`/missing to selector `7`; mode `2` maps area-fill percentages through threshold selectors `0..7`; mode `3` maps pattern ids `1..6` to selectors `8..13`, with portrait/landscape remaps for ids `1..4`; if width/height are nonzero, calls `0x10b80` | fill command validates selector, clips the rectangle to page extents, and queues a rule-list object through `0x13386` |")
+    lines.append("")
+    lines.append("## Queue Path")
+    lines.append("")
+    lines.append("- `0x10b80` rejects rectangles starting beyond the printable extents, clips negative starts and overlong width/height, handles landscape coordinate swapping, ensures a page root through `0x10084`, then queues source record `0x782a88` through `0x13386`.")
+    lines.append("- `0x13386` runs `0x134d6` to compute the compact rule key from source x/y plus `0x782dc0`, then `0x133aa` inserts a 14-byte object under page-root `+0x24`.")
+    lines.append("- `0x1edc6` later copies page-root `+0x24` to render-record `+0x1c`, ORs object byte `+5` with `0x10`, and copies height word `+0x0a` to `+0x0c` before `0x1f446` dispatch.")
+    lines.append("")
+    lines.append("## State Reference Scan")
+    lines.append("")
+    lines.append("| Address | Current role | Longword literal references |")
+    lines.append("| ---: | --- | --- |")
+    for address, role in state_addresses:
+        lines.append(f"| `0x{address:08x}` | {role} | {fmt_refs(find_all(data, address.to_bytes(4, 'big')))} |")
+    lines.append("")
+    lines.append("## Current Reproduction Contract")
+    lines.append("")
+    lines.append("- A byte-stream model must preserve rectangle width/height state across commands until `ESC *c#P` consumes it; reset/rebuild paths clear `0x78316a`, `0x783166`, and `0x78316e`.")
+    lines.append("- Dot sizes and decipoint sizes are not interchangeable at fractional boundaries: decipoint handlers round up with the firmware's `+11` subunit bias before storing the packed value.")
+    lines.append("- `tools/render_fixture_harness.py` now pins dot/decipoint size stores, `ESC *c#G` absolute/clear behavior, `ESC *c#P` selector mapping, portrait rule-list object queueing/bridge normalization, and negative-left clipping. Remaining work is to render all fill-pattern selectors through `0x1f446` and compare pixel patterns.")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def decode_startup_tables(data: bytes) -> str:
     lines = ["# IC30/IC13 Startup Tables", ""]
     lines.append("## Timing/control table at 0x0000048e")
@@ -3126,6 +3181,7 @@ def main() -> None:
     write_if_changed(ANALYSIS / "ic30_ic13_parser_dispatch_tables.md", parser_dispatch_table_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_pcl_command_map.md", parser_command_map_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_page_geometry_tables.md", page_geometry_table_report(firmware))
+    write_if_changed(ANALYSIS / "ic30_ic13_rectangle_graphics_flow.md", rectangle_graphics_flow_report(firmware))
 
     if DISASM.exists():
         write_if_changed(ANALYSIS / "ic30_ic13_reset_absolute_refs.md", absolute_reference_report(DISASM.read_text(encoding="utf-8")))

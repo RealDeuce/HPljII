@@ -54,11 +54,12 @@ These command-to-handler anchors are current priorities for pixel-perfect render
 | `ESC *r#A` | `0x01075a` | start raster graphics |
 | `ESC *r#B` | `0x0107fa` | end raster graphics |
 | `ESC *b#W` | `0x011f82` | transfer raster row bytes |
-| `ESC *c#P` | `0x010898` | fill rectangle |
-| `ESC *c#A` | `0x010e68` | rectangle width in dots |
-| `ESC *c#B` | `0x010e22` | rectangle height in dots |
-| `ESC *c#H` | `0x010a40` | rectangle width in decipoints |
-| `ESC *c#V` | `0x010ae0` | rectangle height in decipoints |
+| `ESC *c#P` | `0x010898` | fill rectangle; consumes size state and queues rule object |
+| `ESC *c#A` | `0x010e68` | rectangle width in dots into `0x78316a` |
+| `ESC *c#B` | `0x010e22` | rectangle height in dots into `0x783166` |
+| `ESC *c#G` | `0x010dce` | area fill id into `0x78316e` |
+| `ESC *c#H` | `0x010a40` | rectangle width in decipoints into `0x78316a` |
+| `ESC *c#V` | `0x010ae0` | rectangle height in decipoints into `0x783166` |
 | `ESC *c#D` | `0x015a56` | assign font ID |
 | `ESC *c#F` | `0x016df6` | font control |
 | `ESC (#A..^` | `0x0120be` | primary font-designation family: symbol set, `#X` font ID, and `3@` default font |
@@ -102,6 +103,8 @@ It then rebuilds page-related state, including `0x782da2`, `0x782db2`, `0x782db4
 `ESC *b#W` at `0x011f82` routes through `0x121cc` with handler `0x105d0`, so raster row byte transfer is tied into the same parsed-command/data chain used by macro/download payload handling.
 
 `ESC *r#B` at `0x0107fa` clears raster active byte `0x783182`, leaving raster origin/baseline/mode/scale/limit state intact so later resolution commands can take effect.
+
+Rectangle graphics command edges are decoded in `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`. `ESC *c#A/#B` store explicit positive dot width/height in `0x78316a` / `0x783166`, while missing or nonpositive values clear the corresponding state. `ESC *c#H/#V` convert decipoints through five 300-dpi subunits per decipoint, round up with the firmware's `+11` subunit bias, and store the same width/height words. `ESC *c#G` stores absolute nonzero area-fill id `0x78316e`; missing or zero clears it. `ESC *c#P` maps black rule, gray-scale, and HP-pattern selectors, clips the current-cursor rectangle against page extents, and queues a 14-byte rule-list object through `0x13386` / `0x133aa`.
 
 `ESC &f#Y` at `0x00e112` stores the absolute parsed signed word into current macro id `0x783164`. `ESC &f#X` at `0x00dd08` uses that id with the 32-entry macro record pool at `0x782a98`: selector `0` starts definition, `1` stops definition, `2` executes, `3` calls, `4`/`5` enable/disable overlay, `6` deletes all, `7` deletes temporary, `8` deletes current id, and `9`/`10` mark temporary/permanent. Execute/call route through `0xe418`, which builds a data-chain frame with byte `+8 = 4` and byte `+9 = 2` or `3`. The executable harness now pins these command side effects and frame metadata; full replay of macro payload bytes through the live parser is still open.
 

@@ -3420,6 +3420,177 @@ def queue_fixed_rule_via_136d2(page_record: dict[str, object], source: dict[str,
     }
 
 
+def rectangle_command_state(**overrides: object) -> dict[str, object]:
+    state: dict[str, object] = {
+        "width": pack12(0),
+        "height": pack12(0),
+        "area_fill_id": 0,
+        "fill_selector": 7,
+        "cursor_x": pack12(10),
+        "cursor_y": pack12(20),
+        "page_width": 100,
+        "page_height": 80,
+        "orientation": 0,
+        "page_record": {},
+        "page_roots": 0,
+        "page_finalizes": 0,
+        "events": [],
+    }
+    state.update(overrides)
+    return state
+
+
+def apply_rectangle_area_fill_id_via_10dce(state: dict[str, object], parameter: int | None) -> dict[str, object]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    value = 0 if parameter is None or int(parameter) == 0 else abs(int(parameter))
+    updated["area_fill_id"] = value & 0xFFFF
+    events.append({"kind": "rectangle-area-fill-id", "area_fill_id": int(updated["area_fill_id"])})
+    updated["events"] = events
+    return updated
+
+
+def rectangle_decipoints_to_packed12(integer: int, fraction: int = 0) -> int:
+    whole = int(integer)
+    frac = int(fraction)
+    if whole < 0 or (whole == 0 and frac == 0):
+        return pack12(0)
+    subunits = whole * 5
+    fractional_product = frac * 5
+    subunits += trunc_div(fractional_product, 10000)
+    if fractional_product % 10000:
+        subunits += 1
+    subunits += 11
+    return subunits_to_packed12(subunits)
+
+
+def apply_rectangle_size_dots(state: dict[str, object], axis: str, parameter: int | None) -> dict[str, object]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    value = 0 if parameter is None or int(parameter) <= 0 else int(parameter)
+    field = "width" if axis == "width" else "height"
+    updated[field] = pack12(value)
+    events.append({"kind": f"rectangle-{field}-dots", field: int(updated[field])})
+    updated["events"] = events
+    return updated
+
+
+def apply_rectangle_size_decipoints(state: dict[str, object], axis: str, integer: int | None, fraction: int = 0) -> dict[str, object]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    value = pack12(0) if integer is None else rectangle_decipoints_to_packed12(int(integer), int(fraction))
+    field = "width" if axis == "width" else "height"
+    updated[field] = value
+    events.append({"kind": f"rectangle-{field}-decipoints", field: int(updated[field])})
+    updated["events"] = events
+    return updated
+
+
+def fill_selector_for_cP(parameter: int | None, area_fill_id: int, orientation: int) -> int | None:
+    if parameter is None or int(parameter) == 0:
+        return 7
+    mode = abs(int(parameter))
+    if mode == 2:
+        if int(area_fill_id) < 1:
+            return None
+        thresholds = ((2, 0), (10, 1), (20, 2), (35, 3), (55, 4), (80, 5), (99, 6), (100, 7))
+        for limit, selector in thresholds:
+            if int(area_fill_id) <= limit:
+                return selector
+        return None
+    if mode == 3:
+        if not 1 <= int(area_fill_id) <= 6:
+            return None
+        selector = int(area_fill_id) + 7
+        if int(orientation) == 1:
+            return {1: 9, 2: 8, 3: 11, 4: 10}.get(int(area_fill_id), selector)
+        return selector
+    return None
+
+
+def apply_fill_rectangle_via_10898(state: dict[str, object], parameter: int | None) -> dict[str, object]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    selector = fill_selector_for_cP(parameter, int(updated.get("area_fill_id", 0)), int(updated.get("orientation", 0)))
+    if selector is None:
+        events.append({"kind": "rectangle-fill-ignored", "parameter": parameter, "area_fill_id": int(updated.get("area_fill_id", 0))})
+        updated["events"] = events
+        return updated
+    updated["fill_selector"] = selector
+    if int(updated["width"]) == 0 or int(updated["height"]) == 0:
+        events.append({"kind": "rectangle-fill-size-missing", "selector": selector})
+        updated["events"] = events
+        return updated
+
+    width = unpack12(int(updated["width"]))[0]
+    height = unpack12(int(updated["height"]))[0]
+    cursor_x = unpack12(int(updated["cursor_x"]))[0]
+    cursor_y = unpack12(int(updated["cursor_y"]))[0]
+    page_width = int(updated["page_width"])
+    page_height = int(updated["page_height"])
+    origin_x = cursor_x
+    origin_y = cursor_y
+    saved_x_long = 0
+    saved_y_long = 0
+
+    if origin_x > page_width - 1 or (origin_x < 0 and origin_x + width < 0):
+        events.append({"kind": "rectangle-fill-ignored", "reason": "horizontal-outside"})
+        updated["events"] = events
+        return updated
+    if origin_x < 0:
+        saved_x_long = int(updated["cursor_x"])
+        width += origin_x
+        origin_x = 0
+    if origin_y > page_height - 1 or (origin_y < 0 and origin_y + height < 0):
+        events.append({"kind": "rectangle-fill-ignored", "reason": "vertical-outside"})
+        updated["events"] = events
+        return updated
+    if origin_y < 0:
+        saved_y_long = int(updated["cursor_y"])
+        height += origin_y
+        origin_y = 0
+
+    max_width = page_width - origin_x
+    max_height = page_height - origin_y
+    if int(updated.get("orientation", 0)) == 0:
+        queued_x = origin_x
+        queued_y = origin_y
+        queued_width = min(width, max_width)
+        queued_height = min(height, max_height)
+    else:
+        right_edge = min(page_width - 1, cursor_x + width - 1)
+        queued_x = origin_y
+        queued_y = page_width - right_edge - 1
+        queued_width = min(height, max_height)
+        queued_height = min(width, max_width)
+
+    if queued_width <= 0 or queued_height <= 0:
+        events.append({"kind": "rectangle-fill-ignored", "reason": "empty-after-clip"})
+        updated["events"] = events
+        return updated
+
+    page_record = dict(updated.get("page_record", {}))
+    result = queue_rectangle_rule_via_13386(page_record, {
+        "x": queued_x,
+        "y": queued_y,
+        "width": queued_width,
+        "height": queued_height,
+        "flags": selector,
+    })
+    updated["page_record"] = page_record
+    updated["page_roots"] = int(updated.get("page_roots", 0)) + 1
+    events.append({
+        "kind": "rectangle-filled",
+        "selector": selector,
+        "source": {"x": queued_x, "y": queued_y, "width": queued_width, "height": queued_height},
+        "saved_x": saved_x_long,
+        "saved_y": saved_y_long,
+        "object": result["object"],
+    })
+    updated["events"] = events
+    return updated
+
+
 def render_bridged_compact_bucket_object(data: bytes, resources: bytes, render_record: dict[str, object]) -> dict[str, object]:
     obj = render_record["bucket_root"]
     context_slots = render_record["context_slots"]
@@ -7614,6 +7785,86 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "object": bytes.fromhex("00 00 00 00 02 06 10 02 00 44 00 00 00 00"),
         "bridged": [bytes.fromhex("00 00 00 00 02 16 10 02 00 44 00 44 01 08")],
     }))
+    rectangle_sizes = apply_rectangle_size_decipoints(
+        apply_rectangle_size_decipoints(
+            apply_rectangle_size_dots(
+                apply_rectangle_size_dots(rectangle_command_state(), "width", 18),
+                "height",
+                0,
+            ),
+            "width",
+            72,
+        ),
+        "height",
+        1,
+        5000,
+    )
+    rectangle_area_id = apply_rectangle_area_fill_id_via_10dce(rectangle_command_state(), -37)
+    checks.append(assert_equal("0x10e68/0x10e22/0x10a40/0x10ae0 rectangle size commands update packed dimensions", {
+        "sizes": select_keys(rectangle_sizes, ("width", "height")),
+        "area_fill_id": rectangle_area_id["area_fill_id"],
+    }, {
+        "sizes": {"width": pack12(30, 11), "height": pack12(1, 7)},
+        "area_fill_id": 37,
+    }))
+    rectangle_fill_black = apply_fill_rectangle_via_10898(rectangle_command_state(
+        width=pack12(12),
+        height=pack12(5),
+        cursor_x=pack12(10),
+        cursor_y=pack12(20),
+        page_width=100,
+        page_height=80,
+    ), 0)
+    rectangle_fill_gray = apply_fill_rectangle_via_10898(rectangle_command_state(
+        width=pack12(12),
+        height=pack12(5),
+        area_fill_id=50,
+    ), 2)
+    rectangle_fill_pattern_landscape = apply_fill_rectangle_via_10898(rectangle_command_state(
+        width=pack12(12),
+        height=pack12(5),
+        area_fill_id=2,
+        orientation=1,
+    ), 3)
+    rectangle_fill_ignored = apply_fill_rectangle_via_10898(rectangle_command_state(
+        width=pack12(12),
+        height=pack12(5),
+        area_fill_id=0,
+    ), 2)
+    checks.append(assert_equal("0x10898 ESC *c#P maps fill selectors and queues rule object", {
+        "black": {
+            "selector": rectangle_fill_black["fill_selector"],
+            "object": rectangle_fill_black["events"][-1]["object"],
+            "bridged": bridge_page_record_via_1edc6(rectangle_fill_black["page_record"])["rule_list"],
+        },
+        "gray_selector": rectangle_fill_gray["fill_selector"],
+        "landscape_pattern_selector": rectangle_fill_pattern_landscape["fill_selector"],
+        "ignored": rectangle_fill_ignored["events"][-1],
+    }, {
+        "black": {
+            "selector": 7,
+            "object": bytes.fromhex("00 00 00 00 00 07 4a 00 00 0c 00 05 00 00"),
+            "bridged": [bytes.fromhex("00 00 00 00 00 17 4a 00 00 0c 00 05 00 05")],
+        },
+        "gray_selector": 4,
+        "landscape_pattern_selector": 8,
+        "ignored": {"kind": "rectangle-fill-ignored", "parameter": 2, "area_fill_id": 0},
+    }))
+    rectangle_fill_clipped = apply_fill_rectangle_via_10898(rectangle_command_state(
+        width=pack12(10),
+        height=pack12(5),
+        cursor_x=pack12(-3),
+        cursor_y=pack12(4),
+        page_width=100,
+        page_height=80,
+    ), None)
+    checks.append(assert_equal("0x10b80 rectangle fill clips negative left edge before queueing", {
+        "object": rectangle_fill_clipped["events"][-1]["object"],
+        "source": rectangle_fill_clipped["events"][-1]["source"],
+    }, {
+        "object": bytes.fromhex("00 00 00 00 00 07 40 00 00 07 00 05 00 00"),
+        "source": {"x": 0, "y": 4, "width": 7, "height": 5},
+    }))
     parser_raster_resolution_cases = [
         (300, {"mode": 0, "scale": 1, "limit": 32}),
         (150, {"mode": 1, "scale": 2, "limit": 16}),
@@ -9528,6 +9779,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         fixed_rule_result["computed"]["key"],
         0x0044,
         fixed_rule_bridged["fixed_list"][0][5],
+    ))
+    lines.append("- `ESC *c#A/#B` store positive dot dimensions directly; `ESC *c#H/#V` convert decipoints through five subunits per decipoint and round up before storing. The fixture pins `ESC *c72H` as `0x%08x` and `ESC *c1.5V` as `0x%08x`." % (
+        rectangle_sizes["width"],
+        rectangle_sizes["height"],
+    ))
+    lines.append("- `ESC *c#G/#P` selector fixtures pin black fill selector `%d`, gray-fill id `50` selector `%d`, and landscape pattern id `2` selector `%d`; the queued black rule object is `%s` before bridge normalization." % (
+        rectangle_fill_black["fill_selector"],
+        rectangle_fill_gray["fill_selector"],
+        rectangle_fill_pattern_landscape["fill_selector"],
+        " ".join(f"{byte:02x}" for byte in rectangle_fill_black["events"][-1]["object"]),
+    ))
+    lines.append("- `0x10b80` clipping fixture starts at x `-3` with width `10`, queues x `0` width `7`, and emits object `%s`." % (
+        " ".join(f"{byte:02x}" for byte in rectangle_fill_clipped["events"][-1]["object"]),
     ))
     lines.append("- bridged compact rows match the page-record queued rows above.")
     lines.append("- remaining gap: replace this synthetic page/control record with a parser-produced page root and compare the finalized record published by `0xff1e`.")

@@ -2593,6 +2593,108 @@ def parser_command_map_report(data: bytes) -> str:
     return "\n".join(lines)
 
 
+def font_control_flow_report(data: bytes) -> str:
+    def fmt_refs(refs: list[int]) -> str:
+        if not refs:
+            return "(none)"
+        text = ", ".join(f"`0x{ref:06x}`" for ref in refs[:12])
+        if len(refs) > 12:
+            text += f", ... ({len(refs)} total)"
+        return text
+
+    table = 0x16DB6
+    entries: list[tuple[int, int]] = []
+    pos = table
+    while True:
+        target = u32(data, pos)
+        value = u32(data, pos + 4)
+        pos += 8
+        if target == 0:
+            default_target = value
+            break
+        entries.append((value, target))
+
+    roles = {
+        0: "if `0x782a92 != 2`, calls `0x179da(1)`, which walks 32 records under `0x782640` and calls `0x187fe` for each record id",
+        1: "if `0x782a92 != 2`, calls `0x179da(0)`, the same all-record walk with the alternate `0x187fe` argument",
+        2: "if `0x782a92 != 2`, calls `0x187fe(1)` for the current `0x782f2e` font id",
+        3: "if `0x782a92 != 2`, calls `0x17b5c`; that helper uses current font id `0x782f2e` plus character/code word `0x782f30` to clear or replace one glyph record",
+        4: "calls `0x17150`; if the current record exists and bit 6 is set, clears bit 6 and moves one count from `0x782786` back to `0x782782`",
+        5: "calls `0x17108`; if the current record exists and bit 6 is clear, sets bit 6 and moves one count from `0x782782` to `0x782786`",
+        6: "if `0x782a92 != 2`, calls `0x18180` and then `0x1b04c` for active/current font-resource housekeeping",
+    }
+
+    state_addresses = [
+        (0x0078299E, "parser record cursor rewound by `0x15a56` and `0x16df6` before reading the parsed parameter"),
+        (0x00782F2E, "current font id written by `ESC *c#D` and consumed by font-control helpers"),
+        (0x00782F30, "current character/code word consumed by the value-3 helper `0x17b5c`"),
+        (0x00782A92, "mode/status byte that suppresses font-control values 0, 1, 2, 3, and 6 when it equals `2`"),
+        (0x00782640, "start of 32 current downloaded-font records, 10 bytes each"),
+        (0x00782782, "unmarked/current downloaded-font count adjusted by `0x17108` and `0x17150`"),
+        (0x00782786, "marked/current downloaded-font count adjusted opposite `0x782782`"),
+        (0x00783140, "download payload byte budget used by `0x16c14` and lower payload readers"),
+    ]
+
+    routines = [
+        (0x015A56, "`ESC *c#D` assign-font-id handler"),
+        (0x016DF6, "`ESC *c#F` font-control dispatcher"),
+        (0x0179DA, "all-record font-control walker"),
+        (0x0187FE, "current-record release/delete wrapper"),
+        (0x017B5C, "current character/glyph record clear helper"),
+        (0x017108, "mark current downloaded record"),
+        (0x017150, "unmark current downloaded record"),
+        (0x018180, "active/current font-resource housekeeping helper"),
+        (0x016C14, "downloaded font/resource payload add command"),
+    ]
+
+    lines = ["# IC30/IC13 Font ID and Font-Control Flow", ""]
+    lines.append("Generated from the verified firmware image and focused disassembly around `0x15a56`, `0x16df6`, and the immediate font-control targets.")
+    lines.append("This is the host-command edge for downloaded-font bookkeeping: `ESC *c#D` selects the current font id, while `ESC *c#F` dispatches control values that delete, mark, unmark, or refresh current downloaded-font records.")
+    lines.append("")
+
+    lines.append("## Assign Font ID")
+    lines.append("")
+    lines.append("| Handler | Firmware behavior | Reproduction meaning |")
+    lines.append("| --- | --- | --- |")
+    lines.append("| `0x15a56` (`ESC *c#D`) | rewinds parser record cursor `0x78299e` by six bytes, reads the parsed signed word at `+2`, stores its absolute value in `0x782f2e`, and maps `-32768` to `0x7fff` | subsequent downloaded-font control and payload commands operate on this normalized current font id |")
+    lines.append("")
+
+    lines.append("## Font-Control Jump Table")
+    lines.append("")
+    lines.append(f"The table at `0x{table:06x}` is decoded as `(target_long, value_long)` pairs terminated by target `0`; the terminal value is the default target `0x{default_target:06x}`.")
+    lines.append("")
+    lines.append("| `ESC *c#F` value | Target | Immediate ROM effect |")
+    lines.append("| ---: | ---: | --- |")
+    for value, target in sorted(entries):
+        lines.append(f"| `{value}` | `0x{target:06x}` | {roles.get(value, '(unlabeled)')} |")
+    lines.append(f"| other | `0x{default_target:06x}` | no-op return |")
+    lines.append("")
+
+    lines.append("## Related Routines")
+    lines.append("")
+    lines.append("| Routine | Role | Absolute JSR references |")
+    lines.append("| ---: | --- | --- |")
+    for routine, role in routines:
+        lines.append(f"| `0x{routine:06x}` | {role} | {fmt_refs(jsr_abs_refs(data, routine))} |")
+    lines.append("")
+
+    lines.append("## State References")
+    lines.append("")
+    lines.append("| Address | Current role | Longword literal references |")
+    lines.append("| ---: | --- | --- |")
+    for address, role in state_addresses:
+        lines.append(f"| `0x{address:08x}` | {role} | {fmt_refs(find_all(data, address.to_bytes(4, 'big')))} |")
+    lines.append("")
+
+    lines.append("## Current Reproduction Contract")
+    lines.append("")
+    lines.append("- A byte-stream reproduction must preserve the global current font id at `0x782f2e`; `ESC *c#D` normalization happens before `ESC *c#F`, `ESC (#X` / `ESC )#X`, and downloaded payload installation consult current records.")
+    lines.append("- Font-control values `0`, `1`, `2`, `3`, and `6` are suppressed when `0x782a92 == 2`; values `4` and `5` still run the downloaded-record mark/unmark helpers.")
+    lines.append("- The concrete payload-install path remains `0x16c14` -> `0x17026` -> `0x1719c` -> `0x1bc38`, but this report names the PCL command edge that selects which current downloaded-font records those lower helpers mutate.")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def host_byte_fetch_flow_report(data: bytes) -> str:
     def fmt_refs(refs: list[int]) -> str:
         if not refs:
@@ -2984,6 +3086,7 @@ def main() -> None:
     write_if_changed(ANALYSIS / "ic30_ic13_cmpi_byte_candidates.md", cmpi_byte_candidates(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_parser_xrefs.md", xref_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_host_byte_fetch_flow.md", host_byte_fetch_flow_report(firmware))
+    write_if_changed(ANALYSIS / "ic30_ic13_font_control_flow.md", font_control_flow_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_direct_control_code_flow.md", direct_control_code_flow_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_esc_e_reset_flow.md", esc_e_reset_flow_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_literal_patterns.md", byte_pattern_report(firmware))

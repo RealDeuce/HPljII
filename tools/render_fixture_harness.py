@@ -5237,6 +5237,12 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
                     raise AssertionError("raster command stream payload shorter than ESC *b#W byte count")
                 payload = stream[payload_start:payload_end]
                 pos = payload_end
+                parsed_record = bytes([
+                    0x81 if parameter < 0 else 0x80,
+                    final,
+                ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
+                delayed = delay_payload_handler_via_121cc(parsed_record, 0x0105D0)
+                restored = restore_delayed_payload_via_12218(delayed)
                 transfer_state = {
                     "x": state["baseline_word"],
                     "y": state["row_y"],
@@ -5249,6 +5255,10 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
                     "kind": "raster-transfer",
                     "sequence": sequence,
                     "parameter": parameter,
+                    "parsed_record": parsed_record,
+                    "delayed_snapshot_bytes": delayed["snapshot_bytes"],
+                    "restore_dispatch": restored["dispatch"],
+                    "restored_record": restored["record"],
                     "delayed_handler": 0x0105D0,
                     "payload_offset": payload_start,
                     "payload": payload,
@@ -12329,7 +12339,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     if event["kind"] == "raster-resolution"
                     else ("kind", "parameter", "active_after", "origin_long", "baseline_word", "limit")
                     if event["kind"] == "start-raster"
-                    else ("kind", "parameter", "delayed_handler", "payload_offset", "payload", "transfer_state", "row_y_after")
+                    else ("kind", "parameter", "parsed_record", "delayed_snapshot_bytes", "restore_dispatch", "restored_record", "delayed_handler", "payload_offset", "payload", "transfer_state", "row_y_after")
                 )
             }
             for event in raster_stream_result["events"]
@@ -12345,6 +12355,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {
                 "kind": "raster-transfer",
                 "parameter": 4,
+                "parsed_record": bytes.fromhex("80 57 00 04 00 00"),
+                "delayed_snapshot_bytes": bytes.fromhex("01 00 01 05 d0 80 57 00 04 00 00"),
+                "restore_dispatch": {"kind": "direct-handler", "handler": 0x0105D0},
+                "restored_record": bytes.fromhex("80 57 00 04 00 00"),
                 "delayed_handler": 0x0105D0,
                 "payload_offset": 17,
                 "payload": bytes.fromhex("f0 0f aa 55"),
@@ -15282,7 +15296,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## Modeled Raster Command/Data Stream Fixture")
     lines.append("")
-    lines.append("This fixture starts from actual PCL command bytes, then models the delayed payload boundary that `0x121cc` records for handler `0x105d0`. It is still not a full firmware parser run, but it proves the byte stream selects parser-derived raster state before queueing and rendering the `ESC *b#W` payload. The 300/150/100/75-dpi streams pin byte-stream-selected modes 0..3, and same-group lowercase-final sequences now stay in the firmware parser mode until the final uppercase command byte.")
+    lines.append("This fixture starts from actual PCL command bytes, then models the delayed payload boundary that `0x121cc` records for handler `0x105d0`. It is still not a full firmware parser run, but each transfer event now carries the six-byte parsed record, the exact `0x121cc` snapshot bytes, and the `0x12218` restore/dispatch result before queueing and rendering the `ESC *b#W` payload. The 300/150/100/75-dpi streams pin byte-stream-selected modes 0..3, and same-group lowercase-final sequences now stay in the firmware parser mode until the final uppercase command byte.")
     lines.append("")
     lines.append(f"- stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_command_stream)}`")
     lines.append("- parsed events:")
@@ -15302,9 +15316,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 event["limit"],
             ))
         elif event["kind"] == "raster-transfer":
-            lines.append("- `ESC *b%dW`: delayed handler `0x%06x`, payload offset `%d`, payload `%s`, transfer state `%s`" % (
+            lines.append("- `ESC *b%dW`: parsed record `%s`, delayed snapshot `%s`, restore dispatch `%s`, payload offset `%d`, payload `%s`, transfer state `%s`" % (
                 event["parameter"],
-                event["delayed_handler"],
+                " ".join(f"{byte:02x}" for byte in event["parsed_record"]),
+                " ".join(f"{byte:02x}" for byte in event["delayed_snapshot_bytes"]),
+                event["restore_dispatch"],
                 event["payload_offset"],
                 " ".join(f"{byte:02x}" for byte in event["payload"]),
                 event["transfer_state"],

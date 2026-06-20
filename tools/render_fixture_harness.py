@@ -2360,6 +2360,231 @@ def default_font_current_candidate_via_1b250(
     }
 
 
+def default_font_candidate_admissible_via_1b7b2(
+    candidate: dict[str, int],
+    *,
+    search_mode: int,
+    candidate_word: int,
+) -> dict[str, object]:
+    mode = int(search_mode)
+    word = int(candidate_word) & 0xFFFF
+    address = int(candidate["longword"]) & 0xFFFFFF
+    if mode == 3:
+        selected = word in (0x0175, 0x0155, 0x0115, 0x000E)
+        reason = "special-symbol" if selected else "mode3-symbol-reject"
+    elif mode == 1:
+        selected = 0x200000 <= address <= 0x3FFFFE and word != 0x0005
+        reason = "range-1" if selected else "range-1-reject"
+    elif mode == 2:
+        selected = 0x400000 <= address <= 0x5FFFFE and word != 0x0005
+        reason = "range-2" if selected else "range-2-reject"
+    elif mode == 0:
+        selected = word != 0x0005 and bool(candidate.get("downloaded_record_bit30", 0))
+        reason = "downloaded-bit30" if selected else "downloaded-reject"
+    else:
+        selected = False
+        reason = "unsupported-mode"
+    return {
+        "selected": selected,
+        "reason": reason,
+        "address": address,
+        "word": word,
+    }
+
+
+def default_font_duplicate_filter_via_1b8b6(
+    candidate: dict[str, int],
+    *,
+    current_selected_pointer: int,
+    candidate_word: int,
+    roman8_substitution_flag: bool,
+) -> dict[str, object]:
+    same_slot = int(current_selected_pointer) == int(candidate["slot_pointer"])
+    duplicate_roman8 = (
+        same_slot
+        and (int(candidate_word) & 0xFFFF) == 0x0115
+        and bool(roman8_substitution_flag)
+    )
+    return {
+        "selected": not duplicate_roman8,
+        "same_slot": same_slot,
+        "reason": "duplicate-roman8-suppressed" if duplicate_roman8 else "admitted",
+    }
+
+
+def default_font_candidate_class_via_1b750(
+    candidate: dict[str, int],
+    *,
+    search_mode: int,
+    candidate_word: int,
+    current_selected_pointer: int,
+    roman8_substitution_flag: bool,
+) -> dict[str, object]:
+    admissible = default_font_candidate_admissible_via_1b7b2(
+        candidate,
+        search_mode=search_mode,
+        candidate_word=candidate_word,
+    )
+    duplicate_filter = default_font_duplicate_filter_via_1b8b6(
+        candidate,
+        current_selected_pointer=current_selected_pointer,
+        candidate_word=candidate_word,
+        roman8_substitution_flag=roman8_substitution_flag,
+    )
+    if not bool(admissible["selected"]) or not bool(duplicate_filter["selected"]):
+        class_id = 0
+    elif (
+        int(current_selected_pointer) == int(candidate["slot_pointer"])
+        and int(search_mode) in (1, 2)
+    ):
+        class_id = 2
+    else:
+        class_id = 1
+    return {
+        "class": class_id,
+        "admissible_reason": admissible["reason"],
+        "duplicate_reason": duplicate_filter["reason"],
+    }
+
+
+def default_font_resolver_scan_via_1b50e(
+    *,
+    search_mode: int,
+    requested_index: int,
+    requested_symbol: int,
+    current_selected_pointer: int,
+    fast_probe: dict[str, int] | None,
+    first_list: list[dict[str, int]],
+    second_list: list[dict[str, int]],
+) -> dict[str, object]:
+    mode = int(search_mode)
+    wanted_index = int(requested_index) & 0xFF
+    requested = int(requested_symbol) & 0xFFFF
+    if wanted_index == 0xFF:
+        return {
+            "selected_pointer": 0,
+            "selected_resource_address": 0,
+            "word": 0,
+            "source": "0x1b50e-disabled",
+            "events": [{
+                "helper": 0x01B50E,
+                "action": "disabled-selector",
+                "search_mode": mode,
+                "requested_index": wanted_index,
+            }],
+        }
+
+    events: list[dict[str, object]] = []
+    if mode != 0 and wanted_index == 0 and fast_probe and int(fast_probe.get("selected_pointer", 0)):
+        resource_address = int(fast_probe["longword"]) & 0xFFFFFF
+        word = int(fast_probe["word"]) & 0xFFFF
+        events.append({
+            "helper": 0x01B8EA,
+            "search_mode": mode,
+            "requested_index": wanted_index,
+            "selected_pointer": int(fast_probe["selected_pointer"]),
+            "resource_address": resource_address,
+            "word": word,
+            "selected": True,
+        })
+        return {
+            "selected_pointer": int(fast_probe["selected_pointer"]),
+            "selected_resource_address": resource_address,
+            "word": word,
+            "source": "0x1b50e-fast-probe",
+            "events": events,
+        }
+
+    if mode not in (0, 1, 2, 3):
+        return {
+            "selected_pointer": 0,
+            "selected_resource_address": 0,
+            "word": 0,
+            "source": "0x1b50e-unsupported-mode",
+            "events": [{
+                "helper": 0x01B50E,
+                "action": "unsupported-mode",
+                "search_mode": mode,
+                "requested_index": wanted_index,
+            }],
+        }
+
+    roman8_substitution_flag = requested not in (0x0115, 0x0175, 0x0155, 0x000E)
+    ordinal = 1
+    roman8_duplicate_pending = False
+    for pass_index, candidates in enumerate((first_list, second_list)):
+        for index, candidate in enumerate(candidates):
+            while True:
+                symbol = default_font_candidate_symbol_via_1bbfe(candidate)
+                candidate_word = int(symbol["word"]) & 0xFFFF
+                class_result = default_font_candidate_class_via_1b750(
+                    candidate,
+                    search_mode=mode,
+                    candidate_word=candidate_word,
+                    current_selected_pointer=current_selected_pointer,
+                    roman8_substitution_flag=roman8_substitution_flag,
+                )
+                class_id = int(class_result["class"])
+                event = {
+                    "helper": 0x01B50E,
+                    "pass": pass_index,
+                    "index": index,
+                    "ordinal": ordinal,
+                    "slot_pointer": int(candidate["slot_pointer"]),
+                    "resource_address": int(candidate["longword"]) & 0xFFFFFF,
+                    "candidate_word": candidate_word,
+                    "reader": symbol["reader"],
+                    "reader_source": symbol["reader_source"],
+                    "class": class_id,
+                    "admissible_reason": class_result["admissible_reason"],
+                    "duplicate_reason": class_result["duplicate_reason"],
+                    "roman8_duplicate_pending": roman8_duplicate_pending,
+                    "selected": False,
+                }
+                events.append(event)
+                if class_id == 0:
+                    roman8_duplicate_pending = False
+                    break
+                if class_id == 2:
+                    roman8_duplicate_pending = True
+
+                if wanted_index == ordinal:
+                    word = requested if (
+                        candidate_word == 0x0115
+                        and roman8_substitution_flag
+                        and roman8_duplicate_pending
+                    ) else candidate_word
+                    event["selected"] = True
+                    event["word"] = word
+                    return {
+                        "selected_pointer": int(candidate["slot_pointer"]),
+                        "selected_resource_address": int(candidate["longword"]) & 0xFFFFFF,
+                        "word": word,
+                        "source": "0x1b50e-scan",
+                        "events": events,
+                    }
+
+                if candidate_word == 0x0115 and roman8_substitution_flag:
+                    if roman8_duplicate_pending or int(current_selected_pointer) == int(candidate["slot_pointer"]):
+                        roman8_duplicate_pending = False
+                        ordinal += 1
+                        break
+                    roman8_duplicate_pending = True
+                    ordinal += 1
+                    continue
+
+                ordinal += 1
+                break
+
+    return {
+        "selected_pointer": 0,
+        "selected_resource_address": 0,
+        "word": 0,
+        "source": "0x1b50e-miss",
+        "events": events,
+    }
+
+
 SYMBOL_BYTE_TO_WORD = {
     0x85: 0x0001,
     0x8D: 0x0002,
@@ -11549,6 +11774,160 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "word": 0x0115,
             "selector_78289f": 1,
         },
+    }))
+    classifier_range_current = default_font_candidate_class_via_1b750(
+        {"slot_pointer": 0x4100, "longword": 0x00250000},
+        search_mode=1,
+        candidate_word=0x0055,
+        current_selected_pointer=0x4100,
+        roman8_substitution_flag=True,
+    )
+    classifier_roman8_duplicate = default_font_candidate_class_via_1b750(
+        {"slot_pointer": 0x4100, "longword": 0x00250000},
+        search_mode=1,
+        candidate_word=0x0115,
+        current_selected_pointer=0x4100,
+        roman8_substitution_flag=True,
+    )
+    classifier_mode3_special = default_font_candidate_class_via_1b750(
+        {"slot_pointer": 0x4200, "longword": 0x00010000},
+        search_mode=3,
+        candidate_word=0x0155,
+        current_selected_pointer=0,
+        roman8_substitution_flag=False,
+    )
+    classifier_downloaded = default_font_candidate_class_via_1b750(
+        {"slot_pointer": 0x4300, "longword": 0x00000100, "downloaded_record_bit30": 1},
+        search_mode=0,
+        candidate_word=0x0115,
+        current_selected_pointer=0,
+        roman8_substitution_flag=True,
+    )
+    resolver_disabled = default_font_resolver_scan_via_1b50e(
+        search_mode=1,
+        requested_index=0xFF,
+        requested_symbol=0x0005,
+        current_selected_pointer=0,
+        fast_probe=None,
+        first_list=[],
+        second_list=[],
+    )
+    resolver_fast = default_font_resolver_scan_via_1b50e(
+        search_mode=1,
+        requested_index=0,
+        requested_symbol=0x0005,
+        current_selected_pointer=0,
+        fast_probe={"selected_pointer": 0x4400, "longword": 0x00250000, "word": 0x0055},
+        first_list=[],
+        second_list=[],
+    )
+    resolver_roman8_duplicate = default_font_resolver_scan_via_1b50e(
+        search_mode=1,
+        requested_index=2,
+        requested_symbol=0x0005,
+        current_selected_pointer=0,
+        fast_probe=None,
+        first_list=[
+            {"slot_pointer": 0x4500, "longword": 0x00250000, "inline_word_0x14": 0x0115},
+        ],
+        second_list=[],
+    )
+    resolver_suppressed_current = default_font_resolver_scan_via_1b50e(
+        search_mode=1,
+        requested_index=1,
+        requested_symbol=0x0005,
+        current_selected_pointer=0x4600,
+        fast_probe=None,
+        first_list=[
+            {"slot_pointer": 0x4600, "longword": 0x00250000, "inline_word_0x14": 0x0115},
+            {"slot_pointer": 0x4604, "longword": 0x00260000, "inline_word_0x14": 0x0055},
+        ],
+        second_list=[],
+    )
+    checks.append(assert_equal("0x1b50e current-default resolver scan and predicates", {
+        "class_range_current": classifier_range_current,
+        "class_roman8_duplicate": classifier_roman8_duplicate,
+        "class_mode3_special": classifier_mode3_special,
+        "class_downloaded": classifier_downloaded,
+        "disabled": select_keys(resolver_disabled, (
+            "selected_pointer",
+            "selected_resource_address",
+            "word",
+            "source",
+        )),
+        "fast": select_keys(resolver_fast, (
+            "selected_pointer",
+            "selected_resource_address",
+            "word",
+            "source",
+        )),
+        "roman8_duplicate": select_keys(resolver_roman8_duplicate, (
+            "selected_pointer",
+            "selected_resource_address",
+            "word",
+            "source",
+        )),
+        "roman8_duplicate_events": resolver_roman8_duplicate["events"],
+        "suppressed_current": select_keys(resolver_suppressed_current, (
+            "selected_pointer",
+            "selected_resource_address",
+            "word",
+            "source",
+        )),
+        "suppressed_current_events": resolver_suppressed_current["events"],
+    }, {
+        "class_range_current": {
+            "class": 2,
+            "admissible_reason": "range-1",
+            "duplicate_reason": "admitted",
+        },
+        "class_roman8_duplicate": {
+            "class": 0,
+            "admissible_reason": "range-1",
+            "duplicate_reason": "duplicate-roman8-suppressed",
+        },
+        "class_mode3_special": {
+            "class": 1,
+            "admissible_reason": "special-symbol",
+            "duplicate_reason": "admitted",
+        },
+        "class_downloaded": {
+            "class": 1,
+            "admissible_reason": "downloaded-bit30",
+            "duplicate_reason": "admitted",
+        },
+        "disabled": {
+            "selected_pointer": 0,
+            "selected_resource_address": 0,
+            "word": 0,
+            "source": "0x1b50e-disabled",
+        },
+        "fast": {
+            "selected_pointer": 0x4400,
+            "selected_resource_address": 0x250000,
+            "word": 0x0055,
+            "source": "0x1b50e-fast-probe",
+        },
+        "roman8_duplicate": {
+            "selected_pointer": 0x4500,
+            "selected_resource_address": 0x250000,
+            "word": 0x0005,
+            "source": "0x1b50e-scan",
+        },
+        "roman8_duplicate_events": [
+            {"helper": 0x01B50E, "pass": 0, "index": 0, "ordinal": 1, "slot_pointer": 0x4500, "resource_address": 0x250000, "candidate_word": 0x0115, "reader": "0x158be", "reader_source": "+0x14-word", "class": 1, "admissible_reason": "range-1", "duplicate_reason": "admitted", "roman8_duplicate_pending": False, "selected": False},
+            {"helper": 0x01B50E, "pass": 0, "index": 0, "ordinal": 2, "slot_pointer": 0x4500, "resource_address": 0x250000, "candidate_word": 0x0115, "reader": "0x158be", "reader_source": "+0x14-word", "class": 1, "admissible_reason": "range-1", "duplicate_reason": "admitted", "roman8_duplicate_pending": True, "selected": True, "word": 0x0005},
+        ],
+        "suppressed_current": {
+            "selected_pointer": 0x4604,
+            "selected_resource_address": 0x260000,
+            "word": 0x0055,
+            "source": "0x1b50e-scan",
+        },
+        "suppressed_current_events": [
+            {"helper": 0x01B50E, "pass": 0, "index": 0, "ordinal": 1, "slot_pointer": 0x4600, "resource_address": 0x250000, "candidate_word": 0x0115, "reader": "0x158be", "reader_source": "+0x14-word", "class": 0, "admissible_reason": "range-1", "duplicate_reason": "duplicate-roman8-suppressed", "roman8_duplicate_pending": False, "selected": False},
+            {"helper": 0x01B50E, "pass": 0, "index": 1, "ordinal": 1, "slot_pointer": 0x4604, "resource_address": 0x260000, "candidate_word": 0x0055, "reader": "0x158be", "reader_source": "+0x14-word", "class": 1, "admissible_reason": "range-1", "duplicate_reason": "admitted", "roman8_duplicate_pending": False, "selected": True, "word": 0x0055},
+        ],
     }))
     default_candidate_range_1 = default_font_candidate_search_via_1ad66(
         selector_78289f=0,
@@ -21604,6 +21983,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " / ".join(f"0x{int(word):04x}" for word in default_font_tables_synthesized["fallback_symbols"]),
     ))
     lines.append("- current-default lookup: `0x1b250` treats `0x78219c == 0xff` as disabled, otherwise asks `0x1b50e` for a resource address and symbol word, maps that low-24 address back into the canonical candidate slot list with `0x1b4c0`, stores the resolved slot in `0x7828a0`, copies the returned word to `0x7828a4`, and sets `0x78289f` to `1` only when the selected slot precedes boundary pointer `0x7827ac`.")
+    lines.append("- current-default resolver: `0x1b50e` first accepts the `0x1b8ea` fast probe only for requested index `0`; otherwise it scans two list windows selected by mode `0`, `1`, `2`, or `3`. `0x1b750` classifies each candidate through `0x1b7b2` range/special/downloaded admissibility and `0x1b8b6` current Roman-8 duplicate suppression; non-special requests can count a Roman-8 candidate twice, with the duplicate ordinal writing the requested word instead of `0x0115`.")
     lines.append("- default-font candidate search: `0x1ad66` first tries `0x1adaa(1)` and then `0x1adaa(2)` before `0x1ae7e`; `0x1bbfe` now derives range-hit words through the bit-30-selected symbol readers, and `0x1b060` validates default candidates by orientation, pitch `0x03e8`, height `0x04b0`, style bytes, spacing byte `3`, and requested-symbol fallback rules. The fixture pins primary-slot range-1 word `0x%04x`, secondary-slot range-2 word `0x%04x`, fallback `0x1b060` requested word `0x%04x`, and base-candidate reader sources `%s` / `%s`." % (
         default_candidate_range_1["word"],
         default_candidate_range_2["word"],

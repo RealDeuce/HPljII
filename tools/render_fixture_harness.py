@@ -16094,6 +16094,119 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "................####..............####" if row == "####" else "." * 38
         for row in line_printer_glyph32_rows
     ]))
+    plain_printable_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"!!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    plain_printable_page_record_object = plain_printable_page_record_stream["bucket_object"]
+    plain_printable_page_record_rendered = plain_printable_page_record_stream["rendered"]
+    plain_printable_page_record_bridged = plain_printable_page_record_stream["bridged_record"]
+    assert isinstance(plain_printable_page_record_object, bytes)
+    assert isinstance(plain_printable_page_record_rendered, dict)
+    assert isinstance(plain_printable_page_record_bridged, dict)
+    plain_printable_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, b"!!")
+    plain_printable_event_summary: list[dict[str, object]] = []
+    plain_printable_page_record_events = plain_printable_page_record_stream["events"]
+    assert isinstance(plain_printable_page_record_events, list)
+    for event in plain_printable_page_record_events:
+        assert isinstance(event, dict)
+        page_result = event["page_result"]
+        positioned = event["positioned"]
+        assert isinstance(page_result, dict)
+        assert isinstance(positioned, dict)
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        plain_printable_event_summary.append({
+            "kind": event["kind"],
+            "byte": event["byte"],
+            "cursor_before": event["cursor_before"],
+            "cursor_after": event["cursor_after"],
+            "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+            "coord": page_result["coord"],
+            "allocated": page_result["allocated"],
+            "count_before": page_result["count_before"],
+            "count_after": page_result["count_after"],
+            "bucket_index": page_result["bucket_index"],
+        })
+    checks.append(assert_equal("plain printable parser trace feeds page-record queue", {
+        "stream": plain_printable_page_record_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in plain_printable_parser_trace["events"]
+        ],
+        "parser_final_mode": plain_printable_parser_trace["final_mode"],
+        "events": plain_printable_event_summary,
+        "root_allocations": plain_printable_page_record_stream["final_state"]["page_record_root_allocations"],
+        "bucket_index": plain_printable_page_record_stream["bucket_index"],
+        "object_prefix": plain_printable_page_record_object[:14],
+        "bridged_context_slots": plain_printable_page_record_bridged["context_slots"][:2],
+        "rendered": {
+            key: plain_printable_page_record_rendered[key]
+            for key in ("selector", "context_slot", "count", "rendered")
+        },
+        "rendered_rows": plain_printable_page_record_rendered["rows"],
+        "final_cursor_x": plain_printable_page_record_stream["final_state"]["cursor_x"],
+    }, {
+        "stream": b"!!",
+        "parser_events": [
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+        ],
+        "parser_final_mode": 0,
+        "events": [
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 0),
+                "coord": 0x0001,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(28),
+                "cursor_after": pack12(46),
+                "positioned_xy": (34, 0),
+                "coord": 0x0202,
+                "allocated": False,
+                "count_before": 1,
+                "count_after": 2,
+                "bucket_index": 0,
+            },
+        ],
+        "root_allocations": 1,
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01 20 02 02"),
+        "bridged_context_slots": (0x440946B4, 0),
+        "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 2,
+            "rendered": metric_printable_rendered["rendered"],
+        },
+        "rendered_rows": metric_printable_rendered["rows"],
+        "final_cursor_x": pack12(46),
+    }))
     mixed_stream = render_mixed_printable_control_stream(
         data,
         resources,
@@ -18626,6 +18739,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- real-HMI compact entries: glyph `0x20` at coords `0x0001` and `0x0202`")
     lines.append("- real-HMI rendered rows:")
     lines.extend(f"`{row}`" for row in metric_printable_rendered["rows"])
+    lines.append("- plain parser-to-page-record boundary: stream `21 21` routes both printable bytes through `0xd04a`, allocates one page-record root, reuses bucket `0`, and renders the same real-HMI rows after the `0x1edc6` bridge.")
     lines.append("")
     lines.append("A first mixed printable/control stream fixture now drives `ESC &k1G`, printable `!`, CR, then printable `!` through one pass. The `ESC &k1G` byte stream stores line-termination mode `0x80`; CR therefore resets x to the left margin and also applies LF/VMI before the second printable byte is positioned. With left margin `5`, VMI `3`, and initialized `LINE_PRINTER` HMI `0x00120000`, the second glyph queues at source `(11,3)` / compact coord `0x3b00`, decoded by `0x1f3d4` as `$a001 = 0x1b`.")
     lines.append("")

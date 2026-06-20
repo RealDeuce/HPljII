@@ -8491,13 +8491,30 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     }))
 
     selected_inline_context = 0x00000100
-    selected_inline_memory = bytearray(0x300)
+    selected_inline_memory = bytearray(0x1000)
     selected_inline_record = selected_inline_context + 0x40 + 1 * 8
     selected_inline_bitmap_delta = 0x80
     selected_inline_bitmap = selected_inline_context + selected_inline_bitmap_delta
     selected_inline_memory[selected_inline_record:selected_inline_record + 8] = bytes.fromhex("02 03 04 00 00 00 00 80")
     selected_inline_memory[selected_inline_context + 0x40 + 2 * 8:selected_inline_context + 0x40 + 2 * 8 + 8] = bytes.fromhex("01 02 00 00 00 00 00 90")
     selected_inline_memory[selected_inline_bitmap:selected_inline_bitmap + 6] = bytes.fromhex("aa 55 f0 0f c3 3c")
+    constructed_wide_record = selected_inline_context + 0x40 + 3 * 8
+    constructed_wide_bitmap_delta = 0x120
+    constructed_wide_bitmap = selected_inline_context + constructed_wide_bitmap_delta
+    selected_inline_memory[constructed_wide_record:constructed_wide_record + 8] = bytes.fromhex("11 03 04 00 00 00 01 20")
+    selected_inline_memory[constructed_wide_bitmap:constructed_wide_bitmap + 0x30] = (b"\xff" * 0x10) + (b"\x00" * 0x10) + (b"\xaa" * 0x10)
+    selected_inline_memory[constructed_wide_bitmap + 0x30:constructed_wide_bitmap + 0x33] = bytes.fromhex("ff 00 55")
+    constructed_segmented_record = selected_inline_context + 0x40 + 4 * 8
+    constructed_segmented_bitmap_delta = 0x300
+    constructed_segmented_bitmap = selected_inline_context + constructed_segmented_bitmap_delta
+    selected_inline_memory[constructed_segmented_record:constructed_segmented_record + 8] = bytes.fromhex("02 81 04 00 00 00 03 00")
+    selected_inline_memory[constructed_segmented_bitmap + 0x100:constructed_segmented_bitmap + 0x102] = bytes.fromhex("aa 55")
+    constructed_segmented_wide_record = selected_inline_context + 0x40 + 5 * 8
+    constructed_segmented_wide_bitmap_delta = 0x500
+    constructed_segmented_wide_bitmap = selected_inline_context + constructed_segmented_wide_bitmap_delta
+    selected_inline_memory[constructed_segmented_wide_record:constructed_segmented_wide_record + 8] = bytes.fromhex("11 81 04 00 00 00 05 00")
+    selected_inline_memory[constructed_segmented_wide_bitmap + 0x80 * 0x10:constructed_segmented_wide_bitmap + 0x81 * 0x10] = b"\xaa" * 0x10
+    selected_inline_memory[constructed_segmented_wide_bitmap + 0x81 * 0x10 + 0x80] = 0x55
     selected_inline_map = inline_map_via_14e24(selected_inline_memory, selected_inline_context)
     selected_inline_map_table = selected_inline_map["table"]
     assert isinstance(selected_inline_map_table, bytes)
@@ -8509,8 +8526,23 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "host_0x20": selected_inline_map_table[0x20],
         "host_0x21": selected_inline_map_table[0x21],
         "host_0x22": selected_inline_map_table[0x22],
+        "host_0x23": selected_inline_map_table[0x23],
+        "host_0x24": selected_inline_map_table[0x24],
+        "host_0x25": selected_inline_map_table[0x25],
         "glyph1_probe": {
             key: selected_inline_validity[1][key]
+            for key in ("glyph", "record", "record_bytes", "bitmap", "valid", "reason")
+        },
+        "glyph3_probe": {
+            key: selected_inline_validity[3][key]
+            for key in ("glyph", "record", "record_bytes", "bitmap", "valid", "reason")
+        },
+        "glyph4_probe": {
+            key: selected_inline_validity[4][key]
+            for key in ("glyph", "record", "record_bytes", "bitmap", "valid", "reason")
+        },
+        "glyph5_probe": {
+            key: selected_inline_validity[5][key]
             for key in ("glyph", "record", "record_bytes", "bitmap", "valid", "reason")
         },
         "glyph2_probe": {
@@ -8523,11 +8555,38 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "host_0x20": 0,
         "host_0x21": 1,
         "host_0x22": 0,
+        "host_0x23": 3,
+        "host_0x24": 4,
+        "host_0x25": 5,
         "glyph1_probe": {
             "glyph": 1,
             "record": 0x00000148,
             "record_bytes": bytes.fromhex("02 03 04 00 00 00 00 80"),
             "bitmap": 0x00000180,
+            "valid": True,
+            "reason": "nonzero-fixed-record",
+        },
+        "glyph3_probe": {
+            "glyph": 3,
+            "record": 0x00000158,
+            "record_bytes": bytes.fromhex("11 03 04 00 00 00 01 20"),
+            "bitmap": 0x00000220,
+            "valid": True,
+            "reason": "nonzero-fixed-record",
+        },
+        "glyph4_probe": {
+            "glyph": 4,
+            "record": 0x00000160,
+            "record_bytes": bytes.fromhex("02 81 04 00 00 00 03 00"),
+            "bitmap": 0x00000400,
+            "valid": True,
+            "reason": "nonzero-fixed-record",
+        },
+        "glyph5_probe": {
+            "glyph": 5,
+            "record": 0x00000168,
+            "record_bytes": bytes.fromhex("11 81 04 00 00 00 05 00"),
+            "bitmap": 0x00000600,
             "valid": True,
             "reason": "nonzero-fixed-record",
         },
@@ -8538,6 +8597,360 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "bitmap": 0x00000190,
             "valid": False,
             "reason": "zero-sentinel-bitmap-word",
+        },
+    }))
+    constructed_wide_source = build_inline_text_source_object_from_1393a(
+        selected_inline_memory,
+        selected_inline_context,
+        selected_inline_map_table,
+        0x23,
+        x=0,
+        y=0,
+        context_slot=3,
+    )
+    constructed_wide_positioned = position_unflagged_text_source_via_d3b2(
+        constructed_wide_source,
+        bytes(constructed_wide_source["inline_record"]),
+        cursor_x=10,
+        cursor_y=20,
+        printable_offset=7,
+        context_metric_flag=0,
+        source_x_offset=5,
+    )
+    constructed_wide_positioned_source = constructed_wide_positioned["source"]
+    assert isinstance(constructed_wide_positioned_source, dict)
+    constructed_wide_bucket = queue_text_source_via_12f2e(selected_inline_memory, constructed_wide_positioned_source)
+    constructed_wide_rendered = render_compact_text_bucket_object(
+        data,
+        selected_inline_memory,
+        (0, 0, 0, selected_inline_context),
+        constructed_wide_bucket["object"],
+    )
+    checks.append(assert_equal("constructed inline/downloaded wide glyph maps through 0x1f0d2", {
+        "source": {
+            key: constructed_wide_source[key]
+            for key in ("host_char", "mapped", "glyph_entry", "glyph_width", "glyph_rows", "inline_record", "valid_record", "bitmap")
+        },
+        "position": {
+            "x": constructed_wide_positioned_source["x"],
+            "y": constructed_wide_positioned_source["y"],
+            "record0": constructed_wide_positioned["record0"],
+            "record1": constructed_wide_positioned["record1"],
+            "record2_signed": constructed_wide_positioned["record2_signed"],
+        },
+        "bucket": {
+            key: constructed_wide_bucket[key]
+            for key in ("path", "object", "bucket_index", "selector", "coord", "glyph", "rows", "width")
+        },
+        "render": {
+            "selector": constructed_wide_rendered["selector"],
+            "context_slot": constructed_wide_rendered["context_slot"],
+            "compact_mode": constructed_wide_rendered["compact_mode"],
+            "payload": constructed_wide_rendered["payload"],
+            "rendered": constructed_wide_rendered["rendered"],
+            "rows": constructed_wide_rendered["rows"],
+        },
+    }, {
+        "source": {
+            "host_char": 0x23,
+            "mapped": 0x03,
+            "glyph_entry": 0x00000158,
+            "glyph_width": 0x11,
+            "glyph_rows": 0x03,
+            "inline_record": bytes.fromhex("11 03 04 00 00 00 01 20"),
+            "valid_record": True,
+            "bitmap": 0x00000220,
+        },
+        "position": {
+            "x": 22,
+            "y": 22,
+            "record0": 0x11,
+            "record1": 0x03,
+            "record2_signed": 0x04,
+        },
+        "bucket": {
+            "path": "short",
+            "object": bytes.fromhex("00 00 00 00 10 03 00 01 03 66 01"),
+            "bucket_index": 1,
+            "selector": 0x1003,
+            "coord": 0x6601,
+            "glyph": 0x03,
+            "rows": 0x03,
+            "width": 0x11,
+        },
+        "render": {
+            "selector": 0x1003,
+            "context_slot": 3,
+            "compact_mode": 1,
+            "payload": bytes.fromhex("00 01 03 66 01"),
+            "rendered": [{
+                "glyph": 3,
+                "coord": 0x6601,
+                "rows": 3,
+                "span": 0x11,
+                "width": 0x88,
+                "full_chunks": 1,
+                "remainder": 1,
+                "full_row_skip": 0,
+                "remainder_row_skip": 0x10,
+                "full_chunk_helper": 0x2F27C,
+                "remainder_helper": u32(data, 0x1F1AC + 1 * 4),
+                "dest_base": 0xC2,
+                "x": 22,
+                "y": 6,
+                "a001": 0x16,
+                "source_layout": "inline-trailing-plane",
+            }],
+            "rows": [
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 22 + "#" * 136,
+                "." * 158,
+                "." * 22 + "#." * 64 + ".#.#.#.#",
+            ],
+        },
+    }))
+    constructed_segmented_source = build_inline_text_source_object_from_1393a(
+        selected_inline_memory,
+        selected_inline_context,
+        selected_inline_map_table,
+        0x24,
+        x=0,
+        y=0,
+        context_slot=3,
+    )
+    constructed_segmented_positioned = position_unflagged_text_source_via_d3b2(
+        constructed_segmented_source,
+        bytes(constructed_segmented_source["inline_record"]),
+        cursor_x=10,
+        cursor_y=130,
+        printable_offset=7,
+        context_metric_flag=0,
+        source_x_offset=5,
+    )
+    constructed_segmented_positioned_source = constructed_segmented_positioned["source"]
+    assert isinstance(constructed_segmented_positioned_source, dict)
+    constructed_segmented_bucket = queue_text_source_via_12f2e(selected_inline_memory, constructed_segmented_positioned_source)
+    constructed_segmented_object = constructed_segmented_bucket["objects"][0]["object"]
+    constructed_segmented_rendered = render_compact_text_bucket_object(
+        data,
+        selected_inline_memory,
+        (0, 0, 0, selected_inline_context),
+        constructed_segmented_object,
+    )
+    checks.append(assert_equal("constructed inline/downloaded segmented glyph maps through 0x1f1f0", {
+        "source": {
+            key: constructed_segmented_source[key]
+            for key in ("host_char", "mapped", "glyph_entry", "glyph_width", "glyph_rows", "inline_record", "valid_record", "bitmap")
+        },
+        "position": {
+            "x": constructed_segmented_positioned_source["x"],
+            "y": constructed_segmented_positioned_source["y"],
+            "record0": constructed_segmented_positioned["record0"],
+            "record1": constructed_segmented_positioned["record1"],
+            "record2_signed": constructed_segmented_positioned["record2_signed"],
+        },
+        "bucket": {
+            key: constructed_segmented_bucket[key]
+            for key in ("path", "object_size", "capacity", "entry_size", "selector", "coord", "glyph", "rows", "width", "objects")
+        },
+        "render": {
+            "selector": constructed_segmented_rendered["selector"],
+            "context_slot": constructed_segmented_rendered["context_slot"],
+            "compact_mode": constructed_segmented_rendered["compact_mode"],
+            "payload": constructed_segmented_rendered["payload"],
+            "rendered": constructed_segmented_rendered["rendered"],
+            "rows": constructed_segmented_rendered["rows"],
+        },
+    }, {
+        "source": {
+            "host_char": 0x24,
+            "mapped": 0x04,
+            "glyph_entry": 0x00000160,
+            "glyph_width": 0x02,
+            "glyph_rows": 0x81,
+            "inline_record": bytes.fromhex("02 81 04 00 00 00 03 00"),
+            "valid_record": True,
+            "bitmap": 0x00000400,
+        },
+        "position": {
+            "x": 22,
+            "y": 6,
+            "record0": 0x02,
+            "record1": 0x81,
+            "record2_signed": 0x04,
+        },
+        "bucket": {
+            "path": "segmented",
+            "object_size": 0x28,
+            "capacity": 0x08,
+            "entry_size": 4,
+            "selector": 0x2003,
+            "coord": 0x6601,
+            "glyph": 0x04,
+            "rows": 0x81,
+            "width": 0x02,
+            "objects": [
+                {"bucket_index": 8, "segment": 1, "object": bytes.fromhex("00 00 00 00 20 03 00 01 04 01 66 01")},
+                {"bucket_index": 0, "segment": 0, "object": bytes.fromhex("00 00 00 00 20 03 00 01 04 00 66 01")},
+            ],
+        },
+        "render": {
+            "selector": 0x2003,
+            "context_slot": 3,
+            "compact_mode": 2,
+            "payload": bytes.fromhex("00 01 04 01 66 01"),
+            "rendered": [{
+                "glyph": 4,
+                "segment": 1,
+                "coord": 0x6601,
+                "row_skip": 0x80,
+                "source_offset": 0x100,
+                "rows": 1,
+                "span": 2,
+                "width": 16,
+                "dest_base": 0xC2,
+                "x": 22,
+                "y": 6,
+                "a001": 0x16,
+                "helper": u32(data, 0x1F08E + 2 * 4),
+            }],
+            "rows": [
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 22 + "#.#.#.#..#.#.#.#",
+            ],
+        },
+    }))
+    constructed_segmented_wide_source = build_inline_text_source_object_from_1393a(
+        selected_inline_memory,
+        selected_inline_context,
+        selected_inline_map_table,
+        0x25,
+        x=0,
+        y=0,
+        context_slot=3,
+    )
+    constructed_segmented_wide_positioned = position_unflagged_text_source_via_d3b2(
+        constructed_segmented_wide_source,
+        bytes(constructed_segmented_wide_source["inline_record"]),
+        cursor_x=10,
+        cursor_y=130,
+        printable_offset=7,
+        context_metric_flag=0,
+        source_x_offset=5,
+    )
+    constructed_segmented_wide_positioned_source = constructed_segmented_wide_positioned["source"]
+    assert isinstance(constructed_segmented_wide_positioned_source, dict)
+    constructed_segmented_wide_bucket = queue_text_source_via_12f2e(selected_inline_memory, constructed_segmented_wide_positioned_source)
+    constructed_segmented_wide_object = constructed_segmented_wide_bucket["objects"][0]["object"]
+    constructed_segmented_wide_rendered = render_compact_text_bucket_object(
+        data,
+        selected_inline_memory,
+        (0, 0, 0, selected_inline_context),
+        constructed_segmented_wide_object,
+    )
+    checks.append(assert_equal("constructed inline/downloaded segmented-wide glyph maps through 0x1f264", {
+        "source": {
+            key: constructed_segmented_wide_source[key]
+            for key in ("host_char", "mapped", "glyph_entry", "glyph_width", "glyph_rows", "inline_record", "valid_record", "bitmap")
+        },
+        "position": {
+            "x": constructed_segmented_wide_positioned_source["x"],
+            "y": constructed_segmented_wide_positioned_source["y"],
+            "record0": constructed_segmented_wide_positioned["record0"],
+            "record1": constructed_segmented_wide_positioned["record1"],
+            "record2_signed": constructed_segmented_wide_positioned["record2_signed"],
+        },
+        "bucket": {
+            key: constructed_segmented_wide_bucket[key]
+            for key in ("path", "object_size", "capacity", "entry_size", "selector", "coord", "glyph", "rows", "width", "objects")
+        },
+        "render": {
+            "selector": constructed_segmented_wide_rendered["selector"],
+            "context_slot": constructed_segmented_wide_rendered["context_slot"],
+            "compact_mode": constructed_segmented_wide_rendered["compact_mode"],
+            "payload": constructed_segmented_wide_rendered["payload"],
+            "rendered": constructed_segmented_wide_rendered["rendered"],
+            "rows": constructed_segmented_wide_rendered["rows"],
+        },
+    }, {
+        "source": {
+            "host_char": 0x25,
+            "mapped": 0x05,
+            "glyph_entry": 0x00000168,
+            "glyph_width": 0x11,
+            "glyph_rows": 0x81,
+            "inline_record": bytes.fromhex("11 81 04 00 00 00 05 00"),
+            "valid_record": True,
+            "bitmap": 0x00000600,
+        },
+        "position": {
+            "x": 22,
+            "y": 6,
+            "record0": 0x11,
+            "record1": 0x81,
+            "record2_signed": 0x04,
+        },
+        "bucket": {
+            "path": "segmented",
+            "object_size": 0x28,
+            "capacity": 0x08,
+            "entry_size": 4,
+            "selector": 0x3003,
+            "coord": 0x6601,
+            "glyph": 0x05,
+            "rows": 0x81,
+            "width": 0x11,
+            "objects": [
+                {"bucket_index": 8, "segment": 1, "object": bytes.fromhex("00 00 00 00 30 03 00 01 05 01 66 01")},
+                {"bucket_index": 0, "segment": 0, "object": bytes.fromhex("00 00 00 00 30 03 00 01 05 00 66 01")},
+            ],
+        },
+        "render": {
+            "selector": 0x3003,
+            "context_slot": 3,
+            "compact_mode": 3,
+            "payload": bytes.fromhex("00 01 05 01 66 01"),
+            "rendered": [{
+                "glyph": 5,
+                "segment": 1,
+                "coord": 0x6601,
+                "row_skip": 0x80,
+                "a2_source_offset": 0x800,
+                "a3_source_offset": 0x80,
+                "rows": 1,
+                "span": 0x11,
+                "width": 0x88,
+                "full_chunks": 1,
+                "remainder": 1,
+                "full_row_skip": 0,
+                "remainder_row_skip": 0x10,
+                "full_chunk_helper": 0x2F27C,
+                "remainder_helper": u32(data, 0x1F1AC + 1 * 4),
+                "dest_base": 0xC2,
+                "x": 22,
+                "y": 6,
+                "a001": 0x16,
+                "source_layout": "inline-trailing-plane",
+            }],
+            "rows": [
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 22 + "#." * 64 + ".#.#.#.#",
+            ],
         },
     }))
     selected_inline_source = build_inline_text_source_object_from_1393a(
@@ -13386,7 +13799,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## `0xd3b2` Unflagged Positioning Fixture")
     lines.append("")
-    lines.append("This fixture pins the unflagged/inline positioning arithmetic at `0xd3b2`, then continues through the unflagged branch of `0x12f2e`. The first inline case now starts from a selected inline/downloaded context model: `0x14e24` calls `0x14eb6`-equivalent fixed-record probes, maps host byte `0x21` to glyph `1`, and `0x1393a` builds the source object with record pointer `context_base + 0x40 + 8*glyph`. The later wide/segmented cases still reuse synthetic records to isolate renderer modes. For unflagged sources, record byte `+0` is the width threshold byte, byte `+1` is the row count used for short/segmented selection, and byte `+2` feeds the signed positioning arithmetic.")
+    lines.append("This fixture pins the unflagged/inline positioning arithmetic at `0xd3b2`, then continues through the unflagged branch of `0x12f2e`. The first inline case now starts from a selected inline/downloaded context model: `0x14e24` calls `0x14eb6`-equivalent fixed-record probes, maps host byte `0x21` to glyph `1`, and `0x1393a` builds the source object with record pointer `context_base + 0x40 + 8*glyph`. The selected-map memory also constructs wide, segmented, and segmented-wide fixed records for host bytes `0x23`, `0x24`, and `0x25`, then drives them through `0x1393a`, `0xd3b2`, `0x12f2e`, and renderers `0x1f0d2`, `0x1f1f0`, and `0x1f264`; the later synthetic records remain as renderer-isolation controls. For unflagged sources, record byte `+0` is the width threshold byte, byte `+1` is the row count used for short/segmented selection, and byte `+2` feeds the signed positioning arithmetic.")
     lines.append("")
     selected_inline_source_report = selected_inline_source
     selected_inline_render = selected_inline_rendered["rendered"][0]
@@ -13415,6 +13828,35 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(selected_inline_rows, list)
     for row in selected_inline_rows:
         lines.append(f"`{row}`")
+    constructed_wide_entry = constructed_wide_rendered["rendered"][0]
+    constructed_segmented_entry = constructed_segmented_rendered["rendered"][0]
+    constructed_segmented_wide_entry = constructed_segmented_wide_rendered["rendered"][0]
+    assert isinstance(constructed_wide_entry, dict)
+    assert isinstance(constructed_segmented_entry, dict)
+    assert isinstance(constructed_segmented_wide_entry, dict)
+    lines.append("- constructed wide inline map: host `0x23 -> glyph %d`, record `%s`, object `%s`, renderer `0x1f0d2`, span `0x%x`, rows `%d`, source layout `%s`." % (
+        constructed_wide_source["mapped"],
+        " ".join(f"{byte:02x}" for byte in constructed_wide_source["inline_record"]),
+        " ".join(f"{byte:02x}" for byte in constructed_wide_bucket["object"]),
+        constructed_wide_entry["span"],
+        constructed_wide_entry["rows"],
+        constructed_wide_entry["source_layout"],
+    ))
+    lines.append("- constructed segmented inline map: host `0x24 -> glyph %d`, record `%s`, first segment object `%s`, renderer `0x1f1f0`, row skip `0x%x`, rows `%d`." % (
+        constructed_segmented_source["mapped"],
+        " ".join(f"{byte:02x}" for byte in constructed_segmented_source["inline_record"]),
+        " ".join(f"{byte:02x}" for byte in constructed_segmented_object),
+        constructed_segmented_entry["row_skip"],
+        constructed_segmented_entry["rows"],
+    ))
+    lines.append("- constructed segmented-wide inline map: host `0x25 -> glyph %d`, record `%s`, first segment object `%s`, renderer `0x1f264`, row skip `0x%x`, span `0x%x`, source layout `%s`." % (
+        constructed_segmented_wide_source["mapped"],
+        " ".join(f"{byte:02x}" for byte in constructed_segmented_wide_source["inline_record"]),
+        " ".join(f"{byte:02x}" for byte in constructed_segmented_wide_object),
+        constructed_segmented_wide_entry["row_skip"],
+        constructed_segmented_wide_entry["span"],
+        constructed_segmented_wide_entry["source_layout"],
+    ))
     lines.append("")
     lines.append("The font payload reader fixtures model the byte-copy loops immediately before these fixed records are usable. Linear reader `0x168dc` copies host bytes into one destination, treats `0x1a 0x58` as a control escape by calling `0xd99a` and storing a zero payload byte, and records continuation state when byte budget `0x783140` expires. Split-plane reader `0x16942` writes `rows * prefix_span` bytes at `A4`, then one trailing byte per row at `A3 = A4 + rows * prefix_span`; this is the same A2/A3 layout used by odd-width inline render fixtures.")
     lines.append("")
@@ -13608,7 +14050,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     unflagged_overflow_source_report = unflagged_overflow_fixture["source"]
     assert isinstance(unflagged_overflow_source_report, dict)
     lines.append(f"- context metric flag set plus left overflow: cursor `(10,20)`, printable offset `20`, source x-offset `-15` -> x `{unflagged_overflow_source_report['x']}`, y `{unflagged_overflow_source_report['y']}`, context slot `{unflagged_overflow_source_report['context_slot']}`, overflow correction `0x{int(unflagged_overflow_fixture['overflow_correction']):08x}`")
-    lines.append("- remaining gap: replace the synthetic inline fixed-record memory with records populated by the real font-download parser, then carry those parser-produced page objects into the bridge/render path.")
+    lines.append("- remaining gap: replace the selected and synthetic inline fixed-record memory with records populated by the real font-download parser, then carry those parser-produced page objects into the bridge/render path.")
     lines.append("")
 
     lines.append("## Segmented Text Bucket Producer Fixture")

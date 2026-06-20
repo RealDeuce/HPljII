@@ -5083,6 +5083,159 @@ def render_font_download_char_command_stream_via_121cc_16498(
     }
 
 
+def render_font_download_resource_command_stream_via_121cc_16c14(
+    stream: bytes,
+    *,
+    records: list[dict[str, int]],
+    current_id: int,
+    new_payload_address: int,
+    counters: dict[str, int] | None = None,
+    cursors: dict[str, int] | None = None,
+    candidates: list[int] | None = None,
+    candidate_base: int = FONT_CANDIDATE_LIST_BASE,
+    continuation: dict[str, int] | None = None,
+    parser_mode: int = 0,
+    allocation_ok: bool = True,
+) -> dict[str, object]:
+    pending: dict[str, object] = {"pending_flag": 0, "handler": 0, "snapshot_record": b""}
+    events: list[dict[str, object]] = []
+    pos = 0
+    while pos < len(stream):
+        if stream[pos] != 0x1B:
+            raise AssertionError(f"font resource command stream expected ESC at offset {pos}")
+        start = pos
+        pos += 1
+        if pos + 1 >= len(stream) or stream[pos] not in (ord("("), ord(")")):
+            raise AssertionError(f"font resource command stream only models ESC (s/ESC )s commands at offset {start}")
+        prefix = stream[pos]
+        group = stream[pos + 1]
+        if group != ord("s"):
+            raise AssertionError(f"font resource command stream only models group s at offset {start}")
+        pos += 2
+        slot = 1 if prefix == ord(")") else 0
+
+        while True:
+            command_start = start if pos == start + 3 else pos
+            if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+                parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            else:
+                parameter = 0
+            if pos >= len(stream):
+                raise AssertionError("font resource command stream missing final byte")
+            final = stream[pos]
+            pos += 1
+            final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+            if final_upper != ord("W"):
+                raise AssertionError(f"font resource command stream only models ESC )s#W payloads, got 0x{final:02x}")
+
+            sequence = stream[command_start:pos]
+            parsed_record = bytes([
+                0x81 if parameter < 0 else 0x80,
+                final,
+            ]) + signed_word_bytes(parameter) + signed_word_bytes(slot)
+            dispatch = font_payload_dispatch_via_11f96(parameter)
+            handler = int(dispatch["handler"])
+            scheduled = schedule_payload_handler_via_121cc(pending, parsed_record, handler)
+            pending = scheduled["pending"]
+            delayed_snapshot = pending["snapshot_bytes"]
+            if ord("a") <= final <= ord("z"):
+                events.append({
+                    "kind": "font-resource-payload-pending",
+                    "sequence": sequence,
+                    "parameter": parameter,
+                    "parsed_record": parsed_record,
+                    "delayed_snapshot_bytes": delayed_snapshot,
+                    "delayed_scheduled": scheduled["scheduled"],
+                    "delayed_handler": handler,
+                    "dispatch": dispatch,
+                    "chained": True,
+                })
+                continue
+
+            restored = restore_delayed_payload_via_12218(pending)
+            pending = restored["pending_after"]
+            restored_record = restored["record"]
+            byte_budget = abs(s16(restored_record, 2))
+            payload_start = pos
+            payload_end = pos + byte_budget
+            if payload_end > len(stream):
+                raise AssertionError("font resource command stream payload shorter than restored ESC )s#W byte count")
+            payload = stream[payload_start:payload_end]
+            pos = payload_end
+
+            if handler != 0x16C14:
+                events.append({
+                    "kind": "font-descriptor-payload",
+                    "sequence": sequence,
+                    "parameter": parameter,
+                    "parsed_record": parsed_record,
+                    "delayed_snapshot_bytes": delayed_snapshot,
+                    "delayed_scheduled": scheduled["scheduled"],
+                    "restore_dispatch": restored["dispatch"],
+                    "restored_record": restored_record,
+                    "delayed_handler": handler,
+                    "payload_offset": payload_start,
+                    "payload": payload,
+                    "chained": False,
+                })
+                break
+
+            validation = font_resource_validate_table_stream_via_16fae(bytearray(0x40), payload, byte_budget)
+            allocation_valid = int(validation["status"]) == 1 and bool(allocation_ok)
+            allocation = font_resource_find_allocate_via_17026(
+                validation["staging"],  # type: ignore[arg-type]
+                int(validation["payload_units"]),
+                allocation_valid,
+                validation["symbol_bytes"],  # type: ignore[arg-type]
+            )
+            install = None
+            if int(allocation["status"]) == 1:
+                payload_info = allocation["payload"]
+                assert isinstance(payload_info, dict)
+                payload_bytes = payload_info["payload"]
+                assert isinstance(payload_bytes, bytes)
+                install = downloaded_font_object_add_bookkeeping_via_16c14(
+                    records,
+                    current_id=current_id,
+                    new_payload=new_payload_address,
+                    byte20=payload_bytes[0x20],
+                    byte0c=payload_bytes[0x0C],
+                    counters=counters,
+                    cursors=cursors,
+                    continuation=continuation,
+                    parser_mode=parser_mode,
+                    candidates=candidates,
+                    candidate_base=candidate_base,
+                    allocation_ok=True,
+                )
+            events.append({
+                "kind": "font-resource-payload",
+                "sequence": sequence,
+                "parameter": parameter,
+                "parsed_record": parsed_record,
+                "delayed_snapshot_bytes": delayed_snapshot,
+                "delayed_scheduled": scheduled["scheduled"],
+                "restore_dispatch": restored["dispatch"],
+                "restored_record": restored_record,
+                "delayed_handler": handler,
+                "payload_offset": payload_start,
+                "payload": payload,
+                "payload_length": len(payload),
+                "byte_budget": byte_budget,
+                "validation": validation,
+                "allocation": allocation,
+                "install": install,
+                "chained": False,
+            })
+            break
+
+    return {
+        "events": events,
+        "pending": pending,
+        "stream_pos": pos,
+    }
+
+
 def render_font_descriptor_command_stream_via_121cc_15d0a(
     stream: bytes,
     *,
@@ -16754,6 +16907,121 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         active_primary_symbol=0x0000,
         active_secondary_symbol=0x0115,
     )
+    table_payload_resource_command_stream = b"\x1b)s80W" + font_validate_stream + b"\x00" * 16
+    table_payload_resource_command = render_font_download_resource_command_stream_via_121cc_16c14(
+        table_payload_resource_command_stream,
+        records=[{"id": 0, "flags": 0, "payload": 0}],
+        current_id=0x1234,
+        new_payload_address=0,
+        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        cursors={
+            "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+        },
+        candidates=[0x00000100, 0x00000200, 0x00000300],
+    )
+    table_payload_resource_command_event = table_payload_resource_command["events"][0]
+    assert isinstance(table_payload_resource_command_event, dict)
+    table_payload_resource_command_allocation = table_payload_resource_command_event["allocation"]
+    assert isinstance(table_payload_resource_command_allocation, dict)
+    table_payload_resource_command_payload = table_payload_resource_command_allocation["payload"]
+    assert isinstance(table_payload_resource_command_payload, dict)
+    table_payload_resource_command_install = table_payload_resource_command_event["install"]
+    assert isinstance(table_payload_resource_command_install, dict)
+    checks.append(assert_equal("ESC )s80W resource stream installs 0x1719c payload through 0x16c14", {
+        "event": {
+            key: table_payload_resource_command_event[key]
+            for key in (
+                "kind",
+                "sequence",
+                "parameter",
+                "parsed_record",
+                "delayed_snapshot_bytes",
+                "restore_dispatch",
+                "restored_record",
+                "delayed_handler",
+                "payload_offset",
+                "payload_length",
+                "byte_budget",
+            )
+        },
+        "validation": {
+            key: table_payload_resource_command_event["validation"][key]  # type: ignore[index]
+            for key in ("status", "bytes_consumed", "budget", "payload_units", "symbol_count", "symbol_bytes")
+        },
+        "allocation": {
+            "status": table_payload_resource_command_allocation["status"],
+            "allocation_size": table_payload_resource_command_allocation["allocation_size"],
+            "payload_word8": u16(table_payload_resource_command_payload["payload"], 8),  # type: ignore[arg-type]
+            "payload_byte0c": table_payload_resource_command_payload["payload"][0x0C],  # type: ignore[index]
+            "payload_word22": u16(table_payload_resource_command_payload["payload"], 0x22),  # type: ignore[arg-type]
+            "extra_offset": table_payload_resource_command_payload["extra_offset"],
+            "symbol_count": table_payload_resource_command_payload["symbol_count"],
+        },
+        "install": {
+            "status": table_payload_resource_command_install["status"],
+            "record": table_payload_resource_command_install["records"][0],  # type: ignore[index]
+            "candidate_flags": table_payload_resource_command_install["candidate_flags"],
+            "candidate_insert": {
+                key: table_payload_resource_command_install["candidate_insert"][key]  # type: ignore[index]
+                for key in ("status", "branch", "insert_index", "slot_pointer")
+            },
+            "candidates": table_payload_resource_command_install["candidates"],
+        },
+        "stream_pos": table_payload_resource_command["stream_pos"],
+        "pending": table_payload_resource_command["pending"],
+    }, {
+        "event": {
+            "kind": "font-resource-payload",
+            "sequence": b"\x1b)s80W",
+            "parameter": 80,
+            "parsed_record": bytes.fromhex("80 57 00 50 00 01"),
+            "delayed_snapshot_bytes": bytes.fromhex("01 00 01 6c 14 80 57 00 50 00 01"),
+            "restore_dispatch": {"kind": "direct-handler", "handler": 0x16C14},
+            "restored_record": bytes.fromhex("80 57 00 50 00 01"),
+            "delayed_handler": 0x16C14,
+            "payload_offset": 6,
+            "payload_length": 80,
+            "byte_budget": 80,
+        },
+        "validation": {
+            "status": 1,
+            "bytes_consumed": 64,
+            "budget": 16,
+            "payload_units": 0x80,
+            "symbol_count": 16,
+            "symbol_bytes": bytes.fromhex("41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f 50"),
+        },
+        "allocation": {
+            "status": 1,
+            "allocation_size": 10,
+            "payload_word8": 0x004A,
+            "payload_byte0c": 0,
+            "payload_word22": 0x1234,
+            "extra_offset": 0x024A,
+            "symbol_count": 16,
+        },
+        "install": {
+            "status": 1,
+            "record": {"id": 0x1234, "flags": 0x00, "payload": 0},
+            "candidate_flags": 0x40000000,
+            "candidate_insert": {
+                "status": "inserted",
+                "branch": "class-one",
+                "insert_index": 0,
+                "slot_pointer": FONT_CANDIDATE_LIST_BASE,
+            },
+            "candidates": [0x40000000, 0x00000100, 0x00000200, 0x00000300],
+        },
+        "stream_pos": 86,
+        "pending": {
+            "pending_flag": 0,
+            "handler": 0,
+            "snapshot_record": bytes.fromhex("80 57 00 50 00 01"),
+        },
+    }))
     checks.append(assert_equal("0x16c14-installed 0x1719c payload dispatches as bit-30 resource form", {
         "install": {
             "candidate_flags": table_payload_resource_install["candidate_flags"],
@@ -25459,6 +25727,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_record,
         " ".join(f"{byte:02x}" for byte in table_payload_bucket["object"]),
         table_payload_source["bitmap"],
+    ))
+    lines.append("- resource payload command stream: `%s` restores delayed handler `0x%05x`, starts payload at offset `%d` / length `%d`, validates `%d` bytes through `0x16fae`, allocates size `%d` through `0x17026`/`0x1719c`, and installs candidate longword `0x%08x` through `0x16c14`/`0x1bc38`." % (
+        " ".join(f"{byte:02x}" for byte in table_payload_resource_command_event["sequence"]),
+        table_payload_resource_command_event["delayed_handler"],
+        table_payload_resource_command_event["payload_offset"],
+        table_payload_resource_command_event["payload_length"],
+        table_payload_resource_command_event["validation"]["bytes_consumed"],  # type: ignore[index]
+        table_payload_resource_command_allocation["allocation_size"],
+        table_payload_resource_command_install["candidate_flags"],
     ))
     lines.append("- installed payload-backed resource dispatch: the same `0x1719c` payload goes through integrated `0x16c14`/`0x1bc38`, setting candidate longword `0x%08x`; `0x14c64` then takes the bit-30 offset-table branch, writes range `0x%04x..0x%04x`, rebuilds map `0x%06x` through `0x14d9c`, maps host `0x21` to glyph `%d`, and snapshots `0x15890` symbol `0x%04x` from `%s`." % (
         table_payload_resource_install["candidate_flags"],

@@ -8249,6 +8249,63 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "rows": ["##............##", "###..........###", ".###........###.", "..###......###..", "...###....###...", "....###..###....", ".....######.....", "......####......", "......####......", ".....######.....", "....###..###....", "...###....###...", "..###......###..", ".###........###.", "###..........###", "##............##"],
         },
     ]))
+    rectangle_fill_pattern_shifted = apply_fill_rectangle_via_10898(rectangle_command_state(
+        width=pack12(19),
+        height=pack12(6),
+        cursor_x=pack12(5),
+        cursor_y=pack12(3),
+        area_fill_id=6,
+    ), 3)
+    rectangle_fill_pattern_shifted_bridged = bridge_page_record_via_1edc6(rectangle_fill_pattern_shifted["page_record"])
+    rectangle_fill_pattern_shifted_rendered = render_rule_list_via_1f446(data, rectangle_fill_pattern_shifted_bridged)
+    checks.append(assert_equal("0x1f4e0 renders sub-byte shifted HP pattern rule pixels", {
+        "selector": rectangle_fill_pattern_shifted["fill_selector"],
+        "object": rectangle_fill_pattern_shifted["events"][-1]["object"],
+        "source": rectangle_fill_pattern_shifted["events"][-1]["source"],
+        "bridged": rectangle_fill_pattern_shifted_bridged["rule_list"],
+        "rendered": [
+            {
+                key: entry[key]
+                for key in ("selector", "helper", "key", "bucket_delta", "decoded", "width", "remaining_before", "available_rows", "rows_drawn", "pattern_base", "pattern_start", "pattern_words", "left_mask", "interior_words", "right_mask", "mutated_object")
+            }
+            for entry in rectangle_fill_pattern_shifted_rendered["rendered"]
+        ],
+        "rows": rectangle_fill_pattern_shifted_rendered["rows"],
+    }, {
+        "selector": 13,
+        "object": bytes.fromhex("00 00 00 00 00 0d 35 00 00 13 00 06 00 00"),
+        "source": {"x": 5, "y": 3, "width": 19, "height": 6},
+        "bridged": [bytes.fromhex("00 00 00 00 00 1d 35 00 00 13 00 06 00 06")],
+        "rendered": [{
+            "selector": 13,
+            "helper": 0x1F4E0,
+            "key": 0x3500,
+            "bucket_delta": 0,
+            "decoded": {"x": 5, "y": 3, "row_low": 3, "subbyte": 5, "byte_pair_offset": 0},
+            "width": 19,
+            "remaining_before": 6,
+            "available_rows": 77,
+            "rows_drawn": 6,
+            "pattern_base": 0x0306BE,
+            "pattern_start": 0x0306C4,
+            "pattern_words": [0x381C, 0x1C38, 0x0E70, 0x07E0, 0x03C0, 0x03C0],
+            "left_mask": 0x07FF,
+            "interior_words": 0,
+            "right_mask": 0xFF00,
+            "mutated_object": bytes.fromhex("00 00 00 00 00 0d 35 00 00 13 00 06 ff b9"),
+        }],
+        "rows": [
+            "........................",
+            "........................",
+            "........................",
+            ".......###......###....#",
+            "........###....###......",
+            ".........###..###.......",
+            "..........######........",
+            "...........####.........",
+            "...........####.........",
+        ],
+    }))
     rectangle_fill_clipped = apply_fill_rectangle_via_10898(rectangle_command_state(
         width=pack12(10),
         height=pack12(5),
@@ -10219,6 +10276,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         for entry in pattern_matrix
     )
     lines.append("- full 16x16 non-solid selector matrix covers: %s." % pattern_matrix_summary)
+    shifted_pattern = rectangle_fill_pattern_shifted_rendered["rendered"][0]
+    lines.append("- sub-byte HP pattern fixture uses selector `%d`, key `0x%04x`, decoded x `%d`, y `%d`, width `%d`, row-low `%d`, pattern start `0x%06x`, left mask `0x%04x`, right mask `0x%04x`." % (
+        shifted_pattern["selector"],
+        shifted_pattern["key"],
+        shifted_pattern["decoded"]["x"],
+        shifted_pattern["decoded"]["y"],
+        shifted_pattern["width"],
+        shifted_pattern["decoded"]["row_low"],
+        shifted_pattern["pattern_start"],
+        shifted_pattern["left_mask"],
+        shifted_pattern["right_mask"],
+    ))
+    lines.append("- rendered shifted HP-pattern rows:")
+    lines.extend(f"`{row}`" for row in rectangle_fill_pattern_shifted_rendered["rows"])
     lines.append("- `0x10b80` clipping fixture starts at x `-3` with width `10`, queues x `0` width `7`, and emits object `%s`." % (
         " ".join(f"{byte:02x}" for byte in rectangle_fill_clipped["events"][-1]["object"]),
     ))

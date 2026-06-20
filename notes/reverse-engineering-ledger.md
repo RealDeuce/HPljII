@@ -88,7 +88,7 @@ ROM work needed:
 - Broaden the documented printable and inline/downloaded `0x1393a` / `0xd824` / `0xd3b2` / `0xd550` / `0x12f2e` text-object glyph-index fixtures into real font-download parser records, real HMI/font metrics, glyph indices, and parser-produced page objects.
 - Treat direct `0x78297a` references and pool aliases documented in `generated/analysis/ic30_ic13_page_root_references.md` as checked leads; the active render bridge is documented in `generated/analysis/ic30_ic13_render_path_references.md`.
 - Keep `0x78287c`, `0x7827b8`, `0x7828a8`, and dispatch around `0x14398..0x156de` under font/resource selection unless later evidence proves a separate imaging role.
-- Trace how text, rules, raster data, and macros merge into final page pixels.
+- Broaden the current same-bridge text+rule page-band composition fixture into raster data and macro replay, then trace the full final page-pixel merge.
 - Determine clipping and off-page behavior exactly.
 - Identify any banding/compression structures used internally; reproduce final pixel result rather than formatter timing.
 

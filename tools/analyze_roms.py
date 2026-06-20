@@ -1767,7 +1767,7 @@ def page_record_bridge_report(data: bytes) -> str:
     lines.append("- A page-object reproduction model must preserve the three page/control record queues separately until the `0x1edc6` bridge copies them into render-record fields `+0x18`, `+0x1c`, and `+0x20`.")
     lines.append("- The compact text/glyph path is the least transformed by the bridge: the bucket root pointer is copied, and the renderer then selects context slots copied from source `+0x2c..+0x68`.")
     lines.append("- The rule/list and fixed-width chains are not pass-through. Their object bytes are normalized by `0x1edc6` before the render dispatchers see them, so fixtures must compare the post-bridge object shape when validating these paths.")
-    lines.append("- `tools/render_fixture_harness.py` now has a `0x1edc6` fixture that bridges a compact text bucket, verifies the copied context slot can render the same glyph rows, and pins both list-normalization side effects. The remaining gap is to replace that synthetic page/control record with a parser-produced page root and compare the finalized record published by `0xff1e`.")
+    lines.append("- `tools/render_fixture_harness.py` now has a `0x1edc6` fixture that bridges a compact text bucket, verifies the copied context slot can render the same glyph rows, pins both list-normalization side effects, and composes a non-overlapping compact text bucket plus selector-7 rule from the same bridged render record into one page band. The remaining gap is to replace that synthetic page/control record with a parser-produced page root and compare the finalized record published by `0xff1e`.")
     lines.append("")
     return "\n".join(lines)
 

@@ -2281,6 +2281,16 @@ def bitmap_bytes_to_rows(bitmap: bytes | bytearray, rows: int, width: int, strid
     return out
 
 
+def compose_set_pixel_rows(layers: list[list[str]], width: int, rows: int) -> list[str]:
+    dest = [["." for _ in range(width)] for _ in range(rows)]
+    for layer in layers:
+        for y, row in enumerate(layer[:rows]):
+            for x, pixel in enumerate(row[:width]):
+                if pixel == "#":
+                    dest[y][x] = "#"
+    return ["".join(row) for row in dest]
+
+
 def write_bitmap_bits(dest: bytearray, dest_stride: int, source: bytes, rows: int, span: int, x: int, y: int) -> None:
     for row_index in range(rows):
         row_base = row_index * span
@@ -11453,6 +11463,68 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(positioned_text_object, bytes)
     positioned_mode0 = render_compact_text_bucket_object(data, resources, (0x440946B4,), positioned_text_object)
     checks.append(assert_equal("0xd824-positioned compact text rendered rows", positioned_mode0["rows"], [f"................{row}" for row in line_printer_glyph32_rows]))
+    text_rule_page_record: dict[str, object] = {
+        "bucket_root": positioned_text_object,
+        "context_slots": [0x440946B4],
+    }
+    text_rule_rule = queue_rectangle_rule_via_13386(text_rule_page_record, {
+        "x": 24,
+        "y": 24,
+        "width": 12,
+        "height": 3,
+        "flags": 7,
+    })
+    text_rule_bridged = bridge_page_record_via_1edc6(text_rule_page_record)
+    text_rule_text = render_bridged_compact_bucket_object(data, resources, text_rule_bridged)
+    text_rule_rules = render_rule_list_via_1f446(data, text_rule_bridged, band_rows=32)
+    text_rule_composed_rows = compose_set_pixel_rows(
+        [text_rule_text["rows"], text_rule_rules["rows"]],
+        width=40,
+        rows=28,
+    )
+    expected_text_rule_composed_rows: list[str] = []
+    for row_index in range(28):
+        row = ["."] * 40
+        if row_index < len(line_printer_glyph32_rows):
+            for x, pixel in enumerate(line_printer_glyph32_rows[row_index]):
+                if pixel == "#":
+                    row[16 + x] = "#"
+        if 24 <= row_index < 27:
+            row[24:36] = ["#"] * 12
+        expected_text_rule_composed_rows.append("".join(row))
+    checks.append(assert_equal("bridged compact text and rule objects compose into one page band", {
+        "bucket_root": text_rule_bridged["bucket_root"],
+        "context_slot0": text_rule_bridged["context_slots"][0],
+        "queued_rule": text_rule_rule["object"],
+        "bridged_rule": text_rule_bridged["rule_list"][0],
+        "text_rendered": text_rule_text["rendered"],
+        "rule_rendered": [
+            {
+                key: entry[key]
+                for key in ("selector", "helper", "key", "bucket_delta", "decoded", "width", "remaining_before", "rows_drawn", "mutated_object")
+            }
+            for entry in text_rule_rules["rendered"]
+        ],
+        "composed_rows": text_rule_composed_rows,
+    }, {
+        "bucket_root": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+        "context_slot0": 0x440946B4,
+        "queued_rule": bytes.fromhex("00 00 00 00 01 07 88 01 00 0c 00 03 00 00"),
+        "bridged_rule": bytes.fromhex("00 00 00 00 01 17 88 01 00 0c 00 03 00 03"),
+        "text_rendered": positioned_mode0["rendered"],
+        "rule_rendered": [{
+            "selector": 7,
+            "helper": 0x1F596,
+            "key": 0x8801,
+            "bucket_delta": 1,
+            "decoded": {"x": 24, "y": 24, "row_low": 8, "subbyte": 8, "byte_pair_offset": 2},
+            "width": 12,
+            "remaining_before": 3,
+            "rows_drawn": 3,
+            "mutated_object": bytes.fromhex("00 00 00 00 01 07 88 01 00 0c 00 03 ff cb"),
+        }],
+        "composed_rows": expected_text_rule_composed_rows,
+    }))
     overflow_positioned_text_object = overflow_positioned_bucket["object"]
     assert isinstance(overflow_positioned_text_object, bytes)
     overflow_positioned_mode0 = render_compact_text_bucket_object(data, resources, (0x440946B4,), overflow_positioned_text_object)
@@ -12646,6 +12718,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " ".join(f"{byte:02x}" for byte in rectangle_fill_clipped["events"][-1]["object"]),
     ))
     lines.append("- bridged compact rows match the page-record queued rows above.")
+    lines.append("- a non-overlapping text+rule composition fixture renders compact text at x `16`, y `0` and a selector-7 solid rule at x `24`, y `24` from the same bridged render record, then composes them into one fixed 40-pixel band.")
+    lines.append("- text+rule composed sample rows:")
+    lines.extend(f"`{row}`" for row in text_rule_composed_rows[:4])
+    lines.extend(f"`{row}`" for row in text_rule_composed_rows[24:27])
     lines.append("- remaining gap: replace this synthetic page/control record with a parser-produced page root and compare the finalized record published by `0xff1e`.")
     lines.append("")
 

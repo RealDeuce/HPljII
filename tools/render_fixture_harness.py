@@ -2897,6 +2897,95 @@ def apply_cursor_position_command(state: dict[str, int], command: str, integer: 
     raise AssertionError(f"unsupported cursor-position command {command!r}")
 
 
+def parse_pcl_decimal_fraction_parameter(stream: bytes, pos: int) -> tuple[int, int, bool, int]:
+    sign = 1
+    relative = False
+    if pos < len(stream) and stream[pos] in (ord("+"), ord("-")):
+        relative = True
+        sign = -1 if stream[pos] == ord("-") else 1
+        pos += 1
+    if pos >= len(stream) or not (chr(stream[pos]).isdigit() or stream[pos] == ord(".")):
+        raise AssertionError("PCL decimal fixture requires an integer or fractional parameter")
+    integer = 0
+    saw_digit = False
+    while pos < len(stream) and chr(stream[pos]).isdigit():
+        saw_digit = True
+        integer = integer * 10 + stream[pos] - ord("0")
+        pos += 1
+    fraction = 0
+    if pos < len(stream) and stream[pos] == ord("."):
+        pos += 1
+        fraction_budget = 4
+        while fraction_budget > 0:
+            fraction *= 10
+            if pos < len(stream) and chr(stream[pos]).isdigit():
+                saw_digit = True
+                fraction += stream[pos] - ord("0")
+                pos += 1
+            fraction_budget -= 1
+        while pos < len(stream) and chr(stream[pos]).isdigit():
+            pos += 1
+    if not saw_digit:
+        raise AssertionError("PCL decimal fixture requires at least one digit")
+    return sign * integer, sign * fraction, relative, pos
+
+
+def cursor_position_handler(final: int) -> int:
+    final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+    if final_upper == ord("C"):
+        return 0x00F39E
+    if final_upper == ord("H"):
+        return 0x00F416
+    if final_upper == ord("R"):
+        return 0x00F560
+    if final_upper == ord("V"):
+        return 0x00F60A
+    raise AssertionError(f"unsupported ESC &a final byte {chr(final)!r}")
+
+
+def apply_cursor_position_stream_via_f39e_f416_f560_f60a(state: dict[str, int], stream: bytes) -> dict[str, object]:
+    state = dict(state)
+    stream_events: list[dict[str, object]] = []
+    pos = 0
+    while pos < len(stream):
+        start = pos
+        if pos + 3 >= len(stream) or stream[pos : pos + 3] != b"\x1b&a":
+            raise AssertionError(f"cursor-position stream only models ESC &a#C/#H/#R/#V at offset {pos}")
+        pos += 3
+        while True:
+            command_start = start if pos == start + 3 else pos
+            integer, fraction, relative, pos = parse_pcl_decimal_fraction_parameter(stream, pos)
+            if pos >= len(stream):
+                raise AssertionError("cursor-position stream missing final byte")
+            final = stream[pos]
+            pos += 1
+            final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+            if final_upper not in (ord("C"), ord("H"), ord("R"), ord("V")):
+                raise AssertionError(f"cursor-position stream unsupported final byte {chr(final)!r}")
+            before = dict(state)
+            state = apply_cursor_position_command(state, chr(final_upper), integer, fraction, relative=relative)
+            record = bytes([
+                0x81 if relative else 0x80,
+                final,
+            ]) + signed_word_bytes(integer) + signed_word_bytes(fraction)
+            stream_events.append({
+                "sequence": stream[command_start:pos],
+                "record": record,
+                "parameter": integer,
+                "fraction": fraction,
+                "relative": relative,
+                "handler": cursor_position_handler(final),
+                "cursor_before": {"x": int(before["cursor_x"]), "y": int(before["cursor_y"])},
+                "event": state["events"][-1],
+                "chained": bool(ord("a") <= final <= ord("z")),
+            })
+            if not (ord("a") <= final <= ord("z")):
+                break
+    state["stream"] = stream
+    state["stream_events"] = stream_events
+    return state
+
+
 def vertical_layout_state(**overrides: int) -> dict[str, int]:
     state = {
         "vmi": pack12(50),
@@ -6505,6 +6594,61 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     }, {
         "absolute": {"cursor_y": pack12(122, 7), "pending_width": 0, "pending_text": 0, "span_flushes": 1, "post_flushes": 1, "page_roots": 1},
         "relative": {"cursor_y": pack12(32), "pending_width": 0, "pending_text": 0, "span_flushes": 0, "post_flushes": 0, "page_roots": 1},
+    }))
+    cursor_position_stream = apply_cursor_position_stream_via_f39e_f416_f560_f60a(cursor_position_state(
+        cursor_x=pack12(10),
+        cursor_y=pack12(20),
+        hmi=pack12(2),
+        vmi=pack12(12),
+        active_width=100,
+        right_limit=pack12(30),
+        span_flush_enable=1,
+    ), b"\x1b&a3.5c+1R")
+    checks.append(assert_equal("cursor position stream ESC &a3.5c+1R selects 0xf39e then 0xf560", {
+        "stream": cursor_position_stream["stream"],
+        "stream_events": cursor_position_stream["stream_events"],
+        "cursor_x": cursor_position_stream["cursor_x"],
+        "cursor_y": cursor_position_stream["cursor_y"],
+        "pending_width": cursor_position_stream["pending_width"],
+        "pending_text": cursor_position_stream["pending_text"],
+        "span_flushes": cursor_position_stream["span_flushes"],
+        "post_flushes": cursor_position_stream["post_flushes"],
+        "span_updates": cursor_position_stream["span_updates"],
+        "page_roots": cursor_position_stream["page_roots"],
+    }, {
+        "stream": b"\x1b&a3.5c+1R",
+        "stream_events": [
+            {
+                "sequence": b"\x1b&a3.5c",
+                "record": bytes.fromhex("80 63 00 03 13 88"),
+                "parameter": 3,
+                "fraction": 5000,
+                "relative": False,
+                "handler": 0x00F39E,
+                "cursor_before": {"x": pack12(10), "y": pack12(20)},
+                "event": {"kind": "horizontal-position", "relative": False, "amount": pack12(7), "cursor_x": pack12(7)},
+                "chained": True,
+            },
+            {
+                "sequence": b"+1R",
+                "record": bytes.fromhex("81 52 00 01 00 00"),
+                "parameter": 1,
+                "fraction": 0,
+                "relative": True,
+                "handler": 0x00F560,
+                "cursor_before": {"x": pack12(7), "y": pack12(20)},
+                "event": {"kind": "vertical-position", "relative": True, "amount": pack12(12), "cursor_y": pack12(32), "clamp_max": False},
+                "chained": False,
+            },
+        ],
+        "cursor_x": pack12(7),
+        "cursor_y": pack12(32),
+        "pending_width": 0,
+        "pending_text": 0,
+        "span_flushes": 1,
+        "post_flushes": 1,
+        "span_updates": 1,
+        "page_roots": 1,
     }))
     vertical_decipoint = apply_cursor_position_command(cursor_position_state(
         top_offset=pack12(90),
@@ -11281,7 +11425,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- Byte-stream fixtures now drive the same model from actual PCL/control bytes: `ESC &k1G` followed by CR applies CR+LF, `ESC &k2G` followed by LF applies CR+LF, `ESC &k2G` followed by FF performs the CR-style reset plus page-eject finalization, `ESC &k3G` followed by CR/LF/FF applies all three combined line-termination bits in sequence, and `ESC &k0G` followed by HT/BS advances to x `21` then backs up to x `20`.")
     lines.append("- `ESC &f0S` pushes the horizontal cursor and the vertical cursor plus `0x782dbe` onto the cursor stack; `ESC &f1S` pops, restores horizontal position clamped to active extent minus `1/12`, restores vertical position after subtracting `0x782dbe` and clamps to printable extent minus `1/12`, then clears pending/right-limit flags. A byte-stream fixture now drives `ESC &f0S` / `ESC &f1S` through the same `0xf75e` selector path.")
     lines.append("- `ESC &a#C` converts columns through current HMI, `ESC &a#H` converts decipoints as five packed subunits per decipoint, and both commit through horizontal helper `0xf4ca` with absolute/relative handling and page-width clamps.")
-    lines.append("- `ESC &a#R` converts rows through current VMI; absolute rows add the firmware's `0.7200` row bias before using the top offset, while relative rows add to the current vertical cursor. `ESC &a#V` uses the same five-subunit decipoint conversion. Both commit through vertical helper `0xf6e2` and clamp to vertical bounds where the handler does so.")
+    lines.append("- `ESC &a#R` converts rows through current VMI; absolute rows add the firmware's `0.7200` row bias before using the top offset, while relative rows add to the current vertical cursor. `ESC &a#V` uses the same five-subunit decipoint conversion. Both commit through vertical helper `0xf6e2` and clamp to vertical bounds where the handler does so. A byte-stream fixture now drives chained `ESC &a3.5c+1R` through handlers `0xf39e` and `0xf560`.")
     lines.append("- `ESC &l#D` accepts only the ROM LPI set `1,2,3,4,6,8,12,16,24,48`, treats zero as 12 LPI, and writes line advance `0x783160`; `ESC &l#C` converts VMI in 1/48-inch units using 75 packed subunits per unit and allows zero without setting the modified-layout flag.")
     lines.append("- `ESC &l#E` sets top offset `0x782dce` from VMI lines minus vertical offset source `0x782dbe`, then recomputes default text-length bottom `0x782dd2`; `ESC &l#F` stores explicit text-length bottom as top offset plus VMI-scaled lines, or restores the default when the parameter is zero.")
     lines.append("- `ESC &a#L` stores an absolute left margin in HMI columns when it does not pass `right_margin - HMI`; it moves the cursor and flushes pending spans only when the new margin is right of the current cursor or pending text is marked.")
@@ -11295,6 +11439,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- `ESC &a3.5C`: absolute x `0x{int(column_absolute['cursor_x']):08x}`, relative x `0x{int(column_relative['cursor_x']):08x}`")
     lines.append(f"- `ESC &a72H`: x `0x{int(decipoint_right['cursor_x']):08x}`, clamped `ESC &a500H` x `0x{int(decipoint_clamped['cursor_x']):08x}`")
     lines.append(f"- `ESC &a2R`: y `0x{int(row_absolute['cursor_y']):08x}`, relative `ESC &a+1R` y `0x{int(row_relative['cursor_y']):08x}`")
+    lines.append(f"- cursor-position stream events: `{cursor_position_stream['stream_events']}`")
     lines.append(f"- `ESC &a72V`: clamped y `0x{int(vertical_decipoint['cursor_y']):08x}`")
     lines.append(f"- `ESC &l6D`: VMI `0x{int(lpi_six['vmi']):08x}`, pending cursor y `0x{int(lpi_six['cursor_y']):08x}`")
     lines.append(f"- `ESC &l8C`: VMI `0x{int(vmi_eight['vmi']):08x}`, `ESC &l1.5C` VMI `0x{int(vmi_fraction['vmi']):08x}`")

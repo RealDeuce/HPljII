@@ -5472,6 +5472,112 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "remaining": [],
     }))
+    line_printer_hmi = builtin_flagged_hmi_from_context(resources, 0x440946B4)
+    macro_payload_printable_stream = render_mixed_printable_control_stream(
+        data,
+        resources,
+        bytes(macro_frame_payload),
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            vmi=pack12(3),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    macro_payload_combined = macro_payload_printable_stream["combined"]
+    macro_payload_rendered = macro_payload_printable_stream["rendered"]
+    macro_payload_final_state = macro_payload_printable_stream["final_state"]
+    assert isinstance(macro_payload_combined, dict)
+    assert isinstance(macro_payload_rendered, dict)
+    assert isinstance(macro_payload_final_state, dict)
+    macro_payload_event_summary: list[dict[str, object]] = []
+    for event in macro_payload_printable_stream["events"]:
+        assert isinstance(event, dict)
+        if event["kind"] == "control":
+            macro_payload_event_summary.append({
+                "kind": "control",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "page_roots": event["page_roots"],
+                "span_flushes": event["span_flushes"],
+            })
+        else:
+            bucket = event["bucket"]
+            positioned = event["positioned"]
+            assert isinstance(bucket, dict)
+            assert isinstance(positioned, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            macro_payload_event_summary.append({
+                "kind": "printable",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": bucket["coord"],
+            })
+    checks.append(assert_equal("macro execute payload queues printable glyph then applies CR", {
+        "stream": macro_payload_printable_stream["stream"],
+        "events": macro_payload_event_summary,
+        "combined": {
+            key: macro_payload_combined[key]
+            for key in ("object", "selector", "bucket_index", "count", "glyphs", "coords")
+        },
+        "rendered": {
+            key: macro_payload_rendered[key]
+            for key in ("selector", "context_slot", "count", "payload")
+        },
+        "final_state": select_keys(macro_payload_final_state, ("cursor_x", "cursor_y", "line_termination", "page_roots", "span_flushes", "post_flushes")),
+    }, {
+        "stream": b"!\r",
+        "events": [
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 0),
+                "coord": 0x0001,
+            },
+            {
+                "kind": "control",
+                "byte": 0x0D,
+                "cursor_before": (pack12(28), pack12(21)),
+                "cursor_after": (pack12(5), pack12(21)),
+                "page_roots": 0,
+                "span_flushes": 1,
+            },
+        ],
+        "combined": {
+            "object": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "selector": 0,
+            "bucket_index": 0,
+            "count": 1,
+            "glyphs": [0x20],
+            "coords": [0x0001],
+        },
+        "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 1,
+            "payload": bytes.fromhex("00 01 20 00 01"),
+        },
+        "final_state": {
+            "cursor_x": pack12(5),
+            "cursor_y": pack12(21),
+            "line_termination": 0,
+            "page_roots": 0,
+            "span_flushes": 1,
+            "post_flushes": 1,
+        },
+    }))
     macro_with_payload = macro_state(
         current_macro_id=123,
         records=[macro_record(b"!\r", 123)] + [macro_record() for _ in range(31)],
@@ -10617,6 +10723,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append("- macro execute frame payload fetches through `0xa904` as data-chain bytes `%s`." % (
         " ".join(f"0x{int(fetch['d7']):02x}" for fetch in (macro_fetch_first, macro_fetch_second)),
+    ))
+    lines.append("- macro execute payload stream `%s` queues glyphs `%s`, coords `%s`, then CR leaves cursor `0x%08x,0x%08x`." % (
+        " ".join(f"{byte:02x}" for byte in macro_payload_printable_stream["stream"]),
+        macro_payload_combined["glyphs"],
+        macro_payload_combined["coords"],
+        macro_payload_final_state["cursor_x"],
+        macro_payload_final_state["cursor_y"],
     ))
     lines.append(f"- lowercase start payload: `{macro_start['records'][0]['payload']!r}`, stop event `{macro_stop_empty['events'][-1]}`")
     lines.append(f"- execute frame: `{macro_execute['data_chain_frames'][0]}`")

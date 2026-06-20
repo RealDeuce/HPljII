@@ -2643,6 +2643,8 @@ def font_control_flow_report(data: bytes) -> str:
         (0x015A18, "`ESC *c#E` character-code handler"),
         (0x011F96, "`ESC )s#W` / `ESC (s#W` delayed font payload selector"),
         (0x015D0A, "zero-count font/download descriptor delayed-payload handler"),
+        (0x0169F6, "descriptor kind validator for byte `4`"),
+        (0x016A10, "descriptor selector mapper: zero -> status 1, nonzero -> status 2"),
         (0x016DF6, "`ESC *c#F` font-control dispatcher"),
         (0x0179DA, "all-record font-control walker"),
         (0x0187FE, "current-record release/delete wrapper"),
@@ -2671,7 +2673,9 @@ def font_control_flow_report(data: bytes) -> str:
     lines.append("| Handler | Firmware behavior | Reproduction meaning |")
     lines.append("| --- | --- | --- |")
     lines.append("| `0x11f96` (`ESC )s#W` / `ESC (s#W`) | inspects the parsed byte-count parameter from the six-byte record: count `0` schedules delayed handler `0x15d0a`, and any nonzero count schedules delayed handler `0x16c14` through `0x121cc` | zero-length `W` enters the descriptor/setup path; nonzero `W` enters downloaded font/character payload installation |")
-    lines.append("| `0x15d0a` | stores the absolute parsed count in `0x783140`, rejects counts below `3`, then parses font/download descriptor bytes from the delayed payload stream | descriptor bytes populate staged font-resource fields before lower allocation helpers run |")
+    lines.append("| `0x15d0a` | stores the absolute parsed count in `0x783140`, rejects counts below `3` or parser mode `2`, reads descriptor byte `0` through `0x169f6` which accepts only value `4`, then reads selector byte `1` through `0x16a10` where zero returns status `1` and nonzero returns status `2` | zero-length `W` is a descriptor packet, not a no-op; byte `4` is the accepted descriptor kind and byte `1` chooses current-record versus continuation handling |")
+    lines.append("| `0x15d0a` status `1` branch | scans current downloaded-font records through `0x172c0`; an existing current record is looked up through `0x1b4c0`, and object flag bit 30 selects `0x16498` when set or `0x16606` when clear | descriptor bytes following `ESC )s0W` can install a downloaded-character object or a downloaded-font-resource object for the current font id |")
+    lines.append("| `0x15d0a` status `2` branch | requires continuation flag `0x7827c6 == 1`, looks up saved payload `0x7827da` through `0x1b4c0`, and object flag bit 30 selects resume helper `0x15b9a` when set or `0x15c4c` when clear | nonzero selector bytes resume an interrupted descriptor/payload copy instead of allocating from the current record table |")
     lines.append("| `0x16c14` | stores the absolute parsed count in `0x783140`, scans or allocates the current downloaded-font record slot, and either skips that many payload bytes or installs the allocated payload pointer | nonzero `ESC )s#W` payload bytes become the current font resource or character object used by later text rendering |")
     lines.append("")
 
@@ -2705,7 +2709,8 @@ def font_control_flow_report(data: bytes) -> str:
     lines.append("## Current Reproduction Contract")
     lines.append("")
     lines.append("- A byte-stream reproduction must preserve the global current font id at `0x782f2e` and current character/code word at `0x782f30`; `ESC *c#D` and `ESC *c#E` normalization happen before `ESC *c#F`, `ESC (#X` / `ESC )#X`, and downloaded payload installation consult current records.")
-    lines.append("- `ESC )s0W` / `ESC (s0W` are not ordinary zero-byte skips: `0x11f96` schedules descriptor handler `0x15d0a`; nonzero `W` counts schedule `0x16c14`, whose lower paths include the already modeled `0x16498` downloaded character-object allocation and `0x16874` payload copy.")
+    lines.append("- `ESC )s0W` / `ESC (s0W` are not ordinary zero-byte skips: `0x11f96` schedules descriptor handler `0x15d0a`; the descriptor stream must begin with kind byte `4`, and selector byte zero routes through the current downloaded-font record while nonzero selector bytes require continuation state `0x7827c6 == 1` and saved payload `0x7827da`.")
+    lines.append("- Nonzero `W` counts schedule `0x16c14`, whose lower paths include the already modeled `0x16498` downloaded character-object allocation and `0x16874` payload copy; `0x15d0a` reaches the same character-object path only after the descriptor branch resolves an existing object whose flag bit 30 is set.")
     lines.append("- Font-control values `0`, `1`, `2`, `3`, and `6` are suppressed when `0x782a92 == 2`; values `4` and `5` still run the downloaded-record mark/unmark helpers.")
     lines.append("- The concrete font-resource payload-install path remains `0x16c14` -> `0x17026` -> `0x1719c` -> `0x1bc38`, while character payload installation reaches the `0x16498` object path; this report now names the PCL command edge that selects which current downloaded-font records and character objects those lower helpers mutate.")
     lines.append("")

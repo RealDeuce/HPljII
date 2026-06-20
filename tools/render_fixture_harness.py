@@ -1811,6 +1811,106 @@ def font_payload_budget_from_delayed_command(parameter: int) -> dict[str, int]:
     }
 
 
+def font_descriptor_route_via_15d0a(
+    stream: bytes,
+    *,
+    byte_budget: int,
+    records: list[dict[str, int]],
+    current_id: int,
+    parser_mode: int = 0,
+    current_object_flags: int = 0,
+    continuation: dict[str, int] | None = None,
+    continuation_object_flags: int = 0,
+) -> dict[str, object]:
+    budget = int(byte_budget)
+    if budget < 0:
+        budget = -budget
+
+    def drain(reason: str, consumed: int, **extra: object) -> dict[str, object]:
+        drained = max(budget - consumed, 0)
+        return {
+            "status": "skip-drain",
+            "reason": reason,
+            "initial_budget": budget,
+            "consumed_prefix": consumed,
+            "drained": drained,
+            "remaining_budget": 0,
+            **extra,
+        }
+
+    if budget < 3:
+        return drain("count-below-three", 0)
+    if parser_mode == 2:
+        return drain("parser-mode-2", 0)
+    if len(stream) < 2:
+        return drain("source-exhausted-before-descriptor", len(stream))
+
+    descriptor_kind = stream[0]
+    if descriptor_kind != 4:
+        return drain("descriptor-kind-rejected-by-0x169f6", 1, descriptor_kind=descriptor_kind)
+
+    selector = stream[1]
+    selector_status = 1 if selector == 0 else 2
+    consumed = 2
+    if selector_status == 1:
+        scan = font_resource_record_scan_via_172c0(records, current_id)
+        if scan["status"] != 0:
+            return drain(
+                "current-record-not-found",
+                consumed,
+                descriptor_kind=descriptor_kind,
+                selector=selector,
+                selector_status=selector_status,
+                scan=scan,
+            )
+        record = scan["record"]
+        assert isinstance(record, dict)
+        target_payload = int(record["payload"]) & 0x00FFFFFF
+        bit30 = (int(current_object_flags) >> 30) & 1
+        return {
+            "status": "route",
+            "path": "current-record",
+            "descriptor_kind": descriptor_kind,
+            "selector": selector,
+            "selector_status": selector_status,
+            "scan": scan,
+            "target_payload": target_payload,
+            "object_bit30": bit30,
+            "handler": 0x16498 if bit30 else 0x16606,
+            "handler_meaning": "downloaded-character-object" if bit30 else "downloaded-font-resource-object",
+            "initial_budget": budget,
+            "consumed_prefix": consumed,
+            "drained_after_route": max(budget - consumed, 0),
+            "remaining_budget": 0,
+        }
+
+    if not continuation or int(continuation.get("flag", 0)) != 1:
+        return drain(
+            "missing-continuation",
+            consumed,
+            descriptor_kind=descriptor_kind,
+            selector=selector,
+            selector_status=selector_status,
+        )
+    target_payload = int(continuation.get("payload", 0)) & 0x00FFFFFF
+    bit30 = (int(continuation_object_flags) >> 30) & 1
+    return {
+        "status": "route",
+        "path": "continuation",
+        "descriptor_kind": descriptor_kind,
+        "selector": selector,
+        "selector_status": selector_status,
+        "target_payload": target_payload,
+        "object_bit30": bit30,
+        "handler": 0x15B9A if bit30 else 0x15C4C,
+        "handler_meaning": "resume-downloaded-character-object" if bit30 else "resume-downloaded-font-resource-object",
+        "initial_budget": budget,
+        "consumed_prefix": consumed,
+        "drained_after_route": max(budget - consumed, 0),
+        "remaining_budget": 0,
+    }
+
+
 def downloaded_font_object_add_bookkeeping_via_16c14(
     records: list[dict[str, int]],
     *,
@@ -9332,6 +9432,76 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    font_descriptor_current = font_descriptor_route_via_15d0a(
+        bytes.fromhex("04 00 aa bb"),
+        byte_budget=4,
+        records=[{"id": 0x1234, "flags": 0x00, "payload": 0x456789}],
+        current_id=0x1234,
+        current_object_flags=0x40000000,
+    )
+    font_descriptor_continuation = font_descriptor_route_via_15d0a(
+        bytes.fromhex("04 01 cc"),
+        byte_budget=3,
+        records=[],
+        current_id=0x1234,
+        continuation={"flag": 1, "payload": 0x654321},
+        continuation_object_flags=0,
+    )
+    font_descriptor_reject = font_descriptor_route_via_15d0a(
+        bytes.fromhex("03 00 aa bb"),
+        byte_budget=4,
+        records=[{"id": 0x1234, "flags": 0x00, "payload": 0x456789}],
+        current_id=0x1234,
+    )
+    checks.append(assert_equal("0x15d0a-modeled font descriptor route", {
+        "current": {
+            key: font_descriptor_current[key]
+            for key in ("status", "path", "descriptor_kind", "selector", "selector_status", "target_payload", "object_bit30", "handler", "handler_meaning", "consumed_prefix", "drained_after_route")
+        },
+        "continuation": {
+            key: font_descriptor_continuation[key]
+            for key in ("status", "path", "descriptor_kind", "selector", "selector_status", "target_payload", "object_bit30", "handler", "handler_meaning", "consumed_prefix", "drained_after_route")
+        },
+        "reject": {
+            key: font_descriptor_reject[key]
+            for key in ("status", "reason", "descriptor_kind", "consumed_prefix", "drained")
+        },
+    }, {
+        "current": {
+            "status": "route",
+            "path": "current-record",
+            "descriptor_kind": 4,
+            "selector": 0,
+            "selector_status": 1,
+            "target_payload": 0x456789,
+            "object_bit30": 1,
+            "handler": 0x16498,
+            "handler_meaning": "downloaded-character-object",
+            "consumed_prefix": 2,
+            "drained_after_route": 2,
+        },
+        "continuation": {
+            "status": "route",
+            "path": "continuation",
+            "descriptor_kind": 4,
+            "selector": 1,
+            "selector_status": 2,
+            "target_payload": 0x654321,
+            "object_bit30": 0,
+            "handler": 0x15C4C,
+            "handler_meaning": "resume-downloaded-font-resource-object",
+            "consumed_prefix": 2,
+            "drained_after_route": 1,
+        },
+        "reject": {
+            "status": "skip-drain",
+            "reason": "descriptor-kind-rejected-by-0x169f6",
+            "descriptor_kind": 3,
+            "consumed_prefix": 1,
+            "drained": 3,
+        },
+    }))
+
     font_records = [
         {"id": 0x1234, "flags": 0xE0, "payload": 0x123456},
         {"id": 0x0000, "flags": 0x00, "payload": 0x000000},
@@ -14418,6 +14588,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_payload_dispatch_header["handler"],
         font_payload_dispatch_character["handler"],
         font_payload_budget["byte_budget"],
+    ))
+    lines.append("- descriptor route fixture: `0x15d0a` accepts descriptor kind byte `%d`, maps selector `%d` to current-record status `%d` and bit-30 handler `0x%05x`, maps selector `%d` to continuation status `%d` and handler `0x%05x`, and rejects kind byte `%d` by draining `%d` remaining bytes." % (
+        font_descriptor_current["descriptor_kind"],
+        font_descriptor_current["selector"],
+        font_descriptor_current["selector_status"],
+        font_descriptor_current["handler"],
+        font_descriptor_continuation["selector"],
+        font_descriptor_continuation["selector_status"],
+        font_descriptor_continuation["handler"],
+        font_descriptor_reject["descriptor_kind"],
+        font_descriptor_reject["drained"],
     ))
     lines.append("")
     lines.append("The next modeled step is the current downloaded-font record bookkeeping at `0x172c0` and `0x16c14`. The record scan treats each `0x782640..0x782776` slot as a 10-byte entry: word `+0` is the current font/resource id, byte/word area `+2` carries flags that `0x16c14` clears at bits 5..7, and long `+6` points at the allocated payload. Status `0` means an existing id with nonzero payload was found, status `1` means a free zero-id/zero-payload slot was found, and status `2` makes `0x16c14` consume/skip the byte budget instead of installing a payload.")

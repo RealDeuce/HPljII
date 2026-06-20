@@ -3618,6 +3618,52 @@ def render_rule_list_via_1f446(data: bytes, render_record: dict[str, object], ba
     }
 
 
+def render_rule_page_bands_via_1f446(data: bytes, render_record: dict[str, object], band_words: tuple[int, ...], page_rows: int, page_width: int, dest_stride: int = 0x20, band_rows: int = 80) -> dict[str, object]:
+    active = [bytes(raw) for raw in render_record.get("rule_list", [])]
+    page = [["." for _ in range(page_width)] for _ in range(page_rows)]
+    band_reports: list[dict[str, object]] = []
+    for band_word in band_words:
+        rendered = render_rule_list_via_1f446(data, {"rule_list": active}, band_word=band_word, dest_stride=dest_stride, band_rows=band_rows)
+        band_top = (band_word // 5) * band_rows
+        rows = rendered["rows"]
+        assert isinstance(rows, list)
+        for row_index, row in enumerate(rows):
+            page_y = band_top + row_index
+            if page_y >= page_rows:
+                break
+            for x, pixel in enumerate(row[:page_width]):
+                if pixel == "#":
+                    page[page_y][x] = "#"
+
+        rendered_items = list(rendered["rendered"])
+        rendered_iter = iter(rendered_items)
+        carried: list[bytes] = []
+        for obj in active:
+            if obj[4] > band_word + 4:
+                carried.append(obj)
+                continue
+            if int.from_bytes(obj[0x0C:0x0E], "big", signed=True) <= 0:
+                continue
+            item = next(rendered_iter)
+            mutated = item["mutated_object"]
+            assert isinstance(mutated, bytes)
+            if int.from_bytes(mutated[0x0C:0x0E], "big", signed=True) > 0:
+                carried.append(mutated)
+        band_reports.append({
+            "band_word": band_word,
+            "rendered": rendered_items,
+            "rows": rows,
+            "carried": carried,
+        })
+        active = carried
+
+    return {
+        "bands": band_reports,
+        "remaining": active,
+        "rows": ["".join(row) for row in page],
+    }
+
+
 def rectangle_command_state(**overrides: object) -> dict[str, object]:
     state: dict[str, object] = {
         "width": pack12(0),
@@ -8157,6 +8203,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     rectangle_fill_pattern_crossing_second = render_rule_list_via_1f446(data, {
         "rule_list": [rectangle_fill_pattern_crossing_first["rendered"][0]["mutated_object"]],
     }, band_word=5)
+    rectangle_fill_pattern_crossing_page = render_rule_page_bands_via_1f446(
+        data,
+        rectangle_fill_pattern_crossing_bridged,
+        (0, 5),
+        88,
+        16,
+    )
     checks.append(assert_equal("0x1f4e0 carries patterned rule remainder across render bands", {
         "selector": rectangle_fill_pattern_crossing["fill_selector"],
         "object": rectangle_fill_pattern_crossing["events"][-1]["object"],
@@ -8221,6 +8274,24 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "mutated_object": bytes.fromhex("00 00 00 00 04 0d e0 00 00 10 00 05 ff b3"),
         }],
         "second_rows": ["##............##", "###..........###", ".###........###."],
+    }))
+    checks.append(assert_equal("0x1f446 page-band walk assembles patterned rule rows", {
+        "carried_after_band0": rectangle_fill_pattern_crossing_page["bands"][0]["carried"],
+        "remaining": rectangle_fill_pattern_crossing_page["remaining"],
+        "page_rows_76_83": rectangle_fill_pattern_crossing_page["rows"][76:84],
+    }, {
+        "carried_after_band0": [bytes.fromhex("00 00 00 00 04 0d e0 00 00 10 00 05 00 03")],
+        "remaining": [],
+        "page_rows_76_83": [
+            "................",
+            "................",
+            "###..........###",
+            "##............##",
+            "##............##",
+            "###..........###",
+            ".###........###.",
+            "................",
+        ],
     }))
     rectangle_fill_gray_threshold = apply_fill_rectangle_via_10898(rectangle_command_state(
         width=pack12(8),
@@ -10424,6 +10495,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         second_pattern_crossing["decoded"]["row_low"],
         ", ".join("0x%04x" % word for word in second_pattern_crossing["pattern_words"]),
     ))
+    lines.append("- page-band walk over bands `0,5` assembles page rows 76..83:")
+    lines.extend(f"`{row}`" for row in rectangle_fill_pattern_crossing_page["rows"][76:84])
     gray_rule = rectangle_fill_gray_threshold_rendered["rendered"][0]
     lines.append("- gray selector `%d` dispatches through pattern helper `0x%06x`; pattern base `0x%06x`, start `0x%06x`, first words `%s`, left mask `0x%04x`, right mask `0x%04x`." % (
         gray_rule["selector"],

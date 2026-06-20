@@ -5151,6 +5151,8 @@ def downloaded_font_object_add_bookkeeping_via_16c14(
     continuation: dict[str, int] | None = None,
     parser_mode: int = 0,
     initial_candidate_flags: int = 0,
+    candidates: list[int] | None = None,
+    candidate_base: int = FONT_CANDIDATE_LIST_BASE,
     allocation_ok: bool = True,
 ) -> dict[str, object]:
     updated_records = [dict(record) for record in records]
@@ -5183,6 +5185,8 @@ def downloaded_font_object_add_bookkeeping_via_16c14(
             "continuation": updated_continuation,
             "budget_action": budget_action,
             "candidate_flags": None,
+            "candidate_insert": None,
+            "candidates": list(candidates) if candidates is not None else None,
             "replacement": None,
             "record_index": None,
         }
@@ -5206,7 +5210,37 @@ def downloaded_font_object_add_bookkeeping_via_16c14(
             "continuation_cleared": continuation_cleared,
         }
 
+    candidate_insert = None
+    updated_candidates = list(candidates) if candidates is not None else None
     candidate_flags = int(initial_candidate_flags) & 0xFFFFFFFF
+    if updated_candidates is not None:
+        candidate_insert = font_candidate_object_insert_via_1bc38(
+            updated_candidates,
+            new_payload & 0x00FFFFFF,
+            d5_arg=1,
+            payload_byte_0x20=byte20,
+            counters=updated_counters,
+            cursors=updated_cursors,
+            base=candidate_base,
+        )
+        if candidate_insert["status"] != "inserted":
+            return {
+                "status": int(scan["status"]),
+                "scan": scan,
+                "records": updated_records,
+                "counters": updated_counters,
+                "cursors": updated_cursors,
+                "continuation": updated_continuation,
+                "budget_action": "skip-candidate-insert-error",
+                "candidate_flags": None,
+                "candidate_insert": candidate_insert,
+                "candidates": updated_candidates,
+                "replacement": replacement,
+                "record_index": record_index,
+            }
+        updated_candidates = list(candidate_insert["candidates"])  # type: ignore[arg-type]
+        candidate_flags = int(updated_candidates[int(candidate_insert["insert_index"])]) & 0xFFFFFFFF
+
     candidate_flags &= ~(1 << 3)
     candidate_flags &= 0xCFFFFFFF
     candidate_flags |= 1 << 6
@@ -5215,6 +5249,8 @@ def downloaded_font_object_add_bookkeeping_via_16c14(
         candidate_flags |= 1 << 2
     else:
         candidate_flags &= ~(1 << 2)
+    if updated_candidates is not None and candidate_insert is not None:
+        updated_candidates[int(candidate_insert["insert_index"])] = candidate_flags
 
     if (byte20 & 0xFF) == 1:
         for key in ("0x7827ac", "0x7827b0", "0x7827b4"):
@@ -5244,6 +5280,8 @@ def downloaded_font_object_add_bookkeeping_via_16c14(
         "continuation": updated_continuation,
         "budget_action": budget_action,
         "candidate_flags": candidate_flags,
+        "candidate_insert": candidate_insert,
+        "candidates": updated_candidates,
         "replacement": replacement,
         "record_index": record_index,
         "counter_branch": counter_branch,
@@ -15875,6 +15913,63 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    font_replace_candidate_install = downloaded_font_object_add_bookkeeping_via_16c14(
+        font_records,
+        current_id=0x1234,
+        new_payload=0x220000,
+        byte20=1,
+        byte0c=2,
+        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        cursors={
+            "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+        },
+        candidates=[0x00210000, 0x00230000, 0x00410000],
+    )
+    checks.append(assert_equal("0x16c14 routes installed font resource through 0x1bc38 slot", {
+        "status": font_replace_candidate_install["status"],
+        "record": font_replace_candidate_install["records"][0],
+        "candidate_flags": font_replace_candidate_install["candidate_flags"],
+        "candidate_insert": {
+            key: font_replace_candidate_install["candidate_insert"][key]  # type: ignore[index]
+            for key in ("status", "branch", "insert_index", "slot_pointer")
+        },
+        "candidates": font_replace_candidate_install["candidates"],
+        "counters": font_replace_candidate_install["counters"],
+        "cursors": {
+            key: font_replace_candidate_install["cursors"][key]  # type: ignore[index]
+            for key in ("0x7827a0", "0x7827ac", "0x7827b0", "0x7827b4")
+        },
+    }, {
+        "status": 0,
+        "record": {"id": 0x1234, "flags": 0x00, "payload": 0x220000},
+        "candidate_flags": 0x00220044,
+        "candidate_insert": {
+            "status": "inserted",
+            "branch": "class-one",
+            "insert_index": 1,
+            "slot_pointer": FONT_CANDIDATE_LIST_BASE + 4,
+        },
+        "candidates": [0x00210000, 0x00220044, 0x00230000, 0x00410000],
+        "counters": {
+            "0x78278e": 4,
+            "0x782790": 3,
+            "0x782796": 1,
+            "0x782798": 1,
+            "0x78279e": 0,
+            "0x78278a": 1,
+            "0x782782": 1,
+        },
+        "cursors": {
+            "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 16,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 16,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 16,
+        },
+    }))
+
     font_insert = downloaded_font_object_add_bookkeeping_via_16c14(
         font_records,
         current_id=0x7777,
@@ -25022,6 +25117,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- byte `+0x20 == 1` counter branch after replacement: counters `%s`, cursors `%s`." % (
         font_replace["counters"],
         font_replace["cursors"],
+    ))
+    lines.append("- integrated install path: `0x16c14` calls `0x1bc38` before its flag edits; payload `0x%06x` is inserted at returned slot `0x%06x`, then the slot longword becomes `0x%08x` and the shifted candidate list is `%s`." % (
+        font_replace_candidate_install["records"][0]["payload"],  # type: ignore[index]
+        font_replace_candidate_install["candidate_insert"]["slot_pointer"],  # type: ignore[index]
+        font_replace_candidate_install["candidate_flags"],
+        [f"0x{candidate:08x}" for candidate in font_replace_candidate_install["candidates"]],  # type: ignore[union-attr]
     ))
     font_insert_record = font_insert["records"][1]
     assert isinstance(font_insert_record, dict)

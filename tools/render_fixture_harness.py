@@ -16922,6 +16922,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         candidates=[0x00000100, 0x00000200, 0x00000300],
     )
+    table_payload_resource_dispatch_trace = trace_font_parser_dispatch_via_11774(data, table_payload_resource_command_stream)
+    table_payload_resource_dispatch_commands = table_payload_resource_dispatch_trace["commands"]
+    assert isinstance(table_payload_resource_dispatch_commands, list)
+    table_payload_resource_dispatch_command = table_payload_resource_dispatch_commands[0]
+    assert isinstance(table_payload_resource_dispatch_command, dict)
+    table_payload_resource_dispatch_payload = table_payload_resource_dispatch_command["payload"]
+    assert isinstance(table_payload_resource_dispatch_payload, bytes)
     table_payload_resource_command_event = table_payload_resource_command["events"][0]
     assert isinstance(table_payload_resource_command_event, dict)
     table_payload_resource_command_allocation = table_payload_resource_command_event["allocation"]
@@ -17020,6 +17027,67 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "pending_flag": 0,
             "handler": 0,
             "snapshot_record": bytes.fromhex("80 57 00 50 00 01"),
+        },
+    }))
+    checks.append(assert_equal("resource payload stream ties ROM parser dispatch to 0x16c14 install", {
+        "parser": {
+            "dispatch_handlers": [
+                event["handler"]
+                for event in table_payload_resource_dispatch_trace["dispatches"]
+            ],
+            "dispatch_modes": [
+                event["next_mode"]
+                for event in table_payload_resource_dispatch_trace["dispatches"]
+            ],
+            "sequence": table_payload_resource_dispatch_command["sequence"],
+            "record": table_payload_resource_dispatch_command["record"],
+            "font_payload_dispatch": table_payload_resource_dispatch_command["font_payload_dispatch"],
+            "delayed_snapshot_bytes": table_payload_resource_dispatch_command["delayed_snapshot_bytes"],
+            "restore_after_final": table_payload_resource_dispatch_command["restore_after_final"],
+            "restored_record": table_payload_resource_dispatch_command["restored_record"],
+            "payload_offset": table_payload_resource_dispatch_command["payload_offset"],
+            "payload_length": len(table_payload_resource_dispatch_payload),
+            "payload_prefix": table_payload_resource_dispatch_payload[:16],
+            "payload_suffix": table_payload_resource_dispatch_payload[-16:],
+            "final_mode": table_payload_resource_dispatch_trace["final_mode"],
+        },
+        "model": {
+            "restore_dispatch": table_payload_resource_command_event["restore_dispatch"],
+            "restored_record": table_payload_resource_command_event["restored_record"],
+            "payload_offset": table_payload_resource_command_event["payload_offset"],
+            "payload_length": table_payload_resource_command_event["payload_length"],
+            "byte_budget": table_payload_resource_command_event["byte_budget"],
+            "validation_status": table_payload_resource_command_event["validation"]["status"],  # type: ignore[index]
+            "candidate_flags": table_payload_resource_command_install["candidate_flags"],
+        },
+    }, {
+        "parser": {
+            "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "dispatch_modes": [1, 4, 13, 0],
+            "sequence": b"\x1b)s80W",
+            "record": bytes.fromhex("80 57 00 50 00 01"),
+            "font_payload_dispatch": {
+                "parameter": 80,
+                "handler": 0x16C14,
+                "meaning": "downloaded-font/character payload",
+            },
+            "delayed_snapshot_bytes": bytes.fromhex("01 00 01 6c 14 80 57 00 50 00 01"),
+            "restore_after_final": {"kind": "direct-handler", "handler": 0x16C14},
+            "restored_record": bytes.fromhex("80 57 00 50 00 01"),
+            "payload_offset": 6,
+            "payload_length": 80,
+            "payload_prefix": bytes.fromhex("00 01 02 00 ff ff 00 04 00 06 00 09 01 05 12 34"),
+            "payload_suffix": b"\x00" * 16,
+            "final_mode": 0,
+        },
+        "model": {
+            "restore_dispatch": {"kind": "direct-handler", "handler": 0x16C14},
+            "restored_record": bytes.fromhex("80 57 00 50 00 01"),
+            "payload_offset": 6,
+            "payload_length": 80,
+            "byte_budget": 80,
+            "validation_status": 1,
+            "candidate_flags": 0x40000000,
         },
     }))
     checks.append(assert_equal("0x16c14-installed 0x1719c payload dispatches as bit-30 resource form", {
@@ -25728,8 +25796,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " ".join(f"{byte:02x}" for byte in table_payload_bucket["object"]),
         table_payload_source["bitmap"],
     ))
-    lines.append("- resource payload command stream: `%s` restores delayed handler `0x%05x`, starts payload at offset `%d` / length `%d`, validates `%d` bytes through `0x16fae`, allocates size `%d` through `0x17026`/`0x1719c`, and installs candidate longword `0x%08x` through `0x16c14`/`0x1bc38`." % (
+    lines.append("- resource payload command stream: `%s` walks ROM parser modes `%s`, restores delayed handler `0x%05x`, starts payload at offset `%d` / length `%d`, validates `%d` bytes through `0x16fae`, allocates size `%d` through `0x17026`/`0x1719c`, and installs candidate longword `0x%08x` through `0x16c14`/`0x1bc38`." % (
         " ".join(f"{byte:02x}" for byte in table_payload_resource_command_event["sequence"]),
+        " -> ".join(str(event["next_mode"]) for event in table_payload_resource_dispatch_trace["dispatches"]),
         table_payload_resource_command_event["delayed_handler"],
         table_payload_resource_command_event["payload_offset"],
         table_payload_resource_command_event["payload_length"],

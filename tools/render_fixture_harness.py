@@ -2411,93 +2411,96 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
             raise AssertionError(f"raster command stream only models ESC * commands at offset {start}")
         group = stream[pos + 1]
         pos += 2
-        if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
-            parameter, pos = parse_pcl_decimal_parameter(stream, pos)
-        else:
-            parameter = 0
-        if pos >= len(stream):
-            raise AssertionError("raster command stream missing final byte")
-        final = stream[pos]
-        pos += 1
-        sequence = stream[start:pos]
+        while True:
+            command_start = start if pos == start + 3 else pos
+            if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+                parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            else:
+                parameter = 0
+            if pos >= len(stream):
+                raise AssertionError("raster command stream missing final byte")
+            final = stream[pos]
+            pos += 1
+            final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+            sequence = stream[command_start:pos]
 
-        if group == ord("t") and final == ord("R"):
-            before = dict(state)
-            state = apply_raster_resolution_via_10808(state, parameter)
-            events.append({
-                "kind": "raster-resolution",
-                "sequence": sequence,
-                "parameter": parameter,
-                "mode_before": before["mode"],
-                "mode_after": state["mode"],
-                "scale": state["scale"],
-                "limit": state["limit"],
-            })
-            continue
+            if group == ord("t") and final_upper == ord("R"):
+                before = dict(state)
+                state = apply_raster_resolution_via_10808(state, parameter)
+                events.append({
+                    "kind": "raster-resolution",
+                    "sequence": sequence,
+                    "parameter": parameter,
+                    "mode_before": before["mode"],
+                    "mode_after": state["mode"],
+                    "scale": state["scale"],
+                    "limit": state["limit"],
+                    "chained": bool(ord("a") <= final <= ord("z")),
+                })
+            elif group == ord("r") and final_upper == ord("A"):
+                before = dict(state)
+                state = start_raster_graphics_via_1075a(state, parameter)
+                events.append({
+                    "kind": "start-raster",
+                    "sequence": sequence,
+                    "parameter": parameter,
+                    "active_before": before["active"],
+                    "active_after": state["active"],
+                    "origin_long": state["origin_long"],
+                    "baseline_word": state["baseline_word"],
+                    "limit": state["limit"],
+                    "chained": bool(ord("a") <= final <= ord("z")),
+                })
+            elif group == ord("r") and final_upper == ord("B"):
+                before = dict(state)
+                state = end_raster_graphics_via_107fa(state)
+                events.append({
+                    "kind": "end-raster",
+                    "sequence": sequence,
+                    "parameter": parameter,
+                    "active_before": before["active"],
+                    "active_after": state["active"],
+                    "mode": state["mode"],
+                    "scale": state["scale"],
+                    "limit": state["limit"],
+                    "row_y": state["row_y"],
+                    "chained": bool(ord("a") <= final <= ord("z")),
+                })
+            elif group == ord("b") and final_upper == ord("W"):
+                byte_count = abs(parameter)
+                payload_start = pos
+                payload_end = pos + byte_count
+                if payload_end > len(stream):
+                    raise AssertionError("raster command stream payload shorter than ESC *b#W byte count")
+                payload = stream[payload_start:payload_end]
+                pos = payload_end
+                transfer_state = {
+                    "x": state["baseline_word"],
+                    "y": state["row_y"],
+                    "byte_count": byte_count,
+                    "mode": state["mode"],
+                }
+                result = queue_raster_row_to_page_record_via_13070(page_record, transfer_state, payload)
+                state["row_y"] += 1
+                event = {
+                    "kind": "raster-transfer",
+                    "sequence": sequence,
+                    "parameter": parameter,
+                    "delayed_handler": 0x0105D0,
+                    "payload_offset": payload_start,
+                    "payload": payload,
+                    "transfer_state": transfer_state,
+                    "result": result,
+                    "row_y_after": state["row_y"],
+                    "chained": bool(ord("a") <= final <= ord("z")),
+                }
+                events.append(event)
+                queued.append(event)
+            else:
+                raise AssertionError(f"unsupported raster command ESC *{chr(group)}#{chr(final)} at offset {command_start}")
 
-        if group == ord("r") and final == ord("A"):
-            before = dict(state)
-            state = start_raster_graphics_via_1075a(state, parameter)
-            events.append({
-                "kind": "start-raster",
-                "sequence": sequence,
-                "parameter": parameter,
-                "active_before": before["active"],
-                "active_after": state["active"],
-                "origin_long": state["origin_long"],
-                "baseline_word": state["baseline_word"],
-                "limit": state["limit"],
-            })
-            continue
-
-        if group == ord("r") and final == ord("B"):
-            before = dict(state)
-            state = end_raster_graphics_via_107fa(state)
-            events.append({
-                "kind": "end-raster",
-                "sequence": sequence,
-                "parameter": parameter,
-                "active_before": before["active"],
-                "active_after": state["active"],
-                "mode": state["mode"],
-                "scale": state["scale"],
-                "limit": state["limit"],
-                "row_y": state["row_y"],
-            })
-            continue
-
-        if group == ord("b") and final == ord("W"):
-            byte_count = abs(parameter)
-            payload_start = pos
-            payload_end = pos + byte_count
-            if payload_end > len(stream):
-                raise AssertionError("raster command stream payload shorter than ESC *b#W byte count")
-            payload = stream[payload_start:payload_end]
-            pos = payload_end
-            transfer_state = {
-                "x": state["baseline_word"],
-                "y": state["row_y"],
-                "byte_count": byte_count,
-                "mode": state["mode"],
-            }
-            result = queue_raster_row_to_page_record_via_13070(page_record, transfer_state, payload)
-            state["row_y"] += 1
-            event = {
-                "kind": "raster-transfer",
-                "sequence": sequence,
-                "parameter": parameter,
-                "delayed_handler": 0x0105D0,
-                "payload_offset": payload_start,
-                "payload": payload,
-                "transfer_state": transfer_state,
-                "result": result,
-                "row_y_after": state["row_y"],
-            }
-            events.append(event)
-            queued.append(event)
-            continue
-
-        raise AssertionError(f"unsupported raster command ESC *{chr(group)}#{chr(final)} at offset {start}")
+            if not (ord("a") <= final <= ord("z")):
+                break
 
     bucket_array = page_record["bucket_array"]
     assert isinstance(bucket_array, dict)
@@ -6203,6 +6206,109 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
     }))
+    raster_chained_resolution_stream = b"\x1b*t300r150R"
+    raster_chained_resolution_result = render_raster_command_data_stream_via_121cc_105d0(
+        data,
+        raster_chained_resolution_stream,
+        raster_graphics_state(page_extent=255),
+    )
+    checks.append(assert_equal("modeled raster command stream accepts lowercase same-group resolution chaining", {
+        "events": [
+            {
+                key: event[key]
+                for key in ("kind", "sequence", "parameter", "mode_before", "mode_after", "scale", "limit", "chained")
+            }
+            for event in raster_chained_resolution_result["events"]
+        ],
+        "final_state": {
+            key: raster_chained_resolution_result["final_state"][key]
+            for key in ("active", "baseline_word", "mode", "scale", "limit", "row_y")
+        },
+    }, {
+        "events": [
+            {"kind": "raster-resolution", "sequence": b"\x1b*t300r", "parameter": 300, "mode_before": 3, "mode_after": 0, "scale": 1, "limit": 32, "chained": True},
+            {"kind": "raster-resolution", "sequence": b"150R", "parameter": 150, "mode_before": 0, "mode_after": 1, "scale": 2, "limit": 16, "chained": False},
+        ],
+        "final_state": {
+            "active": 0,
+            "baseline_word": 0,
+            "mode": 1,
+            "scale": 2,
+            "limit": 16,
+            "row_y": 0,
+        },
+    }))
+    raster_chained_transfer_stream = b"\x1b*t300R\x1b*r0A\x1b*b2w" + bytes.fromhex("f0 0f") + b"2W" + bytes.fromhex("0f f0")
+    raster_chained_transfer_result = render_raster_command_data_stream_via_121cc_105d0(
+        data,
+        raster_chained_transfer_stream,
+        raster_graphics_state(page_extent=255, cursor_axis0=0x00100000, cursor_axis1=0x00200000),
+    )
+    raster_chained_transfer_page_record = raster_chained_transfer_result["page_record"]
+    assert isinstance(raster_chained_transfer_page_record, dict)
+    raster_chained_transfer_bucket_array = raster_chained_transfer_page_record["bucket_array"]
+    assert isinstance(raster_chained_transfer_bucket_array, dict)
+    raster_chained_transfer_chain = [bytes(obj) for obj in raster_chained_transfer_bucket_array[0]]
+    raster_chained_transfer_rendered = [render_encoded_raster_object_via_1f88e(data, obj) for obj in reversed(raster_chained_transfer_chain)]
+    checks.append(assert_equal("modeled raster command stream keeps ESC *b group open across lowercase w payload", {
+        "transfer_events": [
+            {
+                key: event[key]
+                for key in ("sequence", "parameter", "payload_offset", "payload", "transfer_state", "row_y_after", "chained")
+            }
+            for event in raster_chained_transfer_result["events"]
+            if event["kind"] == "raster-transfer"
+        ],
+        "chain": raster_chained_transfer_chain,
+        "rendered": [
+            {
+                key: rendered[key]
+                for key in ("coord", "x", "y", "payload", "rows")
+            }
+            for rendered in raster_chained_transfer_rendered
+        ],
+    }, {
+        "transfer_events": [
+            {
+                "sequence": b"\x1b*b2w",
+                "parameter": 2,
+                "payload_offset": 17,
+                "payload": bytes.fromhex("f0 0f"),
+                "transfer_state": {"x": 0, "y": 0, "byte_count": 2, "mode": 0},
+                "row_y_after": 1,
+                "chained": True,
+            },
+            {
+                "sequence": b"2W",
+                "parameter": 2,
+                "payload_offset": 21,
+                "payload": bytes.fromhex("0f f0"),
+                "transfer_state": {"x": 0, "y": 1, "byte_count": 2, "mode": 0},
+                "row_y_after": 2,
+                "chained": False,
+            },
+        ],
+        "chain": [
+            bytes.fromhex("00 00 00 00 80 00 00 02 10 00 0f f0"),
+            bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
+        ],
+        "rendered": [
+            {
+                "coord": 0x0000,
+                "x": 0,
+                "y": 0,
+                "payload": bytes.fromhex("f0 0f"),
+                "rows": ["####........####"],
+            },
+            {
+                "coord": 0x1000,
+                "x": 0,
+                "y": 1,
+                "payload": bytes.fromhex("0f f0"),
+                "rows": ["................", "....########...."],
+            },
+        ],
+    }))
     raster_page_record: dict[str, object] = {"bucket_array": {}}
     raster_page_result = queue_raster_row_to_page_record_via_13070(
         raster_page_record,
@@ -7448,7 +7554,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## Modeled Raster Command/Data Stream Fixture")
     lines.append("")
-    lines.append("This fixture starts from actual PCL command bytes, then models the delayed payload boundary that `0x121cc` records for handler `0x105d0`. It is still not a full firmware parser run, but it proves the byte stream selects parser-derived raster state before queueing and rendering the `ESC *b#W` payload. The 300/150/100/75-dpi streams pin byte-stream-selected modes 0..3.")
+    lines.append("This fixture starts from actual PCL command bytes, then models the delayed payload boundary that `0x121cc` records for handler `0x105d0`. It is still not a full firmware parser run, but it proves the byte stream selects parser-derived raster state before queueing and rendering the `ESC *b#W` payload. The 300/150/100/75-dpi streams pin byte-stream-selected modes 0..3, and same-group lowercase-final sequences now stay in the firmware parser mode until the final uppercase command byte.")
     lines.append("")
     lines.append(f"- stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_command_stream)}`")
     lines.append("- parsed events:")
@@ -7632,6 +7738,26 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         raster_end_stream_result["final_state"]["limit"],
         raster_end_stream_result["final_state"]["row_y"],
     ))
+    lines.append(f"- chained resolution stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_chained_resolution_stream)}`")
+    lines.append("- chained resolution events: `%s` then `%s`, leaving mode `%d` / scale `%d`." % (
+        raster_chained_resolution_result["events"][0]["sequence"],
+        raster_chained_resolution_result["events"][1]["sequence"],
+        raster_chained_resolution_result["final_state"]["mode"],
+        raster_chained_resolution_result["final_state"]["scale"],
+    ))
+    lines.append(f"- chained `ESC *b` stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_chained_transfer_stream)}`")
+    lines.append("- chained `ESC *b` transfer events:")
+    for event in raster_chained_transfer_result["events"]:
+        if event["kind"] == "raster-transfer":
+            lines.append("- sequence `%s`, payload offset `%d`, payload `%s`, row_y after `%d`, chained `%s`" % (
+                event["sequence"],
+                event["payload_offset"],
+                " ".join(f"{byte:02x}" for byte in event["payload"]),
+                event["row_y_after"],
+                event["chained"],
+            ))
+    lines.append("- chained `ESC *b` queued chain, newest first:")
+    lines.extend(f"`{' '.join(f'{byte:02x}' for byte in obj)}`" for obj in raster_chained_transfer_chain)
     lines.append("- remaining gap: run the same byte stream through the live parser/data-chain machinery instead of this modeled command recognizer.")
     lines.append("")
 

@@ -362,6 +362,104 @@ def restore_delayed_payload_via_12218(pending: dict[str, object], alternate_mode
     }
 
 
+def data_payload_byte_via_dace(stream: bytes, pos: int) -> dict[str, object]:
+    if pos >= len(stream):
+        return {"value": -1, "pos": pos, "control_hits": 0}
+    value = stream[pos]
+    pos += 1
+    if value != 0x1A:
+        return {"value": value, "pos": pos, "control_hits": 0}
+    if pos >= len(stream):
+        return {"value": -1, "pos": pos, "control_hits": 0}
+    value = stream[pos]
+    pos += 1
+    if value == 0x58:
+        return {"value": 0, "pos": pos, "control_hits": 1}
+    return {"value": value, "pos": pos, "control_hits": 0}
+
+
+def consume_data_payload_count_via_12328(byte_count: int, stream: bytes, pos: int = 0) -> dict[str, object]:
+    remaining = int(byte_count)
+    values: list[int] = []
+    control_hits = 0
+    while remaining > 0:
+        read = data_payload_byte_via_dace(stream, pos)
+        value = int(read["value"])
+        pos = int(read["pos"])
+        control_hits += int(read["control_hits"])
+        if value == -1:
+            return {
+                "status": -1,
+                "values": values,
+                "pos": pos,
+                "remaining": remaining,
+                "control_hits": control_hits,
+            }
+        values.append(value)
+        remaining -= 1
+    return {
+        "status": 1,
+        "values": values,
+        "pos": pos,
+        "remaining": remaining,
+        "control_hits": control_hits,
+    }
+
+
+def alternate_payload_dispatch_via_12358(
+    record: bytes,
+    stream: bytes,
+    callback_matches_wrapper: bool,
+    cursor_after_record: int = 0x7829A8,
+) -> dict[str, object]:
+    if len(record) != 6:
+        raise AssertionError("0x12358 alternate payload dispatch requires one six-byte parsed command record")
+    cursor_rewound = cursor_after_record - 6
+    count = s16(record, 2)
+    if callback_matches_wrapper:
+        consumed = consume_data_payload_count_via_12328(abs(count), stream)
+        return {
+            "path": "wrapper-1228a",
+            "cursor_before": cursor_after_record,
+            "cursor_after": cursor_rewound,
+            "byte_count": abs(count),
+            "status": consumed["status"],
+            "values": consumed["values"],
+            "echoed": [],
+            "pos": consumed["pos"],
+            "remaining": consumed["remaining"],
+            "control_hits": consumed["control_hits"],
+        }
+
+    if count <= 0:
+        return {
+            "path": "direct-12358",
+            "cursor_before": cursor_after_record,
+            "cursor_after": cursor_rewound,
+            "byte_count": count,
+            "status": 1,
+            "values": [],
+            "echoed": [],
+            "pos": 0,
+            "remaining": count,
+            "control_hits": 0,
+        }
+
+    consumed = consume_data_payload_count_via_12328(count, stream)
+    return {
+        "path": "direct-12358",
+        "cursor_before": cursor_after_record,
+        "cursor_after": cursor_rewound,
+        "byte_count": count,
+        "status": consumed["status"],
+        "values": consumed["values"],
+        "echoed": list(consumed["values"]),
+        "pos": consumed["pos"],
+        "remaining": consumed["remaining"],
+        "control_hits": consumed["control_hits"],
+    }
+
+
 def resolve_builtin_glyph(resources: bytes, context: int, glyph_index: int) -> dict[str, int | bytes]:
     if not (context & 0x40000000):
         raise AssertionError(f"context 0x{context:08x} does not select the built-in offset-table form")
@@ -3767,6 +3865,62 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "pending_flag": 0,
             "handler": 0,
             "snapshot_record": raster_transfer_record,
+        },
+    }))
+    alternate_payload_wrapper = alternate_payload_dispatch_via_12358(
+        bytes.fromhex("81 57 ff fd 00 00"),
+        bytes.fromhex("aa 1a 58 bb"),
+        callback_matches_wrapper=True,
+    )
+    checks.append(assert_equal("0x1228a consumes absolute delayed payload count without echo", alternate_payload_wrapper, {
+        "path": "wrapper-1228a",
+        "cursor_before": 0x7829A8,
+        "cursor_after": 0x7829A2,
+        "byte_count": 3,
+        "status": 1,
+        "values": [0xAA, 0x00, 0xBB],
+        "echoed": [],
+        "pos": 4,
+        "remaining": 0,
+        "control_hits": 1,
+    }))
+    alternate_payload_direct = alternate_payload_dispatch_via_12358(
+        bytes.fromhex("80 57 00 03 00 00"),
+        bytes.fromhex("aa 1a 58 bb cc"),
+        callback_matches_wrapper=False,
+    )
+    alternate_payload_direct_negative = alternate_payload_dispatch_via_12358(
+        bytes.fromhex("81 57 ff fd 00 00"),
+        bytes.fromhex("aa bb cc"),
+        callback_matches_wrapper=False,
+    )
+    checks.append(assert_equal("0x12358 direct alternate path echoes positive payload bytes only", {
+        "positive": alternate_payload_direct,
+        "negative": alternate_payload_direct_negative,
+    }, {
+        "positive": {
+            "path": "direct-12358",
+            "cursor_before": 0x7829A8,
+            "cursor_after": 0x7829A2,
+            "byte_count": 3,
+            "status": 1,
+            "values": [0xAA, 0x00, 0xBB],
+            "echoed": [0xAA, 0x00, 0xBB],
+            "pos": 4,
+            "remaining": 0,
+            "control_hits": 1,
+        },
+        "negative": {
+            "path": "direct-12358",
+            "cursor_before": 0x7829A8,
+            "cursor_after": 0x7829A2,
+            "byte_count": -3,
+            "status": 1,
+            "values": [],
+            "echoed": [],
+            "pos": 0,
+            "remaining": -3,
+            "control_hits": 0,
         },
     }))
 
@@ -7977,11 +8131,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- Signed numeric parsing sets flag byte `0x81`, caps fractional storage to four digits, skips excess fractional digits, and stores signed word fields.")
     lines.append("- A semicolon final is stored in the record but returns `D7 = 0`, matching the command-combining continuation path.")
     lines.append("- `0x121cc` snapshots pending flag `1`, the saved handler longword, and the current six-byte parsed command record; `0x12218` restores that record at `0x78299e` and dispatches the saved handler when alternate/data mode is clear.")
+    lines.append("- In alternate/data mode, `0x12358` either calls wrapper `0x1228a`, which consumes the absolute parsed byte count through `0x12328` without echo, or consumes only positive counts itself while echoing each normalized byte through `0xe002`; both paths use `0xdace`, where payload control `1a 58` calls `0xd99a` and contributes byte `00`.")
     lines.append("")
     lines.append(f"- chained resolution record bytes: `{' '.join(f'{byte:02x}' for byte in tokenizer_chained_resolution['record_bytes'])}`")
     lines.append(f"- signed/fraction record bytes: `{' '.join(f'{byte:02x}' for byte in tokenizer_signed_fraction['record_bytes'])}`, scratch `{tokenizer_signed_fraction['scratch']!r}`")
     lines.append(f"- semicolon continuation record bytes: `{' '.join(f'{byte:02x}' for byte in tokenizer_semicolon['record_bytes'])}`, returned D7 `{tokenizer_semicolon['returned_d7']}`")
     lines.append(f"- delayed raster transfer snapshot: `{' '.join(f'{byte:02x}' for byte in delayed_raster_transfer['snapshot_bytes'])}`")
+    lines.append(f"- alternate wrapper consume values: `{alternate_payload_wrapper['values']}`, echoed `{alternate_payload_wrapper['echoed']}`, control hits `{alternate_payload_wrapper['control_hits']}`")
+    lines.append(f"- alternate direct consume values: `{alternate_payload_direct['values']}`, echoed `{alternate_payload_direct['echoed']}`, negative-count values `{alternate_payload_direct_negative['values']}`")
     lines.append("")
 
     lines.append("## Built-In Glyph Bitmap Fixtures")

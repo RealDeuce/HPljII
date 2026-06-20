@@ -59,7 +59,7 @@ Observed behavior:
 - Stores the terminating byte at `record+1`.
 - Treats `:` and `;` as command-combining continuation markers by returning `D7 = 0`.
 
-This matches PCL escape syntax closely enough to treat `0xdaf0`/`0xdb74` as the first confirmed PCL tokenizer anchor. `tools/render_fixture_harness.py` now pins six-byte records for `300r150R`, signed fractional values with four stored fractional digits, semicolon continuation returning `D7 = 0`, and `0x121cc`/`0x12218` delayed payload snapshot/restore for a raster `ESC *b4W` record.
+This matches PCL escape syntax closely enough to treat `0xdaf0`/`0xdb74` as the first confirmed PCL tokenizer anchor. `tools/render_fixture_harness.py` now pins six-byte records for `300r150R`, signed fractional values with four stored fractional digits, semicolon continuation returning `D7 = 0`, `0x121cc`/`0x12218` delayed payload snapshot/restore for a raster `ESC *b4W` record, and the alternate/data-mode `0x1228a`/`0x12358` byte-count consumers including `0xdace` handling of payload control `1a 58`.
 
 ## Main Parser Loop
 
@@ -80,7 +80,7 @@ byte_to_match, next_mode, handler_long
 Normal parser pointer table: `0x000112a4`.
 Alternate/data parser pointer table: `0x000116f6`.
 
-Current parser mode is stored at `0x782999`. If `0x782c18` is clear, the normal table is used. If `0x782c18` is set, the alternate/data table is used; that table preserves state transitions but suppresses many command handlers, consistent with a data collection or macro/download mode.
+Current parser mode is stored at `0x782999`. If `0x782c18` is clear, the normal table is used. If `0x782c18` is set, the alternate/data table is used; that table preserves state transitions but suppresses many command handlers, consistent with a data collection or macro/download mode. Delayed payload restore in this mode routes through `0x12358`; the wrapper path `0x1228a` consumes the absolute parsed count without echo, while the direct `0x12358` path consumes only positive counts and echoes normalized bytes through `0xe002`.
 
 ## Direct Control Codes
 

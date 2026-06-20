@@ -3681,6 +3681,82 @@ def firmware_scanned_builtin_candidates(resources: bytes) -> list[dict[str, int]
     return records
 
 
+def builtin_candidate_windows_from_scanned_records(
+    records: list[dict[str, int]],
+    events: list[dict[str, object]],
+    *,
+    base: int = FONT_CANDIDATE_LIST_BASE,
+) -> dict[str, object]:
+    class_one_low: list[dict[str, int]] = []
+    class_zero_low: list[dict[str, int]] = []
+    extension: list[dict[str, int]] = []
+    other: list[dict[str, int]] = []
+    for record, event in zip(records, events):
+        entry = {
+            "record_start": int(record["record_start"]),
+            "address": int(record["address"]),
+            "longword": int(event["candidate_flags"]),
+        }
+        d4_class = int(record["d4_class"])
+        address = int(record["address"]) & 0x00FFFFFF
+        if d4_class == 1 and 0x080000 <= address <= 0x0FFFFE:
+            class_one_low.append(entry)
+        elif d4_class == 0 and 0x080000 <= address <= 0x0FFFFE:
+            class_zero_low.append(entry)
+        elif 0x200000 <= address <= 0x5FFFFE:
+            extension.append(entry)
+        else:
+            other.append(entry)
+
+    ordered_entries = class_one_low + extension + class_zero_low + other
+    slots = []
+    for index, entry in enumerate(ordered_entries):
+        slot = dict(entry)
+        slot["slot_pointer"] = base + index * 4
+        slots.append(slot)
+    return {
+        "base": base,
+        "class_one_low": slots[:len(class_one_low)],
+        "extension": slots[len(class_one_low):len(class_one_low) + len(extension)],
+        "class_zero_low": slots[len(class_one_low) + len(extension):len(class_one_low) + len(extension) + len(class_zero_low)],
+        "other": slots[len(class_one_low) + len(extension) + len(class_zero_low):],
+        "slots": slots,
+    }
+
+
+def activate_candidate_window_via_1569c(windows: dict[str, object], class_selector_byte: int) -> dict[str, object]:
+    if int(class_selector_byte) == 0:
+        selected_name = "class-zero"
+        selected = [dict(slot) for slot in windows["class_zero_low"]]  # type: ignore[index]
+        pointer = selected[0]["slot_pointer"] if selected else int(windows["base"])
+    else:
+        selected_name = "class-one"
+        selected = [dict(slot) for slot in windows["class_one_low"]]  # type: ignore[index]
+        pointer = selected[0]["slot_pointer"] if selected else int(windows["base"])
+
+    events = []
+    for index, slot in enumerate(selected):
+        before = int(slot["longword"]) & 0xFFFFFFFF
+        after = before | 0x80000000
+        slot["longword"] = after
+        events.append({
+            "helper": 0x01569C,
+            "index": index,
+            "slot_pointer": int(slot["slot_pointer"]),
+            "record_start": int(slot["record_start"]),
+            "before": before,
+            "after": after,
+        })
+
+    return {
+        "selected_name": selected_name,
+        "active_pointer_78287c": pointer,
+        "active_count_7827b8": len(selected),
+        "entries": selected,
+        "events": events,
+    }
+
+
 def clear_download_continuation_state(continuation: dict[str, int]) -> dict[str, int]:
     cleared = dict(continuation)
     for key in ("flag", "payload", "word_0x7827c8", "dest", "trailing_dest", "remaining", "d4_counter", "d3_counter"):
@@ -11907,6 +11983,43 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {"record_start": 0x02DCCE, "address": 0x0ADCCE, "d4_class": 1, "candidate_flags": 0x440ADCCE},
             {"record_start": 0x02E122, "address": 0x0AE122, "d4_class": 1, "candidate_flags": 0x400AE122},
         ],
+    }))
+    actual_candidate_windows = builtin_candidate_windows_from_scanned_records(
+        actual_scanned_builtin_candidates,
+        actual_candidate_events,
+    )
+    activated_class_zero = activate_candidate_window_via_1569c(actual_candidate_windows, class_selector_byte=0)
+    activated_class_one = activate_candidate_window_via_1569c(actual_candidate_windows, class_selector_byte=1)
+    checks.append(assert_equal("0x1569c activates concrete built-in candidate windows", {
+        "class_zero": {
+            "selected_name": activated_class_zero["selected_name"],
+            "active_pointer_78287c": activated_class_zero["active_pointer_78287c"],
+            "active_count_7827b8": activated_class_zero["active_count_7827b8"],
+            "first_event": activated_class_zero["events"][0],
+            "last_event": activated_class_zero["events"][-1],
+        },
+        "class_one": {
+            "selected_name": activated_class_one["selected_name"],
+            "active_pointer_78287c": activated_class_one["active_pointer_78287c"],
+            "active_count_7827b8": activated_class_one["active_count_7827b8"],
+            "first_event": activated_class_one["events"][0],
+            "last_event": activated_class_one["events"][-1],
+        },
+    }, {
+        "class_zero": {
+            "selected_name": "class-zero",
+            "active_pointer_78287c": 0x782354,
+            "active_count_7827b8": 12,
+            "first_event": {"helper": 0x01569C, "index": 0, "slot_pointer": 0x782354, "record_start": 0x00004C, "before": 0x4008004C, "after": 0xC008004C},
+            "last_event": {"helper": 0x01569C, "index": 11, "slot_pointer": 0x782380, "record_start": 0x014F5C, "before": 0x40094F5C, "after": 0xC0094F5C},
+        },
+        "class_one": {
+            "selected_name": "class-one",
+            "active_pointer_78287c": 0x782324,
+            "active_count_7827b8": 12,
+            "first_event": {"helper": 0x01569C, "index": 0, "slot_pointer": 0x782324, "record_start": 0x019D18, "before": 0x40099D18, "after": 0xC0099D18},
+            "last_event": {"helper": 0x01569C, "index": 11, "slot_pointer": 0x782350, "record_start": 0x02E122, "before": 0x400AE122, "after": 0xC00AE122},
+        },
     }))
     default_font_tables_found = default_font_symbol_tables_via_1ac0a_1af36(
         current_found=True,
@@ -22477,6 +22590,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         actual_candidate_partition["counters"]["0x78279c"],
         actual_candidate_events[0]["candidate_flags"],
         actual_candidate_events[-1]["candidate_flags"],
+    ))
+    lines.append("- active candidate windows: `0x1569c` selects class-zero pointer `0x%06x`/count `%d` when `0x782da3 == 0`, or class-one pointer `0x%06x`/count `%d` otherwise; selected entries receive active bit `0x80000000` before later filtering." % (
+        activated_class_zero["active_pointer_78287c"],
+        activated_class_zero["active_count_7827b8"],
+        activated_class_one["active_pointer_78287c"],
+        activated_class_one["active_count_7827b8"],
     ))
     lines.append("- default-font table builders: `0x1ac0a` current-candidate mode copies word `0x%04x` into all four `@0`/`@1` table slots, while synthesized mode writes `%s`; `0x1af36` builds fallback slots `%s` for the corresponding `0x156de` candidate-selection fallback." % (
         default_font_tables_found["current_symbol"],

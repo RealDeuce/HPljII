@@ -414,6 +414,12 @@ def font_record_report(data: bytes) -> str:
         f"{key}=0x{int(cursors[key]):06x}"
         for key in ("0x7827a0", "0x7827a4", "0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4")
     ))
+    lines.append("- `0x1569c` activation: class-zero uses `0x78287c = 0x%06x`, `0x7827b8 = %d`; class-one uses `0x78287c = 0x%06x`, `0x7827b8 = %d`; each selected entry is marked active with high bit `0x80000000`." % (
+        int(cursors["0x7827ac"]),
+        int(counters["0x782798"]),
+        int(cursors["0x7827a0"]),
+        int(counters["0x782790"]),
+    ))
     lines.append("")
     lines.append("| Scan index | Name | Record start | Firmware address | Context longword | Class | Partition |")
     lines.append("| ---: | --- | ---: | ---: | ---: | ---: | --- |")
@@ -1289,6 +1295,7 @@ def active_symbol_set_flow_report(data: bytes) -> str:
     lines.append("- Reproduce `0x1ac0a` and `0x1af36` table writes before applying `@0`/`@1` or font-selection fallback behavior; the harness now checks the current-candidate and synthesized-candidate table shapes.")
     lines.append("- Reproduce `0x1a9be` scanner-side candidate-list partitioning before default-font searches: every accepted record increments `0x78278e`; class `1` increments `0x782790` and splits low built-in-resource candidates into `0x782792` and cartridge/extension-range candidates into `0x782794`; class `0` increments `0x782798` and splits the same ranges into `0x78279a` and `0x78279c`; the cursor windows at `0x7827a0..0x7827b4` advance cumulatively across those partitions.")
     lines.append("- For the verified `IC32,IC15` resource ROM, the built-in scan contributes 24 concrete `HEAD`-path records: twelve class `0` and twelve class `1`, all in the low built-in resource window. The extension-range counters stay zero until cartridge/external resource ranges are scanned.")
+    lines.append("- Reproduce `0x1569c` active-list setup: `0x782da3 == 0` selects class-zero pointer/count `0x7827ac`/`0x782798`, while nonzero selects class-one pointer/count `0x7827a0`/`0x782790`; for the verified built-ins these become `0x782354`/`12` and `0x782324`/`12`, and selected entries are marked with active bit `0x80000000`.")
     lines.append("- Reproduce `0x1ad66` as a three-stage default-font candidate search: range class 1, then range class 2, then `0x1ae7e` fallback. Range hits filter candidate high-nibble flags by primary/secondary slot mask and low-24-bit resource address range before `0x1bbfe` dispatches symbol-word reads to `0x15890` for bit-30 built-ins or `0x158be` for inline/downloaded candidates. Fallback first accepts a `0x1b060` match, where the helper validates orientation, pitch, height, style, and spacing, then accepts either exact requested-symbol matches or Roman-8 fallback for non-excluded requested words; accepted `0x1b060` candidates write the requested word from `0x7821a0` to `0x7828a4`.")
     lines.append("- Treat `0x782ef4`/`0x782f04` as requested criteria and `0x783144`/`0x783146` as the active post-selection words.")
     lines.append("- Rebuild the selected primary/secondary character-to-glyph map after symbol-set changes, then apply the `0x14f16` patch rules documented in `ic30_ic13_symbol_set_patch_tables.md`; `tools/render_fixture_harness.py` now drives `ESC (2U` and `ESC )0E` through both the ROM parser trace and symbol-set stream model, then applies the resulting `0x0055` patch-table and `0x0005` Roman Extension map rules to the `LINE_PRINTER` base map.")

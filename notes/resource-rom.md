@@ -166,6 +166,8 @@ Other class values are retained in the total count but do not advance these clas
 
 For the verified `IC32,IC15` built-in resource image, the concrete `HEAD`-path scan accepts 24 records: twelve class `0` records and twelve class `1` records, all in the low built-in resource window `0x080000..0x0ffffe`. The resulting counter state is total `0x78278e = 24`, class-one low/range `0x782792 = 12` / `0x782794 = 0`, and class-zero low/range `0x78279a = 12` / `0x78279c = 0`; final cursor windows are `0x7827a0 = 0x782324`, `0x7827a4 = 0x782354`, `0x7827a8 = 0x782354`, `0x7827ac = 0x782354`, `0x7827b0 = 0x782384`, and `0x7827b4 = 0x782384`.
 
+`0x1569c` activates one of those windows. If `0x782da3 == 0`, it copies class-zero pointer/count `0x7827ac` / `0x782798` into `0x78287c` / `0x7827b8`, giving pointer `0x782354` and count `12` for the verified built-ins. Otherwise it copies class-one pointer/count `0x7827a0` / `0x782790`, giving pointer `0x782324` and count `12`. It then sets the high active bit `0x80000000` in each selected list entry before later filters clear that bit on rejected entries.
+
 Current candidate-list state:
 
 | RAM | Role |
@@ -179,6 +181,6 @@ Current candidate-list state:
 | `0x7827b8` | active candidate-list count |
 | `0x7828a8` | selected candidate slot pointer |
 
-`0x1569c` activates one of the candidate lists by copying a pointer/count pair to `0x78287c` / `0x7827b8` and setting bit 15 in each list entry. `0x156de` then filters the active list against current font criteria. For symbol sets, it reads requested words from `0x782ef4` or `0x782f04`, normalizes them through `0x15850`, compares candidate words returned by `0x15890` / `0x158be`, accepts the small compatibility table at `0x15840`, and stores the active selected word into `0x783144` or `0x783146`.
+`0x156de` then filters the active list against current font criteria. For symbol sets, it reads requested words from `0x782ef4` or `0x782f04`, normalizes them through `0x15850`, compares candidate words returned by `0x15890` / `0x158be`, accepts the small compatibility table at `0x15840`, and stores the active selected word into `0x783144` or `0x783146`.
 
 Filtering helpers around `0x1519a`, `0x153c6`, `0x147f4`, and `0x148f8` prune the active list by attributes such as pitch, style, symbol set, and current orientation-specific state. This directly affects text rendering because it determines the built-in font record used for glyph metrics and bitmaps.

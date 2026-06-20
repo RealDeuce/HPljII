@@ -47,7 +47,7 @@ These command-to-handler anchors are current priorities for pixel-perfect render
 | `ESC &a#V` | `0x00f60a` | vertical decipoint position |
 | `ESC &k#H` | `0x00ca8c` | HMI |
 | `ESC &k#G` | `0x00edf8` | CR/LF/FF line-termination mode |
-| `ESC &f#S` | `0x00f75e` | cursor push/pop |
+| `ESC &f#S` | `0x00f75e` | cursor stack at `0x782c96..0x782d36`; selector `0` pushes, selector `1` pops |
 | `ESC &f#Y` | `0x00e112` | macro ID; stores absolute parsed word in `0x783164` |
 | `ESC &f#X` | `0x00dd08` | macro control; selectors `0..10` dispatch through the macro record/data-chain table |
 | `ESC *t#R` | `0x010808` | raster resolution |
@@ -94,6 +94,8 @@ It then rebuilds page-related state, including `0x782da2`, `0x782db2`, `0x782db4
 `ESC *r#B` at `0x0107fa` clears raster active byte `0x783182`, leaving raster origin/baseline/mode/scale/limit state intact so later resolution commands can take effect.
 
 `ESC &f#Y` at `0x00e112` stores the absolute parsed signed word into current macro id `0x783164`. `ESC &f#X` at `0x00dd08` uses that id with the 32-entry macro record pool at `0x782a98`: selector `0` starts definition, `1` stops definition, `2` executes, `3` calls, `4`/`5` enable/disable overlay, `6` deletes all, `7` deletes temporary, `8` deletes current id, and `9`/`10` mark temporary/permanent. Execute/call route through `0xe418`, which builds a data-chain frame with byte `+8 = 4` and byte `+9 = 2` or `3`. The executable harness now pins these command side effects and frame metadata; full replay of macro payload bytes through the live parser is still open.
+
+`ESC &f#S` at `0x00f75e` uses the absolute parsed word as a cursor-stack selector. Selector `0` pushes the current horizontal cursor `0x782c8a` and the current vertical cursor plus `0x782dbe` as an 8-byte entry while the next-free pointer is below `0x782d36`; selector `1` pops while above stack base `0x782c96`, restores horizontal and vertical positions with current page-extent clamps, clears pending/right-limit flags, and flushes pending spans when enabled. Executable fixtures now pin push, pop, clamp, full-stack, and empty-stack cases.
 
 Primary and secondary font-selection commands share the same final handler stubs, with the `ESC (` versus `ESC )` distinction preserved by setup routines before mode 4. The final handlers call lower-level font-state routines around `0xc6ec..0xc930` and then common routine `0xc580`.
 

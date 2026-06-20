@@ -2798,6 +2798,8 @@ def direct_control_code_flow_report(data: bytes) -> str:
         (0x00782A6D, "printable/pending text flag cleared by control-code cursor moves; FF sets it to `0xff` after page eject"),
         (0x00782C8A, "current horizontal text cursor, reset by CR and changed by HT/BS"),
         (0x00782C8E, "current vertical text cursor, advanced by LF and reset/recomputed by FF"),
+        (0x00782C96, "bottom of the `ESC &f#S` cursor stack"),
+        (0x00782D36, "next-free pointer and upper bound for the `ESC &f#S` cursor stack"),
         (0x00782DB8, "horizontal page extent used to clamp HT and horizontal positioning"),
         (0x00782DCE, "top/vertical offset added by FF helper `0xf124`"),
         (0x00782DD6, "left-margin/default horizontal cursor copied into `0x782c8a` by CR helper `0xf06e`"),
@@ -2836,6 +2838,7 @@ def direct_control_code_flow_report(data: bytes) -> str:
     lines.append("| FF `0x0c` | `0xf0f0` | if `0x78318f.5` is set, calls CR helper `0xf06e`; calls `0xf34a`, ensures page root through `0x10084`, calls page/eject helper `0xf124`, then writes `0x782a6d = 0xff` | finalizes current page/root state and recomputes vertical cursor for the next page context, with optional horizontal reset |")
     lines.append("| HT `0x09` | `0xf1cc` | converts default HMI `0x78315c`; computes next eight-column stop from `0x782c8a - 0x782dd6`, clamps against `0x782dda` or `0x782db8 << 16`, writes `0x782c8a`, then calls `0xd8fc` or `0xd4ac` for active context span update | horizontal cursor jumps to firmware tab stop and can flush/update text span bounds before the next printable byte |")
     lines.append("| BS `0x08` | `0xf2a8` | subtracts either previous width `0x782a5a << 16` when `0x78318e` is set or default HMI `0x78315c`; clamps at `0` and crossing `0x782dd6`; writes `0x782c8a`, sets `0x782a58=1`, clears `0x782a57/0x782a6d`, then calls `0xd8fc` or `0xd4ac` | horizontal cursor backs up using current text metrics while preserving a pending previous-width state for the following printable character |")
+    lines.append("| `ESC &f0S` / `ESC &f1S` | `0xf75e` | selector `0` pushes `0x782c8a` plus `0x782c8e + 0x782dbe` as an 8-byte stack entry while `0x782d36` is below the upper bound; selector `1` pops while the pointer is above `0x782c96`, restores horizontal position clamped to `0x782db8 - 1/12`, restores vertical position after subtracting `0x782dbe` and clamping to `0x782dc6 - 1/12`, clears `0x782a57/0x782a6d`, and flushes pending spans when `0x783184` is set | cursor push/pop is part of placement state and can change subsequent text/raster coordinates after page size, orientation, or margins have changed |")
     lines.append("")
 
     lines.append("## Shared Helpers")
@@ -2862,7 +2865,7 @@ def direct_control_code_flow_report(data: bytes) -> str:
     lines.append("")
     lines.append("- A byte-stream model must apply `ESC &k#G` before interpreting CR/LF/FF because the firmware stores the mode as bit flags in `0x78318f` and the direct control handlers test those bits at runtime.")
     lines.append("- CR/LF/FF/HT/BS do not only change cursor coordinates; they can flush pending text spans, ensure/finalize page roots, and invoke the same context span update routines `0xd4ac` / `0xd8fc` used after printable text.")
-    lines.append("- Axis names remain provisional, but `tools/render_fixture_harness.py` now has synthetic state fixtures for the line-termination map plus CR/LF/FF/HT/BS cursor/page effects, narrow byte-stream fixtures for `ESC &k1G`+CR, `ESC &k2G`+LF, and `ESC &k0G`+HT/BS, a mixed `ESC &k1G!\\r!` fixture that applies CR+LF before queueing the second printable glyph, and a mixed `!\\x1bE` fixture that applies reset publication/clear state after queued text and has a page-record allocator/bridge variant for the pre-reset glyph. The remaining step is expanding this into the full firmware parser path with real page-object allocation.")
+    lines.append("- Axis names remain provisional, but `tools/render_fixture_harness.py` now has synthetic state fixtures for the line-termination map plus CR/LF/FF/HT/BS cursor/page effects, `ESC &f#S` cursor stack push/pop and clamp behavior, narrow byte-stream fixtures for `ESC &k1G`+CR, `ESC &k2G`+LF, and `ESC &k0G`+HT/BS, a mixed `ESC &k1G!\\r!` fixture that applies CR+LF before queueing the second printable glyph, and a mixed `!\\x1bE` fixture that applies reset publication/clear state after queued text and has a page-record allocator/bridge variant for the pre-reset glyph. The remaining step is expanding this into the full firmware parser path with real page-object allocation.")
     lines.append("")
     return "\n".join(lines)
 

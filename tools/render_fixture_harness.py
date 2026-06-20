@@ -2577,6 +2577,73 @@ def apply_direct_control_stream(state: dict[str, int], stream: bytes) -> dict[st
     return state
 
 
+def cursor_stack_state(**overrides: object) -> dict[str, object]:
+    state: dict[str, object] = {
+        "cursor_x": pack12(10),
+        "cursor_y": pack12(20),
+        "vertical_offset_source": 60,
+        "active_height": 2025,
+        "printable_extent": 3090,
+        "right_limit": pack12(80),
+        "right_limit_latch": 0,
+        "pending_text": 1,
+        "pending_span_flush_enable": 0,
+        "span_flushes": 0,
+        "post_flushes": 0,
+        "stack": [],
+        "max_depth": 20,
+        "events": [],
+    }
+    state.update(overrides)
+    return state
+
+
+def apply_cursor_push_pop_via_f75e(state: dict[str, object], parameter: int) -> dict[str, object]:
+    updated = dict(state)
+    stack = list(state.get("stack", []))
+    events = list(state.get("events", []))
+    selector = abs(int(parameter))
+    if selector == 0:
+        if len(stack) >= int(updated.get("max_depth", 20)):
+            events.append({"kind": "cursor-push-ignored", "reason": "stack-full"})
+        else:
+            entry = {
+                "x": int(updated["cursor_x"]),
+                "stored_y": add_packed12(int(updated["cursor_y"]), pack12(int(updated["vertical_offset_source"]))),
+            }
+            stack.append(entry)
+            events.append({"kind": "cursor-push", "depth": len(stack), "entry": entry})
+    elif selector == 1:
+        if not stack:
+            events.append({"kind": "cursor-pop-ignored", "reason": "stack-empty"})
+        else:
+            entry = dict(stack.pop())
+            max_x = sub_packed12(pack12(int(updated["active_height"])), subunits_to_packed12(1))
+            restored_x = min(int(entry["x"]), max_x)
+            updated["cursor_x"] = restored_x
+            updated["right_limit_latch"] = 1 if restored_x == int(updated["right_limit"]) else 0
+            updated["pending_text"] = 0
+            max_y = sub_packed12(pack12(int(updated["printable_extent"])), subunits_to_packed12(1))
+            restored_y = sub_packed12(int(entry["stored_y"]), pack12(int(updated["vertical_offset_source"])))
+            updated["cursor_y"] = min(restored_y, max_y)
+            if int(updated.get("pending_span_flush_enable", 0)):
+                updated["span_flushes"] = int(updated.get("span_flushes", 0)) + 1
+                updated["post_flushes"] = int(updated.get("post_flushes", 0)) + 1
+            events.append({
+                "kind": "cursor-pop",
+                "depth": len(stack),
+                "entry": entry,
+                "max_x": max_x,
+                "max_y": max_y,
+            })
+    else:
+        events.append({"kind": "cursor-stack-ignored", "selector": selector})
+    updated["stack"] = stack
+    updated["events"] = events
+    updated["stack_depth"] = len(stack)
+    return updated
+
+
 def position_flagged_text_source_via_d824(
     resources: bytes,
     source: dict[str, int],
@@ -4722,6 +4789,92 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "post_flushes": 0,
         "span_updates": 2,
         "line_termination": 0x00,
+    }))
+    cursor_stack_pushed = apply_cursor_push_pop_via_f75e(cursor_stack_state(
+        cursor_x=pack12(12, 4),
+        cursor_y=pack12(34, 5),
+        vertical_offset_source=60,
+    ), 0)
+    checks.append(assert_equal("0xf75e ESC &f0S pushes cursor with vertical offset", {
+        "stack_depth": cursor_stack_pushed["stack_depth"],
+        "stack": cursor_stack_pushed["stack"],
+        "events": cursor_stack_pushed["events"],
+    }, {
+        "stack_depth": 1,
+        "stack": [{"x": pack12(12, 4), "stored_y": pack12(94, 5)}],
+        "events": [{"kind": "cursor-push", "depth": 1, "entry": {"x": pack12(12, 4), "stored_y": pack12(94, 5)}}],
+    }))
+    cursor_stack_popped = apply_cursor_push_pop_via_f75e(cursor_stack_pushed, 1)
+    checks.append(assert_equal("0xf75e ESC &f1S pops cursor and clears pending flags", {
+        "cursor_x": cursor_stack_popped["cursor_x"],
+        "cursor_y": cursor_stack_popped["cursor_y"],
+        "stack_depth": cursor_stack_popped["stack_depth"],
+        "right_limit_latch": cursor_stack_popped["right_limit_latch"],
+        "pending_text": cursor_stack_popped["pending_text"],
+        "last_event": cursor_stack_popped["events"][-1],
+    }, {
+        "cursor_x": pack12(12, 4),
+        "cursor_y": pack12(34, 5),
+        "stack_depth": 0,
+        "right_limit_latch": 0,
+        "pending_text": 0,
+        "last_event": {
+            "kind": "cursor-pop",
+            "depth": 0,
+            "entry": {"x": pack12(12, 4), "stored_y": pack12(94, 5)},
+            "max_x": pack12(2024, 11),
+            "max_y": pack12(3089, 11),
+        },
+    }))
+    cursor_stack_clamped = apply_cursor_push_pop_via_f75e(cursor_stack_state(
+        active_height=100,
+        printable_extent=80,
+        right_limit=pack12(80),
+        pending_span_flush_enable=1,
+        stack=[{"x": pack12(120), "stored_y": pack12(200)}],
+    ), 1)
+    cursor_stack_ignored = apply_cursor_push_pop_via_f75e(cursor_stack_state(stack=[{"x": pack12(index), "stored_y": pack12(index)} for index in range(20)]), 0)
+    cursor_stack_empty_pop = apply_cursor_push_pop_via_f75e(cursor_stack_state(stack=[]), 1)
+    checks.append(assert_equal("0xf75e cursor stack bounds and pop clamps to current extents", {
+        "clamped": {
+            "cursor_x": cursor_stack_clamped["cursor_x"],
+            "cursor_y": cursor_stack_clamped["cursor_y"],
+            "stack_depth": cursor_stack_clamped["stack_depth"],
+            "span_flushes": cursor_stack_clamped["span_flushes"],
+            "post_flushes": cursor_stack_clamped["post_flushes"],
+            "last_event": cursor_stack_clamped["events"][-1],
+        },
+        "full_push": {
+            "stack_depth": cursor_stack_ignored["stack_depth"],
+            "last_event": cursor_stack_ignored["events"][-1],
+        },
+        "empty_pop": {
+            "stack_depth": cursor_stack_empty_pop["stack_depth"],
+            "last_event": cursor_stack_empty_pop["events"][-1],
+        },
+    }, {
+        "clamped": {
+            "cursor_x": pack12(99, 11),
+            "cursor_y": pack12(79, 11),
+            "stack_depth": 0,
+            "span_flushes": 1,
+            "post_flushes": 1,
+            "last_event": {
+                "kind": "cursor-pop",
+                "depth": 0,
+                "entry": {"x": pack12(120), "stored_y": pack12(200)},
+                "max_x": pack12(99, 11),
+                "max_y": pack12(79, 11),
+            },
+        },
+        "full_push": {
+            "stack_depth": 20,
+            "last_event": {"kind": "cursor-push-ignored", "reason": "stack-full"},
+        },
+        "empty_pop": {
+            "stack_depth": 0,
+            "last_event": {"kind": "cursor-pop-ignored", "reason": "stack-empty"},
+        },
     }))
     reset_fields = (
         "alternate_mode",
@@ -8759,7 +8912,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- HT from x `17`, left margin `5`, and HMI `1` advances to the next eight-column stop at x `21`; a second fixture clamps HT to page width `90` when the cursor is already beyond the right limit.")
     lines.append("- BS subtracts HMI, clamps at the left margin when it would cross it, and in alternate metrics mode subtracts the previous-width word instead.")
     lines.append("- Byte-stream fixtures now drive the same model from actual PCL/control bytes: `ESC &k1G` followed by CR applies CR+LF, `ESC &k2G` followed by LF applies CR+LF, and `ESC &k0G` followed by HT/BS advances to x `21` then backs up to x `20`.")
+    lines.append("- `ESC &f0S` pushes the horizontal cursor and the vertical cursor plus `0x782dbe` onto the cursor stack; `ESC &f1S` pops, restores horizontal position clamped to active extent minus `1/12`, restores vertical position after subtracting `0x782dbe` and clamps to printable extent minus `1/12`, then clears pending/right-limit flags.")
     lines.append("- The direct-control fixture parser intentionally recognizes only `ESC &k#G`, `ESC E`, and direct control bytes; mixed printable/control/reset coverage is added separately for narrow normal-mode streams, while combined escape sequences and real page-object allocation still need fuller parser-driven fixtures.")
+    lines.append("")
+    lines.append(f"- cursor stack push entry: `{cursor_stack_pushed['stack'][0]}`")
+    lines.append(f"- cursor stack pop cursor: x `0x{int(cursor_stack_popped['cursor_x']):08x}`, y `0x{int(cursor_stack_popped['cursor_y']):08x}`")
+    lines.append(f"- cursor stack clamped pop: x `0x{int(cursor_stack_clamped['cursor_x']):08x}`, y `0x{int(cursor_stack_clamped['cursor_y']):08x}`")
     lines.append("")
 
     lines.append("## `ESC E` Reset Fixtures")

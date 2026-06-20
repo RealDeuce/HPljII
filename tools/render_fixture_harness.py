@@ -5432,7 +5432,9 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
                 gate = raster_transfer_gate_via_105d0(page_record, state, byte_count, payload)
                 transfer_state = gate.get("transfer_state")
                 result = gate.get("result")
-                state["row_y"] += 1
+                row_advanced = gate["path"] != "skip-row-beyond-extent"
+                if row_advanced:
+                    state["row_y"] += 1
                 event = {
                     "kind": "raster-transfer",
                     "sequence": sequence,
@@ -5454,6 +5456,7 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
                     "page_extent": gate["page_extent"],
                     "gate_limit": gate.get("limit"),
                     "result": result,
+                    "row_advanced": row_advanced,
                     "row_y_after": state["row_y"],
                     "chained": bool(ord("a") <= final <= ord("z")),
                 }
@@ -12720,7 +12723,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     if event["kind"] == "raster-resolution"
                     else ("kind", "parameter", "active_after", "origin_long", "baseline_word", "limit")
                     if event["kind"] == "start-raster"
-                    else ("kind", "parameter", "parsed_record", "delayed_snapshot_bytes", "restore_dispatch", "restored_record", "delayed_handler", "payload_offset", "payload", "transfer_state", "gate_path", "gate_queued", "gate_drained", "stored_byte_count", "overflow_count", "page_extent", "gate_limit", "row_y_after")
+                    else ("kind", "parameter", "parsed_record", "delayed_snapshot_bytes", "restore_dispatch", "restored_record", "delayed_handler", "payload_offset", "payload", "transfer_state", "gate_path", "gate_queued", "gate_drained", "stored_byte_count", "overflow_count", "page_extent", "gate_limit", "row_advanced", "row_y_after")
                 )
             }
             for event in raster_stream_result["events"]
@@ -12751,6 +12754,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "overflow_count": 0,
                 "page_extent": 255,
                 "gate_limit": 30,
+                "row_advanced": True,
                 "row_y_after": 1,
             },
         ],
@@ -12829,6 +12833,57 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "scale": 1,
             "limit": 2,
             "row_y": 1,
+        },
+    }))
+    raster_skip_command_stream = b"\x1b*t300R\x1b*r0A\x1b*b4W" + bytes.fromhex("f0 0f aa 55")
+    raster_skip_stream_result = render_raster_command_data_stream_via_121cc_105d0(
+        data,
+        raster_skip_command_stream,
+        raster_graphics_state(row_y=20, page_extent=15, cursor_axis0=0x00100000, cursor_axis1=0x00200000),
+    )
+    raster_skip_transfer = [
+        event for event in raster_skip_stream_result["events"]
+        if event["kind"] == "raster-transfer"
+    ][0]
+    checks.append(assert_equal("modeled raster command stream drains beyond-extent transfer without queueing", {
+        "event": {
+            key: raster_skip_transfer[key]
+            for key in ("parameter", "payload", "gate_path", "gate_queued", "gate_drained", "stored_byte_count", "overflow_count", "page_extent", "gate_limit", "transfer_state", "row_advanced", "row_y_after")
+        },
+        "object": raster_skip_stream_result["object"],
+        "chain": raster_skip_stream_result["chain"],
+        "rendered": raster_skip_stream_result["rendered"],
+        "bridged": raster_skip_stream_result["bridged"],
+        "final_state": {
+            key: raster_skip_stream_result["final_state"][key]
+            for key in ("active", "baseline_word", "mode", "scale", "limit", "row_y")
+        },
+    }, {
+        "event": {
+            "parameter": 4,
+            "payload": bytes.fromhex("f0 0f aa 55"),
+            "gate_path": "skip-row-beyond-extent",
+            "gate_queued": False,
+            "gate_drained": 4,
+            "stored_byte_count": 0,
+            "overflow_count": 0,
+            "page_extent": 15,
+            "gate_limit": None,
+            "transfer_state": None,
+            "row_advanced": False,
+            "row_y_after": 20,
+        },
+        "object": b"",
+        "chain": [],
+        "rendered": None,
+        "bridged": None,
+        "final_state": {
+            "active": 1,
+            "baseline_word": 0,
+            "mode": 0,
+            "scale": 1,
+            "limit": 2,
+            "row_y": 20,
         },
     }))
     raster_mode1_command_stream = b"\x1b*t150R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f")
@@ -15777,7 +15832,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## Modeled Raster Command/Data Stream Fixture")
     lines.append("")
-    lines.append("This fixture starts from actual PCL command bytes, then models the delayed payload boundary that `0x121cc` records for handler `0x105d0`. It is still not a full CPU/parser-state run, but the primary stream is now paired with the ROM dispatch trace above, and each transfer event carries the six-byte parsed record, the exact `0x121cc` snapshot bytes, and the `0x12218` restore/dispatch result before routing the restored payload through the modeled `0x105d0` gate. The 300/150/100/75-dpi streams pin byte-stream-selected modes 0..3, the capped stream proves the parser/data fixture consumes the full restored byte count while queueing only the gate-accepted byte count, and same-group lowercase-final sequences now stay in the firmware parser mode until the final uppercase command byte.")
+    lines.append("This fixture starts from actual PCL command bytes, then models the delayed payload boundary that `0x121cc` records for handler `0x105d0`. It is still not a full CPU/parser-state run, but the primary stream is now paired with the ROM dispatch trace above, and each transfer event carries the six-byte parsed record, the exact `0x121cc` snapshot bytes, and the `0x12218` restore/dispatch result before routing the restored payload through the modeled `0x105d0` gate. The 300/150/100/75-dpi streams pin byte-stream-selected modes 0..3, the capped stream proves the parser/data fixture consumes the full restored byte count while queueing only the gate-accepted byte count, the beyond-extent stream drains payload bytes without queueing or advancing the modeled row state, and same-group lowercase-final sequences now stay in the firmware parser mode until the final uppercase command byte.")
     lines.append("")
     lines.append(f"- stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_command_stream)}`")
     lines.append("- parsed events:")
@@ -15797,7 +15852,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 event["limit"],
             ))
         elif event["kind"] == "raster-transfer":
-            lines.append("- `ESC *b%dW`: parsed record `%s`, delayed snapshot `%s`, restore dispatch `%s`, payload offset `%d`, payload `%s`, gate `%s` stores `%d`/overflows `%d`, transfer state `%s`" % (
+            lines.append("- `ESC *b%dW`: parsed record `%s`, delayed snapshot `%s`, restore dispatch `%s`, payload offset `%d`, payload `%s`, gate `%s` stores `%d`/overflows `%d`, row advance `%s`, transfer state `%s`" % (
                 event["parameter"],
                 " ".join(f"{byte:02x}" for byte in event["parsed_record"]),
                 " ".join(f"{byte:02x}" for byte in event["delayed_snapshot_bytes"]),
@@ -15807,6 +15862,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 event["gate_path"],
                 event["stored_byte_count"],
                 event["overflow_count"],
+                event["row_advanced"],
                 event["transfer_state"],
             ))
     lines.append(f"- queued object bytes: `{' '.join(f'{byte:02x}' for byte in raster_stream_result['object'])}`")
@@ -15819,6 +15875,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         raster_capped_transfer["stored_byte_count"],
         raster_capped_transfer["overflow_count"],
         " ".join(f"{byte:02x}" for byte in raster_capped_stream_result["object"]),
+    ))
+    lines.append("- beyond-extent stream through `0x105d0`: drained `%d`, queued `%s`, row advance `%s`, row after `%d`, object length `%d`." % (
+        raster_skip_transfer["gate_drained"],
+        raster_skip_transfer["gate_queued"],
+        raster_skip_transfer["row_advanced"],
+        raster_skip_transfer["row_y_after"],
+        len(raster_skip_stream_result["object"]),
     ))
     lines.append("")
     lines.append(f"- mode-1 stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode1_command_stream)}`")

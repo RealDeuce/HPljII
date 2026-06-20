@@ -493,6 +493,115 @@ def trace_raster_parser_dispatch_via_11774(data: bytes, stream: bytes) -> dict[s
     }
 
 
+def trace_font_parser_dispatch_via_11774(data: bytes, stream: bytes, descriptor_budget: int = 0) -> dict[str, object]:
+    mode = 0
+    pos = 0
+    dispatches: list[dict[str, object]] = []
+    commands: list[dict[str, object]] = []
+    pending: dict[str, object] = {"pending_flag": 0, "handler": 0, "snapshot_record": b""}
+
+    def dispatch(byte: int, offset: int) -> dict[str, object]:
+        nonlocal mode
+        entry = parser_dispatch_entry_via_11774(data, mode, byte)
+        event = dict(entry)
+        event["offset"] = offset
+        dispatches.append(event)
+        mode = int(entry["next_mode"])
+        return event
+
+    while pos < len(stream):
+        if stream[pos] != 0x1B:
+            raise AssertionError(f"font parser trace expected ESC at offset {pos}")
+        escape_offset = pos
+        if pos + 2 >= len(stream):
+            raise AssertionError("font parser trace expected ESC prefix and group bytes")
+        dispatch(0x1B, escape_offset)
+        pos += 1
+        prefix_offset = pos
+        prefix = stream[pos]
+        dispatch(prefix, prefix_offset)
+        pos += 1
+        group_offset = pos
+        group = stream[pos]
+        dispatch(group, group_offset)
+        pos += 1
+        if prefix not in (ord("("), ord(")")) or group != ord("s"):
+            raise AssertionError("font parser trace only models ESC (s/ESC )s commands")
+        slot = 1 if prefix == ord(")") else 0
+
+        while True:
+            parameter_start = pos
+            if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
+                parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            else:
+                parameter = 0
+            if pos >= len(stream):
+                raise AssertionError("font parser trace missing final byte")
+            final_offset = pos
+            final = stream[pos]
+            pos += 1
+            final_event = dispatch(final, final_offset)
+            record = bytes([
+                0x81 if parameter < 0 else 0x80,
+                final,
+            ]) + signed_word_bytes(parameter) + signed_word_bytes(slot)
+            command: dict[str, object] = {
+                "sequence": stream[escape_offset:pos] if parameter_start == escape_offset + 3 else stream[parameter_start:pos],
+                "prefix": prefix,
+                "group": group,
+                "slot": slot,
+                "parameter": parameter,
+                "record": record,
+                "final_dispatch": final_event,
+                "mode_after_final": mode,
+            }
+            if final_event["handler"] == 0x011F96:
+                dispatch_info = font_payload_dispatch_via_11f96(parameter)
+                handler = int(dispatch_info["handler"])
+                scheduled = schedule_payload_handler_via_121cc(pending, record, handler)
+                pending = scheduled["pending"]
+                command["font_payload_dispatch"] = dispatch_info
+                command["delayed_snapshot_bytes"] = pending["snapshot_bytes"]
+                command["delayed_scheduled"] = scheduled["scheduled"]
+            if mode == 0:
+                restored = restore_delayed_payload_via_12218(pending)
+                command["restore_after_final"] = restored["dispatch"]
+                command["restored_record"] = restored.get("record")
+                pending = restored["pending_after"]
+            else:
+                command["restore_after_final"] = None
+                command["restored_record"] = None
+            if final_event["handler"] == 0x011F96 and mode == 0:
+                count = abs(int(parameter))
+                if count > 0:
+                    payload_start = pos
+                    payload_end = pos + count
+                    if payload_end > len(stream):
+                        raise AssertionError("font parser trace payload shorter than ESC )s#W byte count")
+                    command["payload_offset"] = payload_start
+                    command["payload"] = stream[payload_start:payload_end]
+                    pos = payload_end
+                elif descriptor_budget > 0:
+                    descriptor_start = pos
+                    descriptor_end = pos + descriptor_budget
+                    if descriptor_end > len(stream):
+                        raise AssertionError("font parser trace descriptor shorter than modeled descriptor budget")
+                    command["descriptor_offset"] = descriptor_start
+                    command["descriptor"] = stream[descriptor_start:descriptor_end]
+                    command["descriptor_byte_budget"] = descriptor_budget
+                    pos = descriptor_end
+            commands.append(command)
+            if mode == 0:
+                break
+
+    return {
+        "dispatches": dispatches,
+        "commands": commands,
+        "final_mode": mode,
+        "pending": pending,
+    }
+
+
 def data_payload_byte_via_dace(stream: bytes, pos: int) -> dict[str, object]:
     if pos >= len(stream):
         return {"value": -1, "pos": pos, "control_hits": 0}
@@ -10253,6 +10362,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     font_payload_dispatch_header = font_payload_dispatch_via_11f96(0)
     font_payload_dispatch_character = font_payload_dispatch_via_11f96(0x0891)
     font_payload_budget = font_payload_budget_from_delayed_command(-0x0891)
+    font_descriptor_dispatch_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b)s0W\x04\x00\xaa\xbb", descriptor_budget=4)
+    font_payload_dispatch_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b)s4WABCD")
     checks.append(assert_equal("0x15a18/0x11f96-modeled font payload command edge", {
         "character_code": font_character_code,
         "zero_payload": font_payload_dispatch_header,
@@ -10275,6 +10386,70 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "budget": {
             "byte_budget": 0x0891,
+        },
+    }))
+    checks.append(assert_equal("0x11774 ROM dispatch table routes font W streams to delayed handlers", {
+        "descriptor_dispatches": [
+            {key: event[key] for key in ("offset", "byte", "mode_before", "next_mode", "handler")}
+            for event in font_descriptor_dispatch_trace["dispatches"]
+        ],
+        "descriptor_command": {
+            key: font_descriptor_dispatch_trace["commands"][0][key]
+            for key in ("sequence", "slot", "parameter", "record", "font_payload_dispatch", "delayed_snapshot_bytes", "restore_after_final", "restored_record", "descriptor_offset", "descriptor", "descriptor_byte_budget")
+        },
+        "payload_dispatches": [
+            {key: event[key] for key in ("offset", "byte", "mode_before", "next_mode", "handler")}
+            for event in font_payload_dispatch_trace["dispatches"]
+        ],
+        "payload_command": {
+            key: font_payload_dispatch_trace["commands"][0][key]
+            for key in ("sequence", "slot", "parameter", "record", "font_payload_dispatch", "delayed_snapshot_bytes", "restore_after_final", "restored_record", "payload_offset", "payload")
+        },
+    }, {
+        "descriptor_dispatches": [
+            {"offset": 0, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+            {"offset": 1, "byte": 0x29, "mode_before": 1, "next_mode": 4, "handler": 0x012008},
+            {"offset": 2, "byte": 0x73, "mode_before": 4, "next_mode": 13, "handler": 0x011FF6},
+            {"offset": 4, "byte": 0x57, "mode_before": 13, "next_mode": 0, "handler": 0x011F96},
+        ],
+        "descriptor_command": {
+            "sequence": b"\x1b)s0W",
+            "slot": 1,
+            "parameter": 0,
+            "record": b"\x80W\x00\x00\x00\x01",
+            "font_payload_dispatch": {
+                "parameter": 0,
+                "handler": 0x15D0A,
+                "meaning": "font-header/download-descriptor payload",
+            },
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x01",
+            "restore_after_final": {"kind": "direct-handler", "handler": 0x15D0A},
+            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "descriptor_offset": 5,
+            "descriptor": bytes.fromhex("04 00 aa bb"),
+            "descriptor_byte_budget": 4,
+        },
+        "payload_dispatches": [
+            {"offset": 0, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+            {"offset": 1, "byte": 0x29, "mode_before": 1, "next_mode": 4, "handler": 0x012008},
+            {"offset": 2, "byte": 0x73, "mode_before": 4, "next_mode": 13, "handler": 0x011FF6},
+            {"offset": 4, "byte": 0x57, "mode_before": 13, "next_mode": 0, "handler": 0x011F96},
+        ],
+        "payload_command": {
+            "sequence": b"\x1b)s4W",
+            "slot": 1,
+            "parameter": 4,
+            "record": b"\x80W\x00\x04\x00\x01",
+            "font_payload_dispatch": {
+                "parameter": 4,
+                "handler": 0x16C14,
+                "meaning": "downloaded-font/character payload",
+            },
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x6c\x14\x80W\x00\x04\x00\x01",
+            "restore_after_final": {"kind": "direct-handler", "handler": 0x16C14},
+            "restored_record": b"\x80W\x00\x04\x00\x01",
+            "payload_offset": 5,
+            "payload": b"ABCD",
         },
     }))
 
@@ -16697,6 +16872,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_payload_dispatch_header["handler"],
         font_payload_dispatch_character["handler"],
         font_payload_budget["byte_budget"],
+    ))
+    lines.append("- ROM dispatch trace: `ESC )s0W` and `ESC )s4W` walk parser modes `0 -> 1 -> 4 -> 13 -> 0` through handlers `0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`; `0x11f96` then snapshots delayed handlers `0x%05x` and `0x%05x`, with descriptor offset `%d` and payload offset `%d`." % (
+        font_descriptor_dispatch_trace["commands"][0]["font_payload_dispatch"]["handler"],
+        font_payload_dispatch_trace["commands"][0]["font_payload_dispatch"]["handler"],
+        font_descriptor_dispatch_trace["commands"][0]["descriptor_offset"],
+        font_payload_dispatch_trace["commands"][0]["payload_offset"],
     ))
     lines.append("- descriptor route fixture: `0x15d0a` accepts descriptor kind byte `%d`, maps selector `%d` to current-record status `%d` and bit-30 handler `0x%05x`, maps selector `%d` to continuation status `%d` and handler `0x%05x`, and rejects kind byte `%d` by draining `%d` remaining bytes." % (
         font_descriptor_current["descriptor_kind"],

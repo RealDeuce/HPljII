@@ -180,6 +180,15 @@ named record. Symbols repeat as six records each for `0x0155`,
 Comparator bytes `+0x2f..+0x31` are `(0,0,3)` or `(0,3,3)` for
 `COURIER`, and `(0,0,0)` for `LINE_PRINTER`.
 
+First-nonzero named glyph entries also have their positioning fields
+summarized against the `0xd824` model. Glyph-entry word `+0` is the
+signed x offset added to the queued source x coordinate; word `+2` is
+the signed y offset subtracted from the queued source y coordinate. For
+the first named glyphs, bitmap delta is always `10` and mode is always
+`1`. Selector `0` first glyphs have positive x offsets in the range
+`1..10`; selector `1` first glyphs have negative x offsets in the range
+`-31..-18`.
+
 Example candidate entries from the probe:
 
 - Context `0x4008004c`, glyph `0`, relative offset `0x0000103c`, entry
@@ -327,8 +336,10 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    drives the installed downloaded glyph into segmented page-record
    buckets before `0x1ed84`/`0x1ef6a` rendering.
 5. Finish semantic naming of the remaining built-in metadata fields,
-   especially baseline and the ambiguous size words now extracted for
-   every named `COURIER` and `LINE_PRINTER` record.
+   especially the ambiguous header size words now extracted for every
+   named `COURIER` and `LINE_PRINTER` record. The first-glyph placement
+   offsets are now pinned through the `0xd824` path, but the header-level
+   baseline semantics still need broader correlation.
 6. Locate the glyph bitmap payloads and write a deterministic extractor
    from the verified `IC32,IC15` hash.
 

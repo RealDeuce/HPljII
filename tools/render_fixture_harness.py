@@ -4205,6 +4205,61 @@ def named_builtin_selection_field_summary(resources: bytes) -> dict[str, object]
     }
 
 
+def named_builtin_first_glyph_position_summary(resources: bytes) -> dict[str, object]:
+    tuple_counts: dict[tuple[str, int, tuple[int, int, int, int]], int] = {}
+    bitmap_deltas: set[int] = set()
+    modes: set[int] = set()
+    selector_x_offsets: dict[int, list[int]] = {}
+
+    for candidate in firmware_scanned_builtin_candidates(resources):
+        record_start = int(candidate["record_start"])
+        name = infer_named_builtin_record(resources, record_start)
+        if name is None:
+            continue
+        table = record_start + u16(resources, record_start + 8)
+        first_char = u16(resources, record_start + 0x0E)
+        last_char = u16(resources, record_start + 0x10)
+        glyph_slots = max(0, last_char - first_char + 1)
+        for glyph_index in range(glyph_slots):
+            relative = u32(resources, table + glyph_index * 4)
+            if relative == 0:
+                continue
+            entry = record_start + relative
+            x_offset = s16(resources, entry)
+            y_offset = s16(resources, entry + 2)
+            bitmap_deltas.add(resources[entry + 4])
+            modes.add(resources[entry + 5])
+            selector = int(candidate["d4_class"])
+            selector_x_offsets.setdefault(selector, []).append(x_offset)
+            fields = (
+                x_offset,
+                y_offset,
+                u16(resources, entry + 6),
+                u16(resources, entry + 8),
+            )
+            key = (name, selector, fields)
+            tuple_counts[key] = tuple_counts.get(key, 0) + 1
+            break
+
+    return {
+        "bitmap_delta_values": sorted(bitmap_deltas),
+        "mode_values": sorted(modes),
+        "selector_x_offset_ranges": {
+            selector: (min(values), max(values))
+            for selector, values in sorted(selector_x_offsets.items())
+        },
+        "position_row_width_tuples": [
+            {
+                "name": name,
+                "selector": selector,
+                "tuple": values,
+                "count": count,
+            }
+            for (name, selector, values), count in sorted(tuple_counts.items())
+        ],
+    }
+
+
 def builtin_candidate_windows_from_scanned_records(
     records: list[dict[str, int]],
     events: list[dict[str, object]],
@@ -16814,6 +16869,23 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {"name": "COURIER", "tuple": (0, 0, 3), "count": 6},
             {"name": "COURIER", "tuple": (0, 3, 3), "count": 6},
             {"name": "LINE_PRINTER", "tuple": (0, 0, 0), "count": 6},
+        ],
+    }))
+    checks.append(assert_equal("named built-in first glyphs expose positioning offsets", named_builtin_first_glyph_position_summary(resources), {
+        "bitmap_delta_values": [10],
+        "mode_values": [1],
+        "selector_x_offset_ranges": {0: (1, 10), 1: (-31, -18)},
+        "position_row_width_tuples": [
+            {"name": "COURIER", "selector": 0, "tuple": (1, 28, 29, 28), "count": 4},
+            {"name": "COURIER", "selector": 0, "tuple": (9, 29, 31, 11), "count": 1},
+            {"name": "COURIER", "selector": 0, "tuple": (10, 31, 32, 9), "count": 1},
+            {"name": "COURIER", "selector": 1, "tuple": (-31, 18, 9, 32), "count": 1},
+            {"name": "COURIER", "selector": 1, "tuple": (-29, 19, 11, 31), "count": 1},
+            {"name": "COURIER", "selector": 1, "tuple": (-28, 28, 28, 29), "count": 4},
+            {"name": "LINE_PRINTER", "selector": 0, "tuple": (1, 18, 16, 16), "count": 2},
+            {"name": "LINE_PRINTER", "selector": 0, "tuple": (6, 21, 22, 4), "count": 1},
+            {"name": "LINE_PRINTER", "selector": 1, "tuple": (-21, 9, 4, 22), "count": 1},
+            {"name": "LINE_PRINTER", "selector": 1, "tuple": (-18, 16, 16, 16), "count": 2},
         ],
     }))
     actual_candidate_windows = builtin_candidate_windows_from_scanned_records(

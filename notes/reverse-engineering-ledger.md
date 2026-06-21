@@ -367,7 +367,9 @@ records in the verified window, proving twelve `COURIER` and six
 symbol, decoded pitch/height, character range, nonzero table-entry
 count, size-word tuple, first glyph entry, and firmware selection fields
 including `+0x20`, `+0x21`, raw pitch/height pairs, and comparator bytes
-`+0x2f..+0x31`;
+`+0x2f..+0x31`; the first-nonzero named glyph entries are also grouped
+by signed `+0/+2` positioning offsets, rows, and width, matching the
+`0xd824` flagged-source placement model;
 text object glyph index bytes are mapped before queuing by `0x1393a` and
 initialized by `0x14d9c` / `0x14e24` / `0x14f16`; `0x1be22` computes
 normal PCL symbol words from host `ESC (` / `ESC )` commands, handles
@@ -504,7 +506,8 @@ ROM work needed:
   available.
 - Finish semantic naming of the remaining built-in record fields now
   extracted from the repeated `COURIER` and `LINE_PRINTER` fixtures,
-  especially baseline and ambiguous size words.
+  especially ambiguous header size words and header-level baseline
+  semantics.
 - Replace the modeled default-font candidate records with a live
   parser/font-state fixture that proves the real records feeding
   `0x1b250`, `0x1b50e`, `0x1ab84`, `0x1bbfe`, and `0x1b060`, and decide

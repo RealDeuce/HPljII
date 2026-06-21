@@ -440,11 +440,14 @@ partial-page finalization behavior.
 `tools/render_fixture_harness.py` now has synthetic `ESC E` byte-stream
 fixtures for both reset page-root cases: valid roots are published
 before the current root is cleared, while missing/invalid roots clear
-without publication. The mixed `!\x1bE` fixture exercises that
-valid-root reset path after queuing a printable text object, and its
-page-record variant queues and bridges that object under page-record
-storage rules, then publishes the same bucket through a modeled `0xff1e`
-finalization record before reset clears the current root. The
+without publication. The missing-root case now also starts `ESC E` from
+the modeled `0xa904` ring source, reaches ROM parser handler `0xcc52`,
+and lands on the same no-publication reset state. The mixed `!\x1bE`
+fixture exercises that valid-root reset path after queuing a printable
+text object, and its page-record variant queues and bridges that object
+under page-record storage rules, then publishes the same bucket through
+a modeled `0xff1e` finalization record before reset clears the current
+root. The
 host-fetched publication checks now start `!\x1bE`, `ESC &k2G!\f`,
 `!\x1b&l1A`, and `!\x1b&l1O` from the modeled `0xa904` ring source and
 pin the same published pool header after `0xff1e`: state byte `+4 = 2`,

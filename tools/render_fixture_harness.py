@@ -18036,6 +18036,60 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "page_publication_flag": 0,
         "reset_status": 0,
     }))
+    host_fetched_reset_no_page = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=[0x1B, ord("E")], direct_mode=0),
+        2,
+    )
+    host_fetched_reset_no_page_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        host_fetched_reset_no_page["stream"],
+    )
+    checks.append(assert_equal("host-fetched ESC E clears missing page root without publication", {
+        "fetched_stream": host_fetched_reset_no_page["stream"],
+        "fetch_sources": host_fetched_reset_no_page["sources"],
+        "remaining_ring": host_fetched_reset_no_page["state"]["ring"],
+        "parser_trace": host_fetched_reset_no_page_trace,
+        "reset_state": select_keys(reset_no_page, (
+            "current_page_root",
+            "page_publications",
+            "page_root_clears",
+            "published_pool_record",
+            "page_publication_flag",
+            "active_record_waits",
+            "span_flushes",
+            "post_flushes",
+            "reset_status",
+        )),
+    }, {
+        "fetched_stream": b"\x1bE",
+        "fetch_sources": ["ring", "ring"],
+        "remaining_ring": [],
+        "parser_trace": {
+            "stream": b"\x1bE",
+            "events": [{
+                "kind": "command",
+                "sequence": b"\x1bE",
+                "dispatches": [
+                    {"offset": 0, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+                    {"offset": 1, "byte": ord("E"), "mode_before": 1, "next_mode": 0, "handler": 0x00CC52},
+                ],
+                "handler": 0x00CC52,
+                "mode_after": 0,
+            }],
+            "final_mode": 0,
+        },
+        "reset_state": {
+            "current_page_root": 0,
+            "page_publications": 0,
+            "page_root_clears": 1,
+            "published_pool_record": 0,
+            "page_publication_flag": 0,
+            "active_record_waits": 1,
+            "span_flushes": 0,
+            "post_flushes": 0,
+            "reset_status": 0,
+        },
+    }))
 
     resource_head_scan = resource_head_scan_via_041a(resources, scan_span=0x40000)
     resource_head_records = resource_head_scan["walked_records"]
@@ -39812,6 +39866,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("")
     lines.append("- Valid page-root case: flushes pending text span, runs the active-record wait hook, publishes the current page/control record, sets the publication flag, clears transient page bytes, then clears the current page root.")
     lines.append("- Missing/invalid page-root case: clears the current page root without publication.")
+    lines.append("- The missing-root case now also starts `ESC E` from the modeled `0xa904` ring source, reaches ROM parser handler `0xcc52`, and lands on the same no-publication reset state.")
     lines.append("- Both cases reset orientation to portrait, recompute the vertical offset from `0x96 - source`, clear the related vertical offset word, reinitialize raster state to scale minus one `3` / scale `4`, refresh HMI and symbol snapshots from the current-font context, reset the parser/data-chain pointer to `0x782d3e`, clear parser/text accumulation state, prune command/data records, and clear reset status `0x782a93`.")
     lines.append("- Remaining gap: replace these synthetic reset-state fixtures with fixtures that enter through the full parser and compare the finalized page/control records produced by a real pending page.")
     lines.append("")

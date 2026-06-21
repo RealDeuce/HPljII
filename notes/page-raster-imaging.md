@@ -913,6 +913,9 @@ ring source, drains the ring bytes, replays the same parser handlers,
 lands on the same published rows, and now pins that the `0x1edc6` bridge
 preserves the published bucket root, clears rule/fixed lists, and copies
 the selected context slot into the render record. The host-fetched
+missing-root `ESC E` case drains from the same ring source, reaches
+handler `0xcc52`, and lands on the no-publication reset state. The
+host-fetched
 reset, FF, page-size, and orientation cases also pin the pool header
 after `0xff1e`: state byte `+4 = 2`, default status/environment fields,
 published pointer `0x780ea6`, bucket-root prefix, and context-slot

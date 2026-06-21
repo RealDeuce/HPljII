@@ -19459,6 +19459,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     font_payload_budget = font_payload_budget_from_delayed_command(-0x0891)
     font_descriptor_dispatch_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b)s0W\x04\x00\xaa\xbb", descriptor_budget=4)
     font_payload_dispatch_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b)s4WABCD")
+    primary_font_selection_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b(s0p10h12v0s0b3T")
+    secondary_font_selection_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b)s0p16h8v0s0b0T")
     font_control_dispatch_trace = trace_font_control_parser_dispatch_via_11774(
         data,
         b"\x1b*c17d25e5F",
@@ -19571,6 +19573,69 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "payload_offset": 5,
             "payload": b"ABCD",
         },
+    }))
+    checks.append(assert_equal("0x11774 ROM dispatch table routes chained font selection streams", {
+        "primary_dispatches": [
+            {key: event[key] for key in ("offset", "byte", "mode_before", "next_mode", "handler")}
+            for event in primary_font_selection_trace["dispatches"]
+        ],
+        "primary_commands": [
+            {key: command[key] for key in ("sequence", "slot", "parameter", "record", "mode_after_final")}
+            | {"handler": command["final_dispatch"]["handler"]}
+            for command in primary_font_selection_trace["commands"]
+        ],
+        "primary_final_mode": primary_font_selection_trace["final_mode"],
+        "secondary_dispatches": [
+            {key: event[key] for key in ("offset", "byte", "mode_before", "next_mode", "handler")}
+            for event in secondary_font_selection_trace["dispatches"]
+        ],
+        "secondary_commands": [
+            {key: command[key] for key in ("sequence", "slot", "parameter", "record", "mode_after_final")}
+            | {"handler": command["final_dispatch"]["handler"]}
+            for command in secondary_font_selection_trace["commands"]
+        ],
+        "secondary_final_mode": secondary_font_selection_trace["final_mode"],
+    }, {
+        "primary_dispatches": [
+            {"offset": 0, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+            {"offset": 1, "byte": 0x28, "mode_before": 1, "next_mode": 4, "handler": 0x01201E},
+            {"offset": 2, "byte": 0x73, "mode_before": 4, "next_mode": 13, "handler": 0x011FF6},
+            {"offset": 4, "byte": 0x70, "mode_before": 13, "next_mode": 13, "handler": 0x00C930},
+            {"offset": 7, "byte": 0x68, "mode_before": 13, "next_mode": 13, "handler": 0x00C89C},
+            {"offset": 10, "byte": 0x76, "mode_before": 13, "next_mode": 13, "handler": 0x00C6EC},
+            {"offset": 12, "byte": 0x73, "mode_before": 13, "next_mode": 13, "handler": 0x00C780},
+            {"offset": 14, "byte": 0x62, "mode_before": 13, "next_mode": 13, "handler": 0x00C840},
+            {"offset": 16, "byte": 0x54, "mode_before": 13, "next_mode": 0, "handler": 0x01205A},
+        ],
+        "primary_commands": [
+            {"sequence": b"\x1b(s0p", "slot": 0, "parameter": 0, "record": b"\x80p\x00\x00\x00\x00", "mode_after_final": 13, "handler": 0x00C930},
+            {"sequence": b"10h", "slot": 0, "parameter": 10, "record": b"\x80h\x00\x0a\x00\x00", "mode_after_final": 13, "handler": 0x00C89C},
+            {"sequence": b"12v", "slot": 0, "parameter": 12, "record": b"\x80v\x00\x0c\x00\x00", "mode_after_final": 13, "handler": 0x00C6EC},
+            {"sequence": b"0s", "slot": 0, "parameter": 0, "record": b"\x80s\x00\x00\x00\x00", "mode_after_final": 13, "handler": 0x00C780},
+            {"sequence": b"0b", "slot": 0, "parameter": 0, "record": b"\x80b\x00\x00\x00\x00", "mode_after_final": 13, "handler": 0x00C840},
+            {"sequence": b"3T", "slot": 0, "parameter": 3, "record": b"\x80T\x00\x03\x00\x00", "mode_after_final": 0, "handler": 0x01205A},
+        ],
+        "primary_final_mode": 0,
+        "secondary_dispatches": [
+            {"offset": 0, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+            {"offset": 1, "byte": 0x29, "mode_before": 1, "next_mode": 4, "handler": 0x012008},
+            {"offset": 2, "byte": 0x73, "mode_before": 4, "next_mode": 13, "handler": 0x011FF6},
+            {"offset": 4, "byte": 0x70, "mode_before": 13, "next_mode": 13, "handler": 0x00C930},
+            {"offset": 7, "byte": 0x68, "mode_before": 13, "next_mode": 13, "handler": 0x00C89C},
+            {"offset": 9, "byte": 0x76, "mode_before": 13, "next_mode": 13, "handler": 0x00C6EC},
+            {"offset": 11, "byte": 0x73, "mode_before": 13, "next_mode": 13, "handler": 0x00C780},
+            {"offset": 13, "byte": 0x62, "mode_before": 13, "next_mode": 13, "handler": 0x00C840},
+            {"offset": 15, "byte": 0x54, "mode_before": 13, "next_mode": 0, "handler": 0x01205A},
+        ],
+        "secondary_commands": [
+            {"sequence": b"\x1b)s0p", "slot": 1, "parameter": 0, "record": b"\x80p\x00\x00\x00\x01", "mode_after_final": 13, "handler": 0x00C930},
+            {"sequence": b"16h", "slot": 1, "parameter": 16, "record": b"\x80h\x00\x10\x00\x01", "mode_after_final": 13, "handler": 0x00C89C},
+            {"sequence": b"8v", "slot": 1, "parameter": 8, "record": b"\x80v\x00\x08\x00\x01", "mode_after_final": 13, "handler": 0x00C6EC},
+            {"sequence": b"0s", "slot": 1, "parameter": 0, "record": b"\x80s\x00\x00\x00\x01", "mode_after_final": 13, "handler": 0x00C780},
+            {"sequence": b"0b", "slot": 1, "parameter": 0, "record": b"\x80b\x00\x00\x00\x01", "mode_after_final": 13, "handler": 0x00C840},
+            {"sequence": b"0T", "slot": 1, "parameter": 0, "record": b"\x80T\x00\x00\x00\x01", "mode_after_final": 0, "handler": 0x01205A},
+        ],
+        "secondary_final_mode": 0,
     }))
     checks.append(assert_equal("0x11774 ROM dispatch table routes ESC *c font-control chain", {
         "dispatches": [

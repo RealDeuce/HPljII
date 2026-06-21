@@ -2224,7 +2224,70 @@ def apply_vertical_forms_channel_jump_via_1280a(
             updated["events"] = events
             return updated
 
-    if not matched or target_line > text_last_line:
+    if matched and target_line > text_last_line:
+        before_x = int(updated["cursor_x"])
+        before_y = int(updated["cursor_y"])
+        if start_line <= text_last_line + 1 and page_record is not None:
+            first_flush_before = int(updated.get("span_flushes", 0))
+            control_text_flush_helper(updated)
+            first_flush_after = int(updated.get("span_flushes", 0))
+            page_eject = control_page_eject_via_f124(updated, page_record)
+            updated = page_eject["state"]
+            assert isinstance(updated, dict)
+            finalized = page_eject["finalized_page_record"]
+            assert isinstance(finalized, dict)
+            control_cr_helper(updated)
+            second_flush_before = int(updated.get("span_flushes", 0))
+            control_text_flush_helper(updated)
+            second_flush_after = int(updated.get("span_flushes", 0))
+            updated["cursor_y"] = vfc_bottom_recovery_cursor_via_12afc(
+                top_offset,
+                int(updated["vmi"]),
+                last_line,
+                target_line,
+            )
+            events.append({
+                "kind": "vfc-channel-jump-target-after-text-bottom-recovery",
+                "selector": selector,
+                "mask": mask,
+                "handler": 0x01280A,
+                "page_root": page_root,
+                "search_direction": "forward-after-text",
+                "start_line": start_line,
+                "target_line": target_line,
+                "text_last_line": text_last_line,
+                "last_line": last_line,
+                "max_search_line": max_search_line,
+                "cursor_before": {"x": before_x, "y": before_y},
+                "cursor_after": {"x": int(updated["cursor_x"]), "y": int(updated["cursor_y"])},
+                "flush_counts": (
+                    first_flush_after - first_flush_before,
+                    second_flush_after - second_flush_before,
+                ),
+                "finalized_page_record": finalized,
+                "helpers": (0x010084, 0x00F34A, 0x00F124, 0x00F06E, 0x00F34A),
+                "disassembly_edge": "0x129ee..0x12b5a",
+            })
+            updated["events"] = events
+            return updated
+        events.append({
+            "kind": "vfc-channel-jump-unmodeled",
+            "reason": "target-after-text-bottom-recovery-without-page-record",
+            "selector": selector,
+            "mask": mask,
+            "handler": 0x01280A,
+            "page_root": page_root,
+            "start_line": start_line,
+            "target_line": target_line,
+            "text_last_line": text_last_line,
+            "last_line": last_line,
+            "max_search_line": max_search_line,
+            "unresolved_edges": ("0x129ee..0x12a1e", "0x12afc..0x12b5a"),
+        })
+        updated["events"] = events
+        return updated
+
+    if not matched:
         events.append({
             "kind": "vfc-channel-jump-unmodeled",
             "reason": "wrap-or-page-recovery",
@@ -8938,6 +9001,21 @@ def control_page_eject_via_f124(state: dict[str, int], page_record: dict[str, ob
         "state": state,
         "finalized_page_record": finalized,
     }
+
+
+def vfc_bottom_recovery_cursor_via_12afc(
+    top_offset: int,
+    vmi: int,
+    last_line: int,
+    target_line: int,
+) -> int:
+    vmi_subunits = packed12_to_subunits(vmi)
+    line_gap_subunits = (int(last_line) - int(target_line) + 1) * vmi_subunits
+    baseline_bias_subunits = trunc_div(vmi_subunits * 18, 25)
+    return add_packed12(
+        int(top_offset),
+        subunits_to_packed12(line_gap_subunits - baseline_bias_subunits),
+    )
 
 
 def control_span_update(state: dict[str, int]) -> None:
@@ -42842,6 +42920,220 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "published_rows": expected_vfc_wrap_published_rows,
         "current_rows": expected_vfc_jump_rows,
     }))
+    vfc_after_text_table = bytearray(bytes(vfc_direct_state["vfc_table_782dde"]))
+    vfc_after_text_table[63 * 2 : 63 * 2 + 2] = b"\x00\x02"
+    vfc_after_text_state = {
+        **vfc_direct_state,
+        "vfc_table_782dde": bytes(vfc_after_text_table),
+        "cursor_x": pack12(40),
+        "cursor_y": pack12(3193),
+        "span_flush_enable": 1,
+        "events": [],
+    }
+    vfc_after_text_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"!\x1b&l2V!",
+        0x440946B4,
+        vfc_after_text_state,
+        default_advance=line_printer_hmi["hmi"],
+    )
+    vfc_after_text_parser_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        b"!\x1b&l2V!",
+    )
+    vfc_after_text_events = vfc_after_text_stream["events"]
+    assert isinstance(vfc_after_text_events, list)
+    vfc_after_text_first = vfc_after_text_events[0]
+    vfc_after_text_command = vfc_after_text_events[1]
+    vfc_after_text_second = vfc_after_text_events[2]
+    assert isinstance(vfc_after_text_first, dict)
+    assert isinstance(vfc_after_text_command, dict)
+    assert isinstance(vfc_after_text_second, dict)
+    vfc_after_text_details = vfc_after_text_command["vfc_event"]
+    assert isinstance(vfc_after_text_details, dict)
+    vfc_after_text_finalized = vfc_after_text_details["finalized_page_record"]
+    assert isinstance(vfc_after_text_finalized, dict)
+    vfc_after_text_pool = vfc_after_text_finalized["published_pool_record"]
+    assert isinstance(vfc_after_text_pool, dict)
+    vfc_after_text_first_page_result = vfc_after_text_first["page_result"]
+    vfc_after_text_second_page_result = vfc_after_text_second["page_result"]
+    assert isinstance(vfc_after_text_first_page_result, dict)
+    assert isinstance(vfc_after_text_second_page_result, dict)
+    vfc_after_text_first_positioned = vfc_after_text_first["positioned"]
+    vfc_after_text_second_positioned = vfc_after_text_second["positioned"]
+    assert isinstance(vfc_after_text_first_positioned, dict)
+    assert isinstance(vfc_after_text_second_positioned, dict)
+    vfc_after_text_first_source = vfc_after_text_first_positioned["source"]
+    vfc_after_text_second_source = vfc_after_text_second_positioned["source"]
+    assert isinstance(vfc_after_text_first_source, dict)
+    assert isinstance(vfc_after_text_second_source, dict)
+    expected_vfc_after_text_published_rows = [
+        "." * 50,
+    ] * 4 + [
+        "." * 46 + "####" if row == "####" else "." * 50
+        for row in line_printer_glyph32_rows
+    ]
+    expected_vfc_after_text_rows = [
+        "." * 20,
+    ] * 3 + [
+        "." * 16 + "####" if row == "####" else "." * 20
+        for row in line_printer_glyph32_rows
+    ]
+    vfc_after_text_published_rendered = vfc_after_text_stream["published_rendered"]
+    assert isinstance(vfc_after_text_published_rendered, dict)
+    checks.append(assert_equal("mixed VFC target-after-text recovers near top before fresh printable", {
+        "parser_handlers": [
+            event["handler"]
+            for event in vfc_after_text_parser_trace["events"]
+        ],
+        "first_printable": {
+            "offset": vfc_after_text_first["offset"],
+            "cursor_before": vfc_after_text_first["cursor_before"],
+            "cursor_after": vfc_after_text_first["cursor_after"],
+            "positioned_xy": (
+                vfc_after_text_first_source["x"],
+                vfc_after_text_first_source["y"],
+            ),
+            "coord": vfc_after_text_first_page_result["coord"],
+            "bucket_index": vfc_after_text_first_page_result["bucket_index"],
+        },
+        "command_event": {
+            "kind": vfc_after_text_command["kind"],
+            "sequence": vfc_after_text_command["sequence"],
+            "record": vfc_after_text_command["record"],
+            "handler": vfc_after_text_command["handler"],
+            "cursor_before": vfc_after_text_command["cursor_before"],
+            "cursor_after": vfc_after_text_command["cursor_after"],
+            "cursor_x_before": vfc_after_text_command["cursor_x_before"],
+            "cursor_x_after": vfc_after_text_command["cursor_x_after"],
+            "page_publications": vfc_after_text_command["page_publications"],
+            "page_root_clears": vfc_after_text_command["page_root_clears"],
+            "page_publication_flag": vfc_after_text_command["page_publication_flag"],
+        },
+        "vfc_event": {
+            "kind": vfc_after_text_details["kind"],
+            "selector": vfc_after_text_details["selector"],
+            "mask": vfc_after_text_details["mask"],
+            "search_direction": vfc_after_text_details["search_direction"],
+            "start_line": vfc_after_text_details["start_line"],
+            "target_line": vfc_after_text_details["target_line"],
+            "text_last_line": vfc_after_text_details["text_last_line"],
+            "last_line": vfc_after_text_details["last_line"],
+            "max_search_line": vfc_after_text_details["max_search_line"],
+            "cursor_before": vfc_after_text_details["cursor_before"],
+            "cursor_after": vfc_after_text_details["cursor_after"],
+            "flush_counts": vfc_after_text_details["flush_counts"],
+            "helpers": vfc_after_text_details["helpers"],
+            "disassembly_edge": vfc_after_text_details["disassembly_edge"],
+            "published": vfc_after_text_finalized["published"],
+            "published_bucket_index": vfc_after_text_finalized["bucket_index"],
+            "published_bucket_root": vfc_after_text_pool["bucket_root"][:11],
+            "page_root_created": vfc_after_text_details["page_root"]["page_root_created"],
+        },
+        "second_printable": {
+            "offset": vfc_after_text_second["offset"],
+            "cursor_before": vfc_after_text_second["cursor_before"],
+            "cursor_after": vfc_after_text_second["cursor_after"],
+            "positioned_xy": (
+                vfc_after_text_second_source["x"],
+                vfc_after_text_second_source["y"],
+            ),
+            "coord": vfc_after_text_second_page_result["coord"],
+            "bucket_index": vfc_after_text_second_page_result["bucket_index"],
+            "page_root_created": vfc_after_text_second["page_root"]["page_root_created"],
+            "page_record_root_allocations": vfc_after_text_second["page_root"]["page_record_root_allocations"],
+        },
+        "final_state": select_keys(vfc_after_text_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "current_page_root",
+            "page_root_present",
+            "page_record_root_allocations",
+            "page_publications",
+            "page_root_clears",
+            "page_publication_flag",
+            "pending_text",
+            "pending_width",
+            "span_flushes",
+            "post_flushes",
+            "page_finalizes",
+        )),
+        "current_object_prefix": vfc_after_text_stream["bucket_object"][:11],
+        "published_rows": vfc_after_text_published_rendered["rows"],
+        "current_rows": vfc_after_text_stream["rendered"]["rows"],
+    }, {
+        "parser_handlers": [0x00D04A, 0x01280A, 0x00D04A],
+        "first_printable": {
+            "offset": 0,
+            "cursor_before": pack12(40),
+            "cursor_after": pack12(58),
+            "positioned_xy": (46, 3172),
+            "coord": 0x4E02,
+            "bucket_index": 198,
+        },
+        "command_event": {
+            "kind": "vfc-jump",
+            "sequence": b"\x1b&l2V",
+            "record": b"\x80V\x00\x02\x00\x00",
+            "handler": 0x01280A,
+            "cursor_before": pack12(3193),
+            "cursor_after": pack12(104),
+            "cursor_x_before": pack12(58),
+            "cursor_x_after": pack12(10),
+            "page_publications": 1,
+            "page_root_clears": 1,
+            "page_publication_flag": 1,
+        },
+        "vfc_event": {
+            "kind": "vfc-channel-jump-target-after-text-bottom-recovery",
+            "selector": 2,
+            "mask": 2,
+            "search_direction": "forward-after-text",
+            "start_line": 63,
+            "target_line": 63,
+            "text_last_line": 62,
+            "last_line": 63,
+            "max_search_line": 63,
+            "cursor_before": {"x": pack12(58), "y": pack12(3193)},
+            "cursor_after": {"x": pack12(10), "y": pack12(104)},
+            "flush_counts": (1, 1),
+            "helpers": (0x010084, 0x00F34A, 0x00F124, 0x00F06E, 0x00F34A),
+            "disassembly_edge": "0x129ee..0x12b5a",
+            "published": True,
+            "published_bucket_index": 198,
+            "published_bucket_root": bytes.fromhex("00 00 00 00 00 00 00 01 20 4e 02"),
+            "page_root_created": False,
+        },
+        "second_printable": {
+            "offset": 6,
+            "cursor_before": pack12(10),
+            "cursor_after": pack12(28),
+            "positioned_xy": (16, 83),
+            "coord": 0x3001,
+            "bucket_index": 5,
+            "page_root_created": True,
+            "page_record_root_allocations": 2,
+        },
+        "final_state": {
+            "cursor_x": pack12(28),
+            "cursor_y": pack12(104),
+            "current_page_root": ABSTRACT_PAGE_ROOT_PTR,
+            "page_root_present": 1,
+            "page_record_root_allocations": 2,
+            "page_publications": 1,
+            "page_root_clears": 1,
+            "page_publication_flag": 1,
+            "pending_text": 0,
+            "pending_width": 0,
+            "span_flushes": 2,
+            "post_flushes": 2,
+            "page_finalizes": 1,
+        },
+        "current_object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 30 01"),
+        "published_rows": expected_vfc_after_text_published_rows,
+        "current_rows": expected_vfc_after_text_rows,
+    }))
     orientation_page_record_stream = render_printable_page_geometry_page_record_stream(
         data,
         resources,
@@ -44012,6 +44304,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- A mixed VFC selector-zero stream `ESC &l0V!` routes through the `0x1280a` top-of-form target compare. When the computed target already equals y `126`, it keeps x/y unchanged, ensures the page root through `0x10084`, and queues `!` at compact coord `0x9e02`.")
     lines.append("- A mixed VFC selector-zero page-eject stream `!\\x1b&l0V!` routes through `0x1299c..0x129c4`, publishes the old page at compact coord `0xbe02` through `0xf124`, resets x/y to `10`/`126`, and queues the next `!` on a fresh page at compact coord `0x9001`.")
     lines.append("- A mixed VFC wrap-hit stream `!\\x1b&l2V!` starts at y `226`, wraps the channel search through `0x129c6..0x12af8`, publishes the old page at compact coord `0xde02`, and queues the next `!` on a fresh page at compact coord `0xb001`.")
+    lines.append("- A mixed VFC target-after-text stream `!\\x1b&l2V!` with channel 2 at line 63 routes through `0x129ee..0x12b5a`, publishes the old page at compact coord `0x4e02`, recovers y to `104`, and queues the next `!` at compact coord `0x3001`.")
     lines.append("- A mixed printable/orientation page-record stream starts from letter portrait with no current page root, drives `!` then `ESC &l1O`, allocates the page-record root on the printable queue step, and publishes the queued compact text bucket through the orientation handler's `0xf34a`/`0xff1e` boundary before switching to landscape geometry.")
     lines.append(f"- orientation publication object bytes: `{' '.join(f'{byte:02x}' for byte in orientation_page_record_object)}`")
     lines.append("- orientation published page-record bridge rows match the pre-landscape compact text rows.")

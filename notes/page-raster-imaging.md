@@ -115,6 +115,17 @@ bottom, wraps to line `0`, and finds channel 2 at line `1`. The
 to `10`, writes y `176`, and queues the following `!` on the fresh page at
 compact coord `0xb001`.
 
+The target-after-text `ESC &l#V` recovery path is anchored through
+publication and fresh output. Fixture `!\x1b&l2V!`, with channel 2 at VFC
+line `63`, starts with the queued printable at absolute compact coord
+`0x4e02` in bucket `198`. Handler `0x1280a` takes
+`0x129ee..0x12b5a`, publishes the old page through `0xf124`, enters
+bottom recovery, resets x from `58` to `10`, and writes recovered y
+`104`. The following printable allocates a fresh page record at compact
+coord `0x3001`, bucket `5`. The raster fixture confirms the old published
+row is rendered band-local at row `4`, not as `3172` blank rows before
+the glyph, while the fresh page renders at band-local row `3`.
+
 The lookup helpers at `0x009d16`, `0x009d4e`, `0x009d86`, and `0x009dbe`
 mask the internal code with `0x7f` and index eleven word entries. The
 generated table report records all current values. Its manual

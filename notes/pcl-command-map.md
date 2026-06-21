@@ -207,10 +207,14 @@ following `!` on a fresh page at compact coord `0x9001`. Fixture
 `!\x1b&l2V!` anchors the wrap-hit path through `0x129c6..0x12af8`: it
 publishes the old page at compact coord `0xde02`, wraps from start line
 `3` to target line `1`, writes y `176`, and queues the following `!` on a
-fresh page at compact coord `0xb001`. The remaining wrap and
-bottom/page-recovery branches are unresolved across exact ranges
-`0x129ee..0x12a1e`, `0x12a22..0x12a78`, `0x12afc..0x12b5a`, and
-`0x12b5e..0x12b92`.
+fresh page at compact coord `0xb001`. A second `!\x1b&l2V!` fixture, with
+channel 2 at line `63`, anchors the target-after-text bottom-recovery
+path through `0x129ee..0x12b5a`: it publishes the old page at absolute
+compact coord `0x4e02`, writes recovered y `104`, and queues the
+following `!` on a fresh page at compact coord `0x3001`. The remaining
+wrap and bottom/page-recovery branches are unresolved across exact ranges
+`0x129fc..0x12a10`, `0x12a22..0x12a78`, alternate-entry
+`0x12afc..0x12b5a`, and `0x12b5e..0x12b92`.
 
 `ESC &l#D` at `0x00c992` accepts absolute LPI values
 `1,2,3,4,6,8,12,16,24,48`, treats zero as `12`, converts to packed line

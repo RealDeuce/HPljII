@@ -17117,6 +17117,114 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "control_hits": 1,
         "phase": "done",
     }))
+    downloaded_wide_control_payload = (
+        bytes.fromhex("1a 58") + bytes([0xAA]) * 15 + bytes([0x55])
+    )
+    downloaded_wide_control_stream = b"\x1b)s18W" + downloaded_wide_control_payload
+    host_fetched_downloaded_wide_control_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(downloaded_wide_control_stream), direct_mode=0),
+        len(downloaded_wide_control_stream),
+    )
+    downloaded_wide_control_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        host_fetched_downloaded_wide_control_stream["stream"],
+    )
+    downloaded_wide_control_commands = downloaded_wide_control_trace["commands"]
+    assert isinstance(downloaded_wide_control_commands, list)
+    downloaded_wide_control_command = downloaded_wide_control_commands[0]
+    assert isinstance(downloaded_wide_control_command, dict)
+    downloaded_wide_control_header = bytearray(0x100)
+    downloaded_wide_control_header[0x0C] = 2
+    downloaded_wide_control_result = render_font_download_char_command_stream_via_121cc_16498(
+        host_fetched_downloaded_wide_control_stream["stream"],
+        downloaded_wide_control_header,
+        char_code=0x26,
+        record_words=(0x0000, 0x0000, 0x0001, 0x0000),
+        mode=1,
+        width=0x0088,
+        rows=1,
+        object_offset=0x0080,
+    )
+    downloaded_wide_control_event = downloaded_wide_control_result["events"][0]
+    assert isinstance(downloaded_wide_control_event, dict)
+    downloaded_wide_control_install = downloaded_wide_control_event["install"]
+    assert isinstance(downloaded_wide_control_install, dict)
+    downloaded_wide_control_memory = bytearray(downloaded_wide_control_install["header"])
+    downloaded_wide_control_glyph = resolve_downloaded_pointer_glyph(
+        downloaded_wide_control_memory,
+        0,
+        0x26,
+    )
+    assert downloaded_wide_control_glyph is not None
+    downloaded_wide_control_object = bytes.fromhex("00 00 00 00 10 03 00 01 26 00 00 00")
+    downloaded_wide_control_rendered = render_compact_text_bucket_object(
+        data,
+        downloaded_wide_control_memory,
+        (0, 0, 0, 0),
+        downloaded_wide_control_object,
+    )
+    checks.append(assert_equal("host-fetched downloaded character payload control reaches wide render", {
+        "fetched_stream_prefix": host_fetched_downloaded_wide_control_stream["stream"][:6],
+        "fetched_stream_length": len(host_fetched_downloaded_wide_control_stream["stream"]),
+        "fetch_source_count": len(host_fetched_downloaded_wide_control_stream["sources"]),
+        "fetch_source_set": sorted(set(host_fetched_downloaded_wide_control_stream["sources"])),
+        "remaining_ring": host_fetched_downloaded_wide_control_stream["state"]["ring"],
+        "parser_handlers": [
+            event["handler"]
+            for event in downloaded_wide_control_trace["dispatches"]
+        ],
+        "restored_record": downloaded_wide_control_command["restored_record"],
+        "payload_offset": downloaded_wide_control_command["payload_offset"],
+        "raw_payload": downloaded_wide_control_command["payload"],
+        "copy": {
+            key: downloaded_wide_control_install["copy"][key]
+            for key in ("status", "prefix", "trailing", "byte_budget", "control_hits", "phase")
+        },
+        "glyph": {
+            key: downloaded_wide_control_glyph[key]
+            for key in ("source_kind", "mode", "rows", "width", "span", "render_span")
+        },
+        "compact_object": downloaded_wide_control_object,
+        "render": {
+            "selector": downloaded_wide_control_rendered["selector"],
+            "compact_mode": downloaded_wide_control_rendered["compact_mode"],
+            "rows": downloaded_wide_control_rendered["rows"],
+        },
+    }, {
+        "fetched_stream_prefix": b"\x1b)s18W",
+        "fetched_stream_length": len(downloaded_wide_control_stream),
+        "fetch_source_count": len(downloaded_wide_control_stream),
+        "fetch_source_set": ["ring"],
+        "remaining_ring": [],
+        "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+        "restored_record": b"\x80W\x00\x12\x00\x01",
+        "payload_offset": 6,
+        "raw_payload": downloaded_wide_control_payload,
+        "copy": {
+            "status": 1,
+            "prefix": bytes.fromhex("00 aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa"),
+            "trailing": bytes.fromhex("55"),
+            "byte_budget": 1,
+            "control_hits": 1,
+            "phase": "done",
+        },
+        "glyph": {
+            "source_kind": "downloaded-pointer",
+            "mode": 1,
+            "rows": 1,
+            "width": 0x0088,
+            "span": 0x11,
+            "render_span": 0x11,
+        },
+        "compact_object": bytes.fromhex("00 00 00 00 10 03 00 01 26 00 00 00"),
+        "render": {
+            "selector": 0x1003,
+            "compact_mode": 1,
+            "rows": [
+                "........" + "#." * 60 + ".#.#.#.#",
+            ],
+        },
+    }))
 
     font_character_code = font_character_code_from_15a18(-0x8000)
     font_payload_dispatch_header = font_payload_dispatch_via_11f96(0)
@@ -30509,6 +30617,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- split-plane copy: prefix `{' '.join(f'{byte:02x}' for byte in font_split_payload['prefix'])}`, trailing `{' '.join(f'{byte:02x}' for byte in font_split_payload['trailing'])}`")
     lines.append(f"- split-plane continuation before trailing byte: status `{font_split_continuation['status']}`, state `{font_split_continuation['continuation']}`")
     lines.append(f"- split-plane copy with `1a 58`: prefix `{' '.join(f'{byte:02x}' for byte in font_split_control['prefix'])}`, trailing `{' '.join(f'{byte:02x}' for byte in font_split_control['trailing'])}`, control hits `{font_split_control['control_hits']}`")
+    lines.append("- host-fetched downloaded-character control payload: `ESC )s18W` drains `%d` ring bytes, normalizes prefix `%s`, trailing `%s`, and renders `%s`." % (
+        len(host_fetched_downloaded_wide_control_stream["sources"]),
+        " ".join(f"{byte:02x}" for byte in downloaded_wide_control_install["copy"]["prefix"]),
+        " ".join(f"{byte:02x}" for byte in downloaded_wide_control_install["copy"]["trailing"]),
+        downloaded_wide_control_rendered["rows"],
+    ))
     lines.append("- command edge fixtures: `ESC *c#E` handler `0x15a18` stores absolute character/code word `0x%04x` in `0x782f30`; `ESC )s0W` reaches `0x11f96` and schedules delayed handler `0x%05x`, while nonzero `ESC )s#W` schedules delayed handler `0x%05x` with absolute byte budget `0x%04x`." % (
         font_character_code["stored_word"],
         font_payload_dispatch_header["handler"],

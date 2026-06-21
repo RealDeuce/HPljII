@@ -282,7 +282,8 @@ inline/downloaded
 `0x14e24`/`0x14eb6` map and `0x1393a` source-object fixture plus type-2
 payload-backed `0x1f0d2`/`0x1f1f0`, selected-memory `0x1f264` isolation, and
 `0x16498` downloaded-pointer `0x1f264` render fixtures, `0x168dc`/`0x16942` font
-payload-reader fixtures, `0x172c0`/`0x16c14` downloaded-font record bookkeeping
+payload-reader fixtures plus a host-fetched `ESC )s18W` payload-control render,
+`0x172c0`/`0x16c14` downloaded-font record bookkeeping
 fixtures, `0x170be`/`0x17108`/`0x17150` record lookup/mark/unmark fixtures,
 `0x15a56`/`0x16df6` font-id/control dispatch fixtures,
 `0x16fae`/`0x17362`/`0x17026`/`0x1719c` validation-table/staged

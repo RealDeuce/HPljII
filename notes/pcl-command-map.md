@@ -427,8 +427,9 @@ positioning, packed default cursor advance, same-bucket compact queueing, and
 rendering, pins `0xd3b2` unflagged positioning arithmetic for both
 context-metric branches, adds a selected inline/downloaded map/source fixture
 through `0x14e24`/`0x14eb6` -> `0x1393a` -> `0xd3b2` -> `0x12f2e` -> render plus
-`0x168dc`/`0x16942` font payload-reader fixtures, `0x172c0`/`0x16c14`
-downloaded-font record bookkeeping fixtures, `0x170be`/`0x17108`/`0x17150`
+`0x168dc`/`0x16942` font payload-reader fixtures including a host-fetched
+`ESC )s18W` payload-control render, `0x172c0`/`0x16c14` downloaded-font record
+bookkeeping fixtures, `0x170be`/`0x17108`/`0x17150`
 record lookup/mark/unmark fixtures, `0x15a56`/`0x16df6` font-id/control dispatch
 fixtures, and `0x16fae`/`0x17362`/`0x17026`/`0x1719c` validation-table/staged
 header/payload-backed inline allocation fixtures, keeps synthetic
@@ -519,7 +520,8 @@ single following payload.
   `ESC *c4660d37e5F` feeding font install state, host-fetched `ESC )s0W`
   descriptor routing through `0x15d0a`, fetched font-control state chaining into
   fetched descriptor, resource-payload, and downloaded-character streams,
-  `ESC )s4W`, host-fetched `ESC )s80W` resource payload installation, and full
+  host-fetched `ESC )s18W` payload-control rendering, `ESC )s4W`, host-fetched
+  `ESC )s80W` resource payload installation, and full
   host-fetched `ESC )s2193W` payload/object rendering, resource-ROM glyph,
   `0x1f08e` named row-copy
   fixtures, a ROM-scanned row-copy span matrix, and the full built-in glyph

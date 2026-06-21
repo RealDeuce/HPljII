@@ -694,7 +694,7 @@ macro/data-chain, direct-control, reset, text, rule, raster, bridge,
 row-copy, built-in glyph, symbol-set, and downloaded-font fixture
 families into one ROM-backed self-test. It emits
 `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently
-verifies 354 checks. The raster coverage now includes ROM-table
+verifies 355 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` /
 `ESC *b4W` stream, the 150/100/75-dpi mode streams, the consecutive-row
 `ESC *b2W` stream, the active-resolution-ignore `ESC *t75R` stream, the
@@ -731,10 +731,11 @@ consecutive-row `ESC *b2W` stream now starts from the modeled `0xa904`
 ring source and ties two restored `80 57 00 02 00 00` records to payload
 offsets `17` and `24`, queued coords `0x0000` and `0x1000`, and final
 row_y `2`; the multi-row and chained-transfer host-fetched streams now
-also pin the `0x1edc6` bridge contract for their active raster chain
-heads; the active-resolution stream now starts from the modeled `0xa904`
-ring source and ties an in-raster `ESC *t75R` handler `0x10808` to
-preserved mode 0/scale 1 state before queueing the next row; the
+also pin the `0x1edc6` bridge contract and feed their active raster
+bucket chains through `0x1ed84` and `0x1ef6a`; the active-resolution
+stream now starts from the modeled `0xa904` ring source and ties an
+in-raster `ESC *t75R` handler `0x10808` to preserved mode 0/scale 1
+state before queueing the next row; the
 end-raster stream now starts from the modeled `0xa904` ring source and
 ties `ESC *rB` handler `0x107fa` to active-clear state before
 `ESC *t150R` updates mode/scale again; the chained-resolution

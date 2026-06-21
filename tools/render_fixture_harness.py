@@ -8813,6 +8813,47 @@ def render_published_page_record_via_1ed84_1ef6a(
     }
 
 
+def render_bucket_page_record_via_1ed84_1ef6a(
+    data: bytes,
+    resources: bytes,
+    page_record: dict[str, object],
+    *,
+    bucket_word: int = 0,
+    base_pointer: int = 0x00100000,
+    width_word: int = 0x0020,
+    band_divisor: int = 0x0005,
+) -> dict[str, object]:
+    """Carry a page-record bucket array through 0x1ed84 and 0x1ef6a."""
+    bucket_array = page_record.get("bucket_array", {})
+    if not isinstance(bucket_array, dict):
+        raise AssertionError("bucket page-record render entry needs a bucket array")
+    chain = [bytes(obj) for obj in bucket_array.get(bucket_word, [])]
+    bridge_source = dict(page_record)
+    if chain and not isinstance(bridge_source.get("bucket_root"), bytes):
+        bridge_source["bucket_root"] = chain[0]
+
+    render_record = copy_active_page_record_to_render_record_via_1ed84(bridge_source)
+    fields = render_record["render_record_fields"]
+    if not isinstance(fields, dict):
+        raise AssertionError("bucket page-record render entry needs render-record fields")
+    fields = dict(fields)
+    fields.update({
+        "long_00": int(base_pointer) & 0xFFFFFFFF,
+        "word_04": int(width_word) & 0xFFFF,
+        "word_06": int(band_divisor) & 0xFFFF,
+        "word_08": int(fields.get("word_08", 0)) & 0xFFFF,
+        "bucket_array_18": {int(bucket_word) & 0xFFFF: chain},
+    })
+    render_record["render_record_fields"] = fields
+    entry = render_band_entry_via_1ef6a(data, resources, render_record)
+    return {
+        "active_copy": render_record["active_record_copy_fields"],
+        "chain": chain,
+        "render_record_fields": fields,
+        "entry": entry,
+    }
+
+
 def rectangle_command_state(**overrides: object) -> dict[str, object]:
     state: dict[str, object] = {
         "width": pack12(0),
@@ -25095,6 +25136,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "queued_object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
         "rendered_rows": ["####........####"],
     }))
+    raster_multirow_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        raster_multirow_page_record,
+    )
+    raster_chained_transfer_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        raster_chained_transfer_page_record,
+    )
     checks.append(assert_equal("host-fetched raster multi-row and chained streams preserve 0x1edc6 bridge contract", {
         "multirow": {
             "fetched_stream": host_fetched_raster_multirow_stream["stream"],
@@ -25159,6 +25210,196 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "fixed_list_count": 0,
             "context_slots_prefix": (0, 0),
             "bridged_rows": ["####........####"],
+        },
+    }))
+    checks.append(assert_equal("host-fetched raster streams feed 0x1ed84 and 0x1ef6a", {
+        "multirow": {
+            "fetched_stream": host_fetched_raster_multirow_stream["stream"],
+            "parser_handlers": [
+                command["final_dispatch"]["handler"]
+                for command in raster_multirow_dispatch_commands
+            ],
+            "active_copy": raster_multirow_render_entry["active_copy"],
+            "setup": {
+                key: raster_multirow_render_entry["entry"]["setup"][key]
+                for key in (
+                    "dividend",
+                    "divisor_word_06",
+                    "remainder_783a22",
+                    "band_rows_scaled_783a20",
+                    "destination_base_783a28",
+                )
+            },
+            "dispatch_entries": [
+                {
+                    key: entry[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "encoded_mode",
+                    )
+                }
+                for entry in raster_multirow_render_entry["entry"]["dispatch"]["entries"]
+            ],
+            "bucket_rendered": [
+                {
+                    "branch": item["branch"],
+                    "mode": item["rendered"].get("mode"),
+                    "helper": item["rendered"].get("helper"),
+                    "coord": item["rendered"].get("coord"),
+                    "payload": item["rendered"].get("payload"),
+                    "rows": item["rendered"]["rows"],
+                }
+                for item in raster_multirow_render_entry["entry"]["bucket_rendered"]
+            ],
+            "rows": raster_multirow_render_entry["entry"]["rows"],
+        },
+        "chained_transfer": {
+            "fetched_stream": host_fetched_raster_chained_transfer_stream["stream"],
+            "parser_handlers": [
+                command["final_dispatch"]["handler"]
+                for command in raster_chained_transfer_commands
+            ],
+            "active_copy": raster_chained_transfer_render_entry["active_copy"],
+            "setup": {
+                key: raster_chained_transfer_render_entry["entry"]["setup"][key]
+                for key in (
+                    "dividend",
+                    "divisor_word_06",
+                    "remainder_783a22",
+                    "band_rows_scaled_783a20",
+                    "destination_base_783a28",
+                )
+            },
+            "dispatch_entries": [
+                {
+                    key: entry[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "encoded_mode",
+                    )
+                }
+                for entry in raster_chained_transfer_render_entry["entry"]["dispatch"]["entries"]
+            ],
+            "bucket_rendered": [
+                {
+                    "branch": item["branch"],
+                    "mode": item["rendered"].get("mode"),
+                    "helper": item["rendered"].get("helper"),
+                    "coord": item["rendered"].get("coord"),
+                    "payload": item["rendered"].get("payload"),
+                    "rows": item["rendered"]["rows"],
+                }
+                for item in raster_chained_transfer_render_entry["entry"]["bucket_rendered"]
+            ],
+            "rows": raster_chained_transfer_render_entry["entry"]["rows"],
+        },
+    }, {
+        "multirow": {
+            "fetched_stream": (
+                b"\x1b*t300R\x1b*r0A\x1b*b2W"
+                + bytes.fromhex("f0 0f")
+                + b"\x1b*b2W"
+                + bytes.fromhex("0f f0")
+            ),
+            "parser_handlers": [0x010808, 0x01075A, 0x011F82, 0x011F82],
+            "active_copy": {
+                "source_word_18": 0,
+                "source_word_1a": 0,
+                "render_word_0a": 0,
+                "render_word_0c": 0,
+                "render_word_0e": 0,
+                "render_word_10": 0,
+                "render_word_16": 0,
+            },
+            "setup": {
+                "dividend": 0,
+                "divisor_word_06": 5,
+                "remainder_783a22": 0,
+                "band_rows_scaled_783a20": 0x0050,
+                "destination_base_783a28": 0x00100000,
+            },
+            "dispatch_entries": [
+                {
+                    "chain_index": 0,
+                    "object_byte_4": 0x80,
+                    "class_mask": 0x80,
+                    "branch": "encoded-span",
+                    "target": 0x01F88E,
+                    "encoded_mode": 0,
+                },
+                {
+                    "chain_index": 1,
+                    "object_byte_4": 0x80,
+                    "class_mask": 0x80,
+                    "branch": "encoded-span",
+                    "target": 0x01F88E,
+                    "encoded_mode": 0,
+                },
+            ],
+            "bucket_rendered": [
+                {
+                    "branch": "encoded-span",
+                    "mode": 0,
+                    "helper": 0x01F8DA,
+                    "coord": 0x1000,
+                    "payload": bytes.fromhex("0f f0"),
+                    "rows": ["................", "....########...."],
+                },
+                {
+                    "branch": "encoded-span",
+                    "mode": 0,
+                    "helper": 0x01F8DA,
+                    "coord": 0x0000,
+                    "payload": bytes.fromhex("f0 0f"),
+                    "rows": ["####........####"],
+                },
+            ],
+            "rows": ["####........####", "....########...."],
+        },
+        "chained_transfer": {
+            "fetched_stream": b"\x1b*t300R\x1b*r0A\x1b*b2w2W" + bytes.fromhex("f0 0f"),
+            "parser_handlers": [0x010808, 0x01075A, 0x011F82, 0x011F82],
+            "active_copy": {
+                "source_word_18": 0,
+                "source_word_1a": 0,
+                "render_word_0a": 0,
+                "render_word_0c": 0,
+                "render_word_0e": 0,
+                "render_word_10": 0,
+                "render_word_16": 0,
+            },
+            "setup": {
+                "dividend": 0,
+                "divisor_word_06": 5,
+                "remainder_783a22": 0,
+                "band_rows_scaled_783a20": 0x0050,
+                "destination_base_783a28": 0x00100000,
+            },
+            "dispatch_entries": [{
+                "chain_index": 0,
+                "object_byte_4": 0x80,
+                "class_mask": 0x80,
+                "branch": "encoded-span",
+                "target": 0x01F88E,
+                "encoded_mode": 0,
+            }],
+            "bucket_rendered": [{
+                "branch": "encoded-span",
+                "mode": 0,
+                "helper": 0x01F8DA,
+                "coord": 0x0000,
+                "payload": bytes.fromhex("f0 0f"),
+                "rows": ["####........####"],
+            }],
+            "rows": ["####........####"],
         },
     }))
     raster_page_record: dict[str, object] = {"bucket_array": {}}
@@ -31201,6 +31442,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ))
     lines.append("- multi-row parser boundary: the host-fetched stream with two consecutive uppercase `ESC *b2W` commands restores independent `80 57 00 02 00 00` records, consumes payloads at offsets `17` and `24`, advances modeled `row_y` to `2`, and queues page-record objects at coords `0x0000` and `0x1000`.")
     lines.append("- host-fetched chained transfer boundary: `ESC *b2w2W` keeps parser mode in the `*b` family after lowercase `w`, preserves delayed record `80 77 00 02 00 00`, restores that same record at uppercase `W`, and consumes payload bytes only after offset `19`.")
+    lines.append("- raster render-entry boundary: the host-fetched multi-row and chained-transfer bucket arrays now cross `0x1ed84` active-record copy and `0x1ef6a`; multi-row dispatch entries `%d`, chained-transfer dispatch entries `%d`, rows `%s` / `%s`." % (
+        len(raster_multirow_render_entry["entry"]["dispatch"]["entries"]),
+        len(raster_chained_transfer_render_entry["entry"]["dispatch"]["entries"]),
+        raster_multirow_render_entry["entry"]["rows"],
+        raster_chained_transfer_render_entry["entry"]["rows"],
+    ))
     lines.append("")
     lines.append(f"- mode-1 stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode1_command_stream)}`")
     lines.append("- mode-1 parsed events:")

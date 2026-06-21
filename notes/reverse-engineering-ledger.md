@@ -132,7 +132,10 @@ text in the same byte-stream model and now has page-record
 allocator/bridge/publication coverage, with the host-fetched reset, FF,
 page-size, and orientation cases pinning the `0xff1e` published pool
 header fields plus the `0x1edc6` published bucket/context copy before
-render; `generated/analysis/ic30_ic13_esc_e_reset_flow.md` now also
+render, and with addressed reset, FF, page-size, and orientation
+allocation variants now proving the same compact bucket materialization
+through `0x1387c`/`0x1381c`;
+`generated/analysis/ic30_ic13_esc_e_reset_flow.md` now also
 names `0xcda2` environment-default writes, including four 0x6c-byte
 page/control records rooted at `0x780f02`, bucket backings at
 `0x7810bc + 0x400*n`, parser scratch `0x782a26`, cursor-stack top

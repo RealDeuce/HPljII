@@ -447,14 +447,15 @@ fixture exercises that valid-root reset path after queuing a printable
 text object, and its page-record variant queues and bridges that object
 under page-record storage rules, then publishes the same bucket through
 a modeled `0xff1e` finalization record before reset clears the current
-root. The FF publication stream now also has an addressed allocator
-variant where `ESC &k2G!\f` queues the printable byte through
-`0x1387c`/`0x1381c`, publishes through the FF helper's `0xff1e`
-boundary, and renders through `0x1ed84`/`0x1ef6a`. The
-host-fetched publication checks now start `!\x1bE`, `ESC &k2G!\f`,
-`!\x1b&l1A`, and `!\x1b&l1O` from the modeled `0xa904` ring source and
-pin the same published pool header after `0xff1e`: state byte `+4 = 2`,
-default status/environment fields, `0x780ea6`, bucket-root prefix, and
+root. The reset, FF, page-size, and orientation publication streams now
+also have addressed allocator variants: `!\x1bE`, `ESC &k2G!\f`,
+`!\x1b&l1A`, and `!\x1b&l1O` queue the printable byte through
+`0x1387c`/`0x1381c`, materialize the compact bucket page record,
+publish through the matching `0xff1e` boundary, and render through
+`0x1ed84`/`0x1ef6a`. The host-fetched publication checks now start
+those same streams from the modeled `0xa904` ring source and pin the
+same published pool header after `0xff1e`: state byte `+4 = 2`, default
+status/environment fields, `0x780ea6`, bucket-root prefix, and
 context-slot prefix. The `0x1387c` allocator fixtures queue short and
 segmented compact buckets under page-record storage rules, and the
 `0x1edc6` bridge fixture proves the render-record copy contract for that

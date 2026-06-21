@@ -945,15 +945,13 @@ the full parser/imaging path. The reset, FF, page-size, and orientation
 publication fixtures now start without a current page root and mark the
 first printable queue step as the modeled page-record root allocation
 point, but that is still not a full live parser allocation. The reset
-publication path now also has an addressed `!\x1bE` variant where the
-printable byte queues through addressed `0x1387c`/`0x1381c`, the
-materialized page record publishes through `0xff1e`, and the published
-record renders through `0x1ed84`/`0x1ef6a` with the same rows. The
-FF publication stream now also has an addressed `ESC &k2G!\f` variant
-where the compact bucket materializes from addressed storage, publishes
-through the FF helper's `0xff1e` boundary, and renders through
-`0x1ed84`/`0x1ef6a` with the same rows. The
-host-fetched text/rule/raster fixture now also publishes its full bucket
+reset, FF, page-size, and orientation publication paths now also have
+addressed variants: `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and
+`!\x1b&l1O` queue the printable byte through addressed
+`0x1387c`/`0x1381c`, materialize the page record, publish through the
+same `0xff1e` boundaries, and render through `0x1ed84`/`0x1ef6a` with
+the same rows. The host-fetched text/rule/raster fixture now also
+publishes its full bucket
 array, rule list, and context slots through modeled `0xff1e`, then
 renders the published record through `0x1ed84` and `0x1ef6a` with the
 same composed rows. That same fixture now runs text, `ESC *c`, and the

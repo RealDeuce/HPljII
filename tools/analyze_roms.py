@@ -1005,6 +1005,150 @@ def builtin_glyph_payload_extract(data: bytes) -> tuple[str, str]:
     )
 
 
+def builtin_glyph_rows_from_record(data: bytes, record: dict[str, int | str | None], host_byte: int) -> dict[str, object]:
+    first_char = int(record["first_char"])
+    last_char = int(record["last_char"])
+    if not (first_char <= host_byte <= last_char):
+        raise AssertionError(
+            f"host byte 0x{host_byte:02x} outside record range "
+            f"0x{first_char:02x}..0x{last_char:02x}"
+        )
+    glyph_index = host_byte - first_char
+    base = int(record["record_start"])
+    table = int(record["table"])
+    relative = u32(data, table + glyph_index * 4)
+    if relative == 0:
+        raise AssertionError(f"host byte 0x{host_byte:02x} maps to an empty glyph")
+    entry = base + relative
+    bitmap_delta = data[entry + 4]
+    mode = data[entry + 5]
+    rows = u16(data, entry + 6)
+    width = u16(data, entry + 8)
+    span = (width + 7) // 8
+    render_span = span
+    if render_span & 1 and mode != 2 and render_span != 1:
+        render_span += 1
+    if mode != 1:
+        raise AssertionError(f"sample renderer only handles mode-1 glyphs, got mode {mode}")
+    bitmap = entry + bitmap_delta
+    payload = data[bitmap : bitmap + rows * render_span]
+    decoded_rows: list[str] = []
+    for row in range(rows):
+        row_bytes = payload[row * render_span : (row + 1) * render_span]
+        decoded = []
+        for bit_index in range(width):
+            value = row_bytes[bit_index // 8]
+            mask = 0x80 >> (bit_index % 8)
+            decoded.append("#" if value & mask else ".")
+        decoded_rows.append("".join(decoded))
+    return {
+        "host_byte": host_byte,
+        "glyph_index": glyph_index,
+        "entry": entry,
+        "bitmap": bitmap,
+        "rows": rows,
+        "width": width,
+        "render_span": render_span,
+        "payload_sha256": hashlib.sha256(payload).hexdigest(),
+        "decoded_rows": decoded_rows,
+    }
+
+
+def compose_direct_glyph_sample(data: bytes, record: dict[str, int | str | None], text: str) -> dict[str, object]:
+    glyphs = [
+        builtin_glyph_rows_from_record(data, record, ord(char))
+        for char in text
+    ]
+    height = max(int(glyph["rows"]) for glyph in glyphs)
+    composed_rows: list[str] = []
+    for row_index in range(height):
+        parts: list[str] = []
+        for glyph in glyphs:
+            rows = glyph["decoded_rows"]
+            assert isinstance(rows, list)
+            if row_index < len(rows):
+                parts.append(str(rows[row_index]))
+            else:
+                parts.append("." * int(glyph["width"]))
+        composed_rows.append(".".join(parts))
+    return {
+        "text": text,
+        "record_start": int(record["record_start"]),
+        "context_longword": int(record["context_longword"]),
+        "rows": composed_rows,
+        "row_sha256": hashlib.sha256("\n".join(composed_rows).encode("ascii")).hexdigest(),
+        "glyphs": [
+            {
+                "host_byte": int(glyph["host_byte"]),
+                "glyph_index": int(glyph["glyph_index"]),
+                "entry": int(glyph["entry"]),
+                "bitmap": int(glyph["bitmap"]),
+                "width": int(glyph["width"]),
+                "rows": int(glyph["rows"]),
+                "render_span": int(glyph["render_span"]),
+                "payload_sha256": str(glyph["payload_sha256"]),
+            }
+            for glyph in glyphs
+        ],
+    }
+
+
+def builtin_font_sample_report(data: bytes) -> str:
+    records = firmware_scanned_font_records(data)
+    courier = next(
+        record
+        for record in records
+        if record["name"] == "COURIER" and int(record["record_start"]) == 0x000418
+    )
+    line_printer = next(
+        record
+        for record in records
+        if record["name"] == "LINE_PRINTER" and int(record["record_start"]) == 0x0146B4
+    )
+    samples = [
+        ("COURIER", compose_direct_glyph_sample(data, courier, "LASERJETII")),
+        ("LINE_PRINTER", compose_direct_glyph_sample(data, line_printer, "LASERJETII")),
+    ]
+    lines = ["# IC32/IC15 Built-In Font Direct Samples", ""]
+    lines.append(
+        "These samples consume the same mode-1 payload bytes emitted in "
+        "`ic32_ic15_builtin_glyph_payloads.json` and decode them directly "
+        "into `#`/`.` rows. They prove the extractor output is renderable "
+        "font input, but they are not a firmware cursor/baseline or self-test "
+        "placement proof."
+    )
+    lines.append("")
+    for name, sample in samples:
+        rows = sample["rows"]
+        glyphs = sample["glyphs"]
+        assert isinstance(rows, list)
+        assert isinstance(glyphs, list)
+        lines.append(f"## {name}")
+        lines.append("")
+        lines.append(
+            "- Text: `%s`; record `0x%06x`; context `0x%08x`; row hash `%s`."
+            % (
+                str(sample["text"]),
+                int(sample["record_start"]),
+                int(sample["context_longword"]),
+                str(sample["row_sha256"]),
+            )
+        )
+        lines.append(
+            "- Glyph indexes: `%s`."
+            % ", ".join(
+                "0x%02x->0x%02x" % (int(glyph["host_byte"]), int(glyph["glyph_index"]))
+                for glyph in glyphs
+            )
+        )
+        lines.append("")
+        lines.append("```text")
+        lines.extend(str(row) for row in rows)
+        lines.append("```")
+        lines.append("")
+    return "\n".join(lines)
+
+
 def font_context_bridge_report(data: bytes) -> str:
     def long_refs(value: int) -> list[int]:
         needle = value.to_bytes(4, "big")
@@ -4858,6 +5002,7 @@ def main() -> None:
     write_if_changed(ANALYSIS / "ic32_ic15_resource_glyph_probe.md", resource_glyph_probe_report(resources))
     write_if_changed(ANALYSIS / "ic32_ic15_builtin_glyph_payloads.md", glyph_payload_report)
     write_if_changed(ANALYSIS / "ic32_ic15_builtin_glyph_payloads.json", glyph_payload_json)
+    write_if_changed(ANALYSIS / "ic32_ic15_builtin_font_samples.md", builtin_font_sample_report(resources))
     write_if_changed(ANALYSIS / "ic30_ic13_startup_tables.txt", decode_startup_tables(firmware))
     write_if_changed(ANALYSIS / "signature_scan.md", scan_signature_report(firmware, resources))
     write_if_changed(ANALYSIS / "ic30_ic13_long_reference_scan.md", categorized_long_references(firmware))

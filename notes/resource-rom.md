@@ -209,6 +209,14 @@ nonzero offset-table entries, and emits 468,534 bytes of exact mode-1
 bitmap payload data with per-glyph offsets, dimensions, render spans,
 placement offsets, payload hashes, and hex payload bytes. The JSON stays
 under ignored `generated/` output with the interleaved ROMs.
+`generated/analysis/ic32_ic15_builtin_font_samples.md` consumes those
+payloads directly for a `LASERJETII` smoke sample in first `COURIER`
+and first `LINE_PRINTER`, producing stable row hashes
+`8e004fa1e6351e909224c8ae5ddd7f4e0d96f47b413c2514f93cba8daaca4834`
+and
+`81e38bb45d5520c7a7f572a277371a55648b0b121ebd3c48f5e3db675dfed38d`.
+That sample is only direct glyph composition; firmware cursor, baseline,
+and self-test placement remain separate targets.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record
@@ -366,9 +374,9 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    named `COURIER` and `LINE_PRINTER` record. The first-glyph placement
    offsets are now pinned through the `0xd824` path, but the header-level
    baseline semantics still need broader correlation.
-6. Render known self-test/font samples from the extracted built-in glyph
-   payloads and correlate the remaining baseline/header fields against
-   observed placement.
+6. Replace the direct `LASERJETII` glyph smoke sample with known
+   self-test/font samples and correlate the remaining baseline/header
+   fields against observed placement.
 
 These are high-value targets for pixel-perfect output because the
 manuals describe PCL behavior but do not provide the built-in font

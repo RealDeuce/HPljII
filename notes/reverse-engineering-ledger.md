@@ -358,9 +358,11 @@ examples `0x4008004c`, `0x44080418`, and `0x440946b4` resolve to
 concrete glyph entries and bitmaps in `tools/render_fixture_harness.py`;
 `generated/analysis/ic32_ic15_builtin_glyph_payloads.json` now extracts
 5,310 mode-1 glyph payloads, 468,534 payload bytes, and 1,664 unique
-payload hashes from all 24 firmware-scanned built-in records; the
-startup/resource scanner `0x41a` is modeled for the verified built-in
-`HEAD` chain, walking 24 typed records from `0x08004c` through
+payload hashes from all 24 firmware-scanned built-in records;
+`generated/analysis/ic32_ic15_builtin_font_samples.md` directly renders
+`LASERJETII` rows from first `COURIER` and first `LINE_PRINTER` payloads;
+the startup/resource scanner `0x41a` is modeled for the verified
+built-in `HEAD` chain, walking 24 typed records from `0x08004c` through
 `0x0ae122`, terminating at `0x0b2f80`, adjusting the next probe step
 after a cumulative `0x40000` crossing, and jumping or erroring on
 `0x000000be` executable records according to their length;
@@ -552,8 +554,9 @@ ROM work needed:
   printable stream now drives the installed downloaded glyph into
   segmented page-record buckets and through the `0x1edc6` /
   `0x1ed84` / `0x1ef6a` render boundary.
-- Render a known self-test/font sample from the extracted glyph payloads
-  and correlate remaining baseline/header semantics against placement.
+- Replace the direct `LASERJETII` glyph smoke sample with known
+  self-test/font samples and correlate remaining baseline/header
+  semantics against placement.
 - Confirm symbol-set mapping for ASCII, Roman-8, line draw, and any
   built-in alternatives.
 - Promote the generated glyph payload manifest into renderer fixture

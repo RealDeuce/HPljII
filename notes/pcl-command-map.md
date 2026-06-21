@@ -271,8 +271,9 @@ replaying through a host-fetched ROM/alternate parser trace, `0xa904`
 data-chain fetch, and `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into rows that
 match the direct mixed-stream model. The execute, call, and
 mixed-control replay payloads now also preserve the `0x1edc6`
-bucket/context bridge contract before rendering; full replay of macro
-payload bytes through the live parser is still open.
+bucket/context bridge contract and feed `0x1ed84`/`0x1ef6a` before
+rendering; full replay of macro payload bytes through the live parser is
+still open.
 
 The `ESC &f-123y0x1X` fixture is now also traced through ROM parser
 modes `0 -> 1 -> 5 -> 17 -> 17 -> 17 -> 0`, selecting `0xe112`,

@@ -509,9 +509,11 @@ mixed-control execute payload now also starts from modeled `0xa904` ring
 fetch through the ROM/alternate parser trace, stores the full mixed
 payload, builds the execute frame, and replays through
 `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into page-record rows matching the
-direct mixed-stream model. This still is not full live parser replay,
-but it ties the macro frame, host-byte source priority, and page-record
-output into one executable chain.
+direct mixed-stream model. Execute, call, and mixed-control macro replay
+payloads now also cross `0x1ed84` and `0x1ef6a` before rendering. This
+still is not full live parser replay, but it ties the macro frame,
+host-byte source priority, and page-record output into one executable
+chain.
 
 Top-level `ESC &` enters mode 5. The normal table currently identifies
 these subfamilies:

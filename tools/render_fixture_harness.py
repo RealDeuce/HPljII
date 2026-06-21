@@ -13251,6 +13251,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "post_flushes": 1,
         },
     }))
+    macro_payload_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        macro_payload_page_record_stream["page_record"],
+    )
+    macro_control_payload_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        macro_control_payload_page_record["page_record"],
+    )
     checks.append(assert_equal("host-fetched macro replay payloads preserve 0x1edc6 bridge contract", {
         "execute": {
             "host_stream": macro_execute_host_fetch["stream"],
@@ -13345,6 +13355,258 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "fixed_list_count": 0,
             "context_slots_prefix": (0x440946B4, 0),
             "rendered_rows": macro_control_payload_direct_rendered["rows"],
+        },
+    }))
+    checks.append(assert_equal("host-fetched macro replay payloads feed 0x1ed84 and 0x1ef6a", {
+        "execute": {
+            "host_stream": macro_execute_host_fetch["stream"],
+            "replay_stream": macro_frame_replay["stream"],
+            "parser_handlers": [
+                event["handler"]
+                for event in macro_frame_parser_trace["events"]
+            ],
+            "active_copy": macro_payload_render_entry["active_copy"],
+            "setup": {
+                key: macro_payload_render_entry["entry"]["setup"][key]
+                for key in (
+                    "dividend",
+                    "divisor_word_06",
+                    "remainder_783a22",
+                    "band_rows_scaled_783a20",
+                    "destination_base_783a28",
+                )
+            },
+            "dispatch_entries": [
+                {
+                    key: entry[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "context_slot",
+                    )
+                }
+                for entry in macro_payload_render_entry["entry"]["dispatch"]["entries"]
+            ],
+            "bucket_rendered": [
+                {
+                    "branch": item["branch"],
+                    "selector": item["rendered"].get("selector"),
+                    "context_slot": item["rendered"].get("context_slot"),
+                    "count": item["rendered"].get("count"),
+                    "payload": item["rendered"].get("payload"),
+                    "rows": item["rendered"]["rows"],
+                }
+                for item in macro_payload_render_entry["entry"]["bucket_rendered"]
+            ],
+            "rows": macro_payload_render_entry["entry"]["rows"],
+        },
+        "call": {
+            "host_stream": macro_call_host_fetch["stream"],
+            "replay_stream": macro_call_replay["stream"],
+            "parser_handlers": [
+                event["handler"]
+                for event in macro_call_parser_trace["events"]
+            ],
+            "active_copy": macro_payload_render_entry["active_copy"],
+            "setup": {
+                key: macro_payload_render_entry["entry"]["setup"][key]
+                for key in (
+                    "dividend",
+                    "divisor_word_06",
+                    "remainder_783a22",
+                    "band_rows_scaled_783a20",
+                    "destination_base_783a28",
+                )
+            },
+            "dispatch_entries": [
+                {
+                    key: entry[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "context_slot",
+                    )
+                }
+                for entry in macro_payload_render_entry["entry"]["dispatch"]["entries"]
+            ],
+            "bucket_rendered": [
+                {
+                    "branch": item["branch"],
+                    "selector": item["rendered"].get("selector"),
+                    "context_slot": item["rendered"].get("context_slot"),
+                    "count": item["rendered"].get("count"),
+                    "payload": item["rendered"].get("payload"),
+                    "rows": item["rendered"]["rows"],
+                }
+                for item in macro_payload_render_entry["entry"]["bucket_rendered"]
+            ],
+            "rows": macro_payload_render_entry["entry"]["rows"],
+        },
+        "mixed_control": {
+            "host_stream": macro_control_host_fetch["stream"],
+            "replay_stream": macro_control_replay["stream"],
+            "parser_handlers": [
+                event["handler"]
+                for event in macro_control_payload_parser_trace["events"]
+            ],
+            "active_copy": macro_control_payload_render_entry["active_copy"],
+            "setup": {
+                key: macro_control_payload_render_entry["entry"]["setup"][key]
+                for key in (
+                    "dividend",
+                    "divisor_word_06",
+                    "remainder_783a22",
+                    "band_rows_scaled_783a20",
+                    "destination_base_783a28",
+                )
+            },
+            "dispatch_entries": [
+                {
+                    key: entry[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "context_slot",
+                    )
+                }
+                for entry in macro_control_payload_render_entry["entry"]["dispatch"]["entries"]
+            ],
+            "bucket_rendered": [
+                {
+                    "branch": item["branch"],
+                    "selector": item["rendered"].get("selector"),
+                    "context_slot": item["rendered"].get("context_slot"),
+                    "count": item["rendered"].get("count"),
+                    "payload": item["rendered"].get("payload"),
+                    "rows": item["rendered"]["rows"],
+                }
+                for item in macro_control_payload_render_entry["entry"]["bucket_rendered"]
+            ],
+            "rows": macro_control_payload_render_entry["entry"]["rows"],
+        },
+    }, {
+        "execute": {
+            "host_stream": b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f2X",
+            "replay_stream": b"!\r",
+            "parser_handlers": [0x00D04A, 0x00F02C],
+            "active_copy": {
+                "source_word_18": 0,
+                "source_word_1a": 0,
+                "render_word_0a": 0,
+                "render_word_0c": 0,
+                "render_word_0e": 0,
+                "render_word_10": 0,
+                "render_word_16": 0,
+            },
+            "setup": {
+                "dividend": 0,
+                "divisor_word_06": 5,
+                "remainder_783a22": 0,
+                "band_rows_scaled_783a20": 0x0050,
+                "destination_base_783a28": 0x00100000,
+            },
+            "dispatch_entries": [{
+                "chain_index": 0,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 0,
+            }],
+            "bucket_rendered": [{
+                "branch": "compact",
+                "selector": 0,
+                "context_slot": 0,
+                "count": 1,
+                "payload": bytes.fromhex("00 01 20 00 01") + bytes(0x1B),
+                "rows": macro_payload_rendered["rows"],
+            }],
+            "rows": macro_payload_rendered["rows"],
+        },
+        "call": {
+            "host_stream": b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f3X",
+            "replay_stream": b"!\r",
+            "parser_handlers": [0x00D04A, 0x00F02C],
+            "active_copy": {
+                "source_word_18": 0,
+                "source_word_1a": 0,
+                "render_word_0a": 0,
+                "render_word_0c": 0,
+                "render_word_0e": 0,
+                "render_word_10": 0,
+                "render_word_16": 0,
+            },
+            "setup": {
+                "dividend": 0,
+                "divisor_word_06": 5,
+                "remainder_783a22": 0,
+                "band_rows_scaled_783a20": 0x0050,
+                "destination_base_783a28": 0x00100000,
+            },
+            "dispatch_entries": [{
+                "chain_index": 0,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 0,
+            }],
+            "bucket_rendered": [{
+                "branch": "compact",
+                "selector": 0,
+                "context_slot": 0,
+                "count": 1,
+                "payload": bytes.fromhex("00 01 20 00 01") + bytes(0x1B),
+                "rows": macro_payload_rendered["rows"],
+            }],
+            "rows": macro_payload_rendered["rows"],
+        },
+        "mixed_control": {
+            "host_stream": b"\x1b&f125Y\x1b&f0X\x1b&k1G!\r!\x1b&f1X\x1b&f2X",
+            "replay_stream": b"\x1b&k1G!\r!",
+            "parser_handlers": [0x00EDF8, 0x00D04A, 0x00F02C, 0x00D04A],
+            "active_copy": {
+                "source_word_18": 0,
+                "source_word_1a": 0,
+                "render_word_0a": 0,
+                "render_word_0c": 0,
+                "render_word_0e": 0,
+                "render_word_10": 0,
+                "render_word_16": 0,
+            },
+            "setup": {
+                "dividend": 0,
+                "divisor_word_06": 5,
+                "remainder_783a22": 0,
+                "band_rows_scaled_783a20": 0x0050,
+                "destination_base_783a28": 0x00100000,
+            },
+            "dispatch_entries": [{
+                "chain_index": 0,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 0,
+            }],
+            "bucket_rendered": [{
+                "branch": "compact",
+                "selector": 0,
+                "context_slot": 0,
+                "count": 2,
+                "payload": bytes.fromhex("00 02 20 00 01 20 3b 00") + bytes(0x18),
+                "rows": macro_control_payload_direct_rendered["rows"],
+            }],
+            "rows": macro_control_payload_direct_rendered["rows"],
         },
     }))
     macro_band_rule_record: dict[str, object] = {}
@@ -30771,6 +31033,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append("- macro mixed-control parser-to-page-record boundary: replayed stream `%s` routes through handlers `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, then feeds the same bridged page-record object and rows." % (
         " ".join(f"{byte:02x}" for byte in macro_control_replay["stream"]),
+    ))
+    lines.append("- macro replay render-entry boundary: execute/call payload rows and mixed-control payload rows now cross `0x1ed84` active-record copy and `0x1ef6a`; dispatch counts `%d` / `%d`." % (
+        len(macro_payload_render_entry["entry"]["dispatch"]["entries"]),
+        len(macro_control_payload_render_entry["entry"]["dispatch"]["entries"]),
     ))
     lines.append(f"- macro execute payload page-record layer composes with a selector-7 rule and mode-0 raster row; composed row 12: `{macro_band_composed_rows[12]}`")
     lines.append(f"- lowercase start payload: `{macro_start['records'][0]['payload']!r}`, stop event `{macro_stop_empty['events'][-1]}`")

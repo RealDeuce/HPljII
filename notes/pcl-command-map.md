@@ -293,11 +293,14 @@ current-record and continuation routes through `0x15d0a`, tie `ESC )s80W` to
 resource-payload validation/allocation through `0x16c14` -> `0x16fae` -> `0x17026` ->
 `0x1719c` plus candidate insertion through `0x1bc38`, and tie the `ESC )s2193W` payload
 offset, byte count, split-plane tail, `0x16498` downloaded-pointer object, and `0x1f264`
-segmented-wide rendered row to the same parser trace. The `0x15d0a` descriptor stream
-must start with kind byte `4`; selector byte zero scans the current downloaded-font
-record and object flag bit 30 chooses `0x16498` downloaded-character allocation when set
-or `0x16606` font-resource allocation when clear, while nonzero selector bytes require
-continuation state `0x7827c6 == 1`, use saved payload `0x7827da`, and choose resume
+segmented-wide rendered row to the same parser trace. The `ESC )s2193W` boundary is now
+also ring-fed through modeled `0xa904`, proving the complete command/payload byte stream
+reaches the same parser handlers, delayed record, compact object, and rows. The
+`0x15d0a` descriptor stream must start with kind byte `4`; selector byte zero scans the
+current downloaded-font record and object flag bit 30 chooses `0x16498`
+downloaded-character allocation when set or `0x16606` font-resource allocation when
+clear, while nonzero selector bytes require continuation state `0x7827c6 == 1`, use
+saved payload `0x7827da`, and choose resume
 helper `0x15b9a` or `0x15c4c` by the same bit-30 test. `ESC *c#F` dispatches values
 `0..6` through the table at `0x16db6`: values `0`, `1`, and `2` call all/current record
 release helpers, value `3` uses the current character/code word `0x782f30`, values `4`
@@ -454,10 +457,10 @@ while uppercase `W` triggers the `0x12218` restore and the single following payl
   segmented render rows, a selected-memory `0x1f264` segmented-wide isolation row, ROM
   dispatch traces for `ESC &f-123y0x1X`, `ESC *c12a5b0P`, `ESC *c17d25e5F`, `ESC
   *c4660d37e5F` feeding font install state, `ESC )s0W` descriptor routing through
-  `0x15d0a`, `ESC )s4W`, `ESC )s80W` resource payload installation, and full `ESC
-  )s2193W` payload/object rendering, resource-ROM glyph, `0x1f08e` named row-copy
-  fixtures, a ROM-scanned row-copy span matrix, and the full built-in glyph coverage
-  scan.
+  `0x15d0a`, `ESC )s4W`, `ESC )s80W` resource payload installation, and full
+  host-fetched `ESC )s2193W` payload/object rendering, resource-ROM glyph, `0x1f08e`
+  named row-copy fixtures, a ROM-scanned row-copy span matrix, and the full built-in
+  glyph coverage scan.
 - Replace the synthetic `ESC E` fixtures with parser-produced page-object fixtures to
   prove partial-page finalization and reset-visible page/control state from real queued
   objects.

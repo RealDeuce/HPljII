@@ -254,8 +254,10 @@ pre-patch base mapping starts at byte `0x01 -> glyph 0`.
 4. Replace the current `ESC *c4660d37e5F` current-state boundary, `ESC )s0W`
    parser/route boundary through `0x15d0a`, `ESC )s80W` resource-payload boundary
    through `0x16c14` -> `0x16fae` -> `0x1719c`, and `ESC )s2193W` parser/object boundary
-   through `0x16c14` -> `0x16498` downloaded-pointer `0x1f264` with a full live
-   parser-state run that populates current records/source objects; then replace
+   through `0x16c14` -> `0x16498` downloaded-pointer `0x1f264`; `ESC )s2193W` is now
+   also host-fetched from the modeled `0xa904` ring source. Replace these boundaries
+   with a full live parser-state run that populates current records/source objects; then
+   replace
    producer-modeled text bucket fixtures with full parser-produced page-object payloads.
 5. Extract enough metadata for each `COURIER` and `LINE_PRINTER` record to identify
    point size, pitch, orientation, style, symbol set, cell size, and baseline.

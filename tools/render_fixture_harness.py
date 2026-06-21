@@ -18596,6 +18596,63 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
         },
     }))
+    host_fetched_downloaded_character_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(downloaded_segmented_wide_command_stream), direct_mode=0),
+        len(downloaded_segmented_wide_command_stream),
+    )
+    host_fetched_downloaded_character_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        host_fetched_downloaded_character_stream["stream"],
+    )
+    host_fetched_downloaded_character_commands = host_fetched_downloaded_character_trace["commands"]
+    assert isinstance(host_fetched_downloaded_character_commands, list)
+    host_fetched_downloaded_character_command = host_fetched_downloaded_character_commands[0]
+    assert isinstance(host_fetched_downloaded_character_command, dict)
+    host_fetched_downloaded_character_payload = host_fetched_downloaded_character_command["payload"]
+    assert isinstance(host_fetched_downloaded_character_payload, bytes)
+    checks.append(assert_equal("host-fetched downloaded character stream reaches rendered object", {
+        "fetched_stream_prefix": host_fetched_downloaded_character_stream["stream"][:8],
+        "fetched_stream_length": len(host_fetched_downloaded_character_stream["stream"]),
+        "fetch_source_count": len(host_fetched_downloaded_character_stream["sources"]),
+        "fetch_source_set": sorted(set(host_fetched_downloaded_character_stream["sources"])),
+        "remaining_ring": host_fetched_downloaded_character_stream["state"]["ring"],
+        "parser_handlers": [
+            event["handler"]
+            for event in host_fetched_downloaded_character_trace["dispatches"]
+        ],
+        "parser_modes": [
+            event["next_mode"]
+            for event in host_fetched_downloaded_character_trace["dispatches"]
+        ],
+        "restored_record": host_fetched_downloaded_character_command["restored_record"],
+        "payload_offset": host_fetched_downloaded_character_command["payload_offset"],
+        "payload_length": len(host_fetched_downloaded_character_payload),
+        "payload_suffix": host_fetched_downloaded_character_payload[-17:],
+        "compact_object": downloaded_segmented_wide_object,
+        "rendered_rows": downloaded_segmented_wide_rendered["rows"],
+    }, {
+        "fetched_stream_prefix": b"\x1b)s2193W",
+        "fetched_stream_length": len(downloaded_segmented_wide_command_stream),
+        "fetch_source_count": len(downloaded_segmented_wide_command_stream),
+        "fetch_source_set": ["ring"],
+        "remaining_ring": [],
+        "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+        "parser_modes": [1, 4, 13, 0],
+        "restored_record": b"\x80W\x08\x91\x00\x01",
+        "payload_offset": 8,
+        "payload_length": 0x0891,
+        "payload_suffix": b"\xaa" * 16 + b"\x55",
+        "compact_object": bytes.fromhex("00 00 00 00 30 03 00 01 25 01 66 01"),
+        "rendered_rows": [
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 22 + "#." * 64 + ".#.#.#.#",
+        ],
+    }))
     checks.append(assert_equal("font control stream state feeds descriptor route and character payload", {
         "control": {
             "dispatch_handlers": [
@@ -28412,6 +28469,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         downloaded_segmented_wide_dispatch_command["payload_offset"],
         len(downloaded_segmented_wide_dispatch_payload),
         " ".join(f"{byte:02x}" for byte in downloaded_segmented_wide_dispatch_payload[-17:]),
+    ))
+    lines.append("- host-fetched downloaded character boundary: the complete `%d`-byte `ESC )s2193W` command/payload stream drains from the modeled `0xa904` ring source, replays the same parser handlers, restores record `%s`, and renders the same compact object rows." % (
+        len(host_fetched_downloaded_character_stream["stream"]),
+        " ".join(f"{byte:02x}" for byte in host_fetched_downloaded_character_command["restored_record"]),
     ))
     lines.append("- downloaded character-object fixture: that command stream feeds `0x16498`, which allocates a separate class-1 object for glyph `0x25`, computes allocation size `%d` / object size `0x%04x`, stores pointer-table entry `0x%04x` at header `+0x4a + 4*0x25`, writes record `%s`, and copies `0x%04x` split-plane payload bytes through `0x16874`/`0x16942`; the compact object `%s` resolves as `%s` and renders the `0x1f264` segmented-wide row." % (
         downloaded_segmented_wide_payload["allocation_size"],

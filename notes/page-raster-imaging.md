@@ -623,7 +623,7 @@ The executable harness `tools/render_fixture_harness.py` combines the host-byte 
 tokenizer/delayed-payload, page-geometry, macro/data-chain, direct-control, reset, text,
 rule, raster, bridge, row-copy, built-in glyph, symbol-set, and downloaded-font fixture
 families into one ROM-backed self-test. It emits
-`generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently verifies 316
+`generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently verifies 317
 checks. The raster coverage now includes ROM-table `0x11774` dispatch traces for the
 primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W` stream, the 150/100/75-dpi mode streams,
 the consecutive-row `ESC *b2W` stream, the active-resolution-ignore `ESC *t75R` stream,
@@ -664,10 +664,13 @@ writes that feed `@0`, `@1`, `@3`, and `0x156de` fallback selection, and now pin
 Downloaded-font coverage now includes an `ESC )s80W` ROM-parser-traced payload boundary
 through restored `0x16c14`, `0x16fae` validation, `0x17026`/`0x1719c` allocation, and
 `0x1bc38` candidate insertion before the existing `0x14c64` bit-30 resource dispatch,
-plus the `ESC )s2193W` character-object boundary through `0x16498`. Rectangle coverage
-now also has a ROM-table `0x11774` dispatch trace for `ESC *c12a5b0P`, proving the
-parser selects `0x10e68`, `0x10e22`, and `0x10898` before queueing and rendering the
-selector-7 rule object. It also has a parser-to-retry boundary for that same stream: the
+plus the `ESC )s2193W` character-object boundary through `0x16498`. The `ESC )s2193W`
+case now also starts from the modeled `0xa904` ring source, drains the complete
+command/payload stream, replays the same parser handlers, restores the same delayed
+record, and renders the same compact object rows. Rectangle coverage now also has a
+ROM-table `0x11774` dispatch trace for `ESC *c12a5b0P`, proving the parser selects
+`0x10e68`, `0x10e22`, and `0x10898` before queueing and rendering the selector-7 rule
+object. It also has a parser-to-retry boundary for that same stream: the
 `0x10d22` no-room path publishes an existing compact text bucket through `0xff1e`,
 allocates a fresh root through `0x10084`, retries the selector-7 rule object, bridges it
 through `0x1edc6`, and renders the retried rule rows. Page-root allocation coverage is
@@ -748,8 +751,9 @@ inline cases now also have type-2 `0x1719c` payload-backed fixed-record coverage
 current character `0x25`, delayed record restoration through `0x121cc` / `0x12218`,
 descriptor or payload offsets/lengths, `0x15d0a` current/continuation descriptor routes,
 `0x16fae`/`0x1719c` resource-payload allocation, `0x16498` downloaded-pointer
-allocation, and the rendered segmented-wide row. The full built-in scan proves the
-verified ROM resources do not contain a normal wide or non-mode-1 bitmap-entry case.
+allocation, a host-fetched `ESC )s2193W` command/payload stream, and the rendered
+segmented-wide row. The full built-in scan proves the verified ROM resources do not
+contain a normal wide or non-mode-1 bitmap-entry case.
 
 ## Rejected Compositor Lead
 

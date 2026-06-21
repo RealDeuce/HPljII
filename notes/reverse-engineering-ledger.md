@@ -552,9 +552,10 @@ ROM work needed:
   page-band merge now covers compact text, mode-0 raster, and a crossing
   patterned rule across bands `0` and `5`; modeled rectangle fill
   clipping now covers left/right/top/bottom, landscape-edge, and
-  off-page ignore cases.
-- Determine any remaining text, raster, and final device-output clipping
-  behavior exactly.
+  off-page ignore cases; compact mode-0 text now also has current-band
+  and fallback-row coverage through `0x1f414` and `0x7810b4 + D2`.
+- Determine the remaining wide/segmented text, raster edge-case, and
+  final device-output clipping behavior exactly.
 - Identify any banding/compression structures used internally; reproduce
   final pixel result rather than formatter timing.
 

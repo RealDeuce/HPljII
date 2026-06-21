@@ -6470,6 +6470,9 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
                     raise AssertionError(f"unexpected {write.source} write for compact mode-0 fallback glyph")
                 if write.src + write.size > remaining_after_band * render_span:
                     raise AssertionError(f"source read past compact mode-0 fallback bitmap at +0x{write.src:x}")
+            required_fallback = remaining_after_band * dest_stride
+            if required_fallback > len(fallback_dest):
+                fallback_dest.extend(b"\x00" * (required_fallback - len(fallback_dest)))
             write_bitmap_bits(
                 fallback_dest,
                 dest_stride,
@@ -6502,7 +6505,8 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
             "fallback_d2": byte_pair_offset,
         })
         max_width = max(max_width, x + width)
-        max_bottom = max(max_bottom, min(band_rows, row_index + rows_in_band))
+        if rows_in_band:
+            max_bottom = max(max_bottom, row_index + rows_in_band)
         fallback_bottom = max(fallback_bottom, remaining_after_band)
     return {
         "count": count,
@@ -21945,6 +21949,36 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "payload": bytes.fromhex("00 01 20 00 00"),
     }))
     checks.append(assert_equal("compact text bucket object fixture rendered rows", compact_mode0["rows"], line_printer_glyph32_rows))
+    compact_mode0_split = render_compact_text_bucket_object(
+        data,
+        resources,
+        (0x440946B4,),
+        bytes.fromhex("00 00 00 00 00 00 00 01 20 c0 01"),
+        band_rows=16,
+    )
+    checks.append(assert_equal("0x1f034 compact text splits current band and fallback rows", {
+        "split": compact_mode0_split["splits"],
+        "rows": compact_mode0_split["rows"],
+        "fallback_rows": compact_mode0_split["fallback_rows"],
+    }, {
+        "split": [{
+            "glyph": 0x20,
+            "coord": 0xC001,
+            "row_index": 12,
+            "rows": 22,
+            "rows_in_band": 4,
+            "remaining_after_band": 18,
+            "fallback_d2": 2,
+        }],
+        "rows": ["." * 20] * 12 + [
+            f"................{row}"
+            for row in line_printer_glyph32_rows[:4]
+        ],
+        "fallback_rows": [
+            f"................{row}"
+            for row in line_printer_glyph32_rows[4:]
+        ],
+    }))
     page_record_short_rendered = render_compact_text_bucket_object(data, resources, (0x440946B4,), bytes(page_record_chain[0]))
     checks.append(assert_equal("0x1387c page-record queued short object renders reused entries", {
         "rendered": {key: page_record_short_rendered[key] for key in ("selector", "context_slot", "count", "rendered", "payload")},
@@ -29872,6 +29906,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "target": 0x01EFFE,
         "context_slot": 0,
     }
+    direct_page_record_expected_rows = {
+        name: case["rendered"]["rows"]
+        for name, case in direct_page_record_cases.items()
+    }
+    direct_page_record_expected_rows["cursor_row"] = expected_vertical_cursor_position_rows[:16]
     checks.append(assert_equal("host-fetched direct text/control streams feed 0x1ed84 and 0x1ef6a", {
         name: {
             "fetched_stream": direct_page_record_fetches[name]["stream"],
@@ -29923,9 +29962,48 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
             "dispatch_entries": [direct_page_record_dispatch_entry],
             "bucket_rendered_count": 1,
-            "rows": case["rendered"]["rows"],
+            "rows": direct_page_record_expected_rows[name],
         }
         for name, case in direct_page_record_cases.items()
+    }))
+    cursor_row_rendered = direct_page_record_render_entries["cursor_row"]["entry"]["bucket_rendered"][0]["rendered"]
+    checks.append(assert_equal("host-fetched cursor-row compact text splits at 0x783a20 boundary", {
+        "bucket_word": direct_page_record_render_entries["cursor_row"]["entry"]["band_word"],
+        "setup": {
+            key: direct_page_record_render_entries["cursor_row"]["entry"]["setup"][key]
+            for key in (
+                "remainder_783a22",
+                "band_rows_scaled_783a20",
+                "destination_base_783a28",
+            )
+        },
+        "split": cursor_row_rendered["splits"],
+        "rows": cursor_row_rendered["rows"],
+        "fallback_rows": cursor_row_rendered["fallback_rows"],
+    }, {
+        "bucket_word": 4,
+        "setup": {
+            "remainder_783a22": 4,
+            "band_rows_scaled_783a20": 16,
+            "destination_base_783a28": 0x00102000,
+        },
+        "split": [{
+            "glyph": 0x20,
+            "coord": 0x1001,
+            "row_index": 1,
+            "rows": 22,
+            "rows_in_band": 15,
+            "remaining_after_band": 7,
+            "fallback_d2": 2,
+        }],
+        "rows": ["." * 20] + [
+            f"................{row}"
+            for row in line_printer_glyph32_rows[:15]
+        ],
+        "fallback_rows": [
+            f"................{row}"
+            for row in line_printer_glyph32_rows[15:]
+        ],
     }))
     text_rectangle_state = control_fixture_state(
         cursor_x=pack12(10),
@@ -32635,7 +32713,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## Compact Text Bucket Fixture")
     lines.append("")
-    lines.append("This fixture starts with the base built-in character map that `0x14d9c` creates for `LINE_PRINTER`: host byte `0x21` maps to glyph byte `0x20`. The `0x1393a` source-object model records context `0x440946b4`, glyph entry `0x015330`, flag `1`, `x=0`, `y=0`, and context slot `0`; the `0x12f2e` producer model then emits the short compact text bucket consumed by renderer `0x1effe` / `0x1f034`. The render band is still synthetic and unclipped, but the compact object bytes now come from the modeled source fields rather than a hand-written glyph/coordinate pair.")
+    lines.append("This fixture starts with the base built-in character map that `0x14d9c` creates for `LINE_PRINTER`: host byte `0x21` maps to glyph byte `0x20`. The `0x1393a` source-object model records context `0x440946b4`, glyph entry `0x015330`, flag `1`, `x=0`, `y=0`, and context slot `0`; the `0x12f2e` producer model then emits the short compact text bucket consumed by renderer `0x1effe` / `0x1f034`. The compact object bytes now come from the modeled source fields rather than a hand-written glyph/coordinate pair, and a mode-0 split fixture drives `0x1f414`-style current-band rows plus continuation rows through the `0x7810b4 + D2` fallback buffer.")
     lines.append("")
     lines.append(f"- base map: host `0x{text_source['host_char']:02x}` -> glyph `0x{text_source['mapped']:02x}`")
     lines.append(f"- symbol-set stream events: `{symbol_stream['stream_events']}`")
@@ -33553,7 +33631,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("The publication-boundary fixture ties those parser handler sequences to the modeled page-record side for the same four byte streams: each allocates one root on printable `!`, publishes one compact bucket through `0xff1e`, clears the current root, and renders the published rows after the `0x1edc6` bridge.")
     lines.append("A host-fetch publication fixture now starts those same reset, FF, page-size, and orientation streams from the modeled `0xa904` ring source, drains all input bytes from the ring, replays the same parser handlers, and lands on the same published compact rows.")
     lines.append("The published-record render-entry fixture then carries each of those four `0xff1e` records through `0x1ed84` active-record copy and the `0x1ef6a` call order, selecting the compact bucket through `0x1efc2` and rendering the same rows.")
-    lines.append("A host-fetched direct text/control fixture now starts the plain, CR/LF, HT/BS, margin, cursor-position, vertical-layout, and cursor-stack page-record streams from the modeled `0xa904` ring source, drains every byte, replays the same parser handlers, and lands on the same `0x1387c` page-record objects and rendered row counts.")
+    lines.append("A host-fetched direct text/control fixture now starts the plain, CR/LF, HT/BS, margin, cursor-position, vertical-layout, and cursor-stack page-record streams from the modeled `0xa904` ring source, drains every byte, replays the same parser handlers, and lands on the same `0x1387c` page-record objects. The cursor-row case now also carries the nonzero bucket word through `0x1ef86`, clips compact text to `0x783a20 = 16` current-band rows, and records the continuation rows in the fallback buffer.")
     lines.append("The same direct page-record group now crosses `0x1ed84` active-record copy and the `0x1ef6a` render-entry call order, including nonzero bucket selection for the vertical cursor/layout cases.")
     lines.append("A host-fetched text-plus-rectangle fixture now drains `! ESC *c12a5b0P`, queues the compact text bucket and selector-7 rule in the same page record, and carries that combined bucket/rule record through `0x1ed84` and `0x1ef6a`.")
     lines.append("A host-fetched text-plus-rectangle-plus-raster fixture now drains `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W` through the same mixed page-record stream runner. That runner queues compact text, the selector-7 rule, and the delayed `0x105d0` mode-0 raster transfer in one page record before rendering the combined bucket/rule/raster record through `0x1ed84` and `0x1ef6a`.")

@@ -623,7 +623,9 @@ Compact object mode behavior:
 - `0x00`
   - Target: `0x1f034`
   - Payload entry shape: glyph byte, coordinate word
-  - Current behavior: renders each glyph through table `0x1f08e`
+  - Current behavior: renders each glyph through table `0x1f08e`, with
+    `0x1f414` splitting the row count at `0x783a20` and continuation rows
+    written through the `0x7810b4 + D2` fallback buffer
 - `0x10`
   - Target: `0x1f0d2`
   - Payload entry shape: glyph byte, coordinate word
@@ -700,7 +702,7 @@ macro/data-chain, direct-control, reset, text, rule, raster, bridge,
 row-copy, built-in glyph, symbol-set, and downloaded-font fixture
 families into one ROM-backed self-test. It emits
 `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently
-verifies 359 checks. The raster coverage now includes ROM-table
+verifies 365 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` /
 `ESC *b4W` stream, the 150/100/75-dpi mode streams, the consecutive-row
 `ESC *b2W` stream, the active-resolution-ignore `ESC *t75R` stream, the
@@ -897,6 +899,10 @@ through `0x1ed84` and `0x1ef6a` with the same rows.
 A `0x1ef6a` page-band walker now also merges compact text, mode-0
 raster, and a crossing patterned rule across bands `0` and `5`, carrying
 the mutated rule node into the second band.
+The direct compact text path now includes a mode-0 band split fixture, and
+the host-fetched `ESC &a1R!` cursor-row page-record stream carries bucket
+word `4` through `0x1ef86`, yielding `0x783a20 = 16`, current-band compact
+rows, and fallback continuation rows.
 
 Raster coverage now has a named flow report plus ROM-table `0x11774` dispatch
 traces for the primary, 150/100/75-dpi, consecutive-row, capped/drained,

@@ -2467,6 +2467,7 @@ def symbol_set_state(**overrides: object) -> dict[str, object]:
         "context_install_events": [],
         "candidate_refresh_calls": [],
         "transient_context_refresh_78298f": 0,
+        "font_id_select_flag_78287b": 0,
         "dirty_flag": 0,
         "dirty_maps": 0,
         "refreshes": 0,
@@ -2644,11 +2645,14 @@ def apply_symbol_set_stream_via_120be_1be22(state: dict[str, object], stream: by
         kind = "symbol-set"
         handler_target = 0x01C0A4
         word = provisional_word
+        font_id_call = None
         if final == ord("X"):
             kind = "font-id"
             handler_target = 0x01C066
             word = previous_word
-            state["font_id_calls"].append({"slot": slot, "font_id": abs(int(parameter)), "handler": 0x017708})
+            state["font_id_select_flag_78287b"] = 1
+            font_id_call = {"slot": slot, "font_id": abs(int(parameter)), "handler": 0x017708}
+            state["font_id_calls"].append(font_id_call)
         elif final == ord("@"):
             selector = abs(int(parameter))
             if selector == 0:
@@ -2674,6 +2678,8 @@ def apply_symbol_set_stream_via_120be_1be22(state: dict[str, object], stream: by
         requested[slot] = word
         state["dirty_flag"] = 2 if final == ord("X") else 1
         state["dirty_maps"] = 1
+        dirty_before_refresh = int(state["dirty_flag"])
+        dirty_maps_before_refresh = int(state["dirty_maps"])
         refresh_symbol_state_via_c580(state, slot)
         event = {
             "sequence": stream[start:pos],
@@ -2685,6 +2691,9 @@ def apply_symbol_set_stream_via_120be_1be22(state: dict[str, object], stream: by
             "parameter": parameter,
             "final": final,
             "kind": kind,
+            "dirty_before_refresh": dirty_before_refresh,
+            "dirty_maps_before_refresh": dirty_maps_before_refresh,
+            "font_id_call": font_id_call,
             "previous_word": previous_word,
             "provisional_word": provisional_word,
             "requested_word": word,
@@ -16952,6 +16961,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "parameter": 2,
                 "final": ord("U"),
                 "kind": "symbol-set",
+                "dirty_before_refresh": 1,
+                "dirty_maps_before_refresh": 1,
+                "font_id_call": None,
                 "previous_word": 0x0115,
                 "provisional_word": 0x0055,
                 "requested_word": 0x0055,
@@ -16968,6 +16980,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "parameter": 0,
                 "final": ord("E"),
                 "kind": "symbol-set",
+                "dirty_before_refresh": 1,
+                "dirty_maps_before_refresh": 1,
+                "font_id_call": None,
                 "previous_word": 0x0115,
                 "provisional_word": 0x0005,
                 "requested_word": 0x0005,
@@ -18771,6 +18786,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "remembered_symbols": symbol_special_stream["remembered_symbols"],
         "refreshes": symbol_special_stream["refreshes"],
         "font_id_calls": symbol_special_stream["font_id_calls"],
+        "font_id_select_flag_78287b": symbol_special_stream["font_id_select_flag_78287b"],
         "final_mode": symbol_special_dispatch_trace["final_mode"],
     }, {
         "stream": b"\x1b(7X\x1b)0@\x1b(1@\x1b)2@\x1b(3@\x1b)3@",
@@ -18804,6 +18820,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "parameter": 7,
                 "final": ord("X"),
                 "kind": "font-id",
+                "dirty_before_refresh": 2,
+                "dirty_maps_before_refresh": 1,
+                "font_id_call": {"slot": 0, "font_id": 7, "handler": 0x017708},
                 "previous_word": 0x0055,
                 "provisional_word": 0x00F8,
                 "requested_word": 0x0055,
@@ -18820,6 +18839,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "parameter": 0,
                 "final": ord("@"),
                 "kind": "default-table-slot",
+                "dirty_before_refresh": 1,
+                "dirty_maps_before_refresh": 1,
+                "font_id_call": None,
                 "previous_word": 0x0005,
                 "provisional_word": 0x0000,
                 "requested_word": 0x0005,
@@ -18836,6 +18858,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "parameter": 1,
                 "final": ord("@"),
                 "kind": "default-table-primary",
+                "dirty_before_refresh": 1,
+                "dirty_maps_before_refresh": 1,
+                "font_id_call": None,
                 "previous_word": 0x0055,
                 "provisional_word": 0x0020,
                 "requested_word": 0x0055,
@@ -18852,6 +18877,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "parameter": 2,
                 "final": ord("@"),
                 "kind": "copy-primary-symbol",
+                "dirty_before_refresh": 1,
+                "dirty_maps_before_refresh": 1,
+                "font_id_call": None,
                 "previous_word": 0x0005,
                 "provisional_word": 0x0040,
                 "requested_word": 0x0055,
@@ -18868,6 +18896,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "parameter": 3,
                 "final": ord("@"),
                 "kind": "default-font",
+                "dirty_before_refresh": 1,
+                "dirty_maps_before_refresh": 1,
+                "font_id_call": None,
                 "previous_word": 0x0055,
                 "provisional_word": 0x0060,
                 "requested_word": 0x02C1,
@@ -18884,6 +18915,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "parameter": 3,
                 "final": ord("@"),
                 "kind": "default-font",
+                "dirty_before_refresh": 1,
+                "dirty_maps_before_refresh": 1,
+                "font_id_call": None,
                 "previous_word": 0x0055,
                 "provisional_word": 0x0060,
                 "requested_word": 0x02C1,
@@ -18896,6 +18930,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "remembered_symbols": [0x02C1, 0x02C1],
         "refreshes": 6,
         "font_id_calls": [{"slot": 0, "font_id": 7, "handler": 0x017708}],
+        "font_id_select_flag_78287b": 1,
         "final_mode": 0,
     }))
     text_source = build_text_source_object_from_1393a(resources, 0x440946B4, 0x21, x=0, y=0, context_slot=0)
@@ -35998,7 +36033,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         default_candidate_fallback_builtin["source"],
         default_candidate_fallback_inline["source"],
     ))
-    lines.append("- symbol-set special-case parser boundary: stream `1b 28 37 58 1b 29 30 40 1b 28 31 40 1b 29 32 40 1b 28 33 40 1b 29 33 40` routes final `X` and `@` through terminal handler `0x120be`; the model keeps the previous requested word while calling font-id helper `0x17708` for `X`, reads the `0x1ac0a` default-symbol table for `@0`/`@1`, copies primary to secondary for `@2`, and uses the current-candidate default-font word for `@3`, ending with active words `0x%04x` / `0x%04x`." % (
+    lines.append("- symbol-set special-case parser boundary: stream `1b 28 37 58 1b 29 30 40 1b 28 31 40 1b 29 32 40 1b 28 33 40 1b 29 33 40` routes final `X` and `@` through terminal handler `0x120be`; the model keeps the previous requested word while calling font-id helper `0x17708` for `X`, sets `0x78287b`, enters `0xc580` with dirty flag `2`, reads the `0x1ac0a` default-symbol table for `@0`/`@1`, copies primary to secondary for `@2`, and uses the current-candidate default-font word for `@3`, ending with active words `0x%04x` / `0x%04x`." % (
         symbol_special_stream["active_symbols"][0],
         symbol_special_stream["active_symbols"][1],
     ))

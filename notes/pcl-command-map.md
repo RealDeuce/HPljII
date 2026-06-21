@@ -374,6 +374,12 @@ active selected words later consumed by glyph-map patching are `0x783144`
 and `0x783146`; this path is detailed in
 `generated/analysis/ic30_ic13_active_symbol_set_flow.md`.
 
+The `ESC (7X` special-case fixture now exposes the upstream split before
+common refresh: final `X` restores the previous requested word, sets
+`0x78287b`, calls `0x17708(slot, parameter)`, and enters `0xc580` with
+dirty flag `0x782f2c = 2`; normal symbol-set finals and final-`@`
+subtable paths enter `0xc580` with dirty flag `1`.
+
 The harness now pins six concrete common-refresh outcomes from `0xc580`.
 With dirty flag `0x782f2c = 1`, parser/setup slot `D5 = 0`, current
 selector `0x782f06 = 0`, a present page root, and no live page-root font

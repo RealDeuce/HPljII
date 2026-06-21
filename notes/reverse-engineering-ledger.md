@@ -374,8 +374,10 @@ text object glyph index bytes are mapped before queuing by `0x1393a` and
 initialized by `0x14d9c` / `0x14e24` / `0x14f16`; `0x1be22` computes
 normal PCL symbol words from host `ESC (` / `ESC )` commands, handles
 `X` as font-ID selection through `0x17708`, handles `@` through a
-default-font/table subdispatch backed by `0x782f1c/20/24/28`, `0x1ac0a`
-and `0x1af36` table-builder writes are harness-pinned for
+default-font/table subdispatch backed by `0x782f1c/20/24/28`, exposes
+final `X` as dirty flag `2` with `0x78287b` set while normal/default
+symbol paths are dirty flag `1`, `0x1ac0a` and `0x1af36` table-builder
+writes are harness-pinned for
 default/fallback symbol words, `0x1ad66` list/range/fallback
 candidate-search control flow and `0x1bbfe` / `0x1b060` record-field
 helper behavior are harness-pinned, `0x156de` selects active words and

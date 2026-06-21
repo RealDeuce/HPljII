@@ -258,9 +258,13 @@ normal printable stream fixtures for host byte `0x21` (`!`) through `0x1393a` /
 `0xd04a` events to one root allocation, bucket-0 reuse, bridge, and rendered
 rows, a mixed `ESC &k1G!\r!` fixture that queues the post-CR glyph at coord
 `0x3b00`, shows full-byte shifted blank-row clearing, and has a parser-traced
-page-record allocator/bridge variant, a mixed `!\x1bE` fixture that publishes
-and clears a valid current page root after queued text and has a page-record
-allocator/bridge/publication variant, selected inline/downloaded
+page-record allocator/bridge variant, a grouped host-fetched direct text/control
+fixture tying the plain, CR/LF, HT/BS, margin, cursor-position,
+vertical-layout, and cursor-stack page-record streams to modeled `0xa904` ring
+fetch, parser handlers, object prefixes, and rendered row counts, a mixed
+`!\x1bE` fixture that publishes and clears a valid current page root after
+queued text and has a page-record allocator/bridge/publication variant, selected
+inline/downloaded
 `0x14e24`/`0x14eb6` map and `0x1393a` source-object fixture plus type-2
 payload-backed `0x1f0d2`/`0x1f1f0`, selected-memory `0x1f264` isolation, and
 `0x16498` downloaded-pointer `0x1f264` render fixtures, `0x168dc`/`0x16942` font
@@ -451,13 +455,14 @@ ROM work needed:
 - Broaden the documented printable and inline/downloaded `0x1393a` / `0xd824` /
   `0xd3b2` / `0xd550` / `0x12f2e` text-object glyph-index fixtures into real
   font-download parser records, real HMI/font metrics, glyph indices, and
-  parser-produced page objects, building on the current plain `!!`, mixed `ESC
-  &k1G!\r!`, LF-positioned `ESC &k2G!\n!`, HT/BS-positioned `ESC &k0G HT BS !`,
-  left/right-margin-positioned `ESC &a1L!` / `ESC &a1M!`, lowercase-chained
-  margin-positioned `ESC &a6l9M!`, horizontal-column, horizontal-decipoint,
-  vertical-row, vertical-decipoint, and lowercase-chained cursor-positioned
-  `ESC &a2C!` / `ESC &a72H!` / `ESC &a1R!` / `ESC &a72V!` /
-  `ESC &a2c+1R!`, and top-margin-positioned `ESC &l3E!`
+  parser-produced page objects, building on the current host-fetched plain `!!`,
+  mixed `ESC &k1G!\r!`, LF-positioned `ESC &k2G!\n!`, HT/BS-positioned
+  `ESC &k0G HT BS !`, left/right-margin-positioned `ESC &a1L!` /
+  `ESC &a1M!`, lowercase-chained margin-positioned `ESC &a6l9M!`,
+  horizontal-column, horizontal-decipoint, vertical-row, vertical-decipoint, and
+  lowercase-chained cursor-positioned `ESC &a2C!` / `ESC &a72H!` /
+  `ESC &a1R!` / `ESC &a72V!` / `ESC &a2c+1R!`, top-margin-positioned
+  `ESC &l3E!`, and cursor-stack `ESC &f0S ESC &a2C ESC &f1S!`
   parser-to-page-record boundaries.
 - Treat direct `0x78297a` references and pool aliases documented in
   `generated/analysis/ic30_ic13_page_root_references.md` as checked leads; the

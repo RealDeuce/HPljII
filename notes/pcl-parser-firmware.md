@@ -320,10 +320,13 @@ normalization side effects, and includes producer-shaped `0x13386`/`0x136d2`
 rule-list objects. This is still a narrow normal-mode fixture, not a full parser
 state emulator.
 
-The same `ESC &k1G!\r!` stream is now tied back to the ROM parser dispatch path:
-`ESC &k1G` reaches `0xedf8`, the two printable bytes reach `0xd04a`, CR reaches
-`0xf02c`, and the resulting page-record check proves one root allocation,
-bucket-0 reuse, and matching bridged rows.
+The direct text/control page-record streams are now tied back to host fetch as
+well as the ROM parser dispatch path. The grouped host-fetch check drains `!!`,
+`ESC &k1G!\r!`, `ESC &k2G!\n!`, `ESC &k0G HT BS !`, the margin and
+cursor-position streams, `ESC &l3E!`, and `ESC &f0S ESC &a2C ESC &f1S!` from
+the modeled `0xa904` ring source, replays the expected parser handlers, and
+lands on the same page-record allocations, object prefixes, and rendered row
+counts.
 
 Rectangle/rule command edges are now traced in
 `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`. `ESC *c#A/#B/#H/#V`

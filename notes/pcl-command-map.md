@@ -373,9 +373,10 @@ row-copy fixtures are generated in
 `generated/analysis/ic30_ic13_render_row_copy_fixtures.md`;
 `tools/render_fixture_harness.py` executes these primitive fixtures together,
 pins `0xa904` host byte fetch source-priority fixtures plus ring-fed
-host-to-render boundaries for `ESC &k1G!\r!`, the reset/FF/page-size/orientation
-publication streams, and the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W`
-raster stream, pins `0xdaf0`/`0xdb74` tokenizer records, `0x121cc`
+host-to-render boundaries for the direct text/control page-record stream set,
+the reset/FF/page-size/orientation publication streams, and the primary
+`ESC *t300R` / `ESC *r1A` / `ESC *b4W` raster stream, pins `0xdaf0`/`0xdb74`
+tokenizer records, `0x121cc`
 delayed-payload snapshots, and `0x1228a`/`0x12358` alternate payload byte-count
 consumers, pins synthetic direct control-code packed-state behavior for `ESC
 &k#G` plus CR/LF/FF/HT/BS, adds narrow direct-control byte-stream fixtures for
@@ -444,8 +445,11 @@ left/right-margin handlers `0xeb58`/`0xec0c`, chained lowercase-final margin
 handlers `0xeb58`/`0xec0c`, cursor-position handlers
 `0xf39e`/`0xf416`/`0xf560`/`0xf60a`, chained lowercase-final `0xf39e`/`0xf560`,
 and top-margin handler `0xece2` followed by printable `0xd04a`, queueing glyphs
-at compact coords `0x3b00`, `0x0a01`, `0x0801`, `0x0a02`, `0x0207`, `0x0a02`,
-`0x0402`, `0x1001`, `0x9001`, `0x1a02`, and `0x9001`.
+through the page-record allocator at compact coords `0x3b00`, `0x0a01`,
+`0x0801`, `0x0a02`, `0x0207`, `0x0a02`, `0x0402`, `0x1001`, `0x9001`,
+`0x1a02`, and `0x9001`. A grouped host-fetch check now starts that direct
+text/control set from the modeled `0xa904` ring source and proves the same
+parser handlers, bucket indices, object prefixes, and rendered row counts.
 
 The plain printable stream `!!` now has the same kind of check: both bytes route
 through `0xd04a`, the initialized `LINE_PRINTER` HMI places the second glyph at
@@ -472,11 +476,12 @@ single following payload.
 - Feed the executable renderer harness with full parser-produced page-object
   payloads, building on the current one-byte, two-byte, and mixed
   printable/control/reset stream fixtures, plain and mixed control/reset
-  page-record allocator/bridge stream fixtures, host-fetched `ESC &k1G!\r!` and
-  primary raster parser-to-render coverage, parser-to-page-record checks for
-  `!!`, `ESC &k1G!\r!`, `ESC &k2G!\n!`, `ESC &k0G HT BS !`, `ESC &a1L!`, `ESC
-  &a1M!`, `ESC &a6l9M!`, `ESC &a2C!`, `ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`,
-  `ESC &a2c+1R!`, `ESC &l3E!`, simple macro execute replayed `!\r`, and
+  page-record allocator/bridge stream fixtures, host-fetched direct text/control
+  parser-to-page-record coverage for `!!`, `ESC &k1G!\r!`, `ESC &k2G!\n!`,
+  `ESC &k0G HT BS !`, `ESC &a1L!`, `ESC &a1M!`, `ESC &a6l9M!`, `ESC &a2C!`,
+  `ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`, `ESC &a2c+1R!`, `ESC &l3E!`,
+  `ESC &f0S ESC &a2C ESC &f1S!`, primary raster parser-to-render coverage,
+  simple macro execute replayed `!\r`, and
   mixed-control macro execute replayed `ESC &k1G!\r!`, parser-derived `ESC
   *t#R`/`ESC *r#A` raster state fixtures, modeled raster command/data stream
   fixtures for `ESC *t300R`, `ESC *t150R`, `ESC *t100R`, `ESC *t75R`,

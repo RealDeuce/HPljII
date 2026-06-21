@@ -439,7 +439,7 @@ fixed-width list from `+0x20`. It verifies the firmware call order (`0x1ef86`,
 full parser-produced page-root merge is decoded.
 
 Published-record coverage now also takes the reset, FF, page-size, and
-orientation `0xff1e` records from the parser-traced publication fixtures through
+orientation `0xff1e` records from the host-fetched publication fixtures through
 `0x1ed84` and the same `0x1ef6a` call order, proving those byte streams reach
 the compact bucket renderer without hand-built render-record layers.
 

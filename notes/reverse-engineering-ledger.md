@@ -270,7 +270,7 @@ normal printable stream fixtures for host byte `0x21` (`!`) through `0x1393a` /
 0x12` / pixel x `34`, a plain `!!` parser-to-page-record fixture tying two
 `0xd04a` events to one root allocation, bucket-0 reuse, bridge, and rendered
 rows, a mixed `ESC &k1G!\r!` fixture that queues the post-CR glyph at coord
-`0x3b00`, shows full-byte shifted blank-row clearing, and has a parser-traced
+`0x3b00`, shows full-byte shifted blank-row clearing, and has a host-fetched
 page-record allocator/bridge variant, a grouped host-fetched direct text/control
 fixture tying the plain, CR/LF, HT/BS, margin, cursor-position,
 vertical-layout, and cursor-stack page-record streams to modeled `0xa904` ring

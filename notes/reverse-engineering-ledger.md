@@ -111,8 +111,10 @@ its selector-zero target-equal path is anchored through
 through `0x1299c..0x129c4`, and one wrap-hit page-eject path is anchored
 through `0x129c6..0x12af8`, the wrap-no-hit page-eject path is anchored
 through `0x12a22..0x12a78`, and one target-after-text bottom-recovery
-path is anchored through `0x129ee..0x12b5a`; alternate wrap-recovery and
-page-recovery branches remain unresolved;
+path is anchored through `0x129ee..0x12b5a`, while the start-line-zero
+non-publishing target-after-text path is anchored through
+`0x129fc..0x12afc`; alternate wrap-recovery and page-recovery branches
+remain unresolved;
 `ESC &a#L/#M` map to
 `0xeb58`/`0xec0c` and convert HMI margin columns into
 `0x782dd6`/`0x782dda` with reject/clamp/cursor-move cases;
@@ -182,6 +184,12 @@ now ties parser handler `0x1280a`, wrap-no-hit branch
 wrapped search stop at line `3`, cursor reset `x 58 -> 10`, vertical
 move `y 226 -> 126`, and fresh post-recovery printable output at compact
 coord `0x9001`;
+before-top `ESC &l2V!`, with channel 2 only at VFC line `63`, now ties
+parser handler `0x1280a`, normalization `0x128ae..0x128f4`, start-line
+zero target-after-text branch `0x129fc..0x12afc`, skipped publication
+edge `0x12a12..0x12a1e`, helper sequence `0x10084`, `0xf06e`,
+`0xf34a`, cursor move `x 40 -> 10` and `y 89 -> 104`, and following
+printable output at compact coord `0x3001`;
 `!\x1b&l2V!`, with channel 2 at VFC line `63` and a queued printable at y
 `3193`, now ties parser handler `0x1280a`, target-after-text branch
 `0x129ee..0x12b5a`, helper sequence `0x10084`, `0xf34a`, `0xf124`,
@@ -302,8 +310,9 @@ before-top start-line path is anchored through `0x128ae..0x128f4`. The
 wrap-hit page-eject path is anchored through `0x129c6..0x12af8`. The
 wrap-no-hit page-eject path is anchored through `0x12a22..0x12a78` for
 the empty-table fixture. The target-after-text bottom-recovery path is
-anchored through `0x129ee..0x12b5a` for the line-63 fixture. The
-highest-value unresolved middle edges are `0x129fc..0x12a10`,
+anchored through `0x129ee..0x12b5a` for the line-63 fixture, and the
+start-line-zero no-publish variant is anchored through `0x129fc..0x12afc`.
+The highest-value unresolved middle edges are `0x12a02..0x12a10`,
 alternate-entry `0x12a22..0x12a78`, alternate-entry
 `0x12afc..0x12b5a`, and `0x12b5e..0x12b92`.
 

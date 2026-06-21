@@ -215,9 +215,13 @@ publishes the old page at compact coord `0xde02`, writes top-of-form y
 anchors the target-after-text bottom-recovery path through
 `0x129ee..0x12b5a`: it publishes the old page at absolute compact coord
 `0x4e02`, writes recovered y `104`, and queues the following `!` on a
-fresh page at compact coord `0x3001`. The remaining wrap and
-bottom/page-recovery branches are unresolved across exact ranges
-`0x129fc..0x12a10`, alternate-entry `0x12a22..0x12a78`,
+fresh page at compact coord `0x3001`. A before-top `ESC &l2V!` fixture,
+with channel 2 only at line `63`, anchors the non-publishing
+target-after-text path through `0x129fc..0x12afc`: start line `0` skips
+`0x12a12..0x12a1e`, writes recovered y `104`, and queues `!` at compact
+coord `0x3001`. The remaining wrap and bottom/page-recovery branches are
+unresolved across exact ranges `0x12a02..0x12a10`, alternate-entry
+`0x12a22..0x12a78`,
 alternate-entry `0x12afc..0x12b5a`, and `0x12b5e..0x12b92`.
 
 `ESC &l#D` at `0x00c992` accepts absolute LPI values

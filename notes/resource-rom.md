@@ -201,6 +201,15 @@ Example candidate entries from the probe:
   `0x018730`, bitmap `0x01873a`, height `16`, width `16`, render span
   `2`, sample bytes `03 c0 0f f0 38 1c 30 0c`.
 
+`generated/analysis/ic32_ic15_builtin_glyph_payloads.md` and the local
+JSON companion `generated/analysis/ic32_ic15_builtin_glyph_payloads.json`
+now make that probe deterministic for the full verified built-in window.
+The extractor walks all 24 firmware-scanned font records, resolves 5,310
+nonzero offset-table entries, and emits 468,534 bytes of exact mode-1
+bitmap payload data with per-glyph offsets, dimensions, render spans,
+placement offsets, payload hashes, and hex payload bytes. The JSON stays
+under ignored `generated/` output with the interleaved ROMs.
+
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record
 start. The selected context longword now maps directly to concrete
@@ -357,8 +366,9 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    named `COURIER` and `LINE_PRINTER` record. The first-glyph placement
    offsets are now pinned through the `0xd824` path, but the header-level
    baseline semantics still need broader correlation.
-6. Locate the glyph bitmap payloads and write a deterministic extractor
-   from the verified `IC32,IC15` hash.
+6. Render known self-test/font samples from the extracted built-in glyph
+   payloads and correlate the remaining baseline/header fields against
+   observed placement.
 
 These are high-value targets for pixel-perfect output because the
 manuals describe PCL behavior but do not provide the built-in font

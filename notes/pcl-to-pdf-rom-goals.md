@@ -136,5 +136,6 @@ Expected ROM-only unknowns:
 
 - HP 33440 CPU identity and exact address map.
 - ROM package order/interleave.
-- Built-in font raster data and exact metrics.
+- Remaining built-in font baseline/placement semantics beyond the
+  extracted glyph payloads and known metrics.
 - Firmware edge cases and mode interactions not specified by manuals.

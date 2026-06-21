@@ -347,8 +347,8 @@ scan proving no normal wide/segmented bitmap entries, then emits
 
 ### Resource ROM role
 
-Status: Anchored as font/resource source; built-in metadata extraction
-partly named
+Status: Anchored as font/resource source; built-in glyph payload
+extraction deterministic for the verified ROM image
 
 Evidence: `IC32,IC15` contains `HEAD`, HP copyright, `COURIER`,
 `LINE_PRINTER`, dense font tables, and firmware-scanned `0x1f354` glyph
@@ -356,6 +356,9 @@ entries documented in
 `generated/analysis/ic32_ic15_resource_glyph_probe.md`; built-in context
 examples `0x4008004c`, `0x44080418`, and `0x440946b4` resolve to
 concrete glyph entries and bitmaps in `tools/render_fixture_harness.py`;
+`generated/analysis/ic32_ic15_builtin_glyph_payloads.json` now extracts
+5,310 mode-1 glyph payloads, 468,534 payload bytes, and 1,664 unique
+payload hashes from all 24 firmware-scanned built-in records; the
 startup/resource scanner `0x41a` is modeled for the verified built-in
 `HEAD` chain, walking 24 typed records from `0x08004c` through
 `0x0ae122`, terminating at `0x0b2f80`, adjusting the next probe step
@@ -549,11 +552,12 @@ ROM work needed:
   printable stream now drives the installed downloaded glyph into
   segmented page-record buckets and through the `0x1edc6` /
   `0x1ed84` / `0x1ef6a` render boundary.
-- Extract glyph metrics and render a known self-test/font sample.
+- Render a known self-test/font sample from the extracted glyph payloads
+  and correlate remaining baseline/header semantics against placement.
 - Confirm symbol-set mapping for ASCII, Roman-8, line draw, and any
   built-in alternatives.
-- Build extraction scripts that emit deterministic fixture data for the
-  renderer.
+- Promote the generated glyph payload manifest into renderer fixture
+  inputs once the renderer-side data format is chosen.
 
 ## Raster and Final Imaging
 

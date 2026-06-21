@@ -12,6 +12,7 @@ Sources: `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`;
 `generated/analysis/ic30_ic13_direct_control_code_flow.md`;
 `generated/analysis/ic30_ic13_esc_e_reset_flow.md`;
 `generated/analysis/ic30_ic13_parser_dispatch_tables.md`;
+`generated/analysis/ic30_ic13_tokenizer_macro_callers.md`;
 `generated/analysis/ic30_ic13_parser_xrefs.md`;
 `generated/analysis/ic30_ic13_cmpi_byte_candidates.md`.
 
@@ -559,6 +560,24 @@ bytes long:
 These structures need full naming, but they are already concrete enough
 to drive PCL parser fixture work.
 
+## Tokenizer and Macro Dispatch Callers
+
+`generated/analysis/ic30_ic13_tokenizer_macro_callers.md` now pins the
+static caller map requested for parser work. `0xdaf0` has ten direct
+absolute callers: the main parser callback restart at `0x11b28`, four
+stateful helper/callback paths at `0x11bdc`, `0x11c88`, `0x11d64`, and
+`0x11e2a`, four `ESC (` / `ESC )` font-selection wrappers at `0x11fda`,
+`0x11fec`, `0x12014`, and `0x1202a`, and the `ESC &d` handler at
+`0x1262a`.
+
+The same report confirms that `0xdd08` has no direct absolute `JSR`
+callers. It is reached through normal and alternate/data parser table
+entries for mode 17: `ESC &f#x` remains in mode 17, and `ESC &f#X`
+returns to mode 0. That matches the executable macro fixtures where
+normal `ESC &f#Y` sets the macro id through `0xe112`, while `x/X`
+records route to `0xdd08`; the alternate/data table keeps `x/X ->
+0xdd08` but disables the normal macro-id handler.
+
 ## Rejected Lead
 
 The `cmpi.w #0x000c` at `0x0001053a` is not the PCL form-feed handler.
@@ -568,8 +587,8 @@ control-code anchor.
 
 ## Next RE Targets
 
-- Find callers of `0xdaf0` and `0xdd08`, and keep expanding the named
-  roles for the `0xa904` callers listed in
+- Finish classifying the `0xdaf0` stateful helper variants and keep
+  expanding the named roles for the `0xa904` callers listed in
   `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
 - Decode all normal and alternate parser table handlers into PCL command
   names.

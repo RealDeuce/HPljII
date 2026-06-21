@@ -21375,6 +21375,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         page_width=100,
         page_height=80,
     ))
+    host_fetched_rectangle_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(b"\x1b*c12a5b0P"), direct_mode=0),
+        len(b"\x1b*c12a5b0P"),
+    )
+    host_fetched_rectangle_trace = trace_rectangle_parser_dispatch_via_11774(
+        data,
+        host_fetched_rectangle_stream["stream"],
+        rectangle_command_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(20),
+            page_width=100,
+            page_height=80,
+        ),
+    )
     rectangle_stream_rendered = rectangle_stream_black["rendered"]
     assert isinstance(rectangle_stream_rendered, dict)
     checks.append(assert_equal("rectangle command stream queues chained ESC *c rule object", {
@@ -21465,6 +21479,39 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "final": {"width": pack12(12), "height": pack12(5), "fill_selector": 7, "page_roots": 1},
         "bridged": [bytes.fromhex("00 00 00 00 01 17 4a 00 00 0c 00 05 00 05")],
+        "tail_rows": ["." * 22] + ["." * 10 + "#" * 12] * 5,
+    }))
+    checks.append(assert_equal("host-fetched rectangle rule stream preserves 0x1edc6 bridge contract", {
+        "fetched_stream": host_fetched_rectangle_stream["stream"],
+        "fetch_sources": host_fetched_rectangle_stream["sources"],
+        "remaining_ring": host_fetched_rectangle_stream["state"]["ring"],
+        "parser_handlers": [
+            event["handler"]
+            for event in host_fetched_rectangle_trace["dispatches"]
+        ],
+        "parser_final_mode": host_fetched_rectangle_trace["final_mode"],
+        "rule_object": host_fetched_rectangle_trace["commands"][-1]["state_events"][0]["object"],
+        "bridged_rule": host_fetched_rectangle_trace["bridged"]["rule_list"][0],
+        "render_field_rule_matches_bridge": (
+            host_fetched_rectangle_trace["bridged"]["render_record_fields"]["rule_list_1c"][0]
+            == host_fetched_rectangle_trace["bridged"]["rule_list"][0]
+        ),
+        "bucket_root": host_fetched_rectangle_trace["bridged"]["bucket_root"],
+        "fixed_list_count": len(host_fetched_rectangle_trace["bridged"]["fixed_list"]),
+        "context_slots_prefix": host_fetched_rectangle_trace["bridged"]["context_slots"][:2],
+        "tail_rows": host_fetched_rectangle_trace["rendered"]["rows"][19:],
+    }, {
+        "fetched_stream": b"\x1b*c12a5b0P",
+        "fetch_sources": ["ring"] * len(b"\x1b*c12a5b0P"),
+        "remaining_ring": [],
+        "parser_handlers": [0x011EB6, 0x011EC8, 0x011EDA, 0x010E68, 0x010E22, 0x010898],
+        "parser_final_mode": 0,
+        "rule_object": bytes.fromhex("00 00 00 00 01 07 4a 00 00 0c 00 05 00 00"),
+        "bridged_rule": bytes.fromhex("00 00 00 00 01 17 4a 00 00 0c 00 05 00 05"),
+        "render_field_rule_matches_bridge": True,
+        "bucket_root": None,
+        "fixed_list_count": 0,
+        "context_slots_prefix": (0, 0),
         "tail_rows": ["." * 22] + ["." * 10 + "#" * 12] * 5,
     }))
     checks.append(assert_equal("0x1f446/0x1f596 renders solid black rectangle rule pixels", {

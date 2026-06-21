@@ -200,7 +200,9 @@ stores absolute nonzero area-fill id `0x78316e`; missing or zero clears it. A
 chained `ESC *c12a5b0P` byte-stream fixture now queues the same black selector-7
 rule object as the modeled command state, and the harness traces the same stream
 through ROM parser modes `0 -> 1 -> 3 -> 16 -> 16 -> 16 -> 0` to handlers
-`0x10e68`, `0x10e22`, and `0x10898`. `ESC *c#P` maps black rule, gray-scale, and
+`0x10e68`, `0x10e22`, and `0x10898`; the stream now also drains from modeled
+`0xa904` ring fetch before pinning the `0x1edc6` rule-list bridge contract.
+`ESC *c#P` maps black rule, gray-scale, and
 HP-pattern selectors, clips the current-cursor rectangle against page extents,
 and queues a 14-byte rule-list object through `0x13386` / `0x133aa`; the black
 selector-7 path is rendered through `0x1f446` / `0x1f596`, including a

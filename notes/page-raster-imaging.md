@@ -664,7 +664,7 @@ fetch, tokenizer/delayed-payload, page-geometry, macro/data-chain,
 direct-control, reset, text, rule, raster, bridge, row-copy, built-in glyph,
 symbol-set, and downloaded-font fixture families into one ROM-backed self-test.
 It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and
-currently verifies 349 checks. The raster coverage now includes ROM-table
+currently verifies 350 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W`
 stream, the 150/100/75-dpi mode streams, the consecutive-row `ESC *b2W` stream,
 the active-resolution-ignore `ESC *t75R` stream, the end-raster `ESC *rB` /
@@ -731,7 +731,9 @@ same parser handlers, restores the same delayed record, and renders the same
 compact object rows. Rectangle coverage now also has a ROM-table `0x11774`
 dispatch trace for `ESC *c12a5b0P`, proving the parser selects `0x10e68`,
 `0x10e22`, and `0x10898` before queueing and rendering the selector-7 rule
-object. It also has a parser-to-retry boundary for that same stream: the
+object. That same rectangle stream now starts from the modeled `0xa904` ring
+source and pins the `0x1edc6` rule-list bridge contract before solid rendering.
+It also has a parser-to-retry boundary for that same stream: the
 `0x10d22` no-room path publishes an existing compact text bucket through
 `0xff1e`, allocates a fresh root through `0x10084`, retries the selector-7 rule
 object, bridges it through `0x1edc6`, and renders the retried rule rows.

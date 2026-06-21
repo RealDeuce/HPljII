@@ -131,6 +131,7 @@ macros; `generated/analysis/ic30_ic13_rectangle_graphics_flow.md` decodes `ESC
 *c#A/#B/#H/#V/#G/#P` into rectangle size, area-fill id, selector mapping,
 clipping, `0x13386` rule-list queueing, including a chained `ESC *c12a5b0P`
 byte-stream fixture and ROM parser dispatch trace for selector-7 rule creation,
+modeled `0xa904` ring fetch and `0x1edc6` rule-list bridge coverage,
 selector-7 solid rendering and band-crossing continuation through `0x1f446` /
 `0x1f596`, gray selectors `0..6`, HP pattern selectors `8..13`, sub-byte
 shifted, band-crossing, and two-band page-assembly HP-pattern cases rendering

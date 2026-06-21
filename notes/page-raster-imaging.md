@@ -623,7 +623,7 @@ The executable harness `tools/render_fixture_harness.py` combines the host-byte 
 tokenizer/delayed-payload, page-geometry, macro/data-chain, direct-control, reset, text,
 rule, raster, bridge, row-copy, built-in glyph, symbol-set, and downloaded-font fixture
 families into one ROM-backed self-test. It emits
-`generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently verifies 315
+`generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently verifies 316
 checks. The raster coverage now includes ROM-table `0x11774` dispatch traces for the
 primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W` stream, the 150/100/75-dpi mode streams,
 the consecutive-row `ESC *b2W` stream, the active-resolution-ignore `ESC *t75R` stream,
@@ -715,7 +715,10 @@ page-size dispatch to `0xfc74`, and orientation dispatch to `0x10220` before the
 page-record publication fixtures run; the publication-boundary fixture ties those same
 streams to one root allocation, one `0xff1e` publication, current-root clearing,
 rendered rows after `0x1edc6`, and the same rows after the published records pass
-through `0x1ed84` and `0x1ef6a`. Macro coverage now has the same ROM-table proof for
+through `0x1ed84` and `0x1ef6a`; the host-fetch publication fixture now starts those
+same four streams from the modeled `0xa904` ring source, drains the ring bytes, replays
+the same parser handlers, and lands on the same published rows. Macro coverage now has
+the same ROM-table proof for
 `ESC &f-123y0x1X`, walking modes `0 -> 1 -> 5 -> 17 -> 17 -> 17 -> 0` to handlers
 `0xe112`, `0xdd08`, and `0xdd08` before applying the modeled macro state effects; a
 second macro-definition trace proves alternate table `0x116f6` leaves payload bytes

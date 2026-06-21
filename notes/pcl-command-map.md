@@ -341,9 +341,10 @@ compact glyph row-copy fixtures are generated in
 `generated/analysis/ic30_ic13_render_row_copy_fixtures.md`;
 `tools/render_fixture_harness.py` executes these primitive fixtures together, pins
 `0xa904` host byte fetch source-priority fixtures plus ring-fed host-to-render
-boundaries for `ESC &k1G!\r!` and the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W`
-raster stream, pins `0xdaf0`/`0xdb74` tokenizer records, `0x121cc` delayed-payload
-snapshots, and `0x1228a`/`0x12358` alternate payload byte-count consumers, pins
+boundaries for `ESC &k1G!\r!`, the reset/FF/page-size/orientation publication streams,
+and the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W` raster stream, pins
+`0xdaf0`/`0xdb74` tokenizer records, `0x121cc` delayed-payload snapshots, and
+`0x1228a`/`0x12358` alternate payload byte-count consumers, pins
 synthetic direct control-code packed-state behavior for `ESC &k#G` plus CR/LF/FF/HT/BS,
 adds narrow direct-control byte-stream fixtures for `ESC &k1G`+CR, `ESC &k2G`+LF, `ESC
 &k2G`+FF, `ESC &k3G`+CR/LF/FF, `ESC &k0G`+HT/BS, `ESC &f0S`/`ESC &f1S`, chained `ESC

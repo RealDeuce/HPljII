@@ -198,9 +198,11 @@ fixtures are generated in `generated/analysis/ic30_ic13_render_destination_fixtu
 compact glyph row-copy fixtures are generated in
 `generated/analysis/ic30_ic13_render_row_copy_fixtures.md`;
 `tools/render_fixture_harness.py` executes those primitive models plus `0xa904` host
-byte fetch source-priority fixtures, real built-in glyph-resource resolutions, full
-decoded mode-1 glyph-row fixtures, main `0x1f08e` row-copy rendering for four named
-glyphs plus a ROM-scanned render-span matrix covering spans 1, 2, 4, 6, and 8, one
+byte fetch source-priority fixtures, ring-fed reset/FF/page-size/orientation publication
+streams through parser handlers and published rows, real built-in glyph-resource
+resolutions, full decoded mode-1 glyph-row fixtures, main `0x1f08e` row-copy rendering
+for four named glyphs plus a ROM-scanned render-span matrix covering spans 1, 2, 4, 6,
+and 8, one
 symbol-set stream/map fixture for `ESC (2U` / `ESC )0E` through ROM parser setup
 handlers `0x1201e`/`0x12008`, terminal handler `0x120be`, `0x1be22`, `0xc580`, and
 `0x14f16`, one producer-modeled short text bucket object from `0x14d9c` base-map through

@@ -210,13 +210,15 @@ The transfer routine at `0x0105d0`:
 - calls `0x13070` with the raster state block when row data is in bounds;
 - advances current cursor state after the row transfer and clamps against `0x782dc6`.
 
-The executable harness now pins three `0x105d0` gate cases before the `0x13070` queue call: a row
-beyond the page extent drains the full parsed byte count without queueing, a negative row drains the
-full parsed byte count without queueing, and a byte count larger than raster field `+0x10` ensures
-the modeled page root through `0x10084`, stores the capped count in `+4` and the overflow count in
-`+6`, then queues only the capped bytes. The parser-restored `ESC *b4W` stream now also proves the
-off-page row-counter distinction: beyond-extent rows do not advance `row_y`, while a negative row
-drains the payload and advances `row_y` from `-1` to `0`.
+The executable harness now pins four `0x105d0` gate cases before the `0x13070` queue call: a row at
+the inclusive page extent still queues and renders before advancing to the next row, a row beyond
+the page extent drains the full parsed byte count without queueing, a negative row drains the full
+parsed byte count without queueing, and a byte count larger than raster field `+0x10` ensures the
+modeled page root through `0x10084`, stores the capped count in `+4` and the overflow count in `+6`,
+then queues only the capped bytes. The parser-restored `ESC *b4W` stream now also proves the
+off-page row-counter distinction: `row_y == page_extent` queues and advances to `page_extent + 1`,
+beyond-extent rows do not advance `row_y`, and a negative row drains the payload and advances
+`row_y` from `-1` to `0`.
 
 ## Page Object Queues
 
@@ -584,13 +586,14 @@ The executable harness `tools/render_fixture_harness.py` combines the host-byte 
 tokenizer/delayed-payload, page-geometry, macro/data-chain, direct-control, reset, text, rule,
 raster, bridge, row-copy, built-in glyph, symbol-set, and downloaded-font fixture families into one
 ROM-backed self-test. It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and
-currently verifies 312 checks. The raster coverage now includes ROM-table `0x11774` dispatch traces
+currently verifies 313 checks. The raster coverage now includes ROM-table `0x11774` dispatch traces
 for the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W` stream, the 150/100/75-dpi mode streams, the
 consecutive-row `ESC *b2W` stream, and the chained `ESC *b2w2W` delayed-transfer stream, modeled
 delayed `0x121cc` / `0x12218` transfer records, command/data-stream transfer events routed through
-the modeled `0x105d0` gate including capped-byte, beyond-extent
-drain-without-queue/no-row-advance, negative-row drain-with-advance, and `0xdace` control-byte
-normalization cases before queueing, page-record queue/bridge/render checks for modes 0..3,
+the modeled `0x105d0` gate including capped-byte, inclusive page-extent queue-and-advance,
+beyond-extent drain-without-queue/no-row-advance, negative-row drain-with-advance, and `0xdace`
+control-byte normalization cases before queueing, page-record queue/bridge/render checks for modes
+0..3,
 render-band setup coverage for `0x1ef86`, render-entry call-order coverage for `0x1ef6a`,
 published-record render-entry coverage through `0x1ed84`/`0x1ef6a`, bucket-chain dispatcher coverage
 for `0x1efc2`, segment-list rendering coverage for `0x1f812`, fixed-width list coverage for
@@ -601,9 +604,9 @@ object, bridge, rendered row, and row counter, and now also ties the same bytes 
 modeled `0xa904` ring source to the queued object/bridge/rendered row; the 150/100/75-dpi streams
 now tie the same parser handlers, restored `0x105d0` records, payload offsets, queued objects, and
 rendered expansion rows to modes 1/2/3; the `ESC *t300R` / `ESC *r0A` / `ESC *b4W` edge stream ties
-the parser/restore path to capped queueing, beyond-extent drain/no-row-advance, and negative-row
-drain-with-advance transfer-gate
-outcomes; the consecutive-row `ESC *b2W` stream ties two restored `80 57 00 02 00 00` records to
+the parser/restore path to capped queueing, inclusive page-extent queue-and-advance,
+beyond-extent drain/no-row-advance, and negative-row drain-with-advance transfer-gate outcomes; the
+consecutive-row `ESC *b2W` stream ties two restored `80 57 00 02 00 00` records to
 payload offsets `17` and `24`, queued coords `0x0000` and `0x1000`, and final row_y `2`; and the
 chained `ESC *b2w2W` stream proves uppercase `W` restores the lowercase `80 77 00 02 00 00` delayed
 record before consuming the payload. Symbol-set coverage now traces `ESC (2U` / `ESC )0E` through

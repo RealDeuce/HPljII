@@ -401,8 +401,8 @@ triggers the `0x12218` restore and the single following payload.
 - Broaden the narrow direct-control byte-stream fixtures into the full firmware parser path, then
   compare those against page size, orientation, and raster behavior to finish naming `0x782c8a` and
   `0x782c8e`.
-- Compare page geometry constants from `generated/analysis/ic30_ic13_page_geometry_tables.md`
-  against manual printable-area figures.
+- Use the now-matched ROM/manual logical page dimensions as the baseline for remaining
+  printable-area and self-test placement checks.
 - Trace font handler stubs `0x012046..0x0120aa` into built-in resource ROM font selection and
   metrics lookup.
 - Replace the modeled default-font candidate records with a live parser/font-state fixture that

@@ -155,10 +155,11 @@ Status: Anchored, variable names provisional
 
 Evidence:
   page-size helpers at `0x9d16`, `0x9d4e`, `0x9d86`, and `0x9dbe` decode internal page codes
-  into logical/physical 300 dpi extents; executable fixtures now pin masked table lookup, `ESC
-  &l#A` handler `0xfc74` mapping for letter and PCL `80`, and `ESC &l#O` handler `0x10220`
-  landscape active-extent swap, vertical offset source, printable extent, top offset, `0x103ea`
-  threshold reloads, and chained `ESC &l1a1O` byte-stream selector coverage
+  into manual-matched logical 300 dpi page dimensions; executable fixtures now pin masked table
+  lookup, the full Technical Reference logical-dimension cross-check for supported `ESC &l#A`
+  sizes, `ESC &l#A` handler `0xfc74` mapping for letter and PCL `80`, and `ESC &l#O` handler
+  `0x10220` landscape active-extent swap, vertical offset source, printable extent, top offset,
+  `0x103ea` threshold reloads, and chained `ESC &l1a1O` byte-stream selector coverage
 
 ### Raster/text/page-object path
 
@@ -350,8 +351,8 @@ Known from manuals:
 ROM work needed:
 
 - Locate default environment tables.
-- Compare ROM geometry constants in `notes/page-raster-imaging.md` against Technical Reference
-  figures 2-2 and 2-3.
+- Extend the ROM/manual geometry comparison beyond logical dimensions into remaining printable-area
+  offsets and self-test placement.
 - Trace reset paths for `ESC E`, panel reset, power-on reset, and NVRAM/user defaults.
 - Trace remaining parser-produced cursor-stack interactions and primary/secondary font fallback
   interactions.

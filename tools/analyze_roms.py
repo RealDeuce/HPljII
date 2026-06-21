@@ -3462,11 +3462,44 @@ def esc_e_reset_flow_report(data: bytes) -> str:
 
 
 def page_geometry_table_report(data: bytes) -> str:
+    def add_wrapped(
+        lines: list[str],
+        text: str,
+        prefix: str = "",
+        subsequent: str | None = None,
+    ) -> None:
+        if subsequent is None:
+            subsequent = " " * len(prefix)
+        lines.extend(textwrap.wrap(
+            text,
+            width=100,
+            initial_indent=prefix,
+            subsequent_indent=subsequent,
+            break_long_words=False,
+            break_on_hyphens=False,
+        ))
+
     word_tables = [
-        ("height_or_vertical_extent", 0x00A112, "read by `0x009d16`, stored at `0x782db4` by `ESC &l#A`"),
-        ("width_or_horizontal_extent", 0x00A128, "read by `0x009d4e`, stored at `0x782db2` by `ESC &l#A`"),
-        ("landscape_margin_table", 0x00A13E, "read by `0x009d86`; used when orientation byte `0x782da3` is nonzero"),
-        ("portrait_margin_table", 0x00A154, "read by `0x009dbe`; used when orientation byte `0x782da3` is zero"),
+        (
+            "height_or_vertical_extent",
+            0x00A112,
+            "read by `0x009d16`, stored at `0x782db4` by `ESC &l#A`",
+        ),
+        (
+            "width_or_horizontal_extent",
+            0x00A128,
+            "read by `0x009d4e`, stored at `0x782db2` by `ESC &l#A`",
+        ),
+        (
+            "landscape_margin_table",
+            0x00A13E,
+            "read by `0x009d86`; used when orientation byte `0x782da3` is nonzero",
+        ),
+        (
+            "portrait_margin_table",
+            0x00A154,
+            "read by `0x009dbe`; used when orientation byte `0x782da3` is zero",
+        ),
     ]
     internal_codes = list(range(0x0B))
     pcl_code_notes = {
@@ -3480,12 +3513,33 @@ def page_geometry_table_report(data: bytes) -> str:
         0x09: "PCL 90 maps to internal `0x89`, masked here to 9",
         0x0A: "PCL 91 maps to internal `0x8a`, masked here to 10",
     }
+    manual_logical_dimensions = [
+        ("Executive", 1, 0x06, 2025, 3150, 3030, 2175),
+        ("Letter", 2, 0x02, 2400, 3300, 3180, 2550),
+        ("Legal", 3, 0x05, 2400, 4200, 4080, 2550),
+        ("A4", 26, 0x01, 2338, 3507, 3389, 2480),
+        ("Monarch", 80, 0x88, 1012, 2250, 2130, 1162),
+        ("COM-10", 81, 0x87, 1087, 2850, 2730, 1237),
+        ("DL", 90, 0x89, 1157, 2598, 2480, 1299),
+        ("C5", 91, 0x8A, 1771, 2704, 2586, 1913),
+    ]
 
     lines = ["# IC30/IC13 Page Geometry Lookup Tables", ""]
-    lines.append("The lookup routines at `0x009d16`, `0x009d4e`, `0x009d86`, and `0x009dbe` mask the page-code argument with `0x7f` and accept indexes `0..10`.")
-    lines.append("Values are decoded as big-endian words from the firmware image. Table names are provisional until each consumer is fully traced.")
+    add_wrapped(
+        lines,
+        "The lookup routines at `0x009d16`, `0x009d4e`, `0x009d86`, and `0x009dbe` mask "
+        "the page-code argument with `0x7f` and accept indexes `0..10`.",
+    )
+    add_wrapped(
+        lines,
+        "Values are decoded as big-endian words from the firmware image. Table names are "
+        "provisional until each consumer is fully traced.",
+    )
     lines.append("")
-    lines.append("| Internal index | PCL mapping note | a112 / `0x9d16` | a128 / `0x9d4e` | a13e / `0x9d86` | a154 / `0x9dbe` |")
+    lines.append(
+        "| Internal index | PCL mapping note | a112 / `0x9d16` | a128 / `0x9d4e` | "
+        "a13e / `0x9d86` | a154 / `0x9dbe` |"
+    )
     lines.append("| ---: | --- | ---: | ---: | ---: | ---: |")
     for index in internal_codes:
         values = [u16(data, base + index * 2) for _name, base, _desc in word_tables]
@@ -3494,18 +3548,123 @@ def page_geometry_table_report(data: bytes) -> str:
             f"| {index} | {note} | {values[0]} | {values[1]} | {values[2]} | {values[3]} |"
         )
     lines.append("")
+    lines.append("## Manual Logical-Dimension Cross-Check")
+    lines.append("")
+    add_wrapped(
+        lines,
+        "The Technical Reference figure values in `notes/pcl4-language.md` match the ROM logical "
+        "page dimensions as follows: `0x9d16` is portrait logical width, `0x9dbe` is portrait "
+        "logical length, `0x9d4e` is landscape logical width, and `0x9d86` is landscape logical "
+        "length."
+    )
+    lines.append("")
+    lines.append("| Paper | PCL | Index | Portrait W | Portrait L | Landscape W | Landscape L | Result |")
+    lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |")
+    all_match = True
+    for (
+        paper,
+        pcl_value,
+        internal_code,
+        portrait_w,
+        portrait_l,
+        landscape_w,
+        landscape_l,
+    ) in manual_logical_dimensions:
+        index = internal_code & 0x7F
+        rom_portrait_w = u16(data, 0x00A112 + index * 2)
+        rom_portrait_l = u16(data, 0x00A154 + index * 2)
+        rom_landscape_w = u16(data, 0x00A128 + index * 2)
+        rom_landscape_l = u16(data, 0x00A13E + index * 2)
+        matches = (
+            rom_portrait_w == portrait_w
+            and rom_portrait_l == portrait_l
+            and rom_landscape_w == landscape_w
+            and rom_landscape_l == landscape_l
+        )
+        all_match = all_match and matches
+        result = "match" if matches else "MISMATCH"
+        lines.append(
+            f"| {paper} | {pcl_value} | {index} | {rom_portrait_w} / {portrait_w} | "
+            f"{rom_portrait_l} / {portrait_l} | {rom_landscape_w} / {landscape_w} | "
+            f"{rom_landscape_l} / {landscape_l} | {result} |"
+        )
+    lines.append("")
+    add_wrapped(
+        lines,
+        "- Result: all supported `ESC &l#A` page-size values with manual figure entries "
+        f"{'match' if all_match else 'do not match'} the ROM logical page dimensions.",
+        subsequent="  ",
+    )
+    lines.append("")
     lines.append("## Consumers")
     lines.append("")
     for name, base, desc in word_tables:
-        lines.append(f"- `{name}` @`0x{base:06x}`: {desc}.")
-    lines.append("- `ESC &l#A` handler `0x00fc74` maps PCL page-size values `1`, `2`, `3`, `26`, `80`, `81`, `90`, and `91` to internal page codes, writes `0x782da2`, stores width at `0x782db2` through `0x009d4e`, stores height at `0x782db4` through `0x009d16`, and then recomputes orientation-dependent extents.")
-    lines.append("- `ESC &l#O` handler `0x010220` accepts only absolute values `0` and `1`, writes orientation byte `0x782da3`, calls the same margin/extent helpers, and reloads four orientation threshold words through `0x0103ea`; `tools/render_fixture_harness.py` now drives chained `ESC &l1a1O` through page-size handler `0xfc74` and orientation handler `0x10220`.")
-    lines.append("- `ESC &l#D` handler `0x00c992` takes absolute lines-per-inch, treats `0` as `12`, accepts only `1,2,3,4,6,8,12,16,24,48`, converts to packed line advance as `3600 / LPI` twelfths, rejects values beyond `0x782dba`, stores `0x783160`, sets `0x782ee1`, and refreshes pending vertical cursor `0x782c8e = 0x782dce + VMI * 18 / 25` when text is pending.")
-    lines.append("- `ESC &l#C` handler `0x00cb00` takes absolute VMI in 1/48-inch units with fractional support, rejects integer parts above `0x150` or converted values beyond `0x782dba`, stores `0x783160`, refreshes pending vertical cursor with the same `VMI * 18 / 25` offset, and sets `0x782ee1` only when the converted VMI is nonzero.")
-    lines.append("- `ESC &l#E` handler `0x00ece2` scales top margin lines through current VMI, rejects zero-VMI or positions at/beyond `0x782dba`, stores `0x782dce = top_margin - 0x782dbe`, recomputes default text-length bottom through helper `0xea16`, refreshes pending vertical cursor, then calls `0xfe54` and `0x12b96`.")
-    lines.append("- `ESC &l#F` handler `0x00ea9e` scales text length lines through current VMI, rejects zero-VMI and lengths beyond the remaining page after current top margin, stores `0x782dd2 = 0x782dce + text_length`, and uses helper `0xea16` to restore the default text-length bottom when the parameter is zero.")
-    lines.append("- `0x009e56` computes `(0x051f - floor(argument / 2)) mod 16` through signed remainder helper `0x033238`; `ESC &l#A` feeds it the `0x782db4` table value and stores the result at `0x782dc0`.")
-    lines.append("- Coordinate helpers at `0x0104d8..0x010550` convert between a packed 12-subunit fixed-point form and integer coordinates; raster code uses these helpers around `0x0105d0..0x010758`.")
+        add_wrapped(lines, f"- `{name}` @`0x{base:06x}`: {desc}.", subsequent="  ")
+    add_wrapped(
+        lines,
+        "- `ESC &l#A` handler `0x00fc74` maps PCL page-size values `1`, `2`, `3`, `26`, "
+        "`80`, `81`, `90`, and `91` to internal page codes, writes `0x782da2`, stores width "
+        "at `0x782db2` through `0x009d4e`, stores height at `0x782db4` through `0x009d16`, "
+        "and then recomputes orientation-dependent extents.",
+        subsequent="  ",
+    )
+    add_wrapped(
+        lines,
+        "- `ESC &l#O` handler `0x010220` accepts only absolute values `0` and `1`, writes "
+        "orientation byte `0x782da3`, calls the same margin/extent helpers, and reloads four "
+        "orientation threshold words through `0x0103ea`; `tools/render_fixture_harness.py` "
+        "now drives chained `ESC &l1a1O` through page-size handler `0xfc74` and orientation "
+        "handler `0x10220`.",
+        subsequent="  ",
+    )
+    add_wrapped(
+        lines,
+        "- `ESC &l#D` handler `0x00c992` takes absolute lines-per-inch, treats `0` as `12`, "
+        "accepts only `1,2,3,4,6,8,12,16,24,48`, converts to packed line advance as "
+        "`3600 / LPI` twelfths, rejects values beyond `0x782dba`, stores `0x783160`, sets "
+        "`0x782ee1`, and refreshes pending vertical cursor "
+        "`0x782c8e = 0x782dce + VMI * 18 / 25` when text is pending.",
+        subsequent="  ",
+    )
+    add_wrapped(
+        lines,
+        "- `ESC &l#C` handler `0x00cb00` takes absolute VMI in 1/48-inch units with "
+        "fractional support, rejects integer parts above `0x150` or converted values beyond "
+        "`0x782dba`, stores `0x783160`, refreshes pending vertical cursor with the same "
+        "`VMI * 18 / 25` offset, and sets `0x782ee1` only when the converted VMI is nonzero.",
+        subsequent="  ",
+    )
+    add_wrapped(
+        lines,
+        "- `ESC &l#E` handler `0x00ece2` scales top margin lines through current VMI, rejects "
+        "zero-VMI or positions at/beyond `0x782dba`, stores "
+        "`0x782dce = top_margin - 0x782dbe`, recomputes default text-length bottom through "
+        "helper `0xea16`, refreshes pending vertical cursor, then calls `0xfe54` and "
+        "`0x12b96`.",
+        subsequent="  ",
+    )
+    add_wrapped(
+        lines,
+        "- `ESC &l#F` handler `0x00ea9e` scales text length lines through current VMI, "
+        "rejects zero-VMI and lengths beyond the remaining page after current top margin, "
+        "stores `0x782dd2 = 0x782dce + text_length`, and uses helper `0xea16` to restore the "
+        "default text-length bottom when the parameter is zero.",
+        subsequent="  ",
+    )
+    add_wrapped(
+        lines,
+        "- `0x009e56` computes `(0x051f - floor(argument / 2)) mod 16` through signed "
+        "remainder helper `0x033238`; `ESC &l#A` feeds it the `0x782db4` table value and "
+        "stores the result at `0x782dc0`.",
+        subsequent="  ",
+    )
+    add_wrapped(
+        lines,
+        "- Coordinate helpers at `0x0104d8..0x010550` convert between a packed 12-subunit "
+        "fixed-point form and integer coordinates; raster code uses these helpers around "
+        "`0x0105d0..0x010758`.",
+        subsequent="  ",
+    )
     lines.append("")
     return "\n".join(lines)
 

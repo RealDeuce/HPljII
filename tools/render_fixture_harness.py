@@ -1327,12 +1327,54 @@ PAGE_GEOMETRY_TABLES = {
     "portrait_margin": 0x00A154,
 }
 
+MANUAL_PAGE_LOGICAL_DIMENSIONS = {
+    # paper: (PCL page size, internal code, portrait_w, portrait_l, landscape_w, landscape_l)
+    "Executive": (1, 0x06, 2025, 3150, 3030, 2175),
+    "Letter": (2, 0x02, 2400, 3300, 3180, 2550),
+    "Legal": (3, 0x05, 2400, 4200, 4080, 2550),
+    "A4": (26, 0x01, 2338, 3507, 3389, 2480),
+    "Monarch": (80, 0x88, 1012, 2250, 2130, 1162),
+    "COM-10": (81, 0x87, 1087, 2850, 2730, 1237),
+    "DL": (90, 0x89, 1157, 2598, 2480, 1299),
+    "C5": (91, 0x8A, 1771, 2704, 2586, 1913),
+}
+
 
 def page_geometry_lookup_via_9dxx(data: bytes, table: str, page_code: int) -> int:
     index = int(page_code) & 0x7F
     if index >= 0x0B:
         return 0
     return u16(data, PAGE_GEOMETRY_TABLES[table] + index * 2)
+
+
+def page_geometry_manual_crosscheck(data: bytes) -> dict[str, dict[str, int | bool]]:
+    result: dict[str, dict[str, int | bool]] = {}
+    for paper, values in MANUAL_PAGE_LOGICAL_DIMENSIONS.items():
+        pcl_value, internal_code, portrait_w, portrait_l, landscape_w, landscape_l = values
+        rom_portrait_w = page_geometry_lookup_via_9dxx(data, "height", internal_code)
+        rom_portrait_l = page_geometry_lookup_via_9dxx(data, "portrait_margin", internal_code)
+        rom_landscape_w = page_geometry_lookup_via_9dxx(data, "width", internal_code)
+        rom_landscape_l = page_geometry_lookup_via_9dxx(data, "landscape_margin", internal_code)
+        result[paper] = {
+            "pcl": pcl_value,
+            "internal_code": internal_code,
+            "index": internal_code & 0x7F,
+            "rom_portrait_w": rom_portrait_w,
+            "manual_portrait_w": portrait_w,
+            "rom_portrait_l": rom_portrait_l,
+            "manual_portrait_l": portrait_l,
+            "rom_landscape_w": rom_landscape_w,
+            "manual_landscape_w": landscape_w,
+            "rom_landscape_l": rom_landscape_l,
+            "manual_landscape_l": landscape_l,
+            "match": (
+                rom_portrait_w == portrait_w
+                and rom_portrait_l == portrait_l
+                and rom_landscape_w == landscape_w
+                and rom_landscape_l == landscape_l
+            ),
+        }
+    return result
 
 
 def page_center_remainder_via_9e56(height: int) -> int:
@@ -10737,6 +10779,131 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "letter_portrait_margin": 3150,
         "letter_landscape_margin": 2175,
         "center_remainder": 11,
+    }))
+    geometry_manual_crosscheck = page_geometry_manual_crosscheck(data)
+    checks.append(assert_equal("ROM page geometry tables match manual logical dimensions", {
+        paper: {
+            key: geometry_manual_crosscheck[paper][key]
+            for key in (
+                "pcl",
+                "index",
+                "rom_portrait_w",
+                "manual_portrait_w",
+                "rom_portrait_l",
+                "manual_portrait_l",
+                "rom_landscape_w",
+                "manual_landscape_w",
+                "rom_landscape_l",
+                "manual_landscape_l",
+                "match",
+            )
+        }
+        for paper in geometry_manual_crosscheck
+    }, {
+        "Executive": {
+            "pcl": 1,
+            "index": 6,
+            "rom_portrait_w": 2025,
+            "manual_portrait_w": 2025,
+            "rom_portrait_l": 3150,
+            "manual_portrait_l": 3150,
+            "rom_landscape_w": 3030,
+            "manual_landscape_w": 3030,
+            "rom_landscape_l": 2175,
+            "manual_landscape_l": 2175,
+            "match": True,
+        },
+        "Letter": {
+            "pcl": 2,
+            "index": 2,
+            "rom_portrait_w": 2400,
+            "manual_portrait_w": 2400,
+            "rom_portrait_l": 3300,
+            "manual_portrait_l": 3300,
+            "rom_landscape_w": 3180,
+            "manual_landscape_w": 3180,
+            "rom_landscape_l": 2550,
+            "manual_landscape_l": 2550,
+            "match": True,
+        },
+        "Legal": {
+            "pcl": 3,
+            "index": 5,
+            "rom_portrait_w": 2400,
+            "manual_portrait_w": 2400,
+            "rom_portrait_l": 4200,
+            "manual_portrait_l": 4200,
+            "rom_landscape_w": 4080,
+            "manual_landscape_w": 4080,
+            "rom_landscape_l": 2550,
+            "manual_landscape_l": 2550,
+            "match": True,
+        },
+        "A4": {
+            "pcl": 26,
+            "index": 1,
+            "rom_portrait_w": 2338,
+            "manual_portrait_w": 2338,
+            "rom_portrait_l": 3507,
+            "manual_portrait_l": 3507,
+            "rom_landscape_w": 3389,
+            "manual_landscape_w": 3389,
+            "rom_landscape_l": 2480,
+            "manual_landscape_l": 2480,
+            "match": True,
+        },
+        "Monarch": {
+            "pcl": 80,
+            "index": 8,
+            "rom_portrait_w": 1012,
+            "manual_portrait_w": 1012,
+            "rom_portrait_l": 2250,
+            "manual_portrait_l": 2250,
+            "rom_landscape_w": 2130,
+            "manual_landscape_w": 2130,
+            "rom_landscape_l": 1162,
+            "manual_landscape_l": 1162,
+            "match": True,
+        },
+        "COM-10": {
+            "pcl": 81,
+            "index": 7,
+            "rom_portrait_w": 1087,
+            "manual_portrait_w": 1087,
+            "rom_portrait_l": 2850,
+            "manual_portrait_l": 2850,
+            "rom_landscape_w": 2730,
+            "manual_landscape_w": 2730,
+            "rom_landscape_l": 1237,
+            "manual_landscape_l": 1237,
+            "match": True,
+        },
+        "DL": {
+            "pcl": 90,
+            "index": 9,
+            "rom_portrait_w": 1157,
+            "manual_portrait_w": 1157,
+            "rom_portrait_l": 2598,
+            "manual_portrait_l": 2598,
+            "rom_landscape_w": 2480,
+            "manual_landscape_w": 2480,
+            "rom_landscape_l": 1299,
+            "manual_landscape_l": 1299,
+            "match": True,
+        },
+        "C5": {
+            "pcl": 91,
+            "index": 10,
+            "rom_portrait_w": 1771,
+            "manual_portrait_w": 1771,
+            "rom_portrait_l": 2704,
+            "manual_portrait_l": 2704,
+            "rom_landscape_w": 2586,
+            "manual_landscape_w": 2586,
+            "rom_landscape_l": 1913,
+            "manual_landscape_l": 1913,
+            "match": True,
+        },
     }))
     letter_page = apply_page_size_via_fc74(data, page_geometry_state(), 1)
     pcl80_page = apply_page_size_via_fc74(data, page_geometry_state(), 80)

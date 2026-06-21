@@ -60,6 +60,9 @@ page codes, stores the code at `0x782da2`, then rebuilds page geometry.
 
 The lookup helpers at `0x009d16`, `0x009d4e`, `0x009d86`, and `0x009dbe` mask the internal code with
 `0x7f` and index eleven word entries. The generated table report records all current values.
+Its manual cross-check now matches all supported Technical Reference logical page dimensions:
+`0x9d16` is portrait logical width, `0x9dbe` is portrait logical length, `0x9d4e` is landscape
+logical width, and `0x9d86` is landscape logical length.
 
 Important confirmed mappings:
 
@@ -76,13 +79,12 @@ Important confirmed mappings:
 
 Current interpretation:
 
-- `0x9d4e` writes `0x782db2`; raster transfer bounds check against this value.
-- `0x9d16` writes `0x782db4`; raster-start code uses this value while computing a remaining
-  byte/line limit.
-- `0x9d86` and `0x9dbe` feed orientation-specific physical or margin extents. For letter, they
-  produce 2550 and 3300, matching 8.5 by 11 inches at 300 dpi.
-- The `a112` and `a128` values are smaller than physical paper and currently look like
-  logical/printable extents.
+- `0x9d4e` writes `0x782db2`; the manual match identifies it as landscape logical width. Raster
+  transfer bounds check against this value.
+- `0x9d16` writes `0x782db4`; the manual match identifies it as portrait logical width.
+  Raster-start code uses this value while computing a remaining byte/line limit.
+- `0x9d86` is landscape logical length and `0x9dbe` is portrait logical length. These feed the
+  orientation-specific extent and margin recomputation paths.
 - `0x9e56` stores the signed remainder of `(0x051f - floor(height / 2)) / 16` at `0x782dc0`; for
   `ESC &l1A` letter portrait this yields `11`.
 
@@ -734,4 +736,5 @@ Other checked leads:
   `0x782c8a` and `0x782c8e`.
 - Finish rectangle handlers at `0x010898` and the width/height handlers around `0x010a40..0x010e68`;
   these now appear to share page-object storage with raster, not a direct framebuffer write.
-- Compare the page geometry constants against manual printable-area diagrams and self-test output.
+- Compare remaining printable-area offsets and self-test placement against the now-matched
+  ROM/manual logical page dimensions.

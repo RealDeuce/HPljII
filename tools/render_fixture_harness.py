@@ -9505,6 +9505,87 @@ def stream_alloc_via_1381c(state: dict[str, object], byte_count: int) -> dict[st
     }
 
 
+def bucket_find_or_alloc_addressed_via_1387c(
+    state: dict[str, object],
+    bucket_index: int,
+    selector: int,
+    capacity: int,
+    object_size: int,
+) -> dict[str, object]:
+    """Address-aware 0x1387c model that uses 0x1381c for new objects."""
+    bucket_heads = dict(state.get("bucket_heads_1c", {}))
+    objects = dict(state.get("stream_objects", {}))
+    selector &= 0xFFFF
+    visited: list[int] = []
+    ptr = int(bucket_heads.get(bucket_index, 0))
+    while ptr:
+        visited.append(ptr)
+        obj = objects.get(ptr)
+        if not isinstance(obj, bytearray):
+            raise AssertionError(f"missing stream object at 0x{ptr:08x}")
+        if u16(obj, 4) == selector:
+            count = u16(obj, 6)
+            if count < capacity:
+                state["bucket_heads_1c"] = bucket_heads
+                state["stream_objects"] = objects
+                return {
+                    "object_ptr": ptr,
+                    "object": obj,
+                    "allocated": False,
+                    "count_before": count,
+                    "bucket_index": bucket_index,
+                    "selector": selector,
+                    "capacity": capacity,
+                    "object_size": object_size,
+                    "old_bucket_head": int(bucket_heads.get(bucket_index, 0)),
+                    "new_bucket_head": int(bucket_heads.get(bucket_index, 0)),
+                    "next_ptr": u32(obj, 0),
+                    "visited": visited,
+                }
+        ptr = u32(obj, 0)
+
+    alloc = stream_alloc_via_1381c(state, object_size)
+    object_ptr = int(alloc["returned_ptr"])
+    if object_ptr == 0:
+        return {
+            "object_ptr": 0,
+            "allocated": True,
+            "allocation_failed": True,
+            "bucket_index": bucket_index,
+            "selector": selector,
+            "capacity": capacity,
+            "object_size": object_size,
+            "old_bucket_head": int(bucket_heads.get(bucket_index, 0)),
+            "new_bucket_head": int(bucket_heads.get(bucket_index, 0)),
+            "visited": visited,
+            "stream_alloc": alloc,
+        }
+    old_head = int(bucket_heads.get(bucket_index, 0))
+    obj = bytearray(object_size)
+    obj[0:4] = old_head.to_bytes(4, "big")
+    obj[4:6] = selector.to_bytes(2, "big")
+    objects[object_ptr] = obj
+    bucket_heads[bucket_index] = object_ptr
+    state["bucket_heads_1c"] = bucket_heads
+    state["stream_objects"] = objects
+    return {
+        "object_ptr": object_ptr,
+        "object": obj,
+        "allocated": True,
+        "allocation_failed": False,
+        "count_before": 0,
+        "bucket_index": bucket_index,
+        "selector": selector,
+        "capacity": capacity,
+        "object_size": object_size,
+        "old_bucket_head": old_head,
+        "new_bucket_head": object_ptr,
+        "next_ptr": old_head,
+        "visited": visited,
+        "stream_alloc": alloc,
+    }
+
+
 def queue_text_source_to_page_record_via_12f2e(resources: bytes, page_record: dict[str, object], source: dict[str, object]) -> dict[str, object]:
     bucket_array = page_record.setdefault("bucket_array", {})
     if not isinstance(bucket_array, dict):
@@ -20925,6 +21006,142 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 0x00D00000: 0x00D00100,
             },
             "stream_allocations": 2,
+        },
+    }))
+    addressed_bucket_state: dict[str, object] = {
+        "stream_bytes_remaining_782a70": 0,
+        "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+        "stream_next_free_782a76": 0,
+        "next_stream_chunk_ptr": 0x00D01000,
+        "stream_chunk_links": {},
+        "bucket_heads_1c": {},
+        "stream_objects": {},
+    }
+    addressed_first = bucket_find_or_alloc_addressed_via_1387c(
+        addressed_bucket_state,
+        bucket_index=3,
+        selector=0x1001,
+        capacity=0x0A,
+        object_size=0x26,
+    )
+    addressed_reuse = bucket_find_or_alloc_addressed_via_1387c(
+        addressed_bucket_state,
+        bucket_index=3,
+        selector=0x1001,
+        capacity=0x0A,
+        object_size=0x26,
+    )
+    addressed_objects = addressed_bucket_state["stream_objects"]
+    assert isinstance(addressed_objects, dict)
+    addressed_first_object = addressed_objects[addressed_first["object_ptr"]]
+    assert isinstance(addressed_first_object, bytearray)
+    addressed_first_object[6:8] = (0x0A).to_bytes(2, "big")
+    addressed_full_new = bucket_find_or_alloc_addressed_via_1387c(
+        addressed_bucket_state,
+        bucket_index=3,
+        selector=0x1001,
+        capacity=0x0A,
+        object_size=0x26,
+    )
+    addressed_objects = addressed_bucket_state["stream_objects"]
+    assert isinstance(addressed_objects, dict)
+    addressed_new_object = addressed_objects[addressed_full_new["object_ptr"]]
+    assert isinstance(addressed_new_object, bytearray)
+    checks.append(assert_equal("0x1387c address-aware bucket allocation uses 0x1381c storage", {
+        "first": {
+            key: addressed_first[key]
+            for key in (
+                "object_ptr",
+                "allocated",
+                "allocation_failed",
+                "count_before",
+                "bucket_index",
+                "selector",
+                "old_bucket_head",
+                "new_bucket_head",
+                "next_ptr",
+                "visited",
+            )
+        },
+        "reuse": {
+            key: addressed_reuse[key]
+            for key in (
+                "object_ptr",
+                "allocated",
+                "count_before",
+                "old_bucket_head",
+                "new_bucket_head",
+                "next_ptr",
+                "visited",
+            )
+        },
+        "full_new": {
+            key: addressed_full_new[key]
+            for key in (
+                "object_ptr",
+                "allocated",
+                "count_before",
+                "old_bucket_head",
+                "new_bucket_head",
+                "next_ptr",
+                "visited",
+            )
+        },
+        "first_object_prefix": bytes(addressed_first_object[:8]),
+        "new_object_prefix": bytes(addressed_new_object[:8]),
+        "bucket_heads": addressed_bucket_state["bucket_heads_1c"],
+        "stream_state": {
+            key: addressed_bucket_state[key]
+            for key in (
+                "stream_bytes_remaining_782a70",
+                "stream_link_ptr_782a72",
+                "stream_next_free_782a76",
+                "next_stream_chunk_ptr",
+                "stream_chunk_links",
+                "stream_allocations",
+            )
+        },
+    }, {
+        "first": {
+            "object_ptr": 0x00D01004,
+            "allocated": True,
+            "allocation_failed": False,
+            "count_before": 0,
+            "bucket_index": 3,
+            "selector": 0x1001,
+            "old_bucket_head": 0,
+            "new_bucket_head": 0x00D01004,
+            "next_ptr": 0,
+            "visited": [],
+        },
+        "reuse": {
+            "object_ptr": 0x00D01004,
+            "allocated": False,
+            "count_before": 0,
+            "old_bucket_head": 0x00D01004,
+            "new_bucket_head": 0x00D01004,
+            "next_ptr": 0,
+            "visited": [0x00D01004],
+        },
+        "full_new": {
+            "object_ptr": 0x00D0102A,
+            "allocated": True,
+            "count_before": 0,
+            "old_bucket_head": 0x00D01004,
+            "new_bucket_head": 0x00D0102A,
+            "next_ptr": 0x00D01004,
+            "visited": [0x00D01004],
+        },
+        "first_object_prefix": bytes.fromhex("00 00 00 00 10 01 00 0a"),
+        "new_object_prefix": bytes.fromhex("00 d0 10 04 10 01 00 00"),
+        "bucket_heads": {3: 0x00D0102A},
+        "stream_state": {
+            "stream_bytes_remaining_782a70": 0x00B0,
+            "stream_link_ptr_782a72": 0x00D01000,
+            "stream_next_free_782a76": 0x00D01050,
+            "next_stream_chunk_ptr": 0x00D01100,
+            "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D01000},
+            "stream_allocations": 1,
         },
     }))
     page_record_bucket_fixture: dict[str, object] = {"bucket_array": {}, "context_slots": [0x440946B4]}
@@ -38072,6 +38289,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("")
     lines.append("The `0x1387c` model indexes the page-root `+0x1c` bucket array by `0x782a7c`, walks the bucket chain looking for the same selector word at object `+4`, reuses that object when count `+6` is below the caller-supplied capacity, or allocates and links a new object at the bucket head when the matching object is full or missing.")
     lines.append("")
+    lines.append("- address-aware `0x1387c`: first allocation returns object `0x%08x`, reuse returns the same object while count `%d < capacity`, and a full object forces new head `0x%08x` whose next pointer is the prior head `0x%08x`." % (
+        addressed_first["object_ptr"],
+        addressed_reuse["count_before"],
+        addressed_full_new["object_ptr"],
+        addressed_full_new["next_ptr"],
+    ))
     lines.append("- first allocation: allocated `%s`, bucket `%d`, selector `0x%04x`, count `%d -> %d`, coord `0x%04x`" % (
         page_record_first["allocated"],
         page_record_first["bucket_index"],

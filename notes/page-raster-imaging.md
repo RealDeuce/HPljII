@@ -313,6 +313,12 @@ leaves `0xfc - size` bytes; same-chunk reuse advances only `0x782a76` /
 `0x782a70`; crossing the remaining-byte limit links the next chunk
 through the prior chunk's first longword.
 
+An address-aware `0x1387c` fixture now ties that storage to bucket
+objects: first allocation writes the selector at object `+4` and stores
+the object pointer in the `+0x1c` bucket head, reuse returns the same
+object while count `+6` is below capacity, and a full matching object
+allocates a new head whose longword `+0` points at the prior object.
+
 `0x13070` converts the raster state block into bucket coordinates:
 
 - stores a bucket/index value at `0x782a7c`;

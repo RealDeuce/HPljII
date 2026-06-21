@@ -357,7 +357,10 @@ allocations, object prefixes, rendered row counts, and `0x1edc6` bridge
 fields for bucket root, empty rule/fixed lists, and context slot
 copying. The same group now crosses `0x1ed84` active-record copy and
 the `0x1ef6a` render-entry call order, including the nonzero bucket
-selection used by the vertical cursor/layout cases.
+selection used by the vertical cursor/layout cases. A host-fetched
+`! ESC *c12a5b0P` fixture now extends that page-record stream model to a
+combined compact-text bucket plus selector-7 rule list before the same
+`0x1ed84`/`0x1ef6a` render-entry path composes the rows.
 
 Rectangle/rule command edges are now traced in
 `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`.

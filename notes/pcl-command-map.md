@@ -560,7 +560,8 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   `ESC &k1G!\r!`, `ESC &k2G!\n!`, `ESC &k0G HT BS !`, `ESC &a1L!`,
   `ESC &a1M!`, `ESC &a6l9M!`, `ESC &a2C!`, `ESC &a72H!`, `ESC &a1R!`,
   `ESC &a72V!`, `ESC &a2c+1R!`, `ESC &l3E!`,
-  `ESC &f0S ESC &a2C ESC &f1S!`, primary raster parser-to-render
+  `ESC &f0S ESC &a2C ESC &f1S!`, host-fetched `! ESC *c12a5b0P`
+  text/rule render-entry coverage, primary raster parser-to-render
   coverage, simple macro execute replayed `!\r`, and mixed-control macro
   execute replayed `ESC &k1G!\r!`, parser-derived `ESC *t#R`/`ESC *r#A`
   raster state fixtures, modeled raster command/data stream fixtures for

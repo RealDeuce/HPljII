@@ -9949,6 +9949,7 @@ def render_mixed_printable_control_page_record_stream(
 ) -> dict[str, object]:
     state = dict(state)
     page_record: dict[str, object] = {"bucket_array": {}, "context_slots": [context]}
+    state["page_record"] = page_record
     events: list[dict[str, object]] = []
     published_page_record: dict[str, object] | None = None
     pos = 0
@@ -10169,7 +10170,66 @@ def render_mixed_printable_control_page_record_stream(
                     if not (ord("a") <= final <= ord("z")):
                         break
                 continue
-            raise AssertionError(f"page-record mixed stream only models ESC &k#G, ESC &a#L/#M/#C/#H/#R/#V, ESC &f#S, ESC &l#C/#D/#E/#F, and ESC E at offset {pos}")
+            if stream[pos + 1 : pos + 3] == b"*c":
+                group_start = pos
+                pos += 3
+                while True:
+                    command_start = group_start if pos == group_start + 3 else pos
+                    parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+                    if pos >= len(stream):
+                        raise AssertionError("page-record mixed stream ESC *c missing final byte")
+                    final = stream[pos]
+                    pos += 1
+                    final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+                    before_count = len(state.get("events", []))
+                    if final_upper == ord("A"):
+                        state = apply_rectangle_size_dots(state, "width", parameter)
+                        handler = 0x010E68
+                    elif final_upper == ord("B"):
+                        state = apply_rectangle_size_dots(state, "height", parameter)
+                        handler = 0x010E22
+                    elif final_upper == ord("H"):
+                        state = apply_rectangle_size_decipoints(state, "width", parameter)
+                        handler = 0x010A40
+                    elif final_upper == ord("V"):
+                        state = apply_rectangle_size_decipoints(state, "height", parameter)
+                        handler = 0x010AE0
+                    elif final_upper == ord("G"):
+                        state = apply_rectangle_area_fill_id_via_10dce(state, parameter)
+                        handler = 0x010DCE
+                    elif final_upper == ord("P"):
+                        state = apply_fill_rectangle_via_10898(state, parameter)
+                        handler = 0x010898
+                    else:
+                        raise AssertionError(
+                            f"page-record mixed stream unsupported ESC *c final byte {chr(final)!r}"
+                        )
+                    state_page_record = state.get("page_record")
+                    if not isinstance(state_page_record, dict):
+                        raise AssertionError("page-record mixed stream rectangle command lost page record")
+                    page_record = state_page_record
+                    rectangle_events = [
+                        dict(event)
+                        for event in state.get("events", [])[before_count:]
+                    ]
+                    record = bytes([
+                        0x81 if parameter < 0 else 0x80,
+                        final,
+                    ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
+                    events.append({
+                        "kind": "rectangle",
+                        "offset": command_start,
+                        "sequence": stream[command_start:pos],
+                        "record": record,
+                        "parameter": parameter,
+                        "handler": handler,
+                        "events": rectangle_events,
+                        "chained": bool(ord("a") <= final <= ord("z")),
+                    })
+                    if not (ord("a") <= final <= ord("z")):
+                        break
+                continue
+            raise AssertionError(f"page-record mixed stream only models ESC &k#G, ESC &a#L/#M/#C/#H/#R/#V, ESC &f#S, ESC &l#C/#D/#E/#F, ESC *c, and ESC E at offset {pos}")
         if byte in (0x08, 0x09, 0x0A, 0x0C, 0x0D):
             before = dict(state)
             finalized = None
@@ -10243,10 +10303,10 @@ def render_mixed_printable_control_page_record_stream(
     if len(chain) != 1:
         raise AssertionError("page-record mixed stream fixture expects one compact object in the bucket")
     bucket_object = bytes(chain[0])
-    bridged_record = bridge_page_record_via_1edc6({
-        "bucket_root": bucket_object,
-        "context_slots": [context],
-    })
+    bridge_source = dict(page_record)
+    bridge_source["bucket_root"] = bucket_object
+    bridge_source["context_slots"] = [context]
+    bridged_record = bridge_page_record_via_1edc6(bridge_source)
     rendered = render_bridged_compact_bucket_object(data, resources, bridged_record)
     published_bridged_record = None
     published_rendered = None
@@ -29190,6 +29250,169 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         }
         for name, case in direct_page_record_cases.items()
     }))
+    text_rectangle_state = control_fixture_state(
+        cursor_x=pack12(10),
+        cursor_y=pack12(21),
+        hmi=line_printer_hmi["hmi"],
+        pending_width=1,
+        pending_text=0,
+        span_flush_enable=1,
+        page_width=100,
+        page_height=80,
+        orientation=0,
+        width=pack12(0),
+        height=pack12(0),
+        area_fill_id=0,
+        fill_selector=7,
+    )
+    text_rectangle_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"!\x1b*c12a5b0P",
+        0x440946B4,
+        text_rectangle_state,
+        default_advance=line_printer_hmi["hmi"],
+    )
+    text_rectangle_host_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(text_rectangle_page_record_stream["stream"]), direct_mode=0),
+        len(text_rectangle_page_record_stream["stream"]),
+    )
+    text_rectangle_rectangle_trace = trace_rectangle_parser_dispatch_via_11774(
+        data,
+        b"\x1b*c12a5b0P",
+        rectangle_command_state(
+            cursor_x=pack12(28),
+            cursor_y=pack12(21),
+            page_width=100,
+            page_height=80,
+        ),
+    )
+    text_rectangle_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        text_rectangle_page_record_stream["page_record"],
+        bucket_word=text_rectangle_page_record_stream["bucket_index"],
+    )
+    text_rectangle_rules = render_rule_list_via_1f446(
+        data,
+        text_rectangle_page_record_stream["bridged_record"],
+    )
+    text_rectangle_expected_rows = compose_set_pixel_rows(
+        [
+            text_rectangle_page_record_stream["rendered"]["rows"],
+            text_rectangle_rules["rows"],
+        ],
+        width=40,
+        rows=26,
+    )
+    checks.append(assert_equal("host-fetched text plus rectangle page record feeds 0x1ed84 and 0x1ef6a", {
+        "fetched_stream": text_rectangle_host_fetch["stream"],
+        "fetch_sources": text_rectangle_host_fetch["sources"],
+        "remaining_ring": text_rectangle_host_fetch["state"]["ring"],
+        "parser_handlers": [0x00D04A] + [
+            command["final_dispatch"]["handler"]
+            for command in text_rectangle_rectangle_trace["commands"]
+        ],
+        "text_bucket": text_rectangle_page_record_stream["bucket_object"],
+        "rule_list": text_rectangle_page_record_stream["bridged_record"]["rule_list"],
+        "active_copy": text_rectangle_render_entry["active_copy"],
+        "setup": {
+            key: text_rectangle_render_entry["entry"]["setup"][key]
+            for key in (
+                "dividend",
+                "divisor_word_06",
+                "remainder_783a22",
+                "band_rows_scaled_783a20",
+                "destination_base_783a28",
+            )
+        },
+        "call_order": text_rectangle_render_entry["entry"]["call_order"],
+        "dispatch_entries": [
+            {
+                key: entry[key]
+                for key in (
+                    "chain_index",
+                    "object_byte_4",
+                    "class_mask",
+                    "branch",
+                    "target",
+                    "context_slot",
+                )
+            }
+            for entry in text_rectangle_render_entry["entry"]["dispatch"]["entries"]
+        ],
+        "rule_rendered": [
+            {
+                key: entry[key]
+                for key in (
+                    "selector",
+                    "helper",
+                    "key",
+                    "bucket_delta",
+                    "decoded",
+                    "width",
+                    "remaining_before",
+                    "rows_drawn",
+                    "mutated_object",
+                )
+            }
+            for entry in text_rectangle_render_entry["entry"]["rules"]["rendered"]
+        ],
+        "rows": text_rectangle_render_entry["entry"]["rows"],
+    }, {
+        "fetched_stream": b"!\x1b*c12a5b0P",
+        "fetch_sources": ["ring"] * len(b"!\x1b*c12a5b0P"),
+        "remaining_ring": [],
+        "parser_handlers": [0x00D04A, 0x010E68, 0x010E22, 0x010898],
+        "text_bucket": (
+            bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+            + bytes(0x1B)
+        ),
+        "rule_list": [bytes.fromhex("00 00 00 00 01 17 5c 01 00 0c 00 05 00 05")],
+        "active_copy": {
+            "source_word_18": 0,
+            "source_word_1a": 0,
+            "render_word_0a": 0,
+            "render_word_0c": 0,
+            "render_word_0e": 0,
+            "render_word_10": 0,
+            "render_word_16": 0,
+        },
+        "setup": {
+            "dividend": 0,
+            "divisor_word_06": 5,
+            "remainder_783a22": 0,
+            "band_rows_scaled_783a20": 0x0050,
+            "destination_base_783a28": 0x00100000,
+        },
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "dispatch_entries": [{
+            "chain_index": 0,
+            "object_byte_4": 0x00,
+            "class_mask": 0x00,
+            "branch": "compact",
+            "target": 0x01EFFE,
+            "context_slot": 0,
+        }],
+        "rule_rendered": [{
+            "selector": 7,
+            "helper": 0x1F596,
+            "key": 0x5C01,
+            "bucket_delta": 1,
+            "decoded": {
+                "x": 28,
+                "y": 21,
+                "row_low": 5,
+                "subbyte": 12,
+                "byte_pair_offset": 2,
+            },
+            "width": 12,
+            "remaining_before": 5,
+            "rows_drawn": 5,
+            "mutated_object": bytes.fromhex("00 00 00 00 01 07 5c 01 00 0c 00 05 ff ca"),
+        }],
+        "rows": text_rectangle_expected_rows,
+    }))
     mixed_publication_parser_trace = {
         "reset": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1bE"),
         "ff": trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k2G!\f"),
@@ -32176,6 +32399,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("The published-record render-entry fixture then carries each of those four `0xff1e` records through `0x1ed84` active-record copy and the `0x1ef6a` call order, selecting the compact bucket through `0x1efc2` and rendering the same rows.")
     lines.append("A host-fetched direct text/control fixture now starts the plain, CR/LF, HT/BS, margin, cursor-position, vertical-layout, and cursor-stack page-record streams from the modeled `0xa904` ring source, drains every byte, replays the same parser handlers, and lands on the same `0x1387c` page-record objects and rendered row counts.")
     lines.append("The same direct page-record group now crosses `0x1ed84` active-record copy and the `0x1ef6a` render-entry call order, including nonzero bucket selection for the vertical cursor/layout cases.")
+    lines.append("A host-fetched text-plus-rectangle fixture now drains `! ESC *c12a5b0P`, queues the compact text bucket and selector-7 rule in the same page record, and carries that combined bucket/rule record through `0x1ed84` and `0x1ef6a`.")
     lines.append("")
     lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now starts without a current page root, marks the first printable as the page-record root allocation point, models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`.")
     lines.append("")

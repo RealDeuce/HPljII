@@ -68,7 +68,7 @@ four tables for every supported page size.
 
 Important confirmed mappings:
 
-| PCL page size | Internal code | Masked index | a112 / `0x9d16` | a128 / `0x9d4e` | a13e / `0x9d86` | a154 / `0x9dbe` |
+| PCL page size | Internal code | Masked index | `0x9d16` | `0x9d4e` | `0x9d86` | `0x9dbe` |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 1 | `0x06` | 6 | 2025 | 3030 | 2175 | 3150 |
 | 2 | `0x02` | 2 | 2400 | 3180 | 2550 | 3300 |
@@ -248,7 +248,9 @@ Current page-root fields:
 | `+0x20` | start of the 0x100-byte chunk chain used by display-list object storage |
 | `+0x24` | linked-list head used by rectangle/rule-like objects |
 | `+0x28` | second linked-list head used by another rectangle/rule mode |
-| `+0x2c..+0x68` | 16 current-font context record slots copied from the `0x782ee6` / `0x782ef6` family |
+| `+0x2c..+0x68` | 16 current-font context record slots |
+
+The current-font context slots are copied from the `0x782ee6` / `0x782ef6` family.
 
 `0x132b6` and `0x1381c` implement a small stream allocator over 0x100-byte chunks:
 

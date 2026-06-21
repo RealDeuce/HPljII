@@ -117,7 +117,7 @@ left/right/top/bottom unprintable margins.
 
 Portrait:
 
-| Paper | Phys W `A` | Phys L `B` | Log W `C` | Log L `D` | Left `E` | Right `F` | Top `G` | Bottom `H` |
+| Paper | Phys W | Phys L | Log W | Log L | Left | Right | Top | Bottom |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Letter | 2550 | 3300 | 2400 | 3300 | 50 | 100 | 60 | 60 |
 | Legal | 2550 | 4200 | 2400 | 4200 | 50 | 100 | 60 | 60 |
@@ -130,7 +130,7 @@ Portrait:
 
 Landscape:
 
-| Paper | Phys L `A` | Phys W `B` | Log W `C` | Log L `D` | Left `E` | Right `F` | Top `G` | Bottom `H` |
+| Paper | Phys L | Phys W | Log W | Log L | Left | Right | Top | Bottom |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Letter | 3300 | 2550 | 3180 | 2550 | 60 | 60 | 50 | 100 |
 | Legal | 4200 | 2550 | 4080 | 2550 | 60 | 60 | 50 | 100 |

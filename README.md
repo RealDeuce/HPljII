@@ -96,19 +96,21 @@ offsets or manual sections are useful for confirming it.
 Four 128 KiB Toshiba `TC531000P` mask ROMs from the formatter were read locally. The verified raw
 ROM files are ignored by git and should remain local working inputs:
 
-| Board | Chip marking | Local filename | Role after interleave |
-| --- | --- | --- | --- |
-| IC13 | `SH7-9236-01` | `ic13_sh7-9236-01_tc531000p.bin` | odd/even partner for executable firmware pair |
-| IC30 | `SH7-9235-01` | `ic30_sh7-9235-01_tc531000p.bin` | odd/even partner for executable firmware pair |
-| IC15 | `SH7-9234-01` | `ic15_sh7-9234-01_tc531000p.bin` | odd/even partner for resource/font pair |
-| IC32 | `SH7-9233-01` | `ic32_sh7-9233-01_tc531000p.bin` | odd/even partner for resource/font pair |
+- IC13, marking `SH7-9236-01`: `ic13_sh7-9236-01_tc531000p.bin`.
+  Odd/even partner for the executable firmware pair.
+- IC30, marking `SH7-9235-01`: `ic30_sh7-9235-01_tc531000p.bin`.
+  Odd/even partner for the executable firmware pair.
+- IC15, marking `SH7-9234-01`: `ic15_sh7-9234-01_tc531000p.bin`.
+  Odd/even partner for the resource/font pair.
+- IC32, marking `SH7-9233-01`: `ic32_sh7-9233-01_tc531000p.bin`.
+  Odd/even partner for the resource/font pair.
 
 The current verified interleaves are:
 
-| Pair | Byte order | Local output | Interpretation |
-| --- | --- | --- | --- |
-| firmware | IC30, IC13 | `generated/roms/ic30_ic13.bin` | 262144-byte 68000 executable ROM pair |
-| resources | IC32, IC15 | `generated/roms/ic32_ic15.bin` | 262144-byte resource/font/data ROM pair |
+- Firmware: IC30, IC13 byte order; local output `generated/roms/ic30_ic13.bin`.
+  Interpretation: 262144-byte 68000 executable ROM pair.
+- Resources: IC32, IC15 byte order; local output `generated/roms/ic32_ic15.bin`.
+  Interpretation: 262144-byte resource/font/data ROM pair.
 
 The `IC30,IC13` pair begins with a plausible 68000 vector table:
 

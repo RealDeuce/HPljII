@@ -31,54 +31,65 @@ effects.
 
 These command-to-handler anchors are current priorities for pixel-perfect rendering:
 
-| Command | Handler | Why it matters |
-| --- | --- | --- |
-| `ESC E` | `0x00cc52` | PCL reset, partial-page finalization, environment/parser/raster reinitialization |
-| CR `0x0d` | `0x00f02c` | horizontal cursor reset/line-termination interactions |
-| LF `0x0a` | `0x00f08c` | vertical cursor movement |
-| FF `0x0c` | `0x00f0f0` | page eject and page-buffer boundary |
-| HT `0x09` | `0x00f1cc` | tab and horizontal cursor positioning |
-| BS `0x08` | `0x00f2a8` | backspace cursor behavior |
-| `ESC &l#A` | `0x00fc74` | page size; maps PCL values to internal paper codes |
-| `ESC &l#O` | `0x010220` | orientation; rebuilds page geometry and cursor state |
-| `ESC &l#C` | `0x00cb00` | VMI in 1/48-inch units into `0x783160` |
-| `ESC &l#D` | `0x00c992` | lines per inch; accepted set maps to line advance `0x783160` |
-| `ESC &l#E` | `0x00ece2` | top margin; writes top offset `0x782dce` |
-| `ESC &l#F` | `0x00ea9e` | text length; writes bottom/text-length limit `0x782dd2` |
-| `ESC &l#H` | `0x00ef62` | paper source and page eject |
-| `ESC &a#L` | `0x00eb58` | left margin; absolute HMI columns into `0x782dd6` |
-| `ESC &a#M` | `0x00ec0c` | right margin; `abs(parameter) + 1` HMI columns into `0x782dda` |
-| `ESC &a#C` | `0x00f39e` | horizontal column position through current HMI and helper `0xf4ca` |
-| `ESC &a#H` | `0x00f416` | horizontal decipoint position; five packed subunits per decipoint |
-| `ESC &a#R` | `0x00f560` | vertical row position through current VMI, top offset, and helper `0xf6e2` |
-| `ESC &a#V` | `0x00f60a` | vertical decipoint position; five packed subunits per decipoint |
-| `ESC &k#H` | `0x00ca8c` | HMI |
-| `ESC &k#G` | `0x00edf8` | CR/LF/FF line-termination mode |
-| `ESC &f#S` | `0x00f75e` | cursor stack at `0x782c96..0x782d36`; selector `0` pushes, selector `1` pops |
-| `ESC &f#Y` | `0x00e112` | macro ID; stores absolute parsed word in `0x783164` |
-| `ESC &f#X` | `0x00dd08` | macro control; selectors `0..10` dispatch through the macro record/data-chain table |
-| `ESC *t#R` | `0x010808` | raster resolution |
-| `ESC *r#A` | `0x01075a` | start raster graphics |
-| `ESC *r#B` | `0x0107fa` | end raster graphics |
-| `ESC *b#W` | `0x011f82` | transfer raster row bytes |
-| `ESC *c#P` | `0x010898` | fill rectangle; consumes size state and queues rule object |
-| `ESC *c#A` | `0x010e68` | rectangle width in dots into `0x78316a` |
-| `ESC *c#B` | `0x010e22` | rectangle height in dots into `0x783166` |
-| `ESC *c#G` | `0x010dce` | area fill id into `0x78316e` |
-| `ESC *c#H` | `0x010a40` | rectangle width in decipoints into `0x78316a` |
-| `ESC *c#V` | `0x010ae0` | rectangle height in decipoints into `0x783166` |
-| `ESC *c#D` | `0x015a56` | assign font ID |
-| `ESC *c#E` | `0x015a18` | select current downloaded character/code |
-| `ESC *c#F` | `0x016df6` | font control |
-| `ESC (#A..^` | `0x0120be` | primary font-designation family: symbol set, `#X` font ID, and `3@` default font |
-| `ESC )#A..^` | `0x0120be` | secondary font-designation family: symbol set, `#X` font ID, and `3@` default font |
-| `ESC (s#P` / `ESC )s#P` | `0x012082` | primary/secondary spacing |
-| `ESC (s#H` / `ESC )s#H` | `0x012096` | primary/secondary pitch |
-| `ESC (s#V` / `ESC )s#V` | `0x012046` | primary/secondary point size |
-| `ESC (s#S` / `ESC )s#S` | `0x01206e` | primary/secondary style |
-| `ESC (s#B` / `ESC )s#B` | `0x0120aa` | primary/secondary stroke weight |
-| `ESC (s#T` / `ESC )s#T` | `0x01205a` | primary/secondary typeface |
-| `ESC (s#W` / `ESC )s#W` | `0x011f96` | delayed font/downloaded-character payload selector |
+- `ESC E`, handler `0x00cc52`: PCL reset, partial-page finalization,
+  environment/parser/raster reinitialization.
+- CR `0x0d`, handler `0x00f02c`: horizontal cursor reset and line-termination interactions.
+- LF `0x0a`, handler `0x00f08c`: vertical cursor movement.
+- FF `0x0c`, handler `0x00f0f0`: page eject and page-buffer boundary.
+- HT `0x09`, handler `0x00f1cc`: tab and horizontal cursor positioning.
+- BS `0x08`, handler `0x00f2a8`: backspace cursor behavior.
+- `ESC &l#A`, handler `0x00fc74`: page size; maps PCL values to internal paper codes.
+- `ESC &l#O`, handler `0x010220`: orientation; rebuilds page geometry and cursor state.
+- `ESC &l#C`, handler `0x00cb00`: VMI in 1/48-inch units into `0x783160`.
+- `ESC &l#D`, handler `0x00c992`: lines per inch; accepted set maps to line advance
+  `0x783160`.
+- `ESC &l#E`, handler `0x00ece2`: top margin; writes top offset `0x782dce`.
+- `ESC &l#F`, handler `0x00ea9e`: text length; writes bottom/text-length limit
+  `0x782dd2`.
+- `ESC &l#H`, handler `0x00ef62`: paper source and page eject.
+- `ESC &a#L`, handler `0x00eb58`: left margin; absolute HMI columns into `0x782dd6`.
+- `ESC &a#M`, handler `0x00ec0c`: right margin; `abs(parameter) + 1` HMI columns into
+  `0x782dda`.
+- `ESC &a#C`, handler `0x00f39e`: horizontal column position through current HMI and helper
+  `0xf4ca`.
+- `ESC &a#H`, handler `0x00f416`: horizontal decipoint position; five packed subunits per
+  decipoint.
+- `ESC &a#R`, handler `0x00f560`: vertical row position through current VMI, top offset, and
+  helper `0xf6e2`.
+- `ESC &a#V`, handler `0x00f60a`: vertical decipoint position; five packed subunits per
+  decipoint.
+- `ESC &k#H`, handler `0x00ca8c`: HMI.
+- `ESC &k#G`, handler `0x00edf8`: CR/LF/FF line-termination mode.
+- `ESC &f#S`, handler `0x00f75e`: cursor stack at `0x782c96..0x782d36`; selector `0`
+  pushes, selector `1` pops.
+- `ESC &f#Y`, handler `0x00e112`: macro ID; stores absolute parsed word in `0x783164`.
+- `ESC &f#X`, handler `0x00dd08`: macro control; selectors `0..10` dispatch through the
+  macro record/data-chain table.
+- `ESC *t#R`, handler `0x010808`: raster resolution.
+- `ESC *r#A`, handler `0x01075a`: start raster graphics.
+- `ESC *r#B`, handler `0x0107fa`: end raster graphics.
+- `ESC *b#W`, handler `0x011f82`: transfer raster row bytes.
+- `ESC *c#P`, handler `0x010898`: fill rectangle; consumes size state and queues rule object.
+- `ESC *c#A`, handler `0x010e68`: rectangle width in dots into `0x78316a`.
+- `ESC *c#B`, handler `0x010e22`: rectangle height in dots into `0x783166`.
+- `ESC *c#G`, handler `0x010dce`: area fill id into `0x78316e`.
+- `ESC *c#H`, handler `0x010a40`: rectangle width in decipoints into `0x78316a`.
+- `ESC *c#V`, handler `0x010ae0`: rectangle height in decipoints into `0x783166`.
+- `ESC *c#D`, handler `0x015a56`: assign font ID.
+- `ESC *c#E`, handler `0x015a18`: select current downloaded character/code.
+- `ESC *c#F`, handler `0x016df6`: font control.
+- `ESC (#A..^`, handler `0x0120be`: primary font-designation family; symbol set, `#X`
+  font ID, and `3@` default font.
+- `ESC )#A..^`, handler `0x0120be`: secondary font-designation family; symbol set, `#X`
+  font ID, and `3@` default font.
+- `ESC (s#P` / `ESC )s#P`, handler `0x012082`: primary/secondary spacing.
+- `ESC (s#H` / `ESC )s#H`, handler `0x012096`: primary/secondary pitch.
+- `ESC (s#V` / `ESC )s#V`, handler `0x012046`: primary/secondary point size.
+- `ESC (s#S` / `ESC )s#S`, handler `0x01206e`: primary/secondary style.
+- `ESC (s#B` / `ESC )s#B`, handler `0x0120aa`: primary/secondary stroke weight.
+- `ESC (s#T` / `ESC )s#T`, handler `0x01205a`: primary/secondary typeface.
+- `ESC (s#W` / `ESC )s#W`, handler `0x011f96`: delayed font/downloaded-character payload
+  selector.
 
 ## First Handler Observations
 

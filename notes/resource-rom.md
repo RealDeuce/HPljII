@@ -133,11 +133,15 @@ Current confirmed record facts:
 
 Example candidate entries from the probe:
 
-| Context | Glyph index | Relative offset | Entry | Bitmap | Height | Width | Render span | Sample bytes |
-| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| `0x4008004c` | 0 | `0x0000103c` | `0x001088` | `0x001092` | 32 | 9 | 2 | `1c 00 3e 00 3e 00 3e 00` |
-| `0x44080418` | 0 | `0x00007792` | `0x007baa` | `0x007bb4` | 29 | 28 | 4 | `00 1f 80 00 00 ff f0 00` |
-| `0x440946b4` | 0 | `0x0000407c` | `0x018730` | `0x01873a` | 16 | 16 | 2 | `03 c0 0f f0 38 1c 30 0c` |
+- Context `0x4008004c`, glyph `0`, relative offset `0x0000103c`, entry `0x001088`,
+  bitmap `0x001092`, height `32`, width `9`, render span `2`, sample bytes
+  `1c 00 3e 00 3e 00 3e 00`.
+- Context `0x44080418`, glyph `0`, relative offset `0x00007792`, entry `0x007baa`,
+  bitmap `0x007bb4`, height `29`, width `28`, render span `4`, sample bytes
+  `00 1f 80 00 00 ff f0 00`.
+- Context `0x440946b4`, glyph `0`, relative offset `0x0000407c`, entry `0x018730`,
+  bitmap `0x01873a`, height `16`, width `16`, render span `2`, sample bytes
+  `03 c0 0f f0 38 1c 30 0c`.
 
 The old high-word interpretation was wrong. The entries are not absolute high words; they are full
 relative long offsets from the selected record start. The selected context longword now maps
@@ -271,14 +275,15 @@ byte `+0x0c == 2`. It always increments total count `0x78278e`.
 
 The class byte then partitions the shared pointer-list window:
 
-| Class byte | Address range | Count incremented | Cursors advanced by one pointer |
-| ---: | --- | --- | --- |
-| `1` | any accepted address | `0x782790` | none by itself |
-| `1` | `0x080000..0x0ffffe` | `0x782792` | `0x7827a4`, `0x7827a8`, `0x7827ac`, `0x7827b0`, `0x7827b4` |
-| `1` | `0x200000..0x5ffffe` | `0x782794` | `0x7827a8`, `0x7827ac`, `0x7827b0`, `0x7827b4` |
-| `0` | any accepted address | `0x782798` | none by itself |
-| `0` | `0x080000..0x0ffffe` | `0x78279a` | `0x7827b0`, `0x7827b4` |
-| `0` | `0x200000..0x5ffffe` | `0x78279c` | `0x7827b4` |
+- Class `1`, any accepted address: increments `0x782790`; advances no cursors by itself.
+- Class `1`, `0x080000..0x0ffffe`: increments `0x782792`; advances `0x7827a4`,
+  `0x7827a8`, `0x7827ac`, `0x7827b0`, and `0x7827b4`.
+- Class `1`, `0x200000..0x5ffffe`: increments `0x782794`; advances `0x7827a8`,
+  `0x7827ac`, `0x7827b0`, and `0x7827b4`.
+- Class `0`, any accepted address: increments `0x782798`; advances no cursors by itself.
+- Class `0`, `0x080000..0x0ffffe`: increments `0x78279a`; advances `0x7827b0` and
+  `0x7827b4`.
+- Class `0`, `0x200000..0x5ffffe`: increments `0x78279c`; advances `0x7827b4`.
 
 Other class values are retained in the total count but do not advance these class/range windows. In
 the decoded `0x1a9be` body, initializer-cleared counters `0x782796` and `0x78279e` are not

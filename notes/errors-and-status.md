@@ -27,12 +27,14 @@ Sources: `hplaserjetclassicsiiiii.pdf` ch. 7 table 7-2; `33440-90905...pdf` ch. 
 | `13 PAPER JAM` | Clear paper, then continue/reset to reprint as appropriate. |
 | `14 NO EP CRT` | Install EP-S cartridge. |
 | `16 TONER LOW` | Replace or redistribute EP-S cartridge. |
-| `PC LOAD [paper]` | Requested paper size not installed or tray is empty. `[paper]` can be A4, EXEC, LETTER, LEGAL. |
+| `PC LOAD [paper]` | Requested paper size not installed or tray is empty. |
 | `PE FEED [envelope]` | Manual envelope feed requested. |
 | `PF FEED [paper]` | Manual paper feed requested. |
 | `ENVELOPE=[size]` | HP 33440 envelope tray inserted; select COM10, MONARC, C5, or DL. |
 | `FC LEFT/RIGHT/BOTH` | Font cartridge changed while offline with buffered data. |
 | `FE CARTRIDGE` | Cartridge removed while online; power off, reinsert, power on. |
+
+For `PC LOAD [paper]`, `[paper]` can be A4, EXEC, LETTER, or LEGAL.
 
 ## Data / Page Errors
 
@@ -56,8 +58,10 @@ Sources: `hplaserjetclassicsiiiii.pdf` ch. 7 table 7-2; `33440-90905...pdf` ch. 
 | `69 SERVICE` | Timeout between Interface/Formatter PCA and optional I/O PCA. |
 | `70 ERROR` | HP 33449 firmware cartridge not designed for printer. |
 | `71 ERROR` | HP 33449 firmware cartridge not designed for printer. |
-| `72 SERVICE` | HP 33449 font cartridge removed too quickly after insertion or bad cartridge/connector. |
+| `72 SERVICE` | HP 33449 font cartridge removed too quickly after insertion. |
 | `79 SERVICE` | HP 33449 unexpected formatter error; isolate memory, cartridges, optional I/O. |
+
+`72 SERVICE` can also indicate a bad font-cartridge connector.
 
 ## Engine Service Errors
 

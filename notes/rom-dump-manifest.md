@@ -2,9 +2,9 @@
 
 Sources: local TC531000P reads; `TC531000AP.PDF`; `data/rom_manifest.json`.
 
-The verified ROM images are local-only artifacts and are intentionally ignored by Git.
-Track filenames, hashes, package locations, read method, and analysis notes here; keep
-raw bytes in the working directory.
+The verified ROM images are local-only artifacts and are intentionally ignored
+by Git. Track filenames, hashes, package locations, read method, and analysis
+notes here; keep raw bytes in the working directory.
 
 ## Read Setup
 
@@ -12,7 +12,8 @@ raw bytes in the working directory.
 - Reader profile: `LQ500_4C_A16_PIN22@DIP28`.
 - Control polarity: active-low `/CE` is correct for these parts.
 - Active-high CE probe returned erased-looking data and was rejected.
-- Address pin note: TC531000 pin 22 is A16; pin 20 is the CE or `/CE` mask option.
+- Address pin note: TC531000 pin 22 is A16; pin 20 is the CE or `/CE` mask
+  option.
 
 ## Verified Raw ROMs
 
@@ -35,7 +36,8 @@ raw bytes in the working directory.
   - Chip marking: SH7-9233-01
   - Local filename: `ic32_sh7-9233-01_tc531000p.bin`
   - SHA-256: `7f9abfe55629770b0f4bcd0e3bc671143d4cca6ec666edfac34d9e0587ae6452`
-  - Evidence: read4/read5 matched; earlier reads retained as unverified local files
+  - Evidence: read4/read5 matched; earlier reads retained as unverified local
+    files
 
 All four verified raw images are 131072 bytes.
 
@@ -72,11 +74,12 @@ Rejected order probes:
 
 - Initial supervisor stack pointer: `0x00800000`.
 - Reset PC: `0x00000110`.
-- Exception vectors point into a regular RAM trampoline range beginning at `0x00780000`.
+- Exception vectors point into a regular RAM trampoline range beginning at
+  `0x00780000`.
 
-Disassembling at `0x00000110` as `m68000` produces coherent startup code: interrupt mask
-setup, `RESET`, hardware register writes, RAM tests, trampoline initialization, and
-jumps into later initialization routines.
+Disassembling at `0x00000110` as `m68000` produces coherent startup code:
+interrupt mask setup, `RESET`, hardware register writes, RAM tests, trampoline
+initialization, and jumps into later initialization routines.
 
 `IC32,IC15` reconstructs a readable resource header:
 
@@ -84,5 +87,5 @@ jumps into later initialization routines.
 HEAD ... Copyright (C) Hewlett-Packard Company, 1986
 ```
 
-MAME disassembly of the same pair does not look like executable reset/startup code, so
-treat it as data until proven otherwise.
+MAME disassembly of the same pair does not look like executable reset/startup
+code, so treat it as data until proven otherwise.

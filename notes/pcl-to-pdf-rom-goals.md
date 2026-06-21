@@ -12,8 +12,8 @@ Build a LaserJet II-compatible converter:
 PCL/input byte stream -> rendered pages -> PDF
 ```
 
-This is not a full hardware emulator. The formatter board and ROMs are references and
-data sources, not necessarily execution targets.
+This is not a full hardware emulator. The formatter board and ROMs are
+references and data sources, not necessarily execution targets.
 
 ## What We Should Not Need
 
@@ -24,15 +24,16 @@ For PDF output, we should not need accurate modeling of:
 - Paper timing, beam timing, jams, fuser warmup, or mechanical engine delays.
 - Real Centronics/serial electrical timing beyond accepting byte streams.
 
-The service manual hardware notes remain useful for understanding architecture and
-diagnostics, but they should not drive the renderer design.
+The service manual hardware notes remain useful for understanding architecture
+and diagnostics, but they should not drive the renderer design.
 
 ## What the ROMs Are Expected to Provide
 
 The formatter ROMs are valuable for facts the manuals do not fully specify:
 
 - Built-in bitmap font rasters.
-- Built-in font metrics, cell sizes, baselines, offsets, pitches, and style metadata.
+- Built-in font metrics, cell sizes, baselines, offsets, pitches, and style
+  metadata.
 - Symbol-set mapping tables and internal character conversions.
 - PCL parser dispatch tables.
 - Exact handling of combined escape sequences and malformed commands.
@@ -86,15 +87,16 @@ Suggested renderer components:
 ## ROM Analysis Milestones
 
 1. Photograph/record formatter board markings.
-2. Identify CPU, clock, ROM packages, RAM, NVRAM, gate arrays, and cartridge/interface
-   connectors.
+2. Identify CPU, clock, ROM packages, RAM, NVRAM, gate arrays, and
+   cartridge/interface connectors.
 3. Dump ROMs and preserve raw byte order.
 4. Determine ROM interleave/banking and CPU endian/order.
 5. Locate reset/vector/startup code.
 6. Locate ASCII strings and display-message tables.
 7. Locate PCL command dispatch tables.
 8. Locate factory default tables.
-9. Locate page geometry tables and compare with Technical Reference figures 2-2 and 2-3.
+9. Locate page geometry tables and compare with Technical Reference figures 2-2
+   and 2-3.
 10. Locate built-in font tables:
     - descriptors.
     - metrics.
@@ -117,7 +119,8 @@ The current notes should be enough to avoid routine PDF lookup for:
 
 Expected remaining PDF lookups:
 
-- Verifying OCR-sensitive tables before implementing exact soft-font descriptor parsing.
+- Verifying OCR-sensitive tables before implementing exact soft-font descriptor
+  parsing.
 - Checking diagrams if board connector orientation or signal direction matters.
 - Looking up rarely used PCL commands not copied into the quick reference.
 

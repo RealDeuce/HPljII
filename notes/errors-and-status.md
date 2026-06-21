@@ -23,7 +23,7 @@ Sources: `hplaserjetclassicsiiiii.pdf` ch. 7 table 7-2; `33440-90905...pdf` ch.
 
 | Message | Meaning / action |
 | --- | --- |
-| `11 PAPER OUT` | Add paper to input tray. HP 33440-specific wording in service table. |
+| `11 PAPER OUT` | Add paper; HP 33440 service-table wording. |
 | `12 PRINTER OPEN` | Close top cover. |
 | `13 PAPER JAM` | Clear paper, then continue/reset to reprint as appropriate. |
 | `14 NO EP CRT` | Install EP-S cartridge. |
@@ -31,9 +31,9 @@ Sources: `hplaserjetclassicsiiiii.pdf` ch. 7 table 7-2; `33440-90905...pdf` ch.
 | `PC LOAD [paper]` | Requested paper size not installed or tray is empty. |
 | `PE FEED [envelope]` | Manual envelope feed requested. |
 | `PF FEED [paper]` | Manual paper feed requested. |
-| `ENVELOPE=[size]` | HP 33440 envelope tray inserted; select COM10, MONARC, C5, or DL. |
-| `FC LEFT/RIGHT/BOTH` | Font cartridge changed while offline with buffered data. |
-| `FE CARTRIDGE` | Cartridge removed while online; power off, reinsert, power on. |
+| `ENVELOPE=[size]` | HP 33440 envelope tray; select COM10, MONARC, C5, or DL. |
+| `FC LEFT/RIGHT/BOTH` | Font cartridge changed offline with buffered data. |
+| `FE CARTRIDGE` | Cartridge removed online; power off, reinsert, power on. |
 
 For `PC LOAD [paper]`, `[paper]` can be A4, EXEC, LETTER, or LEGAL.
 
@@ -61,7 +61,7 @@ For `PC LOAD [paper]`, `[paper]` can be A4, EXEC, LETTER, or LEGAL.
 | `70 ERROR` | HP 33449 firmware cartridge not designed for printer. |
 | `71 ERROR` | HP 33449 firmware cartridge not designed for printer. |
 | `72 SERVICE` | HP 33449 font cartridge removed too quickly after insertion. |
-| `79 SERVICE` | HP 33449 formatter error; isolate memory, cartridges, optional I/O. |
+| `79 SERVICE` | HP 33449 formatter error; isolate memory, cartridges, I/O. |
 
 `72 SERVICE` can also indicate a bad font-cartridge connector.
 
@@ -69,8 +69,8 @@ For `PC LOAD [paper]`, `[paper]` can be A4, EXEC, LETTER, or LEGAL.
 
 | Message | Meaning |
 | --- | --- |
-| `50 SERVICE` | Fuser malfunction. Power off 10+ minutes, then troubleshoot fuser. |
-| `51 ERROR` | Laser beam lost for over about two seconds / beam detect malfunction. |
+| `50 SERVICE` | Fuser fault. Power off 10+ minutes, then troubleshoot fuser. |
+| `51 ERROR` | Laser lost for about two seconds / beam detect malfunction. |
 | `52 ERROR` | Scanner motor unable to maintain speed. |
 
 ## Memory / Formatter Service Errors

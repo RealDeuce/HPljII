@@ -171,7 +171,7 @@ Current high-value executable firmware anchors in the `IC30,IC13` interleave:
 | `0x0000041a` | `HEAD` resource-record scanner |
 | `0x0000a904` | normalized host-byte fetch source |
 | `0x0000da9a` | ESC-aware byte fetch wrapper |
-| `0x0000daf0` / `0x0000db74` | PCL escape tokenizer and six-byte command record builder |
+| `0x0000daf0` / `0x0000db74` | ESC tokenizer / command-record builder |
 | `0x00011774` | main parser loop |
 | `0x000112a4` | normal parser pointer table |
 | `0x000116f6` | alternate/data parser pointer table |

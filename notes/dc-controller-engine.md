@@ -108,7 +108,7 @@ Power connector `J212` includes:
 | J212-03/04 | `+5V` | +5 Vdc |
 | J212-05 | `-5V` | -5 Vdc |
 | J212-06 | `RESET` | Initializes DC Controller microprocessors |
-| J212-07 | `REMOTE` | Enables +24 Vdc supplies on power supply/main motor driver |
+| J212-07 | `REMOTE` | Enables +24 Vdc supplies |
 | J212-08 | `1A` | Main motor drive |
 | J212-09 | `A` | Main motor drive |
 | J212-10 | `1B` | Main motor drive |

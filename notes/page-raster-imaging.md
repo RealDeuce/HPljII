@@ -148,7 +148,7 @@ Raster-related PCL handlers:
 | `ESC *t#R` | `0x010808` | raster resolution |
 | `ESC *r#A` | `0x01075a` | start raster graphics |
 | `ESC *r#B` | `0x0107fa` | end raster graphics |
-| `ESC *b#W` | `0x011f82` -> delayed handler `0x0105d0` | transfer raster row bytes |
+| `ESC *b#W` | `0x011f82` -> `0x0105d0` | transfer raster row bytes |
 
 `generated/analysis/ic30_ic13_raster_graphics_flow.md` collects the command
 edge, delayed `0x121cc` / `0x12218` payload handoff, page-root queueing through
@@ -162,13 +162,13 @@ Observed fields:
 | Offset | Access | Current interpretation |
 | ---: | --- | --- |
 | `+0x00` | word | start/baseline coordinate word copied from field `+0x0a` |
-| `+0x02` | word | whole coordinate from current packed coordinate during row transfer |
+| `+0x02` | word | whole coordinate during row transfer |
 | `+0x04` | word | bytes accepted or clipped for current row |
 | `+0x06` | word | excess bytes beyond accepted row count |
 | `+0x08` | word | resolution scale minus one |
 | `+0x0a` | long | start/baseline coordinate copied from current cursor state |
 | `+0x0e` | word | raster scale: 1, 2, 3, or 4 |
-| `+0x10` | word | maximum accepted byte count derived from page extent and raster scale |
+| `+0x10` | word | max byte count from page extent and raster scale |
 | `+0x12` | byte | raster-active / initialized flag |
 
 `ESC *t#R` maps the requested resolution into a scale:
@@ -274,7 +274,7 @@ Current page-root fields:
 | Root offset | Current interpretation |
 | ---: | --- |
 | `+0x1c` | array of bucket heads indexed by `0x782a7c` |
-| `+0x20` | start of the 0x100-byte chunk chain used by display-list object storage |
+| `+0x20` | start of display-list 0x100-byte chunk chain |
 | `+0x24` | linked-list head used by rectangle/rule-like objects |
 | `+0x28` | second linked-list head used by another rectangle/rule mode |
 | `+0x2c..+0x68` | 16 current-font context record slots |
@@ -390,11 +390,11 @@ when record geometry changes.
 `0x1edc6` copies queue/list pointers from the source record into the destination
 render record:
 
-| Source record offset | Destination render-record offset | Current interpretation |
+| Source offset | Render-record offset | Current interpretation |
 | ---: | ---: | --- |
 | `+0x1c` | `+0x18` | bucket-head array copied from page/control record |
 | `+0x24` | `+0x1c` | linked object list copied from page/control record |
-| `+0x28` | `+0x20` | second linked object list copied from page/control record |
+| `+0x28` | `+0x20` | second linked object list from page/control record |
 | `+0x2c..+0x68` | `+0x24..+0x60` | 16 current-font context record pointers |
 
 After copying, `0x1edc6` normalizes objects in the destination lists: it sets

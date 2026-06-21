@@ -155,7 +155,7 @@ Normal mode 0 has these direct control-code entries:
 | Byte | Meaning | Handler |
 | --- | --- | --- |
 | `0x1b` | `ESC` | next mode 1, setup handler `0x011eb6` |
-| `0x1a` | control-Z-style host control | next mode 2, setup handler `0x011ea4` |
+| `0x1a` | control-Z host control | next mode 2, setup handler `0x011ea4` |
 | `0x0f` | SI | `0x00c68a` |
 | `0x0e` | SO | `0x00c6b8` |
 | `0x0d` | CR | `0x00f02c` |

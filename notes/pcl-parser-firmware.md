@@ -446,15 +446,17 @@ storage, stop-kept cleanup, execute/call frame creation from command bytes,
 overlay enable/disable state, selector `10` survival through delete-temporary,
 selector `9` making the record removable, selector `8` clearing only the current
 id, selector `6` clearing pool records, definition-mode and active-data-chain
-guard suppression, `0xa904` data-chain byte fetch and end-marker outer-source
-resumption for execute/call frame payloads, modeled printable/CR processing, and
-page-record allocator/bridge shape for that payload. The empty chained macro
-fixture is also traced through ROM parser modes `0 -> 1 -> 5 -> 17 -> 17 -> 17
--> 0` to final handlers `0xe112`, `0xdd08`, and `0xdd08`; the definition fixture
-proves `ESC &f1X` remains enabled through alternate parser table `0x116f6` while
-payload CR is not dispatched as a control code. The execute/call payload
-page-record fixture is now fed by a replay helper that drains the `0xe418` frame
-through the `0xa904` data-chain source before handing those bytes to the modeled
+guard suppression, and the same complete command streams draining from modeled
+`0xa904` ring fetch into those records and frames. The fixtures also prove
+`0xa904` data-chain byte fetch and end-marker outer-source resumption for
+execute/call frame payloads, modeled printable/CR processing, and page-record
+allocator/bridge shape for that payload. The empty chained macro fixture is also
+traced through ROM parser modes `0 -> 1 -> 5 -> 17 -> 17 -> 17 -> 0` to final
+handlers `0xe112`, `0xdd08`, and `0xdd08`; the definition fixture proves `ESC
+&f1X` remains enabled through alternate parser table `0x116f6` while payload CR
+is not dispatched as a control code. The execute/call payload page-record
+fixture is now fed by a replay helper that drains the `0xe418` frame through the
+`0xa904` data-chain source before handing those bytes to the modeled
 printable/page-record path, including a stored `ESC &k1G!\r!` mixed-control
 execute payload whose replayed page-record output matches the direct
 mixed-stream model. This still is not full live parser replay, but it ties the

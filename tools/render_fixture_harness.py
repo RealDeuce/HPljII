@@ -11696,7 +11696,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ),
     )
     macro_stream_alternate_guard_records = macro_stream_alternate_guard["state"]["records"]
+    macro_stream_active_chain_guard_records = macro_stream_active_chain_guard["state"]["records"]
     assert isinstance(macro_stream_alternate_guard_records, list)
+    assert isinstance(macro_stream_active_chain_guard_records, list)
     checks.append(assert_equal("macro command stream respects definition and active-chain guards", {
         "alternate_events": [
             {
@@ -11733,6 +11735,333 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "active_chain_final": {"current_macro_id": 123, "parser_mode": 0, "host_gate_bit1": 1, "data_chain_slot": 1},
         "active_chain_frames": [{"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"}],
+    }))
+
+    macro_host_fetch_cases = {
+        "empty": (macro_stream_empty, 1),
+        "execute": (macro_stream_execute, 1),
+        "call": (macro_stream_call, 1),
+        "overlay": (macro_stream_overlay, 1),
+        "permanent_delete": (macro_stream_permanent_delete, 1),
+        "temporary_delete": (macro_stream_temporary_delete, 1),
+        "delete_current": (macro_stream_delete_current, 2),
+        "delete_all": (macro_stream_delete_all, 2),
+        "alternate_guard": (macro_stream_alternate_guard, 1),
+        "active_chain_guard": (macro_stream_active_chain_guard, 1),
+    }
+
+    def macro_host_fetch_summary(result: dict[str, object], record_count: int) -> dict[str, object]:
+        stream = bytes(result["stream"])
+        fetched = fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(stream), direct_mode=0),
+            len(stream),
+        )
+        state = result["state"]
+        assert isinstance(state, dict)
+        records = state["records"]
+        assert isinstance(records, list)
+        return {
+            "stream": fetched["stream"],
+            "source_set": sorted(set(fetched["sources"])),
+            "source_count": len(fetched["sources"]),
+            "remaining_ring": fetched["state"]["ring"],
+            "event_kinds": [
+                {
+                    key: event[key]
+                    for key in ("kind", "reason")
+                    if key in event
+                }
+                for event in result["events"]
+            ],
+            "records": records[:record_count],
+            "frames": state["data_chain_frames"],
+            "final": select_keys(
+                state,
+                (
+                    "current_macro_id",
+                    "alternate_mode",
+                    "parser_mode",
+                    "macro_error",
+                    "host_gate_bit1",
+                    "data_chain_slot",
+                    "overlay_macro_id",
+                ),
+            ),
+        }
+
+    checks.append(assert_equal("host-fetched macro command streams update records and frames", {
+        name: macro_host_fetch_summary(result, record_count)
+        for name, (result, record_count) in macro_host_fetch_cases.items()
+    }, {
+        "empty": {
+            "stream": b"\x1b&f-123y0x1X",
+            "source_set": ["ring"],
+            "source_count": len(b"\x1b&f-123y0x1X"),
+            "remaining_ring": [],
+            "event_kinds": [
+                {"kind": "macro-id"},
+                {"kind": "macro-start"},
+                {"kind": "macro-stop-cleared-empty"},
+            ],
+            "records": [{"id": 0, "payload": b"", "permanent": False}],
+            "frames": [],
+            "final": {
+                "current_macro_id": 123,
+                "alternate_mode": 0,
+                "parser_mode": 0,
+                "macro_error": 0,
+                "host_gate_bit1": 0,
+                "data_chain_slot": 0,
+                "overlay_macro_id": 0,
+            },
+        },
+        "execute": {
+            "stream": b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f2X",
+            "source_set": ["ring"],
+            "source_count": len(b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f2X"),
+            "remaining_ring": [],
+            "event_kinds": [
+                {"kind": "macro-id"},
+                {"kind": "macro-start"},
+                {"kind": "macro-definition-payload"},
+                {"kind": "macro-stop-kept"},
+                {"kind": "macro-data-chain"},
+            ],
+            "records": [{"id": 123, "payload": b"!\r", "permanent": False}],
+            "frames": [{"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"}],
+            "final": {
+                "current_macro_id": 123,
+                "alternate_mode": 0,
+                "parser_mode": 0,
+                "macro_error": 0,
+                "host_gate_bit1": 1,
+                "data_chain_slot": 1,
+                "overlay_macro_id": 0,
+            },
+        },
+        "call": {
+            "stream": b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f3X",
+            "source_set": ["ring"],
+            "source_count": len(b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f3X"),
+            "remaining_ring": [],
+            "event_kinds": [
+                {"kind": "macro-id"},
+                {"kind": "macro-start"},
+                {"kind": "macro-definition-payload"},
+                {"kind": "macro-stop-kept"},
+                {"kind": "macro-data-chain"},
+            ],
+            "records": [{"id": 123, "payload": b"!\r", "permanent": False}],
+            "frames": [{"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 3, "environment": "call"}],
+            "final": {
+                "current_macro_id": 123,
+                "alternate_mode": 0,
+                "parser_mode": 0,
+                "macro_error": 0,
+                "host_gate_bit1": 1,
+                "data_chain_slot": 1,
+                "overlay_macro_id": 0,
+            },
+        },
+        "overlay": {
+            "stream": b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f4X\x1b&f5X",
+            "source_set": ["ring"],
+            "source_count": len(b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f4X\x1b&f5X"),
+            "remaining_ring": [],
+            "event_kinds": [
+                {"kind": "macro-id"},
+                {"kind": "macro-start"},
+                {"kind": "macro-definition-payload"},
+                {"kind": "macro-stop-kept"},
+                {"kind": "macro-overlay-enable"},
+                {"kind": "macro-overlay-disable"},
+            ],
+            "records": [{"id": 123, "payload": b"!\r", "permanent": False}],
+            "frames": [],
+            "final": {
+                "current_macro_id": 123,
+                "alternate_mode": 0,
+                "parser_mode": 0,
+                "macro_error": 0,
+                "host_gate_bit1": 0,
+                "data_chain_slot": 0,
+                "overlay_macro_id": 123,
+            },
+        },
+        "permanent_delete": {
+            "stream": b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f10X\x1b&f7X",
+            "source_set": ["ring"],
+            "source_count": len(b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f10X\x1b&f7X"),
+            "remaining_ring": [],
+            "event_kinds": [
+                {"kind": "macro-id"},
+                {"kind": "macro-start"},
+                {"kind": "macro-definition-payload"},
+                {"kind": "macro-stop-kept"},
+                {"kind": "macro-make-permanent"},
+                {"kind": "macro-delete-temporary"},
+            ],
+            "records": [{"id": 123, "payload": b"!\r", "permanent": True}],
+            "frames": [],
+            "final": {
+                "current_macro_id": 123,
+                "alternate_mode": 0,
+                "parser_mode": 0,
+                "macro_error": 0,
+                "host_gate_bit1": 0,
+                "data_chain_slot": 0,
+                "overlay_macro_id": 0,
+            },
+        },
+        "temporary_delete": {
+            "stream": b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f10X\x1b&f9X\x1b&f7X",
+            "source_set": ["ring"],
+            "source_count": len(b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f10X\x1b&f9X\x1b&f7X"),
+            "remaining_ring": [],
+            "event_kinds": [
+                {"kind": "macro-id"},
+                {"kind": "macro-start"},
+                {"kind": "macro-definition-payload"},
+                {"kind": "macro-stop-kept"},
+                {"kind": "macro-make-permanent"},
+                {"kind": "macro-make-temporary"},
+                {"kind": "macro-delete-temporary"},
+            ],
+            "records": [{"id": 0, "payload": b"", "permanent": False}],
+            "frames": [],
+            "final": {
+                "current_macro_id": 123,
+                "alternate_mode": 0,
+                "parser_mode": 0,
+                "macro_error": 0,
+                "host_gate_bit1": 0,
+                "data_chain_slot": 0,
+                "overlay_macro_id": 0,
+            },
+        },
+        "delete_current": {
+            "stream": (
+                b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X"
+                b"\x1b&f124Y\x1b&f0X?\r\x1b&f1X"
+                b"\x1b&f123Y\x1b&f8X"
+            ),
+            "source_set": ["ring"],
+            "source_count": len(
+                b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X"
+                b"\x1b&f124Y\x1b&f0X?\r\x1b&f1X"
+                b"\x1b&f123Y\x1b&f8X"
+            ),
+            "remaining_ring": [],
+            "event_kinds": [
+                {"kind": "macro-id"},
+                {"kind": "macro-start"},
+                {"kind": "macro-definition-payload"},
+                {"kind": "macro-stop-kept"},
+                {"kind": "macro-id"},
+                {"kind": "macro-start"},
+                {"kind": "macro-definition-payload"},
+                {"kind": "macro-stop-kept"},
+                {"kind": "macro-id"},
+                {"kind": "macro-delete-current"},
+            ],
+            "records": [
+                {"id": 0, "payload": b"", "permanent": False},
+                {"id": 124, "payload": b"?\r", "permanent": False},
+            ],
+            "frames": [],
+            "final": {
+                "current_macro_id": 123,
+                "alternate_mode": 0,
+                "parser_mode": 0,
+                "macro_error": 0,
+                "host_gate_bit1": 0,
+                "data_chain_slot": 0,
+                "overlay_macro_id": 0,
+            },
+        },
+        "delete_all": {
+            "stream": (
+                b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X"
+                b"\x1b&f124Y\x1b&f0X?\r\x1b&f1X"
+                b"\x1b&f6X"
+            ),
+            "source_set": ["ring"],
+            "source_count": len(
+                b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X"
+                b"\x1b&f124Y\x1b&f0X?\r\x1b&f1X"
+                b"\x1b&f6X"
+            ),
+            "remaining_ring": [],
+            "event_kinds": [
+                {"kind": "macro-id"},
+                {"kind": "macro-start"},
+                {"kind": "macro-definition-payload"},
+                {"kind": "macro-stop-kept"},
+                {"kind": "macro-id"},
+                {"kind": "macro-start"},
+                {"kind": "macro-definition-payload"},
+                {"kind": "macro-stop-kept"},
+                {"kind": "macro-delete-all"},
+            ],
+            "records": [
+                {"id": 0, "payload": b"", "permanent": False},
+                {"id": 0, "payload": b"", "permanent": False},
+            ],
+            "frames": [],
+            "final": {
+                "current_macro_id": 124,
+                "alternate_mode": 0,
+                "parser_mode": 0,
+                "macro_error": 0,
+                "host_gate_bit1": 0,
+                "data_chain_slot": 0,
+                "overlay_macro_id": 0,
+            },
+        },
+        "alternate_guard": {
+            "stream": b"\x1b&f123Y\x1b&f0X\x1b&f4X\x1b&f1X",
+            "source_set": ["ring"],
+            "source_count": len(b"\x1b&f123Y\x1b&f0X\x1b&f4X\x1b&f1X"),
+            "remaining_ring": [],
+            "event_kinds": [
+                {"kind": "macro-id"},
+                {"kind": "macro-start"},
+                {"kind": "macro-control-ignored", "reason": "alternate-mode"},
+                {"kind": "macro-stop-cleared-empty"},
+            ],
+            "records": [{"id": 0, "payload": b"", "permanent": False}],
+            "frames": [],
+            "final": {
+                "current_macro_id": 123,
+                "alternate_mode": 0,
+                "parser_mode": 0,
+                "macro_error": 0,
+                "host_gate_bit1": 0,
+                "data_chain_slot": 0,
+                "overlay_macro_id": 0,
+            },
+        },
+        "active_chain_guard": {
+            "stream": b"\x1b&f4X\x1b&f2X",
+            "source_set": ["ring"],
+            "source_count": len(b"\x1b&f4X\x1b&f2X"),
+            "remaining_ring": [],
+            "event_kinds": [
+                {"kind": "macro-control-ignored", "reason": "active-data-chain"},
+                {"kind": "macro-data-chain"},
+            ],
+            "records": [{"id": 123, "payload": b"!\r", "permanent": False}],
+            "frames": [{"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"}],
+            "final": {
+                "current_macro_id": 123,
+                "alternate_mode": 0,
+                "parser_mode": 0,
+                "macro_error": 0,
+                "host_gate_bit1": 1,
+                "data_chain_slot": 1,
+                "overlay_macro_id": 0,
+            },
+        },
     }))
     macro_frame_payload = macro_stream_execute["state"]["data_chain_frames"][0]["payload"]
     macro_frame_replay = replay_macro_frame_payload_via_a904(
@@ -27607,6 +27936,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- macro guard streams prove definition mode ignores non-stop control and active data-chain mode ignores non-replay control while still allowing execute: `%s` / `%s`." % (
         macro_stream_alternate_guard["events"][2],
         macro_stream_active_chain_guard["events"],
+    ))
+    lines.append("- macro command streams now drain `%d` bytes from the modeled `0xa904` ring source across id/start/stop, execute/call, overlay, permanence/delete, delete-current/all, and guard cases before landing on the same records and data-chain frames." % (
+        sum(len(bytes(result["stream"])) for result, _record_count in macro_host_fetch_cases.values()),
     ))
     lines.append("- macro execute frame payload fetches through `0xa904` as data-chain bytes `%s`, then end-marker helper `0xe22c` resumes outer byte `0x%02x`." % (
         " ".join(f"0x{int(fetch['d7']):02x}" for fetch in macro_frame_replay["fetches"]),

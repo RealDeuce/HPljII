@@ -364,7 +364,9 @@ payload hashes from all 24 firmware-scanned built-in records;
 `generated/analysis/ic30_ic13_font_sample_page.md` anchors the ROM
 font-printout path, including the font-list headers, sample byte runs,
 `0x1d12e` printable-byte helper, `0x1c5e8` current-font/page-root setup,
-and forced VMI/HMI defaults `0x0032` / `0x001e`;
+forced VMI/HMI defaults `0x0032` / `0x001e`, and direct row hashes for
+the two ROM sample byte runs rendered through first `COURIER` and first
+`LINE_PRINTER`;
 the startup/resource scanner `0x41a` is modeled for the verified
 built-in `HEAD` chain, walking 24 typed records from `0x08004c` through
 `0x0ae122`, terminating at `0x0b2f80`, adjusting the next probe step

@@ -1055,9 +1055,18 @@ def builtin_glyph_rows_from_record(data: bytes, record: dict[str, int | str | No
 
 
 def compose_direct_glyph_sample(data: bytes, record: dict[str, int | str | None], text: str) -> dict[str, object]:
+    return compose_direct_glyph_byte_sample(data, record, text.encode("latin-1"), text)
+
+
+def compose_direct_glyph_byte_sample(
+    data: bytes,
+    record: dict[str, int | str | None],
+    sample_bytes: bytes,
+    label: str,
+) -> dict[str, object]:
     glyphs = [
-        builtin_glyph_rows_from_record(data, record, ord(char))
-        for char in text
+        builtin_glyph_rows_from_record(data, record, byte)
+        for byte in sample_bytes
     ]
     height = max(int(glyph["rows"]) for glyph in glyphs)
     composed_rows: list[str] = []
@@ -1072,7 +1081,8 @@ def compose_direct_glyph_sample(data: bytes, record: dict[str, int | str | None]
                 parts.append("." * int(glyph["width"]))
         composed_rows.append(".".join(parts))
     return {
-        "text": text,
+        "text": label,
+        "sample_bytes": sample_bytes.hex(" "),
         "record_start": int(record["record_start"]),
         "context_longword": int(record["context_longword"]),
         "rows": composed_rows,
@@ -1157,6 +1167,10 @@ def c_string(data: bytes, offset: int) -> str:
 
 
 def font_sample_page_report(data: bytes) -> str:
+    return font_sample_page_report_with_resources(data, b"")
+
+
+def font_sample_page_report_with_resources(data: bytes, resources: bytes) -> str:
     source_table = 0x1C170
     source_names = [
         (index, u32(data, source_table + index * 4))
@@ -1178,6 +1192,38 @@ def font_sample_page_report(data: bytes) -> str:
     ]
     sample_bytes_1 = data[0x1C1CF:0x1C1E8]
     sample_bytes_2 = data[0x1C1E9:0x1C202]
+    direct_samples: list[tuple[str, str, dict[str, object]]] = []
+    if resources:
+        records = firmware_scanned_font_records(resources)
+        sample_records = [
+            (
+                "COURIER",
+                next(
+                    record
+                    for record in records
+                    if record["name"] == "COURIER" and int(record["record_start"]) == 0x000418
+                ),
+            ),
+            (
+                "LINE_PRINTER",
+                next(
+                    record
+                    for record in records
+                    if record["name"] == "LINE_PRINTER" and int(record["record_start"]) == 0x0146B4
+                ),
+            ),
+        ]
+        for font_name, record in sample_records:
+            direct_samples.append((
+                font_name,
+                "sample run 1",
+                compose_direct_glyph_byte_sample(resources, record, sample_bytes_1, "sample-run-1"),
+            ))
+            direct_samples.append((
+                font_name,
+                "sample run 2",
+                compose_direct_glyph_byte_sample(resources, record, sample_bytes_2, "sample-run-2"),
+            ))
 
     lines = ["# IC30/IC13 Font Sample Page Path", ""]
     lines.append(
@@ -1219,6 +1265,29 @@ def font_sample_page_report(data: bytes) -> str:
     )
     lines.append("")
 
+    if direct_samples:
+        lines.append("## Direct Glyph Payload Hashes")
+        lines.append("")
+        lines.append(
+            "These hashes render the ROM sample byte runs directly through the "
+            "extracted built-in glyph payloads for the first `COURIER` and "
+            "first `LINE_PRINTER` records. They still bypass the surrounding "
+            "`0x1c334` page-object loop."
+        )
+        lines.append("")
+        lines.append("| Font | Sample | Record | Context | Row hash | Glyph count |")
+        lines.append("| --- | --- | ---: | ---: | --- | ---: |")
+        for font_name, sample_name, sample in direct_samples:
+            glyphs = sample["glyphs"]
+            assert isinstance(glyphs, list)
+            lines.append(
+                f"| `{font_name}` | {sample_name} | "
+                f"`0x{int(sample['record_start']):06x}` | "
+                f"`0x{int(sample['context_longword']):08x}` | "
+                f"`{sample['row_sha256']}` | {len(glyphs)} |"
+            )
+        lines.append("")
+
     lines.append("## Print and Placement Helpers")
     lines.append("")
     lines.append("| Routine | Observed behavior |")
@@ -1254,7 +1323,8 @@ def font_sample_page_report(data: bytes) -> str:
         "symbol-map, page-root font-slot, and printable text machinery already "
         "used by the host-byte fixtures. The remaining placement work is to "
         "model the surrounding `0x1c334` loop and compare the produced page "
-        "objects against a known printed/self-test sample."
+        "objects against these direct payload hashes and a known printed/"
+        "self-test sample."
     )
     lines.append("")
     return "\n".join(lines)
@@ -5114,7 +5184,7 @@ def main() -> None:
     write_if_changed(ANALYSIS / "ic32_ic15_builtin_glyph_payloads.md", glyph_payload_report)
     write_if_changed(ANALYSIS / "ic32_ic15_builtin_glyph_payloads.json", glyph_payload_json)
     write_if_changed(ANALYSIS / "ic32_ic15_builtin_font_samples.md", builtin_font_sample_report(resources))
-    write_if_changed(ANALYSIS / "ic30_ic13_font_sample_page.md", font_sample_page_report(firmware))
+    write_if_changed(ANALYSIS / "ic30_ic13_font_sample_page.md", font_sample_page_report_with_resources(firmware, resources))
     write_if_changed(ANALYSIS / "ic30_ic13_startup_tables.txt", decode_startup_tables(firmware))
     write_if_changed(ANALYSIS / "signature_scan.md", scan_signature_report(firmware, resources))
     write_if_changed(ANALYSIS / "ic30_ic13_long_reference_scan.md", categorized_long_references(firmware))

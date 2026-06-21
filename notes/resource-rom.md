@@ -225,6 +225,16 @@ printable handler `0xd04a`. Its setup helper `0x1c5e8` installs the
 selected resource through the same `0x782ee6` current-font context,
 `0x14c64` map rebuild, `0xc428` page-root font-slot install, and forced
 VMI/HMI defaults `0x0032` / `0x001e`.
+The same report now renders the two ROM sample byte runs directly
+through extracted payloads for first `COURIER` and first `LINE_PRINTER`,
+producing row hashes
+`da3a1e420d0c9eca0e2638e5eb38d9ec32d8fd795c5b5fef28d552a2ad843717` /
+`53c9e83315109ee2422199a583579b9e7284157fdeb65dd4bb0ed855f4930049`
+and
+`d7bc5c7a8642f3c76724d037cfba7630ae23748419877533335acfebebb35ed0` /
+`5b71982ce62609329dc9eb16d9aa9becece7ff79a3ed41a125fd38b1609f5f88`.
+Those hashes are direct payload-render targets for the later `0x1c334`
+page-object loop model.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record

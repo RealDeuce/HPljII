@@ -423,7 +423,14 @@ context records at `0x782ee6` / `0x782ef6`, installed into page-root
 `0x783a2c` before `0x1f354`; built-in selected-context low 24-bit
 addresses map to `IC32,IC15` offsets by subtracting `0x80000`, and
 bit-30 offset-table entries are relative 32-bit glyph-entry offsets from
-the selected record start
+the selected record start; `0x11774` now traces chained primary and
+secondary font-selection streams through `(s` / `)s` mode 13, proving
+spacing `0xc930`, pitch `0xc89c`, point-size `0xc6ec`, style `0xc780`,
+stroke `0xc840`, and typeface wrapper `0x1205a` routing while preserving
+slot word `0` for primary and `1` for secondary; a modeled bridge now
+feeds parsed primary `0p10h12v0s0b3T` metric values into the concrete
+class-zero built-in candidate filters, reducing Roman-8 survivors to
+slots `0x782354` / `0x782364` before `0x14398` selects record `0x009fb0`
 
 ### Formatter manuals
 
@@ -497,10 +504,11 @@ Expected resource ROM contents:
 
 ROM work needed:
 
-- Extend `0x1519a`/`0x153c6`/`0x14398`/`0x14c64` from isolated
-  requested-metric or hand-selected-record cases to live
-  parser/font-state coverage, and replace the remaining `0x156de`
-  synthetic cases with live parser/font-state coverage.
+- Replace the modeled bridge from parsed `(s` / `)s` records into
+  `0x1519a`/`0x153c6`/`0x14398` filters with a full firmware-state run
+  through primary/secondary font-state mutation, then extend it through
+  `0x14c64` dispatch and replace the remaining `0x156de` synthetic
+  cases with live parser/font-state coverage.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.

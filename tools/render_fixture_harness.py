@@ -845,6 +845,63 @@ def trace_font_parser_dispatch_via_11774(data: bytes, stream: bytes, descriptor_
     }
 
 
+def font_selection_request_from_trace(trace: dict[str, object]) -> dict[str, object]:
+    commands = trace["commands"]  # type: ignore[index]
+    if not isinstance(commands, list):
+        raise AssertionError("font selection trace has no command list")
+
+    slot: int | None = None
+    events: list[dict[str, object]] = []
+    raw: dict[str, int] = {}
+    filter_inputs: dict[str, int] = {}
+    for command in commands:
+        if not isinstance(command, dict):
+            raise AssertionError("font selection trace command is not a dict")
+        current_slot = int(command["slot"])
+        if slot is None:
+            slot = current_slot
+        elif slot != current_slot:
+            raise AssertionError("font selection trace mixed primary/secondary slots")
+
+        record = command["record"]
+        if not isinstance(record, bytes) or len(record) != 6:
+            raise AssertionError("font selection trace command has no terminal record")
+        final = record[1]
+        parameter = int(command["parameter"])
+        handler = int(command["final_dispatch"]["handler"])  # type: ignore[index]
+        name = chr(final)
+        raw[name] = parameter
+        if final == ord("p"):
+            filter_inputs["spacing"] = parameter & 0xFF
+        elif final == ord("h"):
+            filter_inputs["pitch"] = parameter * 100
+        elif final == ord("v"):
+            filter_inputs["height"] = parameter * 100
+        elif final == ord("s"):
+            filter_inputs["style"] = parameter
+        elif final == ord("b"):
+            filter_inputs["stroke"] = parameter
+        elif final == ord("T"):
+            filter_inputs["typeface"] = parameter
+        events.append({
+            "final": name,
+            "parameter": parameter,
+            "handler": handler,
+            "mode_after_final": int(command["mode_after_final"]),
+        })
+
+    missing = sorted(set(("spacing", "pitch", "height")) - set(filter_inputs))
+    if missing:
+        raise AssertionError(f"font selection trace missing filter inputs: {missing}")
+    return {
+        "slot": "secondary" if slot else "primary",
+        "slot_word": int(slot or 0),
+        "raw": raw,
+        "filter_inputs": filter_inputs,
+        "events": events,
+    }
+
+
 def trace_font_control_parser_dispatch_via_11774(
     data: bytes,
     stream: bytes,
@@ -4343,6 +4400,27 @@ def activate_candidate_window_via_1569c(windows: dict[str, object], class_select
         "active_count_7827b8": len(selected),
         "entries": selected,
         "events": events,
+    }
+
+
+def activation_with_active_slots(
+    activation: dict[str, object],
+    survivor_slot_pointers: list[int],
+) -> dict[str, object]:
+    survivors = {int(pointer) for pointer in survivor_slot_pointers}
+    entries = []
+    for entry in activation["entries"]:  # type: ignore[index]
+        updated = dict(entry)
+        longword = int(updated["longword"]) & 0xFFFFFFFF
+        if int(updated["slot_pointer"]) in survivors:
+            updated["longword"] = longword | 0x80000000
+        else:
+            updated["longword"] = longword & 0x7FFFFFFF
+        entries.append(updated)
+    return {
+        "active_pointer_78287c": survivor_slot_pointers[0] if survivor_slot_pointers else 0,
+        "active_count_7827b8": len(survivor_slot_pointers),
+        "entries": entries,
     }
 
 
@@ -16894,6 +16972,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     activated_class_zero = activate_candidate_window_via_1569c(actual_candidate_windows, class_selector_byte=0)
     activated_class_one = activate_candidate_window_via_1569c(actual_candidate_windows, class_selector_byte=1)
+    primary_font_selection_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b(s0p10h12v0s0b3T")
+    secondary_font_selection_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b)s0p16h8v0s0b0T")
     checks.append(assert_equal("0x1569c activates concrete built-in candidate windows", {
         "class_zero": {
             "selected_name": activated_class_zero["selected_name"],
@@ -17245,6 +17325,86 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "active_count_7827b8": 4,
             "survivor_slot_pointers": [0x782374, 0x782378, 0x78237C, 0x782380],
             "first_survivor": {"helper": 0x0155B6, "index": 8, "slot_pointer": 0x782374, "record_start": 0x0142E4, "pitch": 0x0682, "selected_low": 0x0682, "selected_high": 0x0682, "before": 0xC00942E4, "after": 0xC00942E4, "matched": True},
+        },
+    }))
+    primary_selection_request = font_selection_request_from_trace(primary_font_selection_trace)
+    primary_metric_inputs = primary_selection_request["filter_inputs"]
+    parser_metric_height_filter = filter_active_candidates_by_height_via_1519a(
+        class_zero_symbol_survivor_activation,
+        requested_height=primary_metric_inputs["height"],  # type: ignore[index]
+    )
+    parser_metric_height_activation = activation_with_active_slots(
+        class_zero_symbol_survivor_activation,
+        parser_metric_height_filter["survivor_slot_pointers"],  # type: ignore[arg-type]
+    )
+    parser_metric_pitch_filter = filter_active_candidates_by_spacing_pitch_via_153c6(
+        parser_metric_height_activation,
+        requested_spacing=primary_metric_inputs["spacing"],  # type: ignore[index]
+        requested_pitch=primary_metric_inputs["pitch"],  # type: ignore[index]
+    )
+    parser_metric_pitch_activation = activation_with_active_slots(
+        parser_metric_height_activation,
+        parser_metric_pitch_filter["survivor_slot_pointers"],  # type: ignore[arg-type]
+    )
+    parser_metric_selection = choose_active_candidate_via_14398(parser_metric_pitch_activation)
+    checks.append(assert_equal("parsed font-selection metrics feed concrete candidate filters", {
+        "request": {
+            "slot": primary_selection_request["slot"],
+            "slot_word": primary_selection_request["slot_word"],
+            "raw": primary_selection_request["raw"],
+            "filter_inputs": primary_selection_request["filter_inputs"],
+            "events": primary_selection_request["events"],
+        },
+        "symbol_survivors": filtered_class_zero_primary["survivor_slot_pointers"],
+        "height": {
+            "requested_height": parser_metric_height_filter["requested_height"],
+            "path": parser_metric_height_filter["path"],
+            "survivor_slot_pointers": parser_metric_height_filter["survivor_slot_pointers"],
+        },
+        "pitch": {
+            "requested_spacing": parser_metric_pitch_filter["requested_spacing"],
+            "requested_pitch": parser_metric_pitch_filter["requested_pitch"],
+            "spacing_path": parser_metric_pitch_filter["spacing_path"],
+            "pitch_path": parser_metric_pitch_filter["pitch_path"],
+            "survivor_slot_pointers": parser_metric_pitch_filter["survivor_slot_pointers"],
+        },
+        "selected": {
+            "slot_pointer": parser_metric_selection["selected_slot_pointer_7828a8"],
+            "longword": parser_metric_selection["selected_longword"],
+            "record_start": parser_metric_selection["selected_record_start"],
+        },
+    }, {
+        "request": {
+            "slot": "primary",
+            "slot_word": 0,
+            "raw": {"p": 0, "h": 10, "v": 12, "s": 0, "b": 0, "T": 3},
+            "filter_inputs": {"spacing": 0, "pitch": 0x03E8, "height": 0x04B0, "style": 0, "stroke": 0, "typeface": 3},
+            "events": [
+                {"final": "p", "parameter": 0, "handler": 0x00C930, "mode_after_final": 13},
+                {"final": "h", "parameter": 10, "handler": 0x00C89C, "mode_after_final": 13},
+                {"final": "v", "parameter": 12, "handler": 0x00C6EC, "mode_after_final": 13},
+                {"final": "s", "parameter": 0, "handler": 0x00C780, "mode_after_final": 13},
+                {"final": "b", "parameter": 0, "handler": 0x00C840, "mode_after_final": 13},
+                {"final": "T", "parameter": 3, "handler": 0x01205A, "mode_after_final": 0},
+            ],
+        },
+        "symbol_survivors": [0x782354, 0x782364, 0x782374],
+        "height": {
+            "requested_height": 0x04B0,
+            "path": "range",
+            "survivor_slot_pointers": [0x782354, 0x782364],
+        },
+        "pitch": {
+            "requested_spacing": 0,
+            "requested_pitch": 0x03E8,
+            "spacing_path": "matched-continue",
+            "pitch_path": "range",
+            "survivor_slot_pointers": [0x782354, 0x782364],
+        },
+        "selected": {
+            "slot_pointer": 0x782364,
+            "longword": 0xC0089FB0,
+            "record_start": 0x009FB0,
         },
     }))
     default_font_tables_found = default_font_symbol_tables_via_1ac0a_1af36(
@@ -19459,8 +19619,6 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     font_payload_budget = font_payload_budget_from_delayed_command(-0x0891)
     font_descriptor_dispatch_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b)s0W\x04\x00\xaa\xbb", descriptor_budget=4)
     font_payload_dispatch_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b)s4WABCD")
-    primary_font_selection_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b(s0p10h12v0s0b3T")
-    secondary_font_selection_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b)s0p16h8v0s0b0T")
     font_control_dispatch_trace = trace_font_control_parser_dispatch_via_11774(
         data,
         b"\x1b*c17d25e5F",

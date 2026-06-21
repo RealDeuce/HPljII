@@ -330,11 +330,27 @@ selector-path cases, and `ESC &f0S ESC &a2C ESC &f1S!` restoring the
 original cursor before printable `0xd04a` queues at compact coord
 `0x0001`.
 
-Primary and secondary font-selection commands share the same final
-handler stubs, with the `ESC (` versus `ESC )` distinction preserved by
-setup routines before mode 4. The final handlers call lower-level
-font-state routines around `0xc6ec..0xc930` and then common routine
-`0xc580`.
+Primary and secondary font-selection commands share the same parser
+shape, with the `ESC (` versus `ESC )` distinction preserved by setup
+routines before mode 4. The harness now traces primary
+`ESC (s0p10h12v0s0b3T` and secondary `ESC )s0p16h8v0s0b0T` through
+ROM table `0x11774`: modes advance `0 -> 1 -> 4 -> 13`, lower-case
+attribute finals stay in mode 13, and the upper-case typeface final
+returns to mode 0. The lower-case finals route directly to spacing
+`p` handler `0xc930`, pitch `h` handler `0xc89c`, point-size `v`
+handler `0xc6ec`, style `s` handler `0xc780`, and stroke `b` handler
+`0xc840`. The final upper-case `T` routes through wrapper `0x1205a`,
+which calls the typeface updater at `0xc7e0` and common refresh
+`0xc580`. The six-byte terminal records carry slot word `0` for
+primary and slot word `1` for secondary. A bridge fixture now decodes
+the parsed primary records into concrete filter inputs: `0p` -> spacing
+`0`, `10h` -> pitch `0x03e8`, and `12v` -> height `0x04b0`. Feeding
+those values into the real class-zero built-in candidate window after
+the Roman-8 symbol filter narrows survivors from slots `0x782354`,
+`0x782364`, and `0x782374` to `0x782354` / `0x782364`; the existing
+`0x14398` chooser then selects built-in record `0x009fb0`. This is still
+a modeled bridge from parsed records into candidate filters, not a full
+firmware-state run through all selector update side effects.
 
 Primary and secondary font-designation commands use the same parser
 shape. `ESC (` calls setup `0x1201e`, which pushes slot word `0`;
@@ -658,8 +674,10 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
 - Use the now-matched ROM/manual logical page and printable-area
   dimensions as the baseline for physical engine/self-test placement
   checks.
-- Trace font handler stubs `0x012046..0x0120aa` into built-in resource
-  ROM font selection and metrics lookup.
+- Replace the modeled bridge from parsed `(s` / `)s` records into
+  candidate filters with a full firmware-state run that mutates the
+  primary/secondary font-state fields, especially style, stroke, and
+  typeface selection side effects beyond the now-pinned metric filters.
 - Replace the modeled default-font candidate records with a live
   parser/font-state fixture that proves the real records feeding
   `0x1b250`, `0x1b50e`, `0x1ab84`, `0x1bbfe`, and `0x1b060`, then decide

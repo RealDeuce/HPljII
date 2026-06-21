@@ -821,6 +821,10 @@ renders after decipoint cursor conversion at compact coord `0x0402` /
 pixel x `36`, `ESC &a72V!` routes vertical-decipoint handler `0xf60a`
 into the page-record path and renders after decipoint cursor conversion
 at compact coord `0x9001` / bucket `0` with nine blank rows first,
+`ESC *p30x30Y!` routes lowercase-final horizontal dot-position handler
+`0xf48c`, keeps parser mode `18` for vertical dot-position handler
+`0xf692`, and renders after queueing through `0xd04a` at compact coord
+`0x9402` / bucket `0` with nine blank rows first,
 `ESC &a2c+1R!` routes lowercase-final horizontal cursor handler
 `0xf39e`, keeps parser mode `12` for relative vertical handler `0xf560`,
 and renders after queueing through `0xd04a` at compact coord `0x1a02` /
@@ -831,9 +835,9 @@ cursor-stack handlers `0xf75e` around cursor-position handler `0xf39e`,
 restores the original cursor, then queues printable `!` through `0xd04a`
 at compact coord `0x0001`. A grouped host-fetch direct text/control
 fixture now starts the plain, CR/LF, HT/BS, margin, cursor-position,
-vertical-layout, and cursor-stack page-record streams from the modeled
-`0xa904` ring source, drains every byte, replays the same parser
-handlers, and lands on the same `0x1387c` page-record objects and
+dot-position, vertical-layout, and cursor-stack page-record streams from
+the modeled `0xa904` ring source, drains every byte, replays the same
+parser handlers, and lands on the same `0x1387c` page-record objects and
 rendered row counts; the same grouped check now pins that `0x1edc6`
 preserves the bucket root, clears rule/fixed lists, and copies the
 selected context slot into the render record. That direct page-record

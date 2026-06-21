@@ -540,19 +540,21 @@ allocates one page-record root, reuses compact bucket `0`, bridges
 through `0x1edc6`, and renders the expected post-CR rows.
 `ESC &k2G!\n!`, `ESC &k0G HT BS !`, `ESC &a1L!`, `ESC &a1M!`,
 `ESC &a6l9M!`, `ESC &a2C!`, `ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`,
-`ESC &a2c+1R!`, and `ESC &l3E!` now have the same boundary coverage for
-LF handler `0xf08c`, HT/BS direct-control handlers `0xf1cc`/`0xf2a8`,
-left/right-margin handlers `0xeb58`/`0xec0c`, chained lowercase-final
-margin handlers `0xeb58`/`0xec0c`, cursor-position handlers
-`0xf39e`/`0xf416`/`0xf560`/`0xf60a`, chained lowercase-final
-`0xf39e`/`0xf560`, and top-margin handler `0xece2` followed by printable
-`0xd04a`, queueing glyphs through the page-record allocator at compact
-coords `0x3b00`, `0x0a01`, `0x0801`, `0x0a02`, `0x0207`, `0x0a02`,
-`0x0402`, `0x1001`, `0x9001`, `0x1a02`, and `0x9001`. A grouped
-host-fetch check now starts that direct text/control set from the
-modeled `0xa904` ring source and proves the same parser handlers, bucket
-indices, object prefixes, `0x1edc6` bridge fields, `0x1ed84` copy
-fields, `0x1ef6a` setup/dispatch path, and rendered row counts.
+`ESC *p30x30Y!`, `ESC &a2c+1R!`, and `ESC &l3E!` now have the same
+boundary coverage for LF handler `0xf08c`, HT/BS direct-control handlers
+`0xf1cc`/`0xf2a8`, left/right-margin handlers `0xeb58`/`0xec0c`,
+chained lowercase-final margin handlers `0xeb58`/`0xec0c`,
+cursor-position handlers `0xf39e`/`0xf416`/`0xf560`/`0xf60a`, chained
+dot-position handlers `0xf48c`/`0xf692` in parser mode `18`, chained
+lowercase-final `0xf39e`/`0xf560`, and top-margin handler `0xece2`
+followed by printable `0xd04a`, queueing glyphs through the page-record
+allocator at compact coords `0x3b00`, `0x0a01`, `0x0801`, `0x0a02`,
+`0x0207`, `0x0a02`, `0x0402`, `0x1001`, `0x9001`, `0x9402`,
+`0x1a02`, and `0x9001`. A grouped host-fetch check now starts that
+direct text/control set from the modeled `0xa904` ring source and proves
+the same parser handlers, bucket indices, object prefixes, `0x1edc6`
+bridge fields, `0x1ed84` copy fields, `0x1ef6a` setup/dispatch path,
+and rendered row counts.
 
 The plain printable stream `!!` now has the same kind of check: both
 bytes route through `0xd04a`, the initialized `LINE_PRINTER` HMI places

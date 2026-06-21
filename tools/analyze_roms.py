@@ -1345,6 +1345,30 @@ def font_sample_page_report_with_resources(data: bytes, resources: bytes) -> str
     )
     lines.append("")
 
+    lines.append("## Row Formatting and Fit Helpers")
+    lines.append("")
+    lines.append("| Routine | Observed behavior |")
+    lines.append("| ---: | --- |")
+    lines.append("| `0x1d198` | Formats the font-name/style column. It resolves built-in and downloaded names differently, appends spacing/style labels from the local string table, numeric style digits when needed, then pads through `0x1d152` so the column occupies 25 emitted characters. |")
+    lines.append("| `0x1d460` | Walks resource subrecords tagged `FONT`/`font`, `TABL`/`tabl`, or `DUMY`/`DUMY`-like data by adding embedded offsets, then reads the word at `+6` from the resolved font record. |")
+    lines.append("| `0x1d4ee` | Searches 32 downloaded-font slots at `0x782640` for a payload pointer matching the selected record and returns status `1`, status `0x15`, or reports `0xe3/0x52` if no slot matches. |")
+    lines.append("| `0x1d5fa` | For a built-in record, follows the relative name pointer at `+0x38`, reads the stored length word, and emits either a trimmed name or a 25-character-capped name depending on the caller flag. |")
+    lines.append("| `0x1d6ea` | Emits a null-terminated string through `0xd04a` while tracking the current column width and suppressing output after the width reaches 26. |")
+    lines.append("| `0x1d71e` | Emits fixed-length name bytes through `0xd04a`, replacing C0 controls and bytes `0x80..0x9f` with spaces. |")
+    lines.append("| `0x1d76c` | Writes a six-byte parsed-command record at `0x78299e` with flag byte `0x80` and the requested orientation word, then calls the normal orientation handler `0x10220`. |")
+    lines.append("| `0x1d79c` | Probes up to two candidates from `0x1b50e`, compares their orientation/class through `0x1c710` against `0x782da3`, and consults the per-source byte at `0x783f02 + source` for landscape/source gating. |")
+    lines.append("| `0x1d868` / `0x1dcf2` | Temporarily installs current and alternate contexts, uses `0x1dc38` to simulate one or two sample-row advances, and compares the projected y plus row height against page-limit word `0x782db6`. |")
+    lines.append("| `0x1d964` | Resolves a candidate for a source group when none is passed in, checks fit with `0x1dcf2`, installs the selected context through `0x1cece`, and tests alternate-row placement when `0x783132` is set. |")
+    lines.append("")
+    lines.append(
+        "The font-name and fit helpers show that the printout is not just a "
+        "linear string dump. It reuses the parser's orientation handler, "
+        "applies the same printable-byte sanitizer for names, and performs "
+        "preflight page-fit tests before emitting the source heading or "
+        "alternate sample row."
+    )
+    lines.append("")
+
     lines.append("## Font Context Setup")
     lines.append("")
     lines.append(

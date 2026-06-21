@@ -246,6 +246,12 @@ against page-limit word `0x782db6`, `0x1cabe` emits the `S/L/R/I` row
 prefix and metric columns through `0xd04a`, and `0x1cf34` emits sample
 run 1, advances horizontally by `0x31` units, installs the alternate
 context, and emits sample run 2 when `0x783132` is set.
+The row-helper window now names the lower formatting helpers: `0x1d198`
+builds the 25-character font-name/style column, `0x1d6ea` emits capped
+strings through `0xd04a`, `0x1d71e` sanitizes fixed-length name bytes,
+`0x1d76c` synthesizes an orientation command record before calling
+`0x10220`, and `0x1d964` / `0x1dcf2` preflight current/alternate row
+placement against `0x782db6`.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record

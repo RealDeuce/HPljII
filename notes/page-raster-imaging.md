@@ -704,7 +704,7 @@ macro/data-chain, direct-control, reset, text, rule, raster, bridge,
 row-copy, built-in glyph, symbol-set, and downloaded-font fixture
 families into one ROM-backed self-test. It emits
 `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently
-verifies 370 checks. The raster coverage now includes ROM-table
+verifies 371 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` /
 `ESC *b4W` stream, the 150/100/75-dpi mode streams, the consecutive-row
 `ESC *b2W` stream, the active-resolution-ignore `ESC *t75R` stream, the
@@ -934,7 +934,11 @@ path before rendering the same segmented-wide row. A fetched printable
 `%` byte now selects that installed downloaded glyph `0x25`, queues the
 two segmented page-record objects through the `0x12f2e`/`0x1387c`
 producer shape, and renders the segment-1 bucket through `0x1ed84` /
-`0x1ef6a`. The fetched font-control state now carries current id
+`0x1ef6a`. A combined fetched stream now drains
+`ESC *c4660d37e5F`, the `ESC )s2193W` payload, and printable `%`, carrying
+current character `0x25` into the installed glyph before rendering the
+same segmented page-record bucket. The fetched font-control state now
+carries current id
 `0x1234` and current character `0x25` into fetched descriptor,
 resource-payload, and downloaded-character streams, tying delayed record
 restoration through `0x121cc` / `0x12218`, descriptor or payload
@@ -1011,9 +1015,10 @@ Other checked leads:
   that populates current records/source objects; then replace the
   remaining producer-modeled text bucket fixtures with full
   parser-produced page-object payloads. The downloaded-character path
-  now has a fetched printable byte driving the installed glyph into
-  segmented page-record buckets, but not yet from one continuous live
-  font-selection parser state.
+  now has one combined fetched stream driving font-control state,
+  payload install, and printable output into segmented page-record
+  buckets, but it is still family-split modeling rather than a full
+  live parser-state interpreter.
 - Replace the remaining synthetic `ESC E` reset-state fixtures with
   parser-produced page-object fixtures so partial-page finalization and
   current-page-root clearing are proven from real queued objects,

@@ -326,7 +326,9 @@ fixtures plus a host-fetched `ESC )s18W` payload-control
 `0x1ed84`/`0x1ef6a` render-entry bridge,
 fetched printable-byte selection of the installed `ESC )s2193W`
 downloaded glyph into segmented `0x12f2e`/`0x1387c` page-record buckets
-and `0x1ed84`/`0x1ef6a` render-entry output,
+and `0x1ed84`/`0x1ef6a` render-entry output, plus a combined fetched
+font-control / downloaded-character / printable stream proving the same
+installed glyph path from one host byte stream,
 `0x172c0`/`0x16c14` downloaded-font record bookkeeping fixtures,
 `0x170be`/`0x17108`/`0x17150` record lookup/mark/unmark fixtures,
 `0x15a56`/`0x16df6` font-id/control dispatch fixtures,
@@ -498,8 +500,9 @@ ROM work needed:
   producer-modeled fixtures with full parser/page-object rendering.
   Current boundary coverage already chains fetched `ESC *c4660d37e5F`
   state into fetched `ESC )s0W` and `ESC )s80W` and `ESC )s2193W`
-  streams, and a fetched printable byte now drives the installed
-  downloaded glyph into segmented page-record buckets.
+  streams, and a combined fetched font-control / downloaded-character /
+  printable stream now drives the installed downloaded glyph into
+  segmented page-record buckets.
 - Extract glyph metrics and render a known self-test/font sample.
 - Confirm symbol-set mapping for ASCII, Roman-8, line draw, and any
   built-in alternatives.
@@ -518,10 +521,11 @@ ROM work needed:
   and downloaded-character boundaries with a full live parser-state run
   that populates current records/source objects. Current boundary
   coverage already chains fetched `ESC *c4660d37e5F` state into fetched
-  `ESC )s0W`, `ESC )s80W`, and `ESC )s2193W` streams, and a fetched
-  printable byte now drives the installed downloaded glyph into
-  segmented page-record buckets; the verified built-in scan does not
-  provide normal built-in entries for these renderer modes.
+  `ESC )s0W`, `ESC )s80W`, and `ESC )s2193W` streams, and a combined
+  fetched font-control / downloaded-character / printable stream now
+  drives the installed downloaded glyph into segmented page-record
+  buckets; the verified built-in scan does not provide normal built-in
+  entries for these renderer modes.
 - Integrate executable row-copy behavior with real page objects from the
   parser/imaging path.
 - Broaden the documented printable and inline/downloaded `0x1393a` /

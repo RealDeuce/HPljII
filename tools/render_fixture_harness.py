@@ -21544,6 +21544,240 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "." * 22 + "#." * 64 + ".#.#.#.#",
         ],
     }))
+    combined_font_download_printable_stream = (
+        b"\x1b*c4660d37e5F"
+        + downloaded_segmented_wide_command_stream
+        + b"\x25"
+    )
+    combined_font_download_printable_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(combined_font_download_printable_stream),
+            direct_mode=0,
+        ),
+        len(combined_font_download_printable_stream),
+    )
+    combined_control_end = len(b"\x1b*c4660d37e5F")
+    combined_payload_end = combined_control_end + len(downloaded_segmented_wide_command_stream)
+    combined_control_stream = combined_font_download_printable_fetch["stream"][:combined_control_end]
+    combined_payload_stream = combined_font_download_printable_fetch["stream"][
+        combined_control_end:combined_payload_end
+    ]
+    combined_printable_stream = combined_font_download_printable_fetch["stream"][
+        combined_payload_end:
+    ]
+    combined_font_control_trace = trace_font_control_parser_dispatch_via_11774(
+        data,
+        combined_control_stream,
+        records=[{"id": 0x1234, "flags": 0x00, "payload": 0x456789}],
+        counters={"0x782782": 7, "0x782786": 2},
+        parser_mode=0,
+    )
+    combined_payload_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        combined_payload_stream,
+    )
+    combined_payload_command = render_font_download_char_command_stream_via_121cc_16498(
+        combined_payload_stream,
+        table_payload_type2_bytes,
+        char_code=int(combined_font_control_trace["current_character"]),
+        record_words=(0x0000, 0x0000, 0x0081, 0x0000),
+        mode=1,
+        width=0x0088,
+        rows=0x0081,
+        object_offset=0x0500,
+    )
+    combined_payload_event = combined_payload_command["events"][0]
+    assert isinstance(combined_payload_event, dict)
+    combined_payload_install = combined_payload_event["install"]
+    assert isinstance(combined_payload_install, dict)
+    combined_downloaded_memory = bytearray(combined_payload_install["header"])
+    combined_downloaded_glyph = resolve_downloaded_pointer_glyph(
+        combined_downloaded_memory,
+        0,
+        int(combined_font_control_trace["current_character"]),
+    )
+    assert combined_downloaded_glyph is not None
+    combined_printable_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        combined_printable_stream,
+    )
+    combined_printable_source = {
+        "context": 0,
+        "host_char": combined_printable_stream[0],
+        "mapped": int(combined_font_control_trace["current_character"]),
+        "glyph_entry": combined_downloaded_glyph["entry"],
+        "glyph_width": combined_downloaded_glyph["width"],
+        "glyph_rows": combined_downloaded_glyph["rows"],
+        "flag": 0,
+        "x": 22,
+        "y": 22,
+        "context_slot": 3,
+        "inline_record": bytes([
+            int(combined_downloaded_glyph["render_span"]),
+            int(combined_downloaded_glyph["rows"]) & 0xFF,
+            0,
+        ]),
+    }
+    combined_page_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, 0],
+    }
+    combined_page_result = queue_text_source_to_page_record_via_12f2e(
+        combined_downloaded_memory,
+        combined_page_record,
+        combined_printable_source,
+    )
+    combined_page_events = combined_page_result["events"]
+    assert isinstance(combined_page_events, list)
+    combined_segment1 = combined_page_events[0]
+    combined_segment0 = combined_page_events[1]
+    assert isinstance(combined_segment1, dict)
+    assert isinstance(combined_segment0, dict)
+    combined_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        combined_downloaded_memory,
+        combined_page_record,
+        bucket_word=int(combined_segment1["bucket_index"]),
+    )
+    combined_entry = combined_render_entry["entry"]
+    assert isinstance(combined_entry, dict)
+    checks.append(assert_equal("combined host-fetched font download stream prints installed glyph", {
+        "stream_length": len(combined_font_download_printable_fetch["stream"]),
+        "fetch_sources": sorted(set(combined_font_download_printable_fetch["sources"])),
+        "remaining_ring": combined_font_download_printable_fetch["state"]["ring"],
+        "boundaries": {
+            "control": (0, combined_control_end),
+            "payload": (combined_control_end, combined_payload_end),
+            "printable": (combined_payload_end, len(combined_font_download_printable_stream)),
+        },
+        "control": {
+            "handlers": [
+                event["handler"]
+                for event in combined_font_control_trace["dispatches"]
+            ],
+            "current_font_id": combined_font_control_trace["current_font_id"],
+            "current_character": combined_font_control_trace["current_character"],
+        },
+        "payload": {
+            "handlers": [
+                event["handler"]
+                for event in combined_payload_trace["dispatches"]
+            ],
+            "restored_record": combined_payload_trace["commands"][0]["restored_record"],
+            "char_code": combined_font_control_trace["current_character"],
+            "table_entry": combined_payload_install["table_entry"],
+            "bitmap_size": combined_payload_install["bitmap_size"],
+        },
+        "printable": {
+            "stream": combined_printable_stream,
+            "handlers": [
+                event["handler"]
+                for event in combined_printable_trace["events"]
+            ],
+        },
+        "page": {
+            key: combined_page_result[key]
+            for key in ("path", "selector", "coord", "glyph", "rows", "width")
+        },
+        "segments": [
+            {
+                key: event[key]
+                for key in ("bucket_index", "selector", "count_after", "segment")
+            }
+            for event in combined_page_events
+        ],
+        "setup": {
+            key: combined_entry["setup"][key]
+            for key in (
+                "dividend",
+                "remainder_783a22",
+                "band_rows_scaled_783a20",
+                "destination_base_783a28",
+            )
+        },
+        "dispatch": [
+            {
+                key: entry[key]
+                for key in ("object_byte_4", "branch", "target", "context_slot")
+            }
+            for entry in combined_entry["dispatch"]["entries"]
+        ],
+        "rows": combined_entry["rows"],
+    }, {
+        "stream_length": len(combined_font_download_printable_stream),
+        "fetch_sources": ["ring"],
+        "remaining_ring": [],
+        "boundaries": {
+            "control": (0, len(b"\x1b*c4660d37e5F")),
+            "payload": (
+                len(b"\x1b*c4660d37e5F"),
+                len(b"\x1b*c4660d37e5F") + len(downloaded_segmented_wide_command_stream),
+            ),
+            "printable": (
+                len(b"\x1b*c4660d37e5F") + len(downloaded_segmented_wide_command_stream),
+                len(combined_font_download_printable_stream),
+            ),
+        },
+        "control": {
+            "handlers": [0x011EB6, 0x011EC8, 0x011EDA, 0x015A56, 0x015A18, 0x016DF6],
+            "current_font_id": 0x1234,
+            "current_character": 0x25,
+        },
+        "payload": {
+            "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "restored_record": b"\x80W\x08\x91\x00\x01",
+            "char_code": 0x25,
+            "table_entry": 0x00DE,
+            "bitmap_size": 0x0891,
+        },
+        "printable": {
+            "stream": b"%",
+            "handlers": [0x00D04A],
+        },
+        "page": {
+            "path": "segmented-page-record",
+            "selector": 0x3003,
+            "coord": 0x6601,
+            "glyph": 0x25,
+            "rows": 0x0081,
+            "width": 0x11,
+        },
+        "segments": [
+            {
+                "bucket_index": 9,
+                "selector": 0x3003,
+                "count_after": 1,
+                "segment": 1,
+            },
+            {
+                "bucket_index": 1,
+                "selector": 0x3003,
+                "count_after": 1,
+                "segment": 0,
+            },
+        ],
+        "setup": {
+            "dividend": 9,
+            "remainder_783a22": 4,
+            "band_rows_scaled_783a20": 0x0010,
+            "destination_base_783a28": 0x00102000,
+        },
+        "dispatch": [{
+            "object_byte_4": 0x30,
+            "branch": "compact",
+            "target": 0x01EFFE,
+            "context_slot": 3,
+        }],
+        "rows": [
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 22 + "#." * 64 + ".#.#.#.#",
+        ],
+    }))
     checks.append(assert_equal("host-fetched font control state drives descriptor and character streams", {
         "control": {
             "fetched_stream": host_fetched_font_control_stream["stream"],
@@ -34783,6 +35017,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_printable_segment1["bucket_index"],
             downloaded_printable_segment0["bucket_index"],
             downloaded_printable_segment1["segment"],
+        )
+    )
+    lines.append(
+        "- combined font-download printable stream: one modeled `0xa904` "
+        "ring fetch now drains `ESC *c4660d37e5F`, `ESC )s2193W` payload, "
+        "and printable `%%`, carrying current character `0x%02x` into the "
+        "installed glyph and rendering the segmented page-record bucket "
+        "through `0x1ed84`/`0x1ef6a`." % (
+            combined_font_control_trace["current_character"],
         )
     )
     lines.append("")

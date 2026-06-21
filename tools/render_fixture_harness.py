@@ -21947,6 +21947,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     combined_segment0 = combined_page_events[1]
     assert isinstance(combined_segment1, dict)
     assert isinstance(combined_segment0, dict)
+    combined_segment1_object = combined_segment1["object"]
+    assert isinstance(combined_segment1_object, bytes)
+    combined_bridged = bridge_page_record_via_1edc6({
+        "bucket_root": combined_segment1_object,
+        "rule_list": [],
+        "fixed_list": [],
+        "context_slots": [0, 0, 0, 0],
+    })
     combined_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
         data,
         combined_downloaded_memory,
@@ -21977,8 +21985,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 event["handler"]
                 for event in combined_payload_trace["dispatches"]
             ],
+            "sequence": combined_payload_trace["commands"][0]["sequence"],
+            "record": combined_payload_trace["commands"][0]["record"],
+            "font_payload_dispatch": combined_payload_trace["commands"][0]["font_payload_dispatch"],
+            "restore_after_final": combined_payload_trace["commands"][0]["restore_after_final"],
             "restored_record": combined_payload_trace["commands"][0]["restored_record"],
+            "payload_offset": combined_payload_trace["commands"][0]["payload_offset"],
+            "payload_length": len(combined_payload_trace["commands"][0]["payload"]),
             "char_code": combined_font_control_trace["current_character"],
+            "install_record": combined_payload_install["record"],
             "table_entry": combined_payload_install["table_entry"],
             "bitmap_size": combined_payload_install["bitmap_size"],
         },
@@ -21996,23 +22011,43 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "segments": [
             {
                 key: event[key]
-                for key in ("bucket_index", "selector", "count_after", "segment")
+                for key in ("bucket_index", "selector", "count_after", "segment", "object")
             }
             for event in combined_page_events
         ],
+        "bridge": {
+            "bucket_matches": combined_bridged["bucket_root"] == combined_segment1_object,
+            "render_field_matches": (
+                combined_bridged["render_record_fields"]["bucket_root_18"]
+                == combined_segment1_object
+            ),
+            "rule_list_count": len(combined_bridged["rule_list"]),
+            "fixed_list_count": len(combined_bridged["fixed_list"]),
+            "context_slots_prefix": combined_bridged["context_slots"][:4],
+        },
+        "active_copy": combined_render_entry["active_copy"],
         "setup": {
             key: combined_entry["setup"][key]
             for key in (
                 "dividend",
+                "divisor_word_06",
                 "remainder_783a22",
                 "band_rows_scaled_783a20",
                 "destination_base_783a28",
             )
         },
+        "call_order": combined_entry["call_order"],
         "dispatch": [
             {
                 key: entry[key]
-                for key in ("object_byte_4", "branch", "target", "context_slot")
+                for key in (
+                    "chain_index",
+                    "object_byte_4",
+                    "class_mask",
+                    "branch",
+                    "target",
+                    "context_slot",
+                )
             }
             for entry in combined_entry["dispatch"]["entries"]
         ],
@@ -22039,8 +22074,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "payload": {
             "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "sequence": b"\x1b)s2193W",
+            "record": b"\x80W\x08\x91\x00\x01",
+            "font_payload_dispatch": {
+                "parameter": 2193,
+                "handler": 0x16C14,
+                "meaning": "downloaded-font/character payload",
+            },
+            "restore_after_final": {"kind": "direct-handler", "handler": 0x16C14},
             "restored_record": b"\x80W\x08\x91\x00\x01",
+            "payload_offset": 8,
+            "payload_length": 0x0891,
             "char_code": 0x25,
+            "install_record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 88 00 00"),
             "table_entry": 0x00DE,
             "bitmap_size": 0x0891,
         },
@@ -22062,22 +22108,50 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "selector": 0x3003,
                 "count_after": 1,
                 "segment": 1,
+                "object": (
+                    bytes.fromhex("00 00 00 00 30 03 00 01 25 01 66 01")
+                    + bytes(0x1C)
+                ),
             },
             {
                 "bucket_index": 1,
                 "selector": 0x3003,
                 "count_after": 1,
                 "segment": 0,
+                "object": (
+                    bytes.fromhex("00 00 00 00 30 03 00 01 25 00 66 01")
+                    + bytes(0x1C)
+                ),
             },
         ],
+        "bridge": {
+            "bucket_matches": True,
+            "render_field_matches": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0, 0, 0, 0),
+        },
+        "active_copy": {
+            "source_word_18": 0,
+            "source_word_1a": 0,
+            "render_word_0a": 0,
+            "render_word_0c": 0,
+            "render_word_0e": 0,
+            "render_word_10": 0,
+            "render_word_16": 0,
+        },
         "setup": {
             "dividend": 9,
+            "divisor_word_06": 5,
             "remainder_783a22": 4,
             "band_rows_scaled_783a20": 0x0010,
             "destination_base_783a28": 0x00102000,
         },
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
         "dispatch": [{
+            "chain_index": 0,
             "object_byte_4": 0x30,
+            "class_mask": 0x00,
             "branch": "compact",
             "target": 0x01EFFE,
             "context_slot": 3,
@@ -35713,10 +35787,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(
         "- combined font-download printable stream: one modeled `0xa904` "
         "ring fetch now drains `ESC *c4660d37e5F`, `ESC )s2193W` payload, "
-        "and printable `%%`, carrying current character `0x%02x` into the "
-        "installed glyph and rendering the segmented page-record bucket "
-        "through `0x1ed84`/`0x1ef6a`." % (
+        "and printable `%%`, restores payload record `%s`, carries current "
+        "character `0x%02x` into the installed glyph, queues segment buckets "
+        "`%d/%d`, preserves the bucket root through `0x1edc6`, and renders "
+        "segment `%d` through `0x1ed84`/`0x1ef6a`." % (
+            " ".join(f"{byte:02x}" for byte in combined_payload_event["restored_record"]),
             combined_font_control_trace["current_character"],
+            combined_segment1["bucket_index"],
+            combined_segment0["bucket_index"],
+            combined_segment1["segment"],
         )
     )
     lines.append("")

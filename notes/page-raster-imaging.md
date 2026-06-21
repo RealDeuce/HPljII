@@ -946,8 +946,11 @@ producer shape, and renders the segment-1 bucket through `0x1ed84` /
 `0x1ef6a`. A combined fetched stream now drains
 `ESC *c4660d37e5F`, the `ESC )s2193W` payload, and printable `%`, carrying
 current character `0x25` into the installed glyph before rendering the
-same segmented page-record bucket. The fetched font-control state now
-carries current id
+same segmented page-record bucket; the same check now pins restored
+payload record `80 57 08 91 00 01`, segment objects in buckets `9` and
+`1`, the `0x1edc6` bucket-root copy, the `0x1ed84` active-record copy,
+and the `0x1ef6a` compact dispatch for segment `1`. The fetched
+font-control state now carries current id
 `0x1234` and current character `0x25` into fetched descriptor,
 resource-payload, and downloaded-character streams, tying delayed record
 restoration through `0x121cc` / `0x12218`, descriptor or payload

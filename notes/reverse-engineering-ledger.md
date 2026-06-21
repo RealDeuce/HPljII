@@ -328,7 +328,8 @@ fetched printable-byte selection of the installed `ESC )s2193W`
 downloaded glyph into segmented `0x12f2e`/`0x1387c` page-record buckets
 and `0x1ed84`/`0x1ef6a` render-entry output, plus a combined fetched
 font-control / downloaded-character / printable stream proving the same
-installed glyph path from one host byte stream,
+installed glyph path, `0x1edc6` bucket-root bridge, and
+`0x1ed84`/`0x1ef6a` segment render from one host byte stream,
 `0x172c0`/`0x16c14` downloaded-font record bookkeeping fixtures,
 `0x170be`/`0x17108`/`0x17150` record lookup/mark/unmark fixtures,
 `0x15a56`/`0x16df6` font-id/control dispatch fixtures,
@@ -502,7 +503,8 @@ ROM work needed:
   state into fetched `ESC )s0W` and `ESC )s80W` and `ESC )s2193W`
   streams, and a combined fetched font-control / downloaded-character /
   printable stream now drives the installed downloaded glyph into
-  segmented page-record buckets.
+  segmented page-record buckets and through the `0x1edc6` /
+  `0x1ed84` / `0x1ef6a` render boundary.
 - Extract glyph metrics and render a known self-test/font sample.
 - Confirm symbol-set mapping for ASCII, Roman-8, line draw, and any
   built-in alternatives.
@@ -524,7 +526,8 @@ ROM work needed:
   `ESC )s0W`, `ESC )s80W`, and `ESC )s2193W` streams, and a combined
   fetched font-control / downloaded-character / printable stream now
   drives the installed downloaded glyph into segmented page-record
-  buckets; the verified built-in scan does not provide normal built-in
+  buckets and through the `0x1edc6` / `0x1ed84` / `0x1ef6a` render
+  boundary; the verified built-in scan does not provide normal built-in
   entries for these renderer modes.
 - Integrate executable row-copy behavior with real page objects from the
   parser/imaging path.

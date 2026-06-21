@@ -407,6 +407,11 @@ parser handlers, delayed records, installed or rendered objects, and
 rows where applicable; the fetched `ESC )s2193W` downloaded-pointer
 object now also preserves the `0x1edc6` bucket/context bridge contract
 and feeds the `0x1ed84`/`0x1ef6a` render-entry path before rendering.
+A combined fetched `ESC *c4660d37e5F` + `ESC )s2193W` + printable `%`
+stream now carries current character `0x25` through the installed glyph,
+restores payload record `80 57 08 91 00 01`, queues segment buckets `9`
+and `1`, preserves the segment-1 bucket root through `0x1edc6`, and
+dispatches it through `0x1ed84`/`0x1ef6a`.
 The `0x15d0a` descriptor stream must start with kind
 byte `4`; selector byte zero scans the current downloaded-font record
 and object flag bit 30 chooses `0x16498` downloaded-character allocation

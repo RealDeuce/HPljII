@@ -882,7 +882,10 @@ point, but that is still not a full live parser allocation. The
 host-fetched text/rule/raster fixture now also publishes its full bucket
 array, rule list, and context slots through modeled `0xff1e`, then
 renders the published record through `0x1ed84` and `0x1ef6a` with the
-same composed rows. Raster
+same composed rows. That same fixture now runs text, `ESC *c`, and the
+delayed `ESC *b#W` raster transfer through one mixed page-record stream
+runner instead of attaching the raster row after the text/rule record.
+Raster
 coverage now has a named flow report plus ROM-table `0x11774` dispatch
 traces for the primary, 150/100/75-dpi, consecutive-row, capped/drained,
 active-resolution-ignore, end-raster, and host-fetched chained-lowercase

@@ -584,7 +584,9 @@ control-code anchor.
   bridge, and rendered queued compact buckets before reset, FF,
   page-size, and orientation consume the current page root, and the
   text/rule/raster page-record fixture now carries its full bucket
-  array, rule list, and context slots through `0xff1e` before rendering.
+  array, rule list, and context slots through `0xff1e` before rendering
+  after one mixed stream runner handles text, `ESC *c`, and delayed
+  raster transfer commands.
 - Extend the mixed-stream page-record fixture into real parser-produced
   page-object allocation/finalization, then add a parser-driven macro
   command/replay fixture.

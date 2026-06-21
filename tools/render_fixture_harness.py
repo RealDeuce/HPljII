@@ -9958,6 +9958,28 @@ def render_mixed_printable_control_stream(
     }
 
 
+def apply_raster_resolution_cursor_state(state: dict[str, int]) -> dict[str, int]:
+    updated = dict(state)
+    if "cursor_x" in updated:
+        updated["cursor_axis0"] = int(updated["cursor_x"])
+    if "cursor_y" in updated:
+        updated["cursor_axis1"] = int(updated["cursor_y"])
+    if "page_extent" not in updated:
+        updated["page_extent"] = int(updated.get("page_height", 255))
+    updated.setdefault("baseline_word", 0)
+    updated.setdefault("row_y", 0)
+    updated.setdefault("mode", 3)
+    updated.setdefault("origin_long", 0)
+    updated.setdefault("scale", 4)
+    updated.setdefault("limit", 0)
+    updated.setdefault("active", 0)
+    updated.setdefault("orientation", 0)
+    updated.setdefault("cursor_axis0", 0)
+    updated.setdefault("cursor_axis1", 0)
+    updated.setdefault("origin_source", 0)
+    return updated
+
+
 def render_mixed_printable_control_page_record_stream(
     data: bytes,
     resources: bytes,
@@ -9972,6 +9994,7 @@ def render_mixed_printable_control_page_record_stream(
     state["page_record"] = page_record
     events: list[dict[str, object]] = []
     published_page_record: dict[str, object] | None = None
+    raster_pending: dict[str, object] = {"pending_flag": 0, "handler": 0, "snapshot_record": b""}
     pos = 0
     while pos < len(stream):
         byte = stream[pos]
@@ -10249,7 +10272,161 @@ def render_mixed_printable_control_page_record_stream(
                     if not (ord("a") <= final <= ord("z")):
                         break
                 continue
-            raise AssertionError(f"page-record mixed stream only models ESC &k#G, ESC &a#L/#M/#C/#H/#R/#V, ESC &f#S, ESC &l#C/#D/#E/#F, ESC *c, and ESC E at offset {pos}")
+            if stream[pos + 1 : pos + 3] in (b"*t", b"*r", b"*b"):
+                group_start = pos
+                group = stream[pos + 2]
+                pos += 3
+                while True:
+                    command_start = group_start if pos == group_start + 3 else pos
+                    if pos < len(stream) and (
+                        stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()
+                    ):
+                        parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+                    else:
+                        parameter = 0
+                    if pos >= len(stream):
+                        raise AssertionError("page-record mixed stream ESC raster command missing final byte")
+                    final = stream[pos]
+                    pos += 1
+                    final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+                    sequence = stream[command_start:pos]
+                    if group == ord("t") and final_upper == ord("R"):
+                        state = apply_raster_resolution_cursor_state(state)
+                        before = dict(state)
+                        state = apply_raster_resolution_via_10808(state, parameter)
+                        events.append({
+                            "kind": "raster-resolution",
+                            "offset": command_start,
+                            "sequence": sequence,
+                            "parameter": parameter,
+                            "handler": 0x010808,
+                            "mode_before": before["mode"],
+                            "mode_after": state["mode"],
+                            "scale": state["scale"],
+                            "limit": state["limit"],
+                            "chained": bool(ord("a") <= final <= ord("z")),
+                        })
+                    elif group == ord("r") and final_upper == ord("A"):
+                        state = apply_raster_resolution_cursor_state(state)
+                        before = dict(state)
+                        state = start_raster_graphics_via_1075a(state, parameter)
+                        events.append({
+                            "kind": "start-raster",
+                            "offset": command_start,
+                            "sequence": sequence,
+                            "parameter": parameter,
+                            "handler": 0x01075A,
+                            "active_before": before["active"],
+                            "active_after": state["active"],
+                            "origin_long": state["origin_long"],
+                            "baseline_word": state["baseline_word"],
+                            "limit": state["limit"],
+                            "chained": bool(ord("a") <= final <= ord("z")),
+                        })
+                    elif group == ord("r") and final_upper == ord("B"):
+                        state = apply_raster_resolution_cursor_state(state)
+                        before = dict(state)
+                        state = end_raster_graphics_via_107fa(state)
+                        events.append({
+                            "kind": "end-raster",
+                            "offset": command_start,
+                            "sequence": sequence,
+                            "parameter": parameter,
+                            "handler": 0x0107FA,
+                            "active_before": before["active"],
+                            "active_after": state["active"],
+                            "mode": state["mode"],
+                            "scale": state["scale"],
+                            "limit": state["limit"],
+                            "row_y": state["row_y"],
+                            "chained": bool(ord("a") <= final <= ord("z")),
+                        })
+                    elif group == ord("b") and final_upper == ord("W"):
+                        parsed_record = bytes([
+                            0x81 if parameter < 0 else 0x80,
+                            final,
+                        ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
+                        scheduled = schedule_payload_handler_via_121cc(
+                            raster_pending,
+                            parsed_record,
+                            0x0105D0,
+                        )
+                        raster_pending = scheduled["pending"]
+                        delayed_snapshot = raster_pending["snapshot_bytes"]
+                        if ord("a") <= final <= ord("z"):
+                            events.append({
+                                "kind": "raster-transfer-pending",
+                                "offset": command_start,
+                                "sequence": sequence,
+                                "parameter": parameter,
+                                "handler": 0x011F82,
+                                "parsed_record": parsed_record,
+                                "delayed_snapshot_bytes": delayed_snapshot,
+                                "delayed_scheduled": scheduled["scheduled"],
+                                "delayed_handler": 0x0105D0,
+                                "chained": True,
+                            })
+                            continue
+                        restored = restore_delayed_payload_via_12218(raster_pending)
+                        raster_pending = restored["pending_after"]
+                        restored_record = restored["record"]
+                        byte_count = abs(s16(restored_record, 2))
+                        payload_start = pos
+                        consumed_payload = consume_data_payload_count_via_12328(
+                            byte_count,
+                            stream,
+                            payload_start,
+                        )
+                        if int(consumed_payload["status"]) != 1:
+                            raise AssertionError(
+                                "page-record mixed stream raster payload shorter than restored byte count"
+                            )
+                        payload_end = int(consumed_payload["pos"])
+                        raw_payload = stream[payload_start:payload_end]
+                        payload = bytes(int(value) & 0xFF for value in consumed_payload["values"])
+                        pos = payload_end
+                        state = apply_raster_resolution_cursor_state(state)
+                        gate = raster_transfer_gate_via_105d0(page_record, state, byte_count, payload)
+                        state = dict(gate["state_after"])
+                        if gate["path"] != "skip-row-beyond-extent":
+                            state["row_y"] += 1
+                        events.append({
+                            "kind": "raster-transfer",
+                            "offset": command_start,
+                            "sequence": sequence,
+                            "parameter": parameter,
+                            "handler": 0x011F82,
+                            "parsed_record": parsed_record,
+                            "delayed_snapshot_bytes": delayed_snapshot,
+                            "delayed_scheduled": scheduled["scheduled"],
+                            "restore_dispatch": restored["dispatch"],
+                            "restored_record": restored["record"],
+                            "delayed_handler": 0x0105D0,
+                            "payload_offset": payload_start,
+                            "raw_payload": raw_payload,
+                            "payload": payload,
+                            "payload_control_hits": consumed_payload["control_hits"],
+                            "gate_path": gate["path"],
+                            "gate_queued": gate["queued"],
+                            "gate_drained": gate["drained"],
+                            "stored_byte_count": gate["stored_byte_count"],
+                            "overflow_count": gate["overflow_count"],
+                            "row_y": gate["row_y"],
+                            "limit": gate.get("limit"),
+                            "transfer_state": gate.get("transfer_state"),
+                            "result": gate.get("result"),
+                            "page_root": gate.get("page_root"),
+                            "row_y_after": state["row_y"],
+                            "chained": False,
+                        })
+                    else:
+                        raise AssertionError(
+                            f"page-record mixed stream unsupported ESC *{chr(group)} final byte {chr(final)!r}"
+                        )
+                    if not (ord("a") <= final <= ord("z")):
+                        break
+                continue
+            raise AssertionError(f"page-record mixed stream only models ESC &k#G, ESC &a#L/#M/#C/#H/#R/#V, ESC &f#S, ESC &l#C/#D/#E/#F, ESC *c, ESC *t/*r/*b raster commands, and ESC E at offset {pos}")
         if byte in (0x08, 0x09, 0x0A, 0x0C, 0x0D):
             before = dict(state)
             finalized = None
@@ -10318,16 +10495,34 @@ def render_mixed_printable_control_page_record_stream(
     assert isinstance(bucket_array, dict)
     nonempty_buckets = sorted(bucket for bucket, chain in bucket_array.items() if chain)
     if len(nonempty_buckets) != 1:
-        raise AssertionError("page-record mixed stream fixture expects one short compact bucket")
+        raise AssertionError("page-record mixed stream fixture expects one populated bucket")
     chain = bucket_array[nonempty_buckets[0]]
-    if len(chain) != 1:
-        raise AssertionError("page-record mixed stream fixture expects one compact object in the bucket")
-    bucket_object = bytes(chain[0])
+    if not chain:
+        raise AssertionError("page-record mixed stream fixture expects bucket objects")
+    compact_objects = [
+        bytes(obj)
+        for obj in chain
+        if len(obj) > 4 and (bytes(obj)[4] & 0xC0) == 0
+    ]
+    if not compact_objects:
+        raise AssertionError("page-record mixed stream fixture needs a compact text object")
+    bucket_object = compact_objects[0]
     bridge_source = dict(page_record)
     bridge_source["bucket_root"] = bucket_object
     bridge_source["context_slots"] = [context]
     bridged_record = bridge_page_record_via_1edc6(bridge_source)
-    rendered = render_bridged_compact_bucket_object(data, resources, bridged_record)
+    compact_only = len(chain) == 1 and bytes(chain[0]) == bucket_object
+    if compact_only:
+        rendered = render_bridged_compact_bucket_object(data, resources, bridged_record)
+        render_entry = None
+    else:
+        render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+            data,
+            resources,
+            page_record,
+            bucket_word=nonempty_buckets[0],
+        )
+        rendered = render_entry["entry"]
     published_bridged_record = None
     published_rendered = None
     if published_page_record is not None:
@@ -10341,6 +10536,7 @@ def render_mixed_printable_control_page_record_stream(
         "bucket_object": bucket_object,
         "bridged_record": bridged_record,
         "rendered": rendered,
+        "render_entry": render_entry,
         "published_page_record": published_page_record,
         "published_bridged_record": published_bridged_record,
         "published_rendered": published_rendered,
@@ -29441,51 +29637,42 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         host_byte_fetch_state(ring=list(text_rectangle_raster_stream), direct_mode=0),
         len(text_rectangle_raster_stream),
     )
-    text_rectangle_raster_page_record = dict(text_rectangle_page_record_stream["page_record"])
-    text_rectangle_raster_bucket_array = {
-        int(bucket): [bytes(obj) for obj in chain]
-        for bucket, chain in text_rectangle_page_record_stream["page_record"]["bucket_array"].items()
-    }
-    text_rectangle_raster_page_record["bucket_array"] = text_rectangle_raster_bucket_array
-    text_rectangle_raster_page_record["rule_list"] = [
-        bytes(obj) for obj in text_rectangle_page_record_stream["page_record"]["rule_list"]
-    ]
-    text_rectangle_raster_page_record["context_slots"] = [0x440946B4]
+    text_rectangle_raster_stream_state = dict(text_rectangle_state)
+    text_rectangle_raster_stream_state.update(raster_graphics_state(page_extent=255))
+    text_rectangle_raster_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        text_rectangle_raster_stream,
+        0x440946B4,
+        text_rectangle_raster_stream_state,
+        default_advance=line_printer_hmi["hmi"],
+    )
+    text_rectangle_raster_page_record = text_rectangle_raster_page_record_stream["page_record"]
+    assert isinstance(text_rectangle_raster_page_record, dict)
     text_rectangle_raster_suffix = b"\x1b*t300R\x1b*r0A\x1b*b2W" + bytes.fromhex("c3 3c")
     text_rectangle_raster_trace = trace_raster_parser_dispatch_via_11774(
         data,
         text_rectangle_raster_suffix,
     )
-    text_rectangle_raster_state = raster_graphics_state(page_extent=255)
-    text_rectangle_raster_state = apply_raster_resolution_via_10808(
-        text_rectangle_raster_state,
-        300,
-    )
-    text_rectangle_raster_state = start_raster_graphics_via_1075a(
-        text_rectangle_raster_state,
-        0,
-    )
-    text_rectangle_raster_gate = raster_transfer_gate_via_105d0(
-        text_rectangle_raster_page_record,
-        text_rectangle_raster_state,
-        2,
-        bytes.fromhex("c3 3c"),
-    )
-    if not text_rectangle_raster_gate["queued"]:
+    text_rectangle_raster_transfer_events = [
+        event
+        for event in text_rectangle_raster_page_record_stream["events"]
+        if event["kind"] == "raster-transfer"
+    ]
+    if len(text_rectangle_raster_transfer_events) != 1:
+        raise AssertionError("text+rectangle+raster fixture expected one raster transfer")
+    text_rectangle_raster_transfer = text_rectangle_raster_transfer_events[0]
+    if not text_rectangle_raster_transfer["gate_queued"]:
         raise AssertionError("text+rectangle+raster fixture expected raster row to queue")
     text_rectangle_raster_chain = [
-        bytes(obj) for obj in text_rectangle_raster_bucket_array[0]
+        bytes(obj) for obj in text_rectangle_raster_page_record["bucket_array"][0]
     ]
     text_rectangle_raster_rendered = render_encoded_raster_object_via_1f88e(
         data,
         text_rectangle_raster_chain[0],
     )
-    text_rectangle_raster_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
-        data,
-        resources,
-        text_rectangle_raster_page_record,
-        bucket_word=0,
-    )
+    text_rectangle_raster_render_entry = text_rectangle_raster_page_record_stream["render_entry"]
+    assert isinstance(text_rectangle_raster_render_entry, dict)
     text_rectangle_raster_expected_rows = compose_set_pixel_rows(
         [
             text_rectangle_page_record_stream["rendered"]["rows"],
@@ -29507,19 +29694,25 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             command["final_dispatch"]["handler"]
             for command in text_rectangle_raster_trace["commands"]
         ],
+        "stream_events": [
+            {
+                "kind": event["kind"],
+                "sequence": event.get("sequence"),
+                "handler": event.get("handler"),
+            }
+            for event in text_rectangle_raster_page_record_stream["events"]
+        ],
         "raster_gate": {
-            key: text_rectangle_raster_gate[key]
-            for key in (
-                "path",
-                "queued",
-                "stored_byte_count",
-                "overflow_count",
-                "row_y",
-                "limit",
-            )
+            "path": text_rectangle_raster_transfer["gate_path"],
+            "queued": text_rectangle_raster_transfer["gate_queued"],
+            "stored_byte_count": text_rectangle_raster_transfer["stored_byte_count"],
+            "overflow_count": text_rectangle_raster_transfer["overflow_count"],
+            "row_y": text_rectangle_raster_transfer["row_y"],
+            "limit": text_rectangle_raster_transfer["limit"],
+            "row_y_after": text_rectangle_raster_transfer["row_y_after"],
         },
         "raster_result": {
-            key: text_rectangle_raster_gate["result"][key]
+            key: text_rectangle_raster_transfer["result"][key]
             for key in (
                 "path",
                 "allocated",
@@ -29573,6 +29766,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "fetch_source_set": ["ring"],
         "remaining_ring": [],
         "parser_handlers": [0x00D04A, 0x010E68, 0x010E22, 0x010898, 0x010808, 0x01075A, 0x011F82],
+        "stream_events": [
+            {"kind": "printable", "sequence": None, "handler": None},
+            {"kind": "rectangle", "sequence": b"\x1b*c12a", "handler": 0x010E68},
+            {"kind": "rectangle", "sequence": b"5b", "handler": 0x010E22},
+            {"kind": "rectangle", "sequence": b"0P", "handler": 0x010898},
+            {"kind": "raster-resolution", "sequence": b"\x1b*t300R", "handler": 0x010808},
+            {"kind": "start-raster", "sequence": b"\x1b*r0A", "handler": 0x01075A},
+            {"kind": "raster-transfer", "sequence": b"\x1b*b2W", "handler": 0x011F82},
+        ],
         "raster_gate": {
             "path": "queued",
             "queued": True,
@@ -29580,6 +29782,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "overflow_count": 0,
             "row_y": 0,
             "limit": 32,
+            "row_y_after": 1,
         },
         "raster_result": {
             "path": "raster-page-record",
@@ -32716,7 +32919,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("A host-fetched direct text/control fixture now starts the plain, CR/LF, HT/BS, margin, cursor-position, vertical-layout, and cursor-stack page-record streams from the modeled `0xa904` ring source, drains every byte, replays the same parser handlers, and lands on the same `0x1387c` page-record objects and rendered row counts.")
     lines.append("The same direct page-record group now crosses `0x1ed84` active-record copy and the `0x1ef6a` render-entry call order, including nonzero bucket selection for the vertical cursor/layout cases.")
     lines.append("A host-fetched text-plus-rectangle fixture now drains `! ESC *c12a5b0P`, queues the compact text bucket and selector-7 rule in the same page record, and carries that combined bucket/rule record through `0x1ed84` and `0x1ef6a`.")
-    lines.append("A host-fetched text-plus-rectangle-plus-raster fixture now drains `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W`, queues compact text, selector-7 rule, and a mode-0 raster row in one page record, and renders the combined bucket/rule/raster record through `0x1ed84` and `0x1ef6a`.")
+    lines.append("A host-fetched text-plus-rectangle-plus-raster fixture now drains `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W` through the same mixed page-record stream runner. That runner queues compact text, the selector-7 rule, and the delayed `0x105d0` mode-0 raster transfer in one page record before rendering the combined bucket/rule/raster record through `0x1ed84` and `0x1ef6a`.")
     lines.append("")
     lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now starts without a current page root, marks the first printable as the page-record root allocation point, models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`.")
     lines.append("")

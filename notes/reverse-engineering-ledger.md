@@ -105,8 +105,9 @@ handler `0x12cfe`, which writes the table rooted at `0x782dde` and
 updates text-bottom cache `0x782dd2`; `ESC &l#V` maps to `0x1280a` and
 consumes that table for channel jumps; its forward in-text path is now
 anchored through channel search, `0x10084`, `0xf06e`, and `0xf34a`, while
-before-top, selector-zero, wrap, and page-recovery branches remain
-unresolved;
+its selector-zero target-equal path is anchored through
+`0x12966..0x1299a`; before-top, selector-zero page-transition, wrap, and
+page-recovery branches remain unresolved;
 `ESC &a#L/#M` map to
 `0xeb58`/`0xec0c` and convert HMI margin columns into
 `0x782dd6`/`0x782dda` with reject/clamp/cursor-move cases;
@@ -147,6 +148,10 @@ at compact coord `0x9001`;
 CR helper `0xf06e`, text-flush helper `0xf34a`, cursor move
 `x 40 -> 10` and `y 126 -> 176`, and following printable `!` at compact
 coord `0xb001`;
+`ESC &l0V!`, starting from the same VFC table state at top-of-form target
+y `126`, now ties parser handler `0x1280a`, branch `0x12966..0x1299a`,
+page-root helper `0x10084`, unchanged cursor `x 40, y 126`, and
+following printable `!` at compact coord `0x9e02`;
 `ESC &f0S ESC &a2C ESC &f1S!` now ties cursor-stack push/pop and
 cursor-position handlers to restored page-record text output at compact
 coord `0x0001`; `ESC E` maps to reset handler `0xcc52`, reset flow is
@@ -254,8 +259,9 @@ firmware bookkeeping and `0x78299e` remains parser scratch. The table
 writer cluster `0x11f6e -> 0x12cfe`, default builder `0x12b96`, and
 consumer `0x1280a` are identified. The `0x1280a` forward in-text hit path
 is anchored through `0x1292a..0x1295c` search and `0x12aa6..0x12af8`
-cursor commit. The highest-value unresolved middle edges are
-`0x128ae..0x128f4`, `0x12966..0x129c4`, `0x129c6..0x12afc`, and
+cursor commit. The selector-zero target-equal path is anchored through
+`0x12966..0x1299a`. The highest-value unresolved middle edges are
+`0x128ae..0x128f4`, `0x1299c..0x129c4`, `0x129c6..0x12afc`, and
 `0x12b5e..0x12b92`.
 
 ### Raster/text/page-object path

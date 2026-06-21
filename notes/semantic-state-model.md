@@ -8,9 +8,10 @@ notes, disassembly windows, or executable fixtures.
 ## Vertical Forms Control
 
 Status: partially anchored. The table definition path, its immediate
-text-bottom effect, and the forward in-text channel-jump path are
-modeled. The before-top, selector-zero, wrap, and page-recovery branches
-inside the channel-jump consumer still need fixtures.
+text-bottom effect, the forward in-text channel-jump path, and the
+selector-zero target-equal path are modeled. The before-top, selector-zero
+page-transition, wrap, and page-recovery branches inside the channel-jump
+consumer still need fixtures.
 
 Concept: vertical forms control is a per-line, 16-channel stop table used
 by `ESC &l#W` definitions and consumed by `ESC &l#V` vertical channel
@@ -120,7 +121,10 @@ unresolved branches possibly forcing page/line recovery.
   `0x782dde`. It searches forward or backward depending on cursor
   position relative to top offset. The modeled forward path searches
   `0x1292a..0x1295c`, then commits the in-text hit through
-  `0x12aa6..0x12af8`.
+  `0x12aa6..0x12af8`. The modeled selector-zero target-equal path
+  computes the same top-of-form target through `0x12966..0x12992`,
+  compares it with `0x782c8e` at `0x12994`, and exits through
+  `0x1295e` when they match.
 - `0xf36c` consumes the derived limit `0x782dc2` during vertical
   overflow/perforation handling.
 - Printable output is indirectly affected: the `ESC &l4W 00 00 00 02 !`
@@ -131,6 +135,10 @@ unresolved branches possibly forcing page/line recovery.
   `ESC &l2V!` after the same table definition finds channel 2 at line 1,
   changes y from `126` to `176`, resets x from `40` to the left margin
   `10`, and queues `!` at compact coord `0xb001`.
+- Printable output is preserved by the selector-zero target-equal path:
+  `ESC &l0V!` computes target y `126`, finds it already equals the
+  current vertical cursor, leaves x/y unchanged, and queues `!` at
+  compact coord `0x9e02`.
 
 ### Output Effect
 
@@ -148,14 +156,21 @@ Handler `0x1280a` uses cached line bounds `0x782ee0 = 62` and
 `0x0002`, writes y `176`, resets x to `10`, and the following `!` renders
 from compact coord `0xb001`.
 
+In the selector-zero target-equal fixture, the same table state receives
+`ESC &l0V!` while y is already `126`, the computed top-of-form target.
+Handler `0x1280a` ensures the page root through `0x10084`, takes
+`0x12966..0x1299a`, leaves x `40` and y `126` unchanged, and the
+following `!` renders from compact coord `0x9e02`.
+
 ### Confidence
 
 High for the `0x11f6e -> 0x12cfe` delayed payload boundary, table bytes,
 reject cases, zero-count reset, text-bottom cache effect, and forward
-`0x1280a` in-text channel hit. Medium for the exact semantic names of
+`0x1280a` in-text channel hit. High for the selector-zero target-equal
+early exit. Medium for the exact semantic names of
 `0x782ede`/`0x782edf`/`0x782ee0`; the line-count interpretation matches
-fixtures and disassembly, but the wrap and page-recovery branches still
-need complete lifting.
+fixtures and disassembly, but the selector-zero page-transition, wrap,
+and page-recovery branches still need complete lifting.
 
 ### Fixtures
 
@@ -163,6 +178,8 @@ need complete lifting.
 - `mixed VFC definition stream consumes payload before printable
   page-record queue`
 - `mixed VFC channel jump stream moves cursor before printable page-record
+  queue`
+- `mixed VFC selector-zero top-of-form no-op reaches printable page-record
   queue`
 - Supporting existing fixtures:
   `0xc992 ESC &l#D accepts ROM LPI set and refreshes pending vertical
@@ -184,8 +201,9 @@ need complete lifting.
 
 - `0x128ae..0x128f4`: cursor-before-top start-line normalization is
   identified but not modeled by a fixture.
-- `0x12966..0x129c4`: selector-zero top-of-form/page transition path calls
-  `0xf06e`, `0xf34a`, and `0xf124`; exact output effect is unresolved.
+- `0x1299c..0x129c4`: selector-zero page-transition path calls
+  `0xf06e`, `0xf34a`, and `0xf124` when the computed top-of-form target
+  differs from the current cursor; exact output effect is unresolved.
 - `0x129c6..0x12afc`: wrap/search/page-recovery branches call
   `0xf34a`, `0xf124`, and `0xf06e`; exact page-publication boundaries
   and cursor final positions still need fixtures.

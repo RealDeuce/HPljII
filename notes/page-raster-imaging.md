@@ -86,6 +86,11 @@ routes through handler `0x1280a`, searches channel mask `0x0002` at line
 `0xf34a`, moves y from `126` to `176`, resets x from `40` to left margin
 `10`, and queues `!` at compact coord `0xb001`.
 
+The selector-zero target-equal path is also anchored. Fixture
+`ESC &l0V!` takes `0x12966..0x1299a`, computes the top-of-form target y
+`126`, sees it already equals current y, leaves x/y unchanged, ensures the
+page root through `0x10084`, and queues `!` at compact coord `0x9e02`.
+
 The lookup helpers at `0x009d16`, `0x009d4e`, `0x009d86`, and `0x009dbe`
 mask the internal code with `0x7f` and index eleven word entries. The
 generated table report records all current values. Its manual

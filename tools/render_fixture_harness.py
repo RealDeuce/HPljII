@@ -2058,13 +2058,30 @@ def apply_vertical_forms_channel_jump_via_1280a(state: dict[str, int], selector:
         updated["events"] = events
         return updated
     if selector == 0:
+        target_y = pending_text_cursor_for_vmi(top_offset, int(updated["vmi"]))
+        if target_y == cursor_y:
+            events.append({
+                "kind": "vfc-channel-jump-top-of-form-noop",
+                "selector": selector,
+                "handler": 0x01280A,
+                "page_root": page_root,
+                "target_y": target_y,
+                "cursor_before": {"x": int(updated["cursor_x"]), "y": cursor_y},
+                "cursor_after": {"x": int(updated["cursor_x"]), "y": int(updated["cursor_y"])},
+                "helpers": (0x010084,),
+                "disassembly_edge": "0x12966..0x1299a",
+            })
+            updated["events"] = events
+            return updated
         events.append({
             "kind": "vfc-channel-jump-unmodeled",
-            "reason": "selector-zero-top-of-form",
+            "reason": "selector-zero-page-transition",
             "selector": selector,
             "handler": 0x01280A,
             "page_root": page_root,
-            "unresolved_edge": "0x12966..0x129c4",
+            "target_y": target_y,
+            "cursor_y": cursor_y,
+            "unresolved_edge": "0x1299c..0x129c4",
         })
         updated["events"] = events
         return updated
@@ -41968,6 +41985,123 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 b0 01"),
         "rendered_rows": expected_vfc_jump_rows,
     }))
+    vfc_top_of_form_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&l0V!",
+        0x440946B4,
+        vfc_jump_base_state,
+        default_advance=line_printer_hmi["hmi"],
+    )
+    vfc_top_of_form_parser_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        b"\x1b&l0V!",
+    )
+    vfc_top_of_form_events = vfc_top_of_form_stream["events"]
+    assert isinstance(vfc_top_of_form_events, list)
+    vfc_top_of_form_command = vfc_top_of_form_events[0]
+    vfc_top_of_form_printable = vfc_top_of_form_events[1]
+    assert isinstance(vfc_top_of_form_command, dict)
+    assert isinstance(vfc_top_of_form_printable, dict)
+    vfc_top_of_form_details = vfc_top_of_form_command["vfc_event"]
+    assert isinstance(vfc_top_of_form_details, dict)
+    vfc_top_of_form_positioned = vfc_top_of_form_printable["positioned"]
+    vfc_top_of_form_page_result = vfc_top_of_form_printable["page_result"]
+    assert isinstance(vfc_top_of_form_positioned, dict)
+    assert isinstance(vfc_top_of_form_page_result, dict)
+    vfc_top_of_form_positioned_source = vfc_top_of_form_positioned["source"]
+    assert isinstance(vfc_top_of_form_positioned_source, dict)
+    expected_vfc_top_of_form_rows = [
+        "." * 50,
+    ] * 9 + [
+        "." * 46 + "####" if row == "####" else "." * 50
+        for row in line_printer_glyph32_rows
+    ]
+    checks.append(assert_equal("mixed VFC selector-zero top-of-form no-op reaches printable page-record queue", {
+        "parser_handlers": [
+            event["handler"]
+            for event in vfc_top_of_form_parser_trace["events"]
+        ],
+        "command_event": {
+            "kind": vfc_top_of_form_command["kind"],
+            "sequence": vfc_top_of_form_command["sequence"],
+            "record": vfc_top_of_form_command["record"],
+            "handler": vfc_top_of_form_command["handler"],
+            "cursor_before": vfc_top_of_form_command["cursor_before"],
+            "cursor_after": vfc_top_of_form_command["cursor_after"],
+            "cursor_x_before": vfc_top_of_form_command["cursor_x_before"],
+            "cursor_x_after": vfc_top_of_form_command["cursor_x_after"],
+        },
+        "vfc_event": {
+            "kind": vfc_top_of_form_details["kind"],
+            "selector": vfc_top_of_form_details["selector"],
+            "target_y": vfc_top_of_form_details["target_y"],
+            "cursor_before": vfc_top_of_form_details["cursor_before"],
+            "cursor_after": vfc_top_of_form_details["cursor_after"],
+            "helpers": vfc_top_of_form_details["helpers"],
+            "disassembly_edge": vfc_top_of_form_details["disassembly_edge"],
+            "page_root_created": vfc_top_of_form_details["page_root"]["page_root_created"],
+        },
+        "printable": {
+            "offset": vfc_top_of_form_printable["offset"],
+            "cursor_before": vfc_top_of_form_printable["cursor_before"],
+            "cursor_after": vfc_top_of_form_printable["cursor_after"],
+            "positioned_xy": (
+                vfc_top_of_form_positioned_source["x"],
+                vfc_top_of_form_positioned_source["y"],
+            ),
+            "coord": vfc_top_of_form_page_result["coord"],
+            "bucket_index": vfc_top_of_form_page_result["bucket_index"],
+        },
+        "final_state": select_keys(vfc_top_of_form_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "page_record_root_allocations",
+            "pending_text",
+            "pending_width",
+        )),
+        "object_prefix": vfc_top_of_form_stream["bucket_object"][:11],
+        "rendered_rows": vfc_top_of_form_stream["rendered"]["rows"],
+    }, {
+        "parser_handlers": [0x01280A, 0x00D04A],
+        "command_event": {
+            "kind": "vfc-jump",
+            "sequence": b"\x1b&l0V",
+            "record": b"\x80V\x00\x00\x00\x00",
+            "handler": 0x01280A,
+            "cursor_before": pack12(126),
+            "cursor_after": pack12(126),
+            "cursor_x_before": pack12(40),
+            "cursor_x_after": pack12(40),
+        },
+        "vfc_event": {
+            "kind": "vfc-channel-jump-top-of-form-noop",
+            "selector": 0,
+            "target_y": pack12(126),
+            "cursor_before": {"x": pack12(40), "y": pack12(126)},
+            "cursor_after": {"x": pack12(40), "y": pack12(126)},
+            "helpers": (0x010084,),
+            "disassembly_edge": "0x12966..0x1299a",
+            "page_root_created": True,
+        },
+        "printable": {
+            "offset": 5,
+            "cursor_before": pack12(40),
+            "cursor_after": pack12(58),
+            "positioned_xy": (46, 105),
+            "coord": 0x9E02,
+            "bucket_index": 6,
+        },
+        "final_state": {
+            "cursor_x": pack12(58),
+            "cursor_y": pack12(126),
+            "page_record_root_allocations": 1,
+            "pending_text": 1,
+            "pending_width": 1,
+        },
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 9e 02"),
+        "rendered_rows": expected_vfc_top_of_form_rows,
+    }))
     orientation_page_record_stream = render_printable_page_geometry_page_record_stream(
         data,
         resources,
@@ -43134,6 +43268,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- A mixed page-length stream `ESC &l66P!` routes through ROM parser handlers `0xf9e8` and `0xd04a`, refreshes the text cursor to y `126`, and queues the following printable at compact coord `0x9001`.")
     lines.append("- A mixed VFC stream `ESC &l4W 00 00 00 02 !` routes through `0x11f6e`, restores delayed handler `0x12cfe`, consumes the four payload bytes before parsing `!`, and leaves the printable queued at compact coord `0x9001`.")
     lines.append("- A mixed VFC channel stream `ESC &l2V!` routes through `0x1280a`, finds channel 2 at line 1, moves y from `126` to `176`, resets x from `40` to the left margin `10`, and queues `!` at compact coord `0xb001`.")
+    lines.append("- A mixed VFC selector-zero stream `ESC &l0V!` routes through the `0x1280a` top-of-form target compare. When the computed target already equals y `126`, it keeps x/y unchanged, ensures the page root through `0x10084`, and queues `!` at compact coord `0x9e02`.")
     lines.append("- A mixed printable/orientation page-record stream starts from letter portrait with no current page root, drives `!` then `ESC &l1O`, allocates the page-record root on the printable queue step, and publishes the queued compact text bucket through the orientation handler's `0xf34a`/`0xff1e` boundary before switching to landscape geometry.")
     lines.append(f"- orientation publication object bytes: `{' '.join(f'{byte:02x}' for byte in orientation_page_record_object)}`")
     lines.append("- orientation published page-record bridge rows match the pre-landscape compact text rows.")

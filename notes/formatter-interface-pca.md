@@ -17,7 +17,8 @@ For LaserJet II ROM work, prefer `Interface PCA`.
 
 The Interface PCA is responsible for:
 
-- Host communication over standard serial, standard parallel, or optional I/O.
+- Host communication over standard serial, standard parallel, or
+  optional I/O.
 - Control panel scanning and LCD/status display generation.
 - Communication with the DC Controller PCA.
 - PCL command parsing and print environment management.
@@ -25,12 +26,13 @@ The Interface PCA is responsible for:
 - Page composition into dot/image data for the engine.
 - Font storage and font cartridge access.
 - Configuration storage and page count storage in NVRAM.
-- Self-test logic for program ROM, font ROM, RAM, DRAM controller, interface
-  logic, and LEDs.
+- Self-test logic for program ROM, font ROM, RAM, DRAM controller,
+  interface logic, and LEDs.
 
 ## HP 33440 Architecture
 
-Service manual figure 5-17 describes the HP 33440 Interface PCA as these blocks:
+Service manual figure 5-17 describes the HP 33440 Interface PCA as these
+blocks:
 
 - 16-bit CPU executing ROM programs.
 - ROM storing control programs and internal character dot patterns.
@@ -47,36 +49,39 @@ Service manual figure 5-17 describes the HP 33440 Interface PCA as these blocks:
 
 ## CPU
 
-The service manual does not identify the HP 33440 CPU by part family. The prose
-only says the CPU block contains a 16-bit microprocessor, and figure 5-17 labels
-the block simply as `CPU`.
+The service manual does not identify the HP 33440 CPU by part family.
+The prose only says the CPU block contains a 16-bit microprocessor, and
+figure 5-17 labels the block simply as `CPU`.
 
-Do not assume it is the same as the HP 33449 without board inspection. The HP
-33449 formatter is explicitly Motorola 68000-based, but that statement appears
-in the HP 33449 formatter section, not the HP 33440 Interface PCA section.
+Do not assume it is the same as the HP 33449 without board inspection.
+The HP 33449 formatter is explicitly Motorola 68000-based, but that
+statement appears in the HP 33449 formatter section, not the HP 33440
+Interface PCA section.
 
-When the formatter board arrives, record the CPU package marking, clock source,
-ROM package markings, and any gate-array markings before dumping ROMs. Those
-will be needed to choose the disassembler CPU target and build the address map.
+When the formatter board arrives, record the CPU package marking, clock
+source, ROM package markings, and any gate-array markings before dumping
+ROMs. Those will be needed to choose the disassembler CPU target and
+build the address map.
 
 ## ROM
 
 - Maximum HP 33440 ROM capacity: 1 MB.
 - ROM stores both firmware and internal character-set dot patterns.
-- The address controller can change the ROM address region via jumpers attached
-  to the gate array.
+- The address controller can change the ROM address region via jumpers
+  attached to the gate array.
 - The ROM is used in four separate sections.
 
-Disassembly implication: expect vectors, code, font data, command tables, and
-possibly multiple ROM regions selected or banked by the address controller.
+Disassembly implication: expect vectors, code, font data, command
+tables, and possibly multiple ROM regions selected or banked by the
+address controller.
 
 ## RAM
 
 - Onboard DRAM: 512 KB max.
 - Optional expansion DRAM: +1 MB, +2 MB, or +4 MB.
 - Standard available user memory from Technical Reference: 395 KB.
-- DRAM stores host input, printing/font information, page-formatting data, and
-  formatter parameters.
+- DRAM stores host input, printing/font information, page-formatting
+  data, and formatter parameters.
 - The CPU subdivides DRAM dynamically.
 - Technical Reference memory estimates:
   - Each rule, underline, or pattern: 15 bytes.
@@ -88,13 +93,13 @@ possibly multiple ROM regions selected or banked by the address controller.
 
 - HP 33440 Interface PCA NVRAM capacity: 32 bytes.
 - Stores control-panel configuration and page count.
-- Page count is current while powered. On power-off, it is rounded down to the
-  nearest 10-page increment and saved.
-- `68 SERVICE` indicates NVRAM failure; the printer can continue with factory
-  defaults until repair, but settings are lost.
+- Page count is current while powered. On power-off, it is rounded down
+  to the nearest 10-page increment and saved.
+- `68 SERVICE` indicates NVRAM failure; the printer can continue with
+  factory defaults until repair, but settings are lost.
 
-See [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md) for reset
-behavior.
+See [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md)
+for reset behavior.
 
 ## SRAM
 
@@ -108,8 +113,9 @@ behavior.
 - Provides ROM-region address control and DRAM addressing.
 - Enables access to onboard and expansion DRAM.
 
-ROM-tracing implication: accesses to memory control registers or gate-array
-mapped space may affect ROM region selection or DRAM timing/addressing.
+ROM-tracing implication: accesses to memory control registers or
+gate-array mapped space may affect ROM region selection or DRAM
+timing/addressing.
 
 ## Bit Shifter
 
@@ -119,8 +125,8 @@ The service manual says the bit shifter is used to:
 - Overlay printed characters.
 - Shift data by 1 to 15 bits.
 
-This suggests hardware assist for horizontal positioning, raster alignment, and
-possibly font compositing.
+This suggests hardware assist for horizontal positioning, raster
+alignment, and possibly font compositing.
 
 ## Timing Controller
 
@@ -133,8 +139,8 @@ Generates:
 
 Controls:
 
-- Timing of data input from an optional I/O PCA to the CPU via the parallel
-  interface connector.
+- Timing of data input from an optional I/O PCA to the CPU via the
+  parallel interface connector.
 - Timing of communication with the DC Controller.
 
 ## Video Interface
@@ -148,31 +154,31 @@ Controls:
   - `BD`: beam detect / horizontal sync pulse from engine side.
   - `PRNT`: initiates printing operation.
 
-Emulator implication: a first formatter emulator may not need full scan-buffer
-fidelity, but ROM that tests `54 SERVICE` scan-buffer behavior may touch this
-hardware directly.
+Emulator implication: a first formatter emulator may not need full
+scan-buffer fidelity, but ROM that tests `54 SERVICE` scan-buffer
+behavior may touch this hardware directly.
 
 ## Font Cartridge Interface
 
 - Two cartridge slots, left and right.
 - Font cartridges are ROM cartridges containing font dot patterns.
-- Optional cartridges can also overlay/replace portions of machine ROM for
-  emulation/personality behavior.
-- Removing/replacing cartridges while online or while data is buffered causes
-  user-visible cartridge messages and can require power cycling.
+- Optional cartridges can also overlay/replace portions of machine ROM
+  for emulation/personality behavior.
+- Removing/replacing cartridges while online or while data is buffered
+  causes user-visible cartridge messages and can require power cycling.
 
-Font source priority from LaserJet III user manual is soft font, left cartridge,
-right cartridge, internal; confirm this against LaserJet II behavior while
-tracing.
+Font source priority from LaserJet III user manual is soft font, left
+cartridge, right cartridge, internal; confirm this against LaserJet II
+behavior while tracing.
 
 ## HP 33449 Contrast
 
-LaserJet III is useful as a later comparison point but should not be copied into
-HP 33440 assumptions:
+LaserJet III is useful as a later comparison point but should not be
+copied into HP 33440 assumptions:
 
 - CPU: Motorola 68000, 9.83 MHz.
-- ROM: 2 MB; early units use six 1-Mbit EPROMs and three 4-Mbit ROMs; most use
-  four 4-Mbit ROMs.
+- ROM: 2 MB; early units use six 1-Mbit EPROMs and three 4-Mbit ROMs;
+  most use four 4-Mbit ROMs.
 - NVRAM: 1024 bits.
 - DRAM: 1024 KB onboard.
 - ASIC handles DRAM control, hardware assist, and video DMA.
@@ -209,8 +215,8 @@ Self-test printout reports:
 - `33 SERVICE`: dynamic RAM or optional memory error.
 - `54 SERVICE`: laser scan buffer error.
 - `55 SERVICE`: dynamic RAM controller error.
-- `57 SERVICE`: miscellaneous hardware or address error on Interface/Formatter
-  PCA.
+- `57 SERVICE`: miscellaneous hardware or address error on
+  Interface/Formatter PCA.
 - `68 SERVICE`: NVRAM failure.
 - `55 ERROR`: undefined or unanswered status exchange between
   Interface/Formatter and DC Controller.
@@ -222,8 +228,8 @@ See [errors-and-status.md](errors-and-status.md) for a fuller table.
 - Exact HP 33440 CPU type and clock.
 - Exact ROM package count and interleave/order for the incoming ROM set.
 - Address map: ROM regions, NVRAM, SRAM, DRAM, gate array registers, I/O
-  controller, video buffers, cartridge slots, control panel, and DC Controller
-  port.
-- Whether scan buffers are memory-mapped, port-mapped, DMA-fed, or gate-array
-  mediated.
+  controller, video buffers, cartridge slots, control panel, and DC
+  Controller port.
+- Whether scan buffers are memory-mapped, port-mapped, DMA-fed, or
+  gate-array mediated.
 - How optional I/O and cartridge ROM overlay are decoded.

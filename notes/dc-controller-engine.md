@@ -17,14 +17,16 @@ The DC Controller PCA is the machine control system. It coordinates:
 - +24 V power operation.
 - Machine status reported to the Interface PCA.
 
-The Interface PCA formats pages and sends commands/video; the DC Controller
-turns those into engine actions and status.
+The Interface PCA formats pages and sends commands/video; the DC
+Controller turns those into engine actions and status.
 
 ## Functional Blocks Around the DC Controller
 
-- Interface PCA: host I/O, PCL, page composition, video data, user interface.
+- Interface PCA: host I/O, PCL, page composition, video data, user
+  interface.
 - DC Controller PCA: engine timing/control.
-- Laser/scanning assembly: laser diode, polygon/scanner motor, beam detect path.
+- Laser/scanning assembly: laser diode, polygon/scanner motor, beam
+  detect path.
 - DC power supply/main motor driver.
 - High-voltage power supply.
 - Paper control PCA and solenoids.
@@ -33,8 +35,8 @@ turns those into engine actions and status.
 
 ## Formatter/DC Connector Signals (`J205`)
 
-The service manual signal table gives the Interface/Formatter to DC Controller
-connector as:
+The service manual signal table gives the Interface/Formatter to DC
+Controller connector as:
 
 | Pin | Signal | Direction / meaning |
 | --- | --- | --- |
@@ -60,7 +62,8 @@ connector as:
 | J205-B10 | `FG` | Frame ground |
 
 Emulator implication: the formatter ROM likely treats the engine as a
-command/status peripheral with busy/strobe handshakes plus video and sync lines.
+command/status peripheral with busy/strobe handshakes plus video and
+sync lines.
 
 ## Laser and Scanner Signals
 
@@ -91,12 +94,13 @@ Scanner motor connector `J203`:
 ## Beam Detect
 
 - The laser beam sweeps across a six-faced rotating polygon mirror.
-- Before each sweep reaches the drum, it reflects into a fiber optic cable.
-- The DC Controller converts this light pulse into `BD`, the beam detect /
-  horizontal sync pulse.
+- Before each sweep reaches the drum, it reflects into a fiber optic
+  cable.
+- The DC Controller converts this light pulse into `BD`, the beam detect
+  / horizontal sync pulse.
 - `BD` synchronizes one scan line of video data.
-- Loss of beam detect is associated with `41 ERROR` first; if it cannot recover
-  after about two seconds, `51 ERROR` occurs.
+- Loss of beam detect is associated with `41 ERROR` first; if it cannot
+  recover after about two seconds, `51 ERROR` occurs.
 
 ## Main Motor and +24 V Control
 
@@ -117,8 +121,8 @@ Power connector `J212` includes:
 | J212-13 | `+24VB` | +24B Vdc |
 | J212-14 | `+24VA` | +24A Vdc |
 
-The main motor drives the pickup roller, registration assembly, drum, feed
-rollers, fuser, and delivery rollers through gear trains.
+The main motor drives the pickup roller, registration assembly, drum,
+feed rollers, fuser, and delivery rollers through gear trains.
 
 ## Paper Control (`J213`)
 
@@ -134,8 +138,8 @@ rollers, fuser, and delivery rollers through gear trains.
 | J213-08 | `PEMP` | Paper-out signal, low when paper not detected by `PS301` |
 | J213-09 | `MPFS` | Manual feed sensor, paper present at `PS302` |
 
-The OCR truncates the final row label in places; `MPFS` is the manual paper feed
-sensor signal by description.
+The OCR truncates the final row label in places; `MPFS` is the manual
+paper feed sensor signal by description.
 
 ## Fuser / Erase / Fan (`J206`-`J208`)
 
@@ -154,7 +158,8 @@ sensor signal by description.
 | J208-02 | `FSRD` | Fuser heater drive pulse |
 | J208-03 | `GND` | Ground |
 
-`FSRD` may only be observable on a scope, according to the service table.
+`FSRD` may only be observable on a scope, according to the service
+table.
 
 ## High Voltage (`J210`, `J211`)
 
@@ -187,8 +192,8 @@ High-voltage power supply connector `J211`:
 | `GND` | Ground |
 | `+24 Vdc` | +24 Vdc |
 
-Some signal names on J211 are partially corrupted in OCR; descriptions are from
-the service table.
+Some signal names on J211 are partially corrupted in OCR; descriptions
+are from the service table.
 
 ## Tray and Cover Indicators
 
@@ -199,12 +204,13 @@ the service table.
 
 ## Engine Test
 
-`15 ENGINE TEST` is activated by the physical test print button. It prints
-vertical lines and bypasses the Interface PCA. It verifies the DC Controller and
-print engine components independent of formatter page generation.
+`15 ENGINE TEST` is activated by the physical test print button. It
+prints vertical lines and bypasses the Interface PCA. It verifies the DC
+Controller and print engine components independent of formatter page
+generation.
 
-In an emulator, this can become a DC Controller self-contained print pattern
-state that does not require PCL or page memory.
+In an emulator, this can become a DC Controller self-contained print
+pattern state that does not require PCL or page memory.
 
 ## Minimal Engine Stub Behavior
 
@@ -212,18 +218,21 @@ A practical first emulator engine stub should provide:
 
 - Power-on sequence: reset, warmup, ready.
 - `RDY`, `PPRDY`, `CPRDY` behavior.
-- Command/status handshakes over `CMND`/`CCLK`/`CBSY` and `STATS`/`PCLK`/`SBSY`.
+- Command/status handshakes over `CMND`/`CCLK`/`CBSY` and
+  `STATS`/`PCLK`/`SBSY`.
 - `BD` pulses during active print/video.
 - `VSYNC` / `VSREQ` response sufficient for formatter ROM progress.
-- Paper-present, tray-size, cartridge-present, fuser-ready, and no-jam defaults.
-- Error injection for paper out, cover open, no cartridge, paper jam, scanner
-  failure, fuser failure, and formatter/DC communication timeout.
+- Paper-present, tray-size, cartridge-present, fuser-ready, and no-jam
+  defaults.
+- Error injection for paper out, cover open, no cartridge, paper jam,
+  scanner failure, fuser failure, and formatter/DC communication
+  timeout.
 
 ## Open Questions for Tracing
 
 - Exact command byte/protocol encoding on `CMND` and `STATS`.
-- Whether `VSREQ` is Interface-to-engine or engine-to-Interface in actual
-  hardware timing; table names alone are not enough.
+- Whether `VSREQ` is Interface-to-engine or engine-to-Interface in
+  actual hardware timing; table names alone are not enough.
 - Scan line timing expected by the formatter ROM.
 - Which status bits generate each control-panel message.
 - How the DC Controller reports fuser warmup versus ready.

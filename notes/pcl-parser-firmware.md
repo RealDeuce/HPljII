@@ -3,6 +3,7 @@
 Sources: `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`;
 `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`;
 `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`;
+`generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`;
 `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`;
 `generated/disasm/ic30_ic13_esc_e_metric_refresh_00cbd4.lst`;
 `generated/disasm/ic30_ic13_esc_e_environment_reset_00cda2.lst`;
@@ -578,6 +579,15 @@ normal `ESC &f#Y` sets the macro id through `0xe112`, while `x/X`
 records route to `0xdd08`; the alternate/data table keeps `x/X ->
 0xdd08` but disables the normal macro-id handler.
 
+The tokenizer report also classifies the stateful helper bodies at
+`0x11ba6`, `0x11c6c`, `0x11d0c`, and `0x11dd2`. The important
+reproduction contract is the repeated six-byte record rewind at
+`0x78299e`, the shared `W/w` delayed-payload boundary through
+`0x121cc(0x1228a)`, and the terminal restore through `0x12218`.
+Helper `0x11dd2` adds a font-state refresh through `0xc580`, while the
+callback helpers can append terminal bytes through `0xe002` in
+alternate/data mode before restoring the delayed record.
+
 ## Rejected Lead
 
 The `cmpi.w #0x000c` at `0x0001053a` is not the PCL form-feed handler.
@@ -587,8 +597,7 @@ control-code anchor.
 
 ## Next RE Targets
 
-- Finish classifying the `0xdaf0` stateful helper variants and keep
-  expanding the named roles for the `0xa904` callers listed in
+- Keep expanding the named roles for the `0xa904` callers listed in
   `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
 - Decode all normal and alternate parser table handlers into PCL command
   names.

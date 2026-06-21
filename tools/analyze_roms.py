@@ -3103,6 +3103,83 @@ def tokenizer_macro_caller_report(data: bytes) -> str:
             "shape as the other stateful helpers"
         ),
     }
+    stateful_helper_variants = [
+        {
+            "entry": 0x011BA6,
+            "name": "punctuation-prefixed helper",
+            "tokenizer_call": 0x011BDC,
+            "setup": (
+                "If the incoming byte is `0x21..0x2f`, fetch one more host "
+                "byte through `0xda9a`, echo it through `0x9ec0`, and stop "
+                "early only when that fetched byte is space."
+            ),
+            "payload": (
+                "`W/w` arms delayed handler `0x1228a` through `0x121cc`; "
+                "lowercase continuation bytes `0x60..0x7e` re-enter "
+                "`0xdaf0` after rewinding the parsed-record cursor."
+            ),
+            "final": (
+                "Terminal bytes `0x40..0x5e` restore delayed state through "
+                "`0x12218`; other terminal bytes are echoed through `0x9ec0`."
+            ),
+        },
+        {
+            "entry": 0x011C6C,
+            "name": "generic stateful command helper",
+            "tokenizer_call": 0x011C88,
+            "setup": (
+                "Echoes the incoming command byte through `0x9ec0`, skips "
+                "only space, then tokenizes the current record."
+            ),
+            "payload": (
+                "`W/w` arms delayed handler `0x1228a`; if parser mode byte "
+                "`0x782999` is mode 4, the helper bypasses that `W/w` special "
+                "case and immediately rewinds the parsed-record cursor."
+            ),
+            "final": (
+                "Lowercase continuation bytes loop back through `0xdaf0`; "
+                "terminal bytes `0x40..0x5e` restore via `0x12218`, otherwise "
+                "the byte is echoed through `0x9ec0`."
+            ),
+        },
+        {
+            "entry": 0x011D0C,
+            "name": "callback continuation helper",
+            "tokenizer_call": 0x011D64,
+            "setup": (
+                "Lowercase bytes `0x60..0x7e` are continuation candidates; "
+                "only lowercase `w` arms delayed handler `0x1228a` before "
+                "the tokenizer restart."
+            ),
+            "payload": (
+                "Uppercase `W` sets an internal `D4` flag and arms the same "
+                "delayed handler before terminal processing."
+            ),
+            "final": (
+                "In alternate/data mode with byte `0x782a56` set, terminal "
+                "bytes can append either the terminal byte alone or a leading "
+                "`0x30` plus the terminal byte through `0xe002` before "
+                "`0x12218` restores delayed state."
+            ),
+        },
+        {
+            "entry": 0x011DD2,
+            "name": "font-refreshing callback continuation helper",
+            "tokenizer_call": 0x011E2A,
+            "setup": (
+                "Uses the same lowercase `w` continuation and uppercase `W` "
+                "terminal delayed-payload tests as helper `0x11d0c`."
+            ),
+            "payload": (
+                "Uppercase `W` rewinds `0x78299e` and calls common font-state "
+                "refresh helper `0xc580` before terminal processing."
+            ),
+            "final": (
+                "Alternate/data terminal append behavior matches `0x11d0c`, "
+                "including the optional leading `0x30` byte before `0x12218`."
+            ),
+        },
+    ]
     macro_table_entries = (
         parser_table_handler_entries(
             data,
@@ -3156,6 +3233,38 @@ def tokenizer_macro_caller_report(data: bytes) -> str:
         "- `W/w` finals are the repeated delayed-payload boundary: callers "
         "arm `0x121cc(0x1228a)` before the payload reader later restores "
         "state through `0x12218`."
+    )
+    lines.append("")
+    lines.append("## Stateful Tokenizer Helper Variants")
+    lines.append("")
+    lines.append(
+        "The focused disassembly window "
+        "`generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst` "
+        "covers the helper bodies that the caller list previously left only "
+        "partly classified."
+    )
+    lines.append("")
+    for helper in stateful_helper_variants:
+        lines.append(
+            f"- `0x{int(helper['entry']):06x}` "
+            f"({helper['name']}, tokenizer call "
+            f"`0x{int(helper['tokenizer_call']):06x}`):"
+        )
+        lines.append(f"  Setup: {helper['setup']}")
+        lines.append(f"  Payload boundary: {helper['payload']}")
+        lines.append(f"  Finalization: {helper['final']}")
+    lines.append("")
+    lines.append("Reproduction contract added by these variants:")
+    lines.append("")
+    lines.append(
+        "- A byte-stream parser must model `0x78299e` rewind before repeated "
+        "tokenization, because the next delayed payload or terminal handler "
+        "restores the six-byte record that the rewind selects."
+    )
+    lines.append(
+        "- The `0x1228a` delayed handler is not limited to raster/font `W` "
+        "payloads; these generic helpers also arm it for `W/w` boundaries, "
+        "with helper-specific exceptions for mode 4 and font-state refresh."
     )
     lines.append("")
     lines.append("## `0xdd08` Macro Dispatcher Reachability")

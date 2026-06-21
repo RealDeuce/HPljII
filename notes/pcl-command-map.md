@@ -380,8 +380,9 @@ row-copy fixtures are generated in
 `generated/analysis/ic30_ic13_render_row_copy_fixtures.md`;
 `tools/render_fixture_harness.py` executes these primitive fixtures together,
 pins `0xa904` host byte fetch source-priority fixtures plus ring-fed
-host-to-render boundaries for the direct text/control page-record stream set,
-the reset/FF/page-size/orientation publication streams, and the primary
+host-to-render boundaries for the direct text/control page-record stream set
+through `0x1edc6` bridge fields, the reset/FF/page-size/orientation publication
+streams, and the primary
 `ESC *t300R` / `ESC *r1A` / `ESC *b4W` raster stream, pins `0xdaf0`/`0xdb74`
 tokenizer records, `0x121cc`
 delayed-payload snapshots, and `0x1228a`/`0x12358` alternate payload byte-count
@@ -490,7 +491,7 @@ single following payload.
   printable/control/reset stream fixtures, plain and mixed control/reset
   page-record allocator/bridge stream fixtures, host-fetched publication header
   coverage for reset, FF, page-size, and orientation, host-fetched direct
-  text/control
+  text/control bridge-contract coverage,
   parser-to-page-record coverage for `!!`, `ESC &k1G!\r!`, `ESC &k2G!\n!`,
   `ESC &k0G HT BS !`, `ESC &a1L!`, `ESC &a1M!`, `ESC &a6l9M!`, `ESC &a2C!`,
   `ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`, `ESC &a2c+1R!`, `ESC &l3E!`,

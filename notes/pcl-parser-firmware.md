@@ -325,8 +325,9 @@ well as the ROM parser dispatch path. The grouped host-fetch check drains `!!`,
 `ESC &k1G!\r!`, `ESC &k2G!\n!`, `ESC &k0G HT BS !`, the margin and
 cursor-position streams, `ESC &l3E!`, and `ESC &f0S ESC &a2C ESC &f1S!` from
 the modeled `0xa904` ring source, replays the expected parser handlers, and
-lands on the same page-record allocations, object prefixes, and rendered row
-counts.
+lands on the same page-record allocations, object prefixes, rendered row counts,
+and `0x1edc6` bridge fields for bucket root, empty rule/fixed lists, and context
+slot copying.
 
 Rectangle/rule command edges are now traced in
 `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`. `ESC *c#A/#B/#H/#V`

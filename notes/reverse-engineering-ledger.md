@@ -278,7 +278,8 @@ rows, a mixed `ESC &k1G!\r!` fixture that queues the post-CR glyph at coord
 page-record allocator/bridge variant, a grouped host-fetched direct text/control
 fixture tying the plain, CR/LF, HT/BS, margin, cursor-position,
 vertical-layout, and cursor-stack page-record streams to modeled `0xa904` ring
-fetch, parser handlers, object prefixes, and rendered row counts, a mixed
+fetch, parser handlers, object prefixes, `0x1edc6` bridge fields, and rendered
+row counts, a mixed
 `!\x1bE` fixture that publishes and clears a valid current page root after
 queued text and has a page-record allocator/bridge/publication variant, selected
 inline/downloaded

@@ -555,7 +555,9 @@ ROM work needed:
   off-page ignore cases; compact mode-0 text now also has current-band
   and fallback-row coverage through `0x1f414` and `0x7810b4 + D2`, and
   synthetic wide/segmented compact text now covers the same fallback
-  split for `0x1f0d2`, `0x1f1f0`, and `0x1f264`.
+  split for `0x1f0d2`, `0x1f1f0`, and `0x1f264`; host-fetched
+  150/100/75-dpi raster streams now carry encoded modes 1/2/3 through
+  `0x1ed84` and `0x1ef6a`.
 - Determine the remaining live-parser wide/segmented text, raster
   edge-case, and final device-output clipping behavior exactly.
 - Identify any banding/compression structures used internally; reproduce

@@ -704,7 +704,7 @@ macro/data-chain, direct-control, reset, text, rule, raster, bridge,
 row-copy, built-in glyph, symbol-set, and downloaded-font fixture
 families into one ROM-backed self-test. It emits
 `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently
-verifies 368 checks. The raster coverage now includes ROM-table
+verifies 369 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` /
 `ESC *b4W` stream, the 150/100/75-dpi mode streams, the consecutive-row
 `ESC *b2W` stream, the active-resolution-ignore `ESC *t75R` stream, the
@@ -915,7 +915,10 @@ active-resolution-ignore, end-raster, and host-fetched chained-lowercase
 `ESC *t#R` / `ESC *r#A` / `ESC *b#W` streams. It still needs a full
 CPU/parser-state fixture that executes through `0x121cc` / `0x105d0`
 with real parser-produced page/control pool records. The constructed
-`0x1f0d2` and `0x1f1f0` inline cases now also have type-2 `0x1719c`
+150/100/75-dpi raster streams now start from modeled `0xa904` host bytes,
+cross the ROM parser table and delayed `0x105d0` restore, queue encoded
+raster modes 1/2/3, then render through `0x1ed84` / `0x1ef6a`.
+The `0x1f0d2` and `0x1f1f0` inline cases now also have type-2 `0x1719c`
 payload-backed fixed-record coverage; the selected inline/downloaded
 page-record object now crosses `0x1edc6` with context slot `3` intact
 before compact rendering; the `0x1f264` segmented-wide case now has

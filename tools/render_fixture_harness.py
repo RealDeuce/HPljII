@@ -25134,6 +25134,195 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
         },
     ]))
+    raster_mode_render_entries = {
+        case["name"]: render_bucket_page_record_via_1ed84_1ef6a(
+            data,
+            resources,
+            case["result"]["page_record"],
+            bucket_word=case["result"]["bucket_index"],
+        )
+        for case in raster_mode_dispatch_cases
+    }
+    checks.append(assert_equal("host-fetched raster mode streams feed 0x1ed84 and 0x1ef6a", {
+        name: {
+            "fetched_stream": next(
+                summary["fetched_stream"]
+                for summary in raster_mode_host_fetch_summaries
+                if summary["name"] == name
+            ),
+            "active_copy": entry["active_copy"],
+            "setup": {
+                key: entry["entry"]["setup"][key]
+                for key in (
+                    "dividend",
+                    "divisor_word_06",
+                    "remainder_783a22",
+                    "band_rows_scaled_783a20",
+                    "destination_base_783a28",
+                )
+            },
+            "dispatch_entries": [
+                {
+                    key: dispatch[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "encoded_mode",
+                    )
+                }
+                for dispatch in entry["entry"]["dispatch"]["entries"]
+            ],
+            "bucket_rendered": [
+                {
+                    "branch": item["branch"],
+                    "mode": item["rendered"].get("mode"),
+                    "helper": item["rendered"].get("helper"),
+                    "coord": item["rendered"].get("coord"),
+                    "payload": item["rendered"].get("payload"),
+                    "rows": item["rendered"]["rows"],
+                }
+                for item in entry["entry"]["bucket_rendered"]
+            ],
+            "rows": entry["entry"]["rows"],
+        }
+        for name, entry in raster_mode_render_entries.items()
+    }, {
+        "mode-1": {
+            "fetched_stream": b"\x1b*t150R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f"),
+            "active_copy": {
+                "source_word_18": 0,
+                "source_word_1a": 0,
+                "render_word_0a": 0,
+                "render_word_0c": 0,
+                "render_word_0e": 0,
+                "render_word_10": 0,
+                "render_word_16": 0,
+            },
+            "setup": {
+                "dividend": 0,
+                "divisor_word_06": 5,
+                "remainder_783a22": 0,
+                "band_rows_scaled_783a20": 0x0050,
+                "destination_base_783a28": 0x00100000,
+            },
+            "dispatch_entries": [{
+                "chain_index": 0,
+                "object_byte_4": 0x80,
+                "class_mask": 0x80,
+                "branch": "encoded-span",
+                "target": 0x01F88E,
+                "encoded_mode": 1,
+            }],
+            "bucket_rendered": [{
+                "branch": "encoded-span",
+                "mode": 1,
+                "helper": 0x01F8E6,
+                "coord": 0x0000,
+                "payload": bytes.fromhex("f0 0f"),
+                "rows": [
+                    "########................########",
+                    "########................########",
+                ],
+            }],
+            "rows": [
+                "########................########",
+                "########................########",
+            ],
+        },
+        "mode-2": {
+            "fetched_stream": b"\x1b*t100R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f"),
+            "active_copy": {
+                "source_word_18": 0,
+                "source_word_1a": 0,
+                "render_word_0a": 0,
+                "render_word_0c": 0,
+                "render_word_0e": 0,
+                "render_word_10": 0,
+                "render_word_16": 0,
+            },
+            "setup": {
+                "dividend": 0,
+                "divisor_word_06": 5,
+                "remainder_783a22": 0,
+                "band_rows_scaled_783a20": 0x0050,
+                "destination_base_783a28": 0x00100000,
+            },
+            "dispatch_entries": [{
+                "chain_index": 0,
+                "object_byte_4": 0x80,
+                "class_mask": 0x80,
+                "branch": "encoded-span",
+                "target": 0x01F88E,
+                "encoded_mode": 2,
+            }],
+            "bucket_rendered": [{
+                "branch": "encoded-span",
+                "mode": 2,
+                "helper": 0x01F920,
+                "coord": 0x0000,
+                "payload": bytes.fromhex("f0 0f"),
+                "rows": [
+                    "############................############........",
+                    "############................############........",
+                    "############................############........",
+                ],
+            }],
+            "rows": [
+                "############................############........",
+                "############................############........",
+                "############................############........",
+            ],
+        },
+        "mode-3": {
+            "fetched_stream": b"\x1b*t75R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f"),
+            "active_copy": {
+                "source_word_18": 0,
+                "source_word_1a": 0,
+                "render_word_0a": 0,
+                "render_word_0c": 0,
+                "render_word_0e": 0,
+                "render_word_10": 0,
+                "render_word_16": 0,
+            },
+            "setup": {
+                "dividend": 0,
+                "divisor_word_06": 5,
+                "remainder_783a22": 0,
+                "band_rows_scaled_783a20": 0x0050,
+                "destination_base_783a28": 0x00100000,
+            },
+            "dispatch_entries": [{
+                "chain_index": 0,
+                "object_byte_4": 0x80,
+                "class_mask": 0x80,
+                "branch": "encoded-span",
+                "target": 0x01F88E,
+                "encoded_mode": 3,
+            }],
+            "bucket_rendered": [{
+                "branch": "encoded-span",
+                "mode": 3,
+                "helper": 0x01F9C6,
+                "coord": 0x0000,
+                "payload": bytes.fromhex("f0 0f"),
+                "rows": [
+                    "################................................################",
+                    "################................................################",
+                    "################................................################",
+                    "################................................################",
+                ],
+            }],
+            "rows": [
+                "################................................################",
+                "################................................################",
+                "################................................################",
+                "################................................################",
+            ],
+        },
+    }))
     raster_multirow_command_stream = b"\x1b*t300R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f") + b"\x1b*b2W" + bytes.fromhex("0f f0")
     raster_multirow_stream_result = render_raster_command_data_stream_via_121cc_105d0(
         data,
@@ -33551,7 +33740,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         raster_skip_transfer["gate_drained"],
         raster_negative_transfer["gate_drained"],
     ))
-    lines.append("- lower-resolution parser boundary: `ESC *t150R`, `ESC *t100R`, and `ESC *t75R` streams now drain from the modeled `0xa904` ring source, pass through the ROM `0x11774` parser table to handlers `0x10808`, `0x1075a`, and `0x11f82`, and match the modeled payload offset, queued mode object, and rendered expansion rows.")
+    lines.append("- lower-resolution parser boundary: `ESC *t150R`, `ESC *t100R`, and `ESC *t75R` streams now drain from the modeled `0xa904` ring source, pass through the ROM `0x11774` parser table to handlers `0x10808`, `0x1075a`, and `0x11f82`, match the modeled payload offset and queued mode object, then cross `0x1ed84`/`0x1ef6a` with encoded modes 1, 2, and 3.")
     for summary in raster_mode_dispatch_summaries:
         lines.append("- `%s` parser records `%s`, payload offset `%d`, queued object `%s`" % (
             summary["name"],

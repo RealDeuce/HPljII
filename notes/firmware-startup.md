@@ -148,12 +148,23 @@ Routine `0x000003e8` reads `0x8000` and probes optional address spaces:
 - If bit 7 allows it, it checks `0x00400000` for ASCII signature `PROG`,
   then jumps through the following longword.
 
-Routine `0x0000041a` scans a memory range for `HEAD` records. Once it
-finds a `HEAD`, it advances through records, treats `0x000000be` as a
-special type, checks the following length, and can jump into code
-following that record. This links the firmware's extension/resource
-probing to the same `HEAD` signature found at the start of the
-`IC32,IC15` resource ROM pair.
+Routine `0x0000041a` scans a memory range for `HEAD` records. It probes
+from the caller's `A1` base up to `A1 + 0x1ffff0`; a missed probe steps
+by `0x40000`. Once it finds `HEAD`, it walks length-delimited records.
+Null and `0xffffffff` records terminate the current chain and advance to
+the next probe. If the cumulative walked length crosses the `0x40000`
+boundary, the next probe step grows to `0x80000`, matching the
+`D1` increment and `swap`/`lsl #2` sequence at `0x450..0x452` and
+`0x42e..0x432`.
+
+Type `0x000000be` is the executable handoff record. A length greater
+than `7` jumps to the payload at `record + 8`; a length of `7` or below
+reports `D0 = 0xe0`, `D1 = 0x10` through error/status helper `0x128c`.
+The verified `IC32,IC15` built-in resource window has `HEAD` at
+`0x080000`, walks 24 typed records from `0x08004c` through `0x0ae122`,
+and terminates at `0x0b2f80` before the next `0x40000` probe. This
+links the firmware's extension/resource probing to the same `HEAD`
+signature found at the start of the resource ROM pair.
 
 ## Configuration Inputs Seen Early
 
@@ -175,7 +186,8 @@ before treating any startup defaults as fixed.
   handlers.
 - Follow initialization calls `0x00000978`, `0x000008a2`, `0x000008dc`,
   `0x0000073a`, and `0x00000c24`.
-- Name the extension/resource record format around `HEAD` and record
-  type `0x000000be`.
+- Extend the `HEAD`/`0x000000be` record model beyond the verified
+  built-in resource window if cartridge or external resource images are
+  available.
 - Start a cross-reference table from writes into `0x0078xxxx`, because
   this range appears to hold early firmware state and copied handlers.

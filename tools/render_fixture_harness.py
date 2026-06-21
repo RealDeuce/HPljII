@@ -6207,6 +6207,174 @@ def font_resource_find_allocate_via_17026(staging: bytes | bytearray, payload_un
     }
 
 
+def resource_head_scan_via_041a(
+    memory: bytes | bytearray,
+    *,
+    base_address: int = 0x080000,
+    scan_span: int | None = None,
+) -> dict[str, object]:
+    span = len(memory) if scan_span is None else int(scan_span)
+    probe = 0
+    events: list[dict[str, object]] = []
+    head_offsets: list[int] = []
+    walked_records: list[dict[str, int]] = []
+    boundary_crossings = 0
+
+    def read_long(offset: int) -> int | None:
+        if offset < 0 or offset + 4 > len(memory):
+            return None
+        return u32(memory, offset)
+
+    for _ in range(512):
+        if probe >= span:
+            return {
+                "status": "end",
+                "head_offsets": head_offsets,
+                "walked_records": walked_records,
+                "events": events,
+                "boundary_crossings": boundary_crossings,
+                "final_probe": probe,
+            }
+        marker = read_long(probe)
+        if marker is None:
+            events.append({"kind": "source-exhausted", "probe": probe})
+            return {
+                "status": "source-exhausted",
+                "head_offsets": head_offsets,
+                "walked_records": walked_records,
+                "events": events,
+                "boundary_crossings": boundary_crossings,
+                "final_probe": probe,
+            }
+        events.append({"kind": "probe", "offset": probe, "marker": marker})
+        if marker != 0x48454144:
+            step = 0x40000
+            events.append({"kind": "probe-miss", "offset": probe, "step": step})
+            probe += step
+            continue
+
+        head_offsets.append(probe)
+        events.append({"kind": "head", "offset": probe})
+        record = probe
+        cumulative = 0
+        next_probe_units = 1
+        while True:
+            length = read_long(record + 4)
+            if length is None:
+                events.append({"kind": "length-exhausted", "offset": record})
+                return {
+                    "status": "source-exhausted",
+                    "head_offsets": head_offsets,
+                    "walked_records": walked_records,
+                    "events": events,
+                    "boundary_crossings": boundary_crossings,
+                    "final_probe": probe,
+                }
+            cumulative += length
+            record += length
+            if record >= span:
+                events.append({"kind": "scan-limit", "offset": record})
+                return {
+                    "status": "end",
+                    "head_offsets": head_offsets,
+                    "walked_records": walked_records,
+                    "events": events,
+                    "boundary_crossings": boundary_crossings,
+                    "final_probe": record,
+                }
+            if cumulative > 0x3FFFA:
+                next_probe_units += 1
+                cumulative -= 0x40000
+                boundary_crossings += 1
+                events.append({
+                    "kind": "boundary-crossing",
+                    "offset": record,
+                    "next_probe_units": next_probe_units,
+                    "residual": cumulative,
+                })
+            marker = read_long(record)
+            if marker is None:
+                events.append({"kind": "source-exhausted", "probe": record})
+                return {
+                    "status": "source-exhausted",
+                    "head_offsets": head_offsets,
+                    "walked_records": walked_records,
+                    "events": events,
+                    "boundary_crossings": boundary_crossings,
+                    "final_probe": record,
+                }
+            if marker in (0, 0xFFFFFFFF):
+                step = next_probe_units * 0x40000
+                events.append({
+                    "kind": "terminator",
+                    "offset": record,
+                    "marker": marker,
+                    "step": step,
+                })
+                probe += step
+                break
+            if marker == 0x000000BE:
+                be_length = read_long(record + 4)
+                if be_length is None:
+                    events.append({"kind": "length-exhausted", "offset": record})
+                    return {
+                        "status": "source-exhausted",
+                        "head_offsets": head_offsets,
+                        "walked_records": walked_records,
+                        "events": events,
+                        "boundary_crossings": boundary_crossings,
+                        "final_probe": record,
+                    }
+                if be_length <= 7:
+                    events.append({
+                        "kind": "be-error",
+                        "offset": record,
+                        "length": be_length,
+                        "error_handler": 0x00128C,
+                        "d0": 0xE0,
+                        "d1": 0x10,
+                    })
+                    return {
+                        "status": "be-error",
+                        "head_offsets": head_offsets,
+                        "walked_records": walked_records,
+                        "events": events,
+                        "boundary_crossings": boundary_crossings,
+                        "error": {"handler": 0x00128C, "d0": 0xE0, "d1": 0x10},
+                        "final_probe": probe,
+                    }
+                target = base_address + record + 8
+                events.append({
+                    "kind": "be-jump",
+                    "offset": record,
+                    "length": be_length,
+                    "target": target,
+                })
+                return {
+                    "status": "jump",
+                    "head_offsets": head_offsets,
+                    "walked_records": walked_records,
+                    "events": events,
+                    "boundary_crossings": boundary_crossings,
+                    "jump_target": target,
+                    "final_probe": probe,
+                }
+            walked_records.append({
+                "offset": record,
+                "marker": marker,
+                "length": read_long(record + 4) or 0,
+            })
+            events.append({
+                "kind": "record",
+                "offset": record,
+                "marker": marker,
+                "length": read_long(record + 4) or 0,
+                "residual": cumulative,
+            })
+
+    raise AssertionError("0x41a HEAD scanner model exceeded iteration limit")
+
+
 def scanned_builtin_record_bases(resources: bytes) -> list[int]:
     bases: list[int] = []
     cursor = 0
@@ -15725,6 +15893,137 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "published_pool_record": 0,
         "page_publication_flag": 0,
         "reset_status": 0,
+    }))
+
+    resource_head_scan = resource_head_scan_via_041a(resources, scan_span=0x40000)
+    resource_head_records = resource_head_scan["walked_records"]
+    assert isinstance(resource_head_records, list)
+    resource_head_events = resource_head_scan["events"]
+    assert isinstance(resource_head_events, list)
+    resource_head_terminators = [
+        event
+        for event in resource_head_events
+        if isinstance(event, dict) and event.get("kind") == "terminator"
+    ]
+    checks.append(assert_equal("0x41a HEAD scanner walks verified IC32/IC15 resource chain", {
+        "status": resource_head_scan["status"],
+        "heads": resource_head_scan["head_offsets"],
+        "walked_count": len(resource_head_records),
+        "first_records": [
+            {
+                key: record[key]
+                for key in ("offset", "marker", "length")
+            }
+            for record in resource_head_records[:3]
+            if isinstance(record, dict)
+        ],
+        "last_record": {
+            key: resource_head_records[-1][key]  # type: ignore[index]
+            for key in ("offset", "marker", "length")
+        },
+        "terminator": {
+            key: resource_head_terminators[-1][key]
+            for key in ("offset", "marker", "step")
+        },
+        "boundary_crossings": resource_head_scan["boundary_crossings"],
+        "final_probe": resource_head_scan["final_probe"],
+    }, {
+        "status": "end",
+        "heads": [0],
+        "walked_count": 24,
+        "first_records": [
+            {"offset": 0x00004C, "marker": 0x00000014, "length": 0x000003CC},
+            {"offset": 0x000418, "marker": 0x00000014, "length": 0x00000450},
+            {"offset": 0x000868, "marker": 0x00000014, "length": 0x00000450},
+        ],
+        "last_record": {"offset": 0x02E122, "marker": 0x00000014, "length": 0x00004E5E},
+        "terminator": {"offset": 0x032F80, "marker": 0, "step": 0x40000},
+        "boundary_crossings": 0,
+        "final_probe": 0x40000,
+    }))
+
+    def put_long(buffer: bytearray, offset: int, value: int) -> None:
+        buffer[offset:offset + 4] = (value & 0xFFFFFFFF).to_bytes(4, "big")
+
+    boundary_scan_memory = bytearray(0x40008)
+    put_long(boundary_scan_memory, 0, 0x48454144)
+    put_long(boundary_scan_memory, 4, 8)
+    put_long(boundary_scan_memory, 8, 0x14)
+    put_long(boundary_scan_memory, 12, 0x3FFF0)
+    put_long(boundary_scan_memory, 0x3FFF8, 0x14)
+    put_long(boundary_scan_memory, 0x3FFFC, 8)
+    put_long(boundary_scan_memory, 0x40000, 0)
+    boundary_scan = resource_head_scan_via_041a(boundary_scan_memory, scan_span=0x80000)
+    boundary_events = boundary_scan["events"]
+    assert isinstance(boundary_events, list)
+    boundary_crossing_events = [
+        event
+        for event in boundary_events
+        if isinstance(event, dict) and event.get("kind") == "boundary-crossing"
+    ]
+    boundary_terminators = [
+        event
+        for event in boundary_events
+        if isinstance(event, dict) and event.get("kind") == "terminator"
+    ]
+    checks.append(assert_equal("0x41a HEAD scanner advances next probe after 0x40000 boundary", {
+        "status": boundary_scan["status"],
+        "walked_records": boundary_scan["walked_records"],
+        "boundary_crossing": {
+            key: boundary_crossing_events[-1][key]
+            for key in ("offset", "next_probe_units", "residual")
+        },
+        "terminator": {
+            key: boundary_terminators[-1][key]
+            for key in ("offset", "marker", "step")
+        },
+        "final_probe": boundary_scan["final_probe"],
+    }, {
+        "status": "end",
+        "walked_records": [
+            {"offset": 8, "marker": 0x14, "length": 0x3FFF0},
+            {"offset": 0x3FFF8, "marker": 0x14, "length": 8},
+        ],
+        "boundary_crossing": {
+            "offset": 0x40000,
+            "next_probe_units": 2,
+            "residual": 0,
+        },
+        "terminator": {"offset": 0x40000, "marker": 0, "step": 0x80000},
+        "final_probe": 0x80000,
+    }))
+
+    be_jump_memory = bytearray(0x20)
+    put_long(be_jump_memory, 0, 0x48454144)
+    put_long(be_jump_memory, 4, 8)
+    put_long(be_jump_memory, 8, 0xBE)
+    put_long(be_jump_memory, 12, 8)
+    be_jump_scan = resource_head_scan_via_041a(be_jump_memory, base_address=0x200000)
+    be_error_memory = bytearray(be_jump_memory)
+    put_long(be_error_memory, 12, 7)
+    be_error_scan = resource_head_scan_via_041a(be_error_memory, base_address=0x200000)
+    checks.append(assert_equal("0x41a HEAD scanner handles 0xbe executable records", {
+        "jump": {
+            "status": be_jump_scan["status"],
+            "heads": be_jump_scan["head_offsets"],
+            "jump_target": be_jump_scan["jump_target"],
+        },
+        "error": {
+            "status": be_error_scan["status"],
+            "heads": be_error_scan["head_offsets"],
+            "error": be_error_scan["error"],
+        },
+    }, {
+        "jump": {
+            "status": "jump",
+            "heads": [0],
+            "jump_target": 0x200010,
+        },
+        "error": {
+            "status": "be-error",
+            "heads": [0],
+            "error": {"handler": 0x00128C, "d0": 0xE0, "d1": 0x10},
+        },
     }))
 
     width3 = simulate_row_copy(data, u32(data, 0x1F08E + 3 * 4), 3)
@@ -34302,6 +34601,33 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- execute frame: `{macro_execute['data_chain_frames'][0]}`")
     lines.append(f"- call frame: `{macro_call['data_chain_frames'][0]}`")
     lines.append(f"- permanent survives delete-temporary: `{macro_delete_temporary['records'][0]}`")
+    lines.append("")
+
+    lines.append("## Resource HEAD Scanner Fixtures")
+    lines.append("")
+    lines.append("These fixtures model startup/resource routine `0x41a`, which searches optional resource windows for `HEAD`, walks length-delimited records, and treats record type `0x000000be` as an executable extension handoff.")
+    lines.append("")
+    lines.append("- verified `IC32,IC15` scan: one `HEAD` at `0x%05x`, `%d` walked typed records from `0x%05x` through `0x%05x`, terminator `0x%08x` at `0x%05x`, next probe step `0x%05x`, and final probe `0x%05x`." % (
+        resource_head_scan["head_offsets"][0],  # type: ignore[index]
+        len(resource_head_records),
+        resource_head_records[0]["offset"],  # type: ignore[index]
+        resource_head_records[-1]["offset"],  # type: ignore[index]
+        resource_head_terminators[-1]["marker"],  # type: ignore[index]
+        resource_head_terminators[-1]["offset"],  # type: ignore[index]
+        resource_head_terminators[-1]["step"],  # type: ignore[index]
+        resource_head_scan["final_probe"],
+    ))
+    lines.append("- boundary fixture: crossing the cumulative `0x40000` threshold at `0x%05x` raises the next probe units to `%d`, so a null terminator steps by `0x%05x` instead of the default `0x40000`." % (
+        boundary_crossing_events[-1]["offset"],  # type: ignore[index]
+        boundary_crossing_events[-1]["next_probe_units"],  # type: ignore[index]
+        boundary_terminators[-1]["step"],  # type: ignore[index]
+    ))
+    lines.append("- executable fixture: type `0xbe` with length `8` jumps to `0x%06x`; length `7` reports error bytes `D0=0x%02x`, `D1=0x%02x` through handler `0x%05x`." % (
+        be_jump_scan["jump_target"],
+        be_error_scan["error"]["d0"],  # type: ignore[index]
+        be_error_scan["error"]["d1"],  # type: ignore[index]
+        be_error_scan["error"]["handler"],  # type: ignore[index]
+    ))
     lines.append("")
 
     lines.append("## Built-In Glyph Bitmap Fixtures")

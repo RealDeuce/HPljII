@@ -33,8 +33,18 @@ HEAD ... Copyright (C) Hewlett-Packard Company, 1986
 ```
 
 Firmware routine `0x0000041a` scans memory for the same `HEAD`
-signature, so this is not just an incidental string. The record scanner
-should be mapped before extracting font tables by hand.
+signature, so this is not just an incidental string. The scanner probes
+`0x40000` windows, walks length-delimited records after `HEAD`, treats
+null or `0xffffffff` records as chain terminators, and treats type
+`0x000000be` as an executable handoff whose payload starts at
+`record + 8` when the record length is greater than `7`. Lengths of `7`
+or below report `D0 = 0xe0`, `D1 = 0x10` through helper `0x128c`.
+
+The verified `IC32,IC15` image has `HEAD` at offset `0x000000`, then 24
+typed records from `0x00004c` through `0x02e122`; the chain terminates
+on a null record at `0x032f80`. The harness also pins the scanner's
+boundary behavior: if the cumulative walked length crosses `0x40000`,
+the next probe step becomes `0x80000` instead of the default `0x40000`.
 
 At the end of the resource interleave, the chip tail markers overlap as
 interleaved bytes:
@@ -271,7 +281,8 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
 
 ## Extraction Targets
 
-1. Decode the `HEAD` record scanner in firmware routine `0x0000041a`.
+1. Extend the modeled `HEAD` scanner beyond the verified built-in window
+   if cartridge or external resource images become available.
 2. Finish naming the firmware-scanned record metadata fields rather than
    relying on string labels alone.
 3. Replace the modeled default-font candidate records with a live

@@ -356,6 +356,11 @@ entries documented in
 `generated/analysis/ic32_ic15_resource_glyph_probe.md`; built-in context
 examples `0x4008004c`, `0x44080418`, and `0x440946b4` resolve to
 concrete glyph entries and bitmaps in `tools/render_fixture_harness.py`;
+startup/resource scanner `0x41a` is modeled for the verified built-in
+`HEAD` chain, walking 24 typed records from `0x08004c` through
+`0x0ae122`, terminating at `0x0b2f80`, adjusting the next probe step
+after a cumulative `0x40000` crossing, and jumping or erroring on
+`0x000000be` executable records according to their length;
 text object glyph index bytes are mapped before queuing by `0x1393a` and
 initialized by `0x14d9c` / `0x14e24` / `0x14f16`; `0x1be22` computes
 normal PCL symbol words from host `ESC (` / `ESC )` commands, handles
@@ -487,7 +492,9 @@ ROM work needed:
   requested-metric or hand-selected-record cases to live
   parser/font-state coverage, and replace the remaining `0x156de`
   synthetic cases with live parser/font-state coverage.
-- Decode the `HEAD` record scanner at firmware routine `0x0000041a`.
+- Extend the modeled `HEAD` record scanner beyond the verified built-in
+  resource window if cartridge or external resource images become
+  available.
 - Use the repeated `COURIER` and `LINE_PRINTER` records as first
   built-in font extraction fixtures.
 - Replace the modeled default-font candidate records with a live

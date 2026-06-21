@@ -21317,6 +21317,233 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
         },
     }))
+    downloaded_printable_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=[0x25], direct_mode=0),
+        1,
+    )
+    downloaded_printable_parser_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        downloaded_printable_fetch["stream"],
+    )
+    downloaded_printable_map = bytearray(0x100)
+    downloaded_printable_map[0x25] = 0x25
+    downloaded_printable_mapped = downloaded_printable_map[downloaded_printable_fetch["stream"][0]]
+    downloaded_printable_source = {
+        "context": 0,
+        "host_char": downloaded_printable_fetch["stream"][0],
+        "mapped": downloaded_printable_mapped,
+        "glyph_entry": downloaded_segmented_wide_glyph["entry"],
+        "glyph_width": downloaded_segmented_wide_glyph["width"],
+        "glyph_rows": downloaded_segmented_wide_glyph["rows"],
+        "flag": 0,
+        "x": 22,
+        "y": 22,
+        "context_slot": 3,
+        "inline_record": bytes([
+            int(downloaded_segmented_wide_glyph["render_span"]),
+            int(downloaded_segmented_wide_glyph["rows"]) & 0xFF,
+            0,
+        ]),
+    }
+    downloaded_printable_page_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_printable_page_result = queue_text_source_to_page_record_via_12f2e(
+        downloaded_segmented_wide_memory,
+        downloaded_printable_page_record,
+        downloaded_printable_source,
+    )
+    downloaded_printable_events = downloaded_printable_page_result["events"]
+    assert isinstance(downloaded_printable_events, list)
+    downloaded_printable_segment1 = downloaded_printable_events[0]
+    downloaded_printable_segment0 = downloaded_printable_events[1]
+    assert isinstance(downloaded_printable_segment1, dict)
+    assert isinstance(downloaded_printable_segment0, dict)
+    downloaded_printable_segment1_object = downloaded_printable_segment1["object"]
+    assert isinstance(downloaded_printable_segment1_object, bytes)
+    downloaded_printable_bridged = bridge_page_record_via_1edc6({
+        "bucket_root": downloaded_printable_segment1_object,
+        "rule_list": [],
+        "fixed_list": [],
+        "context_slots": [0, 0, 0, 0],
+    })
+    downloaded_printable_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_segmented_wide_memory,
+        downloaded_printable_page_record,
+        bucket_word=int(downloaded_printable_segment1["bucket_index"]),
+    )
+    downloaded_printable_entry = downloaded_printable_render_entry["entry"]
+    assert isinstance(downloaded_printable_entry, dict)
+    checks.append(assert_equal("host-fetched printable byte uses installed downloaded glyph page object", {
+        "download_stream_prefix": host_fetched_downloaded_character_stream["stream"][:8],
+        "printable_fetch": downloaded_printable_fetch["stream"],
+        "printable_sources": sorted(set(downloaded_printable_fetch["sources"])),
+        "printable_handlers": [
+            event["handler"]
+            for event in downloaded_printable_parser_trace["events"]
+        ],
+        "source": {
+            key: downloaded_printable_source[key]
+            for key in (
+                "context",
+                "host_char",
+                "mapped",
+                "glyph_entry",
+                "glyph_width",
+                "glyph_rows",
+                "flag",
+                "x",
+                "y",
+                "context_slot",
+                "inline_record",
+            )
+        },
+        "page_result": {
+            key: downloaded_printable_page_result[key]
+            for key in ("path", "selector", "coord", "glyph", "rows", "width")
+        },
+        "segments": [
+            {
+                key: event[key]
+                for key in (
+                    "allocated",
+                    "bucket_index",
+                    "selector",
+                    "count_before",
+                    "count_after",
+                    "segment",
+                    "object",
+                )
+            }
+            for event in downloaded_printable_events
+        ],
+        "bridge": {
+            "bucket_matches": (
+                downloaded_printable_bridged["bucket_root"]
+                == downloaded_printable_segment1_object
+            ),
+            "context_slots_prefix": downloaded_printable_bridged["context_slots"][:4],
+        },
+        "active_copy": downloaded_printable_render_entry["active_copy"],
+        "setup": {
+            key: downloaded_printable_entry["setup"][key]
+            for key in (
+                "dividend",
+                "divisor_word_06",
+                "remainder_783a22",
+                "band_rows_scaled_783a20",
+                "destination_base_783a28",
+            )
+        },
+        "call_order": downloaded_printable_entry["call_order"],
+        "dispatch": [
+            {
+                key: entry[key]
+                for key in (
+                    "chain_index",
+                    "object_byte_4",
+                    "class_mask",
+                    "branch",
+                    "target",
+                    "context_slot",
+                )
+            }
+            for entry in downloaded_printable_entry["dispatch"]["entries"]
+        ],
+        "rows": downloaded_printable_entry["rows"],
+    }, {
+        "download_stream_prefix": b"\x1b)s2193W",
+        "printable_fetch": b"%",
+        "printable_sources": ["ring"],
+        "printable_handlers": [0x00D04A],
+        "source": {
+            "context": 0,
+            "host_char": 0x25,
+            "mapped": 0x25,
+            "glyph_entry": 0x0500,
+            "glyph_width": 0x0088,
+            "glyph_rows": 0x0081,
+            "flag": 0,
+            "x": 22,
+            "y": 22,
+            "context_slot": 3,
+            "inline_record": b"\x11\x81\x00",
+        },
+        "page_result": {
+            "path": "segmented-page-record",
+            "selector": 0x3003,
+            "coord": 0x6601,
+            "glyph": 0x25,
+            "rows": 0x0081,
+            "width": 0x11,
+        },
+        "segments": [
+            {
+                "allocated": True,
+                "bucket_index": 9,
+                "selector": 0x3003,
+                "count_before": 0,
+                "count_after": 1,
+                "segment": 1,
+                "object": (
+                    bytes.fromhex("00 00 00 00 30 03 00 01 25 01 66 01")
+                    + bytes(0x1C)
+                ),
+            },
+            {
+                "allocated": True,
+                "bucket_index": 1,
+                "selector": 0x3003,
+                "count_before": 0,
+                "count_after": 1,
+                "segment": 0,
+                "object": (
+                    bytes.fromhex("00 00 00 00 30 03 00 01 25 00 66 01")
+                    + bytes(0x1C)
+                ),
+            },
+        ],
+        "bridge": {
+            "bucket_matches": True,
+            "context_slots_prefix": (0, 0, 0, 0),
+        },
+        "active_copy": {
+            "source_word_18": 0,
+            "source_word_1a": 0,
+            "render_word_0a": 0,
+            "render_word_0c": 0,
+            "render_word_0e": 0,
+            "render_word_10": 0,
+            "render_word_16": 0,
+        },
+        "setup": {
+            "dividend": 9,
+            "divisor_word_06": 5,
+            "remainder_783a22": 4,
+            "band_rows_scaled_783a20": 0x0010,
+            "destination_base_783a28": 0x00102000,
+        },
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "dispatch": [{
+            "chain_index": 0,
+            "object_byte_4": 0x30,
+            "class_mask": 0x00,
+            "branch": "compact",
+            "target": 0x01EFFE,
+            "context_slot": 3,
+        }],
+        "rows": [
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 22 + "#." * 64 + ".#.#.#.#",
+        ],
+    }))
     checks.append(assert_equal("host-fetched font control state drives descriptor and character streams", {
         "control": {
             "fetched_stream": host_fetched_font_control_stream["stream"],
@@ -34535,13 +34762,29 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_descriptor_command_from_control["route"]["handler"],
         downloaded_segmented_wide_control_payload["table_entry"],
     ))
-    lines.append("- host-fetched font-control chain: the fetched `ESC *c4660d37e5F` state now feeds fetched `ESC )s0W` and `ESC )s2193W` streams, preserving current id `0x%04x`, current character `0x%02x`, descriptor handler `0x%05x`, table entry `0x%04x`, bitmap size `0x%04x`, and the rendered segmented-wide rows." % (
-        host_fetched_font_control_trace["current_font_id"],
-        host_fetched_font_control_trace["current_character"],
-        font_descriptor_command_from_host_control["route"]["handler"],
-        downloaded_segmented_wide_host_control_payload["table_entry"],
-        downloaded_segmented_wide_host_control_payload["bitmap_size"],
-    ))
+    lines.append(
+        "- host-fetched font-control chain: the fetched `ESC *c4660d37e5F` "
+        "state now feeds fetched `ESC )s0W` and `ESC )s2193W` streams, "
+        "preserving current id `0x%04x`, current character `0x%02x`, "
+        "descriptor handler `0x%05x`, table entry `0x%04x`, bitmap size "
+        "`0x%04x`, and the rendered segmented-wide rows." % (
+            host_fetched_font_control_trace["current_font_id"],
+            host_fetched_font_control_trace["current_character"],
+            font_descriptor_command_from_host_control["route"]["handler"],
+            downloaded_segmented_wide_host_control_payload["table_entry"],
+            downloaded_segmented_wide_host_control_payload["bitmap_size"],
+        )
+    )
+    lines.append(
+        "- installed downloaded printable boundary: fetched byte `0x25` "
+        "dispatches through `0xd04a`, maps to installed glyph `0x25`, "
+        "queues segment buckets `%d/%d` through `0x12f2e`/`0x1387c`, "
+        "and renders segment `%d` through `0x1ed84`/`0x1ef6a`." % (
+            downloaded_printable_segment1["bucket_index"],
+            downloaded_printable_segment0["bucket_index"],
+            downloaded_printable_segment1["segment"],
+        )
+    )
     lines.append("")
     unflagged_source_report = unflagged_fixture["source"]
     assert isinstance(unflagged_source_report, dict)

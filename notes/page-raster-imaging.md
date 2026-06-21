@@ -704,7 +704,7 @@ macro/data-chain, direct-control, reset, text, rule, raster, bridge,
 row-copy, built-in glyph, symbol-set, and downloaded-font fixture
 families into one ROM-backed self-test. It emits
 `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently
-verifies 369 checks. The raster coverage now includes ROM-table
+verifies 370 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` /
 `ESC *b4W` stream, the 150/100/75-dpi mode streams, the consecutive-row
 `ESC *b2W` stream, the active-resolution-ignore `ESC *t75R` stream, the
@@ -930,13 +930,16 @@ before wide glyph rendering and now crosses `0x1edc6` plus the
 `0x1ed84`/`0x1ef6a` render-entry path before rendering the same wide row.
 The fetched `ESC )s2193W` downloaded-pointer object
 now also crosses `0x1edc6` plus the `0x1ed84`/`0x1ef6a` render-entry
-path before rendering the same segmented-wide row. The fetched
-font-control state now carries
-current id `0x1234` and current character `0x25` into fetched
-descriptor, resource-payload, and downloaded-character streams, tying
-delayed record restoration through `0x121cc` / `0x12218`, descriptor or
-payload offsets/lengths, `0x15d0a` current/continuation descriptor
-routes, `0x16fae`/`0x1719c` resource-payload allocation and replacement
+path before rendering the same segmented-wide row. A fetched printable
+`%` byte now selects that installed downloaded glyph `0x25`, queues the
+two segmented page-record objects through the `0x12f2e`/`0x1387c`
+producer shape, and renders the segment-1 bucket through `0x1ed84` /
+`0x1ef6a`. The fetched font-control state now carries current id
+`0x1234` and current character `0x25` into fetched descriptor,
+resource-payload, and downloaded-character streams, tying delayed record
+restoration through `0x121cc` / `0x12218`, descriptor or payload
+offsets/lengths, `0x15d0a` current/continuation descriptor routes,
+`0x16fae`/`0x1719c` resource-payload allocation and replacement
 bookkeeping, `0x16498` downloaded-pointer allocation, and the rendered
 segmented-wide row. The full built-in scan proves the verified ROM
 resources do not contain a normal wide or non-mode-1 bitmap-entry case.
@@ -1005,9 +1008,12 @@ Other checked leads:
 
 - Replace the host-fetched font-control, descriptor, resource-payload,
   and downloaded-character boundaries with a full live parser-state run
-  that populates current records/source objects; then replace
-  producer-modeled text bucket fixtures with full parser-produced
-  page-object payloads.
+  that populates current records/source objects; then replace the
+  remaining producer-modeled text bucket fixtures with full
+  parser-produced page-object payloads. The downloaded-character path
+  now has a fetched printable byte driving the installed glyph into
+  segmented page-record buckets, but not yet from one continuous live
+  font-selection parser state.
 - Replace the remaining synthetic `ESC E` reset-state fixtures with
   parser-produced page-object fixtures so partial-page finalization and
   current-page-root clearing are proven from real queued objects,

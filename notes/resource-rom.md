@@ -288,7 +288,9 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    `ESC )s80W`, and `ESC )s2193W` streams, with fetched `ESC )s2193W`
    now crossing `0x1ed84`/`0x1ef6a`; the fetched
    `ESC )s18W` payload-control path now crosses `0x1edc6` and
-   `0x1ed84`/`0x1ef6a` before wide glyph rendering.
+   `0x1ed84`/`0x1ef6a` before wide glyph rendering, and a fetched
+   printable byte now drives the installed downloaded glyph into
+   segmented page-record buckets before `0x1ed84`/`0x1ef6a` rendering.
 5. Extract enough metadata for each `COURIER` and `LINE_PRINTER` record
    to identify point size, pitch, orientation, style, symbol set, cell
    size, and baseline.

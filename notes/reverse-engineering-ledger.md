@@ -586,6 +586,9 @@ ROM work needed:
   compatibility-facing documentation. The default-font candidate and
   caller path is now real-record backed through `0x1b250`, `0x1b50e`,
   `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
+  The widened `0x1b50e` resolver now pins first/second scan windows for
+  modes `0..3`, fast-probe fallback through `0x1b8ea`, and Roman-8
+  duplicate/substitution state through `0x7828ac` and `0x7821a0`.
 - Replace the host-fetched font-control, descriptor, resource-payload,
   and downloaded-character boundaries with a full live parser-state run
   that populates current records/source objects, then replace

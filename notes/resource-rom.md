@@ -515,6 +515,15 @@ built-ins. Otherwise it copies class-one pointer/count `0x7827a0` /
 high active bit `0x80000000` in each selected list entry before later
 filters clear that bit on rejected entries.
 
+The widened `0x1b50e` resolver pins the source-row scan order used by
+the font sample page and default-font lookup. Mode `3` scans
+`0x7827ac` / `0x78279a`, then `0x7827a0` / `0x782792`; modes `1` and
+`2` scan `0x7827b0` / `0x78279c`, then `0x7827a4` / `0x782794`; mode
+`0` scans `0x7827b4` / `0x78279e`, then `0x7827a8` / `0x782796`. It
+also preserves the Roman-8 duplicate/substitution state through
+`0x7828ac`, requested word `0x7821a0`, classifier `0x1b750`, and
+current-Roman-8 suppression helper `0x1b8b6`.
+
 Current candidate-list state:
 
 | RAM | Role |

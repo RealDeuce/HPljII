@@ -313,6 +313,13 @@ compact coord `0x0202`, which `0x1f3d4` decodes as `$a001 = 0x12` /
 pixel x `34`. The same `!!` stream is now traced through two `0xd04a`
 printable parser events and tied to page-record root allocation,
 bucket-0 reuse, `0x1edc6` bridging, and those real-HMI rows. The mixed
+`!\x0e!\x0f!` stream now routes SO through `0xc6b8` and SI through
+`0xc68a`, proving those normal-mode controls switch `0x782f06` to the
+secondary text context and back before subsequent printable `0xd04a`
+events queue selector-1 and selector-0 compact page-record objects. The
+bridged render record carries context slots `0x44094b08` and
+`0x440946b4`, so the check reaches the `0x1ed84`/`0x1ef6a` dispatch
+with both polarities visible in the bucket chain. The mixed
 `ESC &k1G!\r!` fixture queues the post-CR glyph at coord `0x3b00` /
 `$a001 = 0x1b`, records that blank shifted rows clear the full byte span
 `x=11..18`, and now has a page-record allocator/bridge variant for the

@@ -2608,6 +2608,47 @@ def refresh_symbol_state_via_c580(state: dict[str, object], slot: int) -> None:
     state["refreshes"] = int(state.get("refreshes", 0)) + 1
 
 
+def apply_shift_in_out_via_c68a_c6b8(
+    state: dict[str, object],
+    byte: int,
+) -> dict[str, object]:
+    if byte not in (0x0E, 0x0F):
+        raise AssertionError(f"SI/SO fixture expected 0x0e or 0x0f, got 0x{byte:02x}")
+
+    updated = dict(state)
+    selector_before = int(updated.get("text_map_selector_782f06", 0)) & 0xFF
+    requested_selector = 0 if byte == 0x0F else 1
+    handler = 0x00C68A if byte == 0x0F else 0x00C6B8
+    install_called = selector_before != requested_selector
+    install_success = bool(int(updated.get("font_context_install_success", 1)))
+
+    updated["font_context_refresh_pending_782f2d"] = 1
+    if install_called:
+        updated["font_context_install_calls"] = int(updated.get("font_context_install_calls", 0)) + 1
+        updated["font_context_install_argument"] = requested_selector
+        updated["font_context_install_handler"] = 0x00C428
+        if install_success:
+            updated["text_map_selector_782f06"] = requested_selector
+            updated["current_selector_782f06"] = requested_selector
+    updated["font_context_refresh_pending_782f2d"] = 0
+
+    selector_after = int(updated.get("text_map_selector_782f06", selector_before)) & 0xFF
+    return {
+        "state": updated,
+        "event": {
+            "handler": handler,
+            "selector_before": selector_before,
+            "selector_after": selector_after,
+            "requested_selector": requested_selector,
+            "install_called": install_called,
+            "install_argument": requested_selector if install_called else None,
+            "install_success": install_success if install_called else None,
+            "pending_before": 0,
+            "pending_after": int(updated["font_context_refresh_pending_782f2d"]),
+        },
+    }
+
+
 def apply_symbol_set_stream_via_120be_1be22(state: dict[str, object], stream: bytes) -> dict[str, object]:
     state = dict(state)
     state["requested_symbols"] = list(state["requested_symbols"])
@@ -12245,14 +12286,29 @@ def render_mixed_printable_control_page_record_stream(
     state: dict[str, int],
     default_advance: int,
     context_slot: int = 0,
+    secondary_context: int | None = None,
 ) -> dict[str, object]:
     state = dict(state)
-    page_record: dict[str, object] = {"bucket_array": {}, "context_slots": [context]}
+    context_slots = [context]
+    if secondary_context is not None:
+        context_slots.append(int(secondary_context))
+        state.setdefault("primary_context_782ee6", context)
+        state.setdefault("secondary_context_782ef6", int(secondary_context))
+    page_record: dict[str, object] = {"bucket_array": {}, "context_slots": context_slots}
     state["page_record"] = page_record
     events: list[dict[str, object]] = []
     published_page_record: dict[str, object] | None = None
     raster_pending: dict[str, object] = {"pending_flag": 0, "handler": 0, "snapshot_record": b""}
     pos = 0
+
+    def active_text_context() -> tuple[int, int]:
+        if secondary_context is None:
+            return context, context_slot
+        selector = int(state.get("text_map_selector_782f06", 0)) & 1
+        if selector == 0:
+            return context, 0
+        return int(secondary_context), 1
+
     while pos < len(stream):
         byte = stream[pos]
         if byte == 0x1B:
@@ -12466,13 +12522,14 @@ def render_mixed_printable_control_page_record_stream(
                     byte_value = int(value) & 0xFF
                     if byte_value < 0x20 or byte_value == 0x7F:
                         raise AssertionError("page-record mixed stream transparent fixture only queues printable payload bytes")
+                    active_context, active_context_slot = active_text_context()
                     source = build_text_source_object_from_1393a(
                         resources,
-                        context,
+                        active_context,
                         byte_value,
                         x=0,
                         y=0,
-                        context_slot=context_slot,
+                        context_slot=active_context_slot,
                     )
                     positioned = position_flagged_text_source_via_d824(
                         resources,
@@ -12863,10 +12920,36 @@ def render_mixed_printable_control_page_record_stream(
             events.append(event)
             pos += 1
             continue
+        if byte in (0x0E, 0x0F):
+            before = dict(state)
+            result = apply_shift_in_out_via_c68a_c6b8(state, byte)
+            updated_state = result["state"]
+            event = result["event"]
+            assert isinstance(updated_state, dict)
+            assert isinstance(event, dict)
+            state = updated_state
+            events.append({
+                "kind": "font-shift",
+                "offset": pos,
+                "byte": byte,
+                "cursor_before": (before["cursor_x"], before["cursor_y"]),
+                "cursor_after": (state["cursor_x"], state["cursor_y"]),
+                **event,
+            })
+            pos += 1
+            continue
         if byte < 0x20 or byte == 0x7F:
             raise AssertionError(f"unsupported page-record mixed stream byte 0x{byte:02x} at offset {pos}")
 
-        source = build_text_source_object_from_1393a(resources, context, byte, x=0, y=0, context_slot=context_slot)
+        active_context, active_context_slot = active_text_context()
+        source = build_text_source_object_from_1393a(
+            resources,
+            active_context,
+            byte,
+            x=0,
+            y=0,
+            context_slot=active_context_slot,
+        )
         positioned = position_flagged_text_source_via_d824(
             resources,
             source,
@@ -12910,7 +12993,6 @@ def render_mixed_printable_control_page_record_stream(
     bucket_object = compact_objects[0]
     bridge_source = dict(page_record)
     bridge_source["bucket_root"] = bucket_object
-    bridge_source["context_slots"] = [context]
     bridged_record = bridge_page_record_via_1edc6(bridge_source)
     compact_only = len(chain) == 1 and bytes(chain[0]) == bucket_object
     if compact_only:
@@ -33929,6 +34011,206 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "rendered_rows": metric_printable_rendered["rows"],
         "final_cursor_x": pack12(46),
     }))
+    si_so_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"!\x0e!\x0f!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            text_map_selector_782f06=0,
+            font_context_install_success=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+        secondary_context=0x44094B08,
+    )
+    si_so_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, b"!\x0e!\x0f!")
+    si_so_events = si_so_page_record_stream["events"]
+    si_so_rendered = si_so_page_record_stream["rendered"]
+    si_so_bridged = si_so_page_record_stream["bridged_record"]
+    si_so_render_entry = si_so_page_record_stream["render_entry"]
+    assert isinstance(si_so_events, list)
+    assert isinstance(si_so_rendered, dict)
+    assert isinstance(si_so_bridged, dict)
+    assert isinstance(si_so_render_entry, dict)
+    si_so_event_summary: list[dict[str, object]] = []
+    for event in si_so_events:
+        assert isinstance(event, dict)
+        if event["kind"] == "font-shift":
+            si_so_event_summary.append({
+                "kind": event["kind"],
+                "byte": event["byte"],
+                "handler": event["handler"],
+                "selector_before": event["selector_before"],
+                "selector_after": event["selector_after"],
+                "install_called": event["install_called"],
+                "install_argument": event["install_argument"],
+                "install_success": event["install_success"],
+            })
+            continue
+        page_result = event["page_result"]
+        positioned = event["positioned"]
+        source = event["source"]
+        assert isinstance(page_result, dict)
+        assert isinstance(positioned, dict)
+        assert isinstance(source, dict)
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        si_so_event_summary.append({
+            "kind": event["kind"],
+            "byte": event["byte"],
+            "source_context": source["context"],
+            "source_slot": source["context_slot"],
+            "cursor_before": event["cursor_before"],
+            "cursor_after": event["cursor_after"],
+            "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+            "selector": page_result["selector"],
+            "coord": page_result["coord"],
+            "allocated": page_result["allocated"],
+            "chain_index": page_result["chain_index"],
+            "count_before": page_result["count_before"],
+            "count_after": page_result["count_after"],
+        })
+    si_so_chain = si_so_render_entry["chain"]
+    assert isinstance(si_so_chain, list)
+    si_so_bucket_rendered = si_so_rendered["bucket_rendered"]
+    assert isinstance(si_so_bucket_rendered, list)
+    checks.append(assert_equal("SI/SO parser trace selects page-record text contexts", {
+        "stream": si_so_page_record_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in si_so_parser_trace["events"]
+        ],
+        "parser_final_mode": si_so_parser_trace["final_mode"],
+        "events": si_so_event_summary,
+        "root_allocations": si_so_page_record_stream["final_state"]["page_record_root_allocations"],
+        "final_selector": si_so_page_record_stream["final_state"]["text_map_selector_782f06"],
+        "install_calls": si_so_page_record_stream["final_state"]["font_context_install_calls"],
+        "final_cursor_x": si_so_page_record_stream["final_state"]["cursor_x"],
+        "context_slots": si_so_bridged["context_slots"][:2],
+        "chain_prefixes": [bytes(obj)[:14] for obj in si_so_chain],
+        "dispatch_context_slots": [
+            entry["context_slot"]
+            for entry in si_so_rendered["dispatch"]["entries"]
+        ],
+        "bucket_rendered": [
+            {
+                "selector": item["rendered"]["selector"],
+                "context_slot": item["rendered"]["context_slot"],
+                "count": item["rendered"]["count"],
+                "coords": [
+                    rendered_item["coord"]
+                    for rendered_item in item["rendered"]["rendered"]
+                ],
+            }
+            for item in si_so_bucket_rendered
+        ],
+        "rendered_rows": si_so_rendered["rows"],
+    }, {
+        "stream": b"!\x0e!\x0f!",
+        "parser_events": [
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+            {"kind": "control", "handler": 0x00C6B8, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+            {"kind": "control", "handler": 0x00C68A, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+        ],
+        "parser_final_mode": 0,
+        "events": [
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "source_context": 0x440946B4,
+                "source_slot": 0,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 0),
+                "selector": 0,
+                "coord": 0x0001,
+                "allocated": True,
+                "chain_index": 0,
+                "count_before": 0,
+                "count_after": 1,
+            },
+            {
+                "kind": "font-shift",
+                "byte": 0x0E,
+                "handler": 0x00C6B8,
+                "selector_before": 0,
+                "selector_after": 1,
+                "install_called": True,
+                "install_argument": 1,
+                "install_success": True,
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "source_context": 0x44094B08,
+                "source_slot": 1,
+                "cursor_before": pack12(28),
+                "cursor_after": pack12(46),
+                "positioned_xy": (34, 0),
+                "selector": 1,
+                "coord": 0x0202,
+                "allocated": True,
+                "chain_index": 0,
+                "count_before": 0,
+                "count_after": 1,
+            },
+            {
+                "kind": "font-shift",
+                "byte": 0x0F,
+                "handler": 0x00C68A,
+                "selector_before": 1,
+                "selector_after": 0,
+                "install_called": True,
+                "install_argument": 0,
+                "install_success": True,
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "source_context": 0x440946B4,
+                "source_slot": 0,
+                "cursor_before": pack12(46),
+                "cursor_after": pack12(64),
+                "positioned_xy": (52, 0),
+                "selector": 0,
+                "coord": 0x0403,
+                "allocated": False,
+                "chain_index": 1,
+                "count_before": 1,
+                "count_after": 2,
+            },
+        ],
+        "root_allocations": 1,
+        "final_selector": 0,
+        "install_calls": 2,
+        "final_cursor_x": pack12(64),
+        "context_slots": (0x440946B4, 0x44094B08),
+        "chain_prefixes": [
+            bytes.fromhex("00 00 00 00 00 01 00 01 20 02 02 00 00 00"),
+            bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01 20 04 03"),
+        ],
+        "dispatch_context_slots": [1, 0],
+        "bucket_rendered": [
+            {"selector": 1, "context_slot": 1, "count": 1, "coords": [0x0202]},
+            {"selector": 0, "context_slot": 0, "count": 2, "coords": [0x0001, 0x0403]},
+        ],
+        "rendered_rows": [
+            "................####..............####..............####" if row == "####" else "." * 56
+            for row in line_printer_glyph32_rows
+        ],
+    }))
     transparent_page_record_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,
@@ -41815,6 +42097,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- real-HMI rendered rows:")
     lines.extend(f"`{row}`" for row in metric_printable_rendered["rows"])
     lines.append("- plain parser-to-page-record boundary: stream `21 21` routes both printable bytes through `0xd04a`, allocates one page-record root, reuses bucket `0`, and renders the same real-HMI rows after the `0x1edc6` bridge.")
+    lines.append(
+        "- SI/SO parser-to-page-record boundary: stream `21 0e 21 0f 21` "
+        "routes `SO` through `0xc6b8` and `SI` through `0xc68a`; SO "
+        "switches `0x782f06` to secondary context slot `1`, SI switches it "
+        "back to primary slot `0`, and the page-record chain renders "
+        "selector-1 and selector-0 compact objects from context slots "
+        "`0x44094b08` and `0x440946b4`."
+    )
     lines.append("- transparent parser-to-page-record boundary: stream `1b 26 70 32 58 21 21` routes `ESC &p2X` through handler `0x11f5a`, restores delayed handler `0x12452`, consumes the following two payload bytes through `0xa904`, queues both bytes through `0xd04a` into the same compact coords `0x0001` and `0x0202`, and renders the same real-HMI rows after the `0x1edc6` bridge.")
     lines.append("")
     lines.append("A first mixed printable/control stream fixture now drives `ESC &k1G`, printable `!`, CR, then printable `!` through one pass. The `ESC &k1G` byte stream stores line-termination mode `0x80`; CR therefore resets x to the left margin and also applies LF/VMI before the second printable byte is positioned. With left margin `5`, VMI `3`, and initialized `LINE_PRINTER` HMI `0x00120000`, the second glyph queues at source `(11,3)` / compact coord `0x3b00`, decoded by `0x1f3d4` as `$a001 = 0x1b`.")

@@ -830,7 +830,11 @@ render-record destination offsets `+0x18/+0x1c/+0x20/+0x24` written by
 `0x1edc6`. Direct plain text coverage now traces `!!` through two
 `0xd04a` parser events and ties that stream to one page-record root
 allocation, bucket-0 reuse, and real-HMI rows rendered after the
-`0x1edc6` bridge. Direct mixed text/control coverage now also feeds
+`0x1edc6` bridge. The `!\x0e!\x0f!` stream now carries normal-mode
+SO/SI through `0xc6b8` and `0xc68a`: SO switches `0x782f06` to context
+slot `1`, SI switches it back to slot `0`, and the resulting bucket
+chain renders selector-1 and selector-0 compact objects through
+`0x1ed84`/`0x1ef6a`. Direct mixed text/control coverage now also feeds
 `ESC &k1G!\r!` through the modeled `0xa904` ring source before tracing
 parser handlers `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, then ties
 that same fetched stream to one page-record root allocation, bucket-0

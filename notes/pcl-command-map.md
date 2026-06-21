@@ -665,6 +665,14 @@ the second glyph at compact coord `0x0202`, and the page-record path
 allocates one root, reuses bucket `0`, bridges through `0x1edc6`, and
 renders the same rows.
 
+The SI/SO stream `!\x0e!\x0f!` now pins both text-map polarities:
+SO reaches handler `0xc6b8`, calls the modeled `0xc428(1)` install
+success path, and sets `0x782f06 = 1`; SI reaches `0xc68a`, calls
+`0xc428(0)`, and clears `0x782f06`. The following printable bytes queue
+through `0xd04a` into selector-1 and selector-0 page-record objects, and
+the `0x1ed84`/`0x1ef6a` dispatch renders those objects with context
+slots `1` and `0`.
+
 `ESC &p2X!!` now carries transparent print data into the same
 page-record path: `ESC &p2X` routes through handler `0x11f5a`, restores
 delayed handler `0x12452`, consumes the following two payload bytes

@@ -8036,10 +8036,10 @@ def compact_bucket_root_from_page_record(page_record: dict[str, object]) -> dict
         raise AssertionError("page record bucket_array must be a dict")
     nonempty_buckets = sorted(bucket for bucket, chain in bucket_array.items() if chain)
     if len(nonempty_buckets) != 1:
-        raise AssertionError("page-record compact fixture expects one nonempty bucket")
+        raise AssertionError("page-record fixture expects one nonempty bucket")
     chain = bucket_array[nonempty_buckets[0]]
-    if not isinstance(chain, list) or len(chain) != 1:
-        raise AssertionError("page-record compact fixture expects one compact object in the bucket")
+    if not isinstance(chain, list) or not chain:
+        raise AssertionError("page-record fixture expects at least one bucket object")
     return {
         "bucket_index": nonempty_buckets[0],
         "bucket_root": bytes(chain[0]),
@@ -8055,6 +8055,14 @@ def finalize_page_record_via_ff1e(page_record: dict[str, object], state: dict[st
         }
 
     bucket = compact_bucket_root_from_page_record(page_record)
+    source_bucket_array = page_record.get("bucket_array", {})
+    if not isinstance(source_bucket_array, dict):
+        raise AssertionError("0xff1e publication needs a page-record bucket array")
+    published_bucket_array = {
+        int(bucket_index): [bytes(obj) for obj in chain]
+        for bucket_index, chain in source_bucket_array.items()
+        if chain
+    }
     context_slots = list(page_record.get("context_slots", []))
     if len(context_slots) > 16:
         raise AssertionError("0xff1e published pool record has 16 context slots")
@@ -8073,6 +8081,7 @@ def finalize_page_record_via_ff1e(page_record: dict[str, object], state: dict[st
         "word_18": 0,
         "word_1a": root_word_16 & 0xFFFF,
         "bucket_root_1c": bucket["bucket_root"],
+        "bucket_array_1c": published_bucket_array,
         "rule_list_24": [bytes(node) for node in page_record.get("rule_list", [])],
         "fixed_list_28": [bytes(node) for node in page_record.get("fixed_list", [])],
         "context_slots_2c": tuple(padded_context_slots),
@@ -8083,6 +8092,7 @@ def finalize_page_record_via_ff1e(page_record: dict[str, object], state: dict[st
     }
     published_pool_record = {
         "bucket_root": bucket["bucket_root"],
+        "bucket_array": published_bucket_array,
         "rule_list": list(page_record.get("rule_list", [])),
         "fixed_list": list(page_record.get("fixed_list", [])),
         "context_slots": context_slots,
@@ -8799,11 +8809,21 @@ def render_published_page_record_via_1ed84_1ef6a(
         "word_08": int(fields.get("word_08", 0)) & 0xFFFF,
     })
     bucket_word = int(fields.get("word_10", 0)) & 0xFFFF
-    bucket_root = fields.get("bucket_root_18", render_record.get("bucket_root"))
-    if isinstance(bucket_root, bytes):
-        fields["bucket_array_18"] = {bucket_word: [bucket_root]}
+    source_bucket_array = published_page_record.get(
+        "bucket_array",
+        fields.get("bucket_array_18", fields.get("bucket_array_1c", {})),
+    )
+    if isinstance(source_bucket_array, dict) and source_bucket_array:
+        fields["bucket_array_18"] = {
+            int(index) & 0xFFFF: [bytes(obj) for obj in chain]
+            for index, chain in source_bucket_array.items()
+        }
     else:
-        fields["bucket_array_18"] = {bucket_word: []}
+        bucket_root = fields.get("bucket_root_18", render_record.get("bucket_root"))
+        if isinstance(bucket_root, bytes):
+            fields["bucket_array_18"] = {bucket_word: [bucket_root]}
+        else:
+            fields["bucket_array_18"] = {bucket_word: []}
     render_record["render_record_fields"] = fields
     entry = render_band_entry_via_1ef6a(data, resources, render_record)
     return {
@@ -29621,6 +29641,94 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "rows": text_rectangle_raster_expected_rows,
     }))
+    text_rectangle_raster_publication = finalize_page_record_via_ff1e(
+        text_rectangle_raster_page_record,
+        reset_fixture_state(
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            page_root_clears=0,
+        ),
+    )
+    text_rectangle_raster_published_record = text_rectangle_raster_publication["published_pool_record"]
+    assert isinstance(text_rectangle_raster_published_record, dict)
+    text_rectangle_raster_published_fields = text_rectangle_raster_published_record["pool_record_fields"]
+    assert isinstance(text_rectangle_raster_published_fields, dict)
+    text_rectangle_raster_published_render = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        text_rectangle_raster_published_record,
+    )
+    checks.append(assert_equal("published text rectangle and raster page record feeds 0x1ed84 and 0x1ef6a", {
+        "published": text_rectangle_raster_publication["published"],
+        "bucket_index": text_rectangle_raster_publication["bucket_index"],
+        "current_page_root_after": text_rectangle_raster_publication["current_page_root_after"],
+        "page_root_clears": text_rectangle_raster_publication["page_root_clears"],
+        "bucket_root_1c": text_rectangle_raster_published_fields["bucket_root_1c"],
+        "bucket_array_1c": text_rectangle_raster_published_fields["bucket_array_1c"],
+        "rule_list_24": text_rectangle_raster_published_fields["rule_list_24"],
+        "context_slots_2c_prefix": text_rectangle_raster_published_fields["context_slots_2c"][:2],
+        "active_copy": text_rectangle_raster_published_render["active_copy"],
+        "call_order": text_rectangle_raster_published_render["entry"]["call_order"],
+        "dispatch_entries": [
+            {
+                "chain_index": entry["chain_index"],
+                "object_byte_4": entry["object_byte_4"],
+                "class_mask": entry["class_mask"],
+                "branch": entry["branch"],
+                "target": entry["target"],
+                "context_slot": entry.get("context_slot"),
+                "encoded_mode": entry.get("encoded_mode"),
+            }
+            for entry in text_rectangle_raster_published_render["entry"]["dispatch"]["entries"]
+        ],
+        "rows": text_rectangle_raster_published_render["entry"]["rows"],
+    }, {
+        "published": True,
+        "bucket_index": 0,
+        "current_page_root_after": 0,
+        "page_root_clears": 1,
+        "bucket_root_1c": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+        "bucket_array_1c": {
+            0: [
+                bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01") + bytes(0x1B),
+            ],
+        },
+        "rule_list_24": [bytes.fromhex("00 00 00 00 01 07 5c 01 00 0c 00 05 00 00")],
+        "context_slots_2c_prefix": (0x440946B4, 0),
+        "active_copy": {
+            "source_word_18": 0,
+            "source_word_1a": 0,
+            "render_word_0a": 0,
+            "render_word_0c": 0,
+            "render_word_0e": 0,
+            "render_word_10": 0,
+            "render_word_16": 0,
+        },
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "dispatch_entries": [
+            {
+                "chain_index": 0,
+                "object_byte_4": 0x80,
+                "class_mask": 0x80,
+                "branch": "encoded-span",
+                "target": 0x01F88E,
+                "context_slot": None,
+                "encoded_mode": 0,
+            },
+            {
+                "chain_index": 1,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 0,
+                "encoded_mode": None,
+            },
+        ],
+        "rows": text_rectangle_raster_expected_rows,
+    }))
     mixed_publication_parser_trace = {
         "reset": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1bE"),
         "ff": trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k2G!\f"),
@@ -32014,9 +32122,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " -> ".join("0x%06x" % address for address in render_entry["call_order"]),
         render_entry["rows"][1],
     ))
-    lines.append("- remaining gap: broaden this mixed-layer synthetic render entry to")
-    lines.append("  published/parser-produced records with broader heterogeneous bucket chains and full-page merge")
-    lines.append("  coverage.")
+    lines.append("- a published text+rule+raster fixture now snapshots the full bucket array, rule list, and context slots through modeled `0xff1e`, then renders that published record through `0x1ed84` and `0x1ef6a` with the same rows.")
+    lines.append("- remaining gap: broaden this from modeled state into parser-produced heterogeneous")
+    lines.append("  page objects and full-page merge coverage.")
     lines.append("")
 
     lines.append("## Parser-Derived Raster State Fixture")

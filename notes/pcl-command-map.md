@@ -563,7 +563,8 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   `ESC &f0S ESC &a2C ESC &f1S!`, host-fetched `! ESC *c12a5b0P`
   text/rule render-entry coverage, host-fetched `! ESC *c12a5b0P
   ESC *t300R ESC *r0A ESC *b2W` text/rule/raster render-entry
-  coverage, simple macro execute replayed `!\r`, and mixed-control macro
+  coverage plus its modeled `0xff1e` published-record render-entry
+  variant, simple macro execute replayed `!\r`, and mixed-control macro
   execute replayed `ESC &k1G!\r!`, parser-derived `ESC *t#R`/`ESC *r#A`
   raster state fixtures, modeled raster command/data stream fixtures for
   `ESC *t300R`, `ESC *t150R`, `ESC *t100R`, `ESC *t75R`,

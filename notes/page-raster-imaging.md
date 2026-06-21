@@ -878,7 +878,11 @@ text/raster bucket objects with page objects captured or reproduced from
 the full parser/imaging path. The reset, FF, page-size, and orientation
 publication fixtures now start without a current page root and mark the
 first printable queue step as the modeled page-record root allocation
-point, but that is still not a full live parser allocation. Raster
+point, but that is still not a full live parser allocation. The
+host-fetched text/rule/raster fixture now also publishes its full bucket
+array, rule list, and context slots through modeled `0xff1e`, then
+renders the published record through `0x1ed84` and `0x1ef6a` with the
+same composed rows. Raster
 coverage now has a named flow report plus ROM-table `0x11774` dispatch
 traces for the primary, 150/100/75-dpi, consecutive-row, capped/drained,
 active-resolution-ignore, end-raster, and host-fetched chained-lowercase

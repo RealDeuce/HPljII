@@ -199,11 +199,12 @@ expansion/destination/row-copy/resource-resolution/glyph-row/producer-modeled
 bucket/positioning/font-record/font-allocation fixtures, plus
 host-fetched primary, lower-resolution, capped/drained, consecutive-row,
 active-resolution, end-raster/re-enable, chained-resolution, and
-chained-transfer raster streams; full parser-produced page-object
-integration, font-download parser-populated inline/downloaded source
-records, remaining full live-parser raster, parser-populated
-font-download records, and full parser-produced page-object coverage
-incomplete
+chained-transfer raster streams, plus modeled `0xff1e` publication of
+the combined text/rule/raster page record before `0x1ed84`/`0x1ef6a`
+rendering; full parser-produced page-object integration, font-download
+parser-populated inline/downloaded source records, remaining full
+live-parser raster, parser-populated font-download records, and full
+parser-produced page-object coverage incomplete
 
 Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md`
 collects the raster command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`,
@@ -543,7 +544,7 @@ ROM work needed:
   proves a separate imaging role.
 - Broaden the current text/rule/raster, simple and mixed-control macro
   execute parser-to-page-record, and macro-payload page-band composition
-  fixtures into fuller parser-produced heterogeneous bucket-chain
+  fixtures into fuller parser-produced heterogeneous page-object
   rendering, full macro replay through the live parser/data-chain path,
   and the full final page-pixel merge.
 - Determine clipping and off-page behavior exactly.

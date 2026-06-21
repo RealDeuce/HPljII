@@ -8332,6 +8332,29 @@ def line_termination_mode_bits(parameter: int) -> int:
     raise AssertionError("ESC &k#G fixture only models accepted values 0..3")
 
 
+def apply_hmi_via_ca8c(state: dict[str, int], integer: int, fraction: int = 0) -> dict[str, int]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    whole = abs(int(integer))
+    frac = abs(int(fraction))
+    before = int(updated.get("hmi", 0))
+    stored = False
+    if whole <= 0x348:
+        updated["hmi"] = parsed_decimal_scaled_to_packed12(whole, frac, 30)
+        updated["printable_advance"] = updated["hmi"]
+        stored = True
+    events.append({
+        "kind": "hmi",
+        "parameter": int(integer),
+        "fraction": int(fraction),
+        "hmi_before": before,
+        "hmi_after": int(updated.get("hmi", before)),
+        "stored": stored,
+    })
+    updated["events"] = events
+    return updated
+
+
 def control_fixture_state(**overrides: int) -> dict[str, int]:
     state = {
         "cursor_x": pack12(10),
@@ -12424,6 +12447,9 @@ def render_mixed_printable_control_page_record_stream(
             return context, 0
         return int(secondary_context), 1
 
+    def current_default_advance() -> int:
+        return int(state.get("printable_advance", default_advance))
+
     while pos < len(stream):
         byte = stream[pos]
         if byte == 0x1B:
@@ -12456,28 +12482,50 @@ def render_mixed_printable_control_page_record_stream(
             if pos + 3 >= len(stream):
                 raise AssertionError(f"page-record mixed stream expected ESC command at offset {pos}")
             if stream[pos + 1 : pos + 3] == b"&k":
-                start = pos
+                group_start = pos
                 pos += 3
-                sign = 1
-                if pos < len(stream) and stream[pos] in (ord("+"), ord("-")):
-                    sign = -1 if stream[pos] == ord("-") else 1
+                while True:
+                    command_start = group_start if pos == group_start + 3 else pos
+                    integer, fraction, relative, pos = parse_pcl_decimal_fraction_parameter(stream, pos)
+                    if pos >= len(stream):
+                        raise AssertionError("page-record mixed stream ESC &k missing final byte")
+                    final = stream[pos]
                     pos += 1
-                if pos >= len(stream) or not chr(stream[pos]).isdigit():
-                    raise AssertionError("page-record mixed stream ESC &k#G needs an integer parameter")
-                value = 0
-                while pos < len(stream) and chr(stream[pos]).isdigit():
-                    value = value * 10 + stream[pos] - ord("0")
-                    pos += 1
-                if pos >= len(stream) or stream[pos] != ord("G"):
-                    raise AssertionError("page-record mixed stream only models ESC &k#G final byte")
-                state["line_termination"] = line_termination_mode_bits(sign * value)
-                pos += 1
-                events.append({
-                    "kind": "escape",
-                    "offset": start,
-                    "sequence": stream[start:pos],
-                    "line_termination": state["line_termination"],
-                })
+                    final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+                    if final_upper == ord("G"):
+                        if fraction != 0:
+                            raise AssertionError("page-record mixed stream line-termination command does not model fractions")
+                        state["line_termination"] = line_termination_mode_bits(integer)
+                        events.append({
+                            "kind": "escape",
+                            "offset": command_start,
+                            "sequence": stream[command_start:pos],
+                            "line_termination": state["line_termination"],
+                        })
+                    elif final_upper == ord("H"):
+                        before = dict(state)
+                        state = apply_hmi_via_ca8c(state, integer, fraction)
+                        events.append({
+                            "kind": "hmi",
+                            "offset": command_start,
+                            "sequence": stream[command_start:pos],
+                            "record": bytes([
+                                0x81 if relative else 0x80,
+                                final,
+                            ]) + signed_word_bytes(integer) + signed_word_bytes(fraction),
+                            "parameter": integer,
+                            "fraction": fraction,
+                            "relative": relative,
+                            "handler": 0x00CA8C,
+                            "hmi_before": before["hmi"],
+                            "hmi_after": state["hmi"],
+                            "events": state["events"][len(before.get("events", [])):],
+                            "chained": bool(ord("a") <= final <= ord("z")),
+                        })
+                    else:
+                        raise AssertionError(f"page-record mixed stream unsupported ESC &k final byte {chr(final)!r}")
+                    if not (ord("a") <= final <= ord("z")):
+                        break
                 continue
             if stream[pos + 1 : pos + 3] == b"&a":
                 group_start = pos
@@ -12660,7 +12708,7 @@ def render_mixed_printable_control_page_record_stream(
                         page_record,
                         positioned_source,
                     )
-                    advance = advance_flagged_text_cursor_via_d550(state["cursor_x"], default_advance)
+                    advance = advance_flagged_text_cursor_via_d550(state["cursor_x"], current_default_advance())
                     state["cursor_x"] = advance["cursor_after"]
                     payload_events.append({
                         "index": index,
@@ -13048,7 +13096,7 @@ def render_mixed_printable_control_page_record_stream(
                     if not (ord("a") <= final <= ord("z")):
                         break
                 continue
-            raise AssertionError(f"page-record mixed stream only models ESC &k#G, ESC &a#L/#M/#C/#H/#R/#V, ESC &f#S, ESC &p#X, ESC &l#C/#D/#E/#F/#H/#L/#X, ESC *p#X/#Y, ESC *c, ESC *t/*r/*b raster commands, and ESC E at offset {pos}")
+            raise AssertionError(f"page-record mixed stream only models ESC &k#G/#H, ESC &a#L/#M/#C/#H/#R/#V, ESC &f#S, ESC &p#X, ESC &l#C/#D/#E/#F/#H/#L/#X, ESC *p#X/#Y, ESC *c, ESC *t/*r/*b raster commands, and ESC E at offset {pos}")
         if byte in (0x08, 0x09, 0x0A, 0x0C, 0x0D):
             before = dict(state)
             finalized = None
@@ -13124,7 +13172,7 @@ def render_mixed_printable_control_page_record_stream(
         assert isinstance(positioned_source, dict)
         page_root = ensure_page_record_root_for_queue(state)
         page_result = queue_text_source_to_page_record_via_12f2e(resources, page_record, positioned_source)
-        advance = advance_flagged_text_cursor_via_d550(state["cursor_x"], default_advance)
+        advance = advance_flagged_text_cursor_via_d550(state["cursor_x"], current_default_advance())
         state["cursor_x"] = advance["cursor_after"]
         events.append({
             "kind": "printable",
@@ -34023,6 +34071,72 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "raw_metric": 0x00480000,
         "hmi": pack12(18),
     }))
+    hmi_command_cases = [
+        apply_hmi_via_ca8c({"hmi": before, "events": []}, integer, fraction)
+        for integer, fraction, before in (
+            (6, 0, line_printer_hmi["hmi"]),
+            (-6, 0, line_printer_hmi["hmi"]),
+            (1, 5000, line_printer_hmi["hmi"]),
+            (0x349, 0, line_printer_hmi["hmi"]),
+        )
+    ]
+    checks.append(assert_equal("0xca8c ESC &k#H stores packed HMI for in-range absolute values only", [
+        {
+            "hmi": case["hmi"],
+            "printable_advance": case.get("printable_advance"),
+            "event": case["events"][-1],
+        }
+        for case in hmi_command_cases
+    ], [
+        {
+            "hmi": pack12(15),
+            "printable_advance": pack12(15),
+            "event": {
+                "kind": "hmi",
+                "parameter": 6,
+                "fraction": 0,
+                "hmi_before": pack12(18),
+                "hmi_after": pack12(15),
+                "stored": True,
+            },
+        },
+        {
+            "hmi": pack12(15),
+            "printable_advance": pack12(15),
+            "event": {
+                "kind": "hmi",
+                "parameter": -6,
+                "fraction": 0,
+                "hmi_before": pack12(18),
+                "hmi_after": pack12(15),
+                "stored": True,
+            },
+        },
+        {
+            "hmi": pack12(3, 9),
+            "printable_advance": pack12(3, 9),
+            "event": {
+                "kind": "hmi",
+                "parameter": 1,
+                "fraction": 5000,
+                "hmi_before": pack12(18),
+                "hmi_after": pack12(3, 9),
+                "stored": True,
+            },
+        },
+        {
+            "hmi": pack12(18),
+            "printable_advance": None,
+            "event": {
+                "kind": "hmi",
+                "parameter": 841,
+                "fraction": 0,
+                "hmi_before": pack12(18),
+                "hmi_after": pack12(18),
+                "stored": False,
+            },
+        },
+    ]))
     metric_printable_stream = render_multi_printable_stream(
         data,
         resources,
@@ -34212,6 +34326,158 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "rendered_rows": metric_printable_rendered["rows"],
         "final_cursor_x": pack12(46),
+    }))
+    hmi_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&k6H!!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(0),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            events=[],
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    hmi_page_record_object = hmi_page_record_stream["bucket_object"]
+    hmi_page_record_rendered = hmi_page_record_stream["rendered"]
+    hmi_page_record_bridged = hmi_page_record_stream["bridged_record"]
+    assert isinstance(hmi_page_record_object, bytes)
+    assert isinstance(hmi_page_record_rendered, dict)
+    assert isinstance(hmi_page_record_bridged, dict)
+    hmi_page_record_event_summary: list[dict[str, object]] = []
+    for event in hmi_page_record_stream["events"]:
+        assert isinstance(event, dict)
+        if event["kind"] == "hmi":
+            hmi_page_record_event_summary.append({
+                "kind": event["kind"],
+                "sequence": event["sequence"],
+                "record": event["record"],
+                "parameter": event["parameter"],
+                "fraction": event["fraction"],
+                "handler": event["handler"],
+                "hmi_before": event["hmi_before"],
+                "hmi_after": event["hmi_after"],
+                "events": event["events"],
+            })
+            continue
+        page_result = event["page_result"]
+        positioned = event["positioned"]
+        assert isinstance(page_result, dict)
+        assert isinstance(positioned, dict)
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        hmi_page_record_event_summary.append({
+            "kind": event["kind"],
+            "byte": event["byte"],
+            "cursor_before": event["cursor_before"],
+            "cursor_after": event["cursor_after"],
+            "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+            "coord": page_result["coord"],
+            "allocated": page_result["allocated"],
+            "count_before": page_result["count_before"],
+            "count_after": page_result["count_after"],
+            "bucket_index": page_result["bucket_index"],
+        })
+    hmi_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k6H!!")
+    expected_hmi_rows = [
+        "......####...........####" if row == "####" else "." * 25
+        for row in line_printer_glyph32_rows
+    ]
+    checks.append(assert_equal("HMI parser trace feeds page-record queue", {
+        "stream": hmi_page_record_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in hmi_parser_trace["events"]
+        ],
+        "parser_final_mode": hmi_parser_trace["final_mode"],
+        "events": hmi_page_record_event_summary,
+        "root_allocations": hmi_page_record_stream["final_state"]["page_record_root_allocations"],
+        "bucket_index": hmi_page_record_stream["bucket_index"],
+        "object_prefix": hmi_page_record_object[:14],
+        "bridged_context_slots": hmi_page_record_bridged["context_slots"][:2],
+        "rendered_rows": hmi_page_record_rendered["rows"],
+        "final_state": select_keys(hmi_page_record_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "hmi",
+            "printable_advance",
+            "page_record_root_allocations",
+        )),
+    }, {
+        "stream": b"\x1b&k6H!!",
+        "parser_events": [
+            {"kind": "command", "handler": 0x00CA8C, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+        ],
+        "parser_final_mode": 0,
+        "events": [
+            {
+                "kind": "hmi",
+                "sequence": b"\x1b&k6H",
+                "record": bytes.fromhex("80 48 00 06 00 00"),
+                "parameter": 6,
+                "fraction": 0,
+                "handler": 0x00CA8C,
+                "hmi_before": pack12(18),
+                "hmi_after": pack12(15),
+                "events": [
+                    {
+                        "kind": "hmi",
+                        "parameter": 6,
+                        "fraction": 0,
+                        "hmi_before": pack12(18),
+                        "hmi_after": pack12(15),
+                        "stored": True,
+                    },
+                ],
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(0),
+                "cursor_after": pack12(15),
+                "positioned_xy": (6, 0),
+                "coord": 0x0600,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(15),
+                "cursor_after": pack12(30),
+                "positioned_xy": (21, 0),
+                "coord": 0x0501,
+                "allocated": False,
+                "count_before": 1,
+                "count_after": 2,
+                "bucket_index": 0,
+            },
+        ],
+        "root_allocations": 1,
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 06 00 20 05 01"),
+        "bridged_context_slots": (0x440946B4, 0),
+        "rendered_rows": expected_hmi_rows,
+        "final_state": {
+            "cursor_x": pack12(30),
+            "cursor_y": pack12(21),
+            "hmi": pack12(15),
+            "printable_advance": pack12(15),
+            "page_record_root_allocations": 1,
+        },
     }))
     si_so_page_record_stream = render_mixed_printable_control_page_record_stream(
         data,
@@ -37045,6 +37311,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "bridged": transparent_page_record_bridged,
             "rendered": transparent_page_record_rendered,
         },
+        "hmi": {
+            "stream": hmi_page_record_stream,
+            "trace": hmi_parser_trace,
+            "object": hmi_page_record_object,
+            "bridged": hmi_page_record_bridged,
+            "rendered": hmi_page_record_rendered,
+        },
         "mixed_cr": {
             "stream": mixed_page_record_stream,
             "trace": mixed_control_parser_trace,
@@ -37199,6 +37472,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "bucket_index": 0,
             "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01"),
             "rendered_row_count": len(metric_printable_rendered["rows"]),
+        },
+        "hmi": {
+            "fetched_stream": b"\x1b&k6H!!",
+            "fetch_source_set": ["ring"],
+            "fetch_source_count": 7,
+            "remaining_ring": [],
+            "parser_handlers": [0x00CA8C, 0x00D04A, 0x00D04A],
+            "parser_final_mode": 0,
+            "root_allocations": 1,
+            "bucket_index": 0,
+            "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 06 00"),
+            "rendered_row_count": len(expected_hmi_rows),
         },
         "mixed_cr": {
             "fetched_stream": b"\x1b&k1G!\r!",
@@ -37410,6 +37695,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "transparent": {
             "fetched_stream": b"\x1b&p2X!!",
             "parser_handlers": [0x011F5A],
+            "bridge_bucket_matches_object": True,
+            "render_field_bucket_matches_object": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0x440946B4, 0),
+        },
+        "hmi": {
+            "fetched_stream": b"\x1b&k6H!!",
+            "parser_handlers": [0x00CA8C, 0x00D04A, 0x00D04A],
             "bridge_bucket_matches_object": True,
             "render_field_bucket_matches_object": True,
             "rule_list_count": 0,
@@ -42032,6 +42326,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("These fixtures model the packed 12-subunit cursor/page state touched by `0xf02c..0xf55e`. They are synthetic state fixtures, not a full parser byte-stream run yet, but they pin the ROM-derived side effects that text streams need before page-object rendering.")
     lines.append("")
     lines.append("- `ESC &k#G` line-termination bits: `0 -> 0x00`, `1 -> 0x80`, `2 -> 0x60`, `3 -> 0xe0`.")
+    lines.append("- `ESC &k#H` stores HMI as 30 packed subunits per 1/120-inch unit; `ESC &k6H` stores packed advance `15` in `0x78315c` and moves following printable spacing to compact coords `0x0600` and `0x0501`.")
     lines.append("- CR resets x to the left margin and flushes a pending text span; in mode 1 it also advances y from `20+11/12` by `2/12` to `21+1/12`.")
     lines.append("- LF in mode 2 performs the CR-style x reset before advancing y by VMI.")
     lines.append("- FF in mode 2 performs the CR-style x reset, flushes pending text, ensures/finalizes a page root marker, and leaves pending text/page-eject state as `0xff`.")
@@ -43079,6 +43374,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- real-HMI rendered rows:")
     lines.extend(f"`{row}`" for row in metric_printable_rendered["rows"])
     lines.append("- plain parser-to-page-record boundary: stream `21 21` routes both printable bytes through `0xd04a`, allocates one page-record root, reuses bucket `0`, and renders the same real-HMI rows after the `0x1edc6` bridge.")
+    lines.append("- HMI parser-to-page-record boundary: stream `1b 26 6b 36 48 21 21` routes `ESC &k6H` through handler `0xca8c`, stores packed HMI `15`, then queues two printable `!` bytes through `0xd04a` at compact coords `0x0600` and `0x0501` before rendering the bridged rows with 15-pixel spacing.")
     lines.append(
         "- SI/SO parser-to-page-record boundary: stream `21 0e 21 0f 21` "
         "routes `SO` through `0xc6b8` and `SI` through `0xc68a`; SO "

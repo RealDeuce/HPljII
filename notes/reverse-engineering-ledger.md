@@ -77,8 +77,8 @@ margin and cursor-position conversions, narrow byte streams, mixed
 text/control, LF, HT/BS, left/right-margin, lowercase-chained margin,
 horizontal-column, horizontal-decipoint, vertical-row,
 vertical-decipoint, and lowercase-chained cursor-position, top-margin,
-perforation-skip, and cursor-stack parser-to-page-record boundaries,
-reset sequencing, ROM
+perforation-skip, HMI, and cursor-stack parser-to-page-record
+boundaries, reset sequencing, ROM
 parser dispatch of publication streams, host-fetched publication header
 fields for reset, FF, page-size, and orientation, addressed
 text/rule/raster FF publication, and synthetic mixed reset fixtures,
@@ -90,8 +90,9 @@ incomplete
 
 Evidence: parser mode 0 maps CR/LF/FF/HT/BS to handlers `0xf02c`,
 `0xf08c`, `0xf0f0`, `0xf1cc`, `0xf2a8`; `ESC &k#G` stores
-line-termination mode bits in `0x78318f`; `ESC &f#S` maps to `0xf75e`
-and pushes/pops the cursor stack at `0x782c96..0x782d36`;
+line-termination mode bits in `0x78318f`; `ESC &k#H` maps to `0xca8c`
+and stores packed HMI in `0x78315c`; `ESC &f#S` maps to `0xf75e` and
+pushes/pops the cursor stack at `0x782c96..0x782d36`;
 `ESC &l#C/#D/#E/#F/#L` map to
 `0xcb00`/`0xc992`/`0xece2`/`0xea9e`/`0xee64` and update VMI
 `0x783160`, top offset `0x782dce`, text-length bottom `0x782dd2`,
@@ -105,23 +106,26 @@ convert HMI/VMI/decipoint positions through helpers `0xf4ca` and
 cursor-position side effects are documented in generated reports;
 `tools/render_fixture_harness.py` now pins synthetic packed-state
 fixtures for those effects plus `ESC &f#S` push/pop/clamp/bounds cases,
+`ESC &k#H` conversion/bounds cases,
 `ESC &l#C/#D/#E/#F` conversion/reject/default cases,
 `ESC &l#L` selector cases, `ESC &a#L/#M`
 conversion/reject/cursor-move cases, `ESC &a#C/#H/#R/#V`
 conversion/relative/clamp cases, and narrow direct-control byte-stream
 fixtures for `ESC &k1G`+CR, `ESC &k2G`+LF, `ESC &k2G`+FF,
-`ESC &k3G`+CR/LF/FF, `ESC &k0G`+HT/BS, `ESC &f0S`/`ESC &f1S`, chained
-`ESC &l8c6d3e2F`, chained `ESC &a3.5c+1R`, and chained `ESC &a6l9M`;
+`ESC &k3G`+CR/LF/FF, `ESC &k0G`+HT/BS, `ESC &k6H!!`,
+`ESC &f0S`/`ESC &f1S`, chained `ESC &l8c6d3e2F`,
+chained `ESC &a3.5c+1R`, and chained `ESC &a6l9M`;
 mixed printable/control fixture `ESC &k1G!\r!` proves CR+LF before the
 second glyph and now ties ROM parser handlers
 `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` to the page-record allocator/bridge
-result; `ESC &k2G!\n!`, `ESC &k0G HT BS !`, `ESC &a1L!`, `ESC &a1M!`,
-`ESC &a6l9M!`, `ESC &a2C!`, `ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`,
-`ESC &a2c+1R!`, `ESC &l3E!`, and `ESC &l1L!` now tie LF, HT/BS,
-left/right-margin, lowercase-chained margin, horizontal-column,
-horizontal-decipoint, vertical-row, vertical-decipoint,
-lowercase-chained cursor-position, top-margin, and perforation-skip
-handlers to shifted or unchanged page-record text output;
+result; `ESC &k6H!!`, `ESC &k2G!\n!`, `ESC &k0G HT BS !`,
+`ESC &a1L!`, `ESC &a1M!`, `ESC &a6l9M!`, `ESC &a2C!`,
+`ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`, `ESC &a2c+1R!`,
+`ESC &l3E!`, and `ESC &l1L!` now tie HMI, LF, HT/BS, left/right-margin,
+lowercase-chained margin, horizontal-column, horizontal-decipoint,
+vertical-row, vertical-decipoint, lowercase-chained cursor-position,
+top-margin, and perforation-skip handlers to shifted or unchanged
+page-record text output;
 `ESC &f0S ESC &a2C ESC &f1S!` now ties cursor-stack push/pop and
 cursor-position handlers to restored page-record text output at compact
 coord `0x0001`; `ESC E` maps to reset handler `0xcc52`, reset flow is

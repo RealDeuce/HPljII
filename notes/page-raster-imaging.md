@@ -842,10 +842,13 @@ reuse, and rows rendered after the `0x1edc6` bridge; `ESC &k2G!\n!`
 routes line-termination handler `0xedf8`, LF handler `0xf08c`, and the
 two printable bytes through `0xd04a`, proving mode `0x60` applies CR+LF
 before the second glyph queues at compact coord `0x3b00`,
-`ESC &k0G HT BS !` routes line-termination handler `0xedf8`, HT handler
-`0xf1cc`, and BS handler `0xf2a8` into the page-record path and renders
-after queueing through `0xd04a` at compact coord `0x0a01` / pixel x
-`26`, `ESC &a1L!` now routes left-margin handler `0xeb58` into the same
+`ESC &k6H!!` routes HMI handler `0xca8c` into the page-record path,
+stores packed advance `15`, and renders the two following printable
+bytes at compact coords `0x0600` and `0x0501`, `ESC &k0G HT BS !`
+routes line-termination handler `0xedf8`, HT handler `0xf1cc`, and BS
+handler `0xf2a8` into the page-record path and renders after queueing
+through `0xd04a` at compact coord `0x0a01` / pixel x `26`,
+`ESC &a1L!` now routes left-margin handler `0xeb58` into the same
 page-record path and renders the shifted glyph at compact coord `0x0801`
 / pixel x `24`, `ESC &a1M!` routes right-margin handler `0xec0c` into
 the page-record path and renders after right-margin cursor movement at
@@ -877,11 +880,11 @@ through `0xd04a` at the unchanged compact coord `0x0001`, and
 around cursor-position handler `0xf39e`, restores the original cursor,
 then queues printable `!` through `0xd04a` at compact coord `0x0001`. A
 grouped host-fetch direct text/control fixture now starts the plain,
-CR/LF, HT/BS, margin, cursor-position, dot-position, vertical-layout,
-perforation-skip, and cursor-stack page-record streams from the modeled
-`0xa904` ring source, drains every byte, replays the same parser
-handlers, and lands on the same `0x1387c` page-record objects and
-rendered row counts; the same grouped check now pins that `0x1edc6`
+HMI, CR/LF, HT/BS, margin, cursor-position, dot-position,
+vertical-layout, perforation-skip, and cursor-stack page-record streams
+from the modeled `0xa904` ring source, drains every byte, replays the
+same parser handlers, and lands on the same `0x1387c` page-record
+objects and rendered row counts; the same grouped check now pins that `0x1edc6`
 preserves the bucket root, clears rule/fixed lists, and copies the
 selected context slot into the render record. `ESC &p2X!!` now extends
 that direct set through transparent print data: handler `0x11f5a`

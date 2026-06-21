@@ -253,9 +253,16 @@ scaling for absolute row moves, then commits through vertical helper
 vertical helper. The vertical path uses top offset `0x782dce`, lower
 bound `0x782dca`, and upper bound `0x782dc6`.
 
+`ESC &k#H` is now traced as the parser-produced horizontal motion index
+command. Handler `0xca8c` rewinds the six-byte parsed record, takes the
+absolute integer/fraction pair, rejects integer values above `0x348`,
+scales accepted values by 30 packed subunits per HMI unit, and stores
+the result in HMI word `0x78315c`.
+
 `tools/render_fixture_harness.py` now has synthetic packed-state
 fixtures for the `ESC &k#G` bit map plus CR/LF/FF/HT/BS cursor/page
-effects, `ESC &f#S` cursor-stack push/pop behavior, `ESC &l#C/#D/#E/#F`
+effects, `ESC &k#H` HMI conversion/bounds behavior, `ESC &f#S`
+cursor-stack push/pop behavior, `ESC &l#C/#D/#E/#F`
 vertical layout conversion/reject/default behavior, `ESC &a#L/#M` margin
 conversion/reject/cursor-move behavior, and `ESC &a#C/#H/#R/#V`
 cursor-position conversion, relative, and clamp behavior. It also has
@@ -327,14 +334,18 @@ with both polarities visible in the bucket chain. The mixed
 `ESC &k1G!\r!` fixture queues the post-CR glyph at coord `0x3b00` /
 `$a001 = 0x1b`, records that blank shifted rows clear the full byte span
 `x=11..18`, and now has a page-record allocator/bridge variant for the
-same stream. `ESC &k2G!\n!` routes line-termination handler `0xedf8`, LF
-handler `0xf08c`, and two printable handler `0xd04a` events into the
-page-record path, proving LF mode `0x60` applies CR+LF before the second
-glyph queues at compact coord `0x3b00`; `ESC &k0G HT BS !` routes
-line-termination handler `0xedf8`, HT handler `0xf1cc`, BS handler
-`0xf2a8`, and printable handler `0xd04a` into the page-record path,
-proving HT/BS move the queued glyph to compact coord `0x0a01` / pixel x
-`26`; `ESC &a1L!` routes left-margin handler `0xeb58` then printable
+same stream. `ESC &k6H!!` routes HMI handler `0xca8c` and two printable
+handler `0xd04a` events into the page-record path, proving 6 HMI units
+store packed advance `15` and queue the glyphs at compact coords
+`0x0600` and `0x0501`; `ESC &k2G!\n!` routes line-termination handler
+`0xedf8`, LF handler `0xf08c`, and two printable handler `0xd04a`
+events into the page-record path, proving LF mode `0x60` applies CR+LF
+before the second glyph queues at compact coord `0x3b00`;
+`ESC &k0G HT BS !` routes line-termination handler `0xedf8`, HT handler
+`0xf1cc`, BS handler `0xf2a8`, and printable handler `0xd04a` into the
+page-record path, proving HT/BS move the queued glyph to compact coord
+`0x0a01` / pixel x `26`; `ESC &a1L!` routes left-margin handler
+`0xeb58` then printable
 handler `0xd04a` into the page-record path, proving the initialized HMI
 column margin moves the queued glyph to compact coord `0x0801` / pixel x
 `24`; `ESC &a1M!` routes right-margin handler `0xec0c` then `0xd04a`,

@@ -74,7 +74,8 @@ pixel-perfect rendering:
   VMI, top offset, and helper `0xf6e2`.
 - `ESC &a#V`, handler `0x00f60a`: vertical decipoint position; five
   packed subunits per decipoint.
-- `ESC &k#H`, handler `0x00ca8c`: HMI.
+- `ESC &k#H`, handler `0x00ca8c`: HMI; absolute value scaled as
+  30 packed subunits per 1/120-inch unit into `0x78315c`.
 - `ESC &k#G`, handler `0x00edf8`: CR/LF/FF line-termination mode.
 - `ESC &f#S`, handler `0x00f75e`: cursor stack at `0x782c96..0x782d36`;
   selector `0` pushes, selector `1` pops.
@@ -230,6 +231,14 @@ against lower bound `0x782dca`, and writes `0x782c8e`. The row command
 scales through VMI `0x783160` and adds fractional `0.7200` for absolute
 row moves before conversion; the decipoint command uses five packed
 subunits per decipoint and clamps to `0x782dc6`.
+
+`ESC &k#H` at `0x00ca8c` handles horizontal motion index. It rewinds to
+the parser record, takes the absolute integer/fraction pair, rejects
+integer values above `0x348`, scales accepted values by 30 packed
+subunits per HMI unit, and stores the packed result in `0x78315c`.
+The `ESC &k6H!!` fixture proves `6H` stores packed HMI `15`, so two
+following printable `!` bytes queue at compact coords `0x0600` and
+`0x0501` rather than the initialized `LINE_PRINTER` `18`-pixel spacing.
 
 `ESC *p#X` at `0x00f48c` and `ESC *p#Y` at `0x00f692` are the dot-unit
 counterparts to the `ESC &a` cursor-position commands. Both rewind the
@@ -675,20 +684,22 @@ parser-to-page-record check: the ROM dispatch trace reaches handlers
 `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, and the same byte stream
 allocates one page-record root, reuses compact bucket `0`, bridges
 through `0x1edc6`, and renders the expected post-CR rows.
-`ESC &k2G!\n!`, `ESC &k0G HT BS !`, `ESC &a1L!`, `ESC &a1M!`,
-`ESC &a6l9M!`, `ESC &a2C!`, `ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`,
-`ESC *p30x30Y!`, `ESC &a2c+1R!`, and `ESC &l3E!` now have the same
-boundary coverage for LF handler `0xf08c`, HT/BS direct-control handlers
+`ESC &k6H!!`, `ESC &k2G!\n!`, `ESC &k0G HT BS !`, `ESC &a1L!`,
+`ESC &a1M!`, `ESC &a6l9M!`, `ESC &a2C!`, `ESC &a72H!`,
+`ESC &a1R!`, `ESC &a72V!`, `ESC *p30x30Y!`, `ESC &a2c+1R!`, and
+`ESC &l3E!` now have the same boundary coverage for HMI handler
+`0xca8c`, LF handler `0xf08c`, HT/BS direct-control handlers
 `0xf1cc`/`0xf2a8`, left/right-margin handlers `0xeb58`/`0xec0c`,
 chained lowercase-final margin handlers `0xeb58`/`0xec0c`,
-cursor-position handlers `0xf39e`/`0xf416`/`0xf560`/`0xf60a`, chained
-dot-position handlers `0xf48c`/`0xf692` in parser mode `18`, chained
-lowercase-final `0xf39e`/`0xf560`, top-margin handler `0xece2`, and
-perforation-skip handler `0xee64` followed by printable `0xd04a`,
-queueing glyphs through the page-record allocator at compact coords
-`0x3b00`, `0x0a01`, `0x0801`, `0x0a02`, `0x0207`, `0x0a02`,
-`0x0402`, `0x1001`, `0x9001`, `0x9402`, `0x1a02`, `0x9001`, and
-`0x0001`. A grouped host-fetch check now starts that
+cursor-position handlers `0xf39e`/`0xf416`/`0xf560`/`0xf60a`,
+chained dot-position handlers `0xf48c`/`0xf692` in parser mode `18`,
+chained lowercase-final `0xf39e`/`0xf560`, top-margin handler
+`0xece2`, and perforation-skip handler `0xee64` followed by printable
+`0xd04a`, queueing glyphs through the page-record allocator at compact
+coords `0x0600/0x0501`, `0x3b00`, `0x0a01`, `0x0801`, `0x0a02`,
+`0x0207`, `0x0a02`, `0x0402`, `0x1001`, `0x9001`, `0x9402`,
+`0x1a02`, `0x9001`, and `0x0001`. A grouped host-fetch check now starts
+that
 direct text/control set from the modeled `0xa904` ring source and proves
 the same parser handlers, delayed transparent-payload handler, bucket
 indices, object prefixes, `0x1edc6` bridge fields, `0x1ed84` copy

@@ -329,7 +329,9 @@ downloaded-pointer object, and `0x1f264` segmented-wide rendered row to the same
 parser trace. The `ESC )s0W`, `ESC )s80W`, and `ESC )s2193W` boundaries are now
 also ring-fed through modeled `0xa904`, proving their complete descriptor or
 payload byte streams reach the same parser handlers, delayed records, installed
-or rendered objects, and rows where applicable. The `0x15d0a` descriptor stream
+or rendered objects, and rows where applicable; the fetched `ESC )s2193W`
+downloaded-pointer object now also preserves the `0x1edc6` bucket/context bridge
+contract before rendering. The `0x15d0a` descriptor stream
 must start with kind byte `4`; selector byte zero scans the current
 downloaded-font record and object flag bit 30 chooses `0x16498`
 downloaded-character allocation when set or `0x16606` font-resource allocation

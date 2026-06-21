@@ -19814,6 +19814,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         (0, 0, 0, 0),
         downloaded_segmented_wide_object,
     )
+    downloaded_segmented_wide_page_bridge_record = {
+        "bucket_root": downloaded_segmented_wide_object,
+        "rule_list": [],
+        "fixed_list": [],
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_segmented_wide_bridged = bridge_page_record_via_1edc6(
+        downloaded_segmented_wide_page_bridge_record,
+    )
+    downloaded_segmented_wide_bridged_rendered = render_bridged_compact_bucket_object(
+        data,
+        downloaded_segmented_wide_memory,
+        downloaded_segmented_wide_bridged,
+    )
     checks.append(assert_equal("0x16498-backed downloaded character object renders segmented-wide compact row", {
         "command": {
             key: downloaded_segmented_wide_event[key]
@@ -20104,6 +20118,54 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "." * 158,
             "." * 22 + "#." * 64 + ".#.#.#.#",
         ],
+    }))
+    checks.append(assert_equal("host-fetched downloaded character object preserves 0x1edc6 bridge contract", {
+        "fetched_stream_prefix": host_fetched_downloaded_character_stream["stream"][:8],
+        "parser_handlers": [
+            event["handler"]
+            for event in host_fetched_downloaded_character_trace["dispatches"]
+        ],
+        "compact_object": downloaded_segmented_wide_object,
+        "bridge_bucket_matches_object": (
+            downloaded_segmented_wide_bridged["bucket_root"]
+            == downloaded_segmented_wide_object
+        ),
+        "render_field_bucket_matches_object": (
+            downloaded_segmented_wide_bridged["render_record_fields"]["bucket_root_18"]
+            == downloaded_segmented_wide_object
+        ),
+        "rule_list_count": len(downloaded_segmented_wide_bridged["rule_list"]),
+        "fixed_list_count": len(downloaded_segmented_wide_bridged["fixed_list"]),
+        "context_slots_prefix": downloaded_segmented_wide_bridged["context_slots"][:4],
+        "render": {
+            "selector": downloaded_segmented_wide_bridged_rendered["selector"],
+            "context_slot": downloaded_segmented_wide_bridged_rendered["context_slot"],
+            "compact_mode": downloaded_segmented_wide_bridged_rendered["compact_mode"],
+            "rows": downloaded_segmented_wide_bridged_rendered["rows"],
+        },
+    }, {
+        "fetched_stream_prefix": b"\x1b)s2193W",
+        "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+        "compact_object": bytes.fromhex("00 00 00 00 30 03 00 01 25 01 66 01"),
+        "bridge_bucket_matches_object": True,
+        "render_field_bucket_matches_object": True,
+        "rule_list_count": 0,
+        "fixed_list_count": 0,
+        "context_slots_prefix": (0, 0, 0, 0),
+        "render": {
+            "selector": 0x3003,
+            "context_slot": 3,
+            "compact_mode": 3,
+            "rows": [
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 22 + "#." * 64 + ".#.#.#.#",
+            ],
+        },
     }))
     checks.append(assert_equal("host-fetched font control state drives descriptor and character streams", {
         "control": {

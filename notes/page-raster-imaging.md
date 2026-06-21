@@ -107,6 +107,14 @@ root, resets x from `58` to `10`, recomputes y from `176` to `126`, and
 lets the following `!` allocate a fresh page root at compact coord
 `0x9001`.
 
+The wrap-hit `ESC &l#V` path is now anchored through publication and fresh
+output. Fixture `!\x1b&l2V!` starts at y `226`, queues a printable bucket
+at compact coord `0xde02`, misses channel 2 from start line `3` to the
+bottom, wraps to line `0`, and finds channel 2 at line `1`. The
+`0x129c6..0x12af8` path publishes the old page through `0xf124`, resets x
+to `10`, writes y `176`, and queues the following `!` on the fresh page at
+compact coord `0xb001`.
+
 The lookup helpers at `0x009d16`, `0x009d4e`, `0x009d86`, and `0x009dbe`
 mask the internal code with `0x7f` and index eleven word entries. The
 generated table report records all current values. Its manual

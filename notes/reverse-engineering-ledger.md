@@ -108,8 +108,9 @@ anchored through channel search, `0x10084`, `0xf06e`, and `0xf34a`, while
 its before-top normalization path is anchored through `0x128ae..0x128f4`,
 its selector-zero target-equal path is anchored through
 `0x12966..0x1299a`, and its selector-zero page-eject path is anchored
-through `0x1299c..0x129c4`; wrap and page-recovery branches remain
-unresolved;
+through `0x1299c..0x129c4`, and one wrap-hit page-eject path is anchored
+through `0x129c6..0x12af8`; wrap no-hit, target-after-text, and
+page-recovery branches remain unresolved;
 `ESC &a#L/#M` map to
 `0xeb58`/`0xec0c` and convert HMI margin columns into
 `0x782dd6`/`0x782dda` with reject/clamp/cursor-move cases;
@@ -165,6 +166,13 @@ printable at y `176`, now ties parser handler `0x1280a`, branch
 `0xf34a`, `0xf124`, old-page publication at compact coord `0xbe02`,
 cursor reset `x 58 -> 10`, vertical reset `y 176 -> 126`, and fresh
 post-eject printable output at compact coord `0x9001`;
+`!\x1b&l2V!`, starting from the same VFC table state after a queued
+printable at y `226`, now ties parser handler `0x1280a`, wrap-hit branch
+`0x129c6..0x12af8`, helper sequence `0x10084`, `0xf34a`, `0xf124`,
+`0xf06e`, `0xf34a`, `0xf06e`, `0xf34a`, old-page publication at compact
+coord `0xde02`, wrapped target line `1`, cursor reset `x 58 -> 10`,
+vertical move `y 226 -> 176`, and fresh post-wrap printable output at
+compact coord `0xb001`;
 `ESC &f0S ESC &a2C ESC &f1S!` now ties cursor-stack push/pop and
 cursor-position handlers to restored page-record text output at compact
 coord `0x0001`; `ESC E` maps to reset handler `0xcc52`, reset flow is
@@ -276,8 +284,9 @@ cursor commit. The selector-zero target-equal path is anchored through
 `0x12966..0x1299a`; the selector-zero page-eject path is anchored through
 `0x1299c..0x129c4`, including page publication through `0xf124`. The
 before-top start-line path is anchored through `0x128ae..0x128f4`. The
-highest-value unresolved middle edges are `0x129c6..0x12afc` and
-`0x12b5e..0x12b92`.
+wrap-hit page-eject path is anchored through `0x129c6..0x12af8`. The
+highest-value unresolved middle edges are `0x129ee..0x12a1e`,
+`0x12a22..0x12a78`, `0x12afc..0x12b5a`, and `0x12b5e..0x12b92`.
 
 ### Raster/text/page-object path
 

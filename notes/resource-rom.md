@@ -291,9 +291,14 @@ parser table `0x11774`, proving primary setup `0x1201e`, secondary setup
 `0x12008`, and terminal handler `0x120be` before those active map
 patches are applied. A companion trace drives `ESC (7X`, `ESC )0@`,
 `ESC (1@`, `ESC )2@`, `ESC (3@`, and `ESC )3@` through the same parser
-terminal path, then checks the modeled `X` font-ID helper and `@0..@3`
-table/copy/default-font target selection. A table-builder fixture now
-pins `0x1ac0a` current-candidate and synthesized writes to
+terminal path, then checks the `X` font-ID call boundary and `@0..@3`
+table/copy/default-font target selection. Direct `0x17708` fixtures now
+cover successful font-ID selection for both bit-30 built-in and
+bit-30-clear inline/downloaded current records, including the `0x172c0`
+scan, `0x1b4c0` candidate-slot lookup, class-byte check, active-word
+write through `0x15890` or `0x158be`, `0x1b2fe`, and `0x14c64`
+dispatch. A table-builder fixture now pins `0x1ac0a`
+current-candidate and synthesized writes to
 `0x782f1c/20/24/28` plus `0x1af36` fallback writes to
 `0x782f0c/10/14/18`; candidate-search fixtures pin `0x1b250`
 disabled/resolved/remapped current-default results, `0x1b50e`

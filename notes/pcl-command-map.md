@@ -380,6 +380,18 @@ common refresh: final `X` restores the previous requested word, sets
 dirty flag `0x782f2c = 2`; normal symbol-set finals and final-`@`
 subtable paths enter `0xc580` with dirty flag `1`.
 
+The direct `0x17708` fixtures now pin the successful font-ID selection
+side effects after that parser boundary. A bit-30 built-in current
+record scans through `0x172c0`, resolves its candidate slot through
+`0x1b4c0`, checks record byte `+0x20` against `0x782da3`, optionally
+reuses a page-root slot through `0xc4fc`, writes selector `0x7828de`,
+stores the candidate slot pointer at `0x7828a8`, writes active word
+`0x783144` through `0x15890`, calls `0x1b2fe`, and dispatches
+`0x14c64`. The bit-30-clear inline/downloaded path is the parallel
+secondary-slot form: it checks byte `+0x16`, writes active word
+`0x783146` through `0x158be`, and enters `0x14c64` for the secondary
+glyph map.
+
 The harness now pins six concrete common-refresh outcomes from `0xc580`.
 With dirty flag `0x782f2c = 1`, parser/setup slot `D5 = 0`, current
 selector `0x782f06 = 0`, a present page root, and no live page-root font

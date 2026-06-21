@@ -5659,6 +5659,187 @@ def dispatch_selected_inline_font_via_14c64(
     }
 
 
+def font_id_select_via_17708(
+    data: bytes,
+    resources: bytes,
+    memory: bytes | bytearray,
+    records: list[dict[str, int]],
+    candidate_slots: list[dict[str, int]],
+    *,
+    slot: int,
+    font_id: int,
+    previous_font_id_782f2e: int,
+    class_selector_782da3: int,
+    current_selector_782f06: int,
+    active_symbols: list[int],
+    current_page_root: int = 0,
+    page_root_context_slots: list[int] | None = None,
+    page_root_live_flags: list[int] | None = None,
+    cached_state_matches: bool = False,
+) -> dict[str, object]:
+    selected_slot = int(slot) & 1
+    new_font_id = int(font_id) & 0xFFFF
+    scan = font_resource_record_scan_via_172c0(records, new_font_id)
+    base_result: dict[str, object] = {
+        "helper": 0x017708,
+        "slot": "secondary" if selected_slot else "primary",
+        "font_id": new_font_id,
+        "saved_font_id_782f2e": int(previous_font_id_782f2e) & 0xFFFF,
+        "written_font_id_782f2e": new_font_id,
+        "restored_font_id_782f2e": int(previous_font_id_782f2e) & 0xFFFF,
+        "scan": scan,
+    }
+    if int(scan["status"]) != 0:
+        return {
+            **base_result,
+            "status": "scan-miss",
+            "selected_pointer_7828a8": 0,
+            "calls": ["0x172c0"],
+        }
+
+    record = scan["record"]
+    assert isinstance(record, dict)
+    payload = int(record["payload"]) & 0x00FFFFFF
+    slot_lookup = candidate_slot_lookup_via_1b4c0(payload, candidate_slots)
+    selected_pointer = int(slot_lookup["slot_pointer"])
+    if selected_pointer == 0:
+        return {
+            **base_result,
+            "status": "candidate-slot-miss",
+            "payload": payload,
+            "slot_lookup": slot_lookup,
+            "selected_pointer_7828a8": 0,
+            "calls": ["0x172c0", "0x1b4c0"],
+        }
+
+    selected = next(
+        dict(candidate)
+        for candidate in candidate_slots
+        if int(candidate["slot_pointer"]) == selected_pointer
+    )
+    longword = int(selected["longword"]) & 0xFFFFFFFF
+    bit30 = ((longword >> 30) & 1) == 1
+    if bit30:
+        class_byte = int(selected.get("builtin_byte_0x20", selected.get("d4_class", -1))) & 0xFF
+        reader = "0x15890"
+        orientation_field = "+0x20"
+    else:
+        class_byte = int(selected.get("inline_byte_0x16", -1)) & 0xFF
+        reader = "0x158be"
+        orientation_field = "+0x16"
+    wanted_class = int(class_selector_782da3) & 0xFF
+    if class_byte != wanted_class:
+        return {
+            **base_result,
+            "status": "class-mismatch",
+            "payload": payload,
+            "slot_lookup": slot_lookup,
+            "selected_pointer_7828a8": selected_pointer,
+            "selected_longword": longword,
+            "bit30": bit30,
+            "orientation_field": orientation_field,
+            "class_byte": class_byte,
+            "wanted_class_782da3": wanted_class,
+            "calls": ["0x172c0", "0x1b4c0"],
+        }
+
+    c4fc_result = None
+    c4fc_events: list[dict[str, object]] = []
+    if (int(current_selector_782f06) & 1) == selected_slot:
+        page_state = symbol_set_state(
+            current_page_root=int(current_page_root),
+            page_root_context_slots=list(page_root_context_slots or [0] * 16),
+            page_root_live_flags=list(page_root_live_flags or [0] * 16),
+        )
+        c4fc_result = install_page_root_context_via_c4fc(
+            page_state,
+            payload,
+            caller="0x17708",
+        )
+        c4fc_events = list(page_state["context_install_events"])  # type: ignore[arg-type]
+        if c4fc_result == 0x11:
+            return {
+                **base_result,
+                "status": "context-full",
+                "payload": payload,
+                "slot_lookup": slot_lookup,
+                "selected_pointer_7828a8": selected_pointer,
+                "selected_longword": longword,
+                "bit30": bit30,
+                "orientation_field": orientation_field,
+                "class_byte": class_byte,
+                "wanted_class_782da3": wanted_class,
+                "c4fc_result": c4fc_result,
+                "c4fc_events": c4fc_events,
+                "calls": ["0x172c0", "0x1b4c0", "0xc4fc"],
+            }
+
+    updated_active = [int(word) & 0xFFFF for word in active_symbols]
+    updated_active += [0] * (2 - len(updated_active))
+    if bit30:
+        symbol = builtin_candidate_symbol_via_15890(selected)
+        updated_active[selected_slot] = int(symbol["word"]) & 0xFFFF
+        if payload >= 0x080000:
+            dispatch = dispatch_selected_builtin_font_via_14c64(
+                data,
+                resources,
+                selected,
+                primary_secondary_selector=selected_slot,
+                active_primary_symbol=updated_active[0],
+                active_secondary_symbol=updated_active[1],
+                cached_state_matches=cached_state_matches,
+            )
+        else:
+            dispatch = dispatch_selected_offset_table_font_via_14c64(
+                data,
+                memory,
+                selected,
+                primary_secondary_selector=selected_slot,
+                active_primary_symbol=updated_active[0],
+                active_secondary_symbol=updated_active[1],
+            )
+    else:
+        symbol = inline_candidate_symbol_via_158be(selected)
+        updated_active[selected_slot] = int(symbol["word"]) & 0xFFFF
+        dispatch = dispatch_selected_inline_font_via_14c64(
+            data,
+            bytes(memory),
+            selected,
+            primary_secondary_selector=selected_slot,
+            active_primary_symbol=updated_active[0],
+            active_secondary_symbol=updated_active[1],
+            cached_state_matches=cached_state_matches,
+        )
+    return {
+        **base_result,
+        "status": "selected",
+        "payload": payload,
+        "slot_lookup": slot_lookup,
+        "selected_pointer_7828a8": selected_pointer,
+        "selected_longword": longword,
+        "bit30": bit30,
+        "orientation_field": orientation_field,
+        "class_byte": class_byte,
+        "wanted_class_782da3": wanted_class,
+        "reader": reader,
+        "symbol": symbol,
+        "written_selector_7828de": selected_slot,
+        "active_word_register": 0x783146 if selected_slot else 0x783144,
+        "active_symbols": updated_active[:2],
+        "c4fc_result": c4fc_result,
+        "c4fc_events": c4fc_events,
+        "dispatch": dispatch,
+        "calls": [
+            "0x172c0",
+            "0x1b4c0",
+            *(["0xc4fc"] if c4fc_result is not None else []),
+            reader,
+            "0x1b2fe",
+            "0x14c64",
+        ],
+    }
+
+
 def clear_download_continuation_state(continuation: dict[str, int]) -> dict[str, int]:
     cleared = dict(continuation)
     for key in ("flag", "payload", "word_0x7827c8", "dest", "trailing_dest", "remaining", "d4_counter", "d3_counter"):
@@ -17824,6 +18005,93 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "calls": ["0x13a48", "0x15890", "0x14d9c", "0x14f16", "0x1440c"],
     }))
+    font_id_builtin_select = font_id_select_via_17708(
+        data,
+        resources,
+        bytearray(),
+        [{"id": 7, "payload": 0x089FB0}],
+        list(class_zero_symbol_survivor_activation["entries"]),  # type: ignore[arg-type]
+        slot=0,
+        font_id=7,
+        previous_font_id_782f2e=0x2222,
+        class_selector_782da3=0xFF,
+        current_selector_782f06=0,
+        active_symbols=[0x0005, 0x0115],
+        current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        page_root_context_slots=[0, 0, 0x089FB0] + [0] * 13,
+        page_root_live_flags=[1] * 16,
+    )
+    font_id_builtin_dispatch = font_id_builtin_select["dispatch"]
+    assert isinstance(font_id_builtin_dispatch, dict)
+    checks.append(assert_equal("0x17708 font-ID selects concrete built-in candidate", {
+        "status": font_id_builtin_select["status"],
+        "slot": font_id_builtin_select["slot"],
+        "font_id": font_id_builtin_select["font_id"],
+        "restored_font_id_782f2e": font_id_builtin_select["restored_font_id_782f2e"],
+        "payload": font_id_builtin_select["payload"],
+        "selected_pointer_7828a8": font_id_builtin_select["selected_pointer_7828a8"],
+        "selected_longword": font_id_builtin_select["selected_longword"],
+        "bit30": font_id_builtin_select["bit30"],
+        "orientation_field": font_id_builtin_select["orientation_field"],
+        "class_byte": font_id_builtin_select["class_byte"],
+        "reader": font_id_builtin_select["reader"],
+        "symbol": font_id_builtin_select["symbol"],
+        "written_selector_7828de": font_id_builtin_select["written_selector_7828de"],
+        "active_word_register": font_id_builtin_select["active_word_register"],
+        "active_symbols": font_id_builtin_select["active_symbols"],
+        "c4fc_result": font_id_builtin_select["c4fc_result"],
+        "c4fc_events": font_id_builtin_select["c4fc_events"],
+        "dispatch": select_keys(font_id_builtin_dispatch, (
+            "path",
+            "slot",
+            "selected_symbol",
+            "active_symbol",
+            "range_start",
+            "range_end",
+            "range_reason",
+            "patch_kind",
+            "map_address",
+        )),
+        "calls": font_id_builtin_select["calls"],
+    }, {
+        "status": "selected",
+        "slot": "primary",
+        "font_id": 7,
+        "restored_font_id_782f2e": 0x2222,
+        "payload": 0x089FB0,
+        "selected_pointer_7828a8": 0x782364,
+        "selected_longword": 0xC0089FB0,
+        "bit30": True,
+        "orientation_field": "+0x20",
+        "class_byte": 0xFF,
+        "reader": "0x15890",
+        "symbol": {"word": 0x0115, "reader": "0x15890", "source": "+0x22-word"},
+        "written_selector_7828de": 0,
+        "active_word_register": 0x783144,
+        "active_symbols": [0x0115, 0x0115],
+        "c4fc_result": 2,
+        "c4fc_events": [
+            {
+                "helper": 0x00C4FC,
+                "caller": "0x17708",
+                "context_record": 0x089FB0,
+                "selected_page_slot": 2,
+                "reason": "existing-context",
+            },
+        ],
+        "dispatch": {
+            "path": "built-in-cache-miss",
+            "slot": "primary",
+            "selected_symbol": 0x0115,
+            "active_symbol": 0x0115,
+            "range_start": 0x0021,
+            "range_end": 0x00FE,
+            "range_reason": "record-range",
+            "patch_kind": "unchanged",
+            "map_address": 0x782F32,
+        },
+        "calls": ["0x172c0", "0x1b4c0", "0xc4fc", "0x15890", "0x1b2fe", "0x14c64"],
+    }))
     height_filter_range = filter_active_candidates_by_height_via_1519a(
         activated_class_zero,
         requested_height=0x04B0,
@@ -19377,6 +19645,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "slot_pointer": 0x782900,
         "longword": selected_inline_context,
         "record_start": selected_inline_context,
+        "inline_byte_0x16": 0,
         "inline_word_0x14": 0x0115,
         "inline_byte_0x17": 0,
     }
@@ -19434,6 +19703,80 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "reader_source": "+0x14-word",
         },
         "calls": ["0x13a48", "0x14e24", "0x14eb6", "0x14f16", "0x158be", "0x1440c"],
+    }))
+    font_id_inline_select = font_id_select_via_17708(
+        data,
+        resources,
+        selected_inline_memory,
+        [{"id": 0x1234, "payload": selected_inline_context}],
+        [selected_inline_candidate],
+        slot=1,
+        font_id=0x1234,
+        previous_font_id_782f2e=0x2222,
+        class_selector_782da3=0,
+        current_selector_782f06=0,
+        active_symbols=[0x0115, 0x0005],
+    )
+    font_id_inline_dispatch = font_id_inline_select["dispatch"]
+    assert isinstance(font_id_inline_dispatch, dict)
+    checks.append(assert_equal("0x17708 font-ID selects inline/downloaded candidate", {
+        "status": font_id_inline_select["status"],
+        "slot": font_id_inline_select["slot"],
+        "font_id": font_id_inline_select["font_id"],
+        "restored_font_id_782f2e": font_id_inline_select["restored_font_id_782f2e"],
+        "payload": font_id_inline_select["payload"],
+        "selected_pointer_7828a8": font_id_inline_select["selected_pointer_7828a8"],
+        "selected_longword": font_id_inline_select["selected_longword"],
+        "bit30": font_id_inline_select["bit30"],
+        "orientation_field": font_id_inline_select["orientation_field"],
+        "class_byte": font_id_inline_select["class_byte"],
+        "reader": font_id_inline_select["reader"],
+        "symbol": font_id_inline_select["symbol"],
+        "written_selector_7828de": font_id_inline_select["written_selector_7828de"],
+        "active_word_register": font_id_inline_select["active_word_register"],
+        "active_symbols": font_id_inline_select["active_symbols"],
+        "c4fc_result": font_id_inline_select["c4fc_result"],
+        "c4fc_events": font_id_inline_select["c4fc_events"],
+        "dispatch": select_keys(font_id_inline_dispatch, (
+            "path",
+            "slot",
+            "selected_symbol",
+            "active_symbol",
+            "selected_flag_register",
+            "selected_flag",
+            "patch_kind",
+            "map_address",
+        )),
+        "calls": font_id_inline_select["calls"],
+    }, {
+        "status": "selected",
+        "slot": "secondary",
+        "font_id": 0x1234,
+        "restored_font_id_782f2e": 0x2222,
+        "payload": 0x000100,
+        "selected_pointer_7828a8": 0x782900,
+        "selected_longword": 0x00000100,
+        "bit30": False,
+        "orientation_field": "+0x16",
+        "class_byte": 0,
+        "reader": "0x158be",
+        "symbol": {"word": 0x0115, "reader": "0x158be", "source": "+0x14-word"},
+        "written_selector_7828de": 1,
+        "active_word_register": 0x783146,
+        "active_symbols": [0x0115, 0x0115],
+        "c4fc_result": None,
+        "c4fc_events": [],
+        "dispatch": {
+            "path": "inline-cache-miss",
+            "slot": "secondary",
+            "selected_symbol": 0x0115,
+            "active_symbol": 0x0115,
+            "selected_flag_register": 0x783133,
+            "selected_flag": 1,
+            "patch_kind": "unchanged",
+            "map_address": 0x783032,
+        },
+        "calls": ["0x172c0", "0x1b4c0", "0x158be", "0x1b2fe", "0x14c64"],
     }))
     checks.append(assert_equal("0x14e24-modeled inline/downloaded map entries", {
         "context": selected_inline_map["context"],
@@ -36094,6 +36437,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         dispatched_selected_inline["patch_kind"],
         dispatched_selected_inline["snapshot"]["byte_8_selected_flag"],  # type: ignore[index]
         dispatched_selected_inline["snapshot"]["state_address"],  # type: ignore[index]
+    ))
+    lines.append("- font-ID selection: `0x17708` now has executable success paths for bit-30 built-in and bit-30-clear inline/downloaded candidates. The built-in path scans current id `0x%04x`, resolves candidate slot `0x%06x`, accepts record byte `+0x20 = 0x%02x`, reuses page-root slot `%d` through `0xc4fc`, writes active word `0x%04x` through `%s`, and then enters `0x14c64`; the inline path scans id `0x%04x`, resolves slot `0x%06x`, accepts byte `+0x16 = 0x%02x`, writes active word `0x%04x` through `%s`, and dispatches the secondary map at `0x%06x`." % (
+        font_id_builtin_select["font_id"],
+        font_id_builtin_select["selected_pointer_7828a8"],
+        font_id_builtin_select["class_byte"],
+        font_id_builtin_select["c4fc_result"],
+        font_id_builtin_select["active_symbols"][0],  # type: ignore[index]
+        font_id_builtin_select["reader"],
+        font_id_inline_select["font_id"],
+        font_id_inline_select["selected_pointer_7828a8"],
+        font_id_inline_select["class_byte"],
+        font_id_inline_select["active_symbols"][1],  # type: ignore[index]
+        font_id_inline_select["reader"],
+        font_id_inline_dispatch["map_address"],
     ))
     lines.append("- height filter: `0x1519a` reads primary/secondary requested height from `0x782ef2`/`0x782f02`, keeps active candidates in requested +/- `0x19` when possible, otherwise uses `0x1533e` to select nearest lower/upper heights; class-zero requested `0x04b0` keeps `%d` slots `%s`, while requested `0x0384` falls back to nearest height `0x%04x` and keeps `%d` slots `%s`." % (
         height_filter_range["active_count_7827b8"],

@@ -517,11 +517,11 @@ Expected resource ROM contents:
 
 ROM work needed:
 
-- Extend the pinned visible `0xc580` branch outcomes into full upstream
-  `0x1be22` / `0x17708` firmware-state coverage, then carry dirty-1
-  refreshes through complete `0x13eb8` / `0x14c64` selected-font dispatch
-  and replace the remaining `0x156de` synthetic cases with live
-  parser/font-state coverage.
+- Extend the pinned visible `0xc580` branch outcomes into fuller
+  upstream `0x1be22` parser-state coverage around the now-pinned
+  `0x17708` success paths, then carry dirty-1 refreshes through complete
+  `0x13eb8` / `0x14c64` selected-font dispatch and replace the remaining
+  `0x156de` synthetic cases with live parser/font-state coverage.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.

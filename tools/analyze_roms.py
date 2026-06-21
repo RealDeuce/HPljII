@@ -3523,6 +3523,18 @@ def page_geometry_table_report(data: bytes) -> str:
         ("DL", 90, 0x89, 1157, 2598, 2480, 1299),
         ("C5", 91, 0x8A, 1771, 2704, 2586, 1913),
     ]
+    manual_margins = {
+        # paper: (portrait_left, portrait_right, portrait_top, portrait_bottom,
+        #         landscape_left, landscape_right, landscape_top, landscape_bottom)
+        "Executive": (50, 100, 60, 60, 60, 60, 50, 100),
+        "Letter": (50, 100, 60, 60, 60, 60, 50, 100),
+        "Legal": (50, 100, 60, 60, 60, 60, 50, 100),
+        "A4": (50, 92, 60, 58, 60, 58, 50, 92),
+        "Monarch": (50, 100, 60, 60, 60, 60, 50, 100),
+        "COM-10": (50, 100, 60, 60, 60, 60, 50, 100),
+        "DL": (50, 92, 60, 58, 60, 58, 50, 92),
+        "C5": (50, 92, 60, 58, 60, 58, 50, 92),
+    }
 
     lines = ["# IC30/IC13 Page Geometry Lookup Tables", ""]
     add_wrapped(
@@ -3593,6 +3605,66 @@ def page_geometry_table_report(data: bytes) -> str:
         lines,
         "- Result: all supported `ESC &l#A` page-size values with manual figure entries "
         f"{'match' if all_match else 'do not match'} the ROM logical page dimensions.",
+        subsequent="  ",
+    )
+    lines.append("")
+    lines.append("## Printable-Area Margin Cross-Check")
+    lines.append("")
+    add_wrapped(
+        lines,
+        "The same four ROM tables also recover the manual printable-area margins. In portrait, "
+        "`0x9d86 - 0x9d16` gives the horizontal margin sum and `0x9dbe - 0x9d4e - 60` "
+        "gives the bottom margin. In landscape, `0x9dbe - 0x9d4e` gives the horizontal "
+        "margin sum and `0x9d86 - 0x9d16 - 50` gives the bottom margin.",
+    )
+    lines.append("")
+    lines.append("| Paper | Portrait H Sum | Portrait Bottom | Landscape H Sum | Landscape Bottom | Result |")
+    lines.append("| --- | ---: | ---: | ---: | ---: | --- |")
+    all_margin_match = True
+    for (
+        paper,
+        _pcl_value,
+        internal_code,
+        _portrait_w,
+        _portrait_l,
+        _landscape_w,
+        _landscape_l,
+    ) in manual_logical_dimensions:
+        index = internal_code & 0x7F
+        rom_portrait_w = u16(data, 0x00A112 + index * 2)
+        rom_portrait_l = u16(data, 0x00A154 + index * 2)
+        rom_landscape_w = u16(data, 0x00A128 + index * 2)
+        rom_landscape_l = u16(data, 0x00A13E + index * 2)
+        margins = manual_margins[paper]
+        portrait_h_sum = rom_landscape_l - rom_portrait_w
+        manual_portrait_h_sum = margins[0] + margins[1]
+        portrait_bottom = rom_portrait_l - rom_landscape_w - margins[2]
+        manual_portrait_bottom = margins[3]
+        landscape_h_sum = rom_portrait_l - rom_landscape_w
+        manual_landscape_h_sum = margins[4] + margins[5]
+        landscape_bottom = rom_landscape_l - rom_portrait_w - margins[6]
+        manual_landscape_bottom = margins[7]
+        matches = (
+            portrait_h_sum == manual_portrait_h_sum
+            and margins[2] == 0x3C
+            and portrait_bottom == manual_portrait_bottom
+            and landscape_h_sum == manual_landscape_h_sum
+            and margins[6] == 0x32
+            and landscape_bottom == manual_landscape_bottom
+        )
+        all_margin_match = all_margin_match and matches
+        result = "match" if matches else "MISMATCH"
+        lines.append(
+            f"| {paper} | {portrait_h_sum} / {manual_portrait_h_sum} | "
+            f"{portrait_bottom} / {manual_portrait_bottom} | "
+            f"{landscape_h_sum} / {manual_landscape_h_sum} | "
+            f"{landscape_bottom} / {manual_landscape_bottom} | {result} |"
+        )
+    lines.append("")
+    add_wrapped(
+        lines,
+        "- Result: all supported `ESC &l#A` page-size values recover the manual printable-area "
+        f"margin sums and bottom margins: {'match' if all_margin_match else 'MISMATCH'}.",
         subsequent="  ",
     )
     lines.append("")

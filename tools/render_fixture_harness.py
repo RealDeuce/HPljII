@@ -1339,6 +1339,19 @@ MANUAL_PAGE_LOGICAL_DIMENSIONS = {
     "C5": (91, 0x8A, 1771, 2704, 2586, 1913),
 }
 
+MANUAL_PAGE_MARGINS = {
+    # paper: (portrait_left, portrait_right, portrait_top, portrait_bottom,
+    #         landscape_left, landscape_right, landscape_top, landscape_bottom)
+    "Executive": (50, 100, 60, 60, 60, 60, 50, 100),
+    "Letter": (50, 100, 60, 60, 60, 60, 50, 100),
+    "Legal": (50, 100, 60, 60, 60, 60, 50, 100),
+    "A4": (50, 92, 60, 58, 60, 58, 50, 92),
+    "Monarch": (50, 100, 60, 60, 60, 60, 50, 100),
+    "COM-10": (50, 100, 60, 60, 60, 60, 50, 100),
+    "DL": (50, 92, 60, 58, 60, 58, 50, 92),
+    "C5": (50, 92, 60, 58, 60, 58, 50, 92),
+}
+
 
 def page_geometry_lookup_via_9dxx(data: bytes, table: str, page_code: int) -> int:
     index = int(page_code) & 0x7F
@@ -1372,6 +1385,54 @@ def page_geometry_manual_crosscheck(data: bytes) -> dict[str, dict[str, int | bo
                 and rom_portrait_l == portrait_l
                 and rom_landscape_w == landscape_w
                 and rom_landscape_l == landscape_l
+            ),
+        }
+    return result
+
+
+def page_geometry_printable_area_crosscheck(data: bytes) -> dict[str, dict[str, int | bool]]:
+    result: dict[str, dict[str, int | bool]] = {}
+    for paper, values in MANUAL_PAGE_LOGICAL_DIMENSIONS.items():
+        _pcl_value, internal_code, _portrait_w, _portrait_l, _landscape_w, _landscape_l = values
+        margins = MANUAL_PAGE_MARGINS[paper]
+        (
+            portrait_left,
+            portrait_right,
+            portrait_top,
+            portrait_bottom,
+            landscape_left,
+            landscape_right,
+            landscape_top,
+            landscape_bottom,
+        ) = margins
+        rom_portrait_w = page_geometry_lookup_via_9dxx(data, "height", internal_code)
+        rom_portrait_l = page_geometry_lookup_via_9dxx(data, "portrait_margin", internal_code)
+        rom_landscape_w = page_geometry_lookup_via_9dxx(data, "width", internal_code)
+        rom_landscape_l = page_geometry_lookup_via_9dxx(data, "landscape_margin", internal_code)
+        portrait_horizontal_margin_sum = rom_landscape_l - rom_portrait_w
+        portrait_bottom_margin = rom_portrait_l - rom_landscape_w - portrait_top
+        landscape_horizontal_margin_sum = rom_portrait_l - rom_landscape_w
+        landscape_bottom_margin = rom_landscape_l - rom_portrait_w - landscape_top
+        result[paper] = {
+            "portrait_horizontal_margin_sum": portrait_horizontal_margin_sum,
+            "manual_portrait_horizontal_margin_sum": portrait_left + portrait_right,
+            "portrait_top_margin": 0x3C,
+            "manual_portrait_top_margin": portrait_top,
+            "portrait_bottom_margin": portrait_bottom_margin,
+            "manual_portrait_bottom_margin": portrait_bottom,
+            "landscape_horizontal_margin_sum": landscape_horizontal_margin_sum,
+            "manual_landscape_horizontal_margin_sum": landscape_left + landscape_right,
+            "landscape_top_margin": 0x32,
+            "manual_landscape_top_margin": landscape_top,
+            "landscape_bottom_margin": landscape_bottom_margin,
+            "manual_landscape_bottom_margin": landscape_bottom,
+            "match": (
+                portrait_horizontal_margin_sum == portrait_left + portrait_right
+                and 0x3C == portrait_top
+                and portrait_bottom_margin == portrait_bottom
+                and landscape_horizontal_margin_sum == landscape_left + landscape_right
+                and 0x32 == landscape_top
+                and landscape_bottom_margin == landscape_bottom
             ),
         }
     return result
@@ -10904,6 +10965,45 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "manual_landscape_l": 1913,
             "match": True,
         },
+    }))
+    geometry_printable_crosscheck = page_geometry_printable_area_crosscheck(data)
+    checks.append(assert_equal("ROM page geometry tables recover manual printable-area margins", {
+        paper: {
+            key: geometry_printable_crosscheck[paper][key]
+            for key in (
+                "portrait_horizontal_margin_sum",
+                "manual_portrait_horizontal_margin_sum",
+                "portrait_top_margin",
+                "manual_portrait_top_margin",
+                "portrait_bottom_margin",
+                "manual_portrait_bottom_margin",
+                "landscape_horizontal_margin_sum",
+                "manual_landscape_horizontal_margin_sum",
+                "landscape_top_margin",
+                "manual_landscape_top_margin",
+                "landscape_bottom_margin",
+                "manual_landscape_bottom_margin",
+                "match",
+            )
+        }
+        for paper in geometry_printable_crosscheck
+    }, {
+        paper: {
+            "portrait_horizontal_margin_sum": manual[0] + manual[1],
+            "manual_portrait_horizontal_margin_sum": manual[0] + manual[1],
+            "portrait_top_margin": manual[2],
+            "manual_portrait_top_margin": manual[2],
+            "portrait_bottom_margin": manual[3],
+            "manual_portrait_bottom_margin": manual[3],
+            "landscape_horizontal_margin_sum": manual[4] + manual[5],
+            "manual_landscape_horizontal_margin_sum": manual[4] + manual[5],
+            "landscape_top_margin": manual[6],
+            "manual_landscape_top_margin": manual[6],
+            "landscape_bottom_margin": manual[7],
+            "manual_landscape_bottom_margin": manual[7],
+            "match": True,
+        }
+        for paper, manual in MANUAL_PAGE_MARGINS.items()
     }))
     letter_page = apply_page_size_via_fc74(data, page_geometry_state(), 1)
     pcl80_page = apply_page_size_via_fc74(data, page_geometry_state(), 80)

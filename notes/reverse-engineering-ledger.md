@@ -249,14 +249,15 @@ plus macro-payload rule/raster band composition, parser-derived `ESC *t#R`/`ESC
 host-fetched `ESC *b4W` object carried through the `0x1edc6` bridge contract,
 plus a host-fetched
 two-payload `ESC *t300R`/`ESC *r0A` multi-row stream through delayed handler
-`0x0105d0`, a
+`0x0105d0` and the `0x1edc6` bridge contract, a
 parser-to-gate edge check for host-fetched `ESC *t300R`/`ESC *r0A`/`ESC *b4W`
 capped, page-extent, beyond-extent, and negative-row transfers,
 host-fetched `0xdace` payload-control normalization,
 same-group lowercase-final chaining fixtures for `ESC
-*t300r150R` and host-fetched chained `ESC *b2w`/`2W` payload boundaries, now
-with host-fetched `ESC *t300r150R` parser-family evidence, plus a host-fetched
-active `ESC *t75R` stream proving handler `0x10808` leaves current mode/scale
+*t300r150R` and host-fetched chained `ESC *b2w`/`2W` payload/bridge boundaries,
+now with host-fetched `ESC *t300r150R` parser-family evidence, plus a
+host-fetched active `ESC *t75R` stream proving handler `0x10808` leaves
+current mode/scale
 intact, plus a host-fetched `ESC *rB` stream proving handler `0x107fa` clears
 only raster active state and allows a later
 `ESC *t150R` mode change,

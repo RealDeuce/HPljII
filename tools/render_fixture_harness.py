@@ -24547,6 +24547,72 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "queued_object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
         "rendered_rows": ["####........####"],
     }))
+    checks.append(assert_equal("host-fetched raster multi-row and chained streams preserve 0x1edc6 bridge contract", {
+        "multirow": {
+            "fetched_stream": host_fetched_raster_multirow_stream["stream"],
+            "parser_handlers": [
+                command["final_dispatch"]["handler"]
+                for command in raster_multirow_dispatch_commands
+            ],
+            "chain_head": raster_multirow_chain[0],
+            "bridge_bucket_matches_head": (
+                raster_multirow_stream_result["bridged"]["bucket_root"] == raster_multirow_chain[0]
+            ),
+            "render_field_bucket_matches_head": (
+                raster_multirow_stream_result["bridged"]["render_record_fields"]["bucket_root_18"] == raster_multirow_chain[0]
+            ),
+            "rule_list_count": len(raster_multirow_stream_result["bridged"]["rule_list"]),
+            "fixed_list_count": len(raster_multirow_stream_result["bridged"]["fixed_list"]),
+            "context_slots_prefix": raster_multirow_stream_result["bridged"]["context_slots"][:2],
+            "bridged_rows": raster_multirow_stream_result["bridged_rendered"]["rows"],
+        },
+        "chained_transfer": {
+            "fetched_stream": host_fetched_raster_chained_transfer_stream["stream"],
+            "parser_handlers": [
+                command["final_dispatch"]["handler"]
+                for command in raster_chained_transfer_commands
+            ],
+            "chain_head": raster_chained_transfer_chain[0],
+            "bridge_bucket_matches_head": (
+                raster_chained_transfer_result["bridged"]["bucket_root"] == raster_chained_transfer_chain[0]
+            ),
+            "render_field_bucket_matches_head": (
+                raster_chained_transfer_result["bridged"]["render_record_fields"]["bucket_root_18"] == raster_chained_transfer_chain[0]
+            ),
+            "rule_list_count": len(raster_chained_transfer_result["bridged"]["rule_list"]),
+            "fixed_list_count": len(raster_chained_transfer_result["bridged"]["fixed_list"]),
+            "context_slots_prefix": raster_chained_transfer_result["bridged"]["context_slots"][:2],
+            "bridged_rows": raster_chained_transfer_result["bridged_rendered"]["rows"],
+        },
+    }, {
+        "multirow": {
+            "fetched_stream": (
+                b"\x1b*t300R\x1b*r0A\x1b*b2W"
+                + bytes.fromhex("f0 0f")
+                + b"\x1b*b2W"
+                + bytes.fromhex("0f f0")
+            ),
+            "parser_handlers": [0x010808, 0x01075A, 0x011F82, 0x011F82],
+            "chain_head": bytes.fromhex("00 00 00 00 80 00 00 02 10 00 0f f0"),
+            "bridge_bucket_matches_head": True,
+            "render_field_bucket_matches_head": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0, 0),
+            "bridged_rows": ["................", "....########...."],
+        },
+        "chained_transfer": {
+            "fetched_stream": b"\x1b*t300R\x1b*r0A\x1b*b2w2W" + bytes.fromhex("f0 0f"),
+            "parser_handlers": [0x010808, 0x01075A, 0x011F82, 0x011F82],
+            "chain_head": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
+            "bridge_bucket_matches_head": True,
+            "render_field_bucket_matches_head": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0, 0),
+            "bridged_rows": ["####........####"],
+        },
+    }))
     raster_page_record: dict[str, object] = {"bucket_array": {}}
     raster_page_result = queue_raster_row_to_page_record_via_13070(
         raster_page_record,

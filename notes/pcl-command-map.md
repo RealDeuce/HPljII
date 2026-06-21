@@ -504,11 +504,12 @@ single following payload.
   parser-to-object checks for the 300/150/100/75-dpi raster streams including
   modeled `0x10084` root allocation, host-fetched lower-resolution and
   capped/drained edge streams, host-fetched `0xdace` payload-control
-  normalization, and a page-record bridge check for the first `ESC *b4W` object,
-  a host-fetched consecutive-row `ESC *t300R` stream,
+  normalization, page-record bridge checks for the first `ESC *b4W` object and
+  the host-fetched consecutive-row `ESC *t300R` stream,
   same-group lowercase-final chaining fixtures for host-fetched
   `ESC *t300r150R` and host-fetched `ESC *b2w2W` where lowercase `w` records
-  the delayed transfer and payload is consumed after the uppercase terminator,
+  the delayed transfer and payload is consumed after the uppercase terminator
+  before the chain head is bridged,
   plus host-fetched
   `ESC *rB` active-clear followed by `ESC *t150R`, host-fetched active-raster
   `ESC *t75R` ignore before a mode-0 `ESC *b2W` row, raster row page-record

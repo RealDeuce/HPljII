@@ -163,7 +163,9 @@ The full raster command/data, queue, and render-dispatch edge is summarized in
 `generated/analysis/ic30_ic13_raster_graphics_flow.md`.
 
 `ESC *r#B` at `0x0107fa` clears raster active byte `0x783182`, leaving raster
-origin/baseline/mode/scale/limit state intact so later resolution commands can take effect.
+origin/baseline/mode/scale/limit state intact so later resolution commands can take effect. A
+parser-traced stream now proves `ESC *rB` clears active state between a queued `ESC *b2W` row and a
+following `ESC *t150R` mode/scale update.
 
 Rectangle graphics command edges are decoded in
 `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`. `ESC *c#A/#B` store explicit positive dot
@@ -332,8 +334,8 @@ fixtures plus a two-payload `ESC *t300R`/`ESC *r0A` multi-row stream through del
 beyond-extent transfers, an inclusive page-extent transfer check proving queue-and-advance behavior,
 a negative-row transfer check proving drain-with-advance behavior, a raster payload fixture proving
 `0xdace` turns raw bytes `1a 58` into a single queued `00` byte, same-group lowercase-final chaining
-fixtures for `ESC *t300r150R` and chained `ESC *b2w`/`2W` payloads, plus a bare `ESC *rB`
-active-clear stream through handler `0x107fa`, byte-aligned mode-0,
+fixtures for `ESC *t300r150R` and chained `ESC *b2w`/`2W` payloads, plus a parser-traced `ESC *rB`
+active-clear and following `ESC *t150R` mode/scale update, byte-aligned mode-0,
 non-byte-aligned mode-0, mode-1, byte-aligned mode-2,
 non-byte-aligned mode-2, band-clipped mode-2, and mode-3 raster row fixtures through `0x13070` /
 `0x13250` / `0x138de` / `0x1edc6` / `0x1f88e`, covers normal and negative-left-overflow `0xd824`
@@ -398,8 +400,9 @@ triggers the `0x12218` restore and the single following payload.
   streams including modeled `0x10084` root allocation and a page-record bridge check for the first
   `ESC *b4W` object, a parser-traced consecutive-row `ESC *t300R` stream, same-group lowercase-final
   chaining fixtures for `ESC *t300r150R` and parser-traced `ESC *b2w2W` where lowercase `w` records
-  the delayed transfer and payload is consumed after the uppercase terminator, plus an `ESC *rB`
-  active-clear stream, raster row page-record fixtures for byte-aligned mode 0, non-byte-aligned
+  the delayed transfer and payload is consumed after the uppercase terminator, plus a parser-traced
+  `ESC *rB` active-clear stream followed by `ESC *t150R`, raster row page-record fixtures for
+  byte-aligned mode 0, non-byte-aligned
   mode 0, mode 1, byte-aligned mode 2, non-byte-aligned mode 2, band-clipped mode 2, and mode 3,
   real-HMI sub-byte compact render fixture, producer-modeled short/segmented text bucket objects,
   short/segmented `0x1387c` allocator fixtures, `0x1edc6` page-record bridge fixture including

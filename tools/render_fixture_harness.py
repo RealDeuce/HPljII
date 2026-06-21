@@ -21719,6 +21719,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         raster_end_command_stream,
         raster_graphics_state(page_extent=255, cursor_axis0=0x00100000, cursor_axis1=0x00200000),
     )
+    raster_end_dispatch_trace = trace_raster_parser_dispatch_via_11774(data, raster_end_command_stream)
+    raster_end_dispatch_commands = raster_end_dispatch_trace["commands"]
+    assert isinstance(raster_end_dispatch_commands, list)
     raster_end_event_summary: list[dict[str, object]] = []
     for event in raster_end_stream_result["events"]:
         if event["kind"] == "raster-resolution":
@@ -21753,7 +21756,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     }, {
         "events": [
             {"kind": "raster-resolution", "parameter": 300, "mode_before": 3, "mode_after": 0, "scale": 1, "limit": 32},
-            {"kind": "start-raster", "parameter": 0, "active_before": 0, "active_after": 1, "origin_long": 0, "baseline_word": 0, "limit": 32},
+            {
+                "kind": "start-raster",
+                "parameter": 0,
+                "active_before": 0,
+                "active_after": 1,
+                "origin_long": 0,
+                "baseline_word": 0,
+                "limit": 32,
+            },
             {
                 "kind": "raster-transfer",
                 "parameter": 2,
@@ -21762,7 +21773,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "transfer_state": {"x": 0, "y": 0, "byte_count": 2, "mode": 0},
                 "row_y_after": 1,
             },
-            {"kind": "end-raster", "parameter": 0, "active_before": 1, "active_after": 0, "mode": 0, "scale": 1, "limit": 32, "row_y": 1},
+            {
+                "kind": "end-raster",
+                "parameter": 0,
+                "active_before": 1,
+                "active_after": 0,
+                "mode": 0,
+                "scale": 1,
+                "limit": 32,
+                "row_y": 1,
+            },
             {"kind": "raster-resolution", "parameter": 150, "mode_before": 0, "mode_after": 1, "scale": 2, "limit": 16},
         ],
         "final_state": {
@@ -21774,6 +21794,135 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "row_y": 1,
         },
         "object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
+    }))
+    checks.append(assert_equal("raster end parser trace feeds active-clear and resolution re-enable", {
+        "stream": raster_end_command_stream,
+        "commands": [
+            {
+                "sequence": command["sequence"],
+                "handler": command["final_dispatch"]["handler"],
+                "record": command["record"],
+                "mode_after_final": command["mode_after_final"],
+                "restore_after_final": command["restore_after_final"],
+                "restored_record": command["restored_record"],
+                "payload_offset": command.get("payload_offset"),
+                "payload": command.get("payload"),
+            }
+            for command in raster_end_dispatch_commands
+        ],
+        "model_events": raster_end_event_summary,
+        "final_mode": raster_end_dispatch_trace["final_mode"],
+        "final_state": {
+            key: raster_end_stream_result["final_state"][key]
+            for key in ("active", "mode", "scale", "limit", "row_y")
+        },
+    }, {
+        "stream": b"\x1b*t300R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f") + b"\x1b*rB\x1b*t150R",
+        "commands": [
+            {
+                "sequence": b"\x1b*t300R",
+                "handler": 0x010808,
+                "record": bytes.fromhex("80 52 01 2c 00 00"),
+                "mode_after_final": 0,
+                "restore_after_final": None,
+                "restored_record": None,
+                "payload_offset": None,
+                "payload": None,
+            },
+            {
+                "sequence": b"\x1b*r0A",
+                "handler": 0x01075A,
+                "record": bytes.fromhex("80 41 00 00 00 00"),
+                "mode_after_final": 0,
+                "restore_after_final": None,
+                "restored_record": None,
+                "payload_offset": None,
+                "payload": None,
+            },
+            {
+                "sequence": b"\x1b*b2W",
+                "handler": 0x011F82,
+                "record": bytes.fromhex("80 57 00 02 00 00"),
+                "mode_after_final": 0,
+                "restore_after_final": {"kind": "direct-handler", "handler": 0x0105D0},
+                "restored_record": bytes.fromhex("80 57 00 02 00 00"),
+                "payload_offset": 17,
+                "payload": bytes.fromhex("f0 0f"),
+            },
+            {
+                "sequence": b"\x1b*rB",
+                "handler": 0x0107FA,
+                "record": bytes.fromhex("80 42 00 00 00 00"),
+                "mode_after_final": 0,
+                "restore_after_final": None,
+                "restored_record": None,
+                "payload_offset": None,
+                "payload": None,
+            },
+            {
+                "sequence": b"\x1b*t150R",
+                "handler": 0x010808,
+                "record": bytes.fromhex("80 52 00 96 00 00"),
+                "mode_after_final": 0,
+                "restore_after_final": None,
+                "restored_record": None,
+                "payload_offset": None,
+                "payload": None,
+            },
+        ],
+        "model_events": [
+            {
+                "kind": "raster-resolution",
+                "parameter": 300,
+                "mode_before": 3,
+                "mode_after": 0,
+                "scale": 1,
+                "limit": 32,
+            },
+            {
+                "kind": "start-raster",
+                "parameter": 0,
+                "active_before": 0,
+                "active_after": 1,
+                "origin_long": 0,
+                "baseline_word": 0,
+                "limit": 32,
+            },
+            {
+                "kind": "raster-transfer",
+                "parameter": 2,
+                "payload_offset": 17,
+                "payload": bytes.fromhex("f0 0f"),
+                "transfer_state": {"x": 0, "y": 0, "byte_count": 2, "mode": 0},
+                "row_y_after": 1,
+            },
+            {
+                "kind": "end-raster",
+                "parameter": 0,
+                "active_before": 1,
+                "active_after": 0,
+                "mode": 0,
+                "scale": 1,
+                "limit": 32,
+                "row_y": 1,
+            },
+            {
+                "kind": "raster-resolution",
+                "parameter": 150,
+                "mode_before": 0,
+                "mode_after": 1,
+                "scale": 2,
+                "limit": 16,
+            },
+        ],
+        "final_mode": 0,
+        "final_state": {
+            "active": 0,
+            "mode": 1,
+            "scale": 2,
+            "limit": 16,
+            "row_y": 1,
+        },
     }))
     raster_chained_resolution_stream = b"\x1b*t300r150R"
     raster_chained_resolution_result = render_raster_command_data_stream_via_121cc_105d0(
@@ -27436,6 +27585,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 event["limit"],
                 event["row_y"],
             ))
+    lines.append("- raster-end parser handlers: `%s`." % (
+        ", ".join(
+            f"0x{int(command['final_dispatch']['handler']):05x}"
+            for command in raster_end_dispatch_commands
+        ),
+    ))
+    lines.append("  The `ESC *b2W` record restores `0x105d0`, then `ESC *rB` clears active state")
+    lines.append("  before `ESC *t150R` updates mode/scale again.")
     lines.append("- raster-end final state: active `%d`, mode `%d`, scale `%d`, limit `%d`, row_y `%d`" % (
         raster_end_stream_result["final_state"]["active"],
         raster_end_stream_result["final_state"]["mode"],

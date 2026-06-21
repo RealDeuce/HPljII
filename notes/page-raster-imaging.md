@@ -586,14 +586,14 @@ The executable harness `tools/render_fixture_harness.py` combines the host-byte 
 tokenizer/delayed-payload, page-geometry, macro/data-chain, direct-control, reset, text, rule,
 raster, bridge, row-copy, built-in glyph, symbol-set, and downloaded-font fixture families into one
 ROM-backed self-test. It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and
-currently verifies 313 checks. The raster coverage now includes ROM-table `0x11774` dispatch traces
+currently verifies 314 checks. The raster coverage now includes ROM-table `0x11774` dispatch traces
 for the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W` stream, the 150/100/75-dpi mode streams, the
-consecutive-row `ESC *b2W` stream, and the chained `ESC *b2w2W` delayed-transfer stream, modeled
-delayed `0x121cc` / `0x12218` transfer records, command/data-stream transfer events routed through
-the modeled `0x105d0` gate including capped-byte, inclusive page-extent queue-and-advance,
-beyond-extent drain-without-queue/no-row-advance, negative-row drain-with-advance, and `0xdace`
-control-byte normalization cases before queueing, page-record queue/bridge/render checks for modes
-0..3,
+consecutive-row `ESC *b2W` stream, the end-raster `ESC *rB` / re-enabled `ESC *t150R` stream, and
+the chained `ESC *b2w2W` delayed-transfer stream, modeled delayed `0x121cc` / `0x12218` transfer
+records, command/data-stream transfer events routed through the modeled `0x105d0` gate including
+capped-byte, inclusive page-extent queue-and-advance, beyond-extent drain/no-row-advance,
+negative-row drain-with-advance, and `0xdace` control-byte normalization cases before queueing,
+page-record queue/bridge/render checks for modes 0..3,
 render-band setup coverage for `0x1ef86`, render-entry call-order coverage for `0x1ef6a`,
 published-record render-entry coverage through `0x1ed84`/`0x1ef6a`, bucket-chain dispatcher coverage
 for `0x1efc2`, segment-list rendering coverage for `0x1f812`, fixed-width list coverage for
@@ -607,9 +607,11 @@ rendered expansion rows to modes 1/2/3; the `ESC *t300R` / `ESC *r0A` / `ESC *b4
 the parser/restore path to capped queueing, inclusive page-extent queue-and-advance,
 beyond-extent drain/no-row-advance, and negative-row drain-with-advance transfer-gate outcomes; the
 consecutive-row `ESC *b2W` stream ties two restored `80 57 00 02 00 00` records to
-payload offsets `17` and `24`, queued coords `0x0000` and `0x1000`, and final row_y `2`; and the
-chained `ESC *b2w2W` stream proves uppercase `W` restores the lowercase `80 77 00 02 00 00` delayed
-record before consuming the payload. Symbol-set coverage now traces `ESC (2U` / `ESC )0E` through
+payload offsets `17` and `24`, queued coords `0x0000` and `0x1000`, and final row_y `2`; the
+end-raster stream ties `ESC *rB` handler `0x107fa` to active-clear state before `ESC *t150R` updates
+mode/scale again; and the chained `ESC *b2w2W` stream proves uppercase `W` restores the lowercase
+`80 77 00 02 00 00` delayed record before consuming the payload. Symbol-set coverage now traces
+`ESC (2U` / `ESC )0E` through
 ROM parser setup handlers `0x1201e` / `0x12008` and terminal handler `0x120be` before the modeled
 `0x1be22` / `0xc580` active-word refresh and `0x14f16` map patching, separately traces `ESC (7X`
 plus `ESC )0@` / `ESC (1@` / `ESC )2@` / `ESC (3@` / `ESC )3@` through that same parser terminal

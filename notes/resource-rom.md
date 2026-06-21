@@ -305,8 +305,12 @@ disabled/resolved/remapped current-default results, `0x1b50e`
 fast-probe/two-pass resolver classes and Roman-8 duplicate ordinal
 behavior, `0x1ab84` synthesized search, `0x1ad66` range-1, range-2, and
 `0x1ae7e` fallback control flow, plus `0x1bbfe` / `0x1b060` helper
-behavior from candidate record fields. The remaining live-state gap is
-real parser/font-state candidate records feeding those writes.
+behavior from candidate record fields. The `0x1b060` fallback path now
+also runs against real scanned built-in class windows: class zero selects
+record `0x00004c` by Roman-8 fallback for requested `0x0005`, and class
+one selects record `0x01a984` by exact symbol `0x000e`. The remaining
+live-state gap is real parser/font-state candidate records feeding those
+writes.
 
 This makes the current renderer identity
 `(context longword, mapped glyph byte)`. For example, the unnamed

@@ -4603,8 +4603,16 @@ def builtin_candidate_windows_from_scanned_records(
             "builtin_byte_0x3c": int(record.get("builtin_byte_0x3c", 0)),
             "builtin_word_0x24": int(record.get("builtin_word_0x24", 0)),
             "builtin_byte_0x26": int(record.get("builtin_byte_0x26", 0)),
+            "builtin_pitch_via_13b76": builtin_pitch_via_13b76(
+                int(record.get("builtin_word_0x24", 0)),
+                int(record.get("builtin_byte_0x26", 0)),
+            ),
             "builtin_word_0x28": int(record.get("builtin_word_0x28", 0)),
             "builtin_byte_0x2a": int(record.get("builtin_byte_0x2a", 0)),
+            "builtin_height_via_13bca": builtin_height_via_13bca(
+                int(record.get("builtin_word_0x28", 0)),
+                int(record.get("builtin_byte_0x2a", 0)),
+            ),
             "builtin_byte_0x2f": int(record.get("builtin_byte_0x2f", 0)),
             "builtin_byte_0x30": int(record.get("builtin_byte_0x30", 0)),
             "builtin_byte_0x31": int(record.get("builtin_byte_0x31", 0)),
@@ -19720,6 +19728,28 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         ],
     )
+    real_default_class_zero_candidates = [
+        {**dict(candidate), "builtin_byte_0x20": 0}
+        for candidate in actual_candidate_windows["class_zero_low"]  # type: ignore[index]
+    ]
+    real_default_class_one_candidates = [
+        {**dict(candidate), "builtin_byte_0x20": 1}
+        for candidate in actual_candidate_windows["class_one_low"]  # type: ignore[index]
+    ]
+    real_default_candidate_primary_fallback = default_font_candidate_search_via_1ad66(
+        selector_78289f=0,
+        selector_78289e=0,
+        requested_symbol=0x0005,
+        range_candidates=[],
+        fallback_candidates=real_default_class_zero_candidates,
+    )
+    real_default_candidate_secondary_fallback = default_font_candidate_search_via_1ad66(
+        selector_78289f=1,
+        selector_78289e=1,
+        requested_symbol=0x000E,
+        range_candidates=[],
+        fallback_candidates=real_default_class_one_candidates,
+    )
     checks.append(assert_equal("0x1ad66/0x1adaa/0x1ae7e default-font candidate search", {
         "range_1": {
             "summary": select_keys(default_candidate_range_1, (
@@ -19783,6 +19813,32 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "source",
             "reader_source",
         )),
+        "real_builtins": {
+            "primary_roman_extension": {
+                "summary": select_keys(real_default_candidate_primary_fallback, (
+                    "path",
+                    "selected_pointer",
+                    "selected_longword",
+                    "word",
+                    "source",
+                    "reader",
+                    "reader_source",
+                )),
+                "selected_event": real_default_candidate_primary_fallback["fallback_events"][-1],
+            },
+            "secondary_line_printer": {
+                "summary": select_keys(real_default_candidate_secondary_fallback, (
+                    "path",
+                    "selected_pointer",
+                    "selected_longword",
+                    "word",
+                    "source",
+                    "reader",
+                    "reader_source",
+                )),
+                "selected_event": real_default_candidate_secondary_fallback["fallback_events"][-1],
+            },
+        },
     }, {
         "range_1": {
             "summary": {
@@ -19858,6 +19914,56 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "word": 0x00D5,
             "source": "0x158be",
             "reader_source": "+0x17-encoded",
+        },
+        "real_builtins": {
+            "primary_roman_extension": {
+                "summary": {
+                    "path": "fallback-default-match",
+                    "selected_pointer": 0x782354,
+                    "selected_longword": 0x4008004C,
+                    "word": 0x0005,
+                    "source": "0x1b060",
+                    "reader": "0x15890",
+                    "reader_source": "+0x22-word",
+                },
+                "selected_event": {
+                    "helper": 0x01AE7E,
+                    "probe": "0x1b060",
+                    "index": 0,
+                    "slot_pointer": 0x782354,
+                    "longword": 0x4008004C,
+                    "default_match": 1,
+                    "candidate_word": 0x0115,
+                    "reader": "0x15890",
+                    "reader_source": "+0x22-word",
+                    "match_kind": "roman8-fallback",
+                    "selected": True,
+                },
+            },
+            "secondary_line_printer": {
+                "summary": {
+                    "path": "fallback-default-match",
+                    "selected_pointer": 0x782330,
+                    "selected_longword": 0x4009A984,
+                    "word": 0x000E,
+                    "source": "0x1b060",
+                    "reader": "0x15890",
+                    "reader_source": "+0x22-word",
+                },
+                "selected_event": {
+                    "helper": 0x01AE7E,
+                    "probe": "0x1b060",
+                    "index": 3,
+                    "slot_pointer": 0x782330,
+                    "longword": 0x4009A984,
+                    "default_match": 1,
+                    "candidate_word": 0x000E,
+                    "reader": "0x15890",
+                    "reader_source": "+0x22-word",
+                    "match_kind": "exact",
+                    "selected": True,
+                },
+            },
         },
     }))
     symbol_special_stream_bytes = b"\x1b(7X\x1b)0@\x1b(1@\x1b)2@\x1b(3@\x1b)3@"
@@ -37251,6 +37357,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         default_candidate_fallback_match["word"],
         default_candidate_fallback_builtin["source"],
         default_candidate_fallback_inline["source"],
+    ))
+    lines.append("- real built-in default fallback: scanned class-zero candidates feed `0x1b060` and choose slot `0x%06x` / record `0x%06x` by Roman-8 fallback for requested `0x0005`; scanned class-one candidates choose slot `0x%06x` / record `0x%06x` by exact symbol `0x000e`." % (
+        real_default_candidate_primary_fallback["selected_pointer"],
+        real_default_candidate_primary_fallback["selected_longword"] & 0x00FFFFFF,
+        real_default_candidate_secondary_fallback["selected_pointer"],
+        real_default_candidate_secondary_fallback["selected_longword"] & 0x00FFFFFF,
     ))
     lines.append("- symbol-set special-case parser boundary: stream `1b 28 37 58 1b 29 30 40 1b 28 31 40 1b 29 32 40 1b 28 33 40 1b 29 33 40` routes final `X` and `@` through terminal handler `0x120be`; the model keeps the previous requested word while calling font-id helper `0x17708` for `X`, sets `0x78287b`, enters `0xc580` with dirty flag `2`, reads the `0x1ac0a` default-symbol table for `@0`/`@1`, copies primary to secondary for `@2`, and uses the current-candidate default-font word for `@3`, ending with active words `0x%04x` / `0x%04x`." % (
         symbol_special_stream["active_symbols"][0],

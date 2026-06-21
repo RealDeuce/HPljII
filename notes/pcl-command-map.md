@@ -450,8 +450,12 @@ synthesized search, pins `0x1ad66` as a range-1, range-2, then
 candidate record fields. A parser-derived `ESC )1234U` miss now feeds
 `0x156de`: requested word `0x9a55` misses the class-one candidates and
 falls through to fallback-table word `0x000e`. Remaining default-font
-uncertainty is now limited to live parser/font-state selection over those
-concrete candidate windows.
+uncertainty is narrowed further by real scanned built-in fallback
+coverage: class-zero candidates feed `0x1b060` and choose record
+`0x00004c` by Roman-8 fallback for requested `0x0005`, while class-one
+candidates choose record `0x01a984` by exact symbol `0x000e`. The
+remaining gap is live parser/font-state selection over those concrete
+candidate windows.
 
 Downloaded-font command edges are now decoded in
 `generated/analysis/ic30_ic13_font_control_flow.md`. `ESC *c#D`

@@ -19431,6 +19431,33 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         second_list=[],
     )
+    real_resolver_mode3_first = default_font_resolver_scan_via_1b50e(
+        search_mode=3,
+        requested_index=1,
+        requested_symbol=0x0115,
+        current_selected_pointer=0,
+        fast_probe=None,
+        first_list=list(actual_candidate_windows["class_zero_low"]),  # type: ignore[arg-type]
+        second_list=list(actual_candidate_windows["class_one_low"]),  # type: ignore[arg-type]
+    )
+    real_resolver_mode3_duplicate = default_font_resolver_scan_via_1b50e(
+        search_mode=3,
+        requested_index=2,
+        requested_symbol=0x0005,
+        current_selected_pointer=0,
+        fast_probe=None,
+        first_list=list(actual_candidate_windows["class_zero_low"]),  # type: ignore[arg-type]
+        second_list=list(actual_candidate_windows["class_one_low"]),  # type: ignore[arg-type]
+    )
+    real_resolver_mode3_suppressed_current = default_font_resolver_scan_via_1b50e(
+        search_mode=3,
+        requested_index=1,
+        requested_symbol=0x0005,
+        current_selected_pointer=0x782354,
+        fast_probe=None,
+        first_list=list(actual_candidate_windows["class_zero_low"]),  # type: ignore[arg-type]
+        second_list=list(actual_candidate_windows["class_one_low"]),  # type: ignore[arg-type]
+    )
     checks.append(assert_equal("0x1b50e current-default resolver scan and predicates", {
         "class_range_current": classifier_range_current,
         "class_roman8_duplicate": classifier_roman8_duplicate,
@@ -19462,6 +19489,35 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "source",
         )),
         "suppressed_current_events": resolver_suppressed_current["events"],
+        "real_builtins": {
+            "mode3_first": {
+                "summary": select_keys(real_resolver_mode3_first, (
+                    "selected_pointer",
+                    "selected_resource_address",
+                    "word",
+                    "source",
+                )),
+                "selected_event": real_resolver_mode3_first["events"][-1],
+            },
+            "mode3_duplicate": {
+                "summary": select_keys(real_resolver_mode3_duplicate, (
+                    "selected_pointer",
+                    "selected_resource_address",
+                    "word",
+                    "source",
+                )),
+                "events": real_resolver_mode3_duplicate["events"],
+            },
+            "mode3_suppressed_current": {
+                "summary": select_keys(real_resolver_mode3_suppressed_current, (
+                    "selected_pointer",
+                    "selected_resource_address",
+                    "word",
+                    "source",
+                )),
+                "events": real_resolver_mode3_suppressed_current["events"],
+            },
+        },
     }, {
         "class_range_current": {
             "class": 2,
@@ -19515,6 +19571,41 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {"helper": 0x01B50E, "pass": 0, "index": 0, "ordinal": 1, "slot_pointer": 0x4600, "resource_address": 0x250000, "candidate_word": 0x0115, "reader": "0x158be", "reader_source": "+0x14-word", "class": 0, "admissible_reason": "range-1", "duplicate_reason": "duplicate-roman8-suppressed", "roman8_duplicate_pending": False, "selected": False},
             {"helper": 0x01B50E, "pass": 0, "index": 1, "ordinal": 1, "slot_pointer": 0x4604, "resource_address": 0x260000, "candidate_word": 0x0055, "reader": "0x158be", "reader_source": "+0x14-word", "class": 1, "admissible_reason": "range-1", "duplicate_reason": "admitted", "roman8_duplicate_pending": False, "selected": True, "word": 0x0055},
         ],
+        "real_builtins": {
+            "mode3_first": {
+                "summary": {
+                    "selected_pointer": 0x782354,
+                    "selected_resource_address": 0x08004C,
+                    "word": 0x0115,
+                    "source": "0x1b50e-scan",
+                },
+                "selected_event": {"helper": 0x01B50E, "pass": 0, "index": 0, "ordinal": 1, "slot_pointer": 0x782354, "resource_address": 0x08004C, "candidate_word": 0x0115, "reader": "0x15890", "reader_source": "+0x22-word", "class": 1, "admissible_reason": "special-symbol", "duplicate_reason": "admitted", "roman8_duplicate_pending": False, "selected": True, "word": 0x0115},
+            },
+            "mode3_duplicate": {
+                "summary": {
+                    "selected_pointer": 0x782354,
+                    "selected_resource_address": 0x08004C,
+                    "word": 0x0005,
+                    "source": "0x1b50e-scan",
+                },
+                "events": [
+                    {"helper": 0x01B50E, "pass": 0, "index": 0, "ordinal": 1, "slot_pointer": 0x782354, "resource_address": 0x08004C, "candidate_word": 0x0115, "reader": "0x15890", "reader_source": "+0x22-word", "class": 1, "admissible_reason": "special-symbol", "duplicate_reason": "admitted", "roman8_duplicate_pending": False, "selected": False},
+                    {"helper": 0x01B50E, "pass": 0, "index": 0, "ordinal": 2, "slot_pointer": 0x782354, "resource_address": 0x08004C, "candidate_word": 0x0115, "reader": "0x15890", "reader_source": "+0x22-word", "class": 1, "admissible_reason": "special-symbol", "duplicate_reason": "admitted", "roman8_duplicate_pending": True, "selected": True, "word": 0x0005},
+                ],
+            },
+            "mode3_suppressed_current": {
+                "summary": {
+                    "selected_pointer": 0x782358,
+                    "selected_resource_address": 0x080418,
+                    "word": 0x0155,
+                    "source": "0x1b50e-scan",
+                },
+                "events": [
+                    {"helper": 0x01B50E, "pass": 0, "index": 0, "ordinal": 1, "slot_pointer": 0x782354, "resource_address": 0x08004C, "candidate_word": 0x0115, "reader": "0x15890", "reader_source": "+0x22-word", "class": 0, "admissible_reason": "special-symbol", "duplicate_reason": "duplicate-roman8-suppressed", "roman8_duplicate_pending": False, "selected": False},
+                    {"helper": 0x01B50E, "pass": 0, "index": 1, "ordinal": 1, "slot_pointer": 0x782358, "resource_address": 0x080418, "candidate_word": 0x0155, "reader": "0x15890", "reader_source": "+0x22-word", "class": 1, "admissible_reason": "special-symbol", "duplicate_reason": "admitted", "roman8_duplicate_pending": False, "selected": True, "word": 0x0155},
+                ],
+            },
+        },
     }))
     default_synth_initial = default_font_synthesized_search_via_1ab84(
         selector_78289f=0,

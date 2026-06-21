@@ -2458,6 +2458,14 @@ def symbol_set_state(**overrides: object) -> dict[str, object]:
         "remembered_symbols": [0x0115, 0x0115],
         "default_symbols": [0x0115, 0x0115, 0x0115, 0x0115],
         "orientation": 0,
+        "current_selector_782f06": 0,
+        "current_page_root": 0,
+        "page_root_context_slots": [0] * 16,
+        "page_root_live_flags": [0] * 16,
+        "current_page_context_slot_78297e": 0,
+        "selected_context_record_782992": 0x782EE6,
+        "context_install_events": [],
+        "candidate_refresh_calls": [],
         "dirty_flag": 0,
         "dirty_maps": 0,
         "refreshes": 0,
@@ -2478,6 +2486,83 @@ def symbol_word_from_pcl(parameter: int, final: int) -> int:
     return ((abs(int(parameter)) << 5) + int(final) - 0x40) & 0xFFFF
 
 
+def current_font_context_record(slot: int) -> int:
+    return 0x782EE6 + int(slot) * 0x10
+
+
+def install_page_root_context_via_c4fc(
+    state: dict[str, object],
+    context_record: int,
+    *,
+    caller: str,
+) -> int:
+    if int(state.get("current_page_root", 0)) == 0:
+        return 0
+
+    context_slots = list(state.get("page_root_context_slots", []))
+    context_slots += [0] * (16 - len(context_slots))
+    live_flags = list(state.get("page_root_live_flags", []))
+    live_flags += [0] * (16 - len(live_flags))
+    masked_context = int(context_record) & 0x00FFFFFF
+
+    selected_slot = 0x11
+    reason = "full"
+    for slot in range(16):
+        if (int(context_slots[slot]) & 0x00FFFFFF) == masked_context:
+            selected_slot = slot
+            reason = "existing-context"
+            break
+        if int(live_flags[slot]) != 1:
+            selected_slot = slot
+            reason = "first-inactive"
+            break
+
+    if selected_slot != 0x11:
+        context_slots[selected_slot] = int(context_record)
+        state["page_root_context_slots"] = context_slots[:16]
+
+    events = state.setdefault("context_install_events", [])
+    if not isinstance(events, list):
+        raise AssertionError("context install events must be a list")
+    events.append({
+        "helper": 0x00C4FC,
+        "caller": caller,
+        "context_record": int(context_record),
+        "selected_page_slot": selected_slot,
+        "reason": reason,
+    })
+    return selected_slot
+
+
+def install_current_font_context_via_c428(state: dict[str, object], slot: int) -> int:
+    context_record = current_font_context_record(slot)
+    if int(state.get("current_page_root", 0)) == 0:
+        selected_page_slot = 0
+    else:
+        selected_page_slot = install_page_root_context_via_c4fc(
+            state,
+            context_record,
+            caller="0xc428",
+        )
+        if selected_page_slot == 0x11:
+            state["dirty_maps"] = 0
+            return 0
+    state["current_page_context_slot_78297e"] = selected_page_slot
+    return 1
+
+
+def activate_font_candidate_via_13eb8(state: dict[str, object], slot: int, reason: str) -> None:
+    requested = state["requested_symbols"]
+    active = state["active_symbols"]
+    assert isinstance(requested, list)
+    assert isinstance(active, list)
+    active[slot] = int(requested[slot])
+    calls = state.setdefault("candidate_refresh_calls", [])
+    if not isinstance(calls, list):
+        raise AssertionError("candidate refresh calls must be a list")
+    calls.append({"helper": 0x013EB8, "slot": int(slot), "reason": reason})
+
+
 def refresh_symbol_state_via_c580(state: dict[str, object], slot: int) -> None:
     requested = state["requested_symbols"]
     active = state["active_symbols"]
@@ -2485,7 +2570,34 @@ def refresh_symbol_state_via_c580(state: dict[str, object], slot: int) -> None:
     assert isinstance(requested, list)
     assert isinstance(active, list)
     assert isinstance(remembered, list)
-    active[slot] = int(requested[slot])
+    dirty = int(state.get("dirty_flag", 0))
+    selector = int(state.get("current_selector_782f06", 0))
+
+    if dirty == 1:
+        if selector == slot:
+            live_flags = list(state.get("page_root_live_flags", []))
+            live_flags += [0] * (16 - len(live_flags))
+            first_live = next((index for index, flag in enumerate(live_flags[:16]) if int(flag) != 0), None)
+            if first_live is None and int(state.get("current_page_root", 0)) != 0:
+                state["transient_context_refresh_78298f"] = 1
+                activate_font_candidate_via_13eb8(state, slot, "empty-live-page-root")
+                state["transient_context_refresh_78298f"] = 0
+            selected_context = int(state.get("selected_context_record_782992", current_font_context_record(slot)))
+            selected_page_slot = install_page_root_context_via_c4fc(
+                state,
+                selected_context,
+                caller="0xc580",
+            )
+            if selected_page_slot != 0x11:
+                activate_font_candidate_via_13eb8(state, slot, "post-c4fc")
+                install_current_font_context_via_c428(state, slot)
+        else:
+            activate_font_candidate_via_13eb8(state, slot, "selector-mismatch")
+    else:
+        active[slot] = int(requested[slot])
+        if selector == slot:
+            install_current_font_context_via_c428(state, slot)
+
     remembered[slot] = int(active[slot])
     state["dirty_flag"] = 0
     state["dirty_maps"] = 0
@@ -2498,6 +2610,10 @@ def apply_symbol_set_stream_via_120be_1be22(state: dict[str, object], stream: by
     state["active_symbols"] = list(state["active_symbols"])
     state["remembered_symbols"] = list(state["remembered_symbols"])
     state["default_symbols"] = list(state["default_symbols"])
+    state["page_root_context_slots"] = list(state.get("page_root_context_slots", []))
+    state["page_root_live_flags"] = list(state.get("page_root_live_flags", []))
+    state["context_install_events"] = list(state.get("context_install_events", []))
+    state["candidate_refresh_calls"] = list(state.get("candidate_refresh_calls", []))
     state["font_id_calls"] = list(state.get("font_id_calls", []))
     state["events"] = list(state.get("events", []))
     pos = 0
@@ -16872,6 +16988,60 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "bang": 0xA0,
             "upper_cleared": 0,
         },
+    }))
+    c580_primary_context_refresh = symbol_set_state(
+        requested_symbols=[0x0055, 0x0115],
+        active_symbols=[0x0115, 0x0115],
+        remembered_symbols=[0x0115, 0x0115],
+        current_selector_782f06=0,
+        current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        dirty_flag=1,
+        dirty_maps=1,
+        selected_context_record_782992=current_font_context_record(0),
+    )
+    refresh_symbol_state_via_c580(c580_primary_context_refresh, 0)
+    checks.append(assert_equal("0xc580 dirty primary branch installs page-root font context", {
+        "active_symbols": c580_primary_context_refresh["active_symbols"],
+        "remembered_symbols": c580_primary_context_refresh["remembered_symbols"],
+        "dirty_flag": c580_primary_context_refresh["dirty_flag"],
+        "dirty_maps": c580_primary_context_refresh["dirty_maps"],
+        "refreshes": c580_primary_context_refresh["refreshes"],
+        "current_page_context_slot_78297e": c580_primary_context_refresh["current_page_context_slot_78297e"],
+        "transient_context_refresh_78298f": c580_primary_context_refresh["transient_context_refresh_78298f"],
+        "page_root_context_slots": c580_primary_context_refresh["page_root_context_slots"][:2],
+        "page_root_live_flags": c580_primary_context_refresh["page_root_live_flags"][:2],
+        "candidate_refresh_calls": c580_primary_context_refresh["candidate_refresh_calls"],
+        "context_install_events": c580_primary_context_refresh["context_install_events"],
+    }, {
+        "active_symbols": [0x0055, 0x0115],
+        "remembered_symbols": [0x0055, 0x0115],
+        "dirty_flag": 0,
+        "dirty_maps": 0,
+        "refreshes": 1,
+        "current_page_context_slot_78297e": 0,
+        "transient_context_refresh_78298f": 0,
+        "page_root_context_slots": [0x782EE6, 0],
+        "page_root_live_flags": [0, 0],
+        "candidate_refresh_calls": [
+            {"helper": 0x013EB8, "slot": 0, "reason": "empty-live-page-root"},
+            {"helper": 0x013EB8, "slot": 0, "reason": "post-c4fc"},
+        ],
+        "context_install_events": [
+            {
+                "helper": 0x00C4FC,
+                "caller": "0xc580",
+                "context_record": 0x782EE6,
+                "selected_page_slot": 0,
+                "reason": "first-inactive",
+            },
+            {
+                "helper": 0x00C4FC,
+                "caller": "0xc428",
+                "context_record": 0x782EE6,
+                "selected_page_slot": 0,
+                "reason": "existing-context",
+            },
+        ],
     }))
     symbol_dispatch_commands = symbol_dispatch_trace["commands"]
     assert isinstance(symbol_dispatch_commands, list)
@@ -35517,6 +35687,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- base map: host `0x{text_source['host_char']:02x}` -> glyph `0x{text_source['mapped']:02x}`")
     lines.append(f"- symbol-set stream events: `{symbol_stream['stream_events']}`")
     lines.append("- symbol-set parser-to-map boundary: stream `1b 28 32 55 1b 29 30 45` routes primary setup `0x1201e`, secondary setup `0x12008`, and terminal handler `0x120be`, then the modeled active words `0x0055` and `0x0005` feed the patch-table and Roman Extension map updates below.")
+    lines.append("- `0xc580` dirty primary refresh fixture:")
+    lines.append("  dirty `0x782f2c = 1`, selector slot `0`, no live page-root slots,")
+    lines.append("  and a present page root call `0x13eb8`, `0xc4fc`, `0x13eb8`,")
+    lines.append("  then `0xc428`; page-root context slot `0` receives `0x782ee6`,")
+    lines.append("  `0x78297e` selects slot `0`, and live flags stay clear until")
+    lines.append("  printable source queuing marks `0x78297f+n`.")
     lines.append("- scanned candidate-list partitioning: `0x1a9be` leaves total `%d`, class-one low/range counts `%d`/`%d`, class-zero low/range counts `%d`/`%d`, and cursor windows `%s`; this pins the list starts used later by current/default font searches." % (
         scanned_candidate_partition["counters"]["0x78278e"],
         scanned_candidate_partition["counters"]["0x782792"],

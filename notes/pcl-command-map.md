@@ -374,6 +374,20 @@ active selected words later consumed by glyph-map patching are `0x783144`
 and `0x783146`; this path is detailed in
 `generated/analysis/ic30_ic13_active_symbol_set_flow.md`.
 
+The harness now pins one concrete common-refresh branch from `0xc580`.
+With dirty flag `0x782f2c = 1`, parser/setup slot `D5 = 0`, current
+selector `0x782f06 = 0`, a present page root, and no live page-root font
+slots at `0x78297f..0x78298e`, the routine briefly sets
+`0x78298f = 1`, calls candidate refresh `0x13eb8(0)`, clears
+`0x78298f`, runs `0xc4fc(0x782992)`, calls `0x13eb8(0)` again, and
+then calls `0xc428(0)`. The modeled `0xc4fc` scan writes the current
+font-context record pointer into page-root slot `+0x2c + 4*n`;
+`0xc428` selects that page-root context slot by writing `0x78297e`.
+It does not mark `0x78297f+n` live; the printable producer path marks
+that live flag when text is queued. The branch ends by copying active
+word `0x783144 + 2*D5` into remembered word `0x782f08 + 2*D5` and
+clearing `0x782f2c`.
+
 The harness now includes a concrete `ESC (2U` / `ESC )0E` stream fixture
 that records the six-byte terminal records, refreshes active
 primary/secondary words, and applies the resulting `0x0055` patch-table

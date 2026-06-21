@@ -572,8 +572,13 @@ ROM work needed:
   ROM sample byte runs, then compare those rows against the direct
   payload hashes and a known printed/self-test sample to correlate
   remaining baseline/header semantics against placement.
-- Confirm symbol-set mapping for ASCII, Roman-8, line draw, and any
-  built-in alternatives.
+- Identify the manual-facing names for the currently unidentified
+  built-in symbol words `0N`, `10U`, and `11U`, and broaden the
+  now-pinned real symbol-map samples into more live parser/font-selection
+  byte-stream cases where needed. The generated symbol-set report now
+  inventories all 24 built-in records and shows actual compact glyph
+  bytes for Roman-8 base `8U`, hard-coded `0U`/`0E`, selected patch-table
+  cases, and separate `0N`/`10U`/`11U` base records.
 - Promote the generated glyph payload manifest into renderer fixture
   inputs once the renderer-side data format is chosen.
 

@@ -2042,7 +2042,7 @@ def active_symbol_set_flow_report(data: bytes) -> str:
     return "\n".join(lines)
 
 
-def symbol_set_patch_table_report(data: bytes) -> str:
+def symbol_set_patch_table_report(data: bytes, resources: bytes = b"") -> str:
     table = 0x14FCE
     entry_count = 18
 
@@ -2058,6 +2058,40 @@ def symbol_set_patch_table_report(data: bytes) -> str:
             pairs.append((data[pos], data[pos + 1]))
             pos += 2
         return pairs
+
+    def base_map_for_record(record: dict[str, int | str | None]) -> list[int]:
+        first_char = int(record["first_char"])
+        last_char = int(record["last_char"])
+        mapping = [0] * 0x100
+        for char in range(first_char, last_char + 1):
+            mapping[char & 0xFF] = (char - first_char) & 0xFF
+        return mapping
+
+    def apply_14f16_to_map(mapping: list[int], symbol_word: int) -> list[int]:
+        out = list(mapping)
+        if symbol_word == 0x0005:
+            out[:0x80] = out[0x80:0x100]
+            out[0x80:0x100] = [0] * 0x80
+            return out
+        if symbol_word == 0x0015:
+            out[0x80:0x100] = [0] * 0x80
+            return out
+        for entry in entries:
+            if int(entry["symbol_value"]) != symbol_word:
+                continue
+            pairs = entry["pairs"]
+            assert isinstance(pairs, list)
+            for dst, src in pairs:
+                out[dst] = out[src]
+            out[0x80:0x100] = [0] * 0x80
+            return out
+        return out
+
+    def record_summary(record: dict[str, int | str | None]) -> str:
+        return (
+            f"`0x{int(record['record_start']):06x}` "
+            f"{record['name']} class {int(record['class_byte'])}"
+        )
 
     entries: list[dict[str, int | list[tuple[int, int]]]] = []
     for index in range(entry_count):
@@ -2122,6 +2156,88 @@ def symbol_set_patch_table_report(data: bytes) -> str:
             examples.append(f"`0x{dst:02x}->glyph 0x{glyph:02x}`")
         lines.append(f"| `{pcl_symbol_set_code(symbol_value)}` | {symbol_set_name(symbol_value)} | {', '.join(examples) if examples else '(none)'} |")
     lines.append("")
+
+    if resources:
+        records = firmware_scanned_font_records(resources)
+        by_symbol: dict[int, list[dict[str, int | str | None]]] = {}
+        for record in records:
+            by_symbol.setdefault(int(record["symbol_word_0x22"]), []).append(record)
+
+        lines.append("## Verified Built-In Symbol Inventory")
+        lines.append("")
+        lines.append("These are the symbol words exposed by the 24 firmware-scanned `HEAD` path font records in `IC32,IC15`. Roman-8 (`8U`) records are the ones whose maps can be altered by `0x14f16`; the other built-in symbol words are selected as separate font records rather than patched through the Roman-8 table.")
+        lines.append("")
+        lines.append("| Symbol word | PCL code | Name | Count | Record starts | Character ranges |")
+        lines.append("| ---: | --- | --- | ---: | --- | --- |")
+        for symbol_word in sorted(by_symbol):
+            group = by_symbol[symbol_word]
+            starts = ", ".join(
+                f"`0x{int(record['record_start']):06x}`"
+                for record in group
+            )
+            ranges = sorted({
+                "0x%02x..0x%02x" % (
+                    int(record["first_char"]),
+                    int(record["last_char"]),
+                )
+                for record in group
+            })
+            lines.append(
+                "| `0x%04x` | `%s` | %s | %d | %s | %s |"
+                % (
+                    symbol_word,
+                    pcl_symbol_set_code(symbol_word),
+                    symbol_set_name(symbol_word),
+                    len(group),
+                    starts,
+                    ", ".join(f"`{item}`" for item in ranges),
+                )
+            )
+        lines.append("")
+
+        sample_chars = [0x21, 0x23, 0x24, 0x5B, 0x5C, 0x5D, 0x7E, 0xA1]
+        roman8_record = by_symbol.get(0x0115, [None])[0]
+        if roman8_record is not None:
+            base_map = base_map_for_record(roman8_record)
+            scenarios = [
+                (0x0115, "base Roman-8 / no `0x14fce` hit"),
+                (0x0015, "`0U` ISO 6 ASCII hard-coded upper clear"),
+                (0x0005, "`0E` Roman Extension hard-coded upper-half copy"),
+                (0x0055, "`2U` IRV patch table"),
+                (0x0025, "`1E` UK patch table"),
+                (0x0007, "`0G` German patch table"),
+            ]
+            lines.append("## Real Roman-8 Map Samples")
+            lines.append("")
+            lines.append("The table below starts from the first scanned Roman-8 built-in record, then applies the same `0x14f16` rules that run after `0x14d9c`. Values are compact glyph bytes queued by `0x12f2e`, not final host bytes.")
+            lines.append("")
+            lines.append(f"Record: {record_summary(roman8_record)}")
+            lines.append("")
+            lines.append("| Active symbol | Meaning | " + " | ".join(f"`0x{char:02x}`" for char in sample_chars) + " |")
+            lines.append("| --- | --- | " + " | ".join("---:" for _ in sample_chars) + " |")
+            for symbol_word, meaning in scenarios:
+                patched = apply_14f16_to_map(base_map, symbol_word)
+                samples = " | ".join(f"`0x{patched[char]:02x}`" for char in sample_chars)
+                lines.append(f"| `{pcl_symbol_set_code(symbol_word)}` | {meaning} | {samples} |")
+            lines.append("")
+
+        lines.append("## Non-Roman-8 Built-In Base Samples")
+        lines.append("")
+        lines.append("These records do not enter the `0x14f16` Roman-8 patch table unless selected font normalization changes to `0x0115`; their exact glyph bytes come from their own built-in base ranges.")
+        lines.append("")
+        lines.append("| Symbol | Record | " + " | ".join(f"`0x{char:02x}`" for char in sample_chars) + " |")
+        lines.append("| --- | --- | " + " | ".join("---:" for _ in sample_chars) + " |")
+        for symbol_word in sorted(by_symbol):
+            if symbol_word == 0x0115:
+                continue
+            record = by_symbol[symbol_word][0]
+            mapping = base_map_for_record(record)
+            samples = " | ".join(f"`0x{mapping[char]:02x}`" for char in sample_chars)
+            lines.append(
+                f"| `{pcl_symbol_set_code(symbol_word)}` | "
+                f"{record_summary(record)} | {samples} |"
+            )
+        lines.append("")
     return "\n".join(lines)
 
 
@@ -5232,7 +5348,7 @@ def main() -> None:
     write_if_changed(ANALYSIS / "ic30_ic13_printable_text_path.md", printable_text_path_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_text_cursor_span_flow.md", text_cursor_span_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_active_symbol_set_flow.md", active_symbol_set_flow_report(firmware))
-    write_if_changed(ANALYSIS / "ic30_ic13_symbol_set_patch_tables.md", symbol_set_patch_table_report(firmware))
+    write_if_changed(ANALYSIS / "ic30_ic13_symbol_set_patch_tables.md", symbol_set_patch_table_report(firmware, resources))
     write_if_changed(ANALYSIS / "ic30_ic13_render_expansion_fixtures.md", render_expansion_fixture_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_render_destination_fixtures.md", render_destination_fixture_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_render_row_copy_fixtures.md", render_row_copy_fixture_report(firmware))

@@ -17638,6 +17638,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     }
     for command in host_fetched_font_descriptor_commands.values():
         assert isinstance(command, dict)
+    font_descriptor_command_from_host_control = render_font_descriptor_command_stream_via_121cc_15d0a(
+        host_fetched_font_descriptor_streams["current"]["stream"],
+        descriptor_byte_budget=4,
+        records=host_fetched_font_control_trace["records"],
+        current_id=int(host_fetched_font_control_trace["current_font_id"]),
+        current_object_flags=0x40000000,
+    )
     checks.append(assert_equal("host-fetched font descriptor streams route through 0x15d0a", {
         "current": {
             "fetched_stream": host_fetched_font_descriptor_streams["current"]["stream"],
@@ -19578,6 +19585,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(host_fetched_downloaded_character_command, dict)
     host_fetched_downloaded_character_payload = host_fetched_downloaded_character_command["payload"]
     assert isinstance(host_fetched_downloaded_character_payload, bytes)
+    downloaded_segmented_wide_command_from_host_control = render_font_download_char_command_stream_via_121cc_16498(
+        host_fetched_downloaded_character_stream["stream"],
+        table_payload_type2_bytes,
+        char_code=int(host_fetched_font_control_trace["current_character"]),
+        record_words=(0x0000, 0x0000, 0x0081, 0x0000),
+        mode=1,
+        width=0x0088,
+        rows=0x0081,
+        object_offset=0x0500,
+    )
+    downloaded_segmented_wide_host_control_event = downloaded_segmented_wide_command_from_host_control["events"][0]
+    assert isinstance(downloaded_segmented_wide_host_control_event, dict)
+    downloaded_segmented_wide_host_control_payload = downloaded_segmented_wide_host_control_event["install"]
+    assert isinstance(downloaded_segmented_wide_host_control_payload, dict)
     checks.append(assert_equal("host-fetched downloaded character stream reaches rendered object", {
         "fetched_stream_prefix": host_fetched_downloaded_character_stream["stream"][:8],
         "fetched_stream_length": len(host_fetched_downloaded_character_stream["stream"]),
@@ -19620,6 +19641,92 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "." * 158,
             "." * 22 + "#." * 64 + ".#.#.#.#",
         ],
+    }))
+    checks.append(assert_equal("host-fetched font control state drives descriptor and character streams", {
+        "control": {
+            "fetched_stream": host_fetched_font_control_stream["stream"],
+            "fetch_sources": sorted(set(host_fetched_font_control_stream["sources"])),
+            "current_font_id": host_fetched_font_control_trace["current_font_id"],
+            "current_character": host_fetched_font_control_trace["current_character"],
+            "records": host_fetched_font_control_trace["records"],
+            "counters": host_fetched_font_control_trace["counters"],
+        },
+        "descriptor": {
+            "fetched_stream": host_fetched_font_descriptor_streams["current"]["stream"],
+            "fetch_sources": sorted(set(host_fetched_font_descriptor_streams["current"]["sources"])),
+            "parser_handlers": [
+                event["handler"]
+                for event in host_fetched_font_descriptor_traces["current"]["dispatches"]
+            ],
+            "parser_record": host_fetched_font_descriptor_commands["current"]["restored_record"],
+            "model_record": font_descriptor_command_from_host_control["restored_record"],
+            "descriptor": font_descriptor_command_from_host_control["descriptor"],
+            "route": {
+                key: font_descriptor_command_from_host_control["route"][key]
+                for key in ("path", "target_payload", "object_bit30", "handler", "handler_meaning")
+            },
+        },
+        "character": {
+            "fetched_stream_prefix": host_fetched_downloaded_character_stream["stream"][:8],
+            "fetched_stream_length": len(host_fetched_downloaded_character_stream["stream"]),
+            "fetch_sources": sorted(set(host_fetched_downloaded_character_stream["sources"])),
+            "parser_handlers": [
+                event["handler"]
+                for event in host_fetched_downloaded_character_trace["dispatches"]
+            ],
+            "parser_record": host_fetched_downloaded_character_command["restored_record"],
+            "model_record": downloaded_segmented_wide_host_control_event["restored_record"],
+            "char_code": host_fetched_font_control_trace["current_character"],
+            "table_entry": downloaded_segmented_wide_host_control_payload["table_entry"],
+            "record": downloaded_segmented_wide_host_control_payload["record"],
+            "bitmap_size": downloaded_segmented_wide_host_control_payload["bitmap_size"],
+            "rendered_rows": downloaded_segmented_wide_rendered["rows"],
+        },
+    }, {
+        "control": {
+            "fetched_stream": b"\x1b*c4660d37e5F",
+            "fetch_sources": ["ring"],
+            "current_font_id": 0x1234,
+            "current_character": 0x25,
+            "records": [{"id": 0x1234, "flags": 0x40, "payload": 0x456789}],
+            "counters": {"0x782782": 6, "0x782786": 3},
+        },
+        "descriptor": {
+            "fetched_stream": b"\x1b)s0W\x04\x00\xaa\xbb",
+            "fetch_sources": ["ring"],
+            "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "parser_record": b"\x80W\x00\x00\x00\x01",
+            "model_record": b"\x80W\x00\x00\x00\x01",
+            "descriptor": bytes.fromhex("04 00 aa bb"),
+            "route": {
+                "path": "current-record",
+                "target_payload": 0x456789,
+                "object_bit30": 1,
+                "handler": 0x16498,
+                "handler_meaning": "downloaded-character-object",
+            },
+        },
+        "character": {
+            "fetched_stream_prefix": b"\x1b)s2193W",
+            "fetched_stream_length": len(downloaded_segmented_wide_command_stream),
+            "fetch_sources": ["ring"],
+            "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "parser_record": b"\x80W\x08\x91\x00\x01",
+            "model_record": b"\x80W\x08\x91\x00\x01",
+            "char_code": 0x25,
+            "table_entry": 0x00DE,
+            "record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 88 00 00"),
+            "bitmap_size": 0x0891,
+            "rendered_rows": [
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 158,
+                "." * 22 + "#." * 64 + ".#.#.#.#",
+            ],
+        },
     }))
     checks.append(assert_equal("host-fetched font control stream feeds descriptor and character payload state", {
         "fetched_stream": host_fetched_font_control_stream["stream"],
@@ -29863,6 +29970,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_control_download_target_trace["counters"],
         font_descriptor_command_from_control["route"]["handler"],
         downloaded_segmented_wide_control_payload["table_entry"],
+    ))
+    lines.append("- host-fetched font-control chain: the fetched `ESC *c4660d37e5F` state now feeds fetched `ESC )s0W` and `ESC )s2193W` streams, preserving current id `0x%04x`, current character `0x%02x`, descriptor handler `0x%05x`, table entry `0x%04x`, bitmap size `0x%04x`, and the rendered segmented-wide rows." % (
+        host_fetched_font_control_trace["current_font_id"],
+        host_fetched_font_control_trace["current_character"],
+        font_descriptor_command_from_host_control["route"]["handler"],
+        downloaded_segmented_wide_host_control_payload["table_entry"],
+        downloaded_segmented_wide_host_control_payload["bitmap_size"],
     ))
     lines.append("")
     unflagged_source_report = unflagged_fixture["source"]

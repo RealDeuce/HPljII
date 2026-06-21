@@ -664,7 +664,7 @@ fetch, tokenizer/delayed-payload, page-geometry, macro/data-chain,
 direct-control, reset, text, rule, raster, bridge, row-copy, built-in glyph,
 symbol-set, and downloaded-font fixture families into one ROM-backed self-test.
 It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and
-currently verifies 326 checks. The raster coverage now includes ROM-table
+currently verifies 330 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W`
 stream, the 150/100/75-dpi mode streams, the consecutive-row `ESC *b2W` stream,
 the active-resolution-ignore `ESC *t75R` stream, the end-raster `ESC *rB` /
@@ -791,8 +791,8 @@ control-byte model.
 
 This is still not enough for pixel-perfect reproduction by itself. The next
 unresolved step is to replace fixture-only source/bucket states with fuller
-parser-produced page objects, replace the modeled font command/data wrappers
-with a full live parser-state run that populates current records and source/page
+parser-produced page objects, replace the remaining modeled font state with a
+full live parser-state run that populates current records and source/page
 objects, then replace the producer-modeled text/raster bucket objects with page
 objects captured or reproduced from the full parser/imaging path. The reset, FF,
 page-size, and orientation publication fixtures now start without a current page
@@ -807,13 +807,14 @@ needs a full CPU/parser-state fixture that executes through `0x121cc` /
 payload-backed fixed-record coverage; the `0x1f264` segmented-wide case now has
 selected-memory isolation plus host-fetched `ESC *c4660d37e5F`, host-fetched
 `ESC )s0W`, host-fetched `ESC )s80W`, and host-fetched `ESC )s2193W` parser
-boundaries tying current id `0x1234`, current character `0x25`, delayed record
-restoration through `0x121cc` / `0x12218`, descriptor or payload
-offsets/lengths, `0x15d0a` current/continuation descriptor routes,
-`0x16fae`/`0x1719c` resource-payload allocation, `0x16498` downloaded-pointer
-allocation, and the rendered segmented-wide row. The full built-in scan proves
-the verified ROM resources do not contain a normal wide or non-mode-1
-bitmap-entry case.
+boundaries. The fetched font-control state now carries current id `0x1234` and
+current character `0x25` into fetched descriptor and downloaded-character
+streams, tying delayed record restoration through `0x121cc` / `0x12218`,
+descriptor or payload offsets/lengths, `0x15d0a` current/continuation
+descriptor routes, `0x16fae`/`0x1719c` resource-payload allocation, `0x16498`
+downloaded-pointer allocation, and the rendered segmented-wide row. The full
+built-in scan proves the verified ROM resources do not contain a normal wide or
+non-mode-1 bitmap-entry case.
 
 ## Rejected Compositor Lead
 
@@ -871,13 +872,10 @@ Other checked leads:
 
 ## Next Targets
 
-- Replace the host-fetched `ESC )s0W` parser/route boundary through `0x15d0a`,
-  host-fetched `ESC )s80W` resource-payload boundary through `0x16c14` ->
-  `0x16fae` -> `0x1719c`, and host-fetched `ESC )s2193W` parser/object boundary
-  through `0x16c14` -> `0x16498` downloaded-pointer `0x1f264` with a full live
-  parser-state run that populates current records/source objects; then replace
-  producer-modeled text bucket fixtures with full parser-produced page-object
-  payloads.
+- Replace the host-fetched font-control, descriptor, resource-payload, and
+  downloaded-character boundaries with a full live parser-state run that
+  populates current records/source objects; then replace producer-modeled text
+  bucket fixtures with full parser-produced page-object payloads.
 - Replace the synthetic `ESC E` reset fixtures with parser-produced page-object
   fixtures so partial-page finalization and current-page-root clearing are
   proven from real queued objects.

@@ -188,9 +188,14 @@ modified-layout byte `0x782ee1`. The composed state model is in
 `ESC &l#V` at `0x01280a` is the VFC table consumer. Disassembly shows it
 uses current VMI `0x783160`, vertical cursor `0x782c8e`, top offset
 `0x782dce`, line caches `0x782ede`/`0x782ee0`, and channel words from
-`0x782dde` while searching for the requested channel. Its full
-wrap/page-recovery behavior remains unresolved across exact address
-range `0x1280a..0x12b5e`.
+`0x782dde` while searching for the requested channel. Fixture
+`ESC &l2V!` anchors the forward in-text path: `0x1280a` searches channel
+mask `0x0002`, finds line `1`, ensures a page root through `0x10084`,
+resets horizontal cursor through `0xf06e`, flushes pending text through
+`0xf34a`, writes y `176`, and queues the following `!` at compact coord
+`0xb001`. The before-top, selector-zero, wrap, and page-recovery branches
+remain unresolved across exact ranges `0x128ae..0x128f4`,
+`0x12966..0x129c4`, `0x129c6..0x12afc`, and `0x12b5e..0x12b92`.
 
 `ESC &l#D` at `0x00c992` accepts absolute LPI values
 `1,2,3,4,6,8,12,16,24,48`, treats zero as `12`, converts to packed line

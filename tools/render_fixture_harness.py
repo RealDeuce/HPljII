@@ -1948,6 +1948,8 @@ def apply_vertical_forms_control_via_12cfe(
 
     text_last_line = int(updated.get("vfc_text_last_line_782ee0", vfc_line_counts_from_layout(updated)[0]))
     last_line = int(updated.get("vfc_last_line_782ede", vfc_line_counts_from_layout(updated)[1]))
+    updated["vfc_text_last_line_782ee0"] = text_last_line
+    updated["vfc_last_line_782ede"] = last_line
     max_payload = (last_line + 1) * 2
     if count & 1 or vmi_subunits == 0 or count > max_payload:
         events.append({
@@ -1993,6 +1995,134 @@ def apply_vertical_forms_control_via_12cfe(
     })
     updated["events"] = events
     return {"state": updated, "consumed": int(consumed["pos"]), "consume": consumed}
+
+
+def apply_vertical_forms_channel_jump_via_1280a(state: dict[str, int], selector: int) -> dict[str, int]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    vmi_subunits = packed12_to_subunits(int(updated.get("vmi", 0)))
+    selector = abs(int(selector))
+    if vmi_subunits == 0:
+        events.append({
+            "kind": "vfc-channel-jump-ignored",
+            "reason": "zero-vmi",
+            "selector": selector,
+            "handler": 0x01280A,
+        })
+        updated["events"] = events
+        return updated
+
+    if int(updated.get("modified_layout", 0)) == 1:
+        text_last, last_line = vfc_line_counts_from_layout(updated)
+        updated["vfc_text_last_line_782ee0"] = text_last
+        updated["vfc_last_line_782ede"] = last_line
+        events.append({
+            "kind": "vfc-default-table-refresh-needed",
+            "handler": 0x01280A,
+            "refresh_helpers": (0x00FE54, 0x012B96),
+            "text_last_line": text_last,
+            "last_line": last_line,
+        })
+
+    text_last_line = int(updated.get("vfc_text_last_line_782ee0", vfc_line_counts_from_layout(updated)[0]))
+    last_line = int(updated.get("vfc_last_line_782ede", vfc_line_counts_from_layout(updated)[1]))
+    max_search_line = min(last_line, 0x7F)
+    top_offset = int(updated["top_offset"])
+    cursor_y = int(updated["cursor_y"])
+    if cursor_y < top_offset:
+        events.append({
+            "kind": "vfc-channel-jump-unmodeled",
+            "reason": "cursor-before-top-offset",
+            "selector": selector,
+            "handler": 0x01280A,
+            "unresolved_edge": "0x128ae..0x128f4",
+        })
+        updated["events"] = events
+        return updated
+
+    current_line = trunc_div(
+        packed12_to_subunits(sub_packed12(cursor_y, top_offset)),
+        vmi_subunits,
+    )
+    start_line = current_line + 1 if current_line <= text_last_line else current_line
+    page_root = ensure_page_record_root_for_queue(updated)
+    if selector > 16:
+        events.append({
+            "kind": "vfc-channel-jump-ignored",
+            "reason": "selector-above-16",
+            "selector": selector,
+            "handler": 0x01280A,
+            "page_root": page_root,
+            "recovery_helper": 0x00F054,
+        })
+        updated["events"] = events
+        return updated
+    if selector == 0:
+        events.append({
+            "kind": "vfc-channel-jump-unmodeled",
+            "reason": "selector-zero-top-of-form",
+            "selector": selector,
+            "handler": 0x01280A,
+            "page_root": page_root,
+            "unresolved_edge": "0x12966..0x129c4",
+        })
+        updated["events"] = events
+        return updated
+
+    mask = 1 << (selector - 1)
+    table = bytes(updated.get("vfc_table_782dde", bytes(0x100)))
+    table += bytes(max(0, 0x100 - len(table)))
+    target_line = start_line
+    matched = False
+    while target_line <= max_search_line:
+        word = (table[target_line * 2] << 8) | table[target_line * 2 + 1]
+        if word & mask:
+            matched = True
+            break
+        target_line += 1
+
+    if not matched or target_line > text_last_line:
+        events.append({
+            "kind": "vfc-channel-jump-unmodeled",
+            "reason": "wrap-or-page-recovery",
+            "selector": selector,
+            "mask": mask,
+            "handler": 0x01280A,
+            "page_root": page_root,
+            "start_line": start_line,
+            "target_line": target_line,
+            "text_last_line": text_last_line,
+            "max_search_line": max_search_line,
+            "unresolved_edges": ("0x129c6..0x12afc", "0x12b5e..0x12b92"),
+        })
+        updated["events"] = events
+        return updated
+
+    before_x = int(updated["cursor_x"])
+    before_y = int(updated["cursor_y"])
+    control_cr_helper(updated)
+    control_text_flush_helper(updated)
+    line_offset = subunits_to_packed12(target_line * vmi_subunits)
+    baseline_bias = subunits_to_packed12(trunc_div(vmi_subunits * 18, 25))
+    updated["cursor_y"] = add_packed12(top_offset, add_packed12(line_offset, baseline_bias))
+    events.append({
+        "kind": "vfc-channel-jump",
+        "selector": selector,
+        "mask": mask,
+        "handler": 0x01280A,
+        "page_root": page_root,
+        "search_direction": "forward",
+        "start_line": start_line,
+        "target_line": target_line,
+        "text_last_line": text_last_line,
+        "max_search_line": max_search_line,
+        "cursor_before": {"x": before_x, "y": before_y},
+        "cursor_after": {"x": int(updated["cursor_x"]), "y": int(updated["cursor_y"])},
+        "helpers": (0x010084, 0x00F06E, 0x00F34A),
+        "disassembly_edge": "0x1292a..0x12af8",
+    })
+    updated["events"] = events
+    return updated
 
 
 def apply_orientation_via_10220(data: bytes, state: dict[str, int], parameter: int) -> dict[str, int]:
@@ -9322,6 +9452,8 @@ def vertical_layout_handler(final: int) -> int:
         return 0x00EA9E
     if final_upper == ord("L"):
         return 0x00EE64
+    if final_upper == ord("V"):
+        return 0x01280A
     raise AssertionError(f"unsupported ESC &l vertical-layout final byte {chr(final)!r}")
 
 
@@ -13047,6 +13179,10 @@ def render_mixed_printable_control_page_record_stream(
                             "chained": False,
                         })
                         break
+                    elif final_upper == ord("V"):
+                        if fraction != 0:
+                            raise AssertionError("page-record mixed stream VFC jump command does not model fractions")
+                        state = apply_vertical_forms_channel_jump_via_1280a(state, integer)
                     elif final_upper == ord("H"):
                         if fraction != 0:
                             raise AssertionError("page-record mixed stream paper-source command does not model fractions")
@@ -13082,6 +13218,7 @@ def render_mixed_printable_control_page_record_stream(
                             ord("H"): "paper-source",
                             ord("L"): "perforation-skip",
                             ord("P"): "page-length",
+                            ord("V"): "vfc-jump",
                             ord("X"): "copies",
                         }.get(final_upper, "vertical-layout"),
                         "offset": command_start,
@@ -13121,6 +13258,10 @@ def render_mixed_printable_control_page_record_stream(
                         events[-1]["page_extent_after"] = state.get("page_extent", 0)
                         events[-1]["cursor_x_before"] = before.get("cursor_x", 0)
                         events[-1]["cursor_x_after"] = state.get("cursor_x", 0)
+                    if final_upper == ord("V"):
+                        events[-1]["cursor_x_before"] = before.get("cursor_x", 0)
+                        events[-1]["cursor_x_after"] = state.get("cursor_x", 0)
+                        events[-1]["vfc_event"] = state["events"][-1]
                     if not (ord("a") <= final <= ord("z")):
                         break
                 continue
@@ -41691,6 +41832,142 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 90 01"),
     }))
+    vfc_jump_base_state = {
+        **vfc_direct_state,
+        "cursor_x": pack12(40),
+        "events": [],
+    }
+    vfc_jump_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&l2V!",
+        0x440946B4,
+        vfc_jump_base_state,
+        default_advance=line_printer_hmi["hmi"],
+    )
+    vfc_jump_parser_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        b"\x1b&l2V!",
+    )
+    vfc_jump_events = vfc_jump_stream["events"]
+    assert isinstance(vfc_jump_events, list)
+    vfc_jump_command = vfc_jump_events[0]
+    vfc_jump_printable = vfc_jump_events[1]
+    assert isinstance(vfc_jump_command, dict)
+    assert isinstance(vfc_jump_printable, dict)
+    vfc_jump_details = vfc_jump_command["vfc_event"]
+    assert isinstance(vfc_jump_details, dict)
+    vfc_jump_positioned = vfc_jump_printable["positioned"]
+    vfc_jump_page_result = vfc_jump_printable["page_result"]
+    assert isinstance(vfc_jump_positioned, dict)
+    assert isinstance(vfc_jump_page_result, dict)
+    vfc_jump_positioned_source = vfc_jump_positioned["source"]
+    assert isinstance(vfc_jump_positioned_source, dict)
+    expected_vfc_jump_rows = [
+        "." * 20,
+    ] * 11 + [
+        "." * 16 + "####" if row == "####" else "." * 20
+        for row in line_printer_glyph32_rows
+    ]
+    checks.append(assert_equal("mixed VFC channel jump stream moves cursor before printable page-record queue", {
+        "parser_handlers": [
+            event["handler"]
+            for event in vfc_jump_parser_trace["events"]
+        ],
+        "command_event": {
+            "kind": vfc_jump_command["kind"],
+            "sequence": vfc_jump_command["sequence"],
+            "record": vfc_jump_command["record"],
+            "handler": vfc_jump_command["handler"],
+            "cursor_before": vfc_jump_command["cursor_before"],
+            "cursor_after": vfc_jump_command["cursor_after"],
+            "cursor_x_before": vfc_jump_command["cursor_x_before"],
+            "cursor_x_after": vfc_jump_command["cursor_x_after"],
+        },
+        "vfc_event": {
+            "kind": vfc_jump_details["kind"],
+            "selector": vfc_jump_details["selector"],
+            "mask": vfc_jump_details["mask"],
+            "search_direction": vfc_jump_details["search_direction"],
+            "start_line": vfc_jump_details["start_line"],
+            "target_line": vfc_jump_details["target_line"],
+            "text_last_line": vfc_jump_details["text_last_line"],
+            "max_search_line": vfc_jump_details["max_search_line"],
+            "cursor_before": vfc_jump_details["cursor_before"],
+            "cursor_after": vfc_jump_details["cursor_after"],
+            "helpers": vfc_jump_details["helpers"],
+            "disassembly_edge": vfc_jump_details["disassembly_edge"],
+            "page_root_created": vfc_jump_details["page_root"]["page_root_created"],
+        },
+        "printable": {
+            "offset": vfc_jump_printable["offset"],
+            "cursor_before": vfc_jump_printable["cursor_before"],
+            "cursor_after": vfc_jump_printable["cursor_after"],
+            "positioned_xy": (
+                vfc_jump_positioned_source["x"],
+                vfc_jump_positioned_source["y"],
+            ),
+            "coord": vfc_jump_page_result["coord"],
+            "bucket_index": vfc_jump_page_result["bucket_index"],
+        },
+        "final_state": select_keys(vfc_jump_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "vfc_text_last_line_782ee0",
+            "vfc_last_line_782ede",
+            "page_record_root_allocations",
+            "pending_text",
+            "pending_width",
+        )),
+        "object_prefix": vfc_jump_stream["bucket_object"][:11],
+        "rendered_rows": vfc_jump_stream["rendered"]["rows"],
+    }, {
+        "parser_handlers": [0x01280A, 0x00D04A],
+        "command_event": {
+            "kind": "vfc-jump",
+            "sequence": b"\x1b&l2V",
+            "record": b"\x80V\x00\x02\x00\x00",
+            "handler": 0x01280A,
+            "cursor_before": pack12(126),
+            "cursor_after": pack12(176),
+            "cursor_x_before": pack12(40),
+            "cursor_x_after": pack12(10),
+        },
+        "vfc_event": {
+            "kind": "vfc-channel-jump",
+            "selector": 2,
+            "mask": 2,
+            "search_direction": "forward",
+            "start_line": 1,
+            "target_line": 1,
+            "text_last_line": 62,
+            "max_search_line": 63,
+            "cursor_before": {"x": pack12(40), "y": pack12(126)},
+            "cursor_after": {"x": pack12(10), "y": pack12(176)},
+            "helpers": (0x010084, 0x00F06E, 0x00F34A),
+            "disassembly_edge": "0x1292a..0x12af8",
+            "page_root_created": True,
+        },
+        "printable": {
+            "offset": 5,
+            "cursor_before": pack12(10),
+            "cursor_after": pack12(28),
+            "positioned_xy": (16, 155),
+            "coord": 0xB001,
+            "bucket_index": 9,
+        },
+        "final_state": {
+            "cursor_x": pack12(28),
+            "cursor_y": pack12(176),
+            "vfc_text_last_line_782ee0": 62,
+            "vfc_last_line_782ede": 63,
+            "page_record_root_allocations": 1,
+            "pending_text": 0,
+            "pending_width": 0,
+        },
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 b0 01"),
+        "rendered_rows": expected_vfc_jump_rows,
+    }))
     orientation_page_record_stream = render_printable_page_geometry_page_record_stream(
         data,
         resources,
@@ -42835,12 +43112,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## Page Geometry Command Fixtures")
     lines.append("")
-    lines.append("These fixtures model the ROM table lookups at `0x9d16`/`0x9d4e`/`0x9d86`/`0x9dbe`, the `ESC &l#A` page-size handler at `0xfc74`, the `ESC &l#P` page-length handler at `0xf9e8`, the `ESC &l#W` vertical-forms-control payload handler at `0x12cfe`, and the `ESC &l#O` orientation handler at `0x10220`.")
+    lines.append("These fixtures model the ROM table lookups at `0x9d16`/`0x9d4e`/`0x9d86`/`0x9dbe`, the `ESC &l#A` page-size handler at `0xfc74`, the `ESC &l#P` page-length handler at `0xf9e8`, the `ESC &l#W` vertical-forms-control payload handler at `0x12cfe`, the `ESC &l#V` VFC channel-jump handler at `0x1280a`, and the `ESC &l#O` orientation handler at `0x10220`.")
     lines.append("")
     lines.append("- Page-code lookup masks the internal code with `0x7f`; PCL `80` stores internal code `0x88`, which reads table index `8`.")
     lines.append("- `ESC &l#A` maps PCL values `1`, `2`, `3`, `26`, `80`, `81`, `90`, and `91` to internal page codes, finalizes pending page state, updates width/height words, then recomputes portrait or landscape extents.")
     lines.append("- `ESC &l#P` converts current VMI times absolute line count into page extent `0x782dba`, selects an internal page code from orientation thresholds, recomputes default text bounds, and refreshes the following text cursor.")
     lines.append("- `ESC &l#W` reaches delayed handler `0x12cfe`, consumes its payload through the `0xdace` data reader, loads the vertical-forms-control table at `0x782dde`, and recomputes text-bottom cache `0x782dd2` from channel-bit words.")
+    lines.append("- `ESC &l#V` reaches handler `0x1280a`, searches channel bits in the table at `0x782dde`, ensures a page root through `0x10084`, resets horizontal cursor through `0xf06e`, flushes pending text through `0xf34a`, and moves the vertical cursor before the next printable byte is queued.")
     lines.append("- `ESC &l#O` accepts only values `0` and `1`; changing orientation finalizes pending page state, swaps active width/height in landscape, changes the vertical offset source from `60` to `50`, and reloads the orientation margin thresholds through `0x103ea`. A byte-stream fixture now drives chained `ESC &l1a1O` through handlers `0xfc74` and `0x10220`.")
     lines.append("")
     lines.append(f"- Letter portrait from `ESC &l1A`: code `{letter_page['page_code']}`, width `{letter_page['width']}`, height `{letter_page['height']}`, margin `{letter_page['margin_reference']}`, top offset `{letter_page['top_offset']}`")
@@ -42855,6 +43133,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- page-size published page-record bridge rows match the pre-geometry compact text rows.")
     lines.append("- A mixed page-length stream `ESC &l66P!` routes through ROM parser handlers `0xf9e8` and `0xd04a`, refreshes the text cursor to y `126`, and queues the following printable at compact coord `0x9001`.")
     lines.append("- A mixed VFC stream `ESC &l4W 00 00 00 02 !` routes through `0x11f6e`, restores delayed handler `0x12cfe`, consumes the four payload bytes before parsing `!`, and leaves the printable queued at compact coord `0x9001`.")
+    lines.append("- A mixed VFC channel stream `ESC &l2V!` routes through `0x1280a`, finds channel 2 at line 1, moves y from `126` to `176`, resets x from `40` to the left margin `10`, and queues `!` at compact coord `0xb001`.")
     lines.append("- A mixed printable/orientation page-record stream starts from letter portrait with no current page root, drives `!` then `ESC &l1O`, allocates the page-record root on the printable queue step, and publishes the queued compact text bucket through the orientation handler's `0xf34a`/`0xff1e` boundary before switching to landscape geometry.")
     lines.append(f"- orientation publication object bytes: `{' '.join(f'{byte:02x}' for byte in orientation_page_record_object)}`")
     lines.append("- orientation published page-record bridge rows match the pre-landscape compact text rows.")

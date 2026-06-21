@@ -103,8 +103,10 @@ selection;
 `ESC &l#W` maps to `0x11f6e` and schedules delayed vertical-forms-control
 handler `0x12cfe`, which writes the table rooted at `0x782dde` and
 updates text-bottom cache `0x782dd2`; `ESC &l#V` maps to `0x1280a` and
-consumes that table for channel jumps, but its full wrap/page-recovery
-branches remain unresolved;
+consumes that table for channel jumps; its forward in-text path is now
+anchored through channel search, `0x10084`, `0xf06e`, and `0xf34a`, while
+before-top, selector-zero, wrap, and page-recovery branches remain
+unresolved;
 `ESC &a#L/#M` map to
 `0xeb58`/`0xec0c` and convert HMI margin columns into
 `0x782dd6`/`0x782dda` with reject/clamp/cursor-move cases;
@@ -140,6 +142,11 @@ printable `!` at compact coord `0x9001`;
 payload handler `0x12cfe`, data-byte reader `0xdace`, VFC table prefix
 `00 00 00 02`, derived text bottom `190`, and following printable `!`
 at compact coord `0x9001`;
+`ESC &l2V!`, starting from that VFC table state, now ties parser handler
+`0x1280a`, channel mask `0x0002`, line `1`, page-root helper `0x10084`,
+CR helper `0xf06e`, text-flush helper `0xf34a`, cursor move
+`x 40 -> 10` and `y 126 -> 176`, and following printable `!` at compact
+coord `0xb001`;
 `ESC &f0S ESC &a2C ESC &f1S!` now ties cursor-stack push/pop and
 cursor-position handlers to restored page-record text output at compact
 coord `0x0001`; `ESC E` maps to reset handler `0xcc52`, reset flow is
@@ -245,8 +252,11 @@ Vertical forms control is now a composed semantic state block in
 `0x782dd2`, `0x782ede`, `0x782edf`, and `0x782ee0`; `0x782ee1` is
 firmware bookkeeping and `0x78299e` remains parser scratch. The table
 writer cluster `0x11f6e -> 0x12cfe`, default builder `0x12b96`, and
-consumer `0x1280a` are identified. The highest-value unresolved middle
-edges are `0x1280a..0x1295e` and `0x129c6..0x12afc`.
+consumer `0x1280a` are identified. The `0x1280a` forward in-text hit path
+is anchored through `0x1292a..0x1295c` search and `0x12aa6..0x12af8`
+cursor commit. The highest-value unresolved middle edges are
+`0x128ae..0x128f4`, `0x12966..0x129c4`, `0x129c6..0x12afc`, and
+`0x12b5e..0x12b92`.
 
 ### Raster/text/page-object path
 

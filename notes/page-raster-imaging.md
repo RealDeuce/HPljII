@@ -79,6 +79,13 @@ updates text-bottom cache `0x782dd2`. The fixture
 controls or printable bytes, and that the following `!` still reaches
 the page-record queue at compact coord `0x9001`.
 
+The forward `ESC &l#V` consumer path is now anchored from parser to
+visible output. Fixture `ESC &l2V!`, starting from the same VFC table,
+routes through handler `0x1280a`, searches channel mask `0x0002` at line
+`1`, calls the shared page-root/text helpers `0x10084`, `0xf06e`, and
+`0xf34a`, moves y from `126` to `176`, resets x from `40` to left margin
+`10`, and queues `!` at compact coord `0xb001`.
+
 The lookup helpers at `0x009d16`, `0x009d4e`, `0x009d86`, and `0x009dbe`
 mask the internal code with `0x7f` and index eleven word entries. The
 generated table report records all current values. Its manual

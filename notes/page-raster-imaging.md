@@ -91,6 +91,15 @@ The selector-zero target-equal path is also anchored. Fixture
 `126`, sees it already equals current y, leaves x/y unchanged, ensures the
 page root through `0x10084`, and queues `!` at compact coord `0x9e02`.
 
+The selector-zero top-of-form page-eject path is anchored from queued text
+to the next visible page. Fixture `!\x1b&l0V!` starts with a printable
+bucket at compact coord `0xbe02`, then routes `ESC &l0V` through
+`0x1299c..0x129c4`. The helper sequence `0x10084`, `0xf06e`, `0xf34a`,
+`0xf34a`, `0xf124` publishes the old page record, clears the current page
+root, resets x from `58` to `10`, recomputes y from `176` to `126`, and
+lets the following `!` allocate a fresh page root at compact coord
+`0x9001`.
+
 The lookup helpers at `0x009d16`, `0x009d4e`, `0x009d86`, and `0x009dbe`
 mask the internal code with `0x7f` and index eleven word entries. The
 generated table report records all current values. Its manual

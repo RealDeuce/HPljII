@@ -18096,6 +18096,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     activated_class_one = activate_candidate_window_via_1569c(actual_candidate_windows, class_selector_byte=1)
     primary_font_selection_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b(s0p10h12v0s0b3T")
     secondary_font_selection_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b)s0p16h8v0s0b0T")
+    secondary_symbol_miss_stream_bytes = b"\x1b)1234U"
+    secondary_symbol_miss_trace = trace_symbol_set_parser_dispatch_via_11774(data, secondary_symbol_miss_stream_bytes)
+    secondary_symbol_miss_commands = secondary_symbol_miss_trace["commands"]
+    assert isinstance(secondary_symbol_miss_commands, list)
+    secondary_symbol_miss_stream = apply_symbol_set_stream_via_120be_1be22(symbol_set_state(
+        requested_symbols=[0x0115, 0x9999],
+        active_symbols=[0x0115, 0x9999],
+        remembered_symbols=[0x0115, 0x9999],
+        current_selector_782f06=1,
+    ), secondary_symbol_miss_stream_bytes)
+    secondary_symbol_miss_event = secondary_symbol_miss_stream["stream_events"][0]
+    assert isinstance(secondary_symbol_miss_event, dict)
+    secondary_symbol_miss_word = int(secondary_symbol_miss_event["requested_word"]) & 0xFFFF
     checks.append(assert_equal("0x1569c activates concrete built-in candidate windows", {
         "class_zero": {
             "selected_name": activated_class_zero["selected_name"],
@@ -18148,10 +18161,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         activated_class_one,
         primary_secondary_selector=1,
         requested_primary=0x0115,
-        requested_secondary=0x9999,
-        initial_normalized_flag_783f00=0,
+        requested_secondary=secondary_symbol_miss_word,
+        initial_normalized_flag_783f00=normalized_symbol_flag_via_15850(secondary_symbol_miss_word),
         remembered_primary_782f08=0x0115,
-        remembered_secondary_782f0a=0x9999,
+        remembered_secondary_782f0a=secondary_symbol_miss_word,
         fallback_table_782f0c=fallback_table_782f0c,
         class_selector_byte_782da3=1,
     )
@@ -18169,6 +18182,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "first_reject": filtered_class_zero_primary["prune_events"][1],
         },
         "class_one_secondary_fallback": {
+            "parser_trace": {
+                "record": secondary_symbol_miss_commands[0]["record"],
+                "slot": secondary_symbol_miss_commands[0]["slot"],
+                "parameter": secondary_symbol_miss_commands[0]["parameter"],
+                "final": secondary_symbol_miss_commands[0]["final"],
+                "dispatch_handlers": [
+                    dispatch["handler"]
+                    for dispatch in secondary_symbol_miss_commands[0]["dispatches"]
+                ],
+            },
+            "parser_event": secondary_symbol_miss_event,
             "slot": filtered_class_one_secondary_fallback["slot"],
             "active_word_source": filtered_class_one_secondary_fallback["active_word_source"],
             "active_word": filtered_class_one_secondary_fallback["active_word"],
@@ -18177,6 +18201,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "active_count_7827b8": filtered_class_one_secondary_fallback["active_count_7827b8"],
             "survivor_slot_pointers": filtered_class_one_secondary_fallback["survivor_slot_pointers"],
             "survivor_record_starts": filtered_class_one_secondary_fallback["survivor_record_starts"],
+            "last_requested_probe": [
+                event
+                for event in filtered_class_one_secondary_fallback["events"]  # type: ignore[index]
+                if event["pass"] == "requested"
+            ][-1],
             "last_prune": filtered_class_one_secondary_fallback["prune_events"][-1],
         },
     }, {
@@ -18193,6 +18222,32 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "first_reject": {"helper": 0x0156DE, "pass": "prune", "index": 1, "slot_pointer": 0x782358, "record_start": 0x000418, "candidate_word": 0x0155, "requested_word": 0x0115, "normalized_flag": 0, "before": 0xC4080418, "after": 0x44080418, "matched": False},
         },
         "class_one_secondary_fallback": {
+            "parser_trace": {
+                "record": b"\x80U\x04\xd2\x00\x01",
+                "slot": 1,
+                "parameter": 1234,
+                "final": ord("U"),
+                "dispatch_handlers": [0x011EB6, 0x012008, 0x0120BE],
+            },
+            "parser_event": {
+                "sequence": b"\x1b)1234U",
+                "record": b"\x80U\x04\xd2\x00\x01",
+                "slot": 1,
+                "setup_handler": 0x012008,
+                "terminal_handler": 0x0120BE,
+                "dispatch_target": 0x01C0A4,
+                "parameter": 1234,
+                "final": ord("U"),
+                "kind": "symbol-set",
+                "dirty_before_refresh": 1,
+                "dirty_maps_before_refresh": 1,
+                "font_id_call": None,
+                "previous_word": 0x9999,
+                "provisional_word": 0x9A55,
+                "requested_word": 0x9A55,
+                "active_word": 0x9A55,
+                "refreshes": 1,
+            },
             "slot": "secondary",
             "active_word_source": "fallback-table",
             "active_word": 0x000E,
@@ -18201,6 +18256,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "active_count_7827b8": 3,
             "survivor_slot_pointers": [0x782330, 0x782340, 0x782350],
             "survivor_record_starts": [0x01A984, 0x0240F0, 0x02E122],
+            "last_requested_probe": {"helper": 0x0156DE, "pass": "requested", "index": 11, "slot_pointer": 0x782350, "record_start": 0x02E122, "longword": 0xC00AE122, "candidate_word": 0x000E, "requested_word": 0x9A55, "normalized_flag": 0, "reader": "0x15890", "reader_source": "+0x22-word", "matched": False},
             "last_prune": {"helper": 0x0156DE, "pass": "prune", "index": 11, "slot_pointer": 0x782350, "record_start": 0x02E122, "candidate_word": 0x000E, "requested_word": 0x000E, "normalized_flag": 0, "before": 0xC00AE122, "after": 0xC00AE122, "matched": True},
         },
     }))
@@ -37096,9 +37152,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         activated_class_one["active_pointer_78287c"],
         activated_class_one["active_count_7827b8"],
     ))
-    lines.append("- active symbol filter: `0x156de` keeps only matching active entries, clears rejected active bits, moves `0x78287c` to the first survivor, and shrinks `0x7827b8`; class-zero primary `0x0115` keeps slots `%s`/records `%s`, while a class-one secondary miss falls through to fallback-table word `0x%04x` and keeps slots `%s`." % (
+    lines.append("- active symbol filter: `0x156de` keeps only matching active entries, clears rejected active bits, moves `0x78287c` to the first survivor, and shrinks `0x7827b8`; class-zero primary `0x0115` keeps slots `%s`/records `%s`, while parser-derived `ESC )1234U` word `0x%04x` misses every class-one candidate and falls through to fallback-table word `0x%04x`, keeping slots `%s`." % (
         ", ".join("0x%06x" % int(slot) for slot in filtered_class_zero_primary["survivor_slot_pointers"]),
         ", ".join("0x%06x" % int(start) for start in filtered_class_zero_primary["survivor_record_starts"]),
+        secondary_symbol_miss_word,
         filtered_class_one_secondary_fallback["active_word"],
         ", ".join("0x%06x" % int(slot) for slot in filtered_class_one_secondary_fallback["survivor_slot_pointers"]),
     ))

@@ -447,9 +447,11 @@ current-default results, pins `0x1b50e` fast-probe/two-pass resolver
 classes and Roman-8 duplicate ordinal behavior, pins `0x1ab84`
 synthesized search, pins `0x1ad66` as a range-1, range-2, then
 `0x1ae7e` fallback search, and models `0x1bbfe` / `0x1b060` from
-candidate record fields. Remaining default-font uncertainty is now
-limited to live parser/font-state selection over those concrete candidate
-windows.
+candidate record fields. A parser-derived `ESC )1234U` miss now feeds
+`0x156de`: requested word `0x9a55` misses the class-one candidates and
+falls through to fallback-table word `0x000e`. Remaining default-font
+uncertainty is now limited to live parser/font-state selection over those
+concrete candidate windows.
 
 Downloaded-font command edges are now decoded in
 `generated/analysis/ic30_ic13_font_control_flow.md`. `ESC *c#D`

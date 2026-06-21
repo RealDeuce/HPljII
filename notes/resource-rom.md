@@ -446,7 +446,10 @@ rejected entries, moves `0x78287c` to the first survivor, and shrinks
 `0x7827b8`. The verified built-in class windows expose `+0x22` symbol
 words `0x0115`, `0x0155`, `0x0175`, and `0x000e` repeating; a primary
 `0x0115` filter keeps the three Roman-8 entries in the selected class
-window.
+window. A parser-derived miss now drives the fallback side:
+`ESC )1234U` reaches `0x120be`, produces requested word `0x9a55`, misses
+all class-one candidates, then falls through to fallback-table word
+`0x000e` and keeps the three secondary symbol `0x000e` records.
 
 `0x14398` chooses the selected active slot. It seeds the first
 still-negative active slot, then calls comparator `0x13c06` for each

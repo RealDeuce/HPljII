@@ -525,8 +525,8 @@ ROM work needed:
 
 - Extend the pinned visible `0xc580` branch outcomes into fuller
   upstream `0x1be22` parser-state coverage around the now-pinned
-  `0x17708` success paths, replace the remaining `0x156de` synthetic
-  cases with live parser/font-state coverage, and extend `0x13eb8` if
+  `0x17708` success paths, broaden the parser-derived `0x156de` fallback
+  fixture into live parser/font-state coverage, and extend `0x13eb8` if
   later inline/downloaded or error-return branches surface.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become

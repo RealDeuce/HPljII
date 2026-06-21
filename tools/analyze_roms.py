@@ -3350,10 +3350,16 @@ def seq_text(seq: tuple[int, ...]) -> str:
 
 
 KNOWN_PCL_COMMANDS = {
+    (0x08,): "Backspace",
+    (0x09,): "Horizontal tab",
+    (0x0A,): "Line feed",
+    (0x0C,): "Form feed",
+    (0x0D,): "Carriage return",
     (0x1b, 0x45): "Printer reset",
     (0x1b, 0x39): "Clear horizontal margins",
     (0x1b, 0x59): "Display functions on",
     (0x1b, 0x5a): "Display functions off",
+    (0x1b, 0x3d): "Half-line feed",
     (0x1b, 0x26, 0x6c, 0x58): "Number of copies",
     (0x1b, 0x26, 0x6c, 0x48): "Paper source / page eject",
     (0x1b, 0x26, 0x6c, 0x41): "Page size",
@@ -3375,6 +3381,8 @@ KNOWN_PCL_COMMANDS = {
     (0x1b, 0x26, 0x66, 0x53): "Push/pop cursor position",
     (0x1b, 0x26, 0x66, 0x59): "Macro ID",
     (0x1b, 0x26, 0x66, 0x58): "Macro control",
+    (0x1b, 0x26, 0x70, 0x58): "Transparent print data",
+    (0x1b, 0x26, 0x73, 0x43): "End-of-line wrap",
     (0x1b, 0x26, 0x64, 0x44): "Underline mode",
     (0x1b, 0x2a, 0x74, 0x52): "Raster resolution",
     (0x1b, 0x2a, 0x72, 0x41): "Start raster graphics",
@@ -3388,6 +3396,8 @@ KNOWN_PCL_COMMANDS = {
     (0x1b, 0x2a, 0x63, 0x44): "Assign font ID",
     (0x1b, 0x2a, 0x63, 0x45): "Character code",
     (0x1b, 0x2a, 0x63, 0x46): "Font control",
+    (0x1b, 0x2a, 0x70, 0x58): "Horizontal dot position",
+    (0x1b, 0x2a, 0x70, 0x59): "Vertical dot position",
     (0x1b, 0x28, 0x73, 0x50): "Primary spacing",
     (0x1b, 0x28, 0x73, 0x48): "Primary pitch",
     (0x1b, 0x28, 0x73, 0x56): "Primary point size",
@@ -3403,6 +3413,20 @@ KNOWN_PCL_COMMANDS = {
     (0x1b, 0x29, 0x73, 0x42): "Secondary stroke weight",
     (0x1b, 0x29, 0x73, 0x54): "Secondary typeface",
 }
+
+
+def known_pcl_meaning(seq: tuple[int, ...], next_mode: int) -> str:
+    meaning = KNOWN_PCL_COMMANDS.get(seq)
+    if meaning is not None:
+        return meaning
+    if seq and 0x61 <= seq[-1] <= 0x7A:
+        uppercase_seq = seq[:-1] + (seq[-1] - 0x20,)
+        meaning = KNOWN_PCL_COMMANDS.get(uppercase_seq)
+        if meaning is not None:
+            if next_mode == 0:
+                return meaning
+            return f"{meaning} (lowercase chaining final)"
+    return ""
 
 
 def flattened_command_map(data: bytes, table_base: int, title: str) -> list[str]:
@@ -3423,7 +3447,7 @@ def flattened_command_map(data: bytes, table_base: int, title: str) -> list[str]
     lines.append("| --- | ---: | ---: | --- | --- |")
     for seq, mode, next_mode, handler, _byte in sorted(rows, key=lambda item: (item[0], item[1], item[2], item[3])):
         handler_text = "" if handler == 0 else f"`0x{handler:06x}`"
-        meaning = KNOWN_PCL_COMMANDS.get(seq, "")
+        meaning = known_pcl_meaning(seq, next_mode)
         lines.append(f"| `{seq_text(seq)}` | {mode} | {next_mode} | {handler_text} | {meaning} |")
     lines.append("")
     return lines
@@ -3432,7 +3456,11 @@ def flattened_command_map(data: bytes, table_base: int, title: str) -> list[str]
 def parser_command_map_report(data: bytes) -> str:
     lines = ["# IC30/IC13 Flattened PCL Command Map", ""]
     lines.append("Generated from parser dispatch pointer tables, using the shortest known prefix for each parser mode.")
-    lines.append("Known meanings are assigned only when they directly match commands already listed in `notes/pcl4-language.md`.")
+    lines.append(
+        "Known meanings are assigned when they match commands already listed "
+        "in `notes/pcl4-language.md` or a lowercase final chains to the same "
+        "parser family as its uppercase command."
+    )
     lines.append("")
     lines.extend(flattened_command_map(data, 0x112a4, "Normal parser table @0x112a4"))
     lines.extend(flattened_command_map(data, 0x116f6, "Alternate/data parser table @0x116f6"))

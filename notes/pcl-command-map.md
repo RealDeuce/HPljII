@@ -27,6 +27,8 @@ byte_to_match, next_mode, handler_long
 The alternate/data table keeps the same state transitions but suppresses
 many final handlers. That is consistent with a mode that must still
 parse or collect PCL syntax while deferring normal side effects.
+Lowercase finals that keep the parser in the same command family are
+reported as chaining forms of the matching uppercase PCL command.
 
 ## High-Value Normal-Mode Handlers
 
@@ -74,10 +76,14 @@ pixel-perfect rendering:
   in `0x783164`.
 - `ESC &f#X`, handler `0x00dd08`: macro control; selectors `0..10`
   dispatch through the macro record/data-chain table.
+- `ESC &p#X`, handler `0x011f5a`: transparent print data boundary.
+- `ESC &s#C`, handler `0x00edb0`: end-of-line wrap mode.
 - `ESC *t#R`, handler `0x010808`: raster resolution.
 - `ESC *r#A`, handler `0x01075a`: start raster graphics.
 - `ESC *r#B`, handler `0x0107fa`: end raster graphics.
 - `ESC *b#W`, handler `0x011f82`: transfer raster row bytes.
+- `ESC *p#X`, handler `0x00f48c`: horizontal dot position.
+- `ESC *p#Y`, handler `0x00f692`: vertical dot position.
 - `ESC *c#P`, handler `0x010898`: fill rectangle; consumes size state
   and queues rule object.
 - `ESC *c#A`, handler `0x010e68`: rectangle width in dots into

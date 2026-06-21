@@ -9446,6 +9446,65 @@ def bucket_find_or_alloc_via_1387c(
     }
 
 
+def stream_alloc_via_1381c(state: dict[str, object], byte_count: int) -> dict[str, object]:
+    """Model the shared 0x100-byte display-list stream allocator at 0x1381c."""
+    if byte_count < 0 or byte_count > 0xFFFF:
+        raise AssertionError("0x1381c byte count must fit in one word")
+    next_free_before = int(state.get("stream_next_free_782a76", 0))
+    remaining_before = int(state.get("stream_bytes_remaining_782a70", 0)) & 0xFFFF
+    link_ptr_before = int(state.get("stream_link_ptr_782a72", 0))
+    links = dict(state.get("stream_chunk_links", {}))
+    allocated = remaining_before < byte_count
+    allocated_chunk = 0
+    if allocated:
+        allocated_chunk = int(state.get("next_stream_chunk_ptr", 0))
+        if allocated_chunk == 0:
+            return {
+                "returned_ptr": 0,
+                "allocated": True,
+                "allocation_failed": True,
+                "byte_count": byte_count,
+                "next_free_before": next_free_before,
+                "next_free_after": next_free_before,
+                "remaining_before": remaining_before,
+                "remaining_after": remaining_before,
+                "link_ptr_before": link_ptr_before,
+                "link_ptr_after": link_ptr_before,
+                "allocated_chunk": 0,
+                "stream_chunk_links": links,
+            }
+        links[link_ptr_before] = allocated_chunk
+        state["stream_link_ptr_782a72"] = allocated_chunk
+        state["next_stream_chunk_ptr"] = allocated_chunk + 0x100
+        next_free = allocated_chunk + 4
+        remaining = 0xFC
+    else:
+        next_free = next_free_before
+        remaining = remaining_before
+
+    returned_ptr = next_free
+    next_free += byte_count
+    remaining -= byte_count
+    state["stream_next_free_782a76"] = next_free
+    state["stream_bytes_remaining_782a70"] = remaining & 0xFFFF
+    state["stream_chunk_links"] = links
+    state["stream_allocations"] = int(state.get("stream_allocations", 0)) + (1 if allocated else 0)
+    return {
+        "returned_ptr": returned_ptr,
+        "allocated": allocated,
+        "allocation_failed": False,
+        "byte_count": byte_count,
+        "next_free_before": next_free_before,
+        "next_free_after": next_free,
+        "remaining_before": remaining_before,
+        "remaining_after": remaining & 0xFFFF,
+        "link_ptr_before": link_ptr_before,
+        "link_ptr_after": int(state.get("stream_link_ptr_782a72", link_ptr_before)),
+        "allocated_chunk": allocated_chunk,
+        "stream_chunk_links": links,
+    }
+
+
 def queue_text_source_to_page_record_via_12f2e(resources: bytes, page_record: dict[str, object], source: dict[str, object]) -> dict[str, object]:
     bucket_array = page_record.setdefault("bucket_array", {})
     if not isinstance(bucket_array, dict):
@@ -20754,6 +20813,119 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "page_root_page_code_06": 6,
         "page_root_byte_9": 0x12,
         "page_root_word_16": 0x0030,
+    }))
+    stream_allocator_state: dict[str, object] = {
+        "stream_bytes_remaining_782a70": 0,
+        "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+        "stream_next_free_782a76": 0x00CAFE00,
+        "next_stream_chunk_ptr": 0x00D00000,
+        "stream_chunk_links": {},
+    }
+    stream_alloc_first = stream_alloc_via_1381c(stream_allocator_state, 0x26)
+    stream_alloc_reuse = stream_alloc_via_1381c(stream_allocator_state, 0x28)
+    stream_alloc_second_chunk = stream_alloc_via_1381c(stream_allocator_state, 0xF0)
+    checks.append(assert_equal("0x1381c stream allocator chunks display-list storage", {
+        "first": {
+            key: stream_alloc_first[key]
+            for key in (
+                "returned_ptr",
+                "allocated",
+                "allocation_failed",
+                "next_free_before",
+                "next_free_after",
+                "remaining_before",
+                "remaining_after",
+                "link_ptr_before",
+                "link_ptr_after",
+                "allocated_chunk",
+                "stream_chunk_links",
+            )
+        },
+        "reuse": {
+            key: stream_alloc_reuse[key]
+            for key in (
+                "returned_ptr",
+                "allocated",
+                "next_free_after",
+                "remaining_before",
+                "remaining_after",
+                "link_ptr_before",
+                "link_ptr_after",
+            )
+        },
+        "second_chunk": {
+            key: stream_alloc_second_chunk[key]
+            for key in (
+                "returned_ptr",
+                "allocated",
+                "next_free_after",
+                "remaining_before",
+                "remaining_after",
+                "link_ptr_before",
+                "link_ptr_after",
+                "allocated_chunk",
+                "stream_chunk_links",
+            )
+        },
+        "state_after": {
+            key: stream_allocator_state[key]
+            for key in (
+                "stream_bytes_remaining_782a70",
+                "stream_link_ptr_782a72",
+                "stream_next_free_782a76",
+                "next_stream_chunk_ptr",
+                "stream_chunk_links",
+                "stream_allocations",
+            )
+        },
+    }, {
+        "first": {
+            "returned_ptr": 0x00D00004,
+            "allocated": True,
+            "allocation_failed": False,
+            "next_free_before": 0x00CAFE00,
+            "next_free_after": 0x00D0002A,
+            "remaining_before": 0,
+            "remaining_after": 0x00D6,
+            "link_ptr_before": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+            "link_ptr_after": 0x00D00000,
+            "allocated_chunk": 0x00D00000,
+            "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D00000},
+        },
+        "reuse": {
+            "returned_ptr": 0x00D0002A,
+            "allocated": False,
+            "next_free_after": 0x00D00052,
+            "remaining_before": 0x00D6,
+            "remaining_after": 0x00AE,
+            "link_ptr_before": 0x00D00000,
+            "link_ptr_after": 0x00D00000,
+        },
+        "second_chunk": {
+            "returned_ptr": 0x00D00104,
+            "allocated": True,
+            "next_free_after": 0x00D001F4,
+            "remaining_before": 0x00AE,
+            "remaining_after": 0x000C,
+            "link_ptr_before": 0x00D00000,
+            "link_ptr_after": 0x00D00100,
+            "allocated_chunk": 0x00D00100,
+            "stream_chunk_links": {
+                ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D00000,
+                0x00D00000: 0x00D00100,
+            },
+        },
+        "state_after": {
+            "stream_bytes_remaining_782a70": 0x000C,
+            "stream_link_ptr_782a72": 0x00D00100,
+            "stream_next_free_782a76": 0x00D001F4,
+            "next_stream_chunk_ptr": 0x00D00200,
+            "stream_chunk_links": {
+                ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D00000,
+                0x00D00000: 0x00D00100,
+            },
+            "stream_allocations": 2,
+        },
     }))
     page_record_bucket_fixture: dict[str, object] = {"bucket_array": {}, "context_slots": [0x440946B4]}
     page_record_first = queue_text_source_to_page_record_via_12f2e(resources, page_record_bucket_fixture, text_source)
@@ -37879,6 +38051,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         page_root_existing["page_record_root_allocations"],
         page_root_existing["current_page_root_before"],
         page_root_existing["current_page_root_after"],
+    ))
+    lines.append("- `0x1381c` stream allocator: first object size `0x%02x` returns `0x%08x`, leaves `0x%04x` bytes, next size `0x%02x` reuses the chunk at `0x%08x`, and crossing size `0x%02x` links chunk `0x%08x` after `0x%08x` with `0x%04x` bytes left." % (
+        stream_alloc_first["byte_count"],
+        stream_alloc_first["returned_ptr"],
+        stream_alloc_first["remaining_after"],
+        stream_alloc_reuse["byte_count"],
+        stream_alloc_reuse["returned_ptr"],
+        stream_alloc_second_chunk["byte_count"],
+        stream_alloc_second_chunk["allocated_chunk"],
+        stream_alloc_second_chunk["link_ptr_before"],
+        stream_alloc_second_chunk["remaining_after"],
     ))
     lines.append("- selected context slot bootstrap: selector `%d` copies source `0x%06x` into root slot 0 as `0x%08x` after clearing `%d` context slots." % (
         page_root_secondary_context["page_root_context_selector_782f06"],

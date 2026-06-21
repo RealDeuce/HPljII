@@ -307,6 +307,12 @@ The current-font context slots are copied from the `0x782ee6` /
 - new chunks are allocated via `0x1710` and chained through their first
   longword, leaving `0xfc` payload bytes.
 
+The executable harness now pins the `0x1381c` accounting directly: first
+allocation links a new chunk through `0x782a72`, returns `chunk+4`, and
+leaves `0xfc - size` bytes; same-chunk reuse advances only `0x782a76` /
+`0x782a70`; crossing the remaining-byte limit links the next chunk
+through the prior chunk's first longword.
+
 `0x13070` converts the raster state block into bucket coordinates:
 
 - stores a bucket/index value at `0x782a7c`;

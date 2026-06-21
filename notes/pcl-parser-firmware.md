@@ -286,11 +286,12 @@ second mixed fixture drives printable `!` followed by `ESC E`, proving
 reset publication/clear state after a queued text object in the same
 byte-stream model; its page-record variant queues the glyph through
 `0x1387c` and bridges it through `0x1edc6`. The harness now also traces
-`!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O` through `0x11774`,
-pinning printable `!` to the mode-0 `0xd04a` branch, `ESC E` to
-`0xcc52`, `ESC &k2G` to `0xedf8`, FF to `0xf0f0`, page-size `ESC &l1A`
-to `0xfc74`, orientation `ESC &l1O` to `0x10220`, and paper-source
-`ESC &l2H` to `0xef62` before the modeled page-record publication layer.
+`!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, `!\x1b&l1O`, `!\x1b&l2H`, and
+`!\x1b&l2X\f` through `0x11774`, pinning printable `!` to the mode-0
+`0xd04a` branch, `ESC E` to `0xcc52`, `ESC &k2G` to `0xedf8`, FF to
+`0xf0f0`, page-size `ESC &l1A` to `0xfc74`, orientation `ESC &l1O` to
+`0x10220`, paper-source `ESC &l2H` to `0xef62`, and copies `ESC &l2X`
+to `0xeef0` before the modeled page-record publication layer.
 These prove the
 direct-control/reset/page-geometry publication subset from actual
 PCL/control bytes, but they still need to be broadened into the full
@@ -455,10 +456,13 @@ fixture exercises that valid-root reset path after queuing a printable
 text object, and its page-record variant queues and bridges that object
 under page-record storage rules, then publishes the same bucket through
 a modeled `0xff1e` finalization record before reset clears the current
-root. The reset, FF, page-size, orientation, and paper-source publication
-streams now start from real parser traces; `!\x1b&l2H` reaches handler
-`0xef62`, publishes queued text through `0xff1e`, writes paper-source
-value `0x80` to `0x782da6`, and sets pending-status byte `0x782998`.
+root. The reset, FF, page-size, orientation, paper-source, and copies
+publication streams now start from real parser traces; `!\x1b&l2H`
+reaches handler `0xef62`, publishes queued text through `0xff1e`, writes
+paper-source value `0x80` to `0x782da6`, and sets pending-status byte
+`0x782998`. `!\x1b&l2X\f` reaches `0xeef0`, stores copy count `2` in
+`0x782da4`, then reaches FF handler `0xf0f0`, whose `0xff1e` publication
+copies that word into pool-header `+0x0c`.
 Reset, FF, page-size, and orientation also have addressed allocator
 variants: `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O` queue
 the printable byte through `0x1387c`/`0x1381c`, materialize the compact
@@ -466,9 +470,10 @@ bucket page record, publish through the matching `0xff1e` boundary, and
 render through `0x1ed84`/`0x1ef6a`. The host-fetched publication checks
 now start those same publication streams from the modeled `0xa904` ring
 source and pin the
-same published pool header after `0xff1e`: state byte `+4 = 2`, default
-status/environment fields, `0x780ea6`, bucket-root prefix, and
-context-slot prefix. The `0x1387c` allocator fixtures queue short and
+same published pool header after `0xff1e`: state byte `+4 = 2`,
+status/environment fields including copies word `+0x0c`, `0x780ea6`,
+bucket-root prefix, and context-slot prefix. The `0x1387c` allocator
+fixtures queue short and
 segmented compact buckets under page-record storage rules, and the
 `0x1edc6` bridge fixture proves the render-record copy contract for that
 compact bucket. These fixtures still need a fuller parser-allocated page

@@ -907,32 +907,36 @@ now drives that same heterogeneous addressed page record through the
 publication boundary from the byte stream, clears the current root, and
 renders the published rows through `0x1ed84`/`0x1ef6a`.
 Direct publication-stream coverage traces `!\x1bE`, `ESC &k2G!\f`,
-`!\x1b&l1A`, `!\x1b&l1O`, and `!\x1b&l2H` through the ROM parser path,
-proving printable fallback to `0xd04a`, reset dispatch to `0xcc52`,
-line-termination dispatch to `0xedf8`, FF dispatch to `0xf0f0`,
-page-size dispatch to `0xfc74`, orientation dispatch to `0x10220`, and
-paper-source dispatch to `0xef62` before the modeled page-record
-publication fixtures run; the publication-boundary fixture ties those
-same streams to one root allocation, one `0xff1e` publication,
-current-root clearing, rendered rows after `0x1edc6`, and the same rows
-after the published records pass through `0x1ed84` and `0x1ef6a`. The
-paper-source stream also pins selector `2` to value `0x80`, stores it in
-`0x782da6`, sets `0x782998`, and refreshes the cursor through the
-`0xf8fc` layout path. The host-fetch publication fixture now starts those
-same five streams from the modeled `0xa904` ring source, drains the ring
-bytes, replays the same parser handlers, lands on the same published
-rows, and now pins that the `0x1edc6` bridge preserves the published
-bucket root, clears rule/fixed lists, and copies the selected context
-slot into the render record. The host-fetched
+`!\x1b&l1A`, `!\x1b&l1O`, `!\x1b&l2H`, and `!\x1b&l2X\f` through the ROM
+parser path, proving printable fallback to `0xd04a`, reset dispatch to
+`0xcc52`, line-termination dispatch to `0xedf8`, FF dispatch to
+`0xf0f0`, page-size dispatch to `0xfc74`, orientation dispatch to
+`0x10220`, paper-source dispatch to `0xef62`, and copies dispatch to
+`0xeef0` before the modeled page-record publication fixtures run. The
+publication-boundary fixture ties those same streams to one root
+allocation, one `0xff1e` publication, current-root clearing, rendered
+rows after `0x1edc6`, and the same rows after the published records pass
+through `0x1ed84` and `0x1ef6a`. The paper-source stream also pins
+selector `2` to value `0x80`, stores it in `0x782da6`, sets `0x782998`,
+and refreshes the cursor through the `0xf8fc` layout path. The copies
+stream pins `ESC &l2X` as copy count `2`, stores it in `0x782da4`, and
+proves FF publication copies that value to pool-header word `+0x0c`.
+The host-fetch publication fixture now starts those same six streams from
+the modeled `0xa904` ring source, drains the ring bytes, replays the same
+parser handlers, lands on the same published rows, and now pins that the
+`0x1edc6` bridge preserves the published bucket root, clears rule/fixed
+lists, and copies the selected context slot into the render record. The
+host-fetched
 missing-root `ESC E` case drains from the same ring source, reaches
 handler `0xcc52`, and lands on the no-publication reset state. The
 host-fetched
-reset, FF, page-size, orientation, and paper-source cases also pin the
-pool header
-after `0xff1e`: state byte `+4 = 2`, default status/environment fields,
-published pointer `0x780ea6`, bucket-root prefix, and context-slot
-prefix all match the modeled publication records before the bridged rows
-are compared. Macro coverage now has the same ROM-table proof for
+reset, FF, page-size, orientation, paper-source, and copies cases also pin
+the pool header
+after `0xff1e`: state byte `+4 = 2`, status/environment fields including
+copies word `+0x0c`, published pointer `0x780ea6`, bucket-root prefix,
+and context-slot prefix all match the modeled publication records before
+the bridged rows are compared. Macro coverage now has the same ROM-table
+proof for
 `ESC &f-123y0x1X`, walking modes `0 -> 1 -> 5 -> 17 -> 17 -> 17 -> 0` to
 handlers `0xe112`, `0xdd08`, and `0xdd08` before applying the modeled
 macro state effects; a second macro-definition trace proves alternate

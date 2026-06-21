@@ -9157,6 +9157,32 @@ def apply_paper_source_via_ef62(state: dict[str, int], parameter: int) -> dict[s
     return updated
 
 
+def apply_copies_via_eef0(state: dict[str, int], parameter: int) -> dict[str, int]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    requested = abs(int(parameter))
+    before = int(updated.get("page_env_word_782da4", 0)) & 0xFFFF
+    if requested > 0x63:
+        selected = 0x63
+        updated["page_env_word_782da4"] = selected
+    elif requested != 0:
+        selected = requested
+        updated["page_env_word_782da4"] = selected
+    else:
+        selected = before
+    events.append({
+        "kind": "copies",
+        "parameter": int(parameter),
+        "absolute": requested,
+        "copies_before": before,
+        "copies_after": int(updated.get("page_env_word_782da4", 0)) & 0xFFFF,
+        "stored": requested != 0,
+        "clamped": requested > 0x63,
+    })
+    updated["events"] = events
+    return updated
+
+
 def apply_vertical_layout_stream_via_cb00_c992_ece2_ea9e(state: dict[str, int], stream: bytes) -> dict[str, object]:
     state = dict(state)
     stream_events: list[dict[str, object]] = []
@@ -12684,14 +12710,23 @@ def render_mixed_printable_control_page_record_stream(
                         state["page_root_present"] = 0
                         state["page_root_clears"] = int(finalized["page_root_clears"])
                         state = apply_paper_source_via_ef62(state, integer)
+                    elif final_upper == ord("X"):
+                        if fraction != 0:
+                            raise AssertionError("page-record mixed stream copies command does not model fractions")
+                        state = apply_copies_via_eef0(state, integer)
                     else:
                         raise AssertionError(f"page-record mixed stream unsupported ESC &l final byte {chr(final)!r}")
                     if final_upper == ord("H"):
                         handler = 0x00EF62
+                    elif final_upper == ord("X"):
+                        handler = 0x00EEF0
                     else:
                         handler = vertical_layout_handler(final)
                     events.append({
-                        "kind": "paper-source" if final_upper == ord("H") else "vertical-layout",
+                        "kind": {
+                            ord("H"): "paper-source",
+                            ord("X"): "copies",
+                        }.get(final_upper, "vertical-layout"),
                         "offset": command_start,
                         "sequence": stream[command_start:pos],
                         "record": bytes([
@@ -12716,6 +12751,9 @@ def render_mixed_printable_control_page_record_stream(
                         events[-1]["page_publication_flag"] = state.get("page_publication_flag", 0)
                         events[-1]["table_target"] = paper_source_table_target_via_ef62(integer)
                         events[-1]["selected_value"] = paper_source_value_via_ef62(state, integer)
+                    if final_upper == ord("X"):
+                        events[-1]["copies_before"] = before.get("page_env_word_782da4", 0)
+                        events[-1]["copies_after"] = state.get("page_env_word_782da4", 0)
                     if not (ord("a") <= final <= ord("z")):
                         break
                 continue
@@ -12975,7 +13013,7 @@ def render_mixed_printable_control_page_record_stream(
                     if not (ord("a") <= final <= ord("z")):
                         break
                 continue
-            raise AssertionError(f"page-record mixed stream only models ESC &k#G, ESC &a#L/#M/#C/#H/#R/#V, ESC &f#S, ESC &p#X, ESC &l#C/#D/#E/#F, ESC *p#X/#Y, ESC *c, ESC *t/*r/*b raster commands, and ESC E at offset {pos}")
+            raise AssertionError(f"page-record mixed stream only models ESC &k#G, ESC &a#L/#M/#C/#H/#R/#V, ESC &f#S, ESC &p#X, ESC &l#C/#D/#E/#F/#H/#X, ESC *p#X/#Y, ESC *c, ESC *t/*r/*b raster commands, and ESC E at offset {pos}")
         if byte in (0x08, 0x09, 0x0A, 0x0C, 0x0D):
             before = dict(state)
             finalized = None
@@ -38506,6 +38544,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "page_size": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1b&l1A"),
         "orientation": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1b&l1O"),
         "paper_source": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1b&l2H"),
+        "copies": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1b&l2X\f"),
     }
     expected_mixed_publication_parser_trace = {
         "reset": {
@@ -38664,6 +38703,44 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
             "final_mode": 0,
         },
+        "copies": {
+            "stream": b"!\x1b&l2X\f",
+            "events": [
+                {
+                    "kind": "printable",
+                    "offset": 0,
+                    "byte": 0x21,
+                    "mode_before": 0,
+                    "branch": 0x11880,
+                    "handler": 0x00D04A,
+                    "mode_after": 0,
+                },
+                {
+                    "kind": "command",
+                    "sequence": b"\x1b&l2X",
+                    "prefix": ord("&"),
+                    "group": ord("l"),
+                    "parameter": 2,
+                    "record": bytes.fromhex("80 58 00 02 00 00"),
+                    "dispatches": [
+                        {"offset": 1, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+                        {"offset": 2, "byte": ord("&"), "mode_before": 1, "next_mode": 5, "handler": 0x011EC8},
+                        {"offset": 3, "byte": ord("l"), "mode_before": 5, "next_mode": 10, "handler": 0x011EDA},
+                        {"offset": 5, "byte": ord("X"), "mode_before": 10, "next_mode": 0, "handler": 0x00EEF0},
+                    ],
+                    "handler": 0x00EEF0,
+                    "mode_after": 0,
+                },
+                {
+                    "kind": "control",
+                    "byte": 0x0C,
+                    "dispatch": {"offset": 6, "byte": 0x0C, "mode_before": 0, "next_mode": 0, "handler": 0x00F0F0},
+                    "handler": 0x00F0F0,
+                    "mode_after": 0,
+                },
+            ],
+            "final_mode": 0,
+        },
     }
     checks.append(assert_equal(
         "0x11774 parser path routes mixed publication streams",
@@ -38677,6 +38754,39 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         key: expected_mixed_publication_parser_trace[key]
         for key in ("page_size", "orientation")
     }))
+    copies_edge_cases = [
+        apply_copies_via_eef0({"page_env_word_782da4": 7}, parameter)["events"][-1]
+        for parameter in (0, -3, 150)
+    ]
+    checks.append(assert_equal("0xeef0 ESC &l#X stores absolute clamped copy count", copies_edge_cases, [
+        {
+            "kind": "copies",
+            "parameter": 0,
+            "absolute": 0,
+            "copies_before": 7,
+            "copies_after": 7,
+            "stored": False,
+            "clamped": False,
+        },
+        {
+            "kind": "copies",
+            "parameter": -3,
+            "absolute": 3,
+            "copies_before": 7,
+            "copies_after": 3,
+            "stored": True,
+            "clamped": False,
+        },
+        {
+            "kind": "copies",
+            "parameter": 150,
+            "absolute": 150,
+            "copies_before": 7,
+            "copies_after": 99,
+            "stored": True,
+            "clamped": True,
+        },
+    ]))
     mixed_reset_stream = render_mixed_printable_control_stream(
         data,
         resources,
@@ -39874,6 +39984,200 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "pending_cursor_x_782a57": 0,
         },
     }))
+    copies_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"!\x1b&l2X\f",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=1,
+            span_flush_enable=1,
+            page_root_present=0,
+            page_root_class=1,
+            current_page_root=0,
+            page_publications=0,
+            page_root_clears=0,
+            published_pool_record=0,
+            page_publication_flag=0,
+            transient_page_byte=1,
+            cursor_transient_a=1,
+            cursor_transient_b=1,
+            page_env_word_782da4=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    copies_page_record_object = copies_page_record_stream["bucket_object"]
+    copies_published_page_record = copies_page_record_stream["published_page_record"]
+    copies_published_bridged = copies_page_record_stream["published_bridged_record"]
+    copies_published_rendered = copies_page_record_stream["published_rendered"]
+    assert isinstance(copies_page_record_object, bytes)
+    assert isinstance(copies_published_page_record, dict)
+    assert isinstance(copies_published_bridged, dict)
+    assert isinstance(copies_published_rendered, dict)
+    copies_pool_fields = copies_published_page_record["pool_record_fields"]
+    assert isinstance(copies_pool_fields, dict)
+    copies_event_summary: list[dict[str, object]] = []
+    for event in copies_page_record_stream["events"]:
+        assert isinstance(event, dict)
+        if event["kind"] == "printable":
+            page_result = event["page_result"]
+            positioned = event["positioned"]
+            page_root = event["page_root"]
+            assert isinstance(page_result, dict)
+            assert isinstance(positioned, dict)
+            assert isinstance(page_root, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            copies_event_summary.append({
+                "kind": "printable",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": page_result["coord"],
+                "allocated": page_result["allocated"],
+                "page_root_created": page_root["page_root_created"],
+            })
+            continue
+        if event["kind"] == "copies":
+            copies_event_summary.append({
+                "kind": "copies",
+                "sequence": event["sequence"],
+                "record": event["record"],
+                "parameter": event["parameter"],
+                "handler": event["handler"],
+                "copies_before": event["copies_before"],
+                "copies_after": event["copies_after"],
+                "side_effects": event["events"],
+            })
+            continue
+        finalized = event["finalized_page_record"]
+        assert isinstance(finalized, dict)
+        copies_event_summary.append({
+            "kind": "control",
+            "byte": event["byte"],
+            "handler": 0x00F0F0,
+            "current_page_root_before": event["current_page_root_before"],
+            "current_page_root_after": event["current_page_root_after"],
+            "page_publications": event["page_publications"],
+            "page_root_clears": event["page_root_clears"],
+            "page_publication_flag": event["page_publication_flag"],
+            "published": finalized["published"],
+            "published_bucket_index": finalized["bucket_index"],
+        })
+    checks.append(assert_equal("mixed printable/copies/FF stream publishes copy count", {
+        "stream": copies_page_record_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in mixed_publication_parser_trace["copies"]["events"]
+        ],
+        "events": copies_event_summary,
+        "bucket_index": copies_page_record_stream["bucket_index"],
+        "object_prefix": copies_page_record_object[:11],
+        "published_header": {
+            key: copies_pool_fields[key]
+            for key in (
+                "state_byte_4",
+                "environment_byte_7",
+                "status_byte_8",
+                "status_byte_0a",
+                "environment_word_0c",
+                "published_pointer_780ea6",
+            )
+        },
+        "published_rows": copies_published_rendered["rows"],
+        "final_state": select_keys(copies_page_record_stream["final_state"], (
+            "page_env_word_782da4",
+            "page_publications",
+            "page_root_clears",
+            "current_page_root",
+            "span_flushes",
+            "post_flushes",
+            "page_publication_flag",
+            "page_record_root_allocations",
+        )),
+    }, {
+        "stream": b"!\x1b&l2X\f",
+        "parser_events": [
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+            {"kind": "command", "handler": 0x00EEF0, "mode_after": 0},
+            {"kind": "control", "handler": 0x00F0F0, "mode_after": 0},
+        ],
+        "events": [
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 0),
+                "coord": 0x0001,
+                "allocated": True,
+                "page_root_created": True,
+            },
+            {
+                "kind": "copies",
+                "sequence": b"\x1b&l2X",
+                "record": bytes.fromhex("80 58 00 02 00 00"),
+                "parameter": 2,
+                "handler": 0x00EEF0,
+                "copies_before": 1,
+                "copies_after": 2,
+                "side_effects": [
+                    {
+                        "kind": "copies",
+                        "parameter": 2,
+                        "absolute": 2,
+                        "copies_before": 1,
+                        "copies_after": 2,
+                        "stored": True,
+                        "clamped": False,
+                    },
+                ],
+            },
+            {
+                "kind": "control",
+                "byte": 0x0C,
+                "handler": 0x00F0F0,
+                "current_page_root_before": 1,
+                "current_page_root_after": 0,
+                "page_publications": 1,
+                "page_root_clears": 1,
+                "page_publication_flag": 1,
+                "published": True,
+                "published_bucket_index": 0,
+            },
+        ],
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+        "published_header": {
+            "state_byte_4": 2,
+            "environment_byte_7": 0,
+            "status_byte_8": 0,
+            "status_byte_0a": 0,
+            "environment_word_0c": 2,
+            "published_pointer_780ea6": ABSTRACT_PAGE_ROOT_PTR,
+        },
+        "published_rows": positioned_mode0["rows"],
+        "final_state": {
+            "page_env_word_782da4": 2,
+            "page_publications": 1,
+            "page_root_clears": 1,
+            "current_page_root": 0,
+            "span_flushes": 1,
+            "post_flushes": 1,
+            "page_publication_flag": 1,
+            "page_record_root_allocations": 1,
+        },
+    }))
     page_geometry_page_record_stream = render_printable_page_geometry_page_record_stream(
         data,
         resources,
@@ -40744,6 +41048,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "published_prefix": paper_source_published_page_record["bucket_root"][:11],
             "published_rows": paper_source_published_rendered["rows"][:4],
         },
+        "copies": {
+            "stream": copies_page_record_stream["stream"],
+            "parser_handlers": parser_handler_summary(mixed_publication_parser_trace["copies"]),
+            "parser_final_mode": mixed_publication_parser_trace["copies"]["final_mode"],
+            "root_allocations": copies_page_record_stream["final_state"]["page_record_root_allocations"],
+            "page_publications": copies_page_record_stream["final_state"]["page_publications"],
+            "published_prefix": copies_published_page_record["bucket_root"][:11],
+            "published_rows": copies_published_rendered["rows"][:4],
+        },
     }, {
         "reset": {
             "stream": b"!\x1bE",
@@ -40790,6 +41103,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "published_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
             "published_rows": positioned_mode0["rows"][:4],
         },
+        "copies": {
+            "stream": b"!\x1b&l2X\f",
+            "parser_handlers": [0x00D04A, 0x00EEF0, 0x00F0F0],
+            "parser_final_mode": 0,
+            "root_allocations": 1,
+            "page_publications": 1,
+            "published_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
     }))
     publication_streams = {
         "reset": mixed_reset_page_record_stream,
@@ -40797,6 +41119,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "page_size": page_geometry_page_record_stream,
         "orientation": orientation_page_record_stream,
         "paper_source": paper_source_page_record_stream,
+        "copies": copies_page_record_stream,
     }
     publication_published_records = {
         "reset": mixed_reset_published_page_record,
@@ -40804,6 +41127,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "page_size": page_geometry_published_page_record,
         "orientation": orientation_published_page_record,
         "paper_source": paper_source_published_page_record,
+        "copies": copies_published_page_record,
     }
     publication_published_bridged = {
         "reset": mixed_reset_published_bridged,
@@ -40811,6 +41135,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "page_size": page_geometry_published_bridged,
         "orientation": orientation_published_bridged,
         "paper_source": paper_source_published_bridged,
+        "copies": copies_published_bridged,
     }
     publication_published_rendered = {
         "reset": mixed_reset_published_rendered,
@@ -40818,6 +41143,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "page_size": page_geometry_published_rendered,
         "orientation": orientation_published_rendered,
         "paper_source": paper_source_published_rendered,
+        "copies": copies_published_rendered,
     }
     publication_final_text_states = {
         "reset": mixed_reset_page_record_stream["final_state"],
@@ -40825,6 +41151,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "page_size": page_geometry_final_text,
         "orientation": orientation_final_text,
         "paper_source": paper_source_page_record_stream["final_state"],
+        "copies": copies_page_record_stream["final_state"],
     }
     host_fetched_publication_streams = {
         name: fetch_stream_via_a904(
@@ -40903,6 +41230,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "fetch_sources": ["ring"] * 6,
             "remaining_ring": [],
             "parser_handlers": [0x00D04A, 0x00EF62],
+            "parser_final_mode": 0,
+            "root_allocations": 1,
+            "page_publications": 1,
+            "published_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
+        "copies": {
+            "fetched_stream": b"!\x1b&l2X\f",
+            "fetch_sources": ["ring"] * 7,
+            "remaining_ring": [],
+            "parser_handlers": [0x00D04A, 0x00EEF0, 0x00F0F0],
             "parser_final_mode": 0,
             "root_allocations": 1,
             "page_publications": 1,
@@ -40996,6 +41334,28 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "published_rows": positioned_mode0["rows"][:4],
         },
     }))
+    checks.append(assert_equal("host-fetched copies publication preserves 0xeef0 pool header word", {
+        "fetched_stream": host_fetched_publication_streams["copies"]["stream"],
+        "fetch_sources": host_fetched_publication_streams["copies"]["sources"],
+        "parser_handlers": parser_handler_summary(host_fetched_publication_parser_trace["copies"]),
+        "parser_final_mode": host_fetched_publication_parser_trace["copies"]["final_mode"],
+        "pool_header": publication_pool_header_summary(copies_published_page_record),
+        "bucket_root_prefix": copies_pool_fields["bucket_root_1c"][:11],
+        "context_slots_2c_prefix": copies_pool_fields["context_slots_2c"][:2],
+        "published_rows": copies_published_rendered["rows"][:4],
+    }, {
+        "fetched_stream": b"!\x1b&l2X\f",
+        "fetch_sources": ["ring"] * 7,
+        "parser_handlers": [0x00D04A, 0x00EEF0, 0x00F0F0],
+        "parser_final_mode": 0,
+        "pool_header": {
+            **expected_default_publication_pool_header,
+            "environment_word_0c": 2,
+        },
+        "bucket_root_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+        "context_slots_2c_prefix": (0x440946B4, 0),
+        "published_rows": positioned_mode0["rows"][:4],
+    }))
     checks.append(assert_equal("host-fetched publication streams preserve 0x1edc6 bridge contract", {
         name: {
             "fetched_stream": host_fetched_publication_streams[name]["stream"],
@@ -41013,7 +41373,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "context_slots_prefix": publication_published_bridged[name]["context_slots"][:2],
             "published_rows": publication_published_rendered[name]["rows"][:4],
         }
-        for name in ("reset", "ff", "page_size", "orientation")
+        for name in ("reset", "ff", "page_size", "orientation", "paper_source", "copies")
     }, {
         "reset": {
             "fetched_stream": b"!\x1bE",
@@ -41055,12 +41415,34 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "context_slots_prefix": (0x440946B4, 0),
             "published_rows": positioned_mode0["rows"][:4],
         },
+        "paper_source": {
+            "fetched_stream": b"!\x1b&l2H",
+            "parser_handlers": [0x00D04A, 0x00EF62],
+            "bridge_bucket_matches_published": True,
+            "render_field_bucket_matches_published": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0x440946B4, 0),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
+        "copies": {
+            "fetched_stream": b"!\x1b&l2X\f",
+            "parser_handlers": [0x00D04A, 0x00EEF0, 0x00F0F0],
+            "bridge_bucket_matches_published": True,
+            "render_field_bucket_matches_published": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0x440946B4, 0),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
     }))
     published_render_entries = {
         "reset": render_published_page_record_via_1ed84_1ef6a(data, resources, mixed_reset_published_page_record),
         "ff": render_published_page_record_via_1ed84_1ef6a(data, resources, ff_published_page_record),
         "page_size": render_published_page_record_via_1ed84_1ef6a(data, resources, page_geometry_published_page_record),
         "orientation": render_published_page_record_via_1ed84_1ef6a(data, resources, orientation_published_page_record),
+        "paper_source": render_published_page_record_via_1ed84_1ef6a(data, resources, paper_source_published_page_record),
+        "copies": render_published_page_record_via_1ed84_1ef6a(data, resources, copies_published_page_record),
     }
     checks.append(assert_equal("published page records feed 0x1ed84 and 0x1ef6a render entry", {
         name: {
@@ -41069,6 +41451,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "ff": ff_page_record_stream["stream"],
                 "page_size": page_geometry_page_record_stream["stream"],
                 "orientation": orientation_page_record_stream["stream"],
+                "paper_source": paper_source_page_record_stream["stream"],
+                "copies": copies_page_record_stream["stream"],
             }[name],
             "parser_handlers": parser_handler_summary(mixed_publication_parser_trace[name]),
             "active_copy": report["active_copy"],
@@ -41094,12 +41478,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "ff": b"\x1b&k2G!\f",
                 "page_size": b"!\x1b&l1A",
                 "orientation": b"!\x1b&l1O",
+                "paper_source": b"!\x1b&l2H",
+                "copies": b"!\x1b&l2X\f",
             }[name],
             "parser_handlers": {
                 "reset": [0x00D04A, 0x00CC52],
                 "ff": [0x00EDF8, 0x00D04A, 0x00F0F0],
                 "page_size": [0x00D04A, 0x00FC74],
                 "orientation": [0x00D04A, 0x010220],
+                "paper_source": [0x00D04A, 0x00EF62],
+                "copies": [0x00D04A, 0x00EEF0, 0x00F0F0],
             }[name],
             "active_copy": {
                 "source_word_18": 0,
@@ -41128,7 +41516,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             }],
             "rows": positioned_mode0["rows"],
         }
-        for name in ("reset", "ff", "page_size", "orientation")
+        for name in ("reset", "ff", "page_size", "orientation", "paper_source", "copies")
     }))
 
     lines.append("## Host Byte Fetch Fixtures")
@@ -42506,24 +42894,28 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "the mode-0 `0xd04a` branch and `ESC E` through handler `0xcc52`; "
         "`1b 26 6b 32 47 21 0c` routes `ESC &k2G` through handler `0xedf8`, "
         "printable `!` through `0xd04a`, and FF through handler `0xf0f0`; "
-        "`21 1b 26 6c 31 41`, `21 1b 26 6c 31 4f`, and "
-        "`21 1b 26 6c 32 48` route printable `!` through `0xd04a` before "
+        "`21 1b 26 6c 31 41`, `21 1b 26 6c 31 4f`, "
+        "`21 1b 26 6c 32 48`, and `21 1b 26 6c 32 58 0c` route "
+        "printable `!` through `0xd04a` before "
         "page-size `ESC &l1A` reaches `0xfc74`, orientation `ESC &l1O` "
-        "reaches `0x10220`, and paper-source `ESC &l2H` reaches `0xef62`."
+        "reaches `0x10220`, paper-source `ESC &l2H` reaches `0xef62`, "
+        "and copies `ESC &l2X` reaches `0xeef0` before FF reaches `0xf0f0`."
     )
     lines.append(
         "The publication-boundary fixture ties those parser handler sequences "
-        "to the modeled page-record side for the same five byte streams: each "
+        "to the modeled page-record side for the same six byte streams: each "
         "allocates one root on printable `!`, publishes one compact bucket "
         "through `0xff1e`, clears the current root, and renders the published "
         "rows after the `0x1edc6` bridge."
     )
     lines.append(
         "A host-fetch publication fixture now starts those same reset, FF, "
-        "page-size, orientation, and paper-source streams from the modeled "
-        "`0xa904` ring source, drains all input bytes from the ring, replays "
-        "the same parser handlers, and lands on the same published compact "
-        "rows."
+        "page-size, orientation, paper-source, and copies streams from the "
+        "modeled `0xa904` ring source, drains all input bytes from the ring, "
+        "replays the same parser handlers, and lands on the same published "
+        "compact rows. The copies stream also proves `0xeef0` stores the "
+        "absolute clamped copy count in `0x782da4`, which `0xff1e` copies to "
+        "published header word `+0x0c`."
     )
     lines.append("The reset, FF, page-size, and orientation publication streams now also have addressed allocation variants: `! ESC E`, `ESC &k2G! FF`, `! ESC &l1A`, and `! ESC &l1O` queue printable `!` through addressed `0x1387c`/`0x1381c`, materialize the compact bucket record, publish through their `0xff1e` boundaries, and render through `0x1ed84`/`0x1ef6a` with the same rows.")
     lines.append("The published-record render-entry fixture then carries each of those four `0xff1e` records through `0x1ed84` active-record copy and the `0x1ef6a` call order, selecting the compact bucket through `0x1efc2` and rendering the same rows.")

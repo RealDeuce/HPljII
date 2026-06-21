@@ -171,6 +171,14 @@ page below current top margin, writes
 `0x782dd2 = 0x782dce + text_length`, and uses `0xea16` to restore the
 default bottom when the parameter is zero.
 
+`ESC &l#X` at `0x00eef0` handles number of copies. It rewinds to the
+parser record, takes the absolute value of the parsed word, ignores zero,
+clamps values above `99`, and stores the result in word `0x782da4`. The
+`!\x1b&l2X\f` fixture proves that copy count `2` survives a later FF
+publication: `0xff1e` copies `0x782da4` into published pool-header word
+`+0x0c`, then `0x1edc6` and `0x1ed84`/`0x1ef6a` render the queued compact
+text rows unchanged.
+
 `ESC &l#H` at `0x00ef62` handles page eject and paper-source selection.
 It rewinds to the parser record, normalizes the absolute selector, flushes
 pending text through `0xf34a`, publishes the current page root through
@@ -577,7 +585,7 @@ glyph row-copy fixtures are generated in
 together, pins `0xa904` host byte fetch source-priority fixtures plus
 ring-fed host-to-render boundaries for the direct text/control
 page-record stream set through `0x1edc6` bridge fields, the
-reset/FF/page-size/orientation/paper-source publication streams,
+reset/FF/page-size/orientation/paper-source/copies publication streams,
 addressed publication allocation variants for reset, FF, page-size, and
 orientation, and the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W`
 raster stream through its raster bridge fields,
@@ -592,10 +600,10 @@ page-record boundary for `ESC &f0S ESC &a2C ESC &f1S!`, adds synthetic
 `ESC E` reset byte-stream fixtures for valid-page-root publication and
 missing-root clearing, ties missing-root `ESC E` to the modeled `0xa904`
 ring source and ROM parser handler `0xcc52`, plus a ROM parser trace for
-`!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, `!\x1b&l1O`, and `!\x1b&l2H`
-through printable `0xd04a`, reset `0xcc52`, line-termination `0xedf8`,
-FF `0xf0f0`, page-size `0xfc74`, orientation `0x10220`, and paper-source
-`0xef62`, feeds four named real
+`!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, `!\x1b&l1O`, `!\x1b&l2H`, and
+`!\x1b&l2X\f` through printable `0xd04a`, reset `0xcc52`,
+line-termination `0xedf8`, FF `0xf0f0`, page-size `0xfc74`, orientation
+`0x10220`, paper-source `0xef62`, and copies `0xeef0`, feeds four named real
 built-in glyph bitmaps plus a ROM-scanned span matrix through the main
 `0x1f08e` row-copy table, includes a producer-modeled short text bucket fixture
 plus short and segmented `0x1387c` page-record allocator checks and a

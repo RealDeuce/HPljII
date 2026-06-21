@@ -60,6 +60,15 @@ The page-size command handler `ESC &l#A` at `0x00fc74` maps PCL
 page-size parameters into internal page codes, stores the code at
 `0x782da2`, then rebuilds page geometry.
 
+The page-length command handler `ESC &l#P` at `0x00f9e8` uses the
+current line advance `0x783160` to convert line count into a page extent
+stored at `0x782dba`. For nonzero lengths it selects an internal page
+code from the current orientation thresholds, recomputes geometry, text
+length, and cursor state, and refreshes the next printable cursor. A
+6-LPI `ESC &l66P!` fixture now reaches parser handlers `0xf9e8` and
+`0xd04a`, stores page extent `3300`, and queues `!` at compact text coord
+`0x9001`.
+
 The lookup helpers at `0x009d16`, `0x009d4e`, `0x009d86`, and `0x009dbe`
 mask the internal code with `0x7f` and index eleven word entries. The
 generated table report records all current values. Its manual

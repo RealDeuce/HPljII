@@ -1778,6 +1778,26 @@ def apply_orientation_thresholds_via_103ea(data: bytes, state: dict[str, int]) -
     return state
 
 
+def page_length_code_via_f9e8(state: dict[str, int], page_length: int) -> int | None:
+    if int(state.get("orientation", 0)):
+        thresholds = (
+            (6, int(state["portrait_landscape_threshold_6"])),
+            (1, int(state["portrait_landscape_threshold_1"])),
+            (2, int(state["portrait_landscape_threshold_2"])),
+        )
+    else:
+        thresholds = (
+            (6, int(state["portrait_landscape_threshold_6"])),
+            (2, int(state["portrait_landscape_threshold_2"])),
+            (1, int(state["portrait_landscape_threshold_1"])),
+            (5, int(state["portrait_landscape_threshold_5"])),
+        )
+    for internal_code, threshold in thresholds:
+        if int(page_length) <= threshold:
+            return internal_code
+    return None
+
+
 def apply_page_size_via_fc74(data: bytes, state: dict[str, int], parameter: int = 0, has_parameter: bool = True) -> dict[str, int]:
     state = dict(state)
     internal_code = map_page_size_parameter_via_fc74(parameter, has_parameter, state["default_page_code"])
@@ -1792,6 +1812,76 @@ def apply_page_size_via_fc74(data: bytes, state: dict[str, int], parameter: int 
     state["print_engine_status"] = 0
     state["page_code"] = internal_code
     return apply_page_geometry_tables(data, state)
+
+
+def apply_page_length_via_f9e8(data: bytes, state: dict[str, int], parameter: int) -> dict[str, int]:
+    state = dict(state)
+    events = list(state.get("events", []))
+    vmi = int(state.get("vmi", 0))
+    if packed12_to_subunits(vmi) == 0:
+        events.append({"kind": "page-length-ignored", "reason": "zero-vmi"})
+        state["events"] = events
+        return state
+    lines = abs(int(parameter))
+    if lines == 0:
+        events.append({"kind": "page-length-zero", "modeled": False})
+        state["events"] = events
+        return state
+    page_length = trunc_div(packed12_to_subunits(vmi) * lines, 12)
+    state = apply_orientation_thresholds_via_103ea(data, state)
+    internal_code = page_length_code_via_f9e8(state, page_length)
+    if internal_code is None:
+        events.append({
+            "kind": "page-length-ignored",
+            "reason": "beyond-thresholds",
+            "page_length": page_length,
+        })
+        state["events"] = events
+        return state
+
+    state["pending_text_flushes"] = int(state.get("pending_text_flushes", 0)) + 1
+    state["page_finalizations"] = int(state.get("page_finalizations", 0)) + 1
+    state["page_change_flag"] = 1
+    state["print_engine_status"] = 0
+    state["page_code"] = internal_code
+    state = apply_page_geometry_tables(data, state)
+    state["page_extent"] = page_length
+    source = int(state["vertical_offset_source"])
+    printable_extent = page_length - source
+    state["printable_extent"] = printable_extent
+    if printable_extent < int(state["active_height"]):
+        state["active_height"] = printable_extent
+    top_offset = -source if page_length <= 0x96 else 0x96 - source
+    packed_layout = (
+        int(state.get("top_offset", 0)) > 0xFFFF
+        or "cursor_y" in state
+        or "text_length_bottom" in state
+    )
+    if packed_layout:
+        state["top_offset"] = pack12(top_offset)
+        state["text_length_bottom"] = default_text_length_bottom(
+            int(state["top_offset"]),
+            source,
+            page_length,
+        )
+        if "left_margin" in state:
+            state["cursor_x"] = int(state["left_margin"])
+        if "cursor_y" in state:
+            state["cursor_y"] = pending_text_cursor_for_vmi(int(state["top_offset"]), vmi)
+    else:
+        state["top_offset"] = top_offset
+        state["text_length_bottom"] = page_length - source
+    state["top_offset_fraction"] = 0
+    state["layout_refreshes"] = int(state.get("layout_refreshes", 0)) + 1
+    events.append({
+        "kind": "page-length",
+        "lines": lines,
+        "page_length": page_length,
+        "page_code": internal_code,
+        "top_offset": int(state["top_offset"]),
+    })
+    state["events"] = events
+    return state
 
 
 def apply_orientation_via_10220(data: bytes, state: dict[str, int], parameter: int) -> dict[str, int]:
@@ -1812,6 +1902,8 @@ def page_geometry_handler(final: int) -> int:
     final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
     if final_upper == ord("A"):
         return 0x00FC74
+    if final_upper == ord("P"):
+        return 0x00F9E8
     if final_upper == ord("O"):
         return 0x010220
     raise AssertionError(f"unsupported ESC &l page-geometry final byte {chr(final)!r}")
@@ -1841,7 +1933,7 @@ def apply_page_geometry_stream_via_fc74_10220(data: bytes, state: dict[str, int]
     while pos < len(stream):
         start = pos
         if pos + 3 >= len(stream) or stream[pos : pos + 3] != b"\x1b&l":
-            raise AssertionError(f"page-geometry stream only models ESC &l#A/#O at offset {pos}")
+            raise AssertionError(f"page-geometry stream only models ESC &l#A/#P/#O at offset {pos}")
         pos += 3
         while True:
             command_start = start if pos == start + 3 else pos
@@ -1854,6 +1946,8 @@ def apply_page_geometry_stream_via_fc74_10220(data: bytes, state: dict[str, int]
             before = page_geometry_event_state(state)
             if final_upper == ord("A"):
                 state = apply_page_size_via_fc74(data, state, parameter)
+            elif final_upper == ord("P"):
+                state = apply_page_length_via_f9e8(data, state, parameter)
             elif final_upper == ord("O"):
                 state = apply_orientation_via_10220(data, state, parameter)
             else:
@@ -12773,6 +12867,10 @@ def render_mixed_printable_control_page_record_stream(
                         if fraction != 0:
                             raise AssertionError("page-record mixed stream perforation-skip command does not model fractions")
                         state = apply_perforation_skip_via_ee64(state, integer)
+                    elif final_upper == ord("P"):
+                        if fraction != 0:
+                            raise AssertionError("page-record mixed stream page-length command does not model fractions")
+                        state = apply_page_length_via_f9e8(data, state, integer)
                     elif final_upper == ord("H"):
                         if fraction != 0:
                             raise AssertionError("page-record mixed stream paper-source command does not model fractions")
@@ -12799,12 +12897,15 @@ def render_mixed_printable_control_page_record_stream(
                         handler = 0x00EF62
                     elif final_upper == ord("X"):
                         handler = 0x00EEF0
+                    elif final_upper == ord("P"):
+                        handler = 0x00F9E8
                     else:
                         handler = vertical_layout_handler(final)
                     events.append({
                         "kind": {
                             ord("H"): "paper-source",
                             ord("L"): "perforation-skip",
+                            ord("P"): "page-length",
                             ord("X"): "copies",
                         }.get(final_upper, "vertical-layout"),
                         "offset": command_start,
@@ -12837,6 +12938,13 @@ def render_mixed_printable_control_page_record_stream(
                     if final_upper == ord("L"):
                         events[-1]["skip_before"] = before.get("perforation_skip_783191", 1)
                         events[-1]["skip_after"] = state.get("perforation_skip_783191", 1)
+                    if final_upper == ord("P"):
+                        events[-1]["page_code_before"] = before.get("page_code", 2)
+                        events[-1]["page_code_after"] = state.get("page_code", 2)
+                        events[-1]["page_extent_before"] = before.get("page_extent", 0)
+                        events[-1]["page_extent_after"] = state.get("page_extent", 0)
+                        events[-1]["cursor_x_before"] = before.get("cursor_x", 0)
+                        events[-1]["cursor_x_after"] = state.get("cursor_x", 0)
                     if not (ord("a") <= final <= ord("z")):
                         break
                 continue
@@ -14099,7 +14207,7 @@ def render_printable_page_geometry_page_record_stream(
         byte = stream[pos]
         if byte == 0x1B:
             if pos + 3 >= len(stream) or stream[pos + 1 : pos + 3] != b"&l":
-                raise AssertionError(f"page-geometry page-record stream only models ESC &l#A/#O at offset {pos}")
+                raise AssertionError(f"page-geometry page-record stream only models ESC &l#A/#P/#O at offset {pos}")
             group_start = pos
             pos += 3
             while True:
@@ -14125,6 +14233,8 @@ def render_printable_page_geometry_page_record_stream(
                 text_state["page_root_clears"] = int(finalized["page_root_clears"])
                 if final_upper == ord("A"):
                     geometry_state = apply_page_size_via_fc74(data, geometry_state, parameter)
+                elif final_upper == ord("P"):
+                    geometry_state = apply_page_length_via_f9e8(data, geometry_state, parameter)
                 elif final_upper == ord("O"):
                     geometry_state = apply_orientation_via_10220(data, geometry_state, parameter)
                 else:
@@ -15206,6 +15316,145 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "top_offset": 100,
                     "pending_text_flushes": 2,
                     "page_finalizations": 2,
+                },
+                "chained": False,
+            },
+        ],
+    }))
+    page_length_letter = apply_page_length_via_f9e8(data, page_geometry_state(vmi=pack12(50)), 66)
+    page_length_landscape = apply_page_length_via_f9e8(
+        data,
+        apply_orientation_via_10220(
+            data,
+            page_geometry_state(vmi=pack12(50)),
+            1,
+        ),
+        49,
+    )
+    page_length_zero_vmi = apply_page_length_via_f9e8(
+        data,
+        page_geometry_state(vmi=pack12(0)),
+        66,
+    )
+    page_length_too_long = apply_page_length_via_f9e8(
+        data,
+        page_geometry_state(vmi=pack12(50)),
+        100,
+    )
+    checks.append(assert_equal("0xf9e8 ESC &l#P converts VMI lines to page length and selects internal page code", {
+        "portrait_letter": select_keys(page_length_letter, (
+            "page_code",
+            "page_extent",
+            "width",
+            "height",
+            "active_width",
+            "active_height",
+            "vertical_offset_source",
+            "printable_extent",
+            "top_offset",
+            "text_length_bottom",
+            "pending_text_flushes",
+            "page_finalizations",
+            "page_change_flag",
+            "print_engine_status",
+        )),
+        "landscape_ledger": select_keys(page_length_landscape, (
+            "page_code",
+            "page_extent",
+            "orientation",
+            "vertical_offset_source",
+            "printable_extent",
+            "top_offset",
+        )),
+        "zero_vmi_event": page_length_zero_vmi["events"][-1],
+        "too_long_event": page_length_too_long["events"][-1],
+    }, {
+        "portrait_letter": {
+            "page_code": 2,
+            "page_extent": 3300,
+            "width": 3180,
+            "height": 2400,
+            "active_width": 3180,
+            "active_height": 2400,
+            "vertical_offset_source": 60,
+            "printable_extent": 3240,
+            "top_offset": 90,
+            "text_length_bottom": 3240,
+            "pending_text_flushes": 1,
+            "page_finalizations": 1,
+            "page_change_flag": 1,
+            "print_engine_status": 0,
+        },
+        "landscape_ledger": {
+            "page_code": 1,
+            "page_extent": 2450,
+            "orientation": 1,
+            "vertical_offset_source": 50,
+            "printable_extent": 2400,
+            "top_offset": 100,
+        },
+        "zero_vmi_event": {"kind": "page-length-ignored", "reason": "zero-vmi"},
+        "too_long_event": {
+            "kind": "page-length-ignored",
+            "reason": "beyond-thresholds",
+            "page_length": 5000,
+        },
+    }))
+    page_length_stream = apply_page_geometry_stream_via_fc74_10220(
+        data,
+        page_geometry_state(vmi=pack12(50)),
+        b"\x1b&l66P",
+    )
+    checks.append(assert_equal("0xf9e8 ESC &l#P stream reaches page-length handler", {
+        "state": select_keys(page_length_stream, (
+            "stream",
+            "page_code",
+            "page_extent",
+            "top_offset",
+            "pending_text_flushes",
+            "page_finalizations",
+        )),
+        "stream_events": page_length_stream["stream_events"],
+    }, {
+        "state": {
+            "stream": b"\x1b&l66P",
+            "page_code": 2,
+            "page_extent": 3300,
+            "top_offset": 90,
+            "pending_text_flushes": 1,
+            "page_finalizations": 1,
+        },
+        "stream_events": [
+            {
+                "sequence": b"\x1b&l66P",
+                "record": b"\x80P\x00B\x00\x00",
+                "parameter": 66,
+                "handler": 0x00F9E8,
+                "before": {
+                    "page_code": 2,
+                    "orientation": 0,
+                    "width": 0,
+                    "height": 0,
+                    "active_width": 0,
+                    "active_height": 0,
+                    "margin_reference": 0,
+                    "vertical_offset_source": 0,
+                    "top_offset": 0,
+                    "pending_text_flushes": 0,
+                    "page_finalizations": 0,
+                },
+                "after": {
+                    "page_code": 2,
+                    "orientation": 0,
+                    "width": 3180,
+                    "height": 2400,
+                    "active_width": 3180,
+                    "active_height": 2400,
+                    "margin_reference": 3300,
+                    "vertical_offset_source": 60,
+                    "top_offset": 90,
+                    "pending_text_flushes": 1,
+                    "page_finalizations": 1,
                 },
                 "chained": False,
             },
@@ -40951,6 +41200,125 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "rows": positioned_mode0["rows"],
     }))
+    page_length_mixed_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&l66P!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(1),
+            cursor_y=pack12(20),
+            left_margin=pack12(10),
+            hmi=line_printer_hmi["hmi"],
+            vmi=pack12(50),
+            top_offset=pack12(90),
+            text_length_bottom=pack12(240),
+            page_extent=300,
+            vertical_offset_source=60,
+            orientation=0,
+            page_code=2,
+            pending_text_flushes=0,
+            page_finalizations=0,
+            page_change_flag=0,
+            print_engine_status=1,
+            page_root_present=0,
+            page_root_class=1,
+            current_page_root=0,
+            page_publications=0,
+            page_root_clears=0,
+            published_pool_record=0,
+            page_publication_flag=0,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    page_length_parser_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        page_length_mixed_stream["stream"],
+    )
+    page_length_mixed_events = page_length_mixed_stream["events"]
+    assert isinstance(page_length_mixed_events, list)
+    page_length_mixed_printable = page_length_mixed_events[1]
+    assert isinstance(page_length_mixed_printable, dict)
+    page_length_positioned = page_length_mixed_printable["positioned"]
+    page_length_page_result = page_length_mixed_printable["page_result"]
+    assert isinstance(page_length_positioned, dict)
+    assert isinstance(page_length_page_result, dict)
+    page_length_positioned_source = page_length_positioned["source"]
+    assert isinstance(page_length_positioned_source, dict)
+    checks.append(assert_equal("mixed page-length stream refreshes cursor before printable page-record queue", {
+        "parser_handlers": [
+            event["handler"]
+            for event in page_length_parser_trace["events"]
+        ],
+        "page_length_event": {
+            key: page_length_mixed_events[0][key]
+            for key in (
+                "kind",
+                "sequence",
+                "record",
+                "handler",
+                "cursor_before",
+                "cursor_after",
+                "cursor_x_before",
+                "cursor_x_after",
+                "page_extent_before",
+                "page_extent_after",
+            )
+        },
+        "printable": {
+            "cursor_before": page_length_mixed_printable["cursor_before"],
+            "cursor_after": page_length_mixed_printable["cursor_after"],
+            "positioned_xy": (
+                page_length_positioned_source["x"],
+                page_length_positioned_source["y"],
+            ),
+            "coord": page_length_page_result["coord"],
+            "bucket_index": page_length_page_result["bucket_index"],
+        },
+        "final_state": select_keys(page_length_mixed_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "page_code",
+            "page_extent",
+            "top_offset",
+            "text_length_bottom",
+            "page_record_root_allocations",
+        )),
+        "bucket_index": page_length_mixed_stream["bucket_index"],
+        "object_prefix": page_length_mixed_stream["bucket_object"][:11],
+    }, {
+        "parser_handlers": [0x00F9E8, 0x00D04A],
+        "page_length_event": {
+            "kind": "page-length",
+            "sequence": b"\x1b&l66P",
+            "record": b"\x80P\x00B\x00\x00",
+            "handler": 0x00F9E8,
+            "cursor_before": pack12(20),
+            "cursor_after": pack12(126),
+            "cursor_x_before": pack12(1),
+            "cursor_x_after": pack12(10),
+            "page_extent_before": 300,
+            "page_extent_after": 3300,
+        },
+        "printable": {
+            "cursor_before": pack12(10),
+            "cursor_after": pack12(28),
+            "positioned_xy": (16, 105),
+            "coord": 0x9001,
+            "bucket_index": 6,
+        },
+        "final_state": {
+            "cursor_x": pack12(28),
+            "cursor_y": pack12(126),
+            "page_code": 2,
+            "page_extent": 3300,
+            "top_offset": pack12(90),
+            "text_length_bottom": pack12(3240),
+            "page_record_root_allocations": 1,
+        },
+        "bucket_index": 6,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 90 01"),
+    }))
     orientation_page_record_stream = render_printable_page_geometry_page_record_stream(
         data,
         resources,
@@ -42095,10 +42463,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## Page Geometry Command Fixtures")
     lines.append("")
-    lines.append("These fixtures model the ROM table lookups at `0x9d16`/`0x9d4e`/`0x9d86`/`0x9dbe`, the `ESC &l#A` page-size handler at `0xfc74`, and the `ESC &l#O` orientation handler at `0x10220`.")
+    lines.append("These fixtures model the ROM table lookups at `0x9d16`/`0x9d4e`/`0x9d86`/`0x9dbe`, the `ESC &l#A` page-size handler at `0xfc74`, the `ESC &l#P` page-length handler at `0xf9e8`, and the `ESC &l#O` orientation handler at `0x10220`.")
     lines.append("")
     lines.append("- Page-code lookup masks the internal code with `0x7f`; PCL `80` stores internal code `0x88`, which reads table index `8`.")
     lines.append("- `ESC &l#A` maps PCL values `1`, `2`, `3`, `26`, `80`, `81`, `90`, and `91` to internal page codes, finalizes pending page state, updates width/height words, then recomputes portrait or landscape extents.")
+    lines.append("- `ESC &l#P` converts current VMI times absolute line count into page extent `0x782dba`, selects an internal page code from orientation thresholds, recomputes default text bounds, and refreshes the following text cursor.")
     lines.append("- `ESC &l#O` accepts only values `0` and `1`; changing orientation finalizes pending page state, swaps active width/height in landscape, changes the vertical offset source from `60` to `50`, and reloads the orientation margin thresholds through `0x103ea`. A byte-stream fixture now drives chained `ESC &l1a1O` through handlers `0xfc74` and `0x10220`.")
     lines.append("")
     lines.append(f"- Letter portrait from `ESC &l1A`: code `{letter_page['page_code']}`, width `{letter_page['width']}`, height `{letter_page['height']}`, margin `{letter_page['margin_reference']}`, top offset `{letter_page['top_offset']}`")
@@ -42106,9 +42475,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- Letter landscape from `ESC &l1O`: active `{landscape_letter['active_width']}x{landscape_letter['active_height']}`, margin `{landscape_letter['margin_reference']}`, printable extent `{landscape_letter['printable_extent']}`, top offset `{landscape_letter['top_offset']}`")
     lines.append(f"- page-geometry stream events: `{page_geometry_stream['stream_events']}`")
     lines.append(f"- Landscape thresholds loaded by `0x103ea`: `{[landscape_letter[key] for key in ('portrait_landscape_threshold_6', 'portrait_landscape_threshold_2', 'portrait_landscape_threshold_1', 'portrait_landscape_threshold_5')]}`")
+    lines.append(f"- `ESC &l66P` at 6 LPI: code `{page_length_letter['page_code']}`, extent `{page_length_letter['page_extent']}`, top offset `{page_length_letter['top_offset']}`, text bottom `{page_length_letter['text_length_bottom']}`")
     lines.append("- A mixed printable/page-size page-record stream starts without a current page root, drives `!` then `ESC &l1A`, allocates the page-record root on the printable queue step, and publishes the queued compact text bucket through the page-size handler's `0xf34a`/`0xff1e` boundary before storing the new page code and recomputing geometry.")
     lines.append(f"- page-size publication object bytes: `{' '.join(f'{byte:02x}' for byte in page_geometry_page_record_object)}`")
     lines.append("- page-size published page-record bridge rows match the pre-geometry compact text rows.")
+    lines.append("- A mixed page-length stream `ESC &l66P!` routes through ROM parser handlers `0xf9e8` and `0xd04a`, refreshes the text cursor to y `126`, and queues the following printable at compact coord `0x9001`.")
     lines.append("- A mixed printable/orientation page-record stream starts from letter portrait with no current page root, drives `!` then `ESC &l1O`, allocates the page-record root on the printable queue step, and publishes the queued compact text bucket through the orientation handler's `0xf34a`/`0xff1e` boundary before switching to landscape geometry.")
     lines.append(f"- orientation publication object bytes: `{' '.join(f'{byte:02x}' for byte in orientation_page_record_object)}`")
     lines.append("- orientation published page-record bridge rows match the pre-landscape compact text rows.")
@@ -42339,6 +42710,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- `ESC &s#C` toggles the end-of-line wrap flag: selector `0` stores enabled, selector `1` clears it, and other selectors leave the current flag unchanged.")
     lines.append("- `ESC *p#X/#Y` shifts the parsed integer left 16 bits to form whole-dot packed cursor coordinates, then commits through the same `0xf4ca` and `0xf6e2` helpers as the `ESC &a` cursor-position commands.")
     lines.append("- `ESC &l#D` accepts only the ROM LPI set `1,2,3,4,6,8,12,16,24,48`, treats zero as 12 LPI, and writes line advance `0x783160`; `ESC &l#C` converts VMI in 1/48-inch units using 75 packed subunits per unit and allows zero without setting the modified-layout flag.")
+    lines.append("- `ESC &l#P` uses current VMI to convert line count into page extent, chooses a page code from orientation thresholds, and refreshes the following printable cursor; `ESC &l66P!` queues `!` at compact coord `0x9001`.")
     lines.append("- `ESC &l#E` sets top offset `0x782dce` from VMI lines minus vertical offset source `0x782dbe`, then recomputes default text-length bottom `0x782dd2`; `ESC &l#F` stores explicit text-length bottom as top offset plus VMI-scaled lines, or restores the default when the parameter is zero. A byte-stream fixture now drives chained `ESC &l8c6d3e2F` through handlers `0xcb00`, `0xc992`, `0xece2`, and `0xea9e`; `ESC &l#L` reaches `0xee64` and toggles perforation-skip byte `0x783191` for selectors `0` and `1`.")
     lines.append("- `ESC &a#L` stores an absolute left margin in HMI columns when it does not pass `right_margin - HMI`; it moves the cursor and flushes pending spans only when the new margin is right of the current cursor or pending text is marked.")
     lines.append("- `ESC &a#M` stores `abs(parameter) + 1` HMI columns as the right margin, rejects values before `left_margin + HMI`, clamps beyond page width, and moves the cursor/right-limit latch when the new right margin is left of the current cursor. A byte-stream fixture now drives chained `ESC &a6l9M` through handlers `0xeb58` and `0xec0c`.")
@@ -42358,6 +42730,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- `ESC *p12Y`: y `0x{int(dot_y_absolute['cursor_y']):08x}`, relative `ESC *p+5Y` y `0x{int(dot_y_relative['cursor_y']):08x}`, clamped `ESC *p500Y` y `0x{int(dot_y_clamped['cursor_y']):08x}`")
     lines.append(f"- `ESC &l6D`: VMI `0x{int(lpi_six['vmi']):08x}`, pending cursor y `0x{int(lpi_six['cursor_y']):08x}`")
     lines.append(f"- `ESC &l8C`: VMI `0x{int(vmi_eight['vmi']):08x}`, `ESC &l1.5C` VMI `0x{int(vmi_fraction['vmi']):08x}`")
+    lines.append(f"- `ESC &l66P`: extent `{page_length_letter['page_extent']}`, refreshed cursor y `0x{int(page_length_mixed_stream['final_state']['cursor_y']):08x}`")
     lines.append(f"- `ESC &l3E`: top offset `0x{int(top_margin_three['top_offset']):08x}`, text bottom `0x{int(top_margin_three['text_length_bottom']):08x}`")
     lines.append(f"- `ESC &l2F`: text bottom `0x{int(text_length_two['text_length_bottom']):08x}`, `ESC &l0F` default bottom `0x{int(text_length_default['text_length_bottom']):08x}`")
     lines.append(f"- `ESC &l1L`: perforation skip `{perforation_skip_cases[1]['skip_after']}`")

@@ -49,6 +49,8 @@ pixel-perfect rendering:
 - BS `0x08`, handler `0x00f2a8`: backspace cursor behavior.
 - `ESC &l#A`, handler `0x00fc74`: page size; maps PCL values to internal
   paper codes.
+- `ESC &l#P`, handler `0x00f9e8`: page length in lines; converts current
+  VMI times line count into page extent `0x782dba`.
 - `ESC &l#O`, handler `0x010220`: orientation; rebuilds page geometry
   and cursor state.
 - `ESC &l#C`, handler `0x00cb00`: VMI in 1/48-inch units into
@@ -153,6 +155,22 @@ offset `100`, and the `0x103ea` threshold sequence
 `2175, 2550, 2480, 2550`; a chained byte-stream fixture drives
 `ESC &l1a1O` through `0xfc74` and `0x10220` with the same final
 landscape state.
+
+`ESC &l#P` at `0x00f9e8` handles page length in lines. The nonzero
+parameter path reads current VMI from `0x783160`, multiplies it by the
+absolute line count, converts the packed 12-subunit result back to whole
+dots, then selects an internal page code from thresholds loaded by
+`0x103ea`. Portrait checks internal codes `6`, `2`, `1`, then `5`;
+landscape checks `6`, `1`, then `2`. Accepted values finalize pending
+page state, store the selected code in `0x782da2`, store computed page
+extent in `0x782dba`, recompute geometry, default text length, and cursor
+state, and refresh the next text cursor through the same
+`0x782dce + VMI * 18 / 25` rule. The fixture pins `ESC &l66P` at 6 LPI
+as internal code `2`, page extent `3300`, top offset `90`, and following
+printable `!` at compact coord `0x9001`. Zero VMI and too-long page
+lengths are ignored. The zero-parameter branch is identified in
+disassembly as a publication/default-page path, but it is not yet fully
+modeled.
 
 `ESC &l#D` at `0x00c992` accepts absolute LPI values
 `1,2,3,4,6,8,12,16,24,48`, treats zero as `12`, converts to packed line

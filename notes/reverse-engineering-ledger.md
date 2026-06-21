@@ -77,7 +77,7 @@ margin and cursor-position conversions, narrow byte streams, mixed
 text/control, LF, HT/BS, left/right-margin, lowercase-chained margin,
 horizontal-column, horizontal-decipoint, vertical-row,
 vertical-decipoint, and lowercase-chained cursor-position, top-margin,
-perforation-skip, HMI, and cursor-stack parser-to-page-record
+perforation-skip, page-length, HMI, and cursor-stack parser-to-page-record
 boundaries, reset sequencing, ROM
 parser dispatch of publication streams, host-fetched publication header
 fields for reset, FF, page-size, and orientation, addressed
@@ -97,6 +97,9 @@ pushes/pops the cursor stack at `0x782c96..0x782d36`;
 `0xcb00`/`0xc992`/`0xece2`/`0xea9e`/`0xee64` and update VMI
 `0x783160`, top offset `0x782dce`, text-length bottom `0x782dd2`,
 perforation-skip byte `0x783191`, and pending vertical cursor state;
+`ESC &l#P` maps to `0xf9e8` and converts current VMI lines into page
+extent `0x782dba` with orientation-threshold internal page-code
+selection;
 `ESC &a#L/#M` map to
 `0xeb58`/`0xec0c` and convert HMI margin columns into
 `0x782dd6`/`0x782dda` with reject/clamp/cursor-move cases;
@@ -125,7 +128,9 @@ result; `ESC &k6H!!`, `ESC &k2G!\n!`, `ESC &k0G HT BS !`,
 lowercase-chained margin, horizontal-column, horizontal-decipoint,
 vertical-row, vertical-decipoint, lowercase-chained cursor-position,
 top-margin, and perforation-skip handlers to shifted or unchanged
-page-record text output;
+page-record text output; `ESC &l66P!` now ties page-length handler
+`0xf9e8` to page extent `3300`, refreshed cursor y `126`, and following
+printable `!` at compact coord `0x9001`;
 `ESC &f0S ESC &a2C ESC &f1S!` now ties cursor-stack push/pop and
 cursor-position handlers to restored page-record text output at compact
 coord `0x0001`; `ESC E` maps to reset handler `0xcc52`, reset flow is
@@ -217,6 +222,13 @@ mapping for letter and PCL `80`, and `ESC &l#O` handler `0x10220`
 landscape active-extent swap, vertical offset source, printable extent,
 top offset, `0x103ea` threshold reloads, and chained `ESC &l1a1O`
 byte-stream selector coverage
+
+`ESC &l#P` handler `0xf9e8` is now modeled for nonzero page lengths:
+6-LPI `ESC &l66P` selects internal code `2`, stores page extent `3300`,
+recomputes top/text bounds, and the parser-to-page-record fixture proves
+the following printable byte uses the refreshed text cursor. The
+zero-parameter publication/default-page branch is identified but still
+needs a dedicated fixture.
 
 ### Raster/text/page-object path
 

@@ -153,6 +153,7 @@ def generate_disassembly(firmware: Path) -> None:
         ("ic30_ic13_dot_position_handlers_00f48c.lst", "0xf48c", "0xf48c", "0x280"),
         ("ic30_ic13_page_root_finalize_00ff1e.lst", "0xff1e", "0xff1e", "0x170"),
         ("ic30_ic13_page_geometry_tables_009d16.lst", "0x9d16", "0x9d16", "0x190"),
+        ("ic30_ic13_page_length_handler_00f9e8.lst", "0xf9e8", "0xf9e8", "0x290"),
         ("ic30_ic13_page_size_handler_00fc74.lst", "0xfc74", "0xfc74", "0x260"),
         ("ic30_ic13_orientation_handler_010220.lst", "0x10220", "0x10220", "0x270"),
         ("ic30_ic13_page_root_allocate_010084.lst", "0x10084", "0x10084", "0x1c0"),

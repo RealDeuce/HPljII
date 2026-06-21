@@ -220,7 +220,7 @@ subtracting `0x782dbe` and clamping to `0x782dc6 - 1/12`, clears
 pending/right-limit flags, and flushes pending spans when `0x783184` is
 set.
 
-`ESC &l#C/#D/#E/#F/#L` are now traced as parser-produced vertical layout
+`ESC &l#C/#D/#E/#F/#L/#P` are now traced as parser-produced vertical layout
 commands. `ESC &l#D` accepts only the ROM LPI set and writes line
 advance `0x783160`; `ESC &l#C` converts 1/48-inch VMI units into the
 same line-advance word. `ESC &l#E` writes top offset `0x782dce` from
@@ -231,7 +231,10 @@ values, refresh pending vertical cursor `0x782c8e` as
 chained byte stream `ESC &l8c6d3e2F` through handlers `0xcb00`,
 `0xc992`, `0xece2`, and `0xea9e`. `ESC &l#L` reaches handler `0xee64`;
 selector `0` clears perforation-skip byte `0x783191`, selector `1` sets
-it, and other selectors leave it unchanged.
+it, and other selectors leave it unchanged. `ESC &l#P` reaches handler
+`0xf9e8`, converts VMI lines to page extent `0x782dba`, chooses the
+internal page code through the orientation thresholds, and refreshes the
+following printable cursor before normal `0xd04a` text queueing.
 
 `ESC &a#L/#M` are now traced as parser-produced margin commands.
 `ESC &a#L` converts the absolute parsed column count through current HMI

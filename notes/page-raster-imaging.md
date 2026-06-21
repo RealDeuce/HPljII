@@ -664,7 +664,7 @@ fetch, tokenizer/delayed-payload, page-geometry, macro/data-chain,
 direct-control, reset, text, rule, raster, bridge, row-copy, built-in glyph,
 symbol-set, and downloaded-font fixture families into one ROM-backed self-test.
 It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and
-currently verifies 345 checks. The raster coverage now includes ROM-table
+currently verifies 346 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W`
 stream, the 150/100/75-dpi mode streams, the consecutive-row `ESC *b2W` stream,
 the active-resolution-ignore `ESC *t75R` stream, the end-raster `ESC *rB` /
@@ -793,7 +793,9 @@ publication, current-root clearing, rendered rows after `0x1edc6`, and the same
 rows after the published records pass through `0x1ed84` and `0x1ef6a`; the
 host-fetch publication fixture now starts those same four streams from the
 modeled `0xa904` ring source, drains the ring bytes, replays the same parser
-handlers, and lands on the same published rows. The host-fetched reset, FF,
+handlers, lands on the same published rows, and now pins that the `0x1edc6`
+bridge preserves the published bucket root, clears rule/fixed lists, and copies
+the selected context slot into the render record. The host-fetched reset, FF,
 page-size, and orientation cases also pin the pool header after `0xff1e`: state
 byte `+4 = 2`, default status/environment fields, published pointer `0x780ea6`,
 bucket-root prefix, and context-slot prefix all match the modeled publication

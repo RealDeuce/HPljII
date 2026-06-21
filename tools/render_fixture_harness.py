@@ -29516,6 +29516,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "page_size": page_geometry_published_page_record,
         "orientation": orientation_published_page_record,
     }
+    publication_published_bridged = {
+        "reset": mixed_reset_published_bridged,
+        "ff": ff_published_bridged,
+        "page_size": page_geometry_published_bridged,
+        "orientation": orientation_published_bridged,
+    }
     publication_published_rendered = {
         "reset": mixed_reset_published_rendered,
         "ff": ff_published_rendered,
@@ -29674,6 +29680,66 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "pool_header": expected_default_publication_pool_header,
             "bucket_root_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
             "context_slots_2c_prefix": (0x440946B4, 0),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
+    }))
+    checks.append(assert_equal("host-fetched publication streams preserve 0x1edc6 bridge contract", {
+        name: {
+            "fetched_stream": host_fetched_publication_streams[name]["stream"],
+            "parser_handlers": parser_handler_summary(host_fetched_publication_parser_trace[name]),
+            "bridge_bucket_matches_published": (
+                publication_published_bridged[name]["bucket_root"]
+                == publication_published_records[name]["bucket_root"]
+            ),
+            "render_field_bucket_matches_published": (
+                publication_published_bridged[name]["render_record_fields"]["bucket_root_18"]
+                == publication_published_records[name]["bucket_root"]
+            ),
+            "rule_list_count": len(publication_published_bridged[name]["rule_list"]),
+            "fixed_list_count": len(publication_published_bridged[name]["fixed_list"]),
+            "context_slots_prefix": publication_published_bridged[name]["context_slots"][:2],
+            "published_rows": publication_published_rendered[name]["rows"][:4],
+        }
+        for name in ("reset", "ff", "page_size", "orientation")
+    }, {
+        "reset": {
+            "fetched_stream": b"!\x1bE",
+            "parser_handlers": [0x00D04A, 0x00CC52],
+            "bridge_bucket_matches_published": True,
+            "render_field_bucket_matches_published": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0x440946B4, 0),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
+        "ff": {
+            "fetched_stream": b"\x1b&k2G!\f",
+            "parser_handlers": [0x00EDF8, 0x00D04A, 0x00F0F0],
+            "bridge_bucket_matches_published": True,
+            "render_field_bucket_matches_published": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0x440946B4, 0),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
+        "page_size": {
+            "fetched_stream": b"!\x1b&l1A",
+            "parser_handlers": [0x00D04A, 0x00FC74],
+            "bridge_bucket_matches_published": True,
+            "render_field_bucket_matches_published": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0x440946B4, 0),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
+        "orientation": {
+            "fetched_stream": b"!\x1b&l1O",
+            "parser_handlers": [0x00D04A, 0x010220],
+            "bridge_bucket_matches_published": True,
+            "render_field_bucket_matches_published": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0x440946B4, 0),
             "published_rows": positioned_mode0["rows"][:4],
         },
     }))

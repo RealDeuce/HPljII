@@ -9664,6 +9664,63 @@ def queue_text_source_to_page_record_via_12f2e(resources: bytes, page_record: di
     }
 
 
+def queue_text_source_to_addressed_stream_via_12f2e(
+    resources: bytes,
+    state: dict[str, object],
+    source: dict[str, object],
+) -> dict[str, object]:
+    """Address-aware short text bucket queue through 0x1387c/0x1381c."""
+    selector = int(source["context_slot"]) & 0x0F
+    metrics = text_source_metrics_via_12f2e(resources, source)
+    width = int(metrics["width"])
+    rows = int(metrics["rows"])
+    if width > int(metrics["wide_threshold"]):
+        selector |= 0x1000
+    if rows > 0x80:
+        raise AssertionError("addressed text stream fixture currently pins short 0x12f2e objects")
+
+    coord = compact_text_coord(int(source["x"]), int(source["y"]))
+    bucket_index = int(source["y"]) >> 4
+    glyph = int(source["mapped"]) & 0xFF
+    alloc = bucket_find_or_alloc_addressed_via_1387c(
+        state,
+        bucket_index,
+        selector,
+        0x0A,
+        0x26,
+    )
+    obj = alloc["object"]
+    if not isinstance(obj, bytearray):
+        raise AssertionError("addressed bucket allocator did not return a mutable object")
+    count = int(alloc["count_before"])
+    entry = 8 + count * 3
+    obj[6:8] = (count + 1).to_bytes(2, "big")
+    obj[entry] = glyph
+    obj[entry + 1 : entry + 3] = coord.to_bytes(2, "big")
+    return {
+        "path": "short-addressed-page-record",
+        "object_ptr": alloc["object_ptr"],
+        "allocated": alloc["allocated"],
+        "allocation_failed": alloc.get("allocation_failed", False),
+        "count_before": count,
+        "count_after": count + 1,
+        "object": bytes(obj),
+        "object_size": 0x26,
+        "capacity": 0x0A,
+        "entry_size": 3,
+        "bucket_index": bucket_index,
+        "selector": selector,
+        "coord": coord,
+        "glyph": glyph,
+        "rows": rows,
+        "width": width,
+        "old_bucket_head": alloc["old_bucket_head"],
+        "new_bucket_head": alloc["new_bucket_head"],
+        "next_ptr": alloc["next_ptr"],
+        "visited": alloc["visited"],
+    }
+
+
 def ensure_page_record_root_for_queue(state: dict[str, int]) -> dict[str, object]:
     current_before = int(state.get("current_page_root", 0))
     pending_782c73_before = int(state.get("page_root_pending_782c73", 0))
@@ -12759,6 +12816,178 @@ def render_mixed_printable_control_page_record_stream(
         "published_rendered": published_rendered,
         "published_render_entry": published_render_entry,
         "final_state": state,
+    }
+
+
+def render_text_rectangle_addressed_page_record_stream(
+    data: bytes,
+    resources: bytes,
+    stream: bytes,
+    context: int,
+    state: dict[str, int],
+    default_advance: int,
+    context_slot: int = 0,
+) -> dict[str, object]:
+    """Address-backed fixture for printable text followed by ESC *c#P."""
+    if not stream or stream[0] < 0x20 or stream[0] == 0x7F:
+        raise AssertionError("addressed text+rectangle stream expects one printable byte first")
+    suffix = stream[1:]
+    rectangle_trace = trace_rectangle_parser_dispatch_via_11774(
+        data,
+        suffix,
+        rectangle_command_state(
+            cursor_x=state.get("cursor_x", pack12(0)),
+            cursor_y=state.get("cursor_y", pack12(0)),
+            page_width=state.get("page_width", 0),
+            page_height=state.get("page_height", 0),
+            orientation=state.get("orientation", 0),
+        ),
+    )
+    addressed_state: dict[str, object] = {
+        "stream_bytes_remaining_782a70": 0,
+        "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+        "stream_next_free_782a76": 0,
+        "next_stream_chunk_ptr": int(state.get("next_stream_chunk_ptr", 0x00D05000)),
+        "stream_chunk_links": {},
+        "bucket_heads_1c": {},
+        "rule_head_24": 0,
+        "fixed_head_28": 0,
+        "stream_objects": {},
+        "context_slots": [context],
+    }
+    working = dict(state)
+    events: list[dict[str, object]] = []
+
+    source = build_text_source_object_from_1393a(
+        resources,
+        context,
+        stream[0],
+        x=0,
+        y=0,
+        context_slot=context_slot,
+    )
+    positioned = position_flagged_text_source_via_d824(
+        resources,
+        source,
+        cursor_x=unpack12(working["cursor_x"])[0],
+        cursor_y=unpack12(working["cursor_y"])[0],
+    )
+    positioned_source = positioned["source"]
+    assert isinstance(positioned_source, dict)
+    page_root = ensure_page_record_root_for_queue(working)
+    text_result = queue_text_source_to_addressed_stream_via_12f2e(
+        resources,
+        addressed_state,
+        positioned_source,
+    )
+    advance = advance_flagged_text_cursor_via_d550(working["cursor_x"], default_advance)
+    working["cursor_x"] = advance["cursor_after"]
+    events.append({
+        "kind": "printable",
+        "offset": 0,
+        "byte": stream[0],
+        "cursor_before": advance["cursor_before"],
+        "cursor_after": advance["cursor_after"],
+        "source": source,
+        "positioned": positioned,
+        "page_result": text_result,
+        "page_root": page_root,
+    })
+
+    pos = 0
+    if suffix[:3] != b"\x1b*c":
+        raise AssertionError("addressed text+rectangle fixture only models ESC *c after text")
+    pos = 3
+    while pos < len(suffix):
+        command_start = 0 if pos == 3 else pos
+        parameter, pos = parse_pcl_decimal_parameter(suffix, pos)
+        if pos >= len(suffix):
+            raise AssertionError("addressed text+rectangle stream missing ESC *c final byte")
+        final = suffix[pos]
+        pos += 1
+        final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+        before = dict(working)
+        if final_upper == ord("A"):
+            working = apply_rectangle_size_dots(working, "width", parameter)
+            handler = 0x010E68
+        elif final_upper == ord("B"):
+            working = apply_rectangle_size_dots(working, "height", parameter)
+            handler = 0x010E22
+        elif final_upper == ord("P"):
+            modeled = apply_fill_rectangle_via_10898(dict(working) | {"page_record": {}}, parameter)
+            modeled_events = modeled.get("events", [])
+            if not isinstance(modeled_events, list) or not modeled_events:
+                raise AssertionError("addressed text+rectangle fill produced no event")
+            fill_event = modeled_events[-1]
+            if fill_event.get("kind") != "rectangle-filled":
+                raise AssertionError("addressed text+rectangle fixture expected a queued rectangle")
+            fill_source = dict(fill_event["source"])
+            fill_source["flags"] = int(fill_event["selector"])
+            rule_root = ensure_page_record_root_for_queue(working)
+            rule_result = insert_rectangle_rule_addressed_via_133aa(
+                addressed_state,
+                fill_source,
+            )
+            working["fill_selector"] = modeled["fill_selector"]
+            handler = 0x010898
+            events.append({
+                "kind": "rectangle",
+                "offset": 1 + command_start,
+                "sequence": suffix[command_start:pos],
+                "parameter": parameter,
+                "handler": handler,
+                "source": fill_source,
+                "page_root": rule_root,
+                "page_result": rule_result,
+                "cursor_before": {"x": before["cursor_x"], "y": before["cursor_y"]},
+                "chained": bool(ord("a") <= final <= ord("z")),
+            })
+            if not (ord("a") <= final <= ord("z")):
+                break
+            continue
+        else:
+            raise AssertionError(
+                f"addressed text+rectangle stream unsupported ESC *c final byte {chr(final)!r}"
+            )
+        events.append({
+            "kind": "rectangle",
+            "offset": 1 + command_start,
+            "sequence": suffix[command_start:pos],
+            "parameter": parameter,
+            "handler": handler,
+            "state_before": {
+                "width": before.get("width"),
+                "height": before.get("height"),
+            },
+            "state_after": {
+                "width": working.get("width"),
+                "height": working.get("height"),
+            },
+            "chained": bool(ord("a") <= final <= ord("z")),
+        })
+        if not (ord("a") <= final <= ord("z")):
+            break
+
+    page_record = page_record_from_addressed_stream_state(addressed_state)
+    bridged_record = bridge_page_record_via_1edc6(page_record)
+    render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        page_record,
+        bucket_word=0,
+    )
+    return {
+        "stream": stream,
+        "parser_handlers": [0x00D04A] + [
+            command["final_dispatch"]["handler"]
+            for command in rectangle_trace["commands"]
+        ],
+        "events": events,
+        "addressed_state": addressed_state,
+        "page_record": page_record,
+        "bridged_record": bridged_record,
+        "render_entry": render_entry,
+        "final_state": working,
     }
 
 
@@ -36128,6 +36357,62 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "mutated_object": bytes.fromhex("00 00 00 00 01 07 5c 01 00 0c 00 05 ff ca"),
         }],
         "rows": text_rectangle_expected_rows,
+    }))
+    text_rectangle_addressed = render_text_rectangle_addressed_page_record_stream(
+        data,
+        resources,
+        b"!\x1b*c12a5b0P",
+        0x440946B4,
+        dict(text_rectangle_state) | {"next_stream_chunk_ptr": 0x00D06000},
+        default_advance=line_printer_hmi["hmi"],
+    )
+    checks.append(assert_equal("addressed text plus rectangle stream matches page-record output", {
+        "stream": text_rectangle_addressed["stream"],
+        "parser_handlers": text_rectangle_addressed["parser_handlers"],
+        "event_kinds": [event["kind"] for event in text_rectangle_addressed["events"]],
+        "page_record": text_rectangle_addressed["page_record"],
+        "bridged_rule_list": text_rectangle_addressed["bridged_record"]["rule_list"],
+        "render_call_order": text_rectangle_addressed["render_entry"]["entry"]["call_order"],
+        "render_rule_list": text_rectangle_addressed["render_entry"]["render_record_fields"]["rule_list_1c"],
+        "rows": text_rectangle_addressed["render_entry"]["entry"]["rows"],
+        "stream_state": {
+            key: text_rectangle_addressed["addressed_state"][key]
+            for key in (
+                "stream_bytes_remaining_782a70",
+                "stream_link_ptr_782a72",
+                "stream_next_free_782a76",
+                "next_stream_chunk_ptr",
+                "stream_chunk_links",
+                "stream_allocations",
+            )
+        },
+    }, {
+        "stream": b"!\x1b*c12a5b0P",
+        "parser_handlers": [0x00D04A, 0x010E68, 0x010E22, 0x010898],
+        "event_kinds": ["printable", "rectangle", "rectangle", "rectangle"],
+        "page_record": {
+            "bucket_array": {
+                0: [
+                    bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                    + bytes(0x1B),
+                ],
+            },
+            "rule_list": [bytes.fromhex("00 00 00 00 01 07 5c 01 00 0c 00 05 00 00")],
+            "fixed_list": [],
+            "context_slots": [0x440946B4],
+        },
+        "bridged_rule_list": [bytes.fromhex("00 00 00 00 01 17 5c 01 00 0c 00 05 00 05")],
+        "render_call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "render_rule_list": [bytes.fromhex("00 00 00 00 01 17 5c 01 00 0c 00 05 00 05")],
+        "rows": text_rectangle_expected_rows,
+        "stream_state": {
+            "stream_bytes_remaining_782a70": 0x00C8,
+            "stream_link_ptr_782a72": 0x00D06000,
+            "stream_next_free_782a76": 0x00D06038,
+            "next_stream_chunk_ptr": 0x00D06100,
+            "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D06000},
+            "stream_allocations": 1,
+        },
     }))
     text_rectangle_raster_stream = (
         b"!\x1b*c12a5b0P\x1b*t300R\x1b*r0A\x1b*b2W"

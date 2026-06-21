@@ -37441,6 +37441,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append("- current-default lookup: `0x1b250` treats `0x78219c == 0xff` as disabled, otherwise asks `0x1b50e` for a resource address and symbol word, maps that low-24 address back into the canonical candidate slot list with `0x1b4c0`, stores the resolved slot in `0x7828a0`, copies the returned word to `0x7828a4`, and sets `0x78289f` to `1` only when the selected slot precedes boundary pointer `0x7827ac`.")
     lines.append("- current-default resolver: `0x1b50e` first accepts the `0x1b8ea` fast probe only for requested index `0`; otherwise it scans two list windows selected by mode `0`, `1`, `2`, or `3`. `0x1b750` classifies each candidate through `0x1b7b2` range/special/downloaded admissibility and `0x1b8b6` current Roman-8 duplicate suppression; non-special requests can count a Roman-8 candidate twice, with the duplicate ordinal writing the requested word instead of `0x0115`.")
+    lines.append("- real built-in default resolver: mode-3 `0x1b50e` over scanned candidates selects slot `0x%06x` / record `0x%06x` for ordinal 1, counts the same Roman-8 record twice when requested symbol is non-Roman-8 (`0x%04x` on ordinal 2), and suppresses the current Roman-8 slot before selecting `0x%06x`." % (
+        real_resolver_mode3_first["selected_pointer"],
+        real_resolver_mode3_first["selected_resource_address"],
+        real_resolver_mode3_duplicate["word"],
+        real_resolver_mode3_suppressed_current["selected_pointer"],
+    ))
     lines.append("- synthesized default search: `0x1ab84` clears the selected candidate pointer, tries `0x1adaa(1)` and `0x1adaa(2)` under the current `0x78289f`, flips `0x78289f` only after both miss, repeats both range searches, and finally falls through to `0x1ae7e`; a flipped-orientation hit or miss leaves the flipped selector in place for the caller.")
     lines.append("- default-font candidate search: `0x1ad66` first tries `0x1adaa(1)` and then `0x1adaa(2)` before `0x1ae7e`; `0x1bbfe` now derives range-hit words through the bit-30-selected symbol readers, and `0x1b060` validates default candidates by orientation, pitch `0x03e8`, height `0x04b0`, style bytes, spacing byte `3`, and requested-symbol fallback rules. The fixture pins primary-slot range-1 word `0x%04x`, secondary-slot range-2 word `0x%04x`, fallback `0x1b060` requested word `0x%04x`, and base-candidate reader sources `%s` / `%s`." % (
         default_candidate_range_1["word"],

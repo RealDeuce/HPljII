@@ -537,10 +537,11 @@ ROM work needed:
   semantics.
 - Replace the modeled default-font candidate records with a live
   parser/font-state fixture that proves the real records feeding
-  `0x1b250`, `0x1b50e`, and `0x1ab84`; real scanned built-in windows now
-  feed `0x1b060` fallback selection for class-zero and class-one cases,
-  and the parser-exposed `@0..@2` table/copy variants are documented as
-  firmware-supported but not manual-documented.
+  `0x1b250` and `0x1ab84`; real scanned built-in windows now feed
+  `0x1b50e` mode-3 selection and `0x1b060` fallback selection for
+  class-zero and class-one cases, and the parser-exposed `@0..@2`
+  table/copy variants are documented as firmware-supported but not
+  manual-documented.
 - Replace the host-fetched font-control, descriptor, resource-payload,
   and downloaded-character boundaries with a full live parser-state run
   that populates current records/source objects, then replace

@@ -453,9 +453,13 @@ falls through to fallback-table word `0x000e`. Remaining default-font
 uncertainty is narrowed further by real scanned built-in fallback
 coverage: class-zero candidates feed `0x1b060` and choose record
 `0x00004c` by Roman-8 fallback for requested `0x0005`, while class-one
-candidates choose record `0x01a984` by exact symbol `0x000e`. The
-remaining gap is live parser/font-state selection over those concrete
-candidate windows.
+candidates choose record `0x01a984` by exact symbol `0x000e`. Real
+scanned windows also feed mode-3 `0x1b50e`: ordinal 1 selects slot
+`0x782354` / record `0x08004c`, a non-Roman-8 duplicate ordinal 2
+returns requested word `0x0005`, and current-slot duplicate suppression
+advances to slot `0x782358` / record `0x080418`. The remaining gap is
+live parser/font-state selection over those concrete candidate windows
+for `0x1b250` and `0x1ab84`.
 
 Downloaded-font command edges are now decoded in
 `generated/analysis/ic30_ic13_font_control_flow.md`. `ESC *c#D`
@@ -748,7 +752,8 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   `0x13eb8` / `0xc428`, and `0x14c64` dispatch.
 - Replace the modeled default-font candidate records with a live
   parser/font-state fixture that proves the real records feeding
-  `0x1b250`, `0x1b50e`, `0x1ab84`, `0x1bbfe`, and `0x1b060`, then decide
+  `0x1b250` and `0x1ab84`; real scanned built-in windows now feed
+  `0x1b50e` mode-3 selection and `0x1b060` fallback selection. Decide
   whether undocumented but parser-exposed `@0..@2` variants need
   compatibility-facing documentation.
 - Replace the modeled `ESC &f#X` macro-control fixtures with full replay

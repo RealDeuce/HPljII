@@ -308,7 +308,9 @@ to modeled `0xa904` ring fetch, parser handlers, object prefixes,
 `0x1edc6` bridge fields, `0x1ed84`/`0x1ef6a` render-entry dispatch,
 and rendered row counts, a host-fetched `! ESC *c12a5b0P` fixture that
 renders compact text plus a selector-7 rule from one combined page
-record through `0x1ed84`/`0x1ef6a`, a mixed `!\x1bE` fixture that
+record through `0x1ed84`/`0x1ef6a`, a host-fetched `! ESC *c12a5b0P
+ESC *t300R ESC *r0A ESC *b2W` fixture that adds a mode-0 raster object
+to the same bucket/rule page-record shape, a mixed `!\x1bE` fixture that
 publishes and clears a valid current page root after queued text and has
 a page-record allocator/bridge/publication variant,
 selected inline/downloaded `0x14e24`/`0x14eb6` map and `0x1393a`
@@ -541,9 +543,9 @@ ROM work needed:
   proves a separate imaging role.
 - Broaden the current text/rule/raster, simple and mixed-control macro
   execute parser-to-page-record, and macro-payload page-band composition
-  fixtures into true heterogeneous bucket-chain rendering, full macro
-  replay through the live parser/data-chain path, and the full final
-  page-pixel merge.
+  fixtures into fuller parser-produced heterogeneous bucket-chain
+  rendering, full macro replay through the live parser/data-chain path,
+  and the full final page-pixel merge.
 - Determine clipping and off-page behavior exactly.
 - Identify any banding/compression structures used internally; reproduce
   final pixel result rather than formatter timing.

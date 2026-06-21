@@ -360,7 +360,10 @@ the `0x1ef6a` render-entry call order, including the nonzero bucket
 selection used by the vertical cursor/layout cases. A host-fetched
 `! ESC *c12a5b0P` fixture now extends that page-record stream model to a
 combined compact-text bucket plus selector-7 rule list before the same
-`0x1ed84`/`0x1ef6a` render-entry path composes the rows.
+`0x1ed84`/`0x1ef6a` render-entry path composes the rows. A second
+host-fetched fixture adds `ESC *t300R ESC *r0A ESC *b2W` and queues a
+mode-0 raster row into the same page-record shape before the combined
+bucket/rule/raster render-entry comparison.
 
 Rectangle/rule command edges are now traced in
 `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`.

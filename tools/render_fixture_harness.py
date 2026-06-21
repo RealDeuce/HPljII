@@ -29413,6 +29413,214 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         }],
         "rows": text_rectangle_expected_rows,
     }))
+    text_rectangle_raster_stream = (
+        b"!\x1b*c12a5b0P\x1b*t300R\x1b*r0A\x1b*b2W"
+        + bytes.fromhex("c3 3c")
+    )
+    text_rectangle_raster_host_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(text_rectangle_raster_stream), direct_mode=0),
+        len(text_rectangle_raster_stream),
+    )
+    text_rectangle_raster_page_record = dict(text_rectangle_page_record_stream["page_record"])
+    text_rectangle_raster_bucket_array = {
+        int(bucket): [bytes(obj) for obj in chain]
+        for bucket, chain in text_rectangle_page_record_stream["page_record"]["bucket_array"].items()
+    }
+    text_rectangle_raster_page_record["bucket_array"] = text_rectangle_raster_bucket_array
+    text_rectangle_raster_page_record["rule_list"] = [
+        bytes(obj) for obj in text_rectangle_page_record_stream["page_record"]["rule_list"]
+    ]
+    text_rectangle_raster_page_record["context_slots"] = [0x440946B4]
+    text_rectangle_raster_suffix = b"\x1b*t300R\x1b*r0A\x1b*b2W" + bytes.fromhex("c3 3c")
+    text_rectangle_raster_trace = trace_raster_parser_dispatch_via_11774(
+        data,
+        text_rectangle_raster_suffix,
+    )
+    text_rectangle_raster_state = raster_graphics_state(page_extent=255)
+    text_rectangle_raster_state = apply_raster_resolution_via_10808(
+        text_rectangle_raster_state,
+        300,
+    )
+    text_rectangle_raster_state = start_raster_graphics_via_1075a(
+        text_rectangle_raster_state,
+        0,
+    )
+    text_rectangle_raster_gate = raster_transfer_gate_via_105d0(
+        text_rectangle_raster_page_record,
+        text_rectangle_raster_state,
+        2,
+        bytes.fromhex("c3 3c"),
+    )
+    if not text_rectangle_raster_gate["queued"]:
+        raise AssertionError("text+rectangle+raster fixture expected raster row to queue")
+    text_rectangle_raster_chain = [
+        bytes(obj) for obj in text_rectangle_raster_bucket_array[0]
+    ]
+    text_rectangle_raster_rendered = render_encoded_raster_object_via_1f88e(
+        data,
+        text_rectangle_raster_chain[0],
+    )
+    text_rectangle_raster_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        text_rectangle_raster_page_record,
+        bucket_word=0,
+    )
+    text_rectangle_raster_expected_rows = compose_set_pixel_rows(
+        [
+            text_rectangle_page_record_stream["rendered"]["rows"],
+            text_rectangle_rules["rows"],
+            text_rectangle_raster_rendered["rows"],
+        ],
+        width=40,
+        rows=26,
+    )
+    checks.append(assert_equal("host-fetched text rectangle and raster page record feeds 0x1ed84 and 0x1ef6a", {
+        "fetched_stream": text_rectangle_raster_host_fetch["stream"],
+        "fetch_source_count": len(text_rectangle_raster_host_fetch["sources"]),
+        "fetch_source_set": sorted(set(text_rectangle_raster_host_fetch["sources"])),
+        "remaining_ring": text_rectangle_raster_host_fetch["state"]["ring"],
+        "parser_handlers": [0x00D04A] + [
+            command["final_dispatch"]["handler"]
+            for command in text_rectangle_rectangle_trace["commands"]
+        ] + [
+            command["final_dispatch"]["handler"]
+            for command in text_rectangle_raster_trace["commands"]
+        ],
+        "raster_gate": {
+            key: text_rectangle_raster_gate[key]
+            for key in (
+                "path",
+                "queued",
+                "stored_byte_count",
+                "overflow_count",
+                "row_y",
+                "limit",
+            )
+        },
+        "raster_result": {
+            key: text_rectangle_raster_gate["result"][key]
+            for key in (
+                "path",
+                "allocated",
+                "bucket_index",
+                "key",
+                "mode",
+                "byte_count_before",
+                "byte_count_after",
+                "capacity",
+                "object_size",
+            )
+        },
+        "chain": text_rectangle_raster_chain,
+        "rule_list": text_rectangle_raster_render_entry["render_record_fields"]["rule_list_1c"],
+        "setup": {
+            key: text_rectangle_raster_render_entry["entry"]["setup"][key]
+            for key in (
+                "dividend",
+                "divisor_word_06",
+                "remainder_783a22",
+                "band_rows_scaled_783a20",
+                "destination_base_783a28",
+            )
+        },
+        "call_order": text_rectangle_raster_render_entry["entry"]["call_order"],
+        "dispatch_entries": [
+            {
+                "chain_index": entry["chain_index"],
+                "object_byte_4": entry["object_byte_4"],
+                "class_mask": entry["class_mask"],
+                "branch": entry["branch"],
+                "target": entry["target"],
+                "context_slot": entry.get("context_slot"),
+                "encoded_mode": entry.get("encoded_mode"),
+            }
+            for entry in text_rectangle_raster_render_entry["entry"]["dispatch"]["entries"]
+        ],
+        "bucket_rendered": [
+            {
+                "branch": item["branch"],
+                "mode": item["rendered"].get("mode"),
+                "selector": item["rendered"].get("selector"),
+                "rows": item["rendered"]["rows"],
+            }
+            for item in text_rectangle_raster_render_entry["entry"]["bucket_rendered"]
+        ],
+        "rows": text_rectangle_raster_render_entry["entry"]["rows"],
+    }, {
+        "fetched_stream": text_rectangle_raster_stream,
+        "fetch_source_count": len(text_rectangle_raster_stream),
+        "fetch_source_set": ["ring"],
+        "remaining_ring": [],
+        "parser_handlers": [0x00D04A, 0x010E68, 0x010E22, 0x010898, 0x010808, 0x01075A, 0x011F82],
+        "raster_gate": {
+            "path": "queued",
+            "queued": True,
+            "stored_byte_count": 2,
+            "overflow_count": 0,
+            "row_y": 0,
+            "limit": 32,
+        },
+        "raster_result": {
+            "path": "raster-page-record",
+            "allocated": True,
+            "bucket_index": 0,
+            "key": 0x0000,
+            "mode": 0,
+            "byte_count_before": 2,
+            "byte_count_after": 0,
+            "capacity": 2,
+            "object_size": 0x0C,
+        },
+        "chain": [
+            bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+            bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01") + bytes(0x1B),
+        ],
+        "rule_list": [bytes.fromhex("00 00 00 00 01 17 5c 01 00 0c 00 05 00 05")],
+        "setup": {
+            "dividend": 0,
+            "divisor_word_06": 5,
+            "remainder_783a22": 0,
+            "band_rows_scaled_783a20": 0x0050,
+            "destination_base_783a28": 0x00100000,
+        },
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "dispatch_entries": [
+            {
+                "chain_index": 0,
+                "object_byte_4": 0x80,
+                "class_mask": 0x80,
+                "branch": "encoded-span",
+                "target": 0x01F88E,
+                "context_slot": None,
+                "encoded_mode": 0,
+            },
+            {
+                "chain_index": 1,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 0,
+                "encoded_mode": None,
+            },
+        ],
+        "bucket_rendered": [
+            {
+                "branch": "encoded-span",
+                "mode": 0,
+                "selector": None,
+                "rows": ["##....##..####.."],
+            },
+            {
+                "branch": "compact",
+                "mode": None,
+                "selector": 0,
+                "rows": text_rectangle_page_record_stream["rendered"]["rows"],
+            },
+        ],
+        "rows": text_rectangle_raster_expected_rows,
+    }))
     mixed_publication_parser_trace = {
         "reset": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1bE"),
         "ff": trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k2G!\f"),
@@ -31800,14 +32008,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- text+rule composed sample rows:")
     lines.extend(f"`{row}`" for row in text_rule_composed_rows[:4])
     lines.extend(f"`{row}`" for row in text_rule_composed_rows[24:27])
-    lines.append("- a raster layer fixture renders a mode-0 row at x `0`, y `12` through its own `0x1edc6` raster bridge, then composes it with the text+rule band without claiming the heterogeneous bucket-chain merge is fully decoded.")
+    lines.append("- a raster layer fixture renders a mode-0 row at x `0`, y `12` through its own `0x1edc6` raster bridge, then composes it with the text+rule band.")
     lines.append(f"- text+rule+raster composed row 12: `{text_rule_raster_composed_rows[12]}`")
     lines.append("- a synthetic `0x1ef6a` render-entry fixture now executes call order `%s`, selecting compact text and encoded raster bucket objects through `0x1efc2`, then composing the `0x1f446` rule list and `0x1f756` fixed-width list; composed row 1: `%s`." % (
         " -> ".join("0x%06x" % address for address in render_entry["call_order"]),
         render_entry["rows"][1],
     ))
     lines.append("- remaining gap: broaden this mixed-layer synthetic render entry to")
-    lines.append("  published/parser-produced records with true heterogeneous bucket chains and full-page merge")
+    lines.append("  published/parser-produced records with broader heterogeneous bucket chains and full-page merge")
     lines.append("  coverage.")
     lines.append("")
 
@@ -32400,6 +32608,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("A host-fetched direct text/control fixture now starts the plain, CR/LF, HT/BS, margin, cursor-position, vertical-layout, and cursor-stack page-record streams from the modeled `0xa904` ring source, drains every byte, replays the same parser handlers, and lands on the same `0x1387c` page-record objects and rendered row counts.")
     lines.append("The same direct page-record group now crosses `0x1ed84` active-record copy and the `0x1ef6a` render-entry call order, including nonzero bucket selection for the vertical cursor/layout cases.")
     lines.append("A host-fetched text-plus-rectangle fixture now drains `! ESC *c12a5b0P`, queues the compact text bucket and selector-7 rule in the same page record, and carries that combined bucket/rule record through `0x1ed84` and `0x1ef6a`.")
+    lines.append("A host-fetched text-plus-rectangle-plus-raster fixture now drains `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W`, queues compact text, selector-7 rule, and a mode-0 raster row in one page record, and renders the combined bucket/rule/raster record through `0x1ed84` and `0x1ef6a`.")
     lines.append("")
     lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now starts without a current page root, marks the first printable as the page-record root allocation point, models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`.")
     lines.append("")

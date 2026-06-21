@@ -309,7 +309,8 @@ selected inline/downloaded `0x14e24`/`0x14eb6` map and `0x1393a`
 source-object fixture now crossing `0x1edc6` with context slot `3`
 intact, plus type-2 payload-backed `0x1f0d2`/`0x1f1f0`, selected-memory
 `0x1f264` isolation, and `0x16498` downloaded-pointer `0x1f264` render
-fixtures now crossing `0x1edc6`, `0x168dc`/`0x16942` font payload-reader
+fixtures now crossing `0x1edc6` plus `0x1ed84`/`0x1ef6a`,
+`0x168dc`/`0x16942` font payload-reader
 fixtures plus a host-fetched `ESC )s18W` payload-control
 `0x1ed84`/`0x1ef6a` render-entry bridge,
 `0x172c0`/`0x16c14` downloaded-font record bookkeeping fixtures,

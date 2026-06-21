@@ -285,7 +285,8 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    producer-modeled text bucket fixtures with full parser-produced
    page-object payloads. The current boundary coverage already chains
    fetched `ESC *c4660d37e5F` state into fetched `ESC )s0W`,
-   `ESC )s80W`, and `ESC )s2193W` streams, and the fetched
+   `ESC )s80W`, and `ESC )s2193W` streams, with fetched `ESC )s2193W`
+   now crossing `0x1ed84`/`0x1ef6a`; the fetched
    `ESC )s18W` payload-control path now crosses `0x1edc6` and
    `0x1ed84`/`0x1ef6a` before wide glyph rendering.
 5. Extract enough metadata for each `COURIER` and `LINE_PRINTER` record

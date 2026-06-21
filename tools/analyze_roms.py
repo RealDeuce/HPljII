@@ -1327,6 +1327,30 @@ def font_sample_page_report_with_resources(data: bytes, resources: bytes) -> str
     )
     lines.append("")
 
+    lines.append("## Candidate Resolver `0x1b50e`")
+    lines.append("")
+    lines.append("| Address | Fact |")
+    lines.append("| ---: | --- |")
+    lines.append("| `0x1b516..0x1b558` | Requested ordinal `0xff` disables lookup, clears the caller output word, and returns no resource address. Otherwise `0x1b8ea(mode, ordinal)` is tried first; on fast-probe success, the selected resource comes from `0x7828a0` and the output word from `0x7828a4`. |")
+    lines.append("| `0x1b568..0x1b5a4` | Selects the first scan window. Mode `3` uses pointer/count `0x7827ac` / `0x78279a`; modes `1` and `2` use `0x7827b0` / `0x78279c`; mode `0` uses `0x7827b4` / `0x78279e`. Other modes miss. |")
+    lines.append("| `0x1b5a4..0x1b60c` | Sets Roman-8 substitution flag `0x7828ac = 1` unless requested symbol word `0x7821a0` is one of `0x0115`, `0x0175`, `0x0155`, or `0x000e`. |")
+    lines.append("| `0x1b61a..0x1b650` | For each first-window candidate, reads its candidate word through `0x1bbfe`, classifies it through `0x1b750(mode, slot, word)`, and advances pointer/count when the classifier returns zero. |")
+    lines.append("| `0x1b650..0x1b74e` | When the first window is exhausted, selects the second scan window. Mode `3` uses `0x7827a0` / `0x782792`; modes `1` and `2` use `0x7827a4` / `0x782794`; mode `0` uses `0x7827a8` / `0x782796`. |")
+    lines.append("| `0x1b66e..0x1b6ec` | Classifier return `2` marks a pending duplicate Roman-8 candidate. When the requested ordinal is reached and candidate word is Roman-8 with substitution enabled and a duplicate is pending, the output word is the requested symbol `0x7821a0`; otherwise it is the candidate word. |")
+    lines.append("| `0x1b6b2..0x1b706` | Non-selected Roman-8 candidates can count twice for non-special requested symbols, unless the current selected slot `0x7828a0` is the same slot; this is the duplicate-suppression branch used by the printout row traversal. |")
+    lines.append("| `0x1b750..0x1b7ac` | Candidate classifier accepts only candidates passing `0x1b7b2` range/special/downloaded checks and `0x1b8b6` current-Roman-8 suppression; it returns `2` for the current selected slot in modes `1` or `2`, otherwise `1`. |")
+    lines.append("| `0x1b7b2..0x1b8b4` | Admissibility checks are mode-specific: mode `3` accepts the built-in symbol words above, mode `1` accepts `0x200000..0x3ffffe`, mode `2` accepts `0x400000..0x5ffffe`, and mode `0` accepts downloaded records whose `0x170be` record flags include bit 30. |")
+    lines.append("| `0x1b8ea..0x1b98c` | Fast probe clears `0x7828a0`; mode `3` searches fallback via `0x1ae7e`, modes `1` and `2` call `0x1adaa` first with primary selector `0x78289f = 0` and then with secondary selector `0x78289f = 1`. It succeeds only for requested ordinal zero and a nonzero `0x7828a0`. |")
+    lines.append("")
+    lines.append(
+        "For the font sample page, source-group mode and row ordinal therefore "
+        "drive exactly which candidate record enters `0x1c746` and later "
+        "`0x1cabe` / `0x1cf34`. Reproducing the printed rows must preserve "
+        "the two-window order and the Roman-8 duplicate/substitution cases, "
+        "not just iterate the candidate slots once."
+    )
+    lines.append("")
+
     if direct_samples:
         lines.append("## Direct Glyph Payload Hashes")
         lines.append("")

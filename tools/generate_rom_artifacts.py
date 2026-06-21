@@ -193,7 +193,7 @@ def generate_disassembly(firmware: Path) -> None:
         ("ic30_ic13_font_resource_payload_link_01887a.lst", "0x1887a", "0x1887a", "0x160"),
         ("ic30_ic13_font_resource_release_018b92.lst", "0x18b92", "0x18b92", "0xe0"),
         ("ic30_ic13_font_resource_release_alt_018bf2.lst", "0x18bf2", "0x18bf2", "0xe0"),
-        ("ic30_ic13_font_resource_object_lookup_01b4c0.lst", "0x1b4c0", "0x1b4c0", "0x120"),
+        ("ic30_ic13_font_resource_object_lookup_01b4c0.lst", "0x1b4c0", "0x1b4c0", "0x720"),
         ("ic30_ic13_font_default_update_01ba40.lst", "0x1ba40", "0x1ba40", "0x80"),
         ("ic30_ic13_font_candidate_object_alloc_01bc38.lst", "0x1bc38", "0x1bc38", "0xf0"),
         ("ic30_ic13_default_font_tables_01ab84.lst", "0x1ab84", "0x1ab84", "0x4d0"),

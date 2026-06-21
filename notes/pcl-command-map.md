@@ -361,7 +361,14 @@ built-in record `0x009fb0`. The fuller `0x13eb8` fixture now follows
 `0x14758`, `0x14398`, `0x144d2`, and `0x14c64`: for the same parsed
 primary request, stroke filter `0x14758` prunes `0x009fb0`, leaving
 slot `0x782354` / record `0x00004c`; `0x144d2` writes context
-`0x782ee6`, and `0x14c64` rebuilds the primary map.
+`0x782ee6`, and `0x14c64` rebuilds the primary map. The secondary
+fixture drives `ESC )s0p16h8v0s0b0T` through the same wrapper with class
+selector `1`: symbol filtering keeps slots `0x782330`, `0x782340`, and
+`0x782350`, nearest-pitch filtering selects `0x782350` / record
+`0x02e122`, context `0x782ef6`, and map `0x783032`. The transient
+`0x78298f` exit now proves selected-context staging plus active-word
+restore without `0x144d2`/`0x14c64`; the `0x148f8` cache-hit exit returns
+before list activation.
 
 Primary and secondary font-designation commands use the same parser
 shape. `ESC (` calls setup `0x1201e`, which pushes slot word `0`;

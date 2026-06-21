@@ -437,9 +437,12 @@ class-zero built-in candidate filters as an isolation control; the full
 `0x153c6`, `0x1519a`, `0x147b2`, `0x14758`, `0x14398`, `0x144d2`, and
 `0x14c64`, with stroke filtering selecting slot `0x782354` / record
 `0x00004c` while the older chooser-only bridge still selects
-`0x009fb0`; one `0xc580` dirty-refresh branch is now pinned through
-the first-clear-slot `0xc4fc` scan, and the all-live matching-context
-branch is pinned through the transient `0x78298f` toggle, two
+`0x009fb0`; the secondary `0x13eb8` path now selects class-one slot
+`0x782350` / record `0x02e122` through nearest-pitch filtering, and the
+transient `0x78298f` plus `0x148f8` cache-hit exits are pinned as
+dispatch-skipping branches; one `0xc580` dirty-refresh branch is now
+pinned through the first-clear-slot `0xc4fc` scan, and the all-live
+matching-context branch is pinned through the transient `0x78298f` toggle, two
 `0x13eb8` calls, `0xc428` page-root context-slot selection, and final
 active-to-remembered word copy; all-live no-match and selector-mismatch
 outcomes are pinned as visible branch shortcuts that skip context
@@ -522,9 +525,9 @@ ROM work needed:
 
 - Extend the pinned visible `0xc580` branch outcomes into fuller
   upstream `0x1be22` parser-state coverage around the now-pinned
-  `0x17708` success paths, extend `0x13eb8` coverage to secondary,
-  transient, and cache-hit branches, and replace the remaining `0x156de`
-  synthetic cases with live parser/font-state coverage.
+  `0x17708` success paths, replace the remaining `0x156de` synthetic
+  cases with live parser/font-state coverage, and extend `0x13eb8` if
+  later inline/downloaded or error-return branches surface.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.

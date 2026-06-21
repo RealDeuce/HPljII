@@ -466,6 +466,12 @@ spacing/pitch, and height filtering leave slots `0x782354` and
 `0x782364`, then `0x14758` stroke exact matching keeps `0x782354` /
 record `0x00004c`. `0x144d2` writes primary context `0x782ee6`, and
 `0x14c64` dispatches the unchanged Roman-8 map for that selected record.
+The secondary parsed request `0p16h8v0s0b0T` uses the class-one window:
+symbol filtering keeps three symbol `0x000e` records, and nearest-pitch
+filtering chooses slot `0x782350` / record `0x02e122` before writing
+context `0x782ef6` and secondary map `0x783032`. The same `0x13eb8`
+model now pins the transient context-only exit and the `0x148f8`
+cache-hit return that bypasses candidate-list activation.
 
 Filtering helpers around `0x1519a`, `0x153c6`, `0x147b2`, `0x14758`,
 `0x147f4`, and `0x148f8` prune the active list by attributes such as

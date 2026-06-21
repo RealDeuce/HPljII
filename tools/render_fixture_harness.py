@@ -18537,7 +18537,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
     primary_selection_request = font_selection_request_from_trace(primary_font_selection_trace)
+    secondary_selection_request = font_selection_request_from_trace(secondary_font_selection_trace)
     primary_metric_inputs = primary_selection_request["filter_inputs"]
+    secondary_metric_inputs = secondary_selection_request["filter_inputs"]
     parser_metric_height_filter = filter_active_candidates_by_height_via_1519a(
         class_zero_symbol_survivor_activation,
         requested_height=primary_metric_inputs["height"],  # type: ignore[index]
@@ -18580,6 +18582,69 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     primary_13eb8_stroke = primary_13eb8_refresh["stroke_filter"]
     assert isinstance(primary_13eb8_dispatch, dict)
     assert isinstance(primary_13eb8_stroke, dict)
+    secondary_13eb8_refresh = selected_font_refresh_via_13eb8(
+        data,
+        resources,
+        actual_candidate_windows,
+        slot=1,
+        requested_primary=0x0115,
+        requested_secondary=0x000E,
+        active_symbols=[0x0115, 0x000E],
+        remembered_primary_782f08=0x0115,
+        remembered_secondary_782f0a=0x000E,
+        fallback_table_782f0c=fallback_table_782f0c,
+        class_selector_byte_782da3=1,
+        requested_spacing=secondary_metric_inputs["spacing"],  # type: ignore[index]
+        requested_pitch=secondary_metric_inputs["pitch"],  # type: ignore[index]
+        requested_height=secondary_metric_inputs["height"],  # type: ignore[index]
+        requested_style=secondary_metric_inputs["style"],  # type: ignore[index]
+        requested_stroke=secondary_metric_inputs["stroke"],  # type: ignore[index]
+        requested_typeface=secondary_metric_inputs["typeface"],  # type: ignore[index]
+    )
+    secondary_13eb8_dispatch = secondary_13eb8_refresh["dispatch"]
+    secondary_13eb8_pitch = secondary_13eb8_refresh["spacing_pitch_filter"]
+    assert isinstance(secondary_13eb8_dispatch, dict)
+    assert isinstance(secondary_13eb8_pitch, dict)
+    transient_13eb8_refresh = selected_font_refresh_via_13eb8(
+        data,
+        resources,
+        actual_candidate_windows,
+        slot=0,
+        requested_primary=0x0115,
+        requested_secondary=0x0005,
+        active_symbols=[0x9999, 0x0115],
+        remembered_primary_782f08=0x0115,
+        remembered_secondary_782f0a=0x0005,
+        fallback_table_782f0c=fallback_table_782f0c,
+        class_selector_byte_782da3=0,
+        requested_spacing=primary_metric_inputs["spacing"],  # type: ignore[index]
+        requested_pitch=primary_metric_inputs["pitch"],  # type: ignore[index]
+        requested_height=primary_metric_inputs["height"],  # type: ignore[index]
+        requested_style=primary_metric_inputs["style"],  # type: ignore[index]
+        requested_stroke=primary_metric_inputs["stroke"],  # type: ignore[index]
+        requested_typeface=primary_metric_inputs["typeface"],  # type: ignore[index]
+        transient_context_refresh_78298f=1,
+    )
+    cache_hit_13eb8_refresh = selected_font_refresh_via_13eb8(
+        data,
+        resources,
+        actual_candidate_windows,
+        slot=1,
+        requested_primary=0x0115,
+        requested_secondary=0x000E,
+        active_symbols=[0x1111, 0x2222],
+        remembered_primary_782f08=0x0115,
+        remembered_secondary_782f0a=0x000E,
+        fallback_table_782f0c=fallback_table_782f0c,
+        class_selector_byte_782da3=1,
+        requested_spacing=secondary_metric_inputs["spacing"],  # type: ignore[index]
+        requested_pitch=secondary_metric_inputs["pitch"],  # type: ignore[index]
+        requested_height=secondary_metric_inputs["height"],  # type: ignore[index]
+        requested_style=secondary_metric_inputs["style"],  # type: ignore[index]
+        requested_stroke=secondary_metric_inputs["stroke"],  # type: ignore[index]
+        requested_typeface=secondary_metric_inputs["typeface"],  # type: ignore[index]
+        cache_hit_148f8=True,
+    )
     checks.append(assert_equal("parsed font-selection metrics feed concrete candidate filters", {
         "request": {
             "slot": primary_selection_request["slot"],
@@ -18741,6 +18806,182 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "0x144d2",
             "0x14c64",
         ],
+    }))
+    checks.append(assert_equal("0x13eb8 refresh carries parsed secondary font selection to dispatch", {
+        "request": {
+            "slot": secondary_selection_request["slot"],
+            "raw": secondary_selection_request["raw"],
+            "filter_inputs": secondary_selection_request["filter_inputs"],
+        },
+        "status": secondary_13eb8_refresh["status"],
+        "slot": secondary_13eb8_refresh["slot"],
+        "saved_active_word": secondary_13eb8_refresh["saved_active_word"],
+        "active_symbols": secondary_13eb8_refresh["active_symbols"],
+        "symbol_survivors": secondary_13eb8_refresh["symbol_filter"]["survivor_slot_pointers"],  # type: ignore[index]
+        "pitch": {
+            "path": secondary_13eb8_pitch["pitch_path"],
+            "requested_pitch": secondary_13eb8_pitch["requested_pitch"],
+            "selected_pitch_low": secondary_13eb8_pitch["selected_pitch_low"],
+            "selected_pitch_high": secondary_13eb8_pitch["selected_pitch_high"],
+            "survivor_slot_pointers": secondary_13eb8_pitch["survivor_slot_pointers"],
+            "last_pitch_event": secondary_13eb8_pitch["pitch_events"][-1],
+        },
+        "height_filter": secondary_13eb8_refresh["height_filter"],
+        "style_filter": secondary_13eb8_refresh["style_filter"],
+        "stroke_filter": secondary_13eb8_refresh["stroke_filter"],
+        "typeface_filter": secondary_13eb8_refresh["typeface_filter"],
+        "chosen": select_keys(secondary_13eb8_refresh["chosen"], (
+            "selected_slot_pointer_7828a8",
+            "selected_longword",
+            "selected_record_start",
+        )),
+        "context_update": secondary_13eb8_refresh["context_update"],
+        "dispatch": select_keys(secondary_13eb8_dispatch, (
+            "path",
+            "slot",
+            "selected_symbol",
+            "active_symbol",
+            "range_register",
+            "range_start",
+            "range_end",
+            "range_reason",
+            "selected_flag_register",
+            "map_address",
+            "patch_kind",
+        )),
+        "snapshot": secondary_13eb8_dispatch["snapshot"],
+        "calls": secondary_13eb8_refresh["calls"],
+    }, {
+        "request": {
+            "slot": "secondary",
+            "raw": {"p": 0, "h": 16, "v": 8, "s": 0, "b": 0, "T": 0},
+            "filter_inputs": {"spacing": 0, "pitch": 0x0640, "height": 0x0320, "style": 0, "stroke": 0, "typeface": 0},
+        },
+        "status": "selected",
+        "slot": "secondary",
+        "saved_active_word": 0x000E,
+        "active_symbols": [0x0115, 0x000E],
+        "symbol_survivors": [0x782330, 0x782340, 0x782350],
+        "pitch": {
+            "path": "nearest",
+            "requested_pitch": 0x0640,
+            "selected_pitch_low": 0x0682,
+            "selected_pitch_high": 0x0682,
+            "survivor_slot_pointers": [0x782350],
+            "last_pitch_event": {
+                "helper": 0x0155B6,
+                "index": 2,
+                "slot_pointer": 0x782350,
+                "record_start": 0x02E122,
+                "pitch": 0x0682,
+                "selected_low": 0x0682,
+                "selected_high": 0x0682,
+                "before": 0xC00AE122,
+                "after": 0xC00AE122,
+                "matched": True,
+            },
+        },
+        "height_filter": None,
+        "style_filter": None,
+        "stroke_filter": None,
+        "typeface_filter": None,
+        "chosen": {
+            "selected_slot_pointer_7828a8": 0x782350,
+            "selected_longword": 0xC00AE122,
+            "selected_record_start": 0x02E122,
+        },
+        "context_update": {
+            "helper": 0x0144D2,
+            "context_record": 0x782EF6,
+            "selected_longword": 0xC00AE122,
+            "byte_4_bit30": 1,
+            "byte_5_bit26": 0,
+        },
+        "dispatch": {
+            "path": "built-in-cache-miss",
+            "slot": "secondary",
+            "selected_symbol": 0x000E,
+            "active_symbol": 0x000E,
+            "range_register": 0x78313A,
+            "range_start": 0x0021,
+            "range_end": 0x00FF,
+            "range_reason": "record-range",
+            "selected_flag_register": 0x783133,
+            "map_address": 0x783032,
+            "patch_kind": "selected-symbol-not-roman8",
+        },
+        "snapshot": {
+            "helper": 0x01440C,
+            "state_address": 0x783152,
+            "byte_0_type": 1,
+            "word_2_symbol": 0x000E,
+            "word_4_active_symbol": 0x000E,
+            "byte_6_first_char": 0x21,
+            "byte_7_last_char": 0xFF,
+            "byte_9_before_ram": 1,
+            "reader": "0x15890",
+            "reader_source": "+0x22-word",
+        },
+        "calls": [
+            "0x148f8",
+            "0x1569c",
+            "0x156de",
+            "0x153c6",
+            "0x14398",
+            "0x144d2",
+            "0x14c64",
+        ],
+    }))
+    checks.append(assert_equal("0x13eb8 transient and cache-hit exits avoid dispatch", {
+        "transient": {
+            "status": transient_13eb8_refresh["status"],
+            "slot": transient_13eb8_refresh["slot"],
+            "saved_active_word": transient_13eb8_refresh["saved_active_word"],
+            "active_symbols": transient_13eb8_refresh["active_symbols"],
+            "selected_context_record_782992": transient_13eb8_refresh["selected_context_record_782992"],
+            "chosen": select_keys(transient_13eb8_refresh["chosen"], (
+                "selected_slot_pointer_7828a8",
+                "selected_longword",
+                "selected_record_start",
+            )),
+            "has_context_update": "context_update" in transient_13eb8_refresh,
+            "has_dispatch": "dispatch" in transient_13eb8_refresh,
+            "calls": transient_13eb8_refresh["calls"],
+        },
+        "cache_hit": cache_hit_13eb8_refresh,
+    }, {
+        "transient": {
+            "status": "transient-context-only",
+            "slot": "primary",
+            "saved_active_word": 0x9999,
+            "active_symbols": [0x9999, 0x0115],
+            "selected_context_record_782992": 0xC008004C,
+            "chosen": {
+                "selected_slot_pointer_7828a8": 0x782354,
+                "selected_longword": 0xC008004C,
+                "selected_record_start": 0x00004C,
+            },
+            "has_context_update": False,
+            "has_dispatch": False,
+            "calls": [
+                "0x148f8",
+                "0x1569c",
+                "0x156de",
+                "0x153c6",
+                "0x1519a",
+                "0x147b2",
+                "0x14758",
+                "0x14398",
+            ],
+        },
+        "cache_hit": {
+            "helper": 0x013EB8,
+            "slot": "secondary",
+            "status": "cache-hit",
+            "saved_active_word": 0x2222,
+            "active_symbols": [0x1111, 0x2222],
+            "calls": ["0x148f8"],
+        },
     }))
     checks.append(assert_equal("parsed font-selection stream writes primary font-state fields", {
         "events": [
@@ -36874,6 +37115,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         primary_13eb8_refresh["context_update"]["context_record"],  # type: ignore[index]
         primary_13eb8_dispatch["map_address"],
         primary_13eb8_dispatch["patch_kind"],
+    ))
+    lines.append("- secondary `0x13eb8` refresh: parsed `0p16h8v0s0b0T` follows calls `%s`; symbol filter keeps slots `%s`, nearest-pitch `0x153c6` keeps slot `0x%06x` / record `0x%06x`, `0x144d2` writes context `0x%06x`, and `0x14c64` rebuilds secondary map `0x%06x` with patch `%s`." % (
+        ", ".join(secondary_13eb8_refresh["calls"]),
+        ", ".join("0x%06x" % int(slot) for slot in secondary_13eb8_refresh["symbol_filter"]["survivor_slot_pointers"]),  # type: ignore[index]
+        secondary_13eb8_pitch["survivor_slot_pointers"][0],  # type: ignore[index]
+        secondary_13eb8_pitch["survivor_record_starts"][0],  # type: ignore[index]
+        secondary_13eb8_refresh["context_update"]["context_record"],  # type: ignore[index]
+        secondary_13eb8_dispatch["map_address"],
+        secondary_13eb8_dispatch["patch_kind"],
+    ))
+    lines.append("- `0x13eb8` exits: the transient `0x78298f` path stores selected longword `0x%08x`, restores saved active word `0x%04x`, and skips `0x144d2`/`0x14c64`; the `0x148f8` cache-hit path returns after calls `%s` with active symbols `%s`." % (
+        transient_13eb8_refresh["selected_context_record_782992"],
+        transient_13eb8_refresh["saved_active_word"],
+        ", ".join(cache_hit_13eb8_refresh["calls"]),
+        cache_hit_13eb8_refresh["active_symbols"],
     ))
     lines.append("- selected font dispatch: `0x14c64` cache-miss handling for that selected built-in record updates primary range table `0x%06x` to `0x%04x..0x%04x`, selected flag `0x%06x = %d`, rebuilds map `0x%06x` through `0x14d9c`, applies active symbol `0x%04x` through `%s` handling, and snapshots state at `0x%06x` through `0x1440c`." % (
         dispatched_class_zero_primary["range_register"],

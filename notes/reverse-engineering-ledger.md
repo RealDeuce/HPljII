@@ -436,7 +436,9 @@ slots `0x782354` / `0x782364` before `0x14398` selects record
 the first-clear-slot `0xc4fc` scan, and the all-live matching-context
 branch is pinned through the transient `0x78298f` toggle, two
 `0x13eb8` calls, `0xc428` page-root context-slot selection, and final
-active-to-remembered word copy
+active-to-remembered word copy; all-live no-match and selector-mismatch
+outcomes are pinned as visible branch shortcuts that skip context
+installation after the documented refresh call(s)
 
 ### Formatter manuals
 
@@ -510,11 +512,11 @@ Expected resource ROM contents:
 
 ROM work needed:
 
-- Extend the pinned `0xc580` first-clear-slot and all-live matching-context
-  branches into full firmware-state coverage for secondary,
-  selector-mismatch, and full-slot no-match cases, then carry that through
-  complete `0x13eb8` / `0x14c64` selected-font dispatch and replace the
-  remaining `0x156de` synthetic cases with live parser/font-state coverage.
+- Extend the pinned visible `0xc580` branch outcomes into full
+  firmware-state coverage for secondary and dirty-flag-2 cases, then carry
+  that through complete `0x13eb8` / `0x14c64` selected-font dispatch and
+  replace the remaining `0x156de` synthetic cases with live parser/font-state
+  coverage.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.

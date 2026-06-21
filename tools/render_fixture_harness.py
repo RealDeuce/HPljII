@@ -17100,6 +17100,86 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         ],
     }))
+    c580_full_no_match_refresh = symbol_set_state(
+        requested_symbols=[0x0055, 0x0115],
+        active_symbols=[0x0115, 0x0115],
+        remembered_symbols=[0x0115, 0x0115],
+        current_selector_782f06=0,
+        current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        page_root_context_slots=[0x782F00 + index * 0x10 for index in range(16)],
+        page_root_live_flags=[1] * 16,
+        dirty_flag=1,
+        dirty_maps=1,
+        selected_context_record_782992=current_font_context_record(0),
+    )
+    refresh_symbol_state_via_c580(c580_full_no_match_refresh, 0)
+    checks.append(assert_equal("0xc580 full live-slot branch skips install when c4fc reports full", {
+        "active_symbols": c580_full_no_match_refresh["active_symbols"],
+        "remembered_symbols": c580_full_no_match_refresh["remembered_symbols"],
+        "dirty_flag": c580_full_no_match_refresh["dirty_flag"],
+        "dirty_maps": c580_full_no_match_refresh["dirty_maps"],
+        "refreshes": c580_full_no_match_refresh["refreshes"],
+        "current_page_context_slot_78297e": c580_full_no_match_refresh["current_page_context_slot_78297e"],
+        "page_root_context_slots": c580_full_no_match_refresh["page_root_context_slots"][:2],
+        "page_root_live_flags": c580_full_no_match_refresh["page_root_live_flags"][:2],
+        "candidate_refresh_calls": c580_full_no_match_refresh["candidate_refresh_calls"],
+        "context_install_events": c580_full_no_match_refresh["context_install_events"],
+    }, {
+        "active_symbols": [0x0055, 0x0115],
+        "remembered_symbols": [0x0055, 0x0115],
+        "dirty_flag": 0,
+        "dirty_maps": 0,
+        "refreshes": 1,
+        "current_page_context_slot_78297e": 0,
+        "page_root_context_slots": [0x782F00, 0x782F10],
+        "page_root_live_flags": [1, 1],
+        "candidate_refresh_calls": [
+            {"helper": 0x013EB8, "slot": 0, "reason": "full-live-page-root"},
+        ],
+        "context_install_events": [
+            {
+                "helper": 0x00C4FC,
+                "caller": "0xc580",
+                "context_record": 0x782EE6,
+                "selected_page_slot": 0x11,
+                "reason": "full",
+            },
+        ],
+    }))
+    c580_selector_mismatch_refresh = symbol_set_state(
+        requested_symbols=[0x0055, 0x0005],
+        active_symbols=[0x0115, 0x0005],
+        remembered_symbols=[0x0115, 0x0005],
+        current_selector_782f06=1,
+        current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        dirty_flag=1,
+        dirty_maps=1,
+        selected_context_record_782992=current_font_context_record(0),
+    )
+    refresh_symbol_state_via_c580(c580_selector_mismatch_refresh, 0)
+    checks.append(assert_equal("0xc580 selector-mismatch branch refreshes candidate without context install", {
+        "active_symbols": c580_selector_mismatch_refresh["active_symbols"],
+        "remembered_symbols": c580_selector_mismatch_refresh["remembered_symbols"],
+        "dirty_flag": c580_selector_mismatch_refresh["dirty_flag"],
+        "dirty_maps": c580_selector_mismatch_refresh["dirty_maps"],
+        "refreshes": c580_selector_mismatch_refresh["refreshes"],
+        "current_page_context_slot_78297e": c580_selector_mismatch_refresh["current_page_context_slot_78297e"],
+        "page_root_context_slots": c580_selector_mismatch_refresh["page_root_context_slots"][:2],
+        "candidate_refresh_calls": c580_selector_mismatch_refresh["candidate_refresh_calls"],
+        "context_install_events": c580_selector_mismatch_refresh["context_install_events"],
+    }, {
+        "active_symbols": [0x0055, 0x0005],
+        "remembered_symbols": [0x0055, 0x0005],
+        "dirty_flag": 0,
+        "dirty_maps": 0,
+        "refreshes": 1,
+        "current_page_context_slot_78297e": 0,
+        "page_root_context_slots": [0, 0],
+        "candidate_refresh_calls": [
+            {"helper": 0x013EB8, "slot": 0, "reason": "selector-mismatch"},
+        ],
+        "context_install_events": [],
+    }))
     symbol_dispatch_commands = symbol_dispatch_trace["commands"]
     assert isinstance(symbol_dispatch_commands, list)
     checks.append(assert_equal("symbol-set parser trace feeds active map patches", {
@@ -35755,6 +35835,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("  `0x13eb8`, reuses existing page-root context slot `3` through")
     lines.append("  `0xc4fc`, calls `0x13eb8` again, and leaves `0xc428` selecting")
     lines.append("  slot `3` for subsequent text queuing.")
+    lines.append("- `0xc580` shortcut fixtures:")
+    lines.append("  all-live/no-match returns `0x11` from `0xc4fc` and skips the")
+    lines.append("  second `0x13eb8` plus `0xc428`; selector mismatch calls only")
+    lines.append("  `0x13eb8(D5)` before the final active-to-remembered word copy.")
     lines.append("- scanned candidate-list partitioning: `0x1a9be` leaves total `%d`, class-one low/range counts `%d`/`%d`, class-zero low/range counts `%d`/`%d`, and cursor windows `%s`; this pins the list starts used later by current/default font searches." % (
         scanned_candidate_partition["counters"]["0x78278e"],
         scanned_candidate_partition["counters"]["0x782792"],

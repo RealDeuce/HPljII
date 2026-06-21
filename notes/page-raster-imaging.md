@@ -941,7 +941,11 @@ text/raster bucket objects with page objects captured or reproduced from
 the full parser/imaging path. The reset, FF, page-size, and orientation
 publication fixtures now start without a current page root and mark the
 first printable queue step as the modeled page-record root allocation
-point, but that is still not a full live parser allocation. The
+point, but that is still not a full live parser allocation. The reset
+publication path now also has an addressed `!\x1bE` variant where the
+printable byte queues through addressed `0x1387c`/`0x1381c`, the
+materialized page record publishes through `0xff1e`, and the published
+record renders through `0x1ed84`/`0x1ef6a` with the same rows. The
 host-fetched text/rule/raster fixture now also publishes its full bucket
 array, rule list, and context slots through modeled `0xff1e`, then
 renders the published record through `0x1ed84` and `0x1ef6a` with the

@@ -82,6 +82,9 @@ confirming it.
   mapping, and font candidate lists.
 - `notes/reverse-engineering-ledger.md`: Current anchored facts, open
   work, and working rules for continuing ROM analysis.
+- `notes/semantic-state-model.md`: Composed renderer-facing state
+  concepts with field grouping, evidence, confidence, fixtures, and
+  unresolved address boundaries.
 - `notes/hardware-overview.md`: Product identity, major assemblies, and
   hardware summary from manuals.
 - `notes/formatter-interface-pca.md`: Formatter/interface PCA

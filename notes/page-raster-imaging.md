@@ -21,6 +21,7 @@ Sources: `generated/analysis/ic30_ic13_page_geometry_tables.md`;
 `generated/analysis/ic30_ic13_active_symbol_set_flow.md`;
 `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`;
 `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`;
+`generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`;
 `generated/disasm/ic30_ic13_orientation_handler_010220.lst`;
 `generated/disasm/ic30_ic13_page_root_allocate_010084.lst`;
 `generated/disasm/ic30_ic13_coordinate_math_0104d8.lst`;
@@ -68,6 +69,15 @@ length, and cursor state, and refreshes the next printable cursor. A
 6-LPI `ESC &l66P!` fixture now reaches parser handlers `0xf9e8` and
 `0xd04a`, stores page extent `3300`, and queues `!` at compact text coord
 `0x9001`.
+
+Vertical forms control is now tracked as a composed state block in
+`notes/semantic-state-model.md`. The `ESC &l#W` parser final at
+`0x011f6e` schedules delayed payload handler `0x12cfe`, which consumes
+payload bytes through `0xdace`, loads the table at `0x782dde`, and
+updates text-bottom cache `0x782dd2`. The fixture
+`ESC &l4W 00 00 00 02 !` proves the four payload bytes are not parsed as
+controls or printable bytes, and that the following `!` still reaches
+the page-record queue at compact coord `0x9001`.
 
 The lookup helpers at `0x009d16`, `0x009d4e`, `0x009d86`, and `0x009dbe`
 mask the internal code with `0x7f` and index eleven word entries. The

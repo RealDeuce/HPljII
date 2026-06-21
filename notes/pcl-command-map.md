@@ -51,6 +51,10 @@ pixel-perfect rendering:
   paper codes.
 - `ESC &l#P`, handler `0x00f9e8`: page length in lines; converts current
   VMI times line count into page extent `0x782dba`.
+- `ESC &l#W`, handler `0x011f6e`: vertical forms control payload
+  boundary; delayed handler `0x12cfe` loads table `0x782dde`.
+- `ESC &l#V`, handler `0x01280a`: vertical forms control channel jump;
+  consumes table `0x782dde`.
 - `ESC &l#O`, handler `0x010220`: orientation; rebuilds page geometry
   and cursor state.
 - `ESC &l#C`, handler `0x00cb00`: VMI in 1/48-inch units into
@@ -171,6 +175,22 @@ printable `!` at compact coord `0x9001`. Zero VMI and too-long page
 lengths are ignored. The zero-parameter branch is identified in
 disassembly as a publication/default-page path, but it is not yet fully
 modeled.
+
+`ESC &l#W` at `0x011f6e` is a delayed-payload boundary for vertical
+forms control. It snapshots the six-byte parsed record through `0x121cc`
+with delayed handler `0x12cfe`. The payload handler rewinds
+`0x78299e`, reads the absolute byte count, consumes data through
+`0xdace`, loads the VFC table rooted at `0x782dde`, derives bottom cache
+`0x782dc2`, copies it into text-length bottom `0x782dd2`, and clears
+modified-layout byte `0x782ee1`. The composed state model is in
+`notes/semantic-state-model.md`.
+
+`ESC &l#V` at `0x01280a` is the VFC table consumer. Disassembly shows it
+uses current VMI `0x783160`, vertical cursor `0x782c8e`, top offset
+`0x782dce`, line caches `0x782ede`/`0x782ee0`, and channel words from
+`0x782dde` while searching for the requested channel. Its full
+wrap/page-recovery behavior remains unresolved across exact address
+range `0x1280a..0x12b5e`.
 
 `ESC &l#D` at `0x00c992` accepts absolute LPI values
 `1,2,3,4,6,8,12,16,24,48`, treats zero as `12`, converts to packed line

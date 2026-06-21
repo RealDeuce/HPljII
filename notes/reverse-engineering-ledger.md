@@ -100,6 +100,11 @@ perforation-skip byte `0x783191`, and pending vertical cursor state;
 `ESC &l#P` maps to `0xf9e8` and converts current VMI lines into page
 extent `0x782dba` with orientation-threshold internal page-code
 selection;
+`ESC &l#W` maps to `0x11f6e` and schedules delayed vertical-forms-control
+handler `0x12cfe`, which writes the table rooted at `0x782dde` and
+updates text-bottom cache `0x782dd2`; `ESC &l#V` maps to `0x1280a` and
+consumes that table for channel jumps, but its full wrap/page-recovery
+branches remain unresolved;
 `ESC &a#L/#M` map to
 `0xeb58`/`0xec0c` and convert HMI margin columns into
 `0x782dd6`/`0x782dda` with reject/clamp/cursor-move cases;
@@ -131,6 +136,10 @@ top-margin, and perforation-skip handlers to shifted or unchanged
 page-record text output; `ESC &l66P!` now ties page-length handler
 `0xf9e8` to page extent `3300`, refreshed cursor y `126`, and following
 printable `!` at compact coord `0x9001`;
+`ESC &l4W 00 00 00 02 !` now ties parser handler `0x11f6e`, delayed
+payload handler `0x12cfe`, data-byte reader `0xdace`, VFC table prefix
+`00 00 00 02`, derived text bottom `190`, and following printable `!`
+at compact coord `0x9001`;
 `ESC &f0S ESC &a2C ESC &f1S!` now ties cursor-stack push/pop and
 cursor-position handlers to restored page-record text output at compact
 coord `0x0001`; `ESC E` maps to reset handler `0xcc52`, reset flow is
@@ -229,6 +238,15 @@ recomputes top/text bounds, and the parser-to-page-record fixture proves
 the following printable byte uses the refreshed text cursor. The
 zero-parameter publication/default-page branch is identified but still
 needs a dedicated fixture.
+
+Vertical forms control is now a composed semantic state block in
+`notes/semantic-state-model.md`. The canonical table is
+`0x782dde..0x782edd`; derived/cache fields include `0x782dc2`,
+`0x782dd2`, `0x782ede`, `0x782edf`, and `0x782ee0`; `0x782ee1` is
+firmware bookkeeping and `0x78299e` remains parser scratch. The table
+writer cluster `0x11f6e -> 0x12cfe`, default builder `0x12b96`, and
+consumer `0x1280a` are identified. The highest-value unresolved middle
+edges are `0x1280a..0x1295e` and `0x129c6..0x12afc`.
 
 ### Raster/text/page-object path
 

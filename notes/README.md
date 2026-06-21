@@ -37,6 +37,9 @@ compatibility boundary.
 - [page-raster-imaging.md](page-raster-imaging.md) - page geometry
   lookup tables, orientation state, and first raster graphics imaging
   path.
+- [semantic-state-model.md](semantic-state-model.md) - composed
+  renderer-facing state blocks with field groups, evidence, and
+  unresolved middle edges.
 - [resource-rom.md](resource-rom.md) - current findings for the
   IC32/IC15 resource/font ROM pair.
 - [reverse-engineering-ledger.md](reverse-engineering-ledger.md) -

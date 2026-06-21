@@ -1884,6 +1884,117 @@ def apply_page_length_via_f9e8(data: bytes, state: dict[str, int], parameter: in
     return state
 
 
+def vfc_line_counts_from_layout(state: dict[str, int]) -> tuple[int, int]:
+    vmi_subunits = packed12_to_subunits(int(state.get("vmi", 0)))
+    if vmi_subunits <= 0:
+        return 0, 0
+    top_offset = int(state.get("top_offset", pack12(0)))
+    text_bottom = int(state.get("text_length_bottom", top_offset))
+    text_span = max(0, packed12_to_subunits(text_bottom) - packed12_to_subunits(top_offset))
+    text_last_line = max(0, trunc_div(text_span, vmi_subunits) - 1)
+    page_extent = int(state.get("page_extent", 0))
+    source = int(state.get("vertical_offset_source", 0))
+    page_bottom = pack12(page_extent - source)
+    page_span = max(0, packed12_to_subunits(page_bottom) - packed12_to_subunits(top_offset))
+    page_last_line = max(0, trunc_div(page_span, vmi_subunits) - 1)
+    source_lines = max(0, trunc_div(source * 12, vmi_subunits))
+    return text_last_line, page_last_line + source_lines
+
+
+def apply_vertical_forms_control_via_12cfe(
+    state: dict[str, int],
+    byte_count: int,
+    payload: bytes,
+) -> dict[str, object]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    count = abs(int(byte_count))
+    consumed = consume_data_payload_count_via_12328(count, payload)
+    values = consumed["values"]
+    if not isinstance(values, list):
+        raise AssertionError("VFC payload consume did not return values")
+    if int(consumed["status"]) != 1:
+        events.append({
+            "kind": "vfc-definition-incomplete",
+            "requested": count,
+            "available": len(values),
+        })
+        updated["events"] = events
+        return {"state": updated, "consumed": int(consumed["pos"]), "consume": consumed}
+
+    vmi_subunits = packed12_to_subunits(int(updated.get("vmi", 0)))
+    if count == 0 and vmi_subunits != 0:
+        source = int(updated["vertical_offset_source"])
+        page_extent = int(updated["page_extent"])
+        top_offset = -source if page_extent <= 0x96 else 0x96 - source
+        updated["top_offset"] = pack12(top_offset)
+        updated["text_length_bottom"] = default_text_length_bottom(
+            int(updated["top_offset"]),
+            source,
+            page_extent,
+        )
+        text_last, last_line = vfc_line_counts_from_layout(updated)
+        updated["vfc_text_last_line_782ee0"] = text_last
+        updated["vfc_last_line_782ede"] = last_line
+        events.append({
+            "kind": "vfc-reset",
+            "top_offset": int(updated["top_offset"]),
+            "text_length_bottom": int(updated["text_length_bottom"]),
+            "text_last_line": text_last,
+            "last_line": last_line,
+        })
+        updated["events"] = events
+        return {"state": updated, "consumed": int(consumed["pos"]), "consume": consumed}
+
+    text_last_line = int(updated.get("vfc_text_last_line_782ee0", vfc_line_counts_from_layout(updated)[0]))
+    last_line = int(updated.get("vfc_last_line_782ede", vfc_line_counts_from_layout(updated)[1]))
+    max_payload = (last_line + 1) * 2
+    if count & 1 or vmi_subunits == 0 or count > max_payload:
+        events.append({
+            "kind": "vfc-definition-ignored",
+            "reason": "odd-count-zero-vmi-or-beyond-line-count",
+            "byte_count": count,
+            "max_payload": max_payload,
+        })
+        updated["events"] = events
+        return {"state": updated, "consumed": int(consumed["pos"]), "consume": consumed}
+
+    table = bytearray(bytes(updated.get("vfc_table_782dde", bytes(0x100))))
+    table.extend(bytes(max(0, 0x100 - len(table))))
+    table = table[:0x100]
+    stored_count = min(count, 0x100)
+    for index, value in enumerate(values[:stored_count]):
+        table[index] = int(value) & 0xFF
+    for index in range(stored_count, 0x100):
+        table[index] = 0
+
+    source = int(updated.get("vertical_offset_source", 0))
+    page_extent = int(updated.get("page_extent", 0))
+    limit = pack12(page_extent - source)
+    for line in range(0x80):
+        word = (table[line * 2] << 8) | table[line * 2 + 1]
+        if word & 0x0002 and line <= text_last_line:
+            limit = add_packed12(
+                int(updated["top_offset"]),
+                subunits_to_packed12((line + 1) * vmi_subunits),
+            )
+            break
+    updated["vfc_table_782dde"] = bytes(table)
+    updated["vfc_limit_782dc2"] = limit
+    updated["text_length_bottom"] = limit
+    updated["modified_layout"] = 0
+    events.append({
+        "kind": "vfc-definition",
+        "byte_count": count,
+        "stored_count": stored_count,
+        "text_length_bottom": int(updated["text_length_bottom"]),
+        "text_last_line": text_last_line,
+        "last_line": last_line,
+    })
+    updated["events"] = events
+    return {"state": updated, "consumed": int(consumed["pos"]), "consume": consumed}
+
+
 def apply_orientation_via_10220(data: bytes, state: dict[str, int], parameter: int) -> dict[str, int]:
     state = dict(state)
     orientation = abs(int(parameter))
@@ -12531,6 +12642,7 @@ def render_mixed_printable_control_page_record_stream(
     events: list[dict[str, object]] = []
     published_page_record: dict[str, object] | None = None
     raster_pending: dict[str, object] = {"pending_flag": 0, "handler": 0, "snapshot_record": b""}
+    vfc_pending: dict[str, object] = {"pending_flag": 0, "handler": 0, "snapshot_record": b""}
     pos = 0
 
     def active_text_context() -> tuple[int, int]:
@@ -12871,6 +12983,70 @@ def render_mixed_printable_control_page_record_stream(
                         if fraction != 0:
                             raise AssertionError("page-record mixed stream page-length command does not model fractions")
                         state = apply_page_length_via_f9e8(data, state, integer)
+                    elif final_upper == ord("W"):
+                        if fraction != 0:
+                            raise AssertionError("page-record mixed stream VFC command does not model fractions")
+                        parsed_record = bytes([
+                            0x81 if relative else 0x80,
+                            final,
+                        ]) + signed_word_bytes(integer) + signed_word_bytes(0)
+                        scheduled = schedule_payload_handler_via_121cc(
+                            vfc_pending,
+                            parsed_record,
+                            0x012CFE,
+                        )
+                        vfc_pending = scheduled["pending"]
+                        if ord("a") <= final <= ord("z"):
+                            events.append({
+                                "kind": "vfc-definition-pending",
+                                "offset": command_start,
+                                "sequence": stream[command_start:pos],
+                                "record": parsed_record,
+                                "parameter": integer,
+                                "handler": 0x011F6E,
+                                "delayed_handler": 0x012CFE,
+                                "delayed_snapshot_bytes": vfc_pending["snapshot_bytes"],
+                                "delayed_scheduled": scheduled["scheduled"],
+                                "chained": True,
+                            })
+                            continue
+                        restored = restore_delayed_payload_via_12218(vfc_pending)
+                        vfc_pending = restored["pending_after"]
+                        restored_record = restored["record"]
+                        byte_count = abs(s16(restored_record, 2))
+                        payload_start = pos
+                        applied = apply_vertical_forms_control_via_12cfe(
+                            state,
+                            byte_count,
+                            stream[payload_start:],
+                        )
+                        state = applied["state"]
+                        consumed = int(applied["consumed"])
+                        payload_end = payload_start + consumed
+                        if payload_end > len(stream):
+                            raise AssertionError("page-record mixed stream VFC payload overran stream")
+                        pos = payload_end
+                        events.append({
+                            "kind": "vfc-definition",
+                            "offset": command_start,
+                            "sequence": stream[command_start:payload_end],
+                            "record": parsed_record,
+                            "parameter": integer,
+                            "handler": 0x011F6E,
+                            "delayed_handler": 0x012CFE,
+                            "delayed_snapshot_bytes": scheduled["pending"]["snapshot_bytes"],
+                            "delayed_scheduled": scheduled["scheduled"],
+                            "restore_dispatch": restored["dispatch"],
+                            "restored_record": restored_record,
+                            "payload_offset": payload_start,
+                            "raw_payload": stream[payload_start:payload_end],
+                            "payload_count": byte_count,
+                            "apply_event": state["events"][-1],
+                            "text_length_bottom_before": before.get("text_length_bottom", 0),
+                            "text_length_bottom_after": state.get("text_length_bottom", 0),
+                            "chained": False,
+                        })
+                        break
                     elif final_upper == ord("H"):
                         if fraction != 0:
                             raise AssertionError("page-record mixed stream paper-source command does not model fractions")
@@ -41319,6 +41495,202 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "bucket_index": 6,
         "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 90 01"),
     }))
+    vfc_base_state = control_fixture_state(
+        cursor_x=pack12(10),
+        cursor_y=pack12(126),
+        left_margin=pack12(10),
+        hmi=line_printer_hmi["hmi"],
+        vmi=pack12(50),
+        top_offset=pack12(90),
+        text_length_bottom=pack12(3240),
+        page_extent=3300,
+        vertical_offset_source=60,
+        orientation=0,
+        page_code=2,
+        page_root_present=0,
+        page_root_class=1,
+        current_page_root=0,
+        page_record_root_allocations=0,
+        events=[],
+    )
+    vfc_direct = apply_vertical_forms_control_via_12cfe(
+        vfc_base_state,
+        4,
+        b"\x00\x00\x00\x02",
+    )
+    vfc_direct_state = vfc_direct["state"]
+    assert isinstance(vfc_direct_state, dict)
+    vfc_reset = apply_vertical_forms_control_via_12cfe(
+        {
+            **vfc_base_state,
+            "top_offset": pack12(1),
+            "text_length_bottom": pack12(1),
+            "events": [],
+        },
+        0,
+        b"",
+    )
+    vfc_reset_state = vfc_reset["state"]
+    assert isinstance(vfc_reset_state, dict)
+    vfc_ignored = apply_vertical_forms_control_via_12cfe(
+        vfc_base_state,
+        3,
+        b"\x00\x02\x00",
+    )
+    vfc_ignored_state = vfc_ignored["state"]
+    assert isinstance(vfc_ignored_state, dict)
+    checks.append(assert_equal("0x12cfe ESC &l#W loads vertical forms control state", {
+        "line_counts": vfc_line_counts_from_layout(vfc_base_state),
+        "definition": {
+            "text_length_bottom": vfc_direct_state["text_length_bottom"],
+            "vfc_limit": vfc_direct_state["vfc_limit_782dc2"],
+            "table_prefix": vfc_direct_state["vfc_table_782dde"][:4],
+            "event": vfc_direct_state["events"][-1],
+        },
+        "reset": {
+            "top_offset": vfc_reset_state["top_offset"],
+            "text_length_bottom": vfc_reset_state["text_length_bottom"],
+            "text_last_line": vfc_reset_state["vfc_text_last_line_782ee0"],
+            "last_line": vfc_reset_state["vfc_last_line_782ede"],
+            "event": vfc_reset_state["events"][-1],
+        },
+        "ignored": vfc_ignored_state["events"][-1],
+    }, {
+        "line_counts": (62, 63),
+        "definition": {
+            "text_length_bottom": pack12(190),
+            "vfc_limit": pack12(190),
+            "table_prefix": b"\x00\x00\x00\x02",
+            "event": {
+                "kind": "vfc-definition",
+                "byte_count": 4,
+                "stored_count": 4,
+                "text_length_bottom": pack12(190),
+                "text_last_line": 62,
+                "last_line": 63,
+            },
+        },
+        "reset": {
+            "top_offset": pack12(90),
+            "text_length_bottom": pack12(3240),
+            "text_last_line": 62,
+            "last_line": 63,
+            "event": {
+                "kind": "vfc-reset",
+                "top_offset": pack12(90),
+                "text_length_bottom": pack12(3240),
+                "text_last_line": 62,
+                "last_line": 63,
+            },
+        },
+        "ignored": {
+            "kind": "vfc-definition-ignored",
+            "reason": "odd-count-zero-vmi-or-beyond-line-count",
+            "byte_count": 3,
+            "max_payload": 128,
+        },
+    }))
+    vfc_mixed_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&l4W\x00\x00\x00\x02!",
+        0x440946B4,
+        vfc_base_state,
+        default_advance=line_printer_hmi["hmi"],
+    )
+    vfc_parser_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        b"\x1b&l4W",
+    )
+    vfc_mixed_events = vfc_mixed_stream["events"]
+    assert isinstance(vfc_mixed_events, list)
+    vfc_printable = vfc_mixed_events[1]
+    assert isinstance(vfc_printable, dict)
+    vfc_positioned = vfc_printable["positioned"]
+    vfc_page_result = vfc_printable["page_result"]
+    assert isinstance(vfc_positioned, dict)
+    assert isinstance(vfc_page_result, dict)
+    vfc_positioned_source = vfc_positioned["source"]
+    assert isinstance(vfc_positioned_source, dict)
+    checks.append(assert_equal("mixed VFC definition stream consumes payload before printable page-record queue", {
+        "parser_handlers": [
+            event["handler"]
+            for event in vfc_parser_trace["events"]
+        ],
+        "vfc_event": {
+            key: vfc_mixed_events[0][key]
+            for key in (
+                "kind",
+                "sequence",
+                "record",
+                "handler",
+                "delayed_handler",
+                "payload_offset",
+                "raw_payload",
+                "payload_count",
+                "text_length_bottom_before",
+                "text_length_bottom_after",
+            )
+        },
+        "apply_event": vfc_mixed_events[0]["apply_event"],
+        "printable": {
+            "offset": vfc_printable["offset"],
+            "cursor_before": vfc_printable["cursor_before"],
+            "cursor_after": vfc_printable["cursor_after"],
+            "positioned_xy": (
+                vfc_positioned_source["x"],
+                vfc_positioned_source["y"],
+            ),
+            "coord": vfc_page_result["coord"],
+            "bucket_index": vfc_page_result["bucket_index"],
+        },
+        "final_state": select_keys(vfc_mixed_stream["final_state"], (
+            "text_length_bottom",
+            "vfc_limit_782dc2",
+            "cursor_x",
+            "cursor_y",
+            "page_record_root_allocations",
+        )),
+        "object_prefix": vfc_mixed_stream["bucket_object"][:11],
+    }, {
+        "parser_handlers": [0x011F6E],
+        "vfc_event": {
+            "kind": "vfc-definition",
+            "sequence": b"\x1b&l4W\x00\x00\x00\x02",
+            "record": b"\x80W\x00\x04\x00\x00",
+            "handler": 0x011F6E,
+            "delayed_handler": 0x012CFE,
+            "payload_offset": 5,
+            "raw_payload": b"\x00\x00\x00\x02",
+            "payload_count": 4,
+            "text_length_bottom_before": pack12(3240),
+            "text_length_bottom_after": pack12(190),
+        },
+        "apply_event": {
+            "kind": "vfc-definition",
+            "byte_count": 4,
+            "stored_count": 4,
+            "text_length_bottom": pack12(190),
+            "text_last_line": 62,
+            "last_line": 63,
+        },
+        "printable": {
+            "offset": 9,
+            "cursor_before": pack12(10),
+            "cursor_after": pack12(28),
+            "positioned_xy": (16, 105),
+            "coord": 0x9001,
+            "bucket_index": 6,
+        },
+        "final_state": {
+            "text_length_bottom": pack12(190),
+            "vfc_limit_782dc2": pack12(190),
+            "cursor_x": pack12(28),
+            "cursor_y": pack12(126),
+            "page_record_root_allocations": 1,
+        },
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 90 01"),
+    }))
     orientation_page_record_stream = render_printable_page_geometry_page_record_stream(
         data,
         resources,
@@ -42463,11 +42835,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     lines.append("## Page Geometry Command Fixtures")
     lines.append("")
-    lines.append("These fixtures model the ROM table lookups at `0x9d16`/`0x9d4e`/`0x9d86`/`0x9dbe`, the `ESC &l#A` page-size handler at `0xfc74`, the `ESC &l#P` page-length handler at `0xf9e8`, and the `ESC &l#O` orientation handler at `0x10220`.")
+    lines.append("These fixtures model the ROM table lookups at `0x9d16`/`0x9d4e`/`0x9d86`/`0x9dbe`, the `ESC &l#A` page-size handler at `0xfc74`, the `ESC &l#P` page-length handler at `0xf9e8`, the `ESC &l#W` vertical-forms-control payload handler at `0x12cfe`, and the `ESC &l#O` orientation handler at `0x10220`.")
     lines.append("")
     lines.append("- Page-code lookup masks the internal code with `0x7f`; PCL `80` stores internal code `0x88`, which reads table index `8`.")
     lines.append("- `ESC &l#A` maps PCL values `1`, `2`, `3`, `26`, `80`, `81`, `90`, and `91` to internal page codes, finalizes pending page state, updates width/height words, then recomputes portrait or landscape extents.")
     lines.append("- `ESC &l#P` converts current VMI times absolute line count into page extent `0x782dba`, selects an internal page code from orientation thresholds, recomputes default text bounds, and refreshes the following text cursor.")
+    lines.append("- `ESC &l#W` reaches delayed handler `0x12cfe`, consumes its payload through the `0xdace` data reader, loads the vertical-forms-control table at `0x782dde`, and recomputes text-bottom cache `0x782dd2` from channel-bit words.")
     lines.append("- `ESC &l#O` accepts only values `0` and `1`; changing orientation finalizes pending page state, swaps active width/height in landscape, changes the vertical offset source from `60` to `50`, and reloads the orientation margin thresholds through `0x103ea`. A byte-stream fixture now drives chained `ESC &l1a1O` through handlers `0xfc74` and `0x10220`.")
     lines.append("")
     lines.append(f"- Letter portrait from `ESC &l1A`: code `{letter_page['page_code']}`, width `{letter_page['width']}`, height `{letter_page['height']}`, margin `{letter_page['margin_reference']}`, top offset `{letter_page['top_offset']}`")
@@ -42476,10 +42849,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- page-geometry stream events: `{page_geometry_stream['stream_events']}`")
     lines.append(f"- Landscape thresholds loaded by `0x103ea`: `{[landscape_letter[key] for key in ('portrait_landscape_threshold_6', 'portrait_landscape_threshold_2', 'portrait_landscape_threshold_1', 'portrait_landscape_threshold_5')]}`")
     lines.append(f"- `ESC &l66P` at 6 LPI: code `{page_length_letter['page_code']}`, extent `{page_length_letter['page_extent']}`, top offset `{page_length_letter['top_offset']}`, text bottom `{page_length_letter['text_length_bottom']}`")
+    lines.append(f"- `ESC &l4W` payload `00 00 00 02`: text-bottom cache `0x{int(vfc_direct_state['text_length_bottom']):08x}`, VFC table prefix `{' '.join(f'{byte:02x}' for byte in vfc_direct_state['vfc_table_782dde'][:4])}`")
     lines.append("- A mixed printable/page-size page-record stream starts without a current page root, drives `!` then `ESC &l1A`, allocates the page-record root on the printable queue step, and publishes the queued compact text bucket through the page-size handler's `0xf34a`/`0xff1e` boundary before storing the new page code and recomputing geometry.")
     lines.append(f"- page-size publication object bytes: `{' '.join(f'{byte:02x}' for byte in page_geometry_page_record_object)}`")
     lines.append("- page-size published page-record bridge rows match the pre-geometry compact text rows.")
     lines.append("- A mixed page-length stream `ESC &l66P!` routes through ROM parser handlers `0xf9e8` and `0xd04a`, refreshes the text cursor to y `126`, and queues the following printable at compact coord `0x9001`.")
+    lines.append("- A mixed VFC stream `ESC &l4W 00 00 00 02 !` routes through `0x11f6e`, restores delayed handler `0x12cfe`, consumes the four payload bytes before parsing `!`, and leaves the printable queued at compact coord `0x9001`.")
     lines.append("- A mixed printable/orientation page-record stream starts from letter portrait with no current page root, drives `!` then `ESC &l1O`, allocates the page-record root on the printable queue step, and publishes the queued compact text bucket through the orientation handler's `0xf34a`/`0xff1e` boundary before switching to landscape geometry.")
     lines.append(f"- orientation publication object bytes: `{' '.join(f'{byte:02x}' for byte in orientation_page_record_object)}`")
     lines.append("- orientation published page-record bridge rows match the pre-landscape compact text rows.")

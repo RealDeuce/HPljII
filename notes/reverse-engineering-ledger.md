@@ -179,9 +179,9 @@ Status: Anchored through parser bridge, render dispatch, executable
 allocator/bridge, executable queued raster rows, and executable
 expansion/destination/row-copy/resource-resolution/glyph-row/producer-modeled
 bucket/positioning/font-record/font-allocation fixtures, plus host-fetched
-primary, lower-resolution, and capped/drained raster streams; full
-parser-produced page-object
-integration, font-download parser-populated inline/downloaded source records,
+primary, lower-resolution, capped/drained, and consecutive-row raster streams;
+full parser-produced page-object integration, font-download parser-populated
+inline/downloaded source records,
 remaining full live-parser raster, parser-populated font-download records, and
 full parser-produced page-object coverage incomplete
 
@@ -242,8 +242,9 @@ plus macro-payload rule/raster band composition, parser-derived `ESC *t#R`/`ESC
 *r#A` raster state fixtures, modeled `ESC *t300R`/`ESC *r1A`/`ESC *b4W`, `ESC
 *t150R`/`ESC *r0A`/`ESC *b2W`, `ESC *t100R`/`ESC *r0A`/`ESC *b2W`, and `ESC
 *t75R`/`ESC *r0A`/`ESC *b2W` raster command/data stream fixtures, with the first
-`ESC *b4W` object carried through the `0x1edc6` bridge, plus a two-payload `ESC
-*t300R`/`ESC *r0A` multi-row stream through delayed handler `0x0105d0`, a
+`ESC *b4W` object carried through the `0x1edc6` bridge, plus a host-fetched
+two-payload `ESC *t300R`/`ESC *r0A` multi-row stream through delayed handler
+`0x0105d0`, a
 parser-to-gate edge check for host-fetched `ESC *t300R`/`ESC *r0A`/`ESC *b4W`
 capped, page-extent, beyond-extent, and negative-row transfers,
 same-group lowercase-final chaining fixtures for `ESC

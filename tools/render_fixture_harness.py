@@ -23259,6 +23259,90 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "final_row_y": 2,
     }))
+    host_fetched_raster_multirow_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(raster_multirow_command_stream), direct_mode=0),
+        len(raster_multirow_command_stream),
+    )
+    checks.append(assert_equal("host-fetched raster multi-row stream reaches consecutive queued rows", {
+        "fetched_stream": host_fetched_raster_multirow_stream["stream"],
+        "fetch_source_count": len(host_fetched_raster_multirow_stream["sources"]),
+        "fetch_source_set": sorted(set(host_fetched_raster_multirow_stream["sources"])),
+        "remaining_ring": host_fetched_raster_multirow_stream["state"]["ring"],
+        "parser_handlers": [
+            command["final_dispatch"]["handler"]
+            for command in raster_multirow_dispatch_commands
+        ],
+        "parser_payload_offsets": [
+            command.get("payload_offset")
+            for command in raster_multirow_dispatch_commands
+            if command.get("payload_offset") is not None
+        ],
+        "parser_payloads": [
+            command.get("payload")
+            for command in raster_multirow_dispatch_commands
+            if command.get("payload") is not None
+        ],
+        "model_transfers": [
+            {
+                key: event[key]
+                for key in ("restored_record", "payload_offset", "payload", "transfer_state", "row_y_after")
+            }
+            for event in raster_multirow_transfer_events
+        ],
+        "chain": raster_multirow_chain,
+        "rendered": [
+            {
+                key: rendered[key]
+                for key in ("coord", "payload", "rows")
+            }
+            for rendered in raster_multirow_rendered
+        ],
+        "final_row_y": raster_multirow_stream_result["final_state"]["row_y"],
+    }, {
+        "fetched_stream": b"\x1b*t300R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f") + b"\x1b*b2W" + bytes.fromhex("0f f0"),
+        "fetch_source_count": len(raster_multirow_command_stream),
+        "fetch_source_set": ["ring"],
+        "remaining_ring": [],
+        "parser_handlers": [0x010808, 0x01075A, 0x011F82, 0x011F82],
+        "parser_payload_offsets": [17, 24],
+        "parser_payloads": [
+            bytes.fromhex("f0 0f"),
+            bytes.fromhex("0f f0"),
+        ],
+        "model_transfers": [
+            {
+                "restored_record": bytes.fromhex("80 57 00 02 00 00"),
+                "payload_offset": 17,
+                "payload": bytes.fromhex("f0 0f"),
+                "transfer_state": {"x": 0, "y": 0, "byte_count": 2, "mode": 0},
+                "row_y_after": 1,
+            },
+            {
+                "restored_record": bytes.fromhex("80 57 00 02 00 00"),
+                "payload_offset": 24,
+                "payload": bytes.fromhex("0f f0"),
+                "transfer_state": {"x": 0, "y": 1, "byte_count": 2, "mode": 0},
+                "row_y_after": 2,
+            },
+        ],
+        "chain": [
+            bytes.fromhex("00 00 00 00 80 00 00 02 10 00 0f f0"),
+            bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
+        ],
+        "rendered": [
+            {
+                "coord": 0x0000,
+                "payload": bytes.fromhex("f0 0f"),
+                "rows": ["####........####"],
+            },
+            {
+                "coord": 0x1000,
+                "payload": bytes.fromhex("0f f0"),
+                "rows": ["................", "....########...."],
+            },
+        ],
+        "final_row_y": 2,
+    }))
     raster_end_command_stream = b"\x1b*t300R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f") + b"\x1b*rB\x1b*t150R"
     raster_end_stream_result = render_raster_command_data_stream_via_121cc_105d0(
         data,
@@ -29543,7 +29627,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             summary["parser_payload_offset"],
             " ".join(f"{byte:02x}" for byte in summary["queued_object"]),
         ))
-    lines.append("- multi-row parser boundary: two consecutive uppercase `ESC *b2W` commands restore independent `80 57 00 02 00 00` records, consume payloads at offsets `17` and `24`, advance modeled `row_y` to `2`, and queue page-record objects at coords `0x0000` and `0x1000`.")
+    lines.append("- multi-row parser boundary: the host-fetched stream with two consecutive uppercase `ESC *b2W` commands restores independent `80 57 00 02 00 00` records, consumes payloads at offsets `17` and `24`, advances modeled `row_y` to `2`, and queues page-record objects at coords `0x0000` and `0x1000`.")
     lines.append("- chained transfer parser boundary: `ESC *b2w2W` keeps parser mode in the `*b` family after lowercase `w`, preserves delayed record `80 77 00 02 00 00`, restores that same record at uppercase `W`, and consumes payload bytes only after offset `19`.")
     lines.append("")
     lines.append(f"- mode-1 stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode1_command_stream)}`")

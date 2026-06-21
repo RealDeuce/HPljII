@@ -495,7 +495,7 @@ single following payload.
   parser-to-object checks for the 300/150/100/75-dpi raster streams including
   modeled `0x10084` root allocation, host-fetched lower-resolution and
   capped/drained edge streams, and a page-record bridge check for the first
-  `ESC *b4W` object, a parser-traced consecutive-row `ESC *t300R` stream,
+  `ESC *b4W` object, a host-fetched consecutive-row `ESC *t300R` stream,
   same-group lowercase-final chaining fixtures for `ESC *t300r150R` and
   parser-traced `ESC *b2w2W` where lowercase `w` records the delayed transfer
   and payload is consumed after the uppercase terminator, plus a parser-traced

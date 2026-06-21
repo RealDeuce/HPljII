@@ -10084,6 +10084,83 @@ def queue_rectangle_rule_via_13386(page_record: dict[str, object], source: dict[
     }
 
 
+def insert_rectangle_rule_addressed_via_133aa(
+    state: dict[str, object],
+    source: dict[str, int],
+    *,
+    vertical_offset: int = 0,
+    band_byte: int | None = None,
+) -> dict[str, object]:
+    """Address-aware 0x133aa rule-list insertion via 0x1381c storage."""
+    objects = dict(state.get("stream_objects", {}))
+    computed = rectangle_rule_key_via_134d6(source, vertical_offset)
+    bucket_byte = (int(computed["bucket_index"]) if band_byte is None else int(band_byte)) & 0xFF
+
+    alloc = stream_alloc_via_1381c(state, 0x0E)
+    object_ptr = int(alloc["returned_ptr"])
+    old_head = int(state.get("rule_head_24", 0))
+    if object_ptr == 0:
+        return {
+            "object_ptr": 0,
+            "allocated": True,
+            "allocation_failed": True,
+            "old_head": old_head,
+            "new_head": old_head,
+            "visited": [],
+            "computed": computed,
+            "bucket_byte": bucket_byte,
+            "stream_alloc": alloc,
+        }
+
+    visited: list[int] = []
+    previous_ptr = 0
+    current_ptr = old_head
+    while current_ptr:
+        visited.append(current_ptr)
+        current = objects.get(current_ptr)
+        if not isinstance(current, bytearray):
+            raise AssertionError(f"missing rule-list object at 0x{current_ptr:08x}")
+        if int(current[4]) > bucket_byte:
+            break
+        previous_ptr = current_ptr
+        current_ptr = u32(current, 0)
+
+    obj = bytearray(0x0E)
+    obj[0:4] = current_ptr.to_bytes(4, "big")
+    obj[4] = bucket_byte
+    obj[5] = int(source.get("flags", 0)) & 0xFF
+    obj[6:8] = int(computed["key"]).to_bytes(2, "big")
+    obj[8:10] = (int(source["width"]) & 0xFFFF).to_bytes(2, "big")
+    obj[10:12] = (int(source["height"]) & 0xFFFF).to_bytes(2, "big")
+    objects[object_ptr] = obj
+
+    if previous_ptr:
+        previous = objects.get(previous_ptr)
+        if not isinstance(previous, bytearray):
+            raise AssertionError(f"missing predecessor object at 0x{previous_ptr:08x}")
+        previous[0:4] = object_ptr.to_bytes(4, "big")
+        new_head = old_head
+    else:
+        state["rule_head_24"] = object_ptr
+        new_head = object_ptr
+
+    state["stream_objects"] = objects
+    return {
+        "object_ptr": object_ptr,
+        "object": obj,
+        "allocated": True,
+        "allocation_failed": False,
+        "old_head": old_head,
+        "new_head": new_head,
+        "previous_ptr": previous_ptr,
+        "next_ptr": current_ptr,
+        "visited": visited,
+        "computed": computed,
+        "bucket_byte": bucket_byte,
+        "stream_alloc": alloc,
+    }
+
+
 def fixed_rule_key_via_137a2(source: dict[str, int], vertical_offset: int = 0) -> dict[str, int]:
     mode = 6 if (int(source.get("mode", 0)) & 1) else 3
     x = (int(source["x"]) + int(vertical_offset)) & 0xFFFF
@@ -21141,6 +21218,158 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "stream_next_free_782a76": 0x00D01050,
             "next_stream_chunk_ptr": 0x00D01100,
             "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D01000},
+            "stream_allocations": 1,
+        },
+    }))
+    addressed_rule_state: dict[str, object] = {
+        "stream_bytes_remaining_782a70": 0,
+        "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+        "stream_next_free_782a76": 0,
+        "next_stream_chunk_ptr": 0x00D02000,
+        "stream_chunk_links": {},
+        "rule_head_24": 0,
+        "stream_objects": {},
+    }
+    addressed_rule_first = insert_rectangle_rule_addressed_via_133aa(
+        addressed_rule_state,
+        {"x": 0x0023, "y": 0x0045, "width": 0x0012, "height": 0x0034, "flags": 0x07},
+        vertical_offset=0x0010,
+        band_byte=0x04,
+    )
+    addressed_rule_early = insert_rectangle_rule_addressed_via_133aa(
+        addressed_rule_state,
+        {"x": 0x0011, "y": 0x0020, "width": 0x0005, "height": 0x0006, "flags": 0x01},
+        band_byte=0x02,
+    )
+    addressed_rule_tail = insert_rectangle_rule_addressed_via_133aa(
+        addressed_rule_state,
+        {"x": 0x0008, "y": 0x0062, "width": 0x0009, "height": 0x000A, "flags": 0x02},
+        band_byte=0x06,
+    )
+    addressed_rule_equal = insert_rectangle_rule_addressed_via_133aa(
+        addressed_rule_state,
+        {"x": 0x0005, "y": 0x0042, "width": 0x0007, "height": 0x0008, "flags": 0x03},
+        band_byte=0x04,
+    )
+    addressed_rule_objects = addressed_rule_state["stream_objects"]
+    assert isinstance(addressed_rule_objects, dict)
+    addressed_rule_chain: list[tuple[int, bytes]] = []
+    addressed_rule_ptr = int(addressed_rule_state["rule_head_24"])
+    while addressed_rule_ptr:
+        addressed_rule_obj = addressed_rule_objects[addressed_rule_ptr]
+        assert isinstance(addressed_rule_obj, bytearray)
+        addressed_rule_chain.append((addressed_rule_ptr, bytes(addressed_rule_obj)))
+        addressed_rule_ptr = u32(addressed_rule_obj, 0)
+    checks.append(assert_equal("0x133aa address-aware rule-list insertion uses 0x1381c storage", {
+        "first": {
+            key: addressed_rule_first[key]
+            for key in (
+                "object_ptr",
+                "old_head",
+                "new_head",
+                "previous_ptr",
+                "next_ptr",
+                "visited",
+                "bucket_byte",
+            )
+        },
+        "early": {
+            key: addressed_rule_early[key]
+            for key in (
+                "object_ptr",
+                "old_head",
+                "new_head",
+                "previous_ptr",
+                "next_ptr",
+                "visited",
+                "bucket_byte",
+            )
+        },
+        "tail": {
+            key: addressed_rule_tail[key]
+            for key in (
+                "object_ptr",
+                "old_head",
+                "new_head",
+                "previous_ptr",
+                "next_ptr",
+                "visited",
+                "bucket_byte",
+            )
+        },
+        "equal": {
+            key: addressed_rule_equal[key]
+            for key in (
+                "object_ptr",
+                "old_head",
+                "new_head",
+                "previous_ptr",
+                "next_ptr",
+                "visited",
+                "bucket_byte",
+            )
+        },
+        "chain": addressed_rule_chain,
+        "stream_state": {
+            key: addressed_rule_state[key]
+            for key in (
+                "stream_bytes_remaining_782a70",
+                "stream_link_ptr_782a72",
+                "stream_next_free_782a76",
+                "next_stream_chunk_ptr",
+                "stream_chunk_links",
+                "stream_allocations",
+            )
+        },
+    }, {
+        "first": {
+            "object_ptr": 0x00D02004,
+            "old_head": 0,
+            "new_head": 0x00D02004,
+            "previous_ptr": 0,
+            "next_ptr": 0,
+            "visited": [],
+            "bucket_byte": 4,
+        },
+        "early": {
+            "object_ptr": 0x00D02012,
+            "old_head": 0x00D02004,
+            "new_head": 0x00D02012,
+            "previous_ptr": 0,
+            "next_ptr": 0x00D02004,
+            "visited": [0x00D02004],
+            "bucket_byte": 2,
+        },
+        "tail": {
+            "object_ptr": 0x00D02020,
+            "old_head": 0x00D02012,
+            "new_head": 0x00D02012,
+            "previous_ptr": 0x00D02004,
+            "next_ptr": 0,
+            "visited": [0x00D02012, 0x00D02004],
+            "bucket_byte": 6,
+        },
+        "equal": {
+            "object_ptr": 0x00D0202E,
+            "old_head": 0x00D02012,
+            "new_head": 0x00D02012,
+            "previous_ptr": 0x00D02004,
+            "next_ptr": 0x00D02020,
+            "visited": [0x00D02012, 0x00D02004, 0x00D02020],
+            "bucket_byte": 4,
+        },
+        "chain": [
+            (0x00D02012, bytes.fromhex("00 d0 20 04 02 01 01 01 00 05 00 06 00 00")),
+            (0x00D02004, bytes.fromhex("00 d0 20 2e 04 07 53 03 00 12 00 34 00 00")),
+            (0x00D0202E, bytes.fromhex("00 d0 20 20 04 03 25 00 00 07 00 08 00 00")),
+            (0x00D02020, bytes.fromhex("00 00 00 00 06 02 28 00 00 09 00 0a 00 00")),
+        ],
+        "stream_state": {
+            "stream_bytes_remaining_782a70": 0x00C4,
+            "stream_link_ptr_782a72": 0x00D02000,
+            "stream_next_free_782a76": 0x00D0203C,
+            "next_stream_chunk_ptr": 0x00D02100,
+            "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D02000},
             "stream_allocations": 1,
         },
     }))

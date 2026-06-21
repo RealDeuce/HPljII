@@ -319,6 +319,14 @@ the object pointer in the `+0x1c` bucket head, reuse returns the same
 object while count `+6` is below capacity, and a full matching object
 allocates a new head whose longword `+0` points at the prior object.
 
+An address-aware `0x133aa` fixture now ties the same stream storage to
+the rectangle/rule list rooted at page offset `+0x24`. It allocates
+14-byte objects through `0x1381c`, writes the `+0` next pointers, and
+pins the bucket-byte insertion order observed in `0x13472`: lower
+buckets insert before the current head, higher buckets append after
+lower entries, and equal-bucket entries are inserted after the existing
+equal entry.
+
 `0x13070` converts the raster state block into bucket coordinates:
 
 - stores a bucket/index value at `0x782a7c`;

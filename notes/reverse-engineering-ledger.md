@@ -179,8 +179,8 @@ Status: Anchored through parser bridge, render dispatch, executable
 allocator/bridge, executable queued raster rows, and executable
 expansion/destination/row-copy/resource-resolution/glyph-row/producer-modeled
 bucket/positioning/font-record/font-allocation fixtures, plus host-fetched
-primary, lower-resolution, capped/drained, and consecutive-row raster streams;
-host-fetched end-raster/re-enable stream; full parser-produced page-object
+primary, lower-resolution, capped/drained, consecutive-row, active-resolution,
+and end-raster/re-enable raster streams; full parser-produced page-object
 integration, font-download parser-populated inline/downloaded source records,
 remaining full live-parser raster, parser-populated font-download records, and
 full parser-produced page-object coverage incomplete
@@ -248,10 +248,11 @@ two-payload `ESC *t300R`/`ESC *r0A` multi-row stream through delayed handler
 parser-to-gate edge check for host-fetched `ESC *t300R`/`ESC *r0A`/`ESC *b4W`
 capped, page-extent, beyond-extent, and negative-row transfers,
 same-group lowercase-final chaining fixtures for `ESC
-*t300r150R` and chained `ESC *b2w`/`2W` payload boundaries, plus a parser-traced
+*t300r150R` and chained `ESC *b2w`/`2W` payload boundaries, plus a host-fetched
 active `ESC *t75R` stream proving handler `0x10808` leaves current mode/scale
 intact, plus a host-fetched `ESC *rB` stream proving handler `0x107fa` clears
-only raster active state and allows a later `ESC *t150R` mode change,
+only raster active state and allows a later
+`ESC *t150R` mode change,
 byte-aligned mode-0/non-byte-aligned mode-0/mode-1/ byte-aligned
 mode-2/non-byte-aligned mode-2/band-clipped mode-2/mode-3 raster row fixtures
 that queue objects `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55`, `00 00 00 00 80

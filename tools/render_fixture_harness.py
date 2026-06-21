@@ -8172,6 +8172,43 @@ def copy_active_page_record_to_render_record_via_1ed84(page_record: dict[str, ob
     return render_record
 
 
+def compute_render_band_state_via_1ef86(render_record: dict[str, object]) -> dict[str, int]:
+    """Model the 0x1ef86 band-position arithmetic before bucket/list rendering."""
+    fields = render_record.get("render_record_fields", render_record)
+    if not isinstance(fields, dict):
+        raise AssertionError("0x1ef86 fixture needs render-record fields")
+    base_pointer = int(fields.get("long_00", fields.get("base_pointer_00", 0))) & 0xFFFFFFFF
+    width_word = int(fields.get("word_04", fields.get("width_word_04", 0))) & 0xFFFF
+    divisor = int(fields.get("word_06", fields.get("band_divisor_06", 0))) & 0xFFFF
+    addend = int(fields.get("word_08", 0)) & 0xFFFF
+    subtractor = int(fields.get("word_0a", 0)) & 0xFFFF
+    bucket_word = int(fields.get("word_10", 0)) & 0xFFFF
+    if divisor == 0:
+        raise AssertionError("0x1ef86 fixture cannot divide by zero")
+
+    dividend = (bucket_word + addend - subtractor) & 0xFFFF
+    quotient = dividend // divisor
+    remainder = dividend % divisor
+    rows_until_boundary = (divisor - remainder) & 0xFFFF
+    band_rows_scaled = (rows_until_boundary << 4) & 0xFFFF
+    base_delta = ((remainder << 6) & 0xFFFF) * width_word
+    destination_base = (base_pointer + base_delta) & 0xFFFFFFFF
+    return {
+        "input_word_10": bucket_word,
+        "input_word_08": addend,
+        "input_word_0a": subtractor,
+        "dividend": dividend,
+        "divisor_word_06": divisor,
+        "quotient_before_swap": quotient,
+        "remainder_783a22": remainder,
+        "rows_until_boundary": rows_until_boundary,
+        "band_rows_scaled_783a20": band_rows_scaled,
+        "base_delta": base_delta,
+        "destination_base_783a28": destination_base,
+        "render_record_long_12": destination_base,
+    }
+
+
 def rectangle_rule_key_via_134d6(source: dict[str, int], vertical_offset: int = 0) -> dict[str, int]:
     x = (int(source["x"]) + int(vertical_offset)) & 0xFFFF
     y = int(source["y"]) & 0xFFFF
@@ -18804,6 +18841,30 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "fixed_list_20": [bytes.fromhex("00 00 00 00 00 14 00 00 ab cd ab cd 01 08")],
         "context_slots_24_prefix": (0x440946B4, 0),
     }))
+    render_band_state = compute_render_band_state_via_1ef86({
+        "render_record_fields": {
+            "long_00": 0x00100000,
+            "word_04": 0x0020,
+            "word_06": 0x0006,
+            "word_08": 0x0003,
+            "word_0a": 0x0001,
+            "word_10": 0x0012,
+        },
+    })
+    checks.append(assert_equal("0x1ef86 render band setup computes remainder and destination base", render_band_state, {
+        "input_word_10": 0x0012,
+        "input_word_08": 0x0003,
+        "input_word_0a": 0x0001,
+        "dividend": 0x0014,
+        "divisor_word_06": 0x0006,
+        "quotient_before_swap": 3,
+        "remainder_783a22": 2,
+        "rows_until_boundary": 4,
+        "band_rows_scaled_783a20": 0x0040,
+        "base_delta": 0x00001000,
+        "destination_base_783a28": 0x00101000,
+        "render_record_long_12": 0x00101000,
+    }))
     compact_dispatch_object = bytes.fromhex("00 00 00 00 20 03 00 00")
     segment_dispatch_object = bytes.fromhex("00 00 00 00 40 00 00 00")
     encoded_dispatch_object = bytes.fromhex("00 00 00 00 80 02 00 00")
@@ -25817,6 +25878,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         active_copy_fields["render_word_0c"],
         active_copy_fields["render_word_10"],
         active_copy_fields["render_word_16"],
+    ))
+    lines.append("- `0x1ef86` render-band setup fixture divides `(word +0x10 + word +0x08 - word +0x0a) = 0x%04x` by word `+0x06 = %d`, leaving remainder `%d` in `0x783a22`, scaled rows `%d` in `0x783a20`, and destination base `0x%08x` in `0x783a28` and render-record `+0x12`." % (
+        render_band_state["dividend"],
+        render_band_state["divisor_word_06"],
+        render_band_state["remainder_783a22"],
+        render_band_state["band_rows_scaled_783a20"],
+        render_band_state["destination_base_783a28"],
     ))
     lines.append("- `0x1efc2` bucket-chain dispatcher fixture indexes render bucket word `%d` at slot offset `%d` and dispatches object byte `+4` classes through `%s`." % (
         bucket_dispatch_report["bucket_word_10"],

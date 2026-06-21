@@ -2152,6 +2152,12 @@ def page_record_bridge_report(data: bytes) -> str:
     lines.append("| `0x1edb2..0x1edb6` | calls `0x1edc6(destination, source)` | queue/list pointers and font/context slots are copied by the helper below |")
     lines.append("")
 
+    lines.append("## Render Band Setup `0x1ef86`")
+    lines.append("")
+    lines.append("Before the bucket/list dispatchers run, `0x1ef6a` calls `0x1ef86` with the current render record in `A6`. The helper computes `(word +0x10 + word +0x08 - word +0x0a) / word +0x06` using unsigned word division, stores the remainder in `0x783a22`, stores `(word +0x06 - remainder) << 4` in `0x783a20`, and stores `long +0x00 + ((remainder << 6) * word +0x04)` in both `0x783a28` and render-record long `+0x12`.")
+    lines.append("`tools/render_fixture_harness.py` now has an executable `0x1ef86` fixture that pins those four outputs before the `0x1efc2` bucket-chain dispatch check.")
+    lines.append("")
+
     lines.append("## Queue/List Copy Helper `0x1edc6`")
     lines.append("")
     lines.append("| Address | Instruction fact | Render-record contract |")
@@ -2180,7 +2186,7 @@ def page_record_bridge_report(data: bytes) -> str:
     lines.append("- A page-object reproduction model must preserve the three page/control record queues separately until the `0x1edc6` bridge copies them into render-record fields `+0x18`, `+0x1c`, and `+0x20`.")
     lines.append("- The compact text/glyph path is the least transformed by the bridge: the bucket root pointer is copied, and the renderer then selects context slots copied from source `+0x2c..+0x68`.")
     lines.append("- The rule/list and fixed-width chains are not pass-through. Their object bytes are normalized by `0x1edc6` before the render dispatchers see them, so fixtures must compare the post-bridge object shape when validating these paths.")
-    lines.append("- `tools/render_fixture_harness.py` now has a `0x1ed84`/`0x1edc6` fixture that copies source words `+0x18/+0x1a` into render-record header words `+0x0a/+0x0c/+0x10/+0x16`, clears render word `+0x0e`, bridges a compact text bucket, verifies the copied context slot can render the same glyph rows, pins the render-record destination offsets `+0x18/+0x1c/+0x20/+0x24`, pins both list-normalization side effects, composes a non-overlapping compact text bucket plus selector-7 rule from the same bridged render record into one page band, overlays a separately bridged mode-0 raster row into that same band, traces simple execute/call and mixed-control macro execute payloads from the `0xa904` data-chain through parser handlers into the same page-record streams, and composes a macro execute payload page-record layer with the same selector-7 rule and mode-0 raster row. The remaining gap is to replace that synthetic page/control record with a parser-produced page root and decode the true heterogeneous bucket-chain/full-page merge.")
+    lines.append("- `tools/render_fixture_harness.py` now has a `0x1ed84`/`0x1edc6` fixture that copies source words `+0x18/+0x1a` into render-record header words `+0x0a/+0x0c/+0x10/+0x16`, clears render word `+0x0e`, bridges a compact text bucket, verifies the copied context slot can render the same glyph rows, pins the render-record destination offsets `+0x18/+0x1c/+0x20/+0x24`, pins both list-normalization side effects, pins `0x1ef86` render-band remainder/base-pointer setup and `0x1efc2` selected-bucket class dispatch, composes a non-overlapping compact text bucket plus selector-7 rule from the same bridged render record into one page band, overlays a separately bridged mode-0 raster row into that same band, traces simple execute/call and mixed-control macro execute payloads from the `0xa904` data-chain through parser handlers into the same page-record streams, and composes a macro execute payload page-record layer with the same selector-7 rule and mode-0 raster row. The remaining gap is to replace that synthetic page/control record with a parser-produced page root and decode the true heterogeneous bucket-chain/full-page merge.")
     lines.append("")
     return "\n".join(lines)
 

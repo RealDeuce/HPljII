@@ -9770,6 +9770,68 @@ def compact_bucket_root_from_page_record(page_record: dict[str, object]) -> dict
     }
 
 
+def stream_chain_from_addressed_objects(
+    state: dict[str, object],
+    head_ptr: int,
+    *,
+    label: str,
+) -> list[bytes]:
+    objects = state.get("stream_objects", {})
+    if not isinstance(objects, dict):
+        raise AssertionError("addressed stream state needs stream_objects")
+    chain: list[bytes] = []
+    seen: set[int] = set()
+    ptr = int(head_ptr)
+    while ptr:
+        if ptr in seen:
+            raise AssertionError(f"{label} addressed stream chain loops at 0x{ptr:08x}")
+        seen.add(ptr)
+        obj = objects.get(ptr)
+        if not isinstance(obj, bytearray):
+            raise AssertionError(f"{label} missing stream object at 0x{ptr:08x}")
+        chain.append(bytes(obj))
+        ptr = u32(obj, 0)
+    return chain
+
+
+def page_record_from_addressed_stream_state(
+    state: dict[str, object],
+    *,
+    context_slots: list[int] | None = None,
+) -> dict[str, object]:
+    bucket_heads = state.get("bucket_heads_1c", {})
+    if not isinstance(bucket_heads, dict):
+        raise AssertionError("addressed stream state needs bucket_heads_1c")
+    bucket_array = {
+        int(bucket_index): stream_chain_from_addressed_objects(
+            state,
+            int(head_ptr),
+            label=f"bucket {int(bucket_index)}",
+        )
+        for bucket_index, head_ptr in sorted(bucket_heads.items())
+        if int(head_ptr)
+    }
+    if context_slots is None:
+        raw_slots = state.get("context_slots", [])
+        if not isinstance(raw_slots, list):
+            raise AssertionError("addressed stream context_slots must be a list")
+        context_slots = [int(slot) for slot in raw_slots]
+    return {
+        "bucket_array": bucket_array,
+        "rule_list": stream_chain_from_addressed_objects(
+            state,
+            int(state.get("rule_head_24", state.get("page_root_rule_head_24", 0))),
+            label="rule-list +0x24",
+        ),
+        "fixed_list": stream_chain_from_addressed_objects(
+            state,
+            int(state.get("fixed_head_28", state.get("page_root_rule_head_28", 0))),
+            label="fixed-list +0x28",
+        ),
+        "context_slots": context_slots,
+    }
+
+
 def finalize_page_record_via_ff1e(page_record: dict[str, object], state: dict[str, int]) -> dict[str, object]:
     if not state["page_root_present"] or state["page_root_class"] != 1:
         return {
@@ -21598,6 +21660,158 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "stream_next_free_782a76": 0x00D0303C,
             "next_stream_chunk_ptr": 0x00D03100,
             "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D03000},
+            "stream_allocations": 1,
+        },
+    }))
+    addressed_page_state: dict[str, object] = {
+        "stream_bytes_remaining_782a70": 0,
+        "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+        "stream_next_free_782a76": 0,
+        "next_stream_chunk_ptr": 0x00D04000,
+        "stream_chunk_links": {},
+        "bucket_heads_1c": {},
+        "rule_head_24": 0,
+        "fixed_head_28": 0,
+        "stream_objects": {},
+        "context_slots": [0x440946B4],
+    }
+    addressed_page_text = bucket_find_or_alloc_addressed_via_1387c(
+        addressed_page_state,
+        bucket_index=0,
+        selector=0x0000,
+        capacity=0x0A,
+        object_size=0x26,
+    )
+    addressed_page_objects = addressed_page_state["stream_objects"]
+    assert isinstance(addressed_page_objects, dict)
+    addressed_page_text_object = addressed_page_objects[addressed_page_text["object_ptr"]]
+    assert isinstance(addressed_page_text_object, bytearray)
+    addressed_page_text_object[6:8] = (1).to_bytes(2, "big")
+    addressed_page_text_object[8] = 0x20
+    addressed_page_text_object[9:11] = (1).to_bytes(2, "big")
+    addressed_page_rule = insert_rectangle_rule_addressed_via_133aa(
+        addressed_page_state,
+        {"x": 0x0023, "y": 0x0045, "width": 0x0012, "height": 0x0034, "flags": 0x07},
+        vertical_offset=0x0010,
+        band_byte=0x04,
+    )
+    addressed_page_fixed = insert_fixed_rule_addressed_via_136d2(
+        addressed_page_state,
+        {"x": 0x0017, "y": 0x0021, "mode": 1, "extent": 0x0044},
+        vertical_offset=0x0009,
+        band_byte=0x02,
+    )
+    addressed_page_record = page_record_from_addressed_stream_state(addressed_page_state)
+    addressed_page_bridged = bridge_page_record_via_1edc6(addressed_page_record)
+    addressed_page_published = finalize_page_record_via_ff1e(
+        addressed_page_record,
+        reset_fixture_state(
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            page_root_clears=0,
+        ),
+    )
+    addressed_page_published_record = addressed_page_published["published_pool_record"]
+    assert isinstance(addressed_page_published_record, dict)
+    addressed_page_published_fields = addressed_page_published_record["pool_record_fields"]
+    assert isinstance(addressed_page_published_fields, dict)
+    addressed_page_render = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        addressed_page_published_record,
+    )
+    checks.append(assert_equal("addressed stream page record materializes through 0xff1e and 0x1ed84", {
+        "allocated_ptrs": {
+            "text": addressed_page_text["object_ptr"],
+            "rule": addressed_page_rule["object_ptr"],
+            "fixed": addressed_page_fixed["object_ptr"],
+        },
+        "page_record": addressed_page_record,
+        "bridged": {
+            "rule_list": addressed_page_bridged["rule_list"],
+            "fixed_list": addressed_page_bridged["fixed_list"],
+            "context_slots_prefix": addressed_page_bridged["context_slots"][:2],
+        },
+        "published": {
+            "published": addressed_page_published["published"],
+            "bucket_index": addressed_page_published["bucket_index"],
+            "bucket_array_1c": addressed_page_published_fields["bucket_array_1c"],
+            "rule_list_24": addressed_page_published_fields["rule_list_24"],
+            "fixed_list_28": addressed_page_published_fields["fixed_list_28"],
+            "context_slots_2c_prefix": addressed_page_published_fields["context_slots_2c"][:2],
+        },
+        "render_bridge": {
+            "bucket_array_18": addressed_page_render["render_record_fields"]["bucket_array_18"],
+            "rule_list_1c": addressed_page_render["render_record_fields"]["rule_list_1c"],
+            "fixed_list_20": addressed_page_render["render_record_fields"]["fixed_list_20"],
+            "context_slots_24_prefix": addressed_page_render["render_record_fields"]["context_slots_24"][:2],
+            "call_order": addressed_page_render["entry"]["call_order"],
+        },
+        "stream_state": {
+            key: addressed_page_state[key]
+            for key in (
+                "stream_bytes_remaining_782a70",
+                "stream_link_ptr_782a72",
+                "stream_next_free_782a76",
+                "next_stream_chunk_ptr",
+                "stream_chunk_links",
+                "stream_allocations",
+            )
+        },
+    }, {
+        "allocated_ptrs": {
+            "text": 0x00D04004,
+            "rule": 0x00D0402A,
+            "fixed": 0x00D04038,
+        },
+        "page_record": {
+            "bucket_array": {
+                0: [
+                    bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                    + bytes(0x1B),
+                ],
+            },
+            "rule_list": [bytes.fromhex("00 00 00 00 04 07 53 03 00 12 00 34 00 00")],
+            "fixed_list": [bytes.fromhex("00 00 00 00 02 06 10 02 00 44 00 00 00 00")],
+            "context_slots": [0x440946B4],
+        },
+        "bridged": {
+            "rule_list": [bytes.fromhex("00 00 00 00 04 17 53 03 00 12 00 34 00 34")],
+            "fixed_list": [bytes.fromhex("00 00 00 00 02 16 10 02 00 44 00 44 01 08")],
+            "context_slots_prefix": (0x440946B4, 0),
+        },
+        "published": {
+            "published": True,
+            "bucket_index": 0,
+            "bucket_array_1c": {
+                0: [
+                    bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                    + bytes(0x1B),
+                ],
+            },
+            "rule_list_24": [bytes.fromhex("00 00 00 00 04 07 53 03 00 12 00 34 00 00")],
+            "fixed_list_28": [bytes.fromhex("00 00 00 00 02 06 10 02 00 44 00 00 00 00")],
+            "context_slots_2c_prefix": (0x440946B4, 0),
+        },
+        "render_bridge": {
+            "bucket_array_18": {
+                0: [
+                    bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                    + bytes(0x1B),
+                ],
+            },
+            "rule_list_1c": [bytes.fromhex("00 00 00 00 04 17 53 03 00 12 00 34 00 34")],
+            "fixed_list_20": [bytes.fromhex("00 00 00 00 02 16 10 02 00 44 00 44 01 08")],
+            "context_slots_24_prefix": (0x440946B4, 0),
+            "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        },
+        "stream_state": {
+            "stream_bytes_remaining_782a70": 0x00BA,
+            "stream_link_ptr_782a72": 0x00D04000,
+            "stream_next_free_782a76": 0x00D04046,
+            "next_stream_chunk_ptr": 0x00D04100,
+            "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D04000},
             "stream_allocations": 1,
         },
     }))

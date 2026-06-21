@@ -334,6 +334,14 @@ confirms the same bucket-byte ordering for lower, higher, and equal
 entries before the `0x1edc6` bridge converts it into render-record
 `+0x20` fixed-list shape.
 
+The addressed storage fixtures now also compose into a single page-record
+shape before publication: one compact text bucket under `+0x1c`, one
+rectangle/rule object under `+0x24`, and one fixed/rule object under
+`+0x28` are allocated from the same `0x1381c` chunk, materialized by
+following their `+0` links, published through `0xff1e`, and bridged
+through `0x1ed84` / `0x1edc6` into render-record `+0x18`, `+0x1c`,
+and `+0x20` fields.
+
 `0x13070` converts the raster state block into bucket coordinates:
 
 - stores a bucket/index value at `0x782a7c`;

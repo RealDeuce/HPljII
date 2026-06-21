@@ -1006,6 +1006,11 @@ Other checked leads:
   wait helper `0x9ac2` before resetting environment/raster/parser state.
   This makes software reset a page boundary that can finalize a partial
   page before clearing `0x78297a`.
+- Reset helper `0xcda2` now names the page/control pool setup before new
+  page objects are queued: four 0x6c-byte records rooted at `0x780f02`
+  get bucket-array backings at `0x7810bc + 0x400*n`, while parser
+  scratch, cursor stack, line-termination mode, HMI `0x78315c`, and VMI
+  `0x783160` are restored from current-font/default state.
 - `0xff1e` finalizes or resets the current page root as decoded in
   `generated/analysis/ic30_ic13_page_root_finalization.md`: active roots
   with byte `+4 == 1` can be promoted to state `2`, copied through their

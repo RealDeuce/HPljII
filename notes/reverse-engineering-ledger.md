@@ -80,7 +80,11 @@ vertical-decipoint, and lowercase-chained cursor-position, top-margin,
 and cursor-stack parser-to-page-record boundaries, reset sequencing, ROM
 parser dispatch of publication streams, host-fetched publication header
 fields for reset, FF, page-size, and orientation, and synthetic mixed
-reset fixtures; full firmware parser/reset fixtures incomplete
+reset fixtures, with `0xcda2` reset/default environment state now
+decoded for page/control pool setup, cursor-stack reset, HMI/VMI
+recompute, line-termination clearing, and default bytes
+`0x78219d`/`0x78219e`/`0x7821a2`; full firmware parser/reset fixtures
+incomplete
 
 Evidence: parser mode 0 maps CR/LF/FF/HT/BS to handlers `0xf02c`,
 `0xf08c`, `0xf0f0`, `0xf1cc`, `0xf2a8`; `ESC &k#G` stores
@@ -126,7 +130,12 @@ text in the same byte-stream model and now has page-record
 allocator/bridge/publication coverage, with the host-fetched reset, FF,
 page-size, and orientation cases pinning the `0xff1e` published pool
 header fields plus the `0x1edc6` published bucket/context copy before
-render
+render; `generated/analysis/ic30_ic13_esc_e_reset_flow.md` now also
+names `0xcda2` environment-default writes, including four 0x6c-byte
+page/control records rooted at `0x780f02`, bucket backings at
+`0x7810bc + 0x400*n`, parser scratch `0x782a26`, cursor-stack top
+`0x782d36`, HMI `0x78315c`, reset VMI `0x783160`, line-termination byte
+`0x78318f`, and default inputs `0x78219d`/`0x78219e`/`0x7821a2`
 
 ### PCL command map
 
@@ -521,7 +530,12 @@ Known from manuals:
 
 ROM work needed:
 
-- Locate default environment tables.
+- Continue locating default environment tables. The `ESC E` path now
+  names the reset/default environment helper `0xcda2`, including
+  page/control pool setup, cursor-stack reset, HMI/VMI recompute,
+  line-termination clearing, and default bytes
+  `0x78219d`/`0x78219e`/`0x7821a2`; the remaining work is broader
+  panel/power-on/NVRAM provenance for those defaults.
 - Compare physical engine/self-test placement against the matched
   ROM/manual logical page and printable-area dimensions.
 - Trace reset paths for `ESC E`, panel reset, power-on reset, and

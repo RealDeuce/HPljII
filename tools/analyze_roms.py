@@ -4598,6 +4598,25 @@ def esc_e_reset_flow_report(data: bytes) -> str:
         (0x00782DA3, "orientation byte cleared by the main `0xcc70` environment rebuild path"),
         (0x00782DCE, "top/vertical offset recomputed as `0x96 - 0x782dbe` during reset/page-size rebuild"),
         (0x00782DD0, "related vertical/page offset word cleared during reset/page-size rebuild"),
+        (0x00782A26, "parameter/text scratch pointer reset to `0x782a2a` by `0xcda2`"),
+        (0x00782D36, "cursor-stack top pointer reset to `0x782c96` by `0xcda2`"),
+        (0x00783160, "VMI/line advance recomputed by `0xcda2` from default line spacing word `0x78219e`"),
+        (0x00783166, "environment motion accumulator longword cleared by `0xcda2`"),
+        (0x0078316A, "environment motion accumulator longword cleared by `0xcda2`"),
+        (0x0078316E, "environment motion/status word cleared by `0xcda2`"),
+        (0x00782DA4, "display/page mode word loaded from default byte `0x78219d` by `0xcda2`"),
+        (0x00782DA6, "environment byte copied from default byte `0x7821a2` by `0xcda2` when reset gate permits"),
+        (0x00782990, "page/status byte cleared by `0xcda2`"),
+        (0x00782A6D, "parser/page flag set to `1` by `0xcda2`"),
+        (0x0078297E, "page-root transient byte cleared by `0xcda2` and `0xff1e`"),
+        (0x00782C72, "pending page/allocation latch cleared by `0xcda2` and `0xff1e`"),
+        (0x00782C73, "pending page/allocation latch cleared by `0xcda2` and `0xff1e`"),
+        (0x00783184, "pending text/span flag cleared by `0xcda2`"),
+        (0x00783185, "pending text/span flag cleared by `0xcda2`"),
+        (0x00782F2C, "font/symbol dirty flag cleared by `0xcda2`"),
+        (0x0078318F, "line-termination mode byte cleared by `0xcda2`"),
+        (0x00783190, "display-function byte cleared by `0xcda2`"),
+        (0x00783191, "display-function byte set to `1` by `0xcda2`"),
         (0x0078315C, "HMI/default horizontal motion recomputed by `0xcbd4` from current font metrics"),
         (0x0078318E, "alternate previous-width/text-metric flag refreshed by `0xcbd4`"),
         (0x00782F06, "primary/secondary glyph-map selector cleared by `0xcbd4`"),
@@ -4644,6 +4663,20 @@ def esc_e_reset_flow_report(data: bytes) -> str:
     lines.append("- Calls follow-up environment/font/page helpers `0xea16`, `0xe9ba`, `0xf8fc`, `0xfe54`, `0x12b96`, and `0x103ea`.")
     lines.append("- Reinitializes raster state at `0x783170`: clears byte `+0x12`, word `+0x00`, and long `+0x0a`; writes word `+0x08 = 3` and word `+0x0e = 4`; derives word `+0x10` from page extent `0x782db4`, baseline word `+0x00`, and scale word `+0x08`.")
     lines.append("- If `0x7810b2` is clear and `0x780e3c == 1`, it copies `0x7821a2` to `0x780e8f` and ORs bit `1` into `0x780e26` via helper `0x9b5e`; otherwise it can route through `0x1bba6` before the same rebuild path.")
+    lines.append("")
+
+    lines.append("## Environment Defaults `0xcda2`")
+    lines.append("")
+    lines.append("| Address range | Firmware operation | Reproduction meaning |")
+    lines.append("| ---: | --- | --- |")
+    lines.append("| `0xcdaa..0xcddc` | Initializes four 0x6c-byte page/control records rooted at `0x780f02`; each record's `+0x1c` points to a 0x400-byte bucket region at `0x7810bc + 0x400*n`. | Reset rebuilds the page/control pool's bucket-array backing pointers before page objects are queued. |")
+    lines.append("| `0xcddc..0xcdf0` | Stores `0x782a26 = 0x782a2a` and cursor-stack top `0x782d36 = 0x782c96`. | Parser scratch and the cursor stack return to their base positions. |")
+    lines.append("| `0xcdf0..0xce10` | Clears `0x78316a`, `0x783166`, and `0x78316e`; copies default byte `0x78219d` into word `0x782da4`. | Environment motion/status accumulators are reset and the default display/page mode is restored. |")
+    lines.append("| `0xce10..0xce3e` | If reset gate `0x7810b2` is clear, calls `0x15a6`, copies default byte `0x7821a2` into `0x782da6`, calls `0x15ac`, and sets `0x782997 = 1`, `0x782998 = 1`. | Some user/default environment bytes are reloaded only in the normal host reset path. |")
+    lines.append("| `0xce3e..0xce84` | Clears `0x782990`, sets `0x782a6d = 1`, clears `0x78297e`, `0x782c72`, `0x782c73`, `0x783184`, `0x783185`, `0x782f2c`, `0x78318f`, and `0x783190`, then sets `0x783191 = 1`. | Page/transient text flags, line-termination mode, and display-function bytes return to reset defaults before printing resumes. |")
+    lines.append("| `0xce84..0xcec8` | Recomputes HMI `0x78315c` from primary current-font context `0x782ee6`: flagged contexts use long `+0x24` through `0x10550`; unflagged contexts use word `+0x1a` scaled by `0x00057e40` through `0x3324a` and `0x104d8`. | Horizontal motion after reset remains font-derived, not a fixed constant. |")
+    lines.append("| `0xcec8..0xcf38` | Reads default line-spacing word `0x78219e`, normalizes it through `0xcfea`, clamps values below `5` or above `0x80` through `0xcf52`, converts through `0x104d8`, and stores VMI/line advance `0x783160`. | The reset VMI is derived from default/user line spacing but clamped to firmware bounds before cursor motion uses it. |")
+    lines.append("| `0xcf38..0xcf50` | Calls `0x15a6`, clears `0x780e99`, then calls `0x15ac`. | Completes the normal environment refresh handshake after default VMI/HMI restoration. |")
     lines.append("")
 
     lines.append("## Font Metric Refresh `0xcbd4`")

@@ -423,6 +423,14 @@ reinitializes raster block `0x783170`. `0xcbd4` refreshes HMI/default
 text motion and active symbol snapshots from current-font context state.
 `0xe146` resets parser/data-chain state, clears transient parser records
 and text accumulation bytes, and prunes command/data pool records.
+The reset report now also decodes the environment-default helper
+`0xcda2`: it rebuilds the four 0x6c-byte page/control records rooted at
+`0x780f02`, resets parser scratch `0x782a26`, resets cursor-stack top
+`0x782d36` to `0x782c96`, restores display/page defaults from
+`0x78219d` and `0x7821a2`, clears line-termination byte `0x78318f`,
+recomputes HMI `0x78315c` from the primary current-font context, and
+derives reset VMI `0x783160` from default line-spacing word `0x78219e`
+with firmware clamps at `5` and `0x80`.
 `generated/analysis/ic30_ic13_page_root_finalization.md` decodes the
 `0xff1e` branch: active roots publish as state `2` through
 `0x780ea6`/`0x782996`, while missing or inactive roots only clear

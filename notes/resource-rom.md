@@ -460,9 +460,17 @@ Roman-8 survivors, the harness now selects slot `0x782364` / record
 `[1200, 0, 0, 3]`, while the later 16.66-pitch survivor has lower tuple
 `[850, 0, 0, 0]`.
 
-Filtering helpers around `0x1519a`, `0x153c6`, `0x147f4`, and `0x148f8`
-prune the active list by attributes such as pitch, style, symbol set,
-and current orientation-specific state. `0x1519a` is now pinned as the
+That chooser-only result is intentionally isolated. In the full
+`0x13eb8` refresh for parsed primary `0p10h12v0s0b3T`, symbol,
+spacing/pitch, and height filtering leave slots `0x782354` and
+`0x782364`, then `0x14758` stroke exact matching keeps `0x782354` /
+record `0x00004c`. `0x144d2` writes primary context `0x782ee6`, and
+`0x14c64` dispatches the unchanged Roman-8 map for that selected record.
+
+Filtering helpers around `0x1519a`, `0x153c6`, `0x147b2`, `0x14758`,
+`0x147f4`, and `0x148f8` prune the active list by attributes such as
+pitch, style, stroke, typeface, symbol set, and current
+orientation-specific state. `0x1519a` is now pinned as the
 height filter: it reads primary/secondary requested height from
 `0x782ef2` / `0x782f02`, first keeps active candidates within +/-`0x19`,
 and if none match uses `0x1533e` to choose the nearest lower and/or
@@ -476,6 +484,8 @@ byte `+0x21`, then filters primary/secondary pitch from `0x782ef0` /
 `0x1562c` selects the smallest pitch above the request, or the largest
 pitch below when no upper value exists. The verified class-zero window
 has spacing `0` throughout and splits into eight `1000`-unit pitch
-candidates and four `1666`-unit pitch candidates. This directly affects
-text rendering because it determines the built-in font record used for
-glyph metrics and bitmaps.
+candidates and four `1666`-unit pitch candidates. `0x147b2` filters
+style, `0x14758` filters stroke with exact matching pinned so far, and
+`0x147f4` filters typeface. This directly affects text rendering because
+it determines the built-in font record used for glyph metrics and
+bitmaps.

@@ -354,10 +354,14 @@ stroke `0x782eee = 0`, spacing `0x782eef = 0`, pitch
 `0x782f2c = 1`, and metric dirty flag `0x782f2d = 1`. Feeding those
 values into the real class-zero built-in candidate window after the
 Roman-8 symbol filter narrows survivors from slots `0x782354`,
-`0x782364`, and `0x782374` to `0x782354` / `0x782364`; the existing
-`0x14398` chooser then selects built-in record `0x009fb0`. This is still
-a modeled bridge from parsed records into candidate filters, not a full
-firmware-state run through common refresh and `0x14c64`.
+`0x782364`, and `0x782374` to `0x782354` / `0x782364`; that
+chooser-only bridge still proves isolated `0x14398` behavior by selecting
+built-in record `0x009fb0`. The fuller `0x13eb8` fixture now follows
+`0x148f8`, `0x1569c`, `0x156de`, `0x153c6`, `0x1519a`, `0x147b2`,
+`0x14758`, `0x14398`, `0x144d2`, and `0x14c64`: for the same parsed
+primary request, stroke filter `0x14758` prunes `0x009fb0`, leaving
+slot `0x782354` / record `0x00004c`; `0x144d2` writes context
+`0x782ee6`, and `0x14c64` rebuilds the primary map.
 
 Primary and secondary font-designation commands use the same parser
 shape. `ESC (` calls setup `0x1201e`, which pushes slot word `0`;

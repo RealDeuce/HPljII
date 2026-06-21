@@ -5179,6 +5179,139 @@ def filter_active_candidates_by_spacing_pitch_via_153c6(
     }
 
 
+def candidate_field_for_147xx(candidate: dict[str, int], field: str) -> int:
+    longword = int(candidate["longword"]) & 0xFFFFFFFF
+    built_in = (longword >> 30) & 1
+    if field == "style":
+        return int(candidate.get("builtin_byte_0x2f" if built_in else "inline_byte_0x26", 0)) & 0xFF
+    if field == "stroke":
+        return s8(int(candidate.get("builtin_byte_0x30" if built_in else "inline_byte_0x27", 0)))
+    if field == "typeface":
+        return int(candidate.get("builtin_byte_0x31" if built_in else "inline_byte_0x18", 0)) & 0xFF
+    raise AssertionError(f"unsupported 0x147xx field {field!r}")
+
+
+def filter_active_candidates_by_exact_field(
+    activation: dict[str, object],
+    *,
+    field: str,
+    requested: int,
+    probe_helper: int,
+    prune_helper: int,
+) -> dict[str, object]:
+    entries = active_entries(activation)
+    wanted = s8(requested) if field == "stroke" else int(requested) & 0xFF
+    probe_events: list[dict[str, object]] = []
+    has_match = False
+    for index, entry in enumerate(entries):
+        value = candidate_field_for_147xx(entry, field)
+        matched = value == wanted
+        probe_events.append({
+            "helper": probe_helper,
+            "field": field,
+            "index": index,
+            "slot_pointer": int(entry["slot_pointer"]),
+            "record_start": int(entry["record_start"]),
+            "value": value,
+            "requested": wanted,
+            "matched": matched,
+        })
+        if matched:
+            has_match = True
+            break
+
+    if not has_match:
+        return {
+            "field": field,
+            "path": "no-match",
+            "requested": wanted,
+            "active_pointer_78287c": int(entries[0]["slot_pointer"]) if entries else 0,
+            "active_count_7827b8": len(entries),
+            "survivor_slot_pointers": [int(entry["slot_pointer"]) for entry in entries],
+            "survivor_record_starts": [int(entry["record_start"]) for entry in entries],
+            "probe_events": probe_events,
+            "prune_events": [],
+        }
+
+    survivors: list[dict[str, int]] = []
+    prune_events: list[dict[str, object]] = []
+    for index, entry in enumerate(entries):
+        value = candidate_field_for_147xx(entry, field)
+        matched = value == wanted
+        before = int(entry["longword"]) & 0xFFFFFFFF
+        after = before if matched else before & 0x7FFFFFFF
+        if matched:
+            survivor = dict(entry)
+            survivor["longword"] = after
+            survivors.append(survivor)
+        prune_events.append({
+            "helper": prune_helper,
+            "field": field,
+            "index": index,
+            "slot_pointer": int(entry["slot_pointer"]),
+            "record_start": int(entry["record_start"]),
+            "value": value,
+            "requested": wanted,
+            "before": before,
+            "after": after,
+            "matched": matched,
+        })
+
+    return {
+        "field": field,
+        "path": "exact",
+        "requested": wanted,
+        "active_pointer_78287c": int(survivors[0]["slot_pointer"]) if survivors else 0,
+        "active_count_7827b8": len(survivors),
+        "survivor_slot_pointers": [int(entry["slot_pointer"]) for entry in survivors],
+        "survivor_record_starts": [int(entry["record_start"]) for entry in survivors],
+        "probe_events": probe_events,
+        "prune_events": prune_events,
+    }
+
+
+def filter_active_candidates_by_style_via_147b2(
+    activation: dict[str, object],
+    *,
+    requested_style: int,
+) -> dict[str, object]:
+    return filter_active_candidates_by_exact_field(
+        activation,
+        field="style",
+        requested=requested_style,
+        probe_helper=0x014696,
+        prune_helper=0x0146EE,
+    )
+
+
+def filter_active_candidates_by_stroke_via_14758(
+    activation: dict[str, object],
+    *,
+    requested_stroke: int,
+) -> dict[str, object]:
+    return filter_active_candidates_by_exact_field(
+        activation,
+        field="stroke",
+        requested=requested_stroke,
+        probe_helper=0x014534,
+        prune_helper=0x014628,
+    )
+
+
+def filter_active_candidates_by_typeface_via_147f4(
+    activation: dict[str, object],
+    *,
+    requested_typeface: int,
+) -> dict[str, object]:
+    return filter_active_candidates_by_exact_field(
+        activation,
+        field="typeface",
+        requested=requested_typeface,
+        probe_helper=0x014836,
+        prune_helper=0x01488E,
+    )
+
+
 def resource_class_via_13c06(longword: int, *, ram_start: int = 0x780EFA, ram_end: int = 0x7810B4) -> int:
     address = int(longword) & 0x00FFFFFF
     if 0x080000 <= address < 0x0FFFFE:
@@ -5837,6 +5970,197 @@ def font_id_select_via_17708(
             "0x1b2fe",
             "0x14c64",
         ],
+    }
+
+
+def selected_font_context_update_via_144d2(selected: dict[str, int], slot: int) -> dict[str, int]:
+    longword = int(selected["longword"]) & 0xFFFFFFFF
+    return {
+        "helper": 0x0144D2,
+        "context_record": current_font_context_record(slot),
+        "selected_longword": longword,
+        "byte_4_bit30": (longword >> 30) & 1,
+        "byte_5_bit26": (longword >> 26) & 1,
+    }
+
+
+def selected_font_refresh_via_13eb8(
+    data: bytes,
+    resources: bytes,
+    windows: dict[str, object],
+    *,
+    slot: int,
+    requested_primary: int,
+    requested_secondary: int,
+    active_symbols: list[int],
+    remembered_primary_782f08: int,
+    remembered_secondary_782f0a: int,
+    fallback_table_782f0c: dict[tuple[int, int], int],
+    class_selector_byte_782da3: int,
+    requested_spacing: int,
+    requested_pitch: int,
+    requested_height: int,
+    requested_style: int,
+    requested_stroke: int,
+    requested_typeface: int,
+    cache_hit_148f8: bool = False,
+    transient_context_refresh_78298f: int = 0,
+) -> dict[str, object]:
+    selected_slot = int(slot) & 1
+    updated_active = [int(word) & 0xFFFF for word in active_symbols]
+    updated_active += [0] * (2 - len(updated_active))
+    saved_active_word = updated_active[selected_slot]
+    calls: list[str] = ["0x148f8"]
+    if cache_hit_148f8:
+        return {
+            "helper": 0x013EB8,
+            "slot": "secondary" if selected_slot else "primary",
+            "status": "cache-hit",
+            "saved_active_word": saved_active_word,
+            "active_symbols": updated_active[:2],
+            "calls": calls,
+        }
+
+    activation = activate_candidate_window_via_1569c(
+        windows,
+        class_selector_byte=class_selector_byte_782da3,
+    )
+    calls.append("0x1569c")
+    symbol_filter = filter_active_candidates_via_156de(
+        activation,
+        primary_secondary_selector=selected_slot,
+        requested_primary=requested_primary,
+        requested_secondary=requested_secondary,
+        initial_normalized_flag_783f00=normalized_symbol_flag_via_15850(
+            requested_secondary if selected_slot else requested_primary,
+        ),
+        remembered_primary_782f08=remembered_primary_782f08,
+        remembered_secondary_782f0a=remembered_secondary_782f0a,
+        fallback_table_782f0c=fallback_table_782f0c,
+        class_selector_byte_782da3=class_selector_byte_782da3,
+    )
+    calls.append("0x156de")
+    updated_active[selected_slot] = int(symbol_filter["active_word"]) & 0xFFFF
+    current_activation = activation_with_active_slots(
+        activation,
+        symbol_filter["survivor_slot_pointers"],  # type: ignore[arg-type]
+    )
+
+    spacing_pitch_filter = None
+    if int(symbol_filter["active_count_7827b8"]) > 1:
+        spacing_pitch_filter = filter_active_candidates_by_spacing_pitch_via_153c6(
+            current_activation,
+            requested_spacing=requested_spacing,
+            requested_pitch=requested_pitch,
+        )
+        calls.append("0x153c6")
+        current_activation = activation_with_active_slots(
+            current_activation,
+            spacing_pitch_filter["survivor_slot_pointers"],  # type: ignore[arg-type]
+        )
+
+    height_filter = None
+    if int(current_activation["active_count_7827b8"]) > 1:
+        height_filter = filter_active_candidates_by_height_via_1519a(
+            current_activation,
+            requested_height=requested_height,
+        )
+        calls.append("0x1519a")
+        current_activation = activation_with_active_slots(
+            current_activation,
+            height_filter["survivor_slot_pointers"],  # type: ignore[arg-type]
+        )
+
+    style_filter = None
+    if int(current_activation["active_count_7827b8"]) > 1:
+        style_filter = filter_active_candidates_by_style_via_147b2(
+            current_activation,
+            requested_style=requested_style,
+        )
+        calls.append("0x147b2")
+        current_activation = activation_with_active_slots(
+            current_activation,
+            style_filter["survivor_slot_pointers"],  # type: ignore[arg-type]
+        )
+
+    stroke_filter = None
+    if int(current_activation["active_count_7827b8"]) > 1:
+        stroke_filter = filter_active_candidates_by_stroke_via_14758(
+            current_activation,
+            requested_stroke=requested_stroke,
+        )
+        calls.append("0x14758")
+        current_activation = activation_with_active_slots(
+            current_activation,
+            stroke_filter["survivor_slot_pointers"],  # type: ignore[arg-type]
+        )
+
+    typeface_filter = None
+    if int(current_activation["active_count_7827b8"]) > 1:
+        typeface_filter = filter_active_candidates_by_typeface_via_147f4(
+            current_activation,
+            requested_typeface=requested_typeface,
+        )
+        calls.append("0x147f4")
+        current_activation = activation_with_active_slots(
+            current_activation,
+            typeface_filter["survivor_slot_pointers"],  # type: ignore[arg-type]
+        )
+
+    chosen = choose_active_candidate_via_14398(current_activation)
+    calls.append("0x14398")
+    selected = next(
+        dict(entry)
+        for entry in current_activation["entries"]  # type: ignore[index]
+        if int(entry["slot_pointer"]) == int(chosen["selected_slot_pointer_7828a8"])  # type: ignore[index]
+    )
+    if int(transient_context_refresh_78298f) == 1:
+        updated_active[selected_slot] = saved_active_word
+        return {
+            "helper": 0x013EB8,
+            "slot": "secondary" if selected_slot else "primary",
+            "status": "transient-context-only",
+            "saved_active_word": saved_active_word,
+            "active_symbols": updated_active[:2],
+            "selected_context_record_782992": int(selected["longword"]) & 0xFFFFFFFF,
+            "activation": activation,
+            "symbol_filter": symbol_filter,
+            "spacing_pitch_filter": spacing_pitch_filter,
+            "height_filter": height_filter,
+            "style_filter": style_filter,
+            "stroke_filter": stroke_filter,
+            "typeface_filter": typeface_filter,
+            "chosen": chosen,
+            "calls": calls,
+        }
+
+    context_update = selected_font_context_update_via_144d2(selected, selected_slot)
+    dispatch = dispatch_selected_builtin_font_via_14c64(
+        data,
+        resources,
+        selected,
+        primary_secondary_selector=selected_slot,
+        active_primary_symbol=updated_active[0],
+        active_secondary_symbol=updated_active[1],
+    )
+    calls.extend(["0x144d2", "0x14c64"])
+    return {
+        "helper": 0x013EB8,
+        "slot": "secondary" if selected_slot else "primary",
+        "status": "selected",
+        "saved_active_word": saved_active_word,
+        "active_symbols": updated_active[:2],
+        "activation": activation,
+        "symbol_filter": symbol_filter,
+        "spacing_pitch_filter": spacing_pitch_filter,
+        "height_filter": height_filter,
+        "style_filter": style_filter,
+        "stroke_filter": stroke_filter,
+        "typeface_filter": typeface_filter,
+        "chosen": chosen,
+        "context_update": context_update,
+        "dispatch": dispatch,
+        "calls": calls,
     }
 
 
@@ -18233,6 +18557,29 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     parser_metric_selection = choose_active_candidate_via_14398(parser_metric_pitch_activation)
     primary_selection_state_updates = apply_font_selection_update_handlers_from_trace(primary_font_selection_trace)
+    primary_13eb8_refresh = selected_font_refresh_via_13eb8(
+        data,
+        resources,
+        actual_candidate_windows,
+        slot=0,
+        requested_primary=0x0115,
+        requested_secondary=0x0005,
+        active_symbols=[0x0115, 0x0115],
+        remembered_primary_782f08=0x0115,
+        remembered_secondary_782f0a=0x0005,
+        fallback_table_782f0c=fallback_table_782f0c,
+        class_selector_byte_782da3=0,
+        requested_spacing=primary_metric_inputs["spacing"],  # type: ignore[index]
+        requested_pitch=primary_metric_inputs["pitch"],  # type: ignore[index]
+        requested_height=primary_metric_inputs["height"],  # type: ignore[index]
+        requested_style=primary_metric_inputs["style"],  # type: ignore[index]
+        requested_stroke=primary_metric_inputs["stroke"],  # type: ignore[index]
+        requested_typeface=primary_metric_inputs["typeface"],  # type: ignore[index]
+    )
+    primary_13eb8_dispatch = primary_13eb8_refresh["dispatch"]
+    primary_13eb8_stroke = primary_13eb8_refresh["stroke_filter"]
+    assert isinstance(primary_13eb8_dispatch, dict)
+    assert isinstance(primary_13eb8_stroke, dict)
     checks.append(assert_equal("parsed font-selection metrics feed concrete candidate filters", {
         "request": {
             "slot": primary_selection_request["slot"],
@@ -18292,6 +18639,108 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "longword": 0xC0089FB0,
             "record_start": 0x009FB0,
         },
+    }))
+    checks.append(assert_equal("0x13eb8 refresh carries parsed primary font selection to dispatch", {
+        "status": primary_13eb8_refresh["status"],
+        "slot": primary_13eb8_refresh["slot"],
+        "active_symbols": primary_13eb8_refresh["active_symbols"],
+        "symbol_survivors": primary_13eb8_refresh["symbol_filter"]["survivor_slot_pointers"],  # type: ignore[index]
+        "spacing_survivors": primary_13eb8_refresh["spacing_pitch_filter"]["survivor_slot_pointers"],  # type: ignore[index]
+        "height_survivors": primary_13eb8_refresh["height_filter"]["survivor_slot_pointers"],  # type: ignore[index]
+        "stroke": {
+            "path": primary_13eb8_stroke["path"],
+            "survivor_slot_pointers": primary_13eb8_stroke["survivor_slot_pointers"],
+            "first_prune": primary_13eb8_stroke["prune_events"][0],
+            "second_prune": primary_13eb8_stroke["prune_events"][1],
+        },
+        "chosen": select_keys(primary_13eb8_refresh["chosen"], (
+            "selected_slot_pointer_7828a8",
+            "selected_longword",
+            "selected_record_start",
+        )),
+        "context_update": primary_13eb8_refresh["context_update"],
+        "dispatch": select_keys(primary_13eb8_dispatch, (
+            "path",
+            "slot",
+            "selected_symbol",
+            "active_symbol",
+            "range_start",
+            "range_end",
+            "range_reason",
+            "patch_kind",
+            "map_address",
+        )),
+        "calls": primary_13eb8_refresh["calls"],
+    }, {
+        "status": "selected",
+        "slot": "primary",
+        "active_symbols": [0x0115, 0x0115],
+        "symbol_survivors": [0x782354, 0x782364, 0x782374],
+        "spacing_survivors": [0x782354, 0x782364],
+        "height_survivors": [0x782354, 0x782364],
+        "stroke": {
+            "path": "exact",
+            "survivor_slot_pointers": [0x782354],
+            "first_prune": {
+                "helper": 0x014628,
+                "field": "stroke",
+                "index": 0,
+                "slot_pointer": 0x782354,
+                "record_start": 0x00004C,
+                "value": 0,
+                "requested": 0,
+                "before": 0xC008004C,
+                "after": 0xC008004C,
+                "matched": True,
+            },
+            "second_prune": {
+                "helper": 0x014628,
+                "field": "stroke",
+                "index": 1,
+                "slot_pointer": 0x782364,
+                "record_start": 0x009FB0,
+                "value": 3,
+                "requested": 0,
+                "before": 0xC0089FB0,
+                "after": 0x40089FB0,
+                "matched": False,
+            },
+        },
+        "chosen": {
+            "selected_slot_pointer_7828a8": 0x782354,
+            "selected_longword": 0xC008004C,
+            "selected_record_start": 0x00004C,
+        },
+        "context_update": {
+            "helper": 0x0144D2,
+            "context_record": 0x782EE6,
+            "selected_longword": 0xC008004C,
+            "byte_4_bit30": 1,
+            "byte_5_bit26": 0,
+        },
+        "dispatch": {
+            "path": "built-in-cache-miss",
+            "slot": "primary",
+            "selected_symbol": 0x0115,
+            "active_symbol": 0x0115,
+            "range_start": 0x0021,
+            "range_end": 0x00FE,
+            "range_reason": "record-range",
+            "patch_kind": "unchanged",
+            "map_address": 0x782F32,
+        },
+        "calls": [
+            "0x148f8",
+            "0x1569c",
+            "0x156de",
+            "0x153c6",
+            "0x1519a",
+            "0x147b2",
+            "0x14758",
+            "0x14398",
+            "0x144d2",
+            "0x14c64",
+        ],
     }))
     checks.append(assert_equal("parsed font-selection stream writes primary font-state fields", {
         "events": [
@@ -36416,6 +36865,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         chosen_class_zero_primary["selected_slot_pointer_7828a8"],
         chosen_class_zero_primary["selected_record_start"],
         chosen_class_zero_primary["events"][1]["candidate_tuple"]["fields"],  # type: ignore[index]
+    ))
+    lines.append("- full `0x13eb8` refresh: parsed primary `0p10h12v0s0b3T` follows calls `%s`; symbol, spacing/pitch, and height filters leave slots `%s`, `0x14758` stroke filtering keeps slot `0x%06x` / record `0x%06x`, `0x144d2` writes current-font context `0x%06x`, and `0x14c64` rebuilds map `0x%06x` with patch `%s`." % (
+        ", ".join(primary_13eb8_refresh["calls"]),
+        ", ".join("0x%06x" % int(slot) for slot in primary_13eb8_refresh["height_filter"]["survivor_slot_pointers"]),  # type: ignore[index]
+        primary_13eb8_stroke["survivor_slot_pointers"][0],  # type: ignore[index]
+        primary_13eb8_stroke["survivor_record_starts"][0],  # type: ignore[index]
+        primary_13eb8_refresh["context_update"]["context_record"],  # type: ignore[index]
+        primary_13eb8_dispatch["map_address"],
+        primary_13eb8_dispatch["patch_kind"],
     ))
     lines.append("- selected font dispatch: `0x14c64` cache-miss handling for that selected built-in record updates primary range table `0x%06x` to `0x%04x..0x%04x`, selected flag `0x%06x = %d`, rebuilds map `0x%06x` through `0x14d9c`, applies active symbol `0x%04x` through `%s` handling, and snapshots state at `0x%06x` through `0x1440c`." % (
         dispatched_class_zero_primary["range_register"],

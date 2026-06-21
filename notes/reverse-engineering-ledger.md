@@ -432,8 +432,11 @@ stroke `0xc840`, and typeface wrapper `0x1205a` routing while preserving
 slot setup records distinct from terminal fraction words; a modeled
 bridge now feeds parsed primary `0p10h12v0s0b3T` updater writes at
 `0x782eec..0x782ef2` plus dirty flags `0x782f2c/2d` into the concrete
-class-zero built-in candidate filters, reducing Roman-8 survivors to
-slots `0x782354` / `0x782364` before `0x14398` selects record
+class-zero built-in candidate filters as an isolation control; the full
+`0x13eb8` primary refresh now follows `0x148f8`, `0x1569c`, `0x156de`,
+`0x153c6`, `0x1519a`, `0x147b2`, `0x14758`, `0x14398`, `0x144d2`, and
+`0x14c64`, with stroke filtering selecting slot `0x782354` / record
+`0x00004c` while the older chooser-only bridge still selects
 `0x009fb0`; one `0xc580` dirty-refresh branch is now pinned through
 the first-clear-slot `0xc4fc` scan, and the all-live matching-context
 branch is pinned through the transient `0x78298f` toggle, two
@@ -519,9 +522,9 @@ ROM work needed:
 
 - Extend the pinned visible `0xc580` branch outcomes into fuller
   upstream `0x1be22` parser-state coverage around the now-pinned
-  `0x17708` success paths, then carry dirty-1 refreshes through complete
-  `0x13eb8` / `0x14c64` selected-font dispatch and replace the remaining
-  `0x156de` synthetic cases with live parser/font-state coverage.
+  `0x17708` success paths, extend `0x13eb8` coverage to secondary,
+  transient, and cache-hit branches, and replace the remaining `0x156de`
+  synthetic cases with live parser/font-state coverage.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.

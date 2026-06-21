@@ -664,7 +664,7 @@ fetch, tokenizer/delayed-payload, page-geometry, macro/data-chain,
 direct-control, reset, text, rule, raster, bridge, row-copy, built-in glyph,
 symbol-set, and downloaded-font fixture families into one ROM-backed self-test.
 It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and
-currently verifies 347 checks. The raster coverage now includes ROM-table
+currently verifies 348 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W`
 stream, the 150/100/75-dpi mode streams, the consecutive-row `ESC *b2W` stream,
 the active-resolution-ignore `ESC *t75R` stream, the end-raster `ESC *rB` /
@@ -810,7 +810,8 @@ payloads drain through `0xa904`, route replayed `!\r` through parser handlers
 and a stored `ESC &k1G!\r!` macro payload now drains through `0xa904`, routes
 replayed bytes through handlers `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, and
 feeds the same page-record stream and rendered rows as the direct mixed
-control-byte model.
+control-byte model; the execute, call, and mixed-control replay payloads now
+also pin the `0x1edc6` bucket/context bridge contract before rendering.
 
 This is still not enough for pixel-perfect reproduction by itself. The next
 unresolved step is to replace fixture-only source/bucket states with fuller

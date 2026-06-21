@@ -13210,6 +13210,102 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "post_flushes": 1,
         },
     }))
+    checks.append(assert_equal("host-fetched macro replay payloads preserve 0x1edc6 bridge contract", {
+        "execute": {
+            "host_stream": macro_execute_host_fetch["stream"],
+            "replay_stream": macro_frame_replay["stream"],
+            "parser_handlers": [
+                event["handler"]
+                for event in macro_frame_parser_trace["events"]
+            ],
+            "bridge_bucket_matches_object": (
+                macro_payload_page_record_bridged["bucket_root"]
+                == macro_payload_page_record_object
+            ),
+            "render_field_bucket_matches_object": (
+                macro_payload_page_record_bridged["render_record_fields"]["bucket_root_18"]
+                == macro_payload_page_record_object
+            ),
+            "rule_list_count": len(macro_payload_page_record_bridged["rule_list"]),
+            "fixed_list_count": len(macro_payload_page_record_bridged["fixed_list"]),
+            "context_slots_prefix": macro_payload_page_record_bridged["context_slots"][:2],
+            "rendered_rows": macro_payload_page_record_rendered["rows"],
+        },
+        "call": {
+            "host_stream": macro_call_host_fetch["stream"],
+            "replay_stream": macro_call_replay["stream"],
+            "parser_handlers": [
+                event["handler"]
+                for event in macro_call_parser_trace["events"]
+            ],
+            "bridge_bucket_matches_object": (
+                macro_payload_page_record_bridged["bucket_root"]
+                == macro_payload_page_record_object
+            ),
+            "render_field_bucket_matches_object": (
+                macro_payload_page_record_bridged["render_record_fields"]["bucket_root_18"]
+                == macro_payload_page_record_object
+            ),
+            "rule_list_count": len(macro_payload_page_record_bridged["rule_list"]),
+            "fixed_list_count": len(macro_payload_page_record_bridged["fixed_list"]),
+            "context_slots_prefix": macro_payload_page_record_bridged["context_slots"][:2],
+            "rendered_rows": macro_payload_page_record_rendered["rows"],
+        },
+        "mixed_control": {
+            "host_stream": macro_control_host_fetch["stream"],
+            "replay_stream": macro_control_replay["stream"],
+            "parser_handlers": [
+                event["handler"]
+                for event in macro_control_payload_parser_trace["events"]
+            ],
+            "bridge_bucket_matches_object": (
+                macro_control_payload_page_bridged["bucket_root"]
+                == macro_control_payload_page_object
+            ),
+            "render_field_bucket_matches_object": (
+                macro_control_payload_page_bridged["render_record_fields"]["bucket_root_18"]
+                == macro_control_payload_page_object
+            ),
+            "rule_list_count": len(macro_control_payload_page_bridged["rule_list"]),
+            "fixed_list_count": len(macro_control_payload_page_bridged["fixed_list"]),
+            "context_slots_prefix": macro_control_payload_page_bridged["context_slots"][:2],
+            "rendered_rows": macro_control_payload_page_rendered["rows"],
+        },
+    }, {
+        "execute": {
+            "host_stream": b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f2X",
+            "replay_stream": b"!\r",
+            "parser_handlers": [0x00D04A, 0x00F02C],
+            "bridge_bucket_matches_object": True,
+            "render_field_bucket_matches_object": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0x440946B4, 0),
+            "rendered_rows": macro_payload_rendered["rows"],
+        },
+        "call": {
+            "host_stream": b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f3X",
+            "replay_stream": b"!\r",
+            "parser_handlers": [0x00D04A, 0x00F02C],
+            "bridge_bucket_matches_object": True,
+            "render_field_bucket_matches_object": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0x440946B4, 0),
+            "rendered_rows": macro_payload_rendered["rows"],
+        },
+        "mixed_control": {
+            "host_stream": b"\x1b&f125Y\x1b&f0X\x1b&k1G!\r!\x1b&f1X\x1b&f2X",
+            "replay_stream": b"\x1b&k1G!\r!",
+            "parser_handlers": [0x00EDF8, 0x00D04A, 0x00F02C, 0x00D04A],
+            "bridge_bucket_matches_object": True,
+            "render_field_bucket_matches_object": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0x440946B4, 0),
+            "rendered_rows": macro_control_payload_direct_rendered["rows"],
+        },
+    }))
     macro_band_rule_record: dict[str, object] = {}
     macro_band_rule = queue_rectangle_rule_via_13386(macro_band_rule_record, {
         "x": 24,

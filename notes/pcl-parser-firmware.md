@@ -447,7 +447,10 @@ fixture exercises that valid-root reset path after queuing a printable
 text object, and its page-record variant queues and bridges that object
 under page-record storage rules, then publishes the same bucket through
 a modeled `0xff1e` finalization record before reset clears the current
-root. The
+root. The FF publication stream now also has an addressed allocator
+variant where `ESC &k2G!\f` queues the printable byte through
+`0x1387c`/`0x1381c`, publishes through the FF helper's `0xff1e`
+boundary, and renders through `0x1ed84`/`0x1ef6a`. The
 host-fetched publication checks now start `!\x1bE`, `ESC &k2G!\f`,
 `!\x1b&l1A`, and `!\x1b&l1O` from the modeled `0xa904` ring source and
 pin the same published pool header after `0xff1e`: state byte `+4 = 2`,

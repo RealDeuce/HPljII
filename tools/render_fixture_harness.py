@@ -13253,6 +13253,123 @@ def render_printable_reset_addressed_page_record_stream(
     }
 
 
+def render_printable_ff_addressed_page_record_stream(
+    data: bytes,
+    resources: bytes,
+    stream: bytes,
+    context: int,
+    state: dict[str, int],
+    default_advance: int,
+    context_slot: int = 0,
+) -> dict[str, object]:
+    """Address-backed fixture for ESC &k#G, printable text, then FF publication."""
+    if stream != b"\x1b&k2G!\x0c":
+        raise AssertionError("addressed printable/FF fixture expects ESC &k2G ! FF")
+
+    addressed_state: dict[str, object] = {
+        "stream_bytes_remaining_782a70": 0,
+        "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+        "stream_next_free_782a76": 0,
+        "next_stream_chunk_ptr": int(state.get("next_stream_chunk_ptr", 0x00D05000)),
+        "stream_chunk_links": {},
+        "bucket_heads_1c": {},
+        "rule_head_24": 0,
+        "fixed_head_28": 0,
+        "stream_objects": {},
+        "context_slots": [context],
+    }
+    working = dict(state)
+    events: list[dict[str, object]] = []
+
+    working["line_termination"] = line_termination_mode_bits(2)
+    events.append({
+        "kind": "escape",
+        "offset": 0,
+        "sequence": stream[:5],
+        "handler": 0x00EDF8,
+        "line_termination": working["line_termination"],
+    })
+
+    source = build_text_source_object_from_1393a(
+        resources,
+        context,
+        stream[5],
+        x=0,
+        y=0,
+        context_slot=context_slot,
+    )
+    positioned = position_flagged_text_source_via_d824(
+        resources,
+        source,
+        cursor_x=unpack12(working["cursor_x"])[0],
+        cursor_y=unpack12(working["cursor_y"])[0],
+    )
+    positioned_source = positioned["source"]
+    assert isinstance(positioned_source, dict)
+    page_root = ensure_page_record_root_for_queue(working)
+    text_result = queue_text_source_to_addressed_stream_via_12f2e(
+        resources,
+        addressed_state,
+        positioned_source,
+    )
+    advance = advance_flagged_text_cursor_via_d550(working["cursor_x"], default_advance)
+    working["cursor_x"] = advance["cursor_after"]
+    events.append({
+        "kind": "printable",
+        "offset": 5,
+        "byte": stream[5],
+        "cursor_before": advance["cursor_before"],
+        "cursor_after": advance["cursor_after"],
+        "source": source,
+        "positioned": positioned,
+        "page_result": text_result,
+        "page_root": page_root,
+    })
+
+    page_record = page_record_from_addressed_stream_state(addressed_state)
+    before_ff = dict(working)
+    ff_result = control_ff_page_record_helper(working, page_record)
+    working = ff_result["state"]
+    assert isinstance(working, dict)
+    finalized = ff_result["finalized_page_record"]
+    assert isinstance(finalized, dict)
+    published_page_record = finalized["published_pool_record"]
+    assert isinstance(published_page_record, dict)
+    published_render_entry = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        published_page_record,
+    )
+    events.append({
+        "kind": "control",
+        "offset": 6,
+        "byte": 0x0C,
+        "handler": 0x00F0F0,
+        "finalized_page_record": finalized,
+        "cursor_before": (before_ff["cursor_x"], before_ff["cursor_y"]),
+        "cursor_after": (working["cursor_x"], working["cursor_y"]),
+        "current_page_root_before": before_ff["current_page_root"],
+        "current_page_root_after": working["current_page_root"],
+        "page_publications": working["page_publications"],
+        "page_root_clears": working["page_root_clears"],
+        "page_publication_flag": working["page_publication_flag"],
+        "page_roots": working["page_roots"],
+        "page_finalizes": working["page_finalizes"],
+        "span_flushes": working["span_flushes"],
+    })
+
+    return {
+        "stream": stream,
+        "parser_handlers": [0x00EDF8, 0x00D04A, 0x00F0F0],
+        "events": events,
+        "addressed_state": addressed_state,
+        "page_record": page_record,
+        "published_page_record": published_page_record,
+        "published_render_entry": published_render_entry,
+        "final_state": working,
+    }
+
+
 def render_text_rectangle_raster_addressed_page_record_stream(
     data: bytes,
     resources: bytes,
@@ -38290,6 +38407,165 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_record_root_allocations": 1,
         },
     }))
+    ff_addressed = render_printable_ff_addressed_page_record_stream(
+        data,
+        resources,
+        b"\x1b&k2G!\x0c",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=1,
+            span_flush_enable=1,
+            page_root_present=0,
+            page_root_class=1,
+            current_page_root=0,
+            page_publications=0,
+            page_root_clears=0,
+            published_pool_record=0,
+            page_publication_flag=0,
+            transient_page_byte=1,
+            cursor_transient_a=1,
+            cursor_transient_b=1,
+            next_stream_chunk_ptr=0x00D09000,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    checks.append(assert_equal("addressed printable FF publishes rendered page record", {
+        "stream": ff_addressed["stream"],
+        "parser_handlers": ff_addressed["parser_handlers"],
+        "event_kinds": [event["kind"] for event in ff_addressed["events"]],
+        "page_record": ff_addressed["page_record"],
+        "published_bucket_root": ff_addressed["published_page_record"]["bucket_root"],
+        "published_context_slots": ff_addressed["published_page_record"]["context_slots"],
+        "published_pool_fields": {
+            key: ff_addressed["published_page_record"]["pool_record_fields"][key]
+            for key in (
+                "state_byte_4",
+                "environment_byte_7",
+                "status_byte_8",
+                "status_byte_0a",
+                "environment_word_0c",
+                "word_16",
+                "word_18",
+                "word_1a",
+                "published_pointer_780ea6",
+                "bucket_root_1c",
+                "context_slots_2c",
+            )
+        },
+        "render_call_order": ff_addressed["published_render_entry"]["entry"]["call_order"],
+        "render_dispatch": [
+            {
+                "chain_index": entry["chain_index"],
+                "object_byte_4": entry["object_byte_4"],
+                "class_mask": entry["class_mask"],
+                "branch": entry["branch"],
+                "target": entry["target"],
+                "context_slot": entry.get("context_slot"),
+            }
+            for entry in ff_addressed["published_render_entry"]["entry"]["dispatch"]["entries"]
+        ],
+        "rows": ff_addressed["published_render_entry"]["entry"]["rows"],
+        "stream_state": {
+            key: ff_addressed["addressed_state"][key]
+            for key in (
+                "stream_bytes_remaining_782a70",
+                "stream_link_ptr_782a72",
+                "stream_next_free_782a76",
+                "next_stream_chunk_ptr",
+                "stream_chunk_links",
+                "stream_allocations",
+            )
+        },
+        "final_state": select_keys(ff_addressed["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "line_termination",
+            "pending_text",
+            "page_roots",
+            "page_finalizes",
+            "page_publications",
+            "page_root_clears",
+            "current_page_root",
+            "span_flushes",
+            "post_flushes",
+            "page_publication_flag",
+            "page_record_root_allocations",
+        )),
+    }, {
+        "stream": b"\x1b&k2G!\x0c",
+        "parser_handlers": [0x00EDF8, 0x00D04A, 0x00F0F0],
+        "event_kinds": ["escape", "printable", "control"],
+        "page_record": {
+            "bucket_array": {
+                0: [
+                    bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                    + bytes(0x1B),
+                ],
+            },
+            "rule_list": [],
+            "fixed_list": [],
+            "context_slots": [0x440946B4],
+        },
+        "published_bucket_root": (
+            bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+            + bytes(0x1B)
+        ),
+        "published_context_slots": [0x440946B4],
+        "published_pool_fields": {
+            "state_byte_4": 2,
+            "environment_byte_7": 0,
+            "status_byte_8": 0,
+            "status_byte_0a": 0,
+            "environment_word_0c": 0,
+            "word_16": 0,
+            "word_18": 0,
+            "word_1a": 0,
+            "published_pointer_780ea6": ABSTRACT_PAGE_ROOT_PTR,
+            "bucket_root_1c": (
+                bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                + bytes(0x1B)
+            ),
+            "context_slots_2c": (0x440946B4,) + (0,) * 15,
+        },
+        "render_call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "render_dispatch": [{
+            "chain_index": 0,
+            "object_byte_4": 0x00,
+            "class_mask": 0x00,
+            "branch": "compact",
+            "target": 0x01EFFE,
+            "context_slot": 0,
+        }],
+        "rows": positioned_mode0["rows"],
+        "stream_state": {
+            "stream_bytes_remaining_782a70": 0x00D6,
+            "stream_link_ptr_782a72": 0x00D09000,
+            "stream_next_free_782a76": 0x00D0902A,
+            "next_stream_chunk_ptr": 0x00D09100,
+            "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D09000},
+            "stream_allocations": 1,
+        },
+        "final_state": {
+            "cursor_x": pack12(5),
+            "cursor_y": pack12(21),
+            "line_termination": 0x60,
+            "pending_text": 0xFF,
+            "page_roots": 1,
+            "page_finalizes": 1,
+            "page_publications": 1,
+            "page_root_clears": 1,
+            "current_page_root": 0,
+            "span_flushes": 1,
+            "post_flushes": 1,
+            "page_publication_flag": 1,
+            "page_record_root_allocations": 1,
+        },
+    }))
     mixed_reset_pool_fields = mixed_reset_published_page_record["pool_record_fields"]
     assert isinstance(mixed_reset_pool_fields, dict)
     checks.append(assert_equal("mixed printable/reset publication records 0xff1e pool header defaults", {
@@ -40906,6 +41182,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("A ROM parser trace now anchors the publication streams before the modeled page-record layer: `21 1b 45` routes printable `!` through the mode-0 `0xd04a` branch and `ESC E` through handler `0xcc52`; `1b 26 6b 32 47 21 0c` routes `ESC &k2G` through handler `0xedf8`, printable `!` through `0xd04a`, and FF through handler `0xf0f0`; `21 1b 26 6c 31 41` and `21 1b 26 6c 31 4f` route printable `!` through `0xd04a` before page-size `ESC &l1A` reaches `0xfc74` and orientation `ESC &l1O` reaches `0x10220`.")
     lines.append("The publication-boundary fixture ties those parser handler sequences to the modeled page-record side for the same four byte streams: each allocates one root on printable `!`, publishes one compact bucket through `0xff1e`, clears the current root, and renders the published rows after the `0x1edc6` bridge.")
     lines.append("A host-fetch publication fixture now starts those same reset, FF, page-size, and orientation streams from the modeled `0xa904` ring source, drains all input bytes from the ring, replays the same parser handlers, and lands on the same published compact rows.")
+    lines.append("The FF publication stream now also has an addressed allocation variant: `ESC &k2G! FF` sets line-termination mode, queues printable `!` through addressed `0x1387c`/`0x1381c`, materializes the compact bucket record, publishes through the FF helper's `0xff1e` boundary, and renders through `0x1ed84`/`0x1ef6a` with the same rows.")
     lines.append("The published-record render-entry fixture then carries each of those four `0xff1e` records through `0x1ed84` active-record copy and the `0x1ef6a` call order, selecting the compact bucket through `0x1efc2` and rendering the same rows.")
     lines.append("A host-fetched direct text/control fixture now starts the plain, transparent-data, CR/LF, HT/BS, margin, cursor-position, dot-position, vertical-layout, and cursor-stack page-record streams from the modeled `0xa904` ring source, drains every byte, replays the same parser handlers or delayed payload handler, and lands on the same `0x1387c` page-record objects. The cursor-row case now also carries the nonzero bucket word through `0x1ef86`, clips compact text to `0x783a20 = 16` current-band rows, and records the continuation rows in the fallback buffer.")
     lines.append("The same direct page-record group now crosses `0x1ed84` active-record copy and the `0x1ef6a` render-entry call order, including nonzero bucket selection for the vertical cursor/layout cases.")
@@ -40913,7 +41190,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("A host-fetched text-plus-rectangle-plus-raster fixture now drains `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W` through the same mixed page-record stream runner. That runner queues compact text, the selector-7 rule, and the delayed `0x105d0` mode-0 raster transfer in one page record before rendering the combined bucket/rule/raster record through `0x1ed84` and `0x1ef6a`.")
     lines.append("Adding FF to that same stream now publishes the heterogeneous text/rule/raster page record through the modeled `0xff1e` boundary, clears the current root, and renders the published record through `0x1ed84` and `0x1ef6a` with the same rows.")
     lines.append("")
-    lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now starts without a current page root, marks the first printable as the page-record root allocation point, models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`. The addressed variant queues the same printable byte through addressed `0x1387c`/`0x1381c`, materializes the page record, publishes it through `0xff1e`, and renders the published record through `0x1ed84`/`0x1ef6a` with the same rows.")
+    lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now starts without a current page root, marks the first printable as the page-record root allocation point, models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`. The addressed reset variant queues the same printable byte through addressed `0x1387c`/`0x1381c`, materializes the page record, publishes it through `0xff1e`, and renders the published record through `0x1ed84`/`0x1ef6a` with the same rows.")
     lines.append("")
     lines.append("- mixed reset stream bytes: `21 1b 45`")
     lines.append(f"- mixed reset compact object bytes: `{' '.join(f'{byte:02x}' for byte in mixed_reset_combined['object'])}`")

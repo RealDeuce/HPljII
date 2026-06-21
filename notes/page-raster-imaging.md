@@ -949,6 +949,10 @@ publication path now also has an addressed `!\x1bE` variant where the
 printable byte queues through addressed `0x1387c`/`0x1381c`, the
 materialized page record publishes through `0xff1e`, and the published
 record renders through `0x1ed84`/`0x1ef6a` with the same rows. The
+FF publication stream now also has an addressed `ESC &k2G!\f` variant
+where the compact bucket materializes from addressed storage, publishes
+through the FF helper's `0xff1e` boundary, and renders through
+`0x1ed84`/`0x1ef6a` with the same rows. The
 host-fetched text/rule/raster fixture now also publishes its full bucket
 array, rule list, and context slots through modeled `0xff1e`, then
 renders the published record through `0x1ed84` and `0x1ef6a` with the

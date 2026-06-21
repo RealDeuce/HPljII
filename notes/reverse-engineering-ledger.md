@@ -266,8 +266,9 @@ glyph row-copy fixtures are generated in
 `tools/render_fixture_harness.py` executes those primitive models plus
 `0xa904` host byte fetch source-priority fixtures, ring-fed
 reset/FF/page-size/orientation publication streams through parser
-handlers and published rows, real built-in glyph-resource resolutions,
-full decoded mode-1 glyph-row fixtures, main `0x1f08e` row-copy
+handlers and published rows, addressed reset/FF publication allocation
+variants, real built-in glyph-resource resolutions, full decoded mode-1
+glyph-row fixtures, main `0x1f08e` row-copy
 rendering for four named glyphs plus a ROM-scanned render-span matrix
 covering spans 1, 2, 4, 6, and 8, one symbol-set stream/map fixture for
 `ESC (2U` / `ESC )0E` through ROM parser setup handlers

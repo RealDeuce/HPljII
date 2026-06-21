@@ -2598,7 +2598,6 @@ def refresh_symbol_state_via_c580(state: dict[str, object], slot: int) -> None:
         else:
             activate_font_candidate_via_13eb8(state, slot, "selector-mismatch")
     else:
-        active[slot] = int(requested[slot])
         if selector == slot:
             install_current_font_context_via_c428(state, slot)
 
@@ -2673,7 +2672,7 @@ def apply_symbol_set_stream_via_120be_1be22(state: dict[str, object], stream: by
                 word = previous_word
                 kind = "ignored-at-selector"
         requested[slot] = word
-        state["dirty_flag"] = 2
+        state["dirty_flag"] = 2 if final == ord("X") else 1
         state["dirty_maps"] = 1
         refresh_symbol_state_via_c580(state, slot)
         event = {
@@ -17178,6 +17177,76 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "candidate_refresh_calls": [
             {"helper": 0x013EB8, "slot": 0, "reason": "selector-mismatch"},
         ],
+        "context_install_events": [],
+    }))
+    c580_dirty2_selector_match = symbol_set_state(
+        requested_symbols=[0x0055, 0x0115],
+        active_symbols=[0x02C1, 0x0115],
+        remembered_symbols=[0x0115, 0x0115],
+        current_selector_782f06=0,
+        current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        dirty_flag=2,
+        dirty_maps=1,
+    )
+    refresh_symbol_state_via_c580(c580_dirty2_selector_match, 0)
+    checks.append(assert_equal("0xc580 dirty-2 selector-match branch installs current context only", {
+        "active_symbols": c580_dirty2_selector_match["active_symbols"],
+        "remembered_symbols": c580_dirty2_selector_match["remembered_symbols"],
+        "dirty_flag": c580_dirty2_selector_match["dirty_flag"],
+        "dirty_maps": c580_dirty2_selector_match["dirty_maps"],
+        "refreshes": c580_dirty2_selector_match["refreshes"],
+        "current_page_context_slot_78297e": c580_dirty2_selector_match["current_page_context_slot_78297e"],
+        "page_root_context_slots": c580_dirty2_selector_match["page_root_context_slots"][:2],
+        "candidate_refresh_calls": c580_dirty2_selector_match["candidate_refresh_calls"],
+        "context_install_events": c580_dirty2_selector_match["context_install_events"],
+    }, {
+        "active_symbols": [0x02C1, 0x0115],
+        "remembered_symbols": [0x02C1, 0x0115],
+        "dirty_flag": 0,
+        "dirty_maps": 0,
+        "refreshes": 1,
+        "current_page_context_slot_78297e": 0,
+        "page_root_context_slots": [0x782EE6, 0],
+        "candidate_refresh_calls": [],
+        "context_install_events": [
+            {
+                "helper": 0x00C4FC,
+                "caller": "0xc428",
+                "context_record": 0x782EE6,
+                "selected_page_slot": 0,
+                "reason": "first-inactive",
+            },
+        ],
+    }))
+    c580_dirty2_selector_mismatch = symbol_set_state(
+        requested_symbols=[0x0055, 0x0005],
+        active_symbols=[0x02C1, 0x0005],
+        remembered_symbols=[0x0115, 0x0005],
+        current_selector_782f06=1,
+        current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        dirty_flag=2,
+        dirty_maps=1,
+    )
+    refresh_symbol_state_via_c580(c580_dirty2_selector_mismatch, 0)
+    checks.append(assert_equal("0xc580 dirty-2 selector-mismatch branch only copies remembered word", {
+        "active_symbols": c580_dirty2_selector_mismatch["active_symbols"],
+        "remembered_symbols": c580_dirty2_selector_mismatch["remembered_symbols"],
+        "dirty_flag": c580_dirty2_selector_mismatch["dirty_flag"],
+        "dirty_maps": c580_dirty2_selector_mismatch["dirty_maps"],
+        "refreshes": c580_dirty2_selector_mismatch["refreshes"],
+        "current_page_context_slot_78297e": c580_dirty2_selector_mismatch["current_page_context_slot_78297e"],
+        "page_root_context_slots": c580_dirty2_selector_mismatch["page_root_context_slots"][:2],
+        "candidate_refresh_calls": c580_dirty2_selector_mismatch["candidate_refresh_calls"],
+        "context_install_events": c580_dirty2_selector_mismatch["context_install_events"],
+    }, {
+        "active_symbols": [0x02C1, 0x0005],
+        "remembered_symbols": [0x02C1, 0x0005],
+        "dirty_flag": 0,
+        "dirty_maps": 0,
+        "refreshes": 1,
+        "current_page_context_slot_78297e": 0,
+        "page_root_context_slots": [0, 0],
+        "candidate_refresh_calls": [],
         "context_install_events": [],
     }))
     symbol_dispatch_commands = symbol_dispatch_trace["commands"]
@@ -35839,6 +35908,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("  all-live/no-match returns `0x11` from `0xc4fc` and skips the")
     lines.append("  second `0x13eb8` plus `0xc428`; selector mismatch calls only")
     lines.append("  `0x13eb8(D5)` before the final active-to-remembered word copy.")
+    lines.append("- `0xc580` dirty-2 fixtures:")
+    lines.append("  selector match calls only `0xc428(D5)` before the final copy,")
+    lines.append("  while selector mismatch skips both `0x13eb8` and `0xc428`.")
     lines.append("- scanned candidate-list partitioning: `0x1a9be` leaves total `%d`, class-one low/range counts `%d`/`%d`, class-zero low/range counts `%d`/`%d`, and cursor windows `%s`; this pins the list starts used later by current/default font searches." % (
         scanned_candidate_partition["counters"]["0x78278e"],
         scanned_candidate_partition["counters"]["0x782792"],

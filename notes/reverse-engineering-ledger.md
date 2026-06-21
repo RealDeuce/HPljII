@@ -438,7 +438,9 @@ branch is pinned through the transient `0x78298f` toggle, two
 `0x13eb8` calls, `0xc428` page-root context-slot selection, and final
 active-to-remembered word copy; all-live no-match and selector-mismatch
 outcomes are pinned as visible branch shortcuts that skip context
-installation after the documented refresh call(s)
+installation after the documented refresh call(s); dirty-flag-2 selector
+match and mismatch outcomes are pinned as `0xc428`-only or
+remembered-copy-only paths with no `0x13eb8` call
 
 ### Formatter manuals
 
@@ -512,11 +514,11 @@ Expected resource ROM contents:
 
 ROM work needed:
 
-- Extend the pinned visible `0xc580` branch outcomes into full
-  firmware-state coverage for secondary and dirty-flag-2 cases, then carry
-  that through complete `0x13eb8` / `0x14c64` selected-font dispatch and
-  replace the remaining `0x156de` synthetic cases with live parser/font-state
-  coverage.
+- Extend the pinned visible `0xc580` branch outcomes into full upstream
+  `0x1be22` / `0x17708` and secondary-slot firmware-state coverage, then
+  carry dirty-1 refreshes through complete `0x13eb8` / `0x14c64`
+  selected-font dispatch and replace the remaining `0x156de` synthetic cases
+  with live parser/font-state coverage.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.

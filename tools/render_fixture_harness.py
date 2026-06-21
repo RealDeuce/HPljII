@@ -10197,6 +10197,82 @@ def queue_fixed_rule_via_136d2(page_record: dict[str, object], source: dict[str,
     }
 
 
+def insert_fixed_rule_addressed_via_136d2(
+    state: dict[str, object],
+    source: dict[str, int],
+    *,
+    vertical_offset: int = 0,
+    band_byte: int | None = None,
+) -> dict[str, object]:
+    """Address-aware 0x136d2 fixed-list insertion via 0x1381c storage."""
+    objects = dict(state.get("stream_objects", {}))
+    computed = fixed_rule_key_via_137a2(source, vertical_offset)
+    bucket_byte = (int(computed["bucket_index"]) if band_byte is None else int(band_byte)) & 0xFF
+
+    alloc = stream_alloc_via_1381c(state, 0x0E)
+    object_ptr = int(alloc["returned_ptr"])
+    old_head = int(state.get("fixed_head_28", 0))
+    if object_ptr == 0:
+        return {
+            "object_ptr": 0,
+            "allocated": True,
+            "allocation_failed": True,
+            "old_head": old_head,
+            "new_head": old_head,
+            "visited": [],
+            "computed": computed,
+            "bucket_byte": bucket_byte,
+            "stream_alloc": alloc,
+        }
+
+    visited: list[int] = []
+    previous_ptr = 0
+    current_ptr = old_head
+    while current_ptr:
+        visited.append(current_ptr)
+        current = objects.get(current_ptr)
+        if not isinstance(current, bytearray):
+            raise AssertionError(f"missing fixed-list object at 0x{current_ptr:08x}")
+        if int(current[4]) > bucket_byte:
+            break
+        previous_ptr = current_ptr
+        current_ptr = u32(current, 0)
+
+    obj = bytearray(0x0E)
+    obj[0:4] = current_ptr.to_bytes(4, "big")
+    obj[4] = bucket_byte
+    obj[5] = int(computed["mode"]) & 0xFF
+    obj[6:8] = int(computed["key"]).to_bytes(2, "big")
+    obj[8:10] = (int(source["extent"]) & 0xFFFF).to_bytes(2, "big")
+    objects[object_ptr] = obj
+
+    if previous_ptr:
+        previous = objects.get(previous_ptr)
+        if not isinstance(previous, bytearray):
+            raise AssertionError(f"missing predecessor object at 0x{previous_ptr:08x}")
+        previous[0:4] = object_ptr.to_bytes(4, "big")
+        new_head = old_head
+    else:
+        state["fixed_head_28"] = object_ptr
+        new_head = object_ptr
+
+    state["stream_objects"] = objects
+    return {
+        "object_ptr": object_ptr,
+        "object": obj,
+        "allocated": True,
+        "allocation_failed": False,
+        "old_head": old_head,
+        "new_head": new_head,
+        "previous_ptr": previous_ptr,
+        "next_ptr": current_ptr,
+        "visited": visited,
+        "computed": computed,
+        "bucket_byte": bucket_byte,
+        "stream_alloc": alloc,
+    }
+
+
 def decode_rule_key(key: int, bucket_delta: int = 0) -> dict[str, int]:
     return {
         "x": ((int(key) & 0x00FF) << 4) | ((int(key) >> 8) & 0x0F),
@@ -21370,6 +21446,158 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "stream_next_free_782a76": 0x00D0203C,
             "next_stream_chunk_ptr": 0x00D02100,
             "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D02000},
+            "stream_allocations": 1,
+        },
+    }))
+    addressed_fixed_state: dict[str, object] = {
+        "stream_bytes_remaining_782a70": 0,
+        "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+        "stream_next_free_782a76": 0,
+        "next_stream_chunk_ptr": 0x00D03000,
+        "stream_chunk_links": {},
+        "fixed_head_28": 0,
+        "stream_objects": {},
+    }
+    addressed_fixed_first = insert_fixed_rule_addressed_via_136d2(
+        addressed_fixed_state,
+        {"x": 0x0017, "y": 0x0021, "mode": 1, "extent": 0x0044},
+        vertical_offset=0x0009,
+        band_byte=0x04,
+    )
+    addressed_fixed_early = insert_fixed_rule_addressed_via_136d2(
+        addressed_fixed_state,
+        {"x": 0x0011, "y": 0x0020, "mode": 0, "extent": 0x0005},
+        band_byte=0x02,
+    )
+    addressed_fixed_tail = insert_fixed_rule_addressed_via_136d2(
+        addressed_fixed_state,
+        {"x": 0x0008, "y": 0x0062, "mode": 1, "extent": 0x0009},
+        band_byte=0x06,
+    )
+    addressed_fixed_equal = insert_fixed_rule_addressed_via_136d2(
+        addressed_fixed_state,
+        {"x": 0x0005, "y": 0x0042, "mode": 0, "extent": 0x0007},
+        band_byte=0x04,
+    )
+    addressed_fixed_objects = addressed_fixed_state["stream_objects"]
+    assert isinstance(addressed_fixed_objects, dict)
+    addressed_fixed_chain: list[tuple[int, bytes]] = []
+    addressed_fixed_ptr = int(addressed_fixed_state["fixed_head_28"])
+    while addressed_fixed_ptr:
+        addressed_fixed_obj = addressed_fixed_objects[addressed_fixed_ptr]
+        assert isinstance(addressed_fixed_obj, bytearray)
+        addressed_fixed_chain.append((addressed_fixed_ptr, bytes(addressed_fixed_obj)))
+        addressed_fixed_ptr = u32(addressed_fixed_obj, 0)
+    checks.append(assert_equal("0x136d2 address-aware fixed-list insertion uses 0x1381c storage", {
+        "first": {
+            key: addressed_fixed_first[key]
+            for key in (
+                "object_ptr",
+                "old_head",
+                "new_head",
+                "previous_ptr",
+                "next_ptr",
+                "visited",
+                "bucket_byte",
+            )
+        },
+        "early": {
+            key: addressed_fixed_early[key]
+            for key in (
+                "object_ptr",
+                "old_head",
+                "new_head",
+                "previous_ptr",
+                "next_ptr",
+                "visited",
+                "bucket_byte",
+            )
+        },
+        "tail": {
+            key: addressed_fixed_tail[key]
+            for key in (
+                "object_ptr",
+                "old_head",
+                "new_head",
+                "previous_ptr",
+                "next_ptr",
+                "visited",
+                "bucket_byte",
+            )
+        },
+        "equal": {
+            key: addressed_fixed_equal[key]
+            for key in (
+                "object_ptr",
+                "old_head",
+                "new_head",
+                "previous_ptr",
+                "next_ptr",
+                "visited",
+                "bucket_byte",
+            )
+        },
+        "chain": addressed_fixed_chain,
+        "stream_state": {
+            key: addressed_fixed_state[key]
+            for key in (
+                "stream_bytes_remaining_782a70",
+                "stream_link_ptr_782a72",
+                "stream_next_free_782a76",
+                "next_stream_chunk_ptr",
+                "stream_chunk_links",
+                "stream_allocations",
+            )
+        },
+    }, {
+        "first": {
+            "object_ptr": 0x00D03004,
+            "old_head": 0,
+            "new_head": 0x00D03004,
+            "previous_ptr": 0,
+            "next_ptr": 0,
+            "visited": [],
+            "bucket_byte": 4,
+        },
+        "early": {
+            "object_ptr": 0x00D03012,
+            "old_head": 0x00D03004,
+            "new_head": 0x00D03012,
+            "previous_ptr": 0,
+            "next_ptr": 0x00D03004,
+            "visited": [0x00D03004],
+            "bucket_byte": 2,
+        },
+        "tail": {
+            "object_ptr": 0x00D03020,
+            "old_head": 0x00D03012,
+            "new_head": 0x00D03012,
+            "previous_ptr": 0x00D03004,
+            "next_ptr": 0,
+            "visited": [0x00D03012, 0x00D03004],
+            "bucket_byte": 6,
+        },
+        "equal": {
+            "object_ptr": 0x00D0302E,
+            "old_head": 0x00D03012,
+            "new_head": 0x00D03012,
+            "previous_ptr": 0x00D03004,
+            "next_ptr": 0x00D03020,
+            "visited": [0x00D03012, 0x00D03004, 0x00D03020],
+            "bucket_byte": 4,
+        },
+        "chain": [
+            (0x00D03012, bytes.fromhex("00 d0 30 04 02 03 01 01 00 05 00 00 00 00")),
+            (0x00D03004, bytes.fromhex("00 d0 30 2e 04 06 10 02 00 44 00 00 00 00")),
+            (0x00D0302E, bytes.fromhex("00 d0 30 20 04 03 25 00 00 07 00 00 00 00")),
+            (0x00D03020, bytes.fromhex("00 00 00 00 06 06 28 00 00 09 00 00 00 00")),
+        ],
+        "stream_state": {
+            "stream_bytes_remaining_782a70": 0x00C4,
+            "stream_link_ptr_782a72": 0x00D03000,
+            "stream_next_free_782a76": 0x00D0303C,
+            "next_stream_chunk_ptr": 0x00D03100,
+            "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D03000},
             "stream_allocations": 1,
         },
     }))

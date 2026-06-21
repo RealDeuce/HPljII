@@ -327,6 +327,13 @@ buckets insert before the current head, higher buckets append after
 lower entries, and equal-bucket entries are inserted after the existing
 equal entry.
 
+An address-aware `0x136d2` fixture now pins the paired list rooted at
+page offset `+0x28`. It uses the same 14-byte `0x1381c` allocation
+contract, writes byte `+5` from the normalized fixed/rule mode, and
+confirms the same bucket-byte ordering for lower, higher, and equal
+entries before the `0x1edc6` bridge converts it into render-record
+`+0x20` fixed-list shape.
+
 `0x13070` converts the raster state block into bucket coordinates:
 
 - stores a bucket/index value at `0x782a7c`;

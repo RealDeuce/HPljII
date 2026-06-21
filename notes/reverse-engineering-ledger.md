@@ -178,10 +178,11 @@ source, printable extent, top offset, `0x103ea` threshold reloads, and chained
 Status: Anchored through parser bridge, render dispatch, executable
 allocator/bridge, executable queued raster rows, and executable
 expansion/destination/row-copy/resource-resolution/glyph-row/producer-modeled
-bucket/positioning/font-record/font-allocation fixtures; full parser-produced
-page-object integration, font-download parser-populated inline/downloaded source
-records, remaining full live-parser raster, parser-populated font-download
-records, and full parser-produced page-object coverage incomplete
+bucket/positioning/font-record/font-allocation fixtures, plus host-fetched
+primary and capped/drained raster streams; full parser-produced page-object
+integration, font-download parser-populated inline/downloaded source records,
+remaining full live-parser raster, parser-populated font-download records, and
+full parser-produced page-object coverage incomplete
 
 Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md` collects the
 raster command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`, and `ESC *b#W` map to
@@ -242,8 +243,9 @@ plus macro-payload rule/raster band composition, parser-derived `ESC *t#R`/`ESC
 *t75R`/`ESC *r0A`/`ESC *b2W` raster command/data stream fixtures, with the first
 `ESC *b4W` object carried through the `0x1edc6` bridge, plus a two-payload `ESC
 *t300R`/`ESC *r0A` multi-row stream through delayed handler `0x0105d0`, a
-parser-to-gate edge check for `ESC *t300R`/`ESC *r0A`/`ESC *b4W` capped and
-beyond-extent transfers, same-group lowercase-final chaining fixtures for `ESC
+parser-to-gate edge check for host-fetched `ESC *t300R`/`ESC *r0A`/`ESC *b4W`
+capped, page-extent, beyond-extent, and negative-row transfers,
+same-group lowercase-final chaining fixtures for `ESC
 *t300r150R` and chained `ESC *b2w`/`2W` payload boundaries, plus a parser-traced
 active `ESC *t75R` stream proving handler `0x10808` leaves current mode/scale
 intact, plus a parser-traced `ESC *rB` stream proving handler `0x107fa` clears

@@ -22529,6 +22529,151 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "negative_chain": [],
         "negative_rendered": None,
     }))
+    host_fetched_raster_capped_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(raster_capped_command_stream), direct_mode=0),
+        len(raster_capped_command_stream),
+    )
+    checks.append(assert_equal("host-fetched raster gate stream reaches capped and drained paths", {
+        "fetched_stream": host_fetched_raster_capped_stream["stream"],
+        "fetch_source_count": len(host_fetched_raster_capped_stream["sources"]),
+        "fetch_source_set": sorted(set(host_fetched_raster_capped_stream["sources"])),
+        "remaining_ring": host_fetched_raster_capped_stream["state"]["ring"],
+        "parser_handlers": [
+            command["final_dispatch"]["handler"]
+            for command in raster_capped_dispatch_commands
+        ],
+        "parser_restore": raster_capped_dispatch_commands[-1]["restore_after_final"],
+        "parser_payload_offset": raster_capped_dispatch_commands[-1]["payload_offset"],
+        "parser_payload": raster_capped_dispatch_commands[-1]["payload"],
+        "capped": {
+            "restore": raster_capped_transfer["restore_dispatch"],
+            "record": raster_capped_transfer["restored_record"],
+            "gate": {
+                key: raster_capped_transfer[key]
+                for key in raster_gate_summary_keys
+            },
+            "object": raster_capped_stream_result["object"],
+        },
+        "extent_boundary": {
+            "restore": raster_extent_boundary_transfer["restore_dispatch"],
+            "record": raster_extent_boundary_transfer["restored_record"],
+            "gate": {
+                key: raster_extent_boundary_transfer[key]
+                for key in raster_gate_summary_keys
+            },
+            "object": raster_extent_boundary_stream_result["object"],
+            "rows": raster_extent_boundary_stream_result["rendered"]["rows"],
+        },
+        "beyond_extent": {
+            "restore": raster_skip_transfer["restore_dispatch"],
+            "record": raster_skip_transfer["restored_record"],
+            "gate": {
+                key: raster_skip_transfer[key]
+                for key in raster_gate_summary_keys
+            },
+            "object": raster_skip_stream_result["object"],
+            "rendered": raster_skip_stream_result["rendered"],
+        },
+        "negative_row": {
+            "restore": raster_negative_transfer["restore_dispatch"],
+            "record": raster_negative_transfer["restored_record"],
+            "gate": {
+                key: raster_negative_transfer[key]
+                for key in raster_gate_summary_keys
+            },
+            "object": raster_negative_stream_result["object"],
+            "rendered": raster_negative_stream_result["rendered"],
+        },
+    }, {
+        "fetched_stream": b"\x1b*t300R\x1b*r0A\x1b*b4W" + bytes.fromhex("f0 0f aa 55"),
+        "fetch_source_count": len(raster_capped_command_stream),
+        "fetch_source_set": ["ring"],
+        "remaining_ring": [],
+        "parser_handlers": [0x010808, 0x01075A, 0x011F82],
+        "parser_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+        "parser_payload_offset": 17,
+        "parser_payload": bytes.fromhex("f0 0f aa 55"),
+        "capped": {
+            "restore": {"kind": "direct-handler", "handler": 0x0105D0},
+            "record": bytes.fromhex("80 57 00 04 00 00"),
+            "gate": {
+                "gate_path": "queued-capped",
+                "gate_queued": True,
+                "gate_drained": 0,
+                "stored_byte_count": 2,
+                "overflow_count": 2,
+                "gate_limit": 2,
+                "row_advanced": True,
+                "row_y_after": 1,
+            },
+            "object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
+        },
+        "extent_boundary": {
+            "restore": {"kind": "direct-handler", "handler": 0x0105D0},
+            "record": bytes.fromhex("80 57 00 04 00 00"),
+            "gate": {
+                "gate_path": "queued-capped",
+                "gate_queued": True,
+                "gate_drained": 0,
+                "stored_byte_count": 2,
+                "overflow_count": 2,
+                "gate_limit": 2,
+                "row_advanced": True,
+                "row_y_after": 16,
+            },
+            "object": bytes.fromhex("00 00 00 00 80 00 00 02 f0 00 f0 0f"),
+            "rows": [
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "................",
+                "####........####",
+            ],
+        },
+        "beyond_extent": {
+            "restore": {"kind": "direct-handler", "handler": 0x0105D0},
+            "record": bytes.fromhex("80 57 00 04 00 00"),
+            "gate": {
+                "gate_path": "skip-row-beyond-extent",
+                "gate_queued": False,
+                "gate_drained": 4,
+                "stored_byte_count": 0,
+                "overflow_count": 0,
+                "gate_limit": None,
+                "row_advanced": False,
+                "row_y_after": 20,
+            },
+            "object": b"",
+            "rendered": None,
+        },
+        "negative_row": {
+            "restore": {"kind": "direct-handler", "handler": 0x0105D0},
+            "record": bytes.fromhex("80 57 00 04 00 00"),
+            "gate": {
+                "gate_path": "skip-negative-row",
+                "gate_queued": False,
+                "gate_drained": 4,
+                "stored_byte_count": 0,
+                "overflow_count": 0,
+                "gate_limit": None,
+                "row_advanced": True,
+                "row_y_after": 0,
+            },
+            "object": b"",
+            "rendered": None,
+        },
+    }))
     raster_mode1_command_stream = b"\x1b*t150R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f")
     raster_mode1_stream_result = render_raster_command_data_stream_via_121cc_105d0(
         data,
@@ -29160,7 +29305,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("## ROM Parser Dispatch Trace Fixture")
     lines.append("")
     lines.append("This fixture walks the primary raster stream through the ROM dispatch table used by main parser loop `0x11774`. It proves the byte sequence reaches prefix handlers `0x11eb6` / `0x11ec8` / `0x11eda`, final handlers `0x10808`, `0x1075a`, and `0x11f82`, then returns to mode 0 where `0x12218` restores the delayed `ESC *b4W` record and dispatches handler `0x105d0` before payload bytes are consumed.")
-    lines.append("A paired cross-boundary check now ties that parser trace to the modeled command/data stream: the restored record, payload offset, page-root allocation, queued raster object, `0x1edc6` bridge, rendered row, and final row counter all match for the same byte stream. The same primary stream is also fetched byte-for-byte through the modeled `0xa904` ring source before reaching the parser/object/render boundary. A second parser-to-gate edge check uses the `ESC *t300R` / `ESC *r0A` / `ESC *b4W` stream to prove the same ROM parser handlers and `0x105d0` restore feed both capped queueing and beyond-extent drain/no-row-advance outcomes.")
+    lines.append("A paired cross-boundary check now ties that parser trace to the modeled command/data stream: the restored record, payload offset, page-root allocation, queued raster object, `0x1edc6` bridge, rendered row, and final row counter all match for the same byte stream. The same primary stream is also fetched byte-for-byte through the modeled `0xa904` ring source before reaching the parser/object/render boundary. A second parser-to-gate edge check uses the `ESC *t300R` / `ESC *r0A` / `ESC *b4W` stream to prove the same ROM parser handlers and `0x105d0` restore feed capped queueing, page-extent queueing, beyond-extent drain/no-row-advance, and negative-row drain/advance outcomes; that edge stream is now also fetched through the modeled `0xa904` ring source.")
     lines.append("")
     lines.append(f"- dispatch stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_command_stream)}`")
     lines.append("- dispatch path:")
@@ -29309,6 +29454,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("  bytes, the page-extent fixture queues y `15` then advances to `16`, the")
     lines.append("  beyond-extent fixture drains all four bytes without advancing `row_y`, and the")
     lines.append("  negative-row fixture drains all four bytes while advancing `row_y` from `-1` to `0`.")
+    lines.append("- host-fetched raster gate edge: the same edge stream drains `%d` bytes from `0xa904` before matching the capped object `%s`, extent-boundary object `%s`, beyond-extent drain `%d`, and negative-row drain `%d`." % (
+        len(host_fetched_raster_capped_stream["stream"]),
+        " ".join(f"{byte:02x}" for byte in raster_capped_stream_result["object"]),
+        " ".join(f"{byte:02x}" for byte in raster_extent_boundary_stream_result["object"]),
+        raster_skip_transfer["gate_drained"],
+        raster_negative_transfer["gate_drained"],
+    ))
     lines.append("- lower-resolution parser boundary: `ESC *t150R`, `ESC *t100R`, and `ESC *t75R` streams now also pass through the ROM `0x11774` parser table to handlers `0x10808`, `0x1075a`, and `0x11f82`; each restored `0x105d0` transfer record matches the modeled payload offset, queued mode object, and rendered expansion rows.")
     for summary in raster_mode_dispatch_summaries:
         lines.append("- `%s` parser records `%s`, payload offset `%d`, queued object `%s`" % (

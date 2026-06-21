@@ -9,9 +9,10 @@ notes, disassembly windows, or executable fixtures.
 
 Status: partially anchored. The table definition path, its immediate
 text-bottom effect, the forward in-text channel-jump path, the
-selector-zero target-equal path, and the selector-zero top-of-form
-page-eject path are modeled. The before-top, wrap, and bottom recovery
-branches inside the channel-jump consumer still need fixtures.
+before-top forward channel-jump normalization path, the selector-zero
+target-equal path, and the selector-zero top-of-form page-eject path are
+modeled. The wrap and bottom recovery branches inside the channel-jump
+consumer still need fixtures.
 
 Concept: vertical forms control is a per-line, 16-channel stop table used
 by `ESC &l#W` definitions and consumed by `ESC &l#V` vertical channel
@@ -39,7 +40,9 @@ top-of-form page-eject path.
   Semantic role: origin for VFC line-to-cursor conversion.
   Evidence: writers `0xece2`, `0xf9e8`, `0x12cfe`; readers `0x1280a`,
   `0x12cfe`; fixture
-  `0x12cfe ESC &l#W loads vertical forms control state`.
+  `0x12cfe ESC &l#W loads vertical forms control state` and
+  `mixed VFC before-top channel jump normalizes start line before
+  printable`.
 - `0x782c8e`: canonical vertical cursor.
   Semantic role: current y position read by `0x1280a` to choose a VFC
   start line, written by the forward channel-jump path before the next
@@ -49,7 +52,9 @@ top-of-form page-eject path.
   `0xf124` in
   `generated/analysis/ic30_ic13_direct_control_code_flow.md`; fixtures
   `mixed VFC channel jump stream moves cursor before printable
-  page-record queue` and
+  page-record queue`,
+  `mixed VFC before-top channel jump normalizes start line before
+  printable`, and
   `mixed VFC selector-zero page-eject publishes old page before fresh
   printable`.
 - `0x782c8a`: canonical horizontal cursor.
@@ -146,9 +151,12 @@ top-of-form page-eject path.
   selector, current VMI, cursor y `0x782c8e`, top offset `0x782dce`,
   text-line caches `0x782ede`/`0x782ee0`, and channel words from
   `0x782dde`. It searches forward or backward depending on cursor
-  position relative to top offset. The modeled forward path searches
-  `0x1292a..0x1295c`, then commits the in-text hit through
-  `0x12aa6..0x12af8`. The modeled selector-zero target-equal path
+  position relative to top offset. The modeled before-top path takes
+  `0x128ae..0x128f4`, computes a wrapped start line from
+  `top_offset - cursor_y - 1`, then rejoins the same channel search. The
+  modeled forward path searches `0x1292a..0x1295c`, then commits the
+  in-text hit through `0x12aa6..0x12af8`. The modeled selector-zero
+  target-equal path
   computes the same top-of-form target through `0x12966..0x12992`,
   compares it with `0x782c8e` at `0x12994`, and exits through
   `0x1295e` when they match. When the target differs and the computed
@@ -165,6 +173,10 @@ top-of-form page-eject path.
   `ESC &l2V!` after the same table definition finds channel 2 at line 1,
   changes y from `126` to `176`, resets x from `40` to the left margin
   `10`, and queues `!` at compact coord `0xb001`.
+- Printable output from before the top offset is normalized into the same
+  channel search: `ESC &l2V!` with y `89` and top offset `90` takes
+  `0x128ae..0x128f4`, normalizes the start line to `0`, finds channel 2
+  at line `1`, writes y `176`, and queues `!` at compact coord `0xb001`.
 - Printable output is preserved by the selector-zero target-equal path:
   `ESC &l0V!` computes target y `126`, finds it already equals the
   current vertical cursor, leaves x/y unchanged, and queues `!` at
@@ -191,6 +203,14 @@ Handler `0x1280a` uses cached line bounds `0x782ee0 = 62` and
 `0x0002`, writes y `176`, resets x to `10`, and the following `!` renders
 from compact coord `0xb001`.
 
+In the before-top channel-jump fixture, the same table state receives
+`ESC &l2V!` while y is `89`, below top offset `90`. Handler `0x1280a`
+takes `0x128ae..0x128f4`: `top - y` is `12` subunits, the ROM subtracts
+one before VMI division to get dividend `11`, divides by VMI `50`, and
+maps normalized line `64` back to start line `0`. The following search
+finds channel mask `0x0002` at line `1`, writes y `176`, resets x to
+`10`, and the following `!` renders from compact coord `0xb001`.
+
 In the selector-zero target-equal fixture, the same table state receives
 `ESC &l0V!` while y is already `126`, the computed top-of-form target.
 Handler `0x1280a` ensures the page root through `0x10084`, takes
@@ -210,13 +230,14 @@ following printable allocate a new page root and render at compact coord
 
 High for the `0x11f6e -> 0x12cfe` delayed payload boundary, table bytes,
 reject cases, zero-count reset, text-bottom cache effect, and forward
-`0x1280a` in-text channel hit. High for the selector-zero target-equal
-early exit and selector-zero page-eject branch through
+`0x1280a` in-text channel hit. High for before-top normalization through
+`0x128ae..0x128f4` when it rejoins the forward in-text hit path. High for
+the selector-zero target-equal early exit and selector-zero page-eject
+branch through
 `0x1299c..0x129c4` when `start_line <= text_last_line + 1`. Medium for
 the exact semantic names of `0x782ede`/`0x782edf`/`0x782ee0`; the
-line-count interpretation matches fixtures and disassembly, but the
-before-top, wrap, and bottom recovery branches still need complete
-lifting.
+line-count interpretation matches fixtures and disassembly, but the wrap
+and bottom recovery branches still need complete lifting.
 
 ### Fixtures
 
@@ -225,6 +246,8 @@ lifting.
   page-record queue`
 - `mixed VFC channel jump stream moves cursor before printable page-record
   queue`
+- `mixed VFC before-top channel jump normalizes start line before
+  printable`
 - `mixed VFC selector-zero top-of-form no-op reaches printable page-record
   queue`
 - `mixed VFC selector-zero page-eject publishes old page before fresh
@@ -247,8 +270,6 @@ lifting.
 
 ### Unresolved Middle Edges
 
-- `0x128ae..0x128f4`: cursor-before-top start-line normalization is
-  identified but not modeled by a fixture.
 - `0x129c6..0x12afc`: wrap/search/page-recovery branches call
   `0xf34a`, `0xf124`, and `0xf06e`; exact page-publication boundaries
   and cursor final positions still need fixtures.

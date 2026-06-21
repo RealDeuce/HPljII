@@ -86,6 +86,13 @@ routes through handler `0x1280a`, searches channel mask `0x0002` at line
 `0xf34a`, moves y from `126` to `176`, resets x from `40` to left margin
 `10`, and queues `!` at compact coord `0xb001`.
 
+The before-top `ESC &l#V` normalization path is anchored into the same
+visible output. Fixture `ESC &l2V!` with y `89` below top offset `90`
+takes `0x128ae..0x128f4`, computes start line `0`, then finds channel
+mask `0x0002` at line `1`. It reaches the same helper sequence
+`0x10084`, `0xf06e`, `0xf34a`, moves y to `176`, resets x to `10`, and
+queues `!` at compact coord `0xb001`.
+
 The selector-zero target-equal path is also anchored. Fixture
 `ESC &l0V!` takes `0x12966..0x1299a`, computes the top-of-form target y
 `126`, sees it already equals current y, leaves x/y unchanged, ensures the

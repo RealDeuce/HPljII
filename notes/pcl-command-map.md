@@ -193,16 +193,20 @@ uses current VMI `0x783160`, vertical cursor `0x782c8e`, top offset
 mask `0x0002`, finds line `1`, ensures a page root through `0x10084`,
 resets horizontal cursor through `0xf06e`, flushes pending text through
 `0xf34a`, writes y `176`, and queues the following `!` at compact coord
-`0xb001`. Fixture `ESC &l0V!` anchors the selector-zero target-equal
+`0xb001`. A before-top `ESC &l2V!` fixture anchors
+`0x128ae..0x128f4`: y `89` below top offset `90` normalizes to start line
+`0`, then the same channel-2 search reaches line `1` and queues `!` at
+compact coord `0xb001`. Fixture `ESC &l0V!` anchors the selector-zero
+target-equal
 path through `0x12966..0x1299a`: it computes target y `126`, leaves the
 current cursor unchanged, ensures the page root through `0x10084`, and
 queues `!` at compact coord `0x9e02`. Fixture `!\x1b&l0V!` anchors the
 selector-zero page-eject path through `0x1299c..0x129c4`: it publishes
 the already queued `!` at compact coord `0xbe02` through `0xf124`, resets
 x/y to `10`/`126`, and queues the following `!` on a fresh page at
-compact coord `0x9001`. The before-top, wrap, and bottom/page-recovery
-branches remain unresolved across exact ranges `0x128ae..0x128f4`,
-`0x129c6..0x12afc`, and `0x12b5e..0x12b92`.
+compact coord `0x9001`. The wrap and bottom/page-recovery branches remain
+unresolved across exact ranges `0x129c6..0x12afc` and
+`0x12b5e..0x12b92`.
 
 `ESC &l#D` at `0x00c992` accepts absolute LPI values
 `1,2,3,4,6,8,12,16,24,48`, treats zero as `12`, converts to packed line

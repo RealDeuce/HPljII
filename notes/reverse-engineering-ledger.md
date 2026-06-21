@@ -105,10 +105,11 @@ handler `0x12cfe`, which writes the table rooted at `0x782dde` and
 updates text-bottom cache `0x782dd2`; `ESC &l#V` maps to `0x1280a` and
 consumes that table for channel jumps; its forward in-text path is now
 anchored through channel search, `0x10084`, `0xf06e`, and `0xf34a`, while
+its before-top normalization path is anchored through `0x128ae..0x128f4`,
 its selector-zero target-equal path is anchored through
 `0x12966..0x1299a`, and its selector-zero page-eject path is anchored
-through `0x1299c..0x129c4`; before-top, wrap, and page-recovery branches
-remain unresolved;
+through `0x1299c..0x129c4`; wrap and page-recovery branches remain
+unresolved;
 `ESC &a#L/#M` map to
 `0xeb58`/`0xec0c` and convert HMI margin columns into
 `0x782dd6`/`0x782dda` with reject/clamp/cursor-move cases;
@@ -149,6 +150,11 @@ at compact coord `0x9001`;
 CR helper `0xf06e`, text-flush helper `0xf34a`, cursor move
 `x 40 -> 10` and `y 126 -> 176`, and following printable `!` at compact
 coord `0xb001`;
+before-top `ESC &l2V!`, starting from y `89` with top offset `90`, now
+ties parser handler `0x1280a`, branch `0x128ae..0x128f4`, start-line
+normalization `64 -> 0`, channel mask `0x0002`, target line `1`, cursor
+move `x 40 -> 10` and `y 89 -> 176`, and following printable `!` at
+compact coord `0xb001`;
 `ESC &l0V!`, starting from the same VFC table state at top-of-form target
 y `126`, now ties parser handler `0x1280a`, branch `0x12966..0x1299a`,
 page-root helper `0x10084`, unchanged cursor `x 40, y 126`, and
@@ -269,8 +275,9 @@ is anchored through `0x1292a..0x1295c` search and `0x12aa6..0x12af8`
 cursor commit. The selector-zero target-equal path is anchored through
 `0x12966..0x1299a`; the selector-zero page-eject path is anchored through
 `0x1299c..0x129c4`, including page publication through `0xf124`. The
-highest-value unresolved middle edges are `0x128ae..0x128f4`,
-`0x129c6..0x12afc`, and `0x12b5e..0x12b92`.
+before-top start-line path is anchored through `0x128ae..0x128f4`. The
+highest-value unresolved middle edges are `0x129c6..0x12afc` and
+`0x12b5e..0x12b92`.
 
 ### Raster/text/page-object path
 

@@ -5430,6 +5430,12 @@ def rectangle_graphics_flow_report(data: bytes) -> str:
     lines.append("- A byte-stream model must preserve rectangle width/height state across commands until `ESC *c#P` consumes it; reset/rebuild paths clear `0x78316a`, `0x783166`, and `0x78316e`.")
     lines.append("- Dot sizes and decipoint sizes are not interchangeable at fractional boundaries: decipoint handlers round up with the firmware's `+11` subunit bias before storing the packed value.")
     lines.append("- `tools/render_fixture_harness.py` now pins dot/decipoint size stores, `ESC *c#G` absolute/clear behavior, `ESC *c#P` selector mapping, a chained `ESC *c12a5b0P` byte stream queueing the selector-7 rule object plus a ROM `0x11774` dispatch trace for the same stream, portrait rule-list object queueing/bridge normalization, solid black selector-7 rendering through `0x1f446`/`0x1f596`, solid and patterned rule band-crossing continuation, a two-band page-row assembly for a crossing HP-pattern rule, gray selectors `0..6` and HP pattern selectors `8..13` through `0x1f446`/`0x1f4e0`, sub-byte HP pattern masks/pixels, left/right/top/bottom and landscape edge clipping plus off-page ignore reasons, and a parser-to-retry boundary that ties the same `ESC *c12a5b0P` handlers `0x10e68`/`0x10e22`/`0x10898` to the `0x10d22` no-room path through `0xff1e`, `0x10084`, `0x13386`, `0x1edc6`, and rule rendering. Remaining work is parser-produced full-page comparisons for these rule paths.")
+    lines.extend([
+        "- The mixed `!\\x1b*c12a5b0P` fixture now has an addressed allocation",
+        "  variant: printable `!` queues through addressed `0x1387c`, the chained",
+        "  rectangle queues through addressed `0x133aa`, and the materialized",
+        "  record matches the older byte-list bridge/render output.",
+    ])
     lines.append("")
     return "\n".join(lines)
 

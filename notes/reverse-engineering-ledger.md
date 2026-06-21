@@ -431,7 +431,7 @@ ROM work needed:
   populates current records/source objects, then replace producer-modeled
   fixtures with full parser/page-object rendering. Current boundary coverage
   already chains fetched `ESC *c4660d37e5F` state into fetched `ESC )s0W` and
-  `ESC )s2193W` streams.
+  `ESC )s80W` and `ESC )s2193W` streams.
 - Extract glyph metrics and render a known self-test/font sample.
 - Confirm symbol-set mapping for ASCII, Roman-8, line draw, and any built-in
   alternatives.
@@ -448,8 +448,10 @@ ROM work needed:
 
 - Replace the host-fetched font-control, descriptor, resource-payload, and
   downloaded-character boundaries with a full live parser-state run that
-  populates current records/source objects; the verified built-in scan does not
-  provide normal built-in entries for these renderer modes.
+  populates current records/source objects. Current boundary coverage already
+  chains fetched `ESC *c4660d37e5F` state into fetched `ESC )s0W`, `ESC )s80W`,
+  and `ESC )s2193W` streams; the verified built-in scan does not provide normal
+  built-in entries for these renderer modes.
 - Integrate executable row-copy behavior with real page objects from the
   parser/imaging path.
 - Broaden the documented printable and inline/downloaded `0x1393a` / `0xd824` /

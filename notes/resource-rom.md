@@ -268,7 +268,7 @@ glyph index `0`. The first `COURIER` and `LINE_PRINTER` records have base ranges
    populates current records/source objects; then replace producer-modeled text
    bucket fixtures with full parser-produced page-object payloads. The current
    boundary coverage already chains fetched `ESC *c4660d37e5F` state into
-   fetched `ESC )s0W` and `ESC )s2193W` streams.
+   fetched `ESC )s0W`, `ESC )s80W`, and `ESC )s2193W` streams.
 5. Extract enough metadata for each `COURIER` and `LINE_PRINTER` record to
    identify point size, pitch, orientation, style, symbol set, cell size, and
    baseline.

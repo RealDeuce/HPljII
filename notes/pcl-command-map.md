@@ -512,10 +512,10 @@ single following payload.
   for `ESC &f-123y0x1X`, `ESC *c12a5b0P`, `ESC *c17d25e5F`, host-fetched
   `ESC *c4660d37e5F` feeding font install state, host-fetched `ESC )s0W`
   descriptor routing through `0x15d0a`, fetched font-control state chaining into
-  fetched descriptor and downloaded-character streams, `ESC )s4W`,
-  host-fetched `ESC )s80W` resource payload installation, and full host-fetched
-  `ESC )s2193W` payload/object rendering, resource-ROM glyph, `0x1f08e` named
-  row-copy
+  fetched descriptor, resource-payload, and downloaded-character streams,
+  `ESC )s4W`, host-fetched `ESC )s80W` resource payload installation, and full
+  host-fetched `ESC )s2193W` payload/object rendering, resource-ROM glyph,
+  `0x1f08e` named row-copy
   fixtures, a ROM-scanned row-copy span matrix, and the full built-in glyph
   coverage scan.
 - Replace the synthetic `ESC E` fixtures with parser-produced page-object

@@ -18742,6 +18742,39 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(host_fetched_resource_payload_command, dict)
     host_fetched_resource_payload = host_fetched_resource_payload_command["payload"]
     assert isinstance(host_fetched_resource_payload, bytes)
+    table_payload_resource_command_from_host_control = render_font_download_resource_command_stream_via_121cc_16c14(
+        host_fetched_resource_payload_stream["stream"],
+        records=host_fetched_font_control_trace["records"],
+        current_id=int(host_fetched_font_control_trace["current_font_id"]),
+        new_payload_address=0,
+        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        cursors={
+            "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+        },
+        candidates=[0x00000100, 0x00000200, 0x00000300],
+    )
+    table_payload_resource_host_control_event = table_payload_resource_command_from_host_control["events"][0]
+    assert isinstance(table_payload_resource_host_control_event, dict)
+    table_payload_resource_host_control_allocation = table_payload_resource_host_control_event["allocation"]
+    assert isinstance(table_payload_resource_host_control_allocation, dict)
+    table_payload_resource_host_control_install = table_payload_resource_host_control_event["install"]
+    assert isinstance(table_payload_resource_host_control_install, dict)
+    table_payload_resource_host_control_candidate = {
+        "slot_pointer": table_payload_resource_host_control_install["candidate_insert"]["slot_pointer"],  # type: ignore[index]
+        "longword": table_payload_resource_host_control_install["candidate_flags"],
+        "record_start": 0,
+    }
+    table_payload_resource_host_control_dispatch = dispatch_selected_offset_table_font_via_14c64(
+        data,
+        table_payload_memory,
+        table_payload_resource_host_control_candidate,
+        primary_secondary_selector=0,
+        active_primary_symbol=0x0000,
+        active_secondary_symbol=0x0115,
+    )
     checks.append(assert_equal("host-fetched resource payload stream installs selected 0x1719c font", {
         "fetched_stream_prefix": host_fetched_resource_payload_stream["stream"][:6],
         "fetched_stream_length": len(host_fetched_resource_payload_stream["stream"]),
@@ -18785,6 +18818,78 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "allocation_size": 10,
         "candidate_flags": 0x40000000,
         "selected_dispatch": {
+            "path": "offset-table-cache-miss",
+            "selected_longword": 0x40000000,
+            "selected_symbol": 0x1234,
+            "range_start": 0x0000,
+            "range_end": 0x007F,
+        },
+    }))
+    checks.append(assert_equal("host-fetched font control state drives resource payload stream", {
+        "control": {
+            "current_font_id": host_fetched_font_control_trace["current_font_id"],
+            "records": host_fetched_font_control_trace["records"],
+        },
+        "resource": {
+            "fetched_stream_prefix": host_fetched_resource_payload_stream["stream"][:6],
+            "fetched_stream_length": len(host_fetched_resource_payload_stream["stream"]),
+            "fetch_source_set": sorted(set(host_fetched_resource_payload_stream["sources"])),
+            "parser_handlers": [
+                event["handler"]
+                for event in host_fetched_resource_payload_trace["dispatches"]
+            ],
+            "parser_record": host_fetched_resource_payload_command["restored_record"],
+            "model_record": table_payload_resource_host_control_event["restored_record"],
+            "payload_length": len(host_fetched_resource_payload),
+            "validation_status": table_payload_resource_host_control_event["validation"]["status"],  # type: ignore[index]
+            "allocation_size": table_payload_resource_host_control_allocation["allocation_size"],
+        },
+        "install": {
+            "record": table_payload_resource_host_control_install["records"][0],  # type: ignore[index]
+            "replacement": table_payload_resource_host_control_install["replacement"],
+            "candidate_flags": table_payload_resource_host_control_install["candidate_flags"],
+            "candidate_insert": {
+                key: table_payload_resource_host_control_install["candidate_insert"][key]  # type: ignore[index]
+                for key in ("status", "branch", "insert_index", "slot_pointer")
+            },
+        },
+        "dispatch": {
+            key: table_payload_resource_host_control_dispatch[key]
+            for key in ("path", "selected_longword", "selected_symbol", "range_start", "range_end")
+        },
+    }, {
+        "control": {
+            "current_font_id": 0x1234,
+            "records": [{"id": 0x1234, "flags": 0x40, "payload": 0x456789}],
+        },
+        "resource": {
+            "fetched_stream_prefix": b"\x1b)s80W",
+            "fetched_stream_length": len(table_payload_resource_command_stream),
+            "fetch_source_set": ["ring"],
+            "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "parser_record": bytes.fromhex("80 57 00 50 00 01"),
+            "model_record": bytes.fromhex("80 57 00 50 00 01"),
+            "payload_length": 80,
+            "validation_status": 1,
+            "allocation_size": 10,
+        },
+        "install": {
+            "record": {"id": 0x1234, "flags": 0x00, "payload": 0},
+            "replacement": {
+                "record_index": 0,
+                "released_payload": 0x456789,
+                "release_called": True,
+                "continuation_cleared": False,
+            },
+            "candidate_flags": 0x40000000,
+            "candidate_insert": {
+                "status": "inserted",
+                "branch": "class-one",
+                "insert_index": 0,
+                "slot_pointer": FONT_CANDIDATE_LIST_BASE,
+            },
+        },
+        "dispatch": {
             "path": "offset-table-cache-miss",
             "selected_longword": 0x40000000,
             "selected_symbol": 0x1234,
@@ -29913,6 +30018,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         len(host_fetched_resource_payload_stream["stream"]),
         " ".join(f"{byte:02x}" for byte in host_fetched_resource_payload_command["restored_record"]),
         table_payload_resource_command_install["candidate_flags"],
+    ))
+    lines.append("- host-fetched resource chain: the fetched font-control record for current id `0x%04x` now feeds the fetched `ESC )s80W` resource stream, releases prior payload `0x%06x`, installs candidate longword `0x%08x`, and dispatches the same selected symbol `0x%04x` through the bit-30 resource form." % (
+        host_fetched_font_control_trace["current_font_id"],
+        table_payload_resource_host_control_install["replacement"]["released_payload"],  # type: ignore[index]
+        table_payload_resource_host_control_install["candidate_flags"],
+        table_payload_resource_host_control_dispatch["selected_symbol"],
     ))
     lines.append("- installed payload-backed resource dispatch: the same `0x1719c` payload goes through integrated `0x16c14`/`0x1bc38`, setting candidate longword `0x%08x`; `0x14c64` then takes the bit-30 offset-table branch, writes range `0x%04x..0x%04x`, rebuilds map `0x%06x` through `0x14d9c`, maps host `0x21` to glyph `%d`, and snapshots `0x15890` symbol `0x%04x` from `%s`." % (
         table_payload_resource_install["candidate_flags"],

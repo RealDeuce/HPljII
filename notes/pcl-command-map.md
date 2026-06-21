@@ -3,7 +3,11 @@
 Sources: `generated/analysis/ic30_ic13_pcl_command_map.md`;
 `generated/analysis/ic30_ic13_parser_dispatch_tables.md`;
 `generated/analysis/ic30_ic13_font_control_flow.md`; focused listings under
-`generated/disasm/`; `notes/pcl4-language.md`.
+`generated/disasm/`, including
+`ic30_ic13_wrap_mode_handler_00edb0.lst`,
+`ic30_ic13_dot_position_handlers_00f48c.lst`, and
+`ic30_ic13_transparent_data_handler_011f5a.lst`;
+`notes/pcl4-language.md`.
 
 The generated command map flattens the main parser's mode-indexed
 dispatch tables into PCL command sequences and handler addresses. It is
@@ -194,6 +198,28 @@ against lower bound `0x782dca`, and writes `0x782c8e`. The row command
 scales through VMI `0x783160` and adds fractional `0.7200` for absolute
 row moves before conversion; the decipoint command uses five packed
 subunits per decipoint and clamps to `0x782dc6`.
+
+`ESC *p#X` at `0x00f48c` and `ESC *p#Y` at `0x00f692` are the dot-unit
+counterparts to the `ESC &a` cursor-position commands. Both rewind the
+current parsed record, sign-extend the parsed word, shift it left 16
+bits into a whole-dot packed coordinate, and use parsed-record bit 0 as
+the relative flag. Horizontal dot positioning commits through `0xf4ca`;
+vertical dot positioning commits through `0xf6e2` and clamps to
+`0x782dc6`.
+
+`ESC &s#C` at `0x00edb0` rewinds the parsed record and writes the
+end-of-line wrap flag at `0x783190`: selector `0` stores `1`, selector
+`1` clears it, and other values leave the previous state untouched.
+Printable text overflow paths test this flag, so wrap mode is part of
+the page text-layout state rather than parser-only metadata.
+
+`ESC &p#X` at `0x011f5a` is a delayed transparent-print-data boundary.
+It saves handler `0x12452` through `0x121cc`; after `0x12218` restores
+the saved command record, `0x12452` consumes the absolute byte count
+from the host byte source, stops on `D7=-1`, normalizes `0x1a 0x58` to
+`0x7f`, sends printable bytes through `0xd04a`, and sends filtered
+control bytes through `0xd0f0` depending on the active symbol/high-byte
+state.
 
 `ESC *r#A` at `0x01075a` starts raster graphics by setting state in the
 block rooted at `0x783170`. Portrait raster origin seeds from horizontal

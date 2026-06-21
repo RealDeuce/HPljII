@@ -3814,12 +3814,13 @@ def direct_control_code_flow_report(data: bytes) -> str:
         (0x00783184, "pending text span flush enable tested by `0xf34a`"),
         (0x0078318E, "alternate previous-width mode tested by BS"),
         (0x0078318F, "line-termination mode byte written by `ESC &k#G` and tested by CR/LF/FF"),
+        (0x00783190, "end-of-line wrap flag written by `ESC &s#C` and tested by printable text overflow paths"),
         (0x00783191, "vertical overflow recovery enable tested by `0xf36c`"),
     ]
 
     lines = ["# IC30/IC13 Direct Control-Code Flow", ""]
-    lines.append("Generated from handlers `0xf02c..0xf55e`, line-termination handler `0xedf8`, and state-reference scans of the verified firmware image.")
-    lines.append("This report tracks direct parser mode-0 control codes that change cursor/page state before text or raster objects are queued.")
+    lines.append("Generated from handlers `0xf02c..0xf55e`, line-termination handler `0xedf8`, wrap handler `0xedb0`, dot-position handlers `0xf48c`/`0xf692`, transparent-data handler `0x11f5a`, and state-reference scans of the verified firmware image.")
+    lines.append("This report tracks parser commands that change cursor/page/text state before text or raster objects are queued.")
     lines.append("")
 
     lines.append("## Line-Termination Mode")
@@ -3832,6 +3833,19 @@ def direct_control_code_flow_report(data: bytes) -> str:
     lines.append("| 1 | `0x80` | CR tests bit 7 and also calls LF advance | CR=CR+LF |")
     lines.append("| 2 | `0x60` | LF tests bit 6 and FF tests bit 5, both also call CR reset | LF=CR+LF, FF=CR+FF |")
     lines.append("| 3 | `0xe0` | bits 7, 6, and 5 all set | CR=CR+LF, LF=CR+LF, FF=CR+FF |")
+    lines.append("")
+
+    lines.append("## Wrap and Transparent Data")
+    lines.append("")
+    lines.append("PCL `ESC &s#C` reaches handler `0xedb0`, which rewinds the parsed six-byte record and uses the absolute parsed value:")
+    lines.append("")
+    lines.append("| `#` | Firmware state | Reproduction meaning |")
+    lines.append("| ---: | --- | --- |")
+    lines.append("| 0 | writes `0x783190 = 1` | end-of-line wrap is enabled for printable text overflow paths |")
+    lines.append("| 1 | clears `0x783190` | end-of-line wrap is disabled |")
+    lines.append("| other | leaves `0x783190` unchanged | unsupported selector is ignored after record rewind |")
+    lines.append("")
+    lines.append("PCL `ESC &p#X` reaches handler `0x11f5a`, which only arms delayed payload handler `0x12452` through `0x121cc`; the payload bytes are consumed later after `0x12218` restores the saved command record. Consumer `0x12452` uses the absolute byte count, stops on `D7=-1`, applies the same `0x1a 0x58 -> 0x7f` normalization as other text repeat readers, routes printable bytes through `0xd04a`, and filters control bytes through `0xd0f0` depending on the active symbol/high-byte state.")
     lines.append("")
 
     lines.append("## Direct Control Handlers")
@@ -3849,6 +3863,8 @@ def direct_control_code_flow_report(data: bytes) -> str:
     lines.append("| `ESC &a#H` | `0xf416` | converts parsed decipoints as five packed subunits per decipoint, then commits through `0xf4ca` using parsed-record bit 0 as the relative flag | horizontal decipoint positioning maps host coordinates into 300 dpi twelfths before object placement |")
     lines.append("| `ESC &a#R` | `0xf560` | ensures a page root, masks the parsed flag to bit 0, adds fractional `0.7200` before VMI scaling for absolute rows, converts through current VMI `0x783160`, commits through `0xf6e2`, calls overflow recovery helper `0x1048c` for relative moves, and clamps absolute rows to `0x782dc6` | row positioning uses VMI units and has a firmware absolute-row bias that must be reproduced before text/raster queuing |")
     lines.append("| `ESC &a#V` | `0xf60a` | converts parsed decipoints as five packed subunits per decipoint, commits through `0xf6e2` using parsed-record bit 0 as the relative flag, and clamps to `0x782dc6` | vertical decipoint positioning maps host coordinates into the same vertical cursor used by text and raster start state |")
+    lines.append("| `ESC *p#X` | `0xf48c` | sign-extends the parsed word, shifts it left 16 bits to a whole-dot packed coordinate, then commits through `0xf4ca` using parsed-record bit 0 as the relative flag | horizontal dot positioning shares the same clamp, right-limit latch, pending-text clear, and active-span update path as `ESC &a#C/#H` |")
+    lines.append("| `ESC *p#Y` | `0xf692` | sign-extends the parsed word, shifts it left 16 bits, commits through `0xf6e2` using parsed-record bit 0 as the relative flag, then clamps to `0x782dc6` | vertical dot positioning shares the same page-root, pending-span flush, top/relative base, and vertical-bound behavior as `ESC &a#R/#V` |")
     lines.append("| `ESC &f0S` / `ESC &f1S` | `0xf75e` | selector `0` pushes `0x782c8a` plus `0x782c8e + 0x782dbe` as an 8-byte stack entry while `0x782d36` is below the upper bound; selector `1` pops while the pointer is above `0x782c96`, restores horizontal position clamped to `0x782db8 - 1/12`, restores vertical position after subtracting `0x782dbe` and clamping to `0x782dc6 - 1/12`, clears `0x782a57/0x782a6d`, and flushes pending spans when `0x783184` is set | cursor push/pop is part of placement state and can change subsequent text/raster coordinates after page size, orientation, or margins have changed |")
     lines.append("")
 
@@ -3876,6 +3892,9 @@ def direct_control_code_flow_report(data: bytes) -> str:
     lines.append("## Current Reproduction Contract")
     lines.append("")
     lines.append("- A byte-stream model must apply `ESC &k#G` before interpreting CR/LF/FF because the firmware stores the mode as bit flags in `0x78318f` and the direct control handlers test those bits at runtime.")
+    lines.append("- `ESC &s#C` is not only parser metadata: selector `0` writes wrap flag `0x783190=1` and selector `1` clears it. Printable text overflow paths test this flag, so wrap mode has to be part of the text layout state.")
+    lines.append("- `ESC &p#X` transparent data is not opaque to rendering. It uses delayed-payload restore through `0x121cc`/`0x12218`, then handler `0x12452` feeds each consumed byte through the same printable/control text pipeline as repeat text, including `0x1a 0x58` normalization to `0x7f`.")
+    lines.append("- `ESC *p#X/#Y` dot positioning converts host dots to whole-dot packed cursor coordinates with `parameter << 16`, then uses the same horizontal and vertical commit helpers as the `ESC &a` cursor-position commands.")
     lines.append("- CR/LF/FF/HT/BS do not only change cursor coordinates; they can flush pending text spans, ensure/finalize page roots, and invoke the same context span update routines `0xd4ac` / `0xd8fc` used after printable text.")
     lines.append("- Axis names remain provisional, but `tools/render_fixture_harness.py` now has synthetic state fixtures for the line-termination map plus CR/LF/FF/HT/BS cursor/page effects, `ESC &f#S` cursor stack push/pop and clamp behavior, `ESC &a#C/#H/#R/#V` cursor-position conversion/relative/clamp behavior, `ESC &a#L/#M` margin conversion/reject/cursor-move behavior, narrow byte-stream fixtures for `ESC &k1G`+CR, `ESC &k2G`+LF, `ESC &k2G`+FF, `ESC &k3G`+CR/LF/FF, `ESC &k0G`+HT/BS, `ESC &f0S`/`ESC &f1S` through selector handler `0xf75e`, chained `ESC &l8c6d3e2F` through vertical-layout handlers `0xcb00`/`0xc992`/`0xece2`/`0xea9e`, chained `ESC &a3.5c+1R` through cursor-position handlers `0xf39e` and `0xf560`, and chained `ESC &a6l9M` through margin handlers `0xeb58` and `0xec0c`, a mixed `ESC &k1G!\\r!` fixture that applies CR+LF before queueing the second printable glyph and ties the ROM parser handlers to the page-record allocator/bridge result, an `ESC &a1L!` fixture that ties left-margin handler `0xeb58` to shifted page-record text output, `ESC &a2C!` and `ESC &a1R!` fixtures that tie cursor-position handlers `0xf39e` and `0xf560` to shifted page-record text output, an `ESC &l3E!` fixture that ties top-margin handler `0xece2` to vertically shifted page-record text output, a mixed `!\\x1bE` fixture that applies reset publication/clear state after queued text and has a page-record allocator/bridge/publication variant for the pre-reset glyph, and a publication-boundary fixture tying reset, FF, page-size, and orientation parser-handler sequences to one-root allocation, one `0xff1e` publication, current-root clearing, and rendered rows after `0x1edc6`. The remaining step is expanding this into the full firmware parser path with real page-object allocation.")
     lines.append("- The direct-control/page-record boundary fixtures now also drive `ESC &a1M!`, tying right-margin handler `0xec0c` to cursor movement and restored page-record text output through printable handler `0xd04a` at compact coord `0x0a02`.")

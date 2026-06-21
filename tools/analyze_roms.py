@@ -1323,6 +1323,28 @@ def font_sample_page_report_with_resources(data: bytes, resources: bytes) -> str
     lines.append("| `0x1cabe` | Formats a font row prefix: source code bytes `S`, `L`, `R`, or `I`; two decimal digits; style/spacing/pitch/height details; then sample text. |")
     lines.append("")
 
+    lines.append("## Header, Row, and Sample Sequencing")
+    lines.append("")
+    lines.append("| Address | Fact |")
+    lines.append("| ---: | --- |")
+    lines.append("| `0x1c916` | Resets sample-page VMI/HMI, initializes vertical cursor word `0x782c8e = 0x0024`, clears `0x782c90`, selects portrait/landscape header text from `0x782da3`, then prints column headers with repeated `0x1cfb4` line advances. |")
+    lines.append("| `0x1c9b8` | Clears all 16 recent-context slots at `0x783f0a`, sets count byte `0x783f08 = 1`, and seeds the first slot with the active context. |")
+    lines.append("| `0x1c9f6` | Starts a continuation page by calling FF handler `0xf0f0`, ensuring a page root through `0x10084`, reinstalling the active context through `0x1c5e8`, rerunning header setup `0x1c916`, and reseeding the recent list. |")
+    lines.append("| `0x1ca2c` | Before printing a source heading, compares `0x782c8e + current-row-height` against page-limit word `0x782db6`; if it would overrun, it enters the continuation path at `0x1c9f6`. |")
+    lines.append("| `0x1ca86..0x1caa6` | Flushes pending text with `0x126e2`, prints the selected source/category label from table `0x1c170` via `0x1d12e`, flushes with `0x12714`, advances one line, and stores the row-height word in `0x783f06`. |")
+    lines.append("| `0x1cb26..0x1cb66` | Builds and prints row prefix bytes: source code `S/L/R/I`, two decimal digits from the row number, a terminator, then advances `0x782c8a` by two horizontal units. |")
+    lines.append("| `0x1cb6e..0x1cc5e` | Prints style, pitch, height, and symbol-set fields from the selected record, using `0x1d198`, `0x13b76`, `0x13bca`, `0x1cc6e`, and `0x1cd78`, with one- or two-unit `0x1d152` horizontal advances between columns. |")
+    lines.append("| `0x1cf34..0x1cf9a` | Emits sample run 1 from `0x1c1cf`; if `0x783132` is nonzero, it flushes, updates row/overflow state via `0x1d050`, advances horizontally by `0x31` units, installs the alternate context via `0x1cece`, then emits sample run 2 from `0x1c1e9`. |")
+    lines.append("| `0x1d050` | Chooses the larger current/alternate row height, may update `0x783f06`, advances by `0x1cfe4`, and if the page limit `0x782db6` would be exceeded, starts a continuation heading via `0x1ca2c` before advancing again. |")
+    lines.append("")
+    lines.append(
+        "These addresses move the sample printout closer to a reproducible page "
+        "model: the source label, row prefix, metric columns, and both sample "
+        "byte runs are now tied to cursor state (`0x782c8a`, `0x782c8e`), "
+        "page-limit state (`0x782db6`), and explicit flush points."
+    )
+    lines.append("")
+
     lines.append("## Font Context Setup")
     lines.append("")
     lines.append(

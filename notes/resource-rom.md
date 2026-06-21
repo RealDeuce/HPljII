@@ -240,6 +240,12 @@ and
 `5b71982ce62609329dc9eb16d9aa9becece7ff79a3ed41a125fd38b1609f5f88`.
 Those hashes are direct payload-render targets for the later `0x1c334`
 page-object loop model.
+The report now also pins the local placement sequence: `0x1c916`
+initializes sample-page cursor state, `0x1ca2c` guards source headings
+against page-limit word `0x782db6`, `0x1cabe` emits the `S/L/R/I` row
+prefix and metric columns through `0xd04a`, and `0x1cf34` emits sample
+run 1, advances horizontally by `0x31` units, installs the alternate
+context, and emits sample run 2 when `0x783132` is set.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record

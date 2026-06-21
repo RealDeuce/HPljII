@@ -462,8 +462,10 @@ feed `0x1ab84` after its orientation flip, selecting record `0x00004c`
 by Roman-8 fallback and record `0x01a984` by exact `0x000e`; real
 `0x1b50e` results also feed `0x1b250`, where `0x00004c` maps to slot
 `0x782354` after boundary `0x7827ac` and `0x01a984` maps to slot
-`0x782330` before it. The remaining gap is the live parser/default-table
-caller state.
+`0x782330` before it. A real-backed `@0`/`@1`/`@2`/`@3` caller stream
+now routes through ROM terminal handler `0x120be` and consumes those
+table/default-font words through the same default-table/copy/default-font
+subdispatch.
 
 Downloaded-font command edges are now decoded in
 `generated/analysis/ic30_ic13_font_control_flow.md`. `ESC *c#D`
@@ -754,11 +756,9 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
 - Replace the modeled bridge from parsed `(s` / `)s` records and pinned
   updater writes with a full firmware-state run through `0xc580`,
   `0x13eb8` / `0xc428`, and `0x14c64` dispatch.
-- Replace the modeled default-font candidate records with a live
-  parser/font-state fixture that proves the default-table caller state;
-  real scanned built-in windows now feed `0x1b250`, `0x1b50e` mode-3
-  selection, `0x1ab84` synthesized fallback, and `0x1b060` fallback
-  selection. Decide whether undocumented but parser-exposed `@0..@2`
-  variants need compatibility-facing documentation.
+- Decide whether undocumented but parser-exposed `@0..@2` variants need
+  compatibility-facing documentation. The default-font candidate and
+  caller path is now real-record backed through `0x1b250`, `0x1b50e`,
+  `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
 - Replace the modeled `ESC &f#X` macro-control fixtures with full replay
   of stored macro payload bytes through the live parser/data-chain path.

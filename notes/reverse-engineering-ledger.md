@@ -535,13 +535,10 @@ ROM work needed:
   extracted from the repeated `COURIER` and `LINE_PRINTER` fixtures,
   especially ambiguous header size words and header-level baseline
   semantics.
-- Replace the modeled default-font candidate records with a live
-  parser/font-state fixture that proves the default-table caller state;
-  real scanned built-in windows now feed `0x1b250`, `0x1b50e` mode-3
-  selection, `0x1ab84` synthesized fallback, and `0x1b060` fallback
-  selection for class-zero and class-one cases, and the parser-exposed
-  `@0..@2` table/copy variants are documented as firmware-supported but
-  not manual-documented.
+- Decide whether the parser-exposed `@0..@2` table/copy variants need
+  compatibility-facing documentation. The default-font candidate and
+  caller path is now real-record backed through `0x1b250`, `0x1b50e`,
+  `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
 - Replace the host-fetched font-control, descriptor, resource-payload,
   and downloaded-character boundaries with a full live parser-state run
   that populates current records/source objects, then replace

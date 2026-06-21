@@ -20456,6 +20456,77 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "font_id_select_flag_78287b": 1,
         "final_mode": 0,
     }))
+    real_default_table_symbols = [
+        int(default_synth_real_primary_fallback["word"]),
+        int(default_synth_real_secondary_fallback["word"]),
+        int(real_resolver_mode3_suppressed_current["word"]),
+        int(real_resolver_mode3_class_one_exact["word"]),
+    ]
+    real_default_table_stream_bytes = b"\x1b(0@\x1b)0@\x1b)1@\x1b)2@\x1b(3@"
+    real_default_table_dispatch_trace = trace_symbol_set_parser_dispatch_via_11774(
+        data,
+        real_default_table_stream_bytes,
+    )
+    real_default_table_commands = real_default_table_dispatch_trace["commands"]
+    assert isinstance(real_default_table_commands, list)
+    real_default_table_stream = apply_symbol_set_stream_via_120be_1be22(symbol_set_state(
+        requested_symbols=[0x1111, 0x2222],
+        active_symbols=[0x1111, 0x2222],
+        remembered_symbols=[0x1111, 0x2222],
+        default_symbols=real_default_table_symbols,
+        orientation=0,
+        default_font_symbol=int(real_current_default_secondary["word"]),
+    ), real_default_table_stream_bytes)
+    real_default_table_events = real_default_table_stream["stream_events"]
+    assert isinstance(real_default_table_events, list)
+    checks.append(assert_equal("real default-table caller stream uses ROM-backed words", {
+        "stream": real_default_table_dispatch_trace["stream"],
+        "command_handlers": [
+            [dispatch["handler"] for dispatch in command["dispatches"]]
+            for command in real_default_table_commands
+        ],
+        "records": [command["record"] for command in real_default_table_commands],
+        "kinds": [event["kind"] for event in real_default_table_events],
+        "dispatch_targets": [event["dispatch_target"] for event in real_default_table_events],
+        "requested_words": [event["requested_word"] for event in real_default_table_events],
+        "active_words": [event["active_word"] for event in real_default_table_events],
+        "default_symbols": real_default_table_symbols,
+        "final_requested": real_default_table_stream["requested_symbols"],
+        "final_active": real_default_table_stream["active_symbols"],
+        "refreshes": real_default_table_stream["refreshes"],
+        "final_mode": real_default_table_dispatch_trace["final_mode"],
+    }, {
+        "stream": b"\x1b(0@\x1b)0@\x1b)1@\x1b)2@\x1b(3@",
+        "command_handlers": [
+            [0x011EB6, 0x01201E, 0x0120BE],
+            [0x011EB6, 0x012008, 0x0120BE],
+            [0x011EB6, 0x012008, 0x0120BE],
+            [0x011EB6, 0x012008, 0x0120BE],
+            [0x011EB6, 0x01201E, 0x0120BE],
+        ],
+        "records": [
+            bytes.fromhex("80 40 00 00 00 00"),
+            bytes.fromhex("80 40 00 00 00 01"),
+            bytes.fromhex("80 40 00 01 00 01"),
+            bytes.fromhex("80 40 00 02 00 01"),
+            bytes.fromhex("80 40 00 03 00 00"),
+        ],
+        "kinds": [
+            "default-table-slot",
+            "default-table-slot",
+            "default-table-primary",
+            "copy-primary-symbol",
+            "default-font",
+        ],
+        "dispatch_targets": [0x01BED4, 0x01BED4, 0x01BF0A, 0x01BF36, 0x01BF74],
+        "requested_words": [0x0005, 0x000E, 0x0005, 0x0005, 0x000E],
+        "active_words": [0x0005, 0x000E, 0x0005, 0x0005, 0x000E],
+        "default_symbols": [0x0005, 0x000E, 0x0155, 0x000E],
+        "final_requested": [0x000E, 0x0005],
+        "final_active": [0x000E, 0x0005],
+        "refreshes": 5,
+        "final_mode": 0,
+    }))
     text_source = build_text_source_object_from_1393a(resources, 0x440946B4, 0x21, x=0, y=0, context_slot=0)
     checks.append(assert_equal("0x1393a-modeled text source object fields", text_source, {
         "context": 0x440946B4,
@@ -37702,6 +37773,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- symbol-set special-case parser boundary: stream `1b 28 37 58 1b 29 30 40 1b 28 31 40 1b 29 32 40 1b 28 33 40 1b 29 33 40` routes final `X` and `@` through terminal handler `0x120be`; the model keeps the previous requested word while calling font-id helper `0x17708` for `X`, sets `0x78287b`, enters `0xc580` with dirty flag `2`, reads the `0x1ac0a` default-symbol table for `@0`/`@1`, copies primary to secondary for `@2`, and uses the current-candidate default-font word for `@3`, ending with active words `0x%04x` / `0x%04x`." % (
         symbol_special_stream["active_symbols"][0],
         symbol_special_stream["active_symbols"][1],
+    ))
+    lines.append("- real default-table caller boundary: stream `1b 28 30 40 1b 29 30 40 1b 29 31 40 1b 29 32 40 1b 28 33 40` routes through the same ROM `0x120be` terminal handler; real-backed table words `%s` drive `@0`, `@1`, `@2`, and `@3` requested words `%s`, ending active words `0x%04x` / `0x%04x`." % (
+        " / ".join("0x%04x" % int(word) for word in real_default_table_symbols),
+        " / ".join("0x%04x" % int(event["requested_word"]) for event in real_default_table_events),
+        real_default_table_stream["active_symbols"][0],
+        real_default_table_stream["active_symbols"][1],
     ))
     lines.append("- `ESC (2U` selects primary word `0x%04x` and patches `LINE_PRINTER` map byte `0x24 -> 0x%02x`; `ESC )0E` selects secondary word `0x%04x` and copies upper-half map byte `0xa1 -> 0x%02x` before clearing the upper half." % (
         symbol_stream["active_symbols"][0],

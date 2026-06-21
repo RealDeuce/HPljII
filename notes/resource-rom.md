@@ -317,7 +317,9 @@ after its orientation flip, selecting record `0x00004c` by Roman-8
 fallback and record `0x01a984` by exact `0x000e`; real `0x1b50e`
 results also feed `0x1b250`, where `0x00004c` maps to slot `0x782354`
 after boundary `0x7827ac` and `0x01a984` maps to slot `0x782330` before
-it. The remaining live-state gap is the default-table caller state.
+it. A real-backed `@0`/`@1`/`@2`/`@3` caller stream now routes through
+ROM terminal handler `0x120be` and consumes those table/default-font
+words through the same default-table/copy/default-font subdispatch.
 
 This makes the current renderer identity
 `(context longword, mapped glyph byte)`. For example, the unnamed
@@ -333,12 +335,10 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    if cartridge or external resource images become available.
 2. Finish naming the firmware-scanned record metadata fields rather than
    relying on string labels alone.
-3. Replace the modeled default-font candidate records with a live
-   parser/font-state fixture that proves the default-table caller state;
-   real scanned built-in windows now feed `0x1b250`, `0x1b50e` mode-3
-   selection, `0x1ab84` synthesized fallback, and `0x1b060` fallback
-   selection. Decide how to document the undocumented but parser-exposed
-   `@0..@2` table/copy variants.
+3. Decide how to document the undocumented but parser-exposed `@0..@2`
+   table/copy variants. The default-font candidate and caller path is
+   now real-record backed through `0x1b250`, `0x1b50e`, `0x1ab84`,
+   `0x1b060`, and the ROM `0x120be` terminal path.
 4. Replace the host-fetched font-control, descriptor, resource-payload,
    and downloaded-character boundaries with a full live parser-state run
    that populates current records/source objects; then replace

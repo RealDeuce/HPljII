@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import re
+import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -10554,6 +10556,103 @@ def assert_equal(name: str, actual: object, expected: object) -> str:
 
 def select_keys(values: dict[str, int], keys: tuple[str, ...]) -> dict[str, int]:
     return {key: values[key] for key in keys}
+
+
+def wrap_markdown(text: str) -> str:
+    lines = text.splitlines()
+    out: list[str] = []
+    paragraph: list[str] = []
+    in_code = False
+    bullet_re = re.compile(r"^(\s*)((?:[-*+])|(?:\d+\.))\s+(.*)$")
+
+    def flush_paragraph() -> None:
+        if not paragraph:
+            return
+        joined = " ".join(line.strip() for line in paragraph)
+        out.extend(textwrap.wrap(
+            joined,
+            width=78,
+            break_long_words=False,
+            break_on_hyphens=False,
+        ))
+        paragraph.clear()
+
+    def append_bullet(line: str) -> None:
+        match = bullet_re.match(line)
+        if match is None:
+            return
+        indent, marker, body = match.groups()
+        prefix = f"{indent}{marker} "
+        out.extend(textwrap.wrap(
+            body.strip(),
+            width=78,
+            initial_indent=prefix,
+            subsequent_indent=" " * len(prefix),
+            break_long_words=False,
+            break_on_hyphens=False,
+        ) or [prefix.rstrip()])
+
+    for line in lines:
+        stripped = line.lstrip()
+        if stripped.startswith(("```", "~~~")):
+            flush_paragraph()
+            out.append(line)
+            in_code = not in_code
+            continue
+        if in_code:
+            out.append(line)
+            continue
+        if (
+            stripped.startswith("`")
+            and stripped.endswith("`")
+            and set(stripped.strip("`")) <= {".", "#"}
+        ):
+            flush_paragraph()
+            out.append(line)
+            continue
+        if bullet_re.match(line):
+            flush_paragraph()
+            append_bullet(line)
+            continue
+        if (
+            not stripped
+            or stripped.startswith(("#", "|", "<!--"))
+            or re.match(r"^[-*_]{3,}\s*$", stripped)
+        ):
+            flush_paragraph()
+            out.append(line)
+            continue
+        paragraph.append(line)
+    flush_paragraph()
+    return "\n".join(out) + ("\n" if text.endswith("\n") else "")
+
+
+def append_wrapped(
+    lines: list[str],
+    text: str,
+    prefix: str = "",
+    subsequent: str | None = None,
+) -> None:
+    if subsequent is None:
+        subsequent = " " * len(prefix)
+    lines.extend(textwrap.wrap(
+        text,
+        width=78,
+        initial_indent=prefix,
+        subsequent_indent=subsequent,
+        break_long_words=False,
+        break_on_hyphens=False,
+    ))
+
+
+def append_literal_rows(lines: list[str], rows: list[str], chunk_size: int = 64) -> None:
+    for index, row in enumerate(rows):
+        if len(row) + 2 <= 78:
+            lines.append(f"`{row}`")
+            continue
+        lines.append(f"- row {index}:")
+        for start in range(0, len(row), chunk_size):
+            lines.append(f"  `{row[start:start + chunk_size]}`")
 
 
 def run_selftest(data: bytes, resources: bytes) -> list[str]:
@@ -29222,6 +29321,48 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "published_rows": positioned_mode0["rows"][:4],
         },
     }))
+    checks.append(assert_equal("host-fetched reset publication preserves 0xff1e pool header defaults", {
+        "fetched_stream": host_fetched_publication_streams["reset"]["stream"],
+        "fetch_sources": host_fetched_publication_streams["reset"]["sources"],
+        "parser_handlers": parser_handler_summary(host_fetched_publication_parser_trace["reset"]),
+        "parser_final_mode": host_fetched_publication_parser_trace["reset"]["final_mode"],
+        "pool_header": {
+            key: mixed_reset_pool_fields[key]
+            for key in (
+                "state_byte_4",
+                "environment_byte_7",
+                "status_byte_8",
+                "status_byte_0a",
+                "environment_word_0c",
+                "word_16",
+                "word_18",
+                "word_1a",
+                "published_pointer_780ea6",
+            )
+        },
+        "bucket_root_prefix": mixed_reset_pool_fields["bucket_root_1c"][:11],
+        "context_slots_2c_prefix": mixed_reset_pool_fields["context_slots_2c"][:2],
+        "published_rows": mixed_reset_published_rendered["rows"][:4],
+    }, {
+        "fetched_stream": b"!\x1bE",
+        "fetch_sources": ["ring"] * 3,
+        "parser_handlers": [0x00D04A, 0x00CC52],
+        "parser_final_mode": 0,
+        "pool_header": {
+            "state_byte_4": 2,
+            "environment_byte_7": 0,
+            "status_byte_8": 0,
+            "status_byte_0a": 0,
+            "environment_word_0c": 0,
+            "word_16": 0,
+            "word_18": 0,
+            "word_1a": 0,
+            "published_pointer_780ea6": ABSTRACT_PAGE_ROOT_PTR,
+        },
+        "bucket_root_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+        "context_slots_2c_prefix": (0x440946B4, 0),
+        "published_rows": positioned_mode0["rows"][:4],
+    }))
     published_render_entries = {
         "reset": render_published_page_record_via_1ed84_1ef6a(data, resources, mixed_reset_published_page_record),
         "ff": render_published_page_record_via_1ed84_1ef6a(data, resources, ff_published_page_record),
@@ -30389,7 +30530,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.extend(f"`{row}`" for row in raster_mode2_clipped_rendered["fallback_rows"])
     lines.append(f"- mode-3 queued raster object bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode3_object)}`")
     lines.append("- rendered mode-3 expanded rows:")
-    lines.extend(f"`{row}`" for row in raster_mode3_rendered["rows"])
+    append_literal_rows(lines, raster_mode3_rendered["rows"])
     lines.append("- remaining gap: replace the modeled raster command/data stream with a full live parser/data-chain run through `0x121cc` / `0x105d0`.")
     lines.append("")
 
@@ -30617,12 +30758,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- split-plane copy: prefix `{' '.join(f'{byte:02x}' for byte in font_split_payload['prefix'])}`, trailing `{' '.join(f'{byte:02x}' for byte in font_split_payload['trailing'])}`")
     lines.append(f"- split-plane continuation before trailing byte: status `{font_split_continuation['status']}`, state `{font_split_continuation['continuation']}`")
     lines.append(f"- split-plane copy with `1a 58`: prefix `{' '.join(f'{byte:02x}' for byte in font_split_control['prefix'])}`, trailing `{' '.join(f'{byte:02x}' for byte in font_split_control['trailing'])}`, control hits `{font_split_control['control_hits']}`")
-    lines.append("- host-fetched downloaded-character control payload: `ESC )s18W` drains `%d` ring bytes, normalizes prefix `%s`, trailing `%s`, and renders `%s`." % (
-        len(host_fetched_downloaded_wide_control_stream["sources"]),
-        " ".join(f"{byte:02x}" for byte in downloaded_wide_control_install["copy"]["prefix"]),
-        " ".join(f"{byte:02x}" for byte in downloaded_wide_control_install["copy"]["trailing"]),
-        downloaded_wide_control_rendered["rows"],
-    ))
+    append_wrapped(
+        lines,
+        "- host-fetched downloaded-character control payload: `ESC )s18W` "
+        "drains `%d` ring bytes, normalizes prefix `%s`, and trailing `%s`."
+        % (
+            len(host_fetched_downloaded_wide_control_stream["sources"]),
+            " ".join(f"{byte:02x}" for byte in downloaded_wide_control_install["copy"]["prefix"]),
+            " ".join(f"{byte:02x}" for byte in downloaded_wide_control_install["copy"]["trailing"]),
+        ),
+    )
+    lines.append("  rendered rows:")
+    append_literal_rows(lines, downloaded_wide_control_rendered["rows"])
     lines.append("- command edge fixtures: `ESC *c#E` handler `0x15a18` stores absolute character/code word `0x%04x` in `0x782f30`; `ESC )s0W` reaches `0x11f96` and schedules delayed handler `0x%05x`, while nonzero `ESC )s#W` schedules delayed handler `0x%05x` with absolute byte budget `0x%04x`." % (
         font_character_code["stored_word"],
         font_payload_dispatch_header["handler"],
@@ -31007,7 +31154,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 def main() -> None:
     data = require_firmware()
     resources = require_resources()
-    report = "\n".join(run_selftest(data, resources))
+    report = wrap_markdown("\n".join(run_selftest(data, resources)))
     ANALYSIS.mkdir(parents=True, exist_ok=True)
     (ANALYSIS / "ic30_ic13_renderer_fixture_harness.md").write_text(report, encoding="utf-8")
     print(report)

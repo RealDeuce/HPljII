@@ -379,11 +379,15 @@ mixed `!\x1bE` fixture exercises that valid-root reset path after queuing a
 printable text object, and its page-record variant queues and bridges that
 object under page-record storage rules, then publishes the same bucket through a
 modeled `0xff1e` finalization record before reset clears the current root. The
-`0x1387c` allocator fixtures queue short and segmented compact buckets under
-page-record storage rules, and the `0x1edc6` bridge fixture proves the
-render-record copy contract for that compact bucket. These fixtures still need a
-fuller parser-allocated page root before they can prove the full firmware reset
-path.
+host-fetched reset publication check now starts `!\x1bE` from the modeled
+`0xa904` ring source and pins the same published pool header after `0xff1e`:
+state byte `+4 = 2`, default status/environment fields, `0x780ea6`,
+bucket-root prefix, and context-slot prefix. The `0x1387c` allocator fixtures
+queue short and segmented compact buckets under page-record storage rules, and
+the `0x1edc6` bridge fixture proves the render-record copy contract for that
+compact bucket.
+These fixtures still need a fuller parser-allocated page root before they can
+prove the full firmware reset path.
 
 ## Parsed-Command Dispatch
 
@@ -522,10 +526,10 @@ formatting, so it should not be used as a control-code anchor.
   through the live parser/data-chain path, building on the current simple and
   mixed-control execute replays that drain through `0xa904`, parser handlers,
   and the page-record bridge.
-- Replace the synthetic `ESC E` roots with fuller parser-allocated page objects;
-  the current page-record reset fixture already proves the modeled `0xff1e`
-  publication record bridges and renders the queued compact bucket before reset
-  clears the current page root.
+- Replace the remaining synthetic `ESC E` roots with fuller parser-allocated
+  page objects; the current host-fetched reset publication fixture already
+  proves the modeled `0xff1e` publication header, bridge, and rendered queued
+  compact bucket before reset clears the current page root.
 - Extend the mixed-stream page-record fixture into real parser-produced
   page-object allocation/finalization, then add a parser-driven macro
   command/replay fixture.

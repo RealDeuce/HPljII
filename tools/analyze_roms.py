@@ -20,8 +20,80 @@ DISASM = GENERATED / "disasm" / "ic30_ic13_reset_000110.lst"
 PRINTABLE = set(range(0x20, 0x7f))
 
 
+def wrap_markdown(text: str) -> str:
+    lines = text.splitlines()
+    out: list[str] = []
+    paragraph: list[str] = []
+    in_code = False
+    bullet_re = re.compile(r"^(\s*)((?:[-*+])|(?:\d+\.))\s+(.*)$")
+
+    def flush_paragraph() -> None:
+        if not paragraph:
+            return
+        joined = " ".join(line.strip() for line in paragraph)
+        out.extend(textwrap.wrap(
+            joined,
+            width=78,
+            break_long_words=False,
+            break_on_hyphens=False,
+        ))
+        paragraph.clear()
+
+    def append_bullet(line: str) -> bool:
+        match = bullet_re.match(line)
+        if not match:
+            return False
+        indent, marker, body = match.groups()
+        prefix = f"{indent}{marker} "
+        out.extend(textwrap.wrap(
+            body.strip(),
+            width=78,
+            initial_indent=prefix,
+            subsequent_indent=" " * len(prefix),
+            break_long_words=False,
+            break_on_hyphens=False,
+        ) or [prefix.rstrip()])
+        return True
+
+    for line in lines:
+        stripped = line.lstrip()
+        if stripped.startswith(("```", "~~~")):
+            flush_paragraph()
+            out.append(line)
+            in_code = not in_code
+            continue
+        if in_code:
+            out.append(line)
+            continue
+        if (
+            stripped.startswith("`")
+            and stripped.endswith("`")
+            and set(stripped.strip("`")) <= {".", "#"}
+        ):
+            flush_paragraph()
+            out.append(line)
+            continue
+        if bullet_re.match(line):
+            flush_paragraph()
+            append_bullet(line)
+            continue
+        if (
+            not stripped
+            or stripped.startswith(("#", "|", "<!--"))
+            or re.match(r"^[-*_]{3,}\s*$", stripped)
+        ):
+            flush_paragraph()
+            out.append(line)
+            continue
+        paragraph.append(line)
+    flush_paragraph()
+    return "\n".join(out) + ("\n" if text.endswith("\n") else "")
+
+
 def write_if_changed(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    if path.suffix == ".md":
+        text = wrap_markdown(text)
     data = text.encode("utf-8")
     old = path.read_bytes() if path.exists() else None
     if old != data:
@@ -2118,11 +2190,26 @@ def render_path_reference_report(data: bytes) -> str:
     }
     lines = ["# IC30/IC13 Render Path Reference Leads", ""]
     lines.append("Raw byte scan for render-path entry addresses and bitmap-state globals.")
-    lines.append("Classifications are manual notes from focused disassembly; this report is a lead index, not a complete call graph.")
+    lines.extend(textwrap.wrap(
+        "Classifications are manual notes from focused disassembly; this report is "
+        "a lead index, not a complete call graph.",
+        width=78,
+        break_long_words=False,
+        break_on_hyphens=False,
+    ))
     lines.append("")
     for value, (role, notes) in tracked.items():
         offsets = find_long_occurrences(data, value)
-        lines.append(f"## `{value:#010x}` - {role}")
+        lines.append(f"## `{value:#010x}`")
+        lines.append("")
+        lines.extend(textwrap.wrap(
+            role,
+            width=78,
+            initial_indent="Role: ",
+            subsequent_indent="      ",
+            break_long_words=False,
+            break_on_hyphens=False,
+        ))
         lines.append("")
         lines.append("| Offset | Current classification |")
         lines.append("| --- | --- |")
@@ -2132,7 +2219,18 @@ def render_path_reference_report(data: bytes) -> str:
         if not offsets:
             lines.append("| | no occurrences |")
         lines.append("")
-    lines.append("Current result: `0x1edc6` is the first confirmed bridge from queued page/control records into a render work record, and its concrete queue/list/context-slot copy contract is decoded in `ic30_ic13_page_record_bridge.md`. `0x1ef6a` and helpers then render a band using `0x783a18`, `0x783a1c`, `0x783a28`, and buffer base `0x7810b4`; complete parser-produced page objects and all merge rules remain to be decoded.")
+    lines.extend(textwrap.wrap(
+        "Current result: `0x1edc6` is the first confirmed bridge from queued "
+        "page/control records into a render work record, and its concrete "
+        "queue/list/context-slot copy contract is decoded in "
+        "`ic30_ic13_page_record_bridge.md`. `0x1ef6a` and helpers then render "
+        "a band using `0x783a18`, `0x783a1c`, `0x783a28`, and buffer base "
+        "`0x7810b4`; complete parser-produced page objects and all merge rules "
+        "remain to be decoded.",
+        width=78,
+        break_long_words=False,
+        break_on_hyphens=False,
+    ))
     lines.append("")
     return "\n".join(lines)
 
@@ -3472,7 +3570,7 @@ def page_geometry_table_report(data: bytes) -> str:
             subsequent = " " * len(prefix)
         lines.extend(textwrap.wrap(
             text,
-            width=100,
+            width=78,
             initial_indent=prefix,
             subsequent_indent=subsequent,
             break_long_words=False,

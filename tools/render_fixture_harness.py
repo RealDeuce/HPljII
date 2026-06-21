@@ -9095,6 +9095,68 @@ def vertical_layout_handler(final: int) -> int:
     raise AssertionError(f"unsupported ESC &l vertical-layout final byte {chr(final)!r}")
 
 
+def paper_source_table_target_via_ef62(parameter: int) -> int:
+    selector = abs(int(parameter))
+    return {
+        0: 0x00EFAE,
+        1: 0x00EFB6,
+        2: 0x00EFE8,
+        3: 0x00EFF0,
+    }.get(selector, 0x00EFF8)
+
+
+def paper_source_value_via_ef62(state: dict[str, int], parameter: int) -> int:
+    selector = abs(int(parameter))
+    if selector == 2:
+        return 0x80
+    if selector == 3:
+        return 0x90
+    if selector == 0:
+        return int(state.get("page_env_byte_782da6", 0)) & 0xFF
+    if selector == 1:
+        return 0
+    return int(state.get("paper_source_default_7821a2", 0)) & 0xFF
+
+
+def apply_paper_source_via_ef62(state: dict[str, int], parameter: int) -> dict[str, int]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    selector = abs(int(parameter))
+    table_target = paper_source_table_target_via_ef62(selector)
+    selected_value = paper_source_value_via_ef62(updated, selector)
+
+    updated["cursor_x"] = int(updated["left_margin"])
+    updated["pending_cursor_x_782a57"] = 0
+    updated["cursor_y"] = pending_text_cursor_for_vmi(
+        int(updated["top_offset"]),
+        int(updated["vmi"]),
+    )
+    if selector != 0:
+        updated["page_root_transient_782990"] = 1
+        if int(updated.get("paper_source_available", 1)) == 1:
+            updated["paper_source_output_780e8f"] = selected_value
+            updated["paper_source_control_780e26"] = (
+                int(updated.get("paper_source_control_780e26", 0)) | 1
+            )
+        updated["page_env_byte_782da6"] = selected_value
+        updated["pending_status_782998"] = 1
+    else:
+        updated["paper_source_wait_helper"] = 0x009AC2
+
+    events.append({
+        "kind": "paper-source",
+        "parameter": selector,
+        "table_target": table_target,
+        "selected_value": selected_value,
+        "cursor_x": int(updated["cursor_x"]),
+        "cursor_y": int(updated["cursor_y"]),
+        "page_env_byte_782da6": int(updated.get("page_env_byte_782da6", 0)),
+        "pending_status_782998": int(updated.get("pending_status_782998", 0)),
+    })
+    updated["events"] = events
+    return updated
+
+
 def apply_vertical_layout_stream_via_cb00_c992_ece2_ea9e(state: dict[str, int], stream: bytes) -> dict[str, object]:
     state = dict(state)
     stream_events: list[dict[str, object]] = []
@@ -12606,10 +12668,30 @@ def render_mixed_printable_control_page_record_stream(
                         if fraction != 0:
                             raise AssertionError("page-record mixed stream text-length command does not model fractions")
                         state = apply_text_length_via_ea9e(state, integer)
+                    elif final_upper == ord("H"):
+                        if fraction != 0:
+                            raise AssertionError("page-record mixed stream paper-source command does not model fractions")
+                        control_text_flush_helper(state)
+                        finalized = finalize_page_record_via_ff1e(page_record, state)
+                        if finalized["published"]:
+                            published_pool_record = finalized["published_pool_record"]
+                            assert isinstance(published_pool_record, dict)
+                            published_page_record = published_pool_record
+                            state["page_publications"] = int(state.get("page_publications", 0)) + 1
+                            state["published_pool_record"] = 1
+                            state["page_publication_flag"] = int(finalized["page_publication_flag"])
+                        state["current_page_root"] = int(finalized["current_page_root_after"])
+                        state["page_root_present"] = 0
+                        state["page_root_clears"] = int(finalized["page_root_clears"])
+                        state = apply_paper_source_via_ef62(state, integer)
                     else:
                         raise AssertionError(f"page-record mixed stream unsupported ESC &l final byte {chr(final)!r}")
+                    if final_upper == ord("H"):
+                        handler = 0x00EF62
+                    else:
+                        handler = vertical_layout_handler(final)
                     events.append({
-                        "kind": "vertical-layout",
+                        "kind": "paper-source" if final_upper == ord("H") else "vertical-layout",
                         "offset": command_start,
                         "sequence": stream[command_start:pos],
                         "record": bytes([
@@ -12619,12 +12701,21 @@ def render_mixed_printable_control_page_record_stream(
                         "parameter": integer,
                         "fraction": fraction,
                         "relative": relative,
-                        "handler": vertical_layout_handler(final),
+                        "handler": handler,
                         "cursor_before": before["cursor_y"],
                         "cursor_after": state["cursor_y"],
                         "events": state["events"][len(before.get("events", [])):],
                         "chained": bool(ord("a") <= final <= ord("z")),
                     })
+                    if final_upper == ord("H"):
+                        events[-1]["finalized_page_record"] = finalized
+                        events[-1]["current_page_root_before"] = before.get("current_page_root", 0)
+                        events[-1]["current_page_root_after"] = state.get("current_page_root", 0)
+                        events[-1]["page_publications"] = state.get("page_publications", 0)
+                        events[-1]["page_root_clears"] = state.get("page_root_clears", 0)
+                        events[-1]["page_publication_flag"] = state.get("page_publication_flag", 0)
+                        events[-1]["table_target"] = paper_source_table_target_via_ef62(integer)
+                        events[-1]["selected_value"] = paper_source_value_via_ef62(state, integer)
                     if not (ord("a") <= final <= ord("z")):
                         break
                 continue
@@ -38414,6 +38505,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "ff": trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k2G!\f"),
         "page_size": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1b&l1A"),
         "orientation": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1b&l1O"),
+        "paper_source": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1b&l2H"),
     }
     expected_mixed_publication_parser_trace = {
         "reset": {
@@ -38536,6 +38628,37 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         {"offset": 5, "byte": ord("O"), "mode_before": 10, "next_mode": 0, "handler": 0x010220},
                     ],
                     "handler": 0x010220,
+                    "mode_after": 0,
+                },
+            ],
+            "final_mode": 0,
+        },
+        "paper_source": {
+            "stream": b"!\x1b&l2H",
+            "events": [
+                {
+                    "kind": "printable",
+                    "offset": 0,
+                    "byte": 0x21,
+                    "mode_before": 0,
+                    "branch": 0x11880,
+                    "handler": 0x00D04A,
+                    "mode_after": 0,
+                },
+                {
+                    "kind": "command",
+                    "sequence": b"\x1b&l2H",
+                    "prefix": ord("&"),
+                    "group": ord("l"),
+                    "parameter": 2,
+                    "record": bytes.fromhex("80 48 00 02 00 00"),
+                    "dispatches": [
+                        {"offset": 1, "byte": 0x1B, "mode_before": 0, "next_mode": 1, "handler": 0x011EB6},
+                        {"offset": 2, "byte": ord("&"), "mode_before": 1, "next_mode": 5, "handler": 0x011EC8},
+                        {"offset": 3, "byte": ord("l"), "mode_before": 5, "next_mode": 10, "handler": 0x011EDA},
+                        {"offset": 5, "byte": ord("H"), "mode_before": 10, "next_mode": 0, "handler": 0x00EF62},
+                    ],
+                    "handler": 0x00EF62,
                     "mode_after": 0,
                 },
             ],
@@ -39559,6 +39682,198 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "rows": positioned_mode0["rows"],
     }))
+    paper_source_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"!\x1b&l2H",
+        0x440946B4,
+        reset_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            vmi=pack12(3),
+            top_offset=pack12(90),
+            left_margin=pack12(5),
+            page_root_present=0,
+            current_page_root=0,
+            paper_source_available=1,
+            span_flush_enable=1,
+            pending_width=1,
+            pending_text=0,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    paper_source_page_record_object = paper_source_page_record_stream["bucket_object"]
+    paper_source_published_page_record = paper_source_page_record_stream["published_page_record"]
+    paper_source_published_bridged = paper_source_page_record_stream["published_bridged_record"]
+    paper_source_published_rendered = paper_source_page_record_stream["published_rendered"]
+    assert isinstance(paper_source_page_record_object, bytes)
+    assert isinstance(paper_source_published_page_record, dict)
+    assert isinstance(paper_source_published_bridged, dict)
+    assert isinstance(paper_source_published_rendered, dict)
+    paper_source_events = paper_source_page_record_stream["events"]
+    assert isinstance(paper_source_events, list)
+    paper_source_event_summary: list[dict[str, object]] = []
+    for event in paper_source_events:
+        assert isinstance(event, dict)
+        if event["kind"] == "printable":
+            page_result = event["page_result"]
+            positioned = event["positioned"]
+            page_root = event["page_root"]
+            assert isinstance(page_result, dict)
+            assert isinstance(positioned, dict)
+            assert isinstance(page_root, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            paper_source_event_summary.append({
+                "kind": "printable",
+                "byte": event["byte"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": page_result["coord"],
+                "allocated": page_result["allocated"],
+                "count_before": page_result["count_before"],
+                "count_after": page_result["count_after"],
+                "bucket_index": page_result["bucket_index"],
+                "page_root_created": page_root["page_root_created"],
+            })
+            continue
+        finalized = event["finalized_page_record"]
+        assert isinstance(finalized, dict)
+        paper_source_event_summary.append({
+            "kind": "paper-source",
+            "sequence": event["sequence"],
+            "record": event["record"],
+            "parameter": event["parameter"],
+            "handler": event["handler"],
+            "table_target": event["table_target"],
+            "selected_value": event["selected_value"],
+            "cursor_before": event["cursor_before"],
+            "cursor_after": event["cursor_after"],
+            "current_page_root_before": event["current_page_root_before"],
+            "current_page_root_after": event["current_page_root_after"],
+            "page_publications": event["page_publications"],
+            "page_root_clears": event["page_root_clears"],
+            "page_publication_flag": event["page_publication_flag"],
+            "published": finalized["published"],
+            "published_bucket_index": finalized["bucket_index"],
+            "side_effects": event["events"],
+        })
+    checks.append(assert_equal("mixed printable/paper-source page-record stream publishes queued text", {
+        "stream": paper_source_page_record_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in mixed_publication_parser_trace["paper_source"]["events"]
+        ],
+        "events": paper_source_event_summary,
+        "bucket_index": paper_source_page_record_stream["bucket_index"],
+        "object_prefix": paper_source_page_record_object[:11],
+        "published_bucket_root": paper_source_published_page_record["bucket_root"],
+        "published_rendered": {
+            key: paper_source_published_rendered[key]
+            for key in ("selector", "context_slot", "count", "rendered", "payload")
+        },
+        "published_rows": paper_source_published_rendered["rows"],
+        "final_state": select_keys(paper_source_page_record_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "current_page_root",
+            "page_publications",
+            "page_root_clears",
+            "span_flushes",
+            "post_flushes",
+            "page_record_root_allocations",
+            "page_env_byte_782da6",
+            "pending_status_782998",
+            "paper_source_output_780e8f",
+            "paper_source_control_780e26",
+            "page_root_transient_782990",
+            "pending_cursor_x_782a57",
+        )),
+    }, {
+        "stream": b"!\x1b&l2H",
+        "parser_events": [
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+            {"kind": "command", "handler": 0x00EF62, "mode_after": 0},
+        ],
+        "events": [
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 0),
+                "coord": 0x0001,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+                "page_root_created": True,
+            },
+            {
+                "kind": "paper-source",
+                "sequence": b"\x1b&l2H",
+                "record": bytes.fromhex("80 48 00 02 00 00"),
+                "parameter": 2,
+                "handler": 0x00EF62,
+                "table_target": 0x00EFE8,
+                "selected_value": 0x80,
+                "cursor_before": pack12(21),
+                "cursor_after": pack12(92, 1),
+                "current_page_root_before": 1,
+                "current_page_root_after": 0,
+                "page_publications": 1,
+                "page_root_clears": 1,
+                "page_publication_flag": 1,
+                "published": True,
+                "published_bucket_index": 0,
+                "side_effects": [
+                    {
+                        "kind": "paper-source",
+                        "parameter": 2,
+                        "table_target": 0x00EFE8,
+                        "selected_value": 0x80,
+                        "cursor_x": pack12(5),
+                        "cursor_y": pack12(92, 1),
+                        "page_env_byte_782da6": 0x80,
+                        "pending_status_782998": 1,
+                    },
+                ],
+            },
+        ],
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+        "published_bucket_root": paper_source_page_record_object,
+        "published_rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 1,
+            "rendered": mixed_reset_rendered["rendered"],
+            "payload": bytes.fromhex("00 01 20 00 01") + bytes(0x1B),
+        },
+        "published_rows": positioned_mode0["rows"],
+        "final_state": {
+            "cursor_x": pack12(5),
+            "cursor_y": pack12(92, 1),
+            "current_page_root": 0,
+            "page_publications": 1,
+            "page_root_clears": 1,
+            "span_flushes": 1,
+            "post_flushes": 1,
+            "page_record_root_allocations": 1,
+            "page_env_byte_782da6": 0x80,
+            "pending_status_782998": 1,
+            "paper_source_output_780e8f": 0x80,
+            "paper_source_control_780e26": 1,
+            "page_root_transient_782990": 1,
+            "pending_cursor_x_782a57": 0,
+        },
+    }))
     page_geometry_page_record_stream = render_printable_page_geometry_page_record_stream(
         data,
         resources,
@@ -40420,6 +40735,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "published_prefix": orientation_published_page_record["bucket_root"][:11],
             "published_rows": orientation_published_rendered["rows"][:4],
         },
+        "paper_source": {
+            "stream": paper_source_page_record_stream["stream"],
+            "parser_handlers": parser_handler_summary(mixed_publication_parser_trace["paper_source"]),
+            "parser_final_mode": mixed_publication_parser_trace["paper_source"]["final_mode"],
+            "root_allocations": paper_source_page_record_stream["final_state"]["page_record_root_allocations"],
+            "page_publications": paper_source_page_record_stream["final_state"]["page_publications"],
+            "published_prefix": paper_source_published_page_record["bucket_root"][:11],
+            "published_rows": paper_source_published_rendered["rows"][:4],
+        },
     }, {
         "reset": {
             "stream": b"!\x1bE",
@@ -40457,36 +40781,50 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "published_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
             "published_rows": positioned_mode0["rows"][:4],
         },
+        "paper_source": {
+            "stream": b"!\x1b&l2H",
+            "parser_handlers": [0x00D04A, 0x00EF62],
+            "parser_final_mode": 0,
+            "root_allocations": 1,
+            "page_publications": 1,
+            "published_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
     }))
     publication_streams = {
         "reset": mixed_reset_page_record_stream,
         "ff": ff_page_record_stream,
         "page_size": page_geometry_page_record_stream,
         "orientation": orientation_page_record_stream,
+        "paper_source": paper_source_page_record_stream,
     }
     publication_published_records = {
         "reset": mixed_reset_published_page_record,
         "ff": ff_published_page_record,
         "page_size": page_geometry_published_page_record,
         "orientation": orientation_published_page_record,
+        "paper_source": paper_source_published_page_record,
     }
     publication_published_bridged = {
         "reset": mixed_reset_published_bridged,
         "ff": ff_published_bridged,
         "page_size": page_geometry_published_bridged,
         "orientation": orientation_published_bridged,
+        "paper_source": paper_source_published_bridged,
     }
     publication_published_rendered = {
         "reset": mixed_reset_published_rendered,
         "ff": ff_published_rendered,
         "page_size": page_geometry_published_rendered,
         "orientation": orientation_published_rendered,
+        "paper_source": paper_source_published_rendered,
     }
     publication_final_text_states = {
         "reset": mixed_reset_page_record_stream["final_state"],
         "ff": ff_page_record_stream["final_state"],
         "page_size": page_geometry_final_text,
         "orientation": orientation_final_text,
+        "paper_source": paper_source_page_record_stream["final_state"],
     }
     host_fetched_publication_streams = {
         name: fetch_stream_via_a904(
@@ -40560,6 +40898,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "published_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
             "published_rows": positioned_mode0["rows"][:4],
         },
+        "paper_source": {
+            "fetched_stream": b"!\x1b&l2H",
+            "fetch_sources": ["ring"] * 6,
+            "remaining_ring": [],
+            "parser_handlers": [0x00D04A, 0x00EF62],
+            "parser_final_mode": 0,
+            "root_allocations": 1,
+            "page_publications": 1,
+            "published_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
     }))
     checks.append(assert_equal("host-fetched reset publication preserves 0xff1e pool header defaults", {
         "fetched_stream": host_fetched_publication_streams["reset"]["stream"],
@@ -40593,7 +40942,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "context_slots_2c_prefix": (0x440946B4, 0),
         "published_rows": positioned_mode0["rows"][:4],
     }))
-    checks.append(assert_equal("host-fetched FF and geometry publications preserve 0xff1e pool header defaults", {
+    checks.append(assert_equal("host-fetched FF geometry and paper-source publications preserve 0xff1e pool header defaults", {
         name: {
             "fetched_stream": host_fetched_publication_streams[name]["stream"],
             "fetch_sources": host_fetched_publication_streams[name]["sources"],
@@ -40604,7 +40953,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "context_slots_2c_prefix": publication_published_records[name]["pool_record_fields"]["context_slots_2c"][:2],
             "published_rows": publication_published_rendered[name]["rows"][:4],
         }
-        for name in ("ff", "page_size", "orientation")
+        for name in ("ff", "page_size", "orientation", "paper_source")
     }, {
         "ff": {
             "fetched_stream": b"\x1b&k2G!\f",
@@ -40630,6 +40979,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "fetched_stream": b"!\x1b&l1O",
             "fetch_sources": ["ring"] * 6,
             "parser_handlers": [0x00D04A, 0x010220],
+            "parser_final_mode": 0,
+            "pool_header": expected_default_publication_pool_header,
+            "bucket_root_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "context_slots_2c_prefix": (0x440946B4, 0),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
+        "paper_source": {
+            "fetched_stream": b"!\x1b&l2H",
+            "fetch_sources": ["ring"] * 6,
+            "parser_handlers": [0x00D04A, 0x00EF62],
             "parser_final_mode": 0,
             "pool_header": expected_default_publication_pool_header,
             "bucket_root_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),

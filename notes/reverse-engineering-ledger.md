@@ -140,9 +140,10 @@ downloaded-font control, and macros;
 mapping, clipping, `0x13386` rule-list queueing, including a chained
 `ESC *c12a5b0P` byte-stream fixture and ROM parser dispatch trace for
 selector-7 rule creation, modeled `0xa904` ring fetch and `0x1edc6`
-rule-list bridge coverage, selector-7 solid rendering and band-crossing
-continuation through `0x1f446` / `0x1f596`, gray selectors `0..6`, HP
-pattern selectors `8..13`, sub-byte shifted, band-crossing, and two-band
+rule-list bridge coverage plus `0x1ed84`/`0x1ef6a` render-entry
+coverage, selector-7 solid rendering and band-crossing continuation
+through `0x1f446` / `0x1f596`, gray selectors `0..6`, HP pattern
+selectors `8..13`, sub-byte shifted, band-crossing, and two-band
 page-assembly HP-pattern cases rendering through `0x1f446` / `0x1f4e0`,
 plus a parser-to-retry boundary for `ESC *c12a5b0P` where the `0x10d22`
 no-room path publishes the old root through `0xff1e`, allocates a fresh

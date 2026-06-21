@@ -222,7 +222,8 @@ rule object as the modeled command state, and the harness traces the
 same stream through ROM parser modes
 `0 -> 1 -> 3 -> 16 -> 16 -> 16 -> 0` to handlers `0x10e68`, `0x10e22`,
 and `0x10898`; the stream now also drains from modeled `0xa904` ring
-fetch before pinning the `0x1edc6` rule-list bridge contract. `ESC *c#P`
+fetch before pinning the `0x1edc6` rule-list bridge contract and the
+`0x1ed84`/`0x1ef6a` render-entry path. `ESC *c#P`
 maps black rule, gray-scale, and HP-pattern selectors, clips the
 current-cursor rectangle against page extents, and queues a 14-byte
 rule-list object through `0x13386` / `0x133aa`; the black selector-7

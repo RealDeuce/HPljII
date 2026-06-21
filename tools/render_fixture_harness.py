@@ -21589,6 +21589,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             page_height=80,
         ),
     )
+    host_fetched_rectangle_render_entry = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        host_fetched_rectangle_trace["page_record"],
+    )
     rectangle_stream_rendered = rectangle_stream_black["rendered"]
     assert isinstance(rectangle_stream_rendered, dict)
     checks.append(assert_equal("rectangle command stream queues chained ESC *c rule object", {
@@ -21712,6 +21717,89 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "bucket_root": None,
         "fixed_list_count": 0,
         "context_slots_prefix": (0, 0),
+        "tail_rows": ["." * 22] + ["." * 10 + "#" * 12] * 5,
+    }))
+    checks.append(assert_equal("host-fetched rectangle rule feeds 0x1ed84 and 0x1ef6a", {
+        "fetched_stream": host_fetched_rectangle_stream["stream"],
+        "parser_handlers": [
+            event["handler"]
+            for event in host_fetched_rectangle_trace["dispatches"]
+        ],
+        "active_copy": host_fetched_rectangle_render_entry["active_copy"],
+        "setup": {
+            key: host_fetched_rectangle_render_entry["entry"]["setup"][key]
+            for key in (
+                "dividend",
+                "divisor_word_06",
+                "remainder_783a22",
+                "band_rows_scaled_783a20",
+                "destination_base_783a28",
+            )
+        },
+        "call_order": host_fetched_rectangle_render_entry["entry"]["call_order"],
+        "dispatch": {
+            key: host_fetched_rectangle_render_entry["entry"]["dispatch"][key]
+            for key in ("bucket_word_10", "bucket_slot_offset", "entries", "empty")
+        },
+        "rule_rendered": [
+            {
+                key: entry[key]
+                for key in (
+                    "selector",
+                    "helper",
+                    "key",
+                    "bucket_delta",
+                    "decoded",
+                    "width",
+                    "remaining_before",
+                    "available_rows",
+                    "rows_drawn",
+                    "partial_mask",
+                    "mutated_object",
+                )
+            }
+            for entry in host_fetched_rectangle_render_entry["entry"]["rules"]["rendered"]
+        ],
+        "tail_rows": host_fetched_rectangle_render_entry["entry"]["rows"][19:],
+    }, {
+        "fetched_stream": b"\x1b*c12a5b0P",
+        "parser_handlers": [0x011EB6, 0x011EC8, 0x011EDA, 0x010E68, 0x010E22, 0x010898],
+        "active_copy": {
+            "source_word_18": 0,
+            "source_word_1a": 0,
+            "render_word_0a": 0,
+            "render_word_0c": 0,
+            "render_word_0e": 0,
+            "render_word_10": 0,
+            "render_word_16": 0,
+        },
+        "setup": {
+            "dividend": 0,
+            "divisor_word_06": 5,
+            "remainder_783a22": 0,
+            "band_rows_scaled_783a20": 0x0050,
+            "destination_base_783a28": 0x00100000,
+        },
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "dispatch": {
+            "bucket_word_10": 0,
+            "bucket_slot_offset": 0,
+            "entries": [],
+            "empty": True,
+        },
+        "rule_rendered": [{
+            "selector": 7,
+            "helper": 0x1F596,
+            "key": 0x4A00,
+            "bucket_delta": 1,
+            "decoded": {"x": 10, "y": 20, "row_low": 4, "subbyte": 10, "byte_pair_offset": 0},
+            "width": 12,
+            "remaining_before": 5,
+            "available_rows": 60,
+            "rows_drawn": 5,
+            "partial_mask": 0xFFF0,
+            "mutated_object": bytes.fromhex("00 00 00 00 01 07 4a 00 00 0c 00 05 ff c9"),
+        }],
         "tail_rows": ["." * 22] + ["." * 10 + "#" * 12] * 5,
     }))
     checks.append(assert_equal("0x1f446/0x1f596 renders solid black rectangle rule pixels", {

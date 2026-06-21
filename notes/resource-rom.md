@@ -391,7 +391,11 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    `0x1ed84`/`0x1ef6a` before wide glyph rendering, and a combined
    fetched font-control / downloaded-character / printable stream now
    drives the installed downloaded glyph into segmented page-record
-   buckets before `0x1ed84`/`0x1ef6a` rendering.
+   buckets before `0x1ed84`/`0x1ef6a` rendering. That combined stream is
+   now pinned as a 2,215-byte single `0xa904` ring source with control,
+   payload, and printable boundaries, restored record
+   `80 57 08 91 00 00`, glyph `0x25`, selector `0x3003`, buckets `9`
+   and `1`, and compact render dispatch target `0x1effe`.
 5. Finish semantic naming of the remaining built-in metadata fields,
    especially the ambiguous header size words now extracted for every
    named `COURIER` and `LINE_PRINTER` record. The first-glyph placement

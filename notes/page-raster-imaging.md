@@ -947,7 +947,7 @@ producer shape, and renders the segment-1 bucket through `0x1ed84` /
 `ESC *c4660d37e5F`, the `ESC )s2193W` payload, and printable `%`, carrying
 current character `0x25` into the installed glyph before rendering the
 same segmented page-record bucket; the same check now pins restored
-payload record `80 57 08 91 00 01`, segment objects in buckets `9` and
+payload record `80 57 08 91 00 00`, segment objects in buckets `9` and
 `1`, the `0x1edc6` bucket-root copy, the `0x1ed84` active-record copy,
 and the `0x1ef6a` compact dispatch for segment `1`. The fetched
 font-control state now carries current id
@@ -959,6 +959,21 @@ offsets/lengths, `0x15d0a` current/continuation descriptor routes,
 bookkeeping, `0x16498` downloaded-pointer allocation, and the rendered
 segmented-wide row. The full built-in scan proves the verified ROM
 resources do not contain a normal wide or non-mode-1 bitmap-entry case.
+
+That combined downloaded-glyph stream is now a first-class boundary in
+the harness report rather than only a split family of fixtures. The
+single modeled `0xa904` ring stream is 2,215 bytes: control bytes
+`0..14`, downloaded-character payload bytes `14..2214`, and printable
+byte `2214..2215`. It routes the control phase through handlers
+`0x11eb6`, `0x11ec8`, `0x11eda`, `0x15a56`, `0x15a18`, and `0x16df6`;
+routes the payload phase through `0x11eb6`, `0x12008`, `0x11ff6`, and
+`0x11f96`; and routes printable `%` through `0xd04a`. The resulting
+page object has selector `0x3003`, coord `0x6601`, glyph `0x25`, rows
+`0x0081`, width `0x11`, segment-1 object prefix
+`00 00 00 00 30 03 00 01 25 01 66 01`, and segment-0 object prefix
+`00 00 00 00 30 03 00 01 25 00 66 01`. Both the `0x1edc6` bucket copy
+and render-record bucket root preserve the segment-1 object before
+`0x1ef6a` dispatches compact target `0x1effe`.
 
 ## Rejected Compositor Lead
 

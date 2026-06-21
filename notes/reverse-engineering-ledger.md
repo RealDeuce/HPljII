@@ -203,10 +203,13 @@ chained-transfer raster streams, plus modeled `0xff1e` publication of
 the combined text/rule/raster page record before `0x1ed84`/`0x1ef6a`
 rendering after one mixed stream runner handles text, `ESC *c`, and
 delayed raster transfer commands, including a trailing-FF publication
-variant; full parser-produced page-object integration, font-download
-parser-populated inline/downloaded source records, remaining full
-live-parser raster, parser-populated font-download records, and full
-parser-produced page-object coverage incomplete
+variant; a combined 2,215-byte host-fetched font-download printable
+stream now carries `ESC *c4660d37e5F`, `ESC )s2193W`, and printable `%`
+into a downloaded glyph `0x25` segmented page object before `0x1edc6`,
+`0x1ed84`, and `0x1ef6a`; full parser-produced page-object integration,
+font-download parser-populated inline/downloaded source records,
+remaining full live-parser raster, parser-populated font-download
+records, and full parser-produced page-object coverage incomplete
 
 Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md`
 collects the raster command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`,
@@ -561,7 +564,10 @@ ROM work needed:
   streams, and a combined fetched font-control / downloaded-character /
   printable stream now drives the installed downloaded glyph into
   segmented page-record buckets and through the `0x1edc6` /
-  `0x1ed84` / `0x1ef6a` render boundary.
+  `0x1ed84` / `0x1ef6a` render boundary. The combined stream is pinned
+  as one 2,215-byte `0xa904` ring source with restored record
+  `80 57 08 91 00 00`, glyph `0x25`, selector `0x3003`, buckets `9`
+  and `1`, and compact dispatch target `0x1effe`.
 - Model the `0x1c204` font-printout loop's emitted page objects from the
   ROM sample byte runs, then compare those rows against the direct
   payload hashes and a known printed/self-test sample to correlate
@@ -587,7 +593,10 @@ ROM work needed:
   fetched font-control / downloaded-character / printable stream now
   drives the installed downloaded glyph into segmented page-record
   buckets and through the `0x1edc6` / `0x1ed84` / `0x1ef6a` render
-  boundary; the verified built-in scan does not provide normal built-in
+  boundary. The combined stream is pinned as one 2,215-byte `0xa904`
+  ring source with restored record `80 57 08 91 00 00`, glyph `0x25`,
+  selector `0x3003`, buckets `9` and `1`, and compact dispatch target
+  `0x1effe`; the verified built-in scan does not provide normal built-in
   entries for these renderer modes.
 - Integrate executable row-copy behavior with real page objects from the
   parser/imaging path.

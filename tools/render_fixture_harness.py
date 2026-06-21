@@ -39053,6 +39053,69 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             combined_segment1["segment"],
         )
     )
+    lines.append(
+        "- combined stream parser boundaries: total `%d` bytes, control "
+        "`%d..%d`, payload `%d..%d`, printable `%d..%d`; control handlers "
+        "`%s`, payload handlers `%s`, printable handlers `%s`." % (
+            len(combined_font_download_printable_fetch["stream"]),
+            0,
+            combined_control_end,
+            combined_control_end,
+            combined_payload_end,
+            combined_payload_end,
+            len(combined_font_download_printable_fetch["stream"]),
+            ", ".join(
+                "0x%05x" % event["handler"]
+                for event in combined_font_control_trace["dispatches"]
+            ),
+            ", ".join(
+                "0x%05x" % event["handler"]
+                for event in combined_payload_trace["dispatches"]
+            ),
+            ", ".join(
+                "0x%05x" % event["handler"]
+                for event in combined_printable_trace["events"]
+            ),
+        )
+    )
+    lines.append(
+        "- combined stream page object: selector `0x%04x`, coord `0x%04x`, "
+        "glyph `0x%02x`, rows `0x%04x`, width `0x%02x`; segment objects "
+        "`%d:%s` and `%d:%s`; bridge bucket and render-record bucket both "
+        "match the segment-1 object." % (
+            combined_page_result["selector"],
+            combined_page_result["coord"],
+            combined_page_result["glyph"],
+            combined_page_result["rows"],
+            combined_page_result["width"],
+            combined_segment1["bucket_index"],
+            " ".join(
+                f"{byte:02x}"
+                for byte in combined_segment1_object[:12]
+            ),
+            combined_segment0["bucket_index"],
+            " ".join(
+                f"{byte:02x}"
+                for byte in combined_segment0["object"][:12]
+            ),
+        )
+    )
+    lines.append(
+        "- combined stream render entry: `0x1ed84` active-copy fields stay "
+        "zero for this minimal page record; `0x1ef6a` setup uses dividend "
+        "`%d`, divisor `%d`, remainder `%d`, band rows `0x%04x`, destination "
+        "`0x%08x`, then dispatches byte `+4 = 0x%02x` to compact target "
+        "`0x%05x` with context slot `%d`." % (
+            combined_entry["setup"]["dividend"],
+            combined_entry["setup"]["divisor_word_06"],
+            combined_entry["setup"]["remainder_783a22"],
+            combined_entry["setup"]["band_rows_scaled_783a20"],
+            combined_entry["setup"]["destination_base_783a28"],
+            combined_entry["dispatch"]["entries"][0]["object_byte_4"],
+            combined_entry["dispatch"]["entries"][0]["target"],
+            combined_entry["dispatch"]["entries"][0]["context_slot"],
+        )
+    )
     lines.append("")
     unflagged_source_report = unflagged_fixture["source"]
     assert isinstance(unflagged_source_report, dict)

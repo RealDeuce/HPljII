@@ -76,8 +76,9 @@ HT/BS, left/right-margin, lowercase-chained margin,
 horizontal-column, horizontal-decipoint, vertical-row, vertical-decipoint, and
 lowercase-chained cursor-position, top-margin, and cursor-stack
 parser-to-page-record boundaries, reset sequencing, ROM parser dispatch of
-publication streams, host-fetched reset publication header fields, and synthetic
-mixed reset fixtures; full firmware parser/reset fixtures incomplete
+publication streams, host-fetched publication header fields for reset, FF,
+page-size, and orientation, and synthetic mixed reset fixtures; full firmware
+parser/reset fixtures incomplete
 
 Evidence: parser mode 0 maps CR/LF/FF/HT/BS to handlers `0xf02c`, `0xf08c`,
 `0xf0f0`, `0xf1cc`, `0xf2a8`; `ESC &k#G` stores line-termination mode bits in
@@ -116,8 +117,9 @@ clearing, mixed publication streams `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and
 `0xcc52`, line-termination `0xedf8`, FF `0xf0f0`, page-size `0xfc74`, and
 orientation `0x10220`, and mixed printable/reset fixture `!\x1bE` proves reset
 publication after queued text in the same byte-stream model and now has
-page-record allocator/bridge/publication coverage, with the host-fetched reset
-case pinning the `0xff1e` published pool header fields before render
+page-record allocator/bridge/publication coverage, with the host-fetched reset,
+FF, page-size, and orientation cases pinning the `0xff1e` published pool header
+fields before render
 
 ### PCL command map
 

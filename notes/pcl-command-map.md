@@ -474,8 +474,9 @@ at `0x783170`. `generated/analysis/ic30_ic13_page_root_finalization.md` splits
 out the `0xff1e` contract: active roots publish as state `2` through
 `0x780ea6`/`0x782996`, including the finalized page/control pool-record header
 fields and queue/context roots, while missing or inactive roots only clear
-`0x78297a`. The host-fetched `!\x1bE` publication fixture now pins the default
-published pool header after that boundary before the bridged rows are rendered.
+`0x78297a`. The host-fetched reset, FF, page-size, and orientation publication
+fixtures now pin the default published pool header after that boundary before
+the bridged rows are rendered.
 
 For the raster shorthand above, `ESC *b2w`/`2W` means the combined stream `ESC
 *b2w2W`: lowercase `w` records the delayed transfer and leaves parser mode in
@@ -487,8 +488,9 @@ single following payload.
 - Feed the executable renderer harness with full parser-produced page-object
   payloads, building on the current one-byte, two-byte, and mixed
   printable/control/reset stream fixtures, plain and mixed control/reset
-  page-record allocator/bridge stream fixtures, host-fetched reset publication
-  header coverage, host-fetched direct text/control
+  page-record allocator/bridge stream fixtures, host-fetched publication header
+  coverage for reset, FF, page-size, and orientation, host-fetched direct
+  text/control
   parser-to-page-record coverage for `!!`, `ESC &k1G!\r!`, `ESC &k2G!\n!`,
   `ESC &k0G HT BS !`, `ESC &a1L!`, `ESC &a1M!`, `ESC &a6l9M!`, `ESC &a2C!`,
   `ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`, `ESC &a2c+1R!`, `ESC &l3E!`,

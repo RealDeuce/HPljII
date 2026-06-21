@@ -664,7 +664,7 @@ fetch, tokenizer/delayed-payload, page-geometry, macro/data-chain,
 direct-control, reset, text, rule, raster, bridge, row-copy, built-in glyph,
 symbol-set, and downloaded-font fixture families into one ROM-backed self-test.
 It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and
-currently verifies 341 checks. The raster coverage now includes ROM-table
+currently verifies 342 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W`
 stream, the 150/100/75-dpi mode streams, the consecutive-row `ESC *b2W` stream,
 the active-resolution-ignore `ESC *t75R` stream, the end-raster `ESC *rB` /
@@ -788,11 +788,11 @@ publication, current-root clearing, rendered rows after `0x1edc6`, and the same
 rows after the published records pass through `0x1ed84` and `0x1ef6a`; the
 host-fetch publication fixture now starts those same four streams from the
 modeled `0xa904` ring source, drains the ring bytes, replays the same parser
-handlers, and lands on the same published rows. The host-fetched reset case also
-pins the `!\x1bE` pool header after `0xff1e`: state byte `+4 = 2`, default
-status/environment fields, published pointer `0x780ea6`, bucket-root prefix, and
-context-slot prefix all match the modeled publication record before the bridged
-rows are compared. Macro
+handlers, and lands on the same published rows. The host-fetched reset, FF,
+page-size, and orientation cases also pin the pool header after `0xff1e`: state
+byte `+4 = 2`, default status/environment fields, published pointer `0x780ea6`,
+bucket-root prefix, and context-slot prefix all match the modeled publication
+records before the bridged rows are compared. Macro
 coverage now has the same ROM-table proof for `ESC &f-123y0x1X`, walking modes
 `0 -> 1 -> 5 -> 17 -> 17 -> 17 -> 0` to handlers `0xe112`, `0xdd08`, and
 `0xdd08` before applying the modeled macro state effects; a second
@@ -899,7 +899,7 @@ Other checked leads:
 - Replace the remaining synthetic `ESC E` reset-state fixtures with
   parser-produced page-object fixtures so partial-page finalization and
   current-page-root clearing are proven from real queued objects, building on
-  the host-fetched reset publication header now pinned at the `0xff1e` boundary.
+  the host-fetched publication headers now pinned at the `0xff1e` boundary.
 - Broaden the narrow direct-control byte-stream fixtures into the full firmware
   parser path now that cursor variables `0x782c8a` and `0x782c8e` are named as
   horizontal and vertical respectively.

@@ -29149,6 +29149,38 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             handlers.append(int(trace_event["handler"]))
         return handlers
 
+    publication_pool_header_keys = (
+        "state_byte_4",
+        "environment_byte_7",
+        "status_byte_8",
+        "status_byte_0a",
+        "environment_word_0c",
+        "word_16",
+        "word_18",
+        "word_1a",
+        "published_pointer_780ea6",
+    )
+
+    def publication_pool_header_summary(page_record: dict[str, object]) -> dict[str, int]:
+        pool_fields = page_record["pool_record_fields"]
+        assert isinstance(pool_fields, dict)
+        return {
+            key: pool_fields[key]
+            for key in publication_pool_header_keys
+        }
+
+    expected_default_publication_pool_header = {
+        "state_byte_4": 2,
+        "environment_byte_7": 0,
+        "status_byte_8": 0,
+        "status_byte_0a": 0,
+        "environment_word_0c": 0,
+        "word_16": 0,
+        "word_18": 0,
+        "word_1a": 0,
+        "published_pointer_780ea6": ABSTRACT_PAGE_ROOT_PTR,
+    }
+
     checks.append(assert_equal("publication streams tie parser handlers to page-record publication boundary", {
         "reset": {
             "stream": mixed_reset_page_record_stream["stream"],
@@ -29348,20 +29380,54 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "fetch_sources": ["ring"] * 3,
         "parser_handlers": [0x00D04A, 0x00CC52],
         "parser_final_mode": 0,
-        "pool_header": {
-            "state_byte_4": 2,
-            "environment_byte_7": 0,
-            "status_byte_8": 0,
-            "status_byte_0a": 0,
-            "environment_word_0c": 0,
-            "word_16": 0,
-            "word_18": 0,
-            "word_1a": 0,
-            "published_pointer_780ea6": ABSTRACT_PAGE_ROOT_PTR,
-        },
+        "pool_header": expected_default_publication_pool_header,
         "bucket_root_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
         "context_slots_2c_prefix": (0x440946B4, 0),
         "published_rows": positioned_mode0["rows"][:4],
+    }))
+    checks.append(assert_equal("host-fetched FF and geometry publications preserve 0xff1e pool header defaults", {
+        name: {
+            "fetched_stream": host_fetched_publication_streams[name]["stream"],
+            "fetch_sources": host_fetched_publication_streams[name]["sources"],
+            "parser_handlers": parser_handler_summary(host_fetched_publication_parser_trace[name]),
+            "parser_final_mode": host_fetched_publication_parser_trace[name]["final_mode"],
+            "pool_header": publication_pool_header_summary(publication_published_records[name]),
+            "bucket_root_prefix": publication_published_records[name]["pool_record_fields"]["bucket_root_1c"][:11],
+            "context_slots_2c_prefix": publication_published_records[name]["pool_record_fields"]["context_slots_2c"][:2],
+            "published_rows": publication_published_rendered[name]["rows"][:4],
+        }
+        for name in ("ff", "page_size", "orientation")
+    }, {
+        "ff": {
+            "fetched_stream": b"\x1b&k2G!\f",
+            "fetch_sources": ["ring"] * 7,
+            "parser_handlers": [0x00EDF8, 0x00D04A, 0x00F0F0],
+            "parser_final_mode": 0,
+            "pool_header": expected_default_publication_pool_header,
+            "bucket_root_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "context_slots_2c_prefix": (0x440946B4, 0),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
+        "page_size": {
+            "fetched_stream": b"!\x1b&l1A",
+            "fetch_sources": ["ring"] * 6,
+            "parser_handlers": [0x00D04A, 0x00FC74],
+            "parser_final_mode": 0,
+            "pool_header": expected_default_publication_pool_header,
+            "bucket_root_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "context_slots_2c_prefix": (0x440946B4, 0),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
+        "orientation": {
+            "fetched_stream": b"!\x1b&l1O",
+            "fetch_sources": ["ring"] * 6,
+            "parser_handlers": [0x00D04A, 0x010220],
+            "parser_final_mode": 0,
+            "pool_header": expected_default_publication_pool_header,
+            "bucket_root_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "context_slots_2c_prefix": (0x440946B4, 0),
+            "published_rows": positioned_mode0["rows"][:4],
+        },
     }))
     published_render_entries = {
         "reset": render_published_page_record_via_1ed84_1ef6a(data, resources, mixed_reset_published_page_record),

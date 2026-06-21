@@ -217,6 +217,14 @@ and
 `81e38bb45d5520c7a7f572a277371a55648b0b121ebd3c48f5e3db675dfed38d`.
 That sample is only direct glyph composition; firmware cursor, baseline,
 and self-test placement remain separate targets.
+`generated/analysis/ic30_ic13_font_sample_page.md` now anchors the ROM
+font-printout path that should replace the direct smoke sample: it finds
+the font-list headers, source labels, style labels, and sample byte runs,
+then shows that helper `0x1d12e` prints those bytes through normal
+printable handler `0xd04a`. Its setup helper `0x1c5e8` installs the
+selected resource through the same `0x782ee6` current-font context,
+`0x14c64` map rebuild, `0xc428` page-root font-slot install, and forced
+VMI/HMI defaults `0x0032` / `0x001e`.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record
@@ -374,9 +382,11 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    named `COURIER` and `LINE_PRINTER` record. The first-glyph placement
    offsets are now pinned through the `0xd824` path, but the header-level
    baseline semantics still need broader correlation.
-6. Replace the direct `LASERJETII` glyph smoke sample with known
-   self-test/font samples and correlate the remaining baseline/header
-   fields against observed placement.
+6. Model the surrounding `0x1c334` font-printout loop far enough to
+   produce parser/page objects from the ROM sample byte runs, then
+   compare those rows against a known printed/self-test sample and
+   correlate the remaining baseline/header fields against observed
+   placement.
 
 These are high-value targets for pixel-perfect output because the
 manuals describe PCL behavior but do not provide the built-in font

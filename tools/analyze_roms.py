@@ -1149,6 +1149,117 @@ def builtin_font_sample_report(data: bytes) -> str:
     return "\n".join(lines)
 
 
+def c_string(data: bytes, offset: int) -> str:
+    end = data.find(b"\x00", offset)
+    if end < 0:
+        end = len(data)
+    return data[offset:end].decode("ascii", errors="replace")
+
+
+def font_sample_page_report(data: bytes) -> str:
+    source_table = 0x1C170
+    source_names = [
+        (index, u32(data, source_table + index * 4))
+        for index in range(4)
+    ]
+    header_strings = [
+        0x1C7EA,
+        0x1C82D,
+        0x1C836,
+        0x1C878,
+        0x1C8AD,
+        0x1C8DF,
+    ]
+    style_strings = [
+        0x1D17C,
+        0x1D184,
+        0x1D18C,
+        0x1D193,
+    ]
+    sample_bytes_1 = data[0x1C1CF:0x1C1E8]
+    sample_bytes_2 = data[0x1C1E9:0x1C202]
+
+    lines = ["# IC30/IC13 Font Sample Page Path", ""]
+    lines.append(
+        "This report covers the first ROM facts behind the control-panel font "
+        "printout/self-test sample path. It is not a full placement proof yet; "
+        "it names the firmware strings, print helpers, and font-context setup "
+        "that feed the same `0xd04a` printable path used by host text."
+    )
+    lines.append("")
+
+    lines.append("## Literal Strings and Samples")
+    lines.append("")
+    lines.append("| Address | Text |")
+    lines.append("| ---: | --- |")
+    for offset in header_strings:
+        lines.append(f"| `0x{offset:06x}` | `{c_string(data, offset)}` |")
+    lines.append("")
+    lines.append("Source/category pointer table at `0x1c170`:")
+    lines.append("")
+    lines.append("| Index | Pointer | Text |")
+    lines.append("| ---: | ---: | --- |")
+    for index, pointer in source_names:
+        lines.append(f"| {index} | `0x{pointer:06x}` | `{c_string(data, pointer)}` |")
+    lines.append("")
+    lines.append("Style labels used by the font-row formatter:")
+    lines.append("")
+    lines.append("| Address | Text |")
+    lines.append("| ---: | --- |")
+    for offset in style_strings:
+        lines.append(f"| `0x{offset:06x}` | `{c_string(data, offset)}` |")
+    lines.append("")
+    lines.append(
+        "- Sample byte run 1 at `0x1c1cf`: `%s`."
+        % " ".join(f"0x{byte:02x}" for byte in sample_bytes_1)
+    )
+    lines.append(
+        "- Sample byte run 2 at `0x1c1e9`: `%s`."
+        % " ".join(f"0x{byte:02x}" for byte in sample_bytes_2)
+    )
+    lines.append("")
+
+    lines.append("## Print and Placement Helpers")
+    lines.append("")
+    lines.append("| Routine | Observed behavior |")
+    lines.append("| ---: | --- |")
+    lines.append("| `0x1d12e` | Reads a null-terminated ROM string and calls printable handler `0xd04a` for each byte, so sample-page labels enter the same text path as host bytes. |")
+    lines.append("| `0x1d152` | Advances horizontal cursor `0x782c8a` by the caller value scaled through `0x332ee(..., 0x1e)`. |")
+    lines.append("| `0x1cfb4` | Advances vertical cursor `0x782c8e` by converting current position through `0x104fe`, adding `0x0258`, then converting back through `0x104d8`. |")
+    lines.append("| `0x1cfe4` | Computes a line advance from current font/sample state and clamps it to at least `0x0258` before updating `0x782c8e`. |")
+    lines.append("| `0x1ca2c` | Emits source labels and sample rows, calls `0x1d964`/`0x1d12e`, flushes spans through `0x126e2`/`0x12714`, and stores row-height state in `0x783f06`. |")
+    lines.append("| `0x1cabe` | Formats a font row prefix: source code bytes `S`, `L`, `R`, or `I`; two decimal digits; style/spacing/pitch/height details; then sample text. |")
+    lines.append("")
+
+    lines.append("## Font Context Setup")
+    lines.append("")
+    lines.append(
+        "`0x1c5e8` installs the selected candidate into the primary current-font "
+        "state before sample text is printed:"
+    )
+    lines.append("")
+    lines.append("- writes selected context longword to `0x782ee6`;")
+    lines.append("- stores context flag bits into `0x782eea` and `0x782eeb`;")
+    lines.append("- maps the selected resource back to candidate slot `0x7828a8` via `0x1b4c0`;")
+    lines.append("- clears primary/secondary selector `0x7828de` to primary;")
+    lines.append("- reads active symbol word through `0x15890` or `0x158be` into `0x783144`;")
+    lines.append("- runs selected-font activation/map rebuild through `0x14c64`;")
+    lines.append("- marks current-font dirty byte `0x782f2d = 1`;")
+    lines.append("- installs the current-font context into the page root through `0xc428`;")
+    lines.append("- forces VMI words `0x783160/0x783162 = 0x0032/0x0000`;")
+    lines.append("- forces HMI words `0x78315c/0x78315e = 0x001e/0x0000`.")
+    lines.append("")
+    lines.append(
+        "This ties the font printout path to the same resource-selection, "
+        "symbol-map, page-root font-slot, and printable text machinery already "
+        "used by the host-byte fixtures. The remaining placement work is to "
+        "model the surrounding `0x1c334` loop and compare the produced page "
+        "objects against a known printed/self-test sample."
+    )
+    lines.append("")
+    return "\n".join(lines)
+
+
 def font_context_bridge_report(data: bytes) -> str:
     def long_refs(value: int) -> list[int]:
         needle = value.to_bytes(4, "big")
@@ -5003,6 +5114,7 @@ def main() -> None:
     write_if_changed(ANALYSIS / "ic32_ic15_builtin_glyph_payloads.md", glyph_payload_report)
     write_if_changed(ANALYSIS / "ic32_ic15_builtin_glyph_payloads.json", glyph_payload_json)
     write_if_changed(ANALYSIS / "ic32_ic15_builtin_font_samples.md", builtin_font_sample_report(resources))
+    write_if_changed(ANALYSIS / "ic30_ic13_font_sample_page.md", font_sample_page_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_startup_tables.txt", decode_startup_tables(firmware))
     write_if_changed(ANALYSIS / "signature_scan.md", scan_signature_report(firmware, resources))
     write_if_changed(ANALYSIS / "ic30_ic13_long_reference_scan.md", categorized_long_references(firmware))

@@ -252,6 +252,11 @@ strings through `0xd04a`, `0x1d71e` sanitizes fixed-length name bytes,
 `0x1d76c` synthesizes an orientation command record before calling
 `0x10220`, and `0x1d964` / `0x1dcf2` preflight current/alternate row
 placement against `0x782db6`.
+It also decodes the `0x1d198` local lookup tables: symbol/variant pairs
+at `0x1c0a6` select `UPC/EAN`, `CODE 3 OF 9`, `SPECIAL`, `OCR A`,
+`OCR B`, and `LINE DRAW`, while family bytes at `0x1c11a` select
+`PRESTIGE`, `GOTHIC`, `TMS RMN`, `HELV`, `COURIER`, and
+`LINE PRINTER`.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record

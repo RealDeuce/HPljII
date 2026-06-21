@@ -1190,6 +1190,23 @@ def font_sample_page_report_with_resources(data: bytes, resources: bytes) -> str
         0x1D18C,
         0x1D193,
     ]
+    symbol_variant_table = 0x1C0A6
+    symbol_variant_rows = [
+        (
+            u16(data, symbol_variant_table + index * 8),
+            data[symbol_variant_table + index * 8 + 2],
+            u32(data, symbol_variant_table + index * 8 + 4),
+        )
+        for index in range(7)
+    ]
+    family_name_table = 0x1C11A
+    family_name_rows = [
+        (
+            u16(data, family_name_table + index * 6),
+            u32(data, family_name_table + index * 6 + 2),
+        )
+        for index in range(6)
+    ]
     sample_bytes_1 = data[0x1C1CF:0x1C1E8]
     sample_bytes_2 = data[0x1C1E9:0x1C202]
     direct_samples: list[tuple[str, str, dict[str, object]]] = []
@@ -1367,6 +1384,40 @@ def font_sample_page_report_with_resources(data: bytes, resources: bytes) -> str
         "preflight page-fit tests before emitting the source heading or "
         "alternate sample row."
     )
+    lines.append("")
+
+    lines.append("### Row Formatter Lookup Tables")
+    lines.append("")
+    lines.append(
+        "`0x1d198` uses two local lookup tables before falling back to "
+        "style/numeric formatting. The first table matches the derived "
+        "symbol byte and variant word, and the second matches the family byte "
+        "from the selected resource record."
+    )
+    lines.append("")
+    lines.append("Symbol/variant substitutions at `0x1c0a6`:")
+    lines.append("")
+    lines.append("| Variant word | Symbol byte | Label pointer | Label |")
+    lines.append("| ---: | ---: | ---: | --- |")
+    for variant_word, symbol_byte, pointer in symbol_variant_rows:
+        if 0x20 <= symbol_byte < 0x7F:
+            symbol_text = f"`0x{symbol_byte:02x}` (`{chr(symbol_byte)}`)"
+        else:
+            symbol_text = f"`0x{symbol_byte:02x}`"
+        lines.append(
+            f"| `0x{variant_word:04x}` | {symbol_text} | "
+            f"`0x{pointer:06x}` | `{c_string(data, pointer)}` |"
+        )
+    lines.append("")
+    lines.append("Family-name substitutions at `0x1c11a`:")
+    lines.append("")
+    lines.append("| Family byte | Label pointer | Label |")
+    lines.append("| ---: | ---: | --- |")
+    for family_byte, pointer in family_name_rows:
+        lines.append(
+            f"| `0x{family_byte:04x}` | `0x{pointer:06x}` | "
+            f"`{c_string(data, pointer)}` |"
+        )
     lines.append("")
 
     lines.append("## Font Context Setup")

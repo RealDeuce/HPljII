@@ -388,7 +388,11 @@ and the `0x31` horizontal-unit gap between the two ROM sample runs; the
 row helper listing now names `0x1d198` font-name/style formatting,
 `0x1d6ea` capped string emission, `0x1d71e` fixed-name sanitization,
 `0x1d76c` orientation-command synthesis, and `0x1d964` / `0x1dcf2`
-page-fit preflight for current and alternate sample rows;
+page-fit preflight for current and alternate sample rows; `0x1d198` local
+tables now decode symbol/variant names including `UPC/EAN`,
+`CODE 3 OF 9`, `OCR A/B`, and `LINE DRAW`, plus family names
+`PRESTIGE`, `GOTHIC`, `TMS RMN`, `HELV`, `COURIER`, and
+`LINE PRINTER`;
 the startup/resource scanner `0x41a` is modeled for the verified
 built-in `HEAD` chain, walking 24 typed records from `0x08004c` through
 `0x0ae122`, terminating at `0x0b2f80`, adjusting the next probe step

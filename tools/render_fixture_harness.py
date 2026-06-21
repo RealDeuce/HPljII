@@ -37136,6 +37136,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "bridged": vertical_layout_page_record_bridged,
             "rendered": vertical_layout_page_record_rendered,
         },
+        "perforation_skip": {
+            "stream": perforation_skip_page_record_stream,
+            "trace": perforation_skip_parser_trace,
+            "object": perforation_skip_page_record_object,
+            "bridged": perforation_skip_page_record_bridged,
+            "rendered": perforation_skip_page_record_rendered,
+        },
         "cursor_stack": {
             "stream": cursor_stack_page_record_stream,
             "trace": cursor_stack_parser_trace,
@@ -37349,6 +37356,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 90 01"),
             "rendered_row_count": len(expected_vertical_layout_rows),
         },
+        "perforation_skip": {
+            "fetched_stream": b"\x1b&l1L!",
+            "fetch_source_set": ["ring"],
+            "fetch_source_count": 6,
+            "remaining_ring": [],
+            "parser_handlers": [0x00EE64, 0x00D04A],
+            "parser_final_mode": 0,
+            "root_allocations": 1,
+            "bucket_index": 0,
+            "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "rendered_row_count": len(positioned_mode0["rows"]),
+        },
         "cursor_stack": {
             "fetched_stream": b"\x1b&f0S\x1b&a2C\x1b&f1S!",
             "fetch_source_set": ["ring"],
@@ -37508,6 +37527,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "vertical_layout": {
             "fetched_stream": b"\x1b&l3E!",
             "parser_handlers": [0x00ECE2, 0x00D04A],
+            "bridge_bucket_matches_object": True,
+            "render_field_bucket_matches_object": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0x440946B4, 0),
+        },
+        "perforation_skip": {
+            "fetched_stream": b"\x1b&l1L!",
+            "parser_handlers": [0x00EE64, 0x00D04A],
             "bridge_bucket_matches_object": True,
             "render_field_bucket_matches_object": True,
             "rule_list_count": 0,
@@ -42016,7 +42044,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- `ESC &s#C` toggles the end-of-line wrap flag: selector `0` stores enabled, selector `1` clears it, and other selectors leave the current flag unchanged.")
     lines.append("- `ESC *p#X/#Y` shifts the parsed integer left 16 bits to form whole-dot packed cursor coordinates, then commits through the same `0xf4ca` and `0xf6e2` helpers as the `ESC &a` cursor-position commands.")
     lines.append("- `ESC &l#D` accepts only the ROM LPI set `1,2,3,4,6,8,12,16,24,48`, treats zero as 12 LPI, and writes line advance `0x783160`; `ESC &l#C` converts VMI in 1/48-inch units using 75 packed subunits per unit and allows zero without setting the modified-layout flag.")
-    lines.append("- `ESC &l#E` sets top offset `0x782dce` from VMI lines minus vertical offset source `0x782dbe`, then recomputes default text-length bottom `0x782dd2`; `ESC &l#F` stores explicit text-length bottom as top offset plus VMI-scaled lines, or restores the default when the parameter is zero. A byte-stream fixture now drives chained `ESC &l8c6d3e2F` through handlers `0xcb00`, `0xc992`, `0xece2`, and `0xea9e`.")
+    lines.append("- `ESC &l#E` sets top offset `0x782dce` from VMI lines minus vertical offset source `0x782dbe`, then recomputes default text-length bottom `0x782dd2`; `ESC &l#F` stores explicit text-length bottom as top offset plus VMI-scaled lines, or restores the default when the parameter is zero. A byte-stream fixture now drives chained `ESC &l8c6d3e2F` through handlers `0xcb00`, `0xc992`, `0xece2`, and `0xea9e`; `ESC &l#L` reaches `0xee64` and toggles perforation-skip byte `0x783191` for selectors `0` and `1`.")
     lines.append("- `ESC &a#L` stores an absolute left margin in HMI columns when it does not pass `right_margin - HMI`; it moves the cursor and flushes pending spans only when the new margin is right of the current cursor or pending text is marked.")
     lines.append("- `ESC &a#M` stores `abs(parameter) + 1` HMI columns as the right margin, rejects values before `left_margin + HMI`, clamps beyond page width, and moves the cursor/right-limit latch when the new right margin is left of the current cursor. A byte-stream fixture now drives chained `ESC &a6l9M` through handlers `0xeb58` and `0xec0c`.")
     lines.append("- The direct-control fixture parser intentionally recognizes only `ESC &k#G`, `ESC E`, and direct control bytes; mixed printable/control/reset coverage is added separately for narrow normal-mode streams, while combined escape sequences and real page-object allocation still need fuller parser-driven fixtures.")
@@ -42037,6 +42065,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- `ESC &l8C`: VMI `0x{int(vmi_eight['vmi']):08x}`, `ESC &l1.5C` VMI `0x{int(vmi_fraction['vmi']):08x}`")
     lines.append(f"- `ESC &l3E`: top offset `0x{int(top_margin_three['top_offset']):08x}`, text bottom `0x{int(top_margin_three['text_length_bottom']):08x}`")
     lines.append(f"- `ESC &l2F`: text bottom `0x{int(text_length_two['text_length_bottom']):08x}`, `ESC &l0F` default bottom `0x{int(text_length_default['text_length_bottom']):08x}`")
+    lines.append(f"- `ESC &l1L`: perforation skip `{perforation_skip_cases[1]['skip_after']}`")
     lines.append(f"- vertical-layout stream events: `{vertical_layout_stream['stream_events']}`")
     lines.append(f"- `ESC &a6L`: left margin `0x{int(left_margin_move['left_margin']):08x}`, cursor `0x{int(left_margin_move['cursor_x']):08x}`")
     lines.append(f"- `ESC &a9M`: right margin `0x{int(right_margin_move['right_margin']):08x}`, cursor `0x{int(right_margin_move['cursor_x']):08x}`")
@@ -43092,6 +43121,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- dot-position parser-to-page-record boundary: stream `1b 2a 70 33 30 78 33 30 59 21` routes lowercase-final `ESC *p30x` through handler `0xf48c`, keeps parser mode `18` for `30Y` through handler `0xf692`, then queues printable `!` through `0xd04a` at compact coord `0x9402` and renders the bridged glyph after nine blank rows.")
     lines.append("- chained cursor-position parser-to-page-record boundary: stream `1b 26 61 32 63 2b 31 52 21` routes lowercase-final `ESC &a2c` through handler `0xf39e`, keeps parser mode `12` for relative `+1R` through handler `0xf560`, then queues printable `!` through `0xd04a` at compact coord `0x1a02` in bucket `3` and renders the bridged glyph after one blank row.")
     lines.append("- vertical-layout parser-to-page-record boundary: stream `1b 26 6c 33 45 21` routes `ESC &l3E` through handler `0xece2`, refreshes the pending vertical cursor from top margin row 3, then queues printable `!` through `0xd04a` at compact coord `0x9001` in bucket `6` and renders the bridged glyph with nine blank rows before the glyph body.")
+    lines.append("- perforation-skip parser-to-page-record boundary: stream `1b 26 6c 31 4c 21` routes `ESC &l1L` through handler `0xee64`, sets byte `0x783191`, then queues printable `!` through `0xd04a` at compact coord `0x0001` and renders the bridged glyph at the original origin.")
     lines.append("- cursor-stack parser-to-page-record boundary: stream `1b 26 66 30 53 1b 26 61 32 43 1b 26 66 31 53 21` routes `ESC &f0S`, `ESC &a2C`, and `ESC &f1S` through handlers `0xf75e`, `0xf39e`, and `0xf75e`; the pop restores the original cursor before printable `!` queues through `0xd04a` at compact coord `0x0001` and renders the bridged glyph at the original origin.")
     lines.append("")
     lines.append(

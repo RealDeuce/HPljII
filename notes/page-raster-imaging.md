@@ -870,14 +870,17 @@ at compact coord `0x9001` / bucket `0` with nine blank rows first,
 and renders after queueing through `0xd04a` at compact coord `0x1a02` /
 bucket `3`, `ESC &l3E!` routes top-margin handler `0xece2` into the
 page-record path and renders the vertically shifted glyph at compact
-coord `0x9001` in bucket `6`, and `ESC &f0S ESC &a2C ESC &f1S!` routes
-cursor-stack handlers `0xf75e` around cursor-position handler `0xf39e`,
-restores the original cursor, then queues printable `!` through `0xd04a`
-at compact coord `0x0001`. A grouped host-fetch direct text/control
-fixture now starts the plain, CR/LF, HT/BS, margin, cursor-position,
-dot-position, vertical-layout, and cursor-stack page-record streams from
-the modeled `0xa904` ring source, drains every byte, replays the same
-parser handlers, and lands on the same `0x1387c` page-record objects and
+coord `0x9001` in bucket `6`, `ESC &l1L!` routes perforation-skip
+handler `0xee64`, sets byte `0x783191`, and then queues printable `!`
+through `0xd04a` at the unchanged compact coord `0x0001`, and
+`ESC &f0S ESC &a2C ESC &f1S!` routes cursor-stack handlers `0xf75e`
+around cursor-position handler `0xf39e`, restores the original cursor,
+then queues printable `!` through `0xd04a` at compact coord `0x0001`. A
+grouped host-fetch direct text/control fixture now starts the plain,
+CR/LF, HT/BS, margin, cursor-position, dot-position, vertical-layout,
+perforation-skip, and cursor-stack page-record streams from the modeled
+`0xa904` ring source, drains every byte, replays the same parser
+handlers, and lands on the same `0x1387c` page-record objects and
 rendered row counts; the same grouped check now pins that `0x1edc6`
 preserves the bucket root, clears rule/fixed lists, and copies the
 selected context slot into the render record. `ESC &p2X!!` now extends

@@ -59,6 +59,8 @@ pixel-perfect rendering:
   `0x782dce`.
 - `ESC &l#F`, handler `0x00ea9e`: text length; writes bottom/text-length
   limit `0x782dd2`.
+- `ESC &l#L`, handler `0x00ee64`: perforation skip; selector `0`
+  clears `0x783191`, selector `1` sets it.
 - `ESC &l#H`, handler `0x00ef62`: paper source and page eject.
 - `ESC &a#L`, handler `0x00eb58`: left margin; absolute HMI columns into
   `0x782dd6`.
@@ -170,6 +172,16 @@ scales text-length lines through VMI, rejects lengths beyond the remaining
 page below current top margin, writes
 `0x782dd2 = 0x782dce + text_length`, and uses `0xea16` to restore the
 default bottom when the parameter is zero.
+
+`ESC &l#L` at `0x00ee64` handles perforation skip. It rewinds to the
+parser record, takes the absolute value of the parsed word, clears byte
+`0x783191` for selector `0`, sets byte `0x783191` for selector `1`, and
+leaves the byte unchanged for other selectors. The same byte is tested in
+the vertical overflow/recovery path at `0xf36c`, making it part of page
+advance behavior rather than printable glyph placement. The
+`ESC &l1L!` fixture proves the normal parser reaches `0xee64`, records
+`0x783191` changing from `0` to `1`, then queues the following printable
+`!` through `0xd04a` at the unchanged origin.
 
 `ESC &l#X` at `0x00eef0` handles number of copies. It rewinds to the
 parser record, takes the absolute value of the parsed word, ignores zero,
@@ -595,8 +607,9 @@ byte-count consumers, pins synthetic direct control-code packed-state
 behavior for `ESC &k#G` plus CR/LF/FF/HT/BS, adds narrow direct-control
 byte-stream fixtures for `ESC &k1G`+CR, `ESC &k2G`+LF, `ESC &k2G`+FF,
 `ESC &k3G`+CR/LF/FF, `ESC &k0G`+HT/BS, `ESC &f0S`/`ESC &f1S`, chained
-`ESC &l8c6d3e2F`, `ESC &a3.5c+1R`, and `ESC &a6l9M`, adds a cursor-stack
-page-record boundary for `ESC &f0S ESC &a2C ESC &f1S!`, adds synthetic
+`ESC &l8c6d3e2F`, `ESC &l1L!`, `ESC &a3.5c+1R`, and `ESC &a6l9M`,
+adds a cursor-stack page-record boundary for
+`ESC &f0S ESC &a2C ESC &f1S!`, adds synthetic
 `ESC E` reset byte-stream fixtures for valid-page-root publication and
 missing-root clearing, ties missing-root `ESC E` to the modeled `0xa904`
 ring source and ROM parser handler `0xcc52`, plus a ROM parser trace for
@@ -670,11 +683,12 @@ boundary coverage for LF handler `0xf08c`, HT/BS direct-control handlers
 chained lowercase-final margin handlers `0xeb58`/`0xec0c`,
 cursor-position handlers `0xf39e`/`0xf416`/`0xf560`/`0xf60a`, chained
 dot-position handlers `0xf48c`/`0xf692` in parser mode `18`, chained
-lowercase-final `0xf39e`/`0xf560`, and top-margin handler `0xece2`
-followed by printable `0xd04a`, queueing glyphs through the page-record
-allocator at compact coords `0x3b00`, `0x0a01`, `0x0801`, `0x0a02`,
-`0x0207`, `0x0a02`, `0x0402`, `0x1001`, `0x9001`, `0x9402`,
-`0x1a02`, and `0x9001`. A grouped host-fetch check now starts that
+lowercase-final `0xf39e`/`0xf560`, top-margin handler `0xece2`, and
+perforation-skip handler `0xee64` followed by printable `0xd04a`,
+queueing glyphs through the page-record allocator at compact coords
+`0x3b00`, `0x0a01`, `0x0801`, `0x0a02`, `0x0207`, `0x0a02`,
+`0x0402`, `0x1001`, `0x9001`, `0x9402`, `0x1a02`, `0x9001`, and
+`0x0001`. A grouped host-fetch check now starts that
 direct text/control set from the modeled `0xa904` ring source and proves
 the same parser handlers, delayed transparent-payload handler, bucket
 indices, object prefixes, `0x1edc6` bridge fields, `0x1ed84` copy

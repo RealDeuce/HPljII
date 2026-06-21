@@ -4,6 +4,7 @@ Sources: `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`;
 `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`;
 `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`;
 `generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`;
+`generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`;
 `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`;
 `generated/disasm/ic30_ic13_esc_e_metric_refresh_00cbd4.lst`;
 `generated/disasm/ic30_ic13_esc_e_environment_reset_00cda2.lst`;
@@ -69,6 +70,19 @@ pending service retry, first LIFO priority, data-chain end-marker retry
 into the second LIFO source, ring-buffer priority while `0x780e40 == 0`,
 and both direct hardware paths including direct-mode `0x1a` reporting
 through `0x9ec0` and mode-2 control-shadow bit 6.
+
+All 19 direct absolute `JSR 0xa904` callers are now classified in
+`generated/analysis/ic30_ic13_host_byte_fetch_flow.md`. The parser
+wrappers at `0xda9a`, `0xdaa6`, and `0xdab2` can pass `D7=-1` upward
+without a local stop test. The `0xdace`/`0xdada` control probe treats
+the exact host sequence `0x1a 0x58` as a call to `0xd99a` and returns
+zero. Text repeat readers at `0x12142`, `0x124bc`, and `0x12582` stop
+on `D7=-1` and substitute `0x7f` for the same `0x1a 0x58` sequence.
+The raster reader at `0x138fa` and downloaded-font readers at
+`0x168dc`, `0x16960`, and `0x1697a` store zero for that sequence and
+treat negative `D7` as an end/error/failure status. Byte-stream
+reproduction therefore has to apply the `0x1a 0x58` normalization at
+the consumer family, not globally at the host-byte source.
 
 ## ESC Byte Handling
 
@@ -597,8 +611,8 @@ control-code anchor.
 
 ## Next RE Targets
 
-- Keep expanding the named roles for the `0xa904` callers listed in
-  `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
+- Correlate the direct-input MMIO names and indirect buffer producers
+  for `0xa904` with board/manual evidence.
 - Decode all normal and alternate parser table handlers into PCL command
   names.
 - Decode the six-byte tokenizer records and 12-byte command/data pool

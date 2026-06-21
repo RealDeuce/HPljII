@@ -22985,6 +22985,80 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
         },
     ]))
+    raster_mode_host_fetch_summaries: list[dict[str, object]] = []
+    for summary in raster_mode_dispatch_summaries:
+        stream = summary["stream"]
+        assert isinstance(stream, bytes)
+        host_fetched = fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(stream), direct_mode=0),
+            len(stream),
+        )
+        raster_mode_host_fetch_summaries.append({
+            "name": summary["name"],
+            "fetched_stream": host_fetched["stream"],
+            "fetch_source_count": len(host_fetched["sources"]),
+            "fetch_source_set": sorted(set(host_fetched["sources"])),
+            "remaining_ring": host_fetched["state"]["ring"],
+            "parser_handlers": summary["parser_handlers"],
+            "parser_restore": summary["parser_restore"],
+            "parser_payload_offset": summary["parser_payload_offset"],
+            "parser_payload": summary["parser_payload"],
+            "queued_object": summary["queued_object"],
+            "rendered_rows": summary["rendered_rows"],
+        })
+    checks.append(assert_equal("host-fetched raster mode streams reach parser and rendered rows", raster_mode_host_fetch_summaries, [
+        {
+            "name": "mode-1",
+            "fetched_stream": b"\x1b*t150R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f"),
+            "fetch_source_count": len(raster_mode1_command_stream),
+            "fetch_source_set": ["ring"],
+            "remaining_ring": [],
+            "parser_handlers": [0x010808, 0x01075A, 0x011F82],
+            "parser_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+            "parser_payload_offset": 17,
+            "parser_payload": bytes.fromhex("f0 0f"),
+            "queued_object": bytes.fromhex("00 00 00 00 80 01 00 02 00 00 f0 0f"),
+            "rendered_rows": [
+                "########................########",
+                "########................########",
+            ],
+        },
+        {
+            "name": "mode-2",
+            "fetched_stream": b"\x1b*t100R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f"),
+            "fetch_source_count": len(raster_mode2_command_stream),
+            "fetch_source_set": ["ring"],
+            "remaining_ring": [],
+            "parser_handlers": [0x010808, 0x01075A, 0x011F82],
+            "parser_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+            "parser_payload_offset": 17,
+            "parser_payload": bytes.fromhex("f0 0f"),
+            "queued_object": bytes.fromhex("00 00 00 00 80 02 00 02 00 00 f0 0f"),
+            "rendered_rows": [
+                "############................############........",
+                "############................############........",
+                "############................############........",
+            ],
+        },
+        {
+            "name": "mode-3",
+            "fetched_stream": b"\x1b*t75R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f"),
+            "fetch_source_count": len(raster_mode3_command_stream),
+            "fetch_source_set": ["ring"],
+            "remaining_ring": [],
+            "parser_handlers": [0x010808, 0x01075A, 0x011F82],
+            "parser_restore": {"kind": "direct-handler", "handler": 0x0105D0},
+            "parser_payload_offset": 16,
+            "parser_payload": bytes.fromhex("f0 0f"),
+            "queued_object": bytes.fromhex("00 00 00 00 80 03 00 02 00 00 f0 0f"),
+            "rendered_rows": [
+                "################................................################",
+                "################................................################",
+                "################................................################",
+                "################................................################",
+            ],
+        },
+    ]))
     raster_multirow_command_stream = b"\x1b*t300R\x1b*r0A\x1b*b2W" + bytes.fromhex("f0 0f") + b"\x1b*b2W" + bytes.fromhex("0f f0")
     raster_multirow_stream_result = render_raster_command_data_stream_via_121cc_105d0(
         data,
@@ -29340,7 +29414,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("snapshot bytes, and the `0x12218` restore/dispatch result before routing the restored")
     lines.append("payload through the modeled `0x105d0` gate. Queued transfers now carry the modeled")
     lines.append("`0x10084` page-root allocation record before `0x13070`/`0x13250` link the raster object.")
-    lines.append("The 300/150/100/75-dpi streams pin byte-stream-selected modes 0..3. The capped stream")
+    lines.append("The 300/150/100/75-dpi streams pin byte-stream-selected modes 0..3, and the 150/100/75-dpi streams now start from the modeled `0xa904` ring source before reaching the same parser/restore/render boundary. The capped stream")
     lines.append("proves the parser/data fixture consumes the full restored byte count while queueing only")
     lines.append("the gate-accepted byte count. The page-extent boundary stream still queues at")
     lines.append("`row_y == page_extent` and advances to the next row. The beyond-extent stream")
@@ -29461,7 +29535,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         raster_skip_transfer["gate_drained"],
         raster_negative_transfer["gate_drained"],
     ))
-    lines.append("- lower-resolution parser boundary: `ESC *t150R`, `ESC *t100R`, and `ESC *t75R` streams now also pass through the ROM `0x11774` parser table to handlers `0x10808`, `0x1075a`, and `0x11f82`; each restored `0x105d0` transfer record matches the modeled payload offset, queued mode object, and rendered expansion rows.")
+    lines.append("- lower-resolution parser boundary: `ESC *t150R`, `ESC *t100R`, and `ESC *t75R` streams now drain from the modeled `0xa904` ring source, pass through the ROM `0x11774` parser table to handlers `0x10808`, `0x1075a`, and `0x11f82`, and match the modeled payload offset, queued mode object, and rendered expansion rows.")
     for summary in raster_mode_dispatch_summaries:
         lines.append("- `%s` parser records `%s`, payload offset `%d`, queued object `%s`" % (
             summary["name"],

@@ -179,7 +179,8 @@ Status: Anchored through parser bridge, render dispatch, executable
 allocator/bridge, executable queued raster rows, and executable
 expansion/destination/row-copy/resource-resolution/glyph-row/producer-modeled
 bucket/positioning/font-record/font-allocation fixtures, plus host-fetched
-primary and capped/drained raster streams; full parser-produced page-object
+primary, lower-resolution, and capped/drained raster streams; full
+parser-produced page-object
 integration, font-download parser-populated inline/downloaded source records,
 remaining full live-parser raster, parser-populated font-download records, and
 full parser-produced page-object coverage incomplete

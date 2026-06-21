@@ -11501,6 +11501,84 @@ def raster_transfer_gate_via_105d0(
     }
 
 
+def raster_transfer_gate_addressed_via_105d0(
+    addressed_state: dict[str, object],
+    raster_state: dict[str, int],
+    parameter: int,
+    payload: bytes,
+) -> dict[str, object]:
+    state = dict(raster_state)
+    byte_count = abs(int(parameter))
+    state["active"] = 1
+    row_y = int(state["row_y"])
+    page_extent = int(state.get("page_extent", 0xFFFF))
+    limit = max(int(state.get("limit", byte_count)), 0)
+
+    if len(payload) < byte_count:
+        raise AssertionError("addressed 0x105d0 payload shorter than parsed byte count")
+
+    if row_y > page_extent:
+        return {
+            "path": "skip-row-beyond-extent",
+            "queued": False,
+            "drained": byte_count,
+            "active": state["active"],
+            "byte_count": byte_count,
+            "stored_byte_count": 0,
+            "overflow_count": 0,
+            "row_y": row_y,
+            "page_extent": page_extent,
+            "page_root": None,
+            "state_after": state,
+        }
+
+    if row_y < 0:
+        return {
+            "path": "skip-negative-row",
+            "queued": False,
+            "drained": byte_count,
+            "active": state["active"],
+            "byte_count": byte_count,
+            "stored_byte_count": 0,
+            "overflow_count": 0,
+            "row_y": row_y,
+            "page_extent": page_extent,
+            "page_root": None,
+            "state_after": state,
+        }
+
+    stored_byte_count = min(byte_count, limit)
+    overflow_count = byte_count - stored_byte_count
+    page_root = ensure_page_record_root_for_queue(state)
+    transfer_state = {
+        "x": int(state["baseline_word"]),
+        "y": row_y,
+        "byte_count": stored_byte_count,
+        "mode": int(state["mode"]),
+    }
+    result = queue_raster_row_to_addressed_stream_via_13070(
+        addressed_state,
+        transfer_state,
+        payload[:stored_byte_count],
+    )
+    return {
+        "path": "queued-capped" if overflow_count else "queued",
+        "queued": True,
+        "drained": 0,
+        "active": state["active"],
+        "byte_count": byte_count,
+        "stored_byte_count": stored_byte_count,
+        "overflow_count": overflow_count,
+        "row_y": row_y,
+        "page_extent": page_extent,
+        "limit": limit,
+        "transfer_state": transfer_state,
+        "result": result,
+        "page_root": page_root,
+        "state_after": state,
+    }
+
+
 def parse_pcl_decimal_parameter(stream: bytes, pos: int) -> tuple[int, int]:
     sign = 1
     if pos < len(stream) and stream[pos] in (ord("+"), ord("-")):
@@ -11733,6 +11811,85 @@ def queue_raster_row_to_page_record_via_13070(
         "object_size": object_size,
         "payload": payload[:copy_count],
         "object": bytes(obj),
+    }
+
+
+def queue_raster_row_to_addressed_stream_via_13070(
+    state: dict[str, object],
+    raster_state: dict[str, int],
+    payload: bytes,
+    horizontal_offset: int = 0,
+) -> dict[str, object]:
+    """Address-aware raster row queue through 0x13070/0x13250 storage."""
+    x = int(raster_state["x"]) + int(horizontal_offset)
+    y = int(raster_state["y"])
+    byte_count = int(raster_state["byte_count"])
+    mode = int(raster_state["mode"]) & 0xFF
+    if byte_count < 0:
+        raise AssertionError("addressed raster byte count must be non-negative")
+    if len(payload) < byte_count:
+        raise AssertionError("addressed raster payload shorter than requested byte count")
+
+    bucket_heads = dict(state.get("bucket_heads_1c", {}))
+    objects = dict(state.get("stream_objects", {}))
+    bucket_index = y >> 4
+    key = ((y << 12) & 0xF000) | ((x & 0x0F) << 8) | ((x >> 4) & 0x00FF)
+    capacity = byte_count + (byte_count & 1)
+    object_size = 0x0A + capacity
+    old_head = int(bucket_heads.get(bucket_index, 0))
+
+    alloc = stream_alloc_via_1381c(state, object_size)
+    object_ptr = int(alloc["returned_ptr"])
+    if object_ptr == 0:
+        return {
+            "path": "raster-addressed-page-record",
+            "object_ptr": 0,
+            "allocated": True,
+            "allocation_failed": True,
+            "bucket_index": bucket_index,
+            "old_bucket_head": old_head,
+            "new_bucket_head": old_head,
+            "key": key,
+            "mode": mode,
+            "byte_count_before": byte_count,
+            "byte_count_after": byte_count,
+            "capacity": capacity,
+            "object_size": object_size,
+            "stream_alloc": alloc,
+        }
+
+    obj = bytearray(object_size)
+    obj[0:4] = old_head.to_bytes(4, "big")
+    obj[4] = 0x80
+    obj[5] = mode
+    obj[6:8] = capacity.to_bytes(2, "big")
+    obj[8:10] = key.to_bytes(2, "big")
+    copy_count = min(byte_count, capacity)
+    obj[10 : 10 + copy_count] = payload[:copy_count]
+    remaining_count = byte_count - copy_count
+    objects[object_ptr] = obj
+    bucket_heads[bucket_index] = object_ptr
+    state["bucket_heads_1c"] = bucket_heads
+    state["stream_objects"] = objects
+
+    return {
+        "path": "raster-addressed-page-record",
+        "object_ptr": object_ptr,
+        "allocated": True,
+        "allocation_failed": False,
+        "bucket_index": bucket_index,
+        "old_bucket_head": old_head,
+        "new_bucket_head": object_ptr,
+        "next_ptr": old_head,
+        "key": key,
+        "mode": mode,
+        "byte_count_before": byte_count,
+        "byte_count_after": remaining_count,
+        "capacity": capacity,
+        "object_size": object_size,
+        "payload": payload[:copy_count],
+        "object": bytes(obj),
+        "stream_alloc": alloc,
     }
 
 
@@ -12981,6 +13138,211 @@ def render_text_rectangle_addressed_page_record_stream(
         "parser_handlers": [0x00D04A] + [
             command["final_dispatch"]["handler"]
             for command in rectangle_trace["commands"]
+        ],
+        "events": events,
+        "addressed_state": addressed_state,
+        "page_record": page_record,
+        "bridged_record": bridged_record,
+        "render_entry": render_entry,
+        "final_state": working,
+    }
+
+
+def render_text_rectangle_raster_addressed_page_record_stream(
+    data: bytes,
+    resources: bytes,
+    stream: bytes,
+    context: int,
+    state: dict[str, int],
+    default_advance: int,
+    context_slot: int = 0,
+) -> dict[str, object]:
+    """Address-backed fixture for text, ESC *c rectangle, then raster row."""
+    prefix = b"!\x1b*c12a5b0P"
+    if not stream.startswith(prefix):
+        raise AssertionError("addressed text+rectangle+raster fixture expects fixed prefix")
+
+    base = render_text_rectangle_addressed_page_record_stream(
+        data,
+        resources,
+        prefix,
+        context,
+        state,
+        default_advance,
+        context_slot=context_slot,
+    )
+    addressed_state = base["addressed_state"]
+    if not isinstance(addressed_state, dict):
+        raise AssertionError("addressed text+rectangle base did not return stream state")
+    working = base["final_state"]
+    if not isinstance(working, dict):
+        raise AssertionError("addressed text+rectangle base did not return final state")
+
+    suffix = stream[len(prefix):]
+    raster_trace = trace_raster_parser_dispatch_via_11774(data, suffix)
+    raster_pending: dict[str, object] = {
+        "pending_flag": 0,
+        "handler": 0,
+        "snapshot_record": b"",
+    }
+    events = list(base["events"])
+    pos = 0
+    while pos < len(suffix):
+        if suffix[pos] != 0x1B or suffix[pos + 1 : pos + 2] != b"*":
+            raise AssertionError("addressed text+rectangle+raster only models ESC * suffix")
+        group_start = pos
+        group = suffix[pos + 2]
+        pos += 3
+        while True:
+            command_start = group_start if pos == group_start + 3 else pos
+            if pos < len(suffix) and (
+                suffix[pos] in (ord("+"), ord("-")) or chr(suffix[pos]).isdigit()
+            ):
+                parameter, pos = parse_pcl_decimal_parameter(suffix, pos)
+            else:
+                parameter = 0
+            if pos >= len(suffix):
+                raise AssertionError("addressed text+rectangle+raster missing raster final")
+            final = suffix[pos]
+            pos += 1
+            final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+            sequence = suffix[command_start:pos]
+            if group == ord("t") and final_upper == ord("R"):
+                working = apply_raster_resolution_cursor_state(working)
+                before = dict(working)
+                working = apply_raster_resolution_via_10808(working, parameter)
+                events.append({
+                    "kind": "raster-resolution",
+                    "offset": len(prefix) + command_start,
+                    "sequence": sequence,
+                    "parameter": parameter,
+                    "handler": 0x010808,
+                    "mode_before": before["mode"],
+                    "mode_after": working["mode"],
+                    "scale": working["scale"],
+                    "limit": working["limit"],
+                    "chained": bool(ord("a") <= final <= ord("z")),
+                })
+            elif group == ord("r") and final_upper == ord("A"):
+                working = apply_raster_resolution_cursor_state(working)
+                before = dict(working)
+                working = start_raster_graphics_via_1075a(working, parameter)
+                events.append({
+                    "kind": "start-raster",
+                    "offset": len(prefix) + command_start,
+                    "sequence": sequence,
+                    "parameter": parameter,
+                    "handler": 0x01075A,
+                    "active_before": before["active"],
+                    "active_after": working["active"],
+                    "origin_long": working["origin_long"],
+                    "baseline_word": working["baseline_word"],
+                    "limit": working["limit"],
+                    "chained": bool(ord("a") <= final <= ord("z")),
+                })
+            elif group == ord("b") and final_upper == ord("W"):
+                parsed_record = bytes([
+                    0x81 if parameter < 0 else 0x80,
+                    final,
+                ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
+                scheduled = schedule_payload_handler_via_121cc(
+                    raster_pending,
+                    parsed_record,
+                    0x0105D0,
+                )
+                raster_pending = scheduled["pending"]
+                delayed_snapshot = raster_pending["snapshot_bytes"]
+                if ord("a") <= final <= ord("z"):
+                    events.append({
+                        "kind": "raster-transfer-pending",
+                        "offset": len(prefix) + command_start,
+                        "sequence": sequence,
+                        "parameter": parameter,
+                        "handler": 0x011F82,
+                        "parsed_record": parsed_record,
+                        "delayed_snapshot_bytes": delayed_snapshot,
+                        "delayed_scheduled": scheduled["scheduled"],
+                        "delayed_handler": 0x0105D0,
+                        "chained": True,
+                    })
+                    continue
+                restored = restore_delayed_payload_via_12218(raster_pending)
+                raster_pending = restored["pending_after"]
+                restored_record = restored["record"]
+                byte_count = abs(s16(restored_record, 2))
+                payload_start = pos
+                consumed_payload = consume_data_payload_count_via_12328(
+                    byte_count,
+                    suffix,
+                    payload_start,
+                )
+                if int(consumed_payload["status"]) != 1:
+                    raise AssertionError(
+                        "addressed text+rectangle+raster payload shorter than restored byte count"
+                    )
+                payload_end = int(consumed_payload["pos"])
+                raw_payload = suffix[payload_start:payload_end]
+                payload = bytes(int(value) & 0xFF for value in consumed_payload["values"])
+                pos = payload_end
+                working = apply_raster_resolution_cursor_state(working)
+                gate = raster_transfer_gate_addressed_via_105d0(
+                    addressed_state,
+                    working,
+                    byte_count,
+                    payload,
+                )
+                working = dict(gate["state_after"])
+                if gate["path"] != "skip-row-beyond-extent":
+                    working["row_y"] += 1
+                events.append({
+                    "kind": "raster-transfer",
+                    "offset": len(prefix) + command_start,
+                    "sequence": sequence,
+                    "parameter": parameter,
+                    "handler": 0x011F82,
+                    "parsed_record": parsed_record,
+                    "delayed_snapshot_bytes": delayed_snapshot,
+                    "delayed_scheduled": scheduled["scheduled"],
+                    "restore_dispatch": restored["dispatch"],
+                    "restored_record": restored["record"],
+                    "delayed_handler": 0x0105D0,
+                    "payload_offset": len(prefix) + payload_start,
+                    "raw_payload": raw_payload,
+                    "payload": payload,
+                    "payload_control_hits": consumed_payload["control_hits"],
+                    "gate_path": gate["path"],
+                    "gate_queued": gate["queued"],
+                    "gate_drained": gate["drained"],
+                    "stored_byte_count": gate["stored_byte_count"],
+                    "overflow_count": gate["overflow_count"],
+                    "row_y": gate["row_y"],
+                    "limit": gate.get("limit"),
+                    "transfer_state": gate.get("transfer_state"),
+                    "result": gate.get("result"),
+                    "page_root": gate.get("page_root"),
+                    "row_y_after": working["row_y"],
+                    "chained": False,
+                })
+            else:
+                raise AssertionError(
+                    f"addressed text+rectangle+raster unsupported ESC *{chr(group)}"
+                )
+            if not (ord("a") <= final <= ord("z")):
+                break
+
+    page_record = page_record_from_addressed_stream_state(addressed_state)
+    bridged_record = bridge_page_record_via_1edc6(page_record)
+    render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        page_record,
+        bucket_word=0,
+    )
+    return {
+        "stream": stream,
+        "parser_handlers": list(base["parser_handlers"]) + [
+            command["final_dispatch"]["handler"]
+            for command in raster_trace["commands"]
         ],
         "events": events,
         "addressed_state": addressed_state,
@@ -36628,6 +36990,109 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         ],
         "rows": text_rectangle_raster_expected_rows,
+    }))
+    text_rectangle_raster_addressed = render_text_rectangle_raster_addressed_page_record_stream(
+        data,
+        resources,
+        text_rectangle_raster_stream,
+        0x440946B4,
+        dict(text_rectangle_raster_stream_state) | {"next_stream_chunk_ptr": 0x00D07000},
+        default_advance=line_printer_hmi["hmi"],
+    )
+    checks.append(assert_equal("addressed text rectangle raster stream matches page-record output", {
+        "stream": text_rectangle_raster_addressed["stream"],
+        "parser_handlers": text_rectangle_raster_addressed["parser_handlers"],
+        "event_kinds": [event["kind"] for event in text_rectangle_raster_addressed["events"]],
+        "page_record": text_rectangle_raster_addressed["page_record"],
+        "bridged_rule_list": text_rectangle_raster_addressed["bridged_record"]["rule_list"],
+        "render_call_order": text_rectangle_raster_addressed["render_entry"]["entry"]["call_order"],
+        "dispatch_entries": [
+            {
+                "chain_index": entry["chain_index"],
+                "object_byte_4": entry["object_byte_4"],
+                "class_mask": entry["class_mask"],
+                "branch": entry["branch"],
+                "target": entry["target"],
+                "context_slot": entry.get("context_slot"),
+                "encoded_mode": entry.get("encoded_mode"),
+            }
+            for entry in text_rectangle_raster_addressed["render_entry"]["entry"]["dispatch"]["entries"]
+        ],
+        "rows": text_rectangle_raster_addressed["render_entry"]["entry"]["rows"],
+        "stream_state": {
+            key: text_rectangle_raster_addressed["addressed_state"][key]
+            for key in (
+                "stream_bytes_remaining_782a70",
+                "stream_link_ptr_782a72",
+                "stream_next_free_782a76",
+                "next_stream_chunk_ptr",
+                "stream_chunk_links",
+                "stream_allocations",
+            )
+        },
+    }, {
+        "stream": text_rectangle_raster_stream,
+        "parser_handlers": [
+            0x00D04A,
+            0x010E68,
+            0x010E22,
+            0x010898,
+            0x010808,
+            0x01075A,
+            0x011F82,
+        ],
+        "event_kinds": [
+            "printable",
+            "rectangle",
+            "rectangle",
+            "rectangle",
+            "raster-resolution",
+            "start-raster",
+            "raster-transfer",
+        ],
+        "page_record": {
+            "bucket_array": {
+                0: [
+                    bytes.fromhex("00 d0 70 04 80 00 00 02 00 00 c3 3c"),
+                    bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                    + bytes(0x1B),
+                ],
+            },
+            "rule_list": [bytes.fromhex("00 00 00 00 01 07 5c 01 00 0c 00 05 00 00")],
+            "fixed_list": [],
+            "context_slots": [0x440946B4],
+        },
+        "bridged_rule_list": [bytes.fromhex("00 00 00 00 01 17 5c 01 00 0c 00 05 00 05")],
+        "render_call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "dispatch_entries": [
+            {
+                "chain_index": 0,
+                "object_byte_4": 0x80,
+                "class_mask": 0x80,
+                "branch": "encoded-span",
+                "target": 0x01F88E,
+                "context_slot": None,
+                "encoded_mode": 0,
+            },
+            {
+                "chain_index": 1,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 0,
+                "encoded_mode": None,
+            },
+        ],
+        "rows": text_rectangle_raster_expected_rows,
+        "stream_state": {
+            "stream_bytes_remaining_782a70": 0x00BC,
+            "stream_link_ptr_782a72": 0x00D07000,
+            "stream_next_free_782a76": 0x00D07044,
+            "next_stream_chunk_ptr": 0x00D07100,
+            "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D07000},
+            "stream_allocations": 1,
+        },
     }))
     text_rectangle_raster_publication = finalize_page_record_via_ff1e(
         text_rectangle_raster_page_record,

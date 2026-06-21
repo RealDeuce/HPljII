@@ -893,8 +893,10 @@ chained rectangle queues through addressed `0x133aa`, and the materialized
 page record matches the older byte-list bridge/render output. A host-fetched
 `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W` fixture now adds a mode-0
 raster row to that combined page-record shape before rendering the
-bucket/rule/raster record through the same entry path. Direct
-publication-stream
+bucket/rule/raster record through the same entry path. Its addressed variant
+now allocates the raster row through addressed `0x13070`/`0x13250` storage
+after the addressed text and rule objects, preserving the real bucket link
+pointer while rendering the same rows. Direct publication-stream
 coverage traces `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O`
 through the ROM parser path, proving printable fallback to `0xd04a`,
 reset dispatch to `0xcc52`, line-termination dispatch to `0xedf8`, FF

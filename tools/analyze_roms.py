@@ -5362,7 +5362,11 @@ def raster_graphics_flow_report(data: bytes) -> str:
         "`tools/render_fixture_harness.py` currently proves parser dispatch, delayed restore, "
         "root allocation, object bytes, bridge copying, and final rendered rows for the primary "
         "`ESC *t300R` / `ESC *r1A` / `ESC *b4W` stream, plus mode, cap/drain, multi-row, "
-        "lowercase-final, and end-raster variants.",
+        "lowercase-final, and end-raster variants. The mixed "
+        "`!\\x1b*c12a5b0P\\x1b*t300R\\x1b*r0A\\x1b*b2W` fixture now also has an addressed "
+        "allocation variant where the raster row queues through addressed `0x13070` / "
+        "`0x13250` storage after the addressed text and rule objects, then renders the same "
+        "bucket/rule/raster rows.",
         "- ",
         "  ",
     )

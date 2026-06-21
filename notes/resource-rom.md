@@ -230,6 +230,12 @@ firmware clears sample state, runs class-zero and class-one passes from
 the firmware candidate counts, ensures a page root through `0x10084`,
 tracks up to 16 recent contexts at `0x783f0a`, and calls FF handler
 `0xf0f0` to finalize/eject between passes.
+The same loop is now traced through candidate-row traversal:
+`0x1b50e` supplies source rows, `0x1c746` / `0x1c766` / `0x1c7a8` /
+`0x1c710` normalize and classify each candidate, `0x1d050` /
+`0x1d868` decide continuation-page needs, `0x1cabe` emits row fields,
+and `0x1cf34` emits the sample byte runs before the recent-context list
+at `0x783f0a` suppresses duplicate rows.
 The same report now renders the two ROM sample byte runs directly
 through extracted payloads for first `COURIER` and first `LINE_PRINTER`,
 producing row hashes

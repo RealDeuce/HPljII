@@ -1305,6 +1305,28 @@ def font_sample_page_report_with_resources(data: bytes, resources: bytes) -> str
     )
     lines.append("")
 
+    lines.append("## Candidate Row Traversal")
+    lines.append("")
+    lines.append("| Address | Fact |")
+    lines.append("| ---: | --- |")
+    lines.append("| `0x1c354..0x1c386` | After the first header pass, clears the one-shot header flag. If the recent-context list has reached 16 entries, calls `0x1d79c(source)` and starts a continuation page through `0x1c9f6` when another printable source row remains. |")
+    lines.append("| `0x1c386..0x1c3aa` | Emits the source/category heading with `0x1ca2c(source, 0, current-context, 0)`, then asks `0x1b50e(source, row-index, &next-index)` for the first candidate row in that source group. |")
+    lines.append("| `0x1c3be..0x1c3e4` | Normalizes the returned candidate through `0x1c746`, reads selector/flag bytes via `0x1c766` and `0x1c7a8`, and reads class/orientation through `0x1c710` for comparison with the current class pass. |")
+    lines.append("| `0x1c3e8..0x1c42e` | If the candidate class does not match the current pass, either retries candidate lookup or marks the current source status byte at `0x783f02 + source`. |")
+    lines.append("| `0x1c432..0x1c470` | For a matching candidate, installs its context through `0x1c5e8`; if the recent list is full and the candidate is not the last list entry at `0x783f46`, starts a continuation page and reprints the source heading. |")
+    lines.append("| `0x1c470..0x1c4f2` | Flushes pending text, calls `0x1d050` to advance/check current row height, and calls `0x1d868` to test whether an alternate sample row needs its own continuation-page heading. |")
+    lines.append("| `0x1c4f2..0x1c53c` | Emits the formatted font row through `0x1cabe`; if no continuation happened, installs the candidate via `0x1cece` and emits sample byte runs through `0x1cf34`, storing the return flag in local page-break word `-6(A6)`. |")
+    lines.append("| `0x1c540..0x1c5c6` | Scans recent-context entries at `0x783f0a`; duplicates jump back to the source-pass decision path, while a new context is appended and count byte `0x783f08` is incremented. |")
+    lines.append("| `0x1c5ca..0x1c5e4` | Advances candidate row index `D5` up to `0x63`; when exhausted, stores the final per-source status byte at `0x783f02 + source`, increments source group `D4`, clears row index, and returns to the source loop at `0x1c2fe`. |")
+    lines.append("")
+    lines.append(
+        "This pins the row traversal around the previously open `0x1c334` "
+        "region. The missing executable model is now narrow: reproduce the "
+        "`0x1b50e` candidate sequence and feed these row decisions into the "
+        "already identified printable/page-object path."
+    )
+    lines.append("")
+
     if direct_samples:
         lines.append("## Direct Glyph Payload Hashes")
         lines.append("")

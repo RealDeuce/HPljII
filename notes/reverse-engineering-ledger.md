@@ -380,7 +380,12 @@ forced VMI/HMI defaults `0x0032` / `0x001e`, and direct row hashes for
 the two ROM sample byte runs rendered through first `COURIER` and first
 `LINE_PRINTER`; the outer loop is now anchored from `0x1c204`, including
 class-zero/class-one passes, `0x10084` page-root creation, recent-context
-tracking at `0x783f0a`, and `0xf0f0` pass finalization; the report also
+tracking at `0x783f0a`, and `0xf0f0` pass finalization; candidate-row
+traversal now follows `0x1b50e` lookup, `0x1c746` normalization,
+`0x1c766` / `0x1c7a8` flag extraction, `0x1c710` class comparison,
+`0x1d050` / `0x1d868` continuation checks, `0x1cabe` row emission,
+and `0x1cf34` sample-byte emission before duplicate suppression through
+the recent-context list; the report also
 pins sample-page cursor and row sequencing through `0x1c916`,
 `0x1ca2c`, `0x1cabe`, `0x1cf34`, and `0x1d050`, including page-limit
 checks against `0x782db6`, source/metric text emission through `0xd04a`,

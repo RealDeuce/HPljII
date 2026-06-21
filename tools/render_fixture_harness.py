@@ -8787,6 +8787,109 @@ def render_band_entry_via_1ef6a(data: bytes, resources: bytes, render_record: di
     }
 
 
+def carry_rule_or_fixed_list_after_band(
+    active: list[bytes],
+    rendered_items: list[dict[str, object]],
+    band_word: int,
+    remaining_slice: slice,
+) -> list[bytes]:
+    rendered_iter = iter(rendered_items)
+    carried: list[bytes] = []
+    for obj in active:
+        if obj[4] > int(band_word) + 4:
+            carried.append(obj)
+            continue
+        if int.from_bytes(obj[remaining_slice], "big", signed=True) <= 0:
+            continue
+        item = next(rendered_iter)
+        mutated = item["mutated_object"]
+        assert isinstance(mutated, bytes)
+        if int.from_bytes(mutated[remaining_slice], "big", signed=True) > 0:
+            carried.append(mutated)
+    return carried
+
+
+def render_page_bands_via_1ef6a(
+    data: bytes,
+    resources: bytes,
+    render_record: dict[str, object],
+    band_words: tuple[int, ...],
+    page_rows: int,
+    page_width: int,
+    dest_stride: int = 0x20,
+    band_rows: int = 80,
+) -> dict[str, object]:
+    fields = render_record.get("render_record_fields", {})
+    if not isinstance(fields, dict):
+        fields = {}
+    active_rule_list = [
+        bytes(raw)
+        for raw in render_record.get("rule_list", fields.get("rule_list_1c", []))
+    ]
+    active_fixed_list = [
+        bytes(raw)
+        for raw in render_record.get("fixed_list", fields.get("fixed_list_20", []))
+    ]
+    page = [["." for _ in range(page_width)] for _ in range(page_rows)]
+    band_reports: list[dict[str, object]] = []
+    for band_word in band_words:
+        band_record = dict(render_record)
+        band_fields = dict(fields)
+        band_fields["word_10"] = int(band_word) & 0xFFFF
+        band_fields["rule_list_1c"] = active_rule_list
+        band_fields["fixed_list_20"] = active_fixed_list
+        band_record["render_record_fields"] = band_fields
+        band_record["rule_list"] = active_rule_list
+        band_record["fixed_list"] = active_fixed_list
+
+        entry = render_band_entry_via_1ef6a(
+            data,
+            resources,
+            band_record,
+            dest_stride=dest_stride,
+            band_rows=band_rows,
+        )
+        band_top = (int(band_word) // 5) * band_rows
+        rows = entry["rows"]
+        assert isinstance(rows, list)
+        for row_index, row in enumerate(rows):
+            page_y = band_top + row_index
+            if page_y >= page_rows:
+                break
+            for x, pixel in enumerate(row[:page_width]):
+                if pixel == "#":
+                    page[page_y][x] = "#"
+
+        rule_rendered = list(entry["rules"]["rendered"])
+        fixed_rendered = list(entry["fixed"]["rendered"])
+        active_rule_list = carry_rule_or_fixed_list_after_band(
+            active_rule_list,
+            rule_rendered,
+            int(band_word),
+            slice(0x0C, 0x0E),
+        )
+        active_fixed_list = carry_rule_or_fixed_list_after_band(
+            active_fixed_list,
+            fixed_rendered,
+            int(band_word),
+            slice(0x0A, 0x0C),
+        )
+        band_reports.append({
+            "band_word": int(band_word),
+            "entry": entry,
+            "rows": rows,
+            "carried_rule_list": active_rule_list,
+            "carried_fixed_list": active_fixed_list,
+        })
+
+    return {
+        "bands": band_reports,
+        "remaining_rule_list": active_rule_list,
+        "remaining_fixed_list": active_fixed_list,
+        "rows": ["".join(row) for row in page],
+    }
+
+
 def render_published_page_record_via_1ed84_1ef6a(
     data: bytes,
     resources: bytes,

@@ -731,8 +731,9 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   non-byte-aligned mode 2, band-clipped mode 2, and mode 3, real-HMI
   sub-byte compact render fixture, producer-modeled short/segmented text
   bucket objects, short/segmented `0x1387c` allocator fixtures,
-  `0x1edc6` page-record bridge fixture including text/rule/raster plus
-  macro-payload rule/raster band composition, `0xd824`-positioned text
+  `0x1edc6` page-record bridge fixture including text/rule/raster,
+  addressed text/rule/raster FF publication, plus macro-payload
+  rule/raster band composition, `0xd824`-positioned text
   fixture, synthetic `0xd3b2` positioning and inline/downloaded
   `0x12f2e` payload fixtures plus type-2 payload-backed selected inline
   `0x1f0d2` wide and `0x1f1f0` segmented render rows, a selected-memory

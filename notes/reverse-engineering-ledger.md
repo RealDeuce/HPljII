@@ -79,10 +79,11 @@ horizontal-column, horizontal-decipoint, vertical-row,
 vertical-decipoint, and lowercase-chained cursor-position, top-margin,
 and cursor-stack parser-to-page-record boundaries, reset sequencing, ROM
 parser dispatch of publication streams, host-fetched publication header
-fields for reset, FF, page-size, and orientation, and synthetic mixed
-reset fixtures, with `0xcda2` reset/default environment state now
-decoded for page/control pool setup, cursor-stack reset, HMI/VMI
-recompute, line-termination clearing, and default bytes
+fields for reset, FF, page-size, and orientation, addressed
+text/rule/raster FF publication, and synthetic mixed reset fixtures,
+with `0xcda2` reset/default environment state now decoded for
+page/control pool setup, cursor-stack reset, HMI/VMI recompute,
+line-termination clearing, and default bytes
 `0x78219d`/`0x78219e`/`0x7821a2`; full firmware parser/reset fixtures
 incomplete
 

@@ -898,7 +898,11 @@ now allocates the raster row through addressed `0x13070`/`0x13250` storage
 after the addressed text and rule objects, preserving the real bucket link
 pointer while rendering the same rows; that materialized addressed record now
 also publishes through modeled `0xff1e` and renders the published rows through
-`0x1ed84`/`0x1ef6a`. Direct publication-stream
+`0x1ed84`/`0x1ef6a`. Adding FF to the addressed text/rule/raster stream
+now drives that same heterogeneous addressed page record through the
+publication boundary from the byte stream, clears the current root, and
+renders the published rows through `0x1ed84`/`0x1ef6a`.
+Direct publication-stream
 coverage traces `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O`
 through the ROM parser path, proving printable fallback to `0xd04a`,
 reset dispatch to `0xcc52`, line-termination dispatch to `0xedf8`, FF
@@ -959,7 +963,9 @@ delayed `ESC *b#W` raster transfer through one mixed page-record stream
 runner instead of attaching the raster row after the text/rule record.
 Adding FF to that stream now publishes the heterogeneous page record
 through the modeled `0xff1e` boundary and renders the published record
-through `0x1ed84` and `0x1ef6a` with the same rows.
+through `0x1ed84` and `0x1ef6a` with the same rows; the addressed
+text/rule/raster stream now has the same trailing-FF publication check
+with the raster object linked from addressed `0x1381c` storage.
 A `0x1ef6a` page-band walker now also merges compact text, mode-0
 raster, and a crossing patterned rule across bands `0` and `5`, carrying
 the mutated rule node into the second band.

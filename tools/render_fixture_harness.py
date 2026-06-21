@@ -17427,6 +17427,23 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         downloaded_wide_control_memory,
         downloaded_wide_control_bridged,
     )
+    downloaded_wide_control_active_render_record = copy_active_page_record_to_render_record_via_1ed84(
+        downloaded_wide_control_page_bridge_record,
+    )
+    downloaded_wide_control_active_render_fields = downloaded_wide_control_active_render_record["render_record_fields"]
+    assert isinstance(downloaded_wide_control_active_render_fields, dict)
+    downloaded_wide_control_active_render_fields.update({
+        "long_00": 0x00100000,
+        "word_04": 0x0020,
+        "word_06": 0x0005,
+        "word_08": 0x0000,
+        "bucket_array_18": {0: [downloaded_wide_control_object]},
+    })
+    downloaded_wide_control_render_entry = render_band_entry_via_1ef6a(
+        data,
+        downloaded_wide_control_memory,
+        downloaded_wide_control_active_render_record,
+    )
     checks.append(assert_equal("host-fetched downloaded character payload control reaches wide render", {
         "fetched_stream_prefix": host_fetched_downloaded_wide_control_stream["stream"][:6],
         "fetched_stream_length": len(host_fetched_downloaded_wide_control_stream["stream"]),
@@ -17488,6 +17505,58 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "........" + "#." * 60 + ".#.#.#.#",
             ],
         },
+    }))
+    checks.append(assert_equal("host-fetched downloaded payload-control object feeds 0x1ed84 and 0x1ef6a", {
+        "fetched_stream_prefix": host_fetched_downloaded_wide_control_stream["stream"][:6],
+        "parser_handlers": [
+            event["handler"]
+            for event in downloaded_wide_control_trace["dispatches"]
+        ],
+        "active_copy": downloaded_wide_control_active_render_record["active_record_copy_fields"],
+        "setup": {
+            key: downloaded_wide_control_render_entry["setup"][key]
+            for key in ("dividend", "divisor_word_06", "remainder_783a22", "band_rows_scaled_783a20", "destination_base_783a28")
+        },
+        "call_order": downloaded_wide_control_render_entry["call_order"],
+        "dispatch": [
+            {
+                key: entry[key]
+                for key in ("chain_index", "object_byte_4", "class_mask", "branch", "target", "context_slot")
+            }
+            for entry in downloaded_wide_control_render_entry["dispatch"]["entries"]
+        ],
+        "rows": downloaded_wide_control_render_entry["rows"],
+    }, {
+        "fetched_stream_prefix": b"\x1b)s18W",
+        "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+        "active_copy": {
+            "source_word_18": 0,
+            "source_word_1a": 0,
+            "render_word_0a": 0,
+            "render_word_0c": 0,
+            "render_word_0e": 0,
+            "render_word_10": 0,
+            "render_word_16": 0,
+        },
+        "setup": {
+            "dividend": 0,
+            "divisor_word_06": 5,
+            "remainder_783a22": 0,
+            "band_rows_scaled_783a20": 0x0050,
+            "destination_base_783a28": 0x00100000,
+        },
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "dispatch": [{
+            "chain_index": 0,
+            "object_byte_4": 0x10,
+            "class_mask": 0x00,
+            "branch": "compact",
+            "target": 0x01EFFE,
+            "context_slot": 3,
+        }],
+        "rows": [
+            "........" + "#." * 60 + ".#.#.#.#",
+        ],
     }))
     checks.append(assert_equal("host-fetched downloaded payload-control object preserves 0x1edc6 bridge contract", {
         "fetched_stream_prefix": host_fetched_downloaded_wide_control_stream["stream"][:6],

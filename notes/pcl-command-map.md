@@ -481,7 +481,7 @@ cursor advance, same-bucket compact queueing, and rendering, pins
 branches, adds a selected inline/downloaded map/source fixture through
 `0x14e24`/`0x14eb6` -> `0x1393a` -> `0xd3b2` -> `0x12f2e` -> `0x1edc6`
 -> render plus `0x168dc`/`0x16942` font payload-reader fixtures
-including a host-fetched `ESC )s18W` payload-control render/bridge,
+including a host-fetched `ESC )s18W` payload-control render-entry bridge,
 `0x172c0`/`0x16c14` downloaded-font record bookkeeping fixtures,
 `0x170be`/`0x17108`/`0x17150` record lookup/mark/unmark fixtures,
 `0x15a56`/`0x16df6` font-id/control dispatch fixtures, and

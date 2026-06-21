@@ -23922,6 +23922,100 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "row_y": 0,
         },
     }))
+    raster_chained_resolution_trace = trace_raster_parser_dispatch_via_11774(
+        data,
+        raster_chained_resolution_stream,
+    )
+    raster_chained_resolution_commands = raster_chained_resolution_trace["commands"]
+    assert isinstance(raster_chained_resolution_commands, list)
+    host_fetched_raster_chained_resolution_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(raster_chained_resolution_stream), direct_mode=0),
+        len(raster_chained_resolution_stream),
+    )
+    checks.append(assert_equal("host-fetched raster chained resolution stays in same parser family", {
+        "fetched_stream": host_fetched_raster_chained_resolution_stream["stream"],
+        "fetch_source_count": len(host_fetched_raster_chained_resolution_stream["sources"]),
+        "fetch_source_set": sorted(set(host_fetched_raster_chained_resolution_stream["sources"])),
+        "remaining_ring": host_fetched_raster_chained_resolution_stream["state"]["ring"],
+        "commands": [
+            {
+                "sequence": command["sequence"],
+                "handler": command["final_dispatch"]["handler"],
+                "record": command["record"],
+                "mode_after_final": command["mode_after_final"],
+            }
+            for command in raster_chained_resolution_commands
+        ],
+        "model_events": [
+            {
+                key: event[key]
+                for key in (
+                    "kind",
+                    "sequence",
+                    "parameter",
+                    "mode_before",
+                    "mode_after",
+                    "scale",
+                    "limit",
+                    "chained",
+                )
+            }
+            for event in raster_chained_resolution_result["events"]
+        ],
+        "final_state": {
+            key: raster_chained_resolution_result["final_state"][key]
+            for key in ("active", "baseline_word", "mode", "scale", "limit", "row_y")
+        },
+    }, {
+        "fetched_stream": b"\x1b*t300r150R",
+        "fetch_source_count": len(raster_chained_resolution_stream),
+        "fetch_source_set": ["ring"],
+        "remaining_ring": [],
+        "commands": [
+            {
+                "sequence": b"\x1b*t300r",
+                "handler": 0x010808,
+                "record": bytes.fromhex("80 72 01 2c 00 00"),
+                "mode_after_final": 15,
+            },
+            {
+                "sequence": b"150R",
+                "handler": 0x010808,
+                "record": bytes.fromhex("80 52 00 96 00 00"),
+                "mode_after_final": 0,
+            },
+        ],
+        "model_events": [
+            {
+                "kind": "raster-resolution",
+                "sequence": b"\x1b*t300r",
+                "parameter": 300,
+                "mode_before": 3,
+                "mode_after": 0,
+                "scale": 1,
+                "limit": 32,
+                "chained": True,
+            },
+            {
+                "kind": "raster-resolution",
+                "sequence": b"150R",
+                "parameter": 150,
+                "mode_before": 0,
+                "mode_after": 1,
+                "scale": 2,
+                "limit": 16,
+                "chained": False,
+            },
+        ],
+        "final_state": {
+            "active": 0,
+            "baseline_word": 0,
+            "mode": 1,
+            "scale": 2,
+            "limit": 16,
+            "row_y": 0,
+        },
+    }))
     raster_chained_transfer_stream = b"\x1b*t300R\x1b*r0A\x1b*b2w2W" + bytes.fromhex("f0 0f")
     raster_chained_transfer_result = render_raster_command_data_stream_via_121cc_105d0(
         data,
@@ -30078,7 +30172,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         raster_active_resolution_result["rendered"]["rows"],
     ))
     lines.append(f"- chained resolution stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_chained_resolution_stream)}`")
-    lines.append("- chained resolution events: `%s` then `%s`, leaving mode `%d` / scale `%d`." % (
+    lines.append("- host-fetched chained resolution events: `%s` then `%s`, leaving mode `%d` / scale `%d`." % (
         raster_chained_resolution_result["events"][0]["sequence"],
         raster_chained_resolution_result["events"][1]["sequence"],
         raster_chained_resolution_result["final_state"]["mode"],

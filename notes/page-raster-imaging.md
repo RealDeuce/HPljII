@@ -664,12 +664,13 @@ fetch, tokenizer/delayed-payload, page-geometry, macro/data-chain,
 direct-control, reset, text, rule, raster, bridge, row-copy, built-in glyph,
 symbol-set, and downloaded-font fixture families into one ROM-backed self-test.
 It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and
-currently verifies 337 checks. The raster coverage now includes ROM-table
+currently verifies 338 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W`
 stream, the 150/100/75-dpi mode streams, the consecutive-row `ESC *b2W` stream,
 the active-resolution-ignore `ESC *t75R` stream, the end-raster `ESC *rB` /
-re-enabled `ESC *t150R` stream, and the chained `ESC *b2w2W` delayed-transfer
-stream, modeled delayed `0x121cc` / `0x12218` transfer records,
+re-enabled `ESC *t150R` stream, the chained `ESC *t300r150R` resolution stream,
+and the chained `ESC *b2w2W` delayed-transfer stream, modeled delayed `0x121cc`
+/ `0x12218` transfer records,
 command/data-stream transfer events routed through the modeled `0x105d0` gate
 including capped-byte, inclusive page-extent queue-and-advance, beyond-extent
 drain/no-row-advance, negative-row drain-with-advance, and `0xdace` control-byte
@@ -699,9 +700,12 @@ ring source and ties an in-raster `ESC *t75R` handler `0x10808` to preserved
 mode 0/scale 1 state before queueing the next row; the end-raster stream now
 starts from the modeled `0xa904` ring source and ties `ESC *rB` handler
 `0x107fa` to active-clear state before `ESC *t150R` updates mode/scale again;
-and the chained `ESC *b2w2W` stream now starts from the modeled `0xa904` ring
-source and proves uppercase `W` restores the lowercase `80 77 00 02 00 00`
-delayed record before consuming the payload. Symbol-set coverage now traces
+the chained-resolution `ESC *t300r150R` stream now starts from the modeled
+`0xa904` ring source, keeps the ROM parser in the `*t` family after lowercase
+`r`, and exits at uppercase `R`; and the chained `ESC *b2w2W` stream now starts
+from the modeled `0xa904` ring source and proves uppercase `W` restores the
+lowercase `80 77 00 02 00 00` delayed record before consuming the payload.
+Symbol-set coverage now traces
 `ESC (2U` / `ESC )0E` through ROM parser setup handlers `0x1201e` / `0x12008`
 and terminal handler `0x120be` before the modeled `0x1be22` / `0xc580`
 active-word refresh and `0x14f16` map patching, separately traces `ESC (7X` plus

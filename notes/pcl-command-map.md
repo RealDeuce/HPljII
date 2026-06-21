@@ -411,11 +411,12 @@ delayed handler `0x0105d0`, a parser-to-gate edge check for `ESC *t300R`/`ESC
 transfer check proving queue-and-advance behavior, a negative-row transfer check
 proving drain-with-advance behavior, a raster payload fixture proving `0xdace`
 turns raw bytes `1a 58` into a single queued `00` byte, same-group
-lowercase-final chaining fixtures for `ESC *t300r150R` and chained `ESC
-*b2w`/`2W` payloads, plus host-fetched `ESC *rB` active-clear and following
-`ESC *t150R` mode/scale update, a host-fetched active-raster `ESC *t75R` ignore
-check before `ESC *b2W`, byte-aligned mode-0, non-byte-aligned mode-0, mode-1,
-byte-aligned mode-2, non-byte-aligned mode-2, band-clipped mode-2, and mode-3
+lowercase-final chaining fixtures for host-fetched `ESC *t300r150R` and
+host-fetched `ESC *b2w`/`2W` payloads, plus host-fetched `ESC *rB` active-clear
+and following `ESC *t150R` mode/scale update, a host-fetched active-raster
+`ESC *t75R` ignore check before `ESC *b2W`, byte-aligned mode-0,
+non-byte-aligned mode-0, mode-1, byte-aligned mode-2, non-byte-aligned mode-2,
+band-clipped mode-2, and mode-3
 raster row
 fixtures through `0x13070` / `0x13250` / `0x138de` / `0x1edc6` / `0x1f88e`,
 covers normal and negative-left-overflow `0xd824` positioned text bucket
@@ -497,9 +498,10 @@ single following payload.
   modeled `0x10084` root allocation, host-fetched lower-resolution and
   capped/drained edge streams, and a page-record bridge check for the first
   `ESC *b4W` object, a host-fetched consecutive-row `ESC *t300R` stream,
-  same-group lowercase-final chaining fixtures for `ESC *t300r150R` and
-  host-fetched `ESC *b2w2W` where lowercase `w` records the delayed transfer
-  and payload is consumed after the uppercase terminator, plus host-fetched
+  same-group lowercase-final chaining fixtures for host-fetched
+  `ESC *t300r150R` and host-fetched `ESC *b2w2W` where lowercase `w` records
+  the delayed transfer and payload is consumed after the uppercase terminator,
+  plus host-fetched
   `ESC *rB` active-clear followed by `ESC *t150R`, host-fetched active-raster
   `ESC *t75R` ignore before a mode-0 `ESC *b2W` row, raster row page-record
   fixtures

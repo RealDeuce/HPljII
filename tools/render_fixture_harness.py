@@ -8522,6 +8522,82 @@ def render_rule_page_bands_via_1f446(data: bytes, render_record: dict[str, objec
     }
 
 
+def render_fixed_width_object_via_1f7b0(data: bytes, obj: bytes | bytearray, band_word: int = 0, dest_stride: int = 0x20, band_rows: int = 80) -> dict[str, object]:
+    node = bytearray(obj)
+    selector = node[5] & 0x0F
+    pattern_table_entry = 0x308DE + selector * 4
+    pattern_long = u32(data, pattern_table_entry)
+    pattern_word = pattern_long & 0xFFFF
+    key = u16(node, 6)
+    remaining = int.from_bytes(node[0x0A:0x0C], "big", signed=True)
+    bucket_delta = (node[4] - int(band_word)) & 0xFF
+    bridged_current_band = bool(node[5] & 0x10)
+    if remaining <= 0:
+        rows_to_draw = 0
+        available_rows = 0
+    elif bridged_current_band:
+        node[5] &= ~0x10
+        available_rows = 0x50 - ((key >> 12) & 0x0F) - 0x10 * bucket_delta
+        rows_to_draw = min(remaining, max(available_rows, 0))
+        node[0x0A:0x0C] = ((remaining - available_rows) & 0xFFFF).to_bytes(2, "big")
+    else:
+        key &= 0x0FFF
+        bucket_delta = 0
+        available_rows = 0x50 - ((key >> 12) & 0x0F)
+        rows_to_draw = min(remaining, max(available_rows, 0))
+        node[0x0A:0x0C] = ((remaining - available_rows) & 0xFFFF).to_bytes(2, "big")
+
+    decoded = decode_rule_key(key, bucket_delta)
+    dest = bytearray(band_rows * dest_stride)
+    if rows_to_draw:
+        source = pattern_word.to_bytes(2, "big") * rows_to_draw
+        write_bitmap_bits(dest, dest_stride, source, rows_to_draw, 2, int(decoded["x"]), int(decoded["y"]))
+    max_bottom = min(band_rows, int(decoded["y"]) + rows_to_draw)
+    max_width = int(decoded["x"]) + 16
+    return {
+        "selector": selector,
+        "helper": 0x1F7B0,
+        "pattern_table_entry": pattern_table_entry,
+        "pattern_long": pattern_long,
+        "pattern_word": pattern_word,
+        "key": key,
+        "bucket_delta": bucket_delta,
+        "decoded": decoded,
+        "remaining_before": remaining,
+        "available_rows": available_rows,
+        "rows_drawn": rows_to_draw,
+        "mutated_object": bytes(node),
+        "rows": bitmap_bytes_to_rows(dest, max_bottom, max_width, dest_stride),
+    }
+
+
+def render_fixed_width_list_via_1f756(data: bytes, render_record: dict[str, object], band_word: int = 0, dest_stride: int = 0x20, band_rows: int = 80) -> dict[str, object]:
+    if band_word % 5:
+        return {"band_word": band_word, "rendered": [], "rows": []}
+    rendered: list[dict[str, object]] = []
+    layers: list[list[str]] = []
+    max_width = 0
+    max_rows = 0
+    for raw in render_record.get("fixed_list", []):
+        obj = bytes(raw)
+        if obj[4] > band_word + 4:
+            break
+        if int.from_bytes(obj[0x0A:0x0C], "big", signed=True) <= 0:
+            continue
+        item = render_fixed_width_object_via_1f7b0(data, obj, band_word=band_word, dest_stride=dest_stride, band_rows=band_rows)
+        rendered.append(item)
+        rows = item["rows"]
+        assert isinstance(rows, list)
+        layers.append(rows)
+        max_rows = max(max_rows, len(rows))
+        max_width = max(max_width, max((len(row) for row in rows), default=0))
+    return {
+        "band_word": band_word,
+        "rendered": rendered,
+        "rows": compose_set_pixel_rows(layers, max_width, max_rows) if layers else [],
+    }
+
+
 def rectangle_command_state(**overrides: object) -> dict[str, object]:
     state: dict[str, object] = {
         "width": pack12(0),
@@ -19047,6 +19123,44 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "object": bytes.fromhex("00 00 00 00 02 06 10 02 00 44 00 00 00 00"),
         "bridged": [bytes.fromhex("00 00 00 00 02 16 10 02 00 44 00 44 01 08")],
     }))
+    fixed_width_rendered = render_fixed_width_list_via_1f756(data, {
+        "fixed_list": [bytes.fromhex("00 00 00 00 00 16 10 02 00 03 00 03 01 08")],
+    }, band_rows=8)
+    checks.append(assert_equal("0x1f756 fixed-width list renders bridged +0x20 object", fixed_width_rendered, {
+        "band_word": 0,
+        "rendered": [{
+            "selector": 6,
+            "helper": 0x1F7B0,
+            "pattern_table_entry": 0x0308F6,
+            "pattern_long": 0xC000E000,
+            "pattern_word": 0xE000,
+            "key": 0x1002,
+            "bucket_delta": 0,
+            "decoded": {
+                "x": 32,
+                "y": 1,
+                "row_low": 1,
+                "subbyte": 0,
+                "byte_pair_offset": 4,
+            },
+            "remaining_before": 3,
+            "available_rows": 79,
+            "rows_drawn": 3,
+            "mutated_object": bytes.fromhex("00 00 00 00 00 06 10 02 00 03 ff b4 01 08"),
+            "rows": [
+                "." * 48,
+                "." * 32 + "###" + "." * 13,
+                "." * 32 + "###" + "." * 13,
+                "." * 32 + "###" + "." * 13,
+            ],
+        }],
+        "rows": [
+            "." * 48,
+            "." * 32 + "###" + "." * 13,
+            "." * 32 + "###" + "." * 13,
+            "." * 32 + "###" + "." * 13,
+        ],
+    }))
     rectangle_sizes = apply_rectangle_size_decipoints(
         apply_rectangle_size_decipoints(
             apply_rectangle_size_dots(
@@ -25994,6 +26108,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         fixed_rule_result["computed"]["key"],
         0x0044,
         fixed_rule_bridged["fixed_list"][0][5],
+    ))
+    lines.append("- `0x1f756` fixed-width list fixture reads render-record `+0x20`, selector `%d` -> pattern long `0x%08x` from table `0x%06x`, draws `%d` rows through `0x1f7b0`, and leaves object bytes `%s`." % (
+        fixed_width_rendered["rendered"][0]["selector"],
+        fixed_width_rendered["rendered"][0]["pattern_long"],
+        fixed_width_rendered["rendered"][0]["pattern_table_entry"],
+        fixed_width_rendered["rendered"][0]["rows_drawn"],
+        " ".join(f"{byte:02x}" for byte in fixed_width_rendered["rendered"][0]["mutated_object"]),
     ))
     lines.append("- `ESC *c#A/#B` store positive dot dimensions directly; `ESC *c#H/#V` convert decipoints through five subunits per decipoint and round up before storing. The fixture pins `ESC *c72H` as `0x%08x` and `ESC *c1.5V` as `0x%08x`." % (
         rectangle_sizes["width"],

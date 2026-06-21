@@ -389,7 +389,8 @@ ROM work needed:
 - Replace the current `ESC *c4660d37e5F` current-state boundary, `ESC )s0W` parser/route
   boundary through `0x15d0a`, `ESC )s80W` resource-payload boundary through `0x16c14` ->
   `0x16fae` -> `0x1719c`, and host-fetched `ESC )s2193W` parser/object boundary through
-  `0x16c14` -> `0x16498` downloaded-pointer `0x1f264` with a full live parser-state run
+  `0x16c14` -> `0x16498` downloaded-pointer `0x1f264`; both payload streams now have
+  modeled `0xa904` ring-source coverage. Replace these with a full live parser-state run
   that populates current records/source objects, then replace producer-modeled fixtures
   with full parser/page-object rendering.
 - Extract glyph metrics and render a known self-test/font sample.
@@ -408,7 +409,8 @@ ROM work needed:
 - Replace the current `ESC *c4660d37e5F` current-state boundary, `ESC )s0W` parser/route
   boundary through `0x15d0a`, `ESC )s80W` resource-payload boundary through `0x16c14` ->
   `0x16fae` -> `0x1719c`, and host-fetched `ESC )s2193W` parser/object boundary through
-  `0x16c14` -> `0x16498` downloaded-pointer `0x1f264` with a full live parser-state run
+  `0x16c14` -> `0x16498` downloaded-pointer `0x1f264`; both payload streams now have
+  modeled `0xa904` ring-source coverage. Replace these with a full live parser-state run
   that populates current records/source objects; the verified built-in scan does not
   provide normal built-in entries for these renderer modes.
 - Integrate executable row-copy behavior with real page objects from the parser/imaging

@@ -17817,6 +17817,70 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "candidate_flags": 0x40000000,
         },
     }))
+    host_fetched_resource_payload_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(table_payload_resource_command_stream), direct_mode=0),
+        len(table_payload_resource_command_stream),
+    )
+    host_fetched_resource_payload_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        host_fetched_resource_payload_stream["stream"],
+    )
+    host_fetched_resource_payload_commands = host_fetched_resource_payload_trace["commands"]
+    assert isinstance(host_fetched_resource_payload_commands, list)
+    host_fetched_resource_payload_command = host_fetched_resource_payload_commands[0]
+    assert isinstance(host_fetched_resource_payload_command, dict)
+    host_fetched_resource_payload = host_fetched_resource_payload_command["payload"]
+    assert isinstance(host_fetched_resource_payload, bytes)
+    checks.append(assert_equal("host-fetched resource payload stream installs selected 0x1719c font", {
+        "fetched_stream_prefix": host_fetched_resource_payload_stream["stream"][:6],
+        "fetched_stream_length": len(host_fetched_resource_payload_stream["stream"]),
+        "fetch_source_count": len(host_fetched_resource_payload_stream["sources"]),
+        "fetch_source_set": sorted(set(host_fetched_resource_payload_stream["sources"])),
+        "remaining_ring": host_fetched_resource_payload_stream["state"]["ring"],
+        "parser_handlers": [
+            event["handler"]
+            for event in host_fetched_resource_payload_trace["dispatches"]
+        ],
+        "parser_modes": [
+            event["next_mode"]
+            for event in host_fetched_resource_payload_trace["dispatches"]
+        ],
+        "restored_record": host_fetched_resource_payload_command["restored_record"],
+        "payload_offset": host_fetched_resource_payload_command["payload_offset"],
+        "payload_length": len(host_fetched_resource_payload),
+        "payload_prefix": host_fetched_resource_payload[:16],
+        "payload_suffix": host_fetched_resource_payload[-16:],
+        "validation_status": table_payload_resource_command_event["validation"]["status"],  # type: ignore[index]
+        "allocation_size": table_payload_resource_command_allocation["allocation_size"],
+        "candidate_flags": table_payload_resource_command_install["candidate_flags"],
+        "selected_dispatch": {
+            key: table_payload_resource_dispatch[key]
+            for key in ("path", "selected_longword", "selected_symbol", "range_start", "range_end")
+        },
+    }, {
+        "fetched_stream_prefix": b"\x1b)s80W",
+        "fetched_stream_length": len(table_payload_resource_command_stream),
+        "fetch_source_count": len(table_payload_resource_command_stream),
+        "fetch_source_set": ["ring"],
+        "remaining_ring": [],
+        "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+        "parser_modes": [1, 4, 13, 0],
+        "restored_record": bytes.fromhex("80 57 00 50 00 01"),
+        "payload_offset": 6,
+        "payload_length": 80,
+        "payload_prefix": bytes.fromhex("00 01 02 00 ff ff 00 04 00 06 00 09 01 05 12 34"),
+        "payload_suffix": b"\x00" * 16,
+        "validation_status": 1,
+        "allocation_size": 10,
+        "candidate_flags": 0x40000000,
+        "selected_dispatch": {
+            "path": "offset-table-cache-miss",
+            "selected_longword": 0x40000000,
+            "selected_symbol": 0x1234,
+            "range_start": 0x0000,
+            "range_end": 0x007F,
+        },
+    }))
     checks.append(assert_equal("0x16c14-installed 0x1719c payload dispatches as bit-30 resource form", {
         "install": {
             "candidate_flags": table_payload_resource_install["candidate_flags"],
@@ -28431,6 +28495,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_resource_command_event["payload_length"],
         table_payload_resource_command_event["validation"]["bytes_consumed"],  # type: ignore[index]
         table_payload_resource_command_allocation["allocation_size"],
+        table_payload_resource_command_install["candidate_flags"],
+    ))
+    lines.append("- host-fetched resource payload boundary: the complete `%d`-byte `ESC )s80W` command/payload stream drains from the modeled `0xa904` ring source, restores record `%s`, validates through `0x16fae`, and installs selected longword `0x%08x`." % (
+        len(host_fetched_resource_payload_stream["stream"]),
+        " ".join(f"{byte:02x}" for byte in host_fetched_resource_payload_command["restored_record"]),
         table_payload_resource_command_install["candidate_flags"],
     ))
     lines.append("- installed payload-backed resource dispatch: the same `0x1719c` payload goes through integrated `0x16c14`/`0x1bc38`, setting candidate longword `0x%08x`; `0x14c64` then takes the bit-30 offset-table branch, writes range `0x%04x..0x%04x`, rebuilds map `0x%06x` through `0x14d9c`, maps host `0x21` to glyph `%d`, and snapshots `0x15890` symbol `0x%04x` from `%s`." % (

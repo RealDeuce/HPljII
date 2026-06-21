@@ -385,8 +385,11 @@ With dirty flag `0x782f2c = 1`, parser/setup slot `D5 = 0`, current
 selector `0x782f06 = 0`, a present page root, and no live page-root font
 slots at `0x78297f..0x78298e`, the routine finds slot `0` available,
 runs `0xc4fc(0x782992)`, calls candidate refresh `0x13eb8(0)`, and
-then calls `0xc428(0)`. When all 16 live flags are set and `0xc4fc`
-can match the existing context, `0xc580` briefly sets `0x78298f = 1`,
+then calls `0xc428(0)`. The same first-clear-slot path is pinned for
+secondary slot `D5 = 1`, where `0xc428` selects context record
+`0x782ef6` instead of `0x782ee6`. When all 16 live flags are set and
+`0xc4fc` can match the existing context, `0xc580` briefly sets
+`0x78298f = 1`,
 calls `0x13eb8(0)`, clears `0x78298f`, reuses the existing page-root
 context slot, calls `0x13eb8(0)` again, and then calls `0xc428(0)`.
 When all 16 live flags are set and `0xc4fc` finds no matching context,
@@ -394,10 +397,11 @@ the helper returns `0x11`; `0xc580` skips the second `0x13eb8` and
 `0xc428` install. A dirty-1 selector mismatch (`0x782f06 != D5`) takes
 the short `0x13eb8(D5)` branch and also skips `0xc4fc` / `0xc428`.
 For dirty flag `2`, `0xc580` does not call `0x13eb8`: selector match
-calls only `0xc428(D5)`, while selector mismatch only reaches the final
-active-to-remembered word copy. The modeled `0xc4fc` scan writes or
-reuses the current font-context record pointer in page-root slot
-`+0x2c + 4*n`; `0xc428` selects that page-root context slot by writing
+calls only `0xc428(D5)` for both primary and secondary slots, while
+selector mismatch only reaches the final active-to-remembered word copy.
+The modeled `0xc4fc` scan writes or reuses the current font-context
+record pointer in page-root slot `+0x2c + 4*n`; `0xc428` selects that
+page-root context slot by writing
 `0x78297e`. It does not mark `0x78297f+n` live; the printable producer
 path marks that live flag when text is queued. Each non-returning branch
 ends by copying active word `0x783144 + 2*D5` into remembered word

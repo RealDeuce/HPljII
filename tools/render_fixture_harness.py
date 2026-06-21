@@ -17058,6 +17058,55 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         ],
     }))
+    c580_secondary_context_refresh = symbol_set_state(
+        requested_symbols=[0x0115, 0x0005],
+        active_symbols=[0x0115, 0x0115],
+        remembered_symbols=[0x0115, 0x0115],
+        current_selector_782f06=1,
+        current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        dirty_flag=1,
+        dirty_maps=1,
+        selected_context_record_782992=current_font_context_record(1),
+    )
+    refresh_symbol_state_via_c580(c580_secondary_context_refresh, 1)
+    checks.append(assert_equal("0xc580 dirty secondary branch installs page-root font context", {
+        "active_symbols": c580_secondary_context_refresh["active_symbols"],
+        "remembered_symbols": c580_secondary_context_refresh["remembered_symbols"],
+        "dirty_flag": c580_secondary_context_refresh["dirty_flag"],
+        "dirty_maps": c580_secondary_context_refresh["dirty_maps"],
+        "refreshes": c580_secondary_context_refresh["refreshes"],
+        "current_page_context_slot_78297e": c580_secondary_context_refresh["current_page_context_slot_78297e"],
+        "page_root_context_slots": c580_secondary_context_refresh["page_root_context_slots"][:2],
+        "page_root_live_flags": c580_secondary_context_refresh["page_root_live_flags"][:2],
+        "candidate_refresh_calls": c580_secondary_context_refresh["candidate_refresh_calls"],
+        "context_install_events": c580_secondary_context_refresh["context_install_events"],
+    }, {
+        "active_symbols": [0x0115, 0x0005],
+        "remembered_symbols": [0x0115, 0x0005],
+        "dirty_flag": 0,
+        "dirty_maps": 0,
+        "refreshes": 1,
+        "current_page_context_slot_78297e": 0,
+        "page_root_context_slots": [0x782EF6, 0],
+        "page_root_live_flags": [0, 0],
+        "candidate_refresh_calls": [{"helper": 0x013EB8, "slot": 1, "reason": "post-c4fc"}],
+        "context_install_events": [
+            {
+                "helper": 0x00C4FC,
+                "caller": "0xc580",
+                "context_record": 0x782EF6,
+                "selected_page_slot": 0,
+                "reason": "first-inactive",
+            },
+            {
+                "helper": 0x00C4FC,
+                "caller": "0xc428",
+                "context_record": 0x782EF6,
+                "selected_page_slot": 0,
+                "reason": "existing-context",
+            },
+        ],
+    }))
     c580_full_context_refresh = symbol_set_state(
         requested_symbols=[0x0055, 0x0115],
         active_symbols=[0x0115, 0x0115],
@@ -17228,6 +17277,45 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "helper": 0x00C4FC,
                 "caller": "0xc428",
                 "context_record": 0x782EE6,
+                "selected_page_slot": 0,
+                "reason": "first-inactive",
+            },
+        ],
+    }))
+    c580_dirty2_secondary_match = symbol_set_state(
+        requested_symbols=[0x0115, 0x0005],
+        active_symbols=[0x0115, 0x02C1],
+        remembered_symbols=[0x0115, 0x0115],
+        current_selector_782f06=1,
+        current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        dirty_flag=2,
+        dirty_maps=1,
+    )
+    refresh_symbol_state_via_c580(c580_dirty2_secondary_match, 1)
+    checks.append(assert_equal("0xc580 dirty-2 secondary selector-match branch installs current context only", {
+        "active_symbols": c580_dirty2_secondary_match["active_symbols"],
+        "remembered_symbols": c580_dirty2_secondary_match["remembered_symbols"],
+        "dirty_flag": c580_dirty2_secondary_match["dirty_flag"],
+        "dirty_maps": c580_dirty2_secondary_match["dirty_maps"],
+        "refreshes": c580_dirty2_secondary_match["refreshes"],
+        "current_page_context_slot_78297e": c580_dirty2_secondary_match["current_page_context_slot_78297e"],
+        "page_root_context_slots": c580_dirty2_secondary_match["page_root_context_slots"][:2],
+        "candidate_refresh_calls": c580_dirty2_secondary_match["candidate_refresh_calls"],
+        "context_install_events": c580_dirty2_secondary_match["context_install_events"],
+    }, {
+        "active_symbols": [0x0115, 0x02C1],
+        "remembered_symbols": [0x0115, 0x02C1],
+        "dirty_flag": 0,
+        "dirty_maps": 0,
+        "refreshes": 1,
+        "current_page_context_slot_78297e": 0,
+        "page_root_context_slots": [0x782EF6, 0],
+        "candidate_refresh_calls": [],
+        "context_install_events": [
+            {
+                "helper": 0x00C4FC,
+                "caller": "0xc428",
+                "context_record": 0x782EF6,
                 "selected_page_slot": 0,
                 "reason": "first-inactive",
             },
@@ -35934,6 +36022,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("  `0x13eb8`, then call `0xc428`; page-root context slot `0`")
     lines.append("  receives `0x782ee6`, `0x78297e` selects slot `0`, and live flags")
     lines.append("  stay clear until printable source queuing marks `0x78297f+n`.")
+    lines.append("  The secondary mirror uses selector slot `1` and installs")
+    lines.append("  current-font context record `0x782ef6` through the same path.")
     lines.append("- `0xc580` all-live matching-context fixture:")
     lines.append("  all 16 live flags set briefly toggles `0x78298f`, calls")
     lines.append("  `0x13eb8`, reuses existing page-root context slot `3` through")
@@ -35945,7 +36035,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("  `0x13eb8(D5)` before the final active-to-remembered word copy.")
     lines.append("- `0xc580` dirty-2 fixtures:")
     lines.append("  selector match calls only `0xc428(D5)` before the final copy,")
-    lines.append("  while selector mismatch skips both `0x13eb8` and `0xc428`.")
+    lines.append("  with primary `0x782ee6` and secondary `0x782ef6` both pinned;")
+    lines.append("  selector mismatch skips both `0x13eb8` and `0xc428`.")
     lines.append("- scanned candidate-list partitioning: `0x1a9be` leaves total `%d`, class-one low/range counts `%d`/`%d`, class-zero low/range counts `%d`/`%d`, and cursor windows `%s`; this pins the list starts used later by current/default font searches." % (
         scanned_candidate_partition["counters"]["0x78278e"],
         scanned_candidate_partition["counters"]["0x782792"],

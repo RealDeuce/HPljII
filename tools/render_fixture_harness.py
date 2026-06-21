@@ -9092,7 +9092,30 @@ def vertical_layout_handler(final: int) -> int:
         return 0x00ECE2
     if final_upper == ord("F"):
         return 0x00EA9E
+    if final_upper == ord("L"):
+        return 0x00EE64
     raise AssertionError(f"unsupported ESC &l vertical-layout final byte {chr(final)!r}")
+
+
+def apply_perforation_skip_via_ee64(state: dict[str, int], parameter: int) -> dict[str, int]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    selector = abs(int(parameter))
+    before = int(updated.get("perforation_skip_783191", 1)) & 0xFF
+    if selector == 0:
+        updated["perforation_skip_783191"] = 0
+    elif selector == 1:
+        updated["perforation_skip_783191"] = 1
+    events.append({
+        "kind": "perforation-skip",
+        "parameter": int(parameter),
+        "absolute": selector,
+        "skip_before": before,
+        "skip_after": int(updated.get("perforation_skip_783191", before)) & 0xFF,
+        "stored": selector in (0, 1),
+    })
+    updated["events"] = events
+    return updated
 
 
 def paper_source_table_target_via_ef62(parameter: int) -> int:
@@ -9190,7 +9213,7 @@ def apply_vertical_layout_stream_via_cb00_c992_ece2_ea9e(state: dict[str, int], 
     while pos < len(stream):
         start = pos
         if pos + 3 >= len(stream) or stream[pos : pos + 3] != b"\x1b&l":
-            raise AssertionError(f"vertical-layout stream only models ESC &l#C/#D/#E/#F at offset {pos}")
+            raise AssertionError(f"vertical-layout stream only models ESC &l#C/#D/#E/#F/#L at offset {pos}")
         pos += 3
         while True:
             command_start = start if pos == start + 3 else pos
@@ -9209,6 +9232,10 @@ def apply_vertical_layout_stream_via_cb00_c992_ece2_ea9e(state: dict[str, int], 
                 state = apply_top_margin_via_ece2(state, integer)
             elif final_upper == ord("F"):
                 state = apply_text_length_via_ea9e(state, integer)
+            elif final_upper == ord("L"):
+                if fraction != 0:
+                    raise AssertionError("vertical-layout stream perforation-skip command does not model fractions")
+                state = apply_perforation_skip_via_ee64(state, integer)
             else:
                 raise AssertionError(f"vertical-layout stream unsupported final byte {chr(final)!r}")
             record = bytes([
@@ -12694,6 +12721,10 @@ def render_mixed_printable_control_page_record_stream(
                         if fraction != 0:
                             raise AssertionError("page-record mixed stream text-length command does not model fractions")
                         state = apply_text_length_via_ea9e(state, integer)
+                    elif final_upper == ord("L"):
+                        if fraction != 0:
+                            raise AssertionError("page-record mixed stream perforation-skip command does not model fractions")
+                        state = apply_perforation_skip_via_ee64(state, integer)
                     elif final_upper == ord("H"):
                         if fraction != 0:
                             raise AssertionError("page-record mixed stream paper-source command does not model fractions")
@@ -12725,6 +12756,7 @@ def render_mixed_printable_control_page_record_stream(
                     events.append({
                         "kind": {
                             ord("H"): "paper-source",
+                            ord("L"): "perforation-skip",
                             ord("X"): "copies",
                         }.get(final_upper, "vertical-layout"),
                         "offset": command_start,
@@ -12754,6 +12786,9 @@ def render_mixed_printable_control_page_record_stream(
                     if final_upper == ord("X"):
                         events[-1]["copies_before"] = before.get("page_env_word_782da4", 0)
                         events[-1]["copies_after"] = state.get("page_env_word_782da4", 0)
+                    if final_upper == ord("L"):
+                        events[-1]["skip_before"] = before.get("perforation_skip_783191", 1)
+                        events[-1]["skip_after"] = state.get("perforation_skip_783191", 1)
                     if not (ord("a") <= final <= ord("z")):
                         break
                 continue
@@ -13013,7 +13048,7 @@ def render_mixed_printable_control_page_record_stream(
                     if not (ord("a") <= final <= ord("z")):
                         break
                 continue
-            raise AssertionError(f"page-record mixed stream only models ESC &k#G, ESC &a#L/#M/#C/#H/#R/#V, ESC &f#S, ESC &p#X, ESC &l#C/#D/#E/#F/#H/#X, ESC *p#X/#Y, ESC *c, ESC *t/*r/*b raster commands, and ESC E at offset {pos}")
+            raise AssertionError(f"page-record mixed stream only models ESC &k#G, ESC &a#L/#M/#C/#H/#R/#V, ESC &f#S, ESC &p#X, ESC &l#C/#D/#E/#F/#H/#L/#X, ESC *p#X/#Y, ESC *c, ESC *t/*r/*b raster commands, and ESC E at offset {pos}")
         if byte in (0x08, 0x09, 0x0A, 0x0C, 0x0D):
             before = dict(state)
             finalized = None
@@ -18216,6 +18251,44 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "last_event": {"kind": "top-margin-ignored", "reason": "beyond-page-extent-or-zero-vmi", "candidate": pack12(350)},
         },
     }))
+    perforation_skip_cases = [
+        apply_perforation_skip_via_ee64({"perforation_skip_783191": before}, parameter)["events"][-1]
+        for parameter, before in ((0, 1), (1, 0), (-1, 0), (2, 1))
+    ]
+    checks.append(assert_equal("0xee64 ESC &l#L toggles perforation skip for selectors 0 and 1 only", perforation_skip_cases, [
+        {
+            "kind": "perforation-skip",
+            "parameter": 0,
+            "absolute": 0,
+            "skip_before": 1,
+            "skip_after": 0,
+            "stored": True,
+        },
+        {
+            "kind": "perforation-skip",
+            "parameter": 1,
+            "absolute": 1,
+            "skip_before": 0,
+            "skip_after": 1,
+            "stored": True,
+        },
+        {
+            "kind": "perforation-skip",
+            "parameter": -1,
+            "absolute": 1,
+            "skip_before": 0,
+            "skip_after": 1,
+            "stored": True,
+        },
+        {
+            "kind": "perforation-skip",
+            "parameter": 2,
+            "absolute": 2,
+            "skip_before": 1,
+            "skip_after": 1,
+            "stored": False,
+        },
+    ]))
     vertical_layout_stream = apply_vertical_layout_stream_via_cb00_c992_ece2_ea9e(
         vertical_layout_state(pending_text=1, top_offset=pack12(0), text_length_bottom=0),
         b"\x1b&l8c6d3e2F",
@@ -36641,6 +36714,139 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "top_offset": pack12(90),
             "text_length_bottom": pack12(240),
             "layout_refreshes": 1,
+            "page_record_root_allocations": 1,
+        },
+    }))
+    perforation_skip_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&l1L!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            perforation_skip_783191=0,
+            events=[],
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    perforation_skip_page_record_object = perforation_skip_page_record_stream["bucket_object"]
+    perforation_skip_page_record_rendered = perforation_skip_page_record_stream["rendered"]
+    perforation_skip_page_record_bridged = perforation_skip_page_record_stream["bridged_record"]
+    assert isinstance(perforation_skip_page_record_object, bytes)
+    assert isinstance(perforation_skip_page_record_rendered, dict)
+    assert isinstance(perforation_skip_page_record_bridged, dict)
+    perforation_skip_page_record_event_summary: list[dict[str, object]] = []
+    for event in perforation_skip_page_record_stream["events"]:
+        assert isinstance(event, dict)
+        if event["kind"] == "perforation-skip":
+            perforation_skip_page_record_event_summary.append({
+                "kind": event["kind"],
+                "sequence": event["sequence"],
+                "record": event["record"],
+                "parameter": event["parameter"],
+                "handler": event["handler"],
+                "cursor_before": event["cursor_before"],
+                "cursor_after": event["cursor_after"],
+                "skip_before": event["skip_before"],
+                "skip_after": event["skip_after"],
+                "events": event["events"],
+            })
+            continue
+        page_result = event["page_result"]
+        positioned = event["positioned"]
+        assert isinstance(page_result, dict)
+        assert isinstance(positioned, dict)
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        perforation_skip_page_record_event_summary.append({
+            "kind": event["kind"],
+            "byte": event["byte"],
+            "cursor_before": event["cursor_before"],
+            "cursor_after": event["cursor_after"],
+            "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+            "coord": page_result["coord"],
+            "allocated": page_result["allocated"],
+            "count_before": page_result["count_before"],
+            "count_after": page_result["count_after"],
+            "bucket_index": page_result["bucket_index"],
+        })
+    perforation_skip_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&l1L!")
+    checks.append(assert_equal("perforation skip parser trace feeds page-record queue", {
+        "stream": perforation_skip_page_record_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in perforation_skip_parser_trace["events"]
+        ],
+        "parser_final_mode": perforation_skip_parser_trace["final_mode"],
+        "events": perforation_skip_page_record_event_summary,
+        "root_allocations": perforation_skip_page_record_stream["final_state"]["page_record_root_allocations"],
+        "bucket_index": perforation_skip_page_record_stream["bucket_index"],
+        "object_prefix": perforation_skip_page_record_object[:11],
+        "bridged_context_slots": perforation_skip_page_record_bridged["context_slots"][:2],
+        "rendered_rows": perforation_skip_page_record_rendered["rows"],
+        "final_state": select_keys(perforation_skip_page_record_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "perforation_skip_783191",
+            "page_record_root_allocations",
+        )),
+    }, {
+        "stream": b"\x1b&l1L!",
+        "parser_events": [
+            {"kind": "command", "handler": 0x00EE64, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+        ],
+        "parser_final_mode": 0,
+        "events": [
+            {
+                "kind": "perforation-skip",
+                "sequence": b"\x1b&l1L",
+                "record": bytes.fromhex("80 4c 00 01 00 00"),
+                "parameter": 1,
+                "handler": 0x00EE64,
+                "cursor_before": pack12(21),
+                "cursor_after": pack12(21),
+                "skip_before": 0,
+                "skip_after": 1,
+                "events": [
+                    {
+                        "kind": "perforation-skip",
+                        "parameter": 1,
+                        "absolute": 1,
+                        "skip_before": 0,
+                        "skip_after": 1,
+                        "stored": True,
+                    },
+                ],
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "cursor_before": pack12(10),
+                "cursor_after": pack12(28),
+                "positioned_xy": (16, 0),
+                "coord": 0x0001,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+            },
+        ],
+        "root_allocations": 1,
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+        "bridged_context_slots": (0x440946B4, 0),
+        "rendered_rows": positioned_mode0["rows"],
+        "final_state": {
+            "cursor_x": pack12(28),
+            "cursor_y": pack12(21),
+            "perforation_skip_783191": 1,
             "page_record_root_allocations": 1,
         },
     }))

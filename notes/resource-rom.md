@@ -168,6 +168,18 @@ first named `COURIER` record has context `0x44080418` and first glyph
 entry `0x007baa`; the first named `LINE_PRINTER` record has context
 `0x440946b4` and first glyph entry `0x018730`.
 
+The same named-record summary now pins selection-facing metadata fields
+consumed by firmware helpers. Byte `+0x20` is the class/orientation
+selector used by `0x1a9be` partitioning and `0x1b060` default matching;
+the named records split evenly between selector values `0` and `1`.
+Byte `+0x21`, read by the `0x153c6` spacing filter, is `0` for every
+named record. Symbols repeat as six records each for `0x0155`,
+`0x0175`, and `0x000e`. Raw `+0x24/+0x26` pitch fields are
+`0x0078/0x00` for `COURIER` and `0x0048/0x00` for `LINE_PRINTER`. Raw
+`+0x28/+0x2a` height fields are `0x00c8/0x00` and `0x008d/0xab`.
+Comparator bytes `+0x2f..+0x31` are `(0,0,3)` or `(0,3,3)` for
+`COURIER`, and `(0,0,0)` for `LINE_PRINTER`.
+
 Example candidate entries from the probe:
 
 - Context `0x4008004c`, glyph `0`, relative offset `0x0000103c`, entry
@@ -315,8 +327,8 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    drives the installed downloaded glyph into segmented page-record
    buckets before `0x1ed84`/`0x1ef6a` rendering.
 5. Finish semantic naming of the remaining built-in metadata fields,
-   especially orientation, style, baseline, and the ambiguous size words
-   now extracted for every named `COURIER` and `LINE_PRINTER` record.
+   especially baseline and the ambiguous size words now extracted for
+   every named `COURIER` and `LINE_PRINTER` record.
 6. Locate the glyph bitmap payloads and write a deterministic extractor
    from the verified `IC32,IC15` hash.
 

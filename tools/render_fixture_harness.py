@@ -4132,6 +4132,79 @@ def named_builtin_font_metadata(resources: bytes) -> list[dict[str, object]]:
     return records
 
 
+def named_builtin_selection_field_summary(resources: bytes) -> dict[str, object]:
+    records = [
+        (candidate, infer_named_builtin_record(resources, int(candidate["record_start"])))
+        for candidate in firmware_scanned_builtin_candidates(resources)
+    ]
+    named_records = [(candidate, name) for candidate, name in records if name is not None]
+
+    selector_counts: dict[int, int] = {}
+    selector_by_name: dict[str, dict[int, int]] = {}
+    byte_0x21_values: set[int] = set()
+    symbol_counts: dict[int, int] = {}
+    type_0x0c_counts: dict[int, int] = {}
+    type_0x0d_values: set[int] = set()
+    raw_metric_fields: dict[str, dict[str, set[tuple[int, int]]]] = {}
+    comparator_counts: dict[tuple[str, tuple[int, int, int]], int] = {}
+
+    for candidate, name in named_records:
+        assert name is not None
+        selector = int(candidate["d4_class"])
+        selector_counts[selector] = selector_counts.get(selector, 0) + 1
+        selector_name_counts = selector_by_name.setdefault(name, {})
+        selector_name_counts[selector] = selector_name_counts.get(selector, 0) + 1
+        byte_0x21_values.add(int(candidate["builtin_byte_0x21"]))
+        symbol = int(candidate["builtin_word_0x22"])
+        symbol_counts[symbol] = symbol_counts.get(symbol, 0) + 1
+        type_0x0c = int(candidate["type_byte_0x0c"])
+        type_0x0c_counts[type_0x0c] = type_0x0c_counts.get(type_0x0c, 0) + 1
+        type_0x0d_values.add(int(candidate["type_byte_0x0d"]))
+        metrics = raw_metric_fields.setdefault(
+            name,
+            {"pitch_0x24_0x26": set(), "height_0x28_0x2a": set()},
+        )
+        metrics["pitch_0x24_0x26"].add((
+            int(candidate["builtin_word_0x24"]),
+            int(candidate["builtin_byte_0x26"]),
+        ))
+        metrics["height_0x28_0x2a"].add((
+            int(candidate["builtin_word_0x28"]),
+            int(candidate["builtin_byte_0x2a"]),
+        ))
+        comparator = (
+            int(candidate["builtin_byte_0x2f"]),
+            int(candidate["builtin_byte_0x30"]),
+            int(candidate["builtin_byte_0x31"]),
+        )
+        key = (name, comparator)
+        comparator_counts[key] = comparator_counts.get(key, 0) + 1
+
+    return {
+        "count": len(named_records),
+        "selector_byte_0x20_counts": dict(sorted(selector_counts.items())),
+        "selector_byte_0x20_by_name": {
+            name: dict(sorted(counts.items()))
+            for name, counts in sorted(selector_by_name.items())
+        },
+        "byte_0x21_values": sorted(byte_0x21_values),
+        "symbol_counts": dict(sorted(symbol_counts.items())),
+        "type_byte_0x0c_counts": dict(sorted(type_0x0c_counts.items())),
+        "type_byte_0x0d_values": sorted(type_0x0d_values),
+        "raw_metric_fields": {
+            name: {
+                field: sorted(values)
+                for field, values in sorted(fields.items())
+            }
+            for name, fields in sorted(raw_metric_fields.items())
+        },
+        "comparator_byte_tuples_0x2f_0x30_0x31": [
+            {"name": name, "tuple": values, "count": count}
+            for (name, values), count in sorted(comparator_counts.items())
+        ],
+    }
+
+
 def builtin_candidate_windows_from_scanned_records(
     records: list[dict[str, int]],
     events: list[dict[str, object]],
@@ -16714,6 +16787,33 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {"name": "LINE_PRINTER", "record_start": 0x02D87A, "context": 0x440AD87A, "length": 0x0454, "class": 1, "symbol": 0x0155, "pitch": 1666, "height": 850, "size_words": (18, 39, 18, 38), "first_char": 1, "last_char": 0xFF, "nonzero_entries": 253, "first_glyph": {"index": 0, "relative": 0x0043BA, "entry": 0x031C34, "rows": 16, "width": 16}},
             {"name": "LINE_PRINTER", "record_start": 0x02DCCE, "context": 0x440ADCCE, "length": 0x0454, "class": 1, "symbol": 0x0175, "pitch": 1666, "height": 850, "size_words": (18, 39, 18, 38), "first_char": 1, "last_char": 0xFF, "nonzero_entries": 253, "first_glyph": {"index": 0, "relative": 0x003F66, "entry": 0x031C34, "rows": 16, "width": 16}},
             {"name": "LINE_PRINTER", "record_start": 0x02E122, "context": 0x400AE122, "length": 0x4E5E, "class": 1, "symbol": 0x000E, "pitch": 1666, "height": 850, "size_words": (18, 39, 18, 38), "first_char": 33, "last_char": 0xFF, "nonzero_entries": 190, "first_glyph": {"index": 0, "relative": 0x0003D4, "entry": 0x02E4F6, "rows": 4, "width": 22}},
+        ],
+    }))
+    checks.append(assert_equal("named built-in records expose firmware selection fields", named_builtin_selection_field_summary(resources), {
+        "count": 18,
+        "selector_byte_0x20_counts": {0: 9, 1: 9},
+        "selector_byte_0x20_by_name": {
+            "COURIER": {0: 6, 1: 6},
+            "LINE_PRINTER": {0: 3, 1: 3},
+        },
+        "byte_0x21_values": [0],
+        "symbol_counts": {0x000E: 6, 0x0155: 6, 0x0175: 6},
+        "type_byte_0x0c_counts": {1: 6, 2: 12},
+        "type_byte_0x0d_values": [0],
+        "raw_metric_fields": {
+            "COURIER": {
+                "height_0x28_0x2a": [(0x00C8, 0)],
+                "pitch_0x24_0x26": [(0x0078, 0)],
+            },
+            "LINE_PRINTER": {
+                "height_0x28_0x2a": [(0x008D, 0xAB)],
+                "pitch_0x24_0x26": [(0x0048, 0)],
+            },
+        },
+        "comparator_byte_tuples_0x2f_0x30_0x31": [
+            {"name": "COURIER", "tuple": (0, 0, 3), "count": 6},
+            {"name": "COURIER", "tuple": (0, 3, 3), "count": 6},
+            {"name": "LINE_PRINTER", "tuple": (0, 0, 0), "count": 6},
         ],
     }))
     actual_candidate_windows = builtin_candidate_windows_from_scanned_records(

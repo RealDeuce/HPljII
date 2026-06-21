@@ -365,7 +365,9 @@ after a cumulative `0x40000` crossing, and jumping or erroring on
 records in the verified window, proving twelve `COURIER` and six
 `LINE_PRINTER` records with deterministic context, length, class,
 symbol, decoded pitch/height, character range, nonzero table-entry
-count, size-word tuple, and first glyph entry;
+count, size-word tuple, first glyph entry, and firmware selection fields
+including `+0x20`, `+0x21`, raw pitch/height pairs, and comparator bytes
+`+0x2f..+0x31`;
 text object glyph index bytes are mapped before queuing by `0x1393a` and
 initialized by `0x14d9c` / `0x14e24` / `0x14f16`; `0x1be22` computes
 normal PCL symbol words from host `ESC (` / `ESC )` commands, handles
@@ -502,7 +504,7 @@ ROM work needed:
   available.
 - Finish semantic naming of the remaining built-in record fields now
   extracted from the repeated `COURIER` and `LINE_PRINTER` fixtures,
-  especially orientation, style, baseline, and ambiguous size words.
+  especially baseline and ambiguous size words.
 - Replace the modeled default-font candidate records with a live
   parser/font-state fixture that proves the real records feeding
   `0x1b250`, `0x1b50e`, `0x1ab84`, `0x1bbfe`, and `0x1b060`, and decide

@@ -8598,6 +8598,77 @@ def render_fixed_width_list_via_1f756(data: bytes, render_record: dict[str, obje
     }
 
 
+def render_band_entry_via_1ef6a(data: bytes, resources: bytes, render_record: dict[str, object], dest_stride: int = 0x20, band_rows: int = 80) -> dict[str, object]:
+    """Model the 0x1ef6a per-band call order over a synthetic render record."""
+    fields = render_record.get("render_record_fields", {})
+    if not isinstance(fields, dict):
+        fields = {}
+    band_word = int(fields.get("word_10", render_record.get("word_10", 0))) & 0xFFFF
+    context_slots = render_record.get("context_slots", fields.get("context_slots_24", ()))
+    if not isinstance(context_slots, tuple):
+        context_slots = tuple(context_slots) if isinstance(context_slots, list) else ()
+
+    setup = compute_render_band_state_via_1ef86(render_record)
+    dispatch = classify_bucket_chain_via_1efc2(data, render_record)
+    bucket_heads = render_record.get("bucket_array_18", fields.get("bucket_array_18", {}))
+    if not isinstance(bucket_heads, dict):
+        raise AssertionError("0x1ef6a fixture needs render-record bucket array at +0x18")
+    chain = bucket_heads.get(band_word, [])
+    if not isinstance(chain, list):
+        raise AssertionError("0x1ef6a fixture bucket entry must be a list")
+
+    bucket_rendered: list[dict[str, object]] = []
+    layers: list[list[str]] = []
+    max_width = 0
+    max_rows = 0
+    for entry, raw in zip(dispatch["entries"], chain):
+        obj = bytes(raw)
+        branch = entry["branch"]
+        if branch == "compact":
+            item = render_compact_text_bucket_object(data, resources, context_slots, obj)
+        elif branch == "segment-list":
+            item = render_segment_list_object_via_1f812(data, obj, dest_stride=dest_stride, band_rows=band_rows)
+        elif branch == "encoded-span":
+            item = render_encoded_raster_object_via_1f88e(data, obj, dest_stride=dest_stride, band_rows=band_rows)
+        else:
+            raise AssertionError(f"unsupported 0x1efc2 branch {branch!r}")
+        bucket_rendered.append({"branch": branch, "object": obj, "rendered": item})
+        rows = item["rows"]
+        assert isinstance(rows, list)
+        layers.append(rows)
+        max_rows = max(max_rows, len(rows))
+        max_width = max(max_width, max((len(row) for row in rows), default=0))
+
+    rule_record = {"rule_list": render_record.get("rule_list", fields.get("rule_list_1c", []))}
+    rules = render_rule_list_via_1f446(data, rule_record, band_word=band_word, dest_stride=dest_stride, band_rows=band_rows)
+    rule_rows = rules["rows"]
+    assert isinstance(rule_rows, list)
+    if rule_rows:
+        layers.append(rule_rows)
+        max_rows = max(max_rows, len(rule_rows))
+        max_width = max(max_width, max((len(row) for row in rule_rows), default=0))
+
+    fixed_record = {"fixed_list": render_record.get("fixed_list", fields.get("fixed_list_20", []))}
+    fixed = render_fixed_width_list_via_1f756(data, fixed_record, band_word=band_word, dest_stride=dest_stride, band_rows=band_rows)
+    fixed_rows = fixed["rows"]
+    assert isinstance(fixed_rows, list)
+    if fixed_rows:
+        layers.append(fixed_rows)
+        max_rows = max(max_rows, len(fixed_rows))
+        max_width = max(max_width, max((len(row) for row in fixed_rows), default=0))
+
+    return {
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "band_word": band_word,
+        "setup": setup,
+        "dispatch": dispatch,
+        "bucket_rendered": bucket_rendered,
+        "rules": rules,
+        "fixed": fixed,
+        "rows": compose_set_pixel_rows(layers, max_width, max_rows) if layers else [],
+    }
+
+
 def rectangle_command_state(**overrides: object) -> dict[str, object]:
     state: dict[str, object] = {
         "width": pack12(0),
@@ -21758,6 +21829,99 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "composed_rows": expected_text_rule_raster_composed_rows,
     }))
+    render_entry_record = {
+        "render_record_fields": {
+            "long_00": 0x00100000,
+            "word_04": 0x0020,
+            "word_06": 0x0005,
+            "word_08": 0x0000,
+            "word_0a": 0x0000,
+            "word_10": 0x0000,
+            "bucket_array_18": {
+                0: [positioned_text_object, text_rule_raster_object],
+            },
+            "rule_list_1c": text_rule_bridged["rule_list"],
+            "fixed_list_20": [bytes.fromhex("00 00 00 00 00 16 10 02 00 03 00 03 01 08")],
+            "context_slots_24": (0x440946B4,),
+        },
+    }
+    render_entry = render_band_entry_via_1ef6a(data, resources, render_entry_record, band_rows=32)
+    render_entry_expected_rows = compose_set_pixel_rows(
+        [expected_text_rule_raster_composed_rows, fixed_width_rendered["rows"]],
+        width=48,
+        rows=27,
+    )
+    checks.append(assert_equal("0x1ef6a render entry composes bucket, rule, and fixed-width lists in call order", {
+        "call_order": render_entry["call_order"],
+        "setup": {
+            key: render_entry["setup"][key]
+            for key in ("dividend", "divisor_word_06", "remainder_783a22", "band_rows_scaled_783a20", "destination_base_783a28")
+        },
+        "dispatch_entries": [
+            {
+                key: entry[key]
+                for key in ("chain_index", "object_byte_4", "class_mask", "branch", "target")
+            }
+            for entry in render_entry["dispatch"]["entries"]
+        ],
+        "bucket_rendered": [
+            {
+                "branch": item["branch"],
+                "selector": item["rendered"].get("selector"),
+                "mode": item["rendered"].get("mode"),
+                "helper": item["rendered"].get("helper"),
+                "rows": item["rendered"]["rows"],
+            }
+            for item in render_entry["bucket_rendered"]
+        ],
+        "rule_rows": render_entry["rules"]["rows"],
+        "fixed_rows": render_entry["fixed"]["rows"],
+        "composed_rows": render_entry["rows"],
+    }, {
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "setup": {
+            "dividend": 0,
+            "divisor_word_06": 5,
+            "remainder_783a22": 0,
+            "band_rows_scaled_783a20": 0x0050,
+            "destination_base_783a28": 0x00100000,
+        },
+        "dispatch_entries": [
+            {
+                "chain_index": 0,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+            },
+            {
+                "chain_index": 1,
+                "object_byte_4": 0x80,
+                "class_mask": 0x80,
+                "branch": "encoded-span",
+                "target": 0x01F88E,
+            },
+        ],
+        "bucket_rendered": [
+            {
+                "branch": "compact",
+                "selector": positioned_mode0["selector"],
+                "mode": None,
+                "helper": None,
+                "rows": positioned_mode0["rows"],
+            },
+            {
+                "branch": "encoded-span",
+                "selector": None,
+                "mode": text_rule_raster_rendered["mode"],
+                "helper": text_rule_raster_rendered["helper"],
+                "rows": text_rule_raster_rendered["rows"],
+            },
+        ],
+        "rule_rows": text_rule_rules["rows"],
+        "fixed_rows": fixed_width_rendered["rows"],
+        "composed_rows": render_entry_expected_rows,
+    }))
     overflow_positioned_text_object = overflow_positioned_bucket["object"]
     assert isinstance(overflow_positioned_text_object, bytes)
     overflow_positioned_mode0 = render_compact_text_bucket_object(data, resources, (0x440946B4,), overflow_positioned_text_object)
@@ -26213,7 +26377,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.extend(f"`{row}`" for row in text_rule_composed_rows[24:27])
     lines.append("- a raster layer fixture renders a mode-0 row at x `0`, y `12` through its own `0x1edc6` raster bridge, then composes it with the text+rule band without claiming the heterogeneous bucket-chain merge is fully decoded.")
     lines.append(f"- text+rule+raster composed row 12: `{text_rule_raster_composed_rows[12]}`")
-    lines.append("- remaining gap: replace this synthetic page/control record with a parser-produced page root and compare the finalized record published by `0xff1e`.")
+    lines.append("- a synthetic `0x1ef6a` render-entry fixture now executes call order `%s`, selecting compact text and encoded raster bucket objects through `0x1efc2`, then composing the `0x1f446` rule list and `0x1f756` fixed-width list; composed row 1: `%s`." % (
+        " -> ".join("0x%06x" % address for address in render_entry["call_order"]),
+        render_entry["rows"][1],
+    ))
+    lines.append("- remaining gap: replace this synthetic render/page-control record with a parser-produced page root and compare the finalized record published by `0xff1e`.")
     lines.append("")
 
     lines.append("## Parser-Derived Raster State Fixture")

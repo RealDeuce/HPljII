@@ -171,6 +171,7 @@ Status: Anchored through parser bridge, render dispatch, executable allocator/br
   page-object coverage incomplete
 
 Evidence:
+  `generated/analysis/ic30_ic13_raster_graphics_flow.md` collects the raster command edge:
   `ESC *t#R`, `ESC *r#A`, `ESC *r#B`, and `ESC *b#W` map to handlers `0x10808`, `0x1075a`,
   `0x107fa`, and delayed handler `0x105d0` via `0x121cc`; raster bytes are copied by `0x138de`
   into queued page objects built by `0x13070`; normal printable text bytes flow through `0xa904`

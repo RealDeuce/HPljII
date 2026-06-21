@@ -133,6 +133,11 @@ Raster-related PCL handlers:
 | `ESC *r#B` | `0x0107fa` | end raster graphics |
 | `ESC *b#W` | `0x011f82` -> delayed handler `0x0105d0` | transfer raster row bytes |
 
+`generated/analysis/ic30_ic13_raster_graphics_flow.md` collects the command edge, delayed
+`0x121cc` / `0x12218` payload handoff, page-root queueing through `0x10084` / `0x13070` /
+`0x13250`, payload copy through `0x138de`, and render dispatch through `0x1edc6` / `0x1efc2` /
+`0x1f88e`.
+
 The raster state block is rooted at `0x783170` in the handlers.
 
 Observed fields:
@@ -654,14 +659,15 @@ and source/page objects, then replace the producer-modeled text/raster bucket ob
 objects captured or reproduced from the full parser/imaging path. The reset, FF, page-size, and
 orientation publication fixtures now start without a current page root and mark the first printable
 queue step as the modeled page-record root allocation point, but that is still not a full live
-parser allocation. Raster coverage now has ROM-table `0x11774` dispatch traces for the primary,
-150/100/75-dpi, consecutive-row, and chained-lowercase `ESC *t#R` / `ESC *r#A` / `ESC *b#W` streams,
-but still needs a full CPU/parser-state fixture that executes through `0x121cc` / `0x105d0` with
-real parser-produced page/control pool records. The constructed `0x1f0d2` and `0x1f1f0` inline cases
-now also have type-2 `0x1719c` payload-backed fixed-record coverage; the `0x1f264` segmented-wide
-case now has selected-memory isolation plus `ESC *c4660d37e5F`, `ESC )s0W`, `ESC )s80W`, and `ESC
-)s2193W` parser boundaries tying current id `0x1234`, current character `0x25`, delayed record
-restoration through `0x121cc` / `0x12218`, descriptor or payload offsets/lengths, `0x15d0a`
+parser allocation. Raster coverage now has a named flow report plus ROM-table `0x11774` dispatch
+traces for the primary, 150/100/75-dpi, consecutive-row, capped/drained, end-raster, and
+chained-lowercase `ESC *t#R` / `ESC *r#A` / `ESC *b#W` streams. It still needs a full
+CPU/parser-state fixture that executes through `0x121cc` / `0x105d0` with real parser-produced
+page/control pool records. The constructed `0x1f0d2` and `0x1f1f0` inline cases now also have
+type-2 `0x1719c` payload-backed fixed-record coverage; the `0x1f264` segmented-wide case now has
+selected-memory isolation plus `ESC *c4660d37e5F`, `ESC )s0W`, `ESC )s80W`, and `ESC )s2193W`
+parser boundaries tying current id `0x1234`, current character `0x25`, delayed record restoration
+through `0x121cc` / `0x12218`, descriptor or payload offsets/lengths, `0x15d0a`
 current/continuation descriptor routes, `0x16fae`/`0x1719c` resource-payload allocation, `0x16498`
 downloaded-pointer allocation, and the rendered segmented-wide row. The full built-in scan proves
 the verified ROM resources do not contain a normal wide or non-mode-1 bitmap-entry case.

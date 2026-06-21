@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+import textwrap
 from collections import Counter
 from pathlib import Path
 
@@ -3509,6 +3510,236 @@ def page_geometry_table_report(data: bytes) -> str:
     return "\n".join(lines)
 
 
+def raster_graphics_flow_report(data: bytes) -> str:
+    def add_wrapped(lines: list[str], text: str, prefix: str = "", subsequent: str | None = None) -> None:
+        if subsequent is None:
+            subsequent = " " * len(prefix)
+        lines.extend(textwrap.wrap(
+            text,
+            width=100,
+            initial_indent=prefix,
+            subsequent_indent=subsequent,
+            break_long_words=False,
+            break_on_hyphens=False,
+        ))
+
+    def fmt_refs(refs: list[int]) -> str:
+        if not refs:
+            return "(none)"
+        text = ", ".join(f"`0x{ref:06x}`" for ref in refs[:12])
+        if len(refs) > 12:
+            text += f", ... ({len(refs)} total)"
+        return text
+
+    command_handlers = [
+        (
+            "`ESC *t#R`",
+            "0x10808",
+            "Maps the parsed resolution to raster mode/scale state at `0x783170`. "
+            "The executable stream fixtures pin 300/150/100/75 dpi as modes `0..3`.",
+        ),
+        (
+            "`ESC *r#A`",
+            "0x1075a",
+            "Starts raster graphics, captures the current cursor-derived origin/baseline, and "
+            "computes the row limit used by later transfers.",
+        ),
+        (
+            "`ESC *r#B`",
+            "0x107fa",
+            "Clears only the active raster state; a later `ESC *t#R` can still change mode.",
+        ),
+        (
+            "`ESC *b#W`",
+            "0x11f82 -> 0x121cc -> 0x105d0",
+            "Records a delayed payload handler. `0x12218` restores the six-byte command record "
+            "and dispatches `0x105d0` after the payload begins.",
+        ),
+    ]
+    queue_steps = [
+        (
+            "`0x105d0`",
+            "Restored raster-transfer handler. It checks active state and row limits, caps the "
+            "stored byte count to the printable gate, drains any overflow bytes, and advances the "
+            "raster row only for accepted transfers.",
+        ),
+        (
+            "`0x10084`",
+            "Ensures the current page/control root before an accepted row object is queued.",
+        ),
+        (
+            "`0x13070`",
+            "Builds the raster row source object from raster x/y, mode, byte count, and payload "
+            "metadata.",
+        ),
+        (
+            "`0x13250`",
+            "Allocates and links the encoded-span bucket object under page-root `+0x1c`; raster "
+            "objects are born with byte `+4 = 0x80` and byte `+5` selecting encoded mode.",
+        ),
+        (
+            "`0x138de`",
+            "Copies the accepted host payload bytes into the queued object starting at `+0x0a`.",
+        ),
+        (
+            "`0x1edc6`",
+            "Copies the page-root bucket array to render-record `+0x18` without normalizing raster "
+            "objects.",
+        ),
+        (
+            "`0x1efc2 -> 0x1f88e`",
+            "Dispatches the high-bit encoded-span object to the raster renderer. The low two bits "
+            "of object byte `+5` select modes `0..3` through table `0x1f8ca`.",
+        ),
+    ]
+    state_addresses = [
+        (0x00783170, "raster graphics state block base used by reset, mode, start, and transfer paths"),
+        (0x00782C8A, "current horizontal cursor word captured as raster start axis/source x"),
+        (0x00782C8E, "current vertical cursor word captured as raster start axis/source y"),
+        (0x00782DB4, "page extent/input used while computing raster transfer limits"),
+        (0x00782DB6, "vertical page extent used by geometry/raster clipping paths"),
+        (0x00782DB8, "horizontal page extent used by geometry/raster clipping paths"),
+        (0x0078297A, "current page-root pointer ensured before queuing accepted raster rows"),
+        (0x00782A70, "remaining object-storage bytes reset by `0x10084` and consumed by allocators"),
+        (0x00782A72, "current object-storage chunk link pointer seeded from root `+0x20`"),
+        (0x00782A76, "next-free object-storage pointer used by the shared allocator"),
+    ]
+
+    lines = ["# IC30/IC13 Raster Graphics Flow", ""]
+    add_wrapped(
+        lines,
+        "This report collects the raster command edge, delayed payload handoff, page-object "
+        "queueing, and bitmap render dispatch from the verified firmware image.",
+    )
+    lines.append("")
+
+    lines.append("## Command and Payload Edge")
+    lines.append("")
+    for command, handler, behavior in command_handlers:
+        lines.append(f"- {command}")
+        lines.append(f"  - Handler: `{handler}`")
+        add_wrapped(lines, behavior, "  - Firmware behavior: ", "    ")
+    lines.append("")
+
+    lines.append("## Queue and Render Path")
+    lines.append("")
+    for routine, behavior in queue_steps:
+        add_wrapped(lines, behavior, f"- {routine}: ", "  ")
+    lines.append("")
+
+    lines.append("## Parser/Data Boundary")
+    lines.append("")
+    add_wrapped(
+        lines,
+        "Normal parser table entries route `ESC *t#R`, `ESC *r#A`, and `ESC *b#W` through "
+        "`0x10808`, `0x1075a`, and `0x11f82` respectively.",
+        "- ",
+        "  ",
+    )
+    add_wrapped(
+        lines,
+        "`0x11f82` does not copy raster bytes directly. It snapshots the delayed handler "
+        "`0x105d0` through `0x121cc`, so payload bytes are consumed only after `0x12218` restores "
+        "the command record.",
+        "- ",
+        "  ",
+    )
+    add_wrapped(
+        lines,
+        "Lowercase-final `ESC *b#w` preserves parser mode in the `*b` family. The uppercase "
+        "`W` terminator replaces the delayed snapshot and starts exactly one payload transfer.",
+        "- ",
+        "  ",
+    )
+    add_wrapped(
+        lines,
+        "The harness ties this to ROM parser traces for 300/150/100/75-dpi streams, consecutive "
+        "rows, capped transfers, beyond-extent drains, and same-group lowercase-final transfer "
+        "boundaries.",
+        "- ",
+        "  ",
+    )
+    lines.append("")
+
+    lines.append("## State Reference Scan")
+    lines.append("")
+    for address, role in state_addresses:
+        lines.append(f"- `0x{address:08x}`")
+        add_wrapped(lines, role, "  - Role: ", "    ")
+        add_wrapped(
+            lines,
+            fmt_refs(find_all(data, address.to_bytes(4, "big"))),
+            "  - Longword literal references: ",
+            "    ",
+        )
+    lines.append("")
+
+    lines.append("## Call-Site Anchors")
+    lines.append("")
+    add_wrapped(
+        lines,
+        "`0x10084` ensure-root calls from raster transfer sites: "
+        f"{fmt_refs([ref for ref in (0x0106A4, 0x0106EC) if ref in jsr_abs_refs(data, 0x00010084)])}.",
+        "- ",
+        "  ",
+    )
+    add_wrapped(
+        lines,
+        "`0xff1e` finalization calls from raster page-boundary site: "
+        f"{fmt_refs([ref for ref in (0x0106E6,) if ref in jsr_abs_refs(data, 0x0000FF1E)])}.",
+        "- ",
+        "  ",
+    )
+    add_wrapped(lines, f"`0x13070` raster row builder references: {fmt_refs(jsr_abs_refs(data, 0x00013070))}.", "- ", "  ")
+    add_wrapped(lines, f"`0x13250` bucket object allocator references: {fmt_refs(jsr_abs_refs(data, 0x00013250))}.", "- ", "  ")
+    add_wrapped(lines, f"`0x138de` raster payload copy references: {fmt_refs(jsr_abs_refs(data, 0x000138DE))}.", "- ", "  ")
+    lines.append("")
+
+    lines.append("## Current Reproduction Contract")
+    lines.append("")
+    add_wrapped(
+        lines,
+        "A byte-stream reproduction must preserve the delayed `ESC *b#W` payload boundary: the "
+        "six-byte parsed record and the payload bytes are separate pieces of state until "
+        "`0x12218` restores and dispatches `0x105d0`.",
+        "- ",
+        "  ",
+    )
+    add_wrapped(
+        lines,
+        "Accepted transfers must ensure a page root before `0x13070` / `0x13250` queue the row "
+        "object. Drained transfers beyond the page extent consume host bytes but do not queue an "
+        "object or advance the row counter.",
+        "- ",
+        "  ",
+    )
+    add_wrapped(
+        lines,
+        "Raster row objects share the page-root `+0x1c` bucket array with compact text buckets, "
+        "but render through the encoded-span high-bit branch rather than the compact glyph branch.",
+        "- ",
+        "  ",
+    )
+    add_wrapped(
+        lines,
+        "`tools/render_fixture_harness.py` currently proves parser dispatch, delayed restore, "
+        "root allocation, object bytes, bridge copying, and final rendered rows for the primary "
+        "`ESC *t300R` / `ESC *r1A` / `ESC *b4W` stream, plus mode, cap/drain, multi-row, "
+        "lowercase-final, and end-raster variants.",
+        "- ",
+        "  ",
+    )
+    add_wrapped(
+        lines,
+        "Remaining work is a fuller CPU/parser-state fixture that replaces modeled state with "
+        "real page/control pool records while preserving the same byte-stream-to-pixel boundary.",
+        "- ",
+        "  ",
+    )
+    lines.append("")
+    return "\n".join(lines)
+
+
 def rectangle_graphics_flow_report(data: bytes) -> str:
     def fmt_refs(refs: list[int]) -> str:
         if not refs:
@@ -3660,6 +3891,7 @@ def main() -> None:
     write_if_changed(ANALYSIS / "ic30_ic13_parser_dispatch_tables.md", parser_dispatch_table_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_pcl_command_map.md", parser_command_map_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_page_geometry_tables.md", page_geometry_table_report(firmware))
+    write_if_changed(ANALYSIS / "ic30_ic13_raster_graphics_flow.md", raster_graphics_flow_report(firmware))
     write_if_changed(ANALYSIS / "ic30_ic13_rectangle_graphics_flow.md", rectangle_graphics_flow_report(firmware))
 
     if DISASM.exists():

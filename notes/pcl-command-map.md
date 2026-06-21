@@ -147,6 +147,8 @@ it seeds a raster baseline from `0x782c8a` or `0x782c8e` depending on current mo
 
 `ESC *b#W` at `0x011f82` routes through `0x121cc` with handler `0x105d0`, so raster row byte
 transfer is tied into the same parsed-command/data chain used by macro/download payload handling.
+The full raster command/data, queue, and render-dispatch edge is summarized in
+`generated/analysis/ic30_ic13_raster_graphics_flow.md`.
 
 `ESC *r#B` at `0x0107fa` clears raster active byte `0x783182`, leaving raster
 origin/baseline/mode/scale/limit state intact so later resolution commands can take effect.
@@ -265,10 +267,11 @@ the current character/code word `0x782f30`, values `4` and `5` unmark/mark the c
 record by moving counts between `0x782782` and `0x782786`, value `6` runs active/current
 font-resource housekeeping, and other values no-op.
 
-Page geometry and the first raster transfer path are now tracked in `notes/page-raster-imaging.md`.
-The important anchors are that `0x105d0` clips/consumes raster payload bytes, ensures the page/image
-root exists through `0x10084`, calls `0x13070` with the raster state block rooted at `0x783170`, and
-then `0x138de` copies host bytes into the queued raster object payload. Direct control-code
+Page geometry and the first raster transfer path are tracked in `notes/page-raster-imaging.md` and
+`generated/analysis/ic30_ic13_raster_graphics_flow.md`. The important anchors are that `0x105d0`
+clips/consumes raster payload bytes, ensures the page/image root exists through `0x10084`, calls
+`0x13070` with the raster state block rooted at `0x783170`, and then `0x138de` copies host bytes
+into the queued raster object payload. Direct control-code
 cursor/page effects are documented in `generated/analysis/ic30_ic13_direct_control_code_flow.md`:
 `ESC &k#G` stores line-termination bits in `0x78318f`, CR/LF/FF consume those bits, and
 CR/LF/FF/HT/BS can update cursor coordinates, flush text spans, ensure/finalize page roots, or call

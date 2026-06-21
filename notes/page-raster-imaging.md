@@ -664,7 +664,7 @@ fetch, tokenizer/delayed-payload, page-geometry, macro/data-chain,
 direct-control, reset, text, rule, raster, bridge, row-copy, built-in glyph,
 symbol-set, and downloaded-font fixture families into one ROM-backed self-test.
 It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and
-currently verifies 336 checks. The raster coverage now includes ROM-table
+currently verifies 337 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W`
 stream, the 150/100/75-dpi mode streams, the consecutive-row `ESC *b2W` stream,
 the active-resolution-ignore `ESC *t75R` stream, the end-raster `ESC *rB` /
@@ -699,9 +699,9 @@ ring source and ties an in-raster `ESC *t75R` handler `0x10808` to preserved
 mode 0/scale 1 state before queueing the next row; the end-raster stream now
 starts from the modeled `0xa904` ring source and ties `ESC *rB` handler
 `0x107fa` to active-clear state before `ESC *t150R` updates mode/scale again;
-and the chained
-`ESC *b2w2W` stream proves uppercase `W` restores the lowercase `80 77 00 02 00
-00` delayed record before consuming the payload. Symbol-set coverage now traces
+and the chained `ESC *b2w2W` stream now starts from the modeled `0xa904` ring
+source and proves uppercase `W` restores the lowercase `80 77 00 02 00 00`
+delayed record before consuming the payload. Symbol-set coverage now traces
 `ESC (2U` / `ESC )0E` through ROM parser setup handlers `0x1201e` / `0x12008`
 and terminal handler `0x120be` before the modeled `0x1be22` / `0xc580`
 active-word refresh and `0x14f16` map patching, separately traces `ESC (7X` plus
@@ -805,9 +805,9 @@ root and mark the first printable queue step as the modeled page-record root
 allocation point, but that is still not a full live parser allocation. Raster
 coverage now has a named flow report plus ROM-table `0x11774` dispatch traces
 for the primary, 150/100/75-dpi, consecutive-row, capped/drained,
-active-resolution-ignore, end-raster, and chained-lowercase `ESC *t#R` /
-`ESC *r#A` / `ESC *b#W` streams. It still needs a full CPU/parser-state fixture
-that executes through `0x121cc` /
+active-resolution-ignore, end-raster, and host-fetched chained-lowercase
+`ESC *t#R` / `ESC *r#A` / `ESC *b#W` streams. It still needs a full
+CPU/parser-state fixture that executes through `0x121cc` /
 `0x105d0` with real parser-produced page/control pool records. The constructed
 `0x1f0d2` and `0x1f1f0` inline cases now also have type-2 `0x1719c`
 payload-backed fixed-record coverage; the `0x1f264` segmented-wide case now has

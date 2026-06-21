@@ -498,7 +498,7 @@ single following payload.
   capped/drained edge streams, and a page-record bridge check for the first
   `ESC *b4W` object, a host-fetched consecutive-row `ESC *t300R` stream,
   same-group lowercase-final chaining fixtures for `ESC *t300r150R` and
-  parser-traced `ESC *b2w2W` where lowercase `w` records the delayed transfer
+  host-fetched `ESC *b2w2W` where lowercase `w` records the delayed transfer
   and payload is consumed after the uppercase terminator, plus host-fetched
   `ESC *rB` active-clear followed by `ESC *t150R`, host-fetched active-raster
   `ESC *t75R` ignore before a mode-0 `ESC *b2W` row, raster row page-record

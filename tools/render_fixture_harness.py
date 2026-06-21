@@ -24107,6 +24107,79 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "queued_object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
         "rendered_rows": ["####........####"],
     }))
+    host_fetched_raster_chained_transfer_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(raster_chained_transfer_stream), direct_mode=0),
+        len(raster_chained_transfer_stream),
+    )
+    checks.append(assert_equal("host-fetched raster chained transfer preserves lowercase delayed record", {
+        "fetched_stream": host_fetched_raster_chained_transfer_stream["stream"],
+        "fetch_source_count": len(host_fetched_raster_chained_transfer_stream["sources"]),
+        "fetch_source_set": sorted(set(host_fetched_raster_chained_transfer_stream["sources"])),
+        "remaining_ring": host_fetched_raster_chained_transfer_stream["state"]["ring"],
+        "parser_handlers": [
+            command["final_dispatch"]["handler"]
+            for command in raster_chained_transfer_commands
+        ],
+        "parser_modes_after_final": [
+            command["mode_after_final"]
+            for command in raster_chained_transfer_commands
+        ],
+        "delayed_snapshot_bytes": [
+            command.get("delayed_snapshot_bytes")
+            for command in raster_chained_transfer_commands
+            if command.get("delayed_snapshot_bytes") is not None
+        ],
+        "parser_payload_offset": raster_chained_transfer_commands[-1]["payload_offset"],
+        "parser_payload": raster_chained_transfer_commands[-1]["payload"],
+        "model_events": [
+            {
+                key: event[key]
+                for key in (
+                    ("kind", "sequence", "parsed_record", "delayed_snapshot_bytes", "delayed_scheduled")
+                    if event["kind"] == "raster-transfer-pending"
+                    else ("kind", "sequence", "parsed_record", "delayed_snapshot_bytes", "delayed_scheduled", "restore_dispatch", "restored_record", "payload_offset", "payload")
+                )
+            }
+            for event in raster_chained_transfer_events
+        ],
+        "queued_object": raster_chained_transfer_chain[0],
+        "rendered_rows": raster_chained_transfer_rendered[0]["rows"],
+    }, {
+        "fetched_stream": b"\x1b*t300R\x1b*r0A\x1b*b2w2W" + bytes.fromhex("f0 0f"),
+        "fetch_source_count": len(raster_chained_transfer_stream),
+        "fetch_source_set": ["ring"],
+        "remaining_ring": [],
+        "parser_handlers": [0x010808, 0x01075A, 0x011F82, 0x011F82],
+        "parser_modes_after_final": [0, 0, 14, 0],
+        "delayed_snapshot_bytes": [
+            bytes.fromhex("01 00 01 05 d0 80 77 00 02 00 00"),
+            bytes.fromhex("01 00 01 05 d0 80 77 00 02 00 00"),
+        ],
+        "parser_payload_offset": 19,
+        "parser_payload": bytes.fromhex("f0 0f"),
+        "model_events": [
+            {
+                "kind": "raster-transfer-pending",
+                "sequence": b"\x1b*b2w",
+                "parsed_record": bytes.fromhex("80 77 00 02 00 00"),
+                "delayed_snapshot_bytes": bytes.fromhex("01 00 01 05 d0 80 77 00 02 00 00"),
+                "delayed_scheduled": True,
+            },
+            {
+                "kind": "raster-transfer",
+                "sequence": b"2W",
+                "parsed_record": bytes.fromhex("80 57 00 02 00 00"),
+                "delayed_snapshot_bytes": bytes.fromhex("01 00 01 05 d0 80 77 00 02 00 00"),
+                "delayed_scheduled": False,
+                "restore_dispatch": {"kind": "direct-handler", "handler": 0x0105D0},
+                "restored_record": bytes.fromhex("80 77 00 02 00 00"),
+                "payload_offset": 19,
+                "payload": bytes.fromhex("f0 0f"),
+            },
+        ],
+        "queued_object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
+        "rendered_rows": ["####........####"],
+    }))
     raster_page_record: dict[str, object] = {"bucket_array": {}}
     raster_page_result = queue_raster_row_to_page_record_via_13070(
         raster_page_record,
@@ -29813,7 +29886,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             " ".join(f"{byte:02x}" for byte in summary["queued_object"]),
         ))
     lines.append("- multi-row parser boundary: the host-fetched stream with two consecutive uppercase `ESC *b2W` commands restores independent `80 57 00 02 00 00` records, consumes payloads at offsets `17` and `24`, advances modeled `row_y` to `2`, and queues page-record objects at coords `0x0000` and `0x1000`.")
-    lines.append("- chained transfer parser boundary: `ESC *b2w2W` keeps parser mode in the `*b` family after lowercase `w`, preserves delayed record `80 77 00 02 00 00`, restores that same record at uppercase `W`, and consumes payload bytes only after offset `19`.")
+    lines.append("- host-fetched chained transfer boundary: `ESC *b2w2W` keeps parser mode in the `*b` family after lowercase `w`, preserves delayed record `80 77 00 02 00 00`, restores that same record at uppercase `W`, and consumes payload bytes only after offset `19`.")
     lines.append("")
     lines.append(f"- mode-1 stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode1_command_stream)}`")
     lines.append("- mode-1 parsed events:")

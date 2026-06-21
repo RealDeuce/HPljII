@@ -6422,9 +6422,12 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
     count = u16(payload, 0)
     pos = 2
     rendered: list[dict[str, int]] = []
+    splits: list[dict[str, int]] = []
     dest = bytearray(band_rows * dest_stride)
+    fallback_dest = bytearray(band_rows * dest_stride)
     max_width = 0
     max_bottom = 0
+    fallback_bottom = 0
     for _ in range(count):
         glyph_index = payload[pos]
         coord = u16(payload, pos + 1)
@@ -6440,16 +6443,42 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
         subbyte = (coord >> 8) & 0x0F
         byte_pair_offset = (coord & 0x00FF) * 2
         x = byte_pair_offset * 8 + subbyte
-        if row_index + rows > band_rows:
-            raise AssertionError("compact mode-0 fixture does not implement band-crossing continuation yet")
+        rows_in_band = min(rows, max(int(band_rows) - row_index, 0))
+        remaining_after_band = rows - rows_in_band
         source = resources[int(glyph["bitmap"]) : int(glyph["bitmap"]) + rows * render_span]
-        result = simulate_row_copy(data, u32(data, 0x1F08E + render_span * 4), rows, stride=dest_stride)
-        for write in result.writes:
-            if write.source != "A2":
-                raise AssertionError(f"unexpected {write.source} write for compact mode-0 glyph")
-            if write.src + write.size > len(source):
-                raise AssertionError(f"source read past compact mode-0 glyph bitmap at +0x{write.src:x}")
-        write_bitmap_bits(dest, dest_stride, source, rows, render_span, x, row_index)
+        helper = u32(data, 0x1F08E + render_span * 4)
+        if rows_in_band:
+            result = simulate_row_copy(data, helper, rows_in_band, stride=dest_stride)
+            for write in result.writes:
+                if write.source != "A2":
+                    raise AssertionError(f"unexpected {write.source} write for compact mode-0 glyph")
+                if write.src + write.size > rows_in_band * render_span:
+                    raise AssertionError(f"source read past compact mode-0 current-band bitmap at +0x{write.src:x}")
+            write_bitmap_bits(
+                dest,
+                dest_stride,
+                source[:rows_in_band * render_span],
+                rows_in_band,
+                render_span,
+                x,
+                row_index,
+            )
+        if remaining_after_band:
+            result = simulate_row_copy(data, helper, remaining_after_band, stride=dest_stride)
+            for write in result.writes:
+                if write.source != "A2":
+                    raise AssertionError(f"unexpected {write.source} write for compact mode-0 fallback glyph")
+                if write.src + write.size > remaining_after_band * render_span:
+                    raise AssertionError(f"source read past compact mode-0 fallback bitmap at +0x{write.src:x}")
+            write_bitmap_bits(
+                fallback_dest,
+                dest_stride,
+                source[rows_in_band * render_span:],
+                remaining_after_band,
+                render_span,
+                x,
+                0,
+            )
         decoded = coord_decode(coord, band_base=0, payload_offset=0)
         rendered.append({
             "glyph": glyph_index,
@@ -6461,14 +6490,26 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
             "span": render_span,
             "rows": rows,
             "width": width,
-            "helper": u32(data, 0x1F08E + render_span * 4),
+            "helper": helper,
+        })
+        splits.append({
+            "glyph": glyph_index,
+            "coord": coord,
+            "row_index": row_index,
+            "rows": rows,
+            "rows_in_band": rows_in_band,
+            "remaining_after_band": remaining_after_band,
+            "fallback_d2": byte_pair_offset,
         })
         max_width = max(max_width, x + width)
-        max_bottom = max(max_bottom, row_index + rows)
+        max_bottom = max(max_bottom, min(band_rows, row_index + rows_in_band))
+        fallback_bottom = max(fallback_bottom, remaining_after_band)
     return {
         "count": count,
         "rendered": rendered,
+        "splits": splits,
         "rows": bitmap_bytes_to_rows(dest, max_bottom, max_width, dest_stride),
+        "fallback_rows": bitmap_bytes_to_rows(fallback_dest, fallback_bottom, max_width, dest_stride),
     }
 
 
@@ -8194,7 +8235,7 @@ def combine_short_text_buckets(buckets: list[dict[str, object]]) -> dict[str, ob
     }
 
 
-def render_compact_text_bucket_object(data: bytes, resources: bytes | bytearray, contexts: tuple[int, ...], obj: bytes) -> dict[str, object]:
+def render_compact_text_bucket_object(data: bytes, resources: bytes | bytearray, contexts: tuple[int, ...], obj: bytes, band_rows: int = 64) -> dict[str, object]:
     selector = u16(obj, 4)
     context_slot = obj[5] & 0x0F
     if context_slot >= len(contexts):
@@ -8202,13 +8243,13 @@ def render_compact_text_bucket_object(data: bytes, resources: bytes | bytearray,
     payload = obj[6:]
     compact_mode = selector & 0x3000
     if compact_mode == 0x0000:
-        rendered = render_compact_mode0_payload(data, resources, contexts[context_slot], payload)
+        rendered = render_compact_mode0_payload(data, resources, contexts[context_slot], payload, band_rows=band_rows)
     elif compact_mode == 0x1000:
-        rendered = render_compact_wide_payload_via_1f0d2(data, resources, contexts[context_slot], payload)
+        rendered = render_compact_wide_payload_via_1f0d2(data, resources, contexts[context_slot], payload, band_rows=band_rows)
     elif compact_mode == 0x2000:
-        rendered = render_compact_segmented_payload_via_1f1f0(data, resources, contexts[context_slot], payload)
+        rendered = render_compact_segmented_payload_via_1f1f0(data, resources, contexts[context_slot], payload, band_rows=band_rows)
     elif compact_mode == 0x3000:
-        rendered = render_compact_segmented_wide_payload_via_1f264(data, resources, contexts[context_slot], payload)
+        rendered = render_compact_segmented_wide_payload_via_1f264(data, resources, contexts[context_slot], payload, band_rows=band_rows)
     else:
         raise AssertionError("unknown compact text bucket mode")
     rendered["selector"] = selector
@@ -8727,6 +8768,7 @@ def render_band_entry_via_1ef6a(data: bytes, resources: bytes, render_record: di
         context_slots = tuple(context_slots) if isinstance(context_slots, list) else ()
 
     setup = compute_render_band_state_via_1ef86(render_record)
+    bucket_band_rows = int(setup["band_rows_scaled_783a20"])
     dispatch = classify_bucket_chain_via_1efc2(data, render_record)
     bucket_heads = render_record.get("bucket_array_18", fields.get("bucket_array_18", {}))
     if not isinstance(bucket_heads, dict):
@@ -8743,11 +8785,11 @@ def render_band_entry_via_1ef6a(data: bytes, resources: bytes, render_record: di
         obj = bytes(raw)
         branch = entry["branch"]
         if branch == "compact":
-            item = render_compact_text_bucket_object(data, resources, context_slots, obj)
+            item = render_compact_text_bucket_object(data, resources, context_slots, obj, band_rows=bucket_band_rows)
         elif branch == "segment-list":
-            item = render_segment_list_object_via_1f812(data, obj, dest_stride=dest_stride, band_rows=band_rows)
+            item = render_segment_list_object_via_1f812(data, obj, dest_stride=dest_stride, band_rows=bucket_band_rows)
         elif branch == "encoded-span":
-            item = render_encoded_raster_object_via_1f88e(data, obj, dest_stride=dest_stride, band_rows=band_rows)
+            item = render_encoded_raster_object_via_1f88e(data, obj, dest_stride=dest_stride, band_rows=bucket_band_rows)
         else:
             raise AssertionError(f"unsupported 0x1efc2 branch {branch!r}")
         bucket_rendered.append({"branch": branch, "object": obj, "rendered": item})

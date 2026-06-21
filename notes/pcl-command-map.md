@@ -232,8 +232,9 @@ clearing pool records, definition-mode and active-data-chain guard suppression,
 the same definition stream draining from modeled `0xa904` ring fetch before the
 alternate parser stores payload and exits through `0xdd08`, the complete command
 streams draining from modeled `0xa904` ring fetch into those records and frames,
-the full define-and-execute stream draining from modeled `0xa904` ring fetch
-through the ROM/alternate parser trace into the execute data-chain frame,
+the full define-and-execute and define-and-call streams draining from modeled
+`0xa904` ring fetch through the ROM/alternate parser trace into the
+execute/call data-chain frames,
 `0xa904` data-chain byte fetch and end-marker outer-source resumption for stored
 execute/call payloads, replayed `!\r` parser dispatch through `0xd04a`/`0xf02c`,
 modeled printable/CR processing, the page-record allocator/bridge shape for that

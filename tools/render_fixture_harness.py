@@ -408,6 +408,59 @@ def restore_delayed_payload_via_12218(pending: dict[str, object], alternate_mode
     }
 
 
+def consume_transparent_text_via_12452(record: bytes, payload: bytes) -> dict[str, object]:
+    if len(record) != 6:
+        raise AssertionError("0x12452 transparent text consume requires one six-byte parsed command record")
+    byte_count = abs(s16(record, 2))
+    host_state = host_byte_fetch_state(data_chain=list(payload))
+    values: list[int] = []
+    routes: list[int] = []
+    sources: list[str] = []
+    control_hits = 0
+    status = 1
+    while len(values) < byte_count:
+        result = host_byte_fetch_via_a904(host_state)
+        value = int(result["d7"])
+        if value < 0:
+            status = 0
+            break
+        host_state = result["state"]
+        if not isinstance(host_state, dict):
+            raise AssertionError("0x12452 host fetch did not return a state dictionary")
+        sources.append(str(result["source"]))
+        value &= 0xFF
+        if value == 0x1A:
+            probe = host_byte_fetch_via_a904(host_state)
+            probe_value = int(probe["d7"])
+            if probe_value < 0:
+                status = 0
+                break
+            host_state = probe["state"]
+            if not isinstance(host_state, dict):
+                raise AssertionError("0x12452 control probe did not return a state dictionary")
+            sources.append(str(probe["source"]))
+            if (probe_value & 0xFF) == 0x58:
+                value = 0x7F
+                control_hits += 1
+            else:
+                value = 0x1A
+        values.append(value)
+        if value <= 0x1F or 0x80 <= value <= 0x9F:
+            routes.append(0x00D0F0)
+        else:
+            routes.append(0x00D04A)
+    remaining_chain = list(host_state.get("data_chain", []))
+    return {
+        "byte_count": byte_count,
+        "status": status,
+        "values": values,
+        "routes": routes,
+        "sources": sources,
+        "remaining_payload": remaining_chain,
+        "control_hits": control_hits,
+    }
+
+
 def parser_dispatch_entry_via_11774(data: bytes, mode: int, byte: int, alternate: bool = False) -> dict[str, int | None]:
     pointer_table = 0x116F6 if alternate else 0x112A4
     start = u32(data, pointer_table + mode * 4)
@@ -7472,6 +7525,34 @@ def apply_vertical_position_via_f6e2(state: dict[str, int], amount: int, relativ
     return updated
 
 
+def apply_wrap_mode_via_edb0(current: int, parameter: int) -> dict[str, int]:
+    selector = abs(int(parameter))
+    wrap_flag = int(current)
+    if selector == 0:
+        wrap_flag = 1
+    elif selector == 1:
+        wrap_flag = 0
+    return {
+        "parameter": selector,
+        "wrap_flag": wrap_flag,
+    }
+
+
+def apply_dot_position_command_via_f48c_f692(
+    state: dict[str, int],
+    command: str,
+    integer: int,
+    *,
+    relative: bool = False,
+) -> dict[str, int]:
+    amount = int(integer) << 16
+    if command == "X":
+        return apply_horizontal_position_via_f4ca(state, amount, relative)
+    if command == "Y":
+        return apply_vertical_position_via_f6e2(state, amount, relative, clamp_max=True)
+    raise AssertionError(f"unsupported dot-position command {command!r}")
+
+
 def apply_cursor_position_command(state: dict[str, int], command: str, integer: int, fraction: int = 0, *, relative: bool = False) -> dict[str, int]:
     if command == "C":
         amount = parsed_decimal_scaled_to_packed12(integer, fraction, packed12_to_subunits(int(state["hmi"])))
@@ -11566,6 +11647,30 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "snapshot_record": raster_transfer_record,
         },
     }))
+    transparent_text_record = bytes.fromhex("80 58 00 05 00 00")
+    delayed_transparent_text = delay_payload_handler_via_121cc(transparent_text_record, 0x12452)
+    restored_transparent_text = restore_delayed_payload_via_12218(delayed_transparent_text)
+    consumed_transparent_text = consume_transparent_text_via_12452(
+        transparent_text_record,
+        bytes.fromhex("41 1a 58 05 85 42"),
+    )
+    checks.append(assert_equal("0x11f5a/0x12452 transparent text restores and consumes counted bytes", {
+        "snapshot_bytes": delayed_transparent_text["snapshot_bytes"],
+        "restore_dispatch": restored_transparent_text["dispatch"],
+        "consumed": consumed_transparent_text,
+    }, {
+        "snapshot_bytes": bytes.fromhex("01 00 01 24 52 80 58 00 05 00 00"),
+        "restore_dispatch": {"kind": "direct-handler", "handler": 0x12452},
+        "consumed": {
+            "byte_count": 5,
+            "status": 1,
+            "values": [0x41, 0x7F, 0x05, 0x85, 0x42],
+            "routes": [0x00D04A, 0x00D04A, 0x00D0F0, 0x00D0F0, 0x00D04A],
+            "sources": ["data-chain", "data-chain", "data-chain", "data-chain", "data-chain", "data-chain"],
+            "remaining_payload": [],
+            "control_hits": 1,
+        },
+    }))
     alternate_payload_wrapper = alternate_payload_dispatch_via_12358(
         bytes.fromhex("81 57 ff fd 00 00"),
         bytes.fromhex("aa 1a 58 bb"),
@@ -14976,6 +15081,62 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "pending_width": 0,
         "pending_text": 0,
         "page_roots": 1,
+    }))
+    wrap_on = apply_wrap_mode_via_edb0(0, 0)
+    wrap_off = apply_wrap_mode_via_edb0(1, 1)
+    wrap_unchanged = apply_wrap_mode_via_edb0(1, 2)
+    checks.append(assert_equal("0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1 only", {
+        "on": wrap_on,
+        "off": wrap_off,
+        "unchanged": wrap_unchanged,
+    }, {
+        "on": {"parameter": 0, "wrap_flag": 1},
+        "off": {"parameter": 1, "wrap_flag": 0},
+        "unchanged": {"parameter": 2, "wrap_flag": 1},
+    }))
+    dot_x_absolute = apply_dot_position_command_via_f48c_f692(cursor_position_state(
+        cursor_x=pack12(10),
+        active_width=100,
+        right_limit=pack12(25),
+    ), "X", 25, relative=False)
+    dot_x_relative = apply_dot_position_command_via_f48c_f692(cursor_position_state(
+        cursor_x=pack12(10),
+        active_width=100,
+    ), "X", 5, relative=True)
+    dot_x_clamped = apply_dot_position_command_via_f48c_f692(cursor_position_state(
+        cursor_x=pack12(10),
+        active_width=100,
+    ), "X", 500, relative=False)
+    dot_y_absolute = apply_dot_position_command_via_f48c_f692(cursor_position_state(
+        cursor_y=pack12(20),
+        top_offset=pack12(90),
+        max_y=pack12(120),
+        span_flush_enable=1,
+    ), "Y", 12, relative=False)
+    dot_y_relative = apply_dot_position_command_via_f48c_f692(cursor_position_state(
+        cursor_y=pack12(20),
+        top_offset=pack12(90),
+        max_y=pack12(120),
+    ), "Y", 5, relative=True)
+    dot_y_clamped = apply_dot_position_command_via_f48c_f692(cursor_position_state(
+        cursor_y=pack12(20),
+        top_offset=pack12(90),
+        max_y=pack12(120),
+    ), "Y", 500, relative=False)
+    checks.append(assert_equal("0xf48c/0xf692 ESC *p#X/#Y use whole-dot packed cursor commits", {
+        "x_absolute": select_keys(dot_x_absolute, ("cursor_x", "right_limit_latch", "pending_text", "span_updates")),
+        "x_relative": select_keys(dot_x_relative, ("cursor_x", "right_limit_latch", "pending_text", "span_updates")),
+        "x_clamped": select_keys(dot_x_clamped, ("cursor_x", "right_limit_latch", "pending_text", "span_updates")),
+        "y_absolute": select_keys(dot_y_absolute, ("cursor_y", "pending_width", "pending_text", "span_flushes", "post_flushes", "page_roots")),
+        "y_relative": select_keys(dot_y_relative, ("cursor_y", "pending_width", "pending_text", "span_flushes", "post_flushes", "page_roots")),
+        "y_clamped": select_keys(dot_y_clamped, ("cursor_y", "pending_width", "pending_text", "page_roots")),
+    }, {
+        "x_absolute": {"cursor_x": pack12(25), "right_limit_latch": 1, "pending_text": 0, "span_updates": 1},
+        "x_relative": {"cursor_x": pack12(15), "right_limit_latch": 0, "pending_text": 0, "span_updates": 1},
+        "x_clamped": {"cursor_x": pack12(100), "right_limit_latch": 0, "pending_text": 0, "span_updates": 1},
+        "y_absolute": {"cursor_y": pack12(102), "pending_width": 0, "pending_text": 0, "span_flushes": 1, "post_flushes": 1, "page_roots": 1},
+        "y_relative": {"cursor_y": pack12(25), "pending_width": 0, "pending_text": 0, "span_flushes": 0, "post_flushes": 0, "page_roots": 1},
+        "y_clamped": {"cursor_y": pack12(120), "pending_width": 0, "pending_text": 0, "page_roots": 1},
     }))
     lpi_six = apply_lines_per_inch_via_c992(vertical_layout_state(pending_text=1), 6)
     lpi_zero_default = apply_lines_per_inch_via_c992(vertical_layout_state(), 0)
@@ -33405,11 +33566,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- A semicolon final is stored in the record but returns `D7 = 0`, matching the command-combining continuation path.")
     lines.append("- `0x121cc` snapshots pending flag `1`, the saved handler longword, and the current six-byte parsed command record; `0x12218` restores that record at `0x78299e` and dispatches the saved handler when alternate/data mode is clear.")
     lines.append("- In alternate/data mode, `0x12358` either calls wrapper `0x1228a`, which consumes the absolute parsed byte count through `0x12328` without echo, or consumes only positive counts itself while echoing each normalized byte through `0xe002`; both paths use `0xdace`, where payload control `1a 58` calls `0xd99a` and contributes byte `00`.")
+    lines.append("- `ESC &p#X` arms delayed handler `0x12452`; the transparent text fixture restores the saved parsed record, consumes the absolute byte count through `0xa904`, normalizes `1a 58` to `0x7f`, and routes printable bytes to `0xd04a` while filtered controls route to `0xd0f0`.")
     lines.append("")
     lines.append(f"- chained resolution record bytes: `{' '.join(f'{byte:02x}' for byte in tokenizer_chained_resolution['record_bytes'])}`")
     lines.append(f"- signed/fraction record bytes: `{' '.join(f'{byte:02x}' for byte in tokenizer_signed_fraction['record_bytes'])}`, scratch `{tokenizer_signed_fraction['scratch']!r}`")
     lines.append(f"- semicolon continuation record bytes: `{' '.join(f'{byte:02x}' for byte in tokenizer_semicolon['record_bytes'])}`, returned D7 `{tokenizer_semicolon['returned_d7']}`")
     lines.append(f"- delayed raster transfer snapshot: `{' '.join(f'{byte:02x}' for byte in delayed_raster_transfer['snapshot_bytes'])}`")
+    lines.append(f"- delayed transparent text snapshot: `{' '.join(f'{byte:02x}' for byte in delayed_transparent_text['snapshot_bytes'])}`, values `{consumed_transparent_text['values']}`, routes `{[hex(route) for route in consumed_transparent_text['routes']]}`")
     lines.append(f"- alternate wrapper consume values: `{alternate_payload_wrapper['values']}`, echoed `{alternate_payload_wrapper['echoed']}`, control hits `{alternate_payload_wrapper['control_hits']}`")
     lines.append(f"- alternate direct consume values: `{alternate_payload_direct['values']}`, echoed `{alternate_payload_direct['echoed']}`, negative-count values `{alternate_payload_direct_negative['values']}`")
     lines.append("")
@@ -33629,6 +33792,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- `ESC &f0S` pushes the horizontal cursor and the vertical cursor plus `0x782dbe` onto the cursor stack; `ESC &f1S` pops, restores horizontal position clamped to active extent minus `1/12`, restores vertical position after subtracting `0x782dbe` and clamps to printable extent minus `1/12`, then clears pending/right-limit flags. A byte-stream fixture now drives `ESC &f0S` / `ESC &f1S` through the same `0xf75e` selector path.")
     lines.append("- `ESC &a#C` converts columns through current HMI, `ESC &a#H` converts decipoints as five packed subunits per decipoint, and both commit through horizontal helper `0xf4ca` with absolute/relative handling and page-width clamps.")
     lines.append("- `ESC &a#R` converts rows through current VMI; absolute rows add the firmware's `0.7200` row bias before using the top offset, while relative rows add to the current vertical cursor. `ESC &a#V` uses the same five-subunit decipoint conversion. Both commit through vertical helper `0xf6e2` and clamp to vertical bounds where the handler does so. A byte-stream fixture now drives chained `ESC &a3.5c+1R` through handlers `0xf39e` and `0xf560`.")
+    lines.append("- `ESC &s#C` toggles the end-of-line wrap flag: selector `0` stores enabled, selector `1` clears it, and other selectors leave the current flag unchanged.")
+    lines.append("- `ESC *p#X/#Y` shifts the parsed integer left 16 bits to form whole-dot packed cursor coordinates, then commits through the same `0xf4ca` and `0xf6e2` helpers as the `ESC &a` cursor-position commands.")
     lines.append("- `ESC &l#D` accepts only the ROM LPI set `1,2,3,4,6,8,12,16,24,48`, treats zero as 12 LPI, and writes line advance `0x783160`; `ESC &l#C` converts VMI in 1/48-inch units using 75 packed subunits per unit and allows zero without setting the modified-layout flag.")
     lines.append("- `ESC &l#E` sets top offset `0x782dce` from VMI lines minus vertical offset source `0x782dbe`, then recomputes default text-length bottom `0x782dd2`; `ESC &l#F` stores explicit text-length bottom as top offset plus VMI-scaled lines, or restores the default when the parameter is zero. A byte-stream fixture now drives chained `ESC &l8c6d3e2F` through handlers `0xcb00`, `0xc992`, `0xece2`, and `0xea9e`.")
     lines.append("- `ESC &a#L` stores an absolute left margin in HMI columns when it does not pass `right_margin - HMI`; it moves the cursor and flushes pending spans only when the new margin is right of the current cursor or pending text is marked.")
@@ -33644,6 +33809,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- `ESC &a2R`: y `0x{int(row_absolute['cursor_y']):08x}`, relative `ESC &a+1R` y `0x{int(row_relative['cursor_y']):08x}`")
     lines.append(f"- cursor-position stream events: `{cursor_position_stream['stream_events']}`")
     lines.append(f"- `ESC &a72V`: clamped y `0x{int(vertical_decipoint['cursor_y']):08x}`")
+    lines.append(f"- `ESC &s#C`: selector 0 flag `{wrap_on['wrap_flag']}`, selector 1 flag `{wrap_off['wrap_flag']}`, selector 2 flag `{wrap_unchanged['wrap_flag']}`")
+    lines.append(f"- `ESC *p25X`: x `0x{int(dot_x_absolute['cursor_x']):08x}`, relative `ESC *p+5X` x `0x{int(dot_x_relative['cursor_x']):08x}`, clamped `ESC *p500X` x `0x{int(dot_x_clamped['cursor_x']):08x}`")
+    lines.append(f"- `ESC *p12Y`: y `0x{int(dot_y_absolute['cursor_y']):08x}`, relative `ESC *p+5Y` y `0x{int(dot_y_relative['cursor_y']):08x}`, clamped `ESC *p500Y` y `0x{int(dot_y_clamped['cursor_y']):08x}`")
     lines.append(f"- `ESC &l6D`: VMI `0x{int(lpi_six['vmi']):08x}`, pending cursor y `0x{int(lpi_six['cursor_y']):08x}`")
     lines.append(f"- `ESC &l8C`: VMI `0x{int(vmi_eight['vmi']):08x}`, `ESC &l1.5C` VMI `0x{int(vmi_fraction['vmi']):08x}`")
     lines.append(f"- `ESC &l3E`: top offset `0x{int(top_margin_three['top_offset']):08x}`, text bottom `0x{int(top_margin_three['text_length_bottom']):08x}`")

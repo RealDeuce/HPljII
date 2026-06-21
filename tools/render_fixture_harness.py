@@ -13370,6 +13370,137 @@ def render_printable_ff_addressed_page_record_stream(
     }
 
 
+def render_printable_page_geometry_addressed_page_record_stream(
+    data: bytes,
+    resources: bytes,
+    stream: bytes,
+    context: int,
+    text_state: dict[str, int],
+    geometry_state: dict[str, int],
+    default_advance: int,
+    context_slot: int = 0,
+) -> dict[str, object]:
+    """Address-backed fixture for printable text followed by ESC &l#A/#O."""
+    if not stream.startswith(b"!\x1b&l"):
+        raise AssertionError("addressed page-geometry fixture expects printable then ESC &l")
+
+    addressed_state: dict[str, object] = {
+        "stream_bytes_remaining_782a70": 0,
+        "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+        "stream_next_free_782a76": 0,
+        "next_stream_chunk_ptr": int(text_state.get("next_stream_chunk_ptr", 0x00D05000)),
+        "stream_chunk_links": {},
+        "bucket_heads_1c": {},
+        "rule_head_24": 0,
+        "fixed_head_28": 0,
+        "stream_objects": {},
+        "context_slots": [context],
+    }
+    working = dict(text_state)
+    geometry = dict(geometry_state)
+    events: list[dict[str, object]] = []
+
+    source = build_text_source_object_from_1393a(
+        resources,
+        context,
+        stream[0],
+        x=0,
+        y=0,
+        context_slot=context_slot,
+    )
+    positioned = position_flagged_text_source_via_d824(
+        resources,
+        source,
+        cursor_x=unpack12(working["cursor_x"])[0],
+        cursor_y=unpack12(working["cursor_y"])[0],
+    )
+    positioned_source = positioned["source"]
+    assert isinstance(positioned_source, dict)
+    page_root = ensure_page_record_root_for_queue(working)
+    text_result = queue_text_source_to_addressed_stream_via_12f2e(
+        resources,
+        addressed_state,
+        positioned_source,
+    )
+    advance = advance_flagged_text_cursor_via_d550(working["cursor_x"], default_advance)
+    working["cursor_x"] = advance["cursor_after"]
+    events.append({
+        "kind": "printable",
+        "offset": 0,
+        "byte": stream[0],
+        "cursor_before": advance["cursor_before"],
+        "cursor_after": advance["cursor_after"],
+        "source": source,
+        "positioned": positioned,
+        "page_result": text_result,
+        "page_root": page_root,
+    })
+
+    pos = 4
+    parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+    if pos >= len(stream) or pos != len(stream) - 1:
+        raise AssertionError("addressed page-geometry fixture expects one final byte")
+    final = stream[pos]
+    final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+    if final_upper not in (ord("A"), ord("O")):
+        raise AssertionError("addressed page-geometry fixture only models ESC &l#A/#O")
+
+    page_record = page_record_from_addressed_stream_state(addressed_state)
+    before_geometry = page_geometry_event_state(geometry)
+    before_page_root = int(working.get("current_page_root", 0))
+    finalized = finalize_page_record_via_ff1e(page_record, working)
+    published_page_record = finalized["published_pool_record"]
+    assert isinstance(published_page_record, dict)
+    working["page_publications"] = int(working.get("page_publications", 0)) + 1
+    working["published_pool_record"] = 1
+    working["page_publication_flag"] = int(finalized["page_publication_flag"])
+    working["current_page_root"] = int(finalized["current_page_root_after"])
+    working["page_root_present"] = 0
+    working["page_root_clears"] = int(finalized["page_root_clears"])
+    if final_upper == ord("A"):
+        geometry = apply_page_size_via_fc74(data, geometry, parameter)
+    else:
+        geometry = apply_orientation_via_10220(data, geometry, parameter)
+    record = bytes([
+        0x81 if parameter < 0 else 0x80,
+        final,
+    ]) + signed_word_bytes(parameter) + signed_word_bytes(0)
+    events.append({
+        "kind": "page-geometry",
+        "offset": 1,
+        "sequence": stream[1:],
+        "record": record,
+        "parameter": parameter,
+        "handler": page_geometry_handler(final),
+        "before_geometry": before_geometry,
+        "after_geometry": page_geometry_event_state(geometry),
+        "finalized_page_record": finalized,
+        "current_page_root_before": before_page_root,
+        "current_page_root_after": working["current_page_root"],
+        "page_publications": working.get("page_publications", 0),
+        "page_root_clears": working.get("page_root_clears", 0),
+        "page_publication_flag": working.get("page_publication_flag", 0),
+        "chained": bool(ord("a") <= final <= ord("z")),
+    })
+
+    published_render_entry = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        published_page_record,
+    )
+    return {
+        "stream": stream,
+        "parser_handlers": [0x00D04A, page_geometry_handler(final)],
+        "events": events,
+        "addressed_state": addressed_state,
+        "page_record": page_record,
+        "published_page_record": published_page_record,
+        "published_render_entry": published_render_entry,
+        "final_text_state": working,
+        "final_geometry_state": geometry,
+    }
+
+
 def render_text_rectangle_raster_addressed_page_record_stream(
     data: bytes,
     resources: bytes,
@@ -39387,6 +39518,283 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "payload": bytes.fromhex("00 01 20 00 01") + bytes(0x1B),
         },
         "rows": positioned_mode0["rows"],
+    }))
+    page_geometry_addressed = render_printable_page_geometry_addressed_page_record_stream(
+        data,
+        resources,
+        b"!\x1b&l1A",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            page_root_present=0,
+            page_root_class=1,
+            current_page_root=0,
+            page_publications=0,
+            page_root_clears=0,
+            published_pool_record=0,
+            page_publication_flag=0,
+            next_stream_chunk_ptr=0x00D0A000,
+        ),
+        page_geometry_state(),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    orientation_addressed = render_printable_page_geometry_addressed_page_record_stream(
+        data,
+        resources,
+        b"!\x1b&l1O",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            page_root_present=0,
+            page_root_class=1,
+            current_page_root=0,
+            page_publications=0,
+            page_root_clears=0,
+            published_pool_record=0,
+            page_publication_flag=0,
+            next_stream_chunk_ptr=0x00D0B000,
+        ),
+        letter_page,
+        default_advance=line_printer_hmi["hmi"],
+    )
+    addressed_publication_records = {
+        "page_size": page_geometry_addressed,
+        "orientation": orientation_addressed,
+    }
+    checks.append(assert_equal("addressed page geometry publications render page records", {
+        name: {
+            "stream": result["stream"],
+            "parser_handlers": result["parser_handlers"],
+            "event_kinds": [event["kind"] for event in result["events"]],
+            "page_record": result["page_record"],
+            "published_bucket_root": result["published_page_record"]["bucket_root"],
+            "published_context_slots": result["published_page_record"]["context_slots"],
+            "published_pool_fields": {
+                key: result["published_page_record"]["pool_record_fields"][key]
+                for key in (
+                    "state_byte_4",
+                    "environment_byte_7",
+                    "status_byte_8",
+                    "status_byte_0a",
+                    "environment_word_0c",
+                    "word_16",
+                    "word_18",
+                    "word_1a",
+                    "published_pointer_780ea6",
+                    "bucket_root_1c",
+                    "context_slots_2c",
+                )
+            },
+            "render_call_order": result["published_render_entry"]["entry"]["call_order"],
+            "render_dispatch": [
+                {
+                    "chain_index": entry["chain_index"],
+                    "object_byte_4": entry["object_byte_4"],
+                    "class_mask": entry["class_mask"],
+                    "branch": entry["branch"],
+                    "target": entry["target"],
+                    "context_slot": entry.get("context_slot"),
+                }
+                for entry in result["published_render_entry"]["entry"]["dispatch"]["entries"]
+            ],
+            "rows": result["published_render_entry"]["entry"]["rows"],
+            "stream_state": {
+                key: result["addressed_state"][key]
+                for key in (
+                    "stream_bytes_remaining_782a70",
+                    "stream_link_ptr_782a72",
+                    "stream_next_free_782a76",
+                    "next_stream_chunk_ptr",
+                    "stream_chunk_links",
+                    "stream_allocations",
+                )
+            },
+            "final_text_state": select_keys(result["final_text_state"], (
+                "cursor_x",
+                "current_page_root",
+                "page_root_present",
+                "page_publications",
+                "page_root_clears",
+                "page_publication_flag",
+                "page_record_root_allocations",
+            )),
+            "final_geometry_state": select_keys(result["final_geometry_state"], (
+                "page_code",
+                "orientation",
+                "width",
+                "height",
+                "active_width",
+                "active_height",
+                "vertical_offset_source",
+                "top_offset",
+                "pending_text_flushes",
+                "page_finalizations",
+                "page_change_flag",
+                "print_engine_status",
+            )),
+        }
+        for name, result in addressed_publication_records.items()
+    }, {
+        "page_size": {
+            "stream": b"!\x1b&l1A",
+            "parser_handlers": [0x00D04A, 0x00FC74],
+            "event_kinds": ["printable", "page-geometry"],
+            "page_record": {
+                "bucket_array": {
+                    0: [
+                        bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                        + bytes(0x1B),
+                    ],
+                },
+                "rule_list": [],
+                "fixed_list": [],
+                "context_slots": [0x440946B4],
+            },
+            "published_bucket_root": (
+                bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                + bytes(0x1B)
+            ),
+            "published_context_slots": [0x440946B4],
+            "published_pool_fields": {
+                "state_byte_4": 2,
+                "environment_byte_7": 0,
+                "status_byte_8": 0,
+                "status_byte_0a": 0,
+                "environment_word_0c": 0,
+                "word_16": 0,
+                "word_18": 0,
+                "word_1a": 0,
+                "published_pointer_780ea6": ABSTRACT_PAGE_ROOT_PTR,
+                "bucket_root_1c": (
+                    bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                    + bytes(0x1B)
+                ),
+                "context_slots_2c": (0x440946B4,) + (0,) * 15,
+            },
+            "render_call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+            "render_dispatch": [{
+                "chain_index": 0,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 0,
+            }],
+            "rows": positioned_mode0["rows"],
+            "stream_state": {
+                "stream_bytes_remaining_782a70": 0x00D6,
+                "stream_link_ptr_782a72": 0x00D0A000,
+                "stream_next_free_782a76": 0x00D0A02A,
+                "next_stream_chunk_ptr": 0x00D0A100,
+                "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D0A000},
+                "stream_allocations": 1,
+            },
+            "final_text_state": {
+                "cursor_x": pack12(28),
+                "current_page_root": 0,
+                "page_root_present": 0,
+                "page_publications": 1,
+                "page_root_clears": 1,
+                "page_publication_flag": 1,
+                "page_record_root_allocations": 1,
+            },
+            "final_geometry_state": {
+                "page_code": 6,
+                "orientation": 0,
+                "width": 3030,
+                "height": 2025,
+                "active_width": 3030,
+                "active_height": 2025,
+                "vertical_offset_source": 60,
+                "top_offset": 90,
+                "pending_text_flushes": 1,
+                "page_finalizations": 1,
+                "page_change_flag": 1,
+                "print_engine_status": 0,
+            },
+        },
+        "orientation": {
+            "stream": b"!\x1b&l1O",
+            "parser_handlers": [0x00D04A, 0x010220],
+            "event_kinds": ["printable", "page-geometry"],
+            "page_record": {
+                "bucket_array": {
+                    0: [
+                        bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                        + bytes(0x1B),
+                    ],
+                },
+                "rule_list": [],
+                "fixed_list": [],
+                "context_slots": [0x440946B4],
+            },
+            "published_bucket_root": (
+                bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                + bytes(0x1B)
+            ),
+            "published_context_slots": [0x440946B4],
+            "published_pool_fields": {
+                "state_byte_4": 2,
+                "environment_byte_7": 0,
+                "status_byte_8": 0,
+                "status_byte_0a": 0,
+                "environment_word_0c": 0,
+                "word_16": 0,
+                "word_18": 0,
+                "word_1a": 0,
+                "published_pointer_780ea6": ABSTRACT_PAGE_ROOT_PTR,
+                "bucket_root_1c": (
+                    bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                    + bytes(0x1B)
+                ),
+                "context_slots_2c": (0x440946B4,) + (0,) * 15,
+            },
+            "render_call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+            "render_dispatch": [{
+                "chain_index": 0,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 0,
+            }],
+            "rows": positioned_mode0["rows"],
+            "stream_state": {
+                "stream_bytes_remaining_782a70": 0x00D6,
+                "stream_link_ptr_782a72": 0x00D0B000,
+                "stream_next_free_782a76": 0x00D0B02A,
+                "next_stream_chunk_ptr": 0x00D0B100,
+                "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D0B000},
+                "stream_allocations": 1,
+            },
+            "final_text_state": {
+                "cursor_x": pack12(28),
+                "current_page_root": 0,
+                "page_root_present": 0,
+                "page_publications": 1,
+                "page_root_clears": 1,
+                "page_publication_flag": 1,
+                "page_record_root_allocations": 1,
+            },
+            "final_geometry_state": {
+                "page_code": 6,
+                "orientation": 1,
+                "width": 3030,
+                "height": 2025,
+                "active_width": 2025,
+                "active_height": 3030,
+                "vertical_offset_source": 50,
+                "top_offset": 100,
+                "pending_text_flushes": 2,
+                "page_finalizations": 2,
+                "page_change_flag": 1,
+                "print_engine_status": 0,
+            },
+        },
     }))
     def parser_handler_summary(trace: dict[str, object]) -> list[int]:
         events = trace["events"]

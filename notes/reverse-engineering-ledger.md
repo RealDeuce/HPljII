@@ -548,7 +548,9 @@ ROM work needed:
   execute parser-to-page-record, and macro-payload page-band composition
   fixtures into fuller parser-produced heterogeneous page-object
   rendering, full macro replay through the live parser/data-chain path,
-  and the full final page-pixel merge.
+  and final device-output pixel validation. The modeled `0x1ef6a`
+  page-band merge now covers compact text, mode-0 raster, and a crossing
+  patterned rule across bands `0` and `5`.
 - Determine clipping and off-page behavior exactly.
 - Identify any banding/compression structures used internally; reproduce
   final pixel result rather than formatter timing.

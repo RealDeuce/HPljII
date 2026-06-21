@@ -462,6 +462,12 @@ call order (`0x1ef86`, `0x1efc2`, `0x1f446`, `0x1f756`) and composes
 those layers without claiming the full parser-produced page-root merge
 is decoded.
 
+A `0x1ef6a` page-band walker now merges compact text, mode-0 raster,
+and a crossing patterned rule across bands `0` and `5`, carrying the
+mutated rule node into the second band. The remaining gap is therefore
+parser-produced heterogeneous page objects and final device-output
+validation, not the modeled per-band merge itself.
+
 Published-record coverage now also takes the reset, FF, page-size, and
 orientation `0xff1e` records from the host-fetched publication fixtures
 through `0x1ed84` and the same `0x1ef6a` call order, proving those byte
@@ -888,8 +894,11 @@ runner instead of attaching the raster row after the text/rule record.
 Adding FF to that stream now publishes the heterogeneous page record
 through the modeled `0xff1e` boundary and renders the published record
 through `0x1ed84` and `0x1ef6a` with the same rows.
-Raster
-coverage now has a named flow report plus ROM-table `0x11774` dispatch
+A `0x1ef6a` page-band walker now also merges compact text, mode-0
+raster, and a crossing patterned rule across bands `0` and `5`, carrying
+the mutated rule node into the second band.
+
+Raster coverage now has a named flow report plus ROM-table `0x11774` dispatch
 traces for the primary, 150/100/75-dpi, consecutive-row, capped/drained,
 active-resolution-ignore, end-raster, and host-fetched chained-lowercase
 `ESC *t#R` / `ESC *r#A` / `ESC *b#W` streams. It still needs a full

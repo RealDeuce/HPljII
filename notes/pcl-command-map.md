@@ -565,6 +565,8 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   ESC *t300R ESC *r0A ESC *b2W` text/rule/raster render-entry
   coverage from one mixed page-record stream runner plus its modeled
   `0xff1e` published-record render-entry variant with trailing FF,
+  `0x1ef6a` page-band walker coverage for compact text, mode-0
+  raster, and a crossing patterned rule across bands `0` and `5`,
   simple macro execute replayed `!\r`, and mixed-control macro execute replayed
   `ESC &k1G!\r!`, parser-derived `ESC *t#R`/`ESC *r#A`
   raster state fixtures, modeled raster command/data stream fixtures for

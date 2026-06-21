@@ -26630,6 +26630,130 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "fixed_rows": fixed_width_rendered["rows"],
         "composed_rows": render_entry_expected_rows,
     }))
+    render_page_bands_record = {
+        "render_record_fields": {
+            "long_00": 0x00100000,
+            "word_04": 0x0020,
+            "word_06": 0x0005,
+            "word_08": 0x0000,
+            "word_0a": 0x0000,
+            "word_10": 0x0000,
+            "bucket_array_18": {
+                0: [positioned_text_object, text_rule_raster_object],
+            },
+            "rule_list_1c": rectangle_fill_pattern_crossing_bridged["rule_list"],
+            "fixed_list_20": [],
+            "context_slots_24": (0x440946B4,),
+        },
+    }
+    render_page_bands = render_page_bands_via_1ef6a(
+        data,
+        resources,
+        render_page_bands_record,
+        (0, 5),
+        88,
+        48,
+    )
+    render_page_text_raster_rows = compose_set_pixel_rows(
+        [text_rule_text["rows"], text_rule_raster_rendered["rows"]],
+        width=48,
+        rows=88,
+    )
+    render_page_bands_expected_rows = compose_set_pixel_rows(
+        [
+            render_page_text_raster_rows,
+            rectangle_fill_pattern_crossing_page["rows"],
+        ],
+        width=48,
+        rows=88,
+    )
+    checks.append(assert_equal("0x1ef6a page-band walk merges text raster and crossing rule", {
+        "band_words": [
+            band["band_word"]
+            for band in render_page_bands["bands"]
+        ],
+        "band0_call_order": render_page_bands["bands"][0]["entry"]["call_order"],
+        "band0_dispatch": [
+            {
+                key: entry[key]
+                for key in (
+                    "chain_index",
+                    "object_byte_4",
+                    "class_mask",
+                    "branch",
+                    "target",
+                )
+            }
+            for entry in render_page_bands["bands"][0]["entry"]["dispatch"]["entries"]
+        ],
+        "band0_carried_rule_list": render_page_bands["bands"][0]["carried_rule_list"],
+        "band1_dispatch": render_page_bands["bands"][1]["entry"]["dispatch"]["entries"],
+        "band1_rule_rendered": [
+            {
+                key: entry[key]
+                for key in (
+                    "selector",
+                    "helper",
+                    "key",
+                    "bucket_delta",
+                    "decoded",
+                    "width",
+                    "remaining_before",
+                    "rows_drawn",
+                    "mutated_object",
+                )
+            }
+            for entry in render_page_bands["bands"][1]["entry"]["rules"]["rendered"]
+        ],
+        "remaining_rule_list": render_page_bands["remaining_rule_list"],
+        "remaining_fixed_list": render_page_bands["remaining_fixed_list"],
+        "page_rows_0_13": render_page_bands["rows"][:14],
+        "page_rows_76_83": render_page_bands["rows"][76:84],
+    }, {
+        "band_words": [0, 5],
+        "band0_call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "band0_dispatch": [
+            {
+                "chain_index": 0,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+            },
+            {
+                "chain_index": 1,
+                "object_byte_4": 0x80,
+                "class_mask": 0x80,
+                "branch": "encoded-span",
+                "target": 0x01F88E,
+            },
+        ],
+        "band0_carried_rule_list": [
+            bytes.fromhex("00 00 00 00 04 0d e0 00 00 10 00 05 00 03"),
+        ],
+        "band1_dispatch": [],
+        "band1_rule_rendered": [{
+            "selector": 13,
+            "helper": 0x1F4E0,
+            "key": 0x0000,
+            "bucket_delta": 0,
+            "decoded": {
+                "x": 0,
+                "y": 0,
+                "row_low": 0,
+                "subbyte": 0,
+                "byte_pair_offset": 0,
+            },
+            "width": 16,
+            "remaining_before": 3,
+            "rows_drawn": 3,
+            "mutated_object": bytes.fromhex("00 00 00 00 04 0d e0 00 00 10 00 05 ff b3"),
+        }],
+        "remaining_rule_list": [],
+        "remaining_fixed_list": [],
+        "page_rows_0_13": render_page_bands_expected_rows[:14],
+        "page_rows_76_83": render_page_bands_expected_rows[76:84],
+    }))
     overflow_positioned_text_object = overflow_positioned_bucket["object"]
     assert isinstance(overflow_positioned_text_object, bytes)
     overflow_positioned_mode0 = render_compact_text_bucket_object(data, resources, (0x440946B4,), overflow_positioned_text_object)
@@ -32633,9 +32757,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " -> ".join("0x%06x" % address for address in render_entry["call_order"]),
         render_entry["rows"][1],
     ))
+    lines.append("- a `0x1ef6a` page-band walk now merges compact text, a mode-0 raster row, and a crossing patterned rule across bands `0` and `5`, carrying the mutated rule node into the second band.")
     lines.append("- a published text+rule+raster fixture now snapshots the full bucket array, rule list, and context slots through modeled `0xff1e`, then renders that published record through `0x1ed84` and `0x1ef6a` with the same rows.")
     lines.append("- remaining gap: broaden this from modeled state into parser-produced heterogeneous")
-    lines.append("  page objects and full-page merge coverage.")
+    lines.append("  page objects and final device-output validation.")
     lines.append("")
 
     lines.append("## Parser-Derived Raster State Fixture")

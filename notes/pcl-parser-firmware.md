@@ -587,7 +587,9 @@ control-code anchor.
   array, rule list, and context slots through `0xff1e` before rendering
   after one mixed stream runner handles text, `ESC *c`, and delayed
   raster transfer commands; the trailing-FF variant now drives that
-  publication from the host byte stream.
+  publication from the host byte stream, while a `0x1ef6a` page-band
+  walker merges compact text, mode-0 raster, and a crossing patterned
+  rule across bands `0` and `5`.
 - Extend the mixed-stream page-record fixture into real parser-produced
   page-object allocation/finalization, then add a parser-driven macro
   command/replay fixture.

@@ -9197,6 +9197,7 @@ def raster_graphics_state(**overrides: int) -> dict[str, int]:
         "orientation": 0,
         "cursor_axis0": 0,
         "cursor_axis1": 0,
+        "origin_source": 0,
         "page_extent": 255,
     }
     state.update(overrides)
@@ -9239,8 +9240,14 @@ def start_raster_graphics_via_1075a(state: dict[str, int], parameter: int) -> di
     state["active"] = 1
     value = abs(int(parameter))
     if value == 1:
-        state["origin_long"] = int(state["cursor_axis1"] if state["orientation"] else state["cursor_axis0"])
+        if state["orientation"]:
+            state["origin_source"] = 0x782C8E
+            state["origin_long"] = int(state["cursor_axis1"])
+        else:
+            state["origin_source"] = 0x782C8A
+            state["origin_long"] = int(state["cursor_axis0"])
     else:
+        state["origin_source"] = 0
         state["origin_long"] = 0
     state["baseline_word"] = (int(state["origin_long"]) >> 16) & 0xFFFF
     state["limit"] = recompute_raster_limit_via_3324a(state)
@@ -20258,6 +20265,66 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "limit": 32,
         },
     }))
+    raster_portrait_axis = start_raster_graphics_via_1075a(apply_raster_resolution_via_10808(
+        raster_graphics_state(
+            orientation=0,
+            page_extent=255,
+            cursor_axis0=pack12(17),
+            cursor_axis1=pack12(43),
+        ),
+        300,
+    ), 1)
+    raster_landscape_axis = start_raster_graphics_via_1075a(apply_raster_resolution_via_10808(
+        raster_graphics_state(
+            orientation=1,
+            page_extent=255,
+            cursor_axis0=pack12(17),
+            cursor_axis1=pack12(43),
+        ),
+        300,
+    ), 1)
+    raster_left_edge_axis = start_raster_graphics_via_1075a(apply_raster_resolution_via_10808(
+        raster_graphics_state(
+            orientation=1,
+            page_extent=255,
+            cursor_axis0=pack12(17),
+            cursor_axis1=pack12(43),
+        ),
+        300,
+    ), 0)
+    checks.append(assert_equal("0x1075a raster origin source follows orientation", {
+        "portrait": {
+            key: raster_portrait_axis[key]
+            for key in ("origin_source", "origin_long", "baseline_word", "limit")
+        },
+        "landscape": {
+            key: raster_landscape_axis[key]
+            for key in ("origin_source", "origin_long", "baseline_word", "limit")
+        },
+        "left_edge": {
+            key: raster_left_edge_axis[key]
+            for key in ("origin_source", "origin_long", "baseline_word", "limit")
+        },
+    }, {
+        "portrait": {
+            "origin_source": 0x782C8A,
+            "origin_long": pack12(17),
+            "baseline_word": 17,
+            "limit": 30,
+        },
+        "landscape": {
+            "origin_source": 0x782C8E,
+            "origin_long": pack12(43),
+            "baseline_word": 43,
+            "limit": 27,
+        },
+        "left_edge": {
+            "origin_source": 0,
+            "origin_long": 0,
+            "baseline_word": 0,
+            "limit": 32,
+        },
+    }))
     parser_raster_end = end_raster_graphics_via_107fa(parser_raster_start)
     checks.append(assert_equal("0x107fa ESC *r#B clears raster active flag only", {
         key: parser_raster_end[key]
@@ -26758,22 +26825,40 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " -> ".join("0x%06x" % address for address in render_entry["call_order"]),
         render_entry["rows"][1],
     ))
-    lines.append("- remaining gap: broaden this mixed-layer synthetic render entry to published/parser-produced records with true heterogeneous bucket chains and full-page merge coverage.")
+    lines.append("- remaining gap: broaden this mixed-layer synthetic render entry to")
+    lines.append("  published/parser-produced records with true heterogeneous bucket chains and full-page merge")
+    lines.append("  coverage.")
     lines.append("")
 
     lines.append("## Parser-Derived Raster State Fixture")
     lines.append("")
-    lines.append("This fixture models the raster state fields written by `ESC *t#R` handler `0x10808` and `ESC *r#A` handler `0x1075a` before the existing `0x13070` row-object queue path. It is still a state model rather than a full parser run through `0x121cc` / `0x105d0`, but the encoded raster mode comes from the resolution command threshold instead of being hand-picked.")
+    lines.append("This fixture models the raster state fields written by `ESC *t#R` handler `0x10808`")
+    lines.append("and `ESC *r#A` handler `0x1075a` before the existing `0x13070` row-object queue path.")
+    lines.append("It is still a state model rather than a full parser run through `0x121cc` / `0x105d0`,")
+    lines.append("but the encoded raster mode comes from the resolution command threshold instead of being")
+    lines.append("hand-picked.")
     lines.append("")
     lines.append("| Parameter | Encoded mode | Scale word | Limit for extent 255 |")
     lines.append("| ---: | ---: | ---: | ---: |")
     for parameter, expected in parser_raster_resolution_cases:
         lines.append(f"| `{parameter}` | `{expected['mode']}` | `{expected['scale']}` | `{expected['limit']}` |")
     lines.append("")
-    lines.append("- `ESC *r1A` with orientation `0` seeds raster origin from cursor-axis longword `0x00100000`, giving baseline word `16`, mode `0`, scale `1`, and limit `30` for extent `255`.")
-    lines.append("- `ESC *r0A` starts at the left edge, giving origin `0`, baseline word `0`, mode `0`, scale `1`, and limit `32` for extent `255`.")
-    lines.append("- `ESC *rB` handler `0x107fa` clears only the raster active byte, leaving origin/baseline/mode/scale/limit/row counters untouched in this state fixture.")
-    lines.append(f"- parser-derived transfer object bytes: `{' '.join(f'{byte:02x}' for byte in parser_raster_object)}`")
+    lines.append(
+        "- `ESC *r1A` with orientation `0` seeds raster origin from `0x782c8a`, while "
+        "orientation `1` seeds from `0x782c8e`."
+    )
+    lines.append(
+        "  The executable axis fixture pins portrait origin word `17`, landscape origin word `43`, "
+        "and left-edge parameter `0` origin word `0`."
+    )
+    lines.append("- `ESC *r0A` starts at the left edge, giving origin `0`, baseline word `0`,")
+    lines.append("  mode `0`, scale `1`, and limit `32` for extent `255`.")
+    lines.append("- `ESC *rB` handler `0x107fa` clears only the raster active byte, leaving")
+    lines.append("  origin/baseline/mode/scale/limit/row counters untouched in this state fixture.")
+    lines.append(
+        f"- parser-derived transfer object bytes: "
+        f"`{' '.join(f'{byte:02x}' for byte in parser_raster_object)}`"
+    )
     lines.append("- `0x105d0` transfer gate fixture: row beyond extent drains `%d` bytes without queueing, negative row drains `%d` bytes without queueing, and byte count `%d` with limit `%d` ensures a page root through modeled `0x10084`, queues only `%d` bytes as object `%s`, and records overflow `%d`." % (
         raster_gate_beyond["drained"],
         raster_gate_negative["drained"],

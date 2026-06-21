@@ -142,8 +142,9 @@ bound `0x782dca`, and writes `0x782c8e`. The row command scales through VMI `0x7
 fractional `0.7200` for absolute row moves before conversion; the decipoint command uses five packed
 subunits per decipoint and clamps to `0x782dc6`.
 
-`ESC *r#A` at `0x01075a` starts raster graphics by setting state in the block rooted at `0x783170`;
-it seeds a raster baseline from `0x782c8a` or `0x782c8e` depending on current mode.
+`ESC *r#A` at `0x01075a` starts raster graphics by setting state in the block rooted at `0x783170`.
+Portrait raster origin seeds from horizontal cursor `0x782c8a`; landscape raster origin seeds from
+vertical cursor `0x782c8e`.
 
 `ESC *b#W` at `0x011f82` routes through `0x121cc` with handler `0x105d0`, so raster row byte
 transfer is tied into the same parsed-command/data chain used by macro/download payload handling.
@@ -398,9 +399,8 @@ triggers the `0x12218` restore and the single following payload.
   fixtures, a ROM-scanned row-copy span matrix, and the full built-in glyph coverage scan.
 - Replace the synthetic `ESC E` fixtures with parser-produced page-object fixtures to prove
   partial-page finalization and reset-visible page/control state from real queued objects.
-- Broaden the narrow direct-control byte-stream fixtures into the full firmware parser path, then
-  compare those against page size, orientation, and raster behavior to finish naming `0x782c8a` and
-  `0x782c8e`.
+- Broaden the narrow direct-control byte-stream fixtures into the full firmware parser path using
+  the now-named horizontal cursor `0x782c8a` and vertical cursor `0x782c8e`.
 - Use the now-matched ROM/manual logical page and printable-area dimensions as the baseline for
   physical engine/self-test placement checks.
 - Trace font handler stubs `0x012046..0x0120aa` into built-in resource ROM font selection and

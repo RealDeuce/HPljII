@@ -173,14 +173,16 @@ This is consistent with a `300 dpi / requested dpi` scale for 300, 150, 100, and
 modes.
 
 `ESC *r#A` initializes the state block only if field `+0x12` is clear. With parameter `1`, it seeds
-field `+0x0a` from one current cursor coordinate; otherwise it clears it. Which cursor variable is
-used depends on orientation:
+field `+0x0a` from one current cursor coordinate; otherwise it clears it. This pins the cursor
+variable names used elsewhere:
 
-- orientation 0: seed from `0x782c8a`;
-- orientation 1: seed from `0x782c8e`.
+- orientation 0: seed from horizontal cursor `0x782c8a`;
+- orientation 1: seed from vertical cursor `0x782c8e`.
 
-It then computes field `+0x10` from page extent, the baseline word, and `scale * 8`. This looks like
-a clipped maximum byte count for subsequent row transfers, but the exact axis naming is still open.
+The executable raster-origin fixture now pins this explicitly: portrait `ESC *r1A` uses
+`0x782c8a`, landscape `ESC *r1A` uses `0x782c8e`, and `ESC *r0A` clears the origin to the left edge.
+It then computes field `+0x10` from page extent, the baseline word, and `scale * 8`; this is the
+clipped maximum byte count for subsequent row transfers.
 
 `ESC *b#W` does not call the transfer routine immediately. Handler `0x011f82` stores delayed handler
 pointer `0x0105d0` through `0x0121cc`; the later payload dispatcher restores the parsed six-byte
@@ -735,9 +737,8 @@ Other checked leads:
   text bucket fixtures with full parser-produced page-object payloads.
 - Replace the synthetic `ESC E` reset fixtures with parser-produced page-object fixtures so
   partial-page finalization and current-page-root clearing are proven from real queued objects.
-- Broaden the narrow direct-control byte-stream fixtures into the full firmware parser path, then
-  use those plus raster start/transfer behavior to finish naming cursor coordinate variables
-  `0x782c8a` and `0x782c8e`.
+- Broaden the narrow direct-control byte-stream fixtures into the full firmware parser path now that
+  cursor variables `0x782c8a` and `0x782c8e` are named as horizontal and vertical respectively.
 - Finish rectangle handlers at `0x010898` and the width/height handlers around `0x010a40..0x010e68`;
   these now appear to share page-object storage with raster, not a direct framebuffer write.
 - Compare physical engine/self-test placement against the now-matched ROM/manual logical page and

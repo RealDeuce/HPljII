@@ -179,9 +179,11 @@ Evidence:
   into queued page objects built by `0x13070`; normal printable text bytes flow through `0xa904`
   -> `0xda9a` -> `0x11774` -> `0xd04a`, where `0x1393a` builds source object `0x782d7e`, as
   documented in `generated/analysis/ic30_ic13_printable_text_path.md`; paired post-source text
-  paths are documented in `generated/analysis/ic30_ic13_text_cursor_span_flow.md`, with
-  unflagged text using `0xd140` / `0xd3b2` / `0xd4ac`, flagged text using `0xd550` / `0xd824` /
-  `0xd8fc`, and the queue handoffs reaching compact bucket producer `0x12f2e`; compact bucket
+  paths are documented in `generated/analysis/ic30_ic13_text_cursor_span_flow.md`, with cursor
+  `0x782c8a` named as horizontal and `0x782c8e` named as vertical by text/control handlers plus
+  the raster-origin fixture; unflagged text uses `0xd140` / `0xd3b2` / `0xd4ac`, flagged text
+  uses `0xd550` / `0xd824` / `0xd8fc`, and the queue handoffs reach compact bucket producer
+  `0x12f2e`; compact bucket
   allocator `0x1387c` is decoded in `generated/analysis/ic30_ic13_compact_bucket_allocator.md`;
   text spans enter the same storage through `0x12714` / `0x12f2e`; rectangle/rule handlers share
   page-root queues through `0x13386` and related helpers; `0x1edc6` copies queued record

@@ -153,11 +153,13 @@ cursor/page-visible side effects. The line-termination command `ESC &k#G` writes
 bit 7 to optionally also advance vertically, LF tests bit 6 to optionally also reset horizontally,
 and FF tests bit 5 to optionally also reset horizontally before page finalization.
 
-The CR/LF/FF/HT/BS handlers update state around `0x782c8a`, `0x782c8e`, `0x782dd6`, `0x782dda`,
-`0x78315c`, `0x783160`, and `0x78318f`, with helper calls into the coordinate arithmetic block
-around `0x104d8..0x10518`. They can also flush text spans through `0x12714` / `0x126e2`,
-ensure/finalize page roots through `0x10084` / `0xff1e`, and update active font context spans
-through `0xd4ac` / `0xd8fc`.
+The CR/LF/FF/HT/BS handlers update state around horizontal cursor `0x782c8a`, vertical cursor
+`0x782c8e`, `0x782dd6`, `0x782dda`, `0x78315c`, `0x783160`, and `0x78318f`, with helper calls into
+the coordinate arithmetic block around `0x104d8..0x10518`. They can also flush text spans through
+`0x12714` / `0x126e2`, ensure/finalize page roots through `0x10084` / `0xff1e`, and update active
+font context spans through `0xd4ac` / `0xd8fc`. Raster start now confirms the same names: portrait
+`ESC *r1A` seeds from `0x782c8a`, landscape `ESC *r1A` seeds from `0x782c8e`, and `ESC *r0A`
+clears the raster origin.
 
 `ESC &f#S` reaches handler `0xf75e`, which treats the absolute parsed parameter as a selector.
 Selector `0` pushes `0x782c8a` plus `0x782c8e + 0x782dbe` as an 8-byte entry on the cursor stack at

@@ -451,12 +451,14 @@ guard suppression, and the same complete command streams draining from modeled
 also drains the same `ESC &f123Y ESC &f0X ! CR ESC &f1X` bytes from modeled
 `0xa904` ring fetch before proving `ESC &f1X` remains enabled through alternate
 parser table `0x116f6` while payload CR is not dispatched as a control code. The
-fixtures also prove `0xa904` data-chain byte fetch and end-marker outer-source
-resumption for execute/call frame payloads, modeled printable/CR processing, and
-page-record allocator/bridge shape for that payload. The empty chained macro
-fixture is also traced through ROM parser modes `0 -> 1 -> 5 -> 17 -> 17 -> 17
--> 0` to final handlers `0xe112`, `0xdd08`, and `0xdd08`. The execute/call
-payload page-record
+full define-and-execute stream now drains from modeled `0xa904` ring fetch
+through the ROM/alternate parser trace, builds the execute data-chain frame, and
+replays payload bytes through `0xa904` into `0xd04a`/`0xf02c`. The fixtures also
+prove end-marker outer-source resumption for execute/call frame payloads,
+modeled printable/CR processing, and page-record allocator/bridge shape for that
+payload. The empty chained macro fixture is also traced through ROM parser modes
+`0 -> 1 -> 5 -> 17 -> 17 -> 17 -> 0` to final handlers `0xe112`, `0xdd08`, and
+`0xdd08`. The execute/call payload page-record
 fixture is now fed by a replay helper that drains the `0xe418` frame through the
 `0xa904` data-chain source before handing those bytes to the modeled
 printable/page-record path, including a stored `ESC &k1G!\r!` mixed-control

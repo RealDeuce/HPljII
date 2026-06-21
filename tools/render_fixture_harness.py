@@ -11610,6 +11610,116 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "frames": [{"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"}],
         "host_gate_bit1": 1,
     }))
+    macro_execute_host_stream = b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f2X"
+    macro_execute_host_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(macro_execute_host_stream), direct_mode=0),
+        len(macro_execute_host_stream),
+    )
+    macro_execute_host_dispatch = trace_macro_definition_parser_dispatch_via_11774(
+        data,
+        macro_execute_host_fetch["stream"],
+    )
+    macro_execute_host_records = macro_execute_host_dispatch["state"]["records"]
+    assert isinstance(macro_execute_host_records, list)
+    macro_execute_host_frames = macro_execute_host_dispatch["state"]["data_chain_frames"]
+    assert isinstance(macro_execute_host_frames, list)
+    macro_execute_host_replay = replay_macro_frame_payload_via_a904(
+        macro_execute_host_frames[0],
+        outer_byte=0x5A,
+    )
+    macro_execute_host_parser_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        bytes(macro_execute_host_replay["stream"]),
+    )
+    checks.append(assert_equal("host-fetched macro execute stream builds replay frame", {
+        "fetched_stream": macro_execute_host_fetch["stream"],
+        "source_set": sorted(set(macro_execute_host_fetch["sources"])),
+        "source_count": len(macro_execute_host_fetch["sources"]),
+        "remaining_ring": macro_execute_host_fetch["state"]["ring"],
+        "commands": [
+            {
+                "kind": command["kind"],
+                "sequence": command["sequence"],
+                "handler": command.get("final_dispatch", {}).get("handler"),
+                "alternate": command.get("alternate"),
+                "state_events": command["state_events"],
+            }
+            for command in macro_execute_host_dispatch["commands"]
+        ],
+        "record0": macro_execute_host_records[0],
+        "frame": macro_execute_host_frames[0],
+        "replay_stream": macro_execute_host_replay["stream"],
+        "replay_fetches": macro_execute_host_replay["fetches"] + [macro_execute_host_replay["outer_fetch"]],
+        "payload_parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in macro_execute_host_parser_trace["events"]
+        ],
+        "payload_parser_final_mode": macro_execute_host_parser_trace["final_mode"],
+    }, {
+        "fetched_stream": b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f2X",
+        "source_set": ["ring"],
+        "source_count": len(b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f2X"),
+        "remaining_ring": [],
+        "commands": [
+            {
+                "kind": "macro-command",
+                "sequence": b"\x1b&f123Y",
+                "handler": 0x00E112,
+                "alternate": False,
+                "state_events": [{"kind": "macro-id", "current_macro_id": 123}],
+            },
+            {
+                "kind": "macro-command",
+                "sequence": b"\x1b&f0X",
+                "handler": 0x00DD08,
+                "alternate": False,
+                "state_events": [{"kind": "macro-start", "status": 0, "index": 0, "auto_prefix": False}],
+            },
+            {
+                "kind": "alternate-payload",
+                "sequence": b"!\r",
+                "handler": None,
+                "alternate": None,
+                "state_events": [{
+                    "kind": "macro-definition-payload",
+                    "index": 0,
+                    "payload": b"!\r",
+                    "record_payload": b"!\r",
+                }],
+            },
+            {
+                "kind": "macro-command",
+                "sequence": b"\x1b&f1X",
+                "handler": 0x00DD08,
+                "alternate": True,
+                "state_events": [{"kind": "macro-stop-kept", "index": 0, "payload": b"!\r"}],
+            },
+            {
+                "kind": "macro-command",
+                "sequence": b"\x1b&f2X",
+                "handler": 0x00DD08,
+                "alternate": False,
+                "state_events": [{"kind": "macro-data-chain", "mode": 2, "payload": b"!\r"}],
+            },
+        ],
+        "record0": {"id": 123, "payload": b"!\r", "permanent": False},
+        "frame": {"payload": b"!\r", "byte_count": 2, "byte_8": 4, "byte_9": 2, "environment": "execute"},
+        "replay_stream": b"!\r",
+        "replay_fetches": [
+            {"d7": 0x21, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 1}]},
+            {"d7": 0x0D, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 0}]},
+            {"d7": 0x5A, "source": "second-lifo", "events": [{"kind": "data-chain-transition", "helper": 0xE22C}, {"kind": "second-lifo", "remaining": 0}]},
+        ],
+        "payload_parser_events": [
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+            {"kind": "control", "handler": 0x00F02C, "mode_after": 0},
+        ],
+        "payload_parser_final_mode": 0,
+    }))
     macro_stream_call = render_macro_command_stream_via_e112_dd08(b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f3X")
     macro_stream_call_records = macro_stream_call["state"]["records"]
     assert isinstance(macro_stream_call_records, list)
@@ -28017,6 +28127,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " ".join(f"{byte:02x}" for byte in macro_stream_execute["stream"]),
         " ".join(f"{byte:02x}" for byte in macro_stream_execute["state"]["data_chain_frames"][0]["payload"]),
         macro_stream_execute["state"]["data_chain_frames"][0],
+    ))
+    lines.append("- host-fetched macro execute stream drains `%d` command bytes through the ROM/alternate parser trace, builds frame `%s`, then replays payload `%s` through `0xa904` into handlers `%s`." % (
+        len(macro_execute_host_fetch["stream"]),
+        macro_execute_host_frames[0],
+        " ".join(f"{byte:02x}" for byte in macro_execute_host_replay["stream"]),
+        ", ".join(f"0x{int(event['handler']):x}" for event in macro_execute_host_parser_trace["events"]),
     ))
     lines.append("- macro call stream `%s` pushes call frame `%s`." % (
         " ".join(f"{byte:02x}" for byte in macro_stream_call["stream"]),

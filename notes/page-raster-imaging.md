@@ -840,10 +840,15 @@ the modeled `0xa904` ring source, drains every byte, replays the same
 parser handlers, and lands on the same `0x1387c` page-record objects and
 rendered row counts; the same grouped check now pins that `0x1edc6`
 preserves the bucket root, clears rule/fixed lists, and copies the
-selected context slot into the render record. That direct page-record
-group now also crosses `0x1ed84` active-record copy and the `0x1ef6a`
-render-entry call order, including nonzero bucket selection for the
-vertical cursor/layout cases. A host-fetched `! ESC *c12a5b0P` fixture
+selected context slot into the render record. `ESC &p2X!!` now extends
+that direct set through transparent print data: handler `0x11f5a`
+restores delayed payload handler `0x12452`, consumes the following two
+payload bytes through `0xa904`, routes both bytes through `0xd04a`,
+queues compact coords `0x0001` and `0x0202`, and renders the same rows
+as plain `!!`. That direct page-record group now also crosses `0x1ed84`
+active-record copy and the `0x1ef6a` render-entry call order, including
+nonzero bucket selection for the vertical cursor/layout cases. A
+host-fetched `! ESC *c12a5b0P` fixture
 now queues compact text and a selector-7 rectangle rule in the same page
 record before carrying the combined bucket/rule record through `0x1ed84`
 and `0x1ef6a`. A host-fetched `! ESC *c12a5b0P ESC *t300R ESC *r0A

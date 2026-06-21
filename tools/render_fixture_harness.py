@@ -10594,6 +10594,107 @@ def render_mixed_printable_control_page_record_stream(
                     "event": state["events"][-1],
                 })
                 continue
+            if stream[pos + 1 : pos + 3] == b"&p":
+                group_start = pos
+                pos += 3
+                command_start = group_start
+                integer, fraction, relative, pos = parse_pcl_decimal_fraction_parameter(stream, pos)
+                if fraction != 0:
+                    raise AssertionError("page-record mixed stream ESC &p#X does not model fractions")
+                if pos >= len(stream):
+                    raise AssertionError("page-record mixed stream ESC &p missing final byte")
+                final = stream[pos]
+                pos += 1
+                final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
+                if final_upper != ord("X"):
+                    raise AssertionError(
+                        f"page-record mixed stream unsupported ESC &p final byte {chr(final)!r}"
+                    )
+                parsed_record = bytes([
+                    0x81 if relative else 0x80,
+                    final,
+                ]) + signed_word_bytes(integer) + signed_word_bytes(0)
+                delayed = delay_payload_handler_via_121cc(parsed_record, 0x012452)
+                restored = restore_delayed_payload_via_12218(delayed)
+                byte_count = abs(s16(parsed_record, 2))
+                payload_start = pos
+                consumed = consume_transparent_text_via_12452(
+                    parsed_record,
+                    stream[payload_start:],
+                )
+                if int(consumed["status"]) != 1:
+                    raise AssertionError("page-record mixed stream transparent payload shorter than byte count")
+                remaining_payload = consumed["remaining_payload"]
+                if not isinstance(remaining_payload, list):
+                    raise AssertionError("transparent payload result did not return remaining bytes")
+                payload_end = len(stream) - len(remaining_payload)
+                raw_payload = stream[payload_start:payload_end]
+                pos = payload_end
+                payload_events: list[dict[str, object]] = []
+                for index, value in enumerate(consumed["values"]):
+                    route = int(consumed["routes"][index])
+                    if route != 0x00D04A:
+                        raise AssertionError("page-record mixed stream transparent fixture only models 0xd04a payload bytes")
+                    byte_value = int(value) & 0xFF
+                    if byte_value < 0x20 or byte_value == 0x7F:
+                        raise AssertionError("page-record mixed stream transparent fixture only queues printable payload bytes")
+                    source = build_text_source_object_from_1393a(
+                        resources,
+                        context,
+                        byte_value,
+                        x=0,
+                        y=0,
+                        context_slot=context_slot,
+                    )
+                    positioned = position_flagged_text_source_via_d824(
+                        resources,
+                        source,
+                        cursor_x=unpack12(state["cursor_x"])[0],
+                        cursor_y=unpack12(state["cursor_y"])[0],
+                    )
+                    positioned_source = positioned["source"]
+                    assert isinstance(positioned_source, dict)
+                    page_root = ensure_page_record_root_for_queue(state)
+                    page_result = queue_text_source_to_page_record_via_12f2e(
+                        resources,
+                        page_record,
+                        positioned_source,
+                    )
+                    advance = advance_flagged_text_cursor_via_d550(state["cursor_x"], default_advance)
+                    state["cursor_x"] = advance["cursor_after"]
+                    payload_events.append({
+                        "index": index,
+                        "byte": byte_value,
+                        "route": route,
+                        "cursor_before": advance["cursor_before"],
+                        "cursor_after": advance["cursor_after"],
+                        "source": source,
+                        "positioned": positioned,
+                        "page_result": page_result,
+                        "page_root": page_root,
+                    })
+                events.append({
+                    "kind": "transparent-data",
+                    "offset": command_start,
+                    "sequence": stream[command_start:payload_end],
+                    "record": parsed_record,
+                    "parameter": integer,
+                    "relative": relative,
+                    "handler": 0x011F5A,
+                    "delayed_handler": 0x012452,
+                    "delayed_snapshot_bytes": delayed["snapshot_bytes"],
+                    "restore_dispatch": restored["dispatch"],
+                    "restored_record": restored["record"],
+                    "payload_offset": payload_start,
+                    "byte_count": byte_count,
+                    "raw_payload": raw_payload,
+                    "values": consumed["values"],
+                    "routes": consumed["routes"],
+                    "control_hits": consumed["control_hits"],
+                    "payload_events": payload_events,
+                    "chained": bool(ord("a") <= final <= ord("z")),
+                })
+                continue
             if stream[pos + 1 : pos + 3] == b"&l":
                 group_start = pos
                 pos += 3
@@ -10898,7 +10999,7 @@ def render_mixed_printable_control_page_record_stream(
                     if not (ord("a") <= final <= ord("z")):
                         break
                 continue
-            raise AssertionError(f"page-record mixed stream only models ESC &k#G, ESC &a#L/#M/#C/#H/#R/#V, ESC &f#S, ESC &l#C/#D/#E/#F, ESC *p#X/#Y, ESC *c, ESC *t/*r/*b raster commands, and ESC E at offset {pos}")
+            raise AssertionError(f"page-record mixed stream only models ESC &k#G, ESC &a#L/#M/#C/#H/#R/#V, ESC &f#S, ESC &p#X, ESC &l#C/#D/#E/#F, ESC *p#X/#Y, ESC *c, ESC *t/*r/*b raster commands, and ESC E at offset {pos}")
         if byte in (0x08, 0x09, 0x0A, 0x0C, 0x0D):
             before = dict(state)
             finalized = None
@@ -28425,6 +28526,149 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "rendered_rows": metric_printable_rendered["rows"],
         "final_cursor_x": pack12(46),
     }))
+    transparent_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&p2X!!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    transparent_page_record_object = transparent_page_record_stream["bucket_object"]
+    transparent_page_record_rendered = transparent_page_record_stream["rendered"]
+    transparent_page_record_bridged = transparent_page_record_stream["bridged_record"]
+    assert isinstance(transparent_page_record_object, bytes)
+    assert isinstance(transparent_page_record_rendered, dict)
+    assert isinstance(transparent_page_record_bridged, dict)
+    transparent_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&p2X")
+    transparent_events = transparent_page_record_stream["events"]
+    assert isinstance(transparent_events, list)
+    if len(transparent_events) != 1 or transparent_events[0]["kind"] != "transparent-data":
+        raise AssertionError("transparent page-record stream expected one transparent-data event")
+    transparent_event = transparent_events[0]
+    assert isinstance(transparent_event, dict)
+    transparent_payload_summary: list[dict[str, object]] = []
+    transparent_payload_events = transparent_event["payload_events"]
+    assert isinstance(transparent_payload_events, list)
+    for payload_event in transparent_payload_events:
+        assert isinstance(payload_event, dict)
+        page_result = payload_event["page_result"]
+        positioned = payload_event["positioned"]
+        assert isinstance(page_result, dict)
+        assert isinstance(positioned, dict)
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        transparent_payload_summary.append({
+            "index": payload_event["index"],
+            "byte": payload_event["byte"],
+            "route": payload_event["route"],
+            "cursor_before": payload_event["cursor_before"],
+            "cursor_after": payload_event["cursor_after"],
+            "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+            "coord": page_result["coord"],
+            "allocated": page_result["allocated"],
+            "count_before": page_result["count_before"],
+            "count_after": page_result["count_after"],
+            "bucket_index": page_result["bucket_index"],
+        })
+    checks.append(assert_equal("transparent data parser trace feeds page-record queue", {
+        "stream": transparent_page_record_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in transparent_parser_trace["events"]
+        ],
+        "parser_final_mode": transparent_parser_trace["final_mode"],
+        "event": {
+            "kind": transparent_event["kind"],
+            "sequence": transparent_event["sequence"],
+            "record": transparent_event["record"],
+            "parameter": transparent_event["parameter"],
+            "handler": transparent_event["handler"],
+            "delayed_snapshot_bytes": transparent_event["delayed_snapshot_bytes"],
+            "restore_dispatch": transparent_event["restore_dispatch"],
+            "restored_record": transparent_event["restored_record"],
+            "payload_offset": transparent_event["payload_offset"],
+            "byte_count": transparent_event["byte_count"],
+            "raw_payload": transparent_event["raw_payload"],
+            "values": transparent_event["values"],
+            "routes": transparent_event["routes"],
+            "control_hits": transparent_event["control_hits"],
+            "payload_events": transparent_payload_summary,
+        },
+        "root_allocations": transparent_page_record_stream["final_state"]["page_record_root_allocations"],
+        "bucket_index": transparent_page_record_stream["bucket_index"],
+        "object_prefix": transparent_page_record_object[:14],
+        "bridged_context_slots": transparent_page_record_bridged["context_slots"][:2],
+        "rendered_rows": transparent_page_record_rendered["rows"],
+        "final_cursor_x": transparent_page_record_stream["final_state"]["cursor_x"],
+    }, {
+        "stream": b"\x1b&p2X!!",
+        "parser_events": [
+            {"kind": "command", "handler": 0x011F5A, "mode_after": 0},
+        ],
+        "parser_final_mode": 0,
+        "event": {
+            "kind": "transparent-data",
+            "sequence": b"\x1b&p2X!!",
+            "record": bytes.fromhex("80 58 00 02 00 00"),
+            "parameter": 2,
+            "handler": 0x011F5A,
+            "delayed_snapshot_bytes": bytes.fromhex("01 00 01 24 52 80 58 00 02 00 00"),
+            "restore_dispatch": {"kind": "direct-handler", "handler": 0x012452},
+            "restored_record": bytes.fromhex("80 58 00 02 00 00"),
+            "payload_offset": 5,
+            "byte_count": 2,
+            "raw_payload": b"!!",
+            "values": [0x21, 0x21],
+            "routes": [0x00D04A, 0x00D04A],
+            "control_hits": 0,
+            "payload_events": [
+                {
+                    "index": 0,
+                    "byte": 0x21,
+                    "route": 0x00D04A,
+                    "cursor_before": pack12(10),
+                    "cursor_after": pack12(28),
+                    "positioned_xy": (16, 0),
+                    "coord": 0x0001,
+                    "allocated": True,
+                    "count_before": 0,
+                    "count_after": 1,
+                    "bucket_index": 0,
+                },
+                {
+                    "index": 1,
+                    "byte": 0x21,
+                    "route": 0x00D04A,
+                    "cursor_before": pack12(28),
+                    "cursor_after": pack12(46),
+                    "positioned_xy": (34, 0),
+                    "coord": 0x0202,
+                    "allocated": False,
+                    "count_before": 1,
+                    "count_after": 2,
+                    "bucket_index": 0,
+                },
+            ],
+        },
+        "root_allocations": 1,
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01 20 02 02"),
+        "bridged_context_slots": (0x440946B4, 0),
+        "rendered_rows": metric_printable_rendered["rows"],
+        "final_cursor_x": pack12(46),
+    }))
     mixed_stream = render_mixed_printable_control_stream(
         data,
         resources,
@@ -30774,6 +31018,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "bridged": plain_printable_page_record_bridged,
             "rendered": plain_printable_page_record_rendered,
         },
+        "transparent": {
+            "stream": transparent_page_record_stream,
+            "trace": transparent_parser_trace,
+            "object": transparent_page_record_object,
+            "bridged": transparent_page_record_bridged,
+            "rendered": transparent_page_record_rendered,
+        },
         "mixed_cr": {
             "stream": mixed_page_record_stream,
             "trace": mixed_control_parser_trace,
@@ -30904,6 +31155,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "fetch_source_count": 2,
             "remaining_ring": [],
             "parser_handlers": [0x00D04A, 0x00D04A],
+            "parser_final_mode": 0,
+            "root_allocations": 1,
+            "bucket_index": 0,
+            "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01"),
+            "rendered_row_count": len(metric_printable_rendered["rows"]),
+        },
+        "transparent": {
+            "fetched_stream": b"\x1b&p2X!!",
+            "fetch_source_set": ["ring"],
+            "fetch_source_count": 7,
+            "remaining_ring": [],
+            "parser_handlers": [0x011F5A],
             "parser_final_mode": 0,
             "root_allocations": 1,
             "bucket_index": 0,
@@ -31099,6 +31362,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "plain": {
             "fetched_stream": b"!!",
             "parser_handlers": [0x00D04A, 0x00D04A],
+            "bridge_bucket_matches_object": True,
+            "render_field_bucket_matches_object": True,
+            "rule_list_count": 0,
+            "fixed_list_count": 0,
+            "context_slots_prefix": (0x440946B4, 0),
+        },
+        "transparent": {
+            "fetched_stream": b"\x1b&p2X!!",
+            "parser_handlers": [0x011F5A],
             "bridge_bucket_matches_object": True,
             "render_field_bucket_matches_object": True,
             "rule_list_count": 0,
@@ -34963,6 +35235,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- real-HMI rendered rows:")
     lines.extend(f"`{row}`" for row in metric_printable_rendered["rows"])
     lines.append("- plain parser-to-page-record boundary: stream `21 21` routes both printable bytes through `0xd04a`, allocates one page-record root, reuses bucket `0`, and renders the same real-HMI rows after the `0x1edc6` bridge.")
+    lines.append("- transparent parser-to-page-record boundary: stream `1b 26 70 32 58 21 21` routes `ESC &p2X` through handler `0x11f5a`, restores delayed handler `0x12452`, consumes the following two payload bytes through `0xa904`, queues both bytes through `0xd04a` into the same compact coords `0x0001` and `0x0202`, and renders the same real-HMI rows after the `0x1edc6` bridge.")
     lines.append("")
     lines.append("A first mixed printable/control stream fixture now drives `ESC &k1G`, printable `!`, CR, then printable `!` through one pass. The `ESC &k1G` byte stream stores line-termination mode `0x80`; CR therefore resets x to the left margin and also applies LF/VMI before the second printable byte is positioned. With left margin `5`, VMI `3`, and initialized `LINE_PRINTER` HMI `0x00120000`, the second glyph queues at source `(11,3)` / compact coord `0x3b00`, decoded by `0x1f3d4` as `$a001 = 0x1b`.")
     lines.append("")
@@ -35002,7 +35275,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("The publication-boundary fixture ties those parser handler sequences to the modeled page-record side for the same four byte streams: each allocates one root on printable `!`, publishes one compact bucket through `0xff1e`, clears the current root, and renders the published rows after the `0x1edc6` bridge.")
     lines.append("A host-fetch publication fixture now starts those same reset, FF, page-size, and orientation streams from the modeled `0xa904` ring source, drains all input bytes from the ring, replays the same parser handlers, and lands on the same published compact rows.")
     lines.append("The published-record render-entry fixture then carries each of those four `0xff1e` records through `0x1ed84` active-record copy and the `0x1ef6a` call order, selecting the compact bucket through `0x1efc2` and rendering the same rows.")
-    lines.append("A host-fetched direct text/control fixture now starts the plain, CR/LF, HT/BS, margin, cursor-position, dot-position, vertical-layout, and cursor-stack page-record streams from the modeled `0xa904` ring source, drains every byte, replays the same parser handlers, and lands on the same `0x1387c` page-record objects. The cursor-row case now also carries the nonzero bucket word through `0x1ef86`, clips compact text to `0x783a20 = 16` current-band rows, and records the continuation rows in the fallback buffer.")
+    lines.append("A host-fetched direct text/control fixture now starts the plain, transparent-data, CR/LF, HT/BS, margin, cursor-position, dot-position, vertical-layout, and cursor-stack page-record streams from the modeled `0xa904` ring source, drains every byte, replays the same parser handlers or delayed payload handler, and lands on the same `0x1387c` page-record objects. The cursor-row case now also carries the nonzero bucket word through `0x1ef86`, clips compact text to `0x783a20 = 16` current-band rows, and records the continuation rows in the fallback buffer.")
     lines.append("The same direct page-record group now crosses `0x1ed84` active-record copy and the `0x1ef6a` render-entry call order, including nonzero bucket selection for the vertical cursor/layout cases.")
     lines.append("A host-fetched text-plus-rectangle fixture now drains `! ESC *c12a5b0P`, queues the compact text bucket and selector-7 rule in the same page record, and carries that combined bucket/rule record through `0x1ed84` and `0x1ef6a`.")
     lines.append("A host-fetched text-plus-rectangle-plus-raster fixture now drains `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W` through the same mixed page-record stream runner. That runner queues compact text, the selector-7 rule, and the delayed `0x105d0` mode-0 raster transfer in one page record before rendering the combined bucket/rule/raster record through `0x1ed84` and `0x1ef6a`.")

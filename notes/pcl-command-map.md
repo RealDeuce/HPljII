@@ -552,15 +552,22 @@ allocator at compact coords `0x3b00`, `0x0a01`, `0x0801`, `0x0a02`,
 `0x0207`, `0x0a02`, `0x0402`, `0x1001`, `0x9001`, `0x9402`,
 `0x1a02`, and `0x9001`. A grouped host-fetch check now starts that
 direct text/control set from the modeled `0xa904` ring source and proves
-the same parser handlers, bucket indices, object prefixes, `0x1edc6`
-bridge fields, `0x1ed84` copy fields, `0x1ef6a` setup/dispatch path,
-and rendered row counts.
+the same parser handlers, delayed transparent-payload handler, bucket
+indices, object prefixes, `0x1edc6` bridge fields, `0x1ed84` copy
+fields, `0x1ef6a` setup/dispatch path, and rendered row counts.
 
 The plain printable stream `!!` now has the same kind of check: both
 bytes route through `0xd04a`, the initialized `LINE_PRINTER` HMI places
 the second glyph at compact coord `0x0202`, and the page-record path
 allocates one root, reuses bucket `0`, bridges through `0x1edc6`, and
 renders the same rows.
+
+`ESC &p2X!!` now carries transparent print data into the same
+page-record path: `ESC &p2X` routes through handler `0x11f5a`, restores
+delayed handler `0x12452`, consumes the following two payload bytes
+through `0xa904`, routes both payload bytes through `0xd04a`, queues
+compact coords `0x0001` and `0x0202`, and renders the same rows as
+plain `!!`.
 
 `generated/analysis/ic30_ic13_esc_e_reset_flow.md` tracks the software
 reset boundary: `ESC E` runs text flush/page-root finalization before

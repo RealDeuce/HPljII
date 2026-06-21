@@ -9531,6 +9531,21 @@ def ensure_page_record_root_for_queue(state: dict[str, int]) -> dict[str, object
     stream_next_free_before = int(state.get("stream_next_free_782a76", 0))
     context_selector = int(state.get("text_map_selector_782f06", 0))
     context_slot0_source = 0x782EE6 + context_selector * 0x10
+    page_code = int(state.get("page_code_782da2", state.get("page_root_page_code_06", 0))) & 0xFF
+    horizontal_extent = state.get("page_extent_782db2")
+    if horizontal_extent is None:
+        word_16 = int(state.get("page_root_word_16", 0))
+    else:
+        word_16 = trunc_div(int(horizontal_extent), 0x10) & 0xFFFF
+    vertical_extent = state.get("page_height_782db4")
+    vertical_offset = state.get("page_offset_782dc0")
+    if vertical_extent is None and vertical_offset is None:
+        byte_9 = int(state.get("page_root_byte_9", 0)) & 0xFF
+    else:
+        byte_9 = trunc_div(
+            int(vertical_extent or 0) + int(vertical_offset or 0) + 0x20,
+            0x20,
+        ) & 0xFF
     created = current_before == 0
     if created:
         if pending_782c73_before or pending_782c72_before:
@@ -9551,8 +9566,11 @@ def ensure_page_record_root_for_queue(state: dict[str, int]) -> dict[str, object
         state["stream_link_ptr_782a72"] = ABSTRACT_PAGE_ROOT_PTR + 0x20
         state["page_root_bucket_clear_longwords"] = 0x100
         state["page_root_transient_782990"] = 0
+        state["page_root_page_code_06"] = page_code
+        state["page_root_byte_9"] = byte_9
         state["page_root_field_10"] = 0xFFFFFFFF
         state["page_root_word_0e"] = 0
+        state["page_root_word_16"] = word_16
         state["page_root_flags_14"] = 0
         state["page_root_chunk_head_20"] = 0
         state["page_root_rule_head_24"] = 0
@@ -9580,8 +9598,11 @@ def ensure_page_record_root_for_queue(state: dict[str, int]) -> dict[str, object
         "stream_next_free_782a76_after": int(state.get("stream_next_free_782a76", stream_next_free_before)),
         "page_root_bucket_clear_longwords": int(state.get("page_root_bucket_clear_longwords", 0)),
         "page_root_transient_782990": int(state.get("page_root_transient_782990", 0)),
+        "page_root_page_code_06": int(state.get("page_root_page_code_06", page_code)),
+        "page_root_byte_9": int(state.get("page_root_byte_9", byte_9)),
         "page_root_field_10": int(state.get("page_root_field_10", 0)),
         "page_root_word_0e": int(state.get("page_root_word_0e", 0)),
+        "page_root_word_16": int(state.get("page_root_word_16", word_16)),
         "page_root_flags_14": int(state.get("page_root_flags_14", 0)),
         "page_root_chunk_head_20": int(state.get("page_root_chunk_head_20", 0)),
         "page_root_rule_head_24": int(state.get("page_root_rule_head_24", 0)),
@@ -20580,8 +20601,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "stream_next_free_782a76",
             "page_root_bucket_clear_longwords",
             "page_root_transient_782990",
+            "page_root_page_code_06",
+            "page_root_byte_9",
             "page_root_field_10",
             "page_root_word_0e",
+            "page_root_word_16",
             "page_root_flags_14",
             "page_root_chunk_head_20",
             "page_root_rule_head_24",
@@ -20610,8 +20634,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "stream_next_free_782a76_after": 0x00CAFE00,
             "page_root_bucket_clear_longwords": 0x100,
             "page_root_transient_782990": 0,
+            "page_root_page_code_06": 0,
+            "page_root_byte_9": 0,
             "page_root_field_10": 0xFFFFFFFF,
             "page_root_word_0e": 0,
+            "page_root_word_16": 0,
             "page_root_flags_14": 0,
             "page_root_chunk_head_20": 0,
             "page_root_rule_head_24": 0,
@@ -20635,8 +20662,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "stream_next_free_782a76": 0x00CAFE00,
             "page_root_bucket_clear_longwords": 0x100,
             "page_root_transient_782990": 0,
+            "page_root_page_code_06": 0,
+            "page_root_byte_9": 0,
             "page_root_field_10": 0xFFFFFFFF,
             "page_root_word_0e": 0,
+            "page_root_word_16": 0,
             "page_root_flags_14": 0,
             "page_root_chunk_head_20": 0,
             "page_root_rule_head_24": 0,
@@ -20663,8 +20693,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "stream_next_free_782a76_after": 0x00CAFE00,
             "page_root_bucket_clear_longwords": 0x100,
             "page_root_transient_782990": 0,
+            "page_root_page_code_06": 0,
+            "page_root_byte_9": 0,
             "page_root_field_10": 0xFFFFFFFF,
             "page_root_word_0e": 0,
+            "page_root_word_16": 0,
             "page_root_flags_14": 0,
             "page_root_chunk_head_20": 0,
             "page_root_rule_head_24": 0,
@@ -20698,6 +20731,29 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "page_root_context_slot0_source": 0x782EF6,
         "page_root_context_slot0": 0x440946B4,
         "page_root_context_slots_cleared": 16,
+    }))
+    page_root_geometry_state = {
+        "current_page_root": 0,
+        "page_root_present": 0,
+        "page_code_782da2": 6,
+        "page_extent_782db2": 0x0300,
+        "page_height_782db4": 0x0200,
+        "page_offset_782dc0": 0x0020,
+    }
+    page_root_geometry = ensure_page_record_root_for_queue(page_root_geometry_state)
+    checks.append(assert_equal("0x10110 page-root initializer copies geometry fields", {
+        key: page_root_geometry[key]
+        for key in (
+            "page_root_created",
+            "page_root_page_code_06",
+            "page_root_byte_9",
+            "page_root_word_16",
+        )
+    }, {
+        "page_root_created": True,
+        "page_root_page_code_06": 6,
+        "page_root_byte_9": 0x12,
+        "page_root_word_16": 0x0030,
     }))
     page_record_bucket_fixture: dict[str, object] = {"bucket_array": {}, "context_slots": [0x440946B4]}
     page_record_first = queue_text_source_to_page_record_via_12f2e(resources, page_record_bucket_fixture, text_source)
@@ -37804,6 +37860,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("## `0x1387c` Page-Record Compact Bucket Allocator Fixture")
     lines.append("")
     lines.append("This fixture moves the short text bucket one step closer to the real page-root shape. It models `0x10084` first-page-root allocation before the `0x1387c` bucket path, as documented in `generated/analysis/ic30_ic13_page_root_allocation.md`: a missing current root can run the active-record wait hook, clears pending bytes `0x782c73`/`0x782c72`, marks root byte `+4 = 1`, clears `0x782a70`, stores `0x782a72 = root+0x20`, clears byte `0x782990`, initializes root fields through `0x10110`, installs the selected current-font context into root slot 0, and zeros 256 bucket-head longwords through root `+0x1c`. The fixture also pins that `0x782a76` is not seeded by `0x10084`; it remains unchanged until the shared stream allocator creates/uses a chunk.")
+    lines.append("- `0x10110` geometry fields: root byte `+0x06` copies page code `0x%02x`, byte `+0x09` derives to `0x%02x`, and word `+0x16` derives to `0x%04x` for the explicit geometry fixture." % (
+        page_root_geometry["page_root_page_code_06"],
+        page_root_geometry["page_root_byte_9"],
+        page_root_geometry["page_root_word_16"],
+    ))
     lines.append("")
     lines.append("- `0x10084` first allocation: created `%s`, active-record wait `%s`, stream remaining `%d`, link pointer `0x%06x`, next-free pointer unchanged `0x%08x`, bucket clear longwords `%d`." % (
         page_root_first["page_root_created"],

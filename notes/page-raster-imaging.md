@@ -786,8 +786,9 @@ object, bridges it through `0x1edc6`, and renders the retried rule rows.
 Page-root allocation coverage is now backed by
 `generated/analysis/ic30_ic13_page_root_allocation.md` and pins the
 `0x10110` selected-context slot bootstrap after `0x10084` first-root
-allocation; page-root publication coverage now also pins the `0xff1e`
-pool-record header fields for default reset publication and nonzero
+allocation, plus root `+0x06`, `+0x09`, and `+0x16` geometry fields;
+page-root publication coverage now also pins the `0xff1e` pool-record
+header fields for default reset publication and nonzero
 status/environment copies before render bridging, and page-record bridge
 coverage now pins the `0x1ed84` active-record header copies plus the
 render-record destination offsets `+0x18/+0x1c/+0x20/+0x24` written by

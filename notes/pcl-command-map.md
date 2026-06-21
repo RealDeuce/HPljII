@@ -410,11 +410,11 @@ delayed handler `0x0105d0`, a parser-to-gate edge check for `ESC *t300R`/`ESC
 *r0A`/`ESC *b4W` capped and beyond-extent transfers, an inclusive page-extent
 transfer check proving queue-and-advance behavior, a negative-row transfer check
 proving drain-with-advance behavior, a raster payload fixture proving `0xdace`
-turns raw bytes `1a 58` into a single queued `00` byte, same-group
-lowercase-final chaining fixtures for host-fetched `ESC *t300r150R` and
-host-fetched `ESC *b2w`/`2W` payloads, plus host-fetched `ESC *rB` active-clear
-and following `ESC *t150R` mode/scale update, a host-fetched active-raster
-`ESC *t75R` ignore check before `ESC *b2W`, byte-aligned mode-0,
+turns host-fetched raw bytes `1a 58` into a single queued `00` byte,
+same-group lowercase-final chaining fixtures for host-fetched `ESC *t300r150R`
+and host-fetched `ESC *b2w`/`2W` payloads, plus host-fetched `ESC *rB`
+active-clear and following `ESC *t150R` mode/scale update, a host-fetched
+active-raster `ESC *t75R` ignore check before `ESC *b2W`, byte-aligned mode-0,
 non-byte-aligned mode-0, mode-1, byte-aligned mode-2, non-byte-aligned mode-2,
 band-clipped mode-2, and mode-3
 raster row
@@ -496,8 +496,9 @@ single following payload.
   fixtures for `ESC *t300R`, `ESC *t150R`, `ESC *t100R`, `ESC *t75R`,
   parser-to-object checks for the 300/150/100/75-dpi raster streams including
   modeled `0x10084` root allocation, host-fetched lower-resolution and
-  capped/drained edge streams, and a page-record bridge check for the first
-  `ESC *b4W` object, a host-fetched consecutive-row `ESC *t300R` stream,
+  capped/drained edge streams, host-fetched `0xdace` payload-control
+  normalization, and a page-record bridge check for the first `ESC *b4W` object,
+  a host-fetched consecutive-row `ESC *t300R` stream,
   same-group lowercase-final chaining fixtures for host-fetched
   `ESC *t300r150R` and host-fetched `ESC *b2w2W` where lowercase `w` records
   the delayed transfer and payload is consumed after the uppercase terminator,

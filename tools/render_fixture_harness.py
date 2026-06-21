@@ -22166,6 +22166,48 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "rendered_rows": ["####............#.#.#.#..#.#.#.#"],
         "row_y_after": 1,
     }))
+    host_fetched_raster_control_payload_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(raster_control_payload_stream), direct_mode=0),
+        len(raster_control_payload_stream),
+    )
+    checks.append(assert_equal("host-fetched raster control payload normalizes before queueing pixels", {
+        "fetched_stream": host_fetched_raster_control_payload_stream["stream"],
+        "fetch_source_count": len(host_fetched_raster_control_payload_stream["sources"]),
+        "fetch_source_set": sorted(set(host_fetched_raster_control_payload_stream["sources"])),
+        "remaining_ring": host_fetched_raster_control_payload_stream["state"]["ring"],
+        "parser_handlers": [
+            command["final_dispatch"]["handler"]
+            for command in raster_control_payload_commands
+        ],
+        "parser_payload_offset": raster_control_payload_commands[-1]["payload_offset"],
+        "parser_raw_payload": raster_control_payload_commands[-1]["raw_payload"],
+        "parser_payload": raster_control_payload_commands[-1]["payload"],
+        "parser_control_hits": raster_control_payload_commands[-1]["payload_control_hits"],
+        "event_payload_offset": raster_control_payload_event["payload_offset"],
+        "event_raw_payload": raster_control_payload_event["raw_payload"],
+        "event_payload": raster_control_payload_event["payload"],
+        "event_control_hits": raster_control_payload_event["payload_control_hits"],
+        "queued_object": raster_control_payload_result["object"],
+        "rendered_rows": raster_control_payload_result["rendered"]["rows"],
+        "row_y_after": raster_control_payload_result["final_state"]["row_y"],
+    }, {
+        "fetched_stream": b"\x1b*t300R\x1b*r0A\x1b*b4W" + bytes.fromhex("f0 1a 58 aa 55"),
+        "fetch_source_count": len(raster_control_payload_stream),
+        "fetch_source_set": ["ring"],
+        "remaining_ring": [],
+        "parser_handlers": [0x010808, 0x01075A, 0x011F82],
+        "parser_payload_offset": 17,
+        "parser_raw_payload": bytes.fromhex("f0 1a 58 aa 55"),
+        "parser_payload": bytes.fromhex("f0 00 aa 55"),
+        "parser_control_hits": 1,
+        "event_payload_offset": 17,
+        "event_raw_payload": bytes.fromhex("f0 1a 58 aa 55"),
+        "event_payload": bytes.fromhex("f0 00 aa 55"),
+        "event_control_hits": 1,
+        "queued_object": bytes.fromhex("00 00 00 00 80 00 00 04 00 00 f0 00 aa 55"),
+        "rendered_rows": ["####............#.#.#.#..#.#.#.#"],
+        "row_y_after": 1,
+    }))
     raster_capped_command_stream = b"\x1b*t300R\x1b*r0A\x1b*b4W" + bytes.fromhex("f0 0f aa 55")
     raster_capped_dispatch_trace = trace_raster_parser_dispatch_via_11774(data, raster_capped_command_stream)
     raster_capped_stream_result = render_raster_command_data_stream_via_121cc_105d0(
@@ -29913,11 +29955,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " ".join(f"{byte:02x}" for byte in raster_stream_result["object"]),
         raster_stream_bridged_rendered["rows"],
     ))
-    lines.append("- raster payload control normalization: raw payload `%s` becomes queued payload `%s`." % (
+    lines.append("- host-fetched raster payload control normalization: raw payload `%s` becomes queued payload `%s`." % (
         " ".join(f"{byte:02x}" for byte in raster_control_payload_event["raw_payload"]),
         " ".join(f"{byte:02x}" for byte in raster_control_payload_event["payload"]),
     ))
-    lines.append("  Control hits `%d`, queued object `%s`, rendered `%s`." % (
+    lines.append("  Ring bytes `%d`, control hits `%d`, queued object `%s`, rendered `%s`." % (
+        len(host_fetched_raster_control_payload_stream["sources"]),
         raster_control_payload_event["payload_control_hits"],
         " ".join(f"{byte:02x}" for byte in raster_control_payload_result["object"]),
         raster_control_payload_result["rendered"]["rows"],

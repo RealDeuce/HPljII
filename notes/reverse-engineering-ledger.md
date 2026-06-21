@@ -248,6 +248,7 @@ two-payload `ESC *t300R`/`ESC *r0A` multi-row stream through delayed handler
 `0x0105d0`, a
 parser-to-gate edge check for host-fetched `ESC *t300R`/`ESC *r0A`/`ESC *b4W`
 capped, page-extent, beyond-extent, and negative-row transfers,
+host-fetched `0xdace` payload-control normalization,
 same-group lowercase-final chaining fixtures for `ESC
 *t300r150R` and host-fetched chained `ESC *b2w`/`2W` payload boundaries, now
 with host-fetched `ESC *t300r150R` parser-family evidence, plus a host-fetched

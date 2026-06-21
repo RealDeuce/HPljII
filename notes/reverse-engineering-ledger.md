@@ -121,10 +121,12 @@ cursor-position handlers to restored page-record text output at compact
 coord `0x0001`; `ESC E` maps to reset handler `0xcc52`, reset flow is
 documented in `generated/analysis/ic30_ic13_esc_e_reset_flow.md`,
 synthetic `ESC E` byte-stream fixtures cover valid-page-root publication
-and missing-root clearing, mixed publication streams `!\x1bE`,
-`ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O` are traced through `0x11774`
-to printable branch `0xd04a`, reset `0xcc52`, line-termination `0xedf8`,
-FF `0xf0f0`, page-size `0xfc74`, and orientation `0x10220`, and mixed
+and missing-root clearing, host-fetched missing-root `ESC E` now drains
+from modeled `0xa904` ring bytes to parser handler `0xcc52`, mixed
+publication streams `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and
+`!\x1b&l1O` are traced through `0x11774` to printable branch `0xd04a`,
+reset `0xcc52`, line-termination `0xedf8`, FF `0xf0f0`, page-size
+`0xfc74`, and orientation `0x10220`, and mixed
 printable/reset fixture `!\x1bE` proves reset publication after queued
 text in the same byte-stream model and now has page-record
 allocator/bridge/publication coverage, with the host-fetched reset, FF,

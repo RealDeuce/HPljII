@@ -576,12 +576,13 @@ byte-stream fixtures for `ESC &k1G`+CR, `ESC &k2G`+LF, `ESC &k2G`+FF,
 `ESC &l8c6d3e2F`, `ESC &a3.5c+1R`, and `ESC &a6l9M`, adds a cursor-stack
 page-record boundary for `ESC &f0S ESC &a2C ESC &f1S!`, adds synthetic
 `ESC E` reset byte-stream fixtures for valid-page-root publication and
-missing-root clearing plus a ROM parser trace for `!\x1bE`,
-`ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O` through printable `0xd04a`,
-reset `0xcc52`, line-termination `0xedf8`, FF `0xf0f0`, page-size
-`0xfc74`, and orientation `0x10220`, feeds four named real built-in
-glyph bitmaps plus a ROM-scanned span matrix through the main `0x1f08e`
-row-copy table, includes a producer-modeled short text bucket fixture
+missing-root clearing, ties missing-root `ESC E` to the modeled `0xa904`
+ring source and ROM parser handler `0xcc52`, plus a ROM parser trace for
+`!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O` through printable
+`0xd04a`, reset `0xcc52`, line-termination `0xedf8`, FF `0xf0f0`,
+page-size `0xfc74`, and orientation `0x10220`, feeds four named real
+built-in glyph bitmaps plus a ROM-scanned span matrix through the main
+`0x1f08e` row-copy table, includes a producer-modeled short text bucket fixture
 plus short and segmented `0x1387c` page-record allocator checks and a
 `0x1edc6` page-record bridge fixture that copies the compact
 bucket/context slots, normalizes the rule/fixed lists, pins

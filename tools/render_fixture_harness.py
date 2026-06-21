@@ -22328,6 +22328,30 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "bridged_object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
         "rendered_rows": ["................####........#####.#.#.#..#.#.#.#"],
     }))
+    checks.append(assert_equal("host-fetched raster stream preserves 0x1edc6 bridge contract", {
+        "fetched_stream": host_fetched_raster_stream["stream"],
+        "parser_handlers": [
+            command["final_dispatch"]["handler"]
+            for command in raster_dispatch_commands
+        ],
+        "bridge_bucket_matches_object": raster_stream_bridged["bucket_root"] == raster_stream_result["object"],
+        "render_field_bucket_matches_object": (
+            raster_stream_bridged["render_record_fields"]["bucket_root_18"] == raster_stream_result["object"]
+        ),
+        "rule_list_count": len(raster_stream_bridged["rule_list"]),
+        "fixed_list_count": len(raster_stream_bridged["fixed_list"]),
+        "context_slots_prefix": raster_stream_bridged["context_slots"][:2],
+        "rendered_rows": raster_stream_bridged_rendered["rows"],
+    }, {
+        "fetched_stream": b"\x1b*t300R\x1b*r1A\x1b*b4W" + bytes.fromhex("f0 0f aa 55"),
+        "parser_handlers": [0x010808, 0x01075A, 0x011F82],
+        "bridge_bucket_matches_object": True,
+        "render_field_bucket_matches_object": True,
+        "rule_list_count": 0,
+        "fixed_list_count": 0,
+        "context_slots_prefix": (0, 0),
+        "rendered_rows": ["................####........#####.#.#.#..#.#.#.#"],
+    }))
     raster_control_payload_stream = (
         b"\x1b*t300R\x1b*r0A\x1b*b4W" + bytes.fromhex("f0 1a 58 aa 55")
     )

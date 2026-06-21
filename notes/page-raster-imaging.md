@@ -664,7 +664,7 @@ fetch, tokenizer/delayed-payload, page-geometry, macro/data-chain,
 direct-control, reset, text, rule, raster, bridge, row-copy, built-in glyph,
 symbol-set, and downloaded-font fixture families into one ROM-backed self-test.
 It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and
-currently verifies 343 checks. The raster coverage now includes ROM-table
+currently verifies 344 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W`
 stream, the 150/100/75-dpi mode streams, the consecutive-row `ESC *b2W` stream,
 the active-resolution-ignore `ESC *t75R` stream, the end-raster `ESC *rB` /
@@ -685,7 +685,8 @@ segment-list rendering coverage for `0x1f812`, fixed-width list coverage for
 check tying the ROM parser handlers and `0x12218` restore to the modeled payload
 offset, `0x10084` page-root allocation, queued object, bridge, rendered row, and
 row counter, and now also ties the same bytes fetched through the modeled
-`0xa904` ring source to the queued object/bridge/rendered row; the
+`0xa904` ring source to the queued object, `0x1edc6` bucket-root bridge fields,
+empty rule/fixed lists, and rendered row; the
 150/100/75-dpi streams now start from the modeled `0xa904` ring source and tie
 the same parser handlers, restored `0x105d0` records, payload offsets, queued
 objects, and rendered expansion rows to modes 1/2/3; the `ESC *t300R` /

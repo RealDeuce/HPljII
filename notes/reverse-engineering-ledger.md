@@ -246,7 +246,8 @@ plus macro-payload rule/raster band composition, parser-derived `ESC *t#R`/`ESC
 *r#A` raster state fixtures, modeled `ESC *t300R`/`ESC *r1A`/`ESC *b4W`, `ESC
 *t150R`/`ESC *r0A`/`ESC *b2W`, `ESC *t100R`/`ESC *r0A`/`ESC *b2W`, and `ESC
 *t75R`/`ESC *r0A`/`ESC *b2W` raster command/data stream fixtures, with the first
-`ESC *b4W` object carried through the `0x1edc6` bridge, plus a host-fetched
+host-fetched `ESC *b4W` object carried through the `0x1edc6` bridge contract,
+plus a host-fetched
 two-payload `ESC *t300R`/`ESC *r0A` multi-row stream through delayed handler
 `0x0105d0`, a
 parser-to-gate edge check for host-fetched `ESC *t300R`/`ESC *r0A`/`ESC *b4W`

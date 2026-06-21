@@ -550,8 +550,11 @@ ROM work needed:
   rendering, full macro replay through the live parser/data-chain path,
   and final device-output pixel validation. The modeled `0x1ef6a`
   page-band merge now covers compact text, mode-0 raster, and a crossing
-  patterned rule across bands `0` and `5`.
-- Determine clipping and off-page behavior exactly.
+  patterned rule across bands `0` and `5`; modeled rectangle fill
+  clipping now covers left/right/top/bottom, landscape-edge, and
+  off-page ignore cases.
+- Determine any remaining text, raster, and final device-output clipping
+  behavior exactly.
 - Identify any banding/compression structures used internally; reproduce
   final pixel result rather than formatter timing.
 

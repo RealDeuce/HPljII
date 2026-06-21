@@ -1002,8 +1002,7 @@ Other checked leads:
 - Broaden the narrow direct-control byte-stream fixtures into the full
   firmware parser path now that cursor variables `0x782c8a` and
   `0x782c8e` are named as horizontal and vertical respectively.
-- Finish rectangle handlers at `0x010898` and the width/height handlers
-  around `0x010a40..0x010e68`; these now appear to share page-object
-  storage with raster, not a direct framebuffer write.
+- Extend rectangle/rule coverage from modeled handler state into
+  parser-produced full-page comparisons and physical placement checks.
 - Compare physical engine/self-test placement against the now-matched
   ROM/manual logical page and printable-area dimensions.

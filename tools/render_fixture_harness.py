@@ -22957,6 +22957,167 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "object": bytes.fromhex("00 00 00 00 00 07 40 00 00 07 00 05 00 00"),
         "source": {"x": 0, "y": 4, "width": 7, "height": 5},
     }))
+    rectangle_clip_right = apply_fill_rectangle_via_10898(rectangle_command_state(
+        width=pack12(10),
+        height=pack12(4),
+        cursor_x=pack12(96),
+        cursor_y=pack12(2),
+        page_width=100,
+        page_height=80,
+    ), None)
+    rectangle_clip_right_bridged = bridge_page_record_via_1edc6(rectangle_clip_right["page_record"])
+    rectangle_clip_right_rendered = render_rule_list_via_1f446(data, rectangle_clip_right_bridged)
+    rectangle_clip_bottom = apply_fill_rectangle_via_10898(rectangle_command_state(
+        width=pack12(6),
+        height=pack12(5),
+        cursor_x=pack12(4),
+        cursor_y=pack12(78),
+        page_width=100,
+        page_height=80,
+    ), None)
+    rectangle_clip_bottom_bridged = bridge_page_record_via_1edc6(rectangle_clip_bottom["page_record"])
+    rectangle_clip_bottom_rendered = render_rule_list_via_1f446(data, rectangle_clip_bottom_bridged)
+    rectangle_clip_top = apply_fill_rectangle_via_10898(rectangle_command_state(
+        width=pack12(5),
+        height=pack12(5),
+        cursor_x=pack12(3),
+        cursor_y=pack12(-2),
+        page_width=100,
+        page_height=80,
+    ), None)
+    rectangle_clip_top_bridged = bridge_page_record_via_1edc6(rectangle_clip_top["page_record"])
+    rectangle_clip_top_rendered = render_rule_list_via_1f446(data, rectangle_clip_top_bridged)
+    rectangle_clip_landscape_right = apply_fill_rectangle_via_10898(rectangle_command_state(
+        width=pack12(10),
+        height=pack12(4),
+        cursor_x=pack12(96),
+        cursor_y=pack12(7),
+        page_width=100,
+        page_height=80,
+        orientation=1,
+    ), None)
+    rectangle_clip_landscape_right_bridged = bridge_page_record_via_1edc6(rectangle_clip_landscape_right["page_record"])
+    rectangle_clip_landscape_right_rendered = render_rule_list_via_1f446(data, rectangle_clip_landscape_right_bridged)
+    rectangle_clip_ignored_cases = [
+        apply_fill_rectangle_via_10898(rectangle_command_state(
+            width=pack12(5),
+            height=pack12(5),
+            cursor_x=pack12(-6),
+            cursor_y=pack12(3),
+            page_width=100,
+            page_height=80,
+        ), None),
+        apply_fill_rectangle_via_10898(rectangle_command_state(
+            width=pack12(5),
+            height=pack12(5),
+            cursor_x=pack12(100),
+            cursor_y=pack12(3),
+            page_width=100,
+            page_height=80,
+        ), None),
+        apply_fill_rectangle_via_10898(rectangle_command_state(
+            width=pack12(5),
+            height=pack12(5),
+            cursor_x=pack12(3),
+            cursor_y=pack12(-6),
+            page_width=100,
+            page_height=80,
+        ), None),
+        apply_fill_rectangle_via_10898(rectangle_command_state(
+            width=pack12(5),
+            height=pack12(5),
+            cursor_x=pack12(3),
+            cursor_y=pack12(80),
+            page_width=100,
+            page_height=80,
+        ), None),
+        apply_fill_rectangle_via_10898(rectangle_command_state(
+            width=pack12(5),
+            height=pack12(5),
+            cursor_x=pack12(-5),
+            cursor_y=pack12(3),
+            page_width=100,
+            page_height=80,
+        ), None),
+    ]
+    checks.append(assert_equal("0x10b80 rectangle fill clips right/top/bottom edges and ignores off-page fills", {
+        "right": {
+            "event": select_keys(rectangle_clip_right["events"][-1], ("kind", "source", "saved_x", "saved_y", "object")),
+            "bridged": rectangle_clip_right_bridged["rule_list"],
+            "rows_2_5": rectangle_clip_right_rendered["rows"][2:6],
+        },
+        "bottom": {
+            "event": select_keys(rectangle_clip_bottom["events"][-1], ("kind", "source", "saved_x", "saved_y", "object")),
+            "bridged": rectangle_clip_bottom_bridged["rule_list"],
+            "tail_rows": rectangle_clip_bottom_rendered["rows"][76:],
+        },
+        "top": {
+            "event": select_keys(rectangle_clip_top["events"][-1], ("kind", "source", "saved_x", "saved_y", "object")),
+            "bridged": rectangle_clip_top_bridged["rule_list"],
+            "rows": rectangle_clip_top_rendered["rows"],
+        },
+        "landscape_right": {
+            "event": select_keys(rectangle_clip_landscape_right["events"][-1], ("kind", "source", "saved_x", "saved_y", "object")),
+            "bridged": rectangle_clip_landscape_right_bridged["rule_list"],
+            "rows": rectangle_clip_landscape_right_rendered["rows"],
+        },
+        "ignored": [
+            select_keys(case["events"][-1], ("kind", "reason"))
+            for case in rectangle_clip_ignored_cases
+        ],
+    }, {
+        "right": {
+            "event": {
+                "kind": "rectangle-filled",
+                "source": {"x": 96, "y": 2, "width": 4, "height": 4},
+                "saved_x": 0,
+                "saved_y": 0,
+                "object": bytes.fromhex("00 00 00 00 00 07 20 06 00 04 00 04 00 00"),
+            },
+            "bridged": [bytes.fromhex("00 00 00 00 00 17 20 06 00 04 00 04 00 04")],
+            "rows_2_5": ["." * 96 + "####"] * 4,
+        },
+        "bottom": {
+            "event": {
+                "kind": "rectangle-filled",
+                "source": {"x": 4, "y": 78, "width": 6, "height": 2},
+                "saved_x": 0,
+                "saved_y": 0,
+                "object": bytes.fromhex("00 00 00 00 04 07 e4 00 00 06 00 02 00 00"),
+            },
+            "bridged": [bytes.fromhex("00 00 00 00 04 17 e4 00 00 06 00 02 00 02")],
+            "tail_rows": ["." * 10, "." * 10, "....######", "....######"],
+        },
+        "top": {
+            "event": {
+                "kind": "rectangle-filled",
+                "source": {"x": 3, "y": 0, "width": 5, "height": 3},
+                "saved_x": 0,
+                "saved_y": pack12(-2),
+                "object": bytes.fromhex("00 00 00 00 00 07 03 00 00 05 00 03 00 00"),
+            },
+            "bridged": [bytes.fromhex("00 00 00 00 00 17 03 00 00 05 00 03 00 03")],
+            "rows": ["...#####"] * 3,
+        },
+        "landscape_right": {
+            "event": {
+                "kind": "rectangle-filled",
+                "source": {"x": 7, "y": 0, "width": 4, "height": 4},
+                "saved_x": 0,
+                "saved_y": 0,
+                "object": bytes.fromhex("00 00 00 00 00 07 07 00 00 04 00 04 00 00"),
+            },
+            "bridged": [bytes.fromhex("00 00 00 00 00 17 07 00 00 04 00 04 00 04")],
+            "rows": [".......####"] * 4,
+        },
+        "ignored": [
+            {"kind": "rectangle-fill-ignored", "reason": "horizontal-outside"},
+            {"kind": "rectangle-fill-ignored", "reason": "horizontal-outside"},
+            {"kind": "rectangle-fill-ignored", "reason": "vertical-outside"},
+            {"kind": "rectangle-fill-ignored", "reason": "vertical-outside"},
+            {"kind": "rectangle-fill-ignored", "reason": "empty-after-clip"},
+        ],
+    }))
     rectangle_retry_current_record: dict[str, object] = {"bucket_array": {}, "context_slots": [0x440946B4]}
     rectangle_retry_text_source = build_text_source_object_from_1393a(resources, 0x440946B4, 0x21, x=0, y=0, context_slot=0)
     queue_text_source_to_page_record_via_12f2e(resources, rectangle_retry_current_record, rectangle_retry_text_source)
@@ -32741,6 +32902,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- `0x10b80` clipping fixture starts at x `-3` with width `10`, queues x `0` width `7`, and emits object `%s`." % (
         " ".join(f"{byte:02x}" for byte in rectangle_fill_clipped["events"][-1]["object"]),
     ))
+    lines.append("- extended `0x10b80` clipping now also pins right-edge, top-edge, bottom-edge, and landscape right-edge queue coordinates plus horizontal-outside, vertical-outside, and empty-after-clip ignore reasons.")
     lines.append("- `0x10d22` no-room retry fixture starts with an existing compact text bucket, marks retry flag `0x%04x`, publishes that bucket through `0xff1e`, allocates a fresh root through `0x10084`, and retries the selector-7 rule object `%s`." % (
         rectangle_retry["retry_page_root_flags_14"],
         " ".join(f"{byte:02x}" for byte in rectangle_retry["retry_result"]["object"]),

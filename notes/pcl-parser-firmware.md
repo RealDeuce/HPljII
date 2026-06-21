@@ -377,9 +377,10 @@ object, bridge normalization, solid black rendering through `0x1f446` /
 `0x1f596`, solid-rule band-crossing continuation, gray selectors `0..6`
 and HP pattern selectors `8..13` through `0x1f446` / `0x1f4e0`, sub-byte
 shifted, band-crossing, two-band page-assembly HP-pattern cases, a
-negative-left clipping case, and a parser-to-retry boundary tying the
-same stream to `0x10d22` publication, fresh-root allocation, retry
-queueing, bridge, and rendering.
+negative-left clipping case, right/top/bottom edge clipping,
+landscape-edge clipping, off-page ignore reasons, and a parser-to-retry
+boundary tying the same stream to `0x10d22` publication, fresh-root
+allocation, retry queueing, bridge, and rendering.
 
 ## Top-Level ESC Dispatch
 

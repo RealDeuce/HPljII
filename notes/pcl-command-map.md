@@ -341,16 +341,23 @@ returns to mode 0. The lower-case finals route directly to spacing
 handler `0xc6ec`, style `s` handler `0xc780`, and stroke `b` handler
 `0xc840`. The final upper-case `T` routes through wrapper `0x1205a`,
 which calls the typeface updater at `0xc7e0` and common refresh
-`0xc580`. The six-byte terminal records carry slot word `0` for
-primary and slot word `1` for secondary. A bridge fixture now decodes
-the parsed primary records into concrete filter inputs: `0p` -> spacing
-`0`, `10h` -> pitch `0x03e8`, and `12v` -> height `0x04b0`. Feeding
-those values into the real class-zero built-in candidate window after
-the Roman-8 symbol filter narrows survivors from slots `0x782354`,
+`0xc580`. The primary/secondary selector is not the terminal record
+fraction word: `0x11f26` / `0x11efe` first create a setup record whose
+word `+2` is slot `0` / `1`, and the update handlers recover that setup
+word while the terminal record word `+4` remains the decimal fraction.
+A bridge fixture now decodes the parsed primary records into concrete
+filter inputs: `0p` -> spacing `0`, `10h` -> pitch `0x03e8`, and `12v`
+-> height `0x04b0`. The same fixture pins the updater writes before
+common refresh: typeface byte `0x782eec = 3`, style `0x782eed = 0`,
+stroke `0x782eee = 0`, spacing `0x782eef = 0`, pitch
+`0x782ef0 = 0x03e8`, height `0x782ef2 = 0x04b0`, dirty refresh flag
+`0x782f2c = 1`, and metric dirty flag `0x782f2d = 1`. Feeding those
+values into the real class-zero built-in candidate window after the
+Roman-8 symbol filter narrows survivors from slots `0x782354`,
 `0x782364`, and `0x782374` to `0x782354` / `0x782364`; the existing
 `0x14398` chooser then selects built-in record `0x009fb0`. This is still
 a modeled bridge from parsed records into candidate filters, not a full
-firmware-state run through all selector update side effects.
+firmware-state run through common refresh and `0x14c64`.
 
 Primary and secondary font-designation commands use the same parser
 shape. `ESC (` calls setup `0x1201e`, which pushes slot word `0`;
@@ -674,10 +681,9 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
 - Use the now-matched ROM/manual logical page and printable-area
   dimensions as the baseline for physical engine/self-test placement
   checks.
-- Replace the modeled bridge from parsed `(s` / `)s` records into
-  candidate filters with a full firmware-state run that mutates the
-  primary/secondary font-state fields, especially style, stroke, and
-  typeface selection side effects beyond the now-pinned metric filters.
+- Replace the modeled bridge from parsed `(s` / `)s` records and pinned
+  updater writes with a full firmware-state run through `0xc580`,
+  `0x13eb8` / `0xc428`, and `0x14c64` dispatch.
 - Replace the modeled default-font candidate records with a live
   parser/font-state fixture that proves the real records feeding
   `0x1b250`, `0x1b50e`, `0x1ab84`, `0x1bbfe`, and `0x1b060`, then decide

@@ -736,6 +736,48 @@ def trace_raster_parser_dispatch_via_11774(data: bytes, stream: bytes) -> dict[s
     }
 
 
+def parse_pcl_numeric_parameter_with_fraction(stream: bytes, pos: int) -> tuple[int, int, int]:
+    sign = 1
+    if pos < len(stream) and stream[pos] in (ord("+"), ord("-")):
+        sign = -1 if stream[pos] == ord("-") else 1
+        pos += 1
+    if pos >= len(stream) or not (stream[pos] == ord(".") or chr(stream[pos]).isdigit()):
+        raise AssertionError("PCL command fixture requires a numeric parameter")
+
+    integer = 0
+    while pos < len(stream) and chr(stream[pos]).isdigit():
+        integer = integer * 10 + stream[pos] - ord("0")
+        pos += 1
+    if integer > 0x7FFF:
+        integer = 0x7FFF
+
+    fraction = 0
+    if pos < len(stream) and stream[pos] == ord("."):
+        pos += 1
+        budget = 4
+        while budget > 0:
+            budget -= 1
+            fraction *= 10
+            if pos < len(stream) and chr(stream[pos]).isdigit():
+                fraction += stream[pos] - ord("0")
+                pos += 1
+        while pos < len(stream) and chr(stream[pos]).isdigit():
+            pos += 1
+    return sign * integer, sign * fraction, pos
+
+
+def scaled_metric_from_font_record(integer: int, fraction: int) -> int:
+    whole = int(integer)
+    frac = int(fraction)
+    if whole < 0:
+        whole = -whole
+        frac = -frac
+    if whole >= 0x028F:
+        whole = 0x028F
+        frac = 0
+    return ((whole * 10000) + frac) // 100
+
+
 def trace_font_parser_dispatch_via_11774(data: bytes, stream: bytes, descriptor_budget: int = 0) -> dict[str, object]:
     mode = 0
     pos = 0
@@ -771,13 +813,15 @@ def trace_font_parser_dispatch_via_11774(data: bytes, stream: bytes, descriptor_
         if prefix not in (ord("("), ord(")")) or group != ord("s"):
             raise AssertionError("font parser trace only models ESC (s/ESC )s commands")
         slot = 1 if prefix == ord(")") else 0
+        setup_record = bytes([0x80, 0x00]) + signed_word_bytes(slot) + b"\x00\x00"
 
         while True:
             parameter_start = pos
-            if pos < len(stream) and (stream[pos] in (ord("+"), ord("-")) or chr(stream[pos]).isdigit()):
-                parameter, pos = parse_pcl_decimal_parameter(stream, pos)
+            if pos < len(stream) and (stream[pos] in (ord("+"), ord("-"), ord(".")) or chr(stream[pos]).isdigit()):
+                parameter, fraction, pos = parse_pcl_numeric_parameter_with_fraction(stream, pos)
             else:
                 parameter = 0
+                fraction = 0
             if pos >= len(stream):
                 raise AssertionError("font parser trace missing final byte")
             final_offset = pos
@@ -787,13 +831,15 @@ def trace_font_parser_dispatch_via_11774(data: bytes, stream: bytes, descriptor_
             record = bytes([
                 0x81 if parameter < 0 else 0x80,
                 final,
-            ]) + signed_word_bytes(parameter) + signed_word_bytes(slot)
+            ]) + signed_word_bytes(parameter) + signed_word_bytes(fraction)
             command: dict[str, object] = {
                 "sequence": stream[escape_offset:pos] if parameter_start == escape_offset + 3 else stream[parameter_start:pos],
                 "prefix": prefix,
                 "group": group,
                 "slot": slot,
+                "slot_setup_record": setup_record,
                 "parameter": parameter,
+                "fraction": fraction,
                 "record": record,
                 "final_dispatch": final_event,
                 "mode_after_final": mode,
@@ -868,15 +914,16 @@ def font_selection_request_from_trace(trace: dict[str, object]) -> dict[str, obj
             raise AssertionError("font selection trace command has no terminal record")
         final = record[1]
         parameter = int(command["parameter"])
+        fraction = int(command.get("fraction", 0))
         handler = int(command["final_dispatch"]["handler"])  # type: ignore[index]
         name = chr(final)
         raw[name] = parameter
         if final == ord("p"):
             filter_inputs["spacing"] = parameter & 0xFF
         elif final == ord("h"):
-            filter_inputs["pitch"] = parameter * 100
+            filter_inputs["pitch"] = scaled_metric_from_font_record(parameter, fraction)
         elif final == ord("v"):
-            filter_inputs["height"] = parameter * 100
+            filter_inputs["height"] = scaled_metric_from_font_record(parameter, fraction)
         elif final == ord("s"):
             filter_inputs["style"] = parameter
         elif final == ord("b"):
@@ -886,6 +933,7 @@ def font_selection_request_from_trace(trace: dict[str, object]) -> dict[str, obj
         events.append({
             "final": name,
             "parameter": parameter,
+            "fraction": fraction,
             "handler": handler,
             "mode_after_final": int(command["mode_after_final"]),
         })
@@ -898,6 +946,96 @@ def font_selection_request_from_trace(trace: dict[str, object]) -> dict[str, obj
         "slot_word": int(slot or 0),
         "raw": raw,
         "filter_inputs": filter_inputs,
+        "events": events,
+    }
+
+
+def apply_font_selection_update_handlers_from_trace(trace: dict[str, object]) -> dict[str, object]:
+    commands = trace["commands"]  # type: ignore[index]
+    if not isinstance(commands, list):
+        raise AssertionError("font selection trace has no command list")
+
+    state: dict[int, int] = {}
+    events: list[dict[str, object]] = []
+    dirty_refresh = 0
+    dirty_metric = 0
+    for command in commands:
+        if not isinstance(command, dict):
+            raise AssertionError("font selection trace command is not a dict")
+        slot = int(command["slot"])
+        slot_base = slot * 0x10
+        parameter = int(command["parameter"])
+        fraction = int(command.get("fraction", 0))
+        record = command["record"]
+        setup_record = command["slot_setup_record"]
+        if not isinstance(record, bytes) or not isinstance(setup_record, bytes):
+            raise AssertionError("font selection trace command missing record bytes")
+        final = int(record[1])
+        handler = int(command["final_dispatch"]["handler"])  # type: ignore[index]
+        writes: list[dict[str, int]] = []
+        if final == ord("v"):
+            value = scaled_metric_from_font_record(parameter, fraction) & 0xFFFF
+            address = 0x782EF2 + slot_base
+            state[address] = value
+            dirty_refresh = 1
+            dirty_metric = 1
+            writes.append({"address": address, "width": 2, "value": value})
+        elif final == ord("s"):
+            value = abs(parameter)
+            if value >= 0x100:
+                value = 0xFF
+            address = 0x782EED + slot_base
+            state[address] = value & 0xFF
+            dirty_refresh = 1
+            writes.append({"address": address, "width": 1, "value": value & 0xFF})
+        elif final == ord("t") or final == ord("T"):
+            value = abs(parameter)
+            if value >= 0x100:
+                value = 0xFF
+            address = 0x782EEC + slot_base
+            state[address] = value & 0xFF
+            dirty_refresh = 1
+            writes.append({"address": address, "width": 1, "value": value & 0xFF})
+        elif final == ord("b"):
+            value = max(-7, min(7, parameter))
+            address = 0x782EEE + slot_base
+            state[address] = value & 0xFF
+            dirty_refresh = 1
+            writes.append({"address": address, "width": 1, "value": value & 0xFF})
+        elif final == ord("h"):
+            value = scaled_metric_from_font_record(parameter, fraction) & 0xFFFF
+            address = 0x782EF0 + slot_base
+            state[address] = value
+            dirty_refresh = 1
+            dirty_metric = 1
+            writes.append({"address": address, "width": 2, "value": value})
+        elif final == ord("p"):
+            value = abs(parameter)
+            if value < 2:
+                address = 0x782EEF + slot_base
+                state[address] = value & 0xFF
+                dirty_refresh = 1
+                dirty_metric = 1
+                writes.append({"address": address, "width": 1, "value": value & 0xFF})
+        if dirty_refresh:
+            state[0x782F2C] = dirty_refresh
+        if dirty_metric:
+            state[0x782F2D] = dirty_metric
+        events.append({
+            "final": chr(final),
+            "handler": handler,
+            "slot": slot,
+            "terminal_record": record,
+            "slot_setup_record": setup_record,
+            "parameter": parameter,
+            "fraction": fraction,
+            "writes": writes,
+            "dirty_0x782f2c": dirty_refresh,
+            "dirty_0x782f2d": dirty_metric,
+        })
+
+    return {
+        "state": state,
         "events": events,
     }
 
@@ -5476,7 +5614,7 @@ def render_font_download_char_command_stream_via_121cc_16498(
             parsed_record = bytes([
                 0x81 if parameter < 0 else 0x80,
                 final,
-            ]) + signed_word_bytes(parameter) + signed_word_bytes(slot)
+            ]) + signed_word_bytes(parameter) + b"\x00\x00"
             dispatch = font_payload_dispatch_via_11f96(parameter)
             handler = int(dispatch["handler"])
             scheduled = schedule_payload_handler_via_121cc(pending, parsed_record, handler)
@@ -5613,7 +5751,7 @@ def render_font_download_resource_command_stream_via_121cc_16c14(
             parsed_record = bytes([
                 0x81 if parameter < 0 else 0x80,
                 final,
-            ]) + signed_word_bytes(parameter) + signed_word_bytes(slot)
+            ]) + signed_word_bytes(parameter) + b"\x00\x00"
             dispatch = font_payload_dispatch_via_11f96(parameter)
             handler = int(dispatch["handler"])
             scheduled = schedule_payload_handler_via_121cc(pending, parsed_record, handler)
@@ -5754,7 +5892,7 @@ def render_font_descriptor_command_stream_via_121cc_15d0a(
     parsed_record = bytes([
         0x81 if parameter < 0 else 0x80,
         final,
-    ]) + signed_word_bytes(parameter) + signed_word_bytes(slot)
+    ]) + signed_word_bytes(parameter) + b"\x00\x00"
     dispatch = font_payload_dispatch_via_11f96(parameter)
     handler = int(dispatch["handler"])
     if handler != 0x15D0A:
@@ -17347,6 +17485,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         parser_metric_pitch_filter["survivor_slot_pointers"],  # type: ignore[arg-type]
     )
     parser_metric_selection = choose_active_candidate_via_14398(parser_metric_pitch_activation)
+    primary_selection_state_updates = apply_font_selection_update_handlers_from_trace(primary_font_selection_trace)
     checks.append(assert_equal("parsed font-selection metrics feed concrete candidate filters", {
         "request": {
             "slot": primary_selection_request["slot"],
@@ -17380,12 +17519,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "raw": {"p": 0, "h": 10, "v": 12, "s": 0, "b": 0, "T": 3},
             "filter_inputs": {"spacing": 0, "pitch": 0x03E8, "height": 0x04B0, "style": 0, "stroke": 0, "typeface": 3},
             "events": [
-                {"final": "p", "parameter": 0, "handler": 0x00C930, "mode_after_final": 13},
-                {"final": "h", "parameter": 10, "handler": 0x00C89C, "mode_after_final": 13},
-                {"final": "v", "parameter": 12, "handler": 0x00C6EC, "mode_after_final": 13},
-                {"final": "s", "parameter": 0, "handler": 0x00C780, "mode_after_final": 13},
-                {"final": "b", "parameter": 0, "handler": 0x00C840, "mode_after_final": 13},
-                {"final": "T", "parameter": 3, "handler": 0x01205A, "mode_after_final": 0},
+                {"final": "p", "parameter": 0, "fraction": 0, "handler": 0x00C930, "mode_after_final": 13},
+                {"final": "h", "parameter": 10, "fraction": 0, "handler": 0x00C89C, "mode_after_final": 13},
+                {"final": "v", "parameter": 12, "fraction": 0, "handler": 0x00C6EC, "mode_after_final": 13},
+                {"final": "s", "parameter": 0, "fraction": 0, "handler": 0x00C780, "mode_after_final": 13},
+                {"final": "b", "parameter": 0, "fraction": 0, "handler": 0x00C840, "mode_after_final": 13},
+                {"final": "T", "parameter": 3, "fraction": 0, "handler": 0x01205A, "mode_after_final": 0},
             ],
         },
         "symbol_survivors": [0x782354, 0x782364, 0x782374],
@@ -17405,6 +17544,112 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "slot_pointer": 0x782364,
             "longword": 0xC0089FB0,
             "record_start": 0x009FB0,
+        },
+    }))
+    checks.append(assert_equal("parsed font-selection stream writes primary font-state fields", {
+        "events": [
+            {
+                key: event[key]
+                for key in (
+                    "final",
+                    "handler",
+                    "slot",
+                    "terminal_record",
+                    "slot_setup_record",
+                    "parameter",
+                    "fraction",
+                    "writes",
+                    "dirty_0x782f2c",
+                    "dirty_0x782f2d",
+                )
+            }
+            for event in primary_selection_state_updates["events"]
+        ],
+        "state": primary_selection_state_updates["state"],
+    }, {
+        "events": [
+            {
+                "final": "p",
+                "handler": 0x00C930,
+                "slot": 0,
+                "terminal_record": b"\x80p\x00\x00\x00\x00",
+                "slot_setup_record": b"\x80\x00\x00\x00\x00\x00",
+                "parameter": 0,
+                "fraction": 0,
+                "writes": [{"address": 0x782EEF, "width": 1, "value": 0}],
+                "dirty_0x782f2c": 1,
+                "dirty_0x782f2d": 1,
+            },
+            {
+                "final": "h",
+                "handler": 0x00C89C,
+                "slot": 0,
+                "terminal_record": b"\x80h\x00\x0a\x00\x00",
+                "slot_setup_record": b"\x80\x00\x00\x00\x00\x00",
+                "parameter": 10,
+                "fraction": 0,
+                "writes": [{"address": 0x782EF0, "width": 2, "value": 0x03E8}],
+                "dirty_0x782f2c": 1,
+                "dirty_0x782f2d": 1,
+            },
+            {
+                "final": "v",
+                "handler": 0x00C6EC,
+                "slot": 0,
+                "terminal_record": b"\x80v\x00\x0c\x00\x00",
+                "slot_setup_record": b"\x80\x00\x00\x00\x00\x00",
+                "parameter": 12,
+                "fraction": 0,
+                "writes": [{"address": 0x782EF2, "width": 2, "value": 0x04B0}],
+                "dirty_0x782f2c": 1,
+                "dirty_0x782f2d": 1,
+            },
+            {
+                "final": "s",
+                "handler": 0x00C780,
+                "slot": 0,
+                "terminal_record": b"\x80s\x00\x00\x00\x00",
+                "slot_setup_record": b"\x80\x00\x00\x00\x00\x00",
+                "parameter": 0,
+                "fraction": 0,
+                "writes": [{"address": 0x782EED, "width": 1, "value": 0}],
+                "dirty_0x782f2c": 1,
+                "dirty_0x782f2d": 1,
+            },
+            {
+                "final": "b",
+                "handler": 0x00C840,
+                "slot": 0,
+                "terminal_record": b"\x80b\x00\x00\x00\x00",
+                "slot_setup_record": b"\x80\x00\x00\x00\x00\x00",
+                "parameter": 0,
+                "fraction": 0,
+                "writes": [{"address": 0x782EEE, "width": 1, "value": 0}],
+                "dirty_0x782f2c": 1,
+                "dirty_0x782f2d": 1,
+            },
+            {
+                "final": "T",
+                "handler": 0x01205A,
+                "slot": 0,
+                "terminal_record": b"\x80T\x00\x03\x00\x00",
+                "slot_setup_record": b"\x80\x00\x00\x00\x00\x00",
+                "parameter": 3,
+                "fraction": 0,
+                "writes": [{"address": 0x782EEC, "width": 1, "value": 3}],
+                "dirty_0x782f2c": 1,
+                "dirty_0x782f2d": 1,
+            },
+        ],
+        "state": {
+            0x782EEC: 3,
+            0x782EED: 0,
+            0x782EEE: 0,
+            0x782EEF: 0,
+            0x782EF0: 0x03E8,
+            0x782EF2: 0x04B0,
+            0x782F2C: 1,
+            0x782F2D: 1,
         },
     }))
     default_font_tables_found = default_font_symbol_tables_via_1ac0a_1af36(
@@ -19490,7 +19735,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "fetch_source_set": ["ring"],
         "remaining_ring": [],
         "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
-        "restored_record": b"\x80W\x00\x12\x00\x01",
+        "restored_record": b"\x80W\x00\x12\x00\x00",
         "payload_offset": 6,
         "raw_payload": downloaded_wide_control_payload,
         "copy": {
@@ -19696,15 +19941,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "sequence": b"\x1b)s0W",
             "slot": 1,
             "parameter": 0,
-            "record": b"\x80W\x00\x00\x00\x01",
+            "record": b"\x80W\x00\x00\x00\x00",
             "font_payload_dispatch": {
                 "parameter": 0,
                 "handler": 0x15D0A,
                 "meaning": "font-header/download-descriptor payload",
             },
-            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x01",
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x00",
             "restore_after_final": {"kind": "direct-handler", "handler": 0x15D0A},
-            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "restored_record": b"\x80W\x00\x00\x00\x00",
             "descriptor_offset": 5,
             "descriptor": bytes.fromhex("04 00 aa bb"),
             "descriptor_byte_budget": 4,
@@ -19719,15 +19964,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "sequence": b"\x1b)s4W",
             "slot": 1,
             "parameter": 4,
-            "record": b"\x80W\x00\x04\x00\x01",
+            "record": b"\x80W\x00\x04\x00\x00",
             "font_payload_dispatch": {
                 "parameter": 4,
                 "handler": 0x16C14,
                 "meaning": "downloaded-font/character payload",
             },
-            "delayed_snapshot_bytes": b"\x01\x00\x01\x6c\x14\x80W\x00\x04\x00\x01",
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x6c\x14\x80W\x00\x04\x00\x00",
             "restore_after_final": {"kind": "direct-handler", "handler": 0x16C14},
-            "restored_record": b"\x80W\x00\x04\x00\x01",
+            "restored_record": b"\x80W\x00\x04\x00\x00",
             "payload_offset": 5,
             "payload": b"ABCD",
         },
@@ -19738,7 +19983,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             for event in primary_font_selection_trace["dispatches"]
         ],
         "primary_commands": [
-            {key: command[key] for key in ("sequence", "slot", "parameter", "record", "mode_after_final")}
+            {key: command[key] for key in ("sequence", "slot", "slot_setup_record", "parameter", "fraction", "record", "mode_after_final")}
             | {"handler": command["final_dispatch"]["handler"]}
             for command in primary_font_selection_trace["commands"]
         ],
@@ -19748,7 +19993,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             for event in secondary_font_selection_trace["dispatches"]
         ],
         "secondary_commands": [
-            {key: command[key] for key in ("sequence", "slot", "parameter", "record", "mode_after_final")}
+            {key: command[key] for key in ("sequence", "slot", "slot_setup_record", "parameter", "fraction", "record", "mode_after_final")}
             | {"handler": command["final_dispatch"]["handler"]}
             for command in secondary_font_selection_trace["commands"]
         ],
@@ -19766,12 +20011,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {"offset": 16, "byte": 0x54, "mode_before": 13, "next_mode": 0, "handler": 0x01205A},
         ],
         "primary_commands": [
-            {"sequence": b"\x1b(s0p", "slot": 0, "parameter": 0, "record": b"\x80p\x00\x00\x00\x00", "mode_after_final": 13, "handler": 0x00C930},
-            {"sequence": b"10h", "slot": 0, "parameter": 10, "record": b"\x80h\x00\x0a\x00\x00", "mode_after_final": 13, "handler": 0x00C89C},
-            {"sequence": b"12v", "slot": 0, "parameter": 12, "record": b"\x80v\x00\x0c\x00\x00", "mode_after_final": 13, "handler": 0x00C6EC},
-            {"sequence": b"0s", "slot": 0, "parameter": 0, "record": b"\x80s\x00\x00\x00\x00", "mode_after_final": 13, "handler": 0x00C780},
-            {"sequence": b"0b", "slot": 0, "parameter": 0, "record": b"\x80b\x00\x00\x00\x00", "mode_after_final": 13, "handler": 0x00C840},
-            {"sequence": b"3T", "slot": 0, "parameter": 3, "record": b"\x80T\x00\x03\x00\x00", "mode_after_final": 0, "handler": 0x01205A},
+            {"sequence": b"\x1b(s0p", "slot": 0, "slot_setup_record": b"\x80\x00\x00\x00\x00\x00", "parameter": 0, "fraction": 0, "record": b"\x80p\x00\x00\x00\x00", "mode_after_final": 13, "handler": 0x00C930},
+            {"sequence": b"10h", "slot": 0, "slot_setup_record": b"\x80\x00\x00\x00\x00\x00", "parameter": 10, "fraction": 0, "record": b"\x80h\x00\x0a\x00\x00", "mode_after_final": 13, "handler": 0x00C89C},
+            {"sequence": b"12v", "slot": 0, "slot_setup_record": b"\x80\x00\x00\x00\x00\x00", "parameter": 12, "fraction": 0, "record": b"\x80v\x00\x0c\x00\x00", "mode_after_final": 13, "handler": 0x00C6EC},
+            {"sequence": b"0s", "slot": 0, "slot_setup_record": b"\x80\x00\x00\x00\x00\x00", "parameter": 0, "fraction": 0, "record": b"\x80s\x00\x00\x00\x00", "mode_after_final": 13, "handler": 0x00C780},
+            {"sequence": b"0b", "slot": 0, "slot_setup_record": b"\x80\x00\x00\x00\x00\x00", "parameter": 0, "fraction": 0, "record": b"\x80b\x00\x00\x00\x00", "mode_after_final": 13, "handler": 0x00C840},
+            {"sequence": b"3T", "slot": 0, "slot_setup_record": b"\x80\x00\x00\x00\x00\x00", "parameter": 3, "fraction": 0, "record": b"\x80T\x00\x03\x00\x00", "mode_after_final": 0, "handler": 0x01205A},
         ],
         "primary_final_mode": 0,
         "secondary_dispatches": [
@@ -19786,12 +20031,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {"offset": 15, "byte": 0x54, "mode_before": 13, "next_mode": 0, "handler": 0x01205A},
         ],
         "secondary_commands": [
-            {"sequence": b"\x1b)s0p", "slot": 1, "parameter": 0, "record": b"\x80p\x00\x00\x00\x01", "mode_after_final": 13, "handler": 0x00C930},
-            {"sequence": b"16h", "slot": 1, "parameter": 16, "record": b"\x80h\x00\x10\x00\x01", "mode_after_final": 13, "handler": 0x00C89C},
-            {"sequence": b"8v", "slot": 1, "parameter": 8, "record": b"\x80v\x00\x08\x00\x01", "mode_after_final": 13, "handler": 0x00C6EC},
-            {"sequence": b"0s", "slot": 1, "parameter": 0, "record": b"\x80s\x00\x00\x00\x01", "mode_after_final": 13, "handler": 0x00C780},
-            {"sequence": b"0b", "slot": 1, "parameter": 0, "record": b"\x80b\x00\x00\x00\x01", "mode_after_final": 13, "handler": 0x00C840},
-            {"sequence": b"0T", "slot": 1, "parameter": 0, "record": b"\x80T\x00\x00\x00\x01", "mode_after_final": 0, "handler": 0x01205A},
+            {"sequence": b"\x1b)s0p", "slot": 1, "slot_setup_record": b"\x80\x00\x00\x01\x00\x00", "parameter": 0, "fraction": 0, "record": b"\x80p\x00\x00\x00\x00", "mode_after_final": 13, "handler": 0x00C930},
+            {"sequence": b"16h", "slot": 1, "slot_setup_record": b"\x80\x00\x00\x01\x00\x00", "parameter": 16, "fraction": 0, "record": b"\x80h\x00\x10\x00\x00", "mode_after_final": 13, "handler": 0x00C89C},
+            {"sequence": b"8v", "slot": 1, "slot_setup_record": b"\x80\x00\x00\x01\x00\x00", "parameter": 8, "fraction": 0, "record": b"\x80v\x00\x08\x00\x00", "mode_after_final": 13, "handler": 0x00C6EC},
+            {"sequence": b"0s", "slot": 1, "slot_setup_record": b"\x80\x00\x00\x01\x00\x00", "parameter": 0, "fraction": 0, "record": b"\x80s\x00\x00\x00\x00", "mode_after_final": 13, "handler": 0x00C780},
+            {"sequence": b"0b", "slot": 1, "slot_setup_record": b"\x80\x00\x00\x01\x00\x00", "parameter": 0, "fraction": 0, "record": b"\x80b\x00\x00\x00\x00", "mode_after_final": 13, "handler": 0x00C840},
+            {"sequence": b"0T", "slot": 1, "slot_setup_record": b"\x80\x00\x00\x01\x00\x00", "parameter": 0, "fraction": 0, "record": b"\x80T\x00\x00\x00\x00", "mode_after_final": 0, "handler": 0x01205A},
         ],
         "secondary_final_mode": 0,
     }))
@@ -19980,11 +20225,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "kind": "font-descriptor-command",
             "sequence": b"\x1b)s0W",
             "parameter": 0,
-            "parsed_record": b"\x80W\x00\x00\x00\x01",
-            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x01",
+            "parsed_record": b"\x80W\x00\x00\x00\x00",
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x00",
             "delayed_scheduled": True,
             "restore_dispatch": {"kind": "direct-handler", "handler": 0x15D0A},
-            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "restored_record": b"\x80W\x00\x00\x00\x00",
             "delayed_handler": 0x15D0A,
             "descriptor_offset": 5,
             "descriptor": bytes.fromhex("04 00 aa bb"),
@@ -20008,11 +20253,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "kind": "font-descriptor-command",
             "sequence": b"\x1b)s0W",
             "parameter": 0,
-            "parsed_record": b"\x80W\x00\x00\x00\x01",
-            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x01",
+            "parsed_record": b"\x80W\x00\x00\x00\x00",
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x00",
             "delayed_scheduled": True,
             "restore_dispatch": {"kind": "direct-handler", "handler": 0x15D0A},
-            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "restored_record": b"\x80W\x00\x00\x00\x00",
             "delayed_handler": 0x15D0A,
             "descriptor_offset": 5,
             "descriptor": bytes.fromhex("04 01 cc"),
@@ -20099,22 +20344,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
             "dispatch_modes": [1, 4, 13, 0],
             "sequence": b"\x1b)s0W",
-            "record": b"\x80W\x00\x00\x00\x01",
+            "record": b"\x80W\x00\x00\x00\x00",
             "font_payload_dispatch": {
                 "parameter": 0,
                 "handler": 0x15D0A,
                 "meaning": "font-header/download-descriptor payload",
             },
-            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x01",
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x00",
             "restore_after_final": {"kind": "direct-handler", "handler": 0x15D0A},
-            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "restored_record": b"\x80W\x00\x00\x00\x00",
             "descriptor_offset": 5,
             "descriptor": bytes.fromhex("04 00 aa bb"),
             "descriptor_byte_budget": 4,
         },
         "current_model": {
             "restore_dispatch": {"kind": "direct-handler", "handler": 0x15D0A},
-            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "restored_record": b"\x80W\x00\x00\x00\x00",
             "descriptor_offset": 5,
             "descriptor": bytes.fromhex("04 00 aa bb"),
             "descriptor_byte_budget": 4,
@@ -20135,22 +20380,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
             "dispatch_modes": [1, 4, 13, 0],
             "sequence": b"\x1b)s0W",
-            "record": b"\x80W\x00\x00\x00\x01",
+            "record": b"\x80W\x00\x00\x00\x00",
             "font_payload_dispatch": {
                 "parameter": 0,
                 "handler": 0x15D0A,
                 "meaning": "font-header/download-descriptor payload",
             },
-            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x01",
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x5d\x0a\x80W\x00\x00\x00\x00",
             "restore_after_final": {"kind": "direct-handler", "handler": 0x15D0A},
-            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "restored_record": b"\x80W\x00\x00\x00\x00",
             "descriptor_offset": 5,
             "descriptor": bytes.fromhex("04 01 cc"),
             "descriptor_byte_budget": 3,
         },
         "continuation_model": {
             "restore_dispatch": {"kind": "direct-handler", "handler": 0x15D0A},
-            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "restored_record": b"\x80W\x00\x00\x00\x00",
             "descriptor_offset": 5,
             "descriptor": bytes.fromhex("04 01 cc"),
             "descriptor_byte_budget": 3,
@@ -20253,7 +20498,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "remaining_ring": [],
             "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
             "parser_modes": [1, 4, 13, 0],
-            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "restored_record": b"\x80W\x00\x00\x00\x00",
             "descriptor_offset": 5,
             "descriptor": bytes.fromhex("04 00 aa bb"),
             "descriptor_byte_budget": 4,
@@ -20271,7 +20516,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "remaining_ring": [],
             "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
             "parser_modes": [1, 4, 13, 0],
-            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "restored_record": b"\x80W\x00\x00\x00\x00",
             "descriptor_offset": 5,
             "descriptor": bytes.fromhex("04 01 cc"),
             "descriptor_byte_budget": 3,
@@ -21180,10 +21425,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "kind": "font-resource-payload",
             "sequence": b"\x1b)s80W",
             "parameter": 80,
-            "parsed_record": bytes.fromhex("80 57 00 50 00 01"),
-            "delayed_snapshot_bytes": bytes.fromhex("01 00 01 6c 14 80 57 00 50 00 01"),
+            "parsed_record": bytes.fromhex("80 57 00 50 00 00"),
+            "delayed_snapshot_bytes": bytes.fromhex("01 00 01 6c 14 80 57 00 50 00 00"),
             "restore_dispatch": {"kind": "direct-handler", "handler": 0x16C14},
-            "restored_record": bytes.fromhex("80 57 00 50 00 01"),
+            "restored_record": bytes.fromhex("80 57 00 50 00 00"),
             "delayed_handler": 0x16C14,
             "payload_offset": 6,
             "payload_length": 80,
@@ -21222,7 +21467,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "pending": {
             "pending_flag": 0,
             "handler": 0,
-            "snapshot_record": bytes.fromhex("80 57 00 50 00 01"),
+            "snapshot_record": bytes.fromhex("80 57 00 50 00 00"),
         },
     }))
     checks.append(assert_equal("resource payload stream ties ROM parser dispatch to 0x16c14 install", {
@@ -21261,15 +21506,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
             "dispatch_modes": [1, 4, 13, 0],
             "sequence": b"\x1b)s80W",
-            "record": bytes.fromhex("80 57 00 50 00 01"),
+            "record": bytes.fromhex("80 57 00 50 00 00"),
             "font_payload_dispatch": {
                 "parameter": 80,
                 "handler": 0x16C14,
                 "meaning": "downloaded-font/character payload",
             },
-            "delayed_snapshot_bytes": bytes.fromhex("01 00 01 6c 14 80 57 00 50 00 01"),
+            "delayed_snapshot_bytes": bytes.fromhex("01 00 01 6c 14 80 57 00 50 00 00"),
             "restore_after_final": {"kind": "direct-handler", "handler": 0x16C14},
-            "restored_record": bytes.fromhex("80 57 00 50 00 01"),
+            "restored_record": bytes.fromhex("80 57 00 50 00 00"),
             "payload_offset": 6,
             "payload_length": 80,
             "payload_prefix": bytes.fromhex("00 01 02 00 ff ff 00 04 00 06 00 09 01 05 12 34"),
@@ -21278,7 +21523,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "model": {
             "restore_dispatch": {"kind": "direct-handler", "handler": 0x16C14},
-            "restored_record": bytes.fromhex("80 57 00 50 00 01"),
+            "restored_record": bytes.fromhex("80 57 00 50 00 00"),
             "payload_offset": 6,
             "payload_length": 80,
             "byte_budget": 80,
@@ -21367,7 +21612,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "remaining_ring": [],
         "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
         "parser_modes": [1, 4, 13, 0],
-        "restored_record": bytes.fromhex("80 57 00 50 00 01"),
+        "restored_record": bytes.fromhex("80 57 00 50 00 00"),
         "payload_offset": 6,
         "payload_length": 80,
         "payload_prefix": bytes.fromhex("00 01 02 00 ff ff 00 04 00 06 00 09 01 05 12 34"),
@@ -21425,8 +21670,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "fetched_stream_length": len(table_payload_resource_command_stream),
             "fetch_source_set": ["ring"],
             "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
-            "parser_record": bytes.fromhex("80 57 00 50 00 01"),
-            "model_record": bytes.fromhex("80 57 00 50 00 01"),
+            "parser_record": bytes.fromhex("80 57 00 50 00 00"),
+            "model_record": bytes.fromhex("80 57 00 50 00 00"),
             "payload_length": 80,
             "validation_status": 1,
             "allocation_size": 10,
@@ -22077,11 +22322,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "kind": "font-character-payload",
             "sequence": b"\x1b)s2193W",
             "parameter": 0x0891,
-            "parsed_record": b"\x80W\x08\x91\x00\x01",
-            "delayed_snapshot_bytes": b"\x01\x00\x01\x6c\x14\x80W\x08\x91\x00\x01",
+            "parsed_record": b"\x80W\x08\x91\x00\x00",
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x6c\x14\x80W\x08\x91\x00\x00",
             "delayed_scheduled": True,
             "restore_dispatch": {"kind": "direct-handler", "handler": 0x16C14},
-            "restored_record": b"\x80W\x08\x91\x00\x01",
+            "restored_record": b"\x80W\x08\x91\x00\x00",
             "delayed_handler": 0x16C14,
             "payload_offset": 8,
             "payload_length": 0x0891,
@@ -22091,7 +22336,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "pending": {
             "pending_flag": 0,
             "handler": 0,
-            "snapshot_record": b"\x80W\x08\x91\x00\x01",
+            "snapshot_record": b"\x80W\x08\x91\x00\x00",
         },
         "payload": {
             "status": 1,
@@ -22214,15 +22459,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
             "dispatch_modes": [1, 4, 13, 0],
             "sequence": b"\x1b)s2193W",
-            "record": b"\x80W\x08\x91\x00\x01",
+            "record": b"\x80W\x08\x91\x00\x00",
             "font_payload_dispatch": {
                 "parameter": 0x0891,
                 "handler": 0x16C14,
                 "meaning": "downloaded-font/character payload",
             },
-            "delayed_snapshot_bytes": b"\x01\x00\x01\x6c\x14\x80W\x08\x91\x00\x01",
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x6c\x14\x80W\x08\x91\x00\x00",
             "restore_after_final": {"kind": "direct-handler", "handler": 0x16C14},
-            "restored_record": b"\x80W\x08\x91\x00\x01",
+            "restored_record": b"\x80W\x08\x91\x00\x00",
             "payload_offset": 8,
             "payload_length": 0x0891,
             "payload_prefix": b"\x00" * 17,
@@ -22231,7 +22476,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "model": {
             "restore_dispatch": {"kind": "direct-handler", "handler": 0x16C14},
-            "restored_record": b"\x80W\x08\x91\x00\x01",
+            "restored_record": b"\x80W\x08\x91\x00\x00",
             "payload_offset": 8,
             "payload_length": 0x0891,
             "byte_budget": 0x0891,
@@ -22321,7 +22566,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "remaining_ring": [],
         "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
         "parser_modes": [1, 4, 13, 0],
-        "restored_record": b"\x80W\x08\x91\x00\x01",
+        "restored_record": b"\x80W\x08\x91\x00\x00",
         "payload_offset": 8,
         "payload_length": 0x0891,
         "payload_suffix": b"\xaa" * 16 + b"\x55",
@@ -22886,14 +23131,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "payload": {
             "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
             "sequence": b"\x1b)s2193W",
-            "record": b"\x80W\x08\x91\x00\x01",
+            "record": b"\x80W\x08\x91\x00\x00",
             "font_payload_dispatch": {
                 "parameter": 2193,
                 "handler": 0x16C14,
                 "meaning": "downloaded-font/character payload",
             },
             "restore_after_final": {"kind": "direct-handler", "handler": 0x16C14},
-            "restored_record": b"\x80W\x08\x91\x00\x01",
+            "restored_record": b"\x80W\x08\x91\x00\x00",
             "payload_offset": 8,
             "payload_length": 0x0891,
             "char_code": 0x25,
@@ -23030,8 +23275,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "fetched_stream": b"\x1b)s0W\x04\x00\xaa\xbb",
             "fetch_sources": ["ring"],
             "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
-            "parser_record": b"\x80W\x00\x00\x00\x01",
-            "model_record": b"\x80W\x00\x00\x00\x01",
+            "parser_record": b"\x80W\x00\x00\x00\x00",
+            "model_record": b"\x80W\x00\x00\x00\x00",
             "descriptor": bytes.fromhex("04 00 aa bb"),
             "route": {
                 "path": "current-record",
@@ -23046,8 +23291,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "fetched_stream_length": len(downloaded_segmented_wide_command_stream),
             "fetch_sources": ["ring"],
             "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
-            "parser_record": b"\x80W\x08\x91\x00\x01",
-            "model_record": b"\x80W\x08\x91\x00\x01",
+            "parser_record": b"\x80W\x08\x91\x00\x00",
+            "model_record": b"\x80W\x08\x91\x00\x00",
             "char_code": 0x25,
             "table_entry": 0x00DE,
             "record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 88 00 00"),
@@ -23144,7 +23389,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "current_id": 0x1234,
             "records": [{"id": 0x1234, "flags": 0x40, "payload": 0x456789}],
             "sequence": b"\x1b)s0W",
-            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "restored_record": b"\x80W\x00\x00\x00\x00",
             "route_handler": 0x16498,
         },
         "payload": {
@@ -23235,7 +23480,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "current_id": 0x1234,
             "records": [{"id": 0x1234, "flags": 0x40, "payload": 0x456789}],
             "sequence": b"\x1b)s0W",
-            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "restored_record": b"\x80W\x00\x00\x00\x00",
             "descriptor": bytes.fromhex("04 00 aa bb"),
             "route": {
                 "status": "route",
@@ -23250,7 +23495,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "payload": {
             "char_code": 0x25,
             "sequence": b"\x1b)s2193W",
-            "restored_record": b"\x80W\x08\x91\x00\x01",
+            "restored_record": b"\x80W\x08\x91\x00\x00",
             "payload_offset": 8,
             "payload_length": 0x0891,
             "table_entry": 0x00DE,

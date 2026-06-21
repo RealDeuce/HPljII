@@ -222,9 +222,11 @@ Evidence:
   through delayed handler `0x0105d0`, a parser-to-gate edge check for `ESC *t300R`/`ESC
   *r0A`/`ESC *b4W` capped and beyond-extent transfers, same-group lowercase-final chaining
   fixtures for `ESC *t300r150R` and chained `ESC *b2w`/`2W` payload boundaries, plus a parser-traced
-  `ESC *rB` stream proving handler `0x107fa` clears only raster active state and allows a later
-  `ESC *t150R` mode change, byte-aligned mode-0/non-byte-aligned mode-0/mode-1/byte-aligned
-  mode-2/non-byte-aligned mode-2/band-clipped mode-2/mode-3 raster row fixtures that queue
+  active `ESC *t75R` stream proving handler `0x10808` leaves current mode/scale intact, plus a
+  parser-traced `ESC *rB` stream proving handler `0x107fa` clears only raster active state and
+  allows a later `ESC *t150R` mode change, byte-aligned mode-0/non-byte-aligned mode-0/mode-1/
+  byte-aligned mode-2/non-byte-aligned mode-2/band-clipped mode-2/mode-3 raster row fixtures that
+  queue
   objects `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55`, `00 00 00 00 80 00 00 02 04 01 c3 3c`,
   `00 00 00 00 80 01 00 02 00 01 f0 0f`, `00 00 00 00 80 02 00 02 00 01 f0 0f`, `00 00 00 00 80
   02 00 02 04 01 f0 0f`, `00 00 00 00 80 02 00 02 f0 01 f0 0f`, and `00 00 00 00 80 03 00 02 00

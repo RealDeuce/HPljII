@@ -99,9 +99,10 @@ alternate/data-mode `0x1228a`/`0x12358` byte-count consumers including `0xdace` 
 control `1a 58`. Raster parser coverage now also ties the `ESC *t300R` / `ESC *r0A` / `ESC *b4W`
 dispatch/restore path to the modeled `0x105d0` capped-transfer, inclusive page-extent
 queue-and-advance, beyond-extent drain/no-advance, and negative-row drain-with-advance gates, and
-proves the same `0xdace` normalization applies before raster bytes are queued as pixels. A separate
-end-raster trace ties `ESC *rB` to handler `0x107fa`, active-state clearing, and the following
-`ESC *t150R` resolution update.
+proves the same `0xdace` normalization applies before raster bytes are queued as pixels. Separate
+traces now show active `ESC *t75R` still dispatches to `0x10808` without changing current raster
+mode/scale, while `ESC *rB` dispatches to handler `0x107fa`, clears active state, and lets a
+following `ESC *t150R` update resolution.
 
 ## Main Parser Loop
 

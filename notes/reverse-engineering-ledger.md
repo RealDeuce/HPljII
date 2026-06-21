@@ -347,8 +347,8 @@ scan proving no normal wide/segmented bitmap entries, then emits
 
 ### Resource ROM role
 
-Status: Anchored as font/resource source; glyph metadata extraction
-incomplete
+Status: Anchored as font/resource source; built-in metadata extraction
+partly named
 
 Evidence: `IC32,IC15` contains `HEAD`, HP copyright, `COURIER`,
 `LINE_PRINTER`, dense font tables, and firmware-scanned `0x1f354` glyph
@@ -361,6 +361,11 @@ startup/resource scanner `0x41a` is modeled for the verified built-in
 `0x0ae122`, terminating at `0x0b2f80`, adjusting the next probe step
 after a cumulative `0x40000` crossing, and jumping or erroring on
 `0x000000be` executable records according to their length;
+`tools/render_fixture_harness.py` now extracts all named header-like
+records in the verified window, proving twelve `COURIER` and six
+`LINE_PRINTER` records with deterministic context, length, class,
+symbol, decoded pitch/height, character range, nonzero table-entry
+count, size-word tuple, and first glyph entry;
 text object glyph index bytes are mapped before queuing by `0x1393a` and
 initialized by `0x14d9c` / `0x14e24` / `0x14f16`; `0x1be22` computes
 normal PCL symbol words from host `ESC (` / `ESC )` commands, handles
@@ -495,8 +500,9 @@ ROM work needed:
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.
-- Use the repeated `COURIER` and `LINE_PRINTER` records as first
-  built-in font extraction fixtures.
+- Finish semantic naming of the remaining built-in record fields now
+  extracted from the repeated `COURIER` and `LINE_PRINTER` fixtures,
+  especially orientation, style, baseline, and ambiguous size words.
 - Replace the modeled default-font candidate records with a live
   parser/font-state fixture that proves the real records feeding
   `0x1b250`, `0x1b50e`, `0x1ab84`, `0x1bbfe`, and `0x1b060`, and decide

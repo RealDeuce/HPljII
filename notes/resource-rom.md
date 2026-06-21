@@ -157,6 +157,17 @@ Current confirmed record facts:
   byte `+4` is a bitmap delta, byte `+5` is a small mode/plane value,
   word `+6` is row count, and word `+8` is pixel width.
 
+The executable harness now extracts deterministic metadata for all named
+header-like built-in records in the verified resource window: twelve
+`COURIER` records and six `LINE_PRINTER` records. The `COURIER` records
+decode to pitch `1000` and height `1200`; the `LINE_PRINTER` records
+decode to pitch `1666` and height `850`. The small full-table records
+start at character `0x01` and have 253 nonzero entries. The larger
+records start at character `0x21` and have 190 nonzero entries. The
+first named `COURIER` record has context `0x44080418` and first glyph
+entry `0x007baa`; the first named `LINE_PRINTER` record has context
+`0x440946b4` and first glyph entry `0x018730`.
+
 Example candidate entries from the probe:
 
 - Context `0x4008004c`, glyph `0`, relative offset `0x0000103c`, entry
@@ -303,9 +314,9 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    fetched font-control / downloaded-character / printable stream now
    drives the installed downloaded glyph into segmented page-record
    buckets before `0x1ed84`/`0x1ef6a` rendering.
-5. Extract enough metadata for each `COURIER` and `LINE_PRINTER` record
-   to identify point size, pitch, orientation, style, symbol set, cell
-   size, and baseline.
+5. Finish semantic naming of the remaining built-in metadata fields,
+   especially orientation, style, baseline, and the ambiguous size words
+   now extracted for every named `COURIER` and `LINE_PRINTER` record.
 6. Locate the glyph bitmap payloads and write a deterministic extractor
    from the verified `IC32,IC15` hash.
 

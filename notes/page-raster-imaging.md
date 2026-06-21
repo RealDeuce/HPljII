@@ -664,7 +664,7 @@ fetch, tokenizer/delayed-payload, page-geometry, macro/data-chain,
 direct-control, reset, text, rule, raster, bridge, row-copy, built-in glyph,
 symbol-set, and downloaded-font fixture families into one ROM-backed self-test.
 It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and
-currently verifies 319 checks. The raster coverage now includes ROM-table
+currently verifies 320 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W`
 stream, the 150/100/75-dpi mode streams, the consecutive-row `ESC *b2W` stream,
 the active-resolution-ignore `ESC *t75R` stream, the end-raster `ESC *rB` /
@@ -800,14 +800,15 @@ needs a full CPU/parser-state fixture that executes through `0x121cc` /
 `0x105d0` with real parser-produced page/control pool records. The constructed
 `0x1f0d2` and `0x1f1f0` inline cases now also have type-2 `0x1719c`
 payload-backed fixed-record coverage; the `0x1f264` segmented-wide case now has
-selected-memory isolation plus `ESC *c4660d37e5F`, host-fetched `ESC )s0W`,
-host-fetched `ESC )s80W`, and host-fetched `ESC )s2193W` parser boundaries tying
-current id `0x1234`, current character `0x25`, delayed record restoration
-through `0x121cc` / `0x12218`, descriptor or payload offsets/lengths, `0x15d0a`
-current/continuation descriptor routes, `0x16fae`/`0x1719c` resource-payload
-allocation, `0x16498` downloaded-pointer allocation, and the rendered
-segmented-wide row. The full built-in scan proves the verified ROM resources do
-not contain a normal wide or non-mode-1 bitmap-entry case.
+selected-memory isolation plus host-fetched `ESC *c4660d37e5F`, host-fetched
+`ESC )s0W`, host-fetched `ESC )s80W`, and host-fetched `ESC )s2193W` parser
+boundaries tying current id `0x1234`, current character `0x25`, delayed record
+restoration through `0x121cc` / `0x12218`, descriptor or payload
+offsets/lengths, `0x15d0a` current/continuation descriptor routes,
+`0x16fae`/`0x1719c` resource-payload allocation, `0x16498` downloaded-pointer
+allocation, and the rendered segmented-wide row. The full built-in scan proves
+the verified ROM resources do not contain a normal wide or non-mode-1
+bitmap-entry case.
 
 ## Rejected Compositor Lead
 

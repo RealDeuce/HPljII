@@ -263,15 +263,14 @@ glyph index `0`. The first `COURIER` and `LINE_PRINTER` records have base ranges
    parser/font-state fixture that proves the real records feeding `0x1b250`,
    `0x1b50e`, `0x1ab84`, `0x1bbfe`, and `0x1b060`, and decide how to document
    the undocumented but parser-exposed `@0..@2` table/copy variants.
-4. Replace the current `ESC *c4660d37e5F` current-state boundary, `ESC )s0W`
-   parser/route boundary through `0x15d0a`, `ESC )s80W` resource-payload
-   boundary through `0x16c14` -> `0x16fae` -> `0x1719c`, and `ESC )s2193W`
-   parser/object boundary through `0x16c14` -> `0x16498` downloaded-pointer
-   `0x1f264`; all three font `W` streams are now also host-fetched from the
-   modeled `0xa904` ring source. Replace these boundaries with a full live
-   parser-state run that populates current records/source objects; then replace
-   producer-modeled text bucket fixtures with full parser-produced page-object
-   payloads.
+4. Replace the host-fetched `ESC *c4660d37e5F` current-state boundary,
+   host-fetched `ESC )s0W` parser/route boundary through `0x15d0a`,
+   host-fetched `ESC )s80W` resource-payload boundary through `0x16c14` ->
+   `0x16fae` -> `0x1719c`, and host-fetched `ESC )s2193W` parser/object
+   boundary through `0x16c14` -> `0x16498` downloaded-pointer `0x1f264`.
+   Replace these boundaries with a full live parser-state run that populates
+   current records/source objects; then replace producer-modeled text bucket
+   fixtures with full parser-produced page-object payloads.
 5. Extract enough metadata for each `COURIER` and `LINE_PRINTER` record to
    identify point size, pitch, orientation, style, symbol set, cell size, and
    baseline.

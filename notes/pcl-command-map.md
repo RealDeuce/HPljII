@@ -300,11 +300,12 @@ word `0x782f30`. The executable harness now traces chained `ESC *c17d25e5F`
 through the ROM `0x11774` dispatch table, proving parser modes `0 -> 1 -> 3 ->
 16 -> 16 -> 16 -> 0`, records `ESC *c17d`, `25e`, and `5F`, and handlers
 `0x15a56`, `0x15a18`, and `0x16df6` before the current-record mark side effect.
-A second control-to-install fixture traces `ESC *c4660d37e5F`, uses the
-resulting current font id `0x1234` and current character `0x25` as the inputs to
-the descriptor and character payload models, and proves the marked current
-record is the one consulted by the following font `W` streams. `ESC (s#W` / `ESC
-)s#W` reaches `0x11f96`: a zero count schedules delayed descriptor handler
+A second control-to-install fixture traces `ESC *c4660d37e5F` from the modeled
+`0xa904` ring source, uses the resulting current font id `0x1234` and current
+character `0x25` as the inputs to the descriptor and character payload models,
+and proves the marked current record is the one consulted by the following font
+`W` streams. `ESC (s#W` / `ESC )s#W` reaches `0x11f96`: a zero count schedules
+delayed descriptor handler
 `0x15d0a`, while any nonzero count schedules delayed payload installer `0x16c14`
 with the absolute byte count in `0x783140`. The executable harness also traces
 `ESC )s0W`, `ESC )s4W`, `ESC )s80W`, and the full `ESC )s2193W`
@@ -496,12 +497,13 @@ single following payload.
   and inline/downloaded `0x12f2e` payload fixtures plus type-2 payload-backed
   selected inline `0x1f0d2` wide and `0x1f1f0` segmented render rows, a
   selected-memory `0x1f264` segmented-wide isolation row, ROM dispatch traces
-  for `ESC &f-123y0x1X`, `ESC *c12a5b0P`, `ESC *c17d25e5F`, `ESC *c4660d37e5F`
-  feeding font install state, host-fetched `ESC )s0W` descriptor routing through
-  `0x15d0a`, `ESC )s4W`, host-fetched `ESC )s80W` resource payload installation,
-  and full host-fetched `ESC )s2193W` payload/object rendering, resource-ROM
-  glyph, `0x1f08e` named row-copy fixtures, a ROM-scanned row-copy span matrix,
-  and the full built-in glyph coverage scan.
+  for `ESC &f-123y0x1X`, `ESC *c12a5b0P`, `ESC *c17d25e5F`, host-fetched
+  `ESC *c4660d37e5F` feeding font install state, host-fetched `ESC )s0W`
+  descriptor routing through `0x15d0a`, `ESC )s4W`, host-fetched `ESC )s80W`
+  resource payload installation, and full host-fetched `ESC )s2193W`
+  payload/object rendering, resource-ROM glyph, `0x1f08e` named row-copy
+  fixtures, a ROM-scanned row-copy span matrix, and the full built-in glyph
+  coverage scan.
 - Replace the synthetic `ESC E` fixtures with parser-produced page-object
   fixtures to prove partial-page finalization and reset-visible page/control
   state from real queued objects.

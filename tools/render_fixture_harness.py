@@ -16354,6 +16354,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         counters={"0x782782": 7, "0x782786": 2},
         parser_mode=0,
     )
+    host_fetched_font_control_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(b"\x1b*c4660d37e5F"), direct_mode=0),
+        len(b"\x1b*c4660d37e5F"),
+    )
+    host_fetched_font_control_trace = trace_font_control_parser_dispatch_via_11774(
+        data,
+        host_fetched_font_control_stream["stream"],
+        records=[{"id": 0x1234, "flags": 0x00, "payload": 0x456789}],
+        counters={"0x782782": 7, "0x782786": 2},
+        parser_mode=0,
+    )
     checks.append(assert_equal("0x15a18/0x11f96-modeled font payload command edge", {
         "character_code": font_character_code,
         "zero_payload": font_payload_dispatch_header,
@@ -18825,6 +18836,96 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "." * 158,
             "." * 22 + "#." * 64 + ".#.#.#.#",
         ],
+    }))
+    checks.append(assert_equal("host-fetched font control stream feeds descriptor and character payload state", {
+        "fetched_stream": host_fetched_font_control_stream["stream"],
+        "fetch_source_count": len(host_fetched_font_control_stream["sources"]),
+        "fetch_source_set": sorted(set(host_fetched_font_control_stream["sources"])),
+        "remaining_ring": host_fetched_font_control_stream["state"]["ring"],
+        "control": {
+            "dispatch_handlers": [
+                event["handler"]
+                for event in host_fetched_font_control_trace["dispatches"]
+            ],
+            "dispatch_modes": [
+                event["next_mode"]
+                for event in host_fetched_font_control_trace["dispatches"]
+            ],
+            "commands": [
+                {key: command[key] for key in ("sequence", "parameter", "record", "state_effect", "mode_after_final")}
+                for command in host_fetched_font_control_trace["commands"]
+            ],
+            "current_font_id": host_fetched_font_control_trace["current_font_id"],
+            "current_character": host_fetched_font_control_trace["current_character"],
+            "records": host_fetched_font_control_trace["records"],
+            "counters": host_fetched_font_control_trace["counters"],
+        },
+        "descriptor": {
+            "current_id": host_fetched_font_control_trace["current_font_id"],
+            "records": host_fetched_font_control_trace["records"],
+            "sequence": font_descriptor_command_from_control["sequence"],
+            "restored_record": font_descriptor_command_from_control["restored_record"],
+            "route_handler": font_descriptor_command_from_control["route"]["handler"],
+        },
+        "payload": {
+            "char_code": host_fetched_font_control_trace["current_character"],
+            "table_entry": downloaded_segmented_wide_control_payload["table_entry"],
+            "record": downloaded_segmented_wide_control_payload["record"],
+        },
+    }, {
+        "fetched_stream": b"\x1b*c4660d37e5F",
+        "fetch_source_count": len(b"\x1b*c4660d37e5F"),
+        "fetch_source_set": ["ring"],
+        "remaining_ring": [],
+        "control": {
+            "dispatch_handlers": [0x011EB6, 0x011EC8, 0x011EDA, 0x015A56, 0x015A18, 0x016DF6],
+            "dispatch_modes": [1, 3, 16, 16, 16, 0],
+            "commands": [
+                {
+                    "sequence": b"\x1b*c4660d",
+                    "parameter": 0x1234,
+                    "record": b"\x80d\x12\x34\x00\x00",
+                    "state_effect": {"kind": "current-font-id", "stored_word": 0x1234},
+                    "mode_after_final": 16,
+                },
+                {
+                    "sequence": b"37e",
+                    "parameter": 0x25,
+                    "record": b"\x80e\x00\x25\x00\x00",
+                    "state_effect": {"kind": "current-character-code", "stored_word": 0x25},
+                    "mode_after_final": 16,
+                },
+                {
+                    "sequence": b"5F",
+                    "parameter": 5,
+                    "record": b"\x80F\x00\x05\x00\x00",
+                    "state_effect": {
+                        "kind": "font-control",
+                        "target": 0x16E86,
+                        "action": "mark-current",
+                        "suppressed": False,
+                        "changed": True,
+                    },
+                    "mode_after_final": 0,
+                },
+            ],
+            "current_font_id": 0x1234,
+            "current_character": 0x25,
+            "records": [{"id": 0x1234, "flags": 0x40, "payload": 0x456789}],
+            "counters": {"0x782782": 6, "0x782786": 3},
+        },
+        "descriptor": {
+            "current_id": 0x1234,
+            "records": [{"id": 0x1234, "flags": 0x40, "payload": 0x456789}],
+            "sequence": b"\x1b)s0W",
+            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "route_handler": 0x16498,
+        },
+        "payload": {
+            "char_code": 0x25,
+            "table_entry": 0x00DE,
+            "record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 88 00 00"),
+        },
     }))
     checks.append(assert_equal("font control stream state feeds descriptor route and character payload", {
         "control": {
@@ -28666,7 +28767,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " ".join(f"{byte:02x}" for byte in downloaded_segmented_wide_object),
         downloaded_segmented_wide_glyph["source_kind"],
     ))
-    lines.append("- font-control to install boundary: `ESC *c4660d37e5F` sets current id `0x%04x`, current character `0x%02x`, and mark counters `%s`; those parser-derived values drive the `ESC )s0W` current-record descriptor route to `0x%05x` and the `ESC )s2193W` character payload table entry `0x%04x`." % (
+    lines.append("- host-fetched font-control boundary: the complete `ESC *c4660d37e5F` stream drains from the modeled `0xa904` ring source, sets current id `0x%04x`, current character `0x%02x`, and mark counters `%s`; those parser-derived values drive the `ESC )s0W` current-record descriptor route to `0x%05x` and the `ESC )s2193W` character payload table entry `0x%04x`." % (
         font_control_download_target_trace["current_font_id"],
         font_control_download_target_trace["current_character"],
         font_control_download_target_trace["counters"],

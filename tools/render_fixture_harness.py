@@ -8669,6 +8669,42 @@ def render_band_entry_via_1ef6a(data: bytes, resources: bytes, render_record: di
     }
 
 
+def render_published_page_record_via_1ed84_1ef6a(
+    data: bytes,
+    resources: bytes,
+    published_page_record: dict[str, object],
+    *,
+    base_pointer: int = 0x00100000,
+    width_word: int = 0x0020,
+    band_divisor: int = 0x0005,
+) -> dict[str, object]:
+    """Carry a modeled 0xff1e published pool record through 0x1ed84 and 0x1ef6a."""
+    render_record = copy_active_page_record_to_render_record_via_1ed84(published_page_record)
+    fields = render_record["render_record_fields"]
+    if not isinstance(fields, dict):
+        raise AssertionError("published page-record render entry needs render-record fields")
+    fields = dict(fields)
+    fields.update({
+        "long_00": int(base_pointer) & 0xFFFFFFFF,
+        "word_04": int(width_word) & 0xFFFF,
+        "word_06": int(band_divisor) & 0xFFFF,
+        "word_08": int(fields.get("word_08", 0)) & 0xFFFF,
+    })
+    bucket_word = int(fields.get("word_10", 0)) & 0xFFFF
+    bucket_root = fields.get("bucket_root_18", render_record.get("bucket_root"))
+    if isinstance(bucket_root, bytes):
+        fields["bucket_array_18"] = {bucket_word: [bucket_root]}
+    else:
+        fields["bucket_array_18"] = {bucket_word: []}
+    render_record["render_record_fields"] = fields
+    entry = render_band_entry_via_1ef6a(data, resources, render_record)
+    return {
+        "active_copy": render_record["active_record_copy_fields"],
+        "render_record_fields": fields,
+        "entry": entry,
+    }
+
+
 def rectangle_command_state(**overrides: object) -> dict[str, object]:
     state: dict[str, object] = {
         "width": pack12(0),
@@ -25788,6 +25824,80 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "published_rows": positioned_mode0["rows"][:4],
         },
     }))
+    published_render_entries = {
+        "reset": render_published_page_record_via_1ed84_1ef6a(data, resources, mixed_reset_published_page_record),
+        "ff": render_published_page_record_via_1ed84_1ef6a(data, resources, ff_published_page_record),
+        "page_size": render_published_page_record_via_1ed84_1ef6a(data, resources, page_geometry_published_page_record),
+        "orientation": render_published_page_record_via_1ed84_1ef6a(data, resources, orientation_published_page_record),
+    }
+    checks.append(assert_equal("published page records feed 0x1ed84 and 0x1ef6a render entry", {
+        name: {
+            "stream": {
+                "reset": mixed_reset_page_record_stream["stream"],
+                "ff": ff_page_record_stream["stream"],
+                "page_size": page_geometry_page_record_stream["stream"],
+                "orientation": orientation_page_record_stream["stream"],
+            }[name],
+            "parser_handlers": parser_handler_summary(mixed_publication_parser_trace[name]),
+            "active_copy": report["active_copy"],
+            "setup": {
+                key: report["entry"]["setup"][key]
+                for key in ("dividend", "divisor_word_06", "remainder_783a22", "band_rows_scaled_783a20", "destination_base_783a28")
+            },
+            "call_order": report["entry"]["call_order"],
+            "dispatch": [
+                {
+                    key: entry[key]
+                    for key in ("chain_index", "object_byte_4", "class_mask", "branch", "target", "context_slot")
+                }
+                for entry in report["entry"]["dispatch"]["entries"]
+            ],
+            "rows": report["entry"]["rows"],
+        }
+        for name, report in published_render_entries.items()
+    }, {
+        name: {
+            "stream": {
+                "reset": b"!\x1bE",
+                "ff": b"\x1b&k2G!\f",
+                "page_size": b"!\x1b&l1A",
+                "orientation": b"!\x1b&l1O",
+            }[name],
+            "parser_handlers": {
+                "reset": [0x00D04A, 0x00CC52],
+                "ff": [0x00EDF8, 0x00D04A, 0x00F0F0],
+                "page_size": [0x00D04A, 0x00FC74],
+                "orientation": [0x00D04A, 0x010220],
+            }[name],
+            "active_copy": {
+                "source_word_18": 0,
+                "source_word_1a": 0,
+                "render_word_0a": 0,
+                "render_word_0c": 0,
+                "render_word_0e": 0,
+                "render_word_10": 0,
+                "render_word_16": 0,
+            },
+            "setup": {
+                "dividend": 0,
+                "divisor_word_06": 5,
+                "remainder_783a22": 0,
+                "band_rows_scaled_783a20": 0x0050,
+                "destination_base_783a28": 0x00100000,
+            },
+            "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+            "dispatch": [{
+                "chain_index": 0,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 0,
+            }],
+            "rows": positioned_mode0["rows"],
+        }
+        for name in ("reset", "ff", "page_size", "orientation")
+    }))
 
     lines.append("## Host Byte Fetch Fixtures")
     lines.append("")
@@ -26381,7 +26491,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " -> ".join("0x%06x" % address for address in render_entry["call_order"]),
         render_entry["rows"][1],
     ))
-    lines.append("- remaining gap: replace this synthetic render/page-control record with a parser-produced page root and compare the finalized record published by `0xff1e`.")
+    lines.append("- remaining gap: broaden this mixed-layer synthetic render entry to published/parser-produced records with true heterogeneous bucket chains and full-page merge coverage.")
     lines.append("")
 
     lines.append("## Parser-Derived Raster State Fixture")
@@ -26843,6 +26953,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("")
     lines.append("A ROM parser trace now anchors the publication streams before the modeled page-record layer: `21 1b 45` routes printable `!` through the mode-0 `0xd04a` branch and `ESC E` through handler `0xcc52`; `1b 26 6b 32 47 21 0c` routes `ESC &k2G` through handler `0xedf8`, printable `!` through `0xd04a`, and FF through handler `0xf0f0`; `21 1b 26 6c 31 41` and `21 1b 26 6c 31 4f` route printable `!` through `0xd04a` before page-size `ESC &l1A` reaches `0xfc74` and orientation `ESC &l1O` reaches `0x10220`.")
     lines.append("The publication-boundary fixture ties those parser handler sequences to the modeled page-record side for the same four byte streams: each allocates one root on printable `!`, publishes one compact bucket through `0xff1e`, clears the current root, and renders the published rows after the `0x1edc6` bridge.")
+    lines.append("The published-record render-entry fixture then carries each of those four `0xff1e` records through `0x1ed84` active-record copy and the `0x1ef6a` call order, selecting the compact bucket through `0x1efc2` and rendering the same rows.")
     lines.append("")
     lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now starts without a current page root, marks the first printable as the page-record root allocation point, models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`.")
     lines.append("")
@@ -26889,7 +27000,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append(f"- published FF page-record bucket bytes: `{' '.join(f'{byte:02x}' for byte in ff_published_page_record['bucket_root'])}`")
     lines.append("- published FF page-record bridge rows match the pre-eject compact text rows.")
-    lines.append("- remaining gap: replace the fixture-only source and bucket states with fuller parser-produced page objects; the first printable queue step now marks page-record root allocation for the reset, FF, page-size, and orientation publication fixtures.")
+    lines.append("- remaining gap: replace the fixture-only source and bucket states with fuller live-parser page objects and decode the final full-page merge; the reset, FF, page-size, and orientation records now run from parser trace through publication, `0x1ed84`, and `0x1ef6a`.")
     lines.append("")
 
     lines.append("## `0xd3b2` Unflagged Positioning Fixture")

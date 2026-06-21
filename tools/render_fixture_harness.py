@@ -16815,6 +16815,115 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         },
     }))
+    host_fetched_font_descriptor_streams = {
+        "current": fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(b"\x1b)s0W\x04\x00\xaa\xbb"), direct_mode=0),
+            len(b"\x1b)s0W\x04\x00\xaa\xbb"),
+        ),
+        "continuation": fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(b"\x1b)s0W\x04\x01\xcc"), direct_mode=0),
+            len(b"\x1b)s0W\x04\x01\xcc"),
+        ),
+    }
+    host_fetched_font_descriptor_traces = {
+        "current": trace_font_parser_dispatch_via_11774(
+            data,
+            host_fetched_font_descriptor_streams["current"]["stream"],
+            descriptor_budget=4,
+        ),
+        "continuation": trace_font_parser_dispatch_via_11774(
+            data,
+            host_fetched_font_descriptor_streams["continuation"]["stream"],
+            descriptor_budget=3,
+        ),
+    }
+    host_fetched_font_descriptor_commands = {
+        key: trace["commands"][0]
+        for key, trace in host_fetched_font_descriptor_traces.items()
+    }
+    for command in host_fetched_font_descriptor_commands.values():
+        assert isinstance(command, dict)
+    checks.append(assert_equal("host-fetched font descriptor streams route through 0x15d0a", {
+        "current": {
+            "fetched_stream": host_fetched_font_descriptor_streams["current"]["stream"],
+            "fetch_sources": host_fetched_font_descriptor_streams["current"]["sources"],
+            "remaining_ring": host_fetched_font_descriptor_streams["current"]["state"]["ring"],
+            "parser_handlers": [
+                event["handler"]
+                for event in host_fetched_font_descriptor_traces["current"]["dispatches"]
+            ],
+            "parser_modes": [
+                event["next_mode"]
+                for event in host_fetched_font_descriptor_traces["current"]["dispatches"]
+            ],
+            "restored_record": host_fetched_font_descriptor_commands["current"]["restored_record"],
+            "descriptor_offset": host_fetched_font_descriptor_commands["current"]["descriptor_offset"],
+            "descriptor": host_fetched_font_descriptor_commands["current"]["descriptor"],
+            "descriptor_byte_budget": host_fetched_font_descriptor_commands["current"]["descriptor_byte_budget"],
+            "route": {
+                key: font_descriptor_command_current["route"][key]
+                for key in ("path", "target_payload", "object_bit30", "handler", "handler_meaning")
+            },
+        },
+        "continuation": {
+            "fetched_stream": host_fetched_font_descriptor_streams["continuation"]["stream"],
+            "fetch_sources": host_fetched_font_descriptor_streams["continuation"]["sources"],
+            "remaining_ring": host_fetched_font_descriptor_streams["continuation"]["state"]["ring"],
+            "parser_handlers": [
+                event["handler"]
+                for event in host_fetched_font_descriptor_traces["continuation"]["dispatches"]
+            ],
+            "parser_modes": [
+                event["next_mode"]
+                for event in host_fetched_font_descriptor_traces["continuation"]["dispatches"]
+            ],
+            "restored_record": host_fetched_font_descriptor_commands["continuation"]["restored_record"],
+            "descriptor_offset": host_fetched_font_descriptor_commands["continuation"]["descriptor_offset"],
+            "descriptor": host_fetched_font_descriptor_commands["continuation"]["descriptor"],
+            "descriptor_byte_budget": host_fetched_font_descriptor_commands["continuation"]["descriptor_byte_budget"],
+            "route": {
+                key: font_descriptor_command_continuation["route"][key]
+                for key in ("path", "target_payload", "object_bit30", "handler", "handler_meaning")
+            },
+        },
+    }, {
+        "current": {
+            "fetched_stream": b"\x1b)s0W\x04\x00\xaa\xbb",
+            "fetch_sources": ["ring"] * 9,
+            "remaining_ring": [],
+            "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "parser_modes": [1, 4, 13, 0],
+            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "descriptor_offset": 5,
+            "descriptor": bytes.fromhex("04 00 aa bb"),
+            "descriptor_byte_budget": 4,
+            "route": {
+                "path": "current-record",
+                "target_payload": 0x456789,
+                "object_bit30": 1,
+                "handler": 0x16498,
+                "handler_meaning": "downloaded-character-object",
+            },
+        },
+        "continuation": {
+            "fetched_stream": b"\x1b)s0W\x04\x01\xcc",
+            "fetch_sources": ["ring"] * 8,
+            "remaining_ring": [],
+            "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "parser_modes": [1, 4, 13, 0],
+            "restored_record": b"\x80W\x00\x00\x00\x01",
+            "descriptor_offset": 5,
+            "descriptor": bytes.fromhex("04 01 cc"),
+            "descriptor_byte_budget": 3,
+            "route": {
+                "path": "continuation",
+                "target_payload": 0x654321,
+                "object_bit30": 0,
+                "handler": 0x15C4C,
+                "handler_meaning": "resume-downloaded-font-resource-object",
+            },
+        },
+    }))
 
     font_records = [
         {"id": 0x1234, "flags": 0xE0, "payload": 0x123456},
@@ -28338,6 +28447,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_descriptor_continuation_dispatch_command["descriptor_offset"],
         " ".join(f"{byte:02x}" for byte in font_descriptor_current_dispatch_command["descriptor"]),
         " ".join(f"{byte:02x}" for byte in font_descriptor_continuation_dispatch_command["descriptor"]),
+        font_descriptor_command_current["route"]["handler"],
+        font_descriptor_command_continuation["route"]["handler"],
+    ))
+    lines.append("- host-fetched descriptor boundary: current-record and continuation `ESC )s0W` streams drain from the modeled `0xa904` ring source, restore record `%s`, and route through handlers `0x%05x` / `0x%05x`." % (
+        " ".join(f"{byte:02x}" for byte in host_fetched_font_descriptor_commands["current"]["restored_record"]),
         font_descriptor_command_current["route"]["handler"],
         font_descriptor_command_continuation["route"]["handler"],
     ))

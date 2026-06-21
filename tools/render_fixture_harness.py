@@ -19646,6 +19646,34 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
         },
     )
+    real_default_class_zero_candidates = [
+        {**dict(candidate), "builtin_byte_0x20": 0}
+        for candidate in actual_candidate_windows["class_zero_low"]  # type: ignore[index]
+    ]
+    real_default_class_one_candidates = [
+        {**dict(candidate), "builtin_byte_0x20": 1}
+        for candidate in actual_candidate_windows["class_one_low"]  # type: ignore[index]
+    ]
+    default_synth_real_primary_fallback = default_font_synthesized_search_via_1ab84(
+        selector_78289f=1,
+        selector_78289e=0,
+        requested_symbol=0x0005,
+        range_candidates_by_orientation={},
+        fallback_candidates_by_orientation={
+            0: real_default_class_zero_candidates,
+            1: real_default_class_one_candidates,
+        },
+    )
+    default_synth_real_secondary_fallback = default_font_synthesized_search_via_1ab84(
+        selector_78289f=0,
+        selector_78289e=1,
+        requested_symbol=0x000E,
+        range_candidates_by_orientation={},
+        fallback_candidates_by_orientation={
+            0: real_default_class_zero_candidates,
+            1: real_default_class_one_candidates,
+        },
+    )
     checks.append(assert_equal("0x1ab84 synthesized default-font search", {
         "initial": select_keys(default_synth_initial, (
             "selected_pointer",
@@ -19685,6 +19713,40 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "phase",
         )),
         "flipped_fallback_event": default_synth_flipped_fallback["events"][-1],
+        "real_builtins": {
+            "primary_roman_extension": {
+                "summary": select_keys(default_synth_real_primary_fallback, (
+                    "selected_pointer",
+                    "selected_longword",
+                    "word",
+                    "source",
+                    "reader",
+                    "reader_source",
+                    "initial_selector_78289f",
+                    "final_selector_78289f",
+                    "selector_78289e",
+                    "phase",
+                )),
+                "flip_event": default_synth_real_primary_fallback["events"][0],
+                "selected_event": default_synth_real_primary_fallback["events"][-1],
+            },
+            "secondary_line_printer": {
+                "summary": select_keys(default_synth_real_secondary_fallback, (
+                    "selected_pointer",
+                    "selected_longword",
+                    "word",
+                    "source",
+                    "reader",
+                    "reader_source",
+                    "initial_selector_78289f",
+                    "final_selector_78289f",
+                    "selector_78289e",
+                    "phase",
+                )),
+                "flip_event": default_synth_real_secondary_fallback["events"][0],
+                "selected_event": default_synth_real_secondary_fallback["events"][-1],
+            },
+        },
     }, {
         "initial": {
             "selected_pointer": 0x4700,
@@ -19744,6 +19806,82 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "phase": "flipped-fallback",
             "selector_78289f": 1,
             "selector_78289e": 0,
+        },
+        "real_builtins": {
+            "primary_roman_extension": {
+                "summary": {
+                    "selected_pointer": 0x782354,
+                    "selected_longword": 0x4008004C,
+                    "word": 0x0005,
+                    "source": "0x1b060",
+                    "reader": "0x15890",
+                    "reader_source": "+0x22-word",
+                    "initial_selector_78289f": 1,
+                    "final_selector_78289f": 0,
+                    "selector_78289e": 0,
+                    "phase": "flipped-fallback",
+                },
+                "flip_event": {
+                    "wrapper": 0x01AB84,
+                    "phase": "flip-orientation",
+                    "from_selector_78289f": 1,
+                    "to_selector_78289f": 0,
+                },
+                "selected_event": {
+                    "helper": 0x01AE7E,
+                    "probe": "0x1b060",
+                    "index": 0,
+                    "slot_pointer": 0x782354,
+                    "longword": 0x4008004C,
+                    "default_match": 1,
+                    "candidate_word": 0x0115,
+                    "reader": "0x15890",
+                    "reader_source": "+0x22-word",
+                    "match_kind": "roman8-fallback",
+                    "selected": True,
+                    "wrapper": 0x01AB84,
+                    "phase": "flipped-fallback",
+                    "selector_78289f": 0,
+                    "selector_78289e": 0,
+                },
+            },
+            "secondary_line_printer": {
+                "summary": {
+                    "selected_pointer": 0x782330,
+                    "selected_longword": 0x4009A984,
+                    "word": 0x000E,
+                    "source": "0x1b060",
+                    "reader": "0x15890",
+                    "reader_source": "+0x22-word",
+                    "initial_selector_78289f": 0,
+                    "final_selector_78289f": 1,
+                    "selector_78289e": 1,
+                    "phase": "flipped-fallback",
+                },
+                "flip_event": {
+                    "wrapper": 0x01AB84,
+                    "phase": "flip-orientation",
+                    "from_selector_78289f": 0,
+                    "to_selector_78289f": 1,
+                },
+                "selected_event": {
+                    "helper": 0x01AE7E,
+                    "probe": "0x1b060",
+                    "index": 3,
+                    "slot_pointer": 0x782330,
+                    "longword": 0x4009A984,
+                    "default_match": 1,
+                    "candidate_word": 0x000E,
+                    "reader": "0x15890",
+                    "reader_source": "+0x22-word",
+                    "match_kind": "exact",
+                    "selected": True,
+                    "wrapper": 0x01AB84,
+                    "phase": "flipped-fallback",
+                    "selector_78289f": 1,
+                    "selector_78289e": 1,
+                },
+            },
         },
     }))
     default_candidate_range_1 = default_font_candidate_search_via_1ad66(
@@ -19819,14 +19957,6 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         ],
     )
-    real_default_class_zero_candidates = [
-        {**dict(candidate), "builtin_byte_0x20": 0}
-        for candidate in actual_candidate_windows["class_zero_low"]  # type: ignore[index]
-    ]
-    real_default_class_one_candidates = [
-        {**dict(candidate), "builtin_byte_0x20": 1}
-        for candidate in actual_candidate_windows["class_one_low"]  # type: ignore[index]
-    ]
     real_default_candidate_primary_fallback = default_font_candidate_search_via_1ad66(
         selector_78289f=0,
         selector_78289e=0,
@@ -37448,6 +37578,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         real_resolver_mode3_suppressed_current["selected_pointer"],
     ))
     lines.append("- synthesized default search: `0x1ab84` clears the selected candidate pointer, tries `0x1adaa(1)` and `0x1adaa(2)` under the current `0x78289f`, flips `0x78289f` only after both miss, repeats both range searches, and finally falls through to `0x1ae7e`; a flipped-orientation hit or miss leaves the flipped selector in place for the caller.")
+    lines.append("- real built-in synthesized default search: `0x1ab84` over scanned candidates flips orientation before fallback, then selects slot `0x%06x` / record `0x%06x` by Roman-8 fallback for requested `0x0005` and slot `0x%06x` / record `0x%06x` by exact `0x000e`." % (
+        default_synth_real_primary_fallback["selected_pointer"],
+        int(default_synth_real_primary_fallback["selected_longword"]) & 0x00FFFFFF,
+        default_synth_real_secondary_fallback["selected_pointer"],
+        int(default_synth_real_secondary_fallback["selected_longword"]) & 0x00FFFFFF,
+    ))
     lines.append("- default-font candidate search: `0x1ad66` first tries `0x1adaa(1)` and then `0x1adaa(2)` before `0x1ae7e`; `0x1bbfe` now derives range-hit words through the bit-30-selected symbol readers, and `0x1b060` validates default candidates by orientation, pitch `0x03e8`, height `0x04b0`, style bytes, spacing byte `3`, and requested-symbol fallback rules. The fixture pins primary-slot range-1 word `0x%04x`, secondary-slot range-2 word `0x%04x`, fallback `0x1b060` requested word `0x%04x`, and base-candidate reader sources `%s` / `%s`." % (
         default_candidate_range_1["word"],
         default_candidate_range_2["word"],

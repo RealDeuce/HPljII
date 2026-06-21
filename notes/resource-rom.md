@@ -312,8 +312,11 @@ one selects record `0x01a984` by exact symbol `0x000e`. The same scanned
 windows now feed mode-3 `0x1b50e`: ordinal 1 selects slot `0x782354` /
 record `0x08004c`, a non-Roman-8 duplicate ordinal 2 returns requested
 word `0x0005`, and current-slot duplicate suppression advances to slot
-`0x782358` / record `0x080418`. The remaining live-state gap is real
-parser/font-state candidate records feeding `0x1b250` and `0x1ab84`.
+`0x782358` / record `0x080418`. The same real windows feed `0x1ab84`
+after its orientation flip, selecting record `0x00004c` by Roman-8
+fallback and record `0x01a984` by exact `0x000e`. The remaining
+live-state gap is real parser/font-state candidate records feeding
+`0x1b250` and the default-table caller state.
 
 This makes the current renderer identity
 `(context longword, mapped glyph byte)`. For example, the unnamed
@@ -331,10 +334,10 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    relying on string labels alone.
 3. Replace the modeled default-font candidate records with a live
    parser/font-state fixture that proves the real records feeding
-   `0x1b250` and `0x1ab84`; real scanned built-in windows now feed
-   `0x1b50e` mode-3 selection and `0x1b060` fallback selection. Decide
-   how to document the undocumented but parser-exposed `@0..@2`
-   table/copy variants.
+   `0x1b250`; real scanned built-in windows now feed `0x1b50e` mode-3
+   selection, `0x1ab84` synthesized fallback, and `0x1b060` fallback
+   selection. Decide how to document the undocumented but parser-exposed
+   `@0..@2` table/copy variants.
 4. Replace the host-fetched font-control, descriptor, resource-payload,
    and downloaded-character boundaries with a full live parser-state run
    that populates current records/source objects; then replace

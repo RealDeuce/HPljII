@@ -2264,6 +2264,12 @@ def render_dispatch_table_report(data: bytes) -> str:
     lines.append("`tools/render_fixture_harness.py` now has an executable `0x1efc2` bucket-chain fixture that selects render-record bucket word `+0x10`, converts it to a `+0x18` bucket-array slot offset, and pins the compact, segment-list, and encoded-span branch targets plus the compact/encoded subtable entries.")
     lines.append("")
 
+    lines.append("## Segment-List Bucket Renderer `0x1f812`")
+    lines.append("")
+    lines.append("The `0x40..0x7f` bucket class enters `0x1f812` with `A1` pointing at object byte `+4`. The routine skips to object word `+6` for an entry count, then consumes six bytes per entry: coordinate word, a row-count byte whose low nibble becomes `D2`, one skipped byte, and a width/mask word. Helper `0x1f836` decodes the coordinate through `0x1f3d4`, converts the width/mask word into a full-word count plus a trailing mask from table `0x308f2`, and `0x1f862` writes full `0xffff` words plus that trailing mask for each row.")
+    lines.append("`tools/render_fixture_harness.py` now has an executable `0x1f812` fixture that renders one counted segment-list span through this layout and verifies the ROM mask table value.")
+    lines.append("")
+
     compact_table = [
         ("`object+4 & 0x30 == 0x00`", 0),
         ("`object+4 & 0x30 == 0x10`", 1),

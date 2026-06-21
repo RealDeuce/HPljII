@@ -8840,6 +8840,65 @@ def classify_bucket_chain_via_1efc2(data: bytes, render_record: dict[str, object
     }
 
 
+def render_segment_list_object_via_1f812(data: bytes, obj: bytes, dest_stride: int = 0x20, band_rows: int = 16) -> dict[str, object]:
+    """Model the 0x1f812 segment-list bucket renderer."""
+    if len(obj) < 8:
+        raise AssertionError("segment-list object must include link, selector, and count")
+    if obj[4] & 0xC0 != 0x40:
+        raise AssertionError("segment-list fixture requires object byte +4 high bits 0x40")
+    count = u16(obj, 6)
+    offset = 8
+    dest = bytearray(band_rows * dest_stride)
+    rendered: list[dict[str, object]] = []
+    max_width = 0
+    max_row = 0
+
+    for index in range(count):
+        if offset + 6 > len(obj):
+            raise AssertionError("segment-list object ended before all entries")
+        coord = u16(obj, offset)
+        row_count = obj[offset + 2] & 0x0F
+        width_word = u16(obj, offset + 4)
+        offset += 6
+
+        decoded = coord_decode(coord, band_base=0, payload_offset=0)
+        row = int(decoded["row_index"])
+        byte_offset = int(decoded["byte_pair_offset"])
+        full_words = width_word >> 4
+        mask_index = width_word & 0x0F
+        trailing_mask = u16(data, 0x308F2 + mask_index * 2)
+        if row + row_count > band_rows:
+            raise AssertionError("segment-list fixture crosses the synthetic band")
+        for row_offset in range(row_count):
+            start = (row + row_offset) * dest_stride + byte_offset
+            for word_index in range(full_words):
+                dest[start + word_index * 2 : start + word_index * 2 + 2] = b"\xff\xff"
+            mask_start = start + full_words * 2
+            dest[mask_start : mask_start + 2] = trailing_mask.to_bytes(2, "big")
+
+        width_pixels = byte_offset * 8 + full_words * 16 + mask_index
+        max_width = max(max_width, width_pixels)
+        max_row = max(max_row, row + row_count)
+        rendered.append({
+            "entry_index": index,
+            "coord": coord,
+            "decoded": decoded,
+            "row_count": row_count,
+            "width_word": width_word,
+            "full_words": full_words,
+            "mask_index": mask_index,
+            "trailing_mask": trailing_mask,
+            "target": 0x01F862,
+        })
+
+    return {
+        "selector": obj[4],
+        "count": count,
+        "entries": rendered,
+        "rows": bitmap_bytes_to_rows(dest, max_row, max_width, dest_stride),
+    }
+
+
 def raster_graphics_state(**overrides: int) -> dict[str, int]:
     state = {
         "baseline_word": 0,
@@ -18914,6 +18973,33 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "empty": False,
     }))
+    segment_list_object = bytes.fromhex("00 00 00 00 40 00 00 01 10 01 02 00 00 25")
+    segment_list_rendered = render_segment_list_object_via_1f812(data, segment_list_object, band_rows=4)
+    checks.append(assert_equal("0x1f812 segment-list object renders counted mask spans", segment_list_rendered, {
+        "selector": 0x40,
+        "count": 1,
+        "entries": [{
+            "entry_index": 0,
+            "coord": 0x1001,
+            "decoded": {
+                "row_index": 1,
+                "byte_pair_offset": 2,
+                "a001": 0,
+                "a1": 0x22,
+            },
+            "row_count": 2,
+            "width_word": 0x0025,
+            "full_words": 2,
+            "mask_index": 5,
+            "trailing_mask": 0xF800,
+            "target": 0x01F862,
+        }],
+        "rows": [
+            "." * 53,
+            "." * 16 + "#" * 37,
+            "." * 16 + "#" * 37,
+        ],
+    }))
     rule_page_record: dict[str, object] = {}
     rule_result = queue_rectangle_rule_via_13386(
         rule_page_record,
@@ -25890,6 +25976,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         bucket_dispatch_report["bucket_word_10"],
         bucket_dispatch_report["bucket_slot_offset"],
         ", ".join("`%s -> 0x%06x`" % (entry["branch"], entry["target"]) for entry in bucket_dispatch_report["entries"]),
+    ))
+    lines.append("- `0x1f812` segment-list fixture reads count `%d` at object `+0x06`; entry 0 decodes coord `0x%04x`, row count `%d`, width word `0x%04x`, full words `%d`, and trailing mask `0x%04x` before filling rows through `0x1f862`." % (
+        segment_list_rendered["count"],
+        segment_list_rendered["entries"][0]["coord"],
+        segment_list_rendered["entries"][0]["row_count"],
+        segment_list_rendered["entries"][0]["width_word"],
+        segment_list_rendered["entries"][0]["full_words"],
+        segment_list_rendered["entries"][0]["trailing_mask"],
     ))
     lines.append("- producer-shaped rectangle/rule fixtures: `0x13386`/`0x133aa` stores bucket byte `0x%02x`, key `0x%04x`, width `0x%04x`, and height `0x%04x` before bridge byte `+5` becomes `0x%02x`; `0x137a2`/`0x136d2` stores key `0x%04x` and extent `0x%04x` before bridge byte `+5` becomes `0x%02x`." % (
         rule_bridged["rule_list"][0][4],

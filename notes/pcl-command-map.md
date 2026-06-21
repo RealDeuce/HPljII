@@ -229,14 +229,16 @@ storage, stop-kept cleanup, execute/call frame creation, overlay enable/disable
 state, selector `10` survival through delete-temporary, selector `9` making the
 record removable, selector `8` clearing only the current id, selector `6`
 clearing pool records, definition-mode and active-data-chain guard suppression,
-the same complete command streams draining from modeled `0xa904` ring fetch into
-those records and frames, `0xa904` data-chain byte fetch and end-marker
-outer-source resumption for stored execute/call payloads, replayed `!\r` parser
-dispatch through `0xd04a`/`0xf02c`, modeled printable/CR processing, the
-page-record allocator/bridge shape for that payload, and a stored `ESC
-&k1G!\r!` mixed-control macro payload replaying through `0xedf8`/`0xd04a`/
-`0xf02c`/`0xd04a` into rows that match the direct mixed-stream model; full
-replay of macro payload bytes through the live parser is still open.
+the same definition stream draining from modeled `0xa904` ring fetch before the
+alternate parser stores payload and exits through `0xdd08`, the complete command
+streams draining from modeled `0xa904` ring fetch into those records and frames,
+`0xa904` data-chain byte fetch and end-marker outer-source resumption for stored
+execute/call payloads, replayed `!\r` parser dispatch through `0xd04a`/`0xf02c`,
+modeled printable/CR processing, the page-record allocator/bridge shape for that
+payload, and a stored `ESC &k1G!\r!` mixed-control macro payload replaying
+through `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into rows that match the direct
+mixed-stream model; full replay of macro payload bytes through the live parser
+is still open.
 
 The `ESC &f-123y0x1X` fixture is now also traced through ROM parser modes `0 ->
 1 -> 5 -> 17 -> 17 -> 17 -> 0`, selecting `0xe112`, `0xdd08`, and `0xdd08` for

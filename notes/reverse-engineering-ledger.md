@@ -149,11 +149,12 @@ while still routing `ESC &f1X` to `0xdd08`, and macro command-stream fixtures
 now drive id/start/stop plus plain and mixed-control payload definition,
 execute/call frame creation, overlay enable/disable state, delete-current/all,
 guard-state suppression, and permanence/delete state, and now drain those
-command streams from modeled `0xa904` ring fetch before reaching the same macro
-records and data-chain frames. The harness also covers `0xa904` data-chain byte
-fetch and end-marker outer-source resumption, execute/call replayed `!\r`
-dispatch through `0xd04a`/`0xf02c` into page-record output, replayed `ESC
-&k1G!\r!` dispatch through `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into page-record
+definition and command streams from modeled `0xa904` ring fetch before reaching
+the same alternate parser trace, macro records, and data-chain frames. The
+harness also covers `0xa904` data-chain byte fetch and end-marker outer-source
+resumption, execute/call replayed `!\r` dispatch through `0xd04a`/`0xf02c` into
+page-record output, replayed `ESC &k1G!\r!` dispatch through `0xedf8`/`0xd04a`/
+`0xf02c`/`0xd04a` into page-record
 output, and macro-payload rule/raster band composition from command bytes
 
 ### Page geometry tables

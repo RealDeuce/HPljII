@@ -11375,8 +11375,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         data,
         b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X",
     )
+    macro_definition_host_stream = b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X"
+    macro_definition_host_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(macro_definition_host_stream), direct_mode=0),
+        len(macro_definition_host_stream),
+    )
+    macro_definition_host_dispatch = trace_macro_definition_parser_dispatch_via_11774(
+        data,
+        macro_definition_host_fetch["stream"],
+    )
     macro_definition_dispatch_records = macro_definition_dispatch["state"]["records"]
+    macro_definition_host_records = macro_definition_host_dispatch["state"]["records"]
     assert isinstance(macro_definition_dispatch_records, list)
+    assert isinstance(macro_definition_host_records, list)
     checks.append(assert_equal("0x116f6 alternate parser routes macro stop but suppresses payload controls", {
         "dispatches": [
             {
@@ -11484,6 +11495,92 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "final": {"current_macro_id": 123, "alternate_mode": 0, "macro_error": 0},
         "record0": {"id": 123, "payload": b"!\r", "permanent": False},
+        "final_mode": 0,
+    }))
+    checks.append(assert_equal("host-fetched macro definition stream routes alternate parser table", {
+        "fetched_stream": macro_definition_host_fetch["stream"],
+        "source_set": sorted(set(macro_definition_host_fetch["sources"])),
+        "source_count": len(macro_definition_host_fetch["sources"]),
+        "remaining_ring": macro_definition_host_fetch["state"]["ring"],
+        "commands": [
+            {
+                "kind": command["kind"],
+                "sequence": command["sequence"],
+                "handler": command.get("final_dispatch", {}).get("handler"),
+                "alternate": command.get("alternate"),
+                "state_events": command["state_events"],
+            }
+            for command in macro_definition_host_dispatch["commands"]
+        ],
+        "payload_dispatches": macro_definition_host_dispatch["commands"][2]["payload_dispatches"],
+        "record0": macro_definition_host_records[0],
+        "final": select_keys(
+            macro_definition_host_dispatch["state"],
+            ("current_macro_id", "alternate_mode", "macro_error"),
+        ),
+        "final_mode": macro_definition_host_dispatch["final_mode"],
+    }, {
+        "fetched_stream": b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X",
+        "source_set": ["ring"],
+        "source_count": len(b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X"),
+        "remaining_ring": [],
+        "commands": [
+            {
+                "kind": "macro-command",
+                "sequence": b"\x1b&f123Y",
+                "handler": 0x00E112,
+                "alternate": False,
+                "state_events": [{"kind": "macro-id", "current_macro_id": 123}],
+            },
+            {
+                "kind": "macro-command",
+                "sequence": b"\x1b&f0X",
+                "handler": 0x00DD08,
+                "alternate": False,
+                "state_events": [{"kind": "macro-start", "status": 0, "index": 0, "auto_prefix": False}],
+            },
+            {
+                "kind": "alternate-payload",
+                "sequence": b"!\r",
+                "handler": None,
+                "alternate": None,
+                "state_events": [{
+                    "kind": "macro-definition-payload",
+                    "index": 0,
+                    "payload": b"!\r",
+                    "record_payload": b"!\r",
+                }],
+            },
+            {
+                "kind": "macro-command",
+                "sequence": b"\x1b&f1X",
+                "handler": 0x00DD08,
+                "alternate": True,
+                "state_events": [{"kind": "macro-stop-kept", "index": 0, "payload": b"!\r"}],
+            },
+        ],
+        "payload_dispatches": [
+            {
+                "offset": 12,
+                "byte": ord("!"),
+                "mode_before": 0,
+                "alternate_handler": None,
+                "alternate_next_mode": 0,
+                "normal_handler": None,
+                "normal_next_mode": 0,
+            },
+            {
+                "offset": 13,
+                "byte": 0x0D,
+                "mode_before": 0,
+                "alternate_handler": None,
+                "alternate_next_mode": 0,
+                "normal_handler": 0x00F02C,
+                "normal_next_mode": 0,
+            },
+        ],
+        "record0": {"id": 123, "payload": b"!\r", "permanent": False},
+        "final": {"current_macro_id": 123, "alternate_mode": 0, "macro_error": 0},
         "final_mode": 0,
     }))
     macro_stream_execute = render_macro_command_stream_via_e112_dd08(b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f2X")
@@ -27911,6 +28008,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append("- macro definition dispatch trace proves `ESC &f1X` exits through alternate table `0x116f6` handler `0xdd08`, while payload bytes `%s` are stored and not claimed by alternate table handlers; normal CR would have selected `0xf02c` outside alternate mode." % (
         " ".join(f"{byte:02x}" for byte in macro_definition_dispatch["commands"][2]["sequence"]),
+    ))
+    lines.append("- host-fetched macro definition stream drains `%d` bytes from the modeled `0xa904` ring source before the same alternate parser trace stores payload `%s` and exits definition mode." % (
+        len(macro_definition_host_fetch["stream"]),
+        " ".join(f"{byte:02x}" for byte in macro_definition_host_records[0]["payload"]),
     ))
     lines.append("- macro definition stream `%s` stores payload `%s`, stops with the record kept, then `ESC &f2X` pushes execute frame `%s`." % (
         " ".join(f"{byte:02x}" for byte in macro_stream_execute["stream"]),

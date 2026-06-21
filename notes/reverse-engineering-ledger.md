@@ -553,9 +553,11 @@ ROM work needed:
   patterned rule across bands `0` and `5`; modeled rectangle fill
   clipping now covers left/right/top/bottom, landscape-edge, and
   off-page ignore cases; compact mode-0 text now also has current-band
-  and fallback-row coverage through `0x1f414` and `0x7810b4 + D2`.
-- Determine the remaining wide/segmented text, raster edge-case, and
-  final device-output clipping behavior exactly.
+  and fallback-row coverage through `0x1f414` and `0x7810b4 + D2`, and
+  synthetic wide/segmented compact text now covers the same fallback
+  split for `0x1f0d2`, `0x1f1f0`, and `0x1f264`.
+- Determine the remaining live-parser wide/segmented text, raster
+  edge-case, and final device-output clipping behavior exactly.
 - Identify any banding/compression structures used internally; reproduce
   final pixel result rather than formatter timing.
 

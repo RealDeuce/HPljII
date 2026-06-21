@@ -630,19 +630,21 @@ Compact object mode behavior:
   - Target: `0x1f0d2`
   - Payload entry shape: glyph byte, coordinate word
   - Current behavior: renders wide glyphs in 16-pixel chunks via
-    `0x2f27c`, then a remainder through table `0x1f1ac`
+    `0x2f27c`, then a remainder through table `0x1f1ac`; crossing rows
+    rerun from `0x7810b4 + D2` after the `0x1f414` count split
 - `0x20`
   - Target: `0x1f1f0`
   - Payload entry shape: glyph byte, vertical/plane byte, coordinate
     word
   - Current behavior: offsets glyph bitmap data by `byte*0x80`, clips
-    height to `0x80`, then renders through table `0x1f08e`
+    height to `0x80`, then renders through table `0x1f08e`; crossing
+    rows rerun through the same table into the fallback buffer
 - `0x30`
   - Target: `0x1f264`
   - Payload entry shape: glyph byte, vertical/plane byte, coordinate
     word
   - Current behavior: combines the `byte*0x80` plane adjustment with the
-    wide-glyph chunk/remainder path
+    wide-glyph chunk/remainder path and the same fallback rerun shape
 
 Encoded raster span mode behavior:
 
@@ -702,7 +704,7 @@ macro/data-chain, direct-control, reset, text, rule, raster, bridge,
 row-copy, built-in glyph, symbol-set, and downloaded-font fixture
 families into one ROM-backed self-test. It emits
 `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently
-verifies 365 checks. The raster coverage now includes ROM-table
+verifies 368 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` /
 `ESC *b4W` stream, the 150/100/75-dpi mode streams, the consecutive-row
 `ESC *b2W` stream, the active-resolution-ignore `ESC *t75R` stream, the
@@ -903,6 +905,9 @@ The direct compact text path now includes a mode-0 band split fixture, and
 the host-fetched `ESC &a1R!` cursor-row page-record stream carries bucket
 word `4` through `0x1ef86`, yielding `0x783a20 = 16`, current-band compact
 rows, and fallback continuation rows.
+Synthetic inline/downloaded fixtures now also force `0x1f0d2`, `0x1f1f0`,
+and `0x1f264` objects to cross row `14` of a 16-row band, pinning their
+current-band rows and fallback continuation rows.
 
 Raster coverage now has a named flow report plus ROM-table `0x11774` dispatch
 traces for the primary, 150/100/75-dpi, consecutive-row, capped/drained,

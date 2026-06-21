@@ -6517,13 +6517,63 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
     }
 
 
+def validate_wide_compact_row_copy(
+    data: bytes,
+    rows: int,
+    render_span: int,
+    trailing_plane: bool,
+    full_chunks: int,
+    remainder: int,
+    full_row_skip: int,
+    remainder_row_skip: int,
+    dest_stride: int,
+    label: str,
+) -> None:
+    if rows <= 0:
+        return
+    a2_row_span = render_span - 1 if trailing_plane else render_span
+    a2_source_len = a2_row_span * rows
+    a3_source_len = rows if trailing_plane else 0
+    for chunk in range(full_chunks):
+        result = simulate_row_copy(
+            data,
+            0x2F27C,
+            rows,
+            stride=dest_stride,
+            phase=chunk * 0x10,
+            source_row_delta=full_row_skip,
+        )
+        for write in result.writes:
+            if write.source != "A2":
+                raise AssertionError(f"unexpected {write.source} write for {label} full chunk")
+            if write.src + write.size > a2_source_len:
+                raise AssertionError(f"source read past {label} A2 bitmap at +0x{write.src:x}")
+    if remainder:
+        remainder_helper = u32(data, 0x1F1AC + remainder * 4)
+        result = simulate_row_copy(
+            data,
+            remainder_helper,
+            rows,
+            stride=dest_stride,
+            phase=full_chunks * 0x10,
+            source_row_delta=remainder_row_skip,
+        )
+        for write in result.writes:
+            source_len = a3_source_len if write.source == "A3" else a2_source_len
+            if write.src + write.size > source_len:
+                raise AssertionError(f"source read past {label} {write.source} bitmap at +0x{write.src:x}")
+
+
 def render_compact_wide_payload_via_1f0d2(data: bytes, resources: bytes | bytearray, context: int, payload: bytes, dest_stride: int = 0x20, band_rows: int = 64) -> dict[str, object]:
     count = u16(payload, 0)
     pos = 2
     rendered: list[dict[str, int | str]] = []
+    splits: list[dict[str, int]] = []
     dest = bytearray(band_rows * dest_stride)
+    fallback_dest = bytearray(0)
     max_width = 0
     max_bottom = 0
+    fallback_bottom = 0
     for _ in range(count):
         glyph_index = payload[pos]
         coord = u16(payload, pos + 1)
@@ -6541,35 +6591,67 @@ def render_compact_wide_payload_via_1f0d2(data: bytes, resources: bytes | bytear
         subbyte = (coord >> 8) & 0x0F
         byte_pair_offset = (coord & 0x00FF) * 2
         x = byte_pair_offset * 8 + subbyte
-        if row_index + rows > band_rows:
-            raise AssertionError("compact wide fixture does not implement band-crossing continuation yet")
+        rows_in_band = min(rows, max(int(band_rows) - row_index, 0))
+        remaining_after_band = rows - rows_in_band
 
         full_chunks = render_span >> 4
         remainder = render_span & 0x0F
         full_row_skip = render_span - (0x11 if remainder & 1 else 0x10)
         remainder_row_skip = render_span - remainder if remainder else 0
         trailing_plane = bool(render_span & 1 and render_span > 1 and glyph.get("source_kind") in ("inline", "downloaded-pointer"))
-        a2_source_len = (render_span - 1) * rows if trailing_plane else render_span * rows
-        a3_source_len = rows if trailing_plane else 0
 
-        for chunk in range(full_chunks):
-            result = simulate_row_copy(data, 0x2F27C, rows, stride=dest_stride, phase=chunk * 0x10, source_row_delta=full_row_skip)
-            for write in result.writes:
-                if write.source != "A2":
-                    raise AssertionError(f"unexpected {write.source} write for compact wide full chunk")
-                if write.src + write.size > a2_source_len:
-                    raise AssertionError(f"source read past compact wide A2 bitmap at +0x{write.src:x}")
         remainder_helper = 0
         if remainder:
             remainder_helper = u32(data, 0x1F1AC + remainder * 4)
-            result = simulate_row_copy(data, remainder_helper, rows, stride=dest_stride, phase=full_chunks * 0x10, source_row_delta=remainder_row_skip)
-            for write in result.writes:
-                source_len = a3_source_len if write.source == "A3" else a2_source_len
-                if write.src + write.size > source_len:
-                    raise AssertionError(f"source read past compact wide {write.source} bitmap at +0x{write.src:x}")
 
         source = glyph_source_bytes_for_rows(resources, glyph)
-        write_bitmap_bits(dest, dest_stride, source, rows, render_span, x, row_index)
+        validate_wide_compact_row_copy(
+            data,
+            rows_in_band,
+            render_span,
+            trailing_plane,
+            full_chunks,
+            remainder,
+            full_row_skip,
+            remainder_row_skip,
+            dest_stride,
+            "compact wide current-band",
+        )
+        if rows_in_band:
+            write_bitmap_bits(
+                dest,
+                dest_stride,
+                source[:rows_in_band * render_span],
+                rows_in_band,
+                render_span,
+                x,
+                row_index,
+            )
+        validate_wide_compact_row_copy(
+            data,
+            remaining_after_band,
+            render_span,
+            trailing_plane,
+            full_chunks,
+            remainder,
+            full_row_skip,
+            remainder_row_skip,
+            dest_stride,
+            "compact wide fallback",
+        )
+        if remaining_after_band:
+            required_fallback = remaining_after_band * dest_stride
+            if required_fallback > len(fallback_dest):
+                fallback_dest.extend(b"\x00" * (required_fallback - len(fallback_dest)))
+            write_bitmap_bits(
+                fallback_dest,
+                dest_stride,
+                source[rows_in_band * render_span:],
+                remaining_after_band,
+                render_span,
+                x,
+                0,
+            )
         decoded = coord_decode(coord, band_base=0, payload_offset=0)
         rendered.append({
             "glyph": glyph_index,
@@ -6589,12 +6671,25 @@ def render_compact_wide_payload_via_1f0d2(data: bytes, resources: bytes | bytear
             "a001": decoded["a001"],
             "source_layout": "inline-trailing-plane" if trailing_plane else "linear",
         })
+        splits.append({
+            "glyph": glyph_index,
+            "coord": coord,
+            "row_index": row_index,
+            "rows": rows,
+            "rows_in_band": rows_in_band,
+            "remaining_after_band": remaining_after_band,
+            "fallback_d2": byte_pair_offset,
+        })
         max_width = max(max_width, x + width)
-        max_bottom = max(max_bottom, row_index + rows)
+        if rows_in_band:
+            max_bottom = max(max_bottom, row_index + rows_in_band)
+        fallback_bottom = max(fallback_bottom, remaining_after_band)
     return {
         "count": count,
         "rendered": rendered,
+        "splits": splits,
         "rows": bitmap_bytes_to_rows(dest, max_bottom, max_width, dest_stride),
+        "fallback_rows": bitmap_bytes_to_rows(fallback_dest, fallback_bottom, max_width, dest_stride),
     }
 
 
@@ -6602,9 +6697,12 @@ def render_compact_segmented_wide_payload_via_1f264(data: bytes, resources: byte
     count = u16(payload, 0)
     pos = 2
     rendered: list[dict[str, int | str]] = []
+    splits: list[dict[str, int]] = []
     dest = bytearray(band_rows * dest_stride)
+    fallback_dest = bytearray(0)
     max_width = 0
     max_bottom = 0
+    fallback_bottom = 0
     for _ in range(count):
         glyph_index = payload[pos]
         segment = payload[pos + 1]
@@ -6626,8 +6724,8 @@ def render_compact_segmented_wide_payload_via_1f264(data: bytes, resources: byte
         subbyte = (coord >> 8) & 0x0F
         byte_pair_offset = (coord & 0x00FF) * 2
         x = byte_pair_offset * 8 + subbyte
-        if row_index + rows_here > band_rows:
-            raise AssertionError("compact segmented-wide fixture crosses the synthetic band")
+        rows_in_band = min(rows_here, max(int(band_rows) - row_index, 0))
+        remaining_after_band = rows_here - rows_in_band
 
         full_chunks = render_span >> 4
         remainder = render_span & 0x0F
@@ -6637,27 +6735,59 @@ def render_compact_segmented_wide_payload_via_1f264(data: bytes, resources: byte
         a2_row_span = render_span - 1 if trailing_plane else render_span
         a2_source_offset = row_skip * a2_row_span
         a3_source_offset = row_skip if trailing_plane else 0
-        a2_source_len = a2_row_span * rows_here
-        a3_source_len = rows_here if trailing_plane else 0
 
-        for chunk in range(full_chunks):
-            result = simulate_row_copy(data, 0x2F27C, rows_here, stride=dest_stride, phase=chunk * 0x10, source_row_delta=full_row_skip)
-            for write in result.writes:
-                if write.source != "A2":
-                    raise AssertionError(f"unexpected {write.source} write for compact segmented-wide full chunk")
-                if write.src + write.size > a2_source_len:
-                    raise AssertionError(f"source read past compact segmented-wide A2 bitmap at +0x{write.src:x}")
         remainder_helper = 0
         if remainder:
             remainder_helper = u32(data, 0x1F1AC + remainder * 4)
-            result = simulate_row_copy(data, remainder_helper, rows_here, stride=dest_stride, phase=full_chunks * 0x10, source_row_delta=remainder_row_skip)
-            for write in result.writes:
-                source_len = a3_source_len if write.source == "A3" else a2_source_len
-                if write.src + write.size > source_len:
-                    raise AssertionError(f"source read past compact segmented-wide {write.source} bitmap at +0x{write.src:x}")
 
         source = glyph_source_bytes_for_rows(resources, glyph, row_skip=row_skip, rows=rows_here)
-        write_bitmap_bits(dest, dest_stride, source, rows_here, render_span, x, row_index)
+        validate_wide_compact_row_copy(
+            data,
+            rows_in_band,
+            render_span,
+            trailing_plane,
+            full_chunks,
+            remainder,
+            full_row_skip,
+            remainder_row_skip,
+            dest_stride,
+            "compact segmented-wide current-band",
+        )
+        if rows_in_band:
+            write_bitmap_bits(
+                dest,
+                dest_stride,
+                source[:rows_in_band * render_span],
+                rows_in_band,
+                render_span,
+                x,
+                row_index,
+            )
+        validate_wide_compact_row_copy(
+            data,
+            remaining_after_band,
+            render_span,
+            trailing_plane,
+            full_chunks,
+            remainder,
+            full_row_skip,
+            remainder_row_skip,
+            dest_stride,
+            "compact segmented-wide fallback",
+        )
+        if remaining_after_band:
+            required_fallback = remaining_after_band * dest_stride
+            if required_fallback > len(fallback_dest):
+                fallback_dest.extend(b"\x00" * (required_fallback - len(fallback_dest)))
+            write_bitmap_bits(
+                fallback_dest,
+                dest_stride,
+                source[rows_in_band * render_span:],
+                remaining_after_band,
+                render_span,
+                x,
+                0,
+            )
         decoded = coord_decode(coord, band_base=0, payload_offset=0)
         rendered.append({
             "glyph": glyph_index,
@@ -6681,12 +6811,26 @@ def render_compact_segmented_wide_payload_via_1f264(data: bytes, resources: byte
             "a001": decoded["a001"],
             "source_layout": "inline-trailing-plane" if trailing_plane else "linear",
         })
+        splits.append({
+            "glyph": glyph_index,
+            "segment": segment,
+            "coord": coord,
+            "row_index": row_index,
+            "rows": rows_here,
+            "rows_in_band": rows_in_band,
+            "remaining_after_band": remaining_after_band,
+            "fallback_d2": byte_pair_offset,
+        })
         max_width = max(max_width, x + int(glyph["width"]))
-        max_bottom = max(max_bottom, row_index + rows_here)
+        if rows_in_band:
+            max_bottom = max(max_bottom, row_index + rows_in_band)
+        fallback_bottom = max(fallback_bottom, remaining_after_band)
     return {
         "count": count,
         "rendered": rendered,
+        "splits": splits,
         "rows": bitmap_bytes_to_rows(dest, max_bottom, max_width, dest_stride),
+        "fallback_rows": bitmap_bytes_to_rows(fallback_dest, fallback_bottom, max_width, dest_stride),
     }
 
 
@@ -6694,9 +6838,12 @@ def render_compact_segmented_payload_via_1f1f0(data: bytes, resources: bytes | b
     count = u16(payload, 0)
     pos = 2
     rendered: list[dict[str, int]] = []
+    splits: list[dict[str, int]] = []
     dest = bytearray(band_rows * dest_stride)
+    fallback_dest = bytearray(0)
     max_width = 0
     max_bottom = 0
+    fallback_bottom = 0
     for _ in range(count):
         glyph_index = payload[pos]
         segment = payload[pos + 1]
@@ -6715,18 +6862,47 @@ def render_compact_segmented_payload_via_1f1f0(data: bytes, resources: bytes | b
         subbyte = (coord >> 8) & 0x0F
         byte_pair_offset = (coord & 0x00FF) * 2
         x = byte_pair_offset * 8 + subbyte
-        if row_index + rows_here > band_rows:
-            raise AssertionError("segmented compact fixture crosses the synthetic band")
+        rows_in_band = min(rows_here, max(int(band_rows) - row_index, 0))
+        remaining_after_band = rows_here - rows_in_band
         bitmap = int(glyph["bitmap"])
         source_offset = row_skip * render_span
         source = resources[bitmap + source_offset : bitmap + source_offset + rows_here * render_span]
-        result = simulate_row_copy(data, u32(data, 0x1F08E + render_span * 4), rows_here, stride=dest_stride)
-        for write in result.writes:
-            if write.source != "A2":
-                raise AssertionError(f"unexpected {write.source} write for compact segmented glyph")
-            if write.src + write.size > len(source):
-                raise AssertionError(f"source read past compact segmented glyph bitmap at +0x{write.src:x}")
-        write_bitmap_bits(dest, dest_stride, source, rows_here, render_span, x, row_index)
+        helper = u32(data, 0x1F08E + render_span * 4)
+        if rows_in_band:
+            result = simulate_row_copy(data, helper, rows_in_band, stride=dest_stride)
+            for write in result.writes:
+                if write.source != "A2":
+                    raise AssertionError(f"unexpected {write.source} write for compact segmented glyph")
+                if write.src + write.size > rows_in_band * render_span:
+                    raise AssertionError(f"source read past compact segmented current-band bitmap at +0x{write.src:x}")
+            write_bitmap_bits(
+                dest,
+                dest_stride,
+                source[:rows_in_band * render_span],
+                rows_in_band,
+                render_span,
+                x,
+                row_index,
+            )
+        if remaining_after_band:
+            result = simulate_row_copy(data, helper, remaining_after_band, stride=dest_stride)
+            for write in result.writes:
+                if write.source != "A2":
+                    raise AssertionError(f"unexpected {write.source} write for compact segmented fallback glyph")
+                if write.src + write.size > remaining_after_band * render_span:
+                    raise AssertionError(f"source read past compact segmented fallback bitmap at +0x{write.src:x}")
+            required_fallback = remaining_after_band * dest_stride
+            if required_fallback > len(fallback_dest):
+                fallback_dest.extend(b"\x00" * (required_fallback - len(fallback_dest)))
+            write_bitmap_bits(
+                fallback_dest,
+                dest_stride,
+                source[rows_in_band * render_span:],
+                remaining_after_band,
+                render_span,
+                x,
+                0,
+            )
         decoded = coord_decode(coord, band_base=0, payload_offset=0)
         rendered.append({
             "glyph": glyph_index,
@@ -6743,12 +6919,26 @@ def render_compact_segmented_payload_via_1f1f0(data: bytes, resources: bytes | b
             "a001": decoded["a001"],
             "helper": u32(data, 0x1F08E + render_span * 4),
         })
+        splits.append({
+            "glyph": glyph_index,
+            "segment": segment,
+            "coord": coord,
+            "row_index": row_index,
+            "rows": rows_here,
+            "rows_in_band": rows_in_band,
+            "remaining_after_band": remaining_after_band,
+            "fallback_d2": byte_pair_offset,
+        })
         max_width = max(max_width, x + int(glyph["width"]))
-        max_bottom = max(max_bottom, row_index + rows_here)
+        if rows_in_band:
+            max_bottom = max(max_bottom, row_index + rows_in_band)
+        fallback_bottom = max(fallback_bottom, remaining_after_band)
     return {
         "count": count,
         "rendered": rendered,
+        "splits": splits,
         "rows": bitmap_bytes_to_rows(dest, max_bottom, max_width, dest_stride),
+        "fallback_rows": bitmap_bytes_to_rows(fallback_dest, fallback_bottom, max_width, dest_stride),
     }
 
 
@@ -21570,6 +21760,35 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "." * 22 + "#." * 64 + ".#.#.#.#",
         ],
     }))
+    unflagged_wide_split = render_compact_text_bucket_object(
+        data,
+        wide_inline_render_resources,
+        (0, 0, 0, wide_inline_context),
+        bytes.fromhex("00 00 00 00 10 03 00 01 01 e6 01"),
+        band_rows=16,
+    )
+    checks.append(assert_equal("0x1f0d2 wide compact text splits current band and fallback rows", {
+        "split": unflagged_wide_split["splits"],
+        "rows": unflagged_wide_split["rows"],
+        "fallback_rows": unflagged_wide_split["fallback_rows"],
+    }, {
+        "split": [{
+            "glyph": 1,
+            "coord": 0xE601,
+            "row_index": 14,
+            "rows": 3,
+            "rows_in_band": 2,
+            "remaining_after_band": 1,
+            "fallback_d2": 2,
+        }],
+        "rows": ["." * 158] * 14 + [
+            "." * 22 + "#" * 136,
+            "." * 158,
+        ],
+        "fallback_rows": [
+            "." * 22 + "#." * 64 + ".#.#.#.#",
+        ],
+    }))
     unflagged_tall_source = dict(unflagged_positioned_source)
     unflagged_tall_source["inline_record"] = bytes.fromhex("02 81 04")
     unflagged_tall_bucket = queue_text_source_via_12f2e(resources, unflagged_tall_source)
@@ -21675,6 +21894,51 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "." * 22 + "#." * 64 + ".#.#.#.#",
         ],
     }))
+    segmented_wide_split_resources = bytearray(0xC00)
+    segmented_wide_split_context = 0x00000100
+    segmented_wide_split_record = segmented_wide_split_context + 0x40 + 1 * 8
+    segmented_wide_split_delta = 0x100
+    segmented_wide_split_bitmap = segmented_wide_split_context + segmented_wide_split_delta
+    segmented_wide_split_resources[segmented_wide_split_record] = 0x11
+    segmented_wide_split_resources[segmented_wide_split_record + 1] = 0x83
+    segmented_wide_split_resources[segmented_wide_split_record + 4:segmented_wide_split_record + 8] = segmented_wide_split_delta.to_bytes(4, "big")
+    segmented_wide_split_a3 = segmented_wide_split_bitmap + 0x10 * 0x83
+    segmented_wide_split_resources[segmented_wide_split_bitmap + 0x80 * 0x10:segmented_wide_split_bitmap + 0x81 * 0x10] = b"\xaa" * 0x10
+    segmented_wide_split_resources[segmented_wide_split_a3 + 0x80] = 0x55
+    segmented_wide_split_resources[segmented_wide_split_bitmap + 0x81 * 0x10:segmented_wide_split_bitmap + 0x82 * 0x10] = b"\xff" * 0x10
+    segmented_wide_split_resources[segmented_wide_split_a3 + 0x81] = 0xFF
+    segmented_wide_split_resources[segmented_wide_split_bitmap + 0x82 * 0x10:segmented_wide_split_bitmap + 0x83 * 0x10] = b"\xf0" * 0x10
+    segmented_wide_split_resources[segmented_wide_split_a3 + 0x82] = 0x0F
+    unflagged_segmented_wide_split = render_compact_text_bucket_object(
+        data,
+        segmented_wide_split_resources,
+        (0, 0, 0, segmented_wide_split_context),
+        bytes.fromhex("00 00 00 00 30 03 00 01 01 01 e6 01"),
+        band_rows=16,
+    )
+    checks.append(assert_equal("0x1f264 segmented-wide compact text splits current band and fallback rows", {
+        "split": unflagged_segmented_wide_split["splits"],
+        "rows": unflagged_segmented_wide_split["rows"],
+        "fallback_rows": unflagged_segmented_wide_split["fallback_rows"],
+    }, {
+        "split": [{
+            "glyph": 1,
+            "segment": 1,
+            "coord": 0xE601,
+            "row_index": 14,
+            "rows": 3,
+            "rows_in_band": 2,
+            "remaining_after_band": 1,
+            "fallback_d2": 2,
+        }],
+        "rows": ["." * 158] * 14 + [
+            "." * 22 + "#." * 64 + ".#.#.#.#",
+            "." * 22 + "#" * 136,
+        ],
+        "fallback_rows": [
+            "." * 22 + "####...." * 16 + "....####",
+        ],
+    }))
     inline_render_resources = bytearray(0x300)
     inline_context = 0x00000100
     inline_record_offset = inline_context + 0x40 + 1 * 8
@@ -21728,6 +21992,45 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "." * 38,
             "." * 38,
             "." * 22 + "#.#.#.#..#.#.#.#",
+        ],
+    }))
+    segmented_split_resources = bytearray(0x300)
+    segmented_split_context = 0x00000100
+    segmented_split_record = segmented_split_context + 0x40 + 1 * 8
+    segmented_split_delta = 0x80
+    segmented_split_bitmap = segmented_split_context + segmented_split_delta
+    segmented_split_resources[segmented_split_record] = 0x02
+    segmented_split_resources[segmented_split_record + 1] = 0x83
+    segmented_split_resources[segmented_split_record + 4:segmented_split_record + 8] = segmented_split_delta.to_bytes(4, "big")
+    segmented_split_resources[segmented_split_bitmap + 0x100:segmented_split_bitmap + 0x106] = bytes.fromhex("aa 55 ff 00 00 ff")
+    unflagged_segmented_split = render_compact_text_bucket_object(
+        data,
+        segmented_split_resources,
+        (0, 0, 0, segmented_split_context),
+        bytes.fromhex("00 00 00 00 20 03 00 01 01 01 e6 01"),
+        band_rows=16,
+    )
+    checks.append(assert_equal("0x1f1f0 segmented compact text splits current band and fallback rows", {
+        "split": unflagged_segmented_split["splits"],
+        "rows": unflagged_segmented_split["rows"],
+        "fallback_rows": unflagged_segmented_split["fallback_rows"],
+    }, {
+        "split": [{
+            "glyph": 1,
+            "segment": 1,
+            "coord": 0xE601,
+            "row_index": 14,
+            "rows": 3,
+            "rows_in_band": 2,
+            "remaining_after_band": 1,
+            "fallback_d2": 2,
+        }],
+        "rows": ["." * 38] * 14 + [
+            "." * 22 + "#.#.#.#..#.#.#.#",
+            "." * 22 + "########........",
+        ],
+        "fallback_rows": [
+            "." * 22 + "........########",
         ],
     }))
     unflagged_overflow_fixture = position_unflagged_text_source_via_d3b2(
@@ -34070,6 +34373,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         wide_render_entry["full_chunk_helper"],
         wide_render_entry["remainder_helper"],
     ))
+    lines.append("- the same `0x1f0d2` synthetic wide record now crosses a 16-row band at row `14`, leaving `%d` current-band rows and `%d` fallback rows." % (
+        unflagged_wide_split["splits"][0]["rows_in_band"],
+        unflagged_wide_split["splits"][0]["remaining_after_band"],
+    ))
     lines.append("- record byte `+1 = 0x81` selects segmented entries with selector `0x%04x`:" % (
         unflagged_tall_bucket["selector"],
     ))
@@ -34098,6 +34405,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         segmented_wide_entry["remainder_helper"],
         " ".join(f"{byte:02x}" for byte in unflagged_segmented_wide_object),
     ))
+    lines.append("- synthetic segment-1 split fixtures now cross row `14` for `0x1f1f0` and `0x1f264`, proving the current-band/fallback reruns for both segmented compact paths.")
     unflagged_overflow_source_report = unflagged_overflow_fixture["source"]
     assert isinstance(unflagged_overflow_source_report, dict)
     lines.append(f"- context metric flag set plus left overflow: cursor `(10,20)`, printable offset `20`, source x-offset `-15` -> x `{unflagged_overflow_source_report['x']}`, y `{unflagged_overflow_source_report['y']}`, context slot `{unflagged_overflow_source_report['context_slot']}`, overflow correction `0x{int(unflagged_overflow_fixture['overflow_correction']):08x}`")

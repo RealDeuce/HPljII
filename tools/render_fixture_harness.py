@@ -4047,6 +4047,91 @@ def firmware_scanned_builtin_candidates(resources: bytes) -> list[dict[str, int]
     return records
 
 
+def infer_named_builtin_record(resources: bytes, record_start: int) -> str | None:
+    for raw_name in (b"LINE_PRINTER", b"COURIER"):
+        for padding in (0, 1):
+            name_start = record_start - len(raw_name) - padding
+            if name_start < 0:
+                continue
+            if resources[name_start:name_start + len(raw_name)] != raw_name:
+                continue
+            if all(byte == 0 for byte in resources[name_start + len(raw_name):record_start]):
+                return raw_name.decode("ascii")
+    return None
+
+
+def named_builtin_font_metadata(resources: bytes) -> list[dict[str, object]]:
+    records: list[dict[str, object]] = []
+    for candidate in firmware_scanned_builtin_candidates(resources):
+        record_start = int(candidate["record_start"])
+        name = infer_named_builtin_record(resources, record_start)
+        if name is None:
+            continue
+        table = record_start + u16(resources, record_start + 8)
+        first_char = u16(resources, record_start + 0x0E)
+        last_char = u16(resources, record_start + 0x10)
+        glyph_slots = max(0, last_char - first_char + 1)
+        relative_entries = [
+            u32(resources, table + glyph_index * 4)
+            for glyph_index in range(glyph_slots)
+        ]
+        nonzero_entries = [
+            (glyph_index, relative)
+            for glyph_index, relative in enumerate(relative_entries)
+            if relative
+        ]
+        if nonzero_entries:
+            first_glyph_index, first_relative = nonzero_entries[0]
+            first_entry = record_start + first_relative
+            first_rows = u16(resources, first_entry + 6)
+            first_width = u16(resources, first_entry + 8)
+        else:
+            first_glyph_index = -1
+            first_relative = 0
+            first_entry = 0
+            first_rows = 0
+            first_width = 0
+        context_longword = (
+            0x40000000
+            | ((resources[record_start + 0x0D] & 0x03) << 28)
+            | (0x04000000 if resources[record_start + 0x0C] == 2 else 0)
+            | (0x080000 + record_start)
+        )
+        records.append({
+            "name": name,
+            "record_start": record_start,
+            "context": context_longword,
+            "length": u32(resources, record_start + 4),
+            "class": resources[record_start + 0x20],
+            "symbol": u16(resources, record_start + 0x22),
+            "pitch": builtin_pitch_via_13b76(
+                u16(resources, record_start + 0x24),
+                resources[record_start + 0x26],
+            ),
+            "height": builtin_height_via_13bca(
+                u16(resources, record_start + 0x28),
+                resources[record_start + 0x2A],
+            ),
+            "size_words": (
+                u16(resources, record_start + 0x12),
+                u16(resources, record_start + 0x14),
+                u16(resources, record_start + 0x1C),
+                u16(resources, record_start + 0x1E),
+            ),
+            "first_char": first_char,
+            "last_char": last_char,
+            "nonzero_entries": len(nonzero_entries),
+            "first_glyph": {
+                "index": first_glyph_index,
+                "relative": first_relative,
+                "entry": first_entry,
+                "rows": first_rows,
+                "width": first_width,
+            },
+        })
+    return records
+
+
 def builtin_candidate_windows_from_scanned_records(
     records: list[dict[str, int]],
     events: list[dict[str, object]],
@@ -16597,6 +16682,38 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "last_records": [
             {"record_start": 0x02DCCE, "address": 0x0ADCCE, "d4_class": 1, "candidate_flags": 0x440ADCCE},
             {"record_start": 0x02E122, "address": 0x0AE122, "d4_class": 1, "candidate_flags": 0x400AE122},
+        ],
+    }))
+    actual_named_builtin_metadata = named_builtin_font_metadata(resources)
+    checks.append(assert_equal("named COURIER and LINE_PRINTER records expose deterministic metadata", {
+        "count": len(actual_named_builtin_metadata),
+        "name_counts": {
+            name: sum(1 for record in actual_named_builtin_metadata if record["name"] == name)
+            for name in ("COURIER", "LINE_PRINTER")
+        },
+        "records": actual_named_builtin_metadata,
+    }, {
+        "count": 18,
+        "name_counts": {"COURIER": 12, "LINE_PRINTER": 6},
+        "records": [
+            {"name": "COURIER", "record_start": 0x000418, "context": 0x44080418, "length": 0x0450, "class": 0, "symbol": 0x0155, "pitch": 1000, "height": 1200, "size_words": (30, 54, 30, 50), "first_char": 1, "last_char": 0xFF, "nonzero_entries": 253, "first_glyph": {"index": 0, "relative": 0x007792, "entry": 0x007BAA, "rows": 29, "width": 28}},
+            {"name": "COURIER", "record_start": 0x000868, "context": 0x44080868, "length": 0x0450, "class": 0, "symbol": 0x0175, "pitch": 1000, "height": 1200, "size_words": (30, 54, 30, 50), "first_char": 1, "last_char": 0xFF, "nonzero_entries": 253, "first_glyph": {"index": 0, "relative": 0x007342, "entry": 0x007BAA, "rows": 29, "width": 28}},
+            {"name": "COURIER", "record_start": 0x000CB8, "context": 0x40080CB8, "length": 0x92F8, "class": 0, "symbol": 0x000E, "pitch": 1000, "height": 1200, "size_words": (30, 50, 30, 50), "first_char": 33, "last_char": 0xFF, "nonzero_entries": 190, "first_glyph": {"index": 0, "relative": 0x0003D0, "entry": 0x001088, "rows": 32, "width": 9}},
+            {"name": "COURIER", "record_start": 0x00A37C, "context": 0x4408A37C, "length": 0x0450, "class": 0, "symbol": 0x0155, "pitch": 1000, "height": 1200, "size_words": (30, 54, 30, 50), "first_char": 1, "last_char": 0xFF, "nonzero_entries": 253, "first_glyph": {"index": 0, "relative": 0x007B5A, "entry": 0x011ED6, "rows": 29, "width": 28}},
+            {"name": "COURIER", "record_start": 0x00A7CC, "context": 0x4408A7CC, "length": 0x0450, "class": 0, "symbol": 0x0175, "pitch": 1000, "height": 1200, "size_words": (30, 54, 30, 50), "first_char": 1, "last_char": 0xFF, "nonzero_entries": 253, "first_glyph": {"index": 0, "relative": 0x00770A, "entry": 0x011ED6, "rows": 29, "width": 28}},
+            {"name": "COURIER", "record_start": 0x00AC1C, "context": 0x4008AC1C, "length": 0x96C8, "class": 0, "symbol": 0x000E, "pitch": 1000, "height": 1200, "size_words": (30, 50, 30, 50), "first_char": 33, "last_char": 0xFF, "nonzero_entries": 190, "first_glyph": {"index": 0, "relative": 0x0003D0, "entry": 0x00AFEC, "rows": 31, "width": 11}},
+            {"name": "LINE_PRINTER", "record_start": 0x0146B4, "context": 0x440946B4, "length": 0x0454, "class": 0, "symbol": 0x0155, "pitch": 1666, "height": 850, "size_words": (18, 39, 18, 38), "first_char": 1, "last_char": 0xFF, "nonzero_entries": 253, "first_glyph": {"index": 0, "relative": 0x00407C, "entry": 0x018730, "rows": 16, "width": 16}},
+            {"name": "LINE_PRINTER", "record_start": 0x014B08, "context": 0x44094B08, "length": 0x0454, "class": 0, "symbol": 0x0175, "pitch": 1666, "height": 850, "size_words": (18, 39, 18, 38), "first_char": 1, "last_char": 0xFF, "nonzero_entries": 253, "first_glyph": {"index": 0, "relative": 0x003C28, "entry": 0x018730, "rows": 16, "width": 16}},
+            {"name": "LINE_PRINTER", "record_start": 0x014F5C, "context": 0x40094F5C, "length": 0x4DBC, "class": 0, "symbol": 0x000E, "pitch": 1666, "height": 850, "size_words": (18, 39, 18, 38), "first_char": 33, "last_char": 0xFF, "nonzero_entries": 190, "first_glyph": {"index": 0, "relative": 0x0003D4, "entry": 0x015330, "rows": 22, "width": 4}},
+            {"name": "COURIER", "record_start": 0x01A0E4, "context": 0x4409A0E4, "length": 0x0450, "class": 1, "symbol": 0x0155, "pitch": 1000, "height": 1200, "size_words": (30, 54, 30, 50), "first_char": 1, "last_char": 0xFF, "nonzero_entries": 253, "first_glyph": {"index": 0, "relative": 0x007128, "entry": 0x02120C, "rows": 28, "width": 29}},
+            {"name": "COURIER", "record_start": 0x01A534, "context": 0x4409A534, "length": 0x0450, "class": 1, "symbol": 0x0175, "pitch": 1000, "height": 1200, "size_words": (30, 54, 30, 50), "first_char": 1, "last_char": 0xFF, "nonzero_entries": 253, "first_glyph": {"index": 0, "relative": 0x006CD8, "entry": 0x02120C, "rows": 28, "width": 29}},
+            {"name": "COURIER", "record_start": 0x01A984, "context": 0x4009A984, "length": 0x8B00, "class": 1, "symbol": 0x000E, "pitch": 1000, "height": 1200, "size_words": (30, 50, 30, 50), "first_char": 33, "last_char": 0xFF, "nonzero_entries": 190, "first_glyph": {"index": 0, "relative": 0x0003D0, "entry": 0x01AD54, "rows": 9, "width": 32}},
+            {"name": "COURIER", "record_start": 0x023850, "context": 0x440A3850, "length": 0x0450, "class": 1, "symbol": 0x0155, "pitch": 1000, "height": 1200, "size_words": (30, 54, 30, 50), "first_char": 1, "last_char": 0xFF, "nonzero_entries": 253, "first_glyph": {"index": 0, "relative": 0x0079CA, "entry": 0x02B21A, "rows": 28, "width": 29}},
+            {"name": "COURIER", "record_start": 0x023CA0, "context": 0x440A3CA0, "length": 0x0450, "class": 1, "symbol": 0x0175, "pitch": 1000, "height": 1200, "size_words": (30, 54, 30, 50), "first_char": 1, "last_char": 0xFF, "nonzero_entries": 253, "first_glyph": {"index": 0, "relative": 0x00757A, "entry": 0x02B21A, "rows": 28, "width": 29}},
+            {"name": "COURIER", "record_start": 0x0240F0, "context": 0x400A40F0, "length": 0x93BA, "class": 1, "symbol": 0x000E, "pitch": 1000, "height": 1200, "size_words": (30, 50, 30, 50), "first_char": 33, "last_char": 0xFF, "nonzero_entries": 190, "first_glyph": {"index": 0, "relative": 0x0003D0, "entry": 0x0244C0, "rows": 11, "width": 31}},
+            {"name": "LINE_PRINTER", "record_start": 0x02D87A, "context": 0x440AD87A, "length": 0x0454, "class": 1, "symbol": 0x0155, "pitch": 1666, "height": 850, "size_words": (18, 39, 18, 38), "first_char": 1, "last_char": 0xFF, "nonzero_entries": 253, "first_glyph": {"index": 0, "relative": 0x0043BA, "entry": 0x031C34, "rows": 16, "width": 16}},
+            {"name": "LINE_PRINTER", "record_start": 0x02DCCE, "context": 0x440ADCCE, "length": 0x0454, "class": 1, "symbol": 0x0175, "pitch": 1666, "height": 850, "size_words": (18, 39, 18, 38), "first_char": 1, "last_char": 0xFF, "nonzero_entries": 253, "first_glyph": {"index": 0, "relative": 0x003F66, "entry": 0x031C34, "rows": 16, "width": 16}},
+            {"name": "LINE_PRINTER", "record_start": 0x02E122, "context": 0x400AE122, "length": 0x4E5E, "class": 1, "symbol": 0x000E, "pitch": 1666, "height": 850, "size_words": (18, 39, 18, 38), "first_char": 33, "last_char": 0xFF, "nonzero_entries": 190, "first_glyph": {"index": 0, "relative": 0x0003D4, "entry": 0x02E4F6, "rows": 4, "width": 22}},
         ],
     }))
     actual_candidate_windows = builtin_candidate_windows_from_scanned_records(

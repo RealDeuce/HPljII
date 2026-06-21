@@ -499,8 +499,9 @@ single following payload.
   same-group lowercase-final chaining fixtures for `ESC *t300r150R` and
   parser-traced `ESC *b2w2W` where lowercase `w` records the delayed transfer
   and payload is consumed after the uppercase terminator, plus a parser-traced
-  `ESC *rB` active-clear stream followed by `ESC *t150R`, an active-raster `ESC
-  *t75R` ignored before a mode-0 `ESC *b2W` row, raster row page-record fixtures
+  host-fetched `ESC *rB` active-clear stream followed by `ESC *t150R`, an
+  active-raster `ESC *t75R` ignored before a mode-0 `ESC *b2W` row, raster row
+  page-record fixtures
   for byte-aligned mode 0, non-byte-aligned mode 0, mode 1, byte-aligned mode 2,
   non-byte-aligned mode 2, band-clipped mode 2, and mode 3, real-HMI sub-byte
   compact render fixture, producer-modeled short/segmented text bucket objects,

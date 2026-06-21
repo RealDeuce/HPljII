@@ -36,13 +36,16 @@ Sources: `hplaserjetclassicsiiiii.pdf` ch. 7 table 7-2; `33440-90905...pdf` ch. 
 
 ## Data / Page Errors
 
-| Message | Meaning |
-| --- | --- |
-| `20 ERROR` | Memory overflow: too much font, macro, raster, or page-composition data. Continue prints what was received. Simplify job or add memory. |
-| `21 ERROR` | Page too complex for formatter/engine timing. Reduce complexity. HP 33449 can also use page protection with extra memory. |
-| `22 ERROR` | Host/printer communication protocol problem. Check baud, handshake, and I/O settings. XON/XOFF and DTR are supported; ENQ/ACK is not. |
-| `40 ERROR` | Data transfer error. Common causes include powering host down while printer online or mismatched baud rates. |
-| `41 ERROR` | Temporary page error. Often beam detect related; printer attempts recovery and page repeat. If beam detect cannot recover for about two seconds, expect `51 ERROR`. |
+- `20 ERROR`: Memory overflow: too much font, macro, raster, or page-composition data. Continue
+  prints what was received. Simplify job or add memory.
+- `21 ERROR`: Page too complex for formatter/engine timing. Reduce complexity. HP 33449 can also
+  use page protection with extra memory.
+- `22 ERROR`: Host/printer communication protocol problem. Check baud, handshake, and I/O
+  settings. XON/XOFF and DTR are supported; ENQ/ACK is not.
+- `40 ERROR`: Data transfer error. Common causes include powering host down while printer online
+  or mismatched baud rates.
+- `41 ERROR`: Temporary page error. Often beam detect related; printer attempts recovery and
+  page repeat. If beam detect cannot recover for about two seconds, expect `51 ERROR`.
 
 ## Optional I/O and Cartridge Errors
 
@@ -66,25 +69,27 @@ Sources: `hplaserjetclassicsiiiii.pdf` ch. 7 table 7-2; `33440-90905...pdf` ch. 
 
 ## Memory / Formatter Service Errors
 
-| Message | Meaning |
-| --- | --- |
-| `53 ERROR` | HP 33440 optional memory incompatible with Interface PCA; use HP memory. |
-| `31 SERVICE` | Program ROM checksum error on Interface/Formatter PCA. |
-| `32 SERVICE` | Internal font ROM checksum error on Interface/Formatter PCA. |
-| `33 SERVICE` | Dynamic RAM or optional memory PCA error. Remove optional memory and retest. |
-| `54 SERVICE` | Laser scan buffer error. |
-| `55 SERVICE` | Dynamic RAM controller error. |
-| `57 SERVICE` | Miscellaneous Interface/Formatter PCA hardware or address error. Check cables, font cartridges, accessories; then replace PCA if persistent. |
-| `68 ERROR` | HP 33449 recoverable NVRAM error; settings may reset. |
-| `68 SERVICE` | NVRAM failure. On HP 33440/33449, operation may continue with factory defaults until Interface/Formatter PCA replacement. |
+- `53 ERROR`: HP 33440 optional memory incompatible with Interface PCA; use HP memory.
+- `31 SERVICE`: Program ROM checksum error on Interface/Formatter PCA.
+- `32 SERVICE`: Internal font ROM checksum error on Interface/Formatter PCA.
+- `33 SERVICE`: Dynamic RAM or optional memory PCA error. Remove optional memory and retest.
+- `54 SERVICE`: Laser scan buffer error.
+- `55 SERVICE`: Dynamic RAM controller error.
+- `57 SERVICE`: Miscellaneous Interface/Formatter PCA hardware or address error. Check cables,
+  font cartridges, accessories; then replace PCA if persistent.
+- `68 ERROR`: HP 33449 recoverable NVRAM error; settings may reset.
+- `68 SERVICE`: NVRAM failure. On HP 33440/33449, operation may continue with factory defaults
+  until Interface/Formatter PCA replacement.
 
 ## Formatter/DC Controller Communication
 
-| Message | Meaning |
-| --- | --- |
-| `55 ERROR` | Communication problem between DC Controller PCA and Interface/Formatter PCA. Undefined status exchanged or status request unanswered. Service procedure says run Engine Test to verify DC Controller path, check J209 jumper and voltages, then replace Interface/Formatter PCA or DC Controller PCA. |
+- `55 ERROR`: Communication problem between DC Controller PCA and Interface/Formatter PCA.
+  Undefined status exchanged or status request unanswered. Service procedure says run Engine
+  Test to verify DC Controller path, check J209 jumper and voltages, then replace
+  Interface/Formatter PCA or DC Controller PCA.
 
-Note: There is both `55 ERROR` and `55 SERVICE`; keep them distinct. `55 ERROR` is formatter/DC communication. `55 SERVICE` is dynamic RAM controller.
+Note: There is both `55 ERROR` and `55 SERVICE`; keep them distinct. `55 ERROR` is formatter/DC
+communication. `55 SERVICE` is dynamic RAM controller.
 
 ## Self-Test Failure Mapping
 
@@ -105,11 +110,15 @@ Self-test covers:
 - Printer open: cover / +24B interlock path.
 - No EP cartridge: cartridge sensitivity switches `CSENS1`/`CSENS2` both high.
 - Toner low: toner sensor `TSENS`.
-- Beam/scanner errors: `BD`, scanner tach `FG+`/`FG-`, scanner speed control `SCNCONT`, laser feedback `PD`.
+- Beam/scanner errors: `BD`, scanner tach `FG+`/`FG-`, scanner speed control `SCNCONT`, laser
+  feedback `PD`.
 
 ## Emulator Takeaways
 
 - Implement error codes as named engine/formatter states, not only display strings.
-- `Auto Continue` affects whether recoverable errors wait indefinitely or display for about 10 seconds then resume.
-- Many service codes map directly to hardware blocks; use them as milestones when reverse-engineering startup self-test branches.
-- Keep HP 33449-only messages available as compatibility references but avoid exposing them in HP 33440 mode unless ROM behavior proves otherwise.
+- `Auto Continue` affects whether recoverable errors wait indefinitely or display for about 10
+  seconds then resume.
+- Many service codes map directly to hardware blocks; use them as milestones when
+  reverse-engineering startup self-test branches.
+- Keep HP 33449-only messages available as compatibility references but avoid exposing them in HP
+  33440 mode unless ROM behavior proves otherwise.

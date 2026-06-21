@@ -1,6 +1,8 @@
 # PCL-to-PDF Renderer and ROM Goals
 
-Sources: project discussion; `33440-90905_HP_LaserJet_series_II_Technical_Reference_Manual_Aug1989.pdf`; `hplaserjetclassicsiiiii.pdf`.
+Sources: project discussion;
+`33440-90905_HP_LaserJet_series_II_Technical_Reference_Manual_Aug1989.pdf`;
+`hplaserjetclassicsiiiii.pdf`.
 
 ## Current Goal
 
@@ -10,7 +12,8 @@ Build a LaserJet II-compatible converter:
 PCL/input byte stream -> rendered pages -> PDF
 ```
 
-This is not a full hardware emulator. The formatter board and ROMs are references and data sources, not necessarily execution targets.
+This is not a full hardware emulator. The formatter board and ROMs are references and data sources,
+not necessarily execution targets.
 
 ## What We Should Not Need
 
@@ -21,7 +24,8 @@ For PDF output, we should not need accurate modeling of:
 - Paper timing, beam timing, jams, fuser warmup, or mechanical engine delays.
 - Real Centronics/serial electrical timing beyond accepting byte streams.
 
-The service manual hardware notes remain useful for understanding architecture and diagnostics, but they should not drive the renderer design.
+The service manual hardware notes remain useful for understanding architecture and diagnostics, but
+they should not drive the renderer design.
 
 ## What the ROMs Are Expected to Provide
 

@@ -305,9 +305,10 @@ page-record allocator/bridge variant, a grouped host-fetched direct
 text/control fixture tying the plain, CR/LF, HT/BS, margin,
 cursor-position, vertical-layout, and cursor-stack page-record streams
 to modeled `0xa904` ring fetch, parser handlers, object prefixes,
-`0x1edc6` bridge fields, and rendered row counts, a mixed `!\x1bE`
-fixture that publishes and clears a valid current page root after queued
-text and has a page-record allocator/bridge/publication variant,
+`0x1edc6` bridge fields, `0x1ed84`/`0x1ef6a` render-entry dispatch,
+and rendered row counts, a mixed `!\x1bE` fixture that publishes and
+clears a valid current page root after queued text and has a page-record
+allocator/bridge/publication variant,
 selected inline/downloaded `0x14e24`/`0x14eb6` map and `0x1393a`
 source-object fixture now crossing `0x1edc6` with context slot `3`
 intact, plus type-2 payload-backed `0x1f0d2`/`0x1f1f0`, selected-memory

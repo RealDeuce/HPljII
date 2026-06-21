@@ -694,7 +694,7 @@ macro/data-chain, direct-control, reset, text, rule, raster, bridge,
 row-copy, built-in glyph, symbol-set, and downloaded-font fixture
 families into one ROM-backed self-test. It emits
 `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently
-verifies 356 checks. The raster coverage now includes ROM-table
+verifies 357 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` /
 `ESC *b4W` stream, the 150/100/75-dpi mode streams, the consecutive-row
 `ESC *b2W` stream, the active-resolution-ignore `ESC *t75R` stream, the
@@ -826,7 +826,10 @@ vertical-layout, and cursor-stack page-record streams from the modeled
 handlers, and lands on the same `0x1387c` page-record objects and
 rendered row counts; the same grouped check now pins that `0x1edc6`
 preserves the bucket root, clears rule/fixed lists, and copies the
-selected context slot into the render record. Direct publication-stream
+selected context slot into the render record. That direct page-record
+group now also crosses `0x1ed84` active-record copy and the `0x1ef6a`
+render-entry call order, including nonzero bucket selection for the
+vertical cursor/layout cases. Direct publication-stream
 coverage traces `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O`
 through the ROM parser path, proving printable fallback to `0xd04a`,
 reset dispatch to `0xcc52`, line-termination dispatch to `0xedf8`, FF

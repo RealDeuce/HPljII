@@ -8842,6 +8842,7 @@ def render_bucket_page_record_via_1ed84_1ef6a(
         "word_04": int(width_word) & 0xFFFF,
         "word_06": int(band_divisor) & 0xFFFF,
         "word_08": int(fields.get("word_08", 0)) & 0xFFFF,
+        "word_10": int(bucket_word) & 0xFFFF,
         "bucket_array_18": {int(bucket_word) & 0xFFFF: chain},
     })
     render_record["render_record_fields"] = fields
@@ -29097,6 +29098,98 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "context_slots_prefix": (0x440946B4, 0),
         },
     }))
+    direct_page_record_render_entries = {
+        name: render_bucket_page_record_via_1ed84_1ef6a(
+            data,
+            resources,
+            case["stream"]["page_record"],
+            bucket_word=case["stream"]["bucket_index"],
+        )
+        for name, case in direct_page_record_cases.items()
+    }
+
+    def expected_direct_page_record_setup(bucket_word: int) -> dict[str, int]:
+        remainder = bucket_word % 5
+        return {
+            "dividend": bucket_word,
+            "divisor_word_06": 5,
+            "remainder_783a22": remainder,
+            "band_rows_scaled_783a20": (5 - remainder) << 4,
+            "destination_base_783a28": 0x00100000 + ((remainder << 6) * 0x20),
+        }
+
+    direct_page_record_active_copy = {
+        "source_word_18": 0,
+        "source_word_1a": 0,
+        "render_word_0a": 0,
+        "render_word_0c": 0,
+        "render_word_0e": 0,
+        "render_word_10": 0,
+        "render_word_16": 0,
+    }
+    direct_page_record_dispatch_entry = {
+        "chain_index": 0,
+        "object_byte_4": 0x00,
+        "class_mask": 0x00,
+        "branch": "compact",
+        "target": 0x01EFFE,
+        "context_slot": 0,
+    }
+    checks.append(assert_equal("host-fetched direct text/control streams feed 0x1ed84 and 0x1ef6a", {
+        name: {
+            "fetched_stream": direct_page_record_fetches[name]["stream"],
+            "parser_handlers": [
+                event["handler"]
+                for event in case["trace"]["events"]
+            ],
+            "bucket_word": direct_page_record_render_entries[name]["entry"]["band_word"],
+            "active_copy": direct_page_record_render_entries[name]["active_copy"],
+            "setup": {
+                key: direct_page_record_render_entries[name]["entry"]["setup"][key]
+                for key in (
+                    "dividend",
+                    "divisor_word_06",
+                    "remainder_783a22",
+                    "band_rows_scaled_783a20",
+                    "destination_base_783a28",
+                )
+            },
+            "call_order": direct_page_record_render_entries[name]["entry"]["call_order"],
+            "dispatch_entries": [
+                {
+                    key: entry[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "context_slot",
+                    )
+                }
+                for entry in direct_page_record_render_entries[name]["entry"]["dispatch"]["entries"]
+            ],
+            "bucket_rendered_count": len(direct_page_record_render_entries[name]["entry"]["bucket_rendered"]),
+            "rows": direct_page_record_render_entries[name]["entry"]["rows"],
+        }
+        for name, case in direct_page_record_cases.items()
+    }, {
+        name: {
+            "fetched_stream": direct_page_record_fetches[name]["stream"],
+            "parser_handlers": [
+                event["handler"]
+                for event in case["trace"]["events"]
+            ],
+            "bucket_word": case["stream"]["bucket_index"],
+            "active_copy": direct_page_record_active_copy,
+            "setup": expected_direct_page_record_setup(case["stream"]["bucket_index"]),
+            "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+            "dispatch_entries": [direct_page_record_dispatch_entry],
+            "bucket_rendered_count": 1,
+            "rows": case["rendered"]["rows"],
+        }
+        for name, case in direct_page_record_cases.items()
+    }))
     mixed_publication_parser_trace = {
         "reset": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1bE"),
         "ff": trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k2G!\f"),
@@ -32082,6 +32175,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("A host-fetch publication fixture now starts those same reset, FF, page-size, and orientation streams from the modeled `0xa904` ring source, drains all input bytes from the ring, replays the same parser handlers, and lands on the same published compact rows.")
     lines.append("The published-record render-entry fixture then carries each of those four `0xff1e` records through `0x1ed84` active-record copy and the `0x1ef6a` call order, selecting the compact bucket through `0x1efc2` and rendering the same rows.")
     lines.append("A host-fetched direct text/control fixture now starts the plain, CR/LF, HT/BS, margin, cursor-position, vertical-layout, and cursor-stack page-record streams from the modeled `0xa904` ring source, drains every byte, replays the same parser handlers, and lands on the same `0x1387c` page-record objects and rendered row counts.")
+    lines.append("The same direct page-record group now crosses `0x1ed84` active-record copy and the `0x1ef6a` render-entry call order, including nonzero bucket selection for the vertical cursor/layout cases.")
     lines.append("")
     lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now starts without a current page root, marks the first printable as the page-record root allocation point, models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`.")
     lines.append("")

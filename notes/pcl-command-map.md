@@ -519,7 +519,8 @@ coords `0x3b00`, `0x0a01`, `0x0801`, `0x0a02`, `0x0207`, `0x0a02`,
 `0x0402`, `0x1001`, `0x9001`, `0x1a02`, and `0x9001`. A grouped
 host-fetch check now starts that direct text/control set from the
 modeled `0xa904` ring source and proves the same parser handlers, bucket
-indices, object prefixes, and rendered row counts.
+indices, object prefixes, `0x1edc6` bridge fields, `0x1ed84` copy
+fields, `0x1ef6a` setup/dispatch path, and rendered row counts.
 
 The plain printable stream `!!` now has the same kind of check: both
 bytes route through `0xd04a`, the initialized `LINE_PRINTER` HMI places
@@ -554,7 +555,8 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   control/reset page-record allocator/bridge stream fixtures,
   host-fetched publication header/bridge-contract coverage for reset,
   FF, page-size, and orientation, host-fetched direct text/control
-  bridge-contract coverage, parser-to-page-record coverage for `!!`,
+  bridge-contract and render-entry coverage, parser-to-page-record
+  coverage for `!!`,
   `ESC &k1G!\r!`, `ESC &k2G!\n!`, `ESC &k0G HT BS !`, `ESC &a1L!`,
   `ESC &a1M!`, `ESC &a6l9M!`, `ESC &a2C!`, `ESC &a72H!`, `ESC &a1R!`,
   `ESC &a72V!`, `ESC &a2c+1R!`, `ESC &l3E!`,

@@ -355,7 +355,9 @@ the margin and cursor-position streams, `ESC &l3E!`, and
 replays the expected parser handlers, and lands on the same page-record
 allocations, object prefixes, rendered row counts, and `0x1edc6` bridge
 fields for bucket root, empty rule/fixed lists, and context slot
-copying.
+copying. The same group now crosses `0x1ed84` active-record copy and
+the `0x1ef6a` render-entry call order, including the nonzero bucket
+selection used by the vertical cursor/layout cases.
 
 Rectangle/rule command edges are now traced in
 `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`.

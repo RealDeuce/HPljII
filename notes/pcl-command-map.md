@@ -239,7 +239,8 @@ execute/call data-chain frames,
 execute/call payloads, replayed `!\r` parser dispatch through `0xd04a`/`0xf02c`,
 modeled printable/CR processing, the page-record allocator/bridge shape for that
 payload, and a stored `ESC &k1G!\r!` mixed-control macro payload replaying
-through `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into rows that match the direct
+through a host-fetched ROM/alternate parser trace, `0xa904` data-chain fetch,
+and `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into rows that match the direct
 mixed-stream model; full replay of macro payload bytes through the live parser
 is still open.
 

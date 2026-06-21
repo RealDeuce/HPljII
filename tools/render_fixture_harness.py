@@ -12748,6 +12748,27 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     macro_control_replay = replay_macro_frame_payload_via_a904(macro_control_frame, outer_byte=0x5A)
     macro_control_replay_outer = macro_control_replay["outer_fetch"]
     assert isinstance(macro_control_replay_outer, dict)
+    macro_control_host_stream = b"\x1b&f125Y\x1b&f0X\x1b&k1G!\r!\x1b&f1X\x1b&f2X"
+    macro_control_host_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(macro_control_host_stream), direct_mode=0),
+        len(macro_control_host_stream),
+    )
+    macro_control_host_dispatch = trace_macro_definition_parser_dispatch_via_11774(
+        data,
+        macro_control_host_fetch["stream"],
+    )
+    macro_control_host_records = macro_control_host_dispatch["state"]["records"]
+    assert isinstance(macro_control_host_records, list)
+    macro_control_host_frames = macro_control_host_dispatch["state"]["data_chain_frames"]
+    assert isinstance(macro_control_host_frames, list)
+    macro_control_host_replay = replay_macro_frame_payload_via_a904(
+        macro_control_host_frames[0],
+        outer_byte=0x5A,
+    )
+    macro_control_host_parser_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        bytes(macro_control_host_replay["stream"]),
+    )
     macro_control_payload_direct = render_mixed_printable_control_stream(
         data,
         resources,
@@ -12913,6 +12934,123 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01 20 3b 00"),
         "object_size": 0x26,
+        "page_rows": macro_control_payload_direct_rendered["rows"],
+        "direct_rows": macro_control_payload_direct_rendered["rows"],
+        "final_state": {
+            "cursor_x": pack12(23),
+            "cursor_y": pack12(24),
+            "line_termination": 0x80,
+            "page_roots": 1,
+            "span_flushes": 1,
+            "post_flushes": 1,
+        },
+    }))
+    checks.append(assert_equal("host-fetched mixed-control macro execute stream builds replay frame", {
+        "fetched_stream": macro_control_host_fetch["stream"],
+        "source_set": sorted(set(macro_control_host_fetch["sources"])),
+        "source_count": len(macro_control_host_fetch["sources"]),
+        "remaining_ring": macro_control_host_fetch["state"]["ring"],
+        "commands": [
+            {
+                "kind": command["kind"],
+                "sequence": command["sequence"],
+                "handler": command.get("final_dispatch", {}).get("handler"),
+                "alternate": command.get("alternate"),
+                "state_events": command["state_events"],
+            }
+            for command in macro_control_host_dispatch["commands"]
+        ],
+        "record0": macro_control_host_records[0],
+        "frame": macro_control_host_frames[0],
+        "replay_stream": macro_control_host_replay["stream"],
+        "replay_fetches": macro_control_host_replay["fetches"] + [macro_control_host_replay["outer_fetch"]],
+        "payload_parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+            }
+            for event in macro_control_host_parser_trace["events"]
+        ],
+        "payload_parser_final_mode": macro_control_host_parser_trace["final_mode"],
+        "page_record_stream": macro_control_payload_page_record["stream"],
+        "object_prefix": macro_control_payload_page_object[:14],
+        "page_rows": macro_control_payload_page_rendered["rows"],
+        "direct_rows": macro_control_payload_direct_rendered["rows"],
+        "final_state": select_keys(
+            macro_control_payload_page_record["final_state"],
+            ("cursor_x", "cursor_y", "line_termination", "page_roots", "span_flushes", "post_flushes"),
+        ),
+    }, {
+        "fetched_stream": b"\x1b&f125Y\x1b&f0X\x1b&k1G!\r!\x1b&f1X\x1b&f2X",
+        "source_set": ["ring"],
+        "source_count": len(b"\x1b&f125Y\x1b&f0X\x1b&k1G!\r!\x1b&f1X\x1b&f2X"),
+        "remaining_ring": [],
+        "commands": [
+            {
+                "kind": "macro-command",
+                "sequence": b"\x1b&f125Y",
+                "handler": 0x00E112,
+                "alternate": False,
+                "state_events": [{"kind": "macro-id", "current_macro_id": 125}],
+            },
+            {
+                "kind": "macro-command",
+                "sequence": b"\x1b&f0X",
+                "handler": 0x00DD08,
+                "alternate": False,
+                "state_events": [{"kind": "macro-start", "status": 0, "index": 0, "auto_prefix": False}],
+            },
+            {
+                "kind": "alternate-payload",
+                "sequence": b"\x1b&k1G!\r!",
+                "handler": None,
+                "alternate": None,
+                "state_events": [{
+                    "kind": "macro-definition-payload",
+                    "index": 0,
+                    "payload": b"\x1b&k1G!\r!",
+                    "record_payload": b"\x1b&k1G!\r!",
+                }],
+            },
+            {
+                "kind": "macro-command",
+                "sequence": b"\x1b&f1X",
+                "handler": 0x00DD08,
+                "alternate": True,
+                "state_events": [{"kind": "macro-stop-kept", "index": 0, "payload": b"\x1b&k1G!\r!"}],
+            },
+            {
+                "kind": "macro-command",
+                "sequence": b"\x1b&f2X",
+                "handler": 0x00DD08,
+                "alternate": False,
+                "state_events": [{"kind": "macro-data-chain", "mode": 2, "payload": b"\x1b&k1G!\r!"}],
+            },
+        ],
+        "record0": {"id": 125, "payload": b"\x1b&k1G!\r!", "permanent": False},
+        "frame": {"payload": b"\x1b&k1G!\r!", "byte_count": 8, "byte_8": 4, "byte_9": 2, "environment": "execute"},
+        "replay_stream": b"\x1b&k1G!\r!",
+        "replay_fetches": [
+            {"d7": 0x1B, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 7}]},
+            {"d7": ord("&"), "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 6}]},
+            {"d7": ord("k"), "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 5}]},
+            {"d7": ord("1"), "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 4}]},
+            {"d7": ord("G"), "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 3}]},
+            {"d7": ord("!"), "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 2}]},
+            {"d7": 0x0D, "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 1}]},
+            {"d7": ord("!"), "source": "data-chain", "events": [{"kind": "data-chain-byte", "remaining": 0}]},
+            {"d7": 0x5A, "source": "second-lifo", "events": [{"kind": "data-chain-transition", "helper": 0xE22C}, {"kind": "second-lifo", "remaining": 0}]},
+        ],
+        "payload_parser_events": [
+            {"kind": "command", "handler": 0x00EDF8, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+            {"kind": "control", "handler": 0x00F02C, "mode_after": 0},
+            {"kind": "printable", "handler": 0x00D04A, "mode_after": 0},
+        ],
+        "payload_parser_final_mode": 0,
+        "page_record_stream": b"\x1b&k1G!\r!",
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01 20 3b 00"),
         "page_rows": macro_control_payload_direct_rendered["rows"],
         "direct_rows": macro_control_payload_direct_rendered["rows"],
         "final_state": {
@@ -28297,6 +28435,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- macro mixed-control payload `%s` replays from the data-chain frame into the same page-record stream as host bytes; object `%s` renders rows matching the direct mixed-stream model." % (
         " ".join(f"{byte:02x}" for byte in macro_control_replay["stream"]),
         " ".join(f"{byte:02x}" for byte in macro_control_payload_page_object[:14]),
+    ))
+    lines.append("- host-fetched mixed-control macro stream drains `%d` command bytes through the ROM/alternate parser trace, stores payload `%s`, builds frame `%s`, and replays into handlers `%s` before matching the same rendered rows." % (
+        len(macro_control_host_fetch["stream"]),
+        " ".join(f"{byte:02x}" for byte in macro_control_host_records[0]["payload"]),
+        macro_control_host_frames[0],
+        ", ".join(f"0x{int(event['handler']):x}" for event in macro_control_host_parser_trace["events"]),
     ))
     lines.append("- macro mixed-control parser-to-page-record boundary: replayed stream `%s` routes through handlers `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, then feeds the same bridged page-record object and rows." % (
         " ".join(f"{byte:02x}" for byte in macro_control_replay["stream"]),

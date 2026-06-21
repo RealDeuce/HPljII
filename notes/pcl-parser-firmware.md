@@ -462,11 +462,13 @@ fixture is also traced through ROM parser modes
 `0xdd08`. The execute/call payload page-record
 fixture is now fed by a replay helper that drains the `0xe418` frame through the
 `0xa904` data-chain source before handing those bytes to the modeled
-printable/page-record path, including a stored `ESC &k1G!\r!` mixed-control
-execute payload whose replayed page-record output matches the direct
-mixed-stream model. This still is not full live parser replay, but it ties the
-macro frame, host-byte source priority, and page-record output into one
-executable chain.
+printable/page-record path. The stored `ESC &k1G!\r!` mixed-control execute
+payload now also starts from modeled `0xa904` ring fetch through the
+ROM/alternate parser trace, stores the full mixed payload, builds the execute
+frame, and replays through `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into page-record
+rows matching the direct mixed-stream model. This still is not full live parser
+replay, but it ties the macro frame, host-byte source priority, and page-record
+output into one executable chain.
 
 Top-level `ESC &` enters mode 5. The normal table currently identifies these
 subfamilies:

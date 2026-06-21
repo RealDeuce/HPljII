@@ -156,8 +156,8 @@ streams through the ROM/alternate parser trace into execute/call data-chain
 frames, `0xa904` data-chain byte fetch and end-marker outer-source resumption,
 execute/call replayed `!\r` dispatch through `0xd04a`/`0xf02c` into page-record
 output,
-replayed `ESC &k1G!\r!` dispatch through `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a`
-into page-record
+host-fetched `ESC &k1G!\r!` mixed-control macro replay through `0xedf8`/
+`0xd04a`/`0xf02c`/`0xd04a` into page-record
 output, and macro-payload rule/raster band composition from command bytes
 
 ### Page geometry tables

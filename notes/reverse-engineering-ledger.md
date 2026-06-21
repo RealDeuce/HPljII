@@ -1,7 +1,7 @@
 # Reverse-Engineering Ledger
 
-Goal: track the ROM facts needed to reproduce LaserJet II output from the same host byte stream,
-down to pixel placement and built-in raster data.
+Goal: track the ROM facts needed to reproduce LaserJet II output from the same host byte
+stream, down to pixel placement and built-in raster data.
 
 ## Current Anchors
 
@@ -9,358 +9,360 @@ down to pixel placement and built-in raster data.
 
 Status: Anchored
 
-Evidence:
-  Four verified TC531000P dumps with stable hashes
+Evidence: Four verified TC531000P dumps with stable hashes
 
 ### ROM interleave
 
 Status: Anchored
 
-Evidence:
-  `IC30,IC13` is executable; `IC32,IC15` is resource/data
+Evidence: `IC30,IC13` is executable; `IC32,IC15` is resource/data
 
 ### CPU entry
 
 Status: Anchored
 
-Evidence:
-  68000 reset PC `0x00000110` in `IC30,IC13`
+Evidence: 68000 reset PC `0x00000110` in `IC30,IC13`
 
 ### Exception handling
 
 Status: Early hypothesis
 
-Evidence:
-  vector table targets RAM trampolines at `0x00780000`
+Evidence: vector table targets RAM trampolines at `0x00780000`
 
 ### Extension probing
 
 Status: Anchored, format unknown
 
-Evidence:
-  firmware checks `0x200000` and `0x400000` for `PROG`; scans for `HEAD` records
+Evidence: firmware checks `0x200000` and `0x400000` for `PROG`; scans for `HEAD` records
 
 ### Host byte fetch
 
-Status: Anchored as normalized byte source with executable priority fixtures; physical interface
-  names still need board/manual correlation
+Status: Anchored as normalized byte source with executable priority fixtures; physical
+interface names still need board/manual correlation
 
-Evidence:
-  routine `0x0000a904` returns normalized bytes in `D7` from stacked pushback buffers, a
-  data-chain source, a ring buffer, or one of two direct hardware paths, as documented in
-  `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`; mode `0x780e40 == 1` polls `0x8e01.4`,
-  reads `0x8801`, waits on `0x8c01.0`, and handshakes through `0xa601` / `0xaa01`; the alternate
-  nonzero mode polls `0xfffee005`, reads `0xfffee001`, reports status bits into `0x780e2e`, and
-  handshakes through `0xfffee009`
+Evidence: routine `0x0000a904` returns normalized bytes in `D7` from stacked pushback
+buffers, a data-chain source, a ring buffer, or one of two direct hardware paths, as
+documented in `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`; mode `0x780e40 ==
+1` polls `0x8e01.4`, reads `0x8801`, waits on `0x8c01.0`, and handshakes through
+`0xa601` / `0xaa01`; the alternate nonzero mode polls `0xfffee005`, reads `0xfffee001`,
+reports status bits into `0x780e2e`, and handshakes through `0xfffee009`
 
 ### Main PCL parser
 
 Status: Anchored
 
-Evidence:
-  routine `0x00011774` dispatches bytes through mode-indexed parser tables at `0x112a4` and
-  `0x116f6`
+Evidence: routine `0x00011774` dispatches bytes through mode-indexed parser tables at
+`0x112a4` and `0x116f6`
 
 ### PCL tokenizer
 
 Status: Anchored
 
-Evidence:
-  routines `0x0000da9a`, `0x0000daf0`, and `0x0000db74` parse ESC sequences, `0x20..0x3f`
-  parameter/intermediate bytes, signs, decimal values, fractions, and continuation markers;
-  executable fixtures pin six-byte records for lowercase-final chaining, signed fractions,
-  semicolon continuation, and delayed payload record restore, and alternate/data-mode payload
-  count consumption through `0x1228a`/`0x12358`
+Evidence: routines `0x0000da9a`, `0x0000daf0`, and `0x0000db74` parse ESC sequences,
+`0x20..0x3f` parameter/intermediate bytes, signs, decimal values, fractions, and
+continuation markers; executable fixtures pin six-byte records for lowercase-final
+chaining, signed fractions, semicolon continuation, and delayed payload record restore,
+and alternate/data-mode payload count consumption through `0x1228a`/`0x12358`
 
 ### Direct control and reset
 
 Status: Anchored for direct control-code side effects, vertical layout, margin and
-  cursor-position conversions, narrow byte streams, mixed text/control, LF, HT/BS,
-  left/right-margin, lowercase-chained margin,
-  horizontal-column/horizontal-decipoint/vertical-row/vertical-decipoint/lowercase-chained
-  cursor-position, top-margin, and cursor-stack parser-to-page-record boundaries, reset
-  sequencing, ROM parser dispatch of publication streams, and synthetic mixed reset fixtures;
-  full firmware parser/reset fixtures incomplete
+cursor-position conversions, narrow byte streams, mixed text/control, LF, HT/BS,
+left/right-margin, lowercase-chained margin,
+horizontal-column/horizontal-decipoint/vertical-row/vertical-decipoint/lowercase-chained
+cursor-position, top-margin, and cursor-stack parser-to-page-record boundaries, reset
+sequencing, ROM parser dispatch of publication streams, and synthetic mixed reset
+fixtures; full firmware parser/reset fixtures incomplete
 
-Evidence:
-  parser mode 0 maps CR/LF/FF/HT/BS to handlers `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`,
-  `0xf2a8`; `ESC &k#G` stores line-termination mode bits in `0x78318f`; `ESC &f#S` maps to
-  `0xf75e` and pushes/pops the cursor stack at `0x782c96..0x782d36`; `ESC &l#C/#D/#E/#F` map to
-  `0xcb00`/`0xc992`/`0xece2`/`0xea9e` and update VMI `0x783160`, top offset `0x782dce`,
-  text-length bottom `0x782dd2`, and pending vertical cursor state; `ESC &a#L/#M` map to
-  `0xeb58`/`0xec0c` and convert HMI margin columns into `0x782dd6`/`0x782dda` with
-  reject/clamp/cursor-move cases; `ESC &a#C/#H/#R/#V` map to `0xf39e`/`0xf416`/`0xf560`/`0xf60a`
-  and convert HMI/VMI/decipoint positions through helpers `0xf4ca` and `0xf6e2`; CR/LF/FF/HT/BS,
-  cursor-stack, vertical-layout, margin, and cursor-position side effects are documented in
-  generated reports; `tools/render_fixture_harness.py` now pins synthetic packed-state fixtures
-  for those effects plus `ESC &f#S` push/pop/clamp/bounds cases, `ESC &l#C/#D/#E/#F`
-  conversion/reject/default cases, `ESC &a#L/#M` conversion/reject/cursor-move cases, `ESC
-  &a#C/#H/#R/#V` conversion/relative/clamp cases, and narrow direct-control byte-stream fixtures
-  for `ESC &k1G`+CR, `ESC &k2G`+LF, `ESC &k2G`+FF, `ESC &k3G`+CR/LF/FF, `ESC &k0G`+HT/BS, `ESC
-  &f0S`/`ESC &f1S`, chained `ESC &l8c6d3e2F`, chained `ESC &a3.5c+1R`, and chained `ESC &a6l9M`;
-  mixed printable/control fixture `ESC &k1G!\r!` proves CR+LF before the second glyph and now
-  ties ROM parser handlers `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` to the page-record
-  allocator/bridge result; `ESC &k2G!\n!`, `ESC &k0G HT BS !`, `ESC &a1L!`, `ESC &a1M!`, `ESC
-  &a6l9M!`, `ESC &a2C!`, `ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`, `ESC &a2c+1R!`, and `ESC
-  &l3E!` now tie LF, HT/BS, left/right-margin, lowercase-chained margin,
-  horizontal-column/horizontal-decipoint/vertical-row/vertical-decipoint/lowercase-chained
-  cursor-position, and top-margin handlers to shifted page-record text output; `ESC &f0S ESC
-  &a2C ESC &f1S!` now ties cursor-stack push/pop and cursor-position handlers to restored
-  page-record text output at compact coord `0x0001`; `ESC E` maps to reset handler `0xcc52`,
-  reset flow is documented in `generated/analysis/ic30_ic13_esc_e_reset_flow.md`, synthetic `ESC
-  E` byte-stream fixtures cover valid-page-root publication and missing-root clearing, mixed
-  publication streams `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O` are traced through
-  `0x11774` to printable branch `0xd04a`, reset `0xcc52`, line-termination `0xedf8`, FF
-  `0xf0f0`, page-size `0xfc74`, and orientation `0x10220`, and mixed printable/reset fixture
-  `!\x1bE` proves reset publication after queued text in the same byte-stream model and now has
-  page-record allocator/bridge/publication coverage
+Evidence: parser mode 0 maps CR/LF/FF/HT/BS to handlers `0xf02c`, `0xf08c`, `0xf0f0`,
+`0xf1cc`, `0xf2a8`; `ESC &k#G` stores line-termination mode bits in `0x78318f`; `ESC
+&f#S` maps to `0xf75e` and pushes/pops the cursor stack at `0x782c96..0x782d36`; `ESC
+&l#C/#D/#E/#F` map to `0xcb00`/`0xc992`/`0xece2`/`0xea9e` and update VMI `0x783160`, top
+offset `0x782dce`, text-length bottom `0x782dd2`, and pending vertical cursor state;
+`ESC &a#L/#M` map to `0xeb58`/`0xec0c` and convert HMI margin columns into
+`0x782dd6`/`0x782dda` with reject/clamp/cursor-move cases; `ESC &a#C/#H/#R/#V` map to
+`0xf39e`/`0xf416`/`0xf560`/`0xf60a` and convert HMI/VMI/decipoint positions through
+helpers `0xf4ca` and `0xf6e2`; CR/LF/FF/HT/BS, cursor-stack, vertical-layout, margin,
+and cursor-position side effects are documented in generated reports;
+`tools/render_fixture_harness.py` now pins synthetic packed-state fixtures for those
+effects plus `ESC &f#S` push/pop/clamp/bounds cases, `ESC &l#C/#D/#E/#F`
+conversion/reject/default cases, `ESC &a#L/#M` conversion/reject/cursor-move cases, `ESC
+&a#C/#H/#R/#V` conversion/relative/clamp cases, and narrow direct-control byte-stream
+fixtures for `ESC &k1G`+CR, `ESC &k2G`+LF, `ESC &k2G`+FF, `ESC &k3G`+CR/LF/FF, `ESC
+&k0G`+HT/BS, `ESC &f0S`/`ESC &f1S`, chained `ESC &l8c6d3e2F`, chained `ESC &a3.5c+1R`,
+and chained `ESC &a6l9M`; mixed printable/control fixture `ESC &k1G!\r!` proves CR+LF
+before the second glyph and now ties ROM parser handlers
+`0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` to the page-record allocator/bridge result; `ESC
+&k2G!\n!`, `ESC &k0G HT BS !`, `ESC &a1L!`, `ESC &a1M!`, `ESC &a6l9M!`, `ESC &a2C!`,
+`ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`, `ESC &a2c+1R!`, and `ESC &l3E!` now tie LF,
+HT/BS, left/right-margin, lowercase-chained margin,
+horizontal-column/horizontal-decipoint/vertical-row/vertical-decipoint/lowercase-chained
+cursor-position, and top-margin handlers to shifted page-record text output; `ESC &f0S
+ESC &a2C ESC &f1S!` now ties cursor-stack push/pop and cursor-position handlers to
+restored page-record text output at compact coord `0x0001`; `ESC E` maps to reset
+handler `0xcc52`, reset flow is documented in
+`generated/analysis/ic30_ic13_esc_e_reset_flow.md`, synthetic `ESC E` byte-stream
+fixtures cover valid-page-root publication and missing-root clearing, mixed publication
+streams `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O` are traced through
+`0x11774` to printable branch `0xd04a`, reset `0xcc52`, line-termination `0xedf8`, FF
+`0xf0f0`, page-size `0xfc74`, and orientation `0x10220`, and mixed printable/reset
+fixture `!\x1bE` proves reset publication after queued text in the same byte-stream
+model and now has page-record allocator/bridge/publication coverage
 
 ### PCL command map
 
 Status: Anchored, handlers need deeper annotation and full macro replay
 
-Evidence:
-  flattened generated map links high-value PCL commands to handlers for page geometry, raster,
-  rectangles, font selection, downloaded-font control, and macros;
-  `generated/analysis/ic30_ic13_rectangle_graphics_flow.md` decodes `ESC *c#A/#B/#H/#V/#G/#P`
-  into rectangle size, area-fill id, selector mapping, clipping, `0x13386` rule-list queueing,
-  including a chained `ESC *c12a5b0P` byte-stream fixture and ROM parser dispatch trace for
-  selector-7 rule creation, selector-7 solid rendering and band-crossing continuation through
-  `0x1f446` / `0x1f596`, gray selectors `0..6`, HP pattern selectors `8..13`, sub-byte shifted,
-  band-crossing, and two-band page-assembly HP-pattern cases rendering through `0x1f446` /
-  `0x1f4e0`, plus a parser-to-retry boundary for `ESC *c12a5b0P` where the `0x10d22` no-room
-  path publishes the old root through `0xff1e`, allocates a fresh root through `0x10084`, and
-  retries the selector-7 rule through `0x13386`;
-  `generated/analysis/ic30_ic13_font_control_flow.md` decodes `ESC *c#D` current font-id
-  normalization and `ESC *c#F` values `0..6` into release/character
-  cleanup/mark/unmark/housekeeping helpers, and the harness now traces chained `ESC *c17d25e5F`
-  through ROM parser modes `0/1/3/16` to handlers `0x15a56`, `0x15a18`, and `0x16df6`; macro ID
-  `ESC &f#Y` at `0xe112` stores absolute current id `0x783164`, macro control `ESC &f#X` at
-  `0xdd08` dispatches selectors `0..10` for
-  start/stop/execute/call/overlay/delete/temp/permanent through the macro record pool and
-  `0xe418` data-chain frame builder, the harness now traces `ESC &f-123y0x1X` through ROM parser
-  modes `0/1/5/17` to handlers `0xe112` and `0xdd08`, proves alternate table `0x116f6` stores
-  macro-definition payload bytes while still routing `ESC &f1X` to `0xdd08`, and macro
-  command-stream fixtures now drive id/start/stop plus plain and mixed-control payload
-  definition, execute/call frame creation, overlay enable/disable state, delete-current/all,
-  guard-state suppression, and permanence/delete state, `0xa904` data-chain byte fetch and
-  end-marker outer-source resumption, execute/call replayed `!\r` dispatch through
-  `0xd04a`/`0xf02c` into page-record output, replayed `ESC &k1G!\r!` dispatch through
-  `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into page-record output, and macro-payload rule/raster
-  band composition from command bytes
+Evidence: flattened generated map links high-value PCL commands to handlers for page
+geometry, raster, rectangles, font selection, downloaded-font control, and macros;
+`generated/analysis/ic30_ic13_rectangle_graphics_flow.md` decodes `ESC
+*c#A/#B/#H/#V/#G/#P` into rectangle size, area-fill id, selector mapping, clipping,
+`0x13386` rule-list queueing, including a chained `ESC *c12a5b0P` byte-stream fixture
+and ROM parser dispatch trace for selector-7 rule creation, selector-7 solid rendering
+and band-crossing continuation through `0x1f446` / `0x1f596`, gray selectors `0..6`, HP
+pattern selectors `8..13`, sub-byte shifted, band-crossing, and two-band page-assembly
+HP-pattern cases rendering through `0x1f446` / `0x1f4e0`, plus a parser-to-retry
+boundary for `ESC *c12a5b0P` where the `0x10d22` no-room path publishes the old root
+through `0xff1e`, allocates a fresh root through `0x10084`, and retries the selector-7
+rule through `0x13386`; `generated/analysis/ic30_ic13_font_control_flow.md` decodes `ESC
+*c#D` current font-id normalization and `ESC *c#F` values `0..6` into release/character
+cleanup/mark/unmark/housekeeping helpers, and the harness now traces chained `ESC
+*c17d25e5F` through ROM parser modes `0/1/3/16` to handlers `0x15a56`, `0x15a18`, and
+`0x16df6`; macro ID `ESC &f#Y` at `0xe112` stores absolute current id `0x783164`, macro
+control `ESC &f#X` at `0xdd08` dispatches selectors `0..10` for
+start/stop/execute/call/overlay/delete/temp/permanent through the macro record pool and
+`0xe418` data-chain frame builder, the harness now traces `ESC &f-123y0x1X` through ROM
+parser modes `0/1/5/17` to handlers `0xe112` and `0xdd08`, proves alternate table
+`0x116f6` stores macro-definition payload bytes while still routing `ESC &f1X` to
+`0xdd08`, and macro command-stream fixtures now drive id/start/stop plus plain and
+mixed-control payload definition, execute/call frame creation, overlay enable/disable
+state, delete-current/all, guard-state suppression, and permanence/delete state,
+`0xa904` data-chain byte fetch and end-marker outer-source resumption, execute/call
+replayed `!\r` dispatch through `0xd04a`/`0xf02c` into page-record output, replayed `ESC
+&k1G!\r!` dispatch through `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into page-record output,
+and macro-payload rule/raster band composition from command bytes
 
 ### Page geometry tables
 
 Status: Anchored, variable names provisional
 
-Evidence:
-  page-size helpers at `0x9d16`, `0x9d4e`, `0x9d86`, and `0x9dbe` decode internal page codes
-  into manual-matched logical 300 dpi page dimensions; executable fixtures now pin masked table
-  lookup, the full Technical Reference logical-dimension and printable-area margin cross-checks
-  for supported `ESC &l#A` sizes, `ESC &l#A` handler `0xfc74` mapping for letter and PCL `80`,
-  and `ESC &l#O` handler `0x10220` landscape active-extent swap, vertical offset source,
-  printable extent, top offset, `0x103ea` threshold reloads, and chained `ESC &l1a1O` byte-stream
-  selector coverage
+Evidence: page-size helpers at `0x9d16`, `0x9d4e`, `0x9d86`, and `0x9dbe` decode
+internal page codes into manual-matched logical 300 dpi page dimensions; executable
+fixtures now pin masked table lookup, the full Technical Reference logical-dimension and
+printable-area margin cross-checks for supported `ESC &l#A` sizes, `ESC &l#A` handler
+`0xfc74` mapping for letter and PCL `80`, and `ESC &l#O` handler `0x10220` landscape
+active-extent swap, vertical offset source, printable extent, top offset, `0x103ea`
+threshold reloads, and chained `ESC &l1a1O` byte-stream selector coverage
 
 ### Raster/text/page-object path
 
-Status: Anchored through parser bridge, render dispatch, executable allocator/bridge, executable
-  queued raster rows, and executable
-  expansion/destination/row-copy/resource-resolution/glyph-row/producer-modeled
-  bucket/positioning/font-record/font-allocation fixtures; full parser-produced page-object
-  integration, font-download parser-populated inline/downloaded source records, remaining full
-  live-parser raster, parser-populated font-download records, and full parser-produced
-  page-object coverage incomplete
+Status: Anchored through parser bridge, render dispatch, executable allocator/bridge,
+executable queued raster rows, and executable
+expansion/destination/row-copy/resource-resolution/glyph-row/producer-modeled
+bucket/positioning/font-record/font-allocation fixtures; full parser-produced
+page-object integration, font-download parser-populated inline/downloaded source
+records, remaining full live-parser raster, parser-populated font-download records, and
+full parser-produced page-object coverage incomplete
 
-Evidence:
-  `generated/analysis/ic30_ic13_raster_graphics_flow.md` collects the raster command edge:
-  `ESC *t#R`, `ESC *r#A`, `ESC *r#B`, and `ESC *b#W` map to handlers `0x10808`, `0x1075a`,
-  `0x107fa`, and delayed handler `0x105d0` via `0x121cc`; raster bytes are copied by `0x138de`
-  into queued page objects built by `0x13070`; normal printable text bytes flow through `0xa904`
-  -> `0xda9a` -> `0x11774` -> `0xd04a`, where `0x1393a` builds source object `0x782d7e`, as
-  documented in `generated/analysis/ic30_ic13_printable_text_path.md`; paired post-source text
-  paths are documented in `generated/analysis/ic30_ic13_text_cursor_span_flow.md`, with cursor
-  `0x782c8a` named as horizontal and `0x782c8e` named as vertical by text/control handlers plus
-  the raster-origin fixture; unflagged text uses `0xd140` / `0xd3b2` / `0xd4ac`, flagged text
-  uses `0xd550` / `0xd824` / `0xd8fc`, and the queue handoffs reach compact bucket producer
-  `0x12f2e`; compact bucket
-  allocator `0x1387c` is decoded in `generated/analysis/ic30_ic13_compact_bucket_allocator.md`;
-  text spans enter the same storage through `0x12714` / `0x12f2e`; rectangle/rule handlers share
-  page-root queues through `0x13386` and related helpers; `0x1edc6` copies queued record
-  pointers into render work records, with its queue/list/context-slot contract decoded in
-  `generated/analysis/ic30_ic13_page_record_bridge.md`; `0x1efc2` classifies bucket objects;
-  raster maps to `0x1f88e`, compact text/glyph buckets map through `0x1effe`, and rule lists map
-  through `0x1f446` / `0x1f756`; compact glyph objects select render-record context slots copied
-  from page-root `+0x2c` and traced in `generated/analysis/ic30_ic13_font_context_bridge.md`;
-  compact text payload glyph bytes are mapped through `0x782f32` / `0x783032` and documented in
-  `generated/analysis/ic30_ic13_text_glyph_index_flow.md`; active symbol-set flow from `ESC (` /
-  `ESC )` to `0x783144` / `0x783146` is documented in
-  `generated/analysis/ic30_ic13_active_symbol_set_flow.md`; symbol-set patch tables and
-  Technical Reference names are decoded in
-  `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`; compact and encoded-span payload
-  modes are named in `generated/analysis/ic30_ic13_render_subrenderers.md`; deterministic
-  encoded raster expansion fixtures are generated in
-  `generated/analysis/ic30_ic13_render_expansion_fixtures.md`; destination/clipping fixtures are
-  generated in `generated/analysis/ic30_ic13_render_destination_fixtures.md`; compact glyph
-  row-copy fixtures are generated in `generated/analysis/ic30_ic13_render_row_copy_fixtures.md`;
-  `tools/render_fixture_harness.py` executes those primitive models plus `0xa904` host byte
-  fetch source-priority fixtures, real built-in glyph-resource resolutions, full decoded mode-1
-  glyph-row fixtures, main `0x1f08e` row-copy rendering for four named glyphs plus a ROM-scanned
-  render-span matrix covering spans 1, 2, 4, 6, and 8, one symbol-set stream/map fixture for
-  `ESC (2U` / `ESC )0E` through ROM parser setup handlers `0x1201e`/`0x12008`, terminal handler
-  `0x120be`, `0x1be22`, `0xc580`, and `0x14f16`, one producer-modeled short text bucket object
-  from `0x14d9c` base-map through `0x1393a` / `0x12f2e`, `0x1387c` allocator fixtures that reuse
-  a matching short bucket object, allocate a new head when full, render an allocator-queued
-  short object, and allocate/reuse the segmented `0x2000` tall-glyph buckets from `64/8` down to
-  `0/0`, a `0x1edc6` bridge fixture that copies the compact bucket/context slots, normalizes
-  rule/fixed lists, pins producer-shaped `0x13386`/`0x136d2` rule objects, and covers
-  text/rule/raster plus macro-payload rule/raster band composition, parser-derived `ESC
-  *t#R`/`ESC *r#A` raster state fixtures, modeled `ESC *t300R`/`ESC *r1A`/`ESC *b4W`, `ESC
-  *t150R`/`ESC *r0A`/`ESC *b2W`, `ESC *t100R`/`ESC *r0A`/`ESC *b2W`, and `ESC *t75R`/`ESC
-  *r0A`/`ESC *b2W` raster command/data stream fixtures, with the first `ESC *b4W` object carried
-  through the `0x1edc6` bridge, plus a two-payload `ESC *t300R`/`ESC *r0A` multi-row stream
-  through delayed handler `0x0105d0`, a parser-to-gate edge check for `ESC *t300R`/`ESC
-  *r0A`/`ESC *b4W` capped and beyond-extent transfers, same-group lowercase-final chaining
-  fixtures for `ESC *t300r150R` and chained `ESC *b2w`/`2W` payload boundaries, plus a parser-traced
-  active `ESC *t75R` stream proving handler `0x10808` leaves current mode/scale intact, plus a
-  parser-traced `ESC *rB` stream proving handler `0x107fa` clears only raster active state and
-  allows a later `ESC *t150R` mode change, byte-aligned mode-0/non-byte-aligned mode-0/mode-1/
-  byte-aligned mode-2/non-byte-aligned mode-2/band-clipped mode-2/mode-3 raster row fixtures that
-  queue
-  objects `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55`, `00 00 00 00 80 00 00 02 04 01 c3 3c`,
-  `00 00 00 00 80 01 00 02 00 01 f0 0f`, `00 00 00 00 80 02 00 02 00 01 f0 0f`, `00 00 00 00 80
-  02 00 02 04 01 f0 0f`, `00 00 00 00 80 02 00 02 f0 01 f0 0f`, and `00 00 00 00 80 03 00 02 00
-  01 f0 0f` through `0x13070` / `0x13250` / `0x138de`, bridge the mode-0 object through
-  `0x1edc6`, and render them through `0x1f88e`, two `0xd824`-positioned short text bucket
-  objects covering normal positioning and negative-left overflow, one-byte and two-byte normal
-  printable stream fixtures for host byte `0x21` (`!`) through `0x1393a` / `0xd824` / `0xd550`
-  default advance / `0x12f2e` / render, an initialized `LINE_PRINTER` HMI fixture that renders
-  real sub-byte coord `0x0202` as `$a001 = 0x12` / pixel x `34`, a plain `!!`
-  parser-to-page-record fixture tying two `0xd04a` events to one root allocation, bucket-0
-  reuse, bridge, and rendered rows, a mixed `ESC &k1G!\r!` fixture that queues the post-CR glyph
-  at coord `0x3b00`, shows full-byte shifted blank-row clearing, and has a parser-traced
-  page-record allocator/bridge variant, a mixed `!\x1bE` fixture that publishes and clears a
-  valid current page root after queued text and has a page-record allocator/bridge/publication
-  variant, selected inline/downloaded `0x14e24`/`0x14eb6` map and `0x1393a` source-object
-  fixture plus type-2 payload-backed `0x1f0d2`/`0x1f1f0`, selected-memory `0x1f264` isolation,
-  and `0x16498` downloaded-pointer `0x1f264` render fixtures, `0x168dc`/`0x16942` font
-  payload-reader fixtures, `0x172c0`/`0x16c14` downloaded-font record bookkeeping fixtures,
-  `0x170be`/`0x17108`/`0x17150` record lookup/mark/unmark fixtures, `0x15a56`/`0x16df6`
-  font-id/control dispatch fixtures, `0x16fae`/`0x17362`/`0x17026`/`0x1719c`
-  validation-table/staged header/payload-backed inline allocation fixtures, plus synthetic
-  `0xd3b2` unflagged positioning fixtures covering both context-metric branches,
-  inline/downloaded `0x12f2e` short, page-record short, width-bit, and segmented payload objects
-  as isolation controls, and constructed selected-inline `0x1f0d2` wide, `0x1f1f0` segmented,
-  and `0x1f264` segmented-wide render rows, one segmented `0x2000` text bucket sequence for a
-  real `LINE_PRINTER` tall glyph case through both producer and page-record allocator shapes,
-  and a full built-in glyph coverage scan proving no normal wide/segmented bitmap entries, then
-  emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md`
+Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md` collects the raster
+command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`, and `ESC *b#W` map to handlers
+`0x10808`, `0x1075a`, `0x107fa`, and delayed handler `0x105d0` via `0x121cc`; raster
+bytes are copied by `0x138de` into queued page objects built by `0x13070`; normal
+printable text bytes flow through `0xa904` -> `0xda9a` -> `0x11774` -> `0xd04a`, where
+`0x1393a` builds source object `0x782d7e`, as documented in
+`generated/analysis/ic30_ic13_printable_text_path.md`; paired post-source text paths are
+documented in `generated/analysis/ic30_ic13_text_cursor_span_flow.md`, with cursor
+`0x782c8a` named as horizontal and `0x782c8e` named as vertical by text/control handlers
+plus the raster-origin fixture; unflagged text uses `0xd140` / `0xd3b2` / `0xd4ac`,
+flagged text uses `0xd550` / `0xd824` / `0xd8fc`, and the queue handoffs reach compact
+bucket producer `0x12f2e`; compact bucket allocator `0x1387c` is decoded in
+`generated/analysis/ic30_ic13_compact_bucket_allocator.md`; text spans enter the same
+storage through `0x12714` / `0x12f2e`; rectangle/rule handlers share page-root queues
+through `0x13386` and related helpers; `0x1edc6` copies queued record pointers into
+render work records, with its queue/list/context-slot contract decoded in
+`generated/analysis/ic30_ic13_page_record_bridge.md`; `0x1efc2` classifies bucket
+objects; raster maps to `0x1f88e`, compact text/glyph buckets map through `0x1effe`, and
+rule lists map through `0x1f446` / `0x1f756`; compact glyph objects select render-record
+context slots copied from page-root `+0x2c` and traced in
+`generated/analysis/ic30_ic13_font_context_bridge.md`; compact text payload glyph bytes
+are mapped through `0x782f32` / `0x783032` and documented in
+`generated/analysis/ic30_ic13_text_glyph_index_flow.md`; active symbol-set flow from
+`ESC (` / `ESC )` to `0x783144` / `0x783146` is documented in
+`generated/analysis/ic30_ic13_active_symbol_set_flow.md`; symbol-set patch tables and
+Technical Reference names are decoded in
+`generated/analysis/ic30_ic13_symbol_set_patch_tables.md`; compact and encoded-span
+payload modes are named in `generated/analysis/ic30_ic13_render_subrenderers.md`;
+deterministic encoded raster expansion fixtures are generated in
+`generated/analysis/ic30_ic13_render_expansion_fixtures.md`; destination/clipping
+fixtures are generated in `generated/analysis/ic30_ic13_render_destination_fixtures.md`;
+compact glyph row-copy fixtures are generated in
+`generated/analysis/ic30_ic13_render_row_copy_fixtures.md`;
+`tools/render_fixture_harness.py` executes those primitive models plus `0xa904` host
+byte fetch source-priority fixtures, real built-in glyph-resource resolutions, full
+decoded mode-1 glyph-row fixtures, main `0x1f08e` row-copy rendering for four named
+glyphs plus a ROM-scanned render-span matrix covering spans 1, 2, 4, 6, and 8, one
+symbol-set stream/map fixture for `ESC (2U` / `ESC )0E` through ROM parser setup
+handlers `0x1201e`/`0x12008`, terminal handler `0x120be`, `0x1be22`, `0xc580`, and
+`0x14f16`, one producer-modeled short text bucket object from `0x14d9c` base-map through
+`0x1393a` / `0x12f2e`, `0x1387c` allocator fixtures that reuse a matching short bucket
+object, allocate a new head when full, render an allocator-queued short object, and
+allocate/reuse the segmented `0x2000` tall-glyph buckets from `64/8` down to `0/0`, a
+`0x1edc6` bridge fixture that copies the compact bucket/context slots, normalizes
+rule/fixed lists, pins producer-shaped `0x13386`/`0x136d2` rule objects, and covers
+text/rule/raster plus macro-payload rule/raster band composition, parser-derived `ESC
+*t#R`/`ESC *r#A` raster state fixtures, modeled `ESC *t300R`/`ESC *r1A`/`ESC *b4W`, `ESC
+*t150R`/`ESC *r0A`/`ESC *b2W`, `ESC *t100R`/`ESC *r0A`/`ESC *b2W`, and `ESC *t75R`/`ESC
+*r0A`/`ESC *b2W` raster command/data stream fixtures, with the first `ESC *b4W` object
+carried through the `0x1edc6` bridge, plus a two-payload `ESC *t300R`/`ESC *r0A`
+multi-row stream through delayed handler `0x0105d0`, a parser-to-gate edge check for
+`ESC *t300R`/`ESC *r0A`/`ESC *b4W` capped and beyond-extent transfers, same-group
+lowercase-final chaining fixtures for `ESC *t300r150R` and chained `ESC *b2w`/`2W`
+payload boundaries, plus a parser-traced active `ESC *t75R` stream proving handler
+`0x10808` leaves current mode/scale intact, plus a parser-traced `ESC *rB` stream
+proving handler `0x107fa` clears only raster active state and allows a later `ESC
+*t150R` mode change, byte-aligned mode-0/non-byte-aligned mode-0/mode-1/ byte-aligned
+mode-2/non-byte-aligned mode-2/band-clipped mode-2/mode-3 raster row fixtures that queue
+objects `00 00 00 00 80 00 00 04 00 01 f0 0f aa 55`, `00 00 00 00 80 00 00 02 04 01 c3
+3c`, `00 00 00 00 80 01 00 02 00 01 f0 0f`, `00 00 00 00 80 02 00 02 00 01 f0 0f`, `00
+00 00 00 80 02 00 02 04 01 f0 0f`, `00 00 00 00 80 02 00 02 f0 01 f0 0f`, and `00 00 00
+00 80 03 00 02 00 01 f0 0f` through `0x13070` / `0x13250` / `0x138de`, bridge the mode-0
+object through `0x1edc6`, and render them through `0x1f88e`, two `0xd824`-positioned
+short text bucket objects covering normal positioning and negative-left overflow,
+one-byte and two-byte normal printable stream fixtures for host byte `0x21` (`!`)
+through `0x1393a` / `0xd824` / `0xd550` default advance / `0x12f2e` / render, an
+initialized `LINE_PRINTER` HMI fixture that renders real sub-byte coord `0x0202` as
+`$a001 = 0x12` / pixel x `34`, a plain `!!` parser-to-page-record fixture tying two
+`0xd04a` events to one root allocation, bucket-0 reuse, bridge, and rendered rows, a
+mixed `ESC &k1G!\r!` fixture that queues the post-CR glyph at coord `0x3b00`, shows
+full-byte shifted blank-row clearing, and has a parser-traced page-record
+allocator/bridge variant, a mixed `!\x1bE` fixture that publishes and clears a valid
+current page root after queued text and has a page-record allocator/bridge/publication
+variant, selected inline/downloaded `0x14e24`/`0x14eb6` map and `0x1393a` source-object
+fixture plus type-2 payload-backed `0x1f0d2`/`0x1f1f0`, selected-memory `0x1f264`
+isolation, and `0x16498` downloaded-pointer `0x1f264` render fixtures,
+`0x168dc`/`0x16942` font payload-reader fixtures, `0x172c0`/`0x16c14` downloaded-font
+record bookkeeping fixtures, `0x170be`/`0x17108`/`0x17150` record lookup/mark/unmark
+fixtures, `0x15a56`/`0x16df6` font-id/control dispatch fixtures,
+`0x16fae`/`0x17362`/`0x17026`/`0x1719c` validation-table/staged header/payload-backed
+inline allocation fixtures, plus synthetic `0xd3b2` unflagged positioning fixtures
+covering both context-metric branches, inline/downloaded `0x12f2e` short, page-record
+short, width-bit, and segmented payload objects as isolation controls, and constructed
+selected-inline `0x1f0d2` wide, `0x1f1f0` segmented, and `0x1f264` segmented-wide render
+rows, one segmented `0x2000` text bucket sequence for a real `LINE_PRINTER` tall glyph
+case through both producer and page-record allocator shapes, and a full built-in glyph
+coverage scan proving no normal wide/segmented bitmap entries, then emits
+`generated/analysis/ic30_ic13_renderer_fixture_harness.md`
 
 ### Resource ROM role
 
 Status: Anchored as font/resource source; glyph metadata extraction incomplete
 
-Evidence:
-  `IC32,IC15` contains `HEAD`, HP copyright, `COURIER`, `LINE_PRINTER`, dense font tables, and
-  firmware-scanned `0x1f354` glyph entries documented in
-  `generated/analysis/ic32_ic15_resource_glyph_probe.md`; built-in context examples
-  `0x4008004c`, `0x44080418`, and `0x440946b4` resolve to concrete glyph entries and bitmaps in
-  `tools/render_fixture_harness.py`; text object glyph index bytes are mapped before queuing by
-  `0x1393a` and initialized by `0x14d9c` / `0x14e24` / `0x14f16`; `0x1be22` computes normal PCL
-  symbol words from host `ESC (` / `ESC )` commands, handles `X` as font-ID selection through
-  `0x17708`, handles `@` through a default-font/table subdispatch backed by `0x782f1c/20/24/28`,
-  `0x1ac0a` and `0x1af36` table-builder writes are harness-pinned for default/fallback symbol
-  words, `0x1ad66` list/range/fallback candidate-search control flow and `0x1bbfe` / `0x1b060`
-  record-field helper behavior are harness-pinned, `0x156de` selects active words and can fall
-  back through `0x782f0c/10/14/18`, and `0x14fce` symbol-set patch records decode as named
-  `map[dst] = map[src]` byte-copy pairs, and the harness traces `ESC (2U` / `ESC )0E` through
-  ROM parser setup/terminal handlers before updating `LINE_PRINTER` map bytes through the
-  patch-table and Roman Extension cases
+Evidence: `IC32,IC15` contains `HEAD`, HP copyright, `COURIER`, `LINE_PRINTER`, dense
+font tables, and firmware-scanned `0x1f354` glyph entries documented in
+`generated/analysis/ic32_ic15_resource_glyph_probe.md`; built-in context examples
+`0x4008004c`, `0x44080418`, and `0x440946b4` resolve to concrete glyph entries and
+bitmaps in `tools/render_fixture_harness.py`; text object glyph index bytes are mapped
+before queuing by `0x1393a` and initialized by `0x14d9c` / `0x14e24` / `0x14f16`;
+`0x1be22` computes normal PCL symbol words from host `ESC (` / `ESC )` commands, handles
+`X` as font-ID selection through `0x17708`, handles `@` through a default-font/table
+subdispatch backed by `0x782f1c/20/24/28`, `0x1ac0a` and `0x1af36` table-builder writes
+are harness-pinned for default/fallback symbol words, `0x1ad66` list/range/fallback
+candidate-search control flow and `0x1bbfe` / `0x1b060` record-field helper behavior are
+harness-pinned, `0x156de` selects active words and can fall back through
+`0x782f0c/10/14/18`, and `0x14fce` symbol-set patch records decode as named `map[dst] =
+map[src]` byte-copy pairs, and the harness traces `ESC (2U` / `ESC )0E` through ROM
+parser setup/terminal handlers before updating `LINE_PRINTER` map bytes through the
+patch-table and Roman Extension cases
 
 ### Font candidate selection
 
-Status: Anchored as font/resource path and render-context bridge, rejected as raster compositor
+Status: Anchored as font/resource path and render-context bridge, rejected as raster
+compositor
 
-Evidence:
-  resource scanner `0x1a2e4..0x1ab82` builds font candidate lists; `0x1a9be` now has executable
-  coverage for its accepted-record high-byte flag updates and class/range counter partitioning
-  across `0x782790/92/94/98/9a/9c` plus cursor-window advances at `0x7827a0..0x7827b4`; the
-  verified `IC32,IC15` built-in scan contributes 24 concrete `HEAD`-path records, split into
-  twelve class `0` and twelve class `1` low-window entries; `0x1569c` activates class-zero
-  pointer/count `0x782354`/`12` or class-one pointer/count `0x782324`/`12` into `0x78287c` /
-  `0x7827b8` and sets active bit `0x80000000`; `0x156de` symbol filtering is executable over
-  those concrete windows, including requested-word matches, fallback-table selection, active-bit
-  clearing on rejects, first-survivor pointer update, and count shrink; `0x1519a` height
-  filtering is executable over the concrete class-zero window, including +/-`0x19` range
-  pruning, `0x1533e` nearest-height fallback, `0x13bca` decoded built-in heights, first-survivor
-  pointer update, and count shrink; `0x153c6` spacing/pitch filtering is executable over the
-  same window, including spacing byte pruning, `0x13b76` decoded built-in pitch, +/-`5` pitch
-  range pruning, `0x1562c` next-upper fallback, first-survivor pointer update, and count shrink;
-  `0x14398` active chooser is executable over the concrete class-zero Roman-8 survivors, with
-  `0x13c06`/`0x1428c` selecting slot `0x782364` / record `0x009fb0` by decoded tuple `[1200, 0,
-  3, 3]`; `0x14c64` dispatch is executable for the selected built-in offset-table record, the
-  `0x16c14`-installed RAM-backed `0x16fae` / `0x1719c` offset-table payload through `0x14d9c` /
-  `0x15890`, and separate bit-30-clear fixed-record controls through `0x14e24` / `0x14eb6` /
-  `0x158be`, covering range-table writes, selected flags, map rebuilds, Roman Extension
-  patching, and state snapshot `0x783148`; selected candidate longwords are copied into
-  current-font context records at `0x782ee6` / `0x782ef6`, installed into page-root `+0x2c`
-  slots, copied to render-record `+0x24`, and loaded into `0x783a2c` before `0x1f354`; built-in
-  selected-context low 24-bit addresses map to `IC32,IC15` offsets by subtracting `0x80000`, and
-  bit-30 offset-table entries are relative 32-bit glyph-entry offsets from the selected record
-  start
+Evidence: resource scanner `0x1a2e4..0x1ab82` builds font candidate lists; `0x1a9be` now
+has executable coverage for its accepted-record high-byte flag updates and class/range
+counter partitioning across `0x782790/92/94/98/9a/9c` plus cursor-window advances at
+`0x7827a0..0x7827b4`; the verified `IC32,IC15` built-in scan contributes 24 concrete
+`HEAD`-path records, split into twelve class `0` and twelve class `1` low-window
+entries; `0x1569c` activates class-zero pointer/count `0x782354`/`12` or class-one
+pointer/count `0x782324`/`12` into `0x78287c` / `0x7827b8` and sets active bit
+`0x80000000`; `0x156de` symbol filtering is executable over those concrete windows,
+including requested-word matches, fallback-table selection, active-bit clearing on
+rejects, first-survivor pointer update, and count shrink; `0x1519a` height filtering is
+executable over the concrete class-zero window, including +/-`0x19` range pruning,
+`0x1533e` nearest-height fallback, `0x13bca` decoded built-in heights, first-survivor
+pointer update, and count shrink; `0x153c6` spacing/pitch filtering is executable over
+the same window, including spacing byte pruning, `0x13b76` decoded built-in pitch,
++/-`5` pitch range pruning, `0x1562c` next-upper fallback, first-survivor pointer
+update, and count shrink; `0x14398` active chooser is executable over the concrete
+class-zero Roman-8 survivors, with `0x13c06`/`0x1428c` selecting slot `0x782364` /
+record `0x009fb0` by decoded tuple `[1200, 0, 3, 3]`; `0x14c64` dispatch is executable
+for the selected built-in offset-table record, the `0x16c14`-installed RAM-backed
+`0x16fae` / `0x1719c` offset-table payload through `0x14d9c` / `0x15890`, and separate
+bit-30-clear fixed-record controls through `0x14e24` / `0x14eb6` / `0x158be`, covering
+range-table writes, selected flags, map rebuilds, Roman Extension patching, and state
+snapshot `0x783148`; selected candidate longwords are copied into current-font context
+records at `0x782ee6` / `0x782ef6`, installed into page-root `+0x2c` slots, copied to
+render-record `+0x24`, and loaded into `0x783a2c` before `0x1f354`; built-in
+selected-context low 24-bit addresses map to `IC32,IC15` offsets by subtracting
+`0x80000`, and bit-30 offset-table entries are relative 32-bit glyph-entry offsets from
+the selected record start
 
 ### Formatter manuals
 
 Status: Anchored
 
-Evidence:
-  Existing notes summarize PCL Level IV, I/O, formatter, NVRAM, page geometry, and errors
-Raster lowercase-final shorthand note: references to `ESC *b2w`/`2W` mean the combined stream `ESC
-*b2w2W`, where lowercase `w` records the delayed transfer while parser mode stays in the `*b`
-family, and the raster payload is consumed only after the uppercase `W` terminator triggers the
-`0x12218` restore/dispatch boundary.
+Evidence: Existing notes summarize PCL Level IV, I/O, formatter, NVRAM, page geometry,
+and errors Raster lowercase-final shorthand note: references to `ESC *b2w`/`2W` mean the
+combined stream `ESC *b2w2W`, where lowercase `w` records the delayed transfer while
+parser mode stays in the `*b` family, and the raster payload is consumed only after the
+uppercase `W` terminator triggers the `0x12218` restore/dispatch boundary.
 
 ## Host Interface to Parser
 
 Known from manuals:
 
 - Host input can arrive through Centronics, RS-232C, or RS-422 paths.
-- The renderer target can normalize these to a byte stream once flow control and status side effects
-  are out of scope.
+- The renderer target can normalize these to a byte stream once flow control and status
+  side effects are out of scope.
 - PCL Level IV parser behavior is the main host-facing compatibility target.
 
 ROM work needed:
 
-- Expand named roles for byte-fetch routine `0x0000a904` callers and correlate the host I/O register
-  banks `0x8e01/0x8801/0x8c01` and `0xfffee005/0xfffee001/0xfffee009` with the physical board
-  interfaces.
-- Trace the handler at `0x00000d52`, which polls low MMIO/status addresses and updates many
-  `0x0078xxxx` state bytes.
+- Expand named roles for byte-fetch routine `0x0000a904` callers and correlate the host
+  I/O register banks `0x8e01/0x8801/0x8c01` and `0xfffee005/0xfffee001/0xfffee009` with
+  the physical board interfaces.
+- Trace the handler at `0x00000d52`, which polls low MMIO/status addresses and updates
+  many `0x0078xxxx` state bytes.
 - Identify input buffer structures in RAM.
-- Decode tokenizer records rooted at `0x78299e` and the 32-entry command/data pool at `0x782a98`.
-- Expand normal parser table `0x112a4` and alternate parser table `0x116f6` into named PCL commands.
-- Broaden the narrow direct-control and printable stream fixtures into the full firmware parser path
-  and replace synthetic `ESC E` roots with fuller parser-allocated page-object fixtures.
+- Decode tokenizer records rooted at `0x78299e` and the 32-entry command/data pool at
+  `0x782a98`.
+- Expand normal parser table `0x112a4` and alternate parser table `0x116f6` into named
+  PCL commands.
+- Broaden the narrow direct-control and printable stream fixtures into the full firmware
+  parser path and replace synthetic `ESC E` roots with fuller parser-allocated
+  page-object fixtures.
 - Trace binary payload modes, especially raster graphics and downloaded font data.
-- Use `notes/pcl-command-map.md` to prioritize page geometry, raster, rectangle, font, and macro
-  handlers.
+- Use `notes/pcl-command-map.md` to prioritize page geometry, raster, rectangle, font,
+  and macro handlers.
 - Record malformed/combined escape behavior that is not explicit in the manuals.
 
 ## Print Environment and Page Model
 
 Known from manuals:
 
-- The renderer model needs factory defaults, user defaults, modified print environment, cursor
-  stack, font state, macro state, logical page, printable area, and 300 dpi bitmap placement.
+- The renderer model needs factory defaults, user defaults, modified print environment,
+  cursor stack, font state, macro state, logical page, printable area, and 300 dpi
+  bitmap placement.
 
 ROM work needed:
 
 - Locate default environment tables.
-- Compare physical engine/self-test placement against the matched ROM/manual logical page and
-  printable-area dimensions.
+- Compare physical engine/self-test placement against the matched ROM/manual logical
+  page and printable-area dimensions.
 - Trace reset paths for `ESC E`, panel reset, power-on reset, and NVRAM/user defaults.
-- Trace remaining parser-produced cursor-stack interactions and primary/secondary font fallback
-  interactions.
+- Trace remaining parser-produced cursor-stack interactions and primary/secondary font
+  fallback interactions.
 
 ## Fonts and Glyph Imaging
 
@@ -373,21 +375,24 @@ Expected resource ROM contents:
 ROM work needed:
 
 - Extend `0x1519a`/`0x153c6`/`0x14398`/`0x14c64` from isolated requested-metric or
-  hand-selected-record cases to live parser/font-state coverage, and replace the remaining `0x156de`
-  synthetic cases with live parser/font-state coverage.
+  hand-selected-record cases to live parser/font-state coverage, and replace the
+  remaining `0x156de` synthetic cases with live parser/font-state coverage.
 - Decode the `HEAD` record scanner at firmware routine `0x0000041a`.
-- Use the repeated `COURIER` and `LINE_PRINTER` records as first built-in font extraction fixtures.
-- Replace the modeled default-font candidate records with a live parser/font-state fixture that
-  proves the real records feeding `0x1b250`, `0x1b50e`, `0x1ab84`, `0x1bbfe`, and `0x1b060`, and
-  decide how to document the undocumented but parser-exposed `@0..@2` table/copy variants.
-- Replace the current `ESC *c4660d37e5F` current-state boundary, `ESC )s0W` parser/route boundary
-  through `0x15d0a`, `ESC )s80W` resource-payload boundary through `0x16c14` -> `0x16fae` ->
-  `0x1719c`, and `ESC )s2193W` parser/object boundary through `0x16c14` -> `0x16498`
-  downloaded-pointer `0x1f264` with a full live parser-state run that populates current
-  records/source objects, then replace producer-modeled fixtures with full parser/page-object
-  rendering.
+- Use the repeated `COURIER` and `LINE_PRINTER` records as first built-in font
+  extraction fixtures.
+- Replace the modeled default-font candidate records with a live parser/font-state
+  fixture that proves the real records feeding `0x1b250`, `0x1b50e`, `0x1ab84`,
+  `0x1bbfe`, and `0x1b060`, and decide how to document the undocumented but
+  parser-exposed `@0..@2` table/copy variants.
+- Replace the current `ESC *c4660d37e5F` current-state boundary, `ESC )s0W` parser/route
+  boundary through `0x15d0a`, `ESC )s80W` resource-payload boundary through `0x16c14` ->
+  `0x16fae` -> `0x1719c`, and `ESC )s2193W` parser/object boundary through `0x16c14` ->
+  `0x16498` downloaded-pointer `0x1f264` with a full live parser-state run that
+  populates current records/source objects, then replace producer-modeled fixtures with
+  full parser/page-object rendering.
 - Extract glyph metrics and render a known self-test/font sample.
-- Confirm symbol-set mapping for ASCII, Roman-8, line draw, and any built-in alternatives.
+- Confirm symbol-set mapping for ASCII, Roman-8, line draw, and any built-in
+  alternatives.
 - Build extraction scripts that emit deterministic fixture data for the renderer.
 
 ## Raster and Final Imaging
@@ -398,42 +403,45 @@ Known renderer boundary:
 
 ROM work needed:
 
-- Replace the current `ESC *c4660d37e5F` current-state boundary, `ESC )s0W` parser/route boundary
-  through `0x15d0a`, `ESC )s80W` resource-payload boundary through `0x16c14` -> `0x16fae` ->
-  `0x1719c`, and `ESC )s2193W` parser/object boundary through `0x16c14` -> `0x16498`
-  downloaded-pointer `0x1f264` with a full live parser-state run that populates current
-  records/source objects; the verified built-in scan does not provide normal built-in entries for
-  these renderer modes.
-- Integrate executable row-copy behavior with real page objects from the parser/imaging path.
-- Broaden the documented printable and inline/downloaded `0x1393a` / `0xd824` / `0xd3b2` / `0xd550`
-  / `0x12f2e` text-object glyph-index fixtures into real font-download parser records, real HMI/font
-  metrics, glyph indices, and parser-produced page objects, building on the current plain `!!`,
-  mixed `ESC &k1G!\r!`, LF-positioned `ESC &k2G!\n!`, HT/BS-positioned `ESC &k0G HT BS !`,
-  left/right-margin-positioned `ESC &a1L!` / `ESC &a1M!`, lowercase-chained margin-positioned `ESC
-  &a6l9M!`, horizontal-column/horizontal-decipoint/vertical-row/vertical-decipoint/lowercase-chained
-  cursor-positioned `ESC &a2C!` / `ESC &a72H!` / `ESC &a1R!` / `ESC &a72V!` / `ESC &a2c+1R!`, and
-  top-margin-positioned `ESC &l3E!` parser-to-page-record boundaries.
+- Replace the current `ESC *c4660d37e5F` current-state boundary, `ESC )s0W` parser/route
+  boundary through `0x15d0a`, `ESC )s80W` resource-payload boundary through `0x16c14` ->
+  `0x16fae` -> `0x1719c`, and `ESC )s2193W` parser/object boundary through `0x16c14` ->
+  `0x16498` downloaded-pointer `0x1f264` with a full live parser-state run that
+  populates current records/source objects; the verified built-in scan does not provide
+  normal built-in entries for these renderer modes.
+- Integrate executable row-copy behavior with real page objects from the parser/imaging
+  path.
+- Broaden the documented printable and inline/downloaded `0x1393a` / `0xd824` / `0xd3b2`
+  / `0xd550` / `0x12f2e` text-object glyph-index fixtures into real font-download parser
+  records, real HMI/font metrics, glyph indices, and parser-produced page objects,
+  building on the current plain `!!`, mixed `ESC &k1G!\r!`, LF-positioned `ESC
+  &k2G!\n!`, HT/BS-positioned `ESC &k0G HT BS !`, left/right-margin-positioned `ESC
+  &a1L!` / `ESC &a1M!`, lowercase-chained margin-positioned `ESC &a6l9M!`,
+  horizontal-column/horizontal-decipoint/vertical-row/vertical-decipoint/lowercase-chained
+  cursor-positioned `ESC &a2C!` / `ESC &a72H!` / `ESC &a1R!` / `ESC &a72V!` / `ESC
+  &a2c+1R!`, and top-margin-positioned `ESC &l3E!` parser-to-page-record boundaries.
 - Treat direct `0x78297a` references and pool aliases documented in
-  `generated/analysis/ic30_ic13_page_root_references.md` as checked leads; the shared `0x10084`
-  first-root allocation and `0x10110` context-slot bootstrap are documented in
-  `generated/analysis/ic30_ic13_page_root_allocation.md`; the shared `0xff1e` publish-or-clear
-  boundary is documented in `generated/analysis/ic30_ic13_page_root_finalization.md`; the active
-  render bridge is documented in `generated/analysis/ic30_ic13_render_path_references.md`.
+  `generated/analysis/ic30_ic13_page_root_references.md` as checked leads; the shared
+  `0x10084` first-root allocation and `0x10110` context-slot bootstrap are documented in
+  `generated/analysis/ic30_ic13_page_root_allocation.md`; the shared `0xff1e`
+  publish-or-clear boundary is documented in
+  `generated/analysis/ic30_ic13_page_root_finalization.md`; the active render bridge is
+  documented in `generated/analysis/ic30_ic13_render_path_references.md`.
 - Keep `0x78287c`, `0x7827b8`, `0x7828a8`, and dispatch around `0x14398..0x156de` under
   font/resource selection unless later evidence proves a separate imaging role.
 - Broaden the current text/rule/raster, simple and mixed-control macro execute
-  parser-to-page-record, and macro-payload page-band composition fixtures into true heterogeneous
-  bucket-chain rendering, full macro replay through the live parser/data-chain path, and the full
-  final page-pixel merge.
+  parser-to-page-record, and macro-payload page-band composition fixtures into true
+  heterogeneous bucket-chain rendering, full macro replay through the live
+  parser/data-chain path, and the full final page-pixel merge.
 - Determine clipping and off-page behavior exactly.
-- Identify any banding/compression structures used internally; reproduce final pixel result rather
-  than formatter timing.
+- Identify any banding/compression structures used internally; reproduce final pixel
+  result rather than formatter timing.
 
 ## Working Rules
 
 - Keep raw ROMs and generated disassembly local-only.
 - Track manifests, scripts, and annotated findings.
-- When a ROM-derived behavior is implemented in a renderer, add a fixture byte stream and expected
-  pixel/hash result.
-- Prefer narrow extraction scripts over one-off manual tables so every claim can be regenerated from
-  the verified ROM hashes.
+- When a ROM-derived behavior is implemented in a renderer, add a fixture byte stream
+  and expected pixel/hash result.
+- Prefer narrow extraction scripts over one-off manual tables so every claim can be
+  regenerated from the verified ROM hashes.

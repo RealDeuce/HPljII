@@ -2,9 +2,9 @@
 
 Sources: local TC531000P reads; `TC531000AP.PDF`; `data/rom_manifest.json`.
 
-The verified ROM images are local-only artifacts and are intentionally ignored by Git. Track
-filenames, hashes, package locations, read method, and analysis notes here; keep raw bytes in the
-working directory.
+The verified ROM images are local-only artifacts and are intentionally ignored by Git.
+Track filenames, hashes, package locations, read method, and analysis notes here; keep
+raw bytes in the working directory.
 
 ## Read Setup
 
@@ -74,9 +74,9 @@ Rejected order probes:
 - Reset PC: `0x00000110`.
 - Exception vectors point into a regular RAM trampoline range beginning at `0x00780000`.
 
-Disassembling at `0x00000110` as `m68000` produces coherent startup code: interrupt mask setup,
-`RESET`, hardware register writes, RAM tests, trampoline initialization, and jumps into later
-initialization routines.
+Disassembling at `0x00000110` as `m68000` produces coherent startup code: interrupt mask
+setup, `RESET`, hardware register writes, RAM tests, trampoline initialization, and
+jumps into later initialization routines.
 
 `IC32,IC15` reconstructs a readable resource header:
 
@@ -84,5 +84,5 @@ initialization routines.
 HEAD ... Copyright (C) Hewlett-Packard Company, 1986
 ```
 
-MAME disassembly of the same pair does not look like executable reset/startup code, so treat it as
-data until proven otherwise.
+MAME disassembly of the same pair does not look like executable reset/startup code, so
+treat it as data until proven otherwise.

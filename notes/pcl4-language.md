@@ -1,7 +1,7 @@
 # PCL4 / PCL Level IV Notes
 
-Sources: `33440-90905_HP_LaserJet_series_II_Technical_Reference_Manual_Aug1989.pdf`, especially ch.
-1-3, ch. 13, appendix A.
+Sources: `33440-90905_HP_LaserJet_series_II_Technical_Reference_Manual_Aug1989.pdf`,
+especially ch. 1-3, ch. 13, appendix A.
 
 ## PCL Level
 
@@ -12,8 +12,8 @@ LaserJet Series II is a PCL Level IV device. PCL levels are upward-compatible su
 - Level III: office word processing.
 - Level IV: page formatting.
 
-PCL commands set printer features and normally remain in effect until changed by another command or
-reset.
+PCL commands set printer features and normally remain in effect until changed by another
+command or reset.
 
 Unsupported PCL commands should be ignored.
 
@@ -57,14 +57,16 @@ Where:
 - `#`: ASCII numeric value, optional sign and decimal fraction.
 - `z`: parameter character, ASCII 96-126. Used while combining commands.
 - `Z`: termination character, ASCII 64-94. Ends the command.
-- `[binary data]`: immediate bytes after terminator, length usually given by value field.
+- `[binary data]`: immediate bytes after terminator, length usually given by value
+  field.
 
 If a required value field is omitted, value 0 is assumed.
 
 ## Combining Commands
 
-Commands with the same parameterized and group characters can be combined. In a combined sequence,
-previous terminators become lowercase parameter characters until the final uppercase terminator.
+Commands with the same parameterized and group characters can be combined. In a combined
+sequence, previous terminators become lowercase parameter characters until the final
+uppercase terminator.
 
 Example concept:
 
@@ -79,8 +81,8 @@ Can combine to:
 ESC &l1o2A
 ```
 
-Parser implication: the same final letter in different case can mean "parameter continues" versus
-"command terminates".
+Parser implication: the same final letter in different case can mean "parameter
+continues" versus "command terminates".
 
 ## Coordinate System
 
@@ -97,23 +99,23 @@ Constants:
 - Decipoint: 1/720 inch.
 - Internal unit: 1/3600 inch.
 
-The printer tracks positions internally in 1/3600 inch units and truncates to physical dot positions
-when printing.
+The printer tracks positions internally in 1/3600 inch units and truncates to physical
+dot positions when printing.
 
 Columns are based on HMI. Rows are based on VMI or lines per inch.
 
 ## Logical Page and Printable Area
 
-The logical page is the addressable area in which the PCL cursor can be positioned. The cursor
-cannot move outside logical page bounds. The printable area is the part of the physical page where
-the engine can place dots.
+The logical page is the addressable area in which the PCL cursor can be positioned. The
+cursor cannot move outside logical page bounds. The printable area is the part of the
+physical page where the engine can place dots.
 
-`(0,0)` is at the left edge of the logical page at the current top margin position. Changing top
-margin changes the physical position of `(0,0)`.
+`(0,0)` is at the left edge of the logical page at the current top margin position.
+Changing top margin changes the physical position of `(0,0)`.
 
-All dimensions below are 300 dpi dots from Technical Reference figures 2-2 and 2-3. Columns
-`A`/`B` are physical dimensions, `C`/`D` are logical dimensions, and `E`/`F`/`G`/`H` are
-left/right/top/bottom unprintable margins.
+All dimensions below are 300 dpi dots from Technical Reference figures 2-2 and 2-3.
+Columns `A`/`B` are physical dimensions, `C`/`D` are logical dimensions, and
+`E`/`F`/`G`/`H` are left/right/top/bottom unprintable margins.
 
 Portrait:
 
@@ -145,16 +147,17 @@ Printable length is `B - (G + H)`.
 
 Clipping behavior:
 
-- Text: if any part of the character cell falls outside the printable area, the whole character is
-  clipped, even if the out-of-area portion has no set dots.
-- Raster graphics and rules: if the cursor starts inside the printable area, only the portion
-  extending outside the printable area is clipped.
+- Text: if any part of the character cell falls outside the printable area, the whole
+  character is clipped, even if the out-of-area portion has no set dots.
+- Raster graphics and rules: if the cursor starts inside the printable area, only the
+  portion extending outside the printable area is clipped.
 
 ## Print Environments
 
 ### Factory Default Environment
 
-ROM-stored defaults. See [control-panel-nvram-selftest.md](control-panel-nvram-selftest.md).
+ROM-stored defaults. See
+[control-panel-nvram-selftest.md](control-panel-nvram-selftest.md).
 
 ### User Default Environment
 
@@ -217,13 +220,13 @@ Technical Reference ch. 13:
 - Raster line: raster data bytes plus 10 bytes.
 - All optional memory becomes user memory.
 
-Approximate soft font formula and macro formula are in the Technical Reference; verify from PDF
-before coding an exact memory-accounting test.
+Approximate soft font formula and macro formula are in the Technical Reference; verify
+from PDF before coding an exact memory-accounting test.
 
 ## Common PCL Errors
 
-- `20 ERROR`: memory overflow during font download, macro creation, raster graphics download, or
-  page composition.
+- `20 ERROR`: memory overflow during font download, macro creation, raster graphics
+  download, or page composition.
 - `21 ERROR`: page too complex to print at engine pace.
 - `22 ERROR`: I/O protocol problem.
 - `40 ERROR`: data transfer problem, often baud mismatch or host power transition.
@@ -370,5 +373,6 @@ This is an emulator-oriented subset from appendix A. `#` is an ASCII decimal val
 - Build the parser around command syntax and environment mutation, not isolated strings.
 - Implement command combining correctly early; real drivers use it.
 - `ESC E` must differ from panel reset in page-buffer behavior.
-- Internal positioning should use 1/3600 inch units if you want command-compatible cursor math.
+- Internal positioning should use 1/3600 inch units if you want command-compatible
+  cursor math.
 - Unsupported commands should consume the correct syntax and then no-op.

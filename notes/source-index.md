@@ -4,9 +4,9 @@
 
 ### `33440-90905_HP_LaserJet_series_II_Technical_Reference_Manual_Aug1989.pdf`
 
-HP LaserJet Series II Technical Reference Manual, part number 33440-90905. This is the main source
-for PCL4 behavior, printer command syntax, command tables, programming hints, memory-use estimates,
-and interface appendices.
+HP LaserJet Series II Technical Reference Manual, part number 33440-90905. This is the
+main source for PCL4 behavior, printer command syntax, command tables, programming
+hints, memory-use estimates, and interface appendices.
 
 High-value sections:
 
@@ -20,23 +20,27 @@ High-value sections:
 
 ### `hplaserjetclassicsiiiii.pdf`
 
-LaserJet II / III Combined Service Manual, HP part number 33449-90906, first edition February 1990.
-This is the main source for hardware, formatter/DC controller architecture, control panel behavior,
-diagnostics, error messages, service mode, parts, wiring, and signal tables.
+LaserJet II / III Combined Service Manual, HP part number 33449-90906, first edition
+February 1990. This is the main source for hardware, formatter/DC controller
+architecture, control panel behavior, diagnostics, error messages, service mode, parts,
+wiring, and signal tables.
 
 High-value sections:
 
 - Chapter 1: features, memory capacities, component overview, control-panel overview.
-- Chapter 3: installation, control panel, menus, NVRAM defaults, self tests, service mode.
-- Chapter 5: theory of operation, formatter/interface PCA, DC Controller, engine systems, power.
-- Chapter 7: troubleshooting, message table, sensor checks, DC Controller signal listing and timing.
+- Chapter 3: installation, control panel, menus, NVRAM defaults, self tests, service
+  mode.
+- Chapter 5: theory of operation, formatter/interface PCA, DC Controller, engine
+  systems, power.
+- Chapter 7: troubleshooting, message table, sensor checks, DC Controller signal listing
+  and timing.
 - Appendix D: cabling diagrams and interface pinouts.
 - Appendix E/C: memory expansion installation and associated messages.
 
 ### `5843739.pdf`
 
-HP LaserJet Series II Desktop Office Printer Data Sheet. Useful for concise product specs and
-accessory part numbers.
+HP LaserJet Series II Desktop Office Printer Data Sheet. Useful for concise product
+specs and accessory part numbers.
 
 High-value facts:
 
@@ -48,19 +52,20 @@ High-value facts:
 
 ### `manualsplus_06859.pdf`
 
-LaserJet III User's Manual archive. Mostly HP 33449/PCL5, but useful for compatibility boundaries,
-user-visible UI behavior, memory board messages, and appendices that overlap the II/III service
-manual.
+LaserJet III User's Manual archive. Mostly HP 33449/PCL5, but useful for compatibility
+boundaries, user-visible UI behavior, memory board messages, and appendices that overlap
+the II/III service manual.
 
-Use sparingly for LaserJet II work. Treat LaserJet III-only features such as PCL5, scalable
-typefaces, Resolution Enhancement, auto font/raster rotation, page protection, localized display
-messages, and expanded symbol sets as non-33440 behavior unless the service manual says otherwise.
+Use sparingly for LaserJet II work. Treat LaserJet III-only features such as PCL5,
+scalable typefaces, Resolution Enhancement, auto font/raster rotation, page protection,
+localized display messages, and expanded symbol sets as non-33440 behavior unless the
+service manual says otherwise.
 
 ## Extraction Notes
 
-- Text extraction was done with `pdftotext -layout`; OCR errors include `I`/`1`, `O`/`0`, and
-  garbled table cells.
-- Signal and pin tables were paraphrased into Markdown. Verify against PDF images before building
-  hardware or interpreting connector orientation.
-- The service manual combines HP 33440 and HP 33449. These notes call out LaserJet III-only behavior
-  where it appears near shared material.
+- Text extraction was done with `pdftotext -layout`; OCR errors include `I`/`1`,
+  `O`/`0`, and garbled table cells.
+- Signal and pin tables were paraphrased into Markdown. Verify against PDF images before
+  building hardware or interpreting connector orientation.
+- The service manual combines HP 33440 and HP 33449. These notes call out LaserJet
+  III-only behavior where it appears near shared material.

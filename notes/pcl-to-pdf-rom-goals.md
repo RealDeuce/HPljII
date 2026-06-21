@@ -12,8 +12,8 @@ Build a LaserJet II-compatible converter:
 PCL/input byte stream -> rendered pages -> PDF
 ```
 
-This is not a full hardware emulator. The formatter board and ROMs are references and data sources,
-not necessarily execution targets.
+This is not a full hardware emulator. The formatter board and ROMs are references and
+data sources, not necessarily execution targets.
 
 ## What We Should Not Need
 
@@ -24,8 +24,8 @@ For PDF output, we should not need accurate modeling of:
 - Paper timing, beam timing, jams, fuser warmup, or mechanical engine delays.
 - Real Centronics/serial electrical timing beyond accepting byte streams.
 
-The service manual hardware notes remain useful for understanding architecture and diagnostics, but
-they should not drive the renderer design.
+The service manual hardware notes remain useful for understanding architecture and
+diagnostics, but they should not drive the renderer design.
 
 ## What the ROMs Are Expected to Provide
 
@@ -47,7 +47,8 @@ The formatter ROMs are valuable for facts the manuals do not fully specify:
   - page-size, orientation, margins, HMI, VMI, and text-length interactions.
 - Default environment tables.
 - Paper/page geometry constants.
-- Memory accounting and error thresholds, if reproducing `20 ERROR` / `21 ERROR` matters.
+- Memory accounting and error thresholds, if reproducing `20 ERROR` / `21 ERROR`
+  matters.
 
 ## Implementation Shape
 
@@ -85,7 +86,8 @@ Suggested renderer components:
 ## ROM Analysis Milestones
 
 1. Photograph/record formatter board markings.
-2. Identify CPU, clock, ROM packages, RAM, NVRAM, gate arrays, and cartridge/interface connectors.
+2. Identify CPU, clock, ROM packages, RAM, NVRAM, gate arrays, and cartridge/interface
+   connectors.
 3. Dump ROMs and preserve raw byte order.
 4. Determine ROM interleave/banking and CPU endian/order.
 5. Locate reset/vector/startup code.

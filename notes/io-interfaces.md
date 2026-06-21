@@ -1,7 +1,7 @@
 # I/O Interfaces
 
-Sources: `33440-90905_HP_LaserJet_series_II_Technical_Reference_Manual_Aug1989.pdf` appendix B;
-`hplaserjetclassicsiiiii.pdf` ch. 3 and appendix D.
+Sources: `33440-90905_HP_LaserJet_series_II_Technical_Reference_Manual_Aug1989.pdf`
+appendix B; `hplaserjetclassicsiiiii.pdf` ch. 3 and appendix D.
 
 ## Interface Selection
 
@@ -12,14 +12,14 @@ The LaserJet II supports:
 - RS-422 differential serial.
 - Optional I/O slot for other interfaces.
 
-Configuration is stored in NVRAM. HP 33440 factory default I/O is serial. HP 33449 factory default
-is parallel.
+Configuration is stored in NVRAM. HP 33440 factory default I/O is serial. HP 33449
+factory default is parallel.
 
 ## Parallel Connector
 
-36-pin Centronics-style connector. Technical Reference says printer receptacle is Amphenol
-`850-57FE-403600-20` or equivalent. Cable plug must be compatible with Amphenol `57-30360`.
-Recommended cable length: under 10 feet.
+36-pin Centronics-style connector. Technical Reference says printer receptacle is
+Amphenol `850-57FE-403600-20` or equivalent. Cable plug must be compatible with Amphenol
+`57-30360`. Recommended cable length: under 10 feet.
 
 | Pin | Signal | Meaning |
 | --- | --- | --- |
@@ -53,9 +53,10 @@ Signals with leading `-` are active low.
 - `Busy` goes high at the falling edge of `-Strobe`.
 - During normal transfer, the printer produces `-Ack` before `Busy` returns low.
 - `Busy` remains high when `-Fault` is low or the I/O buffer is full.
-- On offline-to-online, `Select` goes high, the printer sends an `-Ack`, and `Busy` goes low.
-- On online-to-offline, `Select` goes low; the printer can still accept a late character without
-  data loss.
+- On offline-to-online, `Select` goes high, the printer sends an `-Ack`, and `Busy` goes
+  low.
+- On online-to-offline, `Select` goes low; the printer can still accept a late character
+  without data loss.
 
 Timing from Technical Reference figure B-1:
 
@@ -72,10 +73,12 @@ Timing from Technical Reference figure B-1:
 
 ## Parallel Electrical Notes
 
-- Outputs `-Ack`, `Busy`, `Paper Error`, `Select`, `Auxout1`, `Auxout2`, and `-Fault` use SN7407 or
-  equivalent open-collector buffers with pullups between 1K and 3.3K to +5 V.
+- Outputs `-Ack`, `Busy`, `Paper Error`, `Select`, `Auxout1`, `Auxout2`, and `-Fault`
+  use SN7407 or equivalent open-collector buffers with pullups between 1K and 3.3K to +5
+  V.
 - Data inputs use SN74LS241 or equivalent hysteresis buffers with 1K pullup to +5 V.
-- Strobe input uses SN74LS14 hysteresis buffer, 680 ohm pullup to +5 V, and 33 pF to ground.
+- Strobe input uses SN74LS14 hysteresis buffer, 680 ohm pullup to +5 V, and 33 pF to
+  ground.
 
 ## Serial Connector
 
@@ -108,7 +111,8 @@ The HP 33440 selects RS-232C or RS-422 with a physical switch inside the back co
 - Up: RS-422.
 - Factory shipped as RS-232C.
 
-The HP 33449 selects RS-232C/RS-422 from the control panel; do not assume this for HP 33440.
+The HP 33449 selects RS-232C/RS-422 from the control panel; do not assume this for HP
+33440.
 
 ## Serial Data Format
 
@@ -148,8 +152,8 @@ Printer sends XON when all are true:
 - Printer is online.
 - Printer is not busy.
 
-`ROBUST XON=ON` makes the printer repeat XON once per second until data arrives. Factory setting is
-on.
+`ROBUST XON=ON` makes the printer repeat XON once per second until data arrives. Factory
+setting is on.
 
 Printer sends XOFF when any is true:
 
@@ -157,9 +161,9 @@ Printer sends XOFF when any is true:
 - Printer is offline.
 - Printer is busy.
 
-If host keeps sending after XOFF, the printer sends more XOFFs as remaining empty space reaches 32,
-16, 8, 4, 2, 1, and 0 bytes. It also sends XOFF when power-on state changes from `05 SELF TEST` to
-`02 WARMING UP`.
+If host keeps sending after XOFF, the printer sends more XOFFs as remaining empty space
+reaches 32, 16, 8, 4, 2, 1, and 0 bytes. It also sends XOFF when power-on state changes
+from `05 SELF TEST` to `02 WARMING UP`.
 
 ### DTR
 
@@ -184,17 +188,20 @@ DTR not-ready conditions match XOFF conditions:
 
 ## I/O Errors
 
-- `22 ERROR`: protocol mismatch or host/printer communication problem, often handshake or
-  baud/config mismatch.
-- `40 ERROR`: data transfer error, including host powered off while printer is online or mismatched
-  baud rate.
+- `22 ERROR`: protocol mismatch or host/printer communication problem, often handshake
+  or baud/config mismatch.
+- `40 ERROR`: data transfer error, including host powered off while printer is online or
+  mismatched baud rate.
 
 The printer does not support Enquire/Acknowledge (`ENQ/ACK`) protocol.
 
 ## Emulator Takeaways
 
-- Serial emulation needs both in-band XON/XOFF and DTR state even if the host only uses one.
-- The 1 KB I/O buffer and thresholds are concrete and should be modeled for compatibility tests.
-- Parallel emulation should support accepting a late character during online-to-offline transition.
+- Serial emulation needs both in-band XON/XOFF and DTR state even if the host only uses
+  one.
+- The 1 KB I/O buffer and thresholds are concrete and should be modeled for
+  compatibility tests.
+- Parallel emulation should support accepting a late character during online-to-offline
+  transition.
 - `-Input Prime` should be ignored.
 - `+5 V` on Centronics pin 18 is compatibility sense only, not external power.

@@ -694,7 +694,7 @@ macro/data-chain, direct-control, reset, text, rule, raster, bridge,
 row-copy, built-in glyph, symbol-set, and downloaded-font fixture
 families into one ROM-backed self-test. It emits
 `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and currently
-verifies 350 checks. The raster coverage now includes ROM-table
+verifies 351 checks. The raster coverage now includes ROM-table
 `0x11774` dispatch traces for the primary `ESC *t300R` / `ESC *r1A` /
 `ESC *b4W` stream, the 150/100/75-dpi mode streams, the consecutive-row
 `ESC *b2W` stream, the active-resolution-ignore `ESC *t75R` stream, the
@@ -882,9 +882,10 @@ selected-memory isolation plus host-fetched `ESC *c4660d37e5F`,
 host-fetched `ESC )s0W`, host-fetched `ESC )s80W`, and host-fetched
 `ESC )s2193W` parser boundaries, plus a host-fetched `ESC )s18W`
 downloaded-character payload-control stream that normalizes `1a 58`
-before wide glyph rendering. The fetched `ESC )s2193W`
-downloaded-pointer object now also crosses `0x1edc6` before rendering
-the same segmented-wide row. The fetched font-control state now carries
+before wide glyph rendering and now crosses `0x1edc6` before rendering
+the same wide row. The fetched `ESC )s2193W` downloaded-pointer object
+now also crosses `0x1edc6` before rendering the same segmented-wide row.
+The fetched font-control state now carries
 current id `0x1234` and current character `0x25` into fetched
 descriptor, resource-payload, and downloaded-character streams, tying
 delayed record restoration through `0x121cc` / `0x12218`, descriptor or

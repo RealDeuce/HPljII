@@ -17413,6 +17413,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         (0, 0, 0, 0),
         downloaded_wide_control_object,
     )
+    downloaded_wide_control_page_bridge_record = {
+        "bucket_root": downloaded_wide_control_object,
+        "rule_list": [],
+        "fixed_list": [],
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_wide_control_bridged = bridge_page_record_via_1edc6(
+        downloaded_wide_control_page_bridge_record,
+    )
+    downloaded_wide_control_bridged_rendered = render_bridged_compact_bucket_object(
+        data,
+        downloaded_wide_control_memory,
+        downloaded_wide_control_bridged,
+    )
     checks.append(assert_equal("host-fetched downloaded character payload control reaches wide render", {
         "fetched_stream_prefix": host_fetched_downloaded_wide_control_stream["stream"][:6],
         "fetched_stream_length": len(host_fetched_downloaded_wide_control_stream["stream"]),
@@ -17469,6 +17483,48 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "compact_object": bytes.fromhex("00 00 00 00 10 03 00 01 26 00 00 00"),
         "render": {
             "selector": 0x1003,
+            "compact_mode": 1,
+            "rows": [
+                "........" + "#." * 60 + ".#.#.#.#",
+            ],
+        },
+    }))
+    checks.append(assert_equal("host-fetched downloaded payload-control object preserves 0x1edc6 bridge contract", {
+        "fetched_stream_prefix": host_fetched_downloaded_wide_control_stream["stream"][:6],
+        "parser_handlers": [
+            event["handler"]
+            for event in downloaded_wide_control_trace["dispatches"]
+        ],
+        "compact_object": downloaded_wide_control_object,
+        "bridge_bucket_matches_object": (
+            downloaded_wide_control_bridged["bucket_root"]
+            == downloaded_wide_control_object
+        ),
+        "render_field_bucket_matches_object": (
+            downloaded_wide_control_bridged["render_record_fields"]["bucket_root_18"]
+            == downloaded_wide_control_object
+        ),
+        "rule_list_count": len(downloaded_wide_control_bridged["rule_list"]),
+        "fixed_list_count": len(downloaded_wide_control_bridged["fixed_list"]),
+        "context_slots_prefix": downloaded_wide_control_bridged["context_slots"][:4],
+        "render": {
+            "selector": downloaded_wide_control_bridged_rendered["selector"],
+            "context_slot": downloaded_wide_control_bridged_rendered["context_slot"],
+            "compact_mode": downloaded_wide_control_bridged_rendered["compact_mode"],
+            "rows": downloaded_wide_control_bridged_rendered["rows"],
+        },
+    }, {
+        "fetched_stream_prefix": b"\x1b)s18W",
+        "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+        "compact_object": bytes.fromhex("00 00 00 00 10 03 00 01 26 00 00 00"),
+        "bridge_bucket_matches_object": True,
+        "render_field_bucket_matches_object": True,
+        "rule_list_count": 0,
+        "fixed_list_count": 0,
+        "context_slots_prefix": (0, 0, 0, 0),
+        "render": {
+            "selector": 0x1003,
+            "context_slot": 3,
             "compact_mode": 1,
             "rows": [
                 "........" + "#." * 60 + ".#.#.#.#",

@@ -8741,6 +8741,68 @@ def render_bridged_compact_bucket_object(data: bytes, resources: bytes, render_r
     return render_compact_text_bucket_object(data, resources, context_slots, obj)
 
 
+def classify_bucket_chain_via_1efc2(data: bytes, render_record: dict[str, object]) -> dict[str, object]:
+    """Model the 0x1efc2 selected-bucket walk and first object-class split."""
+    fields = render_record.get("render_record_fields", {})
+    if not isinstance(fields, dict):
+        fields = {}
+    bucket_word = int(fields.get("word_10", render_record.get("word_10", 0))) & 0xFFFF
+    bucket_heads = render_record.get("bucket_array_18", fields.get("bucket_array_18"))
+    if not isinstance(bucket_heads, dict):
+        raise AssertionError("0x1efc2 fixture needs render-record bucket array at +0x18")
+    chain = bucket_heads.get(bucket_word, [])
+    if not isinstance(chain, list):
+        raise AssertionError("0x1efc2 fixture bucket entry must be a list of bucket objects")
+
+    entries: list[dict[str, object]] = []
+    for index, bucket_object in enumerate(chain):
+        obj = bytes(bucket_object)
+        if len(obj) < 6:
+            raise AssertionError("0x1efc2 fixture bucket object must include link and selector bytes")
+        object_byte_4 = obj[4]
+        class_mask = object_byte_4 & 0xC0
+        entry: dict[str, object] = {
+            "chain_index": index,
+            "next_link": u32(obj, 0),
+            "object_byte_4": object_byte_4,
+            "class_mask": class_mask,
+        }
+        if class_mask == 0:
+            compact_selector_bits = object_byte_4 & 0x30
+            compact_table_entry = 0x1F024 + (compact_selector_bits >> 2)
+            entry.update({
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "compact_selector_bits": compact_selector_bits,
+                "compact_table_entry": compact_table_entry,
+                "compact_table_target": u32(data, compact_table_entry),
+                "context_slot": obj[5] & 0x0F,
+            })
+        elif class_mask & 0x80:
+            encoded_mode = obj[5] & 0x03
+            encoded_table_entry = 0x1F8CA + encoded_mode * 4
+            entry.update({
+                "branch": "encoded-span",
+                "target": 0x01F88E,
+                "encoded_mode": encoded_mode,
+                "encoded_table_entry": encoded_table_entry,
+                "encoded_table_target": u32(data, encoded_table_entry),
+            })
+        else:
+            entry.update({
+                "branch": "segment-list",
+                "target": 0x01F812,
+            })
+        entries.append(entry)
+
+    return {
+        "bucket_word_10": bucket_word,
+        "bucket_slot_offset": bucket_word * 4,
+        "entries": entries,
+        "empty": not entries,
+    }
+
+
 def raster_graphics_state(**overrides: int) -> dict[str, int]:
     state = {
         "baseline_word": 0,
@@ -18742,6 +18804,55 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "fixed_list_20": [bytes.fromhex("00 00 00 00 00 14 00 00 ab cd ab cd 01 08")],
         "context_slots_24_prefix": (0x440946B4, 0),
     }))
+    compact_dispatch_object = bytes.fromhex("00 00 00 00 20 03 00 00")
+    segment_dispatch_object = bytes.fromhex("00 00 00 00 40 00 00 00")
+    encoded_dispatch_object = bytes.fromhex("00 00 00 00 80 02 00 00")
+    bucket_dispatch_report = classify_bucket_chain_via_1efc2(data, {
+        "render_record_fields": {
+            "word_10": 2,
+            "bucket_array_18": {
+                2: [compact_dispatch_object, segment_dispatch_object, encoded_dispatch_object],
+            },
+        },
+    })
+    checks.append(assert_equal("0x1efc2 bucket-chain dispatcher selects bucket and object classes", bucket_dispatch_report, {
+        "bucket_word_10": 2,
+        "bucket_slot_offset": 8,
+        "entries": [
+            {
+                "chain_index": 0,
+                "next_link": 0,
+                "object_byte_4": 0x20,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "compact_selector_bits": 0x20,
+                "compact_table_entry": 0x01F02C,
+                "compact_table_target": 0x01F1F0,
+                "context_slot": 3,
+            },
+            {
+                "chain_index": 1,
+                "next_link": 0,
+                "object_byte_4": 0x40,
+                "class_mask": 0x40,
+                "branch": "segment-list",
+                "target": 0x01F812,
+            },
+            {
+                "chain_index": 2,
+                "next_link": 0,
+                "object_byte_4": 0x80,
+                "class_mask": 0x80,
+                "branch": "encoded-span",
+                "target": 0x01F88E,
+                "encoded_mode": 2,
+                "encoded_table_entry": 0x01F8D2,
+                "encoded_table_target": 0x01F920,
+            },
+        ],
+        "empty": False,
+    }))
     rule_page_record: dict[str, object] = {}
     rule_result = queue_rectangle_rule_via_13386(
         rule_page_record,
@@ -25706,6 +25817,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         active_copy_fields["render_word_0c"],
         active_copy_fields["render_word_10"],
         active_copy_fields["render_word_16"],
+    ))
+    lines.append("- `0x1efc2` bucket-chain dispatcher fixture indexes render bucket word `%d` at slot offset `%d` and dispatches object byte `+4` classes through `%s`." % (
+        bucket_dispatch_report["bucket_word_10"],
+        bucket_dispatch_report["bucket_slot_offset"],
+        ", ".join("`%s -> 0x%06x`" % (entry["branch"], entry["target"]) for entry in bucket_dispatch_report["entries"]),
     ))
     lines.append("- producer-shaped rectangle/rule fixtures: `0x13386`/`0x133aa` stores bucket byte `0x%02x`, key `0x%04x`, width `0x%04x`, and height `0x%04x` before bridge byte `+5` becomes `0x%02x`; `0x137a2`/`0x136d2` stores key `0x%04x` and extent `0x%04x` before bridge byte `+5` becomes `0x%02x`." % (
         rule_bridged["rule_list"][0][4],

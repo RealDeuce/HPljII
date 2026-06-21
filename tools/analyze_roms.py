@@ -2255,6 +2255,8 @@ def render_dispatch_table_report(data: bytes) -> str:
     lines.append("| `0x40..0x7f` | `jsr 0x1f812` | segment-list object |")
     lines.append("| `0x80..0xff` | `jsr 0x1f88e` | encoded-span object; raster rows are born with byte `+4 = 0x80` |")
     lines.append("")
+    lines.append("`tools/render_fixture_harness.py` now has an executable `0x1efc2` bucket-chain fixture that selects render-record bucket word `+0x10`, converts it to a `+0x18` bucket-array slot offset, and pins the compact, segment-list, and encoded-span branch targets plus the compact/encoded subtable entries.")
+    lines.append("")
 
     compact_table = [
         ("`object+4 & 0x30 == 0x00`", 0),

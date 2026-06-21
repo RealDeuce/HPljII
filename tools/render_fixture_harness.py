@@ -10525,9 +10525,39 @@ def render_mixed_printable_control_page_record_stream(
         rendered = render_entry["entry"]
     published_bridged_record = None
     published_rendered = None
+    published_render_entry = None
     if published_page_record is not None:
         published_bridged_record = bridge_page_record_via_1edc6(published_page_record)
-        published_rendered = render_bridged_compact_bucket_object(data, resources, published_bridged_record)
+        published_bucket_array = published_page_record.get("bucket_array", {})
+        published_chain: list[bytes] = []
+        if isinstance(published_bucket_array, dict):
+            published_nonempty = [
+                int(bucket)
+                for bucket, chain in published_bucket_array.items()
+                if chain
+            ]
+            if len(published_nonempty) == 1:
+                published_chain = [
+                    bytes(obj)
+                    for obj in published_bucket_array[published_nonempty[0]]
+                ]
+        published_bucket_root = published_page_record.get("bucket_root")
+        published_compact_only = (
+            isinstance(published_bucket_root, bytes)
+            and len(published_chain) == 1
+            and published_chain[0] == published_bucket_root
+            and len(published_bucket_root) > 4
+            and (published_bucket_root[4] & 0xC0) == 0
+        )
+        if published_compact_only:
+            published_rendered = render_bridged_compact_bucket_object(data, resources, published_bridged_record)
+        else:
+            published_render_entry = render_published_page_record_via_1ed84_1ef6a(
+                data,
+                resources,
+                published_page_record,
+            )
+            published_rendered = published_render_entry["entry"]
     return {
         "stream": stream,
         "events": events,
@@ -10540,6 +10570,7 @@ def render_mixed_printable_control_page_record_stream(
         "published_page_record": published_page_record,
         "published_bridged_record": published_bridged_record,
         "published_rendered": published_rendered,
+        "published_render_entry": published_render_entry,
         "final_state": state,
     }
 
@@ -29932,6 +29963,180 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "rows": text_rectangle_raster_expected_rows,
     }))
+    text_rectangle_raster_ff_stream = text_rectangle_raster_stream + b"\x0c"
+    text_rectangle_raster_ff_host_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(text_rectangle_raster_ff_stream), direct_mode=0),
+        len(text_rectangle_raster_ff_stream),
+    )
+    text_rectangle_raster_ff_state = control_fixture_state(
+        cursor_x=pack12(10),
+        cursor_y=pack12(21),
+        hmi=line_printer_hmi["hmi"],
+        pending_width=1,
+        pending_text=1,
+        span_flush_enable=1,
+        page_width=100,
+        page_height=80,
+        orientation=0,
+        width=pack12(0),
+        height=pack12(0),
+        area_fill_id=0,
+        fill_selector=7,
+        page_root_present=0,
+        page_root_class=1,
+        current_page_root=0,
+        page_publications=0,
+        page_root_clears=0,
+        published_pool_record=0,
+        page_publication_flag=0,
+        transient_page_byte=1,
+        cursor_transient_a=1,
+        cursor_transient_b=1,
+    )
+    text_rectangle_raster_ff_state.update(raster_graphics_state(page_extent=255))
+    text_rectangle_raster_ff_page_record_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        text_rectangle_raster_ff_stream,
+        0x440946B4,
+        text_rectangle_raster_ff_state,
+        default_advance=line_printer_hmi["hmi"],
+    )
+    text_rectangle_raster_ff_published_record = text_rectangle_raster_ff_page_record_stream["published_page_record"]
+    text_rectangle_raster_ff_published_render = text_rectangle_raster_ff_page_record_stream["published_render_entry"]
+    assert isinstance(text_rectangle_raster_ff_published_record, dict)
+    assert isinstance(text_rectangle_raster_ff_published_render, dict)
+    text_rectangle_raster_ff_pool_fields = text_rectangle_raster_ff_published_record["pool_record_fields"]
+    assert isinstance(text_rectangle_raster_ff_pool_fields, dict)
+    text_rectangle_raster_ff_final_events = [
+        event
+        for event in text_rectangle_raster_ff_page_record_stream["events"]
+        if event["kind"] == "control" and event["byte"] == 0x0C
+    ]
+    if len(text_rectangle_raster_ff_final_events) != 1:
+        raise AssertionError("text+rectangle+raster+FF fixture expected one FF finalization")
+    text_rectangle_raster_ff_final_event = text_rectangle_raster_ff_final_events[0]
+    text_rectangle_raster_ff_finalized = text_rectangle_raster_ff_final_event["finalized_page_record"]
+    assert isinstance(text_rectangle_raster_ff_finalized, dict)
+    checks.append(assert_equal("host-fetched text rectangle raster FF publishes rendered page record", {
+        "fetched_stream": text_rectangle_raster_ff_host_fetch["stream"],
+        "fetch_source_count": len(text_rectangle_raster_ff_host_fetch["sources"]),
+        "remaining_ring": text_rectangle_raster_ff_host_fetch["state"]["ring"],
+        "stream_events": [
+            {
+                "kind": event["kind"],
+                "sequence": event.get("sequence"),
+                "handler": event.get("handler"),
+                "byte": event.get("byte"),
+            }
+            for event in text_rectangle_raster_ff_page_record_stream["events"]
+        ],
+        "finalized": {
+            "published": text_rectangle_raster_ff_finalized["published"],
+            "bucket_index": text_rectangle_raster_ff_finalized["bucket_index"],
+            "current_page_root_after": text_rectangle_raster_ff_finalized["current_page_root_after"],
+            "page_root_clears": text_rectangle_raster_ff_finalized["page_root_clears"],
+            "page_publication_flag": text_rectangle_raster_ff_finalized["page_publication_flag"],
+        },
+        "published_bucket_array_1c": text_rectangle_raster_ff_pool_fields["bucket_array_1c"],
+        "published_rule_list_24": text_rectangle_raster_ff_pool_fields["rule_list_24"],
+        "published_context_slots_2c_prefix": text_rectangle_raster_ff_pool_fields["context_slots_2c"][:2],
+        "published_call_order": text_rectangle_raster_ff_published_render["entry"]["call_order"],
+        "published_dispatch_entries": [
+            {
+                "chain_index": entry["chain_index"],
+                "object_byte_4": entry["object_byte_4"],
+                "class_mask": entry["class_mask"],
+                "branch": entry["branch"],
+                "target": entry["target"],
+                "context_slot": entry.get("context_slot"),
+                "encoded_mode": entry.get("encoded_mode"),
+            }
+            for entry in text_rectangle_raster_ff_published_render["entry"]["dispatch"]["entries"]
+        ],
+        "published_rows": text_rectangle_raster_ff_published_render["entry"]["rows"],
+        "final_state": select_keys(text_rectangle_raster_ff_page_record_stream["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "current_page_root",
+            "page_publications",
+            "page_root_clears",
+            "page_roots",
+            "page_finalizes",
+            "pending_text",
+            "span_flushes",
+            "post_flushes",
+            "page_publication_flag",
+            "page_record_root_allocations",
+            "row_y",
+        )),
+    }, {
+        "fetched_stream": text_rectangle_raster_ff_stream,
+        "fetch_source_count": len(text_rectangle_raster_ff_stream),
+        "remaining_ring": [],
+        "stream_events": [
+            {"kind": "printable", "sequence": None, "handler": None, "byte": 0x21},
+            {"kind": "rectangle", "sequence": b"\x1b*c12a", "handler": 0x010E68, "byte": None},
+            {"kind": "rectangle", "sequence": b"5b", "handler": 0x010E22, "byte": None},
+            {"kind": "rectangle", "sequence": b"0P", "handler": 0x010898, "byte": None},
+            {"kind": "raster-resolution", "sequence": b"\x1b*t300R", "handler": 0x010808, "byte": None},
+            {"kind": "start-raster", "sequence": b"\x1b*r0A", "handler": 0x01075A, "byte": None},
+            {"kind": "raster-transfer", "sequence": b"\x1b*b2W", "handler": 0x011F82, "byte": None},
+            {"kind": "control", "sequence": None, "handler": None, "byte": 0x0C},
+        ],
+        "finalized": {
+            "published": True,
+            "bucket_index": 0,
+            "current_page_root_after": 0,
+            "page_root_clears": 1,
+            "page_publication_flag": 1,
+        },
+        "published_bucket_array_1c": {
+            0: [
+                bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01") + bytes(0x1B),
+            ],
+        },
+        "published_rule_list_24": [bytes.fromhex("00 00 00 00 01 07 5c 01 00 0c 00 05 00 00")],
+        "published_context_slots_2c_prefix": (0x440946B4, 0),
+        "published_call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "published_dispatch_entries": [
+            {
+                "chain_index": 0,
+                "object_byte_4": 0x80,
+                "class_mask": 0x80,
+                "branch": "encoded-span",
+                "target": 0x01F88E,
+                "context_slot": None,
+                "encoded_mode": 0,
+            },
+            {
+                "chain_index": 1,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 0,
+                "encoded_mode": None,
+            },
+        ],
+        "published_rows": text_rectangle_raster_expected_rows,
+        "final_state": {
+            "cursor_x": pack12(28),
+            "cursor_y": pack12(21),
+            "current_page_root": 0,
+            "page_publications": 1,
+            "page_root_clears": 1,
+            "page_roots": 2,
+            "page_finalizes": 1,
+            "pending_text": 0xFF,
+            "span_flushes": 1,
+            "post_flushes": 1,
+            "page_publication_flag": 1,
+            "page_record_root_allocations": 1,
+            "row_y": 1,
+        },
+    }))
     mixed_publication_parser_trace = {
         "reset": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1bE"),
         "ff": trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k2G!\f"),
@@ -32920,6 +33125,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("The same direct page-record group now crosses `0x1ed84` active-record copy and the `0x1ef6a` render-entry call order, including nonzero bucket selection for the vertical cursor/layout cases.")
     lines.append("A host-fetched text-plus-rectangle fixture now drains `! ESC *c12a5b0P`, queues the compact text bucket and selector-7 rule in the same page record, and carries that combined bucket/rule record through `0x1ed84` and `0x1ef6a`.")
     lines.append("A host-fetched text-plus-rectangle-plus-raster fixture now drains `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W` through the same mixed page-record stream runner. That runner queues compact text, the selector-7 rule, and the delayed `0x105d0` mode-0 raster transfer in one page record before rendering the combined bucket/rule/raster record through `0x1ed84` and `0x1ef6a`.")
+    lines.append("Adding FF to that same stream now publishes the heterogeneous text/rule/raster page record through the modeled `0xff1e` boundary, clears the current root, and renders the published record through `0x1ed84` and `0x1ef6a` with the same rows.")
     lines.append("")
     lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now starts without a current page root, marks the first printable as the page-record root allocation point, models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`.")
     lines.append("")

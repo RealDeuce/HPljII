@@ -202,11 +202,11 @@ active-resolution, end-raster/re-enable, chained-resolution, and
 chained-transfer raster streams, plus modeled `0xff1e` publication of
 the combined text/rule/raster page record before `0x1ed84`/`0x1ef6a`
 rendering after one mixed stream runner handles text, `ESC *c`, and
-delayed raster transfer commands; full parser-produced page-object
-integration, font-download parser-populated inline/downloaded source
-records, remaining full live-parser raster, parser-populated
-font-download records, and full parser-produced page-object coverage
-incomplete
+delayed raster transfer commands, including a trailing-FF publication
+variant; full parser-produced page-object integration, font-download
+parser-populated inline/downloaded source records, remaining full
+live-parser raster, parser-populated font-download records, and full
+parser-produced page-object coverage incomplete
 
 Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md`
 collects the raster command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`,

@@ -885,6 +885,9 @@ renders the published record through `0x1ed84` and `0x1ef6a` with the
 same composed rows. That same fixture now runs text, `ESC *c`, and the
 delayed `ESC *b#W` raster transfer through one mixed page-record stream
 runner instead of attaching the raster row after the text/rule record.
+Adding FF to that stream now publishes the heterogeneous page record
+through the modeled `0xff1e` boundary and renders the published record
+through `0x1ed84` and `0x1ef6a` with the same rows.
 Raster
 coverage now has a named flow report plus ROM-table `0x11774` dispatch
 traces for the primary, 150/100/75-dpi, consecutive-row, capped/drained,

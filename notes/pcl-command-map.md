@@ -171,6 +171,18 @@ page below current top margin, writes
 `0x782dd2 = 0x782dce + text_length`, and uses `0xea16` to restore the
 default bottom when the parameter is zero.
 
+`ESC &l#H` at `0x00ef62` handles page eject and paper-source selection.
+It rewinds to the parser record, normalizes the absolute selector, flushes
+pending text through `0xf34a`, publishes the current page root through
+`0xff1e`, and refreshes the cursor through `0xf8fc`. The selector table at
+`0xef3a` maps `0` to the page-eject arm `0xefae`, `1` to `0xefb6`,
+`2` to `0xefe8`, `3` to `0xeff0`, and other values to `0xeff8`. The
+`!\x1b&l2H` fixture proves selector `2` writes manual-feed value `0x80`
+to `0x782da6`, sets pending-status byte `0x782998`, ORs bit 0 into
+`0x780e26` when the output path is available, clears the current page root,
+and publishes the queued compact text bucket before the paper-source state
+change.
+
 `ESC &a#L` at `0x00eb58` converts the absolute parsed column count
 through current HMI `0x78315c`, rejects values beyond `0x782dda - HMI`,
 and writes the accepted value to left margin `0x782dd6`. When the
@@ -565,8 +577,8 @@ glyph row-copy fixtures are generated in
 together, pins `0xa904` host byte fetch source-priority fixtures plus
 ring-fed host-to-render boundaries for the direct text/control
 page-record stream set through `0x1edc6` bridge fields, the
-reset/FF/page-size/orientation publication streams, addressed
-publication allocation variants for reset, FF, page-size, and
+reset/FF/page-size/orientation/paper-source publication streams,
+addressed publication allocation variants for reset, FF, page-size, and
 orientation, and the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W`
 raster stream through its raster bridge fields,
 pins `0xdaf0`/`0xdb74` tokenizer records, `0x121cc`
@@ -580,9 +592,10 @@ page-record boundary for `ESC &f0S ESC &a2C ESC &f1S!`, adds synthetic
 `ESC E` reset byte-stream fixtures for valid-page-root publication and
 missing-root clearing, ties missing-root `ESC E` to the modeled `0xa904`
 ring source and ROM parser handler `0xcc52`, plus a ROM parser trace for
-`!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O` through printable
-`0xd04a`, reset `0xcc52`, line-termination `0xedf8`, FF `0xf0f0`,
-page-size `0xfc74`, and orientation `0x10220`, feeds four named real
+`!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, `!\x1b&l1O`, and `!\x1b&l2H`
+through printable `0xd04a`, reset `0xcc52`, line-termination `0xedf8`,
+FF `0xf0f0`, page-size `0xfc74`, orientation `0x10220`, and paper-source
+`0xef62`, feeds four named real
 built-in glyph bitmaps plus a ROM-scanned span matrix through the main
 `0x1f08e` row-copy table, includes a producer-modeled short text bucket fixture
 plus short and segmented `0x1387c` page-record allocator checks and a

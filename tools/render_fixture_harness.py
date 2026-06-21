@@ -42500,9 +42500,31 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- vertical-layout parser-to-page-record boundary: stream `1b 26 6c 33 45 21` routes `ESC &l3E` through handler `0xece2`, refreshes the pending vertical cursor from top margin row 3, then queues printable `!` through `0xd04a` at compact coord `0x9001` in bucket `6` and renders the bridged glyph with nine blank rows before the glyph body.")
     lines.append("- cursor-stack parser-to-page-record boundary: stream `1b 26 66 30 53 1b 26 61 32 43 1b 26 66 31 53 21` routes `ESC &f0S`, `ESC &a2C`, and `ESC &f1S` through handlers `0xf75e`, `0xf39e`, and `0xf75e`; the pop restores the original cursor before printable `!` queues through `0xd04a` at compact coord `0x0001` and renders the bridged glyph at the original origin.")
     lines.append("")
-    lines.append("A ROM parser trace now anchors the publication streams before the modeled page-record layer: `21 1b 45` routes printable `!` through the mode-0 `0xd04a` branch and `ESC E` through handler `0xcc52`; `1b 26 6b 32 47 21 0c` routes `ESC &k2G` through handler `0xedf8`, printable `!` through `0xd04a`, and FF through handler `0xf0f0`; `21 1b 26 6c 31 41` and `21 1b 26 6c 31 4f` route printable `!` through `0xd04a` before page-size `ESC &l1A` reaches `0xfc74` and orientation `ESC &l1O` reaches `0x10220`.")
-    lines.append("The publication-boundary fixture ties those parser handler sequences to the modeled page-record side for the same four byte streams: each allocates one root on printable `!`, publishes one compact bucket through `0xff1e`, clears the current root, and renders the published rows after the `0x1edc6` bridge.")
-    lines.append("A host-fetch publication fixture now starts those same reset, FF, page-size, and orientation streams from the modeled `0xa904` ring source, drains all input bytes from the ring, replays the same parser handlers, and lands on the same published compact rows.")
+    lines.append(
+        "A ROM parser trace now anchors the publication streams before the "
+        "modeled page-record layer: `21 1b 45` routes printable `!` through "
+        "the mode-0 `0xd04a` branch and `ESC E` through handler `0xcc52`; "
+        "`1b 26 6b 32 47 21 0c` routes `ESC &k2G` through handler `0xedf8`, "
+        "printable `!` through `0xd04a`, and FF through handler `0xf0f0`; "
+        "`21 1b 26 6c 31 41`, `21 1b 26 6c 31 4f`, and "
+        "`21 1b 26 6c 32 48` route printable `!` through `0xd04a` before "
+        "page-size `ESC &l1A` reaches `0xfc74`, orientation `ESC &l1O` "
+        "reaches `0x10220`, and paper-source `ESC &l2H` reaches `0xef62`."
+    )
+    lines.append(
+        "The publication-boundary fixture ties those parser handler sequences "
+        "to the modeled page-record side for the same five byte streams: each "
+        "allocates one root on printable `!`, publishes one compact bucket "
+        "through `0xff1e`, clears the current root, and renders the published "
+        "rows after the `0x1edc6` bridge."
+    )
+    lines.append(
+        "A host-fetch publication fixture now starts those same reset, FF, "
+        "page-size, orientation, and paper-source streams from the modeled "
+        "`0xa904` ring source, drains all input bytes from the ring, replays "
+        "the same parser handlers, and lands on the same published compact "
+        "rows."
+    )
     lines.append("The reset, FF, page-size, and orientation publication streams now also have addressed allocation variants: `! ESC E`, `ESC &k2G! FF`, `! ESC &l1A`, and `! ESC &l1O` queue printable `!` through addressed `0x1387c`/`0x1381c`, materialize the compact bucket record, publish through their `0xff1e` boundaries, and render through `0x1ed84`/`0x1ef6a` with the same rows.")
     lines.append("The published-record render-entry fixture then carries each of those four `0xff1e` records through `0x1ed84` active-record copy and the `0x1ef6a` call order, selecting the compact bucket through `0x1efc2` and rendering the same rows.")
     lines.append("A host-fetched direct text/control fixture now starts the plain, transparent-data, CR/LF, HT/BS, margin, cursor-position, dot-position, vertical-layout, and cursor-stack page-record streams from the modeled `0xa904` ring source, drains every byte, replays the same parser handlers or delayed payload handler, and lands on the same `0x1387c` page-record objects. The cursor-row case now also carries the nonzero bucket word through `0x1ef86`, clips compact text to `0x783a20 = 16` current-band rows, and records the continuation rows in the fallback buffer.")

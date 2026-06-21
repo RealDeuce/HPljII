@@ -906,25 +906,29 @@ also publishes through modeled `0xff1e` and renders the published rows through
 now drives that same heterogeneous addressed page record through the
 publication boundary from the byte stream, clears the current root, and
 renders the published rows through `0x1ed84`/`0x1ef6a`.
-Direct publication-stream
-coverage traces `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O`
-through the ROM parser path, proving printable fallback to `0xd04a`,
-reset dispatch to `0xcc52`, line-termination dispatch to `0xedf8`, FF
-dispatch to `0xf0f0`, page-size dispatch to `0xfc74`, and orientation
-dispatch to `0x10220` before the modeled page-record publication
-fixtures run; the publication-boundary fixture ties those same streams
-to one root allocation, one `0xff1e` publication, current-root clearing,
-rendered rows after `0x1edc6`, and the same rows after the published
-records pass through `0x1ed84` and `0x1ef6a`; the host-fetch publication
-fixture now starts those same four streams from the modeled `0xa904`
-ring source, drains the ring bytes, replays the same parser handlers,
-lands on the same published rows, and now pins that the `0x1edc6` bridge
-preserves the published bucket root, clears rule/fixed lists, and copies
-the selected context slot into the render record. The host-fetched
+Direct publication-stream coverage traces `!\x1bE`, `ESC &k2G!\f`,
+`!\x1b&l1A`, `!\x1b&l1O`, and `!\x1b&l2H` through the ROM parser path,
+proving printable fallback to `0xd04a`, reset dispatch to `0xcc52`,
+line-termination dispatch to `0xedf8`, FF dispatch to `0xf0f0`,
+page-size dispatch to `0xfc74`, orientation dispatch to `0x10220`, and
+paper-source dispatch to `0xef62` before the modeled page-record
+publication fixtures run; the publication-boundary fixture ties those
+same streams to one root allocation, one `0xff1e` publication,
+current-root clearing, rendered rows after `0x1edc6`, and the same rows
+after the published records pass through `0x1ed84` and `0x1ef6a`. The
+paper-source stream also pins selector `2` to value `0x80`, stores it in
+`0x782da6`, sets `0x782998`, and refreshes the cursor through the
+`0xf8fc` layout path. The host-fetch publication fixture now starts those
+same five streams from the modeled `0xa904` ring source, drains the ring
+bytes, replays the same parser handlers, lands on the same published
+rows, and now pins that the `0x1edc6` bridge preserves the published
+bucket root, clears rule/fixed lists, and copies the selected context
+slot into the render record. The host-fetched
 missing-root `ESC E` case drains from the same ring source, reaches
 handler `0xcc52`, and lands on the no-publication reset state. The
 host-fetched
-reset, FF, page-size, and orientation cases also pin the pool header
+reset, FF, page-size, orientation, and paper-source cases also pin the
+pool header
 after `0xff1e`: state byte `+4 = 2`, default status/environment fields,
 published pointer `0x780ea6`, bucket-root prefix, and context-slot
 prefix all match the modeled publication records before the bridged rows

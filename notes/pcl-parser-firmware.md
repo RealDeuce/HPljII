@@ -289,8 +289,9 @@ byte-stream model; its page-record variant queues the glyph through
 `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O` through `0x11774`,
 pinning printable `!` to the mode-0 `0xd04a` branch, `ESC E` to
 `0xcc52`, `ESC &k2G` to `0xedf8`, FF to `0xf0f0`, page-size `ESC &l1A`
-to `0xfc74`, and orientation `ESC &l1O` to `0x10220` before the modeled
-page-record publication layer. These prove the
+to `0xfc74`, orientation `ESC &l1O` to `0x10220`, and paper-source
+`ESC &l2H` to `0xef62` before the modeled page-record publication layer.
+These prove the
 direct-control/reset/page-geometry publication subset from actual
 PCL/control bytes, but they still need to be broadened into the full
 firmware parser path with real page-object allocation.
@@ -454,13 +455,17 @@ fixture exercises that valid-root reset path after queuing a printable
 text object, and its page-record variant queues and bridges that object
 under page-record storage rules, then publishes the same bucket through
 a modeled `0xff1e` finalization record before reset clears the current
-root. The reset, FF, page-size, and orientation publication streams now
-also have addressed allocator variants: `!\x1bE`, `ESC &k2G!\f`,
-`!\x1b&l1A`, and `!\x1b&l1O` queue the printable byte through
-`0x1387c`/`0x1381c`, materialize the compact bucket page record,
-publish through the matching `0xff1e` boundary, and render through
-`0x1ed84`/`0x1ef6a`. The host-fetched publication checks now start
-those same streams from the modeled `0xa904` ring source and pin the
+root. The reset, FF, page-size, orientation, and paper-source publication
+streams now start from real parser traces; `!\x1b&l2H` reaches handler
+`0xef62`, publishes queued text through `0xff1e`, writes paper-source
+value `0x80` to `0x782da6`, and sets pending-status byte `0x782998`.
+Reset, FF, page-size, and orientation also have addressed allocator
+variants: `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O` queue
+the printable byte through `0x1387c`/`0x1381c`, materialize the compact
+bucket page record, publish through the matching `0xff1e` boundary, and
+render through `0x1ed84`/`0x1ef6a`. The host-fetched publication checks
+now start those same publication streams from the modeled `0xa904` ring
+source and pin the
 same published pool header after `0xff1e`: state byte `+4 = 2`, default
 status/environment fields, `0x780ea6`, bucket-root prefix, and
 context-slot prefix. The `0x1387c` allocator fixtures queue short and

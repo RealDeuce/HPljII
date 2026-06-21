@@ -154,6 +154,7 @@ def generate_disassembly(firmware: Path) -> None:
         ("ic30_ic13_main_parser_loop_011774.lst", "0x11774", "0x11774", "0x430"),
         ("ic30_ic13_tokenizer_stateful_helpers_011ba6.lst", "0x11ba6", "0x11ba6", "0x300"),
         ("ic30_ic13_payload_dispatch_011f82.lst", "0x11f82", "0x11f82", "0x470"),
+        ("ic30_ic13_text_payload_repeat_readers_012120.lst", "0x12120", "0x12120", "0x560"),
         ("ic30_ic13_text_span_flush_012714.lst", "0x12714", "0x12714", "0x100"),
         ("ic30_ic13_text_object_queue_012f2e.lst", "0x12f2e", "0x12f2e", "0x150"),
         ("ic30_ic13_raster_object_queue_013070.lst", "0x13070", "0x13070", "0x330"),

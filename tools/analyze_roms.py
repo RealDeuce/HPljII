@@ -3569,6 +3569,11 @@ def host_byte_fetch_flow_report(data: bytes) -> str:
             text += f", ... ({len(refs)} total)"
         return text
 
+    def fmt_all_refs(refs: list[int]) -> str:
+        if not refs:
+            return "(none)"
+        return ", ".join(f"`0x{ref:06x}`" for ref in refs)
+
     state_addresses = [
         (0x007821CD, "fetch blocked / service-needed flag tested before all sources"),
         (0x00780E66, "buffer-source bitfield; bits are cleared as stacked sources drain"),
@@ -3588,6 +3593,103 @@ def host_byte_fetch_flow_report(data: bytes) -> str:
         (0x007828FA, "`0x8e01/0x8801/0x8c01` mode control shadow written to `0xaa01`"),
         (0x007828FB, "`0xfffee005/0xfffee001` mode control shadow written to `0xfffee009`"),
     ]
+    caller_roles = {
+        0x00DA9A: (
+            "ESC-aware parser byte wrapper",
+            "First fetch for normal parser input; returns non-ESC bytes directly.",
+            "No explicit `D7=-1` test here; caller loop decides parser end/state.",
+        ),
+        0x00DAA6: (
+            "ESC wrapper display-functions probe",
+            "Second fetch after ESC; checks for `?` display-function prefix.",
+            "No explicit `D7=-1` test.",
+        ),
+        0x00DAB2: (
+            "ESC wrapper display-functions probe",
+            "Third fetch after `ESC ?`; loops on `0x11`, otherwise reports the byte through `0x9ec0` and returns ESC.",
+            "No explicit `D7=-1` test.",
+        ),
+        0x00DACE: (
+            "`0x1a 0x58` control probe",
+            "Fetches a byte and, if it is `0x1a`, fetches a second byte looking for `0x58`.",
+            "On `0x1a 0x58`, calls `0xd99a` and returns `D7=0`; otherwise leaves the fetched byte path unchanged.",
+        ),
+        0x00DADA: (
+            "`0x1a 0x58` control probe",
+            "Second byte of the `0xdace` probe.",
+            "Only the exact `0x58` second byte triggers `0xd99a` and normalized zero.",
+        ),
+        0x012142: (
+            "alternate/data text append reader",
+            "After seeding `ESC Y`, fetches bytes, appends through `0xe002`, and treats `ESC ... Z` as an end marker.",
+            "Stops on `D7=-1`; `0x1a 0x58` calls `0xd99a` and appends `0x7f`.",
+        ),
+        0x012152: (
+            "alternate/data text append reader",
+            "Second byte of the local `0x1a 0x58` probe in the `ESC Y` append reader.",
+            "Only exact `0x58` normalizes the pair to appended `0x7f`.",
+        ),
+        0x0124BC: (
+            "bounded text repeat reader",
+            "Reads up to counter `D4`, routes printable bytes through `0xd04a`, and filters control ranges through `0xd0f0` depending on active symbol state.",
+            "Stops on `D7=-1`; `0x1a 0x58` calls `0xd99a` and substitutes `0x7f` before text handling.",
+        ),
+        0x0124CC: (
+            "bounded text repeat reader",
+            "Second byte of the bounded reader's `0x1a 0x58` probe.",
+            "Only exact `0x58` normalizes to `0x7f`.",
+        ),
+        0x012582: (
+            "ESC-terminated text repeat reader",
+            "Reads text until `D7=-1` or an `ESC ... Z` terminator, routes printable bytes through `0xd04a`, and calls `0xf054` after CR.",
+            "Stops on `D7=-1`; `0x1a 0x58` calls `0xd99a` and substitutes `0x7f`.",
+        ),
+        0x012592: (
+            "ESC-terminated text repeat reader",
+            "Second byte of the ESC-terminated reader's `0x1a 0x58` probe.",
+            "Only exact `0x58` normalizes to `0x7f`.",
+        ),
+        0x0138FA: (
+            "raster payload copy reader",
+            "Copies normalized host bytes into raster object storage for delayed transfer handler `0x105d0`.",
+            "Uses the same local `0x1a 0x58` probe shape; negative `D7` ends/drains through the raster reader status path.",
+        ),
+        0x013904: (
+            "raster payload copy reader",
+            "Second byte of the raster copy `0x1a 0x58` probe.",
+            "Exact `0x58` calls `0xd99a` and stores normalized zero.",
+        ),
+        0x0168DC: (
+            "linear downloaded-font payload reader",
+            "Copies host bytes to `A4`, decrements payload budget `0x783140`, and saves continuation state when the current copy window expires.",
+            "`0x1a 0x58` calls `0xd99a` and stores zero; negative `D7` returns failure status.",
+        ),
+        0x0168FE: (
+            "linear downloaded-font payload reader",
+            "Second byte of the linear reader's `0x1a 0x58` probe.",
+            "Only exact `0x58` normalizes to stored zero.",
+        ),
+        0x016960: (
+            "split-plane downloaded-font prefix reader",
+            "Copies prefix-span bytes to `A4` for odd-width split-plane glyph rows.",
+            "`0x1a 0x58` calls `0xd99a` and stores zero; negative `D7` returns failure status.",
+        ),
+        0x01697A: (
+            "split-plane downloaded-font tail reader",
+            "Copies one trailing byte per row to `A3` after the prefix plane.",
+            "`0x1a 0x58` calls `0xd99a` and stores zero; negative `D7` returns failure status.",
+        ),
+        0x0169CA: (
+            "split-plane downloaded-font prefix reader",
+            "Second byte of the prefix-plane `0x1a 0x58` probe.",
+            "Only exact `0x58` normalizes to stored zero.",
+        ),
+        0x0169E0: (
+            "split-plane downloaded-font tail reader",
+            "Second byte of the tail-plane `0x1a 0x58` probe.",
+            "Only exact `0x58` normalizes to stored zero.",
+        ),
+    }
 
     lines = ["# IC30/IC13 Host Byte Fetch Flow", ""]
     lines.append("Generated from routine `0x0000a904`, its local branches through `0x0000abf0`, and absolute-call/state-reference scans of the verified firmware image.")
@@ -3619,13 +3721,20 @@ def host_byte_fetch_flow_report(data: bytes) -> str:
 
     lines.append("## Callers and Payload Consumers")
     lines.append("")
-    lines.append(f"- Direct absolute `JSR 0xa904` callers: {fmt_refs(jsr_abs_refs(data, 0x0000A904))}.")
-    lines.append("- Confirmed caller roles from focused listings:")
-    lines.append("  - `0xda9a`, `0xdaa6`, and `0xdab2`: normal ESC-aware parser byte wrapper.")
-    lines.append("  - `0xdace` and `0xdada`: `0x1a 0x58` control probe used by raster/download payload paths.")
-    lines.append("  - `0x12142` / `0x12152`, `0x124bc` / `0x124cc`, and `0x12582` / `0x12592`: parser payload/text repeat readers that also treat `0x1a 0x58` specially.")
-    lines.append("  - `0x138fa` / `0x13904`: raster payload copy path `0x138de` that stores host bytes into queued raster row objects.")
-    lines.append("  - `0x168dc`, `0x168fe`, `0x16960`, `0x1697a`, `0x169ca`, and `0x169e0`: downloaded/font-resource payload readers that keep continuation state under `0x7827c6..0x7827d8` and byte budget `0x783140`.")
+    fetch_callers = jsr_abs_refs(data, 0x0000A904)
+    lines.append(f"Direct absolute `JSR 0xa904` callers: {fmt_all_refs(fetch_callers)}.")
+    lines.append("")
+    lines.append("The table below classifies every direct caller found in the verified firmware image.")
+    lines.append("")
+    lines.append("| Caller | Role | Byte handling | End/control handling |")
+    lines.append("| ---: | --- | --- | --- |")
+    for caller in fetch_callers:
+        role = caller_roles.get(caller)
+        if role is None:
+            lines.append(f"| `0x{caller:06x}` | unclassified | | |")
+            continue
+        name, byte_handling, end_handling = role
+        lines.append(f"| `0x{caller:06x}` | {name} | {byte_handling} | {end_handling} |")
     lines.append("")
 
     lines.append("## State Reference Scan")
@@ -3641,6 +3750,7 @@ def host_byte_fetch_flow_report(data: bytes) -> str:
     lines.append("- A byte-stream emulator can feed parser/imaging work above `0xa904` by returning normalized `D7` bytes in the same order as the priority table, while preserving `D7=-1` as a no-byte/end/error return for callers that test it. `tools/render_fixture_harness.py` now has executable `0xa904` source-priority fixtures covering the no-byte return, service retry, first LIFO, data-chain end retry, second LIFO, ring-buffer mode, and both direct hardware modes including direct-mode `0x1a` reporting and mode-2 control-shadow bit 6; it also feeds ring-buffer bytes for `ESC &k1G!\\r!` through the ROM parser trace, page-record queue, `0x1edc6` bridge, and final rendered rows, and feeds the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W` raster stream through the same `0xa904` ring source before the parser/delayed-transfer/page-record/bridge/render boundary.")
     lines.append("- Exact host-interface emulation still needs board/manual correlation for `0x8e01/0x8801/0x8c01`, `0xa601/0xaa01`, and `0xfffee005/0xfffee001/0xfffee009`; current ROM evidence only proves the polling, data, handshake, and status-bit behavior.")
     lines.append("- Both direct modes special-case input byte `0x1a` through `0x9ec0`, and higher-level payload readers also interpret `0x1a 0x58` by calling `0xd99a`; byte-stream reproduction must preserve that control path rather than treating all payload bytes as opaque.")
+    lines.append("- All 19 direct `0xa904` call sites are now classified. Parser wrapper callers can pass `D7=-1` upward without a local stop test, text repeat readers stop on it, raster and font payload readers treat it as an end/error status, and `0x1a 0x58` is normalized differently by consumer family: `0xdace` returns zero, text repeat readers substitute `0x7f`, and raster/font payload readers store zero.")
     lines.append("- Font payload reader `0x168dc` copies linear downloaded-font bytes to `A4`, decrements byte budget `0x783140` only for stored payload bytes, and saves continuation state in `0x7827c6/0x7827ca/0x7827d2` when the budget expires. Reader `0x16942` handles split odd-width glyph planes: `A4` receives `rows * prefix_span` bytes, `A3 = A4 + rows * prefix_span` receives one trailing byte per row, and continuation state also records `0x7827ce`, `0x7827d6`, and `0x7827d8`. `0x172c0` scans 10-byte current downloaded-font records under `0x782640..0x782776`, returning existing/free/full statuses; `0x16c14` uses that result to replace an existing payload through `0x1887a`, clear matching continuation state, or install a new payload and update candidate counters/cursors. `0x170be` maps a low-24-bit payload pointer back to a current-record slot and id; `0x17108` sets record flag bit 6 and transfers a count from `0x782782` to `0x782786` for an unmarked current payload record; `0x17150` clears that bit and transfers the count back. `0x15a56` normalizes the current font id from `ESC *c#D`, and `0x16df6` dispatches `ESC *c#F` values while suppressing values `0`, `1`, `2`, `3`, and `6` when `0x782a92 == 2`. `0x16fae` walks the validation table at `0x16eae`, then copies up to 16 optional symbol bytes through `0x1599c` into `0x782842` and stores the count at `0x782856`; `0x17362` sets staged type byte `+0x0c` and `0x7827ba`, `0x17026` stages record type `0x15` and allocation size `((0x7827ba << 2) + 0x9b) >> 6`, and `0x1719c` copies the sparse staged header plus optional symbol bytes into the allocated record. `tools/render_fixture_harness.py` now has executable fixtures for both readers, record bookkeeping/lookup/marking/unmarking, font-id/control dispatch, `ESC )s80W` resource-payload command restoration, validation/symbol-byte staging, table-driven staged-header predicate side effects, payload-backed inline map/render, type-2 payload-backed wide/segmented fixed-record rendering, and allocation/header initialization, including `0x1a 0x58` handling, continuation checkpoints, replacement/free-slot updates, no-slot budget skip, count transfer, validation failure, zero-budget validation, table-driven predicate clamps, payload-backed inline map/render, and optional symbol-byte append offsets.")
     lines.append("")
     return "\n".join(lines)

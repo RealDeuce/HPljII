@@ -329,7 +329,8 @@ text/rule/raster plus macro-payload rule/raster band composition, adds parser-de
 `ESC *t100R`/`ESC *r0A`/`ESC *b2W`, and `ESC *t75R`/`ESC *r0A`/`ESC *b2W` command/data stream
 fixtures plus a two-payload `ESC *t300R`/`ESC *r0A` multi-row stream through delayed handler
 `0x0105d0`, a parser-to-gate edge check for `ESC *t300R`/`ESC *r0A`/`ESC *b4W` capped and
-beyond-extent transfers, same-group lowercase-final chaining fixtures for `ESC *t300r150R` and
+beyond-extent transfers, a raster payload fixture proving `0xdace` turns raw bytes `1a 58` into a
+single queued `00` byte, same-group lowercase-final chaining fixtures for `ESC *t300r150R` and
 chained `ESC *b2w`/`2W` payloads, plus a bare `ESC *rB` active-clear stream through handler
 `0x107fa`, byte-aligned mode-0, non-byte-aligned mode-0, mode-1, byte-aligned mode-2,
 non-byte-aligned mode-2, band-clipped mode-2, and mode-3 raster row fixtures through `0x13070` /

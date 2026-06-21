@@ -196,6 +196,10 @@ snapshot-byte, and restore-dispatch evidence on its `ESC *b4W` transfer event be
 payload row. A second parser-to-gate edge check uses `ESC *t300R` / `ESC *r0A` / `ESC *b4W` to tie
 the same ROM parser handlers and restored `0x0105d0` command record to both capped queueing and
 beyond-extent drain/no-row-advance outcomes.
+The delayed raster payload path now uses the same `0x12328` / `0xdace` normalized-byte reader as the
+generic payload fixtures: a raw row payload `f0 1a 58 aa 55` for `ESC *b4W` contributes four queued
+bytes `f0 00 aa 55`, with `1a 58` counted as one control hit before page-object queueing and
+rendering.
 
 The transfer routine at `0x0105d0`:
 
@@ -578,12 +582,13 @@ The executable harness `tools/render_fixture_harness.py` combines the host-byte 
 tokenizer/delayed-payload, page-geometry, macro/data-chain, direct-control, reset, text, rule,
 raster, bridge, row-copy, built-in glyph, symbol-set, and downloaded-font fixture families into one
 ROM-backed self-test. It emits `generated/analysis/ic30_ic13_renderer_fixture_harness.md` and
-currently verifies 310 checks. The raster coverage now includes ROM-table `0x11774` dispatch traces
+currently verifies 311 checks. The raster coverage now includes ROM-table `0x11774` dispatch traces
 for the primary `ESC *t300R` / `ESC *r1A` / `ESC *b4W` stream, the 150/100/75-dpi mode streams, the
 consecutive-row `ESC *b2W` stream, and the chained `ESC *b2w2W` delayed-transfer stream, modeled
 delayed `0x121cc` / `0x12218` transfer records, command/data-stream transfer events routed through
 the modeled `0x105d0` gate including capped-byte and beyond-extent
-drain-without-queue/no-row-advance cases, page-record queue/bridge/render checks for modes 0..3,
+drain-without-queue/no-row-advance cases and `0xdace` control-byte normalization before queueing,
+page-record queue/bridge/render checks for modes 0..3,
 render-band setup coverage for `0x1ef86`, render-entry call-order coverage for `0x1ef6a`,
 published-record render-entry coverage through `0x1ed84`/`0x1ef6a`, bucket-chain dispatcher coverage
 for `0x1efc2`, segment-list rendering coverage for `0x1f812`, fixed-width list coverage for

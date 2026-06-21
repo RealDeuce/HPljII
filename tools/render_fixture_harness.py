@@ -660,11 +660,14 @@ def trace_raster_parser_dispatch_via_11774(data: bytes, stream: bytes) -> dict[s
                     raise AssertionError("parser trace expected restored ESC *b#W record before payload")
                 byte_count = abs(s16(restored_record, 2))
                 payload_start = pos
-                payload_end = pos + byte_count
-                if payload_end > len(stream):
+                consumed_payload = consume_data_payload_count_via_12328(byte_count, stream, payload_start)
+                if int(consumed_payload["status"]) != 1:
                     raise AssertionError("parser trace payload shorter than ESC *b#W byte count")
+                payload_end = int(consumed_payload["pos"])
                 command["payload_offset"] = payload_start
-                command["payload"] = stream[payload_start:payload_end]
+                command["raw_payload"] = stream[payload_start:payload_end]
+                command["payload"] = bytes(int(value) & 0xFF for value in consumed_payload["values"])
+                command["payload_control_hits"] = consumed_payload["control_hits"]
                 pos = payload_end
             commands.append(command)
             if mode == 0:
@@ -9444,10 +9447,12 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
                 restored_record = restored["record"]
                 byte_count = abs(s16(restored_record, 2))
                 payload_start = pos
-                payload_end = pos + byte_count
-                if payload_end > len(stream):
+                consumed_payload = consume_data_payload_count_via_12328(byte_count, stream, payload_start)
+                if int(consumed_payload["status"]) != 1:
                     raise AssertionError("raster command stream payload shorter than restored ESC *b#W byte count")
-                payload = stream[payload_start:payload_end]
+                payload_end = int(consumed_payload["pos"])
+                raw_payload = stream[payload_start:payload_end]
+                payload = bytes(int(value) & 0xFF for value in consumed_payload["values"])
                 pos = payload_end
                 gate = raster_transfer_gate_via_105d0(page_record, state, byte_count, payload)
                 state = dict(gate["state_after"])
@@ -9467,7 +9472,9 @@ def render_raster_command_data_stream_via_121cc_105d0(data: bytes, stream: bytes
                     "restored_record": restored["record"],
                     "delayed_handler": 0x0105D0,
                     "payload_offset": payload_start,
+                    "raw_payload": raw_payload,
                     "payload": payload,
+                    "payload_control_hits": consumed_payload["control_hits"],
                     "transfer_state": transfer_state,
                     "gate_path": gate["path"],
                     "gate_queued": gate["queued"],
@@ -20787,6 +20794,51 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "bridged_object": bytes.fromhex("00 00 00 00 80 00 00 04 00 01 f0 0f aa 55"),
         "rendered_rows": ["................####........#####.#.#.#..#.#.#.#"],
     }))
+    raster_control_payload_stream = (
+        b"\x1b*t300R\x1b*r0A\x1b*b4W" + bytes.fromhex("f0 1a 58 aa 55")
+    )
+    raster_control_payload_trace = trace_raster_parser_dispatch_via_11774(
+        data,
+        raster_control_payload_stream,
+    )
+    raster_control_payload_result = render_raster_command_data_stream_via_121cc_105d0(
+        data,
+        raster_control_payload_stream,
+        raster_graphics_state(page_extent=255),
+    )
+    raster_control_payload_event = [
+        event for event in raster_control_payload_result["events"]
+        if event["kind"] == "raster-transfer"
+    ][0]
+    raster_control_payload_commands = raster_control_payload_trace["commands"]
+    assert isinstance(raster_control_payload_commands, list)
+    checks.append(assert_equal("raster payload reader normalizes 0xdace controls before queueing pixels", {
+        "stream": raster_control_payload_stream,
+        "parser_payload_offset": raster_control_payload_commands[-1]["payload_offset"],
+        "parser_raw_payload": raster_control_payload_commands[-1]["raw_payload"],
+        "parser_payload": raster_control_payload_commands[-1]["payload"],
+        "parser_control_hits": raster_control_payload_commands[-1]["payload_control_hits"],
+        "event_payload_offset": raster_control_payload_event["payload_offset"],
+        "event_raw_payload": raster_control_payload_event["raw_payload"],
+        "event_payload": raster_control_payload_event["payload"],
+        "event_control_hits": raster_control_payload_event["payload_control_hits"],
+        "queued_object": raster_control_payload_result["object"],
+        "rendered_rows": raster_control_payload_result["rendered"]["rows"],
+        "row_y_after": raster_control_payload_result["final_state"]["row_y"],
+    }, {
+        "stream": b"\x1b*t300R\x1b*r0A\x1b*b4W" + bytes.fromhex("f0 1a 58 aa 55"),
+        "parser_payload_offset": 17,
+        "parser_raw_payload": bytes.fromhex("f0 1a 58 aa 55"),
+        "parser_payload": bytes.fromhex("f0 00 aa 55"),
+        "parser_control_hits": 1,
+        "event_payload_offset": 17,
+        "event_raw_payload": bytes.fromhex("f0 1a 58 aa 55"),
+        "event_payload": bytes.fromhex("f0 00 aa 55"),
+        "event_control_hits": 1,
+        "queued_object": bytes.fromhex("00 00 00 00 80 00 00 04 00 00 f0 00 aa 55"),
+        "rendered_rows": ["####............#.#.#.#..#.#.#.#"],
+        "row_y_after": 1,
+    }))
     raster_capped_command_stream = b"\x1b*t300R\x1b*r0A\x1b*b4W" + bytes.fromhex("f0 0f aa 55")
     raster_capped_dispatch_trace = trace_raster_parser_dispatch_via_11774(data, raster_capped_command_stream)
     raster_capped_stream_result = render_raster_command_data_stream_via_121cc_105d0(
@@ -26947,10 +26999,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         raster_stream_page_root["page_record_root_allocations"],
         raster_stream_page_root["page_root_bucket_clear_longwords"],
     ))
-    lines.append("- host-fetched raster stream bytes: `%s`; fetched through `0xa904` ring source before queueing object `%s` and rendering `%s`." % (
+    lines.append("- host-fetched raster stream bytes: `%s`." % (
         " ".join(f"{byte:02x}" for byte in host_fetched_raster_stream["stream"]),
+    ))
+    lines.append("  Fetched through `0xa904` ring source before queueing object `%s` and rendering `%s`." % (
         " ".join(f"{byte:02x}" for byte in raster_stream_result["object"]),
         raster_stream_bridged_rendered["rows"],
+    ))
+    lines.append("- raster payload control normalization: raw payload `%s` becomes queued payload `%s`." % (
+        " ".join(f"{byte:02x}" for byte in raster_control_payload_event["raw_payload"]),
+        " ".join(f"{byte:02x}" for byte in raster_control_payload_event["payload"]),
+    ))
+    lines.append("  Control hits `%d`, queued object `%s`, rendered `%s`." % (
+        raster_control_payload_event["payload_control_hits"],
+        " ".join(f"{byte:02x}" for byte in raster_control_payload_result["object"]),
+        raster_control_payload_result["rendered"]["rows"],
     ))
     lines.append("- capped stream through `0x105d0`: byte count `%d`, limit `%d`, stored `%d`, overflow `%d`, object `%s`." % (
         raster_capped_transfer["parameter"],

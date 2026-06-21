@@ -225,6 +225,11 @@ printable handler `0xd04a`. Its setup helper `0x1c5e8` installs the
 selected resource through the same `0x782ee6` current-font context,
 `0x14c64` map rebuild, `0xc428` page-root font-slot install, and forced
 VMI/HMI defaults `0x0032` / `0x001e`.
+It also names the outer `0x1c204` / `0x1c28e` font-printout loop: the
+firmware clears sample state, runs class-zero and class-one passes from
+the firmware candidate counts, ensures a page root through `0x10084`,
+tracks up to 16 recent contexts at `0x783f0a`, and calls FF handler
+`0xf0f0` to finalize/eject between passes.
 The same report now renders the two ROM sample byte runs directly
 through extracted payloads for first `COURIER` and first `LINE_PRINTER`,
 producing row hashes
@@ -392,11 +397,10 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    named `COURIER` and `LINE_PRINTER` record. The first-glyph placement
    offsets are now pinned through the `0xd824` path, but the header-level
    baseline semantics still need broader correlation.
-6. Model the surrounding `0x1c334` font-printout loop far enough to
-   produce parser/page objects from the ROM sample byte runs, then
-   compare those rows against a known printed/self-test sample and
-   correlate the remaining baseline/header fields against observed
-   placement.
+6. Model the `0x1c204` font-printout loop's emitted page objects from
+   the ROM sample byte runs, then compare those rows against the direct
+   payload hashes and a known printed/self-test sample to correlate the
+   remaining baseline/header fields against observed placement.
 
 These are high-value targets for pixel-perfect output because the
 manuals describe PCL behavior but do not provide the built-in font

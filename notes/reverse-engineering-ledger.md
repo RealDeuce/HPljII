@@ -366,7 +366,9 @@ font-printout path, including the font-list headers, sample byte runs,
 `0x1d12e` printable-byte helper, `0x1c5e8` current-font/page-root setup,
 forced VMI/HMI defaults `0x0032` / `0x001e`, and direct row hashes for
 the two ROM sample byte runs rendered through first `COURIER` and first
-`LINE_PRINTER`;
+`LINE_PRINTER`; the outer loop is now anchored from `0x1c204`, including
+class-zero/class-one passes, `0x10084` page-root creation, recent-context
+tracking at `0x783f0a`, and `0xf0f0` pass finalization;
 the startup/resource scanner `0x41a` is modeled for the verified
 built-in `HEAD` chain, walking 24 typed records from `0x08004c` through
 `0x0ae122`, terminating at `0x0b2f80`, adjusting the next probe step
@@ -560,10 +562,10 @@ ROM work needed:
   printable stream now drives the installed downloaded glyph into
   segmented page-record buckets and through the `0x1edc6` /
   `0x1ed84` / `0x1ef6a` render boundary.
-- Model the surrounding `0x1c334` font-printout loop far enough to
-  produce parser/page objects from the ROM sample byte runs, then
-  compare those rows against a known printed/self-test sample and
-  correlate remaining baseline/header semantics against placement.
+- Model the `0x1c204` font-printout loop's emitted page objects from the
+  ROM sample byte runs, then compare those rows against the direct
+  payload hashes and a known printed/self-test sample to correlate
+  remaining baseline/header semantics against placement.
 - Confirm symbol-set mapping for ASCII, Roman-8, line draw, and any
   built-in alternatives.
 - Promote the generated glyph payload manifest into renderer fixture

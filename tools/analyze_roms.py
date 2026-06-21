@@ -1265,6 +1265,29 @@ def font_sample_page_report_with_resources(data: bytes, resources: bytes) -> str
     )
     lines.append("")
 
+    lines.append("## Outer Loop and Page Boundaries")
+    lines.append("")
+    lines.append("| Address | Fact |")
+    lines.append("| ---: | --- |")
+    lines.append("| `0x1c204` | Entry checks accepted-resource count `0x78278e`, reports status `0xe3/0x51` if no font records exist, then calls setup helper `0xe9ba`. |")
+    lines.append("| `0x1c22a..0x1c236` | Clears display-function bytes `0x783190/0x783191` and sets `0x782da4 = 1` before printing. |")
+    lines.append("| `0x1c23e..0x1c26c` | Clears four per-source status bytes at `0x783f02..0x783f05`. |")
+    lines.append("| `0x1c26e..0x1c28a` | Clears row-height word `0x783f06` and local counters before the font pass loop. |")
+    lines.append("| `0x1c28e..0x1c2c4` | Runs two font-class passes: pass `0` requires class-zero count `0x782798`, pass `1` requires class-one count `0x782790`. Empty passes skip to the next pass. |")
+    lines.append("| `0x1c2cc..0x1c2f2` | For a nonempty pass, calls `0x1d76c`, ensures a page root through `0x10084`, selects initial candidate state through `0x1e9a0`, and prints the first headers before advancing vertically through `0x1cfb4`. |")
+    lines.append("| `0x1c2fe..0x1c332` | Prints up to four source groups for a pass. When the group index reaches `4`, snapshots published pool pointer `0x780ea6`, clears a local page flag, and calls FF handler `0xf0f0`. |")
+    lines.append("| `0x1c344..0x1c350` | Increments the class-pass counter and loops back to `0x1c28e`; after both passes, returns the saved pool pointer. |")
+    lines.append("| `0x1c540..0x1c5c6` | Maintains a 16-entry recent-font list at `0x783f0a` with count byte `0x783f08`, preventing duplicate candidate rows and appending new selected contexts until full. |")
+    lines.append("")
+    lines.append(
+        "The loop therefore reaches the existing page-object machinery before "
+        "sample text is emitted: `0x10084` creates/ensures the page root, "
+        "`0x1c5e8` installs each selected font into the current-font/page-root "
+        "state, `0x1ca2c` and helpers print labels/sample bytes through "
+        "`0xd04a`, and `0xf0f0` finalizes/ejects between class passes."
+    )
+    lines.append("")
+
     if direct_samples:
         lines.append("## Direct Glyph Payload Hashes")
         lines.append("")

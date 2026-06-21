@@ -896,7 +896,9 @@ raster row to that combined page-record shape before rendering the
 bucket/rule/raster record through the same entry path. Its addressed variant
 now allocates the raster row through addressed `0x13070`/`0x13250` storage
 after the addressed text and rule objects, preserving the real bucket link
-pointer while rendering the same rows. Direct publication-stream
+pointer while rendering the same rows; that materialized addressed record now
+also publishes through modeled `0xff1e` and renders the published rows through
+`0x1ed84`/`0x1ef6a`. Direct publication-stream
 coverage traces `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O`
 through the ROM parser path, proving printable fallback to `0xd04a`,
 reset dispatch to `0xcc52`, line-termination dispatch to `0xedf8`, FF

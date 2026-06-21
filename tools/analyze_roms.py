@@ -5366,7 +5366,8 @@ def raster_graphics_flow_report(data: bytes) -> str:
         "`!\\x1b*c12a5b0P\\x1b*t300R\\x1b*r0A\\x1b*b2W` fixture now also has an addressed "
         "allocation variant where the raster row queues through addressed `0x13070` / "
         "`0x13250` storage after the addressed text and rule objects, then renders the same "
-        "bucket/rule/raster rows.",
+        "bucket/rule/raster rows and publishes the materialized addressed record through the "
+        "modeled `0xff1e` pool-record boundary.",
         "- ",
         "  ",
     )

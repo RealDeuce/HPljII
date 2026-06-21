@@ -37094,6 +37094,106 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "stream_allocations": 1,
         },
     }))
+    text_rectangle_raster_addressed_publication = finalize_page_record_via_ff1e(
+        text_rectangle_raster_addressed["page_record"],
+        reset_fixture_state(
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            page_root_clears=0,
+        ),
+    )
+    text_rectangle_raster_addressed_published = (
+        text_rectangle_raster_addressed_publication["published_pool_record"]
+    )
+    assert isinstance(text_rectangle_raster_addressed_published, dict)
+    text_rectangle_raster_addressed_published_fields = (
+        text_rectangle_raster_addressed_published["pool_record_fields"]
+    )
+    assert isinstance(text_rectangle_raster_addressed_published_fields, dict)
+    text_rectangle_raster_addressed_published_render = (
+        render_published_page_record_via_1ed84_1ef6a(
+            data,
+            resources,
+            text_rectangle_raster_addressed_published,
+        )
+    )
+    checks.append(assert_equal("addressed text rectangle raster publication renders rows", {
+        "published": text_rectangle_raster_addressed_publication["published"],
+        "bucket_index": text_rectangle_raster_addressed_publication["bucket_index"],
+        "current_page_root_after": (
+            text_rectangle_raster_addressed_publication["current_page_root_after"]
+        ),
+        "page_root_clears": text_rectangle_raster_addressed_publication["page_root_clears"],
+        "bucket_root_1c": text_rectangle_raster_addressed_published_fields["bucket_root_1c"],
+        "bucket_array_1c": text_rectangle_raster_addressed_published_fields["bucket_array_1c"],
+        "rule_list_24": text_rectangle_raster_addressed_published_fields["rule_list_24"],
+        "context_slots_2c_prefix": (
+            text_rectangle_raster_addressed_published_fields["context_slots_2c"][:2]
+        ),
+        "active_copy": text_rectangle_raster_addressed_published_render["active_copy"],
+        "call_order": text_rectangle_raster_addressed_published_render["entry"]["call_order"],
+        "dispatch_entries": [
+            {
+                "chain_index": entry["chain_index"],
+                "object_byte_4": entry["object_byte_4"],
+                "class_mask": entry["class_mask"],
+                "branch": entry["branch"],
+                "target": entry["target"],
+                "context_slot": entry.get("context_slot"),
+                "encoded_mode": entry.get("encoded_mode"),
+            }
+            for entry in (
+                text_rectangle_raster_addressed_published_render["entry"]["dispatch"]["entries"]
+            )
+        ],
+        "rows": text_rectangle_raster_addressed_published_render["entry"]["rows"],
+    }, {
+        "published": True,
+        "bucket_index": 0,
+        "current_page_root_after": 0,
+        "page_root_clears": 1,
+        "bucket_root_1c": bytes.fromhex("00 d0 70 04 80 00 00 02 00 00 c3 3c"),
+        "bucket_array_1c": {
+            0: [
+                bytes.fromhex("00 d0 70 04 80 00 00 02 00 00 c3 3c"),
+                bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01") + bytes(0x1B),
+            ],
+        },
+        "rule_list_24": [bytes.fromhex("00 00 00 00 01 07 5c 01 00 0c 00 05 00 00")],
+        "context_slots_2c_prefix": (0x440946B4, 0),
+        "active_copy": {
+            "source_word_18": 0,
+            "source_word_1a": 0,
+            "render_word_0a": 0,
+            "render_word_0c": 0,
+            "render_word_0e": 0,
+            "render_word_10": 0,
+            "render_word_16": 0,
+        },
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "dispatch_entries": [
+            {
+                "chain_index": 0,
+                "object_byte_4": 0x80,
+                "class_mask": 0x80,
+                "branch": "encoded-span",
+                "target": 0x01F88E,
+                "context_slot": None,
+                "encoded_mode": 0,
+            },
+            {
+                "chain_index": 1,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 0,
+                "encoded_mode": None,
+            },
+        ],
+        "rows": text_rectangle_raster_expected_rows,
+    }))
     text_rectangle_raster_publication = finalize_page_record_via_ff1e(
         text_rectangle_raster_page_record,
         reset_fixture_state(

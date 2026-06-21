@@ -11,10 +11,10 @@ Status: partially anchored. The table definition path, its immediate
 text-bottom effect, the forward in-text channel-jump path, the
 before-top forward channel-jump normalization path, the selector-zero
 target-equal path, the selector-zero top-of-form page-eject path, and one
-wrap-hit page-eject path are modeled. One target-after-text path through
-bottom recovery is also modeled. The wrap no-hit and alternate
-bottom-recovery branches inside the channel-jump consumer still need
-fixtures.
+wrap-hit page-eject path are modeled. The wrap no-hit top-of-form page
+eject path and one target-after-text path through bottom recovery are
+also modeled. Alternate bottom-recovery and alternate wrap-recovery
+entrances inside the channel-jump consumer still need fixtures.
 
 Concept: vertical forms control is a per-line, 16-channel stop table used
 by `ESC &l#W` definitions and consumed by `ESC &l#V` vertical channel
@@ -155,6 +155,10 @@ top-of-form page-eject path.
   path. Branch `0x129ee..0x12b5a` finds selector 2 at line `63`, calls
   `0xf34a` and `0xf124`, then enters bottom recovery at `0x12afc`,
   calls `0xf06e` and `0xf34a`, and writes recovered cursor y `104`.
+- `0x1280a` publishes the current page on the modeled wrap-no-hit path.
+  Branch `0x12a22..0x12a78` sees no selector-2 bit before wrap returns
+  to start line `3`, calls `0xf34a`, `0xf124`, `0xf06e`, and `0xf34a`,
+  then writes top-of-form cursor y `126`.
 
 ### Readers And Consumers
 
@@ -181,6 +185,10 @@ top-of-form page-eject path.
   channel 2 at line `63`, observes that line is past `0x782ee0 = 62`,
   takes `0x129ee..0x12a1e`, then enters bottom recovery at
   `0x12afc..0x12b5a`.
+- The modeled wrap-no-hit path starts at line `3` with no selector-2 bit
+  anywhere in `0x782dde..0x782e5d`; the wrap search returns to start
+  line `3`, enters `0x12a22..0x12a78`, publishes the current page, and
+  writes the top-of-form target.
 - `0xf36c` consumes the derived limit `0x782dc2` during vertical
   overflow/perforation handling.
 - Printable output is indirectly affected: the `ESC &l4W 00 00 00 02 !`
@@ -214,6 +222,11 @@ top-of-form page-eject path.
   absolute compact coord `0x4e02` in bucket `198`, publishes that old
   page, recovers cursor y to `104`, and queues the post-recovery `!` on a
   fresh page at compact coord `0x3001`.
+- Printable output can split across a wrap-no-hit recovery:
+  `!\x1b&l2V!` with no channel 2 in the table starts with a queued `!` at
+  compact coord `0xde02` in bucket `12`, publishes that old page, returns
+  y to `126`, and queues the post-recovery `!` on a fresh page at compact
+  coord `0x9001`.
 
 ### Output Effect
 
@@ -273,6 +286,14 @@ Recovery resets x to `10`, writes y `104`, and the following printable
 is queued on a fresh page at compact coord `0x3001`, bucket `5`, with
 band-local row `3`.
 
+In the wrap-no-hit fixture, the stream `!\x1b&l2V!` uses an empty VFC
+table while starting at y `226`, so start line is `3` and channel mask
+`0x0002` is absent through line `63` and through the wrapped scan back to
+line `3`. Handler `0x1280a` takes `0x12a22..0x12a78`, publishes the old
+page at compact coord `0xde02`, resets x to `10`, writes top-of-form y
+`126`, and queues the following printable on a fresh page at compact
+coord `0x9001`, bucket `6`.
+
 ### Confidence
 
 High for the `0x11f6e -> 0x12cfe` delayed payload boundary, table bytes,
@@ -287,8 +308,9 @@ original start line and `start_line <= text_last_line + 1`. High for the
 target-after-text branch through `0x129ee..0x12b5a` when the found line
 is `63` and `start_line <= text_last_line + 1`. Medium for the exact
 semantic names of `0x782ede`/`0x782edf`/`0x782ee0`; the line-count
-interpretation matches fixtures and disassembly, but wrap no-hit and
-alternate bottom recovery branches still need complete lifting.
+interpretation matches fixtures and disassembly, but alternate
+wrap-recovery and alternate bottom-recovery entrances still need
+complete lifting.
 
 ### Fixtures
 
@@ -304,6 +326,7 @@ alternate bottom recovery branches still need complete lifting.
 - `mixed VFC selector-zero page-eject publishes old page before fresh
   printable`
 - `mixed VFC wrap-hit publishes old page before fresh printable`
+- `mixed VFC wrap-no-hit publishes old page and returns to top`
 - `mixed VFC target-after-text recovers near top before fresh printable`
 - Supporting existing fixtures:
   `0xc992 ESC &l#D accepts ROM LPI set and refreshes pending vertical
@@ -326,9 +349,9 @@ alternate bottom recovery branches still need complete lifting.
 - `0x129fc..0x12a10`: target-after-text alternate entrances skip the
   `0xf124` publication when start line is `0` or greater than
   `text_last_line + 1`; exact output effect needs fixtures.
-- `0x12a22..0x12a78`: wrap no-hit or hit-at/after-start path calls
-  `0xf34a`, `0xf124`, `0xf06e`, and writes the top-of-form target;
-  triggering conditions and publication effect need fixtures.
+- `0x12a22..0x12a78`: no-hit publication is modeled for the empty-table
+  line-3 case; alternate entrances where the wrapped scan reaches or hits
+  at/after the original start line still need fixtures.
 - `0x12afc..0x12b5a`: bottom/page-recovery placement is modeled for the
   target-after-text line-63 case; alternate entrances and target-line
   values still need fixtures.

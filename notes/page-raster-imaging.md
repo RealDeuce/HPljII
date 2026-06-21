@@ -115,6 +115,14 @@ bottom, wraps to line `0`, and finds channel 2 at line `1`. The
 to `10`, writes y `176`, and queues the following `!` on the fresh page at
 compact coord `0xb001`.
 
+The wrap-no-hit `ESC &l#V` path is anchored through publication and fresh
+top-of-form output. Fixture `!\x1b&l2V!` starts at y `226` with an empty
+VFC table, queues the first printable at compact coord `0xde02`, scans
+line `3` through `63`, wraps, and reaches line `3` without a channel-2
+hit. The `0x12a22..0x12a78` path publishes the old page through
+`0xf124`, resets x from `58` to `10`, writes top-of-form y `126`, and
+queues the following `!` on the fresh page at compact coord `0x9001`.
+
 The target-after-text `ESC &l#V` recovery path is anchored through
 publication and fresh output. Fixture `!\x1b&l2V!`, with channel 2 at VFC
 line `63`, starts with the queued printable at absolute compact coord

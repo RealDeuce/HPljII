@@ -109,8 +109,9 @@ its before-top normalization path is anchored through `0x128ae..0x128f4`,
 its selector-zero target-equal path is anchored through
 `0x12966..0x1299a`, and its selector-zero page-eject path is anchored
 through `0x1299c..0x129c4`, and one wrap-hit page-eject path is anchored
-through `0x129c6..0x12af8`, while one target-after-text bottom-recovery
-path is anchored through `0x129ee..0x12b5a`; wrap no-hit and alternate
+through `0x129c6..0x12af8`, the wrap-no-hit page-eject path is anchored
+through `0x12a22..0x12a78`, and one target-after-text bottom-recovery
+path is anchored through `0x129ee..0x12b5a`; alternate wrap-recovery and
 page-recovery branches remain unresolved;
 `ESC &a#L/#M` map to
 `0xeb58`/`0xec0c` and convert HMI margin columns into
@@ -174,6 +175,13 @@ printable at y `226`, now ties parser handler `0x1280a`, wrap-hit branch
 coord `0xde02`, wrapped target line `1`, cursor reset `x 58 -> 10`,
 vertical move `y 226 -> 176`, and fresh post-wrap printable output at
 compact coord `0xb001`;
+empty-table `!\x1b&l2V!`, starting after a queued printable at y `226`,
+now ties parser handler `0x1280a`, wrap-no-hit branch
+`0x12a22..0x12a78`, helper sequence `0x10084`, `0xf34a`, `0xf124`,
+`0xf06e`, `0xf34a`, old-page publication at compact coord `0xde02`,
+wrapped search stop at line `3`, cursor reset `x 58 -> 10`, vertical
+move `y 226 -> 126`, and fresh post-recovery printable output at compact
+coord `0x9001`;
 `!\x1b&l2V!`, with channel 2 at VFC line `63` and a queued printable at y
 `3193`, now ties parser handler `0x1280a`, target-after-text branch
 `0x129ee..0x12b5a`, helper sequence `0x10084`, `0xf34a`, `0xf124`,
@@ -292,10 +300,12 @@ cursor commit. The selector-zero target-equal path is anchored through
 `0x1299c..0x129c4`, including page publication through `0xf124`. The
 before-top start-line path is anchored through `0x128ae..0x128f4`. The
 wrap-hit page-eject path is anchored through `0x129c6..0x12af8`. The
-target-after-text bottom-recovery path is anchored through
-`0x129ee..0x12b5a` for the line-63 fixture. The highest-value unresolved
-middle edges are `0x129fc..0x12a10`, `0x12a22..0x12a78`,
-alternate-entry `0x12afc..0x12b5a`, and `0x12b5e..0x12b92`.
+wrap-no-hit page-eject path is anchored through `0x12a22..0x12a78` for
+the empty-table fixture. The target-after-text bottom-recovery path is
+anchored through `0x129ee..0x12b5a` for the line-63 fixture. The
+highest-value unresolved middle edges are `0x129fc..0x12a10`,
+alternate-entry `0x12a22..0x12a78`, alternate-entry
+`0x12afc..0x12b5a`, and `0x12b5e..0x12b92`.
 
 ### Raster/text/page-object path
 

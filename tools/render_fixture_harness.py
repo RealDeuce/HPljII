@@ -19458,6 +19458,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         first_list=list(actual_candidate_windows["class_zero_low"]),  # type: ignore[arg-type]
         second_list=list(actual_candidate_windows["class_one_low"]),  # type: ignore[arg-type]
     )
+    real_resolver_mode3_class_one_exact = default_font_resolver_scan_via_1b50e(
+        search_mode=3,
+        requested_index=16,
+        requested_symbol=0x000E,
+        current_selected_pointer=0,
+        fast_probe=None,
+        first_list=list(actual_candidate_windows["class_zero_low"]),  # type: ignore[arg-type]
+        second_list=list(actual_candidate_windows["class_one_low"]),  # type: ignore[arg-type]
+    )
     checks.append(assert_equal("0x1b50e current-default resolver scan and predicates", {
         "class_range_current": classifier_range_current,
         "class_roman8_duplicate": classifier_roman8_duplicate,
@@ -19516,6 +19525,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "source",
                 )),
                 "events": real_resolver_mode3_suppressed_current["events"],
+            },
+            "mode3_class_one_exact": {
+                "summary": select_keys(real_resolver_mode3_class_one_exact, (
+                    "selected_pointer",
+                    "selected_resource_address",
+                    "word",
+                    "source",
+                )),
+                "selected_event": real_resolver_mode3_class_one_exact["events"][-1],
             },
         },
     }, {
@@ -19605,6 +19623,82 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     {"helper": 0x01B50E, "pass": 0, "index": 1, "ordinal": 1, "slot_pointer": 0x782358, "resource_address": 0x080418, "candidate_word": 0x0155, "reader": "0x15890", "reader_source": "+0x22-word", "class": 1, "admissible_reason": "special-symbol", "duplicate_reason": "admitted", "roman8_duplicate_pending": False, "selected": True, "word": 0x0155},
                 ],
             },
+            "mode3_class_one_exact": {
+                "summary": {
+                    "selected_pointer": 0x782330,
+                    "selected_resource_address": 0x09A984,
+                    "word": 0x000E,
+                    "source": "0x1b50e-scan",
+                },
+                "selected_event": {"helper": 0x01B50E, "pass": 1, "index": 3, "ordinal": 16, "slot_pointer": 0x782330, "resource_address": 0x09A984, "candidate_word": 0x000E, "reader": "0x15890", "reader_source": "+0x22-word", "class": 1, "admissible_reason": "special-symbol", "duplicate_reason": "admitted", "roman8_duplicate_pending": False, "selected": True, "word": 0x000E},
+            },
+        },
+    }))
+    real_current_default_primary = default_font_current_candidate_via_1b250(
+        state_78219b=3,
+        state_78219c=2,
+        resolved_resource_address=int(real_resolver_mode3_duplicate["selected_resource_address"]),
+        resolved_symbol_word=int(real_resolver_mode3_duplicate["word"]),
+        candidate_slots=list(actual_candidate_windows["slots"]),  # type: ignore[arg-type]
+        boundary_7827ac=int(actual_candidate_partition["cursors"]["0x7827ac"]),  # type: ignore[index]
+    )
+    real_current_default_secondary = default_font_current_candidate_via_1b250(
+        state_78219b=3,
+        state_78219c=16,
+        resolved_resource_address=int(real_resolver_mode3_class_one_exact["selected_resource_address"]),
+        resolved_symbol_word=int(real_resolver_mode3_class_one_exact["word"]),
+        candidate_slots=list(actual_candidate_windows["slots"]),  # type: ignore[arg-type]
+        boundary_7827ac=int(actual_candidate_partition["cursors"]["0x7827ac"]),  # type: ignore[index]
+    )
+    checks.append(assert_equal("0x1b250 real current-default candidate lookup", {
+        "primary_roman_extension": {
+            "summary": select_keys(real_current_default_primary, (
+                "found",
+                "source",
+                "selected_pointer",
+                "selected_resource_address",
+                "word",
+                "selector_78289f",
+            )),
+            "resolver_event": real_current_default_primary["events"][0],
+            "selected_lookup_event": real_current_default_primary["events"][-1],
+        },
+        "secondary_line_printer": {
+            "summary": select_keys(real_current_default_secondary, (
+                "found",
+                "source",
+                "selected_pointer",
+                "selected_resource_address",
+                "word",
+                "selector_78289f",
+            )),
+            "resolver_event": real_current_default_secondary["events"][0],
+            "selected_lookup_event": real_current_default_secondary["events"][-1],
+        },
+    }, {
+        "primary_roman_extension": {
+            "summary": {
+                "found": True,
+                "source": "0x1b250-current",
+                "selected_pointer": 0x782354,
+                "selected_resource_address": 0x08004C,
+                "word": 0x0005,
+                "selector_78289f": 0,
+            },
+            "resolver_event": {"helper": 0x01B50E, "state_78219b": 3, "state_78219c": 2, "resource_address": 0x08004C, "word": 0x0005, "resolved": True},
+            "selected_lookup_event": {"helper": 0x01B4C0, "index": 12, "slot_pointer": 0x782354, "candidate_address": 0x08004C, "wanted_address": 0x08004C, "selected": True},
+        },
+        "secondary_line_printer": {
+            "summary": {
+                "found": True,
+                "source": "0x1b250-current",
+                "selected_pointer": 0x782330,
+                "selected_resource_address": 0x09A984,
+                "word": 0x000E,
+                "selector_78289f": 1,
+            },
+            "resolver_event": {"helper": 0x01B50E, "state_78219b": 3, "state_78219c": 16, "resource_address": 0x09A984, "word": 0x000E, "resolved": True},
+            "selected_lookup_event": {"helper": 0x01B4C0, "index": 3, "slot_pointer": 0x782330, "candidate_address": 0x09A984, "wanted_address": 0x09A984, "selected": True},
         },
     }))
     default_synth_initial = default_font_synthesized_search_via_1ab84(
@@ -37570,6 +37664,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " / ".join(f"0x{int(word):04x}" for word in default_font_tables_synthesized["fallback_symbols"]),
     ))
     lines.append("- current-default lookup: `0x1b250` treats `0x78219c == 0xff` as disabled, otherwise asks `0x1b50e` for a resource address and symbol word, maps that low-24 address back into the canonical candidate slot list with `0x1b4c0`, stores the resolved slot in `0x7828a0`, copies the returned word to `0x7828a4`, and sets `0x78289f` to `1` only when the selected slot precedes boundary pointer `0x7827ac`.")
+    lines.append("- real built-in current-default lookup: real `0x1b50e` results feed `0x1b250` and map record `0x%06x` to slot `0x%06x` with selector `0x78289f = %d`, while record `0x%06x` maps to slot `0x%06x` before boundary `0x7827ac` with selector `0x78289f = %d`." % (
+        real_current_default_primary["selected_resource_address"],
+        real_current_default_primary["selected_pointer"],
+        real_current_default_primary["selector_78289f"],
+        real_current_default_secondary["selected_resource_address"],
+        real_current_default_secondary["selected_pointer"],
+        real_current_default_secondary["selector_78289f"],
+    ))
     lines.append("- current-default resolver: `0x1b50e` first accepts the `0x1b8ea` fast probe only for requested index `0`; otherwise it scans two list windows selected by mode `0`, `1`, `2`, or `3`. `0x1b750` classifies each candidate through `0x1b7b2` range/special/downloaded admissibility and `0x1b8b6` current Roman-8 duplicate suppression; non-special requests can count a Roman-8 candidate twice, with the duplicate ordinal writing the requested word instead of `0x0115`.")
     lines.append("- real built-in default resolver: mode-3 `0x1b50e` over scanned candidates selects slot `0x%06x` / record `0x%06x` for ordinal 1, counts the same Roman-8 record twice when requested symbol is non-Roman-8 (`0x%04x` on ordinal 2), and suppresses the current Roman-8 slot before selecting `0x%06x`." % (
         real_resolver_mode3_first["selected_pointer"],

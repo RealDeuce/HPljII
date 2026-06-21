@@ -536,8 +536,8 @@ ROM work needed:
   especially ambiguous header size words and header-level baseline
   semantics.
 - Replace the modeled default-font candidate records with a live
-  parser/font-state fixture that proves the real records feeding
-  `0x1b250`; real scanned built-in windows now feed `0x1b50e` mode-3
+  parser/font-state fixture that proves the default-table caller state;
+  real scanned built-in windows now feed `0x1b250`, `0x1b50e` mode-3
   selection, `0x1ab84` synthesized fallback, and `0x1b060` fallback
   selection for class-zero and class-one cases, and the parser-exposed
   `@0..@2` table/copy variants are documented as firmware-supported but

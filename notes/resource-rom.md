@@ -314,9 +314,10 @@ record `0x08004c`, a non-Roman-8 duplicate ordinal 2 returns requested
 word `0x0005`, and current-slot duplicate suppression advances to slot
 `0x782358` / record `0x080418`. The same real windows feed `0x1ab84`
 after its orientation flip, selecting record `0x00004c` by Roman-8
-fallback and record `0x01a984` by exact `0x000e`. The remaining
-live-state gap is real parser/font-state candidate records feeding
-`0x1b250` and the default-table caller state.
+fallback and record `0x01a984` by exact `0x000e`; real `0x1b50e`
+results also feed `0x1b250`, where `0x00004c` maps to slot `0x782354`
+after boundary `0x7827ac` and `0x01a984` maps to slot `0x782330` before
+it. The remaining live-state gap is the default-table caller state.
 
 This makes the current renderer identity
 `(context longword, mapped glyph byte)`. For example, the unnamed
@@ -333,8 +334,8 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
 2. Finish naming the firmware-scanned record metadata fields rather than
    relying on string labels alone.
 3. Replace the modeled default-font candidate records with a live
-   parser/font-state fixture that proves the real records feeding
-   `0x1b250`; real scanned built-in windows now feed `0x1b50e` mode-3
+   parser/font-state fixture that proves the default-table caller state;
+   real scanned built-in windows now feed `0x1b250`, `0x1b50e` mode-3
    selection, `0x1ab84` synthesized fallback, and `0x1b060` fallback
    selection. Decide how to document the undocumented but parser-exposed
    `@0..@2` table/copy variants.

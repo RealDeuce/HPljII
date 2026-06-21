@@ -428,7 +428,8 @@ printable stream fixtures for host byte `0x21` (`!`) through source mapping,
 positioning, packed default cursor advance, same-bucket compact queueing, and
 rendering, pins `0xd3b2` unflagged positioning arithmetic for both
 context-metric branches, adds a selected inline/downloaded map/source fixture
-through `0x14e24`/`0x14eb6` -> `0x1393a` -> `0xd3b2` -> `0x12f2e` -> render plus
+through `0x14e24`/`0x14eb6` -> `0x1393a` -> `0xd3b2` -> `0x12f2e` ->
+`0x1edc6` -> render plus
 `0x168dc`/`0x16942` font payload-reader fixtures including a host-fetched
 `ESC )s18W` payload-control render, `0x172c0`/`0x16c14` downloaded-font record
 bookkeeping fixtures, `0x170be`/`0x17108`/`0x17150`

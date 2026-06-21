@@ -17066,6 +17066,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         (0, 0, 0, selected_inline_context),
         selected_inline_bucket["object"],
     )
+    selected_inline_page_bridge_record = {
+        "bucket_root": selected_inline_page_object,
+        "rule_list": [],
+        "fixed_list": [],
+        "context_slots": [0, 0, 0, selected_inline_context],
+    }
+    selected_inline_bridged = bridge_page_record_via_1edc6(selected_inline_page_bridge_record)
+    selected_inline_bridged_rendered = render_bridged_compact_bucket_object(
+        data,
+        selected_inline_memory,
+        selected_inline_bridged,
+    )
     checks.append(assert_equal("selected inline source queues and renders through unflagged path", {
         "position": {
             "x": selected_inline_positioned_source["x"],
@@ -17139,6 +17151,49 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "width": 16,
                 "helper": u32(data, 0x1F08E + 2 * 4),
             }],
+            "rows": [
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 22 + "#.#.#.#..#.#.#.#",
+                "." * 22 + "####........####",
+                "." * 22 + "##....##..####..",
+            ],
+        },
+    }))
+    checks.append(assert_equal("selected inline page-record object preserves context through 0x1edc6 bridge", {
+        "bucket_root": selected_inline_bridged["bucket_root"],
+        "render_field_bucket_matches_object": (
+            selected_inline_bridged["render_record_fields"]["bucket_root_18"]
+            == selected_inline_page_object
+        ),
+        "rule_list_count": len(selected_inline_bridged["rule_list"]),
+        "fixed_list_count": len(selected_inline_bridged["fixed_list"]),
+        "context_slots_prefix": selected_inline_bridged["context_slots"][:4],
+        "render": {
+            "selector": selected_inline_bridged_rendered["selector"],
+            "context_slot": selected_inline_bridged_rendered["context_slot"],
+            "compact_mode": selected_inline_bridged_rendered["compact_mode"],
+            "payload": selected_inline_bridged_rendered["payload"],
+            "rows": selected_inline_bridged_rendered["rows"],
+        },
+    }, {
+        "bucket_root": (
+            bytes.fromhex("00 00 00 00 00 03 00 01 01 66 01")
+            + bytes(0x1B)
+        ),
+        "render_field_bucket_matches_object": True,
+        "rule_list_count": 0,
+        "fixed_list_count": 0,
+        "context_slots_prefix": (0, 0, 0, selected_inline_context),
+        "render": {
+            "selector": 0x0003,
+            "context_slot": 3,
+            "compact_mode": 0,
+            "payload": bytes.fromhex("00 01 01 66 01") + bytes(0x1B),
             "rows": [
                 "." * 38,
                 "." * 38,

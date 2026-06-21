@@ -433,9 +433,10 @@ bridge now feeds parsed primary `0p10h12v0s0b3T` updater writes at
 class-zero built-in candidate filters, reducing Roman-8 survivors to
 slots `0x782354` / `0x782364` before `0x14398` selects record
 `0x009fb0`; one `0xc580` dirty-refresh branch is now pinned through
-the empty-live-slot `0xc4fc` scan, two `0x13eb8` calls, `0xc428`
-page-root context-slot selection, and final active-to-remembered word
-copy
+the first-clear-slot `0xc4fc` scan, and the all-live matching-context
+branch is pinned through the transient `0x78298f` toggle, two
+`0x13eb8` calls, `0xc428` page-root context-slot selection, and final
+active-to-remembered word copy
 
 ### Formatter manuals
 
@@ -509,11 +510,11 @@ Expected resource ROM contents:
 
 ROM work needed:
 
-- Extend the pinned `0xc580` empty-live-slot branch into full
-  firmware-state coverage for secondary, live-slot, full-slot, and
-  selector-mismatch cases, then carry that through complete `0x13eb8`
-  / `0x14c64` selected-font dispatch and replace the remaining
-  `0x156de` synthetic cases with live parser/font-state coverage.
+- Extend the pinned `0xc580` first-clear-slot and all-live matching-context
+  branches into full firmware-state coverage for secondary,
+  selector-mismatch, and full-slot no-match cases, then carry that through
+  complete `0x13eb8` / `0x14c64` selected-font dispatch and replace the
+  remaining `0x156de` synthetic cases with live parser/font-state coverage.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.

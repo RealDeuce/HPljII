@@ -2466,6 +2466,7 @@ def symbol_set_state(**overrides: object) -> dict[str, object]:
         "selected_context_record_782992": 0x782EE6,
         "context_install_events": [],
         "candidate_refresh_calls": [],
+        "transient_context_refresh_78298f": 0,
         "dirty_flag": 0,
         "dirty_maps": 0,
         "refreshes": 0,
@@ -2577,10 +2578,13 @@ def refresh_symbol_state_via_c580(state: dict[str, object], slot: int) -> None:
         if selector == slot:
             live_flags = list(state.get("page_root_live_flags", []))
             live_flags += [0] * (16 - len(live_flags))
-            first_live = next((index for index, flag in enumerate(live_flags[:16]) if int(flag) != 0), None)
-            if first_live is None and int(state.get("current_page_root", 0)) != 0:
+            first_inactive = next(
+                (index for index, flag in enumerate(live_flags[:16]) if int(flag) == 0),
+                None,
+            )
+            if first_inactive is None and int(state.get("current_page_root", 0)) != 0:
                 state["transient_context_refresh_78298f"] = 1
-                activate_font_candidate_via_13eb8(state, slot, "empty-live-page-root")
+                activate_font_candidate_via_13eb8(state, slot, "full-live-page-root")
                 state["transient_context_refresh_78298f"] = 0
             selected_context = int(state.get("selected_context_record_782992", current_font_context_record(slot)))
             selected_page_slot = install_page_root_context_via_c4fc(
@@ -17022,10 +17026,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "transient_context_refresh_78298f": 0,
         "page_root_context_slots": [0x782EE6, 0],
         "page_root_live_flags": [0, 0],
-        "candidate_refresh_calls": [
-            {"helper": 0x013EB8, "slot": 0, "reason": "empty-live-page-root"},
-            {"helper": 0x013EB8, "slot": 0, "reason": "post-c4fc"},
-        ],
+        "candidate_refresh_calls": [{"helper": 0x013EB8, "slot": 0, "reason": "post-c4fc"}],
         "context_install_events": [
             {
                 "helper": 0x00C4FC,
@@ -17039,6 +17040,62 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "caller": "0xc428",
                 "context_record": 0x782EE6,
                 "selected_page_slot": 0,
+                "reason": "existing-context",
+            },
+        ],
+    }))
+    c580_full_context_refresh = symbol_set_state(
+        requested_symbols=[0x0055, 0x0115],
+        active_symbols=[0x0115, 0x0115],
+        remembered_symbols=[0x0115, 0x0115],
+        current_selector_782f06=0,
+        current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        page_root_context_slots=[0, 0, 0, current_font_context_record(0)] + [0] * 12,
+        page_root_live_flags=[1] * 16,
+        dirty_flag=1,
+        dirty_maps=1,
+        selected_context_record_782992=current_font_context_record(0),
+    )
+    refresh_symbol_state_via_c580(c580_full_context_refresh, 0)
+    checks.append(assert_equal("0xc580 full live-slot branch reuses matching page-root font context", {
+        "active_symbols": c580_full_context_refresh["active_symbols"],
+        "remembered_symbols": c580_full_context_refresh["remembered_symbols"],
+        "dirty_flag": c580_full_context_refresh["dirty_flag"],
+        "dirty_maps": c580_full_context_refresh["dirty_maps"],
+        "refreshes": c580_full_context_refresh["refreshes"],
+        "current_page_context_slot_78297e": c580_full_context_refresh["current_page_context_slot_78297e"],
+        "transient_context_refresh_78298f": c580_full_context_refresh["transient_context_refresh_78298f"],
+        "page_root_context_slots": c580_full_context_refresh["page_root_context_slots"][:4],
+        "page_root_live_flags": c580_full_context_refresh["page_root_live_flags"][:4],
+        "candidate_refresh_calls": c580_full_context_refresh["candidate_refresh_calls"],
+        "context_install_events": c580_full_context_refresh["context_install_events"],
+    }, {
+        "active_symbols": [0x0055, 0x0115],
+        "remembered_symbols": [0x0055, 0x0115],
+        "dirty_flag": 0,
+        "dirty_maps": 0,
+        "refreshes": 1,
+        "current_page_context_slot_78297e": 3,
+        "transient_context_refresh_78298f": 0,
+        "page_root_context_slots": [0, 0, 0, 0x782EE6],
+        "page_root_live_flags": [1, 1, 1, 1],
+        "candidate_refresh_calls": [
+            {"helper": 0x013EB8, "slot": 0, "reason": "full-live-page-root"},
+            {"helper": 0x013EB8, "slot": 0, "reason": "post-c4fc"},
+        ],
+        "context_install_events": [
+            {
+                "helper": 0x00C4FC,
+                "caller": "0xc580",
+                "context_record": 0x782EE6,
+                "selected_page_slot": 3,
+                "reason": "existing-context",
+            },
+            {
+                "helper": 0x00C4FC,
+                "caller": "0xc428",
+                "context_record": 0x782EE6,
+                "selected_page_slot": 3,
                 "reason": "existing-context",
             },
         ],
@@ -35689,10 +35746,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- symbol-set parser-to-map boundary: stream `1b 28 32 55 1b 29 30 45` routes primary setup `0x1201e`, secondary setup `0x12008`, and terminal handler `0x120be`, then the modeled active words `0x0055` and `0x0005` feed the patch-table and Roman Extension map updates below.")
     lines.append("- `0xc580` dirty primary refresh fixture:")
     lines.append("  dirty `0x782f2c = 1`, selector slot `0`, no live page-root slots,")
-    lines.append("  and a present page root call `0x13eb8`, `0xc4fc`, `0x13eb8`,")
-    lines.append("  then `0xc428`; page-root context slot `0` receives `0x782ee6`,")
-    lines.append("  `0x78297e` selects slot `0`, and live flags stay clear until")
-    lines.append("  printable source queuing marks `0x78297f+n`.")
+    lines.append("  and a present page root find slot `0` clear, run `0xc4fc`, call")
+    lines.append("  `0x13eb8`, then call `0xc428`; page-root context slot `0`")
+    lines.append("  receives `0x782ee6`, `0x78297e` selects slot `0`, and live flags")
+    lines.append("  stay clear until printable source queuing marks `0x78297f+n`.")
+    lines.append("- `0xc580` all-live matching-context fixture:")
+    lines.append("  all 16 live flags set briefly toggles `0x78298f`, calls")
+    lines.append("  `0x13eb8`, reuses existing page-root context slot `3` through")
+    lines.append("  `0xc4fc`, calls `0x13eb8` again, and leaves `0xc428` selecting")
+    lines.append("  slot `3` for subsequent text queuing.")
     lines.append("- scanned candidate-list partitioning: `0x1a9be` leaves total `%d`, class-one low/range counts `%d`/`%d`, class-zero low/range counts `%d`/`%d`, and cursor windows `%s`; this pins the list starts used later by current/default font searches." % (
         scanned_candidate_partition["counters"]["0x78278e"],
         scanned_candidate_partition["counters"]["0x782792"],

@@ -836,8 +836,9 @@ ROM work needed:
   macros, continue from the composed
   `Macro Definition And Data-Chain Replay` semantic checkpoint by
   decoding `0xdfba..0xe110`, `0xe002..0xe080`, `0xe0a4..0xe110`,
-  `0xe8f0`/`0xe8a2`/`0xe972`, `0xe22c..0xe408`, and
-  `0x782c6e..0x782d36`. The modeled `0x1ef6a`
+  allocator/free helpers `0x170c`/`0x18b4`, `0xe65c..0xe84c`, and the
+  non-execute/non-call frame producer for `0xe35a..0xe3e8`. The modeled
+  `0x1ef6a`
   page-band merge now covers compact text, mode-0 raster, and a crossing
   patterned rule across bands `0` and `5`; modeled rectangle fill
   clipping now covers left/right/top/bottom, landscape-edge, and

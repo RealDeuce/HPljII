@@ -2673,6 +2673,82 @@ def clear_macro_record_via_dfba(state: dict[str, object], index: int) -> None:
         state["parser_mode"] = 0
 
 
+def snapshot_longword_count(start: int, end: int) -> int:
+    if end < start:
+        return 0
+    return ((end - start) // 4) + 1
+
+
+def build_indexed_longwords(start: int, end: int) -> list[int]:
+    return [addr & 0xFFFFFFFF for addr in range(start, end + 1, 4)]
+
+
+def snapshot_chain_via_e8f0(start: int, end: int, values: list[int]) -> dict[str, object]:
+    expected_count = snapshot_longword_count(start, end)
+    if expected_count != len(values):
+        raise AssertionError("0xe8f0 fixture values must match inclusive source range")
+    chunks: list[dict[str, object]] = []
+    remaining = list(values)
+    head = 0x00D10000
+    chunk_addr = head
+    while remaining:
+        payload = remaining[:0x3F]
+        remaining = remaining[0x3F:]
+        next_addr = chunk_addr + 0x100 if remaining else 0
+        chunks.append({
+            "addr": chunk_addr,
+            "next": next_addr,
+            "payload": payload,
+        })
+        chunk_addr = next_addr
+    return {
+        "head": head if chunks else 0,
+        "source_start": start,
+        "source_end": end,
+        "chunks": chunks,
+        "longword_count": expected_count,
+    }
+
+
+def restore_snapshot_chain_via_e8a2(chain: dict[str, object], start: int, end: int) -> dict[str, object]:
+    expected_count = snapshot_longword_count(start, end)
+    chunks = [dict(chunk) for chunk in chain.get("chunks", [])]
+    values: list[int] = []
+    for chunk in chunks:
+        values.extend(int(value) & 0xFFFFFFFF for value in chunk.get("payload", []))
+    restored = values[:expected_count]
+    leftover = values[expected_count:]
+    exhausted = not leftover and (not chunks or int(chunks[-1].get("next", 0)) == 0)
+    return {
+        "dest_start": start,
+        "dest_end": end,
+        "restored": restored,
+        "leftover": leftover,
+        "exhausted": exhausted,
+        "error": None if exhausted else 0xE3,
+    }
+
+
+def flat_copy_via_e972(dest_start: int, dest_end: int, source_values: list[int]) -> dict[str, object]:
+    expected_count = snapshot_longword_count(dest_start, dest_end)
+    copied = [int(value) & 0xFFFFFFFF for value in source_values[:expected_count]]
+    return {
+        "dest_start": dest_start,
+        "dest_end": dest_end,
+        "copied": copied,
+    }
+
+
+def flat_snapshot_via_e996(source_start: int, source_end: int, values: list[int]) -> dict[str, object]:
+    expected_count = snapshot_longword_count(source_start, source_end)
+    copied = [int(value) & 0xFFFFFFFF for value in values[:expected_count]]
+    return {
+        "source_start": source_start,
+        "source_end": source_end,
+        "copied": copied,
+    }
+
+
 def execute_macro_data_chain_via_e418(state: dict[str, object], index: int, mode: int) -> dict[str, object]:
     records = list(state["records"])
     record = dict(records[index])
@@ -2702,12 +2778,12 @@ def execute_macro_data_chain_via_e418(state: dict[str, object], index: int, mode
     state["data_chain_frames"] = frames
     metadata_entries = list(state.get("data_chain_frame_metadata", []))
     snapshots = list(state.get("environment_snapshots", []))
-    snapshots.append({
-        "ptr": snapshot_ptr,
-        "source": snapshot_source,
-        "target": 0x78319A,
-        "mode": mode,
-    })
+    snapshot_values = build_indexed_longwords(snapshot_source, 0x78319A)
+    snapshot_chain = snapshot_chain_via_e8f0(snapshot_source, 0x78319A, snapshot_values)
+    snapshot_chain["ptr"] = snapshot_ptr
+    snapshot_chain["target"] = 0x78319A
+    snapshot_chain["mode"] = mode
+    snapshots.append(snapshot_chain)
     if mode != 2:
         context_ptr = int(state.get("context_stack_ptr", 0x782C1E))
         context_entry = {
@@ -2734,6 +2810,53 @@ def execute_macro_data_chain_via_e418(state: dict[str, object], index: int, mode
     events.append({"kind": "macro-data-chain", "mode": mode, "payload": payload})
     state["events"] = events
     return frame
+
+
+def end_macro_data_chain_via_e22c(state: dict[str, object]) -> dict[str, object]:
+    updated = dict(state)
+    frames = list(updated.get("data_chain_frames", []))
+    metadata_entries = list(updated.get("data_chain_frame_metadata", []))
+    snapshots = list(updated.get("environment_snapshots", []))
+    context_entries = list(updated.get("context_stack_entries", []))
+    events = list(updated.get("events", []))
+    if not frames or not metadata_entries:
+        raise AssertionError("0xe22c fixture requires an active macro frame")
+    frame = dict(frames.pop())
+    metadata = dict(metadata_entries.pop())
+    mode = int(frame.get("byte_9", 0))
+    snapshot = dict(snapshots.pop()) if snapshots else {}
+    if mode == 2:
+        restore_start = 0x783192
+        post_helper = 0x1240A
+        context_entry = None
+    elif mode == 3:
+        restore_start = 0x782D9E
+        post_helper = 0x1240A
+        context_entry = dict(context_entries.pop()) if context_entries else None
+        updated["context_stack_ptr"] = int(updated.get("context_stack_ptr", 0x782C28)) - 0x0A
+    else:
+        restore_start = 0x782D3A
+        post_helper = None
+        context_entry = None
+    restored = restore_snapshot_chain_via_e8a2(snapshot, restore_start, 0x78319A)
+    updated["data_chain_frames"] = frames
+    updated["data_chain_frame_metadata"] = metadata_entries
+    updated["environment_snapshots"] = snapshots
+    updated["context_stack_entries"] = context_entries
+    updated["data_chain_slot"] = max(0, int(updated.get("data_chain_slot", 0)) - 1)
+    if not frames or int(frames[-1].get("byte_count", 0)) == 0:
+        updated["host_gate_bit1"] = 0
+    events.append({
+        "kind": "macro-frame-end",
+        "mode": mode,
+        "frame_addr": metadata.get("frame_addr"),
+        "restore": restored,
+        "freed_snapshot_ptr": metadata.get("env_snapshot_ptr"),
+        "context_entry": context_entry,
+        "post_helper": post_helper,
+    })
+    updated["events"] = events
+    return updated
 
 
 def replay_macro_frame_payload_via_a904(frame: dict[str, object], outer_byte: int | None = None) -> dict[str, object]:
@@ -18701,6 +18824,155 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "byte_8": 0,
             "byte_9": 0,
         }],
+    }))
+    long_snapshot_values = [0xA0000000 | index for index in range(65)]
+    long_snapshot_chain = snapshot_chain_via_e8f0(
+        0x00783100,
+        0x00783200,
+        long_snapshot_values,
+    )
+    long_snapshot_restore = restore_snapshot_chain_via_e8a2(
+        long_snapshot_chain,
+        0x00783100,
+        0x00783200,
+    )
+    flat_restore = flat_copy_via_e972(0x00782D3A, 0x007834C2, [0x55000000 | index for index in range(483)])
+    flat_snapshot = flat_snapshot_via_e996(0x00782EE2, 0x007831A2, [0x66000000 | index for index in range(177)])
+    checks.append(assert_equal("macro snapshot helpers copy linked and flat environment ranges", {
+        "chain_summary": {
+            "head": long_snapshot_chain["head"],
+            "chunk_count": len(long_snapshot_chain["chunks"]),
+            "chunk_lengths": [len(chunk["payload"]) for chunk in long_snapshot_chain["chunks"]],
+            "first_next": long_snapshot_chain["chunks"][0]["next"],
+            "second_next": long_snapshot_chain["chunks"][1]["next"],
+        },
+        "restored_tail": long_snapshot_restore["restored"][-3:],
+        "restore_exhausted": long_snapshot_restore["exhausted"],
+        "flat_restore": {
+            "dest_start": flat_restore["dest_start"],
+            "dest_end": flat_restore["dest_end"],
+            "count": len(flat_restore["copied"]),
+        },
+        "flat_snapshot": {
+            "source_start": flat_snapshot["source_start"],
+            "source_end": flat_snapshot["source_end"],
+            "count": len(flat_snapshot["copied"]),
+        },
+    }, {
+        "chain_summary": {
+            "head": 0x00D10000,
+            "chunk_count": 2,
+            "chunk_lengths": [63, 2],
+            "first_next": 0x00D10100,
+            "second_next": 0,
+        },
+        "restored_tail": [0xA000003E, 0xA000003F, 0xA0000040],
+        "restore_exhausted": True,
+        "flat_restore": {
+            "dest_start": 0x00782D3A,
+            "dest_end": 0x007834C2,
+            "count": 483,
+        },
+        "flat_snapshot": {
+            "source_start": 0x00782EE2,
+            "source_end": 0x007831A2,
+            "count": 177,
+        },
+    }))
+    macro_execute_end = end_macro_data_chain_via_e22c(macro_execute)
+    macro_call_end = end_macro_data_chain_via_e22c(macro_call)
+    checks.append(assert_equal("0xe22c restores macro frames and consumes call context", {
+        "execute": {
+            "data_chain_slot": macro_execute_end["data_chain_slot"],
+            "host_gate_bit1": macro_execute_end["host_gate_bit1"],
+            "context_ptr": macro_execute_end["context_stack_ptr"],
+            "context_entries": macro_execute_end["context_stack_entries"],
+            "event": select_keys(macro_execute_end["events"][-1], (
+                "kind",
+                "mode",
+                "frame_addr",
+                "freed_snapshot_ptr",
+                "context_entry",
+                "post_helper",
+            )),
+            "restore": select_keys(macro_execute_end["events"][-1]["restore"], (
+                "dest_start",
+                "dest_end",
+                "restored",
+                "exhausted",
+                "error",
+            )),
+        },
+        "call": {
+            "data_chain_slot": macro_call_end["data_chain_slot"],
+            "host_gate_bit1": macro_call_end["host_gate_bit1"],
+            "context_ptr": macro_call_end["context_stack_ptr"],
+            "context_entries": macro_call_end["context_stack_entries"],
+            "event": select_keys(macro_call_end["events"][-1], (
+                "kind",
+                "mode",
+                "frame_addr",
+                "freed_snapshot_ptr",
+                "context_entry",
+                "post_helper",
+            )),
+            "restore": select_keys(macro_call_end["events"][-1]["restore"], (
+                "dest_start",
+                "dest_end",
+                "restored",
+                "exhausted",
+                "error",
+            )),
+        },
+    }, {
+        "execute": {
+            "data_chain_slot": 0,
+            "host_gate_bit1": 0,
+            "context_ptr": 0x782C1E,
+            "context_entries": [],
+            "event": {
+                "kind": "macro-frame-end",
+                "mode": 2,
+                "frame_addr": 0x782D4C,
+                "freed_snapshot_ptr": 0x00D10000,
+                "context_entry": None,
+                "post_helper": 0x1240A,
+            },
+            "restore": {
+                "dest_start": 0x783192,
+                "dest_end": 0x78319A,
+                "restored": [0x00783192, 0x00783196, 0x0078319A],
+                "exhausted": True,
+                "error": None,
+            },
+        },
+        "call": {
+            "data_chain_slot": 0,
+            "host_gate_bit1": 0,
+            "context_ptr": 0x782C1E,
+            "context_entries": [],
+            "event": {
+                "kind": "macro-frame-end",
+                "mode": 3,
+                "frame_addr": 0x782D4C,
+                "freed_snapshot_ptr": 0x00D10000,
+                "context_entry": {
+                    "addr": 0x782C1E,
+                    "long_0_source": 0x782EE6,
+                    "long_4_source": 0x782EF6,
+                    "byte_8": 0,
+                    "byte_9": 0,
+                },
+                "post_helper": 0x1240A,
+            },
+            "restore": {
+                "dest_start": 0x782D9E,
+                "dest_end": 0x78319A,
+                "restored": [0x00782D9E + (4 * index) for index in range(256)],
+                "exhausted": True,
+                "error": None,
+            },
+        },
     }))
     macro_overlay = apply_macro_control_via_dd08(macro_with_payload, 4)
     macro_overlay_clear = apply_macro_control_via_dd08(macro_overlay, 5)
@@ -45849,6 +46121,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- Selector `0` starts macro definition, clears/reuses the selected 12-byte record, sets alternate/data mode, and for lowercase `x` seeds the stored byte stream with `ESC &f`; selector `1` stops definition and clears empty/auto-prefix-only records.")
     lines.append("- Selectors `2` and `3` replay an existing macro by pushing a data-chain frame whose byte `+8` is `4` and byte `+9` is the execute/call selector.")
     lines.append("- `0xe418` writes frame `+0x00/+0x04` from macro record `+0x00/+0x04`, stores an environment snapshot pointer at frame `+0x0a`, and only call mode pushes a 10-byte context-stack entry from `0x782ee6` / `0x782ef6`.")
+    lines.append("- `0xe8f0` stores environment ranges as 0x100-byte linked chunks with a next pointer plus 63 longwords; `0xe8a2` restores those chunks and expects the chain to be exhausted, while `0xe972` and `0xe996` copy flat inclusive longword ranges in opposite directions.")
     lines.append("- Selectors `4`/`5` enable/disable overlay state, `6`/`7`/`8` delete all/temporary/current macros, and `9`/`10` toggle the temporary/permanent byte at record `+0x0a`.")
     lines.append("")
     lines.append(f"- assigned macro id: `{macro_id_state['current_macro_id']}`")
@@ -45952,6 +46225,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- execute frame metadata: `{macro_execute['data_chain_frame_metadata'][0]}`")
     lines.append(f"- call frame: `{macro_call['data_chain_frames'][0]}`")
     lines.append(f"- call frame metadata: `{macro_call['data_chain_frame_metadata'][0]}`")
+    lines.append(f"- execute frame-end event: `{macro_execute_end['events'][-1]}`")
+    lines.append(f"- call frame-end event: `{macro_call_end['events'][-1]}`")
     lines.append(f"- permanent survives delete-temporary: `{macro_delete_temporary['records'][0]}`")
     lines.append("")
 

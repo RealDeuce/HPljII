@@ -408,8 +408,11 @@ route through `0xe418`, which builds a data-chain frame with byte
 `+8 = 4`, byte `+9 = 2` or `3`, macro record `+0x00/+0x04` copied into
 frame `+0x00/+0x04`, and an environment snapshot pointer at frame
 `+0x0a`; call mode also pushes a 10-byte context-stack entry through
-`0x782c6e`. The executable harness now pins these command side effects
-and frame metadata, plus chained `ESC &f-123y0x1X`,
+`0x782c6e`. The `0xe8f0`/`0xe8a2` helpers store and restore those
+snapshots as 0x100-byte linked chunks, and `0xe22c` unwinds execute/call
+frames after `0xa904` sees the frame-end marker. The executable harness
+now pins these command side effects and frame metadata, plus chained
+`ESC &f-123y0x1X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f2X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f3X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f4X ESC &f5X`,
@@ -916,6 +919,7 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   compatibility-facing documentation. The default-font candidate and
   caller path is now real-record backed through `0x1b250`, `0x1b50e`,
   `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
-- Decode the macro chunk allocator, `0xe8f0`/`0xe8a2`/`0xe972`
-  environment snapshot helpers, and `0xe22c` call-return restoration now
-  that the `0xe418` frame layout and call-context push are pinned.
+- Decode the macro chunk allocator, `0xe65c` font-context refresh
+  branches, and the non-execute/non-call frame producer now that the
+  `0xe418` layout, snapshot chain helpers, and execute/call frame end are
+  pinned.

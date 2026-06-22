@@ -4,6 +4,7 @@ Sources: `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`;
 `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`;
 `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`;
 `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`;
+`generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`;
 `generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`;
 `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`;
 `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`;
@@ -551,6 +552,19 @@ Nonzero byte counts set host gate bit 1. Call mode additionally pushes a
 `0x782ee6` and `0x782ef6`, clearing bytes `+8/+9`, and advancing the
 stack pointer by `0x0a`; execute mode does not push this entry.
 
+The environment snapshot helpers behind frame `+0x0a` are now pinned:
+`0xe8f0` copies an inclusive longword range into 0x100-byte linked chunks
+with a longword next pointer plus 63 longwords of payload per chunk.
+`0xe8a2` restores that chain into an inclusive destination range and
+reports error `0xe3` through `0x1284` if data remains after the range is
+filled. `0xe972` and `0xe996` are flat inclusive longword copy helpers in
+opposite call shapes. `0xe22c` consumes the active frame after `0xa904`
+sees frame `+4 == -1`: execute restores `0x783192..0x78319a`, call
+restores `0x782d9e..0x78319a` and pops one 10-byte context entry through
+`0xe65c(0)`, both free the snapshot chain, rewind `0x782d76` by `0x0e`,
+clear host gate bit 1 when the previous frame has no bytes, and call
+`0x1240a`.
+
 `tools/render_fixture_harness.py` has executable fixtures for `0xe112`,
 the `0xdd08` start/stop/delete/overlay/permanent selector behavior, and
 the `0xe418` execute/call data-chain frame shape. Chained
@@ -671,9 +685,9 @@ control-code anchor.
   names.
 - Decode the six-byte tokenizer records and 12-byte command/data pool
   records.
-- Decode the macro chunk allocator plus `0xe8f0`/`0xe8a2`/`0xe972`
-  snapshot helpers and `0xe22c` call-return restoration now that the
-  `0xe418` frame layout and call-context push are pinned.
+- Decode the macro chunk allocator plus `0xe65c` font-context refresh
+  branches and non-execute/non-call frame producer now that the `0xe418`
+  layout, snapshot chain helpers, and execute/call frame end are pinned.
 - Replace the remaining synthetic `ESC E` roots with fuller
   parser-allocated page objects; the current host-fetched publication
   fixtures already prove the modeled `0xff1e` publication headers,

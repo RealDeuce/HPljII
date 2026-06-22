@@ -12794,6 +12794,90 @@ def render_published_page_record_via_1ed84_1ef6a(
     }
 
 
+def render_scheduler_handoff_via_1eb2a_1ecd6(
+    data: bytes,
+    resources: bytes,
+    published_page_record: dict[str, object],
+    state: dict[str, object],
+    *,
+    source_ptr: int,
+    base_pointer: int = 0x00100000,
+    width_word: int = 0x0020,
+    band_divisor: int = 0x0005,
+) -> dict[str, object]:
+    """Model the active-record selection around 0x1eb2a and 0x1ecd6."""
+    pool_records = dict(state.get("page_control_pool_records", {}))
+    pool_records[int(source_ptr)] = published_page_record
+    state["page_control_pool_records"] = pool_records
+    state["published_pool_pointer_780eaa"] = int(source_ptr)
+    state["active_render_flag_780ea4"] = 1
+    state["active_render_loop_flag_780ea5"] = 0
+    state["active_source_780eae"] = int(source_ptr)
+
+    previous_selector = int(state.get("render_work_selector_7820bc", 0))
+    if previous_selector:
+        previous_work_ptr = 0x00782128
+        destination_work_ptr = 0x007820C4
+        next_selector = 0
+    else:
+        previous_work_ptr = 0x007820C4
+        destination_work_ptr = 0x00782128
+        next_selector = 1
+    state["render_work_selector_7820bc"] = next_selector
+    state["render_work_record_783a18"] = destination_work_ptr
+
+    work_records = dict(state.get("render_work_records", {}))
+    previous_work = dict(work_records.get(previous_work_ptr, {}))
+    destination_work = dict(work_records.get(destination_work_ptr, {}))
+    byte_9 = int(published_page_record.get(
+        "byte_9",
+        published_page_record.get("pool_record_fields", {}).get("byte_9", 0),
+    )) & 0xFF
+    destination_work["word_04"] = byte_9
+    geometry_changed = int(previous_work.get("word_04", -1)) != byte_9
+    if geometry_changed:
+        destination_work["long_00"] = int(base_pointer) & 0xFFFFFFFF
+        destination_work["word_06"] = int(band_divisor) & 0xFFFF
+        destination_work["word_08"] = 0
+        destination_work["render_stride_783a1c"] = (int(width_word) << 2) & 0xFFFFFFFF
+        destination_work["offset_table_7839f8_prefix"] = (
+            0,
+            byte_9 * 4,
+            byte_9 * 8,
+            byte_9 * 12,
+        )
+    else:
+        destination_work["word_08"] = int(previous_work.get("word_08", 0))
+        destination_work["long_00"] = int(previous_work.get("long_00", base_pointer))
+        destination_work["word_06"] = int(previous_work.get("word_06", band_divisor))
+    work_records[destination_work_ptr] = destination_work
+    state["render_work_records"] = work_records
+
+    rendered = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        published_page_record,
+        base_pointer=int(destination_work.get("long_00", base_pointer)),
+        width_word=width_word,
+        band_divisor=int(destination_work.get("word_06", band_divisor)),
+    )
+    return {
+        "source_ptr": int(source_ptr),
+        "previous_work_ptr": previous_work_ptr,
+        "destination_work_ptr": destination_work_ptr,
+        "selector_before": previous_selector,
+        "selector_after": next_selector,
+        "active_source_780eae": int(state["active_source_780eae"]),
+        "active_render_flag_780ea4": int(state["active_render_flag_780ea4"]),
+        "active_render_loop_flag_780ea5": int(state["active_render_loop_flag_780ea5"]),
+        "render_work_record_783a18": int(state["render_work_record_783a18"]),
+        "geometry_changed": geometry_changed,
+        "destination_work": destination_work,
+        "rendered": rendered,
+        "state": state,
+    }
+
+
 def render_bucket_page_record_via_1ed84_1ef6a(
     data: bytes,
     resources: bytes,
@@ -26327,6 +26411,76 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "next_stream_chunk_ptr": 0x00D04100,
             "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D04000},
             "stream_allocations": 1,
+        },
+    }))
+    scheduler_source_record = dict(addressed_page_published_record)
+    scheduler_source_record["byte_9"] = 5
+    scheduler_handoff_state: dict[str, object] = {
+        "render_work_selector_7820bc": 0,
+        "render_work_records": {
+            0x007820C4: {"word_04": 0},
+            0x00782128: {},
+        },
+    }
+    scheduler_handoff = render_scheduler_handoff_via_1eb2a_1ecd6(
+        data,
+        resources,
+        scheduler_source_record,
+        scheduler_handoff_state,
+        source_ptr=0x00D0EAA0,
+    )
+    scheduler_rendered = scheduler_handoff["rendered"]
+    assert isinstance(scheduler_rendered, dict)
+    checks.append(assert_equal("0x1eb2a/0x1ecd6 selects published record for render entry", {
+        "source_ptr": scheduler_handoff["source_ptr"],
+        "active_source_780eae": scheduler_handoff["active_source_780eae"],
+        "flags": {
+            "active_render_flag_780ea4": scheduler_handoff["active_render_flag_780ea4"],
+            "active_render_loop_flag_780ea5": (
+                scheduler_handoff["active_render_loop_flag_780ea5"]
+            ),
+        },
+        "work_selection": {
+            "selector_before": scheduler_handoff["selector_before"],
+            "selector_after": scheduler_handoff["selector_after"],
+            "previous_work_ptr": scheduler_handoff["previous_work_ptr"],
+            "destination_work_ptr": scheduler_handoff["destination_work_ptr"],
+            "render_work_record_783a18": scheduler_handoff["render_work_record_783a18"],
+            "geometry_changed": scheduler_handoff["geometry_changed"],
+        },
+        "destination_work": scheduler_handoff["destination_work"],
+        "render": {
+            "active_copy": scheduler_rendered["active_copy"],
+            "call_order": scheduler_rendered["entry"]["call_order"],
+            "rows": scheduler_rendered["entry"]["rows"],
+        },
+    }, {
+        "source_ptr": 0x00D0EAA0,
+        "active_source_780eae": 0x00D0EAA0,
+        "flags": {
+            "active_render_flag_780ea4": 1,
+            "active_render_loop_flag_780ea5": 0,
+        },
+        "work_selection": {
+            "selector_before": 0,
+            "selector_after": 1,
+            "previous_work_ptr": 0x007820C4,
+            "destination_work_ptr": 0x00782128,
+            "render_work_record_783a18": 0x00782128,
+            "geometry_changed": True,
+        },
+        "destination_work": {
+            "word_04": 5,
+            "long_00": 0x00100000,
+            "word_06": 5,
+            "word_08": 0,
+            "render_stride_783a1c": 0x80,
+            "offset_table_7839f8_prefix": (0, 20, 40, 60),
+        },
+        "render": {
+            "active_copy": addressed_page_render["active_copy"],
+            "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+            "rows": addressed_page_render["entry"]["rows"],
         },
     }))
     rollover_state: dict[str, object] = {

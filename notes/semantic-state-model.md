@@ -858,8 +858,9 @@ the parser and allocator.
   rollover fixture in the shared allocator checkpoint, but not captured
   from live CPU memory for the complete text/rule/raster stream.
 - `0xff1e..0x1ed84`: publication and render-entry are modeled and
-  fixture-checked; scheduler timing between the published pool record and
-  active render selection remains outside this cluster.
+  fixture-checked. Active-record selection through `0x1eb2a..0x1ed84`
+  is covered by the published-render scheduler checkpoint; remaining
+  gaps are live engine pacing and multi-band loop timing.
 
 ## Shared Page-Record Storage And Allocator
 
@@ -1046,7 +1047,145 @@ results rather than executing the full heap and page scheduler.
   for lower, higher, and equal bucket bytes; alternate no-room/failure
   returns need live CPU fixtures.
 - `0xff1e..0x1ed84`: pool-record publication and render bridge are
-  modeled, but scheduler selection timing is outside this checkpoint.
+  modeled, and `0x1eb2a..0x1ed84` active-record selection is now
+  fixture-backed. Remaining scheduler work is engine pacing and
+  multi-band loop timing around `0x1eba4..0x1ecd2`.
+
+## Published Record To Active Render Scheduler
+
+Status: anchored as a composition checkpoint from a published
+page/control record to the active render-entry path. This checkpoint does
+not claim full engine pacing; it pins the state handoff that selects the
+source record, alternates render work records, prepares render geometry,
+copies the selected source through `0x1ed84`/`0x1edc6`, and reaches
+visible rows through `0x1ef6a`.
+
+Concept: `0xff1e` publishes a page/control pool record through
+`0x780ea6` and publication flag `0x782996`. The render scheduler uses
+`0x780eaa` as the pending/published source alias, copies it into
+`0x780eae` at `0x1eb46`, selects one of the two render work records at
+`0x7820c4` or `0x782128` through `0x1ecd6`, stores that destination in
+`0x783a18`, then calls `0x1ed84`. The render entry `0x1ef6a` later uses
+`0x783a18` as its current render record.
+
+### Field Groups
+
+- Canonical source record fields:
+  - `0x780ea6`: published page/control pool record pointer written by
+    `0xff1e` from source root longword `+0`.
+  - `0x780eaa`: scheduler source alias for the record selected for
+    rendering.
+  - `0x780eae`: active source record consumed by `0x1ed84` and
+    `0x1ee9e`.
+  - source `+0x1c`, `+0x24`, `+0x28`, and `+0x2c..+0x68`: bucket array,
+    rule list, fixed list, and context slots copied by `0x1edc6`.
+  Evidence: fixture
+  `0x1eb2a/0x1ecd6 selects published record for render entry`,
+  disassembly `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
+  and `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`.
+- Canonical render work fields:
+  - `0x7820bc`: render work-record alternator. Zero selects previous
+    `0x7820c4`, destination `0x782128`, then stores `1`; nonzero selects
+    previous `0x782128`, destination `0x7820c4`, then clears it.
+  - `0x783a18`: active render work-record pointer used by `0x1ef6a`.
+  - render `+0x18`, `+0x1c`, `+0x20`, and `+0x24..+0x60`: copied bucket,
+    rule, fixed, and context slots.
+  Evidence: `0x1ecd6..0x1ed76`,
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+- Derived/cache render fields:
+  - `0x780ea4`: active render/scheduler flag set at `0x1eb38` and
+    cleared on some loop exits at `0x1ebba` or `0x1ebee`.
+  - `0x780ea5`: loop/control flag cleared at `0x1eb40`, tested at
+    `0x1eba4`.
+  - `0x783a1c`: render stride cache written by `0x1ee9e` from render
+    word `+4 << 2`.
+  - `0x7839f8..`: 16-word offset table initialized by `0x1ee9e` from
+    active source byte `+9`.
+  Evidence: `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`
+  and fixture destination-work fields.
+- Parser scratch:
+  - none newly assigned here. The source record has already been built by
+    parser/page-record producers before `0xff1e`.
+- Firmware bookkeeping:
+  - `0x7820c0` participates in the render loop's A4/A5 work-record
+    selection before `0x1ec34`.
+  - `0x7820bc`, `0x780ea4`, `0x780ea5`, `0x780eaa`, `0x780eae`, and
+    `0x783a18` are scheduler/render bookkeeping, not page-object fields.
+- Unknown:
+  - exact physical engine pacing around calls to `0x10c8`, `0x10c4`,
+    `0x10d0`, and `0x10d8`.
+  - complete multi-band timing and stop conditions across
+    `0x1eba4..0x1ecd2`.
+
+### Writers
+
+- `0xff1e` writes state byte `+4 = 2`, copies root longword `+0` to
+  `0x780ea6`, sets `0x782996 = 1`, and clears `0x78297a`.
+- `0x1eb32..0x1eb50` sets `0x780ea4 = 1`, clears `0x780ea5`, and copies
+  `0x780eaa` to `0x780eae` under the `0x15a6`/`0x15ac` critical section.
+- `0x1ecd6..0x1ed0e` toggles `0x7820bc`, chooses destination work record
+  `0x7820c4` or `0x782128`, and writes `0x783a18`.
+- `0x1ed14..0x1ed22` copies active source byte `+9` into destination
+  render word `+4`.
+- `0x1ed6c..0x1ed76` calls `0x1ee9e` when geometry changes, then calls
+  `0x1ed84` for active-record copy and bridge.
+
+### Readers And Consumers
+
+- `0x1ed84` reads `0x780eae`, source words `+0x18/+0x1a`, and source
+  queues/context slots through `0x1edc6`.
+- `0x1ee9e` reads active source byte `+9` through `0x780eae`, render
+  word `+4`, and global bitmap buffer fields `0x7810b4`/`0x7810b8`.
+- `0x1ef6a` reads `0x783a18`, then consumes the render work record
+  through `0x1ef86`, `0x1efc2`, `0x1f446`, and `0x1f756`.
+
+### Output Effect
+
+The fixture `0x1eb2a/0x1ecd6 selects published record for render entry`
+uses the addressed stream page/control record that contains one compact
+bucket, one rule list, one fixed list, and context slot `0x440946b4`.
+It selects source pointer `0x00d0eaa0`, copies it into `0x780eae`,
+switches `0x7820bc` from `0` to `1`, selects render work record
+`0x782128`, stores `0x783a18 = 0x782128`, marks geometry changed, and
+then renders the same rows as the direct published-record
+`0x1ed84`/`0x1ef6a` fixture.
+
+### Confidence
+
+High for `0x780eaa -> 0x780eae`, `0x780ea4/5`, the two-work-record
+alternation, `0x783a18`, the `0x1ee9e` geometry-change boundary, and the
+render-entry output for the selected source. Medium for the surrounding
+engine pacing loop because the fixture does not model `0x10c8`,
+`0x10c4`, `0x10d0`, or `0x10d8`.
+
+### Fixtures
+
+- `0x1eb2a/0x1ecd6 selects published record for render entry`
+- `addressed stream page record materializes through 0xff1e and 0x1ed84`
+- `published page records feed 0x1ed84 and 0x1ef6a render entry`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`:
+  `0x10060..0x10080`
+- `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`:
+  `0x1eb2a..0x1ed84`
+- `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`:
+  `0x1ed84..0x1ee9c`
+- `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`:
+  `0x1ee9e..0x1ef38`
+- `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`:
+  `0x1ef6a..0x1effc`
+
+### Unresolved Middle Edges
+
+- `0x780ea6..0x780eaa`: the pool record publication and active-source
+  alias roles are pinned, but the exact producer that moves the published
+  pointer into `0x780eaa` before this scheduler entry remains a lead.
+- `0x1eba4..0x1ecd2`: render loop pacing, band advance, and engine
+  waits are not yet modeled.
+- `0x1ed36..0x1ed6a`: same-geometry reuse of previous render work-record
+  state is disassembled but not yet fixture-covered.
 
 ## Vertical Forms Control
 

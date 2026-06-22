@@ -87,6 +87,8 @@ fields for reset, FF, page-size, and orientation, addressed
 text/rule/raster FF publication, and synthetic mixed reset fixtures,
 with the shared page-record allocator now composed through one
 multi-writer `0x1381c` chunk rollover state,
+with the published-record to active-render handoff now pinned through
+`0x1eb2a..0x1ed84`,
 with `0xcda2` reset/default environment state now decoded for
 page/control pool setup, cursor-stack reset, HMI/VMI recompute,
 line-termination clearing, and default bytes
@@ -497,7 +499,11 @@ allocator composition fixture where `0x10084` seeds `0x782a72 =
 root + 0x20`, seven compact text objects force stream links
 `root + 0x20 -> 0x00d05000 -> 0x00d05100`, `0x133aa` and
 `0x136d2` add rule/fixed objects at `0x00d0512a` and `0x00d05138`,
-and `0x1ef6a` renders all seven compact objects through `0x1effe`, a mixed
+and `0x1ef6a` renders all seven compact objects through `0x1effe`, an
+active-render scheduler fixture where `0x1eb32..0x1eb50` sets
+`0x780ea4 = 1`, clears `0x780ea5`, copies `0x780eaa` to `0x780eae`,
+`0x1ecd6..0x1ed0e` switches `0x7820bc` and stores `0x783a18`, and the
+selected record reaches the same `0x1ed84`/`0x1ef6a` rows, a mixed
 `!\x1bE` fixture that
 publishes and clears a valid current page root after queued text and has
 a page-record allocator/bridge/publication variant,
@@ -863,6 +869,10 @@ ROM work needed:
   split for `0x1f0d2`, `0x1f1f0`, and `0x1f264`; host-fetched
   150/100/75-dpi raster streams now carry encoded modes 1/2/3 through
   `0x1ed84` and `0x1ef6a`.
+- Continue the active-render scheduler by tracing `0x780ea6..0x780eaa`
+  alias movement and the engine pacing loop `0x1eba4..0x1ecd2`;
+  same-geometry work-record reuse `0x1ed36..0x1ed6a` is disassembled
+  but not fixture-covered.
 - Determine the remaining live-parser wide/segmented text, raster
   edge-case, and final device-output clipping behavior exactly.
 - Identify any banding/compression structures used internally; reproduce

@@ -642,6 +642,12 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   `0x21` maps to glyph `0x01`, record `02 03 04 00 00 00 00 80`,
   source flag `0`, then queues and renders through the unflagged path
   with context slot `3`.
+- Fixture `unflagged printable d4ac low-watermark flush renders span`
+  uses the same inline/downloaded source class with context bytes
+  `+0x2b=7`, `+0x2c=0`, and `+0x2d=10`. It queues host byte `0x21`
+  through `0x1393a` / `0xd3b2` into compact coord `0x7a00`, advances
+  x to `28` through the `0xd140` cursor path, and then reaches
+  `0xd4ac` before the shared `0x12714` span output.
 - The two-printable stream fixture proves the ordinary flagged path can
   repeat: `!!` maps both host bytes through `0xd04a`/`0x1393a`,
   advances the cursor through `0xd550`, reuses the same short object,
@@ -673,6 +679,7 @@ full 68000 interpreter through every source class and allocator branch.
 - `selected inline source queues and renders through unflagged path`
 - `selected inline page-record object preserves context through 0x1edc6
   bridge`
+- `unflagged printable d4ac low-watermark flush renders span`
 - `single printable byte stream builds positioned compact text object`
 - `two printable byte stream combines compact text entries`
 - `two printable byte stream with line-printer HMI renders subbyte
@@ -722,11 +729,12 @@ full 68000 interpreter through every source class and allocator branch.
 Status: composed as the shared pending-span cluster behind printable
 span updates, direct-control flushes, and render-facing span objects.
 This checkpoint covers the two watermark writers `0xd4ac` and `0xd8fc`,
-the flagged printable low-water path `0xd550` -> `0xd824` -> `0xd8fc`,
-the parsed-CR flush path `0xf02c` -> `0xf06e` -> `0xf34a`, the re-arm
-helper `0x126e2`, flush helper `0x12714`, portrait producer `0x13520` /
-`0x135f0`, landscape producer `0x136d2`, and consumers `0x1f812` and
-`0x1f756`.
+the unflagged printable low-water path `0xd140` -> `0xd3b2` ->
+`0xd4ac`, the flagged printable low-water path `0xd550` -> `0xd824` ->
+`0xd8fc`, the parsed-CR flush path `0xf02c` -> `0xf06e` -> `0xf34a`,
+the re-arm helper `0x126e2`, flush helper `0x12714`, portrait producer
+`0x13520` / `0x135f0`, landscape producer `0x136d2`, and consumers
+`0x1f812` and `0x1f756`.
 
 Concept: text placement maintains a pending horizontal span in
 `0x783184..0x78318a`. `0x126e2` opens a new pending span at the current
@@ -752,7 +760,8 @@ queues a fixed-width span through `0x136d2`.
   `0xd4ac..0xd548` and `0xd8fc..0xd992`, and fixtures
   `0x12714 portrait text span flush queues segment-list span` and
   `0x12714 landscape text span flush queues fixed-width span`, plus
-  `flagged printable d8fc low-watermark flush renders span`.
+  `flagged printable d8fc low-watermark flush renders span` and
+  `unflagged printable d4ac low-watermark flush renders span`.
 - Canonical flush source fields:
   - local source `+0`: orientation byte copied from `0x782da3`.
   - local source `+1`: mode byte, initially zero and rewritten by
@@ -785,6 +794,16 @@ queues a fixed-width span through `0x136d2`.
   `flagged printable d8fc low-watermark flush renders span`, where
   `cursor_y=21`, `+0x16=0`, `+0x18=10`, `+0x1a=18`, and
   `0x783185=1` produce `high_y=3`.
+- Canonical unflagged context inputs:
+  - context `+0x2b`: alternate y offset added at `0xd4f8..0xd506`
+    when `0x783185` is set and the byte is nonzero.
+  - context `+0x2c`: lower y bound consumed at `0xd4c0..0xd4d0`.
+  - context `+0x2d`: y-height/page-extent contribution consumed at
+    `0xd4da..0xd4ee`.
+  Evidence: disassembly `0xd4b8..0xd548` and fixture
+  `unflagged printable d4ac low-watermark flush renders span`, where
+  `cursor_y=21`, `+0x2b=7`, `+0x2c=0`, `+0x2d=10`, and
+  `0x783185=1` produce `high_y=28`.
 - Derived/cache producer state:
   - `0x782a7a` / `0x782a7b`: selector bytes for `0x1387c`; current
     fixtures pin `0x4000` for segment-list span objects.
@@ -802,6 +821,9 @@ queues a fixed-width span through `0x136d2`.
   Evidence: fixture `flagged printable d8fc low-watermark flush renders
   span` queues source x `100`, key `0x3406`, and extent `20`; the
   rendered visible span occupies pixels `96..115` on rows `3..5`.
+  Fixture `unflagged printable d4ac low-watermark flush renders span`
+  queues source x `100`, key `0xc406`, and extent `20`; the rendered
+  visible span occupies pixels `96..115` on rows `12..14`.
 - Firmware bookkeeping:
   - current page root `0x78297a` is ensured by `0x10084` before
     `0x12714` queues output.
@@ -814,8 +836,9 @@ queues a fixed-width span through `0x136d2`.
   - none owned by this cluster. The scratch object at `A5` in
     `0x12714` is a local producer source, not parser record storage.
 - Unknown:
-  - full semantic names for the unflagged context fields `+0x2b`,
-    `+0x2c`, and `+0x2d` beyond their y-bound/offset role in `0xd4ac`.
+  - producer ownership for unflagged context fields `+0x2b`, `+0x2c`,
+    and `+0x2d`; their consumer semantics in `0xd4ac` are no longer
+    unknown, but the font/context record source is still open.
   - producer ownership for flagged context fields `+0x16`, `+0x18`,
     and `+0x1a`; their consumer semantics in `0xd8fc` are no longer
     unknown, but the font/context record source is still open.
@@ -827,6 +850,10 @@ queues a fixed-width span through `0x136d2`.
 - `0xd4ac` and `0xd8fc` write `0x78318a` and `0x783188`, compare
   current x with `0x783186`, and call `0x12714` then `0x126e2` when the
   current x is below the low watermark.
+- `0xd140` calls `0xd3b2` during unflagged printable placement and
+  then calls `0xd4ac` after writing the updated cursor to `0x782c8a`.
+  Evidence: `0xd23c..0xd25e` and fixture
+  `unflagged printable d4ac low-watermark flush renders span`.
 - `0xd550` calls `0xd824` during flagged printable placement and then,
   when the flagged path is active, calls `0xd8fc` after writing the
   updated cursor to `0x782c8a`. Evidence: `0xd66e..0xd690` and fixture
@@ -851,7 +878,11 @@ queues a fixed-width span through `0x136d2`.
 ### Readers And Consumers
 
 - `0xd4ac` consumes unflagged context fields `+0x2b`, `+0x2c`, and
-  `+0x2d` after `0xd3b2` printable placement.
+  `+0x2d` after `0xd3b2` printable placement. Its branches are:
+  disabled or before-lower exit at `0xd4b8..0xd4d8`, beyond-page exit
+  at `0xd4da..0xd4ee`, alternate/default y update at
+  `0xd4f0..0xd516`, low-water flush at `0xd51c..0xd536`, and high-x
+  raise at `0xd53c..0xd548`.
 - `0xd8fc` consumes flagged context fields `+0x16`, `+0x18`, and
   `+0x1a` after `0xd824` printable placement and after HT/BS/cursor
   helpers pick the active context. Its branches are: disabled or
@@ -904,16 +935,31 @@ queues a fixed-width span through `0x136d2`.
   text object in bucket `0`, re-arm seeds `0x783186` / `0x783188` to
   x `28`, and `0x1f812` renders the span on rows `3..5` at pixels
   `96..115` while the text glyph stays at pixels `16..19`.
+- Fixture `unflagged printable d4ac low-watermark flush renders span`
+  drives byte `0x21` through the mixed page-record model with inline
+  record `02 03 04 00 00 00 00 80`, `cursor_x=10`, `cursor_y=21`,
+  `low_x=100`, `high_x=120`, and context bytes `+0x2b=7`,
+  `+0x2c=0`, and `+0x2d=10`. `0xd3b2` queues compact text object
+  `00 00 00 00 00 00 00 01 01 7a 00 ...`; `0xd140` advances x to
+  `28`; `0xd4ac` computes `high_y=28`, sees current x below low
+  watermark, calls the modeled `0x12714` / `0x126e2` path, and queues
+  source `orientation=0`, `x=100`, `y=28`, `extent=20`. The queued
+  segment-list object `00 00 00 00 40 00 00 01 c4 06 03 00 00 14 ...`
+  precedes the compact text object in bucket `1`, re-arm seeds
+  `0x783186` / `0x783188` to x `28`, and `0x1f812` renders the span on
+  rows `12..14` at pixels `96..115` while the inline glyph stays at
+  pixels `10..25` on rows `7..9`.
 
 ### Confidence
 
-High for pending-state initialization, flagged `0xd8fc` low-water
-success, flush source packaging, portrait versus landscape branch
-selection, object byte shapes, bridge shape, and visible row effects
-because each claim has disassembly and passing fixtures. Medium for
-allocation-failure recovery and nonempty/split list ordering because
-those are disassembled and partly shared with existing allocator
-fixtures, but not yet driven by a live pending-span stream.
+High for pending-state initialization, unflagged `0xd4ac` low-water
+success, flagged `0xd8fc` low-water success, flush source packaging,
+portrait versus landscape branch selection, object byte shapes, bridge
+shape, and visible row effects because each claim has disassembly and
+passing fixtures. Medium for allocation-failure recovery and
+nonempty/split list ordering because those are disassembled and partly
+shared with existing allocator fixtures, but not yet driven by a live
+pending-span stream.
 
 ### Fixtures
 
@@ -928,6 +974,7 @@ fixtures, but not yet driven by a live pending-span stream.
 - `mixed printable/control page-record stream queues through 0x1387c`
 - `live CR span flush materializes 0x12714 page object`
 - `flagged printable d8fc low-watermark flush renders span`
+- `unflagged printable d4ac low-watermark flush renders span`
 
 ### Disassembly Evidence
 
@@ -938,6 +985,7 @@ fixtures, but not yet driven by a live pending-span stream.
   `0x126e2..0x12712` for re-arm helper initialization of `0x783184`,
   `0x783186`, `0x783188`, and `0x78318a`.
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`:
+  `0xd23c..0xd25e` for unflagged printable placement into `0xd4ac`,
   `0xd66e..0xd690` for flagged printable placement into `0xd8fc`,
   plus `0xd4ac..0xd548` and `0xd8fc..0xd992` watermark writers.
 - `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`:
@@ -960,8 +1008,9 @@ fixtures, but not yet driven by a live pending-span stream.
   the shared `0x136d2` addressed fixture, but not by a live
   `0x12714` landscape span source.
 - `0xd4ac..0xd548`: unflagged context fields `+0x2b`, `+0x2c`, and
-  `+0x2d` are named by behavior; exact font-record ownership and a
-  natural low-water host-byte fixture are still open.
+  `+0x2d` are fixture-backed for the low-water success branch, but
+  exact font/context producer ownership and the disabled, before-lower,
+  beyond-page, and high-x-only branches remain uncovered.
 - `0xd8fc..0xd992`: flagged context fields `+0x16`, `+0x18`, and
   `+0x1a` are fixture-backed for the low-water success branch, but
   exact font/context producer ownership and the disabled, before-lower,

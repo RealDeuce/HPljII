@@ -10147,6 +10147,63 @@ def update_flagged_span_via_d8fc(
     }
 
 
+def update_unflagged_span_via_d4ac(
+    resources: bytes,
+    page_record: dict[str, object],
+    state: dict[str, object],
+    context: int,
+) -> dict[str, object]:
+    if not int(state.get("enabled_783184", 0)):
+        return {"updated": False, "reason": "disabled"}
+
+    base = int(context) & 0x00FFFFFF
+    if base + 0x2D >= len(resources):
+        raise AssertionError("unflagged context span fields outside resource image")
+
+    cursor_y = unpack12(int(state.get("cursor_y", 0)))[0]
+    lower = resources[base + 0x2C]
+    if cursor_y < lower:
+        return {"updated": False, "reason": "before-context-lower", "cursor_y": cursor_y}
+
+    height = resources[base + 0x2D]
+    page_extent = int(state.get("page_extent_782db6", state.get("page_extent", 0xFFFF)))
+    if cursor_y + height > page_extent:
+        return {"updated": False, "reason": "beyond-page-extent", "cursor_y": cursor_y}
+
+    alternate_offset = resources[base + 0x2B]
+    if int(state.get("span_alternate_offset_783185", 0)) and alternate_offset:
+        high_y = cursor_y + alternate_offset
+    else:
+        high_y = cursor_y + 5
+    if high_y > int(state.get("high_y_78318a", 0)):
+        state["high_y_78318a"] = high_y
+
+    cursor_x = unpack12(int(state.get("cursor_x", 0)))[0]
+    flush_result: dict[str, object] | None = None
+    if cursor_x < int(state.get("low_x_783186", 0)):
+        flush_result = control_text_flush_helper_with_page_record(state, page_record)
+    if cursor_x > int(state.get("high_x_783188", 0)):
+        state["high_x_783188"] = cursor_x
+
+    return {
+        "updated": True,
+        "handler": 0x00D4AC,
+        "cursor_x": cursor_x,
+        "cursor_y": cursor_y,
+        "context_offset_002b": alternate_offset,
+        "context_lower_002c": lower,
+        "context_height_002d": height,
+        "high_y": high_y,
+        "flush_result": flush_result,
+        "state": {
+            "enabled_783184": int(state.get("enabled_783184", 0)),
+            "low_x_783186": int(state.get("low_x_783186", 0)),
+            "high_x_783188": int(state.get("high_x_783188", 0)),
+            "high_y_78318a": int(state.get("high_y_78318a", 0)),
+        },
+    }
+
+
 def control_lf_helper(state: dict[str, int]) -> None:
     state["page_roots"] += 1
     state["cursor_y"] = add_packed12(state["cursor_y"], state["vmi"])
@@ -15759,6 +15816,81 @@ def render_mixed_printable_control_page_record_stream(
     def current_default_advance() -> int:
         return int(state.get("printable_advance", default_advance))
 
+    def queue_printable_byte(byte_value: int) -> dict[str, object]:
+        active_context, active_context_slot = active_text_context()
+        source_form = str(state.get("text_source_form", "flagged"))
+        if source_form == "unflagged":
+            inline_map = inline_map_via_14e24(resources, active_context)
+            map_table = inline_map["table"]
+            assert isinstance(map_table, bytes)
+            source = build_inline_text_source_object_from_1393a(
+                resources,
+                active_context,
+                map_table,
+                byte_value,
+                x=0,
+                y=0,
+                context_slot=active_context_slot,
+            )
+            positioned = position_unflagged_text_source_via_d3b2(
+                source,
+                bytes(source["inline_record"]),
+                cursor_x=unpack12(state["cursor_x"])[0],
+                cursor_y=unpack12(state["cursor_y"])[0],
+                printable_offset=int(state.get("printable_offset_782dc0", 0)),
+                orientation=int(state.get("orientation", state.get("orientation_782da3", 0))),
+                orientation_extent=int(state.get("orientation_extent_782db2", 0)),
+                context_metric_flag=int(state.get("unflagged_context_metric_flag_0016", 0)),
+                source_x_offset=int(state.get("source_x_offset", 0)),
+            )
+        elif source_form == "flagged":
+            source = build_text_source_object_from_1393a(
+                resources,
+                active_context,
+                byte_value,
+                x=0,
+                y=0,
+                context_slot=active_context_slot,
+            )
+            positioned = position_flagged_text_source_via_d824(
+                resources,
+                source,
+                cursor_x=unpack12(state["cursor_x"])[0],
+                cursor_y=unpack12(state["cursor_y"])[0],
+            )
+        else:
+            raise AssertionError(f"unsupported text source form {source_form!r}")
+
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        page_root = ensure_page_record_root_for_queue(state)
+        page_result = queue_text_source_to_page_record_via_12f2e(
+            resources,
+            page_record,
+            positioned_source,
+        )
+        advance = advance_flagged_text_cursor_via_d550(state["cursor_x"], current_default_advance())
+        state["cursor_x"] = advance["cursor_after"]
+        span_update_result = None
+        if source_form == "flagged" and int(state.get("materialize_d8fc_span_update", 0)):
+            span_update_result = update_flagged_span_via_d8fc(page_record, state)
+        if source_form == "unflagged" and int(state.get("materialize_d4ac_span_update", 0)):
+            span_update_result = update_unflagged_span_via_d4ac(
+                resources,
+                page_record,
+                state,
+                active_context,
+            )
+        return {
+            "cursor_before": advance["cursor_before"],
+            "cursor_after": advance["cursor_after"],
+            "source": source,
+            "positioned": positioned,
+            "page_result": page_result,
+            "page_root": page_root,
+            "span_update_result": span_update_result,
+        }
+
     while pos < len(stream):
         byte = stream[pos]
         if byte == 0x1B:
@@ -15994,45 +16126,12 @@ def render_mixed_printable_control_page_record_stream(
                     byte_value = int(value) & 0xFF
                     if byte_value < 0x20 or byte_value == 0x7F:
                         raise AssertionError("page-record mixed stream transparent fixture only queues printable payload bytes")
-                    active_context, active_context_slot = active_text_context()
-                    source = build_text_source_object_from_1393a(
-                        resources,
-                        active_context,
-                        byte_value,
-                        x=0,
-                        y=0,
-                        context_slot=active_context_slot,
-                    )
-                    positioned = position_flagged_text_source_via_d824(
-                        resources,
-                        source,
-                        cursor_x=unpack12(state["cursor_x"])[0],
-                        cursor_y=unpack12(state["cursor_y"])[0],
-                    )
-                    positioned_source = positioned["source"]
-                    assert isinstance(positioned_source, dict)
-                    page_root = ensure_page_record_root_for_queue(state)
-                    page_result = queue_text_source_to_page_record_via_12f2e(
-                        resources,
-                        page_record,
-                        positioned_source,
-                    )
-                    advance = advance_flagged_text_cursor_via_d550(state["cursor_x"], current_default_advance())
-                    state["cursor_x"] = advance["cursor_after"]
-                    span_update_result = None
-                    if int(state.get("materialize_d8fc_span_update", 0)):
-                        span_update_result = update_flagged_span_via_d8fc(page_record, state)
+                    queued_printable = queue_printable_byte(byte_value)
                     payload_events.append({
                         "index": index,
                         "byte": byte_value,
                         "route": route,
-                        "cursor_before": advance["cursor_before"],
-                        "cursor_after": advance["cursor_after"],
-                        "source": source,
-                        "positioned": positioned,
-                        "page_result": page_result,
-                        "page_root": page_root,
-                        "span_update_result": span_update_result,
+                        **queued_printable,
                     })
                 events.append({
                     "kind": "transparent-data",
@@ -16578,41 +16677,12 @@ def render_mixed_printable_control_page_record_stream(
         if byte < 0x20 or byte == 0x7F:
             raise AssertionError(f"unsupported page-record mixed stream byte 0x{byte:02x} at offset {pos}")
 
-        active_context, active_context_slot = active_text_context()
-        source = build_text_source_object_from_1393a(
-            resources,
-            active_context,
-            byte,
-            x=0,
-            y=0,
-            context_slot=active_context_slot,
-        )
-        positioned = position_flagged_text_source_via_d824(
-            resources,
-            source,
-            cursor_x=unpack12(state["cursor_x"])[0],
-            cursor_y=unpack12(state["cursor_y"])[0],
-        )
-        positioned_source = positioned["source"]
-        assert isinstance(positioned_source, dict)
-        page_root = ensure_page_record_root_for_queue(state)
-        page_result = queue_text_source_to_page_record_via_12f2e(resources, page_record, positioned_source)
-        advance = advance_flagged_text_cursor_via_d550(state["cursor_x"], current_default_advance())
-        state["cursor_x"] = advance["cursor_after"]
-        span_update_result = None
-        if int(state.get("materialize_d8fc_span_update", 0)):
-            span_update_result = update_flagged_span_via_d8fc(page_record, state)
+        queued_printable = queue_printable_byte(byte)
         events.append({
             "kind": "printable",
             "offset": pos,
             "byte": byte,
-            "cursor_before": advance["cursor_before"],
-            "cursor_after": advance["cursor_after"],
-            "source": source,
-            "positioned": positioned,
-            "page_result": page_result,
-            "page_root": page_root,
-            "span_update_result": span_update_result,
+            **queued_printable,
         })
         pos += 1
 
@@ -42520,6 +42590,197 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             + (b"\x00" * 0x1b),
         ],
         "render_rows": expected_d8fc_rows,
+        "final_span_state": {
+            "enabled_783184": 1,
+            "low_x_783186": 28,
+            "high_x_783188": 28,
+            "high_y_78318a": 0,
+        },
+    }))
+    unflagged_span_memory = bytearray(selected_inline_memory)
+    unflagged_span_memory[selected_inline_context + 0x2B] = 7
+    unflagged_span_memory[selected_inline_context + 0x2C] = 0
+    unflagged_span_memory[selected_inline_context + 0x2D] = 10
+    unflagged_span_resources = bytes(unflagged_span_memory)
+    d4ac_materialized_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        unflagged_span_resources,
+        b"!",
+        selected_inline_context,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            materialize_d4ac_span_update=1,
+            text_source_form="unflagged",
+            enabled_783184=1,
+            low_x_783186=100,
+            high_x_783188=120,
+            high_y_78318a=0,
+            span_alternate_offset_783185=1,
+            orientation=0,
+            page_extent_782db6=64,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    d4ac_events = d4ac_materialized_stream["events"]
+    assert isinstance(d4ac_events, list)
+    d4ac_printable_event = d4ac_events[0]
+    assert isinstance(d4ac_printable_event, dict)
+    d4ac_span_update = d4ac_printable_event["span_update_result"]
+    assert isinstance(d4ac_span_update, dict)
+    d4ac_flush_result = d4ac_span_update["flush_result"]
+    assert isinstance(d4ac_flush_result, dict)
+    d4ac_flush_queued = d4ac_flush_result["queued"]
+    assert isinstance(d4ac_flush_queued, dict)
+    d4ac_page_record = d4ac_materialized_stream["page_record"]
+    assert isinstance(d4ac_page_record, dict)
+    d4ac_bucket_array = d4ac_page_record["bucket_array"]
+    assert isinstance(d4ac_bucket_array, dict)
+    d4ac_chain = [
+        bytes(obj)
+        for obj in d4ac_bucket_array[1]
+    ]
+    d4ac_render_entry = d4ac_materialized_stream["render_entry"]
+    assert isinstance(d4ac_render_entry, dict)
+    d4ac_rendered = d4ac_render_entry["entry"]
+    assert isinstance(d4ac_rendered, dict)
+    inline_patterns = {
+        7: "#.#.#.#..#.#.#.#",
+        8: "####........####",
+        9: "##....##..####..",
+    }
+    expected_d4ac_rows: list[str] = []
+    for row_index in range(15):
+        row_bits = [False] * 116
+        pattern = inline_patterns.get(row_index)
+        if pattern is not None:
+            for bit, value in enumerate(pattern):
+                if value == "#":
+                    row_bits[10 + bit] = True
+        if 12 <= row_index < 15:
+            for bit in range(96, 116):
+                row_bits[bit] = True
+        expected_d4ac_rows.append(
+            "".join("#" if bit else "." for bit in row_bits)
+        )
+    checks.append(assert_equal("unflagged printable d4ac low-watermark flush renders span", {
+        "stream": d4ac_materialized_stream["stream"],
+        "printable": {
+            "byte": d4ac_printable_event["byte"],
+            "cursor_before": d4ac_printable_event["cursor_before"],
+            "cursor_after": d4ac_printable_event["cursor_after"],
+            "source": {
+                key: d4ac_printable_event["source"][key]
+                for key in ("flag", "mapped", "context_slot", "inline_record")
+            },
+            "positioned": {
+                "x": d4ac_printable_event["positioned"]["source"]["x"],
+                "y": d4ac_printable_event["positioned"]["source"]["y"],
+                "coord": d4ac_printable_event["page_result"]["coord"],
+            },
+        },
+        "span_update": {
+            "updated": d4ac_span_update["updated"],
+            "handler": d4ac_span_update["handler"],
+            "cursor_x": d4ac_span_update["cursor_x"],
+            "cursor_y": d4ac_span_update["cursor_y"],
+            "context_offset_002b": d4ac_span_update["context_offset_002b"],
+            "context_lower_002c": d4ac_span_update["context_lower_002c"],
+            "context_height_002d": d4ac_span_update["context_height_002d"],
+            "high_y": d4ac_span_update["high_y"],
+        },
+        "flush": {
+            "flushed": d4ac_flush_result["flushed"],
+            "path": d4ac_flush_result["path"],
+            "raw_source": d4ac_flush_result["raw_source"],
+            "queued": {
+                key: d4ac_flush_queued[key]
+                for key in ("path", "computed", "bucket_index", "selector", "object")
+            },
+            "rearm": d4ac_flush_result["rearm"],
+        },
+        "chain": d4ac_chain,
+        "render_rows": d4ac_rendered["rows"],
+        "final_span_state": select_keys(
+            d4ac_materialized_stream["final_state"],
+            ("enabled_783184", "low_x_783186", "high_x_783188", "high_y_78318a"),
+        ),
+    }, {
+        "stream": b"!",
+        "printable": {
+            "byte": 0x21,
+            "cursor_before": pack12(10),
+            "cursor_after": pack12(28),
+            "source": {
+                "flag": 0,
+                "mapped": 0x01,
+                "context_slot": 0,
+                "inline_record": bytes.fromhex("02 03 04 00 00 00 00 80"),
+            },
+            "positioned": {
+                "x": 10,
+                "y": 23,
+                "coord": 0x7A00,
+            },
+        },
+        "span_update": {
+            "updated": True,
+            "handler": 0x00D4AC,
+            "cursor_x": 28,
+            "cursor_y": 21,
+            "context_offset_002b": 7,
+            "context_lower_002c": 0,
+            "context_height_002d": 10,
+            "high_y": 28,
+        },
+        "flush": {
+            "flushed": True,
+            "path": "portrait-segment-list",
+            "raw_source": {
+                "orientation": 0,
+                "mode": 0,
+                "x": 100,
+                "y": 28,
+                "extent": 20,
+            },
+            "queued": {
+                "path": "text-span-segment-list",
+                "computed": {
+                    "x": 100,
+                    "y": 28,
+                    "bucket_index": 1,
+                    "key": 0xC406,
+                    "mode": 3,
+                    "selector_hi": 0x40,
+                    "selector_lo": 0x00,
+                },
+                "bucket_index": 1,
+                "selector": 0x4000,
+                "object": (
+                    bytes.fromhex("00 00 00 00 40 00 00 01 c4 06 03 00 00 14")
+                    + (b"\x00" * 0x18)
+                ),
+            },
+            "rearm": {
+                "rearmed": True,
+                "enabled_783184": 1,
+                "low_x_783186": 28,
+                "high_x_783188": 28,
+                "high_y_78318a": 0,
+            },
+        },
+        "chain": [
+            bytes.fromhex("00 00 00 00 40 00 00 01 c4 06 03 00 00 14")
+            + (b"\x00" * 0x18),
+            bytes.fromhex("00 00 00 00 00 00 00 01 01 7a 00")
+            + (b"\x00" * 0x1b),
+        ],
+        "render_rows": expected_d4ac_rows,
         "final_span_state": {
             "enabled_783184": 1,
             "low_x_783186": 28,

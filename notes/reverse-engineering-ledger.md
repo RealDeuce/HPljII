@@ -505,8 +505,12 @@ active-render scheduler fixture where `0x1eb32..0x1eb50` sets
 `0x1ecd6..0x1ed0e` switches `0x7820bc` and stores `0x783a18`, and the
 selected record reaches the same `0x1ed84`/`0x1ef6a` rows, plus the
 same-geometry `0x1ed36..0x1ed6a` branch that carries previous render
-base/divisor and writes remainder `3` to destination word `+8`, a mixed
-`!\x1bE` fixture that
+base/divisor and writes remainder `3` to destination word `+8`, a pool
+cursor fixture where `0x3144..0x3162` initializes `0x780ea6`,
+`0x780eaa`, `0x780eae`, `0x780eb2`, and `0x780eb6`,
+`0x7f76..0x7f90` selects a candidate from `0x780e6e[]` into
+`0x780eaa`/`0x780eb2`, and `0x7722..0x779a` advances or protects the
+cursor against `0x780ea6`, a mixed `!\x1bE` fixture that
 publishes and clears a valid current page root after queued text and has
 a page-record allocator/bridge/publication variant,
 selected inline/downloaded `0x14e24`/`0x14eb6` map and `0x1393a`
@@ -871,9 +875,9 @@ ROM work needed:
   split for `0x1f0d2`, `0x1f1f0`, and `0x1f264`; host-fetched
   150/100/75-dpi raster streams now carry encoded modes 1/2/3 through
   `0x1ed84` and `0x1ef6a`.
-- Continue the active-render scheduler by tracing `0x780ea6..0x780eaa`
-  alias movement and the engine pacing loop `0x1eba4..0x1ecd2`;
-  same-geometry work-record reuse `0x1ed36..0x1ed6a` is now
+- Continue the active-render scheduler by tracing candidate-slot producers
+  for `0x780e6e[]` and the engine pacing loop `0x1eba4..0x1ecd2`;
+  pool-cursor alias movement and same-geometry work-record reuse are now
   fixture-covered.
 - Determine the remaining live-parser wide/segmented text, raster
   edge-case, and final device-output clipping behavior exactly.

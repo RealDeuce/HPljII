@@ -1060,29 +1060,40 @@ source record, alternates render work records, prepares or reuses render
 geometry, copies the selected source through `0x1ed84`/`0x1edc6`, and
 reaches visible rows through `0x1ef6a`.
 
-Concept: `0xff1e` publishes a page/control pool record through
-`0x780ea6` and publication flag `0x782996`. The render scheduler uses
-`0x780eaa` as the pending/published source alias, copies it into
-`0x780eae` at `0x1eb46`, selects one of the two render work records at
-`0x7820c4` or `0x782128` through `0x1ecd6`, stores that destination in
-`0x783a18`, then calls `0x1ed84`. The render entry `0x1ef6a` later uses
-`0x783a18` as its current render record.
+Concept: `0xff1e` publishes a page/control pool record through the
+protected pool-head pointer `0x780ea6` and publication flag `0x782996`.
+The scheduler cursor `0x780eaa` is initialized with the same pool base by
+`0x3144..0x3162`, but later comes from the candidate-slot scan
+`0x7ec6..0x7f90` and cursor-advance path `0x7722..0x779a`. The active
+render scheduler copies `0x780eaa` into `0x780eae` at `0x1eb46`, selects
+one of the two render work records at `0x7820c4` or `0x782128` through
+`0x1ecd6`, stores that destination in `0x783a18`, then calls `0x1ed84`.
+The render entry `0x1ef6a` later uses `0x783a18` as its current render
+record.
 
 ### Field Groups
 
 - Canonical source record fields:
-  - `0x780ea6`: published page/control pool record pointer written by
-    `0xff1e` from source root longword `+0`.
-  - `0x780eaa`: scheduler source alias for the record selected for
-    rendering.
+  - `0x780ea6`: page/control pool-head pointer. It is written by
+    `0xff1e` from source root longword `+0` and used by
+    `0x7744..0x7750` as the protected head that `0x780eaa` cannot pass
+    unless the current record is already state byte `+4 == 2`.
+  - `0x780eaa`: scheduler cursor for the record selected for rendering.
+    It is equal to `0x780ea6` only at pool init or when the linked cursor
+    reaches the protected head again; candidate selection writes it from
+    `0x780e6e[]` at `0x7f76..0x7f90`.
   - `0x780eae`: active source record consumed by `0x1ed84` and
     `0x1ee9e`.
   - source `+0x1c`, `+0x24`, `+0x28`, and `+0x2c..+0x68`: bucket array,
     rule list, fixed list, and context slots copied by `0x1edc6`.
-  Evidence: fixture
+  Evidence: fixtures
+  `0x3144/0x7ec6/0x7712 page pool aliases feed scheduler cursor` and
   `0x1eb2a/0x1ecd6 selects published record for render entry`,
   disassembly `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`,
-  and `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`.
+  `generated/disasm/ic30_ic13_page_pool_init_003100.lst`,
+  `generated/disasm/ic30_ic13_page_pool_candidate_select_007ec6.lst`,
+  `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`, and
+  `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`.
 - Canonical render work fields:
   - `0x7820bc`: render work-record alternator. Zero selects previous
     `0x7820c4`, destination `0x782128`, then stores `1`; nonzero selects
@@ -1111,6 +1122,18 @@ Concept: `0xff1e` publishes a page/control pool record through
   - none newly assigned here. The source record has already been built by
     parser/page-record producers before `0xff1e`.
 - Firmware bookkeeping:
+  - `0x780e6e[]`: candidate pointer slots scanned by `0x7ec6..0x7f90`;
+    accepted candidates are cleared from the slot after `0x780eaa` and
+    `0x780eb2` are written.
+  - `0x7821fb`: candidate-slot mask. `0x7ece..0x7ee6` computes scan
+    limit `(0x7821fb & 0x7e) >> 1`, capped at six slots.
+  - `0x780eb2`: release/advance cursor paired with `0x780eaa`.
+    `0x7f76..0x7f90` writes it to the accepted candidate; `0x7760..0x779a`
+    marks a state-2 record reusable and advances it through record `+0`.
+  - `0x780eb6`: pool alias initialized with the same base at
+    `0x3144..0x3162`; no stronger role is assigned yet.
+  - `0x780e04`: engine/status counter copied into released pool record
+    word `+0x10` at `0x778c`.
   - `0x7820c0` participates in the render loop's A4/A5 work-record
     selection before `0x1ec34`.
   - `0x7820bc`, `0x780ea4`, `0x780ea5`, `0x780eaa`, `0x780eae`, and
@@ -1123,8 +1146,22 @@ Concept: `0xff1e` publishes a page/control pool record through
 
 ### Writers
 
+- `0x3144..0x3162` initializes `0x780ea6`, `0x780eaa`, `0x780eae`,
+  `0x780eb2`, and `0x780eb6` to pool base `0x780f02`.
 - `0xff1e` writes state byte `+4 = 2`, copies root longword `+0` to
   `0x780ea6`, sets `0x782996 = 1`, and clears `0x78297a`.
+- `0x7f76..0x7f90` accepts a candidate slot from `0x780e6e[]` when the
+  candidate record has state byte `+4 == 4` or word `+0x0e != 0`. It
+  writes candidate state byte `+4 = 2`, increments word `+0x0e`, stores
+  the candidate in `0x780eb2` and `0x780eaa`, then clears the slot.
+- `0x7722..0x775a` advances `0x780eaa` through record longword `+0`
+  when it equals `0x780eb2`. The guard at `0x7744..0x7750` prevents
+  advancing the protected head `0x780ea6` unless current state byte
+  `+4 == 2`.
+- `0x7760..0x779a` releases the `0x780eb2` record when state byte
+  `+4 == 2`: it writes state byte `+4 = 4`, clears word `+0x0e`,
+  copies `0x780e04` into word `+0x10`, and advances `0x780eb2` through
+  record longword `+0`.
 - `0x1eb32..0x1eb50` sets `0x780ea4 = 1`, clears `0x780ea5`, and copies
   `0x780eaa` to `0x780eae` under the `0x15a6`/`0x15ac` critical section.
 - `0x1ecd6..0x1ed0e` toggles `0x7820bc`, chooses destination work record
@@ -1140,6 +1177,14 @@ Concept: `0xff1e` publishes a page/control pool record through
 
 ### Readers And Consumers
 
+- `0x3bb8..0x3bd6` reads `0x780eaa + 4` for a state-byte status path.
+- `0x3bf6..0x3c26` reads `0x780ea6 + 4` for the matching protected-head
+  status path.
+- `0x3cf0..0x3d5a` reads fields from the current `0x780eaa` record for
+  status/environment propagation.
+- `0x8066..0x80cc` reads `0x780eaa`, sets record byte `+8 = 1`, and
+  walks linked records for a cleanup/status path.
+- `0x1eb46` reads `0x780eaa` and writes it to `0x780eae`.
 - `0x1ed84` reads `0x780eae`, source words `+0x18/+0x1a`, and source
   queues/context slots through `0x1edc6`.
 - `0x1ee9e` reads active source byte `+9` through `0x780eae`, render
@@ -1167,19 +1212,37 @@ same-geometry branch. With previous `+0x10 = 17`, `+0x0a = 3`,
 `0x783a22 = 3`, `0x783a20 = 0x0020`, and
 `0x783a28 = 0x00103800`, while still reaching the same composed rows.
 
+The pool-cursor fixture
+`0x3144/0x7ec6/0x7712 page pool aliases feed scheduler cursor` starts
+with pool base `0x00780f02`, candidate slot `0x780e6e[0] =
+0x00780f6e`, and scan mask `0x7821fb = 0x02`. It proves init stores the
+base into `0x780ea6`, `0x780eaa`, `0x780eae`, `0x780eb2`, and
+`0x780eb6`; candidate selection accepts slot zero, writes
+`0x780eaa = 0x780eb2 = 0x00780f6e`, sets selected record byte `+4 = 2`,
+and increments word `+0x0e` to `1`. The same fixture then proves
+`0x7722..0x779a` advances both cursors to `0x00780fda`, releases the
+selected record back to state byte `+4 = 4`, clears word `+0x0e`, and
+copies `0x780e04 = 0x1234` into word `+0x10`. Its protected-head variant
+keeps `0x780eaa = 0x780ea6 = 0x00780f02` when state byte `+4 = 1`.
+
 ### Confidence
 
-High for `0x780eaa -> 0x780eae`, `0x780ea4/5`, the two-work-record
-alternation, `0x783a18`, the `0x1ee9e` geometry-change boundary, the
-`0x1ed36..0x1ed6a` same-geometry reuse branch, and the render-entry
-output for the selected source. Medium for the surrounding engine pacing
-loop because the fixture does not model `0x10c8`, `0x10c4`, `0x10d0`,
-or `0x10d8`.
+High for the distinction between protected pool head `0x780ea6` and
+scheduler cursor `0x780eaa`, the candidate selection stores into
+`0x780eaa`/`0x780eb2`, the protected-head skip, `0x780eaa -> 0x780eae`,
+`0x780ea4/5`, the two-work-record alternation, `0x783a18`, the
+`0x1ee9e` geometry-change boundary, the `0x1ed36..0x1ed6a`
+same-geometry reuse branch, and the render-entry output for the selected
+source. Medium for the surrounding engine pacing loop because the
+fixture does not model `0x10c8`, `0x10c4`, `0x10d0`, or `0x10d8`.
+Medium for `0x780eb6` because only its initialization is currently
+covered.
 
 ### Fixtures
 
 - `0x1eb2a/0x1ecd6 selects published record for render entry`
 - `0x1ecd6 same-geometry render work reuse reaches render entry`
+- `0x3144/0x7ec6/0x7712 page pool aliases feed scheduler cursor`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`
 
@@ -1187,6 +1250,12 @@ or `0x10d8`.
 
 - `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`:
   `0x10060..0x10080`
+- `generated/disasm/ic30_ic13_page_pool_init_003100.lst`:
+  `0x3144..0x3162`
+- `generated/disasm/ic30_ic13_page_pool_candidate_select_007ec6.lst`:
+  `0x7ece..0x7f90`
+- `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`:
+  `0x7722..0x779a`
 - `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`:
   `0x1eb2a..0x1ed84`
 - `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`:
@@ -1198,9 +1267,11 @@ or `0x10d8`.
 
 ### Unresolved Middle Edges
 
-- `0x780ea6..0x780eaa`: the pool record publication and active-source
-  alias roles are pinned, but the exact producer that moves the published
-  pointer into `0x780eaa` before this scheduler entry remains a lead.
+- `0x780e6e[]` candidate producers: pool-cursor init, selection,
+  advancement, and protected-head behavior are modeled across
+  `0x3144..0x3162`, `0x7ec6..0x7f90`, and `0x7722..0x779a`; the
+  producers that enqueue records into candidate slots before `0x7ec6`
+  remain unresolved.
 - `0x1eba4..0x1ecd2`: render loop pacing, band advance, and engine
   waits are not yet modeled.
 

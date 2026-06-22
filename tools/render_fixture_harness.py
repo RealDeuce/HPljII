@@ -12890,6 +12890,110 @@ def render_scheduler_handoff_via_1eb2a_1ecd6(
     }
 
 
+def page_pool_alias_init_via_3144(state: dict[str, object], base_ptr: int) -> dict[str, object]:
+    """Model the pool cursor alias stores at 0x3144..0x3162."""
+    for field in (
+        "published_pool_head_780ea6",
+        "scheduler_pool_cursor_780eaa",
+        "active_source_780eae",
+        "advance_cursor_780eb2",
+        "pool_alias_780eb6",
+    ):
+        state[field] = int(base_ptr)
+    return {
+        "published_pool_head_780ea6": int(state["published_pool_head_780ea6"]),
+        "scheduler_pool_cursor_780eaa": int(state["scheduler_pool_cursor_780eaa"]),
+        "active_source_780eae": int(state["active_source_780eae"]),
+        "advance_cursor_780eb2": int(state["advance_cursor_780eb2"]),
+        "pool_alias_780eb6": int(state["pool_alias_780eb6"]),
+    }
+
+
+def page_pool_candidate_select_via_7ec6(state: dict[str, object]) -> dict[str, object]:
+    """Model the 0x7ec6 candidate scan that writes 0x780eaa/0x780eb2."""
+    records = state.get("pool_records", {})
+    if not isinstance(records, dict):
+        raise AssertionError("page pool candidate select needs pool_records")
+    slots = list(state.get("candidate_slots_780e6e", []))
+    limit = min((int(state.get("candidate_mask_7821fb", 0)) & 0x7E) >> 1, 6)
+    selected_ptr = 0
+    selected_index = -1
+    repeated = False
+    last_selected = 0
+    for index in range(min(limit, len(slots))):
+        ptr = int(slots[index])
+        if ptr == 0:
+            slots[index] = 0
+            continue
+        if ptr == last_selected:
+            record = records[ptr]
+            record["word_0e"] = (int(record.get("word_0e", 0)) + 1) & 0xFFFF
+            repeated = True
+            slots[index] = 0
+            continue
+        record = records[ptr]
+        if int(record.get("state_byte_4", 0)) == 4 or int(record.get("word_0e", 0)):
+            record["state_byte_4"] = 2
+            record["word_0e"] = (int(record.get("word_0e", 0)) + 1) & 0xFFFF
+            state["advance_cursor_780eb2"] = ptr
+            state["scheduler_pool_cursor_780eaa"] = ptr
+            selected_ptr = ptr
+            selected_index = index
+            last_selected = ptr
+        slots[index] = 0
+    state["candidate_slots_780e6e"] = slots
+    return {
+        "limit": limit,
+        "selected_index": selected_index,
+        "selected_ptr": selected_ptr,
+        "scheduler_pool_cursor_780eaa": int(state.get("scheduler_pool_cursor_780eaa", 0)),
+        "advance_cursor_780eb2": int(state.get("advance_cursor_780eb2", 0)),
+        "repeated": repeated,
+        "candidate_slots_780e6e": slots,
+    }
+
+
+def page_pool_cursor_advance_via_7712(state: dict[str, object]) -> dict[str, object]:
+    """Model the cursor advance and protected-head check at 0x7722..0x779a."""
+    records = state.get("pool_records", {})
+    if not isinstance(records, dict):
+        raise AssertionError("page pool cursor advance needs pool_records")
+    cursor_before = int(state.get("scheduler_pool_cursor_780eaa", 0))
+    advance_before = int(state.get("advance_cursor_780eb2", 0))
+    protected_head = int(state.get("published_pool_head_780ea6", 0))
+    cursor_record = records[cursor_before]
+    advanced_cursor = False
+    protected_skip = False
+    if cursor_before == advance_before:
+        state_byte = int(cursor_record.get("state_byte_4", 0))
+        if state_byte == 2 or cursor_before != protected_head:
+            state["scheduler_pool_cursor_780eaa"] = int(cursor_record.get("next", 0))
+            advanced_cursor = True
+        else:
+            protected_skip = True
+
+    advance_record = records[advance_before]
+    released_advance = False
+    if int(advance_record.get("state_byte_4", 0)) == 2:
+        advance_record["state_byte_4"] = 4
+        advance_record["word_0e"] = 0
+        advance_record["word_10"] = int(state.get("engine_counter_780e04", 0))
+        state["advance_cursor_780eb2"] = int(advance_record.get("next", 0))
+        released_advance = True
+    return {
+        "cursor_before": cursor_before,
+        "advance_before": advance_before,
+        "cursor_after": int(state.get("scheduler_pool_cursor_780eaa", 0)),
+        "advance_after": int(state.get("advance_cursor_780eb2", 0)),
+        "advanced_cursor": advanced_cursor,
+        "protected_skip": protected_skip,
+        "released_advance": released_advance,
+        "released_state_byte_4": int(advance_record.get("state_byte_4", 0)),
+        "released_word_0e": int(advance_record.get("word_0e", 0)),
+        "released_word_10": int(advance_record.get("word_10", 0)),
+    }
+
+
 def render_bucket_page_record_via_1ed84_1ef6a(
     data: bytes,
     resources: bytes,
@@ -26572,6 +26676,114 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "render": {
                 "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
                 "rows": scheduler_rendered["entry"]["rows"],
+            },
+        },
+    ))
+    pool_base = 0x00780F02
+    pool_a = pool_base + 0x6C
+    pool_b = pool_a + 0x6C
+    pool_state: dict[str, object] = {
+        "pool_records": {
+            pool_base: {"next": pool_a, "state_byte_4": 1, "word_0e": 0, "word_10": 0},
+            pool_a: {"next": pool_b, "state_byte_4": 4, "word_0e": 0, "word_10": 0},
+            pool_b: {"next": pool_base, "state_byte_4": 0, "word_0e": 0, "word_10": 0},
+        },
+        "candidate_slots_780e6e": [pool_a, 0, 0, 0, 0, 0],
+        "candidate_mask_7821fb": 0x02,
+        "engine_counter_780e04": 0x1234,
+    }
+    pool_init = page_pool_alias_init_via_3144(pool_state, pool_base)
+    pool_select = page_pool_candidate_select_via_7ec6(pool_state)
+    pool_records = pool_state["pool_records"]
+    assert isinstance(pool_records, dict)
+    selected_after_select = dict(pool_records[pool_a])
+    pool_advance = page_pool_cursor_advance_via_7712(pool_state)
+    protected_state: dict[str, object] = {
+        "pool_records": {
+            pool_base: {"next": pool_a, "state_byte_4": 1, "word_0e": 0, "word_10": 0},
+        },
+        "published_pool_head_780ea6": pool_base,
+        "scheduler_pool_cursor_780eaa": pool_base,
+        "advance_cursor_780eb2": pool_base,
+        "engine_counter_780e04": 0,
+    }
+    protected_advance = page_pool_cursor_advance_via_7712(protected_state)
+    checks.append(assert_equal(
+        "0x3144/0x7ec6/0x7712 page pool aliases feed scheduler cursor",
+        {
+            "init": pool_init,
+            "select": {
+                "limit": pool_select["limit"],
+                "selected_index": pool_select["selected_index"],
+                "selected_ptr": pool_select["selected_ptr"],
+                "scheduler_pool_cursor_780eaa": pool_select["scheduler_pool_cursor_780eaa"],
+                "advance_cursor_780eb2": pool_select["advance_cursor_780eb2"],
+                "candidate_slots_780e6e": pool_select["candidate_slots_780e6e"],
+                "selected_record_after": {
+                    "state_byte_4": selected_after_select["state_byte_4"],
+                    "word_0e": selected_after_select["word_0e"],
+                },
+            },
+            "advance": {
+                "cursor_before": pool_advance["cursor_before"],
+                "advance_before": pool_advance["advance_before"],
+                "cursor_after": pool_advance["cursor_after"],
+                "advance_after": pool_advance["advance_after"],
+                "advanced_cursor": pool_advance["advanced_cursor"],
+                "protected_skip": pool_advance["protected_skip"],
+                "released_advance": pool_advance["released_advance"],
+                "released_state_byte_4": pool_advance["released_state_byte_4"],
+                "released_word_0e": pool_advance["released_word_0e"],
+                "released_word_10": pool_advance["released_word_10"],
+            },
+            "protected_head": {
+                "cursor_before": protected_advance["cursor_before"],
+                "cursor_after": protected_advance["cursor_after"],
+                "advance_after": protected_advance["advance_after"],
+                "advanced_cursor": protected_advance["advanced_cursor"],
+                "protected_skip": protected_advance["protected_skip"],
+                "released_advance": protected_advance["released_advance"],
+            },
+        },
+        {
+            "init": {
+                "published_pool_head_780ea6": pool_base,
+                "scheduler_pool_cursor_780eaa": pool_base,
+                "active_source_780eae": pool_base,
+                "advance_cursor_780eb2": pool_base,
+                "pool_alias_780eb6": pool_base,
+            },
+            "select": {
+                "limit": 1,
+                "selected_index": 0,
+                "selected_ptr": pool_a,
+                "scheduler_pool_cursor_780eaa": pool_a,
+                "advance_cursor_780eb2": pool_a,
+                "candidate_slots_780e6e": [0, 0, 0, 0, 0, 0],
+                "selected_record_after": {
+                    "state_byte_4": 2,
+                    "word_0e": 1,
+                },
+            },
+            "advance": {
+                "cursor_before": pool_a,
+                "advance_before": pool_a,
+                "cursor_after": pool_b,
+                "advance_after": pool_b,
+                "advanced_cursor": True,
+                "protected_skip": False,
+                "released_advance": True,
+                "released_state_byte_4": 4,
+                "released_word_0e": 0,
+                "released_word_10": 0x1234,
+            },
+            "protected_head": {
+                "cursor_before": pool_base,
+                "cursor_after": pool_base,
+                "advance_after": pool_base,
+                "advanced_cursor": False,
+                "protected_skip": True,
+                "released_advance": False,
             },
         },
     ))

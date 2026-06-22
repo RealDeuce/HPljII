@@ -40,6 +40,8 @@ compatibility boundary.
   `ESC *r`, and delayed `ESC *b#W` raster path to encoded-span output.
 - [rectangle-graphics.md](rectangle-graphics.md) - documented `ESC *c`
   rectangle/rule path to solid and patterned rule rendering.
+- [vertical-forms-control.md](vertical-forms-control.md) - documented
+  `ESC &l#W` VFC table definition and `ESC &l#V` channel-jump output effects.
 - [font-context-metrics.md](font-context-metrics.md) - documented font
   context selection, page-root slot install, glyph maps, and span metrics.
 - [downloaded-fonts.md](downloaded-fonts.md) - documented soft-font

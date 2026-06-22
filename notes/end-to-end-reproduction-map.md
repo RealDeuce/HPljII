@@ -162,10 +162,10 @@ pixels or byte-stream compatibility.
    is proving every built-in/downloaded metric-byte form with parser-produced
    pages. Evidence: `notes/semantic-state-model.md` under `Text Span Flush And
    Fixed-Width Spans`.
-2. VFC is only partially composed. Table definition, channel jumps, wrap/no-hit
-   behavior, and several publication paths are modeled, but VFC still lacks a
-   complete command-family contract comparable to text/raster/rules. Evidence:
-   `Vertical Forms Control` in `notes/semantic-state-model.md`.
+2. VFC table definition and channel jumps now have a tracked command-family
+   contract in `notes/vertical-forms-control.md`. The remaining VFC risk is
+   broader final-device image comparison, not an unresolved middle edge in the
+   documented `ESC &l#W` / `ESC &l#V` path.
 3. Macro replay is anchored, but macro overlay/page composition remains short
    of a pixel-complete overlay model. Evidence: `Macro Definition And
    Data-Chain Replay` and macro fixtures.
@@ -191,8 +191,6 @@ The next work should follow dataflow, not isolated handlers:
 1. Prove the remaining font metric-byte combinations with parser-produced
    pages. The selected-context bridge and downloaded descriptor/payload
    producer chain are now tracked, but exhaustive metric provenance is not.
-2. Finish the VFC command-family semantic contract, because it can force page
-   publication, cursor repositioning, and subsequent text placement.
-3. Build a small page-image fixture suite from complete byte streams that mix
+2. Build a small page-image fixture suite from complete byte streams that mix
    text, rules, raster, geometry, font selection, and publication, then compare
    the final bitmap rows as the primary reproduction contract.

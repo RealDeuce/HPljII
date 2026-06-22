@@ -362,7 +362,8 @@ Vertical forms control is now a composed semantic state block in
 `0x782dd2`, `0x782ede`, `0x782edf`, and `0x782ee0`; `0x782ee1` is
 firmware bookkeeping and `0x78299e` remains parser scratch. The table
 writer cluster `0x11f6e -> 0x12cfe`, default builder `0x12b96`, and
-consumer `0x1280a` are identified. The `0x1280a` forward in-text hit path
+consumer `0x1280a` are composed in `notes/vertical-forms-control.md`. The
+`0x1280a` forward in-text hit path
 is anchored through `0x1292a..0x1295c` search and `0x12aa6..0x12af8`
 cursor commit. The selector-zero target-equal path is anchored through
 `0x12966..0x1299a`; the selector-zero page-eject path is anchored through

@@ -2764,21 +2764,20 @@ covered.
 
 ## Vertical Forms Control
 
-Status: partially anchored. The table definition path, its immediate
-text-bottom effect, the forward in-text channel-jump path, the
-before-top forward channel-jump normalization path, the selector-zero
-target-equal path, the selector-zero top-of-form page-eject path, and one
-wrap-hit page-eject path are modeled. The wrap no-hit top-of-form page
-eject path, one publishing target-after-text bottom-recovery path, and
-one non-publishing target-after-text bottom-recovery path are also
-modeled. The start-after-text no-wrap bottom-recovery path is modeled for
-start line `64` with an empty table, the start-after-text wrap-after-text
-path is modeled for default-table line-1 placement and line-63 bottom
-recovery, and selector-zero start-after-text top-of-form recovery is
-modeled for start line `64`. Alternate high-start entries are also
-modeled for start line `80`: no-hit bottom recovery, wrapped line-70
-bottom recovery, and selector-zero top-of-form recovery. The `0x12b96`
-default-table bit convention is now pinned by channel selector.
+Status: anchored as a command-family checkpoint. The table definition path, its
+immediate text-bottom effect, the forward in-text channel-jump path, the before-top
+forward channel-jump normalization path, the selector-zero target-equal path, the
+selector-zero top-of-form page-eject path, and one wrap-hit page-eject path are modeled.
+The wrap no-hit top-of-form page eject path, one publishing target-after-text
+bottom-recovery path, and one non-publishing target-after-text bottom-recovery path are
+also modeled. The start-after-text no-wrap bottom-recovery path is modeled for start
+line `64` with an empty table, the start-after-text wrap-after-text path is modeled for
+default-table line-1 placement and line-63 bottom recovery, and selector-zero
+start-after-text top-of-form recovery is modeled for start line `64`. Alternate
+high-start entries are also modeled for start line `80`: no-hit bottom recovery, wrapped
+line-70 bottom recovery, and selector-zero top-of-form recovery. The `0x12b96`
+default-table bit convention is now pinned by channel selector. The tracked contract
+note is `notes/vertical-forms-control.md`.
 
 Concept: vertical forms control is a per-line, 16-channel stop table used
 by `ESC &l#W` definitions and consumed by `ESC &l#V` vertical channel

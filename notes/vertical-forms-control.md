@@ -1,0 +1,266 @@
+# Vertical Forms Control Firmware
+
+This note is the tracked command-family contract for LaserJet II vertical
+forms control. It composes the `ESC &l#W` VFC table-definition payload path,
+the `ESC &l#V` channel-jump consumer, the default-table builder, and the
+visible output effects through cursor movement and page publication.
+
+The detailed low-level ledger remains in
+`notes/reverse-engineering-ledger.md`, and the field inventory is mirrored in
+`notes/semantic-state-model.md` under `Vertical Forms Control`.
+
+## Evidence
+
+- `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst`
+- `generated/analysis/ic30_ic13_renderer_fixture_harness.md`
+- `generated/analysis/ic30_ic13_direct_control_code_flow.md`
+- `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`
+- `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`
+- `notes/page-raster-imaging.md`
+- `notes/semantic-state-model.md`
+
+Primary fixtures:
+
+- `0x12cfe ESC &l#W loads vertical forms control state`
+- `mixed VFC definition stream consumes payload before printable page-record queue`
+- `mixed VFC lowercase delayed record survives until uppercase W`
+- `mixed VFC channel jump stream moves cursor before printable page-record queue`
+- `mixed VFC before-top channel jump normalizes start line before printable`
+- `mixed VFC before-top target-after-text skips publication`
+- `mixed VFC start-after-text skips wrap and publication`
+- `mixed VFC start-after-text wraps to table hit before printable`
+- `mixed VFC start-after-text wraps to bottom recovery before printable`
+- `mixed VFC selector-zero top-of-form no-op reaches printable page-record queue`
+- `mixed VFC selector-zero start-after-text returns to top`
+- `mixed VFC selector-zero page-eject publishes old page before fresh printable`
+- `mixed VFC wrap-hit publishes old page before fresh printable`
+- `mixed VFC wrap-no-hit publishes old page and returns to top`
+- `mixed VFC target-after-text recovers near top before fresh printable`
+- `0x1280a VFC alternate high-start recovery entries`
+- `0x12b96 default VFC table channel convention`
+
+## Field Groups
+
+Canonical VFC table:
+
+- `0x782dde..0x782edd`: 128 16-bit VFC channel words. `0x12cfe` writes this
+  table from `ESC &l#W`; `0x12b96` builds the default table; `0x1280a` scans
+  it for `ESC &l#V`.
+- Channel selectors are one-based. `0x1280a` maps selector `n` to mask
+  `1 << (n - 1)`, so selector `2` searches for bit `0x0002`.
+- The default-table fixture pins example words for Letter at 6 LPI:
+  line `0 = f8fd`, line `32 = 806c`, line `48 = a05c`, line `61 = 0006`,
+  line `62 = 010e`, line `63 = 0004`, and line `64 = 0000`.
+
+Canonical layout inputs:
+
+- `0x783160`: VMI / line advance. It converts line numbers to cursor
+  positions and is read by `0x1280a`, `0x12cfe`, and page-length logic.
+- `0x782dce`: top offset. It is the origin for VFC line-to-cursor conversion.
+- `0x782c8e`: vertical cursor. `0x1280a` reads it to compute the start line
+  and writes it before the next printable byte is queued.
+- `0x782c8a`: horizontal cursor. `0x1280a` resets it through `0xf06e` on
+  modeled jump and recovery paths.
+- `0x782dd6` and `0x782dda`: left and right text margins. `0xf06e` uses the
+  left margin when VFC resets x.
+
+Derived/cache line bounds:
+
+- `0x782dd2`: text-bottom cache. `0x12cfe` copies the VFC-derived limit here.
+- `0x782dc2`: VFC-derived bottom/limit before it is copied to `0x782dd2`.
+- `0x782ede`: last VFC/page line index. The Letter fixture uses `63`.
+- `0x782edf`: last text line index used by `0x12b96`.
+- `0x782ee0`: last printable text line. The Letter fixture uses `62`.
+
+Parser scratch and firmware bookkeeping:
+
+- `0x78299e`: parsed six-byte command record cursor. `0x12cfe` rewinds it
+  before reading the delayed `ESC &l#W` count.
+- `0x782ee1`: modified-layout flag cleared after table load/default rebuild.
+- `0x782a58` and `0x782a6d`: pending text/cursor latches cleared by direct
+  control helpers on VFC cursor-changing paths.
+- `0x783184`: pending text-span flush enable tested by `0xf34a` before
+  VFC cursor or page-boundary changes.
+- `0x78297a`: current page-root pointer. `0x10084` ensures it before a VFC
+  jump; `0xf124`/`0xff1e` publishes and clears it on page-eject paths.
+
+Unknown:
+
+- `0x782ede`, `0x782edf`, and `0x782ee0` have line-count roles proven by use
+  and fixtures, but their HP manual names are still inferred.
+
+## Table Definition
+
+`0x11f6e` is the parser final for `ESC &l#W`. It schedules delayed handler
+`0x12cfe` through `0x121cc`.
+
+`0x12cfe` is the payload handler:
+
+- rewinds parser scratch at `0x78299e`;
+- reads the absolute byte count from the restored six-byte record;
+- consumes payload bytes through the `0xdace` data reader;
+- stores the payload into `0x782dde`;
+- clears unused table bytes;
+- derives `0x782dc2`, copies it to `0x782dd2`, and clears `0x782ee1`.
+
+Fixture `ESC &l4W 00 00 00 02 !` proves that the four payload bytes are
+consumed before the following printable byte is parsed. It stores table prefix
+`00 00 00 02`, derives text-bottom cache `0x00be0000`, and leaves the
+following `!` queued at compact coord `0x9001`.
+
+The lowercase-delayed fixture `ESC &l4w4W 00 00 00 02 !` proves same-family
+payload preservation. Lowercase `w` records snapshot
+`80 77 00 04 00 00`; the following uppercase `W` reaches `0x11f6e` but does
+not replace the pending delayed record while the pending flag is set. The
+restore then uses the lowercase record and consumes payload bytes after the
+uppercase final.
+
+## Default Table
+
+`0x12b96` builds the default VFC table from cached line bounds. It is called
+by zero-count/default VFC handling and by page/layout refresh paths such as
+`0xf9e8` and `0xe5e2`.
+
+For `0x782ee0 = 62` and `0x782ede = 63`, the default-table fixture proves:
+
+- channel 1 marks line `0`;
+- channel 2 marks lines `61` and `62`;
+- channel 3 marks each active text line plus line `63`;
+- channel 4 marks even lines;
+- channel 5 marks multiples of `3`;
+- channel 6 marks line `0` and the half-text line;
+- channel 7 marks line `0`, half-text, quarter-text, and three-quarter lines;
+- channel 8 marks multiples of `10`;
+- channel 9 marks line `62`;
+- channels 10 and 11 are not set by this builder;
+- channel 12 marks line `0`;
+- channels 13, 14, 15, and 16 mark multiples of `7`, `6`, `5`, and `4`.
+
+## Channel Jump Consumer
+
+`0x1280a` is the `ESC &l#V` consumer. It reads the absolute selector, current
+VMI, current y, top offset, line-bound caches, and channel words from
+`0x782dde`.
+
+The modeled forward in-text path searches from the current line through
+`0x1292a..0x1295c`, then commits the target through `0x12aa6..0x12af8`.
+Fixture `ESC &l2V!` with channel 2 at line `1` moves y from `126` to `176`,
+resets x from `40` to `10`, and queues `!` at compact coord `0xb001`.
+
+The before-top path takes `0x128ae..0x128f4`. Fixture `ESC &l2V!` starting at
+y `89` with top offset `90` normalizes the start line to `0`, finds channel 2
+at line `1`, writes y `176`, and queues `!` at compact coord `0xb001`.
+
+Selector zero computes the top-of-form target through `0x12966..0x12992`.
+Fixture `ESC &l0V!` with y already `126` exits through `0x1295e` with x/y
+unchanged and queues `!` at compact coord `0x9e02`.
+
+## Page Boundary Paths
+
+VFC can publish the current page before the next printable byte:
+
+- Selector-zero page eject: `!\x1b&l0V!` takes `0x1299c..0x129c4`, publishes
+  the old page at compact coord `0xbe02`, resets x/y to `10`/`126`, and
+  queues the next `!` on a fresh page at compact coord `0x9001`.
+- Wrap hit: `!\x1b&l2V!` starts at y `226`, wraps through
+  `0x129c6..0x12af8`, publishes the old page at compact coord `0xde02`,
+  lands at y `176`, and queues the next `!` at compact coord `0xb001`.
+- Wrap no-hit: `!\x1b&l2V!` with no channel 2 takes `0x12a22..0x12a78`,
+  publishes the old page at compact coord `0xde02`, returns to top-of-form
+  y `126`, and queues the next `!` at compact coord `0x9001`.
+- Target after text: `!\x1b&l2V!` with channel 2 only at line `63` takes
+  `0x129ee..0x12b5a`, publishes the old page at compact coord `0x4e02`,
+  recovers y to `104`, and queues the next `!` at compact coord `0x3001`.
+
+VFC can also recover or wrap without publication:
+
+- Before-top target-after-text starts at y `89`, takes `0x129fc..0x12afc`,
+  skips publication at `0x12a12..0x12a1e`, writes y `104`, and queues `!` at
+  compact coord `0x3001`.
+- Empty-table start-after-text starts at y `3290`, takes
+  `0x12a02..0x12afc`, writes y `54`, and queues `!` at compact coord
+  `0x1001`.
+- Default-table start-after-text starts at y `3290`, wraps to line `1`
+  through `0x12a7a..0x12af8`, writes y `176`, and queues `!` at compact coord
+  `0xb001`.
+- Line-63 start-after-text starts at y `3290`, wraps to line `63` through
+  `0x12a7a..0x12afc`, enters bottom recovery `0x12afc..0x12b5a`, writes
+  y `104`, and queues `!` at compact coord `0x3001`.
+- Selector-zero start-after-text starts at y `3290`, takes
+  `0x1299c..0x12b92`, enters `0x12b5e..0x12b92`, writes top-of-form y `126`,
+  and queues `!` at compact coord `0x9001`.
+
+The direct high-start fixture uses start line `80` with `0x782ee0 = 62` and
+`0x782ede = 100`, proving the same branch predicates away from the normal
+Letter page bottom. Empty-table selector 2 writes recovered y `1104`; wrapped
+selector 2 at line `70` writes recovered y `1604`; selector zero writes
+top-of-form y `126`.
+
+## Writers
+
+- `0x11f6e` schedules delayed payload handler `0x12cfe`.
+- `0x12cfe` writes `0x782dde`, clears unused table bytes, derives `0x782dc2`,
+  copies `0x782dd2`, and clears `0x782ee1`.
+- `0x12b96` writes the default VFC table at `0x782dde`.
+- `0xfe54` writes `0x782edf`, `0x782ee0`, and `0x782ede`.
+- `0x1280a` writes cursor state through forward, wrap, recovery, and
+  selector-zero paths.
+- `0xf06e`, `0xf34a`, and `0xf124` reset x, flush pending text, and publish
+  the current page on the modeled page-boundary paths.
+
+## Readers And Consumers
+
+- `0x1280a` consumes selector, VMI, top offset, current y, line-bound caches,
+  and the VFC table.
+- `0xf36c` consumes `0x782dc2` during vertical overflow/perforation handling.
+- Printable text consumes the resulting x/y cursor state through `0xd04a` and
+  page-record queueing.
+- Page publication consumes the current page root through `0xf124` and
+  `0xff1e` before the next printable byte allocates a fresh page root.
+
+## Output Effect
+
+VFC does not draw by itself. Its visible effects are:
+
+- changing text-bottom cache after `ESC &l#W`;
+- consuming delayed payload before later printable bytes;
+- moving x/y before a printable byte is queued;
+- publishing the current page when selector-zero, wrap, or target-after-text
+  paths cross a page boundary.
+
+The covered fixtures prove both non-publishing movement and publishing splits
+where the pre-VFC printable remains renderable on the old page and the
+post-VFC printable is queued on a fresh page.
+
+## Confidence
+
+High for the `0x11f6e -> 0x12cfe` delayed payload boundary, lowercase
+same-family preservation, table bytes, text-bottom cache effect, default-table
+channel convention, forward in-text hits, before-top normalization,
+selector-zero early exit, selector-zero page eject, wrap hit, wrap no-hit,
+target-after-text publication, and start-after-text recovery paths. Each claim
+is backed by named fixtures and disassembly ranges above.
+
+Medium for the manual-facing names of the derived line-count fields
+`0x782ede`, `0x782edf`, and `0x782ee0`.
+
+## Reproduction Contract
+
+A byte-stream renderer must preserve:
+
+- delayed `ESC &l#W` record restoration, including lowercase `w...W`
+  behavior;
+- `0xdace` payload-byte normalization during VFC table load;
+- the 128-word VFC table and selector-to-bit convention;
+- VMI, top offset, current x/y, and line-bound caches before `ESC &l#V`;
+- page-root existence and pending-text flush behavior around VFC jumps;
+- the distinction between cursor-only recovery and page-publication paths;
+- post-VFC printable queueing coordinates and page-root identity.
+
+## Remaining Edges
+
+- None remaining for the documented VFC table-definition and channel-jump
+  command-family contract.
+- Broader printer-output validation still needs representative full-page image
+  comparisons against known LaserJet II output, as noted in
+  `notes/end-to-end-reproduction-map.md`.

@@ -30,6 +30,7 @@ Evidence:
   - `flagged printable d8fc low-watermark flush renders span`
   - `unflagged printable d4ac low-watermark flush renders span`
   - `host-fetched 0x1719c payload metrics feed d4ac span rows`
+  - `host-fetched 0x1719c payload metrics feed d8fc span rows`
 
 ## Concept
 
@@ -122,10 +123,10 @@ Parser scratch:
 Unknown:
 
 - The bridge from selected context records to span metrics is documented for
-  concrete built-in, synthetic inline/downloaded, and one host-fetched
-  `0x1719c` downloaded payload fixture, but every possible built-in/downloaded
-  metric-byte combination is not yet proven by parser-produced page
-  comparisons.
+  concrete built-in, synthetic inline/downloaded, and host-fetched `0x1719c`
+  downloaded payload fixtures for both `0xd4ac` and `0xd8fc`, but every
+  possible built-in/downloaded metric-byte combination is not yet proven by
+  parser-produced page comparisons.
 
 ## Selection And Map Rebuild
 
@@ -293,6 +294,11 @@ Fixture-pinned metric effects:
   leaves payload bytes `+0x2b = 0`, `+0x2c = 0`, and `+0x2d = 0x20`.
   Printing `!` from that selected payload enters `0xd4ac`, produces high-y
   `26`, and queues a segment-list object rendered on rows `10..12`.
+- Host-fetched flagged downloaded-resource path: the same `ESC )s80W`
+  payload supplies words `+0x16 = 4`, `+0x18 = 4`, and `+0x1a = 5`.
+  Printing `!` from a bit-30 downloaded-offset-table context enters `0xd8fc`,
+  produces high-y `16`, queues segment-list key `0x0406`, and renders the
+  span before the compact glyph in bucket `1`.
 
 ## Metric Evidence Matrix
 
@@ -338,17 +344,19 @@ work can close the right gap instead of re-tracing already-covered consumers.
   and `0x1719c`; the selected payload bytes `+0x2b`, `+0x2c`, and `+0x2d`
   are consumed by `0xd4ac` and change rendered segment-list rows. Status:
   parser-produced resource payload to visible unflagged span rows.
-- Claim: downloaded-resource descriptor metrics feed `0xd8fc`. Evidence: no
-  tracked fixture yet combines `ESC )s#W` payload installation with a flagged
-  selected context and metric-sensitive `0xd8fc` flush. Status: open edge.
+- Claim: a downloaded-resource descriptor can feed `0xd8fc` span rows.
+  Evidence: fixture `host-fetched 0x1719c payload metrics feed d8fc span
+  rows`; host-fetched `ESC )s80W` reaches the installed bit-30 resource form,
+  a synthetic downloaded glyph pointer makes printable `!` visible, payload
+  words `+0x16`, `+0x18`, and `+0x1a` are consumed by `0xd8fc`, and the bucket
+  renders both the span rows and compact glyph rows. Status: parser-produced
+  resource payload to visible flagged span rows.
 
-The remaining unresolved middle edge is therefore not "what does `0xd4ac` do?"
-for the tested `0x1719c` type-0 resource: that path now has host-fetched
+The remaining unresolved middle edge is therefore not the tested `0x1719c`
+type-0 metric path into either `0xd4ac` or `0xd8fc`: both now have host-fetched
 payload evidence through visible span rows. The open producer-side work is
-broader descriptor coverage and the flagged `0xd8fc` resource path: drive the
-descriptor/payload bytes from the parser, select the resulting resource in the
-flagged form, print a byte that enters `0xd8fc`, and compare the flushed
-segment-list rows.
+broader descriptor coverage: more metric-byte combinations, type variants,
+and rejection/error forms driven from parser bytes to page rows.
 
 ## Macro And Control Re-entry
 
@@ -402,6 +410,6 @@ A byte-stream reproduction must preserve these behaviors:
 - The exact metric-byte provenance for all downloaded/inline forms remains
   incomplete at the parser-produced page boundary. Existing host-stream
   downloaded-font fixtures prove install, visible glyph rendering, and one
-  `0x1719c` type-0 payload feeding `0xd4ac` span rows. The missing middle is
-  now the flagged `0xd8fc` downloaded-resource case plus broader descriptor
-  metric-byte combinations and rejection/error forms.
+  `0x1719c` type-0 payload feeding both `0xd4ac` and `0xd8fc` span rows. The
+  remaining gap is broader descriptor metric-byte combinations and
+  rejection/error forms.

@@ -47,6 +47,7 @@ Primary fixtures:
 - `0x1719c-backed inline payload dispatches through 0x14c64`
 - `0x16fae/0x1719c-backed inline payload maps, queues, and renders one fixed record`
 - `host-fetched 0x1719c payload metrics feed d4ac span rows`
+- `host-fetched 0x1719c payload metrics feed d8fc span rows`
 - `0x16fae/0x1719c-backed type-2 inline payload maps constructed compact renderer
   records`
 - `0x16498-backed downloaded character object renders segmented-wide compact row`
@@ -144,6 +145,10 @@ Renderer-facing allocated payload fields:
   consumed by `0xd4ac` when the installed payload is used as a fixed-record
   context. The `ESC )s80W` fixture leaves them as `0`, `0`, and `0x20`,
   producing high-y `26` and rendered text-span rows `10..12`.
+- payload words `+0x16`, `+0x18`, and `+0x1a`: flagged span metrics consumed
+  by `0xd8fc` when the installed bit-30 payload is used as a downloaded
+  offset-table context. The same `ESC )s80W` fixture copies them as `4`, `4`,
+  and `5`, producing high-y `16` and segment-list key `0x0406`.
 
 Unknown:
 
@@ -243,7 +248,10 @@ validation status, allocation size, candidate longword, and selected
 
 The composed metric fixture reuses that host-fetched `ESC )s80W` payload as a
 selected fixed-record context, prints `!`, and drives `0xd4ac` from the copied
-payload bytes. It proves:
+payload bytes. A companion fixture uses the same host-fetched payload as a
+bit-30 downloaded-offset-table context, installs a small glyph pointer for
+printable `!`, and drives `0xd8fc` from the copied payload words. Together
+they prove:
 
 - parser handlers `0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`;
 - restored record `80 57 00 50 00 00`;
@@ -252,7 +260,13 @@ payload bytes. It proves:
 - payload metric bytes `+0x2b = 0`, `+0x2c = 0`, `+0x2d = 0x20`;
 - `0xd4ac` high-y `26`;
 - queued segment-list key `0xa406`; and
-- visible segment-list rows `10..12`.
+- visible segment-list rows `10..12`;
+- payload metric words `+0x16 = 4`, `+0x18 = 4`, `+0x1a = 5`;
+- downloaded-offset-table glyph pointer table entry `0x00ce`, record delta
+  `0x0180`, and mode-1 glyph bitmap `f0 f0 f0`;
+- `0xd8fc` high-y `16`;
+- queued segment-list key `0x0406`; and
+- bucket-1 render rows containing the span before the compact glyph.
 
 ## Descriptor Validation And Payload Header
 
@@ -484,6 +498,6 @@ A byte-stream renderer must preserve:
   isolation control. The integrated `ESC )s80W` install path currently proves
   the bit-30 offset-table form.
 - The span-metric fields documented in `notes/font-context-metrics.md` are now
-  tied to installed payload headers for the `0xd4ac` type-0 fixture, but the
-  flagged `0xd8fc` downloaded-resource case and every downloaded/inline
-  metric-byte combination still need parser-produced page evidence.
+  tied to installed payload headers for the `0xd4ac` and `0xd8fc` type-0
+  fixtures, but broader downloaded/inline metric-byte combinations still need
+  parser-produced page evidence.

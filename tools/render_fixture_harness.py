@@ -3966,9 +3966,16 @@ def resolve_downloaded_pointer_glyph(resources: bytes | bytearray, context: int,
 
 def resolve_compact_glyph(resources: bytes | bytearray, context: int, glyph_index: int) -> dict[str, int | bytes]:
     if context & 0x40000000:
-        glyph = resolve_builtin_glyph(bytes(resources), context, glyph_index)
-        glyph["source_kind"] = "builtin"
-        return glyph
+        firmware_address = context & 0x00FFFFFF
+        if 0x80000 <= firmware_address < 0xC0000:
+            glyph = resolve_builtin_glyph(bytes(resources), context, glyph_index)
+            glyph["source_kind"] = "builtin"
+            return glyph
+        downloaded = resolve_downloaded_pointer_glyph(resources, context, glyph_index)
+        if downloaded is not None:
+            downloaded["source_kind"] = "downloaded-offset-table"
+            return downloaded
+        raise AssertionError(f"offset-table glyph {glyph_index} is missing for context 0x{context:08x}")
     downloaded = resolve_downloaded_pointer_glyph(resources, context, glyph_index)
     if downloaded is not None:
         return downloaded
@@ -3987,10 +3994,12 @@ def glyph_bitmap_rows(resources: bytes, glyph: dict[str, int | bytes]) -> list[s
     return bitmap_bytes_to_rows(bitmap_bytes, rows, width, render_span)
 
 
-def built_in_base_map(resources: bytes, context: int, host_char: int) -> dict[str, int]:
+def offset_table_base_map(resources: bytes | bytearray, context: int, host_char: int) -> dict[str, int]:
     if not (context & 0x40000000):
-        raise AssertionError(f"context 0x{context:08x} does not select the built-in offset-table form")
-    base = (context & 0x00FFFFFF) - 0x80000
+        raise AssertionError(f"context 0x{context:08x} does not select the offset-table form")
+    address = context & 0x00FFFFFF
+    base_bias = 0x80000 if 0x80000 <= address < 0xC0000 else 0
+    base = address - base_bias
     first_char = u16(resources, base + 0x0E)
     last_char = u16(resources, base + 0x10)
     mapped = host_char - first_char if first_char <= host_char <= last_char else 0
@@ -4001,6 +4010,12 @@ def built_in_base_map(resources: bytes, context: int, host_char: int) -> dict[st
         "host_char": host_char,
         "mapped": mapped & 0xFF,
     }
+
+
+def built_in_base_map(resources: bytes, context: int, host_char: int) -> dict[str, int]:
+    if not (context & 0x40000000):
+        raise AssertionError(f"context 0x{context:08x} does not select the built-in offset-table form")
+    return offset_table_base_map(resources, context, host_char)
 
 
 def offset_table_base_map_table(memory: bytes | bytearray, context: int, *, base_bias: int = 0) -> bytes:
@@ -5342,9 +5357,9 @@ def builtin_flagged_hmi_from_context(resources: bytes, context: int) -> dict[str
     }
 
 
-def build_text_source_object_from_1393a(resources: bytes, context: int, host_char: int, x: int, y: int, context_slot: int = 0) -> dict[str, int]:
-    mapping = built_in_base_map(resources, context, host_char)
-    glyph = resolve_builtin_glyph(resources, context, mapping["mapped"])
+def build_text_source_object_from_1393a(resources: bytes | bytearray, context: int, host_char: int, x: int, y: int, context_slot: int = 0) -> dict[str, int]:
+    mapping = offset_table_base_map(resources, context, host_char)
+    glyph = resolve_compact_glyph(resources, context, mapping["mapped"])
     return {
         "context": context,
         "host_char": host_char,
@@ -10100,22 +10115,44 @@ def control_text_flush_helper_with_page_record(
 def update_flagged_span_via_d8fc(
     page_record: dict[str, object],
     state: dict[str, object],
+    resources: bytes | bytearray | None = None,
+    context: int | None = None,
 ) -> dict[str, object]:
     if not int(state.get("enabled_783184", 0)):
         return {"updated": False, "reason": "disabled"}
 
     cursor_y = unpack12(int(state.get("cursor_y", 0)))[0]
-    lower = int(state.get("flagged_context_0016", 0))
+    metric_source: dict[str, object]
+    if int(state.get("span_metrics_from_context", 0)):
+        if resources is None or context is None:
+            raise AssertionError("d8fc context metric fixture requires resources and context")
+        address = int(context) & 0x00FFFFFF
+        base_bias = 0x80000 if 0x80000 <= address < 0xC0000 else 0
+        base = address - base_bias
+        if base + 0x1B >= len(resources):
+            raise AssertionError("flagged context span fields outside resource image")
+        lower = u16(resources, base + 0x16)
+        height = u16(resources, base + 0x18)
+        alternate_offset = u16(resources, base + 0x1A)
+        metric_source = {
+            "kind": "context",
+            "base": base,
+            "context": int(context),
+        }
+    else:
+        lower = int(state.get("flagged_context_0016", 0))
+        height = int(state.get("flagged_context_0018", 0))
+        alternate_offset = int(state.get("flagged_context_001a", 0))
+        metric_source = {"kind": "state"}
     if cursor_y < lower:
         return {"updated": False, "reason": "before-context-lower", "cursor_y": cursor_y}
 
-    height = int(state.get("flagged_context_0018", 0))
     page_extent = int(state.get("page_extent_782db6", state.get("page_extent", 0xFFFF)))
     if cursor_y + height > page_extent:
         return {"updated": False, "reason": "beyond-page-extent", "cursor_y": cursor_y}
 
     if int(state.get("span_alternate_offset_783185", 0)):
-        high_y = cursor_y - int(state.get("flagged_context_001a", 0))
+        high_y = cursor_y - alternate_offset
     else:
         high_y = cursor_y + 5
     if high_y > int(state.get("high_y_78318a", 0)):
@@ -10135,8 +10172,9 @@ def update_flagged_span_via_d8fc(
         "cursor_y": cursor_y,
         "context_lower_0016": lower,
         "context_height_0018": height,
-        "context_offset_001a": int(state.get("flagged_context_001a", 0)),
+        "context_offset_001a": alternate_offset,
         "high_y": high_y,
+        "metric_source": metric_source,
         "flush_result": flush_result,
         "state": {
             "enabled_783184": int(state.get("enabled_783184", 0)),
@@ -16049,7 +16087,12 @@ def render_mixed_printable_control_page_record_stream(
         state["cursor_x"] = advance["cursor_after"]
         span_update_result = None
         if source_form == "flagged" and int(state.get("materialize_d8fc_span_update", 0)):
-            span_update_result = update_flagged_span_via_d8fc(page_record, state)
+            span_update_result = update_flagged_span_via_d8fc(
+                page_record,
+                state,
+                resources,
+                active_context,
+            )
         if source_form == "unflagged" and int(state.get("materialize_d4ac_span_update", 0)):
             span_update_result = update_unflagged_span_via_d4ac(
                 resources,
@@ -33926,6 +33969,231 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             + (b"\x00" * 0x1b),
         ],
         "render_rows": expected_table_payload_metric_rows,
+    }))
+    table_payload_flagged_glyph_delta = 0x0180
+    table_payload_flagged_bitmap_delta = 0x000C
+    table_payload_flagged_table_entry = 0x4A + 0x21 * 4
+    table_payload_memory[
+        table_payload_flagged_table_entry:table_payload_flagged_table_entry + 4
+    ] = table_payload_flagged_glyph_delta.to_bytes(4, "big")
+    table_payload_memory[
+        table_payload_flagged_glyph_delta:table_payload_flagged_glyph_delta + 12
+    ] = bytes.fromhex("00 00 00 00 0c 01 00 03 00 04 00 00")
+    table_payload_memory[
+        table_payload_flagged_glyph_delta + table_payload_flagged_bitmap_delta:
+        table_payload_flagged_glyph_delta + table_payload_flagged_bitmap_delta + 3
+    ] = bytes.fromhex("f0 f0 f0")
+    table_payload_flagged_metric_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        table_payload_memory,
+        b"!",
+        0x40000000,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=pack12(18),
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            materialize_d8fc_span_update=1,
+            span_metrics_from_context=1,
+            text_source_form="flagged",
+            enabled_783184=1,
+            low_x_783186=100,
+            high_x_783188=120,
+            high_y_78318a=0,
+            span_alternate_offset_783185=1,
+            orientation=0,
+            page_extent_782db6=64,
+        ),
+        default_advance=pack12(18),
+    )
+    table_payload_flagged_events = table_payload_flagged_metric_stream["events"]
+    assert isinstance(table_payload_flagged_events, list)
+    table_payload_flagged_event = table_payload_flagged_events[0]
+    assert isinstance(table_payload_flagged_event, dict)
+    table_payload_flagged_span = table_payload_flagged_event["span_update_result"]
+    assert isinstance(table_payload_flagged_span, dict)
+    table_payload_flagged_flush = table_payload_flagged_span["flush_result"]
+    assert isinstance(table_payload_flagged_flush, dict)
+    table_payload_flagged_queued = table_payload_flagged_flush["queued"]
+    assert isinstance(table_payload_flagged_queued, dict)
+    table_payload_flagged_page_record = table_payload_flagged_metric_stream["page_record"]
+    assert isinstance(table_payload_flagged_page_record, dict)
+    table_payload_flagged_bucket_array = table_payload_flagged_page_record["bucket_array"]
+    assert isinstance(table_payload_flagged_bucket_array, dict)
+    table_payload_flagged_bucket_chain = [
+        bytes(obj)
+        for obj in table_payload_flagged_bucket_array[1]
+    ]
+    table_payload_flagged_render_entry = table_payload_flagged_metric_stream["render_entry"]
+    assert isinstance(table_payload_flagged_render_entry, dict)
+    table_payload_flagged_rendered = table_payload_flagged_render_entry["entry"]
+    assert isinstance(table_payload_flagged_rendered, dict)
+    expected_table_payload_flagged_rows: list[str] = []
+    for row_index in range(8):
+        row_bits = [False] * 116
+        if 5 <= row_index < 8:
+            for bit in range(4):
+                row_bits[10 + bit] = True
+        if row_index < 3:
+            for bit in range(96, 116):
+                row_bits[bit] = True
+        expected_table_payload_flagged_rows.append(
+            "".join("#" if bit else "." for bit in row_bits)
+        )
+    checks.append(assert_equal("host-fetched 0x1719c payload metrics feed d8fc span rows", {
+        "resource_stream": {
+            "fetched_stream_prefix": host_fetched_resource_payload_stream["stream"][:6],
+            "parser_handlers": [
+                event["handler"]
+                for event in host_fetched_resource_payload_trace["dispatches"]
+            ],
+            "restored_record": host_fetched_resource_payload_command["restored_record"],
+            "payload_length": len(host_fetched_resource_payload),
+            "validation_status": table_payload_resource_host_control_event["validation"]["status"],  # type: ignore[index]
+            "candidate_flags": table_payload_resource_host_control_install["candidate_flags"],
+        },
+        "payload_metric_fields": {
+            "word_0x16": u16(table_payload_memory, 0x16),
+            "word_0x18": u16(table_payload_memory, 0x18),
+            "word_0x1a": u16(table_payload_memory, 0x1A),
+        },
+        "glyph_pointer": {
+            "table_entry": table_payload_flagged_table_entry,
+            "record_delta": u32(table_payload_memory, table_payload_flagged_table_entry),
+            "record": bytes(table_payload_memory[
+                table_payload_flagged_glyph_delta:table_payload_flagged_glyph_delta + 12
+            ]),
+            "bitmap": bytes(table_payload_memory[
+                table_payload_flagged_glyph_delta + table_payload_flagged_bitmap_delta:
+                table_payload_flagged_glyph_delta + table_payload_flagged_bitmap_delta + 3
+            ]),
+        },
+        "printable": {
+            "byte": table_payload_flagged_event["byte"],
+            "cursor_before": table_payload_flagged_event["cursor_before"],
+            "cursor_after": table_payload_flagged_event["cursor_after"],
+            "source": {
+                key: table_payload_flagged_event["source"][key]
+                for key in ("flag", "mapped", "context_slot", "glyph_entry", "glyph_width", "glyph_rows")
+            },
+            "positioned": {
+                "x": table_payload_flagged_event["positioned"]["source"]["x"],
+                "y": table_payload_flagged_event["positioned"]["source"]["y"],
+                "coord": table_payload_flagged_event["page_result"]["coord"],
+            },
+        },
+        "span_update": {
+            "handler": table_payload_flagged_span["handler"],
+            "context_lower_0016": table_payload_flagged_span["context_lower_0016"],
+            "context_height_0018": table_payload_flagged_span["context_height_0018"],
+            "context_offset_001a": table_payload_flagged_span["context_offset_001a"],
+            "metric_source": table_payload_flagged_span["metric_source"],
+            "high_y": table_payload_flagged_span["high_y"],
+        },
+        "flush": {
+            "raw_source": table_payload_flagged_flush["raw_source"],
+            "queued": {
+                key: table_payload_flagged_queued[key]
+                for key in ("path", "computed", "bucket_index", "selector", "object")
+            },
+            "rearm": table_payload_flagged_flush["rearm"],
+        },
+        "chain": table_payload_flagged_bucket_chain,
+        "render_rows": table_payload_flagged_rendered["rows"],
+    }, {
+        "resource_stream": {
+            "fetched_stream_prefix": b"\x1b)s80W",
+            "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+            "payload_length": 80,
+            "validation_status": 1,
+            "candidate_flags": 0x40000000,
+        },
+        "payload_metric_fields": {
+            "word_0x16": 0x0004,
+            "word_0x18": 0x0004,
+            "word_0x1a": 0x0005,
+        },
+        "glyph_pointer": {
+            "table_entry": 0x00CE,
+            "record_delta": 0x0180,
+            "record": bytes.fromhex("00 00 00 00 0c 01 00 03 00 04 00 00"),
+            "bitmap": bytes.fromhex("f0 f0 f0"),
+        },
+        "printable": {
+            "byte": 0x21,
+            "cursor_before": pack12(10),
+            "cursor_after": pack12(28),
+            "source": {
+                "flag": 1,
+                "mapped": 0x21,
+                "context_slot": 0,
+                "glyph_entry": 0x00000180,
+                "glyph_width": 4,
+                "glyph_rows": 3,
+            },
+            "positioned": {
+                "x": 10,
+                "y": 21,
+                "coord": 0x5A00,
+            },
+        },
+        "span_update": {
+            "handler": 0x00D8FC,
+            "context_lower_0016": 0x0004,
+            "context_height_0018": 0x0004,
+            "context_offset_001a": 0x0005,
+            "metric_source": {
+                "kind": "context",
+                "base": 0,
+                "context": 0x40000000,
+            },
+            "high_y": 16,
+        },
+        "flush": {
+            "raw_source": {
+                "orientation": 0,
+                "mode": 0,
+                "x": 100,
+                "y": 16,
+                "extent": 20,
+            },
+            "queued": {
+                "path": "text-span-segment-list",
+                "computed": {
+                    "x": 100,
+                    "y": 16,
+                    "bucket_index": 1,
+                    "key": 0x0406,
+                    "mode": 3,
+                    "selector_hi": 0x40,
+                    "selector_lo": 0x00,
+                },
+                "bucket_index": 1,
+                "selector": 0x4000,
+                "object": (
+                    bytes.fromhex("00 00 00 00 40 00 00 01 04 06 03 00 00 14")
+                    + (b"\x00" * 0x18)
+                ),
+            },
+            "rearm": {
+                "rearmed": True,
+                "enabled_783184": 1,
+                "low_x_783186": 28,
+                "high_x_783188": 28,
+                "high_y_78318a": 0,
+            },
+        },
+        "chain": [
+            bytes.fromhex("00 00 00 00 40 00 00 01 04 06 03 00 00 14")
+            + (b"\x00" * 0x18),
+            bytes.fromhex("00 00 00 00 00 00 00 01 21 5a 00")
+            + (b"\x00" * 0x1b),
+        ],
+        "render_rows": expected_table_payload_flagged_rows,
     }))
 
     table_payload_type2_setup = font_resource_setup_type_via_17362(font_validate_table_staging, 2)

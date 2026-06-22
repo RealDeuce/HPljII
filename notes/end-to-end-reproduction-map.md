@@ -160,10 +160,10 @@ pixels or byte-stream compatibility.
    documented in `notes/font-context-metrics.md`, and the downloaded
    descriptor/payload producer side is documented in `notes/downloaded-fonts.md`.
    One host-fetched `0x1719c` type-0 payload now proves copied descriptor
-   bytes feeding `0xd4ac` visible span rows. The open edge is the flagged
-   `0xd8fc` downloaded-resource path plus broader descriptor metric-byte and
-   rejection/error combinations. Evidence: `notes/semantic-state-model.md`
-   under `Text Span Flush And Fixed-Width Spans`.
+   bytes feeding both `0xd4ac` and `0xd8fc` visible span rows. The open edge
+   is broader descriptor metric-byte and rejection/error combinations, not the
+   tested type-0 middle edge. Evidence: `notes/semantic-state-model.md` under
+   `Text Span Flush And Fixed-Width Spans`.
 2. VFC table definition and channel jumps now have a tracked command-family
    contract in `notes/vertical-forms-control.md`. The remaining VFC risk is
    broader final-device image comparison, not an unresolved middle edge in the
@@ -193,9 +193,9 @@ The next work should follow dataflow, not isolated handlers:
 1. Prove the remaining font metric-byte combinations with parser-produced
    pages. The selected-context bridge, metric consumers, downloaded
    descriptor/payload producer chain, and host-stream downloaded glyph output
-   are now tracked. One host-fetched `0x1719c` type-0 payload reaches `d4ac`
-   span rows; the missing middle is the flagged `d8fc` downloaded-resource
-   path and broader descriptor metric combinations.
+   are now tracked. One host-fetched `0x1719c` type-0 payload reaches both
+   `d4ac` and `d8fc` span rows; the missing middle is broader descriptor
+   metric combinations and rejection/error behavior.
 2. Build a small page-image fixture suite from complete byte streams that mix
    text, rules, raster, geometry, font selection, and publication, then compare
    the final bitmap rows as the primary reproduction contract.

@@ -102,8 +102,10 @@ extent `0x782dba` with orientation-threshold internal page-code
 selection;
 `ESC &l#W` maps to `0x11f6e` and schedules delayed vertical-forms-control
 handler `0x12cfe`, which writes the table rooted at `0x782dde` and
-updates text-bottom cache `0x782dd2`; `ESC &l#V` maps to `0x1280a` and
-consumes that table for channel jumps; its forward in-text path is now
+updates text-bottom cache `0x782dd2`; lowercase `ESC &l#w...#W` preserves
+the first delayed snapshot through uppercase restore; `ESC &l#V` maps to
+`0x1280a` and consumes that table for channel jumps; its forward in-text
+path is now
 anchored through channel search, `0x10084`, `0xf06e`, and `0xf34a`, while
 its before-top normalization path is anchored through `0x128ae..0x128f4`,
 its selector-zero target-equal path is anchored through
@@ -154,6 +156,11 @@ printable `!` at compact coord `0x9001`;
 payload handler `0x12cfe`, data-byte reader `0xdace`, VFC table prefix
 `00 00 00 02`, derived text bottom `190`, and following printable `!`
 at compact coord `0x9001`;
+`ESC &l4w4W 00 00 00 02 !` now ties parser handler sequence
+`0x11f6e`, no-dispatch continuation, `0x11f6e`, lowercase delayed
+snapshot `80 77 00 04 00 00`, unchanged pending state after uppercase
+`W`, restored lowercase record, payload offset after uppercase `W`, and
+following printable `!` at compact coord `0x9001`;
 `ESC &l2V!`, starting from that VFC table state, now ties parser handler
 `0x1280a`, channel mask `0x0002`, line `1`, page-root helper `0x10084`,
 CR helper `0xf06e`, text-flush helper `0xf34a`, cursor move

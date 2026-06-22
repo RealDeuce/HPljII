@@ -42284,6 +42284,146 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 90 01"),
     }))
+    vfc_chained_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&l4w4W\x00\x00\x00\x02!",
+        0x440946B4,
+        vfc_base_state,
+        default_advance=line_printer_hmi["hmi"],
+    )
+    vfc_chained_parser_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        b"\x1b&l4w4W",
+    )
+    vfc_chained_events = vfc_chained_stream["events"]
+    assert isinstance(vfc_chained_events, list)
+    vfc_chained_pending = vfc_chained_events[0]
+    vfc_chained_definition = vfc_chained_events[1]
+    vfc_chained_printable = vfc_chained_events[2]
+    assert isinstance(vfc_chained_pending, dict)
+    assert isinstance(vfc_chained_definition, dict)
+    assert isinstance(vfc_chained_printable, dict)
+    vfc_chained_positioned = vfc_chained_printable["positioned"]
+    vfc_chained_page_result = vfc_chained_printable["page_result"]
+    assert isinstance(vfc_chained_positioned, dict)
+    assert isinstance(vfc_chained_page_result, dict)
+    vfc_chained_positioned_source = vfc_chained_positioned["source"]
+    assert isinstance(vfc_chained_positioned_source, dict)
+    checks.append(assert_equal("mixed VFC lowercase delayed record survives until uppercase W", {
+        "parser_handlers": [
+            event["handler"]
+            for event in vfc_chained_parser_trace["events"]
+        ],
+        "pending_event": {
+            key: vfc_chained_pending[key]
+            for key in (
+                "kind",
+                "sequence",
+                "record",
+                "parameter",
+                "handler",
+                "delayed_handler",
+                "delayed_snapshot_bytes",
+                "delayed_scheduled",
+                "chained",
+            )
+        },
+        "definition_event": {
+            key: vfc_chained_definition[key]
+            for key in (
+                "kind",
+                "sequence",
+                "record",
+                "parameter",
+                "handler",
+                "delayed_handler",
+                "delayed_snapshot_bytes",
+                "delayed_scheduled",
+                "restored_record",
+                "payload_offset",
+                "raw_payload",
+                "payload_count",
+                "text_length_bottom_before",
+                "text_length_bottom_after",
+                "chained",
+            )
+        },
+        "apply_event": vfc_chained_definition["apply_event"],
+        "printable": {
+            "offset": vfc_chained_printable["offset"],
+            "cursor_before": vfc_chained_printable["cursor_before"],
+            "cursor_after": vfc_chained_printable["cursor_after"],
+            "positioned_xy": (
+                vfc_chained_positioned_source["x"],
+                vfc_chained_positioned_source["y"],
+            ),
+            "coord": vfc_chained_page_result["coord"],
+            "bucket_index": vfc_chained_page_result["bucket_index"],
+        },
+        "final_state": select_keys(vfc_chained_stream["final_state"], (
+            "text_length_bottom",
+            "vfc_limit_782dc2",
+            "cursor_x",
+            "cursor_y",
+            "page_record_root_allocations",
+        )),
+        "object_prefix": vfc_chained_stream["bucket_object"][:11],
+    }, {
+        "parser_handlers": [0x011F6E, None, 0x011F6E],
+        "pending_event": {
+            "kind": "vfc-definition-pending",
+            "sequence": b"\x1b&l4w",
+            "record": b"\x80w\x00\x04\x00\x00",
+            "parameter": 4,
+            "handler": 0x011F6E,
+            "delayed_handler": 0x012CFE,
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x2c\xfe\x80w\x00\x04\x00\x00",
+            "delayed_scheduled": True,
+            "chained": True,
+        },
+        "definition_event": {
+            "kind": "vfc-definition",
+            "sequence": b"4W\x00\x00\x00\x02",
+            "record": b"\x80W\x00\x04\x00\x00",
+            "parameter": 4,
+            "handler": 0x011F6E,
+            "delayed_handler": 0x012CFE,
+            "delayed_snapshot_bytes": b"\x01\x00\x01\x2c\xfe\x80w\x00\x04\x00\x00",
+            "delayed_scheduled": False,
+            "restored_record": b"\x80w\x00\x04\x00\x00",
+            "payload_offset": 7,
+            "raw_payload": b"\x00\x00\x00\x02",
+            "payload_count": 4,
+            "text_length_bottom_before": pack12(3240),
+            "text_length_bottom_after": pack12(190),
+            "chained": False,
+        },
+        "apply_event": {
+            "kind": "vfc-definition",
+            "byte_count": 4,
+            "stored_count": 4,
+            "text_length_bottom": pack12(190),
+            "text_last_line": 62,
+            "last_line": 63,
+        },
+        "printable": {
+            "offset": 11,
+            "cursor_before": pack12(10),
+            "cursor_after": pack12(28),
+            "positioned_xy": (16, 105),
+            "coord": 0x9001,
+            "bucket_index": 6,
+        },
+        "final_state": {
+            "text_length_bottom": pack12(190),
+            "vfc_limit_782dc2": pack12(190),
+            "cursor_x": pack12(28),
+            "cursor_y": pack12(126),
+            "page_record_root_allocations": 1,
+        },
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 90 01"),
+    }))
     vfc_jump_base_state = {
         **vfc_direct_state,
         "cursor_x": pack12(40),
@@ -45390,6 +45530,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- page-size published page-record bridge rows match the pre-geometry compact text rows.")
     lines.append("- A mixed page-length stream `ESC &l66P!` routes through ROM parser handlers `0xf9e8` and `0xd04a`, refreshes the text cursor to y `126`, and queues the following printable at compact coord `0x9001`.")
     lines.append("- A mixed VFC stream `ESC &l4W 00 00 00 02 !` routes through `0x11f6e`, restores delayed handler `0x12cfe`, consumes the four payload bytes before parsing `!`, and leaves the printable queued at compact coord `0x9001`.")
+    lines.append("- A mixed VFC lowercase stream `ESC &l4w4W 00 00 00 02 !` records lowercase snapshot `80 77 00 04 00 00`, ignores the uppercase reschedule while pending, restores the lowercase record, consumes payload after uppercase `W`, and queues `!` at compact coord `0x9001`.")
     lines.append("- A mixed VFC channel stream `ESC &l2V!` routes through `0x1280a`, finds channel 2 at line 1, moves y from `126` to `176`, resets x from `40` to the left margin `10`, and queues `!` at compact coord `0xb001`.")
     lines.append("- A mixed VFC before-top stream `ESC &l2V!` starts at y `89`, normalizes the channel search start line through `0x128ae..0x128f4`, finds channel 2 at line 1, and queues `!` at compact coord `0xb001`.")
     lines.append("- A mixed VFC before-top target-after-text stream `ESC &l2V!` starts at y `89`, finds channel 2 at line 63, skips `0xf124` through `0x129fc..0x12afc`, recovers y to `104`, and queues `!` at compact coord `0x3001`.")

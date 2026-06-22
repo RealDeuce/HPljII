@@ -128,14 +128,20 @@ top-of-form page-eject path.
   allocates a fresh page root for the following printable byte.
 - `0x78299e`: parser scratch.
   Semantic role: parsed six-byte command record cursor rewound by
-  command handlers.
+  command handlers and restored by delayed payload dispatch.
   Evidence: `0x11f6e` schedules delayed handler; `0x12cfe` rewinds and
-  reads parsed count.
+  reads parsed count; fixture
+  `mixed VFC lowercase delayed record survives until uppercase W` records
+  lowercase snapshot `80 77 00 04 00 00` and restored lowercase record
+  after uppercase `W`.
 
 ### Writers
 
 - `0x11f6e` is the parser final for `ESC &l#W`; it schedules delayed
-  handler `0x12cfe` through `0x121cc`.
+  handler `0x12cfe` through `0x121cc`. On lowercase `w`, the pending
+  record remains live across the same `&l` command family until an
+  uppercase `W` reaches `0x12218`; the uppercase command does not replace
+  the pending record while `0x782a1a` is already set.
 - `0x12cfe` is the VFC table payload handler. It rewinds parser scratch
   at `0x78299e`, reads the absolute byte count, consumes payload bytes
   through `0xdace`, stores bytes into `0x782dde`, clears unused table
@@ -308,6 +314,15 @@ bottom `3240`, and VMI `50` receives `ESC &l4W 00 00 00 02`. Handler
 `190`, and leaves the following printable `!` queued at compact coord
 `0x9001`.
 
+In the lowercase VFC definition fixture, the stream
+`ESC &l4w4W 00 00 00 02 !` first schedules delayed handler `0x12cfe`
+with snapshot bytes `01 00 01 2c fe 80 77 00 04 00 00` for lowercase
+record `80 77 00 04 00 00`. The following uppercase `W` reaches
+`0x11f6e` but does not reschedule while pending, then `0x12218` restores
+the lowercase record, consumes the four payload bytes starting after the
+uppercase `W`, loads the same table prefix, and queues the following `!`
+at compact coord `0x9001`.
+
 In the channel-jump fixture, the same table state receives `ESC &l2V!`.
 Handler `0x1280a` uses cached line bounds `0x782ee0 = 62` and
 `0x782ede = 63`, starts searching at line `1`, matches channel mask
@@ -399,8 +414,9 @@ coord `0x9001`, bucket `6`.
 
 ### Confidence
 
-High for the `0x11f6e -> 0x12cfe` delayed payload boundary, table bytes,
-reject cases, zero-count reset, text-bottom cache effect, and forward
+High for the `0x11f6e -> 0x12cfe` delayed payload boundary, lowercase
+same-family `w...W` delayed-record preservation, table bytes, reject
+cases, zero-count reset, text-bottom cache effect, and forward
 `0x1280a` in-text channel hit. High for before-top normalization through
 `0x128ae..0x128f4` when it rejoins the forward in-text hit path. High for
 the selector-zero target-equal early exit and selector-zero page-eject
@@ -431,6 +447,7 @@ lifting.
 - `0x12cfe ESC &l#W loads vertical forms control state`
 - `mixed VFC definition stream consumes payload before printable
   page-record queue`
+- `mixed VFC lowercase delayed record survives until uppercase W`
 - `mixed VFC channel jump stream moves cursor before printable page-record
   queue`
 - `mixed VFC before-top channel jump normalizes start line before
@@ -481,6 +498,3 @@ lifting.
   fixtures.
 - `0x12b96..0x12cfc`: default table bit meanings are known by bit
   positions but not fully named by PCL channel convention.
-- Lowercase `ESC &l#w...#W` delayed-record preservation is inferred from
-  the shared `0x121cc` boundary but not yet covered by a VFC-specific
-  fixture.

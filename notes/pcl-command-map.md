@@ -183,7 +183,11 @@ with delayed handler `0x12cfe`. The payload handler rewinds
 `0xdace`, loads the VFC table rooted at `0x782dde`, derives bottom cache
 `0x782dc2`, copies it into text-length bottom `0x782dd2`, and clears
 modified-layout byte `0x782ee1`. The composed state model is in
-`notes/semantic-state-model.md`.
+`notes/semantic-state-model.md`. For the combined stream
+`ESC &l4w4W 00 00 00 02 !`, lowercase `w` snapshots record
+`80 77 00 04 00 00`, uppercase `W` leaves the pending snapshot intact,
+`0x12218` restores the lowercase record, and the payload begins after
+the uppercase terminator before `!` queues at compact coord `0x9001`.
 
 `ESC &l#V` at `0x01280a` is the VFC table consumer. Disassembly shows it
 uses current VMI `0x783160`, vertical cursor `0x782c8e`, top offset

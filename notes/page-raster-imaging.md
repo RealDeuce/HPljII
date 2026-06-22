@@ -78,6 +78,11 @@ updates text-bottom cache `0x782dd2`. The fixture
 `ESC &l4W 00 00 00 02 !` proves the four payload bytes are not parsed as
 controls or printable bytes, and that the following `!` still reaches
 the page-record queue at compact coord `0x9001`.
+Fixture `ESC &l4w4W 00 00 00 02 !` proves the same boundary for the
+lowercase-final form: lowercase `w` snapshots record
+`80 77 00 04 00 00`, the uppercase `W` does not replace that pending
+record, `0x12218` restores the lowercase record, and the payload is
+consumed after the uppercase terminator before `!` queues at `0x9001`.
 
 The forward `ESC &l#V` consumer path is now anchored from parser to
 visible output. Fixture `ESC &l2V!`, starting from the same VFC table,

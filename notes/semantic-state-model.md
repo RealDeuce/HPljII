@@ -1099,10 +1099,16 @@ record.
     `0x7820c4`, destination `0x782128`, then stores `1`; nonzero selects
     previous `0x782128`, destination `0x7820c4`, then clears it.
   - `0x783a18`: active render work-record pointer used by `0x1ef6a`.
+  - active-pool render work record fields consumed through aliases made
+    by `0x2126`: long `+0` source base, words `+4` width longwords,
+    `+6` modulo divisor, `+8`/`+0a` delta inputs, `+0c` start row,
+    `+10` end row, and `+16` current engine row.
   - render `+0x18`, `+0x1c`, `+0x20`, and `+0x24..+0x60`: copied bucket,
     rule, fixed, and context slots.
   Evidence: `0x1ecd6..0x1ed76`,
-  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`.
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`,
+  and fixture
+  `0x2126/0x1a4c/0x2038 active pool copy window feeds engine rows`.
 - Derived/cache render fields:
   - `0x780ea4`: active render/scheduler flag set at `0x1eb38` and
     cleared on some loop exits at `0x1ebba` or `0x1ebee`.
@@ -1115,9 +1121,25 @@ record.
   - same-geometry destination `+8`: remainder from helper `0x33238`
     over `(previous +0x10 - previous +0x0a + previous +0x08) /
     previous +0x06`.
+  - `0x7839ae`, `0x7839ca`, `0x7839b2`, `0x7839b6`, `0x7839c2`,
+    `0x7839be`, `0x7839ba`, and `0x7839c6`: pointer aliases written
+    by `0x2126` to the active-pool render work record fields above.
+  - `0x7839ce`: derived row-source delta, written by `0x2126` as
+    work word `+8 - +0x0a` and consumed by `0x2456`.
+  - `0x78398e`: scan/status threshold from `0x0e + 2 * work word +0x0a`;
+    `0x783996`/`0x783998`: row limit and last-row cache from
+    `0x1a4c..0x1c00`.
+  - `0x7839a4`: row-copy jump offset, equal to
+    `(0x80 - width_longs) * 2`; `0x7839a8`: destination tail stride,
+    equal to `(0x80 - width_longs) * 4`; `0x7839a0`: full source-row
+    stride, equal to `width_longs << 5`.
+  - `0x78399a`: destination row base for the eight-row copy helper;
+    `0x783992`: current source pointer, first seeded by `0x1a4c..0x1c00`
+    and then recomputed by `0x2456` through `0x2038`.
   Evidence: `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`
   and fixture destination-work fields in the geometry-change and
-  same-geometry scheduler cases.
+  same-geometry scheduler cases, plus
+  `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`.
 - Parser scratch:
   - none newly assigned here. The source record has already been built by
     parser/page-record producers before `0xff1e`.
@@ -1143,9 +1165,21 @@ record.
     `0x1c04` may stage and insert the current `0x780eb2` record.
   - `0x7820c0` participates in the render loop's A4/A5 work-record
     selection before `0x1ec34`.
+  - `0x78398c`: interrupt/scan counter incremented by `0x0fa2`.
+    `0x1a4c..0x1c00` clears it before an active-pool copy window.
+  - `0x783990`: copy phase. `0x1a4c..0x1c00` seeds it to `1`; `0x2038`
+    increments it around `0x22f4` and resets it to `1` after phase `2`
+    advances work word `+16`.
+  - `0x78399e` and `0x78399f`: interrupt/status bytes cleared by
+    `0x1a4c..0x1c00`, updated by `0x0fa2..0x101e`, and consumed by
+    copy/pacing helpers such as `0x1db0`.
+  - `0x7839ac`: source-tail longword count consumed by `0x22f4..0x2454`
+    after each copied row body.
   - `0x7820bc`, `0x780ea4`, `0x780ea5`, `0x780eaa`, `0x780eae`, and
     `0x783a18` are scheduler/render bookkeeping, not page-object fields.
 - Unknown:
+  - `0x7839d4`: cleared by `0x1a4c..0x1c00`; no stable role is assigned
+    yet beyond active-pool copy-window bookkeeping.
   - exact physical engine pacing around calls to `0x10c8`, `0x10c4`,
     `0x10d0`, and `0x10d8`.
   - complete multi-band timing and stop conditions across
@@ -1198,6 +1232,25 @@ record.
   matches previous word `+4`: helper `0x33238` computes the remainder
   into destination word `+8`, then previous long `+0` and word `+6` are
   copied before the shared `0x1ed84` exit.
+- `0x2126..0x218e` selects the active-pool render work record from
+  `0x7820c0`, writes the `0x7839ae/ca/b2/b6/c2/be/ba/c6` pointer
+  aliases, and stores `0x7839ce = work +0x08 - work +0x0a`.
+- `0x1a4c..0x1c00` clears `0x78398c`, seeds `0x78398e`, `0x783990`,
+  `0x783996`, `0x783998`, `0x7839a8`, `0x7839a4`, `0x7839ac`,
+  `0x78399a`, `0x78399e`, `0x78399f`, `0x7839a0`, and `0x7839d4`,
+  and snapshots the current work word `+16` through alias `0x7839c6`.
+- `0x2038..0x211c` consumes copy phase `0x783990`, source pointer
+  `0x783992`, stride `0x7839a0`, work word `+16`, and work word `+10`.
+  On copy phases it calls `0x22f4`, increments phase, and after phase `2`
+  increments work word `+16` and resets phase to `1`; on ready rows it
+  calls `0x2456` and stores the next `0x783992`; on done-active-source
+  it sets `0x780ea5`.
+- `0x22f4..0x2454` copies eight destination rows from `0x783992` to
+  `0x78399a`, using `0x7839a4` to enter the longword-copy jump table,
+  `0x7839a8` as destination tail stride, and `0x7839ac` as source-tail
+  longword consumption.
+- `0x2456..0x247a` computes the next source pointer as
+  `base + (((row + 0x7839ce) % work +0x06) * work +0x04 << 6)`.
 
 ### Readers And Consumers
 
@@ -1221,6 +1274,15 @@ record.
   word `+4`, and global bitmap buffer fields `0x7810b4`/`0x7810b8`.
 - `0x1ef6a` reads `0x783a18`, then consumes the render work record
   through `0x1ef86`, `0x1efc2`, `0x1f446`, and `0x1f756`.
+- `0x19d2..0x1a2e` waits on alias fields before entering
+  `0x1a4c..0x1c00`: it compares work word `+6`, work word `+10`, and
+  work word `+16` through the `0x7839b2/ba/c6` aliases.
+- `0x0fa2..0x101e` increments `0x78398c`, compares it against
+  `0x78398e` and `0x783998`, and updates `0x78399e`, `0x78399f`, and
+  `0x7828f9` timing/status bits.
+- `0x1db0..0x1e5e` is a sibling copy/pacing helper: it consumes
+  `0x783990`, `0x783992`, `0x7839a0`, `0x7839c6`, `0x7839ba`, and
+  status byte `0x78399e`, then calls the same `0x22f4` row-copy helper.
 
 ### Output Effect
 
@@ -1275,6 +1337,26 @@ the timeout side of `0x21b8`: elapsed `0x321` sets `0x780ea5`,
 `0x780e6c`, `0x780e6d`, and `0x780e67 = 2`, signals `0x780e36`, returns
 zero to `0x1c04`, and leaves `0x780e6e[]` unchanged.
 
+The copy-window fixture
+`0x2126/0x1a4c/0x2038 active pool copy window feeds engine rows` starts
+with selector `0x7820c0 = 1`, so `0x2126` selects work record
+`0x00782128`. Its work fields are long `+0 = 0x00102000`,
+word `+4 = 0x20`, word `+6 = 5`, word `+8 = 4`, word `+0a = 2`,
+word `+0c = 3`, word `+10 = 5`, and word `+16 = 3`. The fixture proves
+`0x7839ce = 2`, `0x78398e = 0x12`, `0x783996 = 0x18`,
+`0x783998 = 0x17`, `0x7839a8 = 0x180`, `0x7839a4 = 0xc0`,
+`0x7839a0 = 0x400`, and both `0x78399e/9f` clear. The first
+`0x2038` call takes the ready-for-copy path and computes
+`0x783992 = 0x00102000` through `0x2456`. The phase-2 call advances
+`0x783992` to `0x00102400`, calls `0x22f4`, copies eight rows of
+`0x20` longwords from `0x00102400` to `0x00ffc000`, steps source rows
+by `0x80`, steps destination rows by `0x200`, then increments work
+word `+16` to `4` and recomputes `0x783992 = 0x00102800`. Row 0 is
+source `0x00102400` to destination `0x00ffc000`; row 7 is source
+`0x00102780` to destination `0x00ffce00`. With word `+16 = 5`,
+elapsed `0xc9`, and `0x780eae == 0x780eb2`, the done path sets
+`0x780ea5 = 1`.
+
 ### Confidence
 
 High for the distinction between protected pool head `0x780ea6` and
@@ -1282,11 +1364,15 @@ scheduler cursor `0x780eaa`, the candidate selection stores into
 `0x780eaa`/`0x780eb2`, the `0x1fd4` candidate-slot insertion shift, the
 `0x1c04` state-3 staging boundary, the `0x1eea` state-4 release path,
 the protected-head skip, `0x780eaa -> 0x780eae`, `0x780ea4/5`, the
-two-work-record alternation, `0x783a18`, the `0x1ee9e` geometry-change
+two-work-record alternation, `0x783a18`, the `0x2126` pointer aliases,
+the `0x1a4c` copy-window scalars, the `0x22f4` row-copy address pattern,
+the `0x2456` source-address arithmetic, the `0x1ee9e` geometry-change
 boundary, the `0x1ed36..0x1ed6a` same-geometry reuse branch, and the
 render-entry output for the selected source. Medium for the surrounding
 engine pacing loop because the fixture does not model `0x10c8`,
-`0x10c4`, `0x10d0`, or `0x10d8`. Medium for `0x780eb6` because only its
+`0x10c4`, `0x10d0`, or `0x10d8`, and medium for the physical meaning of
+`0x78399e/9f` because the interrupt updates are named but not tied to
+real engine timing yet. Medium for `0x780eb6` because only its
 initialization is currently covered.
 
 ### Fixtures
@@ -1295,6 +1381,7 @@ initialization is currently covered.
 - `0x1ecd6 same-geometry render work reuse reaches render entry`
 - `0x3144/0x7ec6/0x7712 page pool aliases feed scheduler cursor`
 - `0x1958/0x1c04/0x1eea staged candidate reaches render scheduler`
+- `0x2126/0x1a4c/0x2038 active pool copy window feeds engine rows`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`
 
@@ -1308,6 +1395,8 @@ initialization is currently covered.
   `0x1c04..0x2016`
 - `generated/disasm/ic30_ic13_active_pool_engine_gate_002038.lst`:
   `0x2038..0x223c`
+- `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`:
+  `0x22f4..0x247a`
 - `generated/disasm/ic30_ic13_page_pool_init_003100.lst`:
   `0x3144..0x3162`
 - `generated/disasm/ic30_ic13_page_pool_candidate_select_007ec6.lst`:
@@ -1325,11 +1414,11 @@ initialization is currently covered.
 
 ### Unresolved Middle Edges
 
-- `0x19d2..0x1c00` and `0x1cf8..0x1e80`: setup of the `0x78398c..`
-  engine copy window, status bytes `0x78399e/9f`, and the repeated
-  `0x22f4` copy/pacing helpers are only partially modeled. The fixture
-  covers the ready/timeout gate, staged record insertion, and release
-  state transition, but not the exact physical copy timing.
+- `0x0fa2..0x101e`, `0x1db0..0x1e5e`, and the MMIO/helper calls inside
+  `0x1cf8..0x1e80`: the copy-window scalars and `0x22f4` row-copy
+  semantics are modeled, but the interrupt feedback loop through
+  `0x78399e/9f`, `0x7828f9`, `0x10c4`, `0x10c8`, `0x10d0`, and
+  `0x10d8` still needs exact timing and engine-interface meaning.
 - `0x1eba4..0x1ecd2`: render loop pacing, band advance, and engine
   waits are not yet modeled.
 

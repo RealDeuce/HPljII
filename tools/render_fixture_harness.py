@@ -13040,6 +13040,198 @@ def active_pool_candidate_release_via_1eea(state: dict[str, object]) -> dict[str
     }
 
 
+def active_pool_render_aliases_via_2126(state: dict[str, object]) -> dict[str, object]:
+    """Model render-work field pointer aliases established at 0x2126."""
+    selector = int(state.get("render_work_selector_7820c0", 0))
+    work_ptr = 0x007820C4 + ((selector % 2) * 0x64)
+    work_records = state.get("render_work_records", {})
+    if not isinstance(work_records, dict):
+        raise AssertionError("active pool aliases need render_work_records")
+    work_record = work_records.get(work_ptr, {})
+    if not isinstance(work_record, dict):
+        raise AssertionError("active pool aliases need a render work record")
+    aliases = {
+        "render_work_ptr": work_ptr,
+        "base_long_ptr_7839ae": work_ptr + 0x00,
+        "word_04_ptr_7839ca": work_ptr + 0x04,
+        "word_06_ptr_7839b2": work_ptr + 0x06,
+        "word_08_ptr_7839b6": work_ptr + 0x08,
+        "word_0a_ptr_7839c2": work_ptr + 0x0A,
+        "word_0c_ptr_7839be": work_ptr + 0x0C,
+        "word_10_ptr_7839ba": work_ptr + 0x10,
+        "word_16_ptr_7839c6": work_ptr + 0x16,
+        "delta_7839ce": (
+            int(work_record.get("word_08", 0)) - int(work_record.get("word_0a", 0))
+        ),
+    }
+    state["active_pool_aliases"] = aliases
+    state["active_pool_work_record"] = work_record
+    return aliases
+
+
+def active_pool_copy_window_setup_via_1a4c(state: dict[str, object]) -> dict[str, object]:
+    """Model the copy-window scalar setup at 0x1a4c..0x1c00."""
+    aliases = state.get("active_pool_aliases")
+    if not isinstance(aliases, dict):
+        aliases = active_pool_render_aliases_via_2126(state)
+    work_record = state.get("active_pool_work_record", {})
+    if not isinstance(work_record, dict):
+        raise AssertionError("active pool copy setup needs active_pool_work_record")
+    width_longs = int(work_record.get("word_04", 0))
+    word_0a = int(work_record.get("word_0a", 0))
+    word_0c = int(work_record.get("word_0c", 0))
+    word_16 = int(work_record.get("word_16", 0))
+    visible_count = int(state.get("visible_row_count_1a4c", 0x17))
+    source_base = int(state.get("copy_source_base_78399a", 0x00FFC000))
+
+    state["scan_counter_78398c"] = 0
+    state["scan_threshold_78398e"] = 0x0E + (word_0a << 1)
+    state["copy_phase_783990"] = 1
+    state["copy_row_limit_783996"] = max(0x11 + (word_0c << 1), visible_count)
+    state["copy_row_last_783998"] = int(state["copy_row_limit_783996"]) - 1
+    state["copy_dest_stride_tail_7839a8"] = (0x80 - width_longs) << 2
+    state["copy_jump_offset_7839a4"] = (0x80 - width_longs) << 1
+    state["copy_source_tail_7839ac"] = 0
+    state["copy_source_base_78399a"] = source_base
+    state["status_flag_78399e"] = 0
+    state["status_flag_78399f"] = 0
+    state["copy_full_row_stride_7839a0"] = width_longs << 5
+    state["copy_accumulator_7839d4"] = 0
+    state["copy_source_ptr_783992"] = int(state.get("copy_source_ptr_783992", source_base))
+    state["engine_word_16_7839c6"] = word_16
+    return {
+        "aliases": aliases,
+        "scan_counter_78398c": state["scan_counter_78398c"],
+        "scan_threshold_78398e": state["scan_threshold_78398e"],
+        "copy_phase_783990": state["copy_phase_783990"],
+        "copy_row_limit_783996": state["copy_row_limit_783996"],
+        "copy_row_last_783998": state["copy_row_last_783998"],
+        "copy_dest_stride_tail_7839a8": state["copy_dest_stride_tail_7839a8"],
+        "copy_jump_offset_7839a4": state["copy_jump_offset_7839a4"],
+        "copy_source_tail_7839ac": state["copy_source_tail_7839ac"],
+        "copy_source_base_78399a": state["copy_source_base_78399a"],
+        "status_flag_78399e": state["status_flag_78399e"],
+        "status_flag_78399f": state["status_flag_78399f"],
+        "copy_full_row_stride_7839a0": state["copy_full_row_stride_7839a0"],
+        "copy_accumulator_7839d4": state["copy_accumulator_7839d4"],
+        "copy_source_ptr_783992": state["copy_source_ptr_783992"],
+        "engine_word_16_7839c6": state["engine_word_16_7839c6"],
+    }
+
+
+def engine_copy_pass_via_22f4(state: dict[str, object]) -> dict[str, object]:
+    """Model 0x22f4 as eight rows of longword copies into a 0x200-byte stride."""
+    width_longs = 0x80 - (int(state.get("copy_jump_offset_7839a4", 0)) // 2)
+    source_ptr = int(state.get("copy_source_ptr_783992", 0))
+    dest_base = int(state.get("copy_source_base_78399a", 0))
+    dest_tail = int(state.get("copy_dest_stride_tail_7839a8", 0))
+    source_tail = int(state.get("copy_source_tail_7839ac", 0))
+    rows: list[dict[str, int]] = []
+    source_cursor = source_ptr
+    dest_cursor = dest_base
+    for row in range(8):
+        rows.append({
+            "row": row,
+            "source": source_cursor,
+            "dest": dest_cursor,
+            "longwords": width_longs,
+        })
+        source_cursor += (width_longs + source_tail) * 4
+        dest_cursor += width_longs * 4 + dest_tail
+    state.setdefault("engine_copy_passes", []).append(rows)
+    return {
+        "source_start": source_ptr,
+        "dest_base": dest_base,
+        "width_longs": width_longs,
+        "dest_tail": dest_tail,
+        "source_tail": source_tail,
+        "rows": rows,
+    }
+
+
+def active_pool_engine_copy_via_2038(state: dict[str, object]) -> dict[str, object]:
+    """Model the bounded phase/copy part of 0x2038 for one call."""
+    work_record = state.get("active_pool_work_record", {})
+    if not isinstance(work_record, dict):
+        raise AssertionError("active pool engine copy needs active_pool_work_record")
+    phase_before = int(state.get("copy_phase_783990", 1))
+    word_16_before = int(state.get("engine_word_16_7839c6", work_record.get("word_16", 0)))
+    word_16_original = word_16_before
+    word_10 = int(work_record.get("word_10", 0))
+    word_0c = int(work_record.get("word_0c", 0))
+    copied = False
+    copy_pass: dict[str, object] | None = None
+    if phase_before != 1:
+        state["copy_source_ptr_783992"] = (
+            int(state.get("copy_source_ptr_783992", 0))
+            + int(state.get("copy_full_row_stride_7839a0", 0))
+        )
+        copy_pass = engine_copy_pass_via_22f4(state)
+        copied = True
+        phase_after = phase_before + 1
+        if phase_after > 2:
+            word_16_before += 1
+            work_record["word_16"] = word_16_before
+            state["engine_word_16_7839c6"] = word_16_before
+            phase_after = 1
+        state["copy_phase_783990"] = phase_after
+    elif word_16_before < word_0c:
+        return {
+            "path": "below-start-return",
+            "phase_before": phase_before,
+            "phase_after": phase_before,
+            "word_16_before": word_16_before,
+            "word_16_after": word_16_before,
+            "copied": False,
+        }
+    else:
+        phase_after = phase_before
+
+    if int(state.get("engine_word_16_7839c6", word_16_before)) < word_10:
+        state["copy_source_ptr_783992"] = compute_engine_source_address_via_2456(
+            state,
+            int(state.get("engine_word_16_7839c6", word_16_before)),
+        )
+        outcome = "ready-for-copy"
+    else:
+        if int(state.get("elapsed_2038", 0)) >= 0xC9:
+            if int(state.get("active_source_780eae", 0)) == int(
+                state.get("advance_cursor_780eb2", 0)
+            ):
+                state["active_render_loop_flag_780ea5"] = 1
+                outcome = "done-active-source"
+            else:
+                outcome = "done-other-source"
+        else:
+            outcome = "wait"
+    return {
+        "path": outcome,
+        "phase_before": phase_before,
+        "phase_after": int(state.get("copy_phase_783990", phase_after)),
+        "word_16_before": word_16_original,
+        "word_16_after": int(state.get("engine_word_16_7839c6", word_16_before)),
+        "copy_source_ptr_783992": int(state.get("copy_source_ptr_783992", 0)),
+        "copied": copied,
+        "copy_pass": copy_pass,
+        "active_render_loop_flag_780ea5": int(state.get("active_render_loop_flag_780ea5", 0)),
+    }
+
+
+def compute_engine_source_address_via_2456(state: dict[str, object], row_index: int) -> int:
+    """Model the address arithmetic at 0x2456."""
+    work_record = state.get("active_pool_work_record", {})
+    if not isinstance(work_record, dict):
+        raise AssertionError("0x2456 needs active_pool_work_record")
+    delta = int(state.get("active_pool_aliases", {}).get("delta_7839ce", 0))  # type: ignore[union-attr]
+    divisor = int(work_record.get("word_06", 1))
+    width_longs = int(work_record.get("word_04", 0))
+    base = int(work_record.get("long_00", 0))
+    if divisor == 0:
+        raise AssertionError("0x2456 cannot divide by zero")
+    remainder = (int(row_index) + delta) % divisor
+    return base + ((remainder * width_longs) << 6)
+
+
 def page_pool_candidate_select_via_7ec6(state: dict[str, object]) -> dict[str, object]:
     """Model the 0x7ec6 candidate scan that writes 0x780eaa/0x780eb2."""
     records = state.get("pool_records", {})
@@ -27113,6 +27305,170 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "candidate_stage_error_10c8": 0x007801C2,
                 "return_d7": 0,
                 "slots": [old_slot_0, 0, 0, 0, 0, 0],
+            },
+        },
+    ))
+    copy_work_ptr = 0x00782128
+    copy_state: dict[str, object] = {
+        "render_work_selector_7820c0": 1,
+        "render_work_records": {
+            copy_work_ptr: {
+                "long_00": 0x00102000,
+                "word_04": 0x0020,
+                "word_06": 0x0005,
+                "word_08": 0x0004,
+                "word_0a": 0x0002,
+                "word_0c": 0x0003,
+                "word_10": 0x0005,
+                "word_16": 0x0003,
+            },
+        },
+        "visible_row_count_1a4c": 0x0018,
+        "copy_source_base_78399a": 0x00FFC000,
+        "copy_source_ptr_783992": 0x00FFC000,
+        "active_source_780eae": inserted_ptr,
+        "advance_cursor_780eb2": inserted_ptr,
+        "elapsed_2038": 0x00C9,
+    }
+    copy_aliases = active_pool_render_aliases_via_2126(copy_state)
+    copy_setup = active_pool_copy_window_setup_via_1a4c(copy_state)
+    copy_ready = active_pool_engine_copy_via_2038(copy_state)
+    copy_state["copy_phase_783990"] = 2
+    copy_pass = active_pool_engine_copy_via_2038(copy_state)
+    copy_rows = copy_pass["copy_pass"]
+    assert isinstance(copy_rows, dict)
+    copy_state["engine_word_16_7839c6"] = 5
+    active_pool_record = copy_state["active_pool_work_record"]
+    assert isinstance(active_pool_record, dict)
+    active_pool_record["word_16"] = 5
+    copy_done = active_pool_engine_copy_via_2038(copy_state)
+    checks.append(assert_equal(
+        "0x2126/0x1a4c/0x2038 active pool copy window feeds engine rows",
+        {
+            "aliases": copy_aliases,
+            "setup": {
+                "scan_counter_78398c": copy_setup["scan_counter_78398c"],
+                "scan_threshold_78398e": copy_setup["scan_threshold_78398e"],
+                "copy_phase_783990": copy_setup["copy_phase_783990"],
+                "copy_row_limit_783996": copy_setup["copy_row_limit_783996"],
+                "copy_row_last_783998": copy_setup["copy_row_last_783998"],
+                "copy_dest_stride_tail_7839a8": copy_setup[
+                    "copy_dest_stride_tail_7839a8"
+                ],
+                "copy_jump_offset_7839a4": copy_setup["copy_jump_offset_7839a4"],
+                "copy_source_tail_7839ac": copy_setup["copy_source_tail_7839ac"],
+                "copy_source_base_78399a": copy_setup["copy_source_base_78399a"],
+                "status_flag_78399e": copy_setup["status_flag_78399e"],
+                "status_flag_78399f": copy_setup["status_flag_78399f"],
+                "copy_full_row_stride_7839a0": copy_setup[
+                    "copy_full_row_stride_7839a0"
+                ],
+                "copy_accumulator_7839d4": copy_setup["copy_accumulator_7839d4"],
+                "engine_word_16_7839c6": copy_setup["engine_word_16_7839c6"],
+            },
+            "ready": {
+                "path": copy_ready["path"],
+                "phase_before": copy_ready["phase_before"],
+                "phase_after": copy_ready["phase_after"],
+                "word_16_before": copy_ready["word_16_before"],
+                "word_16_after": copy_ready["word_16_after"],
+                "copy_source_ptr_783992": copy_ready["copy_source_ptr_783992"],
+                "copied": copy_ready["copied"],
+            },
+            "copy_pass": {
+                "path": copy_pass["path"],
+                "phase_before": copy_pass["phase_before"],
+                "phase_after": copy_pass["phase_after"],
+                "word_16_before": copy_pass["word_16_before"],
+                "word_16_after": copy_pass["word_16_after"],
+                "copy_source_ptr_783992": copy_pass["copy_source_ptr_783992"],
+                "copied": copy_pass["copied"],
+                "source_start": copy_rows["source_start"],
+                "dest_base": copy_rows["dest_base"],
+                "width_longs": copy_rows["width_longs"],
+                "dest_tail": copy_rows["dest_tail"],
+                "source_tail": copy_rows["source_tail"],
+                "rows": copy_rows["rows"],
+            },
+            "done": {
+                "path": copy_done["path"],
+                "phase_before": copy_done["phase_before"],
+                "phase_after": copy_done["phase_after"],
+                "word_16_before": copy_done["word_16_before"],
+                "word_16_after": copy_done["word_16_after"],
+                "active_render_loop_flag_780ea5": copy_done[
+                    "active_render_loop_flag_780ea5"
+                ],
+            },
+        },
+        {
+            "aliases": {
+                "render_work_ptr": copy_work_ptr,
+                "base_long_ptr_7839ae": copy_work_ptr,
+                "word_04_ptr_7839ca": copy_work_ptr + 0x04,
+                "word_06_ptr_7839b2": copy_work_ptr + 0x06,
+                "word_08_ptr_7839b6": copy_work_ptr + 0x08,
+                "word_0a_ptr_7839c2": copy_work_ptr + 0x0A,
+                "word_0c_ptr_7839be": copy_work_ptr + 0x0C,
+                "word_10_ptr_7839ba": copy_work_ptr + 0x10,
+                "word_16_ptr_7839c6": copy_work_ptr + 0x16,
+                "delta_7839ce": 2,
+            },
+            "setup": {
+                "scan_counter_78398c": 0,
+                "scan_threshold_78398e": 0x0012,
+                "copy_phase_783990": 1,
+                "copy_row_limit_783996": 0x0018,
+                "copy_row_last_783998": 0x0017,
+                "copy_dest_stride_tail_7839a8": 0x0180,
+                "copy_jump_offset_7839a4": 0x00C0,
+                "copy_source_tail_7839ac": 0,
+                "copy_source_base_78399a": 0x00FFC000,
+                "status_flag_78399e": 0,
+                "status_flag_78399f": 0,
+                "copy_full_row_stride_7839a0": 0x0400,
+                "copy_accumulator_7839d4": 0,
+                "engine_word_16_7839c6": 3,
+            },
+            "ready": {
+                "path": "ready-for-copy",
+                "phase_before": 1,
+                "phase_after": 1,
+                "word_16_before": 3,
+                "word_16_after": 3,
+                "copy_source_ptr_783992": 0x00102000,
+                "copied": False,
+            },
+            "copy_pass": {
+                "path": "ready-for-copy",
+                "phase_before": 2,
+                "phase_after": 1,
+                "word_16_before": 3,
+                "word_16_after": 4,
+                "copy_source_ptr_783992": 0x00102800,
+                "copied": True,
+                "source_start": 0x00102400,
+                "dest_base": 0x00FFC000,
+                "width_longs": 0x20,
+                "dest_tail": 0x0180,
+                "source_tail": 0,
+                "rows": [
+                    {
+                        "row": row,
+                        "source": 0x00102400 + row * 0x80,
+                        "dest": 0x00FFC000 + row * 0x200,
+                        "longwords": 0x20,
+                    }
+                    for row in range(8)
+                ],
+            },
+            "done": {
+                "path": "done-active-source",
+                "phase_before": 1,
+                "phase_after": 1,
+                "word_16_before": 5,
+                "word_16_after": 5,
+                "active_render_loop_flag_780ea5": 1,
             },
         },
     ))

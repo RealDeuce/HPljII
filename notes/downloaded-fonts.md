@@ -50,6 +50,7 @@ Primary fixtures:
 - `0x17026/0x1719c-modeled font resource allocation and header initialization`
 - `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`
 - `ESC )s80W invalid resource type fails validation before allocation`
+- `ESC )s80W reversed resource range fails validation before allocation`
 - `resource payload stream ties ROM parser dispatch to 0x16c14 install`
 - `host-fetched resource payload stream installs selected 0x1719c font`
 - `host-fetched font control state drives resource payload stream`
@@ -482,6 +483,16 @@ installed candidate. Its output effect is no downloaded-font state change;
 page-visible behavior for following printable bytes remains the prior/default
 font path unless a later fixture compares the produced page rows.
 
+Fixture `ESC )s80W reversed resource range fails validation before allocation`
+ties the entry-6 failure to the same parser and allocation boundary. The
+host-fetched stream begins with
+`1b 29 73 38 30 57 00 01 00 00 00 00 00 0a 00 06 00 05`, restores record
+`80 57 00 50 00 00`, and fails after twelve descriptor bytes. At failure time
+the staged first-code word `+0x16` is `10`, the range/count word `+0x14` is
+`5`, and derived word `+0x18` remains `0`. `0x17026` receives validation
+status `0`, returns allocation status `0`, and `0x16c14` installs no
+candidate. The host-fetched source drains entirely from the `0xa904` ring.
+
 `0x17362` sets the staged type and payload units. Type `0` writes byte
 `+0x0c = 0` and units `0x80`; type `2` writes byte `+0x0c = 2` and units
 `0x100`; invalid type `3` returns failure.
@@ -903,8 +914,10 @@ A byte-stream renderer must preserve:
 ## Remaining Edges
 
 - `0x16fae..0x17016`: all 32 validation slots now have ROM-effect names and
-  concrete success/failure fixtures. Exact HP manual labels for the
-  consumed-but-not-staged descriptor fields still need external correlation.
+  concrete success/failure fixtures. Host-fetched invalid-type and
+  reversed-range streams prove two parser-produced no-install boundaries. Exact
+  HP manual labels for the consumed-but-not-staged descriptor fields still need
+  external correlation.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span
   wide, linear normal, linear segmented, and split-plane segmented
   downloaded-character paths are page-visible. Remaining parser-produced
@@ -924,7 +937,7 @@ A byte-stream renderer must preserve:
 - The span-metric fields documented in `notes/font-context-metrics.md` are now
   tied to installed payload headers for the `0xd4ac` and `0xd8fc` type-0 and
   type-2 fixtures, and the shared consumer branch family is fixture-backed.
-  The invalid-resource-type resource path now has a host-fetched
-  parser/validation/no-install boundary. Broader downloaded/inline metric-byte
-  values and the remaining producer-side validation/error forms still need
-  parser-produced page evidence.
+  The invalid-resource-type and reversed-range resource paths now have
+  host-fetched parser/validation/no-install boundaries. Broader
+  downloaded/inline metric-byte values and the remaining producer-side
+  validation/error forms still need parser-produced page evidence.

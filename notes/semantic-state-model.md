@@ -1294,6 +1294,16 @@ connects that entry-2 failure to the host-facing parser boundary:
 record `80 57 00 50 00 00`, `0x16fae` fails after descriptor bytes
 `00 01 02 03`, and `0x17026`/`0x16c14` skip allocation and install. The
 output effect is no downloaded-font candidate or current-record mutation.
+Fixture `ESC )s80W reversed resource range fails validation before allocation`
+connects the entry-6 range/count failure to the same host-facing parser
+boundary. `0xa904` fetches
+`1b 29 73 38 30 57 00 01 00 00 00 00 00 0a 00 06 00 05...` from the ring
+source, parser dispatch again walks `0x11eb6`, `0x12008`, `0x11ff6`, and
+`0x11f96`, delayed restore reaches record `80 57 00 50 00 00`, `0x16fae`
+fails after twelve descriptor bytes with staged words `+0x16 = 10`,
+`+0x14 = 5`, and `+0x18 = 0`, and `0x17026`/`0x16c14` skip allocation and
+install. The output effect is no downloaded-font candidate or current-record
+mutation.
 Fixture `host-fetched segmented downloaded character renders through 0x1f1f0`
 connects the downloaded-character linear reader to the remaining segmented
 compact renderer shape. Host fetch drains `ESC )s258W`; parser dispatch walks
@@ -1341,10 +1351,10 @@ through 0x1f1f0`, `host-fetched split-plane segmented downloaded character
 renders through 0x1f1f0`, and `host-fetched downloaded character stream
 reaches rendered object`.
 High for the ROM-effect names and failure behavior of every `0x16fae`
-validation-table entry, including the host-fetched invalid-type no-install
-boundary. Medium for the complete soft-font grammar because exact HP manual
-labels for pass-through descriptor fields and every legal metric combination
-have not been page-compared.
+validation-table entry, including the host-fetched invalid-type and
+reversed-range no-install boundaries. Medium for the complete soft-font grammar
+because exact HP manual labels for pass-through descriptor fields and every
+legal metric combination have not been page-compared.
 
 ### Fixtures
 
@@ -1363,6 +1373,7 @@ have not been page-compared.
 - `host-fetched 0x15d0a split-plane continuation resource object resumes
   fixed-record render`
 - `ESC )s80W invalid resource type fails validation before allocation`
+- `ESC )s80W reversed resource range fails validation before allocation`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `0x16498-backed downloaded character object renders segmented-wide compact
   row`
@@ -1397,9 +1408,10 @@ have not been page-compared.
 - `0x16fae..0x17016`: all 32 validation slots now have ROM-effect names and
   concrete success/failure fixtures. Exact HP manual labels for consumed but
   not staged descriptor fields still need external correlation. The
-  host-fetched invalid-type path proves no-install behavior for entry `2`;
-  remaining descriptor error forms still need the same parser-produced and
-  page-visible treatment.
+  host-fetched invalid-type path proves no-install behavior for entry `2`, and
+  the host-fetched reversed-range path proves no-install behavior for entry
+  `6`; remaining descriptor error forms still need the same parser-produced
+  and page-visible treatment.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span
   wide, linear normal, linear segmented, and split-plane segmented
   downloaded-character paths are page-visible. Remaining parser-produced
@@ -1418,7 +1430,7 @@ have not been page-compared.
   host-fetched type-0 and type-2 downloaded payloads for both span consumers,
   and the shared consumer branch family is fixture-backed. It still needs
   broader metric-byte values and producer-side validation/error page evidence
-  beyond the invalid-type no-install boundary.
+  beyond the invalid-type and reversed-range no-install boundaries.
 
 ## Macro Definition And Data-Chain Replay
 

@@ -36210,6 +36210,25 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         candidates=[0x00000100, 0x00000200, 0x00000300],
     )
+    table_payload_reversed_range_stream = (
+        b"\x1b)s80W"
+        + bytes.fromhex("00 01 00 00 00 00 00 0a 00 06 00 05")
+        + (b"\x00" * 68)
+    )
+    table_payload_reversed_range_command = render_font_download_resource_command_stream_via_121cc_16c14(
+        table_payload_reversed_range_stream,
+        records=[{"id": 0, "flags": 0, "payload": 0}],
+        current_id=0x1234,
+        new_payload_address=0,
+        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        cursors={
+            "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+        },
+        candidates=[0x00000100, 0x00000200, 0x00000300],
+    )
     table_payload_resource_dispatch_trace = trace_font_parser_dispatch_via_11774(data, table_payload_resource_command_stream)
     table_payload_resource_dispatch_commands = table_payload_resource_dispatch_trace["commands"]
     assert isinstance(table_payload_resource_dispatch_commands, list)
@@ -36221,12 +36240,34 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         data,
         table_payload_invalid_type_stream,
     )
+    table_payload_reversed_range_dispatch_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        table_payload_reversed_range_stream,
+    )
     host_fetched_invalid_type_stream = fetch_stream_via_a904(
         host_byte_fetch_state(ring=list(table_payload_invalid_type_stream), direct_mode=0),
         len(table_payload_invalid_type_stream),
     )
+    host_fetched_reversed_range_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(table_payload_reversed_range_stream), direct_mode=0),
+        len(table_payload_reversed_range_stream),
+    )
     table_payload_invalid_type_from_host = render_font_download_resource_command_stream_via_121cc_16c14(
         host_fetched_invalid_type_stream["stream"],
+        records=[{"id": 0, "flags": 0, "payload": 0}],
+        current_id=0x1234,
+        new_payload_address=0,
+        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        cursors={
+            "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+        },
+        candidates=[0x00000100, 0x00000200, 0x00000300],
+    )
+    table_payload_reversed_range_from_host = render_font_download_resource_command_stream_via_121cc_16c14(
+        host_fetched_reversed_range_stream["stream"],
         records=[{"id": 0, "flags": 0, "payload": 0}],
         current_id=0x1234,
         new_payload_address=0,
@@ -36255,6 +36296,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(table_payload_invalid_type_allocation, dict)
     table_payload_invalid_type_host_event = table_payload_invalid_type_from_host["events"][0]
     assert isinstance(table_payload_invalid_type_host_event, dict)
+    table_payload_reversed_range_event = table_payload_reversed_range_command["events"][0]
+    assert isinstance(table_payload_reversed_range_event, dict)
+    table_payload_reversed_range_validation = table_payload_reversed_range_event["validation"]
+    assert isinstance(table_payload_reversed_range_validation, dict)
+    table_payload_reversed_range_allocation = table_payload_reversed_range_event["allocation"]
+    assert isinstance(table_payload_reversed_range_allocation, dict)
+    table_payload_reversed_range_host_event = table_payload_reversed_range_from_host["events"][0]
+    assert isinstance(table_payload_reversed_range_host_event, dict)
     checks.append(assert_equal("ESC )s80W resource stream installs 0x1719c payload through 0x16c14", {
         "event": {
             key: table_payload_resource_command_event[key]
@@ -36432,6 +36481,105 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
         "host_fetched": {
             "stream": table_payload_invalid_type_stream,
+            "fetch_source_set": ["ring"],
+            "remaining_ring": [],
+            "validation_status": 0,
+            "install": None,
+        },
+    }))
+    checks.append(assert_equal("ESC )s80W reversed resource range fails validation before allocation", {
+        "event": {
+            key: table_payload_reversed_range_event[key]
+            for key in (
+                "kind",
+                "sequence",
+                "parameter",
+                "parsed_record",
+                "delayed_snapshot_bytes",
+                "restore_dispatch",
+                "restored_record",
+                "delayed_handler",
+                "payload_offset",
+                "payload_length",
+                "byte_budget",
+            )
+        },
+        "validation": {
+            key: table_payload_reversed_range_validation[key]
+            for key in (
+                "status",
+                "failed_index",
+                "bytes_consumed",
+                "budget",
+                "payload_units",
+                "symbol_count",
+            )
+        },
+        "staging": {
+            "word14": u16(table_payload_reversed_range_validation["staging"], 0x14),  # type: ignore[arg-type]
+            "word16": u16(table_payload_reversed_range_validation["staging"], 0x16),  # type: ignore[arg-type]
+            "word18": u16(table_payload_reversed_range_validation["staging"], 0x18),  # type: ignore[arg-type]
+        },
+        "allocation": {
+            key: table_payload_reversed_range_allocation[key]
+            for key in ("status", "allocation_size", "payload")
+        },
+        "install": table_payload_reversed_range_event["install"],
+        "stream_pos": table_payload_reversed_range_command["stream_pos"],
+        "pending": table_payload_reversed_range_command["pending"],
+        "dispatch_handlers": [
+            event["handler"]
+            for event in table_payload_reversed_range_dispatch_trace["dispatches"]
+        ],
+        "host_fetched": {
+            "stream": host_fetched_reversed_range_stream["stream"],
+            "fetch_source_set": sorted(set(host_fetched_reversed_range_stream["sources"])),
+            "remaining_ring": host_fetched_reversed_range_stream["state"]["ring"],
+            "validation_status": table_payload_reversed_range_host_event["validation"]["status"],  # type: ignore[index]
+            "install": table_payload_reversed_range_host_event["install"],
+        },
+    }, {
+        "event": {
+            "kind": "font-resource-payload",
+            "sequence": b"\x1b)s80W",
+            "parameter": 80,
+            "parsed_record": bytes.fromhex("80 57 00 50 00 00"),
+            "delayed_snapshot_bytes": bytes.fromhex("01 00 01 6c 14 80 57 00 50 00 00"),
+            "restore_dispatch": {"kind": "direct-handler", "handler": 0x16C14},
+            "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+            "delayed_handler": 0x16C14,
+            "payload_offset": 6,
+            "payload_length": 80,
+            "byte_budget": 80,
+        },
+        "validation": {
+            "status": 0,
+            "failed_index": 6,
+            "bytes_consumed": 12,
+            "budget": 68,
+            "payload_units": 0x80,
+            "symbol_count": 0,
+        },
+        "staging": {
+            "word14": 5,
+            "word16": 10,
+            "word18": 0,
+        },
+        "allocation": {
+            "status": 0,
+            "allocation_size": 0,
+            "payload": None,
+        },
+        "install": None,
+        "stream_pos": len(table_payload_reversed_range_stream),
+        "pending": {
+            "pending_flag": 0,
+            "handler": 0,
+            "snapshot_record": bytes.fromhex("80 57 00 50 00 00"),
+        },
+        "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+        "host_fetched": {
+            "stream": table_payload_reversed_range_stream,
             "fetch_source_set": ["ring"],
             "remaining_ring": [],
             "validation_status": 0,
@@ -60297,6 +60445,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_invalid_type_allocation["status"],
         table_payload_invalid_type_event["install"],
         sorted(set(host_fetched_invalid_type_stream["sources"])),
+    ))
+    lines.append("- host-fetched reversed-range resource payload: `%s` reaches restored record `%s`, fails validation entry `%d` after `%d` bytes with words `+0x16/+0x14 = %d/%d`, skips allocation with status `%d`, leaves install `%s`, and drains entirely from `%s` source." % (
+        " ".join(f"{byte:02x}" for byte in table_payload_reversed_range_stream[:18]),
+        " ".join(f"{byte:02x}" for byte in table_payload_reversed_range_event["restored_record"]),
+        table_payload_reversed_range_validation["failed_index"],
+        table_payload_reversed_range_validation["bytes_consumed"],
+        u16(table_payload_reversed_range_validation["staging"], 0x16),  # type: ignore[arg-type]
+        u16(table_payload_reversed_range_validation["staging"], 0x14),  # type: ignore[arg-type]
+        table_payload_reversed_range_allocation["status"],
+        table_payload_reversed_range_event["install"],
+        sorted(set(host_fetched_reversed_range_stream["sources"])),
     ))
     lines.append("- setup type fixtures: type `0` -> byte `+0x0c = %d`, units `0x%03x`; type `2` -> byte `+0x0c = %d`, units `0x%03x`; unsupported type returns status `%d` without changing byte `+0x0c`." % (
         font_setup_type_0["staging"][0x0C],

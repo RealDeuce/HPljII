@@ -1123,8 +1123,8 @@ compact text renderer.
   - staged header `0x7827de`: copied into allocated payloads by `0x1719c`.
 - Unknown:
   - exact manual names for all 32 `0x16fae` validation predicates.
-  - page-render contracts for the bit-30-clear descriptor/resource resume
-    routes through `0x16606` and `0x15c4c`.
+  - page-render contract for the bit-30-clear descriptor/resource resume route
+    through `0x15c4c`.
 
 ### Writers
 
@@ -1139,12 +1139,18 @@ compact text renderer.
   and initialize font-resource payload headers.
 - `0x168dc` and `0x16942` copy downloaded glyph bitmap bytes and save
   continuation state.
+- `0x16606` clears stale continuation state, writes bit-30-clear fixed-record
+  table entries, copies bitmap bytes through `0x16874`, and refreshes selected
+  contexts through `0x14c64` when the installed payload is active.
 
 ### Readers And Consumers
 
 - `0x11f96` reads the parsed `W` count and schedules delayed font handlers.
 - `0x172c0` scans the current-record pool by `0x782f2e`.
 - `0x1b4c0` resolves payload pointers for descriptor routes.
+- `0x16606` reads current character `0x782f30`, selected payload base
+  `0x78285e`, byte budget `0x783140`, fixed-record entries, and continuation
+  fields.
 - `0x1bc38` inserts installed payloads into the candidate list.
 - `0x14c64` consumes installed candidate longwords and payload headers to
   build active maps.
@@ -1157,7 +1163,12 @@ The combined host-fetched stream `ESC *c4660d37e5F` plus `ESC )s2193W`
 payload plus `%` sets current id `0x1234`, sets current character `0x25`,
 installs a split-plane downloaded glyph object at record delta `0x0500`,
 queues printable `%` as segmented compact selector `0x3003`, and renders the
-downloaded row through target `0x1effe`.
+downloaded row through target `0x1effe`. Fixture
+`host-fetched 0x15d0a current-record resource object feeds fixed-record
+render` also proves a host-fetched `ESC )s0W` descriptor can route bit-30-clear
+current-record payload `0x000100` through `0x16606`, install fixed-record glyph
+`0x21` at payload table entry `+0x48`, queue selector `0x0003`, preserve
+context slot `3` through `0x1edc6`, and render three mode-0 rows.
 
 ### Confidence
 
@@ -1174,6 +1185,8 @@ been page-compared.
 - `host-fetched font control stream feeds descriptor and character payload
   state`
 - `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`
+- `host-fetched 0x15d0a current-record resource object feeds fixed-record
+  render`
 - `0x16498-backed downloaded character object renders segmented-wide compact
   row`
 - `0x16fae table-driven validation predicates populate staged header fields`
@@ -1182,6 +1195,7 @@ been page-compared.
 
 - `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`
 - `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`
+- `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`
 - `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`
 - `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`
 - `generated/disasm/ic30_ic13_font_resource_find_017026.lst`
@@ -1190,8 +1204,6 @@ been page-compared.
 
 ### Unresolved Middle Edges
 
-- `0x15e3c..0x15e46`: bit-30-clear current-record descriptor route to
-  `0x16606` is routed but not yet composed into tracked page-render output.
 - `0x15e5c..0x15e68`: bit-30-clear continuation route to `0x15c4c` is routed
   but not yet composed into tracked page-render output.
 - `0x16fae..0x17016`: validation predicates need complete manual-facing names.

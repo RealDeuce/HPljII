@@ -15,6 +15,7 @@ glyph.
 - `generated/analysis/ic30_ic13_font_control_flow.md`
 - `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`
 - `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`
+- `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`
 - `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`
 - `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`
 - `generated/disasm/ic30_ic13_font_resource_find_017026.lst`
@@ -32,6 +33,7 @@ Primary fixtures:
 - `0x121cc/0x15d0a-modeled font descriptor command stream`
 - `font descriptor stream ties ROM parser dispatch to 0x15d0a routes`
 - `host-fetched font descriptor streams route through 0x15d0a`
+- `host-fetched 0x15d0a current-record resource object feeds fixed-record render`
 - `0x16c14-modeled downloaded font replacement bookkeeping`
 - `0x16c14 routes installed font resource through 0x1bc38 slot`
 - `0x16c14-modeled downloaded font free-slot bookkeeping`
@@ -141,6 +143,10 @@ Renderer-facing allocated payload fields:
 - glyph pointer table entry: relative offset from payload base to a
   downloaded character object, for example table entry `0x00de` points to
   record delta `0x0500` in the `ESC )s2193W` fixture.
+- fixed-record table entry: eight bytes at payload `+0x40 + 8 * glyph`. The
+  `0x16606` current-record fixture installs glyph `0x21` at payload-relative
+  offset `0x48` with record `02 03 04 00 00 00 02 00`, where bytes `+0/+1`
+  are width/rows and long `+4` points to bitmap delta `0x0200`.
 - payload bytes `+0x2b`, `+0x2c`, and `+0x2d`: unflagged span metrics
   consumed by `0xd4ac` when the installed payload is used as a fixed-record
   context. The `ESC )s80W` fixture leaves them as `0`, `0`, and `0x20`,
@@ -154,9 +160,9 @@ Unknown:
 
 - Manual names for every validation-table predicate feeding `0x16fae` are not
   complete, even though the table-driven fixture pins all staged field writes.
-- The `0x16606` downloaded-font-resource object path and resume helper
-  `0x15c4c` are routed by `0x15d0a`, but they are not yet composed into a
-  tracked page-render note like the `0x16498` character-object path.
+- The `0x15c4c` downloaded-font-resource resume helper is routed by
+  `0x15d0a`, but it is not yet composed into a tracked page-render note like
+  the `0x16606` current-record path and `0x16498` character-object path.
 - The complete soft-font grammar is not exhaustively proven for every legal
   PCL descriptor form and every metric-byte combination.
 
@@ -197,6 +203,10 @@ Fixture values:
 
 - descriptor `04 00 aa bb` with current id `0x1234` routes to current-record
   payload `0x456789`, sees object bit `30`, and dispatches handler `0x16498`.
+- host-fetched descriptor `04 00 02 03 04 00 aa 55 f0 0f c3 3c ...` with
+  current id `0x1234` routes to current-record payload `0x000100`, sees bit
+  `30` clear, dispatches handler `0x16606`, installs fixed-record glyph
+  `0x21`, and renders that glyph through the page-record bridge.
 - descriptor `04 01 cc` with continuation flag set routes to saved payload
   `0x654321`, sees bit `30` clear, and dispatches handler `0x15c4c`.
 - descriptor kind `3` is rejected by `0x169f6` and drained without routing.
@@ -359,6 +369,34 @@ selects:
 - one full 16-byte chunk and one remainder byte.
 - destination x `22`, y `6`, and `$a001 = 0x16`.
 
+## Downloaded Resource Object And Rendering
+
+The bit-30-clear current-record path uses `0x16606` after a descriptor
+status-1 route. The fixture
+`host-fetched 0x15d0a current-record resource object feeds fixed-record
+render` covers:
+
+- host-fetched command prefix `ESC )s0W`;
+- parser handlers `0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`;
+- restored descriptor record `80 57 00 00 00 00`;
+- descriptor byte budget `0x14`;
+- current-record payload `0x000100` with object bit `30` clear;
+- descriptor route handler `0x16606`;
+- stale continuation state cleared before the install;
+- selected current character `0x21`;
+- fixed-record table entry at payload `+0x48`;
+- installed record `02 03 04 00 00 00 02 00`;
+- copied bitmap bytes `aa 55 f0 0f c3 3c` at payload delta `0x0200`;
+- active map dispatch through `0x14c64` / `0x14e24` / `0x14eb6`;
+- source object glyph `1`, width `2`, rows `3`, context slot `3`;
+- page-record object prefix `00 00 00 00 00 03 00 01 01 66 01`;
+- `0x1edc6` context-slot prefix `(0, 0, 0, 0x000100)`; and
+- rendered mode-0 fixed-record rows beginning at x `22`, y `6`.
+
+This closes the current-record bit-30-clear `0x15e3c..0x15e46` middle edge for
+one page-visible fixed-record resource object. The remaining sibling route is
+the continuation/resume branch `0x15e5c..0x15e68` into `0x15c4c`.
+
 ## End-To-End Downloaded Glyph Path
 
 The strongest current byte-stream fixture is:
@@ -418,6 +456,10 @@ downloaded segmented-wide row as the direct compact-object renderer.
 - `0x17026` writes staged type/size and allocates the payload.
 - `0x1719c` writes allocated payload header fields and optional symbol block.
 - `0x168dc` and `0x16942` write glyph bitmap bytes and continuation state.
+- `0x16606` clears stale continuation state, writes fixed-record table entries
+  in bit-30-clear resource payloads, copies bitmap bytes through `0x16874`,
+  and refreshes selected contexts through `0x14c64` when the payload matches
+  an active primary or secondary context.
 - `0x12f2e`/`0x1387c` write compact text bucket objects for the installed
   glyph.
 
@@ -427,6 +469,9 @@ downloaded segmented-wide row as the direct compact-object renderer.
 - `0x172c0` reads the current-record pool by current font id.
 - `0x1b4c0` resolves payload pointers from current records or continuation
   state.
+- `0x16606` reads `0x7827c6`, `0x7827da`, `0x7827c8`, `0x7827ca`,
+  `0x7827ce`, `0x7827d2`, `0x7827d6`, `0x7827d8`, current character
+  `0x782f30`, selected payload base `0x78285e`, and byte budget `0x783140`.
 - `0x1bc38` reads payload class byte `+0x20` and inserts candidate longwords.
 - `0x14c64` consumes installed candidate longwords and payload header fields
   to build active glyph maps.
@@ -442,14 +487,17 @@ installed glyph. The visible effect is that the same host byte can resolve to
 a payload-backed glyph record instead of a built-in glyph. In the end-to-end
 fixture, printable `%` draws glyph `0x25` from downloaded object record
 `0x0500`, with a segmented-wide compact selector `0x3003` and one visible row
-beginning at x `22`.
+beginning at x `22`. In the `0x16606` current-record fixture, printable `!`
+maps to fixed-record glyph `1` from payload record `0x48`, queues selector
+`0x0003`, and renders three mode-0 rows beginning at x `22`.
 
 ## Confidence
 
 High for command dispatch, delayed-record restoration, current id/current
 character ownership, current-record mark/unmark, `0x16c14` install
 bookkeeping, table-driven descriptor staging, `0x17026`/`0x1719c` allocation
-headers, and the complete downloaded-character-to-rendered-row fixture.
+headers, the complete downloaded-character-to-rendered-row fixture, and the
+`0x16606` bit-30-clear resource-object-to-rendered-row fixture.
 
 Medium for the full PCL soft-font grammar because the validation table is
 executable but not every predicate has a manual-facing semantic name, and not
@@ -457,8 +505,10 @@ every legal metric combination has a parser-produced page comparison.
 
 Medium for bit-30-clear fixed-record dispatch from a `0x1719c` payload: the
 isolation fixture proves `0x14e24`/`0x14eb6` map construction and rendering,
-but the normal integrated `0x16c14` resource install shown here sets bit `30`
-and therefore selects the offset-table path.
+and the `0x16606` descriptor fixture proves a current-record bit-30-clear
+resource object reaches the same fixed-record render path. The normal
+integrated `0x16c14` resource install shown here still sets bit `30` and
+therefore selects the offset-table path.
 
 ## Reproduction Contract
 
@@ -477,15 +527,12 @@ A byte-stream renderer must preserve:
 - bit `30` on candidate longwords, because it chooses offset-table resource
   rendering rather than fixed-record rendering;
 - glyph table entry, glyph record bytes, bitmap offset, span, rows, width,
-  split-plane layout, and compact selector bits;
+  split-plane layout, fixed-record layout, and compact selector bits;
 - the page-record bridge through `0x1edc6` and active render entry
   `0x1ed84`/`0x1ef6a`.
 
 ## Remaining Edges
 
-- `0x15e3c..0x15e46`: bit-30-clear current-record descriptor route to
-  `0x16606` is routed but not yet composed into a tracked page-render
-  contract.
 - `0x15e5c..0x15e68`: bit-30-clear continuation route to `0x15c4c` is routed
   but not yet composed into a tracked page-render contract.
 - `0x16fae..0x17016`: all 32 validation slots are executable, but

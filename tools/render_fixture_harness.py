@@ -5737,6 +5737,132 @@ def font_download_char_object_via_16498(
     }
 
 
+def font_download_resource_object_via_16606(
+    header: bytes | bytearray,
+    *,
+    base: int = 0,
+    char_code: int,
+    record_prefix: bytes,
+    bitmap_stream: bytes,
+    byte_budget: int,
+    object_offset: int,
+    continuation: dict[str, int] | None = None,
+) -> dict[str, object]:
+    updated = bytearray(header)
+    base &= 0x00FFFFFF
+    char_code &= 0xFF
+    type_byte = updated[base + 0x0E] if len(updated) > base + 0x0E else 0
+    continuation_cleared = bool(continuation and int(continuation.get("flag", 0)) == 1)
+    continuation_after = clear_download_continuation_state(continuation) if continuation_cleared and continuation else continuation
+
+    if 0x20 < char_code <= 0x7F:
+        table_base_char = 0x20
+        max_payload_span = 0x300
+    elif type_byte == 1 and 0xA0 <= char_code <= 0xFF:
+        table_base_char = 0x40
+        max_payload_span = 0x600
+    else:
+        return {
+            "status": 0,
+            "reason": "char-outside-resource-range",
+            "char_code": char_code,
+            "type_byte_0x0e": type_byte,
+            "continuation_cleared": continuation_cleared,
+            "continuation": continuation_after,
+        }
+
+    if len(record_prefix) < 4:
+        return {
+            "status": 0,
+            "reason": "short-resource-record-prefix",
+            "char_code": char_code,
+            "record_prefix": record_prefix,
+        }
+    if int(byte_budget) < 0x0E:
+        return {
+            "status": 0,
+            "reason": "budget-below-0x16606-object-minimum",
+            "char_code": char_code,
+            "byte_budget": int(byte_budget),
+        }
+
+    table_entry = base + 0x40 + (char_code - table_base_char) * 8
+    base_entry = base + 0x40
+    if table_entry + 8 > len(updated):
+        updated.extend(b"\x00" * (table_entry + 8 - len(updated)))
+    width = record_prefix[0]
+    rows = record_prefix[1]
+    span = width & 0xFE
+    if span == 0:
+        return {
+            "status": 0,
+            "reason": "zero-resource-span",
+            "char_code": char_code,
+            "record_prefix": record_prefix[:4],
+        }
+    copy_result = font_payload_linear_copy_via_168dc(
+        bitmap_stream,
+        rows * span,
+        byte_budget - 0x0E,
+    )
+    if copy_result["status"] == 0:
+        return {
+            "status": 0,
+            "reason": "payload-copy-failed",
+            "copy": copy_result,
+        }
+
+    bitmap = bytes(copy_result["dest"])
+    object_size = ((len(bitmap) + 0x3F) >> 6) * 0x40
+    if object_size == 0:
+        object_size = 0x40
+    if object_offset < base:
+        raise AssertionError("modeled 0x16606 object offset must be inside the selected payload")
+    if object_offset + object_size > len(updated):
+        updated.extend(b"\x00" * (object_offset + object_size - len(updated)))
+    updated[object_offset:object_offset + len(bitmap)] = bitmap
+
+    release_old = u32(updated, table_entry + 4) != u32(updated, base_entry + 4)
+    updated[table_entry:table_entry + 4] = record_prefix[:4]
+    updated[table_entry + 4:table_entry + 8] = ((object_offset - base) & 0x00FFFFFF).to_bytes(4, "big")
+    continuation_saved = copy_result["status"] == 2
+    if continuation_saved:
+        continuation_after = {
+            "flag": 1,
+            "payload": 0,
+            "char_code": char_code,
+        }
+    else:
+        continuation_after = clear_download_continuation_state(continuation_after) if continuation_after else None
+
+    return {
+        "status": int(copy_result["status"]),
+        "handler": 0x16606,
+        "header": bytes(updated),
+        "base": base,
+        "char_code": char_code,
+        "type_byte_0x0e": type_byte,
+        "table_base_char": table_base_char,
+        "table_entry": table_entry,
+        "base_entry": base_entry,
+        "record_prefix": record_prefix[:4],
+        "record": bytes(updated[table_entry:table_entry + 8]),
+        "release_old": release_old,
+        "byte_budget": int(byte_budget),
+        "copy_budget": byte_budget - 0x0E,
+        "object_offset": object_offset,
+        "object_size": object_size,
+        "bitmap": bitmap,
+        "span": span,
+        "rows": rows,
+        "max_payload_span": max_payload_span,
+        "copy": copy_result,
+        "continuation_cleared": continuation_cleared,
+        "continuation_saved": continuation_saved,
+        "continuation": continuation_after,
+    }
+
+
 FONT_RECORD_BASE = 0x782640
 FONT_RECORD_SIZE = 10
 FONT_RESOURCE_VALIDATE_TABLE: tuple[tuple[int, int], ...] = (
@@ -32348,6 +32474,285 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "handler": 0x15C4C,
                 "handler_meaning": "resume-downloaded-font-resource-object",
             },
+        },
+    }))
+
+    resource_object_context = 0x00000100
+    resource_object_memory = bytearray(0x1000)
+    resource_object_memory[resource_object_context + 0x14:resource_object_context + 0x16] = (0x0115).to_bytes(2, "big")
+    resource_object_descriptor = (
+        bytes.fromhex("04 00 02 03 04 00 aa 55 f0 0f c3 3c")
+        + bytes(8)
+    )
+    resource_object_stream = b"\x1b)s0W" + resource_object_descriptor
+    host_fetched_resource_descriptor_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(resource_object_stream), direct_mode=0),
+        len(resource_object_stream),
+    )
+    host_fetched_resource_descriptor_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        host_fetched_resource_descriptor_stream["stream"],
+        descriptor_budget=0x14,
+    )
+    host_fetched_resource_descriptor_command = host_fetched_resource_descriptor_trace["commands"][0]
+    assert isinstance(host_fetched_resource_descriptor_command, dict)
+    resource_descriptor_command = render_font_descriptor_command_stream_via_121cc_15d0a(
+        host_fetched_resource_descriptor_stream["stream"],
+        descriptor_byte_budget=0x14,
+        records=[{"id": 0x1234, "flags": 0x40, "payload": resource_object_context}],
+        current_id=0x1234,
+        current_object_flags=0,
+    )
+    resource_object_install = font_download_resource_object_via_16606(
+        resource_object_memory,
+        base=resource_object_context,
+        char_code=0x21,
+        record_prefix=resource_object_descriptor[2:6],
+        bitmap_stream=resource_object_descriptor[6:12],
+        byte_budget=0x14,
+        object_offset=resource_object_context + 0x0200,
+        continuation={
+            "flag": 1,
+            "payload": resource_object_context,
+            "word_0x7827c8": 0x21,
+            "dest": 0x111111,
+            "trailing_dest": 0x222222,
+            "remaining": 3,
+            "d4_counter": 4,
+            "d3_counter": 5,
+        },
+    )
+    resource_object_installed = resource_object_install["header"]
+    assert isinstance(resource_object_installed, bytes)
+    resource_object_map = inline_map_via_14e24(resource_object_installed, resource_object_context)
+    resource_object_map_table = resource_object_map["table"]
+    assert isinstance(resource_object_map_table, bytes)
+    resource_object_candidate = {
+        "slot_pointer": FONT_CANDIDATE_LIST_BASE,
+        "longword": resource_object_context,
+        "record_start": resource_object_context,
+        "inline_word_0x14": u16(resource_object_installed, resource_object_context + 0x14),
+        "inline_byte_0x17": resource_object_installed[resource_object_context + 0x17],
+    }
+    resource_object_dispatch = dispatch_selected_inline_font_via_14c64(
+        data,
+        resource_object_installed,
+        resource_object_candidate,
+        primary_secondary_selector=0,
+        active_primary_symbol=0x0115,
+        active_secondary_symbol=0x0115,
+    )
+    resource_object_source = build_inline_text_source_object_from_1393a(
+        resource_object_installed,
+        resource_object_context,
+        resource_object_map_table,
+        0x21,
+        x=0,
+        y=0,
+        context_slot=3,
+    )
+    resource_object_positioned = position_unflagged_text_source_via_d3b2(
+        resource_object_source,
+        bytes(resource_object_source["inline_record"]),
+        cursor_x=10,
+        cursor_y=20,
+        printable_offset=7,
+        context_metric_flag=0,
+        source_x_offset=5,
+    )
+    resource_object_positioned_source = resource_object_positioned["source"]
+    assert isinstance(resource_object_positioned_source, dict)
+    resource_object_bucket = queue_text_source_via_12f2e(
+        resource_object_installed,
+        resource_object_positioned_source,
+    )
+    resource_object_page_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, resource_object_context],
+    }
+    resource_object_page_result = queue_text_source_to_page_record_via_12f2e(
+        resource_object_installed,
+        resource_object_page_record,
+        resource_object_positioned_source,
+    )
+    resource_object_bucket_array = resource_object_page_record["bucket_array"]
+    assert isinstance(resource_object_bucket_array, dict)
+    resource_object_page_object = bytes(resource_object_bucket_array[1][0])
+    resource_object_bridge_record = {
+        "bucket_root": resource_object_page_object,
+        "rule_list": [],
+        "fixed_list": [],
+        "context_slots": [0, 0, 0, resource_object_context],
+    }
+    resource_object_bridged = bridge_page_record_via_1edc6(resource_object_bridge_record)
+    resource_object_rendered = render_bridged_compact_bucket_object(
+        data,
+        resource_object_installed,
+        resource_object_bridged,
+    )
+    checks.append(assert_equal("host-fetched 0x15d0a current-record resource object feeds fixed-record render", {
+        "descriptor": {
+            "fetched_stream_prefix": host_fetched_resource_descriptor_stream["stream"][:5],
+            "fetch_sources": sorted(set(host_fetched_resource_descriptor_stream["sources"])),
+            "parser_handlers": [
+                event["handler"]
+                for event in host_fetched_resource_descriptor_trace["dispatches"]
+            ],
+            "restored_record": host_fetched_resource_descriptor_command["restored_record"],
+            "descriptor_offset": host_fetched_resource_descriptor_command["descriptor_offset"],
+            "descriptor_budget": host_fetched_resource_descriptor_command["descriptor_byte_budget"],
+            "route": {
+                key: resource_descriptor_command["route"][key]
+                for key in ("path", "target_payload", "object_bit30", "handler", "handler_meaning")
+            },
+        },
+        "install": {
+            key: resource_object_install[key]
+            for key in (
+                "handler",
+                "base",
+                "char_code",
+                "table_base_char",
+                "table_entry",
+                "record",
+                "release_old",
+                "byte_budget",
+                "copy_budget",
+                "object_offset",
+                "object_size",
+                "bitmap",
+                "span",
+                "rows",
+                "continuation_cleared",
+                "continuation_saved",
+            )
+        },
+        "dispatch": {
+            key: resource_object_dispatch[key]
+            for key in (
+                "path",
+                "selected_longword",
+                "record_start",
+                "selected_symbol",
+                "selected_flag",
+                "probe_count",
+                "patch_kind",
+            )
+        },
+        "source": {
+            key: resource_object_source[key]
+            for key in ("host_char", "mapped", "glyph_entry", "glyph_width", "glyph_rows", "inline_record", "valid_record", "bitmap")
+        },
+        "bucket": {
+            key: resource_object_bucket[key]
+            for key in ("path", "object", "bucket_index", "selector", "coord", "glyph", "rows", "width")
+        },
+        "page": {
+            key: resource_object_page_result[key]
+            for key in ("path", "allocated", "chain_index", "count_before", "count_after", "bucket_index", "selector", "coord", "glyph")
+        } | {
+            "object_prefix": resource_object_page_object[:11],
+            "bridge_context_slots": resource_object_bridged["context_slots"][:4],
+        },
+        "render": {
+            "selector": resource_object_rendered["selector"],
+            "context_slot": resource_object_rendered["context_slot"],
+            "compact_mode": resource_object_rendered["compact_mode"],
+            "payload": resource_object_rendered["payload"],
+            "rows": resource_object_rendered["rows"],
+        },
+    }, {
+        "descriptor": {
+            "fetched_stream_prefix": b"\x1b)s0W",
+            "fetch_sources": ["ring"],
+            "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "restored_record": b"\x80W\x00\x00\x00\x00",
+            "descriptor_offset": 5,
+            "descriptor_budget": 0x14,
+            "route": {
+                "path": "current-record",
+                "target_payload": resource_object_context,
+                "object_bit30": 0,
+                "handler": 0x16606,
+                "handler_meaning": "downloaded-font-resource-object",
+            },
+        },
+        "install": {
+            "handler": 0x16606,
+            "base": resource_object_context,
+            "char_code": 0x21,
+            "table_base_char": 0x20,
+            "table_entry": resource_object_context + 0x48,
+            "record": bytes.fromhex("02 03 04 00 00 00 02 00"),
+            "release_old": False,
+            "byte_budget": 0x14,
+            "copy_budget": 6,
+            "object_offset": resource_object_context + 0x0200,
+            "object_size": 0x40,
+            "bitmap": bytes.fromhex("aa 55 f0 0f c3 3c"),
+            "span": 2,
+            "rows": 3,
+            "continuation_cleared": True,
+            "continuation_saved": False,
+        },
+        "dispatch": {
+            "path": "inline-cache-miss",
+            "selected_longword": resource_object_context,
+            "record_start": resource_object_context,
+            "selected_symbol": 0x0115,
+            "selected_flag": 0,
+            "probe_count": 0x60,
+            "patch_kind": "unchanged",
+        },
+        "source": {
+            "host_char": 0x21,
+            "mapped": 1,
+            "glyph_entry": resource_object_context + 0x48,
+            "glyph_width": 2,
+            "glyph_rows": 3,
+            "inline_record": bytes.fromhex("02 03 04 00 00 00 02 00"),
+            "valid_record": True,
+            "bitmap": resource_object_context + 0x0200,
+        },
+        "bucket": {
+            "path": "short",
+            "object": bytes.fromhex("00 00 00 00 00 03 00 01 01 66 01"),
+            "bucket_index": 1,
+            "selector": 0x0003,
+            "coord": 0x6601,
+            "glyph": 1,
+            "rows": 3,
+            "width": 2,
+        },
+        "page": {
+            "path": "short-page-record",
+            "allocated": True,
+            "chain_index": 0,
+            "count_before": 0,
+            "count_after": 1,
+            "bucket_index": 1,
+            "selector": 0x0003,
+            "coord": 0x6601,
+            "glyph": 1,
+            "object_prefix": bytes.fromhex("00 00 00 00 00 03 00 01 01 66 01"),
+            "bridge_context_slots": (0, 0, 0, resource_object_context),
+        },
+        "render": {
+            "selector": 0x0003,
+            "context_slot": 3,
+            "compact_mode": 0,
+            "payload": bytes.fromhex("00 01 01 66 01") + bytes(0x1B),
+            "rows": [
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 38,
+                "." * 22 + "#.#.#.#..#.#.#.#",
+                "." * 22 + "####........####",
+                "." * 22 + "##....##..####..",
+            ],
         },
     }))
 

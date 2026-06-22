@@ -808,13 +808,17 @@ queues a fixed-width span through `0x136d2`.
   - `0x782a7a` / `0x782a7b`: selector bytes for `0x1387c`; current
     fixtures pin `0x4000` for segment-list span objects.
   - `0x782a7c`: bucket index from y-like coordinate shifted by four.
+    `0x1354a` increments it for the second portrait segment-list entry
+    when a span crosses a 16-row bucket boundary.
   - `0x782a7d`: bucket byte written into fixed-list objects by
     `0x136d2`.
   - `0x782a7e`: packed key used by both `0x135f0` segment-list entries
-    and `0x136d2` fixed-list entries.
+    and `0x136d2` fixed-list entries. `0x1354a` clears its row bits
+    with `andi.w #0x0fff` before emitting the second split entry.
   Evidence: `0x137a2..0x1381a`, fixture
   `0x137a2/0x136d2-modeled fixed-rule list object and bridge
-  normalization`, and both `0x12714` fixtures.
+  normalization`, both `0x12714` fixtures, and
+  `0x1354a portrait text span split queues adjacent buckets`.
 - Derived/cache render interpretation:
   - `0x1f812` word-aligns portrait segment-list x to a visible
     16-pixel boundary while preserving the source key/extent object.
@@ -868,8 +872,14 @@ queues a fixed-width span through `0x136d2`.
 - `0x12714` clears `0x783184`, writes the local 8-byte source, calls
   `0x10084`, gates on `0x782db6`, calls `0x13520`, and retries after
   `0xff1e` on allocation failure.
-- `0x13520` selects portrait `0x135f0` or landscape `0x136d2` after
+- `0x13520` selects portrait `0x1354a` or landscape `0x136d2` after
   `0x137a2` derives selector/key state.
+- `0x1354a` emits one `0x135f0` segment-list entry when
+  `row_low + row_count < 16`; otherwise it shortens the first row
+  count, calls `0x135f0`, increments `0x782a7c`, clears row bits in
+  `0x782a7e`, restores the remaining row count, and calls `0x135f0`
+  again. Evidence: `0x13556..0x135de` and fixture
+  `0x1354a portrait text span split queues adjacent buckets`.
 - `0x135f0` appends a six-byte segment-list entry in a `0x26` object
   allocated through `0x1387c`.
 - `0x136d2` inserts a fixed-width object under page-root `+0x28` using
@@ -949,17 +959,28 @@ queues a fixed-width span through `0x136d2`.
   `0x783186` / `0x783188` to x `28`, and `0x1f812` renders the span on
   rows `12..14` at pixels `96..115` while the inline glyph stays at
   pixels `10..25` on rows `7..9`.
+- Fixture `0x1354a portrait text span split queues adjacent buckets`
+  starts from a pending portrait span `low_x=2`, `high_x=22`, and
+  `high_y=15`. `0x12714` builds source `x=2`, `y=15`, `extent=20`;
+  `0x1354a` sees row low `15` plus row count `3` cross the bucket
+  boundary, emits first object
+  `00 00 00 00 40 00 00 01 f2 00 01 00 00 14 ...` in bucket `0`,
+  then increments the bucket and clears the row bits to emit second
+  object `00 00 00 00 40 00 00 01 02 00 02 00 00 14 ...` in bucket
+  `1`. `0x1f812` renders the first bucket as one row at row `15` and
+  the second bucket as two rows at rows `0..1`, each with 20 visible
+  pixels.
 
 ### Confidence
 
 High for pending-state initialization, unflagged `0xd4ac` low-water
 success, flagged `0xd8fc` low-water success, flush source packaging,
-portrait versus landscape branch selection, object byte shapes, bridge
-shape, and visible row effects because each claim has disassembly and
-passing fixtures. Medium for allocation-failure recovery and
-nonempty/split list ordering because those are disassembled and partly
-shared with existing allocator fixtures, but not yet driven by a live
-pending-span stream.
+portrait versus landscape branch selection, portrait split output,
+object byte shapes, bridge shape, and visible row effects because each
+claim has disassembly and passing fixtures. Medium for allocation-failure
+recovery and nonempty fixed-list ordering because those are disassembled
+and partly shared with existing allocator fixtures, but not yet driven
+by a live pending-span stream.
 
 ### Fixtures
 
@@ -975,6 +996,7 @@ pending-span stream.
 - `live CR span flush materializes 0x12714 page object`
 - `flagged printable d8fc low-watermark flush renders span`
 - `unflagged printable d4ac low-watermark flush renders span`
+- `0x1354a portrait text span split queues adjacent buckets`
 
 ### Disassembly Evidence
 
@@ -992,7 +1014,7 @@ pending-span stream.
   `0xf02c..0xf050` for CR ordering and `0xf34a..0xf362` for the
   shared direct-control flush helper.
 - `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`:
-  `0x13520..0x1381a` producer, insertion, and packed-key helpers.
+  `0x13520..0x1381a` producer, insertion, split, and packed-key helpers.
 - `generated/analysis/ic30_ic13_page_record_bridge.md` and
   `generated/analysis/ic30_ic13_render_dispatch_tables.md`:
   bridge and renderer consumers for fixed-width lists.
@@ -1001,9 +1023,6 @@ pending-span stream.
 
 - `0x127a4..0x127c4`: allocation-failure retry is identified but not
   fixture-driven from a pending-span stream.
-- `0x1354a..0x135ec`: portrait split case after `0x13520` has a second
-  `0x135f0` call when the source crosses a boundary; success and render
-  shape are not yet fixture-covered.
 - `0x13690..0x1377c`: nonempty fixed-list insertion order is covered by
   the shared `0x136d2` addressed fixture, but not by a live
   `0x12714` landscape span source.

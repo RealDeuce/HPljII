@@ -12362,11 +12362,17 @@ def queue_text_span_segment_via_135f0(
     source: dict[str, int],
     *,
     vertical_offset: int = 0,
+    computed_override: dict[str, int] | None = None,
+    row_count_override: int | None = None,
 ) -> dict[str, object]:
     bucket_array = page_record.setdefault("bucket_array", {})
     if not isinstance(bucket_array, dict):
         raise AssertionError("page record bucket_array must be a dict")
-    computed = fixed_rule_key_via_137a2(source, vertical_offset)
+    computed = (
+        dict(computed_override)
+        if computed_override is not None
+        else fixed_rule_key_via_137a2(source, vertical_offset)
+    )
     bucket_index = int(computed["bucket_index"])
     selector = (int(computed["selector_hi"]) << 8) | int(computed["selector_lo"])
     chain = bucket_array.setdefault(bucket_index, [])
@@ -12376,7 +12382,11 @@ def queue_text_span_segment_via_135f0(
     obj[4:6] = selector.to_bytes(2, "big")
     obj[6:8] = (1).to_bytes(2, "big")
     obj[8:10] = int(computed["key"]).to_bytes(2, "big")
-    obj[10] = int(computed["mode"]) & 0xFF
+    obj[10] = (
+        int(row_count_override)
+        if row_count_override is not None
+        else int(computed["mode"])
+    ) & 0xFF
     obj[11] = 0
     obj[12:14] = (int(source["extent"]) & 0xFFFF).to_bytes(2, "big")
     chain.insert(0, bytes(obj))
@@ -12387,6 +12397,57 @@ def queue_text_span_segment_via_135f0(
         "bucket_index": bucket_index,
         "selector": selector,
         "chain_length": len(chain),
+    }
+
+
+def queue_text_span_portrait_via_1354a(
+    page_record: dict[str, object],
+    source: dict[str, int],
+    *,
+    vertical_offset: int = 0,
+) -> dict[str, object]:
+    computed = fixed_rule_key_via_137a2(source, vertical_offset)
+    row_count = int(computed["mode"]) & 0xFF
+    y_mod = int(source["y"]) & 0x0F
+    if y_mod + row_count < 0x10:
+        return queue_text_span_segment_via_135f0(
+            page_record,
+            source,
+            vertical_offset=vertical_offset,
+            computed_override=computed,
+        )
+
+    first_rows = 0x10 - y_mod
+    remaining_rows = row_count - first_rows
+    first = queue_text_span_segment_via_135f0(
+        page_record,
+        source,
+        vertical_offset=vertical_offset,
+        computed_override=computed,
+        row_count_override=first_rows,
+    )
+    second_computed = dict(computed)
+    second_computed["bucket_index"] = int(computed["bucket_index"]) + 1
+    second_computed["key"] = int(computed["key"]) & 0x0FFF
+    second = queue_text_span_segment_via_135f0(
+        page_record,
+        source,
+        vertical_offset=vertical_offset,
+        computed_override=second_computed,
+        row_count_override=remaining_rows,
+    )
+    return {
+        "path": "text-span-segment-list-split",
+        "computed": computed,
+        "first": first,
+        "second": second,
+        "bucket_index": int(computed["bucket_index"]),
+        "next_bucket_index": int(second_computed["bucket_index"]),
+        "selector": int(first["selector"]),
+        "y_mod": y_mod,
+        "row_count": row_count,
+        "first_rows": first_rows,
+        "remaining_rows": remaining_rows,
     }
 
 
@@ -12440,7 +12501,7 @@ def flush_text_span_via_12714(
         }
 
     if orientation == 0:
-        queued = queue_text_span_segment_via_135f0(
+        queued = queue_text_span_portrait_via_1354a(
             page_record,
             raw_source,
             vertical_offset=vertical_offset,
@@ -36179,6 +36240,170 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "#" * 16,
                 "#" * 16,
             ],
+        },
+    }))
+    span_portrait_split_page_record: dict[str, object] = {}
+    span_portrait_split = flush_text_span_via_12714(span_portrait_split_page_record, {
+        "enabled_783184": 1,
+        "low_x_783186": 2,
+        "high_x_783188": 22,
+        "high_y_78318a": 15,
+        "orientation_782da3": 0,
+        "page_extent_782db6": 64,
+    })
+    span_portrait_split_bucket_array = span_portrait_split_page_record["bucket_array"]
+    assert isinstance(span_portrait_split_bucket_array, dict)
+    span_portrait_split_first = bytes(span_portrait_split_bucket_array[0][0])
+    span_portrait_split_second = bytes(span_portrait_split_bucket_array[1][0])
+    span_portrait_split_first_rendered = render_segment_list_object_via_1f812(
+        data,
+        span_portrait_split_first,
+        band_rows=16,
+    )
+    span_portrait_split_second_rendered = render_segment_list_object_via_1f812(
+        data,
+        span_portrait_split_second,
+        band_rows=4,
+    )
+    checks.append(assert_equal("0x1354a portrait text span split queues adjacent buckets", {
+        "flushed": span_portrait_split["flushed"],
+        "path": span_portrait_split["path"],
+        "raw_source": span_portrait_split["raw_source"],
+        "queued": {
+            key: span_portrait_split["queued"][key]
+            for key in (
+                "path",
+                "computed",
+                "bucket_index",
+                "next_bucket_index",
+                "selector",
+                "y_mod",
+                "row_count",
+                "first_rows",
+                "remaining_rows",
+            )
+        },
+        "first": {
+            key: span_portrait_split["queued"]["first"][key]
+            for key in ("computed", "bucket_index", "selector", "object")
+        },
+        "second": {
+            key: span_portrait_split["queued"]["second"][key]
+            for key in ("computed", "bucket_index", "selector", "object")
+        },
+        "render": {
+            "first": span_portrait_split_first_rendered,
+            "second": span_portrait_split_second_rendered,
+        },
+    }, {
+        "flushed": True,
+        "path": "portrait-segment-list",
+        "raw_source": {
+            "orientation": 0,
+            "mode": 0,
+            "x": 2,
+            "y": 15,
+            "extent": 20,
+        },
+        "queued": {
+            "path": "text-span-segment-list-split",
+            "computed": {
+                "x": 2,
+                "y": 15,
+                "bucket_index": 0,
+                "key": 0xF200,
+                "mode": 3,
+                "selector_hi": 0x40,
+                "selector_lo": 0x00,
+            },
+            "bucket_index": 0,
+            "next_bucket_index": 1,
+            "selector": 0x4000,
+            "y_mod": 15,
+            "row_count": 3,
+            "first_rows": 1,
+            "remaining_rows": 2,
+        },
+        "first": {
+            "computed": {
+                "x": 2,
+                "y": 15,
+                "bucket_index": 0,
+                "key": 0xF200,
+                "mode": 3,
+                "selector_hi": 0x40,
+                "selector_lo": 0x00,
+            },
+            "bucket_index": 0,
+            "selector": 0x4000,
+            "object": (
+                bytes.fromhex("00 00 00 00 40 00 00 01 f2 00 01 00 00 14")
+                + (b"\x00" * 0x18)
+            ),
+        },
+        "second": {
+            "computed": {
+                "x": 2,
+                "y": 15,
+                "bucket_index": 1,
+                "key": 0x0200,
+                "mode": 3,
+                "selector_hi": 0x40,
+                "selector_lo": 0x00,
+            },
+            "bucket_index": 1,
+            "selector": 0x4000,
+            "object": (
+                bytes.fromhex("00 00 00 00 40 00 00 01 02 00 02 00 00 14")
+                + (b"\x00" * 0x18)
+            ),
+        },
+        "render": {
+            "first": {
+                "selector": 0x40,
+                "count": 1,
+                "entries": [{
+                    "entry_index": 0,
+                    "coord": 0xF200,
+                    "decoded": {
+                        "row_index": 15,
+                        "byte_pair_offset": 0,
+                        "a001": 0x12,
+                        "a1": 0x1E0,
+                    },
+                    "row_count": 1,
+                    "width_word": 0x0014,
+                    "full_words": 1,
+                    "mask_index": 4,
+                    "trailing_mask": u16(data, 0x308F2 + 4 * 2),
+                    "target": 0x01F862,
+                }],
+                "rows": (["." * 20] * 15) + ["#" * 20],
+            },
+            "second": {
+                "selector": 0x40,
+                "count": 1,
+                "entries": [{
+                    "entry_index": 0,
+                    "coord": 0x0200,
+                    "decoded": {
+                        "row_index": 0,
+                        "byte_pair_offset": 0,
+                        "a001": 0x12,
+                        "a1": 0x00,
+                    },
+                    "row_count": 2,
+                    "width_word": 0x0014,
+                    "full_words": 1,
+                    "mask_index": 4,
+                    "trailing_mask": u16(data, 0x308F2 + 4 * 2),
+                    "target": 0x01F862,
+                }],
+                "rows": [
+                    "#" * 20,
+                    "#" * 20,
+                ],
+            },
         },
     }))
     span_landscape_page_record: dict[str, object] = {}

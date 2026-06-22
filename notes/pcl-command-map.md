@@ -826,8 +826,8 @@ segmented payload objects as isolation controls, constructs type-2
 payload-backed selected inline `0x1f0d2` wide and `0x1f1f0` segmented
 fixed-record payload rows, keeps a selected-memory `0x1f264`
 segmented-wide isolation row, adds a `0x16498` downloaded-pointer
-`0x1f264` segmented-wide row, and pins the segmented `0x2000`
-producer/page-record objects for a real `LINE_PRINTER` `0x1f1f0` case,
+`0x1f264` segmented-wide row, pins even-span and split-plane segmented
+downloaded-pointer `0x2000` producer/page-record objects through `0x1f1f0`,
 and adds a full built-in glyph coverage scan proving the verified ROM
 resources contain no normal wide or non-mode-1 bitmap-entry cases for
 `0x1f0d2`, `0x1f1f0`, or `0x1f264`.

@@ -10888,7 +10888,7 @@ def render_compact_segmented_wide_payload_via_1f264(data: bytes, resources: byte
 def render_compact_segmented_payload_via_1f1f0(data: bytes, resources: bytes | bytearray, context: int, payload: bytes, dest_stride: int = 0x20, band_rows: int = 16) -> dict[str, object]:
     count = u16(payload, 0)
     pos = 2
-    rendered: list[dict[str, int]] = []
+    rendered: list[dict[str, int | str]] = []
     splits: list[dict[str, int]] = []
     dest = bytearray(band_rows * dest_stride)
     fallback_dest = bytearray(0)
@@ -10902,8 +10902,7 @@ def render_compact_segmented_payload_via_1f1f0(data: bytes, resources: bytes | b
         pos += 4
         glyph = resolve_compact_glyph(resources, context, glyph_index)
         render_span = int(glyph["render_span"])
-        if render_span & 1:
-            raise AssertionError("segmented compact fixture only models even-span A2 source rows")
+        trailing_plane = bool(render_span & 1 and render_span > 1 and glyph.get("source_kind") in ("inline", "downloaded-pointer"))
         row_skip = segment << 7
         rows_total = int(glyph["rows"])
         if row_skip >= rows_total:
@@ -10916,15 +10915,23 @@ def render_compact_segmented_payload_via_1f1f0(data: bytes, resources: bytes | b
         rows_in_band = min(rows_here, max(int(band_rows) - row_index, 0))
         remaining_after_band = rows_here - rows_in_band
         bitmap = int(glyph["bitmap"])
-        source_offset = row_skip * render_span
-        source = resources[bitmap + source_offset : bitmap + source_offset + rows_here * render_span]
+        if trailing_plane:
+            a2_row_span = render_span - 1
+            a2_source_offset = row_skip * a2_row_span
+            a3_source_offset = row_skip
+            source = glyph_source_bytes_for_rows(resources, glyph, row_skip=row_skip, rows=rows_here)
+        else:
+            source_offset = row_skip * render_span
+            source = resources[bitmap + source_offset : bitmap + source_offset + rows_here * render_span]
         helper = u32(data, 0x1F08E + render_span * 4)
+        allowed_sources = ("A2", "A3") if trailing_plane else ("A2",)
         if rows_in_band:
             result = simulate_row_copy(data, helper, rows_in_band, stride=dest_stride)
             for write in result.writes:
-                if write.source != "A2":
+                if write.source not in allowed_sources:
                     raise AssertionError(f"unexpected {write.source} write for compact segmented glyph")
-                if write.src + write.size > rows_in_band * render_span:
+                source_len = rows_in_band if write.source == "A3" else rows_in_band * (render_span - 1 if trailing_plane else render_span)
+                if write.src + write.size > source_len:
                     raise AssertionError(f"source read past compact segmented current-band bitmap at +0x{write.src:x}")
             write_bitmap_bits(
                 dest,
@@ -10938,9 +10945,10 @@ def render_compact_segmented_payload_via_1f1f0(data: bytes, resources: bytes | b
         if remaining_after_band:
             result = simulate_row_copy(data, helper, remaining_after_band, stride=dest_stride)
             for write in result.writes:
-                if write.source != "A2":
+                if write.source not in allowed_sources:
                     raise AssertionError(f"unexpected {write.source} write for compact segmented fallback glyph")
-                if write.src + write.size > remaining_after_band * render_span:
+                source_len = remaining_after_band if write.source == "A3" else remaining_after_band * (render_span - 1 if trailing_plane else render_span)
+                if write.src + write.size > source_len:
                     raise AssertionError(f"source read past compact segmented fallback bitmap at +0x{write.src:x}")
             required_fallback = remaining_after_band * dest_stride
             if required_fallback > len(fallback_dest):
@@ -10955,12 +10963,11 @@ def render_compact_segmented_payload_via_1f1f0(data: bytes, resources: bytes | b
                 0,
             )
         decoded = coord_decode(coord, band_base=0, payload_offset=0)
-        rendered.append({
+        rendered_entry: dict[str, int | str] = {
             "glyph": glyph_index,
             "segment": segment,
             "coord": coord,
             "row_skip": row_skip,
-            "source_offset": source_offset,
             "rows": rows_here,
             "span": render_span,
             "width": int(glyph["width"]),
@@ -10969,7 +10976,16 @@ def render_compact_segmented_payload_via_1f1f0(data: bytes, resources: bytes | b
             "y": row_index,
             "a001": decoded["a001"],
             "helper": u32(data, 0x1F08E + render_span * 4),
-        })
+        }
+        if trailing_plane:
+            rendered_entry.update({
+                "a2_source_offset": a2_source_offset,
+                "a3_source_offset": a3_source_offset,
+                "source_layout": "inline-trailing-plane",
+            })
+        else:
+            rendered_entry["source_offset"] = source_offset
+        rendered.append(rendered_entry)
         splits.append({
             "glyph": glyph_index,
             "segment": segment,
@@ -38691,6 +38707,348 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "rows": expected_downloaded_segmented_even_rows,
         },
     }))
+    downloaded_split_segmented_payload = (b"\x00\x00\x00" * 0x80) + bytes.fromhex("f0 0f aa")
+    downloaded_split_segmented_command_stream = (
+        b"\x1b)s387W" + downloaded_split_segmented_payload
+    )
+    host_fetched_downloaded_split_segmented_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(downloaded_split_segmented_command_stream), direct_mode=0),
+        len(downloaded_split_segmented_command_stream),
+    )
+    downloaded_split_segmented_dispatch_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        host_fetched_downloaded_split_segmented_stream["stream"],
+    )
+    downloaded_split_segmented_dispatch_command = downloaded_split_segmented_dispatch_trace["commands"][0]
+    assert isinstance(downloaded_split_segmented_dispatch_command, dict)
+    downloaded_split_segmented_command = render_font_download_char_command_stream_via_121cc_16498(
+        host_fetched_downloaded_split_segmented_stream["stream"],
+        table_payload_type2_bytes,
+        char_code=0x28,
+        record_words=(0x0000, 0x0000, 0x0081, 0x0000),
+        mode=1,
+        width=0x0018,
+        rows=0x0081,
+        object_offset=0x0700,
+    )
+    downloaded_split_segmented_event = downloaded_split_segmented_command["events"][0]
+    assert isinstance(downloaded_split_segmented_event, dict)
+    downloaded_split_segmented_payload_install = downloaded_split_segmented_event["install"]
+    assert isinstance(downloaded_split_segmented_payload_install, dict)
+    downloaded_split_segmented_memory = bytearray(downloaded_split_segmented_payload_install["header"])
+    downloaded_split_segmented_glyph = resolve_downloaded_pointer_glyph(
+        downloaded_split_segmented_memory,
+        0,
+        0x28,
+    )
+    assert downloaded_split_segmented_glyph is not None
+    downloaded_split_segmented_source = {
+        "context": 0,
+        "host_char": 0x28,
+        "mapped": 0x28,
+        "glyph_entry": downloaded_split_segmented_glyph["entry"],
+        "glyph_width": downloaded_split_segmented_glyph["width"],
+        "glyph_rows": downloaded_split_segmented_glyph["rows"],
+        "flag": 0,
+        "x": 22,
+        "y": 22,
+        "context_slot": 3,
+        "inline_record": bytes([
+            int(downloaded_split_segmented_glyph["render_span"]),
+            int(downloaded_split_segmented_glyph["rows"]) & 0xFF,
+            0,
+        ]),
+    }
+    downloaded_split_segmented_page_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_split_segmented_page_result = queue_text_source_to_page_record_via_12f2e(
+        downloaded_split_segmented_memory,
+        downloaded_split_segmented_page_record,
+        downloaded_split_segmented_source,
+    )
+    downloaded_split_segmented_events = downloaded_split_segmented_page_result["events"]
+    assert isinstance(downloaded_split_segmented_events, list)
+    downloaded_split_segmented_segment1 = downloaded_split_segmented_events[0]
+    downloaded_split_segmented_segment0 = downloaded_split_segmented_events[1]
+    assert isinstance(downloaded_split_segmented_segment1, dict)
+    assert isinstance(downloaded_split_segmented_segment0, dict)
+    downloaded_split_segmented_segment1_object = downloaded_split_segmented_segment1["object"]
+    assert isinstance(downloaded_split_segmented_segment1_object, bytes)
+    downloaded_split_segmented_bridged = bridge_page_record_via_1edc6({
+        "bucket_root": downloaded_split_segmented_segment1_object,
+        "rule_list": [],
+        "fixed_list": [],
+        "context_slots": [0, 0, 0, 0],
+    })
+    downloaded_split_segmented_bridged_rendered = render_bridged_compact_bucket_object(
+        data,
+        downloaded_split_segmented_memory,
+        downloaded_split_segmented_bridged,
+    )
+    downloaded_split_segmented_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_split_segmented_memory,
+        downloaded_split_segmented_page_record,
+        bucket_word=int(downloaded_split_segmented_segment1["bucket_index"]),
+    )
+    downloaded_split_segmented_entry = downloaded_split_segmented_render_entry["entry"]
+    assert isinstance(downloaded_split_segmented_entry, dict)
+    expected_downloaded_split_segmented_rows = [
+        "." * 46,
+        "." * 46,
+        "." * 46,
+        "." * 46,
+        "." * 46,
+        "." * 46,
+        "." * 22 + "####........#####.#.#.#.",
+    ]
+    checks.append(assert_equal("host-fetched split-plane segmented downloaded character renders through 0x1f1f0", {
+        "fetch": {
+            "stream_prefix": host_fetched_downloaded_split_segmented_stream["stream"][:7],
+            "stream_length": len(host_fetched_downloaded_split_segmented_stream["stream"]),
+            "source_set": sorted(set(host_fetched_downloaded_split_segmented_stream["sources"])),
+            "remaining_ring": host_fetched_downloaded_split_segmented_stream["state"]["ring"],
+        },
+        "parser": {
+            "handlers": [
+                event["handler"]
+                for event in downloaded_split_segmented_dispatch_trace["dispatches"]
+            ],
+            "modes": [
+                event["next_mode"]
+                for event in downloaded_split_segmented_dispatch_trace["dispatches"]
+            ],
+            "sequence": downloaded_split_segmented_dispatch_command["sequence"],
+            "record": downloaded_split_segmented_dispatch_command["record"],
+            "restored_record": downloaded_split_segmented_dispatch_command["restored_record"],
+            "payload_offset": downloaded_split_segmented_dispatch_command["payload_offset"],
+            "payload_length": len(downloaded_split_segmented_dispatch_command["payload"]),
+        },
+        "install": {
+            key: downloaded_split_segmented_payload_install[key]
+            for key in (
+                "status",
+                "table_entry",
+                "record_delta",
+                "record",
+                "bitmap_offset",
+                "bitmap_size",
+                "allocation_size",
+                "object_size",
+                "span",
+                "split_plane",
+            )
+        },
+        "copy": {
+            key: downloaded_split_segmented_payload_install["copy"][key]
+            for key in (
+                "status",
+                "prefix",
+                "trailing",
+                "stream_pos",
+                "byte_budget",
+                "control_hits",
+                "phase",
+            )
+        },
+        "glyph": {
+            key: downloaded_split_segmented_glyph[key]
+            for key in (
+                "entry",
+                "bitmap",
+                "mode",
+                "rows",
+                "width",
+                "span",
+                "render_span",
+                "source_kind",
+                "table_entry",
+                "record_delta",
+            )
+        },
+        "page": {
+            key: downloaded_split_segmented_page_result[key]
+            for key in ("path", "selector", "coord", "glyph", "rows", "width")
+        },
+        "segments": [
+            {
+                key: event[key]
+                for key in (
+                    "allocated",
+                    "bucket_index",
+                    "selector",
+                    "count_before",
+                    "count_after",
+                    "segment",
+                    "object",
+                )
+            }
+            for event in downloaded_split_segmented_events
+        ],
+        "bridge": {
+            "bucket_matches": (
+                downloaded_split_segmented_bridged["bucket_root"]
+                == downloaded_split_segmented_segment1_object
+            ),
+            "render_field_matches": (
+                downloaded_split_segmented_bridged["render_record_fields"]["bucket_root_18"]
+                == downloaded_split_segmented_segment1_object
+            ),
+            "context_slots_prefix": downloaded_split_segmented_bridged["context_slots"][:4],
+        },
+        "render": {
+            "selector": downloaded_split_segmented_bridged_rendered["selector"],
+            "context_slot": downloaded_split_segmented_bridged_rendered["context_slot"],
+            "compact_mode": downloaded_split_segmented_bridged_rendered["compact_mode"],
+            "payload": downloaded_split_segmented_bridged_rendered["payload"],
+            "rendered": downloaded_split_segmented_bridged_rendered["rendered"],
+            "rows": downloaded_split_segmented_bridged_rendered["rows"],
+        },
+        "entry": {
+            "call_order": downloaded_split_segmented_entry["call_order"],
+            "dispatch": [
+                {
+                    key: entry[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "context_slot",
+                    )
+                }
+                for entry in downloaded_split_segmented_entry["dispatch"]["entries"]
+            ],
+            "rows": downloaded_split_segmented_entry["rows"],
+        },
+    }, {
+        "fetch": {
+            "stream_prefix": b"\x1b)s387W",
+            "stream_length": len(downloaded_split_segmented_command_stream),
+            "source_set": ["ring"],
+            "remaining_ring": [],
+        },
+        "parser": {
+            "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "modes": [1, 4, 13, 0],
+            "sequence": b"\x1b)s387W",
+            "record": b"\x80W\x01\x83\x00\x00",
+            "restored_record": b"\x80W\x01\x83\x00\x00",
+            "payload_offset": 7,
+            "payload_length": 0x0183,
+        },
+        "install": {
+            "status": 1,
+            "table_entry": 0x00EA,
+            "record_delta": 0x0700,
+            "record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 18 00 00"),
+            "bitmap_offset": 0x070C,
+            "bitmap_size": 0x0183,
+            "allocation_size": 7,
+            "object_size": 0x01C0,
+            "span": 3,
+            "split_plane": True,
+        },
+        "copy": {
+            "status": 1,
+            "prefix": (b"\x00\x00" * 0x80) + bytes.fromhex("f0 0f"),
+            "trailing": (b"\x00" * 0x80) + bytes.fromhex("aa"),
+            "stream_pos": 0x0183,
+            "byte_budget": 0,
+            "control_hits": 0,
+            "phase": "done",
+        },
+        "glyph": {
+            "entry": 0x0700,
+            "bitmap": 0x070C,
+            "mode": 1,
+            "rows": 0x0081,
+            "width": 0x0018,
+            "span": 3,
+            "render_span": 3,
+            "source_kind": "downloaded-pointer",
+            "table_entry": 0x00EA,
+            "record_delta": 0x0700,
+        },
+        "page": {
+            "path": "segmented-page-record",
+            "selector": 0x2003,
+            "coord": 0x6601,
+            "glyph": 0x28,
+            "rows": 0x81,
+            "width": 3,
+        },
+        "segments": [
+            {
+                "allocated": True,
+                "bucket_index": 9,
+                "selector": 0x2003,
+                "count_before": 0,
+                "count_after": 1,
+                "segment": 1,
+                "object": (
+                    bytes.fromhex("00 00 00 00 20 03 00 01 28 01 66 01")
+                    + bytes(0x1C)
+                ),
+            },
+            {
+                "allocated": True,
+                "bucket_index": 1,
+                "selector": 0x2003,
+                "count_before": 0,
+                "count_after": 1,
+                "segment": 0,
+                "object": (
+                    bytes.fromhex("00 00 00 00 20 03 00 01 28 00 66 01")
+                    + bytes(0x1C)
+                ),
+            },
+        ],
+        "bridge": {
+            "bucket_matches": True,
+            "render_field_matches": True,
+            "context_slots_prefix": (0, 0, 0, 0),
+        },
+        "render": {
+            "selector": 0x2003,
+            "context_slot": 3,
+            "compact_mode": 2,
+            "payload": bytes.fromhex("00 01 28 01 66 01") + bytes(0x1C),
+            "rendered": [{
+                "glyph": 0x28,
+                "segment": 1,
+                "coord": 0x6601,
+                "row_skip": 0x80,
+                "rows": 1,
+                "span": 3,
+                "width": 0x18,
+                "dest_base": 0xC2,
+                "x": 22,
+                "y": 6,
+                "a001": 0x16,
+                "helper": u32(data, 0x1F08E + 3 * 4),
+                "a2_source_offset": 0x0100,
+                "a3_source_offset": 0x0080,
+                "source_layout": "inline-trailing-plane",
+            }],
+            "rows": expected_downloaded_split_segmented_rows,
+        },
+        "entry": {
+            "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+            "dispatch": [{
+                "chain_index": 0,
+                "object_byte_4": 0x20,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 3,
+            }],
+            "rows": expected_downloaded_split_segmented_rows,
+        },
+    }))
     downloaded_printable_fetch = fetch_stream_via_a904(
         host_byte_fetch_state(ring=[0x25], direct_mode=0),
         1,
@@ -59394,6 +59752,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_segmented_even_page_result["selector"],
             downloaded_segmented_even_segment1["segment"],
             downloaded_segmented_even_rendered_row,
+        ),
+    )
+    downloaded_split_segmented_rendered_row = downloaded_split_segmented_bridged_rendered["rows"][-1]
+    append_wrapped(
+        lines,
+        "- host-fetched split-plane segmented downloaded character: "
+        "`ESC )s387W` installs glyph `0x28` at table entry `0x%04x`, copies "
+        "prefix `%s` and trailing `%s` through `0x16942`, queues selector "
+        "`0x%04x`, and renders segment `%d` through `0x1f1f0` row `%s`."
+        % (
+            downloaded_split_segmented_payload_install["table_entry"],
+            " ".join(f"{byte:02x}" for byte in downloaded_split_segmented_payload_install["copy"]["prefix"][-2:]),
+            " ".join(f"{byte:02x}" for byte in downloaded_split_segmented_payload_install["copy"]["trailing"][-1:]),
+            downloaded_split_segmented_page_result["selector"],
+            downloaded_split_segmented_segment1["segment"],
+            downloaded_split_segmented_rendered_row,
         ),
     )
     lines.append("- command edge fixtures: `ESC *c#E` handler `0x15a18` stores absolute character/code word `0x%04x` in `0x782f30`; `ESC )s0W` reaches `0x11f96` and schedules delayed handler `0x%05x`, while nonzero `ESC )s#W` schedules delayed handler `0x%05x` with absolute byte budget `0x%04x`." % (

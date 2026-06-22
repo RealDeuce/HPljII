@@ -68,6 +68,8 @@ Primary fixtures:
 - `host-fetched linear downloaded character stream renders through 0x168dc`
 - `host-fetched downloaded character payload control reaches wide render`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
+- `host-fetched split-plane segmented downloaded character renders through
+  0x1f1f0`
 - `host-fetched printable byte uses installed downloaded glyph page object`
 - `combined host-fetched font download stream prints installed glyph`
 - `host-fetched font control stream feeds descriptor and character payload state`
@@ -165,6 +167,10 @@ Renderer-facing allocated payload fields:
 - downloaded character object `+0x0c..`: copied bitmap bytes. The `ESC )s258W`
   fixture copies `0x0102` linear bytes through `0x168dc`, with the final
   row bytes `f0 0f` at bitmap delta `0x0100`.
+- split-plane downloaded character object bitmap layout: `0x16942` stores all
+  row-prefix bytes first, followed by one trailing byte per row. The
+  `ESC )s387W` fixture installs row `128` as A2 bytes `f0 0f` at offset
+  `0x0100` and A3 byte `aa` at trailing offset `0x0080`.
 - fixed-record table entry: eight bytes at payload `+0x40 + 8 * glyph`. The
   `0x16606` current-record fixture installs glyph `0x21` at payload-relative
   offset `0x48` with record `02 03 04 00 00 00 02 00`, where bytes `+0/+1`
@@ -558,6 +564,17 @@ segment-1 object `00 00 00 00 20 03 00 01 27 01 66 01` is preserved by
 `0x1edc6`; `0x1ef6a` dispatches it as compact text; and `0x1f1f0` renders the
 row at source offset `0x0100` as `####........####` beginning at x `22`.
 
+Fixture `host-fetched split-plane segmented downloaded character renders
+through 0x1f1f0` covers the odd-span sibling. The host-fetched `ESC )s387W`
+stream uses parser record `80 57 01 83 00 00`, delayed handler `0x16c14`,
+payload offset `7`, and byte budget `0x0183`. `0x16498` installs glyph `0x28`
+at table entry `0x00ea`, record delta `0x0700`, record
+`00 00 00 00 0c 01 00 81 00 18 00 00`, bitmap offset `0x070c`, span `3`, and
+split-plane layout. `0x16942` copies prefix bytes through A4 and trailing
+bytes through A3; for segment `1`, `0x1f1f0` reads row skip `0x80` from A2
+offset `0x0100` and A3 offset `0x0080`, then renders
+`####........#####.#.#.#.` beginning at x `22`.
+
 ## Downloaded Resource Object And Rendering
 
 The bit-30-clear current-record path uses `0x16606` after a descriptor
@@ -870,10 +887,10 @@ A byte-stream renderer must preserve:
   concrete success/failure fixtures. Exact HP manual labels for the
   consumed-but-not-staged descriptor fields still need external correlation.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, linear normal,
-  and linear segmented downloaded-character paths are page-visible. Remaining
-  parser-produced comparisons are the cross-product variants not covered by
-  those four shapes, especially split-plane segmented and even-span wide
-  without payload-control normalization.
+  linear segmented, and split-plane segmented downloaded-character paths are
+  page-visible. Remaining parser-produced comparisons are the cross-product
+  variants not covered by those shapes, especially even-span wide without
+  payload-control normalization.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through

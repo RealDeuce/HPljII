@@ -1304,6 +1304,14 @@ width `0x0010`, bitmap offset `0x058c`, and `0x0102` bytes copied through
 segment-1 object; and `0x1ef6a` reaches compact renderer `0x1f1f0`. The
 visible output is one segment-1 row from source offset `0x0100`, rendered at
 x `22` as `####........####`.
+Fixture `host-fetched split-plane segmented downloaded character renders
+through 0x1f1f0` adds the odd-span A2/A3 sibling. Host fetch drains
+`ESC )s387W`; `0x16498` installs glyph `0x28` at table entry `0x00ea`, record
+delta `0x0700`, rows `0x0081`, width `0x0018`, bitmap offset `0x070c`, and
+`0x0183` bytes copied through `0x16942`. `0x12f2e` still queues selector
+`0x2003`, but `0x1f1f0` validates A2 source offset `0x0100` and A3 trailing
+offset `0x0080` for segment `1`. The visible output is
+`####........#####.#.#.#.` at x `22`.
 
 ### Confidence
 
@@ -1316,8 +1324,9 @@ wide/control, segmented, and segmented-wide compact selectors represented by
 fixtures `host-fetched linear downloaded character stream renders through
 0x168dc`, `host-fetched downloaded character payload control reaches wide
 render`, `host-fetched segmented downloaded character renders through
-0x1f1f0`, and `host-fetched downloaded character stream reaches rendered
-object`.
+0x1f1f0`, `host-fetched split-plane segmented downloaded character renders
+through 0x1f1f0`, and `host-fetched downloaded character stream reaches
+rendered object`.
 High for the ROM-effect names and failure behavior of every `0x16fae`
 validation-table entry, including the host-fetched invalid-type no-install
 boundary. Medium for the complete soft-font grammar because exact HP manual
@@ -1347,6 +1356,8 @@ have not been page-compared.
 - `host-fetched linear downloaded character stream renders through 0x168dc`
 - `host-fetched downloaded character payload control reaches wide render`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
+- `host-fetched split-plane segmented downloaded character renders through
+  0x1f1f0`
 - `0x16fae validation table semantic map covers staged and pass-through
   entries`
 - `0x16fae table-driven validation predicates populate staged header fields`
@@ -1376,10 +1387,10 @@ have not been page-compared.
   remaining descriptor error forms still need the same parser-produced and
   page-visible treatment.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, linear normal,
-  and linear segmented downloaded-character paths are page-visible. Remaining
-  parser-produced comparisons are the cross-product variants not covered by
-  those four shapes, especially split-plane segmented and even-span wide
-  without payload-control normalization.
+  linear segmented, and split-plane segmented downloaded-character paths are
+  page-visible. Remaining parser-produced comparisons are the cross-product
+  variants not covered by those shapes, especially even-span wide without
+  payload-control normalization.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through

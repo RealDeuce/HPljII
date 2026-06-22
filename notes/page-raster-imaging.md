@@ -1129,10 +1129,12 @@ raster modes 1/2/3, then render through `0x1ed84` / `0x1ef6a`.
 The `0x1f0d2` and `0x1f1f0` inline cases now also have type-2 `0x1719c`
 payload-backed fixed-record coverage; the selected inline/downloaded
 page-record object now crosses `0x1edc6` with context slot `3` intact
-before compact rendering; the `0x1f264` segmented-wide case now has
-selected-memory isolation plus host-fetched `ESC *c4660d37e5F`,
-host-fetched `ESC )s0W`, host-fetched `ESC )s80W`, and host-fetched
-`ESC )s2193W` parser boundaries, plus a host-fetched `ESC )s18W`
+before compact rendering; the `0x1f1f0` downloaded-pointer path has both
+even-span `ESC )s258W` and split-plane `ESC )s387W` parser-produced
+fixtures; the `0x1f264` segmented-wide case now has selected-memory isolation
+plus host-fetched `ESC *c4660d37e5F`, host-fetched `ESC )s0W`, host-fetched
+`ESC )s80W`, and host-fetched `ESC )s2193W` parser boundaries, plus a
+host-fetched `ESC )s18W`
 downloaded-character payload-control stream that normalizes `1a 58`
 before wide glyph rendering and now crosses `0x1edc6` plus the
 `0x1ed84`/`0x1ef6a` render-entry path before rendering the same wide row.

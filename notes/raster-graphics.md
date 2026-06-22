@@ -278,5 +278,7 @@ A byte-stream reproduction must preserve these behaviors:
   text/rule/raster stream still lacks a full live 68000 execution trace through
   `0x105d0` into allocator memory.
 - The renderer fixture covers modes `0..3` and selected shifted/band-clipped
-  cases, but a complete page comparison still needs fuller parser-produced page
-  objects across text, rule, raster, font, and publication paths.
+  cases. The initial mixed text/rule/raster/FF byte stream now compares a
+  complete published page image through `0xff1e`, `0x1ed84`, and `0x1ef6a`;
+  broader page comparisons still need font-selection, downloaded-glyph, and
+  geometry-changing byte streams.

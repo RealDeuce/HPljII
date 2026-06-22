@@ -80,6 +80,17 @@ executable fixture or generated analysis note.
   Reproduction evidence is
   `generated/analysis/ic30_ic13_render_dispatch_tables.md` plus
   text/rule/raster composition fixtures.
+- Mixed page-image stream:
+  ROM evidence crosses parser handlers `0xd04a`, `0x10e68`,
+  `0x10e22`, `0x10898`, `0x10808`, `0x1075a`, `0x11f82`, and
+  `0xf0f0`, then publication and render handlers `0xff1e`,
+  `0x1ed84`, `0x1edc6`, and `0x1ef6a`.
+  Reproduction evidence is `Mixed Text/Rule/Raster Page Record` in
+  `notes/semantic-state-model.md` plus fixtures
+  `host-fetched text rectangle raster FF publishes rendered page record`,
+  `addressed text rectangle raster FF publishes rendered page record`,
+  and `addressed text/rule/raster field groups reach publication and
+  render entry`.
 - Built-in glyph data:
   ROM evidence is the IC32/IC15 resource ROM tables and bitmap records.
   Reproduction evidence is
@@ -112,6 +123,15 @@ executable fixture or generated analysis note.
   Evidence: `generated/analysis/ic30_ic13_esc_e_reset_flow.md`,
   `generated/analysis/ic30_ic13_page_root_finalization.md`, and publication
   fixtures in the harness.
+- The initial mixed page-image suite is covered for one complete
+  host-fetched byte stream:
+  `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`.
+  It drains through the modeled `0xa904` ring source, routes through the
+  parser handlers above, queues compact text, a selector-7 rectangle
+  rule, and a mode-0 raster object into addressed page-record storage,
+  publishes through `0xff1e`, crosses the `0x1ed84` / `0x1edc6`
+  render bridge, and compares the final composed rows. Evidence:
+  `Mixed Text/Rule/Raster Page Record` in `notes/semantic-state-model.md`.
 - Built-in and downloaded text rendering is covered for selected offset-table,
   inline/downloaded fixed records, segmented records, segmented-wide records,
   font descriptors, resource payloads, downloaded character payloads, and
@@ -201,7 +221,9 @@ pixels or byte-stream compatibility.
 6. Final device-output validation is not yet a real printer comparison. The
    harness proves ROM-derived rows internally, but pixel-perfect confidence
    ultimately needs rendered page images compared against known LaserJet II
-   output for representative byte streams.
+   output for representative byte streams. The initial mixed page-image
+   stream above is a ROM-derived internal reproduction contract, not a
+   physical-device comparison.
 
 ## Next Disassembly Targets
 
@@ -215,6 +237,7 @@ The next work should follow dataflow, not isolated handlers:
    disabled/lower/page/high-x consumer branch family is fixture-backed. The
    missing middle is broader descriptor metric values and page-visible behavior
    for every validation error form.
-2. Build a small page-image fixture suite from complete byte streams that mix
-   text, rules, raster, geometry, font selection, and publication, then compare
-   the final bitmap rows as the primary reproduction contract.
+2. Broaden the page-image fixture suite beyond the current complete
+   text/rule/raster/publication stream. The next suite cases should add font
+   selection and downloaded glyphs to the same complete-byte-stream contract,
+   then add geometry-changing publication cases and compare final bitmap rows.

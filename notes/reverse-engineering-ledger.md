@@ -88,6 +88,9 @@ boundaries, reset sequencing, ROM
 parser dispatch of publication streams, host-fetched publication header
 fields for reset, FF, page-size, and orientation, addressed
 text/rule/raster FF publication, and synthetic mixed reset fixtures,
+with the first complete page-image byte-stream contract now documented
+under `Mixed Text/Rule/Raster Page Record` for
+`! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF`,
 with the shared page-record allocator now composed through one
 multi-writer `0x1381c` chunk rollover state,
 with the published-record to active-render handoff now pinned through

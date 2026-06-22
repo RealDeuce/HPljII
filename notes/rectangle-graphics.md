@@ -433,5 +433,8 @@ A byte-stream reproduction must preserve these behaviors:
   streams and no-room retry, but a full live 68000 execution through parser,
   `0x10b80`, `0x1381c`, and real allocator memory has not been captured.
 - Pattern rendering is fixture-pinned for selectors, masks, shifted rows, and
-  band crossing, but a complete parser-produced page comparison still needs
-  broader text, rule, raster, font, and publication coverage together.
+  band crossing. The initial mixed text/rule/raster/FF byte stream now provides
+  a complete parser-produced page comparison with selector-7 rule output,
+  mode-0 raster output, compact text, publication, and render-entry rows;
+  broader comparisons still need font-selection, downloaded-glyph, geometry,
+  and alternate selector coverage together.

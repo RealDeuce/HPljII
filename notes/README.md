@@ -53,6 +53,9 @@ compatibility boundary.
 - [page-raster-imaging.md](page-raster-imaging.md) - page geometry
   lookup tables, orientation state, and first raster graphics imaging
   path.
+- [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) -
+  top-level host-byte-to-rendered-pixel coverage map and remaining
+  reproduction blockers.
 - [semantic-state-model.md](semantic-state-model.md) - composed
   renderer-facing state blocks with field groups, evidence, and
   unresolved middle edges.

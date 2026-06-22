@@ -1149,8 +1149,8 @@ compact text renderer.
   - staged header `0x7827de`: copied into allocated payloads by `0x1719c`.
 - Unknown:
   - exact manual names for all 32 `0x16fae` validation predicates.
-  - secondary-context, extended-table, bit-30 delegate, and allocation-failure
-    release variants around fixed-record resource teardown.
+  - fixed-record secondary-context refresh, fixed-record extended-table, and
+    allocation-failure release variants around resource teardown.
 
 ### Writers
 
@@ -1177,6 +1177,9 @@ compact text renderer.
 - `0x17d7c` rewrites released bit-30-clear fixed-record entries, writes
   fallback side-table bytes, refreshes matching active contexts through
   `0x14c64`, and clears matching continuation state.
+- `0x17a24` releases bit-30 offset-table entries delegated by `0x17d7c`,
+  clears the selected 4-byte glyph/object pointer, refreshes matching active
+  contexts through `0x14c64`, and clears matching continuation state.
 
 ### Readers And Consumers
 
@@ -1194,6 +1197,9 @@ compact text renderer.
 - `0x17d7c` reads the selected payload base, fixed-record glyph/table index,
   payload word `+0x1a`, payload byte `+0x3c`, the base fixed-record entry
   `+0x40`, active primary/secondary context pointers, and continuation state.
+- `0x17a24` reads bit-30 offset-table payload words `+0x08`, `+0x0e`, and
+  `+0x10`, the selected 4-byte table entry, active primary/secondary context
+  pointers, and continuation state.
 - `0x1bc38` inserts installed payloads into the candidate list.
 - `0x14c64` consumes installed candidate longwords and payload headers to
   build active maps.
@@ -1239,6 +1245,12 @@ calls `0x17d7c`. The release helper rewrites payload `+0x48` from
 `02 03 04 00 00 00 02 00` to `01 02 00 fa 00 00 00 00`, writes side-table
 bytes `fa 00` at payload `+0x340`, records active-primary refresh
 `0x7828de = 0`, and clears the matching continuation fields.
+Fixture `0x17d7c delegates bit-30 release to offset-table helper` proves the
+bit-30 sibling: `0x17d7c` dispatches to `0x17a24`, which validates range words
+`+0x0e/+0x10 = 0x0020/0x007f`, uses table offset word `+0x08 = 0x004a`,
+clears char `0x21` table entry `00 00 02 40` to zero at payload
+`+0x004a + 4 * 0x21`, records active-secondary refresh `0x7828de = 1`, and
+clears the matching continuation fields.
 
 ### Confidence
 
@@ -1260,6 +1272,7 @@ been page-compared.
 - `host-fetched 0x15d0a continuation resource object resumes fixed-record
   render`
 - `0x15c4c failed resource resume releases fixed-record object`
+- `0x17d7c delegates bit-30 release to offset-table helper`
 - `host-fetched 0x15d0a split-plane continuation resource object resumes
   fixed-record render`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
@@ -1288,8 +1301,10 @@ been page-compared.
   comparisons.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
-  Secondary-context, extended-table, bit-30 delegate, and allocation-failure
-  release variants still need fixture coverage.
+  The bit-30 offset-table release delegate is fixture-backed through
+  `0x17a24`. Fixed-record secondary-context refresh, fixed-record
+  extended-table, and allocation-failure release variants still need fixture
+  coverage.
 - The span-metric bridge in `notes/font-context-metrics.md` now covers
   host-fetched type-0 and type-2 downloaded payloads for both span consumers,
   and the shared consumer branch family is fixture-backed. It still needs

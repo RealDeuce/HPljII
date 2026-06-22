@@ -37,6 +37,7 @@ Primary fixtures:
 - `host-fetched 0x15d0a current-record resource object feeds fixed-record render`
 - `host-fetched 0x15d0a continuation resource object resumes fixed-record render`
 - `0x15c4c failed resource resume releases fixed-record object`
+- `0x17d7c delegates bit-30 release to offset-table helper`
 - `host-fetched 0x15d0a split-plane continuation resource object resumes
   fixed-record render`
 - `0x16c14-modeled downloaded font replacement bookkeeping`
@@ -168,8 +169,10 @@ Unknown:
 - Manual names for every validation-table predicate feeding `0x16fae` are not
   complete, even though the table-driven fixture pins all staged field writes.
 - The `0x15c4c` status-0 copy-failure exit is fixture-backed through
-  fixed-record release helper `0x17d7c`; broader release variants outside the
-  tested active-primary fixed-record case still need coverage.
+  fixed-record release helper `0x17d7c`; the `0x17d7c` bit-30 delegate to
+  `0x17a24` is fixture-backed for one active-secondary offset-table release.
+  Fixed-record extended-table, fixed-record secondary-refresh, and
+  allocation-failure release variants still need coverage.
 - The complete soft-font grammar is not exhaustively proven for every legal
   PCL descriptor form and every metric-byte combination.
 
@@ -508,9 +511,19 @@ matching continuation state. The replacement byte `0xfa` is the low byte of
 `0x7530 / payload_word_0x1a`, with the fixture setting word `+0x1a = 0x0078`;
 the final longword comes from the base fixed-record entry at payload `+0x40`.
 This covers the `0x15c4c` status-0 release exit for one active-primary
-bit-30-clear fixed-record payload. The untested release variants are the
-secondary-context refresh, extended `0xa0..0xff` table, bit-30 delegate to
-`0x17a24`, and allocation-failure releases through `0x1887a`.
+bit-30-clear fixed-record payload.
+
+The delegated bit-30 fixture
+`0x17d7c delegates bit-30 release to offset-table helper` enters `0x17d7c`
+with payload longword bit 30 set, so `0x17dc4..0x17dce` calls `0x17a24`
+instead of the fixed-record rewrite body. The fixture sets payload word `+8 =
+0x004a`, range words `+0x0e/+0x10 = 0x0020/0x007f`, and char `0x21`;
+`0x17a24` validates the range at `0x17a44..0x17a60`, clears the offset-table
+entry at payload `+0x004a + 4 * 0x21` from `00 00 02 40` to
+`00 00 00 00`, refreshes the matching active secondary context with
+`0x7828de = 1`, and clears matching continuation state. The untested release
+variants are the fixed-record secondary-context refresh, fixed-record extended
+`0xa0..0xff` table, and allocation-failure releases through `0x1887a`.
 
 ## End-To-End Downloaded Glyph Path
 
@@ -585,6 +598,10 @@ downloaded segmented-wide row as the direct compact-object renderer.
   side-table bytes used by the fallback record, refreshes matching active
   primary/secondary contexts through `0x14c64`, and clears matching
   continuation state.
+- `0x17a24` releases bit-30 offset-table entries delegated by `0x17d7c`,
+  clears the selected 4-byte glyph/object pointer, refreshes matching active
+  primary/secondary contexts through `0x14c64`, and clears matching
+  continuation state.
 - `0x12f2e`/`0x1387c` write compact text bucket objects for the installed
   glyph.
 
@@ -602,6 +619,9 @@ downloaded segmented-wide row as the direct compact-object renderer.
   `0x7827ce`, saved remaining count `0x7827d2`, saved split-plane counters
   `0x7827d6`/`0x7827d8`, and the fixed-record table entry in the selected
   payload.
+- `0x17a24` reads bit-30 offset-table payload words `+0x08`, `+0x0e`, and
+  `+0x10`, the selected 4-byte table entry, active primary/secondary context
+  pointers, and continuation state.
 - `0x1bc38` reads payload class byte `+0x20` and inserts candidate longwords.
 - `0x14c64` consumes installed candidate longwords and payload header fields
   to build active glyph maps.
@@ -633,6 +653,10 @@ The failed-resume fixture proves that a short resumed payload does not leave
 the half-copied fixed record installed: `0x15c4c` calls `0x17d7c`, replaces the
 table entry with `01 02 00 fa 00 00 00 00`, updates side-table bytes `fa 00`,
 refreshes the active primary context, and clears the same continuation fields.
+The bit-30 delegate fixture proves the sibling offset-table release form:
+`0x17d7c` calls `0x17a24`, which clears one 4-byte offset-table entry from
+`00 00 02 40` to zero, refreshes the active secondary context, and clears the
+matching continuation fields.
 
 ## Confidence
 
@@ -688,8 +712,10 @@ A byte-stream renderer must preserve:
   parser-produced page comparison.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
-  Secondary-context, extended-table, bit-30 delegate, and allocation-failure
-  release variants still need fixture coverage.
+  The bit-30 offset-table release delegate is fixture-backed through
+  `0x17a24`. Fixed-record secondary-context refresh, fixed-record
+  extended-table, and allocation-failure release variants still need fixture
+  coverage.
 - `0x14c64..0x14eb6`: the `0x1719c` bit-30-clear fixed-record path is an
   isolation control. The integrated `ESC )s80W` install path currently proves
   the bit-30 offset-table form.

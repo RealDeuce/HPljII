@@ -696,8 +696,10 @@ both even fixed-record `02 03 04 00 00 00 02 00` and split-plane fixed-record
 `03 02 04 00 00 00 02 00` continuation records, including saved A4/A3
 destinations and D4/D3 counters; a status-0 resumed copy calls `0x17d7c` and
 rewrites the released fixed-record entry to the fallback form
-`01 02 00 fa 00 00 00 00` in the active-primary fixture. `ESC *c#F` dispatches
-values `0..6` through the
+`01 02 00 fa 00 00 00 00` in the active-primary fixture. The bit-30 release
+delegate is fixture-backed separately: `0x17d7c` calls `0x17a24`, which clears
+the selected offset-table entry and refreshes the active secondary context.
+`ESC *c#F` dispatches values `0..6` through the
 table at `0x16db6`: values `0`, `1`, and `2` call all/current record
 release helpers, value `3` uses the current character/code word
 `0x782f30`, values `4` and `5` unmark/mark the current downloaded record

@@ -5800,6 +5800,94 @@ def signed_divide_trunc_via_3324a(dividend: int, divisor: int) -> int:
     return sign * (abs(int(dividend)) // abs(int(divisor)))
 
 
+def font_resource_offset_table_release_via_17a24(
+    header: bytes | bytearray,
+    *,
+    base: int,
+    char_code: int,
+    continuation: dict[str, int] | None = None,
+    active_primary_context: int | None = None,
+    active_secondary_context: int | None = None,
+) -> dict[str, object]:
+    updated = bytearray(header)
+    base &= 0x00FFFFFF
+    char_code &= 0xFF
+    if base + 0x12 > len(updated):
+        return {
+            "status": "base-outside-header",
+            "handler": 0x17A24,
+            "header": bytes(updated),
+            "base": base,
+            "char_code": char_code,
+            "continuation": dict(continuation) if continuation else None,
+        }
+
+    table_offset = u16(updated, base + 0x08)
+    first_char = u16(updated, base + 0x0E)
+    last_char = u16(updated, base + 0x10)
+    if char_code < first_char or char_code > last_char:
+        return {
+            "status": "char-outside-offset-table-range",
+            "handler": 0x17A24,
+            "header": bytes(updated),
+            "base": base,
+            "char_code": char_code,
+            "first_char_0x0e": first_char,
+            "last_char_0x10": last_char,
+            "table_offset_0x08": table_offset,
+            "continuation": dict(continuation) if continuation else None,
+        }
+
+    table_entry = base + table_offset + char_code * 4
+    if table_entry + 4 > len(updated):
+        updated.extend(b"\x00" * (table_entry + 4 - len(updated)))
+    old_record = bytes(updated[table_entry:table_entry + 4])
+    updated[table_entry:table_entry + 4] = b"\x00" * 4
+
+    active_refresh: list[dict[str, int | str]] = []
+    calls = ["0x196c4", "0x17fa2"]
+    if (
+        active_primary_context is not None
+        and (int(active_primary_context) & 0x00FFFFFF) == base
+    ):
+        active_refresh.append({"slot": "primary", "word_0x7828de": 0})
+        calls.extend(["0x1b4c0", "0x14c64"])
+    if (
+        active_secondary_context is not None
+        and (int(active_secondary_context) & 0x00FFFFFF) == base
+    ):
+        active_refresh.append({"slot": "secondary", "word_0x7828de": 1})
+        calls.extend(["0x1b4c0", "0x14c64"])
+
+    continuation_after = dict(continuation) if continuation else None
+    continuation_cleared = bool(
+        continuation_after
+        and int(continuation_after.get("flag", 0)) == 1
+        and (int(continuation_after.get("payload", 0)) & 0x00FFFFFF) == base
+        and (int(continuation_after.get("word_0x7827c8", 0)) & 0xFF) == char_code
+    )
+    if continuation_cleared and continuation_after is not None:
+        continuation_after = clear_download_continuation_state(continuation_after)
+
+    return {
+        "status": "released-offset-table",
+        "handler": 0x17A24,
+        "header": bytes(updated),
+        "base": base,
+        "char_code": char_code,
+        "first_char_0x0e": first_char,
+        "last_char_0x10": last_char,
+        "table_offset_0x08": table_offset,
+        "table_entry": table_entry,
+        "old_record": old_record,
+        "new_record": bytes(updated[table_entry:table_entry + 4]),
+        "active_refresh": active_refresh,
+        "continuation_cleared": continuation_cleared,
+        "continuation": continuation_after,
+        "calls": calls,
+    }
+
+
 def font_resource_fixed_record_release_via_17d7c(
     header: bytes | bytearray,
     *,
@@ -5823,14 +5911,18 @@ def font_resource_fixed_record_release_via_17d7c(
         }
 
     if (u32(updated, base) >> 30) & 1:
+        release = font_resource_offset_table_release_via_17a24(
+            updated,
+            base=base,
+            char_code=char_code,
+            continuation=continuation,
+            active_primary_context=active_primary_context,
+            active_secondary_context=active_secondary_context,
+        )
         return {
-            "status": "delegates-to-0x17a24",
-            "handler": 0x17D7C,
+            **release,
+            "caller": 0x17D7C,
             "delegate": 0x17A24,
-            "header": bytes(updated),
-            "base": base,
-            "char_code": char_code,
-            "continuation": dict(continuation) if continuation else None,
         }
 
     type_byte = updated[base + 0x0E] if base + 0x0E < len(updated) else 0
@@ -33688,6 +33780,100 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "post_record": bytes.fromhex("01 02 00 fa 00 00 00 00"),
     }))
+
+    offset_release_memory = bytearray(0x400)
+    offset_release_memory[
+        resource_object_context:resource_object_context + 4
+    ] = (0x40000000).to_bytes(4, "big")
+    offset_release_memory[
+        resource_object_context + 0x08:resource_object_context + 0x0A
+    ] = (0x004A).to_bytes(2, "big")
+    offset_release_memory[
+        resource_object_context + 0x0E:resource_object_context + 0x10
+    ] = (0x0020).to_bytes(2, "big")
+    offset_release_memory[
+        resource_object_context + 0x10:resource_object_context + 0x12
+    ] = (0x007F).to_bytes(2, "big")
+    offset_release_entry = resource_object_context + 0x004A + 0x21 * 4
+    offset_release_memory[
+        offset_release_entry:offset_release_entry + 4
+    ] = (0x00000240).to_bytes(4, "big")
+    offset_release_continuation = {
+        "flag": 1,
+        "payload": resource_object_context,
+        "word_0x7827c8": 0x21,
+        "dest": 0x0240,
+        "trailing_dest": 0,
+        "remaining": 3,
+        "d4_counter": 0,
+        "d3_counter": 0,
+    }
+    offset_release = font_resource_fixed_record_release_via_17d7c(
+        offset_release_memory,
+        base=resource_object_context,
+        char_code=0x21,
+        continuation=offset_release_continuation,
+        active_secondary_context=resource_object_context,
+    )
+    offset_release_header = offset_release["header"]
+    assert isinstance(offset_release_header, bytes)
+    offset_release_actual = {
+        key: offset_release[key]
+        for key in (
+            "status",
+            "handler",
+            "caller",
+            "delegate",
+            "base",
+            "char_code",
+            "first_char_0x0e",
+            "last_char_0x10",
+            "table_offset_0x08",
+            "table_entry",
+            "old_record",
+            "new_record",
+            "active_refresh",
+            "continuation_cleared",
+            "continuation",
+            "calls",
+        )
+    }
+    offset_release_actual["post_record"] = offset_release_header[
+        offset_release_entry:offset_release_entry + 4
+    ]
+    offset_release_expected = {
+        "status": "released-offset-table",
+        "handler": 0x17A24,
+        "caller": 0x17D7C,
+        "delegate": 0x17A24,
+        "base": resource_object_context,
+        "char_code": 0x21,
+        "first_char_0x0e": 0x0020,
+        "last_char_0x10": 0x007F,
+        "table_offset_0x08": 0x004A,
+        "table_entry": offset_release_entry,
+        "old_record": bytes.fromhex("00 00 02 40"),
+        "new_record": bytes.fromhex("00 00 00 00"),
+        "active_refresh": [{"slot": "secondary", "word_0x7828de": 1}],
+        "continuation_cleared": True,
+        "continuation": {
+            "flag": 0,
+            "payload": 0,
+            "word_0x7827c8": 0,
+            "dest": 0,
+            "trailing_dest": 0,
+            "remaining": 0,
+            "d4_counter": 0,
+            "d3_counter": 0,
+        },
+        "calls": ["0x196c4", "0x17fa2", "0x1b4c0", "0x14c64"],
+        "post_record": bytes.fromhex("00 00 00 00"),
+    }
+    checks.append(assert_equal(
+        "0x17d7c delegates bit-30 release to offset-table helper",
+        offset_release_actual,
+        offset_release_expected,
+    ))
 
     split_resume_object_memory = bytearray(0x1000)
     split_resume_object_memory[resource_object_context + 0x14:resource_object_context + 0x16] = (0x0115).to_bytes(2, "big")

@@ -741,6 +741,16 @@ contexts use `0x14d9c` to create a base range map from selected font
 record words `+0x0e` / `+0x10`, then `0x14f16` applies
 symbol-set-specific remaps. Inline/downloaded contexts use `0x14e24` and
 `0x14eb6` to populate the same map shape from valid fixed glyph records.
+Fixture `parsed primary built-in font selection feeds visible page-record rows`
+now ties parsed primary selection bytes `ESC (s0p10h12v0s0b3T` to visible
+compact rows: `0x13eb8` selects context `0xc008004c`, `0x14c64` rebuilds map
+`0x782f32`, following printable bytes `!!` queue object prefix
+`00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and the `0x1edc6` render
+record carries context slot `0xc008004c` before compact helper `0x1fe76`
+renders two Courier glyph-0 shapes. The remaining caveat is the same live
+handoff called out in `notes/semantic-state-model.md`: the selected context
+longword is injected from the pinned `0x13eb8` result instead of captured from
+one continuous CPU-memory run.
 The generated `ic30_ic13_active_symbol_set_flow.md` report traces
 `ESC (` / `ESC )` through `0x120be` and `0x1be22`: normal symbol-set
 finals compute PCL codes as `(parameter << 5) + suffix`, store requested

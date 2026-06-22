@@ -26245,8 +26245,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     activated_class_zero = activate_candidate_window_via_1569c(actual_candidate_windows, class_selector_byte=0)
     activated_class_one = activate_candidate_window_via_1569c(actual_candidate_windows, class_selector_byte=1)
-    primary_font_selection_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b(s0p10h12v0s0b3T")
-    secondary_font_selection_trace = trace_font_parser_dispatch_via_11774(data, b"\x1b)s0p16h8v0s0b0T")
+    primary_font_selection_stream = b"\x1b(s0p10h12v0s0b3T"
+    secondary_font_selection_stream = b"\x1b)s0p16h8v0s0b0T"
+    primary_font_selection_trace = trace_font_parser_dispatch_via_11774(data, primary_font_selection_stream)
+    secondary_font_selection_trace = trace_font_parser_dispatch_via_11774(data, secondary_font_selection_stream)
     secondary_symbol_miss_stream_bytes = b"\x1b)1234U"
     secondary_symbol_miss_trace = trace_symbol_set_parser_dispatch_via_11774(data, secondary_symbol_miss_stream_bytes)
     secondary_symbol_miss_commands = secondary_symbol_miss_trace["commands"]
@@ -27398,6 +27400,286 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             0x782EF2: 0x04B0,
             0x782F2C: 1,
             0x782F2D: 1,
+        },
+    }))
+    primary_visible_context = int(primary_13eb8_refresh["context_update"]["selected_longword"])  # type: ignore[index]
+    primary_visible_hmi = builtin_flagged_hmi_from_context(resources, primary_visible_context)
+    primary_selection_visible_stream = primary_font_selection_stream + b"!!"
+    primary_selection_visible_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(primary_selection_visible_stream), direct_mode=0),
+        len(primary_selection_visible_stream),
+    )
+    primary_selection_visible_printable = primary_selection_visible_fetch["stream"][len(primary_font_selection_stream):]
+    primary_selection_visible_page = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        primary_selection_visible_printable,
+        primary_visible_context,
+        control_fixture_state(
+            cursor_x=pack12(0),
+            cursor_y=pack12(21),
+            hmi=primary_visible_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=primary_visible_hmi["hmi"],
+    )
+    primary_selection_visible_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        primary_selection_visible_printable,
+    )
+    primary_selection_visible_events: list[dict[str, object]] = []
+    for event in primary_selection_visible_page["events"]:
+        assert isinstance(event, dict)
+        page_result = event["page_result"]
+        source = event["source"]
+        positioned = event["positioned"]
+        assert isinstance(page_result, dict)
+        assert isinstance(source, dict)
+        assert isinstance(positioned, dict)
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        primary_selection_visible_events.append({
+            "kind": event["kind"],
+            "byte": event["byte"],
+            "source_context": source["context"],
+            "source_slot": source["context_slot"],
+            "mapped": source["mapped"],
+            "glyph_entry": source["glyph_entry"],
+            "glyph_rows": source["glyph_rows"],
+            "glyph_width": source["glyph_width"],
+            "cursor_before": event["cursor_before"],
+            "cursor_after": event["cursor_after"],
+            "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+            "selector": page_result["selector"],
+            "coord": page_result["coord"],
+            "allocated": page_result["allocated"],
+            "chain_index": page_result["chain_index"],
+            "count_before": page_result["count_before"],
+            "count_after": page_result["count_after"],
+            "bucket_index": page_result["bucket_index"],
+        })
+    primary_selection_visible_rendered = primary_selection_visible_page["rendered"]
+    primary_selection_visible_bridged = primary_selection_visible_page["bridged_record"]
+    assert isinstance(primary_selection_visible_rendered, dict)
+    assert isinstance(primary_selection_visible_bridged, dict)
+    checks.append(assert_equal("parsed primary built-in font selection feeds visible page-record rows", {
+        "combined_stream": primary_selection_visible_fetch["stream"],
+        "fetch_sources": sorted(set(primary_selection_visible_fetch["sources"])),
+        "selection_handlers": [
+            event["handler"]
+            for event in primary_selection_request["events"]
+        ],
+        "selection_context": primary_visible_context,
+        "selection_calls": primary_13eb8_refresh["calls"],
+        "selection_map": {
+            key: primary_13eb8_dispatch[key]
+            for key in (
+                "path",
+                "slot",
+                "selected_symbol",
+                "active_symbol",
+                "range_start",
+                "range_end",
+                "patch_kind",
+                "map_address",
+            )
+        },
+        "context_update": primary_13eb8_refresh["context_update"],
+        "metric": primary_visible_hmi,
+        "printable_stream": primary_selection_visible_printable,
+        "printable_parser_handlers": [
+            event["handler"]
+            for event in primary_selection_visible_trace["events"]
+        ],
+        "events": primary_selection_visible_events,
+        "root_allocations": primary_selection_visible_page["final_state"]["page_record_root_allocations"],
+        "bucket_index": primary_selection_visible_page["bucket_index"],
+        "object_prefix": primary_selection_visible_page["bucket_object"][:14],
+        "bridged_context_slots": primary_selection_visible_bridged["context_slots"][:2],
+        "rendered": {
+            key: primary_selection_visible_rendered[key]
+            for key in ("selector", "context_slot", "count", "payload")
+        },
+        "rendered_glyphs": primary_selection_visible_rendered["rendered"],
+        "rendered_rows": primary_selection_visible_rendered["rows"],
+        "final_state": select_keys(primary_selection_visible_page["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "hmi",
+            "page_record_root_allocations",
+        )),
+    }, {
+        "combined_stream": primary_font_selection_stream + b"!!",
+        "fetch_sources": ["ring"],
+        "selection_handlers": [0x00C930, 0x00C89C, 0x00C6EC, 0x00C780, 0x00C840, 0x01205A],
+        "selection_context": 0xC008004C,
+        "selection_calls": [
+            "0x148f8",
+            "0x1569c",
+            "0x156de",
+            "0x153c6",
+            "0x1519a",
+            "0x147b2",
+            "0x14758",
+            "0x14398",
+            "0x144d2",
+            "0x14c64",
+        ],
+        "selection_map": {
+            "path": "built-in-cache-miss",
+            "slot": "primary",
+            "selected_symbol": 0x0115,
+            "active_symbol": 0x0115,
+            "range_start": 0x0021,
+            "range_end": 0x00FE,
+            "patch_kind": "unchanged",
+            "map_address": 0x782F32,
+        },
+        "context_update": {
+            "helper": 0x0144D2,
+            "context_record": 0x782EE6,
+            "selected_longword": 0xC008004C,
+            "byte_4_bit30": 1,
+            "byte_5_bit26": 0,
+        },
+        "metric": {
+            "base": 0x00004C,
+            "metric_flag": 0,
+            "raw_metric": 0x00780000,
+            "hmi": pack12(30),
+        },
+        "printable_stream": b"!!",
+        "printable_parser_handlers": [0x00D04A, 0x00D04A],
+        "events": [
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "source_context": 0xC008004C,
+                "source_slot": 0,
+                "mapped": 0,
+                "glyph_entry": 0x001088,
+                "glyph_rows": 32,
+                "glyph_width": 9,
+                "cursor_before": pack12(0),
+                "cursor_after": pack12(30),
+                "positioned_xy": (10, -10),
+                "selector": 0,
+                "coord": 0x6A00,
+                "allocated": True,
+                "chain_index": 0,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": -1,
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "source_context": 0xC008004C,
+                "source_slot": 0,
+                "mapped": 0,
+                "glyph_entry": 0x001088,
+                "glyph_rows": 32,
+                "glyph_width": 9,
+                "cursor_before": pack12(30),
+                "cursor_after": pack12(60),
+                "positioned_xy": (40, -10),
+                "selector": 0,
+                "coord": 0x6802,
+                "allocated": False,
+                "chain_index": 0,
+                "count_before": 1,
+                "count_after": 2,
+                "bucket_index": -1,
+            },
+        ],
+        "root_allocations": 1,
+        "bucket_index": -1,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 00 6a 00 00 68 02"),
+        "bridged_context_slots": (0xC008004C, 0),
+        "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 2,
+            "payload": bytes.fromhex(
+                "00 02 00 6a 00 00 68 02"
+                "00 00 00 00 00 00 00 00"
+                "00 00 00 00 00 00 00 00"
+                "00 00 00 00 00 00 00 00"
+            ),
+        },
+        "rendered_glyphs": [
+            {
+                "glyph": 0,
+                "coord": 0x6A00,
+                "dest_base": 0xC0,
+                "x": 10,
+                "y": 6,
+                "a001": 0x1A,
+                "span": 2,
+                "rows": 32,
+                "width": 9,
+                "helper": 0x01FE76,
+            },
+            {
+                "glyph": 0,
+                "coord": 0x6802,
+                "dest_base": 0xC4,
+                "x": 40,
+                "y": 6,
+                "a001": 0x18,
+                "span": 2,
+                "rows": 32,
+                "width": 9,
+                "helper": 0x01FE76,
+            },
+        ],
+        "rendered_rows": [
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".............###...........................###...",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            ".............###...........................###...",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            ".............###...........................###...",
+            "............#####.........................#####..",
+            ".............###...........................###...",
+            "............#####.........................#####..",
+            ".............###...........................###...",
+            ".............###...........................###...",
+            ".............###...........................###...",
+            ".............###...........................###...",
+            ".............###...........................###...",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            "............#####.........................#####..",
+            "...........#######.......................#######.",
+            "..........#########.....................#########",
+            "..........#########.....................#########",
+            "..........#########.....................#########",
+            "...........#######.......................#######.",
+            "............#####.........................#####..",
+        ],
+        "final_state": {
+            "cursor_x": pack12(60),
+            "cursor_y": pack12(21),
+            "hmi": pack12(30),
+            "page_record_root_allocations": 1,
         },
     }))
     default_font_tables_found = default_font_symbol_tables_via_1ac0a_1af36(

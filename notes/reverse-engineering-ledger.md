@@ -761,7 +761,16 @@ outcomes are pinned as visible branch shortcuts that skip context
 installation after the documented refresh call(s); dirty-flag-2 selector
 match and mismatch outcomes are pinned as `0xc428`-only or
 remembered-copy-only paths with no `0x13eb8` call, including secondary
-slot `0x782ef6` context selection
+slot `0x782ef6` context selection; fixture `parsed primary built-in font
+selection feeds visible page-record rows` now composes the parsed primary
+selection stream `ESC (s0p10h12v0s0b3T!!` into visible output by taking the
+pinned `0x13eb8` selected context `0xc008004c`, HMI `30`, and rebuilt primary
+map `0x782f32`, then routing the following printable bytes through `0xd04a`
+into compact object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`,
+`0x1edc6` context slot `0xc008004c`, and compact helper `0x1fe76` Courier
+glyph rows; remaining middle edge is live CPU continuity from current-font
+record `0x782ee6` to the printable/page-record runner, not the selected
+context's renderer-facing meaning
 
 ### Formatter manuals
 
@@ -848,8 +857,10 @@ ROM work needed:
 - Extend the pinned visible `0xc580` branch outcomes into fuller
   upstream `0x1be22` parser-state coverage around the now-pinned
   `0x17708` success paths, broaden the parser-derived `0x156de` fallback
-  fixture into live parser/font-state coverage, and extend `0x13eb8` if
-  later inline/downloaded or error-return branches surface.
+  fixture into live parser/font-state coverage, add secondary/fallback
+  font-selection visible-output streams comparable to the now-pinned primary
+  `ESC (s0p10h12v0s0b3T!!` case, and extend `0x13eb8` if later
+  inline/downloaded or error-return branches surface.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.

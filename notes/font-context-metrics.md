@@ -26,6 +26,7 @@ Evidence:
   - `0xc580 full live-slot branch reuses matching page-root font context`
   - `0x13eb8 refresh carries parsed primary font selection to dispatch`
   - `0x13eb8 refresh carries parsed secondary font selection to dispatch`
+  - `parsed primary built-in font selection feeds visible page-record rows`
   - `0xe65c refresh composes with font context bridge`
   - `flagged printable d8fc low-watermark flush renders span`
   - `unflagged printable d4ac low-watermark flush renders span`
@@ -182,6 +183,45 @@ Fixture-pinned secondary result:
   then applies `0x14f16` symbol-set patching and `0x1440c` state snapshot.
 - bit-30 clear / fixed-record form: rebuilds through `0x14e24` and
   `0x14eb6`, then applies the same `0x14f16` / `0x1440c` tail.
+
+## Visible Built-In Selection Boundary
+
+Fixture `parsed primary built-in font selection feeds visible page-record rows`
+now composes the primary font-selection command family into visible compact
+text output. One modeled `0xa904` ring stream contains
+`ESC (s0p10h12v0s0b3T!!`; the selection phase routes through handlers
+`0xc930`, `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a`, then the
+existing `0x13eb8` refresh chooses selected longword `0xc008004c`.
+
+That selected built-in record is the first Courier offset-table record at
+resource base `0x00004c`. Its HMI source is byte `+0x21 = 0` and long
+`+0x24 = 0x00780000`, which `0x10550` converts to packed advance `30`.
+The following printable stream `!!` routes both bytes through `0xd04a`.
+Using the selected context, `0x1393a` maps host byte `0x21` to glyph `0x00`,
+source glyph entry `0x001088`, rows `32`, width `9`, and context slot `0`.
+
+The page-record producer then queues one short compact object in bucket `-1`:
+
+```text
+00 00 00 00 00 00 00 02 00 6a 00 00 68 02
+```
+
+The two entries use compact coords `0x6a00` and `0x6802`. The `0x1edc6`
+bridge copies render-record context slot `0` as `0xc008004c`; compact render
+dispatch resolves both glyphs through that selected context and renders the
+same 38 row strings pinned by the fixture. The first nonblank row is:
+
+```text
+.............###...........................###...
+```
+
+This checkpoint closes the semantic path from parsed built-in font-selection
+bytes through `0x13eb8`, `0x144d2`, `0x14c64`, printable `0xd04a`,
+page-record queueing, `0x1edc6`, and compact glyph rendering. It does not yet
+claim live CPU memory continuity between the command parser's current-font RAM
+record and the page-record runner; the fixture injects the selected context
+longword from the pinned `0x13eb8` result into the printable/page-record
+phase.
 
 ## Page-Root Context Install
 
@@ -354,6 +394,16 @@ work can close the right gap instead of re-tracing already-covered consumers.
   `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a`; filters
   `0x156de`, `0x153c6`, `0x1519a`, and `0x14398`. Status:
   parser-produced and selected to a resource candidate.
+- Claim: parsed built-in font-selection bytes can determine visible compact
+  text rows. Evidence: fixture
+  `parsed primary built-in font selection feeds visible page-record rows`;
+  stream `ESC (s0p10h12v0s0b3T!!`; selected context `0xc008004c`; HMI
+  `30`; printable handlers `0xd04a, 0xd04a`; queued object prefix
+  `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`; render-record context slot
+  `0xc008004c`; first visible row
+  `.............###...........................###...`. Status:
+  parser-produced selection plus modeled selected-context handoff to
+  visible-output fixture.
 - Claim: selected built-in context supplies HMI/default advance. Evidence:
   fixture `line-printer flagged HMI metric via 0x10550`; selected context
   `0x440946b4`, resource base `0x0146b4`, byte `+0x21 = 0x00`, long
@@ -513,8 +563,12 @@ A byte-stream reproduction must preserve these behaviors:
 
 - `0x13eb8` selection, map rebuild, page-root install, printable source
   capture, and low-water span effects are fixture-backed for the primary and
-  secondary cases above, but not every PCL font request combination has been
-  driven from parser bytes to visible rows.
+  secondary cases above. The primary built-in selection request
+  `ESC (s0p10h12v0s0b3T!!` is now driven from parser bytes to visible rows,
+  with the selected `0xc008004c` context injected at the printable phase. Not
+  every PCL font request combination has been driven from parser bytes to
+  visible rows, and the live CPU current-font-record handoff into page
+  queueing remains open.
 - The exact metric-byte provenance for all downloaded/inline forms remains
   incomplete at the parser-produced page boundary. Existing host-stream
   downloaded-font fixtures prove install, visible glyph rendering, and

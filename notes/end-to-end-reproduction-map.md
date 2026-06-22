@@ -288,8 +288,13 @@ The next work should follow dataflow, not isolated handlers:
    predicate no-install fixtures.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
-   and parser-driven downloaded-glyph/rule/raster page stream. The next suite
-   cases should add built-in font-selection commands, capture the
-   font-install-to-page handoff from live CPU memory instead of a modeled
-   installed resource image, and add geometry-changing publication cases with
-   final bitmap-row comparison.
+   parser-driven downloaded-glyph/rule/raster page stream, and primary
+   built-in font-selection visible-output stream. The new built-in case proves
+   `ESC (s0p10h12v0s0b3T!!` through parsed selection handlers, selected
+   context `0xc008004c`, printable `0xd04a` entries, object prefix
+   `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record context slot
+   `0xc008004c`, and final Courier glyph rows. Remaining suite cases should
+   capture the font-install/current-font-to-page handoff from live CPU memory
+   instead of a modeled selected context, add secondary and fallback
+   font-selection visible-output variants, and add geometry-changing
+   publication cases with final bitmap-row comparison.

@@ -1,0 +1,275 @@
+# PCL Parser Core Firmware
+
+This note documents the core parser path after [host-byte-fetch.md](host-byte-fetch.md):
+bytes from `0xa904` become parser bytes, six-byte command records, table dispatches, and
+delayed payload calls.
+
+This is not a command reference. Command-specific state changes live in
+[pcl-command-map.md](pcl-command-map.md),
+[page-raster-imaging.md](page-raster-imaging.md), and
+[resource-rom.md](resource-rom.md). The purpose here is to document what the shared
+parser code does before those handlers take over.
+
+Primary disassembly evidence:
+
+- `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`
+- `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`
+- `generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`
+- `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`
+- `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`
+
+Executable evidence is in `tools/render_fixture_harness.py`, especially the parser trace
+helpers and the `0x121cc` / `0x12218` delayed-payload helpers.
+
+## State Blocks
+
+The parser initializes these fields at `0x11774` before entering the byte loop:
+
+| Address | Group | Meaning |
+| --- | --- | --- |
+| `0x782999` | canonical | Current parser mode. Cleared at parser start. |
+| `0x78299a` | firmware bookkeeping | Current state handler pointer. Starts as `0x11b8e`. |
+| `0x78299e` | canonical | Cursor for six-byte parsed command records. |
+| `0x782a1a` | firmware bookkeeping | Delayed-payload pending flag. |
+| `0x782a1c` | firmware bookkeeping | Delayed-payload handler pointer. |
+| `0x782a20..0x782a25` | firmware bookkeeping | Saved six-byte command record. |
+| `0x782a26` | parser scratch | Cursor into byte scratch at `0x782a2a`. |
+| `0x782a2a..` | parser scratch | Accumulated nonnumeric command bytes. |
+| `0x782a3e` | parser scratch | Cursor into numeric text scratch at `0x782a42`. |
+| `0x782a42..` | parser scratch | Digits/sign/fraction bytes collected by tokenizer. |
+| `0x782a56` | firmware bookkeeping | Alternate-mode echo helper latch. |
+| `0x782c18` | canonical | Alternate/data-mode flag. Chooses alternate parser table. |
+| `0x783196..0x783199` | parser scratch | Small local accumulation buffer for matched bytes. |
+
+The six-byte command record at `0x78299e` has this layout:
+
+```text
++0  flags
++1  terminating/final byte
++2  signed integer parameter word
++4  signed fractional parameter word
+```
+
+The flag byte is cleared before parsing. `0xdb74` sets bit `0x80` when a numeric value
+is present. It writes `0x81` after a leading `+` or `-`, so bit `0x01` is a sign-seen
+marker in observed records.
+
+## Parser Byte Wrapper At 0xda9a
+
+Routine `0xda9a` is the normal byte source used by the parser loop and tokenizer. It
+calls `0xa904` and returns the byte in `D7` unless the byte is `ESC`.
+
+If the first byte is not `ESC`, `0xda9a` returns it unchanged. If the byte is `ESC`, it
+fetches one more byte:
+
+- `ESC` followed by anything except `?` logs that second byte through `0x9ec0` and
+  returns `D7 = 0x1b`. The second byte is not lost; it is reported to the
+  logging/pushback helper before the parser sees the `ESC`.
+- `ESC ? 0x11` is swallowed and the routine restarts from the top.
+- `ESC ? X`, where `X` is not `0x11`, compares `X` as if it were the first fetched byte.
+  If `X` is not another `ESC`, it returns `X`.
+
+This wrapper is why the main parser sees `ESC` as a single dispatch byte even though
+`0xda9a` has already inspected the next host byte.
+
+Routine `0xdace` is a separate payload/control byte reader. It calls `0xa904`. If the
+byte is not `0x1a`, it returns that byte. If it sees `0x1a 0x58`, it calls `0xd99a` and
+returns `D7 = 0`. If the second byte is not `0x58`, it returns the second byte. Raster,
+font, transparent-text, and repeat readers use this routine because their payload bytes
+need this local control handling.
+
+## Tokenizer At 0xdb74
+
+`0xdb74` allocates and fills one six-byte command record. It advances `0x78299e` by six
+before parsing so callers can rewind the current record by subtracting six from the
+cursor.
+
+The tokenizer reads through `0xda9a`, not directly through `0xa904`.
+
+Its behavior:
+
+1. Clear the record flag byte and fractional word.
+2. Skip leading spaces.
+3. Accept optional `+` or `-`; copy it to scratch and set record flag `0x81`.
+4. If the next byte is `.` or a decimal digit, set flag bit `0x80`.
+5. Parse up to six integer digits into a long accumulator.
+6. Clamp the integer accumulator to `0x7fff`.
+7. Negate the integer if a sign was seen and store the low word at record `+2`.
+8. If a decimal point is present, parse up to four fractional digits.
+9. Negate the fractional accumulator if a sign was seen and store it at `+4`.
+10. Skip any additional fractional digits beyond the four stored digits.
+11. Store the terminating byte at record `+1`.
+12. Log the terminating byte through `0x9ec0`.
+13. Return `D7 = 0` for terminators `:` or `;`; otherwise return the terminator.
+
+The digit bytes copied into `0x782a42..0x782a3e` are parser scratch, not the canonical
+numeric value. The record words at `+2` and `+4` are the fields that handlers consume.
+
+## Angle Helper At 0xdb46
+
+`0xdb46` is called by `0xdaf0` after a byte has been fetched. If the byte is not `<`, it
+returns immediately.
+
+When the byte is `<`, the helper consumes a bracketed span through the caller's
+byte-source pointer. It keeps reading until it sees `>`. A nested `<` forces an extra
+byte fetch before continuing. After a closing `>`, it fetches the next byte and repeats
+if that next byte is another `<`.
+
+The helper does not build command records itself. It positions `D7` on the next byte
+that should be considered by the command-combining wrapper.
+
+## Command Combiner At 0xdaf0
+
+`0xdaf0` wraps `0xdb74` for PCL escape-command combining. It sets:
+
+- `A3 = 0xda9a`, the byte-source function;
+- `A4 = 0x78299e`, the command-record cursor pointer.
+
+It first calls `0xdb74` to parse one record. Then it rewinds `0x78299e` by six to point
+back at that record, fetches the next byte through `0xda9a`, and runs the angle helper.
+
+The combiner then decides whether more records belong to the same command family:
+
+- If the current record's flag byte is nonnegative and the next byte is in `0x20..0x3f`,
+  it loops back to `0xdb74` to parse another parameter or intermediate record.
+- If the next byte is still in `0x20..0x3f` but the flag byte is negative, it consumes
+  bytes through `0xda9a` and the angle helper until the final byte is outside that
+  range.
+- It writes the final byte to record `+1`, logs it through `0x9ec0`, advances `0x78299e`
+  by six, and returns.
+
+This means lowercase PCL finals such as `c` or `b` can leave a record pending for the
+uppercase final in the same family, while the final uppercase byte is what causes
+command dispatch or delayed payload restore.
+
+## Main Parser Loop At 0x11774
+
+The main loop fetches one parser byte by calling `0xda9a`, copies it to `D5`, and then
+decides whether it is printable text or a parser-table byte.
+
+Mode zero has a fast printable path. The loop masks the byte with `0x7f`; if the result
+is at least `0x20`, it is printable-ish:
+
+- In normal mode (`0x782c18 == 0`), the loop delays for a short counter and calls
+  printable handler `0xd04a`.
+- In alternate/data mode (`0x782c18 != 0`), it appends the byte through `0xe002` instead
+  of calling the normal printable handler.
+
+Nonprintable bytes, nonzero parser modes, and bytes not handled by the fast path go
+through parser dispatch tables. The entry format is six bytes:
+
+```text
++0  byte to match
++1  next parser mode
++2  handler longword
+```
+
+Normal-mode table pointers come from `0x112a4` and `0x112a8`, indexed by `0x782999`.
+Alternate/data-mode table pointers come from `0x116f6` and `0x116fa`.
+
+The loop scans from the start pointer to the end pointer, comparing entry `+0` with
+`D5`. If it finds a matching entry with a nonzero handler longword, it may append the
+byte to the local buffer, then calls that handler. The default state handler `0x11b8e`
+logs the byte through `0x9ec0` and clears `0x782999`.
+
+If the matching entry has a zero handler longword, the entry is a state transition
+rather than an immediate action. In normal mode, the loop writes entry `+1` to
+`0x782999`. If the new mode is zero, it calls `0x12218` to restore and dispatch any
+delayed payload, then resets the command-record and scratch cursors to their initial
+parser values.
+
+If no table entry matches in mode zero normal mode, the loop consults the active
+font-context state at `0x782f06` / `0x782eeb`. If that context byte is `1`, it calls
+`0xd04a` for the byte; otherwise it ignores the byte and fetches again.
+
+## Stateful Parser Helpers
+
+The helper family at `0x11ba6`, `0x11c6c`, `0x11d0c`, and `0x11dd2` handles multi-record
+command families. These helpers are the middle layer between a table transition and
+command-specific handlers.
+
+Common behavior across the family:
+
+- call `0xdaf0` to parse another record in the same escape family;
+- fetch lookahead bytes through `0xda9a`;
+- recognize `w` / `W` as delayed-payload markers;
+- schedule wrapper `0x1228a` through `0x121cc` for byte-count payloads;
+- call `0x12218` when a terminal byte in `0x40..0x5e` ends the family;
+- rewind `0x78299e` by six when the lookahead byte belongs to the current record instead
+  of a new one.
+
+These helpers are why a stream such as `ESC *b4W` separates the parsed byte count from
+the four payload bytes. The `W` record is first saved by `0x121cc`; the payload reader
+is called later only after `0x12218` restores the saved record.
+
+## Delayed Payload Scheduler
+
+`0x121cc` stores a pending payload call. It rewinds `0x78299e` by six to the current
+record. If no delayed payload is already pending, it writes:
+
+```text
+0x782a1a      pending flag = 1
+0x782a1c      handler longword passed by caller
+0x782a20..25  six-byte command record snapshot
+```
+
+Known scheduler callers:
+
+- `0x11f82` schedules raster transfer handler `0x105d0`.
+- `0x11f96` schedules font descriptor/setup handler `0x15d0a` when the count in the
+  previous record is zero.
+- `0x11f96` schedules downloaded font/character handler `0x16c14` when that count is
+  nonzero.
+- The stateful helpers schedule wrapper `0x1228a` for generic counted payloads.
+
+`0x12218` restores and dispatches the saved payload. If `0x782a1a != 1`, it returns.
+Otherwise it clears the pending flag, copies the saved six-byte record to the current
+`0x78299e` cursor, advances the cursor by six, and dispatches:
+
+- In normal mode (`0x782c18 == 0`), it calls the saved handler pointer from `0x782a1c`.
+- In alternate/data mode, it calls `0x12358` with wrapper `0x1228a` instead.
+
+After dispatch, `0x12218` clears the saved handler longword.
+
+`0x1228a` rewinds the current record, reads the integer count at record `+2`, takes its
+absolute value, and calls `0x12328`. `0x12328` consumes that many bytes through
+`0xdace`. It returns `D7 = -1` if `0xdace` reports `-1`; otherwise it returns `D7 = 1`
+when the count has been consumed.
+
+`0x12358` is the alternate/data-mode path. If the saved handler pointer equals the
+argument passed to `0x12358`, it calls `0x1228a`. Otherwise it consumes a positive count
+through `0xdace` and echoes each normalized byte through `0xe002`.
+
+## Reproduction Requirements
+
+A byte-stream reproduction must preserve these parser contracts:
+
+- Feed parser bytes through `0xda9a`, not directly through `0xa904`.
+- Feed counted binary/text payload bytes through the consumer used by the ROM path,
+  usually `0xdace` for delayed payload consumers.
+- Preserve the six-byte command-record cursor at `0x78299e` and the rewind by six bytes
+  used by handlers and delayed payload setup.
+- Treat `0x782a42..0x782a3e` as scratch text; the canonical parsed numeric fields are
+  the words in the six-byte record.
+- Preserve `0x782999` mode transitions and the normal vs alternate table choice
+  controlled by `0x782c18`.
+- Preserve delayed payload state `0x782a1a`, `0x782a1c`, and saved record bytes
+  `0x782a20..0x782a25` across the command terminator that triggers `0x12218`.
+- Do not collapse command records and payload bytes into one parser event. The ROM
+  stores the command record first and consumes payload bytes later.
+
+## Open Edges
+
+The shared parser mechanism above is documented, but these edges still need
+command-family notes before the model is complete:
+
+- `0x11ba6..0x11ea2`: exact differences between each stateful helper beyond the common
+  tokenizer/lookahead/delayed-payload pattern.
+- `0x11eb6`, `0x11ea4`, and adjacent setup handlers: initial actions for `ESC` and
+  `0x1a` parser-table transitions.
+- `0x12120`: the `ESC Y` byte appender that reads through `0xa904`, echoes through
+  `0xe002`, treats `0x1a 0x58` as `0x7f`, and stops on `ESC Z`.
+- `0x12452` and following transparent-text handlers: how restored transparent-text bytes
+  re-enter printable/control handling.
+- The command-family semantic notes must cite their terminal handlers and output effects
+  rather than citing parser-table membership alone.

@@ -29,6 +29,11 @@ broader.
 See [host-byte-fetch.md](host-byte-fetch.md) for the tracked explanation
 of routine `0x0000a904`.
 
+See [pcl-parser-core.md](pcl-parser-core.md) for the tracked explanation
+of shared parser routines `0xda9a`, `0xdaf0`, `0xdb74`, `0x11774`,
+`0x121cc`, and `0x12218`. The generated files listed above are evidence
+inputs, not the documentation deliverable.
+
 Summary: `0xa904` returns the next normalized input byte in `D7`, or
 `D7 = -1` for the immediate no-byte/error branch where `0x780e66` and
 `0x780e3b` are both set. Before live hardware input it checks service

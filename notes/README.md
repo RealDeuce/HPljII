@@ -30,6 +30,8 @@ compatibility boundary.
   hashes, package markings, interleave order, and rejected order probes.
 - [firmware-startup.md](firmware-startup.md) - first annotated 68000
   reset/startup findings from the executable ROM pair.
+- [host-byte-fetch.md](host-byte-fetch.md) - documented `0xa904` host
+  byte-source multiplexer, direct I/O handshakes, and caller semantics.
 - [pcl-parser-firmware.md](pcl-parser-firmware.md) - current host-byte
   fetch and PCL escape tokenizer/dispatch anchors.
 - [pcl-command-map.md](pcl-command-map.md) - flattened PCL

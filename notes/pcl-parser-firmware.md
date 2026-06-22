@@ -26,65 +26,22 @@ broader.
 
 ## Host Byte Fetch Anchor
 
-`generated/analysis/ic30_ic13_host_byte_fetch_flow.md` now splits
-routine `0x0000a904` into a priority-ordered normalized byte source. It
-returns the next input byte in `D7`, or `D7=-1` in the one immediate
-no-byte/error branch where `0x780e66` and `0x780e3b` are both set. It
-checks several buffered sources first:
+See [host-byte-fetch.md](host-byte-fetch.md) for the tracked explanation
+of routine `0x0000a904`.
 
-- State flag `0x7821cd`.
-- Mode/status flag `0x780e66`.
-- Pushback-like buffer count/pointer at `0x783e8c` / `0x783e8e`.
-- Current data chain pointer at `0x782d76`.
-- Another buffer count/pointer at `0x783e76` / `0x783e78`.
-- Ring-buffer-looking count/pointer at `0x783e54` / `0x783e56`, wrapping
-  between `0x783a4c` and `0x783e53`.
+Summary: `0xa904` returns the next normalized input byte in `D7`, or
+`D7 = -1` for the immediate no-byte/error branch where `0x780e66` and
+`0x780e3b` are both set. Before live hardware input it checks service
+state, two LIFO-like sources, active data-chain replay, and a ring
+buffer. Direct mode `0x780e40 == 1` polls short MMIO registers and
+toggles `0xa601` / `0xaa01`; other nonzero modes poll
+`0xfffee005` / `0xfffee001` and update shadow `0x7828fb` through
+`0xfffee009`.
 
-One direct hardware input path starts at `0x0000a9f0` when mode selector
-`0x780e40 == 1`:
-
-1. Polls `0x8e01` until bit `0x10` is set, with timeout counter
-   `0x2710`.
-2. Reads input byte from `0x8801` into `D7`.
-3. If byte is `0x1a`, echoes/logs it through routine `0x9ec0` and keeps
-   `D7 = 0x1a`.
-4. Waits for bit 0 of `0x8c01` to clear.
-5. Toggles output/control registers including `0xa601`, `0xaa01`, and
-   state byte `0x7828fa`.
-
-A second direct input path starts at `0x0000aaa6` when `0x780e40` is
-nonzero but not `1`. It polls `0xfffee005`, treats bit 0 as data-ready,
-ORs status bits 7 and 6 into `0x780e2e` as `0x80` and `0x40`, reads the
-byte from `0xfffee001`, and writes handshake shadow `0x7828fb` to
-`0xfffee009`. The cleanup helper at `0xab8e` is called from `0x35de` and
-normalizes either the `0xaa01`/`0xa601` mode-1 handshake or the
-`0xfffee009` mode-2 handshake with the literal `bclr #0x40,D0`
-operation seen at `0xabe0`.
-
-Current interpretation: these are host-interface or formatter I/O
-status/data registers. The ROM evidence proves polling/data/handshake
-behavior, but the exact physical interface names still need board or
-manual correlation.
-
-`tools/render_fixture_harness.py` now includes executable `0xa904`
-source-priority fixtures. They cover the immediate `D7=-1` branch,
-pending service retry, first LIFO priority, data-chain end-marker retry
-into the second LIFO source, ring-buffer priority while `0x780e40 == 0`,
-and both direct hardware paths including direct-mode `0x1a` reporting
-through `0x9ec0` and mode-2 control-shadow bit 6.
-
-All 19 direct absolute `JSR 0xa904` callers are now classified in
-`generated/analysis/ic30_ic13_host_byte_fetch_flow.md`. The parser
-wrappers at `0xda9a`, `0xdaa6`, and `0xdab2` can pass `D7=-1` upward
-without a local stop test. The `0xdace`/`0xdada` control probe treats
-the exact host sequence `0x1a 0x58` as a call to `0xd99a` and returns
-zero. Text repeat readers at `0x12142`, `0x124bc`, and `0x12582` stop
-on `D7=-1` and substitute `0x7f` for the same `0x1a 0x58` sequence.
-The raster reader at `0x138fa` and downloaded-font readers at
-`0x168dc`, `0x16960`, and `0x1697a` store zero for that sequence and
-treat negative `D7` as an end/error/failure status. Byte-stream
-reproduction therefore has to apply the `0x1a 0x58` normalization at
-the consumer family, not globally at the host-byte source.
+Important parser consequence: `0xa904` itself returns bytes. It does not
+globally interpret `0x1a 0x58`. Parser, text, raster, and font payload
+readers each apply their own local handling of that pair, so reproduction
+must model the consumer family as well as the byte-source order.
 
 ## ESC Byte Handling
 

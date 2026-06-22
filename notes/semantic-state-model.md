@@ -883,7 +883,11 @@ queues a fixed-width span through `0x136d2`.
 - `0x135f0` appends a six-byte segment-list entry in a `0x26` object
   allocated through `0x1387c`.
 - `0x136d2` inserts a fixed-width object under page-root `+0x28` using
-  `0x1381c` storage.
+  `0x1381c` storage. When the fixed list is nonempty, `0x13690` walks
+  existing bucket bytes and `0x13748..0x1377c` links the new object
+  before the first larger bucket byte or after the previous equal/lower
+  node. Evidence: fixture
+  `0x12714 landscape span inserts into nonempty fixed list`.
 
 ### Readers And Consumers
 
@@ -970,17 +974,28 @@ queues a fixed-width span through `0x136d2`.
   `1`. `0x1f812` renders the first bucket as one row at row `15` and
   the second bucket as two rows at rows `0..1`, each with 20 visible
   pixels.
+- Fixture `0x12714 landscape span inserts into nonempty fixed list`
+  seeds addressed fixed-list nodes at bucket bytes `2` and `6`, then
+  drives a landscape pending span through `0x12714`. The packaged source
+  is `orientation=1`, `x=7`, `y=0x40`, `extent=4`; `0x136d2` allocates
+  object pointer `0x00d05020`, visits existing nodes
+  `0x00d05004` and `0x00d05012`, and links the new object between them
+  as chain `2 -> 4 -> 6`. The inserted raw object
+  `00 d0 50 12 04 06 07 00 00 04 00 00 00 00` bridges to
+  `00 d0 50 12 04 16 07 00 00 04 00 04 01 08`; `0x1f756` / `0x1f7b0`
+  renders the bridged span at x `7`, rows `64..67`, with the selector-6
+  fixed pattern.
 
 ### Confidence
 
 High for pending-state initialization, unflagged `0xd4ac` low-water
 success, flagged `0xd8fc` low-water success, flush source packaging,
 portrait versus landscape branch selection, portrait split output,
-object byte shapes, bridge shape, and visible row effects because each
-claim has disassembly and passing fixtures. Medium for allocation-failure
-recovery and nonempty fixed-list ordering because those are disassembled
-and partly shared with existing allocator fixtures, but not yet driven
-by a live pending-span stream.
+landscape nonempty insertion, object byte shapes, bridge shape, and
+visible row effects because each claim has disassembly and passing
+fixtures. Medium for allocation-failure recovery because that path is
+disassembled and partly shared with existing finalization fixtures, but
+not yet driven by a live pending-span stream.
 
 ### Fixtures
 
@@ -997,6 +1012,7 @@ by a live pending-span stream.
 - `flagged printable d8fc low-watermark flush renders span`
 - `unflagged printable d4ac low-watermark flush renders span`
 - `0x1354a portrait text span split queues adjacent buckets`
+- `0x12714 landscape span inserts into nonempty fixed list`
 
 ### Disassembly Evidence
 
@@ -1023,9 +1039,6 @@ by a live pending-span stream.
 
 - `0x127a4..0x127c4`: allocation-failure retry is identified but not
   fixture-driven from a pending-span stream.
-- `0x13690..0x1377c`: nonempty fixed-list insertion order is covered by
-  the shared `0x136d2` addressed fixture, but not by a live
-  `0x12714` landscape span source.
 - `0xd4ac..0xd548`: unflagged context fields `+0x2b`, `+0x2c`, and
   `+0x2d` are fixture-backed for the low-water success branch, but
   exact font/context producer ownership and the disabled, before-lower,

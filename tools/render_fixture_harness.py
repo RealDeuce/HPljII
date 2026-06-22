@@ -12525,6 +12525,63 @@ def flush_text_span_via_12714(
     }
 
 
+def flush_text_span_addressed_via_12714(
+    stream_state: dict[str, object],
+    state: dict[str, int],
+    *,
+    vertical_offset: int = 0,
+) -> dict[str, object]:
+    enabled = int(state.get("enabled_783184", 0))
+    low_x = int(state.get("low_x_783186", 0))
+    high_x = int(state.get("high_x_783188", 0))
+    high_y = int(state.get("high_y_78318a", 0))
+    width = high_x - low_x
+    state["enabled_783184"] = 0
+    if not enabled or width <= 0:
+        return {
+            "flushed": False,
+            "reason": "disabled-or-empty",
+            "width": width,
+            "state": state,
+        }
+
+    orientation = int(state.get("orientation_782da3", 0))
+    if orientation != 1:
+        raise AssertionError("addressed 0x12714 fixture currently models landscape fixed-list output")
+
+    orientation_extent = int(state.get("orientation_extent_782db2", 0))
+    raw_source = {
+        "orientation": orientation,
+        "mode": 1,
+        "x": high_y,
+        "y": orientation_extent - low_x - (width - 1),
+        "extent": width,
+    }
+    page_extent = int(state.get("page_extent_782db6", 0xFFFF))
+    if high_y + 2 > page_extent:
+        return {
+            "flushed": False,
+            "reason": "below-page-extent",
+            "raw_source": raw_source,
+            "width": width,
+            "state": state,
+        }
+
+    queued = insert_fixed_rule_addressed_via_136d2(
+        stream_state,
+        raw_source,
+        vertical_offset=vertical_offset,
+    )
+    return {
+        "flushed": not bool(queued.get("allocation_failed", False)),
+        "path": "landscape-fixed-list-addressed",
+        "raw_source": raw_source,
+        "queued": queued,
+        "width": width,
+        "state": state,
+    }
+
+
 def insert_fixed_rule_addressed_via_136d2(
     state: dict[str, object],
     source: dict[str, int],
@@ -36496,6 +36553,165 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "..." + "###" + "." * 13,
                 "..." + "###" + "." * 13,
             ],
+        },
+    }))
+    addressed_span_landscape_state: dict[str, object] = {
+        "stream_bytes_remaining_782a70": 0,
+        "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+        "stream_next_free_782a76": 0,
+        "next_stream_chunk_ptr": 0x00D05000,
+        "stream_chunk_links": {},
+        "fixed_head_28": 0,
+        "stream_objects": {},
+    }
+    addressed_span_landscape_low = insert_fixed_rule_addressed_via_136d2(
+        addressed_span_landscape_state,
+        {"x": 0x0011, "y": 0x0020, "mode": 0, "extent": 0x0005},
+    )
+    addressed_span_landscape_high = insert_fixed_rule_addressed_via_136d2(
+        addressed_span_landscape_state,
+        {"x": 0x0008, "y": 0x0062, "mode": 1, "extent": 0x0009},
+    )
+    addressed_span_landscape = flush_text_span_addressed_via_12714(
+        addressed_span_landscape_state,
+        {
+            "enabled_783184": 1,
+            "low_x_783186": 2,
+            "high_x_783188": 6,
+            "high_y_78318a": 7,
+            "orientation_782da3": 1,
+            "orientation_extent_782db2": 0x45,
+            "page_extent_782db6": 64,
+        },
+    )
+    addressed_span_landscape_record = page_record_from_addressed_stream_state(
+        addressed_span_landscape_state,
+    )
+    addressed_span_landscape_bridged = bridge_page_record_via_1edc6(
+        addressed_span_landscape_record,
+    )
+    addressed_span_landscape_chain = [
+        (ptr, obj)
+        for ptr, obj in zip(
+            (0x00D05004, 0x00D05020, 0x00D05012),
+            addressed_span_landscape_record["fixed_list"],
+        )
+    ]
+    addressed_span_landscape_inserted_render = render_fixed_width_list_via_1f756(
+        data,
+        {"fixed_list": [addressed_span_landscape_bridged["fixed_list"][1]]},
+        band_rows=72,
+    )
+    checks.append(assert_equal("0x12714 landscape span inserts into nonempty fixed list", {
+        "preseed": {
+            "low": {
+                key: addressed_span_landscape_low[key]
+                for key in ("object_ptr", "bucket_byte", "old_head", "new_head")
+            },
+            "high": {
+                key: addressed_span_landscape_high[key]
+                for key in ("object_ptr", "bucket_byte", "old_head", "new_head")
+            },
+        },
+        "flushed": addressed_span_landscape["flushed"],
+        "path": addressed_span_landscape["path"],
+        "raw_source": addressed_span_landscape["raw_source"],
+        "queued": {
+            key: addressed_span_landscape["queued"][key]
+            for key in (
+                "object_ptr",
+                "old_head",
+                "new_head",
+                "previous_ptr",
+                "next_ptr",
+                "visited",
+                "bucket_byte",
+                "computed",
+            )
+        },
+        "chain": addressed_span_landscape_chain,
+        "bridged_inserted": addressed_span_landscape_bridged["fixed_list"][1],
+        "render": addressed_span_landscape_inserted_render,
+    }, {
+        "preseed": {
+            "low": {
+                "object_ptr": 0x00D05004,
+                "bucket_byte": 2,
+                "old_head": 0,
+                "new_head": 0x00D05004,
+            },
+            "high": {
+                "object_ptr": 0x00D05012,
+                "bucket_byte": 6,
+                "old_head": 0x00D05004,
+                "new_head": 0x00D05004,
+            },
+        },
+        "flushed": True,
+        "path": "landscape-fixed-list-addressed",
+        "raw_source": {
+            "orientation": 1,
+            "mode": 1,
+            "x": 7,
+            "y": 0x40,
+            "extent": 4,
+        },
+        "queued": {
+            "object_ptr": 0x00D05020,
+            "old_head": 0x00D05004,
+            "new_head": 0x00D05004,
+            "previous_ptr": 0x00D05004,
+            "next_ptr": 0x00D05012,
+            "visited": [0x00D05004, 0x00D05012],
+            "bucket_byte": 4,
+            "computed": {
+                "x": 7,
+                "y": 0x40,
+                "bucket_index": 4,
+                "key": 0x0700,
+                "mode": 6,
+                "selector_hi": 0x40,
+                "selector_lo": 0x00,
+            },
+        },
+        "chain": [
+            (0x00D05004, bytes.fromhex("00 d0 50 20 02 03 01 01 00 05 00 00 00 00")),
+            (0x00D05020, bytes.fromhex("00 d0 50 12 04 06 07 00 00 04 00 00 00 00")),
+            (0x00D05012, bytes.fromhex("00 00 00 00 06 06 28 00 00 09 00 00 00 00")),
+        ],
+        "bridged_inserted": bytes.fromhex("00 d0 50 12 04 16 07 00 00 04 00 04 01 08"),
+        "render": {
+            "band_word": 0,
+            "rendered": [{
+                "selector": 6,
+                "helper": 0x1F7B0,
+                "pattern_table_entry": 0x0308F6,
+                "pattern_long": 0xC000E000,
+                "pattern_word": 0xE000,
+                "key": 0x0700,
+                "bucket_delta": 4,
+                "decoded": {
+                    "x": 7,
+                    "y": 64,
+                    "row_low": 0,
+                    "subbyte": 7,
+                    "byte_pair_offset": 0,
+                },
+                "remaining_before": 4,
+                "available_rows": 16,
+                "rows_drawn": 4,
+                "mutated_object": bytes.fromhex(
+                    "00 d0 50 12 04 06 07 00 00 04 ff f4 01 08"
+                ),
+                "rows": (
+                    ["." * 23] * 64
+                    + ["." * 7 + "###" + "." * 13] * 4
+                ),
+            }],
+            "rows": (
+                ["." * 23] * 64
+                + ["." * 7 + "###" + "." * 13] * 4
+            ),
         },
     }))
     rectangle_sizes = apply_rectangle_size_decipoints(

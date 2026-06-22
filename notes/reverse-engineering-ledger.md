@@ -106,6 +106,8 @@ and unflagged printable `0xd140` -> `0xd3b2` -> `0xd4ac` low-water span
 flush to visible segment-list output,
 and portrait `0x1354a` split text-span output across adjacent compact
 buckets,
+and landscape `0x12714` text-span output through nonempty addressed
+`0x136d2` fixed-list insertion,
 with `0xcda2` reset/default environment state now decoded for
 page/control pool setup, cursor-stack reset, HMI/VMI recompute,
 line-termination clearing, and default bytes

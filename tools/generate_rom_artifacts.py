@@ -210,6 +210,7 @@ def generate_disassembly(firmware: Path) -> None:
         ("ic30_ic13_font_resource_setup_type_017362.lst", "0x17362", "0x17362", "0x80"),
         ("ic30_ic13_font_resource_validate_predicates_017358.lst", "0x17358", "0x17358", "0x3b0"),
         ("ic30_ic13_font_id_select_017708.lst", "0x17708", "0x17708", "0x130"),
+        ("ic30_ic13_font_fixed_record_release_017a24.lst", "0x17a24", "0x17a24", "0x580"),
         ("ic30_ic13_font_resource_payload_link_01887a.lst", "0x1887a", "0x1887a", "0x160"),
         ("ic30_ic13_font_resource_release_018b92.lst", "0x18b92", "0x18b92", "0xe0"),
         ("ic30_ic13_font_resource_release_alt_018bf2.lst", "0x18bf2", "0x18bf2", "0xe0"),

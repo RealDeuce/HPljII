@@ -5793,6 +5793,126 @@ def font_payload_split_plane_resume_via_16942(
     }
 
 
+def signed_divide_trunc_via_3324a(dividend: int, divisor: int) -> int:
+    if divisor == 0:
+        return 0
+    sign = -1 if (dividend < 0) ^ (divisor < 0) else 1
+    return sign * (abs(int(dividend)) // abs(int(divisor)))
+
+
+def font_resource_fixed_record_release_via_17d7c(
+    header: bytes | bytearray,
+    *,
+    base: int,
+    char_code: int,
+    continuation: dict[str, int] | None = None,
+    active_primary_context: int | None = None,
+    active_secondary_context: int | None = None,
+) -> dict[str, object]:
+    updated = bytearray(header)
+    base &= 0x00FFFFFF
+    char_code &= 0xFF
+    if base + 0x44 > len(updated):
+        return {
+            "status": "base-outside-header",
+            "handler": 0x17D7C,
+            "header": bytes(updated),
+            "base": base,
+            "char_code": char_code,
+            "continuation": dict(continuation) if continuation else None,
+        }
+
+    if (u32(updated, base) >> 30) & 1:
+        return {
+            "status": "delegates-to-0x17a24",
+            "handler": 0x17D7C,
+            "delegate": 0x17A24,
+            "header": bytes(updated),
+            "base": base,
+            "char_code": char_code,
+            "continuation": dict(continuation) if continuation else None,
+        }
+
+    type_byte = updated[base + 0x0E] if base + 0x0E < len(updated) else 0
+    if 0x20 < char_code <= 0x7F:
+        table_base_char = 0x20
+    elif type_byte == 1 and 0xA0 <= char_code <= 0xFF:
+        table_base_char = 0x40
+    else:
+        return {
+            "status": "char-outside-fixed-record-range",
+            "handler": 0x17D7C,
+            "header": bytes(updated),
+            "base": base,
+            "char_code": char_code,
+            "type_byte_0x0e": type_byte,
+            "continuation": dict(continuation) if continuation else None,
+        }
+
+    table_entry = base + 0x40 + (char_code - table_base_char) * 8
+    base_entry = base + 0x40
+    if table_entry + 8 > len(updated):
+        updated.extend(b"\x00" * (table_entry + 8 - len(updated)))
+    if base_entry + 8 > len(updated):
+        updated.extend(b"\x00" * (base_entry + 8 - len(updated)))
+
+    old_record = bytes(updated[table_entry:table_entry + 8])
+    divisor = u16(updated, base + 0x1A) if base + 0x1C <= len(updated) else 0
+    replacement_byte = signed_divide_trunc_via_3324a(0x7530, divisor) & 0xFF
+    updated[table_entry] = 1
+    updated[table_entry + 1] = 2
+    updated[table_entry + 2] = 0
+    updated[table_entry + 3] = replacement_byte
+    updated[table_entry + 4:table_entry + 8] = updated[base_entry + 4:base_entry + 8]
+
+    adjusted_char = char_code - 0x20 if char_code >= 0xA0 else char_code
+    side_index = max(adjusted_char - 0x20, 0)
+    side_stride = updated[base + 0x3C] if base + 0x3C < len(updated) else 0
+    side_base = base_entry + (0x600 if type_byte == 1 else 0x300)
+    side_table_offset = side_base + side_index * side_stride
+    if side_table_offset + 2 > len(updated):
+        updated.extend(b"\x00" * (side_table_offset + 2 - len(updated)))
+    updated[side_table_offset] = replacement_byte
+    updated[side_table_offset + 1] = 0
+
+    active_refresh: list[dict[str, int | str]] = []
+    if active_primary_context is not None and (int(active_primary_context) & 0x00FFFFFF) == base:
+        active_refresh.append({"slot": "primary", "word_0x7828de": 0})
+    if active_secondary_context is not None and (int(active_secondary_context) & 0x00FFFFFF) == base:
+        active_refresh.append({"slot": "secondary", "word_0x7828de": 1})
+
+    continuation_after = dict(continuation) if continuation else None
+    continuation_cleared = bool(
+        continuation_after
+        and int(continuation_after.get("flag", 0)) == 1
+        and (int(continuation_after.get("payload", 0)) & 0x00FFFFFF) == base
+        and (int(continuation_after.get("word_0x7827c8", 0)) & 0xFF) == char_code
+    )
+    if continuation_cleared and continuation_after is not None:
+        continuation_after = clear_download_continuation_state(continuation_after)
+
+    return {
+        "status": "released-fixed-record",
+        "handler": 0x17D7C,
+        "header": bytes(updated),
+        "base": base,
+        "char_code": char_code,
+        "type_byte_0x0e": type_byte,
+        "table_base_char": table_base_char,
+        "table_entry": table_entry,
+        "base_entry": base_entry,
+        "old_record": old_record,
+        "new_record": bytes(updated[table_entry:table_entry + 8]),
+        "divisor_0x1a": divisor,
+        "replacement_byte": replacement_byte,
+        "side_table_offset": side_table_offset,
+        "side_table_bytes": bytes(updated[side_table_offset:side_table_offset + 2]),
+        "active_refresh": active_refresh,
+        "continuation_cleared": continuation_cleared,
+        "continuation": continuation_after,
+    }
+
+
 def font_download_char_object_via_16498(
     header: bytes | bytearray,
     char_code: int,
@@ -6053,6 +6173,8 @@ def font_download_resource_resume_via_15c4c(
     continuation: dict[str, int],
     bitmap_stream: bytes,
     byte_budget: int,
+    active_primary_context: int | None = None,
+    active_secondary_context: int | None = None,
 ) -> dict[str, object]:
     updated = bytearray(header)
     base = int(continuation["payload"]) & 0x00FFFFFF
@@ -6124,7 +6246,19 @@ def font_download_resource_resume_via_15c4c(
         updated[dest:dest + len(bitmap)] = bitmap
 
     status = int(copy_result["status"])
-    if status == 2:
+    release = None
+    if status == 0:
+        release = font_resource_fixed_record_release_via_17d7c(
+            updated,
+            base=base,
+            char_code=char_code,
+            continuation=continuation,
+            active_primary_context=active_primary_context,
+            active_secondary_context=active_secondary_context,
+        )
+        updated = bytearray(release["header"])  # type: ignore[index]
+        continuation_after = release["continuation"]
+    elif status == 2:
         continuation_after = dict(continuation)
         if split_plane:
             copy_continuation = copy_result["continuation"]
@@ -6162,6 +6296,7 @@ def font_download_resource_resume_via_15c4c(
         "remaining_before": remaining,
         "bitmap": bitmap,
         "copy": copy_result,
+        "release": release,
         "continuation_before": dict(continuation),
         "continuation": continuation_after,
     }
@@ -33384,6 +33519,174 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "." * 22 + "##....##..####..",
             ],
         },
+    }))
+
+    failed_resume_memory = bytearray(0x1000)
+    failed_resume_memory[resource_object_context + 0x14:resource_object_context + 0x16] = (0x0115).to_bytes(2, "big")
+    failed_resume_memory[resource_object_context + 0x1A:resource_object_context + 0x1C] = (0x0078).to_bytes(2, "big")
+    failed_partial_resource_install = font_download_resource_object_via_16606(
+        failed_resume_memory,
+        base=resource_object_context,
+        char_code=0x21,
+        record_prefix=resume_object_descriptor[2:6],
+        bitmap_stream=resume_object_descriptor[6:12],
+        byte_budget=0x10,
+        object_offset=resource_object_context + 0x0200,
+    )
+    failed_partial_resource_continuation = failed_partial_resource_install["continuation"]
+    assert isinstance(failed_partial_resource_continuation, dict)
+    failed_partial_resource_header = failed_partial_resource_install["header"]
+    assert isinstance(failed_partial_resource_header, bytes)
+    failed_resource_resume = font_download_resource_resume_via_15c4c(
+        failed_partial_resource_header,
+        continuation=failed_partial_resource_continuation,
+        bitmap_stream=bytes.fromhex("f0 0f"),
+        byte_budget=4,
+        active_primary_context=resource_object_context,
+    )
+    failed_resource_header = failed_resource_resume["header"]
+    assert isinstance(failed_resource_header, bytes)
+    failed_resource_release = failed_resource_resume["release"]
+    assert isinstance(failed_resource_release, dict)
+    checks.append(assert_equal("0x15c4c failed resource resume releases fixed-record object", {
+        "partial_install": {
+            key: failed_partial_resource_install[key]
+            for key in (
+                "status",
+                "handler",
+                "base",
+                "char_code",
+                "table_entry",
+                "record",
+                "byte_budget",
+                "copy_budget",
+                "object_offset",
+                "bitmap",
+                "continuation_saved",
+                "continuation",
+            )
+        },
+        "resume": {
+            key: failed_resource_resume[key]
+            for key in (
+                "status",
+                "handler",
+                "base",
+                "char_code",
+                "table_entry",
+                "record",
+                "dest",
+                "byte_budget",
+                "remaining_before",
+                "bitmap",
+                "continuation",
+            )
+        },
+        "copy": {
+            key: failed_resource_resume["copy"][key]  # type: ignore[index]
+            for key in ("status", "dest", "stream_pos", "remaining", "byte_budget")
+        },
+        "release": {
+            key: failed_resource_release[key]
+            for key in (
+                "status",
+                "handler",
+                "base",
+                "char_code",
+                "table_entry",
+                "base_entry",
+                "old_record",
+                "new_record",
+                "divisor_0x1a",
+                "replacement_byte",
+                "side_table_offset",
+                "side_table_bytes",
+                "active_refresh",
+                "continuation_cleared",
+                "continuation",
+            )
+        },
+        "post_record": failed_resource_header[resource_object_context + 0x48:resource_object_context + 0x50],
+    }, {
+        "partial_install": {
+            "status": 2,
+            "handler": 0x16606,
+            "base": resource_object_context,
+            "char_code": 0x21,
+            "table_entry": resource_object_context + 0x48,
+            "record": bytes.fromhex("02 03 04 00 00 00 02 00"),
+            "byte_budget": 0x10,
+            "copy_budget": 2,
+            "object_offset": resource_object_context + 0x0200,
+            "bitmap": bytes.fromhex("aa 55"),
+            "continuation_saved": True,
+            "continuation": {
+                "flag": 1,
+                "payload": resource_object_context,
+                "word_0x7827c8": 0x21,
+                "dest": resource_object_context + 0x0202,
+                "trailing_dest": 0,
+                "remaining": 4,
+                "d4_counter": 0,
+                "d3_counter": 0,
+            },
+        },
+        "resume": {
+            "status": 0,
+            "handler": 0x15C4C,
+            "base": resource_object_context,
+            "char_code": 0x21,
+            "table_entry": resource_object_context + 0x48,
+            "record": bytes.fromhex("02 03 04 00 00 00 02 00"),
+            "dest": resource_object_context + 0x0202,
+            "byte_budget": 4,
+            "remaining_before": 4,
+            "bitmap": bytes.fromhex("f0 0f"),
+            "continuation": {
+                "flag": 0,
+                "payload": 0,
+                "word_0x7827c8": 0,
+                "dest": 0,
+                "trailing_dest": 0,
+                "remaining": 0,
+                "d4_counter": 0,
+                "d3_counter": 0,
+            },
+        },
+        "copy": {
+            "status": 0,
+            "dest": bytes.fromhex("f0 0f"),
+            "stream_pos": 2,
+            "remaining": 2,
+            "byte_budget": 2,
+        },
+        "release": {
+            "status": "released-fixed-record",
+            "handler": 0x17D7C,
+            "base": resource_object_context,
+            "char_code": 0x21,
+            "table_entry": resource_object_context + 0x48,
+            "base_entry": resource_object_context + 0x40,
+            "old_record": bytes.fromhex("02 03 04 00 00 00 02 00"),
+            "new_record": bytes.fromhex("01 02 00 fa 00 00 00 00"),
+            "divisor_0x1a": 0x0078,
+            "replacement_byte": 0xFA,
+            "side_table_offset": resource_object_context + 0x0340,
+            "side_table_bytes": bytes.fromhex("fa 00"),
+            "active_refresh": [{"slot": "primary", "word_0x7828de": 0}],
+            "continuation_cleared": True,
+            "continuation": {
+                "flag": 0,
+                "payload": 0,
+                "word_0x7827c8": 0,
+                "dest": 0,
+                "trailing_dest": 0,
+                "remaining": 0,
+                "d4_counter": 0,
+                "d3_counter": 0,
+            },
+        },
+        "post_record": bytes.fromhex("01 02 00 fa 00 00 00 00"),
     }))
 
     split_resume_object_memory = bytearray(0x1000)

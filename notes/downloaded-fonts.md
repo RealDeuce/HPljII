@@ -24,6 +24,7 @@ glyph.
 - `generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`
 - `generated/disasm/ic30_ic13_font_resource_classify_0172c0.lst`
 - `generated/disasm/ic30_ic13_font_resource_payload_record_lookup_0170be.lst`
+- `generated/disasm/ic30_ic13_font_fixed_record_release_017a24.lst`
 - `generated/disasm/ic30_ic13_font_candidate_object_alloc_01bc38.lst`
 - `notes/font-context-metrics.md`
 
@@ -35,6 +36,7 @@ Primary fixtures:
 - `host-fetched font descriptor streams route through 0x15d0a`
 - `host-fetched 0x15d0a current-record resource object feeds fixed-record render`
 - `host-fetched 0x15d0a continuation resource object resumes fixed-record render`
+- `0x15c4c failed resource resume releases fixed-record object`
 - `host-fetched 0x15d0a split-plane continuation resource object resumes
   fixed-record render`
 - `0x16c14-modeled downloaded font replacement bookkeeping`
@@ -165,9 +167,9 @@ Unknown:
 
 - Manual names for every validation-table predicate feeding `0x16fae` are not
   complete, even though the table-driven fixture pins all staged field writes.
-- Error-exit and release variants for the `0x15c4c` downloaded-font-resource
-  resume helper still need page-render fixtures. The even-span and split-plane
-  fixed-record resume paths are now page-visible.
+- The `0x15c4c` status-0 copy-failure exit is fixture-backed through
+  fixed-record release helper `0x17d7c`; broader release variants outside the
+  tested active-primary fixed-record case still need coverage.
 - The complete soft-font grammar is not exhaustively proven for every legal
   PCL descriptor form and every metric-byte combination.
 
@@ -490,8 +492,25 @@ rows `a0 a1 b0` and `c0 c1 d0`. The page path maps host `!` to glyph `1`,
 queues object prefix `00 00 00 00 00 03 00 01 01 76 01`, preserves context
 slot `3` through `0x1edc6`, and renders two mode-0 rows beginning at x `22`,
 y `7`. This closes the split-plane continuation-counter middle edge for one
-bit-30-clear fixed-record resource object; failure and release exits remain
-uncovered.
+bit-30-clear fixed-record resource object.
+
+The failure companion fixture
+`0x15c4c failed resource resume releases fixed-record object` starts from the
+same partial even-span install but supplies only two of the four remaining
+bitmap bytes. The linear reader `0x168dc` returns status `0` with partial bytes
+`f0 0f`, so `0x15c4c` takes the `0x15cb8..0x15ccc` failure exit through
+`0x17d7c` before clearing the continuation fields at `0x15cd6..0x15d08`.
+`0x17d7c` verifies the bit-30-clear fixed-record range, rewrites glyph `0x21`
+at payload `+0x48` from `02 03 04 00 00 00 02 00` to
+`01 02 00 fa 00 00 00 00`, writes side-table bytes `fa 00` at payload
+`+0x340`, refreshes the active primary context with `0x7828de = 0`, and clears
+matching continuation state. The replacement byte `0xfa` is the low byte of
+`0x7530 / payload_word_0x1a`, with the fixture setting word `+0x1a = 0x0078`;
+the final longword comes from the base fixed-record entry at payload `+0x40`.
+This covers the `0x15c4c` status-0 release exit for one active-primary
+bit-30-clear fixed-record payload. The untested release variants are the
+secondary-context refresh, extended `0xa0..0xff` table, bit-30 delegate to
+`0x17a24`, and allocation-failure releases through `0x1887a`.
 
 ## End-To-End Downloaded Glyph Path
 
@@ -558,9 +577,14 @@ downloaded segmented-wide row as the direct compact-object renderer.
   an active primary or secondary context.
 - `0x15c4c` resumes bit-30-clear fixed-record bitmap copies from saved
   continuation fields, including split-plane A4/A3 destinations and D4/D3
-  counters, updates or clears that continuation state, and leaves the
-  completed fixed-record payload renderable through the same active context
-  path.
+  counters. On status `1` it clears continuation state and leaves the completed
+  fixed-record payload renderable through the same active context path. On
+  status `0` it calls `0x17d7c` to release/rewrite the fixed-record entry, then
+  clears continuation state.
+- `0x17d7c` rewrites released bit-30-clear fixed-record entries, writes the
+  side-table bytes used by the fallback record, refreshes matching active
+  primary/secondary contexts through `0x14c64`, and clears matching
+  continuation state.
 - `0x12f2e`/`0x1387c` write compact text bucket objects for the installed
   glyph.
 
@@ -605,6 +629,10 @@ The split-plane `0x15c4c` fixture proves the same for an odd fixed-record
 width: saved prefix/trailing destinations and D4/D3 counters resume into a
 split A2/A3 bitmap layout, and the later compact renderer reconstructs rows
 `a0 a1 b0` and `c0 c1 d0`.
+The failed-resume fixture proves that a short resumed payload does not leave
+the half-copied fixed record installed: `0x15c4c` calls `0x17d7c`, replaces the
+table entry with `01 02 00 fa 00 00 00 00`, updates side-table bytes `fa 00`,
+refreshes the active primary context, and clears the same continuation fields.
 
 ## Confidence
 
@@ -659,7 +687,9 @@ A byte-stream renderer must preserve:
   are page-visible; alternate mode combinations still need the same
   parser-produced page comparison.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
-  page-visible; failure/release exits still need fixture coverage.
+  page-visible, and the status-0 fixed-record release exit is fixture-backed.
+  Secondary-context, extended-table, bit-30 delegate, and allocation-failure
+  release variants still need fixture coverage.
 - `0x14c64..0x14eb6`: the `0x1719c` bit-30-clear fixed-record path is an
   isolation control. The integrated `ESC )s80W` install path currently proves
   the bit-30 offset-table form.

@@ -1149,8 +1149,8 @@ compact text renderer.
   - staged header `0x7827de`: copied into allocated payloads by `0x1719c`.
 - Unknown:
   - exact manual names for all 32 `0x16fae` validation predicates.
-  - failure/release variants of the bit-30-clear descriptor resource resume
-    route through `0x15c4c`.
+  - secondary-context, extended-table, bit-30 delegate, and allocation-failure
+    release variants around fixed-record resource teardown.
 
 ### Writers
 
@@ -1169,9 +1169,14 @@ compact text renderer.
   table entries, copies bitmap bytes through `0x16874`, and refreshes selected
   contexts through `0x14c64` when the installed payload is active.
 - `0x15c4c` resumes bit-30-clear fixed-record bitmap copies from continuation
-  fields, including split-plane A4/A3 destinations and D4/D3 counters, updates
-  or clears that continuation state, and leaves the completed fixed-record
-  payload consumable by the active context path.
+  fields, including split-plane A4/A3 destinations and D4/D3 counters. On
+  status `1` it clears continuation state and leaves the completed fixed-record
+  payload consumable by the active context path. On status `0` it calls
+  `0x17d7c` to release/rewrite the fixed-record entry, then clears
+  continuation state.
+- `0x17d7c` rewrites released bit-30-clear fixed-record entries, writes
+  fallback side-table bytes, refreshes matching active contexts through
+  `0x14c64`, and clears matching continuation state.
 
 ### Readers And Consumers
 
@@ -1186,6 +1191,9 @@ compact text renderer.
   destination pointer `0x7827ce`, saved remaining count `0x7827d2`, saved
   split-plane counters `0x7827d6`/`0x7827d8`, and the fixed-record table entry
   in the selected payload.
+- `0x17d7c` reads the selected payload base, fixed-record glyph/table index,
+  payload word `+0x1a`, payload byte `+0x3c`, the base fixed-record entry
+  `+0x40`, active primary/secondary context pointers, and continuation state.
 - `0x1bc38` inserts installed payloads into the candidate list.
 - `0x14c64` consumes installed candidate longwords and payload headers to
   build active maps.
@@ -1224,6 +1232,13 @@ D4/D3 counters `0/0`; `0x15c4c` copies bytes `c1 d0`, clears continuation
 state, leaves bitmap layout `a0 a1 c0 c1 b0 d0`, queues object prefix
 `00 00 00 00 00 03 00 01 01 76 01`, and renders rows reconstructed from
 `a0 a1 b0` and `c0 c1 d0`.
+Fixture `0x15c4c failed resource resume releases fixed-record object` proves
+the status-`0` sibling: a partial `0x16606` copy saves the same payload and
+glyph/table index, a short resume copies only bytes `f0 0f`, then `0x15c4c`
+calls `0x17d7c`. The release helper rewrites payload `+0x48` from
+`02 03 04 00 00 00 02 00` to `01 02 00 fa 00 00 00 00`, writes side-table
+bytes `fa 00` at payload `+0x340`, records active-primary refresh
+`0x7828de = 0`, and clears the matching continuation fields.
 
 ### Confidence
 
@@ -1244,6 +1259,7 @@ been page-compared.
   render`
 - `host-fetched 0x15d0a continuation resource object resumes fixed-record
   render`
+- `0x15c4c failed resource resume releases fixed-record object`
 - `host-fetched 0x15d0a split-plane continuation resource object resumes
   fixed-record render`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
@@ -1257,6 +1273,7 @@ been page-compared.
 - `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`
 - `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`
 - `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`
+- `generated/disasm/ic30_ic13_font_fixed_record_release_017a24.lst`
 - `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`
 - `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`
 - `generated/disasm/ic30_ic13_font_resource_find_017026.lst`
@@ -1270,7 +1287,9 @@ been page-compared.
   page-visible; alternate mode combinations still need parser-produced page
   comparisons.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
-  page-visible; failure/release exits still need fixture coverage.
+  page-visible, and the status-0 fixed-record release exit is fixture-backed.
+  Secondary-context, extended-table, bit-30 delegate, and allocation-failure
+  release variants still need fixture coverage.
 - The span-metric bridge in `notes/font-context-metrics.md` now covers
   host-fetched type-0 and type-2 downloaded payloads for both span consumers,
   and the shared consumer branch family is fixture-backed. It still needs

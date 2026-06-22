@@ -228,7 +228,10 @@ publication, writes recovered y `54`, and queues `!` at compact coord
 `0x1001`. A default-table start-after-text `ESC &l2V!` fixture anchors
 `0x12a7a..0x12af8`: start line `64` wraps to line `1`, skips
 `0x12a8a..0x12aa2`, writes y `176`, and queues `!` at compact coord
-`0xb001`. The
+`0xb001`. A line-63 start-after-text `ESC &l2V!` fixture anchors
+`0x12a7a..0x12afc`: start line `64` wraps to line `63`, skips
+`0x12a8a..0x12aa2`, writes recovered y `104`, and queues `!` at compact
+coord `0x3001`. The
 remaining wrap and bottom/page-recovery branches are unresolved across
 the exact ranges alternate-entry `0x12a02..0x12a10`, alternate-entry
 `0x12a22..0x12a78`, alternate-entry `0x12afc..0x12b5a`, and

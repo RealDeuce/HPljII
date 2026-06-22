@@ -161,6 +161,12 @@ the `0x12a8a..0x12aa2` publication edge, resets x from `40` to `10`,
 writes y `176`, and queues the following `!` at compact coord `0xb001`,
 bucket `9`.
 
+The line-63 start-after-text `ESC &l#V` path wraps into bottom recovery
+without publication. Fixture `ESC &l2V!`, with y `3290` and channel 2
+only at line `63`, computes start line `64`, takes `0x12a7a..0x12afc`,
+skips the `0x12a8a..0x12aa2` publication edge, writes recovered y `104`,
+and queues the following `!` at compact coord `0x3001`, bucket `5`.
+
 The lookup helpers at `0x009d16`, `0x009d4e`, `0x009d86`, and `0x009dbe`
 mask the internal code with `0x7f` and index eleven word entries. The
 generated table report records all current values. Its manual

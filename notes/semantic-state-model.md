@@ -16,10 +16,11 @@ eject path, one publishing target-after-text bottom-recovery path, and
 one non-publishing target-after-text bottom-recovery path are also
 modeled. The start-after-text no-wrap bottom-recovery path is modeled for
 start line `64` with an empty table, the start-after-text wrap-after-text
-path is modeled for a default-table line-1 hit, and selector-zero
-start-after-text top-of-form recovery is modeled for start line `64`.
-Alternate bottom-recovery and alternate wrap-recovery entrances inside
-the channel-jump consumer still need fixtures.
+path is modeled for default-table line-1 placement and line-63 bottom
+recovery, and selector-zero start-after-text top-of-form recovery is
+modeled for start line `64`. Alternate bottom-recovery and alternate
+wrap-recovery entrances inside the channel-jump consumer still need
+fixtures.
 
 Concept: vertical forms control is a per-line, 16-channel stop table used
 by `ESC &l#W` definitions and consumed by `ESC &l#V` vertical channel
@@ -37,7 +38,9 @@ top-of-form page-eject path.
   `0x1280a`; fixture
   `0x12cfe ESC &l#W loads vertical forms control state`; table-hit
   consumer fixture
-  `mixed VFC start-after-text wraps to table hit before printable`.
+  `mixed VFC start-after-text wraps to table hit before printable`; and
+  bottom-recovery consumer fixture
+  `mixed VFC start-after-text wraps to bottom recovery before printable`.
 - `0x783160`: canonical VMI / line advance.
   Semantic role: converts between line numbers and packed cursor
   positions.
@@ -174,6 +177,11 @@ top-of-form page-eject path.
   default-table path. Branch `0x12a7a..0x12af8` sees start line `64`,
   skips the `0x12a8a..0x12aa2` publication edge, finds selector 2 at
   line `1`, calls `0xf06e` and `0xf34a`, and writes cursor y `176`.
+- `0x1280a` wraps into bottom recovery on the modeled start-after-text
+  line-63 path. Branch `0x12a7a..0x12afc` sees start line `64`, skips the
+  `0x12a8a..0x12aa2` publication edge, finds selector 2 at line `63`,
+  enters `0x12afc..0x12b5a`, calls `0xf06e` and `0xf34a`, and writes
+  recovered cursor y `104`.
 - `0x1280a` uses bottom/top-of-form recovery on the modeled selector-zero
   start-after-text path. Branch `0x1299c..0x12b92` sees start line `64`
   greater than `0x782ee0 + 1`, skips `0xf124`, and writes top-of-form
@@ -219,6 +227,11 @@ top-of-form page-eject path.
   computes start line `64`, wraps to the selector-2 bit at line `1`, then
   takes `0x12a7a..0x12af8`; it skips the `0x12a8a..0x12aa2`
   publication edge and writes the line-1 target.
+- The modeled line-63 start-after-text path starts with y `3290`,
+  computes start line `64`, wraps to the selector-2 bit at line `63`,
+  then takes `0x12a7a..0x12afc`; it skips the `0x12a8a..0x12aa2`
+  publication edge and writes the bottom-recovered line-63 target through
+  `0x12afc..0x12b5a`.
 - The modeled selector-zero start-after-text path starts with y `3290`,
   computes the top-of-form target through `0x12966..0x12992`, then takes
   `0x1299c..0x12b92`; it skips the `0x129b8..0x129c4` publication edge
@@ -272,6 +285,10 @@ top-of-form page-eject path.
   publication: default-table `ESC &l2V!` with y `3290` computes start
   line `64`, wraps to line `1`, writes y `176`, and queues `!` at
   compact coord `0xb001`.
+- Printable output can move through start-after-text wrap bottom recovery
+  without publication: line-63-only `ESC &l2V!` with y `3290` computes
+  start line `64`, wraps to line `63`, writes recovered y `104`, and
+  queues `!` at compact coord `0x3001`.
 - Printable output can move through selector-zero start-after-text
   recovery without publication: `ESC &l0V!` with y `3290` computes start
   line `64`, writes y `126`, and queues `!` at compact coord `0x9001`.
@@ -359,6 +376,13 @@ at line `1`, and takes `0x12a7a..0x12af8`. It skips the publication edge
 `0x12a8a..0x12aa2`, resets x to `10`, writes y `176`, and queues the
 following printable at compact coord `0xb001`, bucket `9`.
 
+In the line-63 start-after-text fixture, the stream `ESC &l2V!` starts at
+y `3290`, computes start line `64`, wraps to the selector-2 bit at line
+`63`, and takes `0x12a7a..0x12afc`. It skips the publication edge
+`0x12a8a..0x12aa2`, enters bottom recovery `0x12afc..0x12b5a`, writes
+recovered y `104`, and queues the following printable at compact coord
+`0x3001`, bucket `5`.
+
 In the selector-zero start-after-text fixture, the stream `ESC &l0V!`
 starts at y `3290`, computes start line `64`, then takes
 `0x1299c..0x12b92`. The `0x12b5e..0x12b92` recovery writes
@@ -392,7 +416,10 @@ start-after-text no-wrap branch through `0x12a02..0x12afc` when computed
 start line is `64` and the table has no selector-2 bit. High for the
 start-after-text wrap-after-text branch through `0x12a7a..0x12af8` when
 computed start line is `64` and the default table has selector 2 at line
-`1`. High for the selector-zero start-after-text recovery through
+`1`. High for the start-after-text wrap bottom-recovery branch through
+`0x12a7a..0x12afc` when computed start line is `64` and the table has
+selector 2 only at line `63`. High for the selector-zero start-after-text
+recovery through
 `0x1299c..0x12b92` when computed start line is `64`. Medium for the exact
 semantic names of `0x782ede`/`0x782edf`/`0x782ee0`; the line-count
 interpretation matches fixtures and disassembly, but alternate
@@ -411,6 +438,7 @@ lifting.
 - `mixed VFC before-top target-after-text skips publication`
 - `mixed VFC start-after-text skips wrap and publication`
 - `mixed VFC start-after-text wraps to table hit before printable`
+- `mixed VFC start-after-text wraps to bottom recovery before printable`
 - `mixed VFC selector-zero top-of-form no-op reaches printable page-record
   queue`
 - `mixed VFC selector-zero start-after-text returns to top`
@@ -445,8 +473,9 @@ lifting.
   `0x12a7a..0x12af8`; alternate direct entrances where the wrapped scan
   reaches or hits at/after the original start line still need fixtures.
 - `0x12afc..0x12b5a`: bottom/page-recovery placement is modeled for the
-  target-after-text line-63 case; alternate entrances and target-line
-  values still need fixtures.
+  target-after-text line-63 case and the start-after-text wrapped line-63
+  case; alternate direct entrances and target-line values still need
+  fixtures.
 - `0x12b5e..0x12b92`: selector-zero start-after-text recovery is modeled
   for start line `64`; wrap-branch entrants into this recovery still need
   fixtures.

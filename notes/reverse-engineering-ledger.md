@@ -115,9 +115,10 @@ path is anchored through `0x129ee..0x12b5a`, while the start-line-zero
 non-publishing target-after-text path is anchored through
 `0x129fc..0x12afc`, and the start-after-text no-wrap path is anchored
 through `0x12a02..0x12afc`, while the start-after-text wrap-after-text
-path is anchored through `0x12a7a..0x12af8`; selector-zero
-start-after-text recovery is anchored through `0x1299c..0x12b92`;
-alternate wrap-recovery and page-recovery branches remain unresolved;
+paths are anchored through `0x12a7a..0x12af8` and
+`0x12a7a..0x12afc`; selector-zero start-after-text recovery is anchored
+through `0x1299c..0x12b92`; alternate wrap-recovery and page-recovery
+branches remain unresolved;
 `ESC &a#L/#M` map to
 `0xeb58`/`0xec0c` and convert HMI margin columns into
 `0x782dd6`/`0x782dda` with reject/clamp/cursor-move cases;
@@ -209,6 +210,12 @@ ties parser handler `0x1280a`, start line `64`, wrap hit at VFC line
 `0x12a8a..0x12aa2`, helper sequence `0x10084`, `0xf06e`, `0xf34a`,
 cursor move `x 40 -> 10` and `y 3290 -> 176`, and following printable
 output at compact coord `0xb001`;
+line-63 start-after-text `ESC &l2V!`, starting at y `3290`, now ties
+parser handler `0x1280a`, start line `64`, wrap hit at VFC line `63`,
+branch `0x12a7a..0x12afc`, bottom recovery edge `0x12afc..0x12b5a`,
+skipped publication edge `0x12a8a..0x12aa2`, helper sequence `0x10084`,
+`0xf06e`, `0xf34a`, cursor move `x 40 -> 10` and `y 3290 -> 104`, and
+following printable output at compact coord `0x3001`;
 `!\x1b&l2V!`, with channel 2 at VFC line `63` and a queued printable at y
 `3193`, now ties parser handler `0x1280a`, target-after-text branch
 `0x129ee..0x12b5a`, helper sequence `0x10084`, `0xf34a`, `0xf124`,
@@ -334,9 +341,10 @@ start-line-zero no-publish variant is anchored through `0x129fc..0x12afc`.
 The start-after-text no-wrap path is anchored through `0x12a02..0x12afc`
 for start line `64` with an empty table, and the start-after-text
 wrap-after-text path is anchored through `0x12a7a..0x12af8` for the
-default line-1 selector hit. The selector-zero start-after-text recovery
-path is anchored through `0x1299c..0x12b92`. The highest-value unresolved
-middle edges are alternate-entry `0x12a02..0x12a10`, alternate-entry
+default line-1 selector hit, plus `0x12a7a..0x12afc` for the line-63
+selector hit. The selector-zero start-after-text recovery path is
+anchored through `0x1299c..0x12b92`. The highest-value unresolved middle
+edges are alternate-entry `0x12a02..0x12a10`, alternate-entry
 `0x12a22..0x12a78`, alternate-entry `0x12afc..0x12b5a`, and wrap-entry
 `0x12b5e..0x12b92`.
 

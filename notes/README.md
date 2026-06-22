@@ -42,6 +42,8 @@ compatibility boundary.
   rectangle/rule path to solid and patterned rule rendering.
 - [font-context-metrics.md](font-context-metrics.md) - documented font
   context selection, page-root slot install, glyph maps, and span metrics.
+- [downloaded-fonts.md](downloaded-fonts.md) - documented soft-font
+  descriptor, payload, current-record, and downloaded-glyph render paths.
 - [pcl-parser-firmware.md](pcl-parser-firmware.md) - current host-byte
   fetch and PCL escape tokenizer/dispatch anchors.
 - [pcl-command-map.md](pcl-command-map.md) - flattened PCL

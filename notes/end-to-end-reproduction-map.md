@@ -156,11 +156,12 @@ pixels or byte-stream compatibility.
 1. Font/context producer ownership for span metric fields remains incomplete.
    The consumers are known: unflagged `0xd4ac` reads context `+0x2b`,
    `+0x2c`, `+0x2d`; flagged `0xd8fc` reads `+0x16`, `+0x18`, `+0x1a`.
-   The selected-context bridge is now documented in
-   `notes/font-context-metrics.md`; the open edge is proving every
-   built-in/downloaded metric-byte form with parser-produced pages. Evidence:
-   `notes/semantic-state-model.md` under `Text Span Flush And Fixed-Width
-   Spans`.
+   The selected-context bridge is documented in
+   `notes/font-context-metrics.md`, and the downloaded descriptor/payload
+   producer side is documented in `notes/downloaded-fonts.md`; the open edge
+   is proving every built-in/downloaded metric-byte form with parser-produced
+   pages. Evidence: `notes/semantic-state-model.md` under `Text Span Flush And
+   Fixed-Width Spans`.
 2. VFC is only partially composed. Table definition, channel jumps, wrap/no-hit
    behavior, and several publication paths are modeled, but VFC still lacks a
    complete command-family contract comparable to text/raster/rules. Evidence:
@@ -168,10 +169,11 @@ pixels or byte-stream compatibility.
 3. Macro replay is anchored, but macro overlay/page composition remains short
    of a pixel-complete overlay model. Evidence: `Macro Definition And
    Data-Chain Replay` and macro fixtures.
-4. Downloaded font support is strong for descriptor/resource/character payload
-   edges, but the full soft-font descriptor grammar and all validation/error
-   behaviors are not proven against every PCL form. Evidence:
-   `generated/analysis/ic30_ic13_font_control_flow.md` and font fixtures.
+4. Downloaded font support now has tracked documentation for descriptor,
+   resource-payload, current-record, character-object, and downloaded-glyph
+   render paths in `notes/downloaded-fonts.md`. The full soft-font descriptor
+   grammar and all validation/error behaviors are still not proven against
+   every PCL form.
 5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
    board-confirmed. This does not block a byte-stream renderer, but it blocks
@@ -186,9 +188,9 @@ pixels or byte-stream compatibility.
 
 The next work should follow dataflow, not isolated handlers:
 
-1. Compose the font/context producer chain that owns the `d4ac`/`d8fc` metric
-   fields for the remaining downloaded/inline descriptor forms. This connects
-   font selection to text span height and therefore to visible pixels.
+1. Prove the remaining font metric-byte combinations with parser-produced
+   pages. The selected-context bridge and downloaded descriptor/payload
+   producer chain are now tracked, but exhaustive metric provenance is not.
 2. Finish the VFC command-family semantic contract, because it can force page
    publication, cursor repositioning, and subsequent text placement.
 3. Build a small page-image fixture suite from complete byte streams that mix

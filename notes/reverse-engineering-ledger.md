@@ -409,17 +409,14 @@ now composed, with `0x1cf8` wrapper dispatch through `0x1e80` and
 render/yield predicates covered; `0x1036`, `0x1064`/`0x108e`,
 `0x123a`, and `0x10bc..0x10f2` now pin the wait-object scheduler
 handoff and trap-veneer argument shapes, with `0x1144..0x11f8` now
-pinning the copied trap handlers' wait-state transitions; a combined
-2,215-byte
-host-fetched
-font-download printable stream now carries `ESC *c4660d37e5F`,
-`ESC )s2193W`, and printable `%` into a downloaded glyph `0x25`
-segmented page object before `0x1edc6`,
-`0x1ed84`, and `0x1ef6a`; full parser-produced page-object integration,
-font-download parser-populated inline/downloaded source records,
-remaining full live-parser raster, parser-populated font-download
-records, text-span context producer ownership, and full parser-produced
-page-object coverage incomplete
+pinning the copied trap handlers' wait-state transitions; tracked note
+`notes/downloaded-fonts.md` now composes the combined 2,215-byte
+host-fetched font-download printable stream that carries
+`ESC *c4660d37e5F`, `ESC )s2193W`, and printable `%` into downloaded
+glyph `0x25` segmented page objects before `0x1edc6`, `0x1ed84`, and
+`0x1ef6a`; remaining work is exhaustive downloaded/inline metric-byte
+page evidence, the bit-30-clear descriptor/resource resume routes, full
+live-parser raster edge cases, and final device-output page comparison.
 
 Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md`
 collects the raster command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`,

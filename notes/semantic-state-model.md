@@ -1076,6 +1076,125 @@ claim has disassembly and passing fixtures.
   the disabled, before-lower, beyond-page, and high-x-only branches
   remain uncovered.
 
+## Downloaded Font Descriptor And Payload Chain
+
+Status: documented as the soft-font command family from host parser records to
+current downloaded-font records, payload allocation, installed glyph objects,
+and visible compact text rows. The complete semantic note is
+`notes/downloaded-fonts.md`.
+
+Concept: `ESC *c#D`, `ESC *c#E`, `ESC *c#F`, and `ESC )s#W` / `ESC (s#W`
+share a current downloaded-font state block. `0x11f96` selects descriptor
+handler `0x15d0a` for zero `W` counts and payload handler `0x16c14` for
+nonzero counts. The installed payload can become a font-resource candidate
+selected by `0x14c64`, or a downloaded character object consumed by the
+compact text renderer.
+
+### Field Groups
+
+- Canonical:
+  - `0x782f2e`: current downloaded font id written by `0x15a56`.
+  - `0x782f30`: current character/code word written by `0x15a18`.
+  - `0x782640..0x782776`: 32 current downloaded-font records, each with id
+    word `+0x00`, flags at `+0x02`, and payload pointer at `+0x06`.
+  - `0x782782` and `0x782786`: unmarked and marked current-record counts
+    updated by `0x17108` and `0x17150`.
+  - candidate counters/cursors `0x78278e`, `0x782790`, `0x782796`,
+    `0x782798`, `0x78279e`, `0x7827a0`, `0x7827ac`, `0x7827b0`, and
+    `0x7827b4` updated by `0x16c14`/`0x1bc38`.
+- Parser scratch:
+  - `0x78299e`: six-byte parsed-record cursor rewound by font handlers.
+  - `0x783140`: payload byte budget used by descriptor and payload readers.
+- Derived/cache:
+  - `0x7827c6`, `0x7827ca`, `0x7827ce`, `0x7827d2`, `0x7827d6`,
+    `0x7827d8`, `0x7827da`, and `0x7827c8`: continuation state for
+    interrupted font payload reads.
+  - `0x782842..0x782851` and `0x782856`: optional symbol bytes and count
+    staged by `0x16fae`.
+- Firmware bookkeeping:
+  - `0x782862`: staging pointer set to `0x7827de`.
+  - `0x7827ba`: payload unit count written by `0x17362`.
+  - staged header `0x7827de`: copied into allocated payloads by `0x1719c`.
+- Unknown:
+  - exact manual names for all 32 `0x16fae` validation predicates.
+  - page-render contracts for the bit-30-clear descriptor/resource resume
+    routes through `0x16606` and `0x15c4c`.
+
+### Writers
+
+- `0x15a56` and `0x15a18` write current id and character state.
+- `0x16df6` dispatches font-control values; `0x17108` and `0x17150` toggle
+  current-record bit `6` and transfer counts.
+- `0x15d0a` writes `0x783140`, reads descriptor bytes through `0x1599c`, and
+  routes to `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`.
+- `0x16c14` writes current-record ids/payloads, candidate flags/counters, and
+  installed counts.
+- `0x16fae`, `0x17362`, `0x17026`, and `0x1719c` validate, stage, allocate,
+  and initialize font-resource payload headers.
+- `0x168dc` and `0x16942` copy downloaded glyph bitmap bytes and save
+  continuation state.
+
+### Readers And Consumers
+
+- `0x11f96` reads the parsed `W` count and schedules delayed font handlers.
+- `0x172c0` scans the current-record pool by `0x782f2e`.
+- `0x1b4c0` resolves payload pointers for descriptor routes.
+- `0x1bc38` inserts installed payloads into the candidate list.
+- `0x14c64` consumes installed candidate longwords and payload headers to
+  build active maps.
+- `0x1393a`, `0x12f2e`, `0x1387c`, `0x1edc6`, `0x1ed84`, and `0x1ef6a`
+  consume the installed glyph path until visible compact text rows exist.
+
+### Output Effect
+
+The combined host-fetched stream `ESC *c4660d37e5F` plus `ESC )s2193W`
+payload plus `%` sets current id `0x1234`, sets current character `0x25`,
+installs a split-plane downloaded glyph object at record delta `0x0500`,
+queues printable `%` as segmented compact selector `0x3003`, and renders the
+downloaded row through target `0x1effe`.
+
+### Confidence
+
+High for command dispatch, current-record state, staged header fields, payload
+allocation, installed downloaded-character object, and visible row, because
+the fixtures tie host-fetched streams to parser records and render rows.
+Medium for the complete soft-font grammar because every predicate is
+executable but not fully named, and every legal metric combination has not
+been page-compared.
+
+### Fixtures
+
+- `combined host-fetched font download stream prints installed glyph`
+- `host-fetched font control stream feeds descriptor and character payload
+  state`
+- `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`
+- `0x16498-backed downloaded character object renders segmented-wide compact
+  row`
+- `0x16fae table-driven validation predicates populate staged header fields`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`
+- `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`
+- `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`
+- `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`
+- `generated/disasm/ic30_ic13_font_resource_find_017026.lst`
+- `generated/disasm/ic30_ic13_font_resource_payload_initializer_01719c.lst`
+- `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`
+
+### Unresolved Middle Edges
+
+- `0x15e3c..0x15e46`: bit-30-clear current-record descriptor route to
+  `0x16606` is routed but not yet composed into tracked page-render output.
+- `0x15e5c..0x15e68`: bit-30-clear continuation route to `0x15c4c` is routed
+  but not yet composed into tracked page-render output.
+- `0x16fae..0x17016`: validation predicates need complete manual-facing names.
+- `0x16498..0x16942`: split-plane segmented-wide payloads are page-visible;
+  linear and alternate mode combinations still need parser-produced page
+  comparisons.
+- The span-metric bridge in `notes/font-context-metrics.md` still needs
+  exhaustive downloaded/inline metric-byte page evidence.
+
 ## Macro Definition And Data-Chain Replay
 
 Status: anchored as one command-family and end-to-end replay cluster.

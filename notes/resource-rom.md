@@ -285,6 +285,9 @@ renderer loads a selected slot into `0x783a2c`, and `0x1f354` resolves
 the glyph table relative to the selected `IC32,IC15` record. The tracked
 bridge and span-metric contract is documented in
 [font-context-metrics.md](font-context-metrics.md).
+The tracked soft-font descriptor, downloaded payload, current-record, and
+downloaded-glyph render contract is documented in
+[downloaded-fonts.md](downloaded-fonts.md).
 
 ## Character to Glyph Index
 

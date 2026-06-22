@@ -279,10 +279,10 @@ and symbol-set patch mechanics are summarized below.
 The firmware-side bridge to the renderer is now traced through the first
 real glyph entries: selected candidate longwords are copied into
 current-font context records at `0x782ee6` / `0x782ef6`, those
-context-record pointers are installed in page-root `+0x2c` slots,
-`0x1edc6` copies the slots to render-record `+0x24`, the compact glyph
-renderer loads a selected slot into `0x783a2c`, and `0x1f354` resolves
-the glyph table relative to the selected `IC32,IC15` record. The tracked
+selected longwords are installed in page-root `+0x2c` slots, `0x1edc6`
+copies the slots to render-record `+0x24`, the compact glyph renderer
+loads a selected slot into `0x783a2c`, and `0x1f354` resolves the glyph
+table relative to the selected `IC32,IC15` record. The tracked
 bridge and span-metric contract is documented in
 [font-context-metrics.md](font-context-metrics.md).
 The tracked soft-font descriptor, downloaded payload, current-record, and

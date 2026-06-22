@@ -4121,7 +4121,9 @@ def symbol_set_state(**overrides: object) -> dict[str, object]:
         "page_root_context_slots": [0] * 16,
         "page_root_live_flags": [0] * 16,
         "current_page_context_slot_78297e": 0,
-        "selected_context_record_782992": 0x782EE6,
+        "primary_context_782ee6": 0x440946B4,
+        "secondary_context_782ef6": 0x44094B08,
+        "selected_context_record_782992": 0x440946B4,
         "context_install_events": [],
         "candidate_refresh_calls": [],
         "transient_context_refresh_78298f": 0,
@@ -4148,6 +4150,14 @@ def symbol_word_from_pcl(parameter: int, final: int) -> int:
 
 def current_font_context_record(slot: int) -> int:
     return 0x782EE6 + int(slot) * 0x10
+
+
+def current_font_selected_context_longword(state: dict[str, object], slot: int) -> int:
+    if int(slot) == 0:
+        return int(state.get("primary_context_782ee6", state.get("selected_context_record_782992", 0)))
+    if int(slot) == 1:
+        return int(state.get("secondary_context_782ef6", state.get("selected_context_record_782992", 0)))
+    return int(state.get("selected_context_record_782992", 0))
 
 
 def install_page_root_context_via_c4fc(
@@ -4195,7 +4205,7 @@ def install_page_root_context_via_c4fc(
 
 
 def install_current_font_context_via_c428(state: dict[str, object], slot: int) -> int:
-    context_record = current_font_context_record(slot)
+    context_record = current_font_selected_context_longword(state, slot)
     if int(state.get("current_page_root", 0)) == 0:
         selected_page_slot = 0
     else:
@@ -25671,7 +25681,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         current_page_root=ABSTRACT_PAGE_ROOT_PTR,
         dirty_flag=1,
         dirty_maps=1,
-        selected_context_record_782992=current_font_context_record(0),
+        primary_context_782ee6=0xC008004C,
+        selected_context_record_782992=0xC008004C,
     )
     refresh_symbol_state_via_c580(c580_primary_context_refresh, 0)
     checks.append(assert_equal("0xc580 dirty primary branch installs page-root font context", {
@@ -25694,21 +25705,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "refreshes": 1,
         "current_page_context_slot_78297e": 0,
         "transient_context_refresh_78298f": 0,
-        "page_root_context_slots": [0x782EE6, 0],
+        "page_root_context_slots": [0xC008004C, 0],
         "page_root_live_flags": [0, 0],
         "candidate_refresh_calls": [{"helper": 0x013EB8, "slot": 0, "reason": "post-c4fc"}],
         "context_install_events": [
             {
                 "helper": 0x00C4FC,
                 "caller": "0xc580",
-                "context_record": 0x782EE6,
+                "context_record": 0xC008004C,
                 "selected_page_slot": 0,
                 "reason": "first-inactive",
             },
             {
                 "helper": 0x00C4FC,
                 "caller": "0xc428",
-                "context_record": 0x782EE6,
+                "context_record": 0xC008004C,
                 "selected_page_slot": 0,
                 "reason": "existing-context",
             },
@@ -25722,7 +25733,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         current_page_root=ABSTRACT_PAGE_ROOT_PTR,
         dirty_flag=1,
         dirty_maps=1,
-        selected_context_record_782992=current_font_context_record(1),
+        secondary_context_782ef6=0xC00AE122,
+        selected_context_record_782992=0xC00AE122,
     )
     refresh_symbol_state_via_c580(c580_secondary_context_refresh, 1)
     checks.append(assert_equal("0xc580 dirty secondary branch installs page-root font context", {
@@ -25743,21 +25755,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "dirty_maps": 0,
         "refreshes": 1,
         "current_page_context_slot_78297e": 0,
-        "page_root_context_slots": [0x782EF6, 0],
+        "page_root_context_slots": [0xC00AE122, 0],
         "page_root_live_flags": [0, 0],
         "candidate_refresh_calls": [{"helper": 0x013EB8, "slot": 1, "reason": "post-c4fc"}],
         "context_install_events": [
             {
                 "helper": 0x00C4FC,
                 "caller": "0xc580",
-                "context_record": 0x782EF6,
+                "context_record": 0xC00AE122,
                 "selected_page_slot": 0,
                 "reason": "first-inactive",
             },
             {
                 "helper": 0x00C4FC,
                 "caller": "0xc428",
-                "context_record": 0x782EF6,
+                "context_record": 0xC00AE122,
                 "selected_page_slot": 0,
                 "reason": "existing-context",
             },
@@ -25769,11 +25781,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         remembered_symbols=[0x0115, 0x0115],
         current_selector_782f06=0,
         current_page_root=ABSTRACT_PAGE_ROOT_PTR,
-        page_root_context_slots=[0, 0, 0, current_font_context_record(0)] + [0] * 12,
+        page_root_context_slots=[0, 0, 0, 0xC008004C] + [0] * 12,
         page_root_live_flags=[1] * 16,
         dirty_flag=1,
         dirty_maps=1,
-        selected_context_record_782992=current_font_context_record(0),
+        primary_context_782ee6=0xC008004C,
+        selected_context_record_782992=0xC008004C,
     )
     refresh_symbol_state_via_c580(c580_full_context_refresh, 0)
     checks.append(assert_equal("0xc580 full live-slot branch reuses matching page-root font context", {
@@ -25796,7 +25809,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "refreshes": 1,
         "current_page_context_slot_78297e": 3,
         "transient_context_refresh_78298f": 0,
-        "page_root_context_slots": [0, 0, 0, 0x782EE6],
+        "page_root_context_slots": [0, 0, 0, 0xC008004C],
         "page_root_live_flags": [1, 1, 1, 1],
         "candidate_refresh_calls": [
             {"helper": 0x013EB8, "slot": 0, "reason": "full-live-page-root"},
@@ -25806,14 +25819,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {
                 "helper": 0x00C4FC,
                 "caller": "0xc580",
-                "context_record": 0x782EE6,
+                "context_record": 0xC008004C,
                 "selected_page_slot": 3,
                 "reason": "existing-context",
             },
             {
                 "helper": 0x00C4FC,
                 "caller": "0xc428",
-                "context_record": 0x782EE6,
+                "context_record": 0xC008004C,
                 "selected_page_slot": 3,
                 "reason": "existing-context",
             },
@@ -25829,7 +25842,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         page_root_live_flags=[1] * 16,
         dirty_flag=1,
         dirty_maps=1,
-        selected_context_record_782992=current_font_context_record(0),
+        primary_context_782ee6=0xC008004C,
+        selected_context_record_782992=0xC008004C,
     )
     refresh_symbol_state_via_c580(c580_full_no_match_refresh, 0)
     checks.append(assert_equal("0xc580 full live-slot branch skips install when c4fc reports full", {
@@ -25859,7 +25873,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {
                 "helper": 0x00C4FC,
                 "caller": "0xc580",
-                "context_record": 0x782EE6,
+                "context_record": 0xC008004C,
                 "selected_page_slot": 0x11,
                 "reason": "full",
             },
@@ -25873,7 +25887,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         current_page_root=ABSTRACT_PAGE_ROOT_PTR,
         dirty_flag=1,
         dirty_maps=1,
-        selected_context_record_782992=current_font_context_record(0),
+        primary_context_782ee6=0xC008004C,
+        selected_context_record_782992=0xC008004C,
     )
     refresh_symbol_state_via_c580(c580_selector_mismatch_refresh, 0)
     checks.append(assert_equal("0xc580 selector-mismatch branch refreshes candidate without context install", {
@@ -25907,6 +25922,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         current_page_root=ABSTRACT_PAGE_ROOT_PTR,
         dirty_flag=2,
         dirty_maps=1,
+        primary_context_782ee6=0xC008004C,
     )
     refresh_symbol_state_via_c580(c580_dirty2_selector_match, 0)
     checks.append(assert_equal("0xc580 dirty-2 selector-match branch installs current context only", {
@@ -25926,13 +25942,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "dirty_maps": 0,
         "refreshes": 1,
         "current_page_context_slot_78297e": 0,
-        "page_root_context_slots": [0x782EE6, 0],
+        "page_root_context_slots": [0xC008004C, 0],
         "candidate_refresh_calls": [],
         "context_install_events": [
             {
                 "helper": 0x00C4FC,
                 "caller": "0xc428",
-                "context_record": 0x782EE6,
+                "context_record": 0xC008004C,
                 "selected_page_slot": 0,
                 "reason": "first-inactive",
             },
@@ -25946,6 +25962,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         current_page_root=ABSTRACT_PAGE_ROOT_PTR,
         dirty_flag=2,
         dirty_maps=1,
+        secondary_context_782ef6=0xC00AE122,
     )
     refresh_symbol_state_via_c580(c580_dirty2_secondary_match, 1)
     checks.append(assert_equal("0xc580 dirty-2 secondary selector-match branch installs current context only", {
@@ -25965,13 +25982,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "dirty_maps": 0,
         "refreshes": 1,
         "current_page_context_slot_78297e": 0,
-        "page_root_context_slots": [0x782EF6, 0],
+        "page_root_context_slots": [0xC00AE122, 0],
         "candidate_refresh_calls": [],
         "context_install_events": [
             {
                 "helper": 0x00C4FC,
                 "caller": "0xc428",
-                "context_record": 0x782EF6,
+                "context_record": 0xC00AE122,
                 "selected_page_slot": 0,
                 "reason": "first-inactive",
             },
@@ -27145,6 +27162,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         current_page_root=0x78297A,
         page_root_context_slots=[0] * 16,
         page_root_live_flags=[0] * 16,
+        primary_context_782ee6=0xC008004C,
+        secondary_context_782ef6=0xC00AE122,
     )
     e65c_bridge_install_slot = install_current_font_context_via_c428(e65c_bridge_page_state, 1)
     checks.append(assert_equal("0xe65c refresh composes with font context bridge", {
@@ -27235,11 +27254,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "c428_after_e65c": {
             "install_status": 1,
             "selected_page_slot": 0,
-            "page_root_slot_0": 0x782EF6,
+            "page_root_slot_0": 0xC00AE122,
             "events": [{
                 "helper": 0x00C4FC,
                 "caller": "0xc428",
-                "context_record": 0x782EF6,
+                "context_record": 0xC00AE122,
                 "selected_page_slot": 0,
                 "reason": "first-inactive",
             }],
@@ -62581,10 +62600,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("  dirty `0x782f2c = 1`, selector slot `0`, no live page-root slots,")
     lines.append("  and a present page root find slot `0` clear, run `0xc4fc`, call")
     lines.append("  `0x13eb8`, then call `0xc428`; page-root context slot `0`")
-    lines.append("  receives `0x782ee6`, `0x78297e` selects slot `0`, and live flags")
+    lines.append("  receives selected longword `0xc008004c`, `0x78297e` selects slot")
+    lines.append("  `0`, and live flags")
     lines.append("  stay clear until printable source queuing marks `0x78297f+n`.")
     lines.append("  The secondary mirror uses selector slot `1` and installs")
-    lines.append("  current-font context record `0x782ef6` through the same path.")
+    lines.append("  selected longword `0xc00ae122` through the same path.")
     lines.append("- `0xc580` all-live matching-context fixture:")
     lines.append("  all 16 live flags set briefly toggles `0x78298f`, calls")
     lines.append("  `0x13eb8`, reuses existing page-root context slot `3` through")

@@ -404,10 +404,10 @@ Current page-root fields:
 | `+0x20` | start of display-list 0x100-byte chunk chain |
 | `+0x24` | linked-list head used by rectangle/rule-like objects |
 | `+0x28` | second linked-list head used by another rectangle/rule mode |
-| `+0x2c..+0x68` | 16 current-font context record slots |
+| `+0x2c..+0x68` | 16 selected context/resource longword slots |
 
-The current-font context slots are copied from the `0x782ee6` /
-`0x782ef6` family.
+The context slots are copied from the selected longwords stored in the
+`0x782ee6` / `0x782ef6` current-font records.
 
 `0x132b6` and `0x1381c` implement a small stream allocator over
 0x100-byte chunks:
@@ -565,7 +565,7 @@ destination render record:
 | `+0x1c` | `+0x18` | bucket-head array copied from page/control record |
 | `+0x24` | `+0x1c` | linked object list copied from page/control record |
 | `+0x28` | `+0x20` | second linked object list from page/control record |
-| `+0x2c..+0x68` | `+0x24..+0x60` | 16 current-font context record pointers |
+| `+0x2c..+0x68` | `+0x24..+0x60` | 16 selected context/resource longwords |
 
 After copying, `0x1edc6` normalizes objects in the destination lists: it
 sets flag bit `0x10` in object byte `+5`; for the `dest+0x1c` list it
@@ -573,11 +573,11 @@ copies word `+0x0a` to `+0x0c`; for the `dest+0x20` list it copies word
 `+8` to `+0x0a` and sets bytes `+0x0c=1`, `+0x0d=8`.
 
 [font-context-metrics.md](font-context-metrics.md) documents the `+0x2c`
-interpretation: `0xc428` / `0xc4fc` install pointers to current-font
-context records in these 16 page-root slots, not raw glyph pointers.
-`0x1edc6` copies them to render-record slots, and compact text/glyph
-objects use byte `+5` low nibble to select one of the copied render-record
-slots before `0x1f008` loads it into `0x783a2c`.
+interpretation: `0xc428` / `0xc4fc` install selected context/resource
+longwords copied from current-font records in these 16 page-root slots, not
+raw glyph bitmap pointers. `0x1edc6` copies them to render-record slots, and
+compact text/glyph objects use byte `+5` low nibble to select one of the
+copied render-record slots before `0x1f008` loads it into `0x783a2c`.
 
 `0x1ee9e` initializes bitmap render state. It stores the active record
 width word times four into `0x783a1c`, which is used later as a line

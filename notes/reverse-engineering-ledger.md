@@ -761,7 +761,7 @@ outcomes are pinned as visible branch shortcuts that skip context
 installation after the documented refresh call(s); dirty-flag-2 selector
 match and mismatch outcomes are pinned as `0xc428`-only or
 remembered-copy-only paths with no `0x13eb8` call, including secondary
-slot `0x782ef6` context selection; fixture `parsed primary built-in font
+selected-longword context selection; fixture `parsed primary built-in font
 selection feeds visible page-record rows` now composes the parsed primary
 selection stream `ESC (s0p10h12v0s0b3T!!` into visible output by taking the
 pinned `0x13eb8` selected context `0xc008004c`, HMI `30`, and rebuilt primary

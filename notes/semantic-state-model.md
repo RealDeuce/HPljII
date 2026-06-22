@@ -803,6 +803,9 @@ class-one Line Printer context.
 - Firmware bookkeeping:
   - `0x144d2` writes current-font context record `0x782ee6`.
   - `0x14c64` rebuilds map `0x782f32` and snapshots selected font state.
+  - `0xc428` reads the selected longword from `0x782ee6` / `0x782ef6` and
+    passes that longword to `0xc4fc`; `0xc4fc` stores the longword in the
+    selected page-root slot.
   - page-root allocation count is `1` when the printable phase queues the
     compact object.
 - Unknown:
@@ -819,6 +822,8 @@ class-one Line Printer context.
 - `0x144d2` writes selected context state at `0x782ee6`.
 - `0x144d2` writes secondary selected context state at `0x782ef6`.
 - `0x14c64` rebuilds maps `0x782f32` and `0x783032`.
+- `0xc428` / `0xc4fc` install selected longwords `0xc008004c` and
+  `0xc00ae122` into page-root/render context slots.
 - SO handler `0xc6b8` selects secondary slot 1 before the secondary printable
   bytes are consumed.
 - Printable `0xd04a` / `0x1393a` write the source object, and `0x12f2e` /
@@ -2264,8 +2269,8 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 - The composed `0xe65c` bridge consumes the same candidate-filter and
   page-root slot contracts as normal font selection: `0x13eb8` filters
   candidate windows, `0x14c64` rebuilds maps `0x782f32` / `0x783032`, and
-  `0xc428` installs `0x782ee6` / `0x782ef6` context records into the
-  current page root.
+  `0xc428` installs selected longwords copied from `0x782ee6` / `0x782ef6`
+  into the current page root.
 - Parser loop `0x11774` consumes replayed bytes and routes simple replay
   to `0xd04a` and `0xf02c`; mixed-control replay also reaches `0xedf8`.
 - Page-record and render consumers use the shared allocation model:

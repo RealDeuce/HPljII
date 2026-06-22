@@ -78,8 +78,9 @@ Canonical glyph maps:
 
 Canonical page-root/render context fields:
 
-- page root `+0x2c..+0x68`: 16 font context slots. These hold pointers to
-  `0x782ee6` / `0x782ef6` family records, not raw glyph data.
+- page root `+0x2c..+0x68`: 16 font context slots. These hold selected
+  context/resource longwords copied from current-font records, not pointers to
+  the `0x782ee6` / `0x782ef6` records themselves.
 - `0x78297e`: selected page-root font slot written by `0xc428`.
 - `0x78297f+n`: live flag for page-root font slot `n`.
 - render record `+0x24..+0x60`: copy of the 16 page-root context slots
@@ -255,33 +256,35 @@ and `0xcb01`; the first visible row is:
 
 ## Page-Root Context Install
 
-`0xc428(slot)` maps slot `0` or `1` to the current-font context record:
+`0xc428(slot)` maps slot `0` or `1` to the selected longword stored in the
+current-font context record:
 
-- slot `0`: `0x782ee6`;
-- slot `1`: `0x782ef6`.
+- slot `0`: longword at `0x782ee6`;
+- slot `1`: longword at `0x782ef6`.
 
 If there is no current page root at `0x78297a`, it returns success without
 installing a page-root slot. With a current root, it calls `0xc4fc` using the
-selected context record pointer.
+selected context/resource longword.
 
 `0xc4fc` scans the 16 slots at page root `+0x2c + 4*n`:
 
-- It compares the low 24 bits of each existing context pointer with the
-  selected context pointer.
+- It compares the low 24 bits of each existing context longword with the
+  selected context longword.
 - It skips live slots where `0x78297f+n == 1`.
 - It accepts an existing matching context or the first inactive slot.
 - It returns `0x11` if all 16 slots are live and none match.
-- On success, it writes the context record pointer into the selected root
+- On success, it writes the selected context longword into the selected root
   slot and returns the slot number.
 
 Dirty-map fixture results:
 
-- Dirty primary refresh with no live page-root slots installs `0x782ee6` in
-  page-root slot `0`, sets `0x78297e = 0`, and calls `0x13eb8(0)`.
-- Dirty secondary refresh installs `0x782ef6` in page-root slot `0`, sets
-  `0x78297e = 0`, and calls `0x13eb8(1)`.
+- Dirty primary refresh with no live page-root slots installs selected
+  longword `0xc008004c` in page-root slot `0`, sets `0x78297e = 0`, and calls
+  `0x13eb8(0)`.
+- Dirty secondary refresh installs selected longword `0xc00ae122` in
+  page-root slot `0`, sets `0x78297e = 0`, and calls `0x13eb8(1)`.
 - Full-live matching-context refresh reuses existing slot `3` for
-  `0x782ee6`, temporarily toggles the transient refresh path, calls
+  `0xc008004c`, temporarily toggles the transient refresh path, calls
   `0x13eb8(0)` twice, and leaves `0xc428` selecting slot `3`.
 
 `0xc428` also refreshes HMI/cache state from the selected context:
@@ -583,8 +586,8 @@ A byte-stream reproduction must preserve these behaviors:
 
 - Font selection updates the active primary/secondary context record before
   printable bytes are queued.
-- The selected context record pointer, not raw bitmap data, is what page-root
-  `+0x2c` stores.
+- The selected context/resource longword, not raw bitmap data and not the
+  `0x782ee6` / `0x782ef6` record address, is what page-root `+0x2c` stores.
 - `0x1393a` maps original host bytes through the active 256-byte map before
   text object creation; compact payload byte 0 is the mapped glyph byte.
 - The renderer glyph identity is `(selected context longword, mapped glyph

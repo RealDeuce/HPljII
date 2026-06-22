@@ -1171,10 +1171,17 @@ record.
     increments it around `0x22f4` and resets it to `1` after phase `2`
     advances work word `+16`.
   - `0x78399e` and `0x78399f`: interrupt/status bytes cleared by
-    `0x1a4c..0x1c00`, updated by `0x0fa2..0x101e`, and consumed by
-    copy/pacing helpers such as `0x1db0`.
+    `0x1a4c..0x1c00`. `0x0fa2..0x101e` sets `0x78399e` when the scan
+    counter reaches threshold with no pending status; when `0x78399e`
+    is still set on a later threshold-or-after interrupt, it clears
+    `0x78399e`, sets `0x78399f`, and sets `0x7828f9.6`. `0x1db0`
+    consumes and clears `0x78399e` after the status-copy pass; `0x1e44`
+    consumes `0x78399f` to signal `0x780e2e` and enter `0x2038`.
   - `0x7839ac`: source-tail longword count consumed by `0x22f4..0x2454`
     after each copied row body.
+  - `0x7828f9`: engine I/O shadow byte written to `$a801` by the
+    `0x0fa2` interrupt path. Bit 7 toggles after the threshold and bit 6
+    is set on pending-status escalation or beyond-last status.
   - `0x7820bc`, `0x780ea4`, `0x780ea5`, `0x780eaa`, `0x780eae`, and
     `0x783a18` are scheduler/render bookkeeping, not page-object fields.
 - Unknown:
@@ -1251,6 +1258,21 @@ record.
   longword consumption.
 - `0x2456..0x247a` computes the next source pointer as
   `base + (((row + 0x7839ce) % work +0x06) * work +0x04 << 6)`.
+- `0x0fa2..0x101e` increments `0x78398c`. At or after `0x78398e`, it
+  signals `0x780182` through helper `0x1036`; before `0x783998`, it
+  sets pending byte `0x78399e` when no pending status exists. If
+  `0x78399e` is already set, it clears `0x78399e`, sets `0x78399f`,
+  sets `0x7828f9.6`, writes `$a801`, and signals `0x780182`.
+- `0x0fc4..0x0fcc` toggles `0x7828f9.7` and writes `$a801` when the
+  scan counter is after the threshold but not beyond the last row.
+- `0x1db0..0x1e40` consumes pending byte `0x78399e`: phase `1` with
+  work word `+16 < +10` computes `0x783992` through `0x2456`, calls
+  `0x22f4`, increments `0x783990`, and clears `0x78399e`; later phases
+  add `0x7839a0`, call `0x22f4`, and after phase `2` increment work
+  word `+16` and reset phase to `1`.
+- `0x1e44..0x1e7c` consumes escalated byte `0x78399f`: when nonzero, it
+  sets `0x780e6d`, signals bit `1` at `0x780e2e` through `0x9ba2`, and
+  then enters `0x2038`.
 
 ### Readers And Consumers
 
@@ -1277,12 +1299,16 @@ record.
 - `0x19d2..0x1a2e` waits on alias fields before entering
   `0x1a4c..0x1c00`: it compares work word `+6`, work word `+10`, and
   work word `+16` through the `0x7839b2/ba/c6` aliases.
-- `0x0fa2..0x101e` increments `0x78398c`, compares it against
-  `0x78398e` and `0x783998`, and updates `0x78399e`, `0x78399f`, and
-  `0x7828f9` timing/status bits.
-- `0x1db0..0x1e5e` is a sibling copy/pacing helper: it consumes
+- `0x0fa2..0x101e` reads `0x78398e`, `0x783998`, and pending byte
+  `0x78399e` while producing the next status state.
+- `0x1cf8..0x1d36` tests `0x78399e`; when it is nonzero, the wrapper
+  drops the critical section and calls `0x1db0`.
+- `0x1db0..0x1e40` is a sibling copy/pacing helper: it consumes
   `0x783990`, `0x783992`, `0x7839a0`, `0x7839c6`, `0x7839ba`, and
-  status byte `0x78399e`, then calls the same `0x22f4` row-copy helper.
+  status byte `0x78399e`, then calls the same `0x22f4` row-copy helper
+  and clears `0x78399e`.
+- `0x1e44..0x1e7c` reads escalated byte `0x78399f`; `0x1cf8..0x1d58`
+  reaches it when the engine-ready helper `0xa680` returns zero.
 
 ### Output Effect
 
@@ -1357,6 +1383,29 @@ source `0x00102400` to destination `0x00ffc000`; row 7 is source
 elapsed `0xc9`, and `0x780eae == 0x780eb2`, the done path sets
 `0x780ea5 = 1`.
 
+The status-feedback fixture
+`0x0fa2/0x1db0/0x1e44 status feedback drives copy and done flag` starts
+from the same work-record geometry. With `0x78398c = 0x11`,
+`0x78398e = 0x12`, `0x783998 = 0x17`, and no pending status,
+`0x0fa2` increments the counter to `0x12`, sets `0x78399e = 1`, leaves
+`0x78399f = 0`, leaves `0x7828f9 = 0`, and signals helper `0x1036`
+with target `0x780182`. `0x1db0` then consumes that pending status:
+phase `1`, work word `+16 = 3`, and work word `+10 = 5` compute
+`0x783992 = 0x00102000`, call `0x22f4`, copy eight `0x20`-longword
+rows from `0x00102000` to `0x00ffc000`, advance phase to `2`, leave
+word `+16 = 3`, and clear `0x78399e`.
+
+The same fixture covers the escalated status side. With
+`0x78398c = 0x12`, `0x78399e = 1`, and `0x7828f9 = 0`, `0x0fa2`
+increments to `0x13`, toggles `0x7828f9.7`, writes `$a801 = 0x80`,
+clears `0x78399e`, sets `0x78399f = 1`, sets `0x7828f9.6`, writes
+`$a801 = 0xc0`, and signals `0x780182`. `0x1e44` then sees
+`0x78399f = 1`, sets `0x780e6d = 1`, signals bit `1` at `0x780e2e`
+through `0x9ba2`, and enters `0x2038`; with work word `+16 = 5`,
+elapsed `0xc9`, and `0x780eae == 0x780eb2`, that call sets
+`0x780ea5 = 1`. The fixture intentionally leaves `0x78399f` set,
+matching the observed `0x1e44` code, which tests but does not clear it.
+
 ### Confidence
 
 High for the distinction between protected pool head `0x780ea6` and
@@ -1366,14 +1415,16 @@ scheduler cursor `0x780eaa`, the candidate selection stores into
 the protected-head skip, `0x780eaa -> 0x780eae`, `0x780ea4/5`, the
 two-work-record alternation, `0x783a18`, the `0x2126` pointer aliases,
 the `0x1a4c` copy-window scalars, the `0x22f4` row-copy address pattern,
-the `0x2456` source-address arithmetic, the `0x1ee9e` geometry-change
-boundary, the `0x1ed36..0x1ed6a` same-geometry reuse branch, and the
-render-entry output for the selected source. Medium for the surrounding
-engine pacing loop because the fixture does not model `0x10c8`,
-`0x10c4`, `0x10d0`, or `0x10d8`, and medium for the physical meaning of
-`0x78399e/9f` because the interrupt updates are named but not tied to
-real engine timing yet. Medium for `0x780eb6` because only its
-initialization is currently covered.
+the `0x2456` source-address arithmetic, the `0x0fa2` threshold and
+pending-status transitions, the `0x1db0` status-copy path, the `0x1e44`
+escalated-status bridge, the `0x1ee9e` geometry-change boundary, the
+`0x1ed36..0x1ed6a` same-geometry reuse branch, and the render-entry
+output for the selected source. Medium for the surrounding engine pacing
+loop because the fixture does not model `0x10c8`, `0x10c4`, `0x10d0`,
+or `0x10d8`, and medium for the physical meaning of `$8000`, `$a601`,
+`$a801`, and `0x7828f9` because the byte-level side effects are pinned
+but not tied to measured engine timing yet. Medium for `0x780eb6`
+because only its initialization is currently covered.
 
 ### Fixtures
 
@@ -1382,6 +1433,7 @@ initialization is currently covered.
 - `0x3144/0x7ec6/0x7712 page pool aliases feed scheduler cursor`
 - `0x1958/0x1c04/0x1eea staged candidate reaches render scheduler`
 - `0x2126/0x1a4c/0x2038 active pool copy window feeds engine rows`
+- `0x0fa2/0x1db0/0x1e44 status feedback drives copy and done flag`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`
 
@@ -1391,6 +1443,8 @@ initialization is currently covered.
   `0x10060..0x10080`
 - `generated/disasm/ic30_ic13_active_pool_cycle_001958.lst`:
   `0x1958..0x1fa2`
+- `generated/disasm/ic30_ic13_scan_status_interrupt_000f84.lst`:
+  `0x0f84..0x1032`
 - `generated/disasm/ic30_ic13_page_pool_candidate_insert_001c04.lst`:
   `0x1c04..0x2016`
 - `generated/disasm/ic30_ic13_active_pool_engine_gate_002038.lst`:
@@ -1414,11 +1468,15 @@ initialization is currently covered.
 
 ### Unresolved Middle Edges
 
-- `0x0fa2..0x101e`, `0x1db0..0x1e5e`, and the MMIO/helper calls inside
-  `0x1cf8..0x1e80`: the copy-window scalars and `0x22f4` row-copy
-  semantics are modeled, but the interrupt feedback loop through
-  `0x78399e/9f`, `0x7828f9`, `0x10c4`, `0x10c8`, `0x10d0`, and
-  `0x10d8` still needs exact timing and engine-interface meaning.
+- `0x0f84..0x0fa0`, `0x1020..0x108e`, and the MMIO/helper calls inside
+  `0x1cf8..0x1dac`: the `0x78399e/9f` feedback bytes, `0x1db0`, and
+  `0x1e44` are modeled, but the physical interrupt entry/exit,
+  `$8000`, `$a601`, `$a801`, helper `0xa6cc`, helper `0xa680`, and wait
+  helper `0x10e0` still need exact engine-interface meaning.
+- `0x1e80..0x1ee0`: attention and timeout variants set `0x780e6d`,
+  `0x780e67`, and signal `0x780e36`, then enter `0x2038`; exact trigger
+  conditions from `0x780e32`, `0x780e36`, `0x7821f9`, and elapsed
+  `0x191` are not yet fixture-covered.
 - `0x1eba4..0x1ecd2`: render loop pacing, band advance, and engine
   waits are not yet modeled.
 

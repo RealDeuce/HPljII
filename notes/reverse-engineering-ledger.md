@@ -376,10 +376,11 @@ the combined text/rule/raster page record before `0x1ed84`/`0x1ef6a`
 rendering after one mixed stream runner handles text, `ESC *c`, and
 delayed raster transfer commands, including a trailing-FF publication
 variant; active-pool render-work aliases, copy-window setup, `0x2456`
-source selection, and `0x22f4` eight-row copy passes are now composed;
-a combined 2,215-byte host-fetched font-download printable stream now
-carries `ESC *c4660d37e5F`, `ESC )s2193W`, and printable `%` into a
-downloaded glyph `0x25` segmented page object before `0x1edc6`,
+source selection, `0x22f4` eight-row copy passes, and the
+`0x78399e/9f` active-pool status feedback into `0x1db0`/`0x1e44` are
+now composed; a combined 2,215-byte host-fetched font-download printable
+stream now carries `ESC *c4660d37e5F`, `ESC )s2193W`, and printable `%`
+into a downloaded glyph `0x25` segmented page object before `0x1edc6`,
 `0x1ed84`, and `0x1ef6a`; full parser-produced page-object integration,
 font-download parser-populated inline/downloaded source records,
 remaining full live-parser raster, parser-populated font-download
@@ -522,7 +523,12 @@ aliases work record `0x00782128`, `0x1a4c` seeds `0x78398c..0x7839d4`,
 `0x2038` computes ready and done paths, `0x2456` produces source pointer
 `0x00102000` and then `0x00102800`, and `0x22f4` copies eight
 `0x20`-longword rows from `0x00102400` to `0x00ffc000` with destination
-stride `0x200`, a mixed `!\x1bE` fixture that
+stride `0x200`, an active-pool status-feedback fixture where `0x0fa2`
+sets `0x78399e` at threshold `0x12`, `0x1db0` consumes it and copies
+eight rows from `0x00102000` to `0x00ffc000`, a later `0x0fa2`
+escalates pending status into `0x78399f` plus `$a801 = 0xc0`, and
+`0x1e44` signals `0x780e2e` before `0x2038` sets `0x780ea5`, a mixed
+`!\x1bE` fixture that
 publishes and clears a valid current page root after queued text and has
 a page-record allocator/bridge/publication variant,
 selected inline/downloaded `0x14e24`/`0x14eb6` map and `0x1393a`
@@ -887,14 +893,15 @@ ROM work needed:
   split for `0x1f0d2`, `0x1f1f0`, and `0x1f264`; host-fetched
   150/100/75-dpi raster streams now carry encoded modes 1/2/3 through
   `0x1ed84` and `0x1ef6a`.
-- Continue the active-render scheduler from the remaining feedback and
-  pacing edges: interrupt/status updates `0x0fa2..0x101e`, sibling
-  copy/pacing helper `0x1db0..0x1e5e`, MMIO/helper calls inside
-  `0x1cf8..0x1e80`, and the render pacing loop `0x1eba4..0x1ecd2`.
-  Candidate-slot insertion, active-pool staging, pool-cursor alias
-  movement, same-geometry work-record reuse, copy-window setup, `0x2456`
-  source selection, and `0x22f4` row-copy semantics are now
-  fixture-covered.
+- Continue the active-render scheduler from the remaining physical
+  feedback and pacing edges: interrupt entry/exit `0x0f84..0x0fa0` and
+  `0x1020..0x108e`, wrapper/wait logic `0x1cf8..0x1dac`, attention and
+  timeout variants `0x1e80..0x1ee0`, and the render pacing loop
+  `0x1eba4..0x1ecd2`. Candidate-slot insertion, active-pool staging,
+  pool-cursor alias movement, same-geometry work-record reuse,
+  copy-window setup, `0x2456` source selection, `0x22f4` row-copy
+  semantics, and `0x78399e/9f` status feedback through `0x1db0`/`0x1e44`
+  are now fixture-covered.
 - Determine the remaining live-parser wide/segmented text, raster
   edge-case, and final device-output clipping behavior exactly.
 - Identify any banding/compression structures used internally; reproduce

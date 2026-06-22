@@ -13217,6 +13217,143 @@ def active_pool_engine_copy_via_2038(state: dict[str, object]) -> dict[str, obje
     }
 
 
+def active_pool_scan_interrupt_via_0fa2(state: dict[str, object]) -> dict[str, object]:
+    """Model the 0x0fa2 scan/status update against the copy-window fields."""
+    counter_before = int(state.get("scan_counter_78398c", 0)) & 0xFFFF
+    counter_after = (counter_before + 1) & 0xFFFF
+    state["scan_counter_78398c"] = counter_after
+    threshold = int(state.get("scan_threshold_78398e", 0)) & 0xFFFF
+    row_last = int(state.get("copy_row_last_783998", 0)) & 0xFFFF
+    control_before = int(state.get("io_control_shadow_7828f9", 0)) & 0xFF
+    control_original = control_before
+    status_e_before = int(state.get("status_flag_78399e", 0)) & 0xFF
+    status_f_before = int(state.get("status_flag_78399f", 0)) & 0xFF
+    a801_writes = list(state.get("a801_writes", []))
+    signals = list(state.get("signals", []))
+    path = "below-threshold"
+
+    if counter_after > row_last:
+        state["io_control_shadow_7828f9"] = control_before | 0x40
+        a801_writes.append(int(state["io_control_shadow_7828f9"]))
+        path = "beyond-last"
+    elif counter_after >= threshold:
+        if counter_after > threshold:
+            state["io_control_shadow_7828f9"] = control_before ^ 0x80
+            a801_writes.append(int(state["io_control_shadow_7828f9"]))
+            control_before = int(state["io_control_shadow_7828f9"])
+        if status_e_before:
+            state["status_flag_78399e"] = 0
+            state["status_flag_78399f"] = 1
+            state["io_control_shadow_7828f9"] = control_before | 0x40
+            a801_writes.append(int(state["io_control_shadow_7828f9"]))
+            path = "pending-escalated"
+        else:
+            if counter_after != row_last:
+                state["status_flag_78399e"] = 1
+                path = "threshold-pending"
+            else:
+                path = "last-signal"
+
+    if counter_after >= threshold:
+        signals.append({"helper": 0x1036, "target": 0x00780182})
+
+    state["a801_writes"] = a801_writes
+    state["signals"] = signals
+    return {
+        "path": path,
+        "counter_before": counter_before,
+        "counter_after": counter_after,
+        "threshold_78398e": threshold,
+        "row_last_783998": row_last,
+        "status_flag_78399e_before": status_e_before,
+        "status_flag_78399e_after": int(state.get("status_flag_78399e", 0)),
+        "status_flag_78399f_before": status_f_before,
+        "status_flag_78399f_after": int(state.get("status_flag_78399f", 0)),
+        "io_control_shadow_7828f9_before": control_original,
+        "io_control_shadow_7828f9_after": int(
+            state.get("io_control_shadow_7828f9", control_before)
+        ),
+        "a801_writes": a801_writes,
+        "signals": signals,
+    }
+
+
+def active_pool_status_copy_via_1db0(state: dict[str, object]) -> dict[str, object]:
+    """Model the 0x1db0 status-driven sibling of the 0x2038 copy helper."""
+    work_record = state.get("active_pool_work_record", {})
+    if not isinstance(work_record, dict):
+        raise AssertionError("active pool status copy needs active_pool_work_record")
+    phase_before = int(state.get("copy_phase_783990", 1))
+    word_16_before = int(state.get("engine_word_16_7839c6", work_record.get("word_16", 0)))
+    word_10 = int(work_record.get("word_10", 0))
+    copy_pass: dict[str, object] | None = None
+    if phase_before == 1:
+        if word_16_before >= word_10:
+            return {
+                "path": "at-end-return",
+                "phase_before": phase_before,
+                "phase_after": phase_before,
+                "word_16_before": word_16_before,
+                "word_16_after": word_16_before,
+                "status_flag_78399e_after": int(state.get("status_flag_78399e", 0)),
+                "copied": False,
+            }
+        state["copy_source_ptr_783992"] = compute_engine_source_address_via_2456(
+            state,
+            word_16_before,
+        )
+        path = "phase1-source-copy"
+    else:
+        state["copy_source_ptr_783992"] = (
+            int(state.get("copy_source_ptr_783992", 0))
+            + int(state.get("copy_full_row_stride_7839a0", 0))
+        )
+        path = "phase-copy"
+
+    copy_pass = engine_copy_pass_via_22f4(state)
+    phase_after = phase_before + 1
+    word_16_after = word_16_before
+    if phase_after > 2:
+        word_16_after += 1
+        work_record["word_16"] = word_16_after
+        state["engine_word_16_7839c6"] = word_16_after
+        phase_after = 1
+    state["copy_phase_783990"] = phase_after
+    state["status_flag_78399e"] = 0
+    return {
+        "path": path,
+        "phase_before": phase_before,
+        "phase_after": phase_after,
+        "word_16_before": word_16_before,
+        "word_16_after": word_16_after,
+        "copy_source_ptr_783992": int(state.get("copy_source_ptr_783992", 0)),
+        "status_flag_78399e_after": int(state.get("status_flag_78399e", 0)),
+        "copied": True,
+        "copy_pass": copy_pass,
+    }
+
+
+def active_pool_status_bridge_via_1e44(state: dict[str, object]) -> dict[str, object]:
+    """Model the 0x1e44 status-flag bridge before it enters 0x2038."""
+    status_f_before = int(state.get("status_flag_78399f", 0)) & 0xFF
+    signals = list(state.get("signals", []))
+    signaled = False
+    if status_f_before:
+        state["status_flag_780e6d"] = 1
+        signals.append({"helper": 0x9BA2, "target": 0x00780E2E, "bit": 1})
+        signaled = True
+    state["signals"] = signals
+    engine = active_pool_engine_copy_via_2038(state)
+    return {
+        "status_flag_78399f_before": status_f_before,
+        "status_flag_78399f_after": int(state.get("status_flag_78399f", 0)),
+        "status_flag_780e6d": int(state.get("status_flag_780e6d", 0)),
+        "signaled_780e2e": signaled,
+        "signals": signals,
+        "engine": engine,
+    }
+
+
 def compute_engine_source_address_via_2456(state: dict[str, object], row_index: int) -> int:
     """Model the address arithmetic at 0x2456."""
     work_record = state.get("active_pool_work_record", {})
@@ -27469,6 +27606,165 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "word_16_before": 5,
                 "word_16_after": 5,
                 "active_render_loop_flag_780ea5": 1,
+            },
+        },
+    ))
+
+    def feedback_state(word_16: int = 3) -> dict[str, object]:
+        state: dict[str, object] = {
+            "render_work_selector_7820c0": 1,
+            "render_work_records": {
+                copy_work_ptr: {
+                    "long_00": 0x00102000,
+                    "word_04": 0x0020,
+                    "word_06": 0x0005,
+                    "word_08": 0x0004,
+                    "word_0a": 0x0002,
+                    "word_0c": 0x0003,
+                    "word_10": 0x0005,
+                    "word_16": word_16,
+                },
+            },
+            "visible_row_count_1a4c": 0x0018,
+            "copy_source_base_78399a": 0x00FFC000,
+            "copy_source_ptr_783992": 0x00FFC000,
+            "active_source_780eae": inserted_ptr,
+            "advance_cursor_780eb2": inserted_ptr,
+            "elapsed_2038": 0x00C9,
+        }
+        active_pool_render_aliases_via_2126(state)
+        active_pool_copy_window_setup_via_1a4c(state)
+        return state
+
+    pending_state = feedback_state()
+    pending_state["scan_counter_78398c"] = 0x0011
+    pending_state["io_control_shadow_7828f9"] = 0
+    pending_interrupt = active_pool_scan_interrupt_via_0fa2(pending_state)
+    pending_copy = active_pool_status_copy_via_1db0(pending_state)
+    pending_rows = pending_copy["copy_pass"]
+    assert isinstance(pending_rows, dict)
+
+    escalate_state = feedback_state(word_16=5)
+    escalate_state["scan_counter_78398c"] = 0x0012
+    escalate_state["status_flag_78399e"] = 1
+    escalate_state["io_control_shadow_7828f9"] = 0
+    escalated_interrupt = active_pool_scan_interrupt_via_0fa2(escalate_state)
+    escalated_bridge = active_pool_status_bridge_via_1e44(escalate_state)
+    escalated_engine = escalated_bridge["engine"]
+    assert isinstance(escalated_engine, dict)
+    checks.append(assert_equal(
+        "0x0fa2/0x1db0/0x1e44 status feedback drives copy and done flag",
+        {
+            "pending_interrupt": pending_interrupt,
+            "pending_copy": {
+                "path": pending_copy["path"],
+                "phase_before": pending_copy["phase_before"],
+                "phase_after": pending_copy["phase_after"],
+                "word_16_before": pending_copy["word_16_before"],
+                "word_16_after": pending_copy["word_16_after"],
+                "copy_source_ptr_783992": pending_copy["copy_source_ptr_783992"],
+                "status_flag_78399e_after": pending_copy[
+                    "status_flag_78399e_after"
+                ],
+                "copied": pending_copy["copied"],
+                "source_start": pending_rows["source_start"],
+                "dest_base": pending_rows["dest_base"],
+                "width_longs": pending_rows["width_longs"],
+                "rows": pending_rows["rows"],
+            },
+            "escalated_interrupt": escalated_interrupt,
+            "escalated_bridge": {
+                "status_flag_78399f_before": escalated_bridge[
+                    "status_flag_78399f_before"
+                ],
+                "status_flag_78399f_after": escalated_bridge[
+                    "status_flag_78399f_after"
+                ],
+                "status_flag_780e6d": escalated_bridge["status_flag_780e6d"],
+                "signaled_780e2e": escalated_bridge["signaled_780e2e"],
+                "signals": escalated_bridge["signals"],
+                "engine": {
+                    "path": escalated_engine["path"],
+                    "phase_before": escalated_engine["phase_before"],
+                    "phase_after": escalated_engine["phase_after"],
+                    "word_16_before": escalated_engine["word_16_before"],
+                    "word_16_after": escalated_engine["word_16_after"],
+                    "active_render_loop_flag_780ea5": escalated_engine[
+                        "active_render_loop_flag_780ea5"
+                    ],
+                },
+            },
+        },
+        {
+            "pending_interrupt": {
+                "path": "threshold-pending",
+                "counter_before": 0x0011,
+                "counter_after": 0x0012,
+                "threshold_78398e": 0x0012,
+                "row_last_783998": 0x0017,
+                "status_flag_78399e_before": 0,
+                "status_flag_78399e_after": 1,
+                "status_flag_78399f_before": 0,
+                "status_flag_78399f_after": 0,
+                "io_control_shadow_7828f9_before": 0,
+                "io_control_shadow_7828f9_after": 0,
+                "a801_writes": [],
+                "signals": [{"helper": 0x1036, "target": 0x00780182}],
+            },
+            "pending_copy": {
+                "path": "phase1-source-copy",
+                "phase_before": 1,
+                "phase_after": 2,
+                "word_16_before": 3,
+                "word_16_after": 3,
+                "copy_source_ptr_783992": 0x00102000,
+                "status_flag_78399e_after": 0,
+                "copied": True,
+                "source_start": 0x00102000,
+                "dest_base": 0x00FFC000,
+                "width_longs": 0x20,
+                "rows": [
+                    {
+                        "row": row,
+                        "source": 0x00102000 + row * 0x80,
+                        "dest": 0x00FFC000 + row * 0x200,
+                        "longwords": 0x20,
+                    }
+                    for row in range(8)
+                ],
+            },
+            "escalated_interrupt": {
+                "path": "pending-escalated",
+                "counter_before": 0x0012,
+                "counter_after": 0x0013,
+                "threshold_78398e": 0x0012,
+                "row_last_783998": 0x0017,
+                "status_flag_78399e_before": 1,
+                "status_flag_78399e_after": 0,
+                "status_flag_78399f_before": 0,
+                "status_flag_78399f_after": 1,
+                "io_control_shadow_7828f9_before": 0,
+                "io_control_shadow_7828f9_after": 0xC0,
+                "a801_writes": [0x80, 0xC0],
+                "signals": [{"helper": 0x1036, "target": 0x00780182}],
+            },
+            "escalated_bridge": {
+                "status_flag_78399f_before": 1,
+                "status_flag_78399f_after": 1,
+                "status_flag_780e6d": 1,
+                "signaled_780e2e": True,
+                "signals": [
+                    {"helper": 0x1036, "target": 0x00780182},
+                    {"helper": 0x9BA2, "target": 0x00780E2E, "bit": 1},
+                ],
+                "engine": {
+                    "path": "done-active-source",
+                    "phase_before": 1,
+                    "phase_after": 1,
+                    "word_16_before": 5,
+                    "word_16_after": 5,
+                    "active_render_loop_flag_780ea5": 1,
+                },
             },
         },
     ))

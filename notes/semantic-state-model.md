@@ -238,6 +238,27 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     longword range from source to destination in the opposite call shape.
   Evidence: disassembly `0xe8a2..0xe9b8`; fixture
   `macro snapshot helpers copy linked and flat environment ranges`.
+- Canonical heap objects and chains:
+  - allocator entries `0x170c` and `0x1710` both manage 64-byte heap
+    allocation units. `0x170c` scans from the low side; `0x1710` scans
+    from the high side.
+  - alignment word `0x40` allocates the requested count as 64-byte units.
+    Alignment word `0x100` multiplies the requested count by four units,
+    which is why macro payload and snapshot chunks are 0x100 bytes.
+  - a zero requested count is normalized to one object. A nonzero second
+    argument enables zero-fill through `0x1886`, which clears 16 longwords
+    per allocated 64-byte unit.
+  - `0x18b4(ptr, count, alignment)` frees a contiguous run when count is
+    nonzero. When count is zero, it frees one object and follows the
+    first longword of the freed object as a next pointer until zero.
+  - macro clear `0xdfba` and frame-end cleanup `0xe22c` use
+    `0x18b4(ptr, 0, 0x100)` to free linked 0x100-byte chains. Font payload
+    cleanup at `0x1659c..0x165a4` uses `0x18b4(ptr, count, 0x40)` for a
+    contiguous run.
+  Evidence: disassembly `0x170c..0x18b4`, macro callers
+  `0xdfe6..0xdff0` and `0xe90c..0xe944`, font caller
+  `0x16564..0x165a4`, and fixture
+  `0x170c/0x1710 allocate and 0x18b4 frees heap units`.
 - Canonical frame-end paths:
   - `0xe22c` reads the active frame at `0x782d76` and dispatches by frame
     byte `+9`.
@@ -309,6 +330,10 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   - frame-end paths free snapshot chains in 0x100-byte units through
     `0x18b4`, and `0xe8f0` reports allocation failure through
     `0x9b5e(0x780e2e, 4)`.
+  - heap allocator bookkeeping uses bitmap base `0x783972`, payload base
+    `0x783988`, free-unit count `0x780e86`, and scan cursors
+    `0x78397e` / `0x783982`; those fields are allocator-private caches,
+    not PCL-visible state.
   Evidence: disassembly `0xdd4c..0xdd78`, `0xdee4..0xdefa`, and
   `0xe418..0xe4e6`; host-byte section
   `Host Byte Fetch And Data-Chain Input`.
@@ -327,8 +352,9 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 - Unknown:
   - exact in-RAM chunk allocation layout behind macro record `+0x00` and
     the adjusted count at `+0x04`.
-  - allocator `0x170c` and free helper `0x18b4` internals beyond the
-    0x100-byte chunk contract observed through macro snapshots.
+  - heap initialization policy at `0x164a..0x170a` beyond the named bitmap,
+    payload base, free-unit count, and cursor fields consumed by
+    `0x170c`/`0x1710`/`0x18b4`.
   - full CPU-state connection from macro-specific `0xe65c` refresh into
     the broader font resource maps beyond the already modeled
     `0x13eb8` / `0xc428` / `0x144d2` / `0x14c64` contracts.
@@ -348,11 +374,14 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 - `0xe418` writes the data-chain frame later consumed by `0xa904`, writes
   the environment snapshot pointer at frame `+0x0a`, and pushes the
   call-only context entry at `0x782c6e`.
-- `0xe8f0` allocates linked snapshot chunks; `0xe8a2` restores and checks
-  them; `0xe972` and `0xe996` copy flat inclusive longword ranges.
+- `0x170c` / `0x1710` allocate heap objects in 64-byte units; `0xe8f0`
+  allocates linked snapshot chunks; `0xe8a2` restores and checks them;
+  `0xe972` and `0xe996` copy flat inclusive longword ranges.
 - `0xe22c` consumes the current frame, frees snapshot chunks, rewinds
   `0x782d76`, clears host gate bit 1 when the previous frame is empty, and
   calls `0x1240a` on the execute/call return paths.
+- `0x18b4` frees macro payload and snapshot linked chains when count is
+  zero, and frees font payload contiguous runs when count is nonzero.
 - `0xe65c(0)` pops the call-mode context stack entry, may copy active
   primary/secondary font words to remembered words, and clears its 10-byte
   slot before the shared font-context install exit.
@@ -371,6 +400,9 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   bytes to the parser.
 - `0xe22c` consumes frame `+0x09`, frame `+0x0a`, `0x782c6e`, and
   environment buffers to unwind execute/call frames after replay.
+- `0x170c` consumes request count, zero-fill flag, and alignment word to
+  allocate heap units; `0x18b4` consumes pointer, count, and alignment to
+  free either a linked chain or contiguous run.
 - `0xe65c` consumes context-stack entry bytes `+8/+9` to decide whether
   primary/secondary font refresh helpers such as `0x13eb8` run before
   the slot is cleared.
@@ -402,12 +434,13 @@ High for parser reachability, selector meanings, record count/stride,
 current id storage, definition stop behavior, execute/call frame mode
 bytes, frame field offsets `+0x00/+0x04/+0x08/+0x09/+0x0a`, call-only
 context-stack push, snapshot chain chunk shape, execute/call frame-end
-restore, `0xe65c` branch contract, `0xa904` replay, and page-record/render
-effects because those are covered by disassembly, generated parser-table
-reports, and executable fixtures. Medium for macro chunk allocator
-internals, complete downstream font/resource rebuild after `0xe65c`, and
-non-execute/non-call frame-end semantics because only the fields needed by
-current replay fixtures are pinned.
+restore, `0x170c`/`0x1710`/`0x18b4` shared heap contract, `0xe65c` branch
+contract, `0xa904` replay, and page-record/render effects because those
+are covered by disassembly, generated parser-table reports, and executable
+fixtures. Medium for macro append/count bookkeeping, complete downstream
+font/resource rebuild after `0xe65c`, and non-execute/non-call frame-end
+semantics because only the fields needed by current replay fixtures are
+pinned.
 
 ### Fixtures
 
@@ -419,6 +452,7 @@ current replay fixtures are pinned.
 - `host-fetched macro call stream builds replay frame`
 - `0xe418 frame metadata distinguishes execute and call context`
 - `macro snapshot helpers copy linked and flat environment ranges`
+- `0x170c/0x1710 allocate and 0x18b4 frees heap units`
 - `0xe22c restores macro frames and consumes call context`
 - `0xe65c refreshes macro font context entries`
 - `macro execute frame payload feeds 0xa904 data-chain bytes`
@@ -461,7 +495,8 @@ current replay fixtures are pinned.
   count update rules behind record `+0x04`.
 - `0xe0a4..0xe110`: record lookup/allocation policy for the 32-entry pool
   when ids collide, records are temporary/permanent, or allocation fails.
-- `0x170c` and `0x18b4`: allocator/free internals for 0x100-byte chains.
+- `0x164a..0x170a`: heap initialization and partition sizing before
+  `0x170c` / `0x1710` / `0x18b4` consume the allocator bitmap.
 - `0xe65c..0xe84c`: unresolved only at the full CPU-state bridge into
   existing font-map contracts after `0x13eb8`, `0xc428`, `0x144d2`, and
   `0x14c64`; branch flags, fallback install, and shared exit are pinned.

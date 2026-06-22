@@ -2749,6 +2749,127 @@ def flat_snapshot_via_e996(source_start: int, source_end: int, values: list[int]
     }
 
 
+def heap_allocator_state(**overrides: object) -> dict[str, object]:
+    state: dict[str, object] = {
+        "base": 0x783988,
+        "unit_size": 0x40,
+        "capacity_units": 32,
+        "allocated_units": set(),
+        "links": {},
+        "events": [],
+    }
+    state.update(overrides)
+    state["allocated_units"] = set(state.get("allocated_units", set()))
+    state["links"] = dict(state.get("links", {}))
+    state["events"] = list(state.get("events", []))
+    return state
+
+
+def heap_units_for_request(count: int, alignment: int) -> int:
+    if count < 0 or alignment not in (0x40, 0x100):
+        raise AssertionError("0x170c/0x18b4 fixture accepts only valid request shapes")
+    normalized = count if count else 1
+    return normalized * (4 if alignment == 0x100 else 1)
+
+
+def heap_unit_addr(state: dict[str, object], unit: int) -> int:
+    return int(state["base"]) + (unit * int(state["unit_size"]))
+
+
+def heap_unit_index(state: dict[str, object], addr: int) -> int:
+    offset = addr - int(state["base"])
+    if offset < 0 or offset % int(state["unit_size"]) != 0:
+        raise AssertionError("heap fixture pointer must be aligned to a 64-byte unit")
+    return offset // int(state["unit_size"])
+
+
+def heap_find_run(state: dict[str, object], units: int, high_side: bool) -> int | None:
+    allocated = set(state["allocated_units"])
+    capacity = int(state["capacity_units"])
+    starts = range(capacity - units, -1, -1) if high_side else range(0, capacity - units + 1)
+    for start in starts:
+        if all((start + index) not in allocated for index in range(units)):
+            return start
+    return None
+
+
+def heap_alloc_via_170c(
+    state: dict[str, object],
+    count: int,
+    zero_fill: int,
+    alignment: int,
+    entry: int = 0x170C,
+) -> dict[str, object]:
+    updated = heap_allocator_state(**state)
+    units = heap_units_for_request(count, alignment)
+    high_side = entry == 0x1710
+    start = heap_find_run(updated, units, high_side)
+    if start is None:
+        updated["events"].append({
+            "kind": "alloc-failed",
+            "entry": entry,
+            "count": count,
+            "alignment": alignment,
+        })
+        updated["last_alloc"] = 0
+        return updated
+    allocated = set(updated["allocated_units"])
+    for index in range(units):
+        allocated.add(start + index)
+    updated["allocated_units"] = allocated
+    addr = heap_unit_addr(updated, start)
+    updated["last_alloc"] = addr
+    updated["events"].append({
+        "kind": "alloc",
+        "entry": entry,
+        "addr": addr,
+        "count": count,
+        "alignment": alignment,
+        "units": units,
+        "zero_fill": bool(zero_fill),
+    })
+    if zero_fill:
+        updated["events"].append({"kind": "zero-fill", "addr": addr, "units": units})
+    return updated
+
+
+def heap_free_via_18b4(
+    state: dict[str, object],
+    ptr: int,
+    count: int,
+    alignment: int,
+) -> dict[str, object]:
+    updated = heap_allocator_state(**state)
+    if ptr == 0:
+        updated["events"].append({"kind": "free-null"})
+        return updated
+    units = heap_units_for_request(count, alignment)
+    follow_links = count == 0
+    allocated = set(updated["allocated_units"])
+    links = dict(updated["links"])
+    freed: list[int] = []
+    current = ptr
+    while current:
+        start = heap_unit_index(updated, current)
+        for index in range(units):
+            allocated.discard(start + index)
+        freed.append(current)
+        if not follow_links:
+            break
+        current = int(links.get(current, 0))
+    updated["allocated_units"] = allocated
+    updated["events"].append({
+        "kind": "free",
+        "ptr": ptr,
+        "count": count,
+        "alignment": alignment,
+        "units_per_object": units,
+        "follow_links": follow_links,
+        "freed": freed,
+    })
+    return updated
+
+
 def execute_macro_data_chain_via_e418(state: dict[str, object], index: int, mode: int) -> dict[str, object]:
     records = list(state["records"])
     record = dict(records[index])
@@ -19013,6 +19134,92 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "source_start": 0x00782EE2,
             "source_end": 0x007831A2,
             "count": 177,
+        },
+    }))
+    heap_low_alloc = heap_alloc_via_170c(heap_allocator_state(), 1, 1, 0x100, 0x170C)
+    heap_high_alloc = heap_alloc_via_170c(heap_low_alloc, 2, 0, 0x40, 0x1710)
+    heap_linked_free = heap_free_via_18b4(heap_allocator_state(
+        allocated_units=set(range(8)),
+        links={
+            0x783988: 0x783A88,
+            0x783A88: 0,
+        },
+    ), 0x783988, 0, 0x100)
+    heap_contiguous_free = heap_free_via_18b4(heap_allocator_state(
+        allocated_units={12, 13, 14},
+    ), 0x783C88, 3, 0x40)
+    checks.append(assert_equal("0x170c/0x1710 allocate and 0x18b4 frees heap units", {
+        "low_alloc": {
+            "addr": heap_low_alloc["last_alloc"],
+            "allocated_units": sorted(heap_low_alloc["allocated_units"]),
+            "events": heap_low_alloc["events"],
+        },
+        "high_alloc": {
+            "addr": heap_high_alloc["last_alloc"],
+            "allocated_units": sorted(heap_high_alloc["allocated_units"]),
+            "event": heap_high_alloc["events"][-1],
+        },
+        "linked_free": {
+            "remaining": sorted(heap_linked_free["allocated_units"]),
+            "event": heap_linked_free["events"][-1],
+        },
+        "contiguous_free": {
+            "remaining": sorted(heap_contiguous_free["allocated_units"]),
+            "event": heap_contiguous_free["events"][-1],
+        },
+    }, {
+        "low_alloc": {
+            "addr": 0x783988,
+            "allocated_units": [0, 1, 2, 3],
+            "events": [
+                {
+                    "kind": "alloc",
+                    "entry": 0x170C,
+                    "addr": 0x783988,
+                    "count": 1,
+                    "alignment": 0x100,
+                    "units": 4,
+                    "zero_fill": True,
+                },
+                {"kind": "zero-fill", "addr": 0x783988, "units": 4},
+            ],
+        },
+        "high_alloc": {
+            "addr": 0x784108,
+            "allocated_units": [0, 1, 2, 3, 30, 31],
+            "event": {
+                "kind": "alloc",
+                "entry": 0x1710,
+                "addr": 0x784108,
+                "count": 2,
+                "alignment": 0x40,
+                "units": 2,
+                "zero_fill": False,
+            },
+        },
+        "linked_free": {
+            "remaining": [],
+            "event": {
+                "kind": "free",
+                "ptr": 0x783988,
+                "count": 0,
+                "alignment": 0x100,
+                "units_per_object": 4,
+                "follow_links": True,
+                "freed": [0x783988, 0x783A88],
+            },
+        },
+        "contiguous_free": {
+            "remaining": [],
+            "event": {
+                "kind": "free",
+                "ptr": 0x783C88,
+                "count": 3,
+                "alignment": 0x40,
+                "units_per_object": 3,
+                "follow_links": False,
+                "freed": [0x783C88],
+            },
         },
     }))
     macro_execute_end = end_macro_data_chain_via_e22c(macro_execute)
@@ -46402,6 +46609,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- Selectors `2` and `3` replay an existing macro by pushing a data-chain frame whose byte `+8` is `4` and byte `+9` is the execute/call selector.")
     lines.append("- `0xe418` writes frame `+0x00/+0x04` from macro record `+0x00/+0x04`, stores an environment snapshot pointer at frame `+0x0a`, and only call mode pushes a 10-byte context-stack entry from `0x782ee6` / `0x782ef6`.")
     lines.append("- `0xe8f0` stores environment ranges as 0x100-byte linked chunks with a next pointer plus 63 longwords; `0xe8a2` restores those chunks and expects the chain to be exhausted, while `0xe972` and `0xe996` copy flat inclusive longword ranges in opposite directions.")
+    lines.append("- `0x170c` and `0x1710` allocate 64-byte heap units from opposite scan directions; `0x100` requests consume four units, optional zero-fill clears the allocated run, and `0x18b4` frees either a contiguous run or a linked chain when count is zero.")
     lines.append("- `0xe65c` consumes either the call context-stack entry or static record `0x782c64`; entry bytes `+8/+9` refresh primary/secondary font slots through `0x13eb8`, then the selected slot passes through `0xc428`, optional empty-install rebuild, `0x1b04c`, and dirty-flag clear.")
     lines.append("- Selectors `4`/`5` enable/disable overlay state, `6`/`7`/`8` delete all/temporary/current macros, and `9`/`10` toggle the temporary/permanent byte at record `+0x0a`.")
     lines.append("")
@@ -46465,6 +46673,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- macro execute frame payload fetches through `0xa904` as data-chain bytes `%s`, then end-marker helper `0xe22c` resumes outer byte `0x%02x`." % (
         " ".join(f"0x{int(fetch['d7']):02x}" for fetch in macro_frame_replay["fetches"]),
         int(macro_frame_replay_outer["d7"]),
+    ))
+    lines.append("- heap allocator fixture: `0x170c(1,1,0x100)` returns `0x%08x`, `0x1710(2,0,0x40)` returns `0x%08x`, linked free releases `%s`, and contiguous free releases `%s`." % (
+        int(heap_low_alloc["last_alloc"]),
+        int(heap_high_alloc["last_alloc"]),
+        [f"0x{int(addr):08x}" for addr in heap_linked_free["events"][-1]["freed"]],
+        [f"0x{int(addr):08x}" for addr in heap_contiguous_free["events"][-1]["freed"]],
     ))
     lines.append("- `0xe65c(0)` stack-pop fixture refreshes slots `%s`, copies remembered words `%s`, and leaves dirty flag `%d` after final `0x1b04c`." % (
         [event["slot"] for event in refresh_stack_both["events"] if event["kind"] == "call-13eb8"],

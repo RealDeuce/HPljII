@@ -411,16 +411,18 @@ frame `+0x00/+0x04`, and an environment snapshot pointer at frame
 `0x782c6e`. The `0xe8f0`/`0xe8a2` helpers store and restore those
 snapshots as 0x100-byte linked chunks, and `0xe22c` unwinds execute/call
 frames after `0xa904` sees the frame-end marker. The executable harness
-now pins these command side effects, frame metadata, and `0xe65c`
-font-context refresh paths. `0xe65c(0)` pops the call context stack at
-`0x782c6e`, while `0xe65c(1)` consumes static record `0x782c64`.
-Entry bytes `+8/+9` refresh primary/secondary slots through
-`0x13eb8(0/1)`, copy active words `0x783144`/`0x783146` to remembered
-words `0x782f08`/`0x782f0a`, pass selected slot `0x782f06` through
-`0xc428`, optionally rebuild selected context `0x782ee6 + 0x10*slot`
-from `0x782c80`/`0x782c84` through `0x1b4c0`, `0x144d2`, and
-`0x14c64`, then exit through `0x1b04c` with dirty flag `0x782f2d`
-cleared. Chained
+now pins these command side effects, frame metadata, shared heap
+allocation/free, and `0xe65c` font-context refresh paths. `0x170c` /
+`0x1710` allocate 64-byte units, `0x100` requests consume four units,
+and `0x18b4(ptr, 0, 0x100)` follows linked 0x100-byte chains through
+their first longword. `0xe65c(0)` pops the call context stack at
+`0x782c6e`, while `0xe65c(1)` consumes static record `0x782c64`. Entry
+bytes `+8/+9` refresh primary/secondary slots through `0x13eb8(0/1)`,
+copy active words `0x783144`/`0x783146` to remembered words
+`0x782f08`/`0x782f0a`, pass selected slot `0x782f06` through `0xc428`,
+optionally rebuild selected context `0x782ee6 + 0x10*slot` from
+`0x782c80`/`0x782c84` through `0x1b4c0`, `0x144d2`, and `0x14c64`, then
+exit through `0x1b04c` with dirty flag `0x782f2d` cleared. Chained
 `ESC &f-123y0x1X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f2X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f3X`,
@@ -450,9 +452,9 @@ bucket/context bridge contract and feed `0x1ed84`/`0x1ef6a` before
 rendering. The composed semantic checkpoint is in
 `notes/semantic-state-model.md` under
 `Macro Definition And Data-Chain Replay`; the remaining macro gaps are
-the exact macro chunk allocator, the full CPU-state bridge from `0xe65c`
-into the existing font-map contracts, and the non-execute/non-call frame
-producer.
+definition-byte append/count bookkeeping, the full CPU-state bridge from
+`0xe65c` into the existing font-map contracts, and the
+non-execute/non-call frame producer.
 
 The `ESC &f-123y0x1X` fixture is now also traced through ROM parser
 modes `0 -> 1 -> 5 -> 17 -> 17 -> 17 -> 0`, selecting `0xe112`,
@@ -929,7 +931,8 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   compatibility-facing documentation. The default-font candidate and
   caller path is now real-record backed through `0x1b250`, `0x1b50e`,
   `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
-- Decode the macro chunk allocator, the full `0xe65c` CPU-state bridge
-  into already-modeled font maps, and the non-execute/non-call frame
-  producer now that the `0xe418` layout, snapshot chain helpers,
-  execute/call frame end, and `0xe65c` branch contract are pinned.
+- Decode macro definition-byte append/count bookkeeping, the full
+  `0xe65c` CPU-state bridge into already-modeled font maps, and the
+  non-execute/non-call frame producer now that the `0xe418` layout,
+  snapshot chain helpers, heap allocation/free, execute/call frame end,
+  and `0xe65c` branch contract are pinned.

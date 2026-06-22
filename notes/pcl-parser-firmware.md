@@ -565,6 +565,15 @@ restores `0x782d9e..0x78319a` and pops one 10-byte context entry through
 clear host gate bit 1 when the previous frame has no bytes, and call
 `0x1240a`.
 
+The shared heap allocator used by those chunks is pinned at the contract
+level. `0x170c` and `0x1710` allocate 64-byte units from opposite scan
+directions; alignment `0x100` consumes four units per requested object,
+and a nonzero zero-fill argument clears the allocated run. `0x18b4`
+frees a contiguous run when count is nonzero, or follows the first
+longword as a linked-chain pointer when count is zero. Macro record clear
+`0xdfba` and snapshot cleanup use `0x18b4(ptr, 0, 0x100)`, while font
+payload cleanup at `0x1659c..0x165a4` uses a counted `0x40` run.
+
 The `0xe65c` call-context refresh is now split into branch-contract
 fields. Argument `0` pops the 10-byte context stack at `0x782c6e`;
 argument `1` uses static record `0x782c64`. Entry bytes `+8/+9` refresh
@@ -700,10 +709,11 @@ control-code anchor.
   names.
 - Decode the six-byte tokenizer records and 12-byte command/data pool
   records.
-- Decode the macro chunk allocator, full `0xe65c` bridge into the
-  already-modeled font resource maps, and non-execute/non-call frame
-  producer now that the `0xe418` layout, snapshot chain helpers,
-  execute/call frame end, and `0xe65c` branch contract are pinned.
+- Decode macro definition-byte append/count bookkeeping, full `0xe65c`
+  bridge into the already-modeled font resource maps, and the
+  non-execute/non-call frame producer now that the `0xe418` layout,
+  snapshot chain helpers, heap allocation/free contract, execute/call
+  frame end, and `0xe65c` branch contract are pinned.
 - Replace the remaining synthetic `ESC E` roots with fuller
   parser-allocated page objects; the current host-fetched publication
   fixtures already prove the modeled `0xff1e` publication headers,

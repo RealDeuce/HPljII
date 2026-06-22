@@ -511,6 +511,17 @@ jumps through a table at `0x0000dca8` via common dispatch helper
 `0x00033298`. Current macro record pointer lives at `0x782d7a`; current
 data-chain frame pointer lives at `0x782d76`.
 
+The lookup helper `0xe0a4` is now pinned at the slot-policy level. It
+scans the 32 records at `0x782a98` in 12-byte steps, compares the
+requested id to record word `+8`, but returns an existing record only if
+record longword `+0` is nonzero. The first zero-head record is remembered
+as free even when its stale id word is nonzero. If no nonempty match is
+found, that first free record receives the requested id at `+8`, becomes
+`0x782d7a`, and returns status `0`; a nonempty match returns status `1`.
+If every record has a nonzero head and none matches, `0xe0a4` clears
+`0x782d7a` and returns status `2`. The helper does not inspect
+permanence byte `+0x0a`; selectors `7`, `9`, and `10` own that policy.
+
 The table maps selector values to handlers:
 
 | Selector | Handler | Meaning |
@@ -576,7 +587,21 @@ sees frame `+4 == -1`: execute restores `0x783192..0x78319a`, call
 restores `0x782d9e..0x78319a` and pops one 10-byte context entry through
 `0xe65c(0)`, both free the snapshot chain, rewind `0x782d76` by `0x0e`,
 clear host gate bit 1 when the previous frame has no bytes, and call
-`0x1240a`.
+`0x1240a`. Other frame-byte values take the flat restore branch:
+`0xe972` copies 281 longwords from `0x7834c2` into
+`0x782d3a..0x78319a`, leaves `0x782d76` on the same frame, clears host
+gate bit 1 when frame `+4` is zero, restores cursor longword
+`0x782c92 -> 0x782c8a`, calls `0xe65c(0)`, sets `0x782a92 = 0x63`,
+then calls `0x1240a` and `0x9ec0(0)`.
+
+The producer for that non-replay frame is now pinned at `0xe4f4`.
+Page-root finalization reaches it from `0xff8e` after `0xe0a4` restores
+saved key `0x782a94` and the selected record has a nonzero head. `0xe4f4`
+pushes a context entry, snapshots `0x782d3a..0x78319a` to `0x7834c2`,
+saves cursor longword `0x782c8a` to `0x782c92`, restores baseline range
+`0x782ee2..0x78319a` from `0x7831a2`, calls `0xe5e2`, then writes frame
+`0x782d4c` with byte `+8 = 4`, byte `+9 = 4`, record payload/count in
+`+0/+4`, and `+0x0a = 0`.
 
 The shared heap allocator used by those chunks is pinned at the contract
 level. `0x170c` and `0x1710` allocate 64-byte units from opposite scan
@@ -675,8 +700,9 @@ bytes long:
   byte chunks through `0x170c` as needed.
 - `0xe0a4` scans the 32-entry pool keyed by macro id word `+8`: existing
   records with a nonzero payload pointer return status `1`, the first
-  free record is assigned the requested id and returns status `0`, and a
-  full pool returns status `2`.
+  zero-head record is assigned the requested id and returns status `0`,
+  and a full pool returns status `2`. Stale id words in zero-head slots
+  do not prevent reuse.
 
 These structures need full naming, but they are already concrete enough
 to drive PCL parser fixture work.
@@ -724,10 +750,10 @@ control-code anchor.
 - Decode the six-byte tokenizer records and 12-byte command/data pool
   records.
 - Decode the full `0xe65c` bridge into the already-modeled font resource
-  maps, record lookup/allocation edge cases, and the non-execute/non-call
-  frame producer now that the `0xe002` append/count path, `0xe418`
-  layout, snapshot chain helpers, heap allocation/free contract,
-  execute/call frame end, and `0xe65c` branch contract are pinned.
+  maps, heap initialization `0x164a..0x170a`, and `0xe5e2..0xe65a`
+  page/layout side effects now that the `0xe002` append/count path,
+  `0xe418` layout, snapshot chain helpers, heap allocation/free contract,
+  frame-end branches, and `0xe65c` branch contract are pinned.
 - Replace the remaining synthetic `ESC E` roots with fuller
   parser-allocated page objects; the current host-fetched publication
   fixtures already prove the modeled `0xff1e` publication headers,

@@ -191,9 +191,23 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     `0` start.
   - record `+0x0a`: permanence byte, cleared by selector `9` and set by
     selector `10`.
+  - `0xe0a4(id)` scans all 32 records in order, comparing the requested
+    id against record `+0x08` but accepting a match only when record
+    `+0x00` is nonzero. A matching nonempty record writes `0x782d7a` to
+    that slot and returns `D7 = 1`.
+  - during the same scan, the first record with zero `+0x00` is retained
+    as the free slot even if its stale `+0x08` id is nonzero. If no
+    nonempty match is found, that first free slot receives the requested
+    id at `+0x08`, `0x782d7a` points to it, and `D7 = 0`.
+  - if every record has nonzero `+0x00` and none matches, `0xe0a4`
+    writes `0x782d7a = 0` and returns `D7 = 2`.
+  - `0xe0a4` does not inspect permanence byte `+0x0a`; temporary and
+    permanent behavior is handled by selectors `7`, `9`, and `10`.
   Evidence: `notes/pcl-parser-firmware.md` macro selector table;
-  disassembly `0xdd86..0xdfb8`; fixtures for start/stop, permanence,
-  delete-temporary, delete-current, and delete-all.
+  disassembly `0xe0a4..0xe110`; fixtures
+  `0xe0a4 macro record lookup uses head presence and first free slot`,
+  start/stop, permanence, delete-temporary, delete-current, and
+  delete-all.
 - Canonical macro payload chunks:
   - `0xe002(byte)` appends only when active frame byte `+9` is zero and
     macro error byte `0x782c19` is clear.
@@ -242,6 +256,23 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   covers `0xe418..0xe4f2`; fixtures
   `0xdd08 execute and call push macro data-chain frames` and
   `0xe418 frame metadata distinguishes execute and call context`.
+- Canonical non-replay data-chain frame:
+  - `0xe4f4` is called by page-root finalization `0xff8e` after
+    `0xe0a4(0x782a94)` restores a saved command/data key and the selected
+    record has nonzero `+0x00`.
+  - `0xe4f4` pushes a 10-byte context entry from `0x782ee6` and
+    `0x782ef6`, snapshots flat range `0x782d3a..0x78319a` to
+    `0x7834c2` through `0xe996`, and saves cursor longword
+    `0x782c8a` into `0x782c92`.
+  - it restores baseline range `0x782ee2..0x78319a` from `0x7831a2`
+    through `0xe972`, calls layout refresh helper `0xe5e2`, then writes a
+    frame at `0x782d4c` and stores `0x782d76 = 0x782d4c`.
+  - frame `+0x00/+0x04` copy selected macro record `+0x00/+0x04`,
+    byte `+8 = 4`, byte `+9 = 4`, and longword `+0x0a = 0`.
+  - if frame `+0x04` is positive, `0xe4f4` sets host gate bit 1 in
+    `0x780e66`.
+  Evidence: disassembly `0xe4f4..0xe5e0`; fixture
+  `0xe4f4/0xe22c produce and end data-chain frames`.
 - Canonical call context stack:
   - stack pointer `0x782c6e` is initialized to `0x782c1e` by `0xe146`.
   - each entry is 10 bytes.
@@ -298,8 +329,12 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     may copy cursor words through `0x783184`, pops one 10-byte context
     entry through `0xe65c(0)`, rewinds `0x782d76`, clears host gate bit 1
     when appropriate, then calls `0x1240a`.
-  - non-execute/non-call frames copy `0x782d3a..0x7834c2` from a flat
-    snapshot at `0x7834c2`, then run a shorter return path.
+  - non-execute/non-call frames use `0xe972` to copy 281 flat longwords
+    from source `0x7834c2` into `0x782d3a..0x78319a`. They do not rewind
+    `0x782d76`; they leave the same frame current, clear host gate bit 1
+    when frame `+0x04` is zero, copy cursor longword `0x782c92` into
+    `0x782c8a`, call `0xe65c(0)`, set `0x782a92 = 0x63`, then call
+    `0x1240a` and final log helper `0x9ec0(0)`.
   Evidence: disassembly `0xe22c..0xe408`; fixture
   `0xe22c restores macro frames and consumes call context`.
 - Canonical font context refresh:
@@ -383,12 +418,17 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   - full CPU-state connection from macro-specific `0xe65c` refresh into
     the broader font resource maps beyond the already modeled
     `0x13eb8` / `0xc428` / `0x144d2` / `0x14c64` contracts.
-  - non-execute/non-call frame producer and semantics for the `0xe972`
-    flat restore path.
+  - page/layout side effects inside `0xe5e2..0xe65a`; the frame fields
+    written after that helper are pinned, but the helper's calls into
+    `0xea16`, `0xe9ba`, `0xf8fc`, `0xfe54`, `0x12b96`, and `0xe65c(1)`
+    still need composition into the existing layout/font concepts.
 
 ### Writers
 
 - `0xe112` writes `0x783164` from the absolute parsed `ESC &f#Y` value.
+- `0xe0a4` writes `0x782d7a` to the existing nonempty record, the first
+  free record, or zero for the full-pool miss. On the free path it also
+  writes the requested id into record `+0x08`.
 - `0xdd08` rewinds `0x78299e`, finds or allocates the selected macro
   record through `0xe0a4`, dispatches selectors `0..10`, and writes
   definition, overlay, delete, temporary, and permanent state.
@@ -404,12 +444,18 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 - `0xe418` writes the data-chain frame later consumed by `0xa904`, writes
   the environment snapshot pointer at frame `+0x0a`, and pushes the
   call-only context entry at `0x782c6e`.
+- `0xe4f4` writes the non-replay frame at `0x782d4c`, writes
+  `0x782d76`, saves/restores flat state through `0xe996`/`0xe972`,
+  saves cursor longword `0x782c92`, and may set host gate bit 1.
 - `0x170c` / `0x1710` allocate heap objects in 64-byte units; `0xe8f0`
   allocates linked snapshot chunks; `0xe8a2` restores and checks them;
   `0xe972` and `0xe996` copy flat inclusive longword ranges.
 - `0xe22c` consumes the current frame, frees snapshot chunks, rewinds
-  `0x782d76`, clears host gate bit 1 when the previous frame is empty, and
-  calls `0x1240a` on the execute/call return paths.
+  `0x782d76` for execute/call frames, clears host gate bit 1 when the
+  previous frame is empty, and calls `0x1240a` on return paths. For
+  non-execute/non-call frames it leaves `0x782d76` unchanged, restores
+  flat state through `0xe972`, writes `0x782c8a` from `0x782c92`, and
+  writes `0x782a92 = 0x63`.
 - `0x18b4` frees macro payload and snapshot linked chains when count is
   zero, and frees font payload contiguous runs when count is nonzero.
 - `0xe65c(0)` pops the call-mode context stack entry, may copy active
@@ -425,6 +471,8 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 
 - `0xdd08` reads `0x783164`, `0x782d7a`, `0x782d76`, frame byte `+9`,
   and definition-mode byte `0x782c18` before selector dispatch.
+- `0xe0a4` reads each macro record `+0x00` head and `+0x08` id; it does
+  not read record `+0x0a` permanence while selecting the current record.
 - `0xe002` consumes active frame byte `+9`, macro error byte `0x782c19`,
   current record pointer `0x782d7a`, current append chunk `0x782c1a`,
   and record raw count `+0x04` before writing payload bytes.
@@ -432,13 +480,20 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   dispatches end transitions through `0xe22c`, and then returns replayed
   bytes to the parser.
 - `0xe22c` consumes frame `+0x09`, frame `+0x0a`, `0x782c6e`, and
-  environment buffers to unwind execute/call frames after replay.
+  environment buffers to unwind execute/call frames after replay. Its
+  non-execute/non-call path consumes frame `+0x04`, flat source
+  `0x7834c2`, cursor save `0x782c92`, and context-stack state used by
+  `0xe65c(0)`.
 - `0x170c` consumes request count, zero-fill flag, and alignment word to
   allocate heap units; `0x18b4` consumes pointer, count, and alignment to
   free either a linked chain or contiguous run.
 - `0xe65c` consumes context-stack entry bytes `+8/+9` to decide whether
   primary/secondary font refresh helpers such as `0x13eb8` run before
   the slot is cleared.
+- `0xe4f4` consumes current record pointer `0x782d7a`, selected context
+  byte `0x782f06`, active context tables `0x782ee6..0x782ef6`, cursor
+  longword `0x782c8a`, and flat state ranges before producing frame
+  byte `+9 = 4`.
 - `0xe65c` also consumes selected slot byte `0x782f06`, current context
   fields `0x782c80`/`0x782c84`, active words `0x783144`/`0x783146`, and
   remembered words `0x782f08`/`0x782f0a`; fallback install consumers are
@@ -464,21 +519,22 @@ mode-0 raster band output in the existing page-record fixture.
 ### Confidence
 
 High for parser reachability, selector meanings, record count/stride,
-current id storage, definition stop behavior, execute/call frame mode
-bytes, frame field offsets `+0x00/+0x04/+0x08/+0x09/+0x0a`, call-only
-context-stack push, snapshot chain chunk shape, execute/call frame-end
-restore, `0x170c`/`0x1710`/`0x18b4` shared heap contract, `0xe65c` branch
-contract, macro definition append/count bookkeeping, `0xa904` replay, and
-page-record/render effects because those are covered by disassembly,
-generated parser-table reports, and executable fixtures. Medium for
+current id storage, `0xe0a4` lookup/free/full status behavior, definition
+stop behavior, execute/call and non-replay frame mode bytes, frame field offsets
+`+0x00/+0x04/+0x08/+0x09/+0x0a`, call-only context-stack push, snapshot
+chain chunk shape, execute/call frame-end restore, `0x170c`/`0x1710` /
+`0x18b4` shared heap contract, `0xe65c` branch contract, macro definition
+append/count bookkeeping, `0xa904` replay, and page-record/render effects
+because those are covered by disassembly, generated parser-table reports,
+and executable fixtures. Medium for
 complete downstream font/resource rebuild after `0xe65c`, and
-non-execute/non-call frame-end semantics because only the fields needed by
-current replay fixtures are pinned.
+the detailed page/layout side effects inside `0xe5e2..0xe65a`.
 
 ### Fixtures
 
 - `0xe112 stores absolute parsed macro id`
 - `0xdd08 starts and stops empty macro definitions`
+- `0xe0a4 macro record lookup uses head presence and first free slot`
 - `0x11774 ROM dispatch table routes chained ESC &f macro stream`
 - `macro command stream defines payload and executes data-chain frame`
 - `host-fetched macro execute stream builds replay frame`
@@ -487,7 +543,7 @@ current replay fixtures are pinned.
 - `macro snapshot helpers copy linked and flat environment ranges`
 - `0x170c/0x1710 allocate and 0x18b4 frees heap units`
 - `0xe002 appends macro definition bytes into 0x100 chunks`
-- `0xe22c restores macro frames and consumes call context`
+- `0xe4f4/0xe22c produce and end data-chain frames`
 - `0xe65c refreshes macro font context entries`
 - `macro execute frame payload feeds 0xa904 data-chain bytes`
 - `macro execute data-chain parser trace feeds page-record stream`
@@ -506,6 +562,8 @@ current replay fixtures are pinned.
 - `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`:
   `0xdfba..0xe4f2`, including record clear, append, lookup/allocation,
   parser reset, frame cleanup, frame end, and `0xe418` frame creation.
+  The lookup/free/full scan is specifically `0xe0a4..0xe110`.
+  The non-replay frame producer and layout refresh are `0xe4f4..0xe65a`.
 - `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`:
   `0xe65c..0xe9b8`, including context-stack pop, snapshot chain
   allocation, snapshot restore, and flat copy helpers.
@@ -523,8 +581,6 @@ current replay fixtures are pinned.
 
 ### Unresolved Middle Edges
 
-- `0xe0a4..0xe110`: record lookup/allocation policy for the 32-entry pool
-  when ids collide, records are temporary/permanent, or allocation fails.
 - `0x164a..0x170a`: heap initialization and partition sizing before
   `0x170c` / `0x1710` / `0x18b4` consume the allocator bitmap.
 - `0xe65c..0xe84c`: unresolved only at the full CPU-state bridge into
@@ -532,8 +588,8 @@ current replay fixtures are pinned.
   `0x14c64`; branch flags, fallback install, and shared exit are pinned.
 - `0xe860..0xe886`: record-class byte meaning for the `+0x16` versus
   `+0x20` returned values is still named by use, not by font format.
-- `0xe35a..0xe3e8`: producer and full semantics for non-execute/non-call
-  frames restored through `0xe972`.
+- `0xe5e2..0xe65a`: page/layout and font-refresh side effects inside
+  non-replay frame setup before `0xe4f4` writes frame byte `+9 = 4`.
 - `0x782c6e..0x782d36`: context stack capacity and overflow policy around
   macro call replay.
 

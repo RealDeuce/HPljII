@@ -403,15 +403,25 @@ current macro id `0x783164`. `ESC &f#X` at `0x00dd08` uses that id with
 the 32-entry macro record pool at `0x782a98`: selector `0` starts
 definition, `1` stops definition, `2` executes, `3` calls, `4`/`5`
 enable/disable overlay, `6` deletes all, `7` deletes temporary, `8`
-deletes current id, and `9`/`10` mark temporary/permanent. Execute/call
+deletes current id, and `9`/`10` mark temporary/permanent. Lookup helper
+`0xe0a4` accepts an existing id only when record `+0` is nonzero,
+otherwise remembers the first zero-head slot as reusable even if its id
+word is stale; the helper returns status `1` for existing, `0` for
+free-slot assignment, and `2` for a full-pool miss. Execute/call
 route through `0xe418`, which builds a data-chain frame with byte
 `+8 = 4`, byte `+9 = 2` or `3`, macro record `+0x00/+0x04` copied into
 frame `+0x00/+0x04`, and an environment snapshot pointer at frame
 `+0x0a`; call mode also pushes a 10-byte context-stack entry through
 `0x782c6e`. The `0xe8f0`/`0xe8a2` helpers store and restore those
 snapshots as 0x100-byte linked chunks, and `0xe22c` unwinds execute/call
-frames after `0xa904` sees the frame-end marker. The executable harness
-now pins these command side effects, frame metadata, shared heap
+frames after `0xa904` sees the frame-end marker. `0xe22c` also pins the
+non-execute/call flat return: 281 longwords from `0x7834c2` restore
+`0x782d3a..0x78319a`, `0x782d76` stays on the same frame, host gate bit
+1 clears for zero count, cursor `0x782c92` restores to `0x782c8a`, and
+`0x782a92` becomes `0x63`. Producer `0xe4f4`, reached from `0xff8e`,
+builds that frame at `0x782d4c` with byte `+9 = 4` after snapshotting
+`0x782d3a..0x78319a` to `0x7834c2`. The executable harness now pins
+these command side effects, frame metadata, shared heap
 allocation/free, and `0xe65c` font-context refresh paths. `0x170c` /
 `0x1710` allocate 64-byte units, `0x100` requests consume four units,
 and `0x18b4(ptr, 0, 0x100)` follows linked 0x100-byte chains through
@@ -458,7 +468,7 @@ rendering. The composed semantic checkpoint is in
 `notes/semantic-state-model.md` under
 `Macro Definition And Data-Chain Replay`; the remaining macro gaps are
 the full CPU-state bridge from `0xe65c` into the existing font-map
-contracts, record lookup/allocation edge cases, and the
+contracts, heap initialization `0x164a..0x170a`, and the
 non-execute/non-call frame producer.
 
 The `ESC &f-123y0x1X` fixture is now also traced through ROM parser
@@ -937,7 +947,7 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   caller path is now real-record backed through `0x1b250`, `0x1b50e`,
   `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
 - Decode the full `0xe65c` CPU-state bridge into already-modeled font
-  maps, macro record lookup/allocation edge cases, and the
-  non-execute/non-call frame producer now that the `0xe002` append/count
-  path, `0xe418` layout, snapshot chain helpers, heap allocation/free,
-  execute/call frame end, and `0xe65c` branch contract are pinned.
+  maps, heap initialization `0x164a..0x170a`, and `0xe5e2..0xe65a`
+  page/layout side effects now that the `0xe002` append/count path,
+  `0xe418` layout, snapshot chain helpers, heap allocation/free,
+  frame-end branches, and `0xe65c` branch contract are pinned.

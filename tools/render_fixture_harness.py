@@ -2637,6 +2637,12 @@ def macro_state(**overrides: object) -> dict[str, object]:
     return state
 
 
+def macro_record_head_value(record: dict[str, object]) -> int:
+    if "head" in record:
+        return int(record.get("head", 0))
+    return 1 if bytes(record.get("payload", b"")) else 0
+
+
 def assign_macro_id_via_e112(record: bytes, state: dict[str, object] | None = None) -> dict[str, object]:
     if len(record) != 6:
         raise AssertionError("0xe112 macro id assignment requires one six-byte parsed command record")
@@ -2653,15 +2659,32 @@ def find_macro_record_via_e0a4(state: dict[str, object], macro_id: int) -> dict[
     first_free: int | None = None
     for index, record_obj in enumerate(records):
         record = dict(record_obj)
-        if int(record.get("id", 0)) == (macro_id & 0xFFFF) and bytes(record.get("payload", b"")):
-            return {"status": 1, "index": index, "record": record}
-        if first_free is None and int(record.get("id", 0)) == 0 and not bytes(record.get("payload", b"")):
+        head = macro_record_head_value(record)
+        if int(record.get("id", 0)) == (macro_id & 0xFFFF) and head != 0:
+            state["current_record"] = index
+            state["current_record_ptr_782d7a"] = 0x782A98 + (index * 0x0C)
+            return {
+                "status": 1,
+                "index": index,
+                "record": record,
+                "ptr": state["current_record_ptr_782d7a"],
+            }
+        if first_free is None and head == 0:
             first_free = index
     if first_free is None:
-        return {"status": 2, "index": None, "record": None}
+        state["current_record"] = None
+        state["current_record_ptr_782d7a"] = 0
+        return {"status": 2, "index": None, "record": None, "ptr": 0}
     records[first_free] = macro_record(macro_id=macro_id)
     state["records"] = records
-    return {"status": 0, "index": first_free, "record": records[first_free]}
+    state["current_record"] = first_free
+    state["current_record_ptr_782d7a"] = 0x782A98 + (first_free * 0x0C)
+    return {
+        "status": 0,
+        "index": first_free,
+        "record": records[first_free],
+        "ptr": state["current_record_ptr_782d7a"],
+    }
 
 
 def clear_macro_record_via_dfba(state: dict[str, object], index: int) -> None:
@@ -3085,6 +3108,65 @@ def execute_macro_data_chain_via_e418(state: dict[str, object], index: int, mode
     return frame
 
 
+def build_non_replay_frame_via_e4f4(state: dict[str, object], index: int) -> dict[str, object]:
+    records = list(state["records"])
+    record = dict(records[index])
+    context_ptr = int(state.get("context_stack_ptr", 0x782C1E))
+    context_entry = {
+        "addr": context_ptr,
+        "long_0_source": 0x782EE6,
+        "long_4_source": 0x782EF6,
+        "byte_8": 0,
+        "byte_9": 0,
+    }
+    context_entries = list(state.get("context_stack_entries", []))
+    context_entries.append(context_entry)
+    state["context_stack_entries"] = context_entries
+    state["context_stack_ptr"] = context_ptr + 0x0A
+    flat_values = build_indexed_longwords(0x782D3A, 0x78319A)
+    flat_snapshot = flat_snapshot_via_e996(0x782D3A, 0x78319A, flat_values)
+    state["flat_restore_values"] = flat_snapshot["copied"]
+    state["saved_cursor_x_782c92"] = int(state.get("cursor_x_782c8a", 0))
+    baseline_restore = flat_copy_via_e972(
+        0x782EE2,
+        0x78319A,
+        build_indexed_longwords(0x7831A2, 0x78345A),
+    )
+    payload = bytes(record.get("payload", b""))
+    frame = {
+        "payload": payload,
+        "byte_count": len(payload),
+        "byte_8": 4,
+        "byte_9": 4,
+        "environment": "non-replay",
+    }
+    state["data_chain_frames"] = [frame]
+    state["data_chain_frame_metadata"] = [{
+        "frame_addr": 0x782D4C,
+        "frame_size": 0x0E,
+        "payload_ptr_source": "record+0x00",
+        "byte_count_source": "record+0x04",
+        "env_snapshot_ptr": None,
+        "flat_snapshot": flat_snapshot,
+        "baseline_restore": baseline_restore,
+        "context_stack_entry": context_entry,
+    }]
+    state["data_chain_slot"] = 1
+    state["current_data_chain_ptr_782d76"] = 0x782D4C
+    if payload:
+        state["host_gate_bit1"] = 1
+    events = list(state.get("events", []))
+    events.append({
+        "kind": "non-replay-data-chain",
+        "mode": 4,
+        "payload": payload,
+        "byte_count": len(payload),
+        "frame_addr": 0x782D4C,
+    })
+    state["events"] = events
+    return frame
+
+
 def end_macro_data_chain_via_e22c(state: dict[str, object]) -> dict[str, object]:
     updated = dict(state)
     frames = list(updated.get("data_chain_frames", []))
@@ -3094,29 +3176,39 @@ def end_macro_data_chain_via_e22c(state: dict[str, object]) -> dict[str, object]
     events = list(updated.get("events", []))
     if not frames or not metadata_entries:
         raise AssertionError("0xe22c fixture requires an active macro frame")
-    frame = dict(frames.pop())
-    metadata = dict(metadata_entries.pop())
+    frame = dict(frames[-1])
+    metadata = dict(metadata_entries[-1])
     mode = int(frame.get("byte_9", 0))
-    snapshot = dict(snapshots.pop()) if snapshots else {}
     if mode == 2:
+        frames.pop()
+        metadata_entries.pop()
+        snapshot = dict(snapshots.pop()) if snapshots else {}
         restore_start = 0x783192
         post_helper = 0x1240A
         context_entry = None
+        restored = restore_snapshot_chain_via_e8a2(snapshot, restore_start, 0x78319A)
+        updated["data_chain_slot"] = max(0, int(updated.get("data_chain_slot", 0)) - 1)
     elif mode == 3:
+        frames.pop()
+        metadata_entries.pop()
+        snapshot = dict(snapshots.pop()) if snapshots else {}
         restore_start = 0x782D9E
         post_helper = 0x1240A
         context_entry = dict(context_entries.pop()) if context_entries else None
         updated["context_stack_ptr"] = int(updated.get("context_stack_ptr", 0x782C28)) - 0x0A
+        restored = restore_snapshot_chain_via_e8a2(snapshot, restore_start, 0x78319A)
+        updated["data_chain_slot"] = max(0, int(updated.get("data_chain_slot", 0)) - 1)
     else:
-        restore_start = 0x782D3A
-        post_helper = None
+        source_values = list(updated.get("flat_restore_values", build_indexed_longwords(0x7834C2, 0x783922)))
+        restored = flat_copy_via_e972(0x782D3A, 0x78319A, source_values)
+        updated["cursor_x_782c8a"] = int(updated.get("saved_cursor_x_782c92", 0))
+        updated["page_parser_state_782a92"] = 0x63
+        post_helper = 0x1240A
         context_entry = None
-    restored = restore_snapshot_chain_via_e8a2(snapshot, restore_start, 0x78319A)
     updated["data_chain_frames"] = frames
     updated["data_chain_frame_metadata"] = metadata_entries
     updated["environment_snapshots"] = snapshots
     updated["context_stack_entries"] = context_entries
-    updated["data_chain_slot"] = max(0, int(updated.get("data_chain_slot", 0)) - 1)
     if not frames or int(frames[-1].get("byte_count", 0)) == 0:
         updated["host_gate_bit1"] = 0
     events.append({
@@ -3127,6 +3219,7 @@ def end_macro_data_chain_via_e22c(state: dict[str, object]) -> dict[str, object]
         "freed_snapshot_ptr": metadata.get("env_snapshot_ptr"),
         "context_entry": context_entry,
         "post_helper": post_helper,
+        "log_helper": 0x9EC0,
     })
     updated["events"] = events
     return updated
@@ -17465,6 +17558,91 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "record0": {"id": 123, "payload": b"!\r", "permanent": False},
         "final": {"current_macro_id": 123, "parser_mode": 0, "overlay_macro_id": 123},
     }))
+    macro_lookup_existing_state = macro_state(
+        records=[macro_record(b"!\r", 123)] + [macro_record() for _ in range(31)]
+    )
+    macro_lookup_existing = find_macro_record_via_e0a4(macro_lookup_existing_state, 123)
+    macro_lookup_skips_empty_match_state = macro_state(
+        records=(
+            [macro_record(b"", 77), macro_record(b"?", 77)]
+            + [macro_record() for _ in range(30)]
+        )
+    )
+    macro_lookup_skips_empty_match = find_macro_record_via_e0a4(
+        macro_lookup_skips_empty_match_state,
+        77,
+    )
+    macro_lookup_reuses_stale_free_state = macro_state(
+        records=(
+            [macro_record(b"!", 12), macro_record(b"", 77), macro_record(b"?", 13)]
+            + [macro_record() for _ in range(29)]
+        )
+    )
+    macro_lookup_reuses_stale_free = find_macro_record_via_e0a4(
+        macro_lookup_reuses_stale_free_state,
+        200,
+    )
+    macro_lookup_full_state = macro_state(
+        records=[macro_record(bytes([index + 1]), index) for index in range(32)]
+    )
+    macro_lookup_full = find_macro_record_via_e0a4(macro_lookup_full_state, 200)
+    checks.append(assert_equal("0xe0a4 macro record lookup uses head presence and first free slot", {
+        "existing": {
+            "status": macro_lookup_existing["status"],
+            "index": macro_lookup_existing["index"],
+            "ptr": macro_lookup_existing["ptr"],
+            "current_record": macro_lookup_existing_state["current_record"],
+            "current_ptr": macro_lookup_existing_state["current_record_ptr_782d7a"],
+        },
+        "skip_empty_match": {
+            "status": macro_lookup_skips_empty_match["status"],
+            "index": macro_lookup_skips_empty_match["index"],
+            "ptr": macro_lookup_skips_empty_match["ptr"],
+            "current_record": macro_lookup_skips_empty_match_state["current_record"],
+        },
+        "reuse_stale_free": {
+            "status": macro_lookup_reuses_stale_free["status"],
+            "index": macro_lookup_reuses_stale_free["index"],
+            "ptr": macro_lookup_reuses_stale_free["ptr"],
+            "record": macro_lookup_reuses_stale_free_state["records"][1],
+            "current_record": macro_lookup_reuses_stale_free_state["current_record"],
+        },
+        "full": {
+            "status": macro_lookup_full["status"],
+            "index": macro_lookup_full["index"],
+            "ptr": macro_lookup_full["ptr"],
+            "current_record": macro_lookup_full_state["current_record"],
+            "current_ptr": macro_lookup_full_state["current_record_ptr_782d7a"],
+        },
+    }, {
+        "existing": {
+            "status": 1,
+            "index": 0,
+            "ptr": 0x782A98,
+            "current_record": 0,
+            "current_ptr": 0x782A98,
+        },
+        "skip_empty_match": {
+            "status": 1,
+            "index": 1,
+            "ptr": 0x782AA4,
+            "current_record": 1,
+        },
+        "reuse_stale_free": {
+            "status": 0,
+            "index": 1,
+            "ptr": 0x782AA4,
+            "record": {"id": 200, "payload": b"", "permanent": False},
+            "current_record": 1,
+        },
+        "full": {
+            "status": 2,
+            "index": None,
+            "ptr": 0,
+            "current_record": None,
+            "current_ptr": 0,
+        },
+    }))
     macro_stream_permanent_delete = render_macro_command_stream_via_e112_dd08(
         b"\x1b&f123Y\x1b&f0X!\r\x1b&f1X\x1b&f10X\x1b&f7X"
     )
@@ -19571,7 +19749,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     }))
     macro_execute_end = end_macro_data_chain_via_e22c(macro_execute)
     macro_call_end = end_macro_data_chain_via_e22c(macro_call)
-    checks.append(assert_equal("0xe22c restores macro frames and consumes call context", {
+    macro_non_replay_state = macro_state(
+        records=[macro_record(b"!\r", 123)] + [macro_record() for _ in range(31)],
+        current_record=0,
+        cursor_x_782c8a=0x11223344,
+    )
+    macro_non_replay_frame = build_non_replay_frame_via_e4f4(macro_non_replay_state, 0)
+    macro_non_replay_end_input = dict(macro_non_replay_state)
+    macro_non_replay_end_input["data_chain_frames"] = [
+        {**dict(macro_non_replay_frame), "byte_count": 0}
+    ]
+    macro_flat_end = end_macro_data_chain_via_e22c(macro_non_replay_end_input)
+    checks.append(assert_equal("0xe4f4/0xe22c produce and end data-chain frames", {
         "execute": {
             "data_chain_slot": macro_execute_end["data_chain_slot"],
             "host_gate_bit1": macro_execute_end["host_gate_bit1"],
@@ -19613,6 +19802,40 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "exhausted",
                 "error",
             )),
+        },
+        "flat": {
+            "produced_frame": macro_non_replay_frame,
+            "producer_metadata": {
+                "frame_addr": macro_non_replay_state["data_chain_frame_metadata"][0]["frame_addr"],
+                "flat_count": len(
+                    macro_non_replay_state["data_chain_frame_metadata"][0]["flat_snapshot"]["copied"]
+                ),
+                "baseline_count": len(
+                    macro_non_replay_state["data_chain_frame_metadata"][0]["baseline_restore"]["copied"]
+                ),
+                "context_entry": (
+                    macro_non_replay_state["data_chain_frame_metadata"][0]["context_stack_entry"]
+                ),
+            },
+            "frames": macro_flat_end["data_chain_frames"],
+            "host_gate_bit1": macro_flat_end["host_gate_bit1"],
+            "cursor_x": macro_flat_end["cursor_x_782c8a"],
+            "page_parser_state": macro_flat_end["page_parser_state_782a92"],
+            "event": select_keys(macro_flat_end["events"][-1], (
+                "kind",
+                "mode",
+                "frame_addr",
+                "freed_snapshot_ptr",
+                "context_entry",
+                "post_helper",
+                "log_helper",
+            )),
+            "restore": {
+                "dest_start": macro_flat_end["events"][-1]["restore"]["dest_start"],
+                "dest_end": macro_flat_end["events"][-1]["restore"]["dest_end"],
+                "count": len(macro_flat_end["events"][-1]["restore"]["copied"]),
+                "tail": macro_flat_end["events"][-1]["restore"]["copied"][-3:],
+            },
         },
     }, {
         "execute": {
@@ -19661,6 +19884,52 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "restored": [0x00782D9E + (4 * index) for index in range(256)],
                 "exhausted": True,
                 "error": None,
+            },
+        },
+        "flat": {
+            "produced_frame": {
+                "payload": b"!\r",
+                "byte_count": 2,
+                "byte_8": 4,
+                "byte_9": 4,
+                "environment": "non-replay",
+            },
+            "producer_metadata": {
+                "frame_addr": 0x782D4C,
+                "flat_count": 281,
+                "baseline_count": 175,
+                "context_entry": {
+                    "addr": 0x782C1E,
+                    "long_0_source": 0x782EE6,
+                    "long_4_source": 0x782EF6,
+                    "byte_8": 0,
+                    "byte_9": 0,
+                },
+            },
+            "frames": [{
+                "payload": b"!\r",
+                "byte_count": 0,
+                "byte_8": 4,
+                "byte_9": 4,
+                "environment": "non-replay",
+            }],
+            "host_gate_bit1": 0,
+            "cursor_x": 0x11223344,
+            "page_parser_state": 0x63,
+            "event": {
+                "kind": "macro-frame-end",
+                "mode": 4,
+                "frame_addr": 0x782D4C,
+                "freed_snapshot_ptr": None,
+                "context_entry": None,
+                "post_helper": 0x1240A,
+                "log_helper": 0x9EC0,
+            },
+            "restore": {
+                "dest_start": 0x782D3A,
+                "dest_end": 0x78319A,
+                "count": 281,
+                "tail": [0x00783192, 0x00783196, 0x0078319A],
             },
         },
     }))
@@ -47002,6 +47271,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " ".join(f"{byte:02x}" for byte in macro_stream_overlay["stream"]),
         macro_stream_overlay["state"]["overlay_macro_id"],
     ))
+    lines.append("- `0xe0a4` lookup statuses are existing/free/full = `%d/%d/%d`; it skips a matching id with zero head, reuses stale-id free slot index `%d`, and writes `0x782d7a = 0x%08x` for that allocation." % (
+        int(macro_lookup_existing["status"]),
+        int(macro_lookup_reuses_stale_free["status"]),
+        int(macro_lookup_full["status"]),
+        int(macro_lookup_reuses_stale_free["index"]),
+        int(macro_lookup_reuses_stale_free["ptr"]),
+    ))
     lines.append("- macro permanence/delete streams prove selector `10` survives delete-temporary and selector `9` makes the same record removable: `%s` / `%s`." % (
         macro_stream_permanent_delete["state"]["records"][0],
         macro_stream_temporary_delete["state"]["records"][0],
@@ -47020,6 +47296,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- macro execute frame payload fetches through `0xa904` as data-chain bytes `%s`, then end-marker helper `0xe22c` resumes outer byte `0x%02x`." % (
         " ".join(f"0x{int(fetch['d7']):02x}" for fetch in macro_frame_replay["fetches"]),
         int(macro_frame_replay_outer["d7"]),
+    ))
+    lines.append("- `0xe4f4` builds non-replay frame byte `+9 = %d` at `0x%08x` from the current macro record after snapshotting `%d` flat longwords; `0xe22c` then copies `%d` of them back from `0x7834c2` into `0x782d3a..0x78319a`, keeps the frame current, clears host gate bit 1 for a zero count, restores cursor long `0x%08x`, and sets `0x782a92 = 0x%02x`." % (
+        int(macro_non_replay_frame["byte_9"]),
+        int(macro_non_replay_state["data_chain_frame_metadata"][0]["frame_addr"]),
+        len(macro_non_replay_state["data_chain_frame_metadata"][0]["flat_snapshot"]["copied"]),
+        len(macro_flat_end["events"][-1]["restore"]["copied"]),
+        int(macro_flat_end["cursor_x_782c8a"]),
+        int(macro_flat_end["page_parser_state_782a92"]),
     ))
     lines.append("- heap allocator fixture: `0x170c(1,1,0x100)` returns `0x%08x`, `0x1710(2,0,0x40)` returns `0x%08x`, linked free releases `%s`, and contiguous free releases `%s`." % (
         int(heap_low_alloc["last_alloc"]),

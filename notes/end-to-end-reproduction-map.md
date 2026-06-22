@@ -205,10 +205,15 @@ pixels or byte-stream compatibility.
    range/count `+0x14 = 5` clamps an oversized rounded metric input into
    `+0x2c/+0x2d = 0x0014`, leaves `+0x2b = 0`, flips another tight `0xd4ac`
    gate, and moves `0xd8fc` rows through copied `+0x18 = 0` and
-   `+0x1a = 3`. The open edge is broader descriptor metric-byte cross-products
-   and producer-side validation/error combinations, not the tested
-   type-0/type-1/type-2, metric-variant, clamped-variant, or shared consumer
-   middle edges. Evidence:
+   `+0x1a = 3`. Fixture `host-fetched lower-bound metric variant suppresses
+   d4ac and d8fc spans` proves a third parser-produced variant: first code
+   `+0x16 = 0x0018`, range/count `+0x14 = 0x0600`, derived count
+   `+0x18 = 0x05e7`, and rounded word `+0x2c = 0x1800` make both consumers
+   exit `before-context-lower` at cursor y `21` while the compact glyph
+   objects remain queued and render. The open edge is broader descriptor
+   metric-byte cross-products and producer-side validation/error combinations,
+   not the tested type-0/type-1/type-2, metric-variant, clamped-variant,
+   lower-bound-variant, or shared consumer middle edges. Evidence:
    `notes/semantic-state-model.md` under `Text Span Flush And Fixed-Width
    Spans`.
 2. VFC table definition and channel jumps now have a tracked command-family
@@ -265,9 +270,10 @@ The next work should follow dataflow, not isolated handlers:
    descriptor/payload producer chain, and host-stream downloaded glyph output
    are now tracked. Host-fetched `0x1719c` type-0, type-1, and type-2 payloads
    reach both `d4ac` and `d8fc` span rows, and the shared
-   disabled/lower/page/high-x consumer branch family is fixture-backed. Two
-   parser-produced metric-value variants also flip `d4ac` gates, cover one
-   rounded-metric clamp into `+0x2c/+0x2d`, and move `d8fc` visible rows. The
+   disabled/lower/page/high-x consumer branch family is fixture-backed. Three
+   parser-produced metric-value variants now cover tight `d4ac` page-extent
+   gates, one rounded-metric clamp into `+0x2c/+0x2d`, shifted `d8fc` visible
+   rows, and one lower-bound no-span output path for both consumers. The
    missing middle is broader descriptor metric-value cross-products and
    page-visible behavior for validation/error forms beyond the seven bounded
    predicate no-install fixtures.

@@ -67,6 +67,7 @@ Primary fixtures:
 - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `host-fetched metric variant changes d4ac gate and d8fc rows`
 - `host-fetched clamped metric variant changes d4ac gate and d8fc rows`
+- `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`
 - `0x16498-backed downloaded character object renders segmented-wide compact row`
 - `downloaded character stream ties ROM parser dispatch to rendered object`
 - `host-fetched downloaded character stream reaches rendered object`
@@ -205,6 +206,15 @@ Renderer-facing allocated payload fields:
   `0xd4ac` page-extent gate at extent `41`; clamped `+0x2d = 0x14` queues the
   span. The same descriptor copies `+0x18 = 0` and `+0x1a = 3`, moving
   `0xd8fc` high-y to `18` with segment-list key `0x2406`.
+- lower-bound metric-variant descriptor bytes: fixture `host-fetched
+  lower-bound metric variant suppresses d4ac and d8fc spans` writes first
+  code `+0x16 = 0x0018`, range/count `+0x14 = 0x0600`, derived count
+  `+0x18 = 0x05e7`, and rounded word `+0x2c = 0x1800`. These are
+  parser-owned metric fields copied by `0x1719c`, with `+0x18` acting as a
+  derived/cache value from `0x17430` and byte `+0x2b` remaining firmware
+  bookkeeping at `0`. At cursor y `21`, `0xd4ac` reads byte `+0x2c = 0x18`,
+  `0xd8fc` reads word `+0x16 = 0x0018`, and both exit
+  `before-context-lower`; the compact glyph objects still queue and render.
 
 Unknown:
 
@@ -1052,9 +1062,10 @@ A byte-stream renderer must preserve:
   line/count, high line/count, reversed-range, high range/count, and
   invalid-class resource paths now have host-fetched
   parser/validation/no-install boundaries and following-printable page output.
-  Two host-fetched metric-value variants now prove copied descriptor fields
+  Three host-fetched metric-value variants now prove copied descriptor fields
   can flip the `0xd4ac` page-extent gate, exercise rounded-metric clamping
-  into `+0x2c/+0x2d`, and move `0xd8fc` rendered rows. Broader
-  downloaded/inline metric-byte cross-products and the producer-side
-  validation/error forms beyond those seven bounded predicate branches still
-  need parser-produced page evidence.
+  into `+0x2c/+0x2d`, move `0xd8fc` rendered rows, and suppress both span
+  consumers through parser-owned lower-bound fields while preserving compact
+  glyph output. Broader downloaded/inline metric-byte cross-products and the
+  producer-side validation/error forms beyond those seven bounded predicate
+  branches still need parser-produced page evidence.

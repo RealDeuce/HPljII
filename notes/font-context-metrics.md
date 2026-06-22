@@ -36,6 +36,7 @@ Evidence:
   - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
   - `host-fetched metric variant changes d4ac gate and d8fc rows`
   - `host-fetched clamped metric variant changes d4ac gate and d8fc rows`
+  - `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`
 
 ## Concept
 
@@ -318,6 +319,16 @@ Fixture-pinned metric effects:
   `+0x2d = 0x14` queues the span. The same descriptor changes `+0x18` to `0`
   and `+0x1a` to `3`, moving `0xd8fc` high-y to `18` and the rendered span
   object key to `0x2406`.
+- Host-fetched lower-bound metric path: fixture
+  `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`
+  changes descriptor first-code bytes to `0x0018`, range/count bytes to
+  `0x0600`, and rounded-metric input to `0x1800`. `0x16fae` and `0x1719c`
+  copy canonical span lower fields `+0x16 = 0x0018` and `+0x2c = 0x1800`,
+  derive/cache `+0x18 = 0x05e7`, and leave firmware-bookkeeping byte
+  `+0x2b = 0`. At cursor y `21`, `0xd4ac` reads byte `+0x2c = 0x18` and
+  exits `before-context-lower`; `0xd8fc` reads word `+0x16 = 0x0018` and
+  exits the same way. The compact text objects still queue and render, but no
+  segment-list span object is emitted by either consumer.
 - Span-consumer branch family: fixture
   `d4ac and d8fc span consumer branch family controls flush output` drives
   printable `!` through both selected source forms. For both `0xd4ac` and
@@ -423,6 +434,16 @@ work can close the right gap instead of re-tracing already-covered consumers.
   `+0x1a = 3`, and renders `d8fc` span rows at object key `0x2406`. Status:
   parser-produced metric clamp and copied-field cross-product to visible
   unflagged and flagged span effects.
+- Claim: parser-produced descriptor lower-bound values suppress both span
+  consumers without suppressing the compact glyph. Evidence: fixture
+  `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`;
+  host-fetched `ESC )s80W` copies first code `+0x16 = 0x0018`, range/count
+  `+0x14 = 0x0600`, derived count `+0x18 = 0x05e7`, and rounded metric word
+  `+0x2c = 0x1800`. `0xd4ac` consumes byte `+0x2c = 0x18`, `0xd8fc`
+  consumes word `+0x16 = 0x0018`, both return `before-context-lower` at
+  cursor y `21`, and the page-record still contains the compact text object
+  rendered by the fixture. Status: parser-produced lower-bound cross-product
+  to no-span output effect for both selected source forms.
 - Claim: the two span consumers have the same documented branch contract
   around the metric fields. Evidence: fixture
   `d4ac and d8fc span consumer branch family controls flush output`; handlers
@@ -436,12 +457,14 @@ The remaining unresolved middle edge is therefore not the tested `0x1719c`
 type-0, type-1, or type-2 metric paths into either `0xd4ac` or `0xd8fc`: all
 three payload forms now have host-fetched evidence through visible span rows,
 and the consumer-side disabled, lower-bound, page-extent, and high-x branches
-are fixture-backed for both selected source forms. Two parser-produced
+are fixture-backed for both selected source forms. Three parser-produced
 metric-value variants now prove copied descriptor values can flip the `d4ac`
-page-extent gate, exercise rounded-metric clamping into `+0x2c/+0x2d`, and
-move `d8fc` visible rows. The open producer-side work is broader descriptor
-coverage: more metric-byte cross-products and validation/error forms driven
-from parser bytes to page rows.
+page-extent gate, exercise rounded-metric clamping into `+0x2c/+0x2d`, move
+`d8fc` visible rows, and suppress both span consumers through descriptor-owned
+lower-bound fields while preserving compact glyph output. The open
+producer-side work is broader descriptor coverage: more metric-byte
+cross-products and validation/error forms driven from parser bytes to page
+rows.
 
 ## Macro And Control Re-entry
 

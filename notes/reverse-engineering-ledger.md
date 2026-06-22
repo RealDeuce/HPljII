@@ -92,6 +92,8 @@ with the shared page-record allocator now composed through one
 multi-writer `0x1381c` chunk rollover state,
 with the published-record to active-render handoff now pinned through
 `0x1eb2a..0x1ed84`,
+with the direct text cursor/control family now composed in
+`notes/semantic-state-model.md` under `Text Cursor And Direct Controls`,
 with `0xcda2` reset/default environment state now decoded for
 page/control pool setup, cursor-stack reset, HMI/VMI recompute,
 line-termination clearing, and default bytes
@@ -763,8 +765,10 @@ ROM work needed:
 - Expand normal parser table `0x112a4` and alternate parser table
   `0x116f6` into named PCL commands.
 - Broaden the narrow direct-control and printable stream fixtures into
-  the full firmware parser path and replace synthetic `ESC E` roots with
-  fuller parser-allocated page-object fixtures.
+  fuller live `0xd04a..0x12f2e` source-object traces, broader
+  transparent-data filtering cases, and parser-allocated page-object
+  fixtures. The command-family state and host-fetched page-record/render
+  boundaries are now composed in `Text Cursor And Direct Controls`.
 - Trace binary payload modes, especially raster graphics and downloaded
   font data.
 - Use `notes/pcl-command-map.md` to prioritize page geometry, raster,
@@ -792,8 +796,10 @@ ROM work needed:
   ROM/manual logical page and printable-area dimensions.
 - Trace reset paths for `ESC E`, panel reset, power-on reset, and
   NVRAM/user defaults.
-- Trace remaining parser-produced cursor-stack interactions and
-  primary/secondary font fallback interactions.
+- Cursor-stack push/pop, bounds, and restored-origin text output are now
+  composed in `Text Cursor And Direct Controls`; remaining print
+  environment work is reset/default provenance and primary/secondary font
+  fallback interactions.
 
 ## Fonts and Glyph Imaging
 
@@ -886,7 +892,8 @@ ROM work needed:
   lowercase-chained cursor-positioned `ESC &a2C!` / `ESC &a72H!` /
   `ESC &a1R!` / `ESC &a72V!` / `ESC &a2c+1R!`, top-margin-positioned
   `ESC &l3E!`, and cursor-stack `ESC &f0S ESC &a2C ESC &f1S!`
-  parser-to-page-record boundaries.
+  parser-to-page-record boundaries now composed in
+  `Text Cursor And Direct Controls`.
 - Treat direct `0x78297a` references and pool aliases documented in
   `generated/analysis/ic30_ic13_page_root_references.md` as checked
   leads; the shared `0x10084` first-root allocation and `0x10110`

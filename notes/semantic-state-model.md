@@ -202,6 +202,275 @@ broader frame-lifetime tracing.
 - `0x780e66` bit meanings: source-empty/active bits are observed by
   behavior, but not yet fully named.
 
+## Text Cursor And Direct Controls
+
+Status: composed as a parser-to-visible-output cluster for direct
+controls, HMI, margins, cursor positioning, dot positioning, vertical
+layout, transparent text, and cursor stack. The detailed handler ledger
+is preserved in `notes/reverse-engineering-ledger.md` and generated
+reports; this section groups the shared state that determines where the
+next printable byte or raster start lands.
+
+Concept: the parser updates a small canonical cursor/layout environment,
+then printable handler `0xd04a`, transparent-data handler `0x12452`,
+raster-start paths, and page-record producer `0x12f2e` consume that
+environment. Host byte streams that differ only in cursor commands must
+therefore reproduce the same `0x782c8a` / `0x782c8e` / margin / HMI /
+VMI state before object queueing, then cross the same `0x1387c`,
+`0x1edc6`, `0x1ed84`, and `0x1ef6a` boundaries.
+
+### Field Groups
+
+- Canonical placement state:
+  - `0x782c8a`: horizontal cursor used by printable text, HT/BS,
+    horizontal `ESC &a` / `ESC *p` positioning, and raster start.
+  - `0x782c8e`: vertical cursor used by LF/FF, vertical `ESC &a` /
+    `ESC *p` positioning, printable text bucketing, and raster start.
+  - `0x782dd6`: left/default margin copied into `0x782c8a` by CR helper
+    `0xf06e` and written by `ESC &a#L` handler `0xeb58`.
+  - `0x782dda`: right margin / horizontal limit written by
+    `ESC &a#M` handler `0xec0c` and consumed by HT and horizontal
+    commit helper `0xf4ca`.
+  - `0x78315c`: HMI/default horizontal motion written by `ESC &k#H`
+    handler `0xca8c`, read by HT/BS, margin handlers, column
+    positioning, and printable advance fixtures.
+  - `0x783160`: VMI/line advance written by vertical-layout handlers
+    `0xcb00` and `0xc992`, read by LF/FF, `ESC &a#R`, VFC, and
+    page-length/top-margin fixtures.
+  Evidence: generated direct-control report state scan entries for
+  `0x782c8a`, `0x782c8e`, `0x782dd6`, `0x782dda`, `0x78315c`, and
+  `0x783160`; fixtures `HMI parser trace feeds page-record queue`,
+  `mixed printable/control parser trace feeds page-record queue`,
+  `HT/BS parser trace feeds page-record queue`, `margin command parser
+  trace feeds page-record queue`, `right margin command parser trace
+  feeds page-record queue`, and the cursor-position parser traces.
+- Canonical cursor stack:
+  - `0x782c96..0x782d36`: PCL cursor-stack storage used by
+    `ESC &f#S`.
+  - `0x782d36`: next-free pointer and upper bound for the stack.
+  - push selector `0` stores `0x782c8a` and `0x782c8e + 0x782dbe`;
+    pop selector `1` restores x and `stored_y - 0x782dbe`, clamped to
+    current extents.
+  Evidence: generated direct-control report row for `0xf75e`; fixtures
+  `0xf75e ESC &f0S pushes cursor with vertical offset`,
+  `0xf75e ESC &f1S pops cursor and clears pending flags`,
+  `0xf75e cursor stack bounds and pop clamps to current extents`, and
+  `cursor stack parser trace feeds page-record queue`.
+- Canonical vertical/page limits:
+  - `0x782db8`: horizontal page extent used by HT and `0xf4ca` clamps.
+  - `0x782dba`: page length / vertical extent written by page-length
+    handler `0xf9e8`.
+  - `0x782dc6`: vertical upper bound used by `0xf6e2`,
+    `ESC &a#R/#V`, dot-position `ESC *p#Y`, and cursor-stack pop.
+  - `0x782dca`: vertical lower bound used by `0xf6e2`.
+  - `0x782dce`: top offset used by FF helper `0xf124`, absolute
+    vertical positioning, top-margin handler `0xece2`, and VFC.
+  Evidence: generated direct-control report state scan; fixtures
+  `vertical cursor-position parser trace feeds page-record queue`,
+  `vertical-decipoint parser trace feeds page-record queue`,
+  `vertical layout parser trace feeds page-record queue`, and
+  page-length `ESC &l66P!` notes in the ledger.
+- Canonical control modes:
+  - `0x78318f`: line-termination mode written by `ESC &k#G` handler
+    `0xedf8`; CR tests bit 7, LF tests bit 6, and FF tests bit 5.
+  - `0x783190`: end-of-line wrap flag written by `ESC &s#C` handler
+    `0xedb0` and consumed by printable overflow paths.
+  - `0x783191`: perforation-skip byte written by `ESC &l#L` handler
+    `0xee64` and consumed by `0xf36c`.
+  Evidence: generated direct-control report line-termination and wrap
+  sections; fixtures `control stream ESC &k1G then CR applies CR+LF`,
+  `control stream ESC &k2G then LF applies CR+LF`,
+  `control stream ESC &k2G then FF applies CR+page-eject`,
+  `control stream ESC &k3G applies CR/LF/FF combined line termination`,
+  and `host-fetched direct text/control streams reach page-record render`.
+- Derived/cache placement state:
+  - compact text coordinates are derived after cursor conversion and are
+    queued into page-record text objects; examples include `0x3b00` for
+    the post-CR/LF glyph, `0x0a01` for HT/BS, `0x0a02` for HMI-column
+    moves, `0x9001` for vertical decipoint/top-margin cases, and
+    `0x0001` after cursor-stack restore.
+  - `0x783a20`, `0x783a22`, and `0x783a28` are active-render band
+    caches derived by `0x1ed84` setup and consumed by `0x1ef6a`; they
+    are not canonical cursor state.
+  Evidence: fixtures `host-fetched cursor-row compact text splits at
+  0x783a20 boundary`, `host-fetched direct text/control streams feed
+  0x1ed84 and 0x1ef6a`, and generated render-entry notes.
+- Parser scratch:
+  - `0x78299e`: six-byte parsed command record cursor rewound by
+    handlers such as `0xca8c`, `0xeb58`, `0xec0c`, `0xf39e`,
+    `0xf416`, `0xf560`, `0xf60a`, `0xf75e`, and `0x11f5a`.
+  - delayed transparent-text command records are saved/restored by
+    `0x121cc` / `0x12218` before payload handler `0x12452` consumes
+    `ESC &p#X` bytes through the byte-source path.
+  Evidence: generated direct-control report state scan for `0x78299e`
+  and transparent-data section; fixture `host-fetched direct
+  text/control streams reach page-record render` case `transparent`.
+- Firmware bookkeeping:
+  - `0x782a57`: right-limit latch set by right-margin and horizontal
+    positioning paths.
+  - `0x782a58`: previous-width / pending width latch cleared before
+    span flushes and set by BS.
+  - `0x782a5a`: latched previous width used by BS when `0x78318e` is
+    set.
+  - `0x782a6d`: printable/pending-text flag cleared by cursor moves and
+    set to `0xff` by FF after page eject.
+  - `0x783184`: pending text span flush enable tested by helper
+    `0xf34a`.
+  - `0x78318e`: alternate previous-width mode tested by BS.
+  Evidence: generated direct-control report state scan and shared-helper
+  table; fixtures for CR/LF/FF/HT/BS, cursor-stack pop, and horizontal
+  commit helpers.
+- Unknown:
+  - exact manual-facing names for some pending-text latches
+    `0x782a57`, `0x782a58`, `0x782a5a`, and `0x782a6d`.
+  - complete live CPU/memory trace for every `0xd04a` source-object
+    write before the modeled `0x12f2e` / `0x1387c` page-record object.
+
+### Writers
+
+- `0xedf8` writes line-termination byte `0x78318f` for `ESC &k#G`;
+  CR `0xf02c`, LF `0xf08c`, and FF `0xf0f0` consume it at runtime.
+- `0xca8c` writes HMI `0x78315c` for accepted `ESC &k#H` values; the
+  `ESC &k6H!!` fixture stores packed HMI `15` and moves the second
+  glyph to compact coord `0x0501`.
+- `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, and `0xf2a8` write cursor and
+  pending-span state for CR/LF/FF/HT/BS.
+- `0xeb58` and `0xec0c` write left/right margins and can move
+  `0x782c8a`.
+- `0xf39e`, `0xf416`, and `0xf48c` write horizontal cursor state
+  through helper `0xf4ca`; `0xf560`, `0xf60a`, and `0xf692` write
+  vertical cursor state through helper `0xf6e2`.
+- `0xcb00`, `0xc992`, `0xece2`, `0xea9e`, `0xee64`, and `0xf9e8` write
+  VMI, vertical layout, perforation skip, and page-length state.
+- `0xf75e` writes cursor-stack entries and restores cursor state.
+- `0x11f5a` arms transparent-text delayed payload state; `0x12452`
+  consumes the payload and routes printable bytes back into `0xd04a`.
+
+### Readers And Consumers
+
+- `0xd04a` consumes cursor, HMI, font context, and pending-width state
+  to create the next text source object before `0x12f2e` queues compact
+  text.
+- `0x12f2e`, `0x1387c`, and shared page-record storage consume the
+  compact text coordinates produced from cursor state.
+- Raster-start command paths consume `0x782c8a` or `0x782c8e` depending
+  on orientation, as documented in `notes/pcl-parser-firmware.md`.
+- `0x1edc6` bridges queued page-record text objects into render-record
+  shape, and `0x1ed84` / `0x1ef6a` consume the active record to render
+  the band rows.
+- VFC handler `0x1280a` and vertical-layout handlers share VMI,
+  top-offset, text-bottom, and vertical-cursor state with this cluster;
+  see the `Vertical Forms Control Channels` section for its composed
+  channel semantics.
+
+### Output Effect
+
+- `ESC &k1G!\r!` routes `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`;
+  the second glyph queues at compact coord `0x3b00` after CR+LF and
+  renders the shifted rows through `0x1edc6`.
+- `ESC &k2G!\n!` routes LF handler `0xf08c`, applies mode `0x60`
+  CR+LF, and also queues the second glyph at `0x3b00`.
+- `ESC &k0G HT BS !` routes `0xedf8`, `0xf1cc`, `0xf2a8`, and `0xd04a`;
+  HT advances to x `21`, BS backs up to x `20`, and the glyph queues at
+  compact coord `0x0a01` / pixel x `26`.
+- `ESC &k6H!!` routes `0xca8c` and two `0xd04a` events; packed HMI
+  `15` queues glyphs at `0x0600` and `0x0501`.
+- `ESC &a1L!`, `ESC &a1M!`, and `ESC &a6l9M!` route margin handlers
+  `0xeb58` / `0xec0c` into following `0xd04a` output at compact coords
+  `0x0801`, `0x0a02`, and `0x0207`.
+- `ESC &a2C!`, `ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`, and
+  `ESC &a2c+1R!` route cursor-position handlers `0xf39e`, `0xf416`,
+  `0xf560`, and `0xf60a` to compact coords `0x0a02`, `0x0402`,
+  `0x1001`, `0x9001`, and `0x1a02`.
+- `ESC *p30x30Y!` routes dot-position handlers `0xf48c` and `0xf692`
+  to following `0xd04a` output at compact coord `0x9402`.
+- `ESC &l3E!`, `ESC &l1L!`, and `ESC &l66P!` route vertical-layout,
+  perforation-skip, and page-length state into following printable
+  output; the top-margin case queues at `0x9001` in bucket `6`.
+- `ESC &f0S ESC &a2C ESC &f1S!` routes `0xf75e`, `0xf39e`, `0xf75e`,
+  and `0xd04a`; the pop restores the original cursor and the glyph
+  queues at compact coord `0x0001`.
+- The grouped host-fetch fixture drains the same streams from the
+  modeled `0xa904` ring source, verifies the parser handlers, preserves
+  the `0x1edc6` bridge contract, and feeds `0x1ed84` / `0x1ef6a`.
+
+### Confidence
+
+High for the command-family mapping, field roles, conversion effects,
+page-record compact coordinates, and bridge/render-entry effects because
+they are covered by generated disassembly reports plus executable
+fixtures that start at `0xa904` and reach rendered rows. Medium for the
+exact names of pending-text latches and every internal write between
+`0xd04a` and `0x12f2e`, because several page-object fixtures still use
+modeled source/object structures rather than a full live CPU-memory run.
+
+### Fixtures
+
+- `control stream ESC &k1G then CR applies CR+LF`
+- `control stream ESC &k2G then LF applies CR+LF`
+- `control stream ESC &k2G then FF applies CR+page-eject`
+- `control stream ESC &k3G applies CR/LF/FF combined line termination`
+- `control stream HT then BS updates tab and previous-width state`
+- `0xca8c ESC &k#H stores packed HMI for in-range absolute values only`
+- `HMI parser trace feeds page-record queue`
+- `plain printable parser trace feeds page-record queue`
+- `mixed printable/control parser trace feeds page-record queue`
+- `LF parser-to-page-record boundary`
+- `HT/BS parser trace feeds page-record queue`
+- `margin command parser trace feeds page-record queue`
+- `right margin command parser trace feeds page-record queue`
+- `chained margin command parser trace feeds page-record queue`
+- `cursor-position parser trace feeds page-record queue`
+- `decipoint cursor parser trace feeds page-record queue`
+- `vertical cursor-position parser trace feeds page-record queue`
+- `vertical-decipoint cursor parser trace feeds page-record queue`
+- `chained cursor-position parser trace feeds page-record queue`
+- `cursor stack parser trace feeds page-record queue`
+- `host-fetched direct text/control streams reach page-record render`
+- `host-fetched direct text/control streams preserve 0x1edc6 bridge
+  contract`
+- `host-fetched direct text/control streams feed 0x1ed84 and 0x1ef6a`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`:
+  CR/LF/FF/HT/BS and shared helpers `0xf06e`, `0xf0b2`, `0xf124`,
+  `0xf34a`, `0xf36c`, `0xf4ca`, and `0xf6e2`.
+- `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`:
+  HMI/VMI, vertical layout, margin, and line-termination handlers.
+- `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`:
+  dot-position and cursor-stack handlers.
+- `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`:
+  printable text consumers of cursor/font state.
+- `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`:
+  compact text page-record producer.
+- `generated/analysis/ic30_ic13_direct_control_code_flow.md`:
+  handler table, field-reference scan, shared-helper table, and current
+  reproduction contract.
+- `generated/analysis/ic30_ic13_printable_text_path.md`:
+  parser-to-page-record fixture evidence and compact-coordinate outputs.
+
+### Unresolved Middle Edges
+
+- `0xd04a..0x12f2e`: printable text object production is modeled and
+  render-checked, but not every cursor-family stream has a full live
+  CPU-register/memory trace through source-object construction.
+- `0xf34a..0x12714` and `0xf34a..0x126e2`: pending span flush calls are
+  counted and fixture-visible, but their internal text-span structures
+  are not lifted in this checkpoint.
+- `0xd4ac..0xd8fc`: active font/context span update helpers are known
+  consumers after printable/control cursor moves, but their full side
+  effects remain under font/text-span modeling.
+- `0x11f5a..0x12452`: transparent-text delayed payload restore and
+  printable re-entry are host-fetched and render-checked for
+  `ESC &p2X!!`; broader control-byte filtering inside transparent data
+  remains only described by generated analysis.
+- `0x10084..0x1387c`: first-root allocation and compact text queueing
+  are fixture-backed for this cluster, but a dense live parser page that
+  exercises same-chunk and rollover allocation for all cursor variants
+  is still covered by the shared page-record storage checkpoint rather
+  than this section.
+
 ## Macro Definition And Data-Chain Replay
 
 Status: anchored as one command-family and end-to-end replay cluster.

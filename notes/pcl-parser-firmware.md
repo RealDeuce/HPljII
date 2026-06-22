@@ -603,6 +603,19 @@ saves cursor longword `0x782c8a` to `0x782c92`, restores baseline range
 `0x782d4c` with byte `+8 = 4`, byte `+9 = 4`, record payload/count in
 `+0/+4`, and `+0x0a = 0`.
 
+The `0xe5e2` helper is now composed into the layout/VFC/font model rather
+than left as an isolated macro gap. It writes top offset
+`0x782dce = 0x96 - 0x782dbe`, or `-0x782dbe` when page extent
+`0x782dba <= 0x96`; clears scratch/cache word `0x782dd0`; refreshes
+text-bottom cache through `0xea16`; resets margins through `0xe9ba`;
+refreshes pending vertical cursor through `0xf8fc`; recomputes VFC
+line-count caches through `0xfe54`; rebuilds the default VFC table through
+`0x12b96`; and consumes static font-context record `0x782c64` through
+`0xe65c(1)`. Fixture
+`0xe5e2 refreshes page layout, default VFC table, and static font
+context` pins the normal and short-page top-offset branches, margin reset,
+VFC table prefix, modified-layout clear, and static secondary refresh.
+
 The shared heap allocator used by those chunks is pinned at the contract
 level. `0x170c` and `0x1710` allocate 64-byte units from opposite scan
 directions; alignment `0x100` consumes four units per requested object,
@@ -750,10 +763,10 @@ control-code anchor.
 - Decode the six-byte tokenizer records and 12-byte command/data pool
   records.
 - Decode the full `0xe65c` bridge into the already-modeled font resource
-  maps, heap initialization `0x164a..0x170a`, and `0xe5e2..0xe65a`
-  page/layout side effects now that the `0xe002` append/count path,
-  `0xe418` layout, snapshot chain helpers, heap allocation/free contract,
-  frame-end branches, and `0xe65c` branch contract are pinned.
+  maps and heap initialization `0x164a..0x170a` now that the `0xe002`
+  append/count path, `0xe418` layout, snapshot chain helpers, heap
+  allocation/free contract, frame-end branches, `0xe65c` branch contract,
+  and `0xe5e2` layout/VFC/static-font refresh are pinned.
 - Replace the remaining synthetic `ESC E` roots with fuller
   parser-allocated page objects; the current host-fetched publication
   fixtures already prove the modeled `0xff1e` publication headers,

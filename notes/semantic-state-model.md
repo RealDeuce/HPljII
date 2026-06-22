@@ -273,6 +273,35 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     `0x780e66`.
   Evidence: disassembly `0xe4f4..0xe5e0`; fixture
   `0xe4f4/0xe22c produce and end data-chain frames`.
+- Canonical non-replay layout refresh:
+  - `0xe5e2` is the shared page-layout refresh used before `0xe4f4`
+    writes the frame at `0x782d4c`.
+  - it writes top offset `0x782dce = 0x96 - 0x782dbe`, unless page
+    extent `0x782dba <= 0x96`; the short-page branch writes
+    `0x782dce = -0x782dbe`.
+  - parser scratch/cache word `0x782dd0` is cleared before the helper
+    calls and is not canonical layout state.
+  - `0xea16` refreshes default text-bottom cache `0x782dd2`;
+    `0xe9ba` clears left margin `0x782dd6`, copies page width
+    `0x782db8` into right margin `0x782dda`, and clears
+    `0x782ddc`.
+  - `0xf8fc` refreshes pending vertical cursor from the new top offset
+    and current VMI when the pending-text path needs it.
+  - `0xfe54` writes VFC line-count caches `0x782edf`, `0x782ee0`, and
+    `0x782ede`; `0x12b96` rebuilds default table
+    `0x782dde..0x782edd`, copies `0x782dd2 -> 0x782dc2`, and clears
+    modified-layout byte `0x782ee1`.
+  - `0xe65c(1)` then consumes static context record `0x782c64` through
+    the already modeled static font-context refresh path.
+  Evidence: disassembly
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`
+  at `0xe5e2..0xe65a`, shared helper disassembly
+  `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst` at
+  `0xfe54..0xfed2`,
+  `generated/disasm/ic30_ic13_vertical_forms_control_01280a.lst` at
+  `0x12b96..0x12cfc`, and fixture
+  `0xe5e2 refreshes page layout, default VFC table, and static font
+  context`.
 - Canonical call context stack:
   - stack pointer `0x782c6e` is initialized to `0x782c1e` by `0xe146`.
   - each entry is 10 bytes.
@@ -418,10 +447,6 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   - full CPU-state connection from macro-specific `0xe65c` refresh into
     the broader font resource maps beyond the already modeled
     `0x13eb8` / `0xc428` / `0x144d2` / `0x14c64` contracts.
-  - page/layout side effects inside `0xe5e2..0xe65a`; the frame fields
-    written after that helper are pinned, but the helper's calls into
-    `0xea16`, `0xe9ba`, `0xf8fc`, `0xfe54`, `0x12b96`, and `0xe65c(1)`
-    still need composition into the existing layout/font concepts.
 
 ### Writers
 
@@ -526,9 +551,8 @@ chain chunk shape, execute/call frame-end restore, `0x170c`/`0x1710` /
 `0x18b4` shared heap contract, `0xe65c` branch contract, macro definition
 append/count bookkeeping, `0xa904` replay, and page-record/render effects
 because those are covered by disassembly, generated parser-table reports,
-and executable fixtures. Medium for
-complete downstream font/resource rebuild after `0xe65c`, and
-the detailed page/layout side effects inside `0xe5e2..0xe65a`.
+and executable fixtures. Medium for the complete downstream font/resource
+rebuild after `0xe65c`.
 
 ### Fixtures
 
@@ -545,6 +569,8 @@ the detailed page/layout side effects inside `0xe5e2..0xe65a`.
 - `0xe002 appends macro definition bytes into 0x100 chunks`
 - `0xe4f4/0xe22c produce and end data-chain frames`
 - `0xe65c refreshes macro font context entries`
+- `0xe5e2 refreshes page layout, default VFC table, and static font
+  context`
 - `macro execute frame payload feeds 0xa904 data-chain bytes`
 - `macro execute data-chain parser trace feeds page-record stream`
 - `macro call data-chain parser trace feeds page-record stream`
@@ -588,8 +614,6 @@ the detailed page/layout side effects inside `0xe5e2..0xe65a`.
   `0x14c64`; branch flags, fallback install, and shared exit are pinned.
 - `0xe860..0xe886`: record-class byte meaning for the `+0x16` versus
   `+0x20` returned values is still named by use, not by font format.
-- `0xe5e2..0xe65a`: page/layout and font-refresh side effects inside
-  non-replay frame setup before `0xe4f4` writes frame byte `+9 = 4`.
 - `0x782c6e..0x782d36`: context stack capacity and overflow policy around
   macro call replay.
 
@@ -945,13 +969,16 @@ top-of-form page-eject path.
 - `0x782dde..0x782edd`: canonical VFC table.
   Semantic role: 128 16-bit VFC channel words, two payload bytes per
   line.
-  Evidence: writer `0x12cfe`, default builder `0x12b96`, consumer
-  `0x1280a`; fixture
+  Evidence: writer `0x12cfe`, default builder `0x12b96`, refresh caller
+  `0xe5e2`, consumer `0x1280a`; fixture
   `0x12cfe ESC &l#W loads vertical forms control state`; table-hit
   consumer fixture
   `mixed VFC start-after-text wraps to table hit before printable`; and
   bottom-recovery consumer fixture
-  `mixed VFC start-after-text wraps to bottom recovery before printable`.
+  `mixed VFC start-after-text wraps to bottom recovery before printable`;
+  macro-layout fixture
+  `0xe5e2 refreshes page layout, default VFC table, and static font
+  context`.
 - `0x783160`: canonical VMI / line advance.
   Semantic role: converts between line numbers and packed cursor
   positions.
@@ -961,11 +988,20 @@ top-of-form page-eject path.
   internal page code`.
 - `0x782dce`: canonical top offset.
   Semantic role: origin for VFC line-to-cursor conversion.
-  Evidence: writers `0xece2`, `0xf9e8`, `0x12cfe`; readers `0x1280a`,
-  `0x12cfe`; fixture
+  Evidence: writers `0xece2`, `0xf9e8`, `0x12cfe`, and `0xe5e2`;
+  readers `0x1280a`, `0x12cfe`, `0xfe54`, and `0xf8fc`; fixture
   `0x12cfe ESC &l#W loads vertical forms control state` and
   `mixed VFC before-top channel jump normalizes start line before
-  printable`.
+  printable`; macro-layout fixture
+  `0xe5e2 refreshes page layout, default VFC table, and static font
+  context`.
+- `0x782dd0`: parser scratch / layout cache.
+  Semantic role: cleared by shared layout refresh before derived layout
+  helpers run; no canonical PCL command state has been assigned to it.
+  Evidence: writers `0xe5e2`, `0xcc70`, `0xfc74`, and `0xf9e8` clear it
+  before `0xea16`/`0xe9ba`/`0xf8fc`/`0xfe54`/`0x12b96`; fixture
+  `0xe5e2 refreshes page layout, default VFC table, and static font
+  context`.
 - `0x782c8e`: canonical vertical cursor.
   Semantic role: current y position read by `0x1280a` to choose a VFC
   start line, written by the forward channel-jump path before the next
@@ -986,34 +1022,63 @@ top-of-form page-eject path.
   Evidence: `0x1280a` calls `0xf06e` at `0x12aa6`; fixture
   `mixed VFC channel jump stream moves cursor before printable
   page-record queue`.
+- `0x782db8`: canonical page width.
+  Semantic role: page-geometry width used by `0xe9ba` to restore the
+  right margin after geometry or macro-layout refresh.
+  Evidence: page-size/orientation writers `0xfc74` and `0x10220`;
+  reader `0xe9ba`; fixture
+  `0xe5e2 refreshes page layout, default VFC table, and static font
+  context`.
+- `0x782dd6` / `0x782dda`: canonical left/right margins.
+  Semantic role: horizontal text limits. `0xe9ba` resets left to zero and
+  right to page width; margin handlers later update them from PCL
+  columns.
+  Evidence: writers `0xe9ba`, `0xeb4c`, and `0xec1e`; consumers include
+  printable cursor placement and `0xf06e`; fixtures
+  `0xe5e2 refreshes page layout, default VFC table, and static font
+  context`, margin command parser fixtures, and VFC channel-jump fixtures.
+- `0x782ddc`: derived/cache right-margin fraction.
+  Semantic role: fractional margin companion cleared by `0xe9ba` when
+  right margin resets to page width.
+  Evidence: writer `0xe9ba`; fixture
+  `0xe5e2 refreshes page layout, default VFC table, and static font
+  context`.
 - `0x782dd2`: derived/cache text-length bottom.
   Semantic role: text-bottom cache; `0x12cfe` copies VFC-derived limit
   here.
-  Evidence: writers `0xea9e`, `0xea16`, `0x12cfe`; consumers include
-  vertical overflow helpers; fixture
+  Evidence: writers `0xea9e`, `0xea16`, `0x12cfe`, and `0xe5e2`
+  through `0xea16`; consumers include vertical overflow helpers; fixture
   `mixed VFC definition stream consumes payload before printable
-  page-record queue`.
+  page-record queue`; macro-layout fixture
+  `0xe5e2 refreshes page layout, default VFC table, and static font
+  context`.
 - `0x782dc2`: derived/cache VFC limit.
   Semantic role: VFC-derived bottom/limit before it is copied to
   `0x782dd2`.
-  Evidence: writer `0x12cfe`; consumer `0xf36c`; long-reference scan
+  Evidence: writer `0x12cfe`, default-table builder `0x12b96`, and
+  `0xe5e2` through `0x12b96`; consumer `0xf36c`; long-reference scan
   lists `0xf372`, `0x12cec`, and `0x12f16`.
 - `0x782ede`: derived/cache last VFC/page line index.
   Semantic role: payload count bound and channel-search limit.
-  Evidence: writers `0xfe54`/`0x12cfe`; readers `0x1280a`, `0x12cfe`;
-  fixture records `last_line = 63` for Letter at 6 LPI.
+  Evidence: writers `0xfe54`/`0x12cfe`; refresh caller `0xe5e2`;
+  readers `0x1280a`, `0x12cfe`; fixture records `last_line = 63` for
+  Letter at 6 LPI and `last_line = 3` for the macro-layout fixture.
 - `0x782edf`: derived/cache last text line index.
   Semantic role: default VFC table builder `0x12b96` input.
-  Evidence: writer `0xfe54`; reader `0x12b96`; disassembly
-  `0xfe54..0xfe94` and `0x12b96..0x12bb6`.
+  Evidence: writer `0xfe54`, refresh caller `0xe5e2`, reader
+  `0x12b96`; disassembly `0xfe54..0xfe94` and `0x12b96..0x12bb6`;
+  fixture `0xe5e2 refreshes page layout, default VFC table, and static
+  font context`.
 - `0x782ee0`: derived/cache last printable text line.
   Semantic role: clamps channel-derived bottom.
-  Evidence: writer `0xfe54`; readers `0x1280a`, `0x12cfe`; fixture
-  records `text_last_line = 62` for Letter at 6 LPI.
+  Evidence: writer `0xfe54`, refresh caller `0xe5e2`; readers
+  `0x1280a`, `0x12cfe`; fixtures record `text_last_line = 62` for
+  Letter at 6 LPI and `2` for the macro-layout fixture.
 - `0x782ee1`: firmware bookkeeping.
   Semantic role: modified-layout flag cleared after VFC table load.
-  Evidence: writers `0xca8c`/`0xcb00`/`0x12cfe`; reader `0x1280a`;
-  disassembly `0x1284c..0x12866` and `0x12f1e..0x12f24`.
+  Evidence: writers `0xca8c`/`0xcb00`/`0x12cfe`; clear through
+  `0x12b96` in the `0xe5e2` cluster; reader `0x1280a`; disassembly
+  `0x1284c..0x12866` and `0x12f1e..0x12f24`.
 - `0x782a58`/`0x782a6d`: firmware bookkeeping.
   Semantic role: pending text and cursor latches cleared by shared helpers
   on the `0x1280a` jump path; `0xf124` clears page-eject pending state

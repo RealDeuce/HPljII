@@ -1907,6 +1907,98 @@ def vfc_line_counts_from_layout(state: dict[str, int]) -> tuple[int, int]:
     return text_last_line, page_last_line + source_lines
 
 
+def default_vfc_table_via_12b96(text_last_line: int, last_line: int) -> bytes:
+    table = [0] * 0x80
+    limit = min(max(int(text_last_line), -1), 0x7F)
+    for line in range(limit + 1):
+        word = 0x0004
+        if line % 2 == 0:
+            word |= 0x0008
+        if line % 3 == 0:
+            word |= 0x0010
+        if line % 10 == 0:
+            word |= 0x0080
+        if line % 7 == 0:
+            word |= 0x1000
+        if line % 6 == 0:
+            word |= 0x2000
+        if line % 5 == 0:
+            word |= 0x4000
+        if (line & 3) == 0:
+            word |= 0x8000
+        table[line] = word
+    table[0] |= 0x0861
+    if 0 <= text_last_line < 0x80:
+        table[text_last_line] |= 0x0102
+    previous_text_line = text_last_line - 1
+    if 0 <= previous_text_line < 0x80:
+        table[previous_text_line] |= 0x0002
+    half_text_line = (text_last_line + 2) >> 1
+    if 0 <= half_text_line < 0x80:
+        table[half_text_line] |= 0x0060
+    quarter_text_line = (text_last_line + 4) >> 2
+    if 0 <= quarter_text_line < 0x80:
+        table[quarter_text_line] |= 0x0040
+    three_quarter_text_line = ((text_last_line * 3) + 6) >> 2
+    if 0 <= three_quarter_text_line < 0x80:
+        table[three_quarter_text_line] |= 0x0040
+    if 0 <= last_line < 0x80:
+        table[last_line] |= 0x0004
+    out = bytearray()
+    for word in table:
+        out.extend(((word >> 8) & 0xFF, word & 0xFF))
+    return bytes(out)
+
+
+def refresh_layout_via_e5e2(state: dict[str, object]) -> dict[str, object]:
+    updated = dict(state)
+    events = list(updated.get("events", []))
+    source = int(updated.get("vertical_offset_source", 0))
+    page_extent = int(updated.get("page_extent", 0))
+    top_offset = -source if page_extent <= 0x96 else 0x96 - source
+    updated["top_offset"] = pack12(top_offset)
+    updated["top_offset_fraction"] = 0
+    updated["layout_scratch_782dd0"] = 0
+    updated["text_length_bottom"] = default_text_length_bottom(
+        int(updated["top_offset"]),
+        source,
+        page_extent,
+    )
+    updated["left_margin_782dd6"] = 0
+    updated["right_margin_782dda"] = int(updated.get("page_width", 0))
+    updated["right_margin_fraction_782ddc"] = 0
+    if "cursor_y" in updated:
+        updated["cursor_y"] = pending_text_cursor_for_vmi(
+            int(updated["top_offset"]),
+            int(updated.get("vmi", 0)),
+        )
+    text_last, last_line = vfc_line_counts_from_layout(updated)  # type: ignore[arg-type]
+    updated["vfc_text_last_line_782edf"] = text_last
+    updated["vfc_text_last_line_782ee0"] = text_last
+    updated["vfc_last_line_782ede"] = last_line
+    updated["vfc_table_782dde"] = default_vfc_table_via_12b96(text_last, last_line)
+    updated["vfc_limit_782dc2"] = int(updated["text_length_bottom"])
+    updated["modified_layout"] = 0
+    font_state = refresh_font_context_via_e65c(updated, 1)
+    updated.update({
+        key: value
+        for key, value in font_state.items()
+        if key != "events"
+    })
+    font_events = list(font_state.get("events", []))[len(events):]
+    events.append({
+        "kind": "layout-refresh-e5e2",
+        "handler": 0x00E5E2,
+        "helpers": (0x00EA16, 0x00E9BA, 0x00F8FC, 0x00FE54, 0x012B96, 0x00E65C),
+        "top_offset": int(updated["top_offset"]),
+        "text_length_bottom": int(updated["text_length_bottom"]),
+        "line_counts": (text_last, last_line),
+        "font_refresh_events": [event["kind"] for event in font_events],
+    })
+    updated["events"] = events + font_events
+    return updated
+
+
 def apply_vertical_forms_control_via_12cfe(
     state: dict[str, int],
     byte_count: int,
@@ -20075,6 +20167,102 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "dirty-cleared",
             ],
             "refresh_slots": [0, 1],
+        },
+    }))
+    layout_refresh_normal = refresh_layout_via_e5e2({
+        **vertical_layout_state(page_extent=300, page_width=240, cursor_y=pack12(1)),
+        **macro_font_context_state(
+            static_context_record={
+                "long_0": 0xAAAA0000,
+                "long_4": 0xBBBB0000,
+                "byte_8": 0,
+                "byte_9": 0,
+            },
+            selector_782f06=1,
+            class_selector_782da3=0,
+            e860_values={0: 0, 1: 4},
+            context_install_status=1,
+        ),
+    })
+    layout_refresh_short = refresh_layout_via_e5e2({
+        **vertical_layout_state(page_extent=100, page_width=240, cursor_y=pack12(1)),
+        **macro_font_context_state(
+            static_context_record={
+                "long_0": 0xAAAA0000,
+                "long_4": 0xBBBB0000,
+                "byte_8": 0,
+                "byte_9": 0,
+            },
+            selector_782f06=1,
+            class_selector_782da3=0,
+            e860_values={0: 0, 1: 4},
+            context_install_status=1,
+        ),
+    })
+    checks.append(assert_equal("0xe5e2 refreshes page layout, default VFC table, and static font context", {
+        "normal": {
+            **select_keys(layout_refresh_normal, (
+                "top_offset",
+                "text_length_bottom",
+                "layout_scratch_782dd0",
+                "left_margin_782dd6",
+                "right_margin_782dda",
+                "right_margin_fraction_782ddc",
+                "cursor_y",
+                "vfc_text_last_line_782edf",
+                "vfc_text_last_line_782ee0",
+                "vfc_last_line_782ede",
+                "vfc_limit_782dc2",
+                "modified_layout",
+                "remembered_secondary_782f0a",
+                "dirty_782f2d",
+            )),
+            "table_prefix": layout_refresh_normal["vfc_table_782dde"][:16],
+            "events": [event["kind"] for event in layout_refresh_normal["events"]],
+        },
+        "short_page": {
+            **select_keys(layout_refresh_short, (
+                "top_offset",
+                "text_length_bottom",
+                "vfc_text_last_line_782edf",
+                "vfc_last_line_782ede",
+            )),
+            "table_prefix": layout_refresh_short["vfc_table_782dde"][:16],
+        },
+    }, {
+        "normal": {
+            "top_offset": pack12(90),
+            "text_length_bottom": pack12(240),
+            "layout_scratch_782dd0": 0,
+            "left_margin_782dd6": 0,
+            "right_margin_782dda": 240,
+            "right_margin_fraction_782ddc": 0,
+            "cursor_y": pack12(126),
+            "vfc_text_last_line_782edf": 2,
+            "vfc_text_last_line_782ee0": 2,
+            "vfc_last_line_782ede": 3,
+            "vfc_limit_782dc2": pack12(240),
+            "modified_layout": 0,
+            "remembered_secondary_782f0a": 5,
+            "dirty_782f2d": 0,
+            "table_prefix": bytes.fromhex("f8 fd 00 46 01 6e 00 44 00 00 00 00 00 00 00 00"),
+            "events": [
+                "layout-refresh-e5e2",
+                "static-secondary-refresh-by-orientation",
+                "call-13eb8",
+                "dirty-set",
+                "static-context-cleared",
+                "call-c428",
+                "call-1b04c",
+                "dirty-cleared",
+            ],
+        },
+        "short_page": {
+            "top_offset": pack12(-60),
+            "text_length_bottom": pack12(-10),
+            "vfc_text_last_line_782edf": 0,
+            "vfc_last_line_782ede": 2,
+            "table_prefix": bytes.fromhex("f9 ff 00 60 00 04 00 00 00 00 00 00 00 00 00 00"),
         },
     }))
     macro_overlay = apply_macro_control_via_dd08(macro_with_payload, 4)

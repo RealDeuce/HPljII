@@ -437,7 +437,11 @@ copy active words `0x783144`/`0x783146` to remembered words
 `0x782f08`/`0x782f0a`, pass selected slot `0x782f06` through `0xc428`,
 optionally rebuild selected context `0x782ee6 + 0x10*slot` from
 `0x782c80`/`0x782c84` through `0x1b4c0`, `0x144d2`, and `0x14c64`, then
-exit through `0x1b04c` with dirty flag `0x782f2d` cleared. Chained
+exit through `0x1b04c` with dirty flag `0x782f2d` cleared. The
+non-replay producer calls `0xe5e2` before writing frame byte `+9 = 4`;
+that helper refreshes top offset, text-bottom cache, margins, VFC line
+counts, default VFC table, modified-layout byte, and static
+font-context record `0x782c64`. Chained
 `ESC &f-123y0x1X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f2X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f3X`,
@@ -947,7 +951,7 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   caller path is now real-record backed through `0x1b250`, `0x1b50e`,
   `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
 - Decode the full `0xe65c` CPU-state bridge into already-modeled font
-  maps, heap initialization `0x164a..0x170a`, and `0xe5e2..0xe65a`
-  page/layout side effects now that the `0xe002` append/count path,
-  `0xe418` layout, snapshot chain helpers, heap allocation/free,
-  frame-end branches, and `0xe65c` branch contract are pinned.
+  maps and heap initialization `0x164a..0x170a` now that the `0xe002`
+  append/count path, `0xe418` layout, snapshot chain helpers,
+  heap allocation/free, frame-end branches, `0xe65c` branch contract,
+  and `0xe5e2` layout/VFC/static-font refresh are pinned.

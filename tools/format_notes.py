@@ -12,13 +12,29 @@ from pathlib import Path
 
 
 LIST_RE = re.compile(r"^(\s*(?:[-*+]|\d+[.])\s+)(.*)$")
+INDENT_RE = re.compile(r"^([ \t]+)(.*)$")
+TAB_WIDTH = 8
 
 
 def normalize_text_whitespace(text: str) -> str:
     lines = text.splitlines()
     if not lines:
         return ""
-    return "\n".join(line.rstrip(" \t") for line in lines).rstrip("\n") + "\n"
+    normalized = []
+    for line in lines:
+        line = line.rstrip(" \t")
+        match = INDENT_RE.match(line)
+        if match and " \t" in match.group(1):
+            indent, body = match.groups()
+            column = 0
+            for char in indent:
+                if char == "\t":
+                    column += TAB_WIDTH - (column % TAB_WIDTH)
+                else:
+                    column += 1
+            line = (" " * column) + body
+        normalized.append(line)
+    return "\n".join(normalized).rstrip("\n") + "\n"
 
 
 def run_git(root: Path, args: list[str]) -> subprocess.CompletedProcess[str]:

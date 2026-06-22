@@ -674,11 +674,18 @@ fetch through the ROM/alternate parser trace, stores the full mixed
 payload, builds the execute frame, and replays through
 `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into page-record rows matching the
 direct mixed-stream model. Execute, call, and mixed-control macro replay
-payloads now also cross `0x1ed84` and `0x1ef6a` before rendering. The
+payloads now also cross `0x1ed84` and `0x1ef6a` before rendering.
+Overlay publication now has the same parser-to-output chain for the
+covered selector-4 case: `0xff1e` resolves saved id `0x782a94` through
+`0xe0a4`, builds a non-replay `0xe4f4` frame, re-enters parser loop
+`0x11774`, and publishes the replayed `!\r` payload with an existing
+selector-7 rectangle rule. Evidence: fixture `macro overlay finalization
+replays before page publication`. The
 composed semantic checkpoint is
 `Macro Definition And Data-Chain Replay` in
-`notes/semantic-state-model.md`; no macro replay/font-context middle
-edge remains in that checkpoint.
+`notes/semantic-state-model.md`; no macro execute/call replay,
+font-context, or first overlay-publication middle edge remains in that
+checkpoint.
 
 Top-level `ESC &` enters mode 5. The normal table currently identifies
 these subfamilies:

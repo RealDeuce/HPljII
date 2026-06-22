@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Format notes Markdown into patch-friendly wrapped prose."""
+"""Format notes Markdown and ordinary changed-file whitespace."""
 
 from __future__ import annotations
 
@@ -229,7 +229,10 @@ def git_whitespace_failures(root: Path) -> list[str]:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Format notes Markdown by wrapping prose paragraphs.",
+        description=(
+            "Format notes Markdown by wrapping prose paragraphs, and normalize "
+            "ordinary whitespace in changed text files."
+        ),
     )
     parser.add_argument(
         "paths",
@@ -258,7 +261,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "report files that would change; changed text-file whitespace is "
-            "also checked"
+            "also checked and is fixed by running without --check"
         ),
     )
     return parser.parse_args()

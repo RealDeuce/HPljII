@@ -1789,6 +1789,10 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 - Firmware bookkeeping:
   - selector `4`/`5` update overlay state `0x782a92`; selector `4` also
     copies current id into `0x782a94` when the record exists.
+  - `0xff1e` consumes overlay state when `0x782a92 == 1` and current-root
+    flag bit `+0x14.0` is clear: it calls `0xe0a4(0x782a94)`, sets
+    `0x782a92 = 2`, calls `0xe4f4`, re-enters parser loop `0x11774`, and
+    ensures a page root through `0x10084` before normal publication.
   - active data-chain guard in `0xdd08` suppresses non-replay controls when
     frame byte `+9` is nonzero, while still allowing selectors `2` and `3`.
   - `0xe418` sets the host gate bit when the frame byte count is nonzero;
@@ -1806,9 +1810,12 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     tracked bitmap-byte count `0x783986`, and scan cursors
     `0x78397e` / `0x783982`; those fields are allocator-private caches,
     not PCL-visible state.
-  Evidence: disassembly `0xdd4c..0xdd78`, `0xdee4..0xdefa`, and
-  `0xe418..0xe4e6`; host-byte section
-  `Host Byte Fetch And Data-Chain Input`.
+  Evidence: disassembly `0xdd4c..0xdd78`, `0xdee4..0xdefa`,
+  `0xe418..0xe4e6`, and
+  `generated/analysis/ic30_ic13_page_root_finalization.md` rows
+  `0xff40..0xff9a`; host-byte section
+  `Host Byte Fetch And Data-Chain Input`; fixture `macro overlay
+  finalization replays before page publication`.
 - Derived/cache:
   - execute and call replay of stored `!\r` produce the same compact text
     page-record object and rendered rows.
@@ -1817,18 +1824,26 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     through `0xf02c`, and renders rows matching the direct host stream.
   - macro replay rows cross the `0x1edc6` bucket/context bridge and
     `0x1ed84`/`0x1ef6a` render-entry path.
+  - overlay publication of stored `!\r` uses a non-replay frame
+    `+8 = 4`, `+9 = 4`, replays through `0xd04a` and `0xf02c`, queues the
+    text object into an existing page record that already contains a
+    selector-7 rectangle rule, and publishes/render-composes both layers
+    through `0xff1e` and `0x1ed84`/`0x1ef6a`.
   Evidence: fixtures `macro execute data-chain parser trace feeds
   page-record stream`, `macro call data-chain parser trace feeds
-  page-record stream`, and `host-fetched macro replay payloads feed
-  0x1ed84 and 0x1ef6a`.
+  page-record stream`, `host-fetched macro replay payloads feed 0x1ed84
+  and 0x1ef6a`, and `macro overlay finalization replays before page
+  publication`.
 - Unknown:
   - startup option source for the optional `0x80` addition to
     `0x780e5a` still needs board/config correlation, but the downstream
     `0x0b18` heap-limit math and `0x164a` allocator initialization are
     pinned for the default path.
-  - no remaining macro replay/font-context middle edge in this checkpoint.
-    The next high-value edges are in parser-produced heterogeneous
-    page-object rendering and final device-output validation.
+  - no remaining macro execute/call replay, font-context, or first
+    overlay-publication middle edge in this checkpoint. The next
+    high-value edges are broader overlay page-boundary interactions,
+    descriptor metric producer validation, and final device-output
+    validation.
 
 ### Writers
 
@@ -1903,6 +1918,11 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   non-execute/non-call path consumes frame `+0x04`, flat source
   `0x7834c2`, cursor save `0x782c92`, and context-stack state used by
   `0xe65c(0)`.
+- `0xff1e` consumes `0x782a92`, `0x782a94`, current root flag word
+  `+0x14`, and current macro/data record pointer `0x782d7a` before the
+  overlay parser re-entry detour. If the selected macro record exists,
+  `0xe4f4` produces the non-replay frame and `0x11774` consumes the
+  replayed payload before the same `0xff1e` publication boundary.
 - `0x164a` consumes startup heap inputs `0x780efa` and `0x780efe`;
   `0x170c`, `0x1710`, and `0x18b4` then consume the initialized
   allocator bitmap, payload base pointer, free-unit count, and scan
@@ -1942,8 +1962,14 @@ payload. A host-fetched mixed-control definition stores
 `ESC &k1G!\r!`, builds an execute frame, replays through `0xedf8`,
 `0xd04a`, `0xf02c`, and `0xd04a`, then matches the direct mixed-stream
 rendered rows. Macro replay also composes with selector-7 rule and
-mode-0 raster band output in the existing page-record fixture. Macro
-font-context refresh now composes through the existing font bridge:
+mode-0 raster band output in the existing page-record fixture. Overlay
+publication now has a first visible-output fixture: selector `4` stores
+overlay id `123`, `0xff1e` resolves it through `0xe0a4`, `0xe4f4`
+builds a non-replay frame for stored `!\r`, parser loop `0x11774` routes
+the replayed bytes through `0xd04a`/`0xf02c`, and the published page
+record renders both the overlay text rows and an existing selector-7
+rectangle rule. Macro font-context refresh now composes through the
+existing font bridge:
 `0xe65c` refresh slots `0/1` rebuild maps `0x782f32` / `0x783032`, and
 the final `0xc428` install exposes the selected context record through a
 page-root font slot for later text objects.
@@ -1958,8 +1984,9 @@ chain chunk shape, execute/call frame-end restore, `0x164a` heap
 initializer, `0x170c`/`0x1710` / `0x18b4` shared heap contract,
 `0xe65c` branch contract, `0xe65c` bridge into `0x13eb8` / `0x144d2` /
 `0x14c64` / `0xc428`, macro definition append/count bookkeeping,
-`0xa904` replay, and page-record/render effects because those are covered
-by disassembly, generated parser-table reports, and executable fixtures.
+`0xa904` replay, the `0xff1e` overlay detour, and page-record/render
+effects because those are covered by disassembly, generated parser-table
+reports, and executable fixtures.
 High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 
 ### Fixtures
@@ -1992,6 +2019,7 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 - `host-fetched macro replay payloads preserve 0x1edc6 bridge contract`
 - `host-fetched macro replay payloads feed 0x1ed84 and 0x1ef6a`
 - `macro execute page-record layer composes with rule and raster band`
+- `macro overlay finalization replays before page publication`
 
 ### Disassembly Evidence
 
@@ -2026,7 +2054,12 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 
 ### Unresolved Middle Edges
 
-- None remaining for the macro replay/font-context checkpoint.
+- None remaining for macro execute/call replay, macro font-context refresh,
+  or the first overlay-publication path. Remaining macro risk is broader
+  overlay interaction coverage, such as multiple overlays across page
+  boundaries and final-device comparison, not the `0xdd08` selector-4 to
+  `0xff1e` visible-output path pinned by fixture `macro overlay
+  finalization replays before page publication`.
 
 ## Mixed Text/Rule/Raster Page Record
 

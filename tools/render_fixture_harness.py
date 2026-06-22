@@ -13120,6 +13120,122 @@ def finalize_page_record_via_ff1e(page_record: dict[str, object], state: dict[st
     }
 
 
+def clone_page_record(page_record: dict[str, object]) -> dict[str, object]:
+    bucket_array = page_record.get("bucket_array", {})
+    cloned: dict[str, object] = {
+        "bucket_array": {
+            int(bucket): [bytes(obj) for obj in chain]
+            for bucket, chain in dict(bucket_array).items()
+        },
+    }
+    for key in ("rule_list", "fixed_list"):
+        if key in page_record:
+            cloned[key] = [bytes(obj) for obj in page_record.get(key, [])]
+    if "context_slots" in page_record:
+        cloned["context_slots"] = list(page_record.get("context_slots", []))
+    if "bucket_root" in page_record:
+        cloned["bucket_root"] = bytes(page_record["bucket_root"])
+    if "pool_record_fields" in page_record:
+        cloned["pool_record_fields"] = dict(page_record["pool_record_fields"])
+    return cloned
+
+
+def macro_overlay_publication_via_ff1e(
+    data: bytes,
+    resources: bytes,
+    page_record: dict[str, object],
+    page_state: dict[str, int],
+    macro_control_state: dict[str, object],
+    context: int,
+    default_advance: int,
+) -> dict[str, object]:
+    """Model the 0xff1e overlay detour through e0a4/e4f4/11774/10084."""
+    working_page_record = clone_page_record(page_record)
+    working_page_state = dict(page_state)
+    macro_state_work = dict(macro_control_state)
+    macro_state_work["records"] = [dict(record) for record in macro_control_state["records"]]
+    macro_state_work["data_chain_frames"] = list(macro_control_state.get("data_chain_frames", []))
+    macro_state_work["data_chain_frame_metadata"] = list(
+        macro_control_state.get("data_chain_frame_metadata", [])
+    )
+    macro_state_work["environment_snapshots"] = list(
+        macro_control_state.get("environment_snapshots", [])
+    )
+    macro_state_work["context_stack_entries"] = list(
+        macro_control_state.get("context_stack_entries", [])
+    )
+    macro_state_work["events"] = list(macro_control_state.get("events", []))
+
+    overlay_id = int(macro_state_work.get("overlay_macro_id", 0)) & 0xFFFF
+    lookup = find_macro_record_via_e0a4(macro_state_work, overlay_id)
+    overlay_path: dict[str, object] = {
+        "enabled": int(macro_state_work.get("parser_mode", 0)) == 1,
+        "root_retry_flag": int(working_page_state.get("page_root_flags_14", 0)) & 1,
+        "overlay_id": overlay_id,
+        "lookup": {
+            "status": int(lookup["status"]),
+            "index": lookup["index"],
+            "ptr": lookup["ptr"],
+        },
+    }
+
+    if (
+        overlay_path["enabled"]
+        and overlay_path["root_retry_flag"] == 0
+        and lookup["index"] is not None
+        and int(lookup["status"]) == 1
+    ):
+        macro_state_work["page_parser_state_782a92"] = 2
+        frame = build_non_replay_frame_via_e4f4(macro_state_work, int(lookup["index"]))
+        replay = replay_macro_frame_payload_via_a904(frame)
+        parser_trace = trace_mixed_text_control_parser_path_via_11774(
+            data,
+            bytes(replay["stream"]),
+        )
+        overlay_stream = render_mixed_printable_control_page_record_stream(
+            data,
+            resources,
+            bytes(replay["stream"]),
+            context,
+            working_page_state,
+            default_advance,
+            initial_page_record=working_page_record,
+        )
+        working_page_record = overlay_stream["page_record"]
+        ended = end_macro_data_chain_via_e22c(macro_state_work)
+        overlay_path.update({
+            "taken": True,
+            "frame": frame,
+            "replay": replay,
+            "parser_trace": parser_trace,
+            "page_record_stream": overlay_stream,
+            "end_state": {
+                "host_gate_bit1": ended["host_gate_bit1"],
+                "data_chain_slot": ended["data_chain_slot"],
+                "page_parser_state_782a92": ended["page_parser_state_782a92"],
+            },
+        })
+    else:
+        overlay_path["taken"] = False
+
+    finalized = finalize_page_record_via_ff1e(working_page_record, working_page_state)
+    if finalized["published"]:
+        published = finalized["published_pool_record"]
+        assert isinstance(published, dict)
+        render = render_published_page_record_via_1ed84_1ef6a(data, resources, published)
+    else:
+        published = None
+        render = None
+
+    return {
+        "overlay_path": overlay_path,
+        "page_record": working_page_record,
+        "finalized": finalized,
+        "published_page_record": published,
+        "published_render_entry": render,
+    }
+
+
 def retry_rectangle_rule_after_no_room_via_10d22(
     current_page_record: dict[str, object],
     state: dict[str, int],
@@ -17095,6 +17211,7 @@ def render_mixed_printable_control_page_record_stream(
     default_advance: int,
     context_slot: int = 0,
     secondary_context: int | None = None,
+    initial_page_record: dict[str, object] | None = None,
 ) -> dict[str, object]:
     state = dict(state)
     context_slots = [context]
@@ -17102,7 +17219,15 @@ def render_mixed_printable_control_page_record_stream(
         context_slots.append(int(secondary_context))
         state.setdefault("primary_context_782ee6", context)
         state.setdefault("secondary_context_782ef6", int(secondary_context))
-    page_record: dict[str, object] = {"bucket_array": {}, "context_slots": context_slots}
+    if initial_page_record is None:
+        page_record: dict[str, object] = {"bucket_array": {}, "context_slots": context_slots}
+    else:
+        page_record = clone_page_record(initial_page_record)
+        existing_context_slots = list(page_record.get("context_slots", []))
+        for slot in context_slots:
+            if slot not in existing_context_slots:
+                existing_context_slots.append(slot)
+        page_record["context_slots"] = existing_context_slots
     state["page_record"] = page_record
     events: list[dict[str, object]] = []
     published_page_record: dict[str, object] | None = None
@@ -22588,6 +22713,115 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "rows": ["." * 16] * 12 + ["##....##..####.."],
         },
         "composed_rows": expected_macro_band_composed_rows,
+    }))
+    macro_overlay_base_record: dict[str, object] = {"bucket_array": {}, "context_slots": [0x440946B4]}
+    macro_overlay_rule = queue_rectangle_rule_via_13386(macro_overlay_base_record, {
+        "x": 24,
+        "y": 24,
+        "width": 12,
+        "height": 3,
+        "flags": 7,
+    })
+    macro_overlay_enabled_state = apply_macro_control_via_dd08(
+        macro_state(
+            current_macro_id=123,
+            records=[macro_record(b"!\r", 123)] + [macro_record() for _ in range(31)],
+        ),
+        4,
+    )
+    macro_overlay_publication = macro_overlay_publication_via_ff1e(
+        data,
+        resources,
+        macro_overlay_base_record,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            vmi=pack12(3),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        ),
+        macro_overlay_enabled_state,
+        0x440946B4,
+        line_printer_hmi["hmi"],
+    )
+    macro_overlay_path = macro_overlay_publication["overlay_path"]
+    assert isinstance(macro_overlay_path, dict)
+    macro_overlay_page_stream = macro_overlay_path["page_record_stream"]
+    assert isinstance(macro_overlay_page_stream, dict)
+    macro_overlay_published_render = macro_overlay_publication["published_render_entry"]
+    assert isinstance(macro_overlay_published_render, dict)
+    macro_overlay_published_entry = macro_overlay_published_render["entry"]
+    assert isinstance(macro_overlay_published_entry, dict)
+    macro_overlay_published_rows = list(macro_overlay_published_entry["rows"])
+    macro_overlay_row_count = len(macro_overlay_published_rows)
+    macro_overlay_width = len(macro_overlay_published_rows[0])
+    macro_overlay_rule_rows = [
+        (
+            "." * 24
+            + "#" * min(12, max(0, macro_overlay_width - 24))
+            + "." * max(0, macro_overlay_width - 36)
+            if 24 <= row < 27
+            else "." * macro_overlay_width
+        )
+        for row in range(macro_overlay_row_count)
+    ]
+    macro_overlay_expected_rows = compose_set_pixel_rows(
+        [
+            macro_payload_rendered["rows"],
+            macro_overlay_rule_rows,
+        ],
+        width=macro_overlay_width,
+        rows=macro_overlay_row_count,
+    )
+    checks.append(assert_equal("macro overlay finalization replays before page publication", {
+        "overlay_enable": {
+            "parser_mode": macro_overlay_enabled_state["parser_mode"],
+            "overlay_macro_id": macro_overlay_enabled_state["overlay_macro_id"],
+        },
+        "lookup": macro_overlay_path["lookup"],
+        "frame": macro_overlay_path["frame"],
+        "replay_stream": macro_overlay_path["replay"]["stream"],
+        "parser_handlers": [
+            event["handler"]
+            for event in macro_overlay_path["parser_trace"]["events"]
+        ],
+        "overlay_end": macro_overlay_path["end_state"],
+        "queued_rule": macro_overlay_rule["object"],
+        "published": macro_overlay_publication["finalized"]["published"],
+        "published_rows": macro_overlay_published_rows,
+    }, {
+        "overlay_enable": {
+            "parser_mode": 1,
+            "overlay_macro_id": 123,
+        },
+        "lookup": {
+            "status": 1,
+            "index": 0,
+            "ptr": 0x782A98,
+        },
+        "frame": {
+            "payload": b"!\r",
+            "byte_count": 2,
+            "byte_8": 4,
+            "byte_9": 4,
+            "environment": "non-replay",
+        },
+        "replay_stream": b"!\r",
+        "parser_handlers": [0x00D04A, 0x00F02C],
+        "overlay_end": {
+            "host_gate_bit1": 1,
+            "data_chain_slot": 1,
+            "page_parser_state_782a92": 0x63,
+        },
+        "queued_rule": bytes.fromhex("00 00 00 00 01 07 88 01 00 0c 00 03 00 00"),
+        "published": True,
+        "published_rows": macro_overlay_expected_rows,
     }))
     macro_with_payload = macro_state(
         current_macro_id=123,

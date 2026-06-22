@@ -1069,7 +1069,12 @@ replayed bytes through handlers `0xedf8`, `0xd04a`, `0xf02c`, and
 `0xd04a`, and feeds the same page-record stream and rendered rows as the
 direct mixed control-byte model; the execute, call, and mixed-control
 replay payloads now also pin the `0x1edc6` bucket/context bridge
-contract before rendering.
+contract before rendering. Macro overlay publication is now pinned for a
+visible mixed page record as well: selector `4` state leads `0xff1e` to
+resolve saved id `0x782a94`, build a non-replay `0xe4f4` frame, re-enter
+`0x11774`, queue stored `!\r` into a page record that already contains a
+selector-7 rectangle rule, publish through `0xff1e`, and render both
+layers through `0x1ed84`/`0x1ef6a`.
 
 This is still not enough for pixel-perfect reproduction by itself. The
 mixed text/rule/raster/FF fixture is now the first complete byte-stream

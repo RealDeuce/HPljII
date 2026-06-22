@@ -107,6 +107,12 @@ root, resets x from `58` to `10`, recomputes y from `176` to `126`, and
 lets the following `!` allocate a fresh page root at compact coord
 `0x9001`.
 
+The selector-zero start-after-text recovery path is anchored without
+publication. Fixture `ESC &l0V!`, with y `3290`, computes start line
+`64`, routes through `0x1299c..0x12b92`, skips `0xf124`, resets x from
+`40` to `10`, writes top-of-form y `126`, and queues the following `!`
+at compact coord `0x9001`, bucket `6`.
+
 The wrap-hit `ESC &l#V` path is now anchored through publication and fresh
 output. Fixture `!\x1b&l2V!` starts at y `226`, queues a printable bucket
 at compact coord `0xde02`, misses channel 2 from start line `3` to the

@@ -203,7 +203,10 @@ target-equal path through `0x12966..0x1299a`: it computes target y
 `!\x1b&l0V!` anchors the selector-zero page-eject path through
 `0x1299c..0x129c4`: it publishes the already queued `!` at compact coord
 `0xbe02` through `0xf124`, resets x/y to `10`/`126`, and queues the
-following `!` on a fresh page at compact coord `0x9001`. Fixture
+following `!` on a fresh page at compact coord `0x9001`. A selector-zero
+start-after-text `ESC &l0V!` fixture anchors `0x1299c..0x12b92`: start
+line `64` skips publication, writes top-of-form y `126`, and queues `!`
+at compact coord `0x9001`. Fixture
 `!\x1b&l2V!` anchors the wrap-hit path through `0x129c6..0x12af8`: it
 publishes the old page at compact coord `0xde02`, wraps from start line
 `3` to target line `1`, writes y `176`, and queues the following `!` on a
@@ -225,7 +228,7 @@ recovered y `54`, and queues `!` at compact coord `0x1001`. The
 remaining wrap and bottom/page-recovery branches are unresolved across
 the exact ranges alternate-entry `0x12a02..0x12a10`, alternate-entry
 `0x12a22..0x12a78`, alternate-entry `0x12afc..0x12b5a`, and
-`0x12b5e..0x12b92`.
+wrap-entry `0x12b5e..0x12b92`.
 
 `ESC &l#D` at `0x00c992` accepts absolute LPI values
 `1,2,3,4,6,8,12,16,24,48`, treats zero as `12`, converts to packed line

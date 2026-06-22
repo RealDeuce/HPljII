@@ -49,6 +49,7 @@ Primary fixtures:
 - `0x16fae table-driven validation predicates populate staged header fields`
 - `0x17026/0x1719c-modeled font resource allocation and header initialization`
 - `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`
+- `ESC )s80W invalid resource type fails validation before allocation`
 - `resource payload stream ties ROM parser dispatch to 0x16c14 install`
 - `host-fetched resource payload stream installs selected 0x1719c font`
 - `host-fetched font control state drives resource payload stream`
@@ -302,6 +303,13 @@ the modeled `0xa904` ring source and reaches the same restored record,
 validation status, allocation size, candidate longword, and selected
 `0x14c64` dispatch.
 
+The invalid-resource-type sibling uses a full host-fetched `ESC )s80W` stream
+whose descriptor bytes begin `00 01 02 03`. Parser dispatch walks `0x11eb6`,
+`0x12008`, `0x11ff6`, and `0x11f96`; delayed restore reaches record
+`80 57 00 50 00 00`; `0x16fae` fails validation entry `2` after four bytes;
+`0x17026` reports allocation status `0`; and `0x16c14` leaves install state
+`None`. No candidate or current-record payload is installed on this exit.
+
 The composed metric fixture reuses that host-fetched `ESC )s80W` payload as a
 selected fixed-record context, prints `!`, and drives `0xd4ac` from the copied
 payload bytes. A companion fixture uses the same host-fetched payload as a
@@ -445,6 +453,15 @@ no optional symbols, and returns status `0`. A reversed range with word
 `+0x16 = 10` and entry-6 value `5` fails entry `6` after twelve consumed
 bytes; it has written word `+0x14 = 5`, leaves derived word `+0x18 = 0`, and
 copies no optional symbols.
+
+Fixture `ESC )s80W invalid resource type fails validation before allocation`
+ties the entry-2 failure to the parser and allocation boundary. The
+host-fetched stream begins with `1b 29 73 38 30 57 00 01 02 03`, restores
+record `80 57 00 50 00 00`, fails validation before any allocation size is
+computed, drains entirely from the `0xa904` ring source, and leaves no
+installed candidate. Its output effect is no downloaded-font state change;
+page-visible behavior for following printable bytes remains the prior/default
+font path unless a later fixture compares the produced page rows.
 
 `0x17362` sets the staged type and payload units. Type `0` writes byte
 `+0x0c = 0` and units `0x80`; type `2` writes byte `+0x0c = 2` and units
@@ -844,5 +861,7 @@ A byte-stream renderer must preserve:
 - The span-metric fields documented in `notes/font-context-metrics.md` are now
   tied to installed payload headers for the `0xd4ac` and `0xd8fc` type-0 and
   type-2 fixtures, and the shared consumer branch family is fixture-backed.
-  Broader downloaded/inline metric-byte values and producer-side
-  validation/error forms still need parser-produced page evidence.
+  The invalid-resource-type resource path now has a host-fetched
+  parser/validation/no-install boundary. Broader downloaded/inline metric-byte
+  values and the remaining producer-side validation/error forms still need
+  parser-produced page evidence.

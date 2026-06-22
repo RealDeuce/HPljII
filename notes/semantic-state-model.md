@@ -1287,6 +1287,13 @@ then proves the success path plus two predicate failures: invalid resource
 type fails entry `2` after four bytes with no symbols copied, and a reversed
 range fails entry `6` after words `+0x16 = 10` and `+0x14 = 5`, leaving
 derived count word `+0x18 = 0`.
+Fixture `ESC )s80W invalid resource type fails validation before allocation`
+connects that entry-2 failure to the host-facing parser boundary:
+`0xa904` fetches the stream from the ring source, parser dispatch walks
+`0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`, delayed restore reaches
+record `80 57 00 50 00 00`, `0x16fae` fails after descriptor bytes
+`00 01 02 03`, and `0x17026`/`0x16c14` skip allocation and install. The
+output effect is no downloaded-font candidate or current-record mutation.
 
 ### Confidence
 
@@ -1295,9 +1302,10 @@ ordering before allocation failure, staged header fields, payload allocation,
 installed downloaded-character object, and visible row, because the fixtures
 tie host-fetched streams to parser records, teardown state, and render rows.
 High for the ROM-effect names and failure behavior of every `0x16fae`
-validation-table entry. Medium for the complete soft-font grammar because
-exact HP manual labels for pass-through descriptor fields and every legal
-metric combination have not been page-compared.
+validation-table entry, including the host-fetched invalid-type no-install
+boundary. Medium for the complete soft-font grammar because exact HP manual
+labels for pass-through descriptor fields and every legal metric combination
+have not been page-compared.
 
 ### Fixtures
 
@@ -1315,6 +1323,7 @@ metric combination have not been page-compared.
 - `0x16c14 allocation failure releases existing payload through 0x1887a`
 - `host-fetched 0x15d0a split-plane continuation resource object resumes
   fixed-record render`
+- `ESC )s80W invalid resource type fails validation before allocation`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `0x16498-backed downloaded character object renders segmented-wide compact
   row`
@@ -1343,7 +1352,10 @@ metric combination have not been page-compared.
 
 - `0x16fae..0x17016`: all 32 validation slots now have ROM-effect names and
   concrete success/failure fixtures. Exact HP manual labels for consumed but
-  not staged descriptor fields still need external correlation.
+  not staged descriptor fields still need external correlation. The
+  host-fetched invalid-type path proves no-install behavior for entry `2`;
+  remaining descriptor error forms still need the same parser-produced and
+  page-visible treatment.
 - `0x16498..0x16942`: split-plane segmented-wide and linear payloads are
   page-visible; alternate mode combinations still need parser-produced page
   comparisons.
@@ -1358,7 +1370,8 @@ metric combination have not been page-compared.
 - The span-metric bridge in `notes/font-context-metrics.md` now covers
   host-fetched type-0 and type-2 downloaded payloads for both span consumers,
   and the shared consumer branch family is fixture-backed. It still needs
-  broader metric-byte values and producer-side validation/error page evidence.
+  broader metric-byte values and producer-side validation/error page evidence
+  beyond the invalid-type no-install boundary.
 
 ## Macro Definition And Data-Chain Replay
 

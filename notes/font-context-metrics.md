@@ -124,6 +124,9 @@ Unknown:
   concrete built-in and synthetic inline/downloaded fixtures, but every
   possible built-in/downloaded metric-byte combination is not yet proven by a
   parser-produced page comparison.
+- The installed downloaded-font render path is parser-backed for visible glyph
+  rows, but that fixture does not yet exercise downloaded metric-byte
+  combinations through `0xd4ac` or `0xd8fc`.
 
 ## Selection And Map Rebuild
 
@@ -287,6 +290,55 @@ Fixture-pinned metric effects:
   `+0x2d = 10`, and `0x783185 = 1` produce high-y `28`; low-water flush
   queues a segment-list object rendered on rows `12..14`.
 
+## Metric Evidence Matrix
+
+This list is the current coverage boundary for metric-producing state. It
+separates parser-produced evidence from synthetic context fixtures so future
+work can close the right gap instead of re-tracing already-covered consumers.
+
+- Claim: PCL font request bytes become concrete selection filter values.
+  Evidence: fixture `parsed font-selection metrics feed concrete candidate
+  filters`, generated from request `0p10h12v0s0b3T`; handlers `0xc930`,
+  `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a`; filters
+  `0x156de`, `0x153c6`, `0x1519a`, and `0x14398`. Status:
+  parser-produced and selected to a resource candidate.
+- Claim: selected built-in context supplies HMI/default advance. Evidence:
+  fixture `line-printer flagged HMI metric via 0x10550`; selected context
+  `0x440946b4`, resource base `0x0146b4`, byte `+0x21 = 0x00`, long
+  `+0x24 = 0x00480000`, result `18` dots. Status: parser-independent
+  context fixture, but the source fields are concrete built-in resource bytes.
+- Claim: HMI changes compact text object coordinates and visible rows.
+  Evidence: fixtures `two printable byte stream with line-printer HMI renders
+  subbyte entry` and `two printable byte stream with line-printer HMI renders
+  subbyte rows`; stream `!!` advances x from `10` to `28` to `46`, producing
+  payload `00 02 20 00 01 20 02 02`. Status: visible-output fixture through
+  compact text render.
+- Claim: flagged span metrics control pending-span high-y and flush rows.
+  Evidence: fixture `flagged printable d8fc low-watermark flush renders span`;
+  `0xd8fc` consumes context `+0x16`, `+0x18`, `+0x1a`; flush queues selector
+  `0x4000` object key `0x3406`. Status: synthetic context fixture through
+  visible segment-list rows.
+- Claim: unflagged span metrics control pending-span high-y and flush rows.
+  Evidence: fixture `unflagged printable d4ac low-watermark flush renders
+  span`; `0xd4ac` consumes context `+0x2b`, `+0x2c`, `+0x2d`; flush queues
+  selector `0x4000` object key `0xc406`. Status: synthetic
+  inline/downloaded-style context fixture through visible segment-list rows.
+- Claim: downloaded-font payload can be installed and printed from a host
+  stream. Evidence: fixtures `host-fetched printable byte uses installed
+  downloaded glyph page object` and `combined host-fetched font download stream
+  prints installed glyph`; documented in [downloaded-fonts.md](downloaded-fonts.md).
+  Status: parser-produced host stream to visible downloaded glyph rows.
+- Claim: downloaded-font descriptor metrics feed `0xd4ac` / `0xd8fc` span
+  consumers. Evidence: no tracked fixture yet combines `ESC )s#W`
+  descriptor/payload installation with a metric-sensitive span flush. Status:
+  open edge.
+
+The precise unresolved middle edge is therefore not "what do `0xd4ac` and
+`0xd8fc` do?" The documented open edge is the producer side for downloaded
+and less common built-in metric bytes: drive descriptor/payload bytes from the
+parser, select the resulting resource, print a byte that enters either
+`0xd4ac` or `0xd8fc`, and compare the flushed segment-list rows.
+
 ## Macro And Control Re-entry
 
 Macro replay shares this font-context bridge. `0xe65c` consumes either a
@@ -337,6 +389,9 @@ A byte-stream reproduction must preserve these behaviors:
   secondary cases above, but not every PCL font request combination has been
   driven from parser bytes to visible rows.
 - The exact metric-byte provenance for all downloaded/inline forms remains
-  incomplete. The consumers `0xd4ac` and `0xd8fc` are documented, and the
-  selected-context bridge is documented, but broader parser-produced soft-font
-  pages are still needed to prove every descriptor form.
+  incomplete at the parser-produced page boundary. Existing host-stream
+  downloaded-font fixtures prove install and visible glyph rendering, while
+  existing span fixtures prove the metric consumers and visible span rows.
+  The missing middle is a single host-stream soft-font page that proves the
+  installed descriptor metrics become the context fields consumed by `0xd4ac`
+  or `0xd8fc`.

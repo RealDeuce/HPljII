@@ -156,12 +156,14 @@ pixels or byte-stream compatibility.
 1. Font/context producer ownership for span metric fields remains incomplete.
    The consumers are known: unflagged `0xd4ac` reads context `+0x2b`,
    `+0x2c`, `+0x2d`; flagged `0xd8fc` reads `+0x16`, `+0x18`, `+0x1a`.
-   The selected-context bridge is documented in
-   `notes/font-context-metrics.md`, and the downloaded descriptor/payload
-   producer side is documented in `notes/downloaded-fonts.md`; the open edge
-   is proving every built-in/downloaded metric-byte form with parser-produced
-   pages. Evidence: `notes/semantic-state-model.md` under `Text Span Flush And
-   Fixed-Width Spans`.
+   The selected-context bridge and current metric evidence boundary are
+   documented in `notes/font-context-metrics.md`, and the downloaded
+   descriptor/payload producer side is documented in `notes/downloaded-fonts.md`.
+   The open edge is narrower than the consumer behavior: prove, with a
+   parser-produced soft-font page, that installed descriptor metrics become
+   the context fields consumed by `0xd4ac` or `0xd8fc`. Evidence:
+   `notes/semantic-state-model.md` under `Text Span Flush And Fixed-Width
+   Spans`.
 2. VFC table definition and channel jumps now have a tracked command-family
    contract in `notes/vertical-forms-control.md`. The remaining VFC risk is
    broader final-device image comparison, not an unresolved middle edge in the
@@ -189,8 +191,10 @@ pixels or byte-stream compatibility.
 The next work should follow dataflow, not isolated handlers:
 
 1. Prove the remaining font metric-byte combinations with parser-produced
-   pages. The selected-context bridge and downloaded descriptor/payload
-   producer chain are now tracked, but exhaustive metric provenance is not.
+   pages. The selected-context bridge, metric consumers, downloaded
+   descriptor/payload producer chain, and host-stream downloaded glyph output
+   are now tracked. The missing middle is descriptor metric provenance into
+   `0xd4ac` / `0xd8fc` span rows.
 2. Build a small page-image fixture suite from complete byte streams that mix
    text, rules, raster, geometry, font selection, and publication, then compare
    the final bitmap rows as the primary reproduction contract.

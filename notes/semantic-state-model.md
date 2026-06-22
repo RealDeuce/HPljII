@@ -1779,9 +1779,9 @@ modeled. The start-after-text no-wrap bottom-recovery path is modeled for
 start line `64` with an empty table, the start-after-text wrap-after-text
 path is modeled for default-table line-1 placement and line-63 bottom
 recovery, and selector-zero start-after-text top-of-form recovery is
-modeled for start line `64`. Alternate bottom-recovery and alternate
-wrap-recovery entrances inside the channel-jump consumer still need
-fixtures.
+modeled for start line `64`. Alternate high-start entries are now also
+modeled for start line `80`: no-hit bottom recovery, wrapped line-70
+bottom recovery, and selector-zero top-of-form recovery.
 
 Concept: vertical forms control is a per-line, 16-channel stop table used
 by `ESC &l#W` definitions and consumed by `ESC &l#V` vertical channel
@@ -1998,6 +1998,13 @@ top-of-form page-eject path.
   Branch `0x12a22..0x12a78` sees no selector-2 bit before wrap returns
   to start line `3`, calls `0xf34a`, `0xf124`, `0xf06e`, and `0xf34a`,
   then writes top-of-form cursor y `126`.
+- `0x1280a` high-start alternate entries are modeled directly. For start
+  line `80`, empty-table selector 2 takes `0x12a02..0x12afc` and writes
+  recovered y `1104`; a wrapped selector-2 hit at line `70` takes
+  `0x12a7a..0x12afc`, skips `0x12a8a..0x12aa2`, enters
+  `0x12afc..0x12b5a`, and writes recovered y `1604`; selector zero
+  takes `0x1299c..0x12b92`, enters `0x12b5e..0x12b92`, and writes
+  top-of-form y `126`.
 
 ### Readers And Consumers
 
@@ -2048,6 +2055,12 @@ top-of-form page-eject path.
   anywhere in `0x782dde..0x782e5d`; the wrap search returns to start
   line `3`, enters `0x12a22..0x12a78`, publishes the current page, and
   writes the top-of-form target.
+- The modeled high-start alternate path starts at line `80` with
+  `0x782ede = 100` and `0x782ee0 = 62`, so it proves the same
+  branch predicates when the computed start is well past the text region:
+  empty-table no-hit recovery uses `target_line = 80`, wrapped
+  after-text recovery uses wrapped `target_line = 70`, and selector-zero
+  recovery uses `0x12b5e..0x12b92`.
 - `0xf36c` consumes the derived limit `0x782dc2` during vertical
   overflow/perforation handling.
 - Printable output is indirectly affected: the `ESC &l4W 00 00 00 02 !`
@@ -2214,6 +2227,15 @@ page at compact coord `0xde02`, resets x to `10`, writes top-of-form y
 `126`, and queues the following printable on a fresh page at compact
 coord `0x9001`, bucket `6`.
 
+The direct high-start fixture uses the same `0x1280a` state model with
+`0x782ee0 = 62`, `0x782ede = 100`, and computed start line `80`. With an
+empty table, selector 2 takes `0x12a02..0x12afc`, skips publication, and
+writes recovered y `1104`. With channel 2 at line `70`, selector 2 takes
+`0x12a7a..0x12afc`, skips `0x12a8a..0x12aa2`, enters
+`0x12afc..0x12b5a`, and writes recovered y `1604`. Selector zero with
+the same start line takes `0x1299c..0x12b92`, enters
+`0x12b5e..0x12b92`, and writes top-of-form y `126`.
+
 ### Confidence
 
 High for the `0x11f6e -> 0x12cfe` delayed payload boundary, lowercase
@@ -2238,11 +2260,14 @@ computed start line is `64` and the default table has selector 2 at line
 `0x12a7a..0x12afc` when computed start line is `64` and the table has
 selector 2 only at line `63`. High for the selector-zero start-after-text
 recovery through
-`0x1299c..0x12b92` when computed start line is `64`. Medium for the exact
-semantic names of `0x782ede`/`0x782edf`/`0x782ee0`; the line-count
-interpretation matches fixtures and disassembly, but alternate
-wrap-recovery and alternate bottom-recovery entrances still need complete
-lifting.
+`0x1299c..0x12b92` when computed start line is `64`. High for the
+alternate high-start entries through `0x12a02..0x12afc`,
+`0x12a7a..0x12afc`, `0x12afc..0x12b5a`, and `0x12b5e..0x12b92` because
+the direct fixture uses start line `80`, wrapped target line `70`, and
+selector zero from the same state block. Medium for the exact semantic
+names of `0x782ede`/`0x782edf`/`0x782ee0`; the line-count interpretation
+matches fixtures and disassembly, but the byte names remain inferred from
+their use rather than from HP terminology.
 
 ### Fixtures
 
@@ -2266,6 +2291,7 @@ lifting.
 - `mixed VFC wrap-hit publishes old page before fresh printable`
 - `mixed VFC wrap-no-hit publishes old page and returns to top`
 - `mixed VFC target-after-text recovers near top before fresh printable`
+- `0x1280a VFC alternate high-start recovery entries`
 - Supporting existing fixtures:
   `0xc992 ESC &l#D accepts ROM LPI set and refreshes pending vertical
   cursor`, `0xf9e8 ESC &l#P converts VMI lines to page length and
@@ -2284,19 +2310,5 @@ lifting.
 
 ### Unresolved Middle Edges
 
-- `0x12a02..0x12a10`: start-after-text bottom recovery is modeled for
-  start line `64` only when the table has no wrapped selector hit; higher
-  start-line values still need fixtures.
-- `0x12a22..0x12a78`: no-hit publication is modeled for the empty-table
-  line-3 case, and wrap-after-text line-1 placement is modeled through
-  `0x12a7a..0x12af8`; alternate direct entrances where the wrapped scan
-  reaches or hits at/after the original start line still need fixtures.
-- `0x12afc..0x12b5a`: bottom/page-recovery placement is modeled for the
-  target-after-text line-63 case and the start-after-text wrapped line-63
-  case; alternate direct entrances and target-line values still need
-  fixtures.
-- `0x12b5e..0x12b92`: selector-zero start-after-text recovery is modeled
-  for start line `64`; wrap-branch entrants into this recovery still need
-  fixtures.
 - `0x12b96..0x12cfc`: default table bit meanings are known by bit
   positions but not fully named by PCL channel convention.

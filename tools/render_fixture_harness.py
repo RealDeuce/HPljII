@@ -50146,6 +50146,144 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "published_rows": expected_vfc_after_text_published_rows,
         "current_rows": expected_vfc_after_text_rows,
     }))
+
+    vfc_alt_base_state = {
+        **vfc_direct_state,
+        "cursor_x": pack12(40),
+        "cursor_y": pack12(4090),
+        "vfc_text_last_line_782ee0": 62,
+        "vfc_last_line_782ede": 100,
+        "events": [],
+    }
+    vfc_alt_no_hit = apply_vertical_forms_channel_jump_via_1280a(
+        {
+            **vfc_alt_base_state,
+            "vfc_table_782dde": bytes(0x100),
+        },
+        2,
+    )
+    vfc_alt_wrap_table = bytearray(0x100)
+    vfc_alt_wrap_table[70 * 2 : 70 * 2 + 2] = b"\x00\x02"
+    vfc_alt_wrap_after_text = apply_vertical_forms_channel_jump_via_1280a(
+        {
+            **vfc_alt_base_state,
+            "vfc_table_782dde": bytes(vfc_alt_wrap_table),
+        },
+        2,
+    )
+    vfc_alt_selector_zero = apply_vertical_forms_channel_jump_via_1280a(
+        {
+            **vfc_alt_base_state,
+            "vfc_table_782dde": bytes(0x100),
+        },
+        0,
+    )
+    vfc_alt_no_hit_event = vfc_alt_no_hit["events"][-1]
+    vfc_alt_wrap_event = vfc_alt_wrap_after_text["events"][-1]
+    vfc_alt_selector_zero_event = vfc_alt_selector_zero["events"][-1]
+    assert isinstance(vfc_alt_no_hit_event, dict)
+    assert isinstance(vfc_alt_wrap_event, dict)
+    assert isinstance(vfc_alt_selector_zero_event, dict)
+    checks.append(assert_equal(
+        "0x1280a VFC alternate high-start recovery entries",
+        {
+            "no_hit": {
+                "kind": vfc_alt_no_hit_event["kind"],
+                "start_line": vfc_alt_no_hit_event["start_line"],
+                "target_line": vfc_alt_no_hit_event["target_line"],
+                "text_last_line": vfc_alt_no_hit_event["text_last_line"],
+                "last_line": vfc_alt_no_hit_event["last_line"],
+                "max_search_line": vfc_alt_no_hit_event["max_search_line"],
+                "cursor_before": vfc_alt_no_hit_event["cursor_before"],
+                "cursor_after": vfc_alt_no_hit_event["cursor_after"],
+                "helpers": vfc_alt_no_hit_event["helpers"],
+                "disassembly_edge": vfc_alt_no_hit_event["disassembly_edge"],
+                "page_root_created": vfc_alt_no_hit_event["page_root"][
+                    "page_root_created"
+                ],
+            },
+            "wrap_after_text": {
+                "kind": vfc_alt_wrap_event["kind"],
+                "start_line": vfc_alt_wrap_event["start_line"],
+                "target_line": vfc_alt_wrap_event["target_line"],
+                "text_last_line": vfc_alt_wrap_event["text_last_line"],
+                "last_line": vfc_alt_wrap_event["last_line"],
+                "max_search_line": vfc_alt_wrap_event["max_search_line"],
+                "cursor_before": vfc_alt_wrap_event["cursor_before"],
+                "cursor_after": vfc_alt_wrap_event["cursor_after"],
+                "helpers": vfc_alt_wrap_event["helpers"],
+                "skipped_publication_edge": vfc_alt_wrap_event[
+                    "skipped_publication_edge"
+                ],
+                "disassembly_edge": vfc_alt_wrap_event["disassembly_edge"],
+                "bottom_recovery_edge": vfc_alt_wrap_event["bottom_recovery_edge"],
+                "page_root_created": vfc_alt_wrap_event["page_root"][
+                    "page_root_created"
+                ],
+            },
+            "selector_zero": {
+                "kind": vfc_alt_selector_zero_event["kind"],
+                "target_y": vfc_alt_selector_zero_event["target_y"],
+                "start_line": vfc_alt_selector_zero_event["start_line"],
+                "text_last_line": vfc_alt_selector_zero_event["text_last_line"],
+                "last_line": vfc_alt_selector_zero_event["last_line"],
+                "cursor_before": vfc_alt_selector_zero_event["cursor_before"],
+                "cursor_after": vfc_alt_selector_zero_event["cursor_after"],
+                "helpers": vfc_alt_selector_zero_event["helpers"],
+                "disassembly_edge": vfc_alt_selector_zero_event[
+                    "disassembly_edge"
+                ],
+                "recovery_edge": vfc_alt_selector_zero_event["recovery_edge"],
+                "page_root_created": vfc_alt_selector_zero_event["page_root"][
+                    "page_root_created"
+                ],
+            },
+        },
+        {
+            "no_hit": {
+                "kind": "vfc-channel-jump-start-after-text-bottom-recovery-no-publish",
+                "start_line": 80,
+                "target_line": 80,
+                "text_last_line": 62,
+                "last_line": 100,
+                "max_search_line": 100,
+                "cursor_before": {"x": pack12(40), "y": pack12(4090)},
+                "cursor_after": {"x": pack12(10), "y": pack12(1104)},
+                "helpers": (0x010084, 0x00F06E, 0x00F34A),
+                "disassembly_edge": "0x12a02..0x12afc",
+                "page_root_created": True,
+            },
+            "wrap_after_text": {
+                "kind": "vfc-channel-jump-wrap-after-text-bottom-recovery-no-publish",
+                "start_line": 80,
+                "target_line": 70,
+                "text_last_line": 62,
+                "last_line": 100,
+                "max_search_line": 100,
+                "cursor_before": {"x": pack12(40), "y": pack12(4090)},
+                "cursor_after": {"x": pack12(10), "y": pack12(1604)},
+                "helpers": (0x010084, 0x00F06E, 0x00F34A),
+                "skipped_publication_edge": "0x12a7a..0x12aa2",
+                "disassembly_edge": "0x12a7a..0x12afc",
+                "bottom_recovery_edge": "0x12afc..0x12b5a",
+                "page_root_created": True,
+            },
+            "selector_zero": {
+                "kind": "vfc-channel-jump-selector-zero-start-after-text-recovery",
+                "target_y": pack12(126),
+                "start_line": 80,
+                "text_last_line": 62,
+                "last_line": 100,
+                "cursor_before": {"x": pack12(40), "y": pack12(4090)},
+                "cursor_after": {"x": pack12(10), "y": pack12(126)},
+                "helpers": (0x010084, 0x00F06E, 0x00F34A),
+                "disassembly_edge": "0x1299c..0x12b92",
+                "recovery_edge": "0x12b5e..0x12b92",
+                "page_root_created": True,
+            },
+        },
+    ))
+
     orientation_page_record_stream = render_printable_page_geometry_page_record_stream(
         data,
         resources,
@@ -51324,6 +51462,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- A mixed VFC wrap-hit stream `!\\x1b&l2V!` starts at y `226`, wraps the channel search through `0x129c6..0x12af8`, publishes the old page at compact coord `0xde02`, and queues the next `!` on a fresh page at compact coord `0xb001`.")
     lines.append("- A mixed VFC wrap-no-hit stream `!\\x1b&l2V!` with no channel 2 stops at `0x12a22..0x12a78`, publishes the old page at compact coord `0xde02`, returns to top-of-form y `126`, and queues the next `!` at compact coord `0x9001`.")
     lines.append("- A mixed VFC target-after-text stream `!\\x1b&l2V!` with channel 2 at line 63 routes through `0x129ee..0x12b5a`, publishes the old page at compact coord `0x4e02`, recovers y to `104`, and queues the next `!` at compact coord `0x3001`.")
+    lines.append(
+        "- Direct high-start VFC branch fixtures start at line 80 and pin "
+        "`0x12a02..0x12afc` no-hit recovery, `0x12a7a..0x12afc` wrapped "
+        "line-70 recovery, and selector-zero `0x12b5e..0x12b92` recovery."
+    )
     lines.append("- A mixed printable/orientation page-record stream starts from letter portrait with no current page root, drives `!` then `ESC &l1O`, allocates the page-record root on the printable queue step, and publishes the queued compact text bucket through the orientation handler's `0xf34a`/`0xff1e` boundary before switching to landscape geometry.")
     lines.append(f"- orientation publication object bytes: `{' '.join(f'{byte:02x}' for byte in orientation_page_record_object)}`")
     lines.append("- orientation published page-record bridge rows match the pre-landscape compact text rows.")

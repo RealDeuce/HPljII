@@ -361,10 +361,13 @@ for start line `64` with an empty table, and the start-after-text
 wrap-after-text path is anchored through `0x12a7a..0x12af8` for the
 default line-1 selector hit, plus `0x12a7a..0x12afc` for the line-63
 selector hit. The selector-zero start-after-text recovery path is
-anchored through `0x1299c..0x12b92`. The highest-value unresolved middle
-edges are alternate-entry `0x12a02..0x12a10`, alternate-entry
-`0x12a22..0x12a78`, alternate-entry `0x12afc..0x12b5a`, and wrap-entry
-`0x12b5e..0x12b92`.
+anchored through `0x1299c..0x12b92`. Alternate high-start entries are
+now fixture-covered for start line `80`: empty-table no-hit recovery
+through `0x12a02..0x12afc`, wrapped line-70 bottom recovery through
+`0x12a7a..0x12afc` and `0x12afc..0x12b5a`, and selector-zero
+top-of-form recovery through `0x12b5e..0x12b92`. The remaining VFC
+semantic gap is naming the default-table bit convention at
+`0x12b96..0x12cfc` against PCL channel terminology.
 
 ### Raster/text/page-object path
 

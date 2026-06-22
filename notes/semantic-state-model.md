@@ -1182,6 +1182,13 @@ record.
   - `0x7828f9`: engine I/O shadow byte written to `$a801` by the
     `0x0fa2` interrupt path. Bit 7 toggles after the threshold and bit 6
     is set on pending-status escalation or beyond-last status.
+  - `0x780e32`, `0x780e36`, and `0x7821f9.2`: wrapper attention sources
+    tested at `0x1d62..0x1d82`. Any of `(0x780e32 & 5)`,
+    `(0x780e36 & 3)`, or `0x7821f9.2` sends `0x1cf8` to the `0x1e80`
+    attention variant.
+  - `0x780e6d`: active-pool attention/status flag set by `0x1e44`,
+    `0x1e80`, and `0x1ea8`; `0x780e67`: timeout-class status byte set
+    to `1` by `0x1ea8`.
   - `0x7820bc`, `0x780ea4`, `0x780ea5`, `0x780eaa`, `0x780eae`, and
     `0x783a18` are scheduler/render bookkeeping, not page-object fields.
 - Unknown:
@@ -1273,6 +1280,17 @@ record.
 - `0x1e44..0x1e7c` consumes escalated byte `0x78399f`: when nonzero, it
   sets `0x780e6d`, signals bit `1` at `0x780e2e` through `0x9ba2`, and
   then enters `0x2038`.
+- `0x1cf8..0x1dac` dispatches one active-pool wrapper cycle. Elapsed
+  `0x780e04 - start >= 0x191` calls `0x1ea8` and returns `D7 = 0`;
+  pending `0x78399e` calls `0x1db0` before continuing to the engine-ready
+  decision; helper `0xa680` returning zero calls `0x1e44` and returns
+  `D7 = 1`; attention bits call `0x1e80` and return `D7 = 0`; otherwise
+  it waits through `0x10e0(0x7801a2, 3)` and loops.
+- `0x1e80..0x1ea6` is the attention variant. It calls `0xa668`, sets
+  `0x780e6d = 1`, then enters `0x2038`.
+- `0x1ea8..0x1ee8` is the timeout variant. It calls `0xa668`, sets
+  `0x780e6d = 1`, sets `0x780e67 = 1`, signals bit `1` at `0x780e36`
+  through `0x9ba2`, then enters `0x2038`.
 
 ### Readers And Consumers
 
@@ -1309,6 +1327,9 @@ record.
   and clears `0x78399e`.
 - `0x1e44..0x1e7c` reads escalated byte `0x78399f`; `0x1cf8..0x1d58`
   reaches it when the engine-ready helper `0xa680` returns zero.
+- `0x1cf8..0x1dac` reads `0x780e04`, `0x78399e`, the return from
+  `0xa680`, `0x780e32`, `0x780e36`, and `0x7821f9.2` to select
+  `0x1db0`, `0x1e44`, `0x1e80`, `0x1ea8`, or the `0x10e0` wait loop.
 
 ### Output Effect
 
@@ -1406,6 +1427,29 @@ elapsed `0xc9`, and `0x780eae == 0x780eb2`, that call sets
 `0x780ea5 = 1`. The fixture intentionally leaves `0x78399f` set,
 matching the observed `0x1e44` code, which tests but does not clear it.
 
+The wrapper-dispatch fixture
+`0x1cf8/0x1e80/0x1ea8 wrapper dispatch selects engine variants` composes
+the status-copy path with the remaining wrapper exits. With elapsed
+`0x10`, pending `0x78399e = 1`, helper `0xa680` modeled as nonzero, and
+`0x780e32 = 4`, `0x1cf8` first calls `0x1db0`; that computes source
+`0x00102000`, copies one eight-row pass, clears `0x78399e`, and advances
+phase from `1` to `2`. The same wrapper pass then selects `0x1e80`,
+calls `0xa668`, sets `0x780e6d = 1`, enters `0x2038`, copies the
+phase-2 pass, increments work word `+16` from `3` to `4`, resets phase
+to `1`, recomputes `0x783992 = 0x00102800`, and returns `D7 = 0`.
+
+The timeout side starts with elapsed `0x191` and work word `+16 = 5`.
+It selects `0x1ea8`, calls `0xa668`, sets `0x780e6d = 1`, sets
+`0x780e67 = 1`, signals bit `1` at `0x780e36`, enters `0x2038`, and
+sets `0x780ea5 = 1` on the done-active-source path before returning
+`D7 = 0`. The bridge side models helper `0xa680` as zero with
+`0x78399f = 1`; `0x1cf8` calls `0x1e44`, which signals `0x780e2e`,
+enters `0x2038`, sets `0x780ea5 = 1`, and returns `D7 = 1`. The wait
+side models helper `0xa680` as nonzero with `0x780e32 = 0`,
+`0x780e36 = 0`, and `0x7821f9.2 = 0`; it calls
+`0x10e0(0x7801a2, 3)` and loops without producing a terminal `D7` in the
+bounded fixture.
+
 ### Confidence
 
 High for the distinction between protected pool head `0x780ea6` and
@@ -1417,14 +1461,18 @@ two-work-record alternation, `0x783a18`, the `0x2126` pointer aliases,
 the `0x1a4c` copy-window scalars, the `0x22f4` row-copy address pattern,
 the `0x2456` source-address arithmetic, the `0x0fa2` threshold and
 pending-status transitions, the `0x1db0` status-copy path, the `0x1e44`
-escalated-status bridge, the `0x1ee9e` geometry-change boundary, the
-`0x1ed36..0x1ed6a` same-geometry reuse branch, and the render-entry
-output for the selected source. Medium for the surrounding engine pacing
-loop because the fixture does not model `0x10c8`, `0x10c4`, `0x10d0`,
-or `0x10d8`, and medium for the physical meaning of `$8000`, `$a601`,
-`$a801`, and `0x7828f9` because the byte-level side effects are pinned
-but not tied to measured engine timing yet. Medium for `0x780eb6`
-because only its initialization is currently covered.
+escalated-status bridge, the `0x1cf8` wrapper branch predicates, the
+`0x1e80` attention variant, the `0x1ea8` timeout variant, the `0x1ee9e`
+geometry-change boundary, the `0x1ed36..0x1ed6a` same-geometry reuse
+branch, and the render-entry output for the selected source. Medium for
+the surrounding engine pacing loop because the fixture bounds the
+`0x10e0` wait loop instead of executing it to a later interrupt state,
+and because it does not model `0x10c8`, `0x10c4`, `0x10d0`, or
+`0x10d8`. Medium for the physical meaning of `$8000`, `$a601`, `$a801`,
+`0x7828f9`, `0xa668`, and `0xa680` because the byte-level side effects
+and branch returns are pinned but not tied to measured engine timing yet.
+Medium for `0x780eb6` because only its initialization is currently
+covered.
 
 ### Fixtures
 
@@ -1434,6 +1482,7 @@ because only its initialization is currently covered.
 - `0x1958/0x1c04/0x1eea staged candidate reaches render scheduler`
 - `0x2126/0x1a4c/0x2038 active pool copy window feeds engine rows`
 - `0x0fa2/0x1db0/0x1e44 status feedback drives copy and done flag`
+- `0x1cf8/0x1e80/0x1ea8 wrapper dispatch selects engine variants`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`
 
@@ -1469,14 +1518,10 @@ because only its initialization is currently covered.
 ### Unresolved Middle Edges
 
 - `0x0f84..0x0fa0`, `0x1020..0x108e`, and the MMIO/helper calls inside
-  `0x1cf8..0x1dac`: the `0x78399e/9f` feedback bytes, `0x1db0`, and
-  `0x1e44` are modeled, but the physical interrupt entry/exit,
-  `$8000`, `$a601`, `$a801`, helper `0xa6cc`, helper `0xa680`, and wait
-  helper `0x10e0` still need exact engine-interface meaning.
-- `0x1e80..0x1ee0`: attention and timeout variants set `0x780e6d`,
-  `0x780e67`, and signal `0x780e36`, then enter `0x2038`; exact trigger
-  conditions from `0x780e32`, `0x780e36`, `0x7821f9`, and elapsed
-  `0x191` are not yet fixture-covered.
+  `0x1cf8..0x1dac`: the wrapper branch predicates and selected variants
+  are modeled, but the physical interrupt entry/exit, `$8000`, `$a601`,
+  `$a801`, helper `0xa6cc`, helper `0xa668`, helper `0xa680`, and the
+  repeated `0x10e0` wait loop still need exact engine-interface meaning.
 - `0x1eba4..0x1ecd2`: render loop pacing, band advance, and engine
   waits are not yet modeled.
 

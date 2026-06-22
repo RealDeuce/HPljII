@@ -13354,6 +13354,98 @@ def active_pool_status_bridge_via_1e44(state: dict[str, object]) -> dict[str, ob
     }
 
 
+def active_pool_attention_variant_via_1e80(state: dict[str, object]) -> dict[str, object]:
+    """Model the 0x1e80 attention variant before it enters 0x2038."""
+    state["a668_calls"] = int(state.get("a668_calls", 0)) + 1
+    state["status_flag_780e6d"] = 1
+    engine = active_pool_engine_copy_via_2038(state)
+    return {
+        "variant": "attention",
+        "a668_calls": int(state.get("a668_calls", 0)),
+        "status_flag_780e6d": int(state.get("status_flag_780e6d", 0)),
+        "engine": engine,
+    }
+
+
+def active_pool_timeout_variant_via_1ea8(state: dict[str, object]) -> dict[str, object]:
+    """Model the 0x1ea8 timeout variant before it enters 0x2038."""
+    state["a668_calls"] = int(state.get("a668_calls", 0)) + 1
+    state["status_flag_780e6d"] = 1
+    state["status_flag_780e67"] = 1
+    signals = list(state.get("signals", []))
+    signals.append({"helper": 0x9BA2, "target": 0x00780E36, "bit": 1})
+    state["signals"] = signals
+    engine = active_pool_engine_copy_via_2038(state)
+    return {
+        "variant": "timeout",
+        "a668_calls": int(state.get("a668_calls", 0)),
+        "status_flag_780e6d": int(state.get("status_flag_780e6d", 0)),
+        "status_flag_780e67": int(state.get("status_flag_780e67", 0)),
+        "signals": signals,
+        "engine": engine,
+    }
+
+
+def active_pool_wrapper_dispatch_via_1cf8(state: dict[str, object]) -> dict[str, object]:
+    """Model one bounded 0x1cf8 dispatcher pass across its engine variants."""
+    start_counter = int(state.get("wrapper_start_780e04", state.get("engine_counter_780e04", 0)))
+    current_counter = int(state.get("engine_counter_780e04", start_counter))
+    elapsed = current_counter - start_counter
+    status_copy: dict[str, object] | None = None
+    if elapsed >= 0x191:
+        timeout = active_pool_timeout_variant_via_1ea8(state)
+        return {
+            "path": "timeout-return-zero",
+            "elapsed": elapsed,
+            "status_copy": None,
+            "variant": timeout,
+            "return_d7": 0,
+        }
+
+    if int(state.get("status_flag_78399e", 0)):
+        status_copy = active_pool_status_copy_via_1db0(state)
+
+    if int(state.get("engine_ready_a680", 0)) == 0:
+        bridge = active_pool_status_bridge_via_1e44(state)
+        return {
+            "path": "bridge-return-one",
+            "elapsed": elapsed,
+            "status_copy": status_copy,
+            "variant": bridge,
+            "return_d7": 1,
+        }
+
+    status_word = int(state.get("status_word_780e32", 0))
+    signal_word = int(state.get("signal_word_780e36", 0))
+    status_byte = int(state.get("status_byte_7821f9", 0))
+    attention = bool((status_word & 0x5) or (signal_word & 0x3) or (status_byte & 0x4))
+    if attention:
+        variant = active_pool_attention_variant_via_1e80(state)
+        return {
+            "path": "attention-return-zero",
+            "elapsed": elapsed,
+            "status_copy": status_copy,
+            "attention_sources": {
+                "status_word_780e32": status_word,
+                "signal_word_780e36": signal_word,
+                "status_byte_7821f9": status_byte,
+            },
+            "variant": variant,
+            "return_d7": 0,
+        }
+
+    waits = list(state.get("waits", []))
+    waits.append({"helper": 0x10E0, "target": 0x007801A2, "argument": 3})
+    state["waits"] = waits
+    return {
+        "path": "wait-loop",
+        "elapsed": elapsed,
+        "status_copy": status_copy,
+        "waits": waits,
+        "return_d7": None,
+    }
+
+
 def compute_engine_source_address_via_2456(state: dict[str, object], row_index: int) -> int:
     """Model the address arithmetic at 0x2456."""
     work_record = state.get("active_pool_work_record", {})
@@ -27765,6 +27857,222 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "word_16_after": 5,
                     "active_render_loop_flag_780ea5": 1,
                 },
+            },
+        },
+    ))
+
+    status_attention_state = feedback_state()
+    status_attention_state.update({
+        "status_flag_78399e": 1,
+        "engine_ready_a680": 1,
+        "status_word_780e32": 0x00000004,
+        "wrapper_start_780e04": 0x2000,
+        "engine_counter_780e04": 0x2010,
+    })
+    status_attention = active_pool_wrapper_dispatch_via_1cf8(status_attention_state)
+    status_attention_copy = status_attention["status_copy"]
+    assert isinstance(status_attention_copy, dict)
+    status_attention_copy_pass = status_attention_copy["copy_pass"]
+    assert isinstance(status_attention_copy_pass, dict)
+    status_attention_variant = status_attention["variant"]
+    assert isinstance(status_attention_variant, dict)
+    status_attention_engine = status_attention_variant["engine"]
+    assert isinstance(status_attention_engine, dict)
+
+    timeout_state = feedback_state(word_16=5)
+    timeout_state.update({
+        "wrapper_start_780e04": 0x2000,
+        "engine_counter_780e04": 0x2191,
+    })
+    timeout_dispatch = active_pool_wrapper_dispatch_via_1cf8(timeout_state)
+    timeout_variant = timeout_dispatch["variant"]
+    assert isinstance(timeout_variant, dict)
+    timeout_engine = timeout_variant["engine"]
+    assert isinstance(timeout_engine, dict)
+
+    bridge_state = feedback_state(word_16=5)
+    bridge_state.update({
+        "status_flag_78399f": 1,
+        "engine_ready_a680": 0,
+        "wrapper_start_780e04": 0x2000,
+        "engine_counter_780e04": 0x2008,
+    })
+    bridge_dispatch = active_pool_wrapper_dispatch_via_1cf8(bridge_state)
+    bridge_variant = bridge_dispatch["variant"]
+    assert isinstance(bridge_variant, dict)
+    bridge_engine = bridge_variant["engine"]
+    assert isinstance(bridge_engine, dict)
+
+    wait_state = feedback_state()
+    wait_state.update({
+        "engine_ready_a680": 1,
+        "status_word_780e32": 0,
+        "signal_word_780e36": 0,
+        "status_byte_7821f9": 0,
+        "wrapper_start_780e04": 0x2000,
+        "engine_counter_780e04": 0x2004,
+    })
+    wait_dispatch = active_pool_wrapper_dispatch_via_1cf8(wait_state)
+    checks.append(assert_equal(
+        "0x1cf8/0x1e80/0x1ea8 wrapper dispatch selects engine variants",
+        {
+            "status_attention": {
+                "path": status_attention["path"],
+                "elapsed": status_attention["elapsed"],
+                "return_d7": status_attention["return_d7"],
+                "status_copy": {
+                    "path": status_attention_copy["path"],
+                    "phase_before": status_attention_copy["phase_before"],
+                    "phase_after": status_attention_copy["phase_after"],
+                    "word_16_before": status_attention_copy["word_16_before"],
+                    "word_16_after": status_attention_copy["word_16_after"],
+                    "status_flag_78399e_after": status_attention_copy[
+                        "status_flag_78399e_after"
+                    ],
+                    "source_start": status_attention_copy_pass["source_start"],
+                },
+                "attention_sources": status_attention["attention_sources"],
+                "variant": {
+                    "variant": status_attention_variant["variant"],
+                    "a668_calls": status_attention_variant["a668_calls"],
+                    "status_flag_780e6d": status_attention_variant[
+                        "status_flag_780e6d"
+                    ],
+                    "engine": {
+                        "path": status_attention_engine["path"],
+                        "phase_before": status_attention_engine["phase_before"],
+                        "phase_after": status_attention_engine["phase_after"],
+                        "word_16_before": status_attention_engine[
+                            "word_16_before"
+                        ],
+                        "word_16_after": status_attention_engine["word_16_after"],
+                        "copy_source_ptr_783992": status_attention_engine[
+                            "copy_source_ptr_783992"
+                        ],
+                        "copied": status_attention_engine["copied"],
+                    },
+                },
+            },
+            "timeout": {
+                "path": timeout_dispatch["path"],
+                "elapsed": timeout_dispatch["elapsed"],
+                "return_d7": timeout_dispatch["return_d7"],
+                "variant": {
+                    "variant": timeout_variant["variant"],
+                    "a668_calls": timeout_variant["a668_calls"],
+                    "status_flag_780e6d": timeout_variant["status_flag_780e6d"],
+                    "status_flag_780e67": timeout_variant["status_flag_780e67"],
+                    "signals": timeout_variant["signals"],
+                    "engine": {
+                        "path": timeout_engine["path"],
+                        "phase_before": timeout_engine["phase_before"],
+                        "phase_after": timeout_engine["phase_after"],
+                        "word_16_before": timeout_engine["word_16_before"],
+                        "word_16_after": timeout_engine["word_16_after"],
+                        "active_render_loop_flag_780ea5": timeout_engine[
+                            "active_render_loop_flag_780ea5"
+                        ],
+                    },
+                },
+            },
+            "bridge": {
+                "path": bridge_dispatch["path"],
+                "elapsed": bridge_dispatch["elapsed"],
+                "return_d7": bridge_dispatch["return_d7"],
+                "variant": {
+                    "status_flag_78399f_before": bridge_variant[
+                        "status_flag_78399f_before"
+                    ],
+                    "status_flag_780e6d": bridge_variant["status_flag_780e6d"],
+                    "signaled_780e2e": bridge_variant["signaled_780e2e"],
+                    "engine": {
+                        "path": bridge_engine["path"],
+                        "active_render_loop_flag_780ea5": bridge_engine[
+                            "active_render_loop_flag_780ea5"
+                        ],
+                    },
+                },
+            },
+            "wait": wait_dispatch,
+        },
+        {
+            "status_attention": {
+                "path": "attention-return-zero",
+                "elapsed": 0x10,
+                "return_d7": 0,
+                "status_copy": {
+                    "path": "phase1-source-copy",
+                    "phase_before": 1,
+                    "phase_after": 2,
+                    "word_16_before": 3,
+                    "word_16_after": 3,
+                    "status_flag_78399e_after": 0,
+                    "source_start": 0x00102000,
+                },
+                "attention_sources": {
+                    "status_word_780e32": 0x00000004,
+                    "signal_word_780e36": 0,
+                    "status_byte_7821f9": 0,
+                },
+                "variant": {
+                    "variant": "attention",
+                    "a668_calls": 1,
+                    "status_flag_780e6d": 1,
+                    "engine": {
+                        "path": "ready-for-copy",
+                        "phase_before": 2,
+                        "phase_after": 1,
+                        "word_16_before": 3,
+                        "word_16_after": 4,
+                        "copy_source_ptr_783992": 0x00102800,
+                        "copied": True,
+                    },
+                },
+            },
+            "timeout": {
+                "path": "timeout-return-zero",
+                "elapsed": 0x191,
+                "return_d7": 0,
+                "variant": {
+                    "variant": "timeout",
+                    "a668_calls": 1,
+                    "status_flag_780e6d": 1,
+                    "status_flag_780e67": 1,
+                    "signals": [
+                        {"helper": 0x9BA2, "target": 0x00780E36, "bit": 1},
+                    ],
+                    "engine": {
+                        "path": "done-active-source",
+                        "phase_before": 1,
+                        "phase_after": 1,
+                        "word_16_before": 5,
+                        "word_16_after": 5,
+                        "active_render_loop_flag_780ea5": 1,
+                    },
+                },
+            },
+            "bridge": {
+                "path": "bridge-return-one",
+                "elapsed": 0x08,
+                "return_d7": 1,
+                "variant": {
+                    "status_flag_78399f_before": 1,
+                    "status_flag_780e6d": 1,
+                    "signaled_780e2e": True,
+                    "engine": {
+                        "path": "done-active-source",
+                        "active_render_loop_flag_780ea5": 1,
+                    },
+                },
+            },
+            "wait": {
+                "path": "wait-loop",
+                "elapsed": 0x04,
+                "status_copy": None,
+                "waits": [
+                    {"helper": 0x10E0, "target": 0x007801A2, "argument": 3},
+                ],
+                "return_d7": None,
             },
         },
     ))

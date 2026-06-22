@@ -29,6 +29,7 @@ Evidence:
   - `0xe65c refresh composes with font context bridge`
   - `flagged printable d8fc low-watermark flush renders span`
   - `unflagged printable d4ac low-watermark flush renders span`
+  - `host-fetched 0x1719c payload metrics feed d4ac span rows`
 
 ## Concept
 
@@ -121,12 +122,10 @@ Parser scratch:
 Unknown:
 
 - The bridge from selected context records to span metrics is documented for
-  concrete built-in and synthetic inline/downloaded fixtures, but every
-  possible built-in/downloaded metric-byte combination is not yet proven by a
-  parser-produced page comparison.
-- The installed downloaded-font render path is parser-backed for visible glyph
-  rows, but that fixture does not yet exercise downloaded metric-byte
-  combinations through `0xd4ac` or `0xd8fc`.
+  concrete built-in, synthetic inline/downloaded, and one host-fetched
+  `0x1719c` downloaded payload fixture, but every possible built-in/downloaded
+  metric-byte combination is not yet proven by parser-produced page
+  comparisons.
 
 ## Selection And Map Rebuild
 
@@ -289,6 +288,11 @@ Fixture-pinned metric effects:
 - Unflagged path: cursor y `21`, `+0x2b = 7`, `+0x2c = 0`,
   `+0x2d = 10`, and `0x783185 = 1` produce high-y `28`; low-water flush
   queues a segment-list object rendered on rows `12..14`.
+- Host-fetched downloaded-resource path: `ESC )s80W` validates a sparse
+  descriptor through `0x16fae`, copies it into a `0x1719c` payload, and
+  leaves payload bytes `+0x2b = 0`, `+0x2c = 0`, and `+0x2d = 0x20`.
+  Printing `!` from that selected payload enters `0xd4ac`, produces high-y
+  `26`, and queues a segment-list object rendered on rows `10..12`.
 
 ## Metric Evidence Matrix
 
@@ -328,16 +332,23 @@ work can close the right gap instead of re-tracing already-covered consumers.
   downloaded glyph page object` and `combined host-fetched font download stream
   prints installed glyph`; documented in [downloaded-fonts.md](downloaded-fonts.md).
   Status: parser-produced host stream to visible downloaded glyph rows.
-- Claim: downloaded-font descriptor metrics feed `0xd4ac` / `0xd8fc` span
-  consumers. Evidence: no tracked fixture yet combines `ESC )s#W`
-  descriptor/payload installation with a metric-sensitive span flush. Status:
-  open edge.
+- Claim: a downloaded-resource descriptor can feed `0xd4ac` span rows.
+  Evidence: fixture `host-fetched 0x1719c payload metrics feed d4ac span
+  rows`; host-fetched `ESC )s80W` reaches `0x16c14`, `0x16fae`, `0x17026`,
+  and `0x1719c`; the selected payload bytes `+0x2b`, `+0x2c`, and `+0x2d`
+  are consumed by `0xd4ac` and change rendered segment-list rows. Status:
+  parser-produced resource payload to visible unflagged span rows.
+- Claim: downloaded-resource descriptor metrics feed `0xd8fc`. Evidence: no
+  tracked fixture yet combines `ESC )s#W` payload installation with a flagged
+  selected context and metric-sensitive `0xd8fc` flush. Status: open edge.
 
-The precise unresolved middle edge is therefore not "what do `0xd4ac` and
-`0xd8fc` do?" The documented open edge is the producer side for downloaded
-and less common built-in metric bytes: drive descriptor/payload bytes from the
-parser, select the resulting resource, print a byte that enters either
-`0xd4ac` or `0xd8fc`, and compare the flushed segment-list rows.
+The remaining unresolved middle edge is therefore not "what does `0xd4ac` do?"
+for the tested `0x1719c` type-0 resource: that path now has host-fetched
+payload evidence through visible span rows. The open producer-side work is
+broader descriptor coverage and the flagged `0xd8fc` resource path: drive the
+descriptor/payload bytes from the parser, select the resulting resource in the
+flagged form, print a byte that enters `0xd8fc`, and compare the flushed
+segment-list rows.
 
 ## Macro And Control Re-entry
 
@@ -390,8 +401,7 @@ A byte-stream reproduction must preserve these behaviors:
   driven from parser bytes to visible rows.
 - The exact metric-byte provenance for all downloaded/inline forms remains
   incomplete at the parser-produced page boundary. Existing host-stream
-  downloaded-font fixtures prove install and visible glyph rendering, while
-  existing span fixtures prove the metric consumers and visible span rows.
-  The missing middle is a single host-stream soft-font page that proves the
-  installed descriptor metrics become the context fields consumed by `0xd4ac`
-  or `0xd8fc`.
+  downloaded-font fixtures prove install, visible glyph rendering, and one
+  `0x1719c` type-0 payload feeding `0xd4ac` span rows. The missing middle is
+  now the flagged `0xd8fc` downloaded-resource case plus broader descriptor
+  metric-byte combinations and rejection/error forms.

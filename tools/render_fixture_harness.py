@@ -33732,6 +33732,201 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
         },
     }))
+    table_payload_metric_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        table_payload_memory,
+        b"!",
+        0,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=pack12(18),
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            materialize_d4ac_span_update=1,
+            text_source_form="unflagged",
+            enabled_783184=1,
+            low_x_783186=100,
+            high_x_783188=120,
+            high_y_78318a=0,
+            span_alternate_offset_783185=1,
+            orientation=0,
+            page_extent_782db6=64,
+        ),
+        default_advance=pack12(18),
+    )
+    table_payload_metric_events = table_payload_metric_stream["events"]
+    assert isinstance(table_payload_metric_events, list)
+    table_payload_metric_event = table_payload_metric_events[0]
+    assert isinstance(table_payload_metric_event, dict)
+    table_payload_metric_span = table_payload_metric_event["span_update_result"]
+    assert isinstance(table_payload_metric_span, dict)
+    table_payload_metric_flush = table_payload_metric_span["flush_result"]
+    assert isinstance(table_payload_metric_flush, dict)
+    table_payload_metric_queued = table_payload_metric_flush["queued"]
+    assert isinstance(table_payload_metric_queued, dict)
+    table_payload_metric_page_record = table_payload_metric_stream["page_record"]
+    assert isinstance(table_payload_metric_page_record, dict)
+    table_payload_metric_bucket_array = table_payload_metric_page_record["bucket_array"]
+    assert isinstance(table_payload_metric_bucket_array, dict)
+    table_payload_metric_chain = [
+        bytes(obj)
+        for obj in table_payload_metric_bucket_array[1]
+    ]
+    table_payload_metric_render_entry = table_payload_metric_stream["render_entry"]
+    assert isinstance(table_payload_metric_render_entry, dict)
+    table_payload_metric_rendered = table_payload_metric_render_entry["entry"]
+    assert isinstance(table_payload_metric_rendered, dict)
+    table_payload_metric_patterns = {
+        7: "#.#.#.#..#.#.#.#",
+        8: "####........####",
+        9: "##....##..####..",
+    }
+    expected_table_payload_metric_rows: list[str] = []
+    for row_index in range(13):
+        row_bits = [False] * 116
+        pattern = table_payload_metric_patterns.get(row_index)
+        if pattern is not None:
+            for bit, value in enumerate(pattern):
+                if value == "#":
+                    row_bits[10 + bit] = True
+        if 10 <= row_index < 13:
+            for bit in range(96, 116):
+                row_bits[bit] = True
+        expected_table_payload_metric_rows.append(
+            "".join("#" if bit else "." for bit in row_bits)
+        )
+    checks.append(assert_equal("host-fetched 0x1719c payload metrics feed d4ac span rows", {
+        "resource_stream": {
+            "fetched_stream_prefix": host_fetched_resource_payload_stream["stream"][:6],
+            "parser_handlers": [
+                event["handler"]
+                for event in host_fetched_resource_payload_trace["dispatches"]
+            ],
+            "restored_record": host_fetched_resource_payload_command["restored_record"],
+            "payload_length": len(host_fetched_resource_payload),
+            "validation_status": table_payload_resource_host_control_event["validation"]["status"],  # type: ignore[index]
+            "candidate_flags": table_payload_resource_host_control_install["candidate_flags"],
+        },
+        "payload_metric_fields": {
+            "byte_0x2b": table_payload_memory[0x2B],
+            "byte_0x2c": table_payload_memory[0x2C],
+            "byte_0x2d": table_payload_memory[0x2D],
+            "word_0x2c": u16(table_payload_memory, 0x2C),
+        },
+        "printable": {
+            "byte": table_payload_metric_event["byte"],
+            "cursor_before": table_payload_metric_event["cursor_before"],
+            "cursor_after": table_payload_metric_event["cursor_after"],
+            "source": {
+                key: table_payload_metric_event["source"][key]
+                for key in ("flag", "mapped", "context_slot", "inline_record")
+            },
+            "positioned": {
+                "x": table_payload_metric_event["positioned"]["source"]["x"],
+                "y": table_payload_metric_event["positioned"]["source"]["y"],
+                "coord": table_payload_metric_event["page_result"]["coord"],
+            },
+        },
+        "span_update": {
+            "handler": table_payload_metric_span["handler"],
+            "context_offset_002b": table_payload_metric_span["context_offset_002b"],
+            "context_lower_002c": table_payload_metric_span["context_lower_002c"],
+            "context_height_002d": table_payload_metric_span["context_height_002d"],
+            "high_y": table_payload_metric_span["high_y"],
+        },
+        "flush": {
+            "raw_source": table_payload_metric_flush["raw_source"],
+            "queued": {
+                key: table_payload_metric_queued[key]
+                for key in ("path", "computed", "bucket_index", "selector", "object")
+            },
+            "rearm": table_payload_metric_flush["rearm"],
+        },
+        "chain": table_payload_metric_chain,
+        "render_rows": table_payload_metric_rendered["rows"],
+    }, {
+        "resource_stream": {
+            "fetched_stream_prefix": b"\x1b)s80W",
+            "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+            "payload_length": 80,
+            "validation_status": 1,
+            "candidate_flags": 0x40000000,
+        },
+        "payload_metric_fields": {
+            "byte_0x2b": 0,
+            "byte_0x2c": 0,
+            "byte_0x2d": 0x20,
+            "word_0x2c": 0x0020,
+        },
+        "printable": {
+            "byte": 0x21,
+            "cursor_before": pack12(10),
+            "cursor_after": pack12(28),
+            "source": {
+                "flag": 0,
+                "mapped": 0x01,
+                "context_slot": 0,
+                "inline_record": bytes.fromhex("02 03 04 00 00 00 00 a0"),
+            },
+            "positioned": {
+                "x": 10,
+                "y": 23,
+                "coord": 0x7A00,
+            },
+        },
+        "span_update": {
+            "handler": 0x00D4AC,
+            "context_offset_002b": 0,
+            "context_lower_002c": 0,
+            "context_height_002d": 0x20,
+            "high_y": 26,
+        },
+        "flush": {
+            "raw_source": {
+                "orientation": 0,
+                "mode": 0,
+                "x": 100,
+                "y": 26,
+                "extent": 20,
+            },
+            "queued": {
+                "path": "text-span-segment-list",
+                "computed": {
+                    "x": 100,
+                    "y": 26,
+                    "bucket_index": 1,
+                    "key": 0xA406,
+                    "mode": 3,
+                    "selector_hi": 0x40,
+                    "selector_lo": 0x00,
+                },
+                "bucket_index": 1,
+                "selector": 0x4000,
+                "object": (
+                    bytes.fromhex("00 00 00 00 40 00 00 01 a4 06 03 00 00 14")
+                    + (b"\x00" * 0x18)
+                ),
+            },
+            "rearm": {
+                "rearmed": True,
+                "enabled_783184": 1,
+                "low_x_783186": 28,
+                "high_x_783188": 28,
+                "high_y_78318a": 0,
+            },
+        },
+        "chain": [
+            bytes.fromhex("00 00 00 00 40 00 00 01 a4 06 03 00 00 14")
+            + (b"\x00" * 0x18),
+            bytes.fromhex("00 00 00 00 00 00 00 01 01 7a 00")
+            + (b"\x00" * 0x1b),
+        ],
+        "render_rows": expected_table_payload_metric_rows,
+    }))
 
     table_payload_type2_setup = font_resource_setup_type_via_17362(font_validate_table_staging, 2)
     table_payload_type2_allocated = font_resource_find_allocate_via_17026(

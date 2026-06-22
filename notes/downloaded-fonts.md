@@ -46,6 +46,7 @@ Primary fixtures:
 - `0x16c14-installed 0x1719c payload dispatches as bit-30 resource form`
 - `0x1719c-backed inline payload dispatches through 0x14c64`
 - `0x16fae/0x1719c-backed inline payload maps, queues, and renders one fixed record`
+- `host-fetched 0x1719c payload metrics feed d4ac span rows`
 - `0x16fae/0x1719c-backed type-2 inline payload maps constructed compact renderer
   records`
 - `0x16498-backed downloaded character object renders segmented-wide compact row`
@@ -139,6 +140,10 @@ Renderer-facing allocated payload fields:
 - glyph pointer table entry: relative offset from payload base to a
   downloaded character object, for example table entry `0x00de` points to
   record delta `0x0500` in the `ESC )s2193W` fixture.
+- payload bytes `+0x2b`, `+0x2c`, and `+0x2d`: unflagged span metrics
+  consumed by `0xd4ac` when the installed payload is used as a fixed-record
+  context. The `ESC )s80W` fixture leaves them as `0`, `0`, and `0x20`,
+  producing high-y `26` and rendered text-span rows `10..12`.
 
 Unknown:
 
@@ -235,6 +240,19 @@ The same fixture path from host fetch drains the full `ESC )s80W` stream from
 the modeled `0xa904` ring source and reaches the same restored record,
 validation status, allocation size, candidate longword, and selected
 `0x14c64` dispatch.
+
+The composed metric fixture reuses that host-fetched `ESC )s80W` payload as a
+selected fixed-record context, prints `!`, and drives `0xd4ac` from the copied
+payload bytes. It proves:
+
+- parser handlers `0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`;
+- restored record `80 57 00 50 00 00`;
+- payload length `80`;
+- installed candidate longword `0x40000000`;
+- payload metric bytes `+0x2b = 0`, `+0x2c = 0`, `+0x2d = 0x20`;
+- `0xd4ac` high-y `26`;
+- queued segment-list key `0xa406`; and
+- visible segment-list rows `10..12`.
 
 ## Descriptor Validation And Payload Header
 
@@ -466,6 +484,6 @@ A byte-stream renderer must preserve:
   isolation control. The integrated `ESC )s80W` install path currently proves
   the bit-30 offset-table form.
 - The span-metric fields documented in `notes/font-context-metrics.md` are now
-  tied to installed payload headers for specific fixtures, but every
-  downloaded/inline metric-byte combination still needs parser-produced page
-  evidence.
+  tied to installed payload headers for the `0xd4ac` type-0 fixture, but the
+  flagged `0xd8fc` downloaded-resource case and every downloaded/inline
+  metric-byte combination still need parser-produced page evidence.

@@ -1067,11 +1067,12 @@ claim has disassembly and passing fixtures.
 
 - `0xd4ac..0xd548`: unflagged context fields `+0x2b`, `+0x2c`, and
   `+0x2d` are fixture-backed for the low-water success branch and tied
-  to selected context records in `notes/font-context-metrics.md`. The
-  installed downloaded-font host-stream fixtures prove glyph output, but
-  not descriptor metric provenance into this span consumer. The disabled,
-  before-lower, beyond-page, and high-x-only branches also remain
-  uncovered.
+  to selected context records in `notes/font-context-metrics.md`. Fixture
+  `host-fetched 0x1719c payload metrics feed d4ac span rows` proves one
+  host-fetched type-0 downloaded payload copying descriptor bytes into this
+  span consumer and changing visible segment-list rows. The disabled,
+  before-lower, beyond-page, high-x-only, and broader descriptor-combination
+  branches remain uncovered.
 - `0xd8fc..0xd992`: flagged context fields `+0x16`, `+0x18`, and
   `+0x1a` are fixture-backed for the low-water success branch and tied
   to selected context records in `notes/font-context-metrics.md`. The

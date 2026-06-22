@@ -452,9 +452,10 @@ modeled source/object structures rather than a full live CPU-memory run.
 
 ### Unresolved Middle Edges
 
-- `0xd04a..0x12f2e`: printable text object production is modeled and
-  render-checked, but not every cursor-family stream has a full live
-  CPU-register/memory trace through source-object construction.
+- `0xd04a..0x12f2e`: source-object field semantics and compact bucket
+  production are composed in `Text Source Objects And Compact Buckets`;
+  remaining work is full live CPU-register/memory capture for dense
+  parser-produced pages across every source class.
 - `0xf34a..0x12714` and `0xf34a..0x126e2`: pending span flush calls are
   counted and fixture-visible, but their internal text-span structures
   are not lifted in this checkpoint.
@@ -470,6 +471,248 @@ modeled source/object structures rather than a full live CPU-memory run.
   exercises same-chunk and rollover allocation for all cursor variants
   is still covered by the shared page-record storage checkpoint rather
   than this section.
+
+## Text Source Objects And Compact Buckets
+
+Status: composed as the shared source-object and compact-bucket cluster
+between printable parser entry `0xd04a` and renderer-facing compact text
+objects. This checkpoint covers multiple writers to the same source
+fields: unflagged/inline handoff `0xd3b2`, flagged/built-in handoff
+`0xd824`, shared producer `0x12f2e`, and span exits `0xd4ac`/`0xd8fc`.
+
+Concept: `0xd04a` converts one printable host byte into scratch source
+object `0x782d7e` through `0x1393a`. Source byte `+0x10` selects either
+the unflagged inline/downloaded path or the flagged built-in path. Both
+paths position the source by writing `+0x12`, `+0x14`, and `+0x16`, then
+call `0x12f2e`; `0x12f2e` converts those fields plus glyph metrics into
+short or segmented compact bucket entries consumed by `0x1387c`,
+`0x1effe`, `0x1f034`, `0x1f0d2`, `0x1f1f0`, and `0x1f264`.
+
+### Field Groups
+
+- Canonical source object `0x782d7e`:
+  - `+0x00`: selected current-font context pointer written by `0x1393a`.
+  - `+0x04`: built-in glyph-entry pointer on flagged paths, or
+    inline/downloaded fixed-record pointer on unflagged paths.
+  - `+0x08`: signed horizontal source offset used by `0xd3b2` and
+    `0xd824`.
+  - `+0x0a/+0x0b`: mapped compact glyph index copied by `0x12f2e`.
+  - `+0x10`: source class flag tested by `0xd04a`; zero selects
+    `0xd140`/`0xd3b2`, nonzero selects `0xd550`/`0xd824`.
+  - `+0x12`: positioned x-like source coordinate written by `0xd3b2`
+    or `0xd824`.
+  - `+0x14`: positioned y-like source coordinate written by `0xd3b2`
+    or `0xd824`.
+  - `+0x16`: page-root/render context slot written from `0x78297e` and
+    consumed by `0x12f2e`.
+  Evidence: `generated/analysis/ic30_ic13_printable_text_path.md`,
+  `generated/analysis/ic30_ic13_text_cursor_span_flow.md`, and fixtures
+  `0xd824-modeled positioned text source fields`,
+  `0xd824-modeled negative-overflow positioned source fields`,
+  `0xd3b2-modeled unflagged source fields`,
+  `0xd3b2-modeled unflagged overflow source fields`, and
+  `0x1393a-modeled selected inline source object fields`.
+- Canonical cursor/metric inputs:
+  - `0x782c8a`: current horizontal cursor read by `0xd140`,
+    `0xd550`, `0xd3b2`, and `0xd824`, then committed after queue/limit
+    handling.
+  - `0x782c8e`: current vertical cursor used by positioning and span
+    checks.
+  - `0x782a58`: pending previous-width latch; when set, both paths
+    center against `0x782a5a` / `0x782a5c`.
+  - `0x782a5a`: latched previous width.
+  - `0x782a5c`: latched previous advance.
+  - `0x782a6e`: path precheck result from `0xd28a` or `0xd6bc`; a
+    nonzero value suppresses queue and span-update side effects.
+  - `0x78315c`: default HMI advance used when no source-specific
+    advance is available.
+  - `0x78318e`: alternate metrics / previous-width mode flag.
+  Evidence: generated text-cursor report steps 1-4 and state scan;
+  fixtures `two printable byte stream combines compact text entries`,
+  `two printable byte stream with line-printer HMI renders subbyte
+  entry`, and `0xd824-positioned short bucket object fields`.
+- Canonical page/root publication inputs:
+  - `0x78297a`: current page root ensured through `0x10084` before
+    drawable source queueing.
+  - `0x78297e`: selected page-root font slot index copied into source
+    `+0x16`.
+  - `0x78297f + slot`: live flag set by both `0xd3b2` and `0xd824`.
+  Evidence: disassembly `0xd458..0xd47a` and `0xd8a8..0xd8ca`;
+  fixtures `0x1387c page-record bucket allocator reuses matching short
+  object` and `selected inline source queues and renders through
+  unflagged path`.
+- Canonical span/bounds state:
+  - `0x783184`: enables span/bounds updates in `0xd4ac` and `0xd8fc`.
+  - `0x783185`: selects alternate y-offset handling.
+  - `0x783186`: low-x flush threshold; crossing below it calls
+    `0x12714` then `0x126e2`.
+  - `0x783188`: high-x watermark updated after placement.
+  - `0x78318a`: high-y watermark updated after placement.
+  - flagged context fields `+0x16`, `+0x18`, and `+0x1a` are read by
+    `0xd8fc`.
+  - unflagged context fields `+0x2b`, `+0x2c`, and `+0x2d` are read by
+    `0xd4ac`.
+  Evidence: generated text-cursor report context table and disassembly
+  `0xd4ac..0xd548`, `0xd8fc..0xd992`.
+- Derived/cache producer state:
+  - `0x782a7c`: bucket index derived by `0x12f2e` from source `+0x14`
+    and segment height.
+  - compact coordinate: source `+0x12` and `+0x14` become the packed
+    coordinate word copied into short or segmented entries.
+  - selector bits: source context slot forms low selector bits; width
+    greater than threshold sets bit `0x1000`, tall rows set bit
+    `0x2000`, and wide+tall rows set both.
+  - short compact objects use object size `0x26`, capacity `0x0a`, and
+    entries `glyph, coord`; segmented compact objects use object size
+    `0x28`, capacity `0x08`, and entries `glyph, segment, coord`.
+  Evidence: `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
+  and fixtures `0x12f2e-modeled unflagged short bucket object fields`,
+  `0x12f2e-modeled unflagged width byte selects compact mode bit`,
+  `0x12f2e-modeled unflagged tall inline bucket objects`, and
+  `0x12f2e-modeled unflagged wide tall inline bucket objects`.
+- Parser scratch:
+  - `D5` enters `0xd04a` as the printable host byte.
+  - `0xd04a` normalizes bytes above `0xff` through `0xd99a`, masks
+    high-bit bytes when `0x783132` and `0x783133` allow it, and wraps
+    primary-map high-bit masking with `0xc6b8` / `0xc68a`.
+  - `0x783132` and `0x783133` are high-character/symbol-state flags
+    affecting whether bytes above `0x7f` are masked before `0x1393a`.
+  Evidence: disassembly `0xd04a..0xd0e8` and generated printable-text
+  path steps 6-9.
+- Unknown:
+  - live CPU register snapshots for every source class through the
+    entire `0xd04a -> 0x1393a -> 0xd140/d550 -> 0x12f2e` chain.
+  - complete semantic names for the span watermarks beyond their tested
+    x/y threshold behavior.
+
+### Writers
+
+- `0xd04a` writes no final compact object directly; it normalizes the
+  host byte, calls `0x1393a(host_byte, 0x782d7e)`, dispatches by source
+  `+0x10`, and clears `0x782a6d` before returning.
+- `0xd140` and `0xd550` run the path-specific precheck
+  `0xd28a`/`0xd6bc`, write `0x782a6e`, compute cursor advance, and
+  commit `0x782c8a` only after queue/clamp handling.
+- `0xd3b2` writes unflagged source `+0x12/+0x14/+0x16`, sets the
+  `0x78297f + 0x78297e` live flag, calls `0x12f2e`, and retries through
+  `0xff1e` / `0x10084` when allocation fails.
+- `0xd824` writes the same positioned source fields for flagged
+  built-in glyph entries and shares the same `0x12f2e` retry path.
+- `0x12f2e` writes `0x782a7c`, derives selector/coord fields, and calls
+  `0x1387c` with either short-entry capacity `0x0a` / size `0x26` or
+  segmented capacity `0x08` / size `0x28`.
+- `0xd4ac` and `0xd8fc` update span watermarks and call `0x12714` /
+  `0x126e2` when current x is below `0x783186`.
+
+### Readers And Consumers
+
+- `0x1393a` consumes current font context and symbol map state to write
+  source `+0x00`, `+0x04`, `+0x0a`, and `+0x10`.
+- `0xd28a` and `0xd6bc` consume source metrics, `0x783190` wrap state,
+  page extents, and cursor state to decide whether queueing is allowed.
+- `0x12f2e` consumes source `+0x04`, `+0x0a/+0x0b`, `+0x10`,
+  `+0x12`, `+0x14`, and `+0x16`.
+- `0x1387c` consumes the producer selector/key and current page root to
+  reuse or allocate the compact bucket object.
+- Renderers consume the compact bucket classes through `0x1effe` and
+  dispatch to `0x1f034`, `0x1f0d2`, `0x1f1f0`, or `0x1f264`.
+
+### Output Effect
+
+- Flagged built-in `LINE_PRINTER` host byte `0x21` maps through
+  `0x1393a` to glyph `0x20`, glyph-entry pointer `0x015330`, and flag
+  `1`. With cursor `(10,21)`, `0xd824` applies glyph offsets x `6` and
+  y `21`, writes source `(16,0)`, and `0x12f2e` emits short object
+  `00 00 00 00 00 00 00 01 20 00 01`.
+- The same flagged path with source x-offset `-26` returns overflow
+  correction `0x00100000`, writes source `(32,0)`, and emits compact
+  coord `0x0002`.
+- Unflagged inline source with record `02 03 04`, cursor `(10,20)`,
+  printable offset `7`, and source x-offset `5` writes source `(22,22)`,
+  selector `0x0003`, bucket `1`, coord `0x6601`, and short object
+  `00 00 00 00 00 03 00 01 01 66 01`.
+- Unflagged width `0x11` sets selector `0x1003`; rows `0x81` sets
+  selector `0x2003`; width `0x11` plus rows `0x81` sets selector
+  `0x3003`. The segmented cases emit two objects for segment `1` and
+  segment `0`, with bucket indices `9/1` or `8/0` depending on the
+  positioned y coordinate.
+- The selected inline/downloaded fixture starts at `0x1393a`: host
+  `0x21` maps to glyph `0x01`, record `02 03 04 00 00 00 00 80`,
+  source flag `0`, then queues and renders through the unflagged path
+  with context slot `3`.
+- The two-printable stream fixture proves the ordinary flagged path can
+  repeat: `!!` maps both host bytes through `0xd04a`/`0x1393a`,
+  advances the cursor through `0xd550`, reuses the same short object,
+  and renders compact entries at `0x0001` and `0x0002`; the initialized
+  HMI fixture renders the second glyph from coord `0x0202`.
+
+### Confidence
+
+High for source field meanings, paired writer behavior, `0x12f2e`
+short/segmented object shapes, selector bits, and rendered compact rows
+because all are backed by disassembly and executable fixtures. Medium
+for full live CPU/register continuity across the entire path because
+the fixtures model selected source/page objects rather than running a
+full 68000 interpreter through every source class and allocator branch.
+
+### Fixtures
+
+- `0xd824-modeled positioned text source fields`
+- `0xd824-modeled negative-overflow positioned source fields`
+- `0xd824-positioned short bucket object fields`
+- `0xd824-negative-overflow short bucket object fields`
+- `0xd3b2-modeled unflagged source fields`
+- `0xd3b2-modeled unflagged overflow source fields`
+- `0x12f2e-modeled unflagged short bucket object fields`
+- `0x12f2e-modeled unflagged width byte selects compact mode bit`
+- `0x12f2e-modeled unflagged tall inline bucket objects`
+- `0x12f2e-modeled unflagged wide tall inline bucket objects`
+- `0x1393a-modeled selected inline source object fields`
+- `selected inline source queues and renders through unflagged path`
+- `selected inline page-record object preserves context through 0x1edc6
+  bridge`
+- `single printable byte stream builds positioned compact text object`
+- `two printable byte stream combines compact text entries`
+- `two printable byte stream with line-printer HMI renders subbyte
+  entry`
+- `0x1f0d2 renders wide inline compact payload row`
+- `0x1f1f0 renders segmented inline compact payload row`
+- `0x1f264 renders segmented wide inline compact payload row`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`:
+  `0xd04a..0xd0e8`, `0xd140..0xd550`, `0xd550..0xd824`,
+  `0xd824..0xd8fc`, and span helpers.
+- `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`:
+  compact coord, bucket index, selector-bit, short, and segmented
+  producer logic.
+- `generated/analysis/ic30_ic13_printable_text_path.md`:
+  host-byte route, source object field table, and live parser entry
+  evidence.
+- `generated/analysis/ic30_ic13_text_cursor_span_flow.md`:
+  paired text paths, source/context field use, state references, and
+  reproduction contract.
+- `generated/analysis/ic30_ic13_text_glyph_index_flow.md`:
+  `0x1393a` map/context evidence upstream of this checkpoint.
+
+### Unresolved Middle Edges
+
+- `0xd04a..0x1393a`: byte normalization and source-object build are
+  disassembled and fixture-backed, but high-character masking and every
+  `0xd99a` fallback path are not live-stream covered here.
+- `0xd28a..0xd3aa` and `0xd6bc..0xd81a`: precheck wrap/recovery paths
+  are understood from disassembly, but not every reject/retry branch has
+  a visible page-output fixture.
+- `0xd47a..0xd4a0` and `0xd8ca..0xd8f0`: allocation failure retry via
+  `0xff1e` / `0x10084` is identified in both source handoffs; broad
+  dense live-parser coverage remains under page-record allocator work.
+- `0xd4ac..0xd548` and `0xd8fc..0xd992`: span watermark writes are
+  named, but the downstream internals of `0x12714` / `0x126e2` remain
+  unresolved.
+- `0x12f2e..0x1306e`: short and segmented producer shapes are
+  fixture-backed, but a full live CPU/register trace through every
+  selector mode into real allocator memory remains open.
 
 ## Macro Definition And Data-Chain Replay
 
@@ -1163,8 +1406,10 @@ the parser and allocator.
 
 ### Unresolved Middle Edges
 
-- `0xd04a..0x12f2e`: the printable source and queue path is fixture-backed
-  but still not a full live CPU/register trace for this mixed stream.
+- `0xd04a..0x12f2e`: source-object fields, paired queue handoffs, and
+  compact producer semantics are composed in `Text Source Objects And
+  Compact Buckets`; this mixed stream still lacks a full live
+  CPU/register trace for the complete parser-produced dense page.
 - `0x10898..0x133aa`: the addressed rule insertion is modeled from
   disassembly and fixtures, but the exact live no-room/retry edge is not
   covered in this mixed stream.

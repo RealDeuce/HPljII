@@ -94,6 +94,8 @@ with the published-record to active-render handoff now pinned through
 `0x1eb2a..0x1ed84`,
 with the direct text cursor/control family now composed in
 `notes/semantic-state-model.md` under `Text Cursor And Direct Controls`,
+with the printable source-object and compact bucket producer now composed
+under `Text Source Objects And Compact Buckets`,
 with `0xcda2` reset/default environment state now decoded for
 page/control pool setup, cursor-stack reset, HMI/VMI recompute,
 line-termination clearing, and default bytes
@@ -764,11 +766,12 @@ ROM work needed:
   command/data pool at `0x782a98`.
 - Expand normal parser table `0x112a4` and alternate parser table
   `0x116f6` into named PCL commands.
-- Broaden the narrow direct-control and printable stream fixtures into
-  fuller live `0xd04a..0x12f2e` source-object traces, broader
-  transparent-data filtering cases, and parser-allocated page-object
-  fixtures. The command-family state and host-fetched page-record/render
-  boundaries are now composed in `Text Cursor And Direct Controls`.
+- Broaden the direct-control and printable stream fixtures into fuller
+  live parser/register traces, broader transparent-data filtering cases,
+  and dense parser-allocated page-object fixtures. The command-family
+  state is composed in `Text Cursor And Direct Controls`, and the
+  printable source-object fields are composed in `Text Source Objects And
+  Compact Buckets`.
 - Trace binary payload modes, especially raster graphics and downloaded
   font data.
 - Use `notes/pcl-command-map.md` to prioritize page geometry, raster,
@@ -881,10 +884,11 @@ ROM work needed:
 - Integrate executable row-copy behavior with real page objects from the
   parser/imaging path.
 - Broaden the documented printable and inline/downloaded `0x1393a` /
-  `0xd824` / `0xd3b2` / `0xd550` / `0x12f2e` text-object glyph-index
-  fixtures into real font-download parser records, real HMI/font
-  metrics, glyph indices, and parser-produced page objects, building on
-  the current host-fetched plain `!!`, mixed `ESC &k1G!\r!`,
+  `0xd824` / `0xd3b2` / `0xd550` / `0x12f2e` source-object and compact
+  bucket fixtures into full live parser/register runs with real
+  font-download parser records, real HMI/font metrics, glyph indices,
+  and parser-produced page objects, building on the current host-fetched
+  plain `!!`, mixed `ESC &k1G!\r!`,
   LF-positioned `ESC &k2G!\n!`, HT/BS-positioned `ESC &k0G HT BS !`,
   left/right-margin-positioned `ESC &a1L!` / `ESC &a1M!`,
   lowercase-chained margin-positioned `ESC &a6l9M!`, horizontal-column,
@@ -893,7 +897,8 @@ ROM work needed:
   `ESC &a1R!` / `ESC &a72V!` / `ESC &a2c+1R!`, top-margin-positioned
   `ESC &l3E!`, and cursor-stack `ESC &f0S ESC &a2C ESC &f1S!`
   parser-to-page-record boundaries now composed in
-  `Text Cursor And Direct Controls`.
+  `Text Cursor And Direct Controls` and `Text Source Objects And Compact
+  Buckets`.
 - Treat direct `0x78297a` references and pool aliases documented in
   `generated/analysis/ic30_ic13_page_root_references.md` as checked
   leads; the shared `0x10084` first-root allocation and `0x10110`

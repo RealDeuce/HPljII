@@ -269,11 +269,10 @@ Raster-related PCL handlers:
 | `ESC *r#B` | `0x0107fa` | end raster graphics |
 | `ESC *b#W` | `0x011f82` -> `0x0105d0` | transfer raster row bytes |
 
-`generated/analysis/ic30_ic13_raster_graphics_flow.md` collects the
-command edge, delayed `0x121cc` / `0x12218` payload handoff, page-root
-queueing through `0x10084` / `0x13070` / `0x13250`, payload copy through
-`0x138de`, and render dispatch through `0x1edc6` / `0x1efc2` /
-`0x1f88e`.
+[raster-graphics.md](raster-graphics.md) documents the command edge,
+delayed `0x121cc` / `0x12218` payload handoff, page-root queueing through
+`0x10084` / `0x13070` / `0x13250`, payload copy through `0x138de`, and
+render dispatch through `0x1edc6` / `0x1efc2` / `0x1f88e`.
 
 The raster state block is rooted at `0x783170` in the handlers.
 

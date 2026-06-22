@@ -359,8 +359,8 @@ cursor `0x782c8a`; landscape raster origin seeds from vertical cursor
 `ESC *b#W` at `0x011f82` routes through `0x121cc` with handler
 `0x105d0`, so raster row byte transfer is tied into the same
 parsed-command/data chain used by macro/download payload handling. The
-full raster command/data, queue, and render-dispatch edge is summarized
-in `generated/analysis/ic30_ic13_raster_graphics_flow.md`.
+full raster command/data, queue, and render-dispatch edge is documented
+in [raster-graphics.md](raster-graphics.md).
 
 `ESC *r#B` at `0x0107fa` clears raster active byte `0x783182`, leaving
 raster origin/baseline/mode/scale/limit state intact so later resolution

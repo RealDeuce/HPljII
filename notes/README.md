@@ -36,6 +36,8 @@ compatibility boundary.
   wrapper, tokenizer, dispatch loop, and delayed-payload handoff.
 - [transparent-print-data.md](transparent-print-data.md) - documented
   `ESC &p#X` delayed payload handling and printable text re-entry.
+- [raster-graphics.md](raster-graphics.md) - documented `ESC *t`,
+  `ESC *r`, and delayed `ESC *b#W` raster path to encoded-span output.
 - [pcl-parser-firmware.md](pcl-parser-firmware.md) - current host-byte
   fetch and PCL escape tokenizer/dispatch anchors.
 - [pcl-command-map.md](pcl-command-map.md) - flattened PCL

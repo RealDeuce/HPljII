@@ -1640,10 +1640,9 @@ lists through `0x1ef6a`, and only then composes visible pixels.
   - bucket array `+0x1c`: text object at `0x00d0c004`, raster object at
     `0x00d0c038`, bucket head `0x00d0c038`.
   - rule list `+0x24`: rectangle rule object at `0x00d0c02a`.
-  - context slots `+0x2c`: slot 0 is `0x440946b4`.
-  Evidence: fixture
-  `addressed text/rule/raster field groups reach publication and render
-  entry`; source fixture [harness](/usr/home/admin/T400/ljII/tools/render_fixture_harness.py:40084).
+  - context slots `+0x2c`: slot 0 is `0x440946b4`. Evidence: fixture `addressed
+    text/rule/raster field groups reach publication and render entry`; source fixture
+    [harness](/usr/home/admin/T400/ljII/tools/render_fixture_harness.py:40084).
 - Canonical published-record fields:
   - published bucket root `+0x1c` is
     `00 d0 c0 04 80 00 00 02 00 00 c3 3c`.
@@ -1771,9 +1770,10 @@ the parser and allocator.
 - `0x10898..0x133aa`: the addressed rule insertion is modeled from
   disassembly and fixtures, but the exact live no-room/retry edge is not
   covered in this mixed stream.
-- `0x105d0..0x13250`: the raster object queue is address-aware, but the
-  mixed stream still lacks a full 68000 execution through `0x105d0` into
-  real allocator memory.
+- `0x105d0..0x13250`: the raster object queue and render contract are
+  documented in `notes/raster-graphics.md`; the queue is address-aware,
+  but the mixed stream still lacks a full 68000 execution through
+  `0x105d0` into real allocator memory.
 - `0x10084..0x1381c`: first root allocation and stream-chunk allocation
   are modeled with exact side effects, including a multi-writer chunk
   rollover fixture in the shared allocator checkpoint, but not captured

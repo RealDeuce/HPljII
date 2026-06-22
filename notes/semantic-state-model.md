@@ -1403,13 +1403,18 @@ renders at x `22`.
 ### Downloaded Glyph Rule/Raster Composition
 
 Status: anchored as a composition checkpoint from a host-fetched downloaded
-glyph install into a heterogeneous page-record render. Fixture
+glyph install into a parser-driven heterogeneous page-record render. Fixture
 `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
 starts with the same `ESC )s18W` host-fetch, parser handlers `0x11eb6`,
 `0x12008`, `0x11ff6`, `0x11f96`, delayed `0x16c14` install, and glyph `0x29`
 resource state documented above. It then queues the installed glyph, a
 selector-7 rule, and a mode-0 raster object into one active page record and
 renders the composed pixels through the shared `0x1ed84`/`0x1ef6a` entry.
+Fixture `parser-driven downloaded glyph rule raster stream composes through
+0x1ef6a` narrows that edge: the fetched stream is split at byte `24` after the
+same font payload, then page bytes
+`ESC *c12a3b0P ) ESC *t300R ESC *r0A ESC *b2W c3 3c` route through the mixed
+parser/page-record runner before rendering.
 
 Field groups:
 
@@ -1431,15 +1436,21 @@ Field groups:
   canonical parser state.
 - Parser scratch: the font payload command record is `80 57 00 12 00 00` at
   payload offset `6`, and payload bytes are
-  `f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99`. The rule and
-  raster objects in this checkpoint enter through modeled producers, not a
-  single combined parser byte stream.
+  `f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99`. In the
+  parser-driven page stream, rectangle handlers `0x10e68`, `0x10e22`, and
+  `0x10898` consume `ESC *c12a3b0P`; printable handler `0xd04a` consumes byte
+  `0x29`; raster handlers `0x10808`, `0x1075a`, and delayed `0x11f82` /
+  `0x105d0` consume `ESC *t300R ESC *r0A ESC *b2W c3 3c`. The delayed raster
+  record is `80 57 00 02 00 00`, snapshot
+  `01 00 01 05 d0 80 57 00 02 00 00`, payload offset `28`, and payload
+  `c3 3c`.
 - Firmware bookkeeping: active-copy words reported by the fixture are
   zeroed source/render work words before the fixture sets render word `+0x10`
   for bucket `5`; no page publication or root clear occurs in this checkpoint.
 - Unknown for this checkpoint: exact live parser scheduling between the font
-  download, later rule commands, and raster transfer when all three producer
-  families are driven by one uninterrupted host stream.
+  download and the page stream inside real CPU memory. The page stream itself
+  now drives the glyph, rule, and raster producers together; the font payload
+  install still enters the page phase as a modeled resource image.
 
 Readers and output effect: `0x1ef6a` runs call order `0x1ef86`, `0x1efc2`,
 `0x1f446`, `0x1f756`. The bucket dispatcher sends the raster object to
@@ -1452,8 +1463,12 @@ Confidence is high for the installed glyph resource fields, page-record object
 bytes, render call order, dispatch targets, rule helper, and composed rows
 because they are asserted by fixture
 `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`.
-Confidence is medium for the one-stream producer schedule until the unresolved
-edge above is replaced by a parser-driven command stream.
+Confidence is high for the page-stream producer schedule because fixture
+`parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
+asserts fetch boundaries, page parser handlers, glyph source fields, delayed
+raster scratch, queue bytes, dispatch targets, and final rows. Confidence is
+medium for the live CPU memory handoff between the font-install phase and the
+page-stream phase.
 
 ### Confidence
 
@@ -1484,6 +1499,12 @@ High for downloaded-glyph/rule/raster render composition because fixture
 asserts the `ESC )s18W` install fields, bucket-5 glyph/raster objects, bridged
 selector-7 rule object, `0x1ef6a` call order, dispatch targets `0x1f88e` and
 `0x1effe`, rule helper `0x1f596`, and composed output rows.
+High for parser-driven page-stream composition because fixture
+`parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
+asserts the post-font page bytes, handlers `0x10e68`, `0x10e22`, `0x10898`,
+`0xd04a`, `0x10808`, `0x1075a`, and `0x11f82`, delayed raster record
+`80 57 00 02 00 00`, payload offset `28`, bucket-5 chain, bridged rule list,
+and the same composed rows.
 High for the ROM-effect names and failure behavior of every `0x16fae`
 validation-table entry, including the host-fetched invalid-type, first-code
 overflow, zero/high line-count, reversed/high range-count, and invalid-class
@@ -1498,6 +1519,7 @@ combination have not been page-compared.
 - `published downloaded glyph segmented buckets render across bands`
 - `0x1eba4 scheduler band words render published downloaded glyph`
 - `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
+- `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
 - `host-fetched font control stream feeds descriptor and character payload
   state`
 - `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`
@@ -1569,13 +1591,14 @@ combination have not been page-compared.
   especially alternate row counts, character modes, and non-success exits for
   the same selector families.
 - downloaded-glyph plus rule/raster producer schedule: fixture
-  `host-fetched downloaded glyph composes with rule and raster through
-  0x1ef6a` closes the shared render-record composition edge for bucket `5`,
-  but the rule object and raster object still enter through modeled producers.
-  The exact unresolved boundary is from the installed glyph's printable queue
-  exit at `0x12f2e` through later parser-produced `0x10898` rule insertion
-  and `0x105d0` / `0x13070` raster transfer in one uninterrupted host byte
-  stream.
+  `parser-driven downloaded glyph rule raster stream composes through
+  0x1ef6a` closes the page-stream boundary from parser-produced `0x10898` rule
+  insertion, downloaded-current printable queue through `0x12f2e`, and delayed
+  `0x105d0` / `0x13070` raster transfer into one bucket-5 render entry.
+  Remaining risk is the earlier font-install-to-page handoff: the same fetched
+  byte stream is split at byte `24`, and the `0x16c14` installed memory image
+  is supplied to the page-stream runner instead of captured from a live CPU
+  memory run.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets, and fixture
   `published downloaded glyph segmented buckets render across bands` renders

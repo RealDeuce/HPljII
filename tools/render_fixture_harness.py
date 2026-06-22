@@ -17273,6 +17273,33 @@ def render_mixed_printable_control_page_record_stream(
                 context_metric_flag=int(state.get("unflagged_context_metric_flag_0016", 0)),
                 source_x_offset=int(state.get("source_x_offset", 0)),
             )
+        elif source_form == "downloaded-current":
+            mapped = int(state.get("current_character", byte_value)) & 0xFF
+            glyph = resolve_downloaded_pointer_glyph(resources, active_context, mapped)
+            if glyph is None:
+                raise AssertionError(
+                    f"downloaded-current source missing glyph 0x{mapped:02x}"
+                )
+            source = {
+                "context": active_context,
+                "host_char": byte_value & 0xFF,
+                "mapped": mapped,
+                "glyph_entry": int(glyph["entry"]),
+                "glyph_width": int(glyph["width"]),
+                "glyph_rows": int(glyph["rows"]),
+                "flag": 0,
+                "x": int(state.get("downloaded_source_x", 0)),
+                "y": int(state.get("downloaded_source_y", 0)),
+                "context_slot": active_context_slot,
+                "inline_record": bytes([
+                    int(glyph["render_span"]) & 0xFF,
+                    int(glyph["rows"]) & 0xFF,
+                    0,
+                ]),
+                "valid_record": True,
+                "bitmap": int(glyph["bitmap"]),
+            }
+            positioned = {"source": source}
         elif source_form == "flagged":
             source = build_text_source_object_from_1393a(
                 resources,
@@ -33623,6 +33650,382 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "rows": downloaded_wide_even_composed_rows,
         },
     }))
+
+    downloaded_wide_even_parser_page_stream = (
+        b"\x1b*c12a3b0P"
+        + b"\x29"
+        + b"\x1b*t300R\x1b*r0A\x1b*b2W"
+        + bytes.fromhex("c3 3c")
+    )
+    downloaded_wide_even_parser_full_stream = (
+        downloaded_wide_even_command_stream
+        + downloaded_wide_even_parser_page_stream
+    )
+    downloaded_wide_even_parser_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(downloaded_wide_even_parser_full_stream),
+            direct_mode=0,
+        ),
+        len(downloaded_wide_even_parser_full_stream),
+    )
+    downloaded_wide_even_parser_font_end = len(downloaded_wide_even_command_stream)
+    downloaded_wide_even_parser_font_stream = downloaded_wide_even_parser_fetch[
+        "stream"
+    ][:downloaded_wide_even_parser_font_end]
+    downloaded_wide_even_parser_page_fetched = downloaded_wide_even_parser_fetch[
+        "stream"
+    ][downloaded_wide_even_parser_font_end:]
+    downloaded_wide_even_parser_font_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        downloaded_wide_even_parser_font_stream,
+    )
+    downloaded_wide_even_parser_page_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        downloaded_wide_even_parser_page_fetched,
+    )
+    downloaded_wide_even_parser_page_record_stream = (
+        render_mixed_printable_control_page_record_stream(
+            data,
+            downloaded_wide_even_memory,
+            downloaded_wide_even_parser_page_fetched,
+            0,
+            control_fixture_state(
+                cursor_x=pack12(24),
+                cursor_y=pack12(80),
+                hmi=pack12(18),
+                pending_width=1,
+                pending_text=0,
+                span_flush_enable=1,
+                page_width=200,
+                page_height=200,
+                orientation=0,
+                width=pack12(0),
+                height=pack12(0),
+                area_fill_id=0,
+                fill_selector=7,
+                row_y=80,
+                page_extent=255,
+                text_source_form="downloaded-current",
+                current_character=0x29,
+                downloaded_source_x=22,
+                downloaded_source_y=80,
+            ),
+            default_advance=pack12(18),
+            context_slot=3,
+        )
+    )
+    downloaded_wide_even_parser_events = downloaded_wide_even_parser_page_record_stream[
+        "events"
+    ]
+    assert isinstance(downloaded_wide_even_parser_events, list)
+    downloaded_wide_even_parser_printable = next(
+        event for event in downloaded_wide_even_parser_events if event["kind"] == "printable"
+    )
+    downloaded_wide_even_parser_raster = next(
+        event
+        for event in downloaded_wide_even_parser_events
+        if event["kind"] == "raster-transfer"
+    )
+    assert isinstance(downloaded_wide_even_parser_printable, dict)
+    assert isinstance(downloaded_wide_even_parser_raster, dict)
+    downloaded_wide_even_parser_page_record = downloaded_wide_even_parser_page_record_stream[
+        "page_record"
+    ]
+    assert isinstance(downloaded_wide_even_parser_page_record, dict)
+    downloaded_wide_even_parser_bucket_array = downloaded_wide_even_parser_page_record[
+        "bucket_array"
+    ]
+    assert isinstance(downloaded_wide_even_parser_bucket_array, dict)
+    downloaded_wide_even_parser_chain = [
+        bytes(obj) for obj in downloaded_wide_even_parser_bucket_array[5]
+    ]
+    downloaded_wide_even_parser_render_entry = downloaded_wide_even_parser_page_record_stream[
+        "render_entry"
+    ]
+    assert isinstance(downloaded_wide_even_parser_render_entry, dict)
+    downloaded_wide_even_parser_entry = downloaded_wide_even_parser_render_entry[
+        "entry"
+    ]
+    assert isinstance(downloaded_wide_even_parser_entry, dict)
+    checks.append(assert_equal(
+        "parser-driven downloaded glyph rule raster stream composes through 0x1ef6a",
+        {
+            "fetch": {
+                "stream_length": len(downloaded_wide_even_parser_fetch["stream"]),
+                "source_set": sorted(set(downloaded_wide_even_parser_fetch["sources"])),
+                "remaining_ring": downloaded_wide_even_parser_fetch["state"]["ring"],
+                "boundaries": {
+                    "font": (0, downloaded_wide_even_parser_font_end),
+                    "page": (
+                        downloaded_wide_even_parser_font_end,
+                        len(downloaded_wide_even_parser_full_stream),
+                    ),
+                },
+            },
+            "font": {
+                "handlers": [
+                    event["handler"]
+                    for event in downloaded_wide_even_parser_font_trace["dispatches"]
+                ],
+                "record": downloaded_wide_even_parser_font_trace["commands"][0]["record"],
+                "payload_offset": downloaded_wide_even_parser_font_trace["commands"][0]["payload_offset"],
+                "payload": downloaded_wide_even_parser_font_trace["commands"][0]["payload"],
+                "install_table_entry": downloaded_wide_even_install["table_entry"],
+                "install_record_delta": downloaded_wide_even_install["record_delta"],
+                "install_bitmap_offset": downloaded_wide_even_install["bitmap_offset"],
+            },
+            "page_parser": {
+                "stream": downloaded_wide_even_parser_page_record_stream["stream"],
+                "handlers": [
+                    event["handler"]
+                    for event in downloaded_wide_even_parser_page_trace["events"]
+                ],
+                "event_kinds": [
+                    event["kind"]
+                    for event in downloaded_wide_even_parser_events
+                ],
+            },
+            "printable": {
+                "byte": downloaded_wide_even_parser_printable["byte"],
+                "source": {
+                    key: downloaded_wide_even_parser_printable["source"][key]
+                    for key in (
+                        "context",
+                        "host_char",
+                        "mapped",
+                        "glyph_entry",
+                        "glyph_width",
+                        "glyph_rows",
+                        "flag",
+                        "x",
+                        "y",
+                        "context_slot",
+                        "inline_record",
+                        "valid_record",
+                        "bitmap",
+                    )
+                },
+                "page_result": {
+                    key: downloaded_wide_even_parser_printable["page_result"][key]
+                    for key in (
+                        "path",
+                        "object",
+                        "bucket_index",
+                        "selector",
+                        "coord",
+                        "glyph",
+                        "rows",
+                        "width",
+                    )
+                },
+            },
+            "raster": {
+                key: downloaded_wide_even_parser_raster[key]
+                for key in (
+                    "parsed_record",
+                    "delayed_snapshot_bytes",
+                    "restored_record",
+                    "payload_offset",
+                    "payload",
+                    "gate_queued",
+                    "stored_byte_count",
+                    "row_y",
+                    "row_y_after",
+                )
+            },
+            "queue": {
+                "chain": downloaded_wide_even_parser_chain,
+                "rule_list": downloaded_wide_even_parser_render_entry[
+                    "render_record_fields"
+                ]["rule_list_1c"],
+            },
+            "entry": {
+                "active_copy": downloaded_wide_even_parser_render_entry["active_copy"],
+                "band_word": downloaded_wide_even_parser_entry["band_word"],
+                "call_order": downloaded_wide_even_parser_entry["call_order"],
+                "dispatch": [
+                    {
+                        key: entry[key]
+                        for key in (
+                            "chain_index",
+                            "object_byte_4",
+                            "class_mask",
+                            "branch",
+                            "target",
+                        )
+                    }
+                    for entry in downloaded_wide_even_parser_entry["dispatch"]["entries"]
+                ],
+                "rules": [
+                    {
+                        key: item[key]
+                        for key in (
+                            "selector",
+                            "helper",
+                            "key",
+                            "bucket_delta",
+                            "decoded",
+                            "width",
+                            "remaining_before",
+                            "rows_drawn",
+                            "mutated_object",
+                        )
+                    }
+                    for item in downloaded_wide_even_parser_entry["rules"]["rendered"]
+                ],
+                "rows": downloaded_wide_even_parser_entry["rows"],
+            },
+        },
+        {
+            "fetch": {
+                "stream_length": len(downloaded_wide_even_parser_full_stream),
+                "source_set": ["ring"],
+                "remaining_ring": [],
+                "boundaries": {
+                    "font": (0, len(downloaded_wide_even_command_stream)),
+                    "page": (
+                        len(downloaded_wide_even_command_stream),
+                        len(downloaded_wide_even_parser_full_stream),
+                    ),
+                },
+            },
+            "font": {
+                "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                "record": bytes.fromhex("80 57 00 12 00 00"),
+                "payload_offset": 6,
+                "payload": downloaded_wide_even_payload,
+                "install_table_entry": 0x00EE,
+                "install_record_delta": 0x0780,
+                "install_bitmap_offset": 0x078C,
+            },
+            "page_parser": {
+                "stream": downloaded_wide_even_parser_page_stream,
+                "handlers": [
+                    0x010E68,
+                    None,
+                    0x010E22,
+                    None,
+                    0x010898,
+                    0x00D04A,
+                    0x010808,
+                    0x01075A,
+                    0x011F82,
+                    None,
+                    0x00D04A,
+                ],
+                "event_kinds": [
+                    "rectangle",
+                    "rectangle",
+                    "rectangle",
+                    "printable",
+                    "raster-resolution",
+                    "start-raster",
+                    "raster-transfer",
+                ],
+            },
+            "printable": {
+                "byte": 0x29,
+                "source": {
+                    "context": 0,
+                    "host_char": 0x29,
+                    "mapped": 0x29,
+                    "glyph_entry": 0x0780,
+                    "glyph_width": 0x0090,
+                    "glyph_rows": 1,
+                    "flag": 0,
+                    "x": 22,
+                    "y": 80,
+                    "context_slot": 3,
+                    "inline_record": bytes.fromhex("12 01 00"),
+                    "valid_record": True,
+                    "bitmap": 0x078C,
+                },
+                "page_result": {
+                    "path": "short-page-record",
+                    "object": bytes.fromhex("00 00 00 00 10 03 00 01 29 06 01")
+                    + bytes(0x1B),
+                    "bucket_index": 5,
+                    "selector": 0x1003,
+                    "coord": 0x0601,
+                    "glyph": 0x29,
+                    "rows": 1,
+                    "width": 18,
+                },
+            },
+            "raster": {
+                "parsed_record": bytes.fromhex("80 57 00 02 00 00"),
+                "delayed_snapshot_bytes": bytes.fromhex(
+                    "01 00 01 05 d0 80 57 00 02 00 00"
+                ),
+                "restored_record": bytes.fromhex("80 57 00 02 00 00"),
+                "payload_offset": 28,
+                "payload": bytes.fromhex("c3 3c"),
+                "gate_queued": True,
+                "stored_byte_count": 2,
+                "row_y": 80,
+                "row_y_after": 81,
+            },
+            "queue": {
+                "chain": [
+                    bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                    bytes.fromhex("00 00 00 00 10 03 00 01 29 06 01")
+                    + bytes(0x1B),
+                ],
+                "rule_list": [
+                    bytes.fromhex("00 00 00 00 05 17 08 01 00 0c 00 03 00 03")
+                ],
+            },
+            "entry": {
+                "active_copy": {
+                    "source_word_18": 0,
+                    "source_word_1a": 0,
+                    "render_word_0a": 0,
+                    "render_word_0c": 0,
+                    "render_word_0e": 0,
+                    "render_word_10": 0,
+                    "render_word_16": 0,
+                },
+                "band_word": 5,
+                "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+                "dispatch": [
+                    {
+                        "chain_index": 0,
+                        "object_byte_4": 0x80,
+                        "class_mask": 0x80,
+                        "branch": "encoded-span",
+                        "target": 0x01F88E,
+                    },
+                    {
+                        "chain_index": 1,
+                        "object_byte_4": 0x10,
+                        "class_mask": 0x00,
+                        "branch": "compact",
+                        "target": 0x01EFFE,
+                    },
+                ],
+                "rules": [{
+                    "selector": 7,
+                    "helper": 0x1F596,
+                    "key": 0x0801,
+                    "bucket_delta": 0,
+                    "decoded": {
+                        "x": 24,
+                        "y": 0,
+                        "row_low": 0,
+                        "subbyte": 8,
+                        "byte_pair_offset": 2,
+                    },
+                    "width": 12,
+                    "remaining_before": 3,
+                    "rows_drawn": 3,
+                    "mutated_object": bytes.fromhex(
+                        "00 00 00 00 05 07 08 01 00 0c 00 03 ff b3"
+                    ),
+                }],
+                "rows": downloaded_wide_even_composed_rows,
+            },
+        },
+    ))
 
     font_character_code = font_character_code_from_15a18(-0x8000)
     font_payload_dispatch_header = font_payload_dispatch_via_11f96(0)

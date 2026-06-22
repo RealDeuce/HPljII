@@ -1161,9 +1161,16 @@ installs glyph `0x29` from `ESC )s18W`, queues it at x `22`, y `80` as bucket
 dispatches the raster chain item to `0x1f88e`, the downloaded glyph chain item
 to `0x1effe`/`0x1f0d2`, renders the bridged rule through selector helper
 `0x1f596`, and compares the final three composed rows. The remaining
-middle edge is making the rule and raster producers share one parser-driven
-host stream with the font download rather than entering the shared page record
-from modeled producers.
+middle edge has now been narrowed by fixture `parser-driven downloaded glyph
+rule raster stream composes through 0x1ef6a`: after the same fetched
+`ESC )s18W` font-install bytes, page bytes
+`ESC *c12a3b0P ) ESC *t300R ESC *r0A ESC *b2W c3 3c` route through parser
+handlers `0x10e68`, `0x10e22`, `0x10898`, `0xd04a`, `0x10808`, `0x1075a`, and
+`0x11f82`, then delayed `0x105d0` queues the raster object. That fixture
+produces the same bucket-5 glyph/raster chain, the same bridged rule list, and
+the same `0x1ef6a` rows. The remaining caveat is the font-install split: the
+font payload phase still uses the modeled `0x16c14` install output as the
+resource image for the parser-driven page phase.
 The fetched `ESC )s2193W` downloaded-pointer object
 now also crosses `0x1edc6` plus the `0x1ed84`/`0x1ef6a` render-entry
 path before rendering the same segmented-wide row. A fetched printable

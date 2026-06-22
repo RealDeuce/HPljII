@@ -607,6 +607,11 @@ an even-span `ESC )s18W` downloaded glyph composition fixture where bucket
 `00 00 00 00 80 00 00 02 00 00 c3 3c`, the bridged rule list contains
 `00 00 00 00 05 17 08 01 00 0c 00 03 00 03`, and `0x1ef6a` dispatches
 `0x1f88e`, `0x1effe`/`0x1f0d2`, and `0x1f596` before comparing composed rows,
+a parser-driven page-stream variant where fetched bytes `24..54` are
+`ESC *c12a3b0P ) ESC *t300R ESC *r0A ESC *b2W c3 3c`, handlers
+`0x10e68`/`0x10e22`/`0x10898`/`0xd04a`/`0x10808`/`0x1075a`/`0x11f82` produce
+the same bucket-5 glyph/raster chain and bridged rule list before `0x1ef6a`
+compares the same rows,
 `0x172c0`/`0x16c14` downloaded-font record bookkeeping fixtures,
 `0x170be`/`0x17108`/`0x17150` record lookup/mark/unmark fixtures,
 `0x15a56`/`0x16df6` font-id/control dispatch fixtures,

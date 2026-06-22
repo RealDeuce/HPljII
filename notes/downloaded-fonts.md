@@ -76,6 +76,7 @@ Primary fixtures:
 - `host-fetched downloaded character payload control reaches wide render`
 - `host-fetched even-span wide downloaded character renders through 0x1f0d2`
 - `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
+- `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
 - `host-fetched split-plane segmented downloaded character renders through
   0x1f1f0`
@@ -663,9 +664,23 @@ call order `0x1ef86`, `0x1efc2`, `0x1f446`, `0x1f756`, dispatches the raster
 object to `0x1f88e`, dispatches the downloaded glyph object to `0x1effe` /
 `0x1f0d2`, renders the rule through selector helper `0x1f596`, and compares the
 three composed output rows. This closes the downloaded-glyph plus rule/raster
-composition fixture gap for the even-span wide downloaded glyph path; it does
-not yet make the rule and raster producers part of one host byte stream with
-the font download.
+composition fixture gap for the even-span wide downloaded glyph path.
+
+Fixture `parser-driven downloaded glyph rule raster stream composes through
+0x1ef6a` then makes the rule and raster producers parser-driven in the same
+page stream. The fetched stream is 54 bytes: font bytes `0..24` are the
+`ESC )s18W` command and payload above, and page bytes `24..54` are
+`ESC *c12a3b0P ) ESC *t300R ESC *r0A ESC *b2W c3 3c`. The page parser routes
+through `0x10e68`, `0x10e22`, `0x10898`, `0xd04a`, `0x10808`, `0x1075a`, and
+delayed raster handler `0x11f82` / `0x105d0`. It queues the same bucket-5
+downloaded glyph object `00 00 00 00 10 03 00 01 29 06 01...`, the same bridged
+selector-7 rule `00 00 00 00 05 17 08 01 00 0c 00 03 00 03`, and the same
+mode-0 raster object `00 00 00 00 80 00 00 02 00 00 c3 3c`. Render entry
+`0x1ed84`/`0x1ef6a` dispatches the raster object to `0x1f88e`, the glyph object
+to `0x1effe`/`0x1f0d2`, the rule to `0x1f596`, and compares the same three
+composed rows. The remaining limitation is the modeled font install boundary:
+the fixture fetches one stream and uses the existing font-payload model to
+produce the installed memory image before the parser-driven page stream runs.
 
 Fixture `host-fetched segmented downloaded character renders through
 0x1f1f0` adds the even-span tall sibling. The host-fetched `ESC )s258W` stream

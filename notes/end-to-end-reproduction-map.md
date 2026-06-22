@@ -160,9 +160,12 @@ pixels or byte-stream compatibility.
    documented in `notes/font-context-metrics.md`, and the downloaded
    descriptor/payload producer side is documented in `notes/downloaded-fonts.md`.
    Host-fetched `0x1719c` type-0 and type-2 payloads now prove copied
-   descriptor bytes feeding both `0xd4ac` and `0xd8fc` visible span rows. The
-   open edge is broader descriptor metric-byte values and rejection/error
-   combinations, not the tested type-0/type-2 middle edges. Evidence:
+   descriptor bytes feeding both `0xd4ac` and `0xd8fc` visible span rows.
+   Fixture `d4ac and d8fc span consumer branch family controls flush output`
+   covers disabled, lower-bound, page-extent, and high-x consumer outcomes for
+   both source forms. The open edge is broader descriptor metric-byte values
+   and producer-side validation/error combinations, not the tested type-0/type-2
+   or shared consumer middle edges. Evidence:
    `notes/semantic-state-model.md` under `Text Span Flush And Fixed-Width
    Spans`.
 2. VFC table definition and channel jumps now have a tracked command-family
@@ -196,8 +199,9 @@ The next work should follow dataflow, not isolated handlers:
    pages. The selected-context bridge, metric consumers, downloaded
    descriptor/payload producer chain, and host-stream downloaded glyph output
    are now tracked. Host-fetched `0x1719c` type-0 and type-2 payloads reach
-   both `d4ac` and `d8fc` span rows; the missing middle is broader descriptor
-   metric values and rejection/error behavior.
+   both `d4ac` and `d8fc` span rows, and the shared disabled/lower/page/high-x
+   consumer branch family is fixture-backed. The missing middle is broader
+   descriptor metric values and producer-side validation/error behavior.
 2. Build a small page-image fixture suite from complete byte streams that mix
    text, rules, raster, geometry, font selection, and publication, then compare
    the final bitmap rows as the primary reproduction contract.

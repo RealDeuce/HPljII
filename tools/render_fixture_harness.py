@@ -45113,6 +45113,352 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "high_y_78318a": 0,
         },
     }))
+    def span_branch_chain_roles(result: dict[str, object]) -> list[dict[str, object]]:
+        page_record = result["page_record"]
+        assert isinstance(page_record, dict)
+        bucket_array = page_record["bucket_array"]
+        assert isinstance(bucket_array, dict)
+        chain = bucket_array[result["bucket_index"]]
+        assert isinstance(chain, list)
+        roles: list[dict[str, object]] = []
+        for obj in chain:
+            object_bytes = bytes(obj)
+            selector = object_bytes[4] & 0xC0 if len(object_bytes) > 4 else -1
+            if selector == 0x40:
+                role = "span"
+            elif selector == 0x00:
+                role = "compact-text"
+            else:
+                role = f"selector-0x{selector:02x}"
+            roles.append({
+                "role": role,
+                "size": len(object_bytes),
+                "prefix": object_bytes[:14],
+            })
+        return roles
+
+    def span_branch_summary(result: dict[str, object]) -> dict[str, object]:
+        events = result["events"]
+        assert isinstance(events, list)
+        printable = events[0]
+        assert isinstance(printable, dict)
+        span_update = printable["span_update_result"]
+        assert isinstance(span_update, dict)
+        span_summary = {
+            key: span_update[key]
+            for key in (
+                "updated",
+                "reason",
+                "handler",
+                "cursor_x",
+                "cursor_y",
+                "context_lower_0016",
+                "context_height_0018",
+                "context_lower_002c",
+                "context_height_002d",
+                "high_y",
+            )
+            if key in span_update
+        }
+        control_flush = None
+        if len(events) > 1:
+            control_event = events[1]
+            assert isinstance(control_event, dict)
+            control_flush_result = control_event.get("span_flush_result")
+            if isinstance(control_flush_result, dict):
+                control_flush = {
+                    key: control_flush_result[key]
+                    for key in ("flushed", "path", "raw_source", "width")
+                    if key in control_flush_result
+                }
+        rendered = result["rendered"]
+        assert isinstance(rendered, dict)
+        rows = rendered["rows"]
+        assert isinstance(rows, list)
+        return {
+            "stream": result["stream"],
+            "span_update": span_summary,
+            "chain_roles": span_branch_chain_roles(result),
+            "control_flush": control_flush,
+            "rows_with_28_pixel_span_prefix": [
+                index
+                for index, row in enumerate(rows)
+                if isinstance(row, str) and row.startswith("#" * 28)
+            ],
+            "final_span_state": select_keys(
+                result["final_state"],
+                ("enabled_783184", "low_x_783186", "high_x_783188", "high_y_78318a"),
+            ),
+        }
+
+    def d4ac_span_branch_resources(lower: int, height: int, alternate_offset: int = 7) -> bytes:
+        memory = bytearray(selected_inline_memory)
+        memory[selected_inline_context + 0x2B] = alternate_offset
+        memory[selected_inline_context + 0x2C] = lower
+        memory[selected_inline_context + 0x2D] = height
+        return bytes(memory)
+
+    def run_d4ac_span_branch(
+        stream: bytes,
+        *,
+        enabled: int = 1,
+        lower: int = 0,
+        height: int = 10,
+        low_x: int = 100,
+        high_x: int = 120,
+        page_extent: int = 64,
+    ) -> dict[str, object]:
+        return render_mixed_printable_control_page_record_stream(
+            data,
+            d4ac_span_branch_resources(lower, height),
+            stream,
+            selected_inline_context,
+            control_fixture_state(
+                cursor_x=pack12(10),
+                cursor_y=pack12(21),
+                hmi=line_printer_hmi["hmi"],
+                pending_width=1,
+                pending_text=0,
+                span_flush_enable=1,
+                materialize_span_flush=1,
+                materialize_d4ac_span_update=1,
+                text_source_form="unflagged",
+                enabled_783184=enabled,
+                low_x_783186=low_x,
+                high_x_783188=high_x,
+                high_y_78318a=0,
+                span_alternate_offset_783185=0,
+                orientation=0,
+                page_extent_782db6=page_extent,
+            ),
+            default_advance=line_printer_hmi["hmi"],
+        )
+
+    def run_d8fc_span_branch(
+        stream: bytes,
+        *,
+        enabled: int = 1,
+        lower: int = 0,
+        height: int = 10,
+        low_x: int = 100,
+        high_x: int = 120,
+        page_extent: int = 64,
+    ) -> dict[str, object]:
+        return render_mixed_printable_control_page_record_stream(
+            data,
+            resources,
+            stream,
+            0x440946B4,
+            control_fixture_state(
+                cursor_x=pack12(10),
+                cursor_y=pack12(21),
+                hmi=line_printer_hmi["hmi"],
+                pending_width=1,
+                pending_text=0,
+                span_flush_enable=1,
+                materialize_span_flush=1,
+                materialize_d8fc_span_update=1,
+                enabled_783184=enabled,
+                low_x_783186=low_x,
+                high_x_783188=high_x,
+                high_y_78318a=0,
+                span_alternate_offset_783185=1,
+                flagged_context_0016=lower,
+                flagged_context_0018=height,
+                flagged_context_001a=18,
+                orientation=0,
+                page_extent_782db6=page_extent,
+            ),
+            default_advance=line_printer_hmi["hmi"],
+        )
+
+    checks.append(assert_equal("d4ac and d8fc span consumer branch family controls flush output", {
+        "d4ac_disabled": span_branch_summary(run_d4ac_span_branch(b"!", enabled=0)),
+        "d4ac_before_lower": span_branch_summary(run_d4ac_span_branch(b"!", lower=30)),
+        "d4ac_beyond_page": span_branch_summary(run_d4ac_span_branch(b"!", height=50)),
+        "d4ac_high_x_then_cr": span_branch_summary(run_d4ac_span_branch(b"!\r", low_x=0, high_x=20)),
+        "d8fc_disabled": span_branch_summary(run_d8fc_span_branch(b"!", enabled=0)),
+        "d8fc_before_lower": span_branch_summary(run_d8fc_span_branch(b"!", lower=30)),
+        "d8fc_beyond_page": span_branch_summary(run_d8fc_span_branch(b"!", height=50)),
+        "d8fc_high_x_then_cr": span_branch_summary(run_d8fc_span_branch(b"!\r", low_x=0, high_x=20)),
+    }, {
+        "d4ac_disabled": {
+            "stream": b"!",
+            "span_update": {"updated": False, "reason": "disabled"},
+            "chain_roles": [{
+                "role": "compact-text",
+                "size": 0x26,
+                "prefix": bytes.fromhex("00 00 00 00 00 00 00 01 01 7a 00") + (b"\x00" * 3),
+            }],
+            "control_flush": None,
+            "rows_with_28_pixel_span_prefix": [],
+            "final_span_state": {
+                "enabled_783184": 0,
+                "low_x_783186": 100,
+                "high_x_783188": 120,
+                "high_y_78318a": 0,
+            },
+        },
+        "d4ac_before_lower": {
+            "stream": b"!",
+            "span_update": {"updated": False, "reason": "before-context-lower", "cursor_y": 21},
+            "chain_roles": [{
+                "role": "compact-text",
+                "size": 0x26,
+                "prefix": bytes.fromhex("00 00 00 00 00 00 00 01 01 7a 00") + (b"\x00" * 3),
+            }],
+            "control_flush": None,
+            "rows_with_28_pixel_span_prefix": [],
+            "final_span_state": {
+                "enabled_783184": 1,
+                "low_x_783186": 100,
+                "high_x_783188": 120,
+                "high_y_78318a": 0,
+            },
+        },
+        "d4ac_beyond_page": {
+            "stream": b"!",
+            "span_update": {"updated": False, "reason": "beyond-page-extent", "cursor_y": 21},
+            "chain_roles": [{
+                "role": "compact-text",
+                "size": 0x26,
+                "prefix": bytes.fromhex("00 00 00 00 00 00 00 01 01 7a 00") + (b"\x00" * 3),
+            }],
+            "control_flush": None,
+            "rows_with_28_pixel_span_prefix": [],
+            "final_span_state": {
+                "enabled_783184": 1,
+                "low_x_783186": 100,
+                "high_x_783188": 120,
+                "high_y_78318a": 0,
+            },
+        },
+        "d4ac_high_x_then_cr": {
+            "stream": b"!\r",
+            "span_update": {
+                "updated": True,
+                "handler": 0x00D4AC,
+                "cursor_x": 28,
+                "cursor_y": 21,
+                "context_lower_002c": 0,
+                "context_height_002d": 10,
+                "high_y": 26,
+            },
+            "chain_roles": [
+                {
+                    "role": "span",
+                    "size": 0x26,
+                    "prefix": bytes.fromhex("00 00 00 00 40 00 00 01 a0 00 03 00 00 1c"),
+                },
+                {
+                    "role": "compact-text",
+                    "size": 0x26,
+                    "prefix": bytes.fromhex("00 00 00 00 00 00 00 01 01 7a 00") + (b"\x00" * 3),
+                },
+            ],
+            "control_flush": {
+                "flushed": True,
+                "path": "portrait-segment-list",
+                "raw_source": {"orientation": 0, "mode": 0, "x": 0, "y": 26, "extent": 28},
+                "width": 28,
+            },
+            "rows_with_28_pixel_span_prefix": [10, 11, 12],
+            "final_span_state": {
+                "enabled_783184": 1,
+                "low_x_783186": 5,
+                "high_x_783188": 5,
+                "high_y_78318a": 0,
+            },
+        },
+        "d8fc_disabled": {
+            "stream": b"!",
+            "span_update": {"updated": False, "reason": "disabled"},
+            "chain_roles": [{
+                "role": "compact-text",
+                "size": 0x26,
+                "prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01") + (b"\x00" * 3),
+            }],
+            "control_flush": None,
+            "rows_with_28_pixel_span_prefix": [],
+            "final_span_state": {
+                "enabled_783184": 0,
+                "low_x_783186": 100,
+                "high_x_783188": 120,
+                "high_y_78318a": 0,
+            },
+        },
+        "d8fc_before_lower": {
+            "stream": b"!",
+            "span_update": {"updated": False, "reason": "before-context-lower", "cursor_y": 21},
+            "chain_roles": [{
+                "role": "compact-text",
+                "size": 0x26,
+                "prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01") + (b"\x00" * 3),
+            }],
+            "control_flush": None,
+            "rows_with_28_pixel_span_prefix": [],
+            "final_span_state": {
+                "enabled_783184": 1,
+                "low_x_783186": 100,
+                "high_x_783188": 120,
+                "high_y_78318a": 0,
+            },
+        },
+        "d8fc_beyond_page": {
+            "stream": b"!",
+            "span_update": {"updated": False, "reason": "beyond-page-extent", "cursor_y": 21},
+            "chain_roles": [{
+                "role": "compact-text",
+                "size": 0x26,
+                "prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01") + (b"\x00" * 3),
+            }],
+            "control_flush": None,
+            "rows_with_28_pixel_span_prefix": [],
+            "final_span_state": {
+                "enabled_783184": 1,
+                "low_x_783186": 100,
+                "high_x_783188": 120,
+                "high_y_78318a": 0,
+            },
+        },
+        "d8fc_high_x_then_cr": {
+            "stream": b"!\r",
+            "span_update": {
+                "updated": True,
+                "handler": 0x00D8FC,
+                "cursor_x": 28,
+                "cursor_y": 21,
+                "context_lower_0016": 0,
+                "context_height_0018": 10,
+                "high_y": 3,
+            },
+            "chain_roles": [
+                {
+                    "role": "span",
+                    "size": 0x26,
+                    "prefix": bytes.fromhex("00 00 00 00 40 00 00 01 30 00 03 00 00 1c"),
+                },
+                {
+                    "role": "compact-text",
+                    "size": 0x26,
+                    "prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01") + (b"\x00" * 3),
+                },
+            ],
+            "control_flush": {
+                "flushed": True,
+                "path": "portrait-segment-list",
+                "raw_source": {"orientation": 0, "mode": 0, "x": 0, "y": 3, "extent": 28},
+                "width": 28,
+            },
+            "rows_with_28_pixel_span_prefix": [3, 4, 5],
+            "final_span_state": {
+                "enabled_783184": 1,
+                "low_x_783186": 5,
+                "high_x_783188": 5,
+                "high_y_78318a": 0,
+            },
+        },
+    }))
     mixed_control_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k1G!\r!")
     checks.append(assert_equal("mixed printable/control parser trace feeds page-record queue", {
         "stream": mixed_page_record_stream["stream"],

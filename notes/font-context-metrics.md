@@ -29,6 +29,7 @@ Evidence:
   - `0xe65c refresh composes with font context bridge`
   - `flagged printable d8fc low-watermark flush renders span`
   - `unflagged printable d4ac low-watermark flush renders span`
+  - `d4ac and d8fc span consumer branch family controls flush output`
   - `host-fetched 0x1719c payload metrics feed d4ac span rows`
   - `host-fetched 0x1719c payload metrics feed d8fc span rows`
   - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
@@ -300,6 +301,18 @@ Fixture-pinned metric effects:
   Printing `!` from a bit-30 downloaded-offset-table context enters `0xd8fc`,
   produces high-y `16`, queues segment-list key `0x0406`, and renders the
   span before the compact glyph in bucket `1`.
+- Span-consumer branch family: fixture
+  `d4ac and d8fc span consumer branch family controls flush output` drives
+  printable `!` through both selected source forms. For both `0xd4ac` and
+  `0xd8fc`, clear `0x783184` returns `updated=False` and leaves only the
+  compact text object; lower-bound failure at current y `21` versus lower
+  `30` returns `before-context-lower` with no span object; page-extent failure
+  at current y `21`, height `50`, and extent `64` returns
+  `beyond-page-extent` with no span object. The high-x-only case starts with
+  `low_x=0`, `high_x=20`, and printable advance to x `28`, raises
+  `0x783188`, and the following CR materializes a 28-pixel segment-list span
+  through `0x12714`; `d4ac` renders bucket-relative rows `10..12`, while
+  `d8fc` uses its alternate offset to render rows `3..5`.
 
 ## Metric Evidence Matrix
 
@@ -362,12 +375,22 @@ work can close the right gap instead of re-tracing already-covered consumers.
   `+0x2c`, and `+0x2d`, and renders a flagged pointer glyph while `0xd8fc`
   consumes `+0x16`, `+0x18`, and `+0x1a`. Status: parser-produced type-2
   resource payload to visible unflagged and flagged span rows.
+- Claim: the two span consumers have the same documented branch contract
+  around the metric fields. Evidence: fixture
+  `d4ac and d8fc span consumer branch family controls flush output`; handlers
+  `0xd4ac..0xd548` and `0xd8fc..0xd992`; disabled, before-lower, and
+  beyond-page exits leave only the compact text object, while the high-x path
+  updates `0x783188` and later CR flush produces a 28-pixel segment-list span.
+  Status: parser printable to page-record/render fixture with synthetic
+  metric values for both source forms.
 
 The remaining unresolved middle edge is therefore not the tested `0x1719c`
 type-0 or type-2 metric paths into either `0xd4ac` or `0xd8fc`: both payload
-forms now have host-fetched evidence through visible span rows. The open
-producer-side work is broader descriptor coverage: more metric-byte values and
-rejection/error forms driven from parser bytes to page rows.
+forms now have host-fetched evidence through visible span rows, and the
+consumer-side disabled, lower-bound, page-extent, and high-x branches are
+fixture-backed for both selected source forms. The open producer-side work is
+broader descriptor coverage: more metric-byte values and validation/error forms
+driven from parser bytes to page rows.
 
 ## Macro And Control Re-entry
 
@@ -422,5 +445,6 @@ A byte-stream reproduction must preserve these behaviors:
   incomplete at the parser-produced page boundary. Existing host-stream
   downloaded-font fixtures prove install, visible glyph rendering, and
   `0x1719c` type-0 and type-2 payloads feeding both `0xd4ac` and `0xd8fc` span
-  rows. The remaining gap is broader descriptor metric-byte values and
-  rejection/error forms.
+  rows; the shared span-consumer branch family is also fixture-backed. The
+  remaining gap is broader descriptor metric-byte values and validation/error
+  forms.

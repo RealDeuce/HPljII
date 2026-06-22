@@ -976,6 +976,19 @@ queues a fixed-width span through `0x136d2`.
   `0x783186` / `0x783188` to x `28`, and `0x1f812` renders the span on
   rows `12..14` at pixels `96..115` while the inline glyph stays at
   pixels `10..25` on rows `7..9`.
+- Fixture `d4ac and d8fc span consumer branch family controls flush
+  output` drives printable `!` through both selected source forms and
+  covers the non-low-water branch family for the same pending state block.
+  With `0x783184 = 0`, both consumers return disabled and leave only the
+  compact text object. With current y `21` below lower bound `30`, both
+  return `before-context-lower`; with current y `21`, height `50`, and
+  page extent `64`, both return `beyond-page-extent`; neither case inserts
+  a span object. With `low_x=0`, `high_x=20`, and printable advance to
+  x `28`, the high-x path raises `0x783188`; the following CR flushes a
+  segment-list object with source `x=0`, `extent=28`, ahead of the compact
+  text object. The unflagged `d4ac` case uses default high-y `26` and
+  renders bucket-relative rows `10..12`; the flagged `d8fc` case uses
+  alternate offset `+0x1a = 18`, high-y `3`, and renders rows `3..5`.
 - Fixture `0x1354a portrait text span split queues adjacent buckets`
   starts from a pending portrait span `low_x=2`, `high_x=22`, and
   `high_y=15`. `0x12714` builds source `x=2`, `y=15`, `extent=20`;
@@ -1015,11 +1028,12 @@ queues a fixed-width span through `0x136d2`.
 ### Confidence
 
 High for pending-state initialization, unflagged `0xd4ac` low-water
-success, flagged `0xd8fc` low-water success, flush source packaging,
-portrait versus landscape branch selection, portrait split output,
-landscape nonempty insertion, allocation-failure retry publication,
-object byte shapes, bridge shape, and visible row effects because each
-claim has disassembly and passing fixtures.
+success, flagged `0xd8fc` low-water success, disabled/lower-bound/page-extent
+exits, high-x span extent updates, flush source packaging, portrait versus
+landscape branch selection, portrait split output, landscape nonempty
+insertion, allocation-failure retry publication, object byte shapes, bridge
+shape, and visible row effects because each claim has disassembly and passing
+fixtures.
 
 ### Fixtures
 
@@ -1035,6 +1049,7 @@ claim has disassembly and passing fixtures.
 - `live CR span flush materializes 0x12714 page object`
 - `flagged printable d8fc low-watermark flush renders span`
 - `unflagged printable d4ac low-watermark flush renders span`
+- `d4ac and d8fc span consumer branch family controls flush output`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `0x1354a portrait text span split queues adjacent buckets`
 - `0x12714 landscape span inserts into nonempty fixed list`
@@ -1074,8 +1089,11 @@ claim has disassembly and passing fixtures.
   span consumer, and fixture
   `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
   proves the same copied fields for a host-fetched type-2 payload. Both change
-  visible segment-list rows. The disabled, before-lower, beyond-page,
-  high-x-only, and broader descriptor-value branches remain uncovered.
+  visible segment-list rows. Fixture
+  `d4ac and d8fc span consumer branch family controls flush output` covers
+  the disabled, before-lower, beyond-page, and high-x-only consumer branches.
+  Broader descriptor-value and producer-side validation/error branches remain
+  uncovered.
 - `0xd8fc..0xd992`: flagged context fields `+0x16`, `+0x18`, and
   `+0x1a` are fixture-backed for the low-water success branch and tied
   to selected context records in `notes/font-context-metrics.md`. Fixture
@@ -1084,8 +1102,11 @@ claim has disassembly and passing fixtures.
   into this span consumer, and fixture
   `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
   proves the same copied fields for a host-fetched type-2 payload. Both change
-  visible segment-list rows. The disabled, before-lower, beyond-page,
-  high-x-only, and broader descriptor-value branches remain uncovered.
+  visible segment-list rows. Fixture
+  `d4ac and d8fc span consumer branch family controls flush output` covers
+  the disabled, before-lower, beyond-page, and high-x-only consumer branches.
+  Broader descriptor-value and producer-side validation/error branches remain
+  uncovered.
 
 ## Downloaded Font Descriptor And Payload Chain
 
@@ -1232,8 +1253,8 @@ been page-compared.
   continuation counters and failure/release exits still need fixture coverage.
 - The span-metric bridge in `notes/font-context-metrics.md` now covers
   host-fetched type-0 and type-2 downloaded payloads for both span consumers,
-  but still needs broader metric-byte values and rejection/error page
-  evidence.
+  and the shared consumer branch family is fixture-backed. It still needs
+  broader metric-byte values and producer-side validation/error page evidence.
 
 ## Macro Definition And Data-Chain Replay
 

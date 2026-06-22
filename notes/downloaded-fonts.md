@@ -603,5 +603,6 @@ A byte-stream renderer must preserve:
   the bit-30 offset-table form.
 - The span-metric fields documented in `notes/font-context-metrics.md` are now
   tied to installed payload headers for the `0xd4ac` and `0xd8fc` type-0 and
-  type-2 fixtures, but broader downloaded/inline metric-byte values and
-  rejection/error forms still need parser-produced page evidence.
+  type-2 fixtures, and the shared consumer branch family is fixture-backed.
+  Broader downloaded/inline metric-byte values and producer-side
+  validation/error forms still need parser-produced page evidence.

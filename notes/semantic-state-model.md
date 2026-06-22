@@ -1126,6 +1126,10 @@ record.
     `0x1fd4..0x2016` shifts slots 0 through 4 toward slots 1 through 5
     and inserts the new candidate in slot 0. Accepted candidates are
     cleared from the slot after `0x780eaa` and `0x780eb2` are written.
+  - pool-record state byte `+4`: `0x1c04` stages the current record as
+    state `3`, `0x1eea` changes it to selectable state `4` when word
+    `+0x0e` decrements to zero or pending state `2` otherwise, and
+    `0x7f76..0x7f90` writes state `2` for the selected candidate.
   - `0x7821fb`: candidate-slot mask. `0x7ece..0x7ee6` computes scan
     limit `(0x7821fb & 0x7e) >> 1`, capped at six slots.
   - `0x780eb2`: release/advance cursor paired with `0x780eaa`.
@@ -1135,6 +1139,8 @@ record.
     `0x3144..0x3162`; no stronger role is assigned yet.
   - `0x780e04`: engine/status counter copied into released pool record
     word `+0x10` at `0x778c`.
+  - `0x7839d2`: immediate ready flag consumed by `0x21b8` before
+    `0x1c04` may stage and insert the current `0x780eb2` record.
   - `0x7820c0` participates in the render loop's A4/A5 work-record
     selection before `0x1ec34`.
   - `0x7820bc`, `0x780ea4`, `0x780ea5`, `0x780eaa`, `0x780eae`, and
@@ -1151,13 +1157,23 @@ record.
   `0x780eb2`, and `0x780eb6` to pool base `0x780f02`.
 - `0xff1e` writes state byte `+4 = 2`, copies root longword `+0` to
   `0x780ea6`, sets `0x782996 = 1`, and clears `0x78297a`.
+- `0x21b8..0x223c` gates candidate staging. A ready `0x7839d2` returns
+  nonzero; a timeout sets `0x780ea5`, `0x780e6c`, `0x780e6d`, and
+  `0x780e67 = 2`, then signals `0x780e36` through `0x9ba2`.
 - `0x1c32..0x1c54` marks the current `0x780eb2` record state byte
-  `+4 = 3`, runs the `0x2280` cursor helper, passes that record pointer
-  as the argument to `0x1fd4`, and then continues engine/status helper
-  calls at `0x1c5a..0x1c90`.
+  `+4 = 3`, sets `0x780e6d` when record word `+0x14` is nonzero, runs
+  the `0x2280` cursor helper, passes that record pointer as the argument
+  to `0x1fd4`, and then continues engine/status helper calls at
+  `0x1c5a..0x1c90`.
+- `0x1ca0..0x1cea` writes the current staged record word `+0x10` from
+  `0x780e04` plus the page/mode deadline delta.
 - `0x1fd4..0x2016` shifts `0x780e6e[0..4]` into `0x780e6e[1..5]`,
   drops the previous slot 5, and writes the passed record pointer to
   `0x780e6e[0]`.
+- `0x1eea..0x1f34` decrements the current `0x780eb2` record word
+  `+0x0e`; zero changes state byte `+4` to selectable state `4` and
+  advances `0x780eb2` through record longword `+0`, while nonzero leaves
+  the current record as pending state `2`.
 - `0x7f76..0x7f90` accepts a candidate slot from `0x780e6e[]` when the
   candidate record has state byte `+4 == 4` or word `+0x0e != 0`. It
   writes candidate state byte `+4 = 2`, increments word `+0x0e`, stores
@@ -1193,6 +1209,12 @@ record.
 - `0x8066..0x80cc` reads `0x780eaa`, sets record byte `+8 = 1`, and
   walks linked records for a cleanup/status path.
 - `0x1eb46` reads `0x780eaa` and writes it to `0x780eae`.
+- `0x1958..0x1984` consumes the return from `0x1c04`; a nonzero return
+  runs `0x1cf8` and `0x1eea`, while a zero return skips those release
+  steps and goes directly to the `0x1fa2` cleanup/error path.
+- `0x7ec6..0x7f90` consumes selectable records from `0x780e6e[]` after
+  the staged record has been released to state `4` or has nonzero word
+  `+0x0e`.
 - `0x1ed84` reads `0x780eae`, source words `+0x18/+0x1a`, and source
   queues/context slots through `0x1edc6`.
 - `0x1ee9e` reads active source byte `+9` through `0x780eae`, render
@@ -1233,24 +1255,33 @@ selected record back to state byte `+4 = 4`, clears word `+0x0e`, and
 copies `0x780e04 = 0x1234` into word `+0x10`. Its protected-head variant
 keeps `0x780eaa = 0x780ea6 = 0x00780f02` when state byte `+4 = 1`.
 
-The insertion fixture
-`0x1c04/0x1fd4/0x7ec6 inserted candidate reaches render scheduler`
-starts with six candidate slots `0x00d0f000..0x00d0f050`, inserts
-`0x00d0f100` through the `0x1fd4..0x2016` shift helper, and proves the
-slot vector becomes `0x00d0f100, 0x00d0f000, 0x00d0f010,
-0x00d0f020, 0x00d0f030, 0x00d0f040`, dropping the old slot 5. The
-same fixture runs the `0x7ec6..0x7f90` selector with scan limit 6,
-promotes slot 0 into `0x780eaa = 0x780eb2 = 0x00d0f100`, then carries
-that selected pointer through `0x1eb46` into `0x780eae` and the
-`0x1ecd6` render-work selector. The selected record reaches the same
-`0x1ed84`/`0x1ef6a` rows as the published-record render fixtures.
+The staged active-pool fixture
+`0x1958/0x1c04/0x1eea staged candidate reaches render scheduler` starts
+with current `0x780eb2 = 0x00d0f100`, record state byte `+4 = 2`, word
+`+0x0e = 1`, word `+0x14 = 3`, engine counter `0x780e04 = 0x2000`,
+ready flag `0x7839d2` asserted, and six candidate slots
+`0x00d0f000..0x00d0f050`. It proves `0x1c04` marks the record state
+byte `+4 = 3`, sets `0x780e6d = 1`, calls the `0x2280` cursor helper,
+and inserts the candidate through `0x1fd4..0x2016`, producing slot
+vector `0x00d0f100, 0x00d0f000, 0x00d0f010, 0x00d0f020,
+0x00d0f030, 0x00d0f040`. It also proves the `0x1ca0` deadline write
+`word +0x10 = 0x2114`. The modeled `0x1eea` release decrements
+word `+0x0e` to zero, changes state byte `+4` to selectable state `4`,
+and advances `0x780eb2` to `0x00d0f000`; `0x7ec6..0x7f90` then
+promotes slot 0 into `0x780eaa = 0x780eb2 = 0x00d0f100`. The selected
+pointer reaches `0x1eb46`, `0x1ecd6`, and the same `0x1ed84`/`0x1ef6a`
+rows as the published-record render fixtures. The same fixture includes
+the timeout side of `0x21b8`: elapsed `0x321` sets `0x780ea5`,
+`0x780e6c`, `0x780e6d`, and `0x780e67 = 2`, signals `0x780e36`, returns
+zero to `0x1c04`, and leaves `0x780e6e[]` unchanged.
 
 ### Confidence
 
 High for the distinction between protected pool head `0x780ea6` and
 scheduler cursor `0x780eaa`, the candidate selection stores into
 `0x780eaa`/`0x780eb2`, the `0x1fd4` candidate-slot insertion shift, the
-protected-head skip, `0x780eaa -> 0x780eae`, `0x780ea4/5`, the
+`0x1c04` state-3 staging boundary, the `0x1eea` state-4 release path,
+the protected-head skip, `0x780eaa -> 0x780eae`, `0x780ea4/5`, the
 two-work-record alternation, `0x783a18`, the `0x1ee9e` geometry-change
 boundary, the `0x1ed36..0x1ed6a` same-geometry reuse branch, and the
 render-entry output for the selected source. Medium for the surrounding
@@ -1263,7 +1294,7 @@ initialization is currently covered.
 - `0x1eb2a/0x1ecd6 selects published record for render entry`
 - `0x1ecd6 same-geometry render work reuse reaches render entry`
 - `0x3144/0x7ec6/0x7712 page pool aliases feed scheduler cursor`
-- `0x1c04/0x1fd4/0x7ec6 inserted candidate reaches render scheduler`
+- `0x1958/0x1c04/0x1eea staged candidate reaches render scheduler`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`
 
@@ -1271,8 +1302,12 @@ initialization is currently covered.
 
 - `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`:
   `0x10060..0x10080`
+- `generated/disasm/ic30_ic13_active_pool_cycle_001958.lst`:
+  `0x1958..0x1fa2`
 - `generated/disasm/ic30_ic13_page_pool_candidate_insert_001c04.lst`:
-  `0x1c32..0x1c54`, `0x1fd4..0x2016`
+  `0x1c04..0x2016`
+- `generated/disasm/ic30_ic13_active_pool_engine_gate_002038.lst`:
+  `0x2038..0x223c`
 - `generated/disasm/ic30_ic13_page_pool_init_003100.lst`:
   `0x3144..0x3162`
 - `generated/disasm/ic30_ic13_page_pool_candidate_select_007ec6.lst`:
@@ -1290,10 +1325,11 @@ initialization is currently covered.
 
 ### Unresolved Middle Edges
 
-- `0x1958..0x1c98`: the main active-pool path that reaches the covered
-  `0x1c04` candidate insertion path is only partially modeled. The exact
-  status and engine-helper gates around `0x198e`, `0x19d2`,
-  `0x1cf8..0x1e80`, and `0x2038..0x223c` remain the next boundary.
+- `0x19d2..0x1c00` and `0x1cf8..0x1e80`: setup of the `0x78398c..`
+  engine copy window, status bytes `0x78399e/9f`, and the repeated
+  `0x22f4` copy/pacing helpers are only partially modeled. The fixture
+  covers the ready/timeout gate, staged record insertion, and release
+  state transition, but not the exact physical copy timing.
 - `0x1eba4..0x1ecd2`: render loop pacing, band advance, and engine
   waits are not yet modeled.
 

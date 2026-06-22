@@ -12930,6 +12930,116 @@ def page_pool_candidate_insert_via_1fd4(
     }
 
 
+def active_pool_gate_via_21b8(state: dict[str, object]) -> dict[str, object]:
+    """Model the immediate ready/timeout outcomes of the 0x21b8 gate."""
+    elapsed = int(state.get("gate_elapsed_21b8", 0))
+    ready_flag = bool(state.get("gate_ready_7839d2", False))
+    if elapsed >= 0x321:
+        state["active_render_loop_flag_780ea5"] = 1
+        state["status_flag_780e6c"] = 1
+        state["status_flag_780e6d"] = 1
+        state["status_flag_780e67"] = 2
+        state["gate_event_9ba2_780e36"] = True
+        return {
+            "ready": False,
+            "path": "timeout",
+            "elapsed": elapsed,
+            "active_render_loop_flag_780ea5": 1,
+            "status_flag_780e6c": 1,
+            "status_flag_780e6d": 1,
+            "status_flag_780e67": 2,
+            "gate_event_9ba2_780e36": True,
+        }
+    if ready_flag:
+        return {
+            "ready": True,
+            "path": "ready",
+            "elapsed": elapsed,
+            "gate_ready_7839d2": True,
+        }
+    state["active_render_loop_flag_780ea5"] = 1
+    state["status_flag_780e6c"] = 1
+    return {
+        "ready": False,
+        "path": "aborted-wait",
+        "elapsed": elapsed,
+        "active_render_loop_flag_780ea5": 1,
+        "status_flag_780e6c": 1,
+    }
+
+
+def active_pool_candidate_stage_via_1c04(
+    state: dict[str, object],
+    candidate_ptr: int,
+) -> dict[str, object]:
+    """Model the 0x1c04 gate, state-3 mark, insert, and 0x1ca0 deadline."""
+    gate = active_pool_gate_via_21b8(state)
+    if not bool(gate["ready"]):
+        state["candidate_stage_error_10c8"] = 0x007801C2
+        return {
+            "gate": gate,
+            "inserted": False,
+            "candidate_stage_error_10c8": 0x007801C2,
+            "return_d7": 0,
+        }
+
+    records = state.get("pool_records", {})
+    if not isinstance(records, dict):
+        raise AssertionError("active pool candidate stage needs pool_records")
+    record = records[int(candidate_ptr)]
+    record["state_byte_4"] = 3
+    status_word_14 = int(record.get("word_14", 0))
+    status_flag = 1 if status_word_14 else int(state.get("status_flag_780e6d", 0))
+    state["status_flag_780e6d"] = status_flag
+    state["cursor_helper_2280_called"] = True
+    insert = page_pool_candidate_insert_via_1fd4(state, int(candidate_ptr))
+    state["engine_helper_calls_after_1fd4"] = (0xA620, 0xA650, 0x2332, 0xA638, 0xA5DA)
+
+    deadline_delta = int(state.get("deadline_delta_1ca0", 0x0114))
+    deadline = (int(state.get("engine_counter_780e04", 0)) + deadline_delta) & 0xFFFFFFFF
+    record["word_10"] = deadline
+    return {
+        "gate": gate,
+        "inserted": True,
+        "candidate_ptr": int(candidate_ptr),
+        "state_byte_4": int(record["state_byte_4"]),
+        "status_word_14": status_word_14,
+        "status_flag_780e6d": status_flag,
+        "cursor_helper_2280_called": True,
+        "insert": insert,
+        "engine_helper_calls_after_1fd4": state["engine_helper_calls_after_1fd4"],
+        "deadline_word_10": deadline,
+        "return_d7": 1,
+    }
+
+
+def active_pool_candidate_release_via_1eea(state: dict[str, object]) -> dict[str, object]:
+    """Model the 0x1eea release step for the current 0x780eb2 record."""
+    records = state.get("pool_records", {})
+    if not isinstance(records, dict):
+        raise AssertionError("active pool candidate release needs pool_records")
+    candidate_ptr = int(state.get("advance_cursor_780eb2", 0))
+    record = records[candidate_ptr]
+    word_before = int(record.get("word_0e", 0)) & 0xFFFF
+    word_after = (word_before - 1) & 0xFFFF
+    record["word_0e"] = word_after
+    if word_after == 0:
+        record["state_byte_4"] = 4
+        state["advance_cursor_780eb2"] = int(record.get("next", 0))
+        path = "released-selectable"
+    else:
+        record["state_byte_4"] = 2
+        path = "still-pending"
+    return {
+        "candidate_ptr": candidate_ptr,
+        "word_0e_before": word_before,
+        "word_0e_after": word_after,
+        "state_byte_4": int(record["state_byte_4"]),
+        "advance_cursor_780eb2": int(state.get("advance_cursor_780eb2", 0)),
+        "path": path,
+    }
+
+
 def page_pool_candidate_select_via_7ec6(state: dict[str, object]) -> dict[str, object]:
     """Model the 0x7ec6 candidate scan that writes 0x780eaa/0x780eb2."""
     records = state.get("pool_records", {})
@@ -26819,9 +26929,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "pool_records": {
             inserted_ptr: {
                 "next": old_slot_0,
-                "state_byte_4": 4,
-                "word_0e": 0,
+                "state_byte_4": 2,
+                "word_0e": 1,
                 "word_10": 0,
+                "word_14": 0x0003,
             },
             old_slot_0: {"next": old_slot_1, "state_byte_4": 0, "word_0e": 0},
             old_slot_1: {"next": old_slot_2, "state_byte_4": 0, "word_0e": 0},
@@ -26839,13 +26950,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             old_slot_5,
         ],
         "candidate_mask_7821fb": 0x0C,
+        "advance_cursor_780eb2": inserted_ptr,
+        "engine_counter_780e04": 0x2000,
+        "deadline_delta_1ca0": 0x0114,
+        "gate_elapsed_21b8": 0x20,
+        "gate_ready_7839d2": True,
         "render_work_selector_7820bc": 0,
         "render_work_records": {
             0x007820C4: {"word_04": 0},
             0x00782128: {},
         },
     }
-    insert = page_pool_candidate_insert_via_1fd4(insert_state, inserted_ptr)
+    stage = active_pool_candidate_stage_via_1c04(insert_state, inserted_ptr)
+    release = active_pool_candidate_release_via_1eea(insert_state)
     insert_select = page_pool_candidate_select_via_7ec6(insert_state)
     inserted_scheduler = render_scheduler_handoff_via_1eb2a_1ecd6(
         data,
@@ -26856,10 +26973,38 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     inserted_rendered = inserted_scheduler["rendered"]
     assert isinstance(inserted_rendered, dict)
+    gate_fail_state: dict[str, object] = {
+        "pool_records": {
+            inserted_ptr: {
+                "next": old_slot_0,
+                "state_byte_4": 2,
+                "word_0e": 1,
+                "word_10": 0,
+                "word_14": 0,
+            },
+        },
+        "candidate_slots_780e6e": [old_slot_0, 0, 0, 0, 0, 0],
+        "advance_cursor_780eb2": inserted_ptr,
+        "gate_elapsed_21b8": 0x321,
+        "gate_ready_7839d2": False,
+    }
+    gate_fail = active_pool_candidate_stage_via_1c04(gate_fail_state, inserted_ptr)
     checks.append(assert_equal(
-        "0x1c04/0x1fd4/0x7ec6 inserted candidate reaches render scheduler",
+        "0x1958/0x1c04/0x1eea staged candidate reaches render scheduler",
         {
-            "insert": insert,
+            "stage": {
+                "gate": stage["gate"],
+                "inserted": stage["inserted"],
+                "candidate_ptr": stage["candidate_ptr"],
+                "state_byte_4": stage["state_byte_4"],
+                "status_word_14": stage["status_word_14"],
+                "status_flag_780e6d": stage["status_flag_780e6d"],
+                "cursor_helper_2280_called": stage["cursor_helper_2280_called"],
+                "insert": stage["insert"],
+                "deadline_word_10": stage["deadline_word_10"],
+                "return_d7": stage["return_d7"],
+            },
+            "release": release,
             "select": {
                 "limit": insert_select["limit"],
                 "selected_index": insert_select["selected_index"],
@@ -26882,27 +27027,58 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "call_order": inserted_rendered["entry"]["call_order"],
                 "rows": inserted_rendered["entry"]["rows"],
             },
+            "gate_fail": {
+                "gate": gate_fail["gate"],
+                "inserted": gate_fail["inserted"],
+                "candidate_stage_error_10c8": gate_fail["candidate_stage_error_10c8"],
+                "return_d7": gate_fail["return_d7"],
+                "slots": gate_fail_state["candidate_slots_780e6e"],
+            },
         },
         {
-            "insert": {
+            "stage": {
+                "gate": {
+                    "ready": True,
+                    "path": "ready",
+                    "elapsed": 0x20,
+                    "gate_ready_7839d2": True,
+                },
+                "inserted": True,
                 "candidate_ptr": inserted_ptr,
-                "slots_before": (
-                    old_slot_0,
-                    old_slot_1,
-                    old_slot_2,
-                    old_slot_3,
-                    old_slot_4,
-                    old_slot_5,
-                ),
-                "slots_after": (
-                    inserted_ptr,
-                    old_slot_0,
-                    old_slot_1,
-                    old_slot_2,
-                    old_slot_3,
-                    old_slot_4,
-                ),
-                "dropped_slot_5": old_slot_5,
+                "state_byte_4": 3,
+                "status_word_14": 0x0003,
+                "status_flag_780e6d": 1,
+                "cursor_helper_2280_called": True,
+                "insert": {
+                    "candidate_ptr": inserted_ptr,
+                    "slots_before": (
+                        old_slot_0,
+                        old_slot_1,
+                        old_slot_2,
+                        old_slot_3,
+                        old_slot_4,
+                        old_slot_5,
+                    ),
+                    "slots_after": (
+                        inserted_ptr,
+                        old_slot_0,
+                        old_slot_1,
+                        old_slot_2,
+                        old_slot_3,
+                        old_slot_4,
+                    ),
+                    "dropped_slot_5": old_slot_5,
+                },
+                "deadline_word_10": 0x2114,
+                "return_d7": 1,
+            },
+            "release": {
+                "candidate_ptr": inserted_ptr,
+                "word_0e_before": 1,
+                "word_0e_after": 0,
+                "state_byte_4": 4,
+                "advance_cursor_780eb2": old_slot_0,
+                "path": "released-selectable",
             },
             "select": {
                 "limit": 6,
@@ -26921,6 +27097,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "render": {
                 "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
                 "rows": scheduler_rendered["entry"]["rows"],
+            },
+            "gate_fail": {
+                "gate": {
+                    "ready": False,
+                    "path": "timeout",
+                    "elapsed": 0x321,
+                    "active_render_loop_flag_780ea5": 1,
+                    "status_flag_780e6c": 1,
+                    "status_flag_780e6d": 1,
+                    "status_flag_780e67": 2,
+                    "gate_event_9ba2_780e36": True,
+                },
+                "inserted": False,
+                "candidate_stage_error_10c8": 0x007801C2,
+                "return_d7": 0,
+                "slots": [old_slot_0, 0, 0, 0, 0, 0],
             },
         },
     ))

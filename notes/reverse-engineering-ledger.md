@@ -510,12 +510,12 @@ cursor fixture where `0x3144..0x3162` initializes `0x780ea6`,
 `0x780eaa`, `0x780eae`, `0x780eb2`, and `0x780eb6`,
 `0x7f76..0x7f90` selects a candidate from `0x780e6e[]` into
 `0x780eaa`/`0x780eb2`, and `0x7722..0x779a` advances or protects the
-cursor against `0x780ea6`, an insertion-to-render fixture where
-`0x1c32..0x1c54` passes current `0x780eb2` to `0x1fd4`,
-`0x1fd4..0x2016` shifts `0x780e6e[]` and inserts the candidate at slot
-zero, `0x7ec6..0x7f90` promotes it back into `0x780eaa`, and the
-selected pointer reaches `0x1eb46`/`0x1ecd6` render scheduling, a mixed
-`!\x1bE` fixture that
+cursor against `0x780ea6`, a staged active-pool fixture where `0x21b8`
+gates `0x1c04`, `0x1c32..0x1c54` marks current `0x780eb2` state `3`,
+`0x1fd4..0x2016` shifts `0x780e6e[]`, `0x1eea` releases the staged
+record to selectable state `4`, `0x7ec6..0x7f90` promotes it back into
+`0x780eaa`, and the selected pointer reaches `0x1eb46`/`0x1ecd6`
+render scheduling, a mixed `!\x1bE` fixture that
 publishes and clears a valid current page root after queued text and has
 a page-record allocator/bridge/publication variant,
 selected inline/downloaded `0x14e24`/`0x14eb6` map and `0x1393a`
@@ -880,9 +880,9 @@ ROM work needed:
   split for `0x1f0d2`, `0x1f1f0`, and `0x1f264`; host-fetched
   150/100/75-dpi raster streams now carry encoded modes 1/2/3 through
   `0x1ed84` and `0x1ef6a`.
-- Continue the active-render scheduler by tracing active-pool/engine gates
-  around `0x1958..0x1c98`, `0x1cf8..0x1e80`, `0x2038..0x223c`, and the
-  render pacing loop `0x1eba4..0x1ecd2`; candidate-slot insertion,
+- Continue the active-render scheduler by tracing engine copy/pacing gates
+  around `0x19d2..0x1c00`, `0x1cf8..0x1e80`, and the render pacing loop
+  `0x1eba4..0x1ecd2`; candidate-slot insertion, active-pool staging,
   pool-cursor alias movement, and same-geometry work-record reuse are now
   fixture-covered.
 - Determine the remaining live-parser wide/segmented text, raster

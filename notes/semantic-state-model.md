@@ -456,12 +456,14 @@ modeled source/object structures rather than a full live CPU-memory run.
   production are composed in `Text Source Objects And Compact Buckets`;
   remaining work is full live CPU-register/memory capture for dense
   parser-produced pages across every source class.
-- `0xf34a..0x12714` and `0xf34a..0x126e2`: pending span flush calls are
-  counted and fixture-visible, but their internal text-span structures
-  are not lifted in this checkpoint.
-- `0xd4ac..0xd8fc`: active font/context span update helpers are known
-  consumers after printable/control cursor moves, but their full side
-  effects remain under font/text-span modeling.
+- `0xf34a..0x12714` and `0xf34a..0x126e2`: pending span flush and
+  re-arm state are composed in `Text Span Flush And Fixed-Width Spans`;
+  remaining work is the allocator-failure retry branch and live
+  nonempty-list insertion coverage.
+- `0xd4ac..0xd8fc`: active font/context span update helpers are
+  composed as watermark writers in `Text Span Flush And Fixed-Width
+  Spans`; remaining work is exhaustive context-record naming for every
+  font class.
 - `0x11f5a..0x12452`: transparent-text delayed payload restore and
   printable re-entry are host-fetched and render-checked for
   `ESC &p2X!!`; broader control-byte filtering inside transparent data
@@ -707,12 +709,200 @@ full 68000 interpreter through every source class and allocator branch.
 - `0xd47a..0xd4a0` and `0xd8ca..0xd8f0`: allocation failure retry via
   `0xff1e` / `0x10084` is identified in both source handoffs; broad
   dense live-parser coverage remains under page-record allocator work.
-- `0xd4ac..0xd548` and `0xd8fc..0xd992`: span watermark writes are
-  named, but the downstream internals of `0x12714` / `0x126e2` remain
-  unresolved.
+- `0xd4ac..0xd548` and `0xd8fc..0xd992`: span watermark writes and the
+  downstream `0x12714` / `0x126e2` handoff are composed in
+  `Text Span Flush And Fixed-Width Spans`; remaining unresolved edges
+  are the allocator-failure retry and split/nonempty insertion branches.
 - `0x12f2e..0x1306e`: short and segmented producer shapes are
   fixture-backed, but a full live CPU/register trace through every
   selector mode into real allocator memory remains open.
+
+## Text Span Flush And Fixed-Width Spans
+
+Status: composed as the shared pending-span cluster behind printable
+span updates, direct-control flushes, and render-facing span objects.
+This checkpoint covers the two watermark writers `0xd4ac` and `0xd8fc`,
+the re-arm helper `0x126e2`, flush helper `0x12714`, portrait producer
+`0x13520` / `0x135f0`, landscape producer `0x136d2`, and consumers
+`0x1f812` and `0x1f756`.
+
+Concept: text placement maintains a pending horizontal span in
+`0x783184..0x78318a`. `0x126e2` opens a new pending span at the current
+horizontal cursor. `0xd4ac` and `0xd8fc` extend its x/y watermarks from
+font/context metrics. When text or a control movement crosses left of
+`0x783186`, or when shared helper `0xf34a` sees a pending span,
+`0x12714` packages the state as an 8-byte source. Portrait orientation
+queues a segment-list mask span through `0x13520` / `0x135f0`; landscape
+queues a fixed-width span through `0x136d2`.
+
+### Field Groups
+
+- Canonical pending-span state:
+  - `0x783184`: enabled byte. `0x126e2` sets it when clear, and
+    `0x12714` clears it before attempting output.
+  - `0x783186`: low-x watermark / flush threshold. `0x126e2` seeds it
+    from `0x782c8a`; `0xd4ac` and `0xd8fc` compare current x against it.
+  - `0x783188`: high-x watermark. `0x126e2` seeds it from `0x782c8a`;
+    `0xd4ac` and `0xd8fc` raise it after placement.
+  - `0x78318a`: high-y watermark. `0x126e2` clears it; `0xd4ac` and
+    `0xd8fc` raise it from context-record y bounds and offsets.
+  Evidence: disassembly `0x126e2..0x12712`, printable-text disassembly
+  `0xd4ac..0xd548` and `0xd8fc..0xd992`, and fixtures
+  `0x12714 portrait text span flush queues segment-list span` and
+  `0x12714 landscape text span flush queues fixed-width span`.
+- Canonical flush source fields:
+  - local source `+0`: orientation byte copied from `0x782da3`.
+  - local source `+1`: mode byte, initially zero and rewritten by
+    `0x137a2` to `3` for portrait or `6` for landscape.
+  - local source `+2`: portrait x is `0x783186`; landscape x is
+    `0x78318a`.
+  - local source `+4`: portrait y is `0x78318a`; landscape y is
+    `0x782db2 - 0x783186 - ((0x783188 - 0x783186) - 1)`.
+  - local source `+6`: span extent, `0x783188 - 0x783186`.
+  Evidence: `generated/disasm/ic30_ic13_text_span_flush_012714.lst`
+  `0x1274a..0x12808`, plus both `0x12714` fixtures.
+- Canonical geometry inputs:
+  - `0x782c8a`: current horizontal cursor copied by `0x126e2`.
+  - `0x782da3`: orientation branch consumed by `0x12714`.
+  - `0x782db2`: landscape orientation extent consumed by `0x12768`.
+  - `0x782db6`: page extent gate; `0x12790..0x127a0` skips output when
+    `0x78318a + 2` is beyond it.
+  - `0x782dc0`: vertical offset added by `0x137a2` before key packing.
+  Evidence: `0x126f6..0x1270a`, `0x12752..0x127a0`, and
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`
+  `0x137a2..0x1381a`.
+- Derived/cache producer state:
+  - `0x782a7a` / `0x782a7b`: selector bytes for `0x1387c`; current
+    fixtures pin `0x4000` for segment-list span objects.
+  - `0x782a7c`: bucket index from y-like coordinate shifted by four.
+  - `0x782a7d`: bucket byte written into fixed-list objects by
+    `0x136d2`.
+  - `0x782a7e`: packed key used by both `0x135f0` segment-list entries
+    and `0x136d2` fixed-list entries.
+  Evidence: `0x137a2..0x1381a`, fixture
+  `0x137a2/0x136d2-modeled fixed-rule list object and bridge
+  normalization`, and both `0x12714` fixtures.
+- Firmware bookkeeping:
+  - current page root `0x78297a` is ensured by `0x10084` before
+    `0x12714` queues output.
+  - allocation failure at `0x13520` causes `0x127ae..0x127be` to set
+    bit 0 in current page root byte `+0x15`, call `0xff1e`, ensure a
+    page root again, and retry.
+  Evidence: `0x12788..0x127c4` and
+  `generated/analysis/ic30_ic13_page_root_finalization.md`.
+- Parser scratch:
+  - none owned by this cluster. The scratch object at `A5` in
+    `0x12714` is a local producer source, not parser record storage.
+- Unknown:
+  - full semantic names for the unflagged context fields `+0x2b`,
+    `+0x2c`, `+0x2d` and flagged context fields `+0x16`, `+0x18`,
+    `+0x1a` beyond their y-bound/offset role in `0xd4ac` and `0xd8fc`.
+
+### Writers
+
+- `0x126e2` sets `0x783184`, copies `0x782c8a.w` into `0x783188` and
+  `0x783186`, and clears `0x78318a` when no pending span is active.
+- `0xd4ac` and `0xd8fc` write `0x78318a` and `0x783188`, compare
+  current x with `0x783186`, and call `0x12714` then `0x126e2` when the
+  current x is below the low watermark.
+- `0xf34a` clears `0x782a58`; if `0x783184` is set, it calls `0x12714`
+  then `0x126e2`.
+- `0x12714` clears `0x783184`, writes the local 8-byte source, calls
+  `0x10084`, gates on `0x782db6`, calls `0x13520`, and retries after
+  `0xff1e` on allocation failure.
+- `0x13520` selects portrait `0x135f0` or landscape `0x136d2` after
+  `0x137a2` derives selector/key state.
+- `0x135f0` appends a six-byte segment-list entry in a `0x26` object
+  allocated through `0x1387c`.
+- `0x136d2` inserts a fixed-width object under page-root `+0x28` using
+  `0x1381c` storage.
+
+### Readers And Consumers
+
+- `0xd4ac` consumes unflagged context fields `+0x2b`, `+0x2c`, and
+  `+0x2d` after `0xd3b2` printable placement.
+- `0xd8fc` consumes flagged context fields `+0x16`, `+0x18`, and
+  `+0x1a` after `0xd824` printable placement and after HT/BS/cursor
+  helpers pick the active context.
+- `0x1edc6` bridges page-root `+0x28` fixed-list objects to render
+  offset `+0x20`, copying extent into render object word `+0x0a` and
+  setting continuation bytes `+0x0c/+0x0d`.
+- `0x1f812` consumes the portrait segment-list object from compact
+  bucket storage and writes mask spans.
+- `0x1f756` / `0x1f7b0` consume the landscape fixed-width object after
+  bridge normalization and write repeated pattern spans.
+
+### Output Effect
+
+- Fixture `0x12714 portrait text span flush queues segment-list span`
+  starts with pending state `low_x=2`, `high_x=18`, and `high_y=3`.
+  `0x12714` clears `0x783184`, builds source `x=2`, `y=3`,
+  `extent=16`, derives key `0x3200`, queues object
+  `00 00 00 00 40 00 00 01 32 00 03 00 00 10 ...`, and `0x1f812`
+  renders three full 16-pixel rows beginning at row index `3`.
+- Fixture `0x12714 landscape text span flush queues fixed-width span`
+  starts with pending state `low_x=2`, `high_x=5`, `high_y=3`,
+  orientation `1`, and extent source `0x782db2=7`. `0x12714` builds
+  source `x=3`, `y=3`, `extent=3`, derives key `0x3300`, queues fixed
+  object `00 00 00 00 00 06 33 00 00 03 00 00 00 00`, the `0x1edc6`
+  bridge normalizes it to `+0x20`, and `0x1f756` renders three shifted
+  3-pixel rows.
+
+### Confidence
+
+High for pending-state initialization, flush source packaging, portrait
+versus landscape branch selection, object byte shapes, bridge shape, and
+visible row effects because each claim has disassembly and passing
+fixtures. Medium for allocation-failure recovery and nonempty/split list
+ordering because those are disassembled and partly shared with existing
+allocator fixtures, but not yet driven by a live pending-span stream.
+
+### Fixtures
+
+- `0x12714 portrait text span flush queues segment-list span`
+- `0x12714 landscape text span flush queues fixed-width span`
+- `0x137a2/0x136d2-modeled fixed-rule list object and bridge
+  normalization`
+- `0x1f756 fixed-width list renders bridged +0x20 object`
+- `0x1f812 segment-list object renders counted mask spans`
+- `0x136d2 address-aware fixed-list insertion uses 0x1381c storage`
+- `0x1edc6 page-record bridge normalizes rule and fixed lists`
+- `mixed printable/control page-record stream queues through 0x1387c`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_text_span_flush_012714.lst`:
+  `0x12714..0x12808` for source packaging, page-extent gate, success
+  queue call, and retry setup.
+- `generated/disasm/ic30_ic13_text_span_state_0126e2.lst`:
+  `0x126e2..0x12712` for re-arm helper initialization of `0x783184`,
+  `0x783186`, `0x783188`, and `0x78318a`.
+- `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`:
+  `0xd4ac..0xd548` and `0xd8fc..0xd992` watermark writers.
+- `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`:
+  `0xf34a..0xf362` shared direct-control flush helper.
+- `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`:
+  `0x13520..0x1381a` producer, insertion, and packed-key helpers.
+- `generated/analysis/ic30_ic13_page_record_bridge.md` and
+  `generated/analysis/ic30_ic13_render_dispatch_tables.md`:
+  bridge and renderer consumers for fixed-width lists.
+
+### Unresolved Middle Edges
+
+- `0x127a4..0x127c4`: allocation-failure retry is identified but not
+  fixture-driven from a pending-span stream.
+- `0x1354a..0x135ec`: portrait split case after `0x13520` has a second
+  `0x135f0` call when the source crosses a boundary; success and render
+  shape are not yet fixture-covered.
+- `0x13690..0x1377c`: nonempty fixed-list insertion order is covered by
+  the shared `0x136d2` addressed fixture, but not by a live
+  `0x12714` landscape span source.
+- `0xd4ac..0xd548` and `0xd8fc..0xd992`: context y-bound/offset fields
+  are named by behavior; exact font-record ownership of those fields is
+  still open.
+- Live parser stream boundary: no host-byte fixture yet forces a real
+  `0xd4ac` / `0xd8fc` low-watermark crossing into `0x12714` and then
+  renders the emitted span.
 
 ## Macro Definition And Data-Chain Replay
 

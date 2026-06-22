@@ -179,6 +179,7 @@ def generate_disassembly(firmware: Path) -> None:
         ("ic30_ic13_transparent_data_handler_011f5a.lst", "0x11f5a", "0x11f5a", "0x70"),
         ("ic30_ic13_payload_dispatch_011f82.lst", "0x11f82", "0x11f82", "0x470"),
         ("ic30_ic13_text_payload_repeat_readers_012120.lst", "0x12120", "0x12120", "0x560"),
+        ("ic30_ic13_text_span_state_0126e2.lst", "0x126e2", "0x126e2", "0x132"),
         ("ic30_ic13_text_span_flush_012714.lst", "0x12714", "0x12714", "0x100"),
         ("ic30_ic13_vertical_forms_control_01280a.lst", "0x1280a", "0x1280a", "0x730"),
         ("ic30_ic13_text_object_queue_012f2e.lst", "0x12f2e", "0x12f2e", "0x150"),

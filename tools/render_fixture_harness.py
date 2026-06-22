@@ -12181,6 +12181,113 @@ def queue_fixed_rule_via_136d2(page_record: dict[str, object], source: dict[str,
     }
 
 
+def queue_text_span_segment_via_135f0(
+    page_record: dict[str, object],
+    source: dict[str, int],
+    *,
+    vertical_offset: int = 0,
+) -> dict[str, object]:
+    bucket_array = page_record.setdefault("bucket_array", {})
+    if not isinstance(bucket_array, dict):
+        raise AssertionError("page record bucket_array must be a dict")
+    computed = fixed_rule_key_via_137a2(source, vertical_offset)
+    bucket_index = int(computed["bucket_index"])
+    selector = (int(computed["selector_hi"]) << 8) | int(computed["selector_lo"])
+    chain = bucket_array.setdefault(bucket_index, [])
+    if not isinstance(chain, list):
+        raise AssertionError("page record bucket chain must be a list")
+    obj = bytearray(0x26)
+    obj[4:6] = selector.to_bytes(2, "big")
+    obj[6:8] = (1).to_bytes(2, "big")
+    obj[8:10] = int(computed["key"]).to_bytes(2, "big")
+    obj[10] = int(computed["mode"]) & 0xFF
+    obj[11] = 0
+    obj[12:14] = (int(source["extent"]) & 0xFFFF).to_bytes(2, "big")
+    chain.insert(0, bytes(obj))
+    return {
+        "path": "text-span-segment-list",
+        "computed": computed,
+        "object": bytes(obj),
+        "bucket_index": bucket_index,
+        "selector": selector,
+        "chain_length": len(chain),
+    }
+
+
+def flush_text_span_via_12714(
+    page_record: dict[str, object],
+    state: dict[str, int],
+    *,
+    vertical_offset: int = 0,
+) -> dict[str, object]:
+    enabled = int(state.get("enabled_783184", 0))
+    low_x = int(state.get("low_x_783186", 0))
+    high_x = int(state.get("high_x_783188", 0))
+    high_y = int(state.get("high_y_78318a", 0))
+    width = high_x - low_x
+    state["enabled_783184"] = 0
+    if not enabled or width <= 0:
+        return {
+            "flushed": False,
+            "reason": "disabled-or-empty",
+            "width": width,
+            "state": state,
+        }
+
+    orientation = int(state.get("orientation_782da3", 0))
+    if orientation == 0:
+        raw_source = {
+            "orientation": 0,
+            "mode": 0,
+            "x": low_x,
+            "y": high_y,
+            "extent": width,
+        }
+    else:
+        orientation_extent = int(state.get("orientation_extent_782db2", 0))
+        raw_source = {
+            "orientation": orientation,
+            "mode": 1,
+            "x": high_y,
+            "y": orientation_extent - low_x - (width - 1),
+            "extent": width,
+        }
+
+    page_extent = int(state.get("page_extent_782db6", 0xFFFF))
+    if high_y + 2 > page_extent:
+        return {
+            "flushed": False,
+            "reason": "below-page-extent",
+            "raw_source": raw_source,
+            "width": width,
+            "state": state,
+        }
+
+    if orientation == 0:
+        queued = queue_text_span_segment_via_135f0(
+            page_record,
+            raw_source,
+            vertical_offset=vertical_offset,
+        )
+        path = "portrait-segment-list"
+    else:
+        queued = queue_fixed_rule_via_136d2(
+            page_record,
+            raw_source,
+            vertical_offset=vertical_offset,
+        )
+        path = "landscape-fixed-list"
+
+    return {
+        "flushed": True,
+        "path": path,
+        "raw_source": raw_source,
+        "queued": queued,
+        "width": width,
+        "state": state,
+    }
+
+
 def insert_fixed_rule_addressed_via_136d2(
     state: dict[str, object],
     source: dict[str, int],
@@ -35789,6 +35896,183 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "." * 32 + "###" + "." * 13,
             "." * 32 + "###" + "." * 13,
         ],
+    }))
+    span_portrait_page_record: dict[str, object] = {}
+    span_portrait = flush_text_span_via_12714(span_portrait_page_record, {
+        "enabled_783184": 1,
+        "low_x_783186": 2,
+        "high_x_783188": 18,
+        "high_y_78318a": 3,
+        "orientation_782da3": 0,
+        "page_extent_782db6": 64,
+    })
+    span_portrait_bucket_array = span_portrait_page_record["bucket_array"]
+    assert isinstance(span_portrait_bucket_array, dict)
+    span_portrait_object = bytes(span_portrait_bucket_array[0][0])
+    span_portrait_rendered = render_segment_list_object_via_1f812(
+        data,
+        span_portrait_object,
+        band_rows=8,
+    )
+    checks.append(assert_equal("0x12714 portrait text span flush queues segment-list span", {
+        "flushed": span_portrait["flushed"],
+        "path": span_portrait["path"],
+        "raw_source": span_portrait["raw_source"],
+        "queued": {
+            key: span_portrait["queued"][key]
+            for key in ("path", "computed", "bucket_index", "selector", "object")
+        },
+        "state_enabled_after": span_portrait["state"]["enabled_783184"],
+        "render": span_portrait_rendered,
+    }, {
+        "flushed": True,
+        "path": "portrait-segment-list",
+        "raw_source": {
+            "orientation": 0,
+            "mode": 0,
+            "x": 2,
+            "y": 3,
+            "extent": 16,
+        },
+        "queued": {
+            "path": "text-span-segment-list",
+            "computed": {
+                "x": 2,
+                "y": 3,
+                "bucket_index": 0,
+                "key": 0x3200,
+                "mode": 3,
+                "selector_hi": 0x40,
+                "selector_lo": 0x00,
+            },
+            "bucket_index": 0,
+            "selector": 0x4000,
+            "object": (
+                bytes.fromhex("00 00 00 00 40 00 00 01 32 00 03 00 00 10")
+                + (b"\x00" * 0x18)
+            ),
+        },
+        "state_enabled_after": 0,
+        "render": {
+            "selector": 0x40,
+            "count": 1,
+            "entries": [{
+                "entry_index": 0,
+                "coord": 0x3200,
+                "decoded": {
+                    "row_index": 3,
+                    "byte_pair_offset": 0,
+                    "a001": 0x12,
+                    "a1": 0x60,
+                },
+                "row_count": 3,
+                "width_word": 0x0010,
+                "full_words": 1,
+                "mask_index": 0,
+                "trailing_mask": u16(data, 0x308F2),
+                "target": 0x01F862,
+            }],
+            "rows": [
+                "." * 16,
+                "." * 16,
+                "." * 16,
+                "#" * 16,
+                "#" * 16,
+                "#" * 16,
+            ],
+        },
+    }))
+    span_landscape_page_record: dict[str, object] = {}
+    span_landscape = flush_text_span_via_12714(span_landscape_page_record, {
+        "enabled_783184": 1,
+        "low_x_783186": 2,
+        "high_x_783188": 5,
+        "high_y_78318a": 3,
+        "orientation_782da3": 1,
+        "orientation_extent_782db2": 7,
+        "page_extent_782db6": 64,
+    })
+    span_landscape_bridged = bridge_page_record_via_1edc6(span_landscape_page_record)
+    span_landscape_rendered = render_fixed_width_list_via_1f756(
+        data,
+        {"fixed_list": span_landscape_bridged["fixed_list"]},
+        band_rows=8,
+    )
+    checks.append(assert_equal("0x12714 landscape text span flush queues fixed-width span", {
+        "flushed": span_landscape["flushed"],
+        "path": span_landscape["path"],
+        "raw_source": span_landscape["raw_source"],
+        "queued": {
+            key: span_landscape["queued"][key]
+            for key in ("path", "computed", "object")
+        },
+        "bridged": span_landscape_bridged["fixed_list"],
+        "state_enabled_after": span_landscape["state"]["enabled_783184"],
+        "render": span_landscape_rendered,
+    }, {
+        "flushed": True,
+        "path": "landscape-fixed-list",
+        "raw_source": {
+            "orientation": 1,
+            "mode": 1,
+            "x": 3,
+            "y": 3,
+            "extent": 3,
+        },
+        "queued": {
+            "path": "fixed-rule-list",
+            "computed": {
+                "x": 3,
+                "y": 3,
+                "bucket_index": 0,
+                "key": 0x3300,
+                "mode": 6,
+                "selector_hi": 0x40,
+                "selector_lo": 0x00,
+            },
+            "object": bytes.fromhex("00 00 00 00 00 06 33 00 00 03 00 00 00 00"),
+        },
+        "bridged": [bytes.fromhex("00 00 00 00 00 16 33 00 00 03 00 03 01 08")],
+        "state_enabled_after": 0,
+        "render": {
+            "band_word": 0,
+            "rendered": [{
+                "selector": 6,
+                "helper": 0x1F7B0,
+                "pattern_table_entry": 0x0308F6,
+                "pattern_long": 0xC000E000,
+                "pattern_word": 0xE000,
+                "key": 0x3300,
+                "bucket_delta": 0,
+                "decoded": {
+                    "x": 3,
+                    "y": 3,
+                    "row_low": 3,
+                    "subbyte": 3,
+                    "byte_pair_offset": 0,
+                },
+                "remaining_before": 3,
+                "available_rows": 77,
+                "rows_drawn": 3,
+                "mutated_object": bytes.fromhex("00 00 00 00 00 06 33 00 00 03 ff b6 01 08"),
+                "rows": [
+                    "." * 19,
+                    "." * 19,
+                    "." * 19,
+                    "..." + "###" + "." * 13,
+                    "..." + "###" + "." * 13,
+                    "..." + "###" + "." * 13,
+                ],
+            }],
+            "rows": [
+                "." * 19,
+                "." * 19,
+                "." * 19,
+                "..." + "###" + "." * 13,
+                "..." + "###" + "." * 13,
+                "..." + "###" + "." * 13,
+            ],
+        },
     }))
     rectangle_sizes = apply_rectangle_size_decipoints(
         apply_rectangle_size_decipoints(

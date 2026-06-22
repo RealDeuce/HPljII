@@ -38355,6 +38355,342 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "rows": expected_downloaded_linear_rows,
         },
     }))
+    downloaded_segmented_even_payload = (b"\x00\x00" * 0x80) + bytes.fromhex("f0 0f")
+    downloaded_segmented_even_command_stream = (
+        b"\x1b)s258W" + downloaded_segmented_even_payload
+    )
+    host_fetched_downloaded_segmented_even_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(downloaded_segmented_even_command_stream), direct_mode=0),
+        len(downloaded_segmented_even_command_stream),
+    )
+    downloaded_segmented_even_dispatch_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        host_fetched_downloaded_segmented_even_stream["stream"],
+    )
+    downloaded_segmented_even_dispatch_command = downloaded_segmented_even_dispatch_trace["commands"][0]
+    assert isinstance(downloaded_segmented_even_dispatch_command, dict)
+    downloaded_segmented_even_command = render_font_download_char_command_stream_via_121cc_16498(
+        host_fetched_downloaded_segmented_even_stream["stream"],
+        table_payload_type2_bytes,
+        char_code=0x27,
+        record_words=(0x0000, 0x0000, 0x0081, 0x0000),
+        mode=1,
+        width=0x0010,
+        rows=0x0081,
+        object_offset=0x0580,
+    )
+    downloaded_segmented_even_event = downloaded_segmented_even_command["events"][0]
+    assert isinstance(downloaded_segmented_even_event, dict)
+    downloaded_segmented_even_payload_install = downloaded_segmented_even_event["install"]
+    assert isinstance(downloaded_segmented_even_payload_install, dict)
+    downloaded_segmented_even_memory = bytearray(downloaded_segmented_even_payload_install["header"])
+    downloaded_segmented_even_glyph = resolve_downloaded_pointer_glyph(
+        downloaded_segmented_even_memory,
+        0,
+        0x27,
+    )
+    assert downloaded_segmented_even_glyph is not None
+    downloaded_segmented_even_source = {
+        "context": 0,
+        "host_char": 0x27,
+        "mapped": 0x27,
+        "glyph_entry": downloaded_segmented_even_glyph["entry"],
+        "glyph_width": downloaded_segmented_even_glyph["width"],
+        "glyph_rows": downloaded_segmented_even_glyph["rows"],
+        "flag": 0,
+        "x": 22,
+        "y": 22,
+        "context_slot": 3,
+        "inline_record": bytes([
+            int(downloaded_segmented_even_glyph["render_span"]),
+            int(downloaded_segmented_even_glyph["rows"]) & 0xFF,
+            0,
+        ]),
+    }
+    downloaded_segmented_even_page_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_segmented_even_page_result = queue_text_source_to_page_record_via_12f2e(
+        downloaded_segmented_even_memory,
+        downloaded_segmented_even_page_record,
+        downloaded_segmented_even_source,
+    )
+    downloaded_segmented_even_events = downloaded_segmented_even_page_result["events"]
+    assert isinstance(downloaded_segmented_even_events, list)
+    downloaded_segmented_even_segment1 = downloaded_segmented_even_events[0]
+    downloaded_segmented_even_segment0 = downloaded_segmented_even_events[1]
+    assert isinstance(downloaded_segmented_even_segment1, dict)
+    assert isinstance(downloaded_segmented_even_segment0, dict)
+    downloaded_segmented_even_segment1_object = downloaded_segmented_even_segment1["object"]
+    assert isinstance(downloaded_segmented_even_segment1_object, bytes)
+    downloaded_segmented_even_bridged = bridge_page_record_via_1edc6({
+        "bucket_root": downloaded_segmented_even_segment1_object,
+        "rule_list": [],
+        "fixed_list": [],
+        "context_slots": [0, 0, 0, 0],
+    })
+    downloaded_segmented_even_bridged_rendered = render_bridged_compact_bucket_object(
+        data,
+        downloaded_segmented_even_memory,
+        downloaded_segmented_even_bridged,
+    )
+    downloaded_segmented_even_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_segmented_even_memory,
+        downloaded_segmented_even_page_record,
+        bucket_word=int(downloaded_segmented_even_segment1["bucket_index"]),
+    )
+    downloaded_segmented_even_entry = downloaded_segmented_even_render_entry["entry"]
+    assert isinstance(downloaded_segmented_even_entry, dict)
+    expected_downloaded_segmented_even_rows = [
+        "." * 38,
+        "." * 38,
+        "." * 38,
+        "." * 38,
+        "." * 38,
+        "." * 38,
+        "." * 22 + "####........####",
+    ]
+    checks.append(assert_equal("host-fetched segmented downloaded character renders through 0x1f1f0", {
+        "fetch": {
+            "stream_prefix": host_fetched_downloaded_segmented_even_stream["stream"][:7],
+            "stream_length": len(host_fetched_downloaded_segmented_even_stream["stream"]),
+            "source_set": sorted(set(host_fetched_downloaded_segmented_even_stream["sources"])),
+            "remaining_ring": host_fetched_downloaded_segmented_even_stream["state"]["ring"],
+        },
+        "parser": {
+            "handlers": [
+                event["handler"]
+                for event in downloaded_segmented_even_dispatch_trace["dispatches"]
+            ],
+            "modes": [
+                event["next_mode"]
+                for event in downloaded_segmented_even_dispatch_trace["dispatches"]
+            ],
+            "sequence": downloaded_segmented_even_dispatch_command["sequence"],
+            "record": downloaded_segmented_even_dispatch_command["record"],
+            "restored_record": downloaded_segmented_even_dispatch_command["restored_record"],
+            "payload_offset": downloaded_segmented_even_dispatch_command["payload_offset"],
+            "payload_length": len(downloaded_segmented_even_dispatch_command["payload"]),
+        },
+        "install": {
+            key: downloaded_segmented_even_payload_install[key]
+            for key in (
+                "status",
+                "table_entry",
+                "record_delta",
+                "record",
+                "bitmap_offset",
+                "bitmap_size",
+                "allocation_size",
+                "object_size",
+                "span",
+                "split_plane",
+            )
+        },
+        "copy": {
+            key: downloaded_segmented_even_payload_install["copy"][key]
+            for key in (
+                "status",
+                "dest",
+                "stream_pos",
+                "byte_budget",
+                "control_hits",
+            )
+        },
+        "glyph": {
+            key: downloaded_segmented_even_glyph[key]
+            for key in (
+                "entry",
+                "bitmap",
+                "mode",
+                "rows",
+                "width",
+                "span",
+                "render_span",
+                "source_kind",
+                "table_entry",
+                "record_delta",
+            )
+        },
+        "page": {
+            key: downloaded_segmented_even_page_result[key]
+            for key in ("path", "selector", "coord", "glyph", "rows", "width")
+        },
+        "segments": [
+            {
+                key: event[key]
+                for key in (
+                    "allocated",
+                    "bucket_index",
+                    "selector",
+                    "count_before",
+                    "count_after",
+                    "segment",
+                    "object",
+                )
+            }
+            for event in downloaded_segmented_even_events
+        ],
+        "bridge": {
+            "bucket_matches": (
+                downloaded_segmented_even_bridged["bucket_root"]
+                == downloaded_segmented_even_segment1_object
+            ),
+            "render_field_matches": (
+                downloaded_segmented_even_bridged["render_record_fields"]["bucket_root_18"]
+                == downloaded_segmented_even_segment1_object
+            ),
+            "context_slots_prefix": downloaded_segmented_even_bridged["context_slots"][:4],
+        },
+        "render": {
+            "selector": downloaded_segmented_even_bridged_rendered["selector"],
+            "context_slot": downloaded_segmented_even_bridged_rendered["context_slot"],
+            "compact_mode": downloaded_segmented_even_bridged_rendered["compact_mode"],
+            "payload": downloaded_segmented_even_bridged_rendered["payload"],
+            "rendered": downloaded_segmented_even_bridged_rendered["rendered"],
+            "rows": downloaded_segmented_even_bridged_rendered["rows"],
+        },
+        "entry": {
+            "call_order": downloaded_segmented_even_entry["call_order"],
+            "dispatch": [
+                {
+                    key: entry[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "context_slot",
+                    )
+                }
+                for entry in downloaded_segmented_even_entry["dispatch"]["entries"]
+            ],
+            "rows": downloaded_segmented_even_entry["rows"],
+        },
+    }, {
+        "fetch": {
+            "stream_prefix": b"\x1b)s258W",
+            "stream_length": len(downloaded_segmented_even_command_stream),
+            "source_set": ["ring"],
+            "remaining_ring": [],
+        },
+        "parser": {
+            "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "modes": [1, 4, 13, 0],
+            "sequence": b"\x1b)s258W",
+            "record": b"\x80W\x01\x02\x00\x00",
+            "restored_record": b"\x80W\x01\x02\x00\x00",
+            "payload_offset": 7,
+            "payload_length": 0x0102,
+        },
+        "install": {
+            "status": 1,
+            "table_entry": 0x00E6,
+            "record_delta": 0x0580,
+            "record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 10 00 00"),
+            "bitmap_offset": 0x058C,
+            "bitmap_size": 0x0102,
+            "allocation_size": 5,
+            "object_size": 0x0140,
+            "span": 2,
+            "split_plane": False,
+        },
+        "copy": {
+            "status": 1,
+            "dest": downloaded_segmented_even_payload,
+            "stream_pos": 0x0102,
+            "byte_budget": 0,
+            "control_hits": 0,
+        },
+        "glyph": {
+            "entry": 0x0580,
+            "bitmap": 0x058C,
+            "mode": 1,
+            "rows": 0x0081,
+            "width": 0x0010,
+            "span": 2,
+            "render_span": 2,
+            "source_kind": "downloaded-pointer",
+            "table_entry": 0x00E6,
+            "record_delta": 0x0580,
+        },
+        "page": {
+            "path": "segmented-page-record",
+            "selector": 0x2003,
+            "coord": 0x6601,
+            "glyph": 0x27,
+            "rows": 0x81,
+            "width": 2,
+        },
+        "segments": [
+            {
+                "allocated": True,
+                "bucket_index": 9,
+                "selector": 0x2003,
+                "count_before": 0,
+                "count_after": 1,
+                "segment": 1,
+                "object": (
+                    bytes.fromhex("00 00 00 00 20 03 00 01 27 01 66 01")
+                    + bytes(0x1C)
+                ),
+            },
+            {
+                "allocated": True,
+                "bucket_index": 1,
+                "selector": 0x2003,
+                "count_before": 0,
+                "count_after": 1,
+                "segment": 0,
+                "object": (
+                    bytes.fromhex("00 00 00 00 20 03 00 01 27 00 66 01")
+                    + bytes(0x1C)
+                ),
+            },
+        ],
+        "bridge": {
+            "bucket_matches": True,
+            "render_field_matches": True,
+            "context_slots_prefix": (0, 0, 0, 0),
+        },
+        "render": {
+            "selector": 0x2003,
+            "context_slot": 3,
+            "compact_mode": 2,
+            "payload": bytes.fromhex("00 01 27 01 66 01") + bytes(0x1C),
+            "rendered": [{
+                "glyph": 0x27,
+                "segment": 1,
+                "coord": 0x6601,
+                "row_skip": 0x80,
+                "source_offset": 0x100,
+                "rows": 1,
+                "span": 2,
+                "width": 0x10,
+                "dest_base": 0xC2,
+                "x": 22,
+                "y": 6,
+                "a001": 0x16,
+                "helper": u32(data, 0x1F08E + 2 * 4),
+            }],
+            "rows": expected_downloaded_segmented_even_rows,
+        },
+        "entry": {
+            "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+            "dispatch": [{
+                "chain_index": 0,
+                "object_byte_4": 0x20,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 3,
+            }],
+            "rows": expected_downloaded_segmented_even_rows,
+        },
+    }))
     downloaded_printable_fetch = fetch_stream_via_a904(
         host_byte_fetch_state(ring=[0x25], direct_mode=0),
         1,
@@ -59045,6 +59381,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     lines.append("  rendered rows:")
     append_literal_rows(lines, downloaded_wide_control_rendered["rows"])
+    downloaded_segmented_even_rendered_row = downloaded_segmented_even_bridged_rendered["rows"][-1]
+    append_wrapped(
+        lines,
+        "- host-fetched segmented downloaded character: `ESC )s258W` installs "
+        "glyph `0x27` at table entry `0x%04x`, copies `%d` linear bytes "
+        "through `0x168dc`, queues selector `0x%04x`, and renders segment "
+        "`%d` through `0x1f1f0` row `%s`."
+        % (
+            downloaded_segmented_even_payload_install["table_entry"],
+            downloaded_segmented_even_payload_install["bitmap_size"],
+            downloaded_segmented_even_page_result["selector"],
+            downloaded_segmented_even_segment1["segment"],
+            downloaded_segmented_even_rendered_row,
+        ),
+    )
     lines.append("- command edge fixtures: `ESC *c#E` handler `0x15a18` stores absolute character/code word `0x%04x` in `0x782f30`; `ESC )s0W` reaches `0x11f96` and schedules delayed handler `0x%05x`, while nonzero `ESC )s#W` schedules delayed handler `0x%05x` with absolute byte budget `0x%04x`." % (
         font_character_code["stored_word"],
         font_payload_dispatch_header["handler"],

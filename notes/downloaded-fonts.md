@@ -66,6 +66,8 @@ Primary fixtures:
 - `host-fetched downloaded character stream reaches rendered object`
 - `host-fetched downloaded character object feeds 0x1ed84 and 0x1ef6a`
 - `host-fetched linear downloaded character stream renders through 0x168dc`
+- `host-fetched downloaded character payload control reaches wide render`
+- `host-fetched segmented downloaded character renders through 0x1f1f0`
 - `host-fetched printable byte uses installed downloaded glyph page object`
 - `combined host-fetched font download stream prints installed glyph`
 - `host-fetched font control stream feeds descriptor and character payload state`
@@ -153,6 +155,16 @@ Renderer-facing allocated payload fields:
 - glyph pointer table entry: relative offset from payload base to a
   downloaded character object, for example table entry `0x00de` points to
   record delta `0x0500` in the `ESC )s2193W` fixture.
+- downloaded character object `+0x04`: bitmap delta `0x0c` written by
+  `0x16498`.
+- downloaded character object `+0x05`: glyph bitmap mode. The modeled
+  downloaded-character fixtures use mode `1`.
+- downloaded character object `+0x06/+0x08`: row count and width copied from
+  the current character descriptor; the `ESC )s258W` segmented fixture uses
+  rows `0x0081` and width `0x0010`.
+- downloaded character object `+0x0c..`: copied bitmap bytes. The `ESC )s258W`
+  fixture copies `0x0102` linear bytes through `0x168dc`, with the final
+  row bytes `f0 0f` at bitmap delta `0x0100`.
 - fixed-record table entry: eight bytes at payload `+0x40 + 8 * glyph`. The
   `0x16606` current-record fixture installs glyph `0x21` at payload-relative
   offset `0x48` with record `02 03 04 00 00 00 02 00`, where bytes `+0/+1`
@@ -534,6 +546,18 @@ through compact target `0x1effe` and mode-0 helper `0x1fe76` as three visible
 rows beginning at x `22`.
 - destination x `22`, y `6`, and `$a001 = 0x16`.
 
+Fixture `host-fetched segmented downloaded character renders through
+0x1f1f0` adds the even-span tall sibling. The host-fetched `ESC )s258W` stream
+uses parser record `80 57 01 02 00 00`, delayed handler `0x16c14`, payload
+offset `7`, and byte budget `0x0102`. `0x16498` installs glyph `0x27` at
+table entry `0x00e6`, record delta `0x0580`, record
+`00 00 00 00 0c 01 00 81 00 10 00 00`, bitmap offset `0x058c`, and span `2`.
+Because the copied glyph has rows `0x81` and width byte count `2`, `0x12f2e`
+queues selector `0x2003` with segment objects for buckets `9` and `1`. The
+segment-1 object `00 00 00 00 20 03 00 01 27 01 66 01` is preserved by
+`0x1edc6`; `0x1ef6a` dispatches it as compact text; and `0x1f1f0` renders the
+row at source offset `0x0100` as `####........####` beginning at x `22`.
+
 ## Downloaded Resource Object And Rendering
 
 The bit-30-clear current-record path uses `0x16606` after a descriptor
@@ -845,9 +869,11 @@ A byte-stream renderer must preserve:
 - `0x16fae..0x17016`: all 32 validation slots now have ROM-effect names and
   concrete success/failure fixtures. Exact HP manual labels for the
   consumed-but-not-staged descriptor fields still need external correlation.
-- `0x16498..0x16942`: the split-plane segmented-wide and linear payload paths
-  are page-visible; alternate mode combinations still need the same
-  parser-produced page comparison.
+- `0x16498..0x16942`: split-plane segmented-wide, wide/control, linear normal,
+  and linear segmented downloaded-character paths are page-visible. Remaining
+  parser-produced comparisons are the cross-product variants not covered by
+  those four shapes, especially split-plane segmented and even-span wide
+  without payload-control normalization.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through

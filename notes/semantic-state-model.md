@@ -1294,6 +1294,16 @@ connects that entry-2 failure to the host-facing parser boundary:
 record `80 57 00 50 00 00`, `0x16fae` fails after descriptor bytes
 `00 01 02 03`, and `0x17026`/`0x16c14` skip allocation and install. The
 output effect is no downloaded-font candidate or current-record mutation.
+Fixture `host-fetched segmented downloaded character renders through 0x1f1f0`
+connects the downloaded-character linear reader to the remaining segmented
+compact renderer shape. Host fetch drains `ESC )s258W`; parser dispatch walks
+`0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`; `0x16498` installs glyph
+`0x27` at table entry `0x00e6` with record delta `0x0580`, rows `0x0081`,
+width `0x0010`, bitmap offset `0x058c`, and `0x0102` bytes copied through
+`0x168dc`; `0x12f2e` queues selector `0x2003`; `0x1edc6` preserves the
+segment-1 object; and `0x1ef6a` reaches compact renderer `0x1f1f0`. The
+visible output is one segment-1 row from source offset `0x0100`, rendered at
+x `22` as `####........####`.
 
 ### Confidence
 
@@ -1301,6 +1311,13 @@ High for command dispatch, current-record state, existing-record release
 ordering before allocation failure, staged header fields, payload allocation,
 installed downloaded-character object, and visible row, because the fixtures
 tie host-fetched streams to parser records, teardown state, and render rows.
+High for the downloaded-character parser-to-page path for the normal,
+wide/control, segmented, and segmented-wide compact selectors represented by
+fixtures `host-fetched linear downloaded character stream renders through
+0x168dc`, `host-fetched downloaded character payload control reaches wide
+render`, `host-fetched segmented downloaded character renders through
+0x1f1f0`, and `host-fetched downloaded character stream reaches rendered
+object`.
 High for the ROM-effect names and failure behavior of every `0x16fae`
 validation-table entry, including the host-fetched invalid-type no-install
 boundary. Medium for the complete soft-font grammar because exact HP manual
@@ -1328,6 +1345,8 @@ have not been page-compared.
 - `0x16498-backed downloaded character object renders segmented-wide compact
   row`
 - `host-fetched linear downloaded character stream renders through 0x168dc`
+- `host-fetched downloaded character payload control reaches wide render`
+- `host-fetched segmented downloaded character renders through 0x1f1f0`
 - `0x16fae validation table semantic map covers staged and pass-through
   entries`
 - `0x16fae table-driven validation predicates populate staged header fields`
@@ -1356,9 +1375,11 @@ have not been page-compared.
   host-fetched invalid-type path proves no-install behavior for entry `2`;
   remaining descriptor error forms still need the same parser-produced and
   page-visible treatment.
-- `0x16498..0x16942`: split-plane segmented-wide and linear payloads are
-  page-visible; alternate mode combinations still need parser-produced page
-  comparisons.
+- `0x16498..0x16942`: split-plane segmented-wide, wide/control, linear normal,
+  and linear segmented downloaded-character paths are page-visible. Remaining
+  parser-produced comparisons are the cross-product variants not covered by
+  those four shapes, especially split-plane segmented and even-span wide
+  without payload-control normalization.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through

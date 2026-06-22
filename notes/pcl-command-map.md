@@ -441,7 +441,10 @@ exit through `0x1b04c` with dirty flag `0x782f2d` cleared. The
 non-replay producer calls `0xe5e2` before writing frame byte `+9 = 4`;
 that helper refreshes top offset, text-bottom cache, margins, VFC line
 counts, default VFC table, modified-layout byte, and static
-font-context record `0x782c64`. Chained
+font-context record `0x782c64`. `0xe146` clears exactly eight macro
+context records at `0x782c1e..0x782c6d`; unlike the separate
+`ESC &f#S` cursor stack at `0x782c96..0x782d36`, the macro call-context
+push/pop paths have no observed bounds checks. Chained
 `ESC &f-123y0x1X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f2X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f3X`,
@@ -954,4 +957,5 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   maps and heap initialization `0x164a..0x170a` now that the `0xe002`
   append/count path, `0xe418` layout, snapshot chain helpers,
   heap allocation/free, frame-end branches, `0xe65c` branch contract,
-  and `0xe5e2` layout/VFC/static-font refresh are pinned.
+  `0xe5e2` layout/VFC/static-font refresh, and macro context-stack
+  capacity are pinned.

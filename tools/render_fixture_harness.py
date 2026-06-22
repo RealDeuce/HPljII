@@ -2864,6 +2864,78 @@ def flat_snapshot_via_e996(source_start: int, source_end: int, values: list[int]
     }
 
 
+MACRO_CONTEXT_STACK_BASE = 0x782C1E
+MACRO_CONTEXT_STACK_RECORDS = 8
+MACRO_CONTEXT_STACK_ENTRY_SIZE = 0x0A
+MACRO_CONTEXT_STACK_LIMIT = (
+    MACRO_CONTEXT_STACK_BASE
+    + (MACRO_CONTEXT_STACK_RECORDS * MACRO_CONTEXT_STACK_ENTRY_SIZE)
+)
+MACRO_CONTEXT_STACK_PTR_ADDR = 0x782C6E
+
+
+def reset_macro_context_stack_via_e146() -> dict[str, object]:
+    return {
+        "ptr": MACRO_CONTEXT_STACK_BASE,
+        "base": MACRO_CONTEXT_STACK_BASE,
+        "limit": MACRO_CONTEXT_STACK_LIMIT,
+        "record_count": MACRO_CONTEXT_STACK_RECORDS,
+        "cleared_entries": [
+            {
+                "addr": MACRO_CONTEXT_STACK_BASE + (index * MACRO_CONTEXT_STACK_ENTRY_SIZE),
+                "long_0": 0,
+                "long_4": 0,
+                "byte_8": 0,
+                "byte_9": 0,
+            }
+            for index in range(MACRO_CONTEXT_STACK_RECORDS)
+        ],
+    }
+
+
+def macro_context_stack_push_via_e418_e4f4(
+    state: dict[str, object],
+    writer: int,
+) -> dict[str, object]:
+    updated = dict(state)
+    ptr = int(updated.get("ptr", MACRO_CONTEXT_STACK_BASE))
+    event = {
+        "writer": writer,
+        "entry_addr": ptr,
+        "ptr_before": ptr,
+        "ptr_after": ptr + MACRO_CONTEXT_STACK_ENTRY_SIZE,
+        "long_0_source": 0x782EE6,
+        "long_4_source": 0x782EF6,
+        "byte_8": 0,
+        "byte_9": 0,
+        "overflow": ptr >= MACRO_CONTEXT_STACK_LIMIT,
+        "overlaps_ptr_storage": ptr <= MACRO_CONTEXT_STACK_PTR_ADDR <= ptr + 9,
+    }
+    events = list(updated.get("events", []))
+    events.append(event)
+    updated["events"] = events
+    updated["ptr"] = ptr + MACRO_CONTEXT_STACK_ENTRY_SIZE
+    return updated
+
+
+def macro_context_stack_pop_via_e65c(state: dict[str, object]) -> dict[str, object]:
+    updated = dict(state)
+    ptr = int(updated.get("ptr", MACRO_CONTEXT_STACK_BASE))
+    entry_addr = ptr - MACRO_CONTEXT_STACK_ENTRY_SIZE
+    event = {
+        "consumer": 0x00E65C,
+        "entry_addr": entry_addr,
+        "ptr_before": ptr,
+        "ptr_after": entry_addr,
+        "underflow": entry_addr < MACRO_CONTEXT_STACK_BASE,
+    }
+    events = list(updated.get("events", []))
+    events.append(event)
+    updated["events"] = events
+    updated["ptr"] = entry_addr
+    return updated
+
+
 def heap_allocator_state(**overrides: object) -> dict[str, object]:
     state: dict[str, object] = {
         "base": 0x783988,
@@ -19503,6 +19575,112 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "byte_8": 0,
             "byte_9": 0,
         }],
+    }))
+    context_reset = reset_macro_context_stack_via_e146()
+    context_after_eight = context_reset
+    for _ in range(8):
+        context_after_eight = macro_context_stack_push_via_e418_e4f4(
+            context_after_eight,
+            0x00E418,
+        )
+    context_after_nine = macro_context_stack_push_via_e418_e4f4(
+        context_after_eight,
+        0x00E418,
+    )
+    context_non_replay_push = macro_context_stack_push_via_e418_e4f4(
+        context_reset,
+        0x00E4F4,
+    )
+    context_empty_pop = macro_context_stack_pop_via_e65c(context_reset)
+    checks.append(assert_equal("0xe146/e418/e4f4/e65c macro context stack has eight records and no guard", {
+        "reset": {
+            "ptr": context_reset["ptr"],
+            "base": context_reset["base"],
+            "limit": context_reset["limit"],
+            "record_count": context_reset["record_count"],
+            "first_entry": context_reset["cleared_entries"][0],
+            "last_entry": context_reset["cleared_entries"][-1],
+        },
+        "after_eight": {
+            "ptr": context_after_eight["ptr"],
+            "last_event": context_after_eight["events"][-1],
+        },
+        "after_nine": {
+            "ptr": context_after_nine["ptr"],
+            "last_event": context_after_nine["events"][-1],
+        },
+        "non_replay_push": context_non_replay_push["events"][-1],
+        "empty_pop": context_empty_pop["events"][-1],
+    }, {
+        "reset": {
+            "ptr": 0x782C1E,
+            "base": 0x782C1E,
+            "limit": 0x782C6E,
+            "record_count": 8,
+            "first_entry": {
+                "addr": 0x782C1E,
+                "long_0": 0,
+                "long_4": 0,
+                "byte_8": 0,
+                "byte_9": 0,
+            },
+            "last_entry": {
+                "addr": 0x782C64,
+                "long_0": 0,
+                "long_4": 0,
+                "byte_8": 0,
+                "byte_9": 0,
+            },
+        },
+        "after_eight": {
+            "ptr": 0x782C6E,
+            "last_event": {
+                "writer": 0x00E418,
+                "entry_addr": 0x782C64,
+                "ptr_before": 0x782C64,
+                "ptr_after": 0x782C6E,
+                "long_0_source": 0x782EE6,
+                "long_4_source": 0x782EF6,
+                "byte_8": 0,
+                "byte_9": 0,
+                "overflow": False,
+                "overlaps_ptr_storage": False,
+            },
+        },
+        "after_nine": {
+            "ptr": 0x782C78,
+            "last_event": {
+                "writer": 0x00E418,
+                "entry_addr": 0x782C6E,
+                "ptr_before": 0x782C6E,
+                "ptr_after": 0x782C78,
+                "long_0_source": 0x782EE6,
+                "long_4_source": 0x782EF6,
+                "byte_8": 0,
+                "byte_9": 0,
+                "overflow": True,
+                "overlaps_ptr_storage": True,
+            },
+        },
+        "non_replay_push": {
+            "writer": 0x00E4F4,
+            "entry_addr": 0x782C1E,
+            "ptr_before": 0x782C1E,
+            "ptr_after": 0x782C28,
+            "long_0_source": 0x782EE6,
+            "long_4_source": 0x782EF6,
+            "byte_8": 0,
+            "byte_9": 0,
+            "overflow": False,
+            "overlaps_ptr_storage": False,
+        },
+        "empty_pop": {
+            "consumer": 0x00E65C,
+            "entry_addr": 0x782C14,
+            "ptr_before": 0x782C1E,
+            "ptr_after": 0x782C14,
+            "underflow": True,
+        },
     }))
     long_snapshot_values = [0xA0000000 | index for index in range(65)]
     long_snapshot_chain = snapshot_chain_via_e8f0(
@@ -47492,6 +47670,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         len(macro_flat_end["events"][-1]["restore"]["copied"]),
         int(macro_flat_end["cursor_x_782c8a"]),
         int(macro_flat_end["page_parser_state_782a92"]),
+    ))
+    lines.append("- macro context stack reset clears eight 10-byte records `0x%08x..0x%08x`; the eighth push ends at pointer `0x%08x`, the ninth unguarded push starts at pointer storage `0x%08x`, and an empty `0xe65c(0)` pop reads `0x%08x`." % (
+        int(context_reset["cleared_entries"][0]["addr"]),
+        int(context_reset["cleared_entries"][-1]["addr"]) + 9,
+        int(context_after_eight["ptr"]),
+        int(context_after_nine["events"][-1]["entry_addr"]),
+        int(context_empty_pop["events"][-1]["entry_addr"]),
     ))
     lines.append("- heap allocator fixture: `0x170c(1,1,0x100)` returns `0x%08x`, `0x1710(2,0,0x40)` returns `0x%08x`, linked free releases `%s`, and contiguous free releases `%s`." % (
         int(heap_low_alloc["last_alloc"]),

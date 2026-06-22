@@ -304,13 +304,23 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   context`.
 - Canonical call context stack:
   - stack pointer `0x782c6e` is initialized to `0x782c1e` by `0xe146`.
-  - each entry is 10 bytes.
+  - `0xe146` clears eight 10-byte records at `0x782c1e..0x782c6d`.
   - call mode copies longwords from `0x782ee6` and `0x782ef6` into entry
     `+0x00` and `+0x04`, clears entry bytes `+0x08` and `+0x09`, then
     advances `0x782c6e` by `0x0a`.
   - execute mode does not push this context entry.
-  Evidence: disassembly `0xe146..0xe1be` and `0xe4b2..0xe4e6`;
-  fixture `0xe418 frame metadata distinguishes execute and call context`.
+  - non-replay frame producer `0xe4f4` uses the same push shape.
+  - no guard is visible in `0xe418`, `0xe4f4`, or `0xe65c(0)`: after
+    eight pushes the next entry address is the pointer-storage field
+    `0x782c6e`, and an empty `0xe65c(0)` pop would read from `0x782c14`.
+  - this is separate from the PCL cursor-position stack at
+    `0x782c96..0x782d36`, which has explicit push/pop bounds in
+    `0xf75e`.
+  Evidence: disassembly `0xe146..0xe1be`, `0xe4b2..0xe4e6`,
+  `0xe4fc..0xe51e`, and `0xe66a..0xe676`; fixtures
+  `0xe418 frame metadata distinguishes execute and call context` and
+  `0xe146/e418/e4f4/e65c macro context stack has eight records and no
+  guard`.
 - Canonical environment snapshots:
   - `0xe8f0(start, end)` stores an inclusive longword range into a
     heap-backed linked chain.
@@ -486,6 +496,10 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 - `0xe65c(0)` pops the call-mode context stack entry, may copy active
   primary/secondary font words to remembered words, and clears its 10-byte
   slot before the shared font-context install exit.
+- `0xe146` is the only observed initializer for the macro context stack:
+  it clears `0x782c1e..0x782c6d` and stores base pointer `0x782c1e` in
+  `0x782c6e`. `0xe418` and `0xe4f4` advance without a bounds test, and
+  `0xe65c(0)` rewinds without a base test.
 - `0xe65c(1)` consumes and clears static record `0x782c64`, using direct
   flag bytes or `0xe860` class mismatches to force primary/secondary
   refresh.
@@ -571,6 +585,8 @@ rebuild after `0xe65c`.
 - `0xe65c refreshes macro font context entries`
 - `0xe5e2 refreshes page layout, default VFC table, and static font
   context`
+- `0xe146/e418/e4f4/e65c macro context stack has eight records and no
+  guard`
 - `macro execute frame payload feeds 0xa904 data-chain bytes`
 - `macro execute data-chain parser trace feeds page-record stream`
 - `macro call data-chain parser trace feeds page-record stream`
@@ -614,8 +630,6 @@ rebuild after `0xe65c`.
   `0x14c64`; branch flags, fallback install, and shared exit are pinned.
 - `0xe860..0xe886`: record-class byte meaning for the `+0x16` versus
   `+0x20` returned values is still named by use, not by font format.
-- `0x782c6e..0x782d36`: context stack capacity and overflow policy around
-  macro call replay.
 
 ## Mixed Text/Rule/Raster Page Record
 

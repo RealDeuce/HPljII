@@ -639,6 +639,18 @@ Helper `0xe860` supplies the static-record mismatch test from
 `0x782ee6 + 0x10 * slot`, returning pointed record byte `+0x16` or
 `+0x20` according to context byte `+4`.
 
+The macro context stack is now bounded by reset evidence rather than by
+the cursor-stack field. `0xe146` clears eight 10-byte records at
+`0x782c1e..0x782c6d` and stores stack pointer `0x782c1e` at
+`0x782c6e`. `0xe418` call mode and `0xe4f4` non-replay setup both push
+one entry by writing longwords sourced from `0x782ee6` and `0x782ef6`,
+clearing bytes `+8/+9`, and adding `0x0a` to the pointer. No bounds
+check is visible in those push paths or in the `0xe65c(0)` pop path; the
+ninth push starts at the pointer-storage field `0x782c6e`, while an
+empty pop would read from `0x782c14`. This is distinct from the
+PCL-exposed cursor stack at `0x782c96..0x782d36`, which is handled by
+`ESC &f#S` at `0xf75e` with explicit bounds.
+
 `tools/render_fixture_harness.py` has executable fixtures for `0xe112`,
 the `0xdd08` start/stop/delete/overlay/permanent selector behavior, and
 the `0xe002` chunk append/count path, `0xe418` execute/call data-chain
@@ -766,7 +778,8 @@ control-code anchor.
   maps and heap initialization `0x164a..0x170a` now that the `0xe002`
   append/count path, `0xe418` layout, snapshot chain helpers, heap
   allocation/free contract, frame-end branches, `0xe65c` branch contract,
-  and `0xe5e2` layout/VFC/static-font refresh are pinned.
+  `0xe5e2` layout/VFC/static-font refresh, and macro context-stack
+  capacity are pinned.
 - Replace the remaining synthetic `ESC E` roots with fuller
   parser-allocated page objects; the current host-fetched publication
   fixtures already prove the modeled `0xff1e` publication headers,

@@ -1779,9 +1779,10 @@ modeled. The start-after-text no-wrap bottom-recovery path is modeled for
 start line `64` with an empty table, the start-after-text wrap-after-text
 path is modeled for default-table line-1 placement and line-63 bottom
 recovery, and selector-zero start-after-text top-of-form recovery is
-modeled for start line `64`. Alternate high-start entries are now also
+modeled for start line `64`. Alternate high-start entries are also
 modeled for start line `80`: no-hit bottom recovery, wrapped line-70
-bottom recovery, and selector-zero top-of-form recovery.
+bottom recovery, and selector-zero top-of-form recovery. The `0x12b96`
+default-table bit convention is now pinned by channel selector.
 
 Concept: vertical forms control is a per-line, 16-channel stop table used
 by `ESC &l#W` definitions and consumed by `ESC &l#V` vertical channel
@@ -1794,7 +1795,17 @@ top-of-form page-eject path.
 
 - `0x782dde..0x782edd`: canonical VFC table.
   Semantic role: 128 16-bit VFC channel words, two payload bytes per
-  line.
+  line. `0x1280a` maps selector `n` to bit `n - 1`, so channel numbers
+  are the PCL selector numbers. In the `0x12b96` default table, channel
+  1 marks line `0`; channel 2 marks `text_last_line - 1` and
+  `text_last_line`; channel 3 marks every active text line plus
+  `last_line`; channel 4 marks even lines; channel 5 marks multiples of
+  `3`; channel 6 marks line `0` and half-text line; channel 7 marks
+  line `0`, half-text, quarter-text, and three-quarter-text lines;
+  channel 8 marks multiples of `10`; channel 9 marks `text_last_line`;
+  channels 10 and 11 are not set by this builder; channel 12 marks line
+  `0`; and channels 13, 14, 15, and 16 mark multiples of `7`, `6`, `5`,
+  and `4`.
   Evidence: writer `0x12cfe`, default builder `0x12b96`, refresh caller
   `0xe5e2`, consumer `0x1280a`; fixture
   `0x12cfe ESC &l#W loads vertical forms control state`; table-hit
@@ -1804,7 +1815,8 @@ top-of-form page-eject path.
   `mixed VFC start-after-text wraps to bottom recovery before printable`;
   macro-layout fixture
   `0xe5e2 refreshes page layout, default VFC table, and static font
-  context`.
+  context`; and fixture
+  `0x12b96 default VFC table channel convention`.
 - `0x783160`: canonical VMI / line advance.
   Semantic role: converts between line numbers and packed cursor
   positions.
@@ -1952,7 +1964,9 @@ top-of-form page-eject path.
 - `0x12b96` builds the default VFC table from line-number divisibility
   and boundary rules. It writes `0x782dde` words and is called by
   `0x12cfe` zero-count/default handling and by page-geometry refresh
-  paths such as `0xf9e8`.
+  paths such as `0xf9e8`. For `text_last_line = 62` and `last_line = 63`,
+  the fixture pins line words `0: f8fd`, `32: 806c`, `61: 0006`,
+  `62: 010e`, and `63: 0004`.
 - `0xfe54` computes the VFC line-count caches `0x782edf`,
   `0x782ee0`, and `0x782ede` from VMI, top offset, text bottom, page
   extent, and vertical offset source.
@@ -2236,6 +2250,15 @@ writes recovered y `1104`. With channel 2 at line `70`, selector 2 takes
 the same start line takes `0x1299c..0x12b92`, enters
 `0x12b5e..0x12b92`, and writes top-of-form y `126`.
 
+The default-table fixture pins the ROM-generated channel convention for
+`0x12b96` with `0x782ee0 = 62` and `0x782ede = 63`. Example words are
+line `0 = f8fd`, line `32 = 806c`, line `48 = a05c`, line `61 = 0006`,
+line `62 = 010e`, line `63 = 0004`, and line `64 = 0000`. Since
+`0x1280a` converts selector `n` to mask `1 << (n - 1)`, those words mean
+line 0 has channels `1,3,4,5,6,7,8,12,13,14,15,16`, line 61 has
+channels `2,3`, line 62 has channels `2,3,4,9`, line 63 has channel `3`,
+and line 64 has no default channel.
+
 ### Confidence
 
 High for the `0x11f6e -> 0x12cfe` delayed payload boundary, lowercase
@@ -2264,7 +2287,9 @@ recovery through
 alternate high-start entries through `0x12a02..0x12afc`,
 `0x12a7a..0x12afc`, `0x12afc..0x12b5a`, and `0x12b5e..0x12b92` because
 the direct fixture uses start line `80`, wrapped target line `70`, and
-selector zero from the same state block. Medium for the exact semantic
+selector zero from the same state block. High for the `0x12b96` default
+table channel convention because the fixture ties selector masks to
+generated table words and channel sets. Medium for the exact semantic
 names of `0x782ede`/`0x782edf`/`0x782ee0`; the line-count interpretation
 matches fixtures and disassembly, but the byte names remain inferred from
 their use rather than from HP terminology.
@@ -2292,6 +2317,7 @@ their use rather than from HP terminology.
 - `mixed VFC wrap-no-hit publishes old page and returns to top`
 - `mixed VFC target-after-text recovers near top before fresh printable`
 - `0x1280a VFC alternate high-start recovery entries`
+- `0x12b96 default VFC table channel convention`
 - Supporting existing fixtures:
   `0xc992 ESC &l#D accepts ROM LPI set and refreshes pending vertical
   cursor`, `0xf9e8 ESC &l#P converts VMI lines to page length and
@@ -2310,5 +2336,4 @@ their use rather than from HP terminology.
 
 ### Unresolved Middle Edges
 
-- `0x12b96..0x12cfc`: default table bit meanings are known by bit
-  positions but not fully named by PCL channel convention.
+- None remaining for the VFC table and channel-jump checkpoint.

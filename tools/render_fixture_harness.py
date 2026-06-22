@@ -1950,6 +1950,10 @@ def default_vfc_table_via_12b96(text_last_line: int, last_line: int) -> bytes:
     return bytes(out)
 
 
+def vfc_channels_from_table_word(word: int) -> tuple[int, ...]:
+    return tuple(bit + 1 for bit in range(16) if int(word) & (1 << bit))
+
+
 def refresh_layout_via_e5e2(state: dict[str, object]) -> dict[str, object]:
     updated = dict(state)
     events = list(updated.get("events", []))
@@ -21980,6 +21984,86 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "table_prefix": bytes.fromhex("f9 ff 00 60 00 04 00 00 00 00 00 00 00 00 00 00"),
         },
     }))
+    default_vfc_table = default_vfc_table_via_12b96(62, 63)
+    default_vfc_words = {
+        line: (default_vfc_table[line * 2] << 8) | default_vfc_table[line * 2 + 1]
+        for line in (0, 1, 2, 3, 4, 5, 6, 7, 10, 16, 32, 48, 61, 62, 63, 64)
+    }
+    checks.append(assert_equal(
+        "0x12b96 default VFC table channel convention",
+        {
+            "text_last_line": 62,
+            "last_line": 63,
+            "selector_mask_examples": {
+                selector: 1 << (selector - 1)
+                for selector in (1, 2, 3, 9, 16)
+            },
+            "words": default_vfc_words,
+            "channels": {
+                line: vfc_channels_from_table_word(word)
+                for line, word in default_vfc_words.items()
+            },
+            "derived_lines": {
+                "half_text_line": (62 + 2) >> 1,
+                "quarter_text_line": (62 + 4) >> 2,
+                "three_quarter_text_line": ((62 * 3) + 6) >> 2,
+                "previous_text_line": 62 - 1,
+            },
+        },
+        {
+            "text_last_line": 62,
+            "last_line": 63,
+            "selector_mask_examples": {
+                1: 0x0001,
+                2: 0x0002,
+                3: 0x0004,
+                9: 0x0100,
+                16: 0x8000,
+            },
+            "words": {
+                0: 0xF8FD,
+                1: 0x0004,
+                2: 0x000C,
+                3: 0x0014,
+                4: 0x800C,
+                5: 0x4004,
+                6: 0x201C,
+                7: 0x1004,
+                10: 0x408C,
+                16: 0x804C,
+                32: 0x806C,
+                48: 0xA05C,
+                61: 0x0006,
+                62: 0x010E,
+                63: 0x0004,
+                64: 0x0000,
+            },
+            "channels": {
+                0: (1, 3, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16),
+                1: (3,),
+                2: (3, 4),
+                3: (3, 5),
+                4: (3, 4, 16),
+                5: (3, 15),
+                6: (3, 4, 5, 14),
+                7: (3, 13),
+                10: (3, 4, 8, 15),
+                16: (3, 4, 7, 16),
+                32: (3, 4, 6, 7, 16),
+                48: (3, 4, 5, 7, 14, 16),
+                61: (2, 3),
+                62: (2, 3, 4, 9),
+                63: (3,),
+                64: (),
+            },
+            "derived_lines": {
+                "half_text_line": 32,
+                "quarter_text_line": 16,
+                "three_quarter_text_line": 48,
+                "previous_text_line": 61,
+            },
+        },
+    ))
     macro_overlay = apply_macro_control_via_dd08(macro_with_payload, 4)
     macro_overlay_clear = apply_macro_control_via_dd08(macro_overlay, 5)
     macro_permanent = apply_macro_control_via_dd08(macro_with_payload, 10)
@@ -51444,6 +51528,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- Landscape thresholds loaded by `0x103ea`: `{[landscape_letter[key] for key in ('portrait_landscape_threshold_6', 'portrait_landscape_threshold_2', 'portrait_landscape_threshold_1', 'portrait_landscape_threshold_5')]}`")
     lines.append(f"- `ESC &l66P` at 6 LPI: code `{page_length_letter['page_code']}`, extent `{page_length_letter['page_extent']}`, top offset `{page_length_letter['top_offset']}`, text bottom `{page_length_letter['text_length_bottom']}`")
     lines.append(f"- `ESC &l4W` payload `00 00 00 02`: text-bottom cache `0x{int(vfc_direct_state['text_length_bottom']):08x}`, VFC table prefix `{' '.join(f'{byte:02x}' for byte in vfc_direct_state['vfc_table_782dde'][:4])}`")
+    lines.append(
+        "- Default `0x12b96` VFC table channels are now pinned by selector "
+        "bit: channel 1 is line 0, channel 2 marks the last two text "
+        "lines, channel 3 spans all active text lines plus page last, "
+        "and channels 4..16 follow the ROM divisor/boundary masks."
+    )
     lines.append("- A mixed printable/page-size page-record stream starts without a current page root, drives `!` then `ESC &l1A`, allocates the page-record root on the printable queue step, and publishes the queued compact text bucket through the page-size handler's `0xf34a`/`0xff1e` boundary before storing the new page code and recomputing geometry.")
     lines.append(f"- page-size publication object bytes: `{' '.join(f'{byte:02x}' for byte in page_geometry_page_record_object)}`")
     lines.append("- page-size published page-record bridge rows match the pre-geometry compact text rows.")

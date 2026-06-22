@@ -366,8 +366,11 @@ now fixture-covered for start line `80`: empty-table no-hit recovery
 through `0x12a02..0x12afc`, wrapped line-70 bottom recovery through
 `0x12a7a..0x12afc` and `0x12afc..0x12b5a`, and selector-zero
 top-of-form recovery through `0x12b5e..0x12b92`. The remaining VFC
-semantic gap is naming the default-table bit convention at
-`0x12b96..0x12cfc` against PCL channel terminology.
+semantic gap is also closed: fixture
+`0x12b96 default VFC table channel convention` ties `0x1280a` selector
+`n` to bit `n - 1` and names the ROM default table channel rules from
+line `0`, text boundary lines, half/quarter/three-quarter text lines,
+divisor-pattern lines, and page-last line `0x782ede`.
 
 ### Raster/text/page-object path
 

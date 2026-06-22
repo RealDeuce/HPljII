@@ -13354,6 +13354,178 @@ def active_pool_status_bridge_via_1e44(state: dict[str, object]) -> dict[str, ob
     }
 
 
+def scheduler_signal_wait_object_via_1036(
+    state: dict[str, object],
+    target_ptr: int,
+) -> dict[str, object]:
+    """Model the wait-object queue update at 0x1036."""
+    objects = state.get("scheduler_wait_objects", {})
+    if not isinstance(objects, dict):
+        raise AssertionError("0x1036 needs scheduler_wait_objects")
+    target = objects[int(target_ptr)]
+    if not isinstance(target, dict):
+        raise AssertionError("0x1036 target object must be a dict")
+
+    state_before = int(target.get("state_word_0a", 0)) & 0xFFFF
+    flags_before = int(state.get("scheduler_flags_78017e", 0)) & 0xFFFF
+    queued_before = int(state.get("queued_wait_object_78017a", 0))
+    if state_before != 0x8006:
+        return {
+            "queued": False,
+            "target": int(target_ptr),
+            "state_word_0a_before": state_before,
+            "state_word_0a_after": state_before,
+            "scheduler_flags_78017e_before": flags_before,
+            "scheduler_flags_78017e_after": flags_before,
+            "queued_wait_object_78017a_before": queued_before,
+            "queued_wait_object_78017a_after": queued_before,
+        }
+
+    target["state_word_0a"] = 2
+    state["scheduler_flags_78017e"] = flags_before | 0x0002
+    if not (flags_before & 0x0002) or int(target_ptr) < queued_before:
+        state["queued_wait_object_78017a"] = int(target_ptr)
+
+    return {
+        "queued": True,
+        "target": int(target_ptr),
+        "state_word_0a_before": state_before,
+        "state_word_0a_after": int(target["state_word_0a"]),
+        "scheduler_flags_78017e_before": flags_before,
+        "scheduler_flags_78017e_after": int(state["scheduler_flags_78017e"]),
+        "queued_wait_object_78017a_before": queued_before,
+        "queued_wait_object_78017a_after": int(state["queued_wait_object_78017a"]),
+    }
+
+
+def scheduler_dispatch_via_123a(state: dict[str, object], target_ptr: int) -> dict[str, object]:
+    """Model the priority switch performed after 0x1064/0x108e jumps to 0x123a."""
+    objects = state.get("scheduler_wait_objects", {})
+    if not isinstance(objects, dict):
+        raise AssertionError("0x123a needs scheduler_wait_objects")
+    selected_ptr = int(target_ptr)
+    selected = objects[selected_ptr]
+    if not isinstance(selected, dict):
+        raise AssertionError("0x123a target object must be a dict")
+
+    current_priority = int(state.get("scheduler_priority_780174", 0)) & 0xFFFF
+    target_priority = int(selected.get("priority_word_08", 0)) & 0xFFFF
+    if current_priority >= target_priority:
+        return {
+            "switched": False,
+            "reason": "current-priority-not-lower",
+            "target": selected_ptr,
+            "scheduler_priority_780174_before": current_priority,
+            "target_priority_word_08": target_priority,
+        }
+
+    current_ptr = int(state.get("active_wait_object_780176", 0))
+    current = objects[current_ptr]
+    if not isinstance(current, dict):
+        raise AssertionError("0x123a current object must be a dict")
+    current["state_word_0a"] = 2
+    current["saved_stack_1a"] = int(state.get("current_stack_a7", 0))
+
+    walked = [selected_ptr]
+    while int(selected.get("state_word_0a", 0)) != 2:
+        selected_ptr = int(selected.get("next", 0))
+        selected = objects[selected_ptr]
+        if not isinstance(selected, dict):
+            raise AssertionError("0x123a linked object must be a dict")
+        walked.append(selected_ptr)
+
+    state["active_wait_object_780176"] = selected_ptr
+    state["scheduler_priority_780174"] = int(selected.get("priority_word_08", 0))
+    selected["state_word_0a"] = 0x00FF
+    state["current_stack_a7"] = int(selected.get("saved_stack_1a", 0))
+    return {
+        "switched": True,
+        "target": int(target_ptr),
+        "selected": selected_ptr,
+        "walked": walked,
+        "previous_active_wait_object_780176": current_ptr,
+        "active_wait_object_780176": int(state["active_wait_object_780176"]),
+        "scheduler_priority_780174_before": current_priority,
+        "scheduler_priority_780174_after": int(state["scheduler_priority_780174"]),
+        "current_state_word_0a_after": int(current["state_word_0a"]),
+        "selected_state_word_0a_after": int(selected["state_word_0a"]),
+        "current_stack_a7": int(state["current_stack_a7"]),
+    }
+
+
+def scheduler_interrupt_exit_via_1064_108e(
+    state: dict[str, object],
+    *,
+    helper: int,
+    saved_sr: int,
+) -> dict[str, object]:
+    """Model the pending wait-object drain at the interrupt exit helpers."""
+    masked_saved_sr = int(saved_sr) & 0x0700
+    flags_before = int(state.get("scheduler_flags_78017e", 0)) & 0xFFFF
+    if masked_saved_sr:
+        return {
+            "helper": int(helper),
+            "dispatched": False,
+            "reason": "saved-sr-already-masked",
+            "saved_sr_mask": masked_saved_sr,
+            "scheduler_flags_78017e_before": flags_before,
+            "scheduler_flags_78017e_after": flags_before,
+        }
+
+    flags_after = flags_before & ~0x0002
+    state["scheduler_flags_78017e"] = flags_after
+    if not (flags_before & 0x0002):
+        return {
+            "helper": int(helper),
+            "dispatched": False,
+            "reason": "no-pending-wait-object",
+            "saved_sr_mask": masked_saved_sr,
+            "scheduler_flags_78017e_before": flags_before,
+            "scheduler_flags_78017e_after": flags_after,
+        }
+
+    target_ptr = int(state.get("queued_wait_object_78017a", 0))
+    dispatch = scheduler_dispatch_via_123a(state, target_ptr)
+    return {
+        "helper": int(helper),
+        "dispatched": True,
+        "saved_sr_mask": masked_saved_sr,
+        "scheduler_flags_78017e_before": flags_before,
+        "scheduler_flags_78017e_after": flags_after,
+        "queued_wait_object_78017a": target_ptr,
+        "dispatch": dispatch,
+    }
+
+
+def scheduler_trap_veneer_via_10bc_10e0(
+    helper: int,
+    *,
+    target_ptr: int | None = None,
+    argument: int | None = None,
+) -> dict[str, object]:
+    """Pin the trap number and argument registers loaded by 0x10bc..0x10e0."""
+    if helper == 0x10BC:
+        return {"helper": helper, "trap": 0, "loaded_a1": int(target_ptr or 0)}
+    if helper == 0x10C4:
+        return {"helper": helper, "trap": 1}
+    if helper == 0x10C8:
+        return {"helper": helper, "trap": 2, "loaded_a1": int(target_ptr or 0)}
+    if helper == 0x10D0:
+        return {"helper": helper, "trap": 3, "loaded_d0": int(argument or 0)}
+    if helper == 0x10D8:
+        return {"helper": helper, "trap": 4, "loaded_d0": int(argument or 0)}
+    if helper == 0x10E0:
+        return {
+            "helper": helper,
+            "trap": 5,
+            "loaded_a1": int(target_ptr or 0),
+            "loaded_d0": int(argument or 0),
+        }
+    if helper == 0x10EC:
+        return {"helper": helper, "trap": 6, "loaded_a1": int(target_ptr or 0)}
+    raise AssertionError(f"unknown scheduler trap veneer 0x{helper:x}")
+
+
 def active_pool_attention_variant_via_1e80(state: dict[str, object]) -> dict[str, object]:
     """Model the 0x1e80 attention variant before it enters 0x2038."""
     state["a668_calls"] = int(state.get("a668_calls", 0)) + 1
@@ -27964,6 +28136,159 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "active_render_loop_flag_780ea5": 1,
                 },
             },
+        },
+    ))
+
+    scheduler_state: dict[str, object] = {
+        "scheduler_flags_78017e": 0,
+        "queued_wait_object_78017a": 0,
+        "active_wait_object_780176": 0x007801A2,
+        "scheduler_priority_780174": 1,
+        "current_stack_a7": 0x00FFE000,
+        "scheduler_wait_objects": {
+            0x00780182: {
+                "next": 0x007801A2,
+                "priority_word_08": 3,
+                "state_word_0a": 0x8006,
+                "saved_stack_1a": 0x00FF1000,
+            },
+            0x007801A2: {
+                "next": 0x00780182,
+                "priority_word_08": 1,
+                "state_word_0a": 0x00FF,
+                "saved_stack_1a": 0x00FF2000,
+            },
+            0x00780202: {
+                "next": 0x00780182,
+                "priority_word_08": 2,
+                "state_word_0a": 0x8006,
+                "saved_stack_1a": 0x00FF3000,
+            },
+        },
+    }
+    signal_engine = scheduler_signal_wait_object_via_1036(scheduler_state, 0x00780182)
+    exit_dispatch = scheduler_interrupt_exit_via_1064_108e(
+        scheduler_state,
+        helper=0x108E,
+        saved_sr=0,
+    )
+    masked_state: dict[str, object] = {
+        "scheduler_flags_78017e": 0x0002,
+        "queued_wait_object_78017a": 0x00780202,
+        "active_wait_object_780176": 0x00780182,
+        "scheduler_priority_780174": 3,
+        "scheduler_wait_objects": {
+            0x00780182: {"priority_word_08": 3, "state_word_0a": 0x00FF},
+            0x00780202: {"priority_word_08": 2, "state_word_0a": 2},
+        },
+    }
+    masked_exit = scheduler_interrupt_exit_via_1064_108e(
+        masked_state,
+        helper=0x1064,
+        saved_sr=0x0700,
+    )
+    checks.append(assert_equal(
+        "0x1036/0x108e/0x123a wait-object scheduler handoff",
+        {
+            "signal_engine": signal_engine,
+            "exit_dispatch": exit_dispatch,
+            "objects_after": scheduler_state["scheduler_wait_objects"],
+            "scheduler_flags_78017e": scheduler_state["scheduler_flags_78017e"],
+            "active_wait_object_780176": scheduler_state["active_wait_object_780176"],
+            "scheduler_priority_780174": scheduler_state["scheduler_priority_780174"],
+            "current_stack_a7": scheduler_state["current_stack_a7"],
+            "masked_exit": masked_exit,
+            "trap_veneers": [
+                scheduler_trap_veneer_via_10bc_10e0(
+                    0x10C8,
+                    target_ptr=0x00780182,
+                ),
+                scheduler_trap_veneer_via_10bc_10e0(0x10C4),
+                scheduler_trap_veneer_via_10bc_10e0(0x10D0, argument=2),
+                scheduler_trap_veneer_via_10bc_10e0(0x10D8, argument=2),
+                scheduler_trap_veneer_via_10bc_10e0(
+                    0x10E0,
+                    target_ptr=0x007801A2,
+                    argument=3,
+                ),
+            ],
+        },
+        {
+            "signal_engine": {
+                "queued": True,
+                "target": 0x00780182,
+                "state_word_0a_before": 0x8006,
+                "state_word_0a_after": 2,
+                "scheduler_flags_78017e_before": 0,
+                "scheduler_flags_78017e_after": 0x0002,
+                "queued_wait_object_78017a_before": 0,
+                "queued_wait_object_78017a_after": 0x00780182,
+            },
+            "exit_dispatch": {
+                "helper": 0x108E,
+                "dispatched": True,
+                "saved_sr_mask": 0,
+                "scheduler_flags_78017e_before": 0x0002,
+                "scheduler_flags_78017e_after": 0,
+                "queued_wait_object_78017a": 0x00780182,
+                "dispatch": {
+                    "switched": True,
+                    "target": 0x00780182,
+                    "selected": 0x00780182,
+                    "walked": [0x00780182],
+                    "previous_active_wait_object_780176": 0x007801A2,
+                    "active_wait_object_780176": 0x00780182,
+                    "scheduler_priority_780174_before": 1,
+                    "scheduler_priority_780174_after": 3,
+                    "current_state_word_0a_after": 2,
+                    "selected_state_word_0a_after": 0x00FF,
+                    "current_stack_a7": 0x00FF1000,
+                },
+            },
+            "objects_after": {
+                0x00780182: {
+                    "next": 0x007801A2,
+                    "priority_word_08": 3,
+                    "state_word_0a": 0x00FF,
+                    "saved_stack_1a": 0x00FF1000,
+                },
+                0x007801A2: {
+                    "next": 0x00780182,
+                    "priority_word_08": 1,
+                    "state_word_0a": 2,
+                    "saved_stack_1a": 0x00FFE000,
+                },
+                0x00780202: {
+                    "next": 0x00780182,
+                    "priority_word_08": 2,
+                    "state_word_0a": 0x8006,
+                    "saved_stack_1a": 0x00FF3000,
+                },
+            },
+            "scheduler_flags_78017e": 0,
+            "active_wait_object_780176": 0x00780182,
+            "scheduler_priority_780174": 3,
+            "current_stack_a7": 0x00FF1000,
+            "masked_exit": {
+                "helper": 0x1064,
+                "dispatched": False,
+                "reason": "saved-sr-already-masked",
+                "saved_sr_mask": 0x0700,
+                "scheduler_flags_78017e_before": 0x0002,
+                "scheduler_flags_78017e_after": 0x0002,
+            },
+            "trap_veneers": [
+                {"helper": 0x10C8, "trap": 2, "loaded_a1": 0x00780182},
+                {"helper": 0x10C4, "trap": 1},
+                {"helper": 0x10D0, "trap": 3, "loaded_d0": 2},
+                {"helper": 0x10D8, "trap": 4, "loaded_d0": 2},
+                {
+                    "helper": 0x10E0,
+                    "trap": 5,
+                    "loaded_a1": 0x007801A2,
+                    "loaded_d0": 3,
+                },
+            ],
         },
     ))
 

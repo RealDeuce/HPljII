@@ -1195,11 +1195,21 @@ record.
     to `1` by `0x1ea8`.
   - `0x7820bc`, `0x780ea4`, `0x780ea5`, `0x780eaa`, `0x780eae`, and
     `0x783a18` are scheduler/render bookkeeping, not page-object fields.
+  - wait-object records signaled by `0x1036` and selected by `0x123a`:
+    long `+0` next pointer, word `+8` priority, word `+0a` scheduler
+    state, and long `+0x1a` saved stack pointer.
+  - `0x78017e`: scheduler pending/event bits. Bit 1 is the wait-object
+    pending bit set by `0x1036` and cleared by `0x1064` or `0x108e`
+    before `0x123a` dispatch; bits 0, 2, and 3 are set/cleared by the
+    timer/status trampoline around `0x0d52..0x0e86`.
+  - `0x78017a`: pending wait-object pointer chosen by `0x1036`;
+    `0x780176`: active wait-object pointer updated by `0x123a`;
+    `0x780174`: active priority word copied from selected object `+8`.
 - Unknown:
   - `0x7839d4`: cleared by `0x1a4c..0x1c00`; no stable role is assigned
     yet beyond active-pool copy-window bookkeeping.
-  - exact physical engine pacing around calls to `0x10c8`, `0x10c4`,
-    `0x10d0`, and `0x10d8`.
+  - exact physical engine pacing behind trap veneers `0x10bc`,
+    `0x10c4`, `0x10c8`, `0x10d0`, `0x10d8`, `0x10e0`, and `0x10ec`.
   - complete multi-band timing and stop conditions across
     `0x1eba4..0x1ecd2`.
 
@@ -1276,6 +1286,25 @@ record.
   sets `0x7828f9.6`, writes `$a801`, and signals `0x780182`.
 - `0x0fc4..0x0fcc` toggles `0x7828f9.7` and writes `$a801` when the
   scan counter is after the threshold but not beyond the last row.
+- `0x1036..0x1062` is the shared wait-object signal helper used by the
+  scan/status and scheduler loops. When target word `+0x0a == 0x8006`,
+  it writes `+0x0a = 2`, sets `0x78017e.1`, and writes `0x78017a` to
+  the target pointer if no wait object was pending or if the new target
+  pointer is lower than the existing `0x78017a`.
+- `0x1064..0x108c` and `0x108e..0x10ba` are interrupt-exit drain paths.
+  If the saved SR interrupt mask is zero and `0x78017e.1` was set, they
+  clear bit 1, load `A1` from `0x78017a`, save all registers, and enter
+  scheduler dispatch at `0x123a`.
+- `0x123a..0x1282` is the wait-object priority switch. If
+  `0x780174 < target +8`, it marks the current object from `0x780176`
+  as state `2`, saves the current stack at current `+0x1a`, finds a
+  state-2 object, writes `0x780176` and `0x780174`, marks selected
+  `+0x0a = 0xff`, restores `A7` from selected `+0x1a`, and returns by
+  `RTE`.
+- `0x10bc..0x10f2` are trap veneers. `0x10bc`, `0x10c8`, `0x10e0`, and
+  `0x10ec` load `A1` from the first stack argument; `0x10d0`,
+  `0x10d8`, and `0x10e0` load `D0` from a word argument; the veneers
+  execute traps `#0` through `#6`.
 - `0x1db0..0x1e40` consumes pending byte `0x78399e`: phase `1` with
   work word `+16 < +10` computes `0x783992` through `0x2456`, calls
   `0x22f4`, increments `0x783990`, and clears `0x78399e`; later phases
@@ -1339,6 +1368,18 @@ record.
   work word `+16` through the `0x7839b2/ba/c6` aliases.
 - `0x0fa2..0x101e` reads `0x78398e`, `0x783998`, and pending byte
   `0x78399e` while producing the next status state.
+- `0x1036..0x1062` reads the signaled object's word `+0x0a` and
+  compares the target pointer against `0x78017a` when `0x78017e.1` was
+  already set.
+- `0x1064..0x108e` reads the saved SR mask and `0x78017e.1` to decide
+  whether to return immediately or dispatch the queued object from
+  `0x78017a`.
+- `0x123a..0x1282` reads `0x780174`, `0x780176`, target word `+8`,
+  object state word `+0x0a`, linked object `+0`, and saved stack
+  longword `+0x1a` while selecting the active wait object.
+- Trap veneers `0x10bc`, `0x10c8`, `0x10e0`, and `0x10ec` consume a
+  target-object argument; `0x10d0`, `0x10d8`, and `0x10e0` consume a
+  word argument before entering their trap.
 - `0x1cf8..0x1d36` tests `0x78399e`; when it is nonzero, the wrapper
   drops the critical section and calls `0x1db0`.
 - `0x1db0..0x1e40` is a sibling copy/pacing helper: it consumes
@@ -1450,6 +1491,25 @@ elapsed `0xc9`, and `0x780eae == 0x780eb2`, that call sets
 `0x780ea5 = 1`. The fixture intentionally leaves `0x78399f` set,
 matching the observed `0x1e44` code, which tests but does not clear it.
 
+The scheduler handoff fixture
+`0x1036/0x108e/0x123a wait-object scheduler handoff` starts with wait
+object `0x780182` in state word `+0x0a = 0x8006`, priority `3`, and
+saved stack `0x00ff1000`; active object `0x7801a2` has priority `1`.
+Helper `0x1036` changes `0x780182 +0x0a` to `2`, sets `0x78017e.1`,
+and writes `0x78017a = 0x780182`.
+
+The same fixture then runs the `0x108e` exit path with saved SR mask
+zero. It clears `0x78017e.1`, dispatches `0x780182` through `0x123a`,
+marks previous active object `0x7801a2 +0x0a = 2`, saves stack
+`0x00ffe000` at `0x7801a2 +0x1a`, selects `0x780182` into
+`0x780176`, raises `0x780174` from `1` to `3`, marks selected
+`+0x0a = 0xff`, and restores stack `0x00ff1000`. The masked side uses
+helper `0x1064` with saved SR mask `0x0700` and proves it leaves
+`0x78017e.1` pending without dispatch. The trap-veneer side pins
+`0x10c8(0x780182)` to trap `#2`, `0x10c4` to trap `#1`,
+`0x10d0(2)` to trap `#3`, `0x10d8(2)` to trap `#4`, and
+`0x10e0(0x7801a2, 3)` to trap `#5`.
+
 The wrapper-dispatch fixture
 `0x1cf8/0x1e80/0x1ea8 wrapper dispatch selects engine variants` composes
 the status-copy path with the remaining wrapper exits. With elapsed
@@ -1501,20 +1561,22 @@ the protected-head skip, `0x780eaa -> 0x780eae`, `0x780ea4/5`, the
 two-work-record alternation, `0x783a18`, the `0x2126` pointer aliases,
 the `0x1a4c` copy-window scalars, the `0x22f4` row-copy address pattern,
 the `0x2456` source-address arithmetic, the `0x0fa2` threshold and
-pending-status transitions, the `0x1db0` status-copy path, the `0x1e44`
-escalated-status bridge, the `0x1cf8` wrapper branch predicates, the
-`0x1e80` attention variant, the `0x1ea8` timeout variant, the
-`0x1eba4` cleanup, throttle, capacity, and render-call branch
-predicates, the `0x1ee9e` geometry-change boundary, the
-`0x1ed36..0x1ed6a` same-geometry reuse branch, and the render-entry
+pending-status transitions, the `0x1036` wait-object signal helper, the
+`0x1064`/`0x108e` pending-drain predicates, the `0x123a` priority-switch
+state updates, the `0x10bc..0x10f2` trap-veneer argument shapes, the
+`0x1db0` status-copy path, the `0x1e44` escalated-status bridge, the
+`0x1cf8` wrapper branch predicates, the `0x1e80` attention variant, the
+`0x1ea8` timeout variant, the `0x1eba4` cleanup, throttle, capacity, and
+render-call branch predicates, the `0x1ee9e` geometry-change boundary,
+the `0x1ed36..0x1ed6a` same-geometry reuse branch, and the render-entry
 output for the selected source. Medium for the surrounding engine pacing
-loop because the fixture bounds wait/yield helpers instead of executing
-them to later interrupt states, and because it does not model the
-physical timing of `0x10c8`, `0x10c4`, `0x10d0`, or `0x10d8`. Medium for
+loop because the fixture models trap veneers and wait-object dispatch
+without naming the trap handlers' physical engine effects. Medium for
 the physical meaning of `$8000`, `$a601`, `$a801`, `0x7828f9`,
-`0xa668`, and `0xa680` because the byte-level side effects and branch
-returns are pinned but not tied to measured engine timing yet. Medium
-for `0x780eb6` because only its initialization is currently covered.
+`0xa6cc`, `0xa668`, and `0xa680` because the byte-level side effects and
+branch returns are pinned but not tied to measured engine timing yet.
+Medium for `0x780eb6` because only its initialization is currently
+covered.
 
 ### Fixtures
 
@@ -1524,6 +1586,7 @@ for `0x780eb6` because only its initialization is currently covered.
 - `0x1958/0x1c04/0x1eea staged candidate reaches render scheduler`
 - `0x2126/0x1a4c/0x2038 active pool copy window feeds engine rows`
 - `0x0fa2/0x1db0/0x1e44 status feedback drives copy and done flag`
+- `0x1036/0x108e/0x123a wait-object scheduler handoff`
 - `0x1cf8/0x1e80/0x1ea8 wrapper dispatch selects engine variants`
 - `0x1eba4/0x1ef6a active render loop advances or yields bands`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
@@ -1536,7 +1599,9 @@ for `0x780eb6` because only its initialization is currently covered.
 - `generated/disasm/ic30_ic13_active_pool_cycle_001958.lst`:
   `0x1958..0x1fa2`
 - `generated/disasm/ic30_ic13_scan_status_interrupt_000f84.lst`:
-  `0x0f84..0x1032`
+  `0x0f84..0x10f2`
+- `generated/disasm/ic30_ic13_scheduler_dispatch_00123a.lst`:
+  `0x123a..0x1282`
 - `generated/disasm/ic30_ic13_page_pool_candidate_insert_001c04.lst`:
   `0x1c04..0x2016`
 - `generated/disasm/ic30_ic13_active_pool_engine_gate_002038.lst`:
@@ -1560,12 +1625,17 @@ for `0x780eb6` because only its initialization is currently covered.
 
 ### Unresolved Middle Edges
 
-- `0x0f84..0x0fa0`, `0x1020..0x108e`, and MMIO/helper calls from the
-  wrapper and scheduler loops: the software branch predicates and
-  selected variants are modeled, but the physical interrupt entry/exit,
-  `$8000`, `$a601`, `$a801`, helper `0xa6cc`, helper `0xa668`, helper
-  `0xa680`, and wait/yield helpers `0x10c4`, `0x10c8`, `0x10d0`,
-  `0x10d8`, and `0x10e0` still need exact engine-interface meaning.
+- `0x0f84..0x0fa0` and `0x1020..0x102e`: `$8000.4` selection between
+  scan/status handling and helper `0xa6cc`, plus the physical effect of
+  `$a601 = 0xfd` and `$a801` writes, still need board-level engine
+  correlation.
+- `0x10bc..0x10f2`: trap veneers and argument registers are modeled, but
+  the trap handlers' physical effects for traps `#0..#6` remain
+  unnamed. This covers the remaining physical meaning behind scheduler
+  loop calls to `0x10c4`, `0x10c8`, `0x10d0`, `0x10d8`, and `0x10e0`.
+- `0x1cf8..0x1ea8`: helper return predicates around `0xa668` and
+  `0xa680` are modeled, but their external engine/service side effects
+  are not yet tied to measured timing.
 
 ## Vertical Forms Control
 

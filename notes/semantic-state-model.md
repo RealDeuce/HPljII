@@ -1123,8 +1123,9 @@ record.
     parser/page-record producers before `0xff1e`.
 - Firmware bookkeeping:
   - `0x780e6e[]`: candidate pointer slots scanned by `0x7ec6..0x7f90`;
-    accepted candidates are cleared from the slot after `0x780eaa` and
-    `0x780eb2` are written.
+    `0x1fd4..0x2016` shifts slots 0 through 4 toward slots 1 through 5
+    and inserts the new candidate in slot 0. Accepted candidates are
+    cleared from the slot after `0x780eaa` and `0x780eb2` are written.
   - `0x7821fb`: candidate-slot mask. `0x7ece..0x7ee6` computes scan
     limit `(0x7821fb & 0x7e) >> 1`, capped at six slots.
   - `0x780eb2`: release/advance cursor paired with `0x780eaa`.
@@ -1150,6 +1151,13 @@ record.
   `0x780eb2`, and `0x780eb6` to pool base `0x780f02`.
 - `0xff1e` writes state byte `+4 = 2`, copies root longword `+0` to
   `0x780ea6`, sets `0x782996 = 1`, and clears `0x78297a`.
+- `0x1c32..0x1c54` marks the current `0x780eb2` record state byte
+  `+4 = 3`, runs the `0x2280` cursor helper, passes that record pointer
+  as the argument to `0x1fd4`, and then continues engine/status helper
+  calls at `0x1c5a..0x1c90`.
+- `0x1fd4..0x2016` shifts `0x780e6e[0..4]` into `0x780e6e[1..5]`,
+  drops the previous slot 5, and writes the passed record pointer to
+  `0x780e6e[0]`.
 - `0x7f76..0x7f90` accepts a candidate slot from `0x780e6e[]` when the
   candidate record has state byte `+4 == 4` or word `+0x0e != 0`. It
   writes candidate state byte `+4 = 2`, increments word `+0x0e`, stores
@@ -1225,24 +1233,37 @@ selected record back to state byte `+4 = 4`, clears word `+0x0e`, and
 copies `0x780e04 = 0x1234` into word `+0x10`. Its protected-head variant
 keeps `0x780eaa = 0x780ea6 = 0x00780f02` when state byte `+4 = 1`.
 
+The insertion fixture
+`0x1c04/0x1fd4/0x7ec6 inserted candidate reaches render scheduler`
+starts with six candidate slots `0x00d0f000..0x00d0f050`, inserts
+`0x00d0f100` through the `0x1fd4..0x2016` shift helper, and proves the
+slot vector becomes `0x00d0f100, 0x00d0f000, 0x00d0f010,
+0x00d0f020, 0x00d0f030, 0x00d0f040`, dropping the old slot 5. The
+same fixture runs the `0x7ec6..0x7f90` selector with scan limit 6,
+promotes slot 0 into `0x780eaa = 0x780eb2 = 0x00d0f100`, then carries
+that selected pointer through `0x1eb46` into `0x780eae` and the
+`0x1ecd6` render-work selector. The selected record reaches the same
+`0x1ed84`/`0x1ef6a` rows as the published-record render fixtures.
+
 ### Confidence
 
 High for the distinction between protected pool head `0x780ea6` and
 scheduler cursor `0x780eaa`, the candidate selection stores into
-`0x780eaa`/`0x780eb2`, the protected-head skip, `0x780eaa -> 0x780eae`,
-`0x780ea4/5`, the two-work-record alternation, `0x783a18`, the
-`0x1ee9e` geometry-change boundary, the `0x1ed36..0x1ed6a`
-same-geometry reuse branch, and the render-entry output for the selected
-source. Medium for the surrounding engine pacing loop because the
-fixture does not model `0x10c8`, `0x10c4`, `0x10d0`, or `0x10d8`.
-Medium for `0x780eb6` because only its initialization is currently
-covered.
+`0x780eaa`/`0x780eb2`, the `0x1fd4` candidate-slot insertion shift, the
+protected-head skip, `0x780eaa -> 0x780eae`, `0x780ea4/5`, the
+two-work-record alternation, `0x783a18`, the `0x1ee9e` geometry-change
+boundary, the `0x1ed36..0x1ed6a` same-geometry reuse branch, and the
+render-entry output for the selected source. Medium for the surrounding
+engine pacing loop because the fixture does not model `0x10c8`,
+`0x10c4`, `0x10d0`, or `0x10d8`. Medium for `0x780eb6` because only its
+initialization is currently covered.
 
 ### Fixtures
 
 - `0x1eb2a/0x1ecd6 selects published record for render entry`
 - `0x1ecd6 same-geometry render work reuse reaches render entry`
 - `0x3144/0x7ec6/0x7712 page pool aliases feed scheduler cursor`
+- `0x1c04/0x1fd4/0x7ec6 inserted candidate reaches render scheduler`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`
 
@@ -1250,6 +1271,8 @@ covered.
 
 - `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`:
   `0x10060..0x10080`
+- `generated/disasm/ic30_ic13_page_pool_candidate_insert_001c04.lst`:
+  `0x1c32..0x1c54`, `0x1fd4..0x2016`
 - `generated/disasm/ic30_ic13_page_pool_init_003100.lst`:
   `0x3144..0x3162`
 - `generated/disasm/ic30_ic13_page_pool_candidate_select_007ec6.lst`:
@@ -1267,11 +1290,10 @@ covered.
 
 ### Unresolved Middle Edges
 
-- `0x780e6e[]` candidate producers: pool-cursor init, selection,
-  advancement, and protected-head behavior are modeled across
-  `0x3144..0x3162`, `0x7ec6..0x7f90`, and `0x7722..0x779a`; the
-  producers that enqueue records into candidate slots before `0x7ec6`
-  remain unresolved.
+- `0x1958..0x1c98`: the main active-pool path that reaches the covered
+  `0x1c04` candidate insertion path is only partially modeled. The exact
+  status and engine-helper gates around `0x198e`, `0x19d2`,
+  `0x1cf8..0x1e80`, and `0x2038..0x223c` remain the next boundary.
 - `0x1eba4..0x1ecd2`: render loop pacing, band advance, and engine
   waits are not yet modeled.
 

@@ -12909,6 +12909,27 @@ def page_pool_alias_init_via_3144(state: dict[str, object], base_ptr: int) -> di
     }
 
 
+def page_pool_candidate_insert_via_1fd4(
+    state: dict[str, object],
+    candidate_ptr: int,
+) -> dict[str, object]:
+    """Model the candidate-slot shift and head insert at 0x1fd4..0x2016."""
+    slots = list(state.get("candidate_slots_780e6e", []))
+    while len(slots) < 6:
+        slots.append(0)
+    before = tuple(int(ptr) for ptr in slots[:6])
+    for index in range(4, -1, -1):
+        slots[index + 1] = slots[index]
+    slots[0] = int(candidate_ptr)
+    state["candidate_slots_780e6e"] = slots[:6]
+    return {
+        "candidate_ptr": int(candidate_ptr),
+        "slots_before": before,
+        "slots_after": tuple(int(ptr) for ptr in slots[:6]),
+        "dropped_slot_5": before[5],
+    }
+
+
 def page_pool_candidate_select_via_7ec6(state: dict[str, object]) -> dict[str, object]:
     """Model the 0x7ec6 candidate scan that writes 0x780eaa/0x780eb2."""
     records = state.get("pool_records", {})
@@ -26784,6 +26805,122 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "advanced_cursor": False,
                 "protected_skip": True,
                 "released_advance": False,
+            },
+        },
+    ))
+    inserted_ptr = 0x00D0F100
+    old_slot_0 = 0x00D0F000
+    old_slot_1 = 0x00D0F010
+    old_slot_2 = 0x00D0F020
+    old_slot_3 = 0x00D0F030
+    old_slot_4 = 0x00D0F040
+    old_slot_5 = 0x00D0F050
+    insert_state: dict[str, object] = {
+        "pool_records": {
+            inserted_ptr: {
+                "next": old_slot_0,
+                "state_byte_4": 4,
+                "word_0e": 0,
+                "word_10": 0,
+            },
+            old_slot_0: {"next": old_slot_1, "state_byte_4": 0, "word_0e": 0},
+            old_slot_1: {"next": old_slot_2, "state_byte_4": 0, "word_0e": 0},
+            old_slot_2: {"next": old_slot_3, "state_byte_4": 0, "word_0e": 0},
+            old_slot_3: {"next": old_slot_4, "state_byte_4": 0, "word_0e": 0},
+            old_slot_4: {"next": old_slot_5, "state_byte_4": 0, "word_0e": 0},
+            old_slot_5: {"next": inserted_ptr, "state_byte_4": 0, "word_0e": 0},
+        },
+        "candidate_slots_780e6e": [
+            old_slot_0,
+            old_slot_1,
+            old_slot_2,
+            old_slot_3,
+            old_slot_4,
+            old_slot_5,
+        ],
+        "candidate_mask_7821fb": 0x0C,
+        "render_work_selector_7820bc": 0,
+        "render_work_records": {
+            0x007820C4: {"word_04": 0},
+            0x00782128: {},
+        },
+    }
+    insert = page_pool_candidate_insert_via_1fd4(insert_state, inserted_ptr)
+    insert_select = page_pool_candidate_select_via_7ec6(insert_state)
+    inserted_scheduler = render_scheduler_handoff_via_1eb2a_1ecd6(
+        data,
+        resources,
+        scheduler_source_record,
+        insert_state,
+        source_ptr=int(insert_select["scheduler_pool_cursor_780eaa"]),
+    )
+    inserted_rendered = inserted_scheduler["rendered"]
+    assert isinstance(inserted_rendered, dict)
+    checks.append(assert_equal(
+        "0x1c04/0x1fd4/0x7ec6 inserted candidate reaches render scheduler",
+        {
+            "insert": insert,
+            "select": {
+                "limit": insert_select["limit"],
+                "selected_index": insert_select["selected_index"],
+                "selected_ptr": insert_select["selected_ptr"],
+                "scheduler_pool_cursor_780eaa": insert_select[
+                    "scheduler_pool_cursor_780eaa"
+                ],
+                "advance_cursor_780eb2": insert_select["advance_cursor_780eb2"],
+                "candidate_slots_780e6e": insert_select["candidate_slots_780e6e"],
+            },
+            "scheduler": {
+                "source_ptr": inserted_scheduler["source_ptr"],
+                "active_source_780eae": inserted_scheduler["active_source_780eae"],
+                "render_work_record_783a18": inserted_scheduler[
+                    "render_work_record_783a18"
+                ],
+                "geometry_changed": inserted_scheduler["geometry_changed"],
+            },
+            "render": {
+                "call_order": inserted_rendered["entry"]["call_order"],
+                "rows": inserted_rendered["entry"]["rows"],
+            },
+        },
+        {
+            "insert": {
+                "candidate_ptr": inserted_ptr,
+                "slots_before": (
+                    old_slot_0,
+                    old_slot_1,
+                    old_slot_2,
+                    old_slot_3,
+                    old_slot_4,
+                    old_slot_5,
+                ),
+                "slots_after": (
+                    inserted_ptr,
+                    old_slot_0,
+                    old_slot_1,
+                    old_slot_2,
+                    old_slot_3,
+                    old_slot_4,
+                ),
+                "dropped_slot_5": old_slot_5,
+            },
+            "select": {
+                "limit": 6,
+                "selected_index": 0,
+                "selected_ptr": inserted_ptr,
+                "scheduler_pool_cursor_780eaa": inserted_ptr,
+                "advance_cursor_780eb2": inserted_ptr,
+                "candidate_slots_780e6e": [0, 0, 0, 0, 0, 0],
+            },
+            "scheduler": {
+                "source_ptr": inserted_ptr,
+                "active_source_780eae": inserted_ptr,
+                "render_work_record_783a18": 0x00782128,
+                "geometry_changed": True,
+            },
+            "render": {
+                "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+                "rows": scheduler_rendered["entry"]["rows"],
             },
         },
     ))

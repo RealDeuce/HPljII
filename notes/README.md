@@ -34,6 +34,8 @@ compatibility boundary.
   byte-source multiplexer, direct I/O handshakes, and caller semantics.
 - [pcl-parser-core.md](pcl-parser-core.md) - documented parser byte
   wrapper, tokenizer, dispatch loop, and delayed-payload handoff.
+- [transparent-print-data.md](transparent-print-data.md) - documented
+  `ESC &p#X` delayed payload handling and printable text re-entry.
 - [pcl-parser-firmware.md](pcl-parser-firmware.md) - current host-byte
   fetch and PCL escape tokenizer/dispatch anchors.
 - [pcl-command-map.md](pcl-command-map.md) - flattened PCL

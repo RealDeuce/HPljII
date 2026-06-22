@@ -464,10 +464,12 @@ modeled source/object structures rather than a full live CPU-memory run.
   composed as watermark writers in `Text Span Flush And Fixed-Width
   Spans`; remaining work is exhaustive context-record naming for every
   font class.
-- `0x11f5a..0x12452`: transparent-text delayed payload restore and
-  printable re-entry are host-fetched and render-checked for
-  `ESC &p2X!!`; broader control-byte filtering inside transparent data
-  remains only described by generated analysis.
+- `0x11f5a..0x12452`: transparent-text delayed payload restore,
+  control filtering, and printable re-entry are documented in
+  `notes/transparent-print-data.md`. Printable payload re-entry is
+  host-fetched and render-checked for `ESC &p2X!!`; page-record output
+  coverage for C0 and `0x80..0x9f` transparent payload bytes remains
+  open.
 - `0x10084..0x1387c`: first-root allocation and compact text queueing
   are fixture-backed for this cluster, but a dense live parser page that
   exercises same-chunk and rollover allocation for all cursor variants

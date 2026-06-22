@@ -348,6 +348,8 @@ from the host byte source, stops on `D7=-1`, normalizes `0x1a 0x58` to
 `0x7f`, sends printable bytes through `0xd04a`, and sends filtered
 control bytes through `0xd0f0` depending on the active symbol/high-byte
 state.
+See [transparent-print-data.md](transparent-print-data.md) for the
+tracked behavioral note and fixture evidence.
 
 `ESC *r#A` at `0x01075a` starts raster graphics by setting state in the
 block rooted at `0x783170`. Portrait raster origin seeds from horizontal

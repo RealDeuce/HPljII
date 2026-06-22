@@ -1035,6 +1035,7 @@ claim has disassembly and passing fixtures.
 - `live CR span flush materializes 0x12714 page object`
 - `flagged printable d8fc low-watermark flush renders span`
 - `unflagged printable d4ac low-watermark flush renders span`
+- `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `0x1354a portrait text span split queues adjacent buckets`
 - `0x12714 landscape span inserts into nonempty fixed list`
 - `0x12714 allocation failure publishes page and retries span`
@@ -1070,17 +1071,21 @@ claim has disassembly and passing fixtures.
   to selected context records in `notes/font-context-metrics.md`. Fixture
   `host-fetched 0x1719c payload metrics feed d4ac span rows` proves one
   host-fetched type-0 downloaded payload copying descriptor bytes into this
-  span consumer and changing visible segment-list rows. The disabled,
-  before-lower, beyond-page, high-x-only, and broader descriptor-combination
-  branches remain uncovered.
+  span consumer, and fixture
+  `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
+  proves the same copied fields for a host-fetched type-2 payload. Both change
+  visible segment-list rows. The disabled, before-lower, beyond-page,
+  high-x-only, and broader descriptor-value branches remain uncovered.
 - `0xd8fc..0xd992`: flagged context fields `+0x16`, `+0x18`, and
   `+0x1a` are fixture-backed for the low-water success branch and tied
   to selected context records in `notes/font-context-metrics.md`. Fixture
   `host-fetched 0x1719c payload metrics feed d8fc span rows` proves one
   host-fetched type-0 bit-30 downloaded payload copying descriptor words
-  into this span consumer and changing visible segment-list rows. The
-  disabled, before-lower, beyond-page, high-x-only, and broader
-  descriptor-combination branches remain uncovered.
+  into this span consumer, and fixture
+  `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
+  proves the same copied fields for a host-fetched type-2 payload. Both change
+  visible segment-list rows. The disabled, before-lower, beyond-page,
+  high-x-only, and broader descriptor-value branches remain uncovered.
 
 ## Downloaded Font Descriptor And Payload Chain
 
@@ -1201,6 +1206,7 @@ been page-compared.
   render`
 - `host-fetched 0x15d0a continuation resource object resumes fixed-record
   render`
+- `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `0x16498-backed downloaded character object renders segmented-wide compact
   row`
 - `0x16fae table-driven validation predicates populate staged header fields`
@@ -1224,8 +1230,10 @@ been page-compared.
   comparisons.
 - `0x15c4c`: the even-span fixed-record resume route is page-visible; split-plane
   continuation counters and failure/release exits still need fixture coverage.
-- The span-metric bridge in `notes/font-context-metrics.md` still needs
-  exhaustive downloaded/inline metric-byte page evidence.
+- The span-metric bridge in `notes/font-context-metrics.md` now covers
+  host-fetched type-0 and type-2 downloaded payloads for both span consumers,
+  but still needs broader metric-byte values and rejection/error page
+  evidence.
 
 ## Macro Definition And Data-Chain Replay
 

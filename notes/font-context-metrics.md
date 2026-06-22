@@ -31,6 +31,7 @@ Evidence:
   - `unflagged printable d4ac low-watermark flush renders span`
   - `host-fetched 0x1719c payload metrics feed d4ac span rows`
   - `host-fetched 0x1719c payload metrics feed d8fc span rows`
+  - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 
 ## Concept
 
@@ -351,12 +352,22 @@ work can close the right gap instead of re-tracing already-covered consumers.
   words `+0x16`, `+0x18`, and `+0x1a` are consumed by `0xd8fc`, and the bucket
   renders both the span rows and compact glyph rows. Status: parser-produced
   resource payload to visible flagged span rows.
+- Claim: the same metric producer contract survives the type-2 payload form.
+  Evidence: fixture
+  `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`;
+  host-fetched `ESC )s80W` validates a descriptor whose setup byte produces
+  payload byte `+0x0c = 2`, payload units `0x100`, allocation size `18`, and
+  installed candidate longword `0x44000000`. The fixture then renders an
+  unflagged wide fixed-record glyph while `0xd4ac` consumes `+0x2b`,
+  `+0x2c`, and `+0x2d`, and renders a flagged pointer glyph while `0xd8fc`
+  consumes `+0x16`, `+0x18`, and `+0x1a`. Status: parser-produced type-2
+  resource payload to visible unflagged and flagged span rows.
 
 The remaining unresolved middle edge is therefore not the tested `0x1719c`
-type-0 metric path into either `0xd4ac` or `0xd8fc`: both now have host-fetched
-payload evidence through visible span rows. The open producer-side work is
-broader descriptor coverage: more metric-byte combinations, type variants,
-and rejection/error forms driven from parser bytes to page rows.
+type-0 or type-2 metric paths into either `0xd4ac` or `0xd8fc`: both payload
+forms now have host-fetched evidence through visible span rows. The open
+producer-side work is broader descriptor coverage: more metric-byte values and
+rejection/error forms driven from parser bytes to page rows.
 
 ## Macro And Control Re-entry
 
@@ -409,7 +420,7 @@ A byte-stream reproduction must preserve these behaviors:
   driven from parser bytes to visible rows.
 - The exact metric-byte provenance for all downloaded/inline forms remains
   incomplete at the parser-produced page boundary. Existing host-stream
-  downloaded-font fixtures prove install, visible glyph rendering, and one
-  `0x1719c` type-0 payload feeding both `0xd4ac` and `0xd8fc` span rows. The
-  remaining gap is broader descriptor metric-byte combinations and
+  downloaded-font fixtures prove install, visible glyph rendering, and
+  `0x1719c` type-0 and type-2 payloads feeding both `0xd4ac` and `0xd8fc` span
+  rows. The remaining gap is broader descriptor metric-byte values and
   rejection/error forms.

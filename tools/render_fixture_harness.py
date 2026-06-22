@@ -35268,6 +35268,340 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    font_validate_type2_stream = font_validate_stream[:3] + b"\x02" + font_validate_stream[4:]
+    table_payload_type2_command_stream = b"\x1b)s80W" + font_validate_type2_stream + b"\x00" * 16
+    host_fetched_type2_resource_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(table_payload_type2_command_stream), direct_mode=0),
+        len(table_payload_type2_command_stream),
+    )
+    host_fetched_type2_resource_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        host_fetched_type2_resource_stream["stream"],
+    )
+    host_fetched_type2_resource_commands = host_fetched_type2_resource_trace["commands"]
+    assert isinstance(host_fetched_type2_resource_commands, list)
+    host_fetched_type2_resource_command = host_fetched_type2_resource_commands[0]
+    assert isinstance(host_fetched_type2_resource_command, dict)
+    table_payload_type2_command = render_font_download_resource_command_stream_via_121cc_16c14(
+        host_fetched_type2_resource_stream["stream"],
+        records=[{"id": 0, "flags": 0, "payload": 0}],
+        current_id=0x1234,
+        new_payload_address=0,
+        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        cursors={
+            "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+        },
+        candidates=[0x00000100, 0x00000200, 0x00000300],
+    )
+    table_payload_type2_event = table_payload_type2_command["events"][0]
+    assert isinstance(table_payload_type2_event, dict)
+    table_payload_type2_allocation = table_payload_type2_event["allocation"]
+    assert isinstance(table_payload_type2_allocation, dict)
+    table_payload_type2_command_payload = table_payload_type2_allocation["payload"]
+    assert isinstance(table_payload_type2_command_payload, dict)
+    table_payload_type2_install = table_payload_type2_event["install"]
+    assert isinstance(table_payload_type2_install, dict)
+    table_payload_type2_metric_memory = bytearray(table_payload_type2_command_payload["payload"])
+    table_payload_type2_metric_memory[
+        table_payload_type2_wide_record:table_payload_type2_wide_record + 8
+    ] = bytes.fromhex("11 03 04 00 00 00 01 20")
+    table_payload_type2_metric_memory[
+        table_payload_type2_wide_bitmap:table_payload_type2_wide_bitmap + 0x30
+    ] = (b"\xff" * 0x10) + (b"\x00" * 0x10) + (b"\xaa" * 0x10)
+    table_payload_type2_metric_memory[
+        table_payload_type2_wide_bitmap + 0x30:table_payload_type2_wide_bitmap + 0x33
+    ] = bytes.fromhex("ff 00 55")
+    table_payload_type2_flagged_glyph_delta = 0x0300
+    table_payload_type2_flagged_bitmap_delta = 0x000C
+    table_payload_type2_flagged_table_entry = 0x4A + 0x21 * 4
+    table_payload_type2_metric_memory[
+        table_payload_type2_flagged_table_entry:table_payload_type2_flagged_table_entry + 4
+    ] = table_payload_type2_flagged_glyph_delta.to_bytes(4, "big")
+    table_payload_type2_metric_memory[
+        table_payload_type2_flagged_glyph_delta:table_payload_type2_flagged_glyph_delta + 12
+    ] = bytes.fromhex("00 00 00 00 0c 01 00 03 00 04 00 00")
+    table_payload_type2_metric_memory[
+        table_payload_type2_flagged_glyph_delta + table_payload_type2_flagged_bitmap_delta:
+        table_payload_type2_flagged_glyph_delta + table_payload_type2_flagged_bitmap_delta + 3
+    ] = bytes.fromhex("f0 f0 f0")
+    table_payload_type2_d4ac_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        table_payload_type2_metric_memory,
+        b"#",
+        0,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=pack12(18),
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            materialize_d4ac_span_update=1,
+            text_source_form="unflagged",
+            enabled_783184=1,
+            low_x_783186=100,
+            high_x_783188=120,
+            high_y_78318a=0,
+            span_alternate_offset_783185=1,
+            orientation=0,
+            page_extent_782db6=64,
+            printable_offset_782dc0=7,
+            source_x_offset=5,
+        ),
+        default_advance=pack12(18),
+    )
+    table_payload_type2_d4ac_event = table_payload_type2_d4ac_stream["events"][0]
+    assert isinstance(table_payload_type2_d4ac_event, dict)
+    table_payload_type2_d4ac_span = table_payload_type2_d4ac_event["span_update_result"]
+    assert isinstance(table_payload_type2_d4ac_span, dict)
+    table_payload_type2_d4ac_flush = table_payload_type2_d4ac_span["flush_result"]
+    assert isinstance(table_payload_type2_d4ac_flush, dict)
+    table_payload_type2_d4ac_queued = table_payload_type2_d4ac_flush["queued"]
+    assert isinstance(table_payload_type2_d4ac_queued, dict)
+    table_payload_type2_d4ac_render_entry = table_payload_type2_d4ac_stream["render_entry"]
+    assert isinstance(table_payload_type2_d4ac_render_entry, dict)
+    table_payload_type2_d4ac_rendered = table_payload_type2_d4ac_render_entry["entry"]
+    assert isinstance(table_payload_type2_d4ac_rendered, dict)
+    expected_type2_d4ac_rows: list[str] = []
+    for row_index in range(13):
+        row_bits = [False] * 158
+        if row_index == 7:
+            for bit in range(22, 158):
+                row_bits[bit] = True
+        if row_index == 9:
+            pattern = "#." * 64 + ".#.#.#.#"
+            for bit, value in enumerate(pattern):
+                if value == "#":
+                    row_bits[22 + bit] = True
+        if 10 <= row_index < 13:
+            for bit in range(96, 116):
+                row_bits[bit] = True
+        expected_type2_d4ac_rows.append(
+            "".join("#" if bit else "." for bit in row_bits)
+        )
+
+    table_payload_type2_d8fc_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        table_payload_type2_metric_memory,
+        b"!",
+        int(table_payload_type2_install["candidate_flags"]),
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=pack12(18),
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            materialize_d8fc_span_update=1,
+            span_metrics_from_context=1,
+            text_source_form="flagged",
+            enabled_783184=1,
+            low_x_783186=100,
+            high_x_783188=120,
+            high_y_78318a=0,
+            span_alternate_offset_783185=1,
+            orientation=0,
+            page_extent_782db6=64,
+        ),
+        default_advance=pack12(18),
+    )
+    table_payload_type2_d8fc_event = table_payload_type2_d8fc_stream["events"][0]
+    assert isinstance(table_payload_type2_d8fc_event, dict)
+    table_payload_type2_d8fc_span = table_payload_type2_d8fc_event["span_update_result"]
+    assert isinstance(table_payload_type2_d8fc_span, dict)
+    table_payload_type2_d8fc_flush = table_payload_type2_d8fc_span["flush_result"]
+    assert isinstance(table_payload_type2_d8fc_flush, dict)
+    table_payload_type2_d8fc_queued = table_payload_type2_d8fc_flush["queued"]
+    assert isinstance(table_payload_type2_d8fc_queued, dict)
+    table_payload_type2_d8fc_render_entry = table_payload_type2_d8fc_stream["render_entry"]
+    assert isinstance(table_payload_type2_d8fc_render_entry, dict)
+    table_payload_type2_d8fc_rendered = table_payload_type2_d8fc_render_entry["entry"]
+    assert isinstance(table_payload_type2_d8fc_rendered, dict)
+    expected_type2_d8fc_rows: list[str] = []
+    for row_index in range(8):
+        row_bits = [False] * 116
+        if row_index < 3:
+            for bit in range(96, 116):
+                row_bits[bit] = True
+        if 5 <= row_index < 8:
+            for bit in range(10, 14):
+                row_bits[bit] = True
+        expected_type2_d8fc_rows.append(
+            "".join("#" if bit else "." for bit in row_bits)
+        )
+    checks.append(assert_equal("host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows", {
+        "resource_stream": {
+            "fetched_stream_prefix": host_fetched_type2_resource_stream["stream"][:6],
+            "fetch_source_set": sorted(set(host_fetched_type2_resource_stream["sources"])),
+            "parser_handlers": [
+                event["handler"]
+                for event in host_fetched_type2_resource_trace["dispatches"]
+            ],
+            "restored_record": host_fetched_type2_resource_command["restored_record"],
+            "payload_length": len(host_fetched_type2_resource_command["payload"]),
+            "validation_status": table_payload_type2_event["validation"]["status"],  # type: ignore[index]
+            "payload_units": table_payload_type2_event["validation"]["payload_units"],  # type: ignore[index]
+            "allocation_size": table_payload_type2_allocation["allocation_size"],
+            "payload_byte0c": table_payload_type2_command_payload["payload"][0x0C],  # type: ignore[index]
+            "candidate_flags": table_payload_type2_install["candidate_flags"],
+        },
+        "d4ac": {
+            "payload_metric_fields": {
+                "byte_0x2b": table_payload_type2_metric_memory[0x2B],
+                "byte_0x2c": table_payload_type2_metric_memory[0x2C],
+                "byte_0x2d": table_payload_type2_metric_memory[0x2D],
+                "word_0x2c": u16(table_payload_type2_metric_memory, 0x2C),
+            },
+            "source": {
+                key: table_payload_type2_d4ac_event["source"][key]
+                for key in ("flag", "mapped", "context_slot", "inline_record")
+            },
+            "positioned": {
+                "x": table_payload_type2_d4ac_event["positioned"]["source"]["x"],
+                "y": table_payload_type2_d4ac_event["positioned"]["source"]["y"],
+                "coord": table_payload_type2_d4ac_event["page_result"]["coord"],
+            },
+            "span_update": {
+                "handler": table_payload_type2_d4ac_span["handler"],
+                "context_offset_002b": table_payload_type2_d4ac_span["context_offset_002b"],
+                "context_lower_002c": table_payload_type2_d4ac_span["context_lower_002c"],
+                "context_height_002d": table_payload_type2_d4ac_span["context_height_002d"],
+                "high_y": table_payload_type2_d4ac_span["high_y"],
+            },
+            "flush_object": table_payload_type2_d4ac_queued["object"],
+            "render_rows": table_payload_type2_d4ac_rendered["rows"],
+        },
+        "d8fc": {
+            "payload_metric_fields": {
+                "word_0x16": u16(table_payload_type2_metric_memory, 0x16),
+                "word_0x18": u16(table_payload_type2_metric_memory, 0x18),
+                "word_0x1a": u16(table_payload_type2_metric_memory, 0x1A),
+            },
+            "glyph_pointer": {
+                "table_entry": table_payload_type2_flagged_table_entry,
+                "record_delta": u32(table_payload_type2_metric_memory, table_payload_type2_flagged_table_entry),
+                "record": bytes(table_payload_type2_metric_memory[
+                    table_payload_type2_flagged_glyph_delta:table_payload_type2_flagged_glyph_delta + 12
+                ]),
+                "bitmap": bytes(table_payload_type2_metric_memory[
+                    table_payload_type2_flagged_glyph_delta + table_payload_type2_flagged_bitmap_delta:
+                    table_payload_type2_flagged_glyph_delta + table_payload_type2_flagged_bitmap_delta + 3
+                ]),
+            },
+            "source": {
+                key: table_payload_type2_d8fc_event["source"][key]
+                for key in ("flag", "mapped", "context_slot", "glyph_entry", "glyph_width", "glyph_rows")
+            },
+            "positioned": {
+                "x": table_payload_type2_d8fc_event["positioned"]["source"]["x"],
+                "y": table_payload_type2_d8fc_event["positioned"]["source"]["y"],
+                "coord": table_payload_type2_d8fc_event["page_result"]["coord"],
+            },
+            "span_update": {
+                "handler": table_payload_type2_d8fc_span["handler"],
+                "context_lower_0016": table_payload_type2_d8fc_span["context_lower_0016"],
+                "context_height_0018": table_payload_type2_d8fc_span["context_height_0018"],
+                "context_offset_001a": table_payload_type2_d8fc_span["context_offset_001a"],
+                "metric_source": table_payload_type2_d8fc_span["metric_source"],
+                "high_y": table_payload_type2_d8fc_span["high_y"],
+            },
+            "flush_object": table_payload_type2_d8fc_queued["object"],
+            "render_rows": table_payload_type2_d8fc_rendered["rows"],
+        },
+    }, {
+        "resource_stream": {
+            "fetched_stream_prefix": b"\x1b)s80W",
+            "fetch_source_set": ["ring"],
+            "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+            "payload_length": 80,
+            "validation_status": 1,
+            "payload_units": 0x100,
+            "allocation_size": 18,
+            "payload_byte0c": 2,
+            "candidate_flags": 0x44000000,
+        },
+        "d4ac": {
+            "payload_metric_fields": {
+                "byte_0x2b": 0,
+                "byte_0x2c": 0,
+                "byte_0x2d": 0x20,
+                "word_0x2c": 0x0020,
+            },
+            "source": {
+                "flag": 0,
+                "mapped": 0x03,
+                "context_slot": 0,
+                "inline_record": bytes.fromhex("11 03 04 00 00 00 01 20"),
+            },
+            "positioned": {
+                "x": 22,
+                "y": 23,
+                "coord": 0x7601,
+            },
+            "span_update": {
+                "handler": 0x00D4AC,
+                "context_offset_002b": 0,
+                "context_lower_002c": 0,
+                "context_height_002d": 0x20,
+                "high_y": 26,
+            },
+            "flush_object": (
+                bytes.fromhex("00 00 00 00 40 00 00 01 a4 06 03 00 00 14")
+                + (b"\x00" * 0x18)
+            ),
+            "render_rows": expected_type2_d4ac_rows,
+        },
+        "d8fc": {
+            "payload_metric_fields": {
+                "word_0x16": 0x0004,
+                "word_0x18": 0x0004,
+                "word_0x1a": 0x0005,
+            },
+            "glyph_pointer": {
+                "table_entry": 0x00CE,
+                "record_delta": 0x0300,
+                "record": bytes.fromhex("00 00 00 00 0c 01 00 03 00 04 00 00"),
+                "bitmap": bytes.fromhex("f0 f0 f0"),
+            },
+            "source": {
+                "flag": 1,
+                "mapped": 0x21,
+                "context_slot": 0,
+                "glyph_entry": 0x00000300,
+                "glyph_width": 4,
+                "glyph_rows": 3,
+            },
+            "positioned": {
+                "x": 10,
+                "y": 21,
+                "coord": 0x5A00,
+            },
+            "span_update": {
+                "handler": 0x00D8FC,
+                "context_lower_0016": 0x0004,
+                "context_height_0018": 0x0004,
+                "context_offset_001a": 0x0005,
+                "metric_source": {
+                    "kind": "context",
+                    "base": 0,
+                    "context": 0x44000000,
+                },
+                "high_y": 16,
+            },
+            "flush_object": (
+                bytes.fromhex("00 00 00 00 40 00 00 01 04 06 03 00 00 14")
+                + (b"\x00" * 0x18)
+            ),
+            "render_rows": expected_type2_d8fc_rows,
+        },
+    }))
+
     downloaded_segmented_wide_stream = bytearray()
     for row in range(0x81):
         downloaded_segmented_wide_stream.extend(b"\xaa" * 0x10 if row == 0x80 else b"\x00" * 0x10)

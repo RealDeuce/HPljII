@@ -52,6 +52,7 @@ Primary fixtures:
 - `host-fetched 0x1719c payload metrics feed d8fc span rows`
 - `0x16fae/0x1719c-backed type-2 inline payload maps constructed compact renderer
   records`
+- `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `0x16498-backed downloaded character object renders segmented-wide compact row`
 - `downloaded character stream ties ROM parser dispatch to rendered object`
 - `host-fetched downloaded character stream reaches rendered object`
@@ -279,6 +280,24 @@ they prove:
 - `0xd8fc` high-y `16`;
 - queued segment-list key `0x0406`; and
 - bucket-1 render rows containing the span before the compact glyph.
+
+A type-2 companion changes the setup byte in the host-fetched descriptor so
+`0x17362` writes payload byte `+0x0c = 2`, payload units `0x100`, allocation
+size `18`, and candidate longword `0x44000000`. The fixture
+`host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
+then reuses the copied payload metric fields with type-2 glyph shapes:
+
+- unflagged host byte `#` maps to fixed-record glyph `3`, record
+  `11 03 04 00 00 00 01 20`, selector `0x1000`, and visible wide glyph rows;
+- the same payload bytes `+0x2b = 0`, `+0x2c = 0`, and `+0x2d = 0x20` feed
+  `0xd4ac`, high-y `26`, segment-list key `0xa406`, and visible span rows
+  `10..12`;
+- flagged host byte `!` maps through a synthetic pointer-table entry
+  `0x00ce -> 0x0300`, record `00 00 00 00 0c 01 00 03 00 04 00 00`, and
+  bitmap `f0 f0 f0`; and
+- the same payload words `+0x16 = 4`, `+0x18 = 4`, and `+0x1a = 5` feed
+  `0xd8fc`, high-y `16`, segment-list key `0x0406`, and visible span rows
+  before the compact glyph.
 
 ## Descriptor Validation And Payload Header
 
@@ -583,6 +602,6 @@ A byte-stream renderer must preserve:
   isolation control. The integrated `ESC )s80W` install path currently proves
   the bit-30 offset-table form.
 - The span-metric fields documented in `notes/font-context-metrics.md` are now
-  tied to installed payload headers for the `0xd4ac` and `0xd8fc` type-0
-  fixtures, but broader downloaded/inline metric-byte combinations still need
-  parser-produced page evidence.
+  tied to installed payload headers for the `0xd4ac` and `0xd8fc` type-0 and
+  type-2 fixtures, but broader downloaded/inline metric-byte values and
+  rejection/error forms still need parser-produced page evidence.

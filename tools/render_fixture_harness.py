@@ -40893,13 +40893,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "word_06": 24,
                 "word_0c": 20,
                 "word_0e": 0,
-                "word_10": 1,
+                "word_10": 0,
                 "word_16": 0,
             },
         },
     }
     scheduler_band_calls: list[dict[str, object]] = []
-    for _ in range(9):
+    for _ in range(10):
         scheduler_band_step = active_render_loop_step_via_1eba4(scheduler_band_state)
         render_call = scheduler_band_step.get("render_call", {})
         assert isinstance(render_call, dict)
@@ -40958,9 +40958,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "active_remaining": active_remaining,
                 "word_10_before": word,
                 "word_10_after": word + 1,
-                "word_0e_after": word,
+                "word_0e_after": word + 1,
             }
             for word, available, active_remaining in (
+                (0, 24, 0),
                 (1, 23, 1),
                 (2, 22, 2),
                 (3, 21, 3),
@@ -40975,12 +40976,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "scheduler_record_after": {
             "word_06": 24,
             "word_0c": 20,
-            "word_0e": 9,
+            "word_0e": 10,
             "word_10": 10,
             "word_16": 0,
         },
         "published_bucket_words": [1, 9],
-        "rendered_band_words": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+        "rendered_band_words": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
         "bands_with_bucket_dispatch": [
             {
                 "band_word": 1,
@@ -61875,8 +61876,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     lines.append(
         "- combined stream scheduler band walk: `0x1eba4` produces render-call "
-        "band words `%s` from work word `+0x10`; only published buckets `%s` "
-        "dispatch compact objects, and bucket `9` still produces page row "
+        "band words `%s` after `0xff1e`/`0x1ed84` seed work word `+0x10` "
+        "from cleared source `+0x18`; only published buckets `%s` dispatch "
+        "compact objects, and bucket `9` still produces page row "
         "`86`." % (
             scheduler_band_words,
             [

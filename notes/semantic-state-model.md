@@ -1242,11 +1242,11 @@ published record through `0x1ed84`, walks modeled band words `1` and `9`
 through `0x1ef6a`, dispatches both compact objects to `0x1effe`, leaves the
 bucket-1 segment-0 band blank for this payload, and reproduces the same row
 from bucket `9`. Fixture
-`0x1eba4 scheduler band words render published downloaded glyph` then starts
-the active render work record at word `+0x10 = 1`, lets the scheduler loop
-produce `0x1ef6a` calls for band words `1..9`, and reaches the same bucket-9
-visible row while only published buckets `1` and `9` dispatch compact objects.
-Fixture
+`0x1eba4 scheduler band words render published downloaded glyph` starts from
+the `0xff1e`/`0x1ed84` seed where source `+0x18` has been cleared and render
+work `+0x10/+0x16` are zero, lets the scheduler loop produce `0x1ef6a` calls
+for band words `0..9`, and reaches the same bucket-9 visible row while only
+published buckets `1` and `9` dispatch compact objects. Fixture
 `host-fetched linear downloaded character stream renders through 0x168dc`
 drives `ESC )s6W` through the same parser-delayed `0x16c14` boundary, installs
 glyph `0x26` at table entry `0x00e2` with even span `2`, copies bitmap bytes
@@ -1372,12 +1372,13 @@ renders through 0x1f1f0`, and `host-fetched downloaded character stream
 reaches rendered object`. High for the modeled FF publication boundary of the
 combined downloaded-glyph stream because the fixture asserts the full fetched
 stream boundaries, published bucket array entries `1` and `9`, selected render
-bucket words `1` and `9`, dispatch target, and final rows. High for scheduler
-progression after a known active work-record seed because fixture
+bucket words `1` and `9`, dispatch target, and final rows. High for
+publication-to-scheduler band progression because `0xff1e` disassembly at
+`0xffc8` clears root `+0x18`, `0x1ed84` copies that word into render
+`+0x10/+0x16`, and fixture
 `0x1eba4 scheduler band words render published downloaded glyph` proves
-`0x1eba4` emits band words `1..9` through `0x1ef6a` and preserves the same
-visible row. Medium for the exact live pool-header-to-work-record seed that
-sets the first nonzero band word after publication.
+`0x1eba4` emits band words `0..9` through `0x1ef6a` and preserves the same
+visible row.
 High for the ROM-effect names and failure behavior of every `0x16fae`
 validation-table entry, including the host-fetched invalid-type and
 reversed-range no-install boundaries. Medium for the complete soft-font grammar
@@ -1461,11 +1462,11 @@ legal metric combination have not been page-compared.
   segmented buckets, and fixture
   `published downloaded glyph segmented buckets render across bands` renders
   published bucket words `1` and `9` from the copied record. Fixture
-  `0x1eba4 scheduler band words render published downloaded glyph` proves the
-  later scheduler progression from active work word `+0x10 = 1` through band
-  words `1..9`. The remaining edge is the earlier live
-  pool-header-to-work-record seed that initializes the first nonzero band word
-  for this published record.
+  `0x1eba4 scheduler band words render published downloaded glyph` proves
+  `0xff1e`/`0x1ed84` seed render work `+0x10/+0x16` from cleared source
+  `+0x18 = 0`, then `0x1eba4` advances through band words `0..9` until the
+  published bucket-9 row is visible. The earlier first-band seed edge is now
+  closed for this published record.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through
@@ -2943,11 +2944,12 @@ with active selector `0x7820bc = 1`, so the active work record is
 to `4`, and increments throttle word `+0e` from `7` to `8`.
 The downloaded-glyph scheduler fixture
 `0x1eba4 scheduler band words render published downloaded glyph` starts
-from active work word `+0x10 = 1`, produces nine render calls with
-`word_10_before = 1..9`, leaves the work record at `+0x10 = 10`, and
-feeds those scheduler-produced band words into the copied published
-downloaded-glyph record. Only published buckets `1` and `9` dispatch compact
-objects; bucket `9` still produces page row `86`.
+from the `0xff1e`/`0x1ed84` seed where source `+0x18` and render words
+`+0x10/+0x16` are zero, produces ten render calls with
+`word_10_before = 0..9`, leaves the work record at `+0x10 = 10`, and feeds
+those scheduler-produced band words into the copied published downloaded-glyph
+record. Only published buckets `1` and `9` dispatch compact objects; bucket
+`9` still produces page row `86`.
 
 The capacity-wait side uses active `+6 = 10`, active remaining `4`, and
 paired remaining `1`, producing capacity `5`. It clears active word

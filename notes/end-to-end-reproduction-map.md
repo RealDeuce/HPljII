@@ -139,7 +139,7 @@ executable fixture or generated analysis note.
   boundaries, installs glyph `0x25`, publishes segmented buckets `1` and
   `9` through `0xff1e`, walks those published bucket words through
   `0x1ed84`/`0x1ef6a` band rendering, proves `0x1eba4` scheduler progression
-  through band words `1..9`, and compares the published rendered rows with
+  through band words `0..9`, and compares the published rendered rows with
   bucket `9` producing the visible downloaded row. Evidence: fixtures
   `combined font download FF publishes installed glyph page record`,
   `published downloaded glyph segmented buckets render across bands`, and
@@ -225,11 +225,10 @@ pixels or byte-stream compatibility.
    wide/control, even-span wide, segmented, split-plane segmented, and
    segmented-wide compact render shapes, and the combined downloaded-glyph
    stream now reaches FF publication with both segmented buckets preserved and
-   scheduler-produced band words `1..9` rendered. The full soft-font descriptor
+   scheduler-produced band words `0..9` rendered. The full soft-font descriptor
    grammar, remaining alternate character-mode cross-products, other release
-   variants, exact published-header seed for the first nonzero render band, and
-   page-visible behavior for descriptor error forms beyond those no-install
-   boundaries are still not proven against every PCL form.
+   variants, and page-visible behavior for descriptor error forms beyond those
+   no-install boundaries are still not proven against every PCL form.
 5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
    board-confirmed. This does not block a byte-stream renderer, but it blocks

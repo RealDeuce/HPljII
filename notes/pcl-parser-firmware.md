@@ -540,6 +540,19 @@ stored byte count, and clears empty one-byte or auto-prefix-only
 records; the auto-prefix-only check tests payload bytes `0x1b`, `0x26`,
 and `0x66` at chunk offsets `+4`, `+5`, and `+6`.
 
+The append/count path behind that storage is now pinned. `0xe002` only
+appends when active frame byte `+9` is zero and macro error byte
+`0x782c19` is clear. When the low byte of record `+0x04` is zero, it
+allocates a zero-filled 0x100-byte chunk through `0x170c(1, 1, 0x100)`,
+links it through record `+0x00` or the previous chunk's first longword,
+stores the new current chunk in `0x782c1a`, adds four header bytes to
+record `+0x04`, then writes the payload byte at chunk `+4`. Existing
+chunks write at `chunk + 4 + low_count - 4`. Each chunk therefore stores
+252 payload bytes; the next append after raw count `0x100` links a second
+chunk and leaves raw count `0x105` after writing the 253rd byte. Stop
+normalization derives payload bytes as
+`raw_count - (((raw_count + 0xff) >> 8) * 4)`.
+
 Selectors `2` and `3` require an existing record with payload bytes and
 call `0x0000e418` with mode byte `2` for execute or `3` for call.
 `0xe418` advances `0x782d76` by `0x0e` and builds the next 14-byte
@@ -590,8 +603,9 @@ Helper `0xe860` supplies the static-record mismatch test from
 
 `tools/render_fixture_harness.py` has executable fixtures for `0xe112`,
 the `0xdd08` start/stop/delete/overlay/permanent selector behavior, and
-the `0xe418` execute/call data-chain frame shape plus `0xe65c` stack,
-static, and empty-install refresh paths. Chained
+the `0xe002` chunk append/count path, `0xe418` execute/call data-chain
+frame shape, plus `0xe65c` stack, static, and empty-install refresh
+paths. Chained
 `ESC &f-123y0x1X`, `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f2X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f3X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f4X ESC &f5X`, permanence/delete,
@@ -709,11 +723,11 @@ control-code anchor.
   names.
 - Decode the six-byte tokenizer records and 12-byte command/data pool
   records.
-- Decode macro definition-byte append/count bookkeeping, full `0xe65c`
-  bridge into the already-modeled font resource maps, and the
-  non-execute/non-call frame producer now that the `0xe418` layout,
-  snapshot chain helpers, heap allocation/free contract, execute/call
-  frame end, and `0xe65c` branch contract are pinned.
+- Decode the full `0xe65c` bridge into the already-modeled font resource
+  maps, record lookup/allocation edge cases, and the non-execute/non-call
+  frame producer now that the `0xe002` append/count path, `0xe418`
+  layout, snapshot chain helpers, heap allocation/free contract,
+  execute/call frame end, and `0xe65c` branch contract are pinned.
 - Replace the remaining synthetic `ESC E` roots with fuller
   parser-allocated page objects; the current host-fetched publication
   fixtures already prove the modeled `0xff1e` publication headers,

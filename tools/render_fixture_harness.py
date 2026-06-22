@@ -2870,6 +2870,158 @@ def heap_free_via_18b4(
     return updated
 
 
+def macro_chunk_record(record_id: int = 0, head: int = 0, raw_count: int = 0) -> dict[str, object]:
+    return {
+        "id": record_id & 0xFFFF,
+        "head": head,
+        "raw_count": raw_count,
+        "permanent": False,
+    }
+
+
+def macro_chunk_append_state(**overrides: object) -> dict[str, object]:
+    state: dict[str, object] = {
+        "record": macro_chunk_record(123),
+        "current_chunk_ptr_782c1a": 0,
+        "current_frame_byte_9": 0,
+        "macro_error_782c19": 0,
+        "definition_active_782c18": 1,
+        "chunks": {},
+        "heap": heap_allocator_state(),
+        "events": [],
+    }
+    state.update(overrides)
+    state["record"] = dict(state.get("record", {}))
+    state["chunks"] = {
+        int(addr): {
+            "next": int(chunk.get("next", 0)),
+            "data": list(chunk.get("data", [])),
+        }
+        for addr, chunk in dict(state.get("chunks", {})).items()
+    }
+    state["heap"] = heap_allocator_state(**dict(state.get("heap", {})))
+    state["events"] = list(state.get("events", []))
+    return state
+
+
+def macro_chunk_payload_bytes(record: dict[str, object], chunks: dict[int, dict[str, object]]) -> bytes:
+    payload = bytearray()
+    current = int(record.get("head", 0))
+    while current:
+        chunk = dict(chunks[current])
+        payload.extend(int(value) & 0xFF for value in list(chunk.get("data", [])))
+        current = int(chunk.get("next", 0))
+    return bytes(payload)
+
+
+def normalized_macro_payload_count(raw_count: int) -> int:
+    chunk_count = (int(raw_count) + 0xFF) >> 8
+    return int(raw_count) - (chunk_count * 4)
+
+
+def clear_macro_chunk_record_via_dfba(state: dict[str, object]) -> dict[str, object]:
+    updated = macro_chunk_append_state(**state)
+    record = dict(updated["record"])
+    head = int(record.get("head", 0))
+    heap = heap_free_via_18b4(dict(updated["heap"]), head, 0, 0x100)
+    updated["heap"] = heap
+    updated["record"] = macro_chunk_record()
+    updated["current_chunk_ptr_782c1a"] = 0
+    updated["chunks"] = {}
+    updated["events"].append({
+        "kind": "macro-record-clear",
+        "freed": heap["events"][-1] if head else {"kind": "free-null"},
+    })
+    return updated
+
+
+def append_macro_definition_byte_via_e002(state: dict[str, object], byte: int) -> dict[str, object]:
+    updated = macro_chunk_append_state(**state)
+    record = dict(updated["record"])
+    chunks = dict(updated["chunks"])
+    if int(updated.get("current_frame_byte_9", 0)) != 0:
+        updated["events"].append({"kind": "macro-append-skipped", "reason": "active-data-chain"})
+        return updated
+    if int(updated.get("macro_error_782c19", 0)) != 0:
+        updated["events"].append({"kind": "macro-append-skipped", "reason": "macro-error"})
+        return updated
+
+    raw_count = int(record.get("raw_count", 0))
+    low_count = raw_count & 0xFF
+    current_chunk = int(updated.get("current_chunk_ptr_782c1a", 0))
+    if low_count == 0:
+        heap = heap_alloc_via_170c(dict(updated["heap"]), 1, 1, 0x100)
+        updated["heap"] = heap
+        new_chunk = int(heap.get("last_alloc", 0))
+        if new_chunk == 0:
+            updated["macro_error_782c19"] = 1
+            updated["events"].append({
+                "kind": "macro-append-allocation-failed",
+                "byte": byte & 0xFF,
+            })
+            cleared = clear_macro_chunk_record_via_dfba(updated)
+            cleared["macro_error_782c19"] = 1
+            return cleared
+        chunks[new_chunk] = {"next": 0, "data": []}
+        if int(record.get("head", 0)) == 0:
+            record["head"] = new_chunk
+        else:
+            chunks[current_chunk]["next"] = new_chunk
+            heap_links = dict(heap.get("links", {}))
+            heap_links[current_chunk] = new_chunk
+            heap["links"] = heap_links
+        current_chunk = new_chunk
+        updated["current_chunk_ptr_782c1a"] = current_chunk
+        record["raw_count"] = raw_count + 4
+        write_offset = 0
+        updated["events"].append({
+            "kind": "macro-append-chunk-allocated",
+            "chunk": new_chunk,
+            "raw_count": record["raw_count"],
+        })
+    else:
+        write_offset = low_count - 4
+
+    chunk = dict(chunks[current_chunk])
+    data = list(chunk.get("data", []))
+    while len(data) <= write_offset:
+        data.append(0)
+    data[write_offset] = byte & 0xFF
+    chunk["data"] = data
+    chunks[current_chunk] = chunk
+    record["raw_count"] = int(record.get("raw_count", raw_count)) + 1
+    updated["record"] = record
+    updated["chunks"] = chunks
+    updated["events"].append({
+        "kind": "macro-byte-appended",
+        "byte": byte & 0xFF,
+        "chunk": current_chunk,
+        "offset": write_offset,
+        "raw_count": record["raw_count"],
+    })
+    return updated
+
+
+def stop_macro_definition_via_dd08(state: dict[str, object]) -> dict[str, object]:
+    updated = macro_chunk_append_state(**state)
+    record = dict(updated["record"])
+    payload_count = normalized_macro_payload_count(int(record.get("raw_count", 0)))
+    payload = macro_chunk_payload_bytes(record, dict(updated["chunks"]))[:payload_count]
+    updated["events"].append({
+        "kind": "macro-stop-normalized-count",
+        "raw_count": int(record.get("raw_count", 0)),
+        "payload_count": payload_count,
+    })
+    if payload_count == 1 or (payload_count == 3 and payload == b"\x1b&f"):
+        updated = clear_macro_chunk_record_via_dfba(updated)
+        updated["events"].append({"kind": "macro-stop-cleared-empty"})
+    else:
+        updated["events"].append({"kind": "macro-stop-kept", "payload": payload})
+    updated["definition_active_782c18"] = 0
+    updated["macro_error_782c19"] = 0
+    return updated
+
+
 def execute_macro_data_chain_via_e418(state: dict[str, object], index: int, mode: int) -> dict[str, object]:
     records = list(state["records"])
     record = dict(records[index])
@@ -19220,6 +19372,201 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "follow_links": False,
                 "freed": [0x783C88],
             },
+        },
+    }))
+    macro_append_first = append_macro_definition_byte_via_e002(
+        macro_chunk_append_state(),
+        0x1B,
+    )
+    macro_append_same = append_macro_definition_byte_via_e002(
+        macro_append_first,
+        0x26,
+    )
+    macro_boundary_state = macro_chunk_append_state(
+        record=macro_chunk_record(123, head=0x783988, raw_count=0x100),
+        current_chunk_ptr_782c1a=0x783988,
+        chunks={0x783988: {"next": 0, "data": [0x41] * 252}},
+        heap=heap_allocator_state(allocated_units=set(range(4))),
+    )
+    macro_append_boundary = append_macro_definition_byte_via_e002(
+        macro_boundary_state,
+        0x42,
+    )
+    macro_append_active_skip = append_macro_definition_byte_via_e002(
+        macro_chunk_append_state(current_frame_byte_9=3),
+        0x55,
+    )
+    macro_append_error_skip = append_macro_definition_byte_via_e002(
+        macro_chunk_append_state(macro_error_782c19=1),
+        0x66,
+    )
+    macro_append_failure = append_macro_definition_byte_via_e002(
+        macro_chunk_append_state(
+            record=macro_chunk_record(123, head=0x783988, raw_count=0x100),
+            current_chunk_ptr_782c1a=0x783988,
+            chunks={0x783988: {"next": 0, "data": [0x41] * 252}},
+            heap=heap_allocator_state(
+                capacity_units=4,
+                allocated_units=set(range(4)),
+                links={0x783988: 0},
+            ),
+        ),
+        0x43,
+    )
+    macro_stop_prefix = stop_macro_definition_via_dd08(
+        macro_chunk_append_state(
+            record=macro_chunk_record(123, head=0x783988, raw_count=7),
+            current_chunk_ptr_782c1a=0x783988,
+            chunks={0x783988: {"next": 0, "data": [0x1B, 0x26, 0x66]}},
+            heap=heap_allocator_state(allocated_units=set(range(4))),
+        ),
+    )
+    macro_stop_kept = stop_macro_definition_via_dd08(
+        macro_chunk_append_state(
+            record=macro_chunk_record(123, head=0x783988, raw_count=6),
+            current_chunk_ptr_782c1a=0x783988,
+            chunks={0x783988: {"next": 0, "data": [0x21, 0x0D]}},
+            heap=heap_allocator_state(allocated_units=set(range(4))),
+        ),
+    )
+    checks.append(assert_equal("0xe002 appends macro definition bytes into 0x100 chunks", {
+        "first": {
+            "record": macro_append_first["record"],
+            "current_chunk": macro_append_first["current_chunk_ptr_782c1a"],
+            "chunk": macro_append_first["chunks"][0x783988],
+            "events": macro_append_first["events"],
+        },
+        "same_chunk": {
+            "record": macro_append_same["record"],
+            "chunk": macro_append_same["chunks"][0x783988],
+            "last_event": macro_append_same["events"][-1],
+        },
+        "boundary": {
+            "record": macro_append_boundary["record"],
+            "current_chunk": macro_append_boundary["current_chunk_ptr_782c1a"],
+            "first_next": macro_append_boundary["chunks"][0x783988]["next"],
+            "second_chunk": macro_append_boundary["chunks"][0x783A88],
+            "heap_links": macro_append_boundary["heap"]["links"],
+            "last_events": macro_append_boundary["events"][-2:],
+        },
+        "skips": {
+            "active": macro_append_active_skip["events"][-1],
+            "error": macro_append_error_skip["events"][-1],
+        },
+        "allocation_failure": {
+            "record": macro_append_failure["record"],
+            "chunks": macro_append_failure["chunks"],
+            "macro_error": macro_append_failure["macro_error_782c19"],
+            "events": macro_append_failure["events"],
+        },
+        "stop_prefix": {
+            "record": macro_stop_prefix["record"],
+            "chunks": macro_stop_prefix["chunks"],
+            "events": macro_stop_prefix["events"],
+        },
+        "stop_kept": {
+            "record": macro_stop_kept["record"],
+            "payload": macro_chunk_payload_bytes(
+                macro_stop_kept["record"],
+                macro_stop_kept["chunks"],
+            )[:2],
+            "events": macro_stop_kept["events"],
+        },
+    }, {
+        "first": {
+            "record": {"id": 123, "head": 0x783988, "raw_count": 5, "permanent": False},
+            "current_chunk": 0x783988,
+            "chunk": {"next": 0, "data": [0x1B]},
+            "events": [
+                {"kind": "macro-append-chunk-allocated", "chunk": 0x783988, "raw_count": 4},
+                {
+                    "kind": "macro-byte-appended",
+                    "byte": 0x1B,
+                    "chunk": 0x783988,
+                    "offset": 0,
+                    "raw_count": 5,
+                },
+            ],
+        },
+        "same_chunk": {
+            "record": {"id": 123, "head": 0x783988, "raw_count": 6, "permanent": False},
+            "chunk": {"next": 0, "data": [0x1B, 0x26]},
+            "last_event": {
+                "kind": "macro-byte-appended",
+                "byte": 0x26,
+                "chunk": 0x783988,
+                "offset": 1,
+                "raw_count": 6,
+            },
+        },
+        "boundary": {
+            "record": {"id": 123, "head": 0x783988, "raw_count": 0x105, "permanent": False},
+            "current_chunk": 0x783A88,
+            "first_next": 0x783A88,
+            "second_chunk": {"next": 0, "data": [0x42]},
+            "heap_links": {0x783988: 0x783A88},
+            "last_events": [
+                {"kind": "macro-append-chunk-allocated", "chunk": 0x783A88, "raw_count": 0x104},
+                {
+                    "kind": "macro-byte-appended",
+                    "byte": 0x42,
+                    "chunk": 0x783A88,
+                    "offset": 0,
+                    "raw_count": 0x105,
+                },
+            ],
+        },
+        "skips": {
+            "active": {"kind": "macro-append-skipped", "reason": "active-data-chain"},
+            "error": {"kind": "macro-append-skipped", "reason": "macro-error"},
+        },
+        "allocation_failure": {
+            "record": {"id": 0, "head": 0, "raw_count": 0, "permanent": False},
+            "chunks": {},
+            "macro_error": 1,
+            "events": [
+                {"kind": "macro-append-allocation-failed", "byte": 0x43},
+                {
+                    "kind": "macro-record-clear",
+                    "freed": {
+                        "kind": "free",
+                        "ptr": 0x783988,
+                        "count": 0,
+                        "alignment": 0x100,
+                        "units_per_object": 4,
+                        "follow_links": True,
+                        "freed": [0x783988],
+                    },
+                },
+            ],
+        },
+        "stop_prefix": {
+            "record": {"id": 0, "head": 0, "raw_count": 0, "permanent": False},
+            "chunks": {},
+            "events": [
+                {"kind": "macro-stop-normalized-count", "raw_count": 7, "payload_count": 3},
+                {
+                    "kind": "macro-record-clear",
+                    "freed": {
+                        "kind": "free",
+                        "ptr": 0x783988,
+                        "count": 0,
+                        "alignment": 0x100,
+                        "units_per_object": 4,
+                        "follow_links": True,
+                        "freed": [0x783988],
+                    },
+                },
+                {"kind": "macro-stop-cleared-empty"},
+            ],
+        },
+        "stop_kept": {
+            "record": {"id": 123, "head": 0x783988, "raw_count": 6, "permanent": False},
+            "payload": b"!\r",
+            "events": [
+                {"kind": "macro-stop-normalized-count", "raw_count": 6, "payload_count": 2},
+                {"kind": "macro-stop-kept", "payload": b"!\r"},
+            ],
         },
     }))
     macro_execute_end = end_macro_data_chain_via_e22c(macro_execute)
@@ -46679,6 +47026,23 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         int(heap_high_alloc["last_alloc"]),
         [f"0x{int(addr):08x}" for addr in heap_linked_free["events"][-1]["freed"]],
         [f"0x{int(addr):08x}" for addr in heap_contiguous_free["events"][-1]["freed"]],
+    ))
+    lines.append("- `0xe002` first append allocates chunk `0x%08x`, writes byte `0x%02x` at payload offset `%d`, and leaves raw record count `%d`." % (
+        int(macro_append_first["current_chunk_ptr_782c1a"]),
+        int(macro_append_first["chunks"][0x783988]["data"][0]),
+        int(macro_append_first["events"][-1]["offset"]),
+        int(macro_append_first["record"]["raw_count"]),
+    ))
+    lines.append("- `0xe002` boundary append links second chunk `0x%08x` after `0x%08x`, writes byte `0x%02x`, and leaves raw count `0x%03x` for 253 payload bytes." % (
+        int(macro_append_boundary["current_chunk_ptr_782c1a"]),
+        int(macro_append_boundary["record"]["head"]),
+        int(macro_append_boundary["chunks"][0x783A88]["data"][0]),
+        int(macro_append_boundary["record"]["raw_count"]),
+    ))
+    lines.append("- macro stop normalization maps raw counts `7 -> %d` and `6 -> %d`; auto-prefix payload clears through `0xdfba`, while payload `%s` is kept." % (
+        int(macro_stop_prefix["events"][0]["payload_count"]),
+        int(macro_stop_kept["events"][0]["payload_count"]),
+        macro_stop_kept["events"][-1]["payload"],
     ))
     lines.append("- `0xe65c(0)` stack-pop fixture refreshes slots `%s`, copies remembered words `%s`, and leaves dirty flag `%d` after final `0x1b04c`." % (
         [event["slot"] for event in refresh_stack_both["events"] if event["kind"] == "call-13eb8"],

@@ -185,8 +185,8 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   - current macro record pointer `0x782d7a`.
   - record `+0x00`: payload/chunk pointer, observed by execute/call
     nonempty tests and stop-definition cleanup.
-  - record `+0x04`: stored byte count with chunk-header adjustment during
-    selector `1` stop.
+  - record `+0x04`: raw stored byte count. It includes payload bytes plus
+    four bytes of header overhead for each allocated 0x100-byte chunk.
   - record `+0x08`: stored macro id written from `0x783164` on selector
     `0` start.
   - record `+0x0a`: permanence byte, cleared by selector `9` and set by
@@ -194,6 +194,33 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   Evidence: `notes/pcl-parser-firmware.md` macro selector table;
   disassembly `0xdd86..0xdfb8`; fixtures for start/stop, permanence,
   delete-temporary, delete-current, and delete-all.
+- Canonical macro payload chunks:
+  - `0xe002(byte)` appends only when active frame byte `+9` is zero and
+    macro error byte `0x782c19` is clear.
+  - current append chunk pointer `0x782c1a` names the active 0x100-byte
+    chunk for the current record.
+  - when `(record+0x04) & 0xff == 0`, `0xe002` allocates one zero-filled
+    0x100-byte chunk through `0x170c(1, 1, 0x100)`. The new chunk becomes
+    record `+0x00` if this is the first chunk, otherwise it is linked
+    through the previous chunk's first longword.
+  - after allocating a chunk, `0xe002` adds four to record `+0x04` for
+    the chunk link/header and writes the byte at chunk `+0x04`.
+  - within an existing chunk, `0xe002` writes at
+    `chunk + 4 + ((record+0x04) & 0xff) - 4`, then increments
+    record `+0x04`.
+  - each 0x100-byte chunk therefore carries 252 payload bytes. The next
+    append after raw count `0x100` allocates and links a second chunk,
+    writes the byte at the new chunk's payload offset zero, and leaves
+    raw count `0x105`.
+  - selector `1` stop derives payload count as
+    `raw_count - (((raw_count + 0xff) >> 8) * 4)`. A derived count of
+    one clears the record; a derived count of three also clears if the
+    first bytes are `1b 26 66` (`ESC &f`). Other payloads are kept.
+  - if chunk allocation fails, `0xe002` sets `0x782c19`, reports the
+    allocation failure through `0x9b5e(0x780e2e, 4)`, and clears the
+    current record through `0xdfba`.
+  Evidence: disassembly `0xe002..0xe0a2` and `0xde0c..0xde7a`; fixture
+  `0xe002 appends macro definition bytes into 0x100 chunks`.
 - Canonical data-chain replay frame:
   - current frame pointer `0x782d76`.
   - execute selector `2` calls `0xe418` from `0xde96`; call selector `3`
@@ -350,8 +377,6 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   page-record stream`, and `host-fetched macro replay payloads feed
   0x1ed84 and 0x1ef6a`.
 - Unknown:
-  - exact in-RAM chunk allocation layout behind macro record `+0x00` and
-    the adjusted count at `+0x04`.
   - heap initialization policy at `0x164a..0x170a` beyond the named bitmap,
     payload base, free-unit count, and cursor fields consumed by
     `0x170c`/`0x1710`/`0x18b4`.
@@ -370,6 +395,11 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 - `0xdd86..0xde7a` start and stop definition mode, seed lowercase
   `ESC &f` auto-prefix bytes through `0xe002`, and clear empty or
   auto-prefix-only records through `0xdfba`.
+- `0xe002` writes macro definition payload bytes into linked 0x100-byte
+  chunks, links newly allocated chunks, updates raw record count `+0x04`,
+  and sets `0x782c19` on allocation failure.
+- `0xddfc..0xde7a` normalizes raw record count into payload byte count at
+  selector `1` stop and clears empty or auto-prefix-only definitions.
 - `0xde7c..0xdec4` validate execute/call records and call `0xe418`.
 - `0xe418` writes the data-chain frame later consumed by `0xa904`, writes
   the environment snapshot pointer at frame `+0x0a`, and pushes the
@@ -395,6 +425,9 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 
 - `0xdd08` reads `0x783164`, `0x782d7a`, `0x782d76`, frame byte `+9`,
   and definition-mode byte `0x782c18` before selector dispatch.
+- `0xe002` consumes active frame byte `+9`, macro error byte `0x782c19`,
+  current record pointer `0x782d7a`, current append chunk `0x782c1a`,
+  and record raw count `+0x04` before writing payload bytes.
 - `0xa904` consumes the frame bytes as its active data-chain source,
   dispatches end transitions through `0xe22c`, and then returns replayed
   bytes to the parser.
@@ -435,12 +468,12 @@ current id storage, definition stop behavior, execute/call frame mode
 bytes, frame field offsets `+0x00/+0x04/+0x08/+0x09/+0x0a`, call-only
 context-stack push, snapshot chain chunk shape, execute/call frame-end
 restore, `0x170c`/`0x1710`/`0x18b4` shared heap contract, `0xe65c` branch
-contract, `0xa904` replay, and page-record/render effects because those
-are covered by disassembly, generated parser-table reports, and executable
-fixtures. Medium for macro append/count bookkeeping, complete downstream
-font/resource rebuild after `0xe65c`, and non-execute/non-call frame-end
-semantics because only the fields needed by current replay fixtures are
-pinned.
+contract, macro definition append/count bookkeeping, `0xa904` replay, and
+page-record/render effects because those are covered by disassembly,
+generated parser-table reports, and executable fixtures. Medium for
+complete downstream font/resource rebuild after `0xe65c`, and
+non-execute/non-call frame-end semantics because only the fields needed by
+current replay fixtures are pinned.
 
 ### Fixtures
 
@@ -453,6 +486,7 @@ pinned.
 - `0xe418 frame metadata distinguishes execute and call context`
 - `macro snapshot helpers copy linked and flat environment ranges`
 - `0x170c/0x1710 allocate and 0x18b4 frees heap units`
+- `0xe002 appends macro definition bytes into 0x100 chunks`
 - `0xe22c restores macro frames and consumes call context`
 - `0xe65c refreshes macro font context entries`
 - `macro execute frame payload feeds 0xa904 data-chain bytes`
@@ -489,10 +523,6 @@ pinned.
 
 ### Unresolved Middle Edges
 
-- `0xdfba..0xe110`: macro record free/clear and allocator details,
-  including exact ownership of payload chunks referenced by record `+0x00`.
-- `0xe002..0xe080`: definition-byte append helper, chunk growth, and
-  count update rules behind record `+0x04`.
 - `0xe0a4..0xe110`: record lookup/allocation policy for the 32-entry pool
   when ids collide, records are temporary/permanent, or allocation fails.
 - `0x164a..0x170a`: heap initialization and partition sizing before

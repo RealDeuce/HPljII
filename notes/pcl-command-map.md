@@ -415,7 +415,12 @@ now pins these command side effects, frame metadata, shared heap
 allocation/free, and `0xe65c` font-context refresh paths. `0x170c` /
 `0x1710` allocate 64-byte units, `0x100` requests consume four units,
 and `0x18b4(ptr, 0, 0x100)` follows linked 0x100-byte chains through
-their first longword. `0xe65c(0)` pops the call context stack at
+their first longword. `0xe002` appends definition bytes into those chunks:
+record `+0x04` is a raw count including four header bytes per chunk,
+each 0x100-byte chunk stores 252 payload bytes after its next pointer,
+and selector `1` stop subtracts that header overhead before deciding
+whether to clear one-byte or auto-prefix-only definitions. `0xe65c(0)`
+pops the call context stack at
 `0x782c6e`, while `0xe65c(1)` consumes static record `0x782c64`. Entry
 bytes `+8/+9` refresh primary/secondary slots through `0x13eb8(0/1)`,
 copy active words `0x783144`/`0x783146` to remembered words
@@ -452,8 +457,8 @@ bucket/context bridge contract and feed `0x1ed84`/`0x1ef6a` before
 rendering. The composed semantic checkpoint is in
 `notes/semantic-state-model.md` under
 `Macro Definition And Data-Chain Replay`; the remaining macro gaps are
-definition-byte append/count bookkeeping, the full CPU-state bridge from
-`0xe65c` into the existing font-map contracts, and the
+the full CPU-state bridge from `0xe65c` into the existing font-map
+contracts, record lookup/allocation edge cases, and the
 non-execute/non-call frame producer.
 
 The `ESC &f-123y0x1X` fixture is now also traced through ROM parser
@@ -931,8 +936,8 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   compatibility-facing documentation. The default-font candidate and
   caller path is now real-record backed through `0x1b250`, `0x1b50e`,
   `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
-- Decode macro definition-byte append/count bookkeeping, the full
-  `0xe65c` CPU-state bridge into already-modeled font maps, and the
-  non-execute/non-call frame producer now that the `0xe418` layout,
-  snapshot chain helpers, heap allocation/free, execute/call frame end,
-  and `0xe65c` branch contract are pinned.
+- Decode the full `0xe65c` CPU-state bridge into already-modeled font
+  maps, macro record lookup/allocation edge cases, and the
+  non-execute/non-call frame producer now that the `0xe002` append/count
+  path, `0xe418` layout, snapshot chain helpers, heap allocation/free,
+  execute/call frame end, and `0xe65c` branch contract are pinned.

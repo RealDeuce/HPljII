@@ -835,10 +835,9 @@ ROM work needed:
   page-object rendering and final device-output pixel validation. For
   macros, continue from the composed
   `Macro Definition And Data-Chain Replay` semantic checkpoint by
-  decoding `0xdfba..0xe110`, definition-byte append/count rules at
-  `0xe002..0xe080`, `0xe0a4..0xe110`, heap initialization
-  `0x164a..0x170a`, the full CPU-state bridge from pinned `0xe65c`
-  branch effects into the existing font-map contracts, and the
+  decoding `0xe0a4..0xe110` record lookup/allocation edge cases, heap
+  initialization `0x164a..0x170a`, the full CPU-state bridge from pinned
+  `0xe65c` branch effects into the existing font-map contracts, and the
   non-execute/non-call frame producer for `0xe35a..0xe3e8`. The modeled
   `0x1ef6a`
   page-band merge now covers compact text, mode-0 raster, and a crossing

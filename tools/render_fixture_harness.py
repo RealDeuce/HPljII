@@ -36193,6 +36193,63 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         candidates=[0x00000100, 0x00000200, 0x00000300],
     )
+
+    def resource_validation_failure_case(payload_prefix: bytes) -> dict[str, object]:
+        if len(payload_prefix) > 80:
+            raise AssertionError("resource validation fixture payload exceeds ESC )s80W byte budget")
+        stream = b"\x1b)s80W" + payload_prefix + (b"\x00" * (80 - len(payload_prefix)))
+        command = render_font_download_resource_command_stream_via_121cc_16c14(
+            stream,
+            records=[{"id": 0, "flags": 0, "payload": 0}],
+            current_id=0x1234,
+            new_payload_address=0,
+            counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+            cursors={
+                "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+                "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+                "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+                "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+            },
+            candidates=[0x00000100, 0x00000200, 0x00000300],
+        )
+        dispatch_trace = trace_font_parser_dispatch_via_11774(data, stream)
+        host_stream = fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(stream), direct_mode=0),
+            len(stream),
+        )
+        host_command = render_font_download_resource_command_stream_via_121cc_16c14(
+            host_stream["stream"],
+            records=[{"id": 0, "flags": 0, "payload": 0}],
+            current_id=0x1234,
+            new_payload_address=0,
+            counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+            cursors={
+                "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+                "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+                "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+                "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+            },
+            candidates=[0x00000100, 0x00000200, 0x00000300],
+        )
+        event = command["events"][0]
+        assert isinstance(event, dict)
+        validation = event["validation"]
+        assert isinstance(validation, dict)
+        allocation = event["allocation"]
+        assert isinstance(allocation, dict)
+        host_event = host_command["events"][0]
+        assert isinstance(host_event, dict)
+        return {
+            "stream": stream,
+            "command": command,
+            "event": event,
+            "validation": validation,
+            "allocation": allocation,
+            "dispatch_trace": dispatch_trace,
+            "host_stream": host_stream,
+            "host_event": host_event,
+        }
+
     table_payload_invalid_type_stream = (
         b"\x1b)s80W" + bytes.fromhex("00 01 02 03") + (b"\x00" * 76)
     )
@@ -36280,6 +36337,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         candidates=[0x00000100, 0x00000200, 0x00000300],
     )
+    first_code_overflow_payload = bytearray(font_validate_stream)
+    first_code_overflow_payload[6:8] = (0x1068).to_bytes(2, "big")
+    table_payload_first_code_overflow = resource_validation_failure_case(
+        bytes(first_code_overflow_payload),
+    )
+    zero_line_count_payload = bytearray(font_validate_stream)
+    zero_line_count_payload[8:10] = (0).to_bytes(2, "big")
+    table_payload_zero_line_count = resource_validation_failure_case(
+        bytes(zero_line_count_payload),
+    )
+    invalid_class_payload = bytearray(font_validate_stream)
+    invalid_class_payload[12] = 2
+    table_payload_invalid_class = resource_validation_failure_case(
+        bytes(invalid_class_payload),
+    )
     table_payload_resource_command_event = table_payload_resource_command["events"][0]
     assert isinstance(table_payload_resource_command_event, dict)
     table_payload_resource_command_allocation = table_payload_resource_command_event["allocation"]
@@ -36304,6 +36376,65 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(table_payload_reversed_range_allocation, dict)
     table_payload_reversed_range_host_event = table_payload_reversed_range_from_host["events"][0]
     assert isinstance(table_payload_reversed_range_host_event, dict)
+
+    def resource_validation_failure_report(case: dict[str, object]) -> dict[str, object]:
+        event = case["event"]
+        assert isinstance(event, dict)
+        validation = case["validation"]
+        assert isinstance(validation, dict)
+        allocation = case["allocation"]
+        assert isinstance(allocation, dict)
+        dispatch_trace = case["dispatch_trace"]
+        assert isinstance(dispatch_trace, dict)
+        host_stream = case["host_stream"]
+        assert isinstance(host_stream, dict)
+        host_event = case["host_event"]
+        assert isinstance(host_event, dict)
+        staging = validation["staging"]
+        assert isinstance(staging, bytes)
+        stream = case["stream"]
+        assert isinstance(stream, bytes)
+        command = case["command"]
+        assert isinstance(command, dict)
+        return {
+            "payload_prefix": stream[6:19],
+            "restored_record": event["restored_record"],
+            "validation": {
+                key: validation[key]
+                for key in (
+                    "status",
+                    "failed_index",
+                    "bytes_consumed",
+                    "budget",
+                    "payload_units",
+                    "symbol_count",
+                )
+            },
+            "staging": {
+                "word12": u16(staging, 0x12),
+                "word14": u16(staging, 0x14),
+                "word16": u16(staging, 0x16),
+                "word18": u16(staging, 0x18),
+                "byte20": staging[0x20],
+            },
+            "allocation": {
+                key: allocation[key]
+                for key in ("status", "allocation_size", "payload")
+            },
+            "install": event["install"],
+            "stream_pos": command["stream_pos"],
+            "dispatch_handlers": [
+                dispatch_event["handler"]
+                for dispatch_event in dispatch_trace["dispatches"]
+            ],
+            "host_fetched": {
+                "fetch_source_set": sorted(set(host_stream["sources"])),
+                "remaining_ring": host_stream["state"]["ring"],
+                "validation_status": host_event["validation"]["status"],  # type: ignore[index]
+                "install": host_event["install"],
+            },
+        }
+
     checks.append(assert_equal("ESC )s80W resource stream installs 0x1719c payload through 0x16c14", {
         "event": {
             key: table_payload_resource_command_event[key]
@@ -36584,6 +36715,111 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "remaining_ring": [],
             "validation_status": 0,
             "install": None,
+        },
+    }))
+    checks.append(assert_equal("ESC )s80W additional validation predicate failures skip allocation", {
+        "first_code_overflow": resource_validation_failure_report(table_payload_first_code_overflow),
+        "zero_line_count": resource_validation_failure_report(table_payload_zero_line_count),
+        "invalid_class": resource_validation_failure_report(table_payload_invalid_class),
+    }, {
+        "first_code_overflow": {
+            "payload_prefix": bytes.fromhex("00 01 02 00 ff ff 10 68 00 06 00 09 01"),
+            "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+            "validation": {
+                "status": 0,
+                "failed_index": 4,
+                "bytes_consumed": 8,
+                "budget": 72,
+                "payload_units": 0x80,
+                "symbol_count": 0,
+            },
+            "staging": {
+                "word12": 0,
+                "word14": 0,
+                "word16": 0,
+                "word18": 0,
+                "byte20": 0,
+            },
+            "allocation": {
+                "status": 0,
+                "allocation_size": 0,
+                "payload": None,
+            },
+            "install": None,
+            "stream_pos": 86,
+            "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "host_fetched": {
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "validation_status": 0,
+                "install": None,
+            },
+        },
+        "zero_line_count": {
+            "payload_prefix": bytes.fromhex("00 01 02 00 ff ff 00 04 00 00 00 09 01"),
+            "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+            "validation": {
+                "status": 0,
+                "failed_index": 5,
+                "bytes_consumed": 10,
+                "budget": 70,
+                "payload_units": 0x80,
+                "symbol_count": 0,
+            },
+            "staging": {
+                "word12": 0,
+                "word14": 0,
+                "word16": 4,
+                "word18": 0,
+                "byte20": 0,
+            },
+            "allocation": {
+                "status": 0,
+                "allocation_size": 0,
+                "payload": None,
+            },
+            "install": None,
+            "stream_pos": 86,
+            "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "host_fetched": {
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "validation_status": 0,
+                "install": None,
+            },
+        },
+        "invalid_class": {
+            "payload_prefix": bytes.fromhex("00 01 02 00 ff ff 00 04 00 06 00 09 02"),
+            "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+            "validation": {
+                "status": 0,
+                "failed_index": 7,
+                "bytes_consumed": 13,
+                "budget": 67,
+                "payload_units": 0x80,
+                "symbol_count": 0,
+            },
+            "staging": {
+                "word12": 6,
+                "word14": 9,
+                "word16": 4,
+                "word18": 4,
+                "byte20": 0,
+            },
+            "allocation": {
+                "status": 0,
+                "allocation_size": 0,
+                "payload": None,
+            },
+            "install": None,
+            "stream_pos": 86,
+            "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "host_fetched": {
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "validation_status": 0,
+                "install": None,
+            },
         },
     }))
     checks.append(assert_equal("resource payload stream ties ROM parser dispatch to 0x16c14 install", {
@@ -60719,6 +60955,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_reversed_range_allocation["status"],
         table_payload_reversed_range_event["install"],
         sorted(set(host_fetched_reversed_range_stream["sources"])),
+    ))
+    lines.append("- host-fetched validation-failure family: first-code overflow fails entry `%d` after `%d` bytes, zero line/count word fails entry `%d` after `%d` bytes, and invalid class byte fails entry `%d` after `%d` bytes; each restores record `%s`, skips allocation, leaves install `None`, and drains from `%s` source." % (
+        table_payload_first_code_overflow["validation"]["failed_index"],  # type: ignore[index]
+        table_payload_first_code_overflow["validation"]["bytes_consumed"],  # type: ignore[index]
+        table_payload_zero_line_count["validation"]["failed_index"],  # type: ignore[index]
+        table_payload_zero_line_count["validation"]["bytes_consumed"],  # type: ignore[index]
+        table_payload_invalid_class["validation"]["failed_index"],  # type: ignore[index]
+        table_payload_invalid_class["validation"]["bytes_consumed"],  # type: ignore[index]
+        " ".join(f"{byte:02x}" for byte in table_payload_invalid_class["event"]["restored_record"]),  # type: ignore[index]
+        sorted(set(table_payload_invalid_class["host_stream"]["sources"])),  # type: ignore[index]
     ))
     lines.append("- setup type fixtures: type `0` -> byte `+0x0c = %d`, units `0x%03x`; type `2` -> byte `+0x0c = %d`, units `0x%03x`; unsupported type returns status `%d` without changing byte `+0x0c`." % (
         font_setup_type_0["staging"][0x0C],

@@ -1379,6 +1379,7 @@ legal metric combination have not been page-compared.
   fixed-record render`
 - `ESC )s80W invalid resource type fails validation before allocation`
 - `ESC )s80W reversed resource range fails validation before allocation`
+- `ESC )s80W additional validation predicate failures skip allocation`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `0x16498-backed downloaded character object renders segmented-wide compact
@@ -1414,10 +1415,11 @@ legal metric combination have not been page-compared.
 - `0x16fae..0x17016`: all 32 validation slots now have ROM-effect names and
   concrete success/failure fixtures. Exact HP manual labels for consumed but
   not staged descriptor fields still need external correlation. The
-  host-fetched invalid-type path proves no-install behavior for entry `2`, and
-  the host-fetched reversed-range path proves no-install behavior for entry
-  `6`; remaining descriptor error forms still need the same parser-produced
-  and page-visible treatment.
+  host-fetched invalid-type path proves no-install behavior for entry `2`, the
+  host-fetched first-code overflow path proves entry `4`, the zero line/count
+  path proves entry `5`, the reversed-range path proves entry `6`, and the
+  invalid-class path proves entry `7`. Remaining descriptor error forms still
+  need the same parser-produced and page-visible treatment.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span
   wide, linear normal, linear segmented, and split-plane segmented
   downloaded-character paths are page-visible. Remaining parser-produced
@@ -1436,7 +1438,7 @@ legal metric combination have not been page-compared.
   host-fetched type-0, type-1, and type-2 downloaded payloads for both span
   consumers, and the shared consumer branch family is fixture-backed. It still
   needs broader metric-byte values and producer-side validation/error page
-  evidence beyond the invalid-type and reversed-range no-install boundaries.
+  evidence beyond the documented validation no-install boundaries.
 
 ## Macro Definition And Data-Chain Replay
 

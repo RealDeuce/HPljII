@@ -33781,6 +33781,100 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "post_record": bytes.fromhex("01 02 00 fa 00 00 00 00"),
     }))
 
+    extended_release_memory = bytearray(0x1000)
+    extended_release_memory[resource_object_context + 0x0E] = 1
+    extended_release_memory[
+        resource_object_context + 0x1A:resource_object_context + 0x1C
+    ] = (0x0064).to_bytes(2, "big")
+    extended_release_memory[resource_object_context + 0x3C] = 2
+    extended_release_memory[
+        resource_object_context + 0x44:resource_object_context + 0x48
+    ] = (0x00000300).to_bytes(4, "big")
+    extended_release_entry = (
+        resource_object_context + 0x40 + (0xA1 - 0x40) * 8
+    )
+    extended_release_memory[
+        extended_release_entry:extended_release_entry + 8
+    ] = bytes.fromhex("04 05 06 07 00 00 04 00")
+    extended_release_continuation = {
+        "flag": 1,
+        "payload": resource_object_context,
+        "word_0x7827c8": 0xA1,
+        "dest": 0x0400,
+        "trailing_dest": 0,
+        "remaining": 5,
+        "d4_counter": 0,
+        "d3_counter": 0,
+    }
+    extended_release = font_resource_fixed_record_release_via_17d7c(
+        extended_release_memory,
+        base=resource_object_context,
+        char_code=0xA1,
+        continuation=extended_release_continuation,
+        active_secondary_context=resource_object_context,
+    )
+    extended_release_header = extended_release["header"]
+    assert isinstance(extended_release_header, bytes)
+    extended_release_actual = {
+        key: extended_release[key]
+        for key in (
+            "status",
+            "handler",
+            "base",
+            "char_code",
+            "type_byte_0x0e",
+            "table_base_char",
+            "table_entry",
+            "base_entry",
+            "old_record",
+            "new_record",
+            "divisor_0x1a",
+            "replacement_byte",
+            "side_table_offset",
+            "side_table_bytes",
+            "active_refresh",
+            "continuation_cleared",
+            "continuation",
+        )
+    }
+    extended_release_actual["post_record"] = extended_release_header[
+        extended_release_entry:extended_release_entry + 8
+    ]
+    extended_release_expected = {
+        "status": "released-fixed-record",
+        "handler": 0x17D7C,
+        "base": resource_object_context,
+        "char_code": 0xA1,
+        "type_byte_0x0e": 1,
+        "table_base_char": 0x40,
+        "table_entry": extended_release_entry,
+        "base_entry": resource_object_context + 0x40,
+        "old_record": bytes.fromhex("04 05 06 07 00 00 04 00"),
+        "new_record": bytes.fromhex("01 02 00 2c 00 00 03 00"),
+        "divisor_0x1a": 0x0064,
+        "replacement_byte": 0x2C,
+        "side_table_offset": resource_object_context + 0x0702,
+        "side_table_bytes": bytes.fromhex("2c 00"),
+        "active_refresh": [{"slot": "secondary", "word_0x7828de": 1}],
+        "continuation_cleared": True,
+        "continuation": {
+            "flag": 0,
+            "payload": 0,
+            "word_0x7827c8": 0,
+            "dest": 0,
+            "trailing_dest": 0,
+            "remaining": 0,
+            "d4_counter": 0,
+            "d3_counter": 0,
+        },
+        "post_record": bytes.fromhex("01 02 00 2c 00 00 03 00"),
+    }
+    checks.append(assert_equal(
+        "0x17d7c releases extended fixed-record table with secondary refresh",
+        extended_release_actual,
+        extended_release_expected,
+    ))
+
     offset_release_memory = bytearray(0x400)
     offset_release_memory[
         resource_object_context:resource_object_context + 4

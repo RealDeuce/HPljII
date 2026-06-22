@@ -699,6 +699,9 @@ rewrites the released fixed-record entry to the fallback form
 `01 02 00 fa 00 00 00 00` in the active-primary fixture. The bit-30 release
 delegate is fixture-backed separately: `0x17d7c` calls `0x17a24`, which clears
 the selected offset-table entry and refreshes the active secondary context.
+The fixed-record `0xa0..0xff` release branch is fixture-backed for type byte
+`+0x0e = 1`, with char `0xa1` rewriting the extended table entry and
+refreshing the active secondary context.
 `ESC *c#F` dispatches values `0..6` through the
 table at `0x16db6`: values `0`, `1`, and `2` call all/current record
 release helpers, value `3` uses the current character/code word

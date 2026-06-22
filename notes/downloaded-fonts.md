@@ -167,13 +167,15 @@ Renderer-facing allocated payload fields:
 
 Unknown:
 
-- Manual names for every validation-table predicate feeding `0x16fae` are not
-  complete, even though the table-driven fixture pins all staged field writes.
+- Exact HP manual labels for the consumed-but-not-staged descriptor fields in
+  the `0x16fae` table are still not all correlated, but every table entry now
+  has a ROM-effect name in the validation ledger below.
 - The `0x15c4c` status-0 copy-failure exit is fixture-backed through
   fixed-record release helper `0x17d7c`; the `0x17d7c` bit-30 delegate to
   `0x17a24` is fixture-backed for one active-secondary offset-table release.
   Fixed-record extended-table and secondary-refresh release are fixture-backed
-  together. Allocation-failure release variants still need coverage.
+  together. Current-record allocation-failure release through `0x1887a` is
+  fixture-backed for the bit-30-clear extended fixed-record case.
 - The complete soft-font grammar is not exhaustively proven for every legal
   PCL descriptor form and every metric-byte combination.
 
@@ -353,6 +355,70 @@ then reuses the copied payload metric fields with type-2 glyph shapes:
 - `0x17016..0x1701c`: writes the copied symbol count to `0x782856` and
   returns success.
 
+The validation table at `0x16eae` is now named by ROM effect. The reader
+helpers are `0x1599c` for unsigned bytes, `0x159b6` for signed bytes,
+`0x159d4` for unsigned words, and `0x159f6` for signed words:
+
+- Entry `0`, table `0x16eae`, `D5 = 1`: `0x159f6` plus pass predicate
+  `0x17358` consumes signed descriptor word 1 without staging it.
+- Entry `1`, table `0x16eb6`, `D5 = 2`: `0x1599c` plus `0x17358` consumes
+  descriptor byte 3 without staging it.
+- Entry `2`, table `0x16ebe`, `D5 = 3`: `0x1599c` plus `0x17362` validates
+  font resource type, writes payload byte `+0x0c`, and sets payload units to
+  `0x80` for type `0` or `0x100` for types `1` and `2`.
+- Entry `3`, table `0x16ec6`, `D5 = 4`: `0x159f6` plus `0x17358` consumes a
+  signed descriptor word without staging it.
+- Entry `4`, table `0x16ece`, `D5 = 5`: `0x159d4` plus `0x173d0` writes
+  payload word `+0x16` and rejects values greater than `0x1067`.
+- Entry `5`, table `0x16ed6`, `D5 = 6`: `0x159d4` plus `0x173fe` writes
+  payload word `+0x12` and accepts only `1..0x1068`.
+- Entry `6`, table `0x16ede`, `D5 = 7`: `0x159d4` plus `0x17430` writes
+  payload word `+0x14`, requires word `+0x16 <= value - 1`, and writes
+  derived word `+0x18 = value - word(+0x16) - 1`.
+- Entry `7`, table `0x16ee6`, `D5 = 8`: `0x1599c` plus `0x1749e` writes
+  class byte `+0x20` and rejects values greater than `1`.
+- Entry `8`, table `0x16eee`, `D5 = 9`: `0x1599c` plus `0x174cc` writes
+  payload byte `+0x21` as `0` for zero input or `1` for any nonzero input.
+- Entry `9`, table `0x16ef6`, `D5 = 10`: `0x159d4` plus `0x17502` writes
+  symbol-set word `+0x22`.
+- Entry `10`, table `0x16efe`, `D5 = 11`: `0x159d4` plus `0x1751a` writes
+  payload word `+0x24`, capped at `0x41a0`.
+- Entry `11`, table `0x16f06`, `D5 = 12`: `0x159d4` plus `0x1754a` writes
+  payload word `+0x28`, capped at `0x2aaa`.
+- Entry `12`, table `0x16f0e`, `D5 = 13`: `0x159d4` plus `0x1757a` writes
+  payload word `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`.
+- Entry `13`, table `0x16f16`, `D5 = 14`: `0x1599c` plus `0x17358` consumes
+  a descriptor byte without staging it.
+- Entry `14`, table `0x16f1e`, `D5 = 15`: `0x1599c` plus `0x175c2` copies
+  the input byte to payload byte `+0x2f`.
+- Entry `15`, table `0x16f26`, `D5 = 16`: `0x159b6` plus `0x175da` writes
+  signed payload byte `+0x30`, clamped to `-7..7`.
+- Entry `16`, table `0x16f2e`, `D5 = 17`: `0x1599c` plus `0x17612` copies
+  the input byte to payload byte `+0x31`.
+- Entries `17..20`, tables `0x16f36..0x16f4e`, `D5 = 18..21`: four
+  `0x1599c` byte reads plus `0x17358` consume descriptor bytes without
+  staging them.
+- Entry `21`, table `0x16f56`, `D5 = 22`: `0x159b6` plus `0x1762a`
+  sign-extends one byte and writes it to payload word `+0x1a`.
+- Entry `22`, table `0x16f5e`, `D5 = 23`: `0x1599c` plus `0x17358` consumes
+  a descriptor byte without staging it.
+- Entries `23..24`, tables `0x16f66..0x16f6e`, `D5 = 24..25`: two
+  `0x159f6` signed-word reads plus `0x17358` consume descriptor words without
+  staging them.
+- Entry `25`, table `0x16f76`, `D5 = 26`: `0x159d4` plus `0x17642` ignores
+  the input value, clears payload word `+0x0e`, and writes range limit
+  `+0x10 = 0x007f` for type `0` or `0x00ff` for nonzero type.
+- Entry `26`, table `0x16f7e`, `D5 = 27`: `0x159d4` plus `0x17358` consumes
+  a descriptor word without staging it.
+- Entry `27`, table `0x16f86`, `D5 = 28`: `0x1599c` plus `0x17690` writes
+  payload byte `+0x26`, but forces zero when capped word `+0x24 >= 0x41a0`.
+- Entry `28`, table `0x16f8e`, `D5 = 29`: `0x1599c` plus `0x176c2` writes
+  payload byte `+0x2a`, but clamps to `0x80` when word `+0x28 >= 0x2aaa`
+  and the input is greater than `0x80`.
+- Entries `29..31`, tables `0x16f96..0x16fa6`, `D5 = 30..32`: three
+  `0x159d4` word reads plus `0x17358` consume descriptor words without
+  staging them.
+
 The table-driven fixture consumes 64 bytes and stages these renderer-facing
 fields:
 
@@ -372,6 +438,13 @@ fields:
 - `+0x2c = 0x0020`
 - `+0x2f..+0x31 = ab f9 cd`
 - optional symbols `41..50`
+
+Failure fixtures now cover two concrete predicate exits. Invalid type byte
+`3` fails entry `2` after four consumed bytes, leaves byte `+0x0c = 0`, copies
+no optional symbols, and returns status `0`. A reversed range with word
+`+0x16 = 10` and entry-6 value `5` fails entry `6` after twelve consumed
+bytes; it has written word `+0x14 = 5`, leaves derived word `+0x18 = 0`, and
+copies no optional symbols.
 
 `0x17362` sets the staged type and payload units. Type `0` writes byte
 `+0x0c = 0` and units `0x80`; type `2` writes byte `+0x0c = 2` and units
@@ -752,9 +825,9 @@ A byte-stream renderer must preserve:
 
 ## Remaining Edges
 
-- `0x16fae..0x17016`: all 32 validation slots are executable, but
-  manual-facing names for every predicate and descriptor field are still
-  incomplete.
+- `0x16fae..0x17016`: all 32 validation slots now have ROM-effect names and
+  concrete success/failure fixtures. Exact HP manual labels for the
+  consumed-but-not-staged descriptor fields still need external correlation.
 - `0x16498..0x16942`: the split-plane segmented-wide and linear payload paths
   are page-visible; alternate mode combinations still need the same
   parser-produced page comparison.

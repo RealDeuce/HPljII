@@ -6431,6 +6431,187 @@ FONT_RESOURCE_VALIDATE_TABLE: tuple[tuple[int, int], ...] = (
     (0x159D4, 0x17358),
 )
 
+FONT_RESOURCE_VALIDATE_FIELD_META: tuple[dict[str, object], ...] = (
+    {
+        "field": "descriptor word 1",
+        "reader_kind": "signed-word",
+        "effect": "accepted but not staged",
+    },
+    {
+        "field": "descriptor byte 3",
+        "reader_kind": "byte",
+        "effect": "accepted but not staged",
+    },
+    {
+        "field": "font resource type",
+        "reader_kind": "byte",
+        "effect": "writes payload byte +0x0c and payload units 0x80/0x100",
+    },
+    {
+        "field": "descriptor signed word 4",
+        "reader_kind": "signed-word",
+        "effect": "accepted but not staged",
+    },
+    {
+        "field": "first code / flagged metric word",
+        "reader_kind": "word",
+        "effect": "writes payload word +0x16; rejects values greater than 0x1067",
+    },
+    {
+        "field": "bounded metric word +0x12",
+        "reader_kind": "word",
+        "effect": "writes payload word +0x12; accepts 1..0x1068",
+    },
+    {
+        "field": "bounded metric word +0x14 and derived count",
+        "reader_kind": "word",
+        "effect": "writes +0x14 and +0x18 = value - word(+0x16) - 1",
+    },
+    {
+        "field": "class flag",
+        "reader_kind": "byte",
+        "effect": "writes payload byte +0x20; rejects values greater than 1",
+    },
+    {
+        "field": "nonzero boolean flag",
+        "reader_kind": "byte",
+        "effect": "writes payload byte +0x21 as 0 or 1",
+    },
+    {
+        "field": "symbol-set word",
+        "reader_kind": "word",
+        "effect": "writes payload word +0x22",
+    },
+    {
+        "field": "capped metric word +0x24",
+        "reader_kind": "word",
+        "effect": "writes min(value, 0x41a0) to payload word +0x24",
+    },
+    {
+        "field": "capped metric word +0x28",
+        "reader_kind": "word",
+        "effect": "writes min(value, 0x2aaa) to payload word +0x28",
+    },
+    {
+        "field": "rounded metric word +0x2c",
+        "reader_kind": "word",
+        "effect": "writes min((value + 2) >> 2, word(+0x14)) << 2 to +0x2c",
+    },
+    {
+        "field": "descriptor byte 14",
+        "reader_kind": "byte",
+        "effect": "accepted but not staged",
+    },
+    {
+        "field": "copied byte +0x2f",
+        "reader_kind": "byte",
+        "effect": "writes payload byte +0x2f",
+    },
+    {
+        "field": "signed clamped byte +0x30",
+        "reader_kind": "signed-byte",
+        "effect": "writes payload byte +0x30 clamped to -7..7",
+    },
+    {
+        "field": "copied byte +0x31",
+        "reader_kind": "byte",
+        "effect": "writes payload byte +0x31",
+    },
+    {
+        "field": "descriptor byte 18",
+        "reader_kind": "byte",
+        "effect": "accepted but not staged",
+    },
+    {
+        "field": "descriptor byte 19",
+        "reader_kind": "byte",
+        "effect": "accepted but not staged",
+    },
+    {
+        "field": "descriptor byte 20",
+        "reader_kind": "byte",
+        "effect": "accepted but not staged",
+    },
+    {
+        "field": "descriptor byte 21",
+        "reader_kind": "byte",
+        "effect": "accepted but not staged",
+    },
+    {
+        "field": "flagged metric word +0x1a",
+        "reader_kind": "signed-byte",
+        "effect": "writes sign-extended value to payload word +0x1a",
+    },
+    {
+        "field": "descriptor byte 23",
+        "reader_kind": "byte",
+        "effect": "accepted but not staged",
+    },
+    {
+        "field": "descriptor signed word 24",
+        "reader_kind": "signed-word",
+        "effect": "accepted but not staged",
+    },
+    {
+        "field": "descriptor signed word 25",
+        "reader_kind": "signed-word",
+        "effect": "accepted but not staged",
+    },
+    {
+        "field": "character range initializer",
+        "reader_kind": "word",
+        "effect": "clears payload word +0x0e and writes +0x10 = 0x7f or 0xff",
+    },
+    {
+        "field": "descriptor word 27",
+        "reader_kind": "word",
+        "effect": "accepted but not staged",
+    },
+    {
+        "field": "dependent byte +0x26",
+        "reader_kind": "byte",
+        "effect": "writes payload byte +0x26 or zero when word(+0x24) is capped",
+    },
+    {
+        "field": "dependent byte +0x2a",
+        "reader_kind": "byte",
+        "effect": "writes payload byte +0x2a; clamps to 0x80 when word(+0x28) is capped",
+    },
+    {
+        "field": "descriptor word 30",
+        "reader_kind": "word",
+        "effect": "accepted but not staged",
+    },
+    {
+        "field": "descriptor word 31",
+        "reader_kind": "word",
+        "effect": "accepted but not staged",
+    },
+    {
+        "field": "descriptor word 32",
+        "reader_kind": "word",
+        "effect": "accepted but not staged",
+    },
+)
+
+
+def font_resource_validate_table_summary_via_16eae() -> list[dict[str, object]]:
+    if len(FONT_RESOURCE_VALIDATE_FIELD_META) != len(FONT_RESOURCE_VALIDATE_TABLE):
+        raise AssertionError("validation metadata must describe all 32 table entries")
+    summary: list[dict[str, object]] = []
+    for index, ((reader, predicate), meta) in enumerate(
+        zip(FONT_RESOURCE_VALIDATE_TABLE, FONT_RESOURCE_VALIDATE_FIELD_META)
+    ):
+        summary.append({
+            "index": index,
+            "d5": index + 1,
+            "table_address": 0x16EAE + index * 8,
+            "reader": reader,
+            "predicate": predicate,
+            **meta,
+        })
+    return summary
+
 
 def font_resource_record_scan_via_172c0(records: list[dict[str, int]], current_id: int) -> dict[str, object]:
     current_id &= 0xFFFF
@@ -35232,6 +35413,102 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    font_validate_summary = font_resource_validate_table_summary_via_16eae()
+    checks.append(assert_equal("0x16fae validation table semantic map covers staged and pass-through entries", {
+        "entry_count": len(font_validate_summary),
+        "pass_through_count": sum(
+            1 for entry in font_validate_summary
+            if entry["effect"] == "accepted but not staged"
+        ),
+        "type_entry": {
+            key: font_validate_summary[2][key]
+            for key in ("index", "d5", "table_address", "reader", "predicate", "field", "reader_kind", "effect")
+        },
+        "range_entry": {
+            key: font_validate_summary[6][key]
+            for key in ("index", "d5", "table_address", "reader", "predicate", "field", "reader_kind", "effect")
+        },
+        "rounded_entry": {
+            key: font_validate_summary[12][key]
+            for key in ("index", "d5", "table_address", "reader", "predicate", "field", "reader_kind", "effect")
+        },
+        "flagged_metric_entry": {
+            key: font_validate_summary[21][key]
+            for key in ("index", "d5", "table_address", "reader", "predicate", "field", "reader_kind", "effect")
+        },
+        "range_init_entry": {
+            key: font_validate_summary[25][key]
+            for key in ("index", "d5", "table_address", "reader", "predicate", "field", "reader_kind", "effect")
+        },
+        "dependent_height_entry": {
+            key: font_validate_summary[28][key]
+            for key in ("index", "d5", "table_address", "reader", "predicate", "field", "reader_kind", "effect")
+        },
+    }, {
+        "entry_count": 32,
+        "pass_through_count": 15,
+        "type_entry": {
+            "index": 2,
+            "d5": 3,
+            "table_address": 0x16EBE,
+            "reader": 0x1599C,
+            "predicate": 0x17362,
+            "field": "font resource type",
+            "reader_kind": "byte",
+            "effect": "writes payload byte +0x0c and payload units 0x80/0x100",
+        },
+        "range_entry": {
+            "index": 6,
+            "d5": 7,
+            "table_address": 0x16EDE,
+            "reader": 0x159D4,
+            "predicate": 0x17430,
+            "field": "bounded metric word +0x14 and derived count",
+            "reader_kind": "word",
+            "effect": "writes +0x14 and +0x18 = value - word(+0x16) - 1",
+        },
+        "rounded_entry": {
+            "index": 12,
+            "d5": 13,
+            "table_address": 0x16F0E,
+            "reader": 0x159D4,
+            "predicate": 0x1757A,
+            "field": "rounded metric word +0x2c",
+            "reader_kind": "word",
+            "effect": "writes min((value + 2) >> 2, word(+0x14)) << 2 to +0x2c",
+        },
+        "flagged_metric_entry": {
+            "index": 21,
+            "d5": 22,
+            "table_address": 0x16F56,
+            "reader": 0x159B6,
+            "predicate": 0x1762A,
+            "field": "flagged metric word +0x1a",
+            "reader_kind": "signed-byte",
+            "effect": "writes sign-extended value to payload word +0x1a",
+        },
+        "range_init_entry": {
+            "index": 25,
+            "d5": 26,
+            "table_address": 0x16F76,
+            "reader": 0x159D4,
+            "predicate": 0x17642,
+            "field": "character range initializer",
+            "reader_kind": "word",
+            "effect": "clears payload word +0x0e and writes +0x10 = 0x7f or 0xff",
+        },
+        "dependent_height_entry": {
+            "index": 28,
+            "d5": 29,
+            "table_address": 0x16F8E,
+            "reader": 0x1599C,
+            "predicate": 0x176C2,
+            "field": "dependent byte +0x2a",
+            "reader_kind": "byte",
+            "effect": "writes payload byte +0x2a; clamps to 0x80 when word(+0x28) is capped",
+        },
+    }))
+
     font_validate_ok = font_resource_validate_via_16fae([1] * 32, bytes(range(0x30, 0x50)), 20)
     font_validate_fail = font_resource_validate_via_16fae([1] * 7 + [0] + [1] * 24, bytes(range(0x30, 0x50)), 20)
     font_validate_zero_budget = font_resource_validate_via_16fae([1] * 32, bytes(range(0x30, 0x50)), 0)
@@ -35296,6 +35573,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     font_validate_table = font_resource_validate_table_stream_via_16fae(bytearray(0x40), font_validate_stream, 80)
     font_validate_table_staging = font_validate_table["staging"]
     assert isinstance(font_validate_table_staging, bytes)
+    font_validate_invalid_type = font_resource_validate_table_stream_via_16fae(
+        bytearray(0x40),
+        bytes.fromhex("00 01 02 03"),
+        80,
+    )
+    font_validate_reversed_range = font_resource_validate_table_stream_via_16fae(
+        bytearray(0x40),
+        bytes.fromhex("00 01 00 00 00 00 00 0a 00 06 00 05"),
+        80,
+    )
     checks.append(assert_equal("0x16fae table-driven validation predicates populate staged header fields", {
         "status": font_validate_table["status"],
         "visited": len(font_validate_table["visited"]),
@@ -35324,6 +35611,27 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "byte31": font_validate_table_staging[0x31],
         },
         "symbols": font_validate_table["symbol_bytes"],
+        "invalid_type": {
+            "status": font_validate_invalid_type["status"],
+            "failed_index": font_validate_invalid_type["failed_index"],
+            "visited": len(font_validate_invalid_type["visited"]),
+            "bytes_consumed": font_validate_invalid_type["bytes_consumed"],
+            "budget": font_validate_invalid_type["budget"],
+            "payload_units": font_validate_invalid_type["payload_units"],
+            "byte0c": font_validate_invalid_type["staging"][0x0C],
+            "symbol_count": font_validate_invalid_type["symbol_count"],
+        },
+        "reversed_range": {
+            "status": font_validate_reversed_range["status"],
+            "failed_index": font_validate_reversed_range["failed_index"],
+            "visited": len(font_validate_reversed_range["visited"]),
+            "bytes_consumed": font_validate_reversed_range["bytes_consumed"],
+            "budget": font_validate_reversed_range["budget"],
+            "word14": u16(font_validate_reversed_range["staging"], 0x14),
+            "word16": u16(font_validate_reversed_range["staging"], 0x16),
+            "word18": u16(font_validate_reversed_range["staging"], 0x18),
+            "symbol_count": font_validate_reversed_range["symbol_count"],
+        },
     }, {
         "status": 1,
         "visited": 32,
@@ -35352,6 +35660,27 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "byte31": 0xCD,
         },
         "symbols": bytes.fromhex("41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f 50"),
+        "invalid_type": {
+            "status": 0,
+            "failed_index": 2,
+            "visited": 3,
+            "bytes_consumed": 4,
+            "budget": 76,
+            "payload_units": 0x100,
+            "byte0c": 0,
+            "symbol_count": 0,
+        },
+        "reversed_range": {
+            "status": 0,
+            "failed_index": 6,
+            "visited": 7,
+            "bytes_consumed": 12,
+            "budget": 68,
+            "word14": 5,
+            "word16": 10,
+            "word18": 0,
+            "symbol_count": 0,
+        },
     }))
 
     font_staging = bytearray(0x40)
@@ -58724,6 +59053,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("")
     lines.append("The allocation/header side of that path is now pinned through `0x16fae`, `0x17362`, `0x17026`, and `0x1719c`. Validator `0x16fae` walks the 32-entry validation table at `0x16eae` in 8-byte steps, fails immediately if a predicate returns anything other than `1`, and on success copies up to 16 symbol bytes from `0x1599c` into `0x782842` while byte budget `0x783140` remains positive, storing the count in `0x782856`. Setup helper `0x17362` writes staged byte `+0x0c` from the requested type and sets `0x7827ba` to `0x80` for type `0` or `0x100` for types `1`/`2`. `0x17026` then computes the allocation size as `((0x7827ba << 2) + 0x9b) >> 6`, writes staged long `+0 = 0x15` and long `+4 = size`, calls the allocator with class `1` and alignment `0x40`, and initializes the allocated record through `0x1719c`.")
     lines.append("")
+    lines.append("- validation semantic map: `%d` entries at `0x16eae`, `%d` consumed-but-not-staged entries, type entry `%s`, range/count entry `%s`, rounded metric entry `%s`, flagged metric entry `%s`, range initializer `%s`, dependent height entry `%s`." % (
+        len(font_validate_summary),
+        sum(
+            1 for entry in font_validate_summary
+            if entry["effect"] == "accepted but not staged"
+        ),
+        font_validate_summary[2],
+        font_validate_summary[6],
+        font_validate_summary[12],
+        font_validate_summary[21],
+        font_validate_summary[25],
+        font_validate_summary[28],
+    ))
     lines.append("- validation fixtures: all 32 table entries passing copy `%d` symbol bytes `%s` and leave budget `%d`; a failed entry at index `%d` returns status `%d` after `%d` visits; zero budget still validates but copies `%d` bytes." % (
         font_validate_ok["symbol_count"],
         " ".join(f"{byte:02x}" for byte in font_validate_ok["symbol_bytes"]),
@@ -58748,6 +59090,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_validate_table_staging[0x2A],
         font_validate_table_staging[0x30],
         " ".join(f"{byte:02x}" for byte in font_validate_table["symbol_bytes"]),
+    ))
+    lines.append("- validation failure fixtures: invalid resource type fails at entry `%d` after `%d` consumed bytes with byte `+0x0c = %d`; reversed range fails at entry `%d` after first code `%d` and range/count word `%d`, leaving derived count word `+0x18 = %d` and copying no symbols." % (
+        font_validate_invalid_type["failed_index"],
+        font_validate_invalid_type["bytes_consumed"],
+        font_validate_invalid_type["staging"][0x0C],  # type: ignore[index]
+        font_validate_reversed_range["failed_index"],
+        u16(font_validate_reversed_range["staging"], 0x16),  # type: ignore[arg-type]
+        u16(font_validate_reversed_range["staging"], 0x14),  # type: ignore[arg-type]
+        u16(font_validate_reversed_range["staging"], 0x18),  # type: ignore[arg-type]
     ))
     lines.append("- setup type fixtures: type `0` -> byte `+0x0c = %d`, units `0x%03x`; type `2` -> byte `+0x0c = %d`, units `0x%03x`; unsupported type returns status `%d` without changing byte `+0x0c`." % (
         font_setup_type_0["staging"][0x0C],

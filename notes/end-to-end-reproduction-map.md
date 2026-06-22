@@ -182,9 +182,11 @@ pixels or byte-stream compatibility.
    character-object, linear character-object, and downloaded-glyph render paths
    in `notes/downloaded-fonts.md`. The `0x16c14` existing-record
    allocation-failure teardown through `0x1887a` is fixture-backed for the
-   bit-30-clear extended fixed-record case. The full soft-font descriptor
-   grammar, alternate character modes, other release variants, and all
-   validation/error behaviors are still not proven against every PCL form.
+   bit-30-clear extended fixed-record case. The `0x16fae` validation table now
+   has ROM-effect names for all 32 entries plus concrete success and failure
+   fixtures. The full soft-font descriptor grammar, alternate character modes,
+   other release variants, and page-visible behavior for every descriptor error
+   form are still not proven against every PCL form.
 5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
    board-confirmed. This does not block a byte-stream renderer, but it blocks
@@ -205,7 +207,8 @@ The next work should follow dataflow, not isolated handlers:
    are now tracked. Host-fetched `0x1719c` type-0 and type-2 payloads reach
    both `d4ac` and `d8fc` span rows, and the shared disabled/lower/page/high-x
    consumer branch family is fixture-backed. The missing middle is broader
-   descriptor metric values and producer-side validation/error behavior.
+   descriptor metric values and page-visible behavior for every validation
+   error form.
 2. Build a small page-image fixture suite from complete byte streams that mix
    text, rules, raster, geometry, font selection, and publication, then compare
    the final bitmap rows as the primary reproduction contract.

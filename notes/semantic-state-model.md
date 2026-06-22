@@ -1148,7 +1148,8 @@ compact text renderer.
   - `0x7827ba`: payload unit count written by `0x17362`.
   - staged header `0x7827de`: copied into allocated payloads by `0x1719c`.
 - Unknown:
-  - exact manual names for all 32 `0x16fae` validation predicates.
+  - exact HP manual labels for the `0x16fae` consumed-but-not-staged
+    descriptor words/bytes.
 
 ### Writers
 
@@ -1279,6 +1280,13 @@ cleanup runs through `0x18bf2`/`0x18090` for characters `0x21..0x7f` and
 `0xa0..0xff`, continuation state is zeroed, context stack bytes `+8` and `+9`
 are marked for matching primary/secondary entries, secondary active context
 refreshes through `0x179aa(1)`, and no new candidate or payload is installed.
+Fixture `0x16fae validation table semantic map covers staged and pass-through
+entries` names all 32 validation-table entries by ROM effect. Fixture
+`0x16fae table-driven validation predicates populate staged header fields`
+then proves the success path plus two predicate failures: invalid resource
+type fails entry `2` after four bytes with no symbols copied, and a reversed
+range fails entry `6` after words `+0x16 = 10` and `+0x14 = 5`, leaving
+derived count word `+0x18 = 0`.
 
 ### Confidence
 
@@ -1286,9 +1294,10 @@ High for command dispatch, current-record state, existing-record release
 ordering before allocation failure, staged header fields, payload allocation,
 installed downloaded-character object, and visible row, because the fixtures
 tie host-fetched streams to parser records, teardown state, and render rows.
-Medium for the complete soft-font grammar because every predicate is
-executable but not fully named, and every legal metric combination has not
-been page-compared.
+High for the ROM-effect names and failure behavior of every `0x16fae`
+validation-table entry. Medium for the complete soft-font grammar because
+exact HP manual labels for pass-through descriptor fields and every legal
+metric combination have not been page-compared.
 
 ### Fixtures
 
@@ -1310,6 +1319,8 @@ been page-compared.
 - `0x16498-backed downloaded character object renders segmented-wide compact
   row`
 - `host-fetched linear downloaded character stream renders through 0x168dc`
+- `0x16fae validation table semantic map covers staged and pass-through
+  entries`
 - `0x16fae table-driven validation predicates populate staged header fields`
 
 ### Disassembly Evidence
@@ -1323,13 +1334,16 @@ been page-compared.
 - `generated/disasm/ic30_ic13_font_resource_release_018b92.lst`
 - `generated/disasm/ic30_ic13_font_resource_release_alt_018bf2.lst`
 - `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`
+- `generated/disasm/ic30_ic13_font_resource_validate_predicates_017358.lst`
 - `generated/disasm/ic30_ic13_font_resource_find_017026.lst`
 - `generated/disasm/ic30_ic13_font_resource_payload_initializer_01719c.lst`
 - `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`
 
 ### Unresolved Middle Edges
 
-- `0x16fae..0x17016`: validation predicates need complete manual-facing names.
+- `0x16fae..0x17016`: all 32 validation slots now have ROM-effect names and
+  concrete success/failure fixtures. Exact HP manual labels for consumed but
+  not staged descriptor fields still need external correlation.
 - `0x16498..0x16942`: split-plane segmented-wide and linear payloads are
   page-visible; alternate mode combinations still need parser-produced page
   comparisons.

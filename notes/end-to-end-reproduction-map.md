@@ -186,13 +186,13 @@ pixels or byte-stream compatibility.
    has ROM-effect names for all 32 entries plus concrete success and failure
    fixtures, and host-fetched invalid-resource-type, first-code overflow, zero
    line/count, reversed-range, and invalid-class paths prove
-   parser-to-validation no-install boundaries. Downloaded-character coverage
-   now includes parser-produced normal, wide/control, even-span wide,
-   segmented, split-plane segmented, and segmented-wide compact render shapes.
-   The full soft-font descriptor grammar, remaining alternate character-mode
-   cross-products, other release variants, and page-visible behavior for
-   descriptor error forms beyond those no-install boundaries are still not
-   proven against every PCL form.
+   parser-to-validation no-install boundaries plus following-printable default
+   output. Downloaded-character coverage now includes parser-produced normal,
+   wide/control, even-span wide, segmented, split-plane segmented, and
+   segmented-wide compact render shapes. The full soft-font descriptor
+   grammar, remaining alternate character-mode cross-products, other release
+   variants, and page-visible behavior for descriptor error forms beyond those
+   no-install boundaries are still not proven against every PCL form.
 5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
    board-confirmed. This does not block a byte-stream renderer, but it blocks

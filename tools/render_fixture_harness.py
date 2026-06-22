@@ -47752,6 +47752,189 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "rendered_rows": metric_printable_rendered["rows"],
         "final_cursor_x": pack12(46),
     }))
+
+    validation_failure_visible_baseline = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    validation_failure_visible_baseline_rendered = validation_failure_visible_baseline["rendered"]
+    assert isinstance(validation_failure_visible_baseline_rendered, dict)
+    validation_failure_visible_baseline_event = validation_failure_visible_baseline["events"][0]
+    assert isinstance(validation_failure_visible_baseline_event, dict)
+
+    def validation_failure_visible_report(case: dict[str, object]) -> dict[str, object]:
+        stream = case["stream"]
+        assert isinstance(stream, bytes)
+        event = case["event"]
+        assert isinstance(event, dict)
+        validation = case["validation"]
+        assert isinstance(validation, dict)
+        allocation = case["allocation"]
+        assert isinstance(allocation, dict)
+        dispatch_trace = case["dispatch_trace"]
+        assert isinstance(dispatch_trace, dict)
+
+        combined_stream = stream + b"!"
+        combined_fetch = fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(combined_stream), direct_mode=0),
+            len(combined_stream),
+        )
+        resource_stream = combined_fetch["stream"][:len(stream)]
+        printable_stream = combined_fetch["stream"][len(stream):]
+        host_command = render_font_download_resource_command_stream_via_121cc_16c14(
+            resource_stream,
+            records=[{"id": 0, "flags": 0, "payload": 0}],
+            current_id=0x1234,
+            new_payload_address=0,
+            counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+            cursors={
+                "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+                "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+                "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+                "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+            },
+            candidates=[0x00000100, 0x00000200, 0x00000300],
+        )
+        host_event = host_command["events"][0]
+        assert isinstance(host_event, dict)
+        printable_trace = trace_mixed_text_control_parser_path_via_11774(
+            data,
+            printable_stream,
+        )
+        visible_page = render_mixed_printable_control_page_record_stream(
+            data,
+            resources,
+            printable_stream,
+            0x440946B4,
+            control_fixture_state(
+                cursor_x=pack12(10),
+                cursor_y=pack12(21),
+                hmi=line_printer_hmi["hmi"],
+                pending_width=1,
+                pending_text=0,
+                span_flush_enable=1,
+            ),
+            default_advance=line_printer_hmi["hmi"],
+        )
+        visible_rendered = visible_page["rendered"]
+        assert isinstance(visible_rendered, dict)
+        visible_event = visible_page["events"][0]
+        assert isinstance(visible_event, dict)
+        visible_page_result = visible_event["page_result"]
+        assert isinstance(visible_page_result, dict)
+        return {
+            "combined_length": len(combined_fetch["stream"]),
+            "fetch_source_set": sorted(set(combined_fetch["sources"])),
+            "remaining_ring": combined_fetch["state"]["ring"],
+            "resource": {
+                "parser_handlers": [
+                    dispatch_event["handler"]
+                    for dispatch_event in dispatch_trace["dispatches"]
+                ],
+                "restored_record": event["restored_record"],
+                "failed_index": validation["failed_index"],
+                "bytes_consumed": validation["bytes_consumed"],
+                "allocation_status": allocation["status"],
+                "install": event["install"],
+                "host_validation_status": host_event["validation"]["status"],  # type: ignore[index]
+                "host_install": host_event["install"],
+            },
+            "printable": {
+                "stream": printable_stream,
+                "parser_handlers": [
+                    trace_event["handler"]
+                    for trace_event in printable_trace["events"]
+                ],
+                "coord": visible_page_result["coord"],
+                "bucket_object": visible_page["bucket_object"],
+                "rendered_rows": visible_rendered["rows"],
+                "matches_baseline_rows": (
+                    visible_rendered["rows"]
+                    == validation_failure_visible_baseline_rendered["rows"]
+                ),
+                "matches_baseline_object": (
+                    visible_page["bucket_object"]
+                    == validation_failure_visible_baseline["bucket_object"]
+                ),
+            },
+        }
+
+    validation_failure_visible_cases = {
+        "invalid_type": {
+            "stream": table_payload_invalid_type_stream,
+            "event": table_payload_invalid_type_event,
+            "validation": table_payload_invalid_type_validation,
+            "allocation": table_payload_invalid_type_allocation,
+            "dispatch_trace": table_payload_invalid_type_dispatch_trace,
+        },
+        "first_code_overflow": table_payload_first_code_overflow,
+        "zero_line_count": table_payload_zero_line_count,
+        "reversed_range": {
+            "stream": table_payload_reversed_range_stream,
+            "event": table_payload_reversed_range_event,
+            "validation": table_payload_reversed_range_validation,
+            "allocation": table_payload_reversed_range_allocation,
+            "dispatch_trace": table_payload_reversed_range_dispatch_trace,
+        },
+        "invalid_class": table_payload_invalid_class,
+    }
+    validation_failure_visible_reports = {
+        name: validation_failure_visible_report(case)
+        for name, case in validation_failure_visible_cases.items()
+    }
+    checks.append(assert_equal("ESC )s80W validation failures preserve following printable output", {
+        name: {
+            "combined_length": report["combined_length"],
+            "fetch_source_set": report["fetch_source_set"],
+            "remaining_ring": report["remaining_ring"],
+            "resource": report["resource"],
+            "printable": report["printable"],
+        }
+        for name, report in validation_failure_visible_reports.items()
+    }, {
+        name: {
+            "combined_length": len(validation_failure_visible_cases[name]["stream"]) + 1,  # type: ignore[index]
+            "fetch_source_set": ["ring"],
+            "remaining_ring": [],
+            "resource": {
+                "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+                "failed_index": failed_index,
+                "bytes_consumed": bytes_consumed,
+                "allocation_status": 0,
+                "install": None,
+                "host_validation_status": 0,
+                "host_install": None,
+            },
+            "printable": {
+                "stream": b"!",
+                "parser_handlers": [0x00D04A],
+                "coord": validation_failure_visible_baseline_event["page_result"]["coord"],  # type: ignore[index]
+                "bucket_object": validation_failure_visible_baseline["bucket_object"],
+                "rendered_rows": validation_failure_visible_baseline_rendered["rows"],
+                "matches_baseline_rows": True,
+                "matches_baseline_object": True,
+            },
+        }
+        for name, failed_index, bytes_consumed in (
+            ("invalid_type", 2, 4),
+            ("first_code_overflow", 4, 8),
+            ("zero_line_count", 5, 10),
+            ("reversed_range", 6, 12),
+            ("invalid_class", 7, 13),
+        )
+    }))
     hmi_page_record_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,
@@ -60565,6 +60748,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("The reset, FF, page-size, and orientation publication streams now also have addressed allocation variants: `! ESC E`, `ESC &k2G! FF`, `! ESC &l1A`, and `! ESC &l1O` queue printable `!` through addressed `0x1387c`/`0x1381c`, materialize the compact bucket record, publish through their `0xff1e` boundaries, and render through `0x1ed84`/`0x1ef6a` with the same rows.")
     lines.append("The published-record render-entry fixture then carries each of those four `0xff1e` records through `0x1ed84` active-record copy and the `0x1ef6a` call order, selecting the compact bucket through `0x1efc2` and rendering the same rows.")
     lines.append("A host-fetched direct text/control fixture now starts the plain, transparent-data, CR/LF, HT/BS, margin, cursor-position, dot-position, vertical-layout, and cursor-stack page-record streams from the modeled `0xa904` ring source, drains every byte, replays the same parser handlers or delayed payload handler, and lands on the same `0x1387c` page-record objects. The cursor-row case now also carries the nonzero bucket word through `0x1ef86`, clips compact text to `0x783a20 = 16` current-band rows, and records the continuation rows in the fallback buffer.")
+    lines.append("- validation-failure visible output: five `ESC )s80W` no-install streams fail entries `%s`, then the following printable `!` routes to handler `0x%05x`, queues the default-font object `%s`, and matches the baseline rendered rows/object in every case." % (
+        [
+            validation_failure_visible_reports[name]["resource"]["failed_index"]  # type: ignore[index]
+            for name in ("invalid_type", "first_code_overflow", "zero_line_count", "reversed_range", "invalid_class")
+        ],
+        validation_failure_visible_reports["invalid_type"]["printable"]["parser_handlers"][0],  # type: ignore[index]
+        " ".join(f"{byte:02x}" for byte in validation_failure_visible_baseline["bucket_object"]),  # type: ignore[index]
+    ))
     lines.append("The same direct page-record group now crosses `0x1ed84` active-record copy and the `0x1ef6a` render-entry call order, including nonzero bucket selection for the vertical cursor/layout cases.")
     lines.append("A host-fetched text-plus-rectangle fixture now drains `! ESC *c12a5b0P`, queues the compact text bucket and selector-7 rule in the same page record, and carries that combined bucket/rule record through `0x1ed84` and `0x1ef6a`.")
     lines.append("A host-fetched text-plus-rectangle-plus-raster fixture now drains `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W` through the same mixed page-record stream runner. That runner queues compact text, the selector-7 rule, and the delayed `0x105d0` mode-0 raster transfer in one page record before rendering the combined bucket/rule/raster record through `0x1ed84` and `0x1ef6a`.")

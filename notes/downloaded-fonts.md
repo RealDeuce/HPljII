@@ -52,6 +52,7 @@ Primary fixtures:
 - `ESC )s80W invalid resource type fails validation before allocation`
 - `ESC )s80W reversed resource range fails validation before allocation`
 - `ESC )s80W additional validation predicate failures skip allocation`
+- `ESC )s80W validation failures preserve following printable output`
 - `resource payload stream ties ROM parser dispatch to 0x16c14 install`
 - `host-fetched resource payload stream installs selected 0x1719c font`
 - `host-fetched font control state drives resource payload stream`
@@ -497,9 +498,7 @@ ties the entry-2 failure to the parser and allocation boundary. The
 host-fetched stream begins with `1b 29 73 38 30 57 00 01 02 03`, restores
 record `80 57 00 50 00 00`, fails validation before any allocation size is
 computed, drains entirely from the `0xa904` ring source, and leaves no
-installed candidate. Its output effect is no downloaded-font state change;
-page-visible behavior for following printable bytes remains the prior/default
-font path unless a later fixture compares the produced page rows.
+installed candidate.
 
 Fixture `ESC )s80W reversed resource range fails validation before allocation`
 ties the entry-6 failure to the same parser and allocation boundary. The
@@ -519,6 +518,15 @@ status `0`, installs no candidate, and drains entirely from the `0xa904` ring.
 Its output effect is no downloaded-font state change; the fixture records the
 last staged fields before the no-install exit so later page-visible error
 comparisons can start from exact byte boundaries.
+
+Fixture `ESC )s80W validation failures preserve following printable output`
+then appends printable `!` to the five no-install streams above. In each case
+the resource command restores record `80 57 00 50 00 00`, fails validation at
+entry `2`, `4`, `5`, `6`, or `7`, returns allocation status `0`, leaves
+install `None`, then the following printable byte routes through handler
+`0xd04a`, queues the same default-font compact object as baseline `!`, and
+renders identical page rows. Status: parser-produced validation error to
+visible default-font output for those five forms.
 
 `0x17362` sets the staged type and payload units. Type `0` writes byte
 `+0x0c = 0` and units `0x80`; type `2` writes byte `+0x0c = 2` and units
@@ -945,8 +953,9 @@ A byte-stream renderer must preserve:
 - `0x16fae..0x17016`: all 32 validation slots now have ROM-effect names and
   concrete success/failure fixtures. Host-fetched invalid-type, first-code
   overflow, zero line/count, reversed-range, and invalid-class streams prove
-  five parser-produced no-install boundaries. Exact HP manual labels for the
-  consumed-but-not-staged descriptor fields still need external correlation.
+  five parser-produced no-install boundaries and preserve following default
+  printable output. Exact HP manual labels for the consumed-but-not-staged
+  descriptor fields still need external correlation.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span
   wide, linear normal, linear segmented, and split-plane segmented
   downloaded-character paths are page-visible. Remaining parser-produced
@@ -968,6 +977,7 @@ A byte-stream renderer must preserve:
   type-1, and type-2 fixtures, and the shared consumer branch family is
   fixture-backed. The invalid-resource-type, first-code overflow, zero
   line/count, reversed-range, and invalid-class resource paths now have
-  host-fetched parser/validation/no-install boundaries. Broader
+  host-fetched parser/validation/no-install boundaries and following-printable
+  page output. Broader
   downloaded/inline metric-byte values and the remaining producer-side
   validation/error forms still need parser-produced page evidence.

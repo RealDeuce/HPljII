@@ -197,9 +197,13 @@ pixels or byte-stream compatibility.
    descriptor bytes feeding both `0xd4ac` and `0xd8fc` visible span rows.
    Fixture `d4ac and d8fc span consumer branch family controls flush output`
    covers disabled, lower-bound, page-extent, and high-x consumer outcomes for
-   both source forms. The open edge is broader descriptor metric-byte values
-   and producer-side validation/error combinations, not the tested
-   type-0/type-1/type-2 or shared consumer middle edges. Evidence:
+   both source forms. Fixture `host-fetched metric variant changes d4ac gate
+   and d8fc rows` proves one parser-produced metric-value variant: copied
+   `+0x2c/+0x2d` flips a tight `0xd4ac` page-extent gate, and copied `+0x1a`
+   moves `0xd8fc` visible rows. The open edge is broader descriptor
+   metric-byte cross-products and producer-side validation/error combinations,
+   not the tested type-0/type-1/type-2, metric-variant, or shared consumer
+   middle edges. Evidence:
    `notes/semantic-state-model.md` under `Text Span Flush And Fixed-Width
    Spans`.
 2. VFC table definition and channel jumps now have a tracked command-family
@@ -255,9 +259,11 @@ The next work should follow dataflow, not isolated handlers:
    descriptor/payload producer chain, and host-stream downloaded glyph output
    are now tracked. Host-fetched `0x1719c` type-0, type-1, and type-2 payloads
    reach both `d4ac` and `d8fc` span rows, and the shared
-   disabled/lower/page/high-x consumer branch family is fixture-backed. The
-   missing middle is broader descriptor metric values and page-visible behavior
-   for every validation error form.
+   disabled/lower/page/high-x consumer branch family is fixture-backed. One
+   parser-produced metric-value variant also flips a `d4ac` gate and moves
+   `d8fc` visible rows. The missing middle is broader descriptor
+   metric-value cross-products and page-visible behavior for every validation
+   error form.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream and the downloaded-glyph FF
    publication stream. The next suite cases should add built-in font-selection

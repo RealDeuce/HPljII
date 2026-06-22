@@ -38823,6 +38823,291 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    metric_variant_stream = bytearray(font_validate_stream)
+    metric_variant_stream[20:22] = b"\x00\x10"
+    metric_variant_stream[30] = 0x02
+    metric_variant_command_stream = b"\x1b)s80W" + bytes(metric_variant_stream) + b"\x00" * 16
+    metric_variant_host_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(metric_variant_command_stream), direct_mode=0),
+        len(metric_variant_command_stream),
+    )
+    metric_variant_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        metric_variant_host_stream["stream"],
+    )
+    metric_variant_commands = metric_variant_trace["commands"]
+    assert isinstance(metric_variant_commands, list)
+    metric_variant_command_trace = metric_variant_commands[0]
+    assert isinstance(metric_variant_command_trace, dict)
+    metric_variant_command = render_font_download_resource_command_stream_via_121cc_16c14(
+        metric_variant_host_stream["stream"],
+        records=[{"id": 0, "flags": 0, "payload": 0}],
+        current_id=0x1234,
+        new_payload_address=0,
+        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        cursors={
+            "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+        },
+        candidates=[0x00000100, 0x00000200, 0x00000300],
+    )
+    metric_variant_event = metric_variant_command["events"][0]
+    assert isinstance(metric_variant_event, dict)
+    metric_variant_validation = metric_variant_event["validation"]
+    assert isinstance(metric_variant_validation, dict)
+    metric_variant_allocation = metric_variant_event["allocation"]
+    assert isinstance(metric_variant_allocation, dict)
+    metric_variant_payload = metric_variant_allocation["payload"]
+    assert isinstance(metric_variant_payload, dict)
+    metric_variant_install = metric_variant_event["install"]
+    assert isinstance(metric_variant_install, dict)
+    metric_variant_memory = bytearray(metric_variant_payload["payload"])
+    metric_variant_memory[table_payload_record:table_payload_record + 8] = bytes.fromhex(
+        "02 03 04 00 00 00 00 a0"
+    )
+    metric_variant_memory[table_payload_bitmap:table_payload_bitmap + 6] = bytes.fromhex(
+        "aa 55 f0 0f c3 3c"
+    )
+    metric_variant_memory[
+        table_payload_flagged_table_entry:table_payload_flagged_table_entry + 4
+    ] = table_payload_flagged_glyph_delta.to_bytes(4, "big")
+    metric_variant_memory[
+        table_payload_flagged_glyph_delta:table_payload_flagged_glyph_delta + 12
+    ] = bytes.fromhex("00 00 00 00 0c 01 00 03 00 04 00 00")
+    metric_variant_memory[
+        table_payload_flagged_glyph_delta + table_payload_flagged_bitmap_delta:
+        table_payload_flagged_glyph_delta + table_payload_flagged_bitmap_delta + 3
+    ] = bytes.fromhex("f0 f0 f0")
+
+    metric_default_tight_d4ac = render_mixed_printable_control_page_record_stream(
+        data,
+        table_payload_memory,
+        b"!",
+        0,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=pack12(18),
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            materialize_d4ac_span_update=1,
+            text_source_form="unflagged",
+            enabled_783184=1,
+            low_x_783186=100,
+            high_x_783188=120,
+            high_y_78318a=0,
+            span_alternate_offset_783185=1,
+            orientation=0,
+            page_extent_782db6=40,
+        ),
+        default_advance=pack12(18),
+    )
+    metric_default_tight_d4ac_event = metric_default_tight_d4ac["events"][0]
+    assert isinstance(metric_default_tight_d4ac_event, dict)
+    metric_default_tight_d4ac_span = metric_default_tight_d4ac_event["span_update_result"]
+    assert isinstance(metric_default_tight_d4ac_span, dict)
+    metric_variant_d4ac = render_mixed_printable_control_page_record_stream(
+        data,
+        metric_variant_memory,
+        b"!",
+        0,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=pack12(18),
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            materialize_d4ac_span_update=1,
+            text_source_form="unflagged",
+            enabled_783184=1,
+            low_x_783186=100,
+            high_x_783188=120,
+            high_y_78318a=0,
+            span_alternate_offset_783185=1,
+            orientation=0,
+            page_extent_782db6=40,
+        ),
+        default_advance=pack12(18),
+    )
+    metric_variant_d4ac_event = metric_variant_d4ac["events"][0]
+    assert isinstance(metric_variant_d4ac_event, dict)
+    metric_variant_d4ac_span = metric_variant_d4ac_event["span_update_result"]
+    assert isinstance(metric_variant_d4ac_span, dict)
+    metric_variant_d4ac_flush = metric_variant_d4ac_span["flush_result"]
+    assert isinstance(metric_variant_d4ac_flush, dict)
+    metric_variant_d4ac_queued = metric_variant_d4ac_flush["queued"]
+    assert isinstance(metric_variant_d4ac_queued, dict)
+    metric_variant_d4ac_render_entry = metric_variant_d4ac["render_entry"]
+    assert isinstance(metric_variant_d4ac_render_entry, dict)
+    metric_variant_d4ac_rendered = metric_variant_d4ac_render_entry["entry"]
+    assert isinstance(metric_variant_d4ac_rendered, dict)
+
+    metric_variant_d8fc = render_mixed_printable_control_page_record_stream(
+        data,
+        metric_variant_memory,
+        b"!",
+        int(metric_variant_install["candidate_flags"]),
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=pack12(18),
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            materialize_d8fc_span_update=1,
+            span_metrics_from_context=1,
+            text_source_form="flagged",
+            enabled_783184=1,
+            low_x_783186=100,
+            high_x_783188=120,
+            high_y_78318a=0,
+            span_alternate_offset_783185=1,
+            orientation=0,
+            page_extent_782db6=64,
+        ),
+        default_advance=pack12(18),
+    )
+    metric_variant_d8fc_event = metric_variant_d8fc["events"][0]
+    assert isinstance(metric_variant_d8fc_event, dict)
+    metric_variant_d8fc_span = metric_variant_d8fc_event["span_update_result"]
+    assert isinstance(metric_variant_d8fc_span, dict)
+    metric_variant_d8fc_flush = metric_variant_d8fc_span["flush_result"]
+    assert isinstance(metric_variant_d8fc_flush, dict)
+    metric_variant_d8fc_queued = metric_variant_d8fc_flush["queued"]
+    assert isinstance(metric_variant_d8fc_queued, dict)
+    metric_variant_d8fc_render_entry = metric_variant_d8fc["render_entry"]
+    assert isinstance(metric_variant_d8fc_render_entry, dict)
+    metric_variant_d8fc_rendered = metric_variant_d8fc_render_entry["entry"]
+    assert isinstance(metric_variant_d8fc_rendered, dict)
+    expected_metric_variant_d8fc_rows: list[str] = []
+    for row_index in range(8):
+        row_bits = [False] * 116
+        if 3 <= row_index < 6:
+            for bit in range(96, 116):
+                row_bits[bit] = True
+        if 5 <= row_index < 8:
+            for bit in range(10, 14):
+                row_bits[bit] = True
+        expected_metric_variant_d8fc_rows.append(
+            "".join("#" if bit else "." for bit in row_bits)
+        )
+    checks.append(assert_equal("host-fetched metric variant changes d4ac gate and d8fc rows", {
+        "resource_stream": {
+            "fetched_stream_prefix": metric_variant_host_stream["stream"][:6],
+            "fetch_source_set": sorted(set(metric_variant_host_stream["sources"])),
+            "parser_handlers": [
+                event["handler"]
+                for event in metric_variant_trace["dispatches"]
+            ],
+            "restored_record": metric_variant_command_trace["restored_record"],
+            "payload_length": len(metric_variant_command_trace["payload"]),
+            "validation_status": metric_variant_validation["status"],
+            "payload_units": metric_variant_validation["payload_units"],
+            "allocation_size": metric_variant_allocation["allocation_size"],
+            "candidate_flags": metric_variant_install["candidate_flags"],
+        },
+        "copied_metrics": {
+            "word_0x16": u16(metric_variant_memory, 0x16),
+            "word_0x18": u16(metric_variant_memory, 0x18),
+            "word_0x1a": u16(metric_variant_memory, 0x1A),
+            "byte_0x2c": metric_variant_memory[0x2C],
+            "byte_0x2d": metric_variant_memory[0x2D],
+            "word_0x2c": u16(metric_variant_memory, 0x2C),
+        },
+        "d4ac_default_tight_extent": {
+            key: metric_default_tight_d4ac_span[key]
+            for key in ("updated", "reason", "cursor_y")
+        },
+        "d4ac_variant": {
+            "span_update": {
+                "handler": metric_variant_d4ac_span["handler"],
+                "context_offset_002b": metric_variant_d4ac_span["context_offset_002b"],
+                "context_lower_002c": metric_variant_d4ac_span["context_lower_002c"],
+                "context_height_002d": metric_variant_d4ac_span["context_height_002d"],
+                "high_y": metric_variant_d4ac_span["high_y"],
+            },
+            "flush_object": metric_variant_d4ac_queued["object"],
+            "render_rows": metric_variant_d4ac_rendered["rows"],
+        },
+        "d8fc_variant": {
+            "span_update": {
+                "handler": metric_variant_d8fc_span["handler"],
+                "context_lower_0016": metric_variant_d8fc_span["context_lower_0016"],
+                "context_height_0018": metric_variant_d8fc_span["context_height_0018"],
+                "context_offset_001a": metric_variant_d8fc_span["context_offset_001a"],
+                "metric_source": metric_variant_d8fc_span["metric_source"],
+                "high_y": metric_variant_d8fc_span["high_y"],
+            },
+            "flush_object": metric_variant_d8fc_queued["object"],
+            "render_rows": metric_variant_d8fc_rendered["rows"],
+        },
+    }, {
+        "resource_stream": {
+            "fetched_stream_prefix": b"\x1b)s80W",
+            "fetch_source_set": ["ring"],
+            "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+            "payload_length": 80,
+            "validation_status": 1,
+            "payload_units": 0x80,
+            "allocation_size": 10,
+            "candidate_flags": 0x40000000,
+        },
+        "copied_metrics": {
+            "word_0x16": 0x0004,
+            "word_0x18": 0x0004,
+            "word_0x1a": 0x0002,
+            "byte_0x2c": 0,
+            "byte_0x2d": 0x10,
+            "word_0x2c": 0x0010,
+        },
+        "d4ac_default_tight_extent": {
+            "updated": False,
+            "reason": "beyond-page-extent",
+            "cursor_y": 21,
+        },
+        "d4ac_variant": {
+            "span_update": {
+                "handler": 0x00D4AC,
+                "context_offset_002b": 0,
+                "context_lower_002c": 0,
+                "context_height_002d": 0x10,
+                "high_y": 26,
+            },
+            "flush_object": (
+                bytes.fromhex("00 00 00 00 40 00 00 01 a4 06 03 00 00 14")
+                + (b"\x00" * 0x18)
+            ),
+            "render_rows": expected_table_payload_metric_rows,
+        },
+        "d8fc_variant": {
+            "span_update": {
+                "handler": 0x00D8FC,
+                "context_lower_0016": 0x0004,
+                "context_height_0018": 0x0004,
+                "context_offset_001a": 0x0002,
+                "metric_source": {
+                    "kind": "context",
+                    "base": 0,
+                    "context": 0x40000000,
+                },
+                "high_y": 19,
+            },
+            "flush_object": (
+                bytes.fromhex("00 00 00 00 40 00 00 01 34 06 03 00 00 14")
+                + (b"\x00" * 0x18)
+            ),
+            "render_rows": expected_metric_variant_d8fc_rows,
+        },
+    }))
+
     downloaded_segmented_wide_stream = bytearray()
     for row in range(0x81):
         downloaded_segmented_wide_stream.extend(b"\xaa" * 0x10 if row == 0x80 else b"\x00" * 0x10)
@@ -61946,6 +62231,24 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_type1_d4ac_span["high_y"],
         table_payload_type1_d8fc_span["high_y"],
     ))
+    lines.append(
+        "- metric-variant span fixture: host-fetched `ESC )s80W` changes "
+        "copied word `+0x2c` to `0x%04x` and word `+0x1a` to `0x%04x`; "
+        "default `+0x2d = 0x20` fails the tight `0xd4ac` page-extent gate, "
+        "variant `+0x2d = 0x%02x` queues span object `%s`, and `0xd8fc` "
+        "moves high-y to `%d` / object `%s`." % (
+            u16(metric_variant_memory, 0x2C),
+            u16(metric_variant_memory, 0x1A),
+            metric_variant_memory[0x2D],
+            " ".join(
+                f"{byte:02x}" for byte in metric_variant_d4ac_queued["object"]
+            ),
+            metric_variant_d8fc_span["high_y"],
+            " ".join(
+                f"{byte:02x}" for byte in metric_variant_d8fc_queued["object"]
+            ),
+        )
+    )
     lines.append("- downloaded character command stream: `%s` reaches delayed handler `0x%05x` through `0x121cc`, restores record `%s`, and starts payload at offset `%d` with byte budget `0x%04x`." % (
         " ".join(f"{byte:02x}" for byte in downloaded_segmented_wide_event["sequence"]),
         downloaded_segmented_wide_event["delayed_handler"],

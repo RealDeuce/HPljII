@@ -65,6 +65,7 @@ Primary fixtures:
   records`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
+- `host-fetched metric variant changes d4ac gate and d8fc rows`
 - `0x16498-backed downloaded character object renders segmented-wide compact row`
 - `downloaded character stream ties ROM parser dispatch to rendered object`
 - `host-fetched downloaded character stream reaches rendered object`
@@ -188,6 +189,13 @@ Renderer-facing allocated payload fields:
   by `0xd8fc` when the installed bit-30 payload is used as a downloaded
   offset-table context. The same `ESC )s80W` fixture copies them as `4`, `4`,
   and `5`, producing high-y `16` and segment-list key `0x0406`.
+- metric-variant descriptor bytes: fixture `host-fetched metric variant
+  changes d4ac gate and d8fc rows` changes the descriptor stream so `0x16fae`
+  and `0x1719c` copy payload word `+0x2c = 0x0010` and word `+0x1a =
+  0x0002`. The default payload's `+0x2d = 0x20` fails the `0xd4ac`
+  page-extent gate at extent `40`; the variant `+0x2d = 0x10` queues the
+  span, and the changed `+0x1a` moves `0xd8fc` high-y to `19` with
+  segment-list key `0x3406`.
 
 Unknown:
 
@@ -1030,6 +1038,8 @@ A byte-stream renderer must preserve:
   fixture-backed. The invalid-resource-type, first-code overflow, zero
   line/count, reversed-range, and invalid-class resource paths now have
   host-fetched parser/validation/no-install boundaries and following-printable
-  page output. Broader
-  downloaded/inline metric-byte values and the remaining producer-side
-  validation/error forms still need parser-produced page evidence.
+  page output. A host-fetched metric-value variant now proves copied
+  descriptor fields can flip the `0xd4ac` page-extent gate and move `0xd8fc`
+  rendered rows. Broader downloaded/inline metric-byte cross-products and the
+  remaining producer-side validation/error forms still need parser-produced
+  page evidence.

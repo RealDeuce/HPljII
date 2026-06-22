@@ -34,6 +34,7 @@ Evidence:
   - `host-fetched 0x1719c payload metrics feed d8fc span rows`
   - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
   - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
+  - `host-fetched metric variant changes d4ac gate and d8fc rows`
 
 ## Concept
 
@@ -302,6 +303,12 @@ Fixture-pinned metric effects:
   Printing `!` from a bit-30 downloaded-offset-table context enters `0xd8fc`,
   produces high-y `16`, queues segment-list key `0x0406`, and renders the
   span before the compact glyph in bucket `1`.
+- Host-fetched metric-variant path: changing the descriptor bytes consumed by
+  `0x16fae` makes `0x1719c` copy payload word `+0x2c = 0x0010` and word
+  `+0x1a = 0x0002`. The old `+0x2d = 0x20` value fails a tight `0xd4ac`
+  page-extent gate at extent `40`; the new `+0x2d = 0x10` value queues the
+  same segment-list span. The changed `+0x1a` moves `0xd8fc` high-y from `16`
+  to `19`, changing the rendered span object key from `0x0406` to `0x3406`.
 - Span-consumer branch family: fixture
   `d4ac and d8fc span consumer branch family controls flush output` drives
   printable `!` through both selected source forms. For both `0xd4ac` and
@@ -387,6 +394,16 @@ work can close the right gap instead of re-tracing already-covered consumers.
   `+0x2c`, `+0x2d`, `+0x16`, `+0x18`, and `+0x1a` affect visible span rows.
   Status: parser-produced type-1 resource payload to visible unflagged and
   flagged span rows.
+- Claim: parser-produced descriptor metric values can change both consumer
+  gates and visible rows. Evidence: fixture `host-fetched metric variant
+  changes d4ac gate and d8fc rows`; the host-fetched `ESC )s80W` variant
+  copies `+0x2c = 0x0010` and `+0x1a = 0x0002` through `0x16fae`/`0x1719c`.
+  With page extent `40`, the default `+0x2d = 0x20` path returns
+  `beyond-page-extent`, while the variant `+0x2d = 0x10` queues a visible
+  `0xd4ac` span. The same payload moves `0xd8fc` high-y to `19` and renders
+  the segment-list rows at the shifted bucket key `0x3406`. Status:
+  parser-produced metric-value variant to visible unflagged and flagged span
+  effects.
 - Claim: the two span consumers have the same documented branch contract
   around the metric fields. Evidence: fixture
   `d4ac and d8fc span consumer branch family controls flush output`; handlers
@@ -400,9 +417,11 @@ The remaining unresolved middle edge is therefore not the tested `0x1719c`
 type-0, type-1, or type-2 metric paths into either `0xd4ac` or `0xd8fc`: all
 three payload forms now have host-fetched evidence through visible span rows,
 and the consumer-side disabled, lower-bound, page-extent, and high-x branches
-are fixture-backed for both selected source forms. The open producer-side work
-is broader descriptor coverage: more metric-byte values and validation/error
-forms driven from parser bytes to page rows.
+are fixture-backed for both selected source forms. One parser-produced
+metric-value variant now proves copied descriptor values can flip the `d4ac`
+page-extent gate and move `d8fc` visible rows. The open producer-side work is
+broader descriptor coverage: more metric-byte cross-products and
+validation/error forms driven from parser bytes to page rows.
 
 ## Macro And Control Re-entry
 

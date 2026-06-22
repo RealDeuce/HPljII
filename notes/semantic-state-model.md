@@ -1052,6 +1052,7 @@ fixtures.
 - `d4ac and d8fc span consumer branch family controls flush output`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
+- `host-fetched metric variant changes d4ac gate and d8fc rows`
 - `0x1354a portrait text span split queues adjacent buckets`
 - `0x12714 landscape span inserts into nonempty fixed list`
 - `0x12714 allocation failure publishes page and retries span`
@@ -1093,10 +1094,14 @@ fixtures.
   `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
   proves the same copied fields for a host-fetched type-1 payload. All three
   change visible segment-list rows. Fixture
+  `host-fetched metric variant changes d4ac gate and d8fc rows` changes
+  copied word `+0x2c/+0x2d` from a parser-produced descriptor, proving that
+  the old `+0x2d = 0x20` tight-page case exits as `beyond-page-extent` while
+  the variant `+0x2d = 0x10` queues the same segment-list span. Fixture
   `d4ac and d8fc span consumer branch family controls flush output` covers
   the disabled, before-lower, beyond-page, and high-x-only consumer branches.
-  Broader descriptor-value and producer-side validation/error branches remain
-  uncovered.
+  Broader metric-byte cross-products and producer-side validation/error
+  branches remain uncovered.
 - `0xd8fc..0xd992`: flagged context fields `+0x16`, `+0x18`, and
   `+0x1a` are fixture-backed for the low-water success branch and tied
   to selected context records in `notes/font-context-metrics.md`. Fixture
@@ -1108,10 +1113,14 @@ fixtures.
   `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
   proves the same copied fields for a host-fetched type-1 payload. All three
   change visible segment-list rows. Fixture
+  `host-fetched metric variant changes d4ac gate and d8fc rows` changes
+  copied word `+0x1a` from a parser-produced descriptor, moving high-y from
+  `16` to `19` and changing the rendered span object key from `0x0406` to
+  `0x3406`. Fixture
   `d4ac and d8fc span consumer branch family controls flush output` covers
   the disabled, before-lower, beyond-page, and high-x-only consumer branches.
-  Broader descriptor-value and producer-side validation/error branches remain
-  uncovered.
+  Broader metric-byte cross-products and producer-side validation/error
+  branches remain uncovered.
 
 ## Downloaded Font Descriptor And Payload Chain
 
@@ -1324,6 +1333,11 @@ fails after twelve descriptor bytes with staged words `+0x16 = 10`,
 `+0x14 = 5`, and `+0x18 = 0`, and `0x17026`/`0x16c14` skip allocation and
 install. The output effect is no downloaded-font candidate or current-record
 mutation.
+Fixture `host-fetched metric variant changes d4ac gate and d8fc rows` starts
+from host-fetched `ESC )s80W`, changes descriptor bytes copied by `0x1719c`
+into payload word `+0x2c = 0x0010` and word `+0x1a = 0x0002`, proves the
+default `+0x2d = 0x20` path fails a tight `0xd4ac` extent check while the
+variant queues a span, and renders the `0xd8fc` span at shifted key `0x3406`.
 Fixture `host-fetched segmented downloaded character renders through 0x1f1f0`
 connects the downloaded-character linear reader to the remaining segmented
 compact renderer shape. Host fetch drains `ESC )s258W`; parser dispatch walks
@@ -1410,6 +1424,7 @@ legal metric combination have not been page-compared.
 - `ESC )s80W validation failures preserve following printable output`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
+- `host-fetched metric variant changes d4ac gate and d8fc rows`
 - `0x16498-backed downloaded character object renders segmented-wide compact
   row`
 - `host-fetched linear downloaded character stream renders through 0x168dc`
@@ -1477,10 +1492,11 @@ legal metric combination have not been page-compared.
   broader variant coverage, not this control-flow edge.
 - The span-metric bridge in `notes/font-context-metrics.md` now covers
   host-fetched type-0, type-1, and type-2 downloaded payloads for both span
-  consumers, and the shared consumer branch family is fixture-backed. It still
-  needs broader metric-byte values and producer-side validation/error page
-  evidence beyond the documented validation no-install and following-printable
-  boundaries.
+  consumers, the shared consumer branch family, and one parser-produced
+  metric-value variant that flips a tight `d4ac` page-extent gate and moves
+  `d8fc` visible rows. It still needs broader metric-byte cross-products and
+  producer-side validation/error page evidence beyond the documented
+  validation no-install and following-printable boundaries.
 
 ## Macro Definition And Data-Chain Replay
 

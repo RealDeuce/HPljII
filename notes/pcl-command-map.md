@@ -371,10 +371,10 @@ stream proves an in-raster `ESC *t75R` still dispatches to `0x10808` but
 leaves the current mode/scale/limit intact before the next `ESC *b2W`
 row.
 
-Rectangle graphics command edges are decoded in
-`generated/analysis/ic30_ic13_rectangle_graphics_flow.md`. `ESC *c#A/#B`
-store explicit positive dot width/height in `0x78316a` / `0x783166`,
-while missing or nonpositive values clear the corresponding state.
+Rectangle graphics command edges are documented in
+[rectangle-graphics.md](rectangle-graphics.md). `ESC *c#A/#B` store
+explicit positive dot width/height in `0x78316a` / `0x783166`, while
+missing or nonpositive values clear the corresponding state.
 `ESC *c#H/#V` convert decipoints through five 300-dpi subunits per
 decipoint, round up with the firmware's `+11` subunit bias, and store
 the same width/height words. `ESC *c#G` stores absolute nonzero

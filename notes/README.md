@@ -38,6 +38,8 @@ compatibility boundary.
   `ESC &p#X` delayed payload handling and printable text re-entry.
 - [raster-graphics.md](raster-graphics.md) - documented `ESC *t`,
   `ESC *r`, and delayed `ESC *b#W` raster path to encoded-span output.
+- [rectangle-graphics.md](rectangle-graphics.md) - documented `ESC *c`
+  rectangle/rule path to solid and patterned rule rendering.
 - [pcl-parser-firmware.md](pcl-parser-firmware.md) - current host-byte
   fetch and PCL escape tokenizer/dispatch anchors.
 - [pcl-command-map.md](pcl-command-map.md) - flattened PCL

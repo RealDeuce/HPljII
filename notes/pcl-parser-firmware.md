@@ -370,8 +370,8 @@ host-fetched fixture adds `ESC *t300R ESC *r0A ESC *b2W` and queues a
 mode-0 raster row into the same page-record shape before the combined
 bucket/rule/raster render-entry comparison.
 
-Rectangle/rule command edges are now traced in
-`generated/analysis/ic30_ic13_rectangle_graphics_flow.md`.
+Rectangle/rule command edges are now documented in
+[rectangle-graphics.md](rectangle-graphics.md).
 `ESC *c#A/#B/#H/#V` update rectangle width/height state `0x78316a` /
 `0x783166`, `ESC *c#G` updates area-fill id `0x78316e`, and `ESC *c#P`
 maps the current fill selector before `0x10b80` clips the current-cursor

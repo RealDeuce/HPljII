@@ -293,21 +293,20 @@ internals
 
 Evidence: flattened generated map links high-value PCL commands to
 handlers for page geometry, raster, rectangles, font selection,
-downloaded-font control, and macros;
-`generated/analysis/ic30_ic13_rectangle_graphics_flow.md` decodes
-`ESC *c#A/#B/#H/#V/#G/#P` into rectangle size, area-fill id, selector
-mapping, clipping, `0x13386` rule-list queueing, including a chained
-`ESC *c12a5b0P` byte-stream fixture and ROM parser dispatch trace for
-selector-7 rule creation, modeled `0xa904` ring fetch and `0x1edc6`
-rule-list bridge coverage plus `0x1ed84`/`0x1ef6a` render-entry
-coverage, selector-7 solid rendering and band-crossing continuation
-through `0x1f446` / `0x1f596`, gray selectors `0..6`, HP pattern
-selectors `8..13`, sub-byte shifted, band-crossing, and two-band
-page-assembly HP-pattern cases rendering through `0x1f446` / `0x1f4e0`,
-plus a parser-to-retry boundary for `ESC *c12a5b0P` where the `0x10d22`
-no-room path publishes the old root through `0xff1e`, allocates a fresh
-root through `0x10084`, and retries the selector-7 rule through
-`0x13386`; `generated/analysis/ic30_ic13_font_control_flow.md` decodes
+downloaded-font control, and macros; [rectangle-graphics.md](rectangle-graphics.md)
+documents `ESC *c#A/#B/#H/#V/#G/#P` into rectangle size, area-fill id,
+selector mapping, clipping, `0x13386` rule-list queueing, including a
+chained `ESC *c12a5b0P` byte-stream fixture and ROM parser dispatch trace
+for selector-7 rule creation, modeled `0xa904` ring fetch and `0x1edc6`
+rule-list bridge coverage plus `0x1ed84`/`0x1ef6a` render-entry coverage,
+selector-7 solid rendering and band-crossing continuation through
+`0x1f446` / `0x1f596`, gray selectors `0..6`, HP pattern selectors
+`8..13`, sub-byte shifted, band-crossing, and two-band page-assembly
+HP-pattern cases rendering through `0x1f446` / `0x1f4e0`, plus a
+parser-to-retry boundary for `ESC *c12a5b0P` where the `0x10d22` no-room
+path publishes the old root through `0xff1e`, allocates a fresh root
+through `0x10084`, and retries the selector-7 rule through `0x13386`;
+`generated/analysis/ic30_ic13_font_control_flow.md` decodes
 `ESC *c#D` current font-id normalization and `ESC *c#F` values `0..6`
 into release/character cleanup/mark/unmark/housekeeping helpers, and the
 harness now traces chained `ESC *c17d25e5F` through ROM parser modes

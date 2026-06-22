@@ -1768,8 +1768,9 @@ the parser and allocator.
   Compact Buckets`; this mixed stream still lacks a full live
   CPU/register trace for the complete parser-produced dense page.
 - `0x10898..0x133aa`: the addressed rule insertion is modeled from
-  disassembly and fixtures, but the exact live no-room/retry edge is not
-  covered in this mixed stream.
+  disassembly and fixtures and documented in
+  `notes/rectangle-graphics.md`, but the exact live no-room/retry edge is
+  not covered in this mixed stream.
 - `0x105d0..0x13250`: the raster object queue and render contract are
   documented in `notes/raster-graphics.md`; the queue is address-aware,
   but the mixed stream still lacks a full 68000 execution through

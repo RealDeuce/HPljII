@@ -170,8 +170,14 @@ entry `0x007baa`; the first named `LINE_PRINTER` record has context
 
 The same named-record summary now pins selection-facing metadata fields
 consumed by firmware helpers. Byte `+0x20` is the class/orientation
-selector used by `0x1a9be` partitioning and `0x1b060` default matching;
-the named records split evenly between selector values `0` and `1`.
+selector for bit-30 offset-table/built-in records, used by `0x1a9be`
+partitioning, `0x1b060` default matching, `0x17708` font-ID selection,
+and `0xe860` static-context refresh checks; the named records split
+evenly between selector values `0` and `1`. For bit-30-clear
+inline/downloaded records, `0xe860` and `0x17708` use byte `+0x16` as
+the equivalent class selector. Fixture
+`0xe860 reads inline +0x16 and offset-table +0x20 class bytes` pins that
+branch split.
 Byte `+0x21`, read by the `0x153c6` spacing filter, is `0` for every
 named record. Symbols repeat as six records each for `0x0155`,
 `0x0175`, and `0x000e`. Raw `+0x24/+0x26` pitch fields are

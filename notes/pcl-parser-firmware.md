@@ -648,8 +648,12 @@ calls `0xc428(0x782f06)`, optionally rebuilds the selected current-font
 context from `0x782c80`/`0x782c84` through `0x1b4c0`, `0x144d2`, and
 `0x14c64`, then exits through `0x1b04c` and clears `0x782f2d`.
 Helper `0xe860` supplies the static-record mismatch test from
-`0x782ee6 + 0x10 * slot`, returning pointed record byte `+0x16` or
-`+0x20` according to context byte `+4`.
+`0x782ee6 + 0x10 * slot`. When context byte `+4` is zero it returns the
+inline/downloaded class selector at pointed record byte `+0x16`; when
+context byte `+4` is nonzero it returns the bit-30 offset-table/built-in
+class selector at pointed record byte `+0x20`. Fixture
+`0xe860 reads inline +0x16 and offset-table +0x20 class bytes` pins that
+split.
 The `0xe65c` refresh decisions are now composed with the existing font
 bridge: primary refresh slot `0` runs through the modeled `0x13eb8`,
 `0x144d2`, and `0x14c64` path to map `0x782f32`; secondary refresh slot
@@ -711,8 +715,8 @@ direct mixed-stream model. Execute, call, and mixed-control macro replay
 payloads now also cross `0x1ed84` and `0x1ef6a` before rendering. The
 composed semantic checkpoint is
 `Macro Definition And Data-Chain Replay` in
-`notes/semantic-state-model.md`; the remaining macro/font gap is the
-resource-format field name behind `0xe860` bytes `+0x16` and `+0x20`.
+`notes/semantic-state-model.md`; no macro replay/font-context middle
+edge remains in that checkpoint.
 
 Top-level `ESC &` enters mode 5. The normal table currently identifies
 these subfamilies:
@@ -792,9 +796,10 @@ control-code anchor.
   names.
 - Decode the six-byte tokenizer records and 12-byte command/data pool
   records.
-- Name the resource-format fields read by `0xe860..0xe898` at record
-  bytes `+0x16` and `+0x20`; the `0xe65c` branch contract and bridge
-  into `0x13eb8` / `0x144d2` / `0x14c64` / `0xc428` are now pinned.
+- Continue from parser-produced heterogeneous page-object rendering and
+  final device-output validation now that the macro replay/font-context
+  checkpoint is composed through `0xe65c`, `0xe860`, `0x13eb8`,
+  `0x144d2`, `0x14c64`, and `0xc428`.
 - Replace the remaining synthetic `ESC E` roots with fuller
   parser-allocated page objects; the current host-fetched publication
   fixtures already prove the modeled `0xff1e` publication headers,

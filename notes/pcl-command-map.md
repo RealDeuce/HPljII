@@ -476,9 +476,11 @@ mixed-control replay payloads now also preserve the `0x1edc6`
 bucket/context bridge contract and feed `0x1ed84`/`0x1ef6a` before
 rendering. The composed semantic checkpoint is in
 `notes/semantic-state-model.md` under
-`Macro Definition And Data-Chain Replay`; the remaining macro gaps are
-the resource-format field names behind `0xe860` record bytes `+0x16`
-and `+0x20`.
+`Macro Definition And Data-Chain Replay`; no macro replay/font-context
+middle edge remains in that checkpoint. Fixture
+`0xe860 reads inline +0x16 and offset-table +0x20 class bytes` names the
+last resource-format split: inline/downloaded records use `+0x16`, and
+bit-30 offset-table/built-in records use `+0x20`.
 
 The `ESC &f-123y0x1X` fixture is now also traced through ROM parser
 modes `0 -> 1 -> 5 -> 17 -> 17 -> 17 -> 0`, selecting `0xe112`,
@@ -955,6 +957,7 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   compatibility-facing documentation. The default-font candidate and
   caller path is now real-record backed through `0x1b250`, `0x1b50e`,
   `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
-- Name the resource-format fields read by `0xe860..0xe898` at record
-  bytes `+0x16` and `+0x20`; the `0xe65c` branch contract and bridge
-  into `0x13eb8` / `0x144d2` / `0x14c64` / `0xc428` are now pinned.
+- Continue from parser-produced heterogeneous page-object rendering and
+  final device-output validation now that the macro replay/font-context
+  checkpoint is composed through `0xe65c`, `0xe860`, `0x13eb8`,
+  `0x144d2`, `0x14c64`, and `0xc428`.

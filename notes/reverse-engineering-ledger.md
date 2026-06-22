@@ -835,14 +835,17 @@ ROM work needed:
   page-object rendering and final device-output pixel validation. For
   macros, continue from the composed
   `Macro Definition And Data-Chain Replay` semantic checkpoint by
-  naming the resource-format fields read by `0xe860..0xe898` at bytes
-  `+0x16` and `+0x20`; the full CPU-state bridge from pinned `0xe65c`
-  branch effects into `0x13eb8`, `0x144d2`, `0x14c64`, and `0xc428` is
-  now composed. Heap initialization `0x164a..0x170a` is now composed with
-  startup helper `0x0b18`, allocator entries `0x170c`/`0x1710`, and free
-  entry `0x18b4`. The `0xe5e2` layout/VFC/static-font refresh and the
-  eight-record macro context stack are now composed with `0xe4f4`
-  production and `0xe35a..0xe3e8` flat return semantics. The modeled
+  moving back to parser-produced page-object rendering; no macro
+  replay/font-context middle edge remains in that checkpoint. The full
+  CPU-state bridge from pinned `0xe65c` branch effects into `0x13eb8`,
+  `0x144d2`, `0x14c64`, and `0xc428` is now composed, and
+  `0xe860..0xe898` now names inline/downloaded class byte `+0x16` versus
+  offset-table/built-in class byte `+0x20`. Heap initialization
+  `0x164a..0x170a` is now composed with startup helper `0x0b18`,
+  allocator entries `0x170c`/`0x1710`, and free entry `0x18b4`. The
+  `0xe5e2` layout/VFC/static-font refresh and the eight-record macro
+  context stack are now composed with `0xe4f4` production and
+  `0xe35a..0xe3e8` flat return semantics. The modeled
   `0x1ef6a`
   page-band merge now covers compact text, mode-0 raster, and a crossing
   patterned rule across bands `0` and `5`; modeled rectangle fill

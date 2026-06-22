@@ -20374,6 +20374,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         e860_values={0: 2, 1: 5},
         context_install_status=1,
     ), 1)
+    e860_field_probe_state = macro_font_context_state(
+        class_selector_782da3=1,
+        e860_values={},
+        context_records={
+            0: {"long_0": 0x00250000, "long_4": 0, "byte_4": 0, "byte_16": 0, "byte_20": 9},
+            1: {"long_0": 0xC008004C, "long_4": 0, "byte_4": 1, "byte_16": 9, "byte_20": 1},
+        },
+    )
+    e860_field_probe_refresh = refresh_font_context_via_e65c(
+        e860_field_probe_state,
+        1,
+    )
     checks.append(assert_equal("0xe65c refreshes macro font context entries", {
         "stack_both": {
             "context_ptr": refresh_stack_both["context_stack_ptr"],
@@ -26827,6 +26839,29 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "." * 22 + "#." * 64 + ".#.#.#.#",
             ],
         },
+    }))
+    checks.append(assert_equal("0xe860 reads inline +0x16 and offset-table +0x20 class bytes", {
+        "inline_class_byte": static_context_orientation_via_e860(e860_field_probe_state, 0),
+        "offset_table_class_byte": static_context_orientation_via_e860(e860_field_probe_state, 1),
+        "refresh_slots": [
+            event["slot"]
+            for event in e860_field_probe_refresh["events"]
+            if event["kind"] == "call-13eb8"
+        ],
+        "event_kinds": [event["kind"] for event in e860_field_probe_refresh["events"]],
+    }, {
+        "inline_class_byte": 0,
+        "offset_table_class_byte": 1,
+        "refresh_slots": [0],
+        "event_kinds": [
+            "static-primary-refresh-by-orientation",
+            "call-13eb8",
+            "dirty-set",
+            "static-context-cleared",
+            "call-c428",
+            "call-1b04c",
+            "dirty-cleared",
+        ],
     }))
     constructed_segmented_source = build_inline_text_source_object_from_1393a(
         selected_inline_memory,
@@ -47959,6 +47994,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- `0xe65c(1)` static-record fixture uses direct `+8` plus `0xe860` secondary class mismatch, refreshes slots `%s`, and clears `0x782c64` to `%s`." % (
         [event["slot"] for event in refresh_static["events"] if event["kind"] == "call-13eb8"],
         refresh_static["static_context_record"],
+    ))
+    lines.append("- `0xe860` field probe reads class byte `%d` from inline/downloaded record `+0x16` and class byte `%d` from bit-30 offset-table record `+0x20`, refreshing slots `%s` against selector `0x782da3 = 1`." % (
+        static_context_orientation_via_e860(e860_field_probe_state, 0),
+        static_context_orientation_via_e860(e860_field_probe_state, 1),
+        [event["slot"] for event in e860_field_probe_refresh["events"] if event["kind"] == "call-13eb8"],
     ))
     lines.append("- `0xe65c` bridge fixture drives refresh slots `%s` through `0x13eb8` maps `0x%08x`/`0x%08x`, then installs context record `0x%08x` into page-root font slot `%d` through `0xc428`." % (
         [event["slot"] for event in refresh_stack_both["events"] if event["kind"] == "call-13eb8"],

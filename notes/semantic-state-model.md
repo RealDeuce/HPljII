@@ -438,11 +438,13 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     current-font context record, and mismatch with `0x782da3` forces the
     corresponding refresh flag.
   - `0xe860(slot)` selects `0x782ee6 + 0x10 * slot`; if context byte
-    `+0x04` is zero it returns pointed record byte `+0x16`, otherwise it
-    returns pointed record byte `+0x20`.
+    `+0x04` is zero it returns the inline/downloaded class selector at
+    pointed record byte `+0x16`, otherwise it returns the bit-30
+    offset-table/built-in class selector at pointed record byte `+0x20`.
   Evidence: `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`
-  covers `0xe65c..0xe860`; fixture
+  covers `0xe65c..0xe898`; fixture
   `0xe65c refreshes macro font context entries`; fixture
+  `0xe860 reads inline +0x16 and offset-table +0x20 class bytes`; fixture
   `0xe65c refresh composes with font context bridge`; report
   `generated/analysis/ic30_ic13_font_context_bridge.md`.
 - Parser scratch:
@@ -495,9 +497,9 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     `0x780e5a` still needs board/config correlation, but the downstream
     `0x0b18` heap-limit math and `0x164a` allocator initialization are
     pinned for the default path.
-  - semantic meaning of the resource-record bytes read by `0xe860` at
-    `+0x16` and `+0x20` is still named by use as a class/orientation
-    byte, not by resource-format field name.
+  - no remaining macro replay/font-context middle edge in this checkpoint.
+    The next high-value edges are in parser-produced heterogeneous
+    page-object rendering and final device-output validation.
 
 ### Writers
 
@@ -629,8 +631,7 @@ initializer, `0x170c`/`0x1710` / `0x18b4` shared heap contract,
 `0x14c64` / `0xc428`, macro definition append/count bookkeeping,
 `0xa904` replay, and page-record/render effects because those are covered
 by disassembly, generated parser-table reports, and executable fixtures.
-Medium for the resource-format field name behind `0xe860` bytes
-`+0x16` / `+0x20`.
+High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 
 ### Fixtures
 
@@ -648,6 +649,7 @@ Medium for the resource-format field name behind `0xe860` bytes
 - `0xe002 appends macro definition bytes into 0x100 chunks`
 - `0xe4f4/0xe22c produce and end data-chain frames`
 - `0xe65c refreshes macro font context entries`
+- `0xe860 reads inline +0x16 and offset-table +0x20 class bytes`
 - `0xe65c refresh composes with font context bridge`
 - `0xe5e2 refreshes page layout, default VFC table, and static font
   context`
@@ -695,8 +697,7 @@ Medium for the resource-format field name behind `0xe860` bytes
 
 ### Unresolved Middle Edges
 
-- `0xe860..0xe898`: record-class byte meaning for the `+0x16` versus
-  `+0x20` returned values is still named by use, not by font format.
+- None remaining for the macro replay/font-context checkpoint.
 
 ## Mixed Text/Rule/Raster Page Record
 

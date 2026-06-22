@@ -854,8 +854,9 @@ the parser and allocator.
   mixed stream still lacks a full 68000 execution through `0x105d0` into
   real allocator memory.
 - `0x10084..0x1381c`: first root allocation and stream-chunk allocation
-  are modeled with exact side effects, but not captured from live CPU
-  memory for the complete text/rule/raster stream.
+  are modeled with exact side effects, including a multi-writer chunk
+  rollover fixture in the shared allocator checkpoint, but not captured
+  from live CPU memory for the complete text/rule/raster stream.
 - `0xff1e..0x1ed84`: publication and render-entry are modeled and
   fixture-checked; scheduler timing between the published pool record and
   active render selection remains outside this cluster.
@@ -865,7 +866,9 @@ the parser and allocator.
 Status: anchored as the shared storage model beneath compact text, rule,
 fixed-rule, raster, publication, and render-bridge fixtures. This section
 collapses allocator concepts that were previously repeated in text,
-rectangle, raster, and publication notes.
+rectangle, raster, and publication notes. The current checkpoint now
+covers one state block with multiple writers crossing a stream-chunk
+boundary before publication and render entry.
 
 Concept: `0x10084` owns the current page/control root. `0x1381c` owns
 the variable-size object stream under that root. `0x1387c`, `0x133aa`,
@@ -885,6 +888,7 @@ consume those root fields without changing their producer semantics.
   Evidence: fixtures
   `0x10084-modeled page-root allocation side effects`,
   `addressed stream page record materializes through 0xff1e and 0x1ed84`,
+  `addressed page-record writers share 0x1381c across chunk rollover`,
   and disassembly `0x10084..0x1021e`.
 - Firmware bookkeeping:
   - `0x782a70`: bytes remaining in the current stream chunk.
@@ -894,7 +898,9 @@ consume those root fields without changing their producer semantics.
     allocation after the `0x9ac2` wait hook.
   - `0x782990`: transient page-root byte cleared by `0x10084`.
   Evidence: fixture
-  `0x1381c stream allocator chunks display-list storage` and disassembly
+  `0x1381c stream allocator chunks display-list storage`,
+  `addressed page-record writers share 0x1381c across chunk rollover`,
+  and disassembly
   `0x10096..0x100f8`, `0x1381c..0x13876`.
 - Derived/cache producer keys:
   - `0x782a7c`: bucket index / list-order key.
@@ -914,6 +920,7 @@ consume those root fields without changing their producer semantics.
   `0x1387c address-aware bucket allocation uses 0x1381c storage`,
   `0x133aa address-aware rule-list insertion uses 0x1381c storage`,
   `0x136d2 address-aware fixed-list insertion uses 0x1381c storage`,
+  `addressed page-record writers share 0x1381c across chunk rollover`,
   and `0x13070/0x13250 raster row queues encoded-span object`.
 - Derived/cache render fields:
   - `0x783a20`, `0x783a22`, and `0x783a28` are render-band outputs of
@@ -974,6 +981,21 @@ then the published render path composes those objects into the visible
 rows. The separate allocator fixture proves first chunk allocation,
 same-chunk reuse, and second-chunk linking.
 
+The `addressed page-record writers share 0x1381c across chunk rollover`
+fixture composes those allocator facts into one page-record state block:
+`0x10084` seeds `0x782a72 = root + 0x20`, seven compact text writers
+through `0x12f2e`/`0x1387c` allocate objects
+`0x00d05004`, `0x00d0502a`, `0x00d05050`, `0x00d05076`,
+`0x00d0509c`, `0x00d050c2`, and `0x00d05104`, then
+`0x133aa` and `0x136d2` allocate rule/fixed objects at
+`0x00d0512a` and `0x00d05138`. The stream links are
+`root + 0x20 -> 0x00d05000 -> 0x00d05100`, and the final bookkeeping is
+`0x782a70 = 0x00ba`, `0x782a72 = 0x00d05100`,
+`0x782a76 = 0x00d05146`, with two stream-chunk allocations. Publication
+through `0xff1e` preserves bucket index `0`; render entry
+`0x1ef6a` dispatches all seven compact objects to `0x1effe` and produces
+the `LINE_PRINTER` glyph-32 rows.
+
 ### Confidence
 
 High for page-root creation side effects, stream allocator accounting,
@@ -992,6 +1014,7 @@ results rather than executing the full heap and page scheduler.
 - `0x133aa address-aware rule-list insertion uses 0x1381c storage`
 - `0x136d2 address-aware fixed-list insertion uses 0x1381c storage`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
+- `addressed page-record writers share 0x1381c across chunk rollover`
 - `addressed text/rule/raster field groups reach publication and render
   entry`
 
@@ -1013,6 +1036,9 @@ results rather than executing the full heap and page scheduler.
 
 - `0x1710..0x1385e`: the heap allocation result is modeled; the internal
   heap free-list behavior behind `0x1710` is not lifted here.
+- `0x10084..0x1381c`: first-root setup, same-chunk reuse, and
+  second-chunk rollover are modeled, but not captured from live 68000
+  memory during a dense parser-produced page.
 - `0x13250..0x1381c`: raster encoded-span allocation is modeled and
   render-checked, but exact live register/memory state through the full
   raster producer remains unresolved.

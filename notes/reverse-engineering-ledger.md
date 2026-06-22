@@ -85,6 +85,8 @@ boundaries, reset sequencing, ROM
 parser dispatch of publication streams, host-fetched publication header
 fields for reset, FF, page-size, and orientation, addressed
 text/rule/raster FF publication, and synthetic mixed reset fixtures,
+with the shared page-record allocator now composed through one
+multi-writer `0x1381c` chunk rollover state,
 with `0xcda2` reset/default environment state now decoded for
 page/control pool setup, cursor-stack reset, HMI/VMI recompute,
 line-termination clearing, and default bytes
@@ -490,7 +492,12 @@ to the same bucket/rule page-record shape, an addressed text/rule/raster
 field-group checkpoint that pins canonical objects `0x00d0c004`,
 `0x00d0c02a`, and `0x00d0c038`, parser scratch record
 `80 57 00 02 00 00`, allocator state `0x782a70 = 0x00bc`,
-`0x782a72 = 0x00d0c000`, and `0x782a76 = 0x00d0c044`, a mixed
+`0x782a72 = 0x00d0c000`, and `0x782a76 = 0x00d0c044`, an addressed
+allocator composition fixture where `0x10084` seeds `0x782a72 =
+root + 0x20`, seven compact text objects force stream links
+`root + 0x20 -> 0x00d05000 -> 0x00d05100`, `0x133aa` and
+`0x136d2` add rule/fixed objects at `0x00d0512a` and `0x00d05138`,
+and `0x1ef6a` renders all seven compact objects through `0x1effe`, a mixed
 `!\x1bE` fixture that
 publishes and clears a valid current page root after queued text and has
 a page-record allocator/bridge/publication variant,

@@ -26329,6 +26329,163 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "stream_allocations": 1,
         },
     }))
+    rollover_state: dict[str, object] = {
+        "current_page_root": 0,
+        "page_root_present": 0,
+        "page_root_class": 0,
+        "stream_bytes_remaining_782a70": 0,
+        "stream_link_ptr_782a72": 0,
+        "stream_next_free_782a76": 0,
+        "next_stream_chunk_ptr": 0x00D05000,
+        "stream_chunk_links": {},
+        "bucket_heads_1c": {},
+        "rule_head_24": 0,
+        "fixed_head_28": 0,
+        "stream_objects": {},
+        "context_slots": [0x440946B4] * 7,
+        "primary_context_782ee6": 0x440946B4,
+    }
+    rollover_root = ensure_page_record_root_for_queue(rollover_state)  # type: ignore[arg-type]
+    rollover_text_events: list[dict[str, object]] = []
+    for context_slot in range(7):
+        source = dict(text_source)
+        source["context_slot"] = context_slot
+        rollover_text_events.append(
+            queue_text_source_to_addressed_stream_via_12f2e(
+                resources,
+                rollover_state,
+                source,
+            )
+        )
+    rollover_rule = insert_rectangle_rule_addressed_via_133aa(
+        rollover_state,
+        {"x": 0x0008, "y": 0x0080, "width": 0x0007, "height": 0x0008, "flags": 0x03},
+        band_byte=0x08,
+    )
+    rollover_fixed = insert_fixed_rule_addressed_via_136d2(
+        rollover_state,
+        {"x": 0x0008, "y": 0x0090, "mode": 1, "extent": 0x0009},
+        band_byte=0x09,
+    )
+    rollover_objects = rollover_state["stream_objects"]
+    assert isinstance(rollover_objects, dict)
+    rollover_bucket_chain: list[tuple[int, int, int, int, bytes]] = []
+    rollover_ptr = int(rollover_state["bucket_heads_1c"][0])
+    while rollover_ptr:
+        rollover_object = rollover_objects[rollover_ptr]
+        assert isinstance(rollover_object, bytearray)
+        rollover_bucket_chain.append((
+            rollover_ptr,
+            u32(rollover_object, 0),
+            u16(rollover_object, 4),
+            u16(rollover_object, 6),
+            bytes(rollover_object[8:11]),
+        ))
+        rollover_ptr = u32(rollover_object, 0)
+    rollover_page_record = page_record_from_addressed_stream_state(rollover_state)
+    rollover_published = finalize_page_record_via_ff1e(
+        rollover_page_record,
+        reset_fixture_state(
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            page_root_clears=0,
+        ),
+    )
+    rollover_published_record = rollover_published["published_pool_record"]
+    assert isinstance(rollover_published_record, dict)
+    rollover_render = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        rollover_published_record,
+    )
+    checks.append(assert_equal("addressed page-record writers share 0x1381c across chunk rollover", {
+        "root": {
+            key: rollover_root[key]
+            for key in (
+                "page_root_created",
+                "stream_bytes_remaining_782a70",
+                "stream_link_ptr_782a72",
+                "stream_next_free_782a76_after",
+                "page_root_context_slot0",
+            )
+        },
+        "text_ptrs": [event["object_ptr"] for event in rollover_text_events],
+        "rule_ptr": rollover_rule["object_ptr"],
+        "fixed_ptr": rollover_fixed["object_ptr"],
+        "bucket_chain": rollover_bucket_chain,
+        "published": {
+            "published": rollover_published["published"],
+            "bucket_index": rollover_published["bucket_index"],
+        },
+        "render": {
+            "call_order": rollover_render["entry"]["call_order"],
+            "dispatch_targets": [
+                entry["target"]
+                for entry in rollover_render["entry"]["dispatch"]["entries"]
+            ],
+            "rows": rollover_render["entry"]["rows"],
+        },
+        "stream_state": {
+            key: rollover_state[key]
+            for key in (
+                "stream_bytes_remaining_782a70",
+                "stream_link_ptr_782a72",
+                "stream_next_free_782a76",
+                "next_stream_chunk_ptr",
+                "stream_chunk_links",
+                "stream_allocations",
+            )
+        },
+    }, {
+        "root": {
+            "page_root_created": True,
+            "stream_bytes_remaining_782a70": 0,
+            "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+            "stream_next_free_782a76_after": 0,
+            "page_root_context_slot0": 0x440946B4,
+        },
+        "text_ptrs": [
+            0x00D05004,
+            0x00D0502A,
+            0x00D05050,
+            0x00D05076,
+            0x00D0509C,
+            0x00D050C2,
+            0x00D05104,
+        ],
+        "rule_ptr": 0x00D0512A,
+        "fixed_ptr": 0x00D05138,
+        "bucket_chain": [
+            (0x00D05104, 0x00D050C2, 0x0006, 1, bytes.fromhex("20 00 00")),
+            (0x00D050C2, 0x00D0509C, 0x0005, 1, bytes.fromhex("20 00 00")),
+            (0x00D0509C, 0x00D05076, 0x0004, 1, bytes.fromhex("20 00 00")),
+            (0x00D05076, 0x00D05050, 0x0003, 1, bytes.fromhex("20 00 00")),
+            (0x00D05050, 0x00D0502A, 0x0002, 1, bytes.fromhex("20 00 00")),
+            (0x00D0502A, 0x00D05004, 0x0001, 1, bytes.fromhex("20 00 00")),
+            (0x00D05004, 0, 0x0000, 1, bytes.fromhex("20 00 00")),
+        ],
+        "published": {
+            "published": True,
+            "bucket_index": 0,
+        },
+        "render": {
+            "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+            "dispatch_targets": [0x01EFFE] * 7,
+            "rows": line_printer_glyph32_rows,
+        },
+        "stream_state": {
+            "stream_bytes_remaining_782a70": 0x00BA,
+            "stream_link_ptr_782a72": 0x00D05100,
+            "stream_next_free_782a76": 0x00D05146,
+            "next_stream_chunk_ptr": 0x00D05200,
+            "stream_chunk_links": {
+                ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D05000,
+                0x00D05000: 0x00D05100,
+            },
+            "stream_allocations": 2,
+        },
+    }))
     page_record_bucket_fixture: dict[str, object] = {"bucket_array": {}, "context_slots": [0x440946B4]}
     page_record_first = queue_text_source_to_page_record_via_12f2e(resources, page_record_bucket_fixture, text_source)
     positioned_fixture = position_flagged_text_source_via_d824(resources, text_source, cursor_x=10, cursor_y=21)

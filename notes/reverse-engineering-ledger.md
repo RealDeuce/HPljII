@@ -108,6 +108,8 @@ and portrait `0x1354a` split text-span output across adjacent compact
 buckets,
 and landscape `0x12714` text-span output through nonempty addressed
 `0x136d2` fixed-list insertion,
+and `0x12714` allocation-failure recovery through `0xff1e` publication
+and fresh-root retry,
 with `0xcda2` reset/default environment state now decoded for
 page/control pool setup, cursor-stack reset, HMI/VMI recompute,
 line-termination clearing, and default bytes

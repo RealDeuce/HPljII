@@ -12032,6 +12032,64 @@ def retry_rectangle_rule_after_no_room_via_10d22(
     }
 
 
+def retry_text_span_after_no_room_via_12714(
+    state: dict[str, object],
+    span_state: dict[str, int],
+    *,
+    retry_next_stream_chunk_ptr: int,
+) -> dict[str, object]:
+    """Model the 0x127a4..0x12808 text-span no-room retry path."""
+    first_attempt = flush_text_span_addressed_via_12714(state, span_state)
+    queued = first_attempt.get("queued", {})
+    if not isinstance(queued, dict) or not bool(queued.get("allocation_failed", False)):
+        raise AssertionError("0x12714 retry fixture requires the first allocation to fail")
+
+    current_page_record = page_record_from_addressed_stream_state(state)
+    state["page_root_flags_14"] = int(state.get("page_root_flags_14", 0)) | 1
+    retry_flags_14 = int(state["page_root_flags_14"])
+    finalized = finalize_page_record_via_ff1e(
+        current_page_record,
+        state,  # type: ignore[arg-type]
+    )
+    if finalized["published"]:
+        state["page_publications"] = int(state.get("page_publications", 0)) + 1
+        state["published_pool_record"] = 1
+        state["page_publication_flag"] = int(finalized["page_publication_flag"])
+    state["current_page_root"] = int(finalized["current_page_root_after"])
+    state["page_root_present"] = 0
+    state["page_root_class"] = 0
+    state["page_root_clears"] = int(finalized["page_root_clears"])
+
+    context_slots = list(state.get("context_slots", []))
+    state["bucket_heads_1c"] = {}
+    state["rule_head_24"] = 0
+    state["fixed_head_28"] = 0
+    state["stream_objects"] = {}
+    state["stream_chunk_links"] = {}
+    state["context_slots"] = context_slots
+    state["next_stream_chunk_ptr"] = retry_next_stream_chunk_ptr
+
+    fresh_root = ensure_page_record_root_for_queue(state)  # type: ignore[arg-type]
+    raw_source = first_attempt["raw_source"]
+    if not isinstance(raw_source, dict):
+        raise AssertionError("0x12714 retry fixture requires a raw source")
+    retry_result = insert_fixed_rule_addressed_via_136d2(
+        state,
+        {key: int(raw_source[key]) for key in ("x", "y", "mode", "extent")},
+    )
+    retry_page_record = page_record_from_addressed_stream_state(state)
+    return {
+        "no_room": True,
+        "first_attempt": first_attempt,
+        "retry_page_root_flags_14": retry_flags_14,
+        "finalized": finalized,
+        "fresh_root": fresh_root,
+        "retry_result": retry_result,
+        "retry_page_record": retry_page_record,
+        "state": state,
+    }
+
+
 def advance_flagged_text_cursor_via_d550(cursor_x: int, default_advance: int) -> dict[str, int]:
     d5 = int(cursor_x) + int(default_advance)
     if (d5 & 0xFFFF) >= 12:
@@ -36712,6 +36770,214 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 ["." * 23] * 64
                 + ["." * 7 + "###" + "." * 13] * 4
             ),
+        },
+    }))
+    span_retry_state: dict[str, object] = {
+        "stream_bytes_remaining_782a70": 0,
+        "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+        "stream_next_free_782a76": 0,
+        "next_stream_chunk_ptr": 0x00D06000,
+        "stream_chunk_links": {},
+        "bucket_heads_1c": {},
+        "rule_head_24": 0,
+        "fixed_head_28": 0,
+        "stream_objects": {},
+        "context_slots": [0x440946B4],
+        "current_page_root": ABSTRACT_PAGE_ROOT_PTR,
+        "page_root_present": 1,
+        "page_root_class": 1,
+        "page_root_flags_14": 0,
+        "page_root_clears": 0,
+        "page_record_root_allocations": 1,
+    }
+    span_retry_text = bucket_find_or_alloc_addressed_via_1387c(
+        span_retry_state,
+        bucket_index=0,
+        selector=0x0000,
+        capacity=0x0A,
+        object_size=0x26,
+    )
+    span_retry_objects = span_retry_state["stream_objects"]
+    assert isinstance(span_retry_objects, dict)
+    span_retry_text_object = span_retry_objects[span_retry_text["object_ptr"]]
+    assert isinstance(span_retry_text_object, bytearray)
+    span_retry_text_object[6:8] = (1).to_bytes(2, "big")
+    span_retry_text_object[8] = 0x20
+    span_retry_text_object[9:11] = (1).to_bytes(2, "big")
+    span_retry_state["stream_bytes_remaining_782a70"] = 0
+    span_retry_state["next_stream_chunk_ptr"] = 0
+    span_retry = retry_text_span_after_no_room_via_12714(
+        span_retry_state,
+        {
+            "enabled_783184": 1,
+            "low_x_783186": 2,
+            "high_x_783188": 5,
+            "high_y_78318a": 3,
+            "orientation_782da3": 1,
+            "orientation_extent_782db2": 7,
+            "page_extent_782db6": 64,
+        },
+        retry_next_stream_chunk_ptr=0x00D07000,
+    )
+    span_retry_published = span_retry["finalized"]["published_pool_record"]
+    assert isinstance(span_retry_published, dict)
+    span_retry_published_fields = span_retry_published["pool_record_fields"]
+    assert isinstance(span_retry_published_fields, dict)
+    span_retry_bridged = bridge_page_record_via_1edc6(span_retry["retry_page_record"])
+    span_retry_rendered = render_fixed_width_list_via_1f756(
+        data,
+        {"fixed_list": span_retry_bridged["fixed_list"]},
+        band_rows=8,
+    )
+    checks.append(assert_equal("0x12714 allocation failure publishes page and retries span", {
+        "first_attempt": {
+            "flushed": span_retry["first_attempt"]["flushed"],
+            "raw_source": span_retry["first_attempt"]["raw_source"],
+            "queued": {
+                key: span_retry["first_attempt"]["queued"][key]
+                for key in (
+                    "object_ptr",
+                    "allocation_failed",
+                    "old_head",
+                    "new_head",
+                    "bucket_byte",
+                    "computed",
+                )
+            },
+        },
+        "retry_page_root_flags_14": span_retry["retry_page_root_flags_14"],
+        "published": {
+            "published": span_retry["finalized"]["published"],
+            "bucket_index": span_retry["finalized"]["bucket_index"],
+            "bucket_root": span_retry_published["bucket_root"],
+            "bucket_array_1c": span_retry_published_fields["bucket_array_1c"],
+        },
+        "fresh_root": {
+            key: span_retry["fresh_root"][key]
+            for key in (
+                "page_root_created",
+                "page_record_root_allocations",
+                "stream_link_ptr_782a72",
+                "page_root_flags_14",
+            )
+        },
+        "retry_result": {
+            key: span_retry["retry_result"][key]
+            for key in (
+                "object_ptr",
+                "old_head",
+                "new_head",
+                "bucket_byte",
+                "computed",
+            )
+        } | {"object": bytes(span_retry["retry_result"]["object"])},
+        "bridged": span_retry_bridged["fixed_list"],
+        "render": span_retry_rendered,
+    }, {
+        "first_attempt": {
+            "flushed": False,
+            "raw_source": {
+                "orientation": 1,
+                "mode": 1,
+                "x": 3,
+                "y": 3,
+                "extent": 3,
+            },
+            "queued": {
+                "object_ptr": 0,
+                "allocation_failed": True,
+                "old_head": 0,
+                "new_head": 0,
+                "bucket_byte": 0,
+                "computed": {
+                    "x": 3,
+                    "y": 3,
+                    "bucket_index": 0,
+                    "key": 0x3300,
+                    "mode": 6,
+                    "selector_hi": 0x40,
+                    "selector_lo": 0x00,
+                },
+            },
+        },
+        "retry_page_root_flags_14": 1,
+        "published": {
+            "published": True,
+            "bucket_index": 0,
+            "bucket_root": (
+                bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                + (b"\x00" * 0x1B)
+            ),
+            "bucket_array_1c": {
+                0: [
+                    bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                    + (b"\x00" * 0x1B)
+                ],
+            },
+        },
+        "fresh_root": {
+            "page_root_created": True,
+            "page_record_root_allocations": 2,
+            "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+            "page_root_flags_14": 0,
+        },
+        "retry_result": {
+            "object_ptr": 0x00D07004,
+            "old_head": 0,
+            "new_head": 0x00D07004,
+            "bucket_byte": 0,
+            "computed": {
+                "x": 3,
+                "y": 3,
+                "bucket_index": 0,
+                "key": 0x3300,
+                "mode": 6,
+                "selector_hi": 0x40,
+                "selector_lo": 0x00,
+            },
+            "object": bytes.fromhex("00 00 00 00 00 06 33 00 00 03 00 00 00 00"),
+        },
+        "bridged": [bytes.fromhex("00 00 00 00 00 16 33 00 00 03 00 03 01 08")],
+        "render": {
+            "band_word": 0,
+            "rendered": [{
+                "selector": 6,
+                "helper": 0x1F7B0,
+                "pattern_table_entry": 0x0308F6,
+                "pattern_long": 0xC000E000,
+                "pattern_word": 0xE000,
+                "key": 0x3300,
+                "bucket_delta": 0,
+                "decoded": {
+                    "x": 3,
+                    "y": 3,
+                    "row_low": 3,
+                    "subbyte": 3,
+                    "byte_pair_offset": 0,
+                },
+                "remaining_before": 3,
+                "available_rows": 77,
+                "rows_drawn": 3,
+                "mutated_object": bytes.fromhex(
+                    "00 00 00 00 00 06 33 00 00 03 ff b6 01 08"
+                ),
+                "rows": [
+                    "." * 19,
+                    "." * 19,
+                    "." * 19,
+                    "...###" + "." * 13,
+                    "...###" + "." * 13,
+                    "...###" + "." * 13,
+                ],
+            }],
+            "rows": [
+                "." * 19,
+                "." * 19,
+                "." * 19,
+                "...###" + "." * 13,
+                "...###" + "." * 13,
+                "...###" + "." * 13,
+            ],
         },
     }))
     rectangle_sizes = apply_rectangle_size_decipoints(

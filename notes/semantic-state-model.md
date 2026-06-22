@@ -833,9 +833,15 @@ queues a fixed-width span through `0x136d2`.
     `0x12714` queues output.
   - allocation failure at `0x13520` causes `0x127ae..0x127be` to set
     bit 0 in current page root byte `+0x15`, call `0xff1e`, ensure a
-    page root again, and retry.
-  Evidence: `0x12788..0x127c4` and
-  `generated/analysis/ic30_ic13_page_root_finalization.md`.
+    page root again, rebuild the same local source at `0x127ca..0x12808`,
+    and retry at `0x127a2`.
+  - page-root flags word `+0x14` bit 0 is retry/finalization
+    bookkeeping. Fixture
+    `0x12714 allocation failure publishes page and retries span` sets
+    it to `1` before publication and observes fresh-root `+0x14 = 0`.
+  Evidence: `0x12788..0x12808`,
+  `generated/analysis/ic30_ic13_page_root_finalization.md`, and fixture
+  `0x12714 allocation failure publishes page and retries span`.
 - Parser scratch:
   - none owned by this cluster. The scratch object at `A5` in
     `0x12714` is a local producer source, not parser record storage.
@@ -871,7 +877,10 @@ queues a fixed-width span through `0x136d2`.
   before the LF y advance is visible in final cursor state.
 - `0x12714` clears `0x783184`, writes the local 8-byte source, calls
   `0x10084`, gates on `0x782db6`, calls `0x13520`, and retries after
-  `0xff1e` on allocation failure.
+  `0xff1e` on allocation failure. The retry path sets page-root
+  `+0x14` bit 0 through byte `+0x15`, publishes the current root, calls
+  `0x10084`, rebuilds the local source, and returns to the same
+  `0x13520` call.
 - `0x13520` selects portrait `0x1354a` or landscape `0x136d2` after
   `0x137a2` derives selector/key state.
 - `0x1354a` emits one `0x135f0` segment-list entry when
@@ -985,17 +994,28 @@ queues a fixed-width span through `0x136d2`.
   `00 d0 50 12 04 16 07 00 00 04 00 04 01 08`; `0x1f756` / `0x1f7b0`
   renders the bridged span at x `7`, rows `64..67`, with the selector-6
   fixed pattern.
+- Fixture `0x12714 allocation failure publishes page and retries span`
+  starts with an existing addressed compact text object under bucket
+  `0`, then forces the landscape span allocation to fail. The first
+  `0x136d2` attempt returns object pointer `0`, `allocation_failed=True`,
+  and source `orientation=1`, `x=3`, `y=3`, `extent=3`. The retry path
+  marks page-root `+0x14 = 1`, publishes the existing bucket object
+  `00 00 00 00 00 00 00 01 20 00 01 ...` through `0xff1e`, creates a
+  fresh root through `0x10084` with allocation count `2`, then retries
+  the same source into fixed-list object
+  `00 00 00 00 00 06 33 00 00 03 00 00 00 00` at pointer
+  `0x00d07004`. The bridge emits
+  `00 00 00 00 00 16 33 00 00 03 00 03 01 08`, and `0x1f756` /
+  `0x1f7b0` renders three shifted 3-pixel rows at x `3`, y `3`.
 
 ### Confidence
 
 High for pending-state initialization, unflagged `0xd4ac` low-water
 success, flagged `0xd8fc` low-water success, flush source packaging,
 portrait versus landscape branch selection, portrait split output,
-landscape nonempty insertion, object byte shapes, bridge shape, and
-visible row effects because each claim has disassembly and passing
-fixtures. Medium for allocation-failure recovery because that path is
-disassembled and partly shared with existing finalization fixtures, but
-not yet driven by a live pending-span stream.
+landscape nonempty insertion, allocation-failure retry publication,
+object byte shapes, bridge shape, and visible row effects because each
+claim has disassembly and passing fixtures.
 
 ### Fixtures
 
@@ -1013,6 +1033,7 @@ not yet driven by a live pending-span stream.
 - `unflagged printable d4ac low-watermark flush renders span`
 - `0x1354a portrait text span split queues adjacent buckets`
 - `0x12714 landscape span inserts into nonempty fixed list`
+- `0x12714 allocation failure publishes page and retries span`
 
 ### Disassembly Evidence
 
@@ -1031,14 +1052,15 @@ not yet driven by a live pending-span stream.
   shared direct-control flush helper.
 - `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`:
   `0x13520..0x1381a` producer, insertion, split, and packed-key helpers.
+- `generated/analysis/ic30_ic13_page_root_finalization.md`:
+  `0xff1e` publication contract and the `0x127be` text-span retry
+  call-site group.
 - `generated/analysis/ic30_ic13_page_record_bridge.md` and
   `generated/analysis/ic30_ic13_render_dispatch_tables.md`:
   bridge and renderer consumers for fixed-width lists.
 
 ### Unresolved Middle Edges
 
-- `0x127a4..0x127c4`: allocation-failure retry is identified but not
-  fixture-driven from a pending-span stream.
 - `0xd4ac..0xd548`: unflagged context fields `+0x2b`, `+0x2c`, and
   `+0x2d` are fixture-backed for the low-water success branch, but
   exact font/context producer ownership and the disabled, before-lower,

@@ -23770,6 +23770,110 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "0x14c64",
         ],
     }))
+    e65c_bridge_page_state = symbol_set_state(
+        current_page_root=0x78297A,
+        page_root_context_slots=[0] * 16,
+        page_root_live_flags=[0] * 16,
+    )
+    e65c_bridge_install_slot = install_current_font_context_via_c428(e65c_bridge_page_state, 1)
+    checks.append(assert_equal("0xe65c refresh composes with font context bridge", {
+        "e65c_refresh_slots": [
+            event["slot"]
+            for event in refresh_stack_both["events"]
+            if event["kind"] == "call-13eb8"
+        ],
+        "primary": {
+            "calls": primary_13eb8_refresh["calls"],
+            "context_update": primary_13eb8_refresh["context_update"],
+            "dispatch": select_keys(primary_13eb8_dispatch, (
+                "path",
+                "slot",
+                "map_address",
+                "patch_kind",
+            )),
+        },
+        "secondary": {
+            "calls": secondary_13eb8_refresh["calls"],
+            "context_update": secondary_13eb8_refresh["context_update"],
+            "dispatch": select_keys(secondary_13eb8_dispatch, (
+                "path",
+                "slot",
+                "map_address",
+                "patch_kind",
+            )),
+        },
+        "c428_after_e65c": {
+            "install_status": e65c_bridge_install_slot,
+            "selected_page_slot": e65c_bridge_page_state["current_page_context_slot_78297e"],
+            "page_root_slot_0": e65c_bridge_page_state["page_root_context_slots"][0],
+            "events": e65c_bridge_page_state["context_install_events"],
+        },
+    }, {
+        "e65c_refresh_slots": [0, 1],
+        "primary": {
+            "calls": [
+                "0x148f8",
+                "0x1569c",
+                "0x156de",
+                "0x153c6",
+                "0x1519a",
+                "0x147b2",
+                "0x14758",
+                "0x14398",
+                "0x144d2",
+                "0x14c64",
+            ],
+            "context_update": {
+                "helper": 0x0144D2,
+                "context_record": 0x782EE6,
+                "selected_longword": 0xC008004C,
+                "byte_4_bit30": 1,
+                "byte_5_bit26": 0,
+            },
+            "dispatch": {
+                "path": "built-in-cache-miss",
+                "slot": "primary",
+                "map_address": 0x782F32,
+                "patch_kind": "unchanged",
+            },
+        },
+        "secondary": {
+            "calls": [
+                "0x148f8",
+                "0x1569c",
+                "0x156de",
+                "0x153c6",
+                "0x14398",
+                "0x144d2",
+                "0x14c64",
+            ],
+            "context_update": {
+                "helper": 0x0144D2,
+                "context_record": 0x782EF6,
+                "selected_longword": 0xC00AE122,
+                "byte_4_bit30": 1,
+                "byte_5_bit26": 0,
+            },
+            "dispatch": {
+                "path": "built-in-cache-miss",
+                "slot": "secondary",
+                "map_address": 0x783032,
+                "patch_kind": "selected-symbol-not-roman8",
+            },
+        },
+        "c428_after_e65c": {
+            "install_status": 1,
+            "selected_page_slot": 0,
+            "page_root_slot_0": 0x782EF6,
+            "events": [{
+                "helper": 0x00C4FC,
+                "caller": "0xc428",
+                "context_record": 0x782EF6,
+                "selected_page_slot": 0,
+                "reason": "first-inactive",
+            }],
+        },
+    }))
     checks.append(assert_equal("0x13eb8 transient and cache-hit exits avoid dispatch", {
         "transient": {
             "status": transient_13eb8_refresh["status"],
@@ -47855,6 +47959,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- `0xe65c(1)` static-record fixture uses direct `+8` plus `0xe860` secondary class mismatch, refreshes slots `%s`, and clears `0x782c64` to `%s`." % (
         [event["slot"] for event in refresh_static["events"] if event["kind"] == "call-13eb8"],
         refresh_static["static_context_record"],
+    ))
+    lines.append("- `0xe65c` bridge fixture drives refresh slots `%s` through `0x13eb8` maps `0x%08x`/`0x%08x`, then installs context record `0x%08x` into page-root font slot `%d` through `0xc428`." % (
+        [event["slot"] for event in refresh_stack_both["events"] if event["kind"] == "call-13eb8"],
+        int(primary_13eb8_dispatch["map_address"]),
+        int(secondary_13eb8_dispatch["map_address"]),
+        int(e65c_bridge_page_state["page_root_context_slots"][0]),
+        int(e65c_bridge_page_state["current_page_context_slot_78297e"]),
     ))
     lines.append("- macro execute payload stream `%s` queues glyphs `%s`, coords `%s`, then CR leaves cursor `0x%08x,0x%08x`." % (
         " ".join(f"{byte:02x}" for byte in macro_payload_printable_stream["stream"]),

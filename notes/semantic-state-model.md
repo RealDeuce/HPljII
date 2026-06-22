@@ -426,6 +426,12 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     stores `0x1b4c0(0x782c80)` into `0x7828a8`, calls `0x144d2` and
     `0x14c64`, sets `0x782f2d`, and probes `0xc428` again before the
     shared `0x1b04c` exit.
+  - the composed bridge from `0xe65c` refresh slots to visible font state
+    is pinned: primary refresh slot `0` follows
+    `0x13eb8 -> 0x144d2 -> 0x14c64` into map `0x782f32`; secondary
+    refresh slot `1` follows the same path into map `0x783032`; the
+    final `0xc428(0x782f06)` installs the selected current-font context
+    record into a page-root font slot.
   - `0xe65c(1)` uses static record `0x782c64`. Static bytes `+0x08` and
     `+0x09` directly force primary/secondary refresh; otherwise helper
     `0xe860(slot)` returns a class/orientation byte from the selected
@@ -436,7 +442,9 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     returns pointed record byte `+0x20`.
   Evidence: `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`
   covers `0xe65c..0xe860`; fixture
-  `0xe65c refreshes macro font context entries`.
+  `0xe65c refreshes macro font context entries`; fixture
+  `0xe65c refresh composes with font context bridge`; report
+  `generated/analysis/ic30_ic13_font_context_bridge.md`.
 - Parser scratch:
   - normal macro parser table mode 17 entries at `0x11262..0x11286`
     route `y/Y` to `0xe112` and `x/X` to `0xdd08`.
@@ -487,9 +495,9 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     `0x780e5a` still needs board/config correlation, but the downstream
     `0x0b18` heap-limit math and `0x164a` allocator initialization are
     pinned for the default path.
-  - full CPU-state connection from macro-specific `0xe65c` refresh into
-    the broader font resource maps beyond the already modeled
-    `0x13eb8` / `0xc428` / `0x144d2` / `0x14c64` contracts.
+  - semantic meaning of the resource-record bytes read by `0xe860` at
+    `+0x16` and `+0x20` is still named by use as a class/orientation
+    byte, not by resource-format field name.
 
 ### Writers
 
@@ -541,6 +549,9 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 - `0xe65c(1)` consumes and clears static record `0x782c64`, using direct
   flag bytes or `0xe860` class mismatches to force primary/secondary
   refresh.
+- `0xe65c` refresh slots write through `0x13eb8`, `0x144d2`, and
+  `0x14c64` into current-font context records and glyph maps; its final
+  `0xc428` call writes the selected page-root font slot.
 - The alternate parser table at `0x116f6` writes stored definition payload
   bytes rather than dispatching ordinary control-code handlers.
 
@@ -579,6 +590,11 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   fields `0x782c80`/`0x782c84`, active words `0x783144`/`0x783146`, and
   remembered words `0x782f08`/`0x782f0a`; fallback install consumers are
   the already-modeled `0xc428`, `0x1b4c0`, `0x144d2`, and `0x14c64`.
+- The composed `0xe65c` bridge consumes the same candidate-filter and
+  page-root slot contracts as normal font selection: `0x13eb8` filters
+  candidate windows, `0x14c64` rebuilds maps `0x782f32` / `0x783032`, and
+  `0xc428` installs `0x782ee6` / `0x782ef6` context records into the
+  current page root.
 - Parser loop `0x11774` consumes replayed bytes and routes simple replay
   to `0xd04a` and `0xf02c`; mixed-control replay also reaches `0xedf8`.
 - Page-record and render consumers use the shared allocation model:
@@ -595,7 +611,11 @@ payload. A host-fetched mixed-control definition stores
 `ESC &k1G!\r!`, builds an execute frame, replays through `0xedf8`,
 `0xd04a`, `0xf02c`, and `0xd04a`, then matches the direct mixed-stream
 rendered rows. Macro replay also composes with selector-7 rule and
-mode-0 raster band output in the existing page-record fixture.
+mode-0 raster band output in the existing page-record fixture. Macro
+font-context refresh now composes through the existing font bridge:
+`0xe65c` refresh slots `0/1` rebuild maps `0x782f32` / `0x783032`, and
+the final `0xc428` install exposes the selected context record through a
+page-root font slot for later text objects.
 
 ### Confidence
 
@@ -605,10 +625,12 @@ stop behavior, execute/call and non-replay frame mode bytes, frame field offsets
 `+0x00/+0x04/+0x08/+0x09/+0x0a`, call-only context-stack push, snapshot
 chain chunk shape, execute/call frame-end restore, `0x164a` heap
 initializer, `0x170c`/`0x1710` / `0x18b4` shared heap contract,
-`0xe65c` branch contract, macro definition append/count bookkeeping,
+`0xe65c` branch contract, `0xe65c` bridge into `0x13eb8` / `0x144d2` /
+`0x14c64` / `0xc428`, macro definition append/count bookkeeping,
 `0xa904` replay, and page-record/render effects because those are covered
 by disassembly, generated parser-table reports, and executable fixtures.
-Medium for the complete downstream font/resource rebuild after `0xe65c`.
+Medium for the resource-format field name behind `0xe860` bytes
+`+0x16` / `+0x20`.
 
 ### Fixtures
 
@@ -626,6 +648,7 @@ Medium for the complete downstream font/resource rebuild after `0xe65c`.
 - `0xe002 appends macro definition bytes into 0x100 chunks`
 - `0xe4f4/0xe22c produce and end data-chain frames`
 - `0xe65c refreshes macro font context entries`
+- `0xe65c refresh composes with font context bridge`
 - `0xe5e2 refreshes page layout, default VFC table, and static font
   context`
 - `0xe146/e418/e4f4/e65c macro context stack has eight records and no
@@ -652,6 +675,9 @@ Medium for the complete downstream font/resource rebuild after `0xe65c`.
 - `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`:
   `0xe65c..0xe9b8`, including context-stack pop, snapshot chain
   allocation, snapshot restore, and flat copy helpers.
+- `generated/analysis/ic30_ic13_font_context_bridge.md`:
+  `0x13eb8`, `0x144d2`, `0x14c64`, `0xc428`, page-root font slots, and
+  render-record context-slot bridge.
 - `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`:
   `0x164a..0x18d8`, including heap bitmap initialization, low/high
   allocation entries, zero-fill, and free entry setup.
@@ -669,10 +695,7 @@ Medium for the complete downstream font/resource rebuild after `0xe65c`.
 
 ### Unresolved Middle Edges
 
-- `0xe65c..0xe84c`: unresolved only at the full CPU-state bridge into
-  existing font-map contracts after `0x13eb8`, `0xc428`, `0x144d2`, and
-  `0x14c64`; branch flags, fallback install, and shared exit are pinned.
-- `0xe860..0xe886`: record-class byte meaning for the `+0x16` versus
+- `0xe860..0xe898`: record-class byte meaning for the `+0x16` versus
   `+0x20` returned values is still named by use, not by font format.
 
 ## Mixed Text/Rule/Raster Page Record

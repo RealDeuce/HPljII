@@ -650,6 +650,13 @@ context from `0x782c80`/`0x782c84` through `0x1b4c0`, `0x144d2`, and
 Helper `0xe860` supplies the static-record mismatch test from
 `0x782ee6 + 0x10 * slot`, returning pointed record byte `+0x16` or
 `+0x20` according to context byte `+4`.
+The `0xe65c` refresh decisions are now composed with the existing font
+bridge: primary refresh slot `0` runs through the modeled `0x13eb8`,
+`0x144d2`, and `0x14c64` path to map `0x782f32`; secondary refresh slot
+`1` runs through the same path to map `0x783032`; the final `0xc428`
+call installs the selected current-font context record into a page-root
+font slot. Fixture `0xe65c refresh composes with font context bridge`
+pins that connection.
 
 The macro context stack is now bounded by reset evidence rather than by
 the cursor-stack field. `0xe146` clears eight 10-byte records at
@@ -704,9 +711,8 @@ direct mixed-stream model. Execute, call, and mixed-control macro replay
 payloads now also cross `0x1ed84` and `0x1ef6a` before rendering. The
 composed semantic checkpoint is
 `Macro Definition And Data-Chain Replay` in
-`notes/semantic-state-model.md`; the remaining gaps are the full
-font-map bridge after `0xe65c` and the remaining font-context record byte
-meanings.
+`notes/semantic-state-model.md`; the remaining macro/font gap is the
+resource-format field name behind `0xe860` bytes `+0x16` and `+0x20`.
 
 Top-level `ESC &` enters mode 5. The normal table currently identifies
 these subfamilies:
@@ -786,12 +792,9 @@ control-code anchor.
   names.
 - Decode the six-byte tokenizer records and 12-byte command/data pool
   records.
-- Decode the full `0xe65c` bridge into the already-modeled font resource
-  maps now that the `0xe002` append/count path, `0xe418` layout,
-  snapshot chain helpers, heap initialization/allocation/free contract,
-  frame-end branches, `0xe65c` branch contract,
-  `0xe5e2` layout/VFC/static-font refresh, and macro context-stack
-  capacity are pinned.
+- Name the resource-format fields read by `0xe860..0xe898` at record
+  bytes `+0x16` and `+0x20`; the `0xe65c` branch contract and bridge
+  into `0x13eb8` / `0x144d2` / `0x14c64` / `0xc428` are now pinned.
 - Replace the remaining synthetic `ESC E` roots with fuller
   parser-allocated page objects; the current host-fetched publication
   fixtures already prove the modeled `0xff1e` publication headers,

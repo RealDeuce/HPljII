@@ -437,7 +437,10 @@ copy active words `0x783144`/`0x783146` to remembered words
 `0x782f08`/`0x782f0a`, pass selected slot `0x782f06` through `0xc428`,
 optionally rebuild selected context `0x782ee6 + 0x10*slot` from
 `0x782c80`/`0x782c84` through `0x1b4c0`, `0x144d2`, and `0x14c64`, then
-exit through `0x1b04c` with dirty flag `0x782f2d` cleared. The
+exit through `0x1b04c` with dirty flag `0x782f2d` cleared. Fixture
+`0xe65c refresh composes with font context bridge` now proves those
+refresh decisions feed `0x13eb8` map rebuilds at `0x782f32` / `0x783032`
+and the final `0xc428` page-root context install. The
 non-replay producer calls `0xe5e2` before writing frame byte `+9 = 4`;
 that helper refreshes top offset, text-bottom cache, margins, VFC line
 counts, default VFC table, modified-layout byte, and static
@@ -474,8 +477,8 @@ bucket/context bridge contract and feed `0x1ed84`/`0x1ef6a` before
 rendering. The composed semantic checkpoint is in
 `notes/semantic-state-model.md` under
 `Macro Definition And Data-Chain Replay`; the remaining macro gaps are
-the full CPU-state bridge from `0xe65c` into the existing font-map
-contracts and the remaining font-context record byte meanings.
+the resource-format field names behind `0xe860` record bytes `+0x16`
+and `+0x20`.
 
 The `ESC &f-123y0x1X` fixture is now also traced through ROM parser
 modes `0 -> 1 -> 5 -> 17 -> 17 -> 17 -> 0`, selecting `0xe112`,
@@ -952,9 +955,6 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   compatibility-facing documentation. The default-font candidate and
   caller path is now real-record backed through `0x1b250`, `0x1b50e`,
   `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
-- Decode the full `0xe65c` CPU-state bridge into already-modeled font
-  maps now that the `0xe002` append/count path, `0xe418` layout,
-  snapshot chain helpers, heap initialization/allocation/free,
-  frame-end branches, `0xe65c` branch contract,
-  `0xe5e2` layout/VFC/static-font refresh, and macro context-stack
-  capacity are pinned.
+- Name the resource-format fields read by `0xe860..0xe898` at record
+  bytes `+0x16` and `+0x20`; the `0xe65c` branch contract and bridge
+  into `0x13eb8` / `0x144d2` / `0x14c64` / `0xc428` are now pinned.

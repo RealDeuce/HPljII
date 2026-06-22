@@ -1051,6 +1051,7 @@ fixtures.
 - `unflagged printable d4ac low-watermark flush renders span`
 - `d4ac and d8fc span consumer branch family controls flush output`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
+- `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `0x1354a portrait text span split queues adjacent buckets`
 - `0x12714 landscape span inserts into nonempty fixed list`
 - `0x12714 allocation failure publishes page and retries span`
@@ -1088,8 +1089,10 @@ fixtures.
   host-fetched type-0 downloaded payload copying descriptor bytes into this
   span consumer, and fixture
   `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
-  proves the same copied fields for a host-fetched type-2 payload. Both change
-  visible segment-list rows. Fixture
+  proves the same copied fields for a host-fetched type-2 payload. Fixture
+  `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
+  proves the same copied fields for a host-fetched type-1 payload. All three
+  change visible segment-list rows. Fixture
   `d4ac and d8fc span consumer branch family controls flush output` covers
   the disabled, before-lower, beyond-page, and high-x-only consumer branches.
   Broader descriptor-value and producer-side validation/error branches remain
@@ -1101,8 +1104,10 @@ fixtures.
   host-fetched type-0 bit-30 downloaded payload copying descriptor words
   into this span consumer, and fixture
   `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
-  proves the same copied fields for a host-fetched type-2 payload. Both change
-  visible segment-list rows. Fixture
+  proves the same copied fields for a host-fetched type-2 payload. Fixture
+  `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
+  proves the same copied fields for a host-fetched type-1 payload. All three
+  change visible segment-list rows. Fixture
   `d4ac and d8fc span consumer branch family controls flush output` covers
   the disabled, before-lower, beyond-page, and high-x-only consumer branches.
   Broader descriptor-value and producer-side validation/error branches remain
@@ -1375,6 +1380,7 @@ legal metric combination have not been page-compared.
 - `ESC )s80W invalid resource type fails validation before allocation`
 - `ESC )s80W reversed resource range fails validation before allocation`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
+- `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `0x16498-backed downloaded character object renders segmented-wide compact
   row`
 - `host-fetched linear downloaded character stream renders through 0x168dc`
@@ -1427,10 +1433,10 @@ legal metric combination have not been page-compared.
   bit-30-clear extended fixed-record case; the remaining release risk is
   broader variant coverage, not this control-flow edge.
 - The span-metric bridge in `notes/font-context-metrics.md` now covers
-  host-fetched type-0 and type-2 downloaded payloads for both span consumers,
-  and the shared consumer branch family is fixture-backed. It still needs
-  broader metric-byte values and producer-side validation/error page evidence
-  beyond the invalid-type and reversed-range no-install boundaries.
+  host-fetched type-0, type-1, and type-2 downloaded payloads for both span
+  consumers, and the shared consumer branch family is fixture-backed. It still
+  needs broader metric-byte values and producer-side validation/error page
+  evidence beyond the invalid-type and reversed-range no-install boundaries.
 
 ## Macro Definition And Data-Chain Replay
 

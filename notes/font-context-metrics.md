@@ -33,6 +33,7 @@ Evidence:
   - `host-fetched 0x1719c payload metrics feed d4ac span rows`
   - `host-fetched 0x1719c payload metrics feed d8fc span rows`
   - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
+  - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
 
 ## Concept
 
@@ -375,6 +376,17 @@ work can close the right gap instead of re-tracing already-covered consumers.
   `+0x2c`, and `+0x2d`, and renders a flagged pointer glyph while `0xd8fc`
   consumes `+0x16`, `+0x18`, and `+0x1a`. Status: parser-produced type-2
   resource payload to visible unflagged and flagged span rows.
+- Claim: the type-1 payload form uses the same copied metric fields and
+  consumer contracts. Evidence: fixture
+  `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`;
+  host-fetched `ESC )s80W` validates a descriptor whose setup byte produces
+  payload byte `+0x0c = 1`, payload units `0x100`, allocation size `18`, and
+  installed candidate longword `0x40000000`. The fixture installs a fixed-record
+  glyph for the unflagged `0xd4ac` path and a pointer-table glyph for the
+  flagged `0xd8fc` path, then proves the same payload fields `+0x2b`,
+  `+0x2c`, `+0x2d`, `+0x16`, `+0x18`, and `+0x1a` affect visible span rows.
+  Status: parser-produced type-1 resource payload to visible unflagged and
+  flagged span rows.
 - Claim: the two span consumers have the same documented branch contract
   around the metric fields. Evidence: fixture
   `d4ac and d8fc span consumer branch family controls flush output`; handlers
@@ -385,12 +397,12 @@ work can close the right gap instead of re-tracing already-covered consumers.
   metric values for both source forms.
 
 The remaining unresolved middle edge is therefore not the tested `0x1719c`
-type-0 or type-2 metric paths into either `0xd4ac` or `0xd8fc`: both payload
-forms now have host-fetched evidence through visible span rows, and the
-consumer-side disabled, lower-bound, page-extent, and high-x branches are
-fixture-backed for both selected source forms. The open producer-side work is
-broader descriptor coverage: more metric-byte values and validation/error forms
-driven from parser bytes to page rows.
+type-0, type-1, or type-2 metric paths into either `0xd4ac` or `0xd8fc`: all
+three payload forms now have host-fetched evidence through visible span rows,
+and the consumer-side disabled, lower-bound, page-extent, and high-x branches
+are fixture-backed for both selected source forms. The open producer-side work
+is broader descriptor coverage: more metric-byte values and validation/error
+forms driven from parser bytes to page rows.
 
 ## Macro And Control Re-entry
 
@@ -444,7 +456,7 @@ A byte-stream reproduction must preserve these behaviors:
 - The exact metric-byte provenance for all downloaded/inline forms remains
   incomplete at the parser-produced page boundary. Existing host-stream
   downloaded-font fixtures prove install, visible glyph rendering, and
-  `0x1719c` type-0 and type-2 payloads feeding both `0xd4ac` and `0xd8fc` span
-  rows; the shared span-consumer branch family is also fixture-backed. The
-  remaining gap is broader descriptor metric-byte values and validation/error
-  forms.
+  `0x1719c` type-0, type-1, and type-2 payloads feeding both `0xd4ac` and
+  `0xd8fc` span rows; the shared span-consumer branch family is also
+  fixture-backed. The remaining gap is broader descriptor metric-byte values
+  and validation/error forms.

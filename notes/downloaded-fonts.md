@@ -62,6 +62,7 @@ Primary fixtures:
 - `0x16fae/0x1719c-backed type-2 inline payload maps constructed compact renderer
   records`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
+- `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `0x16498-backed downloaded character object renders segmented-wide compact row`
 - `downloaded character stream ties ROM parser dispatch to rendered object`
 - `host-fetched downloaded character stream reaches rendered object`
@@ -370,6 +371,15 @@ then reuses the copied payload metric fields with type-2 glyph shapes:
   `0xd8fc`, high-y `16`, segment-list key `0x0406`, and visible span rows
   before the compact glyph.
 
+A type-1 companion follows the same parser-produced boundary with setup byte
+`+0x0c = 1`, payload units `0x100`, allocation size `18`, and candidate
+longword `0x40000000`. Fixture
+`host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
+uses the same fixed-record and pointer-table glyph shapes as the type-2 metric
+fixture, but proves the type-1 header still feeds `0xd4ac` from bytes
+`+0x2b`, `+0x2c`, and `+0x2d`, and `0xd8fc` from words `+0x16`, `+0x18`, and
+`+0x1a`, with visible span rows.
+
 ## Descriptor Validation And Payload Header
 
 `0x16fae` is a table-driven descriptor validator:
@@ -506,8 +516,10 @@ payload, writes word `+0x08 = 0x004a`, and, if symbols exist, writes payload
 Fixture values:
 
 - type-0 units `0x80` allocate size `10`.
+- type-1 units `0x100` allocate size `18`.
 - type-2 units `0x100` allocate size `18`.
 - type-0 optional-symbol offset is `0x024a`.
+- type-1 optional-symbol offset is `0x044a`.
 - type-2 optional-symbol offset is `0x044a`.
 
 ## Downloaded Character Payload And Rendering
@@ -935,9 +947,10 @@ A byte-stream renderer must preserve:
   isolation control. The integrated `ESC )s80W` install path currently proves
   the bit-30 offset-table form.
 - The span-metric fields documented in `notes/font-context-metrics.md` are now
-  tied to installed payload headers for the `0xd4ac` and `0xd8fc` type-0 and
-  type-2 fixtures, and the shared consumer branch family is fixture-backed.
-  The invalid-resource-type and reversed-range resource paths now have
+  tied to installed payload headers for the `0xd4ac` and `0xd8fc` type-0,
+  type-1, and type-2 fixtures, and the shared consumer branch family is
+  fixture-backed. The invalid-resource-type and reversed-range resource paths
+  now have
   host-fetched parser/validation/no-install boundaries. Broader
   downloaded/inline metric-byte values and the remaining producer-side
   validation/error forms still need parser-produced page evidence.

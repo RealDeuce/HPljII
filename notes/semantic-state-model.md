@@ -1149,7 +1149,6 @@ compact text renderer.
   - staged header `0x7827de`: copied into allocated payloads by `0x1719c`.
 - Unknown:
   - exact manual names for all 32 `0x16fae` validation predicates.
-  - allocation-failure release variants around resource teardown.
 
 ### Writers
 
@@ -1159,7 +1158,16 @@ compact text renderer.
 - `0x15d0a` writes `0x783140`, reads descriptor bytes through `0x1599c`, and
   routes to `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`.
 - `0x16c14` writes current-record ids/payloads, candidate flags/counters, and
-  installed counts.
+  installed counts. For an existing-record replacement, it calls `0x1887a`
+  before allocation; fixture
+  `0x16c14 allocation failure releases existing payload through 0x1887a`
+  proves that the old payload is released even when the later allocation exits
+  through `skip-allocation-failed`.
+- `0x1887a` clears the current-record id/payload and flag bits `4..7`,
+  decrements marked/unmarked and class counters, shifts class-one cursors,
+  clears matching continuation fields, marks matching context-stack bytes,
+  deletes the candidate slot through `0x1bd2e`, refreshes matching active
+  contexts through `0x179aa`, and finishes with `0x1b04c`.
 - `0x16fae`, `0x17362`, `0x17026`, and `0x1719c` validate, stage, allocate,
   and initialize font-resource payload headers.
 - `0x168dc` and `0x16942` copy downloaded glyph bitmap bytes and save
@@ -1199,6 +1207,12 @@ compact text renderer.
 - `0x17a24` reads bit-30 offset-table payload words `+0x08`, `+0x0e`, and
   `+0x10`, the selected 4-byte table entry, active primary/secondary context
   pointers, and continuation state.
+- `0x1887a` reads the candidate longword from `0x1b4c0`, class bytes
+  `+0x16` or `+0x20`, current-record flag bit `6`, continuation payload
+  `0x7827da`, the eight-entry context stack at `0x782c1e`, default resolver
+  state through `0x1b50e`, and active primary/secondary context pointers.
+  Its helper branch reads fixed-record byte `+0x0e` through `0x18bf2` or
+  offset-table range words `+0x0e/+0x10` through `0x18b92`.
 - `0x1bc38` inserts installed payloads into the candidate list.
 - `0x14c64` consumes installed candidate longwords and payload headers to
   build active maps.
@@ -1257,12 +1271,21 @@ bit-30 sibling: `0x17d7c` dispatches to `0x17a24`, which validates range words
 clears char `0x21` table entry `00 00 02 40` to zero at payload
 `+0x004a + 4 * 0x21`, records active-secondary refresh `0x7828de = 1`, and
 clears the matching continuation fields.
+Fixture `0x16c14 allocation failure releases existing payload through
+0x1887a` has no direct pixel output because it is a failed replacement path.
+Its output contract is state cleanup: old current-record payload `0x123456`
+is cleared, candidate slot `0x782328` is deleted, extended fixed-record
+cleanup runs through `0x18bf2`/`0x18090` for characters `0x21..0x7f` and
+`0xa0..0xff`, continuation state is zeroed, context stack bytes `+8` and `+9`
+are marked for matching primary/secondary entries, secondary active context
+refreshes through `0x179aa(1)`, and no new candidate or payload is installed.
 
 ### Confidence
 
-High for command dispatch, current-record state, staged header fields, payload
-allocation, installed downloaded-character object, and visible row, because
-the fixtures tie host-fetched streams to parser records and render rows.
+High for command dispatch, current-record state, existing-record release
+ordering before allocation failure, staged header fields, payload allocation,
+installed downloaded-character object, and visible row, because the fixtures
+tie host-fetched streams to parser records, teardown state, and render rows.
 Medium for the complete soft-font grammar because every predicate is
 executable but not fully named, and every legal metric combination has not
 been page-compared.
@@ -1280,6 +1303,7 @@ been page-compared.
 - `0x15c4c failed resource resume releases fixed-record object`
 - `0x17d7c releases extended fixed-record table with secondary refresh`
 - `0x17d7c delegates bit-30 release to offset-table helper`
+- `0x16c14 allocation failure releases existing payload through 0x1887a`
 - `host-fetched 0x15d0a split-plane continuation resource object resumes
   fixed-record render`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
@@ -1295,6 +1319,9 @@ been page-compared.
 - `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`
 - `generated/disasm/ic30_ic13_font_fixed_record_release_017a24.lst`
 - `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`
+- `generated/disasm/ic30_ic13_font_resource_payload_link_01887a.lst`
+- `generated/disasm/ic30_ic13_font_resource_release_018b92.lst`
+- `generated/disasm/ic30_ic13_font_resource_release_alt_018bf2.lst`
 - `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`
 - `generated/disasm/ic30_ic13_font_resource_find_017026.lst`
 - `generated/disasm/ic30_ic13_font_resource_payload_initializer_01719c.lst`
@@ -1310,8 +1337,10 @@ been page-compared.
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through
   `0x17a24`. Fixed-record secondary-context refresh and fixed-record
-  extended-table release are fixture-backed together. Allocation-failure
-  release through `0x1887a` still needs fixture coverage.
+  extended-table release are fixture-backed together. Current-record
+  allocation-failure release through `0x1887a` is fixture-backed for the
+  bit-30-clear extended fixed-record case; the remaining release risk is
+  broader variant coverage, not this control-flow edge.
 - The span-metric bridge in `notes/font-context-metrics.md` now covers
   host-fetched type-0 and type-2 downloaded payloads for both span consumers,
   and the shared consumer branch family is fixture-backed. It still needs

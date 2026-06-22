@@ -180,8 +180,10 @@ pixels or byte-stream compatibility.
    bit-30-clear even-span and split-plane continuation resume, status-0
    fixed-record release, bit-30 offset-table release delegate, split-plane
    character-object, linear character-object, and downloaded-glyph render paths
-   in `notes/downloaded-fonts.md`. The full soft-font descriptor grammar,
-   alternate character modes, allocation-failure release variants, and all
+   in `notes/downloaded-fonts.md`. The `0x16c14` existing-record
+   allocation-failure teardown through `0x1887a` is fixture-backed for the
+   bit-30-clear extended fixed-record case. The full soft-font descriptor
+   grammar, alternate character modes, other release variants, and all
    validation/error behaviors are still not proven against every PCL form.
 5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not

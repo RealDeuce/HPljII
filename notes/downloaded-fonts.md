@@ -242,7 +242,8 @@ Fixture values:
 - `0x16c80..0x16c92`: existing records release the old payload through
   `0x1887a`.
 - `0x16ca4..0x16cb6`: `0x17026` validates, allocates, and initializes a
-  payload. Failure falls back to byte-budget skip.
+  payload. Failure falls back to byte-budget skip after any existing-record
+  release has already run.
 - `0x16cb8..0x16cc8`: `0x1bc38` inserts the new payload into the candidate
   list and returns the candidate slot pointer in `D7`.
 - `0x16cca..0x16cf8`: candidate flags are normalized: bit `3` is cleared,
@@ -268,6 +269,31 @@ The `ESC )s80W` fixture proves the parser-to-install boundary:
   candidate list head.
 - `0x14c64` later dispatches that candidate as an offset-table resource,
   selecting symbol `0x1234` and range `0x0000..0x007f`.
+
+The allocation-failure fixture
+`0x16c14 allocation failure releases existing payload through 0x1887a` starts
+with a current-record hit for id `0x1234`, record flags `0x40`, old payload
+`0x123456`, and `allocation_ok = False`. Disassembly
+`generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst` places the
+existing-record call to `0x1887a` at `0x16c80..0x16c92`, before the allocation
+failure skip at `0x16ca4..0x16cb6`; the fixture therefore releases the old
+payload and only then returns budget action `skip-allocation-failed`.
+
+The release helper evidence is
+`generated/disasm/ic30_ic13_font_resource_payload_link_01887a.lst`,
+`generated/disasm/ic30_ic13_font_resource_release_018b92.lst`, and
+`generated/disasm/ic30_ic13_font_resource_release_alt_018bf2.lst`. For the
+bit-30-clear class-one fixture, `0x1887a` dispatches to `0x18bf2`, which calls
+`0x18090` for 191 fixed-record characters because payload byte `+0x0e = 1`.
+It clears the current-record id and payload, clears flag bits `4..7`,
+decrements marked-record count `0x782786`, total counters `0x78278e` and
+`0x78278a`, class-one counters `0x782796` and `0x782790`, and class-one
+cursors `0x7827ac`, `0x7827b0`, and `0x7827b4` by four. It deletes the
+matching candidate slot through `0x1bd2e`, clears matching continuation fields
+`0x7827c6/da/c8/ca/ce/d2/d6/d8`, marks matching context-stack primary byte
+`+8` and secondary byte `+9`, refreshes the matching secondary active context
+through `0x179aa(1)`, and calls `0x1b04c`. No new candidate or record payload
+is installed on this failure exit.
 
 The same fixture path from host fetch drains the full `ESC )s80W` stream from
 the modeled `0xa904` ring source and reaches the same restored record,
@@ -535,8 +561,13 @@ instead of the fixed-record rewrite body. The fixture sets payload word `+8 =
 `0x17a24` validates the range at `0x17a44..0x17a60`, clears the offset-table
 entry at payload `+0x004a + 4 * 0x21` from `00 00 02 40` to
 `00 00 00 00`, refreshes the matching active secondary context with
-`0x7828de = 1`, and clears matching continuation state. The untested release
-variant in this cluster is allocation-failure release through `0x1887a`.
+`0x7828de = 1`, and clears matching continuation state.
+
+The current-record allocation-failure release fixture named above covers the
+remaining `0x1887a` teardown edge for a bit-30-clear extended fixed-record
+payload: it proves record clearing, candidate deletion, continuation clearing,
+context-stack dirty marking, active-context refresh, counter/cursor decrement,
+and the final `0x1b04c` refresh even when `0x16c14` installs no replacement.
 
 ## End-To-End Downloaded Glyph Path
 
@@ -731,8 +762,9 @@ A byte-stream renderer must preserve:
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through
   `0x17a24`. Fixed-record secondary-context refresh and fixed-record
-  extended-table release are fixture-backed together. Allocation-failure
-  release through `0x1887a` still needs fixture coverage.
+  extended-table release are fixture-backed together. Current-record
+  allocation-failure teardown through `0x1887a` is fixture-backed for the
+  bit-30-clear extended fixed-record case.
 - `0x14c64..0x14eb6`: the `0x1719c` bit-30-clear fixed-record path is an
   isolation control. The integrated `ESC )s80W` install path currently proves
   the bit-30 offset-table form.

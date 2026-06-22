@@ -6481,6 +6481,174 @@ def font_cursor_defaults() -> dict[str, int]:
 FONT_CANDIDATE_LIST_BASE = 0x782324
 
 
+def font_resource_payload_release_via_1887a(
+    records: list[dict[str, int]],
+    *,
+    record_index: int,
+    payload: int,
+    candidate_longword: int,
+    payload_byte_0x0e: int = 0,
+    payload_byte_0x16: int = 0,
+    payload_byte_0x20: int = 0,
+    payload_first_char_0x0e: int = 0,
+    payload_last_char_0x10: int = 0,
+    counters: dict[str, int] | None = None,
+    cursors: dict[str, int] | None = None,
+    continuation: dict[str, int] | None = None,
+    candidates: list[int] | None = None,
+    candidate_base: int = FONT_CANDIDATE_LIST_BASE,
+    active_primary_context: int | None = None,
+    active_secondary_context: int | None = None,
+    context_stack: list[dict[str, int]] | None = None,
+    default_resolver_matches: bool = False,
+) -> dict[str, object]:
+    updated_records = [dict(record) for record in records]
+    updated_counters = font_counter_defaults()
+    if counters:
+        updated_counters.update(counters)
+    updated_cursors = font_cursor_defaults()
+    if cursors:
+        updated_cursors.update(cursors)
+    updated_continuation = dict(continuation) if continuation else None
+    masked_payload = int(payload) & 0x00FFFFFF
+    longword = int(candidate_longword) & 0xFFFFFFFF
+    bit30 = bool((longword >> 30) & 1)
+
+    record = dict(updated_records[int(record_index)])
+    record_flag_bit6 = bool(int(record.get("flags", 0)) & 0x40)
+    class_one = (
+        (int(payload_byte_0x20) & 0xFF) == 1
+        if bit30
+        else (int(payload_byte_0x16) & 0xFF) == 1
+    )
+
+    if bit30:
+        cleanup_helper = 0x18B92
+        first_char = int(payload_first_char_0x0e) & 0xFFFF
+        last_char = int(payload_last_char_0x10) & 0xFFFF
+        cleanup_chars = list(range(first_char, last_char + 1)) if last_char >= first_char else []
+        char_cleanup_call = "0x17fa2"
+    else:
+        cleanup_helper = 0x18BF2
+        cleanup_chars = list(range(0x21, 0x80))
+        if int(payload_byte_0x0e) & 0xFF:
+            cleanup_chars.extend(range(0xA0, 0x100))
+        char_cleanup_call = "0x18090"
+
+    updated_records[int(record_index)] = {
+        **record,
+        "id": 0,
+        "flags": int(record.get("flags", 0)) & ~0xF0,
+        "payload": 0,
+    }
+
+    if record_flag_bit6:
+        updated_counters["0x782786"] = int(updated_counters.get("0x782786", 0)) - 1
+        record_count_branch = "marked"
+    else:
+        updated_counters["0x782782"] = int(updated_counters.get("0x782782", 0)) - 1
+        record_count_branch = "unmarked"
+
+    updated_counters["0x78278e"] = int(updated_counters.get("0x78278e", 0)) - 1
+    updated_counters["0x78278a"] = int(updated_counters.get("0x78278a", 0)) - 1
+    if class_one:
+        updated_counters["0x782796"] = int(updated_counters.get("0x782796", 0)) - 1
+        updated_counters["0x782790"] = int(updated_counters.get("0x782790", 0)) - 1
+        for key in ("0x7827ac", "0x7827b0", "0x7827b4"):
+            updated_cursors[key] = int(updated_cursors.get(key, 0)) - 4
+        class_branch = "class-one"
+    else:
+        updated_counters["0x78279e"] = int(updated_counters.get("0x78279e", 0)) - 1
+        updated_counters["0x782798"] = int(updated_counters.get("0x782798", 0)) - 1
+        class_branch = "class-zero"
+
+    candidate_delete = None
+    updated_candidates = list(candidates) if candidates is not None else None
+    if updated_candidates is not None:
+        delete_index = next(
+            (
+                index
+                for index, candidate in enumerate(updated_candidates)
+                if (int(candidate) & 0x00FFFFFF) == masked_payload
+            ),
+            None,
+        )
+        if delete_index is not None:
+            removed = int(updated_candidates.pop(delete_index)) & 0xFFFFFFFF
+            candidate_delete = {
+                "helper": 0x1BD2E,
+                "index": delete_index,
+                "slot_pointer": candidate_base + delete_index * 4,
+                "removed": removed,
+            }
+
+    continuation_cleared = bool(
+        updated_continuation
+        and int(updated_continuation.get("flag", 0)) == 1
+        and (int(updated_continuation.get("payload", 0)) & 0x00FFFFFF) == masked_payload
+    )
+    if continuation_cleared and updated_continuation is not None:
+        updated_continuation = clear_download_continuation_state(updated_continuation)
+
+    updated_context_stack = [dict(entry) for entry in (context_stack or [])]
+    context_marks: list[dict[str, int | str]] = []
+    for index, entry in enumerate(updated_context_stack[:8]):
+        if (int(entry.get("primary", 0)) & 0x00FFFFFF) == masked_payload:
+            entry["primary_dirty"] = 1
+            context_marks.append({"entry": index, "slot": "primary", "byte": 8})
+        if (int(entry.get("secondary", 0)) & 0x00FFFFFF) == masked_payload:
+            entry["secondary_dirty"] = 1
+            context_marks.append({"entry": index, "slot": "secondary", "byte": 9})
+
+    active_refresh: list[dict[str, int | str]] = []
+    if active_primary_context is not None and (int(active_primary_context) & 0x00FFFFFF) == masked_payload:
+        active_refresh.append({"slot": "primary", "helper": "0x179aa", "argument": 0})
+    if active_secondary_context is not None and (int(active_secondary_context) & 0x00FFFFFF) == masked_payload:
+        active_refresh.append({"slot": "secondary", "helper": "0x179aa", "argument": 1})
+
+    calls = [
+        "0x1b4c0",
+        "0x196c4",
+        hex(cleanup_helper),
+        char_cleanup_call,
+        "0x18b4",
+        *(["0x1bd2e"] if candidate_delete else []),
+        *(["0x6364"] if default_resolver_matches else []),
+        *(["0x179aa"] if active_refresh else []),
+        "0x1b04c",
+    ]
+
+    return {
+        "handler": 0x1887A,
+        "payload": masked_payload,
+        "record_index": int(record_index),
+        "record_before": record,
+        "records": updated_records,
+        "candidate_longword": longword,
+        "bit30": bit30,
+        "class_branch": class_branch,
+        "record_count_branch": record_count_branch,
+        "cleanup_helper": cleanup_helper,
+        "char_cleanup_call": char_cleanup_call,
+        "cleanup_char_count": len(cleanup_chars),
+        "cleanup_char_edges": (
+            cleanup_chars[0] if cleanup_chars else None,
+            cleanup_chars[-1] if cleanup_chars else None,
+        ),
+        "counters": updated_counters,
+        "cursors": updated_cursors,
+        "candidate_delete": candidate_delete,
+        "candidates": updated_candidates,
+        "continuation_cleared": continuation_cleared,
+        "continuation": updated_continuation,
+        "context_stack": updated_context_stack,
+        "context_marks": context_marks,
+        "default_resolver_refresh": bool(default_resolver_matches),
+        "active_refresh": active_refresh,
+        "calls": calls,
+    }
+
+
 def font_candidate_object_insert_via_1bc38(
     candidates: list[int],
     payload: int,
@@ -9042,6 +9210,16 @@ def downloaded_font_object_add_bookkeeping_via_16c14(
     new_payload: int,
     byte20: int,
     byte0c: int,
+    old_payload_candidate_longword: int | None = None,
+    old_payload_byte0e: int = 0,
+    old_payload_byte16: int = 0,
+    old_payload_byte20: int = 0,
+    old_payload_first_char: int = 0,
+    old_payload_last_char: int = 0,
+    active_primary_context: int | None = None,
+    active_secondary_context: int | None = None,
+    context_stack: list[dict[str, int]] | None = None,
+    default_resolver_matches: bool = False,
     counters: dict[str, int] | None = None,
     cursors: dict[str, int] | None = None,
     continuation: dict[str, int] | None = None,
@@ -9059,6 +9237,7 @@ def downloaded_font_object_add_bookkeeping_via_16c14(
     if cursors:
         updated_cursors.update(cursors)
     updated_continuation = dict(continuation) if continuation else None
+    updated_context_stack = [dict(entry) for entry in (context_stack or [])]
 
     budget_action = "accept"
     scan = font_resource_record_scan_via_172c0(updated_records, current_id)
@@ -9071,6 +9250,48 @@ def downloaded_font_object_add_bookkeeping_via_16c14(
     elif not allocation_ok:
         budget_action = "skip-allocation-failed"
 
+    release = None
+    record_index = scan["index"] if isinstance(scan["index"], int) else None
+    replacement = None
+    if budget_action not in {"skip-parser-mode", "skip-no-record-slot"} and scan["status"] == 0:
+        assert record_index is not None
+        old_payload = int(updated_records[record_index].get("payload", 0)) & 0x00FFFFFF
+        release = font_resource_payload_release_via_1887a(
+            updated_records,
+            record_index=record_index,
+            payload=old_payload,
+            candidate_longword=(
+                old_payload_candidate_longword
+                if old_payload_candidate_longword is not None
+                else old_payload
+            ),
+            payload_byte_0x0e=old_payload_byte0e,
+            payload_byte_0x16=old_payload_byte16,
+            payload_byte_0x20=old_payload_byte20,
+            payload_first_char_0x0e=old_payload_first_char,
+            payload_last_char_0x10=old_payload_last_char,
+            counters=updated_counters,
+            cursors=updated_cursors,
+            continuation=updated_continuation,
+            candidates=candidates,
+            candidate_base=candidate_base,
+            active_primary_context=active_primary_context,
+            active_secondary_context=active_secondary_context,
+            context_stack=updated_context_stack,
+            default_resolver_matches=default_resolver_matches,
+        )
+        updated_records = list(release["records"])  # type: ignore[arg-type]
+        updated_counters = dict(release["counters"])  # type: ignore[arg-type]
+        updated_cursors = dict(release["cursors"])  # type: ignore[arg-type]
+        updated_continuation = release["continuation"]  # type: ignore[assignment]
+        updated_context_stack = list(release["context_stack"])  # type: ignore[arg-type]
+        replacement = {
+            "record_index": record_index,
+            "released_payload": old_payload,
+            "release_called": True,
+            "continuation_cleared": bool(release["continuation_cleared"]),
+        }
+
     if budget_action != "accept":
         return {
             "status": int(scan["status"]) if parser_mode != 2 else None,
@@ -9079,35 +9300,26 @@ def downloaded_font_object_add_bookkeeping_via_16c14(
             "counters": updated_counters,
             "cursors": updated_cursors,
             "continuation": updated_continuation,
+            "context_stack": updated_context_stack,
             "budget_action": budget_action,
             "candidate_flags": None,
             "candidate_insert": None,
-            "candidates": list(candidates) if candidates is not None else None,
-            "replacement": None,
-            "record_index": None,
+            "candidates": (
+                release["candidates"] if release else list(candidates) if candidates is not None else None
+            ),
+            "replacement": replacement,
+            "release": release,
+            "record_index": record_index,
         }
 
-    record_index = scan["index"]
-    assert isinstance(record_index, int)
-    replacement = None
-    if scan["status"] == 0:
-        old_payload = int(updated_records[record_index].get("payload", 0)) & 0x00FFFFFF
-        continuation_cleared = bool(
-            updated_continuation
-            and int(updated_continuation.get("flag", 0)) == 1
-            and (int(updated_continuation.get("payload", 0)) & 0x00FFFFFF) == old_payload
-        )
-        if continuation_cleared and updated_continuation is not None:
-            updated_continuation = clear_download_continuation_state(updated_continuation)
-        replacement = {
-            "record_index": record_index,
-            "released_payload": old_payload,
-            "release_called": True,
-            "continuation_cleared": continuation_cleared,
-        }
+    assert record_index is not None
 
     candidate_insert = None
-    updated_candidates = list(candidates) if candidates is not None else None
+    updated_candidates = (
+        list(release["candidates"])  # type: ignore[index]
+        if release and release["candidates"] is not None
+        else list(candidates) if candidates is not None else None
+    )
     candidate_flags = int(initial_candidate_flags) & 0xFFFFFFFF
     if updated_candidates is not None:
         candidate_insert = font_candidate_object_insert_via_1bc38(
@@ -9132,6 +9344,7 @@ def downloaded_font_object_add_bookkeeping_via_16c14(
                 "candidate_insert": candidate_insert,
                 "candidates": updated_candidates,
                 "replacement": replacement,
+                "release": release,
                 "record_index": record_index,
             }
         updated_candidates = list(candidate_insert["candidates"])  # type: ignore[arg-type]
@@ -9179,8 +9392,10 @@ def downloaded_font_object_add_bookkeeping_via_16c14(
         "candidate_insert": candidate_insert,
         "candidates": updated_candidates,
         "replacement": replacement,
+        "release": release,
         "record_index": record_index,
         "counter_branch": counter_branch,
+        "context_stack": updated_context_stack,
     }
 
 
@@ -34356,7 +34571,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         new_payload=0x456789,
         byte20=1,
         byte0c=2,
-        counters={"0x78278e": 5, "0x78278a": 11, "0x782782": 7},
+        old_payload_candidate_longword=0x00123456,
+        old_payload_byte16=1,
+        counters={
+            "0x78278e": 5,
+            "0x78278a": 11,
+            "0x782782": 7,
+            "0x782786": 4,
+            "0x782790": 2,
+            "0x782796": 2,
+        },
         cursors={"0x7827ac": 0x20, "0x7827b0": 0x30, "0x7827b4": 0x40},
         continuation={
             "flag": 1,
@@ -34387,18 +34611,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "candidate_flags": 0x44000088,
         "counter_branch": "byte20-one",
         "counters": {
-            "0x78278e": 6,
-            "0x782790": 1,
-            "0x782796": 1,
+            "0x78278e": 5,
+            "0x782790": 2,
+            "0x782796": 2,
             "0x782798": 0,
             "0x78279e": 0,
-            "0x78278a": 12,
+            "0x78278a": 11,
             "0x782782": 8,
+            "0x782786": 3,
         },
         "cursors": {
-            "0x7827ac": 0x24,
-            "0x7827b0": 0x34,
-            "0x7827b4": 0x44,
+            "0x7827ac": 0x20,
+            "0x7827b0": 0x30,
+            "0x7827b4": 0x40,
         },
         "replacement": {
             "record_index": 0,
@@ -34424,7 +34649,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         new_payload=0x220000,
         byte20=1,
         byte0c=2,
-        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        old_payload_candidate_longword=0x00123456,
+        old_payload_byte16=1,
+        counters={
+            "0x78278e": 3,
+            "0x782790": 2,
+            "0x782796": 1,
+            "0x782798": 1,
+            "0x78278a": 1,
+            "0x782786": 1,
+        },
         cursors={
             "0x7827a0": FONT_CANDIDATE_LIST_BASE,
             "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
@@ -34459,19 +34693,173 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "candidates": [0x00210000, 0x44220000, 0x00230000, 0x00410000],
         "counters": {
-            "0x78278e": 4,
-            "0x782790": 3,
+            "0x78278e": 3,
+            "0x782790": 2,
             "0x782796": 1,
             "0x782798": 1,
             "0x78279e": 0,
             "0x78278a": 1,
             "0x782782": 1,
+            "0x782786": 0,
         },
         "cursors": {
             "0x7827a0": FONT_CANDIDATE_LIST_BASE,
-            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 16,
-            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 16,
-            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 16,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+        },
+    }))
+
+    font_release_allocation_fail = downloaded_font_object_add_bookkeeping_via_16c14(
+        [{"id": 0x1234, "flags": 0x40, "payload": 0x123456}],
+        current_id=0x1234,
+        new_payload=0x999999,
+        byte20=1,
+        byte0c=2,
+        old_payload_candidate_longword=0x00123456,
+        old_payload_byte0e=1,
+        old_payload_byte16=1,
+        counters={
+            "0x78278e": 5,
+            "0x78278a": 9,
+            "0x782786": 3,
+            "0x782790": 2,
+            "0x782796": 2,
+            "0x782798": 4,
+            "0x78279e": 4,
+        },
+        cursors={"0x7827ac": 0x40, "0x7827b0": 0x50, "0x7827b4": 0x60},
+        continuation={
+            "flag": 1,
+            "payload": 0x123456,
+            "word_0x7827c8": 0x21,
+            "dest": 0x0100,
+            "trailing_dest": 0,
+            "remaining": 7,
+            "d4_counter": 1,
+            "d3_counter": 2,
+        },
+        candidates=[0x00100000, 0x00123456, 0x00200000],
+        context_stack=[
+            {"primary": 0x123456, "secondary": 0x654321},
+            {"primary": 0x222222, "secondary": 0x123456},
+        ],
+        active_secondary_context=0x123456,
+        default_resolver_matches=True,
+        allocation_ok=False,
+    )
+    font_release_allocation = font_release_allocation_fail["release"]
+    assert isinstance(font_release_allocation, dict)
+    checks.append(assert_equal("0x16c14 allocation failure releases existing payload through 0x1887a", {
+        "status": font_release_allocation_fail["status"],
+        "budget_action": font_release_allocation_fail["budget_action"],
+        "record_index": font_release_allocation_fail["record_index"],
+        "records": font_release_allocation_fail["records"],
+        "replacement": font_release_allocation_fail["replacement"],
+        "candidate_flags": font_release_allocation_fail["candidate_flags"],
+        "candidate_insert": font_release_allocation_fail["candidate_insert"],
+        "release": {
+            key: font_release_allocation[key]
+            for key in (
+                "handler",
+                "payload",
+                "record_index",
+                "candidate_longword",
+                "bit30",
+                "class_branch",
+                "record_count_branch",
+                "cleanup_helper",
+                "char_cleanup_call",
+                "cleanup_char_count",
+                "cleanup_char_edges",
+                "counters",
+                "cursors",
+                "candidate_delete",
+                "candidates",
+                "continuation_cleared",
+                "continuation",
+                "context_marks",
+                "context_stack",
+                "default_resolver_refresh",
+                "active_refresh",
+                "calls",
+            )
+        },
+    }, {
+        "status": 0,
+        "budget_action": "skip-allocation-failed",
+        "record_index": 0,
+        "records": [{"id": 0, "flags": 0, "payload": 0}],
+        "replacement": {
+            "record_index": 0,
+            "released_payload": 0x123456,
+            "release_called": True,
+            "continuation_cleared": True,
+        },
+        "candidate_flags": None,
+        "candidate_insert": None,
+        "release": {
+            "handler": 0x1887A,
+            "payload": 0x123456,
+            "record_index": 0,
+            "candidate_longword": 0x00123456,
+            "bit30": False,
+            "class_branch": "class-one",
+            "record_count_branch": "marked",
+            "cleanup_helper": 0x18BF2,
+            "char_cleanup_call": "0x18090",
+            "cleanup_char_count": 191,
+            "cleanup_char_edges": (0x21, 0xFF),
+            "counters": {
+                "0x78278e": 4,
+                "0x782790": 1,
+                "0x782796": 1,
+                "0x782798": 4,
+                "0x78279e": 4,
+                "0x78278a": 8,
+                "0x782782": 0,
+                "0x782786": 2,
+            },
+            "cursors": {"0x7827ac": 0x3C, "0x7827b0": 0x4C, "0x7827b4": 0x5C},
+            "candidate_delete": {
+                "helper": 0x1BD2E,
+                "index": 1,
+                "slot_pointer": FONT_CANDIDATE_LIST_BASE + 4,
+                "removed": 0x00123456,
+            },
+            "candidates": [0x00100000, 0x00200000],
+            "continuation_cleared": True,
+            "continuation": {
+                "flag": 0,
+                "payload": 0,
+                "word_0x7827c8": 0,
+                "dest": 0,
+                "trailing_dest": 0,
+                "remaining": 0,
+                "d4_counter": 0,
+                "d3_counter": 0,
+            },
+            "context_marks": [
+                {"entry": 0, "slot": "primary", "byte": 8},
+                {"entry": 1, "slot": "secondary", "byte": 9},
+            ],
+            "context_stack": [
+                {"primary": 0x123456, "secondary": 0x654321, "primary_dirty": 1},
+                {"primary": 0x222222, "secondary": 0x123456, "secondary_dirty": 1},
+            ],
+            "default_resolver_refresh": True,
+            "active_refresh": [{"slot": "secondary", "helper": "0x179aa", "argument": 1}],
+            "calls": [
+                "0x1b4c0",
+                "0x196c4",
+                "0x18bf2",
+                "0x18090",
+                "0x18b4",
+                "0x1bd2e",
+                "0x6364",
+                "0x179aa",
+                "0x1b04c",
+            ],
         },
     }))
 
@@ -58273,6 +58661,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_replace_candidate_install["candidate_insert"]["slot_pointer"],  # type: ignore[index]
         font_replace_candidate_install["candidate_flags"],
         [f"0x{candidate:08x}" for candidate in font_replace_candidate_install["candidates"]],  # type: ignore[union-attr]
+    ))
+    font_release_allocation_report = font_release_allocation_fail["release"]
+    assert isinstance(font_release_allocation_report, dict)
+    lines.append("- allocation-failure replacement path: `0x16c14` releases existing payload `0x%06x` through `0x1887a` before returning budget action `%s`; helper `0x%05x` clears `%d` fixed-record characters through `%s`, deletes candidate slot `0x%06x`, clears continuation state `%s`, marks context bytes `%s`, and leaves no new candidate installed." % (
+        font_release_allocation_report["payload"],
+        font_release_allocation_fail["budget_action"],
+        font_release_allocation_report["cleanup_helper"],
+        font_release_allocation_report["cleanup_char_count"],
+        font_release_allocation_report["char_cleanup_call"],
+        font_release_allocation_report["candidate_delete"]["slot_pointer"],  # type: ignore[index]
+        font_release_allocation_report["continuation_cleared"],
+        font_release_allocation_report["context_marks"],
     ))
     font_insert_record = font_insert["records"][1]
     assert isinstance(font_insert_record, dict)

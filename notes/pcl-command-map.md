@@ -672,7 +672,11 @@ resource-payload validation/allocation through `0x16c14` -> `0x16fae` ->
 `0x17026` -> `0x1719c` plus candidate insertion through `0x1bc38`, and
 tie the `ESC )s6W` and `ESC )s2193W` payload offsets, byte counts, linear
 `0x168dc` bytes, split-plane tail, `0x16498` downloaded-pointer objects, and
-rendered rows to the same parser trace. The `ESC )s0W`, `ESC )s80W`,
+rendered rows to the same parser trace. Fixture
+`0x16c14 allocation failure releases existing payload through 0x1887a` pins
+the replacement failure order: when `0x172c0` finds an existing current-record
+payload, `0x16c14` releases it through `0x1887a` before the later allocation
+failure skip, leaving no new candidate installed. The `ESC )s0W`, `ESC )s80W`,
 `ESC )s6W`, and `ESC )s2193W` boundaries are now modeled as complete host
 streams, with the larger descriptor/resource/downloaded-character streams also
 ring-fed through modeled `0xa904`, proving their complete descriptor or payload

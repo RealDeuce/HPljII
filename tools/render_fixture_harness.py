@@ -12756,6 +12756,7 @@ def render_published_page_record_via_1ed84_1ef6a(
     base_pointer: int = 0x00100000,
     width_word: int = 0x0020,
     band_divisor: int = 0x0005,
+    word_08: int | None = None,
 ) -> dict[str, object]:
     """Carry a modeled 0xff1e published pool record through 0x1ed84 and 0x1ef6a."""
     render_record = copy_active_page_record_to_render_record_via_1ed84(published_page_record)
@@ -12767,7 +12768,9 @@ def render_published_page_record_via_1ed84_1ef6a(
         "long_00": int(base_pointer) & 0xFFFFFFFF,
         "word_04": int(width_word) & 0xFFFF,
         "word_06": int(band_divisor) & 0xFFFF,
-        "word_08": int(fields.get("word_08", 0)) & 0xFFFF,
+        "word_08": (
+            int(fields.get("word_08", 0)) if word_08 is None else int(word_08)
+        ) & 0xFFFF,
     })
     bucket_word = int(fields.get("word_10", 0)) & 0xFFFF
     source_bucket_array = published_page_record.get(
@@ -12847,9 +12850,17 @@ def render_scheduler_handoff_via_1eb2a_1ecd6(
             byte_9 * 12,
         )
     else:
-        destination_work["word_08"] = int(previous_work.get("word_08", 0))
+        previous_word_06 = int(previous_work.get("word_06", band_divisor))
+        previous_dividend = (
+            int(previous_work.get("word_10", 0))
+            - int(previous_work.get("word_0a", 0))
+            + int(previous_work.get("word_08", 0))
+        )
+        if previous_word_06 == 0:
+            raise AssertionError("0x1ed36 same-geometry reuse cannot divide by zero")
+        destination_work["word_08"] = previous_dividend % previous_word_06
         destination_work["long_00"] = int(previous_work.get("long_00", base_pointer))
-        destination_work["word_06"] = int(previous_work.get("word_06", band_divisor))
+        destination_work["word_06"] = previous_word_06
     work_records[destination_work_ptr] = destination_work
     state["render_work_records"] = work_records
 
@@ -12860,6 +12871,7 @@ def render_scheduler_handoff_via_1eb2a_1ecd6(
         base_pointer=int(destination_work.get("long_00", base_pointer)),
         width_word=width_word,
         band_divisor=int(destination_work.get("word_06", band_divisor)),
+        word_08=int(destination_work.get("word_08", 0)),
     )
     return {
         "source_ptr": int(source_ptr),
@@ -26483,6 +26495,86 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "rows": addressed_page_render["entry"]["rows"],
         },
     }))
+    scheduler_same_geometry_state: dict[str, object] = {
+        "render_work_selector_7820bc": 1,
+        "render_work_records": {
+            0x00782128: {
+                "word_04": 5,
+                "word_06": 5,
+                "word_08": 4,
+                "word_0a": 3,
+                "word_10": 17,
+                "long_00": 0x00102000,
+            },
+            0x007820C4: {},
+        },
+    }
+    scheduler_same_geometry = render_scheduler_handoff_via_1eb2a_1ecd6(
+        data,
+        resources,
+        scheduler_source_record,
+        scheduler_same_geometry_state,
+        source_ptr=0x00D0EAA0,
+    )
+    scheduler_same_rendered = scheduler_same_geometry["rendered"]
+    assert isinstance(scheduler_same_rendered, dict)
+    checks.append(assert_equal(
+        "0x1ecd6 same-geometry render work reuse reaches render entry",
+        {
+            "work_selection": {
+                "selector_before": scheduler_same_geometry["selector_before"],
+                "selector_after": scheduler_same_geometry["selector_after"],
+                "previous_work_ptr": scheduler_same_geometry["previous_work_ptr"],
+                "destination_work_ptr": scheduler_same_geometry["destination_work_ptr"],
+                "render_work_record_783a18": (
+                    scheduler_same_geometry["render_work_record_783a18"]
+                ),
+                "geometry_changed": scheduler_same_geometry["geometry_changed"],
+            },
+            "destination_work": scheduler_same_geometry["destination_work"],
+            "render_setup": {
+                key: scheduler_same_rendered["entry"]["setup"][key]
+                for key in (
+                    "input_word_08",
+                    "divisor_word_06",
+                    "remainder_783a22",
+                    "band_rows_scaled_783a20",
+                    "destination_base_783a28",
+                )
+            },
+            "render": {
+                "call_order": scheduler_same_rendered["entry"]["call_order"],
+                "rows": scheduler_same_rendered["entry"]["rows"],
+            },
+        },
+        {
+            "work_selection": {
+                "selector_before": 1,
+                "selector_after": 0,
+                "previous_work_ptr": 0x00782128,
+                "destination_work_ptr": 0x007820C4,
+                "render_work_record_783a18": 0x007820C4,
+                "geometry_changed": False,
+            },
+            "destination_work": {
+                "word_04": 5,
+                "word_08": 3,
+                "long_00": 0x00102000,
+                "word_06": 5,
+            },
+            "render_setup": {
+                "input_word_08": 3,
+                "divisor_word_06": 5,
+                "remainder_783a22": 3,
+                "band_rows_scaled_783a20": 0x0020,
+                "destination_base_783a28": 0x00103800,
+            },
+            "render": {
+                "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+                "rows": scheduler_rendered["entry"]["rows"],
+            },
+        },
+    ))
     rollover_state: dict[str, object] = {
         "current_page_root": 0,
         "page_root_present": 0,

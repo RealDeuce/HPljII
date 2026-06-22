@@ -503,7 +503,9 @@ and `0x1ef6a` renders all seven compact objects through `0x1effe`, an
 active-render scheduler fixture where `0x1eb32..0x1eb50` sets
 `0x780ea4 = 1`, clears `0x780ea5`, copies `0x780eaa` to `0x780eae`,
 `0x1ecd6..0x1ed0e` switches `0x7820bc` and stores `0x783a18`, and the
-selected record reaches the same `0x1ed84`/`0x1ef6a` rows, a mixed
+selected record reaches the same `0x1ed84`/`0x1ef6a` rows, plus the
+same-geometry `0x1ed36..0x1ed6a` branch that carries previous render
+base/divisor and writes remainder `3` to destination word `+8`, a mixed
 `!\x1bE` fixture that
 publishes and clears a valid current page root after queued text and has
 a page-record allocator/bridge/publication variant,
@@ -871,8 +873,8 @@ ROM work needed:
   `0x1ed84` and `0x1ef6a`.
 - Continue the active-render scheduler by tracing `0x780ea6..0x780eaa`
   alias movement and the engine pacing loop `0x1eba4..0x1ecd2`;
-  same-geometry work-record reuse `0x1ed36..0x1ed6a` is disassembled
-  but not fixture-covered.
+  same-geometry work-record reuse `0x1ed36..0x1ed6a` is now
+  fixture-covered.
 - Determine the remaining live-parser wide/segmented text, raster
   edge-case, and final device-output clipping behavior exactly.
 - Identify any banding/compression structures used internally; reproduce

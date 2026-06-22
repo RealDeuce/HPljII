@@ -1056,9 +1056,9 @@ results rather than executing the full heap and page scheduler.
 Status: anchored as a composition checkpoint from a published
 page/control record to the active render-entry path. This checkpoint does
 not claim full engine pacing; it pins the state handoff that selects the
-source record, alternates render work records, prepares render geometry,
-copies the selected source through `0x1ed84`/`0x1edc6`, and reaches
-visible rows through `0x1ef6a`.
+source record, alternates render work records, prepares or reuses render
+geometry, copies the selected source through `0x1ed84`/`0x1edc6`, and
+reaches visible rows through `0x1ef6a`.
 
 Concept: `0xff1e` publishes a page/control pool record through
 `0x780ea6` and publication flag `0x782996`. The render scheduler uses
@@ -1101,8 +1101,12 @@ Concept: `0xff1e` publishes a page/control pool record through
     word `+4 << 2`.
   - `0x7839f8..`: 16-word offset table initialized by `0x1ee9e` from
     active source byte `+9`.
+  - same-geometry destination `+8`: remainder from helper `0x33238`
+    over `(previous +0x10 - previous +0x0a + previous +0x08) /
+    previous +0x06`.
   Evidence: `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`
-  and fixture destination-work fields.
+  and fixture destination-work fields in the geometry-change and
+  same-geometry scheduler cases.
 - Parser scratch:
   - none newly assigned here. The source record has already been built by
     parser/page-record producers before `0xff1e`.
@@ -1129,6 +1133,10 @@ Concept: `0xff1e` publishes a page/control pool record through
   render word `+4`.
 - `0x1ed6c..0x1ed76` calls `0x1ee9e` when geometry changes, then calls
   `0x1ed84` for active-record copy and bridge.
+- `0x1ed36..0x1ed6a` reuses prior geometry when destination word `+4`
+  matches previous word `+4`: helper `0x33238` computes the remainder
+  into destination word `+8`, then previous long `+0` and word `+6` are
+  copied before the shared `0x1ed84` exit.
 
 ### Readers And Consumers
 
@@ -1150,17 +1158,28 @@ switches `0x7820bc` from `0` to `1`, selects render work record
 then renders the same rows as the direct published-record
 `0x1ed84`/`0x1ef6a` fixture.
 
+The companion fixture `0x1ecd6 same-geometry render work reuse reaches
+render entry` starts with `0x7820bc = 1`, selects previous record
+`0x782128`, destination `0x7820c4`, and takes the `0x1ed36..0x1ed6a`
+same-geometry branch. With previous `+0x10 = 17`, `+0x0a = 3`,
+`+0x08 = 4`, and divisor `+0x06 = 5`, helper `0x33238` stores remainder
+`3` in destination word `+8`; render setup then produces
+`0x783a22 = 3`, `0x783a20 = 0x0020`, and
+`0x783a28 = 0x00103800`, while still reaching the same composed rows.
+
 ### Confidence
 
 High for `0x780eaa -> 0x780eae`, `0x780ea4/5`, the two-work-record
-alternation, `0x783a18`, the `0x1ee9e` geometry-change boundary, and the
-render-entry output for the selected source. Medium for the surrounding
-engine pacing loop because the fixture does not model `0x10c8`,
-`0x10c4`, `0x10d0`, or `0x10d8`.
+alternation, `0x783a18`, the `0x1ee9e` geometry-change boundary, the
+`0x1ed36..0x1ed6a` same-geometry reuse branch, and the render-entry
+output for the selected source. Medium for the surrounding engine pacing
+loop because the fixture does not model `0x10c8`, `0x10c4`, `0x10d0`,
+or `0x10d8`.
 
 ### Fixtures
 
 - `0x1eb2a/0x1ecd6 selects published record for render entry`
+- `0x1ecd6 same-geometry render work reuse reaches render entry`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`
 
@@ -1184,8 +1203,6 @@ engine pacing loop because the fixture does not model `0x10c8`,
   pointer into `0x780eaa` before this scheduler entry remains a lead.
 - `0x1eba4..0x1ecd2`: render loop pacing, band advance, and engine
   waits are not yet modeled.
-- `0x1ed36..0x1ed6a`: same-geometry reuse of previous render work-record
-  state is disassembled but not yet fixture-covered.
 
 ## Vertical Forms Control
 

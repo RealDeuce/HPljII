@@ -482,7 +482,12 @@ and rendered row counts, a host-fetched `! ESC *c12a5b0P` fixture that
 renders compact text plus a selector-7 rule from one combined page
 record through `0x1ed84`/`0x1ef6a`, a host-fetched `! ESC *c12a5b0P
 ESC *t300R ESC *r0A ESC *b2W` fixture that adds a mode-0 raster object
-to the same bucket/rule page-record shape, a mixed `!\x1bE` fixture that
+to the same bucket/rule page-record shape, an addressed text/rule/raster
+field-group checkpoint that pins canonical objects `0x00d0c004`,
+`0x00d0c02a`, and `0x00d0c038`, parser scratch record
+`80 57 00 02 00 00`, allocator state `0x782a70 = 0x00bc`,
+`0x782a72 = 0x00d0c000`, and `0x782a76 = 0x00d0c044`, a mixed
+`!\x1bE` fixture that
 publishes and clears a valid current page root after queued text and has
 a page-record allocator/bridge/publication variant,
 selected inline/downloaded `0x14e24`/`0x14eb6` map and `0x1393a`

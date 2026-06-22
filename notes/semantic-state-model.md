@@ -5,6 +5,167 @@ concepts. It complements the low-level ledger in
 `notes/reverse-engineering-ledger.md`; it does not replace address-level
 notes, disassembly windows, or executable fixtures.
 
+## Mixed Text/Rule/Raster Page Record
+
+Status: anchored as a parser-to-render composition checkpoint, but still
+modeled at the CPU live-state boundary. The byte stream
+`! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF` now has
+host-fetched, addressed-storage, publication, and render-entry coverage.
+The fixture proves the same semantic page record carries compact text,
+a selector-7 rectangle rule, and one mode-0 raster row through `0xff1e`,
+`0x1ed84`, and `0x1ef6a`.
+
+Concept: page output is not a direct raster operation per command. The
+parser first builds typed page-record lists under the current page root,
+then `0xff1e` publishes the page/control pool record. The render path
+copies that record through `0x1ed84`/`0x1edc6`, walks the bucket/rule
+lists through `0x1ef6a`, and only then composes visible pixels.
+
+### Field Groups
+
+- Canonical page-record fields:
+  - bucket array `+0x1c`: text object at `0x00d0c004`, raster object at
+    `0x00d0c038`, bucket head `0x00d0c038`.
+  - rule list `+0x24`: rectangle rule object at `0x00d0c02a`.
+  - context slots `+0x2c`: slot 0 is `0x440946b4`.
+  Evidence: fixture
+  `addressed text/rule/raster field groups reach publication and render
+  entry`; source fixture [harness](/usr/home/admin/T400/ljII/tools/render_fixture_harness.py:40084).
+- Canonical published-record fields:
+  - published bucket root `+0x1c` is
+    `00 d0 c0 04 80 00 00 02 00 00 c3 3c`.
+  - published rule list `+0x24` is
+    `00 00 00 00 01 07 5c 01 00 0c 00 05 00 00`.
+  Evidence: fixtures
+  `addressed text rectangle raster FF publishes rendered page record`
+  and
+  `addressed text/rule/raster field groups reach publication and render
+  entry`.
+- Parser scratch:
+  - raster parsed/restored record: `80 57 00 02 00 00`.
+  - delayed snapshot: `01 00 01 05 d0 80 57 00 02 00 00`.
+  - payload offset `28`, payload `c3 3c`.
+  Evidence: handler `0x11f82` schedules `0x105d0` through `0x121cc`,
+  restored by `0x12218`; fixture above.
+- Firmware bookkeeping:
+  - stream allocator state `0x782a70 = 0x00bc`,
+    `0x782a72 = 0x00d0c000`, `0x782a76 = 0x00d0c044`.
+  - one stream allocation, one page-record root allocation, one
+    publication, one root clear, and page-publication flag `1`.
+  Evidence: address-aware `0x1381c`/`0x1387c` fixtures and the
+  addressed text/rule/raster field-group fixture.
+- Derived/cache render fields:
+  - `0x783a20 = 0x0050`, `0x783a22 = 0`,
+    `0x783a28 = 0x00100000`.
+  Evidence: render-entry setup fixture
+  `addressed text/rule/raster field groups reach publication and render
+  entry`, with `0x1ef86` before `0x1efc2`, `0x1f446`, and `0x1f756`.
+- Unknown for this cluster:
+  - the exact live CPU stack/register handoff between the modeled parser
+    runner and real memory-backed page-root objects is still unknown.
+  - no additional named semantic field is assigned to `0x782a70`,
+    `0x782a72`, or `0x782a76` beyond stream allocator bookkeeping.
+
+### Writers
+
+- `0xd04a` consumes printable `!`, builds a source through `0x1393a`,
+  positions it through `0xd824`, ensures the page root through `0x10084`,
+  and queues compact text through `0x12f2e`/`0x1387c`.
+- `0x10e68` and `0x10e22` write pending rectangle dimensions from
+  `ESC *c12a5b`; `0x10898` queues the selector-7 rule object.
+- `0x10808` writes raster mode/scale for `ESC *t300R`; `0x1075a`
+  starts raster graphics for `ESC *r0A`.
+- `0x11f82` records the delayed `ESC *b2W` transfer, `0x12218`
+  restores handler `0x105d0`, and `0x105d0` queues the mode-0 raster
+  object through the modeled `0x13070`/`0x13250` path.
+- `0xf0f0` triggers the FF publication path. The modeled `0xff1e`
+  copies the page-record lists into the published pool record and clears
+  the current page root.
+- `0x1ed84` copies active published-record header fields, and `0x1edc6`
+  copies bucket/rule/context roots into the render record.
+
+### Readers And Consumers
+
+- The parser dispatch table at `0x11774` consumes the host-fetched stream
+  through handlers `0xd04a`, `0x10e68`, `0x10e22`, `0x10898`,
+  `0x10808`, `0x1075a`, `0x11f82`, and `0xf0f0`.
+- `0x1381c` consumes `0x782a70`, `0x782a72`, and `0x782a76` while
+  allocating text, rule, and raster stream objects.
+- `0xff1e` consumes the current page root and page-record lists to build
+  the published pool record.
+- `0x1ef6a` consumes the render record in call order
+  `0x1ef86`, `0x1efc2`, `0x1f446`, `0x1f756`. It dispatches the raster
+  object to `0x1f88e` and the compact text object to `0x1effe`.
+
+### Output Effect
+
+The covered stream produces rows containing the first compact `!`, the
+mode-0 raster row from payload `c3 3c`, and the rectangle rule. The
+published render-entry fixture proves the same rows before and after the
+`0xff1e` publication boundary, with dispatch targets `0x1f88e` and
+`0x1effe`.
+
+### Confidence
+
+High for parser handler order, delayed raster scratch, addressed stream
+object addresses, published page-record fields, render-entry call order,
+and visible rows because they are executable fixture assertions. Medium
+for exact live CPU state at the page-root/display-list handoff because
+the current fixture is address-aware but not a full 68000 run through
+the parser and allocator.
+
+### Fixtures
+
+- `host-fetched text rectangle raster FF publishes rendered page record`
+- `addressed text rectangle raster FF publishes rendered page record`
+- `addressed text/rule/raster field groups reach publication and render
+  entry`
+- Supporting fixtures:
+  `host-fetched text rectangle and raster page record feeds 0x1ed84 and
+  0x1ef6a`,
+  `addressed text rectangle raster stream matches page-record output`,
+  and
+  `published text rectangle and raster page record feeds 0x1ed84 and
+  0x1ef6a`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`:
+  parser mode dispatch and handler selection.
+- `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`:
+  printable source construction and queue entry.
+- `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`:
+  rectangle dimensions and fill rule producer.
+- `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`:
+  raster setup, delayed transfer, and row queue gates.
+- `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst` and
+  `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`:
+  producer shapes for compact text and encoded raster objects.
+- `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`:
+  display-list allocator, bucket insertion, and rule-list insertion.
+- `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst` and
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`:
+  publication and render-record bridge.
+- `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`:
+  render-entry call order and bucket/list consumers.
+
+### Unresolved Middle Edges
+
+- `0xd04a..0x12f2e`: the printable source and queue path is fixture-backed
+  but still not a full live CPU/register trace for this mixed stream.
+- `0x10898..0x133aa`: the addressed rule insertion is modeled from
+  disassembly and fixtures, but the exact live no-room/retry edge is not
+  covered in this mixed stream.
+- `0x105d0..0x13250`: the raster object queue is address-aware, but the
+  mixed stream still lacks a full 68000 execution through `0x105d0` into
+  real allocator memory.
+- `0x10084..0x1381c`: first root allocation and stream-chunk allocation
+  are modeled with exact side effects, but not captured from live CPU
+  memory for the complete text/rule/raster stream.
+- `0xff1e..0x1ed84`: publication and render-entry are modeled and
+  fixture-checked; scheduler timing between the published pool record and
+  active render selection remains outside this cluster.
+
 ## Vertical Forms Control
 
 Status: partially anchored. The table definition path, its immediate

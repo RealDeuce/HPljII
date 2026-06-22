@@ -849,7 +849,11 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   text/rule render-entry coverage, host-fetched `! ESC *c12a5b0P
   ESC *t300R ESC *r0A ESC *b2W` text/rule/raster render-entry
   coverage from one mixed page-record stream runner plus its modeled
-  `0xff1e` published-record render-entry variant with trailing FF,
+  `0xff1e` published-record render-entry variant with trailing FF and
+  addressed field-group checkpoint, with canonical objects
+  `0x00d0c004`/`0x00d0c02a`/`0x00d0c038`, parser scratch record
+  `80 57 00 02 00 00`, and stream allocator state
+  `0x782a70`/`0x782a72`/`0x782a76`,
   `0x1ef6a` page-band walker coverage for compact text, mode-0
   raster, and a crossing patterned rule across bands `0` and `5`,
   simple macro execute replayed `!\r`, and mixed-control macro execute replayed

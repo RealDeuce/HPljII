@@ -1095,7 +1095,15 @@ Adding FF to that stream now publishes the heterogeneous page record
 through the modeled `0xff1e` boundary and renders the published record
 through `0x1ed84` and `0x1ef6a` with the same rows; the addressed
 text/rule/raster stream now has the same trailing-FF publication check
-with the raster object linked from addressed `0x1381c` storage.
+with the raster object linked from addressed `0x1381c` storage. The
+semantic checkpoint in `notes/semantic-state-model.md` now classifies
+that same cluster: canonical page-record objects are at `0x00d0c004`,
+`0x00d0c02a`, and `0x00d0c038`; parser scratch restores raster record
+`80 57 00 02 00 00` and payload `c3 3c` at offset `28`; firmware
+bookkeeping leaves `0x782a70 = 0x00bc`, `0x782a72 = 0x00d0c000`,
+and `0x782a76 = 0x00d0c044`; derived render caches include
+`0x783a20 = 0x0050`, `0x783a22 = 0`, and
+`0x783a28 = 0x00100000`.
 A `0x1ef6a` page-band walker now also merges compact text, mode-0
 raster, and a crossing patterned rule across bands `0` and `5`, carrying
 the mutated rule node into the second band.

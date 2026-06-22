@@ -67,6 +67,7 @@ Primary fixtures:
 - `host-fetched downloaded character object feeds 0x1ed84 and 0x1ef6a`
 - `host-fetched linear downloaded character stream renders through 0x168dc`
 - `host-fetched downloaded character payload control reaches wide render`
+- `host-fetched even-span wide downloaded character renders through 0x1f0d2`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
 - `host-fetched split-plane segmented downloaded character renders through
   0x1f1f0`
@@ -552,6 +553,24 @@ through compact target `0x1effe` and mode-0 helper `0x1fe76` as three visible
 rows beginning at x `22`.
 - destination x `22`, y `6`, and `$a001 = 0x16`.
 
+Fixture
+`host-fetched even-span wide downloaded character renders through 0x1f0d2`
+covers the clean wide sibling without payload-control normalization. The
+host-fetched `ESC )s18W` stream drains through `0xa904`, parser dispatch walks
+`0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`, and delayed restore reaches
+record `80 57 00 12 00 00` at payload offset `6`. `0x16498` installs glyph
+`0x29` at table entry `0x00ee`, record delta `0x0780`, record
+`00 00 00 00 0c 01 00 01 00 90 00 00`, bitmap offset `0x078c`, span `18`,
+and split-plane flag `false`. `0x168dc` copies the 18 payload bytes
+`f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99` linearly, consumes
+the full byte budget, and records zero control hits. `0x12f2e` queues the
+short page-record object
+`00 00 00 00 10 03 00 01 29 66 01` plus allocator padding under selector
+`0x1003`; `0x1edc6` preserves that bucket object; and `0x1ed84` / `0x1ef6a`
+dispatch compact target `0x1effe` to `0x1f0d2`. The renderer sees one full
+16-byte chunk, a 2-byte remainder, full-row skip `2`, linear source layout,
+and renders the single row at x `22`.
+
 Fixture `host-fetched segmented downloaded character renders through
 0x1f1f0` adds the even-span tall sibling. The host-fetched `ESC )s258W` stream
 uses parser record `80 57 01 02 00 00`, delayed handler `0x16c14`, payload
@@ -886,11 +905,12 @@ A byte-stream renderer must preserve:
 - `0x16fae..0x17016`: all 32 validation slots now have ROM-effect names and
   concrete success/failure fixtures. Exact HP manual labels for the
   consumed-but-not-staged descriptor fields still need external correlation.
-- `0x16498..0x16942`: split-plane segmented-wide, wide/control, linear normal,
-  linear segmented, and split-plane segmented downloaded-character paths are
-  page-visible. Remaining parser-produced comparisons are the cross-product
-  variants not covered by those shapes, especially even-span wide without
-  payload-control normalization.
+- `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span
+  wide, linear normal, linear segmented, and split-plane segmented
+  downloaded-character paths are page-visible. Remaining parser-produced
+  comparisons are the cross-product variants not covered by those shapes,
+  especially alternate row counts, character modes, and non-success exits for
+  the same selector families.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through

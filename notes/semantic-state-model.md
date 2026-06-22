@@ -1312,6 +1312,18 @@ delta `0x0700`, rows `0x0081`, width `0x0018`, bitmap offset `0x070c`, and
 `0x2003`, but `0x1f1f0` validates A2 source offset `0x0100` and A3 trailing
 offset `0x0080` for segment `1`. The visible output is
 `####........#####.#.#.#.` at x `22`.
+Fixture `host-fetched even-span wide downloaded character renders through
+0x1f0d2` covers the wide selector without payload-control normalization:
+`0xa904` fetches `ESC )s18W`, parser dispatch reaches delayed handler
+`0x16c14` with restored record `80 57 00 12 00 00`, `0x16498` installs glyph
+`0x29` at table entry `0x00ee`, record delta `0x0780`, rows `1`, width
+`0x0090`, bitmap offset `0x078c`, and split-plane flag `false`, and
+`0x168dc` copies all 18 bytes with `control_hits = 0`. `0x12f2e` queues
+selector `0x1003` and bucket object
+`00 00 00 00 10 03 00 01 29 66 01` plus allocator padding; `0x1edc6`
+preserves it; and `0x1ef6a` reaches compact renderer `0x1f0d2`, where the
+linear source row uses one full 16-byte chunk plus a 2-byte remainder and
+renders at x `22`.
 
 ### Confidence
 
@@ -1320,13 +1332,14 @@ ordering before allocation failure, staged header fields, payload allocation,
 installed downloaded-character object, and visible row, because the fixtures
 tie host-fetched streams to parser records, teardown state, and render rows.
 High for the downloaded-character parser-to-page path for the normal,
-wide/control, segmented, and segmented-wide compact selectors represented by
-fixtures `host-fetched linear downloaded character stream renders through
-0x168dc`, `host-fetched downloaded character payload control reaches wide
-render`, `host-fetched segmented downloaded character renders through
-0x1f1f0`, `host-fetched split-plane segmented downloaded character renders
-through 0x1f1f0`, and `host-fetched downloaded character stream reaches
-rendered object`.
+wide/control, even-span wide, segmented, and segmented-wide compact selectors
+represented by fixtures `host-fetched linear downloaded character stream
+renders through 0x168dc`, `host-fetched downloaded character payload control
+reaches wide render`, `host-fetched even-span wide downloaded character
+renders through 0x1f0d2`, `host-fetched segmented downloaded character renders
+through 0x1f1f0`, `host-fetched split-plane segmented downloaded character
+renders through 0x1f1f0`, and `host-fetched downloaded character stream
+reaches rendered object`.
 High for the ROM-effect names and failure behavior of every `0x16fae`
 validation-table entry, including the host-fetched invalid-type no-install
 boundary. Medium for the complete soft-font grammar because exact HP manual
@@ -1355,6 +1368,7 @@ have not been page-compared.
   row`
 - `host-fetched linear downloaded character stream renders through 0x168dc`
 - `host-fetched downloaded character payload control reaches wide render`
+- `host-fetched even-span wide downloaded character renders through 0x1f0d2`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
 - `host-fetched split-plane segmented downloaded character renders through
   0x1f1f0`
@@ -1386,11 +1400,12 @@ have not been page-compared.
   host-fetched invalid-type path proves no-install behavior for entry `2`;
   remaining descriptor error forms still need the same parser-produced and
   page-visible treatment.
-- `0x16498..0x16942`: split-plane segmented-wide, wide/control, linear normal,
-  linear segmented, and split-plane segmented downloaded-character paths are
-  page-visible. Remaining parser-produced comparisons are the cross-product
-  variants not covered by those shapes, especially even-span wide without
-  payload-control normalization.
+- `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span
+  wide, linear normal, linear segmented, and split-plane segmented
+  downloaded-character paths are page-visible. Remaining parser-produced
+  comparisons are the cross-product variants not covered by those shapes,
+  especially alternate row counts, character modes, and non-success exits for
+  the same selector families.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through

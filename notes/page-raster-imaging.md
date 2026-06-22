@@ -1138,6 +1138,10 @@ host-fetched `ESC )s18W`
 downloaded-character payload-control stream that normalizes `1a 58`
 before wide glyph rendering and now crosses `0x1edc6` plus the
 `0x1ed84`/`0x1ef6a` render-entry path before rendering the same wide row.
+The clean even-span wide `ESC )s18W` downloaded-character fixture now also
+copies 18 linear bytes through `0x168dc` with no payload-control hits, queues
+selector `0x1003`, crosses `0x1edc6`, and renders through `0x1f0d2` with one
+full 16-byte chunk plus a 2-byte remainder.
 The fetched `ESC )s2193W` downloaded-pointer object
 now also crosses `0x1edc6` plus the `0x1ed84`/`0x1ef6a` render-entry
 path before rendering the same segmented-wide row. A fetched printable

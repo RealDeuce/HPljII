@@ -32755,6 +32755,319 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
         },
     }))
+    downloaded_wide_even_payload = bytes.fromhex(
+        "f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99"
+    )
+    downloaded_wide_even_command_stream = (
+        b"\x1b)s18W" + downloaded_wide_even_payload
+    )
+    host_fetched_downloaded_wide_even_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(downloaded_wide_even_command_stream), direct_mode=0),
+        len(downloaded_wide_even_command_stream),
+    )
+    downloaded_wide_even_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        host_fetched_downloaded_wide_even_stream["stream"],
+    )
+    downloaded_wide_even_command = downloaded_wide_even_trace["commands"][0]
+    assert isinstance(downloaded_wide_even_command, dict)
+    downloaded_wide_even_header = bytearray(0x100)
+    downloaded_wide_even_header[0x0C] = 2
+    downloaded_wide_even_result = render_font_download_char_command_stream_via_121cc_16498(
+        host_fetched_downloaded_wide_even_stream["stream"],
+        downloaded_wide_even_header,
+        char_code=0x29,
+        record_words=(0x0000, 0x0000, 0x0001, 0x0000),
+        mode=1,
+        width=0x0090,
+        rows=1,
+        object_offset=0x0780,
+    )
+    downloaded_wide_even_event = downloaded_wide_even_result["events"][0]
+    assert isinstance(downloaded_wide_even_event, dict)
+    downloaded_wide_even_install = downloaded_wide_even_event["install"]
+    assert isinstance(downloaded_wide_even_install, dict)
+    downloaded_wide_even_memory = bytearray(downloaded_wide_even_install["header"])
+    downloaded_wide_even_glyph = resolve_downloaded_pointer_glyph(
+        downloaded_wide_even_memory,
+        0,
+        0x29,
+    )
+    assert downloaded_wide_even_glyph is not None
+    downloaded_wide_even_page_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_wide_even_source = {
+        "context": 0,
+        "host_char": 0x29,
+        "mapped": 0x29,
+        "glyph_entry": downloaded_wide_even_glyph["entry"],
+        "glyph_width": downloaded_wide_even_glyph["width"],
+        "glyph_rows": downloaded_wide_even_glyph["rows"],
+        "flag": 0,
+        "x": 22,
+        "y": 22,
+        "context_slot": 3,
+        "inline_record": bytes([
+            int(downloaded_wide_even_glyph["render_span"]),
+            int(downloaded_wide_even_glyph["rows"]) & 0xFF,
+            0,
+        ]),
+    }
+    downloaded_wide_even_page_result = queue_text_source_to_page_record_via_12f2e(
+        downloaded_wide_even_memory,
+        downloaded_wide_even_page_record,
+        downloaded_wide_even_source,
+    )
+    downloaded_wide_even_object = downloaded_wide_even_page_result["object"]
+    assert isinstance(downloaded_wide_even_object, bytes)
+    downloaded_wide_even_bridged = bridge_page_record_via_1edc6({
+        "bucket_root": downloaded_wide_even_object,
+        "rule_list": [],
+        "fixed_list": [],
+        "context_slots": [0, 0, 0, 0],
+    })
+    downloaded_wide_even_bridged_rendered = render_bridged_compact_bucket_object(
+        data,
+        downloaded_wide_even_memory,
+        downloaded_wide_even_bridged,
+    )
+    downloaded_wide_even_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_wide_even_memory,
+        downloaded_wide_even_page_record,
+        bucket_word=int(downloaded_wide_even_page_result["bucket_index"]),
+    )
+    downloaded_wide_even_entry = downloaded_wide_even_render_entry["entry"]
+    assert isinstance(downloaded_wide_even_entry, dict)
+    downloaded_wide_even_bits = "".join(
+        "#" if (byte >> (7 - bit)) & 1 else "."
+        for byte in downloaded_wide_even_payload
+        for bit in range(8)
+    )
+    expected_downloaded_wide_even_rows = [
+        "." * 166,
+        "." * 166,
+        "." * 166,
+        "." * 166,
+        "." * 166,
+        "." * 166,
+        "." * 22 + downloaded_wide_even_bits,
+    ]
+    checks.append(assert_equal("host-fetched even-span wide downloaded character renders through 0x1f0d2", {
+        "fetch": {
+            "stream_prefix": host_fetched_downloaded_wide_even_stream["stream"][:6],
+            "stream_length": len(host_fetched_downloaded_wide_even_stream["stream"]),
+            "source_set": sorted(set(host_fetched_downloaded_wide_even_stream["sources"])),
+            "remaining_ring": host_fetched_downloaded_wide_even_stream["state"]["ring"],
+        },
+        "parser": {
+            "handlers": [
+                event["handler"]
+                for event in downloaded_wide_even_trace["dispatches"]
+            ],
+            "modes": [
+                event["next_mode"]
+                for event in downloaded_wide_even_trace["dispatches"]
+            ],
+            "sequence": downloaded_wide_even_command["sequence"],
+            "record": downloaded_wide_even_command["record"],
+            "restored_record": downloaded_wide_even_command["restored_record"],
+            "payload_offset": downloaded_wide_even_command["payload_offset"],
+            "payload": downloaded_wide_even_command["payload"],
+        },
+        "install": {
+            key: downloaded_wide_even_install[key]
+            for key in (
+                "status",
+                "table_entry",
+                "record_delta",
+                "record",
+                "bitmap_offset",
+                "bitmap_size",
+                "allocation_size",
+                "object_size",
+                "span",
+                "split_plane",
+            )
+        },
+        "copy": {
+            key: downloaded_wide_even_install["copy"][key]
+            for key in (
+                "status",
+                "dest",
+                "stream_pos",
+                "byte_budget",
+                "control_hits",
+            )
+        },
+        "glyph": {
+            key: downloaded_wide_even_glyph[key]
+            for key in (
+                "entry",
+                "bitmap",
+                "mode",
+                "rows",
+                "width",
+                "span",
+                "render_span",
+                "source_kind",
+                "table_entry",
+                "record_delta",
+            )
+        },
+        "page": {
+            key: downloaded_wide_even_page_result[key]
+            for key in (
+                "path",
+                "object",
+                "bucket_index",
+                "selector",
+                "coord",
+                "glyph",
+                "rows",
+                "width",
+            )
+        },
+        "bridge": {
+            "bucket_matches": (
+                downloaded_wide_even_bridged["bucket_root"]
+                == downloaded_wide_even_object
+            ),
+            "render_field_matches": (
+                downloaded_wide_even_bridged["render_record_fields"]["bucket_root_18"]
+                == downloaded_wide_even_object
+            ),
+            "context_slots_prefix": downloaded_wide_even_bridged["context_slots"][:4],
+        },
+        "render": {
+            "selector": downloaded_wide_even_bridged_rendered["selector"],
+            "context_slot": downloaded_wide_even_bridged_rendered["context_slot"],
+            "compact_mode": downloaded_wide_even_bridged_rendered["compact_mode"],
+            "payload": downloaded_wide_even_bridged_rendered["payload"],
+            "rendered": downloaded_wide_even_bridged_rendered["rendered"],
+            "rows": downloaded_wide_even_bridged_rendered["rows"],
+        },
+        "entry": {
+            "call_order": downloaded_wide_even_entry["call_order"],
+            "dispatch": [
+                {
+                    key: entry[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "context_slot",
+                    )
+                }
+                for entry in downloaded_wide_even_entry["dispatch"]["entries"]
+            ],
+            "rows": downloaded_wide_even_entry["rows"],
+        },
+    }, {
+        "fetch": {
+            "stream_prefix": b"\x1b)s18W",
+            "stream_length": len(downloaded_wide_even_command_stream),
+            "source_set": ["ring"],
+            "remaining_ring": [],
+        },
+        "parser": {
+            "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "modes": [1, 4, 13, 0],
+            "sequence": b"\x1b)s18W",
+            "record": b"\x80W\x00\x12\x00\x00",
+            "restored_record": b"\x80W\x00\x12\x00\x00",
+            "payload_offset": 6,
+            "payload": downloaded_wide_even_payload,
+        },
+        "install": {
+            "status": 1,
+            "table_entry": 0x00EE,
+            "record_delta": 0x0780,
+            "record": bytes.fromhex("00 00 00 00 0c 01 00 01 00 90 00 00"),
+            "bitmap_offset": 0x078C,
+            "bitmap_size": 18,
+            "allocation_size": 1,
+            "object_size": 0x40,
+            "span": 18,
+            "split_plane": False,
+        },
+        "copy": {
+            "status": 1,
+            "dest": downloaded_wide_even_payload,
+            "stream_pos": 18,
+            "byte_budget": 0,
+            "control_hits": 0,
+        },
+        "glyph": {
+            "entry": 0x0780,
+            "bitmap": 0x078C,
+            "mode": 1,
+            "rows": 1,
+            "width": 0x0090,
+            "span": 18,
+            "render_span": 18,
+            "source_kind": "downloaded-pointer",
+            "table_entry": 0x00EE,
+            "record_delta": 0x0780,
+        },
+        "page": {
+            "path": "short-page-record",
+            "object": bytes.fromhex("00 00 00 00 10 03 00 01 29 66 01")
+            + bytes(0x1B),
+            "bucket_index": 1,
+            "selector": 0x1003,
+            "coord": 0x6601,
+            "glyph": 0x29,
+            "rows": 1,
+            "width": 18,
+        },
+        "bridge": {
+            "bucket_matches": True,
+            "render_field_matches": True,
+            "context_slots_prefix": (0, 0, 0, 0),
+        },
+        "render": {
+            "selector": 0x1003,
+            "context_slot": 3,
+            "compact_mode": 1,
+            "payload": bytes.fromhex("00 01 29 66 01") + bytes(0x1B),
+            "rendered": [{
+                "glyph": 0x29,
+                "coord": 0x6601,
+                "rows": 1,
+                "span": 18,
+                "width": 0x90,
+                "full_chunks": 1,
+                "remainder": 2,
+                "full_row_skip": 2,
+                "remainder_row_skip": 0x10,
+                "full_chunk_helper": 0x2F27C,
+                "remainder_helper": u32(data, 0x1F1AC + 2 * 4),
+                "dest_base": 0xC2,
+                "x": 22,
+                "y": 6,
+                "a001": 0x16,
+                "source_layout": "linear",
+            }],
+            "rows": expected_downloaded_wide_even_rows,
+        },
+        "entry": {
+            "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+            "dispatch": [{
+                "chain_index": 0,
+                "object_byte_4": 0x10,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 3,
+            }],
+            "rows": expected_downloaded_wide_even_rows,
+        },
+    }))
 
     font_character_code = font_character_code_from_15a18(-0x8000)
     font_payload_dispatch_header = font_payload_dispatch_via_11f96(0)
@@ -59739,6 +60052,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     lines.append("  rendered rows:")
     append_literal_rows(lines, downloaded_wide_control_rendered["rows"])
+    append_wrapped(
+        lines,
+        "- host-fetched even-span wide downloaded character: `ESC )s18W` "
+        "installs glyph `0x29` at table entry `0x%04x`, copies `%d` linear "
+        "bytes through `0x168dc` with no control escapes, queues selector "
+        "`0x%04x`, and renders through `0x1f0d2` row `%s`."
+        % (
+            downloaded_wide_even_install["table_entry"],
+            downloaded_wide_even_install["bitmap_size"],
+            downloaded_wide_even_page_result["selector"],
+            downloaded_wide_even_bridged_rendered["rows"][-1],
+        ),
+    )
     downloaded_segmented_even_rendered_row = downloaded_segmented_even_bridged_rendered["rows"][-1]
     append_wrapped(
         lines,

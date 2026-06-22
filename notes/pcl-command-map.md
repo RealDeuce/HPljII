@@ -816,6 +816,7 @@ branches, adds a selected inline/downloaded map/source fixture through
 `0x14e24`/`0x14eb6` -> `0x1393a` -> `0xd3b2` -> `0x12f2e` -> `0x1edc6`
 -> render plus `0x168dc`/`0x16942` font payload-reader fixtures
 including a host-fetched `ESC )s18W` payload-control render-entry bridge,
+an even-span wide `ESC )s18W` render-entry bridge with no control hits,
 `0x172c0`/`0x16c14` downloaded-font record bookkeeping fixtures,
 `0x170be`/`0x17108`/`0x17150` record lookup/mark/unmark fixtures,
 `0x15a56`/`0x16df6` font-id/control dispatch fixtures, and
@@ -826,8 +827,9 @@ segmented payload objects as isolation controls, constructs type-2
 payload-backed selected inline `0x1f0d2` wide and `0x1f1f0` segmented
 fixed-record payload rows, keeps a selected-memory `0x1f264`
 segmented-wide isolation row, adds a `0x16498` downloaded-pointer
-`0x1f264` segmented-wide row, pins even-span and split-plane segmented
-downloaded-pointer `0x2000` producer/page-record objects through `0x1f1f0`,
+`0x1f264` segmented-wide row, pins even-span wide, even-span segmented, and
+split-plane segmented downloaded-pointer producer/page-record objects through
+`0x1f0d2` and `0x1f1f0`,
 and adds a full built-in glyph coverage scan proving the verified ROM
 resources contain no normal wide or non-mode-1 bitmap-entry cases for
 `0x1f0d2`, `0x1f1f0`, or `0x1f264`.

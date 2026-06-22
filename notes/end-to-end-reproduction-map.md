@@ -186,8 +186,8 @@ pixels or byte-stream compatibility.
    has ROM-effect names for all 32 entries plus concrete success and failure
    fixtures, and the host-fetched invalid-resource-type path proves a
    parser-to-validation no-install boundary. Downloaded-character coverage now
-   includes parser-produced normal, wide/control, segmented, split-plane
-   segmented, and segmented-wide compact render shapes. The full soft-font
+   includes parser-produced normal, wide/control, even-span wide, segmented,
+   split-plane segmented, and segmented-wide compact render shapes. The full soft-font
    descriptor grammar, remaining alternate character-mode cross-products, other
    release variants, and page-visible behavior for descriptor error forms
    beyond that invalid-type boundary are still not proven against every PCL

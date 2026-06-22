@@ -661,8 +661,8 @@ consulted by the following font `W` streams. `ESC (s#W` / `ESC )s#W`
 reaches `0x11f96`: a zero count schedules delayed descriptor handler
 `0x15d0a`, while any nonzero count schedules delayed payload installer
 `0x16c14` with the absolute byte count in `0x783140`. The executable
-harness also traces `ESC )s0W`, `ESC )s4W`, `ESC )s80W`, and the full
-`ESC )s2193W` downloaded-character stream through the ROM `0x11774`
+harness also traces `ESC )s0W`, `ESC )s4W`, `ESC )s80W`, `ESC )s6W`, and the
+full `ESC )s2193W` downloaded-character stream through the ROM `0x11774`
 dispatch table, proving parser modes `0 -> 1 -> 4 -> 13 -> 0` and final
 handler `0x11f96`; modeled descriptor and payload command/data wrappers
 then restore six-byte records through `0x121cc` / `0x12218`, tie
@@ -670,15 +670,16 @@ then restore six-byte records through `0x121cc` / `0x12218`, tie
 continuation routes through `0x15d0a`, tie `ESC )s80W` to
 resource-payload validation/allocation through `0x16c14` -> `0x16fae` ->
 `0x17026` -> `0x1719c` plus candidate insertion through `0x1bc38`, and
-tie the `ESC )s2193W` payload offset, byte count, split-plane tail,
-`0x16498` downloaded-pointer object, and `0x1f264` segmented-wide
-rendered row to the same parser trace. The `ESC )s0W`, `ESC )s80W`, and
-`ESC )s2193W` boundaries are now also ring-fed through modeled `0xa904`,
-proving their complete descriptor or payload byte streams reach the same
-parser handlers, delayed records, installed or rendered objects, and
-rows where applicable; the fetched `ESC )s2193W` downloaded-pointer
-object now also preserves the `0x1edc6` bucket/context bridge contract
-and feeds the `0x1ed84`/`0x1ef6a` render-entry path before rendering.
+tie the `ESC )s6W` and `ESC )s2193W` payload offsets, byte counts, linear
+`0x168dc` bytes, split-plane tail, `0x16498` downloaded-pointer objects, and
+rendered rows to the same parser trace. The `ESC )s0W`, `ESC )s80W`,
+`ESC )s6W`, and `ESC )s2193W` boundaries are now modeled as complete host
+streams, with the larger descriptor/resource/downloaded-character streams also
+ring-fed through modeled `0xa904`, proving their complete descriptor or payload
+bytes reach the same parser handlers, delayed records, installed or rendered
+objects, and rows where applicable; the fetched downloaded-pointer objects now
+also preserve the `0x1edc6` bucket/context bridge contract and feed the
+`0x1ed84`/`0x1ef6a` render-entry path before rendering.
 A combined fetched `ESC *c4660d37e5F` + `ESC )s2193W` + printable `%`
 stream now carries current character `0x25` through the installed glyph,
 restores payload record `80 57 08 91 00 01`, queues segment buckets `9`

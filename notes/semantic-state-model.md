@@ -1196,6 +1196,12 @@ payload plus `%` sets current id `0x1234`, sets current character `0x25`,
 installs a split-plane downloaded glyph object at record delta `0x0500`,
 queues printable `%` as segmented compact selector `0x3003`, and renders the
 downloaded row through target `0x1effe`. Fixture
+`host-fetched linear downloaded character stream renders through 0x168dc`
+drives `ESC )s6W` through the same parser-delayed `0x16c14` boundary, installs
+glyph `0x26` at table entry `0x00e2` with even span `2`, copies bitmap bytes
+through the linear `0x168dc` reader, queues normal compact selector `0x0003`,
+preserves the object through `0x1edc6`, and renders three mode-0 rows through
+`0x1ed84` / `0x1ef6a`. Fixture
 `host-fetched 0x15d0a current-record resource object feeds fixed-record
 render` also proves a host-fetched `ESC )s0W` descriptor can route bit-30-clear
 current-record payload `0x000100` through `0x16606`, install fixed-record glyph
@@ -1230,6 +1236,7 @@ been page-compared.
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `0x16498-backed downloaded character object renders segmented-wide compact
   row`
+- `host-fetched linear downloaded character stream renders through 0x168dc`
 - `0x16fae table-driven validation predicates populate staged header fields`
 
 ### Disassembly Evidence
@@ -1246,8 +1253,8 @@ been page-compared.
 ### Unresolved Middle Edges
 
 - `0x16fae..0x17016`: validation predicates need complete manual-facing names.
-- `0x16498..0x16942`: split-plane segmented-wide payloads are page-visible;
-  linear and alternate mode combinations still need parser-produced page
+- `0x16498..0x16942`: split-plane segmented-wide and linear payloads are
+  page-visible; alternate mode combinations still need parser-produced page
   comparisons.
 - `0x15c4c`: the even-span fixed-record resume route is page-visible; split-plane
   continuation counters and failure/release exits still need fixture coverage.

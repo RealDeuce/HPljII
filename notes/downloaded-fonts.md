@@ -57,6 +57,7 @@ Primary fixtures:
 - `downloaded character stream ties ROM parser dispatch to rendered object`
 - `host-fetched downloaded character stream reaches rendered object`
 - `host-fetched downloaded character object feeds 0x1ed84 and 0x1ef6a`
+- `host-fetched linear downloaded character stream renders through 0x168dc`
 - `host-fetched printable byte uses installed downloaded glyph page object`
 - `combined host-fetched font download stream prints installed glyph`
 - `host-fetched font control stream feeds descriptor and character payload state`
@@ -388,6 +389,19 @@ selects:
 - compact mode `3`.
 - full chunk helper `0x2f27c`.
 - one full 16-byte chunk and one remainder byte.
+
+The sibling linear payload fixture
+`host-fetched linear downloaded character stream renders through 0x168dc`
+drives a complete `ESC )s6W` command through the same parser-delayed
+`0x16c14` boundary with glyph `0x26`, rows `3`, width `0x10`, and six bitmap
+bytes `f0 0f aa 55 3c c3`. `0x16498` selects the linear `0x168dc` reader
+because the span is even (`2`), installs table entry `0x00e2`, record delta
+`0x0500`, record `00 00 00 00 0c 01 00 03 00 10 00 00`, and bitmap offset
+`0x050c`. The queued page object uses normal compact selector `0x0003`
+because the source width seen by `0x12f2e` is span byte count `2`; the
+`0x1edc6` bridge preserves that object, and `0x1ed84` / `0x1ef6a` render it
+through compact target `0x1effe` and mode-0 helper `0x1fe76` as three visible
+rows beginning at x `22`.
 - destination x `22`, y `6`, and `$a001 = 0x16`.
 
 ## Downloaded Resource Object And Rendering
@@ -538,20 +552,23 @@ installed glyph. The visible effect is that the same host byte can resolve to
 a payload-backed glyph record instead of a built-in glyph. In the end-to-end
 fixture, printable `%` draws glyph `0x25` from downloaded object record
 `0x0500`, with a segmented-wide compact selector `0x3003` and one visible row
-beginning at x `22`. In the `0x16606` current-record fixture, printable `!`
-maps to fixed-record glyph `1` from payload record `0x48`, queues selector
-`0x0003`, and renders three mode-0 rows beginning at x `22`. The companion
-`0x15c4c` fixture proves that splitting the same bitmap across two descriptor
-packets produces the same table entry, source object, page-record bridge, and
-rendered rows after continuation state is cleared.
+beginning at x `22`. The linear downloaded-character fixture draws glyph
+`0x26` from the same object delta using selector `0x0003` and renders three
+mode-0 rows beginning at x `22`. In the `0x16606` current-record fixture,
+printable `!` maps to fixed-record glyph `1` from payload record `0x48`,
+queues selector `0x0003`, and renders three mode-0 rows beginning at x `22`.
+The companion `0x15c4c` fixture proves that splitting the same bitmap across
+two descriptor packets produces the same table entry, source object,
+page-record bridge, and rendered rows after continuation state is cleared.
 
 ## Confidence
 
 High for command dispatch, delayed-record restoration, current id/current
 character ownership, current-record mark/unmark, `0x16c14` install
 bookkeeping, table-driven descriptor staging, `0x17026`/`0x1719c` allocation
-headers, the complete downloaded-character-to-rendered-row fixture, and the
-`0x16606` and `0x15c4c` bit-30-clear resource-object-to-rendered-row fixtures.
+headers, the split-plane and linear downloaded-character-to-rendered-row
+fixtures, and the `0x16606` and `0x15c4c` bit-30-clear
+resource-object-to-rendered-row fixtures.
 
 Medium for the full PCL soft-font grammar because the validation table is
 executable but not every predicate has a manual-facing semantic name, and not
@@ -592,8 +609,8 @@ A byte-stream renderer must preserve:
 - `0x16fae..0x17016`: all 32 validation slots are executable, but
   manual-facing names for every predicate and descriptor field are still
   incomplete.
-- `0x16498..0x16942`: the split-plane segmented-wide payload path is
-  page-visible; linear and alternate mode combinations still need the same
+- `0x16498..0x16942`: the split-plane segmented-wide and linear payload paths
+  are page-visible; alternate mode combinations still need the same
   parser-produced page comparison.
 - `0x15c4c`: the even-span fixed-record resume route is page-visible; the
   split-plane continuation counters and failure/release exits still need

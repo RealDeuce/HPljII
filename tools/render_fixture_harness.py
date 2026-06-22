@@ -36083,6 +36083,281 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
         },
     }))
+    downloaded_linear_stream = bytes.fromhex("f0 0f aa 55 3c c3")
+    downloaded_linear_command_stream = b"\x1b)s6W" + downloaded_linear_stream
+    downloaded_linear_command = render_font_download_char_command_stream_via_121cc_16498(
+        downloaded_linear_command_stream,
+        table_payload_type2_bytes,
+        char_code=0x26,
+        record_words=(0x0000, 0x0000, 0x0003, 0x0000),
+        mode=1,
+        width=0x0010,
+        rows=0x0003,
+        object_offset=0x0500,
+    )
+    downloaded_linear_dispatch_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        downloaded_linear_command_stream,
+    )
+    downloaded_linear_dispatch_command = downloaded_linear_dispatch_trace["commands"][0]
+    assert isinstance(downloaded_linear_dispatch_command, dict)
+    downloaded_linear_event = downloaded_linear_command["events"][0]
+    assert isinstance(downloaded_linear_event, dict)
+    downloaded_linear_payload = downloaded_linear_event["install"]
+    assert isinstance(downloaded_linear_payload, dict)
+    downloaded_linear_memory = bytearray(downloaded_linear_payload["header"])
+    downloaded_linear_glyph = resolve_downloaded_pointer_glyph(downloaded_linear_memory, 0, 0x26)
+    assert downloaded_linear_glyph is not None
+    downloaded_linear_page_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_linear_source = {
+        "context": 0,
+        "host_char": 0x26,
+        "mapped": 0x26,
+        "glyph_entry": downloaded_linear_glyph["entry"],
+        "glyph_width": downloaded_linear_glyph["width"],
+        "glyph_rows": downloaded_linear_glyph["rows"],
+        "flag": 0,
+        "x": 22,
+        "y": 22,
+        "context_slot": 3,
+        "inline_record": bytes([
+            int(downloaded_linear_glyph["render_span"]),
+            int(downloaded_linear_glyph["rows"]) & 0xFF,
+            0,
+        ]),
+    }
+    downloaded_linear_page_result = queue_text_source_to_page_record_via_12f2e(
+        downloaded_linear_memory,
+        downloaded_linear_page_record,
+        downloaded_linear_source,
+    )
+    downloaded_linear_object = downloaded_linear_page_result["object"]
+    assert isinstance(downloaded_linear_object, bytes)
+    downloaded_linear_bridged = bridge_page_record_via_1edc6({
+        "bucket_root": downloaded_linear_object,
+        "rule_list": [],
+        "fixed_list": [],
+        "context_slots": [0, 0, 0, 0],
+    })
+    downloaded_linear_rendered = render_bridged_compact_bucket_object(
+        data,
+        downloaded_linear_memory,
+        downloaded_linear_bridged,
+    )
+    downloaded_linear_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_linear_memory,
+        downloaded_linear_page_record,
+        bucket_word=int(downloaded_linear_page_result["bucket_index"]),
+    )
+    downloaded_linear_entry = downloaded_linear_render_entry["entry"]
+    assert isinstance(downloaded_linear_entry, dict)
+    expected_downloaded_linear_rows: list[str] = []
+    for _ in range(6):
+        expected_downloaded_linear_rows.append("." * 38)
+    for pattern in ("####........####", "#.#.#.#..#.#.#.#", "..####..##....##"):
+        expected_downloaded_linear_rows.append("." * 22 + pattern)
+    checks.append(assert_equal("host-fetched linear downloaded character stream renders through 0x168dc", {
+        "parser": {
+            "handlers": [
+                event["handler"]
+                for event in downloaded_linear_dispatch_trace["dispatches"]
+            ],
+            "modes": [
+                event["next_mode"]
+                for event in downloaded_linear_dispatch_trace["dispatches"]
+            ],
+            "sequence": downloaded_linear_dispatch_command["sequence"],
+            "record": downloaded_linear_dispatch_command["record"],
+            "font_payload_dispatch": downloaded_linear_dispatch_command["font_payload_dispatch"],
+            "restored_record": downloaded_linear_dispatch_command["restored_record"],
+            "payload_offset": downloaded_linear_dispatch_command["payload_offset"],
+            "payload": downloaded_linear_dispatch_command["payload"],
+        },
+        "install": {
+            key: downloaded_linear_payload[key]
+            for key in (
+                "status",
+                "table_entry",
+                "record_delta",
+                "record",
+                "bitmap_offset",
+                "bitmap_size",
+                "allocation_size",
+                "object_size",
+                "span",
+                "split_plane",
+            )
+        },
+        "copy": {
+            key: downloaded_linear_payload["copy"][key]
+            for key in (
+                "status",
+                "dest",
+                "stream_pos",
+                "byte_budget",
+                "control_hits",
+            )
+        },
+        "glyph": {
+            key: downloaded_linear_glyph[key]
+            for key in (
+                "entry",
+                "bitmap",
+                "mode",
+                "rows",
+                "width",
+                "span",
+                "render_span",
+                "source_kind",
+                "table_entry",
+                "record_delta",
+            )
+        },
+        "page": {
+            key: downloaded_linear_page_result[key]
+            for key in (
+                "path",
+                "object",
+                "bucket_index",
+                "selector",
+                "coord",
+                "glyph",
+                "rows",
+                "width",
+            )
+        },
+        "bridge": {
+            "bucket_matches": downloaded_linear_bridged["bucket_root"] == downloaded_linear_object,
+            "render_field_matches": (
+                downloaded_linear_bridged["render_record_fields"]["bucket_root_18"]
+                == downloaded_linear_object
+            ),
+            "context_slots_prefix": downloaded_linear_bridged["context_slots"][:4],
+        },
+        "render": {
+            "selector": downloaded_linear_rendered["selector"],
+            "context_slot": downloaded_linear_rendered["context_slot"],
+            "compact_mode": downloaded_linear_rendered["compact_mode"],
+            "payload": downloaded_linear_rendered["payload"],
+            "rendered": downloaded_linear_rendered["rendered"],
+            "rows": downloaded_linear_rendered["rows"],
+        },
+        "entry": {
+            "call_order": downloaded_linear_entry["call_order"],
+            "dispatch": [
+                {
+                    key: entry[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "context_slot",
+                    )
+                }
+                for entry in downloaded_linear_entry["dispatch"]["entries"]
+            ],
+            "rows": downloaded_linear_entry["rows"],
+        },
+    }, {
+        "parser": {
+            "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "modes": [1, 4, 13, 0],
+            "sequence": b"\x1b)s6W",
+            "record": b"\x80W\x00\x06\x00\x00",
+            "font_payload_dispatch": {
+                "parameter": 6,
+                "handler": 0x16C14,
+                "meaning": "downloaded-font/character payload",
+            },
+            "restored_record": b"\x80W\x00\x06\x00\x00",
+            "payload_offset": 5,
+            "payload": downloaded_linear_stream,
+        },
+        "install": {
+            "status": 1,
+            "table_entry": 0x00E2,
+            "record_delta": 0x0500,
+            "record": bytes.fromhex("00 00 00 00 0c 01 00 03 00 10 00 00"),
+            "bitmap_offset": 0x050C,
+            "bitmap_size": 6,
+            "allocation_size": 1,
+            "object_size": 0x40,
+            "span": 2,
+            "split_plane": False,
+        },
+        "copy": {
+            "status": 1,
+            "dest": downloaded_linear_stream,
+            "stream_pos": 6,
+            "byte_budget": 0,
+            "control_hits": 0,
+        },
+        "glyph": {
+            "entry": 0x0500,
+            "bitmap": 0x050C,
+            "mode": 1,
+            "rows": 3,
+            "width": 0x10,
+            "span": 2,
+            "render_span": 2,
+            "source_kind": "downloaded-pointer",
+            "table_entry": 0x00E2,
+            "record_delta": 0x0500,
+        },
+        "page": {
+            "path": "short-page-record",
+            "object": bytes.fromhex("00 00 00 00 00 03 00 01 26 66 01")
+            + bytes(0x1B),
+            "bucket_index": 1,
+            "selector": 0x0003,
+            "coord": 0x6601,
+            "glyph": 0x26,
+            "rows": 3,
+            "width": 2,
+        },
+        "bridge": {
+            "bucket_matches": True,
+            "render_field_matches": True,
+            "context_slots_prefix": (0, 0, 0, 0),
+        },
+        "render": {
+            "selector": 0x0003,
+            "context_slot": 3,
+            "compact_mode": 0,
+            "payload": bytes.fromhex("00 01 26 66 01") + bytes(0x1B),
+            "rendered": [{
+                "glyph": 0x26,
+                "coord": 0x6601,
+                "dest_base": 0xC2,
+                "x": 22,
+                "y": 6,
+                "a001": 0x16,
+                "span": 2,
+                "rows": 3,
+                "width": 0x10,
+                "helper": 0x1FE76,
+            }],
+            "rows": expected_downloaded_linear_rows,
+        },
+        "entry": {
+            "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+            "dispatch": [{
+                "chain_index": 0,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 3,
+            }],
+            "rows": expected_downloaded_linear_rows,
+        },
+    }))
     downloaded_printable_fetch = fetch_stream_via_a904(
         host_byte_fetch_state(ring=[0x25], direct_mode=0),
         1,

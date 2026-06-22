@@ -625,6 +625,18 @@ longword as a linked-chain pointer when count is zero. Macro record clear
 `0xdfba` and snapshot cleanup use `0x18b4(ptr, 0, 0x100)`, while font
 payload cleanup at `0x1659c..0x165a4` uses a counted `0x40` run.
 
+The allocator initializer is now pinned for the default startup path.
+Startup helper `0x0b18` writes heap start `0x783f4a` to `0x780efa` and
+available bytes `0x640b6` to `0x780efe` when reset defaults
+`0x780e5a = 0x20` and `0x780e60 = 6` are active. Reset helper `0x0370`
+then calls `0x164a`, which reserves `0x783f4a..0x784905` as occupied,
+sets free-unit count `0x18cf` at `0x780e86`, stores bitmap-base pointer
+`0x784906` in variable `0x783972`, stores payload-base pointer
+`0x784c40` in variable `0x783988`, and seeds scan fields
+`0x783976`, `0x78397a`, `0x78397e`, `0x783982`, and `0x783986`.
+Fixture `0x164a initializes heap allocator bitmap and payload base`
+covers the default and compact sizing branches.
+
 The `0xe65c` call-context refresh is now split into branch-contract
 fields. Argument `0` pops the 10-byte context stack at `0x782c6e`;
 argument `1` uses static record `0x782c64`. Entry bytes `+8/+9` refresh
@@ -692,9 +704,9 @@ direct mixed-stream model. Execute, call, and mixed-control macro replay
 payloads now also cross `0x1ed84` and `0x1ef6a` before rendering. The
 composed semantic checkpoint is
 `Macro Definition And Data-Chain Replay` in
-`notes/semantic-state-model.md`; the remaining gaps are the exact macro
-chunk allocator, complete data-chain frame layout, and call-environment
-context stack.
+`notes/semantic-state-model.md`; the remaining gaps are the full
+font-map bridge after `0xe65c` and the remaining font-context record byte
+meanings.
 
 Top-level `ESC &` enters mode 5. The normal table currently identifies
 these subfamilies:
@@ -775,9 +787,9 @@ control-code anchor.
 - Decode the six-byte tokenizer records and 12-byte command/data pool
   records.
 - Decode the full `0xe65c` bridge into the already-modeled font resource
-  maps and heap initialization `0x164a..0x170a` now that the `0xe002`
-  append/count path, `0xe418` layout, snapshot chain helpers, heap
-  allocation/free contract, frame-end branches, `0xe65c` branch contract,
+  maps now that the `0xe002` append/count path, `0xe418` layout,
+  snapshot chain helpers, heap initialization/allocation/free contract,
+  frame-end branches, `0xe65c` branch contract,
   `0xe5e2` layout/VFC/static-font refresh, and macro context-stack
   capacity are pinned.
 - Replace the remaining synthetic `ESC E` roots with fuller

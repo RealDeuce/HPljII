@@ -475,8 +475,7 @@ rendering. The composed semantic checkpoint is in
 `notes/semantic-state-model.md` under
 `Macro Definition And Data-Chain Replay`; the remaining macro gaps are
 the full CPU-state bridge from `0xe65c` into the existing font-map
-contracts, heap initialization `0x164a..0x170a`, and the
-non-execute/non-call frame producer.
+contracts and the remaining font-context record byte meanings.
 
 The `ESC &f-123y0x1X` fixture is now also traced through ROM parser
 modes `0 -> 1 -> 5 -> 17 -> 17 -> 17 -> 0`, selecting `0xe112`,
@@ -954,8 +953,8 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   caller path is now real-record backed through `0x1b250`, `0x1b50e`,
   `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
 - Decode the full `0xe65c` CPU-state bridge into already-modeled font
-  maps and heap initialization `0x164a..0x170a` now that the `0xe002`
-  append/count path, `0xe418` layout, snapshot chain helpers,
-  heap allocation/free, frame-end branches, `0xe65c` branch contract,
+  maps now that the `0xe002` append/count path, `0xe418` layout,
+  snapshot chain helpers, heap initialization/allocation/free,
+  frame-end branches, `0xe65c` branch contract,
   `0xe5e2` layout/VFC/static-font refresh, and macro context-stack
   capacity are pinned.

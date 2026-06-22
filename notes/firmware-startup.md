@@ -82,6 +82,24 @@ The startup then calls routines at:
 On success it clears `0x2000` longwords at `0x00780000`, then enters the
 next initialization phase at `0x00000240`.
 
+Later setup calls `0x00000b18` before reset subroutine `0x00000370`
+enters the heap allocator initializer at `0x0000164a`. With the observed
+reset defaults `0x780e5a = 0x20` and `0x780e60 = 6`, `0x0b18` writes:
+
+- `0x780efa = 0x783f4a`, the heap start input.
+- `0x780efe = 0x000640b6`, the available heap byte count.
+- `0x7810b4 = 0x007e8000`, the resource/window base.
+- `0x7810b8 = 0x00017ffe`, the resource/window size minus two.
+
+Initializer `0x164a` consumes `0x780efa`/`0x780efe`, reserves the prefix
+`0x783f4a..0x784905` as occupied, seeds allocator free-unit count
+`0x18cf` at `0x780e86`, stores bitmap-base pointer `0x784906` in
+variable `0x783972`, stores payload-base pointer `0x784c40` in variable
+`0x783988`, and initializes the low/high scan fields consumed by
+`0x170c`, `0x1710`, and `0x18b4`. Evidence is the focused listing
+`generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst` and fixture
+`0x164a initializes heap allocator bitmap and payload base`.
+
 ## RAM Trampoline Initialization
 
 Routine `0x00000298` copies a table from ROM address `0x000004c0` into

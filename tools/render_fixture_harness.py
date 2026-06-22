@@ -2952,6 +2952,77 @@ def heap_allocator_state(**overrides: object) -> dict[str, object]:
     return state
 
 
+def startup_heap_limits_via_b18(
+    configured_windows: int = 0x20,
+    bank_count: int = 6,
+) -> dict[str, int]:
+    bank_bytes = int(bank_count) * 0x4000
+    top = 0x780000 + (int(configured_windows) * 0x4000) - bank_bytes
+    heap_start = 0x783F4A
+    return {
+        "heap_start_780efa": heap_start,
+        "available_bytes_780efe": top - heap_start,
+        "resource_window_base_7810b4": top,
+        "resource_window_size_7810b8": bank_bytes - 2,
+    }
+
+
+def heap_allocator_init_via_164a(heap_start: int, available_bytes: int) -> dict[str, object]:
+    a0 = int(heap_start)
+    d0 = int(available_bytes)
+    reserved_prefix_bytes = max(0, 0x784906 - a0)
+    if reserved_prefix_bytes:
+        d0 -= reserved_prefix_bytes
+        a0 = 0x784906
+
+    d1 = d0
+    free_units = d0 >> 6
+    bitmap_budget = d1 & 0x3F
+    removed_unit_budget = 0x40
+    while True:
+        full_zero_bytes = free_units >> 3
+        partial_free_bits = free_units & 0x07
+        tracked_bitmap_bytes = full_zero_bytes + (1 if partial_free_bits else 0)
+        if tracked_bitmap_bytes & 1:
+            tracked_bitmap_bytes += 1
+        if tracked_bitmap_bytes <= bitmap_budget:
+            break
+        free_units -= 1
+        bitmap_budget += removed_unit_budget
+
+    bitmap_start = a0
+    bitmap_scan_end = bitmap_start + tracked_bitmap_bytes - 1
+    low_scan_limit = bitmap_scan_end - 12
+    if tracked_bitmap_bytes & 0x02:
+        low_scan_limit += 2
+    bitmap_bytes = [0] * full_zero_bytes
+    if partial_free_bits:
+        bitmap_bytes.append((0xFF >> partial_free_bits) & 0xFF)
+        bitmap_budget -= 1
+    bitmap_budget -= full_zero_bytes
+    if bitmap_budget > 0:
+        bitmap_bytes.extend([0xFF] * bitmap_budget)
+    payload_base = bitmap_start + len(bitmap_bytes)
+    return {
+        "heap_start_780efa": int(heap_start),
+        "available_bytes_780efe": int(available_bytes),
+        "reserved_prefix_start": int(heap_start) if reserved_prefix_bytes else None,
+        "reserved_prefix_end": 0x784905 if reserved_prefix_bytes else None,
+        "reserved_prefix_bytes": reserved_prefix_bytes,
+        "free_units_780e86": free_units,
+        "bitmap_base_783972": bitmap_start,
+        "low_scan_cursor_78397e": bitmap_start,
+        "bitmap_scan_end_783976": bitmap_scan_end,
+        "high_scan_cursor_783982": bitmap_scan_end,
+        "low_scan_limit_78397a": low_scan_limit,
+        "tracked_bitmap_bytes_783986": tracked_bitmap_bytes,
+        "bitmap_prefix": bytes(bitmap_bytes[:8]),
+        "bitmap_tail": bytes(bitmap_bytes[-8:]),
+        "bitmap_written_bytes": len(bitmap_bytes),
+        "payload_base_783988": payload_base,
+    }
+
+
 def heap_units_for_request(count: int, alignment: int) -> int:
     if count < 0 or alignment not in (0x40, 0x100):
         raise AssertionError("0x170c/0x18b4 fixture accepts only valid request shapes")
@@ -19736,6 +19807,64 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "count": 177,
         },
     }))
+    startup_heap_limits = startup_heap_limits_via_b18()
+    initialized_heap = heap_allocator_init_via_164a(
+        startup_heap_limits["heap_start_780efa"],
+        startup_heap_limits["available_bytes_780efe"],
+    )
+    compact_heap = heap_allocator_init_via_164a(0x784906, 0x1000)
+    checks.append(assert_equal(
+        "0x164a initializes heap allocator bitmap and payload base",
+        {
+            "startup_limits": startup_heap_limits,
+            "initialized": initialized_heap,
+            "compact": {
+                key: compact_heap[key]
+                for key in (
+                    "reserved_prefix_bytes",
+                    "free_units_780e86",
+                    "bitmap_base_783972",
+                    "tracked_bitmap_bytes_783986",
+                    "bitmap_written_bytes",
+                    "payload_base_783988",
+                )
+            },
+        },
+        {
+            "startup_limits": {
+                "heap_start_780efa": 0x783F4A,
+                "available_bytes_780efe": 0x640B6,
+                "resource_window_base_7810b4": 0x7E8000,
+                "resource_window_size_7810b8": 0x17FFE,
+            },
+            "initialized": {
+                "heap_start_780efa": 0x783F4A,
+                "available_bytes_780efe": 0x640B6,
+                "reserved_prefix_start": 0x783F4A,
+                "reserved_prefix_end": 0x784905,
+                "reserved_prefix_bytes": 0x9BC,
+                "free_units_780e86": 0x18CF,
+                "bitmap_base_783972": 0x784906,
+                "low_scan_cursor_78397e": 0x784906,
+                "bitmap_scan_end_783976": 0x784C1F,
+                "high_scan_cursor_783982": 0x784C1F,
+                "low_scan_limit_78397a": 0x784C15,
+                "tracked_bitmap_bytes_783986": 0x031A,
+                "bitmap_prefix": bytes(8),
+                "bitmap_tail": bytes([0xFF] * 8),
+                "bitmap_written_bytes": 0x033A,
+                "payload_base_783988": 0x784C40,
+            },
+            "compact": {
+                "reserved_prefix_bytes": 0,
+                "free_units_780e86": 0x3F,
+                "bitmap_base_783972": 0x784906,
+                "tracked_bitmap_bytes_783986": 0x08,
+                "bitmap_written_bytes": 0x40,
+                "payload_base_783988": 0x784946,
+            },
+        },
+    ))
     heap_low_alloc = heap_alloc_via_170c(heap_allocator_state(), 1, 1, 0x100, 0x170C)
     heap_high_alloc = heap_alloc_via_170c(heap_low_alloc, 2, 0, 0x40, 0x1710)
     heap_linked_free = heap_free_via_18b4(heap_allocator_state(
@@ -47678,6 +47807,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         int(context_after_nine["events"][-1]["entry_addr"]),
         int(context_empty_pop["events"][-1]["entry_addr"]),
     ))
+    lines.append(
+        "- `0x164a` default heap init takes `0x%08x`/`0x%05x`, reserves "
+        "`%d` prefix bytes, seeds `%d` free 64-byte units, and stores "
+        "payload base `0x%08x`." % (
+            int(startup_heap_limits["heap_start_780efa"]),
+            int(startup_heap_limits["available_bytes_780efe"]),
+            int(initialized_heap["reserved_prefix_bytes"]),
+            int(initialized_heap["free_units_780e86"]),
+            int(initialized_heap["payload_base_783988"]),
+        )
+    )
     lines.append("- heap allocator fixture: `0x170c(1,1,0x100)` returns `0x%08x`, `0x1710(2,0,0x40)` returns `0x%08x`, linked free releases `%s`, and contiguous free releases `%s`." % (
         int(heap_low_alloc["last_alloc"]),
         int(heap_high_alloc["last_alloc"]),

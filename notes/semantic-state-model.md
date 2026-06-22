@@ -335,6 +335,16 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     longword range from source to destination in the opposite call shape.
   Evidence: disassembly `0xe8a2..0xe9b8`; fixture
   `macro snapshot helpers copy linked and flat environment ranges`.
+- Startup-derived heap inputs:
+  - startup helper `0x0b18` stores heap start `0x783f4a` in `0x780efa`
+    and stores available heap bytes in `0x780efe`.
+  - with reset defaults `0x780e5a = 0x20` and `0x780e60 = 6`, `0x0b18`
+    computes resource-window base `0x7e8000`, resource-window size
+    `0x17ffe`, and available heap bytes `0x640b6`.
+  - reset path `0x0370` calls allocator initializer `0x164a` before the
+    later setup calls at `0x2feb6`, `0x3178`, and `0x31d6`.
+  Evidence: disassembly `0x0320..0x0376`, `0x0b18..0x0b70`, and fixture
+  `0x164a initializes heap allocator bitmap and payload base`.
 - Canonical heap objects and chains:
   - allocator entries `0x170c` and `0x1710` both manage 64-byte heap
     allocation units. `0x170c` scans from the low side; `0x1710` scans
@@ -356,6 +366,26 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   `0xdfe6..0xdff0` and `0xe90c..0xe944`, font caller
   `0x16564..0x165a4`, and fixture
   `0x170c/0x1710 allocate and 0x18b4 frees heap units`.
+- Derived/cache heap allocation state:
+  - initializer `0x164a` fills any prefix below `0x784906` with `0xff`;
+    default startup reserves `0x783f4a..0x784905`, a `0x09bc` byte range.
+  - `0x164a` rounds the free allocation bitmap to an even byte count,
+    reducing the 64-byte unit count until the bitmap fits in the low
+    remainder space.
+  - default startup writes free-unit count `0x18cf` to `0x780e86`, bitmap
+    base pointer `0x784906` to `0x783972`, scan end `0x784c1f` to
+    `0x783976`, low scan limit `0x784c15` to `0x78397a`, low and high
+    scan cursors to `0x78397e` / `0x783982`, tracked bitmap byte count
+    `0x031a` to `0x783986`, and payload base pointer `0x784c40` to
+    `0x783988`.
+  - the default bitmap write has `0x033a` bytes: the prefix is free
+    zero bits and the tail is occupied `0xff` padding; a compact
+    `heap_start=0x784906`, `available=0x1000` fixture produces free-unit
+    count `0x003f`, tracked bitmap bytes `0x0008`, total bitmap write
+    `0x0040`, and payload base `0x784946`.
+  Evidence: `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`
+  covers `0x164a..0x170a`; fixture
+  `0x164a initializes heap allocator bitmap and payload base`.
 - Canonical frame-end paths:
   - `0xe22c` reads the active frame at `0x782d76` and dispatches by frame
     byte `+9`.
@@ -431,8 +461,10 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   - frame-end paths free snapshot chains in 0x100-byte units through
     `0x18b4`, and `0xe8f0` reports allocation failure through
     `0x9b5e(0x780e2e, 4)`.
-  - heap allocator bookkeeping uses bitmap base `0x783972`, payload base
-    `0x783988`, free-unit count `0x780e86`, and scan cursors
+  - heap allocator bookkeeping uses bitmap-base pointer variable
+    `0x783972`, payload-base pointer variable `0x783988`, free-unit count
+    `0x780e86`, bitmap end/limit fields `0x783976` / `0x78397a`,
+    tracked bitmap-byte count `0x783986`, and scan cursors
     `0x78397e` / `0x783982`; those fields are allocator-private caches,
     not PCL-visible state.
   Evidence: disassembly `0xdd4c..0xdd78`, `0xdee4..0xdefa`, and
@@ -451,9 +483,10 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   page-record stream`, and `host-fetched macro replay payloads feed
   0x1ed84 and 0x1ef6a`.
 - Unknown:
-  - heap initialization policy at `0x164a..0x170a` beyond the named bitmap,
-    payload base, free-unit count, and cursor fields consumed by
-    `0x170c`/`0x1710`/`0x18b4`.
+  - startup option source for the optional `0x80` addition to
+    `0x780e5a` still needs board/config correlation, but the downstream
+    `0x0b18` heap-limit math and `0x164a` allocator initialization are
+    pinned for the default path.
   - full CPU-state connection from macro-specific `0xe65c` refresh into
     the broader font resource maps beyond the already modeled
     `0x13eb8` / `0xc428` / `0x144d2` / `0x14c64` contracts.
@@ -482,6 +515,11 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 - `0xe4f4` writes the non-replay frame at `0x782d4c`, writes
   `0x782d76`, saves/restores flat state through `0xe996`/`0xe972`,
   saves cursor longword `0x782c92`, and may set host gate bit 1.
+- `0x0b18` writes startup-derived heap inputs `0x780efa` and `0x780efe`
+  plus resource-window fields `0x7810b4` and `0x7810b8`.
+- `0x164a` writes the allocator bitmap and fields `0x780e86`,
+  `0x783972`, `0x783976`, `0x78397a`, `0x78397e`, `0x783982`,
+  `0x783986`, and `0x783988`.
 - `0x170c` / `0x1710` allocate heap objects in 64-byte units; `0xe8f0`
   allocates linked snapshot chunks; `0xe8a2` restores and checks them;
   `0xe972` and `0xe996` copy flat inclusive longword ranges.
@@ -523,6 +561,10 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   non-execute/non-call path consumes frame `+0x04`, flat source
   `0x7834c2`, cursor save `0x782c92`, and context-stack state used by
   `0xe65c(0)`.
+- `0x164a` consumes startup heap inputs `0x780efa` and `0x780efe`;
+  `0x170c`, `0x1710`, and `0x18b4` then consume the initialized
+  allocator bitmap, payload base pointer, free-unit count, and scan
+  cursor fields.
 - `0x170c` consumes request count, zero-fill flag, and alignment word to
   allocate heap units; `0x18b4` consumes pointer, count, and alignment to
   free either a linked chain or contiguous run.
@@ -561,12 +603,12 @@ High for parser reachability, selector meanings, record count/stride,
 current id storage, `0xe0a4` lookup/free/full status behavior, definition
 stop behavior, execute/call and non-replay frame mode bytes, frame field offsets
 `+0x00/+0x04/+0x08/+0x09/+0x0a`, call-only context-stack push, snapshot
-chain chunk shape, execute/call frame-end restore, `0x170c`/`0x1710` /
-`0x18b4` shared heap contract, `0xe65c` branch contract, macro definition
-append/count bookkeeping, `0xa904` replay, and page-record/render effects
-because those are covered by disassembly, generated parser-table reports,
-and executable fixtures. Medium for the complete downstream font/resource
-rebuild after `0xe65c`.
+chain chunk shape, execute/call frame-end restore, `0x164a` heap
+initializer, `0x170c`/`0x1710` / `0x18b4` shared heap contract,
+`0xe65c` branch contract, macro definition append/count bookkeeping,
+`0xa904` replay, and page-record/render effects because those are covered
+by disassembly, generated parser-table reports, and executable fixtures.
+Medium for the complete downstream font/resource rebuild after `0xe65c`.
 
 ### Fixtures
 
@@ -579,6 +621,7 @@ rebuild after `0xe65c`.
 - `host-fetched macro call stream builds replay frame`
 - `0xe418 frame metadata distinguishes execute and call context`
 - `macro snapshot helpers copy linked and flat environment ranges`
+- `0x164a initializes heap allocator bitmap and payload base`
 - `0x170c/0x1710 allocate and 0x18b4 frees heap units`
 - `0xe002 appends macro definition bytes into 0x100 chunks`
 - `0xe4f4/0xe22c produce and end data-chain frames`
@@ -609,6 +652,9 @@ rebuild after `0xe65c`.
 - `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`:
   `0xe65c..0xe9b8`, including context-stack pop, snapshot chain
   allocation, snapshot restore, and flat copy helpers.
+- `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`:
+  `0x164a..0x18d8`, including heap bitmap initialization, low/high
+  allocation entries, zero-fill, and free entry setup.
 - `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`:
   normal versus alternate parser table selection.
 - `generated/analysis/ic30_ic13_parser_dispatch_tables.md`:
@@ -623,8 +669,6 @@ rebuild after `0xe65c`.
 
 ### Unresolved Middle Edges
 
-- `0x164a..0x170a`: heap initialization and partition sizing before
-  `0x170c` / `0x1710` / `0x18b4` consume the allocator bitmap.
 - `0xe65c..0xe84c`: unresolved only at the full CPU-state bridge into
   existing font-map contracts after `0x13eb8`, `0xc428`, `0x144d2`, and
   `0x14c64`; branch flags, fallback install, and shared exit are pinned.

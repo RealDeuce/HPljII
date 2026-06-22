@@ -49,7 +49,10 @@ two direct hardware paths, as documented in
 `0x780e40 == 1` polls `0x8e01.4`, reads `0x8801`, waits on `0x8c01.0`,
 and handshakes through `0xa601` / `0xaa01`; the alternate nonzero mode
 polls `0xfffee005`, reads `0xfffee001`, reports status bits into
-`0x780e2e`, and handshakes through `0xfffee009`
+`0x780e2e`, and handshakes through `0xfffee009`. The semantic model now
+classifies the source fields, firmware bookkeeping, downstream
+consumers, output effect, and unresolved physical-interface edges under
+`Host Byte Fetch And Data-Chain Input`.
 
 ### Main PCL parser
 

@@ -5,6 +5,154 @@ concepts. It complements the low-level ledger in
 `notes/reverse-engineering-ledger.md`; it does not replace address-level
 notes, disassembly windows, or executable fixtures.
 
+## Host Byte Fetch And Data-Chain Input
+
+Status: anchored as the normalized byte-source boundary feeding the main
+parser and payload readers. Physical interface names for the two direct
+hardware register banks still need board/manual correlation, but the
+firmware priority order and state side effects are executable fixtures.
+
+Concept: `0xa904` is the byte-source multiplexer. It returns the next
+normalized byte in `D7`, or `-1` when a no-byte gate wins. It is used by
+the main parser, delayed payload handlers, transparent text, macro
+replay, raster payload readers, and font download streams. Higher-level
+byte-stream reproduction should model all input as one of these sources
+before parser dispatch.
+
+### Field Groups
+
+- Canonical byte sources:
+  - first pushback stack: `0x783e8c` count and `0x783e8e` pointer.
+  - active data-chain source: `0x782d76` points to the current frame;
+    frame `+4 == -1` triggers end transition through `0xe22c`.
+  - second pushback stack: `0x783e76` count and `0x783e78` pointer.
+  - ring buffer: `0x783e54` count and `0x783e56` pointer, wrapped
+    between `0x783a4c` and `0x783e53`.
+  Evidence: disassembly `0xa92c..0xa9e0`; fixtures
+  `0xa904 services pending work then prefers first LIFO source`,
+  `0xa904 data-chain end marker retries before second LIFO source`, and
+  `0xa904 buffered ring source wins before direct hardware in mode 0`.
+- Canonical direct hardware sources:
+  - mode `0x780e40 == 1`: status byte `0x8e01`, data byte `0x8801`,
+    wait/ack byte `0x8c01`, handshake outputs `0xa601` and `0xaa01`.
+  - alternate nonzero mode: status byte `0xfffee005`, data byte
+    `0xfffee001`, handshake/control byte `0xfffee009`.
+  Evidence: disassembly `0xa9e2..0xaa86` and `0xaaa6..0xab8a`;
+  fixtures
+  `0xa904 direct mode 1 preserves 0x1a and clears handshake state` and
+  `0xa904 direct mode 2 reads ready byte and sets control-shadow bit 6`.
+- Firmware bookkeeping:
+  - `0x7821cd`: service-needed flag checked before all byte sources.
+  - `0x7821cc`: service-in-progress flag set around helper `0x10cc`.
+  - `0x780e66`: source/pending flags cleared as stacked sources empty.
+  - `0x780e3b`: no-byte gate that returns `D7 = -1` while
+    `0x780e66 != 0`.
+  - `0x7821c4`: timeout/handshake state cleared after direct hardware
+    reads.
+  - `0x7828ec`: direct-mode active byte, cleared or set by hardware
+    handshake paths.
+  - `0x7828fa` and `0x7828fb`: direct-mode control shadows.
+  - `0x780e2e`: status-error accumulator for alternate direct mode bits
+    `7` and `6`.
+  Evidence: disassembly `0xa904..0xab8a`; host fetch fixtures above.
+- Parser scratch:
+  - none owned by `0xa904`. Parser scratch starts after a returned byte
+    enters `0xda9a`/`0x11774`, or when payload readers consume byte counts
+    from already-restored command records.
+- Unknown:
+  - physical names for the `0x8e01`/`0x8801`/`0x8c01` bank and the
+    `0xfffee005`/`0xfffee001`/`0xfffee009` bank.
+  - exact RAM structure for the current data-chain frame beyond fields
+    already used by macro replay fixtures.
+
+### Writers
+
+- `0xa904` decrements stack/ring counts, advances source pointers, clears
+  bits in `0x780e66`, clears `0x7821c4`, updates `0x7828ec`, and toggles
+  direct-mode control shadows.
+- `0xa904` calls `0x10cc(0x780202)` when service/polling paths need work
+  before retrying the byte fetch.
+- `0xa904` calls `0xe22c` when a data-chain frame has end marker `-1` at
+  frame `+4`, then retries source selection.
+- Macro setup helpers such as `0xe418` write data-chain frames later
+  consumed by `0xa904`; the macro execute/call fixtures pin frame
+  payload bytes `!\r` and mixed-control payload
+  `ESC &k1G!\r!`.
+
+### Readers And Consumers
+
+- The main parser loop `0x11774` consumes `0xa904` bytes for normal host
+  streams and routes them to handlers such as `0xd04a`, `0xf02c`,
+  `0xedf8`, and raster/font command finals.
+- Delayed payload readers consume bytes through `0xa904` or payload
+  wrappers after `0x12218` restores the saved command record.
+- Transparent text handler `0x12452` consumes `ESC &p#X` payload bytes
+  through `0xa904`, routing printable bytes back to `0xd04a`.
+- Macro execute/call replay consumes data-chain bytes through `0xa904`,
+  then re-enters the same parser/page-record path as direct host bytes.
+- Font descriptor, resource-payload, downloaded-character, and combined
+  downloaded-glyph streams are fixture-backed as modeled `0xa904` ring
+  streams before they reach parser/object/render boundaries.
+
+### Output Effect
+
+`0xa904` has no pixels by itself. Its visible effect is that the same byte
+sequence can reach parser handlers from host ring, direct hardware, or
+data-chain replay with the same downstream page-record output. The macro
+mixed-control fixture proves a stored `ESC &k1G!\r!` data-chain payload
+replays through `0xa904`, reaches handlers `0xedf8`, `0xd04a`, `0xf02c`,
+and `0xd04a`, then renders the same rows as direct host bytes. The
+combined downloaded-glyph fixture proves one 2,215-byte `0xa904` ring
+stream can cross font-control, payload, printable, page-record, bridge,
+and render-entry boundaries.
+
+### Confidence
+
+High for byte-source priority, no-byte gating, data-chain end retry,
+ring/direct source selection, `0x1a` reporting, and direct-mode state
+side effects because they are covered by executable fixtures and the
+`0xa904` disassembly. Medium for physical interface naming and full
+data-chain frame ownership because those require board/manual
+correlation and broader frame-lifetime tracing.
+
+### Fixtures
+
+- `0xa904 no-byte branch returns -1 before buffered sources`
+- `0xa904 services pending work then prefers first LIFO source`
+- `0xa904 data-chain end marker retries before second LIFO source`
+- `0xa904 buffered ring source wins before direct hardware in mode 0`
+- `0xa904 direct mode 1 preserves 0x1a and clears handshake state`
+- `0xa904 direct mode 2 reads ready byte and sets control-shadow bit 6`
+- `macro execute frame payload feeds 0xa904 data-chain bytes`
+- `host-fetched mixed control stream reaches parser and page-record render`
+- `combined host-fetched font download stream prints installed glyph`
+- `host-fetched text rectangle raster FF publishes rendered page record`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`:
+  `0xa904..0xab8a`
+- `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`:
+  parser consumers of returned `D7`
+- `generated/analysis/ic30_ic13_tokenizer_macro_callers.md` plus
+  executable macro fixtures in
+  [harness](/usr/home/admin/T400/ljII/tools/render_fixture_harness.py:15396)
+  provide the current macro/data-chain evidence.
+- `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst` and
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`:
+  delayed payload consumers.
+
+### Unresolved Middle Edges
+
+- `0xa9e2..0xaa86`: physical interface name and exact electrical
+  handshake for the `0x8e01`/`0x8801`/`0x8c01` direct bank.
+- `0xaaa6..0xab8a`: physical interface name and exact electrical
+  handshake for the `0xfffee005`/`0xfffee001`/`0xfffee009` direct bank.
+- `0x782d76 frame +0x00..+0x??`: full data-chain frame layout and owner
+  lifecycle outside the macro replay fields already fixture-backed.
+- `0x780e66` bit meanings: source-empty/active bits are observed by
+  behavior, but not yet fully named.
+
 ## Mixed Text/Rule/Raster Page Record
 
 Status: anchored as a parser-to-render composition checkpoint, but still

@@ -691,6 +691,7 @@ glyph row-copy fixtures are generated in
 `generated/analysis/ic30_ic13_render_row_copy_fixtures.md`;
 `tools/render_fixture_harness.py` executes these primitive fixtures
 together, pins `0xa904` host byte fetch source-priority fixtures plus
+the semantic host-input/data-chain field model,
 ring-fed host-to-render boundaries for the direct text/control
 page-record stream set through `0x1edc6` bridge fields, the
 reset/FF/page-size/orientation/paper-source/copies publication streams,

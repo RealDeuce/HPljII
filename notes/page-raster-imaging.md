@@ -147,11 +147,19 @@ line `63`, normalizes the search start to line `0`, takes
 resets x from `40` to `10`, writes recovered y `104`, and queues the
 following `!` at compact coord `0x3001`, bucket `5`.
 
-The start-after-text `ESC &l#V` recovery path is anchored without wrap or
-publication. Fixture `ESC &l2V!`, with y `3290`, computes start line
-`64`, takes `0x12a02..0x12afc`, skips wrap and `0xf124`, resets x from
-`40` to `10`, writes recovered y `54`, and queues the following `!` at
-compact coord `0x1001`, bucket `2`.
+The empty-table start-after-text `ESC &l#V` recovery path is anchored
+without wrap or publication. Fixture `ESC &l2V!`, with y `3290` and no
+selector-2 bit in the table, computes start line `64`, takes
+`0x12a02..0x12afc`, skips `0xf124`, resets x from `40` to `10`, writes
+recovered y `54`, and queues the following `!` at compact coord
+`0x1001`, bucket `2`.
+
+The default-table start-after-text `ESC &l#V` path wraps before visible
+output. Fixture `ESC &l2V!`, with y `3290`, computes start line `64`,
+wraps to the selector-2 bit at line `1`, takes `0x12a7a..0x12af8`, skips
+the `0x12a8a..0x12aa2` publication edge, resets x from `40` to `10`,
+writes y `176`, and queues the following `!` at compact coord `0xb001`,
+bucket `9`.
 
 The lookup helpers at `0x009d16`, `0x009d4e`, `0x009d86`, and `0x009dbe`
 mask the internal code with `0x7f` and index eleven word entries. The

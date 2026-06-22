@@ -177,10 +177,10 @@ pixels or byte-stream compatibility.
    Data-Chain Replay` and macro fixtures.
 4. Downloaded font support now has tracked documentation for descriptor,
    resource-payload, current-record, bit-30-clear resource-object,
-   bit-30-clear continuation resume, split-plane character-object, linear
-   character-object, and downloaded-glyph render paths in
+   bit-30-clear even-span and split-plane continuation resume, split-plane
+   character-object, linear character-object, and downloaded-glyph render paths in
    `notes/downloaded-fonts.md`. The full soft-font descriptor grammar,
-   alternate character modes, split-plane/error continuation variants, and all
+   alternate character modes, continuation failure/release variants, and all
    validation/error behaviors are still not proven against every PCL form.
 5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not

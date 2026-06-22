@@ -5656,6 +5656,143 @@ def font_payload_split_plane_copy_via_16942(stream: bytes, rows: int, prefix_spa
     }
 
 
+def font_payload_split_plane_resume_via_16942(
+    stream: bytes,
+    *,
+    prefix_span: int,
+    byte_budget: int,
+    d4_counter: int,
+    d3_counter: int,
+) -> dict[str, object]:
+    pos = 0
+    budget = int(byte_budget)
+    d4 = int(d4_counter)
+    d3 = int(d3_counter)
+    a5_counter = int(prefix_span) - 1
+    prefix = bytearray()
+    trailing = bytearray()
+    control_hits = 0
+    phase = "prefix"
+
+    while d3 >= 0:
+        while d4 >= 0:
+            if budget <= 0:
+                return {
+                    "status": 2,
+                    "prefix": bytes(prefix),
+                    "trailing": bytes(trailing),
+                    "stream_pos": pos,
+                    "byte_budget": budget,
+                    "continuation": {
+                        "flag": 1,
+                        "d4_counter": d4,
+                        "d3_counter": d3,
+                        "prefix_offset": len(prefix),
+                        "trailing_offset": len(trailing),
+                    },
+                    "control_hits": control_hits,
+                    "phase": phase,
+                }
+            if pos >= len(stream):
+                return {
+                    "status": 0,
+                    "prefix": bytes(prefix),
+                    "trailing": bytes(trailing),
+                    "stream_pos": pos,
+                    "byte_budget": budget,
+                    "continuation": None,
+                    "control_hits": control_hits,
+                    "phase": phase,
+                }
+            value = stream[pos]
+            pos += 1
+            if value == 0x1A:
+                if pos >= len(stream):
+                    return {
+                        "status": 0,
+                        "prefix": bytes(prefix),
+                        "trailing": bytes(trailing),
+                        "stream_pos": pos,
+                        "byte_budget": budget,
+                        "continuation": None,
+                        "control_hits": control_hits,
+                        "phase": phase,
+                    }
+                value = stream[pos]
+                pos += 1
+                if value == 0x58:
+                    control_hits += 1
+                    value = 0
+            prefix.append(value)
+            budget -= 1
+            d4 -= 1
+
+        d4 = a5_counter
+        phase = "trailing"
+        if budget <= 0:
+            return {
+                "status": 2,
+                "prefix": bytes(prefix),
+                "trailing": bytes(trailing),
+                "stream_pos": pos,
+                "byte_budget": budget,
+                "continuation": {
+                    "flag": 1,
+                    "d4_counter": d4,
+                    "d3_counter": d3,
+                    "prefix_offset": len(prefix),
+                    "trailing_offset": len(trailing),
+                },
+                "control_hits": control_hits,
+                "phase": phase,
+            }
+        if pos >= len(stream):
+            return {
+                "status": 0,
+                "prefix": bytes(prefix),
+                "trailing": bytes(trailing),
+                "stream_pos": pos,
+                "byte_budget": budget,
+                "continuation": None,
+                "control_hits": control_hits,
+                "phase": phase,
+            }
+        value = stream[pos]
+        pos += 1
+        if value == 0x1A:
+            if pos >= len(stream):
+                return {
+                    "status": 0,
+                    "prefix": bytes(prefix),
+                    "trailing": bytes(trailing),
+                    "stream_pos": pos,
+                    "byte_budget": budget,
+                    "continuation": None,
+                    "control_hits": control_hits,
+                    "phase": phase,
+                }
+            value = stream[pos]
+            pos += 1
+            if value == 0x58:
+                control_hits += 1
+                value = 0
+        trailing.append(value)
+        budget -= 1
+        d3 -= 1
+        phase = "prefix"
+
+    return {
+        "status": 1,
+        "prefix": bytes(prefix),
+        "trailing": bytes(trailing),
+        "stream_pos": pos,
+        "byte_budget": budget,
+        "continuation": None,
+        "control_hits": control_hits,
+        "phase": "done",
+    }
+
+
 def font_download_char_object_via_16498(
     header: bytes | bytearray,
     char_code: int,
@@ -5800,11 +5937,21 @@ def font_download_resource_object_via_16606(
             "char_code": char_code,
             "record_prefix": record_prefix[:4],
         }
-    copy_result = font_payload_linear_copy_via_168dc(
-        bitmap_stream,
-        rows * span,
-        byte_budget - 0x0E,
-    )
+    split_plane = bool(width & 1)
+    copy_budget = byte_budget - 0x0E
+    if split_plane:
+        copy_result = font_payload_split_plane_copy_via_16942(
+            bitmap_stream,
+            rows,
+            span,
+            copy_budget,
+        )
+    else:
+        copy_result = font_payload_linear_copy_via_168dc(
+            bitmap_stream,
+            rows * span,
+            copy_budget,
+        )
     if copy_result["status"] == 0:
         return {
             "status": 0,
@@ -5812,30 +5959,59 @@ def font_download_resource_object_via_16606(
             "copy": copy_result,
         }
 
-    bitmap = bytes(copy_result["dest"])
-    object_size = ((len(bitmap) + 0x3F) >> 6) * 0x40
+    if split_plane:
+        prefix = bytes(copy_result["prefix"])
+        trailing = bytes(copy_result["trailing"])
+        logical_payload_size = rows * width
+    else:
+        prefix = bytes(copy_result["dest"])
+        trailing = b""
+        logical_payload_size = len(prefix)
+
+    object_size = ((max(logical_payload_size, len(prefix) + len(trailing)) + 0x3F) >> 6) * 0x40
     if object_size == 0:
         object_size = 0x40
     if object_offset < base:
         raise AssertionError("modeled 0x16606 object offset must be inside the selected payload")
     if object_offset + object_size > len(updated):
         updated.extend(b"\x00" * (object_offset + object_size - len(updated)))
-    updated[object_offset:object_offset + len(bitmap)] = bitmap
+    if split_plane:
+        trailing_base = object_offset + rows * span
+        updated[object_offset:object_offset + len(prefix)] = prefix
+        updated[trailing_base:trailing_base + len(trailing)] = trailing
+        bitmap = bytes(updated[object_offset:object_offset + logical_payload_size])
+    else:
+        updated[object_offset:object_offset + len(prefix)] = prefix
+        bitmap = prefix
 
     release_old = u32(updated, table_entry + 4) != u32(updated, base_entry + 4)
     updated[table_entry:table_entry + 4] = record_prefix[:4]
     updated[table_entry + 4:table_entry + 8] = ((object_offset - base) & 0x00FFFFFF).to_bytes(4, "big")
     continuation_saved = copy_result["status"] == 2
     if continuation_saved:
+        copy_continuation = copy_result["continuation"]
+        assert isinstance(copy_continuation, dict)
+        if split_plane:
+            continuation_dest = object_offset + int(copy_continuation["prefix_offset"])
+            continuation_trailing_dest = object_offset + rows * span + int(copy_continuation["trailing_offset"])
+            remaining = 0
+            d4_counter = int(copy_continuation["prefix_remaining"])
+            d3_counter = int(copy_continuation["row_remaining"])
+        else:
+            continuation_dest = object_offset + len(prefix)
+            continuation_trailing_dest = 0
+            remaining = int(copy_result["remaining"])
+            d4_counter = 0
+            d3_counter = 0
         continuation_after = {
             "flag": 1,
             "payload": base,
             "word_0x7827c8": char_code,
-            "dest": object_offset + len(bitmap),
-            "trailing_dest": 0,
-            "remaining": int(copy_result["remaining"]),
-            "d4_counter": 0,
-            "d3_counter": 0,
+            "dest": continuation_dest,
+            "trailing_dest": continuation_trailing_dest,
+            "remaining": remaining,
+            "d4_counter": d4_counter,
+            "d3_counter": d3_counter,
         }
     else:
         continuation_after = clear_download_continuation_state(continuation_after) if continuation_after else None
@@ -5854,11 +6030,14 @@ def font_download_resource_object_via_16606(
         "record": bytes(updated[table_entry:table_entry + 8]),
         "release_old": release_old,
         "byte_budget": int(byte_budget),
-        "copy_budget": byte_budget - 0x0E,
+        "copy_budget": copy_budget,
         "object_offset": object_offset,
         "object_size": object_size,
         "bitmap": bitmap,
         "span": span,
+        "raw_width": width,
+        "render_span": width,
+        "split_plane": split_plane,
         "rows": rows,
         "max_payload_span": max_payload_span,
         "copy": copy_result,
@@ -5909,34 +6088,55 @@ def font_download_resource_resume_via_15c4c(
             "continuation": clear_download_continuation_state(continuation),
         }
 
-    if span & 1:
-        return {
-            "status": 0,
-            "handler": 0x15C4C,
-            "reason": "split-plane-resource-resume-not-modeled",
-            "base": base,
-            "char_code": char_code,
-            "table_entry": table_entry,
-            "record": record,
-            "span": span,
-            "rows": rows,
-            "continuation_before": dict(continuation),
-            "continuation": dict(continuation),
-        }
+    split_plane = bool(width & 1)
 
     dest = int(continuation["dest"])
-    remaining = int(continuation["remaining"])
-    copy_result = font_payload_linear_copy_via_168dc(bitmap_stream, remaining, byte_budget)
-    bitmap = bytes(copy_result["dest"])
-    if dest + len(bitmap) > len(updated):
-        updated.extend(b"\x00" * (dest + len(bitmap) - len(updated)))
-    updated[dest:dest + len(bitmap)] = bitmap
+    if split_plane:
+        trailing_dest = int(continuation["trailing_dest"])
+        d4_counter = int(continuation["d4_counter"])
+        d3_counter = int(continuation["d3_counter"])
+        copy_result = font_payload_split_plane_resume_via_16942(
+            bitmap_stream,
+            prefix_span=span,
+            byte_budget=byte_budget,
+            d4_counter=d4_counter,
+            d3_counter=d3_counter,
+        )
+        prefix = bytes(copy_result["prefix"])
+        trailing = bytes(copy_result["trailing"])
+        if dest + len(prefix) > len(updated):
+            updated.extend(b"\x00" * (dest + len(prefix) - len(updated)))
+        if trailing_dest + len(trailing) > len(updated):
+            updated.extend(b"\x00" * (trailing_dest + len(trailing) - len(updated)))
+        updated[dest:dest + len(prefix)] = prefix
+        updated[trailing_dest:trailing_dest + len(trailing)] = trailing
+        bitmap = prefix + trailing
+        remaining = 0
+    else:
+        trailing_dest = 0
+        d4_counter = 0
+        d3_counter = 0
+        remaining = int(continuation["remaining"])
+        copy_result = font_payload_linear_copy_via_168dc(bitmap_stream, remaining, byte_budget)
+        bitmap = bytes(copy_result["dest"])
+        if dest + len(bitmap) > len(updated):
+            updated.extend(b"\x00" * (dest + len(bitmap) - len(updated)))
+        updated[dest:dest + len(bitmap)] = bitmap
 
     status = int(copy_result["status"])
     if status == 2:
         continuation_after = dict(continuation)
-        continuation_after["dest"] = dest + len(bitmap)
-        continuation_after["remaining"] = int(copy_result["remaining"])
+        if split_plane:
+            copy_continuation = copy_result["continuation"]
+            assert isinstance(copy_continuation, dict)
+            continuation_after["dest"] = dest + len(bytes(copy_result["prefix"]))
+            continuation_after["trailing_dest"] = trailing_dest + len(bytes(copy_result["trailing"]))
+            continuation_after["remaining"] = 0
+            continuation_after["d4_counter"] = int(copy_continuation["d4_counter"])
+            continuation_after["d3_counter"] = int(copy_continuation["d3_counter"])
+        else:
+            continuation_after["dest"] = dest + len(bitmap)
+            continuation_after["remaining"] = int(copy_result["remaining"])
     else:
         continuation_after = clear_download_continuation_state(continuation)
 
@@ -5950,8 +6150,14 @@ def font_download_resource_resume_via_15c4c(
         "table_entry": table_entry,
         "record": record,
         "span": span,
+        "raw_width": width,
+        "render_span": width,
+        "split_plane": split_plane,
         "rows": rows,
         "dest": dest,
+        "trailing_dest": trailing_dest,
+        "d4_counter": d4_counter,
+        "d3_counter": d3_counter,
         "byte_budget": int(byte_budget),
         "remaining_before": remaining,
         "bitmap": bitmap,
@@ -9659,14 +9865,19 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
         x = byte_pair_offset * 8 + subbyte
         rows_in_band = min(rows, max(int(band_rows) - row_index, 0))
         remaining_after_band = rows - rows_in_band
-        source = resources[int(glyph["bitmap"]) : int(glyph["bitmap"]) + rows * render_span]
+        source = glyph_source_bytes_for_rows(resources, glyph)
         helper = u32(data, 0x1F08E + render_span * 4)
+        trailing_plane = bool(render_span & 1 and render_span > 1 and glyph.get("source_kind") in ("inline", "downloaded-pointer"))
+        a2_row_span = render_span - 1 if trailing_plane else render_span
         if rows_in_band:
             result = simulate_row_copy(data, helper, rows_in_band, stride=dest_stride)
+            a2_source_len = rows_in_band * a2_row_span
+            a3_source_len = rows_in_band if trailing_plane else 0
             for write in result.writes:
-                if write.source != "A2":
+                if write.source not in ("A2", "A3"):
                     raise AssertionError(f"unexpected {write.source} write for compact mode-0 glyph")
-                if write.src + write.size > rows_in_band * render_span:
+                source_len = a3_source_len if write.source == "A3" else a2_source_len
+                if write.src + write.size > source_len:
                     raise AssertionError(f"source read past compact mode-0 current-band bitmap at +0x{write.src:x}")
             write_bitmap_bits(
                 dest,
@@ -9679,10 +9890,13 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
             )
         if remaining_after_band:
             result = simulate_row_copy(data, helper, remaining_after_band, stride=dest_stride)
+            a2_source_len = remaining_after_band * a2_row_span
+            a3_source_len = remaining_after_band if trailing_plane else 0
             for write in result.writes:
-                if write.source != "A2":
+                if write.source not in ("A2", "A3"):
                     raise AssertionError(f"unexpected {write.source} write for compact mode-0 fallback glyph")
-                if write.src + write.size > remaining_after_band * render_span:
+                source_len = a3_source_len if write.source == "A3" else a2_source_len
+                if write.src + write.size > source_len:
                     raise AssertionError(f"source read past compact mode-0 fallback bitmap at +0x{write.src:x}")
             required_fallback = remaining_after_band * dest_stride
             if required_fallback > len(fallback_dest):
@@ -33168,6 +33382,351 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "." * 22 + "#.#.#.#..#.#.#.#",
                 "." * 22 + "####........####",
                 "." * 22 + "##....##..####..",
+            ],
+        },
+    }))
+
+    split_resume_object_memory = bytearray(0x1000)
+    split_resume_object_memory[resource_object_context + 0x14:resource_object_context + 0x16] = (0x0115).to_bytes(2, "big")
+    split_resume_descriptor = (
+        bytes.fromhex("04 00 03 02 04 00 a0 a1 b0 c0 c1 d0")
+        + bytes(8)
+    )
+    partial_split_resource_install = font_download_resource_object_via_16606(
+        split_resume_object_memory,
+        base=resource_object_context,
+        char_code=0x21,
+        record_prefix=split_resume_descriptor[2:6],
+        bitmap_stream=split_resume_descriptor[6:12],
+        byte_budget=0x12,
+        object_offset=resource_object_context + 0x0200,
+    )
+    partial_split_resource_continuation = partial_split_resource_install["continuation"]
+    assert isinstance(partial_split_resource_continuation, dict)
+    partial_split_resource_header = partial_split_resource_install["header"]
+    assert isinstance(partial_split_resource_header, bytes)
+    split_resource_resume_stream = b"\x1b)s0W\x04\x01\xcc"
+    host_fetched_split_resource_resume_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(split_resource_resume_stream), direct_mode=0),
+        len(split_resource_resume_stream),
+    )
+    host_fetched_split_resource_resume_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        host_fetched_split_resource_resume_stream["stream"],
+        descriptor_budget=3,
+    )
+    host_fetched_split_resource_resume_command = host_fetched_split_resource_resume_trace["commands"][0]
+    assert isinstance(host_fetched_split_resource_resume_command, dict)
+    split_resource_resume_command = render_font_descriptor_command_stream_via_121cc_15d0a(
+        host_fetched_split_resource_resume_stream["stream"],
+        descriptor_byte_budget=3,
+        records=[],
+        current_id=0x1234,
+        continuation=partial_split_resource_continuation,
+        continuation_object_flags=0,
+    )
+    split_resource_object_resume = font_download_resource_resume_via_15c4c(
+        partial_split_resource_header,
+        continuation=partial_split_resource_continuation,
+        bitmap_stream=bytes.fromhex("c1 d0"),
+        byte_budget=2,
+    )
+    split_resumed_resource_object = split_resource_object_resume["header"]
+    assert isinstance(split_resumed_resource_object, bytes)
+    split_resumed_resource_map = inline_map_via_14e24(
+        split_resumed_resource_object,
+        resource_object_context,
+    )
+    split_resumed_resource_map_table = split_resumed_resource_map["table"]
+    assert isinstance(split_resumed_resource_map_table, bytes)
+    split_resumed_resource_candidate = {
+        "slot_pointer": FONT_CANDIDATE_LIST_BASE,
+        "longword": resource_object_context,
+        "record_start": resource_object_context,
+        "inline_word_0x14": u16(split_resumed_resource_object, resource_object_context + 0x14),
+        "inline_byte_0x17": split_resumed_resource_object[resource_object_context + 0x17],
+    }
+    split_resumed_resource_dispatch = dispatch_selected_inline_font_via_14c64(
+        data,
+        split_resumed_resource_object,
+        split_resumed_resource_candidate,
+        primary_secondary_selector=0,
+        active_primary_symbol=0x0115,
+        active_secondary_symbol=0x0115,
+    )
+    split_resumed_resource_source = build_inline_text_source_object_from_1393a(
+        split_resumed_resource_object,
+        resource_object_context,
+        split_resumed_resource_map_table,
+        0x21,
+        x=0,
+        y=0,
+        context_slot=3,
+    )
+    split_resumed_resource_positioned = position_unflagged_text_source_via_d3b2(
+        split_resumed_resource_source,
+        bytes(split_resumed_resource_source["inline_record"]),
+        cursor_x=10,
+        cursor_y=20,
+        printable_offset=7,
+        context_metric_flag=0,
+        source_x_offset=5,
+    )
+    split_resumed_resource_positioned_source = split_resumed_resource_positioned["source"]
+    assert isinstance(split_resumed_resource_positioned_source, dict)
+    split_resumed_resource_bucket = queue_text_source_via_12f2e(
+        split_resumed_resource_object,
+        split_resumed_resource_positioned_source,
+    )
+    split_resumed_resource_page_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, resource_object_context],
+    }
+    split_resumed_resource_page_result = queue_text_source_to_page_record_via_12f2e(
+        split_resumed_resource_object,
+        split_resumed_resource_page_record,
+        split_resumed_resource_positioned_source,
+    )
+    split_resumed_resource_bucket_array = split_resumed_resource_page_record["bucket_array"]
+    assert isinstance(split_resumed_resource_bucket_array, dict)
+    split_resumed_resource_page_object = bytes(split_resumed_resource_bucket_array[1][0])
+    split_resumed_resource_bridge_record = {
+        "bucket_root": split_resumed_resource_page_object,
+        "rule_list": [],
+        "fixed_list": [],
+        "context_slots": [0, 0, 0, resource_object_context],
+    }
+    split_resumed_resource_bridged = bridge_page_record_via_1edc6(
+        split_resumed_resource_bridge_record,
+    )
+    split_resumed_resource_rendered = render_bridged_compact_bucket_object(
+        data,
+        split_resumed_resource_object,
+        split_resumed_resource_bridged,
+    )
+    checks.append(assert_equal("host-fetched 0x15d0a split-plane continuation resource object resumes fixed-record render", {
+        "partial_install": {
+            key: partial_split_resource_install[key]
+            for key in (
+                "status",
+                "handler",
+                "base",
+                "char_code",
+                "table_entry",
+                "record",
+                "byte_budget",
+                "copy_budget",
+                "object_offset",
+                "bitmap",
+                "span",
+                "raw_width",
+                "render_span",
+                "split_plane",
+                "continuation_saved",
+                "continuation",
+            )
+        },
+        "descriptor": {
+            "fetched_stream": host_fetched_split_resource_resume_stream["stream"],
+            "fetch_sources": host_fetched_split_resource_resume_stream["sources"],
+            "parser_handlers": [
+                event["handler"]
+                for event in host_fetched_split_resource_resume_trace["dispatches"]
+            ],
+            "restored_record": host_fetched_split_resource_resume_command["restored_record"],
+            "descriptor_offset": host_fetched_split_resource_resume_command["descriptor_offset"],
+            "descriptor_budget": host_fetched_split_resource_resume_command["descriptor_byte_budget"],
+            "route": {
+                key: split_resource_resume_command["route"][key]
+                for key in ("path", "target_payload", "object_bit30", "handler", "handler_meaning")
+            },
+        },
+        "resume": {
+            key: split_resource_object_resume[key]
+            for key in (
+                "status",
+                "handler",
+                "base",
+                "char_code",
+                "table_entry",
+                "record",
+                "span",
+                "raw_width",
+                "render_span",
+                "split_plane",
+                "dest",
+                "trailing_dest",
+                "d4_counter",
+                "d3_counter",
+                "byte_budget",
+                "remaining_before",
+                "bitmap",
+                "continuation",
+            )
+        },
+        "dispatch": {
+            key: split_resumed_resource_dispatch[key]
+            for key in (
+                "path",
+                "selected_longword",
+                "record_start",
+                "selected_symbol",
+                "selected_flag",
+                "probe_count",
+                "patch_kind",
+            )
+        },
+        "source": {
+            key: split_resumed_resource_source[key]
+            for key in ("host_char", "mapped", "glyph_entry", "glyph_width", "glyph_rows", "inline_record", "valid_record", "bitmap")
+        },
+        "bucket": {
+            key: split_resumed_resource_bucket[key]
+            for key in ("path", "object", "bucket_index", "selector", "coord", "glyph", "rows", "width")
+        },
+        "page": {
+            key: split_resumed_resource_page_result[key]
+            for key in ("path", "allocated", "chain_index", "count_before", "count_after", "bucket_index", "selector", "coord", "glyph")
+        } | {
+            "object_prefix": split_resumed_resource_page_object[:11],
+            "bridge_context_slots": split_resumed_resource_bridged["context_slots"][:4],
+        },
+        "render": {
+            "selector": split_resumed_resource_rendered["selector"],
+            "context_slot": split_resumed_resource_rendered["context_slot"],
+            "compact_mode": split_resumed_resource_rendered["compact_mode"],
+            "payload": split_resumed_resource_rendered["payload"],
+            "rows": split_resumed_resource_rendered["rows"],
+        },
+    }, {
+        "partial_install": {
+            "status": 2,
+            "handler": 0x16606,
+            "base": resource_object_context,
+            "char_code": 0x21,
+            "table_entry": resource_object_context + 0x48,
+            "record": bytes.fromhex("03 02 04 00 00 00 02 00"),
+            "byte_budget": 0x12,
+            "copy_budget": 4,
+            "object_offset": resource_object_context + 0x0200,
+            "bitmap": bytes.fromhex("a0 a1 c0 00 b0 00"),
+            "span": 2,
+            "raw_width": 3,
+            "render_span": 3,
+            "split_plane": True,
+            "continuation_saved": True,
+            "continuation": {
+                "flag": 1,
+                "payload": resource_object_context,
+                "word_0x7827c8": 0x21,
+                "dest": resource_object_context + 0x0203,
+                "trailing_dest": resource_object_context + 0x0205,
+                "remaining": 0,
+                "d4_counter": 0,
+                "d3_counter": 0,
+            },
+        },
+        "descriptor": {
+            "fetched_stream": b"\x1b)s0W\x04\x01\xcc",
+            "fetch_sources": ["ring"] * 8,
+            "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "restored_record": b"\x80W\x00\x00\x00\x00",
+            "descriptor_offset": 5,
+            "descriptor_budget": 3,
+            "route": {
+                "path": "continuation",
+                "target_payload": resource_object_context,
+                "object_bit30": 0,
+                "handler": 0x15C4C,
+                "handler_meaning": "resume-downloaded-font-resource-object",
+            },
+        },
+        "resume": {
+            "status": 1,
+            "handler": 0x15C4C,
+            "base": resource_object_context,
+            "char_code": 0x21,
+            "table_entry": resource_object_context + 0x48,
+            "record": bytes.fromhex("03 02 04 00 00 00 02 00"),
+            "span": 2,
+            "raw_width": 3,
+            "render_span": 3,
+            "split_plane": True,
+            "dest": resource_object_context + 0x0203,
+            "trailing_dest": resource_object_context + 0x0205,
+            "d4_counter": 0,
+            "d3_counter": 0,
+            "byte_budget": 2,
+            "remaining_before": 0,
+            "bitmap": bytes.fromhex("c1 d0"),
+            "continuation": {
+                "flag": 0,
+                "payload": 0,
+                "word_0x7827c8": 0,
+                "dest": 0,
+                "trailing_dest": 0,
+                "remaining": 0,
+                "d4_counter": 0,
+                "d3_counter": 0,
+            },
+        },
+        "dispatch": {
+            "path": "inline-cache-miss",
+            "selected_longword": resource_object_context,
+            "record_start": resource_object_context,
+            "selected_symbol": 0x0115,
+            "selected_flag": 0,
+            "probe_count": 0x60,
+            "patch_kind": "unchanged",
+        },
+        "source": {
+            "host_char": 0x21,
+            "mapped": 1,
+            "glyph_entry": resource_object_context + 0x48,
+            "glyph_width": 3,
+            "glyph_rows": 2,
+            "inline_record": bytes.fromhex("03 02 04 00 00 00 02 00"),
+            "valid_record": True,
+            "bitmap": resource_object_context + 0x0200,
+        },
+        "bucket": {
+            "path": "short",
+            "object": bytes.fromhex("00 00 00 00 00 03 00 01 01 76 01"),
+            "bucket_index": 1,
+            "selector": 0x0003,
+            "coord": 0x7601,
+            "glyph": 1,
+            "rows": 2,
+            "width": 3,
+        },
+        "page": {
+            "path": "short-page-record",
+            "allocated": True,
+            "chain_index": 0,
+            "count_before": 0,
+            "count_after": 1,
+            "bucket_index": 1,
+            "selector": 0x0003,
+            "coord": 0x7601,
+            "glyph": 1,
+            "object_prefix": bytes.fromhex("00 00 00 00 00 03 00 01 01 76 01"),
+            "bridge_context_slots": (0, 0, 0, resource_object_context),
+        },
+        "render": {
+            "selector": 0x0003,
+            "context_slot": 3,
+            "compact_mode": 0,
+            "payload": bytes.fromhex("00 01 01 76 01") + bytes(0x1B),
+            "rows": [
+                "." * 46,
+                "." * 46,
+                "." * 46,
+                "." * 46,
+                "." * 46,
+                "." * 46,
+                "." * 46,
+                "." * 22 + "#.#.....#.#....##.##....",
+                "." * 22 + "##......##.....###.#....",
             ],
         },
     }))

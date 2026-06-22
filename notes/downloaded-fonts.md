@@ -34,6 +34,9 @@ Primary fixtures:
 - `font descriptor stream ties ROM parser dispatch to 0x15d0a routes`
 - `host-fetched font descriptor streams route through 0x15d0a`
 - `host-fetched 0x15d0a current-record resource object feeds fixed-record render`
+- `host-fetched 0x15d0a continuation resource object resumes fixed-record render`
+- `host-fetched 0x15d0a split-plane continuation resource object resumes
+  fixed-record render`
 - `0x16c14-modeled downloaded font replacement bookkeeping`
 - `0x16c14 routes installed font resource through 0x1bc38 slot`
 - `0x16c14-modeled downloaded font free-slot bookkeeping`
@@ -162,9 +165,9 @@ Unknown:
 
 - Manual names for every validation-table predicate feeding `0x16fae` are not
   complete, even though the table-driven fixture pins all staged field writes.
-- Split-plane and error-exit variants for the `0x15c4c` downloaded-font-resource
-  resume helper still need page-render fixtures. The even-span fixed-record
-  resume path is now page-visible.
+- Error-exit and release variants for the `0x15c4c` downloaded-font-resource
+  resume helper still need page-render fixtures. The even-span and split-plane
+  fixed-record resume paths are now page-visible.
 - The complete soft-font grammar is not exhaustively proven for every legal
   PCL descriptor form and every metric-byte combination.
 
@@ -213,6 +216,11 @@ Fixture values:
   `0x000100`, sees bit `30` clear, dispatches handler `0x15c4c`, resumes
   bitmap copy at saved destination `0x000302`, clears continuation state, and
   renders the completed fixed-record glyph.
+- split-plane descriptor `04 01 cc` with saved continuation counters reloads
+  payload `0x000100`, sees fixed-record entry `03 02 04 00 00 00 02 00`,
+  resumes the prefix destination `0x000303` and trailing-plane destination
+  `0x000305` through `0x15c4c`, clears continuation state, and renders the
+  odd-width fixed-record glyph.
 - descriptor kind `3` is rejected by `0x169f6` and drained without routing.
 
 ## Resource Payload Installation
@@ -455,6 +463,36 @@ three mode-0 rows as the one-piece `0x16606` fixture. This closes the
 bit-30-clear continuation middle edge for one even-span fixed-record resource
 object.
 
+The split-plane companion fixture
+`host-fetched 0x15d0a split-plane continuation resource object resumes
+fixed-record render` uses fixed-record prefix `03 02 04 00` and host bitmap
+stream `a0 a1 b0 c0 c1 d0`. The first `0x16606` pass receives budget `0x12`,
+leaving copy budget `4`; it writes prefix bytes `a0 a1 c0` at payload delta
+`0x0200`, writes trailing byte `b0` at delta `0x0204`, stores record
+`03 02 04 00 00 00 02 00` at payload `+0x48`, and saves continuation fields:
+
+- `0x7827c6 = 1`;
+- `0x7827da = 0x000100`;
+- `0x7827c8 = 0x21`;
+- `0x7827ca = 0x000303`;
+- `0x7827ce = 0x000305`;
+- `0x7827d2 = 0`;
+- `0x7827d6 = 0`; and
+- `0x7827d8 = 0`.
+
+The continuation descriptor `ESC )s0W 04 01 cc` again routes through
+`0x15e5c..0x15e68` to `0x15c4c`. `0x15c4c` reloads raw width `3`, row count
+`2`, prefix span `2`, saved A4/A3 destinations, and saved D4/D3 counters; the
+`0x16874` split-plane resume path then copies remaining prefix byte `c1` to
+`0x000303` and trailing byte `d0` to `0x000305`. The completed bitmap layout is
+`a0 a1 c0 c1 b0 d0`, which `glyph_source_bytes_for_rows` reconstructs as
+rows `a0 a1 b0` and `c0 c1 d0`. The page path maps host `!` to glyph `1`,
+queues object prefix `00 00 00 00 00 03 00 01 01 76 01`, preserves context
+slot `3` through `0x1edc6`, and renders two mode-0 rows beginning at x `22`,
+y `7`. This closes the split-plane continuation-counter middle edge for one
+bit-30-clear fixed-record resource object; failure and release exits remain
+uncovered.
+
 ## End-To-End Downloaded Glyph Path
 
 The strongest current byte-stream fixture is:
@@ -519,9 +557,10 @@ downloaded segmented-wide row as the direct compact-object renderer.
   and refreshes selected contexts through `0x14c64` when the payload matches
   an active primary or secondary context.
 - `0x15c4c` resumes bit-30-clear fixed-record bitmap copies from saved
-  continuation fields, updates or clears that continuation state, and leaves
-  the completed fixed-record payload renderable through the same active
-  context path.
+  continuation fields, including split-plane A4/A3 destinations and D4/D3
+  counters, updates or clears that continuation state, and leaves the
+  completed fixed-record payload renderable through the same active context
+  path.
 - `0x12f2e`/`0x1387c` write compact text bucket objects for the installed
   glyph.
 
@@ -535,8 +574,10 @@ downloaded segmented-wide row as the direct compact-object renderer.
   `0x7827ce`, `0x7827d2`, `0x7827d6`, `0x7827d8`, current character
   `0x782f30`, selected payload base `0x78285e`, and byte budget `0x783140`.
 - `0x15c4c` reads saved payload `0x7827da`, saved glyph/table index
-  `0x7827c8`, saved destination `0x7827ca`, saved remaining count `0x7827d2`,
-  and the fixed-record table entry in the selected payload.
+  `0x7827c8`, saved destination `0x7827ca`, saved trailing-plane destination
+  `0x7827ce`, saved remaining count `0x7827d2`, saved split-plane counters
+  `0x7827d6`/`0x7827d8`, and the fixed-record table entry in the selected
+  payload.
 - `0x1bc38` reads payload class byte `+0x20` and inserts candidate longwords.
 - `0x14c64` consumes installed candidate longwords and payload header fields
   to build active glyph maps.
@@ -560,6 +601,10 @@ queues selector `0x0003`, and renders three mode-0 rows beginning at x `22`.
 The companion `0x15c4c` fixture proves that splitting the same bitmap across
 two descriptor packets produces the same table entry, source object,
 page-record bridge, and rendered rows after continuation state is cleared.
+The split-plane `0x15c4c` fixture proves the same for an odd fixed-record
+width: saved prefix/trailing destinations and D4/D3 counters resume into a
+split A2/A3 bitmap layout, and the later compact renderer reconstructs rows
+`a0 a1 b0` and `c0 c1 d0`.
 
 ## Confidence
 
@@ -596,7 +641,8 @@ A byte-stream renderer must preserve:
 - staged descriptor fields copied by `0x16fae` and `0x1719c`;
 - continuation state for partial payload reads;
 - the `0x15c4c` resume contract for saved payload, glyph/table index,
-  destination pointer, remaining byte count, and continuation clearing;
+  destination pointer, trailing-plane destination pointer, remaining byte
+  count, split-plane counters, and continuation clearing;
 - bit `30` on candidate longwords, because it chooses offset-table resource
   rendering rather than fixed-record rendering;
 - glyph table entry, glyph record bytes, bitmap offset, span, rows, width,
@@ -612,9 +658,8 @@ A byte-stream renderer must preserve:
 - `0x16498..0x16942`: the split-plane segmented-wide and linear payload paths
   are page-visible; alternate mode combinations still need the same
   parser-produced page comparison.
-- `0x15c4c`: the even-span fixed-record resume route is page-visible; the
-  split-plane continuation counters and failure/release exits still need
-  fixture coverage.
+- `0x15c4c`: the even-span and split-plane fixed-record resume routes are
+  page-visible; failure/release exits still need fixture coverage.
 - `0x14c64..0x14eb6`: the `0x1719c` bit-30-clear fixed-record path is an
   isolation control. The integrated `ESC )s80W` install path currently proves
   the bit-30 offset-table form.

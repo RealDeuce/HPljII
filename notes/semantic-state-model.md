@@ -1149,8 +1149,8 @@ compact text renderer.
   - staged header `0x7827de`: copied into allocated payloads by `0x1719c`.
 - Unknown:
   - exact manual names for all 32 `0x16fae` validation predicates.
-  - split-plane and failure/release variants of the bit-30-clear descriptor
-    resource resume route through `0x15c4c`.
+  - failure/release variants of the bit-30-clear descriptor resource resume
+    route through `0x15c4c`.
 
 ### Writers
 
@@ -1169,8 +1169,9 @@ compact text renderer.
   table entries, copies bitmap bytes through `0x16874`, and refreshes selected
   contexts through `0x14c64` when the installed payload is active.
 - `0x15c4c` resumes bit-30-clear fixed-record bitmap copies from continuation
-  fields, updates or clears that continuation state, and leaves the completed
-  fixed-record payload consumable by the active context path.
+  fields, including split-plane A4/A3 destinations and D4/D3 counters, updates
+  or clears that continuation state, and leaves the completed fixed-record
+  payload consumable by the active context path.
 
 ### Readers And Consumers
 
@@ -1181,8 +1182,10 @@ compact text renderer.
   `0x78285e`, byte budget `0x783140`, fixed-record entries, and continuation
   fields.
 - `0x15c4c` reads saved payload `0x7827da`, saved glyph/table index
-  `0x7827c8`, saved destination pointer `0x7827ca`, saved remaining count
-  `0x7827d2`, and the fixed-record table entry in the selected payload.
+  `0x7827c8`, saved destination pointer `0x7827ca`, saved trailing-plane
+  destination pointer `0x7827ce`, saved remaining count `0x7827d2`, saved
+  split-plane counters `0x7827d6`/`0x7827d8`, and the fixed-record table entry
+  in the selected payload.
 - `0x1bc38` inserts installed payloads into the candidate list.
 - `0x14c64` consumes installed candidate longwords and payload headers to
   build active maps.
@@ -1213,6 +1216,14 @@ partial `0x16606` copy saves payload `0x000100`, glyph/table index `0x21`,
 destination `0x000302`, and remaining count `4`; `0x15c4c` copies bytes
 `f0 0f c3 3c`, clears the continuation fields, and renders the same fixed
 record and rows.
+Fixture `host-fetched 0x15d0a split-plane continuation resource object resumes
+fixed-record render` proves the odd-width sibling: a partial `0x16606` copy of
+record `03 02 04 00 00 00 02 00` saves payload `0x000100`, glyph/table index
+`0x21`, prefix destination `0x000303`, trailing destination `0x000305`, and
+D4/D3 counters `0/0`; `0x15c4c` copies bytes `c1 d0`, clears continuation
+state, leaves bitmap layout `a0 a1 c0 c1 b0 d0`, queues object prefix
+`00 00 00 00 00 03 00 01 01 76 01`, and renders rows reconstructed from
+`a0 a1 b0` and `c0 c1 d0`.
 
 ### Confidence
 
@@ -1233,6 +1244,8 @@ been page-compared.
   render`
 - `host-fetched 0x15d0a continuation resource object resumes fixed-record
   render`
+- `host-fetched 0x15d0a split-plane continuation resource object resumes
+  fixed-record render`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `0x16498-backed downloaded character object renders segmented-wide compact
   row`
@@ -1256,8 +1269,8 @@ been page-compared.
 - `0x16498..0x16942`: split-plane segmented-wide and linear payloads are
   page-visible; alternate mode combinations still need parser-produced page
   comparisons.
-- `0x15c4c`: the even-span fixed-record resume route is page-visible; split-plane
-  continuation counters and failure/release exits still need fixture coverage.
+- `0x15c4c`: the even-span and split-plane fixed-record resume routes are
+  page-visible; failure/release exits still need fixture coverage.
 - The span-metric bridge in `notes/font-context-metrics.md` now covers
   host-fetched type-0 and type-2 downloaded payloads for both span consumers,
   and the shared consumer branch family is fixture-backed. It still needs

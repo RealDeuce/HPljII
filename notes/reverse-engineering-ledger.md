@@ -263,7 +263,8 @@ page/control records rooted at `0x780f02`, bucket backings at
 
 ### PCL command map
 
-Status: Anchored, handlers need deeper annotation and full macro replay
+Status: Anchored, handlers need deeper annotation and macro allocator/frame
+internals
 
 Evidence: flattened generated map links high-value PCL commands to
 handlers for page geometry, raster, rectangles, font selection,
@@ -829,11 +830,13 @@ ROM work needed:
 - Keep `0x78287c`, `0x7827b8`, `0x7828a8`, and dispatch around
   `0x14398..0x156de` under font/resource selection unless later evidence
   proves a separate imaging role.
-- Broaden the current text/rule/raster, simple and mixed-control macro
-  execute parser-to-page-record, and macro-payload page-band composition
-  fixtures into fuller parser-produced heterogeneous page-object
-  rendering, full macro replay through the live parser/data-chain path,
-  and final device-output pixel validation. The modeled `0x1ef6a`
+- Broaden the current text/rule/raster and macro-payload page-band
+  composition fixtures into fuller parser-produced heterogeneous
+  page-object rendering and final device-output pixel validation. For
+  macros, continue from the composed
+  `Macro Definition And Data-Chain Replay` semantic checkpoint by
+  decoding `0xdfba..0xe110`, `0xe002..0xe080`, `0xe0a4..0xe110`,
+  `0xe418..0xe496`, and `0x782c6e..0x782d36`. The modeled `0x1ef6a`
   page-band merge now covers compact text, mode-0 raster, and a crossing
   patterned rule across bands `0` and `5`; modeled rectangle fill
   clipping now covers left/right/top/bottom, landscape-edge, and

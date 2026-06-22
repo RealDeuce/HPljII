@@ -432,8 +432,11 @@ data-chain fetch, and `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into rows that
 match the direct mixed-stream model. The execute, call, and
 mixed-control replay payloads now also preserve the `0x1edc6`
 bucket/context bridge contract and feed `0x1ed84`/`0x1ef6a` before
-rendering; full replay of macro payload bytes through the live parser is
-still open.
+rendering. The composed semantic checkpoint is in
+`notes/semantic-state-model.md` under
+`Macro Definition And Data-Chain Replay`; the remaining macro gaps are
+the exact macro chunk allocator, full data-chain frame layout, and
+call-environment context stack.
 
 The `ESC &f-123y0x1X` fixture is now also traced through ROM parser
 modes `0 -> 1 -> 5 -> 17 -> 17 -> 17 -> 0`, selecting `0xe112`,
@@ -910,5 +913,7 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   compatibility-facing documentation. The default-font candidate and
   caller path is now real-record backed through `0x1b250`, `0x1b50e`,
   `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
-- Replace the modeled `ESC &f#X` macro-control fixtures with full replay
-  of stored macro payload bytes through the live parser/data-chain path.
+- Decode the macro chunk allocator, complete `0xe418` data-chain frame,
+  and call-environment context stack now that stored payload replay is
+  composed through `0xa904`, parser dispatch, page records, and render
+  entry.

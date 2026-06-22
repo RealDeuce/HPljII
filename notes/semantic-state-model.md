@@ -153,6 +153,195 @@ correlation and broader frame-lifetime tracing.
 - `0x780e66` bit meanings: source-empty/active bits are observed by
   behavior, but not yet fully named.
 
+## Macro Definition And Data-Chain Replay
+
+Status: anchored as one command-family and end-to-end replay cluster.
+The low-level handler ledger is preserved in
+`notes/reverse-engineering-ledger.md`; this section composes the macro
+ID/control handlers, alternate parser table, macro record pool, data-chain
+frame builder, `0xa904` replay, parser dispatch, page-record queueing, and
+render-entry effects into one semantic model.
+
+Concept: `ESC &f#Y` selects a current macro id, and `ESC &f#X` interprets
+the selector against a 32-record macro pool. Definition mode stores host
+bytes instead of dispatching most controls. Execute and call selectors
+convert a stored payload into a data-chain frame consumed by `0xa904`, so
+macro bytes re-enter the same parser/page-record path as normal host bytes.
+
+### Field Groups
+
+- Canonical macro selection:
+  - `0x783164`: current macro id word. Handler `0xe112` rewinds the
+    six-byte parsed record, takes the absolute signed word at `record+2`,
+    and stores it here.
+  - parsed records for `ESC &f-123y0x1X`:
+    `81 79 ff 85 00 00`, `80 78 00 00 00 00`, and
+    `80 58 00 01 00 00`.
+  Evidence: handler `0xe112`, ROM field `0x783164`, parser-table report
+  `generated/analysis/ic30_ic13_parser_dispatch_tables.md`, and fixture
+  `0xe112 stores absolute parsed macro id`.
+- Canonical macro records:
+  - 32 records rooted at `0x782a98`, each 12 bytes.
+  - current macro record pointer `0x782d7a`.
+  - record `+0x00`: payload/chunk pointer, observed by execute/call
+    nonempty tests and stop-definition cleanup.
+  - record `+0x04`: stored byte count with chunk-header adjustment during
+    selector `1` stop.
+  - record `+0x08`: stored macro id written from `0x783164` on selector
+    `0` start.
+  - record `+0x0a`: permanence byte, cleared by selector `9` and set by
+    selector `10`.
+  Evidence: `notes/pcl-parser-firmware.md` macro selector table;
+  disassembly `0xdd86..0xdfb8`; fixtures for start/stop, permanence,
+  delete-temporary, delete-current, and delete-all.
+- Canonical data-chain replay frame:
+  - current frame pointer `0x782d76`.
+  - execute selector `2` calls `0xe418` from `0xde96`; call selector `3`
+    calls it from `0xdebc`.
+  - frame byte `+8 == 4`.
+  - frame byte `+9 == 2` for execute, `+9 == 3` for call.
+  - payload pointer/count are copied from the macro record; executable
+    fixtures pin payload `21 0d` and mixed-control payload
+    `1b 26 6b 31 47 21 0d 21`.
+  Evidence: `generated/analysis/ic30_ic13_parser_xrefs.md` shows
+  `0xe418` called only from `0xde96` and `0xdebc`; fixture
+  `0xdd08 execute and call push macro data-chain frames`.
+- Parser scratch:
+  - normal macro parser table mode 17 entries at `0x11262..0x11286`
+    route `y/Y` to `0xe112` and `x/X` to `0xdd08`.
+  - alternate/data parser table `0x116f6` keeps `x/X -> 0xdd08` while
+    disabling normal macro-id parsing during definition payload storage.
+  - definition-mode flags `0x782c18` and `0x782c19` gate start/stop
+    behavior and auto-prefix cleanup.
+  Evidence: `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`;
+  fixture `0x116f6 alternate parser routes macro stop but suppresses
+  payload controls`.
+- Firmware bookkeeping:
+  - selector `4`/`5` update overlay state `0x782a92`; selector `4` also
+    copies current id into `0x782a94` when the record exists.
+  - active data-chain guard in `0xdd08` suppresses non-replay controls when
+    frame byte `+9` is nonzero, while still allowing selectors `2` and `3`.
+  - `0xe418` sets the host gate bit when the frame byte count is nonzero;
+    `0xa904` later calls `0xe22c` at data-chain end before resuming an
+    outer byte source.
+  Evidence: disassembly `0xdd4c..0xdd78`, `0xdee4..0xdefa`, and
+  host-byte section `Host Byte Fetch And Data-Chain Input`.
+- Derived/cache:
+  - execute and call replay of stored `!\r` produce the same compact text
+    page-record object and rendered rows.
+  - mixed-control replay of stored `ESC &k1G!\r!` sets line termination
+    mode through `0xedf8`, routes printable bytes through `0xd04a`, CR
+    through `0xf02c`, and renders rows matching the direct host stream.
+  - macro replay rows cross the `0x1edc6` bucket/context bridge and
+    `0x1ed84`/`0x1ef6a` render-entry path.
+  Evidence: fixtures `macro execute data-chain parser trace feeds
+  page-record stream`, `macro call data-chain parser trace feeds
+  page-record stream`, and `host-fetched macro replay payloads feed
+  0x1ed84 and 0x1ef6a`.
+- Unknown:
+  - exact in-RAM chunk allocation layout behind macro record `+0x00` and
+    the adjusted count at `+0x04`.
+  - full 14-byte `0xe418` frame layout beyond payload/count, byte `+8`,
+    byte `+9`, and the end marker consumed by `0xa904`.
+  - execute-versus-call environment snapshot details, including the full
+    context-stack layout around `0x782c6e`.
+
+### Writers
+
+- `0xe112` writes `0x783164` from the absolute parsed `ESC &f#Y` value.
+- `0xdd08` rewinds `0x78299e`, finds or allocates the selected macro
+  record through `0xe0a4`, dispatches selectors `0..10`, and writes
+  definition, overlay, delete, temporary, and permanent state.
+- `0xdd86..0xde7a` start and stop definition mode, seed lowercase
+  `ESC &f` auto-prefix bytes through `0xe002`, and clear empty or
+  auto-prefix-only records through `0xdfba`.
+- `0xde7c..0xdec4` validate execute/call records and call `0xe418`.
+- `0xe418` writes the data-chain frame later consumed by `0xa904`.
+- The alternate parser table at `0x116f6` writes stored definition payload
+  bytes rather than dispatching ordinary control-code handlers.
+
+### Readers And Consumers
+
+- `0xdd08` reads `0x783164`, `0x782d7a`, `0x782d76`, frame byte `+9`,
+  and definition-mode byte `0x782c18` before selector dispatch.
+- `0xa904` consumes the frame bytes as its active data-chain source,
+  dispatches end transitions through `0xe22c`, and then returns replayed
+  bytes to the parser.
+- Parser loop `0x11774` consumes replayed bytes and routes simple replay
+  to `0xd04a` and `0xf02c`; mixed-control replay also reaches `0xedf8`.
+- Page-record and render consumers use the shared allocation model:
+  `0x1387c`/`0x1381c` build objects, `0x1edc6` bridges context/buckets,
+  and `0x1ed84`/`0x1ef6a` render them.
+
+### Output Effect
+
+`ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f2X` stores `21 0d`, builds an
+execute frame, drains it through `0xa904`, dispatches `0xd04a` then
+`0xf02c`, queues the same text object as direct host bytes, and renders
+the same rows. The call selector `3` does the same for the covered text
+payload. A host-fetched mixed-control definition stores
+`ESC &k1G!\r!`, builds an execute frame, replays through `0xedf8`,
+`0xd04a`, `0xf02c`, and `0xd04a`, then matches the direct mixed-stream
+rendered rows. Macro replay also composes with selector-7 rule and
+mode-0 raster band output in the existing page-record fixture.
+
+### Confidence
+
+High for parser reachability, selector meanings, record count/stride,
+current id storage, definition stop behavior, execute/call frame mode
+bytes, `0xa904` replay, and page-record/render effects because those are
+covered by disassembly, generated parser-table reports, and executable
+fixtures. Medium for macro chunk allocator internals, complete frame
+layout, and call environment restoration because only the fields needed
+by current replay fixtures are pinned.
+
+### Fixtures
+
+- `0xe112 stores absolute parsed macro id`
+- `0xdd08 starts and stops empty macro definitions`
+- `0x11774 ROM dispatch table routes chained ESC &f macro stream`
+- `macro command stream defines payload and executes data-chain frame`
+- `host-fetched macro execute stream builds replay frame`
+- `host-fetched macro call stream builds replay frame`
+- `macro execute frame payload feeds 0xa904 data-chain bytes`
+- `macro execute data-chain parser trace feeds page-record stream`
+- `macro call data-chain parser trace feeds page-record stream`
+- `host-fetched mixed-control macro execute stream builds replay frame`
+- `macro mixed-control data-chain parser trace feeds page-record stream`
+- `host-fetched macro replay payloads preserve 0x1edc6 bridge contract`
+- `host-fetched macro replay payloads feed 0x1ed84 and 0x1ef6a`
+- `macro execute page-record layer composes with rule and raster band`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`:
+  `0xdd08..0xdfb8`, including selector dispatch, record pool scans, and
+  execute/call calls to `0xe418`.
+- `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`:
+  normal versus alternate parser table selection.
+- `generated/analysis/ic30_ic13_parser_dispatch_tables.md`:
+  normal mode 17 `y/Y/x/X` entries and alternate/data table `x/X`
+  reachability.
+- `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`:
+  `0xdd08` parser-table reachability with no direct `JSR` callers.
+- `generated/analysis/ic30_ic13_parser_xrefs.md`:
+  `0xe418` references from `0xde96` and `0xdebc`.
+- `generated/analysis/ic30_ic13_renderer_fixture_harness.md`:
+  macro command and data-chain fixture outputs.
+
+### Unresolved Middle Edges
+
+- `0xdfba..0xe110`: macro record free/clear and allocator details,
+  including exact ownership of payload chunks referenced by record `+0x00`.
+- `0xe002..0xe080`: definition-byte append helper, chunk growth, and
+  count update rules behind record `+0x04`.
+- `0xe0a4..0xe110`: record lookup/allocation policy for the 32-entry pool
+  when ids collide, records are temporary/permanent, or allocation fails.
+- `0xe418..0xe496`: complete 14-byte data-chain frame layout, frame-link
+  lifecycle, and execute/call environment snapshot boundaries.
+- `0x782c6e..0x782d36`: call-mode context stack fields saved/restored
+  around macro call replay.
+
 ## Mixed Text/Rule/Raster Page Record
 
 Status: anchored as a parser-to-render composition checkpoint, but still

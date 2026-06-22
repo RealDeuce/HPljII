@@ -583,10 +583,12 @@ fetch through the ROM/alternate parser trace, stores the full mixed
 payload, builds the execute frame, and replays through
 `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a` into page-record rows matching the
 direct mixed-stream model. Execute, call, and mixed-control macro replay
-payloads now also cross `0x1ed84` and `0x1ef6a` before rendering. This
-still is not full live parser replay, but it ties the macro frame,
-host-byte source priority, and page-record output into one executable
-chain.
+payloads now also cross `0x1ed84` and `0x1ef6a` before rendering. The
+composed semantic checkpoint is
+`Macro Definition And Data-Chain Replay` in
+`notes/semantic-state-model.md`; the remaining gaps are the exact macro
+chunk allocator, complete data-chain frame layout, and call-environment
+context stack.
 
 Top-level `ESC &` enters mode 5. The normal table currently identifies
 these subfamilies:
@@ -665,10 +667,10 @@ control-code anchor.
   names.
 - Decode the six-byte tokenizer records and 12-byte command/data pool
   records.
-- Replace the modeled `ESC &f#X` macro-control fixtures with full macro
-  replay through the live parser/data-chain path, building on the
-  current simple and mixed-control execute replays that drain through
-  `0xa904`, parser handlers, and the page-record bridge.
+- Decode the macro chunk allocator, complete `0xe418` data-chain frame,
+  and call-environment context stack now that simple and mixed-control
+  macro payload replay drains through `0xa904`, parser handlers, the
+  page-record bridge, and render entry.
 - Replace the remaining synthetic `ESC E` roots with fuller
   parser-allocated page objects; the current host-fetched publication
   fixtures already prove the modeled `0xff1e` publication headers,

@@ -160,9 +160,9 @@ Unknown:
 
 - Manual names for every validation-table predicate feeding `0x16fae` are not
   complete, even though the table-driven fixture pins all staged field writes.
-- The `0x15c4c` downloaded-font-resource resume helper is routed by
-  `0x15d0a`, but it is not yet composed into a tracked page-render note like
-  the `0x16606` current-record path and `0x16498` character-object path.
+- Split-plane and error-exit variants for the `0x15c4c` downloaded-font-resource
+  resume helper still need page-render fixtures. The even-span fixed-record
+  resume path is now page-visible.
 - The complete soft-font grammar is not exhaustively proven for every legal
   PCL descriptor form and every metric-byte combination.
 
@@ -208,7 +208,9 @@ Fixture values:
   `30` clear, dispatches handler `0x16606`, installs fixed-record glyph
   `0x21`, and renders that glyph through the page-record bridge.
 - descriptor `04 01 cc` with continuation flag set routes to saved payload
-  `0x654321`, sees bit `30` clear, and dispatches handler `0x15c4c`.
+  `0x000100`, sees bit `30` clear, dispatches handler `0x15c4c`, resumes
+  bitmap copy at saved destination `0x000302`, clears continuation state, and
+  renders the completed fixed-record glyph.
 - descriptor kind `3` is rejected by `0x169f6` and drained without routing.
 
 ## Resource Payload Installation
@@ -394,8 +396,31 @@ render` covers:
 - rendered mode-0 fixed-record rows beginning at x `22`, y `6`.
 
 This closes the current-record bit-30-clear `0x15e3c..0x15e46` middle edge for
-one page-visible fixed-record resource object. The remaining sibling route is
-the continuation/resume branch `0x15e5c..0x15e68` into `0x15c4c`.
+one page-visible fixed-record resource object.
+
+The companion fixture
+`host-fetched 0x15d0a continuation resource object resumes fixed-record render`
+starts with the same host-fetched descriptor but gives `0x16606` only budget
+`0x10`. That copies bitmap bytes `aa 55`, writes the same fixed-record entry
+`02 03 04 00 00 00 02 00` at payload `+0x48`, and saves continuation fields
+equivalent to:
+
+- `0x7827c6 = 1`;
+- `0x7827da = 0x000100`;
+- `0x7827c8 = 0x21`;
+- `0x7827ca = 0x000302`; and
+- `0x7827d2 = 4`.
+
+The next host-fetched descriptor stream `ESC )s0W 04 01 cc` takes the
+`0x15d0a` status-`2` route through `0x15e5c..0x15e68`, dispatches handler
+`0x15c4c`, reloads the fixed-record table entry from payload `+0x48`, copies
+the remaining bytes `f0 0f c3 3c` through the linear `0x16874`/`0x168dc` path
+at destination `0x000302`, clears `0x7827c6`, `0x7827da`, `0x7827c8`,
+`0x7827ca`, `0x7827ce`, `0x7827d2`, `0x7827d6`, and `0x7827d8`, then renders
+the same source object, page-record object prefix, bridge context slots, and
+three mode-0 rows as the one-piece `0x16606` fixture. This closes the
+bit-30-clear continuation middle edge for one even-span fixed-record resource
+object.
 
 ## End-To-End Downloaded Glyph Path
 
@@ -460,6 +485,10 @@ downloaded segmented-wide row as the direct compact-object renderer.
   in bit-30-clear resource payloads, copies bitmap bytes through `0x16874`,
   and refreshes selected contexts through `0x14c64` when the payload matches
   an active primary or secondary context.
+- `0x15c4c` resumes bit-30-clear fixed-record bitmap copies from saved
+  continuation fields, updates or clears that continuation state, and leaves
+  the completed fixed-record payload renderable through the same active
+  context path.
 - `0x12f2e`/`0x1387c` write compact text bucket objects for the installed
   glyph.
 
@@ -472,6 +501,9 @@ downloaded segmented-wide row as the direct compact-object renderer.
 - `0x16606` reads `0x7827c6`, `0x7827da`, `0x7827c8`, `0x7827ca`,
   `0x7827ce`, `0x7827d2`, `0x7827d6`, `0x7827d8`, current character
   `0x782f30`, selected payload base `0x78285e`, and byte budget `0x783140`.
+- `0x15c4c` reads saved payload `0x7827da`, saved glyph/table index
+  `0x7827c8`, saved destination `0x7827ca`, saved remaining count `0x7827d2`,
+  and the fixed-record table entry in the selected payload.
 - `0x1bc38` reads payload class byte `+0x20` and inserts candidate longwords.
 - `0x14c64` consumes installed candidate longwords and payload header fields
   to build active glyph maps.
@@ -489,7 +521,10 @@ fixture, printable `%` draws glyph `0x25` from downloaded object record
 `0x0500`, with a segmented-wide compact selector `0x3003` and one visible row
 beginning at x `22`. In the `0x16606` current-record fixture, printable `!`
 maps to fixed-record glyph `1` from payload record `0x48`, queues selector
-`0x0003`, and renders three mode-0 rows beginning at x `22`.
+`0x0003`, and renders three mode-0 rows beginning at x `22`. The companion
+`0x15c4c` fixture proves that splitting the same bitmap across two descriptor
+packets produces the same table entry, source object, page-record bridge, and
+rendered rows after continuation state is cleared.
 
 ## Confidence
 
@@ -497,7 +532,7 @@ High for command dispatch, delayed-record restoration, current id/current
 character ownership, current-record mark/unmark, `0x16c14` install
 bookkeeping, table-driven descriptor staging, `0x17026`/`0x1719c` allocation
 headers, the complete downloaded-character-to-rendered-row fixture, and the
-`0x16606` bit-30-clear resource-object-to-rendered-row fixture.
+`0x16606` and `0x15c4c` bit-30-clear resource-object-to-rendered-row fixtures.
 
 Medium for the full PCL soft-font grammar because the validation table is
 executable but not every predicate has a manual-facing semantic name, and not
@@ -524,6 +559,8 @@ A byte-stream renderer must preserve:
   `1a 58 -> 0x00`;
 - staged descriptor fields copied by `0x16fae` and `0x1719c`;
 - continuation state for partial payload reads;
+- the `0x15c4c` resume contract for saved payload, glyph/table index,
+  destination pointer, remaining byte count, and continuation clearing;
 - bit `30` on candidate longwords, because it chooses offset-table resource
   rendering rather than fixed-record rendering;
 - glyph table entry, glyph record bytes, bitmap offset, span, rows, width,
@@ -533,14 +570,15 @@ A byte-stream renderer must preserve:
 
 ## Remaining Edges
 
-- `0x15e5c..0x15e68`: bit-30-clear continuation route to `0x15c4c` is routed
-  but not yet composed into a tracked page-render contract.
 - `0x16fae..0x17016`: all 32 validation slots are executable, but
   manual-facing names for every predicate and descriptor field are still
   incomplete.
 - `0x16498..0x16942`: the split-plane segmented-wide payload path is
   page-visible; linear and alternate mode combinations still need the same
   parser-produced page comparison.
+- `0x15c4c`: the even-span fixed-record resume route is page-visible; the
+  split-plane continuation counters and failure/release exits still need
+  fixture coverage.
 - `0x14c64..0x14eb6`: the `0x1719c` bit-30-clear fixed-record path is an
   isolation control. The integrated `ESC )s80W` install path currently proves
   the bit-30 offset-table form.

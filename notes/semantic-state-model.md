@@ -1123,8 +1123,8 @@ compact text renderer.
   - staged header `0x7827de`: copied into allocated payloads by `0x1719c`.
 - Unknown:
   - exact manual names for all 32 `0x16fae` validation predicates.
-  - page-render contract for the bit-30-clear descriptor/resource resume route
-    through `0x15c4c`.
+  - split-plane and failure/release variants of the bit-30-clear descriptor
+    resource resume route through `0x15c4c`.
 
 ### Writers
 
@@ -1142,6 +1142,9 @@ compact text renderer.
 - `0x16606` clears stale continuation state, writes bit-30-clear fixed-record
   table entries, copies bitmap bytes through `0x16874`, and refreshes selected
   contexts through `0x14c64` when the installed payload is active.
+- `0x15c4c` resumes bit-30-clear fixed-record bitmap copies from continuation
+  fields, updates or clears that continuation state, and leaves the completed
+  fixed-record payload consumable by the active context path.
 
 ### Readers And Consumers
 
@@ -1151,6 +1154,9 @@ compact text renderer.
 - `0x16606` reads current character `0x782f30`, selected payload base
   `0x78285e`, byte budget `0x783140`, fixed-record entries, and continuation
   fields.
+- `0x15c4c` reads saved payload `0x7827da`, saved glyph/table index
+  `0x7827c8`, saved destination pointer `0x7827ca`, saved remaining count
+  `0x7827d2`, and the fixed-record table entry in the selected payload.
 - `0x1bc38` inserts installed payloads into the candidate list.
 - `0x14c64` consumes installed candidate longwords and payload headers to
   build active maps.
@@ -1168,7 +1174,13 @@ downloaded row through target `0x1effe`. Fixture
 render` also proves a host-fetched `ESC )s0W` descriptor can route bit-30-clear
 current-record payload `0x000100` through `0x16606`, install fixed-record glyph
 `0x21` at payload table entry `+0x48`, queue selector `0x0003`, preserve
-context slot `3` through `0x1edc6`, and render three mode-0 rows.
+context slot `3` through `0x1edc6`, and render three mode-0 rows. Fixture
+`host-fetched 0x15d0a continuation resource object resumes fixed-record
+render` proves the sibling status-`2` descriptor route through `0x15c4c`: a
+partial `0x16606` copy saves payload `0x000100`, glyph/table index `0x21`,
+destination `0x000302`, and remaining count `4`; `0x15c4c` copies bytes
+`f0 0f c3 3c`, clears the continuation fields, and renders the same fixed
+record and rows.
 
 ### Confidence
 
@@ -1187,6 +1199,8 @@ been page-compared.
 - `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`
 - `host-fetched 0x15d0a current-record resource object feeds fixed-record
   render`
+- `host-fetched 0x15d0a continuation resource object resumes fixed-record
+  render`
 - `0x16498-backed downloaded character object renders segmented-wide compact
   row`
 - `0x16fae table-driven validation predicates populate staged header fields`
@@ -1204,12 +1218,12 @@ been page-compared.
 
 ### Unresolved Middle Edges
 
-- `0x15e5c..0x15e68`: bit-30-clear continuation route to `0x15c4c` is routed
-  but not yet composed into tracked page-render output.
 - `0x16fae..0x17016`: validation predicates need complete manual-facing names.
 - `0x16498..0x16942`: split-plane segmented-wide payloads are page-visible;
   linear and alternate mode combinations still need parser-produced page
   comparisons.
+- `0x15c4c`: the even-span fixed-record resume route is page-visible; split-plane
+  continuation counters and failure/release exits still need fixture coverage.
 - The span-metric bridge in `notes/font-context-metrics.md` still needs
   exhaustive downloaded/inline metric-byte page evidence.
 

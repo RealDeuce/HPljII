@@ -1197,7 +1197,9 @@ record.
     `0x783a18` are scheduler/render bookkeeping, not page-object fields.
   - wait-object records signaled by `0x1036` and selected by `0x123a`:
     long `+0` next pointer, word `+8` priority, word `+0a` scheduler
-    state, and long `+0x1a` saved stack pointer.
+    state, word `+0c` wait argument, long `+0x12` restart payload,
+    long `+0x16` private stack base, and long `+0x1a` saved stack
+    pointer.
   - `0x78017e`: scheduler pending/event bits. Bit 1 is the wait-object
     pending bit set by `0x1036` and cleared by `0x1064` or `0x108e`
     before `0x123a` dispatch; bits 0, 2, and 3 are set/cleared by the
@@ -1305,6 +1307,31 @@ record.
   `0x10ec` load `A1` from the first stack argument; `0x10d0`,
   `0x10d8`, and `0x10e0` load `D0` from a word argument; the veneers
   execute traps `#0` through `#6`.
+- Copied vector-table slots 32 through 39 route traps `#0..#7` to
+  `0x1144`, `0x1154`, `0x1174`, `0x118a`, `0x11be`, `0x11ca`,
+  `0x11e8`, and `0x11f8`.
+- Trap `#0` handler `0x1144..0x1152` wakes a target in state
+  `0x8006` by writing target word `+0x0a = 2`, then enters
+  `0x123a`.
+- Trap `#1` handler `0x1154..0x1170` blocks the current object from
+  `0x780176` as state `0x8006`, writes `D0` to word `+0x0c`, saves
+  `A7` at long `+0x1a`, and enters the `0x125a` ready-object scan.
+- Trap `#2` handler `0x1174..0x1188` is the sibling block-current
+  path for state `0x8007`, sharing the `D0` and saved-stack writes at
+  `0x1168..0x1170`.
+- Trap `#3` handler `0x118a..0x11ba` first changes a target in state
+  `0x8006` to state `2`, then blocks the current object as state
+  `0x8006` with `D0` in `+0x0c`, and enters `0x125a` starting from
+  wait object `0x780182`.
+- Trap `#5` handler `0x11ca..0x11e6` marks a nonzero, non-active target
+  state as `9`; if the target is state `0xff`, it falls into the
+  current-object yield path at `0x111c`.
+- Trap `#6` handler `0x11e8..0x11f6` wakes a target in state `9` by
+  entering the same `0x1230..0x123a` path used by trap `#0`.
+- Trap `#7` handler `0x11f8..0x122e` clears a non-active target state
+  to `0`, builds a stack frame from target `+0x12` and `+0x16`, writes
+  target `+0x1a`, and returns; if the target is the current active
+  object, it falls into the current-object yield path at `0x111c`.
 - `0x1db0..0x1e40` consumes pending byte `0x78399e`: phase `1` with
   work word `+16 < +10` computes `0x783992` through `0x2456`, calls
   `0x22f4`, increments `0x783990`, and clears `0x78399e`; later phases
@@ -1380,6 +1407,14 @@ record.
 - Trap veneers `0x10bc`, `0x10c8`, `0x10e0`, and `0x10ec` consume a
   target-object argument; `0x10d0`, `0x10d8`, and `0x10e0` consume a
   word argument before entering their trap.
+- Trap handlers `0x1144..0x11f8` consume copied vector slots 32 through
+  39 as traps `#0..#7`; traps `#0`, `#3`, and `#6` read target word
+  `+0x0a` before deciding whether to wake it, trap `#4` returns target
+  word `+0x0a` in `D7`, trap `#5` branches on target word `+0x0a`,
+  and trap `#7` reads target `+0x0a`, `+0x12`, and `+0x16`.
+- Trap handlers `#1`, `#2`, `#3`, `#5` in the `0xff` case, and `#7`
+  in the active-target case read `0x780176` as the active wait object
+  before blocking or yielding it through the shared `0x125a` scan.
 - `0x1cf8..0x1d36` tests `0x78399e`; when it is nonzero, the wrapper
   drops the critical section and calls `0x1db0`.
 - `0x1db0..0x1e40` is a sibling copy/pacing helper: it consumes
@@ -1510,6 +1545,31 @@ helper `0x1064` with saved SR mask `0x0700` and proves it leaves
 `0x10d0(2)` to trap `#3`, `0x10d8(2)` to trap `#4`, and
 `0x10e0(0x7801a2, 3)` to trap `#5`.
 
+The trap-handler fixture
+`0x1144..0x11f8 scheduler trap handlers update wait objects` maps copied
+vector-table slots 32 through 39 to handlers `0x1144`, `0x1154`,
+`0x1174`, `0x118a`, `0x11be`, `0x11ca`, `0x11e8`, and `0x11f8`.
+Trap `#0` wakes target `0x780202` from state `0x8006` and, through
+`0x123a`, selects it as active with priority `4` and saved stack
+`0x00ff3000`; the previous active object `0x7801a2` is left state `2`
+with saved stack `0x00ffe000`.
+
+In the same fixture, trap `#1` blocks current object `0x7801a2` as
+state `0x8006`, stores wait argument `2`, saves stack `0x00ffe100`,
+and selects ready object `0x780182`. Trap `#2` follows the same path but
+uses state `0x8007` and wait argument `3`. Trap `#3` wakes target
+`0x780202` from state `0x8006` to `2`, blocks current object
+`0x7801a2` as state `0x8006` with argument `7`, then selects
+`0x780182` from the hard-coded scan start.
+
+Trap `#4` returns target state `9` in `D7`. Trap `#5` changes target
+`0x780202` from state `0x8006` to state `9`. Trap `#6` wakes that
+state-9 target and selects it through `0x123a`, leaving previous active
+`0x7801a2` in state `2`. Trap `#7` clears non-active target
+`0x780202` from state `0x8006` to `0` and writes saved stack
+`0x00ff6fbe`, computed from target stack base `0x00ff7000` minus the
+ROM's `4 + 2 + 0x3c` frame allocation.
+
 The wrapper-dispatch fixture
 `0x1cf8/0x1e80/0x1ea8 wrapper dispatch selects engine variants` composes
 the status-copy path with the remaining wrapper exits. With elapsed
@@ -1563,20 +1623,22 @@ the `0x1a4c` copy-window scalars, the `0x22f4` row-copy address pattern,
 the `0x2456` source-address arithmetic, the `0x0fa2` threshold and
 pending-status transitions, the `0x1036` wait-object signal helper, the
 `0x1064`/`0x108e` pending-drain predicates, the `0x123a` priority-switch
-state updates, the `0x10bc..0x10f2` trap-veneer argument shapes, the
+state updates, the copied trap vector map for traps `#0..#7`, the
+`0x10bc..0x10f2` trap-veneer argument shapes, the
+`0x1144..0x11f8` trap-handler wait-state transitions, the
 `0x1db0` status-copy path, the `0x1e44` escalated-status bridge, the
 `0x1cf8` wrapper branch predicates, the `0x1e80` attention variant, the
 `0x1ea8` timeout variant, the `0x1eba4` cleanup, throttle, capacity, and
 render-call branch predicates, the `0x1ee9e` geometry-change boundary,
 the `0x1ed36..0x1ed6a` same-geometry reuse branch, and the render-entry
 output for the selected source. Medium for the surrounding engine pacing
-loop because the fixture models trap veneers and wait-object dispatch
-without naming the trap handlers' physical engine effects. Medium for
-the physical meaning of `$8000`, `$a601`, `$a801`, `0x7828f9`,
-`0xa6cc`, `0xa668`, and `0xa680` because the byte-level side effects and
-branch returns are pinned but not tied to measured engine timing yet.
-Medium for `0x780eb6` because only its initialization is currently
-covered.
+loop because the fixture models firmware wait-state semantics but still
+does not name the board-level source of the interrupt/MMIO events that
+drive those states. Medium for the physical meaning of `$8000`, `$a601`,
+`$a801`, `0x7828f9`, `0xa6cc`, `0xa668`, and `0xa680` because the
+byte-level side effects and branch returns are pinned but not tied to
+measured engine timing yet. Medium for `0x780eb6` because only its
+initialization is currently covered.
 
 ### Fixtures
 
@@ -1587,6 +1649,7 @@ covered.
 - `0x2126/0x1a4c/0x2038 active pool copy window feeds engine rows`
 - `0x0fa2/0x1db0/0x1e44 status feedback drives copy and done flag`
 - `0x1036/0x108e/0x123a wait-object scheduler handoff`
+- `0x1144..0x11f8 scheduler trap handlers update wait objects`
 - `0x1cf8/0x1e80/0x1ea8 wrapper dispatch selects engine variants`
 - `0x1eba4/0x1ef6a active render loop advances or yields bands`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
@@ -1600,6 +1663,8 @@ covered.
   `0x1958..0x1fa2`
 - `generated/disasm/ic30_ic13_scan_status_interrupt_000f84.lst`:
   `0x0f84..0x10f2`
+- `generated/disasm/ic30_ic13_scheduler_trap_handlers_00110c.lst`:
+  `0x110c..0x1282`
 - `generated/disasm/ic30_ic13_scheduler_dispatch_00123a.lst`:
   `0x123a..0x1282`
 - `generated/disasm/ic30_ic13_page_pool_candidate_insert_001c04.lst`:
@@ -1629,10 +1694,10 @@ covered.
   scan/status handling and helper `0xa6cc`, plus the physical effect of
   `$a601 = 0xfd` and `$a801` writes, still need board-level engine
   correlation.
-- `0x10bc..0x10f2`: trap veneers and argument registers are modeled, but
-  the trap handlers' physical effects for traps `#0..#6` remain
-  unnamed. This covers the remaining physical meaning behind scheduler
-  loop calls to `0x10c4`, `0x10c8`, `0x10d0`, `0x10d8`, and `0x10e0`.
+- `0x10bc..0x11f8` and `0x123a..0x1282`: trap veneers, copied trap
+  vectors, wait-state transitions, and scheduler selection are modeled;
+  the remaining gap is the timing relation between those firmware
+  wait-states and the physical engine/MMIO events that wake them.
 - `0x1cf8..0x1ea8`: helper return predicates around `0xa668` and
   `0xa680` are modeled, but their external engine/service side effects
   are not yet tied to measured timing.

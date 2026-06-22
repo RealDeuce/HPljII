@@ -382,7 +382,9 @@ now composed, with `0x1cf8` wrapper dispatch through `0x1e80` and
 `0x1ea8` variants also pinned, and `0x1eba4..0x1ecd2` scheduler-loop
 render/yield predicates covered; `0x1036`, `0x1064`/`0x108e`,
 `0x123a`, and `0x10bc..0x10f2` now pin the wait-object scheduler
-handoff and trap-veneer argument shapes; a combined 2,215-byte
+handoff and trap-veneer argument shapes, with `0x1144..0x11f8` now
+pinning the copied trap handlers' wait-state transitions; a combined
+2,215-byte
 host-fetched
 font-download printable stream now carries `ESC *c4660d37e5F`,
 `ESC )s2193W`, and printable `%` into a downloaded glyph `0x25`
@@ -540,7 +542,11 @@ attention, timeout, bridge, and wait-loop paths from `0x78399e`,
 wait-object scheduler fixture where `0x1036` queues `0x780182`,
 `0x108e` drains `0x78017e.1`, `0x123a` selects the higher-priority
 object, and `0x10c8`/`0x10c4`/`0x10d0`/`0x10d8`/`0x10e0` have their
-trap numbers and argument registers pinned, a
+trap numbers and argument registers pinned, a trap-handler fixture where
+copied vector slots 32..39 route traps `#0..#7` to
+`0x1144`/`0x1154`/`0x1174`/`0x118a`/`0x11be`/`0x11ca`/`0x11e8`/
+`0x11f8` and those handlers wake, block, mark, read, or clear
+wait-object states `0`, `2`, `9`, `0xff`, `0x8006`, and `0x8007`, a
 render-loop fixture where `0x1eba4` selects cleanup, throttle,
 capacity-wait, or `0x1ef6a` render-call advance from work words `+6`,
 `+0c`, `+0e`, `+10`, and `+16`, a
@@ -914,13 +920,15 @@ ROM work needed:
   feedback and pacing edges: `$8000.4` selection at `0x0f84..0x0f8e`
   and `0x1020..0x102e`, physical meaning for `$a601 = 0xfd` and
   `$a801` writes, helper/MMIO meaning for `0xa6cc`, `0xa668`, and
-  `0xa680`, and the trap handlers behind veneers `0x10bc..0x10f2`.
+  `0xa680`, and the timing relation between those MMIO/helper events
+  and the now-modeled wait-object states behind traps `#0..#7`.
   Candidate-slot insertion, active-pool staging, pool-cursor alias
   movement, same-geometry work-record reuse, copy-window setup, `0x2456`
   source selection, `0x22f4` row-copy semantics, `0x78399e/9f` status
   feedback, `0x1036`/`0x108e`/`0x123a` wait-object handoff, `0x1cf8`
-  wrapper predicate selection, and `0x1eba4..0x1ecd2` render-loop
-  predicate selection are now fixture-covered.
+  wrapper predicate selection, `0x1144..0x11f8` trap-handler wait-state
+  transitions, and `0x1eba4..0x1ecd2` render-loop predicate selection
+  are now fixture-covered.
 - Determine the remaining live-parser wide/segmented text, raster
   edge-case, and final device-output clipping behavior exactly.
 - Identify any banding/compression structures used internally; reproduce

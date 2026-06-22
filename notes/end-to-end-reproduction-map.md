@@ -146,6 +146,13 @@ executable fixture or generated analysis note.
   `0x1eba4 scheduler band words render published downloaded glyph`, plus
   `Downloaded Font Descriptor And Payload Chain` in
   `notes/semantic-state-model.md`.
+- Downloaded-glyph/rule/raster render composition is covered for the
+  host-fetched `ESC )s18W` even-span wide glyph install plus modeled producers
+  for a selector-7 rule and mode-0 raster row in bucket `5`. Evidence: fixture
+  `host-fetched downloaded glyph composes with rule and raster through
+  0x1ef6a`, which asserts the `0x12f2e` glyph object, `0x13386` rule object,
+  `0x13070` raster object, `0x1ed84`/`0x1ef6a` call order, dispatch targets
+  `0x1f88e` and `0x1effe`, rule helper `0x1f596`, and final composed rows.
 - Built-in and downloaded text rendering is covered for selected offset-table,
   inline/downloaded fixed records, segmented records, segmented-wide records,
   font descriptors, resource payloads, downloaded character payloads, and
@@ -278,7 +285,9 @@ The next work should follow dataflow, not isolated handlers:
    page-visible behavior for validation/error forms beyond the seven bounded
    predicate no-install fixtures.
 2. Broaden the page-image fixture suite beyond the current complete
-   text/rule/raster/publication stream and the downloaded-glyph FF
-   publication stream. The next suite cases should add built-in font-selection
-   commands, combine downloaded glyphs with text/rule/raster composition, and
-   add geometry-changing publication cases with final bitmap-row comparison.
+   text/rule/raster/publication stream, downloaded-glyph FF publication stream,
+   and downloaded-glyph/rule/raster render-composition fixture. The next suite
+   cases should add built-in font-selection commands, turn the
+   downloaded-glyph/rule/raster case into one parser-driven host byte stream,
+   and add geometry-changing publication cases with final bitmap-row
+   comparison.

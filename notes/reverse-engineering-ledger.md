@@ -601,6 +601,12 @@ and `0x1ed84`/`0x1ef6a` render-entry output, plus a combined fetched
 font-control / downloaded-character / printable stream proving the same
 installed glyph path, `0x1edc6` bucket-root bridge, and
 `0x1ed84`/`0x1ef6a` segment render from one host byte stream,
+an even-span `ESC )s18W` downloaded glyph composition fixture where bucket
+`5` contains both the downloaded glyph object
+`00 00 00 00 10 03 00 01 29 06 01...` and mode-0 raster object
+`00 00 00 00 80 00 00 02 00 00 c3 3c`, the bridged rule list contains
+`00 00 00 00 05 17 08 01 00 0c 00 03 00 03`, and `0x1ef6a` dispatches
+`0x1f88e`, `0x1effe`/`0x1f0d2`, and `0x1f596` before comparing composed rows,
 `0x172c0`/`0x16c14` downloaded-font record bookkeeping fixtures,
 `0x170be`/`0x17108`/`0x17150` record lookup/mark/unmark fixtures,
 `0x15a56`/`0x16df6` font-id/control dispatch fixtures,

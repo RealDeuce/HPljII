@@ -75,6 +75,7 @@ Primary fixtures:
 - `host-fetched linear downloaded character stream renders through 0x168dc`
 - `host-fetched downloaded character payload control reaches wide render`
 - `host-fetched even-span wide downloaded character renders through 0x1f0d2`
+- `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
 - `host-fetched split-plane segmented downloaded character renders through
   0x1f1f0`
@@ -648,6 +649,23 @@ short page-record object
 dispatch compact target `0x1effe` to `0x1f0d2`. The renderer sees one full
 16-byte chunk, a 2-byte remainder, full-row skip `2`, linear source layout,
 and renders the single row at x `22`.
+
+Fixture `host-fetched downloaded glyph composes with rule and raster through
+0x1ef6a` reuses that same host-fetched `ESC )s18W` install, then carries the
+installed glyph into a heterogeneous active page record. `0x12f2e` queues glyph
+`0x29` at x `22`, y `80` as bucket `5` object
+`00 00 00 00 10 03 00 01 29 06 01` plus allocator padding. The same page
+record also contains selector-7 rule object
+`00 00 00 00 05 07 08 01 00 0c 00 03 00 00`, normalized by `0x1edc6` to
+`00 00 00 00 05 17 08 01 00 0c 00 03 00 03`, and mode-0 raster object
+`00 00 00 00 80 00 00 02 00 00 c3 3c`. Render entry `0x1ed84`/`0x1ef6a` runs
+call order `0x1ef86`, `0x1efc2`, `0x1f446`, `0x1f756`, dispatches the raster
+object to `0x1f88e`, dispatches the downloaded glyph object to `0x1effe` /
+`0x1f0d2`, renders the rule through selector helper `0x1f596`, and compares the
+three composed output rows. This closes the downloaded-glyph plus rule/raster
+composition fixture gap for the even-span wide downloaded glyph path; it does
+not yet make the rule and raster producers part of one host byte stream with
+the font download.
 
 Fixture `host-fetched segmented downloaded character renders through
 0x1f1f0` adds the even-span tall sibling. The host-fetched `ESC )s258W` stream

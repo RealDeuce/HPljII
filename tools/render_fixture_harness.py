@@ -33317,6 +33317,313 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    downloaded_wide_even_composed_page_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_wide_even_composed_source = dict(downloaded_wide_even_source)
+    downloaded_wide_even_composed_source.update({"y": 80})
+    downloaded_wide_even_composed_page_result = queue_text_source_to_page_record_via_12f2e(
+        downloaded_wide_even_memory,
+        downloaded_wide_even_composed_page_record,
+        downloaded_wide_even_composed_source,
+    )
+    downloaded_wide_even_composed_rule = queue_rectangle_rule_via_13386(
+        downloaded_wide_even_composed_page_record,
+        {
+            "x": 24,
+            "y": 80,
+            "width": 12,
+            "height": 3,
+            "flags": 7,
+        },
+    )
+    downloaded_wide_even_composed_raster = queue_raster_row_to_page_record_via_13070(
+        downloaded_wide_even_composed_page_record,
+        {"x": 0, "y": 80, "byte_count": 2, "mode": 0},
+        bytes.fromhex("c3 3c"),
+    )
+    downloaded_wide_even_composed_bucket = int(
+        downloaded_wide_even_composed_page_result["bucket_index"]
+    )
+    downloaded_wide_even_composed_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_wide_even_memory,
+        downloaded_wide_even_composed_page_record,
+        bucket_word=downloaded_wide_even_composed_bucket,
+    )
+    downloaded_wide_even_composed_entry = downloaded_wide_even_composed_render_entry["entry"]
+    assert isinstance(downloaded_wide_even_composed_entry, dict)
+    downloaded_wide_even_composed_chain = downloaded_wide_even_composed_render_entry["chain"]
+    assert isinstance(downloaded_wide_even_composed_chain, list)
+    downloaded_wide_even_composed_rules = downloaded_wide_even_composed_entry["rules"]
+    assert isinstance(downloaded_wide_even_composed_rules, dict)
+    downloaded_wide_even_composed_rows: list[str] = []
+    for row_index in range(3):
+        row = ["."] * 166
+        if row_index == 0:
+            raster_bits = "##....##..####.."
+            for x, pixel in enumerate(raster_bits):
+                if pixel == "#":
+                    row[x] = "#"
+            for x, pixel in enumerate(downloaded_wide_even_bits):
+                if pixel == "#":
+                    row[22 + x] = "#"
+        for x in range(24, 36):
+            row[x] = "#"
+        downloaded_wide_even_composed_rows.append("".join(row))
+    checks.append(assert_equal("host-fetched downloaded glyph composes with rule and raster through 0x1ef6a", {
+        "fetch": {
+            "stream_prefix": host_fetched_downloaded_wide_even_stream["stream"][:6],
+            "stream_length": len(host_fetched_downloaded_wide_even_stream["stream"]),
+            "source_set": sorted(set(host_fetched_downloaded_wide_even_stream["sources"])),
+            "remaining_ring": host_fetched_downloaded_wide_even_stream["state"]["ring"],
+        },
+        "parser": {
+            "handlers": [
+                event["handler"]
+                for event in downloaded_wide_even_trace["dispatches"]
+            ],
+            "payload_offset": downloaded_wide_even_command["payload_offset"],
+            "payload": downloaded_wide_even_command["payload"],
+        },
+        "install": {
+            "table_entry": downloaded_wide_even_install["table_entry"],
+            "record_delta": downloaded_wide_even_install["record_delta"],
+            "bitmap_offset": downloaded_wide_even_install["bitmap_offset"],
+            "bitmap_size": downloaded_wide_even_install["bitmap_size"],
+            "span": downloaded_wide_even_install["span"],
+        },
+        "glyph": {
+            key: downloaded_wide_even_glyph[key]
+            for key in (
+                "entry",
+                "bitmap",
+                "mode",
+                "rows",
+                "width",
+                "render_span",
+                "source_kind",
+            )
+        },
+        "queue": {
+            "text": {
+                key: downloaded_wide_even_composed_page_result[key]
+                for key in (
+                    "path",
+                    "object",
+                    "bucket_index",
+                    "selector",
+                    "coord",
+                    "glyph",
+                    "rows",
+                    "width",
+                )
+            },
+            "rule": {
+                "object": downloaded_wide_even_composed_rule["object"],
+                "computed": downloaded_wide_even_composed_rule["computed"],
+            },
+            "raster": {
+                key: downloaded_wide_even_composed_raster[key]
+                for key in (
+                    "path",
+                    "object",
+                    "bucket_index",
+                    "key",
+                    "mode",
+                    "byte_count_before",
+                    "byte_count_after",
+                    "capacity",
+                    "object_size",
+                    "payload",
+                )
+            },
+        },
+        "entry": {
+            "active_copy": downloaded_wide_even_composed_render_entry["active_copy"],
+            "chain": downloaded_wide_even_composed_chain,
+            "rule_list": (
+                downloaded_wide_even_composed_render_entry["render_record_fields"][
+                    "rule_list_1c"
+                ]
+            ),
+            "context_slots_prefix": (
+                downloaded_wide_even_composed_render_entry["render_record_fields"][
+                    "context_slots_24"
+                ][:4]
+            ),
+            "band_word": downloaded_wide_even_composed_entry["band_word"],
+            "call_order": downloaded_wide_even_composed_entry["call_order"],
+            "dispatch": [
+                {
+                    key: entry[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                    )
+                }
+                for entry in downloaded_wide_even_composed_entry["dispatch"]["entries"]
+            ],
+            "bucket_rendered": [
+                {
+                    "branch": item["branch"],
+                    "object": item["object"],
+                    "rows": item["rendered"]["rows"],
+                }
+                for item in downloaded_wide_even_composed_entry["bucket_rendered"]
+            ],
+            "rules": [
+                {
+                    key: item[key]
+                    for key in (
+                        "selector",
+                        "helper",
+                        "key",
+                        "bucket_delta",
+                        "decoded",
+                        "width",
+                        "remaining_before",
+                        "rows_drawn",
+                        "mutated_object",
+                    )
+                }
+                for item in downloaded_wide_even_composed_rules["rendered"]
+            ],
+            "rows": downloaded_wide_even_composed_entry["rows"],
+        },
+    }, {
+        "fetch": {
+            "stream_prefix": b"\x1b)s18W",
+            "stream_length": len(downloaded_wide_even_command_stream),
+            "source_set": ["ring"],
+            "remaining_ring": [],
+        },
+        "parser": {
+            "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "payload_offset": 6,
+            "payload": downloaded_wide_even_payload,
+        },
+        "install": {
+            "table_entry": 0x00EE,
+            "record_delta": 0x0780,
+            "bitmap_offset": 0x078C,
+            "bitmap_size": 18,
+            "span": 18,
+        },
+        "glyph": {
+            "entry": 0x0780,
+            "bitmap": 0x078C,
+            "mode": 1,
+            "rows": 1,
+            "width": 0x0090,
+            "render_span": 18,
+            "source_kind": "downloaded-pointer",
+        },
+        "queue": {
+            "text": {
+                "path": "short-page-record",
+                "object": bytes.fromhex("00 00 00 00 10 03 00 01 29 06 01")
+                + bytes(0x1B),
+                "bucket_index": 5,
+                "selector": 0x1003,
+                "coord": 0x0601,
+                "glyph": 0x29,
+                "rows": 1,
+                "width": 18,
+            },
+            "rule": {
+                "object": bytes.fromhex("00 00 00 00 05 07 08 01 00 0c 00 03 00 00"),
+                "computed": {"x": 24, "y": 80, "bucket_index": 5, "key": 0x0801},
+            },
+            "raster": {
+                "path": "raster-page-record",
+                "object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                "bucket_index": 5,
+                "key": 0x0000,
+                "mode": 0,
+                "byte_count_before": 2,
+                "byte_count_after": 0,
+                "capacity": 2,
+                "object_size": 0x0C,
+                "payload": bytes.fromhex("c3 3c"),
+            },
+        },
+        "entry": {
+            "active_copy": {
+                "source_word_18": 0,
+                "source_word_1a": 0,
+                "render_word_0a": 0,
+                "render_word_0c": 0,
+                "render_word_0e": 0,
+                "render_word_10": 0,
+                "render_word_16": 0,
+            },
+            "chain": [
+                bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                bytes.fromhex("00 00 00 00 10 03 00 01 29 06 01") + bytes(0x1B),
+            ],
+            "rule_list": [
+                bytes.fromhex("00 00 00 00 05 17 08 01 00 0c 00 03 00 03")
+            ],
+            "context_slots_prefix": (0, 0, 0, 0),
+            "band_word": 5,
+            "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+            "dispatch": [
+                {
+                    "chain_index": 0,
+                    "object_byte_4": 0x80,
+                    "class_mask": 0x80,
+                    "branch": "encoded-span",
+                    "target": 0x01F88E,
+                },
+                {
+                    "chain_index": 1,
+                    "object_byte_4": 0x10,
+                    "class_mask": 0x00,
+                    "branch": "compact",
+                    "target": 0x01EFFE,
+                },
+            ],
+            "bucket_rendered": [
+                {
+                    "branch": "encoded-span",
+                    "object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                    "rows": ["##....##..####.."],
+                },
+                {
+                    "branch": "compact",
+                    "object": bytes.fromhex("00 00 00 00 10 03 00 01 29 06 01")
+                    + bytes(0x1B),
+                    "rows": ["." * 22 + downloaded_wide_even_bits],
+                },
+            ],
+            "rules": [{
+                "selector": 7,
+                "helper": 0x1F596,
+                "key": 0x0801,
+                "bucket_delta": 0,
+                "decoded": {
+                    "x": 24,
+                    "y": 0,
+                    "row_low": 0,
+                    "subbyte": 8,
+                    "byte_pair_offset": 2,
+                },
+                "width": 12,
+                "remaining_before": 3,
+                "rows_drawn": 3,
+                "mutated_object": bytes.fromhex(
+                    "00 00 00 00 05 07 08 01 00 0c 00 03 ff b3"
+                ),
+            }],
+            "rows": downloaded_wide_even_composed_rows,
+        },
+    }))
+
     font_character_code = font_character_code_from_15a18(-0x8000)
     font_payload_dispatch_header = font_payload_dispatch_via_11f96(0)
     font_payload_dispatch_character = font_payload_dispatch_via_11f96(0x0891)

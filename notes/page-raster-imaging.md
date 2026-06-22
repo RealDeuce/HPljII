@@ -1151,6 +1151,19 @@ The clean even-span wide `ESC )s18W` downloaded-character fixture now also
 copies 18 linear bytes through `0x168dc` with no payload-control hits, queues
 selector `0x1003`, crosses `0x1edc6`, and renders through `0x1f0d2` with one
 full 16-byte chunk plus a 2-byte remainder.
+That same host-fetched even-span wide glyph now participates in a
+heterogeneous page-image composition fixture. Fixture
+`host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
+installs glyph `0x29` from `ESC )s18W`, queues it at x `22`, y `80` as bucket
+`5` object `00 00 00 00 10 03 00 01 29 06 01...`, adds selector-7 rule object
+`00 00 00 00 05 07 08 01 00 0c 00 03 00 00`, and adds mode-0 raster object
+`00 00 00 00 80 00 00 02 00 00 c3 3c`. The `0x1ed84`/`0x1ef6a` render entry
+dispatches the raster chain item to `0x1f88e`, the downloaded glyph chain item
+to `0x1effe`/`0x1f0d2`, renders the bridged rule through selector helper
+`0x1f596`, and compares the final three composed rows. The remaining
+middle edge is making the rule and raster producers share one parser-driven
+host stream with the font download rather than entering the shared page record
+from modeled producers.
 The fetched `ESC )s2193W` downloaded-pointer object
 now also crosses `0x1edc6` plus the `0x1ed84`/`0x1ef6a` render-entry
 path before rendering the same segmented-wide row. A fetched printable

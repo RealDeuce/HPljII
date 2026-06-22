@@ -10097,6 +10097,56 @@ def control_text_flush_helper_with_page_record(
     return flushed
 
 
+def update_flagged_span_via_d8fc(
+    page_record: dict[str, object],
+    state: dict[str, object],
+) -> dict[str, object]:
+    if not int(state.get("enabled_783184", 0)):
+        return {"updated": False, "reason": "disabled"}
+
+    cursor_y = unpack12(int(state.get("cursor_y", 0)))[0]
+    lower = int(state.get("flagged_context_0016", 0))
+    if cursor_y < lower:
+        return {"updated": False, "reason": "before-context-lower", "cursor_y": cursor_y}
+
+    height = int(state.get("flagged_context_0018", 0))
+    page_extent = int(state.get("page_extent_782db6", state.get("page_extent", 0xFFFF)))
+    if cursor_y + height > page_extent:
+        return {"updated": False, "reason": "beyond-page-extent", "cursor_y": cursor_y}
+
+    if int(state.get("span_alternate_offset_783185", 0)):
+        high_y = cursor_y - int(state.get("flagged_context_001a", 0))
+    else:
+        high_y = cursor_y + 5
+    if high_y > int(state.get("high_y_78318a", 0)):
+        state["high_y_78318a"] = high_y
+
+    cursor_x = unpack12(int(state.get("cursor_x", 0)))[0]
+    flush_result: dict[str, object] | None = None
+    if cursor_x < int(state.get("low_x_783186", 0)):
+        flush_result = control_text_flush_helper_with_page_record(state, page_record)
+    if cursor_x > int(state.get("high_x_783188", 0)):
+        state["high_x_783188"] = cursor_x
+
+    return {
+        "updated": True,
+        "handler": 0x00D8FC,
+        "cursor_x": cursor_x,
+        "cursor_y": cursor_y,
+        "context_lower_0016": lower,
+        "context_height_0018": height,
+        "context_offset_001a": int(state.get("flagged_context_001a", 0)),
+        "high_y": high_y,
+        "flush_result": flush_result,
+        "state": {
+            "enabled_783184": int(state.get("enabled_783184", 0)),
+            "low_x_783186": int(state.get("low_x_783186", 0)),
+            "high_x_783188": int(state.get("high_x_783188", 0)),
+            "high_y_78318a": int(state.get("high_y_78318a", 0)),
+        },
+    }
+
+
 def control_lf_helper(state: dict[str, int]) -> None:
     state["page_roots"] += 1
     state["cursor_y"] = add_packed12(state["cursor_y"], state["vmi"])
@@ -15969,6 +16019,9 @@ def render_mixed_printable_control_page_record_stream(
                     )
                     advance = advance_flagged_text_cursor_via_d550(state["cursor_x"], current_default_advance())
                     state["cursor_x"] = advance["cursor_after"]
+                    span_update_result = None
+                    if int(state.get("materialize_d8fc_span_update", 0)):
+                        span_update_result = update_flagged_span_via_d8fc(page_record, state)
                     payload_events.append({
                         "index": index,
                         "byte": byte_value,
@@ -15979,6 +16032,7 @@ def render_mixed_printable_control_page_record_stream(
                         "positioned": positioned,
                         "page_result": page_result,
                         "page_root": page_root,
+                        "span_update_result": span_update_result,
                     })
                 events.append({
                     "kind": "transparent-data",
@@ -16545,6 +16599,9 @@ def render_mixed_printable_control_page_record_stream(
         page_result = queue_text_source_to_page_record_via_12f2e(resources, page_record, positioned_source)
         advance = advance_flagged_text_cursor_via_d550(state["cursor_x"], current_default_advance())
         state["cursor_x"] = advance["cursor_after"]
+        span_update_result = None
+        if int(state.get("materialize_d8fc_span_update", 0)):
+            span_update_result = update_flagged_span_via_d8fc(page_record, state)
         events.append({
             "kind": "printable",
             "offset": pos,
@@ -16555,6 +16612,7 @@ def render_mixed_printable_control_page_record_stream(
             "positioned": positioned,
             "page_result": page_result,
             "page_root": page_root,
+            "span_update_result": span_update_result,
         })
         pos += 1
 
@@ -42303,6 +42361,169 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "enabled_783184": 1,
             "low_x_783186": 5,
             "high_x_783188": 5,
+            "high_y_78318a": 0,
+        },
+    }))
+    d8fc_materialized_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            materialize_d8fc_span_update=1,
+            enabled_783184=1,
+            low_x_783186=100,
+            high_x_783188=120,
+            high_y_78318a=0,
+            span_alternate_offset_783185=1,
+            flagged_context_0016=0,
+            flagged_context_0018=10,
+            flagged_context_001a=18,
+            orientation=0,
+            page_extent_782db6=64,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    d8fc_events = d8fc_materialized_stream["events"]
+    assert isinstance(d8fc_events, list)
+    d8fc_printable_event = d8fc_events[0]
+    assert isinstance(d8fc_printable_event, dict)
+    d8fc_span_update = d8fc_printable_event["span_update_result"]
+    assert isinstance(d8fc_span_update, dict)
+    d8fc_flush_result = d8fc_span_update["flush_result"]
+    assert isinstance(d8fc_flush_result, dict)
+    d8fc_flush_queued = d8fc_flush_result["queued"]
+    assert isinstance(d8fc_flush_queued, dict)
+    d8fc_page_record = d8fc_materialized_stream["page_record"]
+    assert isinstance(d8fc_page_record, dict)
+    d8fc_bucket_array = d8fc_page_record["bucket_array"]
+    assert isinstance(d8fc_bucket_array, dict)
+    d8fc_chain = [
+        bytes(obj)
+        for obj in d8fc_bucket_array[0]
+    ]
+    d8fc_render_entry = d8fc_materialized_stream["render_entry"]
+    assert isinstance(d8fc_render_entry, dict)
+    d8fc_rendered = d8fc_render_entry["entry"]
+    assert isinstance(d8fc_rendered, dict)
+    expected_d8fc_rows: list[str] = []
+    for row_index in range(len(line_printer_glyph32_rows)):
+        row_bits = [False] * 116
+        if line_printer_glyph32_rows[row_index] == "####":
+            for bit in range(4):
+                row_bits[16 + bit] = True
+        if 3 <= row_index < 6:
+            for bit in range(96, 116):
+                row_bits[bit] = True
+        expected_d8fc_rows.append(
+            "".join("#" if bit else "." for bit in row_bits)
+        )
+    checks.append(assert_equal("flagged printable d8fc low-watermark flush renders span", {
+        "stream": d8fc_materialized_stream["stream"],
+        "printable": {
+            "byte": d8fc_printable_event["byte"],
+            "cursor_before": d8fc_printable_event["cursor_before"],
+            "cursor_after": d8fc_printable_event["cursor_after"],
+            "coord": d8fc_printable_event["page_result"]["coord"],
+        },
+        "span_update": {
+            "updated": d8fc_span_update["updated"],
+            "handler": d8fc_span_update["handler"],
+            "cursor_x": d8fc_span_update["cursor_x"],
+            "cursor_y": d8fc_span_update["cursor_y"],
+            "context_lower_0016": d8fc_span_update["context_lower_0016"],
+            "context_height_0018": d8fc_span_update["context_height_0018"],
+            "context_offset_001a": d8fc_span_update["context_offset_001a"],
+            "high_y": d8fc_span_update["high_y"],
+        },
+        "flush": {
+            "flushed": d8fc_flush_result["flushed"],
+            "path": d8fc_flush_result["path"],
+            "raw_source": d8fc_flush_result["raw_source"],
+            "queued": {
+                key: d8fc_flush_queued[key]
+                for key in ("path", "computed", "bucket_index", "selector", "object")
+            },
+            "rearm": d8fc_flush_result["rearm"],
+        },
+        "chain": d8fc_chain,
+        "render_rows": d8fc_rendered["rows"],
+        "final_span_state": select_keys(
+            d8fc_materialized_stream["final_state"],
+            ("enabled_783184", "low_x_783186", "high_x_783188", "high_y_78318a"),
+        ),
+    }, {
+        "stream": b"!",
+        "printable": {
+            "byte": 0x21,
+            "cursor_before": pack12(10),
+            "cursor_after": pack12(28),
+            "coord": 0x0001,
+        },
+        "span_update": {
+            "updated": True,
+            "handler": 0x00D8FC,
+            "cursor_x": 28,
+            "cursor_y": 21,
+            "context_lower_0016": 0,
+            "context_height_0018": 10,
+            "context_offset_001a": 18,
+            "high_y": 3,
+        },
+        "flush": {
+            "flushed": True,
+            "path": "portrait-segment-list",
+            "raw_source": {
+                "orientation": 0,
+                "mode": 0,
+                "x": 100,
+                "y": 3,
+                "extent": 20,
+            },
+            "queued": {
+                "path": "text-span-segment-list",
+                "computed": {
+                    "x": 100,
+                    "y": 3,
+                    "bucket_index": 0,
+                    "key": 0x3406,
+                    "mode": 3,
+                    "selector_hi": 0x40,
+                    "selector_lo": 0x00,
+                },
+                "bucket_index": 0,
+                "selector": 0x4000,
+                "object": (
+                    bytes.fromhex("00 00 00 00 40 00 00 01 34 06 03 00 00 14")
+                    + (b"\x00" * 0x18)
+                ),
+            },
+            "rearm": {
+                "rearmed": True,
+                "enabled_783184": 1,
+                "low_x_783186": 28,
+                "high_x_783188": 28,
+                "high_y_78318a": 0,
+            },
+        },
+        "chain": [
+            bytes.fromhex("00 00 00 00 40 00 00 01 34 06 03 00 00 14")
+            + (b"\x00" * 0x18),
+            bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+            + (b"\x00" * 0x1b),
+        ],
+        "render_rows": expected_d8fc_rows,
+        "final_span_state": {
+            "enabled_783184": 1,
+            "low_x_783186": 28,
+            "high_x_783188": 28,
             "high_y_78318a": 0,
         },
     }))

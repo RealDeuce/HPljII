@@ -100,6 +100,8 @@ with pending text span re-arm, watermark update, flush packaging,
 portrait segment-list output, and landscape fixed-width output now
 composed under `Text Span Flush And Fixed-Width Spans`, including a
 parsed CR / `0xf34a` end-to-end span flush to visible page-record output,
+and flagged printable `0xd550` -> `0xd824` -> `0xd8fc` low-water span
+flush to visible segment-list output,
 with `0xcda2` reset/default environment state now decoded for
 page/control pool setup, cursor-stack reset, HMI/VMI recompute,
 line-termination clearing, and default bytes
@@ -409,7 +411,9 @@ segmented page object before `0x1edc6`,
 `0x1ed84`, and `0x1ef6a`; full parser-produced page-object integration,
 font-download parser-populated inline/downloaded source records,
 remaining full live-parser raster, parser-populated font-download
-records, and full parser-produced page-object coverage incomplete
+records, unflagged `0xd4ac` natural low-water host-byte coverage,
+flagged context producer ownership, and full parser-produced page-object
+coverage incomplete
 
 Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md`
 collects the raster command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`,

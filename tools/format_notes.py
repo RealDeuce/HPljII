@@ -232,10 +232,13 @@ def main() -> int:
         failures.extend(f"would format {path.relative_to(root)}" for path in changed)
 
     if args.check:
-        diff_check = run_git(root, ["diff", "--check"])
-        if diff_check.returncode != 0:
-            output = "\n".join(part for part in [diff_check.stdout, diff_check.stderr] if part)
-            failures.append(output.strip())
+        for diff_args in (["diff", "--check"], ["diff", "--cached", "--check"]):
+            diff_check = run_git(root, diff_args)
+            if diff_check.returncode != 0:
+                output = "\n".join(
+                    part for part in [diff_check.stdout, diff_check.stderr] if part
+                )
+                failures.append(output.strip())
 
     if failures:
         print("\n".join(failures), file=sys.stderr)

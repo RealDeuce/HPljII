@@ -282,7 +282,9 @@ current-font context records at `0x782ee6` / `0x782ef6`, those
 context-record pointers are installed in page-root `+0x2c` slots,
 `0x1edc6` copies the slots to render-record `+0x24`, the compact glyph
 renderer loads a selected slot into `0x783a2c`, and `0x1f354` resolves
-the glyph table relative to the selected `IC32,IC15` record.
+the glyph table relative to the selected `IC32,IC15` record. The tracked
+bridge and span-metric contract is documented in
+[font-context-metrics.md](font-context-metrics.md).
 
 ## Character to Glyph Index
 
@@ -583,7 +585,9 @@ symbol filtering keeps three symbol `0x000e` records, and nearest-pitch
 filtering chooses slot `0x782350` / record `0x02e122` before writing
 context `0x782ef6` and secondary map `0x783032`. The same `0x13eb8`
 model now pins the transient context-only exit and the `0x148f8`
-cache-hit return that bypasses candidate-list activation.
+cache-hit return that bypasses candidate-list activation; see
+[font-context-metrics.md](font-context-metrics.md) for how those context
+records feed page-root slots, printable source capture, and span metrics.
 
 Filtering helpers around `0x1519a`, `0x153c6`, `0x147b2`, `0x14758`,
 `0x147f4`, and `0x148f8` prune the active list by attributes such as

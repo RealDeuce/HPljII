@@ -848,12 +848,14 @@ queues a fixed-width span through `0x136d2`.
   - none owned by this cluster. The scratch object at `A5` in
     `0x12714` is a local producer source, not parser record storage.
 - Unknown:
-  - producer ownership for unflagged context fields `+0x2b`, `+0x2c`,
-    and `+0x2d`; their consumer semantics in `0xd4ac` are no longer
-    unknown, but the font/context record source is still open.
-  - producer ownership for flagged context fields `+0x16`, `+0x18`,
-    and `+0x1a`; their consumer semantics in `0xd8fc` are no longer
-    unknown, but the font/context record source is still open.
+  - selected-context ownership for unflagged context fields `+0x2b`,
+    `+0x2c`, and `+0x2d` is documented in
+    `notes/font-context-metrics.md`; the remaining gap is proving every
+    built-in/downloaded metric-byte form from parser-produced pages.
+  - selected-context ownership for flagged context fields `+0x16`,
+    `+0x18`, and `+0x1a` is documented in
+    `notes/font-context-metrics.md`; the remaining gap is proving every
+    built-in/downloaded metric-byte form from parser-produced pages.
 
 ### Writers
 
@@ -1064,13 +1066,15 @@ claim has disassembly and passing fixtures.
 ### Unresolved Middle Edges
 
 - `0xd4ac..0xd548`: unflagged context fields `+0x2b`, `+0x2c`, and
-  `+0x2d` are fixture-backed for the low-water success branch, but
-  exact font/context producer ownership and the disabled, before-lower,
-  beyond-page, and high-x-only branches remain uncovered.
+  `+0x2d` are fixture-backed for the low-water success branch and tied
+  to selected context records in `notes/font-context-metrics.md`, but
+  the disabled, before-lower, beyond-page, and high-x-only branches
+  remain uncovered.
 - `0xd8fc..0xd992`: flagged context fields `+0x16`, `+0x18`, and
-  `+0x1a` are fixture-backed for the low-water success branch, but
-  exact font/context producer ownership and the disabled, before-lower,
-  beyond-page, and high-x-only branches remain uncovered.
+  `+0x1a` are fixture-backed for the low-water success branch and tied
+  to selected context records in `notes/font-context-metrics.md`, but
+  the disabled, before-lower, beyond-page, and high-x-only branches
+  remain uncovered.
 
 ## Macro Definition And Data-Chain Replay
 
@@ -1364,8 +1368,8 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   covers `0xe65c..0xe898`; fixture
   `0xe65c refreshes macro font context entries`; fixture
   `0xe860 reads inline +0x16 and offset-table +0x20 class bytes`; fixture
-  `0xe65c refresh composes with font context bridge`; report
-  `generated/analysis/ic30_ic13_font_context_bridge.md`.
+  `0xe65c refresh composes with font context bridge`; tracked bridge note
+  `notes/font-context-metrics.md`.
 - Parser scratch:
   - normal macro parser table mode 17 entries at `0x11262..0x11286`
     route `y/Y` to `0xe112` and `x/X` to `0xdd08`.
@@ -1596,9 +1600,9 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 - `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`:
   `0xe65c..0xe9b8`, including context-stack pop, snapshot chain
   allocation, snapshot restore, and flat copy helpers.
-- `generated/analysis/ic30_ic13_font_context_bridge.md`:
-  `0x13eb8`, `0x144d2`, `0x14c64`, `0xc428`, page-root font slots, and
-  render-record context-slot bridge.
+- `notes/font-context-metrics.md`: `0x13eb8`, `0x144d2`, `0x14c64`,
+  `0xc428`, page-root font slots, render-record context-slot bridge,
+  printable source capture, and span-metric consumers.
 - `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`:
   `0x164a..0x18d8`, including heap bitmap initialization, low/high
   allocation entries, zero-fill, and free entry setup.

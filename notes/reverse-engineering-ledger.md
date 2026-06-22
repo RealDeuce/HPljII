@@ -445,10 +445,10 @@ its queue/list/context-slot contract decoded in
 classifies bucket objects; raster maps to `0x1f88e`, compact text/glyph
 buckets map through `0x1effe`, and rule lists map through `0x1f446` /
 `0x1f756`; compact glyph objects select render-record context slots
-copied from page-root `+0x2c` and traced in
-`generated/analysis/ic30_ic13_font_context_bridge.md`; compact text
-payload glyph bytes are mapped through `0x782f32` / `0x783032` and
-documented in `generated/analysis/ic30_ic13_text_glyph_index_flow.md`;
+copied from page-root `+0x2c`, and the selected font context, span
+metrics, and compact glyph byte bridge are documented in
+[font-context-metrics.md](font-context-metrics.md); compact text payload
+glyph bytes are mapped through `0x782f32` / `0x783032`;
 active symbol-set flow from `ESC (` / `ESC )` to `0x783144` / `0x783146`
 is documented in
 `generated/analysis/ic30_ic13_active_symbol_set_flow.md`; symbol-set

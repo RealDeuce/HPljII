@@ -572,12 +572,12 @@ sets flag bit `0x10` in object byte `+5`; for the `dest+0x1c` list it
 copies word `+0x0a` to `+0x0c`; for the `dest+0x20` list it copies word
 `+8` to `+0x0a` and sets bytes `+0x0c=1`, `+0x0d=8`.
 
-`generated/analysis/ic30_ic13_font_context_bridge.md` refines the
-`+0x2c` interpretation: `0xc428` / `0xc4fc` install pointers to
-current-font context records in these 16 page-root slots, not raw glyph
-pointers. `0x1edc6` copies them to render-record slots, and compact
-text/glyph objects use byte `+5` low nibble to select one of the copied
-render-record slots before `0x1f008` loads it into `0x783a2c`.
+[font-context-metrics.md](font-context-metrics.md) documents the `+0x2c`
+interpretation: `0xc428` / `0xc4fc` install pointers to current-font
+context records in these 16 page-root slots, not raw glyph pointers.
+`0x1edc6` copies them to render-record slots, and compact text/glyph
+objects use byte `+5` low nibble to select one of the copied render-record
+slots before `0x1f008` loads it into `0x783a2c`.
 
 `0x1ee9e` initializes bitmap render state. It stores the active record
 width word times four into `0x783a1c`, which is used later as a line

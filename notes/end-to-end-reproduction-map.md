@@ -156,10 +156,11 @@ pixels or byte-stream compatibility.
 1. Font/context producer ownership for span metric fields remains incomplete.
    The consumers are known: unflagged `0xd4ac` reads context `+0x2b`,
    `+0x2c`, `+0x2d`; flagged `0xd8fc` reads `+0x16`, `+0x18`, `+0x1a`.
-   The open edge is the full producer path that writes those context records
-   for every built-in/downloaded font selection. Evidence:
-   `notes/semantic-state-model.md` unresolved edges under
-   `Text Span Flush And Fixed-Width Spans`.
+   The selected-context bridge is now documented in
+   `notes/font-context-metrics.md`; the open edge is proving every
+   built-in/downloaded metric-byte form with parser-produced pages. Evidence:
+   `notes/semantic-state-model.md` under `Text Span Flush And Fixed-Width
+   Spans`.
 2. VFC is only partially composed. Table definition, channel jumps, wrap/no-hit
    behavior, and several publication paths are modeled, but VFC still lacks a
    complete command-family contract comparable to text/raster/rules. Evidence:
@@ -186,8 +187,8 @@ pixels or byte-stream compatibility.
 The next work should follow dataflow, not isolated handlers:
 
 1. Compose the font/context producer chain that owns the `d4ac`/`d8fc` metric
-   fields. This connects font selection to text span height and therefore to
-   visible pixels.
+   fields for the remaining downloaded/inline descriptor forms. This connects
+   font selection to text span height and therefore to visible pixels.
 2. Finish the VFC command-family semantic contract, because it can force page
    publication, cursor repositioning, and subsequent text placement.
 3. Build a small page-image fixture suite from complete byte streams that mix

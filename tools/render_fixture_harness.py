@@ -10037,6 +10037,66 @@ def control_text_flush_helper(state: dict[str, int]) -> None:
         state["post_flushes"] += 1
 
 
+def rearm_text_span_via_126e2(state: dict[str, object]) -> dict[str, object]:
+    if int(state.get("enabled_783184", 0)):
+        return {
+            "rearmed": False,
+            "reason": "already-enabled",
+            "enabled_783184": int(state.get("enabled_783184", 0)),
+        }
+    cursor_x = unpack12(int(state.get("cursor_x", 0)))[0]
+    state["enabled_783184"] = 1
+    state["high_x_783188"] = cursor_x
+    state["low_x_783186"] = cursor_x
+    state["high_y_78318a"] = 0
+    state["span_flush_enable"] = 1
+    return {
+        "rearmed": True,
+        "enabled_783184": 1,
+        "low_x_783186": cursor_x,
+        "high_x_783188": cursor_x,
+        "high_y_78318a": 0,
+    }
+
+
+def control_text_flush_helper_with_page_record(
+    state: dict[str, object],
+    page_record: dict[str, object] | None,
+) -> dict[str, object] | None:
+    before_flushes = int(state.get("span_flushes", 0))
+    control_text_flush_helper(state)  # type: ignore[arg-type]
+    if (
+        page_record is None
+        or not int(state.get("materialize_span_flush", 0))
+        or int(state.get("span_flushes", 0)) == before_flushes
+    ):
+        return None
+
+    span_state = {
+        "enabled_783184": int(state.get("enabled_783184", 0)),
+        "low_x_783186": int(state.get("low_x_783186", 0)),
+        "high_x_783188": int(state.get("high_x_783188", 0)),
+        "high_y_78318a": int(state.get("high_y_78318a", 0)),
+        "orientation_782da3": int(state.get("orientation", state.get("orientation_782da3", 0))),
+        "orientation_extent_782db2": int(state.get("orientation_extent_782db2", 0)),
+        "page_extent_782db6": int(state.get("page_extent_782db6", 0xFFFF)),
+    }
+    flushed = flush_text_span_via_12714(
+        page_record,
+        span_state,
+        vertical_offset=int(state.get("span_vertical_offset_782dc0", 0)),
+    )
+    flushed_state = flushed.get("state", {})
+    if isinstance(flushed_state, dict):
+        state["enabled_783184"] = int(flushed_state.get("enabled_783184", 0))
+        state["low_x_783186"] = int(flushed_state.get("low_x_783186", span_state["low_x_783186"]))
+        state["high_x_783188"] = int(flushed_state.get("high_x_783188", span_state["high_x_783188"]))
+        state["high_y_78318a"] = int(flushed_state.get("high_y_78318a", span_state["high_y_78318a"]))
+    rearmed = rearm_text_span_via_126e2(state)
+    flushed["rearm"] = rearmed
+    return flushed
+
+
 def control_lf_helper(state: dict[str, int]) -> None:
     state["page_roots"] += 1
     state["cursor_y"] = add_packed12(state["cursor_y"], state["vmi"])
@@ -10117,22 +10177,27 @@ def control_span_update(state: dict[str, int]) -> None:
     state["span_updates"] += 1
 
 
-def apply_direct_control_code(state: dict[str, int], code: int) -> dict[str, int]:
+def apply_direct_control_code(
+    state: dict[str, int],
+    code: int,
+    page_record: dict[str, object] | None = None,
+) -> dict[str, int]:
     state = dict(state)
+    last_span_flush_result: dict[str, object] | None = None
     if code == 0x0D:  # CR
         control_cr_helper(state)
-        control_text_flush_helper(state)
+        last_span_flush_result = control_text_flush_helper_with_page_record(state, page_record)
         if state["line_termination"] & 0x80:
             control_lf_helper(state)
     elif code == 0x0A:  # LF
         if state["line_termination"] & 0x40:
             control_cr_helper(state)
-        control_text_flush_helper(state)
+        last_span_flush_result = control_text_flush_helper_with_page_record(state, page_record)
         control_lf_helper(state)
     elif code == 0x0C:  # FF
         if state["line_termination"] & 0x20:
             control_cr_helper(state)
-        control_text_flush_helper(state)
+        last_span_flush_result = control_text_flush_helper_with_page_record(state, page_record)
         state["page_roots"] += 1
         control_ff_helper(state)
         state["pending_text"] = 0xFF
@@ -10169,6 +10234,10 @@ def apply_direct_control_code(state: dict[str, int], code: int) -> dict[str, int
         control_span_update(state)
     else:
         raise AssertionError(f"unsupported direct control fixture byte 0x{code:02x}")
+    if last_span_flush_result is not None:
+        state["last_span_flush_result"] = last_span_flush_result  # type: ignore[assignment]
+    else:
+        state.pop("last_span_flush_result", None)  # type: ignore[arg-type]
     return state
 
 
@@ -16411,7 +16480,8 @@ def render_mixed_printable_control_page_record_stream(
                     assert isinstance(published_pool_record, dict)
                     published_page_record = published_pool_record
             else:
-                state = apply_direct_control_code(state, byte)
+                state = apply_direct_control_code(state, byte, page_record)
+            span_flush_result = state.pop("last_span_flush_result", None)  # type: ignore[arg-type]
             event = {
                 "kind": "control",
                 "offset": pos,
@@ -16421,6 +16491,7 @@ def render_mixed_printable_control_page_record_stream(
                 "page_roots": state["page_roots"],
                 "page_finalizes": state["page_finalizes"],
                 "span_flushes": state["span_flushes"],
+                "span_flush_result": span_flush_result,
             }
             if finalized is not None:
                 event["finalized_page_record"] = finalized
@@ -42096,6 +42167,144 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "payload": bytes.fromhex("00 02 20 00 01 20 3b 00") + bytes(0x18),
         },
         "rows": expected_mixed_rows,
+    }))
+    span_materialized_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&k1G!\r",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            vmi=pack12(3),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            enabled_783184=1,
+            low_x_783186=2,
+            high_x_783188=18,
+            high_y_78318a=3,
+            orientation=0,
+            page_extent_782db6=64,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    span_materialized_events = span_materialized_stream["events"]
+    assert isinstance(span_materialized_events, list)
+    span_control_event = span_materialized_events[2]
+    assert isinstance(span_control_event, dict)
+    span_flush_result = span_control_event["span_flush_result"]
+    assert isinstance(span_flush_result, dict)
+    span_flush_queued = span_flush_result["queued"]
+    assert isinstance(span_flush_queued, dict)
+    span_materialized_page_record = span_materialized_stream["page_record"]
+    assert isinstance(span_materialized_page_record, dict)
+    span_materialized_bucket_array = span_materialized_page_record["bucket_array"]
+    assert isinstance(span_materialized_bucket_array, dict)
+    span_materialized_chain = [
+        bytes(obj)
+        for obj in span_materialized_bucket_array[0]
+    ]
+    span_materialized_render_entry = span_materialized_stream["render_entry"]
+    assert isinstance(span_materialized_render_entry, dict)
+    span_materialized_rendered = span_materialized_render_entry["entry"]
+    assert isinstance(span_materialized_rendered, dict)
+    expected_span_materialized_rows: list[str] = []
+    for row_index in range(len(line_printer_glyph32_rows)):
+        row_bits = [False] * 20
+        if 3 <= row_index < 6:
+            for bit in range(16):
+                row_bits[bit] = True
+        if line_printer_glyph32_rows[row_index] == "####":
+            for bit in range(4):
+                row_bits[16 + bit] = True
+        expected_span_materialized_rows.append(
+            "".join("#" if bit else "." for bit in row_bits)
+        )
+    checks.append(assert_equal("live CR span flush materializes 0x12714 page object", {
+        "stream": span_materialized_stream["stream"],
+        "control": {
+            "byte": span_control_event["byte"],
+            "cursor_before": span_control_event["cursor_before"],
+            "cursor_after": span_control_event["cursor_after"],
+            "span_flushes": span_control_event["span_flushes"],
+        },
+        "flush": {
+            "flushed": span_flush_result["flushed"],
+            "path": span_flush_result["path"],
+            "raw_source": span_flush_result["raw_source"],
+            "queued": {
+                key: span_flush_queued[key]
+                for key in ("path", "computed", "bucket_index", "selector", "object")
+            },
+            "rearm": span_flush_result["rearm"],
+        },
+        "chain": span_materialized_chain,
+        "render_rows": span_materialized_rendered["rows"],
+        "final_span_state": select_keys(
+            span_materialized_stream["final_state"],
+            ("enabled_783184", "low_x_783186", "high_x_783188", "high_y_78318a"),
+        ),
+    }, {
+        "stream": b"\x1b&k1G!\r",
+        "control": {
+            "byte": 0x0D,
+            "cursor_before": (pack12(28), pack12(21)),
+            "cursor_after": (pack12(5), pack12(24)),
+            "span_flushes": 1,
+        },
+        "flush": {
+            "flushed": True,
+            "path": "portrait-segment-list",
+            "raw_source": {
+                "orientation": 0,
+                "mode": 0,
+                "x": 2,
+                "y": 3,
+                "extent": 16,
+            },
+            "queued": {
+                "path": "text-span-segment-list",
+                "computed": {
+                    "x": 2,
+                    "y": 3,
+                    "bucket_index": 0,
+                    "key": 0x3200,
+                    "mode": 3,
+                    "selector_hi": 0x40,
+                    "selector_lo": 0x00,
+                },
+                "bucket_index": 0,
+                "selector": 0x4000,
+                "object": (
+                    bytes.fromhex("00 00 00 00 40 00 00 01 32 00 03 00 00 10")
+                    + (b"\x00" * 0x18)
+                ),
+            },
+            "rearm": {
+                "rearmed": True,
+                "enabled_783184": 1,
+                "low_x_783186": 5,
+                "high_x_783188": 5,
+                "high_y_78318a": 0,
+            },
+        },
+        "chain": [
+            bytes.fromhex("00 00 00 00 40 00 00 01 32 00 03 00 00 10")
+            + (b"\x00" * 0x18),
+            bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+            + (b"\x00" * 0x1b),
+        ],
+        "render_rows": expected_span_materialized_rows,
+        "final_span_state": {
+            "enabled_783184": 1,
+            "low_x_783186": 5,
+            "high_x_783188": 5,
+            "high_y_78318a": 0,
+        },
     }))
     mixed_control_parser_trace = trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k1G!\r!")
     checks.append(assert_equal("mixed printable/control parser trace feeds page-record queue", {

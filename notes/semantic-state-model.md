@@ -722,9 +722,10 @@ full 68000 interpreter through every source class and allocator branch.
 Status: composed as the shared pending-span cluster behind printable
 span updates, direct-control flushes, and render-facing span objects.
 This checkpoint covers the two watermark writers `0xd4ac` and `0xd8fc`,
-the re-arm helper `0x126e2`, flush helper `0x12714`, portrait producer
-`0x13520` / `0x135f0`, landscape producer `0x136d2`, and consumers
-`0x1f812` and `0x1f756`.
+the parsed-CR flush path `0xf02c` -> `0xf06e` -> `0xf34a`, the re-arm
+helper `0x126e2`, flush helper `0x12714`, portrait producer `0x13520` /
+`0x135f0`, landscape producer `0x136d2`, and consumers `0x1f812` and
+`0x1f756`.
 
 Concept: text placement maintains a pending horizontal span in
 `0x783184..0x78318a`. `0x126e2` opens a new pending span at the current
@@ -807,6 +808,11 @@ queues a fixed-width span through `0x136d2`.
   current x is below the low watermark.
 - `0xf34a` clears `0x782a58`; if `0x783184` is set, it calls `0x12714`
   then `0x126e2`.
+- `0xf02c` handles CR by calling `0xf06e`, then `0xf34a`, then optional
+  LF helper `0xf0b2` when line-termination bit 7 is set. Fixture
+  `live CR span flush materializes 0x12714 page object` pins this
+  order by re-arming `0x783186` / `0x783188` from the post-CR x cursor
+  before the LF y advance is visible in final cursor state.
 - `0x12714` clears `0x783184`, writes the local 8-byte source, calls
   `0x10084`, gates on `0x782db6`, calls `0x13520`, and retries after
   `0xff1e` on allocation failure.
@@ -847,6 +853,16 @@ queues a fixed-width span through `0x136d2`.
   object `00 00 00 00 00 06 33 00 00 03 00 00 00 00`, the `0x1edc6`
   bridge normalizes it to `+0x20`, and `0x1f756` renders three shifted
   3-pixel rows.
+- Fixture `live CR span flush materializes 0x12714 page object` drives
+  `ESC &k1G!\r` through the mixed page-record parser model. The
+  printable byte queues compact text object
+  `00 00 00 00 00 00 00 01 20 00 01 ...`; CR then routes through
+  `0xf02c` semantics, materializes pending state `2..18 @ y=3` through
+  `0x12714`, inserts segment-list object
+  `00 00 00 00 40 00 00 01 32 00 03 00 00 10 ...` ahead of the compact
+  object in bucket `0`, re-arms `0x783186` and `0x783188` to x `5`,
+  and renders rows where the three span rows occupy pixels `0..15`
+  while the text glyph remains at pixels `16..19`.
 
 ### Confidence
 
@@ -868,6 +884,7 @@ allocator fixtures, but not yet driven by a live pending-span stream.
 - `0x136d2 address-aware fixed-list insertion uses 0x1381c storage`
 - `0x1edc6 page-record bridge normalizes rule and fixed lists`
 - `mixed printable/control page-record stream queues through 0x1387c`
+- `live CR span flush materializes 0x12714 page object`
 
 ### Disassembly Evidence
 
@@ -880,7 +897,8 @@ allocator fixtures, but not yet driven by a live pending-span stream.
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`:
   `0xd4ac..0xd548` and `0xd8fc..0xd992` watermark writers.
 - `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`:
-  `0xf34a..0xf362` shared direct-control flush helper.
+  `0xf02c..0xf050` for CR ordering and `0xf34a..0xf362` for the
+  shared direct-control flush helper.
 - `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`:
   `0x13520..0x1381a` producer, insertion, and packed-key helpers.
 - `generated/analysis/ic30_ic13_page_record_bridge.md` and
@@ -900,9 +918,10 @@ allocator fixtures, but not yet driven by a live pending-span stream.
 - `0xd4ac..0xd548` and `0xd8fc..0xd992`: context y-bound/offset fields
   are named by behavior; exact font-record ownership of those fields is
   still open.
-- Live parser stream boundary: no host-byte fixture yet forces a real
-  `0xd4ac` / `0xd8fc` low-watermark crossing into `0x12714` and then
-  renders the emitted span.
+- Live text-placement boundary: parsed CR through `0xf34a` now reaches
+  visible `0x12714` output, but no host-byte fixture yet makes
+  `0xd4ac` / `0xd8fc` produce the low-watermark crossing from natural
+  font/context span state.
 
 ## Macro Definition And Data-Chain Replay
 

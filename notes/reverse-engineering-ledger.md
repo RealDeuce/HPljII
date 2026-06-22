@@ -98,7 +98,8 @@ with the printable source-object and compact bucket producer now composed
 under `Text Source Objects And Compact Buckets`,
 with pending text span re-arm, watermark update, flush packaging,
 portrait segment-list output, and landscape fixed-width output now
-composed under `Text Span Flush And Fixed-Width Spans`,
+composed under `Text Span Flush And Fixed-Width Spans`, including a
+parsed CR / `0xf34a` end-to-end span flush to visible page-record output,
 with `0xcda2` reset/default environment state now decoded for
 page/control pool setup, cursor-stack reset, HMI/VMI recompute,
 line-termination clearing, and default bytes

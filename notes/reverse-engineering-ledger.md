@@ -52,7 +52,10 @@ polls `0xfffee005`, reads `0xfffee001`, reports status bits into
 `0x780e2e`, and handshakes through `0xfffee009`. The semantic model now
 classifies the source fields, firmware bookkeeping, downstream
 consumers, output effect, and unresolved physical-interface edges under
-`Host Byte Fetch And Data-Chain Input`.
+`Host Byte Fetch And Data-Chain Input`. The alternate `0xa6cc` bridge
+from `0xfffe0001`/`0xfffe0003` into the `0x783e54` ring is now
+composed with low-water, full-service, status-escape, and `0xa904`
+consumer fixture coverage.
 
 ### Main PCL parser
 
@@ -918,10 +921,13 @@ ROM work needed:
   `0x1ed84` and `0x1ef6a`.
 - Continue the active-render scheduler from the remaining physical
   feedback and pacing edges: `$8000.4` selection at `0x0f84..0x0f8e`
-  and `0x1020..0x102e`, physical meaning for `$a601 = 0xfd` and
-  `$a801` writes, helper/MMIO meaning for `0xa6cc`, `0xa668`, and
-  `0xa680`, and the timing relation between those MMIO/helper events
-  and the now-modeled wait-object states behind traps `#0..#7`.
+  and `0x1020..0x102e`, physical meaning and timing for `$a601 = 0xfd`,
+  `$a801`, `$aa01`, `0xfffe0001`, and `0xfffe0003`, and the timing
+  relation between those MMIO/helper events and the now-modeled
+  wait-object states behind traps `#0..#7`. The software-visible
+  `0xa620`/`0xa638`/`0xa650`/`0xa668`/`0xa680` `$a801` shadow helper
+  effects and `0xa6cc` ring/status bridge effects are now fixture
+  covered and composed into the semantic model.
   Candidate-slot insertion, active-pool staging, pool-cursor alias
   movement, same-geometry work-record reuse, copy-window setup, `0x2456`
   source selection, `0x22f4` row-copy semantics, `0x78399e/9f` status

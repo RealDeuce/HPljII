@@ -139,7 +139,7 @@ def generate_disassembly(firmware: Path) -> None:
         ("ic30_ic13_error_report_00128c.lst", "0x128c", "0x128c", "0x120"),
         ("ic30_ic13_page_pool_init_003100.lst", "0x3100", "0x3100", "0x80"),
         ("ic30_ic13_host_byte_fetch_00a904.lst", "0xa904", "0xa904", "0x2f0"),
-        ("ic30_ic13_a801_a601_io_00a4e8.lst", "0xa4e8", "0xa4e8", "0x180"),
+        ("ic30_ic13_a801_a601_io_00a4e8.lst", "0xa4e8", "0xa4e8", "0x420"),
         ("ic30_ic13_font_context_install_00c428.lst", "0xc428", "0xc428", "0x160"),
         ("ic30_ic13_active_pool_cycle_001958.lst", "0x1958", "0x1958", "0x2e6"),
         ("ic30_ic13_page_pool_candidate_insert_001c04.lst", "0x1c04", "0x1c04", "0x414"),

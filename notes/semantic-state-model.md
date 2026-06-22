@@ -26,12 +26,15 @@ before parser dispatch.
   - active data-chain source: `0x782d76` points to the current frame;
     frame `+4 == -1` triggers end transition through `0xe22c`.
   - second pushback stack: `0x783e76` count and `0x783e78` pointer.
-  - ring buffer: `0x783e54` count and `0x783e56` pointer, wrapped
-    between `0x783a4c` and `0x783e53`.
+  - ring buffer: `0x783e54` count, `0x783e56` read pointer, and
+    `0x783e5a` write pointer, wrapped between `0x783a4c` and
+    `0x783e53`. `0xa6cc`/`0xa846` write this source before `0xa904`
+    drains it.
   Evidence: disassembly `0xa92c..0xa9e0`; fixtures
   `0xa904 services pending work then prefers first LIFO source`,
   `0xa904 data-chain end marker retries before second LIFO source`, and
-  `0xa904 buffered ring source wins before direct hardware in mode 0`.
+  `0xa904 buffered ring source wins before direct hardware in mode 0`,
+  plus `0xa620/0xa668/0xa6cc engine shadow and byte bridge`.
 - Canonical direct hardware sources:
   - mode `0x780e40 == 1`: status byte `0x8e01`, data byte `0x8801`,
     wait/ack byte `0x8c01`, handshake outputs `0xa601` and `0xaa01`.
@@ -41,6 +44,24 @@ before parser dispatch.
   fixtures
   `0xa904 direct mode 1 preserves 0x1a and clears handshake state` and
   `0xa904 direct mode 2 reads ready byte and sets control-shadow bit 6`.
+- Canonical alternate ring bridge:
+  - `0xa6cc` reads status byte `0xfffe0001` and data byte `0xfffe0003`
+    when `0x780e40 == 0`. Ready status bit 0 writes the ring unless a
+    full-buffer service path wins; status bits `0x70` write escape bytes
+    `0x1a,0x58` when capacity remains.
+  Evidence: disassembly
+  `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`
+  `0xa6cc..0xa810` and fixture
+  `0xa620/0xa668/0xa6cc engine shadow and byte bridge`.
+- Derived/cache bridge fields:
+  - ring capacity is derived as `0x400 - 0x783e54` at `0xa6f4`.
+  - `0x783e5e` is the low-water threshold. When capacity is less than or
+    equal to it, `0xa726..0xa73c` sets warning bit `0x780e2a.1`,
+    marks service pending in `0x783e61`, and halves the threshold.
+  - `0x783e62` is the sequence-dispatch cursor used by `0xa86a`.
+    Status-escape paths reset it to table `0xa8a4`.
+  Evidence: fixture low-water and status-escape cases in
+  `0xa620/0xa668/0xa6cc engine shadow and byte bridge`.
 - Firmware bookkeeping:
   - `0x7821cd`: service-needed flag checked before all byte sources.
   - `0x7821cc`: service-in-progress flag set around helper `0x10cc`.
@@ -54,7 +75,20 @@ before parser dispatch.
   - `0x7828fa` and `0x7828fb`: direct-mode control shadows.
   - `0x780e2e`: status-error accumulator for alternate direct mode bits
     `7` and `6`.
-  Evidence: disassembly `0xa904..0xab8a`; host fetch fixtures above.
+  - `0x783e60`: service reason byte set to `8` by full/status bridge
+    service paths.
+  - `0x783e61`: bridge service-pending byte. When set, `0xa7c2..0xa810`
+    writes `$aa01`, then signals `0x780202` if status bit 1 is set or
+    `0x7801e2` otherwise.
+  - `0x780e2a`: warning accumulator; `0xa726..0xa73c` ORs bit `1` on
+    low-water capacity.
+  - `0x780e2e`: error accumulator; `0xa708..0xa714` ORs bit `1` when
+    no ring capacity remains.
+  - `0x780e62`: status byte copy written with `0x13` when a service path
+    observes status bit 1.
+  - `0x780e49`: OR mask merged into `0x7828fa` before `$aa01` writes.
+  Evidence: disassembly `0xa904..0xab8a`, `0xa6cc..0xa810`, and host
+  fetch/bridge fixtures above.
 - Parser scratch:
   - none owned by `0xa904`. Parser scratch starts after a returned byte
     enters `0xda9a`/`0x11774`, or when payload readers consume byte counts
@@ -74,6 +108,10 @@ before parser dispatch.
   before retrying the byte fetch.
 - `0xa904` calls `0xe22c` when a data-chain frame has end marker `-1` at
   frame `+4`, then retries source selection.
+- `0xa6cc` and helper `0xa846` write the ring source consumed later by
+  `0xa904`. `0xa6cc` also writes `0x780e2a`, `0x780e2e`, `0x783e60`,
+  `0x783e61`, `0x783e62`, `0x780e62`, and `$aa01` during low-water,
+  full-buffer, and status service paths.
 - Macro setup helpers such as `0xe418` write data-chain frames later
   consumed by `0xa904`; the macro execute/call fixtures pin frame
   payload bytes `!\r` and mixed-control payload
@@ -104,16 +142,20 @@ replays through `0xa904`, reaches handlers `0xedf8`, `0xd04a`, `0xf02c`,
 and `0xd04a`, then renders the same rows as direct host bytes. The
 combined downloaded-glyph fixture proves one 2,215-byte `0xa904` ring
 stream can cross font-control, payload, printable, page-record, bridge,
-and render-entry boundaries.
+and render-entry boundaries. The bridge fixture proves `0xa6cc` can place
+byte `0x41` into the ring and the next `0xa904` fetch returns it as
+`D7 = 0x41`; low-water and full-buffer paths affect scheduler/status
+state rather than pixels directly.
 
 ### Confidence
 
 High for byte-source priority, no-byte gating, data-chain end retry,
-ring/direct source selection, `0x1a` reporting, and direct-mode state
-side effects because they are covered by executable fixtures and the
-`0xa904` disassembly. Medium for physical interface naming and full
-data-chain frame ownership because those require board/manual
-correlation and broader frame-lifetime tracing.
+ring/direct source selection, `0x1a` reporting, direct-mode state side
+effects, and the software-visible `0xa6cc` ring/status bridge because
+they are covered by executable fixtures and the `0xa904`/`0xa6cc`
+disassembly. Medium for physical interface naming and full data-chain
+frame ownership because those require board/manual correlation and
+broader frame-lifetime tracing.
 
 ### Fixtures
 
@@ -123,6 +165,7 @@ correlation and broader frame-lifetime tracing.
 - `0xa904 buffered ring source wins before direct hardware in mode 0`
 - `0xa904 direct mode 1 preserves 0x1a and clears handshake state`
 - `0xa904 direct mode 2 reads ready byte and sets control-shadow bit 6`
+- `0xa620/0xa668/0xa6cc engine shadow and byte bridge`
 - `macro execute frame payload feeds 0xa904 data-chain bytes`
 - `host-fetched mixed control stream reaches parser and page-record render`
 - `combined host-fetched font download stream prints installed glyph`
@@ -132,6 +175,9 @@ correlation and broader frame-lifetime tracing.
 
 - `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`:
   `0xa904..0xab8a`
+- `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`:
+  `0xa6cc..0xa810` for the alternate bridge and `0xa846..0xa8c8` for
+  ring append / sequence dispatch helpers.
 - `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`:
   parser consumers of returned `D7`
 - `generated/analysis/ic30_ic13_tokenizer_macro_callers.md` plus
@@ -148,6 +194,9 @@ correlation and broader frame-lifetime tracing.
   handshake for the `0x8e01`/`0x8801`/`0x8c01` direct bank.
 - `0xaaa6..0xab8a`: physical interface name and exact electrical
   handshake for the `0xfffee005`/`0xfffee001`/`0xfffee009` direct bank.
+- `0xa6cc..0xa810`: software ring/status bridge effects are modeled, but
+  the physical names and timing for `0xfffe0001`, `0xfffe0003`, and
+  `$aa01` are not identified.
 - `0x782d76 frame +0x00..+0x0d`: non-macro data-chain owners and frame
   lifecycle outside the `0xe418` macro replay fields already pinned.
 - `0x780e66` bit meanings: source-empty/active bits are observed by
@@ -1185,7 +1234,10 @@ record.
     after each copied row body.
   - `0x7828f9`: engine I/O shadow byte written to `$a801` by the
     `0x0fa2` interrupt path. Bit 7 toggles after the threshold and bit 6
-    is set on pending-status escalation or beyond-last status.
+    is set on pending-status escalation or beyond-last status. Helpers
+    `0xa620`/`0xa638` clear/set bit 1, `0xa650`/`0xa668` clear/set bit
+    6, and `0xa680` returns `D7 = 0` when bit 6 is set or `D7 = 1` when
+    bit 6 is clear.
   - `0x780e32`, `0x780e36`, and `0x7821f9.2`: wrapper attention sources
     tested at `0x1d62..0x1d82`. Any of `(0x780e32 & 5)`,
     `(0x780e36 & 3)`, or `0x7821f9.2` sends `0x1cf8` to the `0x1e80`
@@ -1288,6 +1340,12 @@ record.
   sets `0x7828f9.6`, writes `$a801`, and signals `0x780182`.
 - `0x0fc4..0x0fcc` toggles `0x7828f9.7` and writes `$a801` when the
   scan counter is after the threshold but not beyond the last row.
+- `0xa620..0xa680` are shared `$a801` shadow helpers. `0xa620` clears
+  `0x7828f9.1`, `0xa638` sets it, `0xa650` clears `0x7828f9.6`,
+  `0xa668` sets `0x7828f9.6`, and `0xa680` tests bit 6 without writing.
+- `0x1c5a..0x1c90` calls the `$a801` helpers while staging a candidate
+  record, and `0x1d42`, `0x1e80`, and `0x1ea8` consume helper
+  `0xa680`/`0xa668` during wrapper/attention/timeout paths.
 - `0x1036..0x1062` is the shared wait-object signal helper used by the
   scan/status and scheduler loops. When target word `+0x0a == 0x8006`,
   it writes `+0x0a = 2`, sets `0x78017e.1`, and writes `0x78017a` to
@@ -1634,11 +1692,13 @@ the `0x1ed36..0x1ed6a` same-geometry reuse branch, and the render-entry
 output for the selected source. Medium for the surrounding engine pacing
 loop because the fixture models firmware wait-state semantics but still
 does not name the board-level source of the interrupt/MMIO events that
-drive those states. Medium for the physical meaning of `$8000`, `$a601`,
-`$a801`, `0x7828f9`, `0xa6cc`, `0xa668`, and `0xa680` because the
-byte-level side effects and branch returns are pinned but not tied to
-measured engine timing yet. Medium for `0x780eb6` because only its
-initialization is currently covered.
+drive those states. High for `0x7828f9` bit 1/6 helper side effects,
+`0xa668`, and `0xa680` return polarity because the fixture covers set,
+clear, and test cases. Medium for the physical meaning of `$8000`,
+`$a601`, `$a801`, and `$aa01` because the byte-level side effects and
+branch returns are pinned but not tied to measured engine timing yet.
+Medium for `0x780eb6` because only its initialization is currently
+covered.
 
 ### Fixtures
 
@@ -1650,6 +1710,7 @@ initialization is currently covered.
 - `0x0fa2/0x1db0/0x1e44 status feedback drives copy and done flag`
 - `0x1036/0x108e/0x123a wait-object scheduler handoff`
 - `0x1144..0x11f8 scheduler trap handlers update wait objects`
+- `0xa620/0xa668/0xa6cc engine shadow and byte bridge`
 - `0x1cf8/0x1e80/0x1ea8 wrapper dispatch selects engine variants`
 - `0x1eba4/0x1ef6a active render loop advances or yields bands`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
@@ -1663,6 +1724,9 @@ initialization is currently covered.
   `0x1958..0x1fa2`
 - `generated/disasm/ic30_ic13_scan_status_interrupt_000f84.lst`:
   `0x0f84..0x10f2`
+- `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`:
+  `0xa620..0xa680` for `$a801` bit helpers and `0xa6cc..0xa810` for
+  the alternate ring/status bridge.
 - `generated/disasm/ic30_ic13_scheduler_trap_handlers_00110c.lst`:
   `0x110c..0x1282`
 - `generated/disasm/ic30_ic13_scheduler_dispatch_00123a.lst`:
@@ -1691,16 +1755,16 @@ initialization is currently covered.
 ### Unresolved Middle Edges
 
 - `0x0f84..0x0fa0` and `0x1020..0x102e`: `$8000.4` selection between
-  scan/status handling and helper `0xa6cc`, plus the physical effect of
-  `$a601 = 0xfd` and `$a801` writes, still need board-level engine
-  correlation.
+  scan/status handling and helper `0xa6cc`, plus the physical effect and
+  timing of `$a601 = 0xfd`, `$a801`, `$aa01`, `0xfffe0001`, and
+  `0xfffe0003`, still need board-level engine correlation.
 - `0x10bc..0x11f8` and `0x123a..0x1282`: trap veneers, copied trap
   vectors, wait-state transitions, and scheduler selection are modeled;
   the remaining gap is the timing relation between those firmware
   wait-states and the physical engine/MMIO events that wake them.
 - `0x1cf8..0x1ea8`: helper return predicates around `0xa668` and
-  `0xa680` are modeled, but their external engine/service side effects
-  are not yet tied to measured timing.
+  `0xa680` are modeled; the unresolved edge is the external engine
+  timing that makes `0x7828f9.6` ready or busy in real hardware.
 
 ## Vertical Forms Control
 

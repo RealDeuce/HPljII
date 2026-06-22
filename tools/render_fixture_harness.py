@@ -13354,6 +13354,164 @@ def active_pool_status_bridge_via_1e44(state: dict[str, object]) -> dict[str, ob
     }
 
 
+def engine_io_shadow_helper_via_a620_a680(
+    state: dict[str, object],
+    helper: int,
+) -> dict[str, object]:
+    """Model the 0x7828f9/$a801 bit helpers at 0xa620..0xa680."""
+    shadow_before = int(state.get("io_control_shadow_7828f9", 0)) & 0xFF
+    a801_writes = list(state.get("a801_writes", []))
+    if helper == 0xA620:
+        shadow_after = shadow_before & ~0x02
+        state["io_control_shadow_7828f9"] = shadow_after
+        a801_writes.append(shadow_after)
+        path = "clear-bit-1"
+        return_d7 = None
+    elif helper == 0xA638:
+        shadow_after = shadow_before | 0x02
+        state["io_control_shadow_7828f9"] = shadow_after
+        a801_writes.append(shadow_after)
+        path = "set-bit-1"
+        return_d7 = None
+    elif helper == 0xA650:
+        shadow_after = shadow_before & ~0x40
+        state["io_control_shadow_7828f9"] = shadow_after
+        a801_writes.append(shadow_after)
+        path = "clear-bit-6"
+        return_d7 = None
+    elif helper == 0xA668:
+        shadow_after = shadow_before | 0x40
+        state["io_control_shadow_7828f9"] = shadow_after
+        a801_writes.append(shadow_after)
+        path = "set-bit-6"
+        return_d7 = None
+    elif helper == 0xA680:
+        shadow_after = shadow_before
+        path = "test-bit-6"
+        return_d7 = 0 if (shadow_before & 0x40) else 1
+    else:
+        raise AssertionError(f"unknown engine I/O shadow helper 0x{helper:x}")
+
+    state["a801_writes"] = a801_writes
+    return {
+        "helper": helper,
+        "path": path,
+        "shadow_before": shadow_before,
+        "shadow_after": shadow_after,
+        "a801_writes": a801_writes,
+        "return_d7": return_d7,
+    }
+
+
+def alternate_io_byte_bridge_via_a6cc(state: dict[str, object]) -> dict[str, object]:
+    """Model 0xa6cc as the alternate MMIO-to-ring/status bridge."""
+    mode = int(state.get("direct_mode_780e40", 0)) & 0xFF
+    data_byte = int(state.get("fffe0003", 0)) & 0xFF
+    if mode != 0:
+        return {
+            "path": "mode-nonzero-read-only",
+            "direct_mode_780e40": mode,
+            "return_d0": data_byte,
+        }
+
+    status = int(state.get("fffe0001", 0)) & 0xFF
+    if not (status & 0x01):
+        return {
+            "path": "not-ready-read-only",
+            "direct_mode_780e40": mode,
+            "status_fffe0001": status,
+            "return_d0": data_byte,
+        }
+
+    ring = list(state.get("ring", []))
+    ring_count_before = int(state.get("ring_count_783e54", len(ring))) & 0xFFFF
+    threshold_before = int(state.get("ring_low_water_783e5e", 0)) & 0xFFFF
+    capacity = 0x400 - ring_count_before
+    signals = list(state.get("signals", []))
+    aa01_writes = list(state.get("aa01_writes", []))
+    events: list[dict[str, object]] = []
+    service_pending = int(state.get("service_pending_783e61", 0)) & 0xFF
+    path = "queued-byte"
+    low_water = False
+
+    if capacity <= 0:
+        state["status_error_780e2e"] = int(state.get("status_error_780e2e", 0)) | 0x02
+        state["service_pending_783e61"] = 1
+        service_pending = 1
+        if status & 0x70:
+            path = "full-status-service"
+            state["service_reason_783e60"] = 8
+            state["sequence_ptr_783e62"] = 0xA8A4
+        else:
+            path = "full-service"
+            state["service_reason_783e60"] = 8
+            events.append({"helper": 0xA86A, "kind": "sequence-dispatch"})
+    elif capacity <= threshold_before:
+        state["warning_status_780e2a"] = int(state.get("warning_status_780e2a", 0)) | 0x02
+        state["service_pending_783e61"] = 1
+        service_pending = 1
+        state["ring_low_water_783e5e"] = threshold_before >> 1
+        path = "low-water-queued-byte"
+        low_water = True
+
+    if capacity > 0:
+        if status & 0x70:
+            ring.extend([0x1A, 0x58])
+            state["ring_count_783e54"] = ring_count_before + 2
+            state["service_reason_783e60"] = 8
+            state["sequence_ptr_783e62"] = 0xA8A4
+            path = "low-water-status-escape" if low_water else "status-escape"
+        else:
+            ring.append(data_byte)
+            added = 1
+            if data_byte == 0x1A:
+                ring.append(0x1A)
+                added += 1
+                events.append({"helper": 0xA846, "kind": "control-1a-repeat"})
+            state["ring_count_783e54"] = ring_count_before + added
+            events.append({"helper": 0xA86A, "kind": "sequence-dispatch"})
+            path = "low-water-queued-byte" if low_water else "queued-byte"
+
+    if int(state.get("service_pending_783e61", service_pending)):
+        aa01_value = (
+            (int(state.get("mode1_control_shadow_7828fa", 0)) & 0xBF)
+            | (int(state.get("status_or_mask_780e49", 0)) & 0xFF)
+        ) & 0xFF
+        state["mode1_control_shadow_7828fa"] = aa01_value
+        aa01_writes.append(aa01_value)
+        if status & 0x02:
+            state["fffe0003"] = 0x13
+            state["status_byte_780e62"] = 0x13
+            state["service_pending_783e61"] = 0
+            signals.append({"helper": 0x1036, "target": 0x00780202})
+        else:
+            signals.append({"helper": 0x1036, "target": 0x007801E2})
+
+    state["ring"] = ring
+    state["signals"] = signals
+    state["aa01_writes"] = aa01_writes
+    return {
+        "path": path,
+        "direct_mode_780e40": mode,
+        "status_fffe0001": status,
+        "return_d0": data_byte,
+        "capacity": capacity,
+        "ring": ring,
+        "ring_count_783e54": int(state.get("ring_count_783e54", len(ring))),
+        "ring_low_water_783e5e": int(state.get("ring_low_water_783e5e", threshold_before)),
+        "status_error_780e2e": int(state.get("status_error_780e2e", 0)),
+        "warning_status_780e2a": int(state.get("warning_status_780e2a", 0)),
+        "service_pending_783e61": int(state.get("service_pending_783e61", 0)),
+        "service_reason_783e60": int(state.get("service_reason_783e60", 0)),
+        "sequence_ptr_783e62": int(state.get("sequence_ptr_783e62", 0)),
+        "fffe0003": int(state.get("fffe0003", data_byte)),
+        "status_byte_780e62": int(state.get("status_byte_780e62", 0)),
+        "aa01_writes": aa01_writes,
+        "signals": signals,
+        "events": events,
+    }
+
+
 def scheduler_signal_wait_object_via_1036(
     state: dict[str, object],
     target_ptr: int,
@@ -28343,6 +28501,240 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "word_16_after": 5,
                     "active_render_loop_flag_780ea5": 1,
                 },
+            },
+        },
+    ))
+
+    shadow_state: dict[str, object] = {
+        "io_control_shadow_7828f9": 0,
+        "a801_writes": [],
+    }
+    shadow_set_bit1 = engine_io_shadow_helper_via_a620_a680(shadow_state, 0xA638)
+    shadow_clear_bit1 = engine_io_shadow_helper_via_a620_a680(shadow_state, 0xA620)
+    shadow_set_bit6 = engine_io_shadow_helper_via_a620_a680(shadow_state, 0xA668)
+    shadow_test_busy = engine_io_shadow_helper_via_a620_a680(shadow_state, 0xA680)
+    shadow_clear_bit6 = engine_io_shadow_helper_via_a620_a680(shadow_state, 0xA650)
+    shadow_test_ready = engine_io_shadow_helper_via_a620_a680(shadow_state, 0xA680)
+
+    bridge_state: dict[str, object] = {
+        "direct_mode_780e40": 0,
+        "fffe0001": 0x01,
+        "fffe0003": 0x41,
+        "ring": [],
+        "ring_count_783e54": 0,
+        "ring_low_water_783e5e": 0,
+    }
+    bridge_queued = alternate_io_byte_bridge_via_a6cc(bridge_state)
+    bridge_fetch = host_byte_fetch_via_a904(host_byte_fetch_state(
+        ring=bridge_state["ring"],
+        direct_mode=0,
+    ))
+    bridge_fetch_state = bridge_fetch["state"]
+    assert isinstance(bridge_fetch_state, dict)
+
+    low_water_state: dict[str, object] = {
+        "direct_mode_780e40": 0,
+        "fffe0001": 0x03,
+        "fffe0003": 0x42,
+        "ring": [],
+        "ring_count_783e54": 0x03FF,
+        "ring_low_water_783e5e": 1,
+        "mode1_control_shadow_7828fa": 0xFF,
+        "status_or_mask_780e49": 0x10,
+    }
+    low_water_bridge = alternate_io_byte_bridge_via_a6cc(low_water_state)
+
+    status_escape_state: dict[str, object] = {
+        "direct_mode_780e40": 0,
+        "fffe0001": 0x71,
+        "fffe0003": 0x55,
+        "ring": [],
+        "ring_count_783e54": 0,
+        "ring_low_water_783e5e": 0,
+    }
+    status_escape_bridge = alternate_io_byte_bridge_via_a6cc(status_escape_state)
+
+    full_service_state: dict[str, object] = {
+        "direct_mode_780e40": 0,
+        "fffe0001": 0x03,
+        "fffe0003": 0x66,
+        "ring": [],
+        "ring_count_783e54": 0x0400,
+        "ring_low_water_783e5e": 0,
+        "mode1_control_shadow_7828fa": 0x80,
+        "status_or_mask_780e49": 0x01,
+    }
+    full_service_bridge = alternate_io_byte_bridge_via_a6cc(full_service_state)
+
+    checks.append(assert_equal(
+        "0xa620/0xa668/0xa6cc engine shadow and byte bridge",
+        {
+            "shadow": {
+                "set_bit1": shadow_set_bit1,
+                "clear_bit1": shadow_clear_bit1,
+                "set_bit6": shadow_set_bit6,
+                "test_busy": shadow_test_busy,
+                "clear_bit6": shadow_clear_bit6,
+                "test_ready": shadow_test_ready,
+                "final_state": shadow_state,
+            },
+            "queued": {
+                "bridge": {
+                    "path": bridge_queued["path"],
+                    "ring": bridge_queued["ring"],
+                    "ring_count_783e54": bridge_queued["ring_count_783e54"],
+                    "signals": bridge_queued["signals"],
+                    "events": bridge_queued["events"],
+                },
+                "fetch": {
+                    "d7": bridge_fetch["d7"],
+                    "source": bridge_fetch["source"],
+                    "remaining_ring": bridge_fetch_state["ring"],
+                },
+            },
+            "low_water": {
+                "path": low_water_bridge["path"],
+                "ring": low_water_bridge["ring"],
+                "ring_count_783e54": low_water_bridge["ring_count_783e54"],
+                "ring_low_water_783e5e": low_water_bridge["ring_low_water_783e5e"],
+                "warning_status_780e2a": low_water_bridge["warning_status_780e2a"],
+                "service_pending_783e61": low_water_bridge["service_pending_783e61"],
+                "fffe0003": low_water_bridge["fffe0003"],
+                "status_byte_780e62": low_water_bridge["status_byte_780e62"],
+                "aa01_writes": low_water_bridge["aa01_writes"],
+                "signals": low_water_bridge["signals"],
+                "events": low_water_bridge["events"],
+            },
+            "status_escape": {
+                "path": status_escape_bridge["path"],
+                "ring": status_escape_bridge["ring"],
+                "ring_count_783e54": status_escape_bridge["ring_count_783e54"],
+                "service_reason_783e60": status_escape_bridge[
+                    "service_reason_783e60"
+                ],
+                "sequence_ptr_783e62": status_escape_bridge["sequence_ptr_783e62"],
+                "signals": status_escape_bridge["signals"],
+            },
+            "full_service": {
+                "path": full_service_bridge["path"],
+                "ring": full_service_bridge["ring"],
+                "ring_count_783e54": full_service_bridge["ring_count_783e54"],
+                "status_error_780e2e": full_service_bridge["status_error_780e2e"],
+                "service_reason_783e60": full_service_bridge[
+                    "service_reason_783e60"
+                ],
+                "service_pending_783e61": full_service_bridge[
+                    "service_pending_783e61"
+                ],
+                "fffe0003": full_service_bridge["fffe0003"],
+                "status_byte_780e62": full_service_bridge["status_byte_780e62"],
+                "aa01_writes": full_service_bridge["aa01_writes"],
+                "signals": full_service_bridge["signals"],
+                "events": full_service_bridge["events"],
+            },
+        },
+        {
+            "shadow": {
+                "set_bit1": {
+                    "helper": 0xA638,
+                    "path": "set-bit-1",
+                    "shadow_before": 0,
+                    "shadow_after": 0x02,
+                    "a801_writes": [0x02],
+                    "return_d7": None,
+                },
+                "clear_bit1": {
+                    "helper": 0xA620,
+                    "path": "clear-bit-1",
+                    "shadow_before": 0x02,
+                    "shadow_after": 0,
+                    "a801_writes": [0x02, 0],
+                    "return_d7": None,
+                },
+                "set_bit6": {
+                    "helper": 0xA668,
+                    "path": "set-bit-6",
+                    "shadow_before": 0,
+                    "shadow_after": 0x40,
+                    "a801_writes": [0x02, 0, 0x40],
+                    "return_d7": None,
+                },
+                "test_busy": {
+                    "helper": 0xA680,
+                    "path": "test-bit-6",
+                    "shadow_before": 0x40,
+                    "shadow_after": 0x40,
+                    "a801_writes": [0x02, 0, 0x40],
+                    "return_d7": 0,
+                },
+                "clear_bit6": {
+                    "helper": 0xA650,
+                    "path": "clear-bit-6",
+                    "shadow_before": 0x40,
+                    "shadow_after": 0,
+                    "a801_writes": [0x02, 0, 0x40, 0],
+                    "return_d7": None,
+                },
+                "test_ready": {
+                    "helper": 0xA680,
+                    "path": "test-bit-6",
+                    "shadow_before": 0,
+                    "shadow_after": 0,
+                    "a801_writes": [0x02, 0, 0x40, 0],
+                    "return_d7": 1,
+                },
+                "final_state": {
+                    "io_control_shadow_7828f9": 0,
+                    "a801_writes": [0x02, 0, 0x40, 0],
+                },
+            },
+            "queued": {
+                "bridge": {
+                    "path": "queued-byte",
+                    "ring": [0x41],
+                    "ring_count_783e54": 1,
+                    "signals": [],
+                    "events": [{"helper": 0xA86A, "kind": "sequence-dispatch"}],
+                },
+                "fetch": {
+                    "d7": 0x41,
+                    "source": "ring",
+                    "remaining_ring": [],
+                },
+            },
+            "low_water": {
+                "path": "low-water-queued-byte",
+                "ring": [0x42],
+                "ring_count_783e54": 0x0400,
+                "ring_low_water_783e5e": 0,
+                "warning_status_780e2a": 0x02,
+                "service_pending_783e61": 0,
+                "fffe0003": 0x13,
+                "status_byte_780e62": 0x13,
+                "aa01_writes": [0xBF],
+                "signals": [{"helper": 0x1036, "target": 0x00780202}],
+                "events": [{"helper": 0xA86A, "kind": "sequence-dispatch"}],
+            },
+            "status_escape": {
+                "path": "status-escape",
+                "ring": [0x1A, 0x58],
+                "ring_count_783e54": 2,
+                "service_reason_783e60": 8,
+                "sequence_ptr_783e62": 0xA8A4,
+                "signals": [],
+            },
+            "full_service": {
+                "path": "full-service",
+                "ring": [],
+                "ring_count_783e54": 0x0400,
+                "status_error_780e2e": 0x02,
+                "service_reason_783e60": 8,
+                "service_pending_783e61": 0,
+                "fffe0003": 0x13,
+                "status_byte_780e62": 0x13,
+                "aa01_writes": [0x81],
+                "signals": [{"helper": 0x1036, "target": 0x00780202}],
+                "events": [{"helper": 0xA86A, "kind": "sequence-dispatch"}],
             },
         },
     ))

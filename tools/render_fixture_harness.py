@@ -40742,6 +40742,149 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "." * 22 + "#." * 64 + ".#.#.#.#",
         ],
     }))
+    combined_published_band_record = copy_active_page_record_to_render_record_via_1ed84(
+        combined_published_record,
+    )
+    combined_published_band_fields = combined_published_band_record["render_record_fields"]
+    assert isinstance(combined_published_band_fields, dict)
+    combined_published_bucket_array = combined_published_record["bucket_array"]
+    assert isinstance(combined_published_bucket_array, dict)
+    combined_published_band_fields.update({
+        "long_00": 0x00100000,
+        "word_04": 0x0020,
+        "word_06": 0x0005,
+        "word_08": 0,
+        "bucket_array_18": {
+            int(index): [bytes(obj) for obj in chain]
+            for index, chain in combined_published_bucket_array.items()
+        },
+    })
+    combined_published_band_record["render_record_fields"] = combined_published_band_fields
+    combined_published_bands = render_page_bands_via_1ef6a(
+        data,
+        combined_downloaded_memory,
+        combined_published_band_record,
+        band_words=(1, 9),
+        page_rows=88,
+        page_width=158,
+    )
+    checks.append(assert_equal("published downloaded glyph segmented buckets render across bands", {
+        "published_bucket_words": sorted(combined_published_fields["bucket_array_1c"]),
+        "band_words": [band["band_word"] for band in combined_published_bands["bands"]],
+        "band_summaries": [
+            {
+                "band_word": band["band_word"],
+                "setup": {
+                    key: band["entry"]["setup"][key]
+                    for key in (
+                        "dividend",
+                        "remainder_783a22",
+                        "band_rows_scaled_783a20",
+                        "destination_base_783a28",
+                    )
+                },
+                "dispatch": [
+                    {
+                        key: entry[key]
+                        for key in (
+                            "chain_index",
+                            "object_byte_4",
+                            "branch",
+                            "target",
+                            "context_slot",
+                        )
+                    }
+                    for entry in band["entry"]["dispatch"]["entries"]
+                ],
+                "rendered": [
+                    {
+                        "segment": item["rendered"]["rendered"][0]["segment"],
+                        "row_skip": item["rendered"]["rendered"][0]["row_skip"],
+                        "rows": item["rendered"]["rendered"][0]["rows"],
+                        "rows_in_band": item["rendered"]["splits"][0]["rows_in_band"],
+                        "remaining_after_band": (
+                            item["rendered"]["splits"][0]["remaining_after_band"]
+                        ),
+                        "rows_out_count": len(item["rendered"]["rows"]),
+                        "last_row": item["rendered"]["rows"][-1],
+                    }
+                    for item in band["entry"]["bucket_rendered"]
+                ],
+            }
+            for band in combined_published_bands["bands"]
+        ],
+        "page_rows_0_6": combined_published_bands["rows"][:7],
+        "page_rows_80_87": combined_published_bands["rows"][80:87],
+        "remaining_rule_list": combined_published_bands["remaining_rule_list"],
+        "remaining_fixed_list": combined_published_bands["remaining_fixed_list"],
+    }, {
+        "published_bucket_words": [1, 9],
+        "band_words": [1, 9],
+        "band_summaries": [
+            {
+                "band_word": 1,
+                "setup": {
+                    "dividend": 1,
+                    "remainder_783a22": 1,
+                    "band_rows_scaled_783a20": 0x0040,
+                    "destination_base_783a28": 0x00100800,
+                },
+                "dispatch": [{
+                    "chain_index": 0,
+                    "object_byte_4": 0x30,
+                    "branch": "compact",
+                    "target": 0x01EFFE,
+                    "context_slot": 3,
+                }],
+                "rendered": [{
+                    "segment": 0,
+                    "row_skip": 0,
+                    "rows": 0x0080,
+                    "rows_in_band": 58,
+                    "remaining_after_band": 70,
+                    "rows_out_count": 64,
+                    "last_row": "." * 158,
+                }],
+            },
+            {
+                "band_word": 9,
+                "setup": {
+                    "dividend": 9,
+                    "remainder_783a22": 4,
+                    "band_rows_scaled_783a20": 0x0010,
+                    "destination_base_783a28": 0x00102000,
+                },
+                "dispatch": [{
+                    "chain_index": 0,
+                    "object_byte_4": 0x30,
+                    "branch": "compact",
+                    "target": 0x01EFFE,
+                    "context_slot": 3,
+                }],
+                "rendered": [{
+                    "segment": 1,
+                    "row_skip": 0x80,
+                    "rows": 1,
+                    "rows_in_band": 1,
+                    "remaining_after_band": 0,
+                    "rows_out_count": 7,
+                    "last_row": "." * 22 + "#." * 64 + ".#.#.#.#",
+                }],
+            },
+        ],
+        "page_rows_0_6": ["." * 158] * 7,
+        "page_rows_80_87": [
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 22 + "#." * 64 + ".#.#.#.#",
+        ],
+        "remaining_rule_list": [],
+        "remaining_fixed_list": [],
+    }))
     checks.append(assert_equal("host-fetched font control state drives descriptor and character streams", {
         "control": {
             "fetched_stream": host_fetched_font_control_stream["stream"],
@@ -61585,8 +61728,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(
         "- combined stream FF publication: appending FF drains `%d` bytes "
         "total, routes tail handlers `%s`, publishes bucket entries `%s` "
-        "through `0xff1e`, clears current root to `%d`, selects render bucket "
-        "`%d`, and renders the same downloaded rows." % (
+        "through `0xff1e`, clears current root to `%d`, and keeps the "
+        "single-bucket render check pinned at bucket `%d`." % (
             len(combined_font_download_publication_fetch["stream"]),
             ", ".join(
                 "0x%05x" % event["handler"]
@@ -61595,6 +61738,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             sorted(combined_published_fields["bucket_array_1c"].keys()),
             combined_publication["current_page_root_after"],
             combined_published_render["render_record_fields"]["word_10"],
+        )
+    )
+    lines.append(
+        "- combined stream published band walk: modeled band words `%s` render "
+        "segments `%s`; bucket `1` is blank for this payload while bucket `9` "
+        "produces page row `86`." % (
+            [band["band_word"] for band in combined_published_bands["bands"]],
+            [
+                item["rendered"]["rendered"][0]["segment"]
+                for band in combined_published_bands["bands"]
+                for item in band["entry"]["bucket_rendered"]
+            ],
         )
     )
     lines.append("")

@@ -813,9 +813,12 @@ The FF publication variant proves the same installed-glyph page object across
 Publication keeps bucket root `00 00 00 00 30 03 00 01 25 01 66 01...`,
 publishes bucket array entries `9` and `1`, leaves rule and fixed lists empty,
 copies context slots `0,0,0,0`, clears the current root, and sets publication
-flag `1`. The render fixture explicitly selects bucket `9` for the current
-band before `0x1ed84`/`0x1ef6a`, dispatches the segment-1 object to
-`0x1effe`, and reproduces the same downloaded row.
+flag `1`. Fixture
+`published downloaded glyph segmented buckets render across bands` copies that
+published record through `0x1ed84`, walks modeled band words `1` and `9`
+through `0x1ef6a`, dispatches both compact objects to `0x1effe`, leaves the
+bucket-1 segment-0 band blank for this payload, and reproduces the downloaded
+segment-1 row from bucket `9` at page row `86`.
 
 ## Writers
 
@@ -892,8 +895,11 @@ a payload-backed glyph record instead of a built-in glyph. In the end-to-end
 fixture, printable `%` draws glyph `0x25` from downloaded object record
 `0x0500`, with a segmented-wide compact selector `0x3003` and one visible row
 beginning at x `22`. The FF publication variant proves the same row after
-`0xff1e` publishes both segmented buckets and the render fixture selects bucket
-`9`. The linear downloaded-character fixture draws glyph
+`0xff1e` publishes both segmented buckets; fixture
+`published downloaded glyph segmented buckets render across bands` then walks
+published bucket words `1` and `9` through `0x1ed84`/`0x1ef6a`, with bucket
+`1` blank in this payload and bucket `9` producing the visible row. The linear
+downloaded-character fixture draws glyph
 `0x26` from the same object delta using selector `0x0003` and renders three
 mode-0 rows beginning at x `22`. In the `0x16606` current-record fixture,
 printable `!` maps to fixed-record glyph `1` from payload record `0x48`,
@@ -931,11 +937,14 @@ High for the modeled `0xff1e` publication fields of the combined downloaded
 glyph stream because fixture
 `combined font download FF publishes installed glyph page record` asserts the
 published bucket root, bucket array entries `1` and `9`, empty rule/fixed
-lists, context prefix, FF parser handler, selected render bucket, dispatch
-target, and final rows. Medium for exact nonzero published-header
-band-selection semantics because this fixture explicitly selects bucket `9`
-for the render band instead of proving the live scheduler/header path that
-chooses that bucket.
+lists, context prefix, and FF parser handler. High for the modeled
+published-record multi-bucket render because fixture
+`published downloaded glyph segmented buckets render across bands` walks
+bucket words `1` and `9`, proves the `0x1effe` dispatch for both compact
+objects, and compares the page rows. Medium for exact nonzero
+published-header band-selection semantics because the fixture supplies the
+band words explicitly instead of proving the live scheduler/header path that
+chooses them.
 
 Medium for the full PCL soft-font grammar because the validation table is
 executable but not every predicate has a manual-facing semantic name, and not
@@ -987,10 +996,12 @@ A byte-stream renderer must preserve:
   especially alternate row counts, character modes, and non-success exits for
   the same selector families.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
-  segmented buckets and renders bucket `9` from the published record. The
-  exact live scheduler/header mechanism that selects nonzero bucket words for
-  later bands remains unresolved; the fixture uses an explicit render-bucket
-  selection to keep the pixel contract pinned without over-naming that header
+  segmented buckets, and fixture
+  `published downloaded glyph segmented buckets render across bands` renders
+  published bucket words `1` and `9` from the copied record. The exact live
+  scheduler/header mechanism at `0x1eba4..0x1ef6a` that chooses nonzero bucket
+  words for later bands remains unresolved; the fixture supplies modeled band
+  words to keep the pixel contract pinned without over-naming that header
   edge.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.

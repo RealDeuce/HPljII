@@ -1158,7 +1158,10 @@ current character `0x25` into the installed glyph before rendering the
 same segmented page-record bucket; the same check now pins restored
 payload record `80 57 08 91 00 00`, segment objects in buckets `9` and
 `1`, the `0x1edc6` bucket-root copy, the `0x1ed84` active-record copy,
-and the `0x1ef6a` compact dispatch for segment `1`. The fetched
+and the `0x1ef6a` compact dispatch for segment `1`. Appending FF to that
+combined stream now publishes both segmented buckets through `0xff1e`,
+selects bucket `9` for the current render band, and renders the published
+downloaded-glyph page record with the same rows. The fetched
 font-control state now carries current id
 `0x1234` and current character `0x25` into fetched descriptor,
 resource-payload, and downloaded-character streams, tying delayed record

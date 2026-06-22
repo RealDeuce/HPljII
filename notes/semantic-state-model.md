@@ -1232,6 +1232,12 @@ payload plus `%` sets current id `0x1234`, sets current character `0x25`,
 installs a split-plane downloaded glyph object at record delta `0x0500`,
 queues printable `%` as segmented compact selector `0x3003`, and renders the
 downloaded row through target `0x1effe`. Fixture
+`combined font download FF publishes installed glyph page record` appends FF
+to that same byte stream, routes `%` and FF through handlers `0xd04a` and
+`0xf0f0`, publishes bucket array entries `9` and `1` through `0xff1e`,
+preserves empty rule/fixed lists and context prefix `0,0,0,0`, selects bucket
+`9` for the render band, and reproduces the same row through
+`0x1ed84`/`0x1ef6a`. Fixture
 `host-fetched linear downloaded character stream renders through 0x168dc`
 drives `ESC )s6W` through the same parser-delayed `0x16c14` boundary, installs
 glyph `0x26` at table entry `0x00e2` with even span `2`, copies bitmap bytes
@@ -1354,7 +1360,12 @@ reaches wide render`, `host-fetched even-span wide downloaded character
 renders through 0x1f0d2`, `host-fetched segmented downloaded character renders
 through 0x1f1f0`, `host-fetched split-plane segmented downloaded character
 renders through 0x1f1f0`, and `host-fetched downloaded character stream
-reaches rendered object`.
+reaches rendered object`. High for the modeled FF publication boundary of the
+combined downloaded-glyph stream because the fixture asserts the full fetched
+stream boundaries, published bucket array entries `1` and `9`, selected render
+bucket, dispatch target, and final rows. Medium for the exact live
+scheduler/header mechanism that selects nonzero bucket words after publication;
+the fixture keeps that as an explicit render-bucket selection.
 High for the ROM-effect names and failure behavior of every `0x16fae`
 validation-table entry, including the host-fetched invalid-type and
 reversed-range no-install boundaries. Medium for the complete soft-font grammar
@@ -1364,6 +1375,7 @@ legal metric combination have not been page-compared.
 ### Fixtures
 
 - `combined host-fetched font download stream prints installed glyph`
+- `combined font download FF publishes installed glyph page record`
 - `host-fetched font control stream feeds descriptor and character payload
   state`
 - `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`
@@ -1431,6 +1443,11 @@ legal metric combination have not been page-compared.
   comparisons are the cross-product variants not covered by those shapes,
   especially alternate row counts, character modes, and non-success exits for
   the same selector families.
+- `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
+  segmented buckets and renders bucket `9` from the published record, but the
+  exact live scheduler/header path that chooses nonzero bucket words for later
+  bands remains unresolved. The current fixture names the selected render
+  bucket explicitly.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through

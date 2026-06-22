@@ -774,7 +774,7 @@ The strongest current byte-stream fixture is:
 ```text
 ESC *c4660d37e5F
 ESC )s2193W <0x0891 payload bytes>
-%
+% FF
 ```
 
 The modeled `0xa904` ring source drains all bytes. The control part routes
@@ -805,6 +805,17 @@ fixed lists empty, and copies the context-slot prefix. Render entry
 `0x1ed84`/`0x1ef6a` uses call order `0x1ef86`, `0x1efc2`, `0x1f446`,
 `0x1f756`, dispatches the compact object to `0x1effe`, and produces the same
 downloaded segmented-wide row as the direct compact-object renderer.
+
+The FF publication variant proves the same installed-glyph page object across
+`0xff1e`. The fetched stream length is `2216` bytes, with control bytes
+`0..14`, payload bytes `14..2214`, printable byte `2214..2215`, and FF at
+`2215..2216`. The tail `% FF` routes to handlers `0xd04a` and `0xf0f0`.
+Publication keeps bucket root `00 00 00 00 30 03 00 01 25 01 66 01...`,
+publishes bucket array entries `9` and `1`, leaves rule and fixed lists empty,
+copies context slots `0,0,0,0`, clears the current root, and sets publication
+flag `1`. The render fixture explicitly selects bucket `9` for the current
+band before `0x1ed84`/`0x1ef6a`, dispatches the segment-1 object to
+`0x1effe`, and reproduces the same downloaded row.
 
 ## Writers
 
@@ -869,8 +880,9 @@ downloaded segmented-wide row as the direct compact-object renderer.
   to build active glyph maps.
 - `0x1393a` consumes the active map and selected context to build printable
   source objects.
-- `0x12f2e`, `0x1edc6`, `0x1ed84`, and `0x1ef6a` consume the installed glyph
-  source and compact objects through the page-record/render pipeline.
+- `0x12f2e`, `0x1387c`, `0xff1e`, `0x1edc6`, `0x1ed84`, and `0x1ef6a`
+  consume the installed glyph source and compact objects through the
+  page-record publication/render pipeline.
 
 ## Output Effect
 
@@ -879,7 +891,9 @@ installed glyph. The visible effect is that the same host byte can resolve to
 a payload-backed glyph record instead of a built-in glyph. In the end-to-end
 fixture, printable `%` draws glyph `0x25` from downloaded object record
 `0x0500`, with a segmented-wide compact selector `0x3003` and one visible row
-beginning at x `22`. The linear downloaded-character fixture draws glyph
+beginning at x `22`. The FF publication variant proves the same row after
+`0xff1e` publishes both segmented buckets and the render fixture selects bucket
+`9`. The linear downloaded-character fixture draws glyph
 `0x26` from the same object delta using selector `0x0003` and renders three
 mode-0 rows beginning at x `22`. In the `0x16606` current-record fixture,
 printable `!` maps to fixed-record glyph `1` from payload record `0x48`,
@@ -912,6 +926,16 @@ bookkeeping, table-driven descriptor staging, `0x17026`/`0x1719c` allocation
 headers, the split-plane and linear downloaded-character-to-rendered-row
 fixtures, and the `0x16606` and `0x15c4c` bit-30-clear
 resource-object-to-rendered-row fixtures.
+
+High for the modeled `0xff1e` publication fields of the combined downloaded
+glyph stream because fixture
+`combined font download FF publishes installed glyph page record` asserts the
+published bucket root, bucket array entries `1` and `9`, empty rule/fixed
+lists, context prefix, FF parser handler, selected render bucket, dispatch
+target, and final rows. Medium for exact nonzero published-header
+band-selection semantics because this fixture explicitly selects bucket `9`
+for the render band instead of proving the live scheduler/header path that
+chooses that bucket.
 
 Medium for the full PCL soft-font grammar because the validation table is
 executable but not every predicate has a manual-facing semantic name, and not
@@ -962,6 +986,12 @@ A byte-stream renderer must preserve:
   comparisons are the cross-product variants not covered by those shapes,
   especially alternate row counts, character modes, and non-success exits for
   the same selector families.
+- `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
+  segmented buckets and renders bucket `9` from the published record. The
+  exact live scheduler/header mechanism that selects nonzero bucket words for
+  later bands remains unresolved; the fixture uses an explicit render-bucket
+  selection to keep the pixel contract pinned without over-naming that header
+  edge.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through

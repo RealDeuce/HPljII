@@ -12967,18 +12967,24 @@ def ensure_page_record_root_for_queue(state: dict[str, int]) -> dict[str, object
     }
 
 
-def compact_bucket_root_from_page_record(page_record: dict[str, object]) -> dict[str, object]:
+def compact_bucket_root_from_page_record(
+    page_record: dict[str, object],
+    bucket_index: int | None = None,
+) -> dict[str, object]:
     bucket_array = page_record.get("bucket_array", {})
     if not isinstance(bucket_array, dict):
         raise AssertionError("page record bucket_array must be a dict")
     nonempty_buckets = sorted(bucket for bucket, chain in bucket_array.items() if chain)
-    if len(nonempty_buckets) != 1:
+    if bucket_index is None and len(nonempty_buckets) != 1:
         raise AssertionError("page-record fixture expects one nonempty bucket")
-    chain = bucket_array[nonempty_buckets[0]]
+    selected_bucket = nonempty_buckets[0] if bucket_index is None else int(bucket_index)
+    if selected_bucket not in nonempty_buckets:
+        raise AssertionError(f"page-record fixture bucket {selected_bucket} is empty")
+    chain = bucket_array[selected_bucket]
     if not isinstance(chain, list) or not chain:
         raise AssertionError("page-record fixture expects at least one bucket object")
     return {
-        "bucket_index": nonempty_buckets[0],
+        "bucket_index": selected_bucket,
         "bucket_root": bytes(chain[0]),
     }
 
@@ -13053,7 +13059,10 @@ def finalize_page_record_via_ff1e(page_record: dict[str, object], state: dict[st
             "page_root_clears": int(state.get("page_root_clears", 0)) + 1,
         }
 
-    bucket = compact_bucket_root_from_page_record(page_record)
+    bucket = compact_bucket_root_from_page_record(
+        page_record,
+        state.get("publication_bucket_index"),
+    )
     source_bucket_array = page_record.get("bucket_array", {})
     if not isinstance(source_bucket_array, dict):
         raise AssertionError("0xff1e publication needs a page-record bucket array")
@@ -13067,6 +13076,7 @@ def finalize_page_record_via_ff1e(page_record: dict[str, object], state: dict[st
         raise AssertionError("0xff1e published pool record has 16 context slots")
     padded_context_slots = context_slots + [0] * (16 - len(context_slots))
     root_word_16 = int(state.get("page_root_word_16", 0))
+    pool_word_18 = int(state.get("published_word_18", 0))
     pool_record_fields = {
         "state_byte_4": 2,
         "environment_byte_7": int(state.get("page_env_byte_782da6", 0)) & 0xFF,
@@ -13077,7 +13087,7 @@ def finalize_page_record_via_ff1e(page_record: dict[str, object], state: dict[st
         ),
         "environment_word_0c": int(state.get("page_env_word_782da4", 0)) & 0xFFFF,
         "word_16": root_word_16 & 0xFFFF,
-        "word_18": 0,
+        "word_18": pool_word_18 & 0xFFFF,
         "word_1a": root_word_16 & 0xFFFF,
         "bucket_root_1c": bucket["bucket_root"],
         "bucket_array_1c": published_bucket_array,
@@ -14335,6 +14345,7 @@ def render_published_page_record_via_1ed84_1ef6a(
     width_word: int = 0x0020,
     band_divisor: int = 0x0005,
     word_08: int | None = None,
+    bucket_word: int | None = None,
 ) -> dict[str, object]:
     """Carry a modeled 0xff1e published pool record through 0x1ed84 and 0x1ef6a."""
     render_record = copy_active_page_record_to_render_record_via_1ed84(published_page_record)
@@ -14350,7 +14361,10 @@ def render_published_page_record_via_1ed84_1ef6a(
             int(fields.get("word_08", 0)) if word_08 is None else int(word_08)
         ) & 0xFFFF,
     })
-    bucket_word = int(fields.get("word_10", 0)) & 0xFFFF
+    bucket_word = (
+        int(fields.get("word_10", 0)) if bucket_word is None else int(bucket_word)
+    ) & 0xFFFF
+    fields["word_10"] = bucket_word
     source_bucket_array = published_page_record.get(
         "bucket_array",
         fields.get("bucket_array_18", fields.get("bucket_array_1c", {})),
@@ -40544,6 +40558,190 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "." * 22 + "#." * 64 + ".#.#.#.#",
         ],
     }))
+    combined_font_download_publication_stream = combined_font_download_printable_stream + b"\x0c"
+    combined_font_download_publication_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(combined_font_download_publication_stream),
+            direct_mode=0,
+        ),
+        len(combined_font_download_publication_stream),
+    )
+    combined_publication_tail_stream = combined_font_download_publication_fetch["stream"][
+        combined_payload_end:
+    ]
+    combined_publication_tail_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        combined_publication_tail_stream,
+    )
+    combined_publication = finalize_page_record_via_ff1e(
+        combined_page_record,
+        reset_fixture_state(
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            page_root_clears=0,
+            publication_bucket_index=int(combined_segment1["bucket_index"]),
+        ),
+    )
+    combined_published_record = combined_publication["published_pool_record"]
+    assert isinstance(combined_published_record, dict)
+    combined_published_fields = combined_published_record["pool_record_fields"]
+    assert isinstance(combined_published_fields, dict)
+    combined_published_render = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        combined_downloaded_memory,
+        combined_published_record,
+        bucket_word=int(combined_segment1["bucket_index"]),
+    )
+    combined_published_entry = combined_published_render["entry"]
+    assert isinstance(combined_published_entry, dict)
+    checks.append(assert_equal("combined font download FF publishes installed glyph page record", {
+        "stream_length": len(combined_font_download_publication_fetch["stream"]),
+        "fetch_sources": sorted(set(combined_font_download_publication_fetch["sources"])),
+        "remaining_ring": combined_font_download_publication_fetch["state"]["ring"],
+        "boundaries": {
+            "control": (0, combined_control_end),
+            "payload": (combined_control_end, combined_payload_end),
+            "printable": (combined_payload_end, combined_payload_end + 1),
+            "publication": (
+                combined_payload_end + 1,
+                len(combined_font_download_publication_stream),
+            ),
+        },
+        "tail": {
+            "stream": combined_publication_tail_stream,
+            "handlers": [
+                event["handler"]
+                for event in combined_publication_tail_trace["events"]
+            ],
+        },
+        "finalized": {
+            "published": combined_publication["published"],
+            "bucket_index": combined_publication["bucket_index"],
+            "current_page_root_after": combined_publication["current_page_root_after"],
+            "page_root_clears": combined_publication["page_root_clears"],
+            "page_publication_flag": combined_publication["page_publication_flag"],
+        },
+        "published_bucket_root_1c": combined_published_fields["bucket_root_1c"],
+        "published_bucket_array_1c": combined_published_fields["bucket_array_1c"],
+        "published_rule_list_24": combined_published_fields["rule_list_24"],
+        "published_fixed_list_28": combined_published_fields["fixed_list_28"],
+        "published_context_slots_2c_prefix": (
+            combined_published_fields["context_slots_2c"][:4]
+        ),
+        "render_bucket_word": (
+            combined_published_render["render_record_fields"]["word_10"]
+        ),
+        "active_copy": combined_published_render["active_copy"],
+        "setup": {
+            key: combined_published_entry["setup"][key]
+            for key in (
+                "dividend",
+                "divisor_word_06",
+                "remainder_783a22",
+                "band_rows_scaled_783a20",
+                "destination_base_783a28",
+            )
+        },
+        "call_order": combined_published_entry["call_order"],
+        "dispatch": [
+            {
+                key: entry[key]
+                for key in (
+                    "chain_index",
+                    "object_byte_4",
+                    "class_mask",
+                    "branch",
+                    "target",
+                    "context_slot",
+                )
+            }
+            for entry in combined_published_entry["dispatch"]["entries"]
+        ],
+        "rows": combined_published_entry["rows"],
+    }, {
+        "stream_length": len(combined_font_download_publication_stream),
+        "fetch_sources": ["ring"],
+        "remaining_ring": [],
+        "boundaries": {
+            "control": (0, len(b"\x1b*c4660d37e5F")),
+            "payload": (
+                len(b"\x1b*c4660d37e5F"),
+                len(b"\x1b*c4660d37e5F") + len(downloaded_segmented_wide_command_stream),
+            ),
+            "printable": (
+                len(b"\x1b*c4660d37e5F") + len(downloaded_segmented_wide_command_stream),
+                len(b"\x1b*c4660d37e5F") + len(downloaded_segmented_wide_command_stream) + 1,
+            ),
+            "publication": (
+                len(b"\x1b*c4660d37e5F") + len(downloaded_segmented_wide_command_stream) + 1,
+                len(combined_font_download_publication_stream),
+            ),
+        },
+        "tail": {
+            "stream": b"%\x0c",
+            "handlers": [0x00D04A, 0x00F0F0],
+        },
+        "finalized": {
+            "published": True,
+            "bucket_index": 9,
+            "current_page_root_after": 0,
+            "page_root_clears": 1,
+            "page_publication_flag": 1,
+        },
+        "published_bucket_root_1c": (
+            bytes.fromhex("00 00 00 00 30 03 00 01 25 01 66 01")
+            + bytes(0x1C)
+        ),
+        "published_bucket_array_1c": {
+            1: [
+                bytes.fromhex("00 00 00 00 30 03 00 01 25 00 66 01")
+                + bytes(0x1C),
+            ],
+            9: [
+                bytes.fromhex("00 00 00 00 30 03 00 01 25 01 66 01")
+                + bytes(0x1C),
+            ],
+        },
+        "published_rule_list_24": [],
+        "published_fixed_list_28": [],
+        "published_context_slots_2c_prefix": (0, 0, 0, 0),
+        "render_bucket_word": 9,
+        "active_copy": {
+            "source_word_18": 0,
+            "source_word_1a": 0,
+            "render_word_0a": 0,
+            "render_word_0c": 0,
+            "render_word_0e": 0,
+            "render_word_10": 0,
+            "render_word_16": 0,
+        },
+        "setup": {
+            "dividend": 9,
+            "divisor_word_06": 5,
+            "remainder_783a22": 4,
+            "band_rows_scaled_783a20": 0x0010,
+            "destination_base_783a28": 0x00102000,
+        },
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "dispatch": [{
+            "chain_index": 0,
+            "object_byte_4": 0x30,
+            "class_mask": 0x00,
+            "branch": "compact",
+            "target": 0x01EFFE,
+            "context_slot": 3,
+        }],
+        "rows": [
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 22 + "#." * 64 + ".#.#.#.#",
+        ],
+    }))
     checks.append(assert_equal("host-fetched font control state drives descriptor and character streams", {
         "control": {
             "fetched_stream": host_fetched_font_control_stream["stream"],
@@ -61382,6 +61580,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             combined_entry["dispatch"]["entries"][0]["object_byte_4"],
             combined_entry["dispatch"]["entries"][0]["target"],
             combined_entry["dispatch"]["entries"][0]["context_slot"],
+        )
+    )
+    lines.append(
+        "- combined stream FF publication: appending FF drains `%d` bytes "
+        "total, routes tail handlers `%s`, publishes bucket entries `%s` "
+        "through `0xff1e`, clears current root to `%d`, selects render bucket "
+        "`%d`, and renders the same downloaded rows." % (
+            len(combined_font_download_publication_fetch["stream"]),
+            ", ".join(
+                "0x%05x" % event["handler"]
+                for event in combined_publication_tail_trace["events"]
+            ),
+            sorted(combined_published_fields["bucket_array_1c"].keys()),
+            combined_publication["current_page_root_after"],
+            combined_published_render["render_record_fields"]["word_10"],
         )
     )
     lines.append("")

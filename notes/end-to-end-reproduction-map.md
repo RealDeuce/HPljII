@@ -132,6 +132,16 @@ executable fixture or generated analysis note.
   publishes through `0xff1e`, crosses the `0x1ed84` / `0x1edc6`
   render bridge, and compares the final composed rows. Evidence:
   `Mixed Text/Rule/Raster Page Record` in `notes/semantic-state-model.md`.
+- A downloaded-glyph page-image stream is covered for
+  `ESC *c4660d37e5F`, `ESC )s2193W <0x0891 payload bytes>`, printable
+  `%`, and FF publication. The fixture drains the same modeled `0xa904`
+  source, preserves the control/payload/printable/publication byte
+  boundaries, installs glyph `0x25`, publishes segmented buckets `1` and
+  `9` through `0xff1e`, selects bucket `9` for the current render band,
+  and compares the published rendered rows. Evidence: fixture
+  `combined font download FF publishes installed glyph page record` and
+  `Downloaded Font Descriptor And Payload Chain` in
+  `notes/semantic-state-model.md`.
 - Built-in and downloaded text rendering is covered for selected offset-table,
   inline/downloaded fixed records, segmented records, segmented-wide records,
   font descriptors, resource payloads, downloaded character payloads, and
@@ -209,10 +219,13 @@ pixels or byte-stream compatibility.
    parser-to-validation no-install boundaries plus following-printable default
    output. Downloaded-character coverage now includes parser-produced normal,
    wide/control, even-span wide, segmented, split-plane segmented, and
-   segmented-wide compact render shapes. The full soft-font descriptor
-   grammar, remaining alternate character-mode cross-products, other release
-   variants, and page-visible behavior for descriptor error forms beyond those
-   no-install boundaries are still not proven against every PCL form.
+   segmented-wide compact render shapes, and the combined downloaded-glyph
+   stream now reaches FF publication with both segmented buckets preserved.
+   The full soft-font descriptor grammar, remaining alternate character-mode
+   cross-products, other release variants, exact nonzero published-header
+   band-selection semantics, and page-visible behavior for descriptor error
+   forms beyond those no-install boundaries are still not proven against every
+   PCL form.
 5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
    board-confirmed. This does not block a byte-stream renderer, but it blocks
@@ -238,6 +251,7 @@ The next work should follow dataflow, not isolated handlers:
    missing middle is broader descriptor metric values and page-visible behavior
    for every validation error form.
 2. Broaden the page-image fixture suite beyond the current complete
-   text/rule/raster/publication stream. The next suite cases should add font
-   selection and downloaded glyphs to the same complete-byte-stream contract,
-   then add geometry-changing publication cases and compare final bitmap rows.
+   text/rule/raster/publication stream and the downloaded-glyph FF
+   publication stream. The next suite cases should add built-in font-selection
+   commands, combine downloaded glyphs with text/rule/raster composition, and
+   add geometry-changing publication cases with final bitmap-row comparison.

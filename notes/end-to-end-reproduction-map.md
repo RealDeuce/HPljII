@@ -137,11 +137,13 @@ executable fixture or generated analysis note.
   `%`, and FF publication. The fixture drains the same modeled `0xa904`
   source, preserves the control/payload/printable/publication byte
   boundaries, installs glyph `0x25`, publishes segmented buckets `1` and
-  `9` through `0xff1e`, walks those published bucket words through modeled
-  `0x1ed84`/`0x1ef6a` band rendering, and compares the published rendered
-  rows with bucket `9` producing the visible downloaded row. Evidence:
-  fixtures `combined font download FF publishes installed glyph page record`
-  and `published downloaded glyph segmented buckets render across bands`, plus
+  `9` through `0xff1e`, walks those published bucket words through
+  `0x1ed84`/`0x1ef6a` band rendering, proves `0x1eba4` scheduler progression
+  through band words `1..9`, and compares the published rendered rows with
+  bucket `9` producing the visible downloaded row. Evidence: fixtures
+  `combined font download FF publishes installed glyph page record`,
+  `published downloaded glyph segmented buckets render across bands`, and
+  `0x1eba4 scheduler band words render published downloaded glyph`, plus
   `Downloaded Font Descriptor And Payload Chain` in
   `notes/semantic-state-model.md`.
 - Built-in and downloaded text rendering is covered for selected offset-table,
@@ -222,12 +224,12 @@ pixels or byte-stream compatibility.
    output. Downloaded-character coverage now includes parser-produced normal,
    wide/control, even-span wide, segmented, split-plane segmented, and
    segmented-wide compact render shapes, and the combined downloaded-glyph
-   stream now reaches FF publication with both segmented buckets preserved.
-   The full soft-font descriptor grammar, remaining alternate character-mode
-   cross-products, other release variants, exact nonzero published-header
-   band-selection semantics, and page-visible behavior for descriptor error
-   forms beyond those no-install boundaries are still not proven against every
-   PCL form.
+   stream now reaches FF publication with both segmented buckets preserved and
+   scheduler-produced band words `1..9` rendered. The full soft-font descriptor
+   grammar, remaining alternate character-mode cross-products, other release
+   variants, exact published-header seed for the first nonzero render band, and
+   page-visible behavior for descriptor error forms beyond those no-install
+   boundaries are still not proven against every PCL form.
 5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
    board-confirmed. This does not block a byte-stream renderer, but it blocks

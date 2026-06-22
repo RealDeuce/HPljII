@@ -818,7 +818,11 @@ flag `1`. Fixture
 published record through `0x1ed84`, walks modeled band words `1` and `9`
 through `0x1ef6a`, dispatches both compact objects to `0x1effe`, leaves the
 bucket-1 segment-0 band blank for this payload, and reproduces the downloaded
-segment-1 row from bucket `9` at page row `86`.
+segment-1 row from bucket `9` at page row `86`. Fixture
+`0x1eba4 scheduler band words render published downloaded glyph` then starts
+the active render work record at word `+0x10 = 1`, lets the scheduler loop
+produce `0x1ef6a` calls for band words `1..9`, and reaches the same bucket-9
+visible row while only published buckets `1` and `9` dispatch compact objects.
 
 ## Writers
 
@@ -898,8 +902,10 @@ beginning at x `22`. The FF publication variant proves the same row after
 `0xff1e` publishes both segmented buckets; fixture
 `published downloaded glyph segmented buckets render across bands` then walks
 published bucket words `1` and `9` through `0x1ed84`/`0x1ef6a`, with bucket
-`1` blank in this payload and bucket `9` producing the visible row. The linear
-downloaded-character fixture draws glyph
+`1` blank in this payload and bucket `9` producing the visible row. Fixture
+`0x1eba4 scheduler band words render published downloaded glyph` proves the
+same visible row when `0x1eba4` advances render work word `+0x10` through
+band words `1..9`. The linear downloaded-character fixture draws glyph
 `0x26` from the same object delta using selector `0x0003` and renders three
 mode-0 rows beginning at x `22`. In the `0x16606` current-record fixture,
 printable `!` maps to fixed-record glyph `1` from payload record `0x48`,
@@ -941,10 +947,13 @@ lists, context prefix, and FF parser handler. High for the modeled
 published-record multi-bucket render because fixture
 `published downloaded glyph segmented buckets render across bands` walks
 bucket words `1` and `9`, proves the `0x1effe` dispatch for both compact
-objects, and compares the page rows. Medium for exact nonzero
-published-header band-selection semantics because the fixture supplies the
-band words explicitly instead of proving the live scheduler/header path that
-chooses them.
+objects, and compares the page rows. High for scheduler progression from a
+known active work-record seed because fixture
+`0x1eba4 scheduler band words render published downloaded glyph` proves
+`0x1eba4` emits band words `1..9` through `0x1ef6a` and preserves the same
+visible row. Medium for exact published-header seeding semantics because the
+fixture starts from a modeled work-record `+0x10 = 1` instead of proving the
+earlier pool-header-to-work-record initialization for that first band.
 
 Medium for the full PCL soft-font grammar because the validation table is
 executable but not every predicate has a manual-facing semantic name, and not
@@ -998,11 +1007,12 @@ A byte-stream renderer must preserve:
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets, and fixture
   `published downloaded glyph segmented buckets render across bands` renders
-  published bucket words `1` and `9` from the copied record. The exact live
-  scheduler/header mechanism at `0x1eba4..0x1ef6a` that chooses nonzero bucket
-  words for later bands remains unresolved; the fixture supplies modeled band
-  words to keep the pixel contract pinned without over-naming that header
-  edge.
+  published bucket words `1` and `9` from the copied record. Fixture
+  `0x1eba4 scheduler band words render published downloaded glyph` proves the
+  later scheduler progression from active work word `+0x10 = 1` through band
+  words `1..9`. The remaining edge is the earlier live
+  pool-header-to-work-record seed that initializes the first nonzero band word
+  for this published record.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through

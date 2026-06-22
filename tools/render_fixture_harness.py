@@ -40885,6 +40885,127 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "remaining_rule_list": [],
         "remaining_fixed_list": [],
     }))
+    scheduler_band_state: dict[str, object] = {
+        "render_work_selector_7820bc": 1,
+        "render_work_selector_7820c0": 1,
+        "render_work_records": {
+            0x00782128: {
+                "word_06": 24,
+                "word_0c": 20,
+                "word_0e": 0,
+                "word_10": 1,
+                "word_16": 0,
+            },
+        },
+    }
+    scheduler_band_calls: list[dict[str, object]] = []
+    for _ in range(9):
+        scheduler_band_step = active_render_loop_step_via_1eba4(scheduler_band_state)
+        render_call = scheduler_band_step.get("render_call", {})
+        assert isinstance(render_call, dict)
+        scheduler_band_calls.append({
+            "path": scheduler_band_step["path"],
+            "available": scheduler_band_step["available"],
+            "active_remaining": scheduler_band_step["active_remaining"],
+            "word_10_before": render_call["word_10_before"],
+            "word_10_after": scheduler_band_step["word_10_after"],
+            "word_0e_after": scheduler_band_step["word_0e_after"],
+        })
+    scheduler_band_words = tuple(
+        int(call["word_10_before"]) for call in scheduler_band_calls
+    )
+    scheduler_published_bands = render_page_bands_via_1ef6a(
+        data,
+        combined_downloaded_memory,
+        combined_published_band_record,
+        band_words=scheduler_band_words,
+        page_rows=88,
+        page_width=158,
+    )
+    checks.append(assert_equal("0x1eba4 scheduler band words render published downloaded glyph", {
+        "scheduler_calls": scheduler_band_calls,
+        "scheduler_record_after": (
+            scheduler_band_state["render_work_records"][0x00782128]
+        ),
+        "published_bucket_words": sorted(combined_published_fields["bucket_array_1c"]),
+        "rendered_band_words": [
+            band["band_word"] for band in scheduler_published_bands["bands"]
+        ],
+        "bands_with_bucket_dispatch": [
+            {
+                "band_word": band["band_word"],
+                "segments": [
+                    item["rendered"]["rendered"][0]["segment"]
+                    for item in band["entry"]["bucket_rendered"]
+                ],
+                "targets": [
+                    entry["target"]
+                    for entry in band["entry"]["dispatch"]["entries"]
+                ],
+            }
+            for band in scheduler_published_bands["bands"]
+            if band["entry"]["bucket_rendered"]
+        ],
+        "page_rows_0_6": scheduler_published_bands["rows"][:7],
+        "page_rows_80_87": scheduler_published_bands["rows"][80:87],
+        "remaining_rule_list": scheduler_published_bands["remaining_rule_list"],
+        "remaining_fixed_list": scheduler_published_bands["remaining_fixed_list"],
+    }, {
+        "scheduler_calls": [
+            {
+                "path": "render-band",
+                "available": available,
+                "active_remaining": active_remaining,
+                "word_10_before": word,
+                "word_10_after": word + 1,
+                "word_0e_after": word,
+            }
+            for word, available, active_remaining in (
+                (1, 23, 1),
+                (2, 22, 2),
+                (3, 21, 3),
+                (4, 20, 4),
+                (5, 19, 5),
+                (6, 18, 6),
+                (7, 17, 7),
+                (8, 16, 8),
+                (9, 15, 9),
+            )
+        ],
+        "scheduler_record_after": {
+            "word_06": 24,
+            "word_0c": 20,
+            "word_0e": 9,
+            "word_10": 10,
+            "word_16": 0,
+        },
+        "published_bucket_words": [1, 9],
+        "rendered_band_words": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+        "bands_with_bucket_dispatch": [
+            {
+                "band_word": 1,
+                "segments": [0],
+                "targets": [0x01EFFE],
+            },
+            {
+                "band_word": 9,
+                "segments": [1],
+                "targets": [0x01EFFE],
+            },
+        ],
+        "page_rows_0_6": ["." * 158] * 7,
+        "page_rows_80_87": [
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 158,
+            "." * 22 + "#." * 64 + ".#.#.#.#",
+        ],
+        "remaining_rule_list": [],
+        "remaining_fixed_list": [],
+    }))
     checks.append(assert_equal("host-fetched font control state drives descriptor and character streams", {
         "control": {
             "fetched_stream": host_fetched_font_control_stream["stream"],
@@ -61749,6 +61870,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 item["rendered"]["rendered"][0]["segment"]
                 for band in combined_published_bands["bands"]
                 for item in band["entry"]["bucket_rendered"]
+            ],
+        )
+    )
+    lines.append(
+        "- combined stream scheduler band walk: `0x1eba4` produces render-call "
+        "band words `%s` from work word `+0x10`; only published buckets `%s` "
+        "dispatch compact objects, and bucket `9` still produces page row "
+        "`86`." % (
+            scheduler_band_words,
+            [
+                band["band_word"]
+                for band in scheduler_published_bands["bands"]
+                if band["entry"]["bucket_rendered"]
             ],
         )
     )

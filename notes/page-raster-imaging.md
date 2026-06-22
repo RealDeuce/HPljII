@@ -1163,7 +1163,9 @@ combined stream now publishes both segmented buckets through `0xff1e`. The
 published-record band fixture then walks modeled bucket words `1` and `9`
 through `0x1ed84`/`0x1ef6a`, leaves the bucket-1 segment-0 band blank for this
 payload, and renders the published downloaded-glyph row from bucket `9`. The
-fetched
+downloaded-glyph scheduler fixture then starts active work word `+0x10 = 1`,
+lets `0x1eba4` produce render-call band words `1..9`, dispatches only
+published buckets `1` and `9`, and preserves the same bucket-9 row. The fetched
 font-control state now carries current id
 `0x1234` and current character `0x25` into fetched descriptor,
 resource-payload, and downloaded-character streams, tying delayed record

@@ -565,9 +565,24 @@ restores `0x782d9e..0x78319a` and pops one 10-byte context entry through
 clear host gate bit 1 when the previous frame has no bytes, and call
 `0x1240a`.
 
+The `0xe65c` call-context refresh is now split into branch-contract
+fields. Argument `0` pops the 10-byte context stack at `0x782c6e`;
+argument `1` uses static record `0x782c64`. Entry bytes `+8/+9` refresh
+primary/secondary slots through `0x13eb8(0/1)`, copy active words
+`0x783144`/`0x783146` into remembered words `0x782f08`/`0x782f0a`,
+and set dirty byte `0x782f2d` only when selector byte `0x782f06`
+matches the refreshed slot. The common path clears the consumed record,
+calls `0xc428(0x782f06)`, optionally rebuilds the selected current-font
+context from `0x782c80`/`0x782c84` through `0x1b4c0`, `0x144d2`, and
+`0x14c64`, then exits through `0x1b04c` and clears `0x782f2d`.
+Helper `0xe860` supplies the static-record mismatch test from
+`0x782ee6 + 0x10 * slot`, returning pointed record byte `+0x16` or
+`+0x20` according to context byte `+4`.
+
 `tools/render_fixture_harness.py` has executable fixtures for `0xe112`,
 the `0xdd08` start/stop/delete/overlay/permanent selector behavior, and
-the `0xe418` execute/call data-chain frame shape. Chained
+the `0xe418` execute/call data-chain frame shape plus `0xe65c` stack,
+static, and empty-install refresh paths. Chained
 `ESC &f-123y0x1X`, `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f2X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f3X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f4X ESC &f5X`, permanence/delete,
@@ -685,9 +700,10 @@ control-code anchor.
   names.
 - Decode the six-byte tokenizer records and 12-byte command/data pool
   records.
-- Decode the macro chunk allocator plus `0xe65c` font-context refresh
-  branches and non-execute/non-call frame producer now that the `0xe418`
-  layout, snapshot chain helpers, and execute/call frame end are pinned.
+- Decode the macro chunk allocator, full `0xe65c` bridge into the
+  already-modeled font resource maps, and non-execute/non-call frame
+  producer now that the `0xe418` layout, snapshot chain helpers,
+  execute/call frame end, and `0xe65c` branch contract are pinned.
 - Replace the remaining synthetic `ESC E` roots with fuller
   parser-allocated page objects; the current host-fetched publication
   fixtures already prove the modeled `0xff1e` publication headers,

@@ -148,8 +148,8 @@ correlation and broader frame-lifetime tracing.
   handshake for the `0x8e01`/`0x8801`/`0x8c01` direct bank.
 - `0xaaa6..0xab8a`: physical interface name and exact electrical
   handshake for the `0xfffee005`/`0xfffee001`/`0xfffee009` direct bank.
-- `0x782d76 frame +0x00..+0x??`: full data-chain frame layout and owner
-  lifecycle outside the macro replay fields already fixture-backed.
+- `0x782d76 frame +0x00..+0x0d`: non-macro data-chain owners and frame
+  lifecycle outside the `0xe418` macro replay fields already pinned.
 - `0x780e66` bit meanings: source-empty/active bits are observed by
   behavior, but not yet fully named.
 
@@ -254,6 +254,37 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     snapshot at `0x7834c2`, then run a shorter return path.
   Evidence: disassembly `0xe22c..0xe408`; fixture
   `0xe22c restores macro frames and consumes call context`.
+- Canonical font context refresh:
+  - `0xe65c(0)` pops one 10-byte call context entry by rewinding
+    `0x782c6e` by `0x0a`, then uses entry bytes `+0x08` and `+0x09` as
+    primary and secondary font-refresh flags.
+  - a primary refresh flag calls `0x13eb8(0)`, copies active word
+    `0x783144` into remembered word `0x782f08`, and sets dirty flag
+    `0x782f2d` only when selected slot byte `0x782f06 == 0`.
+  - a secondary refresh flag calls `0x13eb8(1)`, copies active word
+    `0x783146` into remembered word `0x782f0a`, and sets `0x782f2d` only
+    when `0x782f06 == 1`.
+  - after flag handling, `0xe65c` clears the consumed entry or static
+    record longwords and flag bytes, calls `0xc428(0x782f06)`, then exits
+    through `0x1b04c` and clears `0x782f2d`.
+  - if `0xc428` returns zero, the fallback path writes current context
+    longword `0x782c80` into selected context record
+    `0x782ee6 + 0x10 * 0x782f06`, writes current word `0x782c84` into
+    selected active and remembered words, stores `0x7828de = 0x782f06`,
+    stores `0x1b4c0(0x782c80)` into `0x7828a8`, calls `0x144d2` and
+    `0x14c64`, sets `0x782f2d`, and probes `0xc428` again before the
+    shared `0x1b04c` exit.
+  - `0xe65c(1)` uses static record `0x782c64`. Static bytes `+0x08` and
+    `+0x09` directly force primary/secondary refresh; otherwise helper
+    `0xe860(slot)` returns a class/orientation byte from the selected
+    current-font context record, and mismatch with `0x782da3` forces the
+    corresponding refresh flag.
+  - `0xe860(slot)` selects `0x782ee6 + 0x10 * slot`; if context byte
+    `+0x04` is zero it returns pointed record byte `+0x16`, otherwise it
+    returns pointed record byte `+0x20`.
+  Evidence: `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`
+  covers `0xe65c..0xe860`; fixture
+  `0xe65c refreshes macro font context entries`.
 - Parser scratch:
   - normal macro parser table mode 17 entries at `0x11262..0x11286`
     route `y/Y` to `0xe112` and `x/X` to `0xdd08`.
@@ -298,8 +329,9 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     the adjusted count at `+0x04`.
   - allocator `0x170c` and free helper `0x18b4` internals beyond the
     0x100-byte chunk contract observed through macro snapshots.
-  - detailed font-context refresh side effects inside `0xe65c` after the
-    context entry is popped.
+  - full CPU-state connection from macro-specific `0xe65c` refresh into
+    the broader font resource maps beyond the already modeled
+    `0x13eb8` / `0xc428` / `0x144d2` / `0x14c64` contracts.
   - non-execute/non-call frame producer and semantics for the `0xe972`
     flat restore path.
 
@@ -321,8 +353,12 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 - `0xe22c` consumes the current frame, frees snapshot chunks, rewinds
   `0x782d76`, clears host gate bit 1 when the previous frame is empty, and
   calls `0x1240a` on the execute/call return paths.
-- `0xe65c(0)` pops the call-mode context stack entry and clears its
-  10-byte slot before running font-context refresh helpers.
+- `0xe65c(0)` pops the call-mode context stack entry, may copy active
+  primary/secondary font words to remembered words, and clears its 10-byte
+  slot before the shared font-context install exit.
+- `0xe65c(1)` consumes and clears static record `0x782c64`, using direct
+  flag bytes or `0xe860` class mismatches to force primary/secondary
+  refresh.
 - The alternate parser table at `0x116f6` writes stored definition payload
   bytes rather than dispatching ordinary control-code handlers.
 
@@ -338,6 +374,10 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 - `0xe65c` consumes context-stack entry bytes `+8/+9` to decide whether
   primary/secondary font refresh helpers such as `0x13eb8` run before
   the slot is cleared.
+- `0xe65c` also consumes selected slot byte `0x782f06`, current context
+  fields `0x782c80`/`0x782c84`, active words `0x783144`/`0x783146`, and
+  remembered words `0x782f08`/`0x782f0a`; fallback install consumers are
+  the already-modeled `0xc428`, `0x1b4c0`, `0x144d2`, and `0x14c64`.
 - Parser loop `0x11774` consumes replayed bytes and routes simple replay
   to `0xd04a` and `0xf02c`; mixed-control replay also reaches `0xedf8`.
 - Page-record and render consumers use the shared allocation model:
@@ -362,12 +402,12 @@ High for parser reachability, selector meanings, record count/stride,
 current id storage, definition stop behavior, execute/call frame mode
 bytes, frame field offsets `+0x00/+0x04/+0x08/+0x09/+0x0a`, call-only
 context-stack push, snapshot chain chunk shape, execute/call frame-end
-restore, `0xa904` replay, and page-record/render effects because those
-are covered by disassembly, generated parser-table reports, and
-executable fixtures. Medium for macro chunk allocator internals,
-`0xe65c` font refresh side effects, and non-execute/non-call frame-end
-semantics because only the fields needed by current replay fixtures are
-pinned.
+restore, `0xe65c` branch contract, `0xa904` replay, and page-record/render
+effects because those are covered by disassembly, generated parser-table
+reports, and executable fixtures. Medium for macro chunk allocator
+internals, complete downstream font/resource rebuild after `0xe65c`, and
+non-execute/non-call frame-end semantics because only the fields needed by
+current replay fixtures are pinned.
 
 ### Fixtures
 
@@ -380,6 +420,7 @@ pinned.
 - `0xe418 frame metadata distinguishes execute and call context`
 - `macro snapshot helpers copy linked and flat environment ranges`
 - `0xe22c restores macro frames and consumes call context`
+- `0xe65c refreshes macro font context entries`
 - `macro execute frame payload feeds 0xa904 data-chain bytes`
 - `macro execute data-chain parser trace feeds page-record stream`
 - `macro call data-chain parser trace feeds page-record stream`
@@ -421,8 +462,11 @@ pinned.
 - `0xe0a4..0xe110`: record lookup/allocation policy for the 32-entry pool
   when ids collide, records are temporary/permanent, or allocation fails.
 - `0x170c` and `0x18b4`: allocator/free internals for 0x100-byte chains.
-- `0xe65c..0xe84c`: full font-context refresh side effects after
-  context-stack pop, especially entry bytes `+8/+9` branches.
+- `0xe65c..0xe84c`: unresolved only at the full CPU-state bridge into
+  existing font-map contracts after `0x13eb8`, `0xc428`, `0x144d2`, and
+  `0x14c64`; branch flags, fallback install, and shared exit are pinned.
+- `0xe860..0xe886`: record-class byte meaning for the `+0x16` versus
+  `+0x20` returned values is still named by use, not by font format.
 - `0xe35a..0xe3e8`: producer and full semantics for non-execute/non-call
   frames restored through `0xe972`.
 - `0x782c6e..0x782d36`: context stack capacity and overflow policy around

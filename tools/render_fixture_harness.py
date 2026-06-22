@@ -2859,6 +2859,142 @@ def end_macro_data_chain_via_e22c(state: dict[str, object]) -> dict[str, object]
     return updated
 
 
+def macro_font_context_state(**overrides: object) -> dict[str, object]:
+    state: dict[str, object] = {
+        "context_stack_ptr": 0x782C1E,
+        "context_stack_entries": [],
+        "static_context_record": {
+            "long_0": 0,
+            "long_4": 0,
+            "byte_8": 0,
+            "byte_9": 0,
+        },
+        "selector_782f06": 0,
+        "class_selector_782da3": 0,
+        "active_primary_783144": 0x0115,
+        "active_secondary_783146": 0x0005,
+        "remembered_primary_782f08": 0,
+        "remembered_secondary_782f0a": 0,
+        "dirty_782f2d": 0,
+        "context_long_782c80": 0x00009FB0,
+        "context_word_782c84": 0x0115,
+        "context_records": {
+            0: {"long_0": 0x00009FB0, "long_4": 0, "byte_4": 0},
+            1: {"long_0": 0x00008080, "long_4": 0, "byte_4": 1},
+        },
+        "candidate_slot_7828a8": 0,
+        "context_install_status": 1,
+        "e860_values": {0: 0, 1: 0},
+        "events": [],
+    }
+    state.update(overrides)
+    return state
+
+
+def static_context_orientation_via_e860(state: dict[str, object], slot: int) -> int:
+    values = dict(state.get("e860_values", {}))
+    if slot in values:
+        return int(values[slot])
+    records = dict(state.get("context_records", {}))
+    record = dict(records.get(slot, {}))
+    if int(record.get("byte_4", 0)):
+        return int(record.get("byte_20", 0))
+    return int(record.get("byte_16", 0))
+
+
+def refresh_font_context_via_e65c(state: dict[str, object], argument: int) -> dict[str, object]:
+    updated = dict(state)
+    updated["context_stack_entries"] = [dict(entry) for entry in state.get("context_stack_entries", [])]
+    updated["events"] = list(state.get("events", []))
+    updated["context_records"] = {
+        int(key): dict(value)
+        for key, value in dict(state.get("context_records", {})).items()
+    }
+    selected = int(updated.get("selector_782f06", 0)) & 1
+    static_record = dict(updated.get("static_context_record", {}))
+    if argument == 0:
+        entries = list(updated["context_stack_entries"])
+        entry = dict(entries.pop()) if entries else {
+            "long_0": 0,
+            "long_4": 0,
+            "byte_8": 0,
+            "byte_9": 0,
+        }
+        updated["context_stack_entries"] = entries
+        updated["context_stack_ptr"] = int(updated.get("context_stack_ptr", 0x782C28)) - 0x0A
+        updated["events"].append({"kind": "context-pop", "entry": dict(entry)})
+    else:
+        entry = dict(static_record)
+        primary_orientation = static_context_orientation_via_e860(updated, 0)
+        secondary_orientation = static_context_orientation_via_e860(updated, 1)
+        if not int(entry.get("byte_8", 0)) and primary_orientation != int(updated.get("class_selector_782da3", 0)):
+            entry["byte_8"] = 1
+            updated["events"].append({
+                "kind": "static-primary-refresh-by-orientation",
+                "orientation": primary_orientation,
+            })
+        if not int(entry.get("byte_9", 0)) and secondary_orientation != int(updated.get("class_selector_782da3", 0)):
+            entry["byte_9"] = 1
+            updated["events"].append({
+                "kind": "static-secondary-refresh-by-orientation",
+                "orientation": secondary_orientation,
+            })
+
+    if int(entry.get("byte_8", 0)) == 1:
+        updated["remembered_primary_782f08"] = int(updated.get("active_primary_783144", 0)) & 0xFFFF
+        updated["events"].append({"kind": "call-13eb8", "slot": 0})
+        if selected == 0:
+            updated["dirty_782f2d"] = 1
+            updated["events"].append({"kind": "dirty-set", "slot": 0})
+    if int(entry.get("byte_9", 0)) == 1:
+        updated["remembered_secondary_782f0a"] = int(updated.get("active_secondary_783146", 0)) & 0xFFFF
+        updated["events"].append({"kind": "call-13eb8", "slot": 1})
+        if selected == 1:
+            updated["dirty_782f2d"] = 1
+            updated["events"].append({"kind": "dirty-set", "slot": 1})
+
+    if argument == 0:
+        entry.update({"long_0": 0, "long_4": 0, "byte_8": 0, "byte_9": 0})
+        updated["events"].append({"kind": "context-entry-cleared", "entry": dict(entry)})
+    else:
+        updated["static_context_record"] = {
+            "long_0": 0,
+            "long_4": 0,
+            "byte_8": 0,
+            "byte_9": 0,
+        }
+        updated["events"].append({"kind": "static-context-cleared"})
+
+    updated["events"].append({"kind": "call-c428", "slot": selected})
+    if int(updated.get("context_install_status", 1)) == 0:
+        records = dict(updated["context_records"])
+        selected_record = dict(records.get(selected, {}))
+        selected_record["long_0"] = int(updated.get("context_long_782c80", 0)) & 0xFFFFFFFF
+        records[selected] = selected_record
+        updated["context_records"] = records
+        if selected == 0:
+            updated["active_primary_783144"] = int(updated.get("context_word_782c84", 0)) & 0xFFFF
+            updated["remembered_primary_782f08"] = int(updated.get("context_word_782c84", 0)) & 0xFFFF
+        else:
+            updated["active_secondary_783146"] = int(updated.get("context_word_782c84", 0)) & 0xFFFF
+            updated["remembered_secondary_782f0a"] = int(updated.get("context_word_782c84", 0)) & 0xFFFF
+        updated["last_context_selector_7828de"] = selected
+        updated["candidate_slot_7828a8"] = (int(updated.get("context_long_782c80", 0)) & 0x00FFFFFF) | 0x80000000
+        updated["dirty_782f2d"] = 1
+        updated["events"].extend([
+            {"kind": "context-install-empty", "slot": selected},
+            {"kind": "call-1b4c0", "argument": int(updated.get("context_long_782c80", 0))},
+            {"kind": "call-144d2"},
+            {"kind": "call-14c64"},
+            {"kind": "dirty-set", "slot": selected},
+            {"kind": "call-c428", "slot": selected},
+        ])
+    updated["events"].append({"kind": "call-1b04c"})
+    updated["dirty_782f2d"] = 0
+    updated["events"].append({"kind": "dirty-cleared"})
+    return updated
+
+
 def replay_macro_frame_payload_via_a904(frame: dict[str, object], outer_byte: int | None = None) -> dict[str, object]:
     payload = bytes(frame.get("payload", b""))
     byte_count = int(frame.get("byte_count", len(payload)))
@@ -18972,6 +19108,150 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "exhausted": True,
                 "error": None,
             },
+        },
+    }))
+    refresh_stack_both = refresh_font_context_via_e65c(macro_font_context_state(
+        context_stack_ptr=0x782C28,
+        context_stack_entries=[{
+            "addr": 0x782C1E,
+            "long_0": 0x11111111,
+            "long_4": 0x22222222,
+            "byte_8": 1,
+            "byte_9": 1,
+        }],
+        selector_782f06=1,
+        active_primary_783144=0x2222,
+        active_secondary_783146=0x3333,
+        context_install_status=1,
+    ), 0)
+    refresh_fallback = refresh_font_context_via_e65c(macro_font_context_state(
+        context_stack_ptr=0x782C28,
+        context_stack_entries=[{
+            "addr": 0x782C1E,
+            "long_0": 0x44444444,
+            "long_4": 0x55555555,
+            "byte_8": 0,
+            "byte_9": 0,
+        }],
+        selector_782f06=0,
+        context_install_status=0,
+        context_long_782c80=0x12345678,
+        context_word_782c84=0x4567,
+    ), 0)
+    refresh_static = refresh_font_context_via_e65c(macro_font_context_state(
+        static_context_record={
+            "long_0": 0xAAAA0000,
+            "long_4": 0xBBBB0000,
+            "byte_8": 1,
+            "byte_9": 0,
+        },
+        selector_782f06=0,
+        class_selector_782da3=2,
+        active_primary_783144=0x7777,
+        active_secondary_783146=0x8888,
+        e860_values={0: 2, 1: 5},
+        context_install_status=1,
+    ), 1)
+    checks.append(assert_equal("0xe65c refreshes macro font context entries", {
+        "stack_both": {
+            "context_ptr": refresh_stack_both["context_stack_ptr"],
+            "entries": refresh_stack_both["context_stack_entries"],
+            "remembered": (
+                refresh_stack_both["remembered_primary_782f08"],
+                refresh_stack_both["remembered_secondary_782f0a"],
+            ),
+            "dirty_after": refresh_stack_both["dirty_782f2d"],
+            "event_kinds": [event["kind"] for event in refresh_stack_both["events"]],
+            "refresh_slots": [
+                event["slot"]
+                for event in refresh_stack_both["events"]
+                if event["kind"] == "call-13eb8"
+            ],
+        },
+        "fallback": {
+            "context_ptr": refresh_fallback["context_stack_ptr"],
+            "record0": refresh_fallback["context_records"][0],
+            "active_primary": refresh_fallback["active_primary_783144"],
+            "remembered_primary": refresh_fallback["remembered_primary_782f08"],
+            "last_selector": refresh_fallback["last_context_selector_7828de"],
+            "candidate": refresh_fallback["candidate_slot_7828a8"],
+            "dirty_after": refresh_fallback["dirty_782f2d"],
+            "event_kinds": [event["kind"] for event in refresh_fallback["events"]],
+        },
+        "static": {
+            "static_record": refresh_static["static_context_record"],
+            "remembered": (
+                refresh_static["remembered_primary_782f08"],
+                refresh_static["remembered_secondary_782f0a"],
+            ),
+            "dirty_after": refresh_static["dirty_782f2d"],
+            "event_kinds": [event["kind"] for event in refresh_static["events"]],
+            "refresh_slots": [
+                event["slot"]
+                for event in refresh_static["events"]
+                if event["kind"] == "call-13eb8"
+            ],
+        },
+    }, {
+        "stack_both": {
+            "context_ptr": 0x782C1E,
+            "entries": [],
+            "remembered": (0x2222, 0x3333),
+            "dirty_after": 0,
+            "event_kinds": [
+                "context-pop",
+                "call-13eb8",
+                "call-13eb8",
+                "dirty-set",
+                "context-entry-cleared",
+                "call-c428",
+                "call-1b04c",
+                "dirty-cleared",
+            ],
+            "refresh_slots": [0, 1],
+        },
+        "fallback": {
+            "context_ptr": 0x782C1E,
+            "record0": {"long_0": 0x12345678, "long_4": 0, "byte_4": 0},
+            "active_primary": 0x4567,
+            "remembered_primary": 0x4567,
+            "last_selector": 0,
+            "candidate": 0x80345678,
+            "dirty_after": 0,
+            "event_kinds": [
+                "context-pop",
+                "context-entry-cleared",
+                "call-c428",
+                "context-install-empty",
+                "call-1b4c0",
+                "call-144d2",
+                "call-14c64",
+                "dirty-set",
+                "call-c428",
+                "call-1b04c",
+                "dirty-cleared",
+            ],
+        },
+        "static": {
+            "static_record": {
+                "long_0": 0,
+                "long_4": 0,
+                "byte_8": 0,
+                "byte_9": 0,
+            },
+            "remembered": (0x7777, 0x8888),
+            "dirty_after": 0,
+            "event_kinds": [
+                "static-secondary-refresh-by-orientation",
+                "call-13eb8",
+                "dirty-set",
+                "call-13eb8",
+                "static-context-cleared",
+                "call-c428",
+                "call-1b04c",
+                "dirty-cleared",
+            ],
+            "refresh_slots": [0, 1],
         },
     }))
     macro_overlay = apply_macro_control_via_dd08(macro_with_payload, 4)
@@ -46122,6 +46402,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- Selectors `2` and `3` replay an existing macro by pushing a data-chain frame whose byte `+8` is `4` and byte `+9` is the execute/call selector.")
     lines.append("- `0xe418` writes frame `+0x00/+0x04` from macro record `+0x00/+0x04`, stores an environment snapshot pointer at frame `+0x0a`, and only call mode pushes a 10-byte context-stack entry from `0x782ee6` / `0x782ef6`.")
     lines.append("- `0xe8f0` stores environment ranges as 0x100-byte linked chunks with a next pointer plus 63 longwords; `0xe8a2` restores those chunks and expects the chain to be exhausted, while `0xe972` and `0xe996` copy flat inclusive longword ranges in opposite directions.")
+    lines.append("- `0xe65c` consumes either the call context-stack entry or static record `0x782c64`; entry bytes `+8/+9` refresh primary/secondary font slots through `0x13eb8`, then the selected slot passes through `0xc428`, optional empty-install rebuild, `0x1b04c`, and dirty-flag clear.")
     lines.append("- Selectors `4`/`5` enable/disable overlay state, `6`/`7`/`8` delete all/temporary/current macros, and `9`/`10` toggle the temporary/permanent byte at record `+0x0a`.")
     lines.append("")
     lines.append(f"- assigned macro id: `{macro_id_state['current_macro_id']}`")
@@ -46184,6 +46465,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- macro execute frame payload fetches through `0xa904` as data-chain bytes `%s`, then end-marker helper `0xe22c` resumes outer byte `0x%02x`." % (
         " ".join(f"0x{int(fetch['d7']):02x}" for fetch in macro_frame_replay["fetches"]),
         int(macro_frame_replay_outer["d7"]),
+    ))
+    lines.append("- `0xe65c(0)` stack-pop fixture refreshes slots `%s`, copies remembered words `%s`, and leaves dirty flag `%d` after final `0x1b04c`." % (
+        [event["slot"] for event in refresh_stack_both["events"] if event["kind"] == "call-13eb8"],
+        (refresh_stack_both["remembered_primary_782f08"], refresh_stack_both["remembered_secondary_782f0a"]),
+        int(refresh_stack_both["dirty_782f2d"]),
+    ))
+    lines.append("- `0xe65c` empty-install fixture records selected context `0x%08x`, active primary word `0x%04x`, candidate `0x%08x`, and event path `%s`." % (
+        int(refresh_fallback["context_records"][0]["long_0"]),
+        int(refresh_fallback["active_primary_783144"]),
+        int(refresh_fallback["candidate_slot_7828a8"]),
+        [event["kind"] for event in refresh_fallback["events"]],
+    ))
+    lines.append("- `0xe65c(1)` static-record fixture uses direct `+8` plus `0xe860` secondary class mismatch, refreshes slots `%s`, and clears `0x782c64` to `%s`." % (
+        [event["slot"] for event in refresh_static["events"] if event["kind"] == "call-13eb8"],
+        refresh_static["static_context_record"],
     ))
     lines.append("- macro execute payload stream `%s` queues glyphs `%s`, coords `%s`, then CR leaves cursor `0x%08x,0x%08x`." % (
         " ".join(f"{byte:02x}" for byte in macro_payload_printable_stream["stream"]),

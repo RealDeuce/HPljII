@@ -113,8 +113,9 @@ through `0x129c6..0x12af8`, the wrap-no-hit page-eject path is anchored
 through `0x12a22..0x12a78`, and one target-after-text bottom-recovery
 path is anchored through `0x129ee..0x12b5a`, while the start-line-zero
 non-publishing target-after-text path is anchored through
-`0x129fc..0x12afc`; alternate wrap-recovery and page-recovery branches
-remain unresolved;
+`0x129fc..0x12afc`, and the start-after-text no-wrap path is anchored
+through `0x12a02..0x12afc`; alternate wrap-recovery and page-recovery
+branches remain unresolved;
 `ESC &a#L/#M` map to
 `0xeb58`/`0xec0c` and convert HMI margin columns into
 `0x782dd6`/`0x782dda` with reject/clamp/cursor-move cases;
@@ -190,6 +191,11 @@ zero target-after-text branch `0x129fc..0x12afc`, skipped publication
 edge `0x12a12..0x12a1e`, helper sequence `0x10084`, `0xf06e`,
 `0xf34a`, cursor move `x 40 -> 10` and `y 89 -> 104`, and following
 printable output at compact coord `0x3001`;
+start-after-text `ESC &l2V!`, starting at y `3290`, now ties parser
+handler `0x1280a`, start line `64`, branch `0x12a02..0x12afc`, skipped
+wrap/publication, helper sequence `0x10084`, `0xf06e`, `0xf34a`, cursor
+move `x 40 -> 10` and `y 3290 -> 54`, and following printable output at
+compact coord `0x1001`;
 `!\x1b&l2V!`, with channel 2 at VFC line `63` and a queued printable at y
 `3193`, now ties parser handler `0x1280a`, target-after-text branch
 `0x129ee..0x12b5a`, helper sequence `0x10084`, `0xf34a`, `0xf124`,
@@ -312,9 +318,10 @@ wrap-no-hit page-eject path is anchored through `0x12a22..0x12a78` for
 the empty-table fixture. The target-after-text bottom-recovery path is
 anchored through `0x129ee..0x12b5a` for the line-63 fixture, and the
 start-line-zero no-publish variant is anchored through `0x129fc..0x12afc`.
-The highest-value unresolved middle edges are `0x12a02..0x12a10`,
-alternate-entry `0x12a22..0x12a78`, alternate-entry
-`0x12afc..0x12b5a`, and `0x12b5e..0x12b92`.
+The start-after-text no-wrap path is anchored through `0x12a02..0x12afc`
+for start line `64`. The highest-value unresolved middle edges are
+alternate-entry `0x12a02..0x12a10`, alternate-entry `0x12a22..0x12a78`,
+alternate-entry `0x12afc..0x12b5a`, and `0x12b5e..0x12b92`.
 
 ### Raster/text/page-object path
 

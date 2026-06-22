@@ -141,6 +141,12 @@ line `63`, normalizes the search start to line `0`, takes
 resets x from `40` to `10`, writes recovered y `104`, and queues the
 following `!` at compact coord `0x3001`, bucket `5`.
 
+The start-after-text `ESC &l#V` recovery path is anchored without wrap or
+publication. Fixture `ESC &l2V!`, with y `3290`, computes start line
+`64`, takes `0x12a02..0x12afc`, skips wrap and `0xf124`, resets x from
+`40` to `10`, writes recovered y `54`, and queues the following `!` at
+compact coord `0x1001`, bucket `2`.
+
 The lookup helpers at `0x009d16`, `0x009d4e`, `0x009d86`, and `0x009dbe`
 mask the internal code with `0x7f` and index eleven word entries. The
 generated table report records all current values. Its manual

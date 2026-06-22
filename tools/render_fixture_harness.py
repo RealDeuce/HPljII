@@ -13446,6 +13446,112 @@ def active_pool_wrapper_dispatch_via_1cf8(state: dict[str, object]) -> dict[str,
     }
 
 
+def active_render_loop_step_via_1eba4(state: dict[str, object]) -> dict[str, object]:
+    """Model one bounded pass through the 0x1eba4 render scheduler loop."""
+    records = state.get("render_work_records", {})
+    if not isinstance(records, dict):
+        raise AssertionError("active render loop step needs render_work_records")
+    active_ptr = 0x00782128 if int(state.get("render_work_selector_7820bc", 0)) else 0x007820C4
+    paired_ptr = 0x00782128 if int(state.get("render_work_selector_7820c0", 0)) else 0x007820C4
+    active = records[active_ptr]
+    paired = records.get(paired_ptr, {})
+    if not isinstance(active, dict) or not isinstance(paired, dict):
+        raise AssertionError("active render loop records must be dicts")
+
+    events: list[dict[str, object]] = []
+    signals = list(state.get("signals", []))
+    waits = list(state.get("waits", []))
+    render_calls = list(state.get("render_calls", []))
+
+    if int(state.get("active_render_loop_flag_780ea5", 0)) == 1:
+        events.append({"kind": "loop-flag-cleanup", "helper": 0x1EF38})
+        state["active_render_flag_780ea4"] = 0
+        signals.append({"helper": 0x10C8, "target": 0x00780182})
+        signals.append({"helper": 0x10C4})
+
+    word_0c = int(active.get("word_0c", 0))
+    word_10 = int(active.get("word_10", 0))
+    if word_0c < word_10:
+        events.append({
+            "kind": "row-bound-cleanup",
+            "word_0c": word_0c,
+            "word_10": word_10,
+        })
+        state["active_render_flag_780ea4"] = 0
+        signals.append({"helper": 0x10C8, "target": 0x00780182})
+        signals.append({"helper": 0x10C4})
+
+    word_0e = int(active.get("word_0e", 0))
+    if word_0e > 0x28:
+        active["word_0e"] = 0
+        signals.append({"helper": 0x10C8, "target": 0x00780182})
+        waits.append({"helper": 0x10D8, "argument": 2})
+        state["signals"] = signals
+        state["waits"] = waits
+        return {
+            "path": "throttle-yield",
+            "active_work_ptr": active_ptr,
+            "paired_work_ptr": paired_ptr,
+            "events": events,
+            "word_0e_before": word_0e,
+            "word_0e_after": int(active["word_0e"]),
+            "signals": signals,
+            "waits": waits,
+        }
+
+    active_remaining = int(active.get("word_10", 0)) - int(active.get("word_16", 0))
+    available = int(active.get("word_06", 0)) - active_remaining
+    paired_remaining = 0
+    if int(state.get("render_work_selector_7820bc", 0)) != int(
+        state.get("render_work_selector_7820c0", 0)
+    ):
+        paired_remaining = int(paired.get("word_10", 0)) - int(paired.get("word_16", 0))
+        available -= paired_remaining
+
+    if available >= 9:
+        render_call = {
+            "helper": 0x1EF6A,
+            "active_work_ptr": active_ptr,
+            "word_10_before": int(active.get("word_10", 0)),
+            "word_0e_before": int(active.get("word_0e", 0)),
+        }
+        render_calls.append(render_call)
+        active["word_10"] = (int(active.get("word_10", 0)) + 1) & 0xFFFF
+        active["word_0e"] = (int(active.get("word_0e", 0)) + 1) & 0xFFFF
+        state["render_calls"] = render_calls
+        return {
+            "path": "render-band",
+            "active_work_ptr": active_ptr,
+            "paired_work_ptr": paired_ptr,
+            "events": events,
+            "available": available,
+            "active_remaining": active_remaining,
+            "paired_remaining": paired_remaining,
+            "render_call": render_call,
+            "word_10_after": int(active["word_10"]),
+            "word_0e_after": int(active["word_0e"]),
+        }
+
+    active["word_0e"] = 0
+    signals.append({"helper": 0x10C8, "target": 0x00780182})
+    waits.append({"helper": 0x10D0, "argument": 2})
+    state["signals"] = signals
+    state["waits"] = waits
+    return {
+        "path": "capacity-wait",
+        "active_work_ptr": active_ptr,
+        "paired_work_ptr": paired_ptr,
+        "events": events,
+        "available": available,
+        "active_remaining": active_remaining,
+        "paired_remaining": paired_remaining,
+        "word_0e_before": word_0e,
+        "word_0e_after": int(active["word_0e"]),
+        "signals": signals,
+        "waits": waits,
+    }
+
+
 def compute_engine_source_address_via_2456(state: dict[str, object], row_index: int) -> int:
     """Model the address arithmetic at 0x2456."""
     work_record = state.get("active_pool_work_record", {})
@@ -28073,6 +28179,146 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     {"helper": 0x10E0, "target": 0x007801A2, "argument": 3},
                 ],
                 "return_d7": None,
+            },
+        },
+    ))
+
+    render_loop_state: dict[str, object] = {
+        "render_work_selector_7820bc": 1,
+        "render_work_selector_7820c0": 0,
+        "render_work_records": {
+            0x00782128: {
+                "word_06": 20,
+                "word_0c": 6,
+                "word_0e": 7,
+                "word_10": 3,
+                "word_16": 0,
+            },
+            0x007820C4: {
+                "word_10": 4,
+                "word_16": 1,
+            },
+        },
+    }
+    render_loop = active_render_loop_step_via_1eba4(render_loop_state)
+
+    capacity_state: dict[str, object] = {
+        "render_work_selector_7820bc": 1,
+        "render_work_selector_7820c0": 0,
+        "render_work_records": {
+            0x00782128: {
+                "word_06": 10,
+                "word_0c": 8,
+                "word_0e": 6,
+                "word_10": 4,
+                "word_16": 0,
+            },
+            0x007820C4: {
+                "word_10": 2,
+                "word_16": 1,
+            },
+        },
+    }
+    capacity_wait = active_render_loop_step_via_1eba4(capacity_state)
+
+    cleanup_state: dict[str, object] = {
+        "render_work_selector_7820bc": 1,
+        "render_work_selector_7820c0": 1,
+        "active_render_loop_flag_780ea5": 1,
+        "active_render_flag_780ea4": 1,
+        "render_work_records": {
+            0x00782128: {
+                "word_06": 20,
+                "word_0c": 1,
+                "word_0e": 0x29,
+                "word_10": 2,
+                "word_16": 0,
+            },
+        },
+    }
+    cleanup_throttle = active_render_loop_step_via_1eba4(cleanup_state)
+    checks.append(assert_equal(
+        "0x1eba4/0x1ef6a active render loop advances or yields bands",
+        {
+            "render": render_loop,
+            "render_record_after": render_loop_state["render_work_records"][0x00782128],
+            "capacity_wait": capacity_wait,
+            "capacity_record_after": capacity_state["render_work_records"][0x00782128],
+            "cleanup_throttle": cleanup_throttle,
+            "cleanup_active_flag": cleanup_state["active_render_flag_780ea4"],
+            "cleanup_record_after": cleanup_state["render_work_records"][0x00782128],
+        },
+        {
+            "render": {
+                "path": "render-band",
+                "active_work_ptr": 0x00782128,
+                "paired_work_ptr": 0x007820C4,
+                "events": [],
+                "available": 14,
+                "active_remaining": 3,
+                "paired_remaining": 3,
+                "render_call": {
+                    "helper": 0x1EF6A,
+                    "active_work_ptr": 0x00782128,
+                    "word_10_before": 3,
+                    "word_0e_before": 7,
+                },
+                "word_10_after": 4,
+                "word_0e_after": 8,
+            },
+            "render_record_after": {
+                "word_06": 20,
+                "word_0c": 6,
+                "word_0e": 8,
+                "word_10": 4,
+                "word_16": 0,
+            },
+            "capacity_wait": {
+                "path": "capacity-wait",
+                "active_work_ptr": 0x00782128,
+                "paired_work_ptr": 0x007820C4,
+                "events": [],
+                "available": 5,
+                "active_remaining": 4,
+                "paired_remaining": 1,
+                "word_0e_before": 6,
+                "word_0e_after": 0,
+                "signals": [{"helper": 0x10C8, "target": 0x00780182}],
+                "waits": [{"helper": 0x10D0, "argument": 2}],
+            },
+            "capacity_record_after": {
+                "word_06": 10,
+                "word_0c": 8,
+                "word_0e": 0,
+                "word_10": 4,
+                "word_16": 0,
+            },
+            "cleanup_throttle": {
+                "path": "throttle-yield",
+                "active_work_ptr": 0x00782128,
+                "paired_work_ptr": 0x00782128,
+                "events": [
+                    {"kind": "loop-flag-cleanup", "helper": 0x1EF38},
+                    {"kind": "row-bound-cleanup", "word_0c": 1, "word_10": 2},
+                ],
+                "word_0e_before": 0x29,
+                "word_0e_after": 0,
+                "signals": [
+                    {"helper": 0x10C8, "target": 0x00780182},
+                    {"helper": 0x10C4},
+                    {"helper": 0x10C8, "target": 0x00780182},
+                    {"helper": 0x10C4},
+                    {"helper": 0x10C8, "target": 0x00780182},
+                ],
+                "waits": [{"helper": 0x10D8, "argument": 2}],
+            },
+            "cleanup_active_flag": 0,
+            "cleanup_record_after": {
+                "word_06": 20,
+                "word_0c": 1,
+                "word_0e": 0,
+                "word_10": 2,
+                "word_16": 0,
             },
         },
     ))

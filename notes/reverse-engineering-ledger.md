@@ -379,7 +379,8 @@ variant; active-pool render-work aliases, copy-window setup, `0x2456`
 source selection, `0x22f4` eight-row copy passes, and the
 `0x78399e/9f` active-pool status feedback into `0x1db0`/`0x1e44` are
 now composed, with `0x1cf8` wrapper dispatch through `0x1e80` and
-`0x1ea8` variants also pinned; a combined 2,215-byte host-fetched
+`0x1ea8` variants also pinned, and `0x1eba4..0x1ecd2` scheduler-loop
+render/yield predicates covered; a combined 2,215-byte host-fetched
 font-download printable stream now carries `ESC *c4660d37e5F`,
 `ESC )s2193W`, and printable `%` into a downloaded glyph `0x25`
 segmented page object before `0x1edc6`,
@@ -533,6 +534,9 @@ escalates pending status into `0x78399f` plus `$a801 = 0xc0`, and
 dispatch fixture where `0x1cf8` selects pending-status copy plus
 attention, timeout, bridge, and wait-loop paths from `0x78399e`,
 `0xa680`, `0x780e32`, `0x780e36`, `0x7821f9.2`, and elapsed `0x191`, a
+render-loop fixture where `0x1eba4` selects cleanup, throttle,
+capacity-wait, or `0x1ef6a` render-call advance from work words `+6`,
+`+0c`, `+0e`, `+10`, and `+16`, a
 mixed
 `!\x1bE` fixture that
 publishes and clears a valid current page root after queued text and has
@@ -902,11 +906,12 @@ ROM work needed:
 - Continue the active-render scheduler from the remaining physical
   feedback and pacing edges: interrupt entry/exit `0x0f84..0x0fa0` and
   `0x1020..0x108e`, helper/MMIO meaning for `$8000`, `$a601`, `$a801`,
-  `0xa668`, `0xa680`, and the repeated wait loop, then the render
-  pacing loop `0x1eba4..0x1ecd2`. Candidate-slot insertion, active-pool
-  staging, pool-cursor alias movement, same-geometry work-record reuse,
-  copy-window setup, `0x2456` source selection, `0x22f4` row-copy
-  semantics, `0x78399e/9f` status feedback, and `0x1cf8` wrapper
+  `0xa668`, `0xa680`, and wait/yield helpers `0x10c4`, `0x10c8`,
+  `0x10d0`, `0x10d8`, and `0x10e0`. Candidate-slot insertion,
+  active-pool staging, pool-cursor alias movement, same-geometry
+  work-record reuse, copy-window setup, `0x2456` source selection,
+  `0x22f4` row-copy semantics, `0x78399e/9f` status feedback, `0x1cf8`
+  wrapper predicate selection, and `0x1eba4..0x1ecd2` render-loop
   predicate selection are now fixture-covered.
 - Determine the remaining live-parser wide/segmented text, raster
   edge-case, and final device-output clipping behavior exactly.

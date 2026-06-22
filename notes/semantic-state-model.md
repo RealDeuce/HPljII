@@ -1103,6 +1103,10 @@ record.
     by `0x2126`: long `+0` source base, words `+4` width longwords,
     `+6` modulo divisor, `+8`/`+0a` delta inputs, `+0c` start row,
     `+10` end row, and `+16` current engine row.
+  - active-render scheduler work fields consumed at `0x1eba4..0x1ecd2`:
+    word `+6` capacity/divisor, word `+0c` cleanup bound, word `+0e`
+    throttle counter, word `+10` render-band cursor, and word `+16`
+    engine-side cursor.
   - render `+0x18`, `+0x1c`, `+0x20`, and `+0x24..+0x60`: copied bucket,
     rule, fixed, and context slots.
   Evidence: `0x1ecd6..0x1ed76`,
@@ -1291,6 +1295,22 @@ record.
 - `0x1ea8..0x1ee8` is the timeout variant. It calls `0xa668`, sets
   `0x780e6d = 1`, sets `0x780e67 = 1`, signals bit `1` at `0x780e36`
   through `0x9ba2`, then enters `0x2038`.
+- `0x1eba4..0x1ecd2` runs the active-render scheduler loop. If
+  `0x780ea5 == 1`, it calls `0x1ef38`, clears `0x780ea4`, and signals
+  `0x780182` through `0x10c8` and `0x10c4`; if active work word
+  `+0x0c < +0x10`, it repeats that clear/signal sequence.
+- `0x1ec0c..0x1ec30` throttles the loop when active work word `+0x0e`
+  exceeds `0x28`: it clears `+0x0e`, signals `0x780182`, calls
+  `0x10d8(2)`, and loops.
+- `0x1ec34..0x1ec8e` computes render capacity as active work
+  `+6 - (+10 - +16)`, subtracting paired work `(+10 - +16)` when
+  `0x7820bc != 0x7820c0`.
+- `0x1ec98..0x1ecac` calls render entry `0x1ef6a` when computed
+  capacity is at least `9`, then increments active work word `+0x10`
+  and throttle word `+0x0e`.
+- `0x1ecb0..0x1ecd2` handles computed capacity below `9`: it clears
+  active work word `+0x0e`, signals `0x780182`, calls `0x10d0(2)`, and
+  loops.
 
 ### Readers And Consumers
 
@@ -1330,6 +1350,9 @@ record.
 - `0x1cf8..0x1dac` reads `0x780e04`, `0x78399e`, the return from
   `0xa680`, `0x780e32`, `0x780e36`, and `0x7821f9.2` to select
   `0x1db0`, `0x1e44`, `0x1e80`, `0x1ea8`, or the `0x10e0` wait loop.
+- `0x1eba4..0x1ecd2` reads `0x780ea5`, `0x7820bc`, `0x7820c0`, and
+  active/paired render work words `+6`, `+0c`, `+0e`, `+10`, and `+16`
+  to select cleanup, throttle, render, or capacity-wait outcomes.
 
 ### Output Effect
 
@@ -1450,6 +1473,24 @@ side models helper `0xa680` as nonzero with `0x780e32 = 0`,
 `0x10e0(0x7801a2, 3)` and loops without producing a terminal `D7` in the
 bounded fixture.
 
+The scheduler-loop fixture
+`0x1eba4/0x1ef6a active render loop advances or yields bands` starts
+with active selector `0x7820bc = 1`, so the active work record is
+`0x00782128`, and paired selector `0x7820c0 = 0`, so the paired record is
+`0x007820c4`. In the render case, active `+6 = 20`, active
+`+10 - +16 = 3`, and paired `+10 - +16 = 3`, so computed capacity is
+`14`. The loop calls `0x1ef6a`, increments active word `+10` from `3`
+to `4`, and increments throttle word `+0e` from `7` to `8`.
+
+The capacity-wait side uses active `+6 = 10`, active remaining `4`, and
+paired remaining `1`, producing capacity `5`. It clears active word
+`+0e` from `6` to `0`, signals `0x780182` through `0x10c8`, and calls
+`0x10d0(2)`. The cleanup/throttle side starts with `0x780ea5 = 1`,
+active `+0c = 1`, active `+10 = 2`, and active `+0e = 0x29`. It records
+the loop-flag cleanup through `0x1ef38`, clears `0x780ea4`, signals
+`0x10c8`/`0x10c4`, records the row-bound cleanup and repeats that
+signal pair, then clears active word `+0e` and calls `0x10d8(2)`.
+
 ### Confidence
 
 High for the distinction between protected pool head `0x780ea6` and
@@ -1462,17 +1503,18 @@ the `0x1a4c` copy-window scalars, the `0x22f4` row-copy address pattern,
 the `0x2456` source-address arithmetic, the `0x0fa2` threshold and
 pending-status transitions, the `0x1db0` status-copy path, the `0x1e44`
 escalated-status bridge, the `0x1cf8` wrapper branch predicates, the
-`0x1e80` attention variant, the `0x1ea8` timeout variant, the `0x1ee9e`
-geometry-change boundary, the `0x1ed36..0x1ed6a` same-geometry reuse
-branch, and the render-entry output for the selected source. Medium for
-the surrounding engine pacing loop because the fixture bounds the
-`0x10e0` wait loop instead of executing it to a later interrupt state,
-and because it does not model `0x10c8`, `0x10c4`, `0x10d0`, or
-`0x10d8`. Medium for the physical meaning of `$8000`, `$a601`, `$a801`,
-`0x7828f9`, `0xa668`, and `0xa680` because the byte-level side effects
-and branch returns are pinned but not tied to measured engine timing yet.
-Medium for `0x780eb6` because only its initialization is currently
-covered.
+`0x1e80` attention variant, the `0x1ea8` timeout variant, the
+`0x1eba4` cleanup, throttle, capacity, and render-call branch
+predicates, the `0x1ee9e` geometry-change boundary, the
+`0x1ed36..0x1ed6a` same-geometry reuse branch, and the render-entry
+output for the selected source. Medium for the surrounding engine pacing
+loop because the fixture bounds wait/yield helpers instead of executing
+them to later interrupt states, and because it does not model the
+physical timing of `0x10c8`, `0x10c4`, `0x10d0`, or `0x10d8`. Medium for
+the physical meaning of `$8000`, `$a601`, `$a801`, `0x7828f9`,
+`0xa668`, and `0xa680` because the byte-level side effects and branch
+returns are pinned but not tied to measured engine timing yet. Medium
+for `0x780eb6` because only its initialization is currently covered.
 
 ### Fixtures
 
@@ -1483,6 +1525,7 @@ covered.
 - `0x2126/0x1a4c/0x2038 active pool copy window feeds engine rows`
 - `0x0fa2/0x1db0/0x1e44 status feedback drives copy and done flag`
 - `0x1cf8/0x1e80/0x1ea8 wrapper dispatch selects engine variants`
+- `0x1eba4/0x1ef6a active render loop advances or yields bands`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`
 
@@ -1517,13 +1560,12 @@ covered.
 
 ### Unresolved Middle Edges
 
-- `0x0f84..0x0fa0`, `0x1020..0x108e`, and the MMIO/helper calls inside
-  `0x1cf8..0x1dac`: the wrapper branch predicates and selected variants
-  are modeled, but the physical interrupt entry/exit, `$8000`, `$a601`,
-  `$a801`, helper `0xa6cc`, helper `0xa668`, helper `0xa680`, and the
-  repeated `0x10e0` wait loop still need exact engine-interface meaning.
-- `0x1eba4..0x1ecd2`: render loop pacing, band advance, and engine
-  waits are not yet modeled.
+- `0x0f84..0x0fa0`, `0x1020..0x108e`, and MMIO/helper calls from the
+  wrapper and scheduler loops: the software branch predicates and
+  selected variants are modeled, but the physical interrupt entry/exit,
+  `$8000`, `$a601`, `$a801`, helper `0xa6cc`, helper `0xa668`, helper
+  `0xa680`, and wait/yield helpers `0x10c4`, `0x10c8`, `0x10d0`,
+  `0x10d8`, and `0x10e0` still need exact engine-interface meaning.
 
 ## Vertical Forms Control
 

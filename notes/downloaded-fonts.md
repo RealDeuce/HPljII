@@ -487,19 +487,22 @@ fields:
 - `+0x2f..+0x31 = ab f9 cd`
 - optional symbols `41..50`
 
-Failure fixtures now cover five concrete predicate exits. Invalid type byte
+Failure fixtures now cover seven concrete predicate exits. Invalid type byte
 `3` fails entry `2` after four consumed bytes, leaves byte `+0x0c = 0`, copies
 no optional symbols, and returns status `0`. A reversed range with word
 `+0x16 = 10` and entry-6 value `5` fails entry `6` after twelve consumed
 bytes; it has written word `+0x14 = 5`, leaves derived word `+0x18 = 0`, and
 copies no optional symbols. Fixture
 `ESC )s80W additional validation predicate failures skip allocation` adds
-three more parser-produced exits: entry `4` rejects first-code word `0x1068`
+five more parser-produced exits: entry `4` rejects first-code word `0x1068`
 after eight consumed bytes before writing payload word `+0x16`; entry `5`
 rejects zero line/count word after ten consumed bytes, leaving `+0x16 = 4` and
-`+0x12 = 0`; and entry `7` rejects class byte `2` after thirteen consumed
-bytes after staging `+0x16 = 4`, `+0x12 = 6`, `+0x14 = 9`, and
-`+0x18 = 4`, but before writing class byte `+0x20`.
+`+0x12 = 0`; entry `5` also rejects high line/count word `0x1069` at the same
+ten-byte boundary; entry `6` rejects high range/count word `0x1069` after
+twelve consumed bytes with `+0x12 = 6` and no `+0x14` write; and entry `7`
+rejects class byte `2` after thirteen consumed bytes after staging
+`+0x16 = 4`, `+0x12 = 6`, `+0x14 = 9`, and `+0x18 = 4`, but before writing
+class byte `+0x20`.
 
 Fixture `ESC )s80W invalid resource type fails validation before allocation`
 ties the entry-2 failure to the parser and allocation boundary. The
@@ -518,8 +521,8 @@ the staged first-code word `+0x16` is `10`, the range/count word `+0x14` is
 status `0`, returns allocation status `0`, and `0x16c14` installs no
 candidate. The host-fetched source drains entirely from the `0xa904` ring.
 
-The additional validation-failure fixture ties entries `4`, `5`, and `7` to
-the same parser/allocation boundary. Each stream restores record
+The additional validation-failure fixture ties entries `4`, `5`, `6`, and `7`
+to the same parser/allocation boundary. Each stream restores record
 `80 57 00 50 00 00`, reaches parser handlers `0x11eb6`, `0x12008`,
 `0x11ff6`, and `0x11f96`, receives validation status `0`, returns allocation
 status `0`, installs no candidate, and drains entirely from the `0xa904` ring.
@@ -528,13 +531,13 @@ last staged fields before the no-install exit so later page-visible error
 comparisons can start from exact byte boundaries.
 
 Fixture `ESC )s80W validation failures preserve following printable output`
-then appends printable `!` to the five no-install streams above. In each case
+then appends printable `!` to the seven no-install streams above. In each case
 the resource command restores record `80 57 00 50 00 00`, fails validation at
 entry `2`, `4`, `5`, `6`, or `7`, returns allocation status `0`, leaves
 install `None`, then the following printable byte routes through handler
 `0xd04a`, queues the same default-font compact object as baseline `!`, and
 renders identical page rows. Status: parser-produced validation error to
-visible default-font output for those five forms.
+visible default-font output for those seven forms.
 
 `0x17362` sets the staged type and payload units. Type `0` writes byte
 `+0x0c = 0` and units `0x80`; type `2` writes byte `+0x0c = 2` and units
@@ -1003,10 +1006,11 @@ A byte-stream renderer must preserve:
 
 - `0x16fae..0x17016`: all 32 validation slots now have ROM-effect names and
   concrete success/failure fixtures. Host-fetched invalid-type, first-code
-  overflow, zero line/count, reversed-range, and invalid-class streams prove
-  five parser-produced no-install boundaries and preserve following default
-  printable output. Exact HP manual labels for the consumed-but-not-staged
-  descriptor fields still need external correlation.
+  overflow, zero line/count, high line/count, reversed-range, high range/count,
+  and invalid-class streams prove seven parser-produced no-install boundaries
+  and preserve following default printable output. Exact HP manual labels for
+  the consumed-but-not-staged descriptor fields still need external
+  correlation.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span
   wide, linear normal, linear segmented, and split-plane segmented
   downloaded-character paths are page-visible. Remaining parser-produced
@@ -1036,10 +1040,11 @@ A byte-stream renderer must preserve:
   tied to installed payload headers for the `0xd4ac` and `0xd8fc` type-0,
   type-1, and type-2 fixtures, and the shared consumer branch family is
   fixture-backed. The invalid-resource-type, first-code overflow, zero
-  line/count, reversed-range, and invalid-class resource paths now have
-  host-fetched parser/validation/no-install boundaries and following-printable
-  page output. A host-fetched metric-value variant now proves copied
+  line/count, high line/count, reversed-range, high range/count, and
+  invalid-class resource paths now have host-fetched
+  parser/validation/no-install boundaries and following-printable page output.
+  A host-fetched metric-value variant now proves copied
   descriptor fields can flip the `0xd4ac` page-extent gate and move `0xd8fc`
   rendered rows. Broader downloaded/inline metric-byte cross-products and the
-  remaining producer-side validation/error forms still need parser-produced
-  page evidence.
+  producer-side validation/error forms beyond those seven bounded predicate
+  branches still need parser-produced page evidence.

@@ -1394,10 +1394,11 @@ publication-to-scheduler band progression because `0xff1e` disassembly at
 `0x1eba4` emits band words `0..9` through `0x1ef6a` and preserves the same
 visible row.
 High for the ROM-effect names and failure behavior of every `0x16fae`
-validation-table entry, including the host-fetched invalid-type and
-reversed-range no-install boundaries. Medium for the complete soft-font grammar
-because exact HP manual labels for pass-through descriptor fields and every
-legal metric combination have not been page-compared.
+validation-table entry, including the host-fetched invalid-type, first-code
+overflow, zero/high line-count, reversed/high range-count, and invalid-class
+no-install boundaries. Medium for the complete soft-font grammar because exact
+HP manual labels for pass-through descriptor fields and every legal metric
+combination have not been page-compared.
 
 ### Fixtures
 
@@ -1459,14 +1460,14 @@ legal metric combination have not been page-compared.
   concrete success/failure fixtures. Exact HP manual labels for consumed but
   not staged descriptor fields still need external correlation. The
   host-fetched invalid-type path proves no-install behavior for entry `2`, the
-  host-fetched first-code overflow path proves entry `4`, the zero line/count
-  path proves entry `5`, the reversed-range path proves entry `6`, and the
-  invalid-class path proves entry `7`. Fixture
+  host-fetched first-code overflow path proves entry `4`, the zero and high
+  line/count paths prove entry `5`, the reversed and high range/count paths
+  prove entry `6`, and the invalid-class path proves entry `7`. Fixture
   `ESC )s80W validation failures preserve following printable output` proves
-  those five no-install exits leave the next printable `!` on the unchanged
+  those seven no-install exits leave the next printable `!` on the unchanged
   default-font page-record path with matching rendered rows. Remaining
-  descriptor error forms still need the same parser-produced and page-visible
-  treatment.
+  descriptor error-form risk is now variants beyond those bounded predicate
+  branches, plus external HP manual naming for consumed-but-not-staged fields.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span
   wide, linear normal, linear segmented, and split-plane segmented
   downloaded-character paths are page-visible. Remaining parser-produced

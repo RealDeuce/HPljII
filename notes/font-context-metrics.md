@@ -477,5 +477,7 @@ A byte-stream reproduction must preserve these behaviors:
   downloaded-font fixtures prove install, visible glyph rendering, and
   `0x1719c` type-0, type-1, and type-2 payloads feeding both `0xd4ac` and
   `0xd8fc` span rows; the shared span-consumer branch family is also
-  fixture-backed. The remaining gap is broader descriptor metric-byte values
-  and validation/error forms.
+  fixture-backed. Seven bounded `0x16fae` validation no-install forms now
+  preserve following printable output. The remaining gap is broader descriptor
+  metric-byte values and validation/error forms beyond those bounded predicate
+  branches.

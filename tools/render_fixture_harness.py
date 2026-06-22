@@ -36595,6 +36595,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     table_payload_zero_line_count = resource_validation_failure_case(
         bytes(zero_line_count_payload),
     )
+    line_count_overflow_payload = bytearray(font_validate_stream)
+    line_count_overflow_payload[8:10] = (0x1069).to_bytes(2, "big")
+    table_payload_line_count_overflow = resource_validation_failure_case(
+        bytes(line_count_overflow_payload),
+    )
+    range_count_overflow_payload = bytearray(font_validate_stream)
+    range_count_overflow_payload[10:12] = (0x1069).to_bytes(2, "big")
+    table_payload_range_count_overflow = resource_validation_failure_case(
+        bytes(range_count_overflow_payload),
+    )
     invalid_class_payload = bytearray(font_validate_stream)
     invalid_class_payload[12] = 2
     table_payload_invalid_class = resource_validation_failure_case(
@@ -36968,6 +36978,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     checks.append(assert_equal("ESC )s80W additional validation predicate failures skip allocation", {
         "first_code_overflow": resource_validation_failure_report(table_payload_first_code_overflow),
         "zero_line_count": resource_validation_failure_report(table_payload_zero_line_count),
+        "line_count_overflow": resource_validation_failure_report(table_payload_line_count_overflow),
+        "range_count_overflow": resource_validation_failure_report(table_payload_range_count_overflow),
         "invalid_class": resource_validation_failure_report(table_payload_invalid_class),
     }, {
         "first_code_overflow": {
@@ -37016,6 +37028,72 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
             "staging": {
                 "word12": 0,
+                "word14": 0,
+                "word16": 4,
+                "word18": 0,
+                "byte20": 0,
+            },
+            "allocation": {
+                "status": 0,
+                "allocation_size": 0,
+                "payload": None,
+            },
+            "install": None,
+            "stream_pos": 86,
+            "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "host_fetched": {
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "validation_status": 0,
+                "install": None,
+            },
+        },
+        "line_count_overflow": {
+            "payload_prefix": bytes.fromhex("00 01 02 00 ff ff 00 04 10 69 00 09 01"),
+            "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+            "validation": {
+                "status": 0,
+                "failed_index": 5,
+                "bytes_consumed": 10,
+                "budget": 70,
+                "payload_units": 0x80,
+                "symbol_count": 0,
+            },
+            "staging": {
+                "word12": 0,
+                "word14": 0,
+                "word16": 4,
+                "word18": 0,
+                "byte20": 0,
+            },
+            "allocation": {
+                "status": 0,
+                "allocation_size": 0,
+                "payload": None,
+            },
+            "install": None,
+            "stream_pos": 86,
+            "dispatch_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "host_fetched": {
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "validation_status": 0,
+                "install": None,
+            },
+        },
+        "range_count_overflow": {
+            "payload_prefix": bytes.fromhex("00 01 02 00 ff ff 00 04 00 06 10 69 01"),
+            "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+            "validation": {
+                "status": 0,
+                "failed_index": 6,
+                "bytes_consumed": 12,
+                "budget": 68,
+                "payload_units": 0x80,
+                "symbol_count": 0,
+            },
+            "staging": {
+                "word12": 6,
                 "word14": 0,
                 "word16": 4,
                 "word18": 0,
@@ -48862,6 +48940,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "first_code_overflow": table_payload_first_code_overflow,
         "zero_line_count": table_payload_zero_line_count,
+        "line_count_overflow": table_payload_line_count_overflow,
+        "range_count_overflow": table_payload_range_count_overflow,
         "reversed_range": {
             "stream": table_payload_reversed_range_stream,
             "event": table_payload_reversed_range_event,
@@ -48913,6 +48993,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ("invalid_type", 2, 4),
             ("first_code_overflow", 4, 8),
             ("zero_line_count", 5, 10),
+            ("line_count_overflow", 5, 10),
+            ("range_count_overflow", 6, 12),
             ("reversed_range", 6, 12),
             ("invalid_class", 7, 13),
         )
@@ -62129,16 +62211,28 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_reversed_range_event["install"],
         sorted(set(host_fetched_reversed_range_stream["sources"])),
     ))
-    lines.append("- host-fetched validation-failure family: first-code overflow fails entry `%d` after `%d` bytes, zero line/count word fails entry `%d` after `%d` bytes, and invalid class byte fails entry `%d` after `%d` bytes; each restores record `%s`, skips allocation, leaves install `None`, and drains from `%s` source." % (
-        table_payload_first_code_overflow["validation"]["failed_index"],  # type: ignore[index]
-        table_payload_first_code_overflow["validation"]["bytes_consumed"],  # type: ignore[index]
-        table_payload_zero_line_count["validation"]["failed_index"],  # type: ignore[index]
-        table_payload_zero_line_count["validation"]["bytes_consumed"],  # type: ignore[index]
-        table_payload_invalid_class["validation"]["failed_index"],  # type: ignore[index]
-        table_payload_invalid_class["validation"]["bytes_consumed"],  # type: ignore[index]
-        " ".join(f"{byte:02x}" for byte in table_payload_invalid_class["event"]["restored_record"]),  # type: ignore[index]
-        sorted(set(table_payload_invalid_class["host_stream"]["sources"])),  # type: ignore[index]
-    ))
+    lines.append(
+        "- host-fetched validation-failure family: first-code overflow fails "
+        "entry `%d` after `%d` bytes, zero and high line/count words fail "
+        "entry `%d` after `%d` bytes, high and reversed range/count words "
+        "fail entry `%d` after `%d` bytes, and invalid class byte fails entry "
+        "`%d` after `%d` bytes; each restores record `%s`, skips allocation, "
+        "leaves install `None`, and drains from `%s` source." % (
+            table_payload_first_code_overflow["validation"]["failed_index"],  # type: ignore[index]
+            table_payload_first_code_overflow["validation"]["bytes_consumed"],  # type: ignore[index]
+            table_payload_zero_line_count["validation"]["failed_index"],  # type: ignore[index]
+            table_payload_zero_line_count["validation"]["bytes_consumed"],  # type: ignore[index]
+            table_payload_range_count_overflow["validation"]["failed_index"],  # type: ignore[index]
+            table_payload_range_count_overflow["validation"]["bytes_consumed"],  # type: ignore[index]
+            table_payload_invalid_class["validation"]["failed_index"],  # type: ignore[index]
+            table_payload_invalid_class["validation"]["bytes_consumed"],  # type: ignore[index]
+            " ".join(
+                f"{byte:02x}"
+                for byte in table_payload_invalid_class["event"]["restored_record"]  # type: ignore[index]
+            ),
+            sorted(set(table_payload_invalid_class["host_stream"]["sources"])),  # type: ignore[index]
+        )
+    )
     lines.append("- setup type fixtures: type `0` -> byte `+0x0c = %d`, units `0x%03x`; type `2` -> byte `+0x0c = %d`, units `0x%03x`; unsupported type returns status `%d` without changing byte `+0x0c`." % (
         font_setup_type_0["staging"][0x0C],
         font_setup_type_0["payload_units"],

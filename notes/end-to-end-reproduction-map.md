@@ -228,16 +228,17 @@ pixels or byte-stream compatibility.
    bit-30-clear extended fixed-record case. The `0x16fae` validation table now
    has ROM-effect names for all 32 entries plus concrete success and failure
    fixtures, and host-fetched invalid-resource-type, first-code overflow, zero
-   line/count, reversed-range, and invalid-class paths prove
-   parser-to-validation no-install boundaries plus following-printable default
-   output. Downloaded-character coverage now includes parser-produced normal,
-   wide/control, even-span wide, segmented, split-plane segmented, and
-   segmented-wide compact render shapes, and the combined downloaded-glyph
-   stream now reaches FF publication with both segmented buckets preserved and
-   scheduler-produced band words `0..9` rendered. The full soft-font descriptor
-   grammar, remaining alternate character-mode cross-products, other release
-   variants, and page-visible behavior for descriptor error forms beyond those
-   no-install boundaries are still not proven against every PCL form.
+   line/count, high line/count, reversed-range, high range/count, and
+   invalid-class paths prove parser-to-validation no-install boundaries plus
+   following-printable default output. Downloaded-character coverage now
+   includes parser-produced normal, wide/control, even-span wide, segmented,
+   split-plane segmented, and segmented-wide compact render shapes, and the
+   combined downloaded-glyph stream now reaches FF publication with both
+   segmented buckets preserved and scheduler-produced band words `0..9`
+   rendered. The full soft-font descriptor grammar, remaining alternate
+   character-mode cross-products, other release variants, and page-visible
+   behavior for descriptor error forms beyond those no-install boundaries are
+   still not proven against every PCL form.
 5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
    board-confirmed. This does not block a byte-stream renderer, but it blocks
@@ -262,8 +263,8 @@ The next work should follow dataflow, not isolated handlers:
    disabled/lower/page/high-x consumer branch family is fixture-backed. One
    parser-produced metric-value variant also flips a `d4ac` gate and moves
    `d8fc` visible rows. The missing middle is broader descriptor
-   metric-value cross-products and page-visible behavior for every validation
-   error form.
+   metric-value cross-products and page-visible behavior for validation/error
+   forms beyond the seven bounded predicate no-install fixtures.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream and the downloaded-glyph FF
    publication stream. The next suite cases should add built-in font-selection

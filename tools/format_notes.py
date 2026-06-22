@@ -14,6 +14,13 @@ from pathlib import Path
 LIST_RE = re.compile(r"^(\s*(?:[-*+]|\d+[.])\s+)(.*)$")
 
 
+def normalize_text_whitespace(text: str) -> str:
+    lines = text.splitlines()
+    if not lines:
+        return ""
+    return "\n".join(line.rstrip(" \t") for line in lines).rstrip("\n") + "\n"
+
+
 def run_git(root: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", *args],
@@ -62,6 +69,35 @@ def all_note_markdown(root: Path) -> list[Path]:
     paths.extend(root / name for name in untracked.stdout.splitlines() if name.endswith(".md"))
 
     return sorted(set(paths))
+
+
+def changed_worktree_paths(root: Path) -> list[Path]:
+    result = run_git(root, ["diff", "--name-only", "--diff-filter=ACMRTUXB", "HEAD"])
+    if result.returncode != 0:
+        raise SystemExit(result.stderr.strip())
+
+    paths = {root / name for name in result.stdout.splitlines()}
+
+    untracked = run_git(root, ["ls-files", "--others", "--exclude-standard"])
+    if untracked.returncode != 0:
+        raise SystemExit(untracked.stderr.strip())
+    paths.update(root / name for name in untracked.stdout.splitlines())
+
+    return sorted(path for path in paths if path.exists() and path.is_file())
+
+
+def is_text_file(path: Path) -> bool:
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return False
+    if b"\0" in data:
+        return False
+    try:
+        data.decode("utf-8")
+    except UnicodeDecodeError:
+        return False
+    return True
 
 
 def passthrough_line(line: str) -> bool:
@@ -160,8 +196,7 @@ def format_markdown(text: str, width: int) -> str:
             out.extend(wrap_plain(para, width))
         i = next_i
 
-    result = "\n".join(out).rstrip() + "\n"
-    return result
+    return normalize_text_whitespace("\n".join(out))
 
 
 def git_whitespace_failures(root: Path) -> list[str]:
@@ -205,7 +240,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--check",
         action="store_true",
-        help="report files that would change; whitespace is always checked",
+        help=(
+            "report files that would change; changed text-file whitespace is "
+            "also checked"
+        ),
     )
     return parser.parse_args()
 
@@ -238,10 +276,34 @@ def main() -> int:
             if not args.check:
                 path.write_text(formatted, encoding="utf-8")
 
+    whitespace_paths: list[Path]
+    if args.changed:
+        whitespace_paths = changed_worktree_paths(root)
+    else:
+        whitespace_paths = paths
+
+    whitespace_changed: list[Path] = []
+    for path in whitespace_paths:
+        if not is_text_file(path):
+            continue
+        original = path.read_text(encoding="utf-8")
+        normalized = normalize_text_whitespace(original)
+        if normalized != original:
+            whitespace_changed.append(path)
+            if not args.check:
+                path.write_text(normalized, encoding="utf-8")
+
     failures: list[str] = []
 
     if args.check and changed:
         failures.extend(f"would format {path.relative_to(root)}" for path in changed)
+
+    if args.check and whitespace_changed:
+        failures.extend(
+            f"would normalize whitespace {path.relative_to(root)}"
+            for path in whitespace_changed
+            if path not in changed
+        )
 
     failures.extend(git_whitespace_failures(root))
 
@@ -250,10 +312,17 @@ def main() -> int:
         return 1
 
     action = "would format" if args.check else "formatted"
+    reported = False
     if changed:
         for path in changed:
             print(f"{action} {path.relative_to(root)}")
-    else:
+            reported = True
+    if whitespace_changed:
+        for path in whitespace_changed:
+            if path not in changed:
+                print(f"{action} whitespace {path.relative_to(root)}")
+                reported = True
+    if not reported:
         print("ok: no formatting changes")
     return 0
 

@@ -198,14 +198,32 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   - current frame pointer `0x782d76`.
   - execute selector `2` calls `0xe418` from `0xde96`; call selector `3`
     calls it from `0xdebc`.
+  - `0xe418` advances `0x782d76` by `0x0e` and writes the new frame.
+  - frame `+0x00`: payload/chunk pointer copied from macro record
+    `+0x00`.
+  - frame `+0x04`: byte count copied from macro record `+0x04`.
   - frame byte `+8 == 4`.
   - frame byte `+9 == 2` for execute, `+9 == 3` for call.
-  - payload pointer/count are copied from the macro record; executable
-    fixtures pin payload `21 0d` and mixed-control payload
+  - frame `+0x0a`: environment snapshot pointer returned by `0xe8f0`.
+    Execute snapshots use source `0x783192` and target `0x78319a`; call
+    snapshots use source `0x782d9e` and target `0x78319a`.
+  - executable fixtures pin payload `21 0d` and mixed-control payload
     `1b 26 6b 31 47 21 0d 21`.
   Evidence: `generated/analysis/ic30_ic13_parser_xrefs.md` shows
-  `0xe418` called only from `0xde96` and `0xdebc`; fixture
-  `0xdd08 execute and call push macro data-chain frames`.
+  `0xe418` called only from `0xde96` and `0xdebc`; disassembly
+  `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`
+  covers `0xe418..0xe4f2`; fixtures
+  `0xdd08 execute and call push macro data-chain frames` and
+  `0xe418 frame metadata distinguishes execute and call context`.
+- Canonical call context stack:
+  - stack pointer `0x782c6e` is initialized to `0x782c1e` by `0xe146`.
+  - each entry is 10 bytes.
+  - call mode copies longwords from `0x782ee6` and `0x782ef6` into entry
+    `+0x00` and `+0x04`, clears entry bytes `+0x08` and `+0x09`, then
+    advances `0x782c6e` by `0x0a`.
+  - execute mode does not push this context entry.
+  Evidence: disassembly `0xe146..0xe1be` and `0xe4b2..0xe4e6`;
+  fixture `0xe418 frame metadata distinguishes execute and call context`.
 - Parser scratch:
   - normal macro parser table mode 17 entries at `0x11262..0x11286`
     route `y/Y` to `0xe112` and `x/X` to `0xdd08`.
@@ -224,8 +242,12 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   - `0xe418` sets the host gate bit when the frame byte count is nonzero;
     `0xa904` later calls `0xe22c` at data-chain end before resuming an
     outer byte source.
+  - if `0xe8f0` fails to allocate an environment snapshot, `0xe418`
+    backs out to the previous frame and clears host gate bit 1 when the
+    previous frame has no byte count.
   Evidence: disassembly `0xdd4c..0xdd78`, `0xdee4..0xdefa`, and
-  host-byte section `Host Byte Fetch And Data-Chain Input`.
+  `0xe418..0xe4e6`; host-byte section
+  `Host Byte Fetch And Data-Chain Input`.
 - Derived/cache:
   - execute and call replay of stored `!\r` produce the same compact text
     page-record object and rendered rows.
@@ -241,10 +263,10 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 - Unknown:
   - exact in-RAM chunk allocation layout behind macro record `+0x00` and
     the adjusted count at `+0x04`.
-  - full 14-byte `0xe418` frame layout beyond payload/count, byte `+8`,
-    byte `+9`, and the end marker consumed by `0xa904`.
-  - execute-versus-call environment snapshot details, including the full
-    context-stack layout around `0x782c6e`.
+  - payload/environment allocation helper internals for `0x170c`,
+    `0xe8f0`, `0xe8a2`, `0xe972`, and `0xe996`.
+  - exact call-return restoration semantics through `0xe22c` after the
+    context stack and environment snapshots have been consumed.
 
 ### Writers
 
@@ -256,7 +278,9 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   `ESC &f` auto-prefix bytes through `0xe002`, and clear empty or
   auto-prefix-only records through `0xdfba`.
 - `0xde7c..0xdec4` validate execute/call records and call `0xe418`.
-- `0xe418` writes the data-chain frame later consumed by `0xa904`.
+- `0xe418` writes the data-chain frame later consumed by `0xa904`, writes
+  the environment snapshot pointer at frame `+0x0a`, and pushes the
+  call-only context entry at `0x782c6e`.
 - The alternate parser table at `0x116f6` writes stored definition payload
   bytes rather than dispatching ordinary control-code handlers.
 
@@ -267,6 +291,9 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
 - `0xa904` consumes the frame bytes as its active data-chain source,
   dispatches end transitions through `0xe22c`, and then returns replayed
   bytes to the parser.
+- `0xe22c` consumes frame `+0x09`, frame `+0x0a`, `0x782c6e`, and
+  environment buffers to unwind execute/call frames after replay; the
+  exact call-return restore edge remains unresolved.
 - Parser loop `0x11774` consumes replayed bytes and routes simple replay
   to `0xd04a` and `0xf02c`; mixed-control replay also reaches `0xedf8`.
 - Page-record and render consumers use the shared allocation model:
@@ -289,11 +316,12 @@ mode-0 raster band output in the existing page-record fixture.
 
 High for parser reachability, selector meanings, record count/stride,
 current id storage, definition stop behavior, execute/call frame mode
-bytes, `0xa904` replay, and page-record/render effects because those are
-covered by disassembly, generated parser-table reports, and executable
-fixtures. Medium for macro chunk allocator internals, complete frame
-layout, and call environment restoration because only the fields needed
-by current replay fixtures are pinned.
+bytes, frame field offsets `+0x00/+0x04/+0x08/+0x09/+0x0a`, call-only
+context-stack push, `0xa904` replay, and page-record/render effects
+because those are covered by disassembly, generated parser-table
+reports, and executable fixtures. Medium for macro chunk allocator
+internals and call environment restoration because only the fields
+needed by current replay fixtures are pinned.
 
 ### Fixtures
 
@@ -303,6 +331,7 @@ by current replay fixtures are pinned.
 - `macro command stream defines payload and executes data-chain frame`
 - `host-fetched macro execute stream builds replay frame`
 - `host-fetched macro call stream builds replay frame`
+- `0xe418 frame metadata distinguishes execute and call context`
 - `macro execute frame payload feeds 0xa904 data-chain bytes`
 - `macro execute data-chain parser trace feeds page-record stream`
 - `macro call data-chain parser trace feeds page-record stream`
@@ -317,6 +346,9 @@ by current replay fixtures are pinned.
 - `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`:
   `0xdd08..0xdfb8`, including selector dispatch, record pool scans, and
   execute/call calls to `0xe418`.
+- `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`:
+  `0xdfba..0xe4f2`, including record clear, append, lookup/allocation,
+  parser reset, frame cleanup, frame end, and `0xe418` frame creation.
 - `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`:
   normal versus alternate parser table selection.
 - `generated/analysis/ic30_ic13_parser_dispatch_tables.md`:
@@ -337,10 +369,12 @@ by current replay fixtures are pinned.
   count update rules behind record `+0x04`.
 - `0xe0a4..0xe110`: record lookup/allocation policy for the 32-entry pool
   when ids collide, records are temporary/permanent, or allocation fails.
-- `0xe418..0xe496`: complete 14-byte data-chain frame layout, frame-link
-  lifecycle, and execute/call environment snapshot boundaries.
-- `0x782c6e..0x782d36`: call-mode context stack fields saved/restored
-  around macro call replay.
+- `0xe8f0`, `0xe8a2`, `0xe972`, and `0xe996`: environment snapshot
+  allocation, copy, and restore helpers used by execute/call frames.
+- `0xe22c..0xe408`: frame-end restoration path, including call-return
+  context restore and publication/flush side effects.
+- `0x782c6e..0x782d36`: context stack capacity, overflow policy, and full
+  restore semantics around macro call replay.
 
 ## Mixed Text/Rule/Raster Page Record
 

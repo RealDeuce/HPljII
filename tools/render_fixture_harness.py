@@ -1260,6 +1260,9 @@ def trace_macro_parser_dispatch_via_11774(
     state = macro_state() if initial_state is None else dict(initial_state)
     state["records"] = [dict(record) for record in state["records"]]
     state["data_chain_frames"] = list(state.get("data_chain_frames", []))
+    state["data_chain_frame_metadata"] = list(state.get("data_chain_frame_metadata", []))
+    state["environment_snapshots"] = list(state.get("environment_snapshots", []))
+    state["context_stack_entries"] = list(state.get("context_stack_entries", []))
     state["events"] = list(state.get("events", []))
 
     def dispatch(byte: int, offset: int) -> dict[str, object]:
@@ -1352,6 +1355,9 @@ def trace_macro_definition_parser_dispatch_via_11774(
     state = macro_state() if initial_state is None else dict(initial_state)
     state["records"] = [dict(record) for record in state["records"]]
     state["data_chain_frames"] = list(state.get("data_chain_frames", []))
+    state["data_chain_frame_metadata"] = list(state.get("data_chain_frame_metadata", []))
+    state["environment_snapshots"] = list(state.get("environment_snapshots", []))
+    state["context_stack_entries"] = list(state.get("context_stack_entries", []))
     state["events"] = list(state.get("events", []))
 
     def dispatch(byte: int, offset: int, alternate: bool) -> dict[str, object]:
@@ -2619,8 +2625,12 @@ def macro_state(**overrides: object) -> dict[str, object]:
         "parser_mode": 0,
         "overlay_macro_id": 0,
         "data_chain_frames": [],
+        "data_chain_frame_metadata": [],
         "host_gate_bit1": 0,
         "data_chain_slot": 0,
+        "environment_snapshots": [],
+        "context_stack_ptr": 0x782C1E,
+        "context_stack_entries": [],
         "events": [],
     }
     state.update(overrides)
@@ -2667,6 +2677,10 @@ def execute_macro_data_chain_via_e418(state: dict[str, object], index: int, mode
     records = list(state["records"])
     record = dict(records[index])
     payload = bytes(record.get("payload", b""))
+    slot = int(state.get("data_chain_slot", 0)) + 1
+    frame_addr = 0x782D3E + (slot * 0x0E)
+    snapshot_source = 0x783192 if mode == 2 else 0x782D9E
+    snapshot_ptr = 0x00D10000 + (len(state.get("environment_snapshots", [])) * 0x100)
     frame = {
         "payload": payload,
         "byte_count": len(payload),
@@ -2674,10 +2688,46 @@ def execute_macro_data_chain_via_e418(state: dict[str, object], index: int, mode
         "byte_9": mode,
         "environment": "execute" if mode == 2 else "call",
     }
+    metadata: dict[str, object] = {
+        "frame_addr": frame_addr,
+        "frame_size": 0x0E,
+        "payload_ptr_source": "record+0x00",
+        "byte_count_source": "record+0x04",
+        "env_snapshot_source": snapshot_source,
+        "env_snapshot_target": 0x78319A,
+        "env_snapshot_ptr": snapshot_ptr,
+    }
     frames = list(state.get("data_chain_frames", []))
     frames.append(frame)
     state["data_chain_frames"] = frames
-    state["data_chain_slot"] = int(state.get("data_chain_slot", 0)) + 1
+    metadata_entries = list(state.get("data_chain_frame_metadata", []))
+    snapshots = list(state.get("environment_snapshots", []))
+    snapshots.append({
+        "ptr": snapshot_ptr,
+        "source": snapshot_source,
+        "target": 0x78319A,
+        "mode": mode,
+    })
+    if mode != 2:
+        context_ptr = int(state.get("context_stack_ptr", 0x782C1E))
+        context_entry = {
+            "addr": context_ptr,
+            "long_0_source": 0x782EE6,
+            "long_4_source": 0x782EF6,
+            "byte_8": 0,
+            "byte_9": 0,
+        }
+        context_entries = list(state.get("context_stack_entries", []))
+        context_entries.append(context_entry)
+        state["context_stack_entries"] = context_entries
+        state["context_stack_ptr"] = context_ptr + 0x0A
+        metadata["context_stack_entry"] = context_entry
+    else:
+        metadata["context_stack_entry"] = None
+    metadata_entries.append(metadata)
+    state["data_chain_frame_metadata"] = metadata_entries
+    state["environment_snapshots"] = snapshots
+    state["data_chain_slot"] = slot
     if payload:
         state["host_gate_bit1"] = 1
     events = list(state.get("events", []))
@@ -2735,6 +2785,9 @@ def apply_macro_control_via_dd08(state: dict[str, object], parameter: int, final
     updated = dict(state)
     updated["records"] = [dict(record) for record in state["records"]]
     updated["data_chain_frames"] = list(state.get("data_chain_frames", []))
+    updated["data_chain_frame_metadata"] = list(state.get("data_chain_frame_metadata", []))
+    updated["environment_snapshots"] = list(state.get("environment_snapshots", []))
+    updated["context_stack_entries"] = list(state.get("context_stack_entries", []))
     updated["events"] = list(state.get("events", []))
     selector = abs(int(parameter))
     current_id = int(updated.get("current_macro_id", 0)) & 0xFFFF
@@ -2863,6 +2916,9 @@ def render_macro_command_stream_via_e112_dd08(stream: bytes, initial_state: dict
     state = macro_state() if initial_state is None else dict(initial_state)
     state["records"] = [dict(record) for record in state["records"]]
     state["data_chain_frames"] = list(state.get("data_chain_frames", []))
+    state["data_chain_frame_metadata"] = list(state.get("data_chain_frame_metadata", []))
+    state["environment_snapshots"] = list(state.get("environment_snapshots", []))
+    state["context_stack_entries"] = list(state.get("context_stack_entries", []))
     state["events"] = list(state.get("events", []))
     stream_events: list[dict[str, object]] = []
     pos = 0
@@ -18600,6 +18656,51 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "host_gate_bit1": 1,
             "data_chain_slot": 1,
         },
+    }))
+    checks.append(assert_equal("0xe418 frame metadata distinguishes execute and call context", {
+        "execute_metadata": macro_execute["data_chain_frame_metadata"],
+        "execute_context_ptr": macro_execute["context_stack_ptr"],
+        "execute_context_entries": macro_execute["context_stack_entries"],
+        "call_metadata": macro_call["data_chain_frame_metadata"],
+        "call_context_ptr": macro_call["context_stack_ptr"],
+        "call_context_entries": macro_call["context_stack_entries"],
+    }, {
+        "execute_metadata": [{
+            "frame_addr": 0x782D4C,
+            "frame_size": 0x0E,
+            "payload_ptr_source": "record+0x00",
+            "byte_count_source": "record+0x04",
+            "env_snapshot_source": 0x783192,
+            "env_snapshot_target": 0x78319A,
+            "env_snapshot_ptr": 0x00D10000,
+            "context_stack_entry": None,
+        }],
+        "execute_context_ptr": 0x782C1E,
+        "execute_context_entries": [],
+        "call_metadata": [{
+            "frame_addr": 0x782D4C,
+            "frame_size": 0x0E,
+            "payload_ptr_source": "record+0x00",
+            "byte_count_source": "record+0x04",
+            "env_snapshot_source": 0x782D9E,
+            "env_snapshot_target": 0x78319A,
+            "env_snapshot_ptr": 0x00D10000,
+            "context_stack_entry": {
+                "addr": 0x782C1E,
+                "long_0_source": 0x782EE6,
+                "long_4_source": 0x782EF6,
+                "byte_8": 0,
+                "byte_9": 0,
+            },
+        }],
+        "call_context_ptr": 0x782C28,
+        "call_context_entries": [{
+            "addr": 0x782C1E,
+            "long_0_source": 0x782EE6,
+            "long_4_source": 0x782EF6,
+            "byte_8": 0,
+            "byte_9": 0,
+        }],
     }))
     macro_overlay = apply_macro_control_via_dd08(macro_with_payload, 4)
     macro_overlay_clear = apply_macro_control_via_dd08(macro_overlay, 5)
@@ -45747,6 +45848,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- `0xe112` stores the absolute parsed macro id word in `0x783164`.")
     lines.append("- Selector `0` starts macro definition, clears/reuses the selected 12-byte record, sets alternate/data mode, and for lowercase `x` seeds the stored byte stream with `ESC &f`; selector `1` stops definition and clears empty/auto-prefix-only records.")
     lines.append("- Selectors `2` and `3` replay an existing macro by pushing a data-chain frame whose byte `+8` is `4` and byte `+9` is the execute/call selector.")
+    lines.append("- `0xe418` writes frame `+0x00/+0x04` from macro record `+0x00/+0x04`, stores an environment snapshot pointer at frame `+0x0a`, and only call mode pushes a 10-byte context-stack entry from `0x782ee6` / `0x782ef6`.")
     lines.append("- Selectors `4`/`5` enable/disable overlay state, `6`/`7`/`8` delete all/temporary/current macros, and `9`/`10` toggle the temporary/permanent byte at record `+0x0a`.")
     lines.append("")
     lines.append(f"- assigned macro id: `{macro_id_state['current_macro_id']}`")
@@ -45847,7 +45949,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- macro execute payload page-record layer composes with a selector-7 rule and mode-0 raster row; composed row 12: `{macro_band_composed_rows[12]}`")
     lines.append(f"- lowercase start payload: `{macro_start['records'][0]['payload']!r}`, stop event `{macro_stop_empty['events'][-1]}`")
     lines.append(f"- execute frame: `{macro_execute['data_chain_frames'][0]}`")
+    lines.append(f"- execute frame metadata: `{macro_execute['data_chain_frame_metadata'][0]}`")
     lines.append(f"- call frame: `{macro_call['data_chain_frames'][0]}`")
+    lines.append(f"- call frame metadata: `{macro_call['data_chain_frame_metadata'][0]}`")
     lines.append(f"- permanent survives delete-temporary: `{macro_delete_temporary['records'][0]}`")
     lines.append("")
 

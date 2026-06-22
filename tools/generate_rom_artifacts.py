@@ -144,6 +144,7 @@ def generate_disassembly(firmware: Path) -> None:
         ("ic30_ic13_esc_e_reset_00cc52.lst", "0xcc52", "0xcc52", "0x140"),
         ("ic30_ic13_esc_e_environment_reset_00cda2.lst", "0xcda2", "0xcda2", "0x260"),
         ("ic30_ic13_esc_e_parser_state_reset_00e146.lst", "0xe146", "0xe146", "0x160"),
+        ("ic30_ic13_macro_record_chain_helpers_00dfba.lst", "0xdfba", "0xdfba", "0x540"),
         ("ic30_ic13_printable_text_path_00d04a.lst", "0xd04a", "0xd04a", "0xa40"),
         ("ic30_ic13_control_code_handlers_00f02c.lst", "0xf02c", "0xf02c", "0x540"),
         ("ic30_ic13_wrap_mode_handler_00edb0.lst", "0xedb0", "0xedb0", "0x70"),

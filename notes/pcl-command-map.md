@@ -405,8 +405,11 @@ definition, `1` stops definition, `2` executes, `3` calls, `4`/`5`
 enable/disable overlay, `6` deletes all, `7` deletes temporary, `8`
 deletes current id, and `9`/`10` mark temporary/permanent. Execute/call
 route through `0xe418`, which builds a data-chain frame with byte
-`+8 = 4` and byte `+9 = 2` or `3`. The executable harness now pins these
-command side effects and frame metadata, plus chained `ESC &f-123y0x1X`,
+`+8 = 4`, byte `+9 = 2` or `3`, macro record `+0x00/+0x04` copied into
+frame `+0x00/+0x04`, and an environment snapshot pointer at frame
+`+0x0a`; call mode also pushes a 10-byte context-stack entry through
+`0x782c6e`. The executable harness now pins these command side effects
+and frame metadata, plus chained `ESC &f-123y0x1X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f2X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f3X`,
 `ESC &f123Y ESC &f0X ! CR ESC &f1X ESC &f4X ESC &f5X`,
@@ -913,7 +916,6 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
   compatibility-facing documentation. The default-font candidate and
   caller path is now real-record backed through `0x1b250`, `0x1b50e`,
   `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
-- Decode the macro chunk allocator, complete `0xe418` data-chain frame,
-  and call-environment context stack now that stored payload replay is
-  composed through `0xa904`, parser dispatch, page records, and render
-  entry.
+- Decode the macro chunk allocator, `0xe8f0`/`0xe8a2`/`0xe972`
+  environment snapshot helpers, and `0xe22c` call-return restoration now
+  that the `0xe418` frame layout and call-context push are pinned.

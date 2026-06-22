@@ -3,6 +3,7 @@
 Sources: `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`;
 `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`;
 `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`;
+`generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`;
 `generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`;
 `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`;
 `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`;
@@ -540,12 +541,15 @@ and `0x66` at chunk offsets `+4`, `+5`, and `+6`.
 
 Selectors `2` and `3` require an existing record with payload bytes and
 call `0x0000e418` with mode byte `2` for execute or `3` for call.
-`0xe418` builds the next 14-byte data-chain frame from the macro record
-payload pointer and byte count, stores byte `+8 = 4`, stores byte
-`+9 = mode`, sets host gate bit 1 when the byte count is nonzero, and
-advances `0x782d76`. Call mode also saves the current font-context pair
-into the context stack around `0x782c6e`; execute and call use different
-environment snapshot buffers.
+`0xe418` advances `0x782d76` by `0x0e` and builds the next 14-byte
+data-chain frame: frame `+0x00/+0x04` copy macro record `+0x00/+0x04`,
+byte `+8 = 4`, byte `+9 = mode`, and longword `+0x0a` receives the
+environment snapshot pointer returned by `0xe8f0`. Execute mode snapshots
+`0x783192 -> 0x78319a`; call mode snapshots `0x782d9e -> 0x78319a`.
+Nonzero byte counts set host gate bit 1. Call mode additionally pushes a
+10-byte context-stack entry at `0x782c6e`, copying longwords from
+`0x782ee6` and `0x782ef6`, clearing bytes `+8/+9`, and advancing the
+stack pointer by `0x0a`; execute mode does not push this entry.
 
 `tools/render_fixture_harness.py` has executable fixtures for `0xe112`,
 the `0xdd08` start/stop/delete/overlay/permanent selector behavior, and
@@ -667,10 +671,9 @@ control-code anchor.
   names.
 - Decode the six-byte tokenizer records and 12-byte command/data pool
   records.
-- Decode the macro chunk allocator, complete `0xe418` data-chain frame,
-  and call-environment context stack now that simple and mixed-control
-  macro payload replay drains through `0xa904`, parser handlers, the
-  page-record bridge, and render entry.
+- Decode the macro chunk allocator plus `0xe8f0`/`0xe8a2`/`0xe972`
+  snapshot helpers and `0xe22c` call-return restoration now that the
+  `0xe418` frame layout and call-context push are pinned.
 - Replace the remaining synthetic `ESC E` roots with fuller
   parser-allocated page objects; the current host-fetched publication
   fixtures already prove the modeled `0xff1e` publication headers,

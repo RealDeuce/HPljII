@@ -164,6 +164,18 @@ def format_markdown(text: str, width: int) -> str:
     return result
 
 
+def git_whitespace_failures(root: Path) -> list[str]:
+    failures: list[str] = []
+    for diff_args in (["diff", "--check"], ["diff", "--cached", "--check"]):
+        diff_check = run_git(root, diff_args)
+        if diff_check.returncode != 0:
+            output = "\n".join(
+                part for part in [diff_check.stdout, diff_check.stderr] if part
+            )
+            failures.append(output.strip())
+    return failures
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Format notes Markdown by wrapping prose paragraphs.",
@@ -193,7 +205,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--check",
         action="store_true",
-        help="report files that would change and run git diff --check",
+        help="report files that would change; whitespace is always checked",
     )
     return parser.parse_args()
 
@@ -231,14 +243,7 @@ def main() -> int:
     if args.check and changed:
         failures.extend(f"would format {path.relative_to(root)}" for path in changed)
 
-    if args.check:
-        for diff_args in (["diff", "--check"], ["diff", "--cached", "--check"]):
-            diff_check = run_git(root, diff_args)
-            if diff_check.returncode != 0:
-                output = "\n".join(
-                    part for part in [diff_check.stdout, diff_check.stderr] if part
-                )
-                failures.append(output.strip())
+    failures.extend(git_whitespace_failures(root))
 
     if failures:
         print("\n".join(failures), file=sys.stderr)

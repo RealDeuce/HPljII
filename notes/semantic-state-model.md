@@ -728,8 +728,8 @@ full 68000 interpreter through every source class and allocator branch.
 
 ## Built-In Font Selection To Visible Text
 
-Status: composed as a parsed command-family to visible-output checkpoint for
-one primary built-in selection stream. The low-level font-selection ledger
+Status: composed as parsed command-family to visible-output checkpoints for
+primary and secondary built-in selection streams. The low-level font-selection ledger
 remains in [font-context-metrics.md](font-context-metrics.md); this section
 records the renderer-facing semantic contract for the selected state.
 
@@ -739,7 +739,10 @@ glyph map through `0x14c64`, and supplies selected context `0xc008004c` to the
 same printable/page-record/render path used by ordinary text. Appending `!!`
 therefore queues two Courier glyph-0 compact entries and renders pixels from
 the selected built-in resource record, not from the default Line Printer
-context.
+context. `ESC )s0p16h8v0s0b0T SO !!` follows the secondary version of the
+same contract: the secondary selection writes context `0xc00ae122`, SO selects
+slot 1 through `0xc6b8`, and the two printable bytes render from that
+class-one Line Printer context.
 
 ### Field Groups
 
@@ -754,39 +757,58 @@ context.
   - `0x782ee6 +0x00`: selected longword `0xc008004c`.
   - `0x782ee6 +0x04`: bit-30-derived byte `1`.
   - `0x782ee6 +0x05`: bit-26-derived byte `0`.
+  - `0x782ef6 +0x00`: secondary selected longword `0xc00ae122`.
+  - `0x782ef6 +0x04`: bit-30-derived byte `1`.
+  - `0x782ef6 +0x05`: bit-26-derived byte `0`.
   - built-in resource base `0x00004c`, first/last host range
     `0x21..0xfe`, glyph entry `0x001088` for host byte `0x21`.
+  - secondary built-in resource base `0x02e122`, first/last host range
+    `0x21..0xff`, glyph entry `0x02e4f6` for host byte `0x21`.
   Evidence: fixtures `0x13eb8 refresh carries parsed primary font selection to
-  dispatch` and `parsed primary built-in font selection feeds visible
-  page-record rows`.
+  dispatch`, `0x13eb8 refresh carries parsed secondary font selection to
+  dispatch`, `parsed primary built-in font selection feeds visible
+  page-record rows`, and
+  `parsed secondary built-in font selection feeds visible SO page-record rows`.
 - Canonical visible page-record fields:
-  - compact text object prefix:
+  - primary compact text object prefix:
     `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`.
-  - render-record context slot `0`: `0xc008004c`.
-  - compact coords: `0x6a00` and `0x6802`.
-  Evidence: fixture `parsed primary built-in font selection feeds visible
-  page-record rows`.
+  - secondary compact text object prefix:
+    `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`.
+  - render-record context slots: primary slot `0xc008004c`, secondary slot
+    `0xc00ae122`.
+  - primary compact coords: `0x6a00` and `0x6802`.
+  - secondary compact coords after SO: `0xc900` and `0xcb01`.
+  Evidence: fixtures `parsed primary built-in font selection feeds visible
+  page-record rows` and
+  `parsed secondary built-in font selection feeds visible SO page-record rows`.
 - Derived/cache state:
   - `0x7828a8`: selected candidate slot `0x782354`.
+  - secondary selected candidate slot `0x782350`.
   - `0x782f32`: rebuilt primary map, range `0x21..0xfe`, patch kind
     `unchanged`.
+  - `0x783032`: rebuilt secondary map, range `0x21..0xff`, patch kind
+    `selected-symbol-not-roman8`.
   - `0x783134`: primary mapped range register, `0x21..0xfe`.
   - HMI/default advance: built-in byte `+0x21 = 0`, long
     `+0x24 = 0x00780000`, converted by `0x10550` to packed advance `30`.
+  - secondary HMI/default advance: built-in byte `+0x21 = 0`, long
+    `+0x24 = 0x00480000`, converted by `0x10550` to packed advance `18`.
 - Parser scratch:
   - fetched stream bytes are split at byte 20: selection bytes
     `ESC (s0p10h12v0s0b3T`, printable bytes `!!`.
-  - printable parser events are two `0xd04a` entries after the selection
-    fixture supplies the selected context.
+  - the secondary fetched stream is split into selection bytes
+    `ESC )s0p16h8v0s0b0T` and printable/control bytes `SO !!`.
+  - printable parser events are two `0xd04a` entries for the primary fixture,
+    and `0xc6b8, 0xd04a, 0xd04a` for the secondary SO fixture.
 - Firmware bookkeeping:
   - `0x144d2` writes current-font context record `0x782ee6`.
   - `0x14c64` rebuilds map `0x782f32` and snapshots selected font state.
   - page-root allocation count is `1` when the printable phase queues the
     compact object.
 - Unknown:
-  - the live CPU-memory continuity from `0x782ee6` after `0x13eb8` into the
-    page-record runner is not yet captured; the fixture injects the pinned
-    selected longword into the printable phase.
+  - the live CPU-memory continuity from `0x782ee6` / `0x782ef6` after
+    `0x13eb8` into the page-record runner is not yet captured; the fixtures
+    inject the pinned selected longwords into the printable phase.
 
 ### Writers
 
@@ -795,7 +817,10 @@ context.
 - `0x13eb8` filters active candidates through `0x1569c`, `0x156de`,
   `0x153c6`, `0x1519a`, `0x147b2`, `0x14758`, and `0x14398`.
 - `0x144d2` writes selected context state at `0x782ee6`.
-- `0x14c64` rebuilds map `0x782f32`.
+- `0x144d2` writes secondary selected context state at `0x782ef6`.
+- `0x14c64` rebuilds maps `0x782f32` and `0x783032`.
+- SO handler `0xc6b8` selects secondary slot 1 before the secondary printable
+  bytes are consumed.
 - Printable `0xd04a` / `0x1393a` write the source object, and `0x12f2e` /
   `0x1387c` write the compact page-record object.
 
@@ -803,11 +828,18 @@ context.
 
 - `0x1393a` consumes selected context `0xc008004c` and map `0x782f32` to map
   host byte `0x21` to glyph `0x00`.
+- After SO, `0x1393a` consumes selected context `0xc00ae122` and map
+  `0x783032` to map host byte `0x21` to glyph `0x00`.
 - `0xd824` consumes built-in glyph offsets from entry `0x001088`, producing
   positioned sources `(10,-10)` and `(40,-10)`.
-- `0x1edc6` copies context slot `0xc008004c` into the render record.
+- `0xd824` also consumes secondary built-in glyph entry `0x02e4f6`, producing
+  positioned sources `(9,12)` and `(27,12)` in the secondary fixture.
+- `0x1edc6` copies context slots `0xc008004c` and `0xc00ae122` into the render
+  record.
 - `0x1f354` / compact renderer helper `0x1fe76` consume that selected context
   and glyph `0` to draw two Courier glyph rows.
+- Compact renderer helper `0x207ac` consumes secondary context `0xc00ae122`
+  and glyph `0` to draw two secondary Line Printer glyph rows.
 
 ### Output Effect
 
@@ -820,6 +852,17 @@ glyph-0 shapes at x `10` and x `40`, with the first nonblank row:
 
 The final printable state has cursor x `60`, cursor y `21`, HMI `30`, and one
 page-record root allocation.
+
+The secondary fixture renders two class-one Line Printer glyph-0 shapes after
+SO selects slot 1. The first visible row is:
+
+```text
+.........################..################...###
+```
+
+The final secondary printable state has cursor x `66`, cursor y `21`, HMI
+`18`, selector `1`, one `0xc6b8` install call, and one page-record root
+allocation.
 
 ### Confidence
 
@@ -834,7 +877,9 @@ continuous CPU-state execution.
 
 - `parsed font-selection stream writes primary font-state fields`
 - `0x13eb8 refresh carries parsed primary font selection to dispatch`
+- `0x13eb8 refresh carries parsed secondary font selection to dispatch`
 - `parsed primary built-in font selection feeds visible page-record rows`
+- `parsed secondary built-in font selection feeds visible SO page-record rows`
 
 ### Disassembly Evidence
 
@@ -851,10 +896,11 @@ continuous CPU-state execution.
 
 - `0x1205a..0x13eb8`: parsed request to refresh is behaviorally composed, but
   a continuous CPU-state trace has not been captured for this stream.
-- `0x782ee6 +0x00..+0x0f` into `0xd04a..0x1393a`: selected current-context
-  RAM is injected from the pinned refresh result; live handoff remains open.
-- Additional primary/secondary font-selection combinations still need the same
-  visible-output treatment.
+- `0x782ee6 +0x00..+0x0f` and `0x782ef6 +0x00..+0x0f` into
+  `0xd04a..0x1393a`: selected current-context RAM is injected from the pinned
+  refresh results; live handoff remains open.
+- Additional primary/secondary font-selection combinations and fallback/error
+  branches still need the same visible-output treatment.
 
 ## Text Span Flush And Fixed-Width Spans
 

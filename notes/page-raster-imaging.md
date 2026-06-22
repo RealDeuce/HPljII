@@ -751,6 +751,13 @@ renders two Courier glyph-0 shapes. The remaining caveat is the same live
 handoff called out in `notes/semantic-state-model.md`: the selected context
 longword is injected from the pinned `0x13eb8` result instead of captured from
 one continuous CPU-memory run.
+Fixture
+`parsed secondary built-in font selection feeds visible SO page-record rows`
+adds the secondary mirror: `ESC )s0p16h8v0s0b0T` selects context
+`0xc00ae122`, SO handler `0xc6b8` selects slot `1`, printable bytes `!!`
+queue object prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and the
+render record carries context slots `(0xc008004c, 0xc00ae122)` before compact
+helper `0x207ac` renders two secondary Line Printer glyph rows.
 The generated `ic30_ic13_active_symbol_set_flow.md` report traces
 `ESC (` / `ESC )` through `0x120be` and `0x1be22`: normal symbol-set
 finals compute PCL codes as `(parameter << 5) + suffix`, store requested

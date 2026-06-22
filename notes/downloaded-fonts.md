@@ -66,6 +66,7 @@ Primary fixtures:
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `host-fetched metric variant changes d4ac gate and d8fc rows`
+- `host-fetched clamped metric variant changes d4ac gate and d8fc rows`
 - `0x16498-backed downloaded character object renders segmented-wide compact row`
 - `downloaded character stream ties ROM parser dispatch to rendered object`
 - `host-fetched downloaded character stream reaches rendered object`
@@ -196,6 +197,14 @@ Renderer-facing allocated payload fields:
   page-extent gate at extent `40`; the variant `+0x2d = 0x10` queues the
   span, and the changed `+0x1a` moves `0xd8fc` high-y to `19` with
   segment-list key `0x3406`.
+- clamped metric-variant descriptor bytes: fixture `host-fetched clamped
+  metric variant changes d4ac gate and d8fc rows` lowers range/count word
+  `+0x14` to `5`, sends an oversized rounded-metric input through `0x1757a`,
+  and makes `0x1719c` copy payload word `+0x2c = 0x0014`. Byte `+0x2b`
+  remains `0` for this payload family. The default `+0x2d = 0x20` fails the
+  `0xd4ac` page-extent gate at extent `41`; clamped `+0x2d = 0x14` queues the
+  span. The same descriptor copies `+0x18 = 0` and `+0x1a = 3`, moving
+  `0xd8fc` high-y to `18` with segment-list key `0x2406`.
 
 Unknown:
 
@@ -1043,8 +1052,9 @@ A byte-stream renderer must preserve:
   line/count, high line/count, reversed-range, high range/count, and
   invalid-class resource paths now have host-fetched
   parser/validation/no-install boundaries and following-printable page output.
-  A host-fetched metric-value variant now proves copied
-  descriptor fields can flip the `0xd4ac` page-extent gate and move `0xd8fc`
-  rendered rows. Broader downloaded/inline metric-byte cross-products and the
-  producer-side validation/error forms beyond those seven bounded predicate
-  branches still need parser-produced page evidence.
+  Two host-fetched metric-value variants now prove copied descriptor fields
+  can flip the `0xd4ac` page-extent gate, exercise rounded-metric clamping
+  into `+0x2c/+0x2d`, and move `0xd8fc` rendered rows. Broader
+  downloaded/inline metric-byte cross-products and the producer-side
+  validation/error forms beyond those seven bounded predicate branches still
+  need parser-produced page evidence.

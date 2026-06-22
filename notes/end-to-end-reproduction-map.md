@@ -200,9 +200,14 @@ pixels or byte-stream compatibility.
    both source forms. Fixture `host-fetched metric variant changes d4ac gate
    and d8fc rows` proves one parser-produced metric-value variant: copied
    `+0x2c/+0x2d` flips a tight `0xd4ac` page-extent gate, and copied `+0x1a`
-   moves `0xd8fc` visible rows. The open edge is broader descriptor
-   metric-byte cross-products and producer-side validation/error combinations,
-   not the tested type-0/type-1/type-2, metric-variant, or shared consumer
+   moves `0xd8fc` visible rows. Fixture `host-fetched clamped metric variant
+   changes d4ac gate and d8fc rows` proves a second parser-produced variant:
+   range/count `+0x14 = 5` clamps an oversized rounded metric input into
+   `+0x2c/+0x2d = 0x0014`, leaves `+0x2b = 0`, flips another tight `0xd4ac`
+   gate, and moves `0xd8fc` rows through copied `+0x18 = 0` and
+   `+0x1a = 3`. The open edge is broader descriptor metric-byte cross-products
+   and producer-side validation/error combinations, not the tested
+   type-0/type-1/type-2, metric-variant, clamped-variant, or shared consumer
    middle edges. Evidence:
    `notes/semantic-state-model.md` under `Text Span Flush And Fixed-Width
    Spans`.
@@ -260,11 +265,12 @@ The next work should follow dataflow, not isolated handlers:
    descriptor/payload producer chain, and host-stream downloaded glyph output
    are now tracked. Host-fetched `0x1719c` type-0, type-1, and type-2 payloads
    reach both `d4ac` and `d8fc` span rows, and the shared
-   disabled/lower/page/high-x consumer branch family is fixture-backed. One
-   parser-produced metric-value variant also flips a `d4ac` gate and moves
-   `d8fc` visible rows. The missing middle is broader descriptor
-   metric-value cross-products and page-visible behavior for validation/error
-   forms beyond the seven bounded predicate no-install fixtures.
+   disabled/lower/page/high-x consumer branch family is fixture-backed. Two
+   parser-produced metric-value variants also flip `d4ac` gates, cover one
+   rounded-metric clamp into `+0x2c/+0x2d`, and move `d8fc` visible rows. The
+   missing middle is broader descriptor metric-value cross-products and
+   page-visible behavior for validation/error forms beyond the seven bounded
+   predicate no-install fixtures.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream and the downloaded-glyph FF
    publication stream. The next suite cases should add built-in font-selection

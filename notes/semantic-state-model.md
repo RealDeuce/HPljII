@@ -477,12 +477,15 @@ modeled source/object structures rather than a full live CPU-memory run.
   parser-produced pages across every source class.
 - `0xf34a..0x12714` and `0xf34a..0x126e2`: pending span flush and
   re-arm state are composed in `Text Span Flush And Fixed-Width Spans`;
-  remaining work is the allocator-failure retry branch and live
-  nonempty-list insertion coverage.
+  allocation-failure retry publication and nonempty fixed-list insertion are
+  fixture-backed there. The remaining direct-control edge is a broader
+  host-fetched stream that reaches those two span branches from real CR,
+  margin, or cursor movement instead of starting at the composed span helper
+  state.
 - `0xd4ac..0xd8fc`: active font/context span update helpers are
   composed as watermark writers in `Text Span Flush And Fixed-Width
-  Spans`; remaining work is exhaustive context-record naming for every
-  font class.
+  Spans`; remaining work is the untested descriptor metric producer
+  cross-product documented in `notes/font-context-metrics.md`.
 - `0x11f5a..0x12452`: transparent-text delayed payload restore, control
   filtering, printable re-entry, and fixed-space output are composed in
   `Transparent Print Data`. Remaining work is the unflagged
@@ -1387,12 +1390,16 @@ queues a fixed-width span through `0x136d2`.
 - Unknown:
   - selected-context ownership for unflagged context fields `+0x2b`,
     `+0x2c`, and `+0x2d` is documented in
-    `notes/font-context-metrics.md`; the remaining gap is proving every
-    built-in/downloaded metric-byte form from parser-produced pages.
+    `notes/font-context-metrics.md`; the remaining gap is the untested
+    cross-product of descriptor metric fields across downloaded and inline
+    forms, not the fixture-backed type-0/type-1/type-2, low-bound,
+    high-bound, clamped, or consumer branch cases.
   - selected-context ownership for flagged context fields `+0x16`,
     `+0x18`, and `+0x1a` is documented in
-    `notes/font-context-metrics.md`; the remaining gap is proving every
-    built-in/downloaded metric-byte form from parser-produced pages.
+    `notes/font-context-metrics.md`; the remaining gap is the untested
+    cross-product of descriptor metric fields across downloaded and inline
+    forms, not the fixture-backed type-0/type-1/type-2, low-bound,
+    high-bound, clamped, or consumer branch cases.
 
 ### Writers
 

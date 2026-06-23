@@ -746,8 +746,14 @@ full 68000 interpreter through every source class and allocator branch.
   dense live-parser coverage remains under page-record allocator work.
 - `0xd4ac..0xd548` and `0xd8fc..0xd992`: span watermark writes and the
   downstream `0x12714` / `0x126e2` handoff are composed in
-  `Text Span Flush And Fixed-Width Spans`; remaining unresolved edges
-  are the allocator-failure retry and split/nonempty insertion branches.
+  `Text Span Flush And Fixed-Width Spans`. That section covers
+  downstream `0x12714` allocation-failure retry, `0x1354a` portrait
+  split insertion, and `0x136d2` landscape nonempty fixed-list insertion
+  with fixtures `0x12714 allocation failure publishes page and retries
+  span`, `0x1354a portrait text span split queues adjacent buckets`, and
+  `0x12714 landscape span inserts into nonempty fixed list`. The remaining
+  unresolved edge here is the earlier printable source-handoff allocation
+  failure path at `0xd47a..0xd4a0` / `0xd8ca..0xd8f0`.
 - `0x12f2e..0x1306e`: short and segmented producer shapes are
   fixture-backed, but a full live CPU/register trace through every
   selector mode into real allocator memory remains open.

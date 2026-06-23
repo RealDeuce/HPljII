@@ -1061,6 +1061,162 @@ resources because no image is available in this repo.
   but final baseline/cell/manual semantics remain unresolved and are
   tracked in [resource-rom.md](resource-rom.md).
 
+## Built-In Font Sample Printout Loop
+
+Status: anchored as the firmware font-sample page generator from
+resource candidate windows to printable sample bytes. It is not yet a
+complete page-object reproduction checkpoint, but it composes the ROM
+helpers that should replace the older direct `LASERJETII` smoke sample
+for built-in baseline/cell correlation.
+
+Concept: the sample printout is firmware-generated text, not host input.
+Routine `0x1c204` checks whether font records exist, runs class-zero and
+class-one passes, selects candidate rows, installs each selected resource
+into the same current-font/page-root state as normal printing, then emits
+labels, metric columns, and ROM sample byte runs through printable
+handler `0xd04a`. This makes the sample page a built-in reference path
+for how resource records become ordinary page-record text.
+
+### Field Groups
+
+- Canonical candidate/sample state:
+  - `0x78278e`: accepted resource count checked by `0x1c204`.
+  - `0x782798` and `0x782790`: class-zero and class-one pass counts
+    tested by `0x1c28e..0x1c2c4`.
+  - `0x78287c` / `0x7827b8`: active candidate window supplied to row
+    helpers such as `0x1b50e`.
+  - current and alternate selected contexts installed by `0x1c5e8` /
+    `0x1cece` and consumed by `0xd04a`.
+  - sample byte-run tables at `0x1c1cf` and `0x1c1e9`, emitted by
+    `0x1cf34`.
+  - source/category labels selected by `0x1ca2c` from table `0x1c170`.
+- Canonical page/text environment:
+  - current page root ensured through `0x10084`.
+  - current vertical cursor `0x782c8e`, initialized by `0x1c916` to
+    `0x0024`.
+  - page-limit word `0x782db6`, checked by `0x1ca2c`, `0x1d050`,
+    `0x1d868`, and `0x1dcf2`.
+  - row-height/cache word `0x783f06`, written by `0x1ca2c` and
+    adjusted by `0x1d050`.
+  - current-font context record `0x782ee6`, page-root context slot, HMI,
+    and VMI are installed through the same `0xc428` / `0x14c64`
+    bridge used by parsed font selection.
+- Derived/cache state:
+  - `0x1c916` forces VMI/HMI defaults `0x0032` / `0x001e` and chooses
+    portrait/landscape header text from `0x782da3`.
+  - `0x1d050` derives the larger current/alternate row height and can
+    start a continuation heading when the projected y would exceed
+    `0x782db6`.
+  - `0x1cf34` uses a fixed horizontal gap of `0x31` units before
+    installing the alternate context and printing sample run 2 when
+    `0x783132` is set.
+  - direct payload-render row hashes for the two ROM sample byte runs
+    are evidence targets, not canonical runtime state.
+- Parser scratch:
+  - sample output is not fetched through `0xa904`; helpers such as
+    `0x1d12e`, `0x1d6ea`, and `0x1d71e` call printable handler
+    `0xd04a` directly for each emitted byte.
+  - `0x1d76c` synthesizes a six-byte orientation command record at
+    `0x78299e` before calling normal orientation handler `0x10220`.
+- Firmware bookkeeping:
+  - `0x783f0a`: recent-context list that suppresses duplicate sample
+    rows, tracking up to 16 contexts.
+  - local page-break word `-6(A6)`: receives the return flag from
+    `0x1cf34`.
+  - class-pass counter in the `0x1c28e..0x1c344` loop.
+- Unknown:
+  - exact page-object bytes emitted by the full `0x1c204` printout loop
+    have not yet been modeled from the sample byte runs.
+  - record `+0x28..+0x31` baseline/cell/manual semantics remain
+    unresolved until this path is correlated with emitted page objects or
+    a known printed sample.
+
+### Writers
+
+- `0x1c204` starts the sample printout and reports status `0xe3/0x51`
+  if no font records exist.
+- `0x1c28e..0x1c344` run class-zero and class-one passes, skipping empty
+  classes and finalizing/ejecting between passes through FF handler
+  `0xf0f0`.
+- `0x1c5e8` installs the selected resource into current-font/page-root
+  state, rebuilds the map through `0x14c64`, and refreshes page-root
+  font slot state through `0xc428`.
+- `0x1c916` initializes sample-page cursor and header state.
+- `0x1ca2c` emits source/category headings, flushes text through
+  `0x126e2` / `0x12714`, and writes row-height state.
+- `0x1cabe` emits row prefix, metric columns, and sample text through
+  `0xd04a`.
+- `0x1cf34` emits sample byte runs, advances horizontally, installs the
+  alternate context when needed, and writes the local page-break flag.
+- `0x1d76c` writes a synthetic orientation command record and delegates
+  to `0x10220`.
+
+### Readers And Consumers
+
+- `0x1b50e` supplies candidate rows from the active candidate windows.
+- `0x1c746`, `0x1c766`, `0x1c7a8`, and `0x1c710` normalize, extract
+  flags, and classify candidate rows before row emission.
+- `0x1d198` builds the font-name/style column and reads local lookup
+  tables at `0x1c0a6` and `0x1c11a` for labels such as `UPC/EAN`,
+  `OCR A`, `OCR B`, `LINE DRAW`, `COURIER`, and `LINE PRINTER`.
+- `0x1d6ea` emits capped strings through `0xd04a`; `0x1d71e`
+  sanitizes fixed-length name bytes before emission.
+- `0x1d964`, `0x1d868`, and `0x1dcf2` preflight current and alternate
+  row placement against `0x782db6`.
+- `0xd04a`, `0x1393a`, `0xd824` / `0xd3b2`, `0x12f2e`, `0x1ed84`, and
+  `0x1ef6a` are the downstream text/page/render consumers once the
+  sample helper emits bytes.
+
+### Output Effect
+
+The path prints ROM-selected labels, metric columns, and sample byte runs
+as ordinary text. `0x1d12e` proves ROM strings and sample bytes enter the
+same printable path as host bytes. Direct payload rendering of the two
+sample byte runs through first `COURIER` and first `LINE_PRINTER`
+produces stable row-hash pairs documented in
+`generated/analysis/ic30_ic13_font_sample_page.md`; those hashes are the
+current comparison targets for the later page-object model. Until the
+full `0x1c204` page-object loop is modeled, this checkpoint proves the
+producer and byte-emission semantics, not final full-page placement.
+
+### Confidence
+
+High for helper roles, class-pass loop structure, candidate-row
+traversal, current-font/page-root setup, printable byte emission,
+continuation checks, local label tables, and direct sample byte-run row
+hashes because they are anchored by generated disassembly analysis.
+Medium for final placement and baseline/cell interpretation because the
+full emitted page objects and physical/self-test comparison are still
+open.
+
+### Fixtures And Reports
+
+- `generated/analysis/ic30_ic13_font_sample_page.md`
+- `generated/analysis/ic32_ic15_builtin_font_samples.md`
+- `generated/analysis/ic32_ic15_builtin_glyph_payloads.md`
+- `generated/analysis/ic32_ic15_font_records.md`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`
+- `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`
+- `generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst`
+- `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
+- `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
+- `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`
+
+### Unresolved Middle Edges
+
+- `0x1c204..0x1cf34`: sample row selection, setup, and byte emission are
+  traced, but emitted page objects for the complete font printout are not
+  yet modeled from the ROM sample byte runs.
+- `0x1c334..0x1ed84`: the bridge from the sample printout's emitted text
+  into published page records remains to be compared against the direct
+  payload hashes and then a known printed/self-test sample.
+- `record +0x28..+0x31`: these fields participate in height and chooser
+  logic, but their final baseline/cell semantics need correlation against
+  observed sample-page placement.
+
 ## Built-In Font Selection To Visible Text
 
 Status: composed as parsed command-family to visible-output checkpoints for

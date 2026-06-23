@@ -1115,7 +1115,14 @@ for how resource records become ordinary page-record text.
     portrait/landscape header text from `0x782da3`.
   - `0x1d050` derives the larger current/alternate row height and can
     start a continuation heading when the projected y would exceed
-    `0x782db6`.
+    `0x782db6`. Fixture
+    `font sample page-limit branches trigger continuation calls` pins the
+    shared page-limit state block for two consumers: `0x1ca2c` takes
+    `0x1c9f6` when cursor y word `32` plus row height `13` equals limit `45`
+    and fits at limit `95`; `0x1d050` advances first `COURIER` from
+    `0x00520000` to `0x00900000`, takes continuation at limit `100`, calls
+    `0x1ca2c(source=3,row=1,current=0x4008004c,selected=0x44080418)`, and fits
+    at limit `1010`.
   - `0x1cf34` uses a fixed horizontal gap of `0x31` units before
     installing the alternate context and printing sample run 2 when
     `0x783132` is set.
@@ -1533,7 +1540,8 @@ open.
   carried page-record state. The
   `0x1c1e9` sample run 2 byte stream is now carried after run 1 through the
   no-continuation `0x1d050` branch for first `COURIER`.
-  Remaining gaps are continuation branches and full page placement.
+  Remaining gaps are alternate-row fit probes through `0x1d868` / `0x1dcf2`
+  and full page placement.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
   identified. First `COURIER` and first `LINE_PRINTER` row-field

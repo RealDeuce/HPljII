@@ -501,9 +501,20 @@ class-zero digest is
 the class-one digest is
 `3d23d5c6c5320d406d1db34523d3ad01c819d4e938e3dee4fa0a5d20747ed152`.
 
-The still-open boundary is the rest of `0x1c204..0x1ed84`: continuation
-branches and all-source full-page placement. The emitted page objects still
-must be
+Fixture `font sample page-limit branches trigger continuation calls` covers
+the page-limit state block shared by the heading and row-advance paths.
+At heading entry, `0x1ca2c` compares cursor y word `32` plus row height `13`
+against page-limit word `0x782db6`: limit `45` takes the `0x1c9f6`
+continuation-page path, while limit `95` does not. At row advance,
+`0x1d050` moves the first `COURIER` row from y `0x00520000` to
+`0x00900000` by `744` subunits; with page limit `100`, it calls `0x1c9f6`,
+then `0x1ca2c(source=3,row=1,current=0x4008004c,selected=0x44080418)`, and
+schedules a second `0x1cfe4` advance of `744` subunits. With page limit
+`1010`, the same row transition stays on the no-continuation path.
+
+The still-open boundary is the rest of `0x1c204..0x1ed84`: alternate-row fit
+probes through `0x1d868` / `0x1dcf2` and all-source full-page placement. The
+emitted page objects still must be
 correlated with the direct sample-byte row hashes or a known print sample
 before those fields get final semantic names.
 

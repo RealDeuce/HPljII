@@ -20750,6 +20750,39 @@ def font_sample_line_advance_via_1cfb4(state: dict[str, int]) -> dict[str, objec
     }
 
 
+def font_sample_heading_preflight_via_1ca2c(
+    resources: bytes,
+    current_record_start: int,
+    current_context: int,
+    *,
+    cursor_y: int,
+    page_limit_782db6: int,
+) -> dict[str, object]:
+    extent = font_sample_extent_via_1c6a4_1c6da(
+        resources,
+        int(current_record_start),
+        int(current_context),
+    )
+    cursor_y_word = unpack12(int(cursor_y))[0]
+    projected_bottom = cursor_y_word + int(extent["row_height_1c6da"])
+    continuation_needed = int(page_limit_782db6) <= projected_bottom
+    return {
+        "helper": "0x1ca2c",
+        "current_record_start": int(current_record_start),
+        "current_context": int(current_context),
+        "cursor_y_782c8e": int(cursor_y),
+        "cursor_y_word": cursor_y_word,
+        "row_height_1c6da": int(extent["row_height_1c6da"]),
+        "projected_bottom": projected_bottom,
+        "page_limit_782db6": int(page_limit_782db6),
+        "continuation_call": {
+            "taken": continuation_needed,
+            "target": "0x1c9f6" if continuation_needed else None,
+            "reason": "page-limit-before-heading" if continuation_needed else "fits-before-heading",
+        },
+    }
+
+
 def render_font_sample_row_fields_page_record_via_1cabe(
     data: bytes,
     resources: bytes,
@@ -20959,6 +20992,8 @@ def font_sample_row_to_row_transition_via_1d050(
     current_context: int,
     state: dict[str, int],
     *,
+    source_index: int | None = None,
+    row_index: int | None = None,
     row_height_cache_783f06: int | None = None,
     page_limit_782db6: int = 0x7FFF,
 ) -> dict[str, object]:
@@ -21000,7 +21035,7 @@ def font_sample_row_to_row_transition_via_1d050(
         unpack12(int(state["cursor_y"]))[0] + row_height_after
         >= int(page_limit_782db6)
     )
-    return {
+    result = {
         "helper": "0x1d050/0x1cfe4",
         "flush_0xf06e": {
             "cursor_before": before["cursor_x"],
@@ -21017,6 +21052,25 @@ def font_sample_row_to_row_transition_via_1d050(
         "page_limit_782db6": int(page_limit_782db6),
         "continuation_needed": continuation_needed,
     }
+    if continuation_needed:
+        result["continuation_call"] = {
+            "taken": True,
+            "reason": "page-limit-after-row-advance",
+            "page_reset": "0x1c9f6",
+            "heading_call": {
+                "target": "0x1ca2c",
+                "source_index": source_index,
+                "row_index": row_index,
+                "current_context": int(current_context),
+                "selected_context": int(selected_row_fields["context"]),
+            },
+            "second_advance": {
+                "target": "0x1cfe4",
+                "line_advance_units": selected_extent["line_advance_1c6a4"],
+                "line_advance_subunits": line_advance_subunits,
+            },
+        }
+    return result
 
 
 def render_font_sample_first_row_fields_and_both_runs_page_record(
@@ -29096,6 +29150,169 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             4: [
                 "2e7a32816cfa8ffd670eb71e6d0443e26537f7d5e4d9f7e0d02dd111bbec8fca",
             ],
+        },
+    }))
+    font_sample_heading_preflight_branches = {
+        "heading_overrun": font_sample_heading_preflight_via_1ca2c(
+            resources,
+            0x00004C,
+            0x4008004C,
+            cursor_y=pack12(32),
+            page_limit_782db6=45,
+        ),
+        "heading_fits": font_sample_heading_preflight_via_1ca2c(
+            resources,
+            0x00004C,
+            0x4008004C,
+            cursor_y=pack12(32),
+            page_limit_782db6=95,
+        ),
+    }
+    font_sample_row_continuation_state = control_fixture_state(
+        cursor_x=pack12(2220),
+        cursor_y=pack12(82),
+        line_anchor_x=pack12(0),
+        hmi=pack12(30),
+        pending_width=1,
+        pending_text=0,
+        span_flush_enable=1,
+    )
+    font_sample_row_continuation_state["row_height_cache_783f06"] = 13
+    font_sample_row_continuation_branch = font_sample_row_to_row_transition_via_1d050(
+        resources,
+        courier_sample_row_fields,
+        0x00004C,
+        0x4008004C,
+        font_sample_row_continuation_state,
+        source_index=3,
+        row_index=1,
+        row_height_cache_783f06=13,
+        page_limit_782db6=100,
+    )
+    font_sample_row_fit_state = control_fixture_state(
+        cursor_x=pack12(2220),
+        cursor_y=pack12(82),
+        line_anchor_x=pack12(0),
+        hmi=pack12(30),
+        pending_width=1,
+        pending_text=0,
+        span_flush_enable=1,
+    )
+    font_sample_row_fit_state["row_height_cache_783f06"] = 13
+    font_sample_row_fit_branch = font_sample_row_to_row_transition_via_1d050(
+        resources,
+        courier_sample_row_fields,
+        0x00004C,
+        0x4008004C,
+        font_sample_row_fit_state,
+        source_index=3,
+        row_index=1,
+        row_height_cache_783f06=13,
+        page_limit_782db6=1010,
+    )
+    checks.append(assert_equal("font sample page-limit branches trigger continuation calls", {
+        "heading_preflight": font_sample_heading_preflight_branches,
+        "row_continuation": font_sample_row_continuation_branch,
+        "row_fits": font_sample_row_fit_branch,
+    }, {
+        "heading_preflight": {
+            "heading_overrun": {
+                "helper": "0x1ca2c",
+                "current_record_start": 0x00004C,
+                "current_context": 0x4008004C,
+                "cursor_y_782c8e": pack12(32),
+                "cursor_y_word": 32,
+                "row_height_1c6da": 13,
+                "projected_bottom": 45,
+                "page_limit_782db6": 45,
+                "continuation_call": {
+                    "taken": True,
+                    "target": "0x1c9f6",
+                    "reason": "page-limit-before-heading",
+                },
+            },
+            "heading_fits": {
+                "helper": "0x1ca2c",
+                "current_record_start": 0x00004C,
+                "current_context": 0x4008004C,
+                "cursor_y_782c8e": pack12(32),
+                "cursor_y_word": 32,
+                "row_height_1c6da": 13,
+                "projected_bottom": 45,
+                "page_limit_782db6": 95,
+                "continuation_call": {
+                    "taken": False,
+                    "target": None,
+                    "reason": "fits-before-heading",
+                },
+            },
+        },
+        "row_continuation": {
+            "helper": "0x1d050/0x1cfe4",
+            "flush_0xf06e": {
+                "cursor_before": pack12(2220),
+                "line_anchor_x_782dd6": pack12(0),
+                "cursor_after": pack12(0),
+            },
+            "selected_extent": {
+                "selector_flag_1c766": 1,
+                "line_advance_1c6a4": 40,
+                "row_height_1c6da": 13,
+            },
+            "current_extent": {
+                "selector_flag_1c766": 1,
+                "line_advance_1c6a4": 36,
+                "row_height_1c6da": 13,
+            },
+            "row_height_cache_before_783f06": 13,
+            "line_advance_subunits_1cfe4": 744,
+            "cursor_y_before": pack12(82),
+            "cursor_y_after": pack12(144),
+            "row_height_cache_after_783f06": 13,
+            "page_limit_782db6": 100,
+            "continuation_needed": True,
+            "continuation_call": {
+                "taken": True,
+                "reason": "page-limit-after-row-advance",
+                "page_reset": "0x1c9f6",
+                "heading_call": {
+                    "target": "0x1ca2c",
+                    "source_index": 3,
+                    "row_index": 1,
+                    "current_context": 0x4008004C,
+                    "selected_context": 0x44080418,
+                },
+                "second_advance": {
+                    "target": "0x1cfe4",
+                    "line_advance_units": 40,
+                    "line_advance_subunits": 744,
+                },
+            },
+        },
+        "row_fits": {
+            "helper": "0x1d050/0x1cfe4",
+            "flush_0xf06e": {
+                "cursor_before": pack12(2220),
+                "line_anchor_x_782dd6": pack12(0),
+                "cursor_after": pack12(0),
+            },
+            "selected_extent": {
+                "selector_flag_1c766": 1,
+                "line_advance_1c6a4": 40,
+                "row_height_1c6da": 13,
+            },
+            "current_extent": {
+                "selector_flag_1c766": 1,
+                "line_advance_1c6a4": 36,
+                "row_height_1c6da": 13,
+            },
+            "row_height_cache_before_783f06": 13,
+            "line_advance_subunits_1cfe4": 744,
+            "cursor_y_before": pack12(82),
+            "cursor_y_after": pack12(144),
+            "row_height_cache_after_783f06": 13,
+            "page_limit_782db6": 1010,
+            "continuation_needed": False,
         },
     }))
     courier_sample_row_run2_rendered = render_font_sample_carried_run2_buckets_via_1ed84_1ef6a(
@@ -70722,6 +70939,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         courier_sample_row_with_both_runs["final_cursor_x"],
         courier_sample_row_with_both_runs["final_cursor_y"],
         courier_sample_row_with_both_runs["bucket_object_hashes"],
+    ))
+    lines.append("- font sample page-limit continuation branches: `0x1ca2c` compares cursor y `%d` plus row height `%d` against page limit `%d`, so equality takes `0x1c9f6`, while page limit `%d` fits. `0x1d050` advances first `COURIER` y from `0x%08x` to `0x%08x`; with page limit `%d` it calls `0x1c9f6`, reprints heading via `0x1ca2c(source=%d,row=%d,current=0x%08x,selected=0x%08x)`, then schedules a second `0x1cfe4` advance of `%d` subunits, while page limit `%d` takes the no-continuation path." % (
+        font_sample_heading_preflight_branches["heading_overrun"]["cursor_y_word"],  # type: ignore[index]
+        font_sample_heading_preflight_branches["heading_overrun"]["row_height_1c6da"],  # type: ignore[index]
+        font_sample_heading_preflight_branches["heading_overrun"]["page_limit_782db6"],  # type: ignore[index]
+        font_sample_heading_preflight_branches["heading_fits"]["page_limit_782db6"],  # type: ignore[index]
+        font_sample_row_continuation_branch["cursor_y_before"],
+        font_sample_row_continuation_branch["cursor_y_after"],
+        font_sample_row_continuation_branch["page_limit_782db6"],
+        font_sample_row_continuation_branch["continuation_call"]["heading_call"]["source_index"],  # type: ignore[index]
+        font_sample_row_continuation_branch["continuation_call"]["heading_call"]["row_index"],  # type: ignore[index]
+        font_sample_row_continuation_branch["continuation_call"]["heading_call"]["current_context"],  # type: ignore[index]
+        font_sample_row_continuation_branch["continuation_call"]["heading_call"]["selected_context"],  # type: ignore[index]
+        font_sample_row_continuation_branch["continuation_call"]["second_advance"]["line_advance_subunits"],  # type: ignore[index]
+        font_sample_row_fit_branch["page_limit_782db6"],
     ))
     lines.append("- font sample carried run-2 render: buckets `3` and `4` now cross `0x1ed84` / `0x1ef6a` with wide destination stride `0x0180`; bucket 3 setup `%s` dispatches `%d` compact objects with current row hash `%s` and fallback hashes `%s`, while bucket 4 setup `%s` dispatches `%d` compact object with current row hash `%s` and fallback hashes `%s`." % (
         courier_sample_row_run2_rendered[3]["setup"],  # type: ignore[index]

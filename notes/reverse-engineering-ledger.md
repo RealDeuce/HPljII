@@ -698,6 +698,11 @@ pins sample-page cursor and row sequencing through `0x1c916`,
 `0x1ca2c`, `0x1cabe`, `0x1cf34`, and `0x1d050`, including page-limit
 checks against `0x782db6`, source/metric text emission through `0xd04a`,
 and the `0x31` horizontal-unit gap between the two ROM sample runs; the
+page-limit branch fixture now pins `0x1ca2c` heading preflight at limits
+`45`/`95` and the `0x1d050` row-continuation call chain at limits
+`100`/`1010`, including `0x1c9f6`,
+`0x1ca2c(source=3,row=1,current=0x4008004c,selected=0x44080418)`, and the
+second `0x1cfe4` advance; the
 row helper listing now names `0x1d198` font-name/style formatting,
 `0x1d6ea` capped string emission, `0x1d71e` fixed-name sanitization,
 `0x1d76c` orientation-command synthesis, and `0x1d964` / `0x1dcf2`
@@ -1064,9 +1069,11 @@ ROM work needed:
   `b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5`.
   The source-heading composition fixtures now carry `INTERNAL FONTS` through
   all 14 visible class-zero rows and all 14 visible class-one rows in separate
-  page-record states. The next boundaries are continuation branches and
-  full-printout placement for comparison against the direct payload hashes and
-  a known printed/self-test sample.
+  page-record states. The page-limit continuation checkpoint now covers
+  `0x1ca2c` heading preflight and `0x1d050` row-continuation call targets. The
+  next boundaries are alternate-row fit probes through `0x1d868` / `0x1dcf2`
+  and full-printout placement for comparison against the direct payload hashes
+  and a known printed/self-test sample.
 - Identify the manual-facing names for the currently unidentified
   built-in symbol words `0N`, `10U`, and `11U`, and broaden the
   now-pinned real symbol-map samples into more live parser/font-selection

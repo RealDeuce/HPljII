@@ -1235,8 +1235,12 @@ payload, and renders the published downloaded-glyph row from bucket `9`. The
 downloaded-glyph scheduler fixture then starts from the `0xff1e`/`0x1ed84`
 zero seed for active work word `+0x10`, lets `0x1eba4` produce render-call band
 words `0..9`, dispatches only published buckets `1` and `9`, and preserves the
-same bucket-9 row. The fetched
-font-control state now carries current id
+same bucket-9 row. The even-span wide downloaded-glyph sibling now publishes
+the host-fetched `ESC )s18W` + printable `)` + FF stream through the same
+`0xff1e` boundary: bucket `1` is copied into the published record, rendered
+through `0x1ed84`/`0x1ef6a`, dispatched to `0x1effe`, and decoded by
+`0x1f0d2` into the same 18-byte row. The fetched font-control state now
+carries current id
 `0x1234` and current character `0x25` into fetched descriptor,
 resource-payload, and downloaded-character streams, tying delayed record
 restoration through `0x121cc` / `0x12218`, descriptor or payload

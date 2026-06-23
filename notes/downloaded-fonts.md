@@ -75,6 +75,7 @@ Primary fixtures:
 - `host-fetched linear downloaded character stream renders through 0x168dc`
 - `host-fetched downloaded character payload control reaches wide render`
 - `host-fetched even-span wide downloaded character renders through 0x1f0d2`
+- `host-fetched even-span downloaded glyph FF publishes rendered page record`
 - `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
 - `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
@@ -888,6 +889,23 @@ work `+0x10/+0x16` are zero, lets the scheduler loop produce `0x1ef6a` calls
 for band words `0..9`, and reaches the same bucket-9 visible row while only
 published buckets `1` and `9` dispatch compact objects.
 
+The even-span wide downloaded-glyph publication sibling proves the same
+`0xff1e` boundary for the non-segmented wide compact branch. The fetched stream
+is `ESC )s18W` plus payload, printable `)`, and FF, with font bytes
+`0..24`, printable byte `24..25`, and FF at `25..26`. The font phase restores
+record `80 57 00 12 00 00`, installs glyph `0x29` at table entry `0x00ee`
+with record delta `0x0780`, bitmap offset `0x078c`, bitmap size `18`, and
+linear mode-1 span `18`. The tail `) FF` routes to handlers `0xd04a` and
+`0xf0f0`. Publication keeps bucket root
+`00 00 00 00 10 03 00 01 29 66 01...`, publishes bucket array entry `1`,
+leaves rule and fixed lists empty, copies context slots `0,0,0,0`, clears the
+current root, and sets publication flag `1`. The copied record renders with
+bucket word `1`: `0x1ef86` computes remainder `1`, current-band rows
+`0x0040`, and destination base `0x00100800`; `0x1efc2` dispatches object byte
+`0x10` to compact branch target `0x1effe`; `0x1f0d2` emits the same 18-byte
+linear downloaded-glyph row as the direct even-span fixture. Evidence: fixture
+`host-fetched even-span downloaded glyph FF publishes rendered page record`.
+
 ## Writers
 
 - `0x15a56` writes `0x782f2e`.
@@ -1008,7 +1026,12 @@ High for the modeled `0xff1e` publication fields of the combined downloaded
 glyph stream because fixture
 `combined font download FF publishes installed glyph page record` asserts the
 published bucket root, bucket array entries `1` and `9`, empty rule/fixed
-lists, context prefix, and FF parser handler. High for the modeled
+lists, context prefix, and FF parser handler. High for the even-span wide
+publication sibling because fixture
+`host-fetched even-span downloaded glyph FF publishes rendered page record`
+asserts the host-fetched `ESC )s18W` payload, tail handlers `0xd04a` and
+`0xf0f0`, published bucket `1`, `0x1ed84` render word `1`, compact dispatch
+target `0x1effe`, and final `0x1f0d2` rows. High for the modeled
 published-record multi-bucket render because fixture
 `published downloaded glyph segmented buckets render across bands` walks
 bucket words `1` and `9`, proves the `0x1effe` dispatch for both compact
@@ -1070,7 +1093,11 @@ A byte-stream renderer must preserve:
   especially alternate row counts, character modes, and non-success exits for
   the same selector families.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
-  segmented buckets, and fixture
+  segmented buckets, and the even-span wide sibling now publishes bucket `1`
+  through the same boundary. Fixture
+  `host-fetched even-span downloaded glyph FF publishes rendered page record`
+  renders the copied bucket-1 record through `0x1ed84`/`0x1ef6a` and compact
+  target `0x1effe`/`0x1f0d2`. Fixture
   `published downloaded glyph segmented buckets render across bands` renders
   published bucket words `1` and `9` from the copied record. Fixture
   `0x1eba4 scheduler band words render published downloaded glyph` proves

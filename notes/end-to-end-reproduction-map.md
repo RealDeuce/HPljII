@@ -321,7 +321,8 @@ The next work should follow dataflow, not isolated handlers:
    visible fixtures. Remaining suite cases should capture a single
    uninterrupted parser-to-printable CPU-state trace, add other fallback/error
    font-selection visible-output variants beyond those two symbol misses, and
-   broaden downloaded-glyph publication variants. The publication-command
+   broaden remaining downloaded-glyph publication variants beyond the
+   segmented-wide and even-span wide branches. The publication-command
    checkpoint now covers host-fetched reset, FF,
    page-size, orientation, paper-source, and copies streams through parser
    dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row

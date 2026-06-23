@@ -32,10 +32,19 @@ Evidence: vector table targets RAM trampolines at `0x00780000`
 
 ### Extension probing
 
-Status: Anchored, format unknown
+Status: Built-in `HEAD` chain anchored; external cartridge/resource
+formats still unavailable
 
-Evidence: firmware checks `0x200000` and `0x400000` for `PROG`; scans
-for `HEAD` records
+Evidence: firmware checks `0x200000` and `0x400000` for `PROG`, and scans
+for `HEAD` records. The verified `IC32,IC15` resource image has `HEAD` at
+offset `0x000000`; startup scanner `0x41a` walks the built-in chain through
+24 typed records from `0x08004c` through `0x0ae122`, terminates at
+`0x0b2f80`, and has modeled boundary behavior for `0x40000` crossings and
+`0x000000be` executable records. Candidate scanner `0x1a616` / `0x1a9be`
+accepts those same 24 built-in records as twelve class `0` and twelve class
+`1` low-window records. Tracked detail lives in
+`notes/resource-rom.md`; extending the scanner beyond this verified built-in
+window still needs cartridge or external resource images.
 
 ### Host byte fetch
 

@@ -157,7 +157,8 @@ Published page-record state:
 
 - Canonical bucket array copied by `0xff1e`: normal downloaded selector
   `0x0003` publishes bucket `1`; linear-segmented selector `0x2003` publishes
-  buckets `1` and `9`; even-span wide selector `0x1003` publishes bucket `1`.
+  buckets `1` and `9`; segmented-wide selector `0x3003` publishes buckets
+  `1` and `9`; even-span wide selector `0x1003` publishes bucket `1`.
 - Canonical side lists copied by `0xff1e`: the covered downloaded-glyph
   publication fixtures leave rule and fixed lists empty.
 - Canonical context slots copied by `0xff1e`: the covered downloaded-glyph
@@ -170,10 +171,11 @@ Published page-record state:
   bucket `1` or `9` and derive band rows and destination base.
 - Firmware bookkeeping: `0xff1e` clears the current page root and sets the
   publication flag after copying the record.
-- Unknown for this checkpoint: broader downloaded-glyph publication
-  cross-products beyond the documented normal bucket-1, linear-segmented
-  bucket-9, segmented-wide bucket-1/bucket-9, and even-span wide bucket-1
-  streams. The covered publication fixtures are
+- Unknown for this checkpoint: downloaded-glyph publication cross-products
+  outside the documented normal bucket-1, linear-segmented bucket-9,
+  segmented-wide bucket-1/bucket-9, and even-span wide bucket-1 streams,
+  especially alternate row counts, character modes, and non-success exits.
+  The covered publication fixtures are
   `downloaded normal and segmented glyph FF publications render page records`,
   `host-fetched even-span downloaded glyph FF publishes rendered page record`,
   `published downloaded glyph segmented buckets render across bands`, and

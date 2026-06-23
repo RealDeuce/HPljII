@@ -1725,7 +1725,8 @@ compact text renderer.
     `0x7827b4` updated by `0x16c14`/`0x1bc38`.
   - published downloaded-glyph page-record buckets copied by `0xff1e`: normal
     selector `0x0003` publishes bucket `1`, linear-segmented selector
-    `0x2003` publishes buckets `1` and `9`, and even-span wide selector
+    `0x2003` publishes buckets `1` and `9`, segmented-wide selector
+    `0x3003` publishes buckets `1` and `9`, and even-span wide selector
     `0x1003` publishes bucket `1`.
 - Parser scratch:
   - `0x78299e`: six-byte parsed-record cursor rewound by font handlers.

@@ -343,10 +343,10 @@ The next work should follow dataflow, not isolated handlers:
    handlers to printable source capture, HMI, object prefix, bridge context
    slots, and rows. Remaining suite cases should add other fallback/error
    font-selection visible-output variants beyond those two symbol misses and
-   broaden remaining downloaded-glyph publication variants beyond the
-   segmented-wide, normal, segmented, and even-span wide branches. The
-   publication-command
-   checkpoint now covers host-fetched reset, FF,
+   broaden downloaded-glyph publication cross-products beyond the documented
+   segmented-wide, normal, linear-segmented, and even-span wide selector
+   families, especially alternate row counts, character modes, and non-success
+   exits. The publication-command checkpoint now covers host-fetched reset, FF,
    page-size, orientation, paper-source, and copies streams through parser
    dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row
    comparison; reset, FF, page-size, orientation, paper-source, and copies

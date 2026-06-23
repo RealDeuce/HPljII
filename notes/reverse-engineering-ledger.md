@@ -704,6 +704,12 @@ including `+0x20`, `+0x21`, raw pitch/height pairs, and comparator bytes
 `+0x2f..+0x31`; the first-nonzero named glyph entries are also grouped
 by signed `+0/+2` positioning offsets, rows, and width, matching the
 `0xd824` flagged-source placement model;
+`tools/render_fixture_harness.py` now models the `0x1cabe` row-field
+cluster for first `COURIER` and first `LINE_PRINTER`: `0x1cb26..0x1cb66`
+emits internal-source prefixes `I01` and `I07`, `0x1d198` / `0x1d5fa`
+emits the built-in names, `0x1cc6e` formats pitch/height as `10`/`12`
+and `16.6`/`8.5` with `0xd0f0` fixed-space accounting, and `0x1cd78`
+formats symbol word `0x0155` as `10U`;
 text object glyph index bytes are mapped before queuing by `0x1393a` and
 initialized by `0x14d9c` / `0x14e24` / `0x14f16`; `0x1be22` computes
 normal PCL symbol words from host `ESC (` / `ESC )` commands, handles

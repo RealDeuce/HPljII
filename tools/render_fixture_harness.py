@@ -4977,6 +4977,172 @@ def builtin_height_via_13bca(word_0x28: int, byte_0x2a: int) -> int:
     return (packed * 0x00E1) // 0x2580
 
 
+def font_sample_row_prefix_via_1cb26(source_index: int, row_index: int) -> dict[str, object]:
+    source_codes = {0: "S", 1: "L", 2: "R", 3: "I"}
+    if source_index not in source_codes:
+        raise AssertionError(f"unsupported font-sample source index {source_index}")
+    if row_index < 0 or row_index > 99:
+        raise AssertionError(f"font-sample row index out of two-digit range {row_index}")
+
+    emitted = f"{source_codes[source_index]}{row_index // 10}{row_index % 10}".encode("ascii")
+    return {
+        "helper": "0x1cb26..0x1cb66",
+        "source_index": source_index,
+        "source_code": source_codes[source_index],
+        "row_index": row_index,
+        "printed": emitted,
+        "terminator": 0,
+        "post_advance_units_1d152": 2,
+    }
+
+
+def font_sample_number_via_1cc6e(value: int, mode: int) -> dict[str, object]:
+    adjusted = int(value) + (5 if int(mode) == 1 else 0)
+    hundreds_digit = (adjusted // 100) // 10
+    tens_digit = (adjusted // 100) % 10
+    fractional_digit = (adjusted % 100) // 10
+    if hundreds_digit > 9:
+        hundreds_digit = 9
+        tens_digit = 9
+        fractional_digit = 9
+
+    fixed_spaces = 0
+    printed = bytearray()
+    if hundreds_digit == 0:
+        fixed_spaces += 1
+    else:
+        printed.append(ord("0") + hundreds_digit)
+    printed.append(ord("0") + tens_digit)
+    if fractional_digit:
+        printed.append(ord("."))
+        printed.append(ord("0") + fractional_digit)
+        internal_advance = 1
+    else:
+        internal_advance = 3
+
+    return {
+        "helper": "0x1cc6e",
+        "input": int(value),
+        "mode": int(mode),
+        "adjusted": adjusted,
+        "digits": (hundreds_digit, tens_digit, fractional_digit),
+        "fixed_spaces_d0f0": fixed_spaces,
+        "printed": bytes(printed),
+        "internal_advance_units_1d152": internal_advance,
+    }
+
+
+def font_sample_symbol_code_via_1cd78(symbol_word: int) -> dict[str, object]:
+    word = int(symbol_word) & 0xFFFF
+    numeric = word >> 5
+    suffix = 0x40 + (word & 0x1F)
+    digits = [
+        numeric // 1000,
+        (numeric % 1000) // 100,
+        (numeric % 100) // 10,
+        numeric % 10,
+    ]
+
+    printed = bytearray()
+    fixed_spaces = 0
+    emitted_nonzero = False
+    for digit in digits[:3]:
+        if digit == 0 and not emitted_nonzero:
+            fixed_spaces += 1
+            continue
+        printed.append(ord("0") + digit)
+        emitted_nonzero = True
+    printed.append(ord("0") + digits[3])
+    printed.append(suffix)
+
+    return {
+        "helper": "0x1cd78",
+        "symbol_word": word,
+        "numeric": numeric,
+        "suffix": suffix,
+        "digits": tuple(digits),
+        "fixed_spaces_d0f0": fixed_spaces,
+        "printed": bytes(printed),
+    }
+
+
+def font_sample_builtin_name_column_via_1d198(resources: bytes, record_start: int) -> dict[str, object]:
+    name = infer_named_builtin_record(resources, record_start)
+    if name is None:
+        raise AssertionError(f"record 0x{record_start:06x} is not a named built-in fixture")
+    printed = name.encode("ascii")
+    return {
+        "helper": "0x1d198/0x1d5fa",
+        "record_start": record_start,
+        "printed": printed,
+        "name_length": len(printed),
+        "pad_advance_units_1d152": max(0, 25 - len(printed)),
+    }
+
+
+def font_sample_builtin_row_fields_via_1cabe(
+    resources: bytes,
+    record_start: int,
+    source_index: int,
+    row_index: int,
+) -> dict[str, object]:
+    prefix = font_sample_row_prefix_via_1cb26(source_index, row_index)
+    name = font_sample_builtin_name_column_via_1d198(resources, record_start)
+    pitch = font_sample_number_via_1cc6e(
+        builtin_pitch_via_13b76(
+            u16(resources, record_start + 0x24),
+            resources[record_start + 0x26],
+        ),
+        0,
+    )
+    height = font_sample_number_via_1cc6e(
+        builtin_height_via_13bca(
+            u16(resources, record_start + 0x28),
+            resources[record_start + 0x2A],
+        ),
+        1,
+    )
+    symbol = font_sample_symbol_code_via_1cd78(u16(resources, record_start + 0x22))
+    printed = (
+        bytes(prefix["printed"])
+        + bytes(name["printed"])
+        + bytes(pitch["printed"])
+        + bytes(height["printed"])
+        + bytes(symbol["printed"])
+    )
+    return {
+        "helper": "0x1cabe",
+        "record_start": record_start,
+        "source_index": source_index,
+        "row_index": row_index,
+        "context": (
+            0x40000000
+            | ((resources[record_start + 0x0D] & 0x03) << 28)
+            | (0x04000000 if resources[record_start + 0x0C] == 2 else 0)
+            | (0x080000 + record_start)
+        ),
+        "prefix": prefix,
+        "name": name,
+        "pitch": pitch,
+        "height": height,
+        "symbol": symbol,
+        "printed": printed,
+        "fixed_spaces_d0f0": (
+            int(pitch["fixed_spaces_d0f0"])
+            + int(height["fixed_spaces_d0f0"])
+            + int(symbol["fixed_spaces_d0f0"])
+        ),
+        "explicit_advance_units_1d152": (
+            int(prefix["post_advance_units_1d152"])
+            + 2
+            + int(pitch["internal_advance_units_1d152"])
+            + 1
+            + int(height["internal_advance_units_1d152"])
+            + 1
+        ),
+    }
+
+
 def builtin_candidate_symbol_via_15890(candidate: dict[str, int]) -> dict[str, object]:
     explicit_word = int(candidate.get("builtin_word_0x22", 0)) & 0xFFFF
     if explicit_word:
@@ -26998,6 +27164,149 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {"name": "COURIER", "tuple": (0, 3, 3), "count": 6},
             {"name": "LINE_PRINTER", "tuple": (0, 0, 0), "count": 6},
         ],
+    }))
+    courier_sample_row_fields = font_sample_builtin_row_fields_via_1cabe(
+        resources,
+        0x000418,
+        source_index=3,
+        row_index=1,
+    )
+    line_printer_sample_row_fields = font_sample_builtin_row_fields_via_1cabe(
+        resources,
+        0x0146B4,
+        source_index=3,
+        row_index=7,
+    )
+    checks.append(assert_equal("font sample built-in row fields format through 0x1cabe", {
+        "courier": {
+            "record_start": courier_sample_row_fields["record_start"],
+            "context": courier_sample_row_fields["context"],
+            "printed": courier_sample_row_fields["printed"],
+            "prefix": courier_sample_row_fields["prefix"],
+            "name": courier_sample_row_fields["name"],
+            "pitch": courier_sample_row_fields["pitch"],
+            "height": courier_sample_row_fields["height"],
+            "symbol": courier_sample_row_fields["symbol"],
+            "fixed_spaces_d0f0": courier_sample_row_fields["fixed_spaces_d0f0"],
+            "explicit_advance_units_1d152": courier_sample_row_fields["explicit_advance_units_1d152"],
+        },
+        "line_printer": {
+            "record_start": line_printer_sample_row_fields["record_start"],
+            "context": line_printer_sample_row_fields["context"],
+            "printed": line_printer_sample_row_fields["printed"],
+            "prefix": line_printer_sample_row_fields["prefix"],
+            "name": line_printer_sample_row_fields["name"],
+            "pitch": line_printer_sample_row_fields["pitch"],
+            "height": line_printer_sample_row_fields["height"],
+            "symbol": line_printer_sample_row_fields["symbol"],
+            "fixed_spaces_d0f0": line_printer_sample_row_fields["fixed_spaces_d0f0"],
+            "explicit_advance_units_1d152": line_printer_sample_row_fields["explicit_advance_units_1d152"],
+        },
+    }, {
+        "courier": {
+            "record_start": 0x000418,
+            "context": 0x44080418,
+            "printed": b"I01COURIER101210U",
+            "prefix": {
+                "helper": "0x1cb26..0x1cb66",
+                "source_index": 3,
+                "source_code": "I",
+                "row_index": 1,
+                "printed": b"I01",
+                "terminator": 0,
+                "post_advance_units_1d152": 2,
+            },
+            "name": {
+                "helper": "0x1d198/0x1d5fa",
+                "record_start": 0x000418,
+                "printed": b"COURIER",
+                "name_length": 7,
+                "pad_advance_units_1d152": 18,
+            },
+            "pitch": {
+                "helper": "0x1cc6e",
+                "input": 1000,
+                "mode": 0,
+                "adjusted": 1000,
+                "digits": (1, 0, 0),
+                "fixed_spaces_d0f0": 0,
+                "printed": b"10",
+                "internal_advance_units_1d152": 3,
+            },
+            "height": {
+                "helper": "0x1cc6e",
+                "input": 1200,
+                "mode": 1,
+                "adjusted": 1205,
+                "digits": (1, 2, 0),
+                "fixed_spaces_d0f0": 0,
+                "printed": b"12",
+                "internal_advance_units_1d152": 3,
+            },
+            "symbol": {
+                "helper": "0x1cd78",
+                "symbol_word": 0x0155,
+                "numeric": 10,
+                "suffix": 0x55,
+                "digits": (0, 0, 1, 0),
+                "fixed_spaces_d0f0": 2,
+                "printed": b"10U",
+            },
+            "fixed_spaces_d0f0": 2,
+            "explicit_advance_units_1d152": 12,
+        },
+        "line_printer": {
+            "record_start": 0x0146B4,
+            "context": 0x440946B4,
+            "printed": b"I07LINE_PRINTER16.68.510U",
+            "prefix": {
+                "helper": "0x1cb26..0x1cb66",
+                "source_index": 3,
+                "source_code": "I",
+                "row_index": 7,
+                "printed": b"I07",
+                "terminator": 0,
+                "post_advance_units_1d152": 2,
+            },
+            "name": {
+                "helper": "0x1d198/0x1d5fa",
+                "record_start": 0x0146B4,
+                "printed": b"LINE_PRINTER",
+                "name_length": 12,
+                "pad_advance_units_1d152": 13,
+            },
+            "pitch": {
+                "helper": "0x1cc6e",
+                "input": 1666,
+                "mode": 0,
+                "adjusted": 1666,
+                "digits": (1, 6, 6),
+                "fixed_spaces_d0f0": 0,
+                "printed": b"16.6",
+                "internal_advance_units_1d152": 1,
+            },
+            "height": {
+                "helper": "0x1cc6e",
+                "input": 850,
+                "mode": 1,
+                "adjusted": 855,
+                "digits": (0, 8, 5),
+                "fixed_spaces_d0f0": 1,
+                "printed": b"8.5",
+                "internal_advance_units_1d152": 1,
+            },
+            "symbol": {
+                "helper": "0x1cd78",
+                "symbol_word": 0x0155,
+                "numeric": 10,
+                "suffix": 0x55,
+                "digits": (0, 0, 1, 0),
+                "fixed_spaces_d0f0": 2,
+                "printed": b"10U",
+            },
+            "fixed_spaces_d0f0": 3,
+            "explicit_advance_units_1d152": 8,
+        },
     }))
     checks.append(assert_equal("named built-in first glyphs expose positioning offsets", named_builtin_first_glyph_position_summary(resources), {
         "bitmap_delta_values": [10],
@@ -67165,6 +67474,28 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         actual_candidate_partition["counters"]["0x78279c"],
         actual_candidate_events[0]["candidate_flags"],
         actual_candidate_events[-1]["candidate_flags"],
+    ))
+    lines.append("- font sample row fields: `0x1cabe` over first `COURIER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152` before the sample bytes." % (
+        courier_sample_row_fields["record_start"],
+        " ".join(f"{byte:02x}" for byte in courier_sample_row_fields["printed"]),
+        courier_sample_row_fields["prefix"]["printed"].decode("ascii"),  # type: ignore[index,union-attr]
+        courier_sample_row_fields["name"]["printed"].decode("ascii"),  # type: ignore[index,union-attr]
+        courier_sample_row_fields["pitch"]["printed"].decode("ascii"),  # type: ignore[index,union-attr]
+        courier_sample_row_fields["height"]["printed"].decode("ascii"),  # type: ignore[index,union-attr]
+        courier_sample_row_fields["symbol"]["printed"].decode("ascii"),  # type: ignore[index,union-attr]
+        courier_sample_row_fields["fixed_spaces_d0f0"],
+        courier_sample_row_fields["explicit_advance_units_1d152"],
+    ))
+    lines.append("- font sample row fields: first `LINE_PRINTER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152`; the height value is rounded by the mode-1 `0x1cc6e` add-five path." % (
+        line_printer_sample_row_fields["record_start"],
+        " ".join(f"{byte:02x}" for byte in line_printer_sample_row_fields["printed"]),
+        line_printer_sample_row_fields["prefix"]["printed"].decode("ascii"),  # type: ignore[index,union-attr]
+        line_printer_sample_row_fields["name"]["printed"].decode("ascii"),  # type: ignore[index,union-attr]
+        line_printer_sample_row_fields["pitch"]["printed"].decode("ascii"),  # type: ignore[index,union-attr]
+        line_printer_sample_row_fields["height"]["printed"].decode("ascii"),  # type: ignore[index,union-attr]
+        line_printer_sample_row_fields["symbol"]["printed"].decode("ascii"),  # type: ignore[index,union-attr]
+        line_printer_sample_row_fields["fixed_spaces_d0f0"],
+        line_printer_sample_row_fields["explicit_advance_units_1d152"],
     ))
     lines.append("- active candidate windows: `0x1569c` selects class-zero pointer `0x%06x`/count `%d` when `0x782da3 == 0`, or class-one pointer `0x%06x`/count `%d` otherwise; selected entries receive active bit `0x80000000` before later filtering." % (
         activated_class_zero["active_pointer_78287c"],

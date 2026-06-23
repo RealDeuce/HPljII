@@ -35309,6 +35309,351 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "rows_match_split_fixture": True,
     }))
+    non_roman_visible_cases: dict[str, dict[str, object]] = {}
+    for label, symbol_word in (("0N", 0x000E), ("10U", 0x0155), ("11U", 0x0175)):
+        for slot_name, symbol_prefix, selection_stream, printable_tail, initial_context, secondary_context in (
+            (
+                "primary",
+                b"\x1b(",
+                primary_font_selection_stream,
+                b"!!",
+                0,
+                None,
+            ),
+            (
+                "secondary",
+                b"\x1b)",
+                secondary_font_selection_stream,
+                b"\x0e!!",
+                primary_visible_context,
+                0,
+            ),
+        ):
+            visible_symbol_stream = symbol_prefix + label.encode("ascii")
+            visible_stream = visible_symbol_stream + selection_stream + printable_tail
+            visible_page = render_mixed_printable_control_page_record_stream(
+                data,
+                resources,
+                visible_stream,
+                initial_context,
+                control_fixture_state(
+                    cursor_x=pack12(0 if slot_name == "primary" else 30),
+                    cursor_y=pack12(21),
+                    hmi=0 if slot_name == "primary" else primary_visible_hmi["hmi"],
+                    pending_width=1,
+                    pending_text=0,
+                    span_flush_enable=1,
+                    text_map_selector_782f06=0,
+                    font_context_install_success=1,
+                ),
+                default_advance=0 if slot_name == "primary" else primary_visible_hmi["hmi"],
+                secondary_context=secondary_context,
+                font_selection_env=font_selection_env,
+            )
+            rendered = visible_page["rendered"]
+            bridged = visible_page["bridged_record"]
+            assert isinstance(rendered, dict)
+            assert isinstance(bridged, dict)
+            events = visible_page["events"]
+            symbol_event = events[0]
+            font_event = events[1]
+            assert isinstance(symbol_event, dict)
+            assert isinstance(font_event, dict)
+            printable_events = [event for event in events if event["kind"] == "printable"]
+            shift_events = [event for event in events if event["kind"] == "font-shift"]
+            rows = rendered["rows"]
+            assert isinstance(rows, list)
+            non_roman_visible_cases[f"{slot_name}-{label}"] = {
+                "stream": visible_stream,
+                "symbol": {
+                    "parser_handlers": symbol_event["parser_handlers"],
+                    "requested_symbols": symbol_event["requested_symbols"],
+                    "active_symbols": symbol_event["active_symbols"],
+                    "stream_event": {
+                        key: symbol_event["stream_events"][0][key]  # type: ignore[index]
+                        for key in (
+                            "setup_handler",
+                            "terminal_handler",
+                            "dispatch_target",
+                            "parameter",
+                            "final",
+                            "requested_word",
+                            "active_word",
+                        )
+                    },
+                },
+                "font": {
+                    "slot": font_event["slot"],
+                    "context_update": font_event["context_update"],
+                    "selection_map": font_event["selection_map"],
+                    "metric": font_event["metric"],
+                    "context_slots": font_event["context_slots"],
+                    "active_symbols": font_event["active_symbols"],
+                },
+                "shift": [
+                    {
+                        "handler": event["handler"],
+                        "selector_before": event["selector_before"],
+                        "selector_after": event["selector_after"],
+                        "install_called": event["install_called"],
+                        "install_success": event["install_success"],
+                    }
+                    for event in shift_events
+                ],
+                "printable_sources": [
+                    {
+                        "source_context": event["source"]["context"],
+                        "source_slot": event["source"]["context_slot"],
+                        "mapped": event["source"]["mapped"],
+                        "glyph_entry": event["source"]["glyph_entry"],
+                        "glyph_rows": event["source"]["glyph_rows"],
+                        "glyph_width": event["source"]["glyph_width"],
+                        "coord": event["page_result"]["coord"],
+                    }
+                    for event in printable_events
+                ],
+                "object_prefix": visible_page["bucket_object"][:14],
+                "bridged_context_slots": bridged["context_slots"][:2],
+                "rendered": {
+                    "selector": rendered["selector"],
+                    "context_slot": rendered["context_slot"],
+                    "count": rendered["count"],
+                    "row_count": len(rows),
+                    "row_width": max((len(str(row)) for row in rows), default=0),
+                    "row_sha256": hashlib.sha256(
+                        "\n".join(str(row) for row in rows).encode("ascii")
+                    ).hexdigest(),
+                },
+                "final_state": {
+                    key: visible_page["final_state"][key]
+                    for key in (
+                        "cursor_x",
+                        "cursor_y",
+                        "hmi",
+                        "text_map_selector_782f06",
+                        "font_context_install_calls",
+                        "page_record_root_allocations",
+                    )
+                    if key in visible_page["final_state"]
+                },
+            }
+            if int(font_event["selection_map"]["selected_symbol"]) != symbol_word:
+                raise AssertionError(f"{slot_name} {label} selected unexpected symbol")
+    expected_non_roman_visible_cases: dict[str, dict[str, object]] = {}
+    non_roman_visible_expected = {
+        "0N": {
+            "word": 0x000E,
+            "parameter": 0,
+            "final": ord("N"),
+            "primary_context": 0xC0080CB8,
+            "primary_base": 0x000CB8,
+            "primary_mapped": 0,
+            "primary_byte_5": 0,
+            "secondary_context": 0xC00AE122,
+            "secondary_base": 0x02E122,
+            "secondary_mapped": 0,
+            "secondary_byte_5": 0,
+            "range_start": 0x0021,
+            "primary_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 00 6a 00 00 68 02"),
+            "secondary_prefix": bytes.fromhex("00 00 00 00 00 01 00 02 00 c9 00 00 cb 01"),
+        },
+        "10U": {
+            "word": 0x0155,
+            "parameter": 10,
+            "final": ord("U"),
+            "primary_context": 0xC4080418,
+            "primary_base": 0x000418,
+            "primary_mapped": 0x20,
+            "primary_byte_5": 1,
+            "secondary_context": 0xC40AD87A,
+            "secondary_base": 0x02D87A,
+            "secondary_mapped": 0x20,
+            "secondary_byte_5": 1,
+            "range_start": 0x0001,
+            "primary_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 6a 00 20 68 02"),
+            "secondary_prefix": bytes.fromhex("00 00 00 00 00 01 00 02 20 c9 00 20 cb 01"),
+        },
+        "11U": {
+            "word": 0x0175,
+            "parameter": 11,
+            "final": ord("U"),
+            "primary_context": 0xC4080868,
+            "primary_base": 0x000868,
+            "primary_mapped": 0x20,
+            "primary_byte_5": 1,
+            "secondary_context": 0xC40ADCCE,
+            "secondary_base": 0x02DCCE,
+            "secondary_mapped": 0x20,
+            "secondary_byte_5": 1,
+            "range_start": 0x0001,
+            "primary_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 20 6a 00 20 68 02"),
+            "secondary_prefix": bytes.fromhex("00 00 00 00 00 01 00 02 20 c9 00 20 cb 01"),
+        },
+    }
+    for label, expected in non_roman_visible_expected.items():
+        word = int(expected["word"])
+        expected_non_roman_visible_cases[f"primary-{label}"] = {
+            "stream": b"\x1b(" + label.encode("ascii") + primary_font_selection_stream + b"!!",
+            "symbol": {
+                "parser_handlers": [0x011EB6, 0x01201E, 0x0120BE],
+                "requested_symbols": [word, 0x000E],
+                "active_symbols": [word, 0x000E],
+                "stream_event": {
+                    "setup_handler": 0x01201E,
+                    "terminal_handler": 0x0120BE,
+                    "dispatch_target": 0x01C0A4,
+                    "parameter": expected["parameter"],
+                    "final": expected["final"],
+                    "requested_word": word,
+                    "active_word": word,
+                },
+            },
+            "font": {
+                "slot": 0,
+                "context_update": {
+                    "helper": 0x0144D2,
+                    "context_record": 0x782EE6,
+                    "selected_longword": expected["primary_context"],
+                    "byte_4_bit30": 1,
+                    "byte_5_bit26": expected["primary_byte_5"],
+                },
+                "selection_map": {
+                    "path": "built-in-cache-miss",
+                    "slot": "primary",
+                    "selected_symbol": word,
+                    "active_symbol": word,
+                    "range_start": expected["range_start"],
+                    "range_end": 0x00FF,
+                    "patch_kind": "selected-symbol-not-roman8",
+                    "map_address": 0x782F32,
+                },
+                "metric": {
+                    "base": expected["primary_base"],
+                    "metric_flag": 0,
+                    "raw_metric": 0x00780000,
+                    "hmi": pack12(30),
+                },
+                "context_slots": [expected["primary_context"]],
+                "active_symbols": [word, 0x000E],
+            },
+            "shift": [],
+            "printable_sources": [
+                {
+                    "source_context": expected["primary_context"],
+                    "source_slot": 0,
+                    "mapped": expected["primary_mapped"],
+                    "glyph_entry": 0x001088,
+                    "glyph_rows": 32,
+                    "glyph_width": 9,
+                    "coord": coord,
+                }
+                for coord in (0x6A00, 0x6802)
+            ],
+            "object_prefix": expected["primary_prefix"],
+            "bridged_context_slots": (expected["primary_context"], 0),
+            "rendered": {
+                "selector": 0,
+                "context_slot": 0,
+                "count": 2,
+                "row_count": 38,
+                "row_width": 49,
+                "row_sha256": "8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c",
+            },
+            "final_state": {
+                "cursor_x": pack12(60),
+                "cursor_y": pack12(21),
+                "hmi": pack12(30),
+                "text_map_selector_782f06": 0,
+                "page_record_root_allocations": 1,
+            },
+        }
+        expected_non_roman_visible_cases[f"secondary-{label}"] = {
+            "stream": b"\x1b)" + label.encode("ascii") + secondary_font_selection_stream + b"\x0e!!",
+            "symbol": {
+                "parser_handlers": [0x011EB6, 0x012008, 0x0120BE],
+                "requested_symbols": [0x0115, word],
+                "active_symbols": [0x0115, word],
+                "stream_event": {
+                    "setup_handler": 0x012008,
+                    "terminal_handler": 0x0120BE,
+                    "dispatch_target": 0x01C0A4,
+                    "parameter": expected["parameter"],
+                    "final": expected["final"],
+                    "requested_word": word,
+                    "active_word": word,
+                },
+            },
+            "font": {
+                "slot": 1,
+                "context_update": {
+                    "helper": 0x0144D2,
+                    "context_record": 0x782EF6,
+                    "selected_longword": expected["secondary_context"],
+                    "byte_4_bit30": 1,
+                    "byte_5_bit26": expected["secondary_byte_5"],
+                },
+                "selection_map": {
+                    "path": "built-in-cache-miss",
+                    "slot": "secondary",
+                    "selected_symbol": word,
+                    "active_symbol": word,
+                    "range_start": expected["range_start"],
+                    "range_end": 0x00FF,
+                    "patch_kind": "selected-symbol-not-roman8",
+                    "map_address": 0x783032,
+                },
+                "metric": {
+                    "base": expected["secondary_base"],
+                    "metric_flag": 0,
+                    "raw_metric": 0x00480000,
+                    "hmi": pack12(18),
+                },
+                "context_slots": [0xC008004C, expected["secondary_context"]],
+                "active_symbols": [0x0115, word],
+            },
+            "shift": [{
+                "handler": 0x00C6B8,
+                "selector_before": 0,
+                "selector_after": 1,
+                "install_called": True,
+                "install_success": True,
+            }],
+            "printable_sources": [
+                {
+                    "source_context": expected["secondary_context"],
+                    "source_slot": 1,
+                    "mapped": expected["secondary_mapped"],
+                    "glyph_entry": 0x02E4F6,
+                    "glyph_rows": 4,
+                    "glyph_width": 22,
+                    "coord": coord,
+                }
+                for coord in (0xC900, 0xCB01)
+            ],
+            "object_prefix": expected["secondary_prefix"],
+            "bridged_context_slots": (0xC008004C, expected["secondary_context"]),
+            "rendered": {
+                "selector": 1,
+                "context_slot": 1,
+                "count": 2,
+                "row_count": 16,
+                "row_width": 49,
+                "row_sha256": "b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c",
+            },
+            "final_state": {
+                "cursor_x": pack12(66),
+                "cursor_y": pack12(21),
+                "hmi": pack12(18),
+                "text_map_selector_782f06": 1,
+                "font_context_install_calls": 1,
+                "page_record_root_allocations": 1,
+            },
+        }
+    checks.append(assert_equal(
+        "non-Roman symbol streams select visible built-ins",
+        non_roman_visible_cases,
+        expected_non_roman_visible_cases,
+    ))
     live_secondary_handoff_state = control_fixture_state(
         cursor_x=pack12(30),
         cursor_y=pack12(21),
@@ -73264,6 +73609,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         secondary_inline_selection_shift_event["selector_after"],
         unpack12(secondary_inline_selection_page["final_state"]["hmi"])[0],
         " ".join(f"{byte:02x}" for byte in secondary_inline_selection_page["bucket_object"][:14]),
+    ))
+    non_roman_visible_summary = [
+        (
+            key,
+            "0x%08x" % int(case["font"]["context_update"]["selected_longword"]),  # type: ignore[index]
+            "0x%02x" % int(case["printable_sources"][0]["mapped"]),  # type: ignore[index]
+            "0x%06x" % int(case["printable_sources"][0]["glyph_entry"]),  # type: ignore[index]
+            " ".join(f"{byte:02x}" for byte in case["object_prefix"]),  # type: ignore[index]
+            case["rendered"]["row_sha256"],  # type: ignore[index]
+        )
+        for key, case in non_roman_visible_cases.items()
+    ]
+    lines.append("- non-Roman visible symbol streams: fixture `non-Roman symbol streams select visible built-ins` composes `ESC (0N`/`10U`/`11U` and `ESC )0N`/`10U`/`11U` with their matching font-selection command and printable `!!` tail. `(case, selected context, mapped byte, glyph entry, object prefix, rendered-row sha256)` values are `%s`; the secondary cases also cross SO handler `0xc6b8` before rendering from context slot 1." % (
+        non_roman_visible_summary,
     ))
     lines.append("- `0x13eb8` exits: the transient `0x78298f` path stores selected longword `0x%08x`, restores saved active word `0x%04x`, and skips `0x144d2`/`0x14c64`; the `0x148f8` cache-hit path returns after calls `%s` with active symbols `%s`." % (
         transient_13eb8_refresh["selected_context_record_782992"],

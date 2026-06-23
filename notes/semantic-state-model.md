@@ -1641,6 +1641,12 @@ primary non-Roman form before visible text: `ESC (0N`, `ESC (10U`, and
 `ESC (11U` pass through the ROM parser and selected-font refresh, select
 distinct class-zero built-in records, and rebuild primary map `0x782f32`
 through the non-Roman selected-symbol path rather than Roman-8 patching.
+Fixture `non-Roman symbol streams select visible built-ins` carries those
+symbols through visible output for both slots. The primary cases append
+`ESC (s0p10h12v0s0b3T!!` and render from selected contexts `0xc0080cb8`,
+`0xc4080418`, and `0xc4080868`; the secondary cases append
+`ESC )s0p16h8v0s0b0T SO !!`, cross SO handler `0xc6b8`, and render from
+selected contexts `0xc00ae122`, `0xc40ad87a`, and `0xc40adcce`.
 Fixture `live primary current-font RAM install feeds SI page-record rows`
 proves the selected primary RAM record handoff: with
 `0x782ee6 = 0xc008004c` and an existing page root whose secondary slot is
@@ -1683,6 +1689,8 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     word `0x000e` before the secondary `ESC )s...T` selection.
   - primary non-Roman symbol request words `0x000e`, `0x0155`, and `0x0175`
     from `ESC (0N`, `ESC (10U`, and `ESC (11U`.
+  - secondary non-Roman symbol request words `0x000e`, `0x0155`, and
+    `0x0175` from `ESC )0N`, `ESC )10U`, and `ESC )11U`.
   - dirty flags `0x782f2c` and `0x782f2d`, set by handlers `0xc930`,
     `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a`.
   Evidence: fixture `parsed font-selection stream writes primary font-state
@@ -1702,6 +1710,8 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     `0x21..0xff`, glyph entry `0x02e4f6` for host byte `0x21`.
   - non-Roman primary selected longwords `0xc0080cb8`, `0xc4080418`, and
     `0xc4080868` for records `0x000cb8`, `0x000418`, and `0x000868`.
+  - non-Roman secondary selected longwords `0xc00ae122`, `0xc40ad87a`, and
+    `0xc40adcce` for records `0x02e122`, `0x02d87a`, and `0x02dcce`.
   - non-Roman primary map ranges: `0N` uses `0x21..0xff`, while `10U` and
     `11U` use `0x01..0xff`.
   Evidence: fixtures `0x13eb8 refresh carries parsed primary font selection to
@@ -1735,6 +1745,12 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     `0xc00ae122`.
   - primary compact coords: `0x6a00` and `0x6802`.
   - secondary compact coords after SO: `0xc900` and `0xcb01`.
+  - non-Roman primary compact prefixes:
+    `0N` uses `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, while `10U` and
+    `11U` use `00 00 00 00 00 00 00 02 20 6a 00 20 68 02`.
+  - non-Roman secondary compact prefixes:
+    `0N` uses `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, while `10U` and
+    `11U` use `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`.
   Evidence: fixtures `parsed primary built-in font selection feeds visible
   page-record rows`,
   `inline primary font selection stream renders visible rows`,
@@ -1768,6 +1784,9 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     `0x000868/0x00a7cc/0x014b08` for `11U`.
   - `0x783032`: rebuilt secondary map, range `0x21..0xff`, patch kind
     `selected-symbol-not-roman8`.
+  - `0x783032` for non-Roman secondary selection: rebuilt map with patch kind
+    `selected-symbol-not-roman8`; contexts are `0xc00ae122` for `0N`,
+    `0xc40ad87a` for `10U`, and `0xc40adcce` for `11U`.
   - `0x783134`: primary mapped range register, `0x21..0xfe`.
   - HMI/default advance: built-in byte `+0x21 = 0`, long
     `+0x24 = 0x00780000`, converted by `0x10550` to packed advance `30`.
@@ -1787,6 +1806,9 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   - non-Roman parser streams `ESC (0N`, `ESC (10U`, and `ESC (11U` all route
     through handlers `0x11eb6`, `0x1201e`, and `0x120be`; their terminal
     `0x120be` dispatch target is `0x1c0a4`.
+  - non-Roman visible streams pair those primary commands with
+    `ESC (s0p10h12v0s0b3T!!`, and pair secondary `ESC )0N`, `ESC )10U`, and
+    `ESC )11U` with `ESC )s0p16h8v0s0b0T SO !!`.
   - printable parser events are two `0xd04a` entries for the primary fixture,
     and `0xc6b8, 0xd04a, 0xd04a` for the secondary SO and fallback fixtures.
   - the live primary handoff stream is `SI !!` with current-font/page-root
@@ -1809,6 +1831,8 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     secondary map `0x783032` in the fallback stream.
   - `0x14c64` rebuilds map `0x782f32` for the primary `0N`, `10U`, and `11U`
     selections without entering the `0x14f16` Roman-8 patch-table path.
+  - `0x14c64` rebuilds map `0x783032` for the secondary `0N`, `10U`, and
+    `11U` selections before SO makes slot `1` active for printable bytes.
   - `0xc428` reads the selected longword from `0x782ee6` / `0x782ef6` and
     passes that longword to `0xc4fc`; `0xc4fc` stores the longword in the
     selected page-root slot.
@@ -1819,9 +1843,9 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   - lower-level CPU-register fidelity inside the modeled `0x13eb8` refresh
     remains indirect; the primary and secondary parser-to-printable state edge
     is now covered by inline mixed-stream fixtures.
-  - secondary-slot and visible-output composition for `0N`, `10U`, and `11U`
-    remains open; current evidence covers primary parser through selected-map
-    dispatch.
+  - broader non-Roman command combinations remain open only if they expose
+    different state boundaries; the primary and secondary visible-output paths
+    for `0N`, `10U`, and `11U` are fixture-backed.
 
 ### Writers
 
@@ -1829,7 +1853,8 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   primary request fields and dirty flags.
 - `0x120be` writes the requested symbol word `0x9a55` for `ESC (1234U` and
   `ESC )1234U`, and writes `0x000e`, `0x0155`, and `0x0175` for primary
-  `ESC (0N`, `ESC (10U`, and `ESC (11U`.
+  `ESC (0N`, `ESC (10U`, and `ESC (11U`, plus the same words for secondary
+  `ESC )0N`, `ESC )10U`, and `ESC )11U`.
 - `0x13eb8` filters active candidates through `0x1569c`, `0x156de`,
   `0x153c6`, `0x1519a`, `0x147b2`, `0x14758`, and `0x14398`.
 - `0x156de` writes fallback active word `0x0115` for the primary symbol miss
@@ -1866,6 +1891,10 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
 - After SO, `0x1393a` consumes selected context `0xc00ae122` and map
   `0x783032` to map host byte `0x21` to glyph `0x00`; the fallback fixture
   reaches this same consumer state after `0x156de` selects word `0x000e`.
+- In the non-Roman visible fixture, `0x1393a` consumes primary contexts
+  `0xc0080cb8`, `0xc4080418`, and `0xc4080868` through map `0x782f32`, and
+  consumes secondary contexts `0xc00ae122`, `0xc40ad87a`, and `0xc40adcce`
+  through map `0x783032` after SO.
 - In the live handoff fixture, `0x1393a` reaches that same selected context by
   reading page-root context slot `1`, which `0xc428(1)` filled from
   `0x782ef6`.
@@ -1879,6 +1908,9 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   and glyph `0` to draw two Courier glyph rows.
 - Compact renderer helper `0x207ac` consumes secondary context `0xc00ae122`
   and glyph `0` to draw two secondary Line Printer glyph rows.
+- The same renderer helpers consume the non-Roman visible fixture outputs:
+  `0x1fe76` renders the primary Courier rows for `0N`/`10U`/`11U`, and
+  `0x207ac` renders the secondary Line Printer rows for `0N`/`10U`/`11U`.
 
 ### Output Effect
 
@@ -1943,6 +1975,15 @@ derives HMI `18`, queues object
 `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and renders the same secondary
 Line Printer rows.
 
+The non-Roman visible fixture extends that output contract across six streams.
+Primary `0N`, `10U`, and `11U` all render two Courier glyphs from contexts
+`0xc0080cb8`, `0xc4080418`, and `0xc4080868`, with rendered-row digest
+`8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
+Secondary `0N`, `10U`, and `11U` all render two Line Printer glyphs from
+contexts `0xc00ae122`, `0xc40ad87a`, and `0xc40adcce` after SO, with
+rendered-row digest
+`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
+
 ### Confidence
 
 High for parser handler routing, fallback table decision, selected built-in
@@ -1953,6 +1994,10 @@ primary and secondary parser-to-printable state edge because the inline
 fixtures preserve one mixed-stream state from selection handlers through
 following printable source capture and row comparison. Medium for lower-level
 CPU-register fidelity inside the modeled `0x13eb8` refresh.
+High for primary and secondary visible-output handling of `0N`, `10U`, and
+`11U` because fixture `non-Roman symbol streams select visible built-ins`
+preserves symbol-set parsing, font-selection refresh, SO for secondary,
+compact object creation, bridge context slots, and rendered row digests.
 
 ### Fixtures
 
@@ -1969,6 +2014,8 @@ CPU-register fidelity inside the modeled `0x13eb8` refresh.
 - `live primary current-font RAM install feeds SI page-record rows`
 - `live secondary current-font RAM install feeds SO page-record rows`
 - `secondary symbol miss falls back before visible SO page-record rows`
+- `live parser symbol-set streams select non-Roman built-ins`
+- `non-Roman symbol streams select visible built-ins`
 
 ### Disassembly Evidence
 

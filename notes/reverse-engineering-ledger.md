@@ -1109,9 +1109,12 @@ ROM work needed:
   `ESC (10U`, and `ESC (11U` route through handlers `0x11eb6`, `0x1201e`,
   and `0x120be`, write requested words `0x000e`, `0x0155`, and `0x0175`,
   select records `0x000cb8`, `0x000418`, and `0x000868`, and rebuild map
-  `0x782f32` through the `selected-symbol-not-roman8` path. The remaining
-  edge is secondary-slot and visible-output composition for those named
-  non-Roman symbols.
+  `0x782f32` through the `selected-symbol-not-roman8` path. Fixture
+  `non-Roman symbol streams select visible built-ins` now carries the primary
+  and secondary `0N` / `10U` / `11U` byte streams through matching
+  font-selection commands, SO for secondary, compact text objects, bridge
+  context slots, and rendered-row digests. The remaining edge is broader
+  command combinations only where they expose different state boundaries.
 - Promote the generated glyph payload manifest into renderer fixture
   inputs once the renderer-side data format is chosen.
 

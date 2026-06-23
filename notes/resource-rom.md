@@ -664,6 +664,20 @@ survivor record starts `0x000cb8/0x00ac1c/0x014f5c`,
 for `0N` and `0x01..0xff` for `10U`/`11U`, using the
 `selected-symbol-not-roman8` dispatch path rather than the `0x14f16`
 Roman-8 patch-table path.
+Fixture `non-Roman symbol streams select visible built-ins` now composes
+both primary and secondary forms through visible output. Primary streams
+`ESC (0N ESC (s0p10h12v0s0b3T!!`,
+`ESC (10U ESC (s0p10h12v0s0b3T!!`, and
+`ESC (11U ESC (s0p10h12v0s0b3T!!` select contexts `0xc0080cb8`,
+`0xc4080418`, and `0xc4080868`, queue two Courier compact entries, and
+render row digest
+`8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
+Secondary streams `ESC )0N ESC )s0p16h8v0s0b0T SO !!`,
+`ESC )10U ESC )s0p16h8v0s0b0T SO !!`, and
+`ESC )11U ESC )s0p16h8v0s0b0T SO !!` select contexts `0xc00ae122`,
+`0xc40ad87a`, and `0xc40adcce`, cross SO handler `0xc6b8`, queue two Line
+Printer compact entries from context slot `1`, and render row digest
+`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
 
 The generated `generated/analysis/ic30_ic13_active_symbol_set_flow.md`
 report traces those active words back to the host parser. `ESC (` uses
@@ -776,9 +790,10 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    rendered rows against the direct payload hashes and a known
    printed/self-test sample to correlate the remaining baseline/header
    fields against observed placement.
-7. Broaden the now-named `0N` / `10U` / `11U` primary parser/font-selection
-   cases into secondary-slot and visible-output byte-stream cases where
-   needed.
+7. Broaden the now-named `0N` / `10U` / `11U` parser/font-selection/output
+   cases only where new command combinations expose different state
+   boundaries; primary and secondary visible-output byte streams are now
+   fixture-backed.
 
 These are high-value targets for pixel-perfect output because the
 manuals describe PCL behavior but do not provide the built-in font
@@ -900,6 +915,10 @@ records `0x000cb8`, `0x000418`, and `0x000868` become the selected built-in
 records, and dispatch map `0x782f32` is rebuilt through the non-Roman-8
 selected-symbol path. This is separate from Roman-8 base record `0x00004c`
 plus `0x14f16` patching.
+The visible-output fixture confirms the same for the secondary class-one rows:
+`ESC )0N`, `ESC )10U`, and `ESC )11U` with the secondary Line Printer
+selection consume records `0x02e122`, `0x02d87a`, and `0x02dcce`, rebuild
+map `0x783032`, cross SO, and render from context slot `1`.
 
 Current candidate-list state:
 

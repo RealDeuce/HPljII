@@ -357,8 +357,14 @@ byte-stream selector coverage
 6-LPI `ESC &l66P` selects internal code `2`, stores page extent `3300`,
 recomputes top/text bounds, and the parser-to-page-record fixture proves
 the following printable byte uses the refreshed text cursor. The
-zero-parameter publication/default-page branch is identified but still
-needs a dedicated fixture.
+zero-parameter publication/default-page branch is now fixture-backed:
+`ESC &l0P` follows `0xfa62..0xfaa6` through `0xf34a`, `0xff1e`,
+`0x9ac2`, optional paper-source output byte `0x780e8f`, and
+`0x9b5e(0x780e26, 1)`, then enters `0xfb4a..0xfc52` to choose default
+page code `0x780e97` or fallback `2`, reload `0x782dba` through
+`0xf9ac`, and recompute text bottom. The fixture pins fallback code `2`,
+extent `3300`, text bottom `3240`, output byte `0x80`, and control word
+`1`.
 
 Vertical forms control is now a composed semantic state block in
 `notes/semantic-state-model.md`. The canonical table is

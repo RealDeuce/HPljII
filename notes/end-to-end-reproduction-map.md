@@ -109,6 +109,14 @@ executable fixture or generated analysis note.
   Evidence: fixtures `plain printable parser trace feeds page-record queue`,
   `host-fetched mixed control stream reaches parser and page-record render`,
   and `host-fetched direct text/control streams feed 0x1ed84 and 0x1ef6a`.
+- Page-geometry streams are covered for page size, orientation, nonzero
+  page length, and the `ESC &l0P` zero-length default-page branch. Evidence:
+  fixture
+  `0xf9e8 ESC &l#P converts VMI lines to page length and selects internal
+  page code`, `0xf9e8 ESC &l#P stream reaches page-length handler`,
+  `mixed printable/page-size page-record stream publishes queued text`,
+  and `mixed printable/orientation page-record stream publishes queued text
+  before landscape change`.
 - Raster graphics streams are covered for `ESC *t#R`, `ESC *r#A`, delayed
   `ESC *b#W`, lowercase transfer chaining, active-raster resolution behavior,
   row caps, beyond-extent drains, and modes 0/1/2/3. Evidence:

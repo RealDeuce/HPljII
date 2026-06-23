@@ -69,6 +69,14 @@ length, and cursor state, and refreshes the next printable cursor. A
 6-LPI `ESC &l66P!` fixture now reaches parser handlers `0xf9e8` and
 `0xd04a`, stores page extent `3300`, and queues `!` at compact text coord
 `0x9001`.
+The zero-length path now has executable coverage: `ESC &l0P` takes
+`0xfa62..0xfaa6`, publishes pending page state through `0xf34a` /
+`0xff1e`, waits through `0x9ac2`, optionally emits paper-source output
+byte `0x780e8f` and control word `0x780e26`, then enters the shared
+geometry refresh at `0xfb4a..0xfc52`. Fixture
+`0xf9e8 ESC &l#P converts VMI lines to page length and selects internal
+page code` pins fallback default code `2`, `0xf9ac` page extent `3300`,
+text bottom `3240`, output byte `0x80`, and control word `1`.
 
 Vertical forms control is now tracked as a composed state block in
 `notes/semantic-state-model.md`. The `ESC &l#W` parser final at

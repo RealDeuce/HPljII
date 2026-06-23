@@ -1630,6 +1630,11 @@ def page_geometry_lookup_via_9dxx(data: bytes, table: str, page_code: int) -> in
     return u16(data, PAGE_GEOMETRY_TABLES[table] + index * 2)
 
 
+def page_extent_via_f9ac(data: bytes, page_code: int, orientation: int) -> int:
+    table = "landscape_margin" if int(orientation) else "portrait_margin"
+    return page_geometry_lookup_via_9dxx(data, table, page_code)
+
+
 def page_geometry_manual_crosscheck(data: bytes) -> dict[str, dict[str, int | bool]]:
     result: dict[str, dict[str, int | bool]] = {}
     for paper, values in MANUAL_PAGE_LOGICAL_DIMENSIONS.items():
@@ -1766,8 +1771,8 @@ def apply_page_geometry_tables(data: bytes, state: dict[str, int]) -> dict[str, 
     orientation = int(state["orientation"])
     state["width"] = page_geometry_lookup_via_9dxx(data, "width", page_code)
     state["height"] = page_geometry_lookup_via_9dxx(data, "height", page_code)
-    margin_table = "landscape_margin" if orientation else "portrait_margin"
-    state["margin_reference"] = page_geometry_lookup_via_9dxx(data, margin_table, page_code)
+    state["margin_reference"] = page_extent_via_f9ac(data, page_code, orientation)
+    state["page_extent"] = state["margin_reference"]
     if orientation:
         state["vertical_offset_source"] = 0x32
         state["active_width"] = state["height"]
@@ -1841,7 +1846,32 @@ def apply_page_length_via_f9e8(data: bytes, state: dict[str, int], parameter: in
         return state
     lines = abs(int(parameter))
     if lines == 0:
-        events.append({"kind": "page-length-zero", "modeled": False})
+        state["pending_text_flushes"] = int(state.get("pending_text_flushes", 0)) + 1
+        state["page_finalizations"] = int(state.get("page_finalizations", 0)) + 1
+        state["active_record_waits"] = int(state.get("active_record_waits", 0)) + 1
+        page_env = int(state.get("page_env_byte_782da6", 0)) & 0xFF
+        current_env = int(state.get("paper_source_current_780e8e", 0)) & 0xFF
+        paper_source_update = page_env != current_env
+        if paper_source_update:
+            state["paper_source_output_780e8f"] = page_env
+            state["paper_source_control_780e26"] = (
+                int(state.get("paper_source_control_780e26", 0)) | 1
+            )
+        internal_code = int(state.get("default_page_code", 0)) & 0xFF
+        if internal_code == 0:
+            internal_code = 2
+        state["page_change_flag"] = 1
+        state["print_engine_status"] = 0
+        state["page_code"] = internal_code
+        state = apply_page_geometry_tables(data, state)
+        state["text_length_bottom"] = int(state["page_extent"]) - int(state["vertical_offset_source"])
+        state["layout_refreshes"] = int(state.get("layout_refreshes", 0)) + 1
+        events.append({
+            "kind": "page-length-zero",
+            "page_code": internal_code,
+            "page_extent": int(state["page_extent"]),
+            "paper_source_update": paper_source_update,
+        })
         state["events"] = events
         return state
     page_length = trunc_div(packed12_to_subunits(vmi) * lines, 12)
@@ -20737,6 +20767,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         page_geometry_state(vmi=pack12(0)),
         66,
     )
+    page_length_zero_default = apply_page_length_via_f9e8(
+        data,
+        page_geometry_state(
+            vmi=pack12(50),
+            default_page_code=0,
+            page_env_byte_782da6=0x80,
+            paper_source_current_780e8e=0,
+        ),
+        0,
+    )
     page_length_too_long = apply_page_length_via_f9e8(
         data,
         page_geometry_state(vmi=pack12(50)),
@@ -20768,6 +20808,26 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "top_offset",
         )),
         "zero_vmi_event": page_length_zero_vmi["events"][-1],
+        "zero_default": select_keys(page_length_zero_default, (
+            "page_code",
+            "page_extent",
+            "width",
+            "height",
+            "active_width",
+            "active_height",
+            "vertical_offset_source",
+            "printable_extent",
+            "top_offset",
+            "text_length_bottom",
+            "pending_text_flushes",
+            "page_finalizations",
+            "active_record_waits",
+            "page_change_flag",
+            "print_engine_status",
+            "paper_source_output_780e8f",
+            "paper_source_control_780e26",
+        )),
+        "zero_default_event": page_length_zero_default["events"][-1],
         "too_long_event": page_length_too_long["events"][-1],
     }, {
         "portrait_letter": {
@@ -20795,6 +20855,31 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "top_offset": 100,
         },
         "zero_vmi_event": {"kind": "page-length-ignored", "reason": "zero-vmi"},
+        "zero_default": {
+            "page_code": 2,
+            "page_extent": 3300,
+            "width": 3180,
+            "height": 2400,
+            "active_width": 3180,
+            "active_height": 2400,
+            "vertical_offset_source": 60,
+            "printable_extent": 3240,
+            "top_offset": 90,
+            "text_length_bottom": 3240,
+            "pending_text_flushes": 1,
+            "page_finalizations": 1,
+            "active_record_waits": 1,
+            "page_change_flag": 1,
+            "print_engine_status": 0,
+            "paper_source_output_780e8f": 0x80,
+            "paper_source_control_780e26": 1,
+        },
+        "zero_default_event": {
+            "kind": "page-length-zero",
+            "page_code": 2,
+            "page_extent": 3300,
+            "paper_source_update": True,
+        },
         "too_long_event": {
             "kind": "page-length-ignored",
             "reason": "beyond-thresholds",
@@ -20806,6 +20891,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         page_geometry_state(vmi=pack12(50)),
         b"\x1b&l66P",
     )
+    page_length_zero_stream = apply_page_geometry_stream_via_fc74_10220(
+        data,
+        page_geometry_state(
+            vmi=pack12(50),
+            default_page_code=0,
+            page_env_byte_782da6=0x80,
+            paper_source_current_780e8e=0,
+        ),
+        b"\x1b&l0P",
+    )
     checks.append(assert_equal("0xf9e8 ESC &l#P stream reaches page-length handler", {
         "state": select_keys(page_length_stream, (
             "stream",
@@ -20815,7 +20910,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "pending_text_flushes",
             "page_finalizations",
         )),
+        "zero_state": select_keys(page_length_zero_stream, (
+            "stream",
+            "page_code",
+            "page_extent",
+            "top_offset",
+            "text_length_bottom",
+            "active_record_waits",
+            "paper_source_output_780e8f",
+            "paper_source_control_780e26",
+        )),
         "stream_events": page_length_stream["stream_events"],
+        "zero_stream_events": page_length_zero_stream["stream_events"],
     }, {
         "state": {
             "stream": b"\x1b&l66P",
@@ -20825,11 +20931,56 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "pending_text_flushes": 1,
             "page_finalizations": 1,
         },
+        "zero_state": {
+            "stream": b"\x1b&l0P",
+            "page_code": 2,
+            "page_extent": 3300,
+            "top_offset": 90,
+            "text_length_bottom": 3240,
+            "active_record_waits": 1,
+            "paper_source_output_780e8f": 0x80,
+            "paper_source_control_780e26": 1,
+        },
         "stream_events": [
             {
                 "sequence": b"\x1b&l66P",
                 "record": b"\x80P\x00B\x00\x00",
                 "parameter": 66,
+                "handler": 0x00F9E8,
+                "before": {
+                    "page_code": 2,
+                    "orientation": 0,
+                    "width": 0,
+                    "height": 0,
+                    "active_width": 0,
+                    "active_height": 0,
+                    "margin_reference": 0,
+                    "vertical_offset_source": 0,
+                    "top_offset": 0,
+                    "pending_text_flushes": 0,
+                    "page_finalizations": 0,
+                },
+                "after": {
+                    "page_code": 2,
+                    "orientation": 0,
+                    "width": 3180,
+                    "height": 2400,
+                    "active_width": 3180,
+                    "active_height": 2400,
+                    "margin_reference": 3300,
+                    "vertical_offset_source": 60,
+                    "top_offset": 90,
+                    "pending_text_flushes": 1,
+                    "page_finalizations": 1,
+                },
+                "chained": False,
+            },
+        ],
+        "zero_stream_events": [
+            {
+                "sequence": b"\x1b&l0P",
+                "record": b"\x80P\x00\x00\x00\x00",
+                "parameter": 0,
                 "handler": 0x00F9E8,
                 "before": {
                     "page_code": 2,
@@ -65833,7 +65984,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("")
     lines.append("- Page-code lookup masks the internal code with `0x7f`; PCL `80` stores internal code `0x88`, which reads table index `8`.")
     lines.append("- `ESC &l#A` maps PCL values `1`, `2`, `3`, `26`, `80`, `81`, `90`, and `91` to internal page codes, finalizes pending page state, updates width/height words, then recomputes portrait or landscape extents.")
-    lines.append("- `ESC &l#P` converts current VMI times absolute line count into page extent `0x782dba`, selects an internal page code from orientation thresholds, recomputes default text bounds, and refreshes the following text cursor.")
+    lines.append("- `ESC &l#P` converts current VMI times absolute line count into page extent `0x782dba`, selects an internal page code from orientation thresholds, recomputes default text bounds, and refreshes the following text cursor. Its zero-parameter branch publishes pending page state, reloads default page geometry through `0xf9ac`, and can emit the paper-source output/control bytes.")
     lines.append("- `ESC &l#W` reaches delayed handler `0x12cfe`, consumes its payload through the `0xdace` data reader, loads the vertical-forms-control table at `0x782dde`, and recomputes text-bottom cache `0x782dd2` from channel-bit words.")
     lines.append("- `ESC &l#V` reaches handler `0x1280a`, searches channel bits in the table at `0x782dde`, ensures a page root through `0x10084`, resets horizontal cursor through `0xf06e`, flushes pending text through `0xf34a`, and moves the vertical cursor before the next printable byte is queued.")
     lines.append("- `ESC &l#O` accepts only values `0` and `1`; changing orientation finalizes pending page state, swaps active width/height in landscape, changes the vertical offset source from `60` to `50`, and reloads the orientation margin thresholds through `0x103ea`. A byte-stream fixture now drives chained `ESC &l1a1O` through handlers `0xfc74` and `0x10220`.")
@@ -65844,6 +65995,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- page-geometry stream events: `{page_geometry_stream['stream_events']}`")
     lines.append(f"- Landscape thresholds loaded by `0x103ea`: `{[landscape_letter[key] for key in ('portrait_landscape_threshold_6', 'portrait_landscape_threshold_2', 'portrait_landscape_threshold_1', 'portrait_landscape_threshold_5')]}`")
     lines.append(f"- `ESC &l66P` at 6 LPI: code `{page_length_letter['page_code']}`, extent `{page_length_letter['page_extent']}`, top offset `{page_length_letter['top_offset']}`, text bottom `{page_length_letter['text_length_bottom']}`")
+    lines.append(f"- `ESC &l0P` zero-parameter branch: code `{page_length_zero_default['page_code']}`, extent `{page_length_zero_default['page_extent']}`, paper-source output `0x{page_length_zero_default['paper_source_output_780e8f']:02x}`, control word `{page_length_zero_default['paper_source_control_780e26']}`")
     lines.append(f"- `ESC &l4W` payload `00 00 00 02`: text-bottom cache `0x{int(vfc_direct_state['text_length_bottom']):08x}`, VFC table prefix `{' '.join(f'{byte:02x}' for byte in vfc_direct_state['vfc_table_782dde'][:4])}`")
     lines.append(
         "- Default `0x12b96` VFC table channels are now pinned by selector "

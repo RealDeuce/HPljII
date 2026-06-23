@@ -271,7 +271,23 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `vertical cursor-position parser trace feeds page-record queue`,
   `vertical-decipoint parser trace feeds page-record queue`,
   `vertical layout parser trace feeds page-record queue`, and
-  page-length `ESC &l66P!` notes in the ledger.
+  page-length `ESC &l66P!` and `ESC &l0P` notes in the ledger.
+- Canonical/default page environment:
+  - `0x782da6`: pending page-environment byte copied by the `ESC &l0P`
+    zero-parameter branch when it differs from active byte `0x780e8e`.
+  - `0x780e8e`: active page-environment byte compared at
+    `0xfa74..0xfa86`.
+  - `0x780e8f`: output page-environment byte written at `0xfa8a`.
+  - `0x780e26`: output/control word signaled through `0x9b5e` at
+    `0xfa94..0xfaa4`.
+  - `0x780e97`: default page code used by the same branch at
+    `0xfb4a..0xfb58`, with fallback code `2` when the byte is zero.
+  Evidence: disassembly `0xfa62..0xfaa6` and `0xfb4a..0xfc52`, and
+  fixture
+  `0xf9e8 ESC &l#P converts VMI lines to page length and selects
+  internal page code`, where `ESC &l0P` with `0x782da6 = 0x80`,
+  `0x780e8e = 0`, and default code `0` emits `0x780e8f = 0x80`,
+  sets control word `1`, chooses code `2`, and reloads extent `3300`.
 - Canonical control modes:
   - `0x78318f`: line-termination mode written by `ESC &k#G` handler
     `0xedf8`; CR tests bit 7, LF tests bit 6, and FF tests bit 5.

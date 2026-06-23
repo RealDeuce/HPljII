@@ -172,9 +172,15 @@ state, and refresh the next text cursor through the same
 `0x782dce + VMI * 18 / 25` rule. The fixture pins `ESC &l66P` at 6 LPI
 as internal code `2`, page extent `3300`, top offset `90`, and following
 printable `!` at compact coord `0x9001`. Zero VMI and too-long page
-lengths are ignored. The zero-parameter branch is identified in
-disassembly as a publication/default-page path, but it is not yet fully
-modeled.
+lengths are ignored. The zero-parameter branch is now modeled from
+`0xfa62..0xfaa6` and `0xfb4a..0xfc52`: it flushes pending text through
+`0xf34a`, publishes through `0xff1e`, waits through `0x9ac2`, copies
+`0x782da6` to output byte `0x780e8f` and signals `0x780e26` through
+`0x9b5e` when it differs from `0x780e8e`, then chooses default page code
+`0x780e97` or fallback `2`. Fixture `0xf9e8 ESC &l#P converts VMI lines
+to page length and selects internal page code` pins `ESC &l0P` with
+fallback code `2`, extent `3300`, text bottom `3240`, output byte
+`0x80`, and control word `1`.
 
 `ESC &l#W` at `0x011f6e` is a delayed-payload boundary for vertical
 forms control. It snapshots the six-byte parsed record through `0x121cc`

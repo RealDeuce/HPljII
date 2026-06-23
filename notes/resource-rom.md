@@ -351,9 +351,13 @@ The unresolved middle edge is now narrower than "built-in metrics":
 `0xc428`/`0x10550` covers record `+0x24`, and `0xd824` covers
 glyph-entry `+0/+2`. The open address boundary is the header-level
 height/baseline use between the extracted record fields
-`+0x28..+0x31` and the font-printout/page-object path
-`0x1c334..0x1ed84`; the `0x1c204..0x1cf34` loop, row helpers, and byte
-emission are now composed in
+`+0x28..+0x31` and the font-printout/page-object path. The
+`0x1c334..0x1c5e4` candidate traversal is now decoded through
+`0x1b50e` row resolution, class filtering, continuation checks, and
+recent-context duplicate suppression; the still-open boundary is
+`0x1c5e8..0x1ed84`, where the selected rows must be modeled as emitted
+page objects and rendered rows. The `0x1c204..0x1cf34` loop, row helpers,
+and byte emission are composed in
 [semantic-state-model.md](semantic-state-model.md). The emitted page
 objects still must be correlated with the direct sample-byte row hashes
 or a known print sample before those fields get final semantic names.
@@ -534,12 +538,14 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    offsets are now pinned through the `0xd824` path, but the
    header-level baseline/cell semantics still need broader correlation.
 6. Model the font-printout loop's emitted page objects from the ROM
-   sample byte runs. The `0x1c204..0x1cf34` loop and byte-emission path
-   are now semantically composed; the remaining boundary is
-   `0x1c334..0x1ed84` into published page records and rendered rows.
-   Compare those rows against the direct payload hashes and a known
-   printed/self-test sample to correlate the remaining baseline/header
-   fields against observed placement.
+   sample byte runs. The `0x1c334..0x1c5e4` row traversal is decoded,
+   including `0x1b50e` two-window candidate resolution, class filtering,
+   continuation-page entry, and recent-context duplicate suppression.
+   The next implementation target is the concrete candidate sequence for
+   the verified internal-font set, followed by the `0x1c5e8..0x1ed84`
+   page-object/render boundary. Compare those rendered rows against the
+   direct payload hashes and a known printed/self-test sample to correlate
+   the remaining baseline/header fields against observed placement.
 7. Identify the manual-facing names for the currently unidentified
    built-in symbol words `0N`, `10U`, and `11U`, and broaden the
    now-pinned real map samples into more live parser/font-selection

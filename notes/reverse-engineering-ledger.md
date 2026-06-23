@@ -950,11 +950,13 @@ ROM work needed:
   `80 57 08 91 00 00`, glyph `0x25`, selector `0x3003`, buckets `9`
   and `1`, and compact dispatch target `0x1effe`.
 - Model the font-printout loop's emitted page objects from the ROM sample
-  byte runs. The `0x1c204..0x1cf34` loop and byte-emission path are now
-  semantically composed; the remaining boundary is `0x1c334..0x1ed84`
-  into published page records and rendered rows. Compare those rows
-  against the direct payload hashes and a known printed/self-test sample
-  to correlate remaining baseline/header semantics against placement.
+  byte runs. The `0x1c334..0x1c5e4` row traversal is decoded, including
+  `0x1b50e` two-window candidate resolution, class filtering,
+  continuation-page entry, row-index advance, and recent-context
+  duplicate suppression. The next boundary is the concrete internal-font
+  candidate sequence plus `0x1c5e8..0x1ed84` emitted page objects and
+  rendered rows, to compare against the direct payload hashes and a known
+  printed/self-test sample.
 - Identify the manual-facing names for the currently unidentified
   built-in symbol words `0N`, `10U`, and `11U`, and broaden the
   now-pinned real symbol-map samples into more live parser/font-selection

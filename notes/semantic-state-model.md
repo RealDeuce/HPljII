@@ -1085,6 +1085,11 @@ for how resource records become ordinary page-record text.
     tested by `0x1c28e..0x1c2c4`.
   - `0x78287c` / `0x7827b8`: active candidate window supplied to row
     helpers such as `0x1b50e`.
+  - `0x7827ac` / `0x78279a`, `0x7827b0` / `0x78279c`,
+    `0x7827b4` / `0x78279e`, `0x7827a0` / `0x782792`,
+    `0x7827a4` / `0x782794`, and `0x7827a8` / `0x782796`:
+    first- and second-window candidate pointer/count pairs selected by
+    `0x1b50e` for modes `0..3`.
   - current and alternate selected contexts installed by `0x1c5e8` /
     `0x1cece` and consumed by `0xd04a`.
   - sample byte-run tables at `0x1c1cf` and `0x1c1e9`, emitted by
@@ -1118,9 +1123,19 @@ for how resource records become ordinary page-record text.
     `0xd04a` directly for each emitted byte.
   - `0x1d76c` synthesizes a six-byte orientation command record at
     `0x78299e` before calling normal orientation handler `0x10220`.
+  - `0x7828a0`, `0x7828a4`, and `0x78289f`: fast-probe selected slot,
+    caller-visible candidate word, and primary/secondary selector used by
+    `0x1b8ea` while `0x1b50e` resolves a row ordinal.
+  - `0x7828ac` and requested symbol word `0x7821a0`: Roman-8
+    substitution state used by `0x1b5a4..0x1b706` so the sample page
+    may count duplicate Roman-8 rows without emitting the same row twice.
 - Firmware bookkeeping:
   - `0x783f0a`: recent-context list that suppresses duplicate sample
     rows, tracking up to 16 contexts.
+  - `0x783f02..0x783f05`: per-source status bytes written when a source
+    group has no more matching rows or when continuation gating is needed.
+  - `0x783f08`: recent-context count byte maintained by
+    `0x1c540..0x1c5c6`.
   - local page-break word `-6(A6)`: receives the return flag from
     `0x1cf34`.
   - class-pass counter in the `0x1c28e..0x1c344` loop.
@@ -1138,6 +1153,14 @@ for how resource records become ordinary page-record text.
 - `0x1c28e..0x1c344` run class-zero and class-one passes, skipping empty
   classes and finalizing/ejecting between passes through FF handler
   `0xf0f0`.
+- `0x1c2fe..0x1c332` iterates up to four source groups per pass,
+  snapshots published pool pointer `0x780ea6` when the group index
+  reaches `4`, clears a local page flag, and calls FF handler `0xf0f0`.
+- `0x1c354..0x1c5e4` walks candidate rows for one source group: it emits
+  the source heading through `0x1ca2c`, asks `0x1b50e` for row ordinals,
+  class-filters candidates through `0x1c710`, starts continuation pages
+  through `0x1c9f6` when needed, and advances the row index up to
+  `0x63`.
 - `0x1c5e8` installs the selected resource into current-font/page-root
   state, rebuilds the map through `0x14c64`, and refreshes page-root
   font slot state through `0xc428`.
@@ -1154,8 +1177,20 @@ for how resource records become ordinary page-record text.
 ### Readers And Consumers
 
 - `0x1b50e` supplies candidate rows from the active candidate windows.
+  It first tries fast probe `0x1b8ea`; otherwise it scans the
+  mode-specific first window, then the second window. Mode `3` uses the
+  built-in-symbol windows, modes `1` and `2` use cartridge/external
+  windows, and mode `0` uses downloaded-record windows.
+- `0x1b750` / `0x1b7b2` classify candidate words before `0x1b50e`
+  exposes them to the sample loop; the admissible ranges differ for
+  built-in, cartridge/external, and downloaded records.
 - `0x1c746`, `0x1c766`, `0x1c7a8`, and `0x1c710` normalize, extract
   flags, and classify candidate rows before row emission.
+- `0x1b50e` duplicate handling is a semantic consumer of current selected
+  slot `0x7828a0`, requested symbol word `0x7821a0`, and Roman-8
+  substitution flag `0x7828ac`: non-selected Roman-8 candidates can count
+  twice for non-special requested symbols, while the current selected
+  slot is suppressed.
 - `0x1d198` builds the font-name/style column and reads local lookup
   tables at `0x1c0a6` and `0x1c11a` for labels such as `UPC/EAN`,
   `OCR A`, `OCR B`, `LINE DRAW`, `COURIER`, and `LINE PRINTER`.
@@ -1170,14 +1205,18 @@ for how resource records become ordinary page-record text.
 ### Output Effect
 
 The path prints ROM-selected labels, metric columns, and sample byte runs
-as ordinary text. `0x1d12e` proves ROM strings and sample bytes enter the
-same printable path as host bytes. Direct payload rendering of the two
-sample byte runs through first `COURIER` and first `LINE_PRINTER`
-produces stable row-hash pairs documented in
-`generated/analysis/ic30_ic13_font_sample_page.md`; those hashes are the
-current comparison targets for the later page-object model. Until the
-full `0x1c204` page-object loop is modeled, this checkpoint proves the
-producer and byte-emission semantics, not final full-page placement.
+as ordinary text. The row order is not a linear ROM-record walk:
+`0x1b50e` resolves each source-group row ordinal through fast probe,
+two scan windows, class/range checks, and Roman-8 duplicate/substitution
+rules before `0x1cabe` and `0x1cf34` emit the visible text. `0x1d12e`
+proves ROM strings and sample bytes enter the same printable path as host
+bytes. Direct payload rendering of the two sample byte runs through first
+`COURIER` and first `LINE_PRINTER` produces stable row-hash pairs
+documented in `generated/analysis/ic30_ic13_font_sample_page.md`; those
+hashes are the current comparison targets for the later page-object
+model. Until the full `0x1c204` page-object loop is modeled, this
+checkpoint proves the producer, row-order, duplicate-suppression, and
+byte-emission semantics, not final full-page placement.
 
 ### Confidence
 
@@ -1199,6 +1238,8 @@ open.
 ### Disassembly Evidence
 
 - `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`
+- `generated/disasm/ic30_ic13_font_sample_page_01c170.lst`
+- `generated/disasm/ic30_ic13_font_sample_row_helpers_01d198.lst`
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`
 - `generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst`
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
@@ -1207,12 +1248,16 @@ open.
 
 ### Unresolved Middle Edges
 
-- `0x1c204..0x1cf34`: sample row selection, setup, and byte emission are
-  traced, but emitted page objects for the complete font printout are not
-  yet modeled from the ROM sample byte runs.
-- `0x1c334..0x1ed84`: the bridge from the sample printout's emitted text
-  into published page records remains to be compared against the direct
-  payload hashes and then a known printed/self-test sample.
+- `0x1c334..0x1c5e4`: row traversal is decoded, including source-group
+  headings, `0x1b50e` two-window candidate resolution, class filtering,
+  continuation-page entry, row-index advance, and recent-context
+  duplicate suppression. The missing executable model is the concrete
+  candidate sequence for the verified internal-font set.
+- `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
+  printable-byte emission, and downstream text/page/render consumers are
+  identified, but emitted page objects for the complete font printout
+  remain to be modeled from the ROM sample byte runs and compared against
+  a known printed/self-test sample.
 - `record +0x28..+0x31`: these fields participate in height and chooser
   logic, but their final baseline/cell semantics need correlation against
   observed sample-page placement.

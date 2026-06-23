@@ -1148,11 +1148,13 @@ for how resource records become ordinary page-record text.
   - class-pass counter in the `0x1c28e..0x1c344` loop.
 - Unknown:
   - exact page-object bytes emitted by the full `0x1c204` printout loop
-    have not yet been modeled from source headings, all row fields, both
-    sample byte runs, and full page placement. The first `COURIER` and
-    first `LINE_PRINTER` built-in row-field formatters are fixture-backed,
-    and both sample byte runs are fixture-backed through compact buckets,
-    page-record objects, and `0x1ed84` / `0x1ef6a` render entries.
+    have not yet been modeled from every source heading, all row fields,
+    both sample byte runs, and full page placement. The internal-font source
+    heading carried into the first `COURIER` row is fixture-backed, the first
+    `COURIER` and first `LINE_PRINTER` built-in row-field formatters are
+    fixture-backed, and both sample byte runs are fixture-backed through
+    compact buckets, page-record objects, and `0x1ed84` / `0x1ef6a` render
+    entries.
   - record `+0x28..+0x31` baseline/cell/manual semantics remain
     unresolved until this path is correlated with emitted page objects or
     a known printed sample.
@@ -1301,6 +1303,30 @@ object; its current-band row hash is
 `5e71581663bd2a7c363a866b8bea232fb69f0524e2046da47fd54375cb800796`
 and its fallback hash is
 `06dc84fbb9421397716b0bfccb9b807942ba9a29671436503c91813626d87d5f`.
+Fixture `font sample source heading carries into first Courier row` now
+composes the source-heading boundary with the same first-row page-record
+state. The caller at `0x1c386..0x1c38e` passes source group `D4`, current
+context `A4`, row word `0`, and alternate context `0` into `0x1ca2c` before
+`0x1b50e` selects the concrete row candidate. The initial current context is
+not arbitrary: `0x1c2dc` calls `0x1e9a0`, and the expanded setup disassembly
+at `0x1e9a8..0x1ea3e` saves `0x78289f` / `0x7821a0`, forces symbol
+`0x0115`, calls `0x1ae7e`, copies the selected candidate longword through
+`0x782ee6`, rebuilds maps via `0x14c64`, and installs the page-root context
+slot through `0xc428`. In the fixture, `0x1ca86..0x1caa6` selects source
+table entry `0x1c170 + 3*4 = 0x1c180`, emits `INTERNAL FONTS` through
+`0x1d12e`, and advances through `0x1cfb4` from y `0x00200000` to
+`0x00520000`. The heading has fourteen printable bytes; the space byte takes
+the segmented page-record path into buckets `[64, 56, 48, 40, 32, 24, 16, 8,
+0]` at compact coord `0xc00f`. The carried state then emits the first
+`COURIER` row fields, sample run 1, and the run-2 transition, ending at
+cursor `0x08ac0000,0x00900000` with buckets `[0, 2, 3, 6, 7, 8, 16, 24, 32,
+40, 48, 56, 64]`. Object hashes pinned by the fixture include bucket `0`
+`000562ec9d99dd04162a1d392f4545ae0793543ceb4836894d3f9981127920f5`,
+`834fc629b6ef04ae1fbfd2a8b3cc1bed7582f4092ed594dcbcfc6ad96eee2b6a`, and
+`9b4cb23e8e85c3375345d77427c756a886b335c19ae227a788e5f1bc55d68761`, bucket
+`7` `36c988c7920bb1883215cec52f642e77b99d36df8c75504366375d4f7430ff91`,
+and bucket `64`
+`24119daa7a11d6f74569cef76eabd26b87f133cc1f53cfa5712937e09f637a42`.
 Fixture `font sample run 1 prefix crosses page-record render entry` first
 consumed bytes `41 42 43 44 45 66 67 68` (`ABCDEfgh`)
 through the sample-page current context `0x44080418`, forced HMI
@@ -1344,14 +1370,15 @@ traversal, current-font/page-root setup, printable byte emission,
 continuation checks, local label tables, concrete first `COURIER` /
 `LINE_PRINTER` row-field formatting, first `COURIER` row-field
 page-record placement, first `COURIER` carried row-field plus sample-run-1
-placement, first `COURIER` `0x1d050` run-1-to-run-2 transition, carried
-run-2 page-record object placement, carried run-2 bucket rendering through
-`0x1ed84` / `0x1ef6a`, and direct sample byte-run row hashes because they
-are anchored by generated disassembly analysis and
+placement, first `COURIER` source-heading-to-row composition, first
+`COURIER` `0x1d050` run-1-to-run-2 transition, carried run-2 page-record
+object placement, carried run-2 bucket rendering through `0x1ed84` /
+`0x1ef6a`, and direct sample byte-run row hashes because they are anchored by
+generated disassembly analysis and
 `tools/render_fixture_harness.py`. Medium for final placement and
 baseline/cell interpretation because the full emitted page objects, full
-source-heading/all-row page model, and physical/self-test comparison are
-still open.
+all-source/all-row page model, and physical/self-test comparison are still
+open.
 
 ### Fixtures And Reports
 
@@ -1364,6 +1391,7 @@ still open.
 ### Disassembly Evidence
 
 - `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`
+- `generated/disasm/ic30_ic13_font_page_setup_alt_01e8e6.lst`
 - `generated/disasm/ic30_ic13_font_sample_page_01c170.lst`
 - `generated/disasm/ic30_ic13_font_sample_row_helpers_01d198.lst`
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`
@@ -1383,8 +1411,10 @@ still open.
   page-object/render fixture and after first-`COURIER` row fields in the
   same carried page-record state. The `0x1c1e9` sample run 2 byte stream
   is now carried after run 1 through the no-continuation `0x1d050` branch
-  for first `COURIER`, but complete source-heading, all-row, and page
-  placement are not modeled.
+  for first `COURIER`, and the internal-font source heading now carries
+  into that same first-row state through `0x1ca2c` / `0x1cfb4`. Remaining
+  gaps are the other source headings, every emitted row, continuation
+  branches, and full page placement.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
   identified. First `COURIER` and first `LINE_PRINTER` row-field
@@ -1396,11 +1426,13 @@ still open.
   through `0x1d050` extends it to buckets `[-1, 0, 3, 4]`. The carried
   run-2 checkpoint pins page-record objects, compact coords, current-band
   render hashes, and fallback hashes for buckets `3` and `4`; the
-  standalone run-2 render fixture remains useful as an isolation control
-  with context `0x44080418`, HMI `0x001e`, compact buckets `-1` and `0`,
-  and render-entry row hashes above. Emitted page objects for the complete
-  font printout remain to be modeled from source headings, row fields for
-  every emitted row, all continuation branches, and page-placement state,
+  source-heading composition checkpoint pins the `INTERNAL FONTS` label,
+  segmented heading-space buckets, and the shifted y origin for the same row.
+  The standalone run-2 render fixture remains useful as an isolation control
+  with context `0x44080418`, HMI `0x001e`, compact buckets `-1` and `0`, and
+  render-entry row hashes above. Emitted page objects for the complete font
+  printout remain to be modeled from remaining source headings, row fields
+  for every emitted row, all continuation branches, and page-placement state,
   then compared against a known printed/self-test sample.
 - `record +0x28..+0x31`: these fields participate in height and chooser
   logic, but their final baseline/cell semantics need correlation against

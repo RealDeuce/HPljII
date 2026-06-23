@@ -20258,15 +20258,31 @@ def queue_font_sample_printable_chunk_to_page_record(
             default_advance,
         )
         state["cursor_x"] = advance["cursor_after"]
-        printable_events.append({
+        event = {
             "byte": byte,
             "cursor_before": advance["cursor_before"],
             "cursor_after": advance["cursor_after"],
-            "coord": page_result["coord"],
-            "bucket_index": page_result["bucket_index"],
-            "allocated": page_result["allocated"],
-            "count_after": page_result["count_after"],
-        })
+        }
+        if "bucket_index" in page_result:
+            event.update({
+                "coord": page_result["coord"],
+                "bucket_index": page_result["bucket_index"],
+                "allocated": page_result["allocated"],
+                "count_after": page_result["count_after"],
+            })
+        else:
+            result_events = page_result.get("events", [])
+            if not isinstance(result_events, list):
+                raise AssertionError("segmented page-record result needs event list")
+            event.update({
+                "path": page_result["path"],
+                "coord": page_result["coord"],
+                "bucket_indices": [item["bucket_index"] for item in result_events],
+                "segments": [item["segment"] for item in result_events],
+                "allocated": [item["allocated"] for item in result_events],
+                "count_after": [item["count_after"] for item in result_events],
+            })
+        printable_events.append(event)
     return {
         "kind": "printable-chunk",
         "label": label,
@@ -20277,26 +20293,14 @@ def queue_font_sample_printable_chunk_to_page_record(
     }
 
 
-def render_font_sample_row_fields_page_record_via_1cabe(
-    data: bytes,
+def queue_font_sample_row_fields_to_page_record(
     resources: bytes,
+    context: int,
+    page_record: dict[str, object],
+    state: dict[str, int],
     row_fields: dict[str, object],
-    cursor_y: int = 32,
-    default_advance: int | None = None,
-) -> dict[str, object]:
-    if default_advance is None:
-        default_advance = pack12(30)
-    state = control_fixture_state(
-        cursor_x=pack12(0),
-        cursor_y=pack12(cursor_y),
-        line_anchor_x=pack12(0),
-        hmi=default_advance,
-        pending_width=1,
-        pending_text=0,
-        span_flush_enable=1,
-    )
-    context = int(row_fields["context"])
-    page_record: dict[str, object] = {"bucket_array": {}, "context_slots": [context]}
+    default_advance: int,
+) -> list[dict[str, object]]:
     events: list[dict[str, object]] = []
 
     def run_printable(label: str, chunk: bytes) -> None:
@@ -20313,7 +20317,6 @@ def render_font_sample_row_fields_page_record_via_1cabe(
         ))
 
     def run_fixed_spaces(label: str, count: int) -> None:
-        nonlocal state
         for index in range(count):
             advance = advance_flagged_text_cursor_via_d550(
                 int(state["cursor_x"]),
@@ -20330,7 +20333,6 @@ def render_font_sample_row_fields_page_record_via_1cabe(
             })
 
     def run_advance(label: str, units: int) -> None:
-        nonlocal state
         if units <= 0:
             return
         before = int(state["cursor_x"])
@@ -20375,6 +20377,74 @@ def render_font_sample_row_fields_page_record_via_1cabe(
     run_fixed_spaces("symbol", int(symbol["fixed_spaces_d0f0"]))
     run_printable("symbol", bytes(symbol["printed"]))
     run_advance("symbol-post", 1)
+    return events
+
+
+def null_terminated_bytes(data: bytes, offset: int) -> bytes:
+    end = data.index(0, offset)
+    return data[offset:end]
+
+
+def font_sample_source_label_via_1ca2c(data: bytes, source_index: int) -> dict[str, object]:
+    pointer = u32(data, 0x1C170 + int(source_index) * 4)
+    return {
+        "source_index": int(source_index),
+        "pointer": pointer,
+        "label": null_terminated_bytes(data, pointer),
+    }
+
+
+def font_sample_line_advance_via_1cfb4(state: dict[str, int]) -> dict[str, object]:
+    before_x = int(state["cursor_x"])
+    before_y = int(state["cursor_y"])
+    line_anchor = int(state.get("line_anchor_x", pack12(0)))
+    state["cursor_x"] = line_anchor
+    state["pending_cursor_x_782a57"] = 0
+    state["pending_flag_782a6d"] = 0
+    state["cursor_y"] = subunits_to_packed12(
+        packed12_to_subunits(before_y) + 0x0258
+    )
+    return {
+        "helper": "0x1cfb4",
+        "flush_0xf06e": {
+            "cursor_before": before_x,
+            "line_anchor_x_782dd6": line_anchor,
+            "cursor_after": line_anchor,
+        },
+        "cursor_y_before": before_y,
+        "advance_subunits": 0x0258,
+        "cursor_y_after": state["cursor_y"],
+    }
+
+
+def render_font_sample_row_fields_page_record_via_1cabe(
+    data: bytes,
+    resources: bytes,
+    row_fields: dict[str, object],
+    cursor_y: int = 32,
+    default_advance: int | None = None,
+) -> dict[str, object]:
+    if default_advance is None:
+        default_advance = pack12(30)
+    state = control_fixture_state(
+        cursor_x=pack12(0),
+        cursor_y=pack12(cursor_y),
+        line_anchor_x=pack12(0),
+        hmi=default_advance,
+        pending_width=1,
+        pending_text=0,
+        span_flush_enable=1,
+    )
+    context = int(row_fields["context"])
+    page_record: dict[str, object] = {"bucket_array": {}, "context_slots": [context]}
+    events = queue_font_sample_row_fields_to_page_record(
+        resources,
+        context,
+        page_record,
+        state,
+        row_fields,
+        default_advance,
+    )
 
     bucket_objects = page_record_bucket_objects(page_record)
     render_summary = summarize_page_record_bucket_renders(
@@ -20592,6 +20662,108 @@ def render_font_sample_first_row_fields_and_both_runs_page_record(
         "transition": transition,
         "sample_event": sample_event,
         "sample_run2": sample_run2,
+        "nonempty_buckets": sorted(bucket_objects),
+        "bucket_objects": bucket_objects,
+        "bucket_object_hashes": object_hashes,
+        "final_cursor_x": state["cursor_x"],
+        "final_cursor_y": state["cursor_y"],
+        "final_state": dict(state),
+        "page_record": page_record,
+    }
+
+
+def render_font_sample_source_heading_and_first_row_page_record(
+    data: bytes,
+    resources: bytes,
+    row_fields: dict[str, object],
+    source_index: int,
+    *,
+    cursor_y: int = 32,
+) -> dict[str, object]:
+    default_advance = pack12(30)
+    context = int(row_fields["context"])
+    state = control_fixture_state(
+        cursor_x=pack12(0),
+        cursor_y=pack12(cursor_y),
+        line_anchor_x=pack12(0),
+        hmi=default_advance,
+        pending_width=1,
+        pending_text=0,
+        span_flush_enable=1,
+    )
+    page_record: dict[str, object] = {"bucket_array": {}, "context_slots": [context]}
+    source_label = font_sample_source_label_via_1ca2c(data, source_index)
+    heading_event = queue_font_sample_printable_chunk_to_page_record(
+        resources,
+        context,
+        page_record,
+        state,
+        bytes(source_label["label"]),
+        "source-heading",
+        default_advance,
+    )
+    line_event = font_sample_line_advance_via_1cfb4(state)
+    extent = font_sample_extent_via_1c6a4_1c6da(
+        resources,
+        int(row_fields["record_start"]),
+        context,
+    )
+    state["row_height_cache_783f06"] = extent["row_height_1c6da"]
+    row_field_events = queue_font_sample_row_fields_to_page_record(
+        resources,
+        context,
+        page_record,
+        state,
+        row_fields,
+        default_advance,
+    )
+    sample_run1 = bytes.fromhex(
+        "41 42 43 44 45 66 67 68 69 6a 23 24 40 5b 5c 5d 5e "
+        "60 7b 7c 7d 7e 31 32 33"
+    )
+    sample_run1_event = queue_font_sample_printable_chunk_to_page_record(
+        resources,
+        context,
+        page_record,
+        state,
+        sample_run1,
+        "sample-run-1",
+        default_advance,
+    )
+    transition = font_sample_run2_transition_via_1cf34(
+        resources,
+        row_fields,
+        state,
+        row_height_cache_783f06=int(state["row_height_cache_783f06"]),
+    )
+    sample_run2 = bytes.fromhex(
+        "a1 a2 b3 b4 b6 b8 b9 bb bd c1 c5 c8 c9 cd ce d0 d2 d4 "
+        "d7 d8 db de e0 e3 e8"
+    )
+    sample_run2_event = queue_font_sample_printable_chunk_to_page_record(
+        resources,
+        context,
+        page_record,
+        state,
+        sample_run2,
+        "sample-run-2",
+        default_advance,
+    )
+    bucket_objects = page_record_bucket_objects(page_record)
+    object_hashes = {
+        bucket: [hashlib.sha256(obj).hexdigest() for obj in objects]
+        for bucket, objects in bucket_objects.items()
+    }
+    return {
+        "context": context,
+        "source_label": source_label,
+        "heading_event": heading_event,
+        "line_event": line_event,
+        "row_extent": extent,
+        "row_field_events": row_field_events,
+        "sample_run1_event": sample_run1_event,
+        "transition": transition,
+        "sample_run2_event": sample_run2_event,
         "nonempty_buckets": sorted(bucket_objects),
         "bucket_objects": bucket_objects,
         "bucket_object_hashes": object_hashes,
@@ -28290,6 +28462,216 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "fallback_d2": 274,
                     },
                 },
+            ],
+        },
+    }))
+    courier_source_heading_first_row = render_font_sample_source_heading_and_first_row_page_record(
+        data,
+        resources,
+        courier_sample_row_fields,
+        source_index=3,
+    )
+    heading_events = courier_source_heading_first_row["heading_event"]["events"]
+    assert isinstance(heading_events, list)
+    source_run2_event = courier_source_heading_first_row["sample_run2_event"]
+    assert isinstance(source_run2_event, dict)
+    source_run2_events = source_run2_event["events"]
+    assert isinstance(source_run2_events, list)
+    checks.append(assert_equal("font sample source heading carries into first Courier row", {
+        "context": courier_source_heading_first_row["context"],
+        "source_label": courier_source_heading_first_row["source_label"],
+        "heading_event_count": courier_source_heading_first_row["heading_event"]["event_count"],
+        "heading_cursor_after": courier_source_heading_first_row["heading_event"]["cursor_after"],
+        "heading_first_event": heading_events[0],
+        "heading_space_event": heading_events[8],
+        "heading_last_event": heading_events[-1],
+        "line_event": courier_source_heading_first_row["line_event"],
+        "row_event_summary": [
+            (
+                event["kind"],
+                event.get("label"),
+                event.get("event_count"),
+                event.get("units"),
+                event.get("cursor_before"),
+                event.get("cursor_after"),
+            )
+            for event in courier_source_heading_first_row["row_field_events"]  # type: ignore[index]
+        ],
+        "sample_run1_event_count": courier_source_heading_first_row["sample_run1_event"]["event_count"],
+        "sample_run1_cursor_after": courier_source_heading_first_row["sample_run1_event"]["cursor_after"],
+        "transition": courier_source_heading_first_row["transition"],
+        "sample_run2_event_count": source_run2_event["event_count"],
+        "sample_run2_first_event": source_run2_events[0],
+        "sample_run2_last_event": source_run2_events[-1],
+        "nonempty_buckets": courier_source_heading_first_row["nonempty_buckets"],
+        "final_cursor_x": courier_source_heading_first_row["final_cursor_x"],
+        "final_cursor_y": courier_source_heading_first_row["final_cursor_y"],
+        "bucket_object_hashes": courier_source_heading_first_row["bucket_object_hashes"],
+    }, {
+        "context": 0x44080418,
+        "source_label": {
+            "source_index": 3,
+            "pointer": 0x01C180,
+            "label": b"INTERNAL FONTS",
+        },
+        "heading_event_count": 14,
+        "heading_cursor_after": pack12(420),
+        "heading_first_event": {
+            "byte": ord("I"),
+            "cursor_before": pack12(0),
+            "cursor_after": pack12(30),
+            "coord": 0x4400,
+            "bucket_index": 0,
+            "allocated": True,
+            "count_after": 1,
+        },
+        "heading_space_event": {
+            "byte": ord(" "),
+            "cursor_before": pack12(240),
+            "cursor_after": pack12(270),
+            "path": "segmented-page-record",
+            "coord": 0xC00F,
+            "bucket_indices": [64, 56, 48, 40, 32, 24, 16, 8, 0],
+            "segments": [8, 7, 6, 5, 4, 3, 2, 1, 0],
+            "allocated": [True, True, True, True, True, True, True, True, True],
+            "count_after": [1, 1, 1, 1, 1, 1, 1, 1, 1],
+        },
+        "heading_last_event": {
+            "byte": ord("S"),
+            "cursor_before": pack12(390),
+            "cursor_after": pack12(420),
+            "coord": 0x4918,
+            "bucket_index": 0,
+            "allocated": False,
+            "count_after": 3,
+        },
+        "line_event": {
+            "helper": "0x1cfb4",
+            "flush_0xf06e": {
+                "cursor_before": pack12(420),
+                "line_anchor_x_782dd6": pack12(0),
+                "cursor_after": pack12(0),
+            },
+            "cursor_y_before": pack12(32),
+            "advance_subunits": 0x0258,
+            "cursor_y_after": pack12(82),
+        },
+        "row_event_summary": [
+            ("printable-chunk", "prefix", 3, None, None, pack12(90)),
+            ("cursor-advance", "prefix-post", None, 2, pack12(90), pack12(150)),
+            ("printable-chunk", "name", 7, None, None, pack12(360)),
+            ("cursor-advance", "name-pad", None, 18, pack12(360), pack12(900)),
+            ("cursor-advance", "name-post", None, 2, pack12(900), pack12(960)),
+            ("printable-chunk", "pitch", 2, None, None, pack12(1020)),
+            ("cursor-advance", "pitch-internal", None, 3, pack12(1020), pack12(1110)),
+            ("cursor-advance", "pitch-post", None, 1, pack12(1110), pack12(1140)),
+            ("printable-chunk", "height", 2, None, None, pack12(1200)),
+            ("cursor-advance", "height-internal", None, 3, pack12(1200), pack12(1290)),
+            ("fixed-space", "symbol", None, None, pack12(1290), pack12(1320)),
+            ("fixed-space", "symbol", None, None, pack12(1320), pack12(1350)),
+            ("printable-chunk", "symbol", 3, None, None, pack12(1440)),
+            ("cursor-advance", "symbol-post", None, 1, pack12(1440), pack12(1470)),
+        ],
+        "sample_run1_event_count": 25,
+        "sample_run1_cursor_after": pack12(2220),
+        "transition": {
+            "helper": "0x1cf34/0x1d050/0x1cfe4",
+            "flush_0xf06e": {
+                "cursor_before": pack12(2220),
+                "line_anchor_x_782dd6": pack12(0),
+                "cursor_after": pack12(0),
+            },
+            "current_extent": {
+                "selector_flag_1c766": 1,
+                "line_advance_1c6a4": 40,
+                "row_height_1c6da": 13,
+            },
+            "alternate_extent": {
+                "selector_flag_1c766": 1,
+                "line_advance_1c6a4": 40,
+                "row_height_1c6da": 13,
+            },
+            "row_height_cache_before_783f06": 13,
+            "line_advance_subunits_1cfe4": 744,
+            "cursor_y_before": pack12(82),
+            "cursor_y_after": pack12(144),
+            "row_height_cache_after_783f06": 13,
+            "page_limit_782db6": 0x7FFF,
+            "continuation_needed": False,
+            "gap_advance_1d152": {
+                "cursor_before": pack12(0),
+                "default_advance": pack12(0x31 * 30),
+                "cursor_after": pack12(1470),
+            },
+        },
+        "sample_run2_event_count": 25,
+        "sample_run2_first_event": {
+            "byte": 0xA1,
+            "cursor_before": pack12(1470),
+            "cursor_after": pack12(1500),
+            "coord": 0x135C,
+            "bucket_index": 7,
+            "allocated": True,
+            "count_after": 1,
+        },
+        "sample_run2_last_event": {
+            "byte": 0xE8,
+            "cursor_before": pack12(2190),
+            "cursor_after": pack12(2220),
+            "coord": 0x4289,
+            "bucket_index": 7,
+            "allocated": False,
+            "count_after": 10,
+        },
+        "nonempty_buckets": [0, 2, 3, 6, 7, 8, 16, 24, 32, 40, 48, 56, 64],
+        "final_cursor_x": pack12(2220),
+        "final_cursor_y": pack12(144),
+        "bucket_object_hashes": {
+            0: [
+                "000562ec9d99dd04162a1d392f4545ae0793543ceb4836894d3f9981127920f5",
+                "834fc629b6ef04ae1fbfd2a8b3cc1bed7582f4092ed594dcbcfc6ad96eee2b6a",
+                "9b4cb23e8e85c3375345d77427c756a886b335c19ae227a788e5f1bc55d68761",
+            ],
+            2: [
+                "7da542b07d8a6ebcb7e3217e4f34c8501bee977e1a6e2dc57202140343f4acaa",
+            ],
+            3: [
+                "dcffcb008bafa53a5b83d25b2145e9f5cd2260c3b261a22359e21bd6c2bd107a",
+                "4f85ad44e7383d83c0928d5554787e723e3df01fef72a6c4e08dbb3fef3b3be5",
+                "da206f0c59b13e293761e620449e67120b9f5f2406b26df92d2075224c9999a3",
+                "d209c309618cd06853ecfa925c6b03666c32933077bab15ba6b731d42f926596",
+                "4b57aacdd3e2b5448723b44dc0cbe21e5b2f4b37b65c49c647fe62f7cee2fc56",
+            ],
+            6: [
+                "7993ed274ad3d0053a65ca7fa88df05cbacbbfd0446429a3d842fbc132ea42bf",
+                "d7a682289aed990d6cd620d686d61567e683833a3074ee87db646f6b48c4dba2",
+            ],
+            7: [
+                "36c988c7920bb1883215cec52f642e77b99d36df8c75504366375d4f7430ff91",
+            ],
+            8: [
+                "16c1ca6c649bfc4fd834aa82a140cc4ac23b60ec5eccfc47c5bc32385c272ab9",
+            ],
+            16: [
+                "c213c34ab7788be9b3ca370608a95adaf5371ec4ed4a9d9b03fb9896226c2f94",
+            ],
+            24: [
+                "99d60f551df96fb2d09f5d51d044a686c712e2e799d4b8ac5fa0c5dbd8a56327",
+            ],
+            32: [
+                "bcca01b3ba59d1dc291853ba175d7c69002bc84a0b58b6c2e9e6fc9b6c525f9d",
+            ],
+            40: [
+                "bc48316110ac9ec9a80d457ea228da0a68b9ffbd3288cd2f9737c4206dc2a639",
+            ],
+            48: [
+                "f46ab49d0956f87cfa38e065687296293337a1c0abdb629b515892a6195327ce",
+            ],
+            56: [
+                "aceb54267b8db5717a1e01f26aa410114468c3ba27b32cc277303602132dfece",
+            ],
+            64: [
+                "24119daa7a11d6f74569cef76eabd26b87f133cc1f53cfa5712937e09f637a42",
             ],
         },
     }))
@@ -68516,6 +68898,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             obj["fallback_sha256"]
             for obj in courier_sample_row_run2_rendered[4]["objects"]  # type: ignore[index,union-attr]
         ],
+    ))
+    lines.append("- font sample source heading composition: `0x1ca2c` source index `%d` selects table pointer `0x%06x` / `%r`, queues `%d` heading bytes through current context `0x%08x`, advances y through `0x1cfb4` from `0x%08x` to `0x%08x`, then carries first `COURIER` row fields, sample run 1, and the `0x1d050` run-2 transition in one page-record state. The heading space byte takes the segmented page-record path into buckets `%s`; the final carried state ends at cursor `0x%08x,0x%08x`, buckets `%s`, and object hashes `%s`." % (
+        courier_source_heading_first_row["source_label"]["source_index"],  # type: ignore[index]
+        courier_source_heading_first_row["source_label"]["pointer"],  # type: ignore[index]
+        courier_source_heading_first_row["source_label"]["label"],  # type: ignore[index]
+        courier_source_heading_first_row["heading_event"]["event_count"],  # type: ignore[index]
+        courier_source_heading_first_row["context"],
+        courier_source_heading_first_row["line_event"]["cursor_y_before"],  # type: ignore[index]
+        courier_source_heading_first_row["line_event"]["cursor_y_after"],  # type: ignore[index]
+        courier_source_heading_first_row["heading_event"]["events"][8]["bucket_indices"],  # type: ignore[index]
+        courier_source_heading_first_row["final_cursor_x"],
+        courier_source_heading_first_row["final_cursor_y"],
+        courier_source_heading_first_row["nonempty_buckets"],
+        courier_source_heading_first_row["bucket_object_hashes"],
     ))
     lines.append("- font sample row fields: first `LINE_PRINTER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152`; the height value is rounded by the mode-1 `0x1cc6e` add-five path." % (
         line_printer_sample_row_fields["record_start"],

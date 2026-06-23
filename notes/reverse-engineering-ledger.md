@@ -708,6 +708,21 @@ hashes
 and bucket-4 current/fallback hashes
 `5e71581663bd2a7c363a866b8bea232fb69f0524e2046da47fd54375cb800796` /
 `06dc84fbb9421397716b0bfccb9b807942ba9a29671436503c91813626d87d5f`;
+fixture `font sample source heading carries into first Courier row` now
+adds the preceding source-heading edge. Disassembly `0x1c386..0x1c38e`
+passes source group `D4`, current context `A4`, zero row word, and zero
+alternate context into `0x1ca2c`; `0x1ca86..0x1caa6` flushes pending text,
+loads source table pointer `0x1c180` from `0x1c170 + 3*4`, emits
+`INTERNAL FONTS` through `0x1d12e`, calls `0x12714`, advances through
+`0x1cfb4`, and stores row-height cache `0x783f06`. The fixture pins the
+fourteen heading bytes, the segmented heading-space object in buckets
+`[64, 56, 48, 40, 32, 24, 16, 8, 0]`, the y advance from `0x00200000` to
+`0x00520000`, and the carried first-row final cursor
+`0x08ac0000,0x00900000`. The widened `0x1e8e6` disassembly window now
+also shows `0x1e9a0` saving `0x78289f` / `0x7821a0`, forcing symbol
+`0x0115`, calling `0x1ae7e`, copying the selected candidate into
+`0x782ee6`, rebuilding via `0x14c64`, and installing the current page-root
+font context through `0xc428`;
 the startup/resource scanner `0x41a` is modeled for the verified
 built-in `HEAD` chain, walking 24 typed records from `0x08004c` through
 `0x0ae122`, terminating at `0x0b2f80`, adjusting the next probe step

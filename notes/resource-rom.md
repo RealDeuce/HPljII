@@ -258,6 +258,13 @@ against page-limit word `0x782db6`, `0x1cabe` emits the `S/L/R/I` row
 prefix and metric columns through `0xd04a`, and `0x1cf34` emits sample
 run 1, advances horizontally by `0x31` units, installs the alternate
 context, and emits sample run 2 when `0x783132` is set.
+The first source-heading-to-row composition is now fixture-backed:
+`font sample source heading carries into first Courier row` follows the
+`0x1c386..0x1c38e` call into `0x1ca2c`, resolves source table pointer
+`0x1c180` to `INTERNAL FONTS`, queues the heading bytes through current
+context `0x44080418`, advances y through `0x1cfb4`, and then carries the
+first `COURIER` row fields plus both sample byte runs in the same
+page-record state.
 The row-helper window now names the lower formatting helpers: `0x1d198`
 builds the 25-character font-name/style column, `0x1d6ea` emits capped
 strings through `0xd04a`, `0x1d71e` sanitizes fixed-length name bytes,

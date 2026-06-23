@@ -483,24 +483,159 @@ modeled source/object structures rather than a full live CPU-memory run.
   composed as watermark writers in `Text Span Flush And Fixed-Width
   Spans`; remaining work is exhaustive context-record naming for every
   font class.
-- `0x11f5a..0x12452`: transparent-text delayed payload restore,
-  control filtering, and printable re-entry are documented in
-  `notes/transparent-print-data.md`. Printable payload re-entry is
-  host-fetched and render-checked for `ESC &p2X!!`; default-zero
-  filtering for C0 and `0x80..0x9f` payload bytes is page-record and
-  render-checked by `ESC &p4X!\x05\x85!`, where `0xd0f0` advances
-  fixed spacing without adding compact text entries. Nonzero filtering
-  is page-record and render-checked by `ESC &p4X!\x05\x80!`, where C0
-  byte `0x05` and high-control byte `0x80` both route through `0xd04a`.
-  The `0x1a` non-`0x58` probe-byte case is render-checked by
-  `ESC &p2X\x1aA!`. Remaining work is the unflagged
-  `0xd0f0..0xd140` branch and broader high-control cross-products that
-  map to tall/segmented glyphs or secondary contexts.
+- `0x11f5a..0x12452`: transparent-text delayed payload restore, control
+  filtering, printable re-entry, and fixed-space output are composed in
+  `Transparent Print Data`. Remaining work is the unflagged
+  `0xd0f0..0xd140` branch and broader high-control cross-products that map to
+  tall/segmented glyphs or secondary contexts.
 - `0x10084..0x1387c`: first-root allocation and compact text queueing
   are fixture-backed for this cluster, but a dense live parser page that
   exercises same-chunk and rollover allocation for all cursor variants
   is still covered by the shared page-record storage checkpoint rather
   than this section.
+
+## Transparent Print Data
+
+Status: composed as the `ESC &p#X` delayed-payload cluster from parser command
+record to transparent payload byte routing, page-record text output, fixed
+spacing, and rendered rows. The low-level ledger remains in
+[transparent-print-data.md](transparent-print-data.md).
+
+Concept: transparent print data is a counted byte-stream splice, not an opaque
+skip. Handler `0x11f5a` arms delayed handler `0x12452` through `0x121cc`.
+When `0x12218` restores the saved six-byte `X` record, `0x12452` consumes the
+following payload bytes through `0xa904`, normalizes its local `1a` probe
+syntax, then routes each normalized value through printable handler `0xd04a`
+or fixed-space helper `0xd0f0`.
+
+### Field Groups
+
+- Canonical command state:
+  - restored command record `80 58 00 02 00 00` for `ESC &p2X`, or
+    `80 58 00 04 00 00` for `ESC &p4X`.
+  - command record word `+2`: signed count converted to an absolute payload
+    count by `0x12452`.
+  - text cursor `0x782c8a`: consumed and advanced by routed `0xd04a` and
+    `0xd0f0` payload values.
+  Evidence: fixtures `0x11f5a/0x12452 transparent text restores and consumes
+  counted bytes`, `transparent data parser trace feeds page-record queue`, and
+  `transparent data control payloads advance through fixed-space path`.
+- Parser scratch:
+  - `0x782a1a`: delayed-payload pending flag.
+  - `0x782a1c`: delayed handler pointer, set to `0x12452`.
+  - `0x782a20..0x782a25`: saved six-byte command record.
+  - snapshot for `ESC &p2X`: `01 00 01 24 52 80 58 00 02 00 00`.
+  Evidence: `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`
+  and the fixture above.
+- Derived/cache filtering state:
+  - selected slot `0x782f06` is scaled by helper `0x332ee`.
+  - selected context byte `0x782eea + 0x10 * 0x782f06` is copied to `D3`.
+  - fallback filtering byte `0x782efa` supplies the local filter word when
+    high-character flags `0x783132` and `0x783133` are clear.
+  - local stack word `A6-2` holds the high-control filtering word used by the
+    `0x80..0x9f` branch.
+  Evidence: `transparent-print-data.md` and fixtures with
+  selected/local filtering words `0/0` and `1/1`.
+- Canonical page-record output:
+  - printable transparent bytes routed through `0xd04a` create compact text
+    entries under page-root `+0x1c`.
+  - default-filtered C0/high-control bytes routed through `0xd0f0` advance
+    fixed spacing in the flagged built-in path and create no compact text
+    entry.
+  Evidence: fixture object prefixes
+  `00 00 00 00 00 00 00 02 20 00 01 20 02 02`,
+  `00 00 00 00 00 00 00 02 20 00 01 20 06 04`, and
+  `00 00 00 00 00 00 00 04 20 00 01 04 0d 01 7f 00 03 20 06 04`.
+- Unknown for this checkpoint:
+  - manual-facing names for the selected context filtering byte, fallback
+    filtering byte, and high-character flags remain provisional.
+
+### Writers
+
+- `0x11f5a` writes delayed-payload state by scheduling `0x12452` through
+  `0x121cc`.
+- `0x12218` restores the saved command record and dispatches `0x12452`.
+- `0x12452` decrements the counted payload, normalizes `1a 58` to routed value
+  `0x7f`, treats `1a xx` with `xx != 0x58` as routed value `xx`, and chooses
+  `0xd04a` or `0xd0f0`.
+- `0xd04a` writes printable source/page-record objects through the normal text
+  path.
+- `0xd0f0` writes the fixed-space source for host byte `0x20`, clears source
+  longword `+4` in the flagged built-in path, and advances spacing through
+  `0xd550` without queueing a compact object in the covered fixture.
+
+### Readers And Consumers
+
+- `0xa904` supplies transparent payload bytes from the current byte source.
+- `0x12452` consumes restored record word `+2`, selected context state,
+  filtering state, and payload bytes.
+- `0xd04a` consumes routed printable values such as `0x21`, `0x41`, `0x05`,
+  and `0x80` when filtering is nonzero.
+- `0xd0f0` consumes default-filtered C0/high-control values and turns them
+  into fixed spacing.
+- `0x1387c`, `0x1edc6`, `0x1ed84`, and `0x1ef6a` consume the resulting
+  page-record compact text objects for visible rows.
+
+### Output Effect
+
+Fixture `transparent data parser trace feeds page-record queue` proves
+`ESC &p2X!!` restores handler `0x12452`, consumes payload bytes `21 21`,
+routes both through `0xd04a`, queues compact coords `0x0001` and `0x0202`,
+allocates one page root, preserves context slot `0x440946b4` through
+`0x1edc6`, and renders the same rows as plain `!!`.
+
+Fixture `transparent non-0x58 probe byte reaches page-record output` proves
+`ESC &p2X\x1aA!` consumes raw payload slice `1a 41 21` as routed values
+`41 21`. The byte `0x41` maps to glyph `0x40`, queues compact coord
+`0x0a00`, and renders visible `A` before the following `!`.
+
+Fixture `transparent data control payloads advance through fixed-space path`
+proves default filtering for `ESC &p4X!\x05\x85!`: payload values route
+`d04a d0f0 d0f0 d04a`, the C0 byte `0x05` and high-control byte `0x85`
+advance spacing from packed x `28` to `46` and `46` to `64` without compact
+entries, and the final object contains only two visible `!` entries at
+coords `0x0001` and `0x0604`.
+
+Fixture `transparent nonzero filters route controls through printable path`
+proves the opposite filtering polarity for `ESC &p4X!\x05\x80!`: selected
+context byte `1` and local filtering word `1` route all four values through
+`0xd04a`; C0 byte `0x05` maps to glyph `0x04`, high-control byte `0x80` maps
+to glyph `0x7f`, and all four entries render.
+
+### Confidence
+
+High for delayed snapshot/restore, absolute payload count, `1a 58` and
+`1a xx` probe handling, default filtering, nonzero filtering, fixed-space
+cursor advance, page-record object bytes, bridge context slots, and rendered
+rows because each is fixture-pinned against disassembly-backed helpers.
+Medium for broader high-control glyph cross-products and manual names for the
+filter bytes.
+
+### Fixtures
+
+- `0x11f5a/0x12452 transparent text restores and consumes counted bytes`
+- `0x12452 transparent text probe keeps non-0x58 byte`
+- `transparent data parser trace feeds page-record queue`
+- `transparent non-0x58 probe byte reaches page-record output`
+- `transparent data control payloads advance through fixed-space path`
+- `transparent nonzero filters route controls through printable path`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_transparent_data_handler_011f5a.lst`
+- `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`
+- `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
+- `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
+- `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+
+### Unresolved Middle Edges
+
+- `0xd0f0..0xd140`: the flagged fixed-space branch is fixture-backed; the
+  unflagged/fixed-record branch after `0x1393a(0x20, 0x782d7e)` is not yet
+  rendered as a page-visible transparent-data fixture.
+- `0x124f8..0x1252a`: broader high-control cross-products remain open for
+  values that map to tall/segmented glyphs or secondary contexts. The
+  short-bucket nonzero branch is covered by `ESC &p4X!\x05\x80!`.
 
 ## Text Source Objects And Compact Buckets
 

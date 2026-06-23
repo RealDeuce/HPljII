@@ -232,10 +232,13 @@ pixels or byte-stream compatibility.
    d8fc` proves a fourth parser-produced variant: range/count
    `+0x14 = 0x0040` derives/cache `+0x18 = 0x003b`, leaves unflagged
    `+0x2c/+0x2d = 0/0x20`, keeps `0xd4ac` span output, and makes `0xd8fc`
-   exit `beyond-page-extent` at cursor y `21`. The open edge is broader
-   descriptor metric-byte cross-products and producer-side validation/error
-   combinations, not the tested type-0/type-1/type-2, metric-variant,
-   clamped-variant, lower-bound-variant, upper-bound-variant, or shared
+   exit `beyond-page-extent` at cursor y `21`. Seven bounded validation
+   no-install forms now prove parser-to-validation failure, allocation skip,
+   no candidate install, resumed default-font printable output, and matching
+   rows. The open edge is broader descriptor metric-byte cross-products and
+   validation/error forms beyond those bounded predicate branches, not the
+   tested type-0/type-1/type-2, metric-variant, clamped-variant,
+   lower-bound-variant, upper-bound-variant, validation no-install, or shared
    consumer middle edges. Evidence:
    `notes/semantic-state-model.md` under `Text Span Flush And Fixed-Width
    Spans`.

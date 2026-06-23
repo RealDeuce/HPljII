@@ -547,9 +547,24 @@ reset mode-`1` probe bottom `511` returns D7 `1` at `0x1de24`. A high-y case
 starting at `0x01f40000` with limit `600` proves the reset mode-`1` and
 mode-`0` probes can both fit and return D7 `0` at `0x1de16`.
 
-The still-open boundary is the rest of `0x1c204..0x1ed84`: correlating the
-composed all-source page-record surfaces with the direct sample-byte row hashes
-or a known print sample before those fields get final semantic names.
+Fixture `font sample full printout rows reuse ROM sample byte runs` now ties
+the composed source/class rows back to the two ROM sample byte tables. Across
+the eight `0x1c204` / `0x1c28e` / `0x1c2fe` source/class segments, the
+non-empty row counts are source/class `(1,0)=1`, `(2,0)=1`, `(3,0)=14`,
+`(1,1)=1`, `(2,1)=1`, and `(3,1)=14`, for the same `32` total rows as the
+placement fixture. Every emitted row queues the 25-byte run-1 table at
+`0x1c1cf` and the 25-byte run-2 table at `0x1c1e9`; the direct isolated
+sample-run render hashes remain
+`b6a0061f7de34c0fa1a0586263f3f167c84d95219e05437e74a286356409af37`,
+`d7dfb89c8cff5e309b95aac43cd64e0f74f17db1dd9118253544343f17b4c1ce`,
+`c77bca7364adbda480c5a31fa4be469175c031bd5f14fc4a54a2e6fb09174be5`, and
+`b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5`.
+The aggregate correlation digest is
+`4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a`.
+
+The still-open boundary is physical comparison of those composed page-record
+surfaces against direct rendered row surfaces or a known printed/self-test
+sample, including baseline and cell placement agreement after `0x1ed84`.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record

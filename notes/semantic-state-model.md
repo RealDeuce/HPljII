@@ -1496,8 +1496,14 @@ row count `32`, and aggregate segment digest
 `f4105538bd1506731f04810ed2f50cce23815751c4f979ed6f60efab4cde08c7`.
 This checkpoint proves the producer, row-order, duplicate-suppression,
 concrete built-in row-field formatting, carried sample-run placement, modeled
-preflight branches, and all-source page-record placement skeleton, but not yet
-physical baseline/cell agreement against a known printed/self-test sample.
+preflight branches, all-source page-record placement skeleton, and source/class
+row reuse of the two ROM sample byte tables. Fixture `font sample full printout
+rows reuse ROM sample byte runs` shows all 32 emitted rows queue the 25-byte
+run-1 table at `0x1c1cf` and the 25-byte run-2 table at `0x1c1e9`, with
+aggregate correlation digest
+`4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a`. It does
+not yet prove physical baseline/cell agreement against a known
+printed/self-test sample.
 
 ### Confidence
 
@@ -1511,11 +1517,11 @@ row 1, and row 2 page-record composition, first two named `COURIER` row
 resolutions and row-to-row composition, first
 `COURIER` `0x1d050` run-1-to-run-2 transition, carried run-2
 page-record object placement, carried run-2 bucket rendering through
-`0x1ed84` / `0x1ef6a`, direct sample byte-run row hashes, and full
-source/class placement skeleton because they are anchored by generated
-disassembly analysis and `tools/render_fixture_harness.py`. Medium for
-baseline/cell interpretation because physical/self-test comparison is still
-open.
+`0x1ed84` / `0x1ef6a`, direct sample byte-run row hashes, full source/class
+placement skeleton, and per-row reuse of sample byte tables `0x1c1cf` /
+`0x1c1e9` because they are anchored by generated disassembly analysis and
+`tools/render_fixture_harness.py`. Medium for baseline/cell interpretation
+because physical/self-test comparison is still open.
 
 ### Fixtures And Reports
 
@@ -1560,8 +1566,12 @@ open.
   no-continuation `0x1d050` branch for first `COURIER`.
   Full source/class placement is now composed as eight page-record segments
   with the modeled preflight branches integrated into the all-source row loop.
-  Remaining gap is correlating those aggregate page-record surfaces with direct
-  sample-row hashes or a known printed/self-test sample.
+  Fixture `font sample full printout rows reuse ROM sample byte runs` proves
+  each non-empty segment row reuses the ROM run tables at `0x1c1cf` and
+  `0x1c1e9`, producing correlation digest
+  `4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a`.
+  Remaining gap is physical baseline/cell comparison against direct rendered
+  row surfaces or a known printed/self-test sample.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
   identified. First `COURIER` and first `LINE_PRINTER` row-field

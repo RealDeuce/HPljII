@@ -21754,6 +21754,163 @@ def font_sample_full_printout_placement_summary(
     }
 
 
+FONT_SAMPLE_RUN1_BYTES = bytes.fromhex(
+    "41 42 43 44 45 66 67 68 69 6a 23 24 40 5b 5c 5d 5e "
+    "60 7b 7c 7d 7e 31 32 33"
+)
+FONT_SAMPLE_RUN2_BYTES = bytes.fromhex(
+    "a1 a2 b3 b4 b6 b8 b9 bb bd c1 c5 c8 c9 cd ce d0 d2 d4 "
+    "d7 d8 db de e0 e3 e8"
+)
+
+
+def font_sample_event_stream_bytes(event: dict[str, object]) -> bytes:
+    events = event["events"]
+    assert isinstance(events, list)
+    return bytes(
+        int(item["byte"])
+        for item in events
+        if isinstance(item, dict) and "byte" in item
+    )
+
+
+def font_sample_full_printout_sample_run_correlation_summary(
+    *,
+    source0_class_zero_page: dict[str, object],
+    source0_class_one_page: dict[str, object],
+    source1_class_zero_page: dict[str, object],
+    source1_class_zero_fields: dict[str, object],
+    source1_class_one_page: dict[str, object],
+    source1_class_one_fields: dict[str, object],
+    source2_class_zero_page: dict[str, object],
+    source2_class_zero_fields: dict[str, object],
+    source2_class_one_page: dict[str, object],
+    source2_class_one_fields: dict[str, object],
+    source3_class_zero_page: dict[str, object],
+    source3_class_one_page: dict[str, object],
+) -> dict[str, object]:
+    page_by_key = {
+        (0, 0): (source0_class_zero_page, None),
+        (1, 0): (source1_class_zero_page, source1_class_zero_fields),
+        (2, 0): (source2_class_zero_page, source2_class_zero_fields),
+        (3, 0): (source3_class_zero_page, None),
+        (0, 1): (source0_class_one_page, None),
+        (1, 1): (source1_class_one_page, source1_class_one_fields),
+        (2, 1): (source2_class_one_page, source2_class_one_fields),
+        (3, 1): (source3_class_one_page, None),
+    }
+    order = [(class_filter, source_index) for class_filter in (0, 1) for source_index in range(4)]
+
+    def page_source_label(page: dict[str, object]) -> bytes:
+        if "source_label" in page:
+            source_label = page["source_label"]
+            assert isinstance(source_label, dict)
+            return bytes(source_label["label"])
+        rows = page["rows"]
+        assert isinstance(rows, list) and rows
+        first_row = rows[0]
+        assert isinstance(first_row, dict)
+        row = first_row["row"]
+        assert isinstance(row, dict)
+        source_label = row["source_label"]
+        assert isinstance(source_label, dict)
+        return bytes(source_label["label"])
+
+    def page_rows(
+        page: dict[str, object],
+        row_fields: dict[str, object] | None,
+    ) -> list[tuple[dict[str, object], dict[str, object]]]:
+        if row_fields is not None:
+            return [(row_fields, page)]
+        if "rows" not in page:
+            return []
+        rows = page["rows"]
+        assert isinstance(rows, list)
+        out = []
+        for entry in rows:
+            assert isinstance(entry, dict)
+            entry_fields = entry["row_fields"]
+            row = entry["row"]
+            assert isinstance(entry_fields, dict)
+            assert isinstance(row, dict)
+            out.append((entry_fields, row))
+        return out
+
+    segments = []
+    aggregate = hashlib.sha256()
+    for class_filter, source_index in order:
+        page, single_row_fields = page_by_key[(source_index, class_filter)]
+        rows = page_rows(page, single_row_fields)
+        contexts = sorted({int(row_fields["context"]) for row_fields, _row in rows})
+        record_starts = [int(row_fields["record_start"]) for row_fields, _row in rows]
+        printed_rows = [bytes(row_fields["printed"]) for row_fields, _row in rows]
+        run1_counts = []
+        run2_counts = []
+        run1_match = True
+        run2_match = True
+        row_digest = hashlib.sha256()
+        for row_fields, row in rows:
+            printed = bytes(row_fields["printed"])
+            row_digest.update(int(row_fields["context"]).to_bytes(4, "big"))
+            row_digest.update(int(row_fields["record_start"]).to_bytes(4, "big"))
+            row_digest.update(len(printed).to_bytes(2, "big"))
+            row_digest.update(printed)
+            run1_event = row["sample_run1_event"]
+            run2_event = row["sample_run2_event"]
+            assert isinstance(run1_event, dict)
+            assert isinstance(run2_event, dict)
+            run1_bytes = bytes(run1_event["bytes"])
+            run2_bytes = bytes(run2_event["bytes"])
+            run1_stream_bytes = font_sample_event_stream_bytes(run1_event)
+            run2_stream_bytes = font_sample_event_stream_bytes(run2_event)
+            run1_counts.append(int(run1_event["event_count"]))
+            run2_counts.append(int(run2_event["event_count"]))
+            run1_match = run1_match and run1_bytes == FONT_SAMPLE_RUN1_BYTES
+            run1_match = run1_match and run1_stream_bytes == FONT_SAMPLE_RUN1_BYTES
+            run2_match = run2_match and run2_bytes == FONT_SAMPLE_RUN2_BYTES
+            run2_match = run2_match and run2_stream_bytes == FONT_SAMPLE_RUN2_BYTES
+            row_digest.update(run1_stream_bytes)
+            row_digest.update(run2_stream_bytes)
+        segment = {
+            "class_filter": class_filter,
+            "source_index": source_index,
+            "label": page_source_label(page),
+            "row_count": len(rows),
+            "contexts": contexts,
+            "record_starts": record_starts,
+            "first_printed": printed_rows[0] if printed_rows else None,
+            "last_printed": printed_rows[-1] if printed_rows else None,
+            "run1_counts": sorted(set(run1_counts)),
+            "run2_counts": sorted(set(run2_counts)),
+            "run1_matches_table": run1_match,
+            "run2_matches_table": run2_match,
+            "row_digest": row_digest.hexdigest(),
+        }
+        segments.append(segment)
+        aggregate.update(int(class_filter).to_bytes(1, "big"))
+        aggregate.update(int(source_index).to_bytes(1, "big"))
+        aggregate.update(int(segment["row_count"]).to_bytes(2, "big"))
+        aggregate.update(bytes.fromhex(str(segment["row_digest"])))
+    return {
+        "helper": "0x1c204/0x1c28e/0x1c2fe plus 0x1d050/0x1cf34 row emission",
+        "run_tables": {
+            "run1_address": "0x1c1cf",
+            "run1_sha256": hashlib.sha256(FONT_SAMPLE_RUN1_BYTES).hexdigest(),
+            "run2_address": "0x1c1e9",
+            "run2_sha256": hashlib.sha256(FONT_SAMPLE_RUN2_BYTES).hexdigest(),
+        },
+        "direct_row_hashes": {
+            "run1_bucket_-1": "b6a0061f7de34c0fa1a0586263f3f167c84d95219e05437e74a286356409af37",
+            "run1_bucket_0": "d7dfb89c8cff5e309b95aac43cd64e0f74f17db1dd9118253544343f17b4c1ce",
+            "run2_bucket_-1": "c77bca7364adbda480c5a31fa4be469175c031bd5f14fc4a54a2e6fb09174be5",
+            "run2_bucket_0": "b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5",
+        },
+        "segments": segments,
+        "total_rows": sum(int(segment["row_count"]) for segment in segments),
+        "correlation_digest": aggregate.hexdigest(),
+    }
+
+
 def render_font_sample_source_heading_first_two_courier_rows_page_record(
     data: bytes,
     resources: bytes,
@@ -31396,6 +31553,221 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "total_rows": 32,
         "segment_digest": "f4105538bd1506731f04810ed2f50cce23815751c4f979ed6f60efab4cde08c7",
     }))
+    font_sample_full_printout_sample_runs = (
+        font_sample_full_printout_sample_run_correlation_summary(
+            source0_class_zero_page=source0_heading_page,
+            source0_class_one_page=source0_class_one_heading_page,
+            source1_class_zero_page=source1_class_zero_page,
+            source1_class_zero_fields=source1_class_zero_fields,
+            source1_class_one_page=source1_class_one_page,
+            source1_class_one_fields=source1_class_one_fields,
+            source2_class_zero_page=source2_class_zero_page,
+            source2_class_zero_fields=source2_class_zero_fields,
+            source2_class_one_page=source2_class_one_page,
+            source2_class_one_fields=source2_class_one_fields,
+            source3_class_zero_page=internal_source_group_page,
+            source3_class_one_page=internal_class_one_group_page,
+        )
+    )
+    checks.append(assert_equal(
+        "font sample full printout rows reuse ROM sample byte runs",
+        font_sample_full_printout_sample_runs,
+        {
+            "helper": "0x1c204/0x1c28e/0x1c2fe plus 0x1d050/0x1cf34 row emission",
+            "run_tables": {
+                "run1_address": "0x1c1cf",
+                "run1_sha256": "3d9c3556b897f7d083d3b01ff6c31471c79f0ee58200d9b9978483b18ffcf02c",
+                "run2_address": "0x1c1e9",
+                "run2_sha256": "83ca4474ca97c08b9cd421a6f1243d45347f84dfa059ef69f8702f56b2d76844",
+            },
+            "direct_row_hashes": {
+                "run1_bucket_-1": "b6a0061f7de34c0fa1a0586263f3f167c84d95219e05437e74a286356409af37",
+                "run1_bucket_0": "d7dfb89c8cff5e309b95aac43cd64e0f74f17db1dd9118253544343f17b4c1ce",
+                "run2_bucket_-1": "c77bca7364adbda480c5a31fa4be469175c031bd5f14fc4a54a2e6fb09174be5",
+                "run2_bucket_0": "b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5",
+            },
+            "segments": [
+                {
+                    "class_filter": 0,
+                    "source_index": 0,
+                    "label": b"\"PERMANENT\" SOFT FONTS",
+                    "row_count": 0,
+                    "contexts": [],
+                    "record_starts": [],
+                    "first_printed": None,
+                    "last_printed": None,
+                    "run1_counts": [],
+                    "run2_counts": [],
+                    "run1_matches_table": True,
+                    "run2_matches_table": True,
+                    "row_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                },
+                {
+                    "class_filter": 0,
+                    "source_index": 1,
+                    "label": b"LEFT FONT CARTRIDGE",
+                    "row_count": 1,
+                    "contexts": [0x4008004C],
+                    "record_starts": [0x00004C],
+                    "first_printed": b"L00LINE PRINTER10128U",
+                    "last_printed": b"L00LINE PRINTER10128U",
+                    "run1_counts": [25],
+                    "run2_counts": [25],
+                    "run1_matches_table": True,
+                    "run2_matches_table": True,
+                    "row_digest": "19edbb368910148b625795b9f30833adbcf33ec0745d403092fc0c4115d70835",
+                },
+                {
+                    "class_filter": 0,
+                    "source_index": 2,
+                    "label": b"RIGHT FONT CARTRIDGE",
+                    "row_count": 1,
+                    "contexts": [0x4008004C],
+                    "record_starts": [0x00004C],
+                    "first_printed": b"R00LINE PRINTER10128U",
+                    "last_printed": b"R00LINE PRINTER10128U",
+                    "run1_counts": [25],
+                    "run2_counts": [25],
+                    "run1_matches_table": True,
+                    "run2_matches_table": True,
+                    "row_digest": "5bf6417ffa76f8e467cc8c23e2e964c825bb0748dff89f45a37d76769712f270",
+                },
+                {
+                    "class_filter": 0,
+                    "source_index": 3,
+                    "label": b"INTERNAL FONTS",
+                    "row_count": 14,
+                    "contexts": [
+                        0x4008004C,
+                        0x40080CB8,
+                        0x40089FB0,
+                        0x4008AC1C,
+                        0x400942E4,
+                        0x40094F5C,
+                        0x44080418,
+                        0x44080868,
+                        0x4408A37C,
+                        0x4408A7CC,
+                        0x440946B4,
+                        0x44094B08,
+                    ],
+                    "record_starts": [
+                        0x00004C,
+                        0x000418,
+                        0x000868,
+                        0x000CB8,
+                        0x009FB0,
+                        0x009FB0,
+                        0x00A37C,
+                        0x00A7CC,
+                        0x00AC1C,
+                        0x0142E4,
+                        0x0142E4,
+                        0x0146B4,
+                        0x014B08,
+                        0x014F5C,
+                    ],
+                    "first_printed": b"I00LINE PRINTER10128U",
+                    "last_printed": b"I13LINE_PRINTER16.68.50N",
+                    "run1_counts": [25],
+                    "run2_counts": [25],
+                    "run1_matches_table": True,
+                    "run2_matches_table": True,
+                    "row_digest": "bc4861cca331d71a37cbb1678a2fdc1f6021073cbdb0489f73bec861f7739dc2",
+                },
+                {
+                    "class_filter": 1,
+                    "source_index": 0,
+                    "label": b"\"PERMANENT\" SOFT FONTS",
+                    "row_count": 0,
+                    "contexts": [],
+                    "record_starts": [],
+                    "first_printed": None,
+                    "last_printed": None,
+                    "run1_counts": [],
+                    "run2_counts": [],
+                    "run1_matches_table": True,
+                    "run2_matches_table": True,
+                    "row_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                },
+                {
+                    "class_filter": 1,
+                    "source_index": 1,
+                    "label": b"LEFT FONT CARTRIDGE",
+                    "row_count": 1,
+                    "contexts": [0x40099D18],
+                    "record_starts": [0x019D18],
+                    "first_printed": b"L00LINE PRINTER10128U",
+                    "last_printed": b"L00LINE PRINTER10128U",
+                    "run1_counts": [25],
+                    "run2_counts": [25],
+                    "run1_matches_table": True,
+                    "run2_matches_table": True,
+                    "row_digest": "f89009d6f0b79c698acf2de518002b8b8e3a7c357717981a3c9df254744a8afe",
+                },
+                {
+                    "class_filter": 1,
+                    "source_index": 2,
+                    "label": b"RIGHT FONT CARTRIDGE",
+                    "row_count": 1,
+                    "contexts": [0x40099D18],
+                    "record_starts": [0x019D18],
+                    "first_printed": b"R00LINE PRINTER10128U",
+                    "last_printed": b"R00LINE PRINTER10128U",
+                    "run1_counts": [25],
+                    "run2_counts": [25],
+                    "run1_matches_table": True,
+                    "run2_matches_table": True,
+                    "row_digest": "c8726b6de7ed64ea32193797be61cae00578926968c570be04d9646c607771d5",
+                },
+                {
+                    "class_filter": 1,
+                    "source_index": 3,
+                    "label": b"INTERNAL FONTS",
+                    "row_count": 14,
+                    "contexts": [
+                        0x40099D18,
+                        0x4009A984,
+                        0x400A3484,
+                        0x400A40F0,
+                        0x400AD4AA,
+                        0x400AE122,
+                        0x4409A0E4,
+                        0x4409A534,
+                        0x440A3850,
+                        0x440A3CA0,
+                        0x440AD87A,
+                        0x440ADCCE,
+                    ],
+                    "record_starts": [
+                        0x019D18,
+                        0x01A0E4,
+                        0x01A534,
+                        0x01A984,
+                        0x023484,
+                        0x023484,
+                        0x023850,
+                        0x023CA0,
+                        0x0240F0,
+                        0x02D4AA,
+                        0x02D4AA,
+                        0x02D87A,
+                        0x02DCCE,
+                        0x02E122,
+                    ],
+                    "first_printed": b"I00LINE PRINTER10128U",
+                    "last_printed": b"I28LINE_PRINTER16.68.50N",
+                    "run1_counts": [25],
+                    "run2_counts": [25],
+                    "run1_matches_table": True,
+                    "run2_matches_table": True,
+                    "row_digest": "acad5e89e95fcff1fe48575fc2f4071edfdc1117178220a73d9b039d6909ec7b",
+                },
+            ],
+            "total_rows": 32,
+            "correlation_digest": "4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a",
+        },
+    ))
     checks.append(assert_equal("font sample resolver carries first two Courier rows", {
         "row1_resolution": {
             "summary": select_keys(courier_source_heading_two_rows["row1_resolution"], (  # type: ignore[arg-type]
@@ -72111,6 +72483,35 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         font_sample_full_printout_placement["segment_digest"],
         font_sample_full_printout_placement["total_rows"],
+    ))
+    lines.append("- font sample full-printout sample-run correlation: every emitted row in the eight source/class segments queues run-1 table `0x1c1cf` and run-2 table `0x1c1e9`; non-empty segment row counts are `%s`, first/last printed rows are `%s`, all run event counts are `%s` / `%s`, direct isolated render hashes remain `%s`, and the aggregate correlation digest is `%s`." % (
+        [
+            (segment["source_index"], segment["class_filter"], segment["row_count"])
+            for segment in font_sample_full_printout_sample_runs["segments"]  # type: ignore[index]
+            if int(segment["row_count"]) != 0
+        ],
+        [
+            (
+                segment["source_index"],
+                segment["class_filter"],
+                segment["first_printed"],
+                segment["last_printed"],
+            )
+            for segment in font_sample_full_printout_sample_runs["segments"]  # type: ignore[index]
+            if int(segment["row_count"]) != 0
+        ],
+        sorted({
+            count
+            for segment in font_sample_full_printout_sample_runs["segments"]  # type: ignore[index]
+            for count in segment["run1_counts"]
+        }),
+        sorted({
+            count
+            for segment in font_sample_full_printout_sample_runs["segments"]  # type: ignore[index]
+            for count in segment["run2_counts"]
+        }),
+        font_sample_full_printout_sample_runs["direct_row_hashes"],
+        font_sample_full_printout_sample_runs["correlation_digest"],
     ))
     lines.append("- font sample row fields: first `LINE_PRINTER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152`; the height value is rounded by the mode-1 `0x1cc6e` add-five path." % (
         line_printer_sample_row_fields["record_start"],

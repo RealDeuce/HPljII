@@ -1093,9 +1093,12 @@ ROM work needed:
   page-record states. The page-limit continuation checkpoint now covers
   `0x1ca2c` heading preflight, `0x1d050` row-continuation call targets, and
   the `0x1d868` selected/alternate fit gate, plus the `0x1d964` /
-  `0x1dcf2..0x1de2c` multi-probe preflight. The next boundary is correlation
-  of the composed full-printout page-record surfaces against the direct
-  payload hashes and a known printed/self-test sample.
+  `0x1dcf2..0x1de2c` multi-probe preflight. Fixture `font sample full printout
+  rows reuse ROM sample byte runs` now proves all 32 composed rows consume the
+  ROM sample tables at `0x1c1cf` and `0x1c1e9`, with correlation digest
+  `4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a`. The
+  next boundary is physical baseline/cell comparison against direct rendered
+  row surfaces or a known printed/self-test sample.
 - Identify the manual-facing names for the currently unidentified
   built-in symbol words `0N`, `10U`, and `11U`, and broaden the
   now-pinned real symbol-map samples into more live parser/font-selection

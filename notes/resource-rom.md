@@ -352,9 +352,11 @@ The unresolved middle edge is now narrower than "built-in metrics":
 glyph-entry `+0/+2`. The open address boundary is the header-level
 height/baseline use between the extracted record fields
 `+0x28..+0x31` and the font-printout/page-object path
-`0x1c204..0x1cf34`; that path must be correlated with emitted page
-objects or a known print sample before those fields get final semantic
-names.
+`0x1c334..0x1ed84`; the `0x1c204..0x1cf34` loop, row helpers, and byte
+emission are now composed in
+[semantic-state-model.md](semantic-state-model.md). The emitted page
+objects still must be correlated with the direct sample-byte row hashes
+or a known print sample before those fields get final semantic names.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record
@@ -531,10 +533,13 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    the `0xc428` / `0x10550` HMI source, and first-glyph placement
    offsets are now pinned through the `0xd824` path, but the
    header-level baseline/cell semantics still need broader correlation.
-6. Model the `0x1c204` font-printout loop's emitted page objects from
-   the ROM sample byte runs, then compare those rows against the direct
-   payload hashes and a known printed/self-test sample to correlate the
-   remaining baseline/header fields against observed placement.
+6. Model the font-printout loop's emitted page objects from the ROM
+   sample byte runs. The `0x1c204..0x1cf34` loop and byte-emission path
+   are now semantically composed; the remaining boundary is
+   `0x1c334..0x1ed84` into published page records and rendered rows.
+   Compare those rows against the direct payload hashes and a known
+   printed/self-test sample to correlate the remaining baseline/header
+   fields against observed placement.
 7. Identify the manual-facing names for the currently unidentified
    built-in symbol words `0N`, `10U`, and `11U`, and broaden the
    now-pinned real map samples into more live parser/font-selection

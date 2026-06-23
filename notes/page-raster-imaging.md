@@ -747,10 +747,12 @@ compact rows: `0x13eb8` selects context `0xc008004c`, `0x14c64` rebuilds map
 `0x782f32`, following printable bytes `!!` queue object prefix
 `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and the `0x1edc6` render
 record carries context slot `0xc008004c` before compact helper `0x1fe76`
-renders two Courier glyph-0 shapes. The remaining caveat is the same live
-handoff called out in `notes/semantic-state-model.md`: the selected context
-longword is injected from the pinned `0x13eb8` result instead of captured from
-one continuous CPU-memory run. The current-font-RAM handoff is now narrower:
+renders two Courier glyph-0 shapes. Fixture
+`inline primary font selection stream renders visible rows` now carries that
+same host-fetched stream through one mixed-stream state: `0x1205a`/`0x13eb8`
+write `0x782ee6 = 0xc008004c`, HMI becomes `30`, the following `!!` bytes
+read context slot `0`, and the rows match the pinned primary fixture. The
+current-font-RAM handoff is now narrower:
 fixture `live primary current-font RAM install feeds SI page-record rows`
 starts from seeded `0x782ee6 = 0xc008004c` and `0x782ef6 = 0xc00ae122`, then
 proves SI `0xc68a` calling `0xc428(0)` / `0xc4fc`, installing page-root slot
@@ -765,6 +767,10 @@ tie those handoffs back to host-fetched selection streams
 `ESC (s0p10h12v0s0b3T SI !!` and `ESC )s0p16h8v0s0b0T SO !!`; their
 page-root install events, source contexts, compact object prefixes, and rows
 match the pinned primary and secondary visible fixtures.
+Fixture `inline secondary font selection stream renders SO visible rows` does
+the same for `ESC )s0p16h8v0s0b0T SO !!`: secondary selection writes
+`0x782ef6 = 0xc00ae122`, SO selects slot `1`, HMI becomes `18`, and the
+following printable bytes render the same secondary Line Printer rows.
 Fixture
 `parsed secondary built-in font selection feeds visible SO page-record rows`
 adds the secondary mirror: `ESC )s0p16h8v0s0b0T` selects context

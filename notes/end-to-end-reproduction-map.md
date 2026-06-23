@@ -289,10 +289,10 @@ The next work should follow dataflow, not isolated handlers:
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus
-   secondary built-in font-selection visible-output streams, the primary and
-   secondary symbol fallbacks, plus primary/secondary current-font-RAM handoff
-   and
-   composed selection-to-RAM handoff visible-output streams. The primary
+   secondary built-in font-selection visible-output streams, inline primary
+   and secondary parser-to-printable streams, the primary and secondary symbol
+   fallbacks, plus primary/secondary current-font-RAM handoff and composed
+   selection-to-RAM handoff visible-output streams. The primary
    built-in case proves `ESC (s0p10h12v0s0b3T!!` through parsed selection
    handlers, selected context `0xc008004c`, printable `0xd04a` entries, object
    prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record context
@@ -318,9 +318,11 @@ The next work should follow dataflow, not isolated handlers:
    The composed handoff cases prove `ESC (s0p10h12v0s0b3T SI !!` and
    `ESC )s0p16h8v0s0b0T SO !!` from host-fetched selection bytes to selected
    current-font RAM, page-root slot install, and rows matching the pinned
-   visible fixtures. Remaining suite cases should capture a single
-   uninterrupted parser-to-printable CPU-state trace, add other fallback/error
-   font-selection visible-output variants beyond those two symbol misses, and
+   visible fixtures. The inline cases prove `ESC (s0p10h12v0s0b3T!!` and
+   `ESC )s0p16h8v0s0b0T SO !!` in one mixed-stream state from selection
+   handlers to printable source capture, HMI, object prefix, bridge context
+   slots, and rows. Remaining suite cases should add other fallback/error
+   font-selection visible-output variants beyond those two symbol misses and
    broaden remaining downloaded-glyph publication variants beyond the
    segmented-wide, normal, segmented, and even-span wide branches. The
    publication-command

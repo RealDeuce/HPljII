@@ -17240,6 +17240,7 @@ def render_mixed_printable_control_page_record_stream(
     context_slot: int = 0,
     secondary_context: int | None = None,
     initial_page_record: dict[str, object] | None = None,
+    font_selection_env: dict[str, object] | None = None,
 ) -> dict[str, object]:
     state = dict(state)
     context_slots = [context]
@@ -17262,6 +17263,183 @@ def render_mixed_printable_control_page_record_stream(
     raster_pending: dict[str, object] = {"pending_flag": 0, "handler": 0, "snapshot_record": b""}
     vfc_pending: dict[str, object] = {"pending_flag": 0, "handler": 0, "snapshot_record": b""}
     pos = 0
+
+    def set_context_slot(slot: int, value: int) -> None:
+        nonlocal context, secondary_context, context_slots
+        while len(context_slots) <= slot:
+            context_slots.append(0)
+        context_slots[slot] = value
+        page_record["context_slots"] = list(context_slots)
+        if slot == 0:
+            context = value
+        elif slot == 1:
+            secondary_context = value
+
+    def ensure_font_selection_state() -> None:
+        state.setdefault("requested_symbols", [0x0115, 0x000E])
+        state.setdefault("active_symbols", [0x0115, 0x000E])
+        state.setdefault("remembered_symbols", list(state["requested_symbols"]))  # type: ignore[arg-type]
+        state.setdefault("font_selection_events", [])
+        state["requested_symbols"] = list(state["requested_symbols"])  # type: ignore[arg-type]
+        state["active_symbols"] = list(state["active_symbols"])  # type: ignore[arg-type]
+        state["remembered_symbols"] = list(state["remembered_symbols"])  # type: ignore[arg-type]
+
+    def font_selection_sequence_end(start: int) -> int:
+        scan = start + 3
+        while True:
+            if scan < len(stream) and (
+                stream[scan] in (ord("+"), ord("-"), ord("."))
+                or chr(stream[scan]).isdigit()
+            ):
+                _parameter, _fraction, scan = parse_pcl_numeric_parameter_with_fraction(
+                    stream,
+                    scan,
+                )
+            if scan >= len(stream):
+                raise AssertionError("page-record mixed stream font selection missing final byte")
+            final = stream[scan]
+            scan += 1
+            if not (ord("a") <= final <= ord("z")):
+                return scan
+
+    def symbol_set_sequence_end(start: int) -> int:
+        scan = start + 2
+        if scan < len(stream) and (
+            stream[scan] in (ord("+"), ord("-")) or chr(stream[scan]).isdigit()
+        ):
+            _parameter, scan = parse_pcl_decimal_parameter(stream, scan)
+        if scan >= len(stream):
+            raise AssertionError("page-record mixed stream symbol-set command missing final byte")
+        final = stream[scan]
+        if not (ord("@") <= final <= ord("^")):
+            raise AssertionError(
+                f"page-record mixed stream unsupported symbol-set final byte {chr(final)!r}"
+            )
+        return scan + 1
+
+    def apply_inline_symbol_set(sequence: bytes, offset: int) -> dict[str, object]:
+        ensure_font_selection_state()
+        trace = trace_symbol_set_parser_dispatch_via_11774(data, sequence)
+        stream_state = symbol_set_state(
+            requested_symbols=state["requested_symbols"],
+            active_symbols=state["active_symbols"],
+            remembered_symbols=state["remembered_symbols"],
+            current_selector_782f06=int(state.get("text_map_selector_782f06", 0)),
+            current_page_root=int(state.get("current_page_root", 0)),
+            page_root_context_slots=state.get("page_root_context_slots", [0] * 16),
+            page_root_live_flags=state.get("page_root_live_flags", [0] * 16),
+            primary_context_782ee6=int(state.get("primary_context_782ee6", context)),
+            secondary_context_782ef6=int(
+                state.get("secondary_context_782ef6", secondary_context or 0)
+            ),
+        )
+        applied = apply_symbol_set_stream_via_120be_1be22(stream_state, sequence)
+        state["requested_symbols"] = list(applied["requested_symbols"])  # type: ignore[index]
+        state["active_symbols"] = list(applied["active_symbols"])  # type: ignore[index]
+        state["remembered_symbols"] = list(applied["requested_symbols"])  # type: ignore[index]
+        event = {
+            "kind": "font-symbol-set",
+            "offset": offset,
+            "sequence": sequence,
+            "parser_handlers": [
+                dispatch["handler"]
+                for command in trace["commands"]  # type: ignore[index]
+                for dispatch in command["dispatches"]  # type: ignore[index]
+            ],
+            "stream_events": applied["stream_events"],
+            "requested_symbols": state["requested_symbols"],
+            "active_symbols": state["active_symbols"],
+            "remembered_symbols": state["remembered_symbols"],
+        }
+        font_events = state.setdefault("font_selection_events", [])
+        if not isinstance(font_events, list):
+            raise AssertionError("font selection events must be a list")
+        font_events.append(event)
+        return event
+
+    def apply_inline_font_selection(sequence: bytes, offset: int) -> dict[str, object]:
+        if font_selection_env is None:
+            raise AssertionError("page-record mixed stream font selection needs font_selection_env")
+        ensure_font_selection_state()
+        trace = trace_font_parser_dispatch_via_11774(data, sequence)
+        request = font_selection_request_from_trace(trace)
+        updates = apply_font_selection_update_handlers_from_trace(trace)
+        slot_word = int(request["slot_word"])
+        metric_inputs = request["filter_inputs"]
+        requested_symbols = list(state["requested_symbols"])  # type: ignore[arg-type]
+        active_symbols = list(state["active_symbols"])  # type: ignore[arg-type]
+        remembered_symbols = list(state["remembered_symbols"])  # type: ignore[arg-type]
+        refresh = selected_font_refresh_via_13eb8(
+            data,
+            resources,
+            font_selection_env["candidate_windows"],  # type: ignore[arg-type]
+            slot=slot_word,
+            requested_primary=int(requested_symbols[0]),
+            requested_secondary=int(requested_symbols[1]),
+            active_symbols=[int(active_symbols[0]), int(active_symbols[1])],
+            remembered_primary_782f08=int(remembered_symbols[0]),
+            remembered_secondary_782f0a=int(remembered_symbols[1]),
+            fallback_table_782f0c=font_selection_env["fallback_table_782f0c"],  # type: ignore[arg-type]
+            class_selector_byte_782da3=slot_word,
+            requested_spacing=int(metric_inputs["spacing"]),  # type: ignore[index]
+            requested_pitch=int(metric_inputs["pitch"]),  # type: ignore[index]
+            requested_height=int(metric_inputs["height"]),  # type: ignore[index]
+            requested_style=int(metric_inputs["style"]),  # type: ignore[index]
+            requested_stroke=int(metric_inputs["stroke"]),  # type: ignore[index]
+            requested_typeface=int(metric_inputs["typeface"]),  # type: ignore[index]
+        )
+        context_update = refresh["context_update"]
+        assert isinstance(context_update, dict)
+        selected_context = int(context_update["selected_longword"])
+        if slot_word == 0:
+            state["primary_context_782ee6"] = selected_context
+        else:
+            state["secondary_context_782ef6"] = selected_context
+        set_context_slot(slot_word, selected_context)
+        hmi_info = builtin_flagged_hmi_from_context(resources, selected_context)
+        if int(state.get("text_map_selector_782f06", 0)) == slot_word:
+            state["hmi"] = int(hmi_info["hmi"])
+            state["printable_advance"] = int(hmi_info["hmi"])
+        state["active_symbols"] = list(refresh["active_symbols"])  # type: ignore[index]
+        remembered_symbols[slot_word] = int(state["active_symbols"][slot_word])  # type: ignore[index]
+        state["remembered_symbols"] = remembered_symbols
+        dispatch = refresh["dispatch"]
+        assert isinstance(dispatch, dict)
+        event = {
+            "kind": "font-selection",
+            "offset": offset,
+            "sequence": sequence,
+            "slot": slot_word,
+            "parser_handlers": [
+                event["handler"]
+                for event in trace["dispatches"]  # type: ignore[index]
+            ],
+            "update_events": updates["events"],
+            "refresh_calls": refresh["calls"],
+            "context_update": context_update,
+            "selection_map": {
+                key: dispatch[key]
+                for key in (
+                    "path",
+                    "slot",
+                    "selected_symbol",
+                    "active_symbol",
+                    "range_start",
+                    "range_end",
+                    "patch_kind",
+                    "map_address",
+                )
+            },
+            "metric": hmi_info,
+            "active_symbols": state["active_symbols"],
+            "remembered_symbols": state["remembered_symbols"],
+            "context_slots": list(context_slots),
+        }
+        font_events = state.setdefault("font_selection_events", [])
+        if not isinstance(font_events, list):
+            raise AssertionError("font selection events must be a list")
+        font_events.append(event)
+        return event
 
     def active_text_context() -> tuple[int, int]:
         if int(state.get("use_page_root_context_slots_for_text", 0)):
@@ -17417,6 +17595,26 @@ def render_mixed_printable_control_page_record_stream(
                 continue
             if pos + 3 >= len(stream):
                 raise AssertionError(f"page-record mixed stream expected ESC command at offset {pos}")
+            if stream[pos + 1] in (ord("("), ord(")")):
+                if stream[pos + 2] == ord("s"):
+                    selection_start = pos
+                    selection_end = font_selection_sequence_end(selection_start)
+                    selection_event = apply_inline_font_selection(
+                        stream[selection_start:selection_end],
+                        selection_start,
+                    )
+                    events.append(selection_event)
+                    pos = selection_end
+                    continue
+                symbol_start = pos
+                symbol_end = symbol_set_sequence_end(symbol_start)
+                symbol_event = apply_inline_symbol_set(
+                    stream[symbol_start:symbol_end],
+                    symbol_start,
+                )
+                events.append(symbol_event)
+                pos = symbol_end
+                continue
             if stream[pos + 1 : pos + 3] == b"&k":
                 group_start = pos
                 pos += 3
@@ -18159,6 +18357,15 @@ def render_mixed_printable_control_page_record_stream(
             assert isinstance(updated_state, dict)
             assert isinstance(event, dict)
             state = updated_state
+            if str(state.get("text_source_form", "flagged")) == "flagged":
+                active_context_after_shift, _active_slot_after_shift = active_text_context()
+                if active_context_after_shift:
+                    shifted_hmi = builtin_flagged_hmi_from_context(
+                        resources,
+                        active_context_after_shift,
+                    )
+                    state["hmi"] = int(shifted_hmi["hmi"])
+                    state["printable_advance"] = int(shifted_hmi["hmi"])
             events.append({
                 "kind": "font-shift",
                 "offset": pos,
@@ -27153,6 +27360,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     secondary_symbol_fallback_13eb8_symbol = secondary_symbol_fallback_13eb8_refresh["symbol_filter"]
     assert isinstance(secondary_symbol_fallback_13eb8_dispatch, dict)
     assert isinstance(secondary_symbol_fallback_13eb8_symbol, dict)
+    font_selection_env = {
+        "candidate_windows": actual_candidate_windows,
+        "fallback_table_782f0c": fallback_table_782f0c,
+    }
     transient_13eb8_refresh = selected_font_refresh_via_13eb8(
         data,
         resources,
@@ -28023,6 +28234,120 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_record_root_allocations": 1,
         },
     }))
+    primary_inline_selection_page = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        primary_selection_visible_fetch["stream"],
+        0,
+        control_fixture_state(
+            cursor_x=pack12(0),
+            cursor_y=pack12(21),
+            hmi=0,
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=0,
+        font_selection_env=font_selection_env,
+    )
+    primary_inline_selection_rendered = primary_inline_selection_page["rendered"]
+    primary_inline_selection_bridged = primary_inline_selection_page["bridged_record"]
+    assert isinstance(primary_inline_selection_rendered, dict)
+    assert isinstance(primary_inline_selection_bridged, dict)
+    primary_inline_selection_events = primary_inline_selection_page["events"]
+    primary_inline_selection_font_event = primary_inline_selection_events[0]
+    assert isinstance(primary_inline_selection_font_event, dict)
+    checks.append(assert_equal("inline primary font selection stream renders visible rows", {
+        "stream": primary_inline_selection_page["stream"],
+        "font_event": {
+            "kind": primary_inline_selection_font_event["kind"],
+            "slot": primary_inline_selection_font_event["slot"],
+            "final_handlers": [
+                event["handler"]
+                for event in primary_inline_selection_font_event["update_events"]
+            ],
+            "context_update": primary_inline_selection_font_event["context_update"],
+            "selection_map": primary_inline_selection_font_event["selection_map"],
+            "metric": primary_inline_selection_font_event["metric"],
+            "context_slots": primary_inline_selection_font_event["context_slots"],
+        },
+        "printable_sources": [
+            {
+                "source_context": event["source"]["context"],
+                "source_slot": event["source"]["context_slot"],
+                "coord": event["page_result"]["coord"],
+                "glyph_entry": event["source"]["glyph_entry"],
+            }
+            for event in primary_inline_selection_events
+            if event["kind"] == "printable"
+        ],
+        "object_prefix": primary_inline_selection_page["bucket_object"][:14],
+        "bridged_context_slots": primary_inline_selection_bridged["context_slots"][:2],
+        "final_state": select_keys(primary_inline_selection_page["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "hmi",
+            "page_record_root_allocations",
+        )),
+        "rows_match_split_fixture": (
+            primary_inline_selection_rendered["rows"]
+            == primary_selection_visible_rendered["rows"]
+        ),
+    }, {
+        "stream": primary_font_selection_stream + b"!!",
+        "font_event": {
+            "kind": "font-selection",
+            "slot": 0,
+            "final_handlers": [0x00C930, 0x00C89C, 0x00C6EC, 0x00C780, 0x00C840, 0x01205A],
+            "context_update": {
+                "helper": 0x0144D2,
+                "context_record": 0x782EE6,
+                "selected_longword": 0xC008004C,
+                "byte_4_bit30": 1,
+                "byte_5_bit26": 0,
+            },
+            "selection_map": {
+                "path": "built-in-cache-miss",
+                "slot": "primary",
+                "selected_symbol": 0x0115,
+                "active_symbol": 0x0115,
+                "range_start": 0x0021,
+                "range_end": 0x00FE,
+                "patch_kind": "unchanged",
+                "map_address": 0x782F32,
+            },
+            "metric": {
+                "base": 0x00004C,
+                "metric_flag": 0,
+                "raw_metric": 0x00780000,
+                "hmi": pack12(30),
+            },
+            "context_slots": [0xC008004C],
+        },
+        "printable_sources": [
+            {
+                "source_context": 0xC008004C,
+                "source_slot": 0,
+                "coord": 0x6A00,
+                "glyph_entry": 0x001088,
+            },
+            {
+                "source_context": 0xC008004C,
+                "source_slot": 0,
+                "coord": 0x6802,
+                "glyph_entry": 0x001088,
+            },
+        ],
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 00 6a 00 00 68 02"),
+        "bridged_context_slots": (0xC008004C, 0),
+        "final_state": {
+            "cursor_x": pack12(60),
+            "cursor_y": pack12(21),
+            "hmi": pack12(30),
+            "page_record_root_allocations": 1,
+        },
+        "rows_match_split_fixture": True,
+    }))
     primary_fallback_visible_context = int(primary_symbol_fallback_13eb8_refresh["context_update"]["selected_longword"])  # type: ignore[index]
     primary_fallback_visible_hmi = builtin_flagged_hmi_from_context(resources, primary_fallback_visible_context)
     primary_fallback_visible_stream = (
@@ -28819,6 +29144,147 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "hmi": pack12(18),
             "page_record_root_allocations": 1,
         },
+    }))
+    secondary_inline_selection_page = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        secondary_selection_visible_fetch["stream"],
+        primary_visible_context,
+        control_fixture_state(
+            cursor_x=pack12(30),
+            cursor_y=pack12(21),
+            hmi=primary_visible_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            text_map_selector_782f06=0,
+            font_context_install_success=1,
+        ),
+        default_advance=primary_visible_hmi["hmi"],
+        secondary_context=0,
+        font_selection_env=font_selection_env,
+    )
+    secondary_inline_selection_rendered = secondary_inline_selection_page["rendered"]
+    secondary_inline_selection_bridged = secondary_inline_selection_page["bridged_record"]
+    assert isinstance(secondary_inline_selection_rendered, dict)
+    assert isinstance(secondary_inline_selection_bridged, dict)
+    secondary_inline_selection_events = secondary_inline_selection_page["events"]
+    secondary_inline_selection_font_event = secondary_inline_selection_events[0]
+    secondary_inline_selection_shift_event = secondary_inline_selection_events[1]
+    assert isinstance(secondary_inline_selection_font_event, dict)
+    assert isinstance(secondary_inline_selection_shift_event, dict)
+    checks.append(assert_equal("inline secondary font selection stream renders SO visible rows", {
+        "stream": secondary_inline_selection_page["stream"],
+        "font_event": {
+            "kind": secondary_inline_selection_font_event["kind"],
+            "slot": secondary_inline_selection_font_event["slot"],
+            "final_handlers": [
+                event["handler"]
+                for event in secondary_inline_selection_font_event["update_events"]
+            ],
+            "context_update": secondary_inline_selection_font_event["context_update"],
+            "selection_map": secondary_inline_selection_font_event["selection_map"],
+            "metric": secondary_inline_selection_font_event["metric"],
+            "context_slots": secondary_inline_selection_font_event["context_slots"],
+        },
+        "shift_event": {
+            "kind": secondary_inline_selection_shift_event["kind"],
+            "byte": secondary_inline_selection_shift_event["byte"],
+            "handler": secondary_inline_selection_shift_event["handler"],
+            "selector_before": secondary_inline_selection_shift_event["selector_before"],
+            "selector_after": secondary_inline_selection_shift_event["selector_after"],
+            "install_called": secondary_inline_selection_shift_event["install_called"],
+            "install_success": secondary_inline_selection_shift_event["install_success"],
+        },
+        "printable_sources": [
+            {
+                "source_context": event["source"]["context"],
+                "source_slot": event["source"]["context_slot"],
+                "coord": event["page_result"]["coord"],
+                "glyph_entry": event["source"]["glyph_entry"],
+            }
+            for event in secondary_inline_selection_events
+            if event["kind"] == "printable"
+        ],
+        "object_prefix": secondary_inline_selection_page["bucket_object"][:14],
+        "bridged_context_slots": secondary_inline_selection_bridged["context_slots"][:2],
+        "final_state": select_keys(secondary_inline_selection_page["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "hmi",
+            "text_map_selector_782f06",
+            "font_context_install_calls",
+            "page_record_root_allocations",
+        )),
+        "rows_match_split_fixture": (
+            secondary_inline_selection_rendered["rows"]
+            == secondary_selection_visible_rendered["rows"]
+        ),
+    }, {
+        "stream": secondary_font_selection_stream + b"\x0e!!",
+        "font_event": {
+            "kind": "font-selection",
+            "slot": 1,
+            "final_handlers": [0x00C930, 0x00C89C, 0x00C6EC, 0x00C780, 0x00C840, 0x01205A],
+            "context_update": {
+                "helper": 0x0144D2,
+                "context_record": 0x782EF6,
+                "selected_longword": 0xC00AE122,
+                "byte_4_bit30": 1,
+                "byte_5_bit26": 0,
+            },
+            "selection_map": {
+                "path": "built-in-cache-miss",
+                "slot": "secondary",
+                "selected_symbol": 0x000E,
+                "active_symbol": 0x000E,
+                "range_start": 0x0021,
+                "range_end": 0x00FF,
+                "patch_kind": "selected-symbol-not-roman8",
+                "map_address": 0x783032,
+            },
+            "metric": {
+                "base": 0x02E122,
+                "metric_flag": 0,
+                "raw_metric": 0x00480000,
+                "hmi": pack12(18),
+            },
+            "context_slots": [0xC008004C, 0xC00AE122],
+        },
+        "shift_event": {
+            "kind": "font-shift",
+            "byte": 0x0E,
+            "handler": 0x00C6B8,
+            "selector_before": 0,
+            "selector_after": 1,
+            "install_called": True,
+            "install_success": True,
+        },
+        "printable_sources": [
+            {
+                "source_context": 0xC00AE122,
+                "source_slot": 1,
+                "coord": 0xC900,
+                "glyph_entry": 0x02E4F6,
+            },
+            {
+                "source_context": 0xC00AE122,
+                "source_slot": 1,
+                "coord": 0xCB01,
+                "glyph_entry": 0x02E4F6,
+            },
+        ],
+        "object_prefix": bytes.fromhex("00 00 00 00 00 01 00 02 00 c9 00 00 cb 01"),
+        "bridged_context_slots": (0xC008004C, 0xC00AE122),
+        "final_state": {
+            "cursor_x": pack12(66),
+            "cursor_y": pack12(21),
+            "hmi": pack12(18),
+            "text_map_selector_782f06": 1,
+            "font_context_install_calls": 1,
+            "page_record_root_allocations": 1,
+        },
+        "rows_match_split_fixture": True,
     }))
     live_secondary_handoff_state = control_fixture_state(
         cursor_x=pack12(30),
@@ -64967,6 +65433,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         secondary_13eb8_refresh["context_update"]["context_record"],  # type: ignore[index]
         secondary_13eb8_dispatch["map_address"],
         secondary_13eb8_dispatch["patch_kind"],
+    ))
+    lines.append("- inline font-selection streams: primary bytes `%s` write context `0x%08x`, derive HMI `%d`, queue object `%s`, and match pinned Courier rows; secondary bytes `%s` write context `0x%08x`, SO selects slot `%d`, derives HMI `%d`, queues object `%s`, and match pinned secondary rows." % (
+        " ".join(f"{byte:02x}" for byte in primary_inline_selection_page["stream"]),
+        primary_inline_selection_font_event["context_update"]["selected_longword"],  # type: ignore[index]
+        unpack12(primary_inline_selection_page["final_state"]["hmi"])[0],
+        " ".join(f"{byte:02x}" for byte in primary_inline_selection_page["bucket_object"][:14]),
+        " ".join(f"{byte:02x}" for byte in secondary_inline_selection_page["stream"]),
+        secondary_inline_selection_font_event["context_update"]["selected_longword"],  # type: ignore[index]
+        secondary_inline_selection_shift_event["selector_after"],
+        unpack12(secondary_inline_selection_page["final_state"]["hmi"])[0],
+        " ".join(f"{byte:02x}" for byte in secondary_inline_selection_page["bucket_object"][:14]),
     ))
     lines.append("- `0x13eb8` exits: the transient `0x78298f` path stores selected longword `0x%08x`, restores saved active word `0x%04x`, and skips `0x144d2`/`0x14c64`; the `0x148f8` cache-hit path returns after calls `%s` with active symbols `%s`." % (
         transient_13eb8_refresh["selected_context_record_782992"],

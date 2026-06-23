@@ -68,6 +68,7 @@ Primary fixtures:
 - `host-fetched metric variant changes d4ac gate and d8fc rows`
 - `host-fetched clamped metric variant changes d4ac gate and d8fc rows`
 - `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`
+- `host-fetched upper-bound metric variant keeps d4ac span but suppresses d8fc`
 - `0x16498-backed downloaded character object renders segmented-wide compact row`
 - `downloaded character stream ties ROM parser dispatch to rendered object`
 - `host-fetched downloaded character stream reaches rendered object`
@@ -240,6 +241,13 @@ Renderer-facing allocated payload fields:
   bookkeeping at `0`. At cursor y `21`, `0xd4ac` reads byte `+0x2c = 0x18`,
   `0xd8fc` reads word `+0x16 = 0x0018`, and both exit
   `before-context-lower`; the compact glyph objects still queue and render.
+- upper-bound metric-variant descriptor bytes: fixture `host-fetched
+  upper-bound metric variant keeps d4ac span but suppresses d8fc` writes
+  range/count `+0x14 = 0x0040`, derives `+0x18 = 0x003b`, and keeps rounded
+  word `+0x2c = 0x0020`. At cursor y `21` and page extent `64`, unflagged
+  `0xd4ac` still queues the default span object and rows, but flagged
+  `0xd8fc` exits `beyond-page-extent` because `21 + 0x003b` crosses the page
+  extent; its compact glyph remains queued and renderable.
 
 Unknown:
 
@@ -1101,9 +1109,13 @@ progression because `0xff1e` disassembly at `0xffc8` clears root `+0x18`,
 `0x1eba4` emits band words `0..9` through `0x1ef6a` and preserves the same
 visible row.
 
-Medium for the full PCL soft-font grammar because the validation table is
-executable but not every predicate has a manual-facing semantic name, and not
-every legal metric combination has a parser-produced page comparison.
+High for the covered parser-produced metric combinations because the type-0,
+type-1, type-2, metric-variant, clamped, lower-bound, and upper-bound fixtures
+all start from host-fetched `ESC )s80W`, run through `0x16fae`/`0x1719c`, and
+compare page-visible `0xd4ac`/`0xd8fc` output effects. Medium for the full PCL
+soft-font grammar because the validation table is executable but not every
+predicate has a manual-facing semantic name, and not every legal metric
+combination has a parser-produced page comparison.
 
 Medium for bit-30-clear fixed-record dispatch from a `0x1719c` payload: the
 isolation fixture proves `0x14e24`/`0x14eb6` map construction and rendering,
@@ -1185,10 +1197,11 @@ A byte-stream renderer must preserve:
   line/count, high line/count, reversed-range, high range/count, and
   invalid-class resource paths now have host-fetched
   parser/validation/no-install boundaries and following-printable page output.
-  Three host-fetched metric-value variants now prove copied descriptor fields
+  Four host-fetched metric-value variants now prove copied descriptor fields
   can flip the `0xd4ac` page-extent gate, exercise rounded-metric clamping
-  into `+0x2c/+0x2d`, move `0xd8fc` rendered rows, and suppress both span
-  consumers through parser-owned lower-bound fields while preserving compact
-  glyph output. Broader downloaded/inline metric-byte cross-products and the
-  producer-side validation/error forms beyond those seven bounded predicate
-  branches still need parser-produced page evidence.
+  into `+0x2c/+0x2d`, move `0xd8fc` rendered rows, suppress both span
+  consumers through parser-owned lower-bound fields, and suppress only
+  `0xd8fc` through parser-owned upper-bound fields while preserving `0xd4ac`
+  span output and compact glyph output. Broader downloaded/inline metric-byte
+  cross-products and the producer-side validation/error forms beyond those
+  seven bounded predicate branches still need parser-produced page evidence.

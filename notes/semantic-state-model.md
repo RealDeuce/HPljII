@@ -1425,6 +1425,7 @@ fixtures.
 - `host-fetched metric variant changes d4ac gate and d8fc rows`
 - `host-fetched clamped metric variant changes d4ac gate and d8fc rows`
 - `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`
+- `host-fetched upper-bound metric variant keeps d4ac span but suppresses d8fc`
 - `0x1354a portrait text span split queues adjacent buckets`
 - `0x12714 landscape span inserts into nonempty fixed list`
 - `0x12714 allocation failure publishes page and retries span`
@@ -1479,6 +1480,10 @@ fixtures.
   raises copied lower byte `+0x2c` to `0x18` through descriptor word
   `+0x2c = 0x1800`, causing `0xd4ac` to exit `before-context-lower` at
   cursor y `21` while the compact glyph object remains queued. Fixture
+  `host-fetched upper-bound metric variant keeps d4ac span but suppresses
+  d8fc` expands descriptor range/count word `+0x14` to `0x0040`, leaves
+  unflagged bytes `+0x2c/+0x2d = 0/0x20`, and proves `0xd4ac` still queues the
+  default span at cursor y `21` / extent `64`. Fixture
   `d4ac and d8fc span consumer branch family controls flush output` covers
   the disabled, before-lower, beyond-page, and high-x-only consumer branches.
   Broader metric-byte cross-products and producer-side validation/error
@@ -1505,6 +1510,10 @@ fixtures.
   raises copied lower word `+0x16` to `0x0018` and derived/cache count
   `+0x18` to `0x05e7`, causing `0xd8fc` to exit `before-context-lower` at
   cursor y `21` while the compact glyph object remains queued. Fixture
+  `host-fetched upper-bound metric variant keeps d4ac span but suppresses
+  d8fc` copies range/count `+0x14 = 0x0040` and derived/cache height
+  `+0x18 = 0x003b`, causing `0xd8fc` to exit `beyond-page-extent` at cursor y
+  `21` / extent `64` while the compact glyph object remains queued. Fixture
   `d4ac and d8fc span consumer branch family controls flush output` covers
   the disabled, before-lower, beyond-page, and high-x-only consumer branches.
   Broader metric-byte cross-products and producer-side validation/error
@@ -1771,6 +1780,13 @@ canonical lower fields `+0x16 = 0x0018` and `+0x2c = 0x1800`, range/count
 byte `+0x2c = 0x18`; `0xd8fc` reads word `+0x16 = 0x0018`; both return
 `before-context-lower` at cursor y `21`, and the fixture renders only the
 compact glyph objects from the page-record buckets.
+Fixture `host-fetched upper-bound metric variant keeps d4ac span but
+suppresses d8fc` adds the asymmetric upper-bound sibling: host-fetched
+descriptor bytes write range/count `+0x14 = 0x0040`, derive/cache
+`+0x18 = 0x003b`, and keep rounded word `+0x2c = 0x0020`. `0xd4ac` reads
+bytes `+0x2c/+0x2d = 0/0x20` and still queues the default segment-list span;
+`0xd8fc` reads word `+0x18 = 0x003b`, exits `beyond-page-extent` at cursor y
+`21`, and leaves only the compact glyph object.
 Fixture `host-fetched segmented downloaded character renders through 0x1f1f0`
 connects the downloaded-character linear reader to the remaining segmented
 compact renderer shape. Host fetch drains `ESC )s258W`; parser dispatch walks
@@ -1957,6 +1973,7 @@ combination have not been page-compared.
 - `host-fetched metric variant changes d4ac gate and d8fc rows`
 - `host-fetched clamped metric variant changes d4ac gate and d8fc rows`
 - `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`
+- `host-fetched upper-bound metric variant keeps d4ac span but suppresses d8fc`
 - `0x16498-backed downloaded character object renders segmented-wide compact
   row`
 - `host-fetched linear downloaded character stream renders through 0x168dc`
@@ -2041,13 +2058,14 @@ combination have not been page-compared.
   broader variant coverage, not this control-flow edge.
 - The span-metric bridge in `notes/font-context-metrics.md` now covers
   host-fetched type-0, type-1, and type-2 downloaded payloads for both span
-  consumers, the shared consumer branch family, and three parser-produced
+  consumers, the shared consumer branch family, and four parser-produced
   metric-value variants that flip tight `d4ac` page-extent gates, exercise
   rounded-metric clamping into `+0x2c/+0x2d`, move `d8fc` visible rows, and
-  suppress both span consumers through copied lower-bound fields while
-  preserving compact glyph output. It still needs broader metric-byte
-  cross-products and producer-side validation/error page evidence beyond the
-  documented validation no-install and following-printable boundaries.
+  suppress both span consumers through copied lower-bound fields, plus an
+  upper-bound variant that preserves `d4ac` span output while `d8fc` exits
+  `beyond-page-extent`. It still needs broader metric-byte cross-products and
+  producer-side validation/error page evidence beyond the documented
+  validation no-install and following-printable boundaries.
 
 ## Macro Definition And Data-Chain Replay
 

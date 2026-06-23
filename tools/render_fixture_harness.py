@@ -43168,6 +43168,251 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     ))
 
+    metric_upper_stream = bytearray(font_validate_stream)
+    metric_upper_stream[10:12] = b"\x00\x40"
+    metric_upper_command_stream = b"\x1b)s80W" + bytes(metric_upper_stream) + b"\x00" * 16
+    metric_upper_host_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(metric_upper_command_stream), direct_mode=0),
+        len(metric_upper_command_stream),
+    )
+    metric_upper_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        metric_upper_host_stream["stream"],
+    )
+    metric_upper_commands = metric_upper_trace["commands"]
+    assert isinstance(metric_upper_commands, list)
+    metric_upper_command_trace = metric_upper_commands[0]
+    assert isinstance(metric_upper_command_trace, dict)
+    metric_upper_command = render_font_download_resource_command_stream_via_121cc_16c14(
+        metric_upper_host_stream["stream"],
+        records=[{"id": 0, "flags": 0, "payload": 0}],
+        current_id=0x1234,
+        new_payload_address=0,
+        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        cursors={
+            "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+        },
+        candidates=[0x00000100, 0x00000200, 0x00000300],
+    )
+    metric_upper_event = metric_upper_command["events"][0]
+    assert isinstance(metric_upper_event, dict)
+    metric_upper_validation = metric_upper_event["validation"]
+    assert isinstance(metric_upper_validation, dict)
+    metric_upper_allocation = metric_upper_event["allocation"]
+    assert isinstance(metric_upper_allocation, dict)
+    metric_upper_payload = metric_upper_allocation["payload"]
+    assert isinstance(metric_upper_payload, dict)
+    metric_upper_install = metric_upper_event["install"]
+    assert isinstance(metric_upper_install, dict)
+    metric_upper_memory = bytearray(metric_upper_payload["payload"])
+    metric_upper_memory[table_payload_record:table_payload_record + 8] = bytes.fromhex(
+        "02 03 04 00 00 00 00 a0"
+    )
+    metric_upper_memory[table_payload_bitmap:table_payload_bitmap + 6] = bytes.fromhex(
+        "aa 55 f0 0f c3 3c"
+    )
+    metric_upper_memory[
+        table_payload_flagged_table_entry:table_payload_flagged_table_entry + 4
+    ] = table_payload_flagged_glyph_delta.to_bytes(4, "big")
+    metric_upper_memory[
+        table_payload_flagged_glyph_delta:table_payload_flagged_glyph_delta + 12
+    ] = bytes.fromhex("00 00 00 00 0c 01 00 03 00 04 00 00")
+    metric_upper_memory[
+        table_payload_flagged_glyph_delta + table_payload_flagged_bitmap_delta:
+        table_payload_flagged_glyph_delta + table_payload_flagged_bitmap_delta + 3
+    ] = bytes.fromhex("f0 f0 f0")
+
+    metric_upper_d4ac = render_mixed_printable_control_page_record_stream(
+        data,
+        metric_upper_memory,
+        b"!",
+        0,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=pack12(18),
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            materialize_d4ac_span_update=1,
+            text_source_form="unflagged",
+            enabled_783184=1,
+            low_x_783186=100,
+            high_x_783188=120,
+            high_y_78318a=0,
+            span_alternate_offset_783185=1,
+            orientation=0,
+            page_extent_782db6=64,
+        ),
+        default_advance=pack12(18),
+    )
+    metric_upper_d4ac_event = metric_upper_d4ac["events"][0]
+    assert isinstance(metric_upper_d4ac_event, dict)
+    metric_upper_d4ac_span = metric_upper_d4ac_event["span_update_result"]
+    assert isinstance(metric_upper_d4ac_span, dict)
+    metric_upper_d4ac_flush = metric_upper_d4ac_span["flush_result"]
+    assert isinstance(metric_upper_d4ac_flush, dict)
+    metric_upper_d4ac_queued = metric_upper_d4ac_flush["queued"]
+    assert isinstance(metric_upper_d4ac_queued, dict)
+    metric_upper_d4ac_render_entry = metric_upper_d4ac["render_entry"]
+    assert isinstance(metric_upper_d4ac_render_entry, dict)
+    metric_upper_d4ac_rendered = metric_upper_d4ac_render_entry["entry"]
+    assert isinstance(metric_upper_d4ac_rendered, dict)
+
+    metric_upper_d8fc = render_mixed_printable_control_page_record_stream(
+        data,
+        metric_upper_memory,
+        b"!",
+        int(metric_upper_install["candidate_flags"]),
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=pack12(18),
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            materialize_d8fc_span_update=1,
+            span_metrics_from_context=1,
+            text_source_form="flagged",
+            enabled_783184=1,
+            low_x_783186=100,
+            high_x_783188=120,
+            high_y_78318a=0,
+            span_alternate_offset_783185=1,
+            orientation=0,
+            page_extent_782db6=64,
+        ),
+        default_advance=pack12(18),
+    )
+    metric_upper_d8fc_event = metric_upper_d8fc["events"][0]
+    assert isinstance(metric_upper_d8fc_event, dict)
+    metric_upper_d8fc_span = metric_upper_d8fc_event["span_update_result"]
+    assert isinstance(metric_upper_d8fc_span, dict)
+    metric_upper_d8fc_page = metric_upper_d8fc_event["page_result"]
+    assert isinstance(metric_upper_d8fc_page, dict)
+    metric_upper_d8fc_rendered = render_compact_text_bucket_object(
+        data,
+        metric_upper_memory,
+        (0, 0, 0, 0),
+        metric_upper_d8fc_page["object"],
+    )
+    checks.append(assert_equal(
+        "host-fetched upper-bound metric variant keeps d4ac span but suppresses d8fc",
+        {
+            "resource_stream": {
+                "fetched_stream_prefix": metric_upper_host_stream["stream"][:6],
+                "fetch_source_set": sorted(set(metric_upper_host_stream["sources"])),
+                "parser_handlers": [
+                    event["handler"]
+                    for event in metric_upper_trace["dispatches"]
+                ],
+                "restored_record": metric_upper_command_trace["restored_record"],
+                "payload_length": len(metric_upper_command_trace["payload"]),
+                "validation_status": metric_upper_validation["status"],
+                "payload_units": metric_upper_validation["payload_units"],
+                "allocation_size": metric_upper_allocation["allocation_size"],
+                "candidate_flags": metric_upper_install["candidate_flags"],
+            },
+            "copied_metrics": {
+                "word_0x14": u16(metric_upper_memory, 0x14),
+                "word_0x16": u16(metric_upper_memory, 0x16),
+                "word_0x18": u16(metric_upper_memory, 0x18),
+                "word_0x1a": u16(metric_upper_memory, 0x1A),
+                "byte_0x2b": metric_upper_memory[0x2B],
+                "byte_0x2c": metric_upper_memory[0x2C],
+                "byte_0x2d": metric_upper_memory[0x2D],
+                "word_0x2c": u16(metric_upper_memory, 0x2C),
+            },
+            "d4ac": {
+                "span_update": {
+                    "handler": metric_upper_d4ac_span["handler"],
+                    "context_offset_002b": metric_upper_d4ac_span[
+                        "context_offset_002b"
+                    ],
+                    "context_lower_002c": metric_upper_d4ac_span[
+                        "context_lower_002c"
+                    ],
+                    "context_height_002d": metric_upper_d4ac_span[
+                        "context_height_002d"
+                    ],
+                    "high_y": metric_upper_d4ac_span["high_y"],
+                },
+                "flush_object": metric_upper_d4ac_queued["object"],
+                "render_rows": metric_upper_d4ac_rendered["rows"],
+            },
+            "d8fc": {
+                "span_update": {
+                    key: metric_upper_d8fc_span[key]
+                    for key in ("updated", "reason", "cursor_y")
+                },
+                "page_object": metric_upper_d8fc_page["object"],
+                "render_rows": metric_upper_d8fc_rendered["rows"],
+            },
+        },
+        {
+            "resource_stream": {
+                "fetched_stream_prefix": b"\x1b)s80W",
+                "fetch_source_set": ["ring"],
+                "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+                "payload_length": 80,
+                "validation_status": 1,
+                "payload_units": 0x80,
+                "allocation_size": 10,
+                "candidate_flags": 0x40000000,
+            },
+            "copied_metrics": {
+                "word_0x14": 0x0040,
+                "word_0x16": 0x0004,
+                "word_0x18": 0x003B,
+                "word_0x1a": 0x0005,
+                "byte_0x2b": 0,
+                "byte_0x2c": 0,
+                "byte_0x2d": 0x20,
+                "word_0x2c": 0x0020,
+            },
+            "d4ac": {
+                "span_update": {
+                    "handler": 0x00D4AC,
+                    "context_offset_002b": 0,
+                    "context_lower_002c": 0,
+                    "context_height_002d": 0x20,
+                    "high_y": 26,
+                },
+                "flush_object": (
+                    bytes.fromhex("00 00 00 00 40 00 00 01 a4 06 03 00 00 14")
+                    + (b"\x00" * 0x18)
+                ),
+                "render_rows": expected_table_payload_metric_rows,
+            },
+            "d8fc": {
+                "span_update": {
+                    "updated": False,
+                    "reason": "beyond-page-extent",
+                    "cursor_y": 21,
+                },
+                "page_object": bytes.fromhex(
+                    "00 00 00 00 00 00 00 01 21 5a 00"
+                ) + (b"\x00" * 0x1B),
+                "render_rows": [
+                    "." * 14,
+                    "." * 14,
+                    "." * 14,
+                    "." * 14,
+                    "." * 14,
+                    "." * 10 + "####",
+                    "." * 10 + "####",
+                    "." * 10 + "####",
+                ],
+            },
+        },
+    ))
+
     downloaded_segmented_wide_stream = bytearray()
     for row in range(0x81):
         downloaded_segmented_wide_stream.extend(b"\xaa" * 0x10 if row == 0x80 else b"\x00" * 0x10)
@@ -66997,6 +67242,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             metric_lower_d4ac_span["cursor_y"],
             " ".join(f"{byte:02x}" for byte in metric_lower_d4ac_page["object"]),
             " ".join(f"{byte:02x}" for byte in metric_lower_d8fc_page["object"]),
+        )
+    )
+    lines.append(
+        "- upper-bound metric fixture: host-fetched `ESC )s80W` expands "
+        "range/count `+0x14` to `0x%04x`, derives flagged height "
+        "`+0x18 = 0x%04x`, keeps unflagged word `+0x2c = 0x%04x`, queues "
+        "`d4ac` span object `%s`, but makes `d8fc` exit `%s` at cursor y "
+        "`%d` while compact object `%s` remains renderable." % (
+            u16(metric_upper_memory, 0x14),
+            u16(metric_upper_memory, 0x18),
+            u16(metric_upper_memory, 0x2C),
+            " ".join(f"{byte:02x}" for byte in metric_upper_d4ac_queued["object"]),
+            metric_upper_d8fc_span["reason"],
+            metric_upper_d8fc_span["cursor_y"],
+            " ".join(f"{byte:02x}" for byte in metric_upper_d8fc_page["object"]),
         )
     )
     lines.append("- downloaded character command stream: `%s` reaches delayed handler `0x%05x` through `0x121cc`, restores record `%s`, and starts payload at offset `%d` with byte budget `0x%04x`." % (

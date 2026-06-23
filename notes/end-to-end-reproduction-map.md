@@ -219,10 +219,16 @@ pixels or byte-stream compatibility.
    `+0x16 = 0x0018`, range/count `+0x14 = 0x0600`, derived count
    `+0x18 = 0x05e7`, and rounded word `+0x2c = 0x1800` make both consumers
    exit `before-context-lower` at cursor y `21` while the compact glyph
-   objects remain queued and render. The open edge is broader descriptor
-   metric-byte cross-products and producer-side validation/error combinations,
-   not the tested type-0/type-1/type-2, metric-variant, clamped-variant,
-   lower-bound-variant, or shared consumer middle edges. Evidence:
+   objects remain queued and render. Fixture
+   `host-fetched upper-bound metric variant keeps d4ac span but suppresses
+   d8fc` proves a fourth parser-produced variant: range/count
+   `+0x14 = 0x0040` derives/cache `+0x18 = 0x003b`, leaves unflagged
+   `+0x2c/+0x2d = 0/0x20`, keeps `0xd4ac` span output, and makes `0xd8fc`
+   exit `beyond-page-extent` at cursor y `21`. The open edge is broader
+   descriptor metric-byte cross-products and producer-side validation/error
+   combinations, not the tested type-0/type-1/type-2, metric-variant,
+   clamped-variant, lower-bound-variant, upper-bound-variant, or shared
+   consumer middle edges. Evidence:
    `notes/semantic-state-model.md` under `Text Span Flush And Fixed-Width
    Spans`.
 2. VFC table definition and channel jumps now have a tracked command-family
@@ -279,11 +285,13 @@ The next work should follow dataflow, not isolated handlers:
    descriptor/payload producer chain, and host-stream downloaded glyph output
    are now tracked. Host-fetched `0x1719c` type-0, type-1, and type-2 payloads
    reach both `d4ac` and `d8fc` span rows, and the shared
-   disabled/lower/page/high-x consumer branch family is fixture-backed. Three
+   disabled/lower/page/high-x consumer branch family is fixture-backed. Four
    parser-produced metric-value variants now cover tight `d4ac` page-extent
    gates, one rounded-metric clamp into `+0x2c/+0x2d`, shifted `d8fc` visible
-   rows, and one lower-bound no-span output path for both consumers. The
-   missing middle is broader descriptor metric-value cross-products and
+   rows, one lower-bound no-span output path for both consumers, and one
+   upper-bound case where `d4ac` still renders a span while `d8fc` exits
+   `beyond-page-extent`. The missing middle is broader descriptor metric-value
+   cross-products and
    page-visible behavior for validation/error forms beyond the seven bounded
    predicate no-install fixtures.
 2. Broaden the page-image fixture suite beyond the current complete

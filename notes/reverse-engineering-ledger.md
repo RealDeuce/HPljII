@@ -690,6 +690,16 @@ tables now decode symbol/variant names including `UPC/EAN`,
 `CODE 3 OF 9`, `OCR A/B`, and `LINE DRAW`, plus family names
 `PRESTIGE`, `GOTHIC`, `TMS RMN`, `HELV`, `COURIER`, and
 `LINE PRINTER`;
+`tools/render_fixture_harness.py` now carries the first `COURIER` row
+fields and sample run 1 through the `0x1cf34` middle transition into
+sample run 2. Fixture `font sample Courier row fields carry run 1 through
+0x1d050 to run 2` cites `0xf06e` resetting `0x782c8a` from
+`0x08ac0000` to `0x00000000`, `0x1d050` reading first `COURIER` record
+`+0x16 = 40` and `+0x18 = 13` through `0x1c6a4` / `0x1c6da`, `0x1cfe4`
+advancing y by `744` subunits from `0x00200000` to `0x005e0000`, and
+`0x1d152(0x31)` starting run 2 at x `0x05be0000`. The carried page-record
+state now ends at cursor `0x08ac0000,0x005e0000` with buckets
+`[-1, 0, 3, 4]`, while full-page render-window expansion remains open;
 the startup/resource scanner `0x41a` is modeled for the verified
 built-in `HEAD` chain, walking 24 typed records from `0x08004c` through
 `0x0ae122`, terminating at `0x0b2f80`, adjusting the next probe step

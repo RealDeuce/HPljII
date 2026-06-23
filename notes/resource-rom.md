@@ -511,10 +511,20 @@ continuation-page path, while limit `95` does not. At row advance,
 then `0x1ca2c(source=3,row=1,current=0x4008004c,selected=0x44080418)`, and
 schedules a second `0x1cfe4` advance of `744` subunits. With page limit
 `1010`, the same row transition stays on the no-continuation path.
+Fixture `font sample alternate row fit gate follows 0x1d868` covers the
+separate selected/alternate gate at `0x1d868..0x1d8b8`. The disassembly reads
+`0x783132` at `0x1d886..0x1d894` after calling `0x1cece(selected,row=1)` and
+before installing the current context through `0x1c5e8`; if the flag is zero,
+the routine skips `0x1d8ba` and returns D7 `0`. With `0x783132 = 1`,
+`0x1d8ba..0x1d95c` projects the first `COURIER` selected row from y
+`0x00900000` to `0x00ce0000` using a `744`-subunit advance, combines current
+and selected row heights to `13`, and compares projected bottom `219` against
+`0x782db6`: page limit `300` fits, while equality at limit `219` returns D7
+`1` for the continuation path.
 
-The still-open boundary is the rest of `0x1c204..0x1ed84`: alternate-row fit
-probes through `0x1d868` / `0x1dcf2` and all-source full-page placement. The
-emitted page objects still must be
+The still-open boundary is the rest of `0x1c204..0x1ed84`: the later
+`0x1d964 -> 0x1dcf2..0x1de2c` current/alternate multi-probe preflight and
+all-source full-page placement. The emitted page objects still must be
 correlated with the direct sample-byte row hashes or a known print sample
 before those fields get final semantic names.
 

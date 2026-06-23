@@ -21073,6 +21073,117 @@ def font_sample_row_to_row_transition_via_1d050(
     return result
 
 
+def font_sample_alternate_row_projection_via_1d8ba(
+    resources: bytes,
+    selected_record_start: int,
+    selected_context: int,
+    current_record_start: int,
+    current_context: int,
+    *,
+    cursor_y: int,
+    page_limit_782db6: int,
+) -> dict[str, object]:
+    selected_extent = font_sample_extent_via_1c6a4_1c6da(
+        resources,
+        int(selected_record_start),
+        int(selected_context),
+    )
+    current_extent = font_sample_extent_via_1c6a4_1c6da(
+        resources,
+        int(current_record_start),
+        int(current_context),
+    )
+    line_advance_subunits = line_advance_subunits_via_1cfe4(
+        selected_extent["line_advance_1c6a4"],
+        selected_extent["row_height_1c6da"],
+    )
+    projected_y = subunits_to_packed12(
+        packed12_to_subunits(int(cursor_y)) + line_advance_subunits
+    )
+    projected_y_word = unpack12(projected_y)[0]
+    row_height_after = max(
+        selected_extent["row_height_1c6da"],
+        current_extent["row_height_1c6da"],
+    )
+    projected_bottom = projected_y_word + row_height_after
+    continuation_needed = int(page_limit_782db6) <= projected_bottom
+    return {
+        "helper": "0x1d8ba",
+        "selected_record_start": int(selected_record_start),
+        "selected_context": int(selected_context),
+        "current_record_start": int(current_record_start),
+        "current_context": int(current_context),
+        "selected_extent": selected_extent,
+        "current_extent": current_extent,
+        "cursor_y_782c8e": int(cursor_y),
+        "line_advance_subunits_1cfe4": line_advance_subunits,
+        "projected_y": projected_y,
+        "projected_y_word": projected_y_word,
+        "row_height_after": row_height_after,
+        "projected_bottom": projected_bottom,
+        "page_limit_782db6": int(page_limit_782db6),
+        "continuation_needed": continuation_needed,
+    }
+
+
+def font_sample_alternate_row_fit_gate_via_1d868(
+    resources: bytes,
+    selected_record_start: int,
+    selected_context: int,
+    current_record_start: int,
+    current_context: int,
+    *,
+    row_index: int,
+    selected_flag_783132: int,
+    cursor_y: int,
+    page_limit_782db6: int,
+) -> dict[str, object]:
+    result: dict[str, object] = {
+        "helper": "0x1d868",
+        "selected_record_start": int(selected_record_start),
+        "selected_context": int(selected_context),
+        "current_record_start": int(current_record_start),
+        "current_context": int(current_context),
+        "row_index": int(row_index),
+        "selected_flag_783132": int(selected_flag_783132),
+        "cursor_y_782c8e": int(cursor_y),
+        "page_limit_782db6": int(page_limit_782db6),
+        "setup_calls": [
+            {
+                "target": "0x1cece",
+                "record_start": int(selected_record_start),
+                "context": int(selected_context),
+                "row_index": int(row_index),
+            },
+            {
+                "target": "0x1c5e8",
+                "record_start": int(current_record_start),
+                "context": int(current_context),
+            },
+        ],
+    }
+    if int(selected_flag_783132) == 0:
+        result["projection_call"] = None
+        result["continuation_needed"] = False
+        result["return_d7"] = 0
+        return result
+
+    projection = font_sample_alternate_row_projection_via_1d8ba(
+        resources,
+        int(selected_record_start),
+        int(selected_context),
+        int(current_record_start),
+        int(current_context),
+        cursor_y=int(cursor_y),
+        page_limit_782db6=int(page_limit_782db6),
+    )
+    continuation_needed = bool(projection["continuation_needed"])
+    result["projection_call"] = projection
+    result["continuation_needed"] = continuation_needed
+    result["return_d7"] = 1 if continuation_needed else 0
+    return result
+
+
 def render_font_sample_first_row_fields_and_both_runs_page_record(
     data: bytes,
     resources: bytes,
@@ -29313,6 +29424,132 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "row_height_cache_after_783f06": 13,
             "page_limit_782db6": 1010,
             "continuation_needed": False,
+        },
+    }))
+    font_sample_alternate_fit_branches = {
+        "flag_clear": font_sample_alternate_row_fit_gate_via_1d868(
+            resources,
+            int(courier_sample_row_fields["record_start"]),
+            int(courier_sample_row_fields["context"]),
+            0x00004C,
+            0x4008004C,
+            row_index=1,
+            selected_flag_783132=0,
+            cursor_y=pack12(144),
+            page_limit_782db6=219,
+        ),
+        "flag_set_fits": font_sample_alternate_row_fit_gate_via_1d868(
+            resources,
+            int(courier_sample_row_fields["record_start"]),
+            int(courier_sample_row_fields["context"]),
+            0x00004C,
+            0x4008004C,
+            row_index=1,
+            selected_flag_783132=1,
+            cursor_y=pack12(144),
+            page_limit_782db6=300,
+        ),
+        "flag_set_overruns": font_sample_alternate_row_fit_gate_via_1d868(
+            resources,
+            int(courier_sample_row_fields["record_start"]),
+            int(courier_sample_row_fields["context"]),
+            0x00004C,
+            0x4008004C,
+            row_index=1,
+            selected_flag_783132=1,
+            cursor_y=pack12(144),
+            page_limit_782db6=219,
+        ),
+    }
+    alternate_setup_calls = [
+        {
+            "target": "0x1cece",
+            "record_start": 0x000418,
+            "context": 0x44080418,
+            "row_index": 1,
+        },
+        {
+            "target": "0x1c5e8",
+            "record_start": 0x00004C,
+            "context": 0x4008004C,
+        },
+    ]
+    alternate_projection_base = {
+        "helper": "0x1d8ba",
+        "selected_record_start": 0x000418,
+        "selected_context": 0x44080418,
+        "current_record_start": 0x00004C,
+        "current_context": 0x4008004C,
+        "selected_extent": {
+            "selector_flag_1c766": 1,
+            "line_advance_1c6a4": 40,
+            "row_height_1c6da": 13,
+        },
+        "current_extent": {
+            "selector_flag_1c766": 1,
+            "line_advance_1c6a4": 36,
+            "row_height_1c6da": 13,
+        },
+        "cursor_y_782c8e": pack12(144),
+        "line_advance_subunits_1cfe4": 744,
+        "projected_y": pack12(206),
+        "projected_y_word": 206,
+        "row_height_after": 13,
+        "projected_bottom": 219,
+    }
+    checks.append(assert_equal("font sample alternate row fit gate follows 0x1d868", font_sample_alternate_fit_branches, {
+        "flag_clear": {
+            "helper": "0x1d868",
+            "selected_record_start": 0x000418,
+            "selected_context": 0x44080418,
+            "current_record_start": 0x00004C,
+            "current_context": 0x4008004C,
+            "row_index": 1,
+            "selected_flag_783132": 0,
+            "cursor_y_782c8e": pack12(144),
+            "page_limit_782db6": 219,
+            "setup_calls": alternate_setup_calls,
+            "projection_call": None,
+            "continuation_needed": False,
+            "return_d7": 0,
+        },
+        "flag_set_fits": {
+            "helper": "0x1d868",
+            "selected_record_start": 0x000418,
+            "selected_context": 0x44080418,
+            "current_record_start": 0x00004C,
+            "current_context": 0x4008004C,
+            "row_index": 1,
+            "selected_flag_783132": 1,
+            "cursor_y_782c8e": pack12(144),
+            "page_limit_782db6": 300,
+            "setup_calls": alternate_setup_calls,
+            "projection_call": {
+                **alternate_projection_base,
+                "page_limit_782db6": 300,
+                "continuation_needed": False,
+            },
+            "continuation_needed": False,
+            "return_d7": 0,
+        },
+        "flag_set_overruns": {
+            "helper": "0x1d868",
+            "selected_record_start": 0x000418,
+            "selected_context": 0x44080418,
+            "current_record_start": 0x00004C,
+            "current_context": 0x4008004C,
+            "row_index": 1,
+            "selected_flag_783132": 1,
+            "cursor_y_782c8e": pack12(144),
+            "page_limit_782db6": 219,
+            "setup_calls": alternate_setup_calls,
+            "projection_call": {
+                **alternate_projection_base,
+                "page_limit_782db6": 219,
+                "continuation_needed": True,
+            },
+            "continuation_needed": True,
+            "return_d7": 1,
         },
     }))
     courier_sample_row_run2_rendered = render_font_sample_carried_run2_buckets_via_1ed84_1ef6a(
@@ -70954,6 +71191,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_sample_row_continuation_branch["continuation_call"]["heading_call"]["selected_context"],  # type: ignore[index]
         font_sample_row_continuation_branch["continuation_call"]["second_advance"]["line_advance_subunits"],  # type: ignore[index]
         font_sample_row_fit_branch["page_limit_782db6"],
+    ))
+    lines.append("- font sample alternate-row fit gate: `0x1d868` calls `0x1cece(selected=0x%08x,row=%d)`, snapshots `0x783132`, installs current context `0x%08x` through `0x1c5e8`, and skips `0x1d8ba` when the flag is zero. With `0x783132 = 1`, `0x1d8ba` projects y from `0x%08x` to `0x%08x` using `%d` subunits, takes row height `%d`, and compares projected bottom `%d` against `0x782db6`; limit `%d` fits and equality at limit `%d` returns D7=1 for continuation." % (
+        font_sample_alternate_fit_branches["flag_set_overruns"]["selected_context"],  # type: ignore[index]
+        font_sample_alternate_fit_branches["flag_set_overruns"]["row_index"],  # type: ignore[index]
+        font_sample_alternate_fit_branches["flag_set_overruns"]["current_context"],  # type: ignore[index]
+        font_sample_alternate_fit_branches["flag_set_overruns"]["projection_call"]["cursor_y_782c8e"],  # type: ignore[index]
+        font_sample_alternate_fit_branches["flag_set_overruns"]["projection_call"]["projected_y"],  # type: ignore[index]
+        font_sample_alternate_fit_branches["flag_set_overruns"]["projection_call"]["line_advance_subunits_1cfe4"],  # type: ignore[index]
+        font_sample_alternate_fit_branches["flag_set_overruns"]["projection_call"]["row_height_after"],  # type: ignore[index]
+        font_sample_alternate_fit_branches["flag_set_overruns"]["projection_call"]["projected_bottom"],  # type: ignore[index]
+        font_sample_alternate_fit_branches["flag_set_fits"]["projection_call"]["page_limit_782db6"],  # type: ignore[index]
+        font_sample_alternate_fit_branches["flag_set_overruns"]["projection_call"]["page_limit_782db6"],  # type: ignore[index]
     ))
     lines.append("- font sample carried run-2 render: buckets `3` and `4` now cross `0x1ed84` / `0x1ef6a` with wide destination stride `0x0180`; bucket 3 setup `%s` dispatches `%d` compact objects with current row hash `%s` and fallback hashes `%s`, while bucket 4 setup `%s` dispatches `%d` compact object with current row hash `%s` and fallback hashes `%s`." % (
         courier_sample_row_run2_rendered[3]["setup"],  # type: ignore[index]

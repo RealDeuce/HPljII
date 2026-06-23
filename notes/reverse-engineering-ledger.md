@@ -702,7 +702,12 @@ page-limit branch fixture now pins `0x1ca2c` heading preflight at limits
 `45`/`95` and the `0x1d050` row-continuation call chain at limits
 `100`/`1010`, including `0x1c9f6`,
 `0x1ca2c(source=3,row=1,current=0x4008004c,selected=0x44080418)`, and the
-second `0x1cfe4` advance; the
+second `0x1cfe4` advance; fixture
+`font sample alternate row fit gate follows 0x1d868` now pins the
+selected/alternate gate at `0x1d868..0x1d95c`: clear `0x783132` skips
+`0x1d8ba`, while set `0x783132` projects first-`COURIER` y
+`0x00900000 -> 0x00ce0000`, compares bottom `219` against page limits `300`
+and `219`, and returns D7 `1` only at equality/overrun; the
 row helper listing now names `0x1d198` font-name/style formatting,
 `0x1d6ea` capped string emission, `0x1d71e` fixed-name sanitization,
 `0x1d76c` orientation-command synthesis, and `0x1d964` / `0x1dcf2`
@@ -1070,10 +1075,11 @@ ROM work needed:
   The source-heading composition fixtures now carry `INTERNAL FONTS` through
   all 14 visible class-zero rows and all 14 visible class-one rows in separate
   page-record states. The page-limit continuation checkpoint now covers
-  `0x1ca2c` heading preflight and `0x1d050` row-continuation call targets. The
-  next boundaries are alternate-row fit probes through `0x1d868` / `0x1dcf2`
-  and full-printout placement for comparison against the direct payload hashes
-  and a known printed/self-test sample.
+  `0x1ca2c` heading preflight, `0x1d050` row-continuation call targets, and
+  the `0x1d868` selected/alternate fit gate. The next boundaries are
+  `0x1d964 -> 0x1dcf2..0x1de2c` multi-probe preflight and full-printout
+  placement for comparison against the direct payload hashes and a known
+  printed/self-test sample.
 - Identify the manual-facing names for the currently unidentified
   built-in symbol words `0N`, `10U`, and `11U`, and broaden the
   now-pinned real symbol-map samples into more live parser/font-selection

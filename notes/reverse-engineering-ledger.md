@@ -430,12 +430,14 @@ host-fetched font-download printable stream that carries
 `ESC *c4660d37e5F`, `ESC )s2193W`, and printable `%` into downloaded
 glyph `0x25` segmented page objects before `0x1edc6`, `0x1ed84`, and
 `0x1ef6a`; `ESC )s80W` validation no-install evidence now covers
-invalid type, first-code overflow, zero line/count, reversed range, and
-invalid class through the parser restore and `0x16c14` allocation
-boundary, and the same five failed streams followed by printable `!`
-now preserve the default-font page-record object and rendered rows;
-remaining work is exhaustive downloaded/inline metric-byte page
-evidence, the bit-30-clear descriptor/resource resume routes, full
+invalid type, first-code overflow, zero line/count, high line/count,
+reversed range, high range/count, and invalid class through the parser
+restore and `0x16c14` allocation boundary, and the same seven failed
+streams followed by printable `!` now preserve the default-font
+page-record object and rendered rows; remaining work is the untested
+descriptor metric producer cross-product across downloaded and inline
+forms, validation/error page behavior beyond those seven no-install
+branches, remaining alternate character-mode/release variants, full
 live-parser raster edge cases, and final device-output page comparison.
 
 Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md`

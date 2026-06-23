@@ -2790,6 +2790,177 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
   `0xff1e` visible-output path pinned by fixture `macro overlay
   finalization replays before page publication`.
 
+## Raster Transfer Gate And Encoded Rows
+
+Status: composed as the raster command-family checkpoint from parsed
+`ESC *t#R`, `ESC *r#A`, delayed `ESC *b#W`, and payload bytes to encoded
+page-record objects and `0x1f88e` rendered rows. The low-level ledger remains
+in [raster-graphics.md](raster-graphics.md); this section records the semantic
+state model needed by byte-stream reproduction.
+
+Concept: raster commands update a state block at `0x783170`, but raster data
+does not render directly. `0x11f82` stores a delayed transfer handler
+`0x105d0` through `0x121cc`; `0x12218` later restores the six-byte
+`ESC *b#W` record and calls `0x105d0` when payload bytes are available.
+`0x105d0` gates the row, drains skipped payload through `0xdace`, ensures a
+page root for queued rows, and passes the state block to `0x13070` /
+`0x13250`, which builds encoded-span objects consumed later by `0x1f88e`.
+
+### Field Groups
+
+- Canonical raster state at `0x783170`:
+  - `+0x00`: baseline word copied from `+0x0a`.
+  - `+0x02`: current row coordinate used by `0x105d0` and `0x13070`.
+  - `+0x04`: accepted byte count for the current transfer.
+  - `+0x06`: overflow byte count beyond the accepted transfer.
+  - `+0x08`: encoded raster mode, stored as scale minus one.
+  - `+0x0a`: packed origin/baseline coordinate copied from cursor state.
+  - `+0x0e`: raster scale, `1`, `2`, `3`, or `4`.
+  - `+0x10`: maximum accepted row byte count after extent/scale clipping.
+  - `+0x12`: raster-active flag.
+  Evidence: fixtures
+  `parser-derived ESC *t300R / ESC *r1A state queues mode-0 raster row`,
+  `0x105d0-modeled raster transfer skip and cap gate`, and
+  [raster-graphics.md](raster-graphics.md).
+- Canonical page-record object:
+  - object `+0x00`: next pointer in bucket chain.
+  - object `+0x04`: class byte `0x80`, selecting encoded raster dispatch.
+  - object `+0x05`: mode byte `0..3`, selecting the `0x1f88e` helper.
+  - object `+0x06`: even-rounded payload capacity / accepted byte count.
+  - object `+0x08`: packed x/y key from `0x13070`.
+  - object `+0x0a..`: copied raster payload bytes.
+  Evidence: fixtures `0x13070/0x13250 raster row queues encoded-span object`
+  and the mode-1, mode-2, mode-3 sibling fixtures listed below.
+- Parser scratch:
+  - parsed records for the primary stream are
+    `80 52 01 2c 00 00`, `80 41 00 01 00 00`, and
+    `80 57 00 04 00 00`.
+  - delayed snapshot for `ESC *b4W` is
+    `01 00 01 05 d0 80 57 00 04 00 00`.
+  - payload offset for the primary stream is byte `17`, payload
+    `f0 0f aa 55`.
+  Evidence: fixture
+  `0x11774 ROM dispatch table routes raster stream to delayed transfer`.
+- Derived/cache producer keys:
+  - `0x782a7c`: bucket index derived from row coordinate.
+  - `0x782a7e`: packed x/y key copied into object `+0x08`.
+  - `0x782a80`: allocation capacity selected by `0x132b6`.
+  These are derived from current transfer state and consumed by `0x13250`,
+  not persistent parser fields.
+- Firmware bookkeeping:
+  - `0x78297a`: current page root ensured by `0x10084` only for queued rows.
+  - `0x782a70`, `0x782a72`, and `0x782a76`: stream allocator state consumed
+    by addressed raster/page-record fixtures.
+  - skipped beyond-extent and negative rows drain input but do not create page
+    roots in the gate fixture.
+- Unknown for this checkpoint:
+  - exact live CPU register/memory trace through `0x105d0` into real
+    allocator memory for the dense mixed text/rule/raster stream.
+
+### Writers
+
+- `0x10808` writes raster scale/mode from `ESC *t#R` when raster active byte
+  `+0x12` is clear.
+- `0x1075a` writes origin/baseline, active byte, and byte limit from
+  `ESC *r#A`; parameter `1` seeds from the active cursor axis, while other
+  parameters clear the origin to the left edge.
+- `0x107fa` clears only active byte `+0x12` for `ESC *r#B`.
+- `0x11f82` stores delayed transfer handler `0x105d0`; `0x12218` restores the
+  delayed record and dispatches it.
+- `0x105d0` writes active byte `+0x12`, current row `+0x02`, accepted count
+  `+0x04`, overflow count `+0x06`, and post-transfer cursor state. It calls
+  `0x10084` only when a row is queued.
+- `0x13070` computes bucket/key fields, and `0x13250` allocates and links the
+  encoded-span object under page-root `+0x1c`.
+- `0x138de` copies the accepted payload bytes into object `+0x0a` and
+  decrements raster state field `+0x04`.
+
+### Readers And Consumers
+
+- Parser loop `0x11774` routes the primary raster stream through final
+  handlers `0x10808`, `0x1075a`, and `0x11f82`.
+- `0x105d0` consumes the restored command record byte count and raster state
+  fields. Beyond-extent rows drain the full count without queueing or row
+  advance; negative rows drain the full count without queueing and advance
+  from `-1` to `0`; capped rows queue only the accepted bytes.
+- `0x138de` consumes queued payload through `0xa904` and locally maps control
+  pair `1a 58` to copied byte `00`.
+- `0x1edc6` copies the queued bucket object into render-record bucket roots.
+- `0x1efc2` sees object byte `+4 & 0xc0 == 0x80` and dispatches to
+  `0x1f88e`.
+- `0x1f88e` consumes object byte `+5`, key `+8`, and payload `+0x0a..` to
+  select helpers `0x1f8da`, `0x1f8e6`, `0x1f920`, or `0x1f9c6`.
+
+### Output Effect
+
+The primary parser-derived stream queues object
+`00 00 00 00 80 00 00 04 00 01 f0 0f aa 55` and renders:
+
+```text
+................####........#####.#.#.#..#.#.#.#
+```
+
+The capped transfer fixture proves byte count `4` with limit `2` stores
+`+0x04 = 2`, stores overflow `+0x06 = 2`, queues payload `f0 0f`, and renders
+`####........####`. The beyond-extent and negative-row fixtures drain four
+bytes and queue no object. The mode fixtures prove byte-aligned mode `0`,
+non-byte-aligned mode `0`, mode `1`, mode `2`, shifted mode `2`, band-clipped
+mode `2`, and mode `3` object/render contracts through `0x1f88e`.
+
+### Confidence
+
+High for parser handler order, delayed snapshot bytes, `0x105d0` gate
+outcomes, page-root creation only for queued rows, encoded object layout,
+bridge preservation, mode dispatch helpers, and rendered rows because those
+are asserted by named harness fixtures. Medium for live CPU/register fidelity
+inside `0x105d0..0x13250` during a dense parser-produced page because the
+current evidence is modeled/address-aware rather than a full 68000 execution
+trace.
+
+### Fixtures
+
+- `0x11774 ROM dispatch table routes raster stream to delayed transfer`
+- `modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W`
+- `host-fetched raster stream reaches parser and queued pixels`
+- `raster payload reader normalizes 0xdace controls before queueing pixels`
+- `parser-derived ESC *t300R / ESC *r1A state queues mode-0 raster row`
+- `0x105d0-modeled raster transfer skip and cap gate`
+- `raster transfer ensures page root before queueing row object`
+- `0x13070/0x13250 raster row queues encoded-span object`
+- `0x1f88e mode-0 raster object renders queued literal row`
+- `0x1edc6 page-record bridge preserves queued raster object`
+- `0x13070/0x13250 raster row queues non-byte-aligned encoded-span object`
+- `0x1f88e mode-0 raster object renders sub-byte shifted literal row`
+- `0x13070/0x13250 raster mode-1 row queues encoded-span object`
+- `0x1f88e mode-1 raster object expands queued bytes into two rows`
+- `0x13070/0x13250 raster mode-2 row queues encoded-span object`
+- `0x1f88e mode-2 raster object expands queued byte pair into three rows`
+- `0x13070/0x13250 raster mode-2 row queues non-byte-aligned encoded-span
+  object`
+- `0x1f88e mode-2 raster object renders sub-byte shifted expanded rows`
+- `0x13070/0x13250 raster mode-2 row queues band-clipped encoded-span object`
+- `0x1f88e mode-2 raster object clips current-band rows and continues in
+  fallback buffer`
+- `0x13070/0x13250 raster mode-3 row queues encoded-span object`
+- `0x1f88e mode-3 raster object expands queued bytes into four rows`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`
+- `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`
+- `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`
+- `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+- `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`
+
+### Unresolved Middle Edges
+
+- `0x105d0..0x13250`: delayed record restore, gate outcomes, encoded object
+  layout, and rendered mode contracts are fixture-backed; the remaining edge
+  is full live 68000 register/memory capture for a dense parser-produced page.
+- `0x13250..0x1381c`: addressed allocation is covered in the shared
+  page-record allocator checkpoint, but the raster producer still uses modeled
+  allocator results rather than a live heap/free-list trace.
+
 ## Mixed Text/Rule/Raster Page Record
 
 Status: anchored as a parser-to-render composition checkpoint, but still
@@ -2943,10 +3114,10 @@ the parser and allocator.
   disassembly and fixtures and documented in
   `notes/rectangle-graphics.md`, but the exact live no-room/retry edge is
   not covered in this mixed stream.
-- `0x105d0..0x13250`: the raster object queue and render contract are
-  documented in `notes/raster-graphics.md`; the queue is address-aware,
-  but the mixed stream still lacks a full 68000 execution through
-  `0x105d0` into real allocator memory.
+- `0x105d0..0x13250`: delayed restore, gate outcomes, encoded object layout,
+  bridge preservation, and mode `0..3` render contracts are composed in
+  `Raster Transfer Gate And Encoded Rows`. The mixed stream still lacks a full
+  68000 execution through `0x105d0` into real allocator memory.
 - `0x10084..0x1381c`: first root allocation and stream-chunk allocation
   are modeled with exact side effects, including a multi-writer chunk
   rollover fixture in the shared allocator checkpoint, but not captured
@@ -3321,9 +3492,10 @@ results rather than executing the full heap and page scheduler.
 - `0x10084..0x1381c`: first-root setup, same-chunk reuse, and
   second-chunk rollover are modeled, but not captured from live 68000
   memory during a dense parser-produced page.
-- `0x13250..0x1381c`: raster encoded-span allocation is modeled and
-  render-checked, but exact live register/memory state through the full
-  raster producer remains unresolved.
+- `0x13250..0x1381c`: raster encoded-span allocation is composed in `Raster
+  Transfer Gate And Encoded Rows` and address-aware stream allocation is
+  composed in this shared allocator checkpoint, but exact live
+  register/memory state through the full raster producer remains unresolved.
 - `0x133aa..0x13472` and `0x136d2..0x13690`: ordered insertion is pinned
   for lower, higher, and equal bucket bytes; alternate no-room/failure
   returns need live CPU fixtures.

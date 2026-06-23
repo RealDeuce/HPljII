@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 import textwrap
 from dataclasses import dataclass
@@ -53615,6 +53616,330 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "rendered_rows": metric_printable_rendered["rows"],
         "final_cursor_x": pack12(46),
+    }))
+
+    font_sample_run1_prefix = bytes.fromhex("41 42 43 44 45 66 67 68")
+    font_sample_prefix_page = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        font_sample_run1_prefix,
+        0x44080418,
+        control_fixture_state(
+            cursor_x=pack12(0),
+            cursor_y=pack12(32),
+            hmi=pack12(30),
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=pack12(30),
+    )
+    font_sample_prefix_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        font_sample_prefix_page["page_record"],  # type: ignore[arg-type]
+        bucket_word=int(font_sample_prefix_page["bucket_index"]),
+        width_word=0x0200,
+    )
+    font_sample_prefix_events: list[dict[str, object]] = []
+    for event in font_sample_prefix_page["events"]:  # type: ignore[index]
+        assert isinstance(event, dict)
+        page_result = event["page_result"]
+        positioned = event["positioned"]
+        assert isinstance(page_result, dict)
+        assert isinstance(positioned, dict)
+        source = positioned["source"]
+        assert isinstance(source, dict)
+        font_sample_prefix_events.append({
+            "byte": event["byte"],
+            "cursor_before": event["cursor_before"],
+            "cursor_after": event["cursor_after"],
+            "positioned_xy": (source["x"], source["y"]),
+            "coord": page_result["coord"],
+            "allocated": page_result["allocated"],
+            "count_before": page_result["count_before"],
+            "count_after": page_result["count_after"],
+            "bucket_index": page_result["bucket_index"],
+        })
+    font_sample_prefix_entry = font_sample_prefix_render_entry["entry"]
+    assert isinstance(font_sample_prefix_entry, dict)
+    font_sample_prefix_rendered = font_sample_prefix_entry["bucket_rendered"][0]["rendered"]  # type: ignore[index]
+    assert isinstance(font_sample_prefix_rendered, dict)
+    font_sample_prefix_rows = font_sample_prefix_entry["rows"]
+    assert isinstance(font_sample_prefix_rows, list)
+    checks.append(assert_equal("font sample run 1 prefix crosses page-record render entry", {
+        "stream": font_sample_prefix_page["stream"],
+        "events": font_sample_prefix_events,
+        "root_allocations": font_sample_prefix_page["final_state"]["page_record_root_allocations"],  # type: ignore[index]
+        "bucket_index": font_sample_prefix_page["bucket_index"],
+        "bucket_object": font_sample_prefix_page["bucket_object"],
+        "bridged_context_slots": font_sample_prefix_page["bridged_record"]["context_slots"][:2],  # type: ignore[index]
+        "call_order": font_sample_prefix_entry["call_order"],
+        "dispatch_entries": [
+            {
+                key: entry[key]
+                for key in (
+                    "chain_index",
+                    "object_byte_4",
+                    "class_mask",
+                    "branch",
+                    "target",
+                    "context_slot",
+                )
+            }
+            for entry in font_sample_prefix_entry["dispatch"]["entries"]  # type: ignore[index]
+        ],
+        "rendered": {
+            key: font_sample_prefix_rendered[key]
+            for key in ("selector", "context_slot", "count", "payload")
+        },
+        "rendered_glyphs": [
+            {
+                key: glyph[key]
+                for key in (
+                    "glyph",
+                    "coord",
+                    "dest_base",
+                    "x",
+                    "y",
+                    "a001",
+                    "span",
+                    "rows",
+                    "width",
+                    "helper",
+                )
+            }
+            for glyph in font_sample_prefix_rendered["rendered"]  # type: ignore[index]
+        ],
+        "row_count": len(font_sample_prefix_rows),
+        "row_width": max(len(row) for row in font_sample_prefix_rows),
+        "row_sha256": hashlib.sha256(
+            "\n".join(str(row) for row in font_sample_prefix_rows).encode("ascii")
+        ).hexdigest(),
+        "final_cursor_x": font_sample_prefix_page["final_state"]["cursor_x"],  # type: ignore[index]
+    }, {
+        "stream": b"ABCDEfgh",
+        "events": [
+            {
+                "byte": 0x41,
+                "cursor_before": pack12(0),
+                "cursor_after": pack12(30),
+                "positioned_xy": (0, 4),
+                "coord": 0x4000,
+                "allocated": True,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+            },
+            {
+                "byte": 0x42,
+                "cursor_before": pack12(30),
+                "cursor_after": pack12(60),
+                "positioned_xy": (33, 4),
+                "coord": 0x4102,
+                "allocated": False,
+                "count_before": 1,
+                "count_after": 2,
+                "bucket_index": 0,
+            },
+            {
+                "byte": 0x43,
+                "cursor_before": pack12(60),
+                "cursor_after": pack12(90),
+                "positioned_xy": (63, 4),
+                "coord": 0x4f03,
+                "allocated": False,
+                "count_before": 2,
+                "count_after": 3,
+                "bucket_index": 0,
+            },
+            {
+                "byte": 0x44,
+                "cursor_before": pack12(90),
+                "cursor_after": pack12(120),
+                "positioned_xy": (93, 4),
+                "coord": 0x4d05,
+                "allocated": False,
+                "count_before": 3,
+                "count_after": 4,
+                "bucket_index": 0,
+            },
+            {
+                "byte": 0x45,
+                "cursor_before": pack12(120),
+                "cursor_after": pack12(150),
+                "positioned_xy": (122, 4),
+                "coord": 0x4a07,
+                "allocated": False,
+                "count_before": 4,
+                "count_after": 5,
+                "bucket_index": 0,
+            },
+            {
+                "byte": 0x66,
+                "cursor_before": pack12(150),
+                "cursor_after": pack12(180),
+                "positioned_xy": (155, 2),
+                "coord": 0x2b09,
+                "allocated": False,
+                "count_before": 5,
+                "count_after": 6,
+                "bucket_index": 0,
+            },
+            {
+                "byte": 0x67,
+                "cursor_before": pack12(180),
+                "cursor_after": pack12(210),
+                "positioned_xy": (182, 10),
+                "coord": 0xa60b,
+                "allocated": False,
+                "count_before": 6,
+                "count_after": 7,
+                "bucket_index": 0,
+            },
+            {
+                "byte": 0x68,
+                "cursor_before": pack12(210),
+                "cursor_after": pack12(240),
+                "positioned_xy": (211, 2),
+                "coord": 0x230d,
+                "allocated": False,
+                "count_before": 7,
+                "count_after": 8,
+                "bucket_index": 0,
+            },
+        ],
+        "root_allocations": 1,
+        "bucket_index": 0,
+        "bucket_object": bytes.fromhex(
+            "00 00 00 00 00 00 00 08 40 40 00 41 41 02 42 4f "
+            "03 43 4d 05 44 4a 07 65 2b 09 66 a6 0b 67 23 0d "
+            "00 00 00 00 00 00"
+        ),
+        "bridged_context_slots": (0x44080418, 0),
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "dispatch_entries": [{
+            "chain_index": 0,
+            "object_byte_4": 0,
+            "class_mask": 0,
+            "branch": "compact",
+            "target": 0x1EFFE,
+            "context_slot": 0,
+        }],
+        "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 8,
+            "payload": bytes.fromhex(
+                "00 08 40 40 00 41 41 02 42 4f 03 43 4d 05 44 "
+                "4a 07 65 2b 09 66 a6 0b 67 23 0d 00 00 00 00 "
+                "00 00"
+            ),
+        },
+        "rendered_glyphs": [
+            {
+                "glyph": 64,
+                "coord": 0x4000,
+                "dest_base": 0x80,
+                "x": 0,
+                "y": 4,
+                "a001": 0,
+                "span": 4,
+                "rows": 29,
+                "width": 30,
+                "helper": 0x207ac,
+            },
+            {
+                "glyph": 65,
+                "coord": 0x4102,
+                "dest_base": 0x84,
+                "x": 33,
+                "y": 4,
+                "a001": 17,
+                "span": 4,
+                "rows": 29,
+                "width": 26,
+                "helper": 0x207ac,
+            },
+            {
+                "glyph": 66,
+                "coord": 0x4f03,
+                "dest_base": 0x86,
+                "x": 63,
+                "y": 4,
+                "a001": 31,
+                "span": 4,
+                "rows": 29,
+                "width": 25,
+                "helper": 0x207ac,
+            },
+            {
+                "glyph": 67,
+                "coord": 0x4d05,
+                "dest_base": 0x8a,
+                "x": 93,
+                "y": 4,
+                "a001": 29,
+                "span": 4,
+                "rows": 29,
+                "width": 26,
+                "helper": 0x207ac,
+            },
+            {
+                "glyph": 68,
+                "coord": 0x4a07,
+                "dest_base": 0x8e,
+                "x": 122,
+                "y": 4,
+                "a001": 26,
+                "span": 4,
+                "rows": 29,
+                "width": 25,
+                "helper": 0x207ac,
+            },
+            {
+                "glyph": 101,
+                "coord": 0x2b09,
+                "dest_base": 0x52,
+                "x": 155,
+                "y": 2,
+                "a001": 27,
+                "span": 4,
+                "rows": 31,
+                "width": 23,
+                "helper": 0x207ac,
+            },
+            {
+                "glyph": 102,
+                "coord": 0xa60b,
+                "dest_base": 0x156,
+                "x": 182,
+                "y": 10,
+                "a001": 22,
+                "span": 4,
+                "rows": 32,
+                "width": 27,
+                "helper": 0x207ac,
+            },
+            {
+                "glyph": 103,
+                "coord": 0x230d,
+                "dest_base": 0x5a,
+                "x": 211,
+                "y": 2,
+                "a001": 19,
+                "span": 4,
+                "rows": 31,
+                "width": 28,
+                "helper": 0x207ac,
+            },
+        ],
+        "row_count": 42,
+        "row_width": 239,
+        "row_sha256": (
+            "a954464fa31f122e8283a19f581c48dca3667ad637edb8b1f02d8d417e104bf2"
+        ),
+        "final_cursor_x": pack12(240),
     }))
 
     validation_failure_visible_baseline = render_mixed_printable_control_page_record_stream(

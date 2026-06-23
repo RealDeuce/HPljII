@@ -1141,7 +1141,9 @@ for how resource records become ordinary page-record text.
   - class-pass counter in the `0x1c28e..0x1c344` loop.
 - Unknown:
   - exact page-object bytes emitted by the full `0x1c204` printout loop
-    have not yet been modeled from the sample byte runs.
+    have not yet been modeled from the complete sample byte runs. The
+    first eight bytes of sample run 1 are fixture-backed through a
+    page-record bucket and `0x1ed84` / `0x1ef6a` render entry.
   - record `+0x28..+0x31` baseline/cell/manual semantics remain
     unresolved until this path is correlated with emitted page objects or
     a known printed sample.
@@ -1214,9 +1216,18 @@ bytes. Direct payload rendering of the two sample byte runs through first
 `COURIER` and first `LINE_PRINTER` produces stable row-hash pairs
 documented in `generated/analysis/ic30_ic13_font_sample_page.md`; those
 hashes are the current comparison targets for the later page-object
-model. Until the full `0x1c204` page-object loop is modeled, this
-checkpoint proves the producer, row-order, duplicate-suppression, and
-byte-emission semantics, not final full-page placement.
+model. Fixture `font sample run 1 prefix crosses page-record render
+entry` now consumes bytes `41 42 43 44 45 66 67 68` (`ABCDEfgh`) through
+the sample-page current context `0x44080418`, forced HMI `0x001e`, the
+compact page-record bucket, `0x1ed84`, and `0x1ef6a`; it pins bucket
+object `00 00 00 00 00 00 00 08 40 40 00 41 41 02 42 4f 03 43 4d 05
+44 4a 07 65 2b 09 66 a6 0b 67 23 0d 00 00 00 00 00 00`, dispatch target
+`0x1effe`, eight rendered glyph entries, row count `42`, row width `239`,
+and row hash
+`a954464fa31f122e8283a19f581c48dca3667ad637edb8b1f02d8d417e104bf2`.
+Until the full `0x1c204` page-object loop is modeled, this checkpoint
+proves the producer, row-order, duplicate-suppression, and one
+sample-byte-run page-record/render slice, not final full-page placement.
 
 ### Confidence
 
@@ -1231,6 +1242,7 @@ open.
 ### Fixtures And Reports
 
 - `generated/analysis/ic30_ic13_font_sample_page.md`
+- `generated/analysis/ic30_ic13_renderer_fixture_harness.md`
 - `generated/analysis/ic32_ic15_builtin_font_samples.md`
 - `generated/analysis/ic32_ic15_builtin_glyph_payloads.md`
 - `generated/analysis/ic32_ic15_font_records.md`
@@ -1252,13 +1264,16 @@ open.
   headings, `0x1b50e` two-window candidate resolution, class filtering,
   continuation-page entry, row-index advance, and recent-context
   duplicate suppression. The verified internal-font mode-3 row sequence
-  is documented in [resource-rom.md](resource-rom.md), but has not yet
-  been consumed by an executable font-sample page-object model.
+  is documented in [resource-rom.md](resource-rom.md). The first
+  eight-byte `0x1c1cf` sample-run prefix is now consumed by an executable
+  font-sample page-object/render fixture; the complete row loop is not.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
-  identified, but emitted page objects for the complete font printout
-  remain to be modeled from the ROM sample byte runs and compared against
-  a known printed/self-test sample.
+  identified. The `ABCDEfgh` sample-run prefix crosses this boundary with
+  context `0x44080418`, HMI `0x001e`, compact bucket count `8`, and
+  render-entry row hash above; emitted page objects for the complete font
+  printout remain to be modeled from the ROM sample byte runs and
+  compared against a known printed/self-test sample.
 - `record +0x28..+0x31`: these fields participate in height and chooser
   logic, but their final baseline/cell semantics need correlation against
   observed sample-page placement.

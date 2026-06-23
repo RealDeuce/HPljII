@@ -950,10 +950,12 @@ handlers:
   decoded through `0x1b50e` candidate resolution, class filtering,
   continuation-page entry, row-index advance, and recent-context
   duplicate suppression. The concrete internal-font candidate sequence is
-  now documented in `notes/resource-rom.md`; the open boundary is
-  consuming that sequence through `0x1c5e8..0x1ed84` emitted page records
-  and rendered rows. Compare those rows against the direct payload hashes
-  and a known printed/self-test sample to resolve remaining
+  now documented in `notes/resource-rom.md`, and the `ABCDEfgh` prefix of
+  sample run 1 now crosses `0x1c5e8..0x1ed84` in fixture `font sample run
+  1 prefix crosses page-record render entry`. The open boundary is
+  extending that page-record/render fixture to full sample rows and full
+  printout placement. Compare those rows against the direct payload
+  hashes and a known printed/self-test sample to resolve remaining
   `+0x28..+0x31` baseline/cell semantics.
 - Broaden visible-output variants where they still change compatibility:
   font-selection fallback/error branches beyond the two symbol-miss

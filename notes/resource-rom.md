@@ -542,11 +542,14 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    including `0x1b50e` two-window candidate resolution, class filtering,
    continuation-page entry, and recent-context duplicate suppression.
    The verified internal-font mode-3 candidate sequence is now
-   documented below. The next implementation target is consuming that
-   sequence through the `0x1c5e8..0x1ed84` page-object/render boundary.
-   Compare those rendered rows against the direct payload hashes and a
-   known printed/self-test sample to correlate the remaining
-   baseline/header fields against observed placement.
+   documented below, and the first eight bytes of sample run 1 are now
+   consumed through the `0x1c5e8..0x1ed84` page-object/render boundary by
+   fixture `font sample run 1 prefix crosses page-record render entry`.
+   The next implementation target is extending that fixture from
+   `ABCDEfgh` to full row and full printout placement. Compare those
+   rendered rows against the direct payload hashes and a known
+   printed/self-test sample to correlate the remaining baseline/header
+   fields against observed placement.
 7. Identify the manual-facing names for the currently unidentified
    built-in symbol words `0N`, `10U`, and `11U`, and broaden the
    now-pinned real map samples into more live parser/font-selection

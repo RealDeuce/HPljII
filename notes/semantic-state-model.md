@@ -3096,6 +3096,195 @@ trace.
   page-record allocator checkpoint, but the raster producer still uses modeled
   allocator results rather than a live heap/free-list trace.
 
+## Rectangle Rule Producer And Renderer
+
+Status: composed as the `ESC *c` rectangle/rule command-family checkpoint
+from parsed width/height/fill commands to rule-list page-record objects,
+bridge normalization, no-room retry, and solid/pattern rendered rows. The
+low-level ledger remains in [rectangle-graphics.md](rectangle-graphics.md).
+
+Concept: rectangle commands accumulate persistent width, height, and fill
+state until `ESC *c#P` asks the firmware to fill a rectangle. Handler
+`0x10898` maps the requested fill mode to a selector, `0x10b80` clips the
+current cursor-sized rectangle against page extents, and `0x13386` /
+`0x133aa` inserts a 14-byte rule object under page-root `+0x24`. Rendering is
+deferred until `0x1edc6` normalizes the rule list and `0x1f446` dispatches
+selector `7` to `0x1f596` or non-solid selectors to `0x1f4e0`.
+
+### Field Groups
+
+- Canonical rectangle command state:
+  - `0x78316a`: current rectangle width, written by `ESC *c#A` and
+    `ESC *c#H`.
+  - `0x783166`: current rectangle height, written by `ESC *c#B` and
+    `ESC *c#V`.
+  - `0x78316e`: current area-fill id, written by `ESC *c#G` and consumed by
+    `ESC *c#P` modes `2` and `3`.
+  Evidence: fixtures
+  `0x10e68/0x10e22/0x10a40/0x10ae0 rectangle size commands update packed
+  dimensions` and `0x10898 ESC *c#P maps fill selectors and queues rule
+  object`.
+- Canonical page/cursor inputs:
+  - `0x782c8a` and `0x782c8e`: current x/y cursor used as rectangle origin.
+  - `0x782da3`: orientation flag selecting portrait or landscape coordinate
+    conversion.
+  - `0x782db8` and `0x782db6`: horizontal and vertical page extents consumed
+    by `0x10b80` reject/clip gates.
+  - `0x78297a`: current page root ensured before queueing.
+- Canonical rule source record at `0x782a88`:
+  - `+0x00`: queued x.
+  - `+0x02`: queued y.
+  - `+0x04`: queued width.
+  - `+0x06`: queued height.
+  - `+0x08`: fill selector.
+  Evidence: `0x10b80 rectangle fill clips right/top/bottom edges and ignores
+  off-page fills`.
+- Canonical rule-list object under page-root `+0x24`:
+  - object `+0x00`: next pointer.
+  - object `+0x04`: bucket byte from `0x782a7d`.
+  - object `+0x05`: fill selector before bridge; bridged selector has bit
+    `0x10` set.
+  - object `+0x06`: packed key from `0x782a7e`.
+  - object `+0x08`: width.
+  - object `+0x0a`: height.
+  - object `+0x0c`: continuation height, copied from height by `0x1edc6` and
+    mutated across render bands.
+  Evidence: fixture
+  `0x13386/0x133aa-modeled rectangle/rule list object and bridge
+  normalization`.
+- Derived/cache producer keys:
+  - `0x782a7c`: bucket index `source_y >> 4`.
+  - `0x782a7d`: low bucket byte copied into object `+4`.
+  - `0x782a7e`: packed key
+    `((source_y << 12) & 0xf000) | (((source_x + 0x782dc0) & 0x0f) << 8)
+    | (((source_x + 0x782dc0) >> 4) & 0x00ff)`.
+  These keys are produced by `0x134d6` and consumed by `0x133aa` /
+  `0x1f446`; they are not parser scratch.
+- Firmware bookkeeping:
+  - stream allocator fields `0x782a70`, `0x782a72`, and `0x782a76` are
+    consumed by `0x1381c`.
+  - page-root flag bit `+0x15.0` is set by the no-room retry path before
+    `0xff1e` publishes the old root.
+  - no-room retry uses `0xff1e` then `0x10084` before retrying the same source.
+- Unknown for this checkpoint:
+  - complete live 68000 parser-to-allocator trace for no-room retry and real
+    heap/free-list memory.
+
+### Writers
+
+- `0x10e68` and `0x10e22` write dot width/height. Missing or nonpositive
+  parameters clear the stored dimension.
+- `0x10a40` and `0x10ae0` write decipoint width/height after multiplying by
+  five 300-dpi subunits, rounding up fractional subunits, and adding the
+  firmware `+11` subunit bias.
+- `0x10dce` writes area-fill id `0x78316e`.
+- `0x10898` maps `ESC *c#P` to fill selectors: `0`/missing to selector `7`,
+  gray percentages to selectors `0..7`, and pattern ids to selectors `8..13`
+  with the documented landscape remaps.
+- `0x10b80` writes the clipped source record at `0x782a88`, ensures a page
+  root through `0x10084`, and calls `0x13386`.
+- `0x13386` calls `0x134d6`, and `0x133aa` allocates/links the rule object
+  under page-root `+0x24` through `0x1381c`.
+- `0x10d22..0x10d3e` handles no-room retry by setting page-root flag bit
+  `+0x15.0`, publishing through `0xff1e`, allocating a fresh root through
+  `0x10084`, and retrying `0x13386`.
+- `0x1edc6` copies page-root `+0x24` into render-record `+0x1c`, ORs object
+  byte `+5` with `0x10`, and copies height `+0x0a` into continuation
+  `+0x0c`.
+
+### Readers And Consumers
+
+- Parser loop `0x11774` routes the chained `ESC *c12a5b0P` stream through
+  handlers `0x10e68`, `0x10e22`, and `0x10898`.
+- `0x10b80` consumes cursor, dimensions, extents, and orientation to reject,
+  clip, or queue the source.
+- `0x133aa` consumes page-root/stream allocator state and maintains ascending
+  object byte `+4` order; equal bucket bytes insert after the existing equal
+  node.
+- `0x1f446` consumes bridged rule-list nodes for the active render band.
+  Selector `7` dispatches to solid helper `0x1f596`; selectors `0..6` and
+  `8..13` dispatch to pattern helper `0x1f4e0`.
+- `0x1f596` and `0x1f4e0` consume packed key, width, and continuation height
+  to write bitmap rows; continuation `+0x0c` carries remaining rows into later
+  bands.
+
+### Output Effect
+
+Fixture `rectangle command stream queues chained ESC *c rule object` proves
+`ESC *c12a5b0P` queues selector-7 rule object
+`00 00 00 00 01 07 4a 00 00 0c 00 05 00 00`. Fixture
+`0x11774 ROM dispatch table routes chained ESC *c rule stream` proves the same
+parser modes and final handlers before bridge normalization to
+`00 00 00 00 01 17 4a 00 00 0c 00 05 00 05`.
+
+Fixture `0x1f446/0x1f596 renders solid black rectangle rule pixels` decodes
+key `0x4a00` as x `10`, y `20`, width `12`, rows `5`, partial mask `0xfff0`,
+and renders five solid rows. The band-crossing solid fixture starts at y `78`,
+draws two rows in the first band, leaves three rows in object `+0x0c`, and
+draws those remaining rows at y `0` in the next band.
+
+Fixture `0x1f4e0 renders gray and HP pattern selector matrix` pins the
+non-solid selector table and pattern starts. Selector `0` uses pattern base
+`0x02ff3e`; shifted HP pattern selector `13` with key `0x3500` decodes x `5`,
+y `3`, width `19`, row-low `3`, pattern start `0x0306c4`, left mask
+`0x07ff`, and right mask `0xff00`.
+
+Fixture `0x10b80 rectangle fill clips right/top/bottom edges and ignores
+off-page fills` proves negative-left clipping from start x `-3`, width `10`
+to queued x `0`, width `7`, plus right-edge, top-edge, bottom-edge,
+landscape-right-edge, horizontal-outside, vertical-outside, and
+empty-after-clip outcomes.
+
+Fixture `rectangle parser trace feeds no-room retry path` proves the parser
+trace reaches `0x10e68`, `0x10e22`, and `0x10898`; the no-room path publishes
+an existing compact text bucket, allocates a fresh root, retries the
+selector-7 object, bridges it through `0x1edc6`, and renders the retried rule.
+
+### Confidence
+
+High for parser handler order, dimension/fill selector mapping, clipping and
+ignore gates, rule object bytes, ordered insertion, bridge normalization,
+solid and pattern dispatch, continuation mutation across bands, and no-room
+retry output because each is fixture-pinned. Medium for live CPU/register
+fidelity inside parser-to-allocator no-room retry because the current evidence
+models allocator results rather than executing the full heap/free-list path.
+
+### Fixtures
+
+- `0x10e68/0x10e22/0x10a40/0x10ae0 rectangle size commands update packed
+  dimensions`
+- `0x10898 ESC *c#P maps fill selectors and queues rule object`
+- `rectangle command stream queues chained ESC *c rule object`
+- `0x11774 ROM dispatch table routes chained ESC *c rule stream`
+- `host-fetched rectangle rule stream preserves 0x1edc6 bridge contract`
+- `0x13386/0x133aa-modeled rectangle/rule list object and bridge
+  normalization`
+- `0x1f446/0x1f596 renders solid black rectangle rule pixels`
+- `0x1f4e0 renders gray and HP pattern selector matrix`
+- `0x10b80 rectangle fill clips right/top/bottom edges and ignores off-page
+  fills`
+- `0x10d22 rectangle/rule no-room retry finalizes root then retries span`
+- `rectangle parser trace feeds no-room retry path`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_rectangle_graphics_010898.lst`
+- `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`
+- `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`
+- `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+- `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`
+- `generated/analysis/ic30_ic13_rectangle_graphics_flow.md`
+
+### Unresolved Middle Edges
+
+- `0x10898..0x133aa`: command routing, clipping, selector mapping, rule object
+  bytes, bridge normalization, render rows, and no-room retry are
+  fixture-backed. The remaining edge is full live 68000 execution through
+  parser, `0x10b80`, `0x1381c`, and real allocator memory.
+- Alternate selector combinations beyond the pinned selector/mask matrix still
+  need broader page-visible comparisons together with font selection,
+  downloaded glyphs, geometry changes, and physical output.
+
 ## Mixed Text/Rule/Raster Page Record
 
 Status: anchored as a parser-to-render composition checkpoint, but still
@@ -3245,10 +3434,10 @@ the parser and allocator.
   compact producer semantics are composed in `Text Source Objects And
   Compact Buckets`; this mixed stream still lacks a full live
   CPU/register trace for the complete parser-produced dense page.
-- `0x10898..0x133aa`: the addressed rule insertion is modeled from
-  disassembly and fixtures and documented in
-  `notes/rectangle-graphics.md`, but the exact live no-room/retry edge is
-  not covered in this mixed stream.
+- `0x10898..0x133aa`: selector mapping, clipping, addressed rule insertion,
+  bridge normalization, solid/pattern rendering, and no-room retry are
+  composed in `Rectangle Rule Producer And Renderer`. The mixed stream still
+  lacks full live parser-to-allocator CPU memory capture for this producer.
 - `0x105d0..0x13250`: delayed restore, gate outcomes, encoded object layout,
   bridge preservation, and mode `0..3` render contracts are composed in
   `Raster Transfer Gate And Encoded Rows`. The mixed stream still lacks a full

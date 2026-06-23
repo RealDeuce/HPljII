@@ -219,10 +219,17 @@ def format_markdown(text: str, width: int) -> str:
     return normalize_text_whitespace("\n".join(out))
 
 
-def diff_check_path(line: str) -> str | None:
-    match = re.match(r"^([^:]+):\d+:", line)
+HANDLED_DIFF_CHECK_ISSUES = {
+    "trailing whitespace.",
+    "space before tab in indent.",
+    "new blank line at EOF.",
+}
+
+
+def diff_check_path_and_issue(line: str) -> tuple[str, str] | None:
+    match = re.match(r"^([^:]+):\d+:\s*(.*)$", line)
     if match:
-        return match.group(1)
+        return match.group(1), match.group(2)
     return None
 
 
@@ -239,8 +246,12 @@ def unhandled_diff_check_failures(
     normalized_names = {str(path.relative_to(root)) for path in normalized_paths}
     failures = []
     for line in lines:
-        name = diff_check_path(line)
-        if name is not None and name in normalized_names:
+        parsed = diff_check_path_and_issue(line)
+        if parsed is not None:
+            name, issue = parsed
+        else:
+            name, issue = None, None
+        if name in normalized_names and issue in HANDLED_DIFF_CHECK_ISSUES:
             continue
         failures.append(line)
     return failures

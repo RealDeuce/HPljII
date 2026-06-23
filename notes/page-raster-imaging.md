@@ -758,6 +758,13 @@ adds the secondary mirror: `ESC )s0p16h8v0s0b0T` selects context
 queue object prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and the
 render record carries context slots `(0xc008004c, 0xc00ae122)` before compact
 helper `0x207ac` renders two secondary Line Printer glyph rows.
+Fixture
+`secondary symbol miss falls back before visible SO page-record rows` proves
+the same secondary visible rows after `ESC )1234U` requests symbol word
+`0x9a55`, `0x156de` misses that word in the class-one candidates, uses
+fallback table word `0x000e`, keeps slots `0x782330`, `0x782340`, and
+`0x782350`, then selects the same context `0xc00ae122`, map `0x783032`, and
+compact object prefix as the secondary SO fixture.
 The generated `ic30_ic13_active_symbol_set_flow.md` report traces
 `ESC (` / `ESC )` through `0x120be` and `0x1be22`: normal symbol-set
 finals compute PCL codes as `(parameter << 5) + suffix`, store requested

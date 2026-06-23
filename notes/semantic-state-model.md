@@ -729,9 +729,10 @@ full 68000 interpreter through every source class and allocator branch.
 ## Built-In Font Selection To Visible Text
 
 Status: composed as parsed command-family to visible-output checkpoints for
-primary and secondary built-in selection streams. The low-level font-selection ledger
-remains in [font-context-metrics.md](font-context-metrics.md); this section
-records the renderer-facing semantic contract for the selected state.
+primary, secondary, and secondary symbol-fallback built-in selection streams.
+The low-level font-selection ledger remains in
+[font-context-metrics.md](font-context-metrics.md); this section records the
+renderer-facing semantic contract for the selected state.
 
 Concept: `ESC (s0p10h12v0s0b3T` writes primary font request fields, refreshes
 the active primary built-in context through `0x13eb8`, rebuilds the primary
@@ -743,16 +744,23 @@ context. `ESC )s0p16h8v0s0b0T SO !!` follows the secondary version of the
 same contract: the secondary selection writes context `0xc00ae122`, SO selects
 slot 1 through `0xc6b8`, and the two printable bytes render from that
 class-one Line Printer context.
+`ESC )1234U ESC )s0p16h8v0s0b0T SO !!` proves the fallback form of that
+secondary contract: the symbol-set request writes word `0x9a55`, no class-one
+candidate matches, `0x156de` takes fallback table word `0x000e`, and the later
+secondary selection plus SO output still render through context `0xc00ae122`.
 
 ### Field Groups
 
 - Canonical selection request fields:
   - primary request bytes under `0x782eec..0x782ef2`: typeface `3`, style `0`,
     stroke `0`, spacing `0`, pitch `0x03e8`, and height `0x04b0`.
+  - secondary symbol request word `0x9a55` from `ESC )1234U`; fallback active
+    word `0x000e` before the secondary `ESC )s...T` selection.
   - dirty flags `0x782f2c` and `0x782f2d`, set by handlers `0xc930`,
     `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a`.
   Evidence: fixture `parsed font-selection stream writes primary font-state
-  fields`.
+  fields` and fixture
+  `secondary symbol miss falls back before visible SO page-record rows`.
 - Canonical selected context:
   - `0x782ee6 +0x00`: selected longword `0xc008004c`.
   - `0x782ee6 +0x04`: bit-30-derived byte `1`.
@@ -768,7 +776,10 @@ class-one Line Printer context.
   dispatch`, `0x13eb8 refresh carries parsed secondary font selection to
   dispatch`, `parsed primary built-in font selection feeds visible
   page-record rows`, and
-  `parsed secondary built-in font selection feeds visible SO page-record rows`.
+  `parsed secondary built-in font selection feeds visible SO page-record rows`;
+  fallback fixture
+  `secondary symbol miss falls back before visible SO page-record rows` reaches
+  the same secondary context after active word `0x000e` is selected.
 - Canonical visible page-record fields:
   - primary compact text object prefix:
     `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`.
@@ -780,10 +791,17 @@ class-one Line Printer context.
   - secondary compact coords after SO: `0xc900` and `0xcb01`.
   Evidence: fixtures `parsed primary built-in font selection feeds visible
   page-record rows` and
-  `parsed secondary built-in font selection feeds visible SO page-record rows`.
+  `parsed secondary built-in font selection feeds visible SO page-record rows`;
+  fallback fixture
+  `secondary symbol miss falls back before visible SO page-record rows` reaches
+  the same secondary visible page-record fields after symbol fallback.
 - Derived/cache state:
   - `0x7828a8`: selected candidate slot `0x782354`.
   - secondary selected candidate slot `0x782350`.
+  - secondary fallback active-word source: fallback table word `0x000e` after
+    the requested pass misses word `0x9a55`.
+  - secondary fallback survivor slot pointers: `0x782330`, `0x782340`, and
+    `0x782350`.
   - `0x782f32`: rebuilt primary map, range `0x21..0xfe`, patch kind
     `unchanged`.
   - `0x783032`: rebuilt secondary map, range `0x21..0xff`, patch kind
@@ -798,11 +816,16 @@ class-one Line Printer context.
     `ESC (s0p10h12v0s0b3T`, printable bytes `!!`.
   - the secondary fetched stream is split into selection bytes
     `ESC )s0p16h8v0s0b0T` and printable/control bytes `SO !!`.
+  - the fallback fetched stream is split into symbol bytes `ESC )1234U`,
+    selection bytes `ESC )s0p16h8v0s0b0T`, and printable/control bytes
+    `SO !!`.
   - printable parser events are two `0xd04a` entries for the primary fixture,
-    and `0xc6b8, 0xd04a, 0xd04a` for the secondary SO fixture.
+    and `0xc6b8, 0xd04a, 0xd04a` for the secondary SO and fallback fixtures.
 - Firmware bookkeeping:
   - `0x144d2` writes current-font context record `0x782ee6`.
   - `0x14c64` rebuilds map `0x782f32` and snapshots selected font state.
+  - `0x156de` uses fallback table word `0x000e` before `0x14c64` rebuilds
+    secondary map `0x783032` in the fallback stream.
   - `0xc428` reads the selected longword from `0x782ee6` / `0x782ef6` and
     passes that longword to `0xc4fc`; `0xc4fc` stores the longword in the
     selected page-root slot.
@@ -817,8 +840,12 @@ class-one Line Printer context.
 
 - `0xc930`, `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a` write the
   primary request fields and dirty flags.
+- `0x120be` writes the secondary requested symbol word `0x9a55` for
+  `ESC )1234U`.
 - `0x13eb8` filters active candidates through `0x1569c`, `0x156de`,
   `0x153c6`, `0x1519a`, `0x147b2`, `0x14758`, and `0x14398`.
+- `0x156de` writes the fallback active word `0x000e` for the secondary symbol
+  miss before pruning the class-one candidate window.
 - `0x144d2` writes selected context state at `0x782ee6`.
 - `0x144d2` writes secondary selected context state at `0x782ef6`.
 - `0x14c64` rebuilds maps `0x782f32` and `0x783032`.
@@ -833,8 +860,12 @@ class-one Line Printer context.
 
 - `0x1393a` consumes selected context `0xc008004c` and map `0x782f32` to map
   host byte `0x21` to glyph `0x00`.
+- `0x156de` consumes candidate symbol words and fallback table word `0x000e`
+  to convert the missed requested word `0x9a55` into the active secondary
+  symbol word.
 - After SO, `0x1393a` consumes selected context `0xc00ae122` and map
-  `0x783032` to map host byte `0x21` to glyph `0x00`.
+  `0x783032` to map host byte `0x21` to glyph `0x00`; the fallback fixture
+  reaches this same consumer state after `0x156de` selects word `0x000e`.
 - `0xd824` consumes built-in glyph offsets from entry `0x001088`, producing
   positioned sources `(10,-10)` and `(40,-10)`.
 - `0xd824` also consumes secondary built-in glyph entry `0x02e4f6`, producing
@@ -869,14 +900,20 @@ The final secondary printable state has cursor x `66`, cursor y `21`, HMI
 `18`, selector `1`, one `0xc6b8` install call, and one page-record root
 allocation.
 
+The secondary symbol-miss fixture has the same output effect after fallback:
+requested word `0x9a55` is replaced by active word `0x000e`, then the final
+object prefix, context slots, rendered rows, cursor x `66`, HMI `18`,
+selector `1`, install count `1`, and page-root allocation count `1` match the
+secondary SO fixture.
+
 ### Confidence
 
-High for parser handler routing, selected built-in context, map rebuild
-metadata, HMI, compact object bytes, render context slot, and final rows
-because they are all fixture-pinned against ROM-derived helpers. Medium for
-the live current-font-record handoff because the fixture composes the pinned
-`0x13eb8` output into the printable runner rather than capturing one
-continuous CPU-state execution.
+High for parser handler routing, fallback table decision, selected built-in
+context, map rebuild metadata, HMI, compact object bytes, render context slot,
+and final rows because they are all fixture-pinned against ROM-derived
+helpers. Medium for the live current-font-record handoff because the fixture
+composes the pinned `0x13eb8` output into the printable runner rather than
+capturing one continuous CPU-state execution.
 
 ### Fixtures
 
@@ -885,6 +922,7 @@ continuous CPU-state execution.
 - `0x13eb8 refresh carries parsed secondary font selection to dispatch`
 - `parsed primary built-in font selection feeds visible page-record rows`
 - `parsed secondary built-in font selection feeds visible SO page-record rows`
+- `secondary symbol miss falls back before visible SO page-record rows`
 
 ### Disassembly Evidence
 
@@ -904,8 +942,10 @@ continuous CPU-state execution.
 - `0x782ee6 +0x00..+0x0f` and `0x782ef6 +0x00..+0x0f` into
   `0xd04a..0x1393a`: selected current-context RAM is injected from the pinned
   refresh results; live handoff remains open.
-- Additional primary/secondary font-selection combinations and fallback/error
-  branches still need the same visible-output treatment.
+- Other primary/secondary font-selection combinations and fallback/error
+  branches still need the same visible-output treatment; the exact covered
+  fallback boundary is `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` through
+  `0x120be..0x156de..0x14c64..0xc6b8..0xd04a`.
 
 ## Text Span Flush And Fixed-Width Spans
 

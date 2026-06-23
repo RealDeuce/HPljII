@@ -288,8 +288,9 @@ The next work should follow dataflow, not isolated handlers:
    predicate no-install fixtures.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
-   parser-driven downloaded-glyph/rule/raster page stream, and primary plus
-   secondary built-in font-selection visible-output streams. The primary
+   parser-driven downloaded-glyph/rule/raster page stream, primary plus
+   secondary built-in font-selection visible-output streams, and the secondary
+   symbol fallback visible-output stream. The primary
    built-in case proves `ESC (s0p10h12v0s0b3T!!` through parsed selection
    handlers, selected context `0xc008004c`, printable `0xd04a` entries, object
    prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record context
@@ -298,7 +299,11 @@ The next work should follow dataflow, not isolated handlers:
    handler `0xc6b8`, object prefix
    `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, render-record context slots
    `(0xc008004c, 0xc00ae122)`, and final secondary Line Printer rows.
+   The fallback case proves `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`: requested
+   word `0x9a55` misses in `0x156de`, fallback word `0x000e` survives, and the
+   final selected context, map, object prefix, context slots, and rows match
+   the secondary SO case.
    Remaining suite cases should capture the font-install/current-font-to-page
    handoff from live CPU memory instead of a modeled selected context, add
-   fallback/error font-selection visible-output variants, and add
+   other fallback/error font-selection visible-output variants, and add
    geometry-changing publication cases with final bitmap-row comparison.

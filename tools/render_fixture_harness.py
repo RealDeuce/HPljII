@@ -26831,6 +26831,29 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     secondary_13eb8_pitch = secondary_13eb8_refresh["spacing_pitch_filter"]
     assert isinstance(secondary_13eb8_dispatch, dict)
     assert isinstance(secondary_13eb8_pitch, dict)
+    secondary_symbol_fallback_13eb8_refresh = selected_font_refresh_via_13eb8(
+        data,
+        resources,
+        actual_candidate_windows,
+        slot=1,
+        requested_primary=0x0115,
+        requested_secondary=secondary_symbol_miss_word,
+        active_symbols=[0x0115, secondary_symbol_miss_word],
+        remembered_primary_782f08=0x0115,
+        remembered_secondary_782f0a=secondary_symbol_miss_word,
+        fallback_table_782f0c=fallback_table_782f0c,
+        class_selector_byte_782da3=1,
+        requested_spacing=secondary_metric_inputs["spacing"],  # type: ignore[index]
+        requested_pitch=secondary_metric_inputs["pitch"],  # type: ignore[index]
+        requested_height=secondary_metric_inputs["height"],  # type: ignore[index]
+        requested_style=secondary_metric_inputs["style"],  # type: ignore[index]
+        requested_stroke=secondary_metric_inputs["stroke"],  # type: ignore[index]
+        requested_typeface=secondary_metric_inputs["typeface"],  # type: ignore[index]
+    )
+    secondary_symbol_fallback_13eb8_dispatch = secondary_symbol_fallback_13eb8_refresh["dispatch"]
+    secondary_symbol_fallback_13eb8_symbol = secondary_symbol_fallback_13eb8_refresh["symbol_filter"]
+    assert isinstance(secondary_symbol_fallback_13eb8_dispatch, dict)
+    assert isinstance(secondary_symbol_fallback_13eb8_symbol, dict)
     transient_13eb8_refresh = selected_font_refresh_via_13eb8(
         data,
         resources,
@@ -27962,6 +27985,321 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "helper": 0x0207AC,
             },
         ],
+        "rendered_rows": [
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".........################..################...###",
+            ".........################..################...###",
+            ".........################..################...###",
+            ".........################..################...###",
+        ],
+        "final_state": {
+            "cursor_x": pack12(66),
+            "cursor_y": pack12(21),
+            "hmi": pack12(18),
+            "page_record_root_allocations": 1,
+        },
+    }))
+    fallback_visible_context = int(secondary_symbol_fallback_13eb8_refresh["context_update"]["selected_longword"])  # type: ignore[index]
+    fallback_visible_hmi = builtin_flagged_hmi_from_context(resources, fallback_visible_context)
+    fallback_selection_visible_stream = (
+        secondary_symbol_miss_stream_bytes
+        + secondary_font_selection_stream
+        + b"\x0e!!"
+    )
+    fallback_selection_visible_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(fallback_selection_visible_stream), direct_mode=0),
+        len(fallback_selection_visible_stream),
+    )
+    fallback_selection_visible_printable = fallback_selection_visible_fetch["stream"][
+        len(secondary_symbol_miss_stream_bytes) + len(secondary_font_selection_stream):
+    ]
+    fallback_selection_visible_page = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        fallback_selection_visible_printable,
+        primary_visible_context,
+        control_fixture_state(
+            cursor_x=pack12(30),
+            cursor_y=pack12(21),
+            hmi=fallback_visible_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            text_map_selector_782f06=0,
+            font_context_install_success=1,
+        ),
+        default_advance=fallback_visible_hmi["hmi"],
+        secondary_context=fallback_visible_context,
+    )
+    fallback_selection_visible_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        fallback_selection_visible_printable,
+    )
+    fallback_selection_visible_events: list[dict[str, object]] = []
+    for event in fallback_selection_visible_page["events"]:
+        assert isinstance(event, dict)
+        if event["kind"] == "font-shift":
+            fallback_selection_visible_events.append({
+                "kind": event["kind"],
+                "byte": event["byte"],
+                "handler": event["handler"],
+                "selector_before": event["selector_before"],
+                "selector_after": event["selector_after"],
+                "requested_selector": event["requested_selector"],
+                "install_called": event["install_called"],
+                "install_argument": event["install_argument"],
+                "install_success": event["install_success"],
+            })
+            continue
+        page_result = event["page_result"]
+        source = event["source"]
+        positioned = event["positioned"]
+        assert isinstance(page_result, dict)
+        assert isinstance(source, dict)
+        assert isinstance(positioned, dict)
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        fallback_selection_visible_events.append({
+            "kind": event["kind"],
+            "byte": event["byte"],
+            "source_context": source["context"],
+            "source_slot": source["context_slot"],
+            "mapped": source["mapped"],
+            "glyph_entry": source["glyph_entry"],
+            "glyph_rows": source["glyph_rows"],
+            "glyph_width": source["glyph_width"],
+            "cursor_before": event["cursor_before"],
+            "cursor_after": event["cursor_after"],
+            "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+            "selector": page_result["selector"],
+            "coord": page_result["coord"],
+            "allocated": page_result["allocated"],
+            "chain_index": page_result["chain_index"],
+            "count_before": page_result["count_before"],
+            "count_after": page_result["count_after"],
+            "bucket_index": page_result["bucket_index"],
+        })
+    fallback_selection_visible_rendered = fallback_selection_visible_page["rendered"]
+    fallback_selection_visible_bridged = fallback_selection_visible_page["bridged_record"]
+    assert isinstance(fallback_selection_visible_rendered, dict)
+    assert isinstance(fallback_selection_visible_bridged, dict)
+    checks.append(assert_equal("secondary symbol miss falls back before visible SO page-record rows", {
+        "combined_stream": fallback_selection_visible_fetch["stream"],
+        "fetch_sources": sorted(set(fallback_selection_visible_fetch["sources"])),
+        "symbol_parser_handlers": [
+            dispatch["handler"]
+            for dispatch in secondary_symbol_miss_commands[0]["dispatches"]
+        ],
+        "symbol_requested_word": secondary_symbol_miss_word,
+        "symbol_filter": {
+            "active_word_source": secondary_symbol_fallback_13eb8_symbol["active_word_source"],
+            "active_word": secondary_symbol_fallback_13eb8_symbol["active_word"],
+            "survivor_slot_pointers": secondary_symbol_fallback_13eb8_symbol["survivor_slot_pointers"],
+            "last_requested_probe": [
+                event
+                for event in secondary_symbol_fallback_13eb8_symbol["events"]  # type: ignore[index]
+                if event["pass"] == "requested"
+            ][-1],
+            "last_prune": secondary_symbol_fallback_13eb8_symbol["prune_events"][-1],
+        },
+        "selection_handlers": [
+            event["handler"]
+            for event in secondary_selection_request["events"]
+        ],
+        "selection_context": fallback_visible_context,
+        "selection_calls": secondary_symbol_fallback_13eb8_refresh["calls"],
+        "selection_map": {
+            key: secondary_symbol_fallback_13eb8_dispatch[key]
+            for key in (
+                "path",
+                "slot",
+                "selected_symbol",
+                "active_symbol",
+                "range_start",
+                "range_end",
+                "patch_kind",
+                "map_address",
+            )
+        },
+        "context_update": secondary_symbol_fallback_13eb8_refresh["context_update"],
+        "metric": fallback_visible_hmi,
+        "printable_stream": fallback_selection_visible_printable,
+        "printable_parser_handlers": [
+            event["handler"]
+            for event in fallback_selection_visible_trace["events"]
+        ],
+        "events": fallback_selection_visible_events,
+        "root_allocations": fallback_selection_visible_page["final_state"]["page_record_root_allocations"],
+        "final_selector": fallback_selection_visible_page["final_state"]["text_map_selector_782f06"],
+        "install_calls": fallback_selection_visible_page["final_state"]["font_context_install_calls"],
+        "bucket_index": fallback_selection_visible_page["bucket_index"],
+        "object_prefix": fallback_selection_visible_page["bucket_object"][:14],
+        "bridged_context_slots": fallback_selection_visible_bridged["context_slots"][:2],
+        "rendered": {
+            key: fallback_selection_visible_rendered[key]
+            for key in ("selector", "context_slot", "count", "payload")
+        },
+        "rendered_rows": fallback_selection_visible_rendered["rows"],
+        "final_state": select_keys(fallback_selection_visible_page["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "hmi",
+            "page_record_root_allocations",
+        )),
+    }, {
+        "combined_stream": secondary_symbol_miss_stream_bytes + secondary_font_selection_stream + b"\x0e!!",
+        "fetch_sources": ["ring"],
+        "symbol_parser_handlers": [0x011EB6, 0x012008, 0x0120BE],
+        "symbol_requested_word": 0x9A55,
+        "symbol_filter": {
+            "active_word_source": "fallback-table",
+            "active_word": 0x000E,
+            "survivor_slot_pointers": [0x782330, 0x782340, 0x782350],
+            "last_requested_probe": {
+                "helper": 0x0156DE,
+                "pass": "requested",
+                "index": 11,
+                "slot_pointer": 0x782350,
+                "record_start": 0x02E122,
+                "longword": 0xC00AE122,
+                "candidate_word": 0x000E,
+                "requested_word": 0x9A55,
+                "normalized_flag": 0,
+                "reader": "0x15890",
+                "reader_source": "+0x22-word",
+                "matched": False,
+            },
+            "last_prune": {
+                "helper": 0x0156DE,
+                "pass": "prune",
+                "index": 11,
+                "slot_pointer": 0x782350,
+                "record_start": 0x02E122,
+                "candidate_word": 0x000E,
+                "requested_word": 0x000E,
+                "normalized_flag": 0,
+                "before": 0xC00AE122,
+                "after": 0xC00AE122,
+                "matched": True,
+            },
+        },
+        "selection_handlers": [0x00C930, 0x00C89C, 0x00C6EC, 0x00C780, 0x00C840, 0x01205A],
+        "selection_context": 0xC00AE122,
+        "selection_calls": [
+            "0x148f8",
+            "0x1569c",
+            "0x156de",
+            "0x153c6",
+            "0x14398",
+            "0x144d2",
+            "0x14c64",
+        ],
+        "selection_map": {
+            "path": "built-in-cache-miss",
+            "slot": "secondary",
+            "selected_symbol": 0x000E,
+            "active_symbol": 0x000E,
+            "range_start": 0x0021,
+            "range_end": 0x00FF,
+            "patch_kind": "selected-symbol-not-roman8",
+            "map_address": 0x783032,
+        },
+        "context_update": {
+            "helper": 0x0144D2,
+            "context_record": 0x782EF6,
+            "selected_longword": 0xC00AE122,
+            "byte_4_bit30": 1,
+            "byte_5_bit26": 0,
+        },
+        "metric": {
+            "base": 0x02E122,
+            "metric_flag": 0,
+            "raw_metric": 0x00480000,
+            "hmi": pack12(18),
+        },
+        "printable_stream": b"\x0e!!",
+        "printable_parser_handlers": [0x00C6B8, 0x00D04A, 0x00D04A],
+        "events": [
+            {
+                "kind": "font-shift",
+                "byte": 0x0E,
+                "handler": 0x00C6B8,
+                "selector_before": 0,
+                "selector_after": 1,
+                "requested_selector": 1,
+                "install_called": True,
+                "install_argument": 1,
+                "install_success": True,
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "source_context": 0xC00AE122,
+                "source_slot": 1,
+                "mapped": 0,
+                "glyph_entry": 0x02E4F6,
+                "glyph_rows": 4,
+                "glyph_width": 22,
+                "cursor_before": pack12(30),
+                "cursor_after": pack12(48),
+                "positioned_xy": (9, 12),
+                "selector": 1,
+                "coord": 0xC900,
+                "allocated": True,
+                "chain_index": 0,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": 0,
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "source_context": 0xC00AE122,
+                "source_slot": 1,
+                "mapped": 0,
+                "glyph_entry": 0x02E4F6,
+                "glyph_rows": 4,
+                "glyph_width": 22,
+                "cursor_before": pack12(48),
+                "cursor_after": pack12(66),
+                "positioned_xy": (27, 12),
+                "selector": 1,
+                "coord": 0xCB01,
+                "allocated": False,
+                "chain_index": 0,
+                "count_before": 1,
+                "count_after": 2,
+                "bucket_index": 0,
+            },
+        ],
+        "root_allocations": 1,
+        "final_selector": 1,
+        "install_calls": 1,
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 01 00 02 00 c9 00 00 cb 01"),
+        "bridged_context_slots": (0xC008004C, 0xC00AE122),
+        "rendered": {
+            "selector": 1,
+            "context_slot": 1,
+            "count": 2,
+            "payload": bytes.fromhex(
+                "00 02 00 c9 00 00 cb 01"
+                "00 00 00 00 00 00 00 00"
+                "00 00 00 00 00 00 00 00"
+                "00 00 00 00 00 00 00 00"
+            ),
+        },
         "rendered_rows": [
             ".................................................",
             ".................................................",

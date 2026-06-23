@@ -28,6 +28,7 @@ Evidence:
   - `0x13eb8 refresh carries parsed secondary font selection to dispatch`
   - `parsed primary built-in font selection feeds visible page-record rows`
   - `parsed secondary built-in font selection feeds visible SO page-record rows`
+  - `secondary symbol miss falls back before visible SO page-record rows`
   - `0xe65c refresh composes with font context bridge`
   - `flagged printable d8fc low-watermark flush renders span`
   - `unflagged printable d4ac low-watermark flush renders span`
@@ -254,6 +255,24 @@ and `0xcb01`; the first visible row is:
 .........################..################...###
 ```
 
+Fixture
+`secondary symbol miss falls back before visible SO page-record rows` adds
+the secondary symbol-set fallback leg before that same visible-output path.
+The modeled stream is `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`.
+Symbol-set parsing routes through `0x11eb6`, `0x12008`, and `0x120be`,
+producing requested word `0x9a55`. The `0x156de` requested pass finds no
+class-one candidate with that word; its last requested probe is slot pointer
+`0x782350`, record `0x02e122`, candidate word `0x000e`, and `matched =
+False`.
+
+The fallback table then supplies active word `0x000e`; the prune pass keeps
+survivor slot pointers `0x782330`, `0x782340`, and `0x782350`, with the last
+prune event matching record `0x02e122`. The following secondary font-selection
+command reuses the same selected context `0xc00ae122`, secondary map
+`0x783032`, and HMI `18`. SO and two printable `!` bytes then produce the same
+compact object prefix, context slots, coords, and first visible row as the
+secondary fixture above.
+
 ## Page-Root Context Install
 
 `0xc428(slot)` maps slot `0` or `1` to the selected longword stored in the
@@ -447,6 +466,18 @@ work can close the right gap instead of re-tracing already-covered consumers.
   `.........################..################...###`. Status:
   parser-produced selection plus modeled selected-context handoff to
   visible-output fixture.
+- Claim: a secondary symbol-set miss can fall back to the firmware table word
+  before visible SO output. Evidence: fixture
+  `secondary symbol miss falls back before visible SO page-record rows`; stream
+  `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`; requested word `0x9a55`; `0x156de`
+  requested pass misses candidate word `0x000e` at slot pointer `0x782350` /
+  record `0x02e122`; fallback active word `0x000e`; surviving slots
+  `0x782330`, `0x782340`, and `0x782350`; selected context `0xc00ae122`; map
+  `0x783032`; queued object prefix
+  `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`; first visible row
+  `.........################..################...###`. Status:
+  parser-produced symbol fallback and selection plus modeled selected-context
+  handoff to visible-output fixture.
 - Claim: selected built-in context supplies HMI/default advance. Evidence:
   fixture `line-printer flagged HMI metric via 0x10550`; selected context
   `0x440946b4`, resource base `0x0146b4`, byte `+0x21 = 0x00`, long

@@ -776,7 +776,12 @@ mirrors that boundary for `ESC )s0p16h8v0s0b0T SO !!`, selected context
 `0xc00ae122`, secondary map `0x783032`, SO handler `0xc6b8`, compact object
 prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, `0x1edc6` context slots
 `(0xc008004c, 0xc00ae122)`, and compact helper `0x207ac` secondary Line
-Printer rows
+Printer rows; fixture
+`secondary symbol miss falls back before visible SO page-record rows` now
+extends that boundary through `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`, where
+requested word `0x9a55` misses in `0x156de`, fallback table word `0x000e`
+survives, and the final selected context, secondary map, object prefix,
+render-context slots, and rows match the secondary SO case
 
 ### Formatter manuals
 
@@ -862,12 +867,12 @@ ROM work needed:
 
 - Extend the pinned visible `0xc580` branch outcomes into fuller
   upstream `0x1be22` parser-state coverage around the now-pinned
-  `0x17708` success paths, broaden the parser-derived `0x156de` fallback
-  fixture into live parser/font-state coverage, add fallback/error
-  font-selection visible-output streams comparable to the now-pinned primary
-  `ESC (s0p10h12v0s0b3T!!` and secondary `ESC )s0p16h8v0s0b0T SO !!` cases,
-  and extend `0x13eb8` if later
-  inline/downloaded or error-return branches surface.
+  `0x17708` success paths, turn the parser-derived `0x156de` secondary
+  fallback fixture into live parser/font-state coverage, add other
+  fallback/error font-selection visible-output streams beyond the now-pinned
+  primary `ESC (s0p10h12v0s0b3T!!`, secondary `ESC )s0p16h8v0s0b0T SO !!`,
+  and fallback `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` cases, and extend
+  `0x13eb8` if later inline/downloaded or error-return branches surface.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.

@@ -289,8 +289,9 @@ The next work should follow dataflow, not isolated handlers:
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus
-   secondary built-in font-selection visible-output streams, and the secondary
-   symbol fallback plus primary/secondary current-font-RAM handoff and
+   secondary built-in font-selection visible-output streams, the primary and
+   secondary symbol fallbacks, plus primary/secondary current-font-RAM handoff
+   and
    composed selection-to-RAM handoff visible-output streams. The primary
    built-in case proves `ESC (s0p10h12v0s0b3T!!` through parsed selection
    handlers, selected context `0xc008004c`, printable `0xd04a` entries, object
@@ -300,10 +301,14 @@ The next work should follow dataflow, not isolated handlers:
    handler `0xc6b8`, object prefix
    `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, render-record context slots
    `(0xc008004c, 0xc00ae122)`, and final secondary Line Printer rows.
-   The fallback case proves `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`: requested
-   word `0x9a55` misses in `0x156de`, fallback word `0x000e` survives, and the
-   final selected context, map, object prefix, context slots, and rows match
-   the secondary SO case.
+   The primary fallback case proves `ESC (1234U ESC (s0p10h12v0s0b3T!!`:
+   requested word `0x9a55` misses in `0x156de`, fallback word `0x0115`
+   survives, and the final selected context, map, object prefix, context slot,
+   and rows match the primary case. The secondary fallback case proves
+   `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`: requested word `0x9a55` misses in
+   `0x156de`, fallback word `0x000e` survives, and the final selected
+   context, map, object prefix, context slots, and rows match the secondary SO
+   case.
    The primary RAM handoff case proves seeded
    `0x782ee6 = 0xc008004c` through SI `0xc68a`, `0xc428(0)`, `0xc4fc`,
    page-root slot `0`, and following `!!` visible rows on an existing root.
@@ -315,5 +320,6 @@ The next work should follow dataflow, not isolated handlers:
    current-font RAM, page-root slot install, and rows matching the pinned
    visible fixtures. Remaining suite cases should capture a single
    uninterrupted parser-to-printable CPU-state trace, add other fallback/error
-   font-selection visible-output variants, and add
+   font-selection visible-output variants beyond those two symbol misses, and
+   add
    geometry-changing publication cases with final bitmap-row comparison.

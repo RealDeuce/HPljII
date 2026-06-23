@@ -26289,6 +26289,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     secondary_font_selection_stream = b"\x1b)s0p16h8v0s0b0T"
     primary_font_selection_trace = trace_font_parser_dispatch_via_11774(data, primary_font_selection_stream)
     secondary_font_selection_trace = trace_font_parser_dispatch_via_11774(data, secondary_font_selection_stream)
+    primary_symbol_miss_stream_bytes = b"\x1b(1234U"
+    primary_symbol_miss_trace = trace_symbol_set_parser_dispatch_via_11774(data, primary_symbol_miss_stream_bytes)
+    primary_symbol_miss_commands = primary_symbol_miss_trace["commands"]
+    assert isinstance(primary_symbol_miss_commands, list)
+    primary_symbol_miss_stream = apply_symbol_set_stream_via_120be_1be22(symbol_set_state(
+        requested_symbols=[0x9999, 0x0005],
+        active_symbols=[0x9999, 0x0005],
+        remembered_symbols=[0x9999, 0x0005],
+        current_selector_782f06=0,
+    ), primary_symbol_miss_stream_bytes)
+    primary_symbol_miss_event = primary_symbol_miss_stream["stream_events"][0]
+    assert isinstance(primary_symbol_miss_event, dict)
+    primary_symbol_miss_word = int(primary_symbol_miss_event["requested_word"]) & 0xFFFF
     secondary_symbol_miss_stream_bytes = b"\x1b)1234U"
     secondary_symbol_miss_trace = trace_symbol_set_parser_dispatch_via_11774(data, secondary_symbol_miss_stream_bytes)
     secondary_symbol_miss_commands = secondary_symbol_miss_trace["commands"]
@@ -26831,6 +26844,29 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     primary_13eb8_stroke = primary_13eb8_refresh["stroke_filter"]
     assert isinstance(primary_13eb8_dispatch, dict)
     assert isinstance(primary_13eb8_stroke, dict)
+    primary_symbol_fallback_13eb8_refresh = selected_font_refresh_via_13eb8(
+        data,
+        resources,
+        actual_candidate_windows,
+        slot=0,
+        requested_primary=primary_symbol_miss_word,
+        requested_secondary=0x0005,
+        active_symbols=[primary_symbol_miss_word, 0x0005],
+        remembered_primary_782f08=primary_symbol_miss_word,
+        remembered_secondary_782f0a=0x0005,
+        fallback_table_782f0c=fallback_table_782f0c,
+        class_selector_byte_782da3=0,
+        requested_spacing=primary_metric_inputs["spacing"],  # type: ignore[index]
+        requested_pitch=primary_metric_inputs["pitch"],  # type: ignore[index]
+        requested_height=primary_metric_inputs["height"],  # type: ignore[index]
+        requested_style=primary_metric_inputs["style"],  # type: ignore[index]
+        requested_stroke=primary_metric_inputs["stroke"],  # type: ignore[index]
+        requested_typeface=primary_metric_inputs["typeface"],  # type: ignore[index]
+    )
+    primary_symbol_fallback_13eb8_dispatch = primary_symbol_fallback_13eb8_refresh["dispatch"]
+    primary_symbol_fallback_13eb8_symbol = primary_symbol_fallback_13eb8_refresh["symbol_filter"]
+    assert isinstance(primary_symbol_fallback_13eb8_dispatch, dict)
+    assert isinstance(primary_symbol_fallback_13eb8_symbol, dict)
     secondary_13eb8_refresh = selected_font_refresh_via_13eb8(
         data,
         resources,
@@ -27746,6 +27782,168 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "hmi": pack12(30),
             "page_record_root_allocations": 1,
         },
+    }))
+    primary_fallback_visible_context = int(primary_symbol_fallback_13eb8_refresh["context_update"]["selected_longword"])  # type: ignore[index]
+    primary_fallback_visible_hmi = builtin_flagged_hmi_from_context(resources, primary_fallback_visible_context)
+    primary_fallback_visible_stream = (
+        primary_symbol_miss_stream_bytes
+        + primary_font_selection_stream
+        + b"!!"
+    )
+    primary_fallback_visible_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(primary_fallback_visible_stream), direct_mode=0),
+        len(primary_fallback_visible_stream),
+    )
+    primary_fallback_visible_printable = primary_fallback_visible_fetch["stream"][
+        len(primary_symbol_miss_stream_bytes) + len(primary_font_selection_stream):
+    ]
+    primary_fallback_visible_page = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        primary_fallback_visible_printable,
+        primary_fallback_visible_context,
+        control_fixture_state(
+            cursor_x=pack12(0),
+            cursor_y=pack12(21),
+            hmi=primary_fallback_visible_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=primary_fallback_visible_hmi["hmi"],
+    )
+    primary_fallback_visible_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        primary_fallback_visible_printable,
+    )
+    primary_fallback_visible_rendered = primary_fallback_visible_page["rendered"]
+    primary_fallback_visible_bridged = primary_fallback_visible_page["bridged_record"]
+    assert isinstance(primary_fallback_visible_rendered, dict)
+    assert isinstance(primary_fallback_visible_bridged, dict)
+    primary_fallback_visible_sources: list[dict[str, object]] = []
+    for event in primary_fallback_visible_page["events"]:
+        assert isinstance(event, dict)
+        page_result = event["page_result"]
+        source = event["source"]
+        assert isinstance(page_result, dict)
+        assert isinstance(source, dict)
+        primary_fallback_visible_sources.append({
+            "source_context": source["context"],
+            "source_slot": source["context_slot"],
+            "mapped": source["mapped"],
+            "glyph_entry": source["glyph_entry"],
+            "coord": page_result["coord"],
+        })
+    checks.append(assert_equal("primary symbol miss falls back before visible page-record rows", {
+        "combined_stream": primary_fallback_visible_fetch["stream"],
+        "fetch_sources": sorted(set(primary_fallback_visible_fetch["sources"])),
+        "symbol_parser_handlers": [
+            dispatch["handler"]
+            for dispatch in primary_symbol_miss_commands[0]["dispatches"]
+        ],
+        "symbol_requested_word": primary_symbol_miss_word,
+        "symbol_filter": {
+            "active_word_source": primary_symbol_fallback_13eb8_symbol["active_word_source"],
+            "active_word": primary_symbol_fallback_13eb8_symbol["active_word"],
+            "survivor_slot_pointers": primary_symbol_fallback_13eb8_symbol["survivor_slot_pointers"],
+            "requested_match_count": sum(
+                1
+                for event in primary_symbol_fallback_13eb8_symbol["events"]  # type: ignore[index]
+                if event["pass"] == "requested" and event["matched"]
+            ),
+            "prune_match_count": sum(
+                1
+                for event in primary_symbol_fallback_13eb8_symbol["prune_events"]  # type: ignore[index]
+                if event["matched"]
+            ),
+        },
+        "selection_handlers": [
+            event["handler"]
+            for event in primary_selection_request["events"]
+        ],
+        "selection_context": primary_fallback_visible_context,
+        "selection_map": {
+            key: primary_symbol_fallback_13eb8_dispatch[key]
+            for key in (
+                "slot",
+                "selected_symbol",
+                "active_symbol",
+                "range_start",
+                "range_end",
+                "patch_kind",
+                "map_address",
+            )
+        },
+        "context_update": primary_symbol_fallback_13eb8_refresh["context_update"],
+        "metric": primary_fallback_visible_hmi,
+        "printable_stream": primary_fallback_visible_printable,
+        "printable_parser_handlers": [
+            event["handler"]
+            for event in primary_fallback_visible_trace["events"]
+        ],
+        "printable_sources": primary_fallback_visible_sources,
+        "root_allocations": primary_fallback_visible_page["final_state"]["page_record_root_allocations"],
+        "object_prefix": primary_fallback_visible_page["bucket_object"][:14],
+        "bridged_context_slots": primary_fallback_visible_bridged["context_slots"][:2],
+        "rows_match_primary_visible": primary_fallback_visible_rendered["rows"] == primary_selection_visible_rendered["rows"],
+    }, {
+        "combined_stream": primary_symbol_miss_stream_bytes + primary_font_selection_stream + b"!!",
+        "fetch_sources": ["ring"],
+        "symbol_parser_handlers": [0x011EB6, 0x01201E, 0x0120BE],
+        "symbol_requested_word": 0x9A55,
+        "symbol_filter": {
+            "active_word_source": "fallback-table",
+            "active_word": 0x0115,
+            "survivor_slot_pointers": [0x782354, 0x782364, 0x782374],
+            "requested_match_count": 0,
+            "prune_match_count": 3,
+        },
+        "selection_handlers": [0x00C930, 0x00C89C, 0x00C6EC, 0x00C780, 0x00C840, 0x01205A],
+        "selection_context": 0xC008004C,
+        "selection_map": {
+            "slot": "primary",
+            "selected_symbol": 0x0115,
+            "active_symbol": 0x0115,
+            "range_start": 0x0021,
+            "range_end": 0x00FE,
+            "patch_kind": "unchanged",
+            "map_address": 0x782F32,
+        },
+        "context_update": {
+            "helper": 0x0144D2,
+            "context_record": 0x782EE6,
+            "selected_longword": 0xC008004C,
+            "byte_4_bit30": 1,
+            "byte_5_bit26": 0,
+        },
+        "metric": {
+            "base": 0x00004C,
+            "metric_flag": 0,
+            "raw_metric": 0x00780000,
+            "hmi": pack12(30),
+        },
+        "printable_stream": b"!!",
+        "printable_parser_handlers": [0x00D04A, 0x00D04A],
+        "printable_sources": [
+            {
+                "source_context": 0xC008004C,
+                "source_slot": 0,
+                "mapped": 0,
+                "glyph_entry": 0x001088,
+                "coord": 0x6A00,
+            },
+            {
+                "source_context": 0xC008004C,
+                "source_slot": 0,
+                "mapped": 0,
+                "glyph_entry": 0x001088,
+                "coord": 0x6802,
+            },
+        ],
+        "root_allocations": 1,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 00 6a 00 00 68 02"),
+        "bridged_context_slots": (0xC008004C, 0),
+        "rows_match_primary_visible": True,
     }))
     secondary_visible_context = int(secondary_13eb8_refresh["context_update"]["selected_longword"])  # type: ignore[index]
     secondary_visible_hmi = builtin_flagged_hmi_from_context(resources, secondary_visible_context)

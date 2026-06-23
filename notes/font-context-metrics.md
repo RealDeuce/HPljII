@@ -28,6 +28,7 @@ Evidence:
   - `0x13eb8 refresh carries parsed secondary font selection to dispatch`
   - `parsed primary built-in font selection feeds visible page-record rows`
   - `parsed secondary built-in font selection feeds visible SO page-record rows`
+  - `primary symbol miss falls back before visible page-record rows`
   - `parsed primary selection current-font RAM feeds SI visible rows`
   - `parsed secondary selection current-font RAM feeds SO visible rows`
   - `live primary current-font RAM install feeds SI page-record rows`
@@ -229,6 +230,18 @@ claim live CPU memory continuity between the command parser's current-font RAM
 record and the page-record runner; the fixture injects the selected context
 longword from the pinned `0x13eb8` result into the printable/page-record
 phase.
+
+Fixture `primary symbol miss falls back before visible page-record rows` adds
+the primary symbol-set fallback leg before that same visible-output path. The
+modeled stream is `ESC (1234U ESC (s0p10h12v0s0b3T!!`. Symbol-set parsing
+routes through `0x11eb6`, `0x1201e`, and `0x120be`, producing requested word
+`0x9a55`. The `0x156de` requested pass finds no class-zero match, so the
+fallback table supplies active word `0x0115`; the prune pass keeps survivor
+slot pointers `0x782354`, `0x782364`, and `0x782374`. The following primary
+font-selection command reuses selected context `0xc008004c`, primary map
+`0x782f32`, and HMI `30`. The two printable `!` bytes then produce the same
+compact object prefix, render-record context slot, and rows as the primary
+fixture above.
 
 Fixture `live primary current-font RAM install feeds SI page-record rows`
 narrows that handoff gap for the primary path. It seeds current-font RAM
@@ -506,6 +519,16 @@ work can close the right gap instead of re-tracing already-covered consumers.
   `.............###...........................###...`. Status:
   parser-produced selection plus modeled selected-context handoff to
   visible-output fixture.
+- Claim: a primary symbol-set miss can fall back to the firmware table word
+  before visible primary output. Evidence: fixture
+  `primary symbol miss falls back before visible page-record rows`; stream
+  `ESC (1234U ESC (s0p10h12v0s0b3T!!`; requested word `0x9a55`; symbol
+  parser handlers `0x11eb6`, `0x1201e`, and `0x120be`; fallback active word
+  `0x0115`; survivor slots `0x782354`, `0x782364`, and `0x782374`; selected
+  context `0xc008004c`; map `0x782f32`; queued object prefix
+  `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`; rows match the pinned primary
+  visible fixture. Status: parser-produced symbol fallback plus modeled
+  selected-context handoff to visible-output fixture.
 - Claim: parsed secondary built-in font-selection bytes can determine visible
   compact text rows after SO selects the secondary context. Evidence: fixture
   `parsed secondary built-in font selection feeds visible SO page-record rows`;
@@ -733,7 +756,10 @@ A byte-stream reproduction must preserve these behaviors:
   `ESC (s0p10h12v0s0b3T!!` is now driven from parser bytes to visible rows,
   with the selected `0xc008004c` context injected at the printable phase. Not
   every PCL font request combination has been driven from parser bytes to
-  visible rows. The secondary built-in selection request
+  visible rows, but the primary symbol-miss fallback boundary
+  `ESC (1234U ESC (s0p10h12v0s0b3T!!` is now fixture-backed from requested
+  word `0x9a55` to fallback word `0x0115` and matching primary rows. The
+  secondary built-in selection request
   `ESC )s0p16h8v0s0b0T SO !!` is also driven to visible rows through SO
   handler `0xc6b8` and context `0xc00ae122`. The secondary current-font RAM
   handoff from seeded `0x782ef6` through `0xc428` / `0xc4fc` into existing

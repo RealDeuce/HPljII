@@ -773,6 +773,13 @@ queue object prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and the
 render record carries context slots `(0xc008004c, 0xc00ae122)` before compact
 helper `0x207ac` renders two secondary Line Printer glyph rows.
 Fixture
+`primary symbol miss falls back before visible page-record rows` proves the
+primary visible rows after `ESC (1234U` requests symbol word `0x9a55`,
+`0x156de` misses that word in the class-zero candidates, uses fallback table
+word `0x0115`, keeps slots `0x782354`, `0x782364`, and `0x782374`, then
+selects the same context `0xc008004c`, map `0x782f32`, and compact object
+prefix as the primary fixture.
+Fixture
 `secondary symbol miss falls back before visible SO page-record rows` proves
 the same secondary visible rows after `ESC )1234U` requests symbol word
 `0x9a55`, `0x156de` misses that word in the class-one candidates, uses

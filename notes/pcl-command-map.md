@@ -629,9 +629,11 @@ current-default results, pins `0x1b50e` fast-probe/two-pass resolver
 classes and Roman-8 duplicate ordinal behavior, pins `0x1ab84`
 synthesized search, pins `0x1ad66` as a range-1, range-2, then
 `0x1ae7e` fallback search, and models `0x1bbfe` / `0x1b060` from
-candidate record fields. A parser-derived `ESC )1234U` miss now feeds
-`0x156de`: requested word `0x9a55` misses the class-one candidates and
-falls through to fallback-table word `0x000e`. Remaining default-font
+candidate record fields. Parser-derived `ESC (1234U` and `ESC )1234U` misses
+now feed `0x156de`: requested word `0x9a55` misses the class-zero candidates
+and falls through to fallback-table word `0x0115` for the primary stream,
+while the same requested word misses class-one candidates and falls through to
+fallback-table word `0x000e` for the secondary stream. Remaining default-font
 uncertainty is narrowed further by real scanned built-in fallback
 coverage: class-zero candidates feed `0x1b060` and choose record
 `0x00004c` by Roman-8 fallback for requested `0x0005`, while class-one

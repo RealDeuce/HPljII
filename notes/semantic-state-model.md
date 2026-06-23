@@ -1158,9 +1158,12 @@ for how resource records become ordinary page-record text.
     to be visible.
   - `0x783f02..0x783f05`: per-source status bytes written when a source
     group has no more matching rows or when continuation gating is needed.
-    The verified internal-font source group writes `0x783f05 = 14` in the
-    class-zero pass through `0x1c5d6..0x1c5de`, then the class-one pass reads
-    that byte through `0x1c41a..0x1c428` and later writes `0x783f05 = 29`.
+    Fixture `font sample non-internal source groups follow modes 0..2` writes
+    `0x783f02 = 1`, `0x783f03 = 1`, and `0x783f04 = 1` for sources `0`, `1`,
+    and `2`. The verified internal-font source group writes `0x783f05 = 14`
+    in the class-zero pass through `0x1c5d6..0x1c5de`, then the class-one pass
+    reads that byte through `0x1c41a..0x1c428` and later writes
+    `0x783f05 = 29`.
   - `0x783f08`: recent-context count byte maintained by
     `0x1c540..0x1c5c6`.
   - local page-break word `-6(A6)`: receives the return flag from
@@ -1186,8 +1189,12 @@ for how resource records become ordinary page-record text.
     leaves final recent contexts `0x40099d18,0x4409a0e4,0x4409a534,
     0x4009a984,0x400a3484,0x440a3850,0x440a3ca0,0x400a40f0,0x400ad4aa,
     0x440ad87a,0x440adcce,0x400ae122`.
-    Other source headings, continuation branches, and whole-page placement
-    remain open.
+    Source `0` fixture-backed mode `0` emits no rows in either pass and writes
+    `0x783f02 = 1`; source `1` mode `1` emits only request-`0` rows `L00`
+    from records `0x00004c` and `0x019d18` across the two class passes and
+    writes `0x783f03 = 1`; source `2` mode `2` does the same for `R00` and
+    writes `0x783f04 = 1`. Source-heading page objects, continuation branches,
+    and whole-page placement remain open.
   - record `+0x28..+0x31` baseline/cell/manual semantics remain
     unresolved until this path is correlated with emitted page objects or
     a known printed sample.
@@ -1506,13 +1513,16 @@ open.
   class-zero emits `I00..I13`, class-one emits `I00` plus `I16..I28`, and
   the full-loop status chain is class-zero `0x783f05 = 14`, class-one resume
   through `0x1c41a..0x1c428`, and final class-one `0x783f05 = 29`. The
+  non-internal source-index fixture covers source `0` mode `0` with no rows
+  and sources `1`/`2` modes `1`/`2` with only request-`0` `L00`/`R00` rows,
+  writing source status bytes `0x783f02..0x783f04 = 1`. The
   `0x1c1cf` sample run 1 byte stream is now consumed both as a standalone
   page-object/render fixture and after first-`COURIER` row fields in the same
   carried page-record state. The
   `0x1c1e9` sample run 2 byte stream is now carried after run 1 through the
   no-continuation `0x1d050` branch for first `COURIER`.
-  Remaining gaps are other source headings, rows for those headings,
-  continuation branches, and full page placement.
+  Remaining gaps are source-heading page-object rendering for source indexes
+  `0..2`, continuation branches, and full page placement.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
   identified. First `COURIER` and first `LINE_PRINTER` row-field

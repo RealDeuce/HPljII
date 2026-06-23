@@ -471,8 +471,21 @@ slots end at
 `0x40099d18,0x4409a0e4,0x4409a534,0x4009a984,0x400a3484,0x440a3850,
 0x440a3ca0,0x400a40f0,0x400ad4aa,0x440ad87a,0x440adcce,0x400ae122`.
 
-The still-open boundary is the rest of `0x1c204..0x1ed84`: other source
-headings, continuation branches, and all-source full-page placement. The
+Fixture `font sample non-internal source groups follow modes 0..2` covers the
+same row loop for the other source indexes. Source `0` uses resolver mode `0`
+for `"PERMANENT" SOFT FONTS`; in this built-in-only fixture state both class
+passes miss at request `0`, advance through `0x1c404..0x1c42e`, miss again at
+request `1`, and write `0x783f02 = 1`. Source `1` uses mode `1` for `LEFT
+FONT CARTRIDGE`; source `2` uses mode `2` for `RIGHT FONT CARTRIDGE`. Both
+cartridge sources take the request-`0` fast-probe path in each class pass, so
+class-zero emits only `L00` / `R00` from record `0x00004c`, class-one emits
+only `L00` / `R00` from record `0x019d18`, and request `1` is the terminal
+miss. Their status chains are `0x783f03 = 1` and `0x783f04 = 1`; the
+class-one pass reads that prior value through `0x1c41a..0x1c428` before the
+request-`1` terminal miss.
+
+The still-open boundary is the rest of `0x1c204..0x1ed84`: source-heading page
+objects, continuation branches, and all-source full-page placement. The
 emitted page objects still must be
 correlated with the direct sample-byte row hashes or a known print sample
 before those fields get final semantic names.

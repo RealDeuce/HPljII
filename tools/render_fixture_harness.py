@@ -29727,6 +29727,188 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "final_cursor_x": 0x08AC0000,
         "final_cursor_y": 0x06390003,
     }))
+    non_internal_source_groups: dict[int, dict[str, object]] = {}
+    for source_index in (0, 1, 2):
+        class_zero_rows = font_sample_source_group_rows_via_1c334(
+            resources,
+            actual_candidate_windows,
+            source_index=source_index,
+            class_filter=0,
+            requested_symbol=0x0005,
+            current_selected_pointer=0x782354,
+            current_record_start=0x00004C,
+            initial_recent_contexts=[0x4008004C],
+        )
+        class_one_rows = font_sample_source_group_rows_via_1c334(
+            resources,
+            actual_candidate_windows,
+            source_index=source_index,
+            class_filter=1,
+            requested_symbol=0x0005,
+            current_selected_pointer=0x782324,
+            current_record_start=0x019D18,
+            initial_recent_contexts=[0x40099D18],
+            source_status_before=int(class_zero_rows["source_status_write"]["value"]),  # type: ignore[index]
+        )
+        non_internal_source_groups[source_index] = {
+            "class_zero": {
+                "search_mode": class_zero_rows["search_mode"],
+                "terminal": (
+                    class_zero_rows["terminal_reason"],
+                    class_zero_rows["terminal_request_index"],
+                ),
+                "rows": [
+                    (
+                        row["request_index"],
+                        row["record_start"],
+                        row["context_after_1c746"],
+                        row["symbol_word"],
+                        row["row_fields"]["printed"],
+                    )
+                    for row in class_zero_rows["emitted_rows"]  # type: ignore[index]
+                ],
+                "non_emit": [
+                    (
+                        attempt["request_index"],
+                        attempt["decision"],
+                        attempt["resolution_summary"]["source"],  # type: ignore[index]
+                    )
+                    for attempt in class_zero_rows["attempts"]  # type: ignore[index]
+                    if attempt["decision"] != "emit-row"
+                ],
+                "source_status_write": class_zero_rows["source_status_write"],
+            },
+            "class_one": {
+                "search_mode": class_one_rows["search_mode"],
+                "source_status_before": class_one_rows["source_status_before"],
+                "status_resume_events": class_one_rows["status_resume_events"],
+                "terminal": (
+                    class_one_rows["terminal_reason"],
+                    class_one_rows["terminal_request_index"],
+                ),
+                "rows": [
+                    (
+                        row["request_index"],
+                        row["record_start"],
+                        row["context_after_1c746"],
+                        row["symbol_word"],
+                        row["row_fields"]["printed"],
+                    )
+                    for row in class_one_rows["emitted_rows"]  # type: ignore[index]
+                ],
+                "non_emit": [
+                    (
+                        attempt["request_index"],
+                        attempt["decision"],
+                        attempt["resolution_summary"]["source"],  # type: ignore[index]
+                    )
+                    for attempt in class_one_rows["attempts"]  # type: ignore[index]
+                    if attempt["decision"] != "emit-row"
+                ],
+                "source_status_write": class_one_rows["source_status_write"],
+            },
+        }
+    checks.append(assert_equal("font sample non-internal source groups follow modes 0..2", non_internal_source_groups, {
+        0: {
+            "class_zero": {
+                "search_mode": 0,
+                "terminal": ("resolver-miss", 1),
+                "rows": [],
+                "non_emit": [
+                    (0, "initial-miss", "0x1b50e-miss"),
+                    (1, "terminal-miss", "0x1b50e-miss"),
+                ],
+                "source_status_write": {
+                    "address": 0x00783F02,
+                    "value": 1,
+                    "writer": "0x1c5d6..0x1c5de",
+                },
+            },
+            "class_one": {
+                "search_mode": 0,
+                "source_status_before": 1,
+                "status_resume_events": [{
+                    "reader": "0x1c41a..0x1c428",
+                    "reason": "initial-miss",
+                    "source_status_before": 1,
+                    "next_request_index": 1,
+                }],
+                "terminal": ("resolver-miss", 1),
+                "rows": [],
+                "non_emit": [
+                    (0, "initial-miss", "0x1b50e-miss"),
+                    (1, "terminal-miss", "0x1b50e-miss"),
+                ],
+                "source_status_write": {
+                    "address": 0x00783F02,
+                    "value": 1,
+                    "writer": "0x1c5d6..0x1c5de",
+                },
+            },
+        },
+        1: {
+            "class_zero": {
+                "search_mode": 1,
+                "terminal": ("resolver-miss", 1),
+                "rows": [(0, 0x00004C, 0x4008004C, 0x0115, b"L00LINE PRINTER10128U")],
+                "non_emit": [(1, "terminal-miss", "0x1b50e-miss")],
+                "source_status_write": {
+                    "address": 0x00783F03,
+                    "value": 1,
+                    "writer": "0x1c5d6..0x1c5de",
+                },
+            },
+            "class_one": {
+                "search_mode": 1,
+                "source_status_before": 1,
+                "status_resume_events": [{
+                    "reader": "0x1c41a..0x1c428",
+                    "reason": "post-row-recent-scan",
+                    "source_status_before": 1,
+                    "next_request_index": 1,
+                }],
+                "terminal": ("resolver-miss", 1),
+                "rows": [(0, 0x019D18, 0x40099D18, 0x0115, b"L00LINE PRINTER10128U")],
+                "non_emit": [(1, "terminal-miss", "0x1b50e-miss")],
+                "source_status_write": {
+                    "address": 0x00783F03,
+                    "value": 1,
+                    "writer": "0x1c5d6..0x1c5de",
+                },
+            },
+        },
+        2: {
+            "class_zero": {
+                "search_mode": 2,
+                "terminal": ("resolver-miss", 1),
+                "rows": [(0, 0x00004C, 0x4008004C, 0x0115, b"R00LINE PRINTER10128U")],
+                "non_emit": [(1, "terminal-miss", "0x1b50e-miss")],
+                "source_status_write": {
+                    "address": 0x00783F04,
+                    "value": 1,
+                    "writer": "0x1c5d6..0x1c5de",
+                },
+            },
+            "class_one": {
+                "search_mode": 2,
+                "source_status_before": 1,
+                "status_resume_events": [{
+                    "reader": "0x1c41a..0x1c428",
+                    "reason": "post-row-recent-scan",
+                    "source_status_before": 1,
+                    "next_request_index": 1,
+                }],
+                "terminal": ("resolver-miss", 1),
+                "rows": [(0, 0x019D18, 0x40099D18, 0x0115, b"R00LINE PRINTER10128U")],
+                "non_emit": [(1, "terminal-miss", "0x1b50e-miss")],
+                "source_status_write": {
+                    "address": 0x00783F04,
+                    "value": 1,
+                    "writer": "0x1c5d6..0x1c5de",
+                },
+            },
+        },
+    }))
     checks.append(assert_equal("font sample resolver carries first two Courier rows", {
         "row1_resolution": {
             "summary": select_keys(courier_source_heading_two_rows["row1_resolution"], (  # type: ignore[arg-type]
@@ -70360,6 +70542,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             for bucket in (26, 66, 82, 98)
         },
     ))
+    lines.append("- font sample non-internal source groups: source 0 uses mode 0 and emits no rows in either pass, writing `0x783f02 = 1`; sources 1 and 2 use modes 1 and 2, each emit only the request-0 fast-probe row in each class pass (`L00`/`R00`) and write `0x783f03 = 1` / `0x783f04 = 1`. The class-one pass for each source reads the prior status byte through `0x1c41a..0x1c428` before terminating at request 1.")
     lines.append("- font sample row fields: first `LINE_PRINTER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152`; the height value is rounded by the mode-1 `0x1cc6e` add-five path." % (
         line_printer_sample_row_fields["record_start"],
         " ".join(f"{byte:02x}" for byte in line_printer_sample_row_fields["printed"]),

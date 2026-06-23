@@ -682,7 +682,10 @@ passes, with class-zero visible rows `I00..I13`, class-one visible rows
 `I00` and `I16..I28`, duplicate Roman-8 substitution rows
 `I05`/`I10`/`I20`/`I25`, and the full-loop source-status chain
 `0x783f05 = 14` from class-zero, class-one resume through
-`0x1c41a..0x1c428`, then `0x783f05 = 29`; the report also
+`0x1c41a..0x1c428`, then `0x783f05 = 29`; the non-internal source-index
+fixture also pins source `0` as no-row/status `0x783f02 = 1` and sources
+`1`/`2` as single request-`0` `L00`/`R00` rows with
+`0x783f03 = 1` / `0x783f04 = 1`; the report also
 pins sample-page cursor and row sequencing through `0x1c916`,
 `0x1ca2c`, `0x1cabe`, `0x1cf34`, and `0x1d050`, including page-limit
 checks against `0x782db6`, source/metric text emission through `0xd04a`,
@@ -1031,6 +1034,10 @@ ROM work needed:
   rows `I05`/`I10`/`I20`/`I25` prove duplicate Roman-8 substitutions are
   visible before the post-row `0x1c540..0x1c5c6` recent-list scan. The final
   class-one status write is `0x783f05 = 29` through `0x1c5d6..0x1c5de`.
+  Sources `0..2` are now fixture-backed too: source `0` mode `0` emits no
+  rows and writes `0x783f02 = 1`, while source `1` / `2` modes `1` / `2` emit
+  only the request-`0` `L00` / `R00` rows in each class pass and write
+  `0x783f03 = 1` / `0x783f04 = 1`.
   Fixture `font sample run 1 full row spans compact buckets` carries byte stream
   ``ABCDEfghij#$@[\\]^`{|}~123`` through context `0x44080418`, compact
   buckets `-1` and `0`, `0x1ed84` / `0x1ef6a`, and row hashes
@@ -1045,9 +1052,10 @@ ROM work needed:
   `b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5`.
   The source-heading composition fixtures now carry `INTERNAL FONTS` through
   all 14 visible class-zero rows and all 14 visible class-one rows in separate
-  page-record states. The next boundaries are other source headings,
-  continuation branches, and full-printout placement for comparison against
-  the direct payload hashes and a known printed/self-test sample.
+  page-record states. The next boundaries are source-heading page-object
+  composition for source indexes `0..2`, continuation branches, and
+  full-printout placement for comparison against the direct payload hashes and
+  a known printed/self-test sample.
 - Identify the manual-facing names for the currently unidentified
   built-in symbol words `0N`, `10U`, and `11U`, and broaden the
   now-pinned real symbol-map samples into more live parser/font-selection

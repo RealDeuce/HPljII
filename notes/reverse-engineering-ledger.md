@@ -1096,9 +1096,13 @@ ROM work needed:
   `0x1dcf2..0x1de2c` multi-probe preflight. Fixture `font sample full printout
   rows reuse ROM sample byte runs` now proves all 32 composed rows consume the
   ROM sample tables at `0x1c1cf` and `0x1c1e9`, with correlation digest
-  `4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a`. The
-  next boundary is physical baseline/cell comparison against direct rendered
-  row surfaces or a known printed/self-test sample.
+  `4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a`.
+  Fixture `font sample full printout segments render through 0x1ed84 and
+  0x1ef6a` now carries all eight source/class page-record segments through the
+  bridge and band renderer, with aggregate rendered-surface digest
+  `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`. The
+  next boundary is physical baseline/cell comparison against a known
+  printed/self-test sample.
 - Identify the manual-facing names for the currently unidentified
   built-in symbol words `0N`, `10U`, and `11U`, and broaden the
   now-pinned real symbol-map samples into more live parser/font-selection

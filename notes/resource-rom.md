@@ -562,9 +562,19 @@ sample-run render hashes remain
 The aggregate correlation digest is
 `4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a`.
 
-The still-open boundary is physical comparison of those composed page-record
-surfaces against direct rendered row surfaces or a known printed/self-test
-sample, including baseline and cell placement agreement after `0x1ed84`.
+Fixture `font sample full printout segments render through 0x1ed84 and
+0x1ef6a` now renders each of those eight page-record segments through the
+active-to-render-record bridge and per-band renderer. The eight segments
+produce render-bucket counts `[1, 6, 6, 65, 1, 5, 5, 50]`, rendered bucket-row
+totals `[33, 210, 210, 2012, 33, 146, 146, 1257]`, and aggregate surface
+digest `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
+The modeled class-zero segments top out at row width `2219`; the modeled
+class-one segments top out at row width `4097`, so that width/baseline
+interpretation is now pinned but not yet validated against paper output.
+
+The still-open boundary is physical comparison of those rendered source/class
+surfaces against a known printed/self-test sample, including baseline and cell
+placement agreement after `0x1ed84`.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record

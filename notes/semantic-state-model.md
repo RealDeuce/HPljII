@@ -1501,8 +1501,13 @@ row reuse of the two ROM sample byte tables. Fixture `font sample full printout
 rows reuse ROM sample byte runs` shows all 32 emitted rows queue the 25-byte
 run-1 table at `0x1c1cf` and the 25-byte run-2 table at `0x1c1e9`, with
 aggregate correlation digest
-`4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a`. It does
-not yet prove physical baseline/cell agreement against a known
+`4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a`.
+Fixture `font sample full printout segments render through 0x1ed84 and
+0x1ef6a` then renders the eight segment page records through the bridge and
+band renderer, preserving render-bucket counts `[1, 6, 6, 65, 1, 5, 5, 50]`,
+rendered bucket-row totals `[33, 210, 210, 2012, 33, 146, 146, 1257]`, and
+surface digest `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
+It does not yet prove physical baseline/cell agreement against a known
 printed/self-test sample.
 
 ### Confidence
@@ -1519,7 +1524,8 @@ resolutions and row-to-row composition, first
 page-record object placement, carried run-2 bucket rendering through
 `0x1ed84` / `0x1ef6a`, direct sample byte-run row hashes, full source/class
 placement skeleton, and per-row reuse of sample byte tables `0x1c1cf` /
-`0x1c1e9` because they are anchored by generated disassembly analysis and
+`0x1c1e9`, plus all-source rendered surface digests through `0x1ed84` /
+`0x1ef6a`, because they are anchored by generated disassembly analysis and
 `tools/render_fixture_harness.py`. Medium for baseline/cell interpretation
 because physical/self-test comparison is still open.
 
@@ -1570,8 +1576,12 @@ because physical/self-test comparison is still open.
   each non-empty segment row reuses the ROM run tables at `0x1c1cf` and
   `0x1c1e9`, producing correlation digest
   `4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a`.
-  Remaining gap is physical baseline/cell comparison against direct rendered
-  row surfaces or a known printed/self-test sample.
+  Fixture `font sample full printout segments render through 0x1ed84 and
+  0x1ef6a` renders those segment records through the output bridge and pins
+  surface digest
+  `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
+  Remaining gap is physical baseline/cell comparison against a known
+  printed/self-test sample.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
   identified. First `COURIER` and first `LINE_PRINTER` row-field

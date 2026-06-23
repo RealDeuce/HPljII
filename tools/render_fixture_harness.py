@@ -20488,6 +20488,7 @@ def summarize_page_record_bucket_renders(
     page_record: dict[str, object],
     bucket_objects: dict[int, list[bytes]],
     width_word: int = 0x0400,
+    dest_stride: int = 0x20,
 ) -> dict[int, dict[str, object]]:
     summary: dict[int, dict[str, object]] = {}
     for bucket in sorted(bucket_objects):
@@ -20497,6 +20498,7 @@ def summarize_page_record_bucket_renders(
             page_record,
             bucket_word=bucket,
             width_word=width_word,
+            dest_stride=dest_stride,
         )
         entry = rendered_entry["entry"]
         assert isinstance(entry, dict)
@@ -21908,6 +21910,133 @@ def font_sample_full_printout_sample_run_correlation_summary(
         "segments": segments,
         "total_rows": sum(int(segment["row_count"]) for segment in segments),
         "correlation_digest": aggregate.hexdigest(),
+    }
+
+
+def font_sample_page_row_count(page: dict[str, object]) -> int:
+    if "rows" in page:
+        rows = page["rows"]
+        assert isinstance(rows, list)
+        return len(rows)
+    if "sample_run1_event" in page and "sample_run2_event" in page:
+        return 1
+    return 0
+
+
+def font_sample_full_printout_render_surface_summary(
+    data: bytes,
+    resources: bytes,
+    *,
+    source0_class_zero_page: dict[str, object],
+    source0_class_one_page: dict[str, object],
+    source1_class_zero_page: dict[str, object],
+    source1_class_one_page: dict[str, object],
+    source2_class_zero_page: dict[str, object],
+    source2_class_one_page: dict[str, object],
+    source3_class_zero_page: dict[str, object],
+    source3_class_one_page: dict[str, object],
+) -> dict[str, object]:
+    page_by_key = {
+        (0, 0): source0_class_zero_page,
+        (1, 0): source1_class_zero_page,
+        (2, 0): source2_class_zero_page,
+        (3, 0): source3_class_zero_page,
+        (0, 1): source0_class_one_page,
+        (1, 1): source1_class_one_page,
+        (2, 1): source2_class_one_page,
+        (3, 1): source3_class_one_page,
+    }
+    order = [(class_filter, source_index) for class_filter in (0, 1) for source_index in range(4)]
+
+    def page_label(page: dict[str, object]) -> bytes:
+        if "source_label" in page:
+            source_label = page["source_label"]
+            assert isinstance(source_label, dict)
+            return bytes(source_label["label"])
+        rows = page["rows"]
+        assert isinstance(rows, list) and rows
+        first = rows[0]
+        assert isinstance(first, dict)
+        row = first["row"]
+        assert isinstance(row, dict)
+        source_label = row["source_label"]
+        assert isinstance(source_label, dict)
+        return bytes(source_label["label"])
+
+    def surface_digest(rendered: dict[int, dict[str, object]]) -> str:
+        digest = hashlib.sha256()
+        for bucket, summary in sorted(rendered.items()):
+            digest.update(int(bucket).to_bytes(4, "big", signed=True))
+            digest.update(int(summary["row_count"]).to_bytes(4, "big"))
+            digest.update(int(summary["row_width"]).to_bytes(4, "big"))
+            digest.update(bytes.fromhex(str(summary["row_sha256"])))
+            for glyph in summary["glyphs"]:  # type: ignore[index]
+                digest.update(int(glyph).to_bytes(2, "big"))
+            for count in summary["counts"]:  # type: ignore[index]
+                digest.update(int(count).to_bytes(2, "big"))
+        return digest.hexdigest()
+
+    segments = []
+    aggregate = hashlib.sha256()
+    for class_filter, source_index in order:
+        page = page_by_key[(source_index, class_filter)]
+        page_record = page["page_record"]
+        assert isinstance(page_record, dict)
+        bucket_objects = page.get("bucket_objects")
+        if bucket_objects is None:
+            bucket_objects = page_record_bucket_objects(page_record)
+        assert isinstance(bucket_objects, dict)
+        try:
+            rendered = summarize_page_record_bucket_renders(
+                data,
+                resources,
+                page_record,
+                bucket_objects,  # type: ignore[arg-type]
+                dest_stride=0x0400,
+            )
+        except AssertionError as exc:
+            raise AssertionError(
+                "full printout segment render failed for "
+                f"class {class_filter} source {source_index}"
+            ) from exc
+        digest = surface_digest(rendered)
+        buckets = sorted(rendered)
+        selected_buckets = (
+            buckets[:2]
+            + [bucket for bucket in buckets[2:-2] if bucket in (0, 3, 4, 7, 26, 66, 82, 98)]
+            + buckets[-2:]
+        )
+        selected_buckets = sorted(set(selected_buckets))
+        segment = {
+            "class_filter": class_filter,
+            "source_index": source_index,
+            "label": page_label(page),
+            "row_count": font_sample_page_row_count(page),
+            "bucket_count": sum(len(objects) for objects in bucket_objects.values()),  # type: ignore[union-attr]
+            "render_bucket_count": len(rendered),
+            "rendered_row_total": sum(int(summary["row_count"]) for summary in rendered.values()),
+            "max_row_width": max((int(summary["row_width"]) for summary in rendered.values()), default=0),
+            "selected_bucket_rows": {
+                bucket: {
+                    "row_count": rendered[bucket]["row_count"],
+                    "row_width": rendered[bucket]["row_width"],
+                    "row_sha256": rendered[bucket]["row_sha256"],
+                }
+                for bucket in selected_buckets
+            },
+            "surface_digest": digest,
+        }
+        segments.append(segment)
+        aggregate.update(int(class_filter).to_bytes(1, "big"))
+        aggregate.update(int(source_index).to_bytes(1, "big"))
+        aggregate.update(bytes.fromhex(digest))
+    return {
+        "helper": "0x1ed84/0x1ef6a full source/class segment render",
+        "segments": segments,
+        "total_segments": len(segments),
+        "total_font_rows": sum(int(segment["row_count"]) for segment in segments),
+        "total_rendered_bucket_rows": sum(int(segment["rendered_row_total"]) for segment in segments),
+        "surface_digest": aggregate.hexdigest(),
     }
 
 
@@ -31766,6 +31895,352 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
             "total_rows": 32,
             "correlation_digest": "4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a",
+        },
+    ))
+    font_sample_full_printout_render_surfaces = (
+        font_sample_full_printout_render_surface_summary(
+            data,
+            resources,
+            source0_class_zero_page=source0_heading_page,
+            source0_class_one_page=source0_class_one_heading_page,
+            source1_class_zero_page=source1_class_zero_page,
+            source1_class_one_page=source1_class_one_page,
+            source2_class_zero_page=source2_class_zero_page,
+            source2_class_one_page=source2_class_one_page,
+            source3_class_zero_page=internal_source_group_page,
+            source3_class_one_page=internal_class_one_group_page,
+        )
+    )
+    checks.append(assert_equal(
+        "font sample full printout segments render through 0x1ed84 and 0x1ef6a",
+        font_sample_full_printout_render_surfaces,
+        {
+            "helper": "0x1ed84/0x1ef6a full source/class segment render",
+            "segments": [
+                {
+                    "class_filter": 0,
+                    "source_index": 0,
+                    "label": b"\"PERMANENT\" SOFT FONTS",
+                    "row_count": 0,
+                    "bucket_count": 3,
+                    "render_bucket_count": 1,
+                    "rendered_row_total": 33,
+                    "max_row_width": 656,
+                    "selected_bucket_rows": {
+                        0: {
+                            "row_count": 33,
+                            "row_width": 656,
+                            "row_sha256": "2e074237301b81b44d09db06a62ea2429c3dfacaf23adcf07d3c4530ced31b7c",
+                        },
+                    },
+                    "surface_digest": "105c04604475622eb5b4511ca69b95634bd2d9c5ddefcb0cb07e12ef45b234d1",
+                },
+                {
+                    "class_filter": 0,
+                    "source_index": 1,
+                    "label": b"LEFT FONT CARTRIDGE",
+                    "row_count": 1,
+                    "bucket_count": 13,
+                    "render_bucket_count": 6,
+                    "rendered_row_total": 210,
+                    "max_row_width": 2219,
+                    "selected_bucket_rows": {
+                        0: {
+                            "row_count": 33,
+                            "row_width": 567,
+                            "row_sha256": "aa6c2f73874aca709252b2e26f4f3ec5f091d6fd4ec30a171c44c9a8df892ec0",
+                        },
+                        2: {
+                            "row_count": 48,
+                            "row_width": 2056,
+                            "row_sha256": "f1d05d3fc8f94311d8de7646c6615c8f46b18030aeda9ef9b2aeb93fcd0c35ef",
+                        },
+                        3: {
+                            "row_count": 32,
+                            "row_width": 2214,
+                            "row_sha256": "678cbc8e7ef8c32f2df2c40a37940d7fc3c195628db5b14b51560c92cbb45181",
+                        },
+                        4: {
+                            "row_count": 8,
+                            "row_width": 2126,
+                            "row_sha256": "05a5b0d8c3e7f22bf314c67493f589333bf9aba4731203db98074aea4ef82e24",
+                        },
+                        6: {
+                            "row_count": 53,
+                            "row_width": 2219,
+                            "row_sha256": "99af7aa330d0c0d09eb5f1c02d25cb26950ffe1ed5b7e3e68251cdcce0c5996c",
+                        },
+                        7: {
+                            "row_count": 36,
+                            "row_width": 2039,
+                            "row_sha256": "1d347145f5787491b14a10bbfaf01d4ad5f76373aa0e66b50c7ac7f7b6cbbb15",
+                        },
+                    },
+                    "surface_digest": "1e99e81ad52be89b8551089ff87d6852ec69bb3f5d61fa0fbb1d01b94f88541f",
+                },
+                {
+                    "class_filter": 0,
+                    "source_index": 2,
+                    "label": b"RIGHT FONT CARTRIDGE",
+                    "row_count": 1,
+                    "bucket_count": 13,
+                    "render_bucket_count": 6,
+                    "rendered_row_total": 210,
+                    "max_row_width": 2219,
+                    "selected_bucket_rows": {
+                        0: {
+                            "row_count": 33,
+                            "row_width": 597,
+                            "row_sha256": "fe96ed5d5df0f8f4b8f9c9d7c0b203b4e85365988b1c7996c94f956cc6552c8c",
+                        },
+                        2: {
+                            "row_count": 48,
+                            "row_width": 2056,
+                            "row_sha256": "f1d05d3fc8f94311d8de7646c6615c8f46b18030aeda9ef9b2aeb93fcd0c35ef",
+                        },
+                        3: {
+                            "row_count": 32,
+                            "row_width": 2214,
+                            "row_sha256": "35c2e5d7c0b6ab3920b7202578076f3556ac3a7de45103eb71287f8d7e64a420",
+                        },
+                        4: {
+                            "row_count": 8,
+                            "row_width": 2126,
+                            "row_sha256": "05a5b0d8c3e7f22bf314c67493f589333bf9aba4731203db98074aea4ef82e24",
+                        },
+                        6: {
+                            "row_count": 53,
+                            "row_width": 2219,
+                            "row_sha256": "99af7aa330d0c0d09eb5f1c02d25cb26950ffe1ed5b7e3e68251cdcce0c5996c",
+                        },
+                        7: {
+                            "row_count": 36,
+                            "row_width": 2039,
+                            "row_sha256": "1d347145f5787491b14a10bbfaf01d4ad5f76373aa0e66b50c7ac7f7b6cbbb15",
+                        },
+                    },
+                    "surface_digest": "940ec458086cb0917da3c2de65b52d2bfec0e57f1d334e8f5ba83946c9739419",
+                },
+                {
+                    "class_filter": 0,
+                    "source_index": 3,
+                    "label": b"INTERNAL FONTS",
+                    "row_count": 14,
+                    "bucket_count": 142,
+                    "render_bucket_count": 65,
+                    "rendered_row_total": 2012,
+                    "max_row_width": 2219,
+                    "selected_bucket_rows": {
+                        0: {
+                            "row_count": 33,
+                            "row_width": 416,
+                            "row_sha256": "6344be14841e9ec21f60cb2b6fb131beae73185afe9f828019bc30e6d4058678",
+                        },
+                        2: {
+                            "row_count": 48,
+                            "row_width": 2056,
+                            "row_sha256": "f1d05d3fc8f94311d8de7646c6615c8f46b18030aeda9ef9b2aeb93fcd0c35ef",
+                        },
+                        3: {
+                            "row_count": 32,
+                            "row_width": 2214,
+                            "row_sha256": "7932e93892cb09de36df4686655063568205ecefc74e674c3cc8f99fdce9b29e",
+                        },
+                        4: {
+                            "row_count": 8,
+                            "row_width": 2126,
+                            "row_sha256": "05a5b0d8c3e7f22bf314c67493f589333bf9aba4731203db98074aea4ef82e24",
+                        },
+                        7: {
+                            "row_count": 36,
+                            "row_width": 2039,
+                            "row_sha256": "1d347145f5787491b14a10bbfaf01d4ad5f76373aa0e66b50c7ac7f7b6cbbb15",
+                        },
+                        26: {
+                            "row_count": 38,
+                            "row_width": 2214,
+                            "row_sha256": "be3bef05a531e61abf6ed77b13efad5d5eac2ea9698776e6a6f619a0d9f40710",
+                        },
+                        66: {
+                            "row_count": 46,
+                            "row_width": 2218,
+                            "row_sha256": "4aeff64b7e8bc7412ac386bb3d6274850b9776660856f13527e705bf6257ecb5",
+                        },
+                        82: {
+                            "row_count": 42,
+                            "row_width": 2206,
+                            "row_sha256": "d0b2f365617448c0a129433f198ea245bc4e7a0f02a377013506d8d5f5cbe4a1",
+                        },
+                        98: {
+                            "row_count": 31,
+                            "row_width": 2207,
+                            "row_sha256": "05320bbe35abb02bae5d38bf9c0088a65a4bc9da31ef29e05130a56beb928cb6",
+                        },
+                        99: {
+                            "row_count": 15,
+                            "row_width": 1631,
+                            "row_sha256": "5dec2ec1e42665b18596bbdc8fdb1ab37d63e1e60385b99cb46d4949340240f4",
+                        },
+                    },
+                    "surface_digest": "dd7e19b1aa077ccb794e73051e68c54e11e335ffcd110e92dc01b39132c638af",
+                },
+                {
+                    "class_filter": 1,
+                    "source_index": 0,
+                    "label": b"\"PERMANENT\" SOFT FONTS",
+                    "row_count": 0,
+                    "bucket_count": 3,
+                    "render_bucket_count": 1,
+                    "rendered_row_total": 33,
+                    "max_row_width": 4083,
+                    "selected_bucket_rows": {
+                        0: {
+                            "row_count": 33,
+                            "row_width": 4083,
+                            "row_sha256": "7d8387c750a608c7bb4432c656698a373b01f30071adb6e3668a50983f06343f",
+                        },
+                    },
+                    "surface_digest": "9a71cdb0b6f8b1365d439119b2b8e1d3d4b3b6a720f729ac94065edef5ba4d2f",
+                },
+                {
+                    "class_filter": 1,
+                    "source_index": 1,
+                    "label": b"LEFT FONT CARTRIDGE",
+                    "row_count": 1,
+                    "bucket_count": 12,
+                    "render_bucket_count": 5,
+                    "rendered_row_total": 146,
+                    "max_row_width": 4097,
+                    "selected_bucket_rows": {
+                        0: {
+                            "row_count": 33,
+                            "row_width": 4097,
+                            "row_sha256": "d5c85d0db66b793eb6e1303dfbf8c915fa235e9cebdd7cb1af16542e7dbf14ce",
+                        },
+                        3: {
+                            "row_count": 32,
+                            "row_width": 4097,
+                            "row_sha256": "d00ea8bfc97c5c4c5f66f8ff5bfe714a1c64bf713fad09ba26a9f869231f40d9",
+                        },
+                        4: {
+                            "row_count": 11,
+                            "row_width": 2054,
+                            "row_sha256": "6eca00cb198fb17a1ef4393385fdbc6c18929c5087c2b5700fc21631de09f245",
+                        },
+                        6: {
+                            "row_count": 44,
+                            "row_width": 2191,
+                            "row_sha256": "4c9bed9b1f0fb0b3b59321c3572224a26f17a96ffe88b1af6dbefa8ed0bac749",
+                        },
+                        7: {
+                            "row_count": 26,
+                            "row_width": 2101,
+                            "row_sha256": "78f33807d79f0a41f67ce442241692fc7cc487282d7461e6235087271ca9253d",
+                        },
+                    },
+                    "surface_digest": "018cdd48ede556dc439d5c5434f775aa7a10dd38321b4645e697542a9c7b825e",
+                },
+                {
+                    "class_filter": 1,
+                    "source_index": 2,
+                    "label": b"RIGHT FONT CARTRIDGE",
+                    "row_count": 1,
+                    "bucket_count": 12,
+                    "render_bucket_count": 5,
+                    "rendered_row_total": 146,
+                    "max_row_width": 4097,
+                    "selected_bucket_rows": {
+                        0: {
+                            "row_count": 33,
+                            "row_width": 4097,
+                            "row_sha256": "5dbf295f173266d8466f1de2c33d099f3fe4bf4d659198e92b18760f9e86a2b9",
+                        },
+                        3: {
+                            "row_count": 32,
+                            "row_width": 4097,
+                            "row_sha256": "5eefef028568b73069db84c7c5a669d69b86a7c53e36df117c3ec89e5718d6af",
+                        },
+                        4: {
+                            "row_count": 11,
+                            "row_width": 2054,
+                            "row_sha256": "6eca00cb198fb17a1ef4393385fdbc6c18929c5087c2b5700fc21631de09f245",
+                        },
+                        6: {
+                            "row_count": 44,
+                            "row_width": 2191,
+                            "row_sha256": "4c9bed9b1f0fb0b3b59321c3572224a26f17a96ffe88b1af6dbefa8ed0bac749",
+                        },
+                        7: {
+                            "row_count": 26,
+                            "row_width": 2101,
+                            "row_sha256": "78f33807d79f0a41f67ce442241692fc7cc487282d7461e6235087271ca9253d",
+                        },
+                    },
+                    "surface_digest": "76b22e4a81d534146a094b0f432909cbb5623d333d29cd373a63e7adb600f786",
+                },
+                {
+                    "class_filter": 1,
+                    "source_index": 3,
+                    "label": b"INTERNAL FONTS",
+                    "row_count": 14,
+                    "bucket_count": 122,
+                    "render_bucket_count": 50,
+                    "rendered_row_total": 1257,
+                    "max_row_width": 4097,
+                    "selected_bucket_rows": {
+                        0: {
+                            "row_count": 33,
+                            "row_width": 4097,
+                            "row_sha256": "a8ec478704a45deb7983ffa0b2087011ea526babdeddee6a42e2c515a61fdf5c",
+                        },
+                        3: {
+                            "row_count": 32,
+                            "row_width": 4097,
+                            "row_sha256": "c24f329759566e72d4a0f78c49bdecb152bc5424b1d4c9458d4bc1bbeaa19a1c",
+                        },
+                        4: {
+                            "row_count": 11,
+                            "row_width": 2054,
+                            "row_sha256": "6eca00cb198fb17a1ef4393385fdbc6c18929c5087c2b5700fc21631de09f245",
+                        },
+                        7: {
+                            "row_count": 26,
+                            "row_width": 2101,
+                            "row_sha256": "78f33807d79f0a41f67ce442241692fc7cc487282d7461e6235087271ca9253d",
+                        },
+                        26: {
+                            "row_count": 29,
+                            "row_width": 4097,
+                            "row_sha256": "7c12ab49618cfd12f9c8723a38a5f1fba63ba38cf764a2a0c97da2896ba051ca",
+                        },
+                        66: {
+                            "row_count": 38,
+                            "row_width": 2191,
+                            "row_sha256": "4bcb2557843198b0f447edea0a2e6dd0a7782be8fa936f7a2f64825f881498cc",
+                        },
+                        82: {
+                            "row_count": 32,
+                            "row_width": 1894,
+                            "row_sha256": "ef65bd6602e68999cd2208e3201df9f58a9eea1b1e56da417f68b669855792ba",
+                        },
+                        98: {
+                            "row_count": 26,
+                            "row_width": 2191,
+                            "row_sha256": "847a3b69f8fec21ada6cefe8b3f2b6ecf8cb33620c0c71a6c591aaa012bbba87",
+                        },
+                        99: {
+                            "row_count": 6,
+                            "row_width": 1641,
+                            "row_sha256": "21feffda1d730a4a043ad0eb12fde5a055102a1d7935489dd05eba419e31b5ea",
+                        },
+                    },
+                    "surface_digest": "3bffa7214d9a478ec5fb5fd47ccb3458e9079daea12d77443437dd9ff11b4224",
+                },
+            ],
+            "total_segments": 8,
+            "total_font_rows": 32,
+            "total_rendered_bucket_rows": 4047,
+            "surface_digest": "5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2",
         },
     ))
     checks.append(assert_equal("font sample resolver carries first two Courier rows", {
@@ -72512,6 +72987,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         }),
         font_sample_full_printout_sample_runs["direct_row_hashes"],
         font_sample_full_printout_sample_runs["correlation_digest"],
+    ))
+    lines.append("- font sample full-printout rendered surfaces: fixture `font sample full printout segments render through 0x1ed84 and 0x1ef6a` renders all eight source/class page-record segments through the bridge and band renderer. Segment `(source,class,row_count,render_buckets,rendered_rows,max_width,digest)` values are `%s`; total rendered bucket rows `%d`, aggregate surface digest `%s`." % (
+        [
+            (
+                segment["source_index"],
+                segment["class_filter"],
+                segment["row_count"],
+                segment["render_bucket_count"],
+                segment["rendered_row_total"],
+                segment["max_row_width"],
+                segment["surface_digest"],
+            )
+            for segment in font_sample_full_printout_render_surfaces["segments"]  # type: ignore[index]
+        ],
+        font_sample_full_printout_render_surfaces["total_rendered_bucket_rows"],
+        font_sample_full_printout_render_surfaces["surface_digest"],
     ))
     lines.append("- font sample row fields: first `LINE_PRINTER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152`; the height value is rounded by the mode-1 `0x1cc6e` add-five path." % (
         line_printer_sample_row_fields["record_start"],

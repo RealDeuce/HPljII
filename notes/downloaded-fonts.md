@@ -170,9 +170,14 @@ Published page-record state:
   bucket `1` or `9` and derive band rows and destination base.
 - Firmware bookkeeping: `0xff1e` clears the current page root and sets the
   publication flag after copying the record.
-- Unknown for this checkpoint: remaining legal downloaded-glyph publication
-  shape variants beyond the documented normal, linear-segmented,
-  segmented-wide, and even-span wide streams.
+- Unknown for this checkpoint: broader downloaded-glyph publication
+  cross-products beyond the documented normal bucket-1, linear-segmented
+  bucket-9, segmented-wide bucket-1/bucket-9, and even-span wide bucket-1
+  streams. The covered publication fixtures are
+  `downloaded normal and segmented glyph FF publications render page records`,
+  `host-fetched even-span downloaded glyph FF publishes rendered page record`,
+  `published downloaded glyph segmented buckets render across bands`, and
+  `0x1eba4 scheduler band words render published downloaded glyph`.
 
 Renderer-facing allocated payload fields:
 

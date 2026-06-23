@@ -709,7 +709,12 @@ cluster for first `COURIER` and first `LINE_PRINTER`: `0x1cb26..0x1cb66`
 emits internal-source prefixes `I01` and `I07`, `0x1d198` / `0x1d5fa`
 emits the built-in names, `0x1cc6e` formats pitch/height as `10`/`12`
 and `16.6`/`8.5` with `0xd0f0` fixed-space accounting, and `0x1cd78`
-formats symbol word `0x0155` as `10U`;
+formats symbol word `0x0155` as `10U`; the first `COURIER` row-field
+fixture now also queues those bytes through `0x1393a` / `0xd824` /
+`0x12f2e` into compact bucket `0` as object counts `[7, 10]`, keeps the
+two symbol-column `0xd0f0` fixed spaces as cursor-only events, and
+renders rows with hash
+`4756fe985af471915c3de75c4637c09e51c28a80af75989a1125f6d9cbf2347c`;
 text object glyph index bytes are mapped before queuing by `0x1393a` and
 initialized by `0x14d9c` / `0x14e24` / `0x14f16`; `0x1be22` computes
 normal PCL symbol words from host `ESC (` / `ESC )` commands, handles

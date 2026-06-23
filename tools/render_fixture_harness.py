@@ -20172,6 +20172,161 @@ def summarize_page_record_bucket_renders(
     return summary
 
 
+def render_font_sample_row_fields_page_record_via_1cabe(
+    data: bytes,
+    resources: bytes,
+    row_fields: dict[str, object],
+    cursor_y: int = 32,
+    default_advance: int | None = None,
+) -> dict[str, object]:
+    if default_advance is None:
+        default_advance = pack12(30)
+    state = control_fixture_state(
+        cursor_x=pack12(0),
+        cursor_y=pack12(cursor_y),
+        hmi=default_advance,
+        pending_width=1,
+        pending_text=0,
+        span_flush_enable=1,
+    )
+    context = int(row_fields["context"])
+    page_record: dict[str, object] = {"bucket_array": {}, "context_slots": [context]}
+    events: list[dict[str, object]] = []
+
+    def run_printable(label: str, chunk: bytes) -> None:
+        nonlocal state, page_record
+        if not chunk:
+            return
+        printable_events = []
+        for byte in chunk:
+            source = build_text_source_object_from_1393a(
+                resources,
+                context,
+                byte,
+                x=0,
+                y=0,
+                context_slot=0,
+            )
+            positioned = position_flagged_text_source_via_d824(
+                resources,
+                source,
+                cursor_x=unpack12(int(state["cursor_x"]))[0],
+                cursor_y=unpack12(int(state["cursor_y"]))[0],
+            )
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            ensure_page_record_root_for_queue(state)
+            page_result = queue_text_source_to_page_record_via_12f2e(
+                resources,
+                page_record,
+                positioned_source,
+            )
+            advance = advance_flagged_text_cursor_via_d550(
+                int(state["cursor_x"]),
+                default_advance,
+            )
+            state["cursor_x"] = advance["cursor_after"]
+            printable_events.append({
+                "byte": byte,
+                "cursor_before": advance["cursor_before"],
+                "cursor_after": advance["cursor_after"],
+                "coord": page_result["coord"],
+                "bucket_index": page_result["bucket_index"],
+                "allocated": page_result["allocated"],
+                "count_after": page_result["count_after"],
+            })
+        events.append({
+            "kind": "printable-chunk",
+            "label": label,
+            "bytes": chunk,
+            "event_count": len(printable_events),
+            "events": printable_events,
+            "cursor_after": state["cursor_x"],
+        })
+
+    def run_fixed_spaces(label: str, count: int) -> None:
+        nonlocal state
+        for index in range(count):
+            advance = advance_flagged_text_cursor_via_d550(
+                int(state["cursor_x"]),
+                default_advance,
+            )
+            state["cursor_x"] = advance["cursor_after"]
+            events.append({
+                "kind": "fixed-space",
+                "label": label,
+                "index": index,
+                "helper": "0xd0f0/d550",
+                "cursor_before": advance["cursor_before"],
+                "cursor_after": advance["cursor_after"],
+            })
+
+    def run_advance(label: str, units: int) -> None:
+        nonlocal state
+        if units <= 0:
+            return
+        before = int(state["cursor_x"])
+        after = add_packed12(before, pack12(units * 30))
+        state["cursor_x"] = after
+        events.append({
+            "kind": "cursor-advance",
+            "label": label,
+            "helper": "0x1d152",
+            "units": units,
+            "cursor_before": before,
+            "cursor_after": after,
+        })
+
+    prefix = row_fields["prefix"]
+    name = row_fields["name"]
+    pitch = row_fields["pitch"]
+    height = row_fields["height"]
+    symbol = row_fields["symbol"]
+    assert isinstance(prefix, dict)
+    assert isinstance(name, dict)
+    assert isinstance(pitch, dict)
+    assert isinstance(height, dict)
+    assert isinstance(symbol, dict)
+
+    run_printable("prefix", bytes(prefix["printed"]))
+    run_advance("prefix-post", int(prefix["post_advance_units_1d152"]))
+
+    run_printable("name", bytes(name["printed"]))
+    run_advance("name-pad", int(name["pad_advance_units_1d152"]))
+    run_advance("name-post", 2)
+
+    run_fixed_spaces("pitch", int(pitch["fixed_spaces_d0f0"]))
+    run_printable("pitch", bytes(pitch["printed"]))
+    run_advance("pitch-internal", int(pitch["internal_advance_units_1d152"]))
+    run_advance("pitch-post", 1)
+
+    run_fixed_spaces("height", int(height["fixed_spaces_d0f0"]))
+    run_printable("height", bytes(height["printed"]))
+    run_advance("height-internal", int(height["internal_advance_units_1d152"]))
+
+    run_fixed_spaces("symbol", int(symbol["fixed_spaces_d0f0"]))
+    run_printable("symbol", bytes(symbol["printed"]))
+    run_advance("symbol-post", 1)
+
+    bucket_objects = page_record_bucket_objects(page_record)
+    render_summary = summarize_page_record_bucket_renders(
+        data,
+        resources,
+        page_record,
+        bucket_objects,
+    )
+    return {
+        "context": context,
+        "printed": row_fields["printed"],
+        "events": events,
+        "nonempty_buckets": sorted(bucket_objects),
+        "bucket_objects": bucket_objects,
+        "render_entries": render_summary,
+        "final_cursor_x": state["cursor_x"],
+        "page_record": page_record,
+    }
+
+
 def wrap_markdown(text: str) -> str:
     lines = text.splitlines()
     out: list[str] = []
@@ -27306,6 +27461,92 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
             "fixed_spaces_d0f0": 3,
             "explicit_advance_units_1d152": 8,
+        },
+    }))
+    courier_sample_row_fields_page = render_font_sample_row_fields_page_record_via_1cabe(
+        data,
+        resources,
+        courier_sample_row_fields,
+    )
+    checks.append(assert_equal("font sample Courier row fields cross page-record placement", {
+        "printed": courier_sample_row_fields_page["printed"],
+        "event_summary": [
+            (
+                event["kind"],
+                event.get("label"),
+                event.get("event_count"),
+                event.get("units"),
+                event.get("cursor_before"),
+                event.get("cursor_after"),
+            )
+            for event in courier_sample_row_fields_page["events"]  # type: ignore[index]
+        ],
+        "nonempty_buckets": courier_sample_row_fields_page["nonempty_buckets"],
+        "final_cursor_x": courier_sample_row_fields_page["final_cursor_x"],
+        "bucket_objects": courier_sample_row_fields_page["bucket_objects"],
+        "render_entries": courier_sample_row_fields_page["render_entries"],
+    }, {
+        "printed": b"I01COURIER101210U",
+        "event_summary": [
+            ("printable-chunk", "prefix", 3, None, None, pack12(90)),
+            ("cursor-advance", "prefix-post", None, 2, pack12(90), pack12(150)),
+            ("printable-chunk", "name", 7, None, None, pack12(360)),
+            ("cursor-advance", "name-pad", None, 18, pack12(360), pack12(900)),
+            ("cursor-advance", "name-post", None, 2, pack12(900), pack12(960)),
+            ("printable-chunk", "pitch", 2, None, None, pack12(1020)),
+            ("cursor-advance", "pitch-internal", None, 3, pack12(1020), pack12(1110)),
+            ("cursor-advance", "pitch-post", None, 1, pack12(1110), pack12(1140)),
+            ("printable-chunk", "height", 2, None, None, pack12(1200)),
+            ("cursor-advance", "height-internal", None, 3, pack12(1200), pack12(1290)),
+            ("fixed-space", "symbol", None, None, pack12(1290), pack12(1320)),
+            ("fixed-space", "symbol", None, None, pack12(1320), pack12(1350)),
+            ("printable-chunk", "symbol", 3, None, None, pack12(1440)),
+            ("cursor-advance", "symbol-post", None, 1, pack12(1440), pack12(1470)),
+        ],
+        "nonempty_buckets": [0],
+        "final_cursor_x": pack12(1470),
+        "bucket_objects": {
+            0: [
+                bytes.fromhex(
+                    "00 00 00 00 00 00 00 07 30 45 3c 2f 43 3e 30 "
+                    "49 47 31 46 49 30 4b 54 2f 49 56 54 42 58 00 "
+                    "00 00 00 00 00 00 00 00"
+                ),
+                bytes.fromhex(
+                    "00 00 00 00 00 00 00 0a 48 44 00 2f 43 02 30 "
+                    "41 04 42 49 09 4e 46 0b 54 42 0d 51 41 0f 48 "
+                    "42 11 44 4e 12 51 4b 14"
+                ),
+            ],
+        },
+        "render_entries": {
+            0: {
+                "dispatch": [
+                    {
+                        "chain_index": 0,
+                        "object_byte_4": 0,
+                        "class_mask": 0,
+                        "branch": "compact",
+                        "target": 0x1EFFE,
+                        "context_slot": 0,
+                    },
+                    {
+                        "chain_index": 1,
+                        "object_byte_4": 0,
+                        "class_mask": 0,
+                        "branch": "compact",
+                        "target": 0x1EFFE,
+                        "context_slot": 0,
+                    },
+                ],
+                "glyphs": [48, 47, 48, 49, 48, 47, 84, 72, 47, 48, 66, 78, 84, 81, 72, 68, 81],
+                "counts": [7, 10],
+                "row_count": 33,
+                "row_width": 256,
+                "row_sha256": (
+                    "4756fe985af471915c3de75c4637c09e51c28a80af75989a1125f6d9cbf2347c"
+                ),
+            },
         },
     }))
     checks.append(assert_equal("named built-in first glyphs expose positioning offsets", named_builtin_first_glyph_position_summary(resources), {
@@ -67485,6 +67726,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         courier_sample_row_fields["symbol"]["printed"].decode("ascii"),  # type: ignore[index,union-attr]
         courier_sample_row_fields["fixed_spaces_d0f0"],
         courier_sample_row_fields["explicit_advance_units_1d152"],
+    ))
+    lines.append("- font sample row-field page-record placement: that first `COURIER` row-field stream now queues `%d` printable glyph entries into compact bucket `%s` with object counts `%s`, leaves the two `0xd0f0` symbol-column fixed spaces as cursor-only events, ends at cursor x `0x%08x`, and renders bucket rows with hash `%s`." % (
+        sum(courier_sample_row_fields_page["render_entries"][0]["counts"]),  # type: ignore[index]
+        courier_sample_row_fields_page["nonempty_buckets"],
+        courier_sample_row_fields_page["render_entries"][0]["counts"],  # type: ignore[index]
+        courier_sample_row_fields_page["final_cursor_x"],
+        courier_sample_row_fields_page["render_entries"][0]["row_sha256"],  # type: ignore[index]
     ))
     lines.append("- font sample row fields: first `LINE_PRINTER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152`; the height value is rounded by the mode-1 `0x1cc6e` add-five path." % (
         line_printer_sample_row_fields["record_start"],

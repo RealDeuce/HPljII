@@ -1239,9 +1239,17 @@ bytes `49 30 37 4c 49 4e 45 5f 50 52 49 4e 54 45 52 31 36 2e 36 38
 units. The fixture cites `0x1cb26..0x1cb66`, `0x1d198` / `0x1d5fa`,
 `0x1cc6e`, and `0x1cd78`; it deliberately keeps `0xd0f0` fixed spaces
 and `0x1d152` cursor advances separate from printable bytes because both
-affect final pixel placement. Fixture `font sample run 1 prefix crosses
-page-record render entry` first consumed bytes `41 42 43 44 45 66 67 68`
-(`ABCDEfgh`)
+affect final pixel placement. Fixture `font sample Courier row fields
+cross page-record placement` now carries the first `COURIER` row-field
+sequence across `0x1393a`, `0xd824`, `0x12f2e`, `0x1ed84`, and
+`0x1ef6a`: the seventeen printable row-field bytes queue into compact
+bucket `0` as two objects with counts `[7, 10]`; the two `0xd0f0`
+symbol-column fixed spaces advance the cursor but create no compact glyph
+entries; the final cursor is `0x05be0000`; and the rendered bucket rows
+hash to
+`4756fe985af471915c3de75c4637c09e51c28a80af75989a1125f6d9cbf2347c`.
+Fixture `font sample run 1 prefix crosses page-record render entry` first
+consumed bytes `41 42 43 44 45 66 67 68` (`ABCDEfgh`)
 through the sample-page current context `0x44080418`, forced HMI
 `0x001e`, the compact page-record bucket, `0x1ed84`, and `0x1ef6a`; it
 pins row hash
@@ -1270,17 +1278,18 @@ and bucket `0` glyphs `[160, 161, 183, 186, 200, 204, 209, 223, 226,
 `b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5`.
 Until the full `0x1c204` page-object loop is modeled, this checkpoint
 proves the producer, row-order, duplicate-suppression, concrete built-in
-row-field formatting for the first `COURIER` / `LINE_PRINTER` rows, and
-both sample byte-run page-record/render slices, not final full-page
-placement.
+row-field formatting for the first `COURIER` / `LINE_PRINTER` rows, the
+first `COURIER` row-field page-record/render slice, and both sample
+byte-run page-record/render slices, not final full-page placement.
 
 ### Confidence
 
 High for helper roles, class-pass loop structure, candidate-row
 traversal, current-font/page-root setup, printable byte emission,
 continuation checks, local label tables, concrete first `COURIER` /
-`LINE_PRINTER` row-field formatting, and direct sample byte-run row
-hashes because they are anchored by generated disassembly analysis and
+`LINE_PRINTER` row-field formatting, first `COURIER` row-field
+page-record placement, and direct sample byte-run row hashes because they
+are anchored by generated disassembly analysis and
 `tools/render_fixture_harness.py`. Medium for final placement and
 baseline/cell interpretation because the full emitted page objects and
 physical/self-test comparison are still open.
@@ -1318,13 +1327,15 @@ physical/self-test comparison are still open.
   printable-byte emission, and downstream text/page/render consumers are
   identified. First `COURIER` and first `LINE_PRINTER` row-field
   formatting now crosses the `0x1cabe` boundary as printable bytes plus
-  fixed-space/cursor-advance events; sample runs 1 and 2 cross the
+  fixed-space/cursor-advance events, and the first `COURIER` row-field
+  sequence crosses the page-record/render boundary as compact bucket `0`
+  with object counts `[7, 10]`. Sample runs 1 and 2 cross the
   page-record/render boundary with context `0x44080418`, HMI `0x001e`,
   compact buckets `-1` and `0`, and render-entry row hashes above.
   Emitted page objects for the complete font printout remain to be
-  modeled from source headings, row fields for all rows, ROM sample bytes,
-  and page-placement state, then compared against a known printed/self-test
-  sample.
+  modeled from source headings, row fields for every emitted row, ROM
+  sample bytes, and page-placement state, then compared against a known
+  printed/self-test sample.
 - `record +0x28..+0x31`: these fields participate in height and chooser
   logic, but their final baseline/cell semantics need correlation against
   observed sample-page placement.

@@ -315,8 +315,13 @@ controls through printable path`.
 
 Unresolved middle edges:
 
-- `0xd0f0..0xd140`: unflagged/fixed-record source branch after
-  `0x1393a(0x20, 0x782d7e)`.
+- `0xd0f0..0xd140`: transparent-data entry into the unflagged/fixed-record
+  source branch after `0x1393a(0x20, 0x782d7e)`. The generic unflagged
+  source/bucket/render path is already fixture-backed by
+  `0x1393a-modeled selected inline source object fields` and
+  `selected inline source queues and renders through unflagged path`; the
+  missing evidence is a transparent-data fixture that enters that same branch
+  through default-filtered `0xd0f0`.
 - `0x124f8..0x1252a`: broader high-control cross-product coverage remains open
   for values that map to tall/segmented glyphs or secondary contexts; the
   short-bucket nonzero branch is covered by `ESC &p4X!\x05\x80!`.
@@ -350,7 +355,9 @@ For `ESC &p#X`:
   built-in branch, where `0xd0f0` clears source `+4`, enters `0xd550`, advances
   spacing, and queues no compact text object. The unflagged/fixed-record
   branch after `0xd0f0` calls `0x1393a(0x20, 0x782d7e)` is still not rendered
-  as a page-visible transparent-data fixture.
+  as a page-visible transparent-data fixture; existing inline/downloaded
+  fixtures cover the downstream unflagged source and bucket behavior, not the
+  transparent-data `0xd0f0` entry into it.
 - Broader nonzero-filtering coverage remains open for high-control payload
   values that map to tall/segmented glyphs or secondary contexts.
 - The names for the active context filtering byte, fallback byte, and high-byte

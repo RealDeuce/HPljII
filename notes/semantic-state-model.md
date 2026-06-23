@@ -633,9 +633,13 @@ filter bytes.
 
 ### Unresolved Middle Edges
 
-- `0xd0f0..0xd140`: the flagged fixed-space branch is fixture-backed; the
-  unflagged/fixed-record branch after `0x1393a(0x20, 0x782d7e)` is not yet
-  rendered as a page-visible transparent-data fixture.
+- `0xd0f0..0xd140`: the flagged fixed-space branch is fixture-backed. The
+  generic unflagged/fixed-record source path after `0x1393a` is composed in
+  `Text Source Objects And Compact Buckets` by fixtures
+  `0x1393a-modeled selected inline source object fields` and
+  `selected inline source queues and renders through unflagged path`; the open
+  edge is specifically a page-visible transparent-data fixture that reaches
+  that branch through default-filtered `0xd0f0` and host-space substitution.
 - `0x124f8..0x1252a`: broader high-control cross-products remain open for
   values that map to tall/segmented glyphs or secondary contexts. The
   short-bucket nonzero branch is covered by `ESC &p4X!\x05\x80!`.

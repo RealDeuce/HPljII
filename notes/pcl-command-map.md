@@ -925,82 +925,44 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
 
 ## Next RE Targets
 
-- Feed the executable renderer harness with full parser-produced
-  page-object payloads, building on the current one-byte, two-byte, and
-  mixed printable/control/reset stream fixtures, plain and mixed
-  control/reset page-record allocator/bridge stream fixtures,
-  host-fetched publication header/bridge-contract coverage for reset,
-  FF, page-size, and orientation, host-fetched direct text/control
-  bridge-contract and render-entry coverage, parser-to-page-record
-  coverage for `!!`,
-  `ESC &k1G!\r!`, `ESC &k2G!\n!`, `ESC &k0G HT BS !`, `ESC &a1L!`,
-  `ESC &a1M!`, `ESC &a6l9M!`, `ESC &a2C!`, `ESC &a72H!`, `ESC &a1R!`,
-  `ESC &a72V!`, `ESC &a2c+1R!`, `ESC &l3E!`,
-  `ESC &f0S ESC &a2C ESC &f1S!`, host-fetched `! ESC *c12a5b0P`
-  text/rule render-entry coverage, host-fetched `! ESC *c12a5b0P
-  ESC *t300R ESC *r0A ESC *b2W` text/rule/raster render-entry
-  coverage from one mixed page-record stream runner plus its modeled
-  `0xff1e` published-record render-entry variant with trailing FF and
-  addressed field-group checkpoint, with canonical objects
-  `0x00d0c004`/`0x00d0c02a`/`0x00d0c038`, parser scratch record
-  `80 57 00 02 00 00`, and stream allocator state
-  `0x782a70`/`0x782a72`/`0x782a76`,
-  `0x1ef6a` page-band walker coverage for compact text, mode-0
-  raster, and a crossing patterned rule across bands `0` and `5`,
-  simple macro execute replayed `!\r`, and mixed-control macro execute replayed
-  `ESC &k1G!\r!`, parser-derived `ESC *t#R`/`ESC *r#A`
-  raster state fixtures, modeled raster command/data stream fixtures for
-  `ESC *t300R`, `ESC *t150R`, `ESC *t100R`, `ESC *t75R`,
-  parser-to-object checks for the 300/150/100/75-dpi raster streams
-  including modeled `0x10084` root allocation, host-fetched
-  lower-resolution and capped/drained edge streams, host-fetched
-  `0xdace` payload-control normalization, page-record bridge checks for
-  the first `ESC *b4W` object and the host-fetched consecutive-row
-  `ESC *t300R` stream, same-group lowercase-final chaining fixtures for
-  host-fetched `ESC *t300r150R` and host-fetched `ESC *b2w2W` where
-  lowercase `w` records the delayed transfer and payload is consumed
-  after the uppercase terminator before the chain head is bridged, plus
-  host-fetched `ESC *rB` active-clear followed by `ESC *t150R`,
-  host-fetched active-raster `ESC *t75R` ignore before a mode-0
-  `ESC *b2W` row, raster row page-record fixtures for byte-aligned mode
-  0, non-byte-aligned mode 0, mode 1, byte-aligned mode 2,
-  non-byte-aligned mode 2, band-clipped mode 2, and mode 3, real-HMI
-  sub-byte compact render fixture, producer-modeled short/segmented text
-  bucket objects, short/segmented `0x1387c` allocator fixtures,
-  `0x1edc6` page-record bridge fixture including text/rule/raster,
-  addressed text/rule/raster FF publication, plus macro-payload
-  rule/raster band composition, `0xd824`-positioned text
-  fixture, synthetic `0xd3b2` positioning and inline/downloaded
-  `0x12f2e` payload fixtures plus type-2 payload-backed selected inline
-  `0x1f0d2` wide and `0x1f1f0` segmented render rows, a selected-memory
-  `0x1f264` segmented-wide isolation row, ROM dispatch traces for
-  `ESC &f-123y0x1X`, `ESC *c12a5b0P`, `ESC *c17d25e5F`, host-fetched
-  `ESC *c4660d37e5F` feeding font install state, host-fetched `ESC )s0W`
-  descriptor routing through `0x15d0a`, fetched font-control state
-  chaining into fetched descriptor, resource-payload, and
-  downloaded-character streams, host-fetched `ESC )s18W` payload-control
-  rendering, `ESC )s4W`, host-fetched `ESC )s80W` resource payload
-  installation, and full host-fetched `ESC )s2193W` payload/object
-  rendering, resource-ROM glyph, `0x1f08e` named row-copy fixtures, a
-  ROM-scanned row-copy span matrix, and the full built-in glyph coverage
-  scan.
-- Replace the synthetic `ESC E` fixtures with parser-produced
-  page-object fixtures to prove partial-page finalization and
-  reset-visible page/control state from real queued objects.
-- Broaden the narrow direct-control byte-stream fixtures into the full
-  firmware parser path using the now-named horizontal cursor `0x782c8a`
-  and vertical cursor `0x782c8e`.
-- Use the now-matched ROM/manual logical page and printable-area
-  dimensions as the baseline for physical engine/self-test placement
-  checks.
-- Replace the modeled bridge from parsed `(s` / `)s` records and pinned
-  updater writes with a full firmware-state run through `0xc580`,
-  `0x13eb8` / `0xc428`, and `0x14c64` dispatch.
-- Decide whether undocumented but parser-exposed `@0..@2` variants need
-  compatibility-facing documentation. The default-font candidate and
-  caller path is now real-record backed through `0x1b250`, `0x1b50e`,
-  `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
-- Continue from parser-produced heterogeneous page-object rendering and
-  final device-output validation now that the macro replay/font-context
-  checkpoint is composed through `0xe65c`, `0xe860`, `0x13eb8`,
-  `0x144d2`, `0x14c64`, and `0xc428`.
+The next work should follow the dataflow checkpoints in
+[semantic-state-model.md](semantic-state-model.md), not isolated command
+handlers:
+
+- Prove the remaining font metric producer cross-products with
+  parser-produced pages. The covered evidence already includes
+  host-fetched `0x1719c` type-0/type-1/type-2 payloads, four
+  parser-produced metric-value variants, and the shared `d4ac`/`d8fc`
+  consumer branch family. The open middle is the descriptor metric
+  cross-product across downloaded and inline forms, plus visible behavior
+  for validation/error forms beyond the seven bounded no-install
+  predicates.
+- Replace remaining modeled producer-state handoffs with fuller
+  parser-produced page objects. Current coverage includes direct text,
+  direct controls, macro replay/overlay, reset/FF/page geometry
+  publications, mixed text/rule/raster publication, downloaded-glyph FF
+  publication, parser-driven downloaded-glyph/rule/raster composition,
+  and the modeled `0x1ef6a` band-crossing merge. The remaining gap is
+  live parser/register/memory capture for dense pages through real
+  allocator state, not the already-covered render-entry rows.
+- Model the built-in font sample printout's emitted page objects from
+  ROM sample byte runs. The `0x1c204..0x1cf34` loop, row helpers, and
+  printable byte emission are composed; the open boundary is
+  `0x1c334..0x1ed84` into published page records and rendered rows.
+  Compare those rows against the direct payload hashes and a known
+  printed/self-test sample to resolve remaining `+0x28..+0x31`
+  baseline/cell semantics.
+- Broaden visible-output variants where they still change compatibility:
+  font-selection fallback/error branches beyond the two symbol-miss
+  fixtures, downloaded-glyph publication cross-products beyond the
+  documented selector families, transparent high-control cases that map
+  to secondary or tall/segmented glyphs, and the parser-exposed `@0..@2`
+  symbol table/copy variants if they need compatibility-facing behavior.
+- Continue the active-render scheduler only at the remaining external
+  boundary: `$8000.4`, `$a601`, `$a801`, `$aa01`, `0xfffe0001`, and
+  `0xfffe0003` physical timing/MMIO correlation. The software-visible
+  scheduler, wait-object, trap, render-work, and per-band merge states
+  are already modeled.
+- Use the matched ROM/manual logical page and printable-area dimensions
+  as the baseline for physical engine/self-test placement checks and
+  final device-output validation.

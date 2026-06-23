@@ -346,6 +346,11 @@ For `ESC &p#X`:
 - The visible-output fixtures now cover printable payload bytes, default-zero
   filtering for C0 and `0x80..0x9f`, nonzero filtering for one C0/high-control
   pair, and the `1a` non-`0x58` probe case.
+- The default-filtered fixed-space route is page-visible for the flagged
+  built-in branch, where `0xd0f0` clears source `+4`, enters `0xd550`, advances
+  spacing, and queues no compact text object. The unflagged/fixed-record
+  branch after `0xd0f0` calls `0x1393a(0x20, 0x782d7e)` is still not rendered
+  as a page-visible transparent-data fixture.
 - Broader nonzero-filtering coverage remains open for high-control payload
   values that map to tall/segmented glyphs or secondary contexts.
 - The names for the active context filtering byte, fallback byte, and high-byte

@@ -739,9 +739,10 @@ page-extent gate, exercise rounded-metric clamping into `+0x2c/+0x2d`, move
 `d8fc` visible rows, suppress both span consumers through descriptor-owned
 lower-bound fields, and suppress only `d8fc` through descriptor-owned
 upper-bound fields while preserving `d4ac` span output and compact glyph
-output. The open producer-side work is broader descriptor coverage: more
-metric-byte cross-products and validation/error forms driven from parser bytes
-to page rows.
+output. The open producer-side work is the untested cross-product of
+descriptor metric fields across downloaded and inline forms, plus
+validation/error forms beyond the seven bounded no-install predicates driven
+from parser bytes to page rows.
 
 ## Macro And Control Re-entry
 
@@ -810,15 +811,15 @@ A byte-stream reproduction must preserve these behaviors:
   existing page roots. Remaining handoff risk is lower-level CPU-register fidelity
   inside the modeled `0x13eb8` refresh and broader selection/fallback variants, not this
   primary or secondary parser-to-printable state edge.
-- The exact metric-byte provenance for all downloaded/inline forms remains
-  incomplete at the parser-produced page boundary. Existing host-stream
-  downloaded-font fixtures prove install, visible glyph rendering, and
-  `0x1719c` type-0, type-1, and type-2 payloads feeding both `0xd4ac` and
+- The exact metric producer cross-product across downloaded and inline forms
+  remains incomplete at the parser-produced page boundary. Existing
+  host-stream downloaded-font fixtures prove install, visible glyph rendering,
+  and `0x1719c` type-0, type-1, and type-2 payloads feeding both `0xd4ac` and
   `0xd8fc` span rows; the shared span-consumer branch family is also
-  fixture-backed. Four parser-produced metric-value variants now cover
-  visible extent flips, clamping, lower-bound suppression for both consumers,
-  and asymmetric upper-bound suppression of `0xd8fc` while `0xd4ac` still
-  renders a span. Seven bounded `0x16fae` validation no-install forms now
-  preserve following printable output. The remaining gap is broader descriptor
-  metric-byte values and validation/error forms beyond those bounded predicate
-  branches.
+  fixture-backed. Four parser-produced metric-value variants now cover visible
+  extent flips, clamping, lower-bound suppression for both consumers, and
+  asymmetric upper-bound suppression of `0xd8fc` while `0xd4ac` still renders
+  a span. Seven bounded `0x16fae` validation no-install forms now preserve
+  following printable output. The remaining gap is untested combinations of
+  descriptor metric fields across downloaded and inline forms, plus
+  validation/error forms beyond those bounded predicate branches.

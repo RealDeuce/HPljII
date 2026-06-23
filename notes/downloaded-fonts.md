@@ -266,7 +266,8 @@ Unknown:
   together. Current-record allocation-failure release through `0x1887a` is
   fixture-backed for the bit-30-clear extended fixed-record case.
 - The complete soft-font grammar is not exhaustively proven for every legal
-  PCL descriptor form and every metric-byte combination.
+  PCL descriptor form; the metric producer gap is the untested cross-product
+  of descriptor metric fields across downloaded and inline forms.
 
 ## Command Dispatch And Descriptor Route
 

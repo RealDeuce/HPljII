@@ -1130,17 +1130,16 @@ with font selection and downloaded-glyph cases, replace the remaining
 modeled font state with a full live parser-state run that populates
 current records and source/page objects, then replace the remaining
 producer-modeled text/raster bucket objects with page objects captured
-or reproduced from the full parser/imaging path. The reset, FF,
-page-size, and orientation publication fixtures now start without a
-current page root and mark the first printable queue step as the modeled
-page-record root allocation point, but that is still not a full live
-parser allocation. The reset, FF, page-size, and orientation publication
-paths now also have addressed variants: `!\x1bE`, `ESC &k2G!\f`,
-`!\x1b&l1A`, and
-`!\x1b&l1O` queue the printable byte through addressed
-`0x1387c`/`0x1381c`, materialize the page record, publish through the
-same `0xff1e` boundaries, and render through `0x1ed84`/`0x1ef6a` with
-the same rows. The host-fetched text/rule/raster fixture now also
+or reproduced from the full parser/imaging path. The reset, FF, page-size,
+orientation, paper-source, and copies publication fixtures now start without
+a current page root and mark the first printable queue step as the modeled
+page-record root allocation point, but that is still not a full live parser
+allocation. Those six publication paths now also have addressed variants:
+`!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, `!\x1b&l1O`, `!\x1b&l2H`, and
+`!\x1b&l2X\f` queue the printable byte through addressed
+`0x1387c`/`0x1381c`, materialize the page record, publish through the same
+`0xff1e` boundaries, and render through `0x1ed84`/`0x1ef6a` with the same
+rows. The host-fetched text/rule/raster fixture now also
 publishes its full bucket
 array, rule list, and context slots through modeled `0xff1e`, then
 renders the published record through `0x1ed84` and `0x1ef6a` with the

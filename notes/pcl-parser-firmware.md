@@ -443,13 +443,13 @@ paper-source value `0x80` to `0x782da6`, and sets pending-status byte
 `0x782998`. `!\x1b&l2X\f` reaches `0xeef0`, stores copy count `2` in
 `0x782da4`, then reaches FF handler `0xf0f0`, whose `0xff1e` publication
 copies that word into pool-header `+0x0c`.
-Reset, FF, page-size, and orientation also have addressed allocator
-variants: `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, and `!\x1b&l1O` queue
-the printable byte through `0x1387c`/`0x1381c`, materialize the compact
-bucket page record, publish through the matching `0xff1e` boundary, and
-render through `0x1ed84`/`0x1ef6a`. The host-fetched publication checks
-now start those same publication streams from the modeled `0xa904` ring
-source and pin the
+Reset, FF, page-size, orientation, paper-source, and copies also have
+addressed allocator variants: `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`,
+`!\x1b&l1O`, `!\x1b&l2H`, and `!\x1b&l2X\f` queue the printable byte
+through `0x1387c`/`0x1381c`, materialize the compact bucket page record,
+publish through the matching `0xff1e` boundary, and render through
+`0x1ed84`/`0x1ef6a`. The host-fetched publication checks now start those
+same publication streams from the modeled `0xa904` ring source and pin the
 same published pool header after `0xff1e`: state byte `+4 = 2`,
 status/environment fields including copies word `+0x0c`, `0x780ea6`,
 bucket-root prefix, and context-slot prefix. The `0x1387c` allocator

@@ -2727,8 +2727,8 @@ printable byte has created a compact text bucket. The visible output is the
 pre-command compact `!` page, while command-specific side effects update
 firmware state around that publication. Fixtures pin this for direct modeled
 streams, host-fetched `0xa904` streams, and addressed reset, FF, page-size,
-and orientation records that materialize the compact bucket through
-`0x1387c`/`0x1381c` before publication.
+orientation, paper-source, and copies records that materialize the compact
+bucket through `0x1387c`/`0x1381c` before publication.
 
 ### Field Groups
 
@@ -2773,13 +2773,22 @@ and orientation records that materialize the compact bucket through
     `0x00d0b000`, links it from `root + 0x20`, and ends with
     `0x782a70 = 0x00d6`, `0x782a72 = 0x00d0b000`,
     `0x782a76 = 0x00d0b02a`.
-  - all four addressed publication streams publish bucket object
+  - paper-source addressed stream `! ESC &l2H` allocates one stream chunk at
+    `0x00d0c000`, links it from `root + 0x20`, and ends with
+    `0x782a70 = 0x00d6`, `0x782a72 = 0x00d0c000`,
+    `0x782a76 = 0x00d0c02a`.
+  - copies addressed stream `! ESC &l2X FF` allocates one stream chunk at
+    `0x00d0d000`, links it from `root + 0x20`, and ends with
+    `0x782a70 = 0x00d6`, `0x782a72 = 0x00d0d000`,
+    `0x782a76 = 0x00d0d02a`.
+  - all six addressed publication streams publish bucket object
     `00 00 00 00 00 00 00 01 20 00 01` followed by zero padding, preserve
     context slot `0x440946b4`, and render the same rows as the direct
     publication fixtures.
   Evidence: fixtures `addressed printable reset publishes rendered page
   record`, `addressed printable FF publishes rendered page record`, and
-  `addressed page geometry publications render page records`.
+  `addressed page geometry publications render page records`, and
+  `addressed paper-source and copies publications render page records`.
 - Derived/cache command side effects:
   - page-size `ESC &l1A` leaves page code `6`, orientation `0`, active size
     `3030 x 2025`, top offset `90`, one pending text flush, one page
@@ -2789,12 +2798,18 @@ and orientation records that materialize the compact bucket through
     text flushes, two page finalizations, page-change flag `1`, and
     print-engine status `0`.
   - paper-source selector `2` stores `0x80` at `0x782da6` and sets pending
-    status byte `0x782998`.
+    status byte `0x782998`; the addressed variant also leaves cursor x at
+    packed `5`, cursor y at packed `92.1`, clears the current page root, and
+    sets paper-source output/control bytes `0x780e8f = 0x80` and
+    `0x780e26 = 1`.
   - copies selector `2` stores copy count `2` in `0x782da4`, then FF
-    publication copies that value to pool-header word `+0x0c`.
+    publication copies that value to pool-header word `+0x0c`; the addressed
+    variant leaves cursor x/y at packed `28`/`21`, clears the current page
+    root, keeps `page_root_present = 1`, and leaves `0x782990 = 0`.
   Evidence: fixtures `addressed page geometry publications render page
   records`, `host-fetched FF geometry and paper-source publications preserve
-  0xff1e pool header defaults`, and
+  0xff1e pool header defaults`,
+  `addressed paper-source and copies publications render page records`, and
   `host-fetched copies publication preserves 0xeef0 pool header word`.
 - Parser scratch:
   - all six host-fetched publication streams drain entirely from the modeled
@@ -2802,8 +2817,6 @@ and orientation records that materialize the compact bucket through
   Evidence: fixture `host-fetched publication streams reach parser and
   published rows`.
 - Unknown:
-  - paper-source and copies publication streams do not yet have addressed
-    allocation variants analogous to reset, FF, page-size, and orientation.
   - this cluster proves rendered rows, not physical printer output.
 
 ### Writers
@@ -2836,18 +2849,17 @@ All six publication streams render the same compact Line Printer `!` rows
 from the pre-publication printable byte. Fixture
 `published page records feed 0x1ed84 and 0x1ef6a render entry` asserts the
 full row set, not just the prefix, for reset, FF, page-size, orientation,
-paper-source, and copies. The reset, FF, page-size, and orientation addressed
-fixtures also assert that their materialized page records render those same
-rows after `0xff1e`.
+paper-source, and copies. The reset, FF, page-size, orientation,
+paper-source, and copies addressed fixtures also assert that their
+materialized page records render those same rows after `0xff1e`.
 
 ### Confidence
 
 High for parser handler order, `0xa904` host-fetch draining, published pool
 header fields, command-specific page-size/orientation/copies/paper-source
 side effects, render-record bridge fields, render-entry call order, and final
-rows because each is fixture-pinned. Medium for paper-source/copies addressed
-allocator state because those two streams still use the non-addressed
-publication path in this cluster.
+rows, including addressed allocator state for all six publication streams,
+because each is fixture-pinned.
 
 ### Fixtures
 
@@ -2857,6 +2869,7 @@ publication path in this cluster.
 - `addressed printable reset publishes rendered page record`
 - `addressed printable FF publishes rendered page record`
 - `addressed page geometry publications render page records`
+- `addressed paper-source and copies publications render page records`
 - `host-fetched FF geometry and paper-source publications preserve 0xff1e pool
   header defaults`
 - `host-fetched copies publication preserves 0xeef0 pool header word`
@@ -2882,8 +2895,6 @@ publication path in this cluster.
 
 ### Unresolved Middle Edges
 
-- `0x10084..0x1381c`: paper-source and copies still lack addressed allocation
-  variants in this publication-command cluster.
 - `0xff1e..0x1ed84`: final rows are fixture-backed for all six publication
   commands, but physical-device comparison remains outside the ROM-internal
   reproduction contract.

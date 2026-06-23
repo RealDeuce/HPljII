@@ -86,7 +86,8 @@ vertical-decipoint, and lowercase-chained cursor-position, top-margin,
 perforation-skip, page-length, HMI, and cursor-stack parser-to-page-record
 boundaries, reset sequencing, ROM
 parser dispatch of publication streams, host-fetched publication header
-fields for reset, FF, page-size, and orientation, addressed
+fields for reset, FF, page-size, orientation, paper-source, and copies,
+addressed publication allocation variants for those six streams, addressed
 text/rule/raster FF publication, and synthetic mixed reset fixtures,
 with the first complete page-image byte-stream contract now documented
 under `Mixed Text/Rule/Raster Page Record` for
@@ -279,9 +280,9 @@ allocator/bridge/publication coverage, with the host-fetched reset, FF,
 page-size, orientation, paper-source, and copies cases pinning the
 `0xff1e` published pool
 header fields plus the `0x1edc6` published bucket/context copy before
-render, and with addressed reset, FF, page-size, and orientation
-allocation variants now proving the same compact bucket materialization
-through `0x1387c`/`0x1381c`;
+render, and with addressed reset, FF, page-size, orientation,
+paper-source, and copies allocation variants now proving the same compact
+bucket materialization through `0x1387c`/`0x1381c`;
 `generated/analysis/ic30_ic13_esc_e_reset_flow.md` now also
 names `0xcda2` environment-default writes, including four 0x6c-byte
 page/control records rooted at `0x780f02`, bucket backings at
@@ -471,9 +472,9 @@ glyph row-copy fixtures are generated in
 `tools/render_fixture_harness.py` executes those primitive models plus
 `0xa904` host byte fetch source-priority fixtures, ring-fed
 reset/FF/page-size/orientation/paper-source/copies publication streams
-through parser handlers and published rows, addressed reset/FF publication
-allocation variants, real built-in glyph-resource resolutions, full decoded
-mode-1
+through parser handlers and published rows, addressed publication allocation
+variants for those six streams, real built-in glyph-resource resolutions,
+full decoded mode-1
 glyph-row fixtures, main `0x1f08e` row-copy
 rendering for four named glyphs plus a ROM-scanned render-span matrix
 covering spans 1, 2, 4, 6, and 8, one symbol-set stream/map fixture for

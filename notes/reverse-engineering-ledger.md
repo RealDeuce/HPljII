@@ -699,7 +699,15 @@ sample run 2. Fixture `font sample Courier row fields carry run 1 through
 advancing y by `744` subunits from `0x00200000` to `0x005e0000`, and
 `0x1d152(0x31)` starting run 2 at x `0x05be0000`. The carried page-record
 state now ends at cursor `0x08ac0000,0x005e0000` with buckets
-`[-1, 0, 3, 4]`, while full-page render-window expansion remains open;
+`[-1, 0, 3, 4]`. Fixture `font sample carried run 2 buckets render through
+0x1ed84 and 0x1ef6a` then renders buckets `3` and `4` through the band
+entry path with wide stride `0x0180`, pinning bucket-3 current/fallback
+hashes
+`823d26ff1ebdb3068224faa8dfc0679eef91cd959f1dd370d13f018eb21ce6a4` /
+`973d6e26612036125768dcc697900e150e57899007ff846da320c457913e6d51`
+and bucket-4 current/fallback hashes
+`5e71581663bd2a7c363a866b8bea232fb69f0524e2046da47fd54375cb800796` /
+`06dc84fbb9421397716b0bfccb9b807942ba9a29671436503c91813626d87d5f`;
 the startup/resource scanner `0x41a` is modeled for the verified
 built-in `HEAD` chain, walking 24 typed records from `0x08004c` through
 `0x0ae122`, terminating at `0x0b2f80`, adjusting the next probe step

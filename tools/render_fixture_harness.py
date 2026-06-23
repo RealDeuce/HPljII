@@ -13613,7 +13613,14 @@ def combine_short_text_buckets(buckets: list[dict[str, object]]) -> dict[str, ob
     }
 
 
-def render_compact_text_bucket_object(data: bytes, resources: bytes | bytearray, contexts: tuple[int, ...], obj: bytes, band_rows: int = 64) -> dict[str, object]:
+def render_compact_text_bucket_object(
+    data: bytes,
+    resources: bytes | bytearray,
+    contexts: tuple[int, ...],
+    obj: bytes,
+    band_rows: int = 64,
+    dest_stride: int = 0x20,
+) -> dict[str, object]:
     selector = u16(obj, 4)
     context_slot = obj[5] & 0x0F
     if context_slot >= len(contexts):
@@ -13621,13 +13628,41 @@ def render_compact_text_bucket_object(data: bytes, resources: bytes | bytearray,
     payload = obj[6:]
     compact_mode = selector & 0x3000
     if compact_mode == 0x0000:
-        rendered = render_compact_mode0_payload(data, resources, contexts[context_slot], payload, band_rows=band_rows)
+        rendered = render_compact_mode0_payload(
+            data,
+            resources,
+            contexts[context_slot],
+            payload,
+            dest_stride=dest_stride,
+            band_rows=band_rows,
+        )
     elif compact_mode == 0x1000:
-        rendered = render_compact_wide_payload_via_1f0d2(data, resources, contexts[context_slot], payload, band_rows=band_rows)
+        rendered = render_compact_wide_payload_via_1f0d2(
+            data,
+            resources,
+            contexts[context_slot],
+            payload,
+            dest_stride=dest_stride,
+            band_rows=band_rows,
+        )
     elif compact_mode == 0x2000:
-        rendered = render_compact_segmented_payload_via_1f1f0(data, resources, contexts[context_slot], payload, band_rows=band_rows)
+        rendered = render_compact_segmented_payload_via_1f1f0(
+            data,
+            resources,
+            contexts[context_slot],
+            payload,
+            dest_stride=dest_stride,
+            band_rows=band_rows,
+        )
     elif compact_mode == 0x3000:
-        rendered = render_compact_segmented_wide_payload_via_1f264(data, resources, contexts[context_slot], payload, band_rows=band_rows)
+        rendered = render_compact_segmented_wide_payload_via_1f264(
+            data,
+            resources,
+            contexts[context_slot],
+            payload,
+            dest_stride=dest_stride,
+            band_rows=band_rows,
+        )
     else:
         raise AssertionError("unknown compact text bucket mode")
     rendered["selector"] = selector
@@ -14541,7 +14576,14 @@ def render_band_entry_via_1ef6a(data: bytes, resources: bytes, render_record: di
         obj = bytes(raw)
         branch = entry["branch"]
         if branch == "compact":
-            item = render_compact_text_bucket_object(data, resources, context_slots, obj, band_rows=bucket_band_rows)
+            item = render_compact_text_bucket_object(
+                data,
+                resources,
+                context_slots,
+                obj,
+                band_rows=bucket_band_rows,
+                dest_stride=dest_stride,
+            )
         elif branch == "segment-list":
             item = render_segment_list_object_via_1f812(data, obj, dest_stride=dest_stride, band_rows=bucket_band_rows)
         elif branch == "encoded-span":
@@ -16143,6 +16185,7 @@ def render_bucket_page_record_via_1ed84_1ef6a(
     base_pointer: int = 0x00100000,
     width_word: int = 0x0020,
     band_divisor: int = 0x0005,
+    dest_stride: int = 0x20,
 ) -> dict[str, object]:
     """Carry a page-record bucket array through 0x1ed84 and 0x1ef6a."""
     bucket_array = page_record.get("bucket_array", {})
@@ -16167,7 +16210,12 @@ def render_bucket_page_record_via_1ed84_1ef6a(
         "bucket_array_18": {int(bucket_word) & 0xFFFF: chain},
     })
     render_record["render_record_fields"] = fields
-    entry = render_band_entry_via_1ef6a(data, resources, render_record)
+    entry = render_band_entry_via_1ef6a(
+        data,
+        resources,
+        render_record,
+        dest_stride=dest_stride,
+    )
     return {
         "active_copy": render_record["active_record_copy_fields"],
         "chain": chain,
@@ -20552,6 +20600,90 @@ def render_font_sample_first_row_fields_and_both_runs_page_record(
         "final_state": dict(state),
         "page_record": page_record,
     }
+
+
+def render_font_sample_carried_run2_buckets_via_1ed84_1ef6a(
+    data: bytes,
+    resources: bytes,
+    carried_row: dict[str, object],
+) -> dict[int, object]:
+    page_record = carried_row["page_record"]
+    assert isinstance(page_record, dict)
+    out: dict[int, object] = {}
+    for bucket_word in (3, 4):
+        report = render_bucket_page_record_via_1ed84_1ef6a(
+            data,
+            resources,
+            page_record,
+            bucket_word=bucket_word,
+            width_word=0x0180,
+            dest_stride=0x0180,
+        )
+        entry = report["entry"]
+        assert isinstance(entry, dict)
+        setup = entry["setup"]
+        dispatch = entry["dispatch"]
+        assert isinstance(setup, dict)
+        assert isinstance(dispatch, dict)
+        rows = entry["rows"]
+        assert isinstance(rows, list)
+        rendered_objects = []
+        for rendered in entry["bucket_rendered"]:
+            assert isinstance(rendered, dict)
+            compact = rendered["rendered"]
+            assert isinstance(compact, dict)
+            compact_rows = compact["rows"]
+            fallback_rows = compact["fallback_rows"]
+            assert isinstance(compact_rows, list)
+            assert isinstance(fallback_rows, list)
+            rendered_objects.append({
+                "count": compact["count"],
+                "glyphs": [item["glyph"] for item in compact["rendered"]],  # type: ignore[index]
+                "rows": len(compact_rows),
+                "row_width": max((len(row) for row in compact_rows), default=0),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(compact_rows).encode("ascii")
+                ).hexdigest(),
+                "fallback_rows": len(fallback_rows),
+                "fallback_sha256": hashlib.sha256(
+                    "\n".join(fallback_rows).encode("ascii")
+                ).hexdigest() if fallback_rows else "",
+                "first_split": compact["splits"][0],  # type: ignore[index]
+                "last_split": compact["splits"][-1],  # type: ignore[index]
+            })
+        out[bucket_word] = {
+            "setup": {
+                key: setup[key]
+                for key in (
+                    "dividend",
+                    "divisor_word_06",
+                    "remainder_783a22",
+                    "band_rows_scaled_783a20",
+                    "destination_base_783a28",
+                )
+            },
+            "dispatch": [
+                {
+                    key: dispatch_entry[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "context_slot",
+                    )
+                }
+                for dispatch_entry in dispatch["entries"]  # type: ignore[index]
+            ],
+            "rows": len(rows),
+            "row_width": max((len(row) for row in rows), default=0),
+            "row_sha256": hashlib.sha256(
+                "\n".join(rows).encode("ascii")
+            ).hexdigest(),
+            "objects": rendered_objects,
+        }
+    return out
 
 
 def wrap_markdown(text: str) -> str:
@@ -28014,6 +28146,150 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
             4: [
                 "2e7a32816cfa8ffd670eb71e6d0443e26537f7d5e4d9f7e0d02dd111bbec8fca",
+            ],
+        },
+    }))
+    courier_sample_row_run2_rendered = render_font_sample_carried_run2_buckets_via_1ed84_1ef6a(
+        data,
+        resources,
+        courier_sample_row_with_both_runs,
+    )
+    checks.append(assert_equal("font sample carried run 2 buckets render through 0x1ed84 and 0x1ef6a", courier_sample_row_run2_rendered, {
+        3: {
+            "setup": {
+                "dividend": 3,
+                "divisor_word_06": 5,
+                "remainder_783a22": 3,
+                "band_rows_scaled_783a20": 32,
+                "destination_base_783a28": 1122304,
+            },
+            "dispatch": [
+                {
+                    "chain_index": 0,
+                    "object_byte_4": 0,
+                    "class_mask": 0,
+                    "branch": "compact",
+                    "target": 126974,
+                    "context_slot": 0,
+                },
+                {
+                    "chain_index": 1,
+                    "object_byte_4": 0,
+                    "class_mask": 0,
+                    "branch": "compact",
+                    "target": 126974,
+                    "context_slot": 0,
+                },
+            ],
+            "rows": 32,
+            "row_width": 2130,
+            "row_sha256": "823d26ff1ebdb3068224faa8dfc0679eef91cd959f1dd370d13f018eb21ce6a4",
+            "objects": [
+                {
+                    "count": 7,
+                    "glyphs": [205, 207, 211, 214, 215, 218, 221],
+                    "rows": 32,
+                    "row_width": 2130,
+                    "row_sha256": "3164f17fedfe56328acceef9ac6a377ccca90e5ae3d398e34909b8715643ae3d",
+                    "fallback_rows": 24,
+                    "fallback_sha256": "973d6e26612036125768dcc697900e150e57899007ff846da320c457913e6d51",
+                    "first_split": {
+                        "glyph": 205,
+                        "coord": 25206,
+                        "row_index": 6,
+                        "rows": 50,
+                        "rows_in_band": 26,
+                        "remaining_after_band": 24,
+                        "fallback_d2": 236,
+                    },
+                    "last_split": {
+                        "glyph": 221,
+                        "coord": 25476,
+                        "row_index": 6,
+                        "rows": 50,
+                        "rows_in_band": 26,
+                        "remaining_after_band": 24,
+                        "fallback_d2": 264,
+                    },
+                },
+                {
+                    "count": 10,
+                    "glyphs": [160, 161, 178, 179, 181, 184, 188, 192, 196, 199],
+                    "rows": 32,
+                    "row_width": 1830,
+                    "row_sha256": "81754b70e3932ba6465c1c85bbb1991d22efaaac9960b242824dd089da2079fd",
+                    "fallback_rows": 24,
+                    "fallback_sha256": "d989877c1640e33f8036c4882d504a01a8f884945759d4b886d7ce132c23356b",
+                    "first_split": {
+                        "glyph": 160,
+                        "coord": 62300,
+                        "row_index": 15,
+                        "rows": 32,
+                        "rows_in_band": 17,
+                        "remaining_after_band": 15,
+                        "fallback_d2": 184,
+                    },
+                    "last_split": {
+                        "glyph": 199,
+                        "coord": 24945,
+                        "row_index": 6,
+                        "rows": 30,
+                        "rows_in_band": 26,
+                        "remaining_after_band": 4,
+                        "fallback_d2": 226,
+                    },
+                },
+            ],
+        },
+        4: {
+            "setup": {
+                "dividend": 4,
+                "divisor_word_06": 5,
+                "remainder_783a22": 4,
+                "band_rows_scaled_783a20": 16,
+                "destination_base_783a28": 1146880,
+            },
+            "dispatch": [
+                {
+                    "chain_index": 0,
+                    "object_byte_4": 0,
+                    "class_mask": 0,
+                    "branch": "compact",
+                    "target": 126974,
+                    "context_slot": 0,
+                },
+            ],
+            "rows": 16,
+            "row_width": 2216,
+            "row_sha256": "5e71581663bd2a7c363a866b8bea232fb69f0524e2046da47fd54375cb800796",
+            "objects": [
+                {
+                    "count": 8,
+                    "glyphs": [183, 186, 200, 204, 209, 223, 226, 231],
+                    "rows": 16,
+                    "row_width": 2216,
+                    "row_sha256": "5e71581663bd2a7c363a866b8bea232fb69f0524e2046da47fd54375cb800796",
+                    "fallback_rows": 24,
+                    "fallback_sha256": "06dc84fbb9421397716b0bfccb9b807942ba9a29671436503c91813626d87d5f",
+                    "first_split": {
+                        "glyph": 183,
+                        "coord": 37989,
+                        "row_index": 9,
+                        "rows": 31,
+                        "rows_in_band": 7,
+                        "remaining_after_band": 24,
+                        "fallback_d2": 202,
+                    },
+                    "last_split": {
+                        "glyph": 231,
+                        "coord": 8841,
+                        "row_index": 2,
+                        "rows": 29,
+                        "rows_in_band": 14,
+                        "remaining_after_band": 15,
+                        "fallback_d2": 274,
+                    },
+                },
             ],
         },
     }))
@@ -68224,6 +68500,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         courier_sample_row_with_both_runs["final_cursor_x"],
         courier_sample_row_with_both_runs["final_cursor_y"],
         courier_sample_row_with_both_runs["bucket_object_hashes"],
+    ))
+    lines.append("- font sample carried run-2 render: buckets `3` and `4` now cross `0x1ed84` / `0x1ef6a` with wide destination stride `0x0180`; bucket 3 setup `%s` dispatches `%d` compact objects with current row hash `%s` and fallback hashes `%s`, while bucket 4 setup `%s` dispatches `%d` compact object with current row hash `%s` and fallback hashes `%s`." % (
+        courier_sample_row_run2_rendered[3]["setup"],  # type: ignore[index]
+        len(courier_sample_row_run2_rendered[3]["dispatch"]),  # type: ignore[index]
+        courier_sample_row_run2_rendered[3]["row_sha256"],  # type: ignore[index]
+        [
+            obj["fallback_sha256"]
+            for obj in courier_sample_row_run2_rendered[3]["objects"]  # type: ignore[index,union-attr]
+        ],
+        courier_sample_row_run2_rendered[4]["setup"],  # type: ignore[index]
+        len(courier_sample_row_run2_rendered[4]["dispatch"]),  # type: ignore[index]
+        courier_sample_row_run2_rendered[4]["row_sha256"],  # type: ignore[index]
+        [
+            obj["fallback_sha256"]
+            for obj in courier_sample_row_run2_rendered[4]["objects"]  # type: ignore[index,union-attr]
+        ],
     ))
     lines.append("- font sample row fields: first `LINE_PRINTER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152`; the height value is rounded by the mode-1 `0x1cc6e` add-five path." % (
         line_printer_sample_row_fields["record_start"],

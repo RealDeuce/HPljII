@@ -1281,6 +1281,26 @@ bucket `3`
 `d5ebcb8ec98bac63f306729ef80239ccbfdd7d7e2e837bcc6ffa035fe314fdfd`,
 and bucket `4`
 `2e7a32816cfa8ffd670eb71e6d0443e26537f7d5e4d9f7e0d02dd111bbec8fca`.
+Fixture `font sample carried run 2 buckets render through 0x1ed84 and
+0x1ef6a` then renders the newly carried run-2 buckets with a wide
+destination stride because the sample text starts around x `1470`.
+Bucket `3` crosses `0x1ed84` / `0x1ef6a` with setup `dividend = 3`,
+`remainder_783a22 = 3`, `band_rows_scaled_783a20 = 32`, and two compact
+objects; its combined current-band row hash is
+`823d26ff1ebdb3068224faa8dfc0679eef91cd959f1dd370d13f018eb21ce6a4`,
+with object current hashes
+`3164f17fedfe56328acceef9ac6a377ccca90e5ae3d398e34909b8715643ae3d`
+and `81754b70e3932ba6465c1c85bbb1991d22efaaac9960b242824dd089da2079fd`.
+Those two objects also prove fallback rows beyond the current band,
+hashing to
+`973d6e26612036125768dcc697900e150e57899007ff846da320c457913e6d51`
+and `d989877c1640e33f8036c4882d504a01a8f884945759d4b886d7ce132c23356b`.
+Bucket `4` crosses the same render path with setup `dividend = 4`,
+`remainder_783a22 = 4`, `band_rows_scaled_783a20 = 16`, and one compact
+object; its current-band row hash is
+`5e71581663bd2a7c363a866b8bea232fb69f0524e2046da47fd54375cb800796`
+and its fallback hash is
+`06dc84fbb9421397716b0bfccb9b807942ba9a29671436503c91813626d87d5f`.
 Fixture `font sample run 1 prefix crosses page-record render entry` first
 consumed bytes `41 42 43 44 45 66 67 68` (`ABCDEfgh`)
 through the sample-page current context `0x44080418`, forced HMI
@@ -1314,8 +1334,8 @@ proves the producer, row-order, duplicate-suppression, concrete built-in
 row-field formatting for the first `COURIER` / `LINE_PRINTER` rows, the
 first `COURIER` carried row-field plus sample-run-1 page-record/render
 slice, the `0x1d050` run-1-to-run-2 transition, the carried sample-run-2
-page-record objects, and both standalone sample byte-run render slices,
-not final full-page placement.
+page-record objects and render buckets, and both standalone sample
+byte-run render slices, not final full-page placement.
 
 ### Confidence
 
@@ -1325,11 +1345,12 @@ continuation checks, local label tables, concrete first `COURIER` /
 `LINE_PRINTER` row-field formatting, first `COURIER` row-field
 page-record placement, first `COURIER` carried row-field plus sample-run-1
 placement, first `COURIER` `0x1d050` run-1-to-run-2 transition, carried
-run-2 page-record object placement, and direct sample byte-run row hashes
-because they are anchored by generated disassembly analysis and
+run-2 page-record object placement, carried run-2 bucket rendering through
+`0x1ed84` / `0x1ef6a`, and direct sample byte-run row hashes because they
+are anchored by generated disassembly analysis and
 `tools/render_fixture_harness.py`. Medium for final placement and
-baseline/cell interpretation because the full emitted page objects,
-expanded full-page render window, and physical/self-test comparison are
+baseline/cell interpretation because the full emitted page objects, full
+source-heading/all-row page model, and physical/self-test comparison are
 still open.
 
 ### Fixtures And Reports
@@ -1373,10 +1394,11 @@ still open.
   with object counts `[7, 10]`; appending sample run 1 in that same state
   extends the record to buckets `[-1, 0]`, and carrying sample run 2
   through `0x1d050` extends it to buckets `[-1, 0, 3, 4]`. The carried
-  run-2 checkpoint pins page-record objects and compact coords, while the
-  standalone run-2 render fixture still pins glyph pixels with context
-  `0x44080418`, HMI `0x001e`, compact buckets `-1` and `0`, and
-  render-entry row hashes above. Emitted page objects for the complete
+  run-2 checkpoint pins page-record objects, compact coords, current-band
+  render hashes, and fallback hashes for buckets `3` and `4`; the
+  standalone run-2 render fixture remains useful as an isolation control
+  with context `0x44080418`, HMI `0x001e`, compact buckets `-1` and `0`,
+  and render-entry row hashes above. Emitted page objects for the complete
   font printout remain to be modeled from source headings, row fields for
   every emitted row, all continuation branches, and page-placement state,
   then compared against a known printed/self-test sample.

@@ -28000,6 +28000,104 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "............#####.........................#####..",
         ],
     }))
+    primary_composed_visible_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(primary_font_selection_stream + b"\x0f!!"),
+            direct_mode=0,
+        ),
+        len(primary_font_selection_stream) + 3,
+    )
+    checks.append(assert_equal("parsed primary selection current-font RAM feeds SI visible rows", {
+        "combined_stream": primary_composed_visible_fetch["stream"],
+        "fetch_sources": sorted(set(primary_composed_visible_fetch["sources"])),
+        "selection_handlers": [
+            event["handler"]
+            for event in primary_selection_request["events"]
+        ],
+        "selection_context_update": primary_13eb8_refresh["context_update"],
+        "selection_map": {
+            key: primary_13eb8_dispatch[key]
+            for key in (
+                "slot",
+                "selected_symbol",
+                "active_symbol",
+                "map_address",
+                "patch_kind",
+            )
+        },
+        "handoff_stream": primary_composed_visible_fetch["stream"][len(primary_font_selection_stream):],
+        "handoff_event": live_primary_handoff_events[0],
+        "printable_sources": [
+            {
+                "source_context": event["source_context"],
+                "source_slot": event["source_slot"],
+                "coord": event["coord"],
+                "glyph_entry": event["glyph_entry"],
+            }
+            for event in live_primary_handoff_events
+            if event["kind"] == "printable"
+        ],
+        "final_page_root_context_slots": live_primary_handoff_page["final_state"]["page_root_context_slots"][:2],
+        "object_prefix": live_primary_handoff_page["bucket_object"][:14],
+        "rows_match_parsed_visible": live_primary_handoff_rendered["rows"] == primary_selection_visible_rendered["rows"],
+    }, {
+        "combined_stream": primary_font_selection_stream + b"\x0f!!",
+        "fetch_sources": ["ring"],
+        "selection_handlers": [0x00C930, 0x00C89C, 0x00C6EC, 0x00C780, 0x00C840, 0x01205A],
+        "selection_context_update": {
+            "helper": 0x0144D2,
+            "context_record": 0x782EE6,
+            "selected_longword": 0xC008004C,
+            "byte_4_bit30": 1,
+            "byte_5_bit26": 0,
+        },
+        "selection_map": {
+            "slot": "primary",
+            "selected_symbol": 0x0115,
+            "active_symbol": 0x0115,
+            "map_address": 0x782F32,
+            "patch_kind": "unchanged",
+        },
+        "handoff_stream": b"\x0f!!",
+        "handoff_event": {
+            "kind": "font-shift",
+            "byte": 0x0F,
+            "handler": 0x00C68A,
+            "selector_before": 1,
+            "selector_after": 0,
+            "requested_selector": 0,
+            "install_called": True,
+            "install_argument": 0,
+            "install_success": True,
+            "install_status": 1,
+            "current_page_context_slot_78297e": 0,
+            "page_root_context_slots": [0xC008004C, 0xC00AE122],
+            "context_install_events": [{
+                "helper": 0x00C4FC,
+                "caller": "0xc428",
+                "context_record": 0xC008004C,
+                "selected_page_slot": 0,
+                "reason": "first-inactive",
+            }],
+        },
+        "printable_sources": [
+            {
+                "source_context": 0xC008004C,
+                "source_slot": 0,
+                "coord": 0x6A00,
+                "glyph_entry": 0x001088,
+            },
+            {
+                "source_context": 0xC008004C,
+                "source_slot": 0,
+                "coord": 0x6802,
+                "glyph_entry": 0x001088,
+            },
+        ],
+        "final_page_root_context_slots": [0xC008004C, 0xC00AE122],
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 00 6a 00 00 68 02"),
+        "rows_match_parsed_visible": True,
+    }))
     secondary_selection_visible_stream = secondary_font_selection_stream + b"\x0e!!"
     secondary_selection_visible_fetch = fetch_stream_via_a904(
         host_byte_fetch_state(ring=list(secondary_selection_visible_stream), direct_mode=0),
@@ -28485,6 +28583,104 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ".........################..################...###",
             ".........################..################...###",
         ],
+    }))
+    secondary_composed_visible_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(secondary_font_selection_stream + b"\x0e!!"),
+            direct_mode=0,
+        ),
+        len(secondary_font_selection_stream) + 3,
+    )
+    checks.append(assert_equal("parsed secondary selection current-font RAM feeds SO visible rows", {
+        "combined_stream": secondary_composed_visible_fetch["stream"],
+        "fetch_sources": sorted(set(secondary_composed_visible_fetch["sources"])),
+        "selection_handlers": [
+            event["handler"]
+            for event in secondary_selection_request["events"]
+        ],
+        "selection_context_update": secondary_13eb8_refresh["context_update"],
+        "selection_map": {
+            key: secondary_13eb8_dispatch[key]
+            for key in (
+                "slot",
+                "selected_symbol",
+                "active_symbol",
+                "map_address",
+                "patch_kind",
+            )
+        },
+        "handoff_stream": secondary_composed_visible_fetch["stream"][len(secondary_font_selection_stream):],
+        "handoff_event": live_secondary_handoff_events[0],
+        "printable_sources": [
+            {
+                "source_context": event["source_context"],
+                "source_slot": event["source_slot"],
+                "coord": event["coord"],
+                "glyph_entry": event["glyph_entry"],
+            }
+            for event in live_secondary_handoff_events
+            if event["kind"] == "printable"
+        ],
+        "final_page_root_context_slots": live_secondary_handoff_page["final_state"]["page_root_context_slots"][:2],
+        "object_prefix": live_secondary_handoff_page["bucket_object"][:14],
+        "rows_match_parsed_visible": live_secondary_handoff_rendered["rows"] == secondary_selection_visible_rendered["rows"],
+    }, {
+        "combined_stream": secondary_font_selection_stream + b"\x0e!!",
+        "fetch_sources": ["ring"],
+        "selection_handlers": [0x00C930, 0x00C89C, 0x00C6EC, 0x00C780, 0x00C840, 0x01205A],
+        "selection_context_update": {
+            "helper": 0x0144D2,
+            "context_record": 0x782EF6,
+            "selected_longword": 0xC00AE122,
+            "byte_4_bit30": 1,
+            "byte_5_bit26": 0,
+        },
+        "selection_map": {
+            "slot": "secondary",
+            "selected_symbol": 0x000E,
+            "active_symbol": 0x000E,
+            "map_address": 0x783032,
+            "patch_kind": "selected-symbol-not-roman8",
+        },
+        "handoff_stream": b"\x0e!!",
+        "handoff_event": {
+            "kind": "font-shift",
+            "byte": 0x0E,
+            "handler": 0x00C6B8,
+            "selector_before": 0,
+            "selector_after": 1,
+            "requested_selector": 1,
+            "install_called": True,
+            "install_argument": 1,
+            "install_success": True,
+            "install_status": 1,
+            "current_page_context_slot_78297e": 1,
+            "page_root_context_slots": [0xC008004C, 0xC00AE122],
+            "context_install_events": [{
+                "helper": 0x00C4FC,
+                "caller": "0xc428",
+                "context_record": 0xC00AE122,
+                "selected_page_slot": 1,
+                "reason": "first-inactive",
+            }],
+        },
+        "printable_sources": [
+            {
+                "source_context": 0xC00AE122,
+                "source_slot": 1,
+                "coord": 0xC900,
+                "glyph_entry": 0x02E4F6,
+            },
+            {
+                "source_context": 0xC00AE122,
+                "source_slot": 1,
+                "coord": 0xCB01,
+                "glyph_entry": 0x02E4F6,
+            },
+        ],
+        "final_page_root_context_slots": [0xC008004C, 0xC00AE122],
+        "object_prefix": bytes.fromhex("00 00 00 00 00 01 00 02 00 c9 00 00 cb 01"),
+        "rows_match_parsed_visible": True,
     }))
     fallback_visible_context = int(secondary_symbol_fallback_13eb8_refresh["context_update"]["selected_longword"])  # type: ignore[index]
     fallback_visible_hmi = builtin_flagged_hmi_from_context(resources, fallback_visible_context)

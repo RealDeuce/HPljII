@@ -729,10 +729,11 @@ full 68000 interpreter through every source class and allocator branch.
 ## Built-In Font Selection To Visible Text
 
 Status: composed as parsed command-family to visible-output checkpoints for
-primary, secondary, secondary symbol-fallback, and primary/secondary live
-current-font-RAM handoff streams. The low-level font-selection ledger remains
-in [font-context-metrics.md](font-context-metrics.md); this section records
-the renderer-facing semantic contract for the selected state.
+primary, secondary, secondary symbol-fallback, primary/secondary live
+current-font-RAM handoff, and parsed-selection-to-current-font-RAM handoff
+streams. The low-level font-selection ledger remains in
+[font-context-metrics.md](font-context-metrics.md); this section records the
+renderer-facing semantic contract for the selected state.
 
 Concept: `ESC (s0p10h12v0s0b3T` writes primary font request fields, refreshes
 the active primary built-in context through `0x13eb8`, rebuilds the primary
@@ -754,12 +755,20 @@ proves the selected primary RAM record handoff: with
 live, SI calls `0xc428(0)`, `0xc4fc` installs `0xc008004c` into page-root slot
 `0`, and `0xd04a` / `0x1393a` consume that installed slot for the following
 two printable bytes.
+Fixture `parsed primary selection current-font RAM feeds SI visible rows`
+composes those contracts for `ESC (s0p10h12v0s0b3T SI !!`: host-fetched
+selection bytes produce `0x782ee6 = 0xc008004c` and map `0x782f32`; the `SI
+!!` tail installs page-root slot `0` and renders the same primary rows.
 Fixture `live secondary current-font RAM install feeds SO page-record rows`
 then proves the selected secondary RAM record handoff: with
 `0x782ef6 = 0xc00ae122` and an existing page root whose primary slot is live,
 SO calls `0xc428(1)`, `0xc4fc` installs `0xc00ae122` into page-root slot `1`,
 and `0xd04a` / `0x1393a` consume that installed slot for the following two
 printable bytes.
+Fixture `parsed secondary selection current-font RAM feeds SO visible rows`
+does the same for `ESC )s0p16h8v0s0b0T SO !!`, producing
+`0x782ef6 = 0xc00ae122`, map `0x783032`, page-root slot `1`, and the same
+secondary rows.
 
 ### Field Groups
 
@@ -850,6 +859,10 @@ printable bytes.
     state preseeded from the `0x13eb8` results.
   - the live secondary handoff stream is `SO !!` with current-font/page-root
     state preseeded from the `0x13eb8` results.
+  - the composed primary stream is `ESC (s0p10h12v0s0b3T SI !!`, split into
+    selection bytes and a `SI !!` handoff tail.
+  - the composed secondary stream is `ESC )s0p16h8v0s0b0T SO !!`, split into
+    selection bytes and a `SO !!` handoff tail.
 - Firmware bookkeeping:
   - `0x144d2` writes current-font context record `0x782ee6`.
   - `0x14c64` rebuilds map `0x782f32` and snapshots selected font state.
@@ -862,8 +875,9 @@ printable bytes.
     fixtures start without a root; it is `0` in the live secondary handoff
     fixture because the root already exists before SO.
 - Unknown:
-  - a single continuous CPU-state trace from parsed font-selection bytes
-    through later SO / printable page queueing is not yet captured.
+  - a single uninterrupted CPU-state trace from parsed font-selection bytes
+    through later SI/SO / printable page queueing is not yet captured; the
+    current fixtures compose parser-selection and page-root handoff models.
 
 ### Writers
 
@@ -961,15 +975,22 @@ bytes then report source context `0xc008004c` and source slot `0`. Final
 page-root allocation count is `0` because the fixture starts after root
 creation.
 
+The parsed-selection-to-RAM composed fixtures do not duplicate the full row
+tables; they assert that the RAM handoff rows match the already-pinned parsed
+visible fixtures while preserving the combined host streams, selection
+handlers, context updates, page-root install events, source contexts, object
+prefixes, and page-root slots.
+
 ### Confidence
 
 High for parser handler routing, fallback table decision, selected built-in
 context, secondary current-font RAM to page-root slot install, map rebuild
 metadata, HMI, compact object bytes, render context slot, and final rows
 because they are all fixture-pinned against ROM-derived helpers. Medium for a
-single continuous CPU-state execution from parsed selection bytes through
+single uninterrupted CPU-state execution from parsed selection bytes through
 later printable output because the fixtures still compose pinned `0x13eb8`
-outputs into later phases.
+outputs into later phases, even though the composed fixture now spans both
+semantic legs.
 
 ### Fixtures
 
@@ -978,6 +999,8 @@ outputs into later phases.
 - `0x13eb8 refresh carries parsed secondary font selection to dispatch`
 - `parsed primary built-in font selection feeds visible page-record rows`
 - `parsed secondary built-in font selection feeds visible SO page-record rows`
+- `parsed primary selection current-font RAM feeds SI visible rows`
+- `parsed secondary selection current-font RAM feeds SO visible rows`
 - `live primary current-font RAM install feeds SI page-record rows`
 - `live secondary current-font RAM install feeds SO page-record rows`
 - `secondary symbol miss falls back before visible SO page-record rows`
@@ -1000,9 +1023,11 @@ outputs into later phases.
 - `0x782ee6 +0x00..+0x0f` into `0xc68a..0xc428..0xc4fc..0xd04a..0x1393a`
   and `0x782ef6 +0x00..+0x0f` into
   `0xc6b8..0xc428..0xc4fc..0xd04a..0x1393a`: primary and secondary selected
-  current-context RAM are now covered for existing page roots. Still open: a
-  single continuous CPU-state trace from parsed selection bytes through later
-  printable output.
+  current-context RAM are now covered for existing page roots, and composed
+  parser-selection-to-visible fixtures cover
+  `ESC (s0p10h12v0s0b3T SI !!` and `ESC )s0p16h8v0s0b0T SO !!`. Still open:
+  a single uninterrupted CPU-state trace from parsed selection bytes through
+  later printable output.
 - Other primary/secondary font-selection combinations and fallback/error
   branches still need the same visible-output treatment; the exact covered
   fallback boundary is `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` through

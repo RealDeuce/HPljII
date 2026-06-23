@@ -28,6 +28,8 @@ Evidence:
   - `0x13eb8 refresh carries parsed secondary font selection to dispatch`
   - `parsed primary built-in font selection feeds visible page-record rows`
   - `parsed secondary built-in font selection feeds visible SO page-record rows`
+  - `parsed primary selection current-font RAM feeds SI visible rows`
+  - `parsed secondary selection current-font RAM feeds SO visible rows`
   - `live primary current-font RAM install feeds SI page-record rows`
   - `live secondary current-font RAM install feeds SO page-record rows`
   - `secondary symbol miss falls back before visible SO page-record rows`
@@ -242,6 +244,16 @@ prefix and visible Courier rows. Because the root already exists, this fixture
 has page-root allocation count `0`; it is a current-font-RAM-to-page-root
 handoff fixture, not a first-root-allocation fixture.
 
+Fixture `parsed primary selection current-font RAM feeds SI visible rows`
+composes the parsed primary selection stream with that handoff. The combined
+host-fetched stream is `ESC (s0p10h12v0s0b3T SI !!`: the selection phase uses
+the same handlers and `0x144d2` context update as the primary visible
+selection fixture, producing `0x782ee6 = 0xc008004c` and map `0x782f32`; the
+tail `SI !!` then follows the live primary handoff fixture through
+`0xc68a`, `0xc428(0)`, `0xc4fc`, page-root slot `0`, and two printable
+`0xd04a` events. Its rendered rows are asserted to match the pinned parsed
+primary visible rows.
+
 Fixture
 `parsed secondary built-in font selection feeds visible SO page-record rows`
 does the same for the secondary selection and SI/SO bridge. The modeled ring
@@ -284,6 +296,14 @@ host `0x21` to glyph `0x00`, and produce the same secondary compact object
 prefix and visible rows. Because the root already exists, this fixture has
 page-root allocation count `0`; it is a current-font-RAM-to-page-root handoff
 fixture, not a first-root-allocation fixture.
+
+Fixture `parsed secondary selection current-font RAM feeds SO visible rows`
+adds the secondary composed contract. The combined host-fetched stream is
+`ESC )s0p16h8v0s0b0T SO !!`: the selection phase writes
+`0x782ef6 = 0xc00ae122` and map `0x783032`, then the tail `SO !!` follows
+`0xc6b8`, `0xc428(1)`, `0xc4fc`, page-root slot `1`, and two printable
+`0xd04a` events. Its rendered rows are asserted to match the pinned parsed
+secondary visible rows.
 
 Fixture
 `secondary symbol miss falls back before visible SO page-record rows` adds
@@ -507,6 +527,16 @@ work can close the right gap instead of re-tracing already-covered consumers.
   row `.............###...........................###...`. Status:
   modeled current-font RAM handoff to existing page-root slot and visible
   output.
+- Claim: parsed primary font-selection bytes can compose with the primary
+  current-font RAM handoff into visible output. Evidence: fixture
+  `parsed primary selection current-font RAM feeds SI visible rows`; stream
+  `ESC (s0p10h12v0s0b3T SI !!`; selection context update
+  `0x782ee6 = 0xc008004c`; map `0x782f32`; SI handler `0xc68a`; install
+  helper `0xc428(0)` / `0xc4fc`; page-root slots
+  `(0xc008004c, 0xc00ae122)`; printable source contexts `0xc008004c`;
+  object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`; rows match the
+  pinned parsed primary visible fixture. Status: composed parser-selection to
+  current-font RAM to existing page-root slot and visible output.
 - Claim: the secondary current-font RAM record can feed visible SO output
   through the page-root context slot path. Evidence: fixture
   `live secondary current-font RAM install feeds SO page-record rows`; seeded
@@ -518,6 +548,16 @@ work can close the right gap instead of re-tracing already-covered consumers.
   row `.........################..################...###`. Status:
   modeled current-font RAM handoff to existing page-root slot and visible
   output.
+- Claim: parsed secondary font-selection bytes can compose with the secondary
+  current-font RAM handoff into visible output. Evidence: fixture
+  `parsed secondary selection current-font RAM feeds SO visible rows`; stream
+  `ESC )s0p16h8v0s0b0T SO !!`; selection context update
+  `0x782ef6 = 0xc00ae122`; map `0x783032`; SO handler `0xc6b8`; install
+  helper `0xc428(1)` / `0xc4fc`; page-root slots
+  `(0xc008004c, 0xc00ae122)`; printable source contexts `0xc00ae122`;
+  object prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`; rows match the
+  pinned parsed secondary visible fixture. Status: composed parser-selection
+  to current-font RAM to existing page-root slot and visible output.
 - Claim: a secondary symbol-set miss can fall back to the firmware table word
   before visible SO output. Evidence: fixture
   `secondary symbol miss falls back before visible SO page-record rows`; stream
@@ -702,9 +742,12 @@ A byte-stream reproduction must preserve these behaviors:
   The primary current-font RAM handoff from seeded `0x782ee6` through
   `0xc428` / `0xc4fc` into existing page-root slot `0` is now fixture-backed
   by `live primary current-font RAM install feeds SI page-record rows`.
-  Remaining handoff work is a continuous parser-to-page CPU-state trace that
-  carries the parser-produced current-font records directly into later SI/SO
-  and printable queueing.
+  The composed fixtures `parsed primary selection current-font RAM feeds SI
+  visible rows` and `parsed secondary selection current-font RAM feeds SO
+  visible rows` now tie host-fetched font-selection bytes to those RAM handoff
+  fixtures and matching visible rows. Remaining handoff work is a single
+  uninterrupted CPU-state trace that carries the parser-produced current-font
+  records directly into later SI/SO and printable queueing.
 - The exact metric-byte provenance for all downloaded/inline forms remains
   incomplete at the parser-produced page boundary. Existing host-stream
   downloaded-font fixtures prove install, visible glyph rendering, and

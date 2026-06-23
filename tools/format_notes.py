@@ -48,6 +48,10 @@ def run_git(root: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
     )
 
 
+def run_git_diff_check(root: Path) -> subprocess.CompletedProcess[str]:
+    return run_git(root, ["diff", "--check", "HEAD"])
+
+
 def repo_root() -> Path:
     result = run_git(Path.cwd(), ["rev-parse", "--show-toplevel"])
     if result.returncode != 0:
@@ -311,6 +315,11 @@ def main() -> int:
             for path in whitespace_changed
             if path not in changed
         )
+
+    diff_check = run_git_diff_check(root)
+    if diff_check.returncode != 0:
+        failures.extend(line for line in diff_check.stdout.splitlines() if line)
+        failures.extend(line for line in diff_check.stderr.splitlines() if line)
 
     if failures:
         print("\n".join(failures), file=sys.stderr)

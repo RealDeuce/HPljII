@@ -759,6 +759,12 @@ proves SI `0xc68a` calling `0xc428(0)` / `0xc4fc`, installing page-root slot
 from the same seeded records, proves SO `0xc6b8` calling `0xc428(1)` /
 `0xc4fc`, installing page-root slot `1`, and rendering the following `!!`
 from that installed slot.
+Composed fixtures `parsed primary selection current-font RAM feeds SI visible
+rows` and `parsed secondary selection current-font RAM feeds SO visible rows`
+tie those handoffs back to host-fetched selection streams
+`ESC (s0p10h12v0s0b3T SI !!` and `ESC )s0p16h8v0s0b0T SO !!`; their
+page-root install events, source contexts, compact object prefixes, and rows
+match the pinned primary and secondary visible fixtures.
 Fixture
 `parsed secondary built-in font selection feeds visible SO page-record rows`
 adds the secondary mirror: `ESC )s0p16h8v0s0b0T` selects context

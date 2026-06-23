@@ -789,7 +789,14 @@ render-context slots, and rows match the secondary SO case; fixture
 secondary existing-root handoff by seeding `0x782ee6 = 0xc008004c` and
 `0x782ef6 = 0xc00ae122`, routing SO through `0xc6b8`, `0xc428(1)`, and
 `0xc4fc`, installing page-root context slot `1`, and rendering the following
-`!!` from source context `0xc00ae122` / source slot `1`
+`!!` from source context `0xc00ae122` / source slot `1`; fixtures
+`parsed primary selection current-font RAM feeds SI visible rows` and
+`parsed secondary selection current-font RAM feeds SO visible rows` compose
+the host-fetched selection streams `ESC (s0p10h12v0s0b3T SI !!` and
+`ESC )s0p16h8v0s0b0T SO !!` into those RAM handoff paths, preserving
+selection handlers, `0x144d2` context updates, `0xc428` / `0xc4fc` install
+events, page-root slots, source contexts, compact object prefixes, and rows
+matching the pinned parsed visible fixtures
 
 ### Formatter manuals
 
@@ -876,12 +883,13 @@ ROM work needed:
 - Extend the pinned visible `0xc580` branch outcomes into fuller
   upstream `0x1be22` parser-state coverage around the now-pinned
   `0x17708` success paths, turn the parser-derived `0x156de` secondary
-  fallback fixture into a continuous parser-to-page CPU-state trace, add other
-  fallback/error font-selection visible-output streams beyond the now-pinned
-  primary `ESC (s0p10h12v0s0b3T!!`, secondary `ESC )s0p16h8v0s0b0T SO !!`,
-  fallback `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`, primary
-  `0x782ee6 -> 0xc428(0) -> 0xc4fc -> 0xd04a`, and secondary
-  `0x782ef6 -> 0xc428(1) -> 0xc4fc -> 0xd04a` cases, and extend `0x13eb8`
+  fallback fixture into a single uninterrupted parser-to-page CPU-state trace,
+  add other fallback/error font-selection visible-output streams beyond the
+  now-pinned primary `ESC (s0p10h12v0s0b3T!!`, secondary
+  `ESC )s0p16h8v0s0b0T SO !!`, fallback
+  `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`, primary
+  `ESC (s0p10h12v0s0b3T SI !!`, and secondary
+  `ESC )s0p16h8v0s0b0T SO !!` composed handoff cases, and extend `0x13eb8`
   if later inline/downloaded or error-return branches surface.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become

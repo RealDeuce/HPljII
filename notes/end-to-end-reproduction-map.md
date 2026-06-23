@@ -290,8 +290,8 @@ The next work should follow dataflow, not isolated handlers:
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus
    secondary built-in font-selection visible-output streams, and the secondary
-   symbol fallback plus primary/secondary current-font-RAM handoff visible-output
-   streams. The primary
+   symbol fallback plus primary/secondary current-font-RAM handoff and
+   composed selection-to-RAM handoff visible-output streams. The primary
    built-in case proves `ESC (s0p10h12v0s0b3T!!` through parsed selection
    handlers, selected context `0xc008004c`, printable `0xd04a` entries, object
    prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record context
@@ -310,7 +310,10 @@ The next work should follow dataflow, not isolated handlers:
    The secondary RAM handoff case proves seeded
    `0x782ef6 = 0xc00ae122` through SO `0xc6b8`, `0xc428(1)`, `0xc4fc`,
    page-root slot `1`, and following `!!` visible rows on an existing root.
-   Remaining suite cases should capture a continuous parser-to-printable
-   CPU-state trace, add other fallback/error font-selection visible-output
-   variants, and add
+   The composed handoff cases prove `ESC (s0p10h12v0s0b3T SI !!` and
+   `ESC )s0p16h8v0s0b0T SO !!` from host-fetched selection bytes to selected
+   current-font RAM, page-root slot install, and rows matching the pinned
+   visible fixtures. Remaining suite cases should capture a single
+   uninterrupted parser-to-printable CPU-state trace, add other fallback/error
+   font-selection visible-output variants, and add
    geometry-changing publication cases with final bitmap-row comparison.

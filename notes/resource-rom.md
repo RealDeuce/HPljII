@@ -382,7 +382,7 @@ The `0x1c334..0x1c5e4` candidate traversal is now decoded through both
 internal-font source-group class passes. Fixture
 `font sample first internal source group follows 0x1c334 row loop` in
 `tools/render_fixture_harness.py` resolves the class-zero request indexes
-`0..29` through `0x1b8ea`, `0x1b50e`, `0x1c746`, `0x1c710`, `0x1cabe`, and the
+`0..14` through `0x1b8ea`, `0x1b50e`, `0x1c746`, `0x1c710`, `0x1cabe`, and the
 `0x1c540..0x1c5c6` recent-list scan. The class-zero visible rows are:
 
 - `I00` record `0x00004c`, context `0x4008004c`, word `0x0115`:
@@ -414,22 +414,26 @@ internal-font source-group class passes. Fixture
 - `I13` record `0x014f5c`, context `0x40094f5c`, word `0x000e`:
   `LINE_PRINTER`, `16.6`, `8.5`, `0N`.
 
-Requests `14..28` resolve to class-one records and are rejected by the
-`0x1c3e8..0x1c3f6` class comparison for the class-zero pass. Request `29`
-is the terminal `0x1b50e` miss. The recent list is seeded with
-`0x4008004c` by the `0x1c9b8` setup path; rows `I05` and `I10` are visible
-duplicate Roman-8 substitutions, but the post-row `0x1c540..0x1c5c6` scan
-does not append their already-present contexts. The fixture carries those
-14 rows through one page-record state with context slots ending at
+Request `14` resolves to class-one record `0x019d18`. Because the class-zero
+pass has nonzero `D5`, the mismatch does not continue scanning: the
+`0x1c3f8..0x1c400` branch jumps to the `0x1c5d6..0x1c5de` status writer and
+stores `0x783f05 = 14`. The recent list is seeded with `0x4008004c` by the
+`0x1c9b8` setup path; rows `I05` and `I10` are visible duplicate Roman-8
+substitutions, but the post-row `0x1c540..0x1c5c6` scan does not append their
+already-present contexts. The fixture carries those 14 rows through one
+page-record state with context slots ending at
 `0x4008004c,0x44080418,0x44080868,0x40080cb8,0x40089fb0,0x4408a37c,
 0x4408a7cc,0x4008ac1c,0x400942e4,0x440946b4,0x44094b08,0x40094f5c`.
 
 Fixture `font sample internal class-one source group follows 0x1c334 row loop`
 then covers the internal-font class-one pass seeded by `0x1e9a0` with
 context `0x40099d18`. Request index `0` emits the seeded class-one Roman-8
-`LINE PRINTER` row. Request indexes `1..15` resolve to class-zero records and
-are rejected by the same `0x1c3e8..0x1c3f6` comparison. Request indexes
-`16..28` emit the class-one rows:
+`LINE PRINTER` row. After that row, control reaches the common
+`0x1c404..0x1c428` advance path with `D5 == 0`; because this is class pass
+`1`, it reads the previous source status byte `0x783f05 = 14` and resumes at
+request `14`. Requests `14` and `15` resolve to class-zero records and are
+rejected by the same `0x1c3e8..0x1c3f6` comparison; request indexes `16..28`
+emit the class-one rows:
 
 - `I16` record `0x01a0e4`, context `0x4409a0e4`, word `0x0155`:
   `COURIER`, `10`, `12`, `10U`.
@@ -458,9 +462,12 @@ are rejected by the same `0x1c3e8..0x1c3f6` comparison. Request indexes
 - `I28` record `0x02e122`, context `0x400ae122`, word `0x000e`:
   `LINE_PRINTER`, `16.6`, `8.5`, `0N`.
 
-Request `29` is again the terminal `0x1b50e` miss, and both class passes write
-source status byte `0x783f05 = 29` through `0x1c5d6..0x1c5de`. The class-one
-page-record context slots end at
+Request `29` is the terminal `0x1b50e` miss for the class-one pass, which
+writes `0x783f05 = 29` through `0x1c5d6..0x1c5de`. The full-loop status
+sequence for the internal source is therefore class-zero writer
+`0x1c5d6..0x1c5de: 14`, class-one reader `0x1c41a..0x1c428: 14`, and
+class-one writer `0x1c5d6..0x1c5de: 29`. The class-one page-record context
+slots end at
 `0x40099d18,0x4409a0e4,0x4409a534,0x4009a984,0x400a3484,0x440a3850,
 0x440a3ca0,0x400a40f0,0x400ad4aa,0x440ad87a,0x440adcce,0x400ae122`.
 

@@ -5264,6 +5264,8 @@ def font_sample_source_group_rows_via_1c334(
     current_selected_pointer: int,
     current_record_start: int,
     initial_recent_contexts: list[int],
+    source_status_before: int = 0,
+    search_mode: int | None = None,
     max_request_index: int = 0x63,
 ) -> dict[str, object]:
     first_list = list(candidate_windows["class_zero_low"])  # type: ignore[index]
@@ -5274,8 +5276,11 @@ def font_sample_source_group_rows_via_1c334(
     emitted_rows: list[dict[str, object]] = []
     terminal_reason = "max-request-index"
     terminal_request_index = max_request_index + 1
+    status_resume_events: list[dict[str, int | str]] = []
+    request_index = 0
+    resolver_search_mode = int(source_index if search_mode is None else search_mode)
 
-    for request_index in range(max_request_index + 1):
+    while request_index <= max_request_index:
         fast_probe = None
         if request_index == 0:
             fast_probe = {
@@ -5284,7 +5289,7 @@ def font_sample_source_group_rows_via_1c334(
                 "word": u16(resources, int(current_record_start) + 0x22),
             }
         resolution = default_font_resolver_scan_via_1b50e(
-            search_mode=3,
+            search_mode=resolver_search_mode,
             requested_index=request_index,
             requested_symbol=requested_symbol,
             current_selected_pointer=current_selected_pointer,
@@ -5318,6 +5323,14 @@ def font_sample_source_group_rows_via_1c334(
                 terminal_reason = "resolver-miss"
                 terminal_request_index = request_index
                 break
+            request_index = font_sample_next_request_index_after_1c404(
+                class_filter=class_filter,
+                request_index=request_index,
+                source_status_before=source_status_before,
+                status_resume_events=status_resume_events,
+                reason="initial-miss",
+                max_request_index=max_request_index,
+            )
             continue
 
         candidate = next(
@@ -5341,6 +5354,18 @@ def font_sample_source_group_rows_via_1c334(
         if int(class_info["class_value"]) != int(class_filter):
             attempt["decision"] = "class-mismatch-skip"
             attempts.append(attempt)
+            if int(class_filter) == 0 and request_index != 0:
+                terminal_reason = "class-mismatch-status-write"
+                terminal_request_index = request_index
+                break
+            request_index = font_sample_next_request_index_after_1c404(
+                class_filter=class_filter,
+                request_index=request_index,
+                source_status_before=source_status_before,
+                status_resume_events=status_resume_events,
+                reason="class-mismatch",
+                max_request_index=max_request_index,
+            )
             continue
 
         recent_before = context in recent_contexts
@@ -5375,12 +5400,23 @@ def font_sample_source_group_rows_via_1c334(
         attempt["recent_before"] = recent_before
         attempts.append(attempt)
         emitted_rows.append(row)
+        request_index = font_sample_next_request_index_after_1c404(
+            class_filter=class_filter,
+            request_index=request_index,
+            source_status_before=source_status_before,
+            status_resume_events=status_resume_events,
+            reason="post-row-recent-scan",
+            max_request_index=max_request_index,
+        )
 
     return {
         "helper": "0x1c398..0x1c5d6",
         "source_index": source_index,
         "class_filter": class_filter,
         "requested_symbol": requested_symbol,
+        "search_mode": resolver_search_mode,
+        "source_status_before": int(source_status_before) & 0xFF,
+        "status_resume_events": status_resume_events,
         "initial_recent_contexts": [int(context) & 0xFFFFFFFF for context in initial_recent_contexts],
         "attempts": attempts,
         "emitted_rows": emitted_rows,
@@ -5393,6 +5429,33 @@ def font_sample_source_group_rows_via_1c334(
             "writer": "0x1c5d6..0x1c5de",
         },
     }
+
+
+def font_sample_next_request_index_after_1c404(
+    *,
+    class_filter: int,
+    request_index: int,
+    source_status_before: int,
+    status_resume_events: list[dict[str, int | str]],
+    reason: str,
+    max_request_index: int,
+) -> int:
+    if request_index != 0:
+        next_index = request_index + 1
+        if next_index > max_request_index:
+            return max_request_index + 1
+        return next_index
+    if int(class_filter) == 1:
+        resume = int(source_status_before) & 0xFF
+        next_index = resume if resume else 1
+        status_resume_events.append({
+            "reader": "0x1c41a..0x1c428",
+            "reason": reason,
+            "source_status_before": resume,
+            "next_request_index": next_index,
+        })
+        return next_index
+    return 1
 
 
 def builtin_candidate_symbol_via_15890(candidate: dict[str, int]) -> dict[str, object]:
@@ -29416,7 +29479,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "final_cursor_x": internal_source_group_page["final_cursor_x"],
         "final_cursor_y": internal_source_group_page["final_cursor_y"],
     }, {
-        "terminal": ("resolver-miss", 29),
+        "terminal": ("class-mismatch-status-write", 14),
         "row_count": 14,
         "row_summary": [
             (0, 0x00004C, 0x4008004C, 0x0115, True, "already-present", b"I00LINE PRINTER10128U"),
@@ -29436,21 +29499,6 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "non_emit_summary": [
             (14, "class-mismatch-skip", 0x019D18, 1),
-            (15, "class-mismatch-skip", 0x019D18, 1),
-            (16, "class-mismatch-skip", 0x01A0E4, 1),
-            (17, "class-mismatch-skip", 0x01A534, 1),
-            (18, "class-mismatch-skip", 0x01A984, 1),
-            (19, "class-mismatch-skip", 0x023484, 1),
-            (20, "class-mismatch-skip", 0x023484, 1),
-            (21, "class-mismatch-skip", 0x023850, 1),
-            (22, "class-mismatch-skip", 0x023CA0, 1),
-            (23, "class-mismatch-skip", 0x0240F0, 1),
-            (24, "class-mismatch-skip", 0x02D4AA, 1),
-            (25, "class-mismatch-skip", 0x02D4AA, 1),
-            (26, "class-mismatch-skip", 0x02D87A, 1),
-            (27, "class-mismatch-skip", 0x02DCCE, 1),
-            (28, "class-mismatch-skip", 0x02E122, 1),
-            (29, "terminal-miss", None, None),
         ],
         "final_recent_contexts": [
             0x4008004C,
@@ -29468,7 +29516,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "source_status_write": {
             "address": 0x00783F05,
-            "value": 29,
+            "value": 14,
             "writer": "0x1c5d6..0x1c5de",
         },
         "page_context_slots": [
@@ -29525,6 +29573,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         current_selected_pointer=0x782324,
         current_record_start=0x019D18,
         initial_recent_contexts=[0x40099D18],
+        source_status_before=int(internal_source_group_rows["source_status_write"]["value"]),  # type: ignore[index]
     )
     internal_class_one_group_emitted = list(internal_class_one_group_rows["emitted_rows"])  # type: ignore[arg-type]
     internal_class_one_group_fields = [
@@ -29574,6 +29623,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             if attempt["decision"] != "emit-row"
         ],
         "final_recent_contexts": internal_class_one_group_rows["final_recent_contexts"],
+        "source_status_before": internal_class_one_group_rows["source_status_before"],
+        "status_resume_events": internal_class_one_group_rows["status_resume_events"],
         "source_status_write": internal_class_one_group_rows["source_status_write"],
         "page_context_slots": internal_class_one_group_page["context_slots"],
         "page_nonempty_buckets": internal_class_one_group_page["nonempty_buckets"],
@@ -29603,19 +29654,6 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             (28, 0x02E122, 0x400AE122, 0x000E, False, "appended", b"I28LINE_PRINTER16.68.50N"),
         ],
         "non_emit_summary": [
-            (1, "class-mismatch-skip", 0x00004C, 0),
-            (2, "class-mismatch-skip", 0x00004C, 0),
-            (3, "class-mismatch-skip", 0x000418, 0),
-            (4, "class-mismatch-skip", 0x000868, 0),
-            (5, "class-mismatch-skip", 0x000CB8, 0),
-            (6, "class-mismatch-skip", 0x009FB0, 0),
-            (7, "class-mismatch-skip", 0x009FB0, 0),
-            (8, "class-mismatch-skip", 0x00A37C, 0),
-            (9, "class-mismatch-skip", 0x00A7CC, 0),
-            (10, "class-mismatch-skip", 0x00AC1C, 0),
-            (11, "class-mismatch-skip", 0x0142E4, 0),
-            (12, "class-mismatch-skip", 0x0142E4, 0),
-            (13, "class-mismatch-skip", 0x0146B4, 0),
             (14, "class-mismatch-skip", 0x014B08, 0),
             (15, "class-mismatch-skip", 0x014F5C, 0),
             (29, "terminal-miss", None, None),
@@ -29634,6 +29672,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             0x440ADCCE,
             0x400AE122,
         ],
+        "source_status_before": 14,
+        "status_resume_events": [{
+            "reader": "0x1c41a..0x1c428",
+            "reason": "post-row-recent-scan",
+            "source_status_before": 14,
+            "next_request_index": 14,
+        }],
         "source_status_write": {
             "address": 0x00783F05,
             "value": 29,
@@ -70243,7 +70288,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         internal_source_heading_first_three_rows["final_cursor_x"],
         internal_source_heading_first_three_rows["final_cursor_y"],
     ))
-    lines.append("- font sample first internal source group: `0x1c398..0x1c5d6` resolves request indexes `0..%d`, emits `%d` class-zero rows, rejects class-one request indexes `%s`, and terminates on `%s` at request `%d`. Duplicate Roman-8 substitution requests `%s` remain visible with words `%s` but are not re-appended by `0x1c540..0x1c5c6`; final recent contexts are `%s`, page context slots are `%s`, and selected page buckets hash to `%s`." % (
+    lines.append("- font sample first internal source group: `0x1c398..0x1c5d6` resolves request indexes `0..%d`, emits `%d` class-zero rows, rejects class-one request indexes `%s`, writes source status byte `0x%06x = %d`, and terminates on `%s` at request `%d`. Duplicate Roman-8 substitution requests `%s` remain visible with words `%s` but are not re-appended by `0x1c540..0x1c5c6`; final recent contexts are `%s`, page context slots are `%s`, and selected page buckets hash to `%s`." % (
         internal_source_group_rows["terminal_request_index"],  # type: ignore[index]
         len(internal_source_group_emitted),
         ",".join(
@@ -70251,6 +70296,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             for attempt in internal_source_group_rows["attempts"]  # type: ignore[index]
             if attempt["decision"] == "class-mismatch-skip"
         ),
+        internal_source_group_rows["source_status_write"]["address"],  # type: ignore[index]
+        internal_source_group_rows["source_status_write"]["value"],  # type: ignore[index]
         internal_source_group_rows["terminal_reason"],  # type: ignore[index]
         internal_source_group_rows["terminal_request_index"],  # type: ignore[index]
         ",".join(
@@ -70276,7 +70323,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             for bucket in (26, 66, 82, 90)
         },
     ))
-    lines.append("- font sample internal class-one source group: `0x1e9a0` seeds current context `0x40099d18`; `0x1c398..0x1c5d6` emits `%d` class-one rows from request indexes `%s`, rejects class-zero request indexes `%s`, writes source status byte `0x%06x = %d`, and terminates on `%s` at request `%d`. Duplicate Roman-8 substitution requests `%s` remain visible with words `%s`; final recent contexts are `%s`, page context slots are `%s`, and selected page buckets hash to `%s`." % (
+    lines.append("- font sample internal class-one source group: `0x1e9a0` seeds current context `0x40099d18`; after request 0, `0x1c41a..0x1c428` reads prior source status `%d` and resumes at request `%d`; `0x1c398..0x1c5d6` emits `%d` class-one rows from request indexes `%s`, rejects class-zero request indexes `%s`, writes source status byte `0x%06x = %d`, and terminates on `%s` at request `%d`. Duplicate Roman-8 substitution requests `%s` remain visible with words `%s`; final recent contexts are `%s`, page context slots are `%s`, and selected page buckets hash to `%s`." % (
+        internal_class_one_group_rows["status_resume_events"][0]["source_status_before"],  # type: ignore[index]
+        internal_class_one_group_rows["status_resume_events"][0]["next_request_index"],  # type: ignore[index]
         len(internal_class_one_group_emitted),
         ",".join(str(row["request_index"]) for row in internal_class_one_group_emitted),
         ",".join(

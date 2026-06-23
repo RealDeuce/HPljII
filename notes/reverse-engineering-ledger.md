@@ -680,8 +680,9 @@ and `0x1cf34` sample-byte emission before the post-row recent-context
 scan; the committed resource note now documents both internal-font class
 passes, with class-zero visible rows `I00..I13`, class-one visible rows
 `I00` and `I16..I28`, duplicate Roman-8 substitution rows
-`I05`/`I10`/`I20`/`I25`, and the shared `0x783f05 = 29` source-status
-write; the report also
+`I05`/`I10`/`I20`/`I25`, and the full-loop source-status chain
+`0x783f05 = 14` from class-zero, class-one resume through
+`0x1c41a..0x1c428`, then `0x783f05 = 29`; the report also
 pins sample-page cursor and row sequencing through `0x1c916`,
 `0x1ca2c`, `0x1cabe`, `0x1cf34`, and `0x1d050`, including page-limit
 checks against `0x782db6`, source/metric text emission through `0xd04a`,
@@ -1022,12 +1023,14 @@ ROM work needed:
 - Model the font-printout loop's emitted page objects from the ROM sample
   byte runs. The internal-font source group is decoded for both class passes
   and documented in `notes/resource-rom.md`: request index `0` fast-probes or
-  uses the `0x1e9a0` seed, request indexes `1..28` scan through `0x1b50e`,
-  `0x1c746` normalizes selected addresses to candidate longwords, `0x1c710`
-  rejects the opposite class, request `29` terminates on resolver miss, and
+  uses the `0x1e9a0` seed, `0x1b50e` scans row ordinals, `0x1c746`
+  normalizes selected addresses to candidate longwords, `0x1c710` rejects the
+  opposite class, class-zero request `14` writes `0x783f05 = 14`, class-one
+  reads that byte through `0x1c41a..0x1c428`, request `29` terminates on
+  resolver miss for class one, and
   rows `I05`/`I10`/`I20`/`I25` prove duplicate Roman-8 substitutions are
-  visible before the post-row `0x1c540..0x1c5c6` recent-list scan. Both passes
-  write source status byte `0x783f05 = 29` through `0x1c5d6..0x1c5de`.
+  visible before the post-row `0x1c540..0x1c5c6` recent-list scan. The final
+  class-one status write is `0x783f05 = 29` through `0x1c5d6..0x1c5de`.
   Fixture `font sample run 1 full row spans compact buckets` carries byte stream
   ``ABCDEfghij#$@[\\]^`{|}~123`` through context `0x44080418`, compact
   buckets `-1` and `0`, `0x1ed84` / `0x1ef6a`, and row hashes

@@ -1158,8 +1158,9 @@ for how resource records become ordinary page-record text.
     to be visible.
   - `0x783f02..0x783f05`: per-source status bytes written when a source
     group has no more matching rows or when continuation gating is needed.
-    The verified internal-font source group writes `0x783f05 = 29` in both
-    class passes through `0x1c5d6..0x1c5de`.
+    The verified internal-font source group writes `0x783f05 = 14` in the
+    class-zero pass through `0x1c5d6..0x1c5de`, then the class-one pass reads
+    that byte through `0x1c41a..0x1c428` and later writes `0x783f05 = 29`.
   - `0x783f08`: recent-context count byte maintained by
     `0x1c540..0x1c5c6`.
   - local page-break word `-6(A6)`: receives the return flag from
@@ -1169,19 +1170,22 @@ for how resource records become ordinary page-record text.
   - exact page-object bytes emitted by the full `0x1c204` printout loop
     have not yet been modeled from every source heading, both class passes,
     continuation pages, and all-source placement. The internal-font class-zero
-    source group is fixture-backed from request indexes `0..29`: `0x1b8ea`
+    source group is fixture-backed from request indexes `0..14`: `0x1b8ea`
     fast-probes class-zero row `I00`, `0x1b50e` scans later rows, `0x1c746`
-    maps low-24 addresses back to candidate longwords, `0x1c710` rejects
-    request indexes `14..28` as class-one rows during the class-zero pass,
-    `0x1cabe` emits 14 visible class-zero rows, and `0x1c540..0x1c5c6` leaves
-    final recent contexts
+    maps low-24 addresses back to candidate longwords, `0x1c710` finds
+    request `14` is class one, and `0x1c3f8..0x1c400` branches directly to
+    the source-status writer because class-zero `D5` is nonzero. `0x1cabe`
+    emits 14 visible class-zero rows, and `0x1c540..0x1c5c6` leaves final
+    recent contexts
     `0x4008004c,0x44080418,0x44080868,0x40080cb8,0x40089fb0,0x4408a37c,
     0x4408a7cc,0x4008ac1c,0x400942e4,0x440946b4,0x44094b08,0x40094f5c`.
     The class-one pass is fixture-backed with seed context `0x40099d18` from
-    `0x1e9a0`: request indexes `1..15` are rejected as class-zero rows,
-    visible rows are `I00` and `I16..I28`, and final recent contexts are
-    `0x40099d18,0x4409a0e4,0x4409a534,0x4009a984,0x400a3484,0x440a3850,
-    0x440a3ca0,0x400a40f0,0x400ad4aa,0x440ad87a,0x440adcce,0x400ae122`.
+    `0x1e9a0`: after visible row `I00`, `0x1c41a..0x1c428` reads the
+    class-zero status byte `14`, resumes at request `14`, rejects requests
+    `14` and `15` as class-zero rows, emits visible rows `I16..I28`, and
+    leaves final recent contexts `0x40099d18,0x4409a0e4,0x4409a534,
+    0x4009a984,0x400a3484,0x440a3850,0x440a3ca0,0x400a40f0,0x400ad4aa,
+    0x440ad87a,0x440adcce,0x400ae122`.
     Other source headings, continuation branches, and whole-page placement
     remain open.
   - record `+0x28..+0x31` baseline/cell/manual semantics remain
@@ -1500,9 +1504,11 @@ open.
   recent-context scan. The verified internal-font mode-3 row sequence is
   documented in [resource-rom.md](resource-rom.md) for both class passes:
   class-zero emits `I00..I13`, class-one emits `I00` plus `I16..I28`, and
-  both passes write `0x783f05 = 29`. The `0x1c1cf` sample run 1 byte stream
-  is now consumed both as a standalone page-object/render fixture and after
-  first-`COURIER` row fields in the same carried page-record state. The
+  the full-loop status chain is class-zero `0x783f05 = 14`, class-one resume
+  through `0x1c41a..0x1c428`, and final class-one `0x783f05 = 29`. The
+  `0x1c1cf` sample run 1 byte stream is now consumed both as a standalone
+  page-object/render fixture and after first-`COURIER` row fields in the same
+  carried page-record state. The
   `0x1c1e9` sample run 2 byte stream is now carried after run 1 through the
   no-continuation `0x1d050` branch for first `COURIER`.
   Remaining gaps are other source headings, rows for those headings,

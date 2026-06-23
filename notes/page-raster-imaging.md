@@ -1056,9 +1056,14 @@ that direct set through transparent print data: handler `0x11f5a`
 restores delayed payload handler `0x12452`, consumes the following two
 payload bytes through `0xa904`, routes both bytes through `0xd04a`,
 queues compact coords `0x0001` and `0x0202`, and renders the same rows
-as plain `!!`. That direct page-record group now also crosses `0x1ed84`
-active-record copy and the `0x1ef6a` render-entry call order, including
-nonzero bucket selection for the vertical cursor/layout cases. A
+as plain `!!`. `ESC &p4X!\x05\x85!` now covers the default-filtered
+transparent control payload path: bytes `0x05` and `0x85` route through
+`0xd0f0`, map fixed-space host byte `0x20` to glyph `0x1f`, clear the
+glyph pointer before `0xd550`, advance the cursor without queuing text
+objects, and leave only the two visible `!` entries at compact coords
+`0x0001` and `0x0604`. That direct page-record group now also crosses
+`0x1ed84` active-record copy and the `0x1ef6a` render-entry call order,
+including nonzero bucket selection for the vertical cursor/layout cases. A
 host-fetched `! ESC *c12a5b0P` fixture
 now queues compact text and a selector-7 rectangle rule in the same page
 record before carrying the combined bucket/rule record through `0x1ed84`

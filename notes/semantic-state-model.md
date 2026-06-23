@@ -125,7 +125,9 @@ before parser dispatch.
 - Delayed payload readers consume bytes through `0xa904` or payload
   wrappers after `0x12218` restores the saved command record.
 - Transparent text handler `0x12452` consumes `ESC &p#X` payload bytes
-  through `0xa904`, routing printable bytes back to `0xd04a`.
+  through `0xa904`, routing printable bytes back to `0xd04a` and
+  default-filtered C0/high-control payload bytes through fixed-space
+  helper `0xd0f0`.
 - Macro execute/call replay consumes data-chain bytes through `0xa904`,
   then re-enters the same parser/page-record path as direct host bytes.
 - Font descriptor, resource-payload, downloaded-character, and combined
@@ -303,8 +305,9 @@ VMI state before object queueing, then cross the same `0x1387c`,
     `0x121cc` / `0x12218` before payload handler `0x12452` consumes
     `ESC &p#X` bytes through the byte-source path.
   Evidence: generated direct-control report state scan for `0x78299e`
-  and transparent-data section; fixture `host-fetched direct
-  text/control streams reach page-record render` case `transparent`.
+  and transparent-data section; fixtures `host-fetched direct
+  text/control streams reach page-record render` case `transparent` and
+  `transparent data control payloads advance through fixed-space path`.
 - Firmware bookkeeping:
   - `0x782a57`: right-limit latch set by right-margin and horizontal
     positioning paths.
@@ -467,9 +470,13 @@ modeled source/object structures rather than a full live CPU-memory run.
 - `0x11f5a..0x12452`: transparent-text delayed payload restore,
   control filtering, and printable re-entry are documented in
   `notes/transparent-print-data.md`. Printable payload re-entry is
-  host-fetched and render-checked for `ESC &p2X!!`; page-record output
-  coverage for C0 and `0x80..0x9f` transparent payload bytes remains
-  open.
+  host-fetched and render-checked for `ESC &p2X!!`; default-zero
+  filtering for C0 and `0x80..0x9f` payload bytes is page-record and
+  render-checked by `ESC &p4X!\x05\x85!`, where `0xd0f0` advances
+  fixed spacing without adding compact text entries. Remaining work is
+  the nonzero-filtering branch that sends those byte ranges through
+  `0xd04a`, the unflagged `0xd0f0..0xd140` branch, and the `0x1a`
+  non-`0x58` probe-byte visible fixture.
 - `0x10084..0x1387c`: first-root allocation and compact text queueing
   are fixture-backed for this cluster, but a dense live parser page that
   exercises same-chunk and rollover allocation for all cursor variants

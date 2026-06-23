@@ -887,7 +887,10 @@ page-record path: `ESC &p2X` routes through handler `0x11f5a`, restores
 delayed handler `0x12452`, consumes the following two payload bytes
 through `0xa904`, routes both payload bytes through `0xd04a`, queues
 compact coords `0x0001` and `0x0202`, and renders the same rows as
-plain `!!`.
+plain `!!`. `ESC &p4X!\x05\x85!` now extends that evidence to the
+default-filtered control route: C0 byte `0x05` and high-control byte
+`0x85` route through `0xd0f0`, advance fixed spacing, queue no text
+object, and leave the next visible `!` at compact coord `0x0604`.
 
 `generated/analysis/ic30_ic13_esc_e_reset_flow.md` tracks the software
 reset boundary: `ESC E` runs text flush/page-root finalization before

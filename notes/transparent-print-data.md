@@ -12,6 +12,7 @@ Evidence:
 - `tools/render_fixture_harness.py`, fixtures:
   - `0x11f5a/0x12452 transparent text restores and consumes counted bytes`
   - `transparent data parser trace feeds page-record queue`
+  - `transparent data control payloads advance through fixed-space path`
 
 ## Command Boundary
 
@@ -123,9 +124,12 @@ printable text handling:
 - All other values call `0xd04a`.
 
 `0xd0f0` is the same fixed-space source-object path used by direct text
-handling. `0xd04a` is the normal printable text path into character mapping,
-cursor placement, compact text object creation, page-record storage, bridge,
-and render dispatch.
+handling. Disassembly `0xd0f0..0xd124` calls `0x1393a(0x20, 0x782d7e)`. In the
+flagged built-in branch it then clears source longword `+4` before entering
+`0xd550`, so the `0xd62e..0xd644` test sees no glyph pointer, skips page-root
+allocation and `0xd824` queueing, and advances the cursor as spacing. `0xd04a`
+is the normal printable text path into character mapping, cursor placement,
+compact text object creation, page-record storage, bridge, and render dispatch.
 
 ## Fixture Evidence
 
@@ -171,6 +175,92 @@ The two payload bytes queue as normal printable text:
 - page-record bridge: `0x1edc6` copies the selected context slot
 - render entry: the bridged rows match the plain `!!` text fixture
 
+The control-payload page-record fixture uses stream:
+
+```text
+1b 26 70 34 58 21 05 85 21
+```
+
+That is `ESC &p4X!\x05\x85!` under the default zero filtering state. It proves
+one command can mix both transparent routing exits:
+
+- restored record: `80 58 00 04 00 00`
+- raw payload: `21 05 85 21`
+- values: `21 05 85 21`
+- routes: `d04a d0f0 d0f0 d04a`
+- first printable payload byte `0x21`: queues compact coord `0x0001`
+- C0 payload byte `0x05`: maps fixed-space host byte `0x20` to glyph `0x1f`,
+  clears the glyph pointer from `0x0146b4` to `0`, advances cursor from
+  `pack12(28)` to `pack12(46)`, and queues no page-record text object
+- high-control payload byte `0x85`: repeats the same fixed-space route,
+  advances cursor from `pack12(46)` to `pack12(64)`, and queues no page-record
+  text object
+- final printable payload byte `0x21`: queues compact coord `0x0604`
+- page-record object prefix: `00 00 00 00 00 00 00 02 20 00 01 20 06 04`
+- final cursor x: `pack12(82)`
+- render entry: the bridged rows contain only the two visible `!` glyphs,
+  separated by the two fixed-space advances
+
+## Semantic Composition
+
+Concept: transparent print data is a counted byte-stream splice, not a binary
+skip. Handler `0x11f5a` schedules the delayed payload reader, `0x12452`
+normalizes and classifies each byte, `0xd04a` emits visible text objects, and
+`0xd0f0` emits fixed spacing without a text object in the flagged built-in path.
+
+Field groups:
+
+- Canonical: command record `+2` byte count and text cursor `0x782c8a`.
+- Derived/cache: selected-slot context byte at `0x782eea + 0x10 * 0x782f06`,
+  fallback filtering byte `0x782efa`, high-byte state flags
+  `0x783132`/`0x783133`, and compact coords such as `0x0001` and `0x0604`.
+- Parser scratch: delayed fields `0x782a1a`, `0x782a1c`, and
+  `0x782a20..0x782a25`.
+- Firmware bookkeeping: local filtering word at `A6-2`.
+- Unknown: manual-facing names for the filtering/context bytes remain
+  provisional.
+
+Writers:
+
+- `0x121cc` writes the delayed snapshot.
+- `0x12218` restores the saved command record.
+- `0x12452` decrements the payload count and selects `0xd04a` or `0xd0f0`.
+- `0xd04a`/`0xd824` write compact page-record text objects.
+- `0xd0f0` writes the source object for host space and clears source `+4` before
+  `0xd550` advances spacing.
+
+Readers/consumers:
+
+- `0xa904` supplies transparent payload bytes.
+- `0x12452` reads command record `+2`, selected context state, fallback
+  filtering state, and payload bytes.
+- `0x1387c`, `0x1edc6`, `0x1ed84`, and `0x1ef6a` consume the page-record result
+  for visible text output.
+
+Output effect:
+
+- Printable transparent bytes produce the same compact text objects and rows as
+  normal printable host bytes.
+- Default-filtered C0 and `0x80..0x9f` transparent bytes advance cursor spacing
+  through `0xd0f0`; they do not add glyph entries to the compact text bucket in
+  the flagged built-in fixture.
+
+Confidence: high for the delayed payload boundary, default filtering exits,
+printable output, and flagged fixed-space output because the claims are backed
+by disassembly `0x11f5a`, `0x12452`, `0xd0f0`, `0xd550`, and fixtures
+`0x11f5a/0x12452 transparent text restores and consumes counted bytes`,
+`transparent data parser trace feeds page-record queue`, and `transparent data
+control payloads advance through fixed-space path`.
+
+Unresolved middle edges:
+
+- `0x124f8..0x1252a`: page-record output when nonzero `D3` or nonzero
+  `A6-2` forces C0 or `0x80..0x9f` payload bytes through `0xd04a`.
+- `0xd0f0..0xd140`: unflagged/fixed-record source branch after
+  `0x1393a(0x20, 0x782d7e)`.
+- `0x124cc..0x124e8`: visible page-record fixture for the `0x1a` followed by a
+  non-`0x58` probe byte case.
+
 ## Reproduction Contract
 
 A byte-stream renderer must not treat transparent data as an opaque binary skip.
@@ -185,12 +275,13 @@ For `ESC &p#X`:
   the control-byte filtering rules above.
 - Let printable transparent bytes update cursor, page-record text objects, and
   rendered rows exactly like normal printable host bytes.
+- Let default-filtered C0 and `0x80..0x9f` bytes advance spacing through
+  `0xd0f0` without appending compact text entries in the flagged built-in path.
 
 ## Remaining Edges
 
-- The visible-output fixture covers printable transparent payload bytes. The
-  control-byte routing rules are fixture-backed by the isolated `0x12452` model,
-  but not yet by a page-record fixture containing C0 or `0x80..0x9f` payload
-  bytes.
+- The visible-output fixture now covers printable payload bytes and default-zero
+  filtering for C0 and `0x80..0x9f` payload bytes. Nonzero filtering states that
+  route those byte ranges through `0xd04a` remain fixture-open.
 - The names for the active context filtering byte, fallback byte, and high-byte
   flags remain provisional.

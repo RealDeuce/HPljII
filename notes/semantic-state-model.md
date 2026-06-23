@@ -900,6 +900,167 @@ full 68000 interpreter through every source class and allocator branch.
   fixture-backed, but a full live CPU/register trace through every
   selector mode into real allocator memory remains open.
 
+## Built-In Resource Scan And Candidate Windows
+
+Status: composed as the built-in resource producer state that feeds font
+selection. The low-level record layout and glyph payload ledger remain in
+[resource-rom.md](resource-rom.md); this section names the candidate-list
+state consumed by `0x1569c`, `0x156de`, `0x1519a`, `0x153c6`, `0x14398`,
+and the parsed font-selection checkpoints below.
+
+Concept: the `IC32,IC15` resource ROM does not become visible pixels by
+itself. Firmware first scans `HEAD`/typed records, classifies accepted
+font records into candidate pointer windows, activates a class-specific
+window, then filters and chooses one selected context longword. That
+selected longword later feeds `0xc428`, `0x1393a`, `0xd824`, `0x12f2e`,
+and the compact glyph renderers.
+
+### Field Groups
+
+- Canonical resource records:
+  - verified built-in `HEAD` chain: 24 typed records from firmware
+    address `0x08004c` through `0x0ae122`, terminating at `0x0b2f80`.
+  - accepted `HEAD`-path records use byte `+0x0d` for candidate flag
+    bits 28..29, set high flag `0x40000000`, and mirror byte
+    `+0x0c == 2` into high flag `0x04000000`.
+  - class/orientation byte `+0x20`, symbol word `+0x22`, spacing byte
+    `+0x21`, HMI source longword `+0x24`, height-like words
+    `+0x28/+0x2a`, and comparator bytes `+0x2f..+0x31` are the
+    record fields consumed by the candidate filters and chooser.
+- Canonical candidate-list state:
+  - `0x782324`: shared candidate pointer-list base.
+  - `0x78278e`: total accepted candidate count.
+  - `0x782790..0x78279e`: candidate-list counts by class/range window.
+  - `0x7827a0..0x7827b4`: candidate-list cursor/window starts.
+  - `0x782884`: resource scan cursor.
+  - `0x78288c` / `0x782890`: scan start/end, initially
+    `0x00080000..0x000ffffe` for the built-in resource window.
+  - `0x78287c`: active candidate-list pointer selected by `0x1569c`.
+  - `0x7827b8`: active candidate-list count selected by `0x1569c`.
+  - `0x7828a8`: selected candidate slot pointer after filtering and
+    chooser steps.
+- Derived/cache state:
+  - class-one low/range counters are `0x782792 = 12` /
+    `0x782794 = 0` for the verified built-ins.
+  - class-zero low/range counters are `0x78279a = 12` /
+    `0x78279c = 0` for the verified built-ins.
+  - final cursor windows are `0x7827a0 = 0x782324`,
+    `0x7827a4 = 0x782354`, `0x7827a8 = 0x782354`,
+    `0x7827ac = 0x782354`, `0x7827b0 = 0x782384`, and
+    `0x7827b4 = 0x782384`.
+  - `0x1569c` derives active class-zero pointer/count
+    `0x782354`/`12` when `0x782da3 == 0`, or class-one pointer/count
+    `0x782324`/`12` otherwise, then marks selected list entries with
+    high bit `0x80000000`.
+- Parser scratch:
+  - parsed font-selection request fields live in `0x782eec..0x782f04`
+    and dirty flags `0x782f2c/2d`; they are consumers of the candidate
+    windows, not part of the resource scan itself.
+  - `ESC (` / `ESC )` symbol words are parser-produced inputs to
+    `0x156de`, not resource-record fields.
+- Firmware bookkeeping:
+  - startup scanner `0x41a` and candidate scanner `0x1a616` both walk
+    resource records but serve different phases. `0x41a` validates the
+    `HEAD` chain and executable-record behavior; `0x1a616` /
+    `0x1a9be` build font candidate windows.
+  - initializer-cleared counters `0x782796` and `0x78279e` are not
+    incremented by the decoded built-in `0x1a9be` body for the verified
+    window; similarly named changes in downloaded-font fixtures belong
+    to downloaded-font bookkeeping.
+- Unknown:
+  - cartridge/external resource behavior outside the verified built-in
+    window `0x080000..0x0ffffe`.
+  - final manual-facing names for record fields `+0x28..+0x31` and
+    built-in symbol words `0N`, `10U`, and `11U`.
+
+### Writers
+
+- `0x1a2e4` clears candidate counts, initializes the cursor windows at
+  `0x782324`, sets scan bounds, and calls `0x1a616`.
+- `0x1a616` scans resource regions, recognizes or skips signatures such
+  as `HEAD`, `FONT`, `TABL`, `tabl`, and `DUMY`, and passes accepted
+  font records to `0x1a9be`.
+- `0x1a9be` writes candidate flags, increments `0x78278e`, partitions
+  records by class/address range, and advances the relevant
+  `0x7827a0..0x7827b4` cursor windows.
+- `0x1569c` writes `0x78287c` / `0x7827b8` from the selected class
+  window and sets active bit `0x80000000` in the chosen entries.
+- `0x156de`, `0x1519a`, `0x153c6`, `0x14758`, and related filters
+  mutate the active list by clearing the active bit on rejects, moving
+  `0x78287c` to the first survivor, and shrinking `0x7827b8`.
+- `0x14398` and comparator `0x13c06` choose `0x7828a8`, the selected
+  candidate slot consumed by later context writers.
+
+### Readers And Consumers
+
+- `0x156de` reads active candidate symbol words through `0x15890` /
+  `0x158be`, compares requested words from `0x782ef4` or `0x782f04`,
+  and may fall back through `0x782f0c..0x782f18`.
+- `0x1519a` reads requested heights from `0x782ef2` / `0x782f02` and
+  decoded built-in heights through `0x13bca`.
+- `0x153c6` reads requested spacing/pitch from `0x782eef` /
+  `0x782eff` and `0x782ef0` / `0x782f00`, then reads resource byte
+  `+0x21` and decoded pitch through `0x13b76`.
+- `0x14398` consumes active survivors and uses `0x13c06` / `0x1428c`
+  to rank resource window, decoded height, byte `+0x2f`, signed byte
+  `+0x30`, and byte `+0x31`.
+- `0x13eb8` consumes the selected candidate state and writes current
+  context records `0x782ee6` / `0x782ef6`; `0x14c64` then rebuilds the
+  active character map for printable text.
+
+### Output Effect
+
+The scan has no direct pixel output. Its visible effect is selection of
+the built-in record whose metrics and glyph payloads are later rendered.
+For the verified built-ins, parsed primary `0p10h12v0s0b3T` filters the
+class-zero window to context `0xc008004c` and visible Courier rows.
+Parsed secondary `0p16h8v0s0b0T` filters the class-one window to context
+`0xc00ae122` and visible secondary Line Printer rows after SO. Symbol
+miss fixtures prove fallback words `0x0115` and `0x000e` can still
+select visible primary/secondary rows through these same windows.
+
+### Confidence
+
+High for the verified built-in scan, class/range counters, cursor
+windows, active-window activation, concrete symbol/height/pitch filtering,
+candidate chooser behavior, and downstream visible primary/secondary row
+effects because the claims are backed by generated record reports,
+disassembly, and executable fixtures. Medium for external cartridge
+resources because no image is available in this repo.
+
+### Fixtures
+
+- `0x1a9be scanned font candidate list partitioning`
+- `actual IC32/IC15 built-in records feed 0x1a9be partitions`
+- `0x1569c activates concrete built-in candidate windows`
+- `0x1519a filters concrete active candidates by height`
+- `0x153c6 filters concrete active candidates by spacing and pitch`
+- `parsed primary built-in font selection feeds visible page-record rows`
+- `parsed secondary built-in font selection feeds visible SO page-record rows`
+- `primary symbol miss falls back before visible page-record rows`
+- `secondary symbol miss falls back before visible SO page-record rows`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`
+- `generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`
+- `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`
+- `generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst`
+- `generated/analysis/ic32_ic15_font_records.md`
+- `generated/analysis/ic32_ic15_resource_glyph_probe.md`
+
+### Unresolved Middle Edges
+
+- `0x1a616..0x1a9be`: verified for the built-in `IC32,IC15` low
+  resource window; cartridge/external windows remain unverified until
+  images are available.
+- `0x14398..0x156de`: visible-output coverage exists for primary,
+  secondary, and two symbol-miss fallback streams; broader font-selection
+  fallback/error combinations still need the same page-visible treatment.
+- Record `+0x28..+0x31` participates in height and chooser comparisons,
+  but final baseline/cell/manual semantics remain unresolved and are
+  tracked in [resource-rom.md](resource-rom.md).
+
 ## Built-In Font Selection To Visible Text
 
 Status: composed as parsed command-family to visible-output checkpoints for

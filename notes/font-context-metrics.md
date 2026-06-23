@@ -142,9 +142,11 @@ Unknown:
 
 - The bridge from selected context records to span metrics is documented for
   concrete built-in, synthetic inline/downloaded, and host-fetched `0x1719c`
-  downloaded payload fixtures for both `0xd4ac` and `0xd8fc`, but every
-  possible built-in/downloaded metric-byte combination is not yet proven by
-  parser-produced page comparisons.
+  downloaded payload fixtures for both `0xd4ac` and `0xd8fc`. The remaining
+  producer gap is the untested cross-product of descriptor metric fields
+  across downloaded and inline forms, not the already fixture-backed
+  type-0/type-1/type-2, low-bound, high-bound, clamped, or consumer branch
+  cases.
 
 ## Selection And Map Rebuild
 

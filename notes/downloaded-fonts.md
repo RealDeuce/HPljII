@@ -1202,6 +1202,7 @@ A byte-stream renderer must preserve:
   into `+0x2c/+0x2d`, move `0xd8fc` rendered rows, suppress both span
   consumers through parser-owned lower-bound fields, and suppress only
   `0xd8fc` through parser-owned upper-bound fields while preserving `0xd4ac`
-  span output and compact glyph output. Broader downloaded/inline metric-byte
-  cross-products and the producer-side validation/error forms beyond those
-  seven bounded predicate branches still need parser-produced page evidence.
+  span output and compact glyph output. The remaining producer gap is the
+  untested cross-product of descriptor metric fields across downloaded and
+  inline forms, plus validation/error forms beyond those seven bounded
+  predicate branches that still need parser-produced page evidence.

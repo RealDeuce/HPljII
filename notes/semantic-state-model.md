@@ -1653,7 +1653,8 @@ fixtures.
   default span at cursor y `21` / extent `64`. Fixture
   `d4ac and d8fc span consumer branch family controls flush output` covers
   the disabled, before-lower, beyond-page, and high-x-only consumer branches.
-  Broader metric-byte cross-products remain open; bounded validation
+  The remaining producer gap is the untested cross-product of descriptor
+  metric fields across downloaded and inline forms; bounded validation
   no-install branches are composed below under `Downloaded Resource Validation
   No-Install`.
 - `0xd8fc..0xd992`: flagged context fields `+0x16`, `+0x18`, and
@@ -1684,7 +1685,8 @@ fixtures.
   `21` / extent `64` while the compact glyph object remains queued. Fixture
   `d4ac and d8fc span consumer branch family controls flush output` covers
   the disabled, before-lower, beyond-page, and high-x-only consumer branches.
-  Broader metric-byte cross-products remain open; bounded validation
+  The remaining producer gap is the untested cross-product of descriptor
+  metric fields across downloaded and inline forms; bounded validation
   no-install branches are composed below under `Downloaded Resource Validation
   No-Install`.
 
@@ -2342,9 +2344,10 @@ combination have not been page-compared.
   rounded-metric clamping into `+0x2c/+0x2d`, move `d8fc` visible rows, and
   suppress both span consumers through copied lower-bound fields, plus an
   upper-bound variant that preserves `d4ac` span output while `d8fc` exits
-  `beyond-page-extent`. It still needs broader metric-byte cross-products and
-  producer-side validation/error page evidence beyond the documented
-  validation no-install and following-printable boundaries.
+  `beyond-page-extent`. It still needs the untested cross-product of descriptor
+  metric fields across downloaded and inline forms, plus producer-side
+  validation/error page evidence beyond the documented validation no-install
+  and following-printable boundaries.
 
 ## Macro Definition And Data-Chain Replay
 

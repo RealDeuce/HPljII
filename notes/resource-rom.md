@@ -541,11 +541,12 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    sample byte runs. The `0x1c334..0x1c5e4` row traversal is decoded,
    including `0x1b50e` two-window candidate resolution, class filtering,
    continuation-page entry, and recent-context duplicate suppression.
-   The next implementation target is the concrete candidate sequence for
-   the verified internal-font set, followed by the `0x1c5e8..0x1ed84`
-   page-object/render boundary. Compare those rendered rows against the
-   direct payload hashes and a known printed/self-test sample to correlate
-   the remaining baseline/header fields against observed placement.
+   The verified internal-font mode-3 candidate sequence is now
+   documented below. The next implementation target is consuming that
+   sequence through the `0x1c5e8..0x1ed84` page-object/render boundary.
+   Compare those rendered rows against the direct payload hashes and a
+   known printed/self-test sample to correlate the remaining
+   baseline/header fields against observed placement.
 7. Identify the manual-facing names for the currently unidentified
    built-in symbol words `0N`, `10U`, and `11U`, and broaden the
    now-pinned real map samples into more live parser/font-selection
@@ -632,6 +633,38 @@ the font sample page and default-font lookup. Mode `3` scans
 also preserves the Roman-8 duplicate/substitution state through
 `0x7828ac`, requested word `0x7821a0`, classifier `0x1b750`, and
 current-Roman-8 suppression helper `0x1b8b6`.
+
+The verified internal-font mode-3 window order is now concrete enough to
+feed the font-sample page model:
+
+- Class-zero first window `0x782354..0x782380`: rows 1..12 are
+  `0x782354` / `0x00004c` / `0x4008004c` / `8U`, `0x782358` /
+  `0x000418` / `0x44080418` / `10U` `COURIER`, `0x78235c` /
+  `0x000868` / `0x44080868` / `11U` `COURIER`, `0x782360` /
+  `0x000cb8` / `0x40080cb8` / `0N` `COURIER`, `0x782364` /
+  `0x009fb0` / `0x40089fb0` / `8U`, `0x782368` / `0x00a37c` /
+  `0x4408a37c` / `10U` `COURIER`, `0x78236c` / `0x00a7cc` /
+  `0x4408a7cc` / `11U` `COURIER`, `0x782370` / `0x00ac1c` /
+  `0x4008ac1c` / `0N` `COURIER`, `0x782374` / `0x0142e4` /
+  `0x400942e4` / `8U`, `0x782378` / `0x0146b4` / `0x440946b4` /
+  `10U` `LINE_PRINTER`, `0x78237c` / `0x014b08` / `0x44094b08` /
+  `11U` `LINE_PRINTER`, and `0x782380` / `0x014f5c` /
+  `0x40094f5c` / `0N` `LINE_PRINTER`.
+- Class-one second window `0x782324..0x782350`: rows 13..24 repeat the
+  same symbol/name pattern at record starts `0x019d18`, `0x01a0e4`,
+  `0x01a534`, `0x01a984`, `0x023484`, `0x023850`, `0x023ca0`,
+  `0x0240f0`, `0x02d4aa`, `0x02d87a`, `0x02dcce`, and `0x02e122`, with
+  context longwords `0x40099d18`, `0x4409a0e4`, `0x4409a534`,
+  `0x4009a984`, `0x400a3484`, `0x440a3850`, `0x440a3ca0`,
+  `0x400a40f0`, `0x400ad4aa`, `0x440ad87a`, `0x440adcce`, and
+  `0x400ae122`.
+
+Rows with symbol word `8U` (`0x0115`) are the only rows affected by the
+Roman-8 duplicate/substitution branch. When requested word `0x7821a0` is
+not one of `8U`, `10U`, `11U`, or `0N`, `0x1b50e` can count a Roman-8
+row twice and return the requested word for the duplicate ordinal; when
+the current selected slot matches the Roman-8 slot, `0x1b8b6` suppresses
+that duplicate.
 
 Current candidate-list state:
 

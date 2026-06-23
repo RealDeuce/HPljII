@@ -949,11 +949,12 @@ handlers:
   ROM sample byte runs. The `0x1c334..0x1c5e4` row traversal is now
   decoded through `0x1b50e` candidate resolution, class filtering,
   continuation-page entry, row-index advance, and recent-context
-  duplicate suppression. The open boundary is the concrete internal-font
-  candidate sequence plus `0x1c5e8..0x1ed84` emitted page records and
-  rendered rows. Compare those rows against the direct payload hashes and
-  a known printed/self-test sample to resolve remaining `+0x28..+0x31`
-  baseline/cell semantics.
+  duplicate suppression. The concrete internal-font candidate sequence is
+  now documented in `notes/resource-rom.md`; the open boundary is
+  consuming that sequence through `0x1c5e8..0x1ed84` emitted page records
+  and rendered rows. Compare those rows against the direct payload hashes
+  and a known printed/self-test sample to resolve remaining
+  `+0x28..+0x31` baseline/cell semantics.
 - Broaden visible-output variants where they still change compatibility:
   font-selection fallback/error branches beyond the two symbol-miss
   fixtures, downloaded-glyph publication cross-products beyond the

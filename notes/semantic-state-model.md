@@ -1251,8 +1251,9 @@ open.
 - `0x1c334..0x1c5e4`: row traversal is decoded, including source-group
   headings, `0x1b50e` two-window candidate resolution, class filtering,
   continuation-page entry, row-index advance, and recent-context
-  duplicate suppression. The missing executable model is the concrete
-  candidate sequence for the verified internal-font set.
+  duplicate suppression. The verified internal-font mode-3 row sequence
+  is documented in [resource-rom.md](resource-rom.md), but has not yet
+  been consumed by an executable font-sample page-object model.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
   identified, but emitted page objects for the complete font printout

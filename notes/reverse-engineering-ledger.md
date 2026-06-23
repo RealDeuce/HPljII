@@ -953,10 +953,10 @@ ROM work needed:
   byte runs. The `0x1c334..0x1c5e4` row traversal is decoded, including
   `0x1b50e` two-window candidate resolution, class filtering,
   continuation-page entry, row-index advance, and recent-context
-  duplicate suppression. The next boundary is the concrete internal-font
-  candidate sequence plus `0x1c5e8..0x1ed84` emitted page objects and
-  rendered rows, to compare against the direct payload hashes and a known
-  printed/self-test sample.
+  duplicate suppression. The concrete internal-font candidate sequence is
+  now documented in `notes/resource-rom.md`; the next boundary is
+  `0x1c5e8..0x1ed84` emitted page objects and rendered rows, to compare
+  against the direct payload hashes and a known printed/self-test sample.
 - Identify the manual-facing names for the currently unidentified
   built-in symbol words `0N`, `10U`, and `11U`, and broaden the
   now-pinned real symbol-map samples into more live parser/font-selection

@@ -140,6 +140,14 @@ executable fixture or generated analysis note.
   publishes through `0xff1e`, crosses the `0x1ed84` / `0x1edc6`
   render bridge, and compares the final composed rows. Evidence:
   `Mixed Text/Rule/Raster Page Record` in `notes/semantic-state-model.md`.
+- The modeled per-band renderer now covers a crossing patterned rule
+  together with compact text and a mode-0 raster row. Fixture
+  `0x1ef6a page-band walk merges text raster and crossing rule`
+  dispatches bucket-array compact/raster objects, carries the mutated
+  rule node from band `0`, renders the remaining rule rows in band `5`,
+  and leaves no rule/fixed-list residue. This closes the modeled
+  per-band merge for that heterogeneous case; remaining render risk is
+  live engine pacing and physical output comparison.
 - A downloaded-glyph page-image stream is covered for
   `ESC *c4660d37e5F`, `ESC )s2193W <0x0891 payload bytes>`, printable
   `%`, and FF publication. The fixture drains the same modeled `0xa904`

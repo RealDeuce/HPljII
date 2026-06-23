@@ -265,6 +265,19 @@ The first source-heading-to-row composition is now fixture-backed:
 context `0x44080418`, advances y through `0x1cfb4`, and then carries the
 first `COURIER` row fields plus both sample byte runs in the same
 page-record state.
+Fixture `font sample resolver carries first two Courier rows` extends
+that composition across the next related resolver request and row
+transition. The sample loop call at `0x1c398..0x1c3a0` invokes `0x1b50e`;
+mode `3` scans `0x7827ac` / `0x78279a` then `0x7827a0` / `0x782792`, while
+`0x1b8ea` fast probe only applies to request index `0`. With current slot
+`0x782354`, request indexes `1` and `2` suppress the unnamed Roman-8
+record `0x00004c`, then select first named `COURIER` record `0x000418`
+with word `0x0155` and second named `COURIER` record `0x000868` with word
+`0x0175`. The `0x1c470..0x1c488` / `0x1d050` row-to-row edge resets x to
+the line anchor, advances y from `0x00900000` to `0x00ce0000` through
+`0x1cfe4`, assigns page-record context slots `[0x44080418, 0x44080868]`,
+and emits second-row bytes `I02COURIER101211U` before carrying both sample
+runs.
 The row-helper window now names the lower formatting helpers: `0x1d198`
 builds the 25-character font-name/style column, `0x1d6ea` emits capped
 strings through `0xd04a`, `0x1d71e` sanitizes fixed-length name bytes,
@@ -361,10 +374,14 @@ height/baseline use between the extracted record fields
 `+0x28..+0x31` and the font-printout/page-object path. The
 `0x1c334..0x1c5e4` candidate traversal is now decoded through
 `0x1b50e` row resolution, class filtering, continuation checks, and
-recent-context duplicate suppression; the still-open boundary is
-`0x1c5e8..0x1ed84`, where the selected rows must be modeled as emitted
-page objects and rendered rows. The `0x1c204..0x1cf34` loop, row helpers,
-and byte emission are composed in
+recent-context duplicate suppression; the first two named internal
+`COURIER` rows are modeled through row resolver, `0x1d050` row-to-row
+advance, `0x1cabe` row fields, both sample runs, context-slot assignment,
+and page-record bucket effects. The still-open boundary is the rest of
+`0x1c5e8..0x1ed84`: request-index `0` formatting for unnamed record
+`0x00004c`, later selected rows, continuation branches, and all-source
+full-page placement. The `0x1c204..0x1cf34` loop, row helpers, and byte
+emission are composed in
 [semantic-state-model.md](semantic-state-model.md). The emitted page
 objects still must be correlated with the direct sample-byte row hashes
 or a known print sample before those fields get final semantic names.

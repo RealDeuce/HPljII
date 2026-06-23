@@ -723,6 +723,19 @@ also shows `0x1e9a0` saving `0x78289f` / `0x7821a0`, forcing symbol
 `0x0115`, calling `0x1ae7e`, copying the selected candidate into
 `0x782ee6`, rebuilding via `0x14c64`, and installing the current page-root
 font context through `0xc428`;
+fixture `font sample resolver carries first two Courier rows` now adds the
+next related resolver and row-transition edge. `0x1c398..0x1c3a0` calls
+`0x1b50e` for request indexes `1` and `2`; the mode-3 scan suppresses
+current Roman-8 slot `0x782354` / record `0x00004c`, selects slot
+`0x782358` / record `0x000418` / word `0x0155` for the first named
+`COURIER` row, then selects slot `0x78235c` / record `0x000868` / word
+`0x0175` for the second named row. `0x1c470..0x1c488` then crosses the
+shared `0xf06e` / `0x1d050` no-continuation path: x resets to
+`0x00000000`, `0x1cfe4` advances y from `0x00900000` to `0x00ce0000`,
+page-record context slots become `[0x44080418, 0x44080868]`, and second
+row bytes `I02COURIER101211U` plus both sample runs extend the carried
+bucket set to `[0, 2, 3, 6, 7, 8, 10, 11, 14, 15, 16, 24, 32, 40, 48,
+56, 64]`;
 the startup/resource scanner `0x41a` is modeled for the verified
 built-in `HEAD` chain, walking 24 typed records from `0x08004c` through
 `0x0ae122`, terminating at `0x0b2f80`, adjusting the next probe step
@@ -1017,8 +1030,15 @@ ROM work needed:
   `c77bca7364adbda480c5a31fa4be469175c031bd5f14fc4a54a2e6fb09174be5`
   and
   `b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5`.
-  The next boundary is full-printout placement, to compare against the
-  direct payload hashes and a known printed/self-test sample.
+  The source-heading composition fixture now carries `INTERNAL FONTS`
+  into the first named `COURIER` row, and the two-row fixture carries
+  `0x1b50e` request indexes `1` and `2` through current Roman-8
+  suppression, second-row `0x1d050` y advance, context slots
+  `[0x44080418, 0x44080868]`, and visible second-row bytes
+  `I02COURIER101211U`. The next boundaries are request-index `0`
+  formatting for unnamed record `0x00004c`, later rows/source headings,
+  continuation branches, and full-printout placement for comparison
+  against the direct payload hashes and a known printed/self-test sample.
 - Identify the manual-facing names for the currently unidentified
   built-in symbol words `0N`, `10U`, and `11U`, and broaden the
   now-pinned real symbol-map samples into more live parser/font-selection

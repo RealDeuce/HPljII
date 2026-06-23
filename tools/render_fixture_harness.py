@@ -20220,6 +20220,23 @@ def summarize_page_record_bucket_renders(
     return summary
 
 
+def font_sample_page_record_context_slot(
+    page_record: dict[str, object],
+    context: int,
+) -> int:
+    context_slots = list(page_record.setdefault("context_slots", []))
+    masked = int(context) & 0x00FFFFFF
+    for index, existing in enumerate(context_slots):
+        if (int(existing) & 0x00FFFFFF) == masked:
+            page_record["context_slots"] = context_slots
+            return index
+    if len(context_slots) >= 16:
+        raise AssertionError("font sample page record has no free context slot")
+    context_slots.append(int(context))
+    page_record["context_slots"] = context_slots
+    return len(context_slots) - 1
+
+
 def queue_font_sample_printable_chunk_to_page_record(
     resources: bytes,
     context: int,
@@ -20231,13 +20248,14 @@ def queue_font_sample_printable_chunk_to_page_record(
 ) -> dict[str, object]:
     printable_events = []
     for byte in chunk:
+        context_slot = font_sample_page_record_context_slot(page_record, context)
         source = build_text_source_object_from_1393a(
             resources,
             context,
             byte,
             x=0,
             y=0,
-            context_slot=0,
+            context_slot=context_slot,
         )
         positioned = position_flagged_text_source_via_d824(
             resources,
@@ -20619,6 +20637,73 @@ def font_sample_run2_transition_via_1cf34(
     }
 
 
+def font_sample_row_to_row_transition_via_1d050(
+    resources: bytes,
+    selected_row_fields: dict[str, object],
+    current_record_start: int,
+    current_context: int,
+    state: dict[str, int],
+    *,
+    row_height_cache_783f06: int | None = None,
+    page_limit_782db6: int = 0x7FFF,
+) -> dict[str, object]:
+    selected_extent = font_sample_extent_via_1c6a4_1c6da(
+        resources,
+        int(selected_row_fields["record_start"]),
+        int(selected_row_fields["context"]),
+    )
+    current_extent = font_sample_extent_via_1c6a4_1c6da(
+        resources,
+        int(current_record_start),
+        int(current_context),
+    )
+    if row_height_cache_783f06 is None:
+        row_height_cache_783f06 = int(state.get(
+            "row_height_cache_783f06",
+            selected_extent["row_height_1c6da"],
+        ))
+
+    before = dict(state)
+    line_anchor_x = int(state.get("line_anchor_x", pack12(0)))
+    state["cursor_x"] = line_anchor_x
+    state["pending_cursor_x_782a57"] = 0
+    state["pending_flag_782a6d"] = 0
+
+    row_height_after = max(
+        selected_extent["row_height_1c6da"],
+        current_extent["row_height_1c6da"],
+    )
+    line_advance_subunits = line_advance_subunits_via_1cfe4(
+        selected_extent["line_advance_1c6a4"],
+        int(row_height_cache_783f06),
+    )
+    state["cursor_y"] = subunits_to_packed12(
+        packed12_to_subunits(int(state["cursor_y"])) + line_advance_subunits
+    )
+    state["row_height_cache_783f06"] = row_height_after
+    continuation_needed = (
+        unpack12(int(state["cursor_y"]))[0] + row_height_after
+        >= int(page_limit_782db6)
+    )
+    return {
+        "helper": "0x1d050/0x1cfe4",
+        "flush_0xf06e": {
+            "cursor_before": before["cursor_x"],
+            "line_anchor_x_782dd6": line_anchor_x,
+            "cursor_after": line_anchor_x,
+        },
+        "selected_extent": selected_extent,
+        "current_extent": current_extent,
+        "row_height_cache_before_783f06": int(row_height_cache_783f06),
+        "line_advance_subunits_1cfe4": line_advance_subunits,
+        "cursor_y_before": before["cursor_y"],
+        "cursor_y_after": state["cursor_y"],
+        "row_height_cache_after_783f06": row_height_after,
+        "page_limit_782db6": int(page_limit_782db6),
+        "continuation_needed": continuation_needed,
+    }
+
+
 def render_font_sample_first_row_fields_and_both_runs_page_record(
     data: bytes,
     resources: bytes,
@@ -20669,6 +20754,64 @@ def render_font_sample_first_row_fields_and_both_runs_page_record(
         "final_cursor_y": state["cursor_y"],
         "final_state": dict(state),
         "page_record": page_record,
+    }
+
+
+def queue_font_sample_row_fields_and_both_runs(
+    resources: bytes,
+    row_fields: dict[str, object],
+    page_record: dict[str, object],
+    state: dict[str, int],
+    *,
+    row_height_cache_783f06: int | None = None,
+) -> dict[str, object]:
+    default_advance = pack12(30)
+    context = int(row_fields["context"])
+    row_field_events = queue_font_sample_row_fields_to_page_record(
+        resources,
+        context,
+        page_record,
+        state,
+        row_fields,
+        default_advance,
+    )
+    sample_run1 = bytes.fromhex(
+        "41 42 43 44 45 66 67 68 69 6a 23 24 40 5b 5c 5d 5e "
+        "60 7b 7c 7d 7e 31 32 33"
+    )
+    sample_run1_event = queue_font_sample_printable_chunk_to_page_record(
+        resources,
+        context,
+        page_record,
+        state,
+        sample_run1,
+        "sample-run-1",
+        default_advance,
+    )
+    transition = font_sample_run2_transition_via_1cf34(
+        resources,
+        row_fields,
+        state,
+        row_height_cache_783f06=row_height_cache_783f06,
+    )
+    sample_run2 = bytes.fromhex(
+        "a1 a2 b3 b4 b6 b8 b9 bb bd c1 c5 c8 c9 cd ce d0 d2 d4 "
+        "d7 d8 db de e0 e3 e8"
+    )
+    sample_run2_event = queue_font_sample_printable_chunk_to_page_record(
+        resources,
+        context,
+        page_record,
+        state,
+        sample_run2,
+        "sample-run-2",
+        default_advance,
+    )
+    return {
+        "row_field_events": row_field_events,
+        "sample_run1_event": sample_run1_event,
+        "transition": transition,
+        "sample_run2_event": sample_run2_event,
     }
 
 
@@ -20766,6 +20909,63 @@ def render_font_sample_source_heading_and_first_row_page_record(
         "sample_run2_event": sample_run2_event,
         "nonempty_buckets": sorted(bucket_objects),
         "bucket_objects": bucket_objects,
+        "bucket_object_hashes": object_hashes,
+        "final_cursor_x": state["cursor_x"],
+        "final_cursor_y": state["cursor_y"],
+        "final_state": dict(state),
+        "page_record": page_record,
+    }
+
+
+def render_font_sample_source_heading_first_two_courier_rows_page_record(
+    data: bytes,
+    resources: bytes,
+    first_row_fields: dict[str, object],
+    second_row_fields: dict[str, object],
+    row1_resolution: dict[str, object],
+    row2_resolution: dict[str, object],
+    *,
+    source_index: int = 3,
+    current_record_start: int = 0x00004C,
+    current_context: int = 0x4008004C,
+) -> dict[str, object]:
+    first_row = render_font_sample_source_heading_and_first_row_page_record(
+        data,
+        resources,
+        first_row_fields,
+        source_index,
+    )
+    page_record = first_row["page_record"]
+    assert isinstance(page_record, dict)
+    state = dict(first_row["final_state"])  # type: ignore[arg-type]
+    row_transition = font_sample_row_to_row_transition_via_1d050(
+        resources,
+        second_row_fields,
+        current_record_start,
+        current_context,
+        state,
+        row_height_cache_783f06=int(state["row_height_cache_783f06"]),
+    )
+    second_row = queue_font_sample_row_fields_and_both_runs(
+        resources,
+        second_row_fields,
+        page_record,
+        state,
+        row_height_cache_783f06=int(state["row_height_cache_783f06"]),
+    )
+    bucket_objects = page_record_bucket_objects(page_record)
+    object_hashes = {
+        bucket: [hashlib.sha256(obj).hexdigest() for obj in objects]
+        for bucket, objects in bucket_objects.items()
+    }
+    return {
+        "row1_resolution": row1_resolution,
+        "row2_resolution": row2_resolution,
+        "first_row": first_row,
+        "row_transition": row_transition,
+        "second_row": second_row,
+        "context_slots": list(page_record.get("context_slots", [])),
+        "nonempty_buckets": sorted(bucket_objects),
         "bucket_object_hashes": object_hashes,
         "final_cursor_x": state["cursor_x"],
         "final_cursor_y": state["cursor_y"],
@@ -27738,6 +27938,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     actual_candidate_partition = classify_scanned_font_candidates_via_1a9be(actual_scanned_builtin_candidates)
     actual_candidate_events = actual_candidate_partition["events"]
     assert isinstance(actual_candidate_events, list)
+    actual_candidate_windows = builtin_candidate_windows_from_scanned_records(
+        actual_scanned_builtin_candidates,
+        actual_candidate_events,
+    )
     checks.append(assert_equal("actual IC32/IC15 built-in records feed 0x1a9be partitions", {
         "record_count": len(actual_scanned_builtin_candidates),
         "counters": actual_candidate_partition["counters"],
@@ -27856,6 +28060,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         0x000418,
         source_index=3,
         row_index=1,
+    )
+    courier_sample_row2_fields = font_sample_builtin_row_fields_via_1cabe(
+        resources,
+        0x000868,
+        source_index=3,
+        row_index=2,
     )
     line_printer_sample_row_fields = font_sample_builtin_row_fields_via_1cabe(
         resources,
@@ -28675,6 +28885,189 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
         },
     }))
+    font_sample_row1_resolution = default_font_resolver_scan_via_1b50e(
+        search_mode=3,
+        requested_index=1,
+        requested_symbol=0x0005,
+        current_selected_pointer=0x782354,
+        fast_probe=None,
+        first_list=list(actual_candidate_windows["class_zero_low"]),  # type: ignore[arg-type]
+        second_list=list(actual_candidate_windows["class_one_low"]),  # type: ignore[arg-type]
+    )
+    font_sample_row2_resolution = default_font_resolver_scan_via_1b50e(
+        search_mode=3,
+        requested_index=2,
+        requested_symbol=0x0005,
+        current_selected_pointer=0x782354,
+        fast_probe=None,
+        first_list=list(actual_candidate_windows["class_zero_low"]),  # type: ignore[arg-type]
+        second_list=list(actual_candidate_windows["class_one_low"]),  # type: ignore[arg-type]
+    )
+    courier_source_heading_two_rows = render_font_sample_source_heading_first_two_courier_rows_page_record(
+        data,
+        resources,
+        courier_sample_row_fields,
+        courier_sample_row2_fields,
+        font_sample_row1_resolution,
+        font_sample_row2_resolution,
+    )
+    row2_run2_event = courier_source_heading_two_rows["second_row"]["sample_run2_event"]  # type: ignore[index]
+    assert isinstance(row2_run2_event, dict)
+    row2_run2_events = row2_run2_event["events"]
+    assert isinstance(row2_run2_events, list)
+    checks.append(assert_equal("font sample resolver carries first two Courier rows", {
+        "row1_resolution": {
+            "summary": select_keys(courier_source_heading_two_rows["row1_resolution"], (  # type: ignore[arg-type]
+                "selected_pointer",
+                "selected_resource_address",
+                "word",
+                "source",
+            )),
+            "events": courier_source_heading_two_rows["row1_resolution"]["events"],  # type: ignore[index]
+        },
+        "row2_resolution": {
+            "summary": select_keys(courier_source_heading_two_rows["row2_resolution"], (  # type: ignore[arg-type]
+                "selected_pointer",
+                "selected_resource_address",
+                "word",
+                "source",
+            )),
+            "events": courier_source_heading_two_rows["row2_resolution"]["events"],  # type: ignore[index]
+        },
+        "row_transition": courier_source_heading_two_rows["row_transition"],
+        "row2_printed": courier_sample_row2_fields["printed"],
+        "row2_event_summary": [
+            (
+                event["kind"],
+                event.get("label"),
+                event.get("event_count"),
+                event.get("units"),
+                event.get("cursor_before"),
+                event.get("cursor_after"),
+            )
+            for event in courier_source_heading_two_rows["second_row"]["row_field_events"]  # type: ignore[index]
+        ],
+        "row2_run2_count": row2_run2_event["event_count"],
+        "row2_run2_first_event": row2_run2_events[0],
+        "row2_run2_last_event": row2_run2_events[-1],
+        "context_slots": courier_source_heading_two_rows["context_slots"],
+        "nonempty_buckets": courier_source_heading_two_rows["nonempty_buckets"],
+        "new_bucket_hashes": {
+            bucket: courier_source_heading_two_rows["bucket_object_hashes"][bucket]  # type: ignore[index]
+            for bucket in (10, 11, 14, 15)
+        },
+        "final_cursor_x": courier_source_heading_two_rows["final_cursor_x"],
+        "final_cursor_y": courier_source_heading_two_rows["final_cursor_y"],
+    }, {
+        "row1_resolution": {
+            "summary": {
+                "selected_pointer": 0x782358,
+                "selected_resource_address": 0x080418,
+                "word": 0x0155,
+                "source": "0x1b50e-scan",
+            },
+            "events": [
+                {"helper": 0x01B50E, "pass": 0, "index": 0, "ordinal": 1, "slot_pointer": 0x782354, "resource_address": 0x08004C, "candidate_word": 0x0115, "reader": "0x15890", "reader_source": "+0x22-word", "class": 0, "admissible_reason": "special-symbol", "duplicate_reason": "duplicate-roman8-suppressed", "roman8_duplicate_pending": False, "selected": False},
+                {"helper": 0x01B50E, "pass": 0, "index": 1, "ordinal": 1, "slot_pointer": 0x782358, "resource_address": 0x080418, "candidate_word": 0x0155, "reader": "0x15890", "reader_source": "+0x22-word", "class": 1, "admissible_reason": "special-symbol", "duplicate_reason": "admitted", "roman8_duplicate_pending": False, "selected": True, "word": 0x0155},
+            ],
+        },
+        "row2_resolution": {
+            "summary": {
+                "selected_pointer": 0x78235C,
+                "selected_resource_address": 0x080868,
+                "word": 0x0175,
+                "source": "0x1b50e-scan",
+            },
+            "events": [
+                {"helper": 0x01B50E, "pass": 0, "index": 0, "ordinal": 1, "slot_pointer": 0x782354, "resource_address": 0x08004C, "candidate_word": 0x0115, "reader": "0x15890", "reader_source": "+0x22-word", "class": 0, "admissible_reason": "special-symbol", "duplicate_reason": "duplicate-roman8-suppressed", "roman8_duplicate_pending": False, "selected": False},
+                {"helper": 0x01B50E, "pass": 0, "index": 1, "ordinal": 1, "slot_pointer": 0x782358, "resource_address": 0x080418, "candidate_word": 0x0155, "reader": "0x15890", "reader_source": "+0x22-word", "class": 1, "admissible_reason": "special-symbol", "duplicate_reason": "admitted", "roman8_duplicate_pending": False, "selected": False},
+                {"helper": 0x01B50E, "pass": 0, "index": 2, "ordinal": 2, "slot_pointer": 0x78235C, "resource_address": 0x080868, "candidate_word": 0x0175, "reader": "0x15890", "reader_source": "+0x22-word", "class": 1, "admissible_reason": "special-symbol", "duplicate_reason": "admitted", "roman8_duplicate_pending": False, "selected": True, "word": 0x0175},
+            ],
+        },
+        "row_transition": {
+            "helper": "0x1d050/0x1cfe4",
+            "flush_0xf06e": {
+                "cursor_before": pack12(2220),
+                "line_anchor_x_782dd6": pack12(0),
+                "cursor_after": pack12(0),
+            },
+            "selected_extent": {
+                "selector_flag_1c766": 1,
+                "line_advance_1c6a4": 40,
+                "row_height_1c6da": 13,
+            },
+            "current_extent": {
+                "selector_flag_1c766": 1,
+                "line_advance_1c6a4": 36,
+                "row_height_1c6da": 13,
+            },
+            "row_height_cache_before_783f06": 13,
+            "line_advance_subunits_1cfe4": 744,
+            "cursor_y_before": pack12(144),
+            "cursor_y_after": pack12(206),
+            "row_height_cache_after_783f06": 13,
+            "page_limit_782db6": 0x7FFF,
+            "continuation_needed": False,
+        },
+        "row2_printed": b"I02COURIER101211U",
+        "row2_event_summary": [
+            ("printable-chunk", "prefix", 3, None, None, pack12(90)),
+            ("cursor-advance", "prefix-post", None, 2, pack12(90), pack12(150)),
+            ("printable-chunk", "name", 7, None, None, pack12(360)),
+            ("cursor-advance", "name-pad", None, 18, pack12(360), pack12(900)),
+            ("cursor-advance", "name-post", None, 2, pack12(900), pack12(960)),
+            ("printable-chunk", "pitch", 2, None, None, pack12(1020)),
+            ("cursor-advance", "pitch-internal", None, 3, pack12(1020), pack12(1110)),
+            ("cursor-advance", "pitch-post", None, 1, pack12(1110), pack12(1140)),
+            ("printable-chunk", "height", 2, None, None, pack12(1200)),
+            ("cursor-advance", "height-internal", None, 3, pack12(1200), pack12(1290)),
+            ("fixed-space", "symbol", None, None, pack12(1290), pack12(1320)),
+            ("fixed-space", "symbol", None, None, pack12(1320), pack12(1350)),
+            ("printable-chunk", "symbol", 3, None, None, pack12(1440)),
+            ("cursor-advance", "symbol-post", None, 1, pack12(1440), pack12(1470)),
+        ],
+        "row2_run2_count": 25,
+        "row2_run2_first_event": {
+            "byte": 0xA1,
+            "cursor_before": pack12(1470),
+            "cursor_after": pack12(1500),
+            "coord": 0xD35C,
+            "bucket_index": 14,
+            "allocated": True,
+            "count_after": 1,
+        },
+        "row2_run2_last_event": {
+            "byte": 0xE8,
+            "cursor_before": pack12(2190),
+            "cursor_after": pack12(2220),
+            "coord": 0x0289,
+            "bucket_index": 15,
+            "allocated": False,
+            "count_after": 8,
+        },
+        "context_slots": [0x44080418, 0x44080868],
+        "nonempty_buckets": [0, 2, 3, 6, 7, 8, 10, 11, 14, 15, 16, 24, 32, 40, 48, 56, 64],
+        "new_bucket_hashes": {
+            10: [
+                "eacd4a8a42aac5b5051ea6fa7ec4f110226f507b2d7553af4b603934797d2518",
+            ],
+            11: [
+                "163c35cc4b32842d247d043fd52e13d3fbad0fd59226d7100b00565c1b6f84ea",
+                "00cbd0627207e812bd605ba426ee57eb4fcad1ba01f9e871549142f27797d599",
+                "cd56f7dd35740a68540e9a86ba961bb0c28591cad5bfee1d6e22fe10ca98debd",
+                "a442f1745e42e19b43df41944423b533173a89d81c59d81ce08c7b89e2eeb531",
+            ],
+            14: [
+                "99e41bc2de372db066e5309811f5056d2b3086d4f1d0c637f723a129a6d8bc1b",
+                "c034baf0c58e41bebb209ffcee321436fb8d2a06ce9d7b7ab219aa2ff53a21a7",
+            ],
+            15: [
+                "1e4f535fe8a84513fe54a616ba4a24d1825564a6f62ad7eb3ba14129d3aa963f",
+            ],
+        },
+        "final_cursor_x": pack12(2220),
+        "final_cursor_y": pack12(268),
+    }))
     checks.append(assert_equal("named built-in first glyphs expose positioning offsets", named_builtin_first_glyph_position_summary(resources), {
         "bitmap_delta_values": [10],
         "mode_values": [1],
@@ -28692,10 +29085,6 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {"name": "LINE_PRINTER", "selector": 1, "tuple": (-18, 16, 16, 16), "count": 2},
         ],
     }))
-    actual_candidate_windows = builtin_candidate_windows_from_scanned_records(
-        actual_scanned_builtin_candidates,
-        actual_candidate_events,
-    )
     activated_class_zero = activate_candidate_window_via_1569c(actual_candidate_windows, class_selector_byte=0)
     activated_class_one = activate_candidate_window_via_1569c(actual_candidate_windows, class_selector_byte=1)
     primary_font_selection_stream = b"\x1b(s0p10h12v0s0b3T"
@@ -68912,6 +69301,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         courier_source_heading_first_row["final_cursor_y"],
         courier_source_heading_first_row["nonempty_buckets"],
         courier_source_heading_first_row["bucket_object_hashes"],
+    ))
+    lines.append("- font sample first two resolved rows: mode-3 `0x1b50e` request indexes 1 and 2 suppress current Roman-8 slot `0x782354` / record `0x00004c`, then select `0x782358` / record `0x000418` / word `0x0155` and `0x78235c` / record `0x000868` / word `0x0175`. The row-to-row `0x1d050` path resets x to line anchor, advances y from `0x%08x` to `0x%08x`, formats second row bytes `%s`, assigns page-record context slots `%s`, reaches buckets `%s`, and ends at cursor `0x%08x,0x%08x`." % (
+        courier_source_heading_two_rows["row_transition"]["cursor_y_before"],  # type: ignore[index]
+        courier_source_heading_two_rows["row_transition"]["cursor_y_after"],  # type: ignore[index]
+        " ".join(f"{byte:02x}" for byte in courier_sample_row2_fields["printed"]),
+        ", ".join("0x%08x" % int(slot) for slot in courier_source_heading_two_rows["context_slots"]),  # type: ignore[index]
+        courier_source_heading_two_rows["nonempty_buckets"],
+        courier_source_heading_two_rows["final_cursor_x"],
+        courier_source_heading_two_rows["final_cursor_y"],
     ))
     lines.append("- font sample row fields: first `LINE_PRINTER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152`; the height value is rounded by the mode-1 `0x1cc6e` add-five path." % (
         line_printer_sample_row_fields["record_start"],

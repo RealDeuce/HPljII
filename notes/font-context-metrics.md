@@ -28,6 +28,7 @@ Evidence:
   - `0x13eb8 refresh carries parsed secondary font selection to dispatch`
   - `parsed primary built-in font selection feeds visible page-record rows`
   - `parsed secondary built-in font selection feeds visible SO page-record rows`
+  - `live primary current-font RAM install feeds SI page-record rows`
   - `live secondary current-font RAM install feeds SO page-record rows`
   - `secondary symbol miss falls back before visible SO page-record rows`
   - `0xe65c refresh composes with font context bridge`
@@ -226,6 +227,20 @@ claim live CPU memory continuity between the command parser's current-font RAM
 record and the page-record runner; the fixture injects the selected context
 longword from the pinned `0x13eb8` result into the printable/page-record
 phase.
+
+Fixture `live primary current-font RAM install feeds SI page-record rows`
+narrows that handoff gap for the primary path. It seeds current-font RAM
+records with primary `0x782ee6 = 0xc008004c` and secondary
+`0x782ef6 = 0xc00ae122`, starts with an existing page root `0x78297a`,
+page-root slot `1` live as the secondary context, and then feeds `SI !!`.
+Handler `0xc68a` calls `0xc428(0)`, which reads `0x782ee6`, calls `0xc4fc`,
+chooses page-root context slot `0` as the first inactive slot, writes
+`0xc008004c`, and sets `0x78297e = 0`. The following `0xd04a` / `0x1393a`
+printable events read context slot `0` from the page-root context slots, map
+host `0x21` to glyph `0x00`, and produce the same primary compact object
+prefix and visible Courier rows. Because the root already exists, this fixture
+has page-root allocation count `0`; it is a current-font-RAM-to-page-root
+handoff fixture, not a first-root-allocation fixture.
 
 Fixture
 `parsed secondary built-in font selection feeds visible SO page-record rows`
@@ -481,6 +496,17 @@ work can close the right gap instead of re-tracing already-covered consumers.
   `.........################..################...###`. Status:
   parser-produced selection plus modeled selected-context handoff to
   visible-output fixture.
+- Claim: the primary current-font RAM record can feed visible SI output
+  through the page-root context slot path. Evidence: fixture
+  `live primary current-font RAM install feeds SI page-record rows`; seeded
+  records `0x782ee6 = 0xc008004c` and `0x782ef6 = 0xc00ae122`; stream
+  `SI !!`; handler `0xc68a`; install helper `0xc428(0)` / `0xc4fc`; selected
+  page-root context slot `0`; page-root slots
+  `(0xc008004c, 0xc00ae122)`; `0xd04a` source context `0xc008004c`; queued
+  object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`; first nonblank
+  row `.............###...........................###...`. Status:
+  modeled current-font RAM handoff to existing page-root slot and visible
+  output.
 - Claim: the secondary current-font RAM record can feed visible SO output
   through the page-root context slot path. Evidence: fixture
   `live secondary current-font RAM install feeds SO page-record rows`; seeded
@@ -673,8 +699,12 @@ A byte-stream reproduction must preserve these behaviors:
   handoff from seeded `0x782ef6` through `0xc428` / `0xc4fc` into existing
   page-root slot `1` is now fixture-backed by
   `live secondary current-font RAM install feeds SO page-record rows`.
-  Remaining handoff work is a continuous parser-to-page CPU-state trace and
-  the primary visible-output equivalent through page-root slots.
+  The primary current-font RAM handoff from seeded `0x782ee6` through
+  `0xc428` / `0xc4fc` into existing page-root slot `0` is now fixture-backed
+  by `live primary current-font RAM install feeds SI page-record rows`.
+  Remaining handoff work is a continuous parser-to-page CPU-state trace that
+  carries the parser-produced current-font records directly into later SI/SO
+  and printable queueing.
 - The exact metric-byte provenance for all downloaded/inline forms remains
   incomplete at the parser-produced page boundary. Existing host-stream
   downloaded-font fixtures prove install, visible glyph rendering, and

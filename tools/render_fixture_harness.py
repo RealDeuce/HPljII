@@ -27749,6 +27749,257 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     }))
     secondary_visible_context = int(secondary_13eb8_refresh["context_update"]["selected_longword"])  # type: ignore[index]
     secondary_visible_hmi = builtin_flagged_hmi_from_context(resources, secondary_visible_context)
+    live_primary_handoff_state = control_fixture_state(
+        cursor_x=pack12(0),
+        cursor_y=pack12(21),
+        hmi=primary_visible_hmi["hmi"],
+        pending_width=1,
+        pending_text=0,
+        span_flush_enable=1,
+        text_map_selector_782f06=1,
+        current_selector_782f06=1,
+        current_page_root=0x78297A,
+        current_page_context_slot_78297e=1,
+        primary_context_782ee6=primary_visible_context,
+        secondary_context_782ef6=secondary_visible_context,
+        page_root_context_slots=[0, secondary_visible_context] + [0] * 14,  # type: ignore[arg-type]
+        page_root_live_flags=[0, 1] + [0] * 14,  # type: ignore[arg-type]
+        context_install_events=[],  # type: ignore[arg-type]
+        use_page_root_context_slots_for_text=1,
+    )
+    live_primary_handoff_page = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x0f!!",
+        primary_visible_context,
+        live_primary_handoff_state,
+        default_advance=primary_visible_hmi["hmi"],
+        secondary_context=secondary_visible_context,
+    )
+    live_primary_handoff_rendered = live_primary_handoff_page["rendered"]
+    live_primary_handoff_bridged = live_primary_handoff_page["bridged_record"]
+    assert isinstance(live_primary_handoff_rendered, dict)
+    assert isinstance(live_primary_handoff_bridged, dict)
+    live_primary_handoff_events: list[dict[str, object]] = []
+    for event in live_primary_handoff_page["events"]:
+        assert isinstance(event, dict)
+        if event["kind"] == "font-shift":
+            live_primary_handoff_events.append({
+                "kind": event["kind"],
+                "byte": event["byte"],
+                "handler": event["handler"],
+                "selector_before": event["selector_before"],
+                "selector_after": event["selector_after"],
+                "requested_selector": event["requested_selector"],
+                "install_called": event["install_called"],
+                "install_argument": event["install_argument"],
+                "install_success": event["install_success"],
+                "install_status": event["install_status"],
+                "current_page_context_slot_78297e": event["current_page_context_slot_78297e"],
+                "page_root_context_slots": event["page_root_context_slots"],
+                "context_install_events": event["context_install_events"],
+            })
+            continue
+        page_result = event["page_result"]
+        source = event["source"]
+        positioned = event["positioned"]
+        assert isinstance(page_result, dict)
+        assert isinstance(source, dict)
+        assert isinstance(positioned, dict)
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        live_primary_handoff_events.append({
+            "kind": event["kind"],
+            "byte": event["byte"],
+            "source_context": source["context"],
+            "source_slot": source["context_slot"],
+            "mapped": source["mapped"],
+            "glyph_entry": source["glyph_entry"],
+            "glyph_rows": source["glyph_rows"],
+            "glyph_width": source["glyph_width"],
+            "cursor_before": event["cursor_before"],
+            "cursor_after": event["cursor_after"],
+            "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+            "selector": page_result["selector"],
+            "coord": page_result["coord"],
+            "allocated": page_result["allocated"],
+            "chain_index": page_result["chain_index"],
+            "count_before": page_result["count_before"],
+            "count_after": page_result["count_after"],
+            "bucket_index": page_result["bucket_index"],
+        })
+    checks.append(assert_equal("live primary current-font RAM install feeds SI page-record rows", {
+        "stream": b"\x0f!!",
+        "current_font_records": {
+            "primary_782ee6": primary_visible_context,
+            "secondary_782ef6": secondary_visible_context,
+        },
+        "events": live_primary_handoff_events,
+        "final_page_context_slot": live_primary_handoff_page["final_state"]["current_page_context_slot_78297e"],
+        "final_page_root_context_slots": live_primary_handoff_page["final_state"]["page_root_context_slots"][:2],
+        "final_selector": live_primary_handoff_page["final_state"]["text_map_selector_782f06"],
+        "root_allocations": live_primary_handoff_page["final_state"].get("page_record_root_allocations", 0),
+        "object_prefix": live_primary_handoff_page["bucket_object"][:14],
+        "bridged_context_slots": live_primary_handoff_bridged["context_slots"][:2],
+        "rendered": {
+            key: live_primary_handoff_rendered[key]
+            for key in ("selector", "context_slot", "count", "payload")
+        },
+        "rendered_glyphs": live_primary_handoff_rendered["rendered"],
+        "rendered_rows": live_primary_handoff_rendered["rows"],
+    }, {
+        "stream": b"\x0f!!",
+        "current_font_records": {
+            "primary_782ee6": 0xC008004C,
+            "secondary_782ef6": 0xC00AE122,
+        },
+        "events": [
+            {
+                "kind": "font-shift",
+                "byte": 0x0F,
+                "handler": 0x00C68A,
+                "selector_before": 1,
+                "selector_after": 0,
+                "requested_selector": 0,
+                "install_called": True,
+                "install_argument": 0,
+                "install_success": True,
+                "install_status": 1,
+                "current_page_context_slot_78297e": 0,
+                "page_root_context_slots": [0xC008004C, 0xC00AE122],
+                "context_install_events": [{
+                    "helper": 0x00C4FC,
+                    "caller": "0xc428",
+                    "context_record": 0xC008004C,
+                    "selected_page_slot": 0,
+                    "reason": "first-inactive",
+                }],
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "source_context": 0xC008004C,
+                "source_slot": 0,
+                "mapped": 0,
+                "glyph_entry": 0x001088,
+                "glyph_rows": 32,
+                "glyph_width": 9,
+                "cursor_before": pack12(0),
+                "cursor_after": pack12(30),
+                "positioned_xy": (10, -10),
+                "selector": 0,
+                "coord": 0x6A00,
+                "allocated": True,
+                "chain_index": 0,
+                "count_before": 0,
+                "count_after": 1,
+                "bucket_index": -1,
+            },
+            {
+                "kind": "printable",
+                "byte": 0x21,
+                "source_context": 0xC008004C,
+                "source_slot": 0,
+                "mapped": 0,
+                "glyph_entry": 0x001088,
+                "glyph_rows": 32,
+                "glyph_width": 9,
+                "cursor_before": pack12(30),
+                "cursor_after": pack12(60),
+                "positioned_xy": (40, -10),
+                "selector": 0,
+                "coord": 0x6802,
+                "allocated": False,
+                "chain_index": 0,
+                "count_before": 1,
+                "count_after": 2,
+                "bucket_index": -1,
+            },
+        ],
+        "final_page_context_slot": 0,
+        "final_page_root_context_slots": [0xC008004C, 0xC00AE122],
+        "final_selector": 0,
+        "root_allocations": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 00 6a 00 00 68 02"),
+        "bridged_context_slots": (0xC008004C, 0xC00AE122),
+        "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 2,
+            "payload": bytes.fromhex(
+                "00 02 00 6a 00 00 68 02"
+                "00 00 00 00 00 00 00 00"
+                "00 00 00 00 00 00 00 00"
+                "00 00 00 00 00 00 00 00"
+            ),
+        },
+        "rendered_glyphs": [
+            {
+                "glyph": 0,
+                "coord": 0x6A00,
+                "dest_base": 0xC0,
+                "x": 10,
+                "y": 6,
+                "a001": 0x1A,
+                "span": 2,
+                "rows": 32,
+                "width": 9,
+                "helper": 0x01FE76,
+            },
+            {
+                "glyph": 0,
+                "coord": 0x6802,
+                "dest_base": 0xC4,
+                "x": 40,
+                "y": 6,
+                "a001": 0x18,
+                "span": 2,
+                "rows": 32,
+                "width": 9,
+                "helper": 0x01FE76,
+            },
+        ],
+        "rendered_rows": [
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".............###...........................###...",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            ".............###...........................###...",
+            "............#####.........................#####..",
+            "............#####.........................#####..",
+            ".............###...........................###...",
+            "............#####.........................#####..",
+            ".............###...........................###...",
+            "............#####.........................#####..",
+            ".............###...........................###...",
+            ".............###...........................###...",
+            ".............###...........................###...",
+            ".............###...........................###...",
+            ".............###...........................###...",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            ".................................................",
+            "............#####.........................#####..",
+            "...........#######.......................#######.",
+            "..........#########.....................#########",
+            "..........#########.....................#########",
+            "..........#########.....................#########",
+            "...........#######.......................#######.",
+            "............#####.........................#####..",
+        ],
+    }))
     secondary_selection_visible_stream = secondary_font_selection_stream + b"\x0e!!"
     secondary_selection_visible_fetch = fetch_stream_via_a904(
         host_byte_fetch_state(ring=list(secondary_selection_visible_stream), direct_mode=0),

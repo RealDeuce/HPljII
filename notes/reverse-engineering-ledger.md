@@ -768,9 +768,12 @@ pinned `0x13eb8` selected context `0xc008004c`, HMI `30`, and rebuilt primary
 map `0x782f32`, then routing the following printable bytes through `0xd04a`
 into compact object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`,
 `0x1edc6` context slot `0xc008004c`, and compact helper `0x1fe76` Courier
-glyph rows; remaining primary middle edge is page-root-slot visible output
-from current-font record `0x782ee6`, not the selected context's
-renderer-facing meaning; fixture
+glyph rows; fixture
+`live primary current-font RAM install feeds SI page-record rows` pins the
+primary existing-root handoff by seeding `0x782ee6 = 0xc008004c` and
+`0x782ef6 = 0xc00ae122`, routing SI through `0xc68a`, `0xc428(0)`, and
+`0xc4fc`, installing page-root context slot `0`, and rendering the following
+`!!` from source context `0xc008004c` / source slot `0`; fixture
 `parsed secondary built-in font selection feeds visible SO page-record rows`
 mirrors that boundary for `ESC )s0p16h8v0s0b0T SO !!`, selected context
 `0xc00ae122`, secondary map `0x783032`, SO handler `0xc6b8`, compact object
@@ -873,14 +876,13 @@ ROM work needed:
 - Extend the pinned visible `0xc580` branch outcomes into fuller
   upstream `0x1be22` parser-state coverage around the now-pinned
   `0x17708` success paths, turn the parser-derived `0x156de` secondary
-  fallback fixture into a continuous parser-to-page CPU-state trace, add the
-  primary current-font-RAM-to-page-root visible-output handoff corresponding
-  to the now-pinned secondary `0x782ef6 -> 0xc428(1) -> 0xc4fc -> 0xd04a`
-  path, add other fallback/error font-selection visible-output streams beyond
-  the now-pinned primary `ESC (s0p10h12v0s0b3T!!`, secondary
-  `ESC )s0p16h8v0s0b0T SO !!`, and fallback
-  `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` cases, and extend `0x13eb8` if
-  later inline/downloaded or error-return branches surface.
+  fallback fixture into a continuous parser-to-page CPU-state trace, add other
+  fallback/error font-selection visible-output streams beyond the now-pinned
+  primary `ESC (s0p10h12v0s0b3T!!`, secondary `ESC )s0p16h8v0s0b0T SO !!`,
+  fallback `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`, primary
+  `0x782ee6 -> 0xc428(0) -> 0xc4fc -> 0xd04a`, and secondary
+  `0x782ef6 -> 0xc428(1) -> 0xc4fc -> 0xd04a` cases, and extend `0x13eb8`
+  if later inline/downloaded or error-return branches surface.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.

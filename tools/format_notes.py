@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Format notes Markdown and ordinary changed-file whitespace."""
+"""Format notes Markdown and enforce ordinary changed-file whitespace."""
 
 from __future__ import annotations
 
@@ -223,7 +223,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Format notes Markdown by wrapping prose paragraphs, and normalize "
-            "ordinary whitespace in changed text files."
+            "ordinary whitespace in changed text files. Every run also performs "
+            "the normal git whitespace check against HEAD."
         ),
     )
     parser.add_argument(
@@ -252,8 +253,9 @@ def parse_args() -> argparse.Namespace:
         "--check",
         action="store_true",
         help=(
-            "report files that would change; changed text-file whitespace is "
-            "also checked and is fixed by running without --check"
+            "report files that would change; changed text-file whitespace and "
+            "git diff --check failures are fixed by running without --check "
+            "when possible"
         ),
     )
     return parser.parse_args()

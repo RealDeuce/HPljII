@@ -376,20 +376,59 @@ The unresolved middle edge is now narrower than "built-in metrics":
 `0xc428`/`0x10550` covers record `+0x24`, and `0xd824` covers
 glyph-entry `+0/+2`. The open address boundary is the header-level
 height/baseline use between the extracted record fields
-`+0x28..+0x31` and the font-printout/page-object path. The
-`0x1c334..0x1c5e4` candidate traversal is now decoded through
-`0x1b50e` row resolution, class filtering, continuation checks, and
-recent-context duplicate suppression; the default Roman-8 row and first two
-named internal `COURIER` rows are modeled through fast-probe/row resolver,
-`0x1d198` fallback name formatting, `0x1d050` row-to-row advance, `0x1cabe`
-row fields, both sample runs, context-slot assignment, and page-record bucket
-effects. The still-open boundary is the rest of `0x1c5e8..0x1ed84`: later
-selected rows, other source headings, continuation branches, and all-source
-full-page placement. The `0x1c204..0x1cf34` loop, row helpers, and byte
-emission are composed in
-[semantic-state-model.md](semantic-state-model.md). The emitted page
-objects still must be correlated with the direct sample-byte row hashes
-or a known print sample before those fields get final semantic names.
+`+0x28..+0x31` and the font-printout/page-object path.
+
+The `0x1c334..0x1c5e4` candidate traversal is now decoded through the
+first internal-font class-zero source group. Fixture
+`font sample first internal source group follows 0x1c334 row loop` in
+`tools/render_fixture_harness.py` resolves request indexes `0..29` through
+`0x1b8ea`, `0x1b50e`, `0x1c746`, `0x1c710`, `0x1cabe`, and the
+`0x1c540..0x1c5c6` recent-list scan. The visible rows are:
+
+- `I00` record `0x00004c`, context `0x4008004c`, word `0x0115`:
+  `LINE PRINTER`, `10`, `12`, `8U`.
+- `I01` record `0x000418`, context `0x44080418`, word `0x0155`:
+  `COURIER`, `10`, `12`, `10U`.
+- `I02` record `0x000868`, context `0x44080868`, word `0x0175`:
+  `COURIER`, `10`, `12`, `11U`.
+- `I03` record `0x000cb8`, context `0x40080cb8`, word `0x000e`:
+  `COURIER`, `10`, `12`, `0N`.
+- `I04` record `0x009fb0`, context `0x40089fb0`, word `0x0115`:
+  `LINE PRINTER`, `10`, `12`, `8U`.
+- `I05` repeats context `0x40089fb0` with substituted word `0x0005`:
+  `LINE PRINTER`, `10`, `12`, `0E`.
+- `I06` record `0x00a37c`, context `0x4408a37c`, word `0x0155`:
+  `COURIER`, `10`, `12`, `10U`.
+- `I07` record `0x00a7cc`, context `0x4408a7cc`, word `0x0175`:
+  `COURIER`, `10`, `12`, `11U`.
+- `I08` record `0x00ac1c`, context `0x4008ac1c`, word `0x000e`:
+  `COURIER`, `10`, `12`, `0N`.
+- `I09` record `0x0142e4`, context `0x400942e4`, word `0x0115`:
+  `LINE PRINTER`, `16.6`, `8.5`, `8U`.
+- `I10` repeats context `0x400942e4` with substituted word `0x0005`:
+  `LINE PRINTER`, `16.6`, `8.5`, `0E`.
+- `I11` record `0x0146b4`, context `0x440946b4`, word `0x0155`:
+  `LINE_PRINTER`, `16.6`, `8.5`, `10U`.
+- `I12` record `0x014b08`, context `0x44094b08`, word `0x0175`:
+  `LINE_PRINTER`, `16.6`, `8.5`, `11U`.
+- `I13` record `0x014f5c`, context `0x40094f5c`, word `0x000e`:
+  `LINE_PRINTER`, `16.6`, `8.5`, `0N`.
+
+Requests `14..28` resolve to class-one records and are rejected by the
+`0x1c3e8..0x1c3f6` class comparison for the class-zero pass. Request `29`
+is the terminal `0x1b50e` miss. The recent list is seeded with
+`0x4008004c` by the `0x1c9b8` setup path; rows `I05` and `I10` are visible
+duplicate Roman-8 substitutions, but the post-row `0x1c540..0x1c5c6` scan
+does not append their already-present contexts. The fixture carries those
+14 rows through one page-record state with context slots ending at
+`0x4008004c,0x44080418,0x44080868,0x40080cb8,0x40089fb0,0x4408a37c,
+0x4408a7cc,0x4008ac1c,0x400942e4,0x440946b4,0x44094b08,0x40094f5c`.
+
+The still-open boundary is the rest of `0x1c204..0x1ed84`: other source
+headings, the internal-font class-one pass, continuation branches, and
+all-source full-page placement. The emitted page objects still must be
+correlated with the direct sample-byte row hashes or a known print sample
+before those fields get final semantic names.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record

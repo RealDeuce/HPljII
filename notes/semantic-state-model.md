@@ -1148,10 +1148,14 @@ for how resource records become ordinary page-record text.
     `0x1b8ea` while `0x1b50e` resolves a row ordinal.
   - `0x7828ac` and requested symbol word `0x7821a0`: Roman-8
     substitution state used by `0x1b5a4..0x1b706` so the sample page
-    may count duplicate Roman-8 rows without emitting the same row twice.
+    may count a Roman-8 candidate twice; the duplicate ordinal passes
+    the requested symbol word to `0x1cabe`.
 - Firmware bookkeeping:
-  - `0x783f0a`: recent-context list that suppresses duplicate sample
-    rows, tracking up to 16 contexts.
+  - `0x783f0a`: recent-context list seeded by `0x1c9b8` and scanned by
+    `0x1c540..0x1c5c6` after row emission; in the verified internal-font
+    class-zero group it prevents re-appending already-seen contexts while
+    still allowing duplicate Roman-8 substitution rows `I05` and `I10`
+    to be visible.
   - `0x783f02..0x783f05`: per-source status bytes written when a source
     group has no more matching rows or when continuation gating is needed.
   - `0x783f08`: recent-context count byte maintained by
@@ -1161,13 +1165,17 @@ for how resource records become ordinary page-record text.
   - class-pass counter in the `0x1c28e..0x1c344` loop.
 - Unknown:
   - exact page-object bytes emitted by the full `0x1c204` printout loop
-    have not yet been modeled from every source heading, all row fields,
-    both sample byte runs, and full page placement. The internal-font source
-    heading carried into the default Roman-8 row plus the first two named
-    `COURIER` rows is fixture-backed, the first `COURIER` and first
-    `LINE_PRINTER` built-in row-field formatters are fixture-backed, and both
-    sample byte runs are fixture-backed through compact buckets, page-record
-    objects, and `0x1ed84` / `0x1ef6a` render entries.
+    have not yet been modeled from every source heading, both class passes,
+    continuation pages, and all-source placement. The internal-font class-zero
+    source group is fixture-backed from request indexes `0..29`: `0x1b8ea`
+    fast-probes row `I00`, `0x1b50e` scans later rows, `0x1c746` maps low-24
+    addresses back to candidate longwords, `0x1c710` rejects request indexes
+    `14..28` as class-one rows, `0x1cabe` emits 14 visible rows, and
+    `0x1c540..0x1c5c6` leaves final recent contexts
+    `0x4008004c,0x44080418,0x44080868,0x40080cb8,0x40089fb0,0x4408a37c,
+    0x4408a7cc,0x4008ac1c,0x400942e4,0x440946b4,0x44094b08,0x40094f5c`.
+    Other source headings, the class-one internal pass, continuation branches,
+    and whole-page placement remain open.
   - record `+0x28..+0x31` baseline/cell/manual semantics remain
     unresolved until this path is correlated with emitted page objects or
     a known printed sample.

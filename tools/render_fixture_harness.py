@@ -5169,6 +5169,8 @@ def font_sample_builtin_row_fields_via_1cabe(
     record_start: int,
     source_index: int,
     row_index: int,
+    *,
+    symbol_word: int | None = None,
 ) -> dict[str, object]:
     prefix = font_sample_row_prefix_via_1cb26(source_index, row_index)
     name = font_sample_builtin_name_column_via_1d198(resources, record_start)
@@ -5186,7 +5188,12 @@ def font_sample_builtin_row_fields_via_1cabe(
         ),
         1,
     )
-    symbol = font_sample_symbol_code_via_1cd78(u16(resources, record_start + 0x22))
+    resolved_symbol_word = (
+        u16(resources, record_start + 0x22)
+        if symbol_word is None
+        else int(symbol_word) & 0xFFFF
+    )
+    symbol = font_sample_symbol_code_via_1cd78(resolved_symbol_word)
     printed = (
         bytes(prefix["printed"])
         + bytes(name["printed"])
@@ -5210,6 +5217,7 @@ def font_sample_builtin_row_fields_via_1cabe(
         "pitch": pitch,
         "height": height,
         "symbol": symbol,
+        "symbol_word_1b50e": resolved_symbol_word,
         "printed": printed,
         "fixed_spaces_d0f0": (
             int(pitch["fixed_spaces_d0f0"])
@@ -5224,6 +5232,161 @@ def font_sample_builtin_row_fields_via_1cabe(
             + int(height["internal_advance_units_1d152"])
             + 1
         ),
+    }
+
+
+def font_sample_candidate_class_via_1c710(resources: bytes, candidate: dict[str, int]) -> dict[str, object]:
+    longword = int(candidate["longword"]) & 0xFFFFFFFF
+    selector_flag = (longword >> 30) & 1
+    record_start = int(candidate["record_start"])
+    if selector_flag == 1:
+        class_value = resources[record_start + 0x20]
+        source = "built-in +0x20"
+    else:
+        class_value = int(candidate.get("inline_byte_0x16", 0)) & 0xFF
+        source = "inline/downloaded +0x16"
+    return {
+        "helper": 0x01C710,
+        "selector_flag_1c766": selector_flag,
+        "record_start": record_start,
+        "class_value": class_value,
+        "source": source,
+    }
+
+
+def font_sample_source_group_rows_via_1c334(
+    resources: bytes,
+    candidate_windows: dict[str, object],
+    *,
+    source_index: int,
+    class_filter: int,
+    requested_symbol: int,
+    current_selected_pointer: int,
+    current_record_start: int,
+    initial_recent_contexts: list[int],
+    max_request_index: int = 0x63,
+) -> dict[str, object]:
+    first_list = list(candidate_windows["class_zero_low"])  # type: ignore[index]
+    second_list = list(candidate_windows["class_one_low"])  # type: ignore[index]
+    slots = list(candidate_windows["slots"])  # type: ignore[index]
+    recent_contexts = [int(context) & 0xFFFFFFFF for context in initial_recent_contexts]
+    attempts: list[dict[str, object]] = []
+    emitted_rows: list[dict[str, object]] = []
+    terminal_reason = "max-request-index"
+    terminal_request_index = max_request_index + 1
+
+    for request_index in range(max_request_index + 1):
+        fast_probe = None
+        if request_index == 0:
+            fast_probe = {
+                "selected_pointer": int(current_selected_pointer),
+                "longword": 0x080000 + int(current_record_start),
+                "word": u16(resources, int(current_record_start) + 0x22),
+            }
+        resolution = default_font_resolver_scan_via_1b50e(
+            search_mode=3,
+            requested_index=request_index,
+            requested_symbol=requested_symbol,
+            current_selected_pointer=current_selected_pointer,
+            fast_probe=fast_probe,
+            first_list=first_list,  # type: ignore[arg-type]
+            second_list=second_list,  # type: ignore[arg-type]
+        )
+        selected_address = int(resolution["selected_resource_address"]) & 0xFFFFFF
+        selected_event = next(
+            (
+                event
+                for event in reversed(list(resolution["events"]))  # type: ignore[arg-type]
+                if bool(event.get("selected"))
+            ),
+            None,
+        )
+        attempt: dict[str, object] = {
+            "request_index": request_index,
+            "resolution_summary": select_keys(resolution, (
+                "selected_pointer",
+                "selected_resource_address",
+                "word",
+                "source",
+            )),
+            "selected_event": selected_event,
+        }
+        if selected_address == 0:
+            attempt["decision"] = "terminal-miss" if request_index != 0 else "initial-miss"
+            attempts.append(attempt)
+            if request_index != 0:
+                terminal_reason = "resolver-miss"
+                terminal_request_index = request_index
+                break
+            continue
+
+        candidate = next(
+            (
+                dict(slot)
+                for slot in slots  # type: ignore[assignment]
+                if (int(slot["longword"]) & 0xFFFFFF) == selected_address
+            ),
+            None,
+        )
+        if candidate is None:
+            raise AssertionError(f"0x1c746 candidate lookup missed resource address 0x{selected_address:06x}")
+
+        context = int(candidate["longword"]) & 0xFFFFFFFF
+        class_info = font_sample_candidate_class_via_1c710(resources, candidate)
+        attempt.update({
+            "record_start": int(candidate["record_start"]),
+            "context_after_1c746": context,
+            "class_1c710": class_info,
+        })
+        if int(class_info["class_value"]) != int(class_filter):
+            attempt["decision"] = "class-mismatch-skip"
+            attempts.append(attempt)
+            continue
+
+        recent_before = context in recent_contexts
+        row_fields = font_sample_builtin_row_fields_via_1cabe(
+            resources,
+            int(candidate["record_start"]),
+            source_index=source_index,
+            row_index=request_index,
+            symbol_word=int(resolution["word"]),
+        )
+        row = {
+            "request_index": request_index,
+            "record_start": int(candidate["record_start"]),
+            "selected_pointer": int(resolution["selected_pointer"]),
+            "context_after_1c746": context,
+            "symbol_word": int(resolution["word"]) & 0xFFFF,
+            "class_value": int(class_info["class_value"]),
+            "recent_before": recent_before,
+            "recent_count_before": len(recent_contexts),
+            "row_fields": row_fields,
+            "resolution": resolution,
+        }
+        if recent_before:
+            row["recent_update"] = "already-present"
+        elif len(recent_contexts) < 16:
+            recent_contexts.append(context)
+            row["recent_update"] = "appended"
+        else:
+            row["recent_update"] = "full-not-modeled"
+        row["recent_count_after"] = len(recent_contexts)
+        attempt["decision"] = "emit-row"
+        attempt["recent_before"] = recent_before
+        attempts.append(attempt)
+        emitted_rows.append(row)
+
+    return {
+        "helper": "0x1c398..0x1c5d6",
+        "source_index": source_index,
+        "class_filter": class_filter,
+        "requested_symbol": requested_symbol,
+        "initial_recent_contexts": [int(context) & 0xFFFFFFFF for context in initial_recent_contexts],
+        "attempts": attempts,
+        "emitted_rows": emitted_rows,
+        "final_recent_contexts": recent_contexts,
+        "terminal_reason": terminal_reason,
+        "terminal_request_index": terminal_request_index,
     }
 
 
@@ -21138,6 +21301,80 @@ def render_font_sample_source_heading_first_three_internal_rows_page_record(
     }
 
 
+def render_font_sample_source_heading_row_sequence_page_record(
+    data: bytes,
+    resources: bytes,
+    row_fields_list: list[dict[str, object]],
+    resolutions: list[dict[str, object]],
+    *,
+    source_index: int = 3,
+    current_record_start: int = 0x00004C,
+    current_context: int = 0x4008004C,
+) -> dict[str, object]:
+    if not row_fields_list:
+        raise AssertionError("font sample row sequence requires at least one row")
+    if len(row_fields_list) != len(resolutions):
+        raise AssertionError("font sample row sequence fields/resolutions length mismatch")
+
+    first_row = render_font_sample_source_heading_and_first_row_page_record(
+        data,
+        resources,
+        row_fields_list[0],
+        source_index,
+    )
+    page_record = first_row["page_record"]
+    assert isinstance(page_record, dict)
+    state = dict(first_row["final_state"])  # type: ignore[arg-type]
+    rows: list[dict[str, object]] = [{
+        "resolution": resolutions[0],
+        "row_fields": row_fields_list[0],
+        "row": first_row,
+        "transition": None,
+    }]
+    transitions: list[dict[str, object]] = []
+
+    for row_fields, resolution in zip(row_fields_list[1:], resolutions[1:]):
+        transition = font_sample_row_to_row_transition_via_1d050(
+            resources,
+            row_fields,
+            current_record_start,
+            current_context,
+            state,
+            row_height_cache_783f06=int(state["row_height_cache_783f06"]),
+        )
+        row = queue_font_sample_row_fields_and_both_runs(
+            resources,
+            row_fields,
+            page_record,
+            state,
+            row_height_cache_783f06=int(state["row_height_cache_783f06"]),
+        )
+        transitions.append(transition)
+        rows.append({
+            "resolution": resolution,
+            "row_fields": row_fields,
+            "row": row,
+            "transition": transition,
+        })
+
+    bucket_objects = page_record_bucket_objects(page_record)
+    object_hashes = {
+        bucket: [hashlib.sha256(obj).hexdigest() for obj in objects]
+        for bucket, objects in bucket_objects.items()
+    }
+    return {
+        "rows": rows,
+        "transitions": transitions,
+        "context_slots": list(page_record.get("context_slots", [])),
+        "nonempty_buckets": sorted(bucket_objects),
+        "bucket_object_hashes": object_hashes,
+        "final_cursor_x": state["cursor_x"],
+        "final_cursor_y": state["cursor_y"],
+        "final_state": dict(state),
+        "page_record": page_record,
+    }
+
+
 def render_font_sample_carried_run2_buckets_via_1ed84_1ef6a(
     data: bytes,
     resources: bytes,
@@ -29108,6 +29345,166 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_sample_row1_resolution,
         font_sample_row2_resolution,
     )
+    internal_source_group_rows = font_sample_source_group_rows_via_1c334(
+        resources,
+        actual_candidate_windows,
+        source_index=3,
+        class_filter=0,
+        requested_symbol=0x0005,
+        current_selected_pointer=0x782354,
+        current_record_start=0x00004C,
+        initial_recent_contexts=[0x4008004C],
+    )
+    internal_source_group_emitted = list(internal_source_group_rows["emitted_rows"])  # type: ignore[arg-type]
+    internal_source_group_fields = [
+        row["row_fields"]
+        for row in internal_source_group_emitted
+    ]
+    internal_source_group_resolutions = [
+        row["resolution"]
+        for row in internal_source_group_emitted
+    ]
+    internal_source_group_page = render_font_sample_source_heading_row_sequence_page_record(
+        data,
+        resources,
+        internal_source_group_fields,
+        internal_source_group_resolutions,
+    )
+    checks.append(assert_equal("font sample first internal source group follows 0x1c334 row loop", {
+        "terminal": (
+            internal_source_group_rows["terminal_reason"],
+            internal_source_group_rows["terminal_request_index"],
+        ),
+        "row_count": len(internal_source_group_emitted),
+        "row_summary": [
+            (
+                row["request_index"],
+                row["record_start"],
+                row["context_after_1c746"],
+                row["symbol_word"],
+                row["recent_before"],
+                row["recent_update"],
+                row["row_fields"]["printed"],
+            )
+            for row in internal_source_group_emitted
+        ],
+        "non_emit_summary": [
+            (
+                attempt["request_index"],
+                attempt["decision"],
+                attempt.get("record_start"),
+                attempt.get("class_1c710", {}).get("class_value")
+                if isinstance(attempt.get("class_1c710"), dict)
+                else None,
+            )
+            for attempt in internal_source_group_rows["attempts"]  # type: ignore[index]
+            if attempt["decision"] != "emit-row"
+        ],
+        "final_recent_contexts": internal_source_group_rows["final_recent_contexts"],
+        "page_context_slots": internal_source_group_page["context_slots"],
+        "page_nonempty_buckets": internal_source_group_page["nonempty_buckets"],
+        "selected_bucket_hashes": {
+            bucket: internal_source_group_page["bucket_object_hashes"][bucket]  # type: ignore[index]
+            for bucket in (26, 66, 82, 90)
+        },
+        "final_cursor_x": internal_source_group_page["final_cursor_x"],
+        "final_cursor_y": internal_source_group_page["final_cursor_y"],
+    }, {
+        "terminal": ("resolver-miss", 29),
+        "row_count": 14,
+        "row_summary": [
+            (0, 0x00004C, 0x4008004C, 0x0115, True, "already-present", b"I00LINE PRINTER10128U"),
+            (1, 0x000418, 0x44080418, 0x0155, False, "appended", b"I01COURIER101210U"),
+            (2, 0x000868, 0x44080868, 0x0175, False, "appended", b"I02COURIER101211U"),
+            (3, 0x000CB8, 0x40080CB8, 0x000E, False, "appended", b"I03COURIER10120N"),
+            (4, 0x009FB0, 0x40089FB0, 0x0115, False, "appended", b"I04LINE PRINTER10128U"),
+            (5, 0x009FB0, 0x40089FB0, 0x0005, True, "already-present", b"I05LINE PRINTER10120E"),
+            (6, 0x00A37C, 0x4408A37C, 0x0155, False, "appended", b"I06COURIER101210U"),
+            (7, 0x00A7CC, 0x4408A7CC, 0x0175, False, "appended", b"I07COURIER101211U"),
+            (8, 0x00AC1C, 0x4008AC1C, 0x000E, False, "appended", b"I08COURIER10120N"),
+            (9, 0x0142E4, 0x400942E4, 0x0115, False, "appended", b"I09LINE PRINTER16.68.58U"),
+            (10, 0x0142E4, 0x400942E4, 0x0005, True, "already-present", b"I10LINE PRINTER16.68.50E"),
+            (11, 0x0146B4, 0x440946B4, 0x0155, False, "appended", b"I11LINE_PRINTER16.68.510U"),
+            (12, 0x014B08, 0x44094B08, 0x0175, False, "appended", b"I12LINE_PRINTER16.68.511U"),
+            (13, 0x014F5C, 0x40094F5C, 0x000E, False, "appended", b"I13LINE_PRINTER16.68.50N"),
+        ],
+        "non_emit_summary": [
+            (14, "class-mismatch-skip", 0x019D18, 1),
+            (15, "class-mismatch-skip", 0x019D18, 1),
+            (16, "class-mismatch-skip", 0x01A0E4, 1),
+            (17, "class-mismatch-skip", 0x01A534, 1),
+            (18, "class-mismatch-skip", 0x01A984, 1),
+            (19, "class-mismatch-skip", 0x023484, 1),
+            (20, "class-mismatch-skip", 0x023484, 1),
+            (21, "class-mismatch-skip", 0x023850, 1),
+            (22, "class-mismatch-skip", 0x023CA0, 1),
+            (23, "class-mismatch-skip", 0x0240F0, 1),
+            (24, "class-mismatch-skip", 0x02D4AA, 1),
+            (25, "class-mismatch-skip", 0x02D4AA, 1),
+            (26, "class-mismatch-skip", 0x02D87A, 1),
+            (27, "class-mismatch-skip", 0x02DCCE, 1),
+            (28, "class-mismatch-skip", 0x02E122, 1),
+            (29, "terminal-miss", None, None),
+        ],
+        "final_recent_contexts": [
+            0x4008004C,
+            0x44080418,
+            0x44080868,
+            0x40080CB8,
+            0x40089FB0,
+            0x4408A37C,
+            0x4408A7CC,
+            0x4008AC1C,
+            0x400942E4,
+            0x440946B4,
+            0x44094B08,
+            0x40094F5C,
+        ],
+        "page_context_slots": [
+            0x4008004C,
+            0x44080418,
+            0x44080868,
+            0x40080CB8,
+            0x40089FB0,
+            0x4408A37C,
+            0x4408A7CC,
+            0x4008AC1C,
+            0x400942E4,
+            0x440946B4,
+            0x44094B08,
+            0x40094F5C,
+        ],
+        "page_nonempty_buckets": [
+            0, 2, 3, 4, 6, 7, 10, 11, 13, 14, 15, 18, 21, 22, 23, 25, 26,
+            29, 30, 31, 32, 33, 36, 37, 39, 40, 41, 43, 44, 47, 48, 50, 51,
+            52, 55, 58, 59, 60, 62, 63, 66, 67, 68, 69, 70, 71, 73, 76, 77,
+            79, 82, 83, 84, 85, 86, 88, 89, 90, 91, 92, 94, 95, 96, 98, 99,
+        ],
+        "selected_bucket_hashes": {
+            26: [
+                "ff3e5268a418ebbefac479fa3a8b0e67888a0eb2616a714cba28f1b17bcc8e22",
+                "927de1122a9d5c999d3dfa20fbc50dc5f9b3dc1673f9ccac2a6cd5a62af5512d",
+                "fb007a871c7a51f230ca582c7efccffa9d436722ad23780bab03321e51965edc",
+            ],
+            66: [
+                "d7f57b392dbd795d5c30d6a9569840da70b98cf52b404202d3053716e44b9494",
+                "075e6b1cccf3cf4c39b84d4011569edaa0e03eef7d5dfc87390f5cfe25160144",
+                "bf1393aac19712dd35515243392e58ba8f7a999bede610a5a3403c88227c6a58",
+            ],
+            82: [
+                "b83056921c998367d52967753da1255113861698e63d3b472f86031b473adfa0",
+                "4890ee64cd679c3f7ebfb84d5c12f7c1c77e4bad23f58a60a086c3742171006e",
+                "8ac0bb82defac1f8c63742cd0581f82c5c49a4680becd1b207cbf4ee6c331e62",
+                "9ac3886848a4a56e72149b344a7dcb393014ea3a30ea6582f744af258974f822",
+                "2f366dec728502f86198ad959382ad25a15048c38887d7f450153935d48d2a12",
+            ],
+            90: [
+                "d3bdc2b00eec88c65cb0f84abcb92cf96710cf8fddc269e48b3833e67c22069f",
+            ],
+        },
+        "final_cursor_x": 0x08AC0000,
+        "final_cursor_y": 0x06390003,
+    }))
     checks.append(assert_equal("font sample resolver carries first two Courier rows", {
         "row1_resolution": {
             "summary": select_keys(courier_source_heading_two_rows["row1_resolution"], (  # type: ignore[arg-type]
@@ -69668,6 +70065,39 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         internal_source_heading_first_three_rows["nonempty_buckets"],
         internal_source_heading_first_three_rows["final_cursor_x"],
         internal_source_heading_first_three_rows["final_cursor_y"],
+    ))
+    lines.append("- font sample first internal source group: `0x1c398..0x1c5d6` resolves request indexes `0..%d`, emits `%d` class-zero rows, rejects class-one request indexes `%s`, and terminates on `%s` at request `%d`. Duplicate Roman-8 substitution requests `%s` remain visible with words `%s` but are not re-appended by `0x1c540..0x1c5c6`; final recent contexts are `%s`, page context slots are `%s`, and selected page buckets hash to `%s`." % (
+        internal_source_group_rows["terminal_request_index"],  # type: ignore[index]
+        len(internal_source_group_emitted),
+        ",".join(
+            str(attempt["request_index"])
+            for attempt in internal_source_group_rows["attempts"]  # type: ignore[index]
+            if attempt["decision"] == "class-mismatch-skip"
+        ),
+        internal_source_group_rows["terminal_reason"],  # type: ignore[index]
+        internal_source_group_rows["terminal_request_index"],  # type: ignore[index]
+        ",".join(
+            str(row["request_index"])
+            for row in internal_source_group_emitted
+            if row["recent_before"] and int(row["request_index"]) != 0
+        ),
+        ",".join(
+            "0x%04x" % int(row["symbol_word"])
+            for row in internal_source_group_emitted
+            if row["recent_before"] and int(row["request_index"]) != 0
+        ),
+        ",".join(
+            "0x%08x" % int(context)
+            for context in internal_source_group_rows["final_recent_contexts"]  # type: ignore[index]
+        ),
+        ",".join(
+            "0x%08x" % int(slot)
+            for slot in internal_source_group_page["context_slots"]  # type: ignore[index]
+        ),
+        {
+            bucket: internal_source_group_page["bucket_object_hashes"][bucket]  # type: ignore[index]
+            for bucket in (26, 66, 82, 90)
+        },
     ))
     lines.append("- font sample row fields: first `LINE_PRINTER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152`; the height value is rounded by the mode-1 `0x1cc6e` add-five path." % (
         line_printer_sample_row_fields["record_start"],

@@ -676,8 +676,10 @@ tracking at `0x783f0a`, and `0xf0f0` pass finalization; candidate-row
 traversal now follows `0x1b50e` lookup, `0x1c746` normalization,
 `0x1c766` / `0x1c7a8` flag extraction, `0x1c710` class comparison,
 `0x1d050` / `0x1d868` continuation checks, `0x1cabe` row emission,
-and `0x1cf34` sample-byte emission before duplicate suppression through
-the recent-context list; the report also
+and `0x1cf34` sample-byte emission before the post-row recent-context
+scan; the committed resource note now documents the first internal-font
+class-zero group as visible rows `I00..I13`, including duplicate Roman-8
+substitution rows `I05` and `I10`; the report also
 pins sample-page cursor and row sequencing through `0x1c916`,
 `0x1ca2c`, `0x1cabe`, `0x1cf34`, and `0x1d050`, including page-limit
 checks against `0x782db6`, source/metric text emission through `0xd04a`,
@@ -1016,11 +1018,13 @@ ROM work needed:
   `80 57 08 91 00 00`, glyph `0x25`, selector `0x3003`, buckets `9`
   and `1`, and compact dispatch target `0x1effe`.
 - Model the font-printout loop's emitted page objects from the ROM sample
-  byte runs. The `0x1c334..0x1c5e4` row traversal is decoded, including
-  `0x1b50e` two-window candidate resolution, class filtering,
-  continuation-page entry, row-index advance, and recent-context
-  duplicate suppression. The concrete internal-font candidate sequence is
-  now documented in `notes/resource-rom.md`, and fixture `font sample run
+  byte runs. The first internal-font class-zero source group is decoded and
+  documented in `notes/resource-rom.md`: request index `0` fast-probes through
+  `0x1b8ea`, request indexes `1..28` scan through `0x1b50e`, `0x1c746`
+  normalizes selected addresses to candidate longwords, `0x1c710` rejects
+  class-one requests `14..28`, request `29` terminates on resolver miss, and
+  rows `I05`/`I10` prove duplicate Roman-8 substitutions are visible before
+  the post-row `0x1c540..0x1c5c6` recent-list scan. Fixture `font sample run
   1 full row spans compact buckets` carries byte stream
   ``ABCDEfghij#$@[\\]^`{|}~123`` through context `0x44080418`, compact
   buckets `-1` and `0`, `0x1ed84` / `0x1ef6a`, and row hashes
@@ -1034,14 +1038,13 @@ ROM work needed:
   and
   `b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5`.
   The source-heading composition fixture now carries `INTERNAL FONTS`
-  into request indexes `0`, `1`, and `2`: row 0 fast-probes record
-  `0x00004c` and formats `I00LINE PRINTER10128U` through the `0x1d198`
-  fallback table path, while rows 1 and 2 carry `0x1b50e` current Roman-8
-  suppression, second-row `0x1d050` y advance, context slots
-  `[0x4008004c, 0x44080418, 0x44080868]`, and visible second-row bytes
-  `I02COURIER101211U`. The next boundaries are later rows/source headings,
-  continuation branches, and full-printout placement for comparison against
-  the direct payload hashes and a known printed/self-test sample.
+  through all 14 visible class-zero rows in one page-record state, ending with
+  context slots `0x4008004c,0x44080418,0x44080868,0x40080cb8,0x40089fb0,
+  0x4408a37c,0x4408a7cc,0x4008ac1c,0x400942e4,0x440946b4,0x44094b08,
+  0x40094f5c`. The next boundaries are other source headings, the class-one
+  internal-font pass, continuation branches, and full-printout placement for
+  comparison against the direct payload hashes and a known printed/self-test
+  sample.
 - Identify the manual-facing names for the currently unidentified
   built-in symbol words `0N`, `10U`, and `11U`, and broaden the
   now-pinned real symbol-map samples into more live parser/font-selection

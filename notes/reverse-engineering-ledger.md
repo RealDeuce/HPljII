@@ -715,6 +715,12 @@ fixture now also queues those bytes through `0x1393a` / `0xd824` /
 two symbol-column `0xd0f0` fixed spaces as cursor-only events, and
 renders rows with hash
 `4756fe985af471915c3de75c4637c09e51c28a80af75989a1125f6d9cbf2347c`;
+the carried-state fixture `font sample Courier row fields and run 1 share
+page-record state` appends the `0x1c1cf` sample run 1 byte stream to that
+same record, producing buckets `[-1, 0]`, final cursor `0x08ac0000`, and
+render hashes
+`78d11b068621d9a47fcce073c9b5d1a591bdfc9368bf5d32f6e81186911d4428`
+/ `975779b94eb6e9eefaaa0134e7ef5915d5471e16b6568315f612def3cb440949`;
 text object glyph index bytes are mapped before queuing by `0x1393a` and
 initialized by `0x14d9c` / `0x14e24` / `0x14f16`; `0x1be22` computes
 normal PCL symbol words from host `ESC (` / `ESC )` commands, handles

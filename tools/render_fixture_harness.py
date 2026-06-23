@@ -20172,6 +20172,63 @@ def summarize_page_record_bucket_renders(
     return summary
 
 
+def queue_font_sample_printable_chunk_to_page_record(
+    resources: bytes,
+    context: int,
+    page_record: dict[str, object],
+    state: dict[str, int],
+    chunk: bytes,
+    label: str,
+    default_advance: int,
+) -> dict[str, object]:
+    printable_events = []
+    for byte in chunk:
+        source = build_text_source_object_from_1393a(
+            resources,
+            context,
+            byte,
+            x=0,
+            y=0,
+            context_slot=0,
+        )
+        positioned = position_flagged_text_source_via_d824(
+            resources,
+            source,
+            cursor_x=unpack12(int(state["cursor_x"]))[0],
+            cursor_y=unpack12(int(state["cursor_y"]))[0],
+        )
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        ensure_page_record_root_for_queue(state)
+        page_result = queue_text_source_to_page_record_via_12f2e(
+            resources,
+            page_record,
+            positioned_source,
+        )
+        advance = advance_flagged_text_cursor_via_d550(
+            int(state["cursor_x"]),
+            default_advance,
+        )
+        state["cursor_x"] = advance["cursor_after"]
+        printable_events.append({
+            "byte": byte,
+            "cursor_before": advance["cursor_before"],
+            "cursor_after": advance["cursor_after"],
+            "coord": page_result["coord"],
+            "bucket_index": page_result["bucket_index"],
+            "allocated": page_result["allocated"],
+            "count_after": page_result["count_after"],
+        })
+    return {
+        "kind": "printable-chunk",
+        "label": label,
+        "bytes": chunk,
+        "event_count": len(printable_events),
+        "events": printable_events,
+        "cursor_after": state["cursor_x"],
+    }
+
+
 def render_font_sample_row_fields_page_record_via_1cabe(
     data: bytes,
     resources: bytes,
@@ -20194,55 +20251,17 @@ def render_font_sample_row_fields_page_record_via_1cabe(
     events: list[dict[str, object]] = []
 
     def run_printable(label: str, chunk: bytes) -> None:
-        nonlocal state, page_record
         if not chunk:
             return
-        printable_events = []
-        for byte in chunk:
-            source = build_text_source_object_from_1393a(
-                resources,
-                context,
-                byte,
-                x=0,
-                y=0,
-                context_slot=0,
-            )
-            positioned = position_flagged_text_source_via_d824(
-                resources,
-                source,
-                cursor_x=unpack12(int(state["cursor_x"]))[0],
-                cursor_y=unpack12(int(state["cursor_y"]))[0],
-            )
-            positioned_source = positioned["source"]
-            assert isinstance(positioned_source, dict)
-            ensure_page_record_root_for_queue(state)
-            page_result = queue_text_source_to_page_record_via_12f2e(
-                resources,
-                page_record,
-                positioned_source,
-            )
-            advance = advance_flagged_text_cursor_via_d550(
-                int(state["cursor_x"]),
-                default_advance,
-            )
-            state["cursor_x"] = advance["cursor_after"]
-            printable_events.append({
-                "byte": byte,
-                "cursor_before": advance["cursor_before"],
-                "cursor_after": advance["cursor_after"],
-                "coord": page_result["coord"],
-                "bucket_index": page_result["bucket_index"],
-                "allocated": page_result["allocated"],
-                "count_after": page_result["count_after"],
-            })
-        events.append({
-            "kind": "printable-chunk",
-            "label": label,
-            "bytes": chunk,
-            "event_count": len(printable_events),
-            "events": printable_events,
-            "cursor_after": state["cursor_x"],
-        })
+        events.append(queue_font_sample_printable_chunk_to_page_record(
+            resources,
+            context,
+            page_record,
+            state,
+            chunk,
+            label,
+            default_advance,
+        ))
 
     def run_fixed_spaces(label: str, count: int) -> None:
         nonlocal state
@@ -20319,6 +20338,54 @@ def render_font_sample_row_fields_page_record_via_1cabe(
         "context": context,
         "printed": row_fields["printed"],
         "events": events,
+        "nonempty_buckets": sorted(bucket_objects),
+        "bucket_objects": bucket_objects,
+        "render_entries": render_summary,
+        "final_cursor_x": state["cursor_x"],
+        "final_state": dict(state),
+        "page_record": page_record,
+    }
+
+
+def render_font_sample_first_row_fields_and_run1_page_record(
+    data: bytes,
+    resources: bytes,
+    row_fields: dict[str, object],
+) -> dict[str, object]:
+    row_page = render_font_sample_row_fields_page_record_via_1cabe(
+        data,
+        resources,
+        row_fields,
+    )
+    page_record = row_page["page_record"]
+    state = dict(row_page["final_state"])  # type: ignore[arg-type]
+    assert isinstance(page_record, dict)
+    context = int(row_fields["context"])
+    sample_run1 = bytes.fromhex(
+        "41 42 43 44 45 66 67 68 69 6a 23 24 40 5b 5c 5d 5e "
+        "60 7b 7c 7d 7e 31 32 33"
+    )
+    sample_event = queue_font_sample_printable_chunk_to_page_record(
+        resources,
+        context,
+        page_record,
+        state,  # type: ignore[arg-type]
+        sample_run1,
+        "sample-run-1",
+        pack12(30),
+    )
+    bucket_objects = page_record_bucket_objects(page_record)
+    render_summary = summarize_page_record_bucket_renders(
+        data,
+        resources,
+        page_record,
+        bucket_objects,
+    )
+    return {
+        "context": context,
+        "row_field_events": row_page["events"],
+        "sample_event": sample_event,
+        "sample_run1": sample_run1,
         "nonempty_buckets": sorted(bucket_objects),
         "bucket_objects": bucket_objects,
         "render_entries": render_summary,
@@ -27545,6 +27612,155 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "row_width": 256,
                 "row_sha256": (
                     "4756fe985af471915c3de75c4637c09e51c28a80af75989a1125f6d9cbf2347c"
+                ),
+            },
+        },
+    }))
+    courier_sample_row_with_run1 = render_font_sample_first_row_fields_and_run1_page_record(
+        data,
+        resources,
+        courier_sample_row_fields,
+    )
+    checks.append(assert_equal("font sample Courier row fields and run 1 share page-record state", {
+        "sample_event_count": courier_sample_row_with_run1["sample_event"]["event_count"],  # type: ignore[index]
+        "sample_cursor_after": courier_sample_row_with_run1["sample_event"]["cursor_after"],  # type: ignore[index]
+        "nonempty_buckets": courier_sample_row_with_run1["nonempty_buckets"],
+        "final_cursor_x": courier_sample_row_with_run1["final_cursor_x"],
+        "bucket_objects": courier_sample_row_with_run1["bucket_objects"],
+        "render_entries": courier_sample_row_with_run1["render_entries"],
+    }, {
+        "sample_event_count": 25,
+        "sample_cursor_after": pack12(2220),
+        "nonempty_buckets": [-1, 0],
+        "final_cursor_x": pack12(2220),
+        "bucket_objects": {
+            -1: [
+                bytes.fromhex(
+                    "00 00 00 00 00 00 00 05 68 f3 6b 69 ff 6c 23 "
+                    "fd 70 5d f6 7a 7b c5 80 00 00 00 00 00 00 00 "
+                    "00 00 00 00 00 00 00 00"
+                ),
+            ],
+            0: [
+                bytes.fromhex(
+                    "00 00 00 00 00 00 00 07 5f 14 7c 7a 42 7e 7c "
+                    "4f 81 7d 1c 83 30 47 85 31 44 87 32 43 89 00 "
+                    "00 00 00 00 00 00 00 00"
+                ),
+                bytes.fromhex(
+                    "00 00 00 00 00 00 00 0a 43 4b 61 44 48 63 65 "
+                    "29 65 66 a4 67 67 21 69 22 00 6f 3f 1b 72 5a "
+                    "4f 74 5b 26 76 5c 48 78"
+                ),
+                bytes.fromhex(
+                    "00 00 00 00 00 00 00 0a 30 45 3c 2f 43 3e 30 "
+                    "49 47 31 46 49 30 4b 54 2f 49 56 54 42 58 40 "
+                    "4e 5b 41 4f 5d 42 4d 5f"
+                ),
+                bytes.fromhex(
+                    "00 00 00 00 00 00 00 0a 48 44 00 2f 43 02 30 "
+                    "41 04 42 49 09 4e 46 0b 54 42 0d 51 41 0f 48 "
+                    "42 11 44 4e 12 51 4b 14"
+                ),
+            ],
+        },
+        "render_entries": {
+            -1: {
+                "dispatch": [{
+                    "chain_index": 0,
+                    "object_byte_4": 0,
+                    "class_mask": 0,
+                    "branch": "compact",
+                    "target": 0x1EFFE,
+                    "context_slot": 0,
+                }],
+                "glyphs": [104, 105, 35, 93, 123],
+                "counts": [5],
+                "row_count": 62,
+                "row_width": 256,
+                "row_sha256": (
+                    "78d11b068621d9a47fcce073c9b5d1a591bdfc9368bf5d32f6e81186911d4428"
+                ),
+            },
+            0: {
+                "dispatch": [
+                    {
+                        "chain_index": 0,
+                        "object_byte_4": 0,
+                        "class_mask": 0,
+                        "branch": "compact",
+                        "target": 0x1EFFE,
+                        "context_slot": 0,
+                    },
+                    {
+                        "chain_index": 1,
+                        "object_byte_4": 0,
+                        "class_mask": 0,
+                        "branch": "compact",
+                        "target": 0x1EFFE,
+                        "context_slot": 0,
+                    },
+                    {
+                        "chain_index": 2,
+                        "object_byte_4": 0,
+                        "class_mask": 0,
+                        "branch": "compact",
+                        "target": 0x1EFFE,
+                        "context_slot": 0,
+                    },
+                    {
+                        "chain_index": 3,
+                        "object_byte_4": 0,
+                        "class_mask": 0,
+                        "branch": "compact",
+                        "target": 0x1EFFE,
+                        "context_slot": 0,
+                    },
+                ],
+                "glyphs": [
+                    95,
+                    122,
+                    124,
+                    125,
+                    48,
+                    49,
+                    50,
+                    67,
+                    68,
+                    101,
+                    102,
+                    103,
+                    34,
+                    63,
+                    90,
+                    91,
+                    92,
+                    48,
+                    47,
+                    48,
+                    49,
+                    48,
+                    47,
+                    84,
+                    64,
+                    65,
+                    66,
+                    72,
+                    47,
+                    48,
+                    66,
+                    78,
+                    84,
+                    81,
+                    72,
+                    68,
+                    81,
+                ],
+                "counts": [7, 10, 10, 10],
+                "row_count": 42,
+                "row_width": 256,
+                "row_sha256": (
+                    "975779b94eb6e9eefaaa0134e7ef5915d5471e16b6568315f612def3cb440949"
                 ),
             },
         },
@@ -67733,6 +67949,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         courier_sample_row_fields_page["render_entries"][0]["counts"],  # type: ignore[index]
         courier_sample_row_fields_page["final_cursor_x"],
         courier_sample_row_fields_page["render_entries"][0]["row_sha256"],  # type: ignore[index]
+    ))
+    lines.append("- font sample carried first row: adding sample run 1 after those row fields in the same page-record state queues `%d` more bytes, extends the page record to buckets `%s`, leaves final cursor x `0x%08x`, and renders bucket hashes `%s`." % (
+        courier_sample_row_with_run1["sample_event"]["event_count"],  # type: ignore[index]
+        courier_sample_row_with_run1["nonempty_buckets"],
+        courier_sample_row_with_run1["final_cursor_x"],
+        {
+            bucket: entry["row_sha256"]
+            for bucket, entry in courier_sample_row_with_run1["render_entries"].items()  # type: ignore[union-attr]
+        },
     ))
     lines.append("- font sample row fields: first `LINE_PRINTER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152`; the height value is rounded by the mode-1 `0x1cc6e` add-five path." % (
         line_printer_sample_row_fields["record_start"],

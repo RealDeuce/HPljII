@@ -1248,6 +1248,15 @@ symbol-column fixed spaces advance the cursor but create no compact glyph
 entries; the final cursor is `0x05be0000`; and the rendered bucket rows
 hash to
 `4756fe985af471915c3de75c4637c09e51c28a80af75989a1125f6d9cbf2347c`.
+Fixture `font sample Courier row fields and run 1 share page-record state`
+then appends sample run 1 bytes `41 42 43 44 45 66 67 68 69 6a 23 24 40
+5b 5c 5d 5e 60 7b 7c 7d 7e 31 32 33` to that same carried page-record
+state. It pins the sample-run event count `25`, final cursor
+`0x08ac0000`, nonempty buckets `[-1, 0]`, bucket `-1` object count `[5]`
+with row hash
+`78d11b068621d9a47fcce073c9b5d1a591bdfc9368bf5d32f6e81186911d4428`,
+and bucket `0` object counts `[7, 10, 10, 10]` with row hash
+`975779b94eb6e9eefaaa0134e7ef5915d5471e16b6568315f612def3cb440949`.
 Fixture `font sample run 1 prefix crosses page-record render entry` first
 consumed bytes `41 42 43 44 45 66 67 68` (`ABCDEfgh`)
 through the sample-page current context `0x44080418`, forced HMI
@@ -1279,8 +1288,9 @@ and bucket `0` glyphs `[160, 161, 183, 186, 200, 204, 209, 223, 226,
 Until the full `0x1c204` page-object loop is modeled, this checkpoint
 proves the producer, row-order, duplicate-suppression, concrete built-in
 row-field formatting for the first `COURIER` / `LINE_PRINTER` rows, the
-first `COURIER` row-field page-record/render slice, and both sample
-byte-run page-record/render slices, not final full-page placement.
+first `COURIER` carried row-field plus sample-run-1 page-record/render
+slice, and both sample byte-run page-record/render slices, not final
+full-page placement.
 
 ### Confidence
 
@@ -1288,8 +1298,9 @@ High for helper roles, class-pass loop structure, candidate-row
 traversal, current-font/page-root setup, printable byte emission,
 continuation checks, local label tables, concrete first `COURIER` /
 `LINE_PRINTER` row-field formatting, first `COURIER` row-field
-page-record placement, and direct sample byte-run row hashes because they
-are anchored by generated disassembly analysis and
+page-record placement, first `COURIER` carried row-field plus sample-run-1
+placement, and direct sample byte-run row hashes because they are anchored
+by generated disassembly analysis and
 `tools/render_fixture_harness.py`. Medium for final placement and
 baseline/cell interpretation because the full emitted page objects and
 physical/self-test comparison are still open.
@@ -1320,22 +1331,27 @@ physical/self-test comparison are still open.
   continuation-page entry, row-index advance, and recent-context
   duplicate suppression. The verified internal-font mode-3 row sequence
   is documented in [resource-rom.md](resource-rom.md). The `0x1c1cf`
-  sample run 1 byte stream and `0x1c1e9` sample run 2 byte stream are now
-  consumed by executable font-sample page-object/render fixtures; complete
-  printout placement is not.
+  sample run 1 byte stream is now consumed both as a standalone
+  page-object/render fixture and after first-`COURIER` row fields in the
+  same carried page-record state. The `0x1c1e9` sample run 2 byte stream
+  is still a standalone page-object/render fixture; carrying it after run
+  1 requires modeling the intervening `0x1d050` line/continuation step.
+  Complete printout placement is not modeled.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
   identified. First `COURIER` and first `LINE_PRINTER` row-field
   formatting now crosses the `0x1cabe` boundary as printable bytes plus
   fixed-space/cursor-advance events, and the first `COURIER` row-field
   sequence crosses the page-record/render boundary as compact bucket `0`
-  with object counts `[7, 10]`. Sample runs 1 and 2 cross the
-  page-record/render boundary with context `0x44080418`, HMI `0x001e`,
-  compact buckets `-1` and `0`, and render-entry row hashes above.
-  Emitted page objects for the complete font printout remain to be
-  modeled from source headings, row fields for every emitted row, ROM
-  sample bytes, and page-placement state, then compared against a known
-  printed/self-test sample.
+  with object counts `[7, 10]`; appending sample run 1 in that same state
+  extends the record to buckets `[-1, 0]`. Sample run 2 crosses the
+  page-record/render boundary separately with context `0x44080418`, HMI
+  `0x001e`, compact buckets `-1` and `0`, and render-entry row hashes
+  above. Emitted page objects for the complete font printout remain to be
+  modeled from source headings, row fields for every emitted row, the
+  `0x1d050` run-1-to-run-2 transition, ROM sample bytes, and
+  page-placement state, then compared against a known printed/self-test
+  sample.
 - `record +0x28..+0x31`: these fields participate in height and chooser
   logic, but their final baseline/cell semantics need correlation against
   observed sample-page placement.

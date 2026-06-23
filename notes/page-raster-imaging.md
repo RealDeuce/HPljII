@@ -1165,16 +1165,22 @@ This is still not enough for pixel-perfect reproduction by itself. The
 mixed text/rule/raster/FF fixture is now the first complete byte-stream
 page-image contract through host fetch, parser handlers, addressed
 page-record storage, `0xff1e` publication, `0x1ed84` / `0x1edc6`, and
-final row comparison. The next unresolved step is to broaden that suite
-with font selection and downloaded-glyph cases, replace the remaining
-modeled font state with a full live parser-state run that populates
-current records and source/page objects, then replace the remaining
-producer-modeled text/raster bucket objects with page objects captured
-or reproduced from the full parser/imaging path. The reset, FF, page-size,
-orientation, paper-source, and copies publication fixtures now start without
-a current page root and mark the first printable queue step as the modeled
-page-record root allocation point, but that is still not a full live parser
-allocation. Those six publication paths now also have addressed variants:
+final row comparison. The suite has since been broadened with font
+selection and downloaded-glyph page-image cases: primary/secondary
+font-selection streams render visible compact rows, downloaded-glyph FF
+publication renders through `0xff1e` / `0x1ed84` / `0x1ef6a`, and
+fixture `parser-driven downloaded glyph rule raster stream composes
+through 0x1ef6a` combines an installed downloaded glyph, selector-7 rule,
+and mode-0 raster row in one parser-driven page stream. The next
+unresolved step is therefore not adding those fixture families, but
+replacing remaining modeled font-install and producer-state handoffs with
+full live parser-state runs that populate current records, source/page
+objects, and raster/text buckets in CPU memory before imaging. The reset,
+FF, page-size, orientation, paper-source, and copies publication fixtures
+now start without a current page root and mark the first printable queue
+step as the modeled page-record root allocation point, but that is still
+not a full live parser allocation. Those six publication paths now also
+have addressed variants:
 `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, `!\x1b&l1O`, `!\x1b&l2H`, and
 `!\x1b&l2X\f` queue the printable byte through addressed
 `0x1387c`/`0x1381c`, materialize the page record, publish through the same

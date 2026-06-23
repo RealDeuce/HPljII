@@ -151,8 +151,12 @@ non-publishing target-after-text path is anchored through
 through `0x12a02..0x12afc`, while the start-after-text wrap-after-text
 paths are anchored through `0x12a7a..0x12af8` and
 `0x12a7a..0x12afc`; selector-zero start-after-text recovery is anchored
-through `0x1299c..0x12b92`; alternate wrap-recovery and page-recovery
-branches remain unresolved;
+through `0x1299c..0x12b92`; alternate high-start recovery entries are
+anchored by fixture `0x1280a VFC alternate high-start recovery entries`
+with start line `80`: no-hit recovery through `0x12a02..0x12afc`,
+wrapped line-70 bottom recovery through `0x12a7a..0x12afc` and
+`0x12afc..0x12b5a`, and selector-zero top-of-form recovery through
+`0x12b5e..0x12b92`;
 `ESC &a#L/#M` map to
 `0xeb58`/`0xec0c` and convert HMI margin columns into
 `0x782dd6`/`0x782dda` with reject/clamp/cursor-move cases;

@@ -235,11 +235,13 @@ publication, writes recovered y `54`, and queues `!` at compact coord
 `0xb001`. A line-63 start-after-text `ESC &l2V!` fixture anchors
 `0x12a7a..0x12afc`: start line `64` wraps to line `63`, skips
 `0x12a8a..0x12aa2`, writes recovered y `104`, and queues `!` at compact
-coord `0x3001`. The
-remaining wrap and bottom/page-recovery branches are unresolved across
-the exact ranges alternate-entry `0x12a02..0x12a10`, alternate-entry
-`0x12a22..0x12a78`, alternate-entry `0x12afc..0x12b5a`, and
-wrap-entry `0x12b5e..0x12b92`.
+coord `0x3001`. Direct high-start VFC fixtures also pin the alternate
+start/recovery predicates away from the normal Letter page bottom:
+`0x12a02..0x12afc` no-hit recovery, `0x12a7a..0x12afc` wrapped line-70
+recovery, and selector-zero `0x12b5e..0x12b92` recovery. The composed
+field groups, writers, readers, output effects, confidence, and
+remaining physical-output risk for this command family are tracked in
+`notes/vertical-forms-control.md`.
 
 `ESC &l#D` at `0x00c992` accepts absolute LPI values
 `1,2,3,4,6,8,12,16,24,48`, treats zero as `12`, converts to packed line

@@ -3668,9 +3668,15 @@ lists through `0x1ef6a`, and only then composes visible pixels.
 - Derived/cache render fields:
   - `0x783a20 = 0x0050`, `0x783a22 = 0`,
     `0x783a28 = 0x00100000`.
+  - crossing rule-list carry state: when `0x1f446` / `0x1f4e0`
+    cannot finish a patterned rule in the current band, the mutated rule
+    node is carried to the next band with its remaining row count
+    reduced.
   Evidence: render-entry setup fixture
   `addressed text/rule/raster field groups reach publication and render
-  entry`, with `0x1ef86` before `0x1efc2`, `0x1f446`, and `0x1f756`.
+  entry`, with `0x1ef86` before `0x1efc2`, `0x1f446`, and `0x1f756`,
+  plus fixture `0x1ef6a page-band walk merges text raster and crossing
+  rule`.
 - Unknown for this cluster:
   - the exact live CPU stack/register handoff between the modeled parser
     runner and real memory-backed page-root objects is still unknown.
@@ -3715,6 +3721,11 @@ mode-0 raster row from payload `c3 3c`, and the rectangle rule. The
 published render-entry fixture proves the same rows before and after the
 `0xff1e` publication boundary, with dispatch targets `0x1f88e` and
 `0x1effe`.
+The page-band walker fixture extends this render-entry contract across
+bands `0` and `5`: it dispatches compact text and mode-0 raster objects
+from bucket array `+0x18`, carries a patterned rule's mutated node from
+rule list `+0x1c` after the first band, then renders the remaining rule
+rows in the second band with no leftover rule or fixed-list state.
 
 ### Confidence
 
@@ -3731,6 +3742,7 @@ the parser and allocator.
 - `addressed text rectangle raster FF publishes rendered page record`
 - `addressed text/rule/raster field groups reach publication and render
   entry`
+- `0x1ef6a page-band walk merges text raster and crossing rule`
 - Supporting fixtures:
   `host-fetched text rectangle and raster page record feeds 0x1ed84 and
   0x1ef6a`,
@@ -3780,8 +3792,10 @@ the parser and allocator.
   from live CPU memory for the complete text/rule/raster stream.
 - `0xff1e..0x1ed84`: publication and render-entry are modeled and
   fixture-checked. Active-record selection through `0x1eb2a..0x1ed84`
-  is covered by the published-render scheduler checkpoint; remaining
-  gaps are live engine pacing and multi-band loop timing.
+  is covered by the published-render scheduler checkpoint, and the
+  modeled `0x1ef6a` per-band merge carries a patterned rule from band
+  `0` to band `5`. Remaining gaps are live engine pacing and multi-band
+  loop timing.
 
 ## Publication Commands To Rendered Page Records
 

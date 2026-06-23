@@ -1141,9 +1141,9 @@ for how resource records become ordinary page-record text.
   - class-pass counter in the `0x1c28e..0x1c344` loop.
 - Unknown:
   - exact page-object bytes emitted by the full `0x1c204` printout loop
-    have not yet been modeled from the complete sample byte runs. The
-    first eight bytes of sample run 1 are fixture-backed through a
-    page-record bucket and `0x1ed84` / `0x1ef6a` render entry.
+    have not yet been modeled from both complete sample byte runs. Sample
+    run 1 is fixture-backed through compact buckets `-1` and `0`,
+    page-record objects, and `0x1ed84` / `0x1ef6a` render entries.
   - record `+0x28..+0x31` baseline/cell/manual semantics remain
     unresolved until this path is correlated with emitted page objects or
     a known printed sample.
@@ -1217,17 +1217,25 @@ bytes. Direct payload rendering of the two sample byte runs through first
 documented in `generated/analysis/ic30_ic13_font_sample_page.md`; those
 hashes are the current comparison targets for the later page-object
 model. Fixture `font sample run 1 prefix crosses page-record render
-entry` now consumes bytes `41 42 43 44 45 66 67 68` (`ABCDEfgh`) through
-the sample-page current context `0x44080418`, forced HMI `0x001e`, the
-compact page-record bucket, `0x1ed84`, and `0x1ef6a`; it pins bucket
-object `00 00 00 00 00 00 00 08 40 40 00 41 41 02 42 4f 03 43 4d 05
-44 4a 07 65 2b 09 66 a6 0b 67 23 0d 00 00 00 00 00 00`, dispatch target
-`0x1effe`, eight rendered glyph entries, row count `42`, row width `239`,
-and row hash
+entry` first consumed bytes `41 42 43 44 45 66 67 68` (`ABCDEfgh`)
+through the sample-page current context `0x44080418`, forced HMI
+`0x001e`, the compact page-record bucket, `0x1ed84`, and `0x1ef6a`; it
+pins row hash
 `a954464fa31f122e8283a19f581c48dca3667ad637edb8b1f02d8d417e104bf2`.
+Fixture `font sample run 1 full row spans compact buckets` now consumes
+sample run 1 byte stream `41 42 43 44 45 66 67 68 69 6a 23 24 40 5b 5c
+5d 5e 60 7b 7c 7d 7e 31 32 33`
+(``ABCDEfghij#$@[\\]^`{|}~123``) through the same context and HMI. It
+pins nonempty compact buckets `-1` and `0`, bucket object counts `1` and
+`2`, compact dispatch target `0x1effe`, bucket `-1` glyphs `[104, 105,
+35, 93, 123]` with row hash
+`b6a0061f7de34c0fa1a0586263f3f167c84d95219e05437e74a286356409af37`,
+and bucket `0` glyphs `[90, 91, 92, 95, 122, 124, 125, 48, 49, 50, 64,
+65, 66, 67, 68, 101, 102, 103, 34, 63]` with row hash
+`d7dfb89c8cff5e309b95aac43cd64e0f74f17db1dd9118253544343f17b4c1ce`.
 Until the full `0x1c204` page-object loop is modeled, this checkpoint
-proves the producer, row-order, duplicate-suppression, and one
-sample-byte-run page-record/render slice, not final full-page placement.
+proves the producer, row-order, duplicate-suppression, and sample run 1
+page-record/render slices, not final full-page placement.
 
 ### Confidence
 
@@ -1264,15 +1272,16 @@ open.
   headings, `0x1b50e` two-window candidate resolution, class filtering,
   continuation-page entry, row-index advance, and recent-context
   duplicate suppression. The verified internal-font mode-3 row sequence
-  is documented in [resource-rom.md](resource-rom.md). The first
-  eight-byte `0x1c1cf` sample-run prefix is now consumed by an executable
-  font-sample page-object/render fixture; the complete row loop is not.
+  is documented in [resource-rom.md](resource-rom.md). The `0x1c1cf`
+  sample run 1 byte stream is now consumed by an executable font-sample
+  page-object/render fixture; sample run 2 and complete printout
+  placement are not.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
-  identified. The `ABCDEfgh` sample-run prefix crosses this boundary with
-  context `0x44080418`, HMI `0x001e`, compact bucket count `8`, and
-  render-entry row hash above; emitted page objects for the complete font
-  printout remain to be modeled from the ROM sample byte runs and
+  identified. Sample run 1 crosses this boundary with context
+  `0x44080418`, HMI `0x001e`, compact buckets `-1` and `0`, and
+  render-entry row hashes above; emitted page objects for the complete
+  font printout remain to be modeled from the ROM sample byte runs and
   compared against a known printed/self-test sample.
 - `record +0x28..+0x31`: these fields participate in height and chooser
   logic, but their final baseline/cell semantics need correlation against

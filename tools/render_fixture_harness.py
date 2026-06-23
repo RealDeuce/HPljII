@@ -17283,6 +17283,7 @@ def render_mixed_printable_control_page_record_stream(
     secondary_context: int | None = None,
     initial_page_record: dict[str, object] | None = None,
     font_selection_env: dict[str, object] | None = None,
+    allow_multiple_buckets: bool = False,
 ) -> dict[str, object]:
     state = dict(state)
     context_slots = [context]
@@ -18473,9 +18474,12 @@ def render_mixed_printable_control_page_record_stream(
     bucket_array = page_record["bucket_array"]
     assert isinstance(bucket_array, dict)
     nonempty_buckets = sorted(bucket for bucket, chain in bucket_array.items() if chain)
-    if len(nonempty_buckets) != 1:
+    if len(nonempty_buckets) != 1 and not allow_multiple_buckets:
         raise AssertionError("page-record mixed stream fixture expects one populated bucket")
-    chain = bucket_array[nonempty_buckets[0]]
+    if not nonempty_buckets:
+        raise AssertionError("page-record mixed stream fixture expects at least one populated bucket")
+    selected_bucket = nonempty_buckets[0]
+    chain = bucket_array[selected_bucket]
     if not chain:
         raise AssertionError("page-record mixed stream fixture expects bucket objects")
     compact_objects = [
@@ -18540,7 +18544,8 @@ def render_mixed_printable_control_page_record_stream(
         "stream": stream,
         "events": events,
         "page_record": page_record,
-        "bucket_index": nonempty_buckets[0],
+        "bucket_index": selected_bucket,
+        "nonempty_buckets": nonempty_buckets,
         "bucket_object": bucket_object,
         "bridged_record": bridged_record,
         "rendered": rendered,
@@ -53941,6 +53946,193 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ),
         "final_cursor_x": pack12(240),
     }))
+
+    font_sample_run1_full = bytes.fromhex(
+        "41 42 43 44 45 66 67 68 69 6a 23 24 40 5b 5c 5d 5e "
+        "60 7b 7c 7d 7e 31 32 33"
+    )
+    font_sample_full_page = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        font_sample_run1_full,
+        0x44080418,
+        control_fixture_state(
+            cursor_x=pack12(0),
+            cursor_y=pack12(32),
+            hmi=pack12(30),
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=pack12(30),
+        allow_multiple_buckets=True,
+    )
+    font_sample_full_bucket_array = font_sample_full_page["page_record"][  # type: ignore[index]
+        "bucket_array"
+    ]
+    assert isinstance(font_sample_full_bucket_array, dict)
+    font_sample_full_bucket_objects = {
+        int(bucket): [bytes(obj) for obj in chain]
+        for bucket, chain in sorted(font_sample_full_bucket_array.items())
+        if chain
+    }
+    font_sample_full_render_entries = {
+        bucket: render_bucket_page_record_via_1ed84_1ef6a(
+            data,
+            resources,
+            font_sample_full_page["page_record"],  # type: ignore[arg-type]
+            bucket_word=bucket,
+            width_word=0x0400,
+        )
+        for bucket in sorted(font_sample_full_bucket_objects)
+    }
+    font_sample_full_render_summary: dict[int, dict[str, object]] = {}
+    for bucket, full_render_entry in font_sample_full_render_entries.items():
+        entry = full_render_entry["entry"]
+        assert isinstance(entry, dict)
+        rows = entry["rows"]
+        assert isinstance(rows, list)
+        font_sample_full_render_summary[bucket] = {
+            "dispatch": [
+                {
+                    key: dispatch_entry[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "context_slot",
+                    )
+                }
+                for dispatch_entry in entry["dispatch"]["entries"]  # type: ignore[index]
+            ],
+            "glyphs": [
+                glyph["glyph"]
+                for rendered in entry["bucket_rendered"]  # type: ignore[index]
+                for glyph in rendered["rendered"]["rendered"]  # type: ignore[index]
+            ],
+            "counts": [
+                rendered["rendered"]["count"]  # type: ignore[index]
+                for rendered in entry["bucket_rendered"]  # type: ignore[index]
+            ],
+            "row_count": len(rows),
+            "row_width": max(len(row) for row in rows),
+            "row_sha256": hashlib.sha256(
+                "\n".join(str(row) for row in rows).encode("ascii")
+            ).hexdigest(),
+        }
+    checks.append(assert_equal(
+        "font sample run 1 full row spans compact buckets",
+        {
+            "stream": font_sample_full_page["stream"],
+            "nonempty_buckets": font_sample_full_page["nonempty_buckets"],
+            "event_count": len(font_sample_full_page["events"]),  # type: ignore[arg-type]
+            "root_allocations": font_sample_full_page["final_state"][  # type: ignore[index]
+                "page_record_root_allocations"
+            ],
+            "final_cursor_x": font_sample_full_page["final_state"][  # type: ignore[index]
+                "cursor_x"
+            ],
+            "bucket_objects": font_sample_full_bucket_objects,
+            "render_entries": font_sample_full_render_summary,
+        },
+        {
+            "stream": b"ABCDEfghij#$@[\\]^`{|}~123",
+            "nonempty_buckets": [-1, 0],
+            "event_count": 25,
+            "root_allocations": 1,
+            "final_cursor_x": pack12(750),
+            "bucket_objects": {
+                -1: [
+                    bytes.fromhex(
+                        "00 00 00 00 00 00 00 05 68 f5 0f 69 f1 11 23 "
+                        "ff 14 5d f8 1e 7b c7 24 00 00 00 00 00 00 00 "
+                        "00 00 00 00 00 00 00 00"
+                    ),
+                ],
+                0: [
+                    bytes.fromhex(
+                        "00 00 00 00 00 00 00 0a 5a 41 19 5b 28 1a 5c "
+                        "4a 1c 5f 16 20 7a 44 22 7c 41 26 7d 1e 27 30 "
+                        "49 29 31 46 2b 32 45 2d"
+                    ),
+                    bytes.fromhex(
+                        "00 00 00 00 00 00 00 0a 40 40 00 41 41 02 42 "
+                        "4f 03 43 4d 05 44 4a 07 65 2b 09 66 a6 0b 67 "
+                        "23 0d 22 02 13 3f 1d 16"
+                    ),
+                ],
+            },
+            "render_entries": {
+                -1: {
+                    "dispatch": [{
+                        "chain_index": 0,
+                        "object_byte_4": 0,
+                        "class_mask": 0,
+                        "branch": "compact",
+                        "target": 0x1EFFE,
+                        "context_slot": 0,
+                    }],
+                    "glyphs": [104, 105, 35, 93, 123],
+                    "counts": [5],
+                    "row_count": 62,
+                    "row_width": 256,
+                    "row_sha256": (
+                        "b6a0061f7de34c0fa1a0586263f3f167c84d95219e05437e74a286356409af37"
+                    ),
+                },
+                0: {
+                    "dispatch": [
+                        {
+                            "chain_index": 0,
+                            "object_byte_4": 0,
+                            "class_mask": 0,
+                            "branch": "compact",
+                            "target": 0x1EFFE,
+                            "context_slot": 0,
+                        },
+                        {
+                            "chain_index": 1,
+                            "object_byte_4": 0,
+                            "class_mask": 0,
+                            "branch": "compact",
+                            "target": 0x1EFFE,
+                            "context_slot": 0,
+                        },
+                    ],
+                    "glyphs": [
+                        90,
+                        91,
+                        92,
+                        95,
+                        122,
+                        124,
+                        125,
+                        48,
+                        49,
+                        50,
+                        64,
+                        65,
+                        66,
+                        67,
+                        68,
+                        101,
+                        102,
+                        103,
+                        34,
+                        63,
+                    ],
+                    "counts": [10, 10],
+                    "row_count": 42,
+                    "row_width": 256,
+                    "row_sha256": (
+                        "d7dfb89c8cff5e309b95aac43cd64e0f74f17db1dd9118253544343f17b4c1ce"
+                    ),
+                },
+            },
+        },
+    ))
 
     validation_failure_visible_baseline = render_mixed_printable_control_page_record_stream(
         data,

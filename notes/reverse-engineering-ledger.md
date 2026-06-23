@@ -955,11 +955,13 @@ ROM work needed:
   continuation-page entry, row-index advance, and recent-context
   duplicate suppression. The concrete internal-font candidate sequence is
   now documented in `notes/resource-rom.md`, and fixture `font sample run
-  1 prefix crosses page-record render entry` carries bytes `ABCDEfgh`
-  through context `0x44080418`, compact page-record bucket count `8`,
-  `0x1ed84` / `0x1ef6a`, and row hash
-  `a954464fa31f122e8283a19f581c48dca3667ad637edb8b1f02d8d417e104bf2`.
-  The next boundary is full sample-row/full-printout placement, to
+  1 full row spans compact buckets` carries byte stream
+  ``ABCDEfghij#$@[\\]^`{|}~123`` through context `0x44080418`, compact
+  buckets `-1` and `0`, `0x1ed84` / `0x1ef6a`, and row hashes
+  `b6a0061f7de34c0fa1a0586263f3f167c84d95219e05437e74a286356409af37`
+  and
+  `d7dfb89c8cff5e309b95aac43cd64e0f74f17db1dd9118253544343f17b4c1ce`.
+  The next boundary is sample run 2 and full-printout placement, to
   compare against the direct payload hashes and a known printed/self-test
   sample.
 - Identify the manual-facing names for the currently unidentified

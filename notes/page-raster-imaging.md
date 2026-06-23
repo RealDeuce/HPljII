@@ -1239,8 +1239,13 @@ same bucket-9 row. The even-span wide downloaded-glyph sibling now publishes
 the host-fetched `ESC )s18W` + printable `)` + FF stream through the same
 `0xff1e` boundary: bucket `1` is copied into the published record, rendered
 through `0x1ed84`/`0x1ef6a`, dispatched to `0x1effe`, and decoded by
-`0x1f0d2` into the same 18-byte row. The fetched font-control state now
-carries current id
+`0x1f0d2` into the same 18-byte row. The normal `ESC )s6W` + `&` + FF and
+segmented `ESC )s258W` + `'` + FF siblings now publish through the same
+boundary: the normal case copies bucket `1` and renders through `0x1fe76`,
+while the segmented case copies buckets `1` and `9` and renders bucket `9`
+through `0x1f1f0` from source offset `0x0100`; both pass through `0xff1e`,
+`0x1ed84`, `0x1ef6a`, and compact target `0x1effe`. The fetched font-control
+state now carries current id
 `0x1234` and current character `0x25` into fetched descriptor,
 resource-payload, and downloaded-character streams, tying delayed record
 restoration through `0x121cc` / `0x12218`, descriptor or payload

@@ -43794,6 +43794,364 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "rows": expected_downloaded_segmented_even_rows,
         },
     }))
+
+    downloaded_linear_publication_stream = downloaded_linear_command_stream + b"&\x0c"
+    downloaded_segmented_even_publication_stream = (
+        downloaded_segmented_even_command_stream + b"'\x0c"
+    )
+    downloaded_linear_publication_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(downloaded_linear_publication_stream), direct_mode=0),
+        len(downloaded_linear_publication_stream),
+    )
+    downloaded_segmented_even_publication_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(downloaded_segmented_even_publication_stream),
+            direct_mode=0,
+        ),
+        len(downloaded_segmented_even_publication_stream),
+    )
+    downloaded_linear_publication_tail = downloaded_linear_publication_fetch["stream"][
+        len(downloaded_linear_command_stream):
+    ]
+    downloaded_segmented_even_publication_tail = (
+        downloaded_segmented_even_publication_fetch["stream"][
+            len(downloaded_segmented_even_command_stream):
+        ]
+    )
+    downloaded_linear_publication_tail_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        downloaded_linear_publication_tail,
+    )
+    downloaded_segmented_even_publication_tail_trace = (
+        trace_mixed_text_control_parser_path_via_11774(
+            data,
+            downloaded_segmented_even_publication_tail,
+        )
+    )
+    downloaded_linear_publication = finalize_page_record_via_ff1e(
+        downloaded_linear_page_record,
+        reset_fixture_state(
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            page_root_clears=0,
+            publication_bucket_index=int(downloaded_linear_page_result["bucket_index"]),
+        ),
+    )
+    downloaded_segmented_even_publication = finalize_page_record_via_ff1e(
+        downloaded_segmented_even_page_record,
+        reset_fixture_state(
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            page_root_clears=0,
+            publication_bucket_index=int(downloaded_segmented_even_segment1["bucket_index"]),
+        ),
+    )
+    downloaded_linear_published_record = downloaded_linear_publication[
+        "published_pool_record"
+    ]
+    downloaded_segmented_even_published_record = downloaded_segmented_even_publication[
+        "published_pool_record"
+    ]
+    assert isinstance(downloaded_linear_published_record, dict)
+    assert isinstance(downloaded_segmented_even_published_record, dict)
+    downloaded_linear_published_fields = downloaded_linear_published_record[
+        "pool_record_fields"
+    ]
+    downloaded_segmented_even_published_fields = (
+        downloaded_segmented_even_published_record["pool_record_fields"]
+    )
+    assert isinstance(downloaded_linear_published_fields, dict)
+    assert isinstance(downloaded_segmented_even_published_fields, dict)
+    downloaded_linear_published_render = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_linear_memory,
+        downloaded_linear_published_record,
+        bucket_word=int(downloaded_linear_page_result["bucket_index"]),
+    )
+    downloaded_segmented_even_published_render = (
+        render_published_page_record_via_1ed84_1ef6a(
+            data,
+            downloaded_segmented_even_memory,
+            downloaded_segmented_even_published_record,
+            bucket_word=int(downloaded_segmented_even_segment1["bucket_index"]),
+        )
+    )
+    downloaded_linear_published_entry = downloaded_linear_published_render["entry"]
+    downloaded_segmented_even_published_entry = (
+        downloaded_segmented_even_published_render["entry"]
+    )
+    assert isinstance(downloaded_linear_published_entry, dict)
+    assert isinstance(downloaded_segmented_even_published_entry, dict)
+    downloaded_publication_variants = {
+        "linear": {
+            "fetch": downloaded_linear_publication_fetch,
+            "font_trace": downloaded_linear_dispatch_trace,
+            "font_command": downloaded_linear_dispatch_command,
+            "font_stream": downloaded_linear_command_stream,
+            "tail": downloaded_linear_publication_tail,
+            "tail_trace": downloaded_linear_publication_tail_trace,
+            "publication": downloaded_linear_publication,
+            "published_fields": downloaded_linear_published_fields,
+            "published_render": downloaded_linear_published_render,
+            "published_entry": downloaded_linear_published_entry,
+        },
+        "segmented": {
+            "fetch": downloaded_segmented_even_publication_fetch,
+            "font_trace": downloaded_segmented_even_dispatch_trace,
+            "font_command": downloaded_segmented_even_dispatch_command,
+            "font_stream": downloaded_segmented_even_command_stream,
+            "tail": downloaded_segmented_even_publication_tail,
+            "tail_trace": downloaded_segmented_even_publication_tail_trace,
+            "publication": downloaded_segmented_even_publication,
+            "published_fields": downloaded_segmented_even_published_fields,
+            "published_render": downloaded_segmented_even_published_render,
+            "published_entry": downloaded_segmented_even_published_entry,
+        },
+    }
+    checks.append(assert_equal(
+        "downloaded normal and segmented glyph FF publications render page records",
+        {
+            name: {
+                "stream_length": len(variant["fetch"]["stream"]),
+                "fetch_sources": sorted(set(variant["fetch"]["sources"])),
+                "remaining_ring": variant["fetch"]["state"]["ring"],
+                "boundaries": {
+                    "font": (0, len(variant["font_stream"])),
+                    "printable": (
+                        len(variant["font_stream"]),
+                        len(variant["font_stream"]) + 1,
+                    ),
+                    "publication": (
+                        len(variant["font_stream"]) + 1,
+                        len(variant["fetch"]["stream"]),
+                    ),
+                },
+                "font": {
+                    "handlers": [
+                        event["handler"]
+                        for event in variant["font_trace"]["dispatches"]
+                    ],
+                    "restored_record": variant["font_command"]["restored_record"],
+                    "payload_offset": variant["font_command"]["payload_offset"],
+                    "payload_length": len(variant["font_command"]["payload"]),
+                },
+                "tail": {
+                    "stream": variant["tail"],
+                    "handlers": [
+                        event["handler"]
+                        for event in variant["tail_trace"]["events"]
+                    ],
+                },
+                "finalized": {
+                    "published": variant["publication"]["published"],
+                    "bucket_index": variant["publication"]["bucket_index"],
+                    "current_page_root_after": (
+                        variant["publication"]["current_page_root_after"]
+                    ),
+                    "page_root_clears": variant["publication"]["page_root_clears"],
+                    "page_publication_flag": (
+                        variant["publication"]["page_publication_flag"]
+                    ),
+                },
+                "published_bucket_root_1c": (
+                    variant["published_fields"]["bucket_root_1c"]
+                ),
+                "published_bucket_array_1c": (
+                    variant["published_fields"]["bucket_array_1c"]
+                ),
+                "published_rule_list_24": variant["published_fields"]["rule_list_24"],
+                "published_fixed_list_28": variant["published_fields"]["fixed_list_28"],
+                "published_context_slots_2c_prefix": (
+                    variant["published_fields"]["context_slots_2c"][:4]
+                ),
+                "render_bucket_word": (
+                    variant["published_render"]["render_record_fields"]["word_10"]
+                ),
+                "active_copy": variant["published_render"]["active_copy"],
+                "setup": {
+                    key: variant["published_entry"]["setup"][key]
+                    for key in (
+                        "dividend",
+                        "divisor_word_06",
+                        "remainder_783a22",
+                        "band_rows_scaled_783a20",
+                        "destination_base_783a28",
+                    )
+                },
+                "call_order": variant["published_entry"]["call_order"],
+                "dispatch": [
+                    {
+                        key: entry[key]
+                        for key in (
+                            "chain_index",
+                            "object_byte_4",
+                            "class_mask",
+                            "branch",
+                            "target",
+                            "context_slot",
+                        )
+                    }
+                    for entry in variant["published_entry"]["dispatch"]["entries"]
+                ],
+                "rows": variant["published_entry"]["rows"],
+            }
+            for name, variant in downloaded_publication_variants.items()
+        },
+        {
+            "linear": {
+                "stream_length": len(downloaded_linear_publication_stream),
+                "fetch_sources": ["ring"],
+                "remaining_ring": [],
+                "boundaries": {
+                    "font": (0, len(downloaded_linear_command_stream)),
+                    "printable": (
+                        len(downloaded_linear_command_stream),
+                        len(downloaded_linear_command_stream) + 1,
+                    ),
+                    "publication": (
+                        len(downloaded_linear_command_stream) + 1,
+                        len(downloaded_linear_publication_stream),
+                    ),
+                },
+                "font": {
+                    "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                    "restored_record": b"\x80W\x00\x06\x00\x00",
+                    "payload_offset": 5,
+                    "payload_length": 6,
+                },
+                "tail": {
+                    "stream": b"&\x0c",
+                    "handlers": [0x00D04A, 0x00F0F0],
+                },
+                "finalized": {
+                    "published": True,
+                    "bucket_index": 1,
+                    "current_page_root_after": 0,
+                    "page_root_clears": 1,
+                    "page_publication_flag": 1,
+                },
+                "published_bucket_root_1c": (
+                    bytes.fromhex("00 00 00 00 00 03 00 01 26 66 01")
+                    + bytes(0x1B)
+                ),
+                "published_bucket_array_1c": {
+                    1: [
+                        bytes.fromhex("00 00 00 00 00 03 00 01 26 66 01")
+                        + bytes(0x1B),
+                    ],
+                },
+                "published_rule_list_24": [],
+                "published_fixed_list_28": [],
+                "published_context_slots_2c_prefix": (0, 0, 0, 0),
+                "render_bucket_word": 1,
+                "active_copy": {
+                    "source_word_18": 0,
+                    "source_word_1a": 0,
+                    "render_word_0a": 0,
+                    "render_word_0c": 0,
+                    "render_word_0e": 0,
+                    "render_word_10": 0,
+                    "render_word_16": 0,
+                },
+                "setup": {
+                    "dividend": 1,
+                    "divisor_word_06": 5,
+                    "remainder_783a22": 1,
+                    "band_rows_scaled_783a20": 0x0040,
+                    "destination_base_783a28": 0x00100800,
+                },
+                "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+                "dispatch": [{
+                    "chain_index": 0,
+                    "object_byte_4": 0x00,
+                    "class_mask": 0x00,
+                    "branch": "compact",
+                    "target": 0x01EFFE,
+                    "context_slot": 3,
+                }],
+                "rows": expected_downloaded_linear_rows,
+            },
+            "segmented": {
+                "stream_length": len(downloaded_segmented_even_publication_stream),
+                "fetch_sources": ["ring"],
+                "remaining_ring": [],
+                "boundaries": {
+                    "font": (0, len(downloaded_segmented_even_command_stream)),
+                    "printable": (
+                        len(downloaded_segmented_even_command_stream),
+                        len(downloaded_segmented_even_command_stream) + 1,
+                    ),
+                    "publication": (
+                        len(downloaded_segmented_even_command_stream) + 1,
+                        len(downloaded_segmented_even_publication_stream),
+                    ),
+                },
+                "font": {
+                    "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                    "restored_record": b"\x80W\x01\x02\x00\x00",
+                    "payload_offset": 7,
+                    "payload_length": 0x0102,
+                },
+                "tail": {
+                    "stream": b"'\x0c",
+                    "handlers": [0x00D04A, 0x00F0F0],
+                },
+                "finalized": {
+                    "published": True,
+                    "bucket_index": 9,
+                    "current_page_root_after": 0,
+                    "page_root_clears": 1,
+                    "page_publication_flag": 1,
+                },
+                "published_bucket_root_1c": (
+                    bytes.fromhex("00 00 00 00 20 03 00 01 27 01 66 01")
+                    + bytes(0x1C)
+                ),
+                "published_bucket_array_1c": {
+                    1: [
+                        bytes.fromhex("00 00 00 00 20 03 00 01 27 00 66 01")
+                        + bytes(0x1C),
+                    ],
+                    9: [
+                        bytes.fromhex("00 00 00 00 20 03 00 01 27 01 66 01")
+                        + bytes(0x1C),
+                    ],
+                },
+                "published_rule_list_24": [],
+                "published_fixed_list_28": [],
+                "published_context_slots_2c_prefix": (0, 0, 0, 0),
+                "render_bucket_word": 9,
+                "active_copy": {
+                    "source_word_18": 0,
+                    "source_word_1a": 0,
+                    "render_word_0a": 0,
+                    "render_word_0c": 0,
+                    "render_word_0e": 0,
+                    "render_word_10": 0,
+                    "render_word_16": 0,
+                },
+                "setup": {
+                    "dividend": 9,
+                    "divisor_word_06": 5,
+                    "remainder_783a22": 4,
+                    "band_rows_scaled_783a20": 0x0010,
+                    "destination_base_783a28": 0x00102000,
+                },
+                "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+                "dispatch": [{
+                    "chain_index": 0,
+                    "object_byte_4": 0x20,
+                    "class_mask": 0x00,
+                    "branch": "compact",
+                    "target": 0x01EFFE,
+                    "context_slot": 3,
+                }],
+                "rows": expected_downloaded_segmented_even_rows,
+            },
+        },
+    ))
     downloaded_split_segmented_payload = (b"\x00\x00\x00" * 0x80) + bytes.fromhex("f0 0f aa")
     downloaded_split_segmented_command_stream = (
         b"\x1b)s387W" + downloaded_split_segmented_payload
@@ -66355,6 +66713,48 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_wide_even_published_render["render_record_fields"]["word_10"],
             downloaded_wide_even_published_entry["dispatch"]["entries"][0]["object_byte_4"],
             downloaded_wide_even_published_entry["dispatch"]["entries"][0]["target"],
+        )
+    )
+    lines.append(
+        "- normal/segmented downloaded-glyph FF publications: host-fetched "
+        "`ESC )s6W` plus printable `&` and FF restores record `%s`, while "
+        "`ESC )s258W` plus printable `'` and FF restores record `%s`; tail "
+        "handlers `%s`/`%s` publish bucket entries `%s`/`%s`, render bucket "
+        "words `%d`/`%d`, and dispatch object bytes `0x%02x`/`0x%02x` to "
+        "`0x%05x` for `0x1fe76`/`0x1f1f0`." % (
+            " ".join(
+                f"{byte:02x}"
+                for byte in downloaded_linear_dispatch_command["restored_record"]
+            ),
+            " ".join(
+                f"{byte:02x}"
+                for byte in downloaded_segmented_even_dispatch_command[
+                    "restored_record"
+                ]
+            ),
+            ", ".join(
+                "0x%05x" % event["handler"]
+                for event in downloaded_linear_publication_tail_trace["events"]
+            ),
+            ", ".join(
+                "0x%05x" % event["handler"]
+                for event in downloaded_segmented_even_publication_tail_trace["events"]
+            ),
+            sorted(downloaded_linear_published_fields["bucket_array_1c"].keys()),
+            sorted(
+                downloaded_segmented_even_published_fields["bucket_array_1c"].keys()
+            ),
+            downloaded_linear_published_render["render_record_fields"]["word_10"],
+            downloaded_segmented_even_published_render["render_record_fields"][
+                "word_10"
+            ],
+            downloaded_linear_published_entry["dispatch"]["entries"][0][
+                "object_byte_4"
+            ],
+            downloaded_segmented_even_published_entry["dispatch"]["entries"][0][
+                "object_byte_4"
+            ],
+            downloaded_linear_published_entry["dispatch"]["entries"][0]["target"],
         )
     )
     lines.append("")

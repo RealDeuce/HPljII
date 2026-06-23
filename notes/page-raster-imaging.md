@@ -1061,7 +1061,12 @@ transparent control payload path: bytes `0x05` and `0x85` route through
 `0xd0f0`, map fixed-space host byte `0x20` to glyph `0x1f`, clear the
 glyph pointer before `0xd550`, advance the cursor without queuing text
 objects, and leave only the two visible `!` entries at compact coords
-`0x0001` and `0x0604`. That direct page-record group now also crosses
+`0x0001` and `0x0604`. `ESC &p4X!\x05\x80!` covers the nonzero-filter
+control path through `0xd04a`, queueing C0 glyph `0x04` at compact coord
+`0x0d01` and high-control glyph `0x7f` at compact coord `0x0003`.
+`ESC &p2X\x1aA!` covers the transparent `1a` probe path by consuming raw
+payload `1a 41 21`, routing values `0x41` and `0x21` through `0xd04a`,
+and rendering visible `A!`. That direct page-record group now also crosses
 `0x1ed84` active-record copy and the `0x1ef6a` render-entry call order,
 including nonzero bucket selection for the vertical cursor/layout cases. A
 host-fetched `! ESC *c12a5b0P` fixture

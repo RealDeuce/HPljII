@@ -473,10 +473,13 @@ modeled source/object structures rather than a full live CPU-memory run.
   host-fetched and render-checked for `ESC &p2X!!`; default-zero
   filtering for C0 and `0x80..0x9f` payload bytes is page-record and
   render-checked by `ESC &p4X!\x05\x85!`, where `0xd0f0` advances
-  fixed spacing without adding compact text entries. Remaining work is
-  the nonzero-filtering branch that sends those byte ranges through
-  `0xd04a`, the unflagged `0xd0f0..0xd140` branch, and the `0x1a`
-  non-`0x58` probe-byte visible fixture.
+  fixed spacing without adding compact text entries. Nonzero filtering
+  is page-record and render-checked by `ESC &p4X!\x05\x80!`, where C0
+  byte `0x05` and high-control byte `0x80` both route through `0xd04a`.
+  The `0x1a` non-`0x58` probe-byte case is render-checked by
+  `ESC &p2X\x1aA!`. Remaining work is the unflagged
+  `0xd0f0..0xd140` branch and broader high-control cross-products that
+  map to tall/segmented glyphs or secondary contexts.
 - `0x10084..0x1387c`: first-root allocation and compact text queueing
   are fixture-backed for this cluster, but a dense live parser page that
   exercises same-chunk and rollover allocation for all cursor variants

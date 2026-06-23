@@ -12,7 +12,9 @@ Evidence:
 - `tools/render_fixture_harness.py`, fixtures:
   - `0x11f5a/0x12452 transparent text restores and consumes counted bytes`
   - `transparent data parser trace feeds page-record queue`
+  - `transparent non-0x58 probe byte reaches page-record output`
   - `transparent data control payloads advance through fixed-space path`
+  - `transparent nonzero filters route controls through printable path`
 
 ## Command Boundary
 
@@ -148,9 +150,24 @@ and payload bytes:
 The ROM-modeled result is:
 
 - byte count: `5`
+- selected context byte: `0`
+- local filtering word: `0`
 - consumed values: `41 7f 05 85 42`
 - routes: `d04a d04a d0f0 d0f0 d04a`
 - control hits: `1`
+
+A second isolated reader fixture uses saved record `80 58 00 02 00 00` and
+payload bytes `1a 41 21`. It consumes three host bytes for two transparent
+payload values:
+
+- byte count: `2`
+- consumed values: `41 21`
+- routes: `d04a d04a`
+- control hits: `0`
+
+This pins disassembly `0x124cc..0x124e8`: when the byte after `0x1a` is not
+`0x58`, that second byte is the routed payload value. The original `0x1a` is
+only the probe prefix.
 
 The visible-output fixture uses stream:
 
@@ -174,6 +191,18 @@ The two payload bytes queue as normal printable text:
 - page-record root allocation count: `1`
 - page-record bridge: `0x1edc6` copies the selected context slot
 - render entry: the bridged rows match the plain `!!` text fixture
+
+The visible probe fixture uses stream:
+
+```text
+1b 26 70 32 58 1a 41 21
+```
+
+That is `ESC &p2X\x1aA!`. The restored record count is `2`, but the raw payload
+slice is `1a 41 21` because the non-`0x58` probe consumes both `1a` and `41`
+for one routed payload value. The queued values are `41 21`; byte `0x41` maps
+to glyph `0x40`, queues compact coord `0x0a00`, and renders visible `A` before
+the following `!` at compact coord `0x0202`.
 
 The control-payload page-record fixture uses stream:
 
@@ -200,6 +229,31 @@ one command can mix both transparent routing exits:
 - final cursor x: `pack12(82)`
 - render entry: the bridged rows contain only the two visible `!` glyphs,
   separated by the two fixed-space advances
+
+The nonzero-filter fixture uses stream:
+
+```text
+1b 26 70 34 58 21 05 80 21
+```
+
+That is `ESC &p4X!\x05\x80!` with selected context byte `1` and local
+filtering word `1`. It proves the other side of both filter branches:
+
+- restored record: `80 58 00 04 00 00`
+- raw payload: `21 05 80 21`
+- selected context byte: `1`
+- local filtering word: `1`
+- values: `21 05 80 21`
+- routes: `d04a d04a d04a d04a`
+- C0 payload byte `0x05`: maps through `0xd04a` to glyph `0x04`, glyph entry
+  `0x0186c6`, and compact coord `0x0d01`
+- high-control payload byte `0x80`: maps through `0xd04a` to glyph `0x7f`,
+  glyph entry `0x016aca`, and compact coord `0x0003`
+- page-record object prefix:
+  `00 00 00 00 00 00 00 04 20 00 01 04 0d 01 7f 00 03 20 06 04`
+- final cursor x: `pack12(82)`
+- render entry: all four routed payload values contribute compact text entries
+  and visible rows
 
 ## Semantic Composition
 
@@ -244,22 +298,28 @@ Output effect:
 - Default-filtered C0 and `0x80..0x9f` transparent bytes advance cursor spacing
   through `0xd0f0`; they do not add glyph entries to the compact text bucket in
   the flagged built-in fixture.
+- Nonzero filtered C0 and `0x80..0x9f` transparent bytes route through `0xd04a`
+  and become normal compact text entries after symbol-set mapping.
+- A non-`0x58` byte after `0x1a` is not lost and does not route as `0x1a`; it is
+  the payload value consumed by `0xd04a` or `0xd0f0`.
 
-Confidence: high for the delayed payload boundary, default filtering exits,
-printable output, and flagged fixed-space output because the claims are backed
-by disassembly `0x11f5a`, `0x12452`, `0xd0f0`, `0xd550`, and fixtures
+Confidence: high for the delayed payload boundary, transparent probe handling,
+both filtering polarities, printable output, and flagged fixed-space output
+because the claims are backed by disassembly `0x11f5a`, `0x12452`, `0xd0f0`,
+`0xd550`, and fixtures
 `0x11f5a/0x12452 transparent text restores and consumes counted bytes`,
-`transparent data parser trace feeds page-record queue`, and `transparent data
-control payloads advance through fixed-space path`.
+`transparent data parser trace feeds page-record queue`, `transparent non-0x58
+probe byte reaches page-record output`, `transparent data control payloads
+advance through fixed-space path`, and `transparent nonzero filters route
+controls through printable path`.
 
 Unresolved middle edges:
 
-- `0x124f8..0x1252a`: page-record output when nonzero `D3` or nonzero
-  `A6-2` forces C0 or `0x80..0x9f` payload bytes through `0xd04a`.
 - `0xd0f0..0xd140`: unflagged/fixed-record source branch after
   `0x1393a(0x20, 0x782d7e)`.
-- `0x124cc..0x124e8`: visible page-record fixture for the `0x1a` followed by a
-  non-`0x58` probe byte case.
+- `0x124f8..0x1252a`: broader high-control cross-product coverage remains open
+  for values that map to tall/segmented glyphs or secondary contexts; the
+  short-bucket nonzero branch is covered by `ESC &p4X!\x05\x80!`.
 
 ## Reproduction Contract
 
@@ -277,11 +337,16 @@ For `ESC &p#X`:
   rendered rows exactly like normal printable host bytes.
 - Let default-filtered C0 and `0x80..0x9f` bytes advance spacing through
   `0xd0f0` without appending compact text entries in the flagged built-in path.
+- Let nonzero-filtered C0 and `0x80..0x9f` bytes enter `0xd04a` and emit normal
+  mapped text entries.
+- Treat `1a xx` with `xx != 58` as routed payload byte `xx`, not `1a`.
 
 ## Remaining Edges
 
-- The visible-output fixture now covers printable payload bytes and default-zero
-  filtering for C0 and `0x80..0x9f` payload bytes. Nonzero filtering states that
-  route those byte ranges through `0xd04a` remain fixture-open.
+- The visible-output fixtures now cover printable payload bytes, default-zero
+  filtering for C0 and `0x80..0x9f`, nonzero filtering for one C0/high-control
+  pair, and the `1a` non-`0x58` probe case.
+- Broader nonzero-filtering coverage remains open for high-control payload
+  values that map to tall/segmented glyphs or secondary contexts.
 - The names for the active context filtering byte, fallback byte, and high-byte
   flags remain provisional.

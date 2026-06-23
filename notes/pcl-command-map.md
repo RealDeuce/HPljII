@@ -891,6 +891,10 @@ plain `!!`. `ESC &p4X!\x05\x85!` now extends that evidence to the
 default-filtered control route: C0 byte `0x05` and high-control byte
 `0x85` route through `0xd0f0`, advance fixed spacing, queue no text
 object, and leave the next visible `!` at compact coord `0x0604`.
+`ESC &p4X!\x05\x80!` covers the nonzero-filter route through `0xd04a`:
+byte `0x05` maps to glyph `0x04`, byte `0x80` maps to glyph `0x7f`,
+and both queue visible compact text entries. `ESC &p2X\x1aA!` covers the
+probe path where `1a 41` contributes payload byte `0x41`, not `0x1a`.
 
 `generated/analysis/ic30_ic13_esc_e_reset_flow.md` tracks the software
 reset boundary: `ESC E` runs text flush/page-root finalization before

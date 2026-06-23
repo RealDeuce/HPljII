@@ -2712,6 +2712,182 @@ the parser and allocator.
   is covered by the published-render scheduler checkpoint; remaining
   gaps are live engine pacing and multi-band loop timing.
 
+## Publication Commands To Rendered Page Records
+
+Status: composed for six host-facing publication streams that carry an
+already queued compact text object through parser dispatch, `0xff1e`
+publication, `0x1ed84`/`0x1edc6` render-record copy, and `0x1ef6a` final row
+rendering. The low-level queue and render mechanics are shared with
+`Mixed Text/Rule/Raster Page Record`; this section names the command-family
+publication contract.
+
+Concept: reset, FF, page-size, orientation, paper-source, and copy-count
+commands can all force publication of the current page record after a
+printable byte has created a compact text bucket. The visible output is the
+pre-command compact `!` page, while command-specific side effects update
+firmware state around that publication. Fixtures pin this for direct modeled
+streams, host-fetched `0xa904` streams, and addressed reset, FF, page-size,
+and orientation records that materialize the compact bucket through
+`0x1387c`/`0x1381c` before publication.
+
+### Field Groups
+
+- Canonical command streams:
+  - reset: `! ESC E`, parser handlers `0xd04a`, `0xcc52`.
+  - FF with line termination: `ESC &k2G! FF`, handlers `0xedf8`, `0xd04a`,
+    `0xf0f0`.
+  - page size: `! ESC &l1A`, handlers `0xd04a`, `0xfc74`.
+  - orientation: `! ESC &l1O`, handlers `0xd04a`, `0x10220`.
+  - paper source: `! ESC &l2H`, handlers `0xd04a`, `0xef62`.
+  - copies: `! ESC &l2X FF`, handlers `0xd04a`, `0xeef0`, `0xf0f0`.
+  Evidence: fixtures `publication streams tie parser handlers to page-record
+  publication boundary` and `host-fetched publication streams reach parser and
+  published rows`.
+- Canonical published page-record fields:
+  - bucket-root prefix for all six streams:
+    `00 00 00 00 00 00 00 01 20 00 01`.
+  - context-slot prefix for host-fetched publication streams:
+    `(0x440946b4, 0)`.
+  - published pool header defaults: state byte `+4 = 2`, environment byte
+    `+7 = 0`, status bytes `+8/+0x0a = 0`, words `+0x16/+0x18/+0x1a = 0`,
+    and published pointer `0x780ea6 = abstract page root`.
+  - copy-count publication changes pool-header word `+0x0c` to `2`.
+  Evidence: fixtures
+  `host-fetched FF geometry and paper-source publications preserve 0xff1e pool
+  header defaults` and
+  `host-fetched copies publication preserves 0xeef0 pool header word`.
+- Canonical addressed publication fields:
+  - reset addressed stream `! ESC E` allocates one stream chunk at
+    `0x00d08000`, links it from `root + 0x20`, and ends with
+    `0x782a70 = 0x00d6`, `0x782a72 = 0x00d08000`,
+    `0x782a76 = 0x00d0802a`.
+  - FF addressed stream `ESC &k2G! FF` allocates one stream chunk at
+    `0x00d09000`, links it from `root + 0x20`, and ends with
+    `0x782a70 = 0x00d6`, `0x782a72 = 0x00d09000`,
+    `0x782a76 = 0x00d0902a`.
+  - page-size addressed stream `! ESC &l1A` allocates one stream chunk at
+    `0x00d0a000`, links it from `root + 0x20`, and ends with
+    `0x782a70 = 0x00d6`, `0x782a72 = 0x00d0a000`,
+    `0x782a76 = 0x00d0a02a`.
+  - orientation addressed stream `! ESC &l1O` allocates one stream chunk at
+    `0x00d0b000`, links it from `root + 0x20`, and ends with
+    `0x782a70 = 0x00d6`, `0x782a72 = 0x00d0b000`,
+    `0x782a76 = 0x00d0b02a`.
+  - all four addressed publication streams publish bucket object
+    `00 00 00 00 00 00 00 01 20 00 01` followed by zero padding, preserve
+    context slot `0x440946b4`, and render the same rows as the direct
+    publication fixtures.
+  Evidence: fixtures `addressed printable reset publishes rendered page
+  record`, `addressed printable FF publishes rendered page record`, and
+  `addressed page geometry publications render page records`.
+- Derived/cache command side effects:
+  - page-size `ESC &l1A` leaves page code `6`, orientation `0`, active size
+    `3030 x 2025`, top offset `90`, one pending text flush, one page
+    finalization, page-change flag `1`, and print-engine status `0`.
+  - orientation `ESC &l1O` leaves page code `6`, orientation `1`, active size
+    `2025 x 3030`, vertical offset source `50`, top offset `100`, two pending
+    text flushes, two page finalizations, page-change flag `1`, and
+    print-engine status `0`.
+  - paper-source selector `2` stores `0x80` at `0x782da6` and sets pending
+    status byte `0x782998`.
+  - copies selector `2` stores copy count `2` in `0x782da4`, then FF
+    publication copies that value to pool-header word `+0x0c`.
+  Evidence: fixtures `addressed page geometry publications render page
+  records`, `host-fetched FF geometry and paper-source publications preserve
+  0xff1e pool header defaults`, and
+  `host-fetched copies publication preserves 0xeef0 pool header word`.
+- Parser scratch:
+  - all six host-fetched publication streams drain entirely from the modeled
+    `0xa904` ring source and leave an empty ring.
+  Evidence: fixture `host-fetched publication streams reach parser and
+  published rows`.
+- Unknown:
+  - paper-source and copies publication streams do not yet have addressed
+    allocation variants analogous to reset, FF, page-size, and orientation.
+  - this cluster proves rendered rows, not physical printer output.
+
+### Writers
+
+- `0xd04a` writes the compact text page object before each publication
+  command.
+- `0xcc52`, `0xf0f0`, `0xfc74`, `0x10220`, `0xef62`, and `0xeef0` trigger
+  command-family publication or state updates for reset, FF, page-size,
+  orientation, paper source, and copies.
+- `0xff1e` copies the current root into the published pool record, clears the
+  current page root, writes state byte `+4 = 2`, and preserves command-specific
+  pool-header fields such as copy count `+0x0c`.
+- `0x1ed84` copies active published-record header fields, and `0x1edc6`
+  copies bucket root, rule/fixed-list roots, and context slots into the render
+  record.
+
+### Readers And Consumers
+
+- The parser dispatch table at `0x11774` routes the six streams to the handler
+  lists above.
+- `0xff1e` consumes the current page root and page-record bucket root.
+- `0x1ed84`/`0x1edc6` consume the published pool record.
+- `0x1ef6a` consumes the render record in call order
+  `0x1ef86`, `0x1efc2`, `0x1f446`, `0x1f756`; each covered publication stream
+  dispatches its compact bucket object to `0x1effe` with context slot `0`.
+
+### Output Effect
+
+All six publication streams render the same compact Line Printer `!` rows
+from the pre-publication printable byte. Fixture
+`published page records feed 0x1ed84 and 0x1ef6a render entry` asserts the
+full row set, not just the prefix, for reset, FF, page-size, orientation,
+paper-source, and copies. The reset, FF, page-size, and orientation addressed
+fixtures also assert that their materialized page records render those same
+rows after `0xff1e`.
+
+### Confidence
+
+High for parser handler order, `0xa904` host-fetch draining, published pool
+header fields, command-specific page-size/orientation/copies/paper-source
+side effects, render-record bridge fields, render-entry call order, and final
+rows because each is fixture-pinned. Medium for paper-source/copies addressed
+allocator state because those two streams still use the non-addressed
+publication path in this cluster.
+
+### Fixtures
+
+- `publication streams tie parser handlers to page-record publication
+  boundary`
+- `host-fetched publication streams reach parser and published rows`
+- `addressed printable reset publishes rendered page record`
+- `addressed printable FF publishes rendered page record`
+- `addressed page geometry publications render page records`
+- `host-fetched FF geometry and paper-source publications preserve 0xff1e pool
+  header defaults`
+- `host-fetched copies publication preserves 0xeef0 pool header word`
+- `host-fetched publication streams preserve 0x1edc6 bridge contract`
+- `published page records feed 0x1ed84 and 0x1ef6a render entry`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`: parser dispatch.
+- `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`: printable
+  object path.
+- `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`: reset publication
+  entry.
+- `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`: page-size
+  geometry and publication.
+- `generated/disasm/ic30_ic13_orientation_handler_010220.lst`: orientation
+  geometry and publication.
+- `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`: publication.
+- `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`:
+  render-record bridge.
+- `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`: render-entry
+  dispatch.
+
+### Unresolved Middle Edges
+
+- `0x10084..0x1381c`: paper-source and copies still lack addressed allocation
+  variants in this publication-command cluster.
+- `0xff1e..0x1ed84`: final rows are fixture-backed for all six publication
+  commands, but physical-device comparison remains outside the ROM-internal
+  reproduction contract.
+
 ## Shared Page-Record Storage And Allocator
 
 Status: anchored as the shared storage model beneath compact text, rule,

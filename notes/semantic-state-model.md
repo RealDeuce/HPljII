@@ -729,10 +729,10 @@ full 68000 interpreter through every source class and allocator branch.
 ## Built-In Font Selection To Visible Text
 
 Status: composed as parsed command-family to visible-output checkpoints for
-primary, secondary, and secondary symbol-fallback built-in selection streams.
-The low-level font-selection ledger remains in
-[font-context-metrics.md](font-context-metrics.md); this section records the
-renderer-facing semantic contract for the selected state.
+primary, secondary, secondary symbol-fallback, and secondary live
+current-font-RAM handoff streams. The low-level font-selection ledger remains
+in [font-context-metrics.md](font-context-metrics.md); this section records
+the renderer-facing semantic contract for the selected state.
 
 Concept: `ESC (s0p10h12v0s0b3T` writes primary font request fields, refreshes
 the active primary built-in context through `0x13eb8`, rebuilds the primary
@@ -748,6 +748,12 @@ class-one Line Printer context.
 secondary contract: the symbol-set request writes word `0x9a55`, no class-one
 candidate matches, `0x156de` takes fallback table word `0x000e`, and the later
 secondary selection plus SO output still render through context `0xc00ae122`.
+Fixture `live secondary current-font RAM install feeds SO page-record rows`
+then proves the selected secondary RAM record handoff: with
+`0x782ef6 = 0xc00ae122` and an existing page root whose primary slot is live,
+SO calls `0xc428(1)`, `0xc4fc` installs `0xc00ae122` into page-root slot `1`,
+and `0xd04a` / `0x1393a` consume that installed slot for the following two
+printable bytes.
 
 ### Field Groups
 
@@ -780,6 +786,15 @@ secondary selection plus SO output still render through context `0xc00ae122`.
   fallback fixture
   `secondary symbol miss falls back before visible SO page-record rows` reaches
   the same secondary context after active word `0x000e` is selected.
+- Canonical installed page-root font slots:
+  - seeded primary current-font RAM: `0x782ee6 = 0xc008004c`.
+  - seeded secondary current-font RAM: `0x782ef6 = 0xc00ae122`.
+  - existing page root: `0x78297a`.
+  - primary page-root slot `0`: `0xc008004c`, live before SO.
+  - SO install result: `0xc428(1)` / `0xc4fc` selects page-root slot `1`,
+    writes `0xc00ae122`, and sets `0x78297e = 1`.
+  Evidence: fixture
+  `live secondary current-font RAM install feeds SO page-record rows`.
 - Canonical visible page-record fields:
   - primary compact text object prefix:
     `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`.
@@ -794,7 +809,10 @@ secondary selection plus SO output still render through context `0xc00ae122`.
   `parsed secondary built-in font selection feeds visible SO page-record rows`;
   fallback fixture
   `secondary symbol miss falls back before visible SO page-record rows` reaches
-  the same secondary visible page-record fields after symbol fallback.
+  the same secondary visible page-record fields after symbol fallback; live
+  handoff fixture `live secondary current-font RAM install feeds SO
+  page-record rows` reaches the same fields after reading context slot `1`
+  from the page-root slot table.
 - Derived/cache state:
   - `0x7828a8`: selected candidate slot `0x782354`.
   - secondary selected candidate slot `0x782350`.
@@ -821,6 +839,8 @@ secondary selection plus SO output still render through context `0xc00ae122`.
     `SO !!`.
   - printable parser events are two `0xd04a` entries for the primary fixture,
     and `0xc6b8, 0xd04a, 0xd04a` for the secondary SO and fallback fixtures.
+  - the live handoff stream is `SO !!` with current-font/page-root state
+    preseeded from the `0x13eb8` results.
 - Firmware bookkeeping:
   - `0x144d2` writes current-font context record `0x782ee6`.
   - `0x14c64` rebuilds map `0x782f32` and snapshots selected font state.
@@ -829,12 +849,14 @@ secondary selection plus SO output still render through context `0xc00ae122`.
   - `0xc428` reads the selected longword from `0x782ee6` / `0x782ef6` and
     passes that longword to `0xc4fc`; `0xc4fc` stores the longword in the
     selected page-root slot.
-  - page-root allocation count is `1` when the printable phase queues the
-    compact object.
+  - page-root allocation count is `1` when the parsed-selection visible
+    fixtures start without a root; it is `0` in the live secondary handoff
+    fixture because the root already exists before SO.
 - Unknown:
-  - the live CPU-memory continuity from `0x782ee6` / `0x782ef6` after
-    `0x13eb8` into the page-record runner is not yet captured; the fixtures
-    inject the pinned selected longwords into the printable phase.
+  - a single continuous CPU-state trace from parsed font-selection bytes
+    through later SO / printable page queueing is not yet captured.
+  - the primary visible-output equivalent that reads page-root context slot
+    `0` after `0xc428(0)` remains to be pinned.
 
 ### Writers
 
@@ -850,9 +872,11 @@ secondary selection plus SO output still render through context `0xc00ae122`.
 - `0x144d2` writes secondary selected context state at `0x782ef6`.
 - `0x14c64` rebuilds maps `0x782f32` and `0x783032`.
 - `0xc428` / `0xc4fc` install selected longwords `0xc008004c` and
-  `0xc00ae122` into page-root/render context slots.
+  `0xc00ae122` into page-root/render context slots; the live secondary
+  handoff fixture pins `0xc428(1)` selecting page-root slot `1`.
 - SO handler `0xc6b8` selects secondary slot 1 before the secondary printable
-  bytes are consumed.
+  bytes are consumed, and in the live handoff fixture it performs the modeled
+  `0xc428(1)` install before changing `0x782f06` to `1`.
 - Printable `0xd04a` / `0x1393a` write the source object, and `0x12f2e` /
   `0x1387c` write the compact page-record object.
 
@@ -866,6 +890,9 @@ secondary selection plus SO output still render through context `0xc00ae122`.
 - After SO, `0x1393a` consumes selected context `0xc00ae122` and map
   `0x783032` to map host byte `0x21` to glyph `0x00`; the fallback fixture
   reaches this same consumer state after `0x156de` selects word `0x000e`.
+- In the live handoff fixture, `0x1393a` reaches that same selected context by
+  reading page-root context slot `1`, which `0xc428(1)` filled from
+  `0x782ef6`.
 - `0xd824` consumes built-in glyph offsets from entry `0x001088`, producing
   positioned sources `(10,-10)` and `(40,-10)`.
 - `0xd824` also consumes secondary built-in glyph entry `0x02e4f6`, producing
@@ -906,14 +933,22 @@ object prefix, context slots, rendered rows, cursor x `66`, HMI `18`,
 selector `1`, install count `1`, and page-root allocation count `1` match the
 secondary SO fixture.
 
+The live secondary current-font RAM handoff fixture has the same secondary
+rows and compact object prefix, but uses an existing page root. Its SO event
+records `0xc428(1)` / `0xc4fc` installing `0xc00ae122` from `0x782ef6` into
+page-root context slot `1`; both printable bytes then report source context
+`0xc00ae122` and source slot `1`. Final page-root allocation count is `0`
+because the fixture starts after root creation.
+
 ### Confidence
 
 High for parser handler routing, fallback table decision, selected built-in
-context, map rebuild metadata, HMI, compact object bytes, render context slot,
-and final rows because they are all fixture-pinned against ROM-derived
-helpers. Medium for the live current-font-record handoff because the fixture
-composes the pinned `0x13eb8` output into the printable runner rather than
-capturing one continuous CPU-state execution.
+context, secondary current-font RAM to page-root slot install, map rebuild
+metadata, HMI, compact object bytes, render context slot, and final rows
+because they are all fixture-pinned against ROM-derived helpers. Medium for a
+single continuous CPU-state execution from parsed selection bytes through
+later printable output because the fixtures still compose pinned `0x13eb8`
+outputs into later phases.
 
 ### Fixtures
 
@@ -922,6 +957,7 @@ capturing one continuous CPU-state execution.
 - `0x13eb8 refresh carries parsed secondary font selection to dispatch`
 - `parsed primary built-in font selection feeds visible page-record rows`
 - `parsed secondary built-in font selection feeds visible SO page-record rows`
+- `live secondary current-font RAM install feeds SO page-record rows`
 - `secondary symbol miss falls back before visible SO page-record rows`
 
 ### Disassembly Evidence
@@ -939,9 +975,12 @@ capturing one continuous CPU-state execution.
 
 - `0x1205a..0x13eb8`: parsed request to refresh is behaviorally composed, but
   a continuous CPU-state trace has not been captured for this stream.
-- `0x782ee6 +0x00..+0x0f` and `0x782ef6 +0x00..+0x0f` into
-  `0xd04a..0x1393a`: selected current-context RAM is injected from the pinned
-  refresh results; live handoff remains open.
+- `0x782ef6 +0x00..+0x0f` into `0xc6b8..0xc428..0xc4fc..0xd04a..0x1393a`:
+  secondary selected current-context RAM is now covered for an existing page
+  root and live primary slot. Still open: the analogous primary
+  `0x782ee6 -> 0xc428(0) -> page-root slot 0 -> 0xd04a` visible-output
+  fixture and a single continuous CPU-state trace from parsed selection bytes
+  through later printable output.
 - Other primary/secondary font-selection combinations and fallback/error
   branches still need the same visible-output treatment; the exact covered
   fallback boundary is `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` through

@@ -290,7 +290,8 @@ The next work should follow dataflow, not isolated handlers:
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus
    secondary built-in font-selection visible-output streams, and the secondary
-   symbol fallback visible-output stream. The primary
+   symbol fallback plus secondary current-font-RAM handoff visible-output
+   streams. The primary
    built-in case proves `ESC (s0p10h12v0s0b3T!!` through parsed selection
    handlers, selected context `0xc008004c`, printable `0xd04a` entries, object
    prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record context
@@ -303,7 +304,10 @@ The next work should follow dataflow, not isolated handlers:
    word `0x9a55` misses in `0x156de`, fallback word `0x000e` survives, and the
    final selected context, map, object prefix, context slots, and rows match
    the secondary SO case.
-   Remaining suite cases should capture the font-install/current-font-to-page
-   handoff from live CPU memory instead of a modeled selected context, add
-   other fallback/error font-selection visible-output variants, and add
+   The secondary RAM handoff case proves seeded
+   `0x782ef6 = 0xc00ae122` through SO `0xc6b8`, `0xc428(1)`, `0xc4fc`,
+   page-root slot `1`, and following `!!` visible rows on an existing root.
+   Remaining suite cases should capture the primary page-root-slot handoff and
+   a continuous parser-to-printable CPU-state trace, add other fallback/error
+   font-selection visible-output variants, and add
    geometry-changing publication cases with final bitmap-row comparison.

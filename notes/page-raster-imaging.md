@@ -750,7 +750,12 @@ record carries context slot `0xc008004c` before compact helper `0x1fe76`
 renders two Courier glyph-0 shapes. The remaining caveat is the same live
 handoff called out in `notes/semantic-state-model.md`: the selected context
 longword is injected from the pinned `0x13eb8` result instead of captured from
-one continuous CPU-memory run.
+one continuous CPU-memory run. The secondary current-font-RAM handoff is now
+narrower: fixture
+`live secondary current-font RAM install feeds SO page-record rows` starts
+from seeded `0x782ee6 = 0xc008004c` and `0x782ef6 = 0xc00ae122`, then proves
+SO `0xc6b8` calling `0xc428(1)` / `0xc4fc`, installing page-root slot `1`,
+and rendering the following `!!` from that installed slot.
 Fixture
 `parsed secondary built-in font selection feeds visible SO page-record rows`
 adds the secondary mirror: `ESC )s0p16h8v0s0b0T` selects context

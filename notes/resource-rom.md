@@ -484,9 +484,26 @@ miss. Their status chains are `0x783f03 = 1` and `0x783f04 = 1`; the
 class-one pass reads that prior value through `0x1c41a..0x1c428` before the
 request-`1` terminal miss.
 
-The still-open boundary is the rest of `0x1c204..0x1ed84`: source-heading page
-objects, continuation branches, and all-source full-page placement. The
-emitted page objects still must be
+Fixture `font sample source headings 0..2 compose page records` then carries
+those source labels and single-row cartridge outputs through the page-record
+producer. Source `0` queues the `"PERMANENT" SOFT FONTS` heading as a
+heading-only page-record state: bucket list `[0]`, bucket count `{0: 3}`, and
+aggregate object digest
+`89fb4143a293f80bb8c07bab86d5c94940ba73039f2bd9ba1e3de0c2c6c4fb4c`.
+Source `1` queues `LEFT FONT CARTRIDGE` plus `L00LINE PRINTER10128U`: the
+class-zero record `0x00004c` reaches buckets `[0, 2, 3, 4, 6, 7]` with digest
+`cc583ac71b083d3cf241a1a72ff6345e22d585a9eef1a0ba850427b6d43e2aba`, and
+the class-one record `0x019d18` reaches buckets `[0, 3, 4, 6, 7]` with digest
+`51dade4f3a0af13cb533c9f62c5ea955a63f02046622e39a00b4ac8b072f63d6`.
+Source `2` queues `RIGHT FONT CARTRIDGE` plus `R00LINE PRINTER10128U`: the
+class-zero digest is
+`eaf10ca6b5b5716170b313ce542df82a6974c1ac22ee0e87308dead7be22c6a1`, and
+the class-one digest is
+`3d23d5c6c5320d406d1db34523d3ad01c819d4e938e3dee4fa0a5d20747ed152`.
+
+The still-open boundary is the rest of `0x1c204..0x1ed84`: continuation
+branches and all-source full-page placement. The emitted page objects still
+must be
 correlated with the direct sample-byte row hashes or a known print sample
 before those fields get final semantic names.
 

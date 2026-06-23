@@ -1193,8 +1193,18 @@ for how resource records become ordinary page-record text.
     `0x783f02 = 1`; source `1` mode `1` emits only request-`0` rows `L00`
     from records `0x00004c` and `0x019d18` across the two class passes and
     writes `0x783f03 = 1`; source `2` mode `2` does the same for `R00` and
-    writes `0x783f04 = 1`. Source-heading page objects, continuation branches,
-    and whole-page placement remain open.
+    writes `0x783f04 = 1`. Fixture
+    `font sample source headings 0..2 compose page records` carries the source
+    `0` heading-only output and source `1`/`2` single-row outputs through the
+    page-record producer: source `0` bucket digest
+    `89fb4143a293f80bb8c07bab86d5c94940ba73039f2bd9ba1e3de0c2c6c4fb4c`,
+    source `1` class-zero/class-one digests
+    `cc583ac71b083d3cf241a1a72ff6345e22d585a9eef1a0ba850427b6d43e2aba` /
+    `51dade4f3a0af13cb533c9f62c5ea955a63f02046622e39a00b4ac8b072f63d6`,
+    and source `2` class-zero/class-one digests
+    `eaf10ca6b5b5716170b313ce542df82a6974c1ac22ee0e87308dead7be22c6a1` /
+    `3d23d5c6c5320d406d1db34523d3ad01c819d4e938e3dee4fa0a5d20747ed152`.
+    Continuation branches and whole-page placement remain open.
   - record `+0x28..+0x31` baseline/cell/manual semantics remain
     unresolved until this path is correlated with emitted page objects or
     a known printed sample.
@@ -1515,14 +1525,15 @@ open.
   through `0x1c41a..0x1c428`, and final class-one `0x783f05 = 29`. The
   non-internal source-index fixture covers source `0` mode `0` with no rows
   and sources `1`/`2` modes `1`/`2` with only request-`0` `L00`/`R00` rows,
-  writing source status bytes `0x783f02..0x783f04 = 1`. The
+  writing source status bytes `0x783f02..0x783f04 = 1`; the source-heading
+  page-record fixture now carries those source `0..2` outputs to bucket lists
+  and aggregate object digests. The
   `0x1c1cf` sample run 1 byte stream is now consumed both as a standalone
   page-object/render fixture and after first-`COURIER` row fields in the same
   carried page-record state. The
   `0x1c1e9` sample run 2 byte stream is now carried after run 1 through the
   no-continuation `0x1d050` branch for first `COURIER`.
-  Remaining gaps are source-heading page-object rendering for source indexes
-  `0..2`, continuation branches, and full page placement.
+  Remaining gaps are continuation branches and full page placement.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
   identified. First `COURIER` and first `LINE_PRINTER` row-field

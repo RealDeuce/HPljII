@@ -21232,6 +21232,94 @@ def render_font_sample_source_heading_and_first_row_page_record(
     }
 
 
+def render_font_sample_source_heading_only_page_record(
+    data: bytes,
+    resources: bytes,
+    context: int,
+    source_index: int,
+    *,
+    cursor_y: int = 32,
+) -> dict[str, object]:
+    default_advance = pack12(30)
+    state = control_fixture_state(
+        cursor_x=pack12(0),
+        cursor_y=pack12(cursor_y),
+        line_anchor_x=pack12(0),
+        hmi=default_advance,
+        pending_width=1,
+        pending_text=0,
+        span_flush_enable=1,
+    )
+    page_record: dict[str, object] = {"bucket_array": {}, "context_slots": [int(context)]}
+    source_label = font_sample_source_label_via_1ca2c(data, source_index)
+    heading_event = queue_font_sample_printable_chunk_to_page_record(
+        resources,
+        int(context),
+        page_record,
+        state,
+        bytes(source_label["label"]),
+        "source-heading",
+        default_advance,
+    )
+    line_event = font_sample_line_advance_via_1cfb4(state)
+    bucket_objects = page_record_bucket_objects(page_record)
+    object_hashes = {
+        bucket: [hashlib.sha256(obj).hexdigest() for obj in objects]
+        for bucket, objects in bucket_objects.items()
+    }
+    return {
+        "context": int(context),
+        "source_label": source_label,
+        "heading_event": heading_event,
+        "line_event": line_event,
+        "nonempty_buckets": sorted(bucket_objects),
+        "bucket_objects": bucket_objects,
+        "bucket_object_hashes": object_hashes,
+        "context_slots": list(page_record.get("context_slots", [])),
+        "final_cursor_x": state["cursor_x"],
+        "final_cursor_y": state["cursor_y"],
+        "final_state": dict(state),
+        "page_record": page_record,
+    }
+
+
+def page_record_bucket_digest(bucket_objects: dict[int, list[bytes]]) -> str:
+    digest = hashlib.sha256()
+    for bucket in sorted(bucket_objects):
+        digest.update(int(bucket).to_bytes(4, "big", signed=True))
+        for obj in bucket_objects[bucket]:
+            digest.update(len(obj).to_bytes(2, "big"))
+            digest.update(obj)
+    return digest.hexdigest()
+
+
+def font_sample_source_page_summary(
+    page: dict[str, object],
+    *,
+    row_printed: bytes | None = None,
+) -> dict[str, object]:
+    bucket_objects = page["bucket_objects"]
+    assert isinstance(bucket_objects, dict)
+    page_record = page["page_record"]
+    assert isinstance(page_record, dict)
+    return {
+        "source_label": page["source_label"],
+        "heading_count": page["heading_event"]["event_count"],  # type: ignore[index]
+        "line_event": page["line_event"],
+        "row_printed": row_printed,
+        "nonempty_buckets": page["nonempty_buckets"],
+        "bucket_counts": {
+            bucket: len(objects)
+            for bucket, objects in sorted(bucket_objects.items())  # type: ignore[union-attr]
+        },
+        "bucket_digest": page_record_bucket_digest(bucket_objects),  # type: ignore[arg-type]
+        "context_slots": list(page_record.get("context_slots", [])),
+        "context": page["context"],
+        "final_cursor_x": page["final_cursor_x"],
+        "final_cursor_y": page["final_cursor_y"],
+    }
+
+
 def render_font_sample_source_heading_first_two_courier_rows_page_record(
     data: bytes,
     resources: bytes,
@@ -29907,6 +29995,219 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "writer": "0x1c5d6..0x1c5de",
                 },
             },
+        },
+    }))
+    source0_heading_page = render_font_sample_source_heading_only_page_record(
+        data,
+        resources,
+        0x4008004C,
+        0,
+    )
+    source1_class_zero_fields = font_sample_builtin_row_fields_via_1cabe(
+        resources,
+        0x00004C,
+        source_index=1,
+        row_index=0,
+        symbol_word=0x0115,
+    )
+    source2_class_zero_fields = font_sample_builtin_row_fields_via_1cabe(
+        resources,
+        0x00004C,
+        source_index=2,
+        row_index=0,
+        symbol_word=0x0115,
+    )
+    source1_class_one_fields = font_sample_builtin_row_fields_via_1cabe(
+        resources,
+        0x019D18,
+        source_index=1,
+        row_index=0,
+        symbol_word=0x0115,
+    )
+    source2_class_one_fields = font_sample_builtin_row_fields_via_1cabe(
+        resources,
+        0x019D18,
+        source_index=2,
+        row_index=0,
+        symbol_word=0x0115,
+    )
+    source1_class_zero_page = render_font_sample_source_heading_and_first_row_page_record(
+        data,
+        resources,
+        source1_class_zero_fields,
+        source_index=1,
+    )
+    source2_class_zero_page = render_font_sample_source_heading_and_first_row_page_record(
+        data,
+        resources,
+        source2_class_zero_fields,
+        source_index=2,
+    )
+    source1_class_one_page = render_font_sample_source_heading_and_first_row_page_record(
+        data,
+        resources,
+        source1_class_one_fields,
+        source_index=1,
+    )
+    source2_class_one_page = render_font_sample_source_heading_and_first_row_page_record(
+        data,
+        resources,
+        source2_class_one_fields,
+        source_index=2,
+    )
+    checks.append(assert_equal("font sample source headings 0..2 compose page records", {
+        "source0": font_sample_source_page_summary(source0_heading_page),
+        "source1_class_zero": font_sample_source_page_summary(
+            source1_class_zero_page,
+            row_printed=bytes(source1_class_zero_fields["printed"]),
+        ),
+        "source2_class_zero": font_sample_source_page_summary(
+            source2_class_zero_page,
+            row_printed=bytes(source2_class_zero_fields["printed"]),
+        ),
+        "source1_class_one": font_sample_source_page_summary(
+            source1_class_one_page,
+            row_printed=bytes(source1_class_one_fields["printed"]),
+        ),
+        "source2_class_one": font_sample_source_page_summary(
+            source2_class_one_page,
+            row_printed=bytes(source2_class_one_fields["printed"]),
+        ),
+    }, {
+        "source0": {
+            "source_label": {
+                "source_index": 0,
+                "pointer": 0x01C1B8,
+                "label": b"\"PERMANENT\" SOFT FONTS",
+            },
+            "heading_count": 22,
+            "line_event": {
+                "helper": "0x1cfb4",
+                "flush_0xf06e": {
+                    "cursor_before": pack12(660),
+                    "line_anchor_x_782dd6": pack12(0),
+                    "cursor_after": pack12(0),
+                },
+                "cursor_y_before": pack12(32),
+                "advance_subunits": 0x0258,
+                "cursor_y_after": pack12(82),
+            },
+            "row_printed": None,
+            "nonempty_buckets": [0],
+            "bucket_counts": {0: 3},
+            "bucket_digest": "89fb4143a293f80bb8c07bab86d5c94940ba73039f2bd9ba1e3de0c2c6c4fb4c",
+            "context_slots": [0x4008004C],
+            "context": 0x4008004C,
+            "final_cursor_x": pack12(0),
+            "final_cursor_y": pack12(82),
+        },
+        "source1_class_zero": {
+            "source_label": {
+                "source_index": 1,
+                "pointer": 0x01C1A4,
+                "label": b"LEFT FONT CARTRIDGE",
+            },
+            "heading_count": 19,
+            "line_event": {
+                "helper": "0x1cfb4",
+                "flush_0xf06e": {
+                    "cursor_before": pack12(570),
+                    "line_anchor_x_782dd6": pack12(0),
+                    "cursor_after": pack12(0),
+                },
+                "cursor_y_before": pack12(32),
+                "advance_subunits": 0x0258,
+                "cursor_y_after": pack12(82),
+            },
+            "row_printed": b"L00LINE PRINTER10128U",
+            "nonempty_buckets": [0, 2, 3, 4, 6, 7],
+            "bucket_counts": {0: 2, 2: 1, 3: 5, 4: 1, 6: 3, 7: 1},
+            "bucket_digest": "cc583ac71b083d3cf241a1a72ff6345e22d585a9eef1a0ba850427b6d43e2aba",
+            "context_slots": [0x4008004C],
+            "context": 0x4008004C,
+            "final_cursor_x": pack12(2220),
+            "final_cursor_y": 0x008B0003,
+        },
+        "source2_class_zero": {
+            "source_label": {
+                "source_index": 2,
+                "pointer": 0x01C18F,
+                "label": b"RIGHT FONT CARTRIDGE",
+            },
+            "heading_count": 20,
+            "line_event": {
+                "helper": "0x1cfb4",
+                "flush_0xf06e": {
+                    "cursor_before": pack12(600),
+                    "line_anchor_x_782dd6": pack12(0),
+                    "cursor_after": pack12(0),
+                },
+                "cursor_y_before": pack12(32),
+                "advance_subunits": 0x0258,
+                "cursor_y_after": pack12(82),
+            },
+            "row_printed": b"R00LINE PRINTER10128U",
+            "nonempty_buckets": [0, 2, 3, 4, 6, 7],
+            "bucket_counts": {0: 2, 2: 1, 3: 5, 4: 1, 6: 3, 7: 1},
+            "bucket_digest": "eaf10ca6b5b5716170b313ce542df82a6974c1ac22ee0e87308dead7be22c6a1",
+            "context_slots": [0x4008004C],
+            "context": 0x4008004C,
+            "final_cursor_x": pack12(2220),
+            "final_cursor_y": 0x008B0003,
+        },
+        "source1_class_one": {
+            "source_label": {
+                "source_index": 1,
+                "pointer": 0x01C1A4,
+                "label": b"LEFT FONT CARTRIDGE",
+            },
+            "heading_count": 19,
+            "line_event": {
+                "helper": "0x1cfb4",
+                "flush_0xf06e": {
+                    "cursor_before": pack12(570),
+                    "line_anchor_x_782dd6": pack12(0),
+                    "cursor_after": pack12(0),
+                },
+                "cursor_y_before": pack12(32),
+                "advance_subunits": 0x0258,
+                "cursor_y_after": pack12(82),
+            },
+            "row_printed": b"L00LINE PRINTER10128U",
+            "nonempty_buckets": [0, 3, 4, 6, 7],
+            "bucket_counts": {0: 2, 3: 5, 4: 1, 6: 2, 7: 2},
+            "bucket_digest": "51dade4f3a0af13cb533c9f62c5ea955a63f02046622e39a00b4ac8b072f63d6",
+            "context_slots": [0x40099D18],
+            "context": 0x40099D18,
+            "final_cursor_x": pack12(2220),
+            "final_cursor_y": 0x008B0003,
+        },
+        "source2_class_one": {
+            "source_label": {
+                "source_index": 2,
+                "pointer": 0x01C18F,
+                "label": b"RIGHT FONT CARTRIDGE",
+            },
+            "heading_count": 20,
+            "line_event": {
+                "helper": "0x1cfb4",
+                "flush_0xf06e": {
+                    "cursor_before": pack12(600),
+                    "line_anchor_x_782dd6": pack12(0),
+                    "cursor_after": pack12(0),
+                },
+                "cursor_y_before": pack12(32),
+                "advance_subunits": 0x0258,
+                "cursor_y_after": pack12(82),
+            },
+            "row_printed": b"R00LINE PRINTER10128U",
+            "nonempty_buckets": [0, 3, 4, 6, 7],
+            "bucket_counts": {0: 2, 3: 5, 4: 1, 6: 2, 7: 2},
+            "bucket_digest": "3d23d5c6c5320d406d1db34523d3ad01c819d4e938e3dee4fa0a5d20747ed152",
+            "context_slots": [0x40099D18],
+            "context": 0x40099D18,
+            "final_cursor_x": pack12(2220),
+            "final_cursor_y": 0x008B0003,
         },
     }))
     checks.append(assert_equal("font sample resolver carries first two Courier rows", {
@@ -70543,6 +70844,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     ))
     lines.append("- font sample non-internal source groups: source 0 uses mode 0 and emits no rows in either pass, writing `0x783f02 = 1`; sources 1 and 2 use modes 1 and 2, each emit only the request-0 fast-probe row in each class pass (`L00`/`R00`) and write `0x783f03 = 1` / `0x783f04 = 1`. The class-one pass for each source reads the prior status byte through `0x1c41a..0x1c428` before terminating at request 1.")
+    lines.append("- font sample source-heading page records for sources 0..2: source 0 queues `%r` as a heading-only page-record state with buckets `%s`, counts `%s`, digest `%s`, and final cursor `0x%08x,0x%08x`; source 1 class-zero/class-one queue `%r` and `%r` with bucket digests `%s` / `%s`; source 2 class-zero/class-one queue `%r` and `%r` with bucket digests `%s` / `%s`." % (
+        source0_heading_page["source_label"]["label"],  # type: ignore[index]
+        font_sample_source_page_summary(source0_heading_page)["nonempty_buckets"],
+        font_sample_source_page_summary(source0_heading_page)["bucket_counts"],
+        font_sample_source_page_summary(source0_heading_page)["bucket_digest"],
+        font_sample_source_page_summary(source0_heading_page)["final_cursor_x"],
+        font_sample_source_page_summary(source0_heading_page)["final_cursor_y"],
+        bytes(source1_class_zero_fields["printed"]),
+        bytes(source1_class_one_fields["printed"]),
+        font_sample_source_page_summary(source1_class_zero_page, row_printed=bytes(source1_class_zero_fields["printed"]))["bucket_digest"],
+        font_sample_source_page_summary(source1_class_one_page, row_printed=bytes(source1_class_one_fields["printed"]))["bucket_digest"],
+        bytes(source2_class_zero_fields["printed"]),
+        bytes(source2_class_one_fields["printed"]),
+        font_sample_source_page_summary(source2_class_zero_page, row_printed=bytes(source2_class_zero_fields["printed"]))["bucket_digest"],
+        font_sample_source_page_summary(source2_class_one_page, row_printed=bytes(source2_class_one_fields["printed"]))["bucket_digest"],
+    ))
     lines.append("- font sample row fields: first `LINE_PRINTER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152`; the height value is rounded by the mode-1 `0x1cc6e` add-five path." % (
         line_printer_sample_row_fields["record_start"],
         " ".join(f"{byte:02x}" for byte in line_printer_sample_row_fields["printed"]),

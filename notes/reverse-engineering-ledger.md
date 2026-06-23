@@ -685,7 +685,15 @@ passes, with class-zero visible rows `I00..I13`, class-one visible rows
 `0x1c41a..0x1c428`, then `0x783f05 = 29`; the non-internal source-index
 fixture also pins source `0` as no-row/status `0x783f02 = 1` and sources
 `1`/`2` as single request-`0` `L00`/`R00` rows with
-`0x783f03 = 1` / `0x783f04 = 1`; the report also
+`0x783f03 = 1` / `0x783f04 = 1`; the source-heading page-record fixture then
+queues source `0` as a heading-only page-record digest
+`89fb4143a293f80bb8c07bab86d5c94940ba73039f2bd9ba1e3de0c2c6c4fb4c` and
+source `1`/`2` single-row page-record digests
+`cc583ac71b083d3cf241a1a72ff6345e22d585a9eef1a0ba850427b6d43e2aba` /
+`51dade4f3a0af13cb533c9f62c5ea955a63f02046622e39a00b4ac8b072f63d6` and
+`eaf10ca6b5b5716170b313ce542df82a6974c1ac22ee0e87308dead7be22c6a1` /
+`3d23d5c6c5320d406d1db34523d3ad01c819d4e938e3dee4fa0a5d20747ed152`; the
+report also
 pins sample-page cursor and row sequencing through `0x1c916`,
 `0x1ca2c`, `0x1cabe`, `0x1cf34`, and `0x1d050`, including page-limit
 checks against `0x782db6`, source/metric text emission through `0xd04a`,
@@ -1038,6 +1046,10 @@ ROM work needed:
   rows and writes `0x783f02 = 1`, while source `1` / `2` modes `1` / `2` emit
   only the request-`0` `L00` / `R00` rows in each class pass and write
   `0x783f03 = 1` / `0x783f04 = 1`.
+  The source-heading page-record checkpoint now carries `"PERMANENT" SOFT
+  FONTS`, `LEFT FONT CARTRIDGE`, and `RIGHT FONT CARTRIDGE` through `0x1ca2c`
+  label printing and the row producer for the `L00` / `R00` cases, with
+  aggregate object digests documented in `notes/resource-rom.md`.
   Fixture `font sample run 1 full row spans compact buckets` carries byte stream
   ``ABCDEfghij#$@[\\]^`{|}~123`` through context `0x44080418`, compact
   buckets `-1` and `0`, `0x1ed84` / `0x1ef6a`, and row hashes
@@ -1052,8 +1064,7 @@ ROM work needed:
   `b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5`.
   The source-heading composition fixtures now carry `INTERNAL FONTS` through
   all 14 visible class-zero rows and all 14 visible class-one rows in separate
-  page-record states. The next boundaries are source-heading page-object
-  composition for source indexes `0..2`, continuation branches, and
+  page-record states. The next boundaries are continuation branches and
   full-printout placement for comparison against the direct payload hashes and
   a known printed/self-test sample.
 - Identify the manual-facing names for the currently unidentified

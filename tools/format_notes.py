@@ -289,11 +289,9 @@ def main() -> int:
             if not args.check:
                 path.write_text(formatted, encoding="utf-8")
 
-    whitespace_paths: list[Path]
-    if args.changed:
-        whitespace_paths = changed_worktree_paths(root)
-    else:
-        whitespace_paths = paths
+    # `git diff --check HEAD` below checks the whole worktree diff, so the
+    # matching repair pass has to cover the whole changed text set too.
+    whitespace_paths = changed_worktree_paths(root)
 
     whitespace_changed: list[Path] = []
     for path in whitespace_paths:

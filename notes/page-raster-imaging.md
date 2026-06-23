@@ -655,7 +655,10 @@ class split:
     `0x1387c`
 - `0x40..0x7f`
   - Render path: segment-list writer `0x1f812` / `0x1f862`
-  - Current producer mapping: producer not yet pinned down
+  - Current producer mapping: portrait text-span objects from pending
+    state `0x783184..0x78318a` through `0x12714` -> `0x13520` /
+    `0x135f0`, stored under the page-root `+0x1c` bucket array and
+    copied to render-record `+0x18`
 - `0x80..0xff`
   - Render path: encoded-span writer `0x1f88e`; table `0x1f8ca` selected
     by byte `+5 & 0x03`
@@ -683,6 +686,19 @@ Confirmed producer-to-renderer mappings:
     `+0x2c` to render `+0x24`
   - Renderer path: `0x1efc2` compact branch -> `0x1effe` -> table
     `0x1f024`
+- portrait text-span segment-list buckets
+  - Queue/list path: pending span `0x783184..0x78318a` -> `0x12714`
+    local source -> `0x13520` / `0x135f0` -> page-root `+0x1c`
+    bucket array -> render-record `+0x18`
+  - Selector fields: `0x137a2` derives selector word `0x4000` for the
+    portrait span producer; `0x135f0` writes byte `+4 = 0x40`, word
+    `+6` as the segment count, then six-byte entries containing the
+    packed coordinate/key word, row count low nibble, skipped byte, and
+    span width. Fixture `0x12714 portrait text span flush queues
+    segment-list span` queues object prefix
+    `00 00 00 00 40 00 00 01 32 00 03 00 00 10`.
+  - Renderer path: `0x1efc2` segment-list branch -> `0x1f812` ->
+    `0x1f862`
 - rectangle/rule list
   - Queue/list path: page-root `+0x24` -> render-record `+0x1c`
   - Selector fields: `0x133aa` writes byte `+4` from `0x782a7d`, ORs

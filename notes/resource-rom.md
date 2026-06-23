@@ -378,12 +378,12 @@ glyph-entry `+0/+2`. The open address boundary is the header-level
 height/baseline use between the extracted record fields
 `+0x28..+0x31` and the font-printout/page-object path.
 
-The `0x1c334..0x1c5e4` candidate traversal is now decoded through the
-first internal-font class-zero source group. Fixture
+The `0x1c334..0x1c5e4` candidate traversal is now decoded through both
+internal-font source-group class passes. Fixture
 `font sample first internal source group follows 0x1c334 row loop` in
-`tools/render_fixture_harness.py` resolves request indexes `0..29` through
-`0x1b8ea`, `0x1b50e`, `0x1c746`, `0x1c710`, `0x1cabe`, and the
-`0x1c540..0x1c5c6` recent-list scan. The visible rows are:
+`tools/render_fixture_harness.py` resolves the class-zero request indexes
+`0..29` through `0x1b8ea`, `0x1b50e`, `0x1c746`, `0x1c710`, `0x1cabe`, and the
+`0x1c540..0x1c5c6` recent-list scan. The class-zero visible rows are:
 
 - `I00` record `0x00004c`, context `0x4008004c`, word `0x0115`:
   `LINE PRINTER`, `10`, `12`, `8U`.
@@ -424,9 +424,49 @@ does not append their already-present contexts. The fixture carries those
 `0x4008004c,0x44080418,0x44080868,0x40080cb8,0x40089fb0,0x4408a37c,
 0x4408a7cc,0x4008ac1c,0x400942e4,0x440946b4,0x44094b08,0x40094f5c`.
 
+Fixture `font sample internal class-one source group follows 0x1c334 row loop`
+then covers the internal-font class-one pass seeded by `0x1e9a0` with
+context `0x40099d18`. Request index `0` emits the seeded class-one Roman-8
+`LINE PRINTER` row. Request indexes `1..15` resolve to class-zero records and
+are rejected by the same `0x1c3e8..0x1c3f6` comparison. Request indexes
+`16..28` emit the class-one rows:
+
+- `I16` record `0x01a0e4`, context `0x4409a0e4`, word `0x0155`:
+  `COURIER`, `10`, `12`, `10U`.
+- `I17` record `0x01a534`, context `0x4409a534`, word `0x0175`:
+  `COURIER`, `10`, `12`, `11U`.
+- `I18` record `0x01a984`, context `0x4009a984`, word `0x000e`:
+  `COURIER`, `10`, `12`, `0N`.
+- `I19` record `0x023484`, context `0x400a3484`, word `0x0115`:
+  `LINE PRINTER`, `10`, `12`, `8U`.
+- `I20` repeats context `0x400a3484` with substituted word `0x0005`:
+  `LINE PRINTER`, `10`, `12`, `0E`.
+- `I21` record `0x023850`, context `0x440a3850`, word `0x0155`:
+  `COURIER`, `10`, `12`, `10U`.
+- `I22` record `0x023ca0`, context `0x440a3ca0`, word `0x0175`:
+  `COURIER`, `10`, `12`, `11U`.
+- `I23` record `0x0240f0`, context `0x400a40f0`, word `0x000e`:
+  `COURIER`, `10`, `12`, `0N`.
+- `I24` record `0x02d4aa`, context `0x400ad4aa`, word `0x0115`:
+  `LINE PRINTER`, `16.6`, `8.5`, `8U`.
+- `I25` repeats context `0x400ad4aa` with substituted word `0x0005`:
+  `LINE PRINTER`, `16.6`, `8.5`, `0E`.
+- `I26` record `0x02d87a`, context `0x440ad87a`, word `0x0155`:
+  `LINE_PRINTER`, `16.6`, `8.5`, `10U`.
+- `I27` record `0x02dcce`, context `0x440adcce`, word `0x0175`:
+  `LINE_PRINTER`, `16.6`, `8.5`, `11U`.
+- `I28` record `0x02e122`, context `0x400ae122`, word `0x000e`:
+  `LINE_PRINTER`, `16.6`, `8.5`, `0N`.
+
+Request `29` is again the terminal `0x1b50e` miss, and both class passes write
+source status byte `0x783f05 = 29` through `0x1c5d6..0x1c5de`. The class-one
+page-record context slots end at
+`0x40099d18,0x4409a0e4,0x4409a534,0x4009a984,0x400a3484,0x440a3850,
+0x440a3ca0,0x400a40f0,0x400ad4aa,0x440ad87a,0x440adcce,0x400ae122`.
+
 The still-open boundary is the rest of `0x1c204..0x1ed84`: other source
-headings, the internal-font class-one pass, continuation branches, and
-all-source full-page placement. The emitted page objects still must be
+headings, continuation branches, and all-source full-page placement. The
+emitted page objects still must be
 correlated with the direct sample-byte row hashes or a known print sample
 before those fields get final semantic names.
 
@@ -608,10 +648,11 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
 6. Model the font-printout loop's emitted page objects from the ROM
    sample byte runs. The `0x1c334..0x1c5e4` row traversal is decoded,
    including `0x1b50e` two-window candidate resolution, class filtering,
-   continuation-page entry, and recent-context duplicate suppression.
-   The verified internal-font mode-3 candidate sequence is now
-   documented below, and both ROM sample byte runs are now consumed
-   through the `0x1c5e8..0x1ed84` page-object/render boundary. Fixture
+   continuation-page entry, row-index status writes, and the post-row
+   recent-context scan. The verified internal-font mode-3 candidate sequence
+   is now documented below for both class passes, and both ROM sample byte
+   runs are now consumed through the `0x1c5e8..0x1ed84` page-object/render
+   boundary. Fixture
    `font sample run 1 full row spans compact buckets` covers sample run 1
    byte stream ``ABCDEfghij#$@[\\]^`{|}~123``. Fixture `font sample run 2
    full row spans compact buckets` covers table `0x1c1e9`. The next

@@ -5387,6 +5387,11 @@ def font_sample_source_group_rows_via_1c334(
         "final_recent_contexts": recent_contexts,
         "terminal_reason": terminal_reason,
         "terminal_request_index": terminal_request_index,
+        "source_status_write": {
+            "address": 0x00783F02 + int(source_index),
+            "value": terminal_request_index & 0xFF,
+            "writer": "0x1c5d6..0x1c5de",
+        },
     }
 
 
@@ -29401,6 +29406,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             if attempt["decision"] != "emit-row"
         ],
         "final_recent_contexts": internal_source_group_rows["final_recent_contexts"],
+        "source_status_write": internal_source_group_rows["source_status_write"],
         "page_context_slots": internal_source_group_page["context_slots"],
         "page_nonempty_buckets": internal_source_group_page["nonempty_buckets"],
         "selected_bucket_hashes": {
@@ -29460,6 +29466,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             0x44094B08,
             0x40094F5C,
         ],
+        "source_status_write": {
+            "address": 0x00783F05,
+            "value": 29,
+            "writer": "0x1c5d6..0x1c5de",
+        },
         "page_context_slots": [
             0x4008004C,
             0x44080418,
@@ -29500,6 +29511,172 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
             90: [
                 "d3bdc2b00eec88c65cb0f84abcb92cf96710cf8fddc269e48b3833e67c22069f",
+            ],
+        },
+        "final_cursor_x": 0x08AC0000,
+        "final_cursor_y": 0x06390003,
+    }))
+    internal_class_one_group_rows = font_sample_source_group_rows_via_1c334(
+        resources,
+        actual_candidate_windows,
+        source_index=3,
+        class_filter=1,
+        requested_symbol=0x0005,
+        current_selected_pointer=0x782324,
+        current_record_start=0x019D18,
+        initial_recent_contexts=[0x40099D18],
+    )
+    internal_class_one_group_emitted = list(internal_class_one_group_rows["emitted_rows"])  # type: ignore[arg-type]
+    internal_class_one_group_fields = [
+        row["row_fields"]
+        for row in internal_class_one_group_emitted
+    ]
+    internal_class_one_group_resolutions = [
+        row["resolution"]
+        for row in internal_class_one_group_emitted
+    ]
+    internal_class_one_group_page = render_font_sample_source_heading_row_sequence_page_record(
+        data,
+        resources,
+        internal_class_one_group_fields,
+        internal_class_one_group_resolutions,
+        current_record_start=0x019D18,
+        current_context=0x40099D18,
+    )
+    checks.append(assert_equal("font sample internal class-one source group follows 0x1c334 row loop", {
+        "terminal": (
+            internal_class_one_group_rows["terminal_reason"],
+            internal_class_one_group_rows["terminal_request_index"],
+        ),
+        "row_count": len(internal_class_one_group_emitted),
+        "row_summary": [
+            (
+                row["request_index"],
+                row["record_start"],
+                row["context_after_1c746"],
+                row["symbol_word"],
+                row["recent_before"],
+                row["recent_update"],
+                row["row_fields"]["printed"],
+            )
+            for row in internal_class_one_group_emitted
+        ],
+        "non_emit_summary": [
+            (
+                attempt["request_index"],
+                attempt["decision"],
+                attempt.get("record_start"),
+                attempt.get("class_1c710", {}).get("class_value")
+                if isinstance(attempt.get("class_1c710"), dict)
+                else None,
+            )
+            for attempt in internal_class_one_group_rows["attempts"]  # type: ignore[index]
+            if attempt["decision"] != "emit-row"
+        ],
+        "final_recent_contexts": internal_class_one_group_rows["final_recent_contexts"],
+        "source_status_write": internal_class_one_group_rows["source_status_write"],
+        "page_context_slots": internal_class_one_group_page["context_slots"],
+        "page_nonempty_buckets": internal_class_one_group_page["nonempty_buckets"],
+        "selected_bucket_hashes": {
+            bucket: internal_class_one_group_page["bucket_object_hashes"][bucket]  # type: ignore[index]
+            for bucket in (26, 66, 82, 98)
+        },
+        "final_cursor_x": internal_class_one_group_page["final_cursor_x"],
+        "final_cursor_y": internal_class_one_group_page["final_cursor_y"],
+    }, {
+        "terminal": ("resolver-miss", 29),
+        "row_count": 14,
+        "row_summary": [
+            (0, 0x019D18, 0x40099D18, 0x0115, True, "already-present", b"I00LINE PRINTER10128U"),
+            (16, 0x01A0E4, 0x4409A0E4, 0x0155, False, "appended", b"I16COURIER101210U"),
+            (17, 0x01A534, 0x4409A534, 0x0175, False, "appended", b"I17COURIER101211U"),
+            (18, 0x01A984, 0x4009A984, 0x000E, False, "appended", b"I18COURIER10120N"),
+            (19, 0x023484, 0x400A3484, 0x0115, False, "appended", b"I19LINE PRINTER10128U"),
+            (20, 0x023484, 0x400A3484, 0x0005, True, "already-present", b"I20LINE PRINTER10120E"),
+            (21, 0x023850, 0x440A3850, 0x0155, False, "appended", b"I21COURIER101210U"),
+            (22, 0x023CA0, 0x440A3CA0, 0x0175, False, "appended", b"I22COURIER101211U"),
+            (23, 0x0240F0, 0x400A40F0, 0x000E, False, "appended", b"I23COURIER10120N"),
+            (24, 0x02D4AA, 0x400AD4AA, 0x0115, False, "appended", b"I24LINE PRINTER16.68.58U"),
+            (25, 0x02D4AA, 0x400AD4AA, 0x0005, True, "already-present", b"I25LINE PRINTER16.68.50E"),
+            (26, 0x02D87A, 0x440AD87A, 0x0155, False, "appended", b"I26LINE_PRINTER16.68.510U"),
+            (27, 0x02DCCE, 0x440ADCCE, 0x0175, False, "appended", b"I27LINE_PRINTER16.68.511U"),
+            (28, 0x02E122, 0x400AE122, 0x000E, False, "appended", b"I28LINE_PRINTER16.68.50N"),
+        ],
+        "non_emit_summary": [
+            (1, "class-mismatch-skip", 0x00004C, 0),
+            (2, "class-mismatch-skip", 0x00004C, 0),
+            (3, "class-mismatch-skip", 0x000418, 0),
+            (4, "class-mismatch-skip", 0x000868, 0),
+            (5, "class-mismatch-skip", 0x000CB8, 0),
+            (6, "class-mismatch-skip", 0x009FB0, 0),
+            (7, "class-mismatch-skip", 0x009FB0, 0),
+            (8, "class-mismatch-skip", 0x00A37C, 0),
+            (9, "class-mismatch-skip", 0x00A7CC, 0),
+            (10, "class-mismatch-skip", 0x00AC1C, 0),
+            (11, "class-mismatch-skip", 0x0142E4, 0),
+            (12, "class-mismatch-skip", 0x0142E4, 0),
+            (13, "class-mismatch-skip", 0x0146B4, 0),
+            (14, "class-mismatch-skip", 0x014B08, 0),
+            (15, "class-mismatch-skip", 0x014F5C, 0),
+            (29, "terminal-miss", None, None),
+        ],
+        "final_recent_contexts": [
+            0x40099D18,
+            0x4409A0E4,
+            0x4409A534,
+            0x4009A984,
+            0x400A3484,
+            0x440A3850,
+            0x440A3CA0,
+            0x400A40F0,
+            0x400AD4AA,
+            0x440AD87A,
+            0x440ADCCE,
+            0x400AE122,
+        ],
+        "source_status_write": {
+            "address": 0x00783F05,
+            "value": 29,
+            "writer": "0x1c5d6..0x1c5de",
+        },
+        "page_context_slots": [
+            0x40099D18,
+            0x4409A0E4,
+            0x4409A534,
+            0x4009A984,
+            0x400A3484,
+            0x440A3850,
+            0x440A3CA0,
+            0x400A40F0,
+            0x400AD4AA,
+            0x440AD87A,
+            0x440ADCCE,
+            0x400AE122,
+        ],
+        "page_nonempty_buckets": [
+            0, 3, 4, 6, 7, 10, 11, 14, 15, 18, 19, 22, 23, 25, 26, 29, 30,
+            33, 36, 37, 40, 41, 43, 44, 47, 48, 51, 52, 55, 56, 59, 60, 62,
+            63, 66, 67, 70, 73, 76, 77, 79, 80, 82, 83, 86, 89, 92, 95, 98,
+            99,
+        ],
+        "selected_bucket_hashes": {
+            26: [
+                "84e5696094804a0fd2e163372062e0963856ea643dc906cfd090518d7abd9103",
+                "8c29d34b2d90c8c0b17e4c743f55161b77dce636decc6d3a2068ff79152eaafd",
+                "c93d0e8f38e269980cff1de455c2c35b6ab68a908f04160dbdf0713520cc7c20",
+                "7fb9f404daea411957ef1af65d8c58454bd1dbdeb46539ec9444256730931682",
+            ],
+            66: [
+                "601e7edcf3fe4dd9645c61037036489fba02f998c8f6c809dbfac3d127e8b44e",
+                "eae524e7eec9f3562fdf034e1aa9abbb2e41da2b7159aa602f74261e7a506fd9",
+            ],
+            82: [
+                "070dfaa7cb0a5629e676fc9c697e85348db84198189d32e055ebc3690bb6de3d",
+            ],
+            98: [
+                "fbb3279e7a9945b2d86bcf6339e6de62d6d827a23db6e353fb9778a5b3080d97",
+                "a3885003758f78b4310fcc487730156a8b29297f17098cc736757ff4c741ba66",
+                "8b3a885ca0059f87fcb22f5cfd2f7f60f7dc5e34076364c997f181a3b270f5c1",
             ],
         },
         "final_cursor_x": 0x08AC0000,
@@ -70097,6 +70274,41 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         {
             bucket: internal_source_group_page["bucket_object_hashes"][bucket]  # type: ignore[index]
             for bucket in (26, 66, 82, 90)
+        },
+    ))
+    lines.append("- font sample internal class-one source group: `0x1e9a0` seeds current context `0x40099d18`; `0x1c398..0x1c5d6` emits `%d` class-one rows from request indexes `%s`, rejects class-zero request indexes `%s`, writes source status byte `0x%06x = %d`, and terminates on `%s` at request `%d`. Duplicate Roman-8 substitution requests `%s` remain visible with words `%s`; final recent contexts are `%s`, page context slots are `%s`, and selected page buckets hash to `%s`." % (
+        len(internal_class_one_group_emitted),
+        ",".join(str(row["request_index"]) for row in internal_class_one_group_emitted),
+        ",".join(
+            str(attempt["request_index"])
+            for attempt in internal_class_one_group_rows["attempts"]  # type: ignore[index]
+            if attempt["decision"] == "class-mismatch-skip"
+        ),
+        internal_class_one_group_rows["source_status_write"]["address"],  # type: ignore[index]
+        internal_class_one_group_rows["source_status_write"]["value"],  # type: ignore[index]
+        internal_class_one_group_rows["terminal_reason"],  # type: ignore[index]
+        internal_class_one_group_rows["terminal_request_index"],  # type: ignore[index]
+        ",".join(
+            str(row["request_index"])
+            for row in internal_class_one_group_emitted
+            if row["recent_before"] and int(row["request_index"]) != 0
+        ),
+        ",".join(
+            "0x%04x" % int(row["symbol_word"])
+            for row in internal_class_one_group_emitted
+            if row["recent_before"] and int(row["request_index"]) != 0
+        ),
+        ",".join(
+            "0x%08x" % int(context)
+            for context in internal_class_one_group_rows["final_recent_contexts"]  # type: ignore[index]
+        ),
+        ",".join(
+            "0x%08x" % int(slot)
+            for slot in internal_class_one_group_page["context_slots"]  # type: ignore[index]
+        ),
+        {
+            bucket: internal_class_one_group_page["bucket_object_hashes"][bucket]  # type: ignore[index]
+            for bucket in (26, 66, 82, 98)
         },
     ))
     lines.append("- font sample row fields: first `LINE_PRINTER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152`; the height value is rounded by the mode-1 `0x1cc6e` add-five path." % (

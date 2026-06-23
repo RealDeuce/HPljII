@@ -1133,6 +1133,13 @@ for how resource records become ordinary page-record text.
     `0x1d8ba` projects first-`COURIER` y `0x00900000 -> 0x00ce0000`, derives
     projected bottom `219`, fits at page limit `300`, and returns D7 `1` when
     `0x782db6` equals `219`.
+  - `0x1dcf2` uses shared calculator `0x1dc38` to probe current-y, optional
+    second-selected-row, reset-y, and final selected-row placements. Fixture
+    `font sample multi-probe preflight follows 0x1dcf2` pins mode `0`
+    projections `0x00900000 -> 0x00ce0000 -> 0x010c0000`, reset raw subunits
+    `0x1218` as packed y `0x01820000`, mode `1` reset projection
+    `0x01820000 -> 0x01f20000`, and the D7 exits `0x1de1a`, `0x1dd8e`,
+    `0x1de24`, and `0x1de16`.
   - `0x1d050` plus `0x1cfe4` derives row-to-row y advance from selected
     row line advance, current row height, prior `0x783f06`, and
     page-limit word `0x782db6`; the first-to-second named `COURIER` row
@@ -1274,8 +1281,8 @@ for how resource records become ordinary page-record text.
 - `0x1d6ea` emits capped strings through `0xd04a`; `0x1d71e`
   sanitizes fixed-length name bytes before emission.
 - `0x1d868` / `0x1d8ba` preflight the selected/alternate row gate against
-  `0x782db6`; `0x1d964` / `0x1dcf2` remain the later current/alternate
-  multi-probe preflight boundary.
+  `0x782db6`; `0x1d964` consumes `0x1dcf2` to preflight current/alternate
+  row placement before continuing row emission.
 - `0xd04a`, `0x1393a`, `0xd824` / `0xd3b2`, `0x12f2e`, `0x1ed84`, and
   `0x1ef6a` are the downstream text/page/render consumers once the
   sample helper emits bytes.
@@ -1548,8 +1555,8 @@ open.
   carried page-record state. The
   `0x1c1e9` sample run 2 byte stream is now carried after run 1 through the
   no-continuation `0x1d050` branch for first `COURIER`.
-  Remaining gaps are the `0x1d964 -> 0x1dcf2..0x1de2c` multi-probe preflight
-  and full page placement.
+  Remaining gap is full page placement with the modeled preflight branches
+  integrated into the all-source row loop.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
   identified. First `COURIER` and first `LINE_PRINTER` row-field

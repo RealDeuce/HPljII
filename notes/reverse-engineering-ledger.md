@@ -707,7 +707,13 @@ second `0x1cfe4` advance; fixture
 selected/alternate gate at `0x1d868..0x1d95c`: clear `0x783132` skips
 `0x1d8ba`, while set `0x783132` projects first-`COURIER` y
 `0x00900000 -> 0x00ce0000`, compares bottom `219` against page limits `300`
-and `219`, and returns D7 `1` only at equality/overrun; the
+and `219`, and returns D7 `1` only at equality/overrun; fixture
+`font sample multi-probe preflight follows 0x1dcf2` now pins the later
+`0x1d964` current/alternate preflight through shared calculator
+`0x1dc38`: first `COURIER` projections `0x00900000 -> 0x00ce0000 ->
+0x010c0000` fit under limit `300`, limit `250` overflows the second probe and
+returns D7 `1` at `0x1de24` after reset y `0x01820000`, and a high-y
+limit-`600` case proves the reset mode-1/mode-0 fit exit at `0x1de16`; the
 row helper listing now names `0x1d198` font-name/style formatting,
 `0x1d6ea` capped string emission, `0x1d71e` fixed-name sanitization,
 `0x1d76c` orientation-command synthesis, and `0x1d964` / `0x1dcf2`
@@ -1076,10 +1082,10 @@ ROM work needed:
   all 14 visible class-zero rows and all 14 visible class-one rows in separate
   page-record states. The page-limit continuation checkpoint now covers
   `0x1ca2c` heading preflight, `0x1d050` row-continuation call targets, and
-  the `0x1d868` selected/alternate fit gate. The next boundaries are
-  `0x1d964 -> 0x1dcf2..0x1de2c` multi-probe preflight and full-printout
-  placement for comparison against the direct payload hashes and a known
-  printed/self-test sample.
+  the `0x1d868` selected/alternate fit gate, plus the `0x1d964` /
+  `0x1dcf2..0x1de2c` multi-probe preflight. The next boundary is
+  full-printout placement for comparison against the direct payload hashes and
+  a known printed/self-test sample.
 - Identify the manual-facing names for the currently unidentified
   built-in symbol words `0N`, `10U`, and `11U`, and broaden the
   now-pinned real symbol-map samples into more live parser/font-selection

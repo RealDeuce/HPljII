@@ -521,12 +521,24 @@ the routine skips `0x1d8ba` and returns D7 `0`. With `0x783132 = 1`,
 and selected row heights to `13`, and compares projected bottom `219` against
 `0x782db6`: page limit `300` fits, while equality at limit `219` returns D7
 `1` for the continuation path.
+Fixture `font sample multi-probe preflight follows 0x1dcf2` covers the later
+current/alternate preflight helper at `0x1dcf2..0x1de2c` and its shared
+calculator `0x1dc38..0x1dcf0`. The calculator reads the selected line advance
+and current/selected row heights, writes the caller's row-height output word,
+and returns the projected packed y. `0x1dcf2` first probes current y with mode
+`0`, optionally probes a second selected row when `0x783132` is set, and on
+overflow converts raw subunits `0x1218` to reset y `0x01820000` before probing
+mode `1` and possibly a final mode-`0` selected row. The first `COURIER` case
+shows y `0x00900000 -> 0x00ce0000 -> 0x010c0000` fitting under limit `300`
+and returning D7 `0`; with limit `250`, the second probe overflows and the
+reset mode-`1` probe bottom `511` returns D7 `1` at `0x1de24`. A high-y case
+starting at `0x01f40000` with limit `600` proves the reset mode-`1` and
+mode-`0` probes can both fit and return D7 `0` at `0x1de16`.
 
-The still-open boundary is the rest of `0x1c204..0x1ed84`: the later
-`0x1d964 -> 0x1dcf2..0x1de2c` current/alternate multi-probe preflight and
-all-source full-page placement. The emitted page objects still must be
-correlated with the direct sample-byte row hashes or a known print sample
-before those fields get final semantic names.
+The still-open boundary is the rest of `0x1c204..0x1ed84`: integrating the
+modeled preflight branches into all-source full-page placement. The emitted
+page objects still must be correlated with the direct sample-byte row hashes or
+a known print sample before those fields get final semantic names.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record

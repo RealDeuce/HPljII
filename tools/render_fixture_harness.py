@@ -21184,6 +21184,180 @@ def font_sample_alternate_row_fit_gate_via_1d868(
     return result
 
 
+def font_sample_row_projection_via_1dc38(
+    resources: bytes,
+    selected_record_start: int,
+    selected_context: int,
+    current_record_start: int,
+    current_context: int,
+    *,
+    cursor_y: int,
+    mode: int,
+) -> dict[str, object]:
+    selected_extent = font_sample_extent_via_1c6a4_1c6da(
+        resources,
+        int(selected_record_start),
+        int(selected_context),
+    )
+    current_extent = font_sample_extent_via_1c6a4_1c6da(
+        resources,
+        int(current_record_start),
+        int(current_context),
+    )
+    row_height_source = (
+        current_extent["row_height_1c6da"]
+        if int(mode) == 1
+        else selected_extent["row_height_1c6da"]
+    )
+    line_advance_subunits = line_advance_subunits_via_1cfe4(
+        selected_extent["line_advance_1c6a4"],
+        row_height_source,
+    )
+    extra_mode1_subunits = 0x0258 if int(mode) == 1 else 0
+    total_subunits = line_advance_subunits + extra_mode1_subunits
+    projected_y = subunits_to_packed12(
+        packed12_to_subunits(int(cursor_y)) + total_subunits
+    )
+    projected_y_word = unpack12(projected_y)[0]
+    row_height_after = max(row_height_source, current_extent["row_height_1c6da"])
+    projected_bottom = projected_y_word + row_height_after
+    return {
+        "helper": "0x1dc38",
+        "selected_record_start": int(selected_record_start),
+        "selected_context": int(selected_context),
+        "current_record_start": int(current_record_start),
+        "current_context": int(current_context),
+        "mode": int(mode),
+        "selected_extent": selected_extent,
+        "current_extent": current_extent,
+        "cursor_y_before": int(cursor_y),
+        "row_height_source": row_height_source,
+        "line_advance_subunits_1cfe4": line_advance_subunits,
+        "extra_mode1_subunits": extra_mode1_subunits,
+        "total_advance_subunits": total_subunits,
+        "projected_y": projected_y,
+        "projected_y_word": projected_y_word,
+        "row_height_after": row_height_after,
+        "projected_bottom": projected_bottom,
+    }
+
+
+def add_font_sample_probe_limit(
+    probe: dict[str, object],
+    page_limit_782db6: int,
+) -> dict[str, object]:
+    with_limit = dict(probe)
+    with_limit["page_limit_782db6"] = int(page_limit_782db6)
+    with_limit["overruns_page_limit"] = (
+        int(page_limit_782db6) <= int(probe["projected_bottom"])
+    )
+    return with_limit
+
+
+def font_sample_multi_probe_preflight_via_1dcf2(
+    resources: bytes,
+    selected_record_start: int,
+    selected_context: int,
+    current_record_start: int,
+    current_context: int,
+    *,
+    row_index: int,
+    selected_flag_783132: int,
+    cursor_y: int,
+    page_limit_782db6: int,
+) -> dict[str, object]:
+    probes: list[dict[str, object]] = []
+
+    def probe(cursor: int, mode: int, label: str) -> dict[str, object]:
+        event = add_font_sample_probe_limit(
+            font_sample_row_projection_via_1dc38(
+                resources,
+                int(selected_record_start),
+                int(selected_context),
+                int(current_record_start),
+                int(current_context),
+                cursor_y=int(cursor),
+                mode=int(mode),
+            ),
+            int(page_limit_782db6),
+        )
+        event["label"] = label
+        probes.append(event)
+        return event
+
+    first = probe(int(cursor_y), 0, "initial-current-y")
+    branch = "first-overrun" if bool(first["overruns_page_limit"]) else "first-fits"
+    return_label = ""
+    return_d7 = 0
+    reset_y: int | None = None
+
+    def run_reset_sequence() -> bool:
+        nonlocal return_d7, return_label, reset_y
+        reset_y = subunits_to_packed12(0x1218)
+        reset_mode1 = probe(reset_y, 1, "reset-y-mode1")
+        if bool(reset_mode1["overruns_page_limit"]):
+            return_d7 = 1
+            return_label = "0x1de24"
+            return True
+        if int(selected_flag_783132) == 0:
+            return_d7 = 0
+            return_label = "0x1de28"
+            return True
+        reset_mode0 = probe(int(reset_mode1["projected_y"]), 0, "reset-y-mode0")
+        if bool(reset_mode0["overruns_page_limit"]):
+            return_d7 = 1
+            return_label = "0x1de2c"
+        else:
+            return_d7 = 0
+            return_label = "0x1de16"
+        return True
+
+    if bool(first["overruns_page_limit"]):
+        run_reset_sequence()
+    elif int(selected_flag_783132) == 0:
+        return_d7 = 0
+        return_label = "0x1de1a"
+    else:
+        second = probe(int(first["projected_y"]), 0, "second-selected-row")
+        if bool(second["overruns_page_limit"]):
+            branch = "second-overrun"
+            run_reset_sequence()
+        else:
+            branch = "two-rows-fit"
+            return_d7 = 0
+            return_label = "0x1dd8e"
+
+    return {
+        "helper": "0x1dcf2",
+        "selected_record_start": int(selected_record_start),
+        "selected_context": int(selected_context),
+        "current_record_start": int(current_record_start),
+        "current_context": int(current_context),
+        "row_index": int(row_index),
+        "selected_flag_783132": int(selected_flag_783132),
+        "cursor_y_782c8e": int(cursor_y),
+        "page_limit_782db6": int(page_limit_782db6),
+        "setup_calls": [
+            {
+                "target": "0x1cece",
+                "record_start": int(selected_record_start),
+                "context": int(selected_context),
+                "row_index": int(row_index),
+            },
+            {
+                "target": "0x1c5e8",
+                "record_start": int(current_record_start),
+                "context": int(current_context),
+            },
+        ],
+        "reset_y_from_raw_0x1218": reset_y,
+        "branch": branch,
+        "probes": probes,
+        "return_label": return_label,
+        "return_d7": return_d7,
+    }
+
+
 def render_font_sample_first_row_fields_and_both_runs_page_record(
     data: bytes,
     resources: bytes,
@@ -29551,6 +29725,268 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "continuation_needed": True,
             "return_d7": 1,
         },
+    }))
+    font_sample_multi_probe_branches = {
+        "flag_clear_first_fits": font_sample_multi_probe_preflight_via_1dcf2(
+            resources,
+            int(courier_sample_row_fields["record_start"]),
+            int(courier_sample_row_fields["context"]),
+            0x00004C,
+            0x4008004C,
+            row_index=1,
+            selected_flag_783132=0,
+            cursor_y=pack12(144),
+            page_limit_782db6=300,
+        ),
+        "flag_set_two_rows_fit": font_sample_multi_probe_preflight_via_1dcf2(
+            resources,
+            int(courier_sample_row_fields["record_start"]),
+            int(courier_sample_row_fields["context"]),
+            0x00004C,
+            0x4008004C,
+            row_index=1,
+            selected_flag_783132=1,
+            cursor_y=pack12(144),
+            page_limit_782db6=300,
+        ),
+        "flag_set_second_overruns_reset_overruns": (
+            font_sample_multi_probe_preflight_via_1dcf2(
+                resources,
+                int(courier_sample_row_fields["record_start"]),
+                int(courier_sample_row_fields["context"]),
+                0x00004C,
+                0x4008004C,
+                row_index=1,
+                selected_flag_783132=1,
+                cursor_y=pack12(144),
+                page_limit_782db6=250,
+            )
+        ),
+        "flag_set_second_overruns_reset_fits": (
+            font_sample_multi_probe_preflight_via_1dcf2(
+                resources,
+                int(courier_sample_row_fields["record_start"]),
+                int(courier_sample_row_fields["context"]),
+                0x00004C,
+                0x4008004C,
+                row_index=1,
+                selected_flag_783132=1,
+                cursor_y=pack12(500),
+                page_limit_782db6=600,
+            )
+        ),
+    }
+    multi_probe_setup_calls = alternate_setup_calls
+    multi_probe_base = {
+        "helper": "0x1dc38",
+        "selected_record_start": 0x000418,
+        "selected_context": 0x44080418,
+        "current_record_start": 0x00004C,
+        "current_context": 0x4008004C,
+        "selected_extent": alternate_projection_base["selected_extent"],
+        "current_extent": alternate_projection_base["current_extent"],
+        "row_height_source": 13,
+        "line_advance_subunits_1cfe4": 744,
+        "row_height_after": 13,
+    }
+
+    def expected_multi_probe_header(
+        selected_flag_783132: int,
+        cursor_y: int,
+        page_limit_782db6: int,
+        branch: str,
+        probes: list[dict[str, object]],
+        reset_y: int | None,
+        return_label: str,
+        return_d7: int,
+    ) -> dict[str, object]:
+        return {
+            "helper": "0x1dcf2",
+            "selected_record_start": 0x000418,
+            "selected_context": 0x44080418,
+            "current_record_start": 0x00004C,
+            "current_context": 0x4008004C,
+            "row_index": 1,
+            "selected_flag_783132": selected_flag_783132,
+            "cursor_y_782c8e": cursor_y,
+            "page_limit_782db6": page_limit_782db6,
+            "setup_calls": multi_probe_setup_calls,
+            "reset_y_from_raw_0x1218": reset_y,
+            "branch": branch,
+            "probes": probes,
+            "return_label": return_label,
+            "return_d7": return_d7,
+        }
+
+    def expected_probe(
+        label: str,
+        cursor_y: int,
+        mode: int,
+        projected_y: int,
+        projected_y_word: int,
+        projected_bottom: int,
+        page_limit_782db6: int,
+        overruns_page_limit: bool,
+    ) -> dict[str, object]:
+        return {
+            **multi_probe_base,
+            "mode": mode,
+            "cursor_y_before": cursor_y,
+            "extra_mode1_subunits": 0x0258 if mode == 1 else 0,
+            "total_advance_subunits": 0x0540 if mode == 1 else 744,
+            "projected_y": projected_y,
+            "projected_y_word": projected_y_word,
+            "projected_bottom": projected_bottom,
+            "page_limit_782db6": page_limit_782db6,
+            "overruns_page_limit": overruns_page_limit,
+            "label": label,
+        }
+
+    checks.append(assert_equal("font sample multi-probe preflight follows 0x1dcf2", font_sample_multi_probe_branches, {
+        "flag_clear_first_fits": expected_multi_probe_header(
+            0,
+            pack12(144),
+            300,
+            "first-fits",
+            [
+                expected_probe(
+                    "initial-current-y",
+                    pack12(144),
+                    0,
+                    pack12(206),
+                    206,
+                    219,
+                    300,
+                    False,
+                ),
+            ],
+            None,
+            "0x1de1a",
+            0,
+        ),
+        "flag_set_two_rows_fit": expected_multi_probe_header(
+            1,
+            pack12(144),
+            300,
+            "two-rows-fit",
+            [
+                expected_probe(
+                    "initial-current-y",
+                    pack12(144),
+                    0,
+                    pack12(206),
+                    206,
+                    219,
+                    300,
+                    False,
+                ),
+                expected_probe(
+                    "second-selected-row",
+                    pack12(206),
+                    0,
+                    pack12(268),
+                    268,
+                    281,
+                    300,
+                    False,
+                ),
+            ],
+            None,
+            "0x1dd8e",
+            0,
+        ),
+        "flag_set_second_overruns_reset_overruns": expected_multi_probe_header(
+            1,
+            pack12(144),
+            250,
+            "second-overrun",
+            [
+                expected_probe(
+                    "initial-current-y",
+                    pack12(144),
+                    0,
+                    pack12(206),
+                    206,
+                    219,
+                    250,
+                    False,
+                ),
+                expected_probe(
+                    "second-selected-row",
+                    pack12(206),
+                    0,
+                    pack12(268),
+                    268,
+                    281,
+                    250,
+                    True,
+                ),
+                expected_probe(
+                    "reset-y-mode1",
+                    pack12(386),
+                    1,
+                    pack12(498),
+                    498,
+                    511,
+                    250,
+                    True,
+                ),
+            ],
+            pack12(386),
+            "0x1de24",
+            1,
+        ),
+        "flag_set_second_overruns_reset_fits": expected_multi_probe_header(
+            1,
+            pack12(500),
+            600,
+            "second-overrun",
+            [
+                expected_probe(
+                    "initial-current-y",
+                    pack12(500),
+                    0,
+                    pack12(562),
+                    562,
+                    575,
+                    600,
+                    False,
+                ),
+                expected_probe(
+                    "second-selected-row",
+                    pack12(562),
+                    0,
+                    pack12(624),
+                    624,
+                    637,
+                    600,
+                    True,
+                ),
+                expected_probe(
+                    "reset-y-mode1",
+                    pack12(386),
+                    1,
+                    pack12(498),
+                    498,
+                    511,
+                    600,
+                    False,
+                ),
+                expected_probe(
+                    "reset-y-mode0",
+                    pack12(498),
+                    0,
+                    pack12(560),
+                    560,
+                    573,
+                    600,
+                    False,
+                ),
+            ],
+            pack12(386),
+            "0x1de16",
+            0,
+        ),
     }))
     courier_sample_row_run2_rendered = render_font_sample_carried_run2_buckets_via_1ed84_1ef6a(
         data,
@@ -71203,6 +71639,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_sample_alternate_fit_branches["flag_set_overruns"]["projection_call"]["projected_bottom"],  # type: ignore[index]
         font_sample_alternate_fit_branches["flag_set_fits"]["projection_call"]["page_limit_782db6"],  # type: ignore[index]
         font_sample_alternate_fit_branches["flag_set_overruns"]["projection_call"]["page_limit_782db6"],  # type: ignore[index]
+    ))
+    lines.append("- font sample multi-probe preflight: `0x1dcf2` uses shared calculator `0x1dc38` to write a row-height word and project each candidate y. With `0x783132 = 0`, first `COURIER` y `0x%08x -> 0x%08x` fits under limit `%d` and returns D7=0 at `0x1de1a`; with `0x783132 = 1`, y `0x%08x -> 0x%08x -> 0x%08x` fits under the same limit and returns D7=0 at `0x1dd8e`. Tightening the limit to `%d` makes the second probe overrun, converts raw `0x1218` to reset y `0x%08x`, and the mode-1 reset probe bottom `%d` returns D7=1 at `0x1de24`; starting at y `0x%08x` with limit `%d` proves the reset mode-1 and mode-0 probes can both fit and return D7=0 at `0x1de16`." % (
+        font_sample_multi_probe_branches["flag_clear_first_fits"]["probes"][0]["cursor_y_before"],  # type: ignore[index]
+        font_sample_multi_probe_branches["flag_clear_first_fits"]["probes"][0]["projected_y"],  # type: ignore[index]
+        font_sample_multi_probe_branches["flag_clear_first_fits"]["page_limit_782db6"],  # type: ignore[index]
+        font_sample_multi_probe_branches["flag_set_two_rows_fit"]["probes"][0]["cursor_y_before"],  # type: ignore[index]
+        font_sample_multi_probe_branches["flag_set_two_rows_fit"]["probes"][0]["projected_y"],  # type: ignore[index]
+        font_sample_multi_probe_branches["flag_set_two_rows_fit"]["probes"][1]["projected_y"],  # type: ignore[index]
+        font_sample_multi_probe_branches["flag_set_second_overruns_reset_overruns"]["page_limit_782db6"],  # type: ignore[index]
+        font_sample_multi_probe_branches["flag_set_second_overruns_reset_overruns"]["reset_y_from_raw_0x1218"],  # type: ignore[index]
+        font_sample_multi_probe_branches["flag_set_second_overruns_reset_overruns"]["probes"][2]["projected_bottom"],  # type: ignore[index]
+        font_sample_multi_probe_branches["flag_set_second_overruns_reset_fits"]["cursor_y_782c8e"],  # type: ignore[index]
+        font_sample_multi_probe_branches["flag_set_second_overruns_reset_fits"]["page_limit_782db6"],  # type: ignore[index]
     ))
     lines.append("- font sample carried run-2 render: buckets `3` and `4` now cross `0x1ed84` / `0x1ef6a` with wide destination stride `0x0180`; bucket 3 setup `%s` dispatches `%d` compact objects with current row hash `%s` and fallback hashes `%s`, while bucket 4 setup `%s` dispatches `%d` compact object with current row hash `%s` and fallback hashes `%s`." % (
         courier_sample_row_run2_rendered[3]["setup"],  # type: ignore[index]

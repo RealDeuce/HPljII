@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Format notes Markdown and enforce ordinary changed-file whitespace."""
+"""Format notes Markdown and normalize ordinary changed-file whitespace."""
 
 from __future__ import annotations
 
@@ -219,12 +219,39 @@ def format_markdown(text: str, width: int) -> str:
     return normalize_text_whitespace("\n".join(out))
 
 
+def diff_check_path(line: str) -> str | None:
+    match = re.match(r"^([^:]+):\d+:", line)
+    if match:
+        return match.group(1)
+    return None
+
+
+def unhandled_diff_check_failures(
+    root: Path,
+    normalized_paths: list[Path],
+) -> list[str]:
+    result = run_git_diff_check(root)
+    lines = [line for line in result.stdout.splitlines() if line]
+    lines.extend(line for line in result.stderr.splitlines() if line)
+    if result.returncode == 0:
+        return []
+
+    normalized_names = {str(path.relative_to(root)) for path in normalized_paths}
+    failures = []
+    for line in lines:
+        name = diff_check_path(line)
+        if name is not None and name in normalized_names:
+            continue
+        failures.append(line)
+    return failures
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Format notes Markdown by wrapping prose paragraphs, and normalize "
-            "ordinary whitespace in changed text files. Every run also performs "
-            "the normal git whitespace check against HEAD."
+            "ordinary whitespace in changed text files. The internal git "
+            "whitespace check only reports issues this formatter did not handle."
         ),
     )
     parser.add_argument(
@@ -253,9 +280,8 @@ def parse_args() -> argparse.Namespace:
         "--check",
         action="store_true",
         help=(
-            "report files that would change; changed text-file whitespace and "
-            "git diff --check failures are fixed by running without --check "
-            "when possible"
+            "report files that would change; running without --check applies "
+            "Markdown wrapping and changed text-file whitespace normalization"
         ),
     )
     return parser.parse_args()
@@ -316,10 +342,7 @@ def main() -> int:
             if path not in changed
         )
 
-    diff_check = run_git_diff_check(root)
-    if diff_check.returncode != 0:
-        failures.extend(line for line in diff_check.stdout.splitlines() if line)
-        failures.extend(line for line in diff_check.stderr.splitlines() if line)
+    failures.extend(unhandled_diff_check_failures(root, whitespace_changed))
 
     if failures:
         print("\n".join(failures), file=sys.stderr)

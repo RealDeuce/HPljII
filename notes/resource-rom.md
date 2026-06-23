@@ -347,9 +347,7 @@ treated as semantic state, not just extraction columns:
     still need a fixture that ties them to an observed baseline, cell
     size, or font-printout column;
   - comparator bytes `+0x2f..+0x31` are extracted and class-correlated,
-    but their manual-facing names remain unknown;
-  - manual-facing names for symbol words `0N`, `10U`, and `11U` remain
-    unresolved.
+    but their manual-facing names remain unknown.
 
 Writers are limited because these are ROM resource records. The firmware
 writers are bridge/cache writers: `0x13eb8` selects a current-font record,
@@ -647,13 +645,13 @@ HP Roman Extension) and `0x0015` (`0U`, ISO 6 ASCII) use hard-coded
 half-map behavior instead of a patch table.
 The same report now adds a verified built-in symbol inventory and real
 map samples from the scanned resource records. The 24 built-ins expose
-six records each for `0N` (`0x000e`), `8U` Roman-8 (`0x0115`), `10U`
-(`0x0155`), and `11U` (`0x0175`). Roman-8 samples from record
-`0x00004c` now show the actual compact glyph bytes for base `8U`,
-hard-coded `0U` and `0E`, plus selected patch-table cases such as `2U`,
-`1E`, and `0G`. Separate base-map samples for `0N`, `10U`, and `11U`
-make clear that those built-in alternatives are selected as distinct
-font records rather than remapped by `0x14f16`.
+six records each for `0N` (`0x000e`, ISO 100: ECMA-94 / Latin 1), `8U`
+Roman-8 (`0x0115`), `10U` (`0x0155`, PC-8), and `11U` (`0x0175`, PC-8
+DIN). Roman-8 samples from record `0x00004c` now show the actual compact
+glyph bytes for base `8U`, hard-coded `0U` and `0E`, plus selected
+patch-table cases such as `2U`, `1E`, and `0G`. Separate base-map samples
+for `0N`, `10U`, and `11U` make clear that those built-in alternatives are
+selected as distinct font records rather than remapped by `0x14f16`.
 
 The generated `generated/analysis/ic30_ic13_active_symbol_set_flow.md`
 report traces those active words back to the host parser. `ESC (` uses
@@ -766,10 +764,8 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    rendered rows against the direct payload hashes and a known
    printed/self-test sample to correlate the remaining baseline/header
    fields against observed placement.
-7. Identify the manual-facing names for the currently unidentified
-   built-in symbol words `0N`, `10U`, and `11U`, and broaden the
-   now-pinned real map samples into more live parser/font-selection
-   byte-stream cases where needed.
+7. Broaden the now-named `0N` / `10U` / `11U` real map samples into more
+   live parser/font-selection byte-stream cases where needed.
 
 These are high-value targets for pixel-perfect output because the
 manuals describe PCL behavior but do not provide the built-in font

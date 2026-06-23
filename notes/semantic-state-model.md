@@ -970,8 +970,7 @@ and the compact glyph renderers.
 - Unknown:
   - cartridge/external resource behavior outside the verified built-in
     window `0x080000..0x0ffffe`.
-  - final manual-facing names for record fields `+0x28..+0x31` and
-    built-in symbol words `0N`, `10U`, and `11U`.
+  - final manual-facing names for record fields `+0x28..+0x31`.
 
 ### Writers
 

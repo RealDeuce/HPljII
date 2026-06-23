@@ -1103,13 +1103,13 @@ ROM work needed:
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`. The
   next boundary is physical baseline/cell comparison against a known
   printed/self-test sample.
-- Identify the manual-facing names for the currently unidentified
-  built-in symbol words `0N`, `10U`, and `11U`, and broaden the
-  now-pinned real symbol-map samples into more live parser/font-selection
-  byte-stream cases where needed. The generated symbol-set report now
-  inventories all 24 built-in records and shows actual compact glyph
-  bytes for Roman-8 base `8U`, hard-coded `0U`/`0E`, selected patch-table
-  cases, and separate `0N`/`10U`/`11U` base records.
+- Broaden the now-named `0N` / `10U` / `11U` built-in symbol-map samples
+  into more live parser/font-selection byte-stream cases where needed. The
+  generated symbol-set report now inventories all 24 built-in records and
+  shows actual compact glyph bytes for Roman-8 base `8U`, hard-coded
+  `0U`/`0E`, selected patch-table cases, `0N` as ISO 100: ECMA-94 / Latin 1,
+  `10U` as PC-8, `11U` as PC-8 (DIN), and separate base records for those
+  non-Roman-8 symbols.
 - Promote the generated glyph payload manifest into renderer fixture
   inputs once the renderer-side data format is chosen.
 

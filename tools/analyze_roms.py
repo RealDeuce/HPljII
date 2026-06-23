@@ -233,6 +233,9 @@ SYMBOL_SET_NAMES = {
     0x00B3: "ISO 84: Portuguese",
     0x00D3: "ISO 85: Spanish",
     0x0115: "HP Roman-8",
+    0x000E: "ISO 100: ECMA-94 (Latin 1)",
+    0x0155: "PC-8",
+    0x0175: "PC-8 (DIN)",
     0x0033: "HP Spanish",
 }
 

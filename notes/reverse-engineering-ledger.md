@@ -925,8 +925,10 @@ ROM work needed:
   available.
 - Finish semantic naming of the remaining built-in record fields now
   extracted from the repeated `COURIER` and `LINE_PRINTER` fixtures,
-  especially ambiguous header size words and header-level baseline
-  semantics.
+  especially record `+0x28..+0x31` header-level baseline/cell fields.
+  Record `+0x24` is already pinned as the `0xc428` / `0x10550`
+  HMI/default-advance source, and glyph-entry `+0/+2` placement offsets
+  are already pinned through the `0xd824` path.
 - Decide whether the parser-exposed `@0..@2` table/copy variants need
   compatibility-facing documentation. The default-font candidate and
   caller path is now real-record backed through `0x1b250`, `0x1b50e`,

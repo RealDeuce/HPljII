@@ -21659,6 +21659,101 @@ def font_sample_source_page_summary(
     }
 
 
+def font_sample_full_printout_placement_summary(
+    *,
+    source0_class_zero_page: dict[str, object],
+    source0_class_one_page: dict[str, object],
+    source1_class_zero_page: dict[str, object],
+    source1_class_one_page: dict[str, object],
+    source2_class_zero_page: dict[str, object],
+    source2_class_one_page: dict[str, object],
+    source3_class_zero_page: dict[str, object],
+    source3_class_one_page: dict[str, object],
+    source_status_writes: dict[tuple[int, int], dict[str, object]],
+    row_counts: dict[tuple[int, int], int],
+) -> dict[str, object]:
+    page_by_key = {
+        (0, 0): source0_class_zero_page,
+        (1, 0): source1_class_zero_page,
+        (2, 0): source2_class_zero_page,
+        (3, 0): source3_class_zero_page,
+        (0, 1): source0_class_one_page,
+        (1, 1): source1_class_one_page,
+        (2, 1): source2_class_one_page,
+        (3, 1): source3_class_one_page,
+    }
+    order = [(class_filter, source_index) for class_filter in (0, 1) for source_index in range(4)]
+    segments = []
+    for class_filter, source_index in order:
+        page = page_by_key[(source_index, class_filter)]
+        page_record = page["page_record"]
+        assert isinstance(page_record, dict)
+        bucket_objects = page.get("bucket_objects")
+        if bucket_objects is None:
+            bucket_objects = page_record_bucket_objects(page_record)
+        assert isinstance(bucket_objects, dict)
+        source_label = page.get("source_label")
+        if source_label is None:
+            rows = page["rows"]
+            assert isinstance(rows, list) and rows
+            first_row = rows[0]
+            assert isinstance(first_row, dict)
+            row_page = first_row["row"]
+            assert isinstance(row_page, dict)
+            source_label = row_page["source_label"]
+        assert isinstance(source_label, dict)
+        segments.append({
+            "class_filter": class_filter,
+            "source_index": source_index,
+            "label": source_label["label"],
+            "row_count": int(row_counts[(source_index, class_filter)]),
+            "status_write": source_status_writes[(source_index, class_filter)],
+            "bucket_count": sum(len(objects) for objects in bucket_objects.values()),
+            "nonempty_bucket_count": len(bucket_objects),
+            "bucket_digest": page_record_bucket_digest(bucket_objects),  # type: ignore[arg-type]
+            "context_slot_count": len(list(page_record.get("context_slots", []))),
+            "final_cursor": (page["final_cursor_x"], page["final_cursor_y"]),
+        })
+    return {
+        "helper": "0x1c204/0x1c28e/0x1c2fe",
+        "pass_setup": [
+            {
+                "class_filter": 0,
+                "orientation_call": "0x1d76c(0)",
+                "page_root_call": "0x10084",
+                "current_context_seed": "0x1e9a0",
+                "recent_reset": "0x1c9b8",
+                "page_setup": "0x1c916",
+                "initial_line_advance": "0x1cfb4",
+            },
+            {
+                "class_filter": 1,
+                "orientation_call": "0x1d76c(1)",
+                "page_root_call": "0x10084",
+                "current_context_seed": "0x1e9a0",
+                "recent_reset": "0x1c9b8",
+                "page_setup": "0x1c916",
+                "initial_line_advance": "0x1cfb4",
+            },
+        ],
+        "source_order": order,
+        "segments": segments,
+        "total_rows": sum(segment["row_count"] for segment in segments),
+        "segment_digest": hashlib.sha256(
+            b"".join(
+                (
+                    int(segment["class_filter"]).to_bytes(1, "big")
+                    + int(segment["source_index"]).to_bytes(1, "big")
+                    + bytes(segment["label"])
+                    + int(segment["row_count"]).to_bytes(2, "big")
+                    + bytes.fromhex(str(segment["bucket_digest"]))
+                )
+                for segment in segments
+            )
+        ).hexdigest(),
+    }
+
+
 def render_font_sample_source_heading_first_two_courier_rows_page_record(
     data: bytes,
     resources: bytes,
@@ -30893,6 +30988,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         0x4008004C,
         0,
     )
+    source0_class_one_heading_page = render_font_sample_source_heading_only_page_record(
+        data,
+        resources,
+        0x40099D18,
+        0,
+    )
     source1_class_zero_fields = font_sample_builtin_row_fields_via_1cabe(
         resources,
         0x00004C,
@@ -31099,6 +31200,201 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "final_cursor_x": pack12(2220),
             "final_cursor_y": 0x008B0003,
         },
+    }))
+    font_sample_full_printout_placement = font_sample_full_printout_placement_summary(
+        source0_class_zero_page=source0_heading_page,
+        source0_class_one_page=source0_class_one_heading_page,
+        source1_class_zero_page=source1_class_zero_page,
+        source1_class_one_page=source1_class_one_page,
+        source2_class_zero_page=source2_class_zero_page,
+        source2_class_one_page=source2_class_one_page,
+        source3_class_zero_page=internal_source_group_page,
+        source3_class_one_page=internal_class_one_group_page,
+        source_status_writes={
+            (0, 0): non_internal_source_groups[0]["class_zero"]["source_status_write"],  # type: ignore[index]
+            (0, 1): non_internal_source_groups[0]["class_one"]["source_status_write"],  # type: ignore[index]
+            (1, 0): non_internal_source_groups[1]["class_zero"]["source_status_write"],  # type: ignore[index]
+            (1, 1): non_internal_source_groups[1]["class_one"]["source_status_write"],  # type: ignore[index]
+            (2, 0): non_internal_source_groups[2]["class_zero"]["source_status_write"],  # type: ignore[index]
+            (2, 1): non_internal_source_groups[2]["class_one"]["source_status_write"],  # type: ignore[index]
+            (3, 0): internal_source_group_rows["source_status_write"],  # type: ignore[index]
+            (3, 1): internal_class_one_group_rows["source_status_write"],  # type: ignore[index]
+        },
+        row_counts={
+            (0, 0): 0,
+            (0, 1): 0,
+            (1, 0): 1,
+            (1, 1): 1,
+            (2, 0): 1,
+            (2, 1): 1,
+            (3, 0): len(internal_source_group_emitted),
+            (3, 1): len(internal_class_one_group_emitted),
+        },
+    )
+    checks.append(assert_equal("font sample full printout source placement follows firmware order", font_sample_full_printout_placement, {
+        "helper": "0x1c204/0x1c28e/0x1c2fe",
+        "pass_setup": [
+            {
+                "class_filter": 0,
+                "orientation_call": "0x1d76c(0)",
+                "page_root_call": "0x10084",
+                "current_context_seed": "0x1e9a0",
+                "recent_reset": "0x1c9b8",
+                "page_setup": "0x1c916",
+                "initial_line_advance": "0x1cfb4",
+            },
+            {
+                "class_filter": 1,
+                "orientation_call": "0x1d76c(1)",
+                "page_root_call": "0x10084",
+                "current_context_seed": "0x1e9a0",
+                "recent_reset": "0x1c9b8",
+                "page_setup": "0x1c916",
+                "initial_line_advance": "0x1cfb4",
+            },
+        ],
+        "source_order": [
+            (0, 0),
+            (0, 1),
+            (0, 2),
+            (0, 3),
+            (1, 0),
+            (1, 1),
+            (1, 2),
+            (1, 3),
+        ],
+        "segments": [
+            {
+                "class_filter": 0,
+                "source_index": 0,
+                "label": b"\"PERMANENT\" SOFT FONTS",
+                "row_count": 0,
+                "status_write": {
+                    "address": 0x00783F02,
+                    "value": 1,
+                    "writer": "0x1c5d6..0x1c5de",
+                },
+                "bucket_count": 3,
+                "nonempty_bucket_count": 1,
+                "bucket_digest": "89fb4143a293f80bb8c07bab86d5c94940ba73039f2bd9ba1e3de0c2c6c4fb4c",
+                "context_slot_count": 1,
+                "final_cursor": (pack12(0), pack12(82)),
+            },
+            {
+                "class_filter": 0,
+                "source_index": 1,
+                "label": b"LEFT FONT CARTRIDGE",
+                "row_count": 1,
+                "status_write": {
+                    "address": 0x00783F03,
+                    "value": 1,
+                    "writer": "0x1c5d6..0x1c5de",
+                },
+                "bucket_count": 13,
+                "nonempty_bucket_count": 6,
+                "bucket_digest": "cc583ac71b083d3cf241a1a72ff6345e22d585a9eef1a0ba850427b6d43e2aba",
+                "context_slot_count": 1,
+                "final_cursor": (pack12(2220), 0x008B0003),
+            },
+            {
+                "class_filter": 0,
+                "source_index": 2,
+                "label": b"RIGHT FONT CARTRIDGE",
+                "row_count": 1,
+                "status_write": {
+                    "address": 0x00783F04,
+                    "value": 1,
+                    "writer": "0x1c5d6..0x1c5de",
+                },
+                "bucket_count": 13,
+                "nonempty_bucket_count": 6,
+                "bucket_digest": "eaf10ca6b5b5716170b313ce542df82a6974c1ac22ee0e87308dead7be22c6a1",
+                "context_slot_count": 1,
+                "final_cursor": (pack12(2220), 0x008B0003),
+            },
+            {
+                "class_filter": 0,
+                "source_index": 3,
+                "label": b"INTERNAL FONTS",
+                "row_count": 14,
+                "status_write": {
+                    "address": 0x00783F05,
+                    "value": 14,
+                    "writer": "0x1c5d6..0x1c5de",
+                },
+                "bucket_count": 142,
+                "nonempty_bucket_count": 65,
+                "bucket_digest": "b8117e0f7bde2e45aa1003d8f7cce6d5b0c01f8fd01e5ab5cbebc354ad2df3fd",
+                "context_slot_count": 12,
+                "final_cursor": (pack12(2220), 0x06390003),
+            },
+            {
+                "class_filter": 1,
+                "source_index": 0,
+                "label": b"\"PERMANENT\" SOFT FONTS",
+                "row_count": 0,
+                "status_write": {
+                    "address": 0x00783F02,
+                    "value": 1,
+                    "writer": "0x1c5d6..0x1c5de",
+                },
+                "bucket_count": 3,
+                "nonempty_bucket_count": 1,
+                "bucket_digest": "39a8de602bcd286711230d2ef2778a7957fba3683e128fd3f1c8e064a3616634",
+                "context_slot_count": 1,
+                "final_cursor": (pack12(0), pack12(82)),
+            },
+            {
+                "class_filter": 1,
+                "source_index": 1,
+                "label": b"LEFT FONT CARTRIDGE",
+                "row_count": 1,
+                "status_write": {
+                    "address": 0x00783F03,
+                    "value": 1,
+                    "writer": "0x1c5d6..0x1c5de",
+                },
+                "bucket_count": 12,
+                "nonempty_bucket_count": 5,
+                "bucket_digest": "51dade4f3a0af13cb533c9f62c5ea955a63f02046622e39a00b4ac8b072f63d6",
+                "context_slot_count": 1,
+                "final_cursor": (pack12(2220), 0x008B0003),
+            },
+            {
+                "class_filter": 1,
+                "source_index": 2,
+                "label": b"RIGHT FONT CARTRIDGE",
+                "row_count": 1,
+                "status_write": {
+                    "address": 0x00783F04,
+                    "value": 1,
+                    "writer": "0x1c5d6..0x1c5de",
+                },
+                "bucket_count": 12,
+                "nonempty_bucket_count": 5,
+                "bucket_digest": "3d23d5c6c5320d406d1db34523d3ad01c819d4e938e3dee4fa0a5d20747ed152",
+                "context_slot_count": 1,
+                "final_cursor": (pack12(2220), 0x008B0003),
+            },
+            {
+                "class_filter": 1,
+                "source_index": 3,
+                "label": b"INTERNAL FONTS",
+                "row_count": 14,
+                "status_write": {
+                    "address": 0x00783F05,
+                    "value": 29,
+                    "writer": "0x1c5d6..0x1c5de",
+                },
+                "bucket_count": 122,
+                "nonempty_bucket_count": 50,
+                "bucket_digest": "0ad752af81a9b792b280c56e0d58749cd1269f529c1c3a5f0f01bf14907e9de4",
+                "context_slot_count": 12,
+                "final_cursor": (pack12(2220), 0x06390003),
+            },
+        ],
+        "total_rows": 32,
+        "segment_digest": "f4105538bd1506731f04810ed2f50cce23815751c4f979ed6f60efab4cde08c7",
     }))
     checks.append(assert_equal("font sample resolver carries first two Courier rows", {
         "row1_resolution": {
@@ -71789,6 +72085,32 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         bytes(source2_class_one_fields["printed"]),
         font_sample_source_page_summary(source2_class_zero_page, row_printed=bytes(source2_class_zero_fields["printed"]))["bucket_digest"],
         font_sample_source_page_summary(source2_class_one_page, row_printed=bytes(source2_class_one_fields["printed"]))["bucket_digest"],
+    ))
+    lines.append("- font sample full-printout placement skeleton: `0x1c204` clears source status bytes, then `0x1c28e` runs class passes `%s`; each pass calls `0x1d76c`, `0x10084`, `0x1e9a0`, `0x1c9b8`, `0x1c916`, and `0x1cfb4` before sources `0..3`. The composed source/class segments emit row counts `%s`, status writes `%s`, bucket counts `%s`, context-slot counts `%s`, and aggregate segment digest `%s` for `%d` total rows." % (
+        [entry["class_filter"] for entry in font_sample_full_printout_placement["pass_setup"]],  # type: ignore[index]
+        [
+            segment["row_count"]
+            for segment in font_sample_full_printout_placement["segments"]  # type: ignore[index]
+        ],
+        [
+            (
+                segment["source_index"],
+                segment["class_filter"],
+                segment["status_write"]["address"],
+                segment["status_write"]["value"],
+            )
+            for segment in font_sample_full_printout_placement["segments"]  # type: ignore[index]
+        ],
+        [
+            segment["bucket_count"]
+            for segment in font_sample_full_printout_placement["segments"]  # type: ignore[index]
+        ],
+        [
+            segment["context_slot_count"]
+            for segment in font_sample_full_printout_placement["segments"]  # type: ignore[index]
+        ],
+        font_sample_full_printout_placement["segment_digest"],
+        font_sample_full_printout_placement["total_rows"],
     ))
     lines.append("- font sample row fields: first `LINE_PRINTER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152`; the height value is rounded by the mode-1 `0x1cc6e` add-five path." % (
         line_printer_sample_row_fields["record_start"],

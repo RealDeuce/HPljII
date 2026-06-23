@@ -1191,9 +1191,10 @@ for how resource records become ordinary page-record text.
     `0x1cf34`.
   - class-pass counter in the `0x1c28e..0x1c344` loop.
 - Unknown:
-  - exact page-object bytes emitted by the full `0x1c204` printout loop
-    have not yet been modeled from every source heading, both class passes,
-    continuation pages, and all-source placement. The internal-font class-zero
+  - exact continuation-page object bytes emitted by the full `0x1c204`
+    printout loop have not yet been modeled from forced page-break cases
+    across every source heading and both class passes. The internal-font
+    class-zero
     source group is fixture-backed from request indexes `0..14`: `0x1b8ea`
     fast-probes class-zero row `I00`, `0x1b50e` scans later rows, `0x1c746`
     maps low-24 addresses back to candidate longwords, `0x1c710` finds
@@ -1485,15 +1486,18 @@ row hash
 and bucket `0` glyphs `[160, 161, 183, 186, 200, 204, 209, 223, 226,
 231]` with row hash
 `b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5`.
-Until the full `0x1c204` page-object loop is modeled, this checkpoint
-proves the producer, row-order, duplicate-suppression, concrete built-in
-row-field formatting for the default Roman-8 row, first `COURIER` row, and
-first `LINE_PRINTER` row, the first `COURIER` carried row-field plus
-sample-run-1 page-record/render slice, the `0x1d050` run-1-to-run-2
-transition, the carried sample-run-2 page-record objects and render buckets,
-the first three actual internal-font row resolver requests plus their
-row-to-row page-record composition, and both standalone sample byte-run render
-slices, not final full-page placement.
+Fixture `font sample full printout source placement follows firmware order`
+composes the `0x1c28e` class pass and `0x1c2fe` source iteration into
+source/class segments `(0,0)..(0,3),(1,0)..(1,3)`. It preserves canonical
+source-status writes `0x783f02..0x783f05`, derived page-record bucket counts
+`[3, 13, 13, 142, 3, 12, 12, 122]`, context-slot counts
+`[1, 1, 1, 12, 1, 1, 1, 12]`, row counts `[0, 1, 1, 14, 0, 1, 1, 14]`, total
+row count `32`, and aggregate segment digest
+`f4105538bd1506731f04810ed2f50cce23815751c4f979ed6f60efab4cde08c7`.
+This checkpoint proves the producer, row-order, duplicate-suppression,
+concrete built-in row-field formatting, carried sample-run placement, modeled
+preflight branches, and all-source page-record placement skeleton, but not yet
+physical baseline/cell agreement against a known printed/self-test sample.
 
 ### Confidence
 
@@ -1507,11 +1511,10 @@ row 1, and row 2 page-record composition, first two named `COURIER` row
 resolutions and row-to-row composition, first
 `COURIER` `0x1d050` run-1-to-run-2 transition, carried run-2
 page-record object placement, carried run-2 bucket rendering through
-`0x1ed84` / `0x1ef6a`, and direct sample byte-run row hashes because
-they are anchored by generated disassembly analysis and
-`tools/render_fixture_harness.py`. Medium for final placement and
-baseline/cell interpretation because the full emitted page objects, full
-all-source/all-row page model, and physical/self-test comparison are still
+`0x1ed84` / `0x1ef6a`, direct sample byte-run row hashes, and full
+source/class placement skeleton because they are anchored by generated
+disassembly analysis and `tools/render_fixture_harness.py`. Medium for
+baseline/cell interpretation because physical/self-test comparison is still
 open.
 
 ### Fixtures And Reports
@@ -1555,8 +1558,10 @@ open.
   carried page-record state. The
   `0x1c1e9` sample run 2 byte stream is now carried after run 1 through the
   no-continuation `0x1d050` branch for first `COURIER`.
-  Remaining gap is full page placement with the modeled preflight branches
-  integrated into the all-source row loop.
+  Full source/class placement is now composed as eight page-record segments
+  with the modeled preflight branches integrated into the all-source row loop.
+  Remaining gap is correlating those aggregate page-record surfaces with direct
+  sample-row hashes or a known printed/self-test sample.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
   identified. First `COURIER` and first `LINE_PRINTER` row-field

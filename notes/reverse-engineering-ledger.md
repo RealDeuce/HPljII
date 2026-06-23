@@ -1066,6 +1066,16 @@ ROM work needed:
   FONTS`, `LEFT FONT CARTRIDGE`, and `RIGHT FONT CARTRIDGE` through `0x1ca2c`
   label printing and the row producer for the `L00` / `R00` cases, with
   aggregate object digests documented in `notes/resource-rom.md`.
+  Fixture `font sample full printout source placement follows firmware order`
+  now composes the firmware-order source/class segments
+  `(0,0)..(0,3),(1,0)..(1,3)` after each pass's `0x1d76c` / `0x10084` /
+  `0x1e9a0` / `0x1c9b8` / `0x1c916` / `0x1cfb4` setup sequence: row counts
+  `[0,1,1,14,0,1,1,14]`, bucket counts `[3,13,13,142,3,12,12,122]`,
+  context-slot counts `[1,1,1,12,1,1,1,12]`, status writes
+  `0x783f02=1`, `0x783f03=1`, `0x783f04=1`, `0x783f05=14`, then
+  `0x783f02=1`, `0x783f03=1`, `0x783f04=1`, `0x783f05=29`, and aggregate
+  segment digest
+  `f4105538bd1506731f04810ed2f50cce23815751c4f979ed6f60efab4cde08c7`.
   Fixture `font sample run 1 full row spans compact buckets` carries byte stream
   ``ABCDEfghij#$@[\\]^`{|}~123`` through context `0x44080418`, compact
   buckets `-1` and `0`, `0x1ed84` / `0x1ef6a`, and row hashes
@@ -1083,9 +1093,9 @@ ROM work needed:
   page-record states. The page-limit continuation checkpoint now covers
   `0x1ca2c` heading preflight, `0x1d050` row-continuation call targets, and
   the `0x1d868` selected/alternate fit gate, plus the `0x1d964` /
-  `0x1dcf2..0x1de2c` multi-probe preflight. The next boundary is
-  full-printout placement for comparison against the direct payload hashes and
-  a known printed/self-test sample.
+  `0x1dcf2..0x1de2c` multi-probe preflight. The next boundary is correlation
+  of the composed full-printout page-record surfaces against the direct
+  payload hashes and a known printed/self-test sample.
 - Identify the manual-facing names for the currently unidentified
   built-in symbol words `0N`, `10U`, and `11U`, and broaden the
   now-pinned real symbol-map samples into more live parser/font-selection

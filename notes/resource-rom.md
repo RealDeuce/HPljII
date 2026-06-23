@@ -500,6 +500,18 @@ class-zero digest is
 `eaf10ca6b5b5716170b313ce542df82a6974c1ac22ee0e87308dead7be22c6a1`, and
 the class-one digest is
 `3d23d5c6c5320d406d1db34523d3ad01c819d4e938e3dee4fa0a5d20747ed152`.
+Fixture `font sample full printout source placement follows firmware order`
+then composes the eight source/class segments in the order driven by
+`0x1c28e` and `0x1c2fe`: class-zero sources `0..3`, then class-one sources
+`0..3`. Each pass performs the `0x1d76c`, `0x10084`, `0x1e9a0`, `0x1c9b8`,
+`0x1c916`, and `0x1cfb4` setup sequence before source iteration. The segment
+row counts are `[0, 1, 1, 14, 0, 1, 1, 14]`; source-status writes are
+`0x783f02 = 1`, `0x783f03 = 1`, `0x783f04 = 1`, `0x783f05 = 14`, then
+`0x783f02 = 1`, `0x783f03 = 1`, `0x783f04 = 1`, `0x783f05 = 29`. The
+composed page-record surfaces have bucket counts `[3, 13, 13, 142, 3, 12,
+12, 122]`, context-slot counts `[1, 1, 1, 12, 1, 1, 1, 12]`, total row count
+`32`, and aggregate segment digest
+`f4105538bd1506731f04810ed2f50cce23815751c4f979ed6f60efab4cde08c7`.
 
 Fixture `font sample page-limit branches trigger continuation calls` covers
 the page-limit state block shared by the heading and row-advance paths.
@@ -535,10 +547,9 @@ reset mode-`1` probe bottom `511` returns D7 `1` at `0x1de24`. A high-y case
 starting at `0x01f40000` with limit `600` proves the reset mode-`1` and
 mode-`0` probes can both fit and return D7 `0` at `0x1de16`.
 
-The still-open boundary is the rest of `0x1c204..0x1ed84`: integrating the
-modeled preflight branches into all-source full-page placement. The emitted
-page objects still must be correlated with the direct sample-byte row hashes or
-a known print sample before those fields get final semantic names.
+The still-open boundary is the rest of `0x1c204..0x1ed84`: correlating the
+composed all-source page-record surfaces with the direct sample-byte row hashes
+or a known print sample before those fields get final semantic names.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record

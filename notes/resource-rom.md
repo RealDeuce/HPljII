@@ -258,13 +258,17 @@ against page-limit word `0x782db6`, `0x1cabe` emits the `S/L/R/I` row
 prefix and metric columns through `0xd04a`, and `0x1cf34` emits sample
 run 1, advances horizontally by `0x31` units, installs the alternate
 context, and emits sample run 2 when `0x783132` is set.
-The first source-heading-to-row composition is now fixture-backed:
-`font sample source heading carries into first Courier row` follows the
-`0x1c386..0x1c38e` call into `0x1ca2c`, resolves source table pointer
-`0x1c180` to `INTERNAL FONTS`, queues the heading bytes through current
-context `0x44080418`, advances y through `0x1cfb4`, and then carries the
-first `COURIER` row fields plus both sample byte runs in the same
-page-record state.
+The actual first source-heading-to-row composition is now fixture-backed:
+`font sample source heading carries default plus first two Courier rows`
+follows the `0x1c386..0x1c38e` call into `0x1ca2c`, resolves source table
+pointer `0x1c180` to `INTERNAL FONTS`, queues the heading bytes through
+current context `0x4008004c`, advances y through `0x1cfb4`, and then carries
+the default Roman-8 row plus the first two named `COURIER` rows in the same
+page-record state. Request index `0` uses `0x1b8ea` fast-probe state to select
+slot `0x782354`, record `0x00004c`, and word `0x0115`. Because that record has
+no explicit name string, `0x1d198` falls through local family table `0x1c11a`;
+record byte `+0x18 == 0` emits `LINE PRINTER`, so row 0 prints
+`I00LINE PRINTER10128U`.
 Fixture `font sample resolver carries first two Courier rows` extends
 that composition across the next related resolver request and row
 transition. The sample loop call at `0x1c398..0x1c3a0` invokes `0x1b50e`;
@@ -275,9 +279,10 @@ record `0x00004c`, then select first named `COURIER` record `0x000418`
 with word `0x0155` and second named `COURIER` record `0x000868` with word
 `0x0175`. The `0x1c470..0x1c488` / `0x1d050` row-to-row edge resets x to
 the line anchor, advances y from `0x00900000` to `0x00ce0000` through
-`0x1cfe4`, assigns page-record context slots `[0x44080418, 0x44080868]`,
-and emits second-row bytes `I02COURIER101211U` before carrying both sample
-runs.
+`0x1cfe4`, assigns page-record context slots `[0x44080418, 0x44080868]` in
+the named-row isolation fixture, and emits second-row bytes
+`I02COURIER101211U` before carrying both sample runs. The actual first-three
+row fixture assigns context slots `[0x4008004c, 0x44080418, 0x44080868]`.
 The row-helper window now names the lower formatting helpers: `0x1d198`
 builds the 25-character font-name/style column, `0x1d6ea` emits capped
 strings through `0xd04a`, `0x1d71e` sanitizes fixed-length name bytes,
@@ -374,12 +379,12 @@ height/baseline use between the extracted record fields
 `+0x28..+0x31` and the font-printout/page-object path. The
 `0x1c334..0x1c5e4` candidate traversal is now decoded through
 `0x1b50e` row resolution, class filtering, continuation checks, and
-recent-context duplicate suppression; the first two named internal
-`COURIER` rows are modeled through row resolver, `0x1d050` row-to-row
-advance, `0x1cabe` row fields, both sample runs, context-slot assignment,
-and page-record bucket effects. The still-open boundary is the rest of
-`0x1c5e8..0x1ed84`: request-index `0` formatting for unnamed record
-`0x00004c`, later selected rows, continuation branches, and all-source
+recent-context duplicate suppression; the default Roman-8 row and first two
+named internal `COURIER` rows are modeled through fast-probe/row resolver,
+`0x1d198` fallback name formatting, `0x1d050` row-to-row advance, `0x1cabe`
+row fields, both sample runs, context-slot assignment, and page-record bucket
+effects. The still-open boundary is the rest of `0x1c5e8..0x1ed84`: later
+selected rows, other source headings, continuation branches, and all-source
 full-page placement. The `0x1c204..0x1cf34` loop, row helpers, and byte
 emission are composed in
 [semantic-state-model.md](semantic-state-model.md). The emitted page

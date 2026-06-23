@@ -708,17 +708,20 @@ hashes
 and bucket-4 current/fallback hashes
 `5e71581663bd2a7c363a866b8bea232fb69f0524e2046da47fd54375cb800796` /
 `06dc84fbb9421397716b0bfccb9b807942ba9a29671436503c91813626d87d5f`;
-fixture `font sample source heading carries into first Courier row` now
-adds the preceding source-heading edge. Disassembly `0x1c386..0x1c38e`
-passes source group `D4`, current context `A4`, zero row word, and zero
-alternate context into `0x1ca2c`; `0x1ca86..0x1caa6` flushes pending text,
-loads source table pointer `0x1c180` from `0x1c170 + 3*4`, emits
-`INTERNAL FONTS` through `0x1d12e`, calls `0x12714`, advances through
-`0x1cfb4`, and stores row-height cache `0x783f06`. The fixture pins the
-fourteen heading bytes, the segmented heading-space object in buckets
-`[64, 56, 48, 40, 32, 24, 16, 8, 0]`, the y advance from `0x00200000` to
-`0x00520000`, and the carried first-row final cursor
-`0x08ac0000,0x00900000`. The widened `0x1e8e6` disassembly window now
+fixture `font sample source heading carries default plus first two Courier
+rows` now adds the actual preceding source-heading edge. Disassembly
+`0x1c386..0x1c38e` passes source group `D4`, current context `A4`, zero row
+word, and zero alternate context into `0x1ca2c`; `0x1ca86..0x1caa6` flushes
+pending text, loads source table pointer `0x1c180` from `0x1c170 + 3*4`,
+emits `INTERNAL FONTS` through `0x1d12e`, calls `0x12714`, advances through
+`0x1cfb4`, and stores row-height cache `0x783f06`. The fixture pins
+request-index `0` through `0x1b8ea` fast probe to slot `0x782354` / record
+`0x00004c` / word `0x0115`; `0x1d198` then uses family table `0x1c11a` to
+format `LINE PRINTER`, so the row-0 field bytes are
+`I00LINE PRINTER10128U`. The same fixture assigns context slots
+`[0x4008004c, 0x44080418, 0x44080868]`, advances rows 1 and 2 through
+`0x1d050`, and carries buckets `[0, 2, 3, 4, 6, 7, 10, 11, 13, 14, 15, 18,
+21, 22, 23]`. The widened `0x1e8e6` disassembly window now
 also shows `0x1e9a0` saving `0x78289f` / `0x7821a0`, forcing symbol
 `0x0115`, calling `0x1ae7e`, copying the selected candidate into
 `0x782ee6`, rebuilding via `0x14c64`, and installing the current page-root
@@ -1031,14 +1034,14 @@ ROM work needed:
   and
   `b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5`.
   The source-heading composition fixture now carries `INTERNAL FONTS`
-  into the first named `COURIER` row, and the two-row fixture carries
-  `0x1b50e` request indexes `1` and `2` through current Roman-8
+  into request indexes `0`, `1`, and `2`: row 0 fast-probes record
+  `0x00004c` and formats `I00LINE PRINTER10128U` through the `0x1d198`
+  fallback table path, while rows 1 and 2 carry `0x1b50e` current Roman-8
   suppression, second-row `0x1d050` y advance, context slots
-  `[0x44080418, 0x44080868]`, and visible second-row bytes
-  `I02COURIER101211U`. The next boundaries are request-index `0`
-  formatting for unnamed record `0x00004c`, later rows/source headings,
-  continuation branches, and full-printout placement for comparison
-  against the direct payload hashes and a known printed/self-test sample.
+  `[0x4008004c, 0x44080418, 0x44080868]`, and visible second-row bytes
+  `I02COURIER101211U`. The next boundaries are later rows/source headings,
+  continuation branches, and full-printout placement for comparison against
+  the direct payload hashes and a known printed/self-test sample.
 - Identify the manual-facing names for the currently unidentified
   built-in symbol words `0N`, `10U`, and `11U`, and broaden the
   now-pinned real symbol-map samples into more live parser/font-selection

@@ -1096,9 +1096,9 @@ for how resource records become ordinary page-record text.
     `0x1cf34`.
   - source/category labels selected by `0x1ca2c` from table `0x1c170`.
   - page-record `context_slots`: durable page-object context identities used
-    by `0x12f2e` and copied through the render bridge; the two-row
-    internal-font fixture assigns slot 0 to `0x44080418` and slot 1 to
-    `0x44080868`.
+    by `0x12f2e` and copied through the render bridge; the actual
+    first-three-internal-rows fixture assigns slot 0 to `0x4008004c`, slot 1
+    to `0x44080418`, and slot 2 to `0x44080868`.
 - Canonical page/text environment:
   - current page root ensured through `0x10084`.
   - current vertical cursor `0x782c8e`, initialized by `0x1c916` to
@@ -1131,6 +1131,10 @@ for how resource records become ordinary page-record text.
     pitch and height with fixed-space calls through `0xd0f0`; and
     `0x1cd78` formats the symbol-set word into PCL-style notation such
     as `10U`.
+  - `0x1d198` has a fallback table path for built-in records without an
+    explicit name string: table `0x1c0a6` handles special symbol/family names,
+    table `0x1c11a` maps family bytes to names, and strings at `0x1d17a`,
+    `0x1d17c`, `0x1d183`, `0x1d18b`, and `0x1d192` add style/weight suffixes.
   - direct payload-render row hashes for the two ROM sample byte runs
     are evidence targets, not canonical runtime state.
 - Parser scratch:
@@ -1159,15 +1163,11 @@ for how resource records become ordinary page-record text.
   - exact page-object bytes emitted by the full `0x1c204` printout loop
     have not yet been modeled from every source heading, all row fields,
     both sample byte runs, and full page placement. The internal-font source
-    heading carried into the first two named `COURIER` rows is
-    fixture-backed, the first `COURIER` and first `LINE_PRINTER` built-in
-    row-field formatters are fixture-backed, and both sample byte runs are
-    fixture-backed through compact buckets, page-record objects, and
-    `0x1ed84` / `0x1ef6a` render entries.
-  - request-index `0` over the internal-font mode-3 window can return the
-    unnamed current Roman-8 default record `0x00004c`; that row's visible
-    formatting remains unmodeled because the current row-field helper only
-    accepts named built-in records.
+    heading carried into the default Roman-8 row plus the first two named
+    `COURIER` rows is fixture-backed, the first `COURIER` and first
+    `LINE_PRINTER` built-in row-field formatters are fixture-backed, and both
+    sample byte runs are fixture-backed through compact buckets, page-record
+    objects, and `0x1ed84` / `0x1ef6a` render entries.
   - record `+0x28..+0x31` baseline/cell/manual semantics remain
     unresolved until this path is correlated with emitted page objects or
     a known printed sample.
@@ -1316,33 +1316,49 @@ object; its current-band row hash is
 `5e71581663bd2a7c363a866b8bea232fb69f0524e2046da47fd54375cb800796`
 and its fallback hash is
 `06dc84fbb9421397716b0bfccb9b807942ba9a29671436503c91813626d87d5f`.
-Fixture `font sample source heading carries into first Courier row` now
-composes the source-heading boundary with the same first-row page-record
-state. The caller at `0x1c386..0x1c38e` passes source group `D4`, current
-context `A4`, row word `0`, and alternate context `0` into `0x1ca2c` before
-`0x1b50e` selects the concrete row candidate. The initial current context is
-not arbitrary: `0x1c2dc` calls `0x1e9a0`, and the expanded setup disassembly
-at `0x1e9a8..0x1ea3e` saves `0x78289f` / `0x7821a0`, forces symbol
+Fixture `font sample source heading carries into first Courier row` remains an
+isolation checkpoint for the first named `COURIER` row, but the actual
+internal source-group page order starts one row earlier. The real setup
+context is not arbitrary: `0x1c2dc` calls `0x1e9a0`, and the expanded setup
+disassembly at `0x1e9a8..0x1ea3e` saves `0x78289f` / `0x7821a0`, forces symbol
 `0x0115`, calls `0x1ae7e`, copies the selected candidate longword through
 `0x782ee6`, rebuilds maps via `0x14c64`, and installs the page-root context
-slot through `0xc428`. In the fixture, `0x1ca86..0x1caa6` selects source
-table entry `0x1c170 + 3*4 = 0x1c180`, emits `INTERNAL FONTS` through
-`0x1d12e`, and advances through `0x1cfb4` from y `0x00200000` to
-`0x00520000`. The heading has fourteen printable bytes; the space byte takes
-the segmented page-record path into buckets `[64, 56, 48, 40, 32, 24, 16, 8,
-0]` at compact coord `0xc00f`. The carried state then emits the first
-`COURIER` row fields, sample run 1, and the run-2 transition, ending at
-cursor `0x08ac0000,0x00900000` with buckets `[0, 2, 3, 6, 7, 8, 16, 24, 32,
-40, 48, 56, 64]`. Object hashes pinned by the fixture include bucket `0`
-`000562ec9d99dd04162a1d392f4545ae0793543ceb4836894d3f9981127920f5`,
-`834fc629b6ef04ae1fbfd2a8b3cc1bed7582f4092ed594dcbcfc6ad96eee2b6a`, and
-`9b4cb23e8e85c3375345d77427c756a886b335c19ae227a788e5f1bc55d68761`, bucket
-`7` `36c988c7920bb1883215cec52f642e77b99d36df8c75504366375d4f7430ff91`,
-and bucket `64`
-`24119daa7a11d6f74569cef76eabd26b87f133cc1f53cfa5712937e09f637a42`.
-Fixture `font sample resolver carries first two Courier rows` extends that
-source-heading composition through two related row resolver requests instead
-of a single row. The sample loop call at `0x1c398..0x1c3a0` invokes
+slot through `0xc428`.
+
+Fixture `font sample source heading carries default plus first two Courier
+rows` composes the actual source-heading boundary and the first three emitted
+internal-font rows. The caller at `0x1c386..0x1c38e` passes source group `D4`,
+current context `A4`, row word `0`, and alternate context `0` into `0x1ca2c`.
+`0x1ca86..0x1caa6` selects source table entry `0x1c170 + 3*4 = 0x1c180`,
+emits `INTERNAL FONTS` through `0x1d12e`, and advances through `0x1cfb4` from
+y `0x00200000` to `0x00520000`. The heading has fourteen printable bytes.
+Request index `0` then takes the `0x1b8ea` fast-probe path and selects slot
+`0x782354`, record `0x00004c`, context `0x4008004c`, and word `0x0115`.
+Because that record has no explicit name prefix, `0x1d198` falls through table
+`0x1c11a`: record byte `+0x18 == 0` prints `LINE PRINTER`. The visible row-0
+field bytes are `49 30 30 4c 49 4e 45 20 50 52 49 4e 54 45 52 31 30 31 32
+38 55` (`I00LINE PRINTER10128U`), with three `0xd0f0` fixed spaces in the
+symbol column before `8U`.
+
+The actual three-row fixture then carries row 1 and row 2 through the same
+`0x1c470..0x1c488` / `0x1d050..0x1d0d8` no-continuation path. It assigns
+page-record context slots `[0x4008004c, 0x44080418, 0x44080868]`, advances row
+1 to y `0x00c90003`, advances row 2 to y `0x01450003`, and ends after row 2 at
+cursor `0x08ac0000,0x01830003`. The carried bucket set is `[0, 2, 3, 4, 6, 7,
+10, 11, 13, 14, 15, 18, 21, 22, 23]`. Selected bucket hashes pinned by the
+fixture include bucket `0`
+`51cf2deccad2c23bc20fea15974651c8a0accd40b98d04f08e7dae9b2b91ede7` and
+`6bc8abff650c02ca198ee24c067f20e675a51df39e57c6c6de6deb920a68e3eb`, bucket
+`3`
+`cb5f8df2937e9030f6bfce652c5ac01b37cd0c1a2321f4e7c128d013b9b4b9a0`,
+`a3d39e69341601268d819eb66ad2f652b65a92f6bb8911c0b6ca6ebc2c215535`,
+`60ed5c45f6003bb57c9c01c60845233ea7d801bdf5c7da71f92eaca7949e0833`,
+`2d29f5798597bb622e722202499732967392b2c04f6cc098311db3cfe930dbe5`, and
+`ceaea30694a4ecc0f0397f0cd42d5454a763dedf0fe8a66b2e65c9cd61de042b`.
+The named-row isolation fixture `font sample resolver carries first two
+Courier rows` keeps the default row as current setup context and starts visible
+emission at request indexes `1` and `2`. The sample loop call at
+`0x1c398..0x1c3a0` invokes
 `0x1b50e(source D4, requested row D5, out word -0xa)`. With mode `3`, the
 resolver scans `0x7827ac` / `0x78279a` and then `0x7827a0` / `0x782792`
 through the `0x1b568..0x1b5a4` window selection and `0x1b5a4..0x1b706`
@@ -1412,23 +1428,24 @@ and bucket `0` glyphs `[160, 161, 183, 186, 200, 204, 209, 223, 226,
 `b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5`.
 Until the full `0x1c204` page-object loop is modeled, this checkpoint
 proves the producer, row-order, duplicate-suppression, concrete built-in
-row-field formatting for the first `COURIER` / `LINE_PRINTER` rows, the
-first `COURIER` carried row-field plus sample-run-1 page-record/render
-slice, the `0x1d050` run-1-to-run-2 transition, the carried sample-run-2
-page-record objects and render buckets, the first two named `COURIER`
-row resolver requests plus their row-to-row page-record composition, and
-both standalone sample byte-run render slices, not final full-page
-placement.
+row-field formatting for the default Roman-8 row, first `COURIER` row, and
+first `LINE_PRINTER` row, the first `COURIER` carried row-field plus
+sample-run-1 page-record/render slice, the `0x1d050` run-1-to-run-2
+transition, the carried sample-run-2 page-record objects and render buckets,
+the first three actual internal-font row resolver requests plus their
+row-to-row page-record composition, and both standalone sample byte-run render
+slices, not final full-page placement.
 
 ### Confidence
 
 High for helper roles, class-pass loop structure, candidate-row
 traversal, current-font/page-root setup, printable byte emission,
-continuation checks, local label tables, concrete first `COURIER` /
-`LINE_PRINTER` row-field formatting, first `COURIER` row-field
-page-record placement, first `COURIER` carried row-field plus sample-run-1
-placement, first `COURIER` source-heading-to-row composition, first
-two named `COURIER` row resolutions and row-to-row composition, first
+continuation checks, local label tables, concrete default Roman-8 row,
+first `COURIER`, and first `LINE_PRINTER` row-field formatting, first
+`COURIER` row-field page-record placement, first `COURIER` carried row-field
+plus sample-run-1 placement, actual internal source-heading through row 0,
+row 1, and row 2 page-record composition, first two named `COURIER` row
+resolutions and row-to-row composition, first
 `COURIER` `0x1d050` run-1-to-run-2 transition, carried run-2
 page-record object placement, carried run-2 bucket rendering through
 `0x1ed84` / `0x1ef6a`, and direct sample byte-run row hashes because
@@ -1471,11 +1488,10 @@ open.
   same carried page-record state. The `0x1c1e9` sample run 2 byte stream
   is now carried after run 1 through the no-continuation `0x1d050` branch
   for first `COURIER`, and the internal-font source heading now carries
-  into the first two named `COURIER` rows through `0x1ca2c` / `0x1cfb4`,
-  `0x1b50e`, `0x1d050`, `0x1cabe`, and `0x1cf34`. Remaining gaps are
-  request-index `0` row formatting for unnamed record `0x00004c`, the
-  other source headings, later emitted rows, continuation branches, and
-  full page placement.
+  into request indexes `0`, `1`, and `2` through `0x1ca2c` / `0x1cfb4`,
+  `0x1b8ea`, `0x1b50e`, `0x1d198`, `0x1d050`, `0x1cabe`, and `0x1cf34`.
+  Remaining gaps are the other source headings, later emitted rows,
+  continuation branches, and full page placement.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
   identified. First `COURIER` and first `LINE_PRINTER` row-field
@@ -1484,15 +1500,15 @@ open.
   sequence crosses the page-record/render boundary as compact bucket `0`
   with object counts `[7, 10]`; appending sample run 1 in that same state
   extends the record to buckets `[-1, 0]`, and carrying sample run 2
-  through `0x1d050` extends it to buckets `[-1, 0, 3, 4]`. The first
-  two-row composition checkpoint then appends second named `COURIER`
-  row fields and both sample runs through context slot `1`, extending the
-  page record to buckets `[0, 2, 3, 6, 7, 8, 10, 11, 14, 15, 16, 24, 32,
-  40, 48, 56, 64]`. The carried run-2 checkpoint pins page-record objects,
-  compact coords, current-band render hashes, and fallback hashes for
-  buckets `3` and `4`; the source-heading composition checkpoint pins the
-  `INTERNAL FONTS` label, segmented heading-space buckets, and shifted y
-  origins for the first two named rows.
+  through `0x1d050` extends it to buckets `[-1, 0, 3, 4]`. The actual
+  first-three-row composition checkpoint starts with default context
+  `0x4008004c`, adds the first two named `COURIER` contexts, and extends the
+  page record to buckets `[0, 2, 3, 4, 6, 7, 10, 11, 13, 14, 15, 18, 21,
+  22, 23]`. The carried run-2 checkpoint pins page-record objects, compact
+  coords, current-band render hashes, and fallback hashes for buckets `3`
+  and `4`; the source-heading composition checkpoint pins the `INTERNAL
+  FONTS` label, fallback row-0 name `LINE PRINTER`, and shifted y origins
+  for the first three actual rows.
   The standalone run-2 render fixture remains useful as an isolation control
   with context `0x44080418`, HMI `0x001e`, compact buckets `-1` and `0`, and
   render-entry row hashes above. Emitted page objects for the complete font

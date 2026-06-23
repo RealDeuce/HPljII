@@ -5066,14 +5066,98 @@ def font_sample_symbol_code_via_1cd78(symbol_word: int) -> dict[str, object]:
     }
 
 
+FONT_SAMPLE_FAMILY_TABLE_1C11A = (
+    (0x00, b"LINE PRINTER"),
+    (0x03, b"COURIER"),
+    (0x04, b"HELV"),
+    (0x05, b"TMS RMN"),
+    (0x06, b"GOTHIC"),
+    (0x08, b"PRESTIGE"),
+)
+
+FONT_SAMPLE_SYMBOL_VARIANT_TABLE_1C0A6 = (
+    (0x0000, 0x42, b"LINE DRAW"),
+    (0x0000, 0x4C, b"LINE DRAW"),
+    (0x0000, 0x4F, b"OCR A"),
+    (0x0001, 0x4F, b"OCR B"),
+    (-1, 0x51, b"SPECIAL"),
+    (0x0000, 0x59, b"CODE 3 OF 9"),
+    (0x0008, 0x59, b"UPC/EAN"),
+)
+
+
+def signed_byte(value: int) -> int:
+    value = int(value) & 0xFF
+    return value - 0x100 if value & 0x80 else value
+
+
+def font_sample_style_digits_via_1d198(style: int) -> bytes:
+    style = int(style) & 0xFF
+    digits = f"{style}".encode("ascii")
+    return b" " + digits[-3:]
+
+
 def font_sample_builtin_name_column_via_1d198(resources: bytes, record_start: int) -> dict[str, object]:
     name = infer_named_builtin_record(resources, record_start)
-    if name is None:
-        raise AssertionError(f"record 0x{record_start:06x} is not a named built-in fixture")
-    printed = name.encode("ascii")
+    steps: list[dict[str, object]] = []
+    if name is not None:
+        printed = name.encode("ascii")
+        source = "record-name-prefix"
+    else:
+        printed_parts = bytearray()
+        source = "0x1d198-table-fallback"
+        symbol_word = u16(resources, record_start + 0x22)
+        symbol_numeric = symbol_word >> 5
+        symbol_suffix = 0x40 + (symbol_word & 0x1F)
+        if symbol_numeric <= 0x14:
+            if symbol_suffix == 0x51:
+                symbol_numeric = -1
+            for table_numeric, table_suffix, label in FONT_SAMPLE_SYMBOL_VARIANT_TABLE_1C0A6:
+                if table_numeric == symbol_numeric and table_suffix == symbol_suffix:
+                    printed_parts.extend(label)
+                    steps.append({
+                        "table": "0x1c0a6",
+                        "symbol_numeric": symbol_numeric,
+                        "symbol_suffix": symbol_suffix,
+                        "printed": label,
+                    })
+                    break
+        if not printed_parts:
+            family_byte = resources[record_start + 0x18]
+            for table_family, label in FONT_SAMPLE_FAMILY_TABLE_1C11A:
+                if table_family == family_byte:
+                    printed_parts.extend(label)
+                    steps.append({
+                        "table": "0x1c11a",
+                        "family_byte_0x18": family_byte,
+                        "printed": label,
+                    })
+                    break
+        weight_byte = signed_byte(resources[record_start + 0x27])
+        if weight_byte > 0:
+            printed_parts.extend(b" BOLD")
+            steps.append({"table": "0x1d192", "weight_byte_0x27": weight_byte, "printed": b" BOLD"})
+        elif weight_byte < 0:
+            printed_parts.extend(b" LIGHT")
+            steps.append({"table": "0x1d18b", "weight_byte_0x27": weight_byte, "printed": b" LIGHT"})
+        style_byte = resources[record_start + 0x26]
+        if len(printed_parts) < 25 and style_byte:
+            if style_byte == 1:
+                printed_parts.extend(b" ITALIC")
+                steps.append({"table": "0x1d183", "style_byte_0x26": style_byte, "printed": b" ITALIC"})
+            elif style_byte == 2:
+                printed_parts.extend(b" SLANT")
+                steps.append({"table": "0x1d17c", "style_byte_0x26": style_byte, "printed": b" SLANT"})
+            else:
+                digits = font_sample_style_digits_via_1d198(style_byte)
+                printed_parts.extend(digits)
+                steps.append({"table": "0x1d17a", "style_byte_0x26": style_byte, "printed": digits})
+        printed = bytes(printed_parts[:25])
     return {
         "helper": "0x1d198/0x1d5fa",
         "record_start": record_start,
+        "source": source,
+        "steps": steps,
         "printed": printed,
         "name_length": len(printed),
         "pad_advance_units_1d152": max(0, 25 - len(printed)),
@@ -20974,6 +21058,86 @@ def render_font_sample_source_heading_first_two_courier_rows_page_record(
     }
 
 
+def render_font_sample_source_heading_first_three_internal_rows_page_record(
+    data: bytes,
+    resources: bytes,
+    default_row_fields: dict[str, object],
+    first_courier_fields: dict[str, object],
+    second_courier_fields: dict[str, object],
+    row0_resolution: dict[str, object],
+    row1_resolution: dict[str, object],
+    row2_resolution: dict[str, object],
+    *,
+    source_index: int = 3,
+    current_record_start: int = 0x00004C,
+    current_context: int = 0x4008004C,
+) -> dict[str, object]:
+    first_row = render_font_sample_source_heading_and_first_row_page_record(
+        data,
+        resources,
+        default_row_fields,
+        source_index,
+    )
+    page_record = first_row["page_record"]
+    assert isinstance(page_record, dict)
+    state = dict(first_row["final_state"])  # type: ignore[arg-type]
+
+    row1_transition = font_sample_row_to_row_transition_via_1d050(
+        resources,
+        first_courier_fields,
+        current_record_start,
+        current_context,
+        state,
+        row_height_cache_783f06=int(state["row_height_cache_783f06"]),
+    )
+    row1 = queue_font_sample_row_fields_and_both_runs(
+        resources,
+        first_courier_fields,
+        page_record,
+        state,
+        row_height_cache_783f06=int(state["row_height_cache_783f06"]),
+    )
+
+    row2_transition = font_sample_row_to_row_transition_via_1d050(
+        resources,
+        second_courier_fields,
+        current_record_start,
+        current_context,
+        state,
+        row_height_cache_783f06=int(state["row_height_cache_783f06"]),
+    )
+    row2 = queue_font_sample_row_fields_and_both_runs(
+        resources,
+        second_courier_fields,
+        page_record,
+        state,
+        row_height_cache_783f06=int(state["row_height_cache_783f06"]),
+    )
+
+    bucket_objects = page_record_bucket_objects(page_record)
+    object_hashes = {
+        bucket: [hashlib.sha256(obj).hexdigest() for obj in objects]
+        for bucket, objects in bucket_objects.items()
+    }
+    return {
+        "row0_resolution": row0_resolution,
+        "row1_resolution": row1_resolution,
+        "row2_resolution": row2_resolution,
+        "row0": first_row,
+        "row1_transition": row1_transition,
+        "row1": row1,
+        "row2_transition": row2_transition,
+        "row2": row2,
+        "context_slots": list(page_record.get("context_slots", [])),
+        "nonempty_buckets": sorted(bucket_objects),
+        "bucket_object_hashes": object_hashes,
+        "final_cursor_x": state["cursor_x"],
+        "final_cursor_y": state["cursor_y"],
+        "final_state": dict(state),
+        "page_record": page_record,
+    }
+
+
 def render_font_sample_carried_run2_buckets_via_1ed84_1ef6a(
     data: bytes,
     resources: bytes,
@@ -28055,6 +28219,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             {"name": "LINE_PRINTER", "tuple": (0, 0, 0), "count": 6},
         ],
     }))
+    default_roman8_sample_row_fields = font_sample_builtin_row_fields_via_1cabe(
+        resources,
+        0x00004C,
+        source_index=3,
+        row_index=0,
+    )
     courier_sample_row_fields = font_sample_builtin_row_fields_via_1cabe(
         resources,
         0x000418,
@@ -28115,6 +28285,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "name": {
                 "helper": "0x1d198/0x1d5fa",
                 "record_start": 0x000418,
+                "source": "record-name-prefix",
+                "steps": [],
                 "printed": b"COURIER",
                 "name_length": 7,
                 "pad_advance_units_1d152": 18,
@@ -28167,6 +28339,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "name": {
                 "helper": "0x1d198/0x1d5fa",
                 "record_start": 0x0146B4,
+                "source": "record-name-prefix",
+                "steps": [],
                 "printed": b"LINE_PRINTER",
                 "name_length": 12,
                 "pad_advance_units_1d152": 13,
@@ -28885,6 +29059,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ],
         },
     }))
+    font_sample_row0_resolution = default_font_resolver_scan_via_1b50e(
+        search_mode=3,
+        requested_index=0,
+        requested_symbol=0x0005,
+        current_selected_pointer=0x782354,
+        fast_probe={"selected_pointer": 0x782354, "longword": 0x08004C, "word": 0x0115},
+        first_list=list(actual_candidate_windows["class_zero_low"]),  # type: ignore[arg-type]
+        second_list=list(actual_candidate_windows["class_one_low"]),  # type: ignore[arg-type]
+    )
     font_sample_row1_resolution = default_font_resolver_scan_via_1b50e(
         search_mode=3,
         requested_index=1,
@@ -28915,6 +29098,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(row2_run2_event, dict)
     row2_run2_events = row2_run2_event["events"]
     assert isinstance(row2_run2_events, list)
+    internal_source_heading_first_three_rows = render_font_sample_source_heading_first_three_internal_rows_page_record(
+        data,
+        resources,
+        default_roman8_sample_row_fields,
+        courier_sample_row_fields,
+        courier_sample_row2_fields,
+        font_sample_row0_resolution,
+        font_sample_row1_resolution,
+        font_sample_row2_resolution,
+    )
     checks.append(assert_equal("font sample resolver carries first two Courier rows", {
         "row1_resolution": {
             "summary": select_keys(courier_source_heading_two_rows["row1_resolution"], (  # type: ignore[arg-type]
@@ -29067,6 +29260,162 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "final_cursor_x": pack12(2220),
         "final_cursor_y": pack12(268),
+    }))
+    checks.append(assert_equal("font sample source heading carries default plus first two Courier rows", {
+        "row0_resolution": {
+            "summary": select_keys(internal_source_heading_first_three_rows["row0_resolution"], (  # type: ignore[arg-type]
+                "selected_pointer",
+                "selected_resource_address",
+                "word",
+                "source",
+            )),
+            "events": internal_source_heading_first_three_rows["row0_resolution"]["events"],  # type: ignore[index]
+        },
+        "row0_printed": default_roman8_sample_row_fields["printed"],
+        "row0_name": default_roman8_sample_row_fields["name"],
+        "row0_event_summary": [
+            (
+                event["kind"],
+                event.get("label"),
+                event.get("event_count"),
+                event.get("units"),
+                event.get("cursor_before"),
+                event.get("cursor_after"),
+            )
+            for event in internal_source_heading_first_three_rows["row0"]["row_field_events"]  # type: ignore[index]
+        ],
+        "row1_transition": internal_source_heading_first_three_rows["row1_transition"],
+        "row2_transition": internal_source_heading_first_three_rows["row2_transition"],
+        "context_slots": internal_source_heading_first_three_rows["context_slots"],
+        "nonempty_buckets": internal_source_heading_first_three_rows["nonempty_buckets"],
+        "selected_bucket_hashes": {
+            bucket: internal_source_heading_first_three_rows["bucket_object_hashes"][bucket]  # type: ignore[index]
+            for bucket in (0, 3, 10, 18)
+        },
+        "final_cursor_x": internal_source_heading_first_three_rows["final_cursor_x"],
+        "final_cursor_y": internal_source_heading_first_three_rows["final_cursor_y"],
+    }, {
+        "row0_resolution": {
+            "summary": {
+                "selected_pointer": 0x782354,
+                "selected_resource_address": 0x08004C,
+                "word": 0x0115,
+                "source": "0x1b50e-fast-probe",
+            },
+            "events": [
+                {"helper": 0x01B8EA, "search_mode": 3, "requested_index": 0, "selected_pointer": 0x782354, "resource_address": 0x08004C, "word": 0x0115, "selected": True},
+            ],
+        },
+        "row0_printed": b"I00LINE PRINTER10128U",
+        "row0_name": {
+            "helper": "0x1d198/0x1d5fa",
+            "record_start": 0x00004C,
+            "source": "0x1d198-table-fallback",
+            "steps": [
+                {"table": "0x1c11a", "family_byte_0x18": 0, "printed": b"LINE PRINTER"},
+            ],
+            "printed": b"LINE PRINTER",
+            "name_length": 12,
+            "pad_advance_units_1d152": 13,
+        },
+        "row0_event_summary": [
+            ("printable-chunk", "prefix", 3, None, None, pack12(90)),
+            ("cursor-advance", "prefix-post", None, 2, pack12(90), pack12(150)),
+            ("printable-chunk", "name", 12, None, None, pack12(510)),
+            ("cursor-advance", "name-pad", None, 13, pack12(510), pack12(900)),
+            ("cursor-advance", "name-post", None, 2, pack12(900), pack12(960)),
+            ("printable-chunk", "pitch", 2, None, None, pack12(1020)),
+            ("cursor-advance", "pitch-internal", None, 3, pack12(1020), pack12(1110)),
+            ("cursor-advance", "pitch-post", None, 1, pack12(1110), pack12(1140)),
+            ("printable-chunk", "height", 2, None, None, pack12(1200)),
+            ("cursor-advance", "height-internal", None, 3, pack12(1200), pack12(1290)),
+            ("fixed-space", "symbol", None, None, pack12(1290), pack12(1320)),
+            ("fixed-space", "symbol", None, None, pack12(1320), pack12(1350)),
+            ("fixed-space", "symbol", None, None, pack12(1350), pack12(1380)),
+            ("printable-chunk", "symbol", 2, None, None, pack12(1440)),
+            ("cursor-advance", "symbol-post", None, 1, pack12(1440), pack12(1470)),
+        ],
+        "row1_transition": {
+            "helper": "0x1d050/0x1cfe4",
+            "flush_0xf06e": {
+                "cursor_before": pack12(2220),
+                "line_anchor_x_782dd6": pack12(0),
+                "cursor_after": pack12(0),
+            },
+            "selected_extent": {
+                "selector_flag_1c766": 1,
+                "line_advance_1c6a4": 40,
+                "row_height_1c6da": 13,
+            },
+            "current_extent": {
+                "selector_flag_1c766": 1,
+                "line_advance_1c6a4": 36,
+                "row_height_1c6da": 13,
+            },
+            "row_height_cache_before_783f06": 13,
+            "line_advance_subunits_1cfe4": 744,
+            "cursor_y_before": 0x008B0003,
+            "cursor_y_after": 0x00C90003,
+            "row_height_cache_after_783f06": 13,
+            "page_limit_782db6": 0x7FFF,
+            "continuation_needed": False,
+        },
+        "row2_transition": {
+            "helper": "0x1d050/0x1cfe4",
+            "flush_0xf06e": {
+                "cursor_before": pack12(2220),
+                "line_anchor_x_782dd6": pack12(0),
+                "cursor_after": pack12(0),
+            },
+            "selected_extent": {
+                "selector_flag_1c766": 1,
+                "line_advance_1c6a4": 40,
+                "row_height_1c6da": 13,
+            },
+            "current_extent": {
+                "selector_flag_1c766": 1,
+                "line_advance_1c6a4": 36,
+                "row_height_1c6da": 13,
+            },
+            "row_height_cache_before_783f06": 13,
+            "line_advance_subunits_1cfe4": 744,
+            "cursor_y_before": 0x01070003,
+            "cursor_y_after": 0x01450003,
+            "row_height_cache_after_783f06": 13,
+            "page_limit_782db6": 0x7FFF,
+            "continuation_needed": False,
+        },
+        "context_slots": [0x4008004C, 0x44080418, 0x44080868],
+        "nonempty_buckets": [0, 2, 3, 4, 6, 7, 10, 11, 13, 14, 15, 18, 21, 22, 23],
+        "selected_bucket_hashes": {
+            0: [
+                "51cf2deccad2c23bc20fea15974651c8a0accd40b98d04f08e7dae9b2b91ede7",
+                "6bc8abff650c02ca198ee24c067f20e675a51df39e57c6c6de6deb920a68e3eb",
+            ],
+            3: [
+                "cb5f8df2937e9030f6bfce652c5ac01b37cd0c1a2321f4e7c128d013b9b4b9a0",
+                "a3d39e69341601268d819eb66ad2f652b65a92f6bb8911c0b6ca6ebc2c215535",
+                "60ed5c45f6003bb57c9c01c60845233ea7d801bdf5c7da71f92eaca7949e0833",
+                "2d29f5798597bb622e722202499732967392b2c04f6cc098311db3cfe930dbe5",
+                "ceaea30694a4ecc0f0397f0cd42d5454a763dedf0fe8a66b2e65c9cd61de042b",
+            ],
+            10: [
+                "702932798a23a69ea9629cd224adaa6271f07815a6bb29e2cbc0e316ee5deb78",
+                "15b89979d8afd52102325da3ad417810e92fdd111099d45f03f15205e2bf762d",
+                "aa767f0ac8c7fd3d5c821b114108406f466eedec5f5b1b57f21a01e082288d89",
+                "85b8757d3cfcb6a61043aa93bf5deb6baa269a07b3e8d1c63a9706a822db8e15",
+                "053ba23980d22509f30a9ae5279c07b698c8e0987b9c911a934a1f3cb89c4f54",
+            ],
+            18: [
+                "d747b683551d5718f65976547458e0eab0ef20b6f1c7b3e12a07aeed8a79b12d",
+                "68436d2cc516350db997cb6047a8d69c4b1a3d81de399527a43286059b7b5879",
+                "c51399e3a6fa2cbbd61032e7df4d9d55fef464c1d9e734dc83cf7538d90db213",
+                "7ad76fb4700a2eb00864de2a86a44535c5f8a489ad4261237fb908762ebb386d",
+                "c00849fe933489c2160557a9ab47f82fd3df69f3b088211bf44e8ce7f28ac4b5",
+            ],
+        },
+        "final_cursor_x": pack12(2220),
+        "final_cursor_y": 0x01830003,
     }))
     checks.append(assert_equal("named built-in first glyphs expose positioning offsets", named_builtin_first_glyph_position_summary(resources), {
         "bitmap_delta_values": [10],
@@ -69310,6 +69659,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         courier_source_heading_two_rows["nonempty_buckets"],
         courier_source_heading_two_rows["final_cursor_x"],
         courier_source_heading_two_rows["final_cursor_y"],
+    ))
+    lines.append("- font sample actual first internal rows: fast-probe request index 0 selects slot `0x782354` / record `0x00004c` / word `0x0115`; `0x1d198` falls through table `0x1c11a` and prints row bytes `%s`. The actual source-heading composition uses context slots `%s`, then row-to-row `0x1d050` transitions reach y `0x%08x` and `0x%08x`, buckets `%s`, and final cursor `0x%08x,0x%08x` after rows 0, 1, and 2." % (
+        " ".join(f"{byte:02x}" for byte in default_roman8_sample_row_fields["printed"]),
+        ", ".join("0x%08x" % int(slot) for slot in internal_source_heading_first_three_rows["context_slots"]),  # type: ignore[index]
+        internal_source_heading_first_three_rows["row1_transition"]["cursor_y_after"],  # type: ignore[index]
+        internal_source_heading_first_three_rows["row2_transition"]["cursor_y_after"],  # type: ignore[index]
+        internal_source_heading_first_three_rows["nonempty_buckets"],
+        internal_source_heading_first_three_rows["final_cursor_x"],
+        internal_source_heading_first_three_rows["final_cursor_y"],
     ))
     lines.append("- font sample row fields: first `LINE_PRINTER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152`; the height value is rounded by the mode-1 `0x1cc6e` add-five path." % (
         line_printer_sample_row_fields["record_start"],

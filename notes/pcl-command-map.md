@@ -950,18 +950,24 @@ handlers:
   decoded through `0x1b50e` candidate resolution, class filtering,
   continuation-page entry, row-index advance, and recent-context
   duplicate suppression. The concrete internal-font candidate sequence is
-  now documented in `notes/resource-rom.md`, and sample run 1 byte stream
-  ``ABCDEfghij#$@[\\]^`{|}~123`` now crosses `0x1c5e8..0x1ed84` in
-  fixture `font sample run 1 full row spans compact buckets`. That
-  fixture emits compact buckets `-1` and `0`, object counts `1` and `2`,
-  dispatch target `0x1effe`, and per-bucket row hashes
+  now documented in `notes/resource-rom.md`. Sample run 1 byte stream
+  ``ABCDEfghij#$@[\\]^`{|}~123`` crosses `0x1c5e8..0x1ed84` in fixture
+  `font sample run 1 full row spans compact buckets`, emitting compact
+  buckets `-1` and `0`, object counts `1` and `2`, dispatch target
+  `0x1effe`, and per-bucket row hashes
   `b6a0061f7de34c0fa1a0586263f3f167c84d95219e05437e74a286356409af37`
   and
   `d7dfb89c8cff5e309b95aac43cd64e0f74f17db1dd9118253544343f17b4c1ce`.
-  The open boundary is full printout placement, including sample run 2
-  and page-level positioning. Compare those rows against the direct
-  payload hashes and a known printed/self-test sample to resolve
-  remaining `+0x28..+0x31` baseline/cell semantics.
+  Sample run 2 from table `0x1c1e9` now crosses the same boundary in
+  fixture `font sample run 2 full row spans compact buckets`, emitting
+  compact buckets `-1` and `0`, object counts `2` and `1`, and row hashes
+  `c77bca7364adbda480c5a31fa4be469175c031bd5f14fc4a54a2e6fb09174be5`
+  and
+  `b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5`.
+  The open boundary is full printout placement and page-level
+  positioning. Compare those rows against the direct payload hashes and a
+  known printed/self-test sample to resolve remaining `+0x28..+0x31`
+  baseline/cell semantics.
 - Broaden visible-output variants where they still change compatibility:
   font-selection fallback/error branches beyond the two symbol-miss
   fixtures, downloaded-glyph publication cross-products beyond the

@@ -1141,9 +1141,10 @@ for how resource records become ordinary page-record text.
   - class-pass counter in the `0x1c28e..0x1c344` loop.
 - Unknown:
   - exact page-object bytes emitted by the full `0x1c204` printout loop
-    have not yet been modeled from both complete sample byte runs. Sample
-    run 1 is fixture-backed through compact buckets `-1` and `0`,
-    page-record objects, and `0x1ed84` / `0x1ef6a` render entries.
+    have not yet been modeled from row-prefix/metric columns through full
+    page placement. Both sample byte runs are fixture-backed through
+    compact buckets, page-record objects, and `0x1ed84` / `0x1ef6a`
+    render entries.
   - record `+0x28..+0x31` baseline/cell/manual semantics remain
     unresolved until this path is correlated with emitted page objects or
     a known printed sample.
@@ -1233,9 +1234,20 @@ pins nonempty compact buckets `-1` and `0`, bucket object counts `1` and
 and bucket `0` glyphs `[90, 91, 92, 95, 122, 124, 125, 48, 49, 50, 64,
 65, 66, 67, 68, 101, 102, 103, 34, 63]` with row hash
 `d7dfb89c8cff5e309b95aac43cd64e0f74f17db1dd9118253544343f17b4c1ce`.
+Fixture `font sample run 2 full row spans compact buckets` consumes sample
+run 2 table `0x1c1e9` bytes `a1 a2 b3 b4 b6 b8 b9 bb bd c1 c5 c8 c9 cd
+ce d0 d2 d4 d7 d8 db de e0 e3 e8` through the same context and HMI. It
+pins nonempty compact buckets `-1` and `0`, bucket object counts `2` and
+`1`, compact dispatch target `0x1effe`, bucket `-1` glyphs `[211, 214,
+215, 218, 221, 178, 179, 181, 184, 188, 192, 196, 199, 205, 207]` with
+row hash
+`c77bca7364adbda480c5a31fa4be469175c031bd5f14fc4a54a2e6fb09174be5`,
+and bucket `0` glyphs `[160, 161, 183, 186, 200, 204, 209, 223, 226,
+231]` with row hash
+`b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5`.
 Until the full `0x1c204` page-object loop is modeled, this checkpoint
-proves the producer, row-order, duplicate-suppression, and sample run 1
-page-record/render slices, not final full-page placement.
+proves the producer, row-order, duplicate-suppression, and both sample
+byte-run page-record/render slices, not final full-page placement.
 
 ### Confidence
 
@@ -1273,16 +1285,17 @@ open.
   continuation-page entry, row-index advance, and recent-context
   duplicate suppression. The verified internal-font mode-3 row sequence
   is documented in [resource-rom.md](resource-rom.md). The `0x1c1cf`
-  sample run 1 byte stream is now consumed by an executable font-sample
-  page-object/render fixture; sample run 2 and complete printout
-  placement are not.
+  sample run 1 byte stream and `0x1c1e9` sample run 2 byte stream are now
+  consumed by executable font-sample page-object/render fixtures; complete
+  printout placement is not.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
-  identified. Sample run 1 crosses this boundary with context
+  identified. Sample runs 1 and 2 cross this boundary with context
   `0x44080418`, HMI `0x001e`, compact buckets `-1` and `0`, and
   render-entry row hashes above; emitted page objects for the complete
-  font printout remain to be modeled from the ROM sample byte runs and
-  compared against a known printed/self-test sample.
+  font printout remain to be modeled from row prefix, metric columns, ROM
+  sample bytes, and page-placement state, then compared against a known
+  printed/self-test sample.
 - `record +0x28..+0x31`: these fields participate in height and chooser
   logic, but their final baseline/cell semantics need correlation against
   observed sample-page placement.

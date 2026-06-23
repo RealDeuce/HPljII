@@ -49780,6 +49780,213 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         },
     ))
+    metric_context_cross_product_cases: dict[str, dict[str, object]] = {}
+    for label, selected_context, source_form, materializer, byte_value in (
+        ("inline-d4ac", 0, "unflagged", "d4ac", b"!"),
+        (
+            "resource-d4ac",
+            int(metric_variant_install["candidate_flags"]),
+            "unflagged",
+            "d4ac",
+            b"!",
+        ),
+        ("inline-d8fc", 0, "flagged", "d8fc", b"!"),
+        (
+            "resource-d8fc",
+            int(metric_variant_install["candidate_flags"]),
+            "flagged",
+            "d8fc",
+            b"!",
+        ),
+    ):
+        metric_state = control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=pack12(18),
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            text_source_form=source_form,
+            enabled_783184=1,
+            low_x_783186=100,
+            high_x_783188=120,
+            high_y_78318a=0,
+            span_alternate_offset_783185=1,
+            orientation=0,
+            page_extent_782db6=64,
+        )
+        if materializer == "d4ac":
+            metric_state["materialize_d4ac_span_update"] = 1
+        else:
+            metric_state["materialize_d8fc_span_update"] = 1
+            metric_state["span_metrics_from_context"] = 1
+        try:
+            stream_result = render_mixed_printable_control_page_record_stream(
+                data,
+                metric_variant_memory,
+                byte_value,
+                selected_context,
+                metric_state,
+                default_advance=pack12(18),
+            )
+        except AssertionError as exc:
+            metric_context_cross_product_cases[label] = {
+                "context": selected_context,
+                "source_form": source_form,
+                "materializer": materializer,
+                "status": "invalid-cross-form",
+                "error": str(exc),
+            }
+            continue
+        event = stream_result["events"][0]
+        assert isinstance(event, dict)
+        span = event["span_update_result"]
+        assert isinstance(span, dict)
+        flush = span["flush_result"]
+        assert isinstance(flush, dict)
+        queued = flush["queued"]
+        assert isinstance(queued, dict)
+        render_entry = stream_result["render_entry"]
+        assert isinstance(render_entry, dict)
+        rendered = render_entry["entry"]
+        assert isinstance(rendered, dict)
+        rows = rendered["rows"]
+        assert isinstance(rows, list)
+        metric_context_cross_product_cases[label] = {
+            "context": selected_context,
+            "source_form": source_form,
+            "materializer": materializer,
+            "status": "rendered",
+            "source": {
+                key: event["source"][key]
+                for key in (
+                    "flag",
+                    "mapped",
+                    "context_slot",
+                    "inline_record",
+                    "glyph_entry",
+                    "glyph_rows",
+                    "glyph_width",
+                )
+                if key in event["source"]
+            },
+            "span": {
+                key: span[key]
+                for key in (
+                    "handler",
+                    "context_offset_002b",
+                    "context_lower_002c",
+                    "context_height_002d",
+                    "context_lower_0016",
+                    "context_height_0018",
+                    "context_offset_001a",
+                    "metric_source",
+                    "high_y",
+                )
+                if key in span
+            },
+            "flush_object": queued["object"],
+            "render": {
+                "selector": rendered.get("selector"),
+                "context_slot": rendered.get("context_slot"),
+                "row_count": len(rows),
+                "row_width": max((len(str(row)) for row in rows), default=0),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(str(row) for row in rows).encode("ascii")
+                ).hexdigest(),
+            },
+        }
+    checks.append(assert_equal(
+        "descriptor metric fields match across inline and resource contexts",
+        metric_context_cross_product_cases,
+        {
+            "inline-d4ac": {
+                "context": 0,
+                "source_form": "unflagged",
+                "materializer": "d4ac",
+                "status": "rendered",
+                "source": {
+                    "flag": 0,
+                    "mapped": 1,
+                    "context_slot": 0,
+                    "inline_record": bytes.fromhex("02 03 04 00 00 00 00 a0"),
+                    "glyph_entry": 0x000048,
+                    "glyph_rows": 3,
+                    "glyph_width": 2,
+                },
+                "span": {
+                    "handler": 0x00D4AC,
+                    "context_offset_002b": 0,
+                    "context_lower_002c": 0,
+                    "context_height_002d": 0x10,
+                    "high_y": 26,
+                },
+                "flush_object": (
+                    bytes.fromhex("00 00 00 00 40 00 00 01 a4 06 03 00 00 14")
+                    + (b"\x00" * 0x18)
+                ),
+                "render": {
+                    "selector": None,
+                    "context_slot": None,
+                    "row_count": 13,
+                    "row_width": 116,
+                    "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                },
+            },
+            "resource-d4ac": {
+                "context": 0x40000000,
+                "source_form": "unflagged",
+                "materializer": "d4ac",
+                "status": "invalid-cross-form",
+                "error": "offset-table glyph 1 is missing for context 0x40000000",
+            },
+            "inline-d8fc": {
+                "context": 0,
+                "source_form": "flagged",
+                "materializer": "d8fc",
+                "status": "invalid-cross-form",
+                "error": "context 0x00000000 does not select the offset-table form",
+            },
+            "resource-d8fc": {
+                "context": 0x40000000,
+                "source_form": "flagged",
+                "materializer": "d8fc",
+                "status": "rendered",
+                "source": {
+                    "flag": 1,
+                    "mapped": 0x21,
+                    "context_slot": 0,
+                    "glyph_entry": 0x000180,
+                    "glyph_rows": 3,
+                    "glyph_width": 4,
+                },
+                "span": {
+                    "handler": 0x00D8FC,
+                    "context_lower_0016": 0x0004,
+                    "context_height_0018": 0x0004,
+                    "context_offset_001a": 0x0002,
+                    "metric_source": {
+                        "kind": "context",
+                        "base": 0,
+                        "context": 0x40000000,
+                    },
+                    "high_y": 19,
+                },
+                "flush_object": (
+                    bytes.fromhex("00 00 00 00 40 00 00 01 34 06 03 00 00 14")
+                    + (b"\x00" * 0x18)
+                ),
+                "render": {
+                    "selector": None,
+                    "context_slot": None,
+                    "row_count": 8,
+                    "row_width": 116,
+                    "row_sha256": "00c97b69bc50326e442dd060c88b710b8f00217d40809bed276d8ba48581fdc7",
+                },
+            },
+        },
+    ))
 
     downloaded_segmented_wide_stream = bytearray()
     for row in range(0x81):
@@ -75174,6 +75381,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             " ".join(
                 f"{byte:02x}" for byte in metric_variant_d8fc_queued["object"]
             ),
+        )
+    )
+    lines.append(
+        "- descriptor metric producer-form cross-product: fixture `descriptor metric fields match across inline and resource contexts` proves inline/unflagged `d4ac` renders row digest `%s`, resource/flagged `d8fc` renders row digest `%s`, resource/unflagged fails as `%s`, and inline/flagged fails as `%s`." % (
+            metric_context_cross_product_cases["inline-d4ac"]["render"]["row_sha256"],  # type: ignore[index]
+            metric_context_cross_product_cases["resource-d8fc"]["render"]["row_sha256"],  # type: ignore[index]
+            metric_context_cross_product_cases["resource-d4ac"]["error"],  # type: ignore[index]
+            metric_context_cross_product_cases["inline-d8fc"]["error"],  # type: ignore[index]
         )
     )
     lines.append(

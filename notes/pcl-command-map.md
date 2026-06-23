@@ -933,9 +933,12 @@ handlers:
   parser-produced pages. The covered evidence already includes
   host-fetched `0x1719c` type-0/type-1/type-2 payloads, four
   parser-produced metric-value variants, and the shared `d4ac`/`d8fc`
-  consumer branch family. The open middle is the descriptor metric
-  cross-product across downloaded and inline forms, plus visible behavior
-  for validation/error forms beyond the seven bounded no-install
+  consumer branch family. Fixture
+  `descriptor metric fields match across inline and resource contexts` now
+  pins the legal inline/unflagged `d4ac` and resource/flagged `d8fc`
+  producer forms plus the two invalid swapped forms. The open middle is
+  broader metric-value combinations within those legal forms, plus visible
+  behavior for validation/error forms beyond the seven bounded no-install
   predicates.
 - Replace remaining modeled producer-state handoffs with fuller
   parser-produced page objects. Current coverage includes direct text,

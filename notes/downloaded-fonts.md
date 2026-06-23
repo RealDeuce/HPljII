@@ -69,6 +69,7 @@ Primary fixtures:
 - `host-fetched clamped metric variant changes d4ac gate and d8fc rows`
 - `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`
 - `host-fetched upper-bound metric variant keeps d4ac span but suppresses d8fc`
+- `descriptor metric fields match across inline and resource contexts`
 - `0x16498-backed downloaded character object renders segmented-wide compact row`
 - `downloaded character stream ties ROM parser dispatch to rendered object`
 - `host-fetched downloaded character stream reaches rendered object`
@@ -268,8 +269,9 @@ Unknown:
   together. Current-record allocation-failure release through `0x1887a` is
   fixture-backed for the bit-30-clear extended fixed-record case.
 - The complete soft-font grammar is not exhaustively proven for every legal
-  PCL descriptor form; the metric producer gap is the untested cross-product
-  of descriptor metric fields across downloaded and inline forms.
+  PCL descriptor form. The metric producer-form boundary is now fixture-backed:
+  inline/unflagged feeds `0xd4ac`, resource/flagged feeds `0xd8fc`, and the
+  swapped forms fail at concrete map/render boundaries.
 
 ## Command Dispatch And Descriptor Route
 
@@ -1210,7 +1212,9 @@ A byte-stream renderer must preserve:
   into `+0x2c/+0x2d`, move `0xd8fc` rendered rows, suppress both span
   consumers through parser-owned lower-bound fields, and suppress only
   `0xd8fc` through parser-owned upper-bound fields while preserving `0xd4ac`
-  span output and compact glyph output. The remaining producer gap is the
-  untested cross-product of descriptor metric fields across downloaded and
-  inline forms, plus validation/error forms beyond those seven bounded
+  span output and compact glyph output. Fixture
+  `descriptor metric fields match across inline and resource contexts` now
+  proves the legal producer forms and the two invalid swapped forms. The
+  remaining producer gap is broader metric-value combinations within those
+  legal forms, plus validation/error forms beyond those seven bounded
   predicate branches that still need parser-produced page evidence.

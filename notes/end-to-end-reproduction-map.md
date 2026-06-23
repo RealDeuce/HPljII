@@ -243,12 +243,14 @@ pixels or byte-stream compatibility.
    exit `beyond-page-extent` at cursor y `21`. Seven bounded validation
    no-install forms now prove parser-to-validation failure, allocation skip,
    no candidate install, resumed default-font printable output, and matching
-   rows. The open edge is untested combinations of descriptor metric producer
-   fields across downloaded and inline forms, plus validation/error forms
-   beyond those bounded predicate branches. It is not the tested
-   type-0/type-1/type-2 payloads, metric-variant, clamped-variant,
-   lower-bound-variant, upper-bound-variant, validation no-install, or shared
-   consumer branch family. Evidence:
+   rows. Fixture `descriptor metric fields match across inline and resource
+   contexts` now proves inline/unflagged `d4ac`, resource/flagged `d8fc`, and
+   the two invalid swapped forms. The open edge is broader metric-value
+   combinations within the legal forms, plus validation/error forms beyond
+   those bounded predicate branches. It is not the tested type-0/type-1/type-2
+   payloads, metric-variant, clamped-variant, lower-bound-variant,
+   upper-bound-variant, validation no-install, legal producer-form boundary, or
+   shared consumer branch family. Evidence:
    `notes/semantic-state-model.md` under `Text Span Flush And Fixed-Width
    Spans`.
 2. VFC table definition and channel jumps now have a tracked command-family
@@ -310,10 +312,14 @@ The next work should follow dataflow, not isolated handlers:
    gates, one rounded-metric clamp into `+0x2c/+0x2d`, shifted `d8fc` visible
    rows, one lower-bound no-span output path for both consumers, and one
    upper-bound case where `d4ac` still renders a span while `d8fc` exits
-   `beyond-page-extent`. The missing middle is the untested cross-product of
-   descriptor metric producer fields across downloaded and inline forms, plus
-   page-visible behavior for validation/error forms beyond the seven bounded
-   predicate no-install fixtures.
+   `beyond-page-extent`. Fixture
+   `descriptor metric fields match across inline and resource contexts` now
+   pins the legal producer-form boundary: inline/unflagged reaches `d4ac`,
+   resource/flagged reaches `d8fc`, and the swapped forms fail at concrete
+   map/render boundaries. The missing middle is now broader metric-value
+   combinations within the legal forms, plus page-visible behavior for
+   validation/error forms beyond the seven bounded predicate no-install
+   fixtures.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus

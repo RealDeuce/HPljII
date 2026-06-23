@@ -2174,16 +2174,18 @@ queues a fixed-width span through `0x136d2`.
 - Unknown:
   - selected-context ownership for unflagged context fields `+0x2b`,
     `+0x2c`, and `+0x2d` is documented in
-    `notes/font-context-metrics.md`; the remaining gap is the untested
-    cross-product of descriptor metric fields across downloaded and inline
-    forms, not the fixture-backed type-0/type-1/type-2, low-bound,
+    `notes/font-context-metrics.md`; the legal producer-form boundary is now
+    fixture-backed by `descriptor metric fields match across inline and
+    resource contexts`, so remaining gaps are broader metric values within
+    legal forms, not the fixture-backed type-0/type-1/type-2, low-bound,
     high-bound, clamped, or consumer branch cases.
   - selected-context ownership for flagged context fields `+0x16`,
     `+0x18`, and `+0x1a` is documented in
-    `notes/font-context-metrics.md`; the remaining gap is the untested
-    cross-product of descriptor metric fields across downloaded and inline
-    forms, not the fixture-backed type-0/type-1/type-2, low-bound,
-    high-bound, clamped, or consumer branch cases.
+    `notes/font-context-metrics.md`; the same producer-form fixture proves
+    resource/flagged `d8fc` is legal, inline/flagged is invalid, and remaining
+    gaps are broader metric values within legal forms, not the fixture-backed
+    type-0/type-1/type-2, low-bound, high-bound, clamped, or consumer branch
+    cases.
 
 ### Writers
 
@@ -2444,10 +2446,11 @@ fixtures.
   default span at cursor y `21` / extent `64`. Fixture
   `d4ac and d8fc span consumer branch family controls flush output` covers
   the disabled, before-lower, beyond-page, and high-x-only consumer branches.
-  The remaining producer gap is the untested cross-product of descriptor
-  metric fields across downloaded and inline forms; bounded validation
-  no-install branches are composed below under `Downloaded Resource Validation
-  No-Install`.
+  Fixture `descriptor metric fields match across inline and resource contexts`
+  proves inline/unflagged `d4ac` is legal and resource/unflagged `d4ac` is an
+  invalid cross-form. Remaining producer gaps are broader metric values within
+  legal forms; bounded validation no-install branches are composed below under
+  `Downloaded Resource Validation No-Install`.
 - `0xd8fc..0xd992`: flagged context fields `+0x16`, `+0x18`, and
   `+0x1a` are fixture-backed for the low-water success branch and tied
   to selected context records in `notes/font-context-metrics.md`. Fixture
@@ -2476,10 +2479,11 @@ fixtures.
   `21` / extent `64` while the compact glyph object remains queued. Fixture
   `d4ac and d8fc span consumer branch family controls flush output` covers
   the disabled, before-lower, beyond-page, and high-x-only consumer branches.
-  The remaining producer gap is the untested cross-product of descriptor
-  metric fields across downloaded and inline forms; bounded validation
-  no-install branches are composed below under `Downloaded Resource Validation
-  No-Install`.
+  Fixture `descriptor metric fields match across inline and resource contexts`
+  proves resource/flagged `d8fc` is legal and inline/flagged `d8fc` is an
+  invalid cross-form. Remaining producer gaps are broader metric values within
+  legal forms; bounded validation no-install branches are composed below under
+  `Downloaded Resource Validation No-Install`.
 
 ## Downloaded Font Descriptor And Payload Chain
 
@@ -3136,10 +3140,12 @@ combination have not been page-compared.
   rounded-metric clamping into `+0x2c/+0x2d`, move `d8fc` visible rows, and
   suppress both span consumers through copied lower-bound fields, plus an
   upper-bound variant that preserves `d4ac` span output while `d8fc` exits
-  `beyond-page-extent`. It still needs the untested cross-product of descriptor
-  metric fields across downloaded and inline forms, plus producer-side
-  validation/error page evidence beyond the documented validation no-install
-  and following-printable boundaries.
+  `beyond-page-extent`. Fixture
+  `descriptor metric fields match across inline and resource contexts` now
+  pins the legal inline/unflagged and resource/flagged producer forms plus the
+  two invalid swapped forms. It still needs broader metric-value combinations
+  within legal forms, plus producer-side validation/error page evidence beyond
+  the documented validation no-install and following-printable boundaries.
 
 ## Macro Definition And Data-Chain Replay
 

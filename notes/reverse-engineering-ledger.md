@@ -443,8 +443,10 @@ invalid type, first-code overflow, zero line/count, high line/count,
 reversed range, high range/count, and invalid class through the parser
 restore and `0x16c14` allocation boundary, and the same seven failed
 streams followed by printable `!` now preserve the default-font
-page-record object and rendered rows; remaining work is the untested
-descriptor metric producer cross-product across downloaded and inline
+page-record object and rendered rows; fixture
+`descriptor metric fields match across inline and resource contexts` now
+pins the legal metric producer forms and the two invalid swapped forms.
+Remaining work is broader metric-value combinations within the legal
 forms, validation/error page behavior beyond those seven no-install
 branches, remaining alternate character-mode/release variants, full
 live-parser raster edge cases, and final device-output page comparison.

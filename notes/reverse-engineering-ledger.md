@@ -1103,13 +1103,15 @@ ROM work needed:
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`. The
   next boundary is physical baseline/cell comparison against a known
   printed/self-test sample.
-- Broaden the now-named `0N` / `10U` / `11U` built-in symbol-map samples
-  into more live parser/font-selection byte-stream cases where needed. The
-  generated symbol-set report now inventories all 24 built-in records and
-  shows actual compact glyph bytes for Roman-8 base `8U`, hard-coded
-  `0U`/`0E`, selected patch-table cases, `0N` as ISO 100: ECMA-94 / Latin 1,
-  `10U` as PC-8, `11U` as PC-8 (DIN), and separate base records for those
-  non-Roman-8 symbols.
+- Fixture `live parser symbol-set streams select non-Roman built-ins` now
+  broadens the named `0N` / `10U` / `11U` samples from static map evidence
+  into primary parser/font-selection evidence. Streams `ESC (0N`,
+  `ESC (10U`, and `ESC (11U` route through handlers `0x11eb6`, `0x1201e`,
+  and `0x120be`, write requested words `0x000e`, `0x0155`, and `0x0175`,
+  select records `0x000cb8`, `0x000418`, and `0x000868`, and rebuild map
+  `0x782f32` through the `selected-symbol-not-roman8` path. The remaining
+  edge is secondary-slot and visible-output composition for those named
+  non-Roman symbols.
 - Promote the generated glyph payload manifest into renderer fixture
   inputs once the renderer-side data format is chosen.
 

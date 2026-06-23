@@ -652,6 +652,18 @@ glyph bytes for base `8U`, hard-coded `0U` and `0E`, plus selected
 patch-table cases such as `2U`, `1E`, and `0G`. Separate base-map samples
 for `0N`, `10U`, and `11U` make clear that those built-in alternatives are
 selected as distinct font records rather than remapped by `0x14f16`.
+Fixture `live parser symbol-set streams select non-Roman built-ins` now
+drives primary host streams `ESC (0N`, `ESC (10U`, and `ESC (11U` through
+parser handlers `0x11eb6`, `0x1201e`, and `0x120be`, then through the
+`0x13eb8` selected-font refresh and `0x14c64` dispatch. The three streams
+write requested words `0x000e`, `0x0155`, and `0x0175`; `0x156de` keeps
+survivor record starts `0x000cb8/0x00ac1c/0x014f5c`,
+`0x000418/0x00a37c/0x0146b4`, and `0x000868/0x00a7cc/0x014b08`;
+`0x14398`/`0x13c06` choose records `0x000cb8`, `0x000418`, and
+`0x000868`. `0x14c64` rebuilds map `0x782f32` with ranges `0x21..0xff`
+for `0N` and `0x01..0xff` for `10U`/`11U`, using the
+`selected-symbol-not-roman8` dispatch path rather than the `0x14f16`
+Roman-8 patch-table path.
 
 The generated `generated/analysis/ic30_ic13_active_symbol_set_flow.md`
 report traces those active words back to the host parser. `ESC (` uses
@@ -764,8 +776,9 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    rendered rows against the direct payload hashes and a known
    printed/self-test sample to correlate the remaining baseline/header
    fields against observed placement.
-7. Broaden the now-named `0N` / `10U` / `11U` real map samples into more
-   live parser/font-selection byte-stream cases where needed.
+7. Broaden the now-named `0N` / `10U` / `11U` primary parser/font-selection
+   cases into secondary-slot and visible-output byte-stream cases where
+   needed.
 
 These are high-value targets for pixel-perfect output because the
 manuals describe PCL behavior but do not provide the built-in font
@@ -880,6 +893,13 @@ not one of `8U`, `10U`, `11U`, or `0N`, `0x1b50e` can count a Roman-8
 row twice and return the requested word for the duplicate ordinal; when
 the current selected slot matches the Roman-8 slot, `0x1b8b6` suppresses
 that duplicate.
+
+The primary live parser selection fixture confirms that `ESC (0N`,
+`ESC (10U`, and `ESC (11U` consume the class-zero rows above directly:
+records `0x000cb8`, `0x000418`, and `0x000868` become the selected built-in
+records, and dispatch map `0x782f32` is rebuilt through the non-Roman-8
+selected-symbol path. This is separate from Roman-8 base record `0x00004c`
+plus `0x14f16` patching.
 
 Current candidate-list state:
 

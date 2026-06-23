@@ -33088,6 +33088,190 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     secondary_selection_request = font_selection_request_from_trace(secondary_font_selection_trace)
     primary_metric_inputs = primary_selection_request["filter_inputs"]
     secondary_metric_inputs = secondary_selection_request["filter_inputs"]
+    non_roman_symbol_selection_cases: dict[str, dict[str, object]] = {}
+    for label, stream_bytes in (
+        ("0N", b"\x1b(0N"),
+        ("10U", b"\x1b(10U"),
+        ("11U", b"\x1b(11U"),
+    ):
+        parser_trace = trace_symbol_set_parser_dispatch_via_11774(data, stream_bytes)
+        parser_commands = parser_trace["commands"]
+        assert isinstance(parser_commands, list)
+        stream_result = apply_symbol_set_stream_via_120be_1be22(
+            symbol_set_state(
+                requested_symbols=[0x0115, 0x0115],
+                active_symbols=[0x0115, 0x0115],
+                remembered_symbols=[0x0115, 0x0115],
+                current_selector_782f06=0,
+            ),
+            stream_bytes,
+        )
+        stream_events = stream_result["stream_events"]
+        assert isinstance(stream_events, list)
+        stream_event = stream_events[0]
+        assert isinstance(stream_event, dict)
+        requested_word = int(stream_event["requested_word"]) & 0xFFFF
+        refresh = selected_font_refresh_via_13eb8(
+            data,
+            resources,
+            actual_candidate_windows,
+            slot=0,
+            requested_primary=requested_word,
+            requested_secondary=0x0115,
+            active_symbols=[requested_word, 0x0115],
+            remembered_primary_782f08=requested_word,
+            remembered_secondary_782f0a=0x0115,
+            fallback_table_782f0c=fallback_table_782f0c,
+            class_selector_byte_782da3=0,
+            requested_spacing=primary_metric_inputs["spacing"],  # type: ignore[index]
+            requested_pitch=primary_metric_inputs["pitch"],  # type: ignore[index]
+            requested_height=primary_metric_inputs["height"],  # type: ignore[index]
+            requested_style=primary_metric_inputs["style"],  # type: ignore[index]
+            requested_stroke=primary_metric_inputs["stroke"],  # type: ignore[index]
+            requested_typeface=primary_metric_inputs["typeface"],  # type: ignore[index]
+        )
+        dispatch = refresh["dispatch"]
+        assert isinstance(dispatch, dict)
+        non_roman_symbol_selection_cases[label] = {
+            "stream": stream_bytes,
+            "parser_record": parser_commands[0]["record"],
+            "parser_handlers": [
+                dispatch_event["handler"]
+                for dispatch_event in parser_commands[0]["dispatches"]
+            ],
+            "stream_event": {
+                key: stream_event[key]
+                for key in (
+                    "setup_handler",
+                    "terminal_handler",
+                    "dispatch_target",
+                    "parameter",
+                    "final",
+                    "requested_word",
+                    "active_word",
+                    "refreshes",
+                )
+            },
+            "symbol_survivors": refresh["symbol_filter"]["survivor_record_starts"],  # type: ignore[index]
+            "chosen": select_keys(refresh["chosen"], (
+                "selected_slot_pointer_7828a8",
+                "selected_longword",
+                "selected_record_start",
+            )),
+            "dispatch": select_keys(dispatch, (
+                "path",
+                "slot",
+                "selected_symbol",
+                "active_symbol",
+                "range_start",
+                "range_end",
+                "range_reason",
+                "patch_kind",
+                "map_address",
+            )),
+        }
+    checks.append(assert_equal(
+        "live parser symbol-set streams select non-Roman built-ins",
+        non_roman_symbol_selection_cases,
+        {
+            "0N": {
+                "stream": b"\x1b(0N",
+                "parser_record": b"\x80N\x00\x00\x00\x00",
+                "parser_handlers": [0x011EB6, 0x01201E, 0x0120BE],
+                "stream_event": {
+                    "setup_handler": 0x01201E,
+                    "terminal_handler": 0x0120BE,
+                    "dispatch_target": 0x01C0A4,
+                    "parameter": 0,
+                    "final": ord("N"),
+                    "requested_word": 0x000E,
+                    "active_word": 0x000E,
+                    "refreshes": 1,
+                },
+                "symbol_survivors": [0x000CB8, 0x00AC1C, 0x014F5C],
+                "chosen": {
+                    "selected_slot_pointer_7828a8": 0x782360,
+                    "selected_longword": 0xC0080CB8,
+                    "selected_record_start": 0x000CB8,
+                },
+                "dispatch": {
+                    "path": "built-in-cache-miss",
+                    "slot": "primary",
+                    "selected_symbol": 0x000E,
+                    "active_symbol": 0x000E,
+                    "range_start": 0x0021,
+                    "range_end": 0x00FF,
+                    "range_reason": "record-range",
+                    "patch_kind": "selected-symbol-not-roman8",
+                    "map_address": 0x782F32,
+                },
+            },
+            "10U": {
+                "stream": b"\x1b(10U",
+                "parser_record": b"\x80U\x00\x0a\x00\x00",
+                "parser_handlers": [0x011EB6, 0x01201E, 0x0120BE],
+                "stream_event": {
+                    "setup_handler": 0x01201E,
+                    "terminal_handler": 0x0120BE,
+                    "dispatch_target": 0x01C0A4,
+                    "parameter": 10,
+                    "final": ord("U"),
+                    "requested_word": 0x0155,
+                    "active_word": 0x0155,
+                    "refreshes": 1,
+                },
+                "symbol_survivors": [0x000418, 0x00A37C, 0x0146B4],
+                "chosen": {
+                    "selected_slot_pointer_7828a8": 0x782358,
+                    "selected_longword": 0xC4080418,
+                    "selected_record_start": 0x000418,
+                },
+                "dispatch": {
+                    "path": "built-in-cache-miss",
+                    "slot": "primary",
+                    "selected_symbol": 0x0155,
+                    "active_symbol": 0x0155,
+                    "range_start": 0x0001,
+                    "range_end": 0x00FF,
+                    "range_reason": "record-range",
+                    "patch_kind": "selected-symbol-not-roman8",
+                    "map_address": 0x782F32,
+                },
+            },
+            "11U": {
+                "stream": b"\x1b(11U",
+                "parser_record": b"\x80U\x00\x0b\x00\x00",
+                "parser_handlers": [0x011EB6, 0x01201E, 0x0120BE],
+                "stream_event": {
+                    "setup_handler": 0x01201E,
+                    "terminal_handler": 0x0120BE,
+                    "dispatch_target": 0x01C0A4,
+                    "parameter": 11,
+                    "final": ord("U"),
+                    "requested_word": 0x0175,
+                    "active_word": 0x0175,
+                    "refreshes": 1,
+                },
+                "symbol_survivors": [0x000868, 0x00A7CC, 0x014B08],
+                "chosen": {
+                    "selected_slot_pointer_7828a8": 0x78235C,
+                    "selected_longword": 0xC4080868,
+                    "selected_record_start": 0x000868,
+                },
+                "dispatch": {
+                    "path": "built-in-cache-miss",
+                    "slot": "primary",
+                    "selected_symbol": 0x0175,
+                    "active_symbol": 0x0175,
+                    "range_start": 0x0001,
+                    "range_end": 0x00FF,
+                    "range_reason": "record-range",
+                    "patch_kind": "selected-symbol-not-roman8",
+                    "map_address": 0x782F32,
+                },
+            },
+        },
+    ))
     parser_metric_height_filter = filter_active_candidates_by_height_via_1519a(
         class_zero_symbol_survivor_activation,
         requested_height=primary_metric_inputs["height"],  # type: ignore[index]
@@ -73027,6 +73211,25 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         secondary_symbol_miss_word,
         filtered_class_one_secondary_fallback["active_word"],
         ", ".join("0x%06x" % int(slot) for slot in filtered_class_one_secondary_fallback["survivor_slot_pointers"]),
+    ))
+    non_roman_symbol_summary = [
+        (
+            label,
+            " ".join(f"{byte:02x}" for byte in case["stream"]),  # type: ignore[index]
+            int(case["stream_event"]["requested_word"]),  # type: ignore[index]
+            [int(start) for start in case["symbol_survivors"]],  # type: ignore[index]
+            int(case["chosen"]["selected_record_start"]),  # type: ignore[index]
+            "%s:%04x-%04x@0x%06x" % (
+                case["dispatch"]["patch_kind"],  # type: ignore[index]
+                int(case["dispatch"]["range_start"]),  # type: ignore[index]
+                int(case["dispatch"]["range_end"]),  # type: ignore[index]
+                int(case["dispatch"]["map_address"]),  # type: ignore[index]
+            ),
+        )
+        for label, case in non_roman_symbol_selection_cases.items()
+    ]
+    lines.append("- live non-Roman symbol-set selection: fixture `live parser symbol-set streams select non-Roman built-ins` drives primary streams through parser handlers `0x11eb6`, `0x1201e`, and `0x120be`, then through `0x13eb8`/`0x14c64`. `(label, stream, requested word, survivor records, chosen record, dispatch)` values are `%s`, proving `0N`, `10U`, and `11U` select distinct built-in records and use the `selected-symbol-not-roman8` map path rather than `0x14f16` Roman-8 patching." % (
+        non_roman_symbol_summary,
     ))
     lines.append("- active candidate chooser: `0x14398` seeds the first active slot and calls `0x13c06` for each later active slot; resource class is compared first, then same-class built-ins use `0x1428c` to compare decoded height, byte `+0x2f`, signed byte `+0x30`, and byte `+0x31`. For class-zero Roman-8 survivors, this selects slot `0x%06x` / record `0x%06x` because tuple `%s` beats the first survivor and the later 16.66-pitch survivor." % (
         chosen_class_zero_primary["selected_slot_pointer_7828a8"],

@@ -1636,6 +1636,11 @@ plus printable output still render through context `0xc008004c`.
 secondary contract: the symbol-set request writes word `0x9a55`, no class-one
 candidate matches, `0x156de` takes fallback table word `0x000e`, and the later
 secondary selection plus SO output still render through context `0xc00ae122`.
+Fixture `live parser symbol-set streams select non-Roman built-ins` proves the
+primary non-Roman form before visible text: `ESC (0N`, `ESC (10U`, and
+`ESC (11U` pass through the ROM parser and selected-font refresh, select
+distinct class-zero built-in records, and rebuild primary map `0x782f32`
+through the non-Roman selected-symbol path rather than Roman-8 patching.
 Fixture `live primary current-font RAM install feeds SI page-record rows`
 proves the selected primary RAM record handoff: with
 `0x782ee6 = 0xc008004c` and an existing page root whose secondary slot is
@@ -1676,6 +1681,8 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     word `0x0115` before the primary `ESC (s...T` selection.
   - secondary symbol request word `0x9a55` from `ESC )1234U`; fallback active
     word `0x000e` before the secondary `ESC )s...T` selection.
+  - primary non-Roman symbol request words `0x000e`, `0x0155`, and `0x0175`
+    from `ESC (0N`, `ESC (10U`, and `ESC (11U`.
   - dirty flags `0x782f2c` and `0x782f2d`, set by handlers `0xc930`,
     `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a`.
   Evidence: fixture `parsed font-selection stream writes primary font-state
@@ -1693,6 +1700,10 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     `0x21..0xfe`, glyph entry `0x001088` for host byte `0x21`.
   - secondary built-in resource base `0x02e122`, first/last host range
     `0x21..0xff`, glyph entry `0x02e4f6` for host byte `0x21`.
+  - non-Roman primary selected longwords `0xc0080cb8`, `0xc4080418`, and
+    `0xc4080868` for records `0x000cb8`, `0x000418`, and `0x000868`.
+  - non-Roman primary map ranges: `0N` uses `0x21..0xff`, while `10U` and
+    `11U` use `0x01..0xff`.
   Evidence: fixtures `0x13eb8 refresh carries parsed primary font selection to
   dispatch`, `0x13eb8 refresh carries parsed secondary font selection to
   dispatch`, `parsed primary built-in font selection feeds visible
@@ -1750,6 +1761,11 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     `0x782350`.
   - `0x782f32`: rebuilt primary map, range `0x21..0xfe`, patch kind
     `unchanged`.
+  - `0x782f32` for non-Roman primary selection: rebuilt map with patch kind
+    `selected-symbol-not-roman8`; survivor record starts are
+    `0x000cb8/0x00ac1c/0x014f5c` for `0N`,
+    `0x000418/0x00a37c/0x0146b4` for `10U`, and
+    `0x000868/0x00a7cc/0x014b08` for `11U`.
   - `0x783032`: rebuilt secondary map, range `0x21..0xff`, patch kind
     `selected-symbol-not-roman8`.
   - `0x783134`: primary mapped range register, `0x21..0xfe`.
@@ -1768,6 +1784,9 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   - the fallback fetched stream is split into symbol bytes `ESC )1234U`,
     selection bytes `ESC )s0p16h8v0s0b0T`, and printable/control bytes
     `SO !!`.
+  - non-Roman parser streams `ESC (0N`, `ESC (10U`, and `ESC (11U` all route
+    through handlers `0x11eb6`, `0x1201e`, and `0x120be`; their terminal
+    `0x120be` dispatch target is `0x1c0a4`.
   - printable parser events are two `0xd04a` entries for the primary fixture,
     and `0xc6b8, 0xd04a, 0xd04a` for the secondary SO and fallback fixtures.
   - the live primary handoff stream is `SI !!` with current-font/page-root
@@ -1788,6 +1807,8 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     primary map `0x782f32` in the primary fallback stream.
   - `0x156de` uses fallback table word `0x000e` before `0x14c64` rebuilds
     secondary map `0x783032` in the fallback stream.
+  - `0x14c64` rebuilds map `0x782f32` for the primary `0N`, `10U`, and `11U`
+    selections without entering the `0x14f16` Roman-8 patch-table path.
   - `0xc428` reads the selected longword from `0x782ee6` / `0x782ef6` and
     passes that longword to `0xc4fc`; `0xc4fc` stores the longword in the
     selected page-root slot.
@@ -1798,13 +1819,17 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   - lower-level CPU-register fidelity inside the modeled `0x13eb8` refresh
     remains indirect; the primary and secondary parser-to-printable state edge
     is now covered by inline mixed-stream fixtures.
+  - secondary-slot and visible-output composition for `0N`, `10U`, and `11U`
+    remains open; current evidence covers primary parser through selected-map
+    dispatch.
 
 ### Writers
 
 - `0xc930`, `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a` write the
   primary request fields and dirty flags.
 - `0x120be` writes the requested symbol word `0x9a55` for `ESC (1234U` and
-  `ESC )1234U`.
+  `ESC )1234U`, and writes `0x000e`, `0x0155`, and `0x0175` for primary
+  `ESC (0N`, `ESC (10U`, and `ESC (11U`.
 - `0x13eb8` filters active candidates through `0x1569c`, `0x156de`,
   `0x153c6`, `0x1519a`, `0x147b2`, `0x14758`, and `0x14398`.
 - `0x156de` writes fallback active word `0x0115` for the primary symbol miss

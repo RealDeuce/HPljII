@@ -270,6 +270,92 @@ at `0x1c0a6` select `UPC/EAN`, `CODE 3 OF 9`, `SPECIAL`, `OCR A`,
 `PRESTIGE`, `GOTHIC`, `TMS RMN`, `HELV`, `COURIER`, and
 `LINE PRINTER`.
 
+## Renderer-Facing Field Classification
+
+The resource fields that are now tied to visible text output should be
+treated as semantic state, not just extraction columns:
+
+- Canonical ROM fields:
+  - record `+0x20`: built-in class/orientation selector consumed by
+    `0x1a9be`, `0x1b060`, `0x17708`, and `0xe860`;
+  - record `+0x21`: spacing/metric selector copied by `0xc428` into
+    `0x78318e` on bit-30 built-in contexts and read by the `0x153c6`
+    spacing filter;
+  - record longword `+0x24`: built-in HMI/default-advance source. First
+    Courier context `0xc008004c` uses `0x00780000`, which `0x10550`
+    converts to packed advance `30`; Line Printer context
+    `0x440946b4` uses `0x00480000`, which fixture
+    `line-printer flagged HMI metric via 0x10550` converts to packed
+    advance `18`;
+  - glyph-entry word `+0`: signed x placement offset consumed by
+    `0xd824`;
+  - glyph-entry word `+2`: signed y placement offset consumed by
+    `0xd824`;
+  - glyph-entry byte `+4`, byte `+5`, word `+6`, and word `+8`: bitmap
+    delta, mode, row count, and pixel width consumed by `0x1f354` and
+    compact text renderers.
+- Derived/cache fields:
+  - `0xc428` derives `0x78318e` from record byte `+0x21` and derives
+    `0x78315c` through `0x10550` from record longword `+0x24`.
+  - `0x1393a` derives source object `+0x04` from the selected context
+    longword and mapped glyph index, so the page-object producer and
+    renderer do not reread the character map.
+  - `0x12f2e` derives the compact coordinate and selector from the
+    positioned source fields and page-root context slot.
+- Parser scratch:
+  - The host byte and active symbol map select the glyph index through
+    `0x1393a`; those transient parser/map values are not fields in the
+    resource record.
+  - SI/SO and font-selection commands only choose which current-font
+    context reaches `0xc428`; they do not mutate the extracted resource
+    metadata.
+- Firmware bookkeeping:
+  - current-font records `0x782ee6` / `0x782ef6`, page-root context
+    slots, and render-record `+0x24` slots carry selected context
+    longwords such as `0xc008004c`, `0xc00ae122`, and `0x440946b4`.
+  - The `0x783132` / `0x783133` selected-font flags and the
+    `0x783134` / `0x78313a` range caches are map-selection state, not
+    part of the resource payload.
+- Unknown or not yet semantically named:
+  - record words `+0x28/+0x2a` are repeatable height-like fields
+    (`0x00c8/0x00` for Courier and `0x008d/0xab` for Line Printer) but
+    still need a fixture that ties them to an observed baseline, cell
+    size, or font-printout column;
+  - comparator bytes `+0x2f..+0x31` are extracted and class-correlated,
+    but their manual-facing names remain unknown;
+  - manual-facing names for symbol words `0N`, `10U`, and `11U` remain
+    unresolved.
+
+Writers are limited because these are ROM resource records. The firmware
+writers are bridge/cache writers: `0x13eb8` selects a current-font record,
+`0xc428` installs the page-root context slot and HMI cache, `0x1393a`
+builds a printable source object, `0xd824` applies glyph-entry placement
+offsets, `0x12f2e` queues compact text objects, and `0x1edc6` copies
+page-root context slots into render records. Readers/consumers are the
+candidate helpers above, the `0x10550` metric conversion path, the
+`0xd824` positioned-source path, and the `0x1f354` built-in glyph
+resolver.
+
+Visible-output evidence is fixture-backed. The Courier parsed-selection
+stream in [font-context-metrics.md](font-context-metrics.md) uses
+selected context `0xc008004c`, record `+0x24 = 0x00780000`, HMI `30`,
+glyph entry `0x001088`, and renders two `!` rows after the
+`0x1edc6` bridge. The Line Printer HMI fixture uses context
+`0x440946b4`, record `+0x24 = 0x00480000`, HMI `18`, and renders the
+second `!` at compact coord `0x0202`. The positioned-text fixture uses
+Line Printer glyph entry `0x015330`: glyph-entry x offset `6` and y
+offset `21` transform cursor `(10,21)` into source `(16,0)`, then
+`0x12f2e` emits compact coord `0x0001`.
+
+The unresolved middle edge is now narrower than "built-in metrics":
+`0xc428`/`0x10550` covers record `+0x24`, and `0xd824` covers
+glyph-entry `+0/+2`. The open address boundary is the header-level
+height/baseline use between the extracted record fields
+`+0x28..+0x31` and the font-printout/page-object path
+`0x1c204..0x1cf34`; that path must be correlated with emitted page
+objects or a known print sample before those fields get final semantic
+names.
+
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record
 start. The selected context longword now maps directly to concrete
@@ -440,10 +526,11 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    `80 57 08 91 00 00`, glyph `0x25`, selector `0x3003`, buckets `9`
    and `1`, and compact render dispatch target `0x1effe`.
 5. Finish semantic naming of the remaining built-in metadata fields,
-   especially the ambiguous header size words now extracted for every
-   named `COURIER` and `LINE_PRINTER` record. The first-glyph placement
-   offsets are now pinned through the `0xd824` path, but the header-level
-   baseline semantics still need broader correlation.
+   especially record `+0x28..+0x31` now extracted for every named
+   `COURIER` and `LINE_PRINTER` record. Record `+0x24` is now pinned as
+   the `0xc428` / `0x10550` HMI source, and first-glyph placement
+   offsets are now pinned through the `0xd824` path, but the
+   header-level baseline/cell semantics still need broader correlation.
 6. Model the `0x1c204` font-printout loop's emitted page objects from
    the ROM sample byte runs, then compare those rows against the direct
    payload hashes and a known printed/self-test sample to correlate the

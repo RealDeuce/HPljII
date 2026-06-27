@@ -261,8 +261,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Format notes Markdown by wrapping prose paragraphs, and normalize "
-            "ordinary whitespace in changed text files. The internal git "
-            "whitespace check only reports issues this formatter did not handle."
+            "ordinary whitespace in changed text files. This is the formatting "
+            "and whitespace gate: check mode also runs git diff --check HEAD "
+            "internally and reports only issues the formatter could not repair."
         ),
     )
     parser.add_argument(
@@ -291,8 +292,10 @@ def parse_args() -> argparse.Namespace:
         "--check",
         action="store_true",
         help=(
-            "report files that would change; running without --check applies "
-            "Markdown wrapping and changed text-file whitespace normalization"
+            "report files that would change and any unhandled git diff "
+            "whitespace/conflict-marker failures; running without --check "
+            "applies Markdown wrapping and changed text-file whitespace "
+            "normalization"
         ),
     )
     return parser.parse_args()
@@ -371,7 +374,7 @@ def main() -> int:
                 print(f"{action} whitespace {path.relative_to(root)}")
                 reported = True
     if not reported:
-        print("ok: no formatting changes")
+        print("ok: no formatting or whitespace-gate changes")
     return 0
 
 

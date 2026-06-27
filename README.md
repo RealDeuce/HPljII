@@ -177,6 +177,21 @@ tools/analyze_roms.py
 The tools expect MAME `unidasm` at `../mame/unidasm` when disassembly
 output is needed.
 
+## Formatting notes
+
+Use the formatter as the single Markdown and whitespace gate before
+committing changed notes or tool output:
+
+```sh
+tools/format_notes.py --changed
+tools/format_notes.py --check --changed
+```
+
+The command wraps changed notes Markdown, normalizes ordinary whitespace
+in changed text files, and runs `git diff --check HEAD` internally.
+Check mode reports only formatting changes or whitespace/conflict-marker
+issues that the formatter could not automatically repair.
+
 ## Key firmware structures
 
 Current high-value executable firmware anchors in the `IC30,IC13`

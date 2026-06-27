@@ -459,19 +459,23 @@ The next work should follow dataflow, not isolated handlers:
    secondary, preserving compact object prefixes, bridge context slots, and rendered-row
    digests. Fixture `real final-@ default-table streams select visible built-ins` closes
    the parser-exposed `@0`/`@1`/`@2`/`@3` edge: after the real-backed default-table
-   caller stream leaves active words `[0x000e, 0x0005]`, primary
-   `ESC (s0p10h12v0s0b3T!!` renders from context `0xc0080cb8` with the primary
-   non-Roman row digest, while secondary `ESC )s0p16h8v0s0b0T SO !!` renders from
-   context `0xc00ad4aa` after SO with the secondary row digest. Remaining suite cases
-   should add other fallback/error font-selection visible-output variants beyond the two
-   symbol misses, the `0N`/`10U`/`11U` primary/secondary streams, and the real final-`@`
-   primary/secondary streams, plus the transparent secondary segment-57 bitmap source
-   interpretation beyond the covered transparent data paths. Current transparent
-   coverage includes the default-filtered C0/high-control fixed-space path, nonzero C0
-   plus high-control `0x80` printable path, primary interior samples `0x81`, `0x88`,
-   `0x90`, and `0x97`, primary tall bucket-crossing `0x98`, primary top-of-range `0x9f`,
-   the secondary segmented page-record boundary from `SO ESC &p3X!\x80!`, and the
-   secondary renderable prefix through bucket `448`. The first unresolved secondary
+   caller stream leaves active words `[0x000e, 0x0005]`; the primary tail renders from
+   context `0xc0080cb8` with the primary non-Roman row digest, while the secondary tail
+   renders from context `0xc00ad4aa` after SO with the secondary row digest. Remaining
+   suite cases should add other fallback/error font-selection visible-output variants
+   beyond the two symbol misses, the `0N`/`10U`/`11U` primary/secondary streams, the
+   real final-`@` primary/secondary streams, and the final-`X` built-in stream. Fixture
+   `font-ID built-in selection feeds visible page-record rows` covers that final-`X`
+   stream: host-fetched `ESC (7X!!` reaches `0x120be`, selects context `0xc0089fb0`
+   through `0x17708`, and renders row digest
+   `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`. Remaining
+   font-selection variants plus the transparent secondary segment-57 bitmap source
+   interpretation beyond the covered transparent data paths still need coverage. Current
+   transparent coverage includes the default-filtered C0/high-control fixed-space path,
+   nonzero C0 plus high-control `0x80` printable path, primary interior samples `0x81`,
+   `0x88`, `0x90`, and `0x97`, primary tall bucket-crossing `0x98`, primary top-of-range
+   `0x9f`, the secondary segmented page-record boundary from `SO ESC &p3X!\x80!`, and
+   the secondary renderable prefix through bucket `448`. The first unresolved secondary
    bucket is `456`, glyph `0x5f`, segment `0x39`, file source `0x03fe22`, firmware
    source `0x0bfe22`, and required byte range `0x0bfe22..0x0c0321`; only `478` bytes are
    inside the verified `IC32,IC15` resource-pair image. Disassembly of `0x1f354` and
@@ -496,41 +500,40 @@ The next work should follow dataflow, not isolated handlers:
    short, rows-`0x0102` low-byte-truncated short publication, even-span wide, and
    payload-control wide selector families, especially row counts outside the covered
    short rows `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`, and `0x80` and segmented
-   rows `0x81`, `0x82`, `0x83`, and `0xff`, descriptor grammar forms outside the
-   covered helper-table path and full-success return-boundary siblings beyond the
-   covered normal even-span, no-install, status-`2`, linear-segmented publication,
-   split-plane segmented publication, and segmented-wide publication zero-drain cases
-   plus the payload-control wide nonzero-drain
-   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` case.
-   The accepted mode-byte boundary itself is covered by fixture
-   `0x16b1a descriptor width helper emits only mode 1/2`, which pins
-   `0x16b36..0x16b6a` accepted writes and `0x16b26..0x16b34` invalid no-writes. The
-   nonboundary-short fixture now publishes rows `0x10` on
-   selector `0x0003` through FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` with digest
-   `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The rows-`0x20`
-   short fixture now carries `ESC )s64W` plus printable `1` and FF through `0xff1e`,
-   preserves bucket `1`, and renders bucket word `1` through `0x1ed84`/`0x1ef6a` to `38`
-   visible `0x1fe76` rows. The rows-`0x40` short fixture now carries `ESC )s128W` plus
-   printable `2` and FF through `0xff1e`, preserves bucket `1`, and renders bucket word
-   `1` through `0x1ed84`/`0x1ef6a` to `64` blank current-band `0x1fe76` rows. The
-   row-threshold fixture closes the `0x80`/`0x81` selector boundary by keeping rows
-   `0x80` on selector `0x0003`, comparing it with the rows-`0x81` selector `0x2003`
-   fixture, and now publishing the row-`0x80` bucket-1 record through FF, `0xff1e`, and
-   `0x1ed84`/`0x1ef6a`. The split-plane segmented fixture now carries `ESC )s387W` plus
-   printable `(` and FF through `0xff1e`, preserves buckets `1` and `9`, and renders
-   bucket word `9` through `0x1ed84`/`0x1ef6a`. The rows-`0x82` segmented fixture now
-   carries `ESC )s260W` plus printable `0` and FF through `0xff1e`, preserves buckets
-   `1` and `9`, and renders bucket word `9` through `0x1ed84`/`0x1ef6a` to two `0x1f1f0`
-   segment-1 rows. The downloaded-glyph row-count matrix now adds short rows `0x04`
-   and `0x7f` on selector `0x0003`/bucket `1`, plus segmented rows `0x83` and `0xff`
-   on selector `0x2003`/buckets `1` and `9`, all through printable+FF, `0xff1e`, and
+   rows `0x81`, `0x82`, `0x83`, and `0xff`, descriptor grammar forms outside the covered
+   helper-table path and full-success return-boundary siblings beyond the covered normal
+   even-span, no-install, status-`2`, linear-segmented publication, split-plane
+   segmented publication, and segmented-wide publication zero-drain cases plus the
+   payload-control wide nonzero-drain `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` case.
+   The accepted mode-byte boundary itself is covered by fixture `0x16b1a descriptor
+   width helper emits only mode 1/2`, which pins `0x16b36..0x16b6a` accepted writes and
+   `0x16b26..0x16b34` invalid no-writes. The nonboundary-short fixture now publishes
+   rows `0x10` on selector `0x0003` through FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` with
+   digest `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The
+   rows-`0x20` short fixture now carries `ESC )s64W` plus printable `1` and FF through
+   `0xff1e`, preserves bucket `1`, and renders bucket word `1` through
+   `0x1ed84`/`0x1ef6a` to `38` visible `0x1fe76` rows. The rows-`0x40` short fixture now
+   carries `ESC )s128W` plus printable `2` and FF through `0xff1e`, preserves bucket
+   `1`, and renders bucket word `1` through `0x1ed84`/`0x1ef6a` to `64` blank
+   current-band `0x1fe76` rows. The row-threshold fixture closes the `0x80`/`0x81`
+   selector boundary by keeping rows `0x80` on selector `0x0003`, comparing it with the
+   rows-`0x81` selector `0x2003` fixture, and now publishing the row-`0x80` bucket-1
+   record through FF, `0xff1e`, and `0x1ed84`/`0x1ef6a`. The split-plane segmented
+   fixture now carries `ESC )s387W` plus printable `(` and FF through `0xff1e`,
+   preserves buckets `1` and `9`, and renders bucket word `9` through
+   `0x1ed84`/`0x1ef6a`. The rows-`0x82` segmented fixture now carries `ESC )s260W` plus
+   printable `0` and FF through `0xff1e`, preserves buckets `1` and `9`, and renders
+   bucket word `9` through `0x1ed84`/`0x1ef6a` to two `0x1f1f0` segment-1 rows. The
+   downloaded-glyph row-count matrix now adds short rows `0x04` and `0x7f` on selector
+   `0x0003`/bucket `1`, plus segmented rows `0x83` and `0xff` on selector
+   `0x2003`/buckets `1` and `9`, all through printable+FF, `0xff1e`, and
    `0x1ed84`/`0x1ef6a`; published row counts are `10`, `64`, `9`, and `16`. The
-   `0x16498` replacement/allocation-failure/partial/reject fixture
-   now has a rows-`0x0102` sibling: `ESC )s516W` installs record `00 00 00 00 0c 01 01
-   02 00 10 00 00`, but the printable page source exposes row byte `0x02`, so `0x12f2e`
-   queues selector `0x0003` and publishes only bucket `1`; `0x1f414` then splits rows
-   `0x0102` into `58` current rows and `200` fallback rows, exceeding the `0x1fe76`
-   table's valid maximum index `128` at fallback target `0x329ad3c0`. The `0x16498`
+   `0x16498` replacement/allocation-failure/partial/reject fixture now has a
+   rows-`0x0102` sibling: `ESC )s516W` installs record `00 00 00 00 0c 01 01 02 00 10 00
+   00`, but the printable page source exposes row byte `0x02`, so `0x12f2e` queues
+   selector `0x0003` and publishes only bucket `1`; `0x1f414` then splits rows `0x0102`
+   into `58` current rows and `200` fallback rows, exceeding the `0x1fe76` table's valid
+   maximum index `128` at fallback target `0x329ad3c0`. The `0x16498`
    replacement/allocation-failure/partial/reject fixture now also covers old-pointer
    release through `0x17a24`, object allocation failure through
    `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear and split-plane continuation pointer
@@ -545,9 +548,8 @@ The next work should follow dataflow, not isolated handlers:
    downloaded-character publication risk is broader publication combinations beyond
    these payload-control, row-count-matrix, rows-`0x20` short, rows-`0x40` short,
    rows-`0x82` segmented, no-install, and status-`2` compact bucket variants, not the
-   documented mode-byte-`0`
-   visible recovery boundary. The publication-command checkpoint now covers host-fetched
-   reset, FF, page-size, orientation, paper-source, and copies streams through parser
-   dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset,
-   FF, page-size, orientation, paper-source, and copies also have addressed allocation
-   variants.
+   documented mode-byte-`0` visible recovery boundary. The publication-command
+   checkpoint now covers host-fetched reset, FF, page-size, orientation, paper-source,
+   and copies streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`,
+   and final row comparison; reset, FF, page-size, orientation, paper-source, and copies
+   also have addressed allocation variants.

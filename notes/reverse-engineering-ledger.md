@@ -1126,18 +1126,16 @@ Expected resource ROM contents:
 
 ROM work needed:
 
-- Extend the pinned visible `0xc580` branch outcomes into fuller
-  upstream `0x1be22` parser-state coverage around the now-pinned
-  `0x17708` success paths, turn the parser-derived `0x156de` primary and
-  secondary fallback fixtures into single uninterrupted parser-to-page
-  CPU-state traces, add other fallback/error font-selection visible-output
-  streams beyond the now-pinned primary `ESC (s0p10h12v0s0b3T!!`, secondary
-  `ESC )s0p16h8v0s0b0T SO !!`, primary fallback
-  `ESC (1234U ESC (s0p10h12v0s0b3T!!`, secondary fallback
-  `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`, primary
-  `ESC (s0p10h12v0s0b3T SI !!`, and secondary
-  `ESC )s0p16h8v0s0b0T SO !!` composed handoff cases, plus the real
-  final-`@` default-table primary and secondary visible streams, and extend
+- Extend the pinned visible `0xc580` branch outcomes into fuller upstream `0x1be22`
+  parser-state coverage around remaining `0x17708` inline/downloaded and error paths,
+  turn the parser-derived `0x156de` primary and secondary fallback fixtures into single
+  uninterrupted parser-to-page CPU-state traces, add other fallback/error font-selection
+  visible-output streams beyond the now-pinned primary `ESC (s0p10h12v0s0b3T!!`,
+  secondary `ESC )s0p16h8v0s0b0T SO !!`, primary fallback `ESC (1234U ESC
+  (s0p10h12v0s0b3T!!`, secondary fallback `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`,
+  primary `ESC (s0p10h12v0s0b3T SI !!`, and secondary `ESC )s0p16h8v0s0b0T SO !!`
+  composed handoff cases, plus the real final-`@` default-table primary and secondary
+  visible streams and final-`X` built-in `ESC (7X!!` visible stream, and extend
   `0x13eb8` if later inline/downloaded or error-return branches surface.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become

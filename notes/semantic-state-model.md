@@ -1465,9 +1465,9 @@ resources because no image is available in this repo.
   images are available.
 - `0x14398..0x156de`: visible-output coverage exists for primary,
   secondary, two symbol-miss fallback streams, non-Roman symbol selections,
-  and the real final-`@` default-table/copy/default-font streams; broader
-  font-selection fallback/error combinations still need the same
-  page-visible treatment.
+  the real final-`@` default-table/copy/default-font streams, and the
+  final-`X` built-in font-ID stream; broader font-selection fallback/error
+  combinations still need the same page-visible treatment.
 - Record `+0x28/+0x2a` is pinned as the decoded-height input consumed by
   `0x1519a` through `0x13bca`; record `+0x2f..+0x31` is pinned as the
   same-class `0x1428c` chooser tie-breaker tuple. Final
@@ -2080,6 +2080,14 @@ and final `@` use the same terminal handler `0x120be` after setup
 font-id helper `0x17708`, `@0`/`@1` read the default-symbol table,
 `@2` copies the current primary requested word to the target slot, and `@3`
 uses the current default-font word. Fixture
+`font-ID built-in selection feeds visible page-record rows` carries the final
+`X` built-in success path through visible output: host-fetched `ESC (7X!!`
+routes through parser handlers `0x11eb6`, `0x1201e`, and `0x120be`,
+`0x17708` selects candidate pointer `0x782364` / context `0xc0089fb0`,
+`0x14c64` rebuilds primary map `0x782f32`, and the printable `!!` tail queues
+object `00 00 00 00 00 00 00 02 00 89 00 00 87 02` with rendered-row digest
+`73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
+Fixture
 `real default-table caller stream uses ROM-backed words` then drives real
 scanned built-in default words through `ESC (0@ ESC )0@ ESC )1@ ESC )2@
 ESC (3@`: the stream requests `[0x0005, 0x000e, 0x0005, 0x0005, 0x000e]`,
@@ -2288,6 +2296,8 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   - final-`X` isolation stream `ESC (7X` routes through the same terminal
     handler and calls font-id helper `0x17708` without replacing the previous
     requested symbol word.
+  - final-`X` visible stream `ESC (7X!!` ties that parser/helper boundary to
+    selected context `0xc0089fb0` and two following `0xd04a` printable events.
   - printable parser events are two `0xd04a` entries for the primary fixture,
     and `0xc6b8, 0xd04a, 0xd04a` for the secondary SO and fallback fixtures.
   - the live primary handoff stream is `SI !!` with current-font/page-root
@@ -2346,6 +2356,11 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   `@3` writes the current default-font symbol word. The real-backed fixture
   drives `ESC (0@ ESC )0@ ESC )1@ ESC )2@ ESC (3@` to final active words
   primary `0x000e` and secondary `0x0005`.
+- `0x120be` / `0x1be22` handle final `X` by restoring the previous requested
+  symbol word, setting `0x78287b`, and calling `0x17708(slot, parameter)`.
+  The visible fixture pins `ESC (7X` to helper calls `0x172c0`, `0x1b4c0`,
+  `0xc4fc`, `0x15890`, `0x1b2fe`, and `0x14c64`, with active primary word
+  `0x0115`.
 - The final-`@` visible fixture then writes primary current-font context
   `0xc0080cb8` through `0x144d2` and secondary current-font context
   `0xc00ad4aa` through `0x144d2`; the secondary stream also crosses SO
@@ -2406,6 +2421,11 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
 - The same renderer helpers consume the non-Roman visible fixture outputs:
   `0x1fe76` renders the primary Courier rows for `0N`/`10U`/`11U`, and
   `0x207ac` renders the secondary Line Printer rows for `0N`/`10U`/`11U`.
+- Final-`X` font-ID selection affects the selected context before later
+  printable bytes. Fixture
+  `font-ID built-in selection feeds visible page-record rows` proves
+  `0x1393a` consumes context `0xc0089fb0`, maps host byte `0x21` to glyph
+  `0x00`, and emits glyph entry `0x00afec`.
 - Final-`@` parser variants affect requested/active symbol words before later
   font selection. Fixture
   `real final-@ default-table streams select visible built-ins` proves those
@@ -2491,6 +2511,12 @@ primary tail selects context `0xc0080cb8` and the same primary digest as
 Roman Extension map path for active word `0x0005`, crosses SO `0xc6b8`, and
 matches the secondary digest above.
 
+The final-`X` visible fixture renders a distinct built-in record selected by
+font ID. Host-fetched `ESC (7X!!` selects context `0xc0089fb0`, HMI `30`, glyph
+entry `0x00afec`, object prefix
+`00 00 00 00 00 00 00 02 00 89 00 00 87 02`, and rendered-row digest
+`73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
+
 ### Confidence
 
 High for parser handler routing, fallback table decision, selected built-in
@@ -2505,6 +2531,11 @@ High for primary and secondary visible-output handling of `0N`, `10U`, and
 `11U` because fixture `non-Roman symbol streams select visible built-ins`
 preserves symbol-set parsing, font-selection refresh, SO for secondary,
 compact object creation, bridge context slots, and rendered row digests.
+High for final-`X` built-in visible output because fixture
+`font-ID built-in selection feeds visible page-record rows` composes
+host-fetched bytes, ROM parser handlers, `0x17708` helper calls, selected
+context, printable source capture, object prefix, bridge context slots, and
+rendered row digest.
 High for final-`@` parser/default-table behavior because the ROM parser
 records, terminal handler, subdispatch targets, real built-in default words,
 requested words, active words, and common-refresh count are fixture-pinned.
@@ -2532,6 +2563,7 @@ digests.
 - `live parser symbol-set streams select non-Roman built-ins`
 - `non-Roman symbol streams select visible built-ins`
 - `symbol-set parser trace covers X and @ special cases`
+- `font-ID built-in selection feeds visible page-record rows`
 - `real default-table caller stream uses ROM-backed words`
 - `real final-@ default-table streams select visible built-ins`
 
@@ -2566,7 +2598,9 @@ digests.
   fallback boundaries are `ESC (1234U ESC (s0p10h12v0s0b3T!!` through
   `0x120be..0x156de..0x14c64..0xd04a`, and
   `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` through
-  `0x120be..0x156de..0x14c64..0xc6b8..0xd04a`.
+  `0x120be..0x156de..0x14c64..0xc6b8..0xd04a`. The covered font-ID boundary
+  is `ESC (7X!!` through
+  `0x120be..0x17708..0x14c64..0xd04a`.
 - Final-`@` parser variants are documented through requested/active
   symbol-state, real default-table words, and primary/secondary visible-output
   streams. No unresolved middle edge remains for `@0..@3` inside the current

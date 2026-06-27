@@ -33562,6 +33562,169 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "calls": ["0x172c0", "0x1b4c0", "0xc4fc", "0x15890", "0x1b2fe", "0x14c64"],
     }))
+    font_id_builtin_visible_stream = b"\x1b(7X!!"
+    font_id_builtin_visible_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(font_id_builtin_visible_stream), direct_mode=0),
+        len(font_id_builtin_visible_stream),
+    )
+    font_id_builtin_symbol_bytes = font_id_builtin_visible_fetch["stream"][:4]
+    font_id_builtin_printable_bytes = font_id_builtin_visible_fetch["stream"][4:]
+    font_id_builtin_parser_trace = trace_symbol_set_parser_dispatch_via_11774(
+        data,
+        font_id_builtin_symbol_bytes,
+    )
+    font_id_builtin_printable_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        font_id_builtin_printable_bytes,
+    )
+    font_id_builtin_visible_context = int(font_id_builtin_select["selected_longword"])
+    font_id_builtin_visible_hmi = builtin_flagged_hmi_from_context(
+        resources,
+        font_id_builtin_visible_context,
+    )
+    font_id_builtin_visible_page = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        font_id_builtin_printable_bytes,
+        font_id_builtin_visible_context,
+        control_fixture_state(
+            cursor_x=pack12(0),
+            cursor_y=pack12(21),
+            hmi=font_id_builtin_visible_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=font_id_builtin_visible_hmi["hmi"],
+    )
+    font_id_builtin_visible_rendered = font_id_builtin_visible_page["rendered"]
+    font_id_builtin_visible_bridged = font_id_builtin_visible_page["bridged_record"]
+    assert isinstance(font_id_builtin_visible_rendered, dict)
+    assert isinstance(font_id_builtin_visible_bridged, dict)
+    font_id_builtin_visible_rows = font_id_builtin_visible_rendered["rows"]
+    assert isinstance(font_id_builtin_visible_rows, list)
+    checks.append(assert_equal("font-ID built-in selection feeds visible page-record rows", {
+        "combined_stream": font_id_builtin_visible_fetch["stream"],
+        "fetch_sources": sorted(set(font_id_builtin_visible_fetch["sources"])),
+        "symbol_parser_handlers": [
+            dispatch["handler"]
+            for command in font_id_builtin_parser_trace["commands"]  # type: ignore[index]
+            for dispatch in command["dispatches"]  # type: ignore[index]
+        ],
+        "symbol_record": font_id_builtin_parser_trace["commands"][0]["record"],  # type: ignore[index]
+        "font_id_helper": {
+            "status": font_id_builtin_select["status"],
+            "font_id": font_id_builtin_select["font_id"],
+            "payload": font_id_builtin_select["payload"],
+            "selected_pointer_7828a8": font_id_builtin_select["selected_pointer_7828a8"],
+            "selected_longword": font_id_builtin_select["selected_longword"],
+            "active_symbols": font_id_builtin_select["active_symbols"],
+            "dispatch": select_keys(font_id_builtin_dispatch, (
+                "path",
+                "slot",
+                "selected_symbol",
+                "active_symbol",
+                "range_start",
+                "range_end",
+                "patch_kind",
+                "map_address",
+            )),
+            "calls": font_id_builtin_select["calls"],
+        },
+        "metric": font_id_builtin_visible_hmi,
+        "printable_stream": font_id_builtin_printable_bytes,
+        "printable_parser_handlers": [
+            event["handler"]
+            for event in font_id_builtin_printable_trace["events"]
+        ],
+        "printable_sources": [
+            {
+                "source_context": event["source"]["context"],
+                "source_slot": event["source"]["context_slot"],
+                "mapped": event["source"]["mapped"],
+                "glyph_entry": event["source"]["glyph_entry"],
+                "coord": event["page_result"]["coord"],
+            }
+            for event in font_id_builtin_visible_page["events"]
+            if event["kind"] == "printable"
+        ],
+        "object_prefix": font_id_builtin_visible_page["bucket_object"][:14],
+        "bridged_context_slots": font_id_builtin_visible_bridged["context_slots"][:2],
+        "rendered": {
+            "selector": font_id_builtin_visible_rendered["selector"],
+            "context_slot": font_id_builtin_visible_rendered["context_slot"],
+            "count": font_id_builtin_visible_rendered["count"],
+            "row_count": len(font_id_builtin_visible_rows),
+            "row_width": max((len(str(row)) for row in font_id_builtin_visible_rows), default=0),
+            "row_sha256": hashlib.sha256(
+                "\n".join(str(row) for row in font_id_builtin_visible_rows).encode("ascii")
+            ).hexdigest(),
+        },
+        "final_state": select_keys(font_id_builtin_visible_page["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "hmi",
+            "page_record_root_allocations",
+        )),
+    }, {
+        "combined_stream": b"\x1b(7X!!",
+        "fetch_sources": ["ring"],
+        "symbol_parser_handlers": [0x011EB6, 0x01201E, 0x0120BE],
+        "symbol_record": bytes.fromhex("80 58 00 07 00 00"),
+        "font_id_helper": {
+            "status": "selected",
+            "font_id": 7,
+            "payload": 0x089FB0,
+            "selected_pointer_7828a8": 0x782364,
+            "selected_longword": 0xC0089FB0,
+            "active_symbols": [0x0115, 0x0115],
+            "dispatch": {
+                "path": "built-in-cache-miss",
+                "slot": "primary",
+                "selected_symbol": 0x0115,
+                "active_symbol": 0x0115,
+                "range_start": 0x0021,
+                "range_end": 0x00FE,
+                "patch_kind": "unchanged",
+                "map_address": 0x782F32,
+            },
+            "calls": ["0x172c0", "0x1b4c0", "0xc4fc", "0x15890", "0x1b2fe", "0x14c64"],
+        },
+        "metric": {
+            "base": 0x009FB0,
+            "metric_flag": 0,
+            "raw_metric": 0x00780000,
+            "hmi": pack12(30),
+        },
+        "printable_stream": b"!!",
+        "printable_parser_handlers": [0x00D04A, 0x00D04A],
+        "printable_sources": [
+            {
+                "source_context": 0xC0089FB0,
+                "source_slot": 0,
+                "mapped": 0,
+                "glyph_entry": 0x00AFEC,
+                "coord": coord,
+            }
+            for coord in (0x8900, 0x8702)
+        ],
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 00 89 00 00 87 02"),
+        "bridged_context_slots": (0xC0089FB0, 0),
+        "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 2,
+            "row_count": 39,
+            "row_width": 50,
+            "row_sha256": "73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631",
+        },
+        "final_state": {
+            "cursor_x": pack12(60),
+            "cursor_y": pack12(21),
+            "hmi": pack12(30),
+            "page_record_root_allocations": 1,
+        },
+    }))
     height_filter_range = filter_active_candidates_by_height_via_1519a(
         activated_class_zero,
         requested_height=0x04B0,
@@ -82826,6 +82989,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_id_inline_select["active_symbols"][1],  # type: ignore[index]
         font_id_inline_select["reader"],
         font_id_inline_dispatch["map_address"],
+    ))
+    lines.append("- font-ID visible selection: fixture `font-ID built-in selection feeds visible page-record rows` carries host-fetched stream `ESC (7X!!` through `0xa904`, parser handlers `0x11eb6` / `0x1201e` / `0x120be`, `0x17708` selected context `0x%08x`, printable `0xd04a` rows, object prefix `%s`, and rendered-row digest `%s`." % (
+        font_id_builtin_visible_context,
+        " ".join(f"{byte:02x}" for byte in font_id_builtin_visible_page["bucket_object"][:14]),
+        hashlib.sha256(
+            "\n".join(str(row) for row in font_id_builtin_visible_rows).encode("ascii")
+        ).hexdigest(),
     ))
     lines.append("- height filter: `0x1519a` reads primary/secondary requested height from `0x782ef2`/`0x782f02`, keeps active candidates in requested +/- `0x19` when possible, otherwise uses `0x1533e` to select nearest lower/upper heights; class-zero requested `0x04b0` keeps `%d` slots `%s`, while requested `0x0384` falls back to nearest height `0x%04x` and keeps `%d` slots `%s`." % (
         height_filter_range["active_count_7827b8"],

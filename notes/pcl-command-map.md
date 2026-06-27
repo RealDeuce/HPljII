@@ -591,7 +591,12 @@ stores the candidate slot pointer at `0x7828a8`, writes active word
 `0x14c64`. The bit-30-clear inline/downloaded path is the parallel
 secondary-slot form: it checks byte `+0x16`, writes active word
 `0x783146` through `0x158be`, and enters `0x14c64` for the secondary
-glyph map.
+glyph map. Fixture `font-ID built-in selection feeds visible page-record
+rows` now carries the bit-30 built-in success path through visible output:
+host-fetched `ESC (7X!!` reaches parser handlers `0x11eb6`, `0x1201e`, and
+`0x120be`, selects context `0xc0089fb0` through `0x17708`, queues compact
+object prefix `00 00 00 00 00 00 00 02 00 89 00 00 87 02`, and renders row
+digest `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
 
 The harness now pins six concrete common-refresh outcomes from `0xc580`.
 With dirty flag `0x782f2c = 1`, parser/setup slot `D5 = 0`, current
@@ -1064,8 +1069,9 @@ handlers:
   tie-breakers after `0x14398` / `0x13c06`. Their HP/manual-facing names
   remain unknown.
 - Broaden visible-output variants where they still change compatibility:
-  font-selection fallback/error branches beyond the two symbol-miss
-  fixtures, downloaded-glyph publication cross-products beyond the documented
+  font-selection fallback/error branches beyond the two symbol-miss and
+  final-`X` built-in fixtures, downloaded-glyph publication cross-products
+  beyond the documented
   normal, non-boundary short, rows-`0x20` short, rows-`0x40` short,
   row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   low-byte-truncated short, linear-segmented, rows-`0x82` segmented,

@@ -1237,9 +1237,11 @@ Raster coverage now has a named flow report plus ROM-table `0x11774` dispatch
 traces for the primary, 150/100/75-dpi, consecutive-row, capped/drained,
 active-resolution-ignore, end-raster, and host-fetched chained-lowercase
 `ESC *t#R` / `ESC *r#A` / `ESC *b#W` streams. It still needs a full
-CPU/parser-state fixture that executes through `0x121cc` / `0x105d0`
-with real parser-produced page/control pool records. The constructed
-150/100/75-dpi raster streams now start from modeled `0xa904` host bytes,
+CPU/parser-state fixture that executes through `0x121cc` / `0x105d0` in one
+live 68000 memory image, but the dense text/rule/raster stream now has
+addressed `0x1381c` page/control storage for the raster object and published
+record fields. The constructed 150/100/75-dpi raster streams now start from
+modeled `0xa904` host bytes,
 cross the ROM parser table and delayed `0x105d0` restore, queue encoded
 raster modes 1/2/3, then render through `0x1ed84` / `0x1ef6a`.
 The `0x1f0d2` and `0x1f1f0` inline cases now also have type-2 `0x1719c`

@@ -4354,8 +4354,10 @@ page root for queued rows, and passes the state block to `0x13070` /
   - skipped beyond-extent and negative rows drain input but do not create page
     roots in the gate fixture.
 - Unknown for this checkpoint:
-  - exact live CPU register/memory trace through `0x105d0` into real
-    allocator memory for the dense mixed text/rule/raster stream.
+  - exact live CPU register/memory trace through `0x105d0` into the dense
+    mixed text/rule/raster stream. Addressed `0x1381c` storage is fixture-backed
+    for that stream, but it is still modeled rather than captured from one live
+    68000 parser run.
 
 ### Writers
 
@@ -4458,8 +4460,11 @@ trace.
   layout, and rendered mode contracts are fixture-backed; the remaining edge
   is full live 68000 register/memory capture for a dense parser-produced page.
 - `0x13250..0x1381c`: addressed allocation is covered in the shared
-  page-record allocator checkpoint, but the raster producer still uses modeled
-  allocator results rather than a live heap/free-list trace.
+  page-record allocator checkpoint and in the addressed text/rule/raster
+  fixture, where the raster object lives at `0x00d0c038` and publishes as
+  `00 d0 c0 04 80 00 00 02 00 00 c3 3c`. The remaining gap is not object
+  layout or addressed storage; it is live 68000 heap/register capture for the
+  complete parser-produced stream.
 
 ## Rectangle Rule Producer And Renderer
 
@@ -4818,7 +4823,9 @@ the parser and allocator.
 - `0x105d0..0x13250`: delayed restore, gate outcomes, encoded object layout,
   bridge preservation, and mode `0..3` render contracts are composed in
   `Raster Transfer Gate And Encoded Rows`. The mixed stream still lacks a full
-  68000 execution through `0x105d0` into real allocator memory.
+  68000 execution through `0x105d0`, but its addressed raster object storage is
+  pinned by fixture `addressed text/rule/raster field groups reach publication
+  and render entry`.
 - `0x10084..0x1381c`: first root allocation and stream-chunk allocation
   are modeled with exact side effects, including a multi-writer chunk
   rollover fixture in the shared allocator checkpoint, but not captured

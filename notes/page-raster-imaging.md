@@ -780,6 +780,193 @@ through `0x1ed84` and the same `0x1ef6a` call order, proving those byte
 streams reach the compact bucket renderer without hand-built
 render-record layers.
 
+### Active Render Scheduler Semantic Checkpoint
+
+This checkpoint covers the scheduler handoff from a published page/control
+pool record to active render work. It is the boundary after page-record
+publication and before object-class bitmap dispatch: `0xff1e` has already
+published a source record, and the scheduler chooses when that record becomes
+`0x780eae` and which render work record becomes `0x783a18`.
+
+Field groups:
+
+- Canonical source-record state:
+  - `0x780ea6`: protected page/control pool-head pointer written by
+    `0xff1e` from source root longword `+0`.
+  - `0x780eaa`: scheduler cursor for the record selected for rendering.
+  - `0x780eae`: active source record consumed by `0x1ed84` and `0x1ee9e`.
+  - source `+0x1c`, `+0x24`, `+0x28`, and `+0x2c..+0x68`: bucket array,
+    rule list, fixed list, and context slots copied by `0x1edc6`.
+- Canonical render work state:
+  - `0x7820bc`: render work-record alternator between `0x7820c4` and
+    `0x782128`.
+  - `0x783a18`: active render work-record pointer used by `0x1ef6a`.
+  - render work fields `+0`, `+4`, `+6`, `+8`, `+0a`, `+0c`, `+10`, and
+    `+16`: source base, width, divisor, row deltas, cleanup bound,
+    render-band cursor, and engine-side cursor.
+  - render `+0x18`, `+0x1c`, `+0x20`, and `+0x24..+0x60`: bucket, rule,
+    fixed, and context roots copied by `0x1edc6`.
+- Derived/cache render state:
+  - `0x780ea4`: active render/scheduler flag.
+  - `0x780ea5`: active loop-control/done flag.
+  - `0x783a1c`: render stride cache from render word `+4 << 2`.
+  - `0x7839f8..`: 16-word offset table initialized by `0x1ee9e`.
+  - `0x7839ae`, `0x7839ca`, `0x7839b2`, `0x7839b6`, `0x7839c2`,
+    `0x7839be`, `0x7839ba`, and `0x7839c6`: aliases to active-pool render
+    work fields written by `0x2126`.
+  - `0x7839ce`, `0x78398e`, `0x783996`, `0x783998`, `0x7839a4`,
+    `0x7839a8`, `0x7839a0`, `0x78399a`, and `0x783992`: row-copy and
+    source-pointer caches used by `0x1a4c`, `0x2038`, `0x22f4`, and
+    `0x2456`.
+- Firmware bookkeeping:
+  - `0x780e6e[]`: candidate pointer slots scanned by `0x7ec6..0x7f90`.
+  - pool-record state byte `+4`: staged state `3`, selectable state `4`,
+    selected state `2`.
+  - `0x7821fb`: candidate-slot scan mask.
+  - `0x780eb2`: release/advance cursor paired with `0x780eaa`.
+  - `0x780e04`: engine/status counter copied into released pool record
+    word `+0x10`.
+  - `0x7839d2`, `0x78398c`, `0x783990`, `0x78399e`, `0x78399f`,
+    `0x7839ac`, `0x7828f9`, `0x780e32`, `0x780e36`, `0x7821f9.2`,
+    `0x780e6d`, and `0x780e67`: active-pool copy/status and engine-shadow
+    bookkeeping.
+  - wait-object records signaled by `0x1036` and selected by `0x123a`:
+    next pointer `+0`, priority `+8`, scheduler state `+0a`, wait argument
+    `+0c`, restart payload `+0x12`, private stack base `+0x16`, and saved
+    stack pointer `+0x1a`.
+- Parser scratch:
+  - none. Parser/page-record producers have already built the published
+    source record before this scheduler runs.
+- Unknown:
+  - `0x7839d4`, cleared by `0x1a4c..0x1c00`, remains active-pool
+    copy-window bookkeeping without a stable name.
+  - physical engine timing behind trap veneers and MMIO/status helpers
+    remains board-level work.
+
+Writers:
+
+- `0xff1e` writes state byte `+4 = 2`, copies the source root longword to
+  `0x780ea6`, sets publication flag `0x782996`, and clears the current root.
+- `0x3144..0x3162` initializes `0x780ea6`, `0x780eaa`, `0x780eae`,
+  `0x780eb2`, and `0x780eb6` to pool base `0x780f02`.
+- `0x1c04..0x2016` stages a current pool record, writes deadline/status
+  fields, inserts it into `0x780e6e[]`, and releases it to selectable state
+  through `0x1eea`.
+- `0x7ec6..0x7f90` promotes a selectable candidate into
+  `0x780eaa`/`0x780eb2`.
+- `0x7722..0x779a` advances or releases scheduler cursors while respecting
+  protected head `0x780ea6`.
+- `0x1eb32..0x1eb50` copies `0x780eaa` into active source `0x780eae`.
+- `0x1ecd6..0x1ed76` alternates render work records, writes `0x783a18`,
+  initializes geometry when needed, or reuses same-geometry fields before
+  calling `0x1ed84`.
+- `0x2126..0x218e`, `0x1a4c..0x1c00`, `0x2038..0x211c`,
+  `0x22f4..0x2454`, and `0x2456..0x247a` prepare and consume the active-pool
+  copy window.
+- `0x0fa2..0x101e`, `0x1db0..0x1e40`, `0x1e44..0x1e7c`, and
+  `0x1cf8..0x1ea8` update status/copy pacing and engine-shadow state.
+- `0x1036..0x1282` and trap handlers `0x1144..0x11f8` update wait-object
+  scheduler state.
+- `0x1eba4..0x1ecd2` advances active render bands, calls `0x1ef6a` when
+  capacity is sufficient, throttles/yields when it is not, and performs
+  cleanup when active work is done.
+
+Readers and consumers:
+
+- `0x1ed84` consumes `0x780eae`, source header words, and source
+  bucket/list/context roots.
+- `0x1ef6a` consumes `0x783a18` and the render work record, then dispatches
+  bucket, rule, and fixed-list consumers.
+- `0x1cf8..0x1ea8` consume `0x780e04`, `0x78399e`, `0xa680` readiness,
+  attention flags, and active work fields to choose copy/status/wait
+  variants.
+- `0x1036`, `0x1064`, `0x108e`, `0x123a`, and trap handlers consume
+  wait-object state to wake, block, yield, or dispatch scheduler objects.
+
+Output effect:
+
+- Fixture `0x1eb2a/0x1ecd6 selects published record for render entry` proves
+  the addressed published page/control record is selected as source
+  `0x00d0eaa0`, copied into `0x780eae`, assigned render work record
+  `0x782128` through `0x783a18`, and rendered to the same rows as the direct
+  `0x1ed84`/`0x1ef6a` fixture.
+- Fixture `0x1ecd6 same-geometry render work reuse reaches render entry`
+  proves the sibling branch reuses previous geometry, computes destination
+  word `+8` via `0x33238`, and still reaches the same composed rows.
+- Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands`
+  proves render-capacity, capacity-wait, cleanup, and throttle outcomes. In
+  the render case it calls `0x1ef6a`, increments active word `+10`, and
+  increments throttle word `+0e`.
+- Fixture `0x1eba4 scheduler band words render published downloaded glyph`
+  proves scheduler-produced band words `0..9` drive published downloaded-glyph
+  buckets through the copied render record; only buckets `1` and `9` dispatch
+  compact objects, and bucket `9` still produces visible row `86`.
+
+Confidence:
+
+- High for pool-head versus scheduler-cursor distinction, candidate-slot
+  staging/release, `0x780eaa -> 0x780eae`, two-work-record alternation,
+  `0x783a18`, same-geometry reuse, active-pool copy-window arithmetic,
+  wait-object state transitions, active-loop branch predicates, and
+  render-entry output.
+- Medium for physical engine pacing because the firmware wait-state and MMIO
+  side effects are modeled, but the board-level event timing is not named.
+
+Fixture evidence:
+
+- `0x1eb2a/0x1ecd6 selects published record for render entry`
+- `0x1ecd6 same-geometry render work reuse reaches render entry`
+- `0x3144/0x7ec6/0x7712 page pool aliases feed scheduler cursor`
+- `0x1958/0x1c04/0x1eea staged candidate reaches render scheduler`
+- `0x2126/0x1a4c/0x2038 active pool copy window feeds engine rows`
+- `0x0fa2/0x1db0/0x1e44 status feedback drives copy and done flag`
+- `0x1036/0x108e/0x123a wait-object scheduler handoff`
+- `0x1144..0x11f8 scheduler trap handlers update wait objects`
+- `0x1cf8/0x1e80/0x1ea8 wrapper dispatch selects engine variants`
+- `0x1eba4/0x1ef6a active render loop advances or yields bands`
+- `0x1eba4 scheduler band words render published downloaded glyph`
+
+Disassembly evidence:
+
+- `generated/disasm/ic30_ic13_active_pool_cycle_001958.lst`:
+  `0x1958..0x1fa2`.
+- `generated/disasm/ic30_ic13_scan_status_interrupt_000f84.lst`:
+  `0x0f84..0x10f2`.
+- `generated/disasm/ic30_ic13_scheduler_trap_handlers_00110c.lst`:
+  `0x110c..0x1282`.
+- `generated/disasm/ic30_ic13_page_pool_candidate_insert_001c04.lst`:
+  `0x1c04..0x2016`.
+- `generated/disasm/ic30_ic13_active_pool_engine_gate_002038.lst`:
+  `0x2038..0x223c`.
+- `generated/disasm/ic30_ic13_engine_copy_pass_0022f4.lst`:
+  `0x22f4..0x247a`.
+- `generated/disasm/ic30_ic13_page_pool_init_003100.lst`:
+  `0x3144..0x3162`.
+- `generated/disasm/ic30_ic13_page_pool_candidate_select_007ec6.lst`:
+  `0x7ece..0x7f90`.
+- `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`:
+  `0x7722..0x779a`.
+- `generated/disasm/ic30_ic13_active_render_scheduler_01eb2a.lst`:
+  `0x1eb2a..0x1ed84`.
+- `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`:
+  `0x1ed84..0x1ee9c`.
+- `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`:
+  `0x1ee9e..0x1ef38`.
+- `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`:
+  `0x1ef6a..0x1effc`.
+
+Unresolved middle edges:
+
+- `0x0f84..0x0fa0` and `0x1020..0x102e`: `$8000.4` selection and the
+  physical timing/effect of `$a601`, `$a801`, `$aa01`, `0xfffe0001`, and
+  `0xfffe0003` still need board-level engine correlation.
+- `0x10bc..0x11f8` and `0x123a..0x1282`: trap veneers, copied trap vectors,
+  wait-state transitions, and scheduler selection are modeled; the remaining
+  gap is their timing relation to physical engine/MMIO events.
+- `0x1cf8..0x1ea8`: helper return predicates around `0xa668` and `0xa680`
+  are modeled; the unresolved edge is external engine timing that makes
+  `0x7828f9.6` ready or busy.
+
 The first confirmed bitmap-writing routines are in `0x1f4e0..0x1fa5a`.
 They write 16-bit words to destinations derived from `0x783a28` or
 `0x7810b4`, advance rows by stride `0x783a1c`, and use mask/expansion

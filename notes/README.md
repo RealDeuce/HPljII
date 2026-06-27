@@ -53,8 +53,8 @@ compatibility boundary.
 - [pcl-command-map.md](pcl-command-map.md) - flattened PCL
   command-to-handler map summary from the firmware parser tables.
 - [page-raster-imaging.md](page-raster-imaging.md) - page geometry
-  lookup tables, orientation state, page-record storage checkpoint, and
-  raster graphics imaging path.
+  lookup tables, orientation state, page-record storage and active-render
+  checkpoints, and raster graphics imaging path.
 - [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) -
   top-level host-byte-to-rendered-pixel coverage map and remaining
   reproduction blockers.

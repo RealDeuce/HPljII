@@ -3418,6 +3418,15 @@ compact text renderer.
     full-chunk helper, `0x1f1ac[1..15]` remainder helpers, and the span-`32`
     no-remainder two-chunk path; render width word `max(0x20, span)` and
     source-walk rows now match the installed bitmap above span `32`.
+  - downloaded-character width-byte boundary: fixture `downloaded glyph
+    width-byte boundary truncates page-record span` installs canonical width
+    words `0x07f8`, `0x0800`, `0x0808`, and `0x1068` for spans `0x00ff`,
+    `0x0100`, `0x0101`, and `0x020d`. Parser/page-record scratch is the
+    current unflagged printable source record byte `+0`, which contains
+    `0xff`, `0x00`, `0x01`, and `0x0d`. Derived/cache state is the `0x12f2e`
+    selector choice: only span `0x00ff` remains selector `0x1003`; the wrapped
+    spans queue selector `0x0003`. Visible output is unknown for the wrapped
+    cases because the fixture stops at the page-record producer boundary.
   - downloaded-character segmented-wide matrix: fixture `downloaded glyph
     segmented-wide matrix publishes and renders compact chunks` installs
     canonical width words `0x0088..0x0100`, row word `0x0081`, mode bytes
@@ -4206,6 +4215,11 @@ helper `0x2f27c`, `0x1f1ac` remainders `1..15`, the no-remainder span-`32` sibli
 zero-drain return boundaries, bucket-0 FF publication, `0x1ed84`/`0x1ef6a` dispatch, and
 rows matching the installed bitmap; the same fixture makes high-span probes `33`, `48`,
 `49`, `64`, and `255` high-confidence for upstream metadata and row equivalence.
+High for the width-byte producer boundary because fixture `downloaded glyph
+width-byte boundary truncates page-record span` asserts spans `0x00ff`,
+`0x0100`, `0x0101`, and `0x020d`, the canonical installed width words, the
+one-byte source records, and the resulting `0x12f2e` selectors. It does not
+raise confidence for wrapped-width pixel output.
 High for segmented-wide downloaded rendering because
 fixture `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
 asserts spans `17..32`, rows `0x81`, mode-byte parity, split-plane copies for odd spans,
@@ -4242,6 +4256,7 @@ fields and every legal metric combination have not been page-compared.
 - `downloaded normal row-0x80 and segmented glyph FF publications render page records`
 - `downloaded glyph width-span matrix publishes and renders all main helpers`
 - `downloaded glyph wide-remainder matrix publishes and renders compact chunks`
+- `downloaded glyph width-byte boundary truncates page-record span`
 - `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
 - `split-plane segmented downloaded glyph FF publication renders page record`
 - `published downloaded glyph segmented buckets render across bands`
@@ -4374,10 +4389,10 @@ fields and every legal metric combination have not been page-compared.
   counts outside the covered short rows `0x01`, `0x02`, `0x03`, `0x04`, `0x08`,
   `0x10`, `0x20`, `0x40`, `0x41`, `0x7f`, and `0x80` and segmented rows
   `0x81`, `0x82`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`,
-  printable downloaded spans `0x0100..0x020d` whose descriptor width is accepted by
-  `0x16b1a` but cannot be represented in the current one-byte page source
-  span field, segmented-wide row-count/segment variants beyond the sampled
-  rows `0x81` and segment `1`, broader
+  visible behavior after printable downloaded spans `0x0100..0x020d` wrap in
+  the current one-byte page source span field, segmented-wide
+  row-count/segment variants beyond the sampled rows `0x81` and segment `1`,
+  broader
   publication combinations beyond the documented normal, non-boundary short, rows-`0x20`
   short, rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   low-byte-truncated table-limit boundary, linear-segmented, rows-`0x82` segmented,

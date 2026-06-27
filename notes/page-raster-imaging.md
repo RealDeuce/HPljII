@@ -1618,6 +1618,15 @@ Output effect:
   returns, full-chunk/remainder metadata, `0x2f27c` A2 source-walk rows, and
   render-record width words `>= span` are pinned, and rendered rows match the
   installed bitmap rows for those high spans.
+- Fixture `downloaded glyph width-byte boundary truncates page-record span`
+  proves descriptor-accepted spans `0x00ff`, `0x0100`, `0x0101`, and `0x020d`
+  keep canonical installed width words `0x07f8`, `0x0800`, `0x0808`, and
+  `0x1068`, but the current unflagged printable source record supplies only
+  byte `+0` to `0x12f2e`. The resulting source width bytes are `0xff`,
+  `0x00`, `0x01`, and `0x0d`; only `0x00ff` keeps selector `0x1003`, while
+  the wrapped spans queue selector `0x0003`. This fixture documents the
+  producer boundary and does not claim rendered pixels for those wrapped-width
+  cases.
 - Fixture `downloaded glyph segmented-wide matrix publishes and renders
   compact chunks` proves parser-produced downloaded-character spans `17..32`
   with rows `0x81` install widths `136..256`, publish buckets `0` and `8` as
@@ -1647,10 +1656,11 @@ Confidence:
 - Medium for exhaustive descriptor/font-width coverage because downloaded
   spans `1..32`, high-span compact-wide row checks through span `255`,
   segmented-wide row checks through span `64`, the legal metric matrix, and
-  many downloaded row-count cases are fixture-backed. The remaining renderer
-  risk is printable handoff for descriptor-accepted spans `0x0100..0x020d`,
-  not every segmented-wide row-count/segment variant, and untested metric
-  combinations.
+  many downloaded row-count cases are fixture-backed. The span `0x0100..0x020d`
+  printable handoff is now classified as an 8-bit source-record producer
+  boundary, not a renderer row-copy claim. Remaining renderer risk is broader
+  visible behavior after that wrapped selector choice, not every segmented-wide
+  row-count/segment variant, and untested metric combinations.
 
 Fixture evidence:
 
@@ -1670,6 +1680,7 @@ Fixture evidence:
 - `0x1f264 renders segmented wide inline compact payload row`
 - `downloaded glyph width-span matrix publishes and renders all main helpers`
 - `downloaded glyph wide-remainder matrix publishes and renders compact chunks`
+- `downloaded glyph width-byte boundary truncates page-record span`
 - `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
 - `downloaded glyph row-count matrix publishes and renders additional
   short/segmented counts`
@@ -1702,8 +1713,12 @@ Unresolved middle edges:
   `17..32` at rows `0x81`. High-span probes now carry compact-wide spans
   `33`, `48`, `49`, `64`, and `255` plus segmented-wide spans `33`, `48`,
   `49`, and `64` through parser/install/publication/dispatch metadata and
-  matched rendered rows. Remaining gaps are descriptor-accepted spans
-  `0x0100..0x020d` at the printable handoff, every legal downloaded
+  matched rendered rows. Fixture `downloaded glyph width-byte boundary
+  truncates page-record span` now classifies descriptor-accepted spans
+  `0x0100..0x020d` at the current printable handoff: canonical installed width
+  words survive, but `0x12f2e` consumes only the low source byte, so spans
+  `0x0100`, `0x0101`, and `0x020d` queue selector `0x0003`. Remaining gaps are
+  visible behavior after that wrapped-width producer boundary, every legal downloaded
   segmented-wide row-count/segment variant, and untested metric combinations.
 - `0x1fa5c..0x2feb0`: all sixteen main `0x1f08e` helper indexes now have
   parser-produced downloaded-glyph page rows, and compact-wide spans `17..32`

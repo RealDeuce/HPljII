@@ -549,9 +549,10 @@ The next work should follow dataflow, not isolated handlers:
    short publication, even-span wide, and payload-control wide selector families,
    especially row counts outside the covered short rows `0x01`, `0x02`, `0x03`, `0x04`,
    `0x08`, `0x10`, `0x20`, `0x40`, `0x41`, `0x7f`, and `0x80` and segmented rows `0x81`,
-   `0x82`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`, descriptor
-   grammar forms outside the covered helper-table path, descriptor-accepted spans
-   `0x0100..0x020d` at the printable handoff,
+   `0x82`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`,
+   descriptor grammar forms outside the covered helper-table path, visible
+   behavior after descriptor-accepted spans `0x0100..0x020d` wrap at the
+   current printable source-byte handoff,
    segmented-wide row-count/segment variants beyond rows `0x81` and segment `1`, and
    full-success return-boundary siblings beyond the covered normal even-span,
    no-install, status-`2`, row-count-matrix short/segmented, linear-segmented
@@ -560,8 +561,13 @@ The next work should follow dataflow, not isolated handlers:
    payload-control wide nonzero-drain `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` case.
    The accepted mode-byte boundary itself is covered by fixture `0x16b1a descriptor
    width helper emits only mode 1/2`, which pins `0x16b36..0x16b6a` accepted writes and
-   `0x16b26..0x16b34` invalid no-writes. Fixture `downloaded glyph width-span matrix
-   publishes and renders all main helpers` now covers parser-produced spans `1..16`:
+   `0x16b26..0x16b34` invalid no-writes. Fixture `downloaded glyph width-byte boundary
+   truncates page-record span` pins the current printable source-byte wrap for spans
+   `0x00ff`, `0x0100`, `0x0101`, and `0x020d`: canonical width words survive in the
+   installed object, but `0x12f2e` sees width bytes `0xff`, `0x00`, `0x01`, and `0x0d`,
+   so only `0x00ff` remains selector `0x1003`. Fixture `downloaded glyph width-span
+   matrix publishes and renders all main helpers` now covers parser-produced spans
+   `1..16`:
    host-fetched `ESC )s#W` descriptors install width words `0x0008..0x0080`, preserve
    odd-span split-plane copies, publish bucket `0` through FF, dispatch object byte
    `0x00` through `0x1ed84`/`0x1ef6a`, and render rows matching installed bitmaps

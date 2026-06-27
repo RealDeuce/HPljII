@@ -89,6 +89,7 @@ Primary fixtures:
 - `0x16b1a descriptor width helper emits only mode 1/2`
 - `downloaded glyph width-span matrix publishes and renders all main helpers`
 - `downloaded glyph wide-remainder matrix publishes and renders compact chunks`
+- `downloaded glyph width-byte boundary truncates page-record span`
 - `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
@@ -304,7 +305,13 @@ Published page-record state:
   `1..15` select `0x1f1ac[remainder]`, and span `32` proves the
   no-remainder two-chunk case. The same fixture probes compact-wide spans
   `33`, `48`, `49`, `64`, and `255` through the parser/install/publication
-  and chunk metadata boundary, while leaving their row equivalence open.
+  and chunk metadata boundary, with matched rendered rows for those sampled
+  high spans. Fixture `downloaded glyph width-byte boundary truncates
+  page-record span` classifies the next handoff: installed spans `0x0100`,
+  `0x0101`, and `0x020d` keep canonical width words, but the current
+  printable source record gives `0x12f2e` width bytes `0x00`, `0x01`, and
+  `0x0d`, so the page-record producer queues selector `0x0003` and leaves
+  visible behavior unresolved.
   Fixture `downloaded glyph segmented-wide matrix publishes and renders
   compact chunks` carries the matched span set through rows `0x81`: selector
   `0x3003` publishes buckets `0` and `8`, segment `1` dispatches object byte
@@ -1290,9 +1297,18 @@ the expected remainder/no-remainder helper choices. The fixture now replays the
 passes render width word `max(0x20, span)`, and matches the installed bitmap
 rows for those high spans. Width helper fixture
 `0x16b1a descriptor width helper emits only mode 1/2` still proves accepted
-descriptor width `0x1068` rounds to span `0x020d`; the page-record source byte
-can only carry spans through `0xff`, so the span-`0x0100..0x020d` printable
-handoff remains a separate unresolved boundary.
+descriptor width `0x1068` rounds to span `0x020d`.
+
+Fixture `downloaded glyph width-byte boundary truncates page-record span`
+turns that upper range into an explicit source-byte boundary. It installs
+downloaded spans `0x00ff`, `0x0100`, `0x0101`, and `0x020d` through
+`0x16498`, preserving canonical width words `0x07f8`, `0x0800`, `0x0808`,
+and `0x1068` in the object record at `+8`. The current unflagged printable
+source record presented to `0x12f2e` still exposes only byte `+0`: span
+`0x00ff` supplies width byte `0xff` and queues selector `0x1003`, while spans
+`0x0100`, `0x0101`, and `0x020d` supply width bytes `0x00`, `0x01`, and
+`0x0d` and queue selector `0x0003`. The fixture stops at this page-record
+producer boundary and makes no pixel-output claim for the wrapped-width cases.
 
 Fixture `downloaded glyph segmented-wide matrix publishes and renders compact
 chunks` covers the segmented-wide sibling. It drives host-fetched `ESC )s#W`

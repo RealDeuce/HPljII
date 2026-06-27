@@ -55862,6 +55862,243 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
     ))
 
+    def downloaded_width_byte_boundary_case(
+        *,
+        span: int,
+        char_code: int,
+        object_offset: int,
+    ) -> dict[str, object]:
+        width = span * 8
+        rows = 3
+        mode = 2 if span & 1 else 1
+        payload = bytes(
+            (
+                0x1B
+                if (((span * 19) + index * 29) & 0xFF) == 0x1A
+                else ((span * 19) + index * 29) & 0xFF
+            )
+            for index in range(rows * span)
+        )
+        command_stream = f"\x1b)s{len(payload)}W".encode("ascii") + payload
+        publication_stream = command_stream + bytes([char_code, 0x0C])
+        fetched = fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(publication_stream), direct_mode=0),
+            len(publication_stream),
+        )
+        font_stream = fetched["stream"][:len(command_stream)]
+        tail_stream = fetched["stream"][len(command_stream):]
+        font_trace = trace_font_parser_dispatch_via_11774(data, font_stream)
+        font_command = font_trace["commands"][0]
+        assert isinstance(font_command, dict)
+        install_command = render_font_download_char_command_stream_via_121cc_16498(
+            font_stream,
+            table_payload_type2_bytes,
+            char_code=char_code,
+            record_words=(0x0000, 0x0000, rows, 0x0000),
+            mode=mode,
+            width=width,
+            rows=rows,
+            object_offset=object_offset,
+        )
+        install_event = install_command["events"][0]
+        assert isinstance(install_event, dict)
+        install = install_event["install"]
+        assert isinstance(install, dict)
+        if "header" not in install:
+            raise AssertionError(
+                f"width-byte boundary install failed for span {span}: {install}"
+            )
+        memory = bytearray(install["header"])
+        glyph = resolve_downloaded_pointer_glyph(memory, 0, char_code)
+        assert glyph is not None
+        inline_record = bytes([
+            int(glyph["render_span"]) & 0xFF,
+            int(glyph["rows"]) & 0xFF,
+            0,
+        ])
+        source = {
+            "context": 0,
+            "host_char": char_code,
+            "mapped": char_code,
+            "glyph_entry": glyph["entry"],
+            "glyph_width": glyph["width"],
+            "glyph_rows": glyph["rows"],
+            "flag": 0,
+            "x": 0,
+            "y": 0,
+            "context_slot": 3,
+            "inline_record": inline_record,
+        }
+        page_record: dict[str, object] = {
+            "bucket_array": {},
+            "context_slots": [0, 0, 0, 0],
+        }
+        page_result = queue_text_source_to_page_record_via_12f2e(
+            memory,
+            page_record,
+            source,
+        )
+        metrics = text_source_metrics_via_12f2e(memory, source)
+        copy = install["copy"]
+        assert isinstance(copy, dict)
+        return_drain = consume_data_payload_count_via_12328(
+            int(copy["byte_budget"]),
+            tail_stream,
+        )
+        tail_trace = trace_mixed_text_control_parser_path_via_11774(data, tail_stream)
+        return {
+            "span": span,
+            "width": width,
+            "mode": mode,
+            "char_code": char_code,
+            "fetch_source_set": sorted(set(fetched["sources"])),
+            "remaining_ring": fetched["state"]["ring"],
+            "restored_record": font_command["restored_record"],
+            "payload_length": len(font_command["payload"]),
+            "install": {
+                "status": install["status"],
+                "table_entry": install["table_entry"],
+                "record_delta": install["record_delta"],
+                "record": install["record"],
+                "bitmap_size": install["bitmap_size"],
+                "allocation_size": install["allocation_size"],
+                "object_size": install["object_size"],
+                "span": install["span"],
+                "split_plane": install["split_plane"],
+            },
+            "glyph": {
+                "width_word": glyph["width"],
+                "rows_word": glyph["rows"],
+                "render_span": glyph["render_span"],
+                "mode": glyph["mode"],
+                "source_kind": glyph["source_kind"],
+            },
+            "source": {
+                "inline_record": inline_record,
+                "width_byte": metrics["width"],
+                "rows_byte": metrics["rows"],
+                "wide_threshold": metrics["wide_threshold"],
+            },
+            "page": {
+                "path": page_result["path"],
+                "selector": page_result["selector"],
+                "bucket_index": page_result["bucket_index"],
+                "coord": page_result["coord"],
+                "glyph": page_result["glyph"],
+                "rows": page_result["rows"],
+                "width": page_result["width"],
+            },
+            "return_boundary": {
+                "call_edge": (0x15DC6, 0x16498),
+                "return_edge": (0x16498, 0x15DCC),
+                "drain_edge": (0x15DCC, 0x12328),
+                "copy_status": copy["status"],
+                "remaining_budget_0x783140": copy["byte_budget"],
+                "drain": return_drain,
+                "next_stream_prefix": tail_stream[:1],
+                "next_handler": tail_trace["events"][0]["handler"],
+            },
+            "visible_output_claim": "none: fixture stops at source-byte/page-record boundary",
+        }
+
+    downloaded_width_byte_boundary = [
+        downloaded_width_byte_boundary_case(
+            span=span,
+            char_code=char_code,
+            object_offset=object_offset,
+        )
+        for span, char_code, object_offset in (
+            (0x00FF, 0x6C, 0x3000),
+            (0x0100, 0x6D, 0x3800),
+            (0x0101, 0x6E, 0x4000),
+            (0x020D, 0x6F, 0x4800),
+        )
+    ]
+    checks.append(assert_equal(
+        "downloaded glyph width-byte boundary truncates page-record span",
+        [
+            {
+                "span": case["span"],
+                "width": case["width"],
+                "mode": case["mode"],
+                "fetch_source_set": case["fetch_source_set"],
+                "remaining_ring": case["remaining_ring"],
+                "payload_length": case["payload_length"],
+                "record": case["install"]["record"],
+                "install_span": case["install"]["span"],
+                "split_plane": case["install"]["split_plane"],
+                "glyph": case["glyph"],
+                "source": case["source"],
+                "path": case["page"]["path"],
+                "selector": case["page"]["selector"],
+                "page_width": case["page"]["width"],
+                "page_rows": case["page"]["rows"],
+                "return_boundary": case["return_boundary"],
+                "visible_output_claim": case["visible_output_claim"],
+            }
+            for case in downloaded_width_byte_boundary
+        ],
+        [
+            {
+                "span": span,
+                "width": span * 8,
+                "mode": 2 if span & 1 else 1,
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "payload_length": span * 3,
+                "record": (
+                    bytes.fromhex("00 00 00 00 0c")
+                    + bytes([2 if span & 1 else 1])
+                    + bytes.fromhex("00 03")
+                    + (span * 8).to_bytes(2, "big")
+                    + bytes.fromhex("00 00")
+                ),
+                "install_span": span,
+                "split_plane": bool(span & 1 and span > 1),
+                "glyph": {
+                    "width_word": span * 8,
+                    "rows_word": 3,
+                    "render_span": span,
+                    "mode": 2 if span & 1 else 1,
+                    "source_kind": "downloaded-pointer",
+                },
+                "source": {
+                    "inline_record": bytes([span & 0xFF, 0x03, 0x00]),
+                    "width_byte": span & 0xFF,
+                    "rows_byte": 3,
+                    "wide_threshold": 0x10,
+                },
+                "path": "short-page-record",
+                "selector": 0x1003 if (span & 0xFF) > 0x10 else 0x0003,
+                "page_width": span & 0xFF,
+                "page_rows": 3,
+                "return_boundary": {
+                    "call_edge": (0x15DC6, 0x16498),
+                    "return_edge": (0x16498, 0x15DCC),
+                    "drain_edge": (0x15DCC, 0x12328),
+                    "copy_status": 1,
+                    "remaining_budget_0x783140": 0,
+                    "drain": {
+                        "status": 1,
+                        "values": [],
+                        "pos": 0,
+                        "remaining": 0,
+                        "control_hits": 0,
+                    },
+                    "next_stream_prefix": bytes([char_code]),
+                    "next_handler": 0x00D04A,
+                },
+                "visible_output_claim": "none: fixture stops at source-byte/page-record boundary",
+            }
+            for span, char_code in (
+                (0x00FF, 0x6C),
+                (0x0100, 0x6D),
+                (0x0101, 0x6E),
+                (0x020D, 0x6F),
+            )
+        ],
+    ))
+
     def downloaded_wide_remainder_matrix_case(
         *,
         span: int,
@@ -86886,6 +87123,30 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     case["row_sha256"],
                 )
                 for case in downloaded_width_span_matrix
+            ],
+        ),
+    )
+    append_wrapped(
+        lines,
+        "- downloaded-glyph width-byte boundary: fixture `downloaded glyph "
+        "width-byte boundary truncates page-record span` installs descriptor "
+        "spans `0xff`, `0x100`, `0x101`, and `0x20d` with canonical width "
+        "words through `0x16498`, then feeds the current unflagged printable "
+        "source record into `0x12f2e`. The source record exposes only byte "
+        "`+0`: span `0xff` remains width byte `0xff` and selector `0x1003`, "
+        "while spans `0x100`, `0x101`, and `0x20d` present width bytes "
+        "`0x00`, `0x01`, and `0x0d`, so they queue selector `0x0003`. No "
+        "pixel-output claim is made for the wrapped-width cases. Case "
+        "summaries `(span, width byte, selector, record)` are `%s`."
+        % (
+            [
+                (
+                    case["span"],
+                    case["source"]["width_byte"],
+                    "0x%04x" % case["page"]["selector"],
+                    " ".join(f"{byte:02x}" for byte in case["install"]["record"]),
+                )
+                for case in downloaded_width_byte_boundary
             ],
         ),
     )

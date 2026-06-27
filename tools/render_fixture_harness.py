@@ -6569,6 +6569,8 @@ def font_download_char_object_via_16498(
     continuation: dict[str, int] | None = None,
     active_primary_context: int | None = None,
     active_secondary_context: int | None = None,
+    allocation_ok: bool = True,
+    allocation_failure_release: dict[str, object] | None = None,
 ) -> dict[str, object]:
     updated = bytearray(header)
     base = 0
@@ -6601,6 +6603,61 @@ def font_download_char_object_via_16498(
             "reason": "unsupported-record-shape",
             "release": release,
             "continuation": continuation_after_release,
+        }
+    expected_payload_bytes = rows * span
+    allocation_size = (0x4B + expected_payload_bytes) >> 6
+    object_size = allocation_size * 0x40
+    if not allocation_ok:
+        payload_release = None
+        if allocation_failure_release is not None:
+            records = allocation_failure_release["records"]
+            assert isinstance(records, list)
+            payload_release = font_resource_payload_release_via_1887a(
+                records,
+                record_index=int(allocation_failure_release["record_index"]),
+                payload=int(allocation_failure_release["payload"]),
+                candidate_longword=int(allocation_failure_release["candidate_longword"]),
+                payload_byte_0x0e=int(allocation_failure_release.get("payload_byte_0x0e", 0)),
+                payload_byte_0x16=int(allocation_failure_release.get("payload_byte_0x16", 0)),
+                payload_byte_0x20=int(allocation_failure_release.get("payload_byte_0x20", 0)),
+                counters=allocation_failure_release.get("counters"),  # type: ignore[arg-type]
+                cursors=allocation_failure_release.get("cursors"),  # type: ignore[arg-type]
+                continuation=allocation_failure_release.get("continuation"),  # type: ignore[arg-type]
+                candidates=allocation_failure_release.get("candidates"),  # type: ignore[arg-type]
+                active_primary_context=(
+                    int(allocation_failure_release["active_primary_context"])
+                    if "active_primary_context" in allocation_failure_release
+                    else None
+                ),
+                active_secondary_context=(
+                    int(allocation_failure_release["active_secondary_context"])
+                    if "active_secondary_context" in allocation_failure_release
+                    else None
+                ),
+                context_stack=allocation_failure_release.get("context_stack"),  # type: ignore[arg-type]
+                default_resolver_matches=bool(
+                    allocation_failure_release.get("default_resolver_matches", False)
+                ),
+            )
+        return {
+            "status": 0,
+            "reason": "allocation-failed",
+            "handler": 0x16498,
+            "allocation_call": {"handler": 0x170C, "units": allocation_size, "alignment": 0x40},
+            "error_report": {"handler": 0x9B5E, "address": 0x780E2E, "code": 4},
+            "release": release,
+            "payload_release": payload_release,
+            "continuation": (
+                payload_release["continuation"]
+                if isinstance(payload_release, dict)
+                else continuation_after_release
+            ),
+            "table_entry": table_entry,
+            "table_pointer": u32(updated, table_entry),
+            "expected_bitmap_size": expected_payload_bytes,
+            "allocation_size": allocation_size,
+            "object_size": object_size,
+            "copy": None,
         }
     copy_result: dict[str, object]
     prefix = b""
@@ -6637,10 +6694,7 @@ def font_download_char_object_via_16498(
             }
         prefix = bytes(copy_result["dest"])
 
-    expected_payload_bytes = rows * span
     payload_bytes = len(prefix) + len(trailing)
-    allocation_size = (0x4B + expected_payload_bytes) >> 6
-    object_size = allocation_size * 0x40
     if object_size < 0x0C + expected_payload_bytes:
         raise AssertionError("modeled 0x16498 allocation does not cover the copied payload")
     char_object = bytearray(object_size)
@@ -52093,8 +52147,59 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     downloaded_replacement_release = downloaded_replacement["release"]
     assert isinstance(downloaded_replacement_release, dict)
+    downloaded_allocation_failure_continuation = {
+        "flag": 1,
+        "payload": 0x123456,
+        "word_0x7827c8": 0x2F,
+        "dest": 0x222222,
+        "trailing_dest": 0,
+        "remaining": 6,
+        "d4_counter": 0,
+        "d3_counter": 0,
+    }
+    downloaded_allocation_failure = font_download_char_object_via_16498(
+        table_payload_type2_bytes,
+        0x2F,
+        (0x0000, 0x0000, 0x0003, 0x0000),
+        mode=1,
+        width=0x0010,
+        rows=0x0003,
+        stream=bytes.fromhex("de ad be ef ca fe"),
+        byte_budget=6,
+        object_offset=0x0940,
+        allocation_ok=False,
+        allocation_failure_release={
+            "records": [{"id": 0x1234, "flags": 0x40, "payload": 0x123456}],
+            "record_index": 0,
+            "payload": 0x123456,
+            "candidate_longword": 0x00123456,
+            "payload_byte_0x0e": 1,
+            "payload_byte_0x16": 1,
+            "counters": {
+                "0x78278e": 5,
+                "0x782790": 2,
+                "0x782796": 2,
+                "0x782798": 4,
+                "0x78279e": 4,
+                "0x78278a": 9,
+                "0x782782": 1,
+                "0x782786": 3,
+            },
+            "cursors": {"0x7827ac": 0x40, "0x7827b0": 0x50, "0x7827b4": 0x60},
+            "continuation": downloaded_allocation_failure_continuation,
+            "candidates": [0x00100000, 0x00123456, 0x00200000],
+            "active_secondary_context": 0x123456,
+            "context_stack": [
+                {"primary": 0x123456, "secondary": 0x654321},
+                {"primary": 0x222222, "secondary": 0x123456},
+            ],
+            "default_resolver_matches": True,
+        },
+    )
+    downloaded_allocation_payload_release = downloaded_allocation_failure["payload_release"]
+    assert isinstance(downloaded_allocation_payload_release, dict)
     checks.append(assert_equal(
-        "0x16498 replacement partial and rejected downloaded character exits preserve state",
+        "0x16498 replacement allocation failure partial and rejected downloaded character exits preserve state",
         {
             "linear_partial": {
                 "status": downloaded_linear_partial["status"],
@@ -52199,6 +52304,43 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "active_refresh",
                         "continuation_cleared",
                         "continuation",
+                        "calls",
+                    )
+                },
+            },
+            "allocation_failure": {
+                "status": downloaded_allocation_failure["status"],
+                "reason": downloaded_allocation_failure["reason"],
+                "allocation_call": downloaded_allocation_failure["allocation_call"],
+                "error_report": downloaded_allocation_failure["error_report"],
+                "table_entry": downloaded_allocation_failure["table_entry"],
+                "table_pointer": downloaded_allocation_failure["table_pointer"],
+                "expected_bitmap_size": downloaded_allocation_failure["expected_bitmap_size"],
+                "allocation_size": downloaded_allocation_failure["allocation_size"],
+                "copy": downloaded_allocation_failure["copy"],
+                "payload_release": {
+                    key: downloaded_allocation_payload_release[key]
+                    for key in (
+                        "handler",
+                        "payload",
+                        "record_index",
+                        "records",
+                        "candidate_longword",
+                        "bit30",
+                        "class_branch",
+                        "record_count_branch",
+                        "cleanup_helper",
+                        "char_cleanup_call",
+                        "cleanup_char_count",
+                        "cleanup_char_edges",
+                        "counters",
+                        "cursors",
+                        "candidate_delete",
+                        "candidates",
+                        "continuation_cleared",
+                        "continuation",
+                        "context_marks",
+                        "active_refresh",
                         "calls",
                     )
                 },
@@ -52314,6 +52456,76 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "d3_counter": 0,
                     },
                     "calls": ["0x196c4", "0x17fa2", "0x1b4c0", "0x14c64"],
+                },
+            },
+            "allocation_failure": {
+                "status": 0,
+                "reason": "allocation-failed",
+                "allocation_call": {"handler": 0x170C, "units": 1, "alignment": 0x40},
+                "error_report": {"handler": 0x9B5E, "address": 0x780E2E, "code": 4},
+                "table_entry": 0x0106,
+                "table_pointer": 0,
+                "expected_bitmap_size": 6,
+                "allocation_size": 1,
+                "copy": None,
+                "payload_release": {
+                    "handler": 0x1887A,
+                    "payload": 0x123456,
+                    "record_index": 0,
+                    "records": [{"id": 0, "flags": 0, "payload": 0}],
+                    "candidate_longword": 0x00123456,
+                    "bit30": False,
+                    "class_branch": "class-one",
+                    "record_count_branch": "marked",
+                    "cleanup_helper": 0x18BF2,
+                    "char_cleanup_call": "0x18090",
+                    "cleanup_char_count": 191,
+                    "cleanup_char_edges": (0x21, 0xFF),
+                    "counters": {
+                        "0x78278e": 4,
+                        "0x782790": 1,
+                        "0x782796": 1,
+                        "0x782798": 4,
+                        "0x78279e": 4,
+                        "0x78278a": 8,
+                        "0x782782": 1,
+                        "0x782786": 2,
+                    },
+                    "cursors": {"0x7827ac": 0x3C, "0x7827b0": 0x4C, "0x7827b4": 0x5C},
+                    "candidate_delete": {
+                        "helper": 0x1BD2E,
+                        "index": 1,
+                        "slot_pointer": FONT_CANDIDATE_LIST_BASE + 4,
+                        "removed": 0x00123456,
+                    },
+                    "candidates": [0x00100000, 0x00200000],
+                    "continuation_cleared": True,
+                    "continuation": {
+                        "flag": 0,
+                        "payload": 0,
+                        "word_0x7827c8": 0,
+                        "dest": 0,
+                        "trailing_dest": 0,
+                        "remaining": 0,
+                        "d4_counter": 0,
+                        "d3_counter": 0,
+                    },
+                    "context_marks": [
+                        {"entry": 0, "slot": "primary", "byte": 8},
+                        {"entry": 1, "slot": "secondary", "byte": 9},
+                    ],
+                    "active_refresh": [{"slot": "secondary", "helper": "0x179aa", "argument": 1}],
+                    "calls": [
+                        "0x1b4c0",
+                        "0x196c4",
+                        "0x18bf2",
+                        "0x18090",
+                        "0x18b4",
+                        "0x1bd2e",
+                        "0x6364",
+                        "0x179aa",
+                        "0x1b04c",
+                    ],
                 },
             },
         },
@@ -77801,15 +78013,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     append_wrapped(
         lines,
-        "- `0x16498` replacement/partial/rejected downloaded-character exits: linear "
-        "status-2 copy stores table `0x%04x -> 0x%04x`, copies `%d/%d` "
-        "bitmap bytes, and saves continuation `%s`; split-plane status-2 "
-        "copy stores table `0x%04x -> 0x%04x`, copies prefix `%s` and "
-        "trailing `%s`, and saves continuation `%s`; replacement glyph "
-        "`0x2e` releases old record `%s` through `0x17a24`, clears "
-        "continuation `%s`, then stores new table pointer `0x%04x`; "
-        "mode-0 and header-type range rejects return `%s`/`%s` without "
-        "changing their headers."
+        "- `0x16498` replacement/allocation-failure/partial/rejected "
+        "downloaded-character exits: linear status-2 copy stores table "
+        "`0x%04x -> 0x%04x`, copies `%d/%d` bitmap bytes, and saves "
+        "continuation `%s`; split-plane status-2 copy stores table "
+        "`0x%04x -> 0x%04x`, copies prefix `%s` and trailing `%s`, and "
+        "saves continuation `%s`; replacement glyph `0x2e` releases old "
+        "record `%s` through `0x17a24`, clears continuation `%s`, then "
+        "stores new table pointer `0x%04x`; allocation failure requests "
+        "`%d` unit from `0x170c`, reports `0x%04x(0x%06x, %d)`, releases "
+        "current payload "
+        "`0x%06x` through `0x1887a`, copies `%s` bitmap bytes, and leaves "
+        "table `0x%04x -> 0x%04x`; mode-0 and header-type range rejects "
+        "return `%s`/`%s` without changing their headers."
         % (
             downloaded_linear_partial["table_entry"],
             downloaded_linear_partial["record_delta"],
@@ -77828,6 +78044,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             " ".join(f"{byte:02x}" for byte in downloaded_replacement_release["old_record"]),
             downloaded_replacement_release["continuation_cleared"],
             downloaded_replacement["record_delta"],
+            downloaded_allocation_failure["allocation_call"]["units"],  # type: ignore[index]
+            downloaded_allocation_failure["error_report"]["handler"],  # type: ignore[index]
+            downloaded_allocation_failure["error_report"]["address"],  # type: ignore[index]
+            downloaded_allocation_failure["error_report"]["code"],  # type: ignore[index]
+            downloaded_allocation_payload_release["payload"],
+            "no" if downloaded_allocation_failure["copy"] is None else "some",
+            downloaded_allocation_failure["table_entry"],
+            downloaded_allocation_failure["table_pointer"],
             downloaded_mode_reject["reason"],
             downloaded_range_reject["reason"],
         ),

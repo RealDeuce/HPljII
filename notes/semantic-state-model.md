@@ -2963,10 +2963,11 @@ on short selector `0x0003` because the row test is `rows > 0x80`; `0x1ef6a`
 dispatches compact target `0x1effe`; mode-0 helper `0x1fe76` renders the
 bucket-1 band with digest
 `918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac`.
-Fixture `0x16498 replacement partial and rejected downloaded character exits
-preserve state` adds the replacement/non-success/continuation sibling for the
-same object writer. The linear status-`2` branch copies four of six bytes
-through `0x168dc`, writes table entry `0x00f6 -> 0x0840`, keeps record
+Fixture `0x16498 replacement allocation failure partial and rejected
+downloaded character exits preserve state` adds the replacement,
+allocator-failure, non-success, and continuation sibling for the same object
+writer. The linear status-`2` branch copies four of six bytes through
+`0x168dc`, writes table entry `0x00f6 -> 0x0840`, keeps record
 `00 00 00 00 0c 01 00 03 00 10 00 00`, and saves continuation fields
 `0x7827c6 = 1`, payload `0`, glyph word `0x2b`, destination `0x0850`, and
 remaining count `2`. The split-plane status-`2` branch copies prefix
@@ -2977,12 +2978,20 @@ and D3 counter `0`. The replacement branch starts with table entry `0x0102`
 holding old record `00 00 02 00`; `0x1652a..0x1653e` calls `0x17a24`, which
 clears that old entry, clears the matching continuation, refreshes the active
 primary context, and then `0x16498` writes the new pointer `0x0900` plus
-bitmap `11 22 33 44 55 66`. The mode-`0` shape reject and the header-type
-range reject for character `0xa0` both return status `0` without changing the
-header. Disassembly evidence is `0x164f2..0x16540` for range rejection,
-`0x1652a..0x1653e` for replacement release, `0x1658e..0x16602` for copy
+bitmap `11 22 33 44 55 66`. The allocation-failure branch computes a one-unit
+object allocation, receives zero from `0x170c`, reports
+`0x9b5e(0x780e2e, 4)`, releases current payload `0x123456` through `0x1887a`,
+copies no bitmap bytes, and leaves table entry `0x0106` zero. The `0x1887a`
+release clears current-record canonical state, candidate slot `0x782328`,
+continuation fields, and context-stack dirty bytes before the failed install
+returns with no replacement object. The mode-`0` shape reject and the
+header-type range reject for character `0xa0` both return status `0` without
+changing the header. Disassembly evidence is `0x164f2..0x16540` for range
+rejection, `0x1652a..0x1653e` for replacement release, `0x1656e..0x165d8` for
+allocation failure and current-payload release, `0x1658e..0x16602` for copy
 status and table-pointer storage, `0x17a24..0x17b54` for old-pointer release,
-and `0x168dc` / `0x16942` for continuation state.
+`0x1887a..0x18c4e` for current-payload teardown, and `0x168dc` / `0x16942` for
+continuation state.
 Fixture `host-fetched segmented downloaded character renders through 0x1f1f0`
 connects the downloaded-character linear reader to the remaining segmented
 compact renderer shape. Host fetch drains `ESC )s258W`; parser dispatch walks
@@ -3223,8 +3232,9 @@ compact selectors represented by fixtures `host-fetched linear downloaded
 character stream renders through 0x168dc`, `host-fetched downloaded character
 payload control reaches wide render`, `host-fetched even-span wide downloaded
 character renders through 0x1f0d2`, `host-fetched row-0x80 downloaded
-character remains short compact`, `0x16498 replacement partial and rejected
-downloaded character exits preserve state`, `host-fetched segmented downloaded
+character remains short compact`, `0x16498 replacement allocation failure
+partial and rejected downloaded character exits preserve state`,
+`host-fetched segmented downloaded
 character renders through 0x1f1f0`, `host-fetched split-plane segmented
 downloaded character renders through 0x1f1f0`, and
 `host-fetched downloaded character stream reaches rendered object`. High for
@@ -3307,7 +3317,8 @@ combination have not been page-compared.
 - `host-fetched downloaded character payload control reaches wide render`
 - `host-fetched even-span wide downloaded character renders through 0x1f0d2`
 - `host-fetched row-0x80 downloaded character remains short compact`
-- `0x16498 replacement partial and rejected downloaded character exits preserve state`
+- `0x16498 replacement allocation failure partial and rejected downloaded character
+  exits preserve state`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
 - `host-fetched split-plane segmented downloaded character renders through
   0x1f1f0`
@@ -3345,21 +3356,20 @@ combination have not been page-compared.
   default-font page-record path with matching rendered rows. Remaining
   descriptor error-form risk is now variants beyond those bounded predicate
   branches, plus external HP manual naming for consumed-but-not-staged fields.
-- `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span
-  wide, row-threshold `0x80` short, linear normal, linear segmented, and
-  split-plane segmented downloaded-character paths are page-visible. Fixture
-  `host-fetched row-0x80 downloaded character remains short compact` closes
-  the exact `0x80`/`0x81` selector boundary for even-span copied glyphs:
-  `0x12f2e` leaves rows `0x80` on selector `0x0003`, while fixture
-  `host-fetched segmented downloaded character renders through 0x1f1f0`
-  puts rows `0x81` on selector `0x2003`. Fixture
-  `0x16498 replacement partial and rejected downloaded character exits preserve state`
-  covers old-pointer release through `0x17a24`, status-`2` linear/split-plane
-  continuation pointer writes, and the mode/header-type status-`0` rejects.
-  Remaining parser-produced comparisons are the cross-product variants not
-  covered by those shapes, especially other row counts, other character-mode
-  behavior, allocator failures, and page-visible recovery from the same
-  selector families.
+- `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span wide,
+  row-threshold `0x80` short, linear normal, linear segmented, and split-plane segmented
+  downloaded-character paths are page-visible. Fixture `host-fetched row-0x80 downloaded
+  character remains short compact` closes the exact `0x80`/`0x81` selector boundary for
+  even-span copied glyphs: `0x12f2e` leaves rows `0x80` on selector `0x0003`, while
+  fixture `host-fetched segmented downloaded character renders through 0x1f1f0` puts
+  rows `0x81` on selector `0x2003`. Fixture `0x16498 replacement allocation failure
+  partial and rejected downloaded character exits preserve state` covers old-pointer
+  release through `0x17a24`, object allocation failure through
+  `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear/split-plane continuation pointer
+  writes, and the mode/header-type status-`0` rejects. Remaining parser-produced
+  comparisons are the cross-product variants not covered by those shapes, especially
+  other row counts, other character-mode behavior, and page-visible recovery from the
+  same selector families.
 - downloaded-glyph plus rule/raster producer schedule: fixture
   `parser-driven downloaded glyph rule raster stream composes through
   0x1ef6a` closes the page-stream boundary from parser-produced `0x10898` rule

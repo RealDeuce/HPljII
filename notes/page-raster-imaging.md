@@ -1320,7 +1320,11 @@ segmented `ESC )s258W` + `'` + FF siblings now publish through the same
 boundary: the normal case copies bucket `1` and renders through `0x1fe76`,
 while the segmented case copies buckets `1` and `9` and renders bucket `9`
 through `0x1f1f0` from source offset `0x0100`; both pass through `0xff1e`,
-`0x1ed84`, `0x1ef6a`, and compact target `0x1effe`. The fetched font-control
+`0x1ed84`, `0x1ef6a`, and compact target `0x1effe`. The rows-`0x82`
+segmented sibling `ESC )s260W` + printable `0` + FF also copies buckets `1`
+and `9`; render bucket word `9` passes through `0x1ed84`, `0x1ef6a`, compact
+target `0x1effe`, and `0x1f1f0`, producing two segment-1 rows from the
+interior segmented row count. The fetched font-control
 state now carries current id
 `0x1234` and current character `0x25` into fetched descriptor,
 resource-payload, and downloaded-character streams, tying delayed record

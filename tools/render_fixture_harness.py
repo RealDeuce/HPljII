@@ -54824,6 +54824,315 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    downloaded_segmented_rows82_payload = (
+        (b"\x00\x00" * 0x80)
+        + bytes.fromhex("f0 0f")
+        + bytes.fromhex("aa 55")
+    )
+    downloaded_segmented_rows82_command_stream = (
+        b"\x1b)s260W" + downloaded_segmented_rows82_payload
+    )
+    host_fetched_downloaded_segmented_rows82_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(downloaded_segmented_rows82_command_stream),
+            direct_mode=0,
+        ),
+        len(downloaded_segmented_rows82_command_stream),
+    )
+    downloaded_segmented_rows82_dispatch_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        host_fetched_downloaded_segmented_rows82_stream["stream"],
+    )
+    downloaded_segmented_rows82_dispatch_command = downloaded_segmented_rows82_dispatch_trace["commands"][0]
+    assert isinstance(downloaded_segmented_rows82_dispatch_command, dict)
+    downloaded_segmented_rows82_command = render_font_download_char_command_stream_via_121cc_16498(
+        host_fetched_downloaded_segmented_rows82_stream["stream"],
+        table_payload_type2_bytes,
+        char_code=0x30,
+        record_words=(0x0000, 0x0000, 0x0082, 0x0000),
+        mode=1,
+        width=0x0010,
+        rows=0x0082,
+        object_offset=0x09C0,
+    )
+    downloaded_segmented_rows82_event = downloaded_segmented_rows82_command["events"][0]
+    assert isinstance(downloaded_segmented_rows82_event, dict)
+    downloaded_segmented_rows82_install = downloaded_segmented_rows82_event["install"]
+    assert isinstance(downloaded_segmented_rows82_install, dict)
+    downloaded_segmented_rows82_memory = bytearray(downloaded_segmented_rows82_install["header"])
+    downloaded_segmented_rows82_glyph = resolve_downloaded_pointer_glyph(
+        downloaded_segmented_rows82_memory,
+        0,
+        0x30,
+    )
+    assert downloaded_segmented_rows82_glyph is not None
+    downloaded_segmented_rows82_source = {
+        "context": 0,
+        "host_char": 0x30,
+        "mapped": 0x30,
+        "glyph_entry": downloaded_segmented_rows82_glyph["entry"],
+        "glyph_width": downloaded_segmented_rows82_glyph["width"],
+        "glyph_rows": downloaded_segmented_rows82_glyph["rows"],
+        "flag": 0,
+        "x": 22,
+        "y": 22,
+        "context_slot": 3,
+        "inline_record": bytes([
+            int(downloaded_segmented_rows82_glyph["render_span"]),
+            int(downloaded_segmented_rows82_glyph["rows"]) & 0xFF,
+            0,
+        ]),
+    }
+    downloaded_segmented_rows82_page_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_segmented_rows82_page_result = queue_text_source_to_page_record_via_12f2e(
+        downloaded_segmented_rows82_memory,
+        downloaded_segmented_rows82_page_record,
+        downloaded_segmented_rows82_source,
+    )
+    downloaded_segmented_rows82_events = downloaded_segmented_rows82_page_result["events"]
+    assert isinstance(downloaded_segmented_rows82_events, list)
+    downloaded_segmented_rows82_segment1 = downloaded_segmented_rows82_events[0]
+    downloaded_segmented_rows82_segment0 = downloaded_segmented_rows82_events[1]
+    assert isinstance(downloaded_segmented_rows82_segment1, dict)
+    assert isinstance(downloaded_segmented_rows82_segment0, dict)
+    downloaded_segmented_rows82_publication_stream = (
+        downloaded_segmented_rows82_command_stream + b"0\x0c"
+    )
+    downloaded_segmented_rows82_publication_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(downloaded_segmented_rows82_publication_stream),
+            direct_mode=0,
+        ),
+        len(downloaded_segmented_rows82_publication_stream),
+    )
+    downloaded_segmented_rows82_publication_tail = (
+        downloaded_segmented_rows82_publication_fetch["stream"][
+            len(downloaded_segmented_rows82_command_stream):
+        ]
+    )
+    downloaded_segmented_rows82_publication_tail_trace = (
+        trace_mixed_text_control_parser_path_via_11774(
+            data,
+            downloaded_segmented_rows82_publication_tail,
+        )
+    )
+    downloaded_segmented_rows82_publication = finalize_page_record_via_ff1e(
+        downloaded_segmented_rows82_page_record,
+        reset_fixture_state(
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            page_root_clears=0,
+            publication_bucket_index=int(downloaded_segmented_rows82_segment1["bucket_index"]),
+        ),
+    )
+    downloaded_segmented_rows82_published_record = downloaded_segmented_rows82_publication[
+        "published_pool_record"
+    ]
+    assert isinstance(downloaded_segmented_rows82_published_record, dict)
+    downloaded_segmented_rows82_published_fields = (
+        downloaded_segmented_rows82_published_record["pool_record_fields"]
+    )
+    assert isinstance(downloaded_segmented_rows82_published_fields, dict)
+    downloaded_segmented_rows82_published_render = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_segmented_rows82_memory,
+        downloaded_segmented_rows82_published_record,
+        bucket_word=int(downloaded_segmented_rows82_segment1["bucket_index"]),
+    )
+    downloaded_segmented_rows82_published_entry = (
+        downloaded_segmented_rows82_published_render["entry"]
+    )
+    assert isinstance(downloaded_segmented_rows82_published_entry, dict)
+    expected_downloaded_segmented_rows82_rows = [
+        "." * 38,
+        "." * 38,
+        "." * 38,
+        "." * 38,
+        "." * 38,
+        "." * 38,
+        "." * 22 + "####........####",
+        "." * 22 + "#.#.#.#..#.#.#.#",
+    ]
+    checks.append(assert_equal("host-fetched rows-0x82 segmented downloaded glyph FF publication renders page record", {
+        "fetch": {
+            "stream_prefix": host_fetched_downloaded_segmented_rows82_stream["stream"][:7],
+            "stream_length": len(host_fetched_downloaded_segmented_rows82_stream["stream"]),
+            "source_set": sorted(set(host_fetched_downloaded_segmented_rows82_stream["sources"])),
+            "remaining_ring": host_fetched_downloaded_segmented_rows82_stream["state"]["ring"],
+        },
+        "parser": {
+            "handlers": [
+                event["handler"]
+                for event in downloaded_segmented_rows82_dispatch_trace["dispatches"]
+            ],
+            "record": downloaded_segmented_rows82_dispatch_command["record"],
+            "restored_record": downloaded_segmented_rows82_dispatch_command[
+                "restored_record"
+            ],
+            "payload_offset": downloaded_segmented_rows82_dispatch_command["payload_offset"],
+            "payload_length": len(downloaded_segmented_rows82_dispatch_command["payload"]),
+        },
+        "install": {
+            key: downloaded_segmented_rows82_install[key]
+            for key in (
+                "status",
+                "table_entry",
+                "record_delta",
+                "record",
+                "bitmap_offset",
+                "bitmap_size",
+                "allocation_size",
+                "object_size",
+                "span",
+                "split_plane",
+            )
+        },
+        "page": {
+            key: downloaded_segmented_rows82_page_result[key]
+            for key in ("path", "selector", "coord", "glyph", "rows", "width")
+        },
+        "segments": [
+            {
+                key: event[key]
+                for key in (
+                    "allocated",
+                    "bucket_index",
+                    "selector",
+                    "count_before",
+                    "count_after",
+                    "segment",
+                    "object",
+                )
+            }
+            for event in downloaded_segmented_rows82_events
+        ],
+        "tail": {
+            "stream": downloaded_segmented_rows82_publication_tail,
+            "handlers": [
+                event["handler"]
+                for event in downloaded_segmented_rows82_publication_tail_trace["events"]
+            ],
+        },
+        "finalized": {
+            "published": downloaded_segmented_rows82_publication["published"],
+            "bucket_index": downloaded_segmented_rows82_publication["bucket_index"],
+            "current_page_root_after": (
+                downloaded_segmented_rows82_publication["current_page_root_after"]
+            ),
+            "page_root_clears": downloaded_segmented_rows82_publication["page_root_clears"],
+            "page_publication_flag": (
+                downloaded_segmented_rows82_publication["page_publication_flag"]
+            ),
+        },
+        "published_bucket_array_keys": sorted(
+            downloaded_segmented_rows82_published_fields["bucket_array_1c"].keys()
+        ),
+        "render_bucket_word": (
+            downloaded_segmented_rows82_published_render["render_record_fields"]["word_10"]
+        ),
+        "dispatch": [
+            {
+                key: entry[key]
+                for key in (
+                    "chain_index",
+                    "object_byte_4",
+                    "class_mask",
+                    "branch",
+                    "target",
+                    "context_slot",
+                )
+            }
+            for entry in downloaded_segmented_rows82_published_entry["dispatch"]["entries"]
+        ],
+        "rows": downloaded_segmented_rows82_published_entry["rows"],
+    }, {
+        "fetch": {
+            "stream_prefix": b"\x1b)s260W",
+            "stream_length": len(downloaded_segmented_rows82_command_stream),
+            "source_set": ["ring"],
+            "remaining_ring": [],
+        },
+        "parser": {
+            "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "record": b"\x80W\x01\x04\x00\x00",
+            "restored_record": b"\x80W\x01\x04\x00\x00",
+            "payload_offset": 7,
+            "payload_length": 0x0104,
+        },
+        "install": {
+            "status": 1,
+            "table_entry": 0x010A,
+            "record_delta": 0x09C0,
+            "record": bytes.fromhex("00 00 00 00 0c 01 00 82 00 10 00 00"),
+            "bitmap_offset": 0x09CC,
+            "bitmap_size": 0x0104,
+            "allocation_size": 5,
+            "object_size": 0x0140,
+            "span": 2,
+            "split_plane": False,
+        },
+        "page": {
+            "path": "segmented-page-record",
+            "selector": 0x2003,
+            "coord": 0x6601,
+            "glyph": 0x30,
+            "rows": 0x82,
+            "width": 2,
+        },
+        "segments": [
+            {
+                "allocated": True,
+                "bucket_index": 9,
+                "selector": 0x2003,
+                "count_before": 0,
+                "count_after": 1,
+                "segment": 1,
+                "object": (
+                    bytes.fromhex("00 00 00 00 20 03 00 01 30 01 66 01")
+                    + bytes(0x1C)
+                ),
+            },
+            {
+                "allocated": True,
+                "bucket_index": 1,
+                "selector": 0x2003,
+                "count_before": 0,
+                "count_after": 1,
+                "segment": 0,
+                "object": (
+                    bytes.fromhex("00 00 00 00 20 03 00 01 30 00 66 01")
+                    + bytes(0x1C)
+                ),
+            },
+        ],
+        "tail": {
+            "stream": b"0\x0c",
+            "handlers": [0x00D04A, 0x00F0F0],
+        },
+        "finalized": {
+            "published": True,
+            "bucket_index": 9,
+            "current_page_root_after": 0,
+            "page_root_clears": 1,
+            "page_publication_flag": 1,
+        },
+        "published_bucket_array_keys": [1, 9],
+        "render_bucket_word": 9,
+        "dispatch": [{
+            "chain_index": 0,
+            "object_byte_4": 0x20,
+            "class_mask": 0x00,
+            "branch": "compact",
+            "target": 0x01EFFE,
+            "context_slot": 3,
+        }],
+        "rows": expected_downloaded_segmented_rows82_rows,
+    }))
+
     downloaded_linear_publication_stream = downloaded_linear_command_stream + b"&\x0c"
     downloaded_row80_publication_stream = downloaded_row80_command_stream + b"*\x0c"
     downloaded_segmented_even_publication_stream = (
@@ -82365,6 +82674,26 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "object_byte_4"
             ],
             downloaded_linear_published_entry["dispatch"]["entries"][0]["target"],
+        )
+    )
+    lines.append(
+        "- rows-0x82 segmented downloaded-glyph FF publication: host-fetched "
+        "`ESC )s260W` plus printable `0` and FF restores record `%s`, "
+        "installs table entry `0x%04x`, publishes bucket entries `%s`, "
+        "renders bucket word `%d`, and produces `%d` segment-1 visible rows "
+        "through `0x1f1f0`." % (
+            " ".join(
+                f"{byte:02x}"
+                for byte in downloaded_segmented_rows82_dispatch_command[
+                    "restored_record"
+                ]
+            ),
+            downloaded_segmented_rows82_install["table_entry"],
+            sorted(downloaded_segmented_rows82_published_fields["bucket_array_1c"].keys()),
+            downloaded_segmented_rows82_published_render["render_record_fields"][
+                "word_10"
+            ],
+            len(downloaded_segmented_rows82_published_entry["rows"]) - 6,
         )
     )
     lines.append("")

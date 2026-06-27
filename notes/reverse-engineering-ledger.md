@@ -471,9 +471,9 @@ even-span and mode-byte-`2` odd-span installs if ROM evidence proves such
 forms, remaining release variants, broader publication combinations beyond
 the covered
 normal, nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented,
-split-plane segmented, segmented-wide, even-span wide, payload-control wide,
-downloaded-character no-install, and status-`2` compact bucket variants, full
-live-parser raster edge cases, and final device-output page
+rows-`0x82` segmented, split-plane segmented, segmented-wide, even-span wide,
+payload-control wide, downloaded-character no-install, and status-`2` compact
+bucket variants, full live-parser raster edge cases, and final device-output page
 comparison.
 Downloaded-character no-install failures now publish the following default
 printable through trailing-FF `0xff1e`, while the status-`2` partial-install
@@ -646,8 +646,9 @@ intact, plus type-2 payload-backed `0x1f0d2`/`0x1f1f0`, selected-memory
 `0x1f264` isolation, and `0x16498` downloaded-pointer `0x1f264` render
 fixtures now crossing `0x1edc6` plus `0x1ed84`/`0x1ef6a`,
 `0x168dc`/`0x16942` font payload-reader
-fixtures plus host-fetched `ESC )s18W` payload-control `0x1ed84`/`0x1ef6a`
-render-entry and FF-publication bridges,
+fixtures plus host-fetched `ESC )s18W` payload-control and `ESC )s260W`
+rows-`0x82` segmented `0x1ed84`/`0x1ef6a` render-entry and FF-publication
+bridges,
 fetched printable-byte selection of the installed `ESC )s2193W`
 downloaded glyph into segmented `0x12f2e`/`0x1387c` page-record buckets
 and `0x1ed84`/`0x1ef6a` render-entry output, plus a combined fetched

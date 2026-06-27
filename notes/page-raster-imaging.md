@@ -1320,7 +1320,11 @@ segmented `ESC )s258W` + `'` + FF siblings now publish through the same
 boundary: the normal case copies bucket `1` and renders through `0x1fe76`,
 while the segmented case copies buckets `1` and `9` and renders bucket `9`
 through `0x1f1f0` from source offset `0x0100`; both pass through `0xff1e`,
-`0x1ed84`, `0x1ef6a`, and compact target `0x1effe`. The rows-`0x82`
+`0x1ed84`, `0x1ef6a`, and compact target `0x1effe`. The rows-`0x20` short
+sibling `ESC )s64W` + printable `1` + FF also copies bucket `1`; render
+bucket word `1` passes through `0x1ed84`, `0x1ef6a`, compact target
+`0x1effe`, and `0x1fe76`, producing `38` visible rows from the interior short
+row count. The rows-`0x82`
 segmented sibling `ESC )s260W` + printable `0` + FF also copies buckets `1`
 and `9`; render bucket word `9` passes through `0x1ed84`, `0x1ef6a`, compact
 target `0x1effe`, and `0x1f1f0`, producing two segment-1 rows from the

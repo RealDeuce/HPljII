@@ -54487,6 +54487,286 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     ))
 
+    downloaded_short32_payload = (b"\x00\x00" * 31) + bytes.fromhex("f0 0f")
+    downloaded_short32_command_stream = b"\x1b)s64W" + downloaded_short32_payload
+    host_fetched_downloaded_short32_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(downloaded_short32_command_stream),
+            direct_mode=0,
+        ),
+        len(downloaded_short32_command_stream),
+    )
+    downloaded_short32_dispatch_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        host_fetched_downloaded_short32_stream["stream"],
+    )
+    downloaded_short32_dispatch_command = downloaded_short32_dispatch_trace[
+        "commands"
+    ][0]
+    assert isinstance(downloaded_short32_dispatch_command, dict)
+    downloaded_short32_command = render_font_download_char_command_stream_via_121cc_16498(
+        host_fetched_downloaded_short32_stream["stream"],
+        table_payload_type2_bytes,
+        char_code=0x31,
+        record_words=(0x0000, 0x0000, 0x0020, 0x0000),
+        mode=1,
+        width=0x0010,
+        rows=0x0020,
+        object_offset=0x0A40,
+    )
+    downloaded_short32_event = downloaded_short32_command["events"][0]
+    assert isinstance(downloaded_short32_event, dict)
+    downloaded_short32_install = downloaded_short32_event["install"]
+    assert isinstance(downloaded_short32_install, dict)
+    downloaded_short32_memory = bytearray(downloaded_short32_install["header"])
+    downloaded_short32_glyph = resolve_downloaded_pointer_glyph(
+        downloaded_short32_memory,
+        0,
+        0x31,
+    )
+    assert downloaded_short32_glyph is not None
+    downloaded_short32_source = {
+        "context": 0,
+        "host_char": 0x31,
+        "mapped": 0x31,
+        "glyph_entry": downloaded_short32_glyph["entry"],
+        "glyph_width": downloaded_short32_glyph["width"],
+        "glyph_rows": downloaded_short32_glyph["rows"],
+        "flag": 0,
+        "x": 22,
+        "y": 22,
+        "context_slot": 3,
+        "inline_record": bytes([
+            int(downloaded_short32_glyph["render_span"]),
+            int(downloaded_short32_glyph["rows"]) & 0xFF,
+            0,
+        ]),
+    }
+    downloaded_short32_page_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_short32_page_result = queue_text_source_to_page_record_via_12f2e(
+        downloaded_short32_memory,
+        downloaded_short32_page_record,
+        downloaded_short32_source,
+    )
+    downloaded_short32_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_short32_memory,
+        downloaded_short32_page_record,
+        bucket_word=int(downloaded_short32_page_result["bucket_index"]),
+    )
+    downloaded_short32_entry = downloaded_short32_render_entry["entry"]
+    assert isinstance(downloaded_short32_entry, dict)
+    downloaded_short32_publication_stream = (
+        downloaded_short32_command_stream + b"1\x0c"
+    )
+    downloaded_short32_publication_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(downloaded_short32_publication_stream),
+            direct_mode=0,
+        ),
+        len(downloaded_short32_publication_stream),
+    )
+    downloaded_short32_publication_tail = downloaded_short32_publication_fetch[
+        "stream"
+    ][len(downloaded_short32_command_stream):]
+    downloaded_short32_publication_tail_trace = (
+        trace_mixed_text_control_parser_path_via_11774(
+            data,
+            downloaded_short32_publication_tail,
+        )
+    )
+    downloaded_short32_publication = finalize_page_record_via_ff1e(
+        downloaded_short32_page_record,
+        reset_fixture_state(
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            page_root_clears=0,
+            publication_bucket_index=int(downloaded_short32_page_result["bucket_index"]),
+        ),
+    )
+    downloaded_short32_published_record = downloaded_short32_publication[
+        "published_pool_record"
+    ]
+    assert isinstance(downloaded_short32_published_record, dict)
+    downloaded_short32_published_fields = downloaded_short32_published_record[
+        "pool_record_fields"
+    ]
+    assert isinstance(downloaded_short32_published_fields, dict)
+    downloaded_short32_published_render = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_short32_memory,
+        downloaded_short32_published_record,
+        bucket_word=int(downloaded_short32_page_result["bucket_index"]),
+    )
+    downloaded_short32_published_entry = downloaded_short32_published_render["entry"]
+    assert isinstance(downloaded_short32_published_entry, dict)
+    expected_downloaded_short32_rows = (
+        ["." * 38 for _ in range(37)]
+        + ["." * 22 + "####........####"]
+    )
+    checks.append(assert_equal(
+        "host-fetched rows-0x20 short downloaded glyph FF publication renders page record",
+        {
+            "fetch": {
+                "stream_prefix": host_fetched_downloaded_short32_stream["stream"][:6],
+                "stream_length": len(host_fetched_downloaded_short32_stream["stream"]),
+                "source_set": sorted(set(host_fetched_downloaded_short32_stream["sources"])),
+                "remaining_ring": host_fetched_downloaded_short32_stream["state"]["ring"],
+            },
+            "parser": {
+                "handlers": [
+                    event["handler"]
+                    for event in downloaded_short32_dispatch_trace["dispatches"]
+                ],
+                "record": downloaded_short32_dispatch_command["record"],
+                "restored_record": downloaded_short32_dispatch_command[
+                    "restored_record"
+                ],
+                "payload_offset": downloaded_short32_dispatch_command["payload_offset"],
+                "payload_length": len(downloaded_short32_dispatch_command["payload"]),
+            },
+            "install": {
+                key: downloaded_short32_install[key]
+                for key in (
+                    "status",
+                    "table_entry",
+                    "record_delta",
+                    "record",
+                    "bitmap_offset",
+                    "bitmap_size",
+                    "allocation_size",
+                    "object_size",
+                    "span",
+                    "split_plane",
+                )
+            },
+            "page": {
+                key: downloaded_short32_page_result[key]
+                for key in (
+                    "path",
+                    "object",
+                    "bucket_index",
+                    "selector",
+                    "coord",
+                    "glyph",
+                    "rows",
+                    "width",
+                )
+            },
+            "render": {
+                "call_order": downloaded_short32_entry["call_order"],
+                "dispatch": [
+                    {
+                        key: entry[key]
+                        for key in (
+                            "chain_index",
+                            "object_byte_4",
+                            "class_mask",
+                            "branch",
+                            "target",
+                            "context_slot",
+                        )
+                    }
+                    for entry in downloaded_short32_entry["dispatch"]["entries"]
+                ],
+                "rows": downloaded_short32_entry["rows"],
+            },
+            "tail": {
+                "stream": downloaded_short32_publication_tail,
+                "handlers": [
+                    event["handler"]
+                    for event in downloaded_short32_publication_tail_trace["events"]
+                ],
+            },
+            "finalized": {
+                "published": downloaded_short32_publication["published"],
+                "bucket_index": downloaded_short32_publication["bucket_index"],
+                "current_page_root_after": downloaded_short32_publication[
+                    "current_page_root_after"
+                ],
+                "page_root_clears": downloaded_short32_publication["page_root_clears"],
+                "page_publication_flag": downloaded_short32_publication[
+                    "page_publication_flag"
+                ],
+            },
+            "published_bucket_array_keys": sorted(
+                downloaded_short32_published_fields["bucket_array_1c"].keys()
+            ),
+            "published_render_bucket_word": (
+                downloaded_short32_published_render["render_record_fields"]["word_10"]
+            ),
+            "published_rows": downloaded_short32_published_entry["rows"],
+        },
+        {
+            "fetch": {
+                "stream_prefix": b"\x1b)s64W",
+                "stream_length": len(downloaded_short32_command_stream),
+                "source_set": ["ring"],
+                "remaining_ring": [],
+            },
+            "parser": {
+                "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                "record": b"\x80W\x00\x40\x00\x00",
+                "restored_record": b"\x80W\x00\x40\x00\x00",
+                "payload_offset": 6,
+                "payload_length": 64,
+            },
+            "install": {
+                "status": 1,
+                "table_entry": 0x010E,
+                "record_delta": 0x0A40,
+                "record": bytes.fromhex("00 00 00 00 0c 01 00 20 00 10 00 00"),
+                "bitmap_offset": 0x0A4C,
+                "bitmap_size": 64,
+                "allocation_size": 2,
+                "object_size": 0x80,
+                "span": 2,
+                "split_plane": False,
+            },
+            "page": {
+                "path": "short-page-record",
+                "object": bytes.fromhex("00 00 00 00 00 03 00 01 31 66 01")
+                + bytes(0x1B),
+                "bucket_index": 1,
+                "selector": 0x0003,
+                "coord": 0x6601,
+                "glyph": 0x31,
+                "rows": 0x20,
+                "width": 2,
+            },
+            "render": {
+                "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+                "dispatch": [{
+                    "chain_index": 0,
+                    "object_byte_4": 0x00,
+                    "class_mask": 0x00,
+                    "branch": "compact",
+                    "target": 0x01EFFE,
+                    "context_slot": 3,
+                }],
+                "rows": expected_downloaded_short32_rows,
+            },
+            "tail": {
+                "stream": b"1\x0c",
+                "handlers": [0x00D04A, 0x00F0F0],
+            },
+            "finalized": {
+                "published": True,
+                "bucket_index": 1,
+                "current_page_root_after": 0,
+                "page_root_clears": 1,
+                "page_publication_flag": 1,
+            },
+            "published_bucket_array_keys": [1],
+            "published_render_bucket_word": 1,
+            "published_rows": expected_downloaded_short32_rows,
+        },
+    ))
+
     downloaded_segmented_even_payload = (b"\x00\x00" * 0x80) + bytes.fromhex("f0 0f")
     downloaded_segmented_even_command_stream = (
         b"\x1b)s258W" + downloaded_segmented_even_payload
@@ -82617,6 +82897,23 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     str(row) for row in downloaded_short16_published_entry["rows"]
                 ).encode("ascii")
             ).hexdigest(),
+        )
+    )
+    lines.append(
+        "- rows-0x20 short downloaded-glyph FF publication: host-fetched "
+        "`ESC )s64W` plus printable `1` and FF restores record `%s`, "
+        "installs table entry `0x%04x`, keeps selector `0x%04x`, publishes "
+        "bucket entries `%s`, renders bucket word `%d`, and produces `%d` "
+        "visible rows through `0x1fe76`." % (
+            " ".join(
+                f"{byte:02x}"
+                for byte in downloaded_short32_dispatch_command["restored_record"]
+            ),
+            downloaded_short32_install["table_entry"],
+            downloaded_short32_page_result["selector"],
+            sorted(downloaded_short32_published_fields["bucket_array_1c"].keys()),
+            downloaded_short32_published_render["render_record_fields"]["word_10"],
+            len(downloaded_short32_published_entry["rows"]),
         )
     )
     lines.append(

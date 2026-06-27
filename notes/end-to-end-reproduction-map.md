@@ -307,7 +307,11 @@ pixels or byte-stream compatibility.
    `0x1f0d2` row. The rows-`0x82` segmented sibling now publishes through FF as well:
    fixture `host-fetched rows-0x82 segmented downloaded glyph FF publication renders
    page record` carries `ESC )s260W`, selector `0x2003`, buckets `1` and `9`, `0xff1e`,
-   `0x1ed84`, and `0x1ef6a` to two `0x1f1f0` segment-1 rows. The full soft-font
+   `0x1ed84`, and `0x1ef6a` to two `0x1f1f0` segment-1 rows. The rows-`0x20`
+   short sibling now publishes through FF too: fixture
+   `host-fetched rows-0x20 short downloaded glyph FF publication renders page record`
+   carries `ESC )s64W`, selector `0x0003`, bucket `1`, `0xff1e`,
+   `0x1ed84`, and `0x1ef6a` to `38` visible `0x1fe76` rows. The full soft-font
    descriptor grammar, any accepted descriptor-record mode bytes beyond the documented
    `0x16b1a` mode-byte-`1` even-span and mode-byte-`2` odd-span bitmap installs, other
    release variants, and page-visible behavior for descriptor error forms beyond those
@@ -425,13 +429,17 @@ The next work should follow dataflow, not isolated handlers:
    `0xe002`. Remaining display-functions risk is broader physical/page comparison, not
    the command-family loop boundary or the documented filter predicates. They should
    also broaden downloaded-glyph publication cross-products beyond the documented
-   segmented-wide, normal, nonboundary-short, linear-segmented, rows-`0x82` segmented,
-   split-plane segmented, row-threshold `0x80` short, even-span wide, and
-   payload-control wide selector families, especially additional row counts, descriptor
+   segmented-wide, normal, nonboundary-short, rows-`0x20` short,
+   linear-segmented, rows-`0x82` segmented, split-plane segmented,
+   row-threshold `0x80` short, even-span wide, and payload-control wide
+   selector families, especially additional row counts, descriptor
    grammar forms outside the covered `0x16b1a` mode-byte-`1`/`2` bitmap installs, and
    non-success exits. The nonboundary-short fixture now publishes rows `0x10` on
    selector `0x0003` through FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` with digest
-   `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The row-threshold
+   `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The rows-`0x20`
+   short fixture now carries `ESC )s64W` plus printable `1` and
+   FF through `0xff1e`, preserves bucket `1`, and renders bucket word `1`
+   through `0x1ed84`/`0x1ef6a` to `38` visible `0x1fe76` rows. The row-threshold
    fixture closes the `0x80`/`0x81` selector boundary by keeping rows `0x80` on selector
    `0x0003`, comparing it with the rows-`0x81` selector `0x2003` fixture, and now
    publishing the row-`0x80` bucket-1 record through FF, `0xff1e`, and
@@ -452,9 +460,10 @@ The next work should follow dataflow, not isolated handlers:
    their stored table pointers and zero-filled missing bytes, then publishes both
    bucket-1 compact objects through trailing FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` with
    the same rows. Remaining downloaded-character publication risk is broader publication
-   combinations beyond these payload-control, rows-`0x82` segmented, no-install, and
-   status-`2` compact bucket variants, not the documented mode-byte-`0` visible recovery
-   boundary. The publication-command checkpoint now covers host-fetched reset, FF,
+   combinations beyond these payload-control, rows-`0x20` short,
+   rows-`0x82` segmented, no-install, and status-`2` compact bucket variants,
+   not the documented mode-byte-`0` visible recovery boundary. The
+   publication-command checkpoint now covers host-fetched reset, FF,
    page-size, orientation, paper-source, and copies streams through parser dispatch,
    `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF,
    page-size, orientation, paper-source, and copies also have addressed allocation

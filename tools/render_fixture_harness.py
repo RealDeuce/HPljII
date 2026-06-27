@@ -53531,6 +53531,171 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     ))
 
+    def metric_extent_fence_stream(
+        first_code: int,
+        range_word: int,
+        rounded_word: int,
+        offset_byte: int,
+    ) -> bytearray:
+        stream = bytearray(font_validate_stream)
+        stream[6:8] = first_code.to_bytes(2, "big")
+        stream[10:12] = range_word.to_bytes(2, "big")
+        stream[20:22] = rounded_word.to_bytes(2, "big")
+        stream[30] = offset_byte
+        return stream
+
+    metric_extent_fence_inputs = {
+        "extent-minus-one-offset-zero": (0x0004, 0x002F, 0x0020, 0x00),
+        "extent-plus-one-offset-zero": (0x0004, 0x0031, 0x0020, 0x00),
+        "extent-plus-one-offset-one": (0x0004, 0x0031, 0x0020, 0x01),
+        "extent-plus-two-offset-two": (0x0004, 0x0032, 0x0020, 0x02),
+    }
+    metric_extent_fence_cases = {
+        label: compact_metric_boundary_case(
+            metric_extent_fence_stream(
+                first_code,
+                range_word,
+                rounded_word,
+                offset_byte,
+            ),
+        )
+        for label, (
+            first_code,
+            range_word,
+            rounded_word,
+            offset_byte,
+        ) in metric_extent_fence_inputs.items()
+    }
+
+    def expected_metric_extent_fence_case(
+        range_word: int,
+        offset_byte: int,
+        d8fc_updates: bool,
+        d8fc_high_y: int,
+        d8fc_object_prefix: bytes,
+        d8fc_row_count: int,
+        d8fc_row_width: int,
+        d8fc_row_sha256: str,
+    ) -> dict[str, object]:
+        return {
+            "input_metrics": {
+                "first_code_word_at_stream_6": 4,
+                "range_word_at_stream_10": range_word,
+                "rounded_word_at_stream_20": 32,
+                "flagged_offset_byte_at_stream_30": offset_byte,
+            },
+            "copied_metrics": {
+                "word_0x14": range_word,
+                "word_0x16": 4,
+                "word_0x18": range_word - 5,
+                "word_0x1a": offset_byte,
+                "byte_0x2b": 0,
+                "byte_0x2c": 0,
+                "byte_0x2d": 32,
+                "word_0x2c": 32,
+            },
+            "d4ac": {
+                "span": {
+                    "updated": True,
+                    "cursor_y": 21,
+                    "handler": 0x00D4AC,
+                    "context_offset_002b": 0,
+                    "context_lower_002c": 0,
+                    "context_height_002d": 32,
+                    "high_y": 26,
+                },
+                "object_prefix": bytes.fromhex(
+                    "00 00 00 00 40 00 00 01 a4 06 03 00 00 14"
+                ),
+                "render": {
+                    "row_count": 13,
+                    "row_width": 116,
+                    "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                },
+            },
+            "d8fc": (
+                {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D8FC,
+                        "context_lower_0016": 4,
+                        "context_height_0018": range_word - 5,
+                        "context_offset_001a": offset_byte,
+                        "metric_source": metric_boundary_context_source,
+                        "high_y": d8fc_high_y,
+                    },
+                    "object_prefix": d8fc_object_prefix,
+                    "render": {
+                        "row_count": d8fc_row_count,
+                        "row_width": d8fc_row_width,
+                        "row_sha256": d8fc_row_sha256,
+                    },
+                }
+                if d8fc_updates
+                else {
+                    "span": {
+                        "updated": False,
+                        "reason": "beyond-page-extent",
+                        "cursor_y": 21,
+                    },
+                    "object_prefix": d8fc_object_prefix,
+                    "render": {
+                        "row_count": d8fc_row_count,
+                        "row_width": d8fc_row_width,
+                        "row_sha256": d8fc_row_sha256,
+                    },
+                }
+            ),
+        }
+
+    checks.append(assert_equal(
+        "legal descriptor metric extent fenceposts drive d4ac and d8fc consumers",
+        metric_extent_fence_cases,
+        {
+            "extent-minus-one-offset-zero": expected_metric_extent_fence_case(
+                0x002F,
+                0x00,
+                True,
+                21,
+                bytes.fromhex("00 00 00 00 40 00 00 01 54 06 03 00 00 14"),
+                8,
+                116,
+                "47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8",
+            ),
+            "extent-plus-one-offset-zero": expected_metric_extent_fence_case(
+                0x0031,
+                0x00,
+                False,
+                0,
+                bytes.fromhex("00 00 00 00 00 00 00 01 21 5a 00 00 00 00"),
+                8,
+                14,
+                "1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a",
+            ),
+            "extent-plus-one-offset-one": expected_metric_extent_fence_case(
+                0x0031,
+                0x01,
+                False,
+                0,
+                bytes.fromhex("00 00 00 00 00 00 00 01 21 5a 00 00 00 00"),
+                8,
+                14,
+                "1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a",
+            ),
+            "extent-plus-two-offset-two": expected_metric_extent_fence_case(
+                0x0032,
+                0x02,
+                False,
+                0,
+                bytes.fromhex("00 00 00 00 00 00 00 01 21 5a 00 00 00 00"),
+                8,
+                14,
+                "1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a",
+            ),
+        },
+    ))
+
     metric_first_code_zero_stream = bytearray(font_validate_stream)
     metric_first_code_zero_stream[6:8] = b"\x00\x00"
     metric_first_code_zero_stream[10:12] = b"\x00\x18"
@@ -88408,6 +88573,25 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             metric_boundary_cases["rounded-0x1508-transform"]["copied_metrics"]["word_0x2c"],  # type: ignore[index]
             metric_boundary_cases["rounded-0x15ff-transform"]["copied_metrics"]["word_0x2c"],  # type: ignore[index]
             metric_boundary_cases["rounded-0x1500-transform"]["d4ac"]["span"]["reason"],  # type: ignore[index]
+        )
+    )
+    lines.append(
+        "- metric extent-fence fixture: fixture `legal descriptor metric "
+        "extent fenceposts drive d4ac and d8fc consumers` varies range words "
+        "`0x002f`, `0x0031`, and `0x0032` with offset bytes `0`, `1`, and "
+        "`2`. It proves `0x17430` derived heights `42`, `44`, and `45`, "
+        "keeps `d4ac` on digest `%s`, accepts the height-42 zero-offset "
+        "`d8fc` case with high-y `%d`, and rejects the height-44/45 cases as "
+        "`%s` even when `+0x1a` is `1` or `2`." % (
+            metric_extent_fence_cases["extent-minus-one-offset-zero"]["d4ac"][
+                "render"
+            ]["row_sha256"],  # type: ignore[index]
+            metric_extent_fence_cases["extent-minus-one-offset-zero"]["d8fc"][
+                "span"
+            ]["high_y"],  # type: ignore[index]
+            metric_extent_fence_cases["extent-plus-one-offset-one"]["d8fc"][
+                "span"
+            ]["reason"],  # type: ignore[index]
         )
     )
     lines.append(

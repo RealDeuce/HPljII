@@ -51,6 +51,7 @@ Evidence:
   - `descriptor metric fields match across inline and resource contexts`
   - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
   - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+  - `legal descriptor metric extent fenceposts drive d4ac and d8fc consumers`
   - `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
   - `legal descriptor metric mixed values drive d4ac and d8fc consumers`
   - `legal descriptor metric tight range values drive d4ac and d8fc consumers`
@@ -618,6 +619,20 @@ Fixture-pinned metric effects:
   same beyond-page exit while `d8fc` still consumes `+0x16/+0x18/+0x1a =
   0x0004/0x0013/0x0001` and renders digest
   `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+- Legal descriptor metric extent fenceposts: fixture
+  `legal descriptor metric extent fenceposts drive d4ac and d8fc consumers`
+  combines the `0x17430` derived-height writer with the `0x1762a`
+  signed-offset writer at the `0xd8fc` page-extent gate. Range word `0x002f`
+  with first code `4` copies derived/cache `+0x18 = 42`; with offset byte
+  `0`, `d8fc` accepts the span at high-y `21` and renders digest
+  `47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8`. Range
+  word `0x0031` copies `+0x18 = 44` and exits `beyond-page-extent` with
+  offset byte `0`; changing the offset byte to `1` still exits before a span
+  object is queued. Range word `0x0032` copies `+0x18 = 45` and also exits
+  `beyond-page-extent` with offset byte `2`. In all four cases the legal
+  inline/unflagged form still feeds `d4ac` copied word `+0x2c = 0x0020` and
+  the standard span digest
+  `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`.
 - Legal descriptor metric range endpoints: fixture
   `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
   holds the rounded metric and signed offset stable while varying the
@@ -1089,6 +1104,12 @@ Output effect:
   max positive offset byte `0x7f`, max negative offset byte `0xff`, normal
   rounded `0x0013 -> +0x2c = 0x0014`, and the `0x1500` / `0x1508` /
   `0x15ff -> +0x2c = 0x0060` rounded-transform family.
+- Fixture `legal descriptor metric extent fenceposts drive d4ac and d8fc
+  consumers` proves derived heights `42`, `44`, and `45` around the `d8fc`
+  page-extent gate. Height `42` with offset `0` renders; heights `44` and
+  `45` exit `beyond-page-extent` even when offsets `1` and `2` would move the
+  final high-y, proving the extent gate consumes derived height before offset
+  placement can recover the span.
 - Fixture `legal descriptor metric range endpoints drive d4ac and d8fc
   consumers` proves `0x17430` accepts first-code zero as
   `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017` and the range-minus-one endpoint
@@ -1135,10 +1156,13 @@ Fixture evidence:
 - `descriptor metric fields match across inline and resource contexts`
 - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
 - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+- `legal descriptor metric extent fenceposts drive d4ac and d8fc consumers`
 - `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
 - `legal descriptor metric mixed values drive d4ac and d8fc consumers`
 - `legal descriptor metric tight range values drive d4ac and d8fc consumers`
 - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+- `legal descriptor metric byte-boundary rounding drives d4ac and d8fc
+  consumers`
 - `d4ac and d8fc span consumer branch family controls flush output`
 
 Disassembly evidence:
@@ -1269,6 +1293,7 @@ A byte-stream reproduction must preserve these behaviors:
   `ESC )s8W` entry-5 failure now preserve following printable output and cover
   every ROM-internal rejecting predicate family. The remaining gap is
   additional metric-value combinations within the legal inline/unflagged and
-  resource/flagged forms outside the pinned matrix, boundary, range-endpoint,
-  mixed-value, tight-range, low-nibble, and byte-boundary fixtures, plus
+  resource/flagged forms outside the pinned matrix, boundary, extent-fence,
+  range-endpoint, mixed-value, tight-range, low-nibble, and byte-boundary
+  fixtures, plus
   external/manual naming for consumed-but-not-staged fields.

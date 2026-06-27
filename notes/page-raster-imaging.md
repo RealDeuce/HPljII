@@ -1731,13 +1731,15 @@ Unresolved middle edges:
   truncates page-record span` now classifies descriptor-accepted spans
   `0x0100..0x020d` at the current printable handoff: canonical installed width
   words survive, but `0x12f2e` consumes only the low source byte, so spans
-  `0x0100`, `0x0101`, and `0x020d` queue selector `0x0003`. Remaining gaps are
-  visible behavior after wrapped width/row producer boundaries and untested
-  metric combinations. Fixture `downloaded segmented-wide row-byte boundary
-  truncates page-record segments` now classifies the sampled row side: row
-  words `0x0100`, `0x0101`, and `0x0181` survive in the installed glyph but
-  the current source row byte causes selector `0x1003`, `0x1003`, and
-  `0x3003` with only segments `1` and `0`.
+  `0x0100`, `0x0101`, and `0x020d` queue selector `0x0003` and read
+  non-helper compact mode-0 row-copy entries. Fixture
+  `downloaded segmented-wide row-byte boundary truncates page-record segments`
+  now classifies the sampled row side: row words `0x0100`, `0x0101`, and
+  `0x0181` survive in the installed glyph, but the current source row byte
+  causes selector `0x1003`, `0x1003`, and `0x3003` with only segments `1` and
+  `0`; the first render splits for those sampled rows are also documented.
+  Remaining gaps are broader physical/full-row comparison for boundary cases
+  and untested metric combinations.
 - `0x1fa5c..0x2feb0`: all sixteen main `0x1f08e` helper indexes now have
   parser-produced downloaded-glyph page rows, and compact-wide spans `17..32`
   plus segmented-wide spans `17..32` now cover selectors `0x1003` and

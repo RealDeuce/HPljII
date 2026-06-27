@@ -3318,6 +3318,16 @@ fixtures.
   keeping the standard span digest, and `d8fc` keeps unchanged `+0x16/+0x18/+0x1a =
   0x0004/0x0013/0x0001`, high-y `20`, and digest
   `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`. Fixture `legal
+  descriptor metric extent fenceposts drive d4ac and d8fc consumers` combines
+  `0x17430` and `0x1762a` at the `d8fc` page-extent gate. Canonical fields are
+  first code `4`, range words `0x002f`, `0x0031`, and `0x0032`, rounded word
+  `0x0020`, and offset bytes `0`, `1`, and `2`; derived/cache `+0x18` becomes
+  `42`, `44`, and `45`, and copied offset word `+0x1a` becomes `0`, `1`, and
+  `2`. The height-42 zero-offset case renders `d8fc` high-y `21` with digest
+  `47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8`; the
+  height-44 and height-45 cases exit `beyond-page-extent` even with offsets
+  `1` and `2`, proving the page-extent gate uses the derived height before
+  offset placement can recover a span. Fixture `legal
   descriptor metric byte-boundary rounding drives d4ac and d8fc consumers` adds the
   `0x1757a` byte-boundary submatrix: rounded inputs `0x00fd/0x00fe/0x0101/0x0102` with
   range/count `0x0042` copy `+0x2c = 0x00fc/0x0100/0x0100/0x0104`, and `0x0102` with
@@ -3329,7 +3339,7 @@ fixtures.
   keeps `d8fc` at `beyond-page-extent` because derived/cache `+0x18 = 0x003d` or
   `0x003b` exceeds the page extent at cursor y `21`. Remaining producer gaps are
   additional metric values within legal forms outside the pinned legal matrix, boundary,
-  range-endpoint, mixed-value, tight-range, low-nibble, and byte-boundary
+  extent-fence, range-endpoint, mixed-value, tight-range, low-nibble, and byte-boundary
   fixtures; bounded validation no-install branches are composed below under
   `Downloaded Resource Validation No-Install`.
 

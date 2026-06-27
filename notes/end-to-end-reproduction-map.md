@@ -407,38 +407,34 @@ pixels or byte-stream compatibility.
 
 The next work should follow dataflow, not isolated handlers:
 
-1. Prove the remaining font metric-byte combinations with parser-produced
-   pages. The selected-context bridge, metric consumers, downloaded
-   descriptor/payload producer chain, and host-stream downloaded glyph output
-   are now tracked. Host-fetched `0x1719c` type-0, type-1, and type-2 payloads
-   reach both `d4ac` and `d8fc` span rows, and the shared
-   disabled/lower/page/high-x consumer branch family is fixture-backed. The
-   seven-case legal descriptor metric matrix plus boundary fixture covers
-   tight `d4ac` page-extent gates, rounded-metric clamping into `+0x2c/+0x2d`,
-   shifted `d8fc` visible rows, a zero rounded/offset case where both consumers
-   publish spans, negative and max-positive copied offset words
-   `0xfffe`/`0xffff`/`0x007f`, `d8fc` lower-bound and exact page-extent
-   equality, rounded transform inputs `0x1500`/`0x1508`/`0x15ff`, the
-   low-nibble rounded inputs `0x0001`/`0x0003`/`0x0004`/`0x0005`/`0x000f`, a
-   byte-boundary rounded submatrix around `0x00fd..0x0102`,
-   `0x17430` first-code-zero endpoint and first-code-`range - 1` endpoint, a
-   mixed-value matrix that combines first-code/range/rounded/offset changes,
-   a tight-range matrix that combines range one/range two with zero/clamped
-   rounded outputs and max signed offsets,
-   midpoint case where `d8fc` updates state but leaves compact-only output, a
-   lower-bound no-span output path for both consumers, and an upper-bound case where
-   `d4ac` still renders a span while `d8fc` exits `beyond-page-extent`.
-   Fixture
-   `descriptor metric fields match across inline and resource contexts` now
-   pins the legal producer-form boundary: inline/unflagged reaches `d4ac`,
-   resource/flagged reaches `d8fc`, and the swapped forms fail at concrete
-   map/render boundaries. The producer formulas are no longer the missing
-   middle: `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c` now define the
-   canonical, derived/cache, and copied metric fields. The missing middle is
-   now additional metric-value combinations outside the pinned legal matrix,
-   boundary, range-endpoint, mixed-value, tight-range, low-nibble, and
-   byte-boundary fixtures, plus external/manual naming for consumed-but-not-staged
-   validation fields.
+1. Prove the remaining font metric-byte combinations with parser-produced pages. The
+   selected-context bridge, metric consumers, downloaded descriptor/payload producer
+   chain, and host-stream downloaded glyph output are now tracked. Host-fetched
+   `0x1719c` type-0, type-1, and type-2 payloads reach both `d4ac` and `d8fc` span rows,
+   and the shared disabled/lower/page/high-x consumer branch family is fixture-backed.
+   The seven-case legal descriptor metric matrix plus boundary fixture covers tight
+   `d4ac` page-extent gates, rounded-metric clamping into `+0x2c/+0x2d`, shifted `d8fc`
+   visible rows, a zero rounded/offset case where both consumers publish spans, negative
+   and max-positive copied offset words `0xfffe`/`0xffff`/`0x007f`, `d8fc` lower-bound
+   and exact page-extent equality, rounded transform inputs `0x1500`/`0x1508`/`0x15ff`,
+   the low-nibble rounded inputs `0x0001`/`0x0003`/`0x0004`/`0x0005`/`0x000f`, a
+   byte-boundary rounded submatrix around `0x00fd..0x0102`, `0x17430` first-code-zero
+   endpoint and first-code-`range - 1` endpoint, a page-extent fencepost matrix where
+   derived heights `42`, `44`, and `45` combine with offset bytes `0`, `1`, and `2`,
+   mixed-value matrix that combines first-code/range/rounded/offset changes, a
+   tight-range matrix that combines range one/range two with zero/clamped rounded
+   outputs and max signed offsets, midpoint case where `d8fc` updates state but leaves
+   compact-only output, a lower-bound no-span output path for both consumers, and an
+   upper-bound case where `d4ac` still renders a span while `d8fc` exits
+   `beyond-page-extent`. Fixture `descriptor metric fields match across inline and
+   resource contexts` now pins the legal producer-form boundary: inline/unflagged
+   reaches `d4ac`, resource/flagged reaches `d8fc`, and the swapped forms fail at
+   concrete map/render boundaries. The producer formulas are no longer the missing
+   middle: `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c` now define the canonical,
+   derived/cache, and copied metric fields. The missing middle is now additional
+   metric-value combinations outside the pinned legal matrix, boundary, extent-fence,
+   range-endpoint, mixed-value, tight-range, low-nibble, and byte-boundary fixtures,
+   plus external/manual naming for consumed-but-not-staged validation fields.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus secondary

@@ -18,6 +18,13 @@ Evidence:
   - `modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W`
   - `host-fetched raster stream reaches parser and queued pixels`
   - `raster payload reader normalizes 0xdace controls before queueing pixels`
+  - `host-fetched raster gate stream reaches capped and drained paths`
+  - `host-fetched text rectangle and raster page record feeds 0x1ed84 and
+    0x1ef6a`
+  - `host-fetched text rectangle raster FF publishes rendered page record`
+  - `addressed text rectangle raster FF publishes rendered page record`
+  - `addressed text/rule/raster field groups reach publication and render
+    entry`
   - `0x13070/0x13250 raster row queues encoded-span object`
   - `0x1f88e mode-0 raster object renders queued literal row`
 
@@ -252,6 +259,66 @@ For the primary mode-0 object above, the rendered row is:
 ................####........#####.#.#.#..#.#.#.#
 ```
 
+## Mixed Page-Record Composition
+
+The raster transfer path has now been composed with adjacent page producers
+instead of only isolated raster rows. Fixture `host-fetched text rectangle and
+raster page record feeds 0x1ed84 and 0x1ef6a` drains this byte stream through
+the modeled `0xa904` host source:
+
+```text
+21 1b 2a 63 31 32 61 35 62 30 50 1b 2a 74 33 30 30 52
+1b 2a 72 30 41 1b 2a 62 32 57 c3 3c
+```
+
+That is printable `!`, selector-7 rule command `ESC *c12a5b0P`,
+`ESC *t300R`, `ESC *r0A`, and delayed raster transfer
+`ESC *b2W c3 3c`. The stream runner queues all three visible producer
+classes into one current page record before bridge/render:
+
+- compact text through `0xd04a` / `0x12f2e` / `0x1387c`;
+- selector-7 rectangle through `0x10898` / `0x133aa`;
+- mode-0 raster through delayed `0x11f82` / `0x12218` / `0x105d0` /
+  `0x13070` / `0x13250`.
+
+The addressed publication fixture `addressed text/rule/raster field groups
+reach publication and render entry` pins the canonical storage shape for the
+same cluster:
+
+- text object at `0x00d0c004`;
+- rule object at `0x00d0c02a`;
+- raster object at `0x00d0c038`;
+- bucket head `page_root+0x1c = 0x00d0c038`;
+- rule head `page_root+0x24 = 0x00d0c02a`;
+- context slot 0 copied as `0x440946b4`.
+
+Field classes for reproduction:
+
+- canonical fields: the three page-record objects, bucket head, rule head,
+  context slot, and raster object bytes
+  `00 d0 c0 04 80 00 00 02 00 00 c3 3c`;
+- parser scratch: restored raster record `80 57 00 02 00 00`, delayed
+  snapshot `01 00 01 05 d0 80 57 00 02 00 00`, payload offset `28`, and
+  payload `c3 3c`;
+- derived/cache fields: raster bucket/key from `0x782a7c` / `0x782a7e`,
+  allocation capacity from `0x782a80`, render band height
+  `0x783a20 = 0x0050`, band base `0x783a22 = 0`, and active row origin
+  `0x783a28 = 0x00100000`;
+- firmware bookkeeping: stream allocator state
+  `0x782a70 = 0x00bc`, `0x782a72 = 0x00d0c000`,
+  `0x782a76 = 0x00d0c044`, one page-root allocation, one stream
+  allocation, one publication, one root clear, and publication flag `1`;
+- unknown: the exact live 68000 register/heap-memory trace for this complete
+  mixed stream as it crosses `0x105d0..0x13250..0x1381c`.
+
+Writers are the parser handlers and page producers listed above, plus `0xff1e`
+when fixture `host-fetched text rectangle raster FF publishes rendered page
+record` finalizes the heterogeneous page record. Readers are `0x1ed84` /
+`0x1edc6`, `0x1ef6a`, `0x1efc2`, raster dispatch `0x1f88e`, compact text
+dispatch `0x1effe`, and rule dispatch `0x1f446`. The output effect is one
+published text/rule/raster page image whose rows match the non-published
+current-page render for the same byte stream.
+
 ## Reproduction Contract
 
 A byte-stream reproduction must preserve these behaviors:
@@ -277,8 +344,14 @@ A byte-stream reproduction must preserve these behaviors:
 - `0x105d0..0x13250` is modeled and address-aware, but the mixed
   text/rule/raster stream still lacks a full live 68000 execution trace through
   `0x105d0` into allocator memory.
-- The renderer fixture covers modes `0..3` and selected shifted/band-clipped
-  cases. The initial mixed text/rule/raster/FF byte stream now compares a
-  complete published page image through `0xff1e`, `0x1ed84`, and `0x1ef6a`;
-  broader page comparisons still need font-selection, downloaded-glyph, and
-  geometry-changing byte streams.
+- `0x13250..0x1381c` addressed storage is documented by the mixed
+  text/rule/raster publication fixture, but the heap allocator result is still
+  a modeled fixture result rather than a memory snapshot from one live parser
+  run.
+- Page-image coverage is no longer missing only because the raster fixture is
+  isolated: checked-in fixtures now include mixed text/rule/raster publication,
+  geometry-changing publication streams, font-selection streams, downloaded
+  glyph FF publication, and a parser-driven downloaded-glyph/rule/raster page.
+  The remaining page-image gap is broader physical/device comparison and live
+  CPU continuity, not the software-visible raster object layout or render
+  dispatch.

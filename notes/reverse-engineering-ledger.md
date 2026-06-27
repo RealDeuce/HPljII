@@ -482,11 +482,20 @@ boundary: after stream byte `24`, it records `0x15dc6 -> 0x16498`,
 `0x16498 -> 0x15dcc`, `0x15dcc -> 0x12328`, copy status `1`, copy stream
 position `18`, remaining `0x783140 = 0`, a zero-byte `0x12328` drain, and
 next parser handler `0x10e68` for following bytes `ESC *c12a`.
+Fixture `0x16498 no-install exits preserve following printable output` now
+pins non-success no-install return edges through the same
+`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` boundary: the three branches leave
+`0x783140 = 6`, drain rejected payloads `de ad be ef ca fe` or
+`f0 0f aa 55 3c c3` via `0x12328`, and resume at printable handler `0xd04a`.
+Fixture `0x16498 status-2 partial installs remain printable` pins the linear
+and split-plane partial-install siblings with `0x783140 = 0`, a zero-byte
+`0x12328` drain, and the same next printable handler `0xd04a`.
 Remaining work is additional metric-value combinations outside those pinned
 legal matrix, boundary, and low-nibble endpoints, validation/error page behavior
 beyond those bounded predicate and short-budget no-install branches, remaining
-release variants, return-boundary siblings beyond that covered even-span
-zero-drain case, broader publication combinations beyond the covered
+release variants, split-plane/segmented full-success return-boundary siblings
+beyond the covered normal even-span, no-install, and status-`2` cases, broader
+publication combinations beyond the covered
 normal, nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented,
 rows-`0x20` short, rows-`0x40` short, row-count-matrix rows
 `0x04`/`0x7f`/`0x83`/`0xff`, rows-`0x82` segmented, rows-`0x0102`

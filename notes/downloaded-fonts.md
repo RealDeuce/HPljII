@@ -269,9 +269,10 @@ Published page-record state:
   wide bucket-1 streams. The remaining row-count risk is no longer the
   `0x80`/`0x81` selector boundary itself or the newly covered short/segmented
   matrix; it is row counts outside those sampled selector-family fixtures,
-  additional no-install/partial-install publication siblings, and live CPU
-  continuity from the `0x15dc6` call into `0x16498` through the install return
-  at `0x15dcc`. Accepted descriptor-record mode bytes are no longer a vague
+  broader publication cross-products, and live CPU continuity for split-plane
+  and segmented full-success return siblings outside the pinned normal
+  even-span, no-install, and status-`2` return fixtures. Accepted
+  descriptor-record mode bytes are no longer a vague
   open edge for this helper table: fixture `0x16b1a descriptor width helper
   emits only mode 1/2` proves `0x16b1a` writes only mode `1`/`2`, while
   mode-byte-`0` is documented as an unchanged-output object-boundary reject,
@@ -982,6 +983,11 @@ host-fetched `ESC )s6W` command plus six payload bytes, restores record
 the `0xa0`/header-type case returns `char-outside-header-type`. In all three
 cases the following printable byte routes through `0xd04a`, queues the same
 default-font compact object as baseline `!`, and renders identical rows. The
+return boundary is also pinned for all three cases: the path records
+`0x15dc6 -> 0x16498`, `0x16498 -> 0x15dcc`, and `0x15dcc -> 0x12328`,
+leaves `0x783140 = 6`, drains the rejected payload bytes through `0x12328`
+(`de ad be ef ca fe` for allocation failure and `f0 0f aa 55 3c c3` for
+mode/range reject), then resumes at printable handler `0xd04a` for `!`. The
 trailing FF routes through `0xf0f0`, publishes the default-font bucket through
 `0xff1e`, clears the current page root, and renders the published record
 through `0x1ed84`/`0x1ef6a` with the same rows. This classifies the failed
@@ -995,8 +1001,10 @@ The linear case starts from host-fetched `ESC )s4W f0 0f aa 55`, restores
 record `80 57 00 04 00 00`, stores table entry `0x00f6 -> 0x0840`, leaves
 bitmap bytes `f0 0f aa 55 00 00`, and saves continuation state with
 destination `0x0850` and remaining count `2`. A following printable `+`
-resolves glyph `0x2b`, queues short selector `0x0003`, and renders rows from
-the copied bytes plus the zero-filled missing row. The same page-record object
+resumes after `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with
+`0x783140 = 0`, a zero-byte drain, and handler `0xd04a`; it resolves glyph
+`0x2b`, queues short selector `0x0003`, and renders rows from the copied bytes
+plus the zero-filled missing row. The same page-record object
 now finalizes through `0xff1e` on a trailing FF: publication keeps bucket `1`,
 copies compact object `00 00 00 00 00 03 00 01 2b 66 01`, clears the current
 page root, and renders the published record through `0x1ed84`/`0x1ef6a` with
@@ -1005,9 +1013,11 @@ the same rows.
 The split-plane case starts from `ESC )s3W a0 a1 b0`, stores table entry
 `0x00fa -> 0x0880`, leaves layout `a0 a1 00 00 b0 00`, saves A4/A3
 continuation destinations `0x088e`/`0x0891`, and a following printable `,`
-resolves glyph `0x2c`, exposes inline record `04 02 00`, queues selector
-`0x0003` with width `4`, and renders from prefix bytes `a0 a1` plus trailing
-byte `b0`. Its trailing-FF publication also keeps bucket `1`, copies compact
+resumes through the same return edges with `0x783140 = 0`, a zero-byte
+`0x12328` drain, and handler `0xd04a`; it resolves glyph `0x2c`, exposes
+inline record `04 02 00`, queues selector `0x0003` with width `4`, and renders
+from prefix bytes `a0 a1` plus trailing byte `b0`. Its trailing-FF publication
+also keeps bucket `1`, copies compact
 object `00 00 00 00 00 03 00 01 2c 66 01`, clears the current page root, and
 renders the published record through `0x1ed84`/`0x1ef6a` with the same rows.
 
@@ -1590,12 +1600,17 @@ A byte-stream renderer must preserve:
   rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   truncated, linear-segmented, rows-`0x82` segmented, split-plane segmented,
   segmented-wide, even-span wide, payload-control wide, no-install, and status-`2`
-  compact bucket variants, and return-boundary variants beyond the even-span
+  compact bucket variants, and return-boundary variants beyond the covered
+  normal even-span, no-install, and status-`2`
   `parser-driven downloaded glyph rule raster stream composes through
-  0x1ef6a` fixture. That fixture now pins the normal even-span
+  0x1ef6a`/visible-output fixtures. The normal even-span fixture pins the
   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` boundary with zero remaining
-  budget and next handler `0x10e68`; split-plane, segmented, no-install, and
-  status-`2` return-boundary siblings are still bounded cross-products. Accepted
+  budget and next handler `0x10e68`; fixture `0x16498 no-install exits preserve
+  following printable output` pins six-byte `0x12328` drains before handler
+  `0xd04a`; fixture `0x16498 status-2 partial installs remain printable` pins
+  the linear/split status-`2` zero-drain returns before handler `0xd04a`.
+  Split-plane and segmented full-success return-boundary siblings are still
+  bounded cross-products. Accepted
   descriptor-record mode bytes are closed for the covered helper table by
   fixture `0x16b1a descriptor width helper emits only mode 1/2`: disassembly
   `0x16b36..0x16b6a` writes mode `1`/`2` from span parity, and

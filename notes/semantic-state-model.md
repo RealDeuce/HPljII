@@ -3429,9 +3429,13 @@ trailing FF; the resource side restores `80 57 00 06 00 00`, dispatches delayed 
 `0x16c14`, and returns reasons `allocation-failed`, `unsupported-record-shape`, or
 `char-outside-header-type`. The following `!` then routes through `0xd04a`, queues the
 baseline default-font compact object, and renders the same rows as the standalone
-baseline `!`. Trailing FF routes through `0xf0f0`, publishes that default-font bucket
-through `0xff1e`, clears the current page root, and renders the published page record
-through `0x1ed84`/`0x1ef6a` with the same rows. Canonical renderer state is therefore
+baseline `!`. The same fixture pins the no-install return boundary as
+`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with `0x783140 = 6`; `0x12328`
+drains `de ad be ef ca fe` for allocation failure and `f0 0f aa 55 3c c3` for
+mode/range reject before parser handler `0xd04a` consumes `!`. Trailing FF routes
+through `0xf0f0`, publishes that default-font bucket through `0xff1e`, clears the
+current page root, and renders the published page record through `0x1ed84`/`0x1ef6a`
+with the same rows. Canonical renderer state is therefore
 unchanged by those failed downloaded-character installs; the mutable state is parser
 scratch plus firmware cleanup/bookkeeping from `0x1887a` for the allocation failure
 case, and the published bucket/root is derived page-output state from the unchanged
@@ -3444,7 +3448,10 @@ renders rows from the partial bitmap plus zero-filled missing bytes. The split-p
 `ESC )s3W` case stores table `0x00fa -> 0x0880`, layout `a0 a1 00 00 b0 00`, and A4/A3
 continuation destinations `0x088e`/`0x0891`; the following `,` resolves glyph `0x2c`,
 queues selector `0x0003`, and renders the first row from prefix `a0 a1` plus trailing
-`b0`. Canonical state includes the partially installed table pointer, object record, and
+`b0`. Both status-`2` cases return through
+`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with `0x783140 = 0`, a zero-byte
+`0x12328` drain, and next handler `0xd04a` for the following printable byte.
+Canonical state includes the partially installed table pointer, object record, and
 bitmap bytes; the continuation fields are firmware bookkeeping needed to complete the
 same glyph later. The same fixture now carries both status-`2` objects through
 trailing-FF publication: `0xff1e` copies bucket `1`, the compact object root, empty
@@ -3646,10 +3653,12 @@ Field groups:
 - Firmware bookkeeping: active-copy words reported by the fixture are
   zeroed source/render work words before the fixture sets render word `+0x10`
   for bucket `5`; no page publication or root clear occurs in this checkpoint.
-- Unknown for this checkpoint: return-boundary siblings outside the even-span
-  downloaded-glyph plus rule/raster stream. The page stream itself now drives
-  the glyph, rule, and raster producers together; the font payload install
-  still enters the page phase as a modeled resource image.
+- Unknown for this checkpoint: split-plane and segmented full-success
+  return-boundary siblings outside the even-span downloaded-glyph plus
+  rule/raster stream and outside the separate no-install/status-`2` visible
+  fixtures. The page stream itself now drives the glyph, rule, and raster
+  producers together; the font payload install still enters the page phase as
+  a modeled resource image.
 
 The modeled resource image is now a pinned handoff, not an implicit fixture
 shortcut. The page-stream runner uses exactly
@@ -3665,7 +3674,9 @@ downloaded glyph rule raster stream composes through 0x1ef6a` now pins that
 even-span boundary as `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, with copy
 status `1`, copy stream position `18`, remaining `0x783140 = 0`, a zero-byte
 `0x12328` drain, and next handler `0x10e68`. The split-plane, segmented,
-no-install, and status-`2` return-boundary siblings remain open cross-products.
+no-install, and status-`2` return-boundary siblings are covered by separate
+visible-output fixtures only where cited below; split-plane and segmented
+full-success return siblings remain open cross-products.
 
 Readers and output effect: `0x1ef6a` runs call order `0x1ef86`, `0x1efc2`,
 `0x1f446`, `0x1f756`. The bucket dispatcher sends the raster object to
@@ -3864,10 +3875,14 @@ fields and every legal metric combination have not been page-compared.
   low-byte-truncated table-limit boundary, linear-segmented, rows-`0x82` segmented,
   split-plane segmented, segmented-wide, even-span wide, payload-control wide,
   no-install, and status-`2` compact bucket variants, and return-boundary siblings
-  outside the even-span `parser-driven downloaded glyph rule raster stream composes
-  through 0x1ef6a` fixture. That fixture pins
+  outside the covered normal even-span, no-install, and status-`2` fixtures. The
+  normal even-span fixture `parser-driven downloaded glyph rule raster stream composes
+  through 0x1ef6a` pins
   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with zero remaining budget and next
-  handler `0x10e68`; split-plane, segmented, no-install, and status-`2`
+  handler `0x10e68`; fixture `0x16498 no-install exits preserve following printable
+  output` pins six-byte `0x12328` drains before handler `0xd04a`; fixture `0x16498
+  status-2 partial installs remain printable` pins linear/split status-`2` zero-drain
+  returns before handler `0xd04a`. Split-plane and segmented full-success
   return-boundary siblings remain open cross-products. Accepted
   descriptor-record mode bytes are closed for the covered helper table by fixture
   `0x16b1a descriptor width helper emits only mode 1/2`: `0x16b36..0x16b6a` writes

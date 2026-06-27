@@ -53631,6 +53631,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             data,
             printable_stream,
         )
+        copy = install["copy"]
+        assert isinstance(copy, dict)
+        return_drain = consume_data_payload_count_via_12328(
+            int(copy["byte_budget"]),
+            printable_stream,
+        )
         source = {
             "context": 0,
             "host_char": printable_stream[0],
@@ -53702,6 +53708,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "install_status": install["status"],
                 "table_entry": install["table_entry"],
                 "table_pointer": u32(memory, int(install["table_entry"])),
+                "return_boundary": {
+                    "call_edge": (0x15DC6, 0x16498),
+                    "return_edge": (0x16498, 0x15DCC),
+                    "drain_edge": (0x15DCC, 0x12328),
+                    "remaining_budget_0x783140": copy["byte_budget"],
+                    "drain": return_drain,
+                    "next_stream_prefix": printable_stream[:1],
+                    "next_handler": printable_trace["events"][0]["handler"],
+                },
                 "bitmap": bytes(
                     memory[
                         int(install["bitmap_offset"]):
@@ -53833,6 +53848,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "install_status": 2,
                     "table_entry": 0x00F6,
                     "table_pointer": 0x0840,
+                    "return_boundary": {
+                        "call_edge": (0x15DC6, 0x16498),
+                        "return_edge": (0x16498, 0x15DCC),
+                        "drain_edge": (0x15DCC, 0x12328),
+                        "remaining_budget_0x783140": 0,
+                        "drain": {
+                            "status": 1,
+                            "values": [],
+                            "pos": 0,
+                            "remaining": 0,
+                            "control_hits": 0,
+                        },
+                        "next_stream_prefix": b"+",
+                        "next_handler": 0x00D04A,
+                    },
                     "bitmap": bytes.fromhex("f0 0f aa 55 00 00"),
                     "continuation": {
                         "flag": 1,
@@ -53958,6 +53988,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "install_status": 2,
                     "table_entry": 0x00FA,
                     "table_pointer": 0x0880,
+                    "return_boundary": {
+                        "call_edge": (0x15DC6, 0x16498),
+                        "return_edge": (0x16498, 0x15DCC),
+                        "drain_edge": (0x15DCC, 0x12328),
+                        "remaining_budget_0x783140": 0,
+                        "drain": {
+                            "status": 1,
+                            "values": [],
+                            "pos": 0,
+                            "remaining": 0,
+                            "control_hits": 0,
+                        },
+                        "next_stream_prefix": b",",
+                        "next_handler": 0x00D04A,
+                    },
                     "bitmap": bytes.fromhex("a0 a1 00 00 b0 00"),
                     "continuation": {
                         "flag": 1,
@@ -66868,6 +66913,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_pointer = u32(header, table_entry) if table_entry + 4 <= len(header) else 0
         trace_command = resource_trace["commands"][0]
         assert isinstance(trace_command, dict)
+        payload = resource_event["payload"]
+        assert isinstance(payload, bytes)
+        return_drain = consume_data_payload_count_via_12328(
+            int(resource_event["payload_length"]),
+            payload,
+        )
         return {
             "combined_length": len(combined_fetch["stream"]),
             "fetch_source_set": sorted(set(combined_fetch["sources"])),
@@ -66890,6 +66941,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     if "table_pointer" in install
                     else table_pointer
                 ),
+                "return_boundary": {
+                    "call_edge": (0x15DC6, 0x16498),
+                    "return_edge": (0x16498, 0x15DCC),
+                    "drain_edge": (0x15DCC, 0x12328),
+                    "remaining_budget_0x783140": resource_event["payload_length"],
+                    "drain": return_drain,
+                    "next_stream_prefix": printable_stream[:1],
+                    "next_handler": printable_trace["events"][0]["handler"],
+                },
                 "copy": install.get("copy"),
                 "payload_release_handler": (
                     install["payload_release"]["handler"]  # type: ignore[index]
@@ -67042,6 +67102,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "table_entry": table_entry,
                     "table_pointer_before": 0,
                     "table_pointer_after": 0,
+                    "return_boundary": {
+                        "call_edge": (0x15DC6, 0x16498),
+                        "return_edge": (0x16498, 0x15DCC),
+                        "drain_edge": (0x15DCC, 0x12328),
+                        "remaining_budget_0x783140": 6,
+                        "drain": {
+                            "status": 1,
+                            "values": list(payload),
+                            "pos": 6,
+                            "remaining": 0,
+                            "control_hits": 0,
+                        },
+                        "next_stream_prefix": b"!",
+                        "next_handler": 0x00D04A,
+                    },
                     "copy": None,
                     "payload_release_handler": payload_release_handler,
                 },
@@ -67061,10 +67136,28 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "matches_baseline_bucket": True,
                 },
             }
-            for name, reason, table_entry, payload_release_handler in (
-                ("allocation_failure", "allocation-failed", 0x0106, 0x1887A),
-                ("mode_reject", "unsupported-record-shape", 0x00FE, None),
-                ("range_reject", "char-outside-header-type", 0x02CA, None),
+            for name, reason, table_entry, payload_release_handler, payload in (
+                (
+                    "allocation_failure",
+                    "allocation-failed",
+                    0x0106,
+                    0x1887A,
+                    bytes.fromhex("de ad be ef ca fe"),
+                ),
+                (
+                    "mode_reject",
+                    "unsupported-record-shape",
+                    0x00FE,
+                    None,
+                    bytes.fromhex("f0 0f aa 55 3c c3"),
+                ),
+                (
+                    "range_reject",
+                    "char-outside-header-type",
+                    0x02CA,
+                    None,
+                    bytes.fromhex("f0 0f aa 55 3c c3"),
+                ),
             )
         },
     ))
@@ -83097,10 +83190,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         validation_failure_visible_reports["invalid_type"]["printable"]["parser_handlers"][0],  # type: ignore[index]
         " ".join(f"{byte:02x}" for byte in validation_failure_visible_baseline["bucket_object"]),  # type: ignore[index]
     ))
-    lines.append("- downloaded-character no-install visible recovery/publication: cases `%s` return reasons `%s`, leave following printable `!` on handler `0x%05x`, queue the same default-font object `%s`, then trailing FF reaches handler `0x%05x`, publishes bucket `%d` through `0xff1e`, and matches baseline rows/object `%s`." % (
+    lines.append("- downloaded-character no-install visible recovery/publication: cases `%s` return reasons `%s`, drain rejected payload bytes `%s` through `0x12328`, leave following printable `!` on handler `0x%05x`, queue the same default-font object `%s`, then trailing FF reaches handler `0x%05x`, publishes bucket `%d` through `0xff1e`, and matches baseline rows/object `%s`." % (
         sorted(downloaded_char_failure_visible_reports),
         {
             name: report["resource"]["install_reason"]  # type: ignore[index]
+            for name, report in downloaded_char_failure_visible_reports.items()
+        },
+        {
+            name: report["resource"]["return_boundary"]["drain"]["values"]  # type: ignore[index]
             for name, report in downloaded_char_failure_visible_reports.items()
         },
         downloaded_char_failure_visible_reports["allocation_failure"]["printable"]["parser_handlers"][0],  # type: ignore[index]
@@ -83362,12 +83459,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         lines,
         "- `0x16498` status-2 partial visible output: linear `ESC )s4W` "
         "stores table `0x%04x -> 0x%04x`, leaves bitmap `%s`, saves "
-        "continuation `%s`, then printable `0x2b` queues selector `0x%04x` "
+        "continuation `%s`, returns with `0x783140 = %d` and drain `%s`, "
+        "then printable `0x2b` reaches handler `0x%05x`, queues selector `0x%04x` "
         "and renders final rows `%s`; trailing FF publishes bucket `%d` "
         "through `0xff1e` and renders the published rows with digest `%s`. "
         "Split-plane `ESC )s3W` stores table "
         "`0x%04x -> 0x%04x`, leaves bitmap `%s`, saves continuation `%s`, "
-        "then printable `0x2c` queues selector `0x%04x` and renders final "
+        "returns with `0x783140 = %d` and drain `%s`, then printable `0x2c` "
+        "reaches handler `0x%05x`, queues selector `0x%04x` and renders final "
         "rows `%s`; trailing FF publishes bucket `%d` through `0xff1e` "
         "and renders the published rows with digest `%s`."
         % (
@@ -83375,6 +83474,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_linear_partial_visible["resource"]["table_pointer"],  # type: ignore[index]
             " ".join(f"{byte:02x}" for byte in downloaded_linear_partial_visible["resource"]["bitmap"]),  # type: ignore[index]
             downloaded_linear_partial_visible["resource"]["continuation"],  # type: ignore[index]
+            downloaded_linear_partial_visible["resource"]["return_boundary"]["remaining_budget_0x783140"],  # type: ignore[index]
+            downloaded_linear_partial_visible["resource"]["return_boundary"]["drain"],  # type: ignore[index]
+            downloaded_linear_partial_visible["resource"]["return_boundary"]["next_handler"],  # type: ignore[index]
             downloaded_linear_partial_visible["printable"]["page"]["selector"],  # type: ignore[index]
             downloaded_linear_partial_visible["printable"]["rows"][-3:],  # type: ignore[index]
             downloaded_linear_partial_visible["publication"]["finalized"]["bucket_index"],  # type: ignore[index]
@@ -83388,6 +83490,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_split_partial_visible["resource"]["table_pointer"],  # type: ignore[index]
             " ".join(f"{byte:02x}" for byte in downloaded_split_partial_visible["resource"]["bitmap"]),  # type: ignore[index]
             downloaded_split_partial_visible["resource"]["continuation"],  # type: ignore[index]
+            downloaded_split_partial_visible["resource"]["return_boundary"]["remaining_budget_0x783140"],  # type: ignore[index]
+            downloaded_split_partial_visible["resource"]["return_boundary"]["drain"],  # type: ignore[index]
+            downloaded_split_partial_visible["resource"]["return_boundary"]["next_handler"],  # type: ignore[index]
             downloaded_split_partial_visible["printable"]["page"]["selector"],  # type: ignore[index]
             downloaded_split_partial_visible["printable"]["rows"][-2:],  # type: ignore[index]
             downloaded_split_partial_visible["publication"]["finalized"]["bucket_index"],  # type: ignore[index]

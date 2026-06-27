@@ -724,9 +724,9 @@ modeled source/object structures rather than a full live CPU-memory run.
   `Transparent Print Data`. The C0 branch, `0x80..0x9f` branch, nonzero
   printable route, fixed-space route, primary tall bucket-crossing, and
   secondary segmented page-record boundaries are fixture-backed; remaining
-  work is the secondary segment-57 bitmap source interpretation at bucket
-  `456`, not primary high-control value cross-products or the command-family
-  parser-to-page-record boundary.
+  work is the secondary segment-57 fallback-row memory-map interpretation at
+  bucket `456`, not primary high-control value cross-products or the
+  command-family parser-to-page-record boundary.
 - `0x10084..0x1387c`: first-root allocation and compact text queueing
   are fixture-backed for this cluster, but a dense live parser page that
   exercises same-chunk and rollover allocation for all cursor variants
@@ -814,9 +814,17 @@ or fixed-space helper `0xd0f0`.
   (`57` buckets) with aggregate digest
   `292eafb8b558bd36ca0caa5caa2771976c0e611456ac0b610ec8916b9d1f03f9`
   before reaching the current bitmap-source boundary at bucket `456`.
+- Derived render state for segment `0x39`: fixture
+  `transparent secondary segment-57 continuation policies diverge after verified
+  bytes` proves the verified resource bytes determine the current-band digest
+  `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`, but
+  fallback rows need `802` bytes past firmware address `0x0c0000`.
 - Unknown for this checkpoint:
   - manual-facing names for the selected context filtering byte, fallback
     filtering byte, and high-character flags remain provisional.
+  - the board memory-map policy for firmware address `0x0c0000..0x0c0321`
+    remains unknown; mirror, code-pair continuation, and zero-fill hypotheses
+    produce different fallback row digests in the harness.
 
 ### Writers
 
@@ -957,6 +965,21 @@ comes from the verified `IC32,IC15` pair. `notes/firmware-startup.md` verifies
 scanner `0x41a` walking records through `0x0ae122` and terminating at
 `0x0b2f80`, but the hardware mapping at `0x0c0000..0x0c0321` remains unknown.
 
+Fixture `transparent secondary segment-57 continuation policies diverge after
+verified bytes` makes that memory-map dependency executable. The segment-57
+compact payload `00 01 5f 39 1c 01` has glyph `0x5f`, segment `0x39`, coord
+`0x1c01`, row skip `7296`, row count `128`, span `10`, width `74`, and source
+offset `72960`. The `0x40000`-byte verified resource image supplies the first
+`478` bytes of the `1280`-byte segment read, so the current-band rows are
+identical under tested continuation policies with digest
+`f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`. The
+fallback rows diverge: mirroring the resource pair gives digest
+`75cc8b60cd33f5c659ad702530ebacdc7685f2b75d63e18b9ce055383153f142`,
+appending the code pair gives
+`dc58960aff83e718df147897de51944939626c4e8422a53da5443bca48a53df5`, and
+zero-fill gives
+`6373cecdf5f20d78b01abe5aa65c051d82ddef345b7cf7fe1504f93c9cb2c425`.
+
 ### Confidence
 
 High for delayed snapshot/restore, absolute payload count, `1a 58` and
@@ -968,9 +991,12 @@ disassembly-backed helpers. High for the secondary selector/routing/page-record
 boundary because the SO plus transparent fixture pins handler `0xc6b8`, source
 context `0xc00ae122`, segmented selector `0x2001`, bridge context slots, and a
 selected-bucket render digest; the secondary render-prefix fixture pins
-buckets `0..448` and the first source-read boundary at bucket `456`. Medium
-for the source interpretation after that boundary and manual names for the
-filter bytes.
+buckets `0..448` and the first source-read boundary at bucket `456`. High for
+the conclusion that segment-57 fallback rows depend on an unverified memory-map
+policy, because the mirror, code-pair, and zero-fill continuation fixtures all
+share the same current-band digest and diverge only in fallback row digests.
+Medium for the actual hardware source interpretation after that boundary and
+manual names for the filter bytes.
 
 ### Fixtures
 
@@ -986,6 +1012,8 @@ filter bytes.
 - `transparent nonzero high-control upper bound remains printable`
 - `transparent secondary high-control byte enters segmented page-record path`
 - `transparent secondary segmented render prefix exposes source boundary`
+- `transparent secondary segment-57 continuation policies diverge after verified
+  bytes`
 
 ### Disassembly Evidence
 
@@ -1006,8 +1034,13 @@ filter bytes.
   disassembly-backed compact path reaches glyph `0x5f`, segment `0x39`, file
   source `0x03fe22`, firmware source `0x0bfe22`, and required byte range
   `0x0bfe22..0x0c0321`, with only `478` bytes inside the verified resource-pair
-  image. It is not primary route polarity, sampled primary interior values, or
-  the renderable secondary prefix through bucket `448`.
+  image. Fixture
+  `transparent secondary segment-57 continuation policies diverge after verified
+  bytes` proves mirror, code-pair continuation, and zero-fill all produce the
+  same current-band digest but different fallback row digests, so the remaining
+  requirement is board or emulator memory-map evidence for
+  `0x0c0000..0x0c0321`. It is not primary route polarity, sampled primary
+  interior values, or the renderable secondary prefix through bucket `448`.
 
 ## Text Source Objects And Compact Buckets
 

@@ -21,6 +21,8 @@ Evidence:
   - `transparent nonzero high-control upper bound remains printable`
   - `transparent secondary high-control byte enters segmented page-record path`
   - `transparent secondary segmented render prefix exposes source boundary`
+  - `transparent secondary segment-57 continuation policies diverge after
+    verified bytes`
 
 ## Command Boundary
 
@@ -432,6 +434,21 @@ walking resource records through `0x0ae122` and terminating at `0x0b2f80`
 before the next `0x40000` probe, but they do not yet prove whether the physical
 decode wraps, mirrors, or maps another source at `0x0c0000..0x0c0321`.
 
+Fixture `transparent secondary segment-57 continuation policies diverge after
+verified bytes` now makes the boundary policy-dependent rather than vaguely
+unknown. Rendering the bucket-456 compact payload `00 01 5f 39 1c 01` with
+three explicit continuation policies proves the first current-band rows are
+already fixed by verified bytes: mirror, code-pair continuation, and zero-fill
+all produce current-band digest
+`f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`. The
+remaining `802` bytes after firmware address `0x0c0000` only affect fallback
+rows, and the policies diverge there: mirror digest
+`75cc8b60cd33f5c659ad702530ebacdc7685f2b75d63e18b9ce055383153f142`,
+code-pair digest
+`dc58960aff83e718df147897de51944939626c4e8422a53da5443bca48a53df5`, and
+zero-fill digest
+`6373cecdf5f20d78b01abe5aa65c051d82ddef345b7cf7fe1504f93c9cb2c425`.
+
 ## Semantic Composition
 
 Concept: transparent print data is a counted byte-stream splice, not a binary
@@ -513,13 +530,16 @@ Unresolved middle edges:
   `0x90`, and `0x97`), two primary bucket-crossing glyphs (`0x98` and
   top-of-range `0x9f`), and a secondary segmented page-record boundary
   (`SO ESC &p3X!\x80!`). The remaining high-control edge is the secondary
-  segment-57 physical/resource-window source interpretation at bucket `456`.
+  segment-57 fallback-row physical/resource-window source interpretation at
+  bucket `456`.
   The compact renderer path is disassembly-backed through `0x1f354` and
   `0x1f1f0`: glyph `0x5f`, segment `0x39`, file source `0x03fe22`, firmware
   source `0x0bfe22`, and required byte range `0x0bfe22..0x0c0321`. Only the
   first `478` bytes are inside the verified `IC32,IC15` resource-pair image.
-  It is not primary route polarity, sampled primary interior values, or the
-  renderable secondary prefix through bucket `448`.
+  The current-band rows are pinned across mirror, code-pair, and zero-fill
+  continuation policies; only the fallback rows diverge. It is not primary
+  route polarity, sampled primary interior values, or the renderable secondary
+  prefix through bucket `448`.
 
 ## Reproduction Contract
 
@@ -562,7 +582,9 @@ For `ESC &p#X`:
 - Broader nonzero-filtering coverage now includes primary high-control samples
   `0x81`, `0x88`, `0x90`, and `0x97`, plus the tall primary bucket-crossing
   cases `ESC &p3X!\x98!` and `ESC &p3X!\x9f!`. The secondary segmented
-  mapping has a page-record boundary and renderable prefix; the remaining risk
-  is the segment-57 bitmap source interpretation named above.
+  mapping has a page-record boundary and renderable prefix. The remaining risk
+  is the segment-57 fallback-row source interpretation named above; the
+  current-band rows are already pinned across mirror, code-pair, and zero-fill
+  continuation policies.
 - The names for the active context filtering byte, fallback byte, and high-byte
   flags remain provisional.

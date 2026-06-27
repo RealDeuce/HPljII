@@ -67171,6 +67171,165 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         },
     ))
+    if secondary_segment_first_failure is None:
+        raise AssertionError("secondary transparent segment boundary fixture expected a source failure")
+    secondary_boundary_payload = bytes.fromhex("00 01 5f 39 1c 01")
+    secondary_boundary_hypotheses: list[dict[str, object]] = []
+    for name, hypothesis_resources in (
+        ("mirror-resource-pair", bytes(resources) + bytes(resources)),
+        ("code-pair-after-resource", bytes(resources) + bytes(data)),
+        ("zero-fill-after-resource", bytes(resources) + bytes(len(resources))),
+    ):
+        boundary_render = render_compact_segmented_payload_via_1f1f0(
+            data,
+            hypothesis_resources,
+            0xC00AE122,
+            secondary_boundary_payload,
+            band_rows=16,
+        )
+        boundary_rows = boundary_render["rows"]
+        boundary_fallback_rows = boundary_render["fallback_rows"]
+        assert isinstance(boundary_rows, list)
+        assert isinstance(boundary_fallback_rows, list)
+        boundary_entry = boundary_render["rendered"][0]
+        assert isinstance(boundary_entry, dict)
+        secondary_boundary_hypotheses.append({
+            "name": name,
+            "resource_len": len(hypothesis_resources),
+            "rendered": {
+                key: boundary_entry[key]
+                for key in (
+                    "glyph",
+                    "segment",
+                    "coord",
+                    "row_skip",
+                    "rows",
+                    "span",
+                    "width",
+                    "source_offset",
+                )
+            },
+            "current_rows": {
+                "row_count": len(boundary_rows),
+                "row_width": max((len(str(row)) for row in boundary_rows), default=0),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(str(row) for row in boundary_rows).encode("ascii")
+                ).hexdigest(),
+            },
+            "fallback_rows": {
+                "row_count": len(boundary_fallback_rows),
+                "row_width": max(
+                    (len(str(row)) for row in boundary_fallback_rows),
+                    default=0,
+                ),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(str(row) for row in boundary_fallback_rows).encode("ascii")
+                ).hexdigest(),
+            },
+        })
+    checks.append(assert_equal(
+        "transparent secondary segment-57 continuation policies diverge after verified bytes",
+        {
+            "verified_resource_len": len(resources),
+            "source_abs": secondary_segment_first_failure["source_abs"],
+            "source_firmware_address": 0x080000 + secondary_segment_first_failure["source_abs"],
+            "needed_bytes": secondary_segment_first_failure["needed_bytes"],
+            "available_verified_bytes": secondary_segment_first_failure["available_bytes"],
+            "first_unverified_resource_offset": len(resources),
+            "first_unverified_firmware_address": 0x080000 + len(resources),
+            "continuation_needed_bytes": (
+                secondary_segment_first_failure["needed_bytes"]
+                - secondary_segment_first_failure["available_bytes"]
+            ),
+            "payload": secondary_boundary_payload,
+            "hypotheses": secondary_boundary_hypotheses,
+        },
+        {
+            "verified_resource_len": 0x40000,
+            "source_abs": 0x03FE22,
+            "source_firmware_address": 0x0BFE22,
+            "needed_bytes": 1280,
+            "available_verified_bytes": 478,
+            "first_unverified_resource_offset": 0x40000,
+            "first_unverified_firmware_address": 0x0C0000,
+            "continuation_needed_bytes": 802,
+            "payload": bytes.fromhex("00 01 5f 39 1c 01"),
+            "hypotheses": [
+                {
+                    "name": "mirror-resource-pair",
+                    "resource_len": 0x80000,
+                    "rendered": {
+                        "glyph": 0x5F,
+                        "segment": 0x39,
+                        "coord": 0x1C01,
+                        "row_skip": 7296,
+                        "rows": 128,
+                        "span": 10,
+                        "width": 74,
+                        "source_offset": 72960,
+                    },
+                    "current_rows": {
+                        "row_count": 16,
+                        "row_width": 102,
+                        "row_sha256": "f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e",
+                    },
+                    "fallback_rows": {
+                        "row_count": 113,
+                        "row_width": 102,
+                        "row_sha256": "75cc8b60cd33f5c659ad702530ebacdc7685f2b75d63e18b9ce055383153f142",
+                    },
+                },
+                {
+                    "name": "code-pair-after-resource",
+                    "resource_len": 0x80000,
+                    "rendered": {
+                        "glyph": 0x5F,
+                        "segment": 0x39,
+                        "coord": 0x1C01,
+                        "row_skip": 7296,
+                        "rows": 128,
+                        "span": 10,
+                        "width": 74,
+                        "source_offset": 72960,
+                    },
+                    "current_rows": {
+                        "row_count": 16,
+                        "row_width": 102,
+                        "row_sha256": "f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e",
+                    },
+                    "fallback_rows": {
+                        "row_count": 113,
+                        "row_width": 102,
+                        "row_sha256": "dc58960aff83e718df147897de51944939626c4e8422a53da5443bca48a53df5",
+                    },
+                },
+                {
+                    "name": "zero-fill-after-resource",
+                    "resource_len": 0x80000,
+                    "rendered": {
+                        "glyph": 0x5F,
+                        "segment": 0x39,
+                        "coord": 0x1C01,
+                        "row_skip": 7296,
+                        "rows": 128,
+                        "span": 10,
+                        "width": 74,
+                        "source_offset": 72960,
+                    },
+                    "current_rows": {
+                        "row_count": 16,
+                        "row_width": 102,
+                        "row_sha256": "f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e",
+                    },
+                    "fallback_rows": {
+                        "row_count": 113,
+                        "row_width": 102,
+                        "row_sha256": "6373cecdf5f20d78b01abe5aa65c051d82ddef345b7cf7fe1504f93c9cb2c425",
+                    },
+                },
+            ],
+        },
+    ))
     mixed_stream = render_mixed_printable_control_stream(
         data,
         resources,
@@ -80112,6 +80271,23 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             secondary_segment_failure["source_abs"],
             secondary_segment_failure["needed_bytes"],
             secondary_segment_failure["available_bytes"],
+        )
+    )
+    boundary_hashes = {
+        item["name"]: item["fallback_rows"]["row_sha256"]
+        for item in secondary_boundary_hypotheses
+    }
+    current_hash = secondary_boundary_hypotheses[0]["current_rows"]["row_sha256"]
+    lines.append(
+        "- transparent secondary segment-57 continuation hypotheses: the "
+        "verified resource bytes determine the current-band digest `%s`, but "
+        "the 802 bytes needed after firmware address `0x0c0000` make fallback "
+        "digests diverge as mirror `%s`, code-pair `%s`, and zero-fill `%s`."
+        % (
+            current_hash,
+            boundary_hashes["mirror-resource-pair"],
+            boundary_hashes["code-pair-after-resource"],
+            boundary_hashes["zero-fill-after-resource"],
         )
     )
     lines.append(

@@ -167,6 +167,15 @@ entry is the record header at file offset `0x02e122`: bitmap delta `0`, mode
 address `0x0bfe22` and needs bytes through `0x0c0321`. That crosses the
 verified `IC32,IC15` image at `0x0c0000`, so the remaining question is
 resource-window decode after the pair boundary, not glyph-entry field layout.
+Fixture `transparent secondary segment-57 continuation policies diverge after
+verified bytes` tests three explicit continuation policies for that same
+bucket-456 compact payload. The verified bytes produce the same current-band
+digest `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`
+under resource-pair mirror, code-pair continuation, and zero-fill; the
+fallback rows diverge with digests
+`75cc8b60cd33f5c659ad702530ebacdc7685f2b75d63e18b9ce055383153f142`,
+`dc58960aff83e718df147897de51944939626c4e8422a53da5443bca48a53df5`, and
+`6373cecdf5f20d78b01abe5aa65c051d82ddef345b7cf7fe1504f93c9cb2c425`.
 
 The executable harness now extracts deterministic metadata for all named
 header-like built-in records in the verified resource window: twelve

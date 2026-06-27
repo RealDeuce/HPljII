@@ -399,7 +399,12 @@ The next work should follow dataflow, not isolated handlers:
    source `0x0bfe22`, and required byte range `0x0bfe22..0x0c0321`; only `478` bytes are
    inside the verified `IC32,IC15` resource-pair image. Disassembly of `0x1f354` and
    `0x1f1f0` makes the unresolved part a physical/resource-window mapping question after
-   `0x0c0000`, not a transparent parser or row-skip question. The `ESC Y ... ESC Z`
+   `0x0c0000`, not a transparent parser or row-skip question. The current-band
+   segment-57 rows are now pinned across mirror, code-pair, and zero-fill
+   continuation hypotheses with digest
+   `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`; the
+   fallback rows diverge, so the remaining requirement is board/emulator memory-map
+   evidence for `0x0c0000..0x0c0321`. The `ESC Y ... ESC Z`
    display-functions loop is now documented in `notes/pcl-parser-core.md` and
    `notes/semantic-state-model.md`; fixture `ESC Y display-functions stream reaches
    page-record output` covers the normal `0x12536..0x1261e` page-output path, and

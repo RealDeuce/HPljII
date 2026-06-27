@@ -933,6 +933,13 @@ record header at file offset `0x02e122`, and `0x1f1f0` advances segment `0x39`
 to file offset `0x03fe22` / firmware address `0x0bfe22`. The remaining gap is
 what resource bytes hardware supplies for `0x0bfe22..0x0c0321`, not the
 transparent parser route or compact renderer row-skip arithmetic.
+Fixture `transparent secondary segment-57 continuation policies diverge after
+verified bytes` proves the current-band rows at bucket `456` no longer depend
+on that unknown continuation: mirror, code-pair continuation, and zero-fill all
+produce digest
+`f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`. The
+fallback rows diverge across those policies, so the unresolved command-map edge
+is specifically the memory map at `0x0c0000..0x0c0321`.
 `ESC &p2X\x1aA!` covers the probe path where `1a 41` contributes payload byte
 `0x41`, not `0x1a`.
 
@@ -1016,10 +1023,10 @@ handlers:
   fixtures, downloaded-glyph publication cross-products beyond the documented
   normal, row-`0x80`, linear-segmented, split-plane segmented,
   segmented-wide, even-span wide, no-install, and status-`2` compact bucket
-  variants, the transparent secondary segment-57 bitmap source interpretation
-  beyond the now-pinned page-record and render-prefix boundary, and final-`@`
-  symbol table/copy variants only if they need compatibility-facing
-  visible-output behavior. The primary transparent
+  variants, the transparent secondary segment-57 fallback-row memory-map
+  interpretation beyond the now-pinned page-record, render-prefix, and
+  continuation-policy boundary, and final-`@` symbol table/copy variants only
+  if they need compatibility-facing visible-output behavior. The primary transparent
   high-control path now includes boundary, interior-sample, tall-glyph, and
   top-of-range fixtures, and the parser/default-table state boundary for
   `@0..@3` is already pinned by fixture `real default-table caller stream uses

@@ -991,8 +991,11 @@ ROM work needed:
   page-object fixtures. The transparent segment-57 compact path is now narrowed
   by disassembly to `0x1f354` accepting glyph `0x5f` table offset zero as entry
   `0x02e122`, then `0x1f1f0` reading firmware range `0x0bfe22..0x0c0321`;
-  the unknown is what hardware maps after the verified resource-pair byte
-  range ends at `0x0bffff`.
+  fixture `transparent secondary segment-57 continuation policies diverge
+  after verified bytes` proves the verified bytes already determine the
+  current-band digest and that mirror, code-pair continuation, and zero-fill
+  diverge only in fallback rows. The unknown is what hardware maps after the
+  verified resource-pair byte range ends at `0x0bffff`.
   Command-family state is composed in `Text Cursor And Direct Controls`, and
   the
   printable source-object fields are composed in `Text Source Objects And

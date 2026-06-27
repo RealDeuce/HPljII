@@ -63247,6 +63247,178 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "final_cursor_x": pack12(64),
         },
     ))
+
+    def summarize_primary_transparent_high_control(
+        payload_byte: int,
+    ) -> dict[str, object]:
+        stream = render_mixed_printable_control_page_record_stream(
+            data,
+            resources,
+            b"\x1b&p3X!" + bytes([payload_byte]) + b"!",
+            0x440946B4,
+            control_fixture_state(
+                cursor_x=pack12(10),
+                cursor_y=pack12(21),
+                hmi=line_printer_hmi["hmi"],
+                pending_width=1,
+                pending_text=0,
+                span_flush_enable=1,
+                transparent_selected_context_byte=1,
+                transparent_filtering_word=1,
+            ),
+            default_advance=line_printer_hmi["hmi"],
+            allow_multiple_buckets=True,
+        )
+        events = stream["events"]
+        assert isinstance(events, list)
+        if len(events) != 1 or events[0]["kind"] != "transparent-data":
+            raise AssertionError("transparent high-control summary expected one event")
+        event = events[0]
+        assert isinstance(event, dict)
+        payload_events = event["payload_events"]
+        assert isinstance(payload_events, list)
+        payload_summary: list[dict[str, object]] = []
+        for payload_event in payload_events:
+            assert isinstance(payload_event, dict)
+            source = payload_event["source"]
+            positioned = payload_event["positioned"]
+            page_result = payload_event["page_result"]
+            assert isinstance(source, dict)
+            assert isinstance(positioned, dict)
+            assert isinstance(page_result, dict)
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            payload_summary.append({
+                "index": payload_event["index"],
+                "byte": payload_event["byte"],
+                "mapped": source["mapped"],
+                "glyph_entry": source["glyph_entry"],
+                "glyph_rows": source["glyph_rows"],
+                "glyph_width": source["glyph_width"],
+                "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+                "coord": page_result["coord"],
+                "bucket_index": page_result["bucket_index"],
+                "count_after": page_result["count_after"],
+            })
+        page_record = stream["page_record"]
+        bridged = stream["bridged_record"]
+        rendered = stream["rendered"]
+        assert isinstance(page_record, dict)
+        assert isinstance(bridged, dict)
+        assert isinstance(rendered, dict)
+        rows = rendered["rows"]
+        assert isinstance(rows, list)
+        bucket_objects = page_record_bucket_objects(page_record)
+        bucket_summary: dict[int, dict[str, object]] = {}
+        for bucket_word in sorted(bucket_objects):
+            render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+                data,
+                resources,
+                page_record,
+                bucket_word=bucket_word,
+            )
+            entry = render_entry["entry"]
+            assert isinstance(entry, dict)
+            bucket_rows = entry["rows"]
+            assert isinstance(bucket_rows, list)
+            bucket_summary[bucket_word] = {
+                "object_count": len(bucket_objects[bucket_word]),
+                "row_count": len(bucket_rows),
+                "row_width": max((len(str(row)) for row in bucket_rows), default=0),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(str(row) for row in bucket_rows).encode("ascii")
+                ).hexdigest(),
+            }
+        return {
+            "stream": stream["stream"],
+            "values": event["values"],
+            "routes": event["routes"],
+            "payload_events": payload_summary,
+            "selected_bucket_index": stream["bucket_index"],
+            "nonempty_buckets": stream["nonempty_buckets"],
+            "bridged_context_slots": bridged["context_slots"][:2],
+            "selected_render": {
+                "row_count": len(rows),
+                "row_width": max((len(str(row)) for row in rows), default=0),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(str(row) for row in rows).encode("ascii")
+                ).hexdigest(),
+            },
+            "bucket_summary": bucket_summary,
+            "final_cursor_x": stream["final_state"]["cursor_x"],
+        }
+
+    transparent_high_limit_summary = summarize_primary_transparent_high_control(0x9F)
+    checks.append(assert_equal(
+        "transparent nonzero high-control upper bound remains printable",
+        transparent_high_limit_summary,
+        {
+            "stream": b"\x1b&p3X!\x9f!",
+            "values": [0x21, 0x9F, 0x21],
+            "routes": [0x00D04A, 0x00D04A, 0x00D04A],
+            "payload_events": [
+                {
+                    "index": 0,
+                    "byte": 0x21,
+                    "mapped": 0x20,
+                    "glyph_entry": 0x015330,
+                    "glyph_rows": 22,
+                    "glyph_width": 4,
+                    "positioned_xy": (16, 0),
+                    "coord": 0x0001,
+                    "bucket_index": 0,
+                    "count_after": 1,
+                },
+                {
+                    "index": 1,
+                    "byte": 0x9F,
+                    "mapped": 0x9E,
+                    "glyph_entry": 0x016D1E,
+                    "glyph_rows": 30,
+                    "glyph_width": 15,
+                    "positioned_xy": (30, -2),
+                    "coord": 0xEE01,
+                    "bucket_index": -1,
+                    "count_after": 1,
+                },
+                {
+                    "index": 2,
+                    "byte": 0x21,
+                    "mapped": 0x20,
+                    "glyph_entry": 0x015330,
+                    "glyph_rows": 22,
+                    "glyph_width": 4,
+                    "positioned_xy": (52, 0),
+                    "coord": 0x0403,
+                    "bucket_index": 0,
+                    "count_after": 2,
+                },
+            ],
+            "selected_bucket_index": -1,
+            "nonempty_buckets": [-1, 0],
+            "bridged_context_slots": (0x440946B4, 0),
+            "selected_render": {
+                "row_count": 44,
+                "row_width": 45,
+                "row_sha256": "ec0f944207561c1b9c9139749c3e37d122aebf53e2a50849dd8703416545c719",
+            },
+            "bucket_summary": {
+                -1: {
+                    "object_count": 1,
+                    "row_count": 44,
+                    "row_width": 45,
+                    "row_sha256": "ec0f944207561c1b9c9139749c3e37d122aebf53e2a50849dd8703416545c719",
+                },
+                0: {
+                    "object_count": 1,
+                    "row_count": 22,
+                    "row_width": 56,
+                    "row_sha256": "4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300",
+                },
+            },
+            "final_cursor_x": pack12(64),
+        },
+    ))
     secondary_transparent_high_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,
@@ -76494,6 +76666,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "so C0 payload `0x05` and high-control payload `0x80` both route "
         "through `0xd04a`, map to glyphs `0x04` and `0x7f`, and queue visible "
         "compact coords `0x0d01` and `0x0003`."
+    )
+    lines.append(
+        "- transparent high-control upper-bound boundary: stream `1b 26 70 33 "
+        "58 21 9f 21` keeps selected context byte `1` and local filtering word "
+        "`1`, so payload byte `0x9f` routes through `0xd04a`, maps to glyph "
+        "`0x9e`, uses glyph entry `0x016d1e`, queues compact coord `0xee01` "
+        "in bucket `-1`, and renders selected bucket digest "
+        f"`{transparent_high_limit_summary['selected_render']['row_sha256']}`."
     )
     lines.append(
         "- transparent `1a` probe boundary: stream `1b 26 70 32 58 1a 41 21` "

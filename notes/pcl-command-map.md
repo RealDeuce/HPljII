@@ -912,6 +912,10 @@ nonzero-filter high-control path to a taller bucket-crossing glyph: byte
 `0x98` maps to glyph `0x97`, glyph entry `0x01781e`, rows `29`, width `17`,
 queues bucket `-1` coord `0xfd01`, and renders row digest
 `bd7ad3016d15c1dc2ef12adaeb1091a58f26473c0ecfc7ac13bfaf268c383e90`.
+The top-of-range sibling `ESC &p3X!\x9f!` stays on that printable route too:
+byte `0x9f` maps to glyph `0x9e`, glyph entry `0x016d1e`, rows `30`, width
+`15`, queues bucket `-1` coord `0xee01`, and renders row digest
+`ec0f944207561c1b9c9139749c3e37d122aebf53e2a50849dd8703416545c719`.
 `SO ESC &p3X!\x80!` composes the same transparent high-control route with the
 secondary text context: SO handler `0xc6b8` selects slot `1`, `0x12452`
 restores record `80 58 00 03 00 00`, the high-control byte reads source

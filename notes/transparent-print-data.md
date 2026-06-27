@@ -17,6 +17,7 @@ Evidence:
   - `transparent default-filtered control enters unflagged fixed-record path`
   - `transparent nonzero filters route controls through printable path`
   - `transparent nonzero high-control byte queues tall glyph bucket`
+  - `transparent nonzero high-control upper bound remains printable`
   - `transparent secondary high-control byte enters segmented page-record path`
 
 ## Command Boundary
@@ -323,6 +324,30 @@ different bucket from surrounding printable bytes:
 - surrounding printable bucket render: row count `22`, row width `56`, digest
   `4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300`
 
+The upper-bound high-control fixture uses stream:
+
+```text
+1b 26 70 33 58 21 9f 21
+```
+
+That is `ESC &p3X!\x9f!` with selected context byte `1` and local filtering
+word `1`. It proves the top value in the filtered `0x80..0x9f` range stays on
+the same printable route as `0x98`, while selecting a different glyph:
+
+- restored record: `80 58 00 03 00 00`
+- raw payload: `21 9f 21`
+- values: `21 9f 21`
+- routes: `d04a d04a d04a`
+- payload byte `0x9f`: maps to glyph `0x9e`, glyph entry `0x016d1e`, rows
+  `30`, width `15`, positioned x/y `30/-2`, compact coord `0xee01`, and
+  bucket `-1`
+- surrounding `!` bytes remain in bucket `0` at compact coords `0x0001` and
+  `0x0403`
+- selected high-control bucket render: row count `44`, row width `45`, digest
+  `ec0f944207561c1b9c9139749c3e37d122aebf53e2a50849dd8703416545c719`
+- surrounding printable bucket render matches the `0x98` fixture digest
+  `4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300`
+
 The secondary high-control fixture uses stream:
 
 ```text
@@ -422,8 +447,9 @@ probe byte reaches page-record output`, `transparent data control payloads
 advance through fixed-space path`, `transparent default-filtered control enters
 unflagged fixed-record path`, `transparent nonzero filters route controls
 through printable path`, and
-`transparent nonzero high-control byte queues tall glyph bucket`. High for the
-secondary selector/routing/page-record boundary because fixture `transparent
+`transparent nonzero high-control byte queues tall glyph bucket`, plus the
+upper-bound `0x9f` fixture. High for the secondary selector/routing/page-record
+boundary because fixture `transparent
 secondary high-control byte enters segmented page-record path` pins SO handler
 `0xc6b8`, source context `0xc00ae122`, segmented selector `0x2001`, bridge
 context slots, and a selected-bucket render digest.
@@ -431,11 +457,11 @@ context slots, and a selected-bucket render digest.
 Unresolved middle edges:
 
 - `0x124f8..0x1252a`: high-control nonzero filtering is now page-visible for a
-  short primary bucket (`0x80`), a taller primary bucket-crossing glyph
-  (`0x98`), and a secondary segmented page-record boundary
-  (`SO ESC &p3X!\x80!`). Broader high-control cross-product coverage remains
-  open for additional payload values and for full secondary segmented bitmap
-  semantics.
+  short primary bucket (`0x80`), two primary bucket-crossing glyphs
+  (`0x98` and top-of-range `0x9f`), and a secondary segmented page-record
+  boundary (`SO ESC &p3X!\x80!`). Broader high-control cross-product coverage
+  remains open for intermediate payload values and for full secondary segmented
+  bitmap semantics.
 
 ## Reproduction Contract
 
@@ -465,8 +491,9 @@ For `ESC &p#X`:
 - The visible-output fixtures now cover printable payload bytes, default-zero
   filtering for C0 and `0x80..0x9f`, the unflagged fixed-record `0xd0f0`
   branch, nonzero filtering for one C0/high-control pair, a primary tall
-  high-control bucket, a secondary segmented high-control page-record path,
-  and the `1a` non-`0x58` probe case.
+  high-control bucket plus the top-of-range `0x9f` high-control glyph, a
+  secondary segmented high-control page-record path, and the `1a` non-`0x58`
+  probe case.
 - The default-filtered fixed-space route is page-visible for the flagged
   built-in branch, where `0xd0f0` clears source `+4`, enters `0xd550`, advances
   spacing, and queues no compact text object. It is also page-visible for the
@@ -474,10 +501,10 @@ For `ESC &p#X`:
   `0x1393a(0x20, 0x782d7e)`, enters `0xd140` / `0xd3b2`, queues substituted
   host-space glyph `0`, and renders the selected bucket digest
   `89629435e063529ce7150d603ed9be37a74658317db3e97a4ae01b1c8d64f9d9`.
-- Broader nonzero-filtering coverage remains open for additional high-control
-  payload values and for the full visible semantics of the secondary segmented
-  mapping. The tall primary bucket-crossing case is covered by
-  `ESC &p3X!\x98!`; the secondary segmented page-record boundary is covered by
-  `SO ESC &p3X!\x80!`.
+- Broader nonzero-filtering coverage remains open for intermediate
+  high-control payload values and for the full visible semantics of the
+  secondary segmented mapping. The tall primary bucket-crossing cases are
+  covered by `ESC &p3X!\x98!` and `ESC &p3X!\x9f!`; the secondary segmented
+  page-record boundary is covered by `SO ESC &p3X!\x80!`.
 - The names for the active context filtering byte, fallback byte, and high-byte
   flags remain provisional.

@@ -561,6 +561,10 @@ or fixed-space helper `0xd0f0`.
   object in bucket `-1`:
   `00 00 00 00 00 00 00 01 97 fd 01`, while surrounding `!` entries remain
   in bucket `0`.
+  Top-of-range high-control `0x9f` with nonzero filtering follows the same
+  printable page-record shape, maps to glyph `0x9e`, queues compact coord
+  `0xee01` in bucket `-1`, and renders a distinct selected-bucket digest
+  `ec0f944207561c1b9c9139749c3e37d122aebf53e2a50849dd8703416545c719`.
   Secondary high-control `0x80` after SO reads context `0xc00ae122` in source
   slot `1`, maps to glyph `0x5f`, and queues segmented selector `0x2001`
   objects across `157` segment buckets; selected bucket `0` begins
@@ -646,6 +650,16 @@ The bucket `-1` render has row count `44`, width `46`, and digest
 bucket `0` renders row digest
 `4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300`.
 
+Fixture `transparent nonzero high-control upper bound remains printable`
+proves the top-of-range sibling `ESC &p3X!\x9f!`. Payload byte `0x9f` routes
+through `0xd04a`, maps to glyph `0x9e`, glyph entry `0x016d1e`, rows `30`,
+width `15`, and compact coord `0xee01` in bucket `-1`. The surrounding `!`
+bytes again remain in bucket `0`; the bucket `-1` render has row count `44`,
+width `45`, and digest
+`ec0f944207561c1b9c9139749c3e37d122aebf53e2a50849dd8703416545c719`, while
+bucket `0` keeps digest
+`4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300`.
+
 Fixture `transparent secondary high-control byte enters segmented page-record
 path` composes SO with the transparent branch for `SO ESC &p3X!\x80!`. SO
 handler `0xc6b8` changes selector `0x782f06` from `0` to `1`; delayed handler
@@ -666,8 +680,8 @@ row width `256`, digest
 High for delayed snapshot/restore, absolute payload count, `1a 58` and
 `1a xx` probe handling, default filtering, nonzero filtering, fixed-space
 cursor advance, page-record object bytes, bridge context slots, and rendered
-rows, and one taller high-control bucket-crossing glyph because each is
-fixture-pinned against disassembly-backed helpers. High for the secondary
+rows, plus two taller primary high-control bucket-crossing glyphs because each
+is fixture-pinned against disassembly-backed helpers. High for the secondary
 selector/routing/page-record boundary because the SO plus transparent fixture
 pins handler `0xc6b8`, source context `0xc00ae122`, segmented selector
 `0x2001`, bridge context slots, and a selected-bucket render digest. Medium
@@ -684,6 +698,7 @@ bytes.
 - `transparent default-filtered control enters unflagged fixed-record path`
 - `transparent nonzero filters route controls through printable path`
 - `transparent nonzero high-control byte queues tall glyph bucket`
+- `transparent nonzero high-control upper bound remains printable`
 - `transparent secondary high-control byte enters segmented page-record path`
 
 ### Disassembly Evidence
@@ -697,10 +712,11 @@ bytes.
 ### Unresolved Middle Edges
 
 - `0x124f8..0x1252a`: high-control nonzero filtering is now fixture-backed for
-  a short primary bucket (`0x80`), a taller primary bucket-crossing glyph
-  (`0x98`), and a secondary segmented page-record boundary (`SO ESC
-  &p3X!\x80!`). Broader cross-products remain open for additional
-  high-control values and for full secondary segmented bitmap semantics.
+  a short primary bucket (`0x80`), two taller primary bucket-crossing glyphs
+  (`0x98` and top-of-range `0x9f`), and a secondary segmented page-record
+  boundary (`SO ESC &p3X!\x80!`). Broader cross-products remain open for
+  intermediate high-control values and for full secondary segmented bitmap
+  semantics.
 
 ## Text Source Objects And Compact Buckets
 

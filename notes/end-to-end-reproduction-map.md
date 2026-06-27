@@ -276,6 +276,16 @@ pixels or byte-stream compatibility.
    copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, keep the standard
    `d4ac` span digest, and keep `d8fc` high-y `20` / digest
    `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+   Fixture
+   `legal descriptor metric byte-boundary rounding drives d4ac and d8fc consumers`
+   proves rounded inputs `0x00fd`, `0x00fe`, `0x0101`, and `0x0102` copy to
+   `+0x2c = 0x00fc/0x0100/0x0100/0x0104`, with a range-cap sibling forcing
+   `0x0102` back to `0x0100` when `+0x14 = 0x0040`. The copied `0x00fc` case
+   leaves `d4ac` on compact-only digest
+   `86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6`, while the
+   `0x0100` boundary copy restores the standard `d4ac` span digest
+   `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`; the same
+   large-range cases keep `d8fc` at `beyond-page-extent`.
    The producer formula is documented from disassembly: `0x17430` derives
    `+0x18 = +0x14 - +0x16 - 1`, `0x1757a` writes
    `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`, `0x1762a` writes
@@ -283,8 +293,8 @@ pixels or byte-stream compatibility.
    the allocated payload.
    The open edge is additional metric-value combinations within the legal
    forms outside these lower/equality/upper, clamp, offset endpoint,
-   rounded-transform, and low-nibble cases, plus external/manual naming for
-   consumed-but-not-staged validation fields.
+   rounded-transform, range-endpoint, low-nibble, and byte-boundary cases, plus
+   external/manual naming for consumed-but-not-staged validation fields.
    It is not the tested type-0/type-1/type-2 payloads, metric-variant,
    clamped-variant, lower-bound-variant, upper-bound-variant,
    legal-value-matrix, low-nibble rounding submatrix, validation no-install,
@@ -409,6 +419,7 @@ The next work should follow dataflow, not isolated handlers:
    `0xfffe`/`0xffff`/`0x007f`, `d8fc` lower-bound and exact page-extent
    equality, rounded transform inputs `0x1500`/`0x1508`/`0x15ff`, the
    low-nibble rounded inputs `0x0001`/`0x0003`/`0x0004`/`0x0005`/`0x000f`, a
+   byte-boundary rounded submatrix around `0x00fd..0x0102`,
    `0x17430` first-code-zero endpoint and first-code-`range - 1` endpoint, a
    midpoint case where `d8fc` updates state but leaves compact-only output, a
    lower-bound no-span output path for both consumers, and an upper-bound case where
@@ -421,8 +432,8 @@ The next work should follow dataflow, not isolated handlers:
    middle: `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c` now define the
    canonical, derived/cache, and copied metric fields. The missing middle is
    now additional metric-value combinations outside the pinned legal matrix,
-   boundary, range-endpoint, and low-nibble fixtures, plus external/manual
-   naming for consumed-but-not-staged validation fields.
+   boundary, range-endpoint, low-nibble, and byte-boundary fixtures, plus
+   external/manual naming for consumed-but-not-staged validation fields.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus secondary

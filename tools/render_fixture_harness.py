@@ -53281,6 +53281,149 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             for label, (input_word, copied_word) in metric_rounding_nibble_inputs.items()
         },
     ))
+
+    def rounded_metric_byte_boundary_stream(
+        range_word: int,
+        rounded_word: int,
+    ) -> bytearray:
+        stream = bytearray(font_validate_stream)
+        stream[10:12] = range_word.to_bytes(2, "big")
+        stream[20:22] = rounded_word.to_bytes(2, "big")
+        stream[30] = 0x01
+        return stream
+
+    metric_rounding_byte_boundary_inputs = {
+        "rounded-0x00fd-to-0x00fc": (0x0042, 0x00FD),
+        "rounded-0x00fe-to-0x0100": (0x0042, 0x00FE),
+        "rounded-0x0101-to-0x0100": (0x0042, 0x0101),
+        "rounded-0x0102-to-0x0104": (0x0042, 0x0102),
+        "rounded-0x0102-capped-by-range-0x0040": (0x0040, 0x0102),
+    }
+    metric_rounding_byte_boundary_cases = {
+        label: compact_metric_boundary_case(
+            rounded_metric_byte_boundary_stream(range_word, rounded_word),
+        )
+        for label, (
+            range_word,
+            rounded_word,
+        ) in metric_rounding_byte_boundary_inputs.items()
+    }
+
+    def expected_metric_rounding_byte_boundary_case(
+        range_word: int,
+        rounded_word: int,
+        copied_word: int,
+        d4ac_updates: bool,
+    ) -> dict[str, object]:
+        d4ac_render = (
+            {
+                "span": {
+                    "updated": True,
+                    "cursor_y": 21,
+                    "handler": 0x00D4AC,
+                    "context_offset_002b": 0,
+                    "context_lower_002c": copied_word >> 8,
+                    "context_height_002d": copied_word & 0xFF,
+                    "high_y": 26,
+                },
+                "object_prefix": bytes.fromhex(
+                    "00 00 00 00 40 00 00 01 a4 06 03 00 00 14"
+                ),
+                "render": {
+                    "row_count": 13,
+                    "row_width": 116,
+                    "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                },
+            }
+            if d4ac_updates
+            else {
+                "span": {
+                    "updated": False,
+                    "reason": "beyond-page-extent",
+                    "cursor_y": 21,
+                },
+                "object_prefix": bytes.fromhex(
+                    "00 00 00 00 00 00 00 01 01 7a 00 00 00 00"
+                ),
+                "render": {
+                    "row_count": 10,
+                    "row_width": 26,
+                    "row_sha256": "86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6",
+                },
+            }
+        )
+        return {
+            "input_metrics": {
+                "first_code_word_at_stream_6": 4,
+                "range_word_at_stream_10": range_word,
+                "rounded_word_at_stream_20": rounded_word,
+                "flagged_offset_byte_at_stream_30": 1,
+            },
+            "copied_metrics": {
+                "word_0x14": range_word,
+                "word_0x16": 4,
+                "word_0x18": range_word - 5,
+                "word_0x1a": 1,
+                "byte_0x2b": 0,
+                "byte_0x2c": copied_word >> 8,
+                "byte_0x2d": copied_word & 0xFF,
+                "word_0x2c": copied_word,
+            },
+            "d4ac": d4ac_render,
+            "d8fc": {
+                "span": {
+                    "updated": False,
+                    "reason": "beyond-page-extent",
+                    "cursor_y": 21,
+                },
+                "object_prefix": bytes.fromhex(
+                    "00 00 00 00 00 00 00 01 21 5a 00 00 00 00"
+                ),
+                "render": {
+                    "row_count": 8,
+                    "row_width": 14,
+                    "row_sha256": "1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a",
+                },
+            },
+        }
+
+    checks.append(assert_equal(
+        "legal descriptor metric byte-boundary rounding drives d4ac and d8fc consumers",
+        metric_rounding_byte_boundary_cases,
+        {
+            "rounded-0x00fd-to-0x00fc": expected_metric_rounding_byte_boundary_case(
+                0x0042,
+                0x00FD,
+                0x00FC,
+                False,
+            ),
+            "rounded-0x00fe-to-0x0100": expected_metric_rounding_byte_boundary_case(
+                0x0042,
+                0x00FE,
+                0x0100,
+                True,
+            ),
+            "rounded-0x0101-to-0x0100": expected_metric_rounding_byte_boundary_case(
+                0x0042,
+                0x0101,
+                0x0100,
+                True,
+            ),
+            "rounded-0x0102-to-0x0104": expected_metric_rounding_byte_boundary_case(
+                0x0042,
+                0x0102,
+                0x0104,
+                True,
+            ),
+            "rounded-0x0102-capped-by-range-0x0040":
+                expected_metric_rounding_byte_boundary_case(
+                    0x0040,
+                    0x0102,
+                    0x0100,
+                    True,
+                ),
+        },
+    ))
     metric_context_cross_product_cases: dict[str, dict[str, object]] = {}
     for label, selected_context, source_form, materializer, byte_value in (
         ("inline-d4ac", 0, "unflagged", "d4ac", b"!"),
@@ -85275,6 +85418,38 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             metric_rounding_nibble_cases[
                 "rounded-0x000f-to-0x0010"
             ]["d8fc"]["render"]["row_sha256"],  # type: ignore[index]
+        )
+    )
+    lines.append(
+        "- metric byte-boundary rounding fixture: fixture `legal descriptor "
+        "metric byte-boundary rounding drives d4ac and d8fc consumers` proves "
+        "rounded inputs `0x00fd`, `0x00fe`, `0x0101`, and `0x0102` copy to "
+        "`+0x2c` words `%s`; range cap `0x0040` forces input `0x0102` back to "
+        "`0x%04x`. The `0x00fd` copy suppresses `d4ac` with digest `%s`, while "
+        "the `0x00fe` byte-boundary copy emits the normal `d4ac` span digest "
+        "`%s`; `d8fc` exits `%s` for the large derived-height cases." % (
+            ", ".join(
+                "0x%04x"
+                % metric_rounding_byte_boundary_cases[label]["copied_metrics"]["word_0x2c"]  # type: ignore[index]
+                for label in (
+                    "rounded-0x00fd-to-0x00fc",
+                    "rounded-0x00fe-to-0x0100",
+                    "rounded-0x0101-to-0x0100",
+                    "rounded-0x0102-to-0x0104",
+                )
+            ),
+            metric_rounding_byte_boundary_cases[
+                "rounded-0x0102-capped-by-range-0x0040"
+            ]["copied_metrics"]["word_0x2c"],  # type: ignore[index]
+            metric_rounding_byte_boundary_cases[
+                "rounded-0x00fd-to-0x00fc"
+            ]["d4ac"]["render"]["row_sha256"],  # type: ignore[index]
+            metric_rounding_byte_boundary_cases[
+                "rounded-0x00fe-to-0x0100"
+            ]["d4ac"]["render"]["row_sha256"],  # type: ignore[index]
+            metric_rounding_byte_boundary_cases[
+                "rounded-0x0102-to-0x0104"
+            ]["d8fc"]["span"]["reason"],  # type: ignore[index]
         )
     )
     lines.append(

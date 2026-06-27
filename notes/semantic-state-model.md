@@ -2842,7 +2842,16 @@ queues a fixed-width span through `0x136d2`.
   proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f`
   copy to canonical `+0x2c` words `0x0000`, `0x0004`, `0x0004`, `0x0004`,
   and `0x0010`, matching the ROM-derived `min((value + 2) >> 2,
-  word(+0x14)) << 2` transform for these low-nibble samples.
+  word(+0x14)) << 2` transform for these low-nibble samples. Fixture
+  `legal descriptor metric byte-boundary rounding drives d4ac and d8fc
+  consumers` extends that transform across the byte boundary: rounded inputs
+  `0x00fd`, `0x00fe`, `0x0101`, and `0x0102` copy to canonical `+0x2c`
+  words `0x00fc`, `0x0100`, `0x0100`, and `0x0104`, while the same `0x0102`
+  input caps at `0x0100` when `+0x14 = 0x0040`. The copied `0x00fc` case
+  makes `d4ac` exit `beyond-page-extent`, but the `0x0100` byte-boundary copy
+  changes the consumed bytes to lower `1` and height `0`, so `d4ac` emits the
+  standard span digest
+  `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`.
 - Derived/cache producer state:
   - `0x782a7a` / `0x782a7b`: selector bytes for `0x1387c`; current
     fixtures pin `0x4000` for segment-list span objects.
@@ -3096,6 +3105,7 @@ fixtures.
 - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
 - `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
 - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+- `legal descriptor metric byte-boundary rounding drives d4ac and d8fc consumers`
 - `0x1354a portrait text span split queues adjacent buckets`
 - `0x12714 landscape span inserts into nonempty fixed list`
 - `0x12714 allocation failure publishes page and retries span`
@@ -3234,6 +3244,18 @@ fixtures.
   while keeping the standard span digest, and `d8fc` keeps unchanged
   `+0x16/+0x18/+0x1a = 0x0004/0x0013/0x0001`, high-y `20`, and digest
   `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+  Fixture
+  `legal descriptor metric byte-boundary rounding drives d4ac and d8fc
+  consumers` adds the `0x1757a` byte-boundary submatrix: rounded inputs
+  `0x00fd/0x00fe/0x0101/0x0102` with range/count `0x0042` copy `+0x2c =
+  0x00fc/0x0100/0x0100/0x0104`, and `0x0102` with range/count `0x0040` caps
+  back to `0x0100`. The `0x00fd` case suppresses `d4ac` at
+  `beyond-page-extent` with compact-only digest
+  `86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6`, while
+  crossing to `0x00fe` restores the standard `d4ac` span digest
+  `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`. The
+  same submatrix keeps `d8fc` at `beyond-page-extent` because derived/cache
+  `+0x18 = 0x003d` or `0x003b` exceeds the page extent at cursor y `21`.
   Remaining producer gaps are additional metric values within legal forms;
   bounded validation no-install branches are composed below under
   `Downloaded Resource Validation No-Install`.
@@ -4282,13 +4304,23 @@ fields and every legal metric combination have not been page-compared.
   `d4ac` span rows and `d8fc` high-y `20` / digest
   `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
   Fixture
+  `legal descriptor metric byte-boundary rounding drives d4ac and d8fc
+  consumers` adds rounded inputs `0x00fd`, `0x00fe`, `0x0101`, and
+  `0x0102`, copying `+0x2c = 0x00fc/0x0100/0x0100/0x0104`; the capped
+  range sibling copies `0x0102` back to `0x0100` when `+0x14 = 0x0040`.
+  It proves `d4ac` flips from compact-only digest
+  `86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6`
+  at copied `0x00fc` to the standard span digest
+  `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`
+  once copied `+0x2c` crosses to `0x0100`.
+  Fixture
   `descriptor metric fields match across inline and resource contexts` now
   pins the legal inline/unflagged and resource/flagged producer forms plus the
   two invalid swapped forms. The producer formulas are documented from
   `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c`; remaining work is additional
   metric-value combinations within legal forms beyond the covered matrix,
-  boundary, range-endpoint, and low-nibble fixtures, plus external naming for
-  consumed-but-not-staged validation fields.
+  boundary, range-endpoint, low-nibble, and byte-boundary fixtures, plus
+  external naming for consumed-but-not-staged validation fields.
 
 ## Macro Definition And Data-Chain Replay
 

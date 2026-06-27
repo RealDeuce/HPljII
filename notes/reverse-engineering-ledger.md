@@ -459,20 +459,27 @@ descriptor metric low-nibble rounding drives d4ac and d8fc consumers` now proves
 inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f` copy to `+0x2c =
 0x0000/0x0004/0x0004/0x0004/0x0010`; `d4ac` keeps its standard span digest, while `d8fc`
 keeps high-y `20` and row digest
-`f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`. The producer formula
-is now composed into the semantic notes rather than left as fixture output:
-`0x16fae..0x17016` walks table `0x16eae` into staged base `0x782862`, `0x17430..0x1749c`
-writes canonical `+0x14` and derives `+0x18 = +0x14 - +0x16 - 1`, `0x1757a..0x175b8`
-writes rounded/capped `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`,
-`0x1762a..0x1763c` writes signed-byte offset word `+0x1a`, and `0x1719c..0x1725c` copies
-those staged fields into the allocated payload. The field grouping is canonical
-`+0x14/+0x16/+0x1a`, derived/cache `+0x18/+0x2c`, parser scratch
-`0x782862`/`0x783140`/`0x782842..0x782856`, and firmware bookkeeping
-`+0x0c`/`0x7827ba`/`+0x2b`. Fixture `0x16b1a descriptor width helper emits only mode
-1/2` closes the downloaded-character helper-table mode-byte question for accepted
-widths: disassembly `0x16b36..0x16b6a` writes mode `1` for even byte spans and mode `2`
-for odd byte spans, while `0x16b26..0x16b34` rejects widths `0` and `0x1069` without
-scratch writes. Mode-byte-`0` remains documented as an artificial `0x16498`
+`f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`. Fixture `legal
+descriptor metric byte-boundary rounding drives d4ac and d8fc consumers` now proves
+rounded inputs `0x00fd`, `0x00fe`, `0x0101`, and `0x0102` copy to `+0x2c =
+0x00fc/0x0100/0x0100/0x0104`, with range `0x0040` capping `0x0102` back to `0x0100`. The
+copied `0x00fc` case leaves `d4ac` at `beyond-page-extent` with compact-only digest
+`86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6`, while copied
+`0x0100` restores the standard `d4ac` span digest
+`67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`; the same large-range
+cases keep `d8fc` at `beyond-page-extent`. The producer formula is now composed into the
+semantic notes rather than left as fixture output: `0x16fae..0x17016` walks table
+`0x16eae` into staged base `0x782862`, `0x17430..0x1749c` writes canonical `+0x14` and
+derives `+0x18 = +0x14 - +0x16 - 1`, `0x1757a..0x175b8` writes rounded/capped `+0x2c =
+min((value + 2) >> 2, word(+0x14)) << 2`, `0x1762a..0x1763c` writes signed-byte offset
+word `+0x1a`, and `0x1719c..0x1725c` copies those staged fields into the allocated
+payload. The field grouping is canonical `+0x14/+0x16/+0x1a`, derived/cache
+`+0x18/+0x2c`, parser scratch `0x782862`/`0x783140`/`0x782842..0x782856`, and firmware
+bookkeeping `+0x0c`/`0x7827ba`/`+0x2b`. Fixture `0x16b1a descriptor width helper emits
+only mode 1/2` closes the downloaded-character helper-table mode-byte question for
+accepted widths: disassembly `0x16b36..0x16b6a` writes mode `1` for even byte spans and
+mode `2` for odd byte spans, while `0x16b26..0x16b34` rejects widths `0` and `0x1069`
+without scratch writes. Mode-byte-`0` remains documented as an artificial `0x16498`
 object-boundary reject through the no-install fixtures, not as parser-produced
 descriptor output. Fixture `parser-driven downloaded glyph rule raster stream composes
 through 0x1ef6a` now carries an explicit even-span downloaded-character return boundary:
@@ -502,13 +509,14 @@ case: after `1a 58` normalization, copy leaves `0x783140 = 1`, `0x12328` drains
 following byte `0x26` (`&`), and the post-return parser sees FF at handler `0xf0f0`; the
 same fixture still documents the modeled published bucket-1 wide object through
 `0x1ed84`/`0x1ef6a`/`0x1f0d2`. Remaining work is additional metric-value combinations
-outside the pinned legal matrix, boundary, and low-nibble endpoints. Those pinned metric
-endpoints include rounded input `0x0013` copying `+0x2c = 0x0014`, high-byte rounded
-inputs `0x1500`/`0x1508`/`0x15ff` all copying `+0x2c = 0x0060`, max positive and max
-negative copied offset words `0x007f`/`0xffff`, lower-bound equality, and exact
-page-extent equality. ROM-internal validation/error page behavior is no longer an open
-class: `0x16fae..0x17016` predicate failures for entries `2`, `4`, `5`, `6`, and `7`
-plus the short-budget entry-`5` case are covered by fixtures `ESC )s80W additional
+outside the pinned legal matrix, boundary, low-nibble, and byte-boundary endpoints.
+Those pinned metric endpoints include rounded input `0x0013` copying `+0x2c = 0x0014`,
+high-byte rounded inputs `0x1500`/`0x1508`/`0x15ff` all copying `+0x2c = 0x0060`, max
+positive and max negative copied offset words `0x007f`/`0xffff`, lower-bound equality,
+exact page-extent equality, byte-boundary outputs `0x00fc`/`0x0100`/`0x0104`, and
+range-cap output `0x0100`. ROM-internal validation/error page behavior is no longer an
+open class: `0x16fae..0x17016` predicate failures for entries `2`, `4`, `5`, `6`, and
+`7` plus the short-budget entry-`5` case are covered by fixtures `ESC )s80W additional
 validation predicate failures skip allocation` and `ESC )s#W validation failures
 preserve following printable output`, while `0x16498` object-level no-install/status-`2`
 exits are covered by fixtures `0x16498 no-install exits preserve following printable

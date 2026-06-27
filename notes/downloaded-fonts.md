@@ -74,6 +74,7 @@ Primary fixtures:
 - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
 - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
 - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+- `legal descriptor metric byte-boundary rounding drives d4ac and d8fc consumers`
 - `0x16498-backed downloaded character object renders segmented-wide compact row`
 - `downloaded character stream ties ROM parser dispatch to rendered object`
 - `host-fetched downloaded character stream reaches rendered object`
@@ -324,11 +325,13 @@ Renderer-facing allocated payload fields:
   reversed or out-of-range values, and on success derives `+0x18 = value -
   word(+0x16) - 1`; the reversed-range no-install fixture proves the rejected
   branch can leave `+0x14 = 5` while `+0x18` remains `0`. `0x1757a..0x175b8`
-  computes `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`; the boundary
-  and low-nibble fixtures prove both the cap (`0x1500`, `0x1508`, and
-  `0x15ff` all become `0x0060` when `+0x14 = 0x0018`) and the low-nibble
-  rounding (`0x0001/0x0003/0x0004/0x0005/0x000f` become
-  `0x0000/0x0004/0x0004/0x0004/0x0010`). `0x1762a..0x1763c` writes the
+  computes `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`; the boundary,
+  low-nibble, and byte-boundary fixtures prove the cap (`0x1500`, `0x1508`,
+  and `0x15ff` all become `0x0060` when `+0x14 = 0x0018`; `0x0102` caps to
+  `0x0100` when `+0x14 = 0x0040`), low-nibble rounding
+  (`0x0001/0x0003/0x0004/0x0005/0x000f` become
+  `0x0000/0x0004/0x0004/0x0004/0x0010`), and the `0x00fd..0x0102`
+  byte-boundary outputs `0x00fc/0x0100/0x0100/0x0104`. `0x1762a..0x1763c` writes the
   signed byte reader result into payload word `+0x1a`; fixtures prove bytes
   `0x7f`, `0xfe`, and `0xff` copy as `0x007f`, `0xfffe`, and `0xffff` and
   are consumed by `0xd8fc` as words.
@@ -427,6 +430,22 @@ Renderer-facing allocated payload fields:
   `+0x2c/+0x2d` bytes and keeps the default span digest, while `d8fc` keeps
   high-y `20` and row digest
   `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+- legal metric byte-boundary rounding: fixture
+  `legal descriptor metric byte-boundary rounding drives d4ac and d8fc
+  consumers` varies rounded inputs `0x00fd`, `0x00fe`, `0x0101`, and
+  `0x0102` with range/count `+0x14 = 0x0042`, then repeats `0x0102` with
+  range/count `+0x14 = 0x0040`. `0x1719c` copies `+0x2c =
+  0x00fc/0x0100/0x0100/0x0104`, while the capped range copies `0x0100`.
+  The `0x00fd` case leaves `d4ac` at `beyond-page-extent` with compact-only
+  row digest `86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6`.
+  Crossing to `0x00fe` changes the byte consumers to `+0x2c/+0x2d = 1/0`,
+  so `d4ac` emits the standard span digest
+  `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`; the
+  `0x0101`, uncapped `0x0102`, and capped `0x0102` cases keep that digest.
+  The same fixture proves the large derived/cache heights
+  `+0x18 = 0x003d` or `0x003b` make `d8fc` exit `beyond-page-extent` with
+  compact-only digest
+  `1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a`.
 
 Unknown:
 
@@ -1684,14 +1703,13 @@ progression because `0xff1e` disassembly at `0xffc8` clears root `+0x18`,
 `0x1eba4` emits band words `0..9` through `0x1ef6a` and preserves the same
 visible row.
 
-High for the covered parser-produced metric combinations because the type-0,
-type-1, type-2, metric-variant, clamped, lower-bound, upper-bound, legal
-matrix, boundary, and low-nibble rounding fixtures all start from host-fetched
-`ESC )s80W`, run through `0x16fae`/`0x1719c`, and compare page-visible
-`0xd4ac`/`0xd8fc` output effects. Medium for the full PCL soft-font grammar
-because the validation table is executable but not every predicate has a
-manual-facing semantic name, and not every legal metric combination has a
-parser-produced page comparison.
+High for the covered parser-produced metric combinations because the type-0, type-1,
+type-2, metric-variant, clamped, lower-bound, upper-bound, legal matrix, boundary,
+low-nibble rounding, and byte-boundary rounding fixtures all start from host-fetched
+`ESC )s80W`, run through `0x16fae`/`0x1719c`, and compare page-visible `0xd4ac`/`0xd8fc`
+output effects. Medium for the full PCL soft-font grammar because the validation table
+is executable but not every predicate has a manual-facing semantic name, and not every
+legal metric combination has a parser-produced page comparison.
 
 Medium for bit-30-clear fixed-record dispatch from a `0x1719c` payload: the
 isolation fixture proves `0x14e24`/`0x14eb6` map construction and rendering,
@@ -1846,40 +1864,34 @@ A byte-stream renderer must preserve:
 - `0x14c64..0x14eb6`: the `0x1719c` bit-30-clear fixed-record path is an
   isolation control. The integrated `ESC )s80W` install path currently proves
   the bit-30 offset-table form.
-- The span-metric fields documented in `notes/font-context-metrics.md` are now
-  tied to installed payload headers for the `0xd4ac` and `0xd8fc` type-0,
-  type-1, and type-2 fixtures, and the shared consumer branch family is
-  fixture-backed. The invalid-resource-type, first-code overflow, zero
-  line/count, high line/count, reversed-range, high range/count, and
-  invalid-class resource paths now have host-fetched
-  parser/validation/no-install boundaries and following-printable page output.
-  The seven-case legal descriptor metric matrix plus the boundary-value
-  fixture now prove copied descriptor fields can flip the `0xd4ac`
-  page-extent gate, exercise rounded-metric clamping into `+0x2c/+0x2d`,
-  preserve zero rounded/offset fields through visible `0xd4ac` and `0xd8fc`
-  span objects, preserve negative and max-positive flagged offset bytes as
-  copied words `0xfffe`, `0xffff`, and `0x007f`, accept `d8fc` lower-bound
-  equality and exact page-extent equality, move `d8fc` rendered rows, update
-  `0xd8fc` without publishing a span object, suppress both span consumers
-  through parser-owned lower-bound fields, suppress only `0xd8fc` through
-  parser-owned upper-bound fields while preserving `0xd4ac` span output and
-  compact glyph output, round `0x0013` up to copied `+0x2c = 0x0014`, and show
-  rounded inputs `0x1500`, `0x1508`, and `0x15ff` all transform to copied
-  `+0x2c = 0x0060` before `d4ac` exits beyond page extent. Fixture
-  `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
-  proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f`
-  copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, while preserving
-  `d4ac` span output and `d8fc` high-y `20` output. Fixture
-  `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
-  proves first-code zero and first-code `range - 1` copy
-  `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017` and
-  `0x0015/0x0014/0x0000` while preserving the documented visible span paths.
-  Fixture
-  `descriptor metric fields match across inline and resource contexts` now
-  proves the legal producer forms and the two invalid swapped forms. The
-  remaining producer gap is not these copied-field endpoints; it is additional
-  legal descriptor combinations outside the pinned lower/equality/upper,
-  clamp, offset endpoint, range endpoint, rounded-transform, and low-nibble
-  cases. All ROM-internal validation no-install predicate families are already
-  parser-produced and page-visible; remaining validation work is external HP
-  manual naming for consumed-but-not-staged fields.
+- The span-metric fields documented in `notes/font-context-metrics.md` are now tied to
+  installed payload headers for the `0xd4ac` and `0xd8fc` type-0, type-1, and type-2
+  fixtures, and the shared consumer branch family is fixture-backed. The
+  invalid-resource-type, first-code overflow, zero line/count, high line/count,
+  reversed-range, high range/count, and invalid-class resource paths now have
+  host-fetched parser/validation/no-install boundaries and following-printable page
+  output. The seven-case legal descriptor metric matrix plus the boundary-value fixture
+  now prove copied descriptor fields can flip the `0xd4ac` page-extent gate, exercise
+  rounded-metric clamping into `+0x2c/+0x2d`, preserve zero rounded/offset fields
+  through visible `0xd4ac` and `0xd8fc` span objects, preserve negative and max-positive
+  flagged offset bytes as copied words `0xfffe`, `0xffff`, and `0x007f`, accept `d8fc`
+  lower-bound equality and exact page-extent equality, move `d8fc` rendered rows, update
+  `0xd8fc` without publishing a span object, suppress both span consumers through
+  parser-owned lower-bound fields, suppress only `0xd8fc` through parser-owned
+  upper-bound fields while preserving `0xd4ac` span output and compact glyph output,
+  round `0x0013` up to copied `+0x2c = 0x0014`, and show rounded inputs `0x1500`,
+  `0x1508`, and `0x15ff` all transform to copied `+0x2c = 0x0060` before `d4ac` exits
+  beyond page extent. Fixture `legal descriptor metric low-nibble rounding drives d4ac
+  and d8fc consumers` proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
+  `0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, while preserving `d4ac`
+  span output and `d8fc` high-y `20` output. Fixture `legal descriptor metric range
+  endpoints drive d4ac and d8fc consumers` proves first-code zero and first-code `range
+  - 1` copy `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017` and `0x0015/0x0014/0x0000` while
+  preserving the documented visible span paths. Fixture `descriptor metric fields match
+  across inline and resource contexts` now proves the legal producer forms and the two
+  invalid swapped forms. The remaining producer gap is not these copied-field endpoints;
+  it is additional legal descriptor combinations outside the pinned
+  lower/equality/upper, clamp, offset endpoint, range endpoint, rounded-transform,
+  low-nibble, and byte-boundary cases. All ROM-internal validation no-install predicate
+  families are already parser-produced and page-visible; remaining validation work is
+  external HP manual naming for consumed-but-not-staged fields.

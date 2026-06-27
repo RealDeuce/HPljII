@@ -464,6 +464,155 @@ as the shared page-record storage model instead of repeating the
 allocator concepts separately for text, rule, fixed-rule, and raster
 producers.
 
+### Page-Record Storage Semantic Checkpoint
+
+This checkpoint covers the shared page-record state block used by compact
+text, rule, fixed-rule, raster, publication, and render-entry paths. It is a
+software-visible boundary: it documents how producers build canonical page
+objects, not how the engine eventually clocks paper.
+
+Field groups:
+
+- Canonical page root:
+  - `0x78297a`: current page/control root pointer.
+  - root `+0x1c`: bucket-head array for compact text and raster objects.
+  - root `+0x20`: head/link slot for 0x100-byte stream chunks.
+  - root `+0x24`: rectangle/rule list head.
+  - root `+0x28`: fixed-rule list head.
+  - root `+0x2c..+0x68`: sixteen current-font context slots.
+- Canonical object fields:
+  - bucket objects: `+0` next pointer, `+4` selector/class byte, `+6`
+    count/capacity, payload from `+8` or `+0a`.
+  - rule and fixed-rule objects: `+0` next pointer, `+4` bucket byte,
+    `+5` selector/mode, `+6` key, dimensions or extent from `+8`.
+- Derived/cache producer keys:
+  - `0x782a7c`: bucket index / list-order key.
+  - `0x782a7d`: rule/fixed selector byte copied into object `+4`.
+  - `0x782a7e`: compact coordinate or rule key copied into object `+6`.
+  - `0x782a7a` and `0x782a7b`: compact text selector bytes used by
+    `0x1387c` callers.
+- Firmware bookkeeping:
+  - `0x782a70`: bytes remaining in the current stream chunk.
+  - `0x782a72`: pointer to the current chunk link field.
+  - `0x782a76`: next free byte in the current chunk.
+  - `0x782c72` and `0x782c73`: pending latches cleared by first-root
+    allocation after the `0x9ac2` wait hook.
+  - `0x782990`: transient page-root byte cleared by `0x10084`.
+- Derived/cache render fields:
+  - `0x783a20`, `0x783a22`, and `0x783a28` are render-band outputs of
+    `0x1ef86`; they are not canonical page-record fields.
+- Parser scratch:
+  - none newly assigned in this allocator cluster. Parser scratch enters
+    through command records such as the raster delayed record restored by
+    `0x12218`.
+- Unknown:
+  - heap allocator `0x1710` lifetime and free-list behavior outside the
+    page-record stream.
+  - exact live scheduler timing from a published pool record into the active
+    render record.
+
+Writers:
+
+- `0x10084` creates the current root when `0x78297a` is empty, clears
+  `0x782a70`, seeds `0x782a72 = root + 0x20`, clears `0x782990`, and calls
+  initializer `0x10110`.
+- `0x10110` writes root page code byte `+6`, status/flag fields
+  `+8/+0a/+14`, geometry/band fields `+09/+16`, list heads `+20/+24/+28`,
+  and selected current-font context slot `+2c`.
+- `0x1381c` allocates variable-sized stream objects, updating
+  `0x782a70`, `0x782a72`, and `0x782a76`; when the current chunk cannot
+  satisfy a request, it links a new chunk through the prior link field.
+- `0x1387c` writes root `+0x1c` bucket heads and bucket objects for compact
+  text and raster producers.
+- `0x133aa` writes root `+0x24` and inserts rectangle/rule nodes by bucket
+  byte order.
+- `0x136d2` writes root `+0x28` and inserts fixed-rule nodes with the same
+  ordered-list contract.
+- `0xff1e` publishes the root fields into pool-record fields, and
+  `0x1edc6` copies the published bucket/rule/fixed/context roots into
+  render-record fields `+0x18`, `+0x1c`, `+0x20`, and `+0x24`.
+
+Readers and consumers:
+
+- Printable text through `0xd04a` / `0x12f2e` consumes the current root and
+  `0x1387c` bucket allocator.
+- Rectangle fill through `0x10898` consumes the current root and inserts a
+  rule node through `0x13386` / `0x133aa`.
+- Raster transfer through `0x105d0` consumes the current root and queues
+  encoded-span objects through `0x13070` / `0x13250`.
+- Publication through `0xff1e` consumes bucket, list, and context root fields.
+- Rendering through `0x1ed84` / `0x1edc6` / `0x1ef6a` consumes the published
+  or active page record and dispatches compact, encoded-span, rule, and
+  fixed-list objects.
+
+Output effect:
+
+- The allocator does not draw pixels by itself. It determines object order,
+  bucket selection, and list roots consumed by visible rendering.
+- Fixture `addressed text/rule/raster field groups reach publication and
+  render entry` proves text object `0x00d0c004`, rule object `0x00d0c02a`,
+  and raster object `0x00d0c038` share the addressed page-record state, then
+  publish and render into the expected mixed rows.
+- Fixture `addressed page-record writers share 0x1381c across chunk
+  rollover` proves one page-root stream crosses a chunk boundary:
+  `root + 0x20 -> 0x00d05000 -> 0x00d05100`, final bookkeeping
+  `0x782a70 = 0x00ba`, `0x782a72 = 0x00d05100`, and
+  `0x782a76 = 0x00d05146`, followed by publication and compact rendering.
+
+Confidence:
+
+- High for page-root creation side effects, stream allocator accounting,
+  bucket reuse/new-head behavior, rule/fixed insertion order, root
+  publication, render-record field copies, and final rendered rows.
+- Medium for heap allocator internals and render-scheduler timing, because
+  current fixtures model `0x1710` results and active-record handoff instead
+  of executing the entire heap/scheduler path.
+
+Fixture evidence:
+
+- `0x10084-modeled page-root allocation side effects`
+- `0x10110 page-root initializer installs selected context slot`
+- `0x10110 page-root initializer copies geometry fields`
+- `0x1381c stream allocator chunks display-list storage`
+- `0x1387c address-aware bucket allocation uses 0x1381c storage`
+- `0x133aa address-aware rule-list insertion uses 0x1381c storage`
+- `0x136d2 address-aware fixed-list insertion uses 0x1381c storage`
+- `addressed stream page record materializes through 0xff1e and 0x1ed84`
+- `addressed page-record writers share 0x1381c across chunk rollover`
+- `addressed text/rule/raster field groups reach publication and render
+  entry`
+
+Disassembly evidence:
+
+- `generated/disasm/ic30_ic13_page_root_allocate_010084.lst`:
+  `0x10084..0x1021e`.
+- `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`:
+  `0x13386..0x1387a` and `0x1387c..0x138de`.
+- `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`:
+  compact text callers of `0x1387c`.
+- `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`:
+  encoded-span producer path.
+- `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst` and
+  `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`:
+  publication and render bridge consumers.
+
+Unresolved middle edges:
+
+- `0x1710..0x1385e`: heap allocation results are modeled; heap free-list
+  internals behind `0x1710` are not lifted here.
+- `0x10084..0x1381c`: first-root setup, same-chunk reuse, and second-chunk
+  rollover are fixture-backed, but not captured from live 68000 memory during
+  a dense parser-produced page.
+- `0x13250..0x1381c`: raster encoded-span allocation is composed here and in
+  the raster transfer section, but exact live register/memory state through
+  the full raster producer remains unresolved.
+- `0x133aa..0x13472` and `0x136d2..0x13690`: ordered insertion is pinned for
+  lower, higher, and equal bucket bytes; alternate no-room/failure returns
+  still need live CPU fixtures.
+- `0xff1e..0x1ed84`: pool-record publication and render bridge are modeled;
+  remaining scheduler work is engine pacing and multi-band loop timing around
+  `0x1eba4..0x1ecd2`.
+
 `0x13070` converts the raster state block into bucket coordinates:
 
 - stores a bucket/index value at `0x782a7c`;

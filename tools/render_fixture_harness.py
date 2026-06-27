@@ -11271,6 +11271,84 @@ def glyph_source_bytes_for_rows(resources: bytes | bytearray, glyph: dict[str, i
     return bytes(resources[start : start + rows * span])
 
 
+def glyph_wide_row_copy_source_bytes(
+    data: bytes,
+    resources: bytes | bytearray,
+    glyph: dict[str, int | bytes],
+    row_skip: int = 0,
+    rows: int | None = None,
+) -> bytes:
+    total_rows = int(glyph["rows"])
+    render_span = int(glyph["render_span"])
+    if rows is None:
+        rows = total_rows - row_skip
+    if row_skip < 0 or rows < 0 or row_skip + rows > total_rows:
+        raise AssertionError("wide glyph source row range is outside the glyph")
+    if render_span <= 0x10:
+        raise AssertionError("wide glyph source helper expects span above 16 bytes")
+
+    bitmap = int(glyph["bitmap"])
+    trailing_plane = glyph_uses_trailing_plane(glyph)
+    a2_row_span = render_span - 1 if trailing_plane else render_span
+    a2_start = bitmap + row_skip * a2_row_span
+    a2_source = bytes(resources[a2_start : a2_start + rows * a2_row_span])
+    if trailing_plane:
+        a3_base = bitmap + a2_row_span * total_rows
+        a3_source = bytes(resources[a3_base + row_skip : a3_base + row_skip + rows])
+    else:
+        a3_source = b""
+
+    full_chunks = render_span >> 4
+    remainder = render_span & 0x0F
+    full_row_skip = render_span - (0x11 if remainder & 1 else 0x10)
+    remainder_row_skip = render_span - remainder if remainder else 0
+    dest = bytearray(rows * render_span)
+
+    def apply_writes(result: RowCopyResult, source_label: str) -> None:
+        for write in result.writes:
+            if write.source == "A2":
+                source = a2_source
+            elif write.source == "A3":
+                source = a3_source
+            else:
+                raise AssertionError(f"unexpected {write.source} write for {source_label}")
+            if write.src + write.size > len(source):
+                raise AssertionError(
+                    f"source read past {source_label} {write.source} bitmap at +0x{write.src:x}"
+                )
+            if write.dst + write.size > len(dest):
+                raise AssertionError(
+                    f"destination write past {source_label} logical row at +0x{write.dst:x}"
+                )
+            dest[write.dst : write.dst + write.size] = source[write.src : write.src + write.size]
+
+    for chunk in range(full_chunks):
+        apply_writes(
+            simulate_row_copy(
+                data,
+                0x2F27C,
+                rows,
+                stride=render_span,
+                phase=chunk * 0x10,
+                source_row_delta=full_row_skip,
+            ),
+            "wide full-chunk",
+        )
+    if remainder:
+        apply_writes(
+            simulate_row_copy(
+                data,
+                u32(data, 0x1F1AC + remainder * 4),
+                rows,
+                stride=render_span,
+                phase=full_chunks * 0x10,
+                source_row_delta=remainder_row_skip,
+            ),
+            "wide remainder",
+        )
+    return bytes(dest)
+
+
 def render_glyph_rows_via_main_row_copy(data: bytes, resources: bytes, glyph: dict[str, int | bytes], dest_stride: int = 0x20) -> list[str]:
     mode = int(glyph["mode"])
     if mode not in (1, 2):
@@ -11535,7 +11613,6 @@ def render_compact_wide_payload_via_1f0d2(data: bytes, resources: bytes | bytear
         if remainder:
             remainder_helper = u32(data, 0x1F1AC + remainder * 4)
 
-        source = glyph_source_bytes_for_rows(resources, glyph)
         validate_wide_compact_row_copy(
             data,
             rows_in_band,
@@ -11549,10 +11626,11 @@ def render_compact_wide_payload_via_1f0d2(data: bytes, resources: bytes | bytear
             "compact wide current-band",
         )
         if rows_in_band:
+            source = glyph_wide_row_copy_source_bytes(data, resources, glyph, rows=rows_in_band)
             write_bitmap_bits(
                 dest,
                 dest_stride,
-                source[:rows_in_band * render_span],
+                source,
                 rows_in_band,
                 render_span,
                 x,
@@ -11571,13 +11649,20 @@ def render_compact_wide_payload_via_1f0d2(data: bytes, resources: bytes | bytear
             "compact wide fallback",
         )
         if remaining_after_band:
+            source = glyph_wide_row_copy_source_bytes(
+                data,
+                resources,
+                glyph,
+                row_skip=rows_in_band,
+                rows=remaining_after_band,
+            )
             required_fallback = remaining_after_band * dest_stride
             if required_fallback > len(fallback_dest):
                 fallback_dest.extend(b"\x00" * (required_fallback - len(fallback_dest)))
             write_bitmap_bits(
                 fallback_dest,
                 dest_stride,
-                source[rows_in_band * render_span:],
+                source,
                 remaining_after_band,
                 render_span,
                 x,
@@ -11671,7 +11756,6 @@ def render_compact_segmented_wide_payload_via_1f264(data: bytes, resources: byte
         if remainder:
             remainder_helper = u32(data, 0x1F1AC + remainder * 4)
 
-        source = glyph_source_bytes_for_rows(resources, glyph, row_skip=row_skip, rows=rows_here)
         validate_wide_compact_row_copy(
             data,
             rows_in_band,
@@ -11685,10 +11769,17 @@ def render_compact_segmented_wide_payload_via_1f264(data: bytes, resources: byte
             "compact segmented-wide current-band",
         )
         if rows_in_band:
+            source = glyph_wide_row_copy_source_bytes(
+                data,
+                resources,
+                glyph,
+                row_skip=row_skip,
+                rows=rows_in_band,
+            )
             write_bitmap_bits(
                 dest,
                 dest_stride,
-                source[:rows_in_band * render_span],
+                source,
                 rows_in_band,
                 render_span,
                 x,
@@ -11707,13 +11798,20 @@ def render_compact_segmented_wide_payload_via_1f264(data: bytes, resources: byte
             "compact segmented-wide fallback",
         )
         if remaining_after_band:
+            source = glyph_wide_row_copy_source_bytes(
+                data,
+                resources,
+                glyph,
+                row_skip=row_skip + rows_in_band,
+                rows=remaining_after_band,
+            )
             required_fallback = remaining_after_band * dest_stride
             if required_fallback > len(fallback_dest):
                 fallback_dest.extend(b"\x00" * (required_fallback - len(fallback_dest)))
             write_bitmap_bits(
                 fallback_dest,
                 dest_stride,
-                source[rows_in_band * render_span:],
+                source,
                 remaining_after_band,
                 render_span,
                 x,
@@ -55863,6 +55961,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             memory,
             published_record,
             bucket_word=int(page_result["bucket_index"]),
+            width_word=max(0x20, span),
         )
         published_entry = published_render["entry"]
         assert isinstance(published_entry, dict)
@@ -56075,7 +56174,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     if span & 0x0F
                     else 0
                 ),
-                "rows_match_installed_bitmap": span <= 32,
+                "rows_match_installed_bitmap": True,
                 "row_count": 3,
             }
             for index, span in enumerate(downloaded_wide_remainder_spans)
@@ -86799,8 +86898,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "through `0x1ed84` / `0x1ef6a` to `0x1f0d2`, render full chunks "
         "through `0x2f27c`, render remainders `1..15` through "
         "`0x1f1ac[remainder]`, render span `32` as the no-remainder "
-        "two-full-chunk sibling, and record non-matching row comparisons "
-        "above span `32`. Case summaries "
+        "two-full-chunk sibling, and match installed bitmap rows above "
+        "span `32`. Case summaries "
         "`(span, mode, split, remainder, remainder helper, rows match, "
         "row sha256)` "
         "are `%s`."
@@ -86829,7 +86928,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "`0x1ef6a` to `0x1f264`, render full chunks through `0x2f27c`, "
         "render remainders `1..15` through `0x1f1ac[remainder]`, and "
         "render span `32` as the no-remainder two-full-chunk sibling; "
-        "row comparisons above span `32` are recorded as non-matching. "
+        "row comparisons above span `32` match installed bitmap rows. "
         "Case summaries "
         "`(span, mode, split, remainder, A2 offset, A3 offset, rows match, "
         "row sha256)` "

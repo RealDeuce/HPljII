@@ -1285,14 +1285,14 @@ rows match the installed bitmap rows.
 The same fixture now adds compact-wide high-span probes `33`, `48`, `49`,
 `64`, and `255`. These probes keep the same canonical fields and return
 boundary, prove additional full-chunk counts `2`, `3`, `4`, and `15`, and keep
-the expected remainder/no-remainder helper choices. The row comparison is
-intentionally recorded as non-matching for those high spans, so the remaining
-middle edge is no longer parser acceptance or page-record dispatch; it is the
-exact span-`33+` `0x1f0d2` / `0x2f27c` source-walk semantics. Width helper
-fixture `0x16b1a descriptor width helper emits only mode 1/2` still proves
-accepted descriptor width `0x1068` rounds to span `0x020d`; the page-record
-source byte can only carry spans through `0xff`, so the span-`0x0100..0x020d`
-printable handoff remains a separate unresolved boundary.
+the expected remainder/no-remainder helper choices. The fixture now replays the
+`0x2f27c` full-chunk source walk and `0x1f1ac[remainder]` tail into row bytes,
+passes render width word `max(0x20, span)`, and matches the installed bitmap
+rows for those high spans. Width helper fixture
+`0x16b1a descriptor width helper emits only mode 1/2` still proves accepted
+descriptor width `0x1068` rounds to span `0x020d`; the page-record source byte
+can only carry spans through `0xff`, so the span-`0x0100..0x020d` printable
+handoff remains a separate unresolved boundary.
 
 Fixture `downloaded glyph segmented-wide matrix publishes and renders compact
 chunks` covers the segmented-wide sibling. It drives host-fetched `ESC )s#W`
@@ -1313,10 +1313,10 @@ The same fixture now adds segmented-wide high-span probes `33`, `48`, `49`,
 and `64` at rows `0x81`. They prove bucket `8` / segment `1`, bucket `0` /
 segment `0`, object byte `0x30`, segment row skip `0x80`, A2/A3 offsets, and
 full-chunk/remainder metadata through the same zero-drain return boundary.
-Their row comparisons are intentionally non-matching, so the remaining
-segmented-wide high-span edge is the exact `0x1f264` / `0x2f27c` row-copy
-source walk above span `32`, not parser install, page-object selection, or
-publication.
+Their segment-1 rendered rows now match installed bitmap rows through
+`0x1f264`, `0x2f27c`, and the selected `0x1f1ac` remainder helper, so the
+remaining segmented-wide gaps are broader row-count/segment cross-products, not
+the sampled high-span source walk.
 
 Fixture `downloaded glyph row-count matrix publishes and renders additional
 short/segmented counts` broadens the same command family. Short rows `0x0001`,
@@ -1897,14 +1897,14 @@ A byte-stream renderer must preserve:
   compact target `0x1effe` / `0x1f0d2`, remainders `1..15`, and the
   no-remainder span-`32` case through the same zero-drain return boundary, and
   probes spans `33`, `48`, `49`, `64`, and `255` through the same upstream
-  boundary while recording non-matching rows;
+  boundary with matching rendered rows;
   fixture `downloaded glyph segmented-wide matrix publishes and renders
   compact chunks` pins spans `17..32`, rows `0x81`, selector `0x3003`,
   buckets `0` and `8`, object byte `0x30`, compact target `0x1effe` /
   `0x1f264`, segment-1 row skip `0x80`, A2/A3 source offsets, remainders
   `1..15`, and the no-remainder span-`32` case through the same zero-drain
   return boundary, and probes spans `33`, `48`, `49`, and `64` through the
-  same upstream boundary while recording non-matching segment-1 rows;
+  same upstream boundary with matching segment-1 rows;
   fixture `downloaded normal row-0x80 and segmented glyph FF publications
   render page records` pins normal, row-`0x80`, and linear-segmented zero-drain
   returns before handler `0xd04a`; fixture `split-plane segmented downloaded
@@ -1970,7 +1970,7 @@ A byte-stream renderer must preserve:
   `8` for matched spans `17..32` with rows `0x81`, renders bucket word `8`, dispatches
   object byte `0x30` to compact target `0x1effe`/`0x1f264`, and compares segment-1 rows
   against the installed bitmap; the same fixture probes spans `33`, `48`, `49`, and
-  `64` with non-matching row comparisons. Fixture `host-fetched payload-control
+  `64` with matching row comparisons. Fixture `host-fetched payload-control
   downloaded glyph FF publishes page record` covers the odd-span wide sibling:
   host-fetched `ESC )s18W` normalizes one `1a 58` payload escape through the font
   payload reader, stores mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`,

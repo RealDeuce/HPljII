@@ -550,9 +550,8 @@ The next work should follow dataflow, not isolated handlers:
    especially row counts outside the covered short rows `0x01`, `0x02`, `0x03`, `0x04`,
    `0x08`, `0x10`, `0x20`, `0x40`, `0x41`, `0x7f`, and `0x80` and segmented rows `0x81`,
    `0x82`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`, descriptor
-   grammar forms outside the covered helper-table path, compact-wide and segmented-wide
-   span-`33+` row equivalence after the now-pinned parser/install/publication/dispatch
-   metadata, descriptor-accepted spans `0x0100..0x020d` at the printable handoff,
+   grammar forms outside the covered helper-table path, descriptor-accepted spans
+   `0x0100..0x020d` at the printable handoff,
    segmented-wide row-count/segment variants beyond rows `0x81` and segment `1`, and
    full-success return-boundary siblings beyond the covered normal even-span,
    no-install, status-`2`, row-count-matrix short/segmented, linear-segmented
@@ -574,8 +573,8 @@ The next work should follow dataflow, not isolated handlers:
    full chunks through `0x2f27c`, render remainders `1..15` through
    `0x1f1ac[remainder]`, and cover span `32` as the no-remainder two-full-chunk sibling.
    The same fixture now probes compact-wide spans `33`, `48`, `49`, `64`, and `255`
-   through the same upstream metadata and return boundary, but records non-matching row
-   comparisons. The `downloaded glyph segmented-wide matrix publishes and renders
+   through the same upstream metadata and return boundary, including matched installed
+   bitmap rows. The `downloaded glyph segmented-wide matrix publishes and renders
    compact chunks` fixture now covers matched parser-produced spans `17..32` with rows
    `0x81`: host-fetched `ESC )s#W` descriptors install width words `0x0088..0x0100`,
    publish buckets `0` and `8` as selector `0x3003`, dispatch segment `1` object byte
@@ -583,8 +582,8 @@ The next work should follow dataflow, not isolated handlers:
    full chunks through `0x2f27c`, render remainders `1..15` through
    `0x1f1ac[remainder]`, and cover span `32` as the segmented no-remainder sibling. The
    same fixture probes segmented-wide spans `33`, `48`, `49`, and `64` through the same
-   upstream metadata and return boundary, but records non-matching segment-1 row
-   comparisons. The nonboundary-short fixture now publishes rows `0x10` on selector
+   upstream metadata and return boundary, including matched segment-1 rows. The
+   nonboundary-short fixture now publishes rows `0x10` on selector
    `0x0003` through FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` with digest
    `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The rows-`0x20`
    short fixture now carries `ESC )s64W` plus printable `1` and FF through `0xff1e`,

@@ -237,6 +237,151 @@ For reproduction, do not normalize `0x1a 0x58` globally at the byte source.
 The byte source returns bytes; each consumer family applies its own local
 control-pair behavior.
 
+## Semantic Checkpoint
+
+This cluster is covered as the normalized byte-source boundary, not as a
+physical I/O-board model. The firmware-observable contract is that all parser,
+payload, transparent-text, macro, raster, and downloaded-font consumers see
+bytes through the same `D7` return channel after the source-priority logic
+above has run.
+
+Field groups:
+
+- Canonical byte-source state:
+  - first pushback stack: count `0x783e8c`, pointer `0x783e8e`;
+  - data-chain source: current frame pointer `0x782d76`, with frame
+    `+4 == -1` meaning end transition through `0xe22c`;
+  - second pushback stack: count `0x783e76`, pointer `0x783e78`;
+  - ring source: count `0x783e54`, read pointer `0x783e56`, write
+    pointer `0x783e5a`, and bounds `0x783a4c..0x783e53`.
+- Canonical direct hardware state:
+  - selector `0x780e40 == 1`: status `0x8e01`, data `0x8801`,
+    acknowledge wait `0x8c01`, and control writes `0xa601`/`0xaa01`;
+  - selector `0x780e40 != 0 && != 1`: status `0xfffee005`, data
+    `0xfffee001`, and control write `0xfffee009`.
+- Derived/cache bridge state:
+  - `0x783e54` derives ring occupancy; `0xa6f4` derives free capacity as
+    `0x400 - 0x783e54`;
+  - `0x783e5e` is the low-water threshold adjusted by
+    `0xa726..0xa73c`;
+  - `0x783e62` is the status-escape sequence cursor reset to table
+    `0xa8a4`.
+- Firmware bookkeeping:
+  - `0x7821cd` is the service-needed gate;
+  - `0x7821cc` is set while `0x10cc(0x780202)` runs;
+  - `0x780e66` gates stacked/data-chain sources and is cleared as those
+    sources drain;
+  - `0x780e3b` forces the immediate `D7 = -1` return while
+    `0x780e66` is set;
+  - `0x7821c4`, `0x7828ec`, `0x7828fa`, `0x7828fb`, and `0x780e2e`
+    record direct-mode timeout, active-byte, control-shadow, and
+    status/error state.
+- Parser scratch:
+  - none is owned by `0xa904`. Parser scratch begins after a returned byte
+    reaches `0xda9a`, `0x11774`, `0x12218`, or the payload readers.
+- Unknown:
+  - board-level names and timing for the direct MMIO banks;
+  - non-macro data-chain frame owners outside the fields used by current
+    macro replay fixtures;
+  - final names for individual `0x780e66` bits beyond observed source
+    gating behavior.
+
+Writers:
+
+- `0xa904` consumes the first stack, data-chain source, second stack,
+  ring, or direct hardware source; it updates counts, pointers, `0x780e66`,
+  `0x7821c4`, `0x7828ec`, `0x7828fa`, `0x7828fb`, and `0x780e2e`.
+- `0xa904` calls `0x10cc(0x780202)` on service or timeout paths and
+  `0xe22c` when a data-chain frame end marker is reached.
+- `0xa6cc` and `0xa846` feed the ring source consumed by `0xa904`.
+  `0xa6cc` also writes low-water, full-buffer, and status-service fields
+  including `0x780e2a`, `0x780e2e`, `0x783e60`, `0x783e61`,
+  `0x783e62`, and `$aa01`.
+- Macro setup helpers such as `0xe418` build data-chain frames that later
+  replay through `0xa904`.
+
+Readers and consumers:
+
+- `0xda9a` and the parser dispatch loop at `0x11774` consume ordinary
+  parser bytes and route printable/control streams to handlers such as
+  `0xd04a`, `0xf02c`, and `0xedf8`.
+- `0xdace` consumes bytes for its local `0x1a 0x58` control-pair probe.
+- `0x12142`, `0x124bc`, and `0x12582` consume text-payload bytes and stop
+  on negative `D7`.
+- `0x138fa` copies raster payload bytes into queued raster objects.
+- `0x168dc`, `0x168fe`, `0x16960`, `0x1697a`, `0x169ca`, and
+  `0x169e0` consume downloaded-font payload bytes.
+- Macro execute/call replay consumes data-chain bytes through `0xa904`,
+  then re-enters the same parser/page-record path as direct host input.
+
+Output effect:
+
+- `0xa904` does not draw pixels. Its output effect is source equivalence:
+  the same byte sequence can be supplied by ring input, data-chain replay,
+  pushback stacks, or direct hardware and still enter the same parser and
+  imaging handlers.
+- Fixture `host-fetched mixed control stream reaches parser and page-record
+  render` proves ring-sourced bytes route through `0xedf8`, `0xd04a`,
+  `0xf02c`, and `0xd04a` before page-record rendering.
+- Fixture `macro execute frame payload feeds 0xa904 data-chain bytes`
+  proves replayed data-chain bytes enter through the same fetch routine.
+- Fixture `combined host-fetched font download stream prints installed
+  glyph` proves a long `0xa904` byte stream can cross font-control,
+  payload, printable, publication, bridge, and render-entry boundaries.
+- Fixture `0xa620/0xa668/0xa6cc engine shadow and byte bridge` proves
+  the bridge can place byte `0x41` in the ring and the next `0xa904`
+  fetch returns `D7 = 0x41`.
+
+Confidence:
+
+- High for source priority, service retry, no-byte return, stack/ring
+  pointer movement, data-chain end retry, direct-mode `0x1a` reporting,
+  mode-2 status accumulation, and software-visible bridge behavior.
+- Medium for the physical signal names and timing attached to direct MMIO
+  registers, because the ROM proves polling and handshake behavior but not
+  board labels.
+
+Fixture evidence:
+
+- `0xa904 no-byte branch returns -1 before buffered sources`
+- `0xa904 services pending work then prefers first LIFO source`
+- `0xa904 data-chain end marker retries before second LIFO source`
+- `0xa904 buffered ring source wins before direct hardware in mode 0`
+- `0xa904 direct mode 1 preserves 0x1a and clears handshake state`
+- `0xa904 direct mode 2 reads ready byte and sets control-shadow bit 6`
+- `0xa620/0xa668/0xa6cc engine shadow and byte bridge`
+- `macro execute frame payload feeds 0xa904 data-chain bytes`
+- `host-fetched mixed control stream reaches parser and page-record render`
+- `combined host-fetched font download stream prints installed glyph`
+
+Disassembly evidence:
+
+- `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`:
+  `0xa904..0xab8a`.
+- `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`:
+  `0xa6cc..0xa810` bridge behavior and `0xa846..0xa8c8` ring/sequence
+  helpers.
+- `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`:
+  parser wrapper consumers.
+- `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`,
+  and `generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`:
+  payload consumers.
+
+Unresolved middle edges:
+
+- `0xa9e2..0xaa86`: physical interface name and exact electrical
+  handshake for the `0x8e01`/`0x8801`/`0x8c01` bank.
+- `0xaaa6..0xab8a`: physical interface name and exact electrical
+  handshake for the `0xfffee005`/`0xfffee001`/`0xfffee009` bank.
+- `0xa6cc..0xa810`: software ring/status bridge effects are modeled, but
+  physical names and timing for `0xfffe0001`, `0xfffe0003`, and `$aa01`
+  remain unassigned.
+- `0x782d76 frame +0x00..+0x0d`: non-macro data-chain owners and frame
+  lifecycle outside the macro replay fields already pinned.
+- `0x780e66`: bit meanings are behaviorally observed as source gates, but
+  the full bit-name map is not yet proven.
+
 ## Reproduction Requirements
 
 A byte-stream renderer can model this layer without electrical timing by

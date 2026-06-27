@@ -31,7 +31,8 @@ compatibility boundary.
 - [firmware-startup.md](firmware-startup.md) - first annotated 68000
   reset/startup findings from the executable ROM pair.
 - [host-byte-fetch.md](host-byte-fetch.md) - documented `0xa904` host
-  byte-source multiplexer, direct I/O handshakes, and caller semantics.
+  byte-source multiplexer, direct I/O handshakes, caller semantics, and
+  semantic checkpoint.
 - [pcl-parser-core.md](pcl-parser-core.md) - documented parser byte
   wrapper, tokenizer, dispatch loop, and delayed-payload handoff.
 - [transparent-print-data.md](transparent-print-data.md) - documented

@@ -202,6 +202,40 @@ These helpers are why a stream such as `ESC *b4W` separates the parsed byte coun
 the four payload bytes. The `W` record is first saved by `0x121cc`; the payload reader
 is called later only after `0x12218` restores the saved record.
 
+Variant behavior:
+
+- `0x11ba6`: punctuation-prefixed helper. Incoming bytes `0x21..0x2f`
+  consume one extra host byte through `0xda9a`, echo that fetched byte
+  through `0x9ec0`, and stop early only if it is space. Otherwise the helper
+  tokenizes at `0x11bdc`, arms wrapper `0x1228a` for `W/w`, loops lowercase
+  continuation bytes `0x60..0x7e` back through `0xdaf0`, and sends terminal
+  bytes `0x40..0x5e` to `0x12218`.
+- `0x11c6c`: generic stateful command helper. It echoes the incoming byte
+  through `0x9ec0`, skips space, tokenizes at `0x11c88`, and normally treats
+  `W/w` as a delayed-payload boundary. Parser mode `4` is the exception:
+  after the lookahead fetch, it bypasses the `W/w` special case and rewinds
+  `0x78299e` by six before continuing.
+- `0x11d0c`: callback continuation helper. Lowercase bytes `0x60..0x7e`
+  are continuation candidates; lowercase `w` arms `0x1228a` before the
+  tokenizer restart. Uppercase `W` clears mode state, sets local flag `D4`,
+  and arms the same wrapper before terminal processing. In alternate/data
+  mode, when `0x782a56` is set, terminal bytes append either the terminal
+  byte alone or `0x30` plus the terminal byte through `0xe002` before
+  `0x12218`.
+- `0x11dd2`: font-refreshing callback continuation helper. It shares the
+  lowercase `w` and uppercase `W` payload tests with `0x11d0c`; the uppercase
+  path rewinds `0x78299e` and calls common font-state refresh helper
+  `0xc580` before the terminal range check. Its alternate/data terminal
+  append behavior matches `0x11d0c`.
+
+These distinctions are documented from
+`generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst` and
+summarized in `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`.
+For reproduction, the important semantic edge is that `0x78299e` rewinds
+select which six-byte record the delayed handler later sees; this affects
+generic payload readers, raster payloads, downloaded-font payloads, and macro
+data-chain replay.
+
 ## Delayed Payload Scheduler
 
 `0x121cc` stores a pending payload call. It rewinds `0x78299e` by six to the current
@@ -263,8 +297,6 @@ A byte-stream reproduction must preserve these parser contracts:
 The shared parser mechanism above is documented, but these edges still need
 command-family notes before the model is complete:
 
-- `0x11ba6..0x11ea2`: exact differences between each stateful helper beyond the common
-  tokenizer/lookahead/delayed-payload pattern.
 - `0x11eb6`, `0x11ea4`, and adjacent setup handlers: initial actions for `ESC` and
   `0x1a` parser-table transitions.
 - `0x12120`: the `ESC Y` byte appender that reads through `0xa904`, echoes through

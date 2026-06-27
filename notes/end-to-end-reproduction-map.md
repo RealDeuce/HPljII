@@ -187,7 +187,9 @@ executable fixture or generated analysis note.
   `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
 - Parser scratch: six-byte command records at `0x78299e..0x7829a7`,
   delayed handler snapshots, payload counters, and alternate/data mode state.
-  Evidence: tokenizer fixtures and `generated/analysis/ic30_ic13_parser_xrefs.md`.
+  Evidence: `Parser Record And Delayed Payload State` in
+  `notes/semantic-state-model.md`, tokenizer fixtures, and
+  `generated/analysis/ic30_ic13_parser_xrefs.md`.
 - Canonical print environment: cursor words `0x782c8a` and `0x782c8e`,
   HMI/VMI words, margins, page geometry fields under `0x782da2..0x782dc0`,
   line-termination mode, cursor stack, and font slot state. Evidence:

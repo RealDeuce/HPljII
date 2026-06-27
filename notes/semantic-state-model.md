@@ -204,6 +204,101 @@ broader frame-lifetime tracing.
 - `0x780e66` bit meanings: source-empty/active bits are observed by
   behavior, but not yet fully named.
 
+## Parser Record And Delayed Payload State
+
+Status: composed as the stateful tokenizer-helper cluster for
+`0x11ba6..0x11ea2`. The low-level ledger remains in
+[pcl-parser-core.md](pcl-parser-core.md), with disassembly evidence in
+`generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst` and
+summary evidence in
+`generated/analysis/ic30_ic13_tokenizer_macro_callers.md`.
+
+Concept: the parser does not treat a command final and its payload bytes as
+one event. Stateful helpers tokenize one or more six-byte records, rewind
+`0x78299e` when a lookahead byte belongs to the current record, arm delayed
+handler wrapper `0x1228a` for generic `W/w` payloads, and let `0x12218`
+restore the selected record before payload consumption.
+
+### Field Groups
+
+- Canonical parser record state:
+  - `0x78299e`: current six-byte command-record cursor.
+  - six-byte command records: final byte, parsed signed word, and scratch
+    words consumed by terminal handlers and payload readers.
+  - `0x782999`: parser mode byte cleared by helper exits and tested by
+    `0x11c6c` to bypass generic `W/w` scheduling in mode `4`.
+  Evidence: `pcl-parser-core.md` and the `0x11ba6`, `0x11c6c`,
+  `0x11d0c`, and `0x11dd2` helper bodies.
+- Parser scratch:
+  - `0x782a1a`: delayed-payload pending flag.
+  - `0x782a1c`: delayed handler pointer.
+  - `0x782a20..0x782a25`: saved six-byte command record.
+  Evidence: scheduler `0x121cc`, restore helper `0x12218`, and generic
+  helper calls to `0x121cc(0x1228a)`.
+- Firmware bookkeeping:
+  - `0x78299a`: active callback helper pointer written by setup helpers such
+    as `0x11ec8`, `0x11eda`, and `0x11eec`.
+  - `0x782c18`: normal versus alternate/data parser mode, used by `0x12218`
+    and by callback helpers before appending through `0xe002`.
+  - `0x782a56`: alternate/data terminal-append latch cleared by `0x11d0c` and
+    `0x11dd2` before optional `0xe002` output.
+  - local flag `D4`: distinguishes uppercase `W` terminal processing from
+    other terminal bytes in `0x11d0c` and `0x11dd2`.
+- Unknown for this checkpoint:
+  - exact front-end side effects of adjacent setup handlers `0x11ea4` and
+    `0x11eb6` remain split from this helper-family disassembly window.
+
+### Writers
+
+- `0xdaf0` writes the parsed six-byte command record at `0x78299e`.
+- `0x11ba6` consumes one extra host byte through `0xda9a` for incoming
+  `0x21..0x2f` punctuation-prefixed commands, echoes it through `0x9ec0`,
+  then tokenizes at `0x11bdc` unless it is space.
+- `0x11c6c` echoes the incoming command byte, tokenizes at `0x11c88`, arms
+  `0x1228a` for `W/w` except in parser mode `4`, and rewinds `0x78299e` for
+  continuation bytes.
+- `0x11d0c` and `0x11dd2` arm `0x1228a` for lowercase `w` continuation and
+  uppercase `W` terminal cases. `0x11dd2` also rewinds `0x78299e` and calls
+  font-state refresh helper `0xc580` before terminal processing.
+- `0x121cc` writes the pending flag, handler pointer, and saved command
+  record; `0x12218` clears the pending flag and restores that record before
+  dispatching the saved handler.
+
+### Readers And Consumers
+
+- Terminal command handlers consume the six-byte record selected by the helper
+  and cursor rewind behavior.
+- Generic payload wrapper `0x1228a`, raster payload reader `0x105d0`,
+  transparent payload reader `0x12452`, and downloaded-font payload readers
+  depend on the same delayed-record restore contract.
+- Alternate/data parser mode consumes `0x782a56` and may append terminal bytes
+  through `0xe002` before delayed restore.
+
+### Output Effect
+
+The helper cluster has no pixels by itself. Its output effect is preserving
+the command/payload boundary that later pixel-producing handlers consume. If a
+reimplementation does not preserve the `0x78299e` rewind and `0x121cc` /
+`0x12218` delayed snapshot behavior, streams such as `ESC *b4W`, `ESC &p#X`,
+generic `W/w` payloads, downloaded-font payloads, and macro data-chain replay
+will restore the wrong byte count or final byte before producing page objects.
+
+### Confidence
+
+High for the `0x11ba6`, `0x11c6c`, `0x11d0c`, and `0x11dd2` helper variants,
+because the side effects are direct disassembly reads and the downstream
+payload contracts are fixture-backed in raster, transparent, downloaded-font,
+and macro sections. Medium for adjacent setup-handler semantics until
+`0x11ea4` and `0x11eb6` receive their own focused window.
+
+### Evidence
+
+- `generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`
+- `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`
+- `notes/pcl-parser-core.md`
+- fixtures named in raster, transparent-data, downloaded-font, and macro
+  sections that pass through `0x121cc` / `0x12218` before visible output.
+
 ## Text Cursor And Direct Controls
 
 Status: composed as a parser-to-visible-output cluster for direct

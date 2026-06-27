@@ -775,21 +775,27 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    the `0xc428` / `0x10550` HMI source, and first-glyph placement
    offsets are now pinned through the `0xd824` path, but the
    header-level baseline/cell semantics still need broader correlation.
-6. Model the font-printout loop's emitted page objects from the ROM
-   sample byte runs. The `0x1c334..0x1c5e4` row traversal is decoded,
+6. Compare the modeled font-printout surfaces against a known
+   printed/self-test sample. The `0x1c334..0x1c5e4` row traversal is decoded,
    including `0x1b50e` two-window candidate resolution, class filtering,
    continuation-page entry, row-index status writes, and the post-row
    recent-context scan. The verified internal-font mode-3 candidate sequence
    is now documented below for both class passes, and both ROM sample byte
-   runs are now consumed through the `0x1c5e8..0x1ed84` page-object/render
-   boundary. Fixture
-   `font sample run 1 full row spans compact buckets` covers sample run 1
-   byte stream ``ABCDEfghij#$@[\\]^`{|}~123``. Fixture `font sample run 2
-   full row spans compact buckets` covers table `0x1c1e9`. The next
-   implementation target is full printout placement. Compare those
-   rendered rows against the direct payload hashes and a known
-   printed/self-test sample to correlate the remaining baseline/header
-   fields against observed placement.
+   runs are consumed through the `0x1c5e8..0x1ed84` page-object/render
+   boundary. Fixture `font sample full printout source placement follows
+   firmware order` composes all eight source/class segments with row counts
+   `[0,1,1,14,0,1,1,14]` and aggregate segment digest
+   `f4105538bd1506731f04810ed2f50cce23815751c4f979ed6f60efab4cde08c7`.
+   Fixture `font sample full printout rows reuse ROM sample byte runs` proves
+   every non-empty row queues both ROM sample tables at `0x1c1cf` and
+   `0x1c1e9`, with correlation digest
+   `4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a`.
+   Fixture `font sample full printout segments render through 0x1ed84 and
+   0x1ef6a` renders those eight segments through the bridge and band renderer,
+   with aggregate surface digest
+   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
+   The remaining work is physical baseline/header/cell correlation against
+   observed paper output, not ROM sample-run page-object construction.
 7. Broaden the now-named `0N` / `10U` / `11U` parser/font-selection/output
    cases only where new command combinations expose different state
    boundaries; primary and secondary visible-output byte streams are now

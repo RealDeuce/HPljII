@@ -966,29 +966,28 @@ handlers:
   and the modeled `0x1ef6a` band-crossing merge. The remaining gap is
   live parser/register/memory capture for dense pages through real
   allocator state, not the already-covered render-entry rows.
-- Model the built-in font sample printout's emitted page objects from
-  ROM sample byte runs. The `0x1c334..0x1c5e4` row traversal is now
+- Compare the built-in font sample printout against observed paper output.
+  The `0x1c334..0x1c5e4` row traversal is now
   decoded through `0x1b50e` candidate resolution, class filtering,
   continuation-page entry, row-index advance, and recent-context
   duplicate suppression. The concrete internal-font candidate sequence is
-  now documented in `notes/resource-rom.md`. Sample run 1 byte stream
-  ``ABCDEfghij#$@[\\]^`{|}~123`` crosses `0x1c5e8..0x1ed84` in fixture
-  `font sample run 1 full row spans compact buckets`, emitting compact
-  buckets `-1` and `0`, object counts `1` and `2`, dispatch target
-  `0x1effe`, and per-bucket row hashes
-  `b6a0061f7de34c0fa1a0586263f3f167c84d95219e05437e74a286356409af37`
-  and
-  `d7dfb89c8cff5e309b95aac43cd64e0f74f17db1dd9118253544343f17b4c1ce`.
-  Sample run 2 from table `0x1c1e9` now crosses the same boundary in
-  fixture `font sample run 2 full row spans compact buckets`, emitting
-  compact buckets `-1` and `0`, object counts `2` and `1`, and row hashes
-  `c77bca7364adbda480c5a31fa4be469175c031bd5f14fc4a54a2e6fb09174be5`
-  and
-  `b10556bfb02fbb6a2ffec2a82add396619bae3ace0ebab657113f4d3648c41b5`.
-  The open boundary is full printout placement and page-level
-  positioning. Compare those rows against the direct payload hashes and a
-  known printed/self-test sample to resolve remaining `+0x28..+0x31`
-  baseline/cell semantics.
+  documented in `notes/resource-rom.md`. Fixture `font sample full printout
+  source placement follows firmware order` composes all eight source/class
+  segments after the `0x1d76c` / `0x10084` / `0x1e9a0` / `0x1c9b8` /
+  `0x1c916` / `0x1cfb4` pass setup sequence, with row counts
+  `[0,1,1,14,0,1,1,14]` and aggregate segment digest
+  `f4105538bd1506731f04810ed2f50cce23815751c4f979ed6f60efab4cde08c7`.
+  Fixture `font sample full printout rows reuse ROM sample byte runs` proves
+  every non-empty row queues sample-run tables `0x1c1cf` and `0x1c1e9`, with
+  correlation digest
+  `4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a`.
+  Fixture `font sample full printout segments render through 0x1ed84 and
+  0x1ef6a` renders the eight source/class page-record segments through the
+  bridge and band renderer, with aggregate surface digest
+  `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
+  The open boundary is physical baseline/cell/page placement agreement
+  against a known font/self-test sample, including remaining
+  `+0x28..+0x31` header semantics.
 - Broaden visible-output variants where they still change compatibility:
   font-selection fallback/error branches beyond the two symbol-miss
   fixtures, downloaded-glyph publication cross-products beyond the

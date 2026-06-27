@@ -309,7 +309,13 @@ pixels or byte-stream compatibility.
    ultimately needs rendered page images compared against known LaserJet II
    output for representative byte streams. The initial mixed page-image
    stream above is a ROM-derived internal reproduction contract, not a
-   physical-device comparison.
+   physical-device comparison. The font-sample printout now has its own
+   internal rendered-surface checkpoint: fixture `font sample full printout
+   segments render through 0x1ed84 and 0x1ef6a` renders all eight source/class
+   page-record segments with aggregate digest
+   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
+   The remaining sample-printout gap is physical baseline/cell placement
+   comparison against a known font/self-test page.
 
 ## Next Disassembly Targets
 
@@ -320,13 +326,14 @@ The next work should follow dataflow, not isolated handlers:
    descriptor/payload producer chain, and host-stream downloaded glyph output
    are now tracked. Host-fetched `0x1719c` type-0, type-1, and type-2 payloads
    reach both `d4ac` and `d8fc` span rows, and the shared
-   disabled/lower/page/high-x consumer branch family is fixture-backed. Four
-   parser-produced metric-value variants now cover tight `d4ac` page-extent
-   gates, one rounded-metric clamp into `+0x2c/+0x2d`, shifted `d8fc` visible
-   rows, one midpoint case where `d8fc` updates state but leaves compact-only
-   output, one lower-bound no-span output path for both consumers, and one
-   upper-bound case where `d4ac` still renders a span while `d8fc` exits
-   `beyond-page-extent`. Fixture
+   disabled/lower/page/high-x consumer branch family is fixture-backed. The
+   six-case legal descriptor metric matrix covers tight `d4ac` page-extent
+   gates, rounded-metric clamping into `+0x2c/+0x2d`, shifted `d8fc` visible
+   rows, a zero rounded/offset case where both consumers publish spans, a
+   midpoint case where `d8fc` updates state but leaves compact-only output, a
+   lower-bound no-span output path for both consumers, and an upper-bound case
+   where `d4ac` still renders a span while `d8fc` exits `beyond-page-extent`.
+   Fixture
    `descriptor metric fields match across inline and resource contexts` now
    pins the legal producer-form boundary: inline/unflagged reaches `d4ac`,
    resource/flagged reaches `d8fc`, and the swapped forms fail at concrete

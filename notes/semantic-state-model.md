@@ -2101,8 +2101,13 @@ Fixture `0x17708 font-ID non-selected exits preserve prior selection` covers
 the helper exits that deliberately stop before map dispatch: record scan miss,
 candidate-slot miss, class mismatch, and full page-root context table. These
 paths restore `0x782f2e = 0x2222`, leave `0x7828a8 = 0` until a candidate slot
-is actually accepted, and never call `0x14c64`; their visible-output contract
-is preservation of the previously selected font, not a new rendered row.
+is actually accepted, and never call `0x14c64`. Fixture
+`font-ID non-selected exits keep prior visible rows` carries host-fetched
+`ESC (7X!!` through the same parser record and those four terminal helper
+states, then renders the printable `!!` tail from the previously selected
+primary context `0xc008004c`, object
+`00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and row digest
+`8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
 Fixture
 `real default-table caller stream uses ROM-backed words` then drives real
 scanned built-in default words through `ESC (0@ ESC )0@ ESC )1@ ESC )2@
@@ -2194,7 +2199,9 @@ path returns immediately after `0x148f8`, preserving active words
     `0x1234` through `0x782f2e`, and calls `0x17708` for slot `1`.
   - final-`X` non-selected helper exits:
     `scan-miss`, `candidate-slot-miss`, `class-mismatch`, and `context-full`
-    all restore saved font ID `0x2222` after the helper returns.
+    all restore saved font ID `0x2222` after the helper returns. In the
+    visible preserved-state stream, the following `!!` bytes consume the
+    previously selected primary context `0xc008004c`.
   - `0x13eb8` no-dispatch exit inputs:
     transient refresh uses selected slot `0`, requested primary `0x0115`,
     saved active primary word `0x9999`, and page-root transient flag
@@ -2209,7 +2216,9 @@ path returns immediately after `0x148f8`, preserving active words
   fixtures `symbol-set parser trace covers X and @ special cases` and
   `real default-table caller stream uses ROM-backed words`; fixture
   `0x17708 font-ID non-selected exits preserve prior selection` pins the
-  non-selected final-`X` helper exits.
+  non-selected final-`X` helper exits, and fixture
+  `font-ID non-selected exits keep prior visible rows` pins their following
+  printable output.
 - Canonical selected context:
   - `0x782ee6 +0x00`: selected longword `0xc008004c`.
   - `0x782ee6 +0x04`: bit-30-derived byte `1`.
@@ -2262,6 +2271,10 @@ path returns immediately after `0x148f8`, preserving active words
     `0xc00ae122`.
   - primary compact coords: `0x6a00` and `0x6802`.
   - secondary compact coords after SO: `0xc900` and `0xcb01`.
+  - final-`X` non-selected preserved-output compact prefix:
+    `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, with render-record context
+    slot `0xc008004c` and row digest
+    `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
   - non-Roman primary compact prefixes:
     `0N` uses `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, while `10U` and
     `11U` use `00 00 00 00 00 00 00 02 20 6a 00 20 68 02`.
@@ -2280,7 +2293,9 @@ path returns immediately after `0x148f8`, preserving active words
   `secondary symbol miss falls back before visible SO page-record rows` reaches
   the same secondary visible page-record fields after symbol fallback; live
   handoff fixtures reach the same primary and secondary fields after reading
-  context slots `0` and `1` from the page-root slot table.
+  context slots `0` and `1` from the page-root slot table; fixture
+  `font-ID non-selected exits keep prior visible rows` reaches the same
+  primary visible fields after failed final-`X` helper exits.
 - Derived/cache state:
   - `0x7828a8`: selected candidate slot `0x782354`.
   - secondary selected candidate slot `0x782350`.
@@ -2300,7 +2315,8 @@ path returns immediately after `0x148f8`, preserving active words
     scan miss and candidate-slot miss leave selected pointer `0x7828a8 = 0`;
     class mismatch observes pointer `0x782364` and record class `0xff` but
     rejects wanted class `0x00`; context-full observes the same pointer but
-    stops when `0xc4fc` returns `0x11`.
+    stops when `0xc4fc` returns `0x11`. None of these cases replaces the
+    prior printable context `0xc008004c`.
   - primary fallback active-word source: fallback table word `0x0115` after
     the requested pass misses word `0x9a55`.
   - parser default-symbol table `0x782f1c/20/24/28`: built by `0x1ac0a` and
@@ -2364,9 +2380,10 @@ path returns immediately after `0x148f8`, preserving active words
     secondary parser/helper boundary to selected context `0x00000100`, SO
     handler `0xc6b8`, and one following `0xd04a` printable event.
   - direct final-`X` error-state fixture cases use the same `0x17708` helper
-    boundary without a following printable tail: no matching `0x172c0` record,
-    no matching `0x1b4c0` candidate slot, class mismatch at `+0x20`, and
-    page-root context-full after `0xc4fc`.
+    boundary and now append a following printable tail: no matching `0x172c0`
+    record, no matching `0x1b4c0` candidate slot, class mismatch at `+0x20`,
+    and page-root context-full after `0xc4fc`, then two `0xd04a` printable
+    events from prior context `0xc008004c`.
   - printable parser events are two `0xd04a` entries for the primary fixture,
     and `0xc6b8, 0xd04a, 0xd04a` for the secondary SO and fallback fixtures.
   - the live primary handoff stream is `SI !!` with current-font/page-root
@@ -2395,7 +2412,8 @@ path returns immediately after `0x148f8`, preserving active words
     `scan-miss` calls only `0x172c0`; `candidate-slot-miss` calls
     `0x172c0` and `0x1b4c0`; `class-mismatch` calls the same scan/slot
     helpers and stops before reader `0x15890`; `context-full` adds `0xc4fc`
-    and stops when selected page slot is `0x11`.
+    and stops when selected page slot is `0x11`. The preserved-visible fixture
+    confirms none of these statuses calls `0x14c64` before the printable tail.
   - `0x17708` inline/downloaded selected bookkeeping:
     the secondary final-`X` visible fixture calls `0x172c0`, `0x1b4c0`,
     `0xc4fc`, `0x158be`, `0x1b2fe`, and `0x14c64`; `0x158be` reads the active
@@ -2522,8 +2540,10 @@ path returns immediately after `0x148f8`, preserving active words
   glyph entry `0x00000148`.
 - Final-`X` non-selected exits do not produce a new consumer context. Fixture
   `0x17708 font-ID non-selected exits preserve prior selection` proves the
-  helper stops before `0x14c64`, so later `0xd04a` / `0x1393a` output remains
-  the responsibility of the previously selected context.
+  helper stops before `0x14c64`, and fixture
+  `font-ID non-selected exits keep prior visible rows` proves the following
+  `0xd04a` / `0x1393a` events consume prior context `0xc008004c`, map `!` to
+  glyph `0x00`, and emit glyph entry `0x001088`.
 - Final-`@` parser variants affect requested/active symbol words before later
   font selection. Fixture
   `real final-@ default-table streams select visible built-ins` proves those
@@ -2615,10 +2635,12 @@ entry `0x00afec`, object prefix
 `00 00 00 00 00 00 00 02 00 89 00 00 87 02`, and rendered-row digest
 `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
 
-The direct `0x17708` non-selected fixture has no new rendered rows by design.
-Its output effect is negative: after scan miss, candidate-slot miss,
-class-mismatch, or context-full, no new map dispatch occurs and the previous
-selection remains the font state that any later printable byte will consume.
+The final-`X` non-selected visible fixture renders the previous primary font,
+not the requested font ID. After scan miss, candidate-slot miss,
+class-mismatch, or context-full, no new map dispatch occurs; the following
+`!!` tail consumes preserved context `0xc008004c`, queues object
+`00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and renders row digest
+`8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
 
 The final-`X` inline/downloaded visible fixture renders a synthetic secondary
 inline/downloaded record selected by font ID. Host-fetched `ESC )4660X SO !`
@@ -2666,9 +2688,11 @@ state preservation rather than appending a printable tail.
 High for direct `0x17708` non-selected exits because fixture
 `0x17708 font-ID non-selected exits preserve prior selection` pins all four
 terminal statuses, call lists, restored font ID, selected pointer state, class
-comparison, and `0xc4fc` full-table result. Medium for carrying those negative
-exits through later visible output because the current fixture documents the
-helper boundary rather than appending a printable tail.
+comparison, and `0xc4fc` full-table result. High for carrying those exits
+through later visible output because fixture
+`font-ID non-selected exits keep prior visible rows` appends the parsed
+printable tail and pins prior context `0xc008004c`, object prefix, bridge
+context slots, and row digest.
 High for final-`@` parser/default-table behavior because the ROM parser
 records, terminal handler, subdispatch targets, real built-in default words,
 requested words, active words, and common-refresh count are fixture-pinned.
@@ -2699,6 +2723,7 @@ digests.
 - `font-ID built-in selection feeds visible page-record rows`
 - `font-ID inline/downloaded selection feeds visible page-record rows`
 - `0x17708 font-ID non-selected exits preserve prior selection`
+- `font-ID non-selected exits keep prior visible rows`
 - `0x13eb8 transient and cache-hit exits avoid dispatch`
 - `real default-table caller stream uses ROM-backed words`
 - `real final-@ default-table streams select visible built-ins`
@@ -2741,9 +2766,11 @@ digests.
   `0x120be..0x17708..0x14c64..0xd04a`, and inline/downloaded
   `ESC )4660X SO !` through
   `0x120be..0x17708..0x14c64..0xc6b8..0xd04a`; the covered direct font-ID
-  non-selected boundaries stop at `0x17708` statuses `scan-miss`,
-  `candidate-slot-miss`, `class-mismatch`, and `context-full`, with the
-  `context-full` middle edge ending at `0x17708..0xc4fc = 0x11`.
+  non-selected boundaries now run from `0x120be..0x17708` statuses
+  `scan-miss`, `candidate-slot-miss`, `class-mismatch`, and `context-full`
+  into preserved-context `0xd04a` output. The `context-full` helper edge still
+  ends at `0x17708..0xc4fc = 0x11` before the printable tail consumes prior
+  context `0xc008004c`.
 - Final-`@` parser variants are documented through requested/active
   symbol-state, real default-table words, and primary/secondary visible-output
   streams. No unresolved middle edge remains for `@0..@3` inside the current

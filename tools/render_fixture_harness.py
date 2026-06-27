@@ -33720,6 +33720,166 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         data,
         font_id_builtin_printable_bytes,
     )
+    font_id_preserved_context = 0xC008004C
+    font_id_preserved_hmi = builtin_flagged_hmi_from_context(resources, font_id_preserved_context)
+    font_id_preserved_visible_page = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        font_id_builtin_printable_bytes,
+        font_id_preserved_context,
+        control_fixture_state(
+            cursor_x=pack12(0),
+            cursor_y=pack12(21),
+            hmi=font_id_preserved_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=font_id_preserved_hmi["hmi"],
+    )
+    font_id_preserved_visible_rendered = font_id_preserved_visible_page["rendered"]
+    font_id_preserved_visible_bridged = font_id_preserved_visible_page["bridged_record"]
+    assert isinstance(font_id_preserved_visible_rendered, dict)
+    assert isinstance(font_id_preserved_visible_bridged, dict)
+    font_id_preserved_visible_rows = font_id_preserved_visible_rendered["rows"]
+    assert isinstance(font_id_preserved_visible_rows, list)
+    font_id_preserved_case_results = {
+        "scan_miss": font_id_scan_miss,
+        "candidate_slot_miss": font_id_candidate_miss,
+        "class_mismatch": font_id_class_mismatch,
+        "context_full": font_id_context_full,
+    }
+    checks.append(assert_equal("font-ID non-selected exits keep prior visible rows", {
+        "combined_stream": font_id_builtin_visible_fetch["stream"],
+        "fetch_sources": sorted(set(font_id_builtin_visible_fetch["sources"])),
+        "symbol_parser_handlers": [
+            dispatch["handler"]
+            for command in font_id_builtin_parser_trace["commands"]  # type: ignore[index]
+            for dispatch in command["dispatches"]  # type: ignore[index]
+        ],
+        "symbol_record": font_id_builtin_parser_trace["commands"][0]["record"],  # type: ignore[index]
+        "terminal_helpers": {
+            name: {
+                "status": result["status"],
+                "selected_pointer_7828a8": result["selected_pointer_7828a8"],
+                "selected_longword": result.get("selected_longword"),
+                "c4fc_result": result.get("c4fc_result"),
+                "restored_font_id_782f2e": result["restored_font_id_782f2e"],
+                "calls": result["calls"],
+            }
+            for name, result in font_id_preserved_case_results.items()
+        },
+        "preserved_context": font_id_preserved_context,
+        "metric": font_id_preserved_hmi,
+        "printable_stream": font_id_builtin_printable_bytes,
+        "printable_parser_handlers": [
+            event["handler"]
+            for event in font_id_builtin_printable_trace["events"]
+        ],
+        "printable_sources": [
+            {
+                "source_context": event["source"]["context"],
+                "source_slot": event["source"]["context_slot"],
+                "mapped": event["source"]["mapped"],
+                "glyph_entry": event["source"]["glyph_entry"],
+                "coord": event["page_result"]["coord"],
+            }
+            for event in font_id_preserved_visible_page["events"]
+            if event["kind"] == "printable"
+        ],
+        "object_prefix": font_id_preserved_visible_page["bucket_object"][:14],
+        "bridged_context_slots": font_id_preserved_visible_bridged["context_slots"][:2],
+        "rendered": {
+            "selector": font_id_preserved_visible_rendered["selector"],
+            "context_slot": font_id_preserved_visible_rendered["context_slot"],
+            "count": font_id_preserved_visible_rendered["count"],
+            "row_count": len(font_id_preserved_visible_rows),
+            "row_width": max((len(str(row)) for row in font_id_preserved_visible_rows), default=0),
+            "row_sha256": hashlib.sha256(
+                "\n".join(str(row) for row in font_id_preserved_visible_rows).encode("ascii")
+            ).hexdigest(),
+        },
+        "final_state": select_keys(font_id_preserved_visible_page["final_state"], (
+            "cursor_x",
+            "cursor_y",
+            "hmi",
+            "page_record_root_allocations",
+        )),
+    }, {
+        "combined_stream": b"\x1b(7X!!",
+        "fetch_sources": ["ring"],
+        "symbol_parser_handlers": [0x011EB6, 0x01201E, 0x0120BE],
+        "symbol_record": bytes.fromhex("80 58 00 07 00 00"),
+        "terminal_helpers": {
+            "scan_miss": {
+                "status": "scan-miss",
+                "selected_pointer_7828a8": 0,
+                "selected_longword": None,
+                "c4fc_result": None,
+                "restored_font_id_782f2e": 0x2222,
+                "calls": ["0x172c0"],
+            },
+            "candidate_slot_miss": {
+                "status": "candidate-slot-miss",
+                "selected_pointer_7828a8": 0,
+                "selected_longword": None,
+                "c4fc_result": None,
+                "restored_font_id_782f2e": 0x2222,
+                "calls": ["0x172c0", "0x1b4c0"],
+            },
+            "class_mismatch": {
+                "status": "class-mismatch",
+                "selected_pointer_7828a8": 0x782364,
+                "selected_longword": 0xC0089FB0,
+                "c4fc_result": None,
+                "restored_font_id_782f2e": 0x2222,
+                "calls": ["0x172c0", "0x1b4c0"],
+            },
+            "context_full": {
+                "status": "context-full",
+                "selected_pointer_7828a8": 0x782364,
+                "selected_longword": 0xC0089FB0,
+                "c4fc_result": 0x11,
+                "restored_font_id_782f2e": 0x2222,
+                "calls": ["0x172c0", "0x1b4c0", "0xc4fc"],
+            },
+        },
+        "preserved_context": 0xC008004C,
+        "metric": {
+            "base": 0x00004C,
+            "metric_flag": 0,
+            "raw_metric": 0x00780000,
+            "hmi": pack12(30),
+        },
+        "printable_stream": b"!!",
+        "printable_parser_handlers": [0x00D04A, 0x00D04A],
+        "printable_sources": [
+            {
+                "source_context": 0xC008004C,
+                "source_slot": 0,
+                "mapped": 0,
+                "glyph_entry": 0x001088,
+                "coord": coord,
+            }
+            for coord in (0x6A00, 0x6802)
+        ],
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 00 6a 00 00 68 02"),
+        "bridged_context_slots": (0xC008004C, 0),
+        "rendered": {
+            "selector": 0,
+            "context_slot": 0,
+            "count": 2,
+            "row_count": 38,
+            "row_width": 49,
+            "row_sha256": "8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c",
+        },
+        "final_state": {
+            "cursor_x": pack12(60),
+            "cursor_y": pack12(21),
+            "hmi": pack12(30),
+            "page_record_root_allocations": 1,
+        },
+    }))
     font_id_builtin_visible_context = int(font_id_builtin_select["selected_longword"])
     font_id_builtin_visible_hmi = builtin_flagged_hmi_from_context(
         resources,
@@ -83793,6 +83953,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_id_context_full["status"],
         font_id_context_full["c4fc_result"],
         font_id_context_full["restored_font_id_782f2e"],
+    ))
+    lines.append("- font-ID preserved visible output: fixture `font-ID non-selected exits keep prior visible rows` carries host-fetched stream `ESC (7X!!` through the same parser record, applies those four non-selected `0x17708` terminal states, then renders the printable `!!` tail from prior context `0x%08x` with object prefix `%s` and rendered-row digest `%s`." % (
+        font_id_preserved_context,
+        " ".join(f"{byte:02x}" for byte in font_id_preserved_visible_page["bucket_object"][:14]),
+        hashlib.sha256(
+            "\n".join(str(row) for row in font_id_preserved_visible_rows).encode("ascii")
+        ).hexdigest(),
     ))
     lines.append("- font-ID visible selection: fixture `font-ID built-in selection feeds visible page-record rows` carries host-fetched stream `ESC (7X!!` through `0xa904`, parser handlers `0x11eb6` / `0x1201e` / `0x120be`, `0x17708` selected context `0x%08x`, printable `0xd04a` rows, object prefix `%s`, and rendered-row digest `%s`." % (
         font_id_builtin_visible_context,

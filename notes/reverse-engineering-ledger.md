@@ -1134,15 +1134,19 @@ ROM work needed:
   (s0p10h12v0s0b3T!!`, secondary fallback `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`,
   primary `ESC (s0p10h12v0s0b3T SI !!`, and secondary `ESC )s0p16h8v0s0b0T SO !!`
   composed handoff cases, plus the real final-`@` default-table primary and secondary
-  visible streams, final-`X` built-in `ESC (7X!!` visible stream, and final-`X`
-  inline/downloaded `ESC )4660X SO !` visible stream. The direct `0x17708` error exits
-  are now state-covered by fixture
+  visible streams, final-`X` built-in `ESC (7X!!` visible stream, final-`X`
+  inline/downloaded `ESC )4660X SO !` visible stream, and final-`X` non-selected
+  `ESC (7X!!` preserved-output stream. The direct `0x17708` error exits
+  are now state- and output-covered by fixtures
   `0x17708 font-ID non-selected exits preserve prior selection`: scan miss,
   candidate-slot miss, class mismatch, and context-full all restore `0x782f2e` and stop
-  before `0x14c64`. The direct `0x13eb8` no-dispatch exits are also state-covered by
+  before `0x14c64`, and `font-ID non-selected exits keep prior visible rows`, where
+  following `!!` renders from prior context `0xc008004c` with row digest
+  `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
+  The direct `0x13eb8` no-dispatch exits are state-covered by
   fixture `0x13eb8 transient and cache-hit exits avoid dispatch`: transient `0x78298f`
   stores selected context `0xc008004c` without `0x144d2`/`0x14c64`, and cache-hit
-  returns after `0x148f8`. Add visible tails only if later inline/downloaded or
+  returns after `0x148f8`. Add visible tails there only if later inline/downloaded or
   error-return branches expose different preserved-state output.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become

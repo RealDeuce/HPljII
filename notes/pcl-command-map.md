@@ -612,6 +612,11 @@ no `0x1b4c0` slot, class mismatch at pointer `0x782364` when record class
 returns page slot `0x11`. In all four cases the helper restores saved
 `0x782f2e = 0x2222` and does not call `0x14c64`, so following printable output
 continues from the prior selected font rather than a newly selected font ID.
+Fixture `font-ID non-selected exits keep prior visible rows` pins that
+following output: host-fetched `ESC (7X!!` uses the same parser record and
+then renders `!!` from prior context `0xc008004c`, compact object prefix
+`00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and row digest
+`8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
 
 The harness now pins six concrete common-refresh outcomes from `0xc580`.
 With dirty flag `0x782f2c = 1`, parser/setup slot `D5 = 0`, current

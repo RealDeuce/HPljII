@@ -657,7 +657,14 @@ by Roman-8 fallback and record `0x01a984` by exact `0x000e`; real
 `0x782330` before it. A real-backed `@0`/`@1`/`@2`/`@3` caller stream
 now routes through ROM terminal handler `0x120be` and consumes those
 table/default-font words through the same default-table/copy/default-font
-subdispatch.
+subdispatch. Fixture `real final-@ default-table streams select visible
+built-ins` appends primary `ESC (s0p10h12v0s0b3T!!` and secondary
+`ESC )s0p16h8v0s0b0T SO !!` tails to that caller stream. The final active
+words `[0x000e, 0x0005]` select primary context `0xc0080cb8` and secondary
+context `0xc00ad4aa`, queue the same compact object prefixes as the pinned
+primary non-Roman and secondary SO streams, and render row digests
+`8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c` /
+`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
 
 Downloaded-font command edges are now decoded in
 `generated/analysis/ic30_ic13_font_control_flow.md`. `ESC *c#D`
@@ -1066,12 +1073,12 @@ handlers:
   odd-span wide, no-install, and status-`2` compact bucket variants, the
   transparent secondary segment-57 fallback-row memory-map interpretation
   beyond the now-pinned page-record, render-prefix, and continuation-policy
-  boundary, and final-`@` symbol table/copy variants only if they need
-  compatibility-facing visible-output behavior. The primary transparent
-  high-control path now includes boundary, interior-sample, tall-glyph, and
-  top-of-range fixtures, and the parser/default-table state boundary for
-  `@0..@3` is already pinned by fixture `real default-table caller stream uses
-  ROM-backed words`.
+  boundary. The primary transparent high-control path now includes boundary,
+  interior-sample, tall-glyph, and top-of-range fixtures. The final-`@`
+  table/copy/default-font variants are now pinned through parser state and
+  visible output by fixtures `real default-table caller stream uses
+  ROM-backed words` and `real final-@ default-table streams select visible
+  built-ins`.
 - Continue the active-render scheduler only at the remaining external
   boundary: `$8000.4`, `$a601`, `$a801`, `$aa01`, `0xfffe0001`, and
   `0xfffe0003` physical timing/MMIO correlation. The software-visible

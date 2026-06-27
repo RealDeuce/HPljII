@@ -1136,8 +1136,9 @@ ROM work needed:
   `ESC (1234U ESC (s0p10h12v0s0b3T!!`, secondary fallback
   `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`, primary
   `ESC (s0p10h12v0s0b3T SI !!`, and secondary
-  `ESC )s0p16h8v0s0b0T SO !!` composed handoff cases, and extend `0x13eb8`
-  if later inline/downloaded or error-return branches surface.
+  `ESC )s0p16h8v0s0b0T SO !!` composed handoff cases, plus the real
+  final-`@` default-table primary and secondary visible streams, and extend
+  `0x13eb8` if later inline/downloaded or error-return branches surface.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.
@@ -1150,10 +1151,13 @@ ROM work needed:
   same-class chooser tie-breakers after `0x14398` / `0x13c06`. What remains
   is the HP/manual-facing baseline/cell terminology and comparison against a
   known printed font/self-test sample.
-- Decide whether the parser-exposed `@0..@2` table/copy variants need
-  compatibility-facing documentation. The default-font candidate and
-  caller path is now real-record backed through `0x1b250`, `0x1b50e`,
-  `0x1ab84`, `0x1b060`, and the ROM `0x120be` terminal path.
+- The parser-exposed `@0..@3` table/copy/default-font variants now have
+  compatibility-facing documentation. The default-font candidate and caller
+  path is real-record backed through `0x1b250`, `0x1b50e`, `0x1ab84`,
+  `0x1b060`, and the ROM `0x120be` terminal path, and fixture
+  `real final-@ default-table streams select visible built-ins` carries the
+  resulting active words into primary context `0xc0080cb8`, secondary context
+  `0xc00ad4aa`, compact object prefixes, and rendered row digests.
   The widened `0x1b50e` resolver now pins first/second scan windows for
   modes `0..3`, fast-probe fallback through `0x1b8ea`, and Roman-8
   duplicate/substitution state through `0x7828ac` and `0x7821a0`.

@@ -18200,10 +18200,13 @@ def render_mixed_printable_control_page_record_stream(
         state.setdefault("requested_symbols", [0x0115, 0x000E])
         state.setdefault("active_symbols", [0x0115, 0x000E])
         state.setdefault("remembered_symbols", list(state["requested_symbols"]))  # type: ignore[arg-type]
+        state.setdefault("default_symbols", [0x0115, 0x0115, 0x0115, 0x0115])
+        state.setdefault("default_font_symbol", state["requested_symbols"][0])  # type: ignore[index]
         state.setdefault("font_selection_events", [])
         state["requested_symbols"] = list(state["requested_symbols"])  # type: ignore[arg-type]
         state["active_symbols"] = list(state["active_symbols"])  # type: ignore[arg-type]
         state["remembered_symbols"] = list(state["remembered_symbols"])  # type: ignore[arg-type]
+        state["default_symbols"] = list(state["default_symbols"])  # type: ignore[arg-type]
 
     def font_selection_sequence_end(start: int) -> int:
         scan = start + 3
@@ -18245,6 +18248,8 @@ def render_mixed_printable_control_page_record_stream(
             requested_symbols=state["requested_symbols"],
             active_symbols=state["active_symbols"],
             remembered_symbols=state["remembered_symbols"],
+            default_symbols=state["default_symbols"],
+            default_font_symbol=state["default_font_symbol"],
             current_selector_782f06=int(state.get("text_map_selector_782f06", 0)),
             current_page_root=int(state.get("current_page_root", 0)),
             page_root_context_slots=state.get("page_root_context_slots", [0] * 16),
@@ -38236,6 +38241,326 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "refreshes": 5,
         "final_mode": 0,
     }))
+    real_default_visible_cases: dict[str, dict[str, object]] = {}
+    for label, selection_stream, printable_tail, initial_context, secondary_context in (
+        (
+            "primary",
+            primary_font_selection_stream,
+            b"!!",
+            0,
+            None,
+        ),
+        (
+            "secondary",
+            secondary_font_selection_stream,
+            b"\x0e!!",
+            primary_visible_context,
+            0,
+        ),
+    ):
+        visible_stream = real_default_table_stream_bytes + selection_stream + printable_tail
+        visible_state = control_fixture_state(
+            cursor_x=pack12(0 if label == "primary" else 30),
+            cursor_y=pack12(21),
+            hmi=0 if label == "primary" else primary_visible_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            text_map_selector_782f06=0,
+            font_context_install_success=1,
+        )
+        visible_state.update({
+            "requested_symbols": [0x1111, 0x2222],
+            "active_symbols": [0x1111, 0x2222],
+            "remembered_symbols": [0x1111, 0x2222],
+            "default_symbols": real_default_table_symbols,
+            "default_font_symbol": int(real_current_default_secondary["word"]),
+        })
+        visible_page = render_mixed_printable_control_page_record_stream(
+            data,
+            resources,
+            visible_stream,
+            initial_context,
+            visible_state,
+            default_advance=0 if label == "primary" else primary_visible_hmi["hmi"],
+            secondary_context=secondary_context,
+            font_selection_env=font_selection_env,
+        )
+        visible_rendered = visible_page["rendered"]
+        visible_bridged = visible_page["bridged_record"]
+        assert isinstance(visible_rendered, dict)
+        assert isinstance(visible_bridged, dict)
+        visible_events = visible_page["events"]
+        symbol_events = [
+            event
+            for event in visible_events
+            if isinstance(event, dict) and event["kind"] == "font-symbol-set"
+        ]
+        font_events = [
+            event
+            for event in visible_events
+            if isinstance(event, dict) and event["kind"] == "font-selection"
+        ]
+        printable_events = [
+            event
+            for event in visible_events
+            if isinstance(event, dict) and event["kind"] == "printable"
+        ]
+        shift_events = [
+            event
+            for event in visible_events
+            if isinstance(event, dict) and event["kind"] == "font-shift"
+        ]
+        rows = visible_rendered["rows"]
+        assert isinstance(rows, list)
+        real_default_visible_cases[label] = {
+            "stream": visible_stream,
+            "symbol_events": [
+                {
+                    "sequence": event["sequence"],
+                    "requested_symbols": event["requested_symbols"],
+                    "active_symbols": event["active_symbols"],
+                    "stream_event": {
+                        key: event["stream_events"][0][key]  # type: ignore[index]
+                        for key in (
+                            "dispatch_target",
+                            "kind",
+                            "requested_word",
+                            "active_word",
+                        )
+                    },
+                }
+                for event in symbol_events
+            ],
+            "font": {
+                "slot": font_events[0]["slot"],
+                "context_update": font_events[0]["context_update"],
+                "selection_map": font_events[0]["selection_map"],
+                "metric": font_events[0]["metric"],
+                "active_symbols": font_events[0]["active_symbols"],
+            },
+            "shift": [
+                {
+                    "handler": event["handler"],
+                    "selector_before": event["selector_before"],
+                    "selector_after": event["selector_after"],
+                    "install_called": event["install_called"],
+                    "install_success": event["install_success"],
+                }
+                for event in shift_events
+            ],
+            "printable_sources": [
+                {
+                    "source_context": event["source"]["context"],
+                    "source_slot": event["source"]["context_slot"],
+                    "mapped": event["source"]["mapped"],
+                    "glyph_entry": event["source"]["glyph_entry"],
+                    "coord": event["page_result"]["coord"],
+                }
+                for event in printable_events
+            ],
+            "object_prefix": visible_page["bucket_object"][:14],
+            "bridged_context_slots": visible_bridged["context_slots"][:2],
+            "rendered": {
+                "selector": visible_rendered["selector"],
+                "context_slot": visible_rendered["context_slot"],
+                "count": visible_rendered["count"],
+                "row_count": len(rows),
+                "row_width": max((len(str(row)) for row in rows), default=0),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(str(row) for row in rows).encode("ascii")
+                ).hexdigest(),
+            },
+            "final_state": {
+                key: visible_page["final_state"][key]
+                for key in (
+                    "cursor_x",
+                    "cursor_y",
+                    "hmi",
+                    "text_map_selector_782f06",
+                    "font_context_install_calls",
+                    "page_record_root_allocations",
+                )
+                if key in visible_page["final_state"]
+            },
+        }
+    checks.append(assert_equal(
+        "real final-@ default-table streams select visible built-ins",
+        real_default_visible_cases,
+        {
+            "primary": {
+                "stream": (
+                    real_default_table_stream_bytes
+                    + primary_font_selection_stream
+                    + b"!!"
+                ),
+                "symbol_events": [
+                    {
+                        "sequence": sequence,
+                        "requested_symbols": requested,
+                        "active_symbols": requested,
+                        "stream_event": {
+                            "dispatch_target": target,
+                            "kind": kind,
+                            "requested_word": word,
+                            "active_word": word,
+                        },
+                    }
+                    for sequence, requested, target, kind, word in (
+                        (b"\x1b(0@", [0x0005, 0x2222], 0x01BED4, "default-table-slot", 0x0005),
+                        (b"\x1b)0@", [0x0005, 0x000E], 0x01BED4, "default-table-slot", 0x000E),
+                        (b"\x1b)1@", [0x0005, 0x0005], 0x01BF0A, "default-table-primary", 0x0005),
+                        (b"\x1b)2@", [0x0005, 0x0005], 0x01BF36, "copy-primary-symbol", 0x0005),
+                        (b"\x1b(3@", [0x000E, 0x0005], 0x01BF74, "default-font", 0x000E),
+                    )
+                ],
+                "font": {
+                    "slot": 0,
+                    "context_update": {
+                        "helper": 0x0144D2,
+                        "context_record": 0x782EE6,
+                        "selected_longword": 0xC0080CB8,
+                        "byte_4_bit30": 1,
+                        "byte_5_bit26": 0,
+                    },
+                    "selection_map": {
+                        "path": "built-in-cache-miss",
+                        "slot": "primary",
+                        "selected_symbol": 0x000E,
+                        "active_symbol": 0x000E,
+                        "range_start": 0x0021,
+                        "range_end": 0x00FF,
+                        "patch_kind": "selected-symbol-not-roman8",
+                        "map_address": 0x782F32,
+                    },
+                    "metric": {
+                        "base": 0x000CB8,
+                        "metric_flag": 0,
+                        "raw_metric": 0x00780000,
+                        "hmi": pack12(30),
+                    },
+                    "active_symbols": [0x000E, 0x0005],
+                },
+                "shift": [],
+                "printable_sources": [
+                    {
+                        "source_context": 0xC0080CB8,
+                        "source_slot": 0,
+                        "mapped": 0,
+                        "glyph_entry": 0x001088,
+                        "coord": coord,
+                    }
+                    for coord in (0x6A00, 0x6802)
+                ],
+                "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 00 6a 00 00 68 02"),
+                "bridged_context_slots": (0xC0080CB8, 0),
+                "rendered": {
+                    "selector": 0,
+                    "context_slot": 0,
+                    "count": 2,
+                    "row_count": 38,
+                    "row_width": 49,
+                    "row_sha256": "8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c",
+                },
+                "final_state": {
+                    "cursor_x": pack12(60),
+                    "cursor_y": pack12(21),
+                    "hmi": pack12(30),
+                    "text_map_selector_782f06": 0,
+                    "page_record_root_allocations": 1,
+                },
+            },
+            "secondary": {
+                "stream": (
+                    real_default_table_stream_bytes
+                    + secondary_font_selection_stream
+                    + b"\x0e!!"
+                ),
+                "symbol_events": [
+                    {
+                        "sequence": sequence,
+                        "requested_symbols": requested,
+                        "active_symbols": requested,
+                        "stream_event": {
+                            "dispatch_target": target,
+                            "kind": kind,
+                            "requested_word": word,
+                            "active_word": word,
+                        },
+                    }
+                    for sequence, requested, target, kind, word in (
+                        (b"\x1b(0@", [0x0005, 0x2222], 0x01BED4, "default-table-slot", 0x0005),
+                        (b"\x1b)0@", [0x0005, 0x000E], 0x01BED4, "default-table-slot", 0x000E),
+                        (b"\x1b)1@", [0x0005, 0x0005], 0x01BF0A, "default-table-primary", 0x0005),
+                        (b"\x1b)2@", [0x0005, 0x0005], 0x01BF36, "copy-primary-symbol", 0x0005),
+                        (b"\x1b(3@", [0x000E, 0x0005], 0x01BF74, "default-font", 0x000E),
+                    )
+                ],
+                "font": {
+                    "slot": 1,
+                    "context_update": {
+                        "helper": 0x0144D2,
+                        "context_record": 0x782EF6,
+                        "selected_longword": 0xC00AD4AA,
+                        "byte_4_bit30": 1,
+                        "byte_5_bit26": 0,
+                    },
+                    "selection_map": {
+                        "path": "built-in-cache-miss",
+                        "slot": "secondary",
+                        "selected_symbol": 0x0115,
+                        "active_symbol": 0x0005,
+                        "range_start": 0x0021,
+                        "range_end": 0x007E,
+                        "patch_kind": "roman-extension",
+                        "map_address": 0x783032,
+                    },
+                    "metric": {
+                        "base": 0x02D4AA,
+                        "metric_flag": 0,
+                        "raw_metric": 0x00480000,
+                        "hmi": pack12(18),
+                    },
+                    "active_symbols": [0x000E, 0x0005],
+                },
+                "shift": [{
+                    "handler": 0x00C6B8,
+                    "selector_before": 0,
+                    "selector_after": 1,
+                    "install_called": True,
+                    "install_success": True,
+                }],
+                "printable_sources": [
+                    {
+                        "source_context": 0xC00AD4AA,
+                        "source_slot": 1,
+                        "mapped": 0,
+                        "glyph_entry": 0x02E4F6,
+                        "coord": coord,
+                    }
+                    for coord in (0xC900, 0xCB01)
+                ],
+                "object_prefix": bytes.fromhex("00 00 00 00 00 01 00 02 00 c9 00 00 cb 01"),
+                "bridged_context_slots": (0xC008004C, 0xC00AD4AA),
+                "rendered": {
+                    "selector": 1,
+                    "context_slot": 1,
+                    "count": 2,
+                    "row_count": 16,
+                    "row_width": 49,
+                    "row_sha256": "b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c",
+                },
+                "final_state": {
+                    "cursor_x": pack12(66),
+                    "cursor_y": pack12(21),
+                    "hmi": pack12(18),
+                    "text_map_selector_782f06": 1,
+                    "font_context_install_calls": 1,
+                    "page_record_root_allocations": 1,
+                },
+            },
+        },
+    ))
     text_source = build_text_source_object_from_1393a(resources, 0x440946B4, 0x21, x=0, y=0, context_slot=0)
     checks.append(assert_equal("0x1393a-modeled text source object fields", text_source, {
         "context": 0x440946B4,
@@ -82566,6 +82891,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " / ".join("0x%04x" % int(event["requested_word"]) for event in real_default_table_events),
         real_default_table_stream["active_symbols"][0],
         real_default_table_stream["active_symbols"][1],
+    ))
+    lines.append("- real final-`@` visible streams: fixture `real final-@ default-table streams select visible built-ins` appends primary `ESC (s0p10h12v0s0b3T!!` and secondary `ESC )s0p16h8v0s0b0T SO !!` tails after the real-backed `@0`/`@1`/`@2`/`@3` caller stream. The final active words `0x000e` / `0x0005` select primary context `0x%08x` and secondary context `0x%08x`, object prefixes `%s` / `%s`, and row digests `%s` / `%s`." % (
+        real_default_visible_cases["primary"]["font"]["context_update"]["selected_longword"],  # type: ignore[index]
+        real_default_visible_cases["secondary"]["font"]["context_update"]["selected_longword"],  # type: ignore[index]
+        " ".join(f"{byte:02x}" for byte in real_default_visible_cases["primary"]["object_prefix"]),  # type: ignore[index]
+        " ".join(f"{byte:02x}" for byte in real_default_visible_cases["secondary"]["object_prefix"]),  # type: ignore[index]
+        real_default_visible_cases["primary"]["rendered"]["row_sha256"],  # type: ignore[index]
+        real_default_visible_cases["secondary"]["rendered"]["row_sha256"],  # type: ignore[index]
     ))
     lines.append("- `ESC (2U` selects primary word `0x%04x` and patches `LINE_PRINTER` map byte `0x24 -> 0x%02x`; `ESC )0E` selects secondary word `0x%04x` and copies upper-half map byte `0xa1 -> 0x%02x` before clearing the upper half." % (
         symbol_stream["active_symbols"][0],

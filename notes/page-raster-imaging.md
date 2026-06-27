@@ -1277,7 +1277,15 @@ handlers `0x10e68`, `0x10e22`, `0x10898`, `0xd04a`, `0x10808`, `0x1075a`, and
 produces the same bucket-5 glyph/raster chain, the same bridged rule list, and
 the same `0x1ef6a` rows. The remaining caveat is the font-install split: the
 font payload phase still uses the modeled `0x16c14` install output as the
-resource image for the parser-driven page phase.
+resource image for the parser-driven page phase. That split is now documented
+as an exact handoff: the page phase consumes
+`bytearray(downloaded_wide_even_install["header"])`, whose host-fetched
+install fixture pins glyph `0x29`, table entry `0x00ee`, record delta
+`0x0780`, bitmap offset `0x078c`, record bytes
+`00 00 00 00 0c 01 00 01 00 90 00 00`, and the 18 copied bitmap bytes. The
+remaining open edge is live CPU continuity from the `0x16c14` / `0x16498`
+install return after byte `24` back to parser loop `0x11774` for the following
+`0x10e68` rectangle handler.
 The fetched `ESC )s2193W` downloaded-pointer object
 now also crosses `0x1edc6` plus the `0x1ed84`/`0x1ef6a` render-entry
 path before rendering the same segmented-wide row. A fetched printable

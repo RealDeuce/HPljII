@@ -3094,7 +3094,12 @@ Field groups:
 - Canonical font resource state: downloaded glyph table entry `0x00ee`, record
   delta `0x0780`, bitmap offset `0x078c`, bitmap size `18`, glyph mode `1`,
   rows `1`, width `0x0090`, and source kind `downloaded-pointer`. Writer:
-  `0x16498` using the linear `0x168dc` reader. Consumer: compact renderer
+  `0x16498` using the linear `0x168dc` reader. Fixture
+  `host-fetched even-span wide downloaded character renders through 0x1f0d2`
+  pins the exact installed record bytes
+  `00 00 00 00 0c 01 00 01 00 90 00 00` and bitmap bytes
+  `f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99`. Consumer:
+  `0x1393a` / `0x12f2e` during page-object production and compact renderer
   `0x1f0d2` after `0x1ef6a` dispatches target `0x1effe`.
 - Canonical page-record state: bucket `5` chain contains mode-0 raster object
   `00 00 00 00 80 00 00 02 00 00 c3 3c` followed by downloaded glyph object
@@ -3124,6 +3129,18 @@ Field groups:
   download and the page stream inside real CPU memory. The page stream itself
   now drives the glyph, rule, and raster producers together; the font payload
   install still enters the page phase as a modeled resource image.
+
+The modeled resource image is now a pinned handoff, not an implicit fixture
+shortcut. The page-stream runner uses exactly
+`bytearray(downloaded_wide_even_install["header"])`, the header produced by the
+host-fetched `0x16c14` / `0x16498` install fixture. With that header, printable
+byte `0x29` resolves to glyph entry `0x0780`, bitmap `0x078c`, width `0x0090`,
+rows `1`, inline record `12 01 00`, and context slot `3` before `0x12f2e`
+queues selector `0x1003`. The unresolved address boundary is the live CPU
+continuation from the delayed install return at `0x16c14` / `0x16498` after
+stream byte `24` back into parser loop `0x11774`, where the next page byte
+starts the `0x10e68` rectangle handler; the bytes, installed resource image,
+and downstream rendered rows on both sides are fixture-pinned.
 
 Readers and output effect: `0x1ef6a` runs call order `0x1ef86`, `0x1efc2`,
 `0x1f446`, `0x1f756`. The bucket dispatcher sends the raster object to
@@ -3283,9 +3300,10 @@ combination have not been page-compared.
   insertion, downloaded-current printable queue through `0x12f2e`, and delayed
   `0x105d0` / `0x13070` raster transfer into one bucket-5 render entry.
   Remaining risk is the earlier font-install-to-page handoff: the same fetched
-  byte stream is split at byte `24`, and the `0x16c14` installed memory image
-  is supplied to the page-stream runner instead of captured from a live CPU
-  memory run.
+  byte stream is split at byte `24`; the supplied memory image is now named as
+  the exact `bytearray(downloaded_wide_even_install["header"])` emitted by the
+  host-fetched `0x16c14` / `0x16498` install fixture, but it is still supplied
+  to the page-stream runner instead of captured from one live CPU memory run.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets; the normal, linear-segmented, and even-span wide siblings
   now publish through the same boundary. Fixture

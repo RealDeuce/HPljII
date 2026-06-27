@@ -748,6 +748,34 @@ composed rows. The remaining limitation is the modeled font install boundary:
 the fixture fetches one stream and uses the existing font-payload model to
 produce the installed memory image before the parser-driven page stream runs.
 
+The modeled install-to-page handoff is now documented as a concrete resource
+image contract rather than a vague fixture split. In fixture
+`host-fetched even-span wide downloaded character renders through 0x1f0d2`,
+the host-fetched `ESC )s18W` bytes enter delayed handler `0x16c14` through
+parser handlers `0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`. Handler
+`0x16498` installs glyph `0x29` by writing table entry `0x00ee`, record delta
+`0x0780`, record bytes `00 00 00 00 0c 01 00 01 00 90 00 00`, bitmap offset
+`0x078c`, bitmap size `18`, and the 18 linear bitmap bytes
+`f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99`. The page-stream
+fixture then uses exactly `bytearray(downloaded_wide_even_install["header"])`
+as its resource image: printable byte `0x29` resolves to glyph entry `0x0780`,
+bitmap `0x078c`, width `0x0090`, rows `1`, source kind
+`downloaded-pointer`, inline record `12 01 00`, and context slot `3` before
+`0x12f2e` queues selector `0x1003`.
+
+That handoff divides canonical state from parser scratch. Canonical resource
+state is the installed glyph table entry, record, bitmap, and copied bitmap
+bytes above. Parser scratch is the restored font payload record
+`80 57 00 12 00 00`, payload offset `6`, and stream byte range `0..24`, plus
+the later page parser range `24..54` and raster scratch record
+`80 57 00 02 00 00` at payload offset `28`. Derived/cache state is the page
+bucket chain, normalized rule object, `0x1ed84` active copy, and `0x1ef6a`
+dispatch fields. The unresolved middle edge is therefore exact: live CPU
+continuity from the `0x16c14` / `0x16498` install return after byte `24` back
+to the `0x11774` parser loop for the following `0x10e68` rectangle handler is
+not captured; the bytes and installed resource image on both sides of that
+boundary are fixture-pinned.
+
 Fixture `host-fetched segmented downloaded character renders through
 0x1f1f0` adds the even-span tall sibling. The host-fetched `ESC )s258W` stream
 uses parser record `80 57 01 02 00 00`, delayed handler `0x16c14`, payload

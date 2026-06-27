@@ -298,7 +298,14 @@ pixels or byte-stream compatibility.
    rendered. The full soft-font descriptor grammar, remaining alternate
    character-mode cross-products, other release variants, and page-visible
    behavior for descriptor error forms beyond those no-install boundaries are
-   still not proven against every PCL form.
+   still not proven against every PCL form. The even-span downloaded-glyph
+   plus rule/raster composition now has an exact modeled install-to-page
+   handoff: host-fetched `ESC )s18W` produces the resource image consumed by
+   the parser-driven page stream, including glyph `0x29`, table entry
+   `0x00ee`, record delta `0x0780`, bitmap offset `0x078c`, and the 18 copied
+   bitmap bytes. The still-open boundary is live CPU continuity from the
+   `0x16c14` / `0x16498` install return after stream byte `24` back into
+   parser loop `0x11774` for the following page bytes.
 5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
    board-confirmed. This does not block a byte-stream renderer, but it blocks

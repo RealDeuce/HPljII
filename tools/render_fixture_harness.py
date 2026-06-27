@@ -51672,6 +51672,275 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "rows": expected_downloaded_linear_rows,
         },
     }))
+
+    downloaded_row80_payload = (b"\x00\x00" * 0x7F) + bytes.fromhex("f0 0f")
+    downloaded_row80_command_stream = b"\x1b)s256W" + downloaded_row80_payload
+    host_fetched_downloaded_row80_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(downloaded_row80_command_stream),
+            direct_mode=0,
+        ),
+        len(downloaded_row80_command_stream),
+    )
+    downloaded_row80_dispatch_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        host_fetched_downloaded_row80_stream["stream"],
+    )
+    downloaded_row80_dispatch_command = downloaded_row80_dispatch_trace["commands"][0]
+    assert isinstance(downloaded_row80_dispatch_command, dict)
+    downloaded_row80_command = render_font_download_char_command_stream_via_121cc_16498(
+        host_fetched_downloaded_row80_stream["stream"],
+        table_payload_type2_bytes,
+        char_code=0x2A,
+        record_words=(0x0000, 0x0000, 0x0080, 0x0000),
+        mode=1,
+        width=0x0010,
+        rows=0x0080,
+        object_offset=0x0800,
+    )
+    downloaded_row80_event = downloaded_row80_command["events"][0]
+    assert isinstance(downloaded_row80_event, dict)
+    downloaded_row80_payload_install = downloaded_row80_event["install"]
+    assert isinstance(downloaded_row80_payload_install, dict)
+    downloaded_row80_memory = bytearray(downloaded_row80_payload_install["header"])
+    downloaded_row80_glyph = resolve_downloaded_pointer_glyph(
+        downloaded_row80_memory,
+        0,
+        0x2A,
+    )
+    assert downloaded_row80_glyph is not None
+    downloaded_row80_source = {
+        "context": 0,
+        "host_char": 0x2A,
+        "mapped": 0x2A,
+        "glyph_entry": downloaded_row80_glyph["entry"],
+        "glyph_width": downloaded_row80_glyph["width"],
+        "glyph_rows": downloaded_row80_glyph["rows"],
+        "flag": 0,
+        "x": 22,
+        "y": 22,
+        "context_slot": 3,
+        "inline_record": bytes([
+            int(downloaded_row80_glyph["render_span"]),
+            int(downloaded_row80_glyph["rows"]) & 0xFF,
+            0,
+        ]),
+    }
+    downloaded_row80_page_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_row80_page_result = queue_text_source_to_page_record_via_12f2e(
+        downloaded_row80_memory,
+        downloaded_row80_page_record,
+        downloaded_row80_source,
+    )
+    downloaded_row80_object = downloaded_row80_page_result["object"]
+    assert isinstance(downloaded_row80_object, bytes)
+    downloaded_row80_bridged = bridge_page_record_via_1edc6({
+        "bucket_root": downloaded_row80_object,
+        "rule_list": [],
+        "fixed_list": [],
+        "context_slots": [0, 0, 0, 0],
+    })
+    downloaded_row80_rendered = render_bridged_compact_bucket_object(
+        data,
+        downloaded_row80_memory,
+        downloaded_row80_bridged,
+    )
+    downloaded_row80_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_row80_memory,
+        downloaded_row80_page_record,
+        bucket_word=int(downloaded_row80_page_result["bucket_index"]),
+    )
+    downloaded_row80_entry = downloaded_row80_render_entry["entry"]
+    assert isinstance(downloaded_row80_entry, dict)
+    downloaded_row80_rows = downloaded_row80_entry["rows"]
+    assert isinstance(downloaded_row80_rows, list)
+    checks.append(assert_equal(
+        "host-fetched row-0x80 downloaded character remains short compact",
+        {
+            "fetch": {
+                "stream_prefix": host_fetched_downloaded_row80_stream["stream"][:7],
+                "stream_length": len(host_fetched_downloaded_row80_stream["stream"]),
+                "source_set": sorted(set(host_fetched_downloaded_row80_stream["sources"])),
+                "remaining_ring": host_fetched_downloaded_row80_stream["state"]["ring"],
+            },
+            "parser": {
+                "handlers": [
+                    event["handler"]
+                    for event in downloaded_row80_dispatch_trace["dispatches"]
+                ],
+                "modes": [
+                    event["next_mode"]
+                    for event in downloaded_row80_dispatch_trace["dispatches"]
+                ],
+                "sequence": downloaded_row80_dispatch_command["sequence"],
+                "record": downloaded_row80_dispatch_command["record"],
+                "restored_record": downloaded_row80_dispatch_command["restored_record"],
+                "payload_offset": downloaded_row80_dispatch_command["payload_offset"],
+                "payload_length": len(downloaded_row80_dispatch_command["payload"]),
+            },
+            "install": {
+                key: downloaded_row80_payload_install[key]
+                for key in (
+                    "status",
+                    "table_entry",
+                    "record_delta",
+                    "record",
+                    "bitmap_offset",
+                    "bitmap_size",
+                    "allocation_size",
+                    "object_size",
+                    "span",
+                    "split_plane",
+                )
+            },
+            "glyph": {
+                key: downloaded_row80_glyph[key]
+                for key in (
+                    "entry",
+                    "bitmap",
+                    "mode",
+                    "rows",
+                    "width",
+                    "span",
+                    "render_span",
+                    "source_kind",
+                    "table_entry",
+                    "record_delta",
+                )
+            },
+            "page": {
+                key: downloaded_row80_page_result[key]
+                for key in (
+                    "path",
+                    "object",
+                    "bucket_index",
+                    "selector",
+                    "coord",
+                    "glyph",
+                    "rows",
+                    "width",
+                )
+            },
+            "render": {
+                "selector": downloaded_row80_rendered["selector"],
+                "context_slot": downloaded_row80_rendered["context_slot"],
+                "compact_mode": downloaded_row80_rendered["compact_mode"],
+                "rendered": downloaded_row80_rendered["rendered"],
+            },
+            "entry": {
+                "call_order": downloaded_row80_entry["call_order"],
+                "dispatch": [
+                    {
+                        key: entry[key]
+                        for key in (
+                            "chain_index",
+                            "object_byte_4",
+                            "class_mask",
+                            "branch",
+                            "target",
+                            "context_slot",
+                        )
+                    }
+                    for entry in downloaded_row80_entry["dispatch"]["entries"]
+                ],
+                "row_count": len(downloaded_row80_rows),
+                "row_width": max(
+                    (len(str(row)) for row in downloaded_row80_rows),
+                    default=0,
+                ),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(str(row) for row in downloaded_row80_rows).encode("ascii")
+                ).hexdigest(),
+            },
+        },
+        {
+            "fetch": {
+                "stream_prefix": b"\x1b)s256W",
+                "stream_length": len(downloaded_row80_command_stream),
+                "source_set": ["ring"],
+                "remaining_ring": [],
+            },
+            "parser": {
+                "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                "modes": [1, 4, 13, 0],
+                "sequence": b"\x1b)s256W",
+                "record": b"\x80W\x01\x00\x00\x00",
+                "restored_record": b"\x80W\x01\x00\x00\x00",
+                "payload_offset": 7,
+                "payload_length": 256,
+            },
+            "install": {
+                "status": 1,
+                "table_entry": 0x00F2,
+                "record_delta": 0x0800,
+                "record": bytes.fromhex("00 00 00 00 0c 01 00 80 00 10 00 00"),
+                "bitmap_offset": 0x080C,
+                "bitmap_size": 256,
+                "allocation_size": 5,
+                "object_size": 0x0140,
+                "span": 2,
+                "split_plane": False,
+            },
+            "glyph": {
+                "entry": 0x0800,
+                "bitmap": 0x080C,
+                "mode": 1,
+                "rows": 0x80,
+                "width": 0x10,
+                "span": 2,
+                "render_span": 2,
+                "source_kind": "downloaded-pointer",
+                "table_entry": 0x00F2,
+                "record_delta": 0x0800,
+            },
+            "page": {
+                "path": "short-page-record",
+                "object": bytes.fromhex("00 00 00 00 00 03 00 01 2a 66 01")
+                + bytes(0x1B),
+                "bucket_index": 1,
+                "selector": 0x0003,
+                "coord": 0x6601,
+                "glyph": 0x2A,
+                "rows": 0x80,
+                "width": 2,
+            },
+            "render": {
+                "selector": 0x0003,
+                "context_slot": 3,
+                "compact_mode": 0,
+                "rendered": [{
+                    "glyph": 0x2A,
+                    "coord": 0x6601,
+                    "dest_base": 0xC2,
+                    "x": 22,
+                    "y": 6,
+                    "a001": 0x16,
+                    "span": 2,
+                    "rows": 0x80,
+                    "width": 0x10,
+                    "helper": 0x1FE76,
+                }],
+            },
+            "entry": {
+                "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+                "dispatch": [{
+                    "chain_index": 0,
+                    "object_byte_4": 0x00,
+                    "class_mask": 0x00,
+                    "branch": "compact",
+                    "target": 0x01EFFE,
+                    "context_slot": 3,
+                }],
+                "row_count": 64,
+                "row_width": 38,
+                "row_sha256": "918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac",
+            },
+        },
+    ))
     downloaded_segmented_even_payload = (b"\x00\x00" * 0x80) + bytes.fromhex("f0 0f")
     downloaded_segmented_even_command_stream = (
         b"\x1b)s258W" + downloaded_segmented_even_payload
@@ -77011,6 +77280,23 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_wide_even_install["bitmap_size"],
             downloaded_wide_even_page_result["selector"],
             downloaded_wide_even_bridged_rendered["rows"][-1],
+        ),
+    )
+    append_wrapped(
+        lines,
+        "- host-fetched row-0x80 downloaded character: `ESC )s256W` installs "
+        "glyph `0x2a` at table entry `0x%04x`, copies `%d` linear bytes "
+        "through `0x168dc`, keeps `rows = 0x80` on short selector `0x%04x` "
+        "rather than segmented selector `0x2003`, dispatches compact target "
+        "`0x%05x`, and renders row digest `%s`."
+        % (
+            downloaded_row80_payload_install["table_entry"],
+            downloaded_row80_payload_install["bitmap_size"],
+            downloaded_row80_page_result["selector"],
+            downloaded_row80_entry["dispatch"]["entries"][0]["target"],  # type: ignore[index]
+            hashlib.sha256(
+                "\n".join(str(row) for row in downloaded_row80_rows).encode("ascii")
+            ).hexdigest(),
         ),
     )
     downloaded_segmented_even_rendered_row = downloaded_segmented_even_bridged_rendered["rows"][-1]

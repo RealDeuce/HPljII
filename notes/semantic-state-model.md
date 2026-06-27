@@ -2945,6 +2945,19 @@ while `0xd8fc` consumes `+0x1a` as word `65534`, computes high-y `-65513`,
 queues span object prefix `00 00 00 00 40 00 00 01 04 06 03 00 00 14`, and
 renders digest
 `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
+Fixture `host-fetched row-0x80 downloaded character remains short compact`
+pins the downloaded-character row threshold immediately below segmented
+layout. Host fetch drains `ESC )s256W`; parser dispatch walks `0x11eb6`,
+`0x12008`, `0x11ff6`, and `0x11f96`; the restored record is
+`80 57 01 00 00 00`, payload offset is `7`, and payload length is `256`.
+`0x16498` installs glyph `0x2a` at table entry `0x00f2`, record delta
+`0x0800`, record `00 00 00 00 0c 01 00 80 00 10 00 00`, bitmap offset
+`0x080c`, rows `0x0080`, width `0x0010`, span `2`, and split-plane flag
+`false` after copying the bytes through `0x168dc`. `0x12f2e` keeps the glyph
+on short selector `0x0003` because the row test is `rows > 0x80`; `0x1ef6a`
+dispatches compact target `0x1effe`; mode-0 helper `0x1fe76` renders the
+bucket-1 band with digest
+`918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac`.
 Fixture `host-fetched segmented downloaded character renders through 0x1f1f0`
 connects the downloaded-character linear reader to the remaining segmented
 compact renderer shape. Host fetch drains `ESC )s258W`; parser dispatch walks
@@ -3180,18 +3193,19 @@ ordering before allocation failure, staged header fields, payload allocation,
 installed downloaded-character object, and visible row, because the fixtures
 tie host-fetched streams to parser records, teardown state, and render rows.
 High for the downloaded-character parser-to-page path for the normal,
-wide/control, even-span wide, segmented, and segmented-wide compact selectors
-represented by fixtures `host-fetched linear downloaded character stream
-renders through 0x168dc`, `host-fetched downloaded character payload control
-reaches wide render`, `host-fetched even-span wide downloaded character
-renders through 0x1f0d2`, `host-fetched segmented downloaded character renders
-through 0x1f1f0`, `host-fetched split-plane segmented downloaded character
-renders through 0x1f1f0`, and `host-fetched downloaded character stream
-reaches rendered object`. High for the modeled FF publication boundary of the
-combined downloaded-glyph stream because the fixture asserts the full fetched
-stream boundaries, published bucket array entries `1` and `9`, selected render
-bucket words `1` and `9`, dispatch target, and final rows. High for the
-even-span wide publication sibling because fixture
+wide/control, even-span wide, row-threshold, segmented, and segmented-wide
+compact selectors represented by fixtures `host-fetched linear downloaded
+character stream renders through 0x168dc`, `host-fetched downloaded character
+payload control reaches wide render`, `host-fetched even-span wide downloaded
+character renders through 0x1f0d2`, `host-fetched row-0x80 downloaded
+character remains short compact`, `host-fetched segmented downloaded character
+renders through 0x1f1f0`, `host-fetched split-plane segmented downloaded
+character renders through 0x1f1f0`, and `host-fetched downloaded character
+stream reaches rendered object`. High for the modeled FF publication boundary
+of the combined downloaded-glyph stream because the fixture asserts the full
+fetched stream boundaries, published bucket array entries `1` and `9`,
+selected render bucket words `1` and `9`, dispatch target, and final rows.
+High for the even-span wide publication sibling because fixture
 `host-fetched even-span downloaded glyph FF publishes rendered page record`
 asserts the host-fetched `ESC )s18W` payload, tail handlers `0xd04a` and
 `0xf0f0`, published bucket `1`, `0x1ed84` render word `1`, compact dispatch
@@ -3264,6 +3278,7 @@ combination have not been page-compared.
 - `host-fetched linear downloaded character stream renders through 0x168dc`
 - `host-fetched downloaded character payload control reaches wide render`
 - `host-fetched even-span wide downloaded character renders through 0x1f0d2`
+- `host-fetched row-0x80 downloaded character remains short compact`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
 - `host-fetched split-plane segmented downloaded character renders through
   0x1f1f0`
@@ -3302,11 +3317,16 @@ combination have not been page-compared.
   descriptor error-form risk is now variants beyond those bounded predicate
   branches, plus external HP manual naming for consumed-but-not-staged fields.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span
-  wide, linear normal, linear segmented, and split-plane segmented
-  downloaded-character paths are page-visible. Remaining parser-produced
+  wide, row-threshold `0x80` short, linear normal, linear segmented, and
+  split-plane segmented downloaded-character paths are page-visible. Fixture
+  `host-fetched row-0x80 downloaded character remains short compact` closes
+  the exact `0x80`/`0x81` selector boundary for even-span copied glyphs:
+  `0x12f2e` leaves rows `0x80` on selector `0x0003`, while fixture
+  `host-fetched segmented downloaded character renders through 0x1f1f0`
+  puts rows `0x81` on selector `0x2003`. Remaining parser-produced
   comparisons are the cross-product variants not covered by those shapes,
-  especially alternate row counts, character modes, and non-success exits for
-  the same selector families.
+  especially other row counts, character modes, and non-success exits for the
+  same selector families.
 - downloaded-glyph plus rule/raster producer schedule: fixture
   `parser-driven downloaded glyph rule raster stream composes through
   0x1ef6a` closes the page-stream boundary from parser-produced `0x10898` rule

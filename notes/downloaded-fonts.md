@@ -78,6 +78,7 @@ Primary fixtures:
 - `host-fetched linear downloaded character stream renders through 0x168dc`
 - `host-fetched downloaded character payload control reaches wide render`
 - `host-fetched even-span wide downloaded character renders through 0x1f0d2`
+- `host-fetched row-0x80 downloaded character remains short compact`
 - `host-fetched even-span downloaded glyph FF publishes rendered page record`
 - `downloaded normal and segmented glyph FF publications render page records`
 - `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
@@ -176,7 +177,10 @@ Published page-record state:
 - Unknown for this checkpoint: downloaded-glyph publication cross-products
   outside the documented normal bucket-1, linear-segmented bucket-9,
   segmented-wide bucket-1/bucket-9, and even-span wide bucket-1 streams,
-  especially alternate row counts, character modes, and non-success exits.
+  especially other row counts, character modes, and non-success exits. The
+  `host-fetched row-0x80 downloaded character remains short compact` fixture
+  covers the pre-publication `0x80`/`0x81` selector threshold, but the
+  row-`0x80` shape has not yet been driven through FF publication.
   The covered publication fixtures are
   `downloaded normal and segmented glyph FF publications render page records`,
   `host-fetched even-span downloaded glyph FF publishes rendered page record`,
@@ -781,6 +785,21 @@ to the `0x11774` parser loop for the following `0x10e68` rectangle handler is
 not captured; the bytes and installed resource image on both sides of that
 boundary are fixture-pinned.
 
+Fixture `host-fetched row-0x80 downloaded character remains short compact`
+pins the row-count threshold just below the segmented path. The host-fetched
+`ESC )s256W` stream restores record `80 57 01 00 00 00`, starts payload at
+offset `7`, and copies `256` linear bytes through `0x168dc`. `0x16498`
+installs glyph `0x2a` at table entry `0x00f2`, record delta `0x0800`, record
+`00 00 00 00 0c 01 00 80 00 10 00 00`, bitmap offset `0x080c`, rows
+`0x0080`, width `0x0010`, span `2`, and split-plane flag `false`. Because
+`0x12f2e` tests `rows > 0x80`, not `rows >= 0x80`, the copied glyph stays on
+short page-record selector `0x0003` instead of segmented selector `0x2003`.
+The queued object is
+`00 00 00 00 00 03 00 01 2a 66 01` plus allocator padding, `0x1ef6a`
+dispatches compact target `0x1effe`, and mode-0 helper `0x1fe76` renders the
+bucket-1 band with digest
+`918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac`.
+
 Fixture `host-fetched segmented downloaded character renders through
 0x1f1f0` adds the even-span tall sibling. The host-fetched `ESC )s258W` stream
 uses parser record `80 57 01 02 00 00`, delayed handler `0x16c14`, payload
@@ -1216,11 +1235,15 @@ A byte-stream renderer must preserve:
   the consumed-but-not-staged descriptor fields still need external
   correlation.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span
-  wide, linear normal, linear segmented, and split-plane segmented
-  downloaded-character paths are page-visible. Remaining parser-produced
-  comparisons are the cross-product variants not covered by those shapes,
-  especially alternate row counts, character modes, and non-success exits for
-  the same selector families.
+  wide, row-threshold `0x80` short, linear normal, linear segmented, and
+  split-plane segmented downloaded-character paths are page-visible. Fixture
+  `host-fetched row-0x80 downloaded character remains short compact` closes
+  the even-span `0x80`/`0x81` selector boundary: rows `0x80` stay on
+  selector `0x0003`, while rows `0x81` enter selector `0x2003` in fixture
+  `host-fetched segmented downloaded character renders through 0x1f1f0`.
+  Remaining parser-produced comparisons are the cross-product variants not
+  covered by those shapes, especially other row counts, character modes, and
+  non-success exits for the same selector families.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets; the normal, linear-segmented, and even-span wide siblings
   now publish through the same boundary. Fixture

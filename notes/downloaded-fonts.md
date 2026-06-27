@@ -1152,6 +1152,14 @@ segmented stream is `ESC )s258W` plus payload, printable `'`, and FF; the font
 phase restores `80 57 01 02 00 00`, `0xff1e` publishes buckets `1` and `9`,
 and render bucket word `9` dispatches object byte `0x20` to
 `0x1effe`/`0x1f1f0`, reading the visible row from source offset `0x0100`.
+Fixture
+`host-fetched nonboundary short downloaded glyph FF publication renders page record`
+adds an interior short-row sibling: `ESC )s32W` plus printable `+` and FF
+restores record `80 57 00 20 00 00`, installs glyph `0x2b` with rows `0x10`,
+keeps selector `0x0003`, publishes bucket `1`, dispatches object byte `0x00`
+through `0x1effe`/`0x1fe76`, and preserves row digest
+`28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b` across
+the direct and published-record render entries.
 
 ## Writers
 
@@ -1363,11 +1371,13 @@ A byte-stream renderer must preserve:
   split-plane status-`2` visible-output siblings and now carries both through
   trailing-FF `0xff1e` publication and published-record rendering. Remaining
   parser-produced comparisons are bounded cross-products: non-boundary row
-  counts inside the already-covered short and segmented selector families,
-  character modes other than the covered mode-1 bitmap records, and broader
-  publication combinations beyond the documented normal, row-`0x80`,
-  linear-segmented, split-plane segmented, segmented-wide, even-span wide,
-  no-install, and status-`2` compact bucket variants.
+  counts inside the already-covered segmented selector family, additional
+  interior short-family row counts beyond the covered rows `0x03`, `0x10`,
+  and `0x80`, character modes other than the covered mode-1 bitmap records,
+  and broader publication combinations beyond the documented normal,
+  nonboundary-short, row-`0x80`, linear-segmented, split-plane segmented,
+  segmented-wide, even-span wide, no-install, and status-`2` compact bucket
+  variants.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets; the normal, linear-segmented, split-plane segmented, and
   even-span wide siblings now publish through the same boundary. Fixture

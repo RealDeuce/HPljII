@@ -415,12 +415,16 @@ The next work should follow dataflow, not isolated handlers:
    `0xe002`. Remaining display-functions risk is broader physical/page comparison, not
    the command-family loop boundary or the documented filter predicates. They should
    also broaden downloaded-glyph publication cross-products beyond the documented
-   segmented-wide, normal, linear-segmented, split-plane segmented, row-threshold `0x80`
-   short, and even-span wide selector families, especially other row counts, character
-   modes, and non-success exits. The row-threshold fixture closes the `0x80`/`0x81`
-   selector boundary by keeping rows `0x80` on selector `0x0003`, comparing it with the
-   rows-`0x81` selector `0x2003` fixture, and now publishing the row-`0x80` bucket-1
-   record through FF, `0xff1e`, and `0x1ed84`/`0x1ef6a`. The split-plane segmented
+   segmented-wide, normal, nonboundary-short, linear-segmented, split-plane segmented,
+   row-threshold `0x80` short, and even-span wide selector families, especially
+   additional row counts, character modes, and non-success exits. The nonboundary-short
+   fixture now publishes rows `0x10` on selector `0x0003` through FF, `0xff1e`, and
+   `0x1ed84`/`0x1ef6a` with digest
+   `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The
+   row-threshold fixture closes the `0x80`/`0x81` selector boundary by keeping rows
+   `0x80` on selector `0x0003`, comparing it with the rows-`0x81` selector `0x2003`
+   fixture, and now publishing the row-`0x80` bucket-1 record through FF, `0xff1e`, and
+   `0x1ed84`/`0x1ef6a`. The split-plane segmented
    fixture now carries `ESC )s387W` plus printable `(` and FF through `0xff1e`,
    preserves buckets `1` and `9`, and renders bucket word `9` through
    `0x1ed84`/`0x1ef6a`. The `0x16498` replacement/allocation-failure/partial/reject

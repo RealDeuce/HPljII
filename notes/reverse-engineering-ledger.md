@@ -467,9 +467,10 @@ Remaining work is additional metric-value combinations outside those pinned
 legal endpoints, validation/error page behavior beyond those bounded predicate
 and short-budget no-install branches, remaining alternate character-mode/release
 variants, broader publication combinations beyond the covered
-normal, row-`0x80`, linear-segmented, split-plane segmented, segmented-wide,
-even-span wide, downloaded-character no-install, and status-`2` compact bucket
-variants, full live-parser raster edge cases, and final device-output page
+normal, nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented,
+split-plane segmented, segmented-wide, even-span wide, downloaded-character
+no-install, and status-`2` compact bucket variants, full live-parser raster
+edge cases, and final device-output page
 comparison.
 Downloaded-character no-install failures now publish the following default
 printable through trailing-FF `0xff1e`, while the status-`2` partial-install

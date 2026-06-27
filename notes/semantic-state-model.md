@@ -3166,6 +3166,11 @@ printable `*` and FF, restores record `80 57 01 00 00 00`, publishes bucket
 `1` object `00 00 00 00 00 03 00 01 2a 66 01`, keeps selector `0x0003`, and
 renders bucket word `1` through the same compact target/helper with digest
 `918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac`. The
+non-boundary short case drains host-fetched `ESC )s32W` plus printable `+` and
+FF, restores record `80 57 00 20 00 00`, publishes bucket `1` object
+`00 00 00 00 00 03 00 01 2b 66 01`, keeps selector `0x0003`, and renders
+bucket word `1` through the same compact target/helper with digest
+`28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The
 segmented case drains host-fetched `ESC )s258W` plus printable `'` and FF,
 restores record `80 57 01 02 00 00`, publishes bucket `9` object
 `00 00 00 00 20 03 00 01 27 01 66 01` plus the segment-0 bucket `1` entry,
@@ -3646,8 +3651,10 @@ sibling because fixture
 `host-fetched even-span downloaded glyph FF publishes rendered page record`
 asserts the host-fetched `ESC )s18W` payload, tail handlers `0xd04a` and
 `0xf0f0`, published bucket `1`, `0x1ed84` render word `1`, compact dispatch
-target `0x1effe`, and final `0x1f0d2` rows. High for the normal, row-`0x80`,
-segmented, and split-plane segmented publication siblings because fixtures
+target `0x1effe`, and final `0x1f0d2` rows. High for the normal,
+non-boundary short, row-`0x80`, segmented, and split-plane segmented
+publication siblings because fixtures
+`host-fetched nonboundary short downloaded glyph FF publication renders page record`,
 `downloaded normal row-0x80 and segmented glyph FF publications render page records`
 and `split-plane segmented downloaded glyph FF publication renders page record`
 assert fetched stream boundaries, parser-restored records, tail handlers
@@ -3783,11 +3790,12 @@ combination have not been page-compared.
   those two compact objects through trailing-FF `0xff1e` publication and
   `0x1ed84`/`0x1ef6a` published-record rendering. Still-open comparisons are
   bounded cross-products: non-boundary row counts inside the already-covered
-  short and segmented selector families, character modes other than the
+  segmented selector family, additional interior short-family row counts
+  beyond rows `0x03`, `0x10`, and `0x80`, character modes other than the
   covered mode-1 bitmap records, and broader publication combinations beyond
-  the documented normal, row-`0x80`, linear-segmented, split-plane segmented,
-  segmented-wide, even-span wide, no-install, and status-`2` compact bucket
-  variants.
+  the documented normal, non-boundary short, row-`0x80`, linear-segmented,
+  split-plane segmented, segmented-wide, even-span wide, no-install, and
+  status-`2` compact bucket variants.
 - downloaded-glyph plus rule/raster producer schedule: fixture
   `parser-driven downloaded glyph rule raster stream composes through
   0x1ef6a` closes the page-stream boundary from parser-produced `0x10898` rule
@@ -3799,9 +3807,14 @@ combination have not been page-compared.
   host-fetched `0x16c14` / `0x16498` install fixture, but it is still supplied
   to the page-stream runner instead of captured from one live CPU memory run.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
-  segmented buckets; the normal, row-threshold `0x80`, linear-segmented,
-  split-plane segmented, and even-span wide siblings now publish through the
-  same boundary. Fixture
+  segmented buckets; the normal, non-boundary short, row-threshold `0x80`,
+  linear-segmented, split-plane segmented, and even-span wide siblings now
+  publish through the same boundary. Fixture
+  `host-fetched nonboundary short downloaded glyph FF publication renders page record`
+  renders rows `0x10` on selector `0x0003` through `0x1ed84`/`0x1ef6a` and
+  compact target `0x1effe`/`0x1fe76`, preserving digest
+  `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`.
+  Fixture
   `downloaded normal row-0x80 and segmented glyph FF publications render page records`
   renders the normal bucket-1 record through `0x1ed84`/`0x1ef6a` and compact
   target `0x1effe`/`0x1fe76`, renders the row-`0x80` bucket-1 record through

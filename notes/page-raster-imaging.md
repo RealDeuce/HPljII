@@ -2194,11 +2194,16 @@ Other checked leads:
   payload install, and printable output into segmented page-record
   buckets, but it is still family-split modeling rather than a full
   live parser-state interpreter.
-- Replace the remaining synthetic `ESC E` reset-state fixtures with
-  parser-produced page-object fixtures so partial-page finalization and
-  current-page-root clearing are proven from real queued objects,
-  building on the host-fetched publication headers now pinned at the
-  `0xff1e` boundary.
+- Treat the `ESC E` reset publication boundary as covered for
+  parser-produced compact text page objects. Fixtures
+  `mixed printable/reset page-record stream queues through 0x1387c before
+  reset`, `mixed printable/reset page-record finalization publishes bridged
+  record`, and `addressed printable reset publishes rendered page record`
+  now start from `! ESC E`, allocate/materialize the compact bucket through
+  the page-record path, publish through `0xff1e`, clear the current page
+  root, and render through `0x1ed84`/`0x1ef6a`. Remaining reset work is live
+  CPU allocation/state capture, not the software-visible reset-to-render
+  contract for this compact-text case.
 - Broaden the narrow direct-control byte-stream fixtures into the full
   firmware parser path now that cursor variables `0x782c8a` and
   `0x782c8e` are named as horizontal and vertical respectively.

@@ -268,10 +268,16 @@ byte-stream model; its page-record variant queues the glyph through
 `0xf0f0`, page-size `ESC &l1A` to `0xfc74`, orientation `ESC &l1O` to
 `0x10220`, paper-source `ESC &l2H` to `0xef62`, and copies `ESC &l2X`
 to `0xeef0` before the modeled page-record publication layer.
-These prove the
-direct-control/reset/page-geometry publication subset from actual
-PCL/control bytes, but they still need to be broadened into the full
-firmware parser path with real page-object allocation.
+These prove the direct-control/reset/page-geometry publication subset from
+actual PCL/control bytes. The reset publication edge has since been broadened
+from synthetic roots into page-record and addressed allocation fixtures:
+`mixed printable/reset page-record stream queues through 0x1387c before
+reset`, `mixed printable/reset page-record finalization publishes bridged
+record`, and `addressed printable reset publishes rendered page record` cover
+`! ESC E` from printable parse, compact bucket materialization, `0xff1e`
+publication/current-root clearing, and `0x1ed84`/`0x1ef6a` rendered rows. The
+remaining parser-firmware work is live CPU allocation/state capture for broader
+heterogeneous streams, not this compact-text reset boundary.
 
 For symbol-set selection, the harness now drives `ESC (2U` and `ESC )0E`
 through `0x120be`/`0x1be22`/`0xc580`, records active words `0x0055` and
@@ -769,20 +775,20 @@ control-code anchor.
   final device-output validation now that the macro replay/font-context
   checkpoint is composed through `0xe65c`, `0xe860`, `0x13eb8`,
   `0x144d2`, `0x14c64`, and `0xc428`.
-- Replace the remaining synthetic `ESC E` roots with fuller
-  parser-allocated page objects; the current host-fetched publication
-  fixtures already prove the modeled `0xff1e` publication headers,
-  bridge, and rendered queued compact buckets before reset, FF,
-  page-size, and orientation consume the current page root, and the
-  text/rule/raster page-record fixture now carries its full bucket
-  array, rule list, and context slots through `0xff1e` before rendering
-  after one mixed stream runner handles text, `ESC *c`, and delayed
-  raster transfer commands; the trailing-FF variant now drives that
-  publication from the host byte stream, and the addressed trailing-FF
-  variant proves the same heterogeneous publication after text, rule,
-  and raster objects materialize through addressed storage. A `0x1ef6a`
-  page-band walker merges compact text, mode-0 raster, and a crossing
-  patterned rule across bands `0` and `5`.
+- Treat compact-text `ESC E` publication as covered through page-record and
+  addressed allocation fixtures; keep pursuing live CPU allocation/state
+  capture for broader heterogeneous streams. The current host-fetched
+  publication fixtures already prove the modeled `0xff1e` publication
+  headers, bridge, and rendered queued compact buckets before reset, FF,
+  page-size, and orientation consume the current page root. The text/rule/raster
+  page-record fixture now carries its full bucket array, rule list, and context
+  slots through `0xff1e` before rendering after one mixed stream runner handles
+  text, `ESC *c`, and delayed raster transfer commands. The trailing-FF variant
+  now drives that publication from the host byte stream, and the addressed
+  trailing-FF variant proves the same heterogeneous publication after text,
+  rule, and raster objects materialize through addressed storage. A `0x1ef6a`
+  page-band walker merges compact text, mode-0 raster, and a crossing patterned
+  rule across bands `0` and `5`.
 - Extend the mixed-stream page-record fixture into real parser-produced
   page-object allocation/finalization, then add a parser-driven macro
   command/replay fixture.

@@ -955,7 +955,13 @@ header fields and queue/context roots, while missing or inactive roots
 only clear `0x78297a`. The host-fetched reset, FF, page-size, and
 orientation publication fixtures now pin the default published pool
 header and `0x1edc6` bucket/context copy fields after that boundary
-before the bridged rows are rendered.
+before the bridged rows are rendered. The reset publication edge is also
+page-record backed: fixtures `mixed printable/reset page-record stream queues
+through 0x1387c before reset`, `mixed printable/reset page-record finalization
+publishes bridged record`, and `addressed printable reset publishes rendered
+page record` start from `! ESC E`, materialize the compact bucket through
+`0x1387c`/`0x1381c`, publish via `0xff1e`, clear `0x78297a`, and render the
+published record through `0x1ed84`/`0x1ef6a`.
 
 For the raster shorthand above, `ESC *b2w`/`2W` means the combined
 stream `ESC *b2w2W`: lowercase `w` records the delayed transfer and
@@ -967,7 +973,6 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
 The next work should follow the dataflow checkpoints in
 [semantic-state-model.md](semantic-state-model.md), not isolated command
 handlers:
-
 - Prove the remaining font metric producer cross-products with
   parser-produced pages. The covered evidence already includes
   host-fetched `0x1719c` type-0/type-1/type-2 payloads, the seven-case legal

@@ -342,11 +342,15 @@ pixels or byte-stream compatibility.
    fixture `0x16b1a descriptor width helper emits only mode 1/2`: `0x16b36..0x16b6a`
    writes only mode `1`/`2` from span parity, and `0x16b26..0x16b34` rejects invalid
    widths without scratch writes. The full soft-font descriptor grammar, other release
-   variants, full-success return-boundary siblings outside the even-span rule/raster
+   variants and full-success return-boundary siblings outside the even-span rule/raster
    path and outside the segmented, split-plane segmented, segmented-wide, and
-   payload-control publication fixtures, and page-visible behavior for
-   descriptor error forms beyond those no-install boundaries
-   are still not proven against every PCL form. The mode-byte-`0` no-install boundary is
+   payload-control publication fixtures are still not proven against every PCL form.
+   ROM-internal descriptor-validation error visibility is documented at the rejecting
+   predicate boundary instead: fixture `ESC )s#W validation failures preserve following
+   printable output` carries the seven `ESC )s80W` predicate failures plus the
+   short-budget `ESC )s8W` entry-`5` failure through the following default-font page
+   path. The remaining descriptor-validation gap is external HP/manual naming for
+   consumed-but-not-staged fields. The mode-byte-`0` no-install boundary is
    documented separately: fixture `0x16498 replacement allocation failure partial and
    rejected downloaded character exits preserve state` proves the unchanged table/header
    at object boundary `0x16498`, and fixture `0x16498 no-install exits preserve

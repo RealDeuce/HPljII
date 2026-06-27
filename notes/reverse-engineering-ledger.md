@@ -415,146 +415,127 @@ divisor-pattern lines, and page-last line `0x782ede`.
 
 ### Raster/text/page-object path
 
-Status: Anchored through parser bridge, render dispatch, executable
-allocator/bridge, executable queued raster rows, and executable
+Status: Anchored through parser bridge, render dispatch, executable allocator/bridge,
+executable queued raster rows, and executable
 expansion/destination/row-copy/resource-resolution/glyph-row/producer-modeled
-bucket/positioning/font-record/font-allocation fixtures, plus
-host-fetched primary, lower-resolution, capped/drained, consecutive-row,
-active-resolution, end-raster/re-enable, chained-resolution, and
-chained-transfer raster streams, plus modeled `0xff1e` publication of
-the combined text/rule/raster page record before `0x1ed84`/`0x1ef6a`
-rendering after one mixed stream runner handles text, `ESC *c`, and
-delayed raster transfer commands, including a trailing-FF publication
-variant; active-pool render-work aliases, copy-window setup, `0x2456`
-source selection, `0x22f4` eight-row copy passes, and the
-`0x78399e/9f` active-pool status feedback into `0x1db0`/`0x1e44` are
-now composed, with `0x1cf8` wrapper dispatch through `0x1e80` and
-`0x1ea8` variants also pinned, and `0x1eba4..0x1ecd2` scheduler-loop
-render/yield predicates covered; `0x1036`, `0x1064`/`0x108e`,
-`0x123a`, and `0x10bc..0x10f2` now pin the wait-object scheduler
-handoff and trap-veneer argument shapes, with `0x1144..0x11f8` now
-pinning the copied trap handlers' wait-state transitions; tracked note
-`notes/downloaded-fonts.md` now composes the combined 2,215-byte
-host-fetched font-download printable stream that carries
-`ESC *c4660d37e5F`, `ESC )s2193W`, and printable `%` into downloaded
-glyph `0x25` segmented page objects before `0x1edc6`, `0x1ed84`, and
-`0x1ef6a`; `ESC )s80W` validation no-install evidence now covers
-invalid type, first-code overflow, zero line/count, high line/count,
-reversed range, high range/count, and invalid class through the parser
-restore and `0x16c14` allocation boundary, and the same seven failed
-streams plus the short-budget `ESC )s8W` entry-5 failure followed by
-printable `!` now preserve the default-font page-record object and rendered
-rows; fixture
-`descriptor metric fields match across inline and resource contexts` now
-pins the legal metric producer forms and the two invalid swapped forms.
-Fixture `legal descriptor metric value matrix drives d4ac and d8fc consumers`
-now covers small-rounded, clamped-rounded, midpoint-rounded, zero-rounded-offset,
-negative-offset, lower-bound, and upper-bound legal metric values. The
-negative-offset row accepts descriptor byte `0xfe`, preserves it as copied word
-`+0x1a = 0xfffe`, and pins the resulting `d8fc` high-y `-65513` / render
-digest `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
-Fixture `legal descriptor metric boundary values drive d4ac and d8fc consumers`
-now covers `d8fc` lower-bound equality, exact page-extent equality, max
-positive offset byte `0x7f`, normal rounded input `0x0013` storing copied
-`+0x2c = 0x0014`, and rounded input `0x1500` transforming to copied
-`+0x2c = 0x0060` before `d4ac` exits beyond page extent; it now also proves
-rounded inputs `0x1508` and `0x15ff` store the same `+0x2c = 0x0060`, so the
-descriptor transform discards that low byte before the same `d4ac` exit. The
-same fixture proves offset byte `0xff` copies to word `+0x1a = 0xffff`, is
-consumed by `d8fc` as `65535`, and renders with the same digest as the
-`0xfffe` offset case.
-Fixture
-`legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
-now proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
-`0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`; `d4ac`
-keeps its standard span digest, while `d8fc` keeps high-y `20` and row digest
-`f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
-The producer formula is now composed into the semantic notes rather than left
-as fixture output: `0x16fae..0x17016` walks table `0x16eae` into staged base
-`0x782862`, `0x17430..0x1749c` writes canonical `+0x14` and derives
-`+0x18 = +0x14 - +0x16 - 1`, `0x1757a..0x175b8` writes rounded/capped
-`+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`, `0x1762a..0x1763c`
-writes signed-byte offset word `+0x1a`, and `0x1719c..0x1725c` copies those
-staged fields into the allocated payload. The field grouping is canonical
+bucket/positioning/font-record/font-allocation fixtures, plus host-fetched primary,
+lower-resolution, capped/drained, consecutive-row, active-resolution,
+end-raster/re-enable, chained-resolution, and chained-transfer raster streams, plus
+modeled `0xff1e` publication of the combined text/rule/raster page record before
+`0x1ed84`/`0x1ef6a` rendering after one mixed stream runner handles text, `ESC *c`, and
+delayed raster transfer commands, including a trailing-FF publication variant;
+active-pool render-work aliases, copy-window setup, `0x2456` source selection, `0x22f4`
+eight-row copy passes, and the `0x78399e/9f` active-pool status feedback into
+`0x1db0`/`0x1e44` are now composed, with `0x1cf8` wrapper dispatch through `0x1e80` and
+`0x1ea8` variants also pinned, and `0x1eba4..0x1ecd2` scheduler-loop render/yield
+predicates covered; `0x1036`, `0x1064`/`0x108e`, `0x123a`, and `0x10bc..0x10f2` now pin
+the wait-object scheduler handoff and trap-veneer argument shapes, with `0x1144..0x11f8`
+now pinning the copied trap handlers' wait-state transitions; tracked note
+`notes/downloaded-fonts.md` now composes the combined 2,215-byte host-fetched
+font-download printable stream that carries `ESC *c4660d37e5F`, `ESC )s2193W`, and
+printable `%` into downloaded glyph `0x25` segmented page objects before `0x1edc6`,
+`0x1ed84`, and `0x1ef6a`; `ESC )s80W` validation no-install evidence now covers invalid
+type, first-code overflow, zero line/count, high line/count, reversed range, high
+range/count, and invalid class through the parser restore and `0x16c14` allocation
+boundary, and the same seven failed streams plus the short-budget `ESC )s8W` entry-5
+failure followed by printable `!` now preserve the default-font page-record object and
+rendered rows; fixture `descriptor metric fields match across inline and resource
+contexts` now pins the legal metric producer forms and the two invalid swapped forms.
+Fixture `legal descriptor metric value matrix drives d4ac and d8fc consumers` now covers
+small-rounded, clamped-rounded, midpoint-rounded, zero-rounded-offset, negative-offset,
+lower-bound, and upper-bound legal metric values. The negative-offset row accepts
+descriptor byte `0xfe`, preserves it as copied word `+0x1a = 0xfffe`, and pins the
+resulting `d8fc` high-y `-65513` / render digest
+`72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`. Fixture `legal
+descriptor metric boundary values drive d4ac and d8fc consumers` now covers `d8fc`
+lower-bound equality, exact page-extent equality, max positive offset byte `0x7f`,
+normal rounded input `0x0013` storing copied `+0x2c = 0x0014`, and rounded input
+`0x1500` transforming to copied `+0x2c = 0x0060` before `d4ac` exits beyond page extent;
+it now also proves rounded inputs `0x1508` and `0x15ff` store the same `+0x2c = 0x0060`,
+so the descriptor transform discards that low byte before the same `d4ac` exit. The same
+fixture proves offset byte `0xff` copies to word `+0x1a = 0xffff`, is consumed by `d8fc`
+as `65535`, and renders with the same digest as the `0xfffe` offset case. Fixture `legal
+descriptor metric low-nibble rounding drives d4ac and d8fc consumers` now proves rounded
+inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f` copy to `+0x2c =
+0x0000/0x0004/0x0004/0x0004/0x0010`; `d4ac` keeps its standard span digest, while `d8fc`
+keeps high-y `20` and row digest
+`f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`. The producer formula
+is now composed into the semantic notes rather than left as fixture output:
+`0x16fae..0x17016` walks table `0x16eae` into staged base `0x782862`, `0x17430..0x1749c`
+writes canonical `+0x14` and derives `+0x18 = +0x14 - +0x16 - 1`, `0x1757a..0x175b8`
+writes rounded/capped `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`,
+`0x1762a..0x1763c` writes signed-byte offset word `+0x1a`, and `0x1719c..0x1725c` copies
+those staged fields into the allocated payload. The field grouping is canonical
 `+0x14/+0x16/+0x1a`, derived/cache `+0x18/+0x2c`, parser scratch
 `0x782862`/`0x783140`/`0x782842..0x782856`, and firmware bookkeeping
-`+0x0c`/`0x7827ba`/`+0x2b`.
-Fixture `0x16b1a descriptor width helper emits only mode 1/2` closes the
-downloaded-character helper-table mode-byte question for accepted widths:
-disassembly `0x16b36..0x16b6a` writes mode `1` for even byte spans and mode
-`2` for odd byte spans, while `0x16b26..0x16b34` rejects widths `0` and
-`0x1069` without scratch writes. Mode-byte-`0` remains documented as an
-artificial `0x16498` object-boundary reject through the no-install fixtures,
-not as parser-produced descriptor output.
-Fixture `parser-driven downloaded glyph rule raster stream composes through
-0x1ef6a` now carries an explicit even-span downloaded-character return
-boundary: after stream byte `24`, it records `0x15dc6 -> 0x16498`,
-`0x16498 -> 0x15dcc`, `0x15dcc -> 0x12328`, copy status `1`, copy stream
-position `18`, remaining `0x783140 = 0`, a zero-byte `0x12328` drain, and
-next parser handler `0x10e68` for following bytes `ESC *c12a`.
-Fixture `0x16498 no-install exits preserve following printable output` now
-pins non-success no-install return edges through the same
-`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` boundary: the three branches leave
-`0x783140 = 6`, drain rejected payloads `de ad be ef ca fe` or
-`f0 0f aa 55 3c c3` via `0x12328`, and resume at printable handler `0xd04a`.
-Fixture `0x16498 status-2 partial installs remain printable` pins the linear
-and split-plane partial-install siblings with `0x783140 = 0`, a zero-byte
-`0x12328` drain, and the same next printable handler `0xd04a`.
-Fixture `downloaded normal row-0x80 and segmented glyph FF publications render
-page records` now pins normal, row-`0x80`, and linear-segmented full-success
-publication returns through the same boundary with `0x783140 = 0`, zero-byte
-`0x12328` drains, and next printable handler `0xd04a`; fixture
-`split-plane segmented downloaded glyph FF publication renders page record`
-pins the corresponding split-plane segmented return before printable `(` and
-FF publication.
-Fixture `combined font download FF publishes installed glyph page record` now
-pins the segmented-wide full-success sibling: after the `ESC )s2193W` copy,
-record `00 00 00 00 0c 02 00 81 00 88 00 00`, table entry `0x00de`, bitmap
-size `0x0891`, and copy stream position `0x0891` are installed; the
-`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` return leaves `0x783140 = 0`,
-drains zero bytes, and resumes at printable handler `0xd04a` before FF
-publishes bucket entries `1` and `9`.
-Fixture `host-fetched payload-control downloaded glyph FF publishes page
-record` now pins the contrasting nonzero-drain wide case: after `1a 58`
-normalization, copy leaves `0x783140 = 1`, `0x12328` drains following byte
-`0x26` (`&`), and the post-return parser sees FF at handler `0xf0f0`; the
+`+0x0c`/`0x7827ba`/`+0x2b`. Fixture `0x16b1a descriptor width helper emits only mode
+1/2` closes the downloaded-character helper-table mode-byte question for accepted
+widths: disassembly `0x16b36..0x16b6a` writes mode `1` for even byte spans and mode `2`
+for odd byte spans, while `0x16b26..0x16b34` rejects widths `0` and `0x1069` without
+scratch writes. Mode-byte-`0` remains documented as an artificial `0x16498`
+object-boundary reject through the no-install fixtures, not as parser-produced
+descriptor output. Fixture `parser-driven downloaded glyph rule raster stream composes
+through 0x1ef6a` now carries an explicit even-span downloaded-character return boundary:
+after stream byte `24`, it records `0x15dc6 -> 0x16498`, `0x16498 -> 0x15dcc`, `0x15dcc
+-> 0x12328`, copy status `1`, copy stream position `18`, remaining `0x783140 = 0`, a
+zero-byte `0x12328` drain, and next parser handler `0x10e68` for following bytes `ESC
+*c12a`. Fixture `0x16498 no-install exits preserve following printable output` now pins
+non-success no-install return edges through the same `0x15dc6 -> 0x16498 -> 0x15dcc ->
+0x12328` boundary: the three branches leave `0x783140 = 6`, drain rejected payloads `de
+ad be ef ca fe` or `f0 0f aa 55 3c c3` via `0x12328`, and resume at printable handler
+`0xd04a`. Fixture `0x16498 status-2 partial installs remain printable` pins the linear
+and split-plane partial-install siblings with `0x783140 = 0`, a zero-byte `0x12328`
+drain, and the same next printable handler `0xd04a`. Fixture `downloaded normal row-0x80
+and segmented glyph FF publications render page records` now pins normal, row-`0x80`,
+and linear-segmented full-success publication returns through the same boundary with
+`0x783140 = 0`, zero-byte `0x12328` drains, and next printable handler `0xd04a`; fixture
+`split-plane segmented downloaded glyph FF publication renders page record` pins the
+corresponding split-plane segmented return before printable `(` and FF publication.
+Fixture `combined font download FF publishes installed glyph page record` now pins the
+segmented-wide full-success sibling: after the `ESC )s2193W` copy, record `00 00 00 00
+0c 02 00 81 00 88 00 00`, table entry `0x00de`, bitmap size `0x0891`, and copy stream
+position `0x0891` are installed; the `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` return
+leaves `0x783140 = 0`, drains zero bytes, and resumes at printable handler `0xd04a`
+before FF publishes bucket entries `1` and `9`. Fixture `host-fetched payload-control
+downloaded glyph FF publishes page record` now pins the contrasting nonzero-drain wide
+case: after `1a 58` normalization, copy leaves `0x783140 = 1`, `0x12328` drains
+following byte `0x26` (`&`), and the post-return parser sees FF at handler `0xf0f0`; the
 same fixture still documents the modeled published bucket-1 wide object through
-`0x1ed84`/`0x1ef6a`/`0x1f0d2`.
-Remaining work is additional metric-value combinations outside the pinned legal
-matrix, boundary, and low-nibble endpoints. Those pinned metric endpoints include
-rounded input `0x0013` copying `+0x2c = 0x0014`, high-byte rounded inputs
-`0x1500`/`0x1508`/`0x15ff` all copying `+0x2c = 0x0060`, max positive and max
+`0x1ed84`/`0x1ef6a`/`0x1f0d2`. Remaining work is additional metric-value combinations
+outside the pinned legal matrix, boundary, and low-nibble endpoints. Those pinned metric
+endpoints include rounded input `0x0013` copying `+0x2c = 0x0014`, high-byte rounded
+inputs `0x1500`/`0x1508`/`0x15ff` all copying `+0x2c = 0x0060`, max positive and max
 negative copied offset words `0x007f`/`0xffff`, lower-bound equality, and exact
-page-extent equality. Remaining work also includes validation/error page behavior
-beyond those bounded predicate and short-budget no-install branches, remaining
-release variants, full-success return-boundary siblings beyond the covered normal
-even-span, no-install, status-`2`, linear-segmented publication, split-plane
+page-extent equality. ROM-internal validation/error page behavior is no longer an open
+class: `0x16fae..0x17016` predicate failures for entries `2`, `4`, `5`, `6`, and `7`
+plus the short-budget entry-`5` case are covered by fixtures `ESC )s80W additional
+validation predicate failures skip allocation` and `ESC )s#W validation failures
+preserve following printable output`, while `0x16498` object-level no-install/status-`2`
+exits are covered by fixtures `0x16498 no-install exits preserve following printable
+output` and `0x16498 status-2 partial installs remain printable`. Remaining work instead
+includes external HP/manual names for consumed-but-not-staged validation fields,
+remaining release variants, full-success return-boundary siblings beyond the covered
+normal even-span, no-install, status-`2`, linear-segmented publication, split-plane
 segmented publication, and segmented-wide publication zero-drain cases plus the
-payload-control wide nonzero-drain case, broader publication combinations beyond
-the covered
-normal, nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented,
-rows-`0x20` short, rows-`0x40` short, row-count-matrix rows
-`0x04`/`0x7f`/`0x83`/`0xff`, rows-`0x82` segmented, rows-`0x0102`
-low-byte-truncated publication, split-plane segmented, segmented-wide,
-even-span wide, payload-control wide, downloaded-character no-install, and
-status-`2` compact bucket variants, full live-parser raster edge cases, and
-final device-output page
-comparison.
-Downloaded-character no-install failures now publish the following default
-printable through trailing-FF `0xff1e`, while the status-`2` partial-install
-branch is carried through trailing-FF publication and published-record
-rendering for both linear and split-plane compact objects.
-The downloaded-glyph row-count matrix fixture adds fetched `ESC )s#W` install,
-printable, FF-publication, and render-entry coverage for short rows `0x04` and
-`0x7f` on selector `0x0003`/bucket `1`, plus segmented rows `0x83` and
-`0xff` on selector `0x2003`/buckets `1` and `9`. The published render row
-counts are `10`, `64`, `9`, and `16`.
-The rows-`0x0102` downloaded-glyph fixture proves accepted 16-bit install
-record `00 00 00 00 0c 01 01 02 00 10 00 00`, but the printable
-page-record source exposes row byte `0x02`, publishes selector `0x0003`
-bucket `1` only, then `0x1f414` splits rows `0x0102` into `58` current rows
-and `200` fallback rows. The fallback exceeds `0x1fe76`'s valid table maximum
-index `128` and reads target `0x329ad3c0`.
+payload-control wide nonzero-drain case, broader publication combinations beyond the
+covered normal, nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented, rows-`0x20`
+short, rows-`0x40` short, row-count-matrix rows `0x04`/`0x7f`/`0x83`/`0xff`, rows-`0x82`
+segmented, rows-`0x0102` low-byte-truncated publication, split-plane segmented,
+segmented-wide, even-span wide, payload-control wide, downloaded-character no-install,
+and status-`2` compact bucket variants, full live-parser raster edge cases, and final
+device-output page comparison. Downloaded-character no-install failures now publish the
+following default printable through trailing-FF `0xff1e`, while the status-`2`
+partial-install branch is carried through trailing-FF publication and published-record
+rendering for both linear and split-plane compact objects. The downloaded-glyph
+row-count matrix fixture adds fetched `ESC )s#W` install, printable, FF-publication, and
+render-entry coverage for short rows `0x04` and `0x7f` on selector `0x0003`/bucket `1`,
+plus segmented rows `0x83` and `0xff` on selector `0x2003`/buckets `1` and `9`. The
+published render row counts are `10`, `64`, `9`, and `16`. The rows-`0x0102`
+downloaded-glyph fixture proves accepted 16-bit install record `00 00 00 00 0c 01 01 02
+00 10 00 00`, but the printable page-record source exposes row byte `0x02`, publishes
+selector `0x0003` bucket `1` only, then `0x1f414` splits rows `0x0102` into `58` current
+rows and `200` fallback rows. The fallback exceeds `0x1fe76`'s valid table maximum index
+`128` and reads target `0x329ad3c0`.
 
 Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md`
 collects the raster command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`,

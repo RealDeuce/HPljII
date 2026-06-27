@@ -3628,24 +3628,27 @@ combination have not been page-compared.
   descriptor error-form risk is now variants beyond those bounded predicate
   branches, plus external HP manual naming for consumed-but-not-staged fields.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span wide,
-  row-threshold `0x80` short, linear normal, linear segmented, and split-plane segmented
-  downloaded-character paths are page-visible. Fixture `host-fetched row-0x80 downloaded
-  character remains short compact` closes the exact `0x80`/`0x81` selector boundary for
-  even-span copied glyphs: `0x12f2e` leaves rows `0x80` on selector `0x0003`, while
-  fixture `host-fetched segmented downloaded character renders through 0x1f1f0` puts
-  rows `0x81` on selector `0x2003`. Fixture `0x16498 replacement allocation failure
-  partial and rejected downloaded character exits preserve state` covers old-pointer
-  release through `0x17a24`, object allocation failure through
-  `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear/split-plane continuation pointer
-  writes, and the mode/header-type status-`0` rejects. Remaining parser-produced
-  comparisons are narrowed by fixture
-  `0x16498 no-install exits preserve following printable output`, which proves
-  those no-install exits leave the next printable on the baseline default-font
-  object and rows. Fixture `0x16498 status-2 partial installs remain printable`
-  proves the status-`2` linear and split-plane partial-install visibility
-  contract. Still-open comparisons are cross-product variants not covered by
-  those shapes, especially other row counts and other character-mode behavior
-  from the same selector families.
+  row-threshold `0x80` short, linear normal, linear segmented, and
+  split-plane segmented downloaded-character paths are page-visible. Fixture
+  `host-fetched row-0x80 downloaded character remains short compact` closes
+  the exact `0x80`/`0x81` selector boundary for even-span copied glyphs:
+  `0x12f2e` leaves rows `0x80` on selector `0x0003`, while fixture
+  `host-fetched segmented downloaded character renders through 0x1f1f0` puts
+  rows `0x81` on selector `0x2003`. Fixture `0x16498 replacement allocation
+  failure partial and rejected downloaded character exits preserve state`
+  covers old-pointer release through `0x17a24`, object allocation failure
+  through `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear/split-plane
+  continuation pointer writes, and the mode/header-type status-`0` rejects.
+  Remaining parser-produced comparisons are narrowed by fixture
+  `0x16498 no-install exits preserve following printable output`, which
+  proves those no-install exits leave the next printable on the baseline
+  default-font object and rows. Fixture
+  `0x16498 status-2 partial installs remain printable` proves the status-`2`
+  linear and split-plane partial-install visibility contract. Still-open
+  comparisons are bounded cross-products: non-boundary row counts inside the
+  already-covered short and segmented selector families, character modes other
+  than the covered mode-1 bitmap records, and publication behavior for the
+  no-install/status-`2` variants rather than the next printable byte alone.
 - downloaded-glyph plus rule/raster producer schedule: fixture
   `parser-driven downloaded glyph rule raster stream composes through
   0x1ef6a` closes the page-stream boundary from parser-produced `0x10898` rule

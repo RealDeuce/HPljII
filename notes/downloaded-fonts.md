@@ -180,12 +180,15 @@ Published page-record state:
 - Firmware bookkeeping: `0xff1e` clears the current page root and sets the
   publication flag after copying the record.
 - Unknown for this checkpoint: downloaded-glyph publication cross-products
-  outside the documented normal bucket-1, linear-segmented bucket-9,
-  segmented-wide bucket-1/bucket-9, and even-span wide bucket-1 streams,
-  especially other row counts, character modes, and non-success exits. Fixture
-  `downloaded normal row-0x80 and segmented glyph FF publications render page
-  records` covers the row-`0x80` bucket-1 publication sibling for the
-  `0x80`/`0x81` selector threshold.
+  outside the documented normal bucket-1, row-`0x80` short bucket-1,
+  linear-segmented bucket-9, segmented-wide bucket-1/bucket-9, and even-span
+  wide bucket-1 streams. The remaining row-count risk is no longer the
+  `0x80`/`0x81` selector boundary itself; it is non-boundary row counts inside
+  the same selector families, character modes other than the covered mode-1
+  bitmap records, and no-install/partial-install publication siblings.
+  Fixture `downloaded normal row-0x80 and segmented glyph FF publications
+  render page records` covers the row-`0x80` bucket-1 publication sibling for
+  the `0x80`/`0x81` selector threshold.
   The covered publication fixtures are
   `downloaded normal row-0x80 and segmented glyph FF publications render page records`,
   `host-fetched even-span downloaded glyph FF publishes rendered page record`,
@@ -1325,9 +1328,10 @@ A byte-stream renderer must preserve:
   printable byte stays on the default-font object and rows. Fixture
   `0x16498 status-2 partial installs remain printable` covers the linear and
   split-plane status-`2` visible-output siblings. Remaining parser-produced
-  comparisons are the cross-product variants not covered by those shapes,
-  especially other row counts and other character-mode behavior from the same
-  selector families.
+  comparisons are bounded cross-products: non-boundary row counts inside the
+  already-covered short and segmented selector families, character modes other
+  than the covered mode-1 bitmap records, and publication behavior for the
+  no-install/status-`2` variants rather than the next printable byte alone.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets; the normal, linear-segmented, and even-span wide siblings
   now publish through the same boundary. Fixture

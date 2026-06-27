@@ -477,10 +477,13 @@ The next work should follow dataflow, not isolated handlers:
    `0x17708 font-ID non-selected exits preserve prior selection` covers the direct
    final-`X` helper exits for scan miss, candidate-slot miss, class mismatch, and
    context-full through the exact `0x17708` terminal status, with no `0x14c64` map
-   dispatch. Remaining font-selection work is visible-output treatment for other
-   fallback/error streams after those preserved-prior-selection exits, plus the
-   transparent secondary segment-57 bitmap source interpretation beyond the covered
-   transparent data paths. Current transparent coverage includes the
+   dispatch. Fixture `0x13eb8 transient and cache-hit exits avoid dispatch` covers the
+   selected-font refresh exits that stop before `0x144d2`/`0x14c64`: transient
+   `0x78298f` stores selected context `0xc008004c`, while cache-hit returns after
+   `0x148f8`. Remaining font-selection work is visible-output treatment for other
+   fallback/error streams after preserved-state exits, plus the transparent secondary
+   segment-57 bitmap source interpretation beyond the covered transparent data paths.
+   Current transparent coverage includes the
    default-filtered C0/high-control fixed-space path,
    nonzero C0 plus high-control `0x80` printable path, primary interior samples `0x81`,
    `0x88`, `0x90`, and `0x97`, primary tall bucket-crossing `0x98`, primary top-of-range

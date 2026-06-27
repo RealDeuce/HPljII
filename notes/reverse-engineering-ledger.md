@@ -1140,8 +1140,11 @@ ROM work needed:
   are now state-covered by fixture
   `0x17708 font-ID non-selected exits preserve prior selection`: scan miss,
   candidate-slot miss, class mismatch, and context-full all restore `0x782f2e` and stop
-  before `0x14c64`. Extend `0x13eb8` if later inline/downloaded or error-return branches
-  surface.
+  before `0x14c64`. The direct `0x13eb8` no-dispatch exits are also state-covered by
+  fixture `0x13eb8 transient and cache-hit exits avoid dispatch`: transient `0x78298f`
+  stores selected context `0xc008004c` without `0x144d2`/`0x14c64`, and cache-hit
+  returns after `0x148f8`. Add visible tails only if later inline/downloaded or
+  error-return branches expose different preserved-state output.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.

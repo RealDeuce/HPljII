@@ -1085,8 +1085,9 @@ handlers:
   remain unknown.
 - Broaden visible-output variants where they still change compatibility:
   font-selection fallback/error branches beyond the two symbol-miss and
-  final-`X` built-in fixtures, downloaded-glyph publication cross-products
-  beyond the documented
+  final-`X` built-in/inline fixtures, with `0x17708` non-selected and
+  `0x13eb8` transient/cache-hit exits currently state-covered as preserved-output
+  paths; downloaded-glyph publication cross-products beyond the documented
   normal, non-boundary short, rows-`0x20` short, rows-`0x40` short,
   row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   low-byte-truncated short, linear-segmented, rows-`0x82` segmented,

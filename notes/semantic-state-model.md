@@ -1466,8 +1466,10 @@ resources because no image is available in this repo.
 - `0x14398..0x156de`: visible-output coverage exists for primary,
   secondary, two symbol-miss fallback streams, non-Roman symbol selections,
   the real final-`@` default-table/copy/default-font streams, and the
-  final-`X` built-in font-ID stream; broader font-selection fallback/error
-  combinations still need the same page-visible treatment.
+  final-`X` built-in and inline/downloaded font-ID streams. The `0x13eb8`
+  transient/cache-hit exits are state-covered as preserved-output paths, while
+  broader font-selection fallback/error combinations still need the same
+  page-visible treatment when they change output.
 - Record `+0x28/+0x2a` is pinned as the decoded-height input consumed by
   `0x1519a` through `0x13bca`; record `+0x2f..+0x31` is pinned as the
   same-class `0x1428c` chooser tie-breaker tuple. Final
@@ -2147,6 +2149,14 @@ through one mixed-stream state: final handlers `0xc930`, `0xc89c`, `0xc6ec`,
 secondary fixture runs `ESC )s0p16h8v0s0b0T SO !!` through the same shape:
 selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
 `1`, HMI becomes `18`, and printable bytes read source context `0xc00ae122`.
+Fixture `0x13eb8 transient and cache-hit exits avoid dispatch` documents the
+two selected-font refresh exits that intentionally do not rebuild a visible
+map. The transient-context path follows `0x148f8`, `0x1569c`, `0x156de`,
+`0x153c6`, `0x1519a`, `0x147b2`, `0x14758`, and `0x14398`, records selected
+context `0xc008004c` for the page-root refresh byte `0x78298f`, restores saved
+active word `0x9999`, and stops before `0x144d2` / `0x14c64`. The cache-hit
+path returns immediately after `0x148f8`, preserving active words
+`[0x1111, 0x2222]`.
 
 ### Field Groups
 
@@ -2185,6 +2195,11 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   - final-`X` non-selected helper exits:
     `scan-miss`, `candidate-slot-miss`, `class-mismatch`, and `context-full`
     all restore saved font ID `0x2222` after the helper returns.
+  - `0x13eb8` no-dispatch exit inputs:
+    transient refresh uses selected slot `0`, requested primary `0x0115`,
+    saved active primary word `0x9999`, and page-root transient flag
+    `0x78298f = 1`; cache-hit uses selected slot `1` with active words
+    `[0x1111, 0x2222]`.
   - dirty flags `0x782f2c` and `0x782f2d`, set by handlers `0xc930`,
     `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a`.
   Evidence: fixture `parsed font-selection stream writes primary font-state
@@ -2274,6 +2289,13 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   - final-`X` selected inline/downloaded candidate slot:
     `0x782900` for payload `0x000100` / selected longword `0x00000100`.
     With an existing page root, `0xc4fc` reuses context slot `1`.
+  - transient `0x13eb8` selected context cache:
+    `0x782992` receives selected longword `0xc008004c` after candidate slot
+    `0x782354` / record `0x00004c` wins, but the normal current-font context
+    record `0x782ee6` is not written by this exit.
+  - cache-hit `0x13eb8` derived state:
+    no candidate-window activation or map rebuild occurs; the only confirmed
+    call is `0x148f8`, and the active words remain `[0x1111, 0x2222]`.
   - final-`X` non-selected candidates:
     scan miss and candidate-slot miss leave selected pointer `0x7828a8 = 0`;
     class mismatch observes pointer `0x782364` and record class `0xff` but
@@ -2378,6 +2400,11 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     the secondary final-`X` visible fixture calls `0x172c0`, `0x1b4c0`,
     `0xc4fc`, `0x158be`, `0x1b2fe`, and `0x14c64`; `0x158be` reads the active
     symbol from inline word `+0x14`, and `0x14c64` rebuilds map `0x783032`.
+  - `0x13eb8` no-dispatch bookkeeping:
+    transient refresh with `0x78298f = 1` runs the normal candidate filters
+    through chooser `0x14398`, stores only selected context `0x782992`, and
+    does not call `0x144d2` or `0x14c64`; cache-hit returns after `0x148f8`
+    without activating candidate windows.
   - `0x1ac0a` writes the parser default-symbol table
     `0x782f1c/20/24/28`; `0x1af36` writes the separate candidate fallback
     table `0x782f0c/10/14/18`.
@@ -2423,6 +2450,11 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   `0xc6b8` before printable consumption.
 - `0x13eb8` filters active candidates through `0x1569c`, `0x156de`,
   `0x153c6`, `0x1519a`, `0x147b2`, `0x14758`, and `0x14398`.
+- `0x13eb8` also has two no-dispatch consumers documented by fixture
+  `0x13eb8 transient and cache-hit exits avoid dispatch`: the transient path
+  consumes the same candidate-filter chain but leaves visible output to the
+  already-selected map, while the cache-hit path consumes only the `0x148f8`
+  cache probe and returns.
 - `0x156de` writes fallback active word `0x0115` for the primary symbol miss
   and `0x000e` for the secondary symbol miss before pruning the active
   candidate window.
@@ -2596,6 +2628,11 @@ unflagged source at `(22,22)`, queues compact object prefix
 renders row digest
 `e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`.
 
+The `0x13eb8` no-dispatch fixture has no new rendered rows. Its output effect
+is preservation: the transient path prepares `0x782992 = 0xc008004c` for a
+page-root refresh without touching `0x782ee6` or rebuilding `0x782f32`, and
+the cache-hit path leaves the existing active words and maps in force.
+
 ### Confidence
 
 High for parser handler routing, fallback table decision, selected built-in
@@ -2620,6 +2657,12 @@ High for final-`X` inline/downloaded visible output because fixture
 host-fetched bytes, ROM parser handlers, the bit-30-clear `0x17708` helper
 path, selected inline context, SO, unflagged printable source capture, object
 prefix, bridge context slots, and rendered row digest.
+High for the `0x13eb8` transient and cache-hit no-dispatch exits because
+fixture `0x13eb8 transient and cache-hit exits avoid dispatch` pins call
+lists, selected context cache, saved active word restoration, absence of
+`0x144d2` / `0x14c64`, and cache-hit early return. Medium for later visible
+output after these exits because the fixture documents the helper boundary and
+state preservation rather than appending a printable tail.
 High for direct `0x17708` non-selected exits because fixture
 `0x17708 font-ID non-selected exits preserve prior selection` pins all four
 terminal statuses, call lists, restored font ID, selected pointer state, class
@@ -2656,6 +2699,7 @@ digests.
 - `font-ID built-in selection feeds visible page-record rows`
 - `font-ID inline/downloaded selection feeds visible page-record rows`
 - `0x17708 font-ID non-selected exits preserve prior selection`
+- `0x13eb8 transient and cache-hit exits avoid dispatch`
 - `real default-table caller stream uses ROM-backed words`
 - `real final-@ default-table streams select visible built-ins`
 
@@ -2674,9 +2718,11 @@ digests.
 
 - `0x1205a..0x13eb8`: parsed request to refresh is behaviorally composed and
   the resulting current-font context now stays in one mixed-stream state for
-  the primary and secondary visible paths. Remaining risk is lower-level
-  CPU-register fidelity inside the modeled refresh and broader font-selection
-  variants.
+  the primary and secondary visible paths. The `0x13eb8` transient and
+  cache-hit no-dispatch exits are state-covered through their helper return
+  boundaries. Remaining risk is lower-level CPU-register fidelity inside the
+  modeled refresh, plus broader font-selection variants that need visible
+  tails after preserved-state exits.
 - `0x782ee6 +0x00..+0x0f` into `0xc68a..0xc428..0xc4fc..0xd04a..0x1393a`
   and `0x782ef6 +0x00..+0x0f` into
   `0xc6b8..0xc428..0xc4fc..0xd04a..0x1393a`: primary and secondary selected

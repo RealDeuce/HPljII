@@ -52,7 +52,9 @@ Evidence:
   - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
   - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
   - `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
+  - `legal descriptor metric mixed values drive d4ac and d8fc consumers`
   - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+  - `legal descriptor metric byte-boundary rounding drives d4ac and d8fc consumers`
 
 ## Concept
 
@@ -1075,6 +1077,14 @@ Output effect:
   `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017` and the range-minus-one endpoint
   as `0x0015/0x0014/0x0000`, with both legal forms still feeding the same
   documented `d4ac` and `d8fc` visible output paths.
+- Fixture `legal descriptor metric mixed values drive d4ac and d8fc
+  consumers` proves multi-field legal combinations where `0x17430`,
+  `0x1757a`, and `0x1762a` all change: middle-range
+  `0x0008/0x0030/0x002a/0x02` copies `+0x18/+0x1a/+0x2c =
+  0x0027/0x0002/0x002c`, suppresses `d4ac`, and renders `d8fc`; rounded
+  `0x00ff` caps copied `+0x2c` to `0x00c0`; offset byte `0x80` sign-extends
+  to `+0x1a = 0xff80`; and late first-code `0x002f` derives `+0x18 = 0`,
+  keeping `d4ac` visible while `d8fc` exits before lower bound.
 - Fixture `legal descriptor metric low-nibble rounding drives d4ac and d8fc
   consumers` proves inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
   `0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010` and keep
@@ -1235,5 +1245,6 @@ A byte-stream reproduction must preserve these behaviors:
   `ESC )s8W` entry-5 failure now preserve following printable output and cover
   every ROM-internal rejecting predicate family. The remaining gap is
   additional metric-value combinations within the legal inline/unflagged and
-  resource/flagged forms, plus external/manual naming for
+  resource/flagged forms outside the pinned matrix, boundary, range-endpoint,
+  mixed-value, low-nibble, and byte-boundary fixtures, plus external/manual naming for
   consumed-but-not-staged fields.

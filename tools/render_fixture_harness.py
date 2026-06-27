@@ -53192,6 +53192,204 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     ))
 
+    def mixed_metric_stream(
+        first_code: int,
+        range_word: int,
+        rounded_word: int,
+        offset_byte: int,
+    ) -> bytearray:
+        stream = bytearray(font_validate_stream)
+        stream[6:8] = first_code.to_bytes(2, "big")
+        stream[10:12] = range_word.to_bytes(2, "big")
+        stream[20:22] = rounded_word.to_bytes(2, "big")
+        stream[30] = offset_byte
+        return stream
+
+    metric_mixed_value_inputs = {
+        "middle-range-rounded": (0x0008, 0x0030, 0x002A, 0x02),
+        "middle-range-rounded-capped": (0x0008, 0x0030, 0x00FF, 0x02),
+        "middle-range-negative-min-offset": (0x0008, 0x0030, 0x002A, 0x80),
+        "late-first-code-zero-height": (0x002F, 0x0030, 0x000C, 0x00),
+    }
+    metric_mixed_value_cases = {
+        label: compact_metric_boundary_case(
+            mixed_metric_stream(first_code, range_word, rounded_word, offset_byte),
+        )
+        for label, (
+            first_code,
+            range_word,
+            rounded_word,
+            offset_byte,
+        ) in metric_mixed_value_inputs.items()
+    }
+
+    metric_compact_only_d4ac = {
+        "span": {
+            "updated": False,
+            "reason": "beyond-page-extent",
+            "cursor_y": 21,
+        },
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 01 7a 00 00 00 00"),
+        "render": {
+            "row_count": 10,
+            "row_width": 26,
+            "row_sha256": "86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6",
+        },
+    }
+    metric_visible_d4ac_height_0x0c = {
+        "span": {
+            "updated": True,
+            "cursor_y": 21,
+            "handler": 0x00D4AC,
+            "context_offset_002b": 0,
+            "context_lower_002c": 0,
+            "context_height_002d": 0x0C,
+            "high_y": 26,
+        },
+        "object_prefix": bytes.fromhex("00 00 00 00 40 00 00 01 a4 06 03 00 00 14"),
+        "render": {
+            "row_count": 13,
+            "row_width": 116,
+            "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+        },
+    }
+    metric_visible_d8fc_offset_2 = {
+        "span": {
+            "updated": True,
+            "cursor_y": 21,
+            "handler": 0x00D8FC,
+            "context_lower_0016": 8,
+            "context_height_0018": 39,
+            "context_offset_001a": 2,
+            "metric_source": metric_boundary_context_source,
+            "high_y": 19,
+        },
+        "object_prefix": bytes.fromhex("00 00 00 00 40 00 00 01 34 06 03 00 00 14"),
+        "render": {
+            "row_count": 8,
+            "row_width": 116,
+            "row_sha256": "00c97b69bc50326e442dd060c88b710b8f00217d40809bed276d8ba48581fdc7",
+        },
+    }
+    metric_compact_only_d8fc_lower = {
+        "span": {
+            "updated": False,
+            "reason": "before-context-lower",
+            "cursor_y": 21,
+        },
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 21 5a 00 00 00 00"),
+        "render": {
+            "row_count": 8,
+            "row_width": 14,
+            "row_sha256": "1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a",
+        },
+    }
+    checks.append(assert_equal(
+        "legal descriptor metric mixed values drive d4ac and d8fc consumers",
+        metric_mixed_value_cases,
+        {
+            "middle-range-rounded": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 8,
+                    "range_word_at_stream_10": 48,
+                    "rounded_word_at_stream_20": 42,
+                    "flagged_offset_byte_at_stream_30": 2,
+                },
+                "copied_metrics": {
+                    "word_0x14": 48,
+                    "word_0x16": 8,
+                    "word_0x18": 39,
+                    "word_0x1a": 2,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 44,
+                    "word_0x2c": 44,
+                },
+                "d4ac": metric_compact_only_d4ac,
+                "d8fc": metric_visible_d8fc_offset_2,
+            },
+            "middle-range-rounded-capped": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 8,
+                    "range_word_at_stream_10": 48,
+                    "rounded_word_at_stream_20": 255,
+                    "flagged_offset_byte_at_stream_30": 2,
+                },
+                "copied_metrics": {
+                    "word_0x14": 48,
+                    "word_0x16": 8,
+                    "word_0x18": 39,
+                    "word_0x1a": 2,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 192,
+                    "word_0x2c": 192,
+                },
+                "d4ac": metric_compact_only_d4ac,
+                "d8fc": metric_visible_d8fc_offset_2,
+            },
+            "middle-range-negative-min-offset": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 8,
+                    "range_word_at_stream_10": 48,
+                    "rounded_word_at_stream_20": 42,
+                    "flagged_offset_byte_at_stream_30": -128,
+                },
+                "copied_metrics": {
+                    "word_0x14": 48,
+                    "word_0x16": 8,
+                    "word_0x18": 39,
+                    "word_0x1a": 0xFF80,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 44,
+                    "word_0x2c": 44,
+                },
+                "d4ac": metric_compact_only_d4ac,
+                "d8fc": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D8FC,
+                        "context_lower_0016": 8,
+                        "context_height_0018": 39,
+                        "context_offset_001a": 0xFF80,
+                        "metric_source": metric_boundary_context_source,
+                        "high_y": -65387,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 40 00 00 01 04 06 03 00 00 14"
+                    ),
+                    "render": {
+                        "row_count": 3,
+                        "row_width": 116,
+                        "row_sha256": "72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281",
+                    },
+                },
+            },
+            "late-first-code-zero-height": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 47,
+                    "range_word_at_stream_10": 48,
+                    "rounded_word_at_stream_20": 12,
+                    "flagged_offset_byte_at_stream_30": 0,
+                },
+                "copied_metrics": {
+                    "word_0x14": 48,
+                    "word_0x16": 47,
+                    "word_0x18": 0,
+                    "word_0x1a": 0,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 12,
+                    "word_0x2c": 12,
+                },
+                "d4ac": metric_visible_d4ac_height_0x0c,
+                "d8fc": metric_compact_only_d8fc_lower,
+            },
+        },
+    ))
+
     def rounded_metric_nibble_stream(value: int) -> bytearray:
         stream = bytearray(font_validate_stream)
         stream[10:12] = b"\x00\x18"
@@ -85505,6 +85703,48 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             metric_range_endpoint_cases[
                 "first-code-range-minus-one"
             ]["d8fc"]["render"]["row_sha256"],  # type: ignore[index]
+        )
+    )
+    lines.append(
+        "- metric mixed-value fixture: fixture `legal descriptor metric mixed "
+        "values drive d4ac and d8fc consumers` proves mid-range "
+        "`first/range/rounded/offset = 0x0008/0x0030/0x002a/0x02` copies "
+        "`+0x18/+0x1a/+0x2c = 0x%04x/0x%04x/0x%04x`, suppresses `d4ac` as "
+        "`%s`, and renders `d8fc` digest `%s`; rounded input `0x00ff` caps "
+        "to copied `+0x2c = 0x%04x`, offset byte `0x80` sign-extends to "
+        "`+0x1a = 0x%04x` with high-y `%d`, and late first-code `0x002f` "
+        "derives `+0x18 = %d`, letting `d4ac` render while `d8fc` exits "
+        "`%s`." % (
+            metric_mixed_value_cases["middle-range-rounded"]["copied_metrics"][
+                "word_0x18"
+            ],  # type: ignore[index]
+            metric_mixed_value_cases["middle-range-rounded"]["copied_metrics"][
+                "word_0x1a"
+            ],  # type: ignore[index]
+            metric_mixed_value_cases["middle-range-rounded"]["copied_metrics"][
+                "word_0x2c"
+            ],  # type: ignore[index]
+            metric_mixed_value_cases["middle-range-rounded"]["d4ac"]["span"][
+                "reason"
+            ],  # type: ignore[index]
+            metric_mixed_value_cases["middle-range-rounded"]["d8fc"]["render"][
+                "row_sha256"
+            ],  # type: ignore[index]
+            metric_mixed_value_cases["middle-range-rounded-capped"]["copied_metrics"][
+                "word_0x2c"
+            ],  # type: ignore[index]
+            metric_mixed_value_cases[
+                "middle-range-negative-min-offset"
+            ]["copied_metrics"]["word_0x1a"],  # type: ignore[index]
+            metric_mixed_value_cases[
+                "middle-range-negative-min-offset"
+            ]["d8fc"]["span"]["high_y"],  # type: ignore[index]
+            metric_mixed_value_cases["late-first-code-zero-height"]["copied_metrics"][
+                "word_0x18"
+            ],  # type: ignore[index]
+            metric_mixed_value_cases["late-first-code-zero-height"]["d8fc"]["span"][
+                "reason"
+            ],  # type: ignore[index]
         )
     )
     lines.append(

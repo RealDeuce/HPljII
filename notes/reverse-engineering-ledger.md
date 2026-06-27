@@ -509,11 +509,16 @@ case: after `1a 58` normalization, copy leaves `0x783140 = 1`, `0x12328` drains
 following byte `0x26` (`&`), and the post-return parser sees FF at handler `0xf0f0`; the
 same fixture still documents the modeled published bucket-1 wide object through
 `0x1ed84`/`0x1ef6a`/`0x1f0d2`. Remaining work is additional metric-value combinations
-outside the pinned legal matrix, boundary, low-nibble, and byte-boundary endpoints.
+outside the pinned legal matrix, boundary, range-endpoint, mixed-value, low-nibble, and
+byte-boundary endpoints.
 Those pinned metric endpoints include rounded input `0x0013` copying `+0x2c = 0x0014`,
 high-byte rounded inputs `0x1500`/`0x1508`/`0x15ff` all copying `+0x2c = 0x0060`, max
 positive and max negative copied offset words `0x007f`/`0xffff`, lower-bound equality,
 exact page-extent equality, byte-boundary outputs `0x00fc`/`0x0100`/`0x0104`, and
+mixed legal values `0x0008/0x0030/0x002a/0x02` copying `+0x18/+0x1a/+0x2c =
+0x0027/0x0002/0x002c`, rounded `0x00ff` capping to `+0x2c = 0x00c0`, offset byte
+`0x80` sign-extending to `+0x1a = 0xff80`, and late first-code `0x002f` deriving
+`+0x18 = 0`.
 range-cap output `0x0100`. ROM-internal validation/error page behavior is no longer an
 open class: `0x16fae..0x17016` predicate failures for entries `2`, `4`, `5`, `6`, and
 `7` plus the short-budget entry-`5` case are covered by fixtures `ESC )s80W additional

@@ -73,6 +73,7 @@ Primary fixtures:
 - `descriptor metric fields match across inline and resource contexts`
 - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
 - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+- `legal descriptor metric mixed values drive d4ac and d8fc consumers`
 - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
 - `legal descriptor metric byte-boundary rounding drives d4ac and d8fc consumers`
 - `0x16498-backed downloaded character object renders segmented-wide compact row`
@@ -334,8 +335,13 @@ Renderer-facing allocated payload fields:
   `0x0000/0x0004/0x0004/0x0004/0x0010`), and the `0x00fd..0x0102`
   byte-boundary outputs `0x00fc/0x0100/0x0100/0x0104`. `0x1762a..0x1763c` writes the
   signed byte reader result into payload word `+0x1a`; fixtures prove bytes
-  `0x7f`, `0xfe`, and `0xff` copy as `0x007f`, `0xfffe`, and `0xffff` and
-  are consumed by `0xd8fc` as words.
+  `0x7f`, `0x80`, `0xfe`, and `0xff` copy as `0x007f`, `0xff80`, `0xfffe`, and
+  `0xffff` and are consumed by `0xd8fc` as words. Fixture `legal descriptor metric
+  mixed values drive d4ac and d8fc consumers` proves the formulas together for
+  middle-range `first/range/rounded/offset = 0x0008/0x0030/0x002a/0x02`, copied
+  `+0x18/+0x1a/+0x2c = 0x0027/0x0002/0x002c`, the rounded-`0x00ff` cap to
+  `+0x2c = 0x00c0`, the offset-byte `0x80` sign extension, and the late first-code
+  `0x002f` case deriving `+0x18 = 0`.
 - payload `+0x38`: optional-symbol block offset when `0x782856 != 0`.
 - glyph pointer table entry: relative offset from payload base to a
   downloaded character object, for example table entry `0x00de` points to
@@ -1895,11 +1901,14 @@ A byte-stream renderer must preserve:
   span output and `d8fc` high-y `20` output. Fixture `legal descriptor metric range
   endpoints drive d4ac and d8fc consumers` proves first-code zero and first-code `range
   - 1` copy `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017` and `0x0015/0x0014/0x0000` while
-  preserving the documented visible span paths. Fixture `descriptor metric fields match
-  across inline and resource contexts` now proves the legal producer forms and the two
+  preserving the documented visible span paths. Fixture `legal descriptor metric mixed
+  values drive d4ac and d8fc consumers` proves the combined middle-range, range-capped,
+  sign-extended-offset, and zero-derived-height copied-field cases described above.
+  Fixture `descriptor metric fields match across inline and resource contexts` now
+  proves the legal producer forms and the two
   invalid swapped forms. The remaining producer gap is not these copied-field endpoints;
   it is additional legal descriptor combinations outside the pinned
   lower/equality/upper, clamp, offset endpoint, range endpoint, rounded-transform,
-  low-nibble, and byte-boundary cases. All ROM-internal validation no-install predicate
-  families are already parser-produced and page-visible; remaining validation work is
-  external HP manual naming for consumed-but-not-staged fields.
+  mixed-value, low-nibble, and byte-boundary cases. All ROM-internal validation
+  no-install predicate families are already parser-produced and page-visible; remaining
+  validation work is external HP manual naming for consumed-but-not-staged fields.

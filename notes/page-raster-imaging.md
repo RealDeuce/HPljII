@@ -1324,7 +1324,10 @@ through `0x1f1f0` from source offset `0x0100`; both pass through `0xff1e`,
 sibling `ESC )s64W` + printable `1` + FF also copies bucket `1`; render
 bucket word `1` passes through `0x1ed84`, `0x1ef6a`, compact target
 `0x1effe`, and `0x1fe76`, producing `38` visible rows from the interior short
-row count. The rows-`0x82`
+row count. The rows-`0x40` short sibling `ESC )s128W` + printable `2` + FF
+also copies bucket `1`; render bucket word `1` follows the same path and
+produces `64` blank current-band rows because the nonzero glyph row is below
+the first band. The rows-`0x82`
 segmented sibling `ESC )s260W` + printable `0` + FF also copies buckets `1`
 and `9`; render bucket word `9` passes through `0x1ed84`, `0x1ef6a`, compact
 target `0x1effe`, and `0x1f1f0`, producing two segment-1 rows from the

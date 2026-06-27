@@ -471,7 +471,7 @@ even-span and mode-byte-`2` odd-span installs if ROM evidence proves such
 forms, remaining release variants, broader publication combinations beyond
 the covered
 normal, nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented,
-rows-`0x20` short, rows-`0x82` segmented, split-plane segmented,
+rows-`0x20` short, rows-`0x40` short, rows-`0x82` segmented, split-plane segmented,
 segmented-wide, even-span wide, payload-control wide, downloaded-character
 no-install, and status-`2` compact bucket variants, full live-parser raster
 edge cases, and final device-output page
@@ -649,7 +649,7 @@ fixtures now crossing `0x1edc6` plus `0x1ed84`/`0x1ef6a`,
 `0x168dc`/`0x16942` font payload-reader
 fixtures plus host-fetched `ESC )s18W` payload-control and `ESC )s260W`
 rows-`0x82` segmented plus `ESC )s64W` rows-`0x20` short `0x1ed84`/`0x1ef6a`
-render-entry and FF-publication bridges,
+and `ESC )s128W` rows-`0x40` short render-entry and FF-publication bridges,
 fetched printable-byte selection of the installed `ESC )s2193W`
 downloaded glyph into segmented `0x12f2e`/`0x1387c` page-record buckets
 and `0x1ed84`/`0x1ef6a` render-entry output, plus a combined fetched

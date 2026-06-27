@@ -3027,11 +3027,12 @@ compact text renderer.
     `0x7827b4` updated by `0x16c14`/`0x1bc38`.
   - published downloaded-glyph page-record buckets copied by `0xff1e`: normal
     selector `0x0003` publishes bucket `1`, rows-`0x20` short selector
-    `0x0003` publishes bucket `1`, linear-segmented selector `0x2003`
-    publishes buckets `1` and `9` for rows `0x81` and rows `0x82`,
-    segmented-wide selector `0x3003` publishes buckets `1` and `9`, and
-    wide selector `0x1003` publishes bucket `1` for the even-span and
-    payload-control odd-span streams.
+    `0x0003` publishes bucket `1`, rows-`0x40` short selector `0x0003`
+    publishes bucket `1`, linear-segmented selector `0x2003` publishes
+    buckets `1` and `9` for rows `0x81` and rows `0x82`, segmented-wide
+    selector `0x3003` publishes buckets `1` and `9`, and wide selector
+    `0x1003` publishes bucket `1` for the even-span and payload-control
+    odd-span streams.
 - Parser scratch:
   - `0x78299e`: six-byte parsed-record cursor rewound by font handlers.
   - `0x783140`: payload byte budget used by descriptor and payload readers.
@@ -3211,6 +3212,11 @@ FF, restores record `80 57 00 40 00 00`, installs record
 `00 00 00 00 0c 01 00 20 00 10 00 00`, publishes bucket `1`, keeps selector
 `0x0003`, and renders bucket word `1` through `0x1ed84`/`0x1ef6a` and compact
 target `0x1effe` / renderer `0x1fe76` with `38` visible rows. The
+rows-`0x40` short case drains host-fetched `ESC )s128W` plus printable `2`
+and FF, restores record `80 57 00 80 00 00`, installs record
+`00 00 00 00 0c 01 00 40 00 10 00 00`, publishes bucket `1`, keeps selector
+`0x0003`, and renders bucket word `1` through `0x1ed84`/`0x1ef6a` and compact
+target `0x1effe` / renderer `0x1fe76` with `64` blank current-band rows. The
 segmented case drains host-fetched `ESC )s258W` plus printable `'` and FF,
 restores record `80 57 01 02 00 00`, publishes bucket `9` object
 `00 00 00 00 20 03 00 01 27 01 66 01` plus the segment-0 bucket `1` entry,
@@ -3676,75 +3682,64 @@ page-stream phase.
 
 ### Confidence
 
-High for command dispatch, current-record state, existing-record release
-ordering before allocation failure, staged header fields, payload allocation,
-installed downloaded-character object, and visible row, because the fixtures
-tie host-fetched streams to parser records, teardown state, and render rows.
-High for the downloaded-character parser-to-page path for the normal,
-wide/control, even-span wide, row-threshold, segmented, and segmented-wide
-compact selectors represented by fixtures `host-fetched linear downloaded
-character stream renders through 0x168dc`, `host-fetched downloaded character
-payload control reaches wide render`, `host-fetched even-span wide downloaded
-character renders through 0x1f0d2`, `host-fetched row-0x80 downloaded
-character remains short compact`, `0x16498 replacement allocation failure
-partial and rejected downloaded character exits preserve state`,
-`0x16498 no-install exits preserve following printable output`,
-`0x16498 status-2 partial installs remain printable`,
-`host-fetched segmented downloaded character renders through 0x1f1f0`,
-`host-fetched split-plane segmented
-downloaded character renders through 0x1f1f0`, and
-`host-fetched downloaded character stream reaches rendered object`. High for
-the modeled FF publication boundary of the combined downloaded-glyph stream
-because the fixture asserts the full fetched stream boundaries, published
-bucket array entries `1` and `9`, selected render bucket words `1` and `9`,
-dispatch target, and final rows. High for the even-span wide publication
-sibling because fixture
-`host-fetched even-span downloaded glyph FF publishes rendered page record`
-asserts the host-fetched `ESC )s18W` payload, tail handlers `0xd04a` and
-`0xf0f0`, published bucket `1`, `0x1ed84` render word `1`, compact dispatch
-target `0x1effe`, and final `0x1f0d2` rows. High for the payload-control
-odd-span wide publication sibling because fixture
-`host-fetched payload-control downloaded glyph FF publishes page record`
-asserts the `1a 58` normalized payload, mode-byte-`2` record
-`00 00 00 00 0c 02 00 01 00 88 00 00`, printable `&`, FF tail handlers
-`0xd04a`/`0xf0f0`, published bucket `1`, `0x1ed84` render word `1`, compact
-dispatch target `0x1effe`, and final `0x1f0d2` rows. High for the normal,
-non-boundary short, rows-`0x20` short, row-`0x80`, segmented, rows-`0x82`
-segmented, and split-plane segmented publication siblings because fixtures
-`host-fetched nonboundary short downloaded glyph FF publication renders page record`,
-`host-fetched rows-0x20 short downloaded glyph FF publication renders page record`,
-`downloaded normal row-0x80 and segmented glyph FF publications render page records`,
-`host-fetched rows-0x82 segmented downloaded glyph FF publication renders page record`,
-and `split-plane segmented downloaded glyph FF publication renders page record`
-assert fetched stream boundaries, parser-restored records, tail handlers
-`0xd04a` and `0xf0f0`, published bucket entries `1` and `9`, selected render
-bucket words, compact target `0x1effe`, row-`0x80` selector `0x0003`, rows
-`0x20` selector `0x0003`, rows `0x82` selector `0x2003`, split-plane A2/A3
-source offsets, dispatch object bytes `0x00` and `0x20`, and final
-`0x1fe76`/`0x1f1f0` rows. High for
-publication-to-scheduler band progression because `0xff1e` disassembly at
-`0xffc8` clears root `+0x18`, `0x1ed84` copies that word into render
-`+0x10/+0x16`, and fixture
-`0x1eba4 scheduler band words render published downloaded glyph` proves
-`0x1eba4` emits band words `0..9` through `0x1ef6a` and preserves the same
-visible row.
-High for downloaded-glyph/rule/raster render composition because fixture
-`host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
-asserts the `ESC )s18W` install fields, bucket-5 glyph/raster objects, bridged
-selector-7 rule object, `0x1ef6a` call order, dispatch targets `0x1f88e` and
-`0x1effe`, rule helper `0x1f596`, and composed output rows.
-High for parser-driven page-stream composition because fixture
-`parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
-asserts the post-font page bytes, handlers `0x10e68`, `0x10e22`, `0x10898`,
-`0xd04a`, `0x10808`, `0x1075a`, and `0x11f82`, delayed raster record
-`80 57 00 02 00 00`, payload offset `28`, bucket-5 chain, bridged rule list,
-and the same composed rows.
-High for the ROM-effect names and failure behavior of every `0x16fae`
-validation-table entry, including the host-fetched invalid-type, first-code
-overflow, zero/high line-count, reversed/high range-count, and invalid-class
-no-install boundaries. Medium for the complete soft-font grammar because exact
-HP manual labels for pass-through descriptor fields and every legal metric
-combination have not been page-compared.
+High for command dispatch, current-record state, existing-record release ordering before
+allocation failure, staged header fields, payload allocation, installed
+downloaded-character object, and visible row, because the fixtures tie host-fetched
+streams to parser records, teardown state, and render rows. High for the
+downloaded-character parser-to-page path for the normal, wide/control, even-span wide,
+row-threshold, segmented, and segmented-wide compact selectors represented by fixtures
+`host-fetched linear downloaded character stream renders through 0x168dc`, `host-fetched
+downloaded character payload control reaches wide render`, `host-fetched even-span wide
+downloaded character renders through 0x1f0d2`, `host-fetched row-0x80 downloaded
+character remains short compact`, `0x16498 replacement allocation failure partial and
+rejected downloaded character exits preserve state`, `0x16498 no-install exits preserve
+following printable output`, `0x16498 status-2 partial installs remain printable`,
+`host-fetched segmented downloaded character renders through 0x1f1f0`, `host-fetched
+split-plane segmented downloaded character renders through 0x1f1f0`, and `host-fetched
+downloaded character stream reaches rendered object`. High for the modeled FF
+publication boundary of the combined downloaded-glyph stream because the fixture asserts
+the full fetched stream boundaries, published bucket array entries `1` and `9`, selected
+render bucket words `1` and `9`, dispatch target, and final rows. High for the even-span
+wide publication sibling because fixture `host-fetched even-span downloaded glyph FF
+publishes rendered page record` asserts the host-fetched `ESC )s18W` payload, tail
+handlers `0xd04a` and `0xf0f0`, published bucket `1`, `0x1ed84` render word `1`, compact
+dispatch target `0x1effe`, and final `0x1f0d2` rows. High for the payload-control
+odd-span wide publication sibling because fixture `host-fetched payload-control
+downloaded glyph FF publishes page record` asserts the `1a 58` normalized payload,
+mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`, printable `&`, FF tail
+handlers `0xd04a`/`0xf0f0`, published bucket `1`, `0x1ed84` render word `1`, compact
+dispatch target `0x1effe`, and final `0x1f0d2` rows. High for the normal, non-boundary
+short, rows-`0x20` short, rows-`0x40` short, row-`0x80`, segmented, rows-`0x82`
+segmented, and split-plane segmented publication siblings because fixtures `host-fetched
+nonboundary short downloaded glyph FF publication renders page record`, `host-fetched
+rows-0x20 short downloaded glyph FF publication renders page record`, `host-fetched
+rows-0x40 short downloaded glyph FF publication renders page record`, `downloaded normal
+row-0x80 and segmented glyph FF publications render page records`, `host-fetched
+rows-0x82 segmented downloaded glyph FF publication renders page record`, and
+`split-plane segmented downloaded glyph FF publication renders page record` assert
+fetched stream boundaries, parser-restored records, tail handlers `0xd04a` and `0xf0f0`,
+published bucket entries `1` and `9`, selected render bucket words, compact target
+`0x1effe`, row-`0x80` selector `0x0003`, rows `0x20` selector `0x0003`, rows `0x40`
+selector `0x0003`, rows `0x82` selector `0x2003`, split-plane A2/A3 source offsets,
+dispatch object bytes `0x00` and `0x20`, and final `0x1fe76`/`0x1f1f0` rows. High for
+publication-to-scheduler band progression because `0xff1e` disassembly at `0xffc8`
+clears root `+0x18`, `0x1ed84` copies that word into render `+0x10/+0x16`, and fixture
+`0x1eba4 scheduler band words render published downloaded glyph` proves `0x1eba4` emits
+band words `0..9` through `0x1ef6a` and preserves the same visible row. High for
+downloaded-glyph/rule/raster render composition because fixture `host-fetched downloaded
+glyph composes with rule and raster through 0x1ef6a` asserts the `ESC )s18W` install
+fields, bucket-5 glyph/raster objects, bridged selector-7 rule object, `0x1ef6a` call
+order, dispatch targets `0x1f88e` and `0x1effe`, rule helper `0x1f596`, and composed
+output rows. High for parser-driven page-stream composition because fixture
+`parser-driven downloaded glyph rule raster stream composes through 0x1ef6a` asserts the
+post-font page bytes, handlers `0x10e68`, `0x10e22`, `0x10898`, `0xd04a`, `0x10808`,
+`0x1075a`, and `0x11f82`, delayed raster record `80 57 00 02 00 00`, payload offset
+`28`, bucket-5 chain, bridged rule list, and the same composed rows. High for the
+ROM-effect names and failure behavior of every `0x16fae` validation-table entry,
+including the host-fetched invalid-type, first-code overflow, zero/high line-count,
+reversed/high range-count, and invalid-class no-install boundaries. Medium for the
+complete soft-font grammar because exact HP manual labels for pass-through descriptor
+fields and every legal metric combination have not been page-compared.
 
 ### Fixtures
 
@@ -3786,6 +3781,8 @@ combination have not been page-compared.
 - `host-fetched downloaded character payload control reaches wide render`
 - `host-fetched payload-control downloaded glyph FF publishes page record`
 - `host-fetched rows-0x20 short downloaded glyph FF publication renders page
+  record`
+- `host-fetched rows-0x40 short downloaded glyph FF publication renders page
   record`
 - `host-fetched rows-0x82 segmented downloaded glyph FF publication renders page
   record`
@@ -3859,15 +3856,15 @@ combination have not been page-compared.
   bounded cross-products: additional non-boundary row counts inside the
   already-covered segmented selector family beyond rows `0x81` and `0x82`,
   additional interior short-family row counts beyond rows `0x03`, `0x10`,
-  `0x20`, and `0x80`, no identified ROM helper path for
+  `0x20`, `0x40`, and `0x80`, no identified ROM helper path for
   accepted descriptor-record mode bytes beyond the covered `0x16b1a`
   mode-byte-`1` even-span and mode-byte-`2` odd-span bitmap installs, and
   broader publication combinations beyond the documented normal,
-  non-boundary short, rows-`0x20` short, row-`0x80`, linear-segmented,
-  rows-`0x82` segmented, split-plane segmented, segmented-wide,
-  even-span wide, payload-control wide, no-install, and status-`2` compact
-  bucket variants. The mode-byte-`0` and high-character header-type status-`0`
-  exits are already documented no-install boundaries:
+  non-boundary short, rows-`0x20` short, rows-`0x40` short, row-`0x80`,
+  linear-segmented, rows-`0x82` segmented, split-plane segmented,
+  segmented-wide, even-span wide, payload-control wide, no-install, and
+  status-`2` compact bucket variants. The mode-byte-`0` and high-character
+  header-type status-`0` exits are already documented no-install boundaries:
   fixture `0x16498 replacement allocation failure partial and rejected
   downloaded character exits preserve state` proves no table/header write at
   the object boundary, and fixture
@@ -3885,9 +3882,9 @@ combination have not been page-compared.
   to the page-stream runner instead of captured from one live CPU memory run.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets; the normal, non-boundary short, row-threshold `0x80`,
-  rows-`0x20` short, linear-segmented, rows-`0x82` segmented,
-  split-plane segmented, even-span wide, and payload-control odd-span wide
-  siblings now publish through the same boundary. Fixture
+  rows-`0x20` short, rows-`0x40` short, linear-segmented, rows-`0x82`
+  segmented, split-plane segmented, even-span wide, and payload-control
+  odd-span wide siblings now publish through the same boundary. Fixture
   `host-fetched nonboundary short downloaded glyph FF publication renders page record`
   renders rows `0x10` on selector `0x0003` through `0x1ed84`/`0x1ef6a` and
   compact target `0x1effe`/`0x1fe76`, preserving digest
@@ -3913,6 +3910,10 @@ combination have not been page-compared.
   publishes bucket-array entry `1` for `ESC )s64W`, preserves record
   `00 00 00 00 0c 01 00 20 00 10 00 00`, renders bucket word `1`, and emits
   `38` visible rows through compact target `0x1effe`/`0x1fe76`. Fixture
+  `host-fetched rows-0x40 short downloaded glyph FF publication renders page record`
+  publishes bucket-array entry `1` for `ESC )s128W`, preserves record
+  `00 00 00 00 0c 01 00 40 00 10 00 00`, renders bucket word `1`, and emits
+  `64` current-band rows through compact target `0x1effe`/`0x1fe76`. Fixture
   `host-fetched even-span downloaded glyph FF publishes rendered page record`
   renders the copied bucket-1 record through `0x1ed84`/`0x1ef6a` and compact
   target `0x1effe`/`0x1f0d2`. Fixture

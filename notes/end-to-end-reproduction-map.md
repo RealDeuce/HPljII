@@ -553,7 +553,8 @@ The next work should follow dataflow, not isolated handlers:
    descriptor grammar forms outside the covered helper-table path, visible
    behavior after descriptor-accepted spans `0x0100..0x020d` wrap at the
    current printable source-byte handoff,
-   segmented-wide row-count/segment variants beyond rows `0x81` and segment `1`, and
+   visible behavior after segmented-wide row words above `0x00ff` wrap at the current
+   printable source-byte handoff, and
    full-success return-boundary siblings beyond the covered normal even-span,
    no-install, status-`2`, row-count-matrix short/segmented, linear-segmented
    publication, split-plane segmented publication, segmented-wide publication,
@@ -565,7 +566,13 @@ The next work should follow dataflow, not isolated handlers:
    truncates page-record span` pins the current printable source-byte wrap for spans
    `0x00ff`, `0x0100`, `0x0101`, and `0x020d`: canonical width words survive in the
    installed object, but `0x12f2e` sees width bytes `0xff`, `0x00`, `0x01`, and `0x0d`,
-   so only `0x00ff` remains selector `0x1003`. Fixture `downloaded glyph width-span
+   so only `0x00ff` remains selector `0x1003`. Fixture `downloaded segmented-wide
+   row-byte boundary truncates page-record segments` pins the row-byte sibling for
+   span `0x11`: canonical row words `0x0081`, `0x00ff`, `0x0100`, `0x0101`, and
+   `0x0181` survive in the installed object, but `0x12f2e` sees row bytes `0x81`,
+   `0xff`, `0x00`, `0x01`, and `0x81`; rows `0x0100` and `0x0101` become selector
+   `0x1003`, and row `0x0181` queues only segments `1` and `0`. Fixture `downloaded
+   glyph width-span
    matrix publishes and renders all main helpers` now covers parser-produced spans
    `1..16`:
    host-fetched `ESC )s#W` descriptors install width words `0x0008..0x0080`, preserve

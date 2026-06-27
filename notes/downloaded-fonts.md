@@ -91,6 +91,7 @@ Primary fixtures:
 - `downloaded glyph wide-remainder matrix publishes and renders compact chunks`
 - `downloaded glyph width-byte boundary truncates page-record span`
 - `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
+- `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
 - `0x16498 no-install exits preserve following printable output`
@@ -1334,6 +1335,19 @@ Their segment-1 rendered rows now match installed bitmap rows through
 remaining segmented-wide gaps are broader row-count/segment cross-products, not
 the sampled high-span source walk.
 
+Fixture `downloaded segmented-wide row-byte boundary truncates page-record
+segments` classifies the row-count side of that cross-product for span `0x11`.
+It installs canonical row words `0x0081`, `0x00ff`, `0x0100`, `0x0101`, and
+`0x0181` through `0x16498`, preserving those words in the object record at
+`+6`. The current unflagged printable source record presented to `0x12f2e`
+exposes only byte `+1`: rows `0x0081` and `0x00ff` supply row bytes `0x81`
+and `0xff` and queue selector `0x3003` for segments `1` and `0`; rows
+`0x0100` and `0x0101` supply row bytes `0x00` and `0x01` and queue selector
+`0x1003`; row `0x0181` supplies row byte `0x81` and again queues only
+segments `1` and `0`, not the higher canonical segments. The fixture stops at
+this page-record producer boundary and makes no pixel-output claim for the
+wrapped-row cases.
+
 Fixture `downloaded glyph row-count matrix publishes and renders additional
 short/segmented counts` broadens the same command family. Short rows `0x0001`,
 `0x0002`, `0x0004`, `0x0008`, `0x0041`, and `0x007f` restore fetched
@@ -1888,8 +1902,10 @@ A byte-stream renderer must preserve:
   parser-produced comparisons are bounded cross-products: row counts outside the
   covered short rows `0x01`, `0x02`, `0x03`, `0x04`, `0x08`, `0x10`, `0x20`,
   `0x40`, `0x41`, `0x7f`, and `0x80` and segmented rows `0x81`, `0x82`,
-  `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`, broader publication
-  combinations beyond the documented normal, nonboundary-short, rows-`0x20` short,
+  `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`, visible behavior after
+  segmented-wide row words above `0x00ff` wrap through the current one-byte printable
+  source row field, broader publication combinations beyond the documented normal,
+  nonboundary-short, rows-`0x20` short,
   rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   truncated, linear-segmented, rows-`0x82` segmented, split-plane segmented,
   segmented-wide, even-span wide, payload-control wide, wide-remainder matrix,

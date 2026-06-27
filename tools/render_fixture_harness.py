@@ -56792,6 +56792,310 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
     ))
 
+    def downloaded_segmented_wide_row_byte_boundary_case(
+        *,
+        rows: int,
+        char_code: int,
+        object_offset: int,
+    ) -> dict[str, object]:
+        span = 0x11
+        width = span * 8
+        mode = 2
+        payload = bytes(
+            (
+                0x1B
+                if (((rows * 11) + index * 17) & 0xFF) == 0x1A
+                else ((rows * 11) + index * 17) & 0xFF
+            )
+            for index in range(rows * span)
+        )
+        command_stream = f"\x1b)s{len(payload)}W".encode("ascii") + payload
+        publication_stream = command_stream + bytes([char_code, 0x0C])
+        fetched = fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(publication_stream), direct_mode=0),
+            len(publication_stream),
+        )
+        font_stream = fetched["stream"][:len(command_stream)]
+        tail_stream = fetched["stream"][len(command_stream):]
+        font_trace = trace_font_parser_dispatch_via_11774(data, font_stream)
+        font_command = font_trace["commands"][0]
+        assert isinstance(font_command, dict)
+        install_command = render_font_download_char_command_stream_via_121cc_16498(
+            font_stream,
+            table_payload_type2_bytes,
+            char_code=char_code,
+            record_words=(0x0000, 0x0000, rows, 0x0000),
+            mode=mode,
+            width=width,
+            rows=rows,
+            object_offset=object_offset,
+        )
+        install_event = install_command["events"][0]
+        assert isinstance(install_event, dict)
+        install = install_event["install"]
+        assert isinstance(install, dict)
+        if "header" not in install:
+            raise AssertionError(
+                f"segmented-wide row-byte boundary install failed for rows {rows}: {install}"
+            )
+        memory = bytearray(install["header"])
+        glyph = resolve_downloaded_pointer_glyph(memory, 0, char_code)
+        assert glyph is not None
+        inline_record = bytes([
+            int(glyph["render_span"]) & 0xFF,
+            int(glyph["rows"]) & 0xFF,
+            0,
+        ])
+        source = {
+            "context": 0,
+            "host_char": char_code,
+            "mapped": char_code,
+            "glyph_entry": glyph["entry"],
+            "glyph_width": glyph["width"],
+            "glyph_rows": glyph["rows"],
+            "flag": 0,
+            "x": 0,
+            "y": 0,
+            "context_slot": 3,
+            "inline_record": inline_record,
+        }
+        page_record: dict[str, object] = {
+            "bucket_array": {},
+            "context_slots": [0, 0, 0, 0],
+        }
+        page_result = queue_text_source_to_page_record_via_12f2e(
+            memory,
+            page_record,
+            source,
+        )
+        page_segments: list[dict[str, object]]
+        if page_result["path"] == "segmented-page-record":
+            events = page_result["events"]
+            assert isinstance(events, list)
+            page_segments = [
+                {
+                    key: event[key]
+                    for key in (
+                        "bucket_index",
+                        "selector",
+                        "count_after",
+                        "segment",
+                        "object",
+                    )
+                }
+                for event in events
+            ]
+            object_prefix = b""
+        else:
+            page_segments = []
+            object_prefix = bytes(page_result["object"])[:12]
+        metrics = text_source_metrics_via_12f2e(memory, source)
+        copy = install["copy"]
+        assert isinstance(copy, dict)
+        return_drain = consume_data_payload_count_via_12328(
+            int(copy["byte_budget"]),
+            tail_stream,
+        )
+        tail_trace = trace_mixed_text_control_parser_path_via_11774(data, tail_stream)
+        return {
+            "rows": rows,
+            "span": span,
+            "width": width,
+            "mode": mode,
+            "char_code": char_code,
+            "fetch_source_set": sorted(set(fetched["sources"])),
+            "remaining_ring": fetched["state"]["ring"],
+            "restored_record": font_command["restored_record"],
+            "payload_length": len(font_command["payload"]),
+            "install": {
+                "status": install["status"],
+                "table_entry": install["table_entry"],
+                "record_delta": install["record_delta"],
+                "record": install["record"],
+                "bitmap_size": install["bitmap_size"],
+                "allocation_size": install["allocation_size"],
+                "object_size": install["object_size"],
+                "span": install["span"],
+                "split_plane": install["split_plane"],
+            },
+            "glyph": {
+                "width_word": glyph["width"],
+                "rows_word": glyph["rows"],
+                "render_span": glyph["render_span"],
+                "mode": glyph["mode"],
+                "source_kind": glyph["source_kind"],
+            },
+            "source": {
+                "inline_record": inline_record,
+                "width_byte": metrics["width"],
+                "rows_byte": metrics["rows"],
+                "wide_threshold": metrics["wide_threshold"],
+            },
+            "page": {
+                "path": page_result["path"],
+                "selector": page_result["selector"],
+                "coord": page_result["coord"],
+                "glyph": page_result["glyph"],
+                "rows": page_result["rows"],
+                "width": page_result["width"],
+                "bucket_index": page_result.get("bucket_index"),
+                "segments": page_segments,
+                "object_prefix": object_prefix,
+            },
+            "return_boundary": {
+                "call_edge": (0x15DC6, 0x16498),
+                "return_edge": (0x16498, 0x15DCC),
+                "drain_edge": (0x15DCC, 0x12328),
+                "copy_status": copy["status"],
+                "remaining_budget_0x783140": copy["byte_budget"],
+                "drain": return_drain,
+                "next_stream_prefix": tail_stream[:1],
+                "next_handler": tail_trace["events"][0]["handler"],
+            },
+            "visible_output_claim": "none: fixture stops at source-byte/page-record boundary",
+        }
+
+    downloaded_segmented_wide_row_byte_boundary_inputs = (
+        (0x0081, 0x78, 0x2A000),
+        (0x00FF, 0x79, 0x2B000),
+        (0x0100, 0x7A, 0x2C000),
+        (0x0101, 0x7B, 0x2D000),
+        (0x0181, 0x7C, 0x2E000),
+    )
+    downloaded_segmented_wide_row_byte_boundary = [
+        downloaded_segmented_wide_row_byte_boundary_case(
+            rows=rows,
+            char_code=char_code,
+            object_offset=object_offset,
+        )
+        for rows, char_code, object_offset
+        in downloaded_segmented_wide_row_byte_boundary_inputs
+    ]
+    checks.append(assert_equal(
+        "downloaded segmented-wide row-byte boundary truncates page-record segments",
+        [
+            {
+                "rows": case["rows"],
+                "span": case["span"],
+                "fetch_source_set": case["fetch_source_set"],
+                "remaining_ring": case["remaining_ring"],
+                "payload_length": case["payload_length"],
+                "record": case["install"]["record"],
+                "install_span": case["install"]["span"],
+                "glyph": case["glyph"],
+                "source": case["source"],
+                "path": case["page"]["path"],
+                "selector": case["page"]["selector"],
+                "page_width": case["page"]["width"],
+                "page_rows": case["page"]["rows"],
+                "segments": case["page"]["segments"],
+                "object_prefix": case["page"]["object_prefix"],
+                "return_boundary": case["return_boundary"],
+                "visible_output_claim": case["visible_output_claim"],
+            }
+            for case in downloaded_segmented_wide_row_byte_boundary
+        ],
+        [
+            {
+                "rows": rows,
+                "span": 0x11,
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "payload_length": rows * 0x11,
+                "record": (
+                    bytes.fromhex("00 00 00 00 0c 02")
+                    + rows.to_bytes(2, "big")
+                    + bytes.fromhex("00 88 00 00")
+                ),
+                "install_span": 0x11,
+                "glyph": {
+                    "width_word": 0x88,
+                    "rows_word": rows,
+                    "render_span": 0x11,
+                    "mode": 2,
+                    "source_kind": "downloaded-pointer",
+                },
+                "source": {
+                    "inline_record": bytes([0x11, rows & 0xFF, 0x00]),
+                    "width_byte": 0x11,
+                    "rows_byte": rows & 0xFF,
+                    "wide_threshold": 0x10,
+                },
+                "path": (
+                    "segmented-page-record"
+                    if (rows & 0xFF) > 0x80
+                    else "short-page-record"
+                ),
+                "selector": (
+                    0x3003
+                    if (rows & 0xFF) > 0x80
+                    else 0x1003
+                ),
+                "page_width": 0x11,
+                "page_rows": rows & 0xFF,
+                "segments": (
+                    [
+                        {
+                            "bucket_index": 8,
+                            "selector": 0x3003,
+                            "count_after": 1,
+                            "segment": 1,
+                            "object": (
+                                bytes.fromhex("00 00 00 00 30 03 00 01")
+                                + bytes([char_code, 0x01])
+                                + bytes.fromhex("00 00")
+                                + bytes(0x1C)
+                            ),
+                        },
+                        {
+                            "bucket_index": 0,
+                            "selector": 0x3003,
+                            "count_after": 1,
+                            "segment": 0,
+                            "object": (
+                                bytes.fromhex("00 00 00 00 30 03 00 01")
+                                + bytes([char_code, 0x00])
+                                + bytes.fromhex("00 00")
+                                + bytes(0x1C)
+                            ),
+                        },
+                    ]
+                    if (rows & 0xFF) > 0x80
+                    else []
+                ),
+                "object_prefix": (
+                    b""
+                    if (rows & 0xFF) > 0x80
+                    else (
+                        bytes.fromhex("00 00 00 00 10 03 00 01")
+                        + bytes([char_code])
+                        + bytes.fromhex("00 00")
+                        + b"\x00"
+                    )
+                ),
+                "return_boundary": {
+                    "call_edge": (0x15DC6, 0x16498),
+                    "return_edge": (0x16498, 0x15DCC),
+                    "drain_edge": (0x15DCC, 0x12328),
+                    "copy_status": 1,
+                    "remaining_budget_0x783140": 0,
+                    "drain": {
+                        "status": 1,
+                        "values": [],
+                        "pos": 0,
+                        "remaining": 0,
+                        "control_hits": 0,
+                    },
+                    "next_stream_prefix": bytes([char_code]),
+                    "next_handler": 0x00D04A,
+                },
+                "visible_output_claim": "none: fixture stops at source-byte/page-record boundary",
+            }
+            for rows, char_code, _object_offset
+            in downloaded_segmented_wide_row_byte_boundary_inputs
+        ],
+    ))
+
     downloaded_linear_partial = font_download_char_object_via_16498(
         table_payload_type2_bytes,
         0x2B,
@@ -87207,6 +87511,36 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     case["row_sha256"],
                 )
                 for case in downloaded_segmented_wide_remainder_matrix
+            ],
+        ),
+    )
+    append_wrapped(
+        lines,
+        "- downloaded-glyph segmented-wide row-byte boundary: fixture "
+        "`downloaded segmented-wide row-byte boundary truncates page-record "
+        "segments` installs span `0x11` with canonical row words `0x0081`, "
+        "`0x00ff`, `0x0100`, `0x0101`, and `0x0181`; the current unflagged "
+        "printable source record exposes only row byte `+1` to `0x12f2e`. "
+        "Rows `0x0081` and `0x00ff` queue selector `0x3003` for segments "
+        "`1` and `0`; rows `0x0100` and `0x0101` wrap to row bytes `0x00` "
+        "and `0x01` and queue selector `0x1003`; row `0x0181` wraps to "
+        "row byte `0x81` and again queues only segments `1` and `0`, not "
+        "the higher canonical segments. No pixel-output claim is made for "
+        "the wrapped-row cases. Case summaries "
+        "`(rows, row byte, selector, path, segment ids)` are `%s`."
+        % (
+            [
+                (
+                    case["rows"],
+                    case["source"]["rows_byte"],
+                    "0x%04x" % case["page"]["selector"],
+                    case["page"]["path"],
+                    [
+                        segment["segment"]
+                        for segment in case["page"]["segments"]
+                    ],
+                )
+                for case in downloaded_segmented_wide_row_byte_boundary
             ],
         ),
     )

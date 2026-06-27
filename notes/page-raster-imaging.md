@@ -1638,6 +1638,15 @@ Output effect:
   rows `0x81`; segment bucket/object metadata and chunk/remainder state are
   pinned, and segment-1 rendered rows match the installed bitmap rows above
   span `32`.
+- Fixture `downloaded segmented-wide row-byte boundary truncates page-record
+  segments` proves span-`0x11` downloaded glyphs keep canonical installed row
+  words `0x0081`, `0x00ff`, `0x0100`, `0x0101`, and `0x0181`, but the current
+  unflagged printable source record supplies only byte `+1` to `0x12f2e`.
+  Rows `0x0081` and `0x00ff` queue selector `0x3003` for segments `1` and
+  `0`; rows `0x0100` and `0x0101` wrap to selector `0x1003`; row `0x0181`
+  wraps to source row byte `0x81` and queues only segments `1` and `0`.
+  This fixture documents the producer boundary and does not claim rendered
+  pixels for the wrapped-row cases.
 - Fixture `host-fetched rows-0x102 downloaded glyph FF publication truncates
   page-record rows` proves the failure boundary: installed row count `0x0102`
   reaches `0x1f414`, but fallback row count `200` indexes past the valid
@@ -1659,8 +1668,8 @@ Confidence:
   many downloaded row-count cases are fixture-backed. The span `0x0100..0x020d`
   printable handoff is now classified as an 8-bit source-record producer
   boundary, not a renderer row-copy claim. Remaining renderer risk is broader
-  visible behavior after that wrapped selector choice, not every segmented-wide
-  row-count/segment variant, and untested metric combinations.
+  visible behavior after those wrapped width/row selector choices and untested
+  metric combinations.
 
 Fixture evidence:
 
@@ -1682,6 +1691,7 @@ Fixture evidence:
 - `downloaded glyph wide-remainder matrix publishes and renders compact chunks`
 - `downloaded glyph width-byte boundary truncates page-record span`
 - `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
+- `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `downloaded glyph row-count matrix publishes and renders additional
   short/segmented counts`
 - `host-fetched rows-0x102 downloaded glyph FF publication truncates
@@ -1718,8 +1728,12 @@ Unresolved middle edges:
   `0x0100..0x020d` at the current printable handoff: canonical installed width
   words survive, but `0x12f2e` consumes only the low source byte, so spans
   `0x0100`, `0x0101`, and `0x020d` queue selector `0x0003`. Remaining gaps are
-  visible behavior after that wrapped-width producer boundary, every legal downloaded
-  segmented-wide row-count/segment variant, and untested metric combinations.
+  visible behavior after wrapped width/row producer boundaries and untested
+  metric combinations. Fixture `downloaded segmented-wide row-byte boundary
+  truncates page-record segments` now classifies the sampled row side: row
+  words `0x0100`, `0x0101`, and `0x0181` survive in the installed glyph but
+  the current source row byte causes selector `0x1003`, `0x1003`, and
+  `0x3003` with only segments `1` and `0`.
 - `0x1fa5c..0x2feb0`: all sixteen main `0x1f08e` helper indexes now have
   parser-produced downloaded-glyph page rows, and compact-wide spans `17..32`
   plus segmented-wide spans `17..32` now cover selectors `0x1003` and

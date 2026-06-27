@@ -88,6 +88,7 @@ Primary fixtures:
 - `host-fetched row-0x80 downloaded character remains short compact`
 - `0x16b1a descriptor width helper emits only mode 1/2`
 - `downloaded glyph width-span matrix publishes and renders all main helpers`
+- `downloaded glyph wide-remainder matrix publishes and renders compact chunks`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
 - `0x16498 no-install exits preserve following printable output`
@@ -251,7 +252,8 @@ Published page-record state:
   the printable source record exposes row byte `0x02` to `0x12f2e`;
   segmented-wide selector `0x3003` publishes buckets `1` and `9`; wide
   selector `0x1003` publishes bucket `1` for both the even-span and
-  payload-control odd-span streams.
+  payload-control odd-span streams, and bucket `0` for the width/remainder
+  matrix's origin-positioned spans `17..32`.
 - Canonical side lists copied by `0xff1e`: the covered downloaded-glyph
   publication fixtures leave rule and fixed lists empty.
 - Canonical context slots copied by `0xff1e`: the covered downloaded-glyph
@@ -291,11 +293,17 @@ Published page-record state:
   bytes alternate `2/1` by span parity, odd spans above one use the
   `0x16942` split-plane copy path, all cases publish bucket `0` through FF,
   and `0x1ed84`/`0x1ef6a` renders rows matching the installed bitmap through
-  the `0x1f08e` helper selected by `D1`. The covered publication fixture set
-  is the primary fixture ledger above, now including the width-span matrix,
-  row-count matrix, row-`0x80`, split-plane segmented, segmented-wide,
-  payload-control wide, no-install, status-`2`, and scheduler band-walk
-  siblings.
+  the `0x1f08e` helper selected by `D1`. Fixture
+  `downloaded glyph wide-remainder matrix publishes and renders
+  compact chunks` extends this to spans `17..32`: selector `0x1003` publishes
+  bucket `0`, object byte `0x10` dispatches to compact target `0x1effe` /
+  `0x1f0d2`, full 16-byte chunks render through `0x2f27c`, remainders
+  `1..15` select `0x1f1ac[remainder]`, and span `32` proves the
+  no-remainder two-chunk case. The covered publication fixture set is the
+  primary fixture ledger above, now including the width-span matrix,
+  wide-remainder matrix, row-count matrix, row-`0x80`, split-plane segmented,
+  segmented-wide, payload-control wide, no-install, status-`2`, and scheduler
+  band-walk siblings.
 
 Renderer-facing allocated payload fields:
 
@@ -1244,6 +1252,22 @@ Rows rendered by helpers `0x1fa5c`, `0x1fe76`, `0x20290`, `0x207ac`,
 `0x23770`, `0x24090`, `0x249b0`, `0x253d0`, `0x25df0`, and `0x26910` match
 the installed bitmap rows in the fixture.
 
+Fixture `downloaded glyph wide-remainder matrix publishes and renders compact
+chunks` covers the compact-wide sibling of that width/span matrix. It drives
+sixteen host-fetched `ESC )s#W` streams whose descriptor widths produce spans
+`17..32`, canonical installed width words `0x0088..0x0100`, row word
+`0x0003`, and mode bytes `2` for odd spans or `1` for even spans. Canonical
+state is the installed table entry, record, bitmap bytes, and split-plane flag.
+Derived/cache state is selector `0x1003`, object byte `0x10`, bucket `0`,
+full-chunk helper `0x2f27c`, `full_row_skip`, `remainder_row_skip`, and the
+selected remainder helper. Remainders `1..15` select
+`0x1f1ac[remainder]`; span `32` has remainder `0` and therefore uses two full
+16-byte chunks with no remainder helper. All sixteen cases return through
+`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with copy status `1`,
+`0x783140 = 0`, no drained bytes, and next handler `0xd04a`; `0x1ed84` /
+`0x1ef6a` then dispatches compact target `0x1effe` / `0x1f0d2`, and rendered
+rows match the installed bitmap rows.
+
 Fixture `downloaded glyph row-count matrix publishes and renders additional
 short/segmented counts` broadens the same command family. Short rows `0x0001`,
 `0x0002`, `0x0004`, `0x0008`, `0x0041`, and `0x007f` restore fetched
@@ -1801,8 +1825,9 @@ A byte-stream renderer must preserve:
   combinations beyond the documented normal, nonboundary-short, rows-`0x20` short,
   rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   truncated, linear-segmented, rows-`0x82` segmented, split-plane segmented,
-  segmented-wide, even-span wide, payload-control wide, no-install, and status-`2`
-  compact bucket variants, and return-boundary variants beyond the covered
+  segmented-wide, even-span wide, payload-control wide, wide-remainder matrix,
+  no-install, and status-`2` compact bucket variants, and return-boundary
+  variants beyond the covered
   normal even-span, no-install, status-`2`, row-count-matrix short/segmented,
   linear-segmented publication, split-plane segmented publication, and segmented-wide
   publication fixtures. The
@@ -1816,6 +1841,10 @@ A byte-stream renderer must preserve:
   short/segmented counts` pins rows `0x01`, `0x02`, `0x04`, `0x08`, `0x41`,
   `0x7f`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`
   zero-drain returns before handler `0xd04a`;
+  fixture `downloaded glyph wide-remainder matrix publishes and renders
+  compact chunks` pins spans `17..32`, selector `0x1003`, object byte `0x10`,
+  compact target `0x1effe` / `0x1f0d2`, remainders `1..15`, and the
+  no-remainder span-`32` case through the same zero-drain return boundary;
   fixture `downloaded normal row-0x80 and segmented glyph FF publications
   render page records` pins normal, row-`0x80`, and linear-segmented zero-drain
   returns before handler `0xd04a`; fixture `split-plane segmented downloaded

@@ -1606,6 +1606,13 @@ Output effect:
   widths `8..128`, preserve odd-span split-plane copies where required, publish
   bucket `0` through FF, and render rows matching the installed bitmap through
   all sixteen main `0x1f08e` helpers from `0x1fa5c` through `0x26910`.
+- Fixture `downloaded glyph wide-remainder matrix publishes and renders
+  compact chunks` proves parser-produced downloaded-character spans `17..32`
+  install widths `136..256`, publish bucket `0` as selector `0x1003`, dispatch
+  object byte `0x10` through `0x1effe` to `0x1f0d2`, render full chunks through
+  `0x2f27c`, render remainders `1..15` through `0x1f1ac[remainder]`, and
+  match the installed bitmap rows. Span `32` is the no-remainder two-full-chunk
+  sibling and does not select a remainder helper.
 - Fixture `host-fetched rows-0x102 downloaded glyph FF publication truncates
   page-record rows` proves the failure boundary: installed row count `0x0102`
   reaches `0x1f414`, but fallback row count `200` indexes past the valid
@@ -1622,9 +1629,10 @@ Confidence:
   named fixtures tie host bytes to installed records, queued compact objects,
   dispatch targets, and rendered rows.
 - Medium for exhaustive descriptor/font-width coverage because downloaded
-  spans `1..16`, the legal metric matrix, and many downloaded row-count cases
-  are fixture-backed, but not every wide/remainder-table byte-width and metric
-  combination has a page-visible comparison.
+  spans `1..32`, the legal metric matrix, and many downloaded row-count cases
+  are fixture-backed, but not every segmented-wide remainder-table byte-width,
+  unsampled width above span `32`, and metric combination has a page-visible
+  comparison.
 
 Fixture evidence:
 
@@ -1643,6 +1651,7 @@ Fixture evidence:
 - `0x1f1f0 renders segmented inline compact payload row`
 - `0x1f264 renders segmented wide inline compact payload row`
 - `downloaded glyph width-span matrix publishes and renders all main helpers`
+- `downloaded glyph wide-remainder matrix publishes and renders compact chunks`
 - `downloaded glyph row-count matrix publishes and renders additional
   short/segmented counts`
 - `host-fetched rows-0x102 downloaded glyph FF publication truncates
@@ -1669,13 +1678,16 @@ Unresolved middle edges:
   page-visible; remaining symbol-set and pitch/style combinations need
   comparison against physical or reference output.
 - `0x16498..0x1f354`: normal, wide, segmented, split-plane, segmented-wide,
-  partial, no-install, row-count boundary, and main width-span cases are
-  documented; not every legal downloaded wide/remainder-table byte-width and
-  metric combination has a visible page comparison.
+  partial, no-install, row-count boundary, main width-span, and compact-wide
+  remainder cases are documented; not every legal downloaded segmented-wide
+  remainder-table byte-width, unsampled width above span `32`, and metric
+  combination has a visible page comparison.
 - `0x1fa5c..0x2feb0`: all sixteen main `0x1f08e` helper indexes now have
-  parser-produced downloaded-glyph page rows. Remaining helper risk is wider
-  selector `0x1000`/`0x3000` remainder-table coverage and broader physical
-  page comparisons, not the main helper aliases.
+  parser-produced downloaded-glyph page rows, and compact-wide spans `17..32`
+  now cover selector `0x1003`, `0x2f27c`, remainders `1..15`, and the
+  no-remainder two-chunk sibling. Remaining helper risk is segmented-wide
+  selector `0x3000` remainder-table coverage and broader physical page
+  comparisons, not the main helper aliases or sampled compact-wide path.
 - `0x1f414..0x7810b4`: current-band/fallback splitting is fixture-backed,
   including the row-`0x0102` invalid fallback boundary; device-level behavior
   after such invalid table targets is intentionally not claimed.

@@ -550,21 +550,28 @@ The next work should follow dataflow, not isolated handlers:
    especially row counts outside the covered short rows `0x01`, `0x02`, `0x03`, `0x04`,
    `0x08`, `0x10`, `0x20`, `0x40`, `0x41`, `0x7f`, and `0x80` and segmented rows `0x81`,
    `0x82`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`, descriptor
-   grammar forms outside the covered helper-table path, legal widths beyond the main
-   helper table, and full-success return-boundary siblings beyond the covered normal
-   even-span, no-install, status-`2`, row-count-matrix short/segmented, linear-segmented
-   publication, split-plane segmented publication, and segmented-wide publication
-   zero-drain cases plus the payload-control wide nonzero-drain `0x15dc6 -> 0x16498 ->
-   0x15dcc -> 0x12328` case. The accepted mode-byte boundary itself is covered by
-   fixture `0x16b1a descriptor width helper emits only mode 1/2`, which pins
-   `0x16b36..0x16b6a` accepted writes and `0x16b26..0x16b34` invalid no-writes. Fixture
-   `downloaded glyph width-span matrix publishes and renders all main helpers` now
-   covers parser-produced spans `1..16`: host-fetched `ESC )s#W` descriptors install
-   width words `0x0008..0x0080`, preserve odd-span split-plane copies, publish bucket
-   `0` through FF, dispatch object byte `0x00` through `0x1ed84`/`0x1ef6a`, and render
-   rows matching installed bitmaps through helpers `0x1fa5c..0x26910`. The
-   nonboundary-short fixture now publishes rows `0x10` on selector `0x0003` through FF,
-   `0xff1e`, and `0x1ed84`/`0x1ef6a` with digest
+   grammar forms outside the covered helper-table path, legal widths above the sampled
+   compact-wide span `32`, segmented-wide remainder-table combinations, and full-success
+   return-boundary siblings beyond the covered normal even-span, no-install, status-`2`,
+   row-count-matrix short/segmented, linear-segmented publication, split-plane segmented
+   publication, and segmented-wide publication zero-drain cases plus the payload-control
+   wide nonzero-drain `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` case. The accepted
+   mode-byte boundary itself is covered by fixture `0x16b1a descriptor width helper
+   emits only mode 1/2`, which pins `0x16b36..0x16b6a` accepted writes and
+   `0x16b26..0x16b34` invalid no-writes. Fixture `downloaded glyph width-span matrix
+   publishes and renders all main helpers` now covers parser-produced spans `1..16`:
+   host-fetched `ESC )s#W` descriptors install width words `0x0008..0x0080`, preserve
+   odd-span split-plane copies, publish bucket `0` through FF, dispatch object byte
+   `0x00` through `0x1ed84`/`0x1ef6a`, and render rows matching installed bitmaps
+   through helpers `0x1fa5c..0x26910`. The `downloaded glyph wide-remainder matrix
+   publishes and renders compact chunks` fixture now covers parser-produced spans
+   `17..32`: host-fetched `ESC )s#W` descriptors install width words `0x0088..0x0100`,
+   publish bucket `0` as selector `0x1003`, dispatch object byte `0x10` through
+   `0x1ed84`/`0x1ef6a` and compact target `0x1effe` / `0x1f0d2`, render full chunks
+   through `0x2f27c`, render remainders `1..15` through `0x1f1ac[remainder]`, and cover
+   span `32` as the no-remainder two-full-chunk sibling. The nonboundary-short fixture
+   now publishes rows `0x10` on selector `0x0003` through FF, `0xff1e`, and
+   `0x1ed84`/`0x1ef6a` with digest
    `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The rows-`0x20`
    short fixture now carries `ESC )s64W` plus printable `1` and FF through `0xff1e`,
    preserves bucket `1`, and renders bucket word `1` through `0x1ed84`/`0x1ef6a` to `38`
@@ -605,13 +612,13 @@ The next work should follow dataflow, not isolated handlers:
    zero-filled missing bytes, then publishes both bucket-1 compact objects through
    trailing FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` with the same rows. Remaining
    downloaded-character publication risk is broader publication combinations beyond
-   these payload-control, width-span-matrix, row-count-matrix, rows-`0x20` short,
-   rows-`0x40` short, rows-`0x82` segmented, no-install, and status-`2` compact bucket
-   variants, plus full-success return-boundary siblings outside the now-pinned
-   row-count-matrix, normal, row-`0x80`, linear-segmented, split-plane segmented,
-   segmented-wide, and payload-control cases. It is not the documented mode-byte-`0`
-   visible recovery boundary. The publication-command checkpoint now covers host-fetched
-   reset, FF, page-size, orientation, paper-source, and copies streams through parser
-   dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset,
-   FF, page-size, orientation, paper-source, and copies also have addressed allocation
-   variants.
+   these payload-control, width-span-matrix, wide-remainder-matrix, row-count-matrix,
+   rows-`0x20` short, rows-`0x40` short, rows-`0x82` segmented, no-install, and
+   status-`2` compact bucket variants, plus full-success return-boundary siblings
+   outside the now-pinned row-count-matrix, wide-remainder-matrix, normal, row-`0x80`,
+   linear-segmented, split-plane segmented, segmented-wide, and payload-control cases.
+   It is not the documented mode-byte-`0` visible recovery boundary. The
+   publication-command checkpoint now covers host-fetched reset, FF, page-size,
+   orientation, paper-source, and copies streams through parser dispatch, `0xff1e`,
+   `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF, page-size,
+   orientation, paper-source, and copies also have addressed allocation variants.

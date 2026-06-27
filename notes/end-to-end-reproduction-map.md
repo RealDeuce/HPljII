@@ -406,9 +406,10 @@ The next work should follow dataflow, not isolated handlers:
    `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear and split-plane continuation
    pointer writes, and mode/header-type status-`0` rejects. The `0x16498`
    no-install visible-output fixture now proves those failed installs leave
-   the following printable byte on the default-font compact object and rows;
-   remaining non-success risk is narrower status-`2` partial-install
-   visibility. The publication-command
+   the following printable byte on the default-font compact object and rows.
+   The status-`2` partial-install fixture now proves linear and split-plane
+   partial glyphs remain printable through their stored table pointers and
+   zero-filled missing bytes. The publication-command
    checkpoint now covers host-fetched reset, FF, page-size, orientation,
    paper-source, and copies streams through parser dispatch, `0xff1e`,
    `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF,

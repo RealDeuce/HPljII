@@ -3003,6 +3003,19 @@ the standalone baseline `!`. Canonical renderer state is therefore unchanged
 by those failed downloaded-character installs; the mutable state is parser
 scratch plus firmware cleanup/bookkeeping from `0x1887a` for the allocation
 failure case.
+Fixture `0x16498 status-2 partial installs remain printable` proves that copy
+status `2` takes the opposite visible contract. The linear `ESC )s4W` case
+stores table entry `0x00f6 -> 0x0840`, bitmap `f0 0f aa 55 00 00`, and
+continuation destination `0x0850` with remaining count `2`; the following `+`
+routes through `0xd04a`, resolves downloaded glyph `0x2b`, queues selector
+`0x0003`, and renders rows from the partial bitmap plus zero-filled missing
+bytes. The split-plane `ESC )s3W` case stores table `0x00fa -> 0x0880`,
+layout `a0 a1 00 00 b0 00`, and A4/A3 continuation destinations
+`0x088e`/`0x0891`; the following `,` resolves glyph `0x2c`, queues selector
+`0x0003`, and renders the first row from prefix `a0 a1` plus trailing `b0`.
+Canonical state includes the partially installed table pointer, object record,
+and bitmap bytes; the continuation fields are firmware bookkeeping needed to
+complete the same glyph later.
 Fixture `host-fetched segmented downloaded character renders through 0x1f1f0`
 connects the downloaded-character linear reader to the remaining segmented
 compact renderer shape. Host fetch drains `ESC )s258W`; parser dispatch walks
@@ -3246,6 +3259,7 @@ character renders through 0x1f0d2`, `host-fetched row-0x80 downloaded
 character remains short compact`, `0x16498 replacement allocation failure
 partial and rejected downloaded character exits preserve state`,
 `0x16498 no-install exits preserve following printable output`,
+`0x16498 status-2 partial installs remain printable`,
 `host-fetched segmented downloaded character renders through 0x1f1f0`,
 `host-fetched split-plane segmented
 downloaded character renders through 0x1f1f0`, and
@@ -3332,6 +3346,7 @@ combination have not been page-compared.
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
 - `0x16498 no-install exits preserve following printable output`
+- `0x16498 status-2 partial installs remain printable`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
 - `host-fetched split-plane segmented downloaded character renders through
   0x1f1f0`
@@ -3383,10 +3398,11 @@ combination have not been page-compared.
   comparisons are narrowed by fixture
   `0x16498 no-install exits preserve following printable output`, which proves
   those no-install exits leave the next printable on the baseline default-font
-  object and rows. Still-open comparisons are cross-product variants not
-  covered by those shapes, especially other row counts, other character-mode
-  behavior, and status-`2` partial-install visibility from the same selector
-  families.
+  object and rows. Fixture `0x16498 status-2 partial installs remain printable`
+  proves the status-`2` linear and split-plane partial-install visibility
+  contract. Still-open comparisons are cross-product variants not covered by
+  those shapes, especially other row counts and other character-mode behavior
+  from the same selector families.
 - downloaded-glyph plus rule/raster producer schedule: fixture
   `parser-driven downloaded glyph rule raster stream composes through
   0x1ef6a` closes the page-stream boundary from parser-produced `0x10898` rule

@@ -52094,6 +52094,301 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         byte_budget=3,
         object_offset=0x0880,
     )
+
+    def downloaded_partial_visible_report(
+        *,
+        command_stream: bytes,
+        char_code: int,
+        record_words: tuple[int, int, int, int],
+        width: int,
+        rows: int,
+        object_offset: int,
+    ) -> dict[str, object]:
+        combined_stream = command_stream + bytes([char_code])
+        fetched = fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(combined_stream), direct_mode=0),
+            len(combined_stream),
+        )
+        resource_stream = fetched["stream"][:len(command_stream)]
+        printable_stream = fetched["stream"][len(command_stream):]
+        resource_trace = trace_font_parser_dispatch_via_11774(data, resource_stream)
+        resource_command = render_font_download_char_command_stream_via_121cc_16498(
+            resource_stream,
+            table_payload_type2_bytes,
+            char_code=char_code,
+            record_words=record_words,
+            mode=1,
+            width=width,
+            rows=rows,
+            object_offset=object_offset,
+        )
+        resource_event = resource_command["events"][0]
+        assert isinstance(resource_event, dict)
+        install = resource_event["install"]
+        assert isinstance(install, dict)
+        memory = bytearray(install["header"])
+        glyph = resolve_downloaded_pointer_glyph(memory, 0, char_code)
+        assert glyph is not None
+        printable_trace = trace_mixed_text_control_parser_path_via_11774(
+            data,
+            printable_stream,
+        )
+        source = {
+            "context": 0,
+            "host_char": printable_stream[0],
+            "mapped": char_code,
+            "glyph_entry": glyph["entry"],
+            "glyph_width": glyph["width"],
+            "glyph_rows": glyph["rows"],
+            "flag": 0,
+            "x": 22,
+            "y": 22,
+            "context_slot": 3,
+            "inline_record": bytes([
+                int(glyph["render_span"]),
+                int(glyph["rows"]) & 0xFF,
+                0,
+            ]),
+        }
+        page_record: dict[str, object] = {
+            "bucket_array": {},
+            "context_slots": [0, 0, 0, 0],
+        }
+        page_result = queue_text_source_to_page_record_via_12f2e(
+            memory,
+            page_record,
+            source,
+        )
+        render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+            data,
+            memory,
+            page_record,
+            bucket_word=int(page_result["bucket_index"]),
+        )
+        entry = render_entry["entry"]
+        assert isinstance(entry, dict)
+        return {
+            "combined_length": len(fetched["stream"]),
+            "fetch_source_set": sorted(set(fetched["sources"])),
+            "remaining_ring": fetched["state"]["ring"],
+            "resource": {
+                "parser_handlers": [
+                    event["handler"]
+                    for event in resource_trace["dispatches"]
+                ],
+                "restored_record": resource_event["restored_record"],
+                "payload_offset": resource_event["payload_offset"],
+                "payload_length": resource_event["payload_length"],
+                "install_status": install["status"],
+                "table_entry": install["table_entry"],
+                "table_pointer": u32(memory, int(install["table_entry"])),
+                "bitmap": bytes(
+                    memory[
+                        int(install["bitmap_offset"]):
+                        int(install["bitmap_offset"]) + int(install["expected_bitmap_size"])
+                    ]
+                ),
+                "continuation": install["continuation"],
+            },
+            "printable": {
+                "stream": printable_stream,
+                "parser_handlers": [
+                    event["handler"]
+                    for event in printable_trace["events"]
+                ],
+                "source": {
+                    key: source[key]
+                    for key in (
+                        "host_char",
+                        "mapped",
+                        "glyph_entry",
+                        "glyph_width",
+                        "glyph_rows",
+                        "inline_record",
+                    )
+                },
+                "page": {
+                    key: page_result[key]
+                    for key in ("path", "selector", "coord", "glyph", "rows", "width")
+                },
+                "bucket_index": page_result["bucket_index"],
+                "object": page_result["object"],
+                "dispatch": [
+                    {
+                        key: dispatch[key]
+                        for key in (
+                            "chain_index",
+                            "object_byte_4",
+                            "class_mask",
+                            "branch",
+                            "target",
+                            "context_slot",
+                        )
+                    }
+                    for dispatch in entry["dispatch"]["entries"]
+                ],
+                "rows": entry["rows"],
+            },
+        }
+
+    downloaded_linear_partial_visible = downloaded_partial_visible_report(
+        command_stream=b"\x1b)s4W" + bytes.fromhex("f0 0f aa 55"),
+        char_code=0x2B,
+        record_words=(0x0000, 0x0000, 0x0003, 0x0000),
+        width=0x0010,
+        rows=0x0003,
+        object_offset=0x0840,
+    )
+    downloaded_split_partial_visible = downloaded_partial_visible_report(
+        command_stream=b"\x1b)s3W" + bytes.fromhex("a0 a1 b0"),
+        char_code=0x2C,
+        record_words=(0x0000, 0x0000, 0x0002, 0x0000),
+        width=0x0018,
+        rows=0x0002,
+        object_offset=0x0880,
+    )
+    checks.append(assert_equal(
+        "0x16498 status-2 partial installs remain printable",
+        {
+            "linear": downloaded_linear_partial_visible,
+            "split": downloaded_split_partial_visible,
+        },
+        {
+            "linear": {
+                "combined_length": 10,
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "resource": {
+                    "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                    "restored_record": bytes.fromhex("80 57 00 04 00 00"),
+                    "payload_offset": 5,
+                    "payload_length": 4,
+                    "install_status": 2,
+                    "table_entry": 0x00F6,
+                    "table_pointer": 0x0840,
+                    "bitmap": bytes.fromhex("f0 0f aa 55 00 00"),
+                    "continuation": {
+                        "flag": 1,
+                        "payload": 0,
+                        "word_0x7827c8": 0x2B,
+                        "dest": 0x0850,
+                        "trailing_dest": 0,
+                        "remaining": 2,
+                        "d4_counter": 0,
+                        "d3_counter": 0,
+                    },
+                },
+                "printable": {
+                    "stream": b"+",
+                    "parser_handlers": [0x00D04A],
+                    "source": {
+                        "host_char": 0x2B,
+                        "mapped": 0x2B,
+                        "glyph_entry": 0x0840,
+                        "glyph_width": 0x0010,
+                        "glyph_rows": 0x0003,
+                        "inline_record": b"\x02\x03\x00",
+                    },
+                    "page": {
+                        "path": "short-page-record",
+                        "selector": 0x0003,
+                        "coord": 0x6601,
+                        "glyph": 0x2B,
+                        "rows": 0x0003,
+                        "width": 2,
+                    },
+                    "bucket_index": 1,
+                    "object": bytes.fromhex("00 00 00 00 00 03 00 01 2b 66 01")
+                    + bytes(0x1B),
+                    "dispatch": [{
+                        "chain_index": 0,
+                        "object_byte_4": 0x00,
+                        "class_mask": 0x00,
+                        "branch": "compact",
+                        "target": 0x01EFFE,
+                        "context_slot": 3,
+                    }],
+                    "rows": [
+                        "." * 38,
+                        "." * 38,
+                        "." * 38,
+                        "." * 38,
+                        "." * 38,
+                        "." * 38,
+                        "." * 22 + "####........####",
+                        "." * 22 + "#.#.#.#..#.#.#.#",
+                        "." * 38,
+                    ],
+                },
+            },
+            "split": {
+                "combined_length": 9,
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "resource": {
+                    "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                    "restored_record": bytes.fromhex("80 57 00 03 00 00"),
+                    "payload_offset": 5,
+                    "payload_length": 3,
+                    "install_status": 2,
+                    "table_entry": 0x00FA,
+                    "table_pointer": 0x0880,
+                    "bitmap": bytes.fromhex("a0 a1 00 00 b0 00"),
+                    "continuation": {
+                        "flag": 1,
+                        "payload": 0,
+                        "word_0x7827c8": 0x2C,
+                        "dest": 0x088E,
+                        "trailing_dest": 0x0891,
+                        "remaining": 0,
+                        "d4_counter": 1,
+                        "d3_counter": 0,
+                    },
+                },
+                "printable": {
+                    "stream": b",",
+                    "parser_handlers": [0x00D04A],
+                    "source": {
+                        "host_char": 0x2C,
+                        "mapped": 0x2C,
+                        "glyph_entry": 0x0880,
+                        "glyph_width": 0x0018,
+                        "glyph_rows": 0x0002,
+                        "inline_record": b"\x03\x02\x00",
+                    },
+                    "page": {
+                        "path": "short-page-record",
+                        "selector": 0x0003,
+                        "coord": 0x6601,
+                        "glyph": 0x2C,
+                        "rows": 0x0002,
+                        "width": 3,
+                    },
+                    "bucket_index": 1,
+                    "object": bytes.fromhex("00 00 00 00 00 03 00 01 2c 66 01")
+                    + bytes(0x1B),
+                    "dispatch": [{
+                        "chain_index": 0,
+                        "object_byte_4": 0x00,
+                        "class_mask": 0x00,
+                        "branch": "compact",
+                        "target": 0x01EFFE,
+                        "context_slot": 3,
+                    }],
+                    "rows": [
+                        "." * 46,
+                        "." * 46,
+                        "." * 46,
+                        "." * 46,
+                        "." * 46,
+                        "." * 46,
+                        "." * 22 + "#.#.....#.#....##.##....",
+                        "." * 46,
+                    ],
+                },
+            },
+        },
+    ))
     downloaded_mode_reject = font_download_char_object_via_16498(
         table_payload_type2_bytes,
         0x2D,
@@ -78270,6 +78565,30 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_allocation_failure["table_pointer"],
             downloaded_mode_reject["reason"],
             downloaded_range_reject["reason"],
+        ),
+    )
+    append_wrapped(
+        lines,
+        "- `0x16498` status-2 partial visible output: linear `ESC )s4W` "
+        "stores table `0x%04x -> 0x%04x`, leaves bitmap `%s`, saves "
+        "continuation `%s`, then printable `0x2b` queues selector `0x%04x` "
+        "and renders final rows `%s`; split-plane `ESC )s3W` stores table "
+        "`0x%04x -> 0x%04x`, leaves bitmap `%s`, saves continuation `%s`, "
+        "then printable `0x2c` queues selector `0x%04x` and renders final "
+        "rows `%s`."
+        % (
+            downloaded_linear_partial_visible["resource"]["table_entry"],  # type: ignore[index]
+            downloaded_linear_partial_visible["resource"]["table_pointer"],  # type: ignore[index]
+            " ".join(f"{byte:02x}" for byte in downloaded_linear_partial_visible["resource"]["bitmap"]),  # type: ignore[index]
+            downloaded_linear_partial_visible["resource"]["continuation"],  # type: ignore[index]
+            downloaded_linear_partial_visible["printable"]["page"]["selector"],  # type: ignore[index]
+            downloaded_linear_partial_visible["printable"]["rows"][-3:],  # type: ignore[index]
+            downloaded_split_partial_visible["resource"]["table_entry"],  # type: ignore[index]
+            downloaded_split_partial_visible["resource"]["table_pointer"],  # type: ignore[index]
+            " ".join(f"{byte:02x}" for byte in downloaded_split_partial_visible["resource"]["bitmap"]),  # type: ignore[index]
+            downloaded_split_partial_visible["resource"]["continuation"],  # type: ignore[index]
+            downloaded_split_partial_visible["printable"]["page"]["selector"],  # type: ignore[index]
+            downloaded_split_partial_visible["printable"]["rows"][-2:],  # type: ignore[index]
         ),
     )
     downloaded_segmented_even_rendered_row = downloaded_segmented_even_bridged_rendered["rows"][-1]

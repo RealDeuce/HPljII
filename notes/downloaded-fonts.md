@@ -82,6 +82,7 @@ Primary fixtures:
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
 - `0x16498 no-install exits preserve following printable output`
+- `0x16498 status-2 partial installs remain printable`
 - `host-fetched even-span downloaded glyph FF publishes rendered page record`
 - `downloaded normal row-0x80 and segmented glyph FF publications render page records`
 - `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
@@ -852,6 +853,20 @@ default-font compact object as baseline `!`, and renders identical rows. This
 classifies the failed downloaded-character command as firmware bookkeeping and
 parser scratch, not canonical renderer state.
 
+Fixture `0x16498 status-2 partial installs remain printable` covers the
+opposite non-success branch: status `2` is a partial install, not a no-install.
+The linear case starts from host-fetched `ESC )s4W f0 0f aa 55`, restores
+record `80 57 00 04 00 00`, stores table entry `0x00f6 -> 0x0840`, leaves
+bitmap bytes `f0 0f aa 55 00 00`, and saves continuation state with
+destination `0x0850` and remaining count `2`. A following printable `+`
+resolves glyph `0x2b`, queues short selector `0x0003`, and renders rows from
+the copied bytes plus the zero-filled missing row. The split-plane case starts
+from `ESC )s3W a0 a1 b0`, stores table entry `0x00fa -> 0x0880`, leaves
+layout `a0 a1 00 00 b0 00`, saves A4/A3 continuation destinations
+`0x088e`/`0x0891`, and a following printable `,` resolves glyph `0x2c`,
+queues selector `0x0003`, and renders the first row from prefix bytes
+`a0 a1` plus trailing byte `b0`.
+
 Fixture `host-fetched segmented downloaded character renders through
 0x1f1f0` adds the even-span tall sibling. The host-fetched `ESC )s258W` stream
 uses parser record `80 57 01 02 00 00`, delayed handler `0x16c14`, payload
@@ -1306,10 +1321,12 @@ A byte-stream renderer must preserve:
   mode/header-type rejects. Fixture
   `0x16498 no-install exits preserve following printable output` closes
   page-visible recovery for those no-install exits by proving the following
-  printable byte stays on the default-font object and rows. Remaining
-  parser-produced comparisons are the cross-product variants not covered by
-  those shapes, especially other row counts, other character-mode behavior,
-  and status-`2` partial-install visibility from the same selector families.
+  printable byte stays on the default-font object and rows. Fixture
+  `0x16498 status-2 partial installs remain printable` covers the linear and
+  split-plane status-`2` visible-output siblings. Remaining parser-produced
+  comparisons are the cross-product variants not covered by those shapes,
+  especially other row counts and other character-mode behavior from the same
+  selector families.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets; the normal, linear-segmented, and even-span wide siblings
   now publish through the same boundary. Fixture

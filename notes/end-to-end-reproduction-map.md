@@ -411,10 +411,20 @@ The next work should follow dataflow, not isolated handlers:
    bytes to selected current-font RAM, page-root slot install, and rows matching the
    pinned visible fixtures. The inline cases prove `ESC (s0p10h12v0s0b3T!!` and `ESC
    )s0p16h8v0s0b0T SO !!` in one mixed-stream state from selection handlers to printable
-   source capture, HMI, object prefix, bridge context slots, and rows. Remaining suite
-   cases should add other fallback/error font-selection visible-output variants beyond
-   those two symbol misses and the transparent secondary segment-57 bitmap source
-   interpretation beyond the covered transparent data paths. Current transparent
+   source capture, HMI, object prefix, bridge context slots, and rows. The non-Roman
+   symbol cluster is now part of the visible-output suite too: fixture `live parser
+   symbol-set streams select non-Roman built-ins` proves primary `ESC (0N`, `ESC (10U`,
+   and `ESC (11U` through parser handlers `0x11eb6`, `0x1201e`, and `0x120be`,
+   selected-font refresh, record choices `0x000cb8`, `0x000418`, and `0x000868`, and map
+   rebuild path `selected-symbol-not-roman8`. Fixture `non-Roman symbol streams select
+   visible built-ins` then carries primary `0N`/`10U`/`11U` streams through matching
+   `ESC (s0p10h12v0s0b3T!!` tails and secondary `ESC )0N`/`10U`/`11U` streams through
+   matching `ESC )s0p16h8v0s0b0T SO !!` tails, crossing SO handler `0xc6b8` for
+   secondary, preserving compact object prefixes, bridge context slots, and rendered-row
+   digests. Remaining suite cases should add other fallback/error font-selection
+   visible-output variants beyond the two symbol misses and the `0N`/`10U`/`11U`
+   primary/secondary visible streams, plus the transparent secondary segment-57 bitmap
+   source interpretation beyond the covered transparent data paths. Current transparent
    coverage includes the default-filtered C0/high-control fixed-space path, nonzero C0
    plus high-control `0x80` printable path, primary interior samples `0x81`, `0x88`,
    `0x90`, and `0x97`, primary tall bucket-crossing `0x98`, primary top-of-range `0x9f`,

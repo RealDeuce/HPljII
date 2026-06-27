@@ -980,12 +980,27 @@ handlers:
   takes the beyond-page exit and `d8fc` renders from copied context words
   `0x0004/0x0013/0x0001`. The same fixture proves offset byte `0xff` copies
   to word `+0x1a = 0xffff` and is consumed by `d8fc` as `65535`. Fixture
+  `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+  proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
+  `0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, preserving
+  `d4ac` span output and `d8fc` high-y `20` output. Fixture
   `descriptor metric fields match across inline and resource contexts` now
   pins the legal inline/unflagged `d4ac` and resource/flagged `d8fc`
   producer forms plus the two invalid swapped forms. The open middle is
-  additional metric-value combinations outside those pinned legal endpoints,
-  plus visible behavior for validation/error forms beyond the bounded
+  additional metric-value combinations outside those pinned legal matrix,
+  boundary, and low-nibble endpoints, plus visible behavior for
+  validation/error forms beyond the bounded
   predicate and short-budget no-install cases.
+- Treat non-Roman `0N` / `10U` / `11U` font-selection visible output as
+  covered for the documented primary and secondary paths. Fixture
+  `live parser symbol-set streams select non-Roman built-ins` proves primary
+  parser streams select records `0x000cb8`, `0x000418`, and `0x000868` through
+  the `selected-symbol-not-roman8` map path; fixture
+  `non-Roman symbol streams select visible built-ins` carries the primary and
+  secondary `0N`/`10U`/`11U` streams through matching font-selection commands,
+  SO for secondary, compact text objects, bridge context slots, and rendered-row
+  digests. Further font-selection work should target command combinations that
+  expose new state boundaries, not these six visible streams.
 - Replace remaining modeled producer-state handoffs with fuller
   parser-produced page objects. Current coverage includes direct text,
   direct controls, macro replay/overlay, reset/FF/page geometry

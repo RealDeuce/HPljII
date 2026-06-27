@@ -451,7 +451,8 @@ The next work should follow dataflow, not isolated handlers:
    also broaden downloaded-glyph publication cross-products beyond the documented
    segmented-wide, normal, nonboundary-short, rows-`0x20` short, rows-`0x40` short,
    linear-segmented, rows-`0x82` segmented, split-plane segmented, row-threshold `0x80`
-   short, even-span wide, and payload-control wide selector families, especially
+   short, rows-`0x0102` low-byte-truncated short publication, even-span wide, and
+   payload-control wide selector families, especially
    additional row counts, descriptor grammar forms outside the covered `0x16b1a`
    mode-byte-`1`/`2` bitmap installs, and non-success exits. The nonboundary-short
    fixture now publishes rows `0x10` on selector `0x0003` through FF, `0xff1e`, and
@@ -471,6 +472,11 @@ The next work should follow dataflow, not isolated handlers:
    carries `ESC )s260W` plus printable `0` and FF through `0xff1e`, preserves buckets
    `1` and `9`, and renders bucket word `9` through `0x1ed84`/`0x1ef6a` to two `0x1f1f0`
    segment-1 rows. The `0x16498` replacement/allocation-failure/partial/reject fixture
+   now has a rows-`0x0102` sibling: `ESC )s516W` installs record
+   `00 00 00 00 0c 01 01 02 00 10 00 00`, but the printable page source exposes row byte
+   `0x02`, so `0x12f2e` queues selector `0x0003`, publishes only bucket `1`, and leaves
+   `0x1ed84`/`0x1ef6a -> 0x1effe` as the unresolved visible-output edge. The `0x16498`
+   replacement/allocation-failure/partial/reject fixture
    now also covers old-pointer release through `0x17a24`, object allocation failure
    through `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear and split-plane continuation
    pointer writes, descriptor mode-byte-`0` status-`0` reject, and

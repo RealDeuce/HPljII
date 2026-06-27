@@ -55780,6 +55780,236 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "rows": expected_downloaded_segmented_rows82_rows,
     }))
 
+    downloaded_segmented_rows102_payload = (
+        (b"\x00\x00" * 0x100)
+        + bytes.fromhex("f0 0f")
+        + bytes.fromhex("aa 55")
+    )
+    downloaded_segmented_rows102_command_stream = (
+        b"\x1b)s516W" + downloaded_segmented_rows102_payload
+    )
+    host_fetched_downloaded_segmented_rows102_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(downloaded_segmented_rows102_command_stream),
+            direct_mode=0,
+        ),
+        len(downloaded_segmented_rows102_command_stream),
+    )
+    downloaded_segmented_rows102_dispatch_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        host_fetched_downloaded_segmented_rows102_stream["stream"],
+    )
+    downloaded_segmented_rows102_dispatch_command = (
+        downloaded_segmented_rows102_dispatch_trace["commands"][0]
+    )
+    assert isinstance(downloaded_segmented_rows102_dispatch_command, dict)
+    downloaded_segmented_rows102_command = render_font_download_char_command_stream_via_121cc_16498(
+        host_fetched_downloaded_segmented_rows102_stream["stream"],
+        table_payload_type2_bytes,
+        char_code=0x33,
+        record_words=(0x0000, 0x0000, 0x0102, 0x0000),
+        mode=1,
+        width=0x0010,
+        rows=0x0102,
+        object_offset=0x0D40,
+    )
+    downloaded_segmented_rows102_event = downloaded_segmented_rows102_command["events"][0]
+    assert isinstance(downloaded_segmented_rows102_event, dict)
+    downloaded_segmented_rows102_install = downloaded_segmented_rows102_event["install"]
+    assert isinstance(downloaded_segmented_rows102_install, dict)
+    downloaded_segmented_rows102_memory = bytearray(downloaded_segmented_rows102_install["header"])
+    downloaded_segmented_rows102_glyph = resolve_downloaded_pointer_glyph(
+        downloaded_segmented_rows102_memory,
+        0,
+        0x33,
+    )
+    assert downloaded_segmented_rows102_glyph is not None
+    downloaded_segmented_rows102_source = {
+        "context": 0,
+        "host_char": 0x33,
+        "mapped": 0x33,
+        "glyph_entry": downloaded_segmented_rows102_glyph["entry"],
+        "glyph_width": downloaded_segmented_rows102_glyph["width"],
+        "glyph_rows": downloaded_segmented_rows102_glyph["rows"],
+        "flag": 0,
+        "x": 22,
+        "y": 22,
+        "context_slot": 3,
+        "inline_record": bytes([
+            int(downloaded_segmented_rows102_glyph["render_span"]),
+            int(downloaded_segmented_rows102_glyph["rows"]) & 0xFF,
+            0,
+        ]),
+    }
+    downloaded_segmented_rows102_page_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_segmented_rows102_page_result = queue_text_source_to_page_record_via_12f2e(
+        downloaded_segmented_rows102_memory,
+        downloaded_segmented_rows102_page_record,
+        downloaded_segmented_rows102_source,
+    )
+    downloaded_segmented_rows102_publication_stream = (
+        downloaded_segmented_rows102_command_stream + b"3\x0c"
+    )
+    downloaded_segmented_rows102_publication_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(downloaded_segmented_rows102_publication_stream),
+            direct_mode=0,
+        ),
+        len(downloaded_segmented_rows102_publication_stream),
+    )
+    downloaded_segmented_rows102_publication_tail = (
+        downloaded_segmented_rows102_publication_fetch["stream"][
+            len(downloaded_segmented_rows102_command_stream):
+        ]
+    )
+    downloaded_segmented_rows102_publication_tail_trace = (
+        trace_mixed_text_control_parser_path_via_11774(
+            data,
+            downloaded_segmented_rows102_publication_tail,
+        )
+    )
+    downloaded_segmented_rows102_publication = finalize_page_record_via_ff1e(
+        downloaded_segmented_rows102_page_record,
+        reset_fixture_state(
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            page_root_clears=0,
+            publication_bucket_index=int(downloaded_segmented_rows102_page_result["bucket_index"]),
+        ),
+    )
+    downloaded_segmented_rows102_published_record = downloaded_segmented_rows102_publication[
+        "published_pool_record"
+    ]
+    assert isinstance(downloaded_segmented_rows102_published_record, dict)
+    downloaded_segmented_rows102_published_fields = (
+        downloaded_segmented_rows102_published_record["pool_record_fields"]
+    )
+    assert isinstance(downloaded_segmented_rows102_published_fields, dict)
+    checks.append(assert_equal("host-fetched rows-0x102 downloaded glyph FF publication truncates page-record rows", {
+        "fetch": {
+            "stream_prefix": host_fetched_downloaded_segmented_rows102_stream["stream"][:7],
+            "stream_length": len(host_fetched_downloaded_segmented_rows102_stream["stream"]),
+            "source_set": sorted(set(host_fetched_downloaded_segmented_rows102_stream["sources"])),
+            "remaining_ring": host_fetched_downloaded_segmented_rows102_stream["state"]["ring"],
+        },
+        "parser": {
+            "handlers": [
+                event["handler"]
+                for event in downloaded_segmented_rows102_dispatch_trace["dispatches"]
+            ],
+            "record": downloaded_segmented_rows102_dispatch_command["record"],
+            "restored_record": downloaded_segmented_rows102_dispatch_command[
+                "restored_record"
+            ],
+            "payload_offset": downloaded_segmented_rows102_dispatch_command["payload_offset"],
+            "payload_length": len(downloaded_segmented_rows102_dispatch_command["payload"]),
+        },
+        "install": {
+            key: downloaded_segmented_rows102_install[key]
+            for key in (
+                "status",
+                "table_entry",
+                "record_delta",
+                "record",
+                "bitmap_offset",
+                "bitmap_size",
+                "allocation_size",
+                "object_size",
+                "span",
+                "split_plane",
+            )
+        },
+        "page": {
+            key: downloaded_segmented_rows102_page_result[key]
+            for key in (
+                "path",
+                "object",
+                "bucket_index",
+                "selector",
+                "coord",
+                "glyph",
+                "rows",
+                "width",
+            )
+        },
+        "tail": {
+            "stream": downloaded_segmented_rows102_publication_tail,
+            "handlers": [
+                event["handler"]
+                for event in downloaded_segmented_rows102_publication_tail_trace["events"]
+            ],
+        },
+        "finalized": {
+            "published": downloaded_segmented_rows102_publication["published"],
+            "bucket_index": downloaded_segmented_rows102_publication["bucket_index"],
+            "current_page_root_after": (
+                downloaded_segmented_rows102_publication["current_page_root_after"]
+            ),
+            "page_root_clears": downloaded_segmented_rows102_publication["page_root_clears"],
+            "page_publication_flag": (
+                downloaded_segmented_rows102_publication["page_publication_flag"]
+            ),
+        },
+        "published_bucket_array_keys": sorted(
+            downloaded_segmented_rows102_published_fields["bucket_array_1c"].keys()
+        ),
+        "unresolved_render_edge": "0x1ed84/0x1ef6a -> selector 0x0003 target 0x1effe",
+    }, {
+        "fetch": {
+            "stream_prefix": b"\x1b)s516W",
+            "stream_length": len(downloaded_segmented_rows102_command_stream),
+            "source_set": ["ring"],
+            "remaining_ring": [],
+        },
+        "parser": {
+            "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "record": b"\x80W\x02\x04\x00\x00",
+            "restored_record": b"\x80W\x02\x04\x00\x00",
+            "payload_offset": 7,
+            "payload_length": 0x0204,
+        },
+        "install": {
+            "status": 1,
+            "table_entry": 0x0116,
+            "record_delta": 0x0D40,
+            "record": bytes.fromhex("00 00 00 00 0c 01 01 02 00 10 00 00"),
+            "bitmap_offset": 0x0D4C,
+            "bitmap_size": 0x0204,
+            "allocation_size": 9,
+            "object_size": 0x0240,
+            "span": 2,
+            "split_plane": False,
+        },
+        "page": {
+            "path": "short-page-record",
+            "object": bytes.fromhex("00 00 00 00 00 03 00 01 33 66 01")
+            + bytes(0x1B),
+            "bucket_index": 1,
+            "selector": 0x0003,
+            "coord": 0x6601,
+            "glyph": 0x33,
+            "rows": 0x02,
+            "width": 2,
+        },
+        "tail": {
+            "stream": b"3\x0c",
+            "handlers": [0x00D04A, 0x00F0F0],
+        },
+        "finalized": {
+            "published": True,
+            "bucket_index": 1,
+            "current_page_root_after": 0,
+            "page_root_clears": 1,
+            "page_publication_flag": 1,
+        },
+        "published_bucket_array_keys": [1],
+        "unresolved_render_edge": "0x1ed84/0x1ef6a -> selector 0x0003 target 0x1effe",
+    }))
+
     downloaded_linear_publication_stream = downloaded_linear_command_stream + b"&\x0c"
     downloaded_row80_publication_stream = downloaded_row80_command_stream + b"*\x0c"
     downloaded_segmented_even_publication_stream = (
@@ -83396,6 +83626,32 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "word_10"
             ],
             len(downloaded_segmented_rows82_published_entry["rows"]) - 6,
+        )
+    )
+    lines.append(
+        "- rows-0x102 downloaded-glyph FF publication: host-fetched "
+        "`ESC )s516W` plus printable `3` and FF restores record `%s`, "
+        "installs table entry `0x%04x` with record `%s`, but the printable "
+        "page source exposes row byte `0x%02x`; `0x12f2e` queues selector "
+        "`0x%04x`, publishes bucket entries `%s`, and leaves render edge "
+        "`0x1ed84`/`0x1ef6a -> 0x1effe` unresolved." % (
+            " ".join(
+                f"{byte:02x}"
+                for byte in downloaded_segmented_rows102_dispatch_command[
+                    "restored_record"
+                ]
+            ),
+            downloaded_segmented_rows102_install["table_entry"],
+            " ".join(
+                f"{byte:02x}" for byte in downloaded_segmented_rows102_install["record"]
+            ),
+            downloaded_segmented_rows102_page_result["rows"],
+            downloaded_segmented_rows102_page_result["selector"],
+            sorted(
+                downloaded_segmented_rows102_published_fields[
+                    "bucket_array_1c"
+                ].keys()
+            ),
         )
     )
     lines.append("")

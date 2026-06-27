@@ -3044,15 +3044,18 @@ compact text renderer.
     `0x0003` publishes bucket `1`, rows-`0x40` short selector `0x0003`
     publishes bucket `1`, linear-segmented selector `0x2003` publishes
     buckets `1` and `9` for rows `0x81` and rows `0x82`, segmented-wide
-    selector `0x3003` publishes buckets `1` and `9`, and wide selector
-    `0x1003` publishes bucket `1` for the even-span and payload-control
-    odd-span streams.
+    selector `0x3003` publishes buckets `1` and `9`, rows-`0x0102`
+    downloaded installs publish only selector-`0x0003` bucket `1` because the
+    printable inline source exposes row byte `0x02` to `0x12f2e`, and wide
+    selector `0x1003` publishes bucket `1` for the even-span and
+    payload-control odd-span streams.
 - Parser scratch:
   - `0x78299e`: six-byte parsed-record cursor rewound by font handlers.
   - `0x783140`: payload byte budget used by descriptor and payload readers.
   - delayed `ESC )s#W` records restored by `0x11f96`/`0x16c14`: normal
     `80 57 00 06 00 00`, linear-segmented `80 57 01 02 00 00`, and even-span
-    wide `80 57 00 12 00 00`.
+    wide `80 57 00 12 00 00`; the rows-`0x0102` truncation fixture restores
+    `80 57 02 04 00 00`.
 - Derived/cache:
   - `0x7827c6`, `0x7827ca`, `0x7827ce`, `0x7827d2`, `0x7827d6`,
     `0x7827d8`, `0x7827da`, and `0x7827c8`: continuation state for
@@ -3243,6 +3246,20 @@ host-fetched `ESC )s260W` plus printable `0` and FF restores record
 `00 00 00 00 0c 01 00 82 00 10 00 00`, publishes bucket-array entries `1`
 and `9`, renders bucket word `9`, and emits two segment-1 rows through
 `0x1ed84`/`0x1ef6a` and compact target `0x1effe` / renderer `0x1f1f0`.
+Fixture
+`host-fetched rows-0x102 downloaded glyph FF publication truncates page-record rows`
+adds the first nonzero-high-byte downloaded row count in this family. The
+host-fetched `ESC )s516W` plus printable `3` and FF restores record
+`80 57 02 04 00 00`, installs record
+`00 00 00 00 0c 01 01 02 00 10 00 00`, and copies `0x0204` linear bytes into
+glyph `0x33`. The installed glyph table entry is canonical downloaded-glyph
+state, but the printable source record is parser/page scratch with only row
+byte `0x02`; `0x12f2e` therefore writes selector `0x0003` object
+`00 00 00 00 00 03 00 01 33 66 01`, publishes only bucket `1` through
+`0xff1e`, and leaves bucket words `9` and `17` absent. This fixture does not
+claim rendered pixels: the remaining middle edge is the published
+selector-`0x0003` tall normal-compact handoff through `0x1ed84`/`0x1ef6a`
+into target `0x1effe`.
 Fixture
 `split-plane segmented downloaded glyph FF publication renders page record`
 adds the odd-span sibling: host-fetched `ESC )s387W` plus printable `(` and FF
@@ -3812,6 +3829,8 @@ fields and every legal metric combination have not been page-compared.
   record`
 - `host-fetched rows-0x82 segmented downloaded glyph FF publication renders page
   record`
+- `host-fetched rows-0x102 downloaded glyph FF publication truncates
+  page-record rows`
 - `host-fetched even-span wide downloaded character renders through 0x1f0d2`
 - `host-fetched row-0x80 downloaded character remains short compact`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
@@ -3909,8 +3928,9 @@ fields and every legal metric combination have not been page-compared.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets; the normal, non-boundary short, row-threshold `0x80`,
   rows-`0x20` short, rows-`0x40` short, linear-segmented, rows-`0x82`
-  segmented, split-plane segmented, even-span wide, and payload-control
-  odd-span wide siblings now publish through the same boundary. Fixture
+  segmented, split-plane segmented, even-span wide, payload-control odd-span
+  wide, and rows-`0x0102` low-byte-truncated short siblings now publish through
+  the same boundary. Fixture
   `host-fetched nonboundary short downloaded glyph FF publication renders page record`
   renders rows `0x10` on selector `0x0003` through `0x1ed84`/`0x1ef6a` and
   compact target `0x1effe`/`0x1fe76`, preserving digest
@@ -3931,6 +3951,13 @@ fields and every legal metric combination have not been page-compared.
   publishes bucket-array entries `1` and `9` for `ESC )s260W`, preserves
   record `00 00 00 00 0c 01 00 82 00 10 00 00`, renders bucket word `9`,
   and emits two segment-1 rows through compact target `0x1effe`/`0x1f1f0`.
+  Fixture
+  `host-fetched rows-0x102 downloaded glyph FF publication truncates page-record rows`
+  publishes bucket-array entry `1` for `ESC )s516W`, preserves installed
+  record `00 00 00 00 0c 01 01 02 00 10 00 00`, but shows the printable source
+  row byte as `0x02`, so `0x12f2e` writes selector `0x0003` object
+  `00 00 00 00 00 03 00 01 33 66 01` and leaves the visible render edge
+  `0x1ed84`/`0x1ef6a -> 0x1effe` unresolved.
   Fixture
   `host-fetched rows-0x20 short downloaded glyph FF publication renders page record`
   publishes bucket-array entry `1` for `ESC )s64W`, preserves record

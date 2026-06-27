@@ -94,6 +94,8 @@ Primary fixtures:
   record`
 - `host-fetched rows-0x82 segmented downloaded glyph FF publication renders page
   record`
+- `host-fetched rows-0x102 downloaded glyph FF publication truncates
+  page-record rows`
 - `downloaded normal row-0x80 and segmented glyph FF publications render page records`
 - `split-plane segmented downloaded glyph FF publication renders page record`
 - `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
@@ -236,9 +238,11 @@ Published page-record state:
 - Canonical bucket array copied by `0xff1e`: normal downloaded selector
   `0x0003` publishes bucket `1`; linear-segmented selector `0x2003` publishes
   buckets `1` and `9`; split-plane segmented selector `0x2003` publishes
-  buckets `1` and `9`; segmented-wide selector `0x3003` publishes buckets
-  `1` and `9`; wide selector `0x1003` publishes bucket `1` for both the
-  even-span and payload-control odd-span streams.
+  buckets `1` and `9`; rows-`0x0102` installs publish only bucket `1` because
+  the printable source record exposes row byte `0x02` to `0x12f2e`;
+  segmented-wide selector `0x3003` publishes buckets `1` and `9`; wide
+  selector `0x1003` publishes bucket `1` for both the even-span and
+  payload-control odd-span streams.
 - Canonical side lists copied by `0xff1e`: the covered downloaded-glyph
   publication fixtures leave rule and fixed lists empty.
 - Canonical context slots copied by `0xff1e`: the covered downloaded-glyph
@@ -253,12 +257,13 @@ Published page-record state:
   publication flag after copying the record.
 - Unknown for this checkpoint: downloaded-glyph publication cross-products outside the
   documented normal bucket-1, rows-`0x20` short bucket-1, row-`0x80` short
-  bucket-1, rows-`0x40` short bucket-1, linear-segmented bucket-9,
-  split-plane segmented bucket-9, segmented-wide bucket-1/bucket-9,
-  even-span wide bucket-1, payload-control odd-span wide bucket-1, and
-  rows-`0x82` segmented bucket-1/bucket-9 streams. The remaining row-count
-  risk is no longer the `0x80`/`0x81` selector boundary itself; it is
-  additional non-boundary row counts inside the same selector families, no
+  bucket-1, rows-`0x40` short bucket-1, rows-`0x0102` low-byte-truncated
+  bucket-1 publication, linear-segmented bucket-9, split-plane segmented
+  bucket-9, segmented-wide bucket-1/bucket-9, even-span wide bucket-1,
+  payload-control odd-span wide bucket-1, and rows-`0x82` segmented
+  bucket-1/bucket-9 streams. The remaining row-count risk is no longer the
+  `0x80`/`0x81` selector boundary itself; it is additional non-boundary row
+  counts inside the same selector families, no
   identified ROM helper path for accepted
   descriptor-record mode bytes beyond the `0x16b1a` mode-byte-`1` even-span
   and mode-byte-`2` odd-span bitmap installs, and additional
@@ -273,6 +278,7 @@ Published page-record state:
   segmented downloaded glyph FF publication renders page record`, `host-fetched
   rows-0x20 short downloaded glyph FF publication renders page record`,
   `host-fetched rows-0x40 short downloaded glyph FF publication renders page record`,
+  `host-fetched rows-0x102 downloaded glyph FF publication truncates page-record rows`,
   `host-fetched payload-control downloaded glyph FF publishes page record`,
   `published downloaded glyph segmented buckets render across bands`, and
   `0x1eba4 scheduler band words render published downloaded glyph`.
@@ -1024,6 +1030,22 @@ and queues selector `0x2003`. Publication copies bucket array entries `1` and
 `0x1effe`/`0x1f1f0` produces two segment-1 rows, `####........####` and
 `#.#.#.#..#.#.#.#`, at x `22`.
 
+Fixture `host-fetched rows-0x102 downloaded glyph FF publication truncates
+page-record rows` covers the first row count whose high byte is nonzero. The
+stream is `ESC )s516W` plus printable `3` and FF. The font phase restores
+record `80 57 02 04 00 00`, installs glyph `0x33` at table entry `0x0116`,
+writes record `00 00 00 00 0c 01 01 02 00 10 00 00`, and copies `0x0204`
+linear bytes. The page-record producer does not carry that 16-bit row count
+forward through the printable inline source record: `text_source_metrics_via_12f2e`
+reads row byte `0x02`, so `0x12f2e` queues selector `0x0003`, short object
+`00 00 00 00 00 03 00 01 33 66 01` plus allocator padding, and bucket `1`
+instead of selector `0x2003` buckets `1`, `9`, and `17`. The trailing FF routes
+tail handlers `0xd04a` and `0xf0f0`, and `0xff1e` publishes only bucket `1`.
+The unresolved visible-output edge is the published selector-`0x0003` tall
+normal-compact render handoff through `0x1ed84`/`0x1ef6a` into target
+`0x1effe`; the current fixture therefore proves parser/install/page-record
+publication state, not pixel output for rows `0x0102`.
+
 Fixture `host-fetched split-plane segmented downloaded character renders
 through 0x1f1f0` covers the odd-span sibling. The host-fetched `ESC )s387W`
 stream uses parser record `80 57 01 83 00 00`, delayed handler `0x16c14`,
@@ -1529,13 +1551,16 @@ A byte-stream renderer must preserve:
   parser-produced comparisons are bounded cross-products: additional non-boundary row
   counts inside the already-covered segmented selector family beyond the covered rows
   `0x81` and `0x82`, additional interior short-family row counts beyond the covered rows
-  `0x03`, `0x10`, `0x20`, `0x40`, and `0x80`, no identified ROM helper path for accepted
+  `0x03`, `0x10`, `0x20`, `0x40`, and `0x80`, the visible-output continuation for the
+  rows-`0x0102` low-byte-truncated selector-`0x0003` case from
+  `0x1ed84`/`0x1ef6a` into `0x1effe`, no identified ROM helper path for accepted
   descriptor-record mode bytes beyond the covered `0x16b1a` mode-byte-`1` even-span and
   mode-byte-`2` odd-span bitmap installs, and broader publication combinations beyond
   the documented normal, nonboundary-short, rows-`0x20` short, rows-`0x40` short,
-  row-`0x80`, linear-segmented, rows-`0x82` segmented, split-plane segmented,
-  segmented-wide, even-span wide, payload-control wide, no-install, and status-`2`
-  compact bucket variants. The mode-byte-`0` no-install boundary itself is no longer a
+  row-`0x80`, rows-`0x0102` truncated, linear-segmented, rows-`0x82` segmented,
+  split-plane segmented, segmented-wide, even-span wide, payload-control wide,
+  no-install, and status-`2` compact bucket variants. The mode-byte-`0` no-install
+  boundary itself is no longer a
   vague open edge: fixture `0x16498 no-install exits preserve following printable
   output` proves status `0`/`unsupported-record-shape` plus unchanged visible output,
   and fixture `0x16498 replacement allocation failure partial and rejected downloaded
@@ -1543,8 +1568,9 @@ A byte-stream renderer must preserve:
   object level.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both segmented
   buckets; the normal, rows-`0x20` short, rows-`0x40` short, linear-segmented,
-  rows-`0x82` segmented, split-plane segmented, even-span wide, and payload-control
-  odd-span wide siblings now publish through the same boundary. Fixture `downloaded
+  rows-`0x82` segmented, split-plane segmented, even-span wide, payload-control
+  odd-span wide, and rows-`0x0102` low-byte-truncated short siblings now publish through
+  the same boundary. Fixture `downloaded
   normal row-0x80 and segmented glyph FF publications render page records` renders the
   normal bucket-1 record through `0x1ed84`/`0x1ef6a` and compact target
   `0x1effe`/`0x1fe76`, renders the row-`0x80` bucket-1 record through the same
@@ -1557,6 +1583,12 @@ A byte-stream renderer must preserve:
   FF publication renders page record` publishes bucket-array entries `1` and `9` for
   `ESC )s260W`, preserves record `00 00 00 00 0c 01 00 82 00 10 00 00`, renders bucket
   word `9`, and emits two segment-1 rows through compact target `0x1effe`/`0x1f1f0`.
+  Fixture `host-fetched rows-0x102 downloaded glyph FF publication truncates page-record
+  rows` publishes bucket-array entry `1` for `ESC )s516W`, preserves installed record
+  `00 00 00 00 0c 01 01 02 00 10 00 00`, but shows the printable source row byte as
+  `0x02`, so `0x12f2e` writes selector `0x0003` object
+  `00 00 00 00 00 03 00 01 33 66 01` and leaves the visible render edge
+  `0x1ed84`/`0x1ef6a -> 0x1effe` unresolved.
   Fixture `host-fetched rows-0x20 short downloaded glyph FF publication renders page
   record` publishes bucket-array entry `1` for `ESC )s64W`, preserves record `00 00 00
   00 0c 01 00 20 00 10 00 00`, renders bucket word `1`, and emits `38` visible rows

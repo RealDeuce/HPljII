@@ -1331,7 +1331,11 @@ the first band. The rows-`0x82`
 segmented sibling `ESC )s260W` + printable `0` + FF also copies buckets `1`
 and `9`; render bucket word `9` passes through `0x1ed84`, `0x1ef6a`, compact
 target `0x1effe`, and `0x1f1f0`, producing two segment-1 rows from the
-interior segmented row count. The fetched font-control
+interior segmented row count. The rows-`0x0102` sibling `ESC )s516W` +
+printable `3` + FF also crosses `0xff1e`, but the page-record source exposes
+row byte `0x02`; it publishes selector `0x0003` bucket `1` only and leaves the
+visible render edge `0x1ed84`/`0x1ef6a -> 0x1effe` unresolved. The fetched
+font-control
 state now carries current id
 `0x1234` and current character `0x25` into fetched descriptor,
 resource-payload, and downloaded-character streams, tying delayed record

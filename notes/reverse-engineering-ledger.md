@@ -478,7 +478,8 @@ even-span and mode-byte-`2` odd-span installs if ROM evidence proves such
 forms, remaining release variants, broader publication combinations beyond
 the covered
 normal, nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented,
-rows-`0x20` short, rows-`0x40` short, rows-`0x82` segmented, split-plane segmented,
+rows-`0x20` short, rows-`0x40` short, rows-`0x82` segmented,
+rows-`0x0102` low-byte-truncated publication, split-plane segmented,
 segmented-wide, even-span wide, payload-control wide, downloaded-character
 no-install, and status-`2` compact bucket variants, full live-parser raster
 edge cases, and final device-output page
@@ -487,6 +488,11 @@ Downloaded-character no-install failures now publish the following default
 printable through trailing-FF `0xff1e`, while the status-`2` partial-install
 branch is carried through trailing-FF publication and published-record
 rendering for both linear and split-plane compact objects.
+The rows-`0x0102` downloaded-glyph fixture proves accepted 16-bit install
+record `00 00 00 00 0c 01 01 02 00 10 00 00`, but the printable
+page-record source exposes row byte `0x02`, publishes selector `0x0003`
+bucket `1` only, and leaves `0x1ed84`/`0x1ef6a -> 0x1effe` as an
+unresolved visible-output edge.
 
 Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md`
 collects the raster command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`,

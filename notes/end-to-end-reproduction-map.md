@@ -390,10 +390,12 @@ The next work should follow dataflow, not isolated handlers:
    handlers to printable source capture, HMI, object prefix, bridge context
    slots, and rows. Remaining suite cases should add other fallback/error
    font-selection visible-output variants beyond those two symbol misses and
-   transparent-data high-control variants beyond the covered primary short
-   `0x80`, primary tall bucket-crossing `0x98`, and secondary segmented
-   page-record boundary from `SO ESC &p3X!\x80!`. They should also
-   broaden downloaded-glyph publication cross-products beyond the documented
+   transparent-data representative values beyond the covered default-filtered
+   C0/high-control fixed-space path, nonzero C0 plus high-control `0x80`
+   printable path, primary tall bucket-crossing `0x98`, primary top-of-range
+   `0x9f`, and secondary segmented page-record boundary from
+   `SO ESC &p3X!\x80!`. They should also broaden downloaded-glyph publication
+   cross-products beyond the documented
    segmented-wide, normal, linear-segmented, row-threshold `0x80` short, and
    even-span wide selector families, especially other row counts, character
    modes, and non-success exits. The row-threshold fixture closes the

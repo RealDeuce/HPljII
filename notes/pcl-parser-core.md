@@ -269,8 +269,10 @@ command-family notes before the model is complete:
   `0x1a` parser-table transitions.
 - `0x12120`: the `ESC Y` byte appender that reads through `0xa904`, echoes through
   `0xe002`, treats `0x1a 0x58` as `0x7f`, and stops on `ESC Z`.
-- `0x12452` transparent print data is now documented in
-  [transparent-print-data.md](transparent-print-data.md); remaining work there is
-  page-record output coverage for C0 and `0x80..0x9f` payload filtering cases.
+- `0x12452` transparent print data is documented in
+  [transparent-print-data.md](transparent-print-data.md). That command-family
+  note covers delayed restore, `1a` probe handling, C0 and `0x80..0x9f`
+  filtering, fixed-space output, nonzero-filter printable routing, and
+  secondary-context segmented page-record output through concrete fixtures.
 - The command-family semantic notes must cite their terminal handlers and output effects
   rather than citing parser-table membership alone.

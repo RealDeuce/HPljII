@@ -488,10 +488,11 @@ modeled source/object structures rather than a full live CPU-memory run.
   cross-product documented in `notes/font-context-metrics.md`.
 - `0x11f5a..0x12452`: transparent-text delayed payload restore, control
   filtering, printable re-entry, and fixed-space output are composed in
-  `Transparent Print Data`. Remaining work is broader high-control
-  cross-products and full secondary segmented bitmap semantics; the primary
-  tall bucket-crossing and secondary segmented page-record boundaries are now
-  fixture-backed.
+  `Transparent Print Data`. The C0 branch, `0x80..0x9f` branch, nonzero
+  printable route, fixed-space route, primary tall bucket-crossing, and
+  secondary segmented page-record boundaries are fixture-backed; remaining
+  work is broader value cross-products and full secondary segmented bitmap
+  semantics, not the command-family parser-to-page-record boundary.
 - `0x10084..0x1387c`: first-root allocation and compact text queueing
   are fixture-backed for this cluster, but a dense live parser page that
   exercises same-chunk and rollover allocation for all cursor variants

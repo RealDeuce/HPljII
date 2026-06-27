@@ -248,11 +248,15 @@ pixels or byte-stream compatibility.
    the two invalid swapped forms. Fixture
    `legal descriptor metric value matrix drives d4ac and d8fc consumers`
    composes the legal small-rounded, clamped-rounded, midpoint-rounded,
-   lower-bound, and upper-bound values; the midpoint case copies
-   `+0x14/+0x18/+0x1a/+0x2c = 0x0018/0x0013/0x0007/0x0018`, preserves the
-   `d4ac` span digest
+   zero-rounded-offset, lower-bound, and upper-bound values; the zero case
+   copies `+0x14/+0x18/+0x1a/+0x2c = 0x0018/0x0013/0x0000/0x0000`, preserves
+   the `d4ac` span digest
    `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`,
-   and makes `d8fc` update high-y `14` while leaving compact-only digest
+   and makes `d8fc` publish high-y `21` / row digest
+   `47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8`. The
+   midpoint case copies `+0x14/+0x18/+0x1a/+0x2c =
+   0x0018/0x0013/0x0007/0x0018` and makes `d8fc` update high-y `14` while
+   leaving compact-only digest
    `1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a`.
    The open edge is additional metric-value combinations within the legal
    forms, plus validation/error forms beyond those bounded predicate branches.

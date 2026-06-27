@@ -49905,6 +49905,78 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_flagged_glyph_delta + table_payload_flagged_bitmap_delta + 3
     ] = bytes.fromhex("f0 f0 f0")
 
+    def build_metric_matrix_payload(stream: bytearray) -> dict[str, object]:
+        command_stream = b"\x1b)s80W" + bytes(stream) + b"\x00" * 16
+        host_stream = fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(command_stream), direct_mode=0),
+            len(command_stream),
+        )
+        trace = trace_font_parser_dispatch_via_11774(data, host_stream["stream"])
+        commands = trace["commands"]
+        assert isinstance(commands, list)
+        command_trace = commands[0]
+        assert isinstance(command_trace, dict)
+        command = render_font_download_resource_command_stream_via_121cc_16c14(
+            host_stream["stream"],
+            records=[{"id": 0, "flags": 0, "payload": 0}],
+            current_id=0x1234,
+            new_payload_address=0,
+            counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+            cursors={
+                "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+                "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+                "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+                "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+            },
+            candidates=[0x00000100, 0x00000200, 0x00000300],
+        )
+        event = command["events"][0]
+        assert isinstance(event, dict)
+        validation = event["validation"]
+        assert isinstance(validation, dict)
+        allocation = event["allocation"]
+        assert isinstance(allocation, dict)
+        payload = allocation["payload"]
+        assert isinstance(payload, dict)
+        install = event["install"]
+        assert isinstance(install, dict)
+        memory = bytearray(payload["payload"])
+        memory[table_payload_record:table_payload_record + 8] = bytes.fromhex(
+            "02 03 04 00 00 00 00 a0"
+        )
+        memory[table_payload_bitmap:table_payload_bitmap + 6] = bytes.fromhex(
+            "aa 55 f0 0f c3 3c"
+        )
+        memory[
+            table_payload_flagged_table_entry:table_payload_flagged_table_entry + 4
+        ] = table_payload_flagged_glyph_delta.to_bytes(4, "big")
+        memory[
+            table_payload_flagged_glyph_delta:
+            table_payload_flagged_glyph_delta + 12
+        ] = bytes.fromhex("00 00 00 00 0c 01 00 03 00 04 00 00")
+        memory[
+            table_payload_flagged_glyph_delta + table_payload_flagged_bitmap_delta:
+            table_payload_flagged_glyph_delta
+            + table_payload_flagged_bitmap_delta
+            + 3
+        ] = bytes.fromhex("f0 f0 f0")
+        return {
+            "stream": bytes(stream),
+            "host_stream": host_stream,
+            "trace": trace,
+            "command_trace": command_trace,
+            "validation": validation,
+            "allocation": allocation,
+            "install": install,
+            "memory": memory,
+        }
+
+    metric_zero_offset_stream = bytearray(font_validate_stream)
+    metric_zero_offset_stream[10:12] = b"\x00\x18"
+    metric_zero_offset_stream[20:22] = b"\x00\x00"
+    metric_zero_offset_stream[30] = 0
+    metric_zero_offset = build_metric_matrix_payload(metric_zero_offset_stream)
+
     def summarize_legal_metric_render(
         memory: bytes | bytearray,
         selected_context: int,
@@ -50038,6 +50110,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             metric_mid_allocation,
             metric_mid_install,
             metric_mid_memory,
+        ),
+        (
+            "zero-rounded-offset",
+            metric_zero_offset["stream"],
+            metric_zero_offset["host_stream"],
+            metric_zero_offset["trace"],
+            metric_zero_offset["command_trace"],
+            metric_zero_offset["validation"],
+            metric_zero_offset["allocation"],
+            metric_zero_offset["install"],
+            metric_zero_offset["memory"],
         ),
         (
             "lower-bound",
@@ -50319,6 +50402,83 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "row_count": 8,
                         "row_width": 14,
                         "row_sha256": "1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a",
+                    },
+                },
+            },
+            "zero-rounded-offset": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 4,
+                    "range_word_at_stream_10": 24,
+                    "rounded_word_at_stream_20": 0,
+                    "flagged_offset_byte_at_stream_30": 0,
+                },
+                "resource_stream": {
+                    "fetched_stream_prefix": b"\x1b)s80W",
+                    "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                    "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+                    "payload_length": 80,
+                    "validation_status": 1,
+                    "payload_units": 0x80,
+                    "allocation_size": 10,
+                    "candidate_flags": 0x40000000,
+                },
+                "copied_metrics": {
+                    "word_0x14": 24,
+                    "word_0x16": 4,
+                    "word_0x18": 19,
+                    "word_0x1a": 0,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 0,
+                    "word_0x2c": 0,
+                },
+                "d4ac": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D4AC,
+                        "context_offset_002b": 0,
+                        "context_lower_002c": 0,
+                        "context_height_002d": 0,
+                        "high_y": 26,
+                    },
+                    "page_object": (
+                        bytes.fromhex(
+                            "00 00 00 00 40 00 00 01 a4 06 03 00 00 14"
+                        )
+                        + (b"\x00" * 0x18)
+                    ),
+                    "render": {
+                        "row_count": 13,
+                        "row_width": 116,
+                        "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                    },
+                },
+                "d8fc": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D8FC,
+                        "context_lower_0016": 4,
+                        "context_height_0018": 19,
+                        "context_offset_001a": 0,
+                        "metric_source": {
+                            "kind": "context",
+                            "base": 0,
+                            "context": 0x40000000,
+                        },
+                        "high_y": 21,
+                    },
+                    "page_object": (
+                        bytes.fromhex(
+                            "00 00 00 00 40 00 00 01 54 06 03 00 00 14"
+                        )
+                        + (b"\x00" * 0x18)
+                    ),
+                    "render": {
+                        "row_count": 8,
+                        "row_width": 116,
+                        "row_sha256": "47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8",
                     },
                 },
             },
@@ -76958,7 +77118,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         )
     )
     lines.append(
-        "- legal descriptor metric value matrix: fixture `legal descriptor metric value matrix drives d4ac and d8fc consumers` covers small-rounded, clamped-rounded, midpoint-rounded, lower-bound, and upper-bound parser-produced descriptors. The midpoint case copies `+0x14/+0x18/+0x1a/+0x2c = 0x0018/0x0013/0x0007/0x0018`, keeps `d4ac` row digest `%s`, and makes `d8fc` update high-y `%d` while leaving compact-only row digest `%s`." % (
+        "- legal descriptor metric value matrix: fixture `legal descriptor metric value matrix drives d4ac and d8fc consumers` covers small-rounded, clamped-rounded, midpoint-rounded, zero-rounded-offset, lower-bound, and upper-bound parser-produced descriptors. The zero case copies `+0x14/+0x18/+0x1a/+0x2c = 0x%04x/0x%04x/0x%04x/0x%04x`, keeps `d4ac` row digest `%s`, and makes `d8fc` publish high-y `%d` / row digest `%s`." % (
+            metric_value_matrix_cases["zero-rounded-offset"]["copied_metrics"]["word_0x14"],  # type: ignore[index]
+            metric_value_matrix_cases["zero-rounded-offset"]["copied_metrics"]["word_0x18"],  # type: ignore[index]
+            metric_value_matrix_cases["zero-rounded-offset"]["copied_metrics"]["word_0x1a"],  # type: ignore[index]
+            metric_value_matrix_cases["zero-rounded-offset"]["copied_metrics"]["word_0x2c"],  # type: ignore[index]
+            metric_value_matrix_cases["zero-rounded-offset"]["d4ac"]["render"]["row_sha256"],  # type: ignore[index]
+            metric_value_matrix_cases["zero-rounded-offset"]["d8fc"]["span"]["high_y"],  # type: ignore[index]
+            metric_value_matrix_cases["zero-rounded-offset"]["d8fc"]["render"]["row_sha256"],  # type: ignore[index]
+        )
+    )
+    lines.append(
+        "- midpoint metric matrix case: copied words `+0x14/+0x18/+0x1a/+0x2c = 0x0018/0x0013/0x0007/0x0018`, `d4ac` row digest `%s`, and `d8fc` high-y `%d` with compact-only row digest `%s`." % (
             metric_value_matrix_cases["midpoint-rounded"]["d4ac"]["render"]["row_sha256"],  # type: ignore[index]
             metric_value_matrix_cases["midpoint-rounded"]["d8fc"]["span"]["high_y"],  # type: ignore[index]
             metric_value_matrix_cases["midpoint-rounded"]["d8fc"]["render"]["row_sha256"],  # type: ignore[index]

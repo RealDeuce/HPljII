@@ -33562,6 +33562,149 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "calls": ["0x172c0", "0x1b4c0", "0xc4fc", "0x15890", "0x1b2fe", "0x14c64"],
     }))
+    font_id_error_records = [{"id": 7, "payload": 0x089FB0}]
+    font_id_error_candidates = list(class_zero_symbol_survivor_activation["entries"])  # type: ignore[arg-type]
+    font_id_scan_miss = font_id_select_via_17708(
+        data,
+        resources,
+        bytearray(),
+        [{"id": 1, "payload": 0x089FB0}, {"id": 0, "payload": 0}],
+        font_id_error_candidates,
+        slot=0,
+        font_id=7,
+        previous_font_id_782f2e=0x2222,
+        class_selector_782da3=0xFF,
+        current_selector_782f06=0,
+        active_symbols=[0x0005, 0x0115],
+    )
+    font_id_candidate_miss = font_id_select_via_17708(
+        data,
+        resources,
+        bytearray(),
+        font_id_error_records,
+        [],
+        slot=0,
+        font_id=7,
+        previous_font_id_782f2e=0x2222,
+        class_selector_782da3=0xFF,
+        current_selector_782f06=0,
+        active_symbols=[0x0005, 0x0115],
+    )
+    font_id_class_mismatch = font_id_select_via_17708(
+        data,
+        resources,
+        bytearray(),
+        font_id_error_records,
+        font_id_error_candidates,
+        slot=0,
+        font_id=7,
+        previous_font_id_782f2e=0x2222,
+        class_selector_782da3=0,
+        current_selector_782f06=0,
+        active_symbols=[0x0005, 0x0115],
+    )
+    full_context_slots = [0x080000 + index * 0x1000 for index in range(16)]
+    font_id_context_full = font_id_select_via_17708(
+        data,
+        resources,
+        bytearray(),
+        font_id_error_records,
+        font_id_error_candidates,
+        slot=0,
+        font_id=7,
+        previous_font_id_782f2e=0x2222,
+        class_selector_782da3=0xFF,
+        current_selector_782f06=0,
+        active_symbols=[0x0005, 0x0115],
+        current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        page_root_context_slots=full_context_slots,
+        page_root_live_flags=[1] * 16,
+    )
+    checks.append(assert_equal("0x17708 font-ID non-selected exits preserve prior selection", {
+        "scan_miss": {
+            "status": font_id_scan_miss["status"],
+            "scan_status": font_id_scan_miss["scan"]["status"],  # type: ignore[index]
+            "scan_index": font_id_scan_miss["scan"]["index"],  # type: ignore[index]
+            "selected_pointer_7828a8": font_id_scan_miss["selected_pointer_7828a8"],
+            "restored_font_id_782f2e": font_id_scan_miss["restored_font_id_782f2e"],
+            "calls": font_id_scan_miss["calls"],
+        },
+        "candidate_slot_miss": {
+            "status": font_id_candidate_miss["status"],
+            "payload": font_id_candidate_miss["payload"],
+            "selected_pointer_7828a8": font_id_candidate_miss["selected_pointer_7828a8"],
+            "slot_lookup": font_id_candidate_miss["slot_lookup"],
+            "restored_font_id_782f2e": font_id_candidate_miss["restored_font_id_782f2e"],
+            "calls": font_id_candidate_miss["calls"],
+        },
+        "class_mismatch": {
+            "status": font_id_class_mismatch["status"],
+            "payload": font_id_class_mismatch["payload"],
+            "selected_pointer_7828a8": font_id_class_mismatch["selected_pointer_7828a8"],
+            "selected_longword": font_id_class_mismatch["selected_longword"],
+            "bit30": font_id_class_mismatch["bit30"],
+            "class_byte": font_id_class_mismatch["class_byte"],
+            "wanted_class_782da3": font_id_class_mismatch["wanted_class_782da3"],
+            "restored_font_id_782f2e": font_id_class_mismatch["restored_font_id_782f2e"],
+            "calls": font_id_class_mismatch["calls"],
+        },
+        "context_full": {
+            "status": font_id_context_full["status"],
+            "payload": font_id_context_full["payload"],
+            "selected_pointer_7828a8": font_id_context_full["selected_pointer_7828a8"],
+            "selected_longword": font_id_context_full["selected_longword"],
+            "c4fc_result": font_id_context_full["c4fc_result"],
+            "c4fc_events": font_id_context_full["c4fc_events"],
+            "restored_font_id_782f2e": font_id_context_full["restored_font_id_782f2e"],
+            "calls": font_id_context_full["calls"],
+        },
+    }, {
+        "scan_miss": {
+            "status": "scan-miss",
+            "scan_status": 1,
+            "scan_index": 1,
+            "selected_pointer_7828a8": 0,
+            "restored_font_id_782f2e": 0x2222,
+            "calls": ["0x172c0"],
+        },
+        "candidate_slot_miss": {
+            "status": "candidate-slot-miss",
+            "payload": 0x089FB0,
+            "selected_pointer_7828a8": 0,
+            "slot_lookup": {"slot_pointer": 0, "events": []},
+            "restored_font_id_782f2e": 0x2222,
+            "calls": ["0x172c0", "0x1b4c0"],
+        },
+        "class_mismatch": {
+            "status": "class-mismatch",
+            "payload": 0x089FB0,
+            "selected_pointer_7828a8": 0x782364,
+            "selected_longword": 0xC0089FB0,
+            "bit30": True,
+            "class_byte": 0xFF,
+            "wanted_class_782da3": 0,
+            "restored_font_id_782f2e": 0x2222,
+            "calls": ["0x172c0", "0x1b4c0"],
+        },
+        "context_full": {
+            "status": "context-full",
+            "payload": 0x089FB0,
+            "selected_pointer_7828a8": 0x782364,
+            "selected_longword": 0xC0089FB0,
+            "c4fc_result": 0x11,
+            "c4fc_events": [
+                {
+                    "helper": 0x00C4FC,
+                    "caller": "0x17708",
+                    "context_record": 0x089FB0,
+                    "selected_page_slot": 0x11,
+                    "reason": "full",
+                },
+            ],
+            "restored_font_id_782f2e": 0x2222,
+            "calls": ["0x172c0", "0x1b4c0", "0xc4fc"],
+        },
+    }))
     font_id_builtin_visible_stream = b"\x1b(7X!!"
     font_id_builtin_visible_fetch = fetch_stream_via_a904(
         host_byte_fetch_state(ring=list(font_id_builtin_visible_stream), direct_mode=0),
@@ -82989,6 +83132,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         font_id_inline_select["active_symbols"][1],  # type: ignore[index]
         font_id_inline_select["reader"],
         font_id_inline_dispatch["map_address"],
+    ))
+    lines.append("- font-ID non-selected exits: fixture `0x17708 font-ID non-selected exits preserve prior selection` pins four terminal helper statuses before map dispatch: scan miss status `%s` after `0x172c0` status `%d`, candidate-slot miss for payload `0x%06x` with selected pointer `%d`, class mismatch at pointer `0x%06x` with record class `0x%02x` versus wanted `0x%02x`, and page-root context-full status `%s` after `0xc4fc` returns `0x%02x`; all four restore `0x782f2e = 0x%04x` and do not call `0x14c64`." % (
+        font_id_scan_miss["status"],
+        font_id_scan_miss["scan"]["status"],  # type: ignore[index]
+        font_id_candidate_miss["payload"],
+        font_id_candidate_miss["selected_pointer_7828a8"],
+        font_id_class_mismatch["selected_pointer_7828a8"],
+        font_id_class_mismatch["class_byte"],
+        font_id_class_mismatch["wanted_class_782da3"],
+        font_id_context_full["status"],
+        font_id_context_full["c4fc_result"],
+        font_id_context_full["restored_font_id_782f2e"],
     ))
     lines.append("- font-ID visible selection: fixture `font-ID built-in selection feeds visible page-record rows` carries host-fetched stream `ESC (7X!!` through `0xa904`, parser handlers `0x11eb6` / `0x1201e` / `0x120be`, `0x17708` selected context `0x%08x`, printable `0xd04a` rows, object prefix `%s`, and rendered-row digest `%s`." % (
         font_id_builtin_visible_context,

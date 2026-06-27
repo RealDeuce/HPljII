@@ -468,10 +468,15 @@ The next work should follow dataflow, not isolated handlers:
    `font-ID built-in selection feeds visible page-record rows` covers that final-`X`
    stream: host-fetched `ESC (7X!!` reaches `0x120be`, selects context `0xc0089fb0`
    through `0x17708`, and renders row digest
-   `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`. Remaining
-   font-selection variants plus the transparent secondary segment-57 bitmap source
-   interpretation beyond the covered transparent data paths still need coverage. Current
-   transparent coverage includes the default-filtered C0/high-control fixed-space path,
+   `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`. Fixture
+   `0x17708 font-ID non-selected exits preserve prior selection` covers the direct
+   final-`X` helper exits for scan miss, candidate-slot miss, class mismatch, and
+   context-full through the exact `0x17708` terminal status, with no `0x14c64` map
+   dispatch. Remaining font-selection work is visible-output treatment for other
+   fallback/error streams after those preserved-prior-selection exits, plus the
+   transparent secondary segment-57 bitmap source interpretation beyond the covered
+   transparent data paths. Current transparent coverage includes the
+   default-filtered C0/high-control fixed-space path,
    nonzero C0 plus high-control `0x80` printable path, primary interior samples `0x81`,
    `0x88`, `0x90`, and `0x97`, primary tall bucket-crossing `0x98`, primary top-of-range
    `0x9f`, the secondary segmented page-record boundary from `SO ESC &p3X!\x80!`, and

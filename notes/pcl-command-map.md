@@ -597,6 +597,14 @@ host-fetched `ESC (7X!!` reaches parser handlers `0x11eb6`, `0x1201e`, and
 `0x120be`, selects context `0xc0089fb0` through `0x17708`, queues compact
 object prefix `00 00 00 00 00 00 00 02 00 89 00 00 87 02`, and renders row
 digest `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
+Fixture `0x17708 font-ID non-selected exits preserve prior selection` covers
+the direct helper exits that stop before a new map is dispatched: scan miss
+after `0x172c0` status `1`, candidate-slot miss for payload `0x089fb0` with
+no `0x1b4c0` slot, class mismatch at pointer `0x782364` when record class
+`0xff` does not match wanted class `0x00`, and context-full when `0xc4fc`
+returns page slot `0x11`. In all four cases the helper restores saved
+`0x782f2e = 0x2222` and does not call `0x14c64`, so following printable output
+continues from the prior selected font rather than a newly selected font ID.
 
 The harness now pins six concrete common-refresh outcomes from `0xc580`.
 With dirty flag `0x782f2c = 1`, parser/setup slot `D5 = 0`, current

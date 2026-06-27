@@ -2087,6 +2087,12 @@ routes through parser handlers `0x11eb6`, `0x1201e`, and `0x120be`,
 `0x14c64` rebuilds primary map `0x782f32`, and the printable `!!` tail queues
 object `00 00 00 00 00 00 00 02 00 89 00 00 87 02` with rendered-row digest
 `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
+Fixture `0x17708 font-ID non-selected exits preserve prior selection` covers
+the helper exits that deliberately stop before map dispatch: record scan miss,
+candidate-slot miss, class mismatch, and full page-root context table. These
+paths restore `0x782f2e = 0x2222`, leave `0x7828a8 = 0` until a candidate slot
+is actually accepted, and never call `0x14c64`; their visible-output contract
+is preservation of the previously selected font, not a new rendered row.
 Fixture
 `real default-table caller stream uses ROM-backed words` then drives real
 scanned built-in default words through `ESC (0@ ESC )0@ ESC )1@ ESC )2@
@@ -2161,6 +2167,13 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     the primary stream carries final active words `[0x000e, 0x0005]` into
     `ESC (s0p10h12v0s0b3T!!`; the secondary stream carries the same final
     active words into `ESC )s0p16h8v0s0b0T SO !!`.
+  - final-`X` font-ID request:
+    `ESC (7X` routes through `0x120be`, preserves the previous requested
+    symbol word, writes transient current font ID `7` through `0x782f2e`, and
+    calls `0x17708`.
+  - final-`X` non-selected helper exits:
+    `scan-miss`, `candidate-slot-miss`, `class-mismatch`, and `context-full`
+    all restore saved font ID `0x2222` after the helper returns.
   - dirty flags `0x782f2c` and `0x782f2d`, set by handlers `0xc930`,
     `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a`.
   Evidence: fixture `parsed font-selection stream writes primary font-state
@@ -2168,7 +2181,9 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   `primary symbol miss falls back before visible page-record rows`, and fixture
   `secondary symbol miss falls back before visible SO page-record rows`, plus
   fixtures `symbol-set parser trace covers X and @ special cases` and
-  `real default-table caller stream uses ROM-backed words`.
+  `real default-table caller stream uses ROM-backed words`; fixture
+  `0x17708 font-ID non-selected exits preserve prior selection` pins the
+  non-selected final-`X` helper exits.
 - Canonical selected context:
   - `0x782ee6 +0x00`: selected longword `0xc008004c`.
   - `0x782ee6 +0x04`: bit-30-derived byte `1`.
@@ -2239,6 +2254,13 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
 - Derived/cache state:
   - `0x7828a8`: selected candidate slot `0x782354`.
   - secondary selected candidate slot `0x782350`.
+  - final-`X` selected built-in candidate slot: `0x782364` for resource
+    payload `0x089fb0` / selected longword `0xc0089fb0`.
+  - final-`X` non-selected candidates:
+    scan miss and candidate-slot miss leave selected pointer `0x7828a8 = 0`;
+    class mismatch observes pointer `0x782364` and record class `0xff` but
+    rejects wanted class `0x00`; context-full observes the same pointer but
+    stops when `0xc4fc` returns `0x11`.
   - primary fallback active-word source: fallback table word `0x0115` after
     the requested pass misses word `0x9a55`.
   - parser default-symbol table `0x782f1c/20/24/28`: built by `0x1ac0a` and
@@ -2298,6 +2320,10 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     requested symbol word.
   - final-`X` visible stream `ESC (7X!!` ties that parser/helper boundary to
     selected context `0xc0089fb0` and two following `0xd04a` printable events.
+  - direct final-`X` error-state fixture cases use the same `0x17708` helper
+    boundary without a following printable tail: no matching `0x172c0` record,
+    no matching `0x1b4c0` candidate slot, class mismatch at `+0x20`, and
+    page-root context-full after `0xc4fc`.
   - printable parser events are two `0xd04a` entries for the primary fixture,
     and `0xc6b8, 0xd04a, 0xd04a` for the secondary SO and fallback fixtures.
   - the live primary handoff stream is `SI !!` with current-font/page-root
@@ -2322,6 +2348,11 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     selections without entering the `0x14f16` Roman-8 patch-table path.
   - `0x14c64` rebuilds map `0x783032` for the secondary `0N`, `10U`, and
     `11U` selections before SO makes slot `1` active for printable bytes.
+  - `0x17708` non-selected bookkeeping:
+    `scan-miss` calls only `0x172c0`; `candidate-slot-miss` calls
+    `0x172c0` and `0x1b4c0`; `class-mismatch` calls the same scan/slot
+    helpers and stops before reader `0x15890`; `context-full` adds `0xc4fc`
+    and stops when selected page slot is `0x11`.
   - `0x1ac0a` writes the parser default-symbol table
     `0x782f1c/20/24/28`; `0x1af36` writes the separate candidate fallback
     table `0x782f0c/10/14/18`.
@@ -2426,6 +2457,10 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   `font-ID built-in selection feeds visible page-record rows` proves
   `0x1393a` consumes context `0xc0089fb0`, maps host byte `0x21` to glyph
   `0x00`, and emits glyph entry `0x00afec`.
+- Final-`X` non-selected exits do not produce a new consumer context. Fixture
+  `0x17708 font-ID non-selected exits preserve prior selection` proves the
+  helper stops before `0x14c64`, so later `0xd04a` / `0x1393a` output remains
+  the responsibility of the previously selected context.
 - Final-`@` parser variants affect requested/active symbol words before later
   font selection. Fixture
   `real final-@ default-table streams select visible built-ins` proves those
@@ -2517,6 +2552,11 @@ entry `0x00afec`, object prefix
 `00 00 00 00 00 00 00 02 00 89 00 00 87 02`, and rendered-row digest
 `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
 
+The direct `0x17708` non-selected fixture has no new rendered rows by design.
+Its output effect is negative: after scan miss, candidate-slot miss,
+class-mismatch, or context-full, no new map dispatch occurs and the previous
+selection remains the font state that any later printable byte will consume.
+
 ### Confidence
 
 High for parser handler routing, fallback table decision, selected built-in
@@ -2536,6 +2576,12 @@ High for final-`X` built-in visible output because fixture
 host-fetched bytes, ROM parser handlers, `0x17708` helper calls, selected
 context, printable source capture, object prefix, bridge context slots, and
 rendered row digest.
+High for direct `0x17708` non-selected exits because fixture
+`0x17708 font-ID non-selected exits preserve prior selection` pins all four
+terminal statuses, call lists, restored font ID, selected pointer state, class
+comparison, and `0xc4fc` full-table result. Medium for carrying those negative
+exits through later visible output because the current fixture documents the
+helper boundary rather than appending a printable tail.
 High for final-`@` parser/default-table behavior because the ROM parser
 records, terminal handler, subdispatch targets, real built-in default words,
 requested words, active words, and common-refresh count are fixture-pinned.
@@ -2564,6 +2610,7 @@ digests.
 - `non-Roman symbol streams select visible built-ins`
 - `symbol-set parser trace covers X and @ special cases`
 - `font-ID built-in selection feeds visible page-record rows`
+- `0x17708 font-ID non-selected exits preserve prior selection`
 - `real default-table caller stream uses ROM-backed words`
 - `real final-@ default-table streams select visible built-ins`
 
@@ -2600,7 +2647,10 @@ digests.
   `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` through
   `0x120be..0x156de..0x14c64..0xc6b8..0xd04a`. The covered font-ID boundary
   is `ESC (7X!!` through
-  `0x120be..0x17708..0x14c64..0xd04a`.
+  `0x120be..0x17708..0x14c64..0xd04a`; the covered direct font-ID
+  non-selected boundaries stop at `0x17708` statuses `scan-miss`,
+  `candidate-slot-miss`, `class-mismatch`, and `context-full`, with the
+  `context-full` middle edge ending at `0x17708..0xc4fc = 0x11`.
 - Final-`@` parser variants are documented through requested/active
   symbol-state, real default-table words, and primary/secondary visible-output
   streams. No unresolved middle edge remains for `@0..@3` inside the current

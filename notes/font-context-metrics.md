@@ -49,6 +49,7 @@ Evidence:
   - `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`
   - `host-fetched upper-bound metric variant keeps d4ac span but suppresses d8fc`
   - `descriptor metric fields match across inline and resource contexts`
+  - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
 
 ## Concept
 
@@ -522,6 +523,22 @@ Fixture-pinned metric effects:
   fails when the renderer treats compact glyph `1` as an offset-table glyph
   for context `0x40000000`, and inline/flagged `d8fc` fails because context
   `0x00000000` does not select the offset-table form.
+- Legal descriptor metric value matrix: fixture
+  `legal descriptor metric value matrix drives d4ac and d8fc consumers`
+  groups five parser-produced descriptor cases behind the same two legal
+  selected forms. Small-rounded, clamped-rounded, lower-bound, and
+  upper-bound cases match the individual fixtures above. The new
+  midpoint-rounded case changes host descriptor range/count bytes to
+  `0x0018`, rounded-metric input to `0x0018`, and flagged offset byte to `7`;
+  `0x16fae` / `0x1719c` copy canonical fields
+  `+0x14/+0x16/+0x18/+0x1a/+0x2c =
+  0x0018/0x0004/0x0013/0x0007/0x0018`. `0xd4ac` consumes
+  `+0x2c/+0x2d = 0/0x18`, queues the same span digest
+  `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`,
+  and `0xd8fc` consumes `+0x16/+0x18/+0x1a =
+  0x0004/0x0013/0x0007`, updates high-y to `14`, but because no flush object
+  is published for that state it leaves the compact glyph digest
+  `1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a`.
 - Span-consumer branch family: fixture
   `d4ac and d8fc span consumer branch family controls flush output` drives
   printable `!` through both selected source forms. For both `0xd4ac` and
@@ -735,6 +752,22 @@ work can close the right gap instead of re-tracing already-covered consumers.
   `+0x18 = 0x003b`, returns `beyond-page-extent` at cursor y `21`, and leaves
   only the compact glyph object. Status: parser-produced upper-bound
   cross-product to asymmetric visible output for both selected source forms.
+- Claim: legal parser-produced descriptor metric values now cover a five-case
+  consumer matrix. Evidence: fixture
+  `legal descriptor metric value matrix drives d4ac and d8fc consumers`;
+  small-rounded copies `+0x14/+0x18/+0x1a/+0x2c =
+  0x0009/0x0004/0x0002/0x0010`, clamped-rounded copies
+  `0x0005/0x0000/0x0003/0x0014`, midpoint-rounded copies
+  `0x0018/0x0013/0x0007/0x0018`, lower-bound copies
+  `0x0600/0x05e7/0x0005/0x1800`, and upper-bound copies
+  `0x0040/0x003b/0x0005/0x0020`. The same fixture records both legal
+  consumers for each case: `d4ac` span output stays visible for small,
+  clamped, midpoint, and upper values, `d4ac` exits `before-context-lower`
+  for lower-bound, `d8fc` emits visible span objects for small and clamped,
+  updates high-y `14` but leaves compact-only rows for midpoint, exits
+  `before-context-lower` for lower-bound, and exits `beyond-page-extent` for
+  upper-bound. Status: parser-produced legal metric value cross-product to
+  consumer state, queued object, and rendered row digest.
 - Claim: descriptor metric producer forms are disjoint at the selected-context
   boundary. Evidence: fixture
   `descriptor metric fields match across inline and resource contexts`;
@@ -757,17 +790,18 @@ The remaining unresolved middle edge is therefore not the tested `0x1719c`
 type-0, type-1, or type-2 metric paths into either `0xd4ac` or `0xd8fc`: all
 three payload forms now have host-fetched evidence through visible span rows,
 and the consumer-side disabled, lower-bound, page-extent, and high-x branches
-are fixture-backed for both selected source forms. Four parser-produced
-metric-value variants now prove copied descriptor values can flip the `d4ac`
-page-extent gate, exercise rounded-metric clamping into `+0x2c/+0x2d`, move
-`d8fc` visible rows, suppress both span consumers through descriptor-owned
-lower-bound fields, and suppress only `d8fc` through descriptor-owned
-upper-bound fields while preserving `d4ac` span output and compact glyph
-output. Fixture `descriptor metric fields match across inline and resource
-contexts` now pins the selected-context producer-form boundary: inline/unflagged
-`d4ac` and resource/flagged `d8fc` are visible, while resource/unflagged and
+are fixture-backed for both selected source forms. The five-case legal
+descriptor metric matrix now proves copied descriptor values can flip the
+`d4ac` page-extent gate, exercise rounded-metric clamping into
+`+0x2c/+0x2d`, move `d8fc` visible rows, update `d8fc` without publishing a
+span object, suppress both span consumers through descriptor-owned lower-bound
+fields, and suppress only `d8fc` through descriptor-owned upper-bound fields
+while preserving `d4ac` span output and compact glyph output. Fixture
+`descriptor metric fields match across inline and resource contexts` now pins
+the selected-context producer-form boundary: inline/unflagged `d4ac` and
+resource/flagged `d8fc` are visible, while resource/unflagged and
 inline/flagged are invalid cross-forms. The remaining producer-side work is
-broader descriptor metric combinations within those legal forms, plus
+additional descriptor metric combinations within those legal forms, plus
 validation/error forms beyond the seven bounded no-install predicates driven
 from parser bytes to page rows.
 
@@ -846,12 +880,13 @@ A byte-stream reproduction must preserve these behaviors:
   host-stream downloaded-font fixtures prove install, visible glyph rendering,
   and `0x1719c` type-0, type-1, and type-2 payloads feeding both `0xd4ac` and
   `0xd8fc` span rows; the shared span-consumer branch family is also
-  fixture-backed. Four parser-produced metric-value variants now cover visible
-  extent flips, clamping, lower-bound suppression for both consumers, and
-  asymmetric upper-bound suppression of `0xd8fc` while `0xd4ac` still renders
-  a span. Fixture `descriptor metric fields match across inline and resource
-  contexts` now pins the legal producer-form boundary and both invalid swapped
-  forms. Seven bounded `0x16fae` validation no-install forms now preserve
-  following printable output. The remaining gap is broader metric-value
-  combinations within the legal inline/unflagged and resource/flagged forms,
-  plus validation/error forms beyond those bounded predicate branches.
+  fixture-backed. The five-case legal descriptor metric matrix now covers
+  visible extent flips, clamping, a midpoint `d8fc` state update without a
+  span object, lower-bound suppression for both consumers, and asymmetric
+  upper-bound suppression of `0xd8fc` while `0xd4ac` still renders a span.
+  Fixture `descriptor metric fields match across inline and resource contexts`
+  now pins the legal producer-form boundary and both invalid swapped forms.
+  Seven bounded `0x16fae` validation no-install forms now preserve following
+  printable output. The remaining gap is additional metric-value combinations
+  within the legal inline/unflagged and resource/flagged forms, plus
+  validation/error forms beyond those bounded predicate branches.

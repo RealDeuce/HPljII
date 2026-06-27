@@ -245,11 +245,20 @@ pixels or byte-stream compatibility.
    no candidate install, resumed default-font printable output, and matching
    rows. Fixture `descriptor metric fields match across inline and resource
    contexts` now proves inline/unflagged `d4ac`, resource/flagged `d8fc`, and
-   the two invalid swapped forms. The open edge is broader metric-value
-   combinations within the legal forms, plus validation/error forms beyond
-   those bounded predicate branches. It is not the tested type-0/type-1/type-2
-   payloads, metric-variant, clamped-variant, lower-bound-variant,
-   upper-bound-variant, validation no-install, legal producer-form boundary, or
+   the two invalid swapped forms. Fixture
+   `legal descriptor metric value matrix drives d4ac and d8fc consumers`
+   composes the legal small-rounded, clamped-rounded, midpoint-rounded,
+   lower-bound, and upper-bound values; the midpoint case copies
+   `+0x14/+0x18/+0x1a/+0x2c = 0x0018/0x0013/0x0007/0x0018`, preserves the
+   `d4ac` span digest
+   `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`,
+   and makes `d8fc` update high-y `14` while leaving compact-only digest
+   `1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a`.
+   The open edge is additional metric-value combinations within the legal
+   forms, plus validation/error forms beyond those bounded predicate branches.
+   It is not the tested type-0/type-1/type-2 payloads, metric-variant,
+   clamped-variant, lower-bound-variant, upper-bound-variant,
+   legal-value-matrix, validation no-install, legal producer-form boundary, or
    shared consumer branch family. Evidence:
    `notes/semantic-state-model.md` under `Text Span Flush And Fixed-Width
    Spans`.
@@ -310,13 +319,14 @@ The next work should follow dataflow, not isolated handlers:
    disabled/lower/page/high-x consumer branch family is fixture-backed. Four
    parser-produced metric-value variants now cover tight `d4ac` page-extent
    gates, one rounded-metric clamp into `+0x2c/+0x2d`, shifted `d8fc` visible
-   rows, one lower-bound no-span output path for both consumers, and one
+   rows, one midpoint case where `d8fc` updates state but leaves compact-only
+   output, one lower-bound no-span output path for both consumers, and one
    upper-bound case where `d4ac` still renders a span while `d8fc` exits
    `beyond-page-extent`. Fixture
    `descriptor metric fields match across inline and resource contexts` now
    pins the legal producer-form boundary: inline/unflagged reaches `d4ac`,
    resource/flagged reaches `d8fc`, and the swapped forms fail at concrete
-   map/render boundaries. The missing middle is now broader metric-value
+   map/render boundaries. The missing middle is now additional metric-value
    combinations within the legal forms, plus page-visible behavior for
    validation/error forms beyond the seven bounded predicate no-install
    fixtures.

@@ -19007,16 +19007,24 @@ def render_mixed_printable_control_page_record_stream(
         raise AssertionError("page-record mixed stream fixture expects one populated bucket")
     if not nonempty_buckets:
         raise AssertionError("page-record mixed stream fixture expects at least one populated bucket")
-    selected_bucket = nonempty_buckets[0]
-    chain = bucket_array[selected_bucket]
-    if not chain:
-        raise AssertionError("page-record mixed stream fixture expects bucket objects")
-    compact_objects = [
-        bytes(obj)
-        for obj in chain
-        if len(obj) > 4 and (bytes(obj)[4] & 0xC0) == 0
-    ]
-    if not compact_objects:
+    selected_bucket: int | None = None
+    chain: list[bytes | bytearray] | None = None
+    compact_objects: list[bytes] = []
+    for bucket in nonempty_buckets:
+        bucket_chain = bucket_array[bucket]
+        if not bucket_chain:
+            continue
+        bucket_compact_objects = [
+            bytes(obj)
+            for obj in bucket_chain
+            if len(obj) > 4 and (bytes(obj)[4] & 0xC0) == 0
+        ]
+        if bucket_compact_objects:
+            selected_bucket = bucket
+            chain = bucket_chain
+            compact_objects = bucket_compact_objects
+            break
+    if selected_bucket is None or chain is None:
         raise AssertionError("page-record mixed stream fixture needs a compact text object")
     bucket_object = compact_objects[0]
     bridge_source = dict(page_record)
@@ -19031,7 +19039,7 @@ def render_mixed_printable_control_page_record_stream(
             data,
             resources,
             page_record,
-            bucket_word=nonempty_buckets[0],
+            bucket_word=selected_bucket,
         )
         rendered = render_entry["entry"]
     published_bridged_record = None
@@ -49780,6 +49788,609 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         },
     ))
+
+    metric_mid_stream = bytearray(font_validate_stream)
+    metric_mid_stream[10:12] = b"\x00\x18"
+    metric_mid_stream[20:22] = b"\x00\x18"
+    metric_mid_stream[30] = 0x07
+    metric_mid_command_stream = b"\x1b)s80W" + bytes(metric_mid_stream) + b"\x00" * 16
+    metric_mid_host_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(metric_mid_command_stream), direct_mode=0),
+        len(metric_mid_command_stream),
+    )
+    metric_mid_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        metric_mid_host_stream["stream"],
+    )
+    metric_mid_commands = metric_mid_trace["commands"]
+    assert isinstance(metric_mid_commands, list)
+    metric_mid_command_trace = metric_mid_commands[0]
+    assert isinstance(metric_mid_command_trace, dict)
+    metric_mid_command = render_font_download_resource_command_stream_via_121cc_16c14(
+        metric_mid_host_stream["stream"],
+        records=[{"id": 0, "flags": 0, "payload": 0}],
+        current_id=0x1234,
+        new_payload_address=0,
+        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        cursors={
+            "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+        },
+        candidates=[0x00000100, 0x00000200, 0x00000300],
+    )
+    metric_mid_event = metric_mid_command["events"][0]
+    assert isinstance(metric_mid_event, dict)
+    metric_mid_validation = metric_mid_event["validation"]
+    assert isinstance(metric_mid_validation, dict)
+    metric_mid_allocation = metric_mid_event["allocation"]
+    assert isinstance(metric_mid_allocation, dict)
+    metric_mid_payload = metric_mid_allocation["payload"]
+    assert isinstance(metric_mid_payload, dict)
+    metric_mid_install = metric_mid_event["install"]
+    assert isinstance(metric_mid_install, dict)
+    metric_mid_memory = bytearray(metric_mid_payload["payload"])
+    metric_mid_memory[table_payload_record:table_payload_record + 8] = bytes.fromhex(
+        "02 03 04 00 00 00 00 a0"
+    )
+    metric_mid_memory[table_payload_bitmap:table_payload_bitmap + 6] = bytes.fromhex(
+        "aa 55 f0 0f c3 3c"
+    )
+    metric_mid_memory[
+        table_payload_flagged_table_entry:table_payload_flagged_table_entry + 4
+    ] = table_payload_flagged_glyph_delta.to_bytes(4, "big")
+    metric_mid_memory[
+        table_payload_flagged_glyph_delta:table_payload_flagged_glyph_delta + 12
+    ] = bytes.fromhex("00 00 00 00 0c 01 00 03 00 04 00 00")
+    metric_mid_memory[
+        table_payload_flagged_glyph_delta + table_payload_flagged_bitmap_delta:
+        table_payload_flagged_glyph_delta + table_payload_flagged_bitmap_delta + 3
+    ] = bytes.fromhex("f0 f0 f0")
+
+    def summarize_legal_metric_render(
+        memory: bytes | bytearray,
+        selected_context: int,
+        materializer: str,
+    ) -> dict[str, object]:
+        metric_state = control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=pack12(18),
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            enabled_783184=1,
+            low_x_783186=100,
+            high_x_783188=120,
+            high_y_78318a=0,
+            span_alternate_offset_783185=1,
+            orientation=0,
+            page_extent_782db6=64,
+        )
+        if materializer == "d4ac":
+            metric_state["materialize_d4ac_span_update"] = 1
+            metric_state["text_source_form"] = "unflagged"
+        elif materializer == "d8fc":
+            metric_state["materialize_d8fc_span_update"] = 1
+            metric_state["span_metrics_from_context"] = 1
+            metric_state["text_source_form"] = "flagged"
+        else:
+            raise AssertionError(f"unknown metric materializer {materializer!r}")
+
+        stream_result = render_mixed_printable_control_page_record_stream(
+            data,
+            memory,
+            b"!",
+            selected_context,
+            metric_state,
+            default_advance=pack12(18),
+            allow_multiple_buckets=True,
+        )
+        event = stream_result["events"][0]
+        assert isinstance(event, dict)
+        span = event["span_update_result"]
+        assert isinstance(span, dict)
+        span_summary = {
+            key: span[key]
+            for key in (
+                "updated",
+                "reason",
+                "cursor_y",
+                "handler",
+                "context_offset_002b",
+                "context_lower_002c",
+                "context_height_002d",
+                "context_lower_0016",
+                "context_height_0018",
+                "context_offset_001a",
+                "metric_source",
+                "high_y",
+            )
+            if key in span
+        }
+        flush = span.get("flush_result")
+        if (
+            isinstance(flush, dict)
+            and isinstance(flush.get("queued"), dict)
+            and "object" in flush["queued"]
+        ):
+            queued = flush["queued"]
+            assert isinstance(queued, dict)
+            page_object = queued["object"]
+            render_entry = stream_result["render_entry"]
+            assert isinstance(render_entry, dict)
+            rendered = render_entry["entry"]
+            assert isinstance(rendered, dict)
+        else:
+            page = event["page_result"]
+            assert isinstance(page, dict)
+            page_object = page["object"]
+            rendered = render_compact_text_bucket_object(
+                data,
+                memory,
+                (0, 0, 0, 0),
+                page_object,
+            )
+        rows = rendered["rows"]
+        assert isinstance(rows, list)
+        return {
+            "span": span_summary,
+            "page_object": page_object,
+            "render": {
+                "row_count": len(rows),
+                "row_width": max((len(str(row)) for row in rows), default=0),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(str(row) for row in rows).encode("ascii")
+                ).hexdigest(),
+            },
+        }
+
+    metric_value_matrix_cases: dict[str, dict[str, object]] = {}
+    for label, stream, host_stream, trace, command_trace, validation, allocation, install, memory in (
+        (
+            "small-rounded",
+            bytes(metric_variant_stream),
+            metric_variant_host_stream,
+            metric_variant_trace,
+            metric_variant_command_trace,
+            metric_variant_validation,
+            metric_variant_allocation,
+            metric_variant_install,
+            metric_variant_memory,
+        ),
+        (
+            "clamped-rounded",
+            bytes(metric_clamp_stream),
+            metric_clamp_host_stream,
+            metric_clamp_trace,
+            metric_clamp_command_trace,
+            metric_clamp_validation,
+            metric_clamp_allocation,
+            metric_clamp_install,
+            metric_clamp_memory,
+        ),
+        (
+            "midpoint-rounded",
+            bytes(metric_mid_stream),
+            metric_mid_host_stream,
+            metric_mid_trace,
+            metric_mid_command_trace,
+            metric_mid_validation,
+            metric_mid_allocation,
+            metric_mid_install,
+            metric_mid_memory,
+        ),
+        (
+            "lower-bound",
+            bytes(metric_lower_stream),
+            metric_lower_host_stream,
+            metric_lower_trace,
+            metric_lower_command_trace,
+            metric_lower_validation,
+            metric_lower_allocation,
+            metric_lower_install,
+            metric_lower_memory,
+        ),
+        (
+            "upper-bound",
+            bytes(metric_upper_stream),
+            metric_upper_host_stream,
+            metric_upper_trace,
+            metric_upper_command_trace,
+            metric_upper_validation,
+            metric_upper_allocation,
+            metric_upper_install,
+            metric_upper_memory,
+        ),
+    ):
+        metric_value_matrix_cases[label] = {
+            "input_metrics": {
+                "first_code_word_at_stream_6": u16(stream, 6),
+                "range_word_at_stream_10": u16(stream, 10),
+                "rounded_word_at_stream_20": u16(stream, 20),
+                "flagged_offset_byte_at_stream_30": s8(stream[30]),
+            },
+            "resource_stream": {
+                "fetched_stream_prefix": host_stream["stream"][:6],
+                "parser_handlers": [
+                    event["handler"]
+                    for event in trace["dispatches"]
+                ],
+                "restored_record": command_trace["restored_record"],
+                "payload_length": len(command_trace["payload"]),
+                "validation_status": validation["status"],
+                "payload_units": validation["payload_units"],
+                "allocation_size": allocation["allocation_size"],
+                "candidate_flags": install["candidate_flags"],
+            },
+            "copied_metrics": {
+                "word_0x14": u16(memory, 0x14),
+                "word_0x16": u16(memory, 0x16),
+                "word_0x18": u16(memory, 0x18),
+                "word_0x1a": u16(memory, 0x1A),
+                "byte_0x2b": memory[0x2B],
+                "byte_0x2c": memory[0x2C],
+                "byte_0x2d": memory[0x2D],
+                "word_0x2c": u16(memory, 0x2C),
+            },
+            "d4ac": summarize_legal_metric_render(memory, 0, "d4ac"),
+            "d8fc": summarize_legal_metric_render(
+                memory,
+                int(install["candidate_flags"]),
+                "d8fc",
+            ),
+        }
+    checks.append(assert_equal(
+        "legal descriptor metric value matrix drives d4ac and d8fc consumers",
+        metric_value_matrix_cases,
+        {
+            "small-rounded": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 4,
+                    "range_word_at_stream_10": 9,
+                    "rounded_word_at_stream_20": 16,
+                    "flagged_offset_byte_at_stream_30": 2,
+                },
+                "resource_stream": {
+                    "fetched_stream_prefix": b"\x1b)s80W",
+                    "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                    "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+                    "payload_length": 80,
+                    "validation_status": 1,
+                    "payload_units": 0x80,
+                    "allocation_size": 10,
+                    "candidate_flags": 0x40000000,
+                },
+                "copied_metrics": {
+                    "word_0x14": 9,
+                    "word_0x16": 4,
+                    "word_0x18": 4,
+                    "word_0x1a": 2,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 16,
+                    "word_0x2c": 16,
+                },
+                "d4ac": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D4AC,
+                        "context_offset_002b": 0,
+                        "context_lower_002c": 0,
+                        "context_height_002d": 16,
+                        "high_y": 26,
+                    },
+                    "page_object": (
+                        bytes.fromhex("00 00 00 00 40 00 00 01 a4 06 03 00 00 14")
+                        + (b"\x00" * 0x18)
+                    ),
+                    "render": {
+                        "row_count": 13,
+                        "row_width": 116,
+                        "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                    },
+                },
+                "d8fc": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D8FC,
+                        "context_lower_0016": 4,
+                        "context_height_0018": 4,
+                        "context_offset_001a": 2,
+                        "metric_source": {
+                            "kind": "context",
+                            "base": 0,
+                            "context": 0x40000000,
+                        },
+                        "high_y": 19,
+                    },
+                    "page_object": (
+                        bytes.fromhex("00 00 00 00 40 00 00 01 34 06 03 00 00 14")
+                        + (b"\x00" * 0x18)
+                    ),
+                    "render": {
+                        "row_count": 8,
+                        "row_width": 116,
+                        "row_sha256": "00c97b69bc50326e442dd060c88b710b8f00217d40809bed276d8ba48581fdc7",
+                    },
+                },
+            },
+            "clamped-rounded": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 4,
+                    "range_word_at_stream_10": 5,
+                    "rounded_word_at_stream_20": 0xFFFF,
+                    "flagged_offset_byte_at_stream_30": 3,
+                },
+                "resource_stream": {
+                    "fetched_stream_prefix": b"\x1b)s80W",
+                    "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                    "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+                    "payload_length": 80,
+                    "validation_status": 1,
+                    "payload_units": 0x80,
+                    "allocation_size": 10,
+                    "candidate_flags": 0x40000000,
+                },
+                "copied_metrics": {
+                    "word_0x14": 5,
+                    "word_0x16": 4,
+                    "word_0x18": 0,
+                    "word_0x1a": 3,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 20,
+                    "word_0x2c": 20,
+                },
+                "d4ac": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D4AC,
+                        "context_offset_002b": 0,
+                        "context_lower_002c": 0,
+                        "context_height_002d": 20,
+                        "high_y": 26,
+                    },
+                    "page_object": (
+                        bytes.fromhex("00 00 00 00 40 00 00 01 a4 06 03 00 00 14")
+                        + (b"\x00" * 0x18)
+                    ),
+                    "render": {
+                        "row_count": 13,
+                        "row_width": 116,
+                        "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                    },
+                },
+                "d8fc": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D8FC,
+                        "context_lower_0016": 4,
+                        "context_height_0018": 0,
+                        "context_offset_001a": 3,
+                        "metric_source": {
+                            "kind": "context",
+                            "base": 0,
+                            "context": 0x40000000,
+                        },
+                        "high_y": 18,
+                    },
+                    "page_object": (
+                        bytes.fromhex("00 00 00 00 40 00 00 01 24 06 03 00 00 14")
+                        + (b"\x00" * 0x18)
+                    ),
+                    "render": {
+                        "row_count": 8,
+                        "row_width": 116,
+                        "row_sha256": "d12f53fc321d79eca39fbb0a45ac229fe15e4df1c1096b43e8b39ae9467c35b9",
+                    },
+                },
+            },
+            "midpoint-rounded": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 4,
+                    "range_word_at_stream_10": 24,
+                    "rounded_word_at_stream_20": 24,
+                    "flagged_offset_byte_at_stream_30": 7,
+                },
+                "resource_stream": {
+                    "fetched_stream_prefix": b"\x1b)s80W",
+                    "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                    "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+                    "payload_length": 80,
+                    "validation_status": 1,
+                    "payload_units": 0x80,
+                    "allocation_size": 10,
+                    "candidate_flags": 0x40000000,
+                },
+                "copied_metrics": {
+                    "word_0x14": 24,
+                    "word_0x16": 4,
+                    "word_0x18": 19,
+                    "word_0x1a": 7,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 24,
+                    "word_0x2c": 24,
+                },
+                "d4ac": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D4AC,
+                        "context_offset_002b": 0,
+                        "context_lower_002c": 0,
+                        "context_height_002d": 24,
+                        "high_y": 26,
+                    },
+                    "page_object": (
+                        bytes.fromhex("00 00 00 00 40 00 00 01 a4 06 03 00 00 14")
+                        + (b"\x00" * 0x18)
+                    ),
+                    "render": {
+                        "row_count": 13,
+                        "row_width": 116,
+                        "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                    },
+                },
+                "d8fc": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D8FC,
+                        "context_lower_0016": 4,
+                        "context_height_0018": 19,
+                        "context_offset_001a": 7,
+                        "metric_source": {
+                            "kind": "context",
+                            "base": 0,
+                            "context": 0x40000000,
+                        },
+                        "high_y": 14,
+                    },
+                    "page_object": (
+                        bytes.fromhex("00 00 00 00 00 00 00 01 21 5a 00")
+                        + (b"\x00" * 0x1B)
+                    ),
+                    "render": {
+                        "row_count": 8,
+                        "row_width": 14,
+                        "row_sha256": "1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a",
+                    },
+                },
+            },
+            "lower-bound": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 24,
+                    "range_word_at_stream_10": 1536,
+                    "rounded_word_at_stream_20": 6144,
+                    "flagged_offset_byte_at_stream_30": 5,
+                },
+                "resource_stream": {
+                    "fetched_stream_prefix": b"\x1b)s80W",
+                    "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                    "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+                    "payload_length": 80,
+                    "validation_status": 1,
+                    "payload_units": 0x80,
+                    "allocation_size": 10,
+                    "candidate_flags": 0x40000000,
+                },
+                "copied_metrics": {
+                    "word_0x14": 1536,
+                    "word_0x16": 24,
+                    "word_0x18": 1511,
+                    "word_0x1a": 5,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 24,
+                    "byte_0x2d": 0,
+                    "word_0x2c": 6144,
+                },
+                "d4ac": {
+                    "span": {
+                        "updated": False,
+                        "reason": "before-context-lower",
+                        "cursor_y": 21,
+                    },
+                    "page_object": (
+                        bytes.fromhex("00 00 00 00 00 00 00 01 01 7a 00")
+                        + (b"\x00" * 0x1B)
+                    ),
+                    "render": {
+                        "row_count": 10,
+                        "row_width": 26,
+                        "row_sha256": "86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6",
+                    },
+                },
+                "d8fc": {
+                    "span": {
+                        "updated": False,
+                        "reason": "before-context-lower",
+                        "cursor_y": 21,
+                    },
+                    "page_object": (
+                        bytes.fromhex("00 00 00 00 00 00 00 01 21 5a 00")
+                        + (b"\x00" * 0x1B)
+                    ),
+                    "render": {
+                        "row_count": 8,
+                        "row_width": 14,
+                        "row_sha256": "1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a",
+                    },
+                },
+            },
+            "upper-bound": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 4,
+                    "range_word_at_stream_10": 64,
+                    "rounded_word_at_stream_20": 32,
+                    "flagged_offset_byte_at_stream_30": 5,
+                },
+                "resource_stream": {
+                    "fetched_stream_prefix": b"\x1b)s80W",
+                    "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                    "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+                    "payload_length": 80,
+                    "validation_status": 1,
+                    "payload_units": 0x80,
+                    "allocation_size": 10,
+                    "candidate_flags": 0x40000000,
+                },
+                "copied_metrics": {
+                    "word_0x14": 64,
+                    "word_0x16": 4,
+                    "word_0x18": 59,
+                    "word_0x1a": 5,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 32,
+                    "word_0x2c": 32,
+                },
+                "d4ac": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D4AC,
+                        "context_offset_002b": 0,
+                        "context_lower_002c": 0,
+                        "context_height_002d": 32,
+                        "high_y": 26,
+                    },
+                    "page_object": (
+                        bytes.fromhex("00 00 00 00 40 00 00 01 a4 06 03 00 00 14")
+                        + (b"\x00" * 0x18)
+                    ),
+                    "render": {
+                        "row_count": 13,
+                        "row_width": 116,
+                        "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                    },
+                },
+                "d8fc": {
+                    "span": {
+                        "updated": False,
+                        "reason": "beyond-page-extent",
+                        "cursor_y": 21,
+                    },
+                    "page_object": (
+                        bytes.fromhex("00 00 00 00 00 00 00 01 21 5a 00")
+                        + (b"\x00" * 0x1B)
+                    ),
+                    "render": {
+                        "row_count": 8,
+                        "row_width": 14,
+                        "row_sha256": "1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a",
+                    },
+                },
+            },
+        },
+    ))
     metric_context_cross_product_cases: dict[str, dict[str, object]] = {}
     for label, selected_context, source_form, materializer, byte_value in (
         ("inline-d4ac", 0, "unflagged", "d4ac", b"!"),
@@ -75389,6 +76000,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             metric_context_cross_product_cases["resource-d8fc"]["render"]["row_sha256"],  # type: ignore[index]
             metric_context_cross_product_cases["resource-d4ac"]["error"],  # type: ignore[index]
             metric_context_cross_product_cases["inline-d8fc"]["error"],  # type: ignore[index]
+        )
+    )
+    lines.append(
+        "- legal descriptor metric value matrix: fixture `legal descriptor metric value matrix drives d4ac and d8fc consumers` covers small-rounded, clamped-rounded, midpoint-rounded, lower-bound, and upper-bound parser-produced descriptors. The midpoint case copies `+0x14/+0x18/+0x1a/+0x2c = 0x0018/0x0013/0x0007/0x0018`, keeps `d4ac` row digest `%s`, and makes `d8fc` update high-y `%d` while leaving compact-only row digest `%s`." % (
+            metric_value_matrix_cases["midpoint-rounded"]["d4ac"]["render"]["row_sha256"],  # type: ignore[index]
+            metric_value_matrix_cases["midpoint-rounded"]["d8fc"]["span"]["high_y"],  # type: ignore[index]
+            metric_value_matrix_cases["midpoint-rounded"]["d8fc"]["render"]["row_sha256"],  # type: ignore[index]
         )
     )
     lines.append(

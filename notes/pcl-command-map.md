@@ -931,13 +931,13 @@ handlers:
 
 - Prove the remaining font metric producer cross-products with
   parser-produced pages. The covered evidence already includes
-  host-fetched `0x1719c` type-0/type-1/type-2 payloads, four
-  parser-produced metric-value variants, and the shared `d4ac`/`d8fc`
-  consumer branch family. Fixture
+  host-fetched `0x1719c` type-0/type-1/type-2 payloads, the five-case legal
+  descriptor metric value matrix, and the shared `d4ac`/`d8fc` consumer branch
+  family. Fixture
   `descriptor metric fields match across inline and resource contexts` now
   pins the legal inline/unflagged `d4ac` and resource/flagged `d8fc`
   producer forms plus the two invalid swapped forms. The open middle is
-  broader metric-value combinations within those legal forms, plus visible
+  additional metric-value combinations within those legal forms, plus visible
   behavior for validation/error forms beyond the seven bounded no-install
   predicates.
 - Replace remaining modeled producer-state handoffs with fuller

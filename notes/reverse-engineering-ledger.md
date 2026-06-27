@@ -446,7 +446,10 @@ streams followed by printable `!` now preserve the default-font
 page-record object and rendered rows; fixture
 `descriptor metric fields match across inline and resource contexts` now
 pins the legal metric producer forms and the two invalid swapped forms.
-Remaining work is broader metric-value combinations within the legal
+Fixture `legal descriptor metric value matrix drives d4ac and d8fc consumers`
+now covers small-rounded, clamped-rounded, midpoint-rounded, lower-bound, and
+upper-bound legal metric values. Remaining work is additional metric-value
+combinations within the legal
 forms, validation/error page behavior beyond those seven no-install
 branches, remaining alternate character-mode/release variants, full
 live-parser raster edge cases, and final device-output page comparison.

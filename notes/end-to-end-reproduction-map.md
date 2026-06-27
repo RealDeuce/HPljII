@@ -527,8 +527,9 @@ The next work should follow dataflow, not isolated handlers:
    linear-segmented, rows-`0x82` segmented, split-plane segmented, row-threshold `0x80`
    short, rows-`0x0102` low-byte-truncated short publication, even-span wide, and
    payload-control wide selector families, especially row counts outside the covered
-   short rows `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`, and `0x80` and segmented
-   rows `0x81`, `0x82`, `0x83`, and `0xff`, descriptor grammar forms outside the covered
+   short rows `0x01`, `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`, and `0x80` and
+   segmented rows `0x81`, `0x82`, `0x83`, `0x84`, `0xfe`, and `0xff`, descriptor
+   grammar forms outside the covered
    helper-table path and full-success return-boundary siblings beyond the covered normal
    even-span, no-install, status-`2`, row-count-matrix short/segmented,
    linear-segmented publication, split-plane segmented publication, and
@@ -553,11 +554,12 @@ The next work should follow dataflow, not isolated handlers:
    `0x1ed84`/`0x1ef6a`. The rows-`0x82` segmented fixture now carries `ESC )s260W` plus
    printable `0` and FF through `0xff1e`, preserves buckets `1` and `9`, and renders
    bucket word `9` through `0x1ed84`/`0x1ef6a` to two `0x1f1f0` segment-1 rows. The
-   downloaded-glyph row-count matrix now adds short rows `0x04` and `0x7f` on selector
-   `0x0003`/bucket `1`, plus segmented rows `0x83` and `0xff` on selector
-   `0x2003`/buckets `1` and `9`, all through printable+FF, `0xff1e`, and
-   `0x1ed84`/`0x1ef6a`; published row counts are `10`, `64`, `9`, and `16`.
-   All four row-count matrix cases now also pin
+   downloaded-glyph row-count matrix now adds short rows `0x01`, `0x04`, and `0x7f` on
+   selector `0x0003`/bucket `1`, plus segmented rows `0x83`, `0x84`, `0xfe`, and
+   `0xff` on selector `0x2003`/buckets `1` and `9`, all through printable+FF,
+   `0xff1e`, and `0x1ed84`/`0x1ef6a`; published row counts are `7`, `10`, `64`, `9`,
+   `10`, `16`, and `16`.
+   All seven row-count matrix cases now also pin
    `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with copy status `1`,
    `0x783140 = 0`, zero drained bytes, and next handler `0xd04a`. The
    `0x16498` replacement/allocation-failure/partial/reject fixture now has a

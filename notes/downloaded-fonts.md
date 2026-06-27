@@ -262,10 +262,11 @@ Published page-record state:
 - Firmware bookkeeping: `0xff1e` clears the current page root and sets the
   publication flag after copying the record.
 - Unknown for this checkpoint: downloaded-glyph publication cross-products outside the
-  documented normal bucket-1, rows-`0x04`/`0x20`/`0x40`/`0x7f` short bucket-1,
-  row-`0x80` short bucket-1, rows-`0x0102` low-byte-truncated bucket-1
-  publication, linear-segmented bucket-9, rows-`0x82`/`0x83`/`0xff` segmented
-  bucket-1/bucket-9, split-plane segmented bucket-9, segmented-wide
+  documented normal bucket-1, rows-`0x01`/`0x04`/`0x20`/`0x40`/`0x7f` short
+  bucket-1, row-`0x80` short bucket-1, rows-`0x0102` low-byte-truncated
+  bucket-1 publication, linear-segmented bucket-9,
+  rows-`0x82`/`0x83`/`0x84`/`0xfe`/`0xff` segmented bucket-1/bucket-9,
+  split-plane segmented bucket-9, segmented-wide
   bucket-1/bucket-9, even-span wide bucket-1, and payload-control odd-span
   wide bucket-1 streams. The remaining row-count risk is no longer the
   `0x80`/`0x81` selector boundary itself or the newly covered short/segmented
@@ -1221,23 +1222,21 @@ and queues selector `0x2003`. Publication copies bucket array entries `1` and
 `#.#.#.#..#.#.#.#`, at x `22`.
 
 Fixture `downloaded glyph row-count matrix publishes and renders additional
-short/segmented counts` broadens the same command family. Short rows `0x0004`
-and `0x007f` both restore fetched `ESC )s#W` records, install mode-byte-`1`
-records `00 00 00 00 0c 01 00 04 00 10 00 00` and
-`00 00 00 00 0c 01 00 7f 00 10 00 00`, publish only bucket `1`, keep selector
-`0x0003`, and dispatch compact target `0x1effe` with object byte `0x00`.
-Segmented rows `0x0083` and `0x00ff` install records
-`00 00 00 00 0c 01 00 83 00 10 00 00` and
-`00 00 00 00 0c 01 00 ff 00 10 00 00`, publish buckets `1` and `9`, keep
-selector `0x2003`, and render bucket word `9` through compact target `0x1effe`
-with object byte `0x20`. The published-row counts are `10`, `64`, `9`, and `16`. All
-four cases now also pin the full-success return boundary
+short/segmented counts` broadens the same command family. Short rows `0x0001`,
+`0x0004`, and `0x007f` restore fetched `ESC )s#W` records, install mode-byte-`1`
+records ending in row words `00 01`, `00 04`, and `00 7f`, publish only bucket
+`1`, keep selector `0x0003`, and dispatch compact target `0x1effe` with object
+byte `0x00`. Segmented rows `0x0083`, `0x0084`, `0x00fe`, and `0x00ff` install
+mode-byte-`1` records ending in row words `00 83`, `00 84`, `00 fe`, and
+`00 ff`, publish buckets `1` and `9`, keep selector `0x2003`, and render bucket
+word `9` through compact target `0x1effe` with object byte `0x20`. The
+published-row counts are `7`, `10`, `64`, `9`, `10`, `16`, and `16`. All seven
+cases now also pin the full-success return boundary
 `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`: copy status is `1`, `0x783140` is
-`0`, `0x12328` drains no bytes, and the next parser handler is `0xd04a` for printable
-bytes `0x34`, `0x35`, `0x36`, and `0x37`. Row hashes are respectively
-`0c25b1b238e8805219f48c7b2cc034253fb84a7f3f0423fe68af1a2bba2b0498`,
-`5000f7a7c66dd0c0e520daafd9a3b2de08aa6b67196dc4623e3ee0ed673fa47c`,
-`1d737da9bde647abe8c186eba9dfa0253652aa4d929d7fd30055529083b40af4`, and
+`0`, `0x12328` drains no bytes, and the next parser handler is `0xd04a` for
+printable bytes `0x38`, `0x34`, `0x35`, `0x36`, `0x39`, `0x3a`, and `0x37`.
+Rows `0x0083` and `0x0084` differ by one rendered row; rows `0x00fe` and
+`0x00ff` share the same 16-row digest
 `a3dd16ea6b4509770b6c7859de6c059de5af91c05c9136e90f8daccc8acf5932`.
 
 Fixture `host-fetched rows-0x102 downloaded glyph FF publication truncates
@@ -1771,8 +1770,9 @@ A byte-stream renderer must preserve:
   split-plane status-`2` visible-output siblings and now carries both through
   trailing-FF `0xff1e` publication and published-record rendering. Remaining
   parser-produced comparisons are bounded cross-products: row counts outside the
-  covered short rows `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`, and `0x80` and
-  segmented rows `0x81`, `0x82`, `0x83`, and `0xff`, broader publication
+  covered short rows `0x01`, `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`,
+  and `0x80` and segmented rows `0x81`, `0x82`, `0x83`, `0x84`, `0xfe`, and
+  `0xff`, broader publication
   combinations beyond the documented normal, nonboundary-short, rows-`0x20` short,
   rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   truncated, linear-segmented, rows-`0x82` segmented, split-plane segmented,
@@ -1788,8 +1788,8 @@ A byte-stream renderer must preserve:
   `0xd04a`; fixture `0x16498 status-2 partial installs remain printable` pins
   the linear/split status-`2` zero-drain returns before handler `0xd04a`;
   fixture `downloaded glyph row-count matrix publishes and renders additional
-  short/segmented counts` pins the rows-`0x04`, rows-`0x7f`, rows-`0x83`, and
-  rows-`0xff` zero-drain returns before handler `0xd04a`;
+  short/segmented counts` pins rows `0x01`, `0x04`, `0x7f`, `0x83`, `0x84`,
+  `0xfe`, and `0xff` zero-drain returns before handler `0xd04a`;
   fixture `downloaded normal row-0x80 and segmented glyph FF publications
   render page records` pins normal, row-`0x80`, and linear-segmented zero-drain
   returns before handler `0xd04a`; fixture `split-plane segmented downloaded
@@ -1843,9 +1843,10 @@ A byte-stream renderer must preserve:
   for `ESC )s128W`, preserves record `00 00 00 00 0c 01 00 40 00 10 00 00`, renders
   bucket word `1`, and emits `64` current-band rows through compact target
   `0x1effe`/`0x1fe76`. Fixture `downloaded glyph row-count matrix publishes and renders
-  additional short/segmented counts` adds short rows `0x04` and `0x7f` on selector
-  `0x0003`/bucket `1`, and segmented rows `0x83` and `0xff` on selector
-  `0x2003`/buckets `1` and `9`, all through printable+FF, `0xff1e`, and
+  additional short/segmented counts` adds short rows `0x01`, `0x04`, and `0x7f`
+  on selector `0x0003`/bucket `1`, and segmented rows `0x83`, `0x84`, `0xfe`,
+  and `0xff` on selector `0x2003`/buckets `1` and `9`, all through
+  printable+FF, `0xff1e`, and
   `0x1ed84`/`0x1ef6a`. Fixture `host-fetched even-span downloaded glyph FF publishes
   rendered page record` renders the copied bucket-1 record through `0x1ed84`/`0x1ef6a`
   and compact target `0x1effe`/`0x1f0d2`. Fixture `host-fetched payload-control

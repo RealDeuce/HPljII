@@ -360,88 +360,76 @@ The next work should follow dataflow, not isolated handlers:
    no-install fixtures.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
-   parser-driven downloaded-glyph/rule/raster page stream, primary plus
-   secondary built-in font-selection visible-output streams, inline primary
-   and secondary parser-to-printable streams, the primary and secondary symbol
-   fallbacks, plus primary/secondary current-font-RAM handoff and composed
-   selection-to-RAM handoff visible-output streams. The primary
-   built-in case proves `ESC (s0p10h12v0s0b3T!!` through parsed selection
-   handlers, selected context `0xc008004c`, printable `0xd04a` entries, object
-   prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record context
-   slot `0xc008004c`, and final Courier glyph rows. The secondary case proves
-   `ESC )s0p16h8v0s0b0T SO !!` through selected context `0xc00ae122`, SO
-   handler `0xc6b8`, object prefix
-   `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, render-record context slots
-   `(0xc008004c, 0xc00ae122)`, and final secondary Line Printer rows.
-   The primary fallback case proves `ESC (1234U ESC (s0p10h12v0s0b3T!!`:
-   requested word `0x9a55` misses in `0x156de`, fallback word `0x0115`
-   survives, and the final selected context, map, object prefix, context slot,
-   and rows match the primary case. The secondary fallback case proves
-   `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`: requested word `0x9a55` misses in
-   `0x156de`, fallback word `0x000e` survives, and the final selected
-   context, map, object prefix, context slots, and rows match the secondary SO
-   case.
-   The primary RAM handoff case proves seeded
-   `0x782ee6 = 0xc008004c` through SI `0xc68a`, `0xc428(0)`, `0xc4fc`,
-   page-root slot `0`, and following `!!` visible rows on an existing root.
-   The secondary RAM handoff case proves seeded
-   `0x782ef6 = 0xc00ae122` through SO `0xc6b8`, `0xc428(1)`, `0xc4fc`,
-   page-root slot `1`, and following `!!` visible rows on an existing root.
-   The composed handoff cases prove `ESC (s0p10h12v0s0b3T SI !!` and
-   `ESC )s0p16h8v0s0b0T SO !!` from host-fetched selection bytes to selected
-   current-font RAM, page-root slot install, and rows matching the pinned
-   visible fixtures. The inline cases prove `ESC (s0p10h12v0s0b3T!!` and
-   `ESC )s0p16h8v0s0b0T SO !!` in one mixed-stream state from selection
-   handlers to printable source capture, HMI, object prefix, bridge context
-   slots, and rows. Remaining suite cases should add other fallback/error
-   font-selection visible-output variants beyond those two symbol misses and
-   the transparent secondary segment-57 bitmap source interpretation beyond
-   the covered transparent data paths. Current transparent coverage includes
-   the default-filtered C0/high-control fixed-space path, nonzero C0 plus
-   high-control `0x80` printable path, primary interior samples `0x81`,
-   `0x88`, `0x90`, and `0x97`, primary tall bucket-crossing `0x98`, primary
-   top-of-range `0x9f`, the secondary segmented page-record boundary from
-   `SO ESC &p3X!\x80!`, and the secondary renderable prefix through bucket
-   `448`. The first unresolved secondary bucket is `456`, glyph `0x5f`,
-   segment `0x39`, file source `0x03fe22`, firmware source `0x0bfe22`, and
-   required byte range `0x0bfe22..0x0c0321`; only `478` bytes are inside the
-   verified `IC32,IC15` resource-pair image. Disassembly of `0x1f354` and
-   `0x1f1f0` makes the unresolved part a physical/resource-window mapping
-   question after `0x0c0000`, not a transparent parser or row-skip question.
-   The `ESC Y ... ESC Z` display-functions loop is now
-   documented in `notes/pcl-parser-core.md` and
-   `notes/semantic-state-model.md`; fixture
-   `ESC Y display-functions stream reaches page-record output` covers the
-   normal `0x12536..0x1261e` page-output path, and fixture
-   `0x12120 ESC Y alternate append stores normalized display bytes` covers the
-   alternate/data append-only `0x12120..0x1219c` path around `0xe002`.
-   Remaining display-functions risk is fixture breadth across other
-   context/filter combinations, not the command-family loop boundary. They
-   should also broaden downloaded-glyph publication cross-products beyond the
-   documented segmented-wide, normal, linear-segmented, row-threshold `0x80`
-   short, and even-span wide selector families, especially other row counts,
-   character modes, and non-success exits. The row-threshold fixture closes the
-   `0x80`/`0x81` selector boundary by keeping rows `0x80` on selector
-   `0x0003`, comparing it with the rows-`0x81` selector `0x2003` fixture, and
-   now publishing the row-`0x80` bucket-1 record through FF, `0xff1e`, and
-   `0x1ed84`/`0x1ef6a`. The `0x16498`
-   replacement/allocation-failure/partial/reject fixture now also covers
-   old-pointer release through `0x17a24`, object allocation failure through
-   `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear and split-plane continuation
-   pointer writes, and mode/header-type status-`0` rejects. The `0x16498`
-   no-install visible-output fixture now proves those failed installs leave
-   the following printable byte on the default-font compact object and rows,
-   then publishes that default-font bucket through trailing FF, `0xff1e`, and
-   `0x1ed84`/`0x1ef6a`.
-   The status-`2` partial-install fixture now proves linear and split-plane
-   partial glyphs remain printable through their stored table pointers and
-   zero-filled missing bytes, then publishes both bucket-1 compact objects
-   through trailing FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` with the same rows.
-   Remaining downloaded-character publication risk is broader publication
-   combinations beyond these compact bucket-1 no-install/status-`2` variants.
-   The publication-command
-   checkpoint now covers host-fetched reset, FF, page-size, orientation,
-   paper-source, and copies streams through parser dispatch, `0xff1e`,
-   `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF,
-   page-size, orientation, paper-source, and copies also have addressed
-   allocation variants.
+   parser-driven downloaded-glyph/rule/raster page stream, primary plus secondary
+   built-in font-selection visible-output streams, inline primary and secondary
+   parser-to-printable streams, the primary and secondary symbol fallbacks, plus
+   primary/secondary current-font-RAM handoff and composed selection-to-RAM handoff
+   visible-output streams. The primary built-in case proves `ESC (s0p10h12v0s0b3T!!`
+   through parsed selection handlers, selected context `0xc008004c`, printable `0xd04a`
+   entries, object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record
+   context slot `0xc008004c`, and final Courier glyph rows. The secondary case proves
+   `ESC )s0p16h8v0s0b0T SO !!` through selected context `0xc00ae122`, SO handler
+   `0xc6b8`, object prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, render-record
+   context slots `(0xc008004c, 0xc00ae122)`, and final secondary Line Printer rows. The
+   primary fallback case proves `ESC (1234U ESC (s0p10h12v0s0b3T!!`: requested word
+   `0x9a55` misses in `0x156de`, fallback word `0x0115` survives, and the final selected
+   context, map, object prefix, context slot, and rows match the primary case. The
+   secondary fallback case proves `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`: requested word
+   `0x9a55` misses in `0x156de`, fallback word `0x000e` survives, and the final selected
+   context, map, object prefix, context slots, and rows match the secondary SO case. The
+   primary RAM handoff case proves seeded `0x782ee6 = 0xc008004c` through SI `0xc68a`,
+   `0xc428(0)`, `0xc4fc`, page-root slot `0`, and following `!!` visible rows on an
+   existing root. The secondary RAM handoff case proves seeded `0x782ef6 = 0xc00ae122`
+   through SO `0xc6b8`, `0xc428(1)`, `0xc4fc`, page-root slot `1`, and following `!!`
+   visible rows on an existing root. The composed handoff cases prove `ESC
+   (s0p10h12v0s0b3T SI !!` and `ESC )s0p16h8v0s0b0T SO !!` from host-fetched selection
+   bytes to selected current-font RAM, page-root slot install, and rows matching the
+   pinned visible fixtures. The inline cases prove `ESC (s0p10h12v0s0b3T!!` and `ESC
+   )s0p16h8v0s0b0T SO !!` in one mixed-stream state from selection handlers to printable
+   source capture, HMI, object prefix, bridge context slots, and rows. Remaining suite
+   cases should add other fallback/error font-selection visible-output variants beyond
+   those two symbol misses and the transparent secondary segment-57 bitmap source
+   interpretation beyond the covered transparent data paths. Current transparent
+   coverage includes the default-filtered C0/high-control fixed-space path, nonzero C0
+   plus high-control `0x80` printable path, primary interior samples `0x81`, `0x88`,
+   `0x90`, and `0x97`, primary tall bucket-crossing `0x98`, primary top-of-range `0x9f`,
+   the secondary segmented page-record boundary from `SO ESC &p3X!\x80!`, and the
+   secondary renderable prefix through bucket `448`. The first unresolved secondary
+   bucket is `456`, glyph `0x5f`, segment `0x39`, file source `0x03fe22`, firmware
+   source `0x0bfe22`, and required byte range `0x0bfe22..0x0c0321`; only `478` bytes are
+   inside the verified `IC32,IC15` resource-pair image. Disassembly of `0x1f354` and
+   `0x1f1f0` makes the unresolved part a physical/resource-window mapping question after
+   `0x0c0000`, not a transparent parser or row-skip question. The `ESC Y ... ESC Z`
+   display-functions loop is now documented in `notes/pcl-parser-core.md` and
+   `notes/semantic-state-model.md`; fixture `ESC Y display-functions stream reaches
+   page-record output` covers the normal `0x12536..0x1261e` page-output path, and
+   fixture `0x12120 ESC Y alternate append stores normalized display bytes` covers the
+   alternate/data append-only `0x12120..0x1219c` path around `0xe002`. Remaining
+   display-functions risk is fixture breadth across other context/filter combinations,
+   not the command-family loop boundary. They should also broaden downloaded-glyph
+   publication cross-products beyond the documented segmented-wide, normal,
+   linear-segmented, split-plane segmented, row-threshold `0x80` short, and even-span
+   wide selector families, especially other row counts, character modes, and non-success
+   exits. The row-threshold fixture closes the `0x80`/`0x81` selector boundary by
+   keeping rows `0x80` on selector `0x0003`, comparing it with the rows-`0x81` selector
+   `0x2003` fixture, and now publishing the row-`0x80` bucket-1 record through FF,
+   `0xff1e`, and `0x1ed84`/`0x1ef6a`. The split-plane segmented fixture now carries `ESC
+   )s387W` plus printable `(` and FF through `0xff1e`, preserves buckets `1` and `9`,
+   and renders bucket word `9` through `0x1ed84`/`0x1ef6a`. The `0x16498`
+   replacement/allocation-failure/partial/reject fixture now also covers old-pointer
+   release through `0x17a24`, object allocation failure through
+   `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear and split-plane continuation pointer
+   writes, and mode/header-type status-`0` rejects. The `0x16498` no-install
+   visible-output fixture now proves those failed installs leave the following printable
+   byte on the default-font compact object and rows, then publishes that default-font
+   bucket through trailing FF, `0xff1e`, and `0x1ed84`/`0x1ef6a`. The status-`2`
+   partial-install fixture now proves linear and split-plane partial glyphs remain
+   printable through their stored table pointers and zero-filled missing bytes, then
+   publishes both bucket-1 compact objects through trailing FF, `0xff1e`, and
+   `0x1ed84`/`0x1ef6a` with the same rows. Remaining downloaded-character publication
+   risk is broader publication combinations beyond these compact bucket-1
+   no-install/status-`2` variants. The publication-command checkpoint now covers
+   host-fetched reset, FF, page-size, orientation, paper-source, and copies streams
+   through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row
+   comparison; reset, FF, page-size, orientation, paper-source, and copies also have
+   addressed allocation variants.

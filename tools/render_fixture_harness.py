@@ -54945,6 +54945,229 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "rows": expected_downloaded_split_segmented_rows,
         },
     }))
+    downloaded_split_segmented_publication_stream = (
+        downloaded_split_segmented_command_stream + b"(\x0c"
+    )
+    downloaded_split_segmented_publication_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(downloaded_split_segmented_publication_stream),
+            direct_mode=0,
+        ),
+        len(downloaded_split_segmented_publication_stream),
+    )
+    downloaded_split_segmented_publication_tail = (
+        downloaded_split_segmented_publication_fetch["stream"][
+            len(downloaded_split_segmented_command_stream):
+        ]
+    )
+    downloaded_split_segmented_publication_tail_trace = (
+        trace_mixed_text_control_parser_path_via_11774(
+            data,
+            downloaded_split_segmented_publication_tail,
+        )
+    )
+    downloaded_split_segmented_publication = finalize_page_record_via_ff1e(
+        downloaded_split_segmented_page_record,
+        reset_fixture_state(
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            page_root_clears=0,
+            publication_bucket_index=int(downloaded_split_segmented_segment1["bucket_index"]),
+        ),
+    )
+    downloaded_split_segmented_published_record = (
+        downloaded_split_segmented_publication["published_pool_record"]
+    )
+    assert isinstance(downloaded_split_segmented_published_record, dict)
+    downloaded_split_segmented_published_fields = (
+        downloaded_split_segmented_published_record["pool_record_fields"]
+    )
+    assert isinstance(downloaded_split_segmented_published_fields, dict)
+    downloaded_split_segmented_published_render = (
+        render_published_page_record_via_1ed84_1ef6a(
+            data,
+            downloaded_split_segmented_memory,
+            downloaded_split_segmented_published_record,
+            bucket_word=int(downloaded_split_segmented_segment1["bucket_index"]),
+        )
+    )
+    downloaded_split_segmented_published_entry = (
+        downloaded_split_segmented_published_render["entry"]
+    )
+    assert isinstance(downloaded_split_segmented_published_entry, dict)
+    checks.append(assert_equal(
+        "split-plane segmented downloaded glyph FF publication renders page record",
+        {
+            "stream_length": len(downloaded_split_segmented_publication_fetch["stream"]),
+            "fetch_sources": sorted(set(downloaded_split_segmented_publication_fetch["sources"])),
+            "remaining_ring": downloaded_split_segmented_publication_fetch["state"]["ring"],
+            "boundaries": {
+                "font": (0, len(downloaded_split_segmented_command_stream)),
+                "printable": (
+                    len(downloaded_split_segmented_command_stream),
+                    len(downloaded_split_segmented_command_stream) + 1,
+                ),
+                "publication": (
+                    len(downloaded_split_segmented_command_stream) + 1,
+                    len(downloaded_split_segmented_publication_stream),
+                ),
+            },
+            "font": {
+                "handlers": [
+                    event["handler"]
+                    for event in downloaded_split_segmented_dispatch_trace["dispatches"]
+                ],
+                "restored_record": downloaded_split_segmented_dispatch_command["restored_record"],
+                "payload_offset": downloaded_split_segmented_dispatch_command["payload_offset"],
+                "payload_length": len(downloaded_split_segmented_dispatch_command["payload"]),
+                "split_plane": downloaded_split_segmented_payload_install["split_plane"],
+            },
+            "tail": {
+                "stream": downloaded_split_segmented_publication_tail,
+                "handlers": [
+                    event["handler"]
+                    for event in downloaded_split_segmented_publication_tail_trace["events"]
+                ],
+            },
+            "finalized": {
+                "published": downloaded_split_segmented_publication["published"],
+                "bucket_index": downloaded_split_segmented_publication["bucket_index"],
+                "current_page_root_after": (
+                    downloaded_split_segmented_publication["current_page_root_after"]
+                ),
+                "page_root_clears": downloaded_split_segmented_publication["page_root_clears"],
+                "page_publication_flag": (
+                    downloaded_split_segmented_publication["page_publication_flag"]
+                ),
+            },
+            "published_bucket_root_1c": (
+                downloaded_split_segmented_published_fields["bucket_root_1c"]
+            ),
+            "published_bucket_array_1c": (
+                downloaded_split_segmented_published_fields["bucket_array_1c"]
+            ),
+            "published_rule_list_24": (
+                downloaded_split_segmented_published_fields["rule_list_24"]
+            ),
+            "published_fixed_list_28": (
+                downloaded_split_segmented_published_fields["fixed_list_28"]
+            ),
+            "published_context_slots_2c_prefix": (
+                downloaded_split_segmented_published_fields["context_slots_2c"][:4]
+            ),
+            "render_bucket_word": (
+                downloaded_split_segmented_published_render["render_record_fields"]["word_10"]
+            ),
+            "active_copy": downloaded_split_segmented_published_render["active_copy"],
+            "setup": {
+                key: downloaded_split_segmented_published_entry["setup"][key]
+                for key in (
+                    "dividend",
+                    "divisor_word_06",
+                    "remainder_783a22",
+                    "band_rows_scaled_783a20",
+                    "destination_base_783a28",
+                )
+            },
+            "call_order": downloaded_split_segmented_published_entry["call_order"],
+            "dispatch": [
+                {
+                    key: entry[key]
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "context_slot",
+                    )
+                }
+                for entry in downloaded_split_segmented_published_entry[
+                    "dispatch"
+                ]["entries"]
+            ],
+            "rows": downloaded_split_segmented_published_entry["rows"],
+        },
+        {
+            "stream_length": len(downloaded_split_segmented_publication_stream),
+            "fetch_sources": ["ring"],
+            "remaining_ring": [],
+            "boundaries": {
+                "font": (0, len(downloaded_split_segmented_command_stream)),
+                "printable": (
+                    len(downloaded_split_segmented_command_stream),
+                    len(downloaded_split_segmented_command_stream) + 1,
+                ),
+                "publication": (
+                    len(downloaded_split_segmented_command_stream) + 1,
+                    len(downloaded_split_segmented_publication_stream),
+                ),
+            },
+            "font": {
+                "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                "restored_record": b"\x80W\x01\x83\x00\x00",
+                "payload_offset": 7,
+                "payload_length": 0x0183,
+                "split_plane": True,
+            },
+            "tail": {
+                "stream": b"(\x0c",
+                "handlers": [0x00D04A, 0x00F0F0],
+            },
+            "finalized": {
+                "published": True,
+                "bucket_index": 9,
+                "current_page_root_after": 0,
+                "page_root_clears": 1,
+                "page_publication_flag": 1,
+            },
+            "published_bucket_root_1c": (
+                bytes.fromhex("00 00 00 00 20 03 00 01 28 01 66 01")
+                + bytes(0x1C)
+            ),
+            "published_bucket_array_1c": {
+                1: [
+                    bytes.fromhex("00 00 00 00 20 03 00 01 28 00 66 01")
+                    + bytes(0x1C),
+                ],
+                9: [
+                    bytes.fromhex("00 00 00 00 20 03 00 01 28 01 66 01")
+                    + bytes(0x1C),
+                ],
+            },
+            "published_rule_list_24": [],
+            "published_fixed_list_28": [],
+            "published_context_slots_2c_prefix": (0, 0, 0, 0),
+            "render_bucket_word": 9,
+            "active_copy": {
+                "source_word_18": 0,
+                "source_word_1a": 0,
+                "render_word_0a": 0,
+                "render_word_0c": 0,
+                "render_word_0e": 0,
+                "render_word_10": 0,
+                "render_word_16": 0,
+            },
+            "setup": {
+                "dividend": 9,
+                "divisor_word_06": 5,
+                "remainder_783a22": 4,
+                "band_rows_scaled_783a20": 0x0010,
+                "destination_base_783a28": 0x00102000,
+            },
+            "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+            "dispatch": [{
+                "chain_index": 0,
+                "object_byte_4": 0x20,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "context_slot": 3,
+            }],
+            "rows": expected_downloaded_split_segmented_rows,
+        },
+    ))
     downloaded_printable_fetch = fetch_stream_via_a904(
         host_byte_fetch_state(ring=[0x25], direct_mode=0),
         1,
@@ -80278,6 +80501,26 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_split_segmented_page_result["selector"],
             downloaded_split_segmented_segment1["segment"],
             downloaded_split_segmented_rendered_row,
+        ),
+    )
+    append_wrapped(
+        lines,
+        "- split-plane segmented downloaded glyph publication: appending "
+        "printable `0x28` and FF after `ESC )s387W` routes tail handlers "
+        "`0x%04x` and `0x%04x`, publishes bucket `%d` through `0xff1e`, "
+        "preserves bucket-array entries `%s`, and renders through `0x1ed84` "
+        "/ `0x1ef6a` row `%s`."
+        % (
+            downloaded_split_segmented_publication_tail_trace["events"][0]["handler"],
+            downloaded_split_segmented_publication_tail_trace["events"][1]["handler"],
+            downloaded_split_segmented_publication["bucket_index"],
+            ", ".join(
+                str(bucket)
+                for bucket in sorted(
+                    downloaded_split_segmented_published_fields["bucket_array_1c"]
+                )
+            ),
+            downloaded_split_segmented_published_entry["rows"][-1],
         ),
     )
     lines.append("- command edge fixtures: `ESC *c#E` handler `0x15a18` stores absolute character/code word `0x%04x` in `0x782f30`; `ESC )s0W` reaches `0x11f96` and schedules delayed handler `0x%05x`, while nonzero `ESC )s#W` schedules delayed handler `0x%05x` with absolute byte budget `0x%04x`." % (

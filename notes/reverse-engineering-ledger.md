@@ -464,8 +464,10 @@ Remaining work is additional metric-value combinations within the legal
 forms, validation/error page behavior beyond those bounded predicate and
 short-budget no-install branches, remaining alternate character-mode/release
 variants, broader publication combinations beyond the covered
-downloaded-character no-install and status-`2` compact bucket-1 variants, full
-live-parser raster edge cases, and final device-output page comparison.
+normal, row-`0x80`, linear-segmented, split-plane segmented, segmented-wide,
+even-span wide, downloaded-character no-install, and status-`2` compact bucket
+variants, full live-parser raster edge cases, and final device-output page
+comparison.
 Downloaded-character no-install failures now publish the following default
 printable through trailing-FF `0xff1e`, while the status-`2` partial-install
 branch is carried through trailing-FF publication and published-record

@@ -1013,11 +1013,13 @@ handlers:
   remain unknown.
 - Broaden visible-output variants where they still change compatibility:
   font-selection fallback/error branches beyond the two symbol-miss
-  fixtures, downloaded-glyph publication cross-products beyond the
-  documented selector families, the transparent secondary segment-57 bitmap
-  source interpretation beyond the now-pinned page-record and render-prefix
-  boundary, and final-`@` symbol table/copy variants only if they need
-  compatibility-facing visible-output behavior. The primary transparent
+  fixtures, downloaded-glyph publication cross-products beyond the documented
+  normal, row-`0x80`, linear-segmented, split-plane segmented,
+  segmented-wide, even-span wide, no-install, and status-`2` compact bucket
+  variants, the transparent secondary segment-57 bitmap source interpretation
+  beyond the now-pinned page-record and render-prefix boundary, and final-`@`
+  symbol table/copy variants only if they need compatibility-facing
+  visible-output behavior. The primary transparent
   high-control path now includes boundary, interior-sample, tall-glyph, and
   top-of-range fixtures, and the parser/default-table state boundary for
   `@0..@3` is already pinned by fixture `real default-table caller stream uses

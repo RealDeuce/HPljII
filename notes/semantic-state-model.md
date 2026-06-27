@@ -517,6 +517,8 @@ or fixed-space helper `0xd0f0`.
 - Canonical command state:
   - restored command record `80 58 00 02 00 00` for `ESC &p2X`, or
     `80 58 00 04 00 00` for `ESC &p4X`.
+  - restored command record `80 58 00 03 00 00` for high-control fixtures
+    `ESC &p3X!\x98!` and `SO ESC &p3X!\x80!`.
   - command record word `+2`: signed count converted to an absolute payload
     count by `0x12452`.
   - text cursor `0x782c8a`: consumed and advanced by routed `0xd04a` and
@@ -554,6 +556,10 @@ or fixed-space helper `0xd0f0`.
   object in bucket `-1`:
   `00 00 00 00 00 00 00 01 97 fd 01`, while surrounding `!` entries remain
   in bucket `0`.
+  Secondary high-control `0x80` after SO reads context `0xc00ae122` in source
+  slot `1`, maps to glyph `0x5f`, and queues segmented selector `0x2001`
+  objects across `157` segment buckets; selected bucket `0` begins
+  `00 00 00 00 20 01 00 01 5f 00 1c 01 00 00 00 00`.
 - Unknown for this checkpoint:
   - manual-facing names for the selected context filtering byte, fallback
     filtering byte, and high-character flags remain provisional.
@@ -620,14 +626,33 @@ The bucket `-1` render has row count `44`, width `46`, and digest
 bucket `0` renders row digest
 `4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300`.
 
+Fixture `transparent secondary high-control byte enters segmented page-record
+path` composes SO with the transparent branch for `SO ESC &p3X!\x80!`. SO
+handler `0xc6b8` changes selector `0x782f06` from `0` to `1`; delayed handler
+`0x12452` restores record `80 58 00 03 00 00`, consumes payload `21 80 21`,
+and routes all three values through `0xd04a`. Both `!` bytes read source
+context `0xc00ae122` slot `1`, map to glyph `0`, and queue short selector-1
+coords `0xc5ff` and `0xc901`. The high-control byte `0x80` reads the same
+source context, maps to glyph `0x5f`, reports glyph entry `0x02e122`, rows
+`20062`, width `74`, compact coord `0x1c01`, and enters segmented page-record
+storage with selector `0x2001`, first segment/bucket `156`/`1248`, and last
+segment/bucket `0`/`0`. The bridge carries context slots
+`(0x440946b4, 0xc00ae122)`, and selected bucket `0` renders row count `80`,
+row width `256`, digest
+`57bb3fd895be358ff325e26ae58a3b0dc526c5b08b382eb90e7273e6227fbfbb`.
+
 ### Confidence
 
 High for delayed snapshot/restore, absolute payload count, `1a 58` and
 `1a xx` probe handling, default filtering, nonzero filtering, fixed-space
 cursor advance, page-record object bytes, bridge context slots, and rendered
 rows, and one taller high-control bucket-crossing glyph because each is
-fixture-pinned against disassembly-backed helpers. Medium for segmented or
-secondary high-control cross-products and manual names for the filter bytes.
+fixture-pinned against disassembly-backed helpers. High for the secondary
+selector/routing/page-record boundary because the SO plus transparent fixture
+pins handler `0xc6b8`, source context `0xc00ae122`, segmented selector
+`0x2001`, bridge context slots, and a selected-bucket render digest. Medium
+for full secondary segmented bitmap semantics and manual names for the filter
+bytes.
 
 ### Fixtures
 
@@ -638,6 +663,7 @@ secondary high-control cross-products and manual names for the filter bytes.
 - `transparent data control payloads advance through fixed-space path`
 - `transparent nonzero filters route controls through printable path`
 - `transparent nonzero high-control byte queues tall glyph bucket`
+- `transparent secondary high-control byte enters segmented page-record path`
 
 ### Disassembly Evidence
 
@@ -657,8 +683,10 @@ secondary high-control cross-products and manual names for the filter bytes.
   edge is specifically a page-visible transparent-data fixture that reaches
   that branch through default-filtered `0xd0f0` and host-space substitution.
 - `0x124f8..0x1252a`: high-control nonzero filtering is now fixture-backed for
-  a short bucket (`0x80`) and a taller bucket-crossing glyph (`0x98`). Broader
-  cross-products remain open for segmented glyphs or secondary contexts.
+  a short primary bucket (`0x80`), a taller primary bucket-crossing glyph
+  (`0x98`), and a secondary segmented page-record boundary (`SO ESC
+  &p3X!\x80!`). Broader cross-products remain open for additional
+  high-control values and for full secondary segmented bitmap semantics.
 
 ## Text Source Objects And Compact Buckets
 

@@ -16,6 +16,7 @@ Evidence:
   - `transparent data control payloads advance through fixed-space path`
   - `transparent nonzero filters route controls through printable path`
   - `transparent nonzero high-control byte queues tall glyph bucket`
+  - `transparent secondary high-control byte enters segmented page-record path`
 
 ## Command Boundary
 
@@ -287,6 +288,39 @@ different bucket from surrounding printable bytes:
 - surrounding printable bucket render: row count `22`, row width `56`, digest
   `4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300`
 
+The secondary high-control fixture uses stream:
+
+```text
+0e 1b 26 70 33 58 21 80 21
+```
+
+That is `SO ESC &p3X!\x80!`. It composes the text-map selector with the same
+transparent payload path:
+
+- SO reaches handler `0xc6b8`, calls the modeled `0xc428(1)` install success
+  path, and changes selector `0x782f06` from `0` to `1`.
+- restored record: `80 58 00 03 00 00`
+- raw payload: `21 80 21`
+- selected context byte: `1`
+- local filtering word: `1`
+- values: `21 80 21`
+- routes: `d04a d04a d04a`
+- both `!` payload bytes read source context `0xc00ae122`, source slot `1`,
+  map to glyph `0`, and queue short selector-1 entries at compact coords
+  `0xc5ff` and `0xc901`
+- high-control payload byte `0x80` reads the same secondary source context and
+  source slot, maps to glyph `0x5f`, reports glyph entry `0x02e122`, rows
+  `20062`, width `74`, and compact coord `0x1c01`
+- the high-control byte enters the segmented page-record path with selector
+  `0x2001`, `157` segment objects, first segment/bucket `156`/`1248`, and last
+  segment/bucket `0`/`0`
+- bridged context slots are `(0x440946b4, 0xc00ae122)`
+- selected bucket `0` object prefix:
+  `00 00 00 00 20 01 00 01 5f 00 1c 01 00 00 00 00`
+- selected bucket render: row count `80`, row width `256`, digest
+  `57bb3fd895be358ff325e26ae58a3b0dc526c5b08b382eb90e7273e6227fbfbb`
+- final selector remains `1`; final cursor x is `pack12(64)`
+
 ## Semantic Composition
 
 Concept: transparent print data is a counted byte-stream splice, not a binary
@@ -332,6 +366,9 @@ Output effect:
   the flagged built-in fixture.
 - Nonzero filtered C0 and `0x80..0x9f` transparent bytes route through `0xd04a`
   and become normal compact text entries after symbol-set mapping.
+- Secondary-context high-control bytes follow the same `0x12452` route decision
+  after SO; fixture `SO ESC &p3X!\x80!` proves the downstream page-record form
+  can be segmented rather than a short compact object.
 - A non-`0x58` byte after `0x1a` is not lost and does not route as `0x1a`; it is
   the payload value consumed by `0xd04a` or `0xd0f0`.
 
@@ -344,7 +381,11 @@ because the claims are backed by disassembly `0x11f5a`, `0x12452`, `0xd0f0`,
 probe byte reaches page-record output`, `transparent data control payloads
 advance through fixed-space path`, and `transparent nonzero filters route
 controls through printable path`, and
-`transparent nonzero high-control byte queues tall glyph bucket`.
+`transparent nonzero high-control byte queues tall glyph bucket`. High for the
+secondary selector/routing/page-record boundary because fixture `transparent
+secondary high-control byte enters segmented page-record path` pins SO handler
+`0xc6b8`, source context `0xc00ae122`, segmented selector `0x2001`, bridge
+context slots, and a selected-bucket render digest.
 
 Unresolved middle edges:
 
@@ -384,7 +425,8 @@ For `ESC &p#X`:
 
 - The visible-output fixtures now cover printable payload bytes, default-zero
   filtering for C0 and `0x80..0x9f`, nonzero filtering for one C0/high-control
-  pair, and the `1a` non-`0x58` probe case.
+  pair, a primary tall high-control bucket, a secondary segmented high-control
+  page-record path, and the `1a` non-`0x58` probe case.
 - The default-filtered fixed-space route is page-visible for the flagged
   built-in branch, where `0xd0f0` clears source `+4`, enters `0xd550`, advances
   spacing, and queues no compact text object. The unflagged/fixed-record
@@ -392,8 +434,10 @@ For `ESC &p#X`:
   as a page-visible transparent-data fixture; existing inline/downloaded
   fixtures cover the downstream unflagged source and bucket behavior, not the
   transparent-data `0xd0f0` entry into it.
-- Broader nonzero-filtering coverage remains open for high-control payload
-  values that map to segmented glyphs or secondary contexts. The tall
-  bucket-crossing high-control case is covered by `ESC &p3X!\x98!`.
+- Broader nonzero-filtering coverage remains open for additional high-control
+  payload values and for the full visible semantics of the secondary segmented
+  mapping. The tall primary bucket-crossing case is covered by
+  `ESC &p3X!\x98!`; the secondary segmented page-record boundary is covered by
+  `SO ESC &p3X!\x80!`.
 - The names for the active context filtering byte, fallback byte, and high-byte
   flags remain provisional.

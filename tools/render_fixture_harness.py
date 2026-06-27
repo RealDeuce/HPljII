@@ -62752,6 +62752,362 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "final_cursor_x": pack12(64),
         },
     ))
+    secondary_transparent_high_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x0e\x1b&p3X!\x80!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            transparent_selected_context_byte=1,
+            transparent_filtering_word=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+        secondary_context=0xC00AE122,
+        allow_multiple_buckets=True,
+    )
+    secondary_transparent_high_events = secondary_transparent_high_stream["events"]
+    secondary_transparent_high_rendered = secondary_transparent_high_stream["rendered"]
+    secondary_transparent_high_bridged = secondary_transparent_high_stream[
+        "bridged_record"
+    ]
+    secondary_transparent_high_object = secondary_transparent_high_stream[
+        "bucket_object"
+    ]
+    assert isinstance(secondary_transparent_high_events, list)
+    assert isinstance(secondary_transparent_high_rendered, dict)
+    assert isinstance(secondary_transparent_high_bridged, dict)
+    assert isinstance(secondary_transparent_high_object, bytes)
+    if (
+        len(secondary_transparent_high_events) != 2
+        or secondary_transparent_high_events[0]["kind"] != "font-shift"
+        or secondary_transparent_high_events[1]["kind"] != "transparent-data"
+    ):
+        raise AssertionError(
+            "secondary transparent high-control stream expected SO then transparent-data"
+        )
+    secondary_transparent_high_shift = secondary_transparent_high_events[0]
+    secondary_transparent_high_event = secondary_transparent_high_events[1]
+    assert isinstance(secondary_transparent_high_shift, dict)
+    assert isinstance(secondary_transparent_high_event, dict)
+    secondary_transparent_high_payload_summary: list[dict[str, object]] = []
+    secondary_transparent_high_payload_events = secondary_transparent_high_event[
+        "payload_events"
+    ]
+    assert isinstance(secondary_transparent_high_payload_events, list)
+    for payload_event in secondary_transparent_high_payload_events:
+        assert isinstance(payload_event, dict)
+        source = payload_event["source"]
+        positioned = payload_event["positioned"]
+        page_result = payload_event["page_result"]
+        assert isinstance(source, dict)
+        assert isinstance(positioned, dict)
+        assert isinstance(page_result, dict)
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        summary: dict[str, object] = {
+            "index": payload_event["index"],
+            "byte": payload_event["byte"],
+            "route": payload_event["route"],
+            "cursor_before": payload_event["cursor_before"],
+            "cursor_after": payload_event["cursor_after"],
+            "source_context": source["context"],
+            "source_slot": source["context_slot"],
+            "mapped": source["mapped"],
+            "glyph_entry": source["glyph_entry"],
+            "glyph_rows": source["glyph_rows"],
+            "glyph_width": source["glyph_width"],
+            "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+            "path": page_result["path"],
+            "coord": page_result["coord"],
+            "glyph": page_result["glyph"],
+            "rows": page_result["rows"],
+            "width": page_result["width"],
+        }
+        if page_result["path"] == "segmented-page-record":
+            segment_events = page_result["events"]
+            assert isinstance(segment_events, list)
+            first_segment = segment_events[0]
+            last_segment = segment_events[-1]
+            assert isinstance(first_segment, dict)
+            assert isinstance(last_segment, dict)
+            summary.update({
+                "segment_count": len(segment_events),
+                "first_segment": {
+                    key: first_segment[key]
+                    for key in (
+                        "bucket_index",
+                        "selector",
+                        "segment",
+                        "count_before",
+                        "count_after",
+                    )
+                },
+                "last_segment": {
+                    key: last_segment[key]
+                    for key in (
+                        "bucket_index",
+                        "selector",
+                        "segment",
+                        "count_before",
+                        "count_after",
+                    )
+                },
+                "first_object_prefix": first_segment["object"][:12],
+                "last_object_prefix": last_segment["object"][:12],
+            })
+        else:
+            summary.update({
+                "bucket_index": page_result["bucket_index"],
+                "selector": page_result["selector"],
+                "allocated": page_result["allocated"],
+                "count_before": page_result["count_before"],
+                "count_after": page_result["count_after"],
+                "object_prefix": page_result["object"][:14],
+            })
+        secondary_transparent_high_payload_summary.append(summary)
+    secondary_transparent_high_rows = secondary_transparent_high_rendered["rows"]
+    assert isinstance(secondary_transparent_high_rows, list)
+    checks.append(assert_equal(
+        "transparent secondary high-control byte enters segmented page-record path",
+        {
+            "stream": secondary_transparent_high_stream["stream"],
+            "font_shift": {
+                "kind": secondary_transparent_high_shift["kind"],
+                "byte": secondary_transparent_high_shift["byte"],
+                "handler": secondary_transparent_high_shift["handler"],
+                "selector_before": secondary_transparent_high_shift[
+                    "selector_before"
+                ],
+                "selector_after": secondary_transparent_high_shift["selector_after"],
+                "install_called": secondary_transparent_high_shift[
+                    "install_called"
+                ],
+                "install_argument": secondary_transparent_high_shift[
+                    "install_argument"
+                ],
+                "install_success": secondary_transparent_high_shift[
+                    "install_success"
+                ],
+            },
+            "event": {
+                "kind": secondary_transparent_high_event["kind"],
+                "sequence": secondary_transparent_high_event["sequence"],
+                "record": secondary_transparent_high_event["record"],
+                "parameter": secondary_transparent_high_event["parameter"],
+                "handler": secondary_transparent_high_event["handler"],
+                "delayed_snapshot_bytes": secondary_transparent_high_event[
+                    "delayed_snapshot_bytes"
+                ],
+                "restore_dispatch": secondary_transparent_high_event[
+                    "restore_dispatch"
+                ],
+                "restored_record": secondary_transparent_high_event[
+                    "restored_record"
+                ],
+                "payload_offset": secondary_transparent_high_event[
+                    "payload_offset"
+                ],
+                "byte_count": secondary_transparent_high_event["byte_count"],
+                "raw_payload": secondary_transparent_high_event["raw_payload"],
+                "selected_context_byte": secondary_transparent_high_event[
+                    "selected_context_byte"
+                ],
+                "local_filtering_word": secondary_transparent_high_event[
+                    "local_filtering_word"
+                ],
+                "values": secondary_transparent_high_event["values"],
+                "routes": secondary_transparent_high_event["routes"],
+                "control_hits": secondary_transparent_high_event["control_hits"],
+                "payload_events": secondary_transparent_high_payload_summary,
+            },
+            "root_allocations": secondary_transparent_high_stream["final_state"][
+                "page_record_root_allocations"
+            ],
+            "selected_bucket_index": secondary_transparent_high_stream[
+                "bucket_index"
+            ],
+            "nonempty_bucket_count": len(
+                secondary_transparent_high_stream["nonempty_buckets"]
+            ),
+            "nonempty_bucket_prefix": secondary_transparent_high_stream[
+                "nonempty_buckets"
+            ][:10],
+            "selected_object_prefix": secondary_transparent_high_object[:16],
+            "selected_object_len": len(secondary_transparent_high_object),
+            "bridged_context_slots": secondary_transparent_high_bridged[
+                "context_slots"
+            ][:2],
+            "selected_render": {
+                "row_count": len(secondary_transparent_high_rows),
+                "row_width": max(
+                    (len(str(row)) for row in secondary_transparent_high_rows),
+                    default=0,
+                ),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(
+                        str(row) for row in secondary_transparent_high_rows
+                    ).encode("ascii")
+                ).hexdigest(),
+            },
+            "final_selector": secondary_transparent_high_stream["final_state"][
+                "text_map_selector_782f06"
+            ],
+            "final_cursor_x": secondary_transparent_high_stream["final_state"][
+                "cursor_x"
+            ],
+        },
+        {
+            "stream": b"\x0e\x1b&p3X!\x80!",
+            "font_shift": {
+                "kind": "font-shift",
+                "byte": 0x0E,
+                "handler": 0x00C6B8,
+                "selector_before": 0,
+                "selector_after": 1,
+                "install_called": True,
+                "install_argument": 1,
+                "install_success": True,
+            },
+            "event": {
+                "kind": "transparent-data",
+                "sequence": b"\x1b&p3X!\x80!",
+                "record": bytes.fromhex("80 58 00 03 00 00"),
+                "parameter": 3,
+                "handler": 0x011F5A,
+                "delayed_snapshot_bytes": bytes.fromhex(
+                    "01 00 01 24 52 80 58 00 03 00 00"
+                ),
+                "restore_dispatch": {"kind": "direct-handler", "handler": 0x012452},
+                "restored_record": bytes.fromhex("80 58 00 03 00 00"),
+                "payload_offset": 6,
+                "byte_count": 3,
+                "raw_payload": b"!\x80!",
+                "selected_context_byte": 1,
+                "local_filtering_word": 1,
+                "values": [0x21, 0x80, 0x21],
+                "routes": [0x00D04A, 0x00D04A, 0x00D04A],
+                "control_hits": 0,
+                "payload_events": [
+                    {
+                        "index": 0,
+                        "byte": 0x21,
+                        "route": 0x00D04A,
+                        "cursor_before": pack12(10),
+                        "cursor_after": pack12(28),
+                        "source_context": 0xC00AE122,
+                        "source_slot": 1,
+                        "mapped": 0x00,
+                        "glyph_entry": 0x02E4F6,
+                        "glyph_rows": 4,
+                        "glyph_width": 22,
+                        "positioned_xy": (-11, 12),
+                        "path": "short-page-record",
+                        "coord": 0xC5FF,
+                        "glyph": 0x00,
+                        "rows": 4,
+                        "width": 22,
+                        "bucket_index": 0,
+                        "selector": 1,
+                        "allocated": True,
+                        "count_before": 0,
+                        "count_after": 1,
+                        "object_prefix": bytes.fromhex(
+                            "00 00 00 00 00 01 00 01 00 c5 ff 00 00 00"
+                        ),
+                    },
+                    {
+                        "index": 1,
+                        "byte": 0x80,
+                        "route": 0x00D04A,
+                        "cursor_before": pack12(28),
+                        "cursor_after": pack12(46),
+                        "source_context": 0xC00AE122,
+                        "source_slot": 1,
+                        "mapped": 0x5F,
+                        "glyph_entry": 0x02E122,
+                        "glyph_rows": 20062,
+                        "glyph_width": 74,
+                        "positioned_xy": (28, 1),
+                        "path": "segmented-page-record",
+                        "coord": 0x1C01,
+                        "glyph": 0x5F,
+                        "rows": 20062,
+                        "width": 74,
+                        "segment_count": 157,
+                        "first_segment": {
+                            "bucket_index": 1248,
+                            "selector": 0x2001,
+                            "segment": 156,
+                            "count_before": 0,
+                            "count_after": 1,
+                        },
+                        "last_segment": {
+                            "bucket_index": 0,
+                            "selector": 0x2001,
+                            "segment": 0,
+                            "count_before": 0,
+                            "count_after": 1,
+                        },
+                        "first_object_prefix": bytes.fromhex(
+                            "00 00 00 00 20 01 00 01 5f 9c 1c 01"
+                        ),
+                        "last_object_prefix": bytes.fromhex(
+                            "00 00 00 00 20 01 00 01 5f 00 1c 01"
+                        ),
+                    },
+                    {
+                        "index": 2,
+                        "byte": 0x21,
+                        "route": 0x00D04A,
+                        "cursor_before": pack12(46),
+                        "cursor_after": pack12(64),
+                        "source_context": 0xC00AE122,
+                        "source_slot": 1,
+                        "mapped": 0x00,
+                        "glyph_entry": 0x02E4F6,
+                        "glyph_rows": 4,
+                        "glyph_width": 22,
+                        "positioned_xy": (25, 12),
+                        "path": "short-page-record",
+                        "coord": 0xC901,
+                        "glyph": 0x00,
+                        "rows": 4,
+                        "width": 22,
+                        "bucket_index": 0,
+                        "selector": 1,
+                        "allocated": False,
+                        "count_before": 1,
+                        "count_after": 2,
+                        "object_prefix": bytes.fromhex(
+                            "00 00 00 00 00 01 00 02 00 c5 ff 00 c9 01"
+                        ),
+                    },
+                ],
+            },
+            "root_allocations": 1,
+            "selected_bucket_index": 0,
+            "nonempty_bucket_count": 157,
+            "nonempty_bucket_prefix": [0, 8, 16, 24, 32, 40, 48, 56, 64, 72],
+            "selected_object_prefix": bytes.fromhex(
+                "00 00 00 00 20 01 00 01 5f 00 1c 01 00 00 00 00"
+            ),
+            "selected_object_len": 40,
+            "bridged_context_slots": (0x440946B4, 0xC00AE122),
+            "selected_render": {
+                "row_count": 80,
+                "row_width": 256,
+                "row_sha256": "57bb3fd895be358ff325e26ae58a3b0dc526c5b08b382eb90e7273e6227fbfbb",
+            },
+            "final_selector": 1,
+            "final_cursor_x": pack12(64),
+        },
+    ))
     mixed_stream = render_mixed_printable_control_stream(
         data,
         resources,

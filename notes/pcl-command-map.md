@@ -906,6 +906,13 @@ nonzero-filter high-control path to a taller bucket-crossing glyph: byte
 `0x98` maps to glyph `0x97`, glyph entry `0x01781e`, rows `29`, width `17`,
 queues bucket `-1` coord `0xfd01`, and renders row digest
 `bd7ad3016d15c1dc2ef12adaeb1091a58f26473c0ecfc7ac13bfaf268c383e90`.
+`SO ESC &p3X!\x80!` composes the same transparent high-control route with the
+secondary text context: SO handler `0xc6b8` selects slot `1`, `0x12452`
+restores record `80 58 00 03 00 00`, the high-control byte reads source
+context `0xc00ae122`, maps to glyph `0x5f`, enters segmented selector
+`0x2001` page-record storage with `157` segment objects, bridges slots
+`(0x440946b4, 0xc00ae122)`, and selected bucket `0` renders digest
+`57bb3fd895be358ff325e26ae58a3b0dc526c5b08b382eb90e7273e6227fbfbb`.
 `ESC &p2X\x1aA!` covers the probe path where `1a 41` contributes payload byte
 `0x41`, not `0x1a`.
 
@@ -979,9 +986,10 @@ handlers:
 - Broaden visible-output variants where they still change compatibility:
   font-selection fallback/error branches beyond the two symbol-miss
   fixtures, downloaded-glyph publication cross-products beyond the
-  documented selector families, transparent high-control cases that map
-  to secondary or segmented glyphs, and the parser-exposed `@0..@2`
-  symbol table/copy variants if they need compatibility-facing behavior.
+  documented selector families, additional transparent high-control values
+  and full secondary segmented bitmap semantics beyond the now-pinned
+  secondary page-record boundary, and the parser-exposed `@0..@2` symbol
+  table/copy variants if they need compatibility-facing behavior.
 - Continue the active-render scheduler only at the remaining external
   boundary: `$8000.4`, `$a601`, `$a801`, `$aa01`, `0xfffe0001`, and
   `0xfffe0003` physical timing/MMIO correlation. The software-visible

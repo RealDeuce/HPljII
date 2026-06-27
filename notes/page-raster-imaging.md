@@ -1094,6 +1094,12 @@ coord `0xfd01`, leaves surrounding `!` entries in bucket `0`, and renders
 bucket digests
 `bd7ad3016d15c1dc2ef12adaeb1091a58f26473c0ecfc7ac13bfaf268c383e90` and
 `4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300`.
+`SO ESC &p3X!\x80!` composes transparent data with the secondary text context:
+SO selects slot `1`, the high-control byte reads context `0xc00ae122`, maps to
+glyph `0x5f`, queues segmented selector `0x2001` page-record objects across
+`157` segment buckets, bridges slots `(0x440946b4, 0xc00ae122)`, and selected
+bucket `0` renders row digest
+`57bb3fd895be358ff325e26ae58a3b0dc526c5b08b382eb90e7273e6227fbfbb`.
 `ESC &p2X\x1aA!` covers the transparent `1a` probe path by consuming raw
 payload `1a 41 21`, routing values `0x41` and `0x21` through `0xd04a`,
 and rendering visible `A!`. That direct page-record group now also crosses

@@ -1331,7 +1331,11 @@ the first band. The rows-`0x82`
 segmented sibling `ESC )s260W` + printable `0` + FF also copies buckets `1`
 and `9`; render bucket word `9` passes through `0x1ed84`, `0x1ef6a`, compact
 target `0x1effe`, and `0x1f1f0`, producing two segment-1 rows from the
-interior segmented row count. The rows-`0x0102` sibling `ESC )s516W` +
+interior segmented row count. The downloaded-glyph row-count matrix adds
+short rows `0x04` and `0x7f` on selector `0x0003`/bucket `1`, plus segmented
+rows `0x83` and `0xff` on selector `0x2003`/buckets `1` and `9`, all through
+printable+FF publication and `0x1ed84`/`0x1ef6a`; rendered row counts are
+`10`, `64`, `9`, and `16`. The rows-`0x0102` sibling `ESC )s516W` +
 printable `3` + FF also crosses `0xff1e`, but the page-record source exposes
 row byte `0x02`; it publishes selector `0x0003` bucket `1` only, then
 `0x1f414` splits rows `0x0102` into `58` current rows and `200` fallback rows.

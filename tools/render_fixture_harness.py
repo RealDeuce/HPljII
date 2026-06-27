@@ -56167,6 +56167,275 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    def downloaded_row_count_matrix_case(
+        *,
+        name: str,
+        char_code: int,
+        rows: int,
+        object_offset: int,
+    ) -> dict[str, object]:
+        span = 2
+        payload = bytearray(rows * span)
+        if rows > 0x80:
+            payload[0x100:0x102] = bytes.fromhex("f0 0f")
+        else:
+            payload[0:2] = bytes.fromhex("f0 0f")
+        command_stream = f"\x1b)s{len(payload)}W".encode("ascii") + bytes(payload)
+        publication_stream = command_stream + bytes([char_code, 0x0C])
+        fetched = fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(publication_stream), direct_mode=0),
+            len(publication_stream),
+        )
+        font_stream = fetched["stream"][:len(command_stream)]
+        tail_stream = fetched["stream"][len(command_stream):]
+        font_trace = trace_font_parser_dispatch_via_11774(data, font_stream)
+        font_command = font_trace["commands"][0]
+        assert isinstance(font_command, dict)
+        install_command = render_font_download_char_command_stream_via_121cc_16498(
+            font_stream,
+            table_payload_type2_bytes,
+            char_code=char_code,
+            record_words=(0x0000, 0x0000, rows, 0x0000),
+            mode=1,
+            width=0x0010,
+            rows=rows,
+            object_offset=object_offset,
+        )
+        install_event = install_command["events"][0]
+        assert isinstance(install_event, dict)
+        install = install_event["install"]
+        assert isinstance(install, dict)
+        memory = bytearray(install["header"])
+        glyph = resolve_downloaded_pointer_glyph(memory, 0, char_code)
+        assert glyph is not None
+        source = {
+            "context": 0,
+            "host_char": char_code,
+            "mapped": char_code,
+            "glyph_entry": glyph["entry"],
+            "glyph_width": glyph["width"],
+            "glyph_rows": glyph["rows"],
+            "flag": 0,
+            "x": 22,
+            "y": 22,
+            "context_slot": 3,
+            "inline_record": bytes([
+                int(glyph["render_span"]),
+                int(glyph["rows"]) & 0xFF,
+                0,
+            ]),
+        }
+        page_record: dict[str, object] = {
+            "bucket_array": {},
+            "context_slots": [0, 0, 0, 0],
+        }
+        page_result = queue_text_source_to_page_record_via_12f2e(
+            memory,
+            page_record,
+            source,
+        )
+        if page_result["path"] == "segmented-page-record":
+            events = page_result["events"]
+            assert isinstance(events, list)
+            render_bucket_word = int(events[0]["bucket_index"])
+            segment_summary = [
+                {
+                    "bucket_index": int(event["bucket_index"]),
+                    "segment": int(event["segment"]),
+                    "selector": int(event["selector"]),
+                    "object_prefix": bytes(event["object"])[:12],
+                }
+                for event in events
+            ]
+        else:
+            render_bucket_word = int(page_result["bucket_index"])
+            segment_summary = []
+        tail_trace = trace_mixed_text_control_parser_path_via_11774(data, tail_stream)
+        publication = finalize_page_record_via_ff1e(
+            page_record,
+            reset_fixture_state(
+                page_root_present=1,
+                page_root_class=1,
+                current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+                page_root_clears=0,
+                publication_bucket_index=render_bucket_word,
+            ),
+        )
+        published_record = publication["published_pool_record"]
+        assert isinstance(published_record, dict)
+        published_fields = published_record["pool_record_fields"]
+        assert isinstance(published_fields, dict)
+        published_render = render_published_page_record_via_1ed84_1ef6a(
+            data,
+            memory,
+            published_record,
+            bucket_word=render_bucket_word,
+        )
+        published_entry = published_render["entry"]
+        assert isinstance(published_entry, dict)
+        rows_out = published_entry["rows"]
+        assert isinstance(rows_out, list)
+        dispatch_entries = published_entry["dispatch"]["entries"]
+        assert isinstance(dispatch_entries, list)
+        first_dispatch = dispatch_entries[0]
+        assert isinstance(first_dispatch, dict)
+        return {
+            "name": name,
+            "fetch_source_set": sorted(set(fetched["sources"])),
+            "remaining_ring": fetched["state"]["ring"],
+            "stream_length": len(fetched["stream"]),
+            "restored_record": font_command["restored_record"],
+            "payload_offset": font_command["payload_offset"],
+            "payload_length": len(font_command["payload"]),
+            "install": {
+                "table_entry": install["table_entry"],
+                "record_delta": install["record_delta"],
+                "record": install["record"],
+                "bitmap_size": install["bitmap_size"],
+                "allocation_size": install["allocation_size"],
+                "object_size": install["object_size"],
+            },
+            "page": {
+                "path": page_result["path"],
+                "selector": page_result["selector"],
+                "rows": page_result["rows"],
+                "width": page_result["width"],
+                "coord": page_result["coord"],
+                "glyph": page_result["glyph"],
+            },
+            "segments": segment_summary,
+            "tail_handlers": [event["handler"] for event in tail_trace["events"]],
+            "published_bucket_keys": sorted(
+                published_fields["bucket_array_1c"].keys()
+            ),
+            "render_bucket_word": published_render["render_record_fields"]["word_10"],
+            "dispatch": {
+                "object_byte_4": first_dispatch["object_byte_4"],
+                "target": first_dispatch["target"],
+                "context_slot": first_dispatch["context_slot"],
+            },
+            "row_count": len(rows_out),
+            "row_width": max((len(str(row)) for row in rows_out), default=0),
+            "row_sha256": hashlib.sha256(
+                "\n".join(str(row) for row in rows_out).encode("ascii")
+            ).hexdigest(),
+        }
+
+    downloaded_row_count_matrix = [
+        downloaded_row_count_matrix_case(
+            name="short rows-0x04",
+            char_code=0x34,
+            rows=0x0004,
+            object_offset=0x1200,
+        ),
+        downloaded_row_count_matrix_case(
+            name="short rows-0x7f",
+            char_code=0x35,
+            rows=0x007F,
+            object_offset=0x1280,
+        ),
+        downloaded_row_count_matrix_case(
+            name="segmented rows-0x83",
+            char_code=0x36,
+            rows=0x0083,
+            object_offset=0x1400,
+        ),
+        downloaded_row_count_matrix_case(
+            name="segmented rows-0xff",
+            char_code=0x37,
+            rows=0x00FF,
+            object_offset=0x1580,
+        ),
+    ]
+    checks.append(assert_equal(
+        "downloaded glyph row-count matrix publishes and renders additional short/segmented counts",
+        [
+            {
+                "name": case["name"],
+                "fetch_source_set": case["fetch_source_set"],
+                "remaining_ring": case["remaining_ring"],
+                "payload_length": case["payload_length"],
+                "record": case["install"]["record"],
+                "path": case["page"]["path"],
+                "selector": case["page"]["selector"],
+                "page_rows": case["page"]["rows"],
+                "bucket_keys": case["published_bucket_keys"],
+                "render_bucket_word": case["render_bucket_word"],
+                "object_byte_4": case["dispatch"]["object_byte_4"],
+                "target": case["dispatch"]["target"],
+                "segment_count": len(case["segments"]),
+                "row_count": case["row_count"],
+            }
+            for case in downloaded_row_count_matrix
+        ],
+        [
+            {
+                "name": "short rows-0x04",
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "payload_length": 0x0008,
+                "record": bytes.fromhex("00 00 00 00 0c 01 00 04 00 10 00 00"),
+                "path": "short-page-record",
+                "selector": 0x0003,
+                "page_rows": 0x0004,
+                "bucket_keys": [1],
+                "render_bucket_word": 1,
+                "object_byte_4": 0x00,
+                "target": 0x01EFFE,
+                "segment_count": 0,
+                "row_count": 10,
+            },
+            {
+                "name": "short rows-0x7f",
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "payload_length": 0x00FE,
+                "record": bytes.fromhex("00 00 00 00 0c 01 00 7f 00 10 00 00"),
+                "path": "short-page-record",
+                "selector": 0x0003,
+                "page_rows": 0x007F,
+                "bucket_keys": [1],
+                "render_bucket_word": 1,
+                "object_byte_4": 0x00,
+                "target": 0x01EFFE,
+                "segment_count": 0,
+                "row_count": 64,
+            },
+            {
+                "name": "segmented rows-0x83",
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "payload_length": 0x0106,
+                "record": bytes.fromhex("00 00 00 00 0c 01 00 83 00 10 00 00"),
+                "path": "segmented-page-record",
+                "selector": 0x2003,
+                "page_rows": 0x0083,
+                "bucket_keys": [1, 9],
+                "render_bucket_word": 9,
+                "object_byte_4": 0x20,
+                "target": 0x01EFFE,
+                "segment_count": 2,
+                "row_count": 9,
+            },
+            {
+                "name": "segmented rows-0xff",
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "payload_length": 0x01FE,
+                "record": bytes.fromhex("00 00 00 00 0c 01 00 ff 00 10 00 00"),
+                "path": "segmented-page-record",
+                "selector": 0x2003,
+                "page_rows": 0x00FF,
+                "bucket_keys": [1, 9],
+                "render_bucket_word": 9,
+                "object_byte_4": 0x20,
+                "target": 0x01EFFE,
+                "segment_count": 2,
+                "row_count": 16,
+            },
+        ],
+    ))
+
     downloaded_linear_publication_stream = downloaded_linear_command_stream + b"&\x0c"
     downloaded_row80_publication_stream = downloaded_row80_command_stream + b"*\x0c"
     downloaded_segmented_even_publication_stream = (
@@ -83816,6 +84085,28 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_segmented_rows102_render_split["remaining_after_band"],
             downloaded_segmented_rows102_row_copy_limit["last_valid_index"],
             downloaded_segmented_rows102_fallback_row_target,
+        )
+    )
+    lines.append(
+        "- downloaded-glyph row-count matrix: additional rows `%s` all fetch "
+        "through `ESC )s#W`, publish through printable+FF, and render through "
+        "`0x1ed84`/`0x1ef6a`; case summaries `(name, selector, buckets, "
+        "render bucket, row count, row sha256)` are `%s`." % (
+            ", ".join(
+                "0x%04x" % case["page"]["rows"]
+                for case in downloaded_row_count_matrix
+            ),
+            [
+                (
+                    case["name"],
+                    "0x%04x" % case["page"]["selector"],
+                    case["published_bucket_keys"],
+                    case["render_bucket_word"],
+                    case["row_count"],
+                    case["row_sha256"],
+                )
+                for case in downloaded_row_count_matrix
+            ],
         )
     )
     lines.append("")

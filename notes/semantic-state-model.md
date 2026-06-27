@@ -3179,348 +3179,298 @@ compact text renderer.
 
 ### Output Effect
 
-The combined host-fetched stream `ESC *c4660d37e5F` plus `ESC )s2193W`
-payload plus `%` sets current id `0x1234`, sets current character `0x25`,
-installs a split-plane downloaded glyph object at record delta `0x0500`,
-queues printable `%` as segmented compact selector `0x3003`, and renders the
-downloaded row through target `0x1effe`. Fixture
-`combined font download FF publishes installed glyph page record` appends FF
-to that same byte stream, routes `%` and FF through handlers `0xd04a` and
-`0xf0f0`, publishes bucket array entries `9` and `1` through `0xff1e`,
-preserves empty rule/fixed lists and context prefix `0,0,0,0`, and preserves
-the published segmented objects. Fixture
-`published downloaded glyph segmented buckets render across bands` copies that
-published record through `0x1ed84`, walks modeled band words `1` and `9`
-through `0x1ef6a`, dispatches both compact objects to `0x1effe`, leaves the
-bucket-1 segment-0 band blank for this payload, and reproduces the same row
-from bucket `9`. Fixture
-`0x1eba4 scheduler band words render published downloaded glyph` starts from
-the `0xff1e`/`0x1ed84` seed where source `+0x18` has been cleared and render
-work `+0x10/+0x16` are zero, lets the scheduler loop produce `0x1ef6a` calls
-for band words `0..9`, and reaches the same bucket-9 visible row while only
-published buckets `1` and `9` dispatch compact objects. Fixture
-`host-fetched even-span downloaded glyph FF publishes rendered page record`
-adds the non-segmented wide publication sibling: host-fetched `ESC )s18W`
-plus printable `)` and FF restores record `80 57 00 12 00 00`, installs glyph
-`0x29` at table entry `0x00ee` / record delta `0x0780`, routes tail handlers
-`0xd04a` and `0xf0f0`, publishes bucket array entry `1`, copies empty
-rule/fixed lists and context prefix `0,0,0,0`, and renders the copied bucket-1
-record through `0x1ed84`/`0x1ef6a` to compact target `0x1effe` / renderer
-`0x1f0d2` with the same 18-byte row. Fixture
-`downloaded normal row-0x80 and segmented glyph FF publications render page records`
-adds three more publication siblings in the same command family. The normal
-case drains host-fetched `ESC )s6W` plus printable `&` and FF, restores record
-`80 57 00 06 00 00`, routes tail handlers `0xd04a` and `0xf0f0`, publishes
-bucket `1` object `00 00 00 00 00 03 00 01 26 66 01`, clears the current root,
-copies empty rule/fixed lists and context prefix `0,0,0,0`, and renders bucket
-word `1` through `0x1ed84`/`0x1ef6a` to compact target `0x1effe` / renderer
-`0x1fe76`. The row-threshold case drains host-fetched `ESC )s256W` plus
-printable `*` and FF, restores record `80 57 01 00 00 00`, publishes bucket
-`1` object `00 00 00 00 00 03 00 01 2a 66 01`, keeps selector `0x0003`, and
-renders bucket word `1` through the same compact target/helper with digest
-`918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac`. The
-non-boundary short case drains host-fetched `ESC )s32W` plus printable `+` and
-FF, restores record `80 57 00 20 00 00`, publishes bucket `1` object
-`00 00 00 00 00 03 00 01 2b 66 01`, keeps selector `0x0003`, and renders
-bucket word `1` through the same compact target/helper with digest
-`28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The
-rows-`0x20` short case drains host-fetched `ESC )s64W` plus printable `1` and
-FF, restores record `80 57 00 40 00 00`, installs record
-`00 00 00 00 0c 01 00 20 00 10 00 00`, publishes bucket `1`, keeps selector
-`0x0003`, and renders bucket word `1` through `0x1ed84`/`0x1ef6a` and compact
-target `0x1effe` / renderer `0x1fe76` with `38` visible rows. The
-rows-`0x40` short case drains host-fetched `ESC )s128W` plus printable `2`
-and FF, restores record `80 57 00 80 00 00`, installs record
-`00 00 00 00 0c 01 00 40 00 10 00 00`, publishes bucket `1`, keeps selector
-`0x0003`, and renders bucket word `1` through `0x1ed84`/`0x1ef6a` and compact
-target `0x1effe` / renderer `0x1fe76` with `64` blank current-band rows. The
-segmented case drains host-fetched `ESC )s258W` plus printable `'` and FF,
-restores record `80 57 01 02 00 00`, publishes bucket `9` object
-`00 00 00 00 20 03 00 01 27 01 66 01` plus the segment-0 bucket `1` entry,
-and renders bucket word `9` through compact target `0x1effe` / renderer
-`0x1f1f0` from segment-1 source offset `0x0100`. Fixture
-`host-fetched rows-0x82 segmented downloaded glyph FF publication renders page record`
-adds an interior segmented row count in the same selector family. The
-host-fetched `ESC )s260W` plus printable `0` and FF restores record
-`80 57 01 04 00 00`, installs record
-`00 00 00 00 0c 01 00 82 00 10 00 00`, publishes bucket-array entries `1`
-and `9`, renders bucket word `9`, and emits two segment-1 rows through
-`0x1ed84`/`0x1ef6a` and compact target `0x1effe` / renderer `0x1f1f0`.
-Fixture
-`host-fetched rows-0x102 downloaded glyph FF publication truncates page-record rows`
-adds the first nonzero-high-byte downloaded row count in this family. The
-host-fetched `ESC )s516W` plus printable `3` and FF restores record
-`80 57 02 04 00 00`, installs record
-`00 00 00 00 0c 01 01 02 00 10 00 00`, and copies `0x0204` linear bytes into
-glyph `0x33`. The installed glyph table entry is canonical downloaded-glyph
-state, but the printable source record is parser/page scratch with only row
-byte `0x02`; `0x12f2e` therefore writes selector `0x0003` object
-`00 00 00 00 00 03 00 01 33 66 01`, publishes only bucket `1` through
-`0xff1e`, and leaves bucket words `9` and `17` absent. This fixture does not
-claim rendered pixels: `0x1ef86` computes `0x783a20 = 0x0040` and
-`0x783a28 = 0x00100800`, `0x1f414` splits coord `0x6601` and rows `0x0102`
-into `58` current-band rows plus `200` fallback rows, and span-2 row-copy
-helper `0x1fe76` has valid table entries only through index `128`; fallback
-index `200` reads target `0x329ad3c0`.
-Fixture
-`split-plane segmented downloaded glyph FF publication renders page record`
-adds the odd-span sibling: host-fetched `ESC )s387W` plus printable `(` and FF
-restores record `80 57 01 83 00 00`, publishes bucket `9` object
-`00 00 00 00 20 03 00 01 28 01 66 01` plus the segment-0 bucket `1` entry
-`00 00 00 00 20 03 00 01 28 00 66 01`, clears the current root, copies empty
-rule/fixed lists and context prefix `0,0,0,0`, and renders bucket word `9`
-through `0x1ed84`/`0x1ef6a` to compact target `0x1effe` / renderer
-`0x1f1f0` with A2 source offset `0x0100` and A3 trailing offset `0x0080`.
-Fixture `host-fetched linear downloaded character stream renders through 0x168dc`
-drives `ESC )s6W` through the same parser-delayed `0x16c14` boundary, installs
-glyph `0x26` at table entry `0x00e2` with even span `2`, copies bitmap bytes
-through the linear `0x168dc` reader, queues normal compact selector `0x0003`,
-preserves the object through `0x1edc6`, and renders three mode-0 rows through
-`0x1ed84` / `0x1ef6a`. Fixture
-`host-fetched 0x15d0a current-record resource object feeds fixed-record
-render` also proves a host-fetched `ESC )s0W` descriptor can route bit-30-clear
-current-record payload `0x000100` through `0x16606`, install fixed-record glyph
-`0x21` at payload table entry `+0x48`, queue selector `0x0003`, preserve
-context slot `3` through `0x1edc6`, and render three mode-0 rows. Fixture
-`host-fetched 0x15d0a continuation resource object resumes fixed-record
-render` proves the sibling status-`2` descriptor route through `0x15c4c`: a
-partial `0x16606` copy saves payload `0x000100`, glyph/table index `0x21`,
-destination `0x000302`, and remaining count `4`; `0x15c4c` copies bytes
-`f0 0f c3 3c`, clears the continuation fields, and renders the same fixed
-record and rows.
-Fixture `host-fetched 0x15d0a split-plane continuation resource object resumes
-fixed-record render` proves the odd-width sibling: a partial `0x16606` copy of
-record `03 02 04 00 00 00 02 00` saves payload `0x000100`, glyph/table index
-`0x21`, prefix destination `0x000303`, trailing destination `0x000305`, and
-D4/D3 counters `0/0`; `0x15c4c` copies bytes `c1 d0`, clears continuation
-state, leaves bitmap layout `a0 a1 c0 c1 b0 d0`, queues object prefix
-`00 00 00 00 00 03 00 01 01 76 01`, and renders rows reconstructed from
-`a0 a1 b0` and `c0 c1 d0`.
-Fixture `0x15c4c failed resource resume releases fixed-record object` proves
-the status-`0` sibling: a partial `0x16606` copy saves the same payload and
-glyph/table index, a short resume copies only bytes `f0 0f`, then `0x15c4c`
-calls `0x17d7c`. The release helper rewrites payload `+0x48` from
-`02 03 04 00 00 00 02 00` to `01 02 00 fa 00 00 00 00`, writes side-table
-bytes `fa 00` at payload `+0x340`, records active-primary refresh
-`0x7828de = 0`, and clears the matching continuation fields.
-Fixture `0x17d7c releases extended fixed-record table with secondary refresh`
-proves the direct extended fixed-record form: payload byte `+0x0e = 1` admits
-char `0xa1`, the helper indexes table entry
-`payload + 0x40 + (0xa1 - 0x40) * 8`, rewrites it from
-`04 05 06 07 00 00 04 00` to `01 02 00 2c 00 00 03 00`, writes side-table
-bytes `2c 00` at payload `+0x702`, records active-secondary refresh
-`0x7828de = 1`, and clears the matching continuation fields.
-Fixture `0x17d7c delegates bit-30 release to offset-table helper` proves the
-bit-30 sibling: `0x17d7c` dispatches to `0x17a24`, which validates range words
-`+0x0e/+0x10 = 0x0020/0x007f`, uses table offset word `+0x08 = 0x004a`,
-clears char `0x21` table entry `00 00 02 40` to zero at payload
-`+0x004a + 4 * 0x21`, records active-secondary refresh `0x7828de = 1`, and
-clears the matching continuation fields.
-Fixture `0x16c14 allocation failure releases existing payload through
-0x1887a` has no direct pixel output because it is a failed replacement path.
-Its output contract is state cleanup: old current-record payload `0x123456`
-is cleared, candidate slot `0x782328` is deleted, extended fixed-record
-cleanup runs through `0x18bf2`/`0x18090` for characters `0x21..0x7f` and
-`0xa0..0xff`, continuation state is zeroed, context stack bytes `+8` and `+9`
-are marked for matching primary/secondary entries, secondary active context
-refreshes through `0x179aa(1)`, and no new candidate or payload is installed.
-Fixture `0x16fae validation table semantic map covers staged and pass-through
-entries` names all 32 validation-table entries by ROM effect. Fixture
-`0x16fae table-driven validation predicates populate staged header fields`
-then proves the success path plus two predicate failures: invalid resource
-type fails entry `2` after four bytes with no symbols copied, and a reversed
-range fails entry `6` after words `+0x16 = 10` and `+0x14 = 5`, leaving
-derived count word `+0x18 = 0`.
-Fixture `ESC )s80W invalid resource type fails validation before allocation`
-connects that entry-2 failure to the host-facing parser boundary:
-`0xa904` fetches the stream from the ring source, parser dispatch walks
-`0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`, delayed restore reaches
-record `80 57 00 50 00 00`, `0x16fae` fails after descriptor bytes
-`00 01 02 03`, and `0x17026`/`0x16c14` skip allocation and install. The
-output effect is no downloaded-font candidate or current-record mutation.
-Fixture `ESC )s80W reversed resource range fails validation before allocation`
-connects the entry-6 range/count failure to the same host-facing parser
-boundary. `0xa904` fetches
-`1b 29 73 38 30 57 00 01 00 00 00 00 00 0a 00 06 00 05...` from the ring
-source, parser dispatch again walks `0x11eb6`, `0x12008`, `0x11ff6`, and
-`0x11f96`, delayed restore reaches record `80 57 00 50 00 00`, `0x16fae`
-fails after twelve descriptor bytes with staged words `+0x16 = 10`,
-`+0x14 = 5`, and `+0x18 = 0`, and `0x17026`/`0x16c14` skip allocation and
-install. The output effect is no downloaded-font candidate or current-record
-mutation.
-Fixture `host-fetched metric variant changes d4ac gate and d8fc rows` starts
-from host-fetched `ESC )s80W`, changes descriptor bytes copied by `0x1719c`
-into payload word `+0x2c = 0x0010` and word `+0x1a = 0x0002`, proves the
-default `+0x2d = 0x20` path fails a tight `0xd4ac` extent check while the
-variant queues a span, and renders the `0xd8fc` span at shifted key `0x3406`.
-Fixture `host-fetched clamped metric variant changes d4ac gate and d8fc rows`
-adds the rounded-metric clamp sibling: descriptor range/count `+0x14 = 5`
-caps an oversized rounded input so `0x1719c` copies `+0x2c = 0x0014`, leaves
-`+0x2b = 0`, flips a tight `0xd4ac` extent gate with `+0x2d = 0x14`, and
-renders the `0xd8fc` span at shifted key `0x2406` from copied words
-`+0x18 = 0` and `+0x1a = 3`.
-Fixture `host-fetched lower-bound metric variant suppresses d4ac and d8fc
-spans` adds the lower-bound sibling: host-fetched descriptor bytes write
-canonical lower fields `+0x16 = 0x0018` and `+0x2c = 0x1800`, range/count
-`+0x14 = 0x0600`, and derived/cache count `+0x18 = 0x05e7`. `0xd4ac` reads
-byte `+0x2c = 0x18`; `0xd8fc` reads word `+0x16 = 0x0018`; both return
-`before-context-lower` at cursor y `21`, and the fixture renders only the
-compact glyph objects from the page-record buckets.
-Fixture `host-fetched upper-bound metric variant keeps d4ac span but
-suppresses d8fc` adds the asymmetric upper-bound sibling: host-fetched
-descriptor bytes write range/count `+0x14 = 0x0040`, derive/cache
-`+0x18 = 0x003b`, and keep rounded word `+0x2c = 0x0020`. `0xd4ac` reads
-bytes `+0x2c/+0x2d = 0/0x20` and still queues the default segment-list span;
-`0xd8fc` reads word `+0x18 = 0x003b`, exits `beyond-page-extent` at cursor y
-`21`, and leaves only the compact glyph object.
-Fixture `legal descriptor metric value matrix drives d4ac and d8fc consumers`
-composes the legal metric cases into one state-block matrix. It records
-parser input words, copied payload words, both consumer outcomes, queued page
-objects, and row digests for small-rounded, clamped-rounded, midpoint-rounded,
-zero-rounded-offset, negative-offset, lower-bound, and upper-bound descriptors. The
-zero-rounded-offset row records parser range/count `0x0018`, rounded input
-`0x0000`, and offset byte `0`; canonical fields `+0x14/+0x16 =
-0x0018/0x0004`, derived/cache field `+0x18 = 0x0013`, and consumer fields
-`+0x1a/+0x2c = 0x0000/0x0000` survive the `0x16fae` / `0x1719c` copy.
-`0xd4ac` emits the same visible span digest
-`67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`, while
-`0xd8fc` publishes high-y `21` and row digest
-`47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8`. The
-midpoint row records descriptor range/count `0x0018`, rounded input `0x0018`,
-and signed offset byte `7`; `0xd8fc` updates high-y to `14` but leaves only
-compact glyph digest
-`1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a`.
-The negative-offset row records descriptor range/count `0x0018`, rounded
-input `0x0008`, and signed offset byte `0xfe`; canonical fields
-`+0x14/+0x16 = 0x0018/0x0004`, derived/cache field `+0x18 = 0x0013`, and
-consumer fields `+0x1a/+0x2c = 0xfffe/0x0008` survive the
-`0x16fae` / `0x1719c` copy. `0xd4ac` keeps the default visible span digest,
-while `0xd8fc` consumes `+0x1a` as word `65534`, computes high-y `-65513`,
-queues span object prefix `00 00 00 00 40 00 00 01 04 06 03 00 00 14`, and
-renders digest
-`72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
-Fixture `legal descriptor metric low-nibble rounding drives d4ac and d8fc
-consumers` narrows the remaining legal metric-value gap for the rounded
-`+0x2c` producer transform. It varies parser rounded inputs `0x0001`,
-`0x0003`, `0x0004`, `0x0005`, and `0x000f` while keeping the legal resource
-and inline forms fixed. `0x16fae` / `0x1719c` copy those words to `+0x2c =
-0x0000/0x0004/0x0004/0x0004/0x0010`; `0xd4ac` consumes the copied
-`+0x2c/+0x2d` bytes and keeps span digest
-`67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`, while
-`0xd8fc` consumes unchanged `+0x16/+0x18/+0x1a =
-0x0004/0x0013/0x0001`, keeps high-y `20`, queues object prefix
-`00 00 00 00 40 00 00 01 44 06 03 00 00 14`, and renders digest
-`f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
-Fixture `host-fetched row-0x80 downloaded character remains short compact`
-pins the downloaded-character row threshold immediately below segmented
-layout. Host fetch drains `ESC )s256W`; parser dispatch walks `0x11eb6`,
-`0x12008`, `0x11ff6`, and `0x11f96`; the restored record is
-`80 57 01 00 00 00`, payload offset is `7`, and payload length is `256`.
-`0x16498` installs glyph `0x2a` at table entry `0x00f2`, record delta
-`0x0800`, record `00 00 00 00 0c 01 00 80 00 10 00 00`, bitmap offset
-`0x080c`, rows `0x0080`, width `0x0010`, span `2`, and split-plane flag
-`false` after copying the bytes through `0x168dc`. `0x12f2e` keeps the glyph
-on short selector `0x0003` because the row test is `rows > 0x80`; `0x1ef6a`
-dispatches compact target `0x1effe`; mode-0 helper `0x1fe76` renders the
-bucket-1 band with digest
-`918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac`.
-Fixture `0x16498 replacement allocation failure partial and rejected
-downloaded character exits preserve state` adds the replacement,
-allocator-failure, non-success, and continuation sibling for the same object
-writer. The linear status-`2` branch copies four of six bytes through
-`0x168dc`, writes table entry `0x00f6 -> 0x0840`, keeps record
-`00 00 00 00 0c 01 00 03 00 10 00 00`, and saves continuation fields
-`0x7827c6 = 1`, payload `0`, glyph word `0x2b`, destination `0x0850`, and
-remaining count `2`. The split-plane status-`2` branch copies prefix
-`a0 a1` and trailing `b0` through `0x16942`, writes table entry
-`0x00fa -> 0x0880`, leaves bitmap layout `a0 a1 00 00 b0 00`, and saves
-prefix destination `0x088e`, trailing destination `0x0891`, D4 counter `1`,
-and D3 counter `0`. The replacement branch starts with table entry `0x0102`
-holding old record `00 00 02 00`; `0x1652a..0x1653e` calls `0x17a24`, which
-clears that old entry, clears the matching continuation, refreshes the active
-primary context, and then `0x16498` writes the new pointer `0x0900` plus
-bitmap `11 22 33 44 55 66`. The allocation-failure branch computes a one-unit
-object allocation, receives zero from `0x170c`, reports
-`0x9b5e(0x780e2e, 4)`, releases current payload `0x123456` through `0x1887a`,
-copies no bitmap bytes, and leaves table entry `0x0106` zero. The `0x1887a`
-release clears current-record canonical state, candidate slot `0x782328`,
-continuation fields, and context-stack dirty bytes before the failed install
-returns with no replacement object. The descriptor/object mode-byte-`0` shape
-reject returns status `0` with no table write after the `0x16336` parse, while
-the header-type range reject for character `0xa0` returns status `0` because
-`0x164f2..0x16540` accepts high character codes only when font-header byte
-`+0x0c >= 1`. Disassembly evidence is `0x16336..0x163b6` for descriptor
-parse/finalization, `0x164f2..0x16540` for range rejection,
-`0x1652a..0x1653e` for replacement release, `0x1656e..0x165d8` for allocation
-failure and current-payload release, `0x1658e..0x16602` for copy status and
-table-pointer storage, `0x17a24..0x17b54` for old-pointer release,
-`0x1887a..0x18c4e` for current-payload teardown, and `0x168dc` / `0x16942` for
-continuation state.
-Fixture `0x16498 no-install exits preserve following printable output` carries
-those no-install exits through the next visible byte. Host fetch drains each
-`ESC )s6W` payload plus printable `!` and trailing FF; the resource side restores
-`80 57 00 06 00 00`, dispatches delayed handler `0x16c14`, and returns reasons
-`allocation-failed`, `unsupported-record-shape`, or
-`char-outside-header-type`. The following `!` then routes through `0xd04a`,
-queues the baseline default-font compact object, and renders the same rows as
-the standalone baseline `!`. Trailing FF routes through `0xf0f0`, publishes
-that default-font bucket through `0xff1e`, clears the current page root, and
-renders the published page record through `0x1ed84`/`0x1ef6a` with the same
-rows. Canonical renderer state is therefore unchanged by those failed
-downloaded-character installs; the mutable state is parser scratch plus
-firmware cleanup/bookkeeping from `0x1887a` for the allocation failure case,
-and the published bucket/root is derived page-output state from the unchanged
-default-font printable path.
-Fixture `0x16498 status-2 partial installs remain printable` proves that copy
-status `2` takes the opposite visible contract. The linear `ESC )s4W` case
-stores table entry `0x00f6 -> 0x0840`, bitmap `f0 0f aa 55 00 00`, and
-continuation destination `0x0850` with remaining count `2`; the following `+`
-routes through `0xd04a`, resolves downloaded glyph `0x2b`, queues selector
-`0x0003`, and renders rows from the partial bitmap plus zero-filled missing
-bytes. The split-plane `ESC )s3W` case stores table `0x00fa -> 0x0880`,
-layout `a0 a1 00 00 b0 00`, and A4/A3 continuation destinations
-`0x088e`/`0x0891`; the following `,` resolves glyph `0x2c`, queues selector
-`0x0003`, and renders the first row from prefix `a0 a1` plus trailing `b0`.
-Canonical state includes the partially installed table pointer, object record,
-and bitmap bytes; the continuation fields are firmware bookkeeping needed to
-complete the same glyph later. The same fixture now carries both status-`2`
-objects through trailing-FF publication: `0xff1e` copies bucket `1`, the
-compact object root, empty rule/fixed lists, and context slots `(0,0,0,0)`
-into a published pool record, clears the current page root, and
-`0x1ed84`/`0x1ef6a` render the published rows from bucket word `1`. This
-classifies the published bucket root and bucket array as derived page-output
-state from the canonical partial downloaded glyph; the continuation fields
-remain firmware bookkeeping and are not consumed by the published record.
-Fixture `host-fetched segmented downloaded character renders through 0x1f1f0`
-connects the downloaded-character linear reader to the remaining segmented
-compact renderer shape. Host fetch drains `ESC )s258W`; parser dispatch walks
-`0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`; `0x16498` installs glyph
-`0x27` at table entry `0x00e6` with record delta `0x0580`, rows `0x0081`,
-width `0x0010`, bitmap offset `0x058c`, and `0x0102` bytes copied through
-`0x168dc`; `0x12f2e` queues selector `0x2003`; `0x1edc6` preserves the
-segment-1 object; and `0x1ef6a` reaches compact renderer `0x1f1f0`. The
-visible output is one segment-1 row from source offset `0x0100`, rendered at
-x `22` as `####........####`.
-Fixture `host-fetched split-plane segmented downloaded character renders
-through 0x1f1f0` adds the odd-span A2/A3 sibling. Host fetch drains
-`ESC )s387W`; `0x16498` installs glyph `0x28` at table entry `0x00ea`, record
-delta `0x0700`, rows `0x0081`, width `0x0018`, bitmap offset `0x070c`, and
-`0x0183` bytes copied through `0x16942`. `0x12f2e` still queues selector
-`0x2003`, but `0x1f1f0` validates A2 source offset `0x0100` and A3 trailing
-offset `0x0080` for segment `1`. The visible output is
-`####........#####.#.#.#.` at x `22`.
-Fixture `host-fetched even-span wide downloaded character renders through
-0x1f0d2` covers the wide selector without payload-control normalization:
-`0xa904` fetches `ESC )s18W`, parser dispatch reaches delayed handler
-`0x16c14` with restored record `80 57 00 12 00 00`, `0x16498` installs glyph
-`0x29` at table entry `0x00ee`, record delta `0x0780`, rows `1`, width
-`0x0090`, bitmap offset `0x078c`, and split-plane flag `false`, and
-`0x168dc` copies all 18 bytes with `control_hits = 0`. `0x12f2e` queues
-selector `0x1003` and bucket object
-`00 00 00 00 10 03 00 01 29 66 01` plus allocator padding; `0x1edc6`
-preserves it; and `0x1ef6a` reaches compact renderer `0x1f0d2`, where the
-linear source row uses one full 16-byte chunk plus a 2-byte remainder and
-renders at x `22`.
+The combined host-fetched stream `ESC *c4660d37e5F` plus `ESC )s2193W` payload plus `%`
+sets current id `0x1234`, sets current character `0x25`, installs a split-plane
+downloaded glyph object at record delta `0x0500`, queues printable `%` as segmented
+compact selector `0x3003`, and renders the downloaded row through target `0x1effe`.
+Fixture `combined font download FF publishes installed glyph page record` appends FF to
+that same byte stream, routes `%` and FF through handlers `0xd04a` and `0xf0f0`,
+publishes bucket array entries `9` and `1` through `0xff1e`, preserves empty rule/fixed
+lists and context prefix `0,0,0,0`, and preserves the published segmented objects.
+Fixture `published downloaded glyph segmented buckets render across bands` copies that
+published record through `0x1ed84`, walks modeled band words `1` and `9` through
+`0x1ef6a`, dispatches both compact objects to `0x1effe`, leaves the bucket-1 segment-0
+band blank for this payload, and reproduces the same row from bucket `9`. Fixture
+`0x1eba4 scheduler band words render published downloaded glyph` starts from the
+`0xff1e`/`0x1ed84` seed where source `+0x18` has been cleared and render work
+`+0x10/+0x16` are zero, lets the scheduler loop produce `0x1ef6a` calls for band words
+`0..9`, and reaches the same bucket-9 visible row while only published buckets `1` and
+`9` dispatch compact objects. Fixture `host-fetched even-span downloaded glyph FF
+publishes rendered page record` adds the non-segmented wide publication sibling:
+host-fetched `ESC )s18W` plus printable `)` and FF restores record `80 57 00 12 00 00`,
+installs glyph `0x29` at table entry `0x00ee` / record delta `0x0780`, routes tail
+handlers `0xd04a` and `0xf0f0`, publishes bucket array entry `1`, copies empty
+rule/fixed lists and context prefix `0,0,0,0`, and renders the copied bucket-1 record
+through `0x1ed84`/`0x1ef6a` to compact target `0x1effe` / renderer `0x1f0d2` with the
+same 18-byte row. Fixture `downloaded normal row-0x80 and segmented glyph FF
+publications render page records` adds three more publication siblings in the same
+command family. The normal case drains host-fetched `ESC )s6W` plus printable `&` and
+FF, restores record `80 57 00 06 00 00`, routes tail handlers `0xd04a` and `0xf0f0`,
+publishes bucket `1` object `00 00 00 00 00 03 00 01 26 66 01`, clears the current root,
+copies empty rule/fixed lists and context prefix `0,0,0,0`, and renders bucket word `1`
+through `0x1ed84`/`0x1ef6a` to compact target `0x1effe` / renderer `0x1fe76`. The
+row-threshold case drains host-fetched `ESC )s256W` plus printable `*` and FF, restores
+record `80 57 01 00 00 00`, publishes bucket `1` object `00 00 00 00 00 03 00 01 2a 66
+01`, keeps selector `0x0003`, and renders bucket word `1` through the same compact
+target/helper with digest
+`918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac`. The non-boundary
+short case drains host-fetched `ESC )s32W` plus printable `+` and FF, restores record
+`80 57 00 20 00 00`, publishes bucket `1` object `00 00 00 00 00 03 00 01 2b 66 01`,
+keeps selector `0x0003`, and renders bucket word `1` through the same compact
+target/helper with digest
+`28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The rows-`0x20`
+short case drains host-fetched `ESC )s64W` plus printable `1` and FF, restores record
+`80 57 00 40 00 00`, installs record `00 00 00 00 0c 01 00 20 00 10 00 00`, publishes
+bucket `1`, keeps selector `0x0003`, and renders bucket word `1` through
+`0x1ed84`/`0x1ef6a` and compact target `0x1effe` / renderer `0x1fe76` with `38` visible
+rows. The rows-`0x40` short case drains host-fetched `ESC )s128W` plus printable `2` and
+FF, restores record `80 57 00 80 00 00`, installs record `00 00 00 00 0c 01 00 40 00 10
+00 00`, publishes bucket `1`, keeps selector `0x0003`, and renders bucket word `1`
+through `0x1ed84`/`0x1ef6a` and compact target `0x1effe` / renderer `0x1fe76` with `64`
+blank current-band rows. The segmented case drains host-fetched `ESC )s258W` plus
+printable `'` and FF, restores record `80 57 01 02 00 00`, publishes bucket `9` object
+`00 00 00 00 20 03 00 01 27 01 66 01` plus the segment-0 bucket `1` entry, and renders
+bucket word `9` through compact target `0x1effe` / renderer `0x1f1f0` from segment-1
+source offset `0x0100`. Fixture `host-fetched rows-0x82 segmented downloaded glyph FF
+publication renders page record` adds an interior segmented row count in the same
+selector family. The host-fetched `ESC )s260W` plus printable `0` and FF restores record
+`80 57 01 04 00 00`, installs record `00 00 00 00 0c 01 00 82 00 10 00 00`, publishes
+bucket-array entries `1` and `9`, renders bucket word `9`, and emits two segment-1 rows
+through `0x1ed84`/`0x1ef6a` and compact target `0x1effe` / renderer `0x1f1f0`. Fixture
+`downloaded glyph row-count matrix publishes and renders additional short/segmented
+counts` adds four more row-count siblings through the same fetched install, printable,
+FF-publication, and render-entry chain. Rows `0x0004` and `0x007f` are canonical
+installed record fields that derive selector `0x0003`, bucket `1`, object byte `0x00`,
+and compact target `0x1effe`; rows `0x0083` and `0x00ff` derive selector `0x2003`,
+buckets `1` and `9`, object byte `0x20`, and compact target `0x1effe` for render bucket
+word `9`. Parser scratch is limited to the fetched `ESC )s#W` restored record and
+payload byte count; derived/cache state is the `0xff1e` bucket array plus
+`0x1ed84`/`0x1ef6a` dispatch. Published row counts for the four cases are `10`, `64`,
+`9`, and `16`. Fixture `host-fetched rows-0x102 downloaded glyph FF publication
+truncates page-record rows` adds the first nonzero-high-byte downloaded row count in
+this family. The host-fetched `ESC )s516W` plus printable `3` and FF restores record `80
+57 02 04 00 00`, installs record `00 00 00 00 0c 01 01 02 00 10 00 00`, and copies
+`0x0204` linear bytes into glyph `0x33`. The installed glyph table entry is canonical
+downloaded-glyph state, but the printable source record is parser/page scratch with only
+row byte `0x02`; `0x12f2e` therefore writes selector `0x0003` object `00 00 00 00 00 03
+00 01 33 66 01`, publishes only bucket `1` through `0xff1e`, and leaves bucket words `9`
+and `17` absent. This fixture does not claim rendered pixels: `0x1ef86` computes
+`0x783a20 = 0x0040` and `0x783a28 = 0x00100800`, `0x1f414` splits coord `0x6601` and
+rows `0x0102` into `58` current-band rows plus `200` fallback rows, and span-2 row-copy
+helper `0x1fe76` has valid table entries only through index `128`; fallback index `200`
+reads target `0x329ad3c0`. Fixture `split-plane segmented downloaded glyph FF
+publication renders page record` adds the odd-span sibling: host-fetched `ESC )s387W`
+plus printable `(` and FF restores record `80 57 01 83 00 00`, publishes bucket `9`
+object `00 00 00 00 20 03 00 01 28 01 66 01` plus the segment-0 bucket `1` entry `00 00
+00 00 20 03 00 01 28 00 66 01`, clears the current root, copies empty rule/fixed lists
+and context prefix `0,0,0,0`, and renders bucket word `9` through `0x1ed84`/`0x1ef6a` to
+compact target `0x1effe` / renderer `0x1f1f0` with A2 source offset `0x0100` and A3
+trailing offset `0x0080`. Fixture `host-fetched linear downloaded character stream
+renders through 0x168dc` drives `ESC )s6W` through the same parser-delayed `0x16c14`
+boundary, installs glyph `0x26` at table entry `0x00e2` with even span `2`, copies
+bitmap bytes through the linear `0x168dc` reader, queues normal compact selector
+`0x0003`, preserves the object through `0x1edc6`, and renders three mode-0 rows through
+`0x1ed84` / `0x1ef6a`. Fixture `host-fetched 0x15d0a current-record resource object
+feeds fixed-record render` also proves a host-fetched `ESC )s0W` descriptor can route
+bit-30-clear current-record payload `0x000100` through `0x16606`, install fixed-record
+glyph `0x21` at payload table entry `+0x48`, queue selector `0x0003`, preserve context
+slot `3` through `0x1edc6`, and render three mode-0 rows. Fixture `host-fetched 0x15d0a
+continuation resource object resumes fixed-record render` proves the sibling status-`2`
+descriptor route through `0x15c4c`: a partial `0x16606` copy saves payload `0x000100`,
+glyph/table index `0x21`, destination `0x000302`, and remaining count `4`; `0x15c4c`
+copies bytes `f0 0f c3 3c`, clears the continuation fields, and renders the same fixed
+record and rows. Fixture `host-fetched 0x15d0a split-plane continuation resource object
+resumes fixed-record render` proves the odd-width sibling: a partial `0x16606` copy of
+record `03 02 04 00 00 00 02 00` saves payload `0x000100`, glyph/table index `0x21`,
+prefix destination `0x000303`, trailing destination `0x000305`, and D4/D3 counters
+`0/0`; `0x15c4c` copies bytes `c1 d0`, clears continuation state, leaves bitmap layout
+`a0 a1 c0 c1 b0 d0`, queues object prefix `00 00 00 00 00 03 00 01 01 76 01`, and
+renders rows reconstructed from `a0 a1 b0` and `c0 c1 d0`. Fixture `0x15c4c failed
+resource resume releases fixed-record object` proves the status-`0` sibling: a partial
+`0x16606` copy saves the same payload and glyph/table index, a short resume copies only
+bytes `f0 0f`, then `0x15c4c` calls `0x17d7c`. The release helper rewrites payload
+`+0x48` from `02 03 04 00 00 00 02 00` to `01 02 00 fa 00 00 00 00`, writes side-table
+bytes `fa 00` at payload `+0x340`, records active-primary refresh `0x7828de = 0`, and
+clears the matching continuation fields. Fixture `0x17d7c releases extended fixed-record
+table with secondary refresh` proves the direct extended fixed-record form: payload byte
+`+0x0e = 1` admits char `0xa1`, the helper indexes table entry `payload + 0x40 + (0xa1 -
+0x40) * 8`, rewrites it from `04 05 06 07 00 00 04 00` to `01 02 00 2c 00 00 03 00`,
+writes side-table bytes `2c 00` at payload `+0x702`, records active-secondary refresh
+`0x7828de = 1`, and clears the matching continuation fields. Fixture `0x17d7c delegates
+bit-30 release to offset-table helper` proves the bit-30 sibling: `0x17d7c` dispatches
+to `0x17a24`, which validates range words `+0x0e/+0x10 = 0x0020/0x007f`, uses table
+offset word `+0x08 = 0x004a`, clears char `0x21` table entry `00 00 02 40` to zero at
+payload `+0x004a + 4 * 0x21`, records active-secondary refresh `0x7828de = 1`, and
+clears the matching continuation fields. Fixture `0x16c14 allocation failure releases
+existing payload through 0x1887a` has no direct pixel output because it is a failed
+replacement path. Its output contract is state cleanup: old current-record payload
+`0x123456` is cleared, candidate slot `0x782328` is deleted, extended fixed-record
+cleanup runs through `0x18bf2`/`0x18090` for characters `0x21..0x7f` and `0xa0..0xff`,
+continuation state is zeroed, context stack bytes `+8` and `+9` are marked for matching
+primary/secondary entries, secondary active context refreshes through `0x179aa(1)`, and
+no new candidate or payload is installed. Fixture `0x16fae validation table semantic map
+covers staged and pass-through entries` names all 32 validation-table entries by ROM
+effect. Fixture `0x16fae table-driven validation predicates populate staged header
+fields` then proves the success path plus two predicate failures: invalid resource type
+fails entry `2` after four bytes with no symbols copied, and a reversed range fails
+entry `6` after words `+0x16 = 10` and `+0x14 = 5`, leaving derived count word `+0x18 =
+0`. Fixture `ESC )s80W invalid resource type fails validation before allocation`
+connects that entry-2 failure to the host-facing parser boundary: `0xa904` fetches the
+stream from the ring source, parser dispatch walks `0x11eb6`, `0x12008`, `0x11ff6`, and
+`0x11f96`, delayed restore reaches record `80 57 00 50 00 00`, `0x16fae` fails after
+descriptor bytes `00 01 02 03`, and `0x17026`/`0x16c14` skip allocation and install. The
+output effect is no downloaded-font candidate or current-record mutation. Fixture `ESC
+)s80W reversed resource range fails validation before allocation` connects the entry-6
+range/count failure to the same host-facing parser boundary. `0xa904` fetches `1b 29 73
+38 30 57 00 01 00 00 00 00 00 0a 00 06 00 05...` from the ring source, parser dispatch
+again walks `0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`, delayed restore reaches
+record `80 57 00 50 00 00`, `0x16fae` fails after twelve descriptor bytes with staged
+words `+0x16 = 10`, `+0x14 = 5`, and `+0x18 = 0`, and `0x17026`/`0x16c14` skip
+allocation and install. The output effect is no downloaded-font candidate or
+current-record mutation. Fixture `host-fetched metric variant changes d4ac gate and d8fc
+rows` starts from host-fetched `ESC )s80W`, changes descriptor bytes copied by `0x1719c`
+into payload word `+0x2c = 0x0010` and word `+0x1a = 0x0002`, proves the default `+0x2d
+= 0x20` path fails a tight `0xd4ac` extent check while the variant queues a span, and
+renders the `0xd8fc` span at shifted key `0x3406`. Fixture `host-fetched clamped metric
+variant changes d4ac gate and d8fc rows` adds the rounded-metric clamp sibling:
+descriptor range/count `+0x14 = 5` caps an oversized rounded input so `0x1719c` copies
+`+0x2c = 0x0014`, leaves `+0x2b = 0`, flips a tight `0xd4ac` extent gate with `+0x2d =
+0x14`, and renders the `0xd8fc` span at shifted key `0x2406` from copied words `+0x18 =
+0` and `+0x1a = 3`. Fixture `host-fetched lower-bound metric variant suppresses d4ac and
+d8fc spans` adds the lower-bound sibling: host-fetched descriptor bytes write canonical
+lower fields `+0x16 = 0x0018` and `+0x2c = 0x1800`, range/count `+0x14 = 0x0600`, and
+derived/cache count `+0x18 = 0x05e7`. `0xd4ac` reads byte `+0x2c = 0x18`; `0xd8fc` reads
+word `+0x16 = 0x0018`; both return `before-context-lower` at cursor y `21`, and the
+fixture renders only the compact glyph objects from the page-record buckets. Fixture
+`host-fetched upper-bound metric variant keeps d4ac span but suppresses d8fc` adds the
+asymmetric upper-bound sibling: host-fetched descriptor bytes write range/count `+0x14 =
+0x0040`, derive/cache `+0x18 = 0x003b`, and keep rounded word `+0x2c = 0x0020`. `0xd4ac`
+reads bytes `+0x2c/+0x2d = 0/0x20` and still queues the default segment-list span;
+`0xd8fc` reads word `+0x18 = 0x003b`, exits `beyond-page-extent` at cursor y `21`, and
+leaves only the compact glyph object. Fixture `legal descriptor metric value matrix
+drives d4ac and d8fc consumers` composes the legal metric cases into one state-block
+matrix. It records parser input words, copied payload words, both consumer outcomes,
+queued page objects, and row digests for small-rounded, clamped-rounded,
+midpoint-rounded, zero-rounded-offset, negative-offset, lower-bound, and upper-bound
+descriptors. The zero-rounded-offset row records parser range/count `0x0018`, rounded
+input `0x0000`, and offset byte `0`; canonical fields `+0x14/+0x16 = 0x0018/0x0004`,
+derived/cache field `+0x18 = 0x0013`, and consumer fields `+0x1a/+0x2c = 0x0000/0x0000`
+survive the `0x16fae` / `0x1719c` copy. `0xd4ac` emits the same visible span digest
+`67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`, while `0xd8fc`
+publishes high-y `21` and row digest
+`47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8`. The midpoint row
+records descriptor range/count `0x0018`, rounded input `0x0018`, and signed offset byte
+`7`; `0xd8fc` updates high-y to `14` but leaves only compact glyph digest
+`1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a`. The negative-offset
+row records descriptor range/count `0x0018`, rounded input `0x0008`, and signed offset
+byte `0xfe`; canonical fields `+0x14/+0x16 = 0x0018/0x0004`, derived/cache field `+0x18
+= 0x0013`, and consumer fields `+0x1a/+0x2c = 0xfffe/0x0008` survive the `0x16fae` /
+`0x1719c` copy. `0xd4ac` keeps the default visible span digest, while `0xd8fc` consumes
+`+0x1a` as word `65534`, computes high-y `-65513`, queues span object prefix `00 00 00
+00 40 00 00 01 04 06 03 00 00 14`, and renders digest
+`72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`. Fixture `legal
+descriptor metric low-nibble rounding drives d4ac and d8fc consumers` narrows the
+remaining legal metric-value gap for the rounded `+0x2c` producer transform. It varies
+parser rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f` while keeping
+the legal resource and inline forms fixed. `0x16fae` / `0x1719c` copy those words to
+`+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`; `0xd4ac` consumes the copied `+0x2c/+0x2d`
+bytes and keeps span digest
+`67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`, while `0xd8fc`
+consumes unchanged `+0x16/+0x18/+0x1a = 0x0004/0x0013/0x0001`, keeps high-y `20`, queues
+object prefix `00 00 00 00 40 00 00 01 44 06 03 00 00 14`, and renders digest
+`f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`. Fixture
+`host-fetched row-0x80 downloaded character remains short compact` pins the
+downloaded-character row threshold immediately below segmented layout. Host fetch drains
+`ESC )s256W`; parser dispatch walks `0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`; the
+restored record is `80 57 01 00 00 00`, payload offset is `7`, and payload length is
+`256`. `0x16498` installs glyph `0x2a` at table entry `0x00f2`, record delta `0x0800`,
+record `00 00 00 00 0c 01 00 80 00 10 00 00`, bitmap offset `0x080c`, rows `0x0080`,
+width `0x0010`, span `2`, and split-plane flag `false` after copying the bytes through
+`0x168dc`. `0x12f2e` keeps the glyph on short selector `0x0003` because the row test is
+`rows > 0x80`; `0x1ef6a` dispatches compact target `0x1effe`; mode-0 helper `0x1fe76`
+renders the bucket-1 band with digest
+`918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac`. Fixture `0x16498
+replacement allocation failure partial and rejected downloaded character exits preserve
+state` adds the replacement, allocator-failure, non-success, and continuation sibling
+for the same object writer. The linear status-`2` branch copies four of six bytes
+through `0x168dc`, writes table entry `0x00f6 -> 0x0840`, keeps record `00 00 00 00 0c
+01 00 03 00 10 00 00`, and saves continuation fields `0x7827c6 = 1`, payload `0`, glyph
+word `0x2b`, destination `0x0850`, and remaining count `2`. The split-plane status-`2`
+branch copies prefix `a0 a1` and trailing `b0` through `0x16942`, writes table entry
+`0x00fa -> 0x0880`, leaves bitmap layout `a0 a1 00 00 b0 00`, and saves prefix
+destination `0x088e`, trailing destination `0x0891`, D4 counter `1`, and D3 counter `0`.
+The replacement branch starts with table entry `0x0102` holding old record `00 00 02
+00`; `0x1652a..0x1653e` calls `0x17a24`, which clears that old entry, clears the
+matching continuation, refreshes the active primary context, and then `0x16498` writes
+the new pointer `0x0900` plus bitmap `11 22 33 44 55 66`. The allocation-failure branch
+computes a one-unit object allocation, receives zero from `0x170c`, reports
+`0x9b5e(0x780e2e, 4)`, releases current payload `0x123456` through `0x1887a`, copies no
+bitmap bytes, and leaves table entry `0x0106` zero. The `0x1887a` release clears
+current-record canonical state, candidate slot `0x782328`, continuation fields, and
+context-stack dirty bytes before the failed install returns with no replacement object.
+The descriptor/object mode-byte-`0` shape reject returns status `0` with no table write
+after the `0x16336` parse, while the header-type range reject for character `0xa0`
+returns status `0` because `0x164f2..0x16540` accepts high character codes only when
+font-header byte `+0x0c >= 1`. Disassembly evidence is `0x16336..0x163b6` for descriptor
+parse/finalization, `0x164f2..0x16540` for range rejection, `0x1652a..0x1653e` for
+replacement release, `0x1656e..0x165d8` for allocation failure and current-payload
+release, `0x1658e..0x16602` for copy status and table-pointer storage,
+`0x17a24..0x17b54` for old-pointer release, `0x1887a..0x18c4e` for current-payload
+teardown, and `0x168dc` / `0x16942` for continuation state. Fixture `0x16498 no-install
+exits preserve following printable output` carries those no-install exits through the
+next visible byte. Host fetch drains each `ESC )s6W` payload plus printable `!` and
+trailing FF; the resource side restores `80 57 00 06 00 00`, dispatches delayed handler
+`0x16c14`, and returns reasons `allocation-failed`, `unsupported-record-shape`, or
+`char-outside-header-type`. The following `!` then routes through `0xd04a`, queues the
+baseline default-font compact object, and renders the same rows as the standalone
+baseline `!`. Trailing FF routes through `0xf0f0`, publishes that default-font bucket
+through `0xff1e`, clears the current page root, and renders the published page record
+through `0x1ed84`/`0x1ef6a` with the same rows. Canonical renderer state is therefore
+unchanged by those failed downloaded-character installs; the mutable state is parser
+scratch plus firmware cleanup/bookkeeping from `0x1887a` for the allocation failure
+case, and the published bucket/root is derived page-output state from the unchanged
+default-font printable path. Fixture `0x16498 status-2 partial installs remain
+printable` proves that copy status `2` takes the opposite visible contract. The linear
+`ESC )s4W` case stores table entry `0x00f6 -> 0x0840`, bitmap `f0 0f aa 55 00 00`, and
+continuation destination `0x0850` with remaining count `2`; the following `+` routes
+through `0xd04a`, resolves downloaded glyph `0x2b`, queues selector `0x0003`, and
+renders rows from the partial bitmap plus zero-filled missing bytes. The split-plane
+`ESC )s3W` case stores table `0x00fa -> 0x0880`, layout `a0 a1 00 00 b0 00`, and A4/A3
+continuation destinations `0x088e`/`0x0891`; the following `,` resolves glyph `0x2c`,
+queues selector `0x0003`, and renders the first row from prefix `a0 a1` plus trailing
+`b0`. Canonical state includes the partially installed table pointer, object record, and
+bitmap bytes; the continuation fields are firmware bookkeeping needed to complete the
+same glyph later. The same fixture now carries both status-`2` objects through
+trailing-FF publication: `0xff1e` copies bucket `1`, the compact object root, empty
+rule/fixed lists, and context slots `(0,0,0,0)` into a published pool record, clears the
+current page root, and `0x1ed84`/`0x1ef6a` render the published rows from bucket word
+`1`. This classifies the published bucket root and bucket array as derived page-output
+state from the canonical partial downloaded glyph; the continuation fields remain
+firmware bookkeeping and are not consumed by the published record. Fixture `host-fetched
+segmented downloaded character renders through 0x1f1f0` connects the
+downloaded-character linear reader to the remaining segmented compact renderer shape.
+Host fetch drains `ESC )s258W`; parser dispatch walks `0x11eb6`, `0x12008`, `0x11ff6`,
+and `0x11f96`; `0x16498` installs glyph `0x27` at table entry `0x00e6` with record delta
+`0x0580`, rows `0x0081`, width `0x0010`, bitmap offset `0x058c`, and `0x0102` bytes
+copied through `0x168dc`; `0x12f2e` queues selector `0x2003`; `0x1edc6` preserves the
+segment-1 object; and `0x1ef6a` reaches compact renderer `0x1f1f0`. The visible output
+is one segment-1 row from source offset `0x0100`, rendered at x `22` as
+`####........####`. Fixture `host-fetched split-plane segmented downloaded character
+renders through 0x1f1f0` adds the odd-span A2/A3 sibling. Host fetch drains `ESC
+)s387W`; `0x16498` installs glyph `0x28` at table entry `0x00ea`, record delta `0x0700`,
+rows `0x0081`, width `0x0018`, bitmap offset `0x070c`, and `0x0183` bytes copied through
+`0x16942`. `0x12f2e` still queues selector `0x2003`, but `0x1f1f0` validates A2 source
+offset `0x0100` and A3 trailing offset `0x0080` for segment `1`. The visible output is
+`####........#####.#.#.#.` at x `22`. Fixture `host-fetched even-span wide downloaded
+character renders through 0x1f0d2` covers the wide selector without payload-control
+normalization: `0xa904` fetches `ESC )s18W`, parser dispatch reaches delayed handler
+`0x16c14` with restored record `80 57 00 12 00 00`, `0x16498` installs glyph `0x29` at
+table entry `0x00ee`, record delta `0x0780`, rows `1`, width `0x0090`, bitmap offset
+`0x078c`, and split-plane flag `false`, and `0x168dc` copies all 18 bytes with
+`control_hits = 0`. `0x12f2e` queues selector `0x1003` and bucket object `00 00 00 00 10
+03 00 01 29 66 01` plus allocator padding; `0x1edc6` preserves it; and `0x1ef6a` reaches
+compact renderer `0x1f0d2`, where the linear source row uses one full 16-byte chunk plus
+a 2-byte remainder and renders at x `22`.
 
 ### Downloaded Resource Validation No-Install
 
@@ -3880,44 +3830,37 @@ fields and every legal metric combination have not been page-compared.
   the short-budget boundary, plus external HP manual naming for
   consumed-but-not-staged fields.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span wide,
-  row-threshold `0x80` short, linear normal, linear segmented, and
-  split-plane segmented downloaded-character paths are page-visible. Fixture
-  `host-fetched row-0x80 downloaded character remains short compact` closes
-  the exact `0x80`/`0x81` selector boundary for even-span copied glyphs:
-  `0x12f2e` leaves rows `0x80` on selector `0x0003`, while fixture
-  `host-fetched segmented downloaded character renders through 0x1f1f0` puts
-  rows `0x81` on selector `0x2003`. Fixture `0x16498 replacement allocation
-  failure partial and rejected downloaded character exits preserve state`
-  covers old-pointer release through `0x17a24`, object allocation failure
-  through `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear/split-plane
-  continuation pointer writes, and the descriptor mode-byte-`0` plus
-  high-character/header-type status-`0` rejects.
-  Remaining parser-produced comparisons are narrowed by fixture
-  `0x16498 no-install exits preserve following printable output`, which
-  proves those no-install exits leave the next printable on the baseline
-  default-font object and rows. Fixture
-  `0x16498 status-2 partial installs remain printable` proves the status-`2`
-  linear and split-plane partial-install visibility contract, and now carries
-  those two compact objects through trailing-FF `0xff1e` publication and
-  `0x1ed84`/`0x1ef6a` published-record rendering. Still-open comparisons are
-  bounded cross-products: additional non-boundary row counts inside the
-  already-covered segmented selector family beyond rows `0x81` and `0x82`,
-  additional interior short-family row counts beyond rows `0x03`, `0x10`,
-  `0x20`, `0x40`, and `0x80`, no identified ROM helper path for
-  accepted descriptor-record mode bytes beyond the covered `0x16b1a`
-  mode-byte-`1` even-span and mode-byte-`2` odd-span bitmap installs, and
-  broader publication combinations beyond the documented normal,
-  non-boundary short, rows-`0x20` short, rows-`0x40` short, row-`0x80`,
-  rows-`0x0102` low-byte-truncated table-limit boundary, linear-segmented,
-  rows-`0x82` segmented, split-plane segmented, segmented-wide, even-span
-  wide, payload-control wide, no-install, and status-`2` compact bucket
-  variants. The mode-byte-`0` and high-character
-  header-type status-`0` exits are already documented no-install boundaries:
-  fixture `0x16498 replacement allocation failure partial and rejected
-  downloaded character exits preserve state` proves no table/header write at
-  the object boundary, and fixture
-  `0x16498 no-install exits preserve following printable output` proves the
-  next printable and FF publication use the unchanged default-font page path.
+  row-threshold `0x80` short, linear normal, linear segmented, and split-plane segmented
+  downloaded-character paths are page-visible. Fixture `host-fetched row-0x80 downloaded
+  character remains short compact` closes the exact `0x80`/`0x81` selector boundary for
+  even-span copied glyphs: `0x12f2e` leaves rows `0x80` on selector `0x0003`, while
+  fixture `host-fetched segmented downloaded character renders through 0x1f1f0` puts
+  rows `0x81` on selector `0x2003`. Fixture `0x16498 replacement allocation failure
+  partial and rejected downloaded character exits preserve state` covers old-pointer
+  release through `0x17a24`, object allocation failure through
+  `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear/split-plane continuation pointer
+  writes, and the descriptor mode-byte-`0` plus high-character/header-type status-`0`
+  rejects. Remaining parser-produced comparisons are narrowed by fixture `0x16498
+  no-install exits preserve following printable output`, which proves those no-install
+  exits leave the next printable on the baseline default-font object and rows. Fixture
+  `0x16498 status-2 partial installs remain printable` proves the status-`2` linear and
+  split-plane partial-install visibility contract, and now carries those two compact
+  objects through trailing-FF `0xff1e` publication and `0x1ed84`/`0x1ef6a`
+  published-record rendering. Still-open comparisons are bounded cross-products: row
+  counts outside the covered short rows `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`,
+  and `0x80` and segmented rows `0x81`, `0x82`, `0x83`, and `0xff`, no identified ROM
+  helper path for accepted descriptor-record mode bytes beyond the covered `0x16b1a`
+  mode-byte-`1` even-span and mode-byte-`2` odd-span bitmap installs, and broader
+  publication combinations beyond the documented normal, non-boundary short, rows-`0x20`
+  short, rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
+  low-byte-truncated table-limit boundary, linear-segmented, rows-`0x82` segmented,
+  split-plane segmented, segmented-wide, even-span wide, payload-control wide,
+  no-install, and status-`2` compact bucket variants. The mode-byte-`0` and
+  high-character header-type status-`0` exits are already documented no-install
+  boundaries: fixture `0x16498 replacement allocation failure partial and rejected
+  downloaded character exits preserve state` proves no table/header write at the object
+  boundary, and fixture `0x16498 no-install exits preserve following printable output`
+  proves the next printable and FF publication use the unchanged default-font page path.
 - downloaded-glyph plus rule/raster producer schedule: fixture
   `parser-driven downloaded glyph rule raster stream composes through
   0x1ef6a` closes the page-stream boundary from parser-produced `0x10898` rule
@@ -3928,65 +3871,57 @@ fields and every legal metric combination have not been page-compared.
   the exact `bytearray(downloaded_wide_even_install["header"])` emitted by the
   host-fetched `0x16c14` / `0x16498` install fixture, but it is still supplied
   to the page-stream runner instead of captured from one live CPU memory run.
-- `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
-  segmented buckets; the normal, non-boundary short, row-threshold `0x80`,
-  rows-`0x20` short, rows-`0x40` short, linear-segmented, rows-`0x82`
-  segmented, split-plane segmented, even-span wide, payload-control odd-span
-  wide, and rows-`0x0102` low-byte-truncated short siblings now publish through
-  the same boundary. Fixture
-  `host-fetched nonboundary short downloaded glyph FF publication renders page record`
-  renders rows `0x10` on selector `0x0003` through `0x1ed84`/`0x1ef6a` and
-  compact target `0x1effe`/`0x1fe76`, preserving digest
-  `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`.
-  Fixture
+- `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both segmented
+  buckets; the normal, non-boundary short, row-threshold `0x80`, rows-`0x20` short,
+  rows-`0x40` short, linear-segmented, rows-`0x82` segmented, split-plane segmented,
+  even-span wide, payload-control odd-span wide, and rows-`0x0102` low-byte-truncated
+  short siblings now publish through the same boundary. Fixture `host-fetched
+  nonboundary short downloaded glyph FF publication renders page record` renders rows
+  `0x10` on selector `0x0003` through `0x1ed84`/`0x1ef6a` and compact target
+  `0x1effe`/`0x1fe76`, preserving digest
+  `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. Fixture
   `downloaded normal row-0x80 and segmented glyph FF publications render page records`
-  renders the normal bucket-1 record through `0x1ed84`/`0x1ef6a` and compact
-  target `0x1effe`/`0x1fe76`, renders the row-`0x80` bucket-1 record through
-  the same target/helper while preserving selector `0x0003`, and renders the
-  linear-segmented bucket-9 record through `0x1ed84`/`0x1ef6a` and compact
-  target `0x1effe`/`0x1f1f0`. Fixture
-  `split-plane segmented downloaded glyph FF publication renders page record`
-  publishes the odd-span bucket-9 root
-  `00 00 00 00 20 03 00 01 28 01 66 01`, preserves bucket-array entries `1`
-  and `9`, and renders through `0x1ed84`/`0x1ef6a` and compact target
-  `0x1effe`/`0x1f1f0`. Fixture
-  `host-fetched rows-0x82 segmented downloaded glyph FF publication renders page record`
-  publishes bucket-array entries `1` and `9` for `ESC )s260W`, preserves
-  record `00 00 00 00 0c 01 00 82 00 10 00 00`, renders bucket word `9`,
-  and emits two segment-1 rows through compact target `0x1effe`/`0x1f1f0`.
-  Fixture
-  `host-fetched rows-0x102 downloaded glyph FF publication truncates page-record rows`
-  publishes bucket-array entry `1` for `ESC )s516W`, preserves installed
-  record `00 00 00 00 0c 01 01 02 00 10 00 00`, but shows the printable source
-  row byte as `0x02`, so `0x12f2e` writes selector `0x0003` object
-  `00 00 00 00 00 03 00 01 33 66 01`; `0x1f414` then splits rows `0x0102`
-  into `58` current rows and `200` fallback rows, exceeding the `0x1fe76`
-  row-copy table's valid maximum index `128` at fallback target `0x329ad3c0`.
-  Fixture
-  `host-fetched rows-0x20 short downloaded glyph FF publication renders page record`
-  publishes bucket-array entry `1` for `ESC )s64W`, preserves record
-  `00 00 00 00 0c 01 00 20 00 10 00 00`, renders bucket word `1`, and emits
-  `38` visible rows through compact target `0x1effe`/`0x1fe76`. Fixture
+  renders the normal bucket-1 record through `0x1ed84`/`0x1ef6a` and compact target
+  `0x1effe`/`0x1fe76`, renders the row-`0x80` bucket-1 record through the same
+  target/helper while preserving selector `0x0003`, and renders the linear-segmented
+  bucket-9 record through `0x1ed84`/`0x1ef6a` and compact target `0x1effe`/`0x1f1f0`.
+  Fixture `split-plane segmented downloaded glyph FF publication renders page record`
+  publishes the odd-span bucket-9 root `00 00 00 00 20 03 00 01 28 01 66 01`, preserves
+  bucket-array entries `1` and `9`, and renders through `0x1ed84`/`0x1ef6a` and compact
+  target `0x1effe`/`0x1f1f0`. Fixture `host-fetched rows-0x82 segmented downloaded glyph
+  FF publication renders page record` publishes bucket-array entries `1` and `9` for
+  `ESC )s260W`, preserves record `00 00 00 00 0c 01 00 82 00 10 00 00`, renders bucket
+  word `9`, and emits two segment-1 rows through compact target `0x1effe`/`0x1f1f0`.
+  Fixture `host-fetched rows-0x102 downloaded glyph FF publication truncates page-record
+  rows` publishes bucket-array entry `1` for `ESC )s516W`, preserves installed record
+  `00 00 00 00 0c 01 01 02 00 10 00 00`, but shows the printable source row byte as
+  `0x02`, so `0x12f2e` writes selector `0x0003` object `00 00 00 00 00 03 00 01 33 66
+  01`; `0x1f414` then splits rows `0x0102` into `58` current rows and `200` fallback
+  rows, exceeding the `0x1fe76` row-copy table's valid maximum index `128` at fallback
+  target `0x329ad3c0`. Fixture `host-fetched rows-0x20 short downloaded glyph FF
+  publication renders page record` publishes bucket-array entry `1` for `ESC )s64W`,
+  preserves record `00 00 00 00 0c 01 00 20 00 10 00 00`, renders bucket word `1`, and
+  emits `38` visible rows through compact target `0x1effe`/`0x1fe76`. Fixture
   `host-fetched rows-0x40 short downloaded glyph FF publication renders page record`
-  publishes bucket-array entry `1` for `ESC )s128W`, preserves record
-  `00 00 00 00 0c 01 00 40 00 10 00 00`, renders bucket word `1`, and emits
-  `64` current-band rows through compact target `0x1effe`/`0x1fe76`. Fixture
-  `host-fetched even-span downloaded glyph FF publishes rendered page record`
-  renders the copied bucket-1 record through `0x1ed84`/`0x1ef6a` and compact
-  target `0x1effe`/`0x1f0d2`. Fixture
-  `host-fetched payload-control downloaded glyph FF publishes page record`
-  renders the odd-span wide/payload-control sibling through the same boundary:
-  `0x168dc` normalizes one `1a 58` escape, `0x16498` installs table entry
-  `0x00e2` with mode-byte-`2` record
-  `00 00 00 00 0c 02 00 01 00 88 00 00`, printable `&` queues selector
-  `0x1003`, trailing FF publishes bucket `1`, and `0x1ed84`/`0x1ef6a`
-  dispatches compact target `0x1effe`/`0x1f0d2`. Fixture
-  `published downloaded glyph segmented buckets render across bands` renders
-  published bucket words `1` and `9` from the copied record. Fixture
-  `0x1eba4 scheduler band words render published downloaded glyph` proves
-  `0xff1e`/`0x1ed84` seed render work `+0x10/+0x16` from cleared source
-  `+0x18 = 0`, then `0x1eba4` advances through band words `0..9` until the
-  published bucket-9 row is visible. The earlier first-band seed edge is now
+  publishes bucket-array entry `1` for `ESC )s128W`, preserves record `00 00 00 00 0c 01
+  00 40 00 10 00 00`, renders bucket word `1`, and emits `64` current-band rows through
+  compact target `0x1effe`/`0x1fe76`. Fixture `downloaded glyph row-count matrix
+  publishes and renders additional short/segmented counts` adds rows `0x04`, `0x7f`,
+  `0x83`, and `0xff` through the same printable+FF, `0xff1e`, and `0x1ed84`/`0x1ef6a`
+  boundary, with selectors `0x0003`, `0x0003`, `0x2003`, and `0x2003`. Fixture
+  `host-fetched even-span downloaded glyph FF publishes rendered page record` renders
+  the copied bucket-1 record through `0x1ed84`/`0x1ef6a` and compact target
+  `0x1effe`/`0x1f0d2`. Fixture `host-fetched payload-control downloaded glyph FF
+  publishes page record` renders the odd-span wide/payload-control sibling through the
+  same boundary: `0x168dc` normalizes one `1a 58` escape, `0x16498` installs table entry
+  `0x00e2` with mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`, printable
+  `&` queues selector `0x1003`, trailing FF publishes bucket `1`, and
+  `0x1ed84`/`0x1ef6a` dispatches compact target `0x1effe`/`0x1f0d2`. Fixture `published
+  downloaded glyph segmented buckets render across bands` renders published bucket words
+  `1` and `9` from the copied record. Fixture `0x1eba4 scheduler band words render
+  published downloaded glyph` proves `0xff1e`/`0x1ed84` seed render work `+0x10/+0x16`
+  from cleared source `+0x18 = 0`, then `0x1eba4` advances through band words `0..9`
+  until the published bucket-9 row is visible. The earlier first-band seed edge is now
   closed for this published record.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.

@@ -452,9 +452,11 @@ The next work should follow dataflow, not isolated handlers:
    segmented-wide, normal, nonboundary-short, rows-`0x20` short, rows-`0x40` short,
    linear-segmented, rows-`0x82` segmented, split-plane segmented, row-threshold `0x80`
    short, rows-`0x0102` low-byte-truncated short publication, even-span wide, and
-   payload-control wide selector families, especially additional row counts, descriptor
-   grammar forms outside the covered `0x16b1a` mode-byte-`1`/`2` bitmap installs, and
-   non-success exits. The nonboundary-short fixture now publishes rows `0x10` on
+   payload-control wide selector families, especially row counts outside the covered
+   short rows `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`, and `0x80` and segmented
+   rows `0x81`, `0x82`, `0x83`, and `0xff`, descriptor grammar forms outside the
+   covered `0x16b1a` mode-byte-`1`/`2` bitmap installs, and non-success exits. The
+   nonboundary-short fixture now publishes rows `0x10` on
    selector `0x0003` through FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` with digest
    `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The rows-`0x20`
    short fixture now carries `ESC )s64W` plus printable `1` and FF through `0xff1e`,
@@ -470,7 +472,11 @@ The next work should follow dataflow, not isolated handlers:
    bucket word `9` through `0x1ed84`/`0x1ef6a`. The rows-`0x82` segmented fixture now
    carries `ESC )s260W` plus printable `0` and FF through `0xff1e`, preserves buckets
    `1` and `9`, and renders bucket word `9` through `0x1ed84`/`0x1ef6a` to two `0x1f1f0`
-   segment-1 rows. The `0x16498` replacement/allocation-failure/partial/reject fixture
+   segment-1 rows. The downloaded-glyph row-count matrix now adds short rows `0x04`
+   and `0x7f` on selector `0x0003`/bucket `1`, plus segmented rows `0x83` and `0xff`
+   on selector `0x2003`/buckets `1` and `9`, all through printable+FF, `0xff1e`, and
+   `0x1ed84`/`0x1ef6a`; published row counts are `10`, `64`, `9`, and `16`. The
+   `0x16498` replacement/allocation-failure/partial/reject fixture
    now has a rows-`0x0102` sibling: `ESC )s516W` installs record `00 00 00 00 0c 01 01
    02 00 10 00 00`, but the printable page source exposes row byte `0x02`, so `0x12f2e`
    queues selector `0x0003` and publishes only bucket `1`; `0x1f414` then splits rows
@@ -488,8 +494,9 @@ The next work should follow dataflow, not isolated handlers:
    zero-filled missing bytes, then publishes both bucket-1 compact objects through
    trailing FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` with the same rows. Remaining
    downloaded-character publication risk is broader publication combinations beyond
-   these payload-control, rows-`0x20` short, rows-`0x40` short, rows-`0x82` segmented,
-   no-install, and status-`2` compact bucket variants, not the documented mode-byte-`0`
+   these payload-control, row-count-matrix, rows-`0x20` short, rows-`0x40` short,
+   rows-`0x82` segmented, no-install, and status-`2` compact bucket variants, not the
+   documented mode-byte-`0`
    visible recovery boundary. The publication-command checkpoint now covers host-fetched
    reset, FF, page-size, orientation, paper-source, and copies streams through parser
    dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset,

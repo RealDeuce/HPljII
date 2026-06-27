@@ -397,10 +397,11 @@ The next work should follow dataflow, not isolated handlers:
    segmented-wide, normal, linear-segmented, row-threshold `0x80` short, and
    even-span wide selector families, especially other row counts, character
    modes, and non-success exits. The row-threshold fixture closes the
-   pre-publication `0x80`/`0x81` selector boundary by keeping rows `0x80` on
-   selector `0x0003` and comparing it with the rows-`0x81` selector `0x2003`
-   fixture. The publication-command checkpoint now covers host-fetched reset,
-   FF, page-size, orientation, paper-source, and copies streams through parser
-   dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row
-   comparison; reset, FF, page-size, orientation, paper-source, and copies also
-   have addressed allocation variants.
+   `0x80`/`0x81` selector boundary by keeping rows `0x80` on selector
+   `0x0003`, comparing it with the rows-`0x81` selector `0x2003` fixture, and
+   now publishing the row-`0x80` bucket-1 record through FF, `0xff1e`, and
+   `0x1ed84`/`0x1ef6a`. The publication-command checkpoint now covers
+   host-fetched reset, FF, page-size, orientation, paper-source, and copies
+   streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`,
+   and final row comparison; reset, FF, page-size, orientation, paper-source,
+   and copies also have addressed allocation variants.

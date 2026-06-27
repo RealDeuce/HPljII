@@ -52279,12 +52279,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     }))
 
     downloaded_linear_publication_stream = downloaded_linear_command_stream + b"&\x0c"
+    downloaded_row80_publication_stream = downloaded_row80_command_stream + b"*\x0c"
     downloaded_segmented_even_publication_stream = (
         downloaded_segmented_even_command_stream + b"'\x0c"
     )
     downloaded_linear_publication_fetch = fetch_stream_via_a904(
         host_byte_fetch_state(ring=list(downloaded_linear_publication_stream), direct_mode=0),
         len(downloaded_linear_publication_stream),
+    )
+    downloaded_row80_publication_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(downloaded_row80_publication_stream), direct_mode=0),
+        len(downloaded_row80_publication_stream),
     )
     downloaded_segmented_even_publication_fetch = fetch_stream_via_a904(
         host_byte_fetch_state(
@@ -52296,6 +52301,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     downloaded_linear_publication_tail = downloaded_linear_publication_fetch["stream"][
         len(downloaded_linear_command_stream):
     ]
+    downloaded_row80_publication_tail = downloaded_row80_publication_fetch["stream"][
+        len(downloaded_row80_command_stream):
+    ]
     downloaded_segmented_even_publication_tail = (
         downloaded_segmented_even_publication_fetch["stream"][
             len(downloaded_segmented_even_command_stream):
@@ -52304,6 +52312,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     downloaded_linear_publication_tail_trace = trace_mixed_text_control_parser_path_via_11774(
         data,
         downloaded_linear_publication_tail,
+    )
+    downloaded_row80_publication_tail_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        downloaded_row80_publication_tail,
     )
     downloaded_segmented_even_publication_tail_trace = (
         trace_mixed_text_control_parser_path_via_11774(
@@ -52321,6 +52333,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             publication_bucket_index=int(downloaded_linear_page_result["bucket_index"]),
         ),
     )
+    downloaded_row80_publication = finalize_page_record_via_ff1e(
+        downloaded_row80_page_record,
+        reset_fixture_state(
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            page_root_clears=0,
+            publication_bucket_index=int(downloaded_row80_page_result["bucket_index"]),
+        ),
+    )
     downloaded_segmented_even_publication = finalize_page_record_via_ff1e(
         downloaded_segmented_even_page_record,
         reset_fixture_state(
@@ -52334,24 +52356,38 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     downloaded_linear_published_record = downloaded_linear_publication[
         "published_pool_record"
     ]
+    downloaded_row80_published_record = downloaded_row80_publication[
+        "published_pool_record"
+    ]
     downloaded_segmented_even_published_record = downloaded_segmented_even_publication[
         "published_pool_record"
     ]
     assert isinstance(downloaded_linear_published_record, dict)
+    assert isinstance(downloaded_row80_published_record, dict)
     assert isinstance(downloaded_segmented_even_published_record, dict)
     downloaded_linear_published_fields = downloaded_linear_published_record[
+        "pool_record_fields"
+    ]
+    downloaded_row80_published_fields = downloaded_row80_published_record[
         "pool_record_fields"
     ]
     downloaded_segmented_even_published_fields = (
         downloaded_segmented_even_published_record["pool_record_fields"]
     )
     assert isinstance(downloaded_linear_published_fields, dict)
+    assert isinstance(downloaded_row80_published_fields, dict)
     assert isinstance(downloaded_segmented_even_published_fields, dict)
     downloaded_linear_published_render = render_published_page_record_via_1ed84_1ef6a(
         data,
         downloaded_linear_memory,
         downloaded_linear_published_record,
         bucket_word=int(downloaded_linear_page_result["bucket_index"]),
+    )
+    downloaded_row80_published_render = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_row80_memory,
+        downloaded_row80_published_record,
+        bucket_word=int(downloaded_row80_page_result["bucket_index"]),
     )
     downloaded_segmented_even_published_render = (
         render_published_page_record_via_1ed84_1ef6a(
@@ -52362,10 +52398,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         )
     )
     downloaded_linear_published_entry = downloaded_linear_published_render["entry"]
+    downloaded_row80_published_entry = downloaded_row80_published_render["entry"]
     downloaded_segmented_even_published_entry = (
         downloaded_segmented_even_published_render["entry"]
     )
     assert isinstance(downloaded_linear_published_entry, dict)
+    assert isinstance(downloaded_row80_published_entry, dict)
     assert isinstance(downloaded_segmented_even_published_entry, dict)
     downloaded_publication_variants = {
         "linear": {
@@ -52379,6 +52417,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "published_fields": downloaded_linear_published_fields,
             "published_render": downloaded_linear_published_render,
             "published_entry": downloaded_linear_published_entry,
+        },
+        "row80": {
+            "fetch": downloaded_row80_publication_fetch,
+            "font_trace": downloaded_row80_dispatch_trace,
+            "font_command": downloaded_row80_dispatch_command,
+            "font_stream": downloaded_row80_command_stream,
+            "tail": downloaded_row80_publication_tail,
+            "tail_trace": downloaded_row80_publication_tail_trace,
+            "publication": downloaded_row80_publication,
+            "published_fields": downloaded_row80_published_fields,
+            "published_render": downloaded_row80_published_render,
+            "published_entry": downloaded_row80_published_entry,
         },
         "segmented": {
             "fetch": downloaded_segmented_even_publication_fetch,
@@ -52394,7 +52444,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }
     checks.append(assert_equal(
-        "downloaded normal and segmented glyph FF publications render page records",
+        "downloaded normal row-0x80 and segmented glyph FF publications render page records",
         {
             name: {
                 "stream_length": len(variant["fetch"]["stream"]),
@@ -52555,6 +52605,79 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "context_slot": 3,
                 }],
                 "rows": expected_downloaded_linear_rows,
+            },
+            "row80": {
+                "stream_length": len(downloaded_row80_publication_stream),
+                "fetch_sources": ["ring"],
+                "remaining_ring": [],
+                "boundaries": {
+                    "font": (0, len(downloaded_row80_command_stream)),
+                    "printable": (
+                        len(downloaded_row80_command_stream),
+                        len(downloaded_row80_command_stream) + 1,
+                    ),
+                    "publication": (
+                        len(downloaded_row80_command_stream) + 1,
+                        len(downloaded_row80_publication_stream),
+                    ),
+                },
+                "font": {
+                    "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                    "restored_record": b"\x80W\x01\x00\x00\x00",
+                    "payload_offset": 7,
+                    "payload_length": 256,
+                },
+                "tail": {
+                    "stream": b"*\x0c",
+                    "handlers": [0x00D04A, 0x00F0F0],
+                },
+                "finalized": {
+                    "published": True,
+                    "bucket_index": 1,
+                    "current_page_root_after": 0,
+                    "page_root_clears": 1,
+                    "page_publication_flag": 1,
+                },
+                "published_bucket_root_1c": (
+                    bytes.fromhex("00 00 00 00 00 03 00 01 2a 66 01")
+                    + bytes(0x1B)
+                ),
+                "published_bucket_array_1c": {
+                    1: [
+                        bytes.fromhex("00 00 00 00 00 03 00 01 2a 66 01")
+                        + bytes(0x1B),
+                    ],
+                },
+                "published_rule_list_24": [],
+                "published_fixed_list_28": [],
+                "published_context_slots_2c_prefix": (0, 0, 0, 0),
+                "render_bucket_word": 1,
+                "active_copy": {
+                    "source_word_18": 0,
+                    "source_word_1a": 0,
+                    "render_word_0a": 0,
+                    "render_word_0c": 0,
+                    "render_word_0e": 0,
+                    "render_word_10": 0,
+                    "render_word_16": 0,
+                },
+                "setup": {
+                    "dividend": 1,
+                    "divisor_word_06": 5,
+                    "remainder_783a22": 1,
+                    "band_rows_scaled_783a20": 0x0040,
+                    "destination_base_783a28": 0x00100800,
+                },
+                "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+                "dispatch": [{
+                    "chain_index": 0,
+                    "object_byte_4": 0x00,
+                    "class_mask": 0x00,
+                    "branch": "compact",
+                    "target": 0x01EFFE,
+                    "context_slot": 3,
+                }],
+                "rows": downloaded_row80_rows,
             },
             "segmented": {
                 "stream_length": len(downloaded_segmented_even_publication_stream),
@@ -77956,15 +78079,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         )
     )
     lines.append(
-        "- normal/segmented downloaded-glyph FF publications: host-fetched "
-        "`ESC )s6W` plus printable `&` and FF restores record `%s`, while "
-        "`ESC )s258W` plus printable `'` and FF restores record `%s`; tail "
-        "handlers `%s`/`%s` publish bucket entries `%s`/`%s`, render bucket "
-        "words `%d`/`%d`, and dispatch object bytes `0x%02x`/`0x%02x` to "
-        "`0x%05x` for `0x1fe76`/`0x1f1f0`." % (
+        "- normal/row-0x80/segmented downloaded-glyph FF publications: "
+        "host-fetched `ESC )s6W` plus printable `&` and FF restores record "
+        "`%s`; `ESC )s256W` plus printable `*` and FF restores record `%s`; "
+        "`ESC )s258W` plus printable `'` and FF restores record `%s`. Tail "
+        "handlers `%s`/`%s`/`%s` publish bucket entries `%s`/`%s`/`%s`, "
+        "render bucket words `%d`/`%d`/`%d`, and dispatch object bytes "
+        "`0x%02x`/`0x%02x`/`0x%02x` to `0x%05x` for "
+        "`0x1fe76`/`0x1fe76`/`0x1f1f0`." % (
             " ".join(
                 f"{byte:02x}"
                 for byte in downloaded_linear_dispatch_command["restored_record"]
+            ),
+            " ".join(
+                f"{byte:02x}"
+                for byte in downloaded_row80_dispatch_command["restored_record"]
             ),
             " ".join(
                 f"{byte:02x}"
@@ -77978,17 +78107,26 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ),
             ", ".join(
                 "0x%05x" % event["handler"]
+                for event in downloaded_row80_publication_tail_trace["events"]
+            ),
+            ", ".join(
+                "0x%05x" % event["handler"]
                 for event in downloaded_segmented_even_publication_tail_trace["events"]
             ),
             sorted(downloaded_linear_published_fields["bucket_array_1c"].keys()),
+            sorted(downloaded_row80_published_fields["bucket_array_1c"].keys()),
             sorted(
                 downloaded_segmented_even_published_fields["bucket_array_1c"].keys()
             ),
             downloaded_linear_published_render["render_record_fields"]["word_10"],
+            downloaded_row80_published_render["render_record_fields"]["word_10"],
             downloaded_segmented_even_published_render["render_record_fields"][
                 "word_10"
             ],
             downloaded_linear_published_entry["dispatch"]["entries"][0][
+                "object_byte_4"
+            ],
+            downloaded_row80_published_entry["dispatch"]["entries"][0][
                 "object_byte_4"
             ],
             downloaded_segmented_even_published_entry["dispatch"]["entries"][0][

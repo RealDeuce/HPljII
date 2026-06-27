@@ -80,7 +80,7 @@ Primary fixtures:
 - `host-fetched even-span wide downloaded character renders through 0x1f0d2`
 - `host-fetched row-0x80 downloaded character remains short compact`
 - `host-fetched even-span downloaded glyph FF publishes rendered page record`
-- `downloaded normal and segmented glyph FF publications render page records`
+- `downloaded normal row-0x80 and segmented glyph FF publications render page records`
 - `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
 - `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
@@ -177,12 +177,12 @@ Published page-record state:
 - Unknown for this checkpoint: downloaded-glyph publication cross-products
   outside the documented normal bucket-1, linear-segmented bucket-9,
   segmented-wide bucket-1/bucket-9, and even-span wide bucket-1 streams,
-  especially other row counts, character modes, and non-success exits. The
-  `host-fetched row-0x80 downloaded character remains short compact` fixture
-  covers the pre-publication `0x80`/`0x81` selector threshold, but the
-  row-`0x80` shape has not yet been driven through FF publication.
+  especially other row counts, character modes, and non-success exits. Fixture
+  `downloaded normal row-0x80 and segmented glyph FF publications render page
+  records` covers the row-`0x80` bucket-1 publication sibling for the
+  `0x80`/`0x81` selector threshold.
   The covered publication fixtures are
-  `downloaded normal and segmented glyph FF publications render page records`,
+  `downloaded normal row-0x80 and segmented glyph FF publications render page records`,
   `host-fetched even-span downloaded glyph FF publishes rendered page record`,
   `published downloaded glyph segmented buckets render across bands`, and
   `0x1eba4 scheduler band words render published downloaded glyph`.
@@ -698,15 +698,20 @@ through compact target `0x1effe` and mode-0 helper `0x1fe76` as three visible
 rows beginning at x `22`.
 - destination x `22`, y `6`, and `$a001 = 0x16`.
 
-Fixture `downloaded normal and segmented glyph FF publications render page
-records` adds the publication sibling for that normal selector. The
-host-fetched `ESC )s6W` stream plus printable `&` and FF restores record
-`80 57 00 06 00 00`, starts the payload at offset `5`, routes tail handlers
-`0xd04a` and `0xf0f0`, publishes bucket `1` object
-`00 00 00 00 00 03 00 01 26 66 01`, leaves rule/fixed lists empty, copies
-context slots `(0, 0, 0, 0)`, clears the current root, and renders the copied
-record through bucket word `1`, compact target `0x1effe`, object byte `0x00`,
-context slot `3`, and mode-0 helper `0x1fe76`.
+Fixture `downloaded normal row-0x80 and segmented glyph FF publications
+render page records` adds the publication siblings for the normal and
+row-threshold short selectors. The host-fetched `ESC )s6W` stream plus
+printable `&` and FF restores record `80 57 00 06 00 00`, starts the payload
+at offset `5`, routes tail handlers `0xd04a` and `0xf0f0`, publishes bucket
+`1` object `00 00 00 00 00 03 00 01 26 66 01`, leaves rule/fixed lists empty,
+copies context slots `(0, 0, 0, 0)`, clears the current root, and renders the
+copied record through bucket word `1`, compact target `0x1effe`, object byte
+`0x00`, context slot `3`, and mode-0 helper `0x1fe76`. The row-`0x80`
+sibling uses host-fetched `ESC )s256W`, printable `*`, and FF, restores record
+`80 57 01 00 00 00`, starts payload at offset `7`, publishes the bucket-1
+object `00 00 00 00 00 03 00 01 2a 66 01`, and renders the copied record
+through the same bucket word `1`, compact target `0x1effe`, object byte
+`0x00`, context slot `3`, and mode-0 helper `0x1fe76`.
 
 Fixture
 `host-fetched even-span wide downloaded character renders through 0x1f0d2`
@@ -1033,16 +1038,21 @@ bucket word `1`: `0x1ef86` computes remainder `1`, current-band rows
 linear downloaded-glyph row as the direct even-span fixture. Evidence: fixture
 `host-fetched even-span downloaded glyph FF publishes rendered page record`.
 
-Fixture `downloaded normal and segmented glyph FF publications render page
-records` extends that publication concept to the normal and linear-segmented
-branches. The normal stream is `ESC )s6W` plus payload, printable `&`, and FF;
-the font phase restores `80 57 00 06 00 00`, the tail routes through
-`0xd04a`/`0xf0f0`, `0xff1e` publishes bucket `1`, and `0x1ed84`/`0x1ef6a`
-dispatch object byte `0x00` to `0x1effe`/`0x1fe76`. The segmented stream is
-`ESC )s258W` plus payload, printable `'`, and FF; the font phase restores
-`80 57 01 02 00 00`, `0xff1e` publishes buckets `1` and `9`, and render bucket
-word `9` dispatches object byte `0x20` to `0x1effe`/`0x1f1f0`, reading the
-visible row from source offset `0x0100`.
+Fixture `downloaded normal row-0x80 and segmented glyph FF publications
+render page records` extends that publication concept to the normal,
+row-threshold, and linear-segmented branches. The normal stream is
+`ESC )s6W` plus payload, printable `&`, and FF; the font phase restores
+`80 57 00 06 00 00`, the tail routes through `0xd04a`/`0xf0f0`, `0xff1e`
+publishes bucket `1`, and `0x1ed84`/`0x1ef6a` dispatch object byte `0x00` to
+`0x1effe`/`0x1fe76`. The row-threshold stream is `ESC )s256W` plus payload,
+printable `*`, and FF; the font phase restores `80 57 01 00 00 00`, `0xff1e`
+publishes bucket `1`, and the copied row-`0x80` selector `0x0003` record
+renders through the same compact target/helper with digest
+`918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac`. The
+segmented stream is `ESC )s258W` plus payload, printable `'`, and FF; the font
+phase restores `80 57 01 02 00 00`, `0xff1e` publishes buckets `1` and `9`,
+and render bucket word `9` dispatches object byte `0x20` to
+`0x1effe`/`0x1f1f0`, reading the visible row from source offset `0x0100`.
 
 ## Writers
 
@@ -1169,13 +1179,14 @@ publication sibling because fixture
 `host-fetched even-span downloaded glyph FF publishes rendered page record`
 asserts the host-fetched `ESC )s18W` payload, tail handlers `0xd04a` and
 `0xf0f0`, published bucket `1`, `0x1ed84` render word `1`, compact dispatch
-target `0x1effe`, and final `0x1f0d2` rows. High for the modeled normal and
-segmented publication siblings because fixture
-`downloaded normal and segmented glyph FF publications render page records`
-asserts host-fetched `ESC )s6W` plus `&`/FF and `ESC )s258W` plus `'`/FF,
-tail handlers `0xd04a` and `0xf0f0`, published buckets `1` and `9`, render
-bucket words `1` and `9`, compact target `0x1effe`, object bytes `0x00` and
-`0x20`, and final `0x1fe76`/`0x1f1f0` rows. High for the modeled
+target `0x1effe`, and final `0x1f0d2` rows. High for the modeled normal,
+row-`0x80`, and segmented publication siblings because fixture
+`downloaded normal row-0x80 and segmented glyph FF publications render page records`
+asserts host-fetched `ESC )s6W` plus `&`/FF, `ESC )s256W` plus `*`/FF, and
+`ESC )s258W` plus `'`/FF, tail handlers `0xd04a` and `0xf0f0`, published
+buckets `1` and `9`, render bucket words `1` and `9`, compact target
+`0x1effe`, row-`0x80` selector `0x0003`, object bytes `0x00` and `0x20`, and
+final `0x1fe76`/`0x1f1f0` rows. High for the modeled
 published-record multi-bucket render because fixture
 `published downloaded glyph segmented buckets render across bands` walks
 bucket words `1` and `9`, proves the `0x1effe` dispatch for both compact
@@ -1247,10 +1258,12 @@ A byte-stream renderer must preserve:
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets; the normal, linear-segmented, and even-span wide siblings
   now publish through the same boundary. Fixture
-  `downloaded normal and segmented glyph FF publications render page records`
+  `downloaded normal row-0x80 and segmented glyph FF publications render page records`
   renders the normal bucket-1 record through `0x1ed84`/`0x1ef6a` and compact
-  target `0x1effe`/`0x1fe76`, and renders the linear-segmented bucket-9 record
-  through `0x1ed84`/`0x1ef6a` and compact target `0x1effe`/`0x1f1f0`. Fixture
+  target `0x1effe`/`0x1fe76`, renders the row-`0x80` bucket-1 record through
+  the same target/helper while preserving selector `0x0003`, and renders the
+  linear-segmented bucket-9 record through `0x1ed84`/`0x1ef6a` and compact
+  target `0x1effe`/`0x1f1f0`. Fixture
   `host-fetched even-span downloaded glyph FF publishes rendered page record`
   renders the copied bucket-1 record through `0x1ed84`/`0x1ef6a` and compact
   target `0x1effe`/`0x1f0d2`. Fixture

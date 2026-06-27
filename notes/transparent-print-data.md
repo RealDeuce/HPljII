@@ -17,6 +17,7 @@ Evidence:
   - `transparent default-filtered control enters unflagged fixed-record path`
   - `transparent nonzero filters route controls through printable path`
   - `transparent nonzero high-control byte queues tall glyph bucket`
+  - `transparent nonzero high-control interior samples remain printable`
   - `transparent nonzero high-control upper bound remains printable`
   - `transparent secondary high-control byte enters segmented page-record path`
 
@@ -348,6 +349,17 @@ the same printable route as `0x98`, while selecting a different glyph:
 - surrounding printable bucket render matches the `0x98` fixture digest
   `4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300`
 
+The interior high-control sample fixture drives `ESC &p3X!#!` for payload
+bytes `0x81`, `0x88`, `0x90`, and `0x97` with the same selected context byte
+`1` and local filtering word `1`. All four samples route
+`d04a d04a d04a`; their payload bytes map to glyphs `0x80`, `0x87`,
+`0x8f`, and `0x96`, queue the high-control glyph in bucket `-1`, keep the
+surrounding `!` bytes in bucket `0`, and render selected-bucket digests
+`841384c82ec301334f603178a4ad28152c7818bab08c8b829bb769a356b27c04`,
+`64ab78cb858eb0560f08304101c4a6870daee5a94144ce028e5807952d479850`,
+`e99bffbc8e6c0c9179536c5c90927a72ba3047cf7f43e43355552f0e5aa4fae4`, and
+`a97b85527284735826a97ef1998d72e5841bd4331c2f2aeea24d444a35179acd`.
+
 The secondary high-control fixture uses stream:
 
 ```text
@@ -447,9 +459,9 @@ probe byte reaches page-record output`, `transparent data control payloads
 advance through fixed-space path`, `transparent default-filtered control enters
 unflagged fixed-record path`, `transparent nonzero filters route controls
 through printable path`, and
-`transparent nonzero high-control byte queues tall glyph bucket`, plus the
-upper-bound `0x9f` fixture. High for the secondary selector/routing/page-record
-boundary because fixture `transparent
+`transparent nonzero high-control byte queues tall glyph bucket`, the interior
+sample fixture, and the upper-bound `0x9f` fixture. High for the secondary
+selector/routing/page-record boundary because fixture `transparent
 secondary high-control byte enters segmented page-record path` pins SO handler
 `0xc6b8`, source context `0xc00ae122`, segmented selector `0x2001`, bridge
 context slots, and a selected-bucket render digest.
@@ -457,11 +469,12 @@ context slots, and a selected-bucket render digest.
 Unresolved middle edges:
 
 - `0x124f8..0x1252a`: high-control nonzero filtering is now page-visible for a
-  short primary bucket (`0x80`), two primary bucket-crossing glyphs
-  (`0x98` and top-of-range `0x9f`), and a secondary segmented page-record
-  boundary (`SO ESC &p3X!\x80!`). Broader high-control cross-product coverage
-  remains open for intermediate payload values and for full secondary segmented
-  bitmap semantics.
+  short primary bucket (`0x80`), interior primary samples (`0x81`, `0x88`,
+  `0x90`, and `0x97`), two primary bucket-crossing glyphs (`0x98` and
+  top-of-range `0x9f`), and a secondary segmented page-record boundary
+  (`SO ESC &p3X!\x80!`). The remaining high-control edge is full secondary
+  segmented bitmap semantics, not primary route polarity or the sampled primary
+  interior values.
 
 ## Reproduction Contract
 
@@ -501,10 +514,10 @@ For `ESC &p#X`:
   `0x1393a(0x20, 0x782d7e)`, enters `0xd140` / `0xd3b2`, queues substituted
   host-space glyph `0`, and renders the selected bucket digest
   `89629435e063529ce7150d603ed9be37a74658317db3e97a4ae01b1c8d64f9d9`.
-- Broader nonzero-filtering coverage remains open for intermediate
-  high-control payload values and for the full visible semantics of the
-  secondary segmented mapping. The tall primary bucket-crossing cases are
-  covered by `ESC &p3X!\x98!` and `ESC &p3X!\x9f!`; the secondary segmented
+- Broader nonzero-filtering coverage now includes primary high-control samples
+  `0x81`, `0x88`, `0x90`, and `0x97`, plus the tall primary bucket-crossing
+  cases `ESC &p3X!\x98!` and `ESC &p3X!\x9f!`. The remaining high-control
+  risk is the full visible semantics of the secondary segmented mapping; its
   page-record boundary is covered by `SO ESC &p3X!\x80!`.
 - The names for the active context filtering byte, fallback byte, and high-byte
   flags remain provisional.

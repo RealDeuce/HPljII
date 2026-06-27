@@ -999,12 +999,13 @@ handlers:
 - Broaden visible-output variants where they still change compatibility:
   font-selection fallback/error branches beyond the two symbol-miss
   fixtures, downloaded-glyph publication cross-products beyond the
-  documented selector families, additional transparent high-control values
-  and full secondary segmented bitmap semantics beyond the now-pinned
-  secondary page-record boundary, and final-`@` symbol table/copy variants
-  only if they need compatibility-facing visible-output behavior. The
-  parser/default-table state boundary for `@0..@3` is already pinned by
-  fixture `real default-table caller stream uses ROM-backed words`.
+  documented selector families, full secondary segmented bitmap semantics
+  beyond the now-pinned transparent high-control page-record boundary, and
+  final-`@` symbol table/copy variants only if they need compatibility-facing
+  visible-output behavior. The primary transparent high-control path now
+  includes boundary, interior-sample, tall-glyph, and top-of-range fixtures,
+  and the parser/default-table state boundary for `@0..@3` is already pinned
+  by fixture `real default-table caller stream uses ROM-backed words`.
 - Continue the active-render scheduler only at the remaining external
   boundary: `$8000.4`, `$a601`, `$a801`, `$aa01`, `0xfffe0001`, and
   `0xfffe0003` physical timing/MMIO correlation. The software-visible

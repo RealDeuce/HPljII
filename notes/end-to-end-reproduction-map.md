@@ -393,11 +393,13 @@ The next work should follow dataflow, not isolated handlers:
    handlers to printable source capture, HMI, object prefix, bridge context
    slots, and rows. Remaining suite cases should add other fallback/error
    font-selection visible-output variants beyond those two symbol misses and
-   transparent-data representative values beyond the covered default-filtered
+   full secondary segmented bitmap semantics beyond the covered transparent
+   data paths. Current transparent coverage includes the default-filtered
    C0/high-control fixed-space path, nonzero C0 plus high-control `0x80`
-   printable path, primary tall bucket-crossing `0x98`, primary top-of-range
-   `0x9f`, and secondary segmented page-record boundary from
-   `SO ESC &p3X!\x80!`. The `ESC Y ... ESC Z` display-functions loop is now
+   printable path, primary interior samples `0x81`, `0x88`, `0x90`, and
+   `0x97`, primary tall bucket-crossing `0x98`, primary top-of-range `0x9f`,
+   and the secondary segmented page-record boundary from `SO ESC &p3X!\x80!`.
+   The `ESC Y ... ESC Z` display-functions loop is now
    documented in `notes/pcl-parser-core.md` and
    `notes/semantic-state-model.md`; fixture
    `ESC Y display-functions stream reaches page-record output` covers the

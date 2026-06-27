@@ -65729,6 +65729,105 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "final_cursor_x": stream["final_state"]["cursor_x"],
         }
 
+    transparent_high_interior_summary = []
+    for payload_byte in (0x81, 0x88, 0x90, 0x97):
+        summary = summarize_primary_transparent_high_control(payload_byte)
+        high_event = summary["payload_events"][1]
+        assert isinstance(high_event, dict)
+        selected_render = summary["selected_render"]
+        assert isinstance(selected_render, dict)
+        transparent_high_interior_summary.append({
+            "payload_byte": payload_byte,
+            "routes": summary["routes"],
+            "mapped": high_event["mapped"],
+            "glyph_entry": high_event["glyph_entry"],
+            "glyph_rows": high_event["glyph_rows"],
+            "glyph_width": high_event["glyph_width"],
+            "positioned_xy": high_event["positioned_xy"],
+            "coord": high_event["coord"],
+            "bucket_index": high_event["bucket_index"],
+            "nonempty_buckets": summary["nonempty_buckets"],
+            "selected_render": selected_render,
+            "final_cursor_x": summary["final_cursor_x"],
+        })
+    checks.append(assert_equal(
+        "transparent nonzero high-control interior samples remain printable",
+        transparent_high_interior_summary,
+        [
+            {
+                "payload_byte": 0x81,
+                "routes": [0x00D04A, 0x00D04A, 0x00D04A],
+                "mapped": 0x80,
+                "glyph_entry": 0x0170F6,
+                "glyph_rows": 23,
+                "glyph_width": 15,
+                "positioned_xy": (30, -1),
+                "coord": 0xFE01,
+                "bucket_index": -1,
+                "nonempty_buckets": [-1, 0],
+                "selected_render": {
+                    "row_count": 38,
+                    "row_width": 45,
+                    "row_sha256": "841384c82ec301334f603178a4ad28152c7818bab08c8b829bb769a356b27c04",
+                },
+                "final_cursor_x": pack12(64),
+            },
+            {
+                "payload_byte": 0x88,
+                "routes": [0x00D04A, 0x00D04A, 0x00D04A],
+                "mapped": 0x87,
+                "glyph_entry": 0x016DD0,
+                "glyph_rows": 24,
+                "glyph_width": 15,
+                "positioned_xy": (30, -2),
+                "coord": 0xEE01,
+                "bucket_index": -1,
+                "nonempty_buckets": [-1, 0],
+                "selected_render": {
+                    "row_count": 38,
+                    "row_width": 45,
+                    "row_sha256": "64ab78cb858eb0560f08304101c4a6870daee5a94144ce028e5807952d479850",
+                },
+                "final_cursor_x": pack12(64),
+            },
+            {
+                "payload_byte": 0x90,
+                "routes": [0x00D04A, 0x00D04A, 0x00D04A],
+                "mapped": 0x8F,
+                "glyph_entry": 0x0173E4,
+                "glyph_rows": 26,
+                "glyph_width": 13,
+                "positioned_xy": (31, -4),
+                "coord": 0xCF01,
+                "bucket_index": -1,
+                "nonempty_buckets": [-1, 0],
+                "selected_render": {
+                    "row_count": 38,
+                    "row_width": 44,
+                    "row_sha256": "e99bffbc8e6c0c9179536c5c90927a72ba3047cf7f43e43355552f0e5aa4fae4",
+                },
+                "final_cursor_x": pack12(64),
+            },
+            {
+                "payload_byte": 0x97,
+                "routes": [0x00D04A, 0x00D04A, 0x00D04A],
+                "mapped": 0x96,
+                "glyph_entry": 0x017014,
+                "glyph_rows": 24,
+                "glyph_width": 15,
+                "positioned_xy": (30, -2),
+                "coord": 0xEE01,
+                "bucket_index": -1,
+                "nonempty_buckets": [-1, 0],
+                "selected_render": {
+                    "row_count": 38,
+                    "row_width": 45,
+                    "row_sha256": "a97b85527284735826a97ef1998d72e5841bd4331c2f2aeea24d444a35179acd",
+                },
+                "final_cursor_x": pack12(64),
+            },
+        ],
+    ))
     transparent_high_limit_summary = summarize_primary_transparent_high_control(0x9F)
     checks.append(assert_equal(
         "transparent nonzero high-control upper bound remains printable",
@@ -79063,6 +79162,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "so C0 payload `0x05` and high-control payload `0x80` both route "
         "through `0xd04a`, map to glyphs `0x04` and `0x7f`, and queue visible "
         "compact coords `0x0d01` and `0x0003`."
+    )
+    lines.append(
+        "- transparent high-control interior samples: payload bytes `0x81`, "
+        "`0x88`, `0x90`, and `0x97` all route as `d04a d04a d04a`, map to "
+        "glyphs `0x80`, `0x87`, `0x8f`, and `0x96`, queue the high-control "
+        "glyph in bucket `-1`, and leave the surrounding `!` bytes in bucket "
+        "`0`."
     )
     lines.append(
         "- transparent high-control upper-bound boundary: stream `1b 26 70 33 "

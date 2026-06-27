@@ -54,7 +54,8 @@ compatibility boundary.
   command-to-handler map summary from the firmware parser tables.
 - [page-raster-imaging.md](page-raster-imaging.md) - page geometry
   lookup tables, orientation state, page-record storage, active-render,
-  bitmap object-dispatch checkpoints, and raster graphics imaging path.
+  bitmap object-dispatch, compact row-copy checkpoints, and raster graphics
+  imaging path.
 - [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) -
   top-level host-byte-to-rendered-pixel coverage map and remaining
   reproduction blockers.

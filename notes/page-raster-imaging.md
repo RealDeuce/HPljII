@@ -1291,9 +1291,9 @@ Unresolved middle edges:
 - `0x13386..0x1f4e0` and `0x136d2..0x1f756`: rule and fixed-list output is
   pinned for the selector fixtures above; the remaining work is a broader
   selector/page-visible matrix and physical-device comparison.
-- `0x1fa5c..0x207ac`: compact row-copy table targets are decoded by fixtures,
-  but final naming of every helper alias should be collapsed after the
-  remaining glyph-width cases are tied to parser-produced font records.
+- `0x1fa5c..0x207ac`: compact row-copy table targets are composed in the
+  compact glyph row-copy checkpoint below. Remaining work is broader
+  page-visible comparison for every legal descriptor/font-width cross-product.
 
 ### Subrenderer Payloads
 
@@ -1474,6 +1474,204 @@ traces:
   as the current horizontal phase;
 - odd byte widths copy the trailing byte from `A3`, while even byte
   widths are word copies from `A2`.
+
+### Compact Glyph Row-Copy Semantic Checkpoint
+
+This checkpoint covers the compact glyph pixel-copy layer under the compact
+object modes documented above. It connects parser-produced built-in and
+downloaded font records to the unrolled row-copy helpers selected through
+tables `0x1f08e` and `0x1f1ac`, including the A2/A3 split-plane layout needed
+for odd byte spans.
+
+Field groups:
+
+- Canonical font/context state:
+  - render-record context slot selected by compact object byte `+5` low nibble
+    and copied by `0x1edc6` from page-root `+0x2c..+0x68`.
+  - `0x783a2c`: active context/resource longword loaded by `0x1f008` before
+    `0x1f354` resolves each glyph.
+  - bit-30-set resource form: `0x1f354` masks the context base to 24 bits,
+    adds context word `+8` to find an offset table, reads the glyph longword
+    offset, then reads glyph bytes/words `+4`, `+5`, `+6`, and `+8` to derive
+    bitmap start, layout mode, row count, and width.
+  - bit-30-clear inline form: `0x1f354` reads fixed eight-byte glyph entries at
+    `context + 0x40 + 8 * glyph_index`, deriving row count, span byte count,
+    and bitmap offset from the inline record.
+- Canonical glyph payload layout:
+  - `A2`: prefix/word plane consumed by all even-span row-copy helpers and by
+    the word portion of odd-span helpers.
+  - `A3`: trailing-byte plane used when span byte count is odd. `0x1f354`
+    points `A3` at the trailing plane for inline odd spans; downloaded
+    split-plane reader `0x16942` stores this same layout.
+  - `D1`: span byte count returned by `0x1f354` and used as the
+    table-selection index.
+  - `D3`: row count returned by `0x1f354`, then split by `0x1f414` into
+    current-band rows and fallback rows.
+- Derived/cache row-copy state:
+  - `0x1f08e`: main width table. Indexes `1..16` select helpers
+    `0x1fa5c`, `0x1fe76`, `0x20290`, `0x207ac`, `0x20cc8`, `0x212e4`,
+    `0x21900`, `0x2201c`, `0x22738`, `0x22f54`, `0x23770`, `0x24090`,
+    `0x249b0`, `0x253d0`, `0x25df0`, and `0x26910`.
+  - `0x1f1ac`: wide-glyph remainder table. Indexes `1..16` select helpers
+    `0x27430`, `0x27850`, `0x27d84`, `0x283ba`, `0x289f0`, `0x29126`,
+    `0x2985c`, `0x2a092`, `0x2a8c8`, `0x2b1fe`, `0x2bb34`, `0x2c56e`,
+    `0x2cfa8`, `0x2dae2`, `0x2e62e`, and `0x2f27c`.
+  - row-count jump tables under each helper map `D3` rows to an unrolled copy
+    tail. Fixture report
+    `generated/analysis/ic30_ic13_render_row_copy_fixtures.md` decodes the
+    representative row-count targets and final A1/A2/A3 deltas.
+  - `0x783a40`, `0x783a42`, `0x783a44`, `0x783a46`, and `0x783a48`: wide-mode
+    row-skip, fallback row-skip, remainder row-skip, current 16-byte chunk
+    phase, and fallback source pointer caches written by `0x1f0d2` and
+    `0x1f264`.
+  - `0x7810b4 + D2`: fallback destination base used when `0x1f414` reports
+    rows past the current band.
+- Parser scratch:
+  - downloaded-character command records such as `80 57 00 06 00 00`,
+    `80 57 00 12 00 00`, `80 57 01 83 00 00`, and
+    `80 57 08 91 00 00` are parser/delayed-payload scratch. They prove how
+    resource images are installed, but are not consumed by row-copy helpers.
+  - font-selection command records and symbol-set parser state are scratch
+    once `0x13eb8`, `0x14c64`, `0x14f16`, `0xc428`, and `0xc4fc` have
+    installed page-root context slots.
+- Firmware bookkeeping:
+  - continuation fields for partial downloaded payload copies
+    `0x7827ca`, `0x7827ce`, `0x7827d6`, and `0x7827d8` preserve future
+    canonical glyph payload layout, but are not read by row-copy helpers.
+  - invalid overlarge row-count table targets, such as the row-`0x0102`
+    fallback index through helper `0x1fe76`, are firmware failure boundaries
+    rather than pixel output.
+- Unknown:
+  - complete physical page comparison for every legal downloaded descriptor
+    metric and byte-width combination remains open.
+
+Writers:
+
+- `0x13eb8`, `0x14c64`, `0x14d9c`, `0x14e24`, `0x14eb6`, and `0x14f16` build
+  or refresh character maps and selected built-in/inline context records that
+  later become page-root context slots.
+- `0xc428` and `0xc4fc` install active current-font records into page-root
+  context slots copied by `0x1edc6`.
+- `0x16498` installs downloaded glyph table entries, glyph records, bitmap
+  offsets, and bitmap bytes. `0x168dc` writes linear bitmap payloads; `0x16942`
+  writes split-plane prefix bytes plus trailing A3 bytes.
+- `0x12f2e` writes compact page-record objects whose selector bits choose
+  normal, wide, segmented, or segmented-wide compact modes.
+- `0x1f0d2` and `0x1f264` write wide-mode caches `0x783a40`,
+  `0x783a42`, `0x783a44`, `0x783a46`, and `0x783a48` before calling
+  `0x2f27c` and `0x1f1ac` helpers.
+
+Readers and consumers:
+
+- `0x1effe` dispatches compact objects to `0x1f034`, `0x1f0d2`, `0x1f1f0`, or
+  `0x1f264`.
+- `0x1f354` consumes the active context and glyph index, then returns `A2`,
+  optional `A3`, span `D1`, and rows `D3`.
+- `0x1f034` and `0x1f1f0` select `0x1f08e[D1]` for normal and segmented
+  compact glyphs; `0x1f1f0` first applies the segment byte as a `0x80`-row
+  plane offset and clamps each segment to at most `0x80` rows.
+- `0x1f0d2` and `0x1f264` render full 16-byte chunks through `0x2f27c`, then
+  select `0x1f1ac[remainder]` for the trailing width. `0x1f264` combines this
+  with the segmented `0x80`-row plane offset.
+- Row-copy helpers consume `0x783a1c` as the destination stride. Even widths
+  copy only A2 words; odd widths copy A2 words plus one A3 trailing byte per
+  row.
+
+Output effect:
+
+- Fixture `parsed primary built-in font selection feeds visible page-record
+  rows` proves a host-fetched primary font-selection stream installs context
+  `0xc008004c`, queues compact object
+  `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and renders Courier rows
+  through helper `0x1fe76`.
+- Fixture `parsed secondary built-in font selection feeds visible SO
+  page-record rows` proves secondary context `0xc00ae122` reaches compact
+  helper `0x207ac`.
+- Fixture `host-fetched linear downloaded character stream renders through
+  0x168dc` proves parser-produced `ESC )s6W` installs glyph `0x26`, queues
+  selector `0x0003`, and renders three rows through mode-0 helper `0x1fe76`.
+- Fixture `host-fetched even-span wide downloaded character renders through
+  0x1f0d2` proves parser-produced `ESC )s18W` installs glyph `0x29`, queues
+  selector `0x1003`, renders one full 16-byte chunk through `0x2f27c`, then
+  renders a two-byte remainder through `0x1f1ac`.
+- Fixture `host-fetched split-plane segmented downloaded character renders
+  through 0x1f1f0` proves odd-span split-plane layout: `0x16942` writes prefix
+  bytes and trailing bytes, then `0x1f1f0` renders segment `1` from A2 offset
+  `0x0100` and A3 trailing offset `0x0080`.
+- Fixture `0x16498-backed downloaded character object renders segmented-wide
+  compact row` proves selector `0x3003` reaches `0x1f264`, uses one full
+  16-byte chunk through `0x2f27c`, and uses a one-byte remainder.
+- Fixture `host-fetched rows-0x102 downloaded glyph FF publication truncates
+  page-record rows` proves the failure boundary: installed row count `0x0102`
+  reaches `0x1f414`, but fallback row count `200` indexes past the valid
+  helper `0x1fe76` row-count table, so no pixel-output claim is made.
+
+Confidence:
+
+- High for `0x1f354` context-form split, A2/A3 source layout, table
+  selection, even/odd span copy behavior, wide chunk/remainder behavior, and
+  segmented row-plane offsets because these are pinned by disassembly plus
+  generated row-copy fixtures.
+- High for parser-produced built-in, normal downloaded, even-span wide
+  downloaded, split-plane segmented, and segmented-wide examples because the
+  named fixtures tie host bytes to installed records, queued compact objects,
+  dispatch targets, and rendered rows.
+- Medium for exhaustive descriptor/font-width coverage because the legal
+  metric matrix and many downloaded row-count cases are fixture-backed, but
+  not every byte-width and metric combination has a page-visible comparison.
+
+Fixture evidence:
+
+- `parsed primary built-in font selection feeds visible page-record rows`
+- `parsed secondary built-in font selection feeds visible SO page-record rows`
+- `compact text bucket object fixture metadata`
+- `compact text bucket object fixture rendered rows`
+- `0x1f034 compact text splits current band and fallback rows`
+- `host-fetched linear downloaded character stream renders through 0x168dc`
+- `host-fetched even-span wide downloaded character renders through 0x1f0d2`
+- `host-fetched split-plane segmented downloaded character renders through
+  0x1f1f0`
+- `0x16498-backed downloaded character object renders segmented-wide compact
+  row`
+- `0x1f0d2 renders wide inline compact payload row`
+- `0x1f1f0 renders segmented inline compact payload row`
+- `0x1f264 renders segmented wide inline compact payload row`
+- `downloaded glyph row-count matrix publishes and renders additional
+  short/segmented counts`
+- `host-fetched rows-0x102 downloaded glyph FF publication truncates
+  page-record rows`
+
+Disassembly evidence:
+
+- `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`:
+  `0x1f024..0x1f3d2`, including compact dispatch, `0x1f08e`, `0x1f1ac`,
+  `0x1f354`, and wide-mode cache writes.
+- `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`:
+  `0x1fa5c..0x2feb0`, including row-count jump tables and unrolled A1/A2/A3
+  copy tails.
+- `generated/analysis/ic30_ic13_render_row_copy_fixtures.md`: decoded
+  width-table, remainder-table, multi-row, and A2/A3 write traces.
+- [font-context-metrics.md](font-context-metrics.md): parser-produced
+  built-in and resource-context metric fixtures.
+- [downloaded-fonts.md](downloaded-fonts.md): parser-produced downloaded
+  glyph installs, publications, and compact render fixtures.
+
+Unresolved middle edges:
+
+- `0x14c64..0x1f354`: built-in primary/secondary context examples are
+  page-visible; remaining symbol-set and pitch/style combinations need
+  comparison against physical or reference output.
+- `0x16498..0x1f354`: normal, wide, segmented, split-plane, segmented-wide,
+  partial, no-install, and row-count boundary cases are documented; not every
+  legal downloaded descriptor byte-width and metric combination has a visible
+  page comparison.
+- `0x1fa5c..0x2feb0`: helper behavior is decoded from disassembly and
+  synthetic fixtures, but only representative helper widths are tied to
+  parser-produced page rows. Broader width sampling should collapse any
+  remaining helper aliases.
+- `0x1f414..0x7810b4`: current-band/fallback splitting is fixture-backed,
+  including the row-`0x0102` invalid fallback boundary; device-level behavior
+  after such invalid table targets is intentionally not claimed.
 
 The executable harness `tools/render_fixture_harness.py` combines the
 host-byte fetch, tokenizer/delayed-payload, page-geometry,

@@ -1537,9 +1537,13 @@ for how resource records become ordinary page-record text.
     `eaf10ca6b5b5716170b313ce542df82a6974c1ac22ee0e87308dead7be22c6a1` /
     `3d23d5c6c5320d406d1db34523d3ad01c819d4e938e3dee4fa0a5d20747ed152`.
     Continuation branches and whole-page placement remain open.
-  - record `+0x28..+0x31` baseline/cell/manual semantics remain
-    unresolved until this path is correlated with emitted page objects or
-    a known printed sample.
+  - record `+0x28/+0x2a` and `+0x2f..+0x31` are already correlated with
+    emitted page objects for their ROM roles: `0x1519a` consumes
+    `+0x28/+0x2a` as decoded-height inputs before `0x13bca`, and
+    `0x1428c` consumes `+0x2f..+0x31` as same-class chooser tie-breakers
+    after `0x14398` / `0x13c06`. What remains open here is only the
+    HP/manual-facing baseline/cell terminology and comparison against a
+    known printed sample.
 
 ### Writers
 

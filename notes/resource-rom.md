@@ -377,10 +377,12 @@ offset `21` transform cursor `(10,21)` into source `(16,0)`, then
 `0x12f2e` emits compact coord `0x0001`.
 
 The unresolved middle edge is now narrower than "built-in metrics":
-`0xc428`/`0x10550` covers record `+0x24`, and `0xd824` covers
-glyph-entry `+0/+2`. The open address boundary is the header-level
-height/baseline use between the extracted record fields
-`+0x28..+0x31` and the font-printout/page-object path.
+`0xc428`/`0x10550` covers record `+0x24`, `0xd824` covers glyph-entry
+`+0/+2`, `0x1519a` consumes record `+0x28/+0x2a` as decoded-height
+inputs before `0x13bca`, and `0x1428c` consumes `+0x2f..+0x31` as
+same-class chooser tie-breakers after `0x14398` / `0x13c06`. The open
+boundary is physical/manual naming of those height/baseline/cell fields
+against a known printed font/self-test sample.
 
 The `0x1c334..0x1c5e4` candidate traversal is now decoded through both
 internal-font source-group class passes. Fixture

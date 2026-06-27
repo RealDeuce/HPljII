@@ -990,8 +990,12 @@ handlers:
   bridge and band renderer, with aggregate surface digest
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
   The open boundary is physical baseline/cell/page placement agreement
-  against a known font/self-test sample, including remaining
-  `+0x28..+0x31` header semantics.
+  against a known font/self-test sample. The ROM roles for record
+  `+0x28/+0x2a` and `+0x2f..+0x31` are no longer part of that open edge:
+  `0x1519a` consumes `+0x28/+0x2a` as decoded-height inputs before
+  `0x13bca`, and `0x1428c` consumes `+0x2f..+0x31` as same-class chooser
+  tie-breakers after `0x14398` / `0x13c06`. Their HP/manual-facing names
+  remain unknown.
 - Broaden visible-output variants where they still change compatibility:
   font-selection fallback/error branches beyond the two symbol-miss
   fixtures, downloaded-glyph publication cross-products beyond the

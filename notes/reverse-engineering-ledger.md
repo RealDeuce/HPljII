@@ -1036,12 +1036,15 @@ ROM work needed:
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.
-- Finish semantic naming of the remaining built-in record fields now
-  extracted from the repeated `COURIER` and `LINE_PRINTER` fixtures,
-  especially record `+0x28..+0x31` header-level baseline/cell fields.
-  Record `+0x24` is already pinned as the `0xc428` / `0x10550`
-  HMI/default-advance source, and glyph-entry `+0/+2` placement offsets
-  are already pinned through the `0xd824` path.
+- Finish physical/manual naming of the built-in record fields whose ROM roles
+  are already pinned by the repeated `COURIER` and `LINE_PRINTER` fixtures.
+  Record `+0x24` is the `0xc428` / `0x10550` HMI/default-advance source,
+  glyph-entry `+0/+2` placement offsets are pinned through the `0xd824` path,
+  record `+0x28/+0x2a` is consumed by `0x1519a` as decoded-height inputs
+  before `0x13bca`, and record `+0x2f..+0x31` is consumed by `0x1428c` as
+  same-class chooser tie-breakers after `0x14398` / `0x13c06`. What remains
+  is the HP/manual-facing baseline/cell terminology and comparison against a
+  known printed font/self-test sample.
 - Decide whether the parser-exposed `@0..@2` table/copy variants need
   compatibility-facing documentation. The default-font candidate and
   caller path is now real-record backed through `0x1b250`, `0x1b50e`,

@@ -62497,6 +62497,261 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "final_cursor_x": pack12(82),
     }))
+    transparent_high_control_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&p3X!\x98!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            transparent_selected_context_byte=1,
+            transparent_filtering_word=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+        allow_multiple_buckets=True,
+    )
+    transparent_high_control_object = transparent_high_control_stream["bucket_object"]
+    transparent_high_control_rendered = transparent_high_control_stream["rendered"]
+    transparent_high_control_bridged = transparent_high_control_stream["bridged_record"]
+    transparent_high_control_page_record = transparent_high_control_stream["page_record"]
+    assert isinstance(transparent_high_control_object, bytes)
+    assert isinstance(transparent_high_control_rendered, dict)
+    assert isinstance(transparent_high_control_bridged, dict)
+    assert isinstance(transparent_high_control_page_record, dict)
+    transparent_high_control_events = transparent_high_control_stream["events"]
+    assert isinstance(transparent_high_control_events, list)
+    if (
+        len(transparent_high_control_events) != 1
+        or transparent_high_control_events[0]["kind"] != "transparent-data"
+    ):
+        raise AssertionError("transparent high-control stream expected one transparent-data event")
+    transparent_high_control_event = transparent_high_control_events[0]
+    assert isinstance(transparent_high_control_event, dict)
+    transparent_high_control_payload_summary: list[dict[str, object]] = []
+    transparent_high_control_payload_events = transparent_high_control_event["payload_events"]
+    assert isinstance(transparent_high_control_payload_events, list)
+    for payload_event in transparent_high_control_payload_events:
+        assert isinstance(payload_event, dict)
+        page_result = payload_event["page_result"]
+        positioned = payload_event["positioned"]
+        source = payload_event["source"]
+        assert isinstance(page_result, dict)
+        assert isinstance(positioned, dict)
+        assert isinstance(source, dict)
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        transparent_high_control_payload_summary.append({
+            "index": payload_event["index"],
+            "byte": payload_event["byte"],
+            "route": payload_event["route"],
+            "cursor_before": payload_event["cursor_before"],
+            "cursor_after": payload_event["cursor_after"],
+            "mapped": source["mapped"],
+            "glyph_entry": source["glyph_entry"],
+            "glyph_rows": source["glyph_rows"],
+            "glyph_width": source["glyph_width"],
+            "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+            "coord": page_result["coord"],
+            "allocated": page_result["allocated"],
+            "count_before": page_result["count_before"],
+            "count_after": page_result["count_after"],
+            "bucket_index": page_result["bucket_index"],
+        })
+    transparent_high_control_bucket_objects = page_record_bucket_objects(
+        transparent_high_control_page_record
+    )
+    transparent_high_control_bucket_renders: dict[int, dict[str, object]] = {}
+    for bucket_word in (-1, 0):
+        high_control_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+            data,
+            resources,
+            transparent_high_control_page_record,
+            bucket_word=bucket_word,
+        )
+        entry = high_control_render_entry["entry"]
+        assert isinstance(entry, dict)
+        rows = entry["rows"]
+        assert isinstance(rows, list)
+        transparent_high_control_bucket_renders[bucket_word] = {
+            "row_count": len(rows),
+            "row_width": max((len(str(row)) for row in rows), default=0),
+            "row_sha256": hashlib.sha256(
+                "\n".join(str(row) for row in rows).encode("ascii")
+            ).hexdigest(),
+        }
+    high_control_rows = transparent_high_control_rendered["rows"]
+    assert isinstance(high_control_rows, list)
+    checks.append(assert_equal(
+        "transparent nonzero high-control byte queues tall glyph bucket",
+        {
+            "stream": transparent_high_control_stream["stream"],
+            "event": {
+                "kind": transparent_high_control_event["kind"],
+                "sequence": transparent_high_control_event["sequence"],
+                "record": transparent_high_control_event["record"],
+                "parameter": transparent_high_control_event["parameter"],
+                "handler": transparent_high_control_event["handler"],
+                "delayed_snapshot_bytes": transparent_high_control_event[
+                    "delayed_snapshot_bytes"
+                ],
+                "restore_dispatch": transparent_high_control_event[
+                    "restore_dispatch"
+                ],
+                "restored_record": transparent_high_control_event[
+                    "restored_record"
+                ],
+                "payload_offset": transparent_high_control_event["payload_offset"],
+                "byte_count": transparent_high_control_event["byte_count"],
+                "raw_payload": transparent_high_control_event["raw_payload"],
+                "selected_context_byte": transparent_high_control_event[
+                    "selected_context_byte"
+                ],
+                "local_filtering_word": transparent_high_control_event[
+                    "local_filtering_word"
+                ],
+                "values": transparent_high_control_event["values"],
+                "routes": transparent_high_control_event["routes"],
+                "control_hits": transparent_high_control_event["control_hits"],
+                "payload_events": transparent_high_control_payload_summary,
+            },
+            "root_allocations": transparent_high_control_stream["final_state"][
+                "page_record_root_allocations"
+            ],
+            "selected_bucket_index": transparent_high_control_stream["bucket_index"],
+            "selected_object": transparent_high_control_object,
+            "bucket_objects": transparent_high_control_bucket_objects,
+            "bridged_context_slots": transparent_high_control_bridged[
+                "context_slots"
+            ][:2],
+            "selected_render": {
+                "row_count": len(high_control_rows),
+                "row_width": max((len(str(row)) for row in high_control_rows), default=0),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(str(row) for row in high_control_rows).encode("ascii")
+                ).hexdigest(),
+            },
+            "bucket_renders": transparent_high_control_bucket_renders,
+            "final_cursor_x": transparent_high_control_stream["final_state"]["cursor_x"],
+        },
+        {
+            "stream": b"\x1b&p3X!\x98!",
+            "event": {
+                "kind": "transparent-data",
+                "sequence": b"\x1b&p3X!\x98!",
+                "record": bytes.fromhex("80 58 00 03 00 00"),
+                "parameter": 3,
+                "handler": 0x011F5A,
+                "delayed_snapshot_bytes": bytes.fromhex(
+                    "01 00 01 24 52 80 58 00 03 00 00"
+                ),
+                "restore_dispatch": {"kind": "direct-handler", "handler": 0x012452},
+                "restored_record": bytes.fromhex("80 58 00 03 00 00"),
+                "payload_offset": 5,
+                "byte_count": 3,
+                "raw_payload": b"!\x98!",
+                "selected_context_byte": 1,
+                "local_filtering_word": 1,
+                "values": [0x21, 0x98, 0x21],
+                "routes": [0x00D04A, 0x00D04A, 0x00D04A],
+                "control_hits": 0,
+                "payload_events": [
+                    {
+                        "index": 0,
+                        "byte": 0x21,
+                        "route": 0x00D04A,
+                        "cursor_before": pack12(10),
+                        "cursor_after": pack12(28),
+                        "mapped": 0x20,
+                        "glyph_entry": 0x015330,
+                        "glyph_rows": 22,
+                        "glyph_width": 4,
+                        "positioned_xy": (16, 0),
+                        "coord": 0x0001,
+                        "allocated": True,
+                        "count_before": 0,
+                        "count_after": 1,
+                        "bucket_index": 0,
+                    },
+                    {
+                        "index": 1,
+                        "byte": 0x98,
+                        "route": 0x00D04A,
+                        "cursor_before": pack12(28),
+                        "cursor_after": pack12(46),
+                        "mapped": 0x97,
+                        "glyph_entry": 0x01781E,
+                        "glyph_rows": 29,
+                        "glyph_width": 17,
+                        "positioned_xy": (29, -1),
+                        "coord": 0xFD01,
+                        "allocated": True,
+                        "count_before": 0,
+                        "count_after": 1,
+                        "bucket_index": -1,
+                    },
+                    {
+                        "index": 2,
+                        "byte": 0x21,
+                        "route": 0x00D04A,
+                        "cursor_before": pack12(46),
+                        "cursor_after": pack12(64),
+                        "mapped": 0x20,
+                        "glyph_entry": 0x015330,
+                        "glyph_rows": 22,
+                        "glyph_width": 4,
+                        "positioned_xy": (52, 0),
+                        "coord": 0x0403,
+                        "allocated": False,
+                        "count_before": 1,
+                        "count_after": 2,
+                        "bucket_index": 0,
+                    },
+                ],
+            },
+            "root_allocations": 1,
+            "selected_bucket_index": -1,
+            "selected_object": (
+                bytes.fromhex("00 00 00 00 00 00 00 01 97 fd 01")
+                + (b"\x00" * 0x1B)
+            ),
+            "bucket_objects": {
+                -1: [
+                    bytes.fromhex("00 00 00 00 00 00 00 01 97 fd 01")
+                    + (b"\x00" * 0x1B)
+                ],
+                0: [
+                    bytes.fromhex(
+                        "00 00 00 00 00 00 00 02 20 00 01 20 04 03"
+                    )
+                    + (b"\x00" * 0x18)
+                ],
+            },
+            "bridged_context_slots": (0x440946B4, 0),
+            "selected_render": {
+                "row_count": 44,
+                "row_width": 46,
+                "row_sha256": "bd7ad3016d15c1dc2ef12adaeb1091a58f26473c0ecfc7ac13bfaf268c383e90",
+            },
+            "bucket_renders": {
+                -1: {
+                    "row_count": 44,
+                    "row_width": 46,
+                    "row_sha256": "bd7ad3016d15c1dc2ef12adaeb1091a58f26473c0ecfc7ac13bfaf268c383e90",
+                },
+                0: {
+                    "row_count": 22,
+                    "row_width": 56,
+                    "row_sha256": "4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300",
+                },
+            },
+            "final_cursor_x": pack12(64),
+        },
+    ))
     mixed_stream = render_mixed_printable_control_stream(
         data,
         resources,

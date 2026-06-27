@@ -1088,6 +1088,12 @@ objects, and leave only the two visible `!` entries at compact coords
 `0x0001` and `0x0604`. `ESC &p4X!\x05\x80!` covers the nonzero-filter
 control path through `0xd04a`, queueing C0 glyph `0x04` at compact coord
 `0x0d01` and high-control glyph `0x7f` at compact coord `0x0003`.
+`ESC &p3X!\x98!` extends that same nonzero-filter path to a taller
+high-control glyph: byte `0x98` maps to glyph `0x97`, queues bucket `-1`
+coord `0xfd01`, leaves surrounding `!` entries in bucket `0`, and renders
+bucket digests
+`bd7ad3016d15c1dc2ef12adaeb1091a58f26473c0ecfc7ac13bfaf268c383e90` and
+`4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300`.
 `ESC &p2X\x1aA!` covers the transparent `1a` probe path by consuming raw
 payload `1a 41 21`, routing values `0x41` and `0x21` through `0xd04a`,
 and rendering visible `A!`. That direct page-record group now also crosses

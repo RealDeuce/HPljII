@@ -901,8 +901,13 @@ default-filtered control route: C0 byte `0x05` and high-control byte
 object, and leave the next visible `!` at compact coord `0x0604`.
 `ESC &p4X!\x05\x80!` covers the nonzero-filter route through `0xd04a`:
 byte `0x05` maps to glyph `0x04`, byte `0x80` maps to glyph `0x7f`,
-and both queue visible compact text entries. `ESC &p2X\x1aA!` covers the
-probe path where `1a 41` contributes payload byte `0x41`, not `0x1a`.
+and both queue visible compact text entries. `ESC &p3X!\x98!` extends the
+nonzero-filter high-control path to a taller bucket-crossing glyph: byte
+`0x98` maps to glyph `0x97`, glyph entry `0x01781e`, rows `29`, width `17`,
+queues bucket `-1` coord `0xfd01`, and renders row digest
+`bd7ad3016d15c1dc2ef12adaeb1091a58f26473c0ecfc7ac13bfaf268c383e90`.
+`ESC &p2X\x1aA!` covers the probe path where `1a 41` contributes payload byte
+`0x41`, not `0x1a`.
 
 `generated/analysis/ic30_ic13_esc_e_reset_flow.md` tracks the software
 reset boundary: `ESC E` runs text flush/page-root finalization before
@@ -975,7 +980,7 @@ handlers:
   font-selection fallback/error branches beyond the two symbol-miss
   fixtures, downloaded-glyph publication cross-products beyond the
   documented selector families, transparent high-control cases that map
-  to secondary or tall/segmented glyphs, and the parser-exposed `@0..@2`
+  to secondary or segmented glyphs, and the parser-exposed `@0..@2`
   symbol table/copy variants if they need compatibility-facing behavior.
 - Continue the active-render scheduler only at the remaining external
   boundary: `$8000.4`, `$a601`, `$a801`, `$aa01`, `0xfffe0001`, and

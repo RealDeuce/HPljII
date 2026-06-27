@@ -367,6 +367,9 @@ The next work should follow dataflow, not isolated handlers:
    handlers to printable source capture, HMI, object prefix, bridge context
    slots, and rows. Remaining suite cases should add other fallback/error
    font-selection visible-output variants beyond those two symbol misses and
+   transparent-data high-control variants beyond the covered short `0x80` and
+   tall bucket-crossing `0x98` nonzero-filter cases, especially secondary or
+   segmented mappings. They should also
    broaden downloaded-glyph publication cross-products beyond the documented
    segmented-wide, normal, linear-segmented, and even-span wide selector
    families, especially alternate row counts, character modes, and non-success

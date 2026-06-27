@@ -15,6 +15,7 @@ Evidence:
   - `transparent non-0x58 probe byte reaches page-record output`
   - `transparent data control payloads advance through fixed-space path`
   - `transparent nonzero filters route controls through printable path`
+  - `transparent nonzero high-control byte queues tall glyph bucket`
 
 ## Command Boundary
 
@@ -255,6 +256,37 @@ filtering word `1`. It proves the other side of both filter branches:
 - render entry: all four routed payload values contribute compact text entries
   and visible rows
 
+The high-control nonzero-filter fixture uses stream:
+
+```text
+1b 26 70 33 58 21 98 21
+```
+
+That is `ESC &p3X!\x98!` with selected context byte `1` and local filtering
+word `1`. It keeps the high-control byte on the `0xd04a` printable path and
+proves that transparent data can queue a taller high-control glyph into a
+different bucket from surrounding printable bytes:
+
+- restored record: `80 58 00 03 00 00`
+- raw payload: `21 98 21`
+- selected context byte: `1`
+- local filtering word: `1`
+- values: `21 98 21`
+- routes: `d04a d04a d04a`
+- payload byte `0x98`: maps to glyph `0x97`, glyph entry `0x01781e`, rows
+  `29`, width `17`, positioned x/y `29/-1`, compact coord `0xfd01`, and bucket
+  `-1`
+- surrounding `!` bytes remain in bucket `0` at compact coords `0x0001` and
+  `0x0403`
+- bucket `-1` object:
+  `00 00 00 00 00 00 00 01 97 fd 01` plus trailing zeros
+- bucket `0` object:
+  `00 00 00 00 00 00 00 02 20 00 01 20 04 03` plus trailing zeros
+- selected high-control bucket render: row count `44`, row width `46`, digest
+  `bd7ad3016d15c1dc2ef12adaeb1091a58f26473c0ecfc7ac13bfaf268c383e90`
+- surrounding printable bucket render: row count `22`, row width `56`, digest
+  `4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300`
+
 ## Semantic Composition
 
 Concept: transparent print data is a counted byte-stream splice, not a binary
@@ -311,7 +343,8 @@ because the claims are backed by disassembly `0x11f5a`, `0x12452`, `0xd0f0`,
 `transparent data parser trace feeds page-record queue`, `transparent non-0x58
 probe byte reaches page-record output`, `transparent data control payloads
 advance through fixed-space path`, and `transparent nonzero filters route
-controls through printable path`.
+controls through printable path`, and
+`transparent nonzero high-control byte queues tall glyph bucket`.
 
 Unresolved middle edges:
 
@@ -322,9 +355,10 @@ Unresolved middle edges:
   `selected inline source queues and renders through unflagged path`; the
   missing evidence is a transparent-data fixture that enters that same branch
   through default-filtered `0xd0f0`.
-- `0x124f8..0x1252a`: broader high-control cross-product coverage remains open
-  for values that map to tall/segmented glyphs or secondary contexts; the
-  short-bucket nonzero branch is covered by `ESC &p4X!\x05\x80!`.
+- `0x124f8..0x1252a`: high-control nonzero filtering is now page-visible for a
+  short bucket (`0x80`) and a taller bucket-crossing glyph (`0x98`). Broader
+  high-control cross-product coverage remains open for segmented glyphs and
+  secondary contexts.
 
 ## Reproduction Contract
 
@@ -359,6 +393,7 @@ For `ESC &p#X`:
   fixtures cover the downstream unflagged source and bucket behavior, not the
   transparent-data `0xd0f0` entry into it.
 - Broader nonzero-filtering coverage remains open for high-control payload
-  values that map to tall/segmented glyphs or secondary contexts.
+  values that map to segmented glyphs or secondary contexts. The tall
+  bucket-crossing high-control case is covered by `ESC &p3X!\x98!`.
 - The names for the active context filtering byte, fallback byte, and high-byte
   flags remain provisional.

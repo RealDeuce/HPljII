@@ -490,7 +490,8 @@ modeled source/object structures rather than a full live CPU-memory run.
   filtering, printable re-entry, and fixed-space output are composed in
   `Transparent Print Data`. Remaining work is the unflagged
   `0xd0f0..0xd140` branch and broader high-control cross-products that map to
-  tall/segmented glyphs or secondary contexts.
+  segmented glyphs or secondary contexts; the tall bucket-crossing
+  high-control case is now fixture-backed.
 - `0x10084..0x1387c`: first-root allocation and compact text queueing
   are fixture-backed for this cluster, but a dense live parser page that
   exercises same-chunk and rollover allocation for all cursor variants
@@ -549,6 +550,10 @@ or fixed-space helper `0xd0f0`.
   `00 00 00 00 00 00 00 02 20 00 01 20 02 02`,
   `00 00 00 00 00 00 00 02 20 00 01 20 06 04`, and
   `00 00 00 00 00 00 00 04 20 00 01 04 0d 01 7f 00 03 20 06 04`.
+  High-control `0x98` with nonzero filtering queues a separate taller glyph
+  object in bucket `-1`:
+  `00 00 00 00 00 00 00 01 97 fd 01`, while surrounding `!` entries remain
+  in bucket `0`.
 - Unknown for this checkpoint:
   - manual-facing names for the selected context filtering byte, fallback
     filtering byte, and high-character flags remain provisional.
@@ -605,14 +610,24 @@ context byte `1` and local filtering word `1` route all four values through
 `0xd04a`; C0 byte `0x05` maps to glyph `0x04`, high-control byte `0x80` maps
 to glyph `0x7f`, and all four entries render.
 
+Fixture `transparent nonzero high-control byte queues tall glyph bucket`
+extends that nonzero high-control branch with `ESC &p3X!\x98!`. Payload byte
+`0x98` routes through `0xd04a`, maps to glyph `0x97`, glyph entry `0x01781e`,
+rows `29`, width `17`, and compact coord `0xfd01` in bucket `-1`; the
+surrounding `!` bytes remain in bucket `0` at coords `0x0001` and `0x0403`.
+The bucket `-1` render has row count `44`, width `46`, and digest
+`bd7ad3016d15c1dc2ef12adaeb1091a58f26473c0ecfc7ac13bfaf268c383e90`;
+bucket `0` renders row digest
+`4bf2f0104b14bfa598b8acfcf8cfb69ccb4419c234f02f256781b6b236110300`.
+
 ### Confidence
 
 High for delayed snapshot/restore, absolute payload count, `1a 58` and
 `1a xx` probe handling, default filtering, nonzero filtering, fixed-space
 cursor advance, page-record object bytes, bridge context slots, and rendered
-rows because each is fixture-pinned against disassembly-backed helpers.
-Medium for broader high-control glyph cross-products and manual names for the
-filter bytes.
+rows, and one taller high-control bucket-crossing glyph because each is
+fixture-pinned against disassembly-backed helpers. Medium for segmented or
+secondary high-control cross-products and manual names for the filter bytes.
 
 ### Fixtures
 
@@ -622,6 +637,7 @@ filter bytes.
 - `transparent non-0x58 probe byte reaches page-record output`
 - `transparent data control payloads advance through fixed-space path`
 - `transparent nonzero filters route controls through printable path`
+- `transparent nonzero high-control byte queues tall glyph bucket`
 
 ### Disassembly Evidence
 
@@ -640,9 +656,9 @@ filter bytes.
   `selected inline source queues and renders through unflagged path`; the open
   edge is specifically a page-visible transparent-data fixture that reaches
   that branch through default-filtered `0xd0f0` and host-space substitution.
-- `0x124f8..0x1252a`: broader high-control cross-products remain open for
-  values that map to tall/segmented glyphs or secondary contexts. The
-  short-bucket nonzero branch is covered by `ESC &p4X!\x05\x80!`.
+- `0x124f8..0x1252a`: high-control nonzero filtering is now fixture-backed for
+  a short bucket (`0x80`) and a taller bucket-crossing glyph (`0x98`). Broader
+  cross-products remain open for segmented glyphs or secondary contexts.
 
 ## Text Source Objects And Compact Buckets
 

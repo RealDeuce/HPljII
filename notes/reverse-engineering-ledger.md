@@ -964,8 +964,9 @@ ROM work needed:
 - Expand normal parser table `0x112a4` and alternate parser table
   `0x116f6` into named PCL commands.
 - Broaden the direct-control and printable stream fixtures into fuller
-  live parser/register traces, broader transparent-data filtering cases,
-  and dense parser-allocated page-object fixtures. The command-family
+  live parser/register traces, remaining transparent-data segmented/secondary
+  high-control cases, and dense parser-allocated page-object fixtures. The
+  command-family
   state is composed in `Text Cursor And Direct Controls`, and the
   printable source-object fields are composed in `Text Source Objects And
   Compact Buckets`.

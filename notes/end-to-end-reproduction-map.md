@@ -400,13 +400,15 @@ The next work should follow dataflow, not isolated handlers:
    documented in `notes/pcl-parser-core.md` and
    `notes/semantic-state-model.md`; fixture
    `ESC Y display-functions stream reaches page-record output` covers the
-   normal `0x12536..0x1261e` page-output path. The remaining display-functions
-   suite gap is the alternate/data append-only `0x12120..0x1219c` path around
-   `0xe002`, not the normal loop semantics. They should also broaden
-   downloaded-glyph publication cross-products beyond the documented
-   segmented-wide, normal, linear-segmented, row-threshold `0x80` short, and
-   even-span wide selector families, especially other row counts, character
-   modes, and non-success exits. The row-threshold fixture closes the
+   normal `0x12536..0x1261e` page-output path, and fixture
+   `0x12120 ESC Y alternate append stores normalized display bytes` covers the
+   alternate/data append-only `0x12120..0x1219c` path around `0xe002`.
+   Remaining display-functions risk is fixture breadth across other
+   context/filter combinations, not the command-family loop boundary. They
+   should also broaden downloaded-glyph publication cross-products beyond the
+   documented segmented-wide, normal, linear-segmented, row-threshold `0x80`
+   short, and even-span wide selector families, especially other row counts,
+   character modes, and non-success exits. The row-threshold fixture closes the
    `0x80`/`0x81` selector boundary by keeping rows `0x80` on selector
    `0x0003`, comparing it with the rows-`0x81` selector `0x2003` fixture, and
    now publishing the row-`0x80` bucket-1 record through FF, `0xff1e`, and

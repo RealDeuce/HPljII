@@ -546,6 +546,59 @@ def consume_display_functions_text_via_12536(
     }
 
 
+def consume_display_functions_append_via_12120(payload: bytes) -> dict[str, object]:
+    host_state = host_byte_fetch_state(data_chain=list(payload))
+    values: list[int] = [0x1B, 0x59]
+    sources: list[str] = []
+    control_hits = 0
+    esc_seen = 0
+    status = 1
+    terminated = False
+    while True:
+        result = host_byte_fetch_via_a904(host_state)
+        value = int(result["d7"])
+        if value < 0:
+            status = 0
+            break
+        host_state = result["state"]
+        if not isinstance(host_state, dict):
+            raise AssertionError("0x12120 host fetch did not return a state dictionary")
+        sources.append(str(result["source"]))
+        value &= 0xFF
+        if value == 0x1A:
+            probe = host_byte_fetch_via_a904(host_state)
+            probe_value = int(probe["d7"])
+            if probe_value < 0:
+                status = 0
+                break
+            host_state = probe["state"]
+            if not isinstance(host_state, dict):
+                raise AssertionError("0x12120 control probe did not return a state dictionary")
+            sources.append(str(probe["source"]))
+            if (probe_value & 0xFF) == 0x58:
+                value = 0x7F
+                control_hits += 1
+            else:
+                value = probe_value & 0xFF
+        values.append(value)
+        if value == 0x1B:
+            esc_seen = 1
+            continue
+        if value == 0x5A and esc_seen:
+            terminated = True
+            break
+        esc_seen = 0
+    remaining_chain = list(host_state.get("data_chain", []))
+    return {
+        "status": status,
+        "terminated": terminated,
+        "values": values,
+        "sources": sources,
+        "remaining_payload": remaining_chain,
+        "control_hits": control_hits,
+    }
+
+
 def parser_dispatch_entry_via_11774(data: bytes, mode: int, byte: int, alternate: bool = False) -> dict[str, int | None]:
     pointer_table = 0x116F6 if alternate else 0x112A4
     start = u32(data, pointer_table + mode * 4)
@@ -23053,6 +23106,85 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "sources": ["data-chain", "data-chain", "data-chain"],
         "remaining_payload": [],
         "control_hits": 0,
+    }))
+    consumed_display_append = consume_display_functions_append_via_12120(
+        bytes.fromhex("21 1a 58 1b 5a"),
+    )
+    display_append_state = macro_chunk_append_state()
+    for byte in consumed_display_append["values"]:
+        display_append_state = append_macro_definition_byte_via_e002(
+            display_append_state,
+            int(byte),
+        )
+    display_append_payload = macro_chunk_payload_bytes(
+        dict(display_append_state["record"]),
+        dict(display_append_state["chunks"]),
+    )
+    checks.append(assert_equal("0x12120 ESC Y alternate append stores normalized display bytes", {
+        "consumed": consumed_display_append,
+        "payload": display_append_payload,
+        "raw_count": display_append_state["record"]["raw_count"],
+        "events": display_append_state["events"],
+    }, {
+        "consumed": {
+            "status": 1,
+            "terminated": True,
+            "values": [0x1B, 0x59, 0x21, 0x7F, 0x1B, 0x5A],
+            "sources": ["data-chain", "data-chain", "data-chain", "data-chain", "data-chain"],
+            "remaining_payload": [],
+            "control_hits": 1,
+        },
+        "payload": bytes.fromhex("1b 59 21 7f 1b 5a"),
+        "raw_count": 10,
+        "events": [
+            {
+                "kind": "macro-append-chunk-allocated",
+                "chunk": 0x00783988,
+                "raw_count": 4,
+            },
+            {
+                "kind": "macro-byte-appended",
+                "byte": 0x1B,
+                "chunk": 0x00783988,
+                "offset": 0,
+                "raw_count": 5,
+            },
+            {
+                "kind": "macro-byte-appended",
+                "byte": 0x59,
+                "chunk": 0x00783988,
+                "offset": 1,
+                "raw_count": 6,
+            },
+            {
+                "kind": "macro-byte-appended",
+                "byte": 0x21,
+                "chunk": 0x00783988,
+                "offset": 2,
+                "raw_count": 7,
+            },
+            {
+                "kind": "macro-byte-appended",
+                "byte": 0x7F,
+                "chunk": 0x00783988,
+                "offset": 3,
+                "raw_count": 8,
+            },
+            {
+                "kind": "macro-byte-appended",
+                "byte": 0x1B,
+                "chunk": 0x00783988,
+                "offset": 4,
+                "raw_count": 9,
+            },
+            {
+                "kind": "macro-byte-appended",
+                "byte": 0x5A,
+                "chunk": 0x00783988,
+                "offset": 5,
+                "raw_count": 10,
+            },
+        ],
     }))
     alternate_payload_wrapper = alternate_payload_dispatch_via_12358(
         bytes.fromhex("81 57 ff fd 00 00"),
@@ -78591,6 +78723,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "queues visible `!`, `!`, and `Z` entries at compact coords `0x0001`, "
         "`0x0403`, and `0x0405`, and renders row digest "
         "`c7d0fb0a66181acd591244aab0a7f450f895b3b89ea98d189a00a25c3de04d85`."
+    )
+    lines.append(
+        "- display-functions alternate append boundary: stream payload `21 1a "
+        "58 1b 5a` through `0x12120` appends literal `ESC Y` plus normalized "
+        "values `21 7f 1b 5a` through `0xe002`, terminates after appended "
+        "`ESC Z`, and stores payload `1b 59 21 7f 1b 5a` in macro chunk "
+        "`0x783988`."
     )
     lines.append(
         "- transparent control-payload boundary: stream `1b 26 70 34 58 21 05 "

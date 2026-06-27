@@ -353,6 +353,8 @@ which appends normalized bytes through `0xe002`.
   - `0xe002` append sink used by alternate/data handler `0x12120`.
   - `0xd99a` side effect for local `0x1a 0x58` control reporting.
   - `0xf054` CR post-handler called by `0x12536` after routed value `0x0d`.
+  - macro/data-chain chunk `0x783988`, populated by `0xe002` in the append
+    fixture for the byte stream preserved by alternate/data `ESC Y`.
 
 ### Writers
 
@@ -379,6 +381,10 @@ which appends normalized bytes through `0xe002`.
 Alternate/data `0x12120` has no direct pixels in this checkpoint. It preserves
 the displayed byte stream by appending `ESC Y` and all normalized values
 through `0xe002`, with `0x1a 0x58` represented as `0x7f`, until `ESC Z`.
+Fixture `0x12120 ESC Y alternate append stores normalized display bytes`
+proves payload `21 1a 58 1b 5a` is stored as `1b 59 21 7f 1b 5a` in macro
+chunk `0x783988`; the fixture records allocation plus six `0xe002` byte
+appends with raw counts `4..10`.
 
 Normal `0x12536` can produce pixels or spacing. Values `0x00..0x1f` route
 through `0xd0f0` only when the selected context byte is zero; values
@@ -399,15 +405,18 @@ values before exit, queues visible `!`, `!`, and `Z` entries at compact coords
 
 High for the loop terminator, local `0x1a 0x58` normalization, alternate/data
 append behavior, normal-path C0/high-control routing predicates, and CR
-post-handler call because these are direct disassembly reads. High for the
-normal `0x12536` parser-to-page-record boundary because the dedicated
-host-fetched fixture now drives `ESC Y ... ESC Z` through `0xd04a`, `0xd0f0`,
-compact object queueing, bridge, and rendered rows. Medium for the
-alternate/data append path until it has a dedicated `ESC Y` append fixture.
+post-handler call because these are direct disassembly reads and now have
+dedicated fixtures for both `0x12120` and `0x12536`. High for the normal
+`0x12536` parser-to-page-record boundary because the host-fetched fixture
+drives `ESC Y ... ESC Z` through `0xd04a`, `0xd0f0`, compact object queueing,
+bridge, and rendered rows. High for the alternate/data append boundary because
+the append fixture drives `0x12120` loop output through `0xe002` into the
+macro chunk payload.
 
 ### Fixtures
 
 - `ESC Y display-functions stream reaches page-record output`
+- `0x12120 ESC Y alternate append stores normalized display bytes`
 - Downstream route controls are shared with fixtures in `Transparent Print
   Data` and `Text Cursor And Direct Controls`, including
   `transparent data control payloads advance through fixed-space path` and
@@ -423,9 +432,10 @@ alternate/data append path until it has a dedicated `ESC Y` append fixture.
 
 ### Unresolved Middle Edges
 
-- `0x12120..0x1219c`: append-only path is disassembly-documented, but its
-  exact owning data-chain/frame context around `0xe002` is covered by macro
-  append fixtures rather than a dedicated `ESC Y` append fixture.
+- None remaining for the `0x12536..0x1261e` normal page-output loop or the
+  `0x12120..0x1219c` alternate/data append loop. Broader macro/data-chain
+  ownership remains covered in `Macro Definition And Replay`, not reopened
+  here.
 
 ## Text Cursor And Direct Controls
 

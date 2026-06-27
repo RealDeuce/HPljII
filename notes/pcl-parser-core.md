@@ -306,7 +306,12 @@ disassembly `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`
 at `0x12120..0x1219c` and `0x12536..0x1261e`. Fixture
 `ESC Y display-functions stream reaches page-record output` proves the normal
 handler consumes `ESC Y!\x05! ESC Z`, routes values `21 05 21 1b 5a`, queues
-visible `!`, `!`, and `Z`, and renders the resulting page-record rows.
+visible `!`, `!`, and `Z`, and renders the resulting page-record rows. Fixture
+`0x12120 ESC Y alternate append stores normalized display bytes` proves the
+alternate/data handler consumes payload bytes `21 1a 58 1b 5a`, appends the
+literal prefix plus normalized loop values as `1b 59 21 7f 1b 5a`, and stores
+them through `0xe002` in macro chunk `0x783988` before terminating on appended
+`ESC Z`.
 
 ## Delayed Payload Scheduler
 

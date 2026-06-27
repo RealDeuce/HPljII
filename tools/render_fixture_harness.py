@@ -6725,6 +6725,35 @@ def font_resource_fixed_record_release_via_17d7c(
     }
 
 
+def downloaded_descriptor_width_helper_via_16b1a(width: int) -> dict[str, object]:
+    scratch = bytearray.fromhex("12 34 56 78 0c 7f 00 00 ab cd ee ff")
+    initial = bytes(scratch)
+    if width <= 0 or width > 0x1068:
+        return {
+            "status": 0,
+            "width": width,
+            "span": None,
+            "mode": scratch[5],
+            "scratch": bytes(scratch),
+            "scratch_unchanged": bytes(scratch) == initial,
+            "edge": "0x16b26..0x16b34",
+        }
+
+    scratch[8:10] = width.to_bytes(2, "big")
+    span = (width + 7) >> 3
+    scratch[5] = 2 if span & 1 else 1
+    return {
+        "status": 1,
+        "width": width,
+        "span": span,
+        "mode": scratch[5],
+        "scratch": bytes(scratch),
+        "scratch_unchanged": bytes(scratch) == initial,
+        "edge": "0x16b36..0x16b6a",
+        "span_word_0x7827c2": span,
+    }
+
+
 def font_download_char_object_via_16498(
     header: bytes | bytearray,
     char_code: int,
@@ -53399,6 +53428,114 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         },
     ))
+    downloaded_descriptor_width_modes = [
+        downloaded_descriptor_width_helper_via_16b1a(width)
+        for width in (0, 1, 8, 9, 16, 17, 24, 25, 0x1068, 0x1069)
+    ]
+    checks.append(assert_equal(
+        "0x16b1a descriptor width helper emits only mode 1/2",
+        downloaded_descriptor_width_modes,
+        [
+            {
+                "status": 0,
+                "width": 0,
+                "span": None,
+                "mode": 0x7F,
+                "scratch": bytes.fromhex("12 34 56 78 0c 7f 00 00 ab cd ee ff"),
+                "scratch_unchanged": True,
+                "edge": "0x16b26..0x16b34",
+            },
+            {
+                "status": 1,
+                "width": 1,
+                "span": 1,
+                "mode": 2,
+                "scratch": bytes.fromhex("12 34 56 78 0c 02 00 00 00 01 ee ff"),
+                "scratch_unchanged": False,
+                "edge": "0x16b36..0x16b6a",
+                "span_word_0x7827c2": 1,
+            },
+            {
+                "status": 1,
+                "width": 8,
+                "span": 1,
+                "mode": 2,
+                "scratch": bytes.fromhex("12 34 56 78 0c 02 00 00 00 08 ee ff"),
+                "scratch_unchanged": False,
+                "edge": "0x16b36..0x16b6a",
+                "span_word_0x7827c2": 1,
+            },
+            {
+                "status": 1,
+                "width": 9,
+                "span": 2,
+                "mode": 1,
+                "scratch": bytes.fromhex("12 34 56 78 0c 01 00 00 00 09 ee ff"),
+                "scratch_unchanged": False,
+                "edge": "0x16b36..0x16b6a",
+                "span_word_0x7827c2": 2,
+            },
+            {
+                "status": 1,
+                "width": 16,
+                "span": 2,
+                "mode": 1,
+                "scratch": bytes.fromhex("12 34 56 78 0c 01 00 00 00 10 ee ff"),
+                "scratch_unchanged": False,
+                "edge": "0x16b36..0x16b6a",
+                "span_word_0x7827c2": 2,
+            },
+            {
+                "status": 1,
+                "width": 17,
+                "span": 3,
+                "mode": 2,
+                "scratch": bytes.fromhex("12 34 56 78 0c 02 00 00 00 11 ee ff"),
+                "scratch_unchanged": False,
+                "edge": "0x16b36..0x16b6a",
+                "span_word_0x7827c2": 3,
+            },
+            {
+                "status": 1,
+                "width": 24,
+                "span": 3,
+                "mode": 2,
+                "scratch": bytes.fromhex("12 34 56 78 0c 02 00 00 00 18 ee ff"),
+                "scratch_unchanged": False,
+                "edge": "0x16b36..0x16b6a",
+                "span_word_0x7827c2": 3,
+            },
+            {
+                "status": 1,
+                "width": 25,
+                "span": 4,
+                "mode": 1,
+                "scratch": bytes.fromhex("12 34 56 78 0c 01 00 00 00 19 ee ff"),
+                "scratch_unchanged": False,
+                "edge": "0x16b36..0x16b6a",
+                "span_word_0x7827c2": 4,
+            },
+            {
+                "status": 1,
+                "width": 0x1068,
+                "span": 0x20D,
+                "mode": 2,
+                "scratch": bytes.fromhex("12 34 56 78 0c 02 00 00 10 68 ee ff"),
+                "scratch_unchanged": False,
+                "edge": "0x16b36..0x16b6a",
+                "span_word_0x7827c2": 0x20D,
+            },
+            {
+                "status": 0,
+                "width": 0x1069,
+                "span": None,
+                "mode": 0x7F,
+                "scratch": bytes.fromhex("12 34 56 78 0c 7f 00 00 ab cd ee ff"),
+                "scratch_unchanged": True,
+                "edge": "0x16b26..0x16b34",
+            },
+        ],
+    ))
     downloaded_linear_partial = font_download_char_object_via_16498(
         table_payload_type2_bytes,
         0x2B,
@@ -83059,6 +83196,29 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         constructed_segmented_wide_entry["source_layout"],
     ))
     lines.append("")
+    append_wrapped(
+        lines,
+        "- downloaded-character descriptor width helper `0x16b1a`: sampled "
+        "widths `%s` produce accepted mode set `%s` from span parity, while "
+        "invalid widths `%s` return status `0` and leave scratch unchanged."
+        % (
+            [
+                report["width"]
+                for report in downloaded_descriptor_width_modes
+                if report["status"] == 1
+            ],
+            sorted({
+                report["mode"]
+                for report in downloaded_descriptor_width_modes
+                if report["status"] == 1
+            }),
+            [
+                report["width"]
+                for report in downloaded_descriptor_width_modes
+                if report["status"] == 0
+            ],
+        ),
+    )
     lines.append("The font payload reader fixtures model the byte-copy loops immediately before these fixed records are usable. Linear reader `0x168dc` copies host bytes into one destination, treats `0x1a 0x58` as a control escape by calling `0xd99a` and storing a zero payload byte, and records continuation state when byte budget `0x783140` expires. Split-plane reader `0x16942` writes `rows * prefix_span` bytes at `A4`, then one trailing byte per row at `A3 = A4 + rows * prefix_span`; this is the same A2/A3 layout used by odd-width inline render fixtures.")
     lines.append("")
     lines.append(f"- linear copy with `1a 58`: `{' '.join(f'{byte:02x}' for byte in font_linear_payload['dest'])}`, status `{font_linear_payload['status']}`, budget `{font_linear_payload['byte_budget']}`, control hits `{font_linear_payload['control_hits']}`")

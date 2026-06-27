@@ -83,6 +83,7 @@ Primary fixtures:
 - `host-fetched payload-control downloaded glyph FF publishes page record`
 - `host-fetched even-span wide downloaded character renders through 0x1f0d2`
 - `host-fetched row-0x80 downloaded character remains short compact`
+- `0x16b1a descriptor width helper emits only mode 1/2`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
 - `0x16498 no-install exits preserve following printable output`
@@ -199,7 +200,11 @@ Downloaded-character descriptor helper table:
 - Slot 7, reader `0x159d4`, helper `0x16b1a`: width must be
   `1..0x1068`. It writes scratch word `+8`, writes rounded span
   `(width + 7) >> 3` to `0x7827c2`, and sets scratch byte `+5` to mode byte
-  `1` for even spans or `2` for odd spans.
+  `1` for even spans or `2` for odd spans. Fixture `0x16b1a descriptor
+  width helper emits only mode 1/2` samples widths `1`, `8`, `9`, `16`, `17`,
+  `24`, `25`, and `0x1068`, proves the accepted mode set is `{1, 2}`, and
+  proves invalid widths `0` and `0x1069` return through `0x16b26..0x16b34`
+  without rewriting the staged scratch record.
 - Slot 8, reader `0x159d4`, helper `0x16b74`: row count must be
   `1..0x1068`. It writes scratch word `+6`, writes `0x7827c4`, computes
   `0x7827be = rows * span` through `0x332ee`, and increments that byte count
@@ -263,13 +268,15 @@ Published page-record state:
   bucket-1/bucket-9, even-span wide bucket-1, and payload-control odd-span
   wide bucket-1 streams. The remaining row-count risk is no longer the
   `0x80`/`0x81` selector boundary itself or the newly covered short/segmented
-  matrix; it is row counts outside those sampled selector-family fixtures, no
-  identified ROM helper path for accepted
-  descriptor-record mode bytes beyond the `0x16b1a` mode-byte-`1` even-span
-  and mode-byte-`2` odd-span bitmap installs, and additional
-  no-install/partial-install publication siblings. The
-  mode-byte-`0` no-install path is documented as an unchanged-output reject, not an open
-  renderer mode. Fixture `downloaded normal row-0x80 and segmented glyph FF publications
+  matrix; it is row counts outside those sampled selector-family fixtures,
+  additional no-install/partial-install publication siblings, and live CPU
+  continuity from the `0x15dc6` call into `0x16498` through the install return
+  at `0x15dcc`. Accepted descriptor-record mode bytes are no longer a vague
+  open edge for this helper table: fixture `0x16b1a descriptor width helper
+  emits only mode 1/2` proves `0x16b1a` writes only mode `1`/`2`, while
+  mode-byte-`0` is documented as an unchanged-output object-boundary reject,
+  not a parser-produced renderer mode. Fixture `downloaded normal row-0x80
+  and segmented glyph FF publications
   render page records` covers the row-`0x80` bucket-1 publication sibling for the
   `0x80`/`0x81` selector threshold. The covered publication fixtures are `downloaded
   normal row-0x80 and segmented glyph FF publications render page records`, `split-plane
@@ -304,10 +311,13 @@ Renderer-facing allocated payload fields:
   record delta `0x0500` in the `ESC )s2193W` fixture.
 - downloaded character object `+0x04`: bitmap delta `0x0c` written by
   `0x16498`.
-- downloaded character object `+0x05`: glyph bitmap mode. The modeled page-visible
-  downloaded-character fixtures use mode `1`; fixture `0x16498 replacement allocation
-  failure partial and rejected downloaded character exits preserve state` proves mode
-  `0` exits as `unsupported-record-shape` without changing the header.
+- downloaded character object `+0x05`: glyph bitmap mode. Parser-produced
+  descriptors reach this byte through `0x16b1a`, where fixture `0x16b1a
+  descriptor width helper emits only mode 1/2` proves accepted widths write
+  only mode `1` for even byte spans and mode `2` for odd byte spans. Fixture
+  `0x16498 replacement allocation failure partial and rejected downloaded
+  character exits preserve state` proves the artificial object-boundary mode
+  `0` record exits as `unsupported-record-shape` without changing the header.
 - downloaded character object `+0x06/+0x08`: row count and width copied from
   the current character descriptor; the `ESC )s258W` segmented fixture uses
   rows `0x0081` and width `0x0010`.
@@ -1573,20 +1583,23 @@ A byte-stream renderer must preserve:
   trailing-FF `0xff1e` publication and published-record rendering. Remaining
   parser-produced comparisons are bounded cross-products: row counts outside the
   covered short rows `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`, and `0x80` and
-  segmented rows `0x81`, `0x82`, `0x83`, and `0xff`, no identified ROM helper path for
-  accepted descriptor-record mode bytes beyond the covered `0x16b1a` mode-byte-`1`
-  even-span and mode-byte-`2` odd-span bitmap installs, and broader publication
+  segmented rows `0x81`, `0x82`, `0x83`, and `0xff`, broader publication
   combinations beyond the documented normal, nonboundary-short, rows-`0x20` short,
   rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   truncated, linear-segmented, rows-`0x82` segmented, split-plane segmented,
   segmented-wide, even-span wide, payload-control wide, no-install, and status-`2`
-  compact bucket variants. The mode-byte-`0` no-install
-  boundary itself is no longer a
-  vague open edge: fixture `0x16498 no-install exits preserve following printable
-  output` proves status `0`/`unsupported-record-shape` plus unchanged visible output,
-  and fixture `0x16498 replacement allocation failure partial and rejected downloaded
-  character exits preserve state` proves the same table/header no-write boundary at the
-  object level.
+  compact bucket variants, and live CPU continuity from `0x15dc6` into
+  `0x16498` back to `0x15dcc` after the install/payload skip. Accepted
+  descriptor-record mode bytes are closed for the covered helper table by
+  fixture `0x16b1a descriptor width helper emits only mode 1/2`: disassembly
+  `0x16b36..0x16b6a` writes mode `1`/`2` from span parity, and
+  `0x16b26..0x16b34` rejects invalid widths without writing scratch. The
+  mode-byte-`0` no-install boundary itself is no longer a vague open edge:
+  fixture `0x16498 no-install exits preserve following printable output`
+  proves status `0`/`unsupported-record-shape` plus unchanged visible output,
+  and fixture `0x16498 replacement allocation failure partial and rejected
+  downloaded character exits preserve state` proves the same table/header
+  no-write boundary at the object level.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both segmented
   buckets; the normal, rows-`0x20` short, rows-`0x40` short, linear-segmented,
   rows-`0x82` segmented, split-plane segmented, even-span wide, payload-control

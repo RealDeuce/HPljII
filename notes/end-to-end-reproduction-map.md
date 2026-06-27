@@ -320,16 +320,19 @@ pixels or byte-stream compatibility.
    rows. The rows-`0x40` short sibling now publishes through FF as well: fixture
    `host-fetched rows-0x40 short downloaded glyph FF publication renders page record`
    carries `ESC )s128W`, selector `0x0003`, bucket `1`, `0xff1e`, `0x1ed84`, and
-   `0x1ef6a` to `64` blank current-band `0x1fe76` rows. The full soft-font descriptor
-   grammar, any accepted descriptor-record mode bytes beyond the documented `0x16b1a`
-   mode-byte-`1` even-span and mode-byte-`2` odd-span bitmap installs, other release
-   variants, and page-visible behavior for descriptor error forms beyond those
-   no-install boundaries are still not proven against every PCL form. The mode-byte-`0`
-   no-install boundary is documented separately: fixture `0x16498 replacement allocation
-   failure partial and rejected downloaded character exits preserve state` proves the
-   unchanged table/header at object boundary `0x16498`, and fixture `0x16498 no-install
-   exits preserve following printable output` proves the following printable and FF
-   publication stay on the unchanged default-font page path. The even-span
+   `0x1ef6a` to `64` blank current-band `0x1fe76` rows. The accepted
+   descriptor-record mode-byte boundary for this helper table is now documented by
+   fixture `0x16b1a descriptor width helper emits only mode 1/2`: `0x16b36..0x16b6a`
+   writes only mode `1`/`2` from span parity, and `0x16b26..0x16b34` rejects invalid
+   widths without scratch writes. The full soft-font descriptor grammar, other release
+   variants, live CPU continuity from `0x15dc6` into `0x16498` back to `0x15dcc`, and
+   page-visible behavior for descriptor error forms beyond those no-install boundaries
+   are still not proven against every PCL form. The mode-byte-`0` no-install boundary is
+   documented separately: fixture `0x16498 replacement allocation failure partial and
+   rejected downloaded character exits preserve state` proves the unchanged table/header
+   at object boundary `0x16498`, and fixture `0x16498 no-install exits preserve
+   following printable output` proves the following printable and FF publication stay on
+   the unchanged default-font page path. The even-span
    downloaded-glyph plus rule/raster composition now has an exact modeled
    install-to-page handoff: host-fetched `ESC )s18W` produces the resource image
    consumed by the parser-driven page stream, including glyph `0x29`, table entry
@@ -455,7 +458,10 @@ The next work should follow dataflow, not isolated handlers:
    payload-control wide selector families, especially row counts outside the covered
    short rows `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`, and `0x80` and segmented
    rows `0x81`, `0x82`, `0x83`, and `0xff`, descriptor grammar forms outside the
-   covered `0x16b1a` mode-byte-`1`/`2` bitmap installs, and non-success exits. The
+   covered helper-table path, live CPU continuity from `0x15dc6` into `0x16498` back to
+   `0x15dcc`, and non-success exits. The accepted mode-byte boundary itself is covered
+   by fixture `0x16b1a descriptor width helper emits only mode 1/2`, which pins
+   `0x16b36..0x16b6a` accepted writes and `0x16b26..0x16b34` invalid no-writes. The
    nonboundary-short fixture now publishes rows `0x10` on
    selector `0x0003` through FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` with digest
    `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The rows-`0x20`

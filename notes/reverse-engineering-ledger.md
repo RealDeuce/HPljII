@@ -469,14 +469,18 @@ now proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
 `0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`; `d4ac`
 keeps its standard span digest, while `d8fc` keeps high-y `20` and row digest
 `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+Fixture `0x16b1a descriptor width helper emits only mode 1/2` closes the
+downloaded-character helper-table mode-byte question for accepted widths:
+disassembly `0x16b36..0x16b6a` writes mode `1` for even byte spans and mode
+`2` for odd byte spans, while `0x16b26..0x16b34` rejects widths `0` and
+`0x1069` without scratch writes. Mode-byte-`0` remains documented as an
+artificial `0x16498` object-boundary reject through the no-install fixtures,
+not as parser-produced descriptor output.
 Remaining work is additional metric-value combinations outside those pinned
 legal matrix, boundary, and low-nibble endpoints, validation/error page behavior
-beyond those bounded predicate
-and short-budget no-install branches, any accepted downloaded-character
-descriptor mode-byte forms beyond the documented `0x16b1a` mode-byte-`1`
-even-span and mode-byte-`2` odd-span installs if ROM evidence proves such
-forms, remaining release variants, broader publication combinations beyond
-the covered
+beyond those bounded predicate and short-budget no-install branches, remaining
+release variants, live CPU continuity from `0x15dc6` into `0x16498` back to
+`0x15dcc`, broader publication combinations beyond the covered
 normal, nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented,
 rows-`0x20` short, rows-`0x40` short, row-count-matrix rows
 `0x04`/`0x7f`/`0x83`/`0xff`, rows-`0x82` segmented, rows-`0x0102`

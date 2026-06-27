@@ -3066,8 +3066,12 @@ compact text renderer.
     character object record before `0x16498` allocates/copies the payload.
     Byte `+5` of that staged record is the descriptor/object mode byte; the
     ROM descriptor helper `0x16b1a` writes mode byte `1` for even byte spans
-    and mode byte `2` for odd byte spans. The mode-byte-`0` fixture is an
-    artificial record-shape reject at the `0x16498` object boundary, not a
+    and mode byte `2` for odd byte spans. Fixture `0x16b1a descriptor width
+    helper emits only mode 1/2` samples accepted widths `1`, `8`, `9`, `16`,
+    `17`, `24`, `25`, and `0x1068`, plus invalid widths `0` and `0x1069`,
+    proving that the helper table produces only mode `1`/`2` on success and
+    leaves scratch unchanged on width rejection. The mode-byte-`0` fixture is
+    an artificial record-shape reject at the `0x16498` object boundary, not a
     value produced by the accepted `0x16336` helper table. This scratch buffer
     is reused by the `0x17026`/`0x1719c` resource-header route with a
     different interpretation.
@@ -3138,7 +3142,9 @@ compact text renderer.
   descriptors stage mode byte `1` for even byte spans and mode byte `2` for
   odd byte spans through helper `0x16b1a`; resolver `0x1f354` consumes that
   byte on bit-30 offset-table glyphs to keep the odd-span trailing plane
-  instead of padding the span. Fixtures
+  instead of padding the span. Fixture `0x16b1a descriptor width helper emits
+  only mode 1/2` pins the helper write edges at `0x16b36..0x16b6a` and the
+  invalid no-write edge at `0x16b26..0x16b34`. Fixtures
   `host-fetched even-span wide downloaded character renders through 0x1f0d2`,
   `host-fetched segmented downloaded character renders through 0x1f1f0`, and
   `host-fetched split-plane segmented downloaded character renders through
@@ -3848,14 +3854,17 @@ fields and every legal metric combination have not been page-compared.
   objects through trailing-FF `0xff1e` publication and `0x1ed84`/`0x1ef6a`
   published-record rendering. Still-open comparisons are bounded cross-products: row
   counts outside the covered short rows `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`,
-  and `0x80` and segmented rows `0x81`, `0x82`, `0x83`, and `0xff`, no identified ROM
-  helper path for accepted descriptor-record mode bytes beyond the covered `0x16b1a`
-  mode-byte-`1` even-span and mode-byte-`2` odd-span bitmap installs, and broader
+  and `0x80` and segmented rows `0x81`, `0x82`, `0x83`, and `0xff`, broader
   publication combinations beyond the documented normal, non-boundary short, rows-`0x20`
   short, rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   low-byte-truncated table-limit boundary, linear-segmented, rows-`0x82` segmented,
   split-plane segmented, segmented-wide, even-span wide, payload-control wide,
-  no-install, and status-`2` compact bucket variants. The mode-byte-`0` and
+  no-install, and status-`2` compact bucket variants, and live CPU continuity from
+  `0x15dc6` into `0x16498` back to `0x15dcc` after install/payload skip. Accepted
+  descriptor-record mode bytes are closed for the covered helper table by fixture
+  `0x16b1a descriptor width helper emits only mode 1/2`: `0x16b36..0x16b6a` writes
+  mode `1`/`2` from span parity, and `0x16b26..0x16b34` rejects invalid widths without
+  writing scratch. The mode-byte-`0` and
   high-character header-type status-`0` exits are already documented no-install
   boundaries: fixture `0x16498 replacement allocation failure partial and rejected
   downloaded character exits preserve state` proves no table/header write at the object

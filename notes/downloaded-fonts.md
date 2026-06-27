@@ -16,6 +16,7 @@ glyph.
 - `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`
 - `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`
 - `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`
+- `generated/disasm/ic30_ic13_font_payload_descriptor_helpers_016a10.lst`
 - `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`
 - `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`
 - `generated/disasm/ic30_ic13_font_resource_find_017026.lst`
@@ -161,6 +162,46 @@ Parser scratch and staged resource header:
 - `0x782f30`: current character code/index written before descriptor
   dispatch and used by `0x16498` for the object-table entry
   `0x4a + 4 * char`.
+
+Downloaded-character descriptor helper table:
+
+- `0x16336` initializes `0x78286e = 0x7827de`, then walks nine reader/helper
+  pairs from table `0x162ee..0x16332`. Each reader value is passed to the
+  paired helper; any helper returning other than `1` exits status `0` at
+  `0x16384`. After all nine helpers succeed, `0x15a94` performs the shared
+  geometry/bounds check, then `0x16396..0x163ae` drains
+  `0x782848 = descriptor_size - 14` extension bytes through `0x12328` and
+  subtracts that count from `0x783140`.
+- Slot 1, reader `0x1599c`, helper `0x16a26`: the descriptor size byte must
+  be at least `14`; accepted values write the extension-byte count
+  `value - 14` to `0x782848`.
+- Slot 2, reader `0x1599c`, helper `0x16a4c`: accepts only value `1`. This is
+  a descriptor version/form guard; it writes no staged object byte.
+- Slot 3, reader `0x1599c`, helper `0x16a66`: masks the value with `3`, then
+  accepts only when the masked value is `0` or `1` and matches font-header
+  byte `+0x20`. It writes no staged object byte; the mismatch is a
+  descriptor/header compatibility reject.
+- Slot 4, reader `0x1599c`, helper `0x17358`: pass-through byte consumed and
+  not staged for the covered object forms.
+- Slots 5 and 6, reader `0x159f6`, helpers `0x16aa0` and `0x16adc`: signed
+  words clamped to `[-0x1068, 0x1068]`, written to scratch words `+0` and
+  `+2`, and copied by `0x163b8` to object words `+0` and `+2`.
+- Slot 7, reader `0x159d4`, helper `0x16b1a`: width must be
+  `1..0x1068`. It writes scratch word `+8`, writes rounded span
+  `(width + 7) >> 3` to `0x7827c2`, and sets scratch byte `+5` to mode byte
+  `1` for even spans or `2` for odd spans.
+- Slot 8, reader `0x159d4`, helper `0x16b74`: row count must be
+  `1..0x1068`. It writes scratch word `+6`, writes `0x7827c4`, computes
+  `0x7827be = rows * span` through `0x332ee`, and increments that byte count
+  when `0x7827c1.0` is set.
+- Slot 9, reader `0x159f6`, helper `0x16bd2`: signed word clamped to
+  `0..0x41a0`, rounded by `(value + 2) >> 2 << 2`, and written to scratch
+  word `+0x0a`, which becomes object word `+0x0a`.
+- `0x163b8` copies scratch words `+0/+2/+6/+8/+0x0a` into the allocated
+  object, forces object byte `+4 = 0x0c`, and copies scratch byte `+5` as the
+  object mode byte. It then updates selected font-header extent words
+  `+0x1c/+0x1e` from the staged row/width fields, with the comparison order
+  controlled by font-header byte `+0x20`.
 - `0x782862`: staging-record pointer, set by `0x17026` to `0x7827de`.
 - `0x7827de`: staged sparse font-resource header copied by `0x1719c` on the
   resource-header route.
@@ -207,11 +248,11 @@ Published page-record state:
   segmented-wide bucket-1/bucket-9, and even-span wide bucket-1 streams. The
   remaining row-count risk is no longer the `0x80`/`0x81` selector boundary
   itself; it is non-boundary row counts inside the same selector families,
-  accepted descriptor-record mode-byte forms beyond the covered mode-byte-`1`
-  bitmap installs if ROM evidence proves such accepted forms, and additional
-  no-install/partial-install publication siblings. The mode-byte-`0`
-  no-install path is documented as an unchanged-output reject, not an open
-  renderer mode.
+  no identified ROM helper path for accepted descriptor-record mode bytes
+  beyond the `0x16b1a` mode-byte-`1` even-span and mode-byte-`2` odd-span
+  bitmap installs, and additional no-install/partial-install publication
+  siblings. The mode-byte-`0` no-install path is documented as an
+  unchanged-output reject, not an open renderer mode.
   Fixture `downloaded normal row-0x80 and segmented glyph FF publications
   render page records` covers the row-`0x80` bucket-1 publication sibling for
   the `0x80`/`0x81` selector threshold.
@@ -696,7 +737,7 @@ fixture is `ESC )s2193W`:
 - current character from `0x782f30` is `0x25`.
 - installed table entry is `0x00de`.
 - downloaded character record delta is `0x0500`.
-- glyph record bytes are `00 00 00 00 0c 01 00 81 00 88 00 00`.
+- glyph record bytes are `00 00 00 00 0c 02 00 81 00 88 00 00`.
 - bitmap offset is `0x050c`.
 - bitmap size is `0x0891`.
 - span is `0x11`, width is `0x88`, rows are `0x81`, and the split-plane
@@ -855,9 +896,11 @@ table entry `0x00f6 -> 0x0840`, writes record
 `f0 0f aa 55 00 00`, and saves continuation fields equivalent to
 `0x7827c6 = 1`, `0x7827da = 0`, `0x7827c8 = 0x2b`,
 `0x7827ca = 0x0850`, `0x7827d2 = 2`, and zero split-plane counters. The
-split-plane status-`2` case copies prefix bytes `a0 a1` and trailing byte
-`b0` through `0x16942`, stores table entry `0x00fa -> 0x0880`, leaves bitmap
-layout `a0 a1 00 00 b0 00`, and saves `0x7827ca = 0x088e`,
+split-plane status-`2` case parses a mode-byte-`2` descriptor for odd span
+`3`, copies prefix bytes `a0 a1` and trailing byte `b0` through `0x16942`,
+stores table entry `0x00fa -> 0x0880`, writes record
+`00 00 00 00 0c 02 00 02 00 18 00 00`, leaves bitmap layout
+`a0 a1 00 00 b0 00`, and saves `0x7827ca = 0x088e`,
 `0x7827ce = 0x0891`, `0x7827d6 = 1`, and `0x7827d8 = 0`. The replacement
 case starts with table entry `0x0102` holding old record `00 00 02 00`;
 `0x1652a..0x1653e` calls `0x17a24`, which validates range
@@ -873,17 +916,18 @@ slot `0x782328`, clears the matching continuation, marks primary/secondary
 context-stack bytes, refreshes the active secondary context, and leaves no new
 downloaded-character object.
 
-The no-install rejects split into two different field families. A
-descriptor/object mode byte other than `1` is rejected by the pre-copy
-record-shape guard after the `0x16336` descriptor parse, so the mode-`0`
-fixture returns status `0`, reason `unsupported-record-shape`, and leaves
-table entry `0x00fe` at zero. A high character code is checked against the
-font-header type byte: `0x164f2..0x16540` allows `0x80..0xff` only when
-header byte `+0x0c >= 1`, so the `0xa0` fixture with header byte `+0x0c = 0`
-returns status `0`, reason `char-outside-header-type`, and leaves table entry
-`0x02ca` at zero. Both reject families return before `0x1658e..0x16602`
-stores the allocated-object pointer, so they are parser scratch/firmware
-bookkeeping exits rather than canonical renderer-state changes.
+The no-install rejects split into two different field families. A synthetic
+descriptor/object mode byte outside the parser-produced `1`/`2` set is
+rejected by the pre-copy record-shape guard after the `0x16336` descriptor
+parse, so the mode-`0` fixture returns status `0`, reason
+`unsupported-record-shape`, and leaves table entry `0x00fe` at zero. A high
+character code is checked against the font-header type byte:
+`0x164f2..0x16540` allows `0x80..0xff` only when header byte `+0x0c >= 1`, so
+the `0xa0` fixture with header byte `+0x0c = 0` returns status `0`, reason
+`char-outside-header-type`, and leaves table entry `0x02ca` at zero. Both
+reject families return before `0x1658e..0x16602` stores the allocated-object
+pointer, so they are parser scratch/firmware bookkeeping exits rather than
+canonical renderer-state changes.
 
 Fixture `0x16498 no-install exits preserve following printable output` carries
 the three no-install branches above to visible output. Each case starts from a
@@ -917,11 +961,11 @@ the same rows.
 The split-plane case starts from `ESC )s3W a0 a1 b0`, stores table entry
 `0x00fa -> 0x0880`, leaves layout `a0 a1 00 00 b0 00`, saves A4/A3
 continuation destinations `0x088e`/`0x0891`, and a following printable `,`
-resolves glyph `0x2c`, queues selector `0x0003`, and renders the first row
-from prefix bytes `a0 a1` plus trailing byte `b0`. Its trailing-FF publication
-also keeps bucket `1`, copies compact object `00 00 00 00 00 03 00 01 2c 66
-01`, clears the current page root, and renders the published record through
-`0x1ed84`/`0x1ef6a` with the same rows.
+resolves glyph `0x2c`, exposes inline record `04 02 00`, queues selector
+`0x0003` with width `4`, and renders from prefix bytes `a0 a1` plus trailing
+byte `b0`. Its trailing-FF publication also keeps bucket `1`, copies compact
+object `00 00 00 00 00 03 00 01 2c 66 01`, clears the current page root, and
+renders the published record through `0x1ed84`/`0x1ef6a` with the same rows.
 
 Fixture `host-fetched segmented downloaded character renders through
 0x1f1f0` adds the even-span tall sibling. The host-fetched `ESC )s258W` stream
@@ -950,7 +994,7 @@ through 0x1f1f0` covers the odd-span sibling. The host-fetched `ESC )s387W`
 stream uses parser record `80 57 01 83 00 00`, delayed handler `0x16c14`,
 payload offset `7`, and byte budget `0x0183`. `0x16498` installs glyph `0x28`
 at table entry `0x00ea`, record delta `0x0700`, record
-`00 00 00 00 0c 01 00 81 00 18 00 00`, bitmap offset `0x070c`, span `3`, and
+`00 00 00 00 0c 02 00 81 00 18 00 00`, bitmap offset `0x070c`, span `3`, and
 split-plane layout. `0x16942` copies prefix bytes through A4 and trailing
 bytes through A3; for segment `1`, `0x1f1f0` reads row skip `0x80` from A2
 offset `0x0100` and A3 offset `0x0080`, then renders
@@ -1406,9 +1450,10 @@ A byte-stream renderer must preserve:
   parser-produced comparisons are bounded cross-products: non-boundary row
   counts inside the already-covered segmented selector family, additional
   interior short-family row counts beyond the covered rows `0x03`, `0x10`,
-  and `0x80`, accepted descriptor-record mode bytes beyond the covered
-  mode-byte-`1` bitmap installs if ROM evidence proves such accepted forms,
-  and broader publication combinations beyond the documented normal,
+  and `0x80`, no identified ROM helper path for accepted descriptor-record
+  mode bytes beyond the covered `0x16b1a` mode-byte-`1` even-span and
+  mode-byte-`2` odd-span bitmap installs, and broader publication
+  combinations beyond the documented normal,
   nonboundary-short, row-`0x80`, linear-segmented, split-plane segmented,
   segmented-wide, even-span wide, no-install, and status-`2` compact bucket
   variants. The mode-byte-`0` no-install boundary itself is no longer a vague

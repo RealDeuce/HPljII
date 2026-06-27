@@ -3045,10 +3045,12 @@ compact text renderer.
     fills the parsed byte count, row span, row count, and staged 12-byte
     character object record before `0x16498` allocates/copies the payload.
     Byte `+5` of that staged record is the descriptor/object mode byte; the
-    covered accepted installs use mode byte `1`, while the mode-byte-`0`
-    fixture exits before object-pointer storage. This scratch buffer is reused
-    by the `0x17026`/`0x1719c` resource-header route with a different
-    interpretation.
+    ROM descriptor helper `0x16b1a` writes mode byte `1` for even byte spans
+    and mode byte `2` for odd byte spans. The mode-byte-`0` fixture is an
+    artificial record-shape reject at the `0x16498` object boundary, not a
+    value produced by the accepted `0x16336` helper table. This scratch buffer
+    is reused by the `0x17026`/`0x1719c` resource-header route with a
+    different interpretation.
   - `0x782842..0x782851` and `0x782856`: optional symbol bytes and count
     staged by `0x16fae`.
   - `0x1ed84` render-record work words `+0x10/+0x16` copied from the
@@ -3073,8 +3075,11 @@ compact text renderer.
   routes to `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`.
 - `0x16336` walks the downloaded-character descriptor helper table, writes
   parser scratch `0x7827be`/`0x7827c2`/`0x7827c4`, and stages the record bytes
-  copied by `0x163b8`; `0x15a94` finalizes the parse before the bitmap payload
-  budget is subtracted.
+  copied by `0x163b8`. Its helper pairs validate descriptor size, version,
+  font-header compatibility byte `+0x20`, signed object words `+0/+2`,
+  width, rows, and rounded word `+0x0a`; `0x15a94` performs the shared
+  geometry/bounds check before `0x16396..0x163ae` drains extension bytes and
+  subtracts them from the bitmap payload budget.
 - `0x16c14` writes current-record ids/payloads, candidate flags/counters, and
   installed counts. For an existing-record replacement, it calls `0x1887a`
   before allocation; fixture
@@ -3109,9 +3114,17 @@ compact text renderer.
   downloaded-character payloads. Its range branch `0x164f2..0x16540` treats
   high character codes as legal only when the font-header byte `+0x0c >= 1`;
   its copy/allocation branch `0x16558..0x16602` stores the object pointer only
-  after allocation and `0x16874` return status. The mode-byte-`0` fixture
-  exercises the pre-copy record-shape reject and leaves the table entry
-  unchanged.
+  after allocation and `0x16874` return status. Accepted parser-produced
+  descriptors stage mode byte `1` for even byte spans and mode byte `2` for
+  odd byte spans through helper `0x16b1a`; resolver `0x1f354` consumes that
+  byte on bit-30 offset-table glyphs to keep the odd-span trailing plane
+  instead of padding the span. Fixtures
+  `host-fetched even-span wide downloaded character renders through 0x1f0d2`,
+  `host-fetched segmented downloaded character renders through 0x1f1f0`, and
+  `host-fetched split-plane segmented downloaded character renders through
+  0x1f1f0` cover the visible even-span and odd-span object paths. The
+  mode-byte-`0` fixture exercises the pre-copy record-shape reject and leaves
+  the table entry unchanged.
 
 ### Readers And Consumers
 
@@ -3765,6 +3778,7 @@ combination have not been page-compared.
 - `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`
 - `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`
 - `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`
+- `generated/disasm/ic30_ic13_font_payload_descriptor_helpers_016a10.lst`
 - `generated/disasm/ic30_ic13_font_fixed_record_release_017a24.lst`
 - `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`
 - `generated/disasm/ic30_ic13_font_resource_payload_link_01887a.lst`
@@ -3815,12 +3829,13 @@ combination have not been page-compared.
   `0x1ed84`/`0x1ef6a` published-record rendering. Still-open comparisons are
   bounded cross-products: non-boundary row counts inside the already-covered
   segmented selector family, additional interior short-family row counts
-  beyond rows `0x03`, `0x10`, and `0x80`, accepted descriptor-record mode
-  bytes beyond the covered mode-byte-`1` bitmap installs if the ROM parser
-  admits such forms, and broader publication combinations beyond the
-  documented normal, non-boundary short, row-`0x80`, linear-segmented,
-  split-plane segmented, segmented-wide, even-span wide, no-install, and
-  status-`2` compact bucket variants. The mode-byte-`0` and high-character
+  beyond rows `0x03`, `0x10`, and `0x80`, no identified ROM helper path for
+  accepted descriptor-record mode bytes beyond the covered `0x16b1a`
+  mode-byte-`1` even-span and mode-byte-`2` odd-span bitmap installs, and
+  broader publication combinations beyond the documented normal,
+  non-boundary short, row-`0x80`, linear-segmented, split-plane segmented,
+  segmented-wide, even-span wide, no-install, and status-`2` compact bucket
+  variants. The mode-byte-`0` and high-character
   header-type status-`0` exits are already documented no-install boundaries:
   fixture `0x16498 replacement allocation failure partial and rejected
   downloaded character exits preserve state` proves no table/header write at

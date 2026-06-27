@@ -4137,9 +4137,12 @@ def resolve_downloaded_pointer_glyph(resources: bytes | bytearray, context: int,
     mode = resources[record + 5]
     rows = u16(resources, record + 6)
     width = u16(resources, record + 8)
-    if bitmap_delta == 0 or mode != 1 or rows == 0 or width == 0:
+    if bitmap_delta == 0 or mode not in (1, 2) or rows == 0 or width == 0:
         return None
-    render_span = (width + 7) // 8
+    span = (width + 7) // 8
+    render_span = span
+    if render_span & 1 and mode != 2 and render_span != 1:
+        render_span += 1
     bitmap = record + bitmap_delta
     if bitmap + rows * render_span > len(resources):
         return None
@@ -4151,7 +4154,7 @@ def resolve_downloaded_pointer_glyph(resources: bytes | bytearray, context: int,
         "mode": mode,
         "rows": rows,
         "width": width,
-        "span": render_span,
+        "span": span,
         "render_span": render_span,
         "source_kind": "downloaded-pointer",
         "table_entry": table_entry,
@@ -4179,7 +4182,7 @@ def resolve_compact_glyph(resources: bytes | bytearray, context: int, glyph_inde
 
 def glyph_bitmap_rows(resources: bytes, glyph: dict[str, int | bytes]) -> list[str]:
     mode = int(glyph["mode"])
-    if mode != 1:
+    if mode not in (1, 2):
         raise AssertionError(f"mode {mode} glyph bitmap decoder is not implemented")
     bitmap = int(glyph["bitmap"])
     rows = int(glyph["rows"])
@@ -4187,6 +4190,19 @@ def glyph_bitmap_rows(resources: bytes, glyph: dict[str, int | bytes]) -> list[s
     render_span = int(glyph["render_span"])
     bitmap_bytes = resources[bitmap : bitmap + rows * render_span]
     return bitmap_bytes_to_rows(bitmap_bytes, rows, width, render_span)
+
+
+def glyph_uses_trailing_plane(glyph: dict[str, int | bytes]) -> bool:
+    render_span = int(glyph["render_span"])
+    if render_span <= 1 or not (render_span & 1):
+        return False
+    source_kind = glyph.get("source_kind")
+    if source_kind == "inline":
+        return True
+    return int(glyph["mode"]) == 2 and source_kind in (
+        "downloaded-pointer",
+        "downloaded-offset-table",
+    )
 
 
 def offset_table_base_map(resources: bytes | bytearray, context: int, host_char: int) -> dict[str, int]:
@@ -6750,7 +6766,7 @@ def font_download_char_object_via_16498(
         continuation_after_release = release.get("continuation")
         assert continuation_after_release is None or isinstance(continuation_after_release, dict)
     span = (int(width) + 7) >> 3
-    if span <= 0 or rows <= 0 or mode != 1:
+    if span <= 0 or rows <= 0 or mode not in (1, 2):
         return {
             "status": 0,
             "reason": "unsupported-record-shape",
@@ -11213,7 +11229,7 @@ def glyph_source_bytes_for_rows(resources: bytes | bytearray, glyph: dict[str, i
     if row_skip < 0 or rows < 0 or row_skip + rows > total_rows:
         raise AssertionError("glyph source row range is outside the glyph")
     bitmap = int(glyph["bitmap"])
-    if span & 1 and span > 1 and glyph.get("source_kind") in ("inline", "downloaded-pointer"):
+    if glyph_uses_trailing_plane(glyph):
         prefix_span = span - 1
         a2_base = bitmap
         a3_base = bitmap + prefix_span * total_rows
@@ -11228,7 +11244,7 @@ def glyph_source_bytes_for_rows(resources: bytes | bytearray, glyph: dict[str, i
 
 def render_glyph_rows_via_main_row_copy(data: bytes, resources: bytes, glyph: dict[str, int | bytes], dest_stride: int = 0x20) -> list[str]:
     mode = int(glyph["mode"])
-    if mode != 1:
+    if mode not in (1, 2):
         raise AssertionError(f"mode {mode} row-copy renderer is not implemented")
     rows = int(glyph["rows"])
     width = int(glyph["width"])
@@ -11312,7 +11328,7 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
         pos += 3
         glyph = resolve_compact_glyph(resources, context, glyph_index)
         mode = int(glyph["mode"])
-        if mode != 1:
+        if mode not in (1, 2):
             raise AssertionError(f"compact mode-0 fixture does not implement glyph mode {mode}")
         rows = int(glyph["rows"])
         width = int(glyph["width"])
@@ -11325,7 +11341,7 @@ def render_compact_mode0_payload(data: bytes, resources: bytes, context: int, pa
         remaining_after_band = rows - rows_in_band
         source = glyph_source_bytes_for_rows(resources, glyph)
         helper = u32(data, 0x1F08E + render_span * 4)
-        trailing_plane = bool(render_span & 1 and render_span > 1 and glyph.get("source_kind") in ("inline", "downloaded-pointer"))
+        trailing_plane = glyph_uses_trailing_plane(glyph)
         a2_row_span = render_span - 1 if trailing_plane else render_span
         if rows_in_band:
             result = simulate_row_copy(data, helper, rows_in_band, stride=dest_stride)
@@ -11466,7 +11482,7 @@ def render_compact_wide_payload_via_1f0d2(data: bytes, resources: bytes | bytear
         pos += 3
         glyph = resolve_compact_glyph(resources, context, glyph_index)
         mode = int(glyph["mode"])
-        if mode != 1:
+        if mode not in (1, 2):
             raise AssertionError(f"compact wide fixture does not implement glyph mode {mode}")
         rows = int(glyph["rows"])
         width = int(glyph["width"])
@@ -11484,7 +11500,7 @@ def render_compact_wide_payload_via_1f0d2(data: bytes, resources: bytes | bytear
         remainder = render_span & 0x0F
         full_row_skip = render_span - (0x11 if remainder & 1 else 0x10)
         remainder_row_skip = render_span - remainder if remainder else 0
-        trailing_plane = bool(render_span & 1 and render_span > 1 and glyph.get("source_kind") in ("inline", "downloaded-pointer"))
+        trailing_plane = glyph_uses_trailing_plane(glyph)
 
         remainder_helper = 0
         if remainder:
@@ -11596,7 +11612,7 @@ def render_compact_segmented_wide_payload_via_1f264(data: bytes, resources: byte
         pos += 4
         glyph = resolve_compact_glyph(resources, context, glyph_index)
         mode = int(glyph["mode"])
-        if mode != 1:
+        if mode not in (1, 2):
             raise AssertionError(f"compact segmented-wide fixture does not implement glyph mode {mode}")
         render_span = int(glyph["render_span"])
         if render_span <= 0x10:
@@ -11617,7 +11633,7 @@ def render_compact_segmented_wide_payload_via_1f264(data: bytes, resources: byte
         remainder = render_span & 0x0F
         full_row_skip = render_span - (0x11 if remainder & 1 else 0x10)
         remainder_row_skip = render_span - remainder if remainder else 0
-        trailing_plane = bool(render_span & 1 and render_span > 1 and glyph.get("source_kind") in ("inline", "downloaded-pointer"))
+        trailing_plane = glyph_uses_trailing_plane(glyph)
         a2_row_span = render_span - 1 if trailing_plane else render_span
         a2_source_offset = row_skip * a2_row_span
         a3_source_offset = row_skip if trailing_plane else 0
@@ -11737,7 +11753,7 @@ def render_compact_segmented_payload_via_1f1f0(data: bytes, resources: bytes | b
         pos += 4
         glyph = resolve_compact_glyph(resources, context, glyph_index)
         render_span = int(glyph["render_span"])
-        trailing_plane = bool(render_span & 1 and render_span > 1 and glyph.get("source_kind") in ("inline", "downloaded-pointer"))
+        trailing_plane = glyph_uses_trailing_plane(glyph)
         row_skip = segment << 7
         rows_total = int(glyph["rows"])
         if row_skip >= rows_total:
@@ -42179,7 +42195,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         downloaded_wide_control_header,
         char_code=0x26,
         record_words=(0x0000, 0x0000, 0x0001, 0x0000),
-        mode=1,
+        mode=2,
         width=0x0088,
         rows=1,
         object_offset=0x0080,
@@ -42280,7 +42296,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "glyph": {
             "source_kind": "downloaded-pointer",
-            "mode": 1,
+            "mode": 2,
             "rows": 1,
             "width": 0x0088,
             "span": 0x11,
@@ -51955,7 +51971,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_type2_bytes,
         char_code=0x25,
         record_words=(0x0000, 0x0000, 0x0081, 0x0000),
-        mode=1,
+        mode=2,
         width=0x0088,
         rows=0x0081,
         object_offset=0x0500,
@@ -51965,7 +51981,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_type2_bytes,
         char_code=int(font_control_download_target_trace["current_character"]),
         record_words=(0x0000, 0x0000, 0x0081, 0x0000),
-        mode=1,
+        mode=2,
         width=0x0088,
         rows=0x0081,
         object_offset=0x0500,
@@ -52081,7 +52097,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "status": 1,
             "table_entry": 0x00DE,
             "record_delta": 0x0500,
-            "record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 88 00 00"),
+            "record": bytes.fromhex("00 00 00 00 0c 02 00 81 00 88 00 00"),
             "bitmap_offset": 0x050C,
             "bitmap_size": 0x0891,
             "allocation_size": 35,
@@ -52101,7 +52117,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "entry": 0x0500,
             "bitmap": 0x050C,
             "delta": 0x0C,
-            "mode": 1,
+            "mode": 2,
             "rows": 0x81,
             "width": 0x88,
             "span": 0x11,
@@ -52222,7 +52238,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "object": {
             "table_entry": 0x00DE,
-            "record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 88 00 00"),
+            "record": bytes.fromhex("00 00 00 00 0c 02 00 81 00 88 00 00"),
             "bitmap_offset": 0x050C,
             "bitmap_size": 0x0891,
             "split_plane": True,
@@ -52231,7 +52247,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "render": {
             "glyph": {
                 "source_kind": "downloaded-pointer",
-                "mode": 1,
+                "mode": 2,
                 "rows": 0x81,
                 "width": 0x88,
                 "span": 0x11,
@@ -52268,7 +52284,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_type2_bytes,
         char_code=int(host_fetched_font_control_trace["current_character"]),
         record_words=(0x0000, 0x0000, 0x0081, 0x0000),
-        mode=1,
+        mode=2,
         width=0x0088,
         rows=0x0081,
         object_offset=0x0500,
@@ -52985,7 +53001,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_type2_bytes,
         0x2C,
         (0x0000, 0x0000, 0x0002, 0x0000),
-        mode=1,
+        mode=2,
         width=0x0018,
         rows=0x0002,
         stream=bytes.fromhex("a0 a1 b0"),
@@ -53379,7 +53395,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "glyph_entry": 0x0880,
                         "glyph_width": 0x0018,
                         "glyph_rows": 0x0002,
-                        "inline_record": b"\x03\x02\x00",
+                        "inline_record": b"\x04\x02\x00",
                     },
                     "page": {
                         "path": "short-page-record",
@@ -53387,7 +53403,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "coord": 0x6601,
                         "glyph": 0x2C,
                         "rows": 0x0002,
-                        "width": 3,
+                        "width": 4,
                     },
                     "bucket_index": 1,
                     "object": bytes.fromhex("00 00 00 00 00 03 00 01 2c 66 01")
@@ -53407,8 +53423,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "." * 46,
                         "." * 46,
                         "." * 46,
-                        "." * 22 + "#.#.....#.#....##.##....",
-                        "." * 46,
+                        "." * 22 + "#.#.....#.#....#........",
+                        "." * 22 + "#.##....................",
                     ],
                 },
                 "publication": {
@@ -53464,8 +53480,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "." * 46,
                         "." * 46,
                         "." * 46,
-                        "." * 22 + "#.#.....#.#....##.##....",
-                        "." * 46,
+                        "." * 22 + "#.#.....#.#....#........",
+                        "." * 22 + "#.##....................",
                     ],
                 },
             },
@@ -53761,7 +53777,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "status": 2,
                 "table_entry": 0x00FA,
                 "record_delta": 0x0880,
-                "record": bytes.fromhex("00 00 00 00 0c 01 00 02 00 18 00 00"),
+                "record": bytes.fromhex("00 00 00 00 0c 02 00 02 00 18 00 00"),
                 "bitmap_offset": 0x088C,
                 "bitmap": bytes.fromhex("a0 a1 00 00 b0 00"),
                 "bitmap_size": 3,
@@ -55042,7 +55058,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_type2_bytes,
         char_code=0x28,
         record_words=(0x0000, 0x0000, 0x0081, 0x0000),
-        mode=1,
+        mode=2,
         width=0x0018,
         rows=0x0081,
         object_offset=0x0700,
@@ -55260,7 +55276,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "status": 1,
             "table_entry": 0x00EA,
             "record_delta": 0x0700,
-            "record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 18 00 00"),
+            "record": bytes.fromhex("00 00 00 00 0c 02 00 81 00 18 00 00"),
             "bitmap_offset": 0x070C,
             "bitmap_size": 0x0183,
             "allocation_size": 7,
@@ -55280,7 +55296,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "glyph": {
             "entry": 0x0700,
             "bitmap": 0x070C,
-            "mode": 1,
+            "mode": 2,
             "rows": 0x0081,
             "width": 0x0018,
             "span": 3,
@@ -55852,7 +55868,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         table_payload_type2_bytes,
         char_code=int(combined_font_control_trace["current_character"]),
         record_words=(0x0000, 0x0000, 0x0081, 0x0000),
-        mode=1,
+        mode=2,
         width=0x0088,
         rows=0x0081,
         object_offset=0x0500,
@@ -56043,7 +56059,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "payload_offset": 8,
             "payload_length": 0x0891,
             "char_code": 0x25,
-            "install_record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 88 00 00"),
+            "install_record": bytes.fromhex("00 00 00 00 0c 02 00 81 00 88 00 00"),
             "table_entry": 0x00DE,
             "bitmap_size": 0x0891,
         },
@@ -56645,7 +56661,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "model_record": b"\x80W\x08\x91\x00\x00",
             "char_code": 0x25,
             "table_entry": 0x00DE,
-            "record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 88 00 00"),
+            "record": bytes.fromhex("00 00 00 00 0c 02 00 81 00 88 00 00"),
             "bitmap_size": 0x0891,
             "rendered_rows": [
                 "." * 158,
@@ -56745,7 +56761,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "payload": {
             "char_code": 0x25,
             "table_entry": 0x00DE,
-            "record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 88 00 00"),
+            "record": bytes.fromhex("00 00 00 00 0c 02 00 81 00 88 00 00"),
         },
     }))
     checks.append(assert_equal("font control stream state feeds descriptor route and character payload", {
@@ -56849,7 +56865,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "payload_offset": 8,
             "payload_length": 0x0891,
             "table_entry": 0x00DE,
-            "record": bytes.fromhex("00 00 00 00 0c 01 00 81 00 88 00 00"),
+            "record": bytes.fromhex("00 00 00 00 0c 02 00 81 00 88 00 00"),
             "bitmap_size": 0x0891,
         },
     }))

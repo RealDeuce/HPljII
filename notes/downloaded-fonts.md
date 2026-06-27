@@ -775,6 +775,126 @@ same default-font compact object as baseline `!`, and renders identical page
 rows. Status: parser-produced validation error to visible default-font output
 for those eight forms.
 
+### Downloaded Resource Validation No-Install Checkpoint
+
+This checkpoint composes the downloaded-resource validation error cluster from
+host-fetched `ESC )s80W` and short-budget `ESC )s8W` streams to visible
+default-font output. It covers the bounded parser-produced failure cases where
+`0x16fae` rejects the descriptor before `0x17026` can allocate a resource
+payload.
+
+Field groups:
+
+- Canonical downloaded-font state:
+  - current-record pool `0x782640..0x782776`;
+  - candidate count/cursor fields `0x78278e`, `0x782790`, `0x782796`,
+    `0x782798`, `0x78279e`, `0x7827a0`, `0x7827ac`, `0x7827b0`, and
+    `0x7827b4`;
+  - selected candidate longword installed by `0x16c14` / `0x1bc38` on
+    success.
+  The validation-failure fixtures assert that these canonical install fields
+  are not changed.
+- Parser scratch:
+  - restored records `80 57 00 50 00 00` for the normal failed `ESC )s80W`
+    streams and `80 57 00 08 00 00` for the short-budget stream;
+  - payload budget `0x783140`, parser record cursor `0x78299e`, host byte
+    source `0xa904`, and parser handlers `0x11eb6`, `0x12008`, `0x11ff6`,
+    and `0x11f96`.
+- Parser-owned staged descriptor fields:
+  - staged header `0x7827de` and staged payload base `0x782862`;
+  - type byte `+0x0c`, first-code word `+0x16`, line/count word `+0x12`,
+    range/count word `+0x14`, derived count word `+0x18`, and class byte
+    `+0x20`;
+  - optional symbol bytes `0x782842..0x782851` and count `0x782856`, which
+    remain empty for the covered failures because validation stops before the
+    optional-symbol tail.
+- Derived/cache descriptor state:
+  - `+0x18` is derived by entry-6 helper `0x17430` as range/count minus
+    first code minus one when entry 6 is reached and accepted far enough;
+  - rounded unflagged metric `+0x2c` is not owned by these no-install cases,
+    but its successful entry-12 formula is documented in
+    [font-context-metrics.md](font-context-metrics.md).
+- Firmware bookkeeping:
+  - validation status `0`, allocation status `0`, install state `None`, and
+    drained host source are failure bookkeeping. They gate the next printable
+    byte back to the unchanged default-font path.
+- Unknown:
+  - descriptor-error forms outside the bounded entry `2`, `4`, `5`, `6`, and
+    `7` predicate failures and the short entry-5 byte-budget exhaustion.
+  - HP manual labels for consumed-but-not-staged descriptor fields.
+
+Writers:
+
+- `0x16fae` stages descriptor fields as each validation entry succeeds.
+- `0x17362` writes type byte `+0x0c` and payload units for entry `2`; invalid
+  type byte `3` fails before allocation size exists.
+- `0x173d0` handles entry `4`; first-code word `0x1068` fails before writing
+  payload word `+0x16`.
+- `0x173fe` handles entry `5`; zero and high line/count values fail with no
+  valid line/count payload. The short-budget `ESC )s8W` case reaches the same
+  predicate after byte-budget exhaustion.
+- `0x17430` handles entry `6`; reversed and high range/count values fail at
+  the twelve-byte boundary.
+- `0x1749e` handles entry `7`; class byte `2` fails after staging previous
+  range fields but before writing class byte `+0x20`.
+
+Readers and consumers:
+
+- `0x17026` consumes validation status `0` and skips payload allocation.
+- `0x16c14` consumes allocation status `0` and installs no candidate.
+- After the failed resource command drains, `0xd04a`, `0x1393a`, `0x12f2e`,
+  `0x1ed84`, and `0x1ef6a` consume the following printable `!` through the
+  unchanged default-font compact path.
+
+Output effect:
+
+- Invalid resource type, first-code overflow, zero line/count, high
+  line/count, short descriptor budget, reversed range/count, high range/count,
+  and invalid class all produce the same visible output for the following
+  printable byte.
+- No downloaded-font candidate is installed, no current-record payload is
+  selected, the queued compact object matches the baseline default-font `!`,
+  and the rendered rows match the baseline rows.
+
+Confidence:
+
+- High for the covered parser boundaries, failed entries, last staged fields,
+  allocation skip, no-install result, resumed printable handler, default
+  compact object, and rendered rows because
+  `ESC )s#W validation failures preserve following printable output` asserts
+  all eight visible recovery cases.
+- Medium for untested descriptor-error forms because the validation table has
+  more predicates than the covered failure and budget-exhaustion cases.
+
+Fixture evidence:
+
+- `0x16fae validation table semantic map covers staged and pass-through
+  entries`
+- `0x16fae table-driven validation predicates populate staged header fields`
+- `ESC )s80W invalid resource type fails validation before allocation`
+- `ESC )s80W reversed resource range fails validation before allocation`
+- `ESC )s80W additional validation predicate failures skip allocation`
+- `ESC )s#W validation failures preserve following printable output`
+
+Disassembly evidence:
+
+- `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`
+- `generated/disasm/ic30_ic13_font_resource_validate_predicates_017358.lst`
+- `generated/disasm/ic30_ic13_font_resource_find_017026.lst`
+- `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`
+- `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
+- `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
+
+Unresolved middle edges:
+
+- `0x16fae..0x17016`: fixture-backed for the seven bounded `ESC )s80W`
+  no-install exits and the short-budget `ESC )s8W` entry-5 failure, including
+  resumed visible output. Remaining work is descriptor-error cross-products
+  outside entries `2`, `4`, `5`, `6`, and `7` plus the covered budget
+  boundary.
+- `0x16eae` consumed-but-not-staged fields: currently named by ROM effect;
+  external HP documentation correlation remains open.
+
 `0x17362` sets the staged type and payload units. Type `0` writes byte
 `+0x0c = 0` and units `0x80`; type `2` writes byte `+0x0c = 2` and units
 `0x100`; invalid type `3` returns failure.

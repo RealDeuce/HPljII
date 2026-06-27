@@ -48,7 +48,8 @@ compatibility boundary.
   context selection, page-root slot install, glyph maps, and descriptor/span
   metric checkpoints.
 - [downloaded-fonts.md](downloaded-fonts.md) - documented soft-font
-  descriptor, payload, current-record, and downloaded-glyph render paths.
+  descriptor, payload, validation/no-install, current-record, and
+  downloaded-glyph render paths.
 - [pcl-parser-firmware.md](pcl-parser-firmware.md) - current host-byte
   fetch and PCL escape tokenizer/dispatch anchors.
 - [pcl-command-map.md](pcl-command-map.md) - flattened PCL

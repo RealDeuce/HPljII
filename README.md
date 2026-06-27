@@ -184,13 +184,14 @@ committing changed notes or tool output:
 
 ```sh
 tools/format_notes.py --changed
-tools/format_notes.py --check --changed
 ```
 
 The command wraps changed notes Markdown, normalizes ordinary whitespace
 in changed text files, and runs `git diff --check HEAD` internally.
-Check mode reports only formatting changes or whitespace/conflict-marker
-issues that the formatter could not automatically repair.
+For CI-style preflight without edits, run `tools/format_notes.py --check
+--changed`; check mode reports only formatting changes or
+whitespace/conflict-marker issues that the formatter could not
+automatically repair.
 
 ## Key firmware structures
 

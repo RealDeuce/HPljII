@@ -51200,6 +51200,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     metric_positive_offset_stream[20:22] = b"\x00\x08"
     metric_positive_offset_stream[30] = 0x7F
 
+    metric_rounded_0x0013_stream = bytearray(font_validate_stream)
+    metric_rounded_0x0013_stream[20:22] = b"\x00\x13"
+    metric_rounded_0x0013_stream[30] = 0x01
+
     metric_rounded_0x1508_stream = bytearray(font_validate_stream)
     metric_rounded_0x1508_stream[10:12] = b"\x00\x18"
     metric_rounded_0x1508_stream[20:22] = b"\x15\x08"
@@ -51207,6 +51211,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
 
     metric_boundary_cases = {
         "d8fc-lower-equal": compact_metric_boundary_case(metric_lower_equal_stream),
+        "rounded-0x0013-up": compact_metric_boundary_case(
+            metric_rounded_0x0013_stream,
+        ),
         "rounded-0x1508-transform": compact_metric_boundary_case(
             metric_rounded_0x1508_stream,
         ),
@@ -51266,6 +51273,63 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "handler": 0x00D8FC,
                         "context_lower_0016": 21,
                         "context_height_0018": 2,
+                        "context_offset_001a": 1,
+                        "metric_source": metric_boundary_context_source,
+                        "high_y": 20,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 40 00 00 01 44 06 03 00 00 14"
+                    ),
+                    "render": {
+                        "row_count": 8,
+                        "row_width": 116,
+                        "row_sha256": "f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab",
+                    },
+                },
+            },
+            "rounded-0x0013-up": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 4,
+                    "range_word_at_stream_10": 9,
+                    "rounded_word_at_stream_20": 19,
+                    "flagged_offset_byte_at_stream_30": 1,
+                },
+                "copied_metrics": {
+                    "word_0x14": 9,
+                    "word_0x16": 4,
+                    "word_0x18": 4,
+                    "word_0x1a": 1,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 20,
+                    "word_0x2c": 20,
+                },
+                "d4ac": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D4AC,
+                        "context_offset_002b": 0,
+                        "context_lower_002c": 0,
+                        "context_height_002d": 20,
+                        "high_y": 26,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 40 00 00 01 a4 06 03 00 00 14"
+                    ),
+                    "render": {
+                        "row_count": 13,
+                        "row_width": 116,
+                        "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                    },
+                },
+                "d8fc": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D8FC,
+                        "context_lower_0016": 4,
+                        "context_height_0018": 4,
                         "context_offset_001a": 1,
                         "metric_source": metric_boundary_context_source,
                         "high_y": 20,
@@ -80175,10 +80239,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "values drive d4ac and d8fc consumers` proves `d8fc` accepts lower "
         "equality `+0x16 = 21`, accepts exact page extent with `+0x18 = 43`, "
         "copies max positive offset byte `0x7f` as word `+0x1a = 0x007f` "
-        "and computes high-y `%d`, and maps rounded input `0x1500` to copied "
+        "and computes high-y `%d`, rounds input `0x0013` up to copied "
+        "`+0x2c = 0x%04x`, and maps rounded input `0x1500` to copied "
         "`+0x2c = 0x%04x`; rounded input `0x1508` maps to the same copied "
-        "`+0x2c = 0x%04x`, so `d4ac` exits `%s` in both cases." % (
+        "`+0x2c = 0x%04x`, so `d4ac` exits `%s` in both high-byte cases." % (
             metric_boundary_cases["positive-offset-max"]["d8fc"]["span"]["high_y"],  # type: ignore[index]
+            metric_boundary_cases["rounded-0x0013-up"]["copied_metrics"]["word_0x2c"],  # type: ignore[index]
             metric_boundary_cases["rounded-0x1500-transform"]["copied_metrics"]["word_0x2c"],  # type: ignore[index]
             metric_boundary_cases["rounded-0x1508-transform"]["copied_metrics"]["word_0x2c"],  # type: ignore[index]
             metric_boundary_cases["rounded-0x1500-transform"]["d4ac"]["span"]["reason"],  # type: ignore[index]

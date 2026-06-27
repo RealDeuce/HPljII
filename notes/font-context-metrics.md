@@ -561,11 +561,17 @@ Fixture-pinned metric effects:
   `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
 - Legal descriptor metric boundary values: fixture
   `legal descriptor metric boundary values drive d4ac and d8fc consumers`
-  adds five parser-produced descriptors behind the same legal forms. The
+  adds six parser-produced descriptors behind the same legal forms. The
   `d8fc-lower-equal` case copies `+0x16/+0x18/+0x1a =
   0x0015/0x0002/0x0001`; at cursor y `21`, `0xd8fc` treats lower equality as
   in range, publishes high-y `20`, queues object prefix
   `00 00 00 00 40 00 00 01 44 06 03 00 00 14`, and renders digest
+  `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+  The `rounded-0x0013-up` case proves normal, unclamped rounding: input
+  `0x0013` stores `+0x2c = 0x0014`, so `d4ac` consumes height byte `0x14` and
+  publishes the standard segment-list span while `d8fc` consumes
+  `+0x16/+0x18/+0x1a = 0x0004/0x0004/0x0001`, publishes high-y `20`, and
+  renders digest
   `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
   The `extent-equal` case copies `+0x18 = 0x002b`; at cursor y `21`,
   `0xd8fc` accepts the exact page extent `64` boundary, publishes high-y
@@ -824,6 +830,7 @@ work can close the right gap instead of re-tracing already-covered consumers.
   current y `21` plus copied height `+0x18 = 0x002b` reaches page extent `64`
   without taking the beyond-page exit; `positive-offset-max` proves input
   byte `0x7f` copies as word `+0x1a = 0x007f` and computes high-y `-106`;
+  `rounded-0x0013-up` proves normal rounded input stores `+0x2c = 0x0014`;
   `rounded-0x1500-transform` proves rounded input `0x1500` stores
   `+0x2c = 0x0060` and drives `d4ac` to `beyond-page-extent`; and
   `rounded-0x1508-transform` proves the descriptor transform discards the low
@@ -948,9 +955,10 @@ A byte-stream reproduction must preserve these behaviors:
   `0xd8fc` span rows; the shared span-consumer branch family is also
   fixture-backed. The legal descriptor metric matrix plus boundary fixture now
   covers visible extent flips, clamping, zero rounded/offset span publication,
-  negative and max-positive offset copied words `0xfffe`/`0x007f`, `d8fc`
-  lower-bound and page-extent equality, a midpoint `d8fc` state update without
-  a span object, rounded low-byte discard for `0x1508`, lower-bound
+  normal rounded input `0x0013` storing `+0x2c = 0x0014`, negative and
+  max-positive offset copied words `0xfffe`/`0x007f`, `d8fc` lower-bound and
+  page-extent equality, a midpoint `d8fc` state update without a span object,
+  rounded low-byte discard for `0x1508`, lower-bound
   suppression for both consumers, and asymmetric upper-bound suppression of
   `0xd8fc` while `0xd4ac` still renders a span.
   Fixture `descriptor metric fields match across inline and resource contexts`

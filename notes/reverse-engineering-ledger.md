@@ -454,7 +454,8 @@ negative-offset row accepts descriptor byte `0xfe`, preserves it as copied word
 digest `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
 Fixture `legal descriptor metric boundary values drive d4ac and d8fc consumers`
 now covers `d8fc` lower-bound equality, exact page-extent equality, max
-positive offset byte `0x7f`, and rounded input `0x1500` transforming to copied
+positive offset byte `0x7f`, normal rounded input `0x0013` storing copied
+`+0x2c = 0x0014`, and rounded input `0x1500` transforming to copied
 `+0x2c = 0x0060` before `d4ac` exits beyond page extent; it now also proves
 rounded input `0x1508` stores the same `+0x2c = 0x0060`, so the descriptor
 transform discards that low byte before the same `d4ac` exit.

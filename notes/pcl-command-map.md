@@ -974,8 +974,15 @@ verified bytes` proves the current-band rows at bucket `456` no longer depend
 on that unknown continuation: mirror, code-pair continuation, and zero-fill all
 produce digest
 `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`. The
-fallback rows diverge across those policies, so the unresolved command-map edge
-is specifically the memory map at `0x0c0000..0x0c0321`.
+fallback rows diverge across those policies. The fixture hashes the verified
+`0x0bfe22..0x0bffff` suffix as
+`e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f` and the
+mirror/code-pair/zero-fill continuation candidates as
+`e435e3b9d033e491b57282a88b0f321aa5fecae8128fa060844cc01379349563`,
+`90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16`, and
+`359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`, so the
+unresolved command-map edge is specifically the memory map at
+`0x0c0000..0x0c0321`.
 `ESC &p2X\x1aA!` covers the probe path where `1a 41` contributes payload byte
 `0x41`, not `0x1a`.
 

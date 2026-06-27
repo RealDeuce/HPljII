@@ -522,8 +522,14 @@ The next work should follow dataflow, not isolated handlers:
    segment-57 rows are now pinned across mirror, code-pair, and zero-fill continuation
    hypotheses with digest
    `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`; the fallback rows
-   diverge, so the remaining requirement is board/emulator memory-map evidence for
-   `0x0c0000..0x0c0321`. The `ESC Y ... ESC Z` display-functions loop is now documented
+   diverge. The same fixture hashes the verified `0x0bfe22..0x0bffff` suffix as
+   `e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f` and the three
+   continuation candidates as
+   `e435e3b9d033e491b57282a88b0f321aa5fecae8128fa060844cc01379349563`,
+   `90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16`, and
+   `359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`, so the
+   remaining requirement is board/emulator memory-map evidence for `0x0c0000..0x0c0321`.
+   The `ESC Y ... ESC Z` display-functions loop is now documented
    in `notes/pcl-parser-core.md` and `notes/semantic-state-model.md`; fixture `ESC Y
    display-functions stream reaches page-record output` covers the default-filter normal
    `0x12536..0x1261e` page-output path, fixture `ESC Y display-functions filter-on

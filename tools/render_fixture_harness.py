@@ -72017,6 +72017,29 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     if secondary_segment_first_failure is None:
         raise AssertionError("secondary transparent segment boundary fixture expected a source failure")
     secondary_boundary_payload = bytes.fromhex("00 01 5f 39 1c 01")
+    secondary_boundary_source_abs = int(secondary_segment_first_failure["source_abs"])
+    secondary_boundary_needed = int(secondary_segment_first_failure["needed_bytes"])
+    secondary_boundary_available = int(secondary_segment_first_failure["available_bytes"])
+    secondary_boundary_continuation_len = (
+        secondary_boundary_needed - secondary_boundary_available
+    )
+    secondary_boundary_verified_suffix = bytes(
+        resources[secondary_boundary_source_abs:]
+    )
+    secondary_boundary_continuations = {
+        "mirror-resource-pair": bytes(resources[:secondary_boundary_continuation_len]),
+        "code-pair-after-resource": bytes(data[:secondary_boundary_continuation_len]),
+        "zero-fill-after-resource": bytes(secondary_boundary_continuation_len),
+    }
+    secondary_boundary_sources = {
+        name: {
+            "byte_count": len(payload),
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "head16": payload[:16],
+            "tail16": payload[-16:],
+        }
+        for name, payload in secondary_boundary_continuations.items()
+    }
     secondary_boundary_hypotheses: list[dict[str, object]] = []
     for name, hypothesis_resources in (
         ("mirror-resource-pair", bytes(resources) + bytes(resources)),
@@ -72080,10 +72103,23 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "available_verified_bytes": secondary_segment_first_failure["available_bytes"],
             "first_unverified_resource_offset": len(resources),
             "first_unverified_firmware_address": 0x080000 + len(resources),
-            "continuation_needed_bytes": (
-                secondary_segment_first_failure["needed_bytes"]
-                - secondary_segment_first_failure["available_bytes"]
-            ),
+            "source_window": {
+                "firmware_start": 0x080000 + secondary_boundary_source_abs,
+                "firmware_end_inclusive": (
+                    0x080000
+                    + secondary_boundary_source_abs
+                    + secondary_boundary_needed
+                    - 1
+                ),
+                "verified_suffix_byte_count": len(secondary_boundary_verified_suffix),
+                "verified_suffix_sha256": hashlib.sha256(
+                    secondary_boundary_verified_suffix
+                ).hexdigest(),
+                "verified_suffix_head16": secondary_boundary_verified_suffix[:16],
+                "verified_suffix_tail16": secondary_boundary_verified_suffix[-16:],
+                "continuation_needed_bytes": secondary_boundary_continuation_len,
+                "continuation_sources": secondary_boundary_sources,
+            },
             "payload": secondary_boundary_payload,
             "hypotheses": secondary_boundary_hypotheses,
         },
@@ -72095,7 +72131,51 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "available_verified_bytes": 478,
             "first_unverified_resource_offset": 0x40000,
             "first_unverified_firmware_address": 0x0C0000,
-            "continuation_needed_bytes": 802,
+            "source_window": {
+                "firmware_start": 0x0BFE22,
+                "firmware_end_inclusive": 0x0C0321,
+                "verified_suffix_byte_count": 478,
+                "verified_suffix_sha256": "e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f",
+                "verified_suffix_head16": bytes.fromhex(
+                    "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+                ),
+                "verified_suffix_tail16": bytes.fromhex(
+                    "2d 2d 30 30 31 31 00 00 00 00 00 00 00 00 a2 a1"
+                ),
+                "continuation_needed_bytes": 802,
+                "continuation_sources": {
+                    "mirror-resource-pair": {
+                        "byte_count": 802,
+                        "sha256": "e435e3b9d033e491b57282a88b0f321aa5fecae8128fa060844cc01379349563",
+                        "head16": bytes.fromhex(
+                            "48 45 41 44 00 00 00 4c 00 04 00 00 48 00 ff ff"
+                        ),
+                        "tail16": bytes.fromhex(
+                            "00 00 48 38 00 00 48 ca 00 00 49 5c 00 00 49 ee"
+                        ),
+                    },
+                    "code-pair-after-resource": {
+                        "byte_count": 802,
+                        "sha256": "90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16",
+                        "head16": bytes.fromhex(
+                            "00 80 00 00 00 00 01 10 00 78 00 00 00 78 00 06"
+                        ),
+                        "tail16": bytes.fromhex(
+                            "0e 5a 60 08 06 79 01 00 00 78 0e 5a 4e 75 61 00"
+                        ),
+                    },
+                    "zero-fill-after-resource": {
+                        "byte_count": 802,
+                        "sha256": "359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e",
+                        "head16": bytes.fromhex(
+                            "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+                        ),
+                        "tail16": bytes.fromhex(
+                            "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+                        ),
+                    },
+                },
+            },
             "payload": bytes.fromhex("00 01 5f 39 1c 01"),
             "hypotheses": [
                 {
@@ -85192,11 +85272,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     current_hash = secondary_boundary_hypotheses[0]["current_rows"]["row_sha256"]
     lines.append(
         "- transparent secondary segment-57 continuation hypotheses: the "
-        "verified resource bytes determine the current-band digest `%s`, but "
-        "the 802 bytes needed after firmware address `0x0c0000` make fallback "
-        "digests diverge as mirror `%s`, code-pair `%s`, and zero-fill `%s`."
+        "verified resource bytes determine the current-band digest `%s`; "
+        "source window `0x%06x..0x%06x` has %d verified suffix bytes "
+        "(sha256 `%s`) and needs %d bytes after firmware address `0x0c0000`, "
+        "where mirror/code-pair/zero-fill continuation sources hash to "
+        "`%s`, `%s`, and `%s` and make fallback digests diverge as `%s`, "
+        "`%s`, and `%s`."
         % (
             current_hash,
+            0x080000 + secondary_boundary_source_abs,
+            0x080000 + secondary_boundary_source_abs + secondary_boundary_needed - 1,
+            len(secondary_boundary_verified_suffix),
+            hashlib.sha256(secondary_boundary_verified_suffix).hexdigest(),
+            secondary_boundary_continuation_len,
+            secondary_boundary_sources["mirror-resource-pair"]["sha256"],
+            secondary_boundary_sources["code-pair-after-resource"]["sha256"],
+            secondary_boundary_sources["zero-fill-after-resource"]["sha256"],
             boundary_hashes["mirror-resource-pair"],
             boundary_hashes["code-pair-after-resource"],
             boundary_hashes["zero-fill-after-resource"],

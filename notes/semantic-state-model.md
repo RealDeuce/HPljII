@@ -829,7 +829,13 @@ or fixed-space helper `0xd0f0`.
   `transparent secondary segment-57 continuation policies diverge after verified
   bytes` proves the verified resource bytes determine the current-band digest
   `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`, but
-  fallback rows need `802` bytes past firmware address `0x0c0000`.
+  fallback rows need `802` bytes past firmware address `0x0c0000`. The same
+  fixture hashes the verified `0x0bfe22..0x0bffff` suffix as
+  `e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f` and the
+  mirror/code-pair/zero-fill continuation candidates as
+  `e435e3b9d033e491b57282a88b0f321aa5fecae8128fa060844cc01379349563`,
+  `90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16`, and
+  `359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`.
 - Unknown for this checkpoint:
   - manual-facing names for the selected context filtering byte, fallback
     filtering byte, and high-character flags remain provisional.

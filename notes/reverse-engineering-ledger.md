@@ -1076,7 +1076,12 @@ ROM work needed:
   `0x02e122`, then `0x1f1f0` reading firmware range `0x0bfe22..0x0c0321`;
   fixture `transparent secondary segment-57 continuation policies diverge
   after verified bytes` proves the verified bytes already determine the
-  current-band digest and that mirror, code-pair continuation, and zero-fill
+  current-band digest and hashes the verified `0x0bfe22..0x0bffff` suffix as
+  `e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f`. The
+  mirror, code-pair continuation, and zero-fill candidates hash to
+  `e435e3b9d033e491b57282a88b0f321aa5fecae8128fa060844cc01379349563`,
+  `90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16`, and
+  `359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`, and
   diverge only in fallback rows. The unknown is what hardware maps after the
   verified resource-pair byte range ends at `0x0bffff`.
   Command-family state is composed in `Text Cursor And Direct Controls`, and

@@ -441,8 +441,17 @@ three explicit continuation policies proves the first current-band rows are
 already fixed by verified bytes: mirror, code-pair continuation, and zero-fill
 all produce current-band digest
 `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`. The
+fixture also pins the exact byte-source boundary: the read window is
+`0x0bfe22..0x0c0321`, the verified suffix is `478` bytes with digest
+`e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f`, and the
 remaining `802` bytes after firmware address `0x0c0000` only affect fallback
-rows, and the policies diverge there: mirror digest
+rows. The candidate continuation sources hash differently: mirror
+`e435e3b9d033e491b57282a88b0f321aa5fecae8128fa060844cc01379349563`,
+code-pair
+`90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16`, and
+zero-fill
+`359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`. The
+fallback rows diverge there: mirror digest
 `75cc8b60cd33f5c659ad702530ebacdc7685f2b75d63e18b9ce055383153f142`,
 code-pair digest
 `dc58960aff83e718df147897de51944939626c4e8422a53da5443bca48a53df5`, and

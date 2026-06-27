@@ -172,7 +172,13 @@ verified bytes` tests three explicit continuation policies for that same
 bucket-456 compact payload. The verified bytes produce the same current-band
 digest `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`
 under resource-pair mirror, code-pair continuation, and zero-fill; the
-fallback rows diverge with digests
+verified suffix at `0x0bfe22..0x0bffff` hashes to
+`e0a0fd34ce7a39f79ecd27c0ee288631554a0ff78359b72e27ea6087651bcf1f`.
+The mirror/code-pair/zero-fill continuation candidates hash to
+`e435e3b9d033e491b57282a88b0f321aa5fecae8128fa060844cc01379349563`,
+`90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16`, and
+`359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`, and
+the fallback rows diverge with digests
 `75cc8b60cd33f5c659ad702530ebacdc7685f2b75d63e18b9ce055383153f142`,
 `dc58960aff83e718df147897de51944939626c4e8422a53da5443bca48a53df5`, and
 `6373cecdf5f20d78b01abe5aa65c051d82ddef345b7cf7fe1504f93c9cb2c425`.

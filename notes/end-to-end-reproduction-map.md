@@ -550,11 +550,9 @@ The next work should follow dataflow, not isolated handlers:
    especially row counts outside the covered short rows `0x01`, `0x02`, `0x03`, `0x04`,
    `0x08`, `0x10`, `0x20`, `0x40`, `0x41`, `0x7f`, and `0x80` and segmented rows `0x81`,
    `0x82`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`,
-   descriptor grammar forms outside the covered helper-table path, visible
-   behavior after descriptor-accepted spans `0x0100..0x020d` wrap at the
-   current printable source-byte handoff,
-   visible behavior after segmented-wide row words above `0x00ff` wrap at the current
-   printable source-byte handoff, and
+   descriptor grammar forms outside the covered helper-table path, full
+   pixel-row behavior past the wrapped-width invalid helper entries, broader
+   physical comparison for segmented-wide row words above `0x00ff`, and
    full-success return-boundary siblings beyond the covered normal even-span,
    no-install, status-`2`, row-count-matrix short/segmented, linear-segmented
    publication, split-plane segmented publication, segmented-wide publication,
@@ -566,12 +564,17 @@ The next work should follow dataflow, not isolated handlers:
    truncates page-record span` pins the current printable source-byte wrap for spans
    `0x00ff`, `0x0100`, `0x0101`, and `0x020d`: canonical width words survive in the
    installed object, but `0x12f2e` sees width bytes `0xff`, `0x00`, `0x01`, and `0x0d`,
-   so only `0x00ff` remains selector `0x1003`. Fixture `downloaded segmented-wide
+   so only `0x00ff` remains selector `0x1003`; the wrapped spans dispatch
+   through `0x1effe` and read helper entries `0x1f48e`, `0x1f492`, and
+   `0x1f8c2`, which target non-helper longwords `0x20700000`, `0x4e90202c`,
+   and `0x4e904cdf`. Fixture `downloaded segmented-wide
    row-byte boundary truncates page-record segments` pins the row-byte sibling for
    span `0x11`: canonical row words `0x0081`, `0x00ff`, `0x0100`, `0x0101`, and
    `0x0181` survive in the installed object, but `0x12f2e` sees row bytes `0x81`,
    `0xff`, `0x00`, `0x01`, and `0x81`; rows `0x0100` and `0x0101` become selector
-   `0x1003`, and row `0x0181` queues only segments `1` and `0`. Fixture `downloaded
+   `0x1003` and split through `0x1f0d2` as `80/176` and `80/177`, while row
+   `0x0181` queues only segments `1` and `0`, splitting through `0x1f264` as
+   `32/96` and `80/48`. Fixture `downloaded
    glyph width-span
    matrix publishes and renders all main helpers` now covers parser-produced spans
    `1..16`:

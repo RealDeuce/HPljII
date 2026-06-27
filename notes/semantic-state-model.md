@@ -3425,8 +3425,11 @@ compact text renderer.
     current unflagged printable source record byte `+0`, which contains
     `0xff`, `0x00`, `0x01`, and `0x0d`. Derived/cache state is the `0x12f2e`
     selector choice: only span `0x00ff` remains selector `0x1003`; the wrapped
-    spans queue selector `0x0003`. Visible output is unknown for the wrapped
-    cases because the fixture stops at the page-record producer boundary.
+    spans queue selector `0x0003`. Derived render state now includes the first
+    dispatch edge: `0x00ff` stays on compact-wide renderer `0x1f0d2`, while
+    wrapped spans enter compact mode-0 at `0x1effe` and read helper-table
+    entries `0x1f48e`, `0x1f492`, and `0x1f8c2`, targeting `0x20700000`,
+    `0x4e90202c`, and `0x4e904cdf` outside decoded row-copy helper heads.
   - downloaded-character segmented-wide matrix: fixture `downloaded glyph
     segmented-wide matrix publishes and renders compact chunks` installs
     canonical width words `0x0088..0x0100`, row word `0x0081`, mode bytes
@@ -3447,8 +3450,11 @@ compact text renderer.
     `0x12f2e` selector and segment list: rows `0x0081` and `0x00ff` queue
     selector `0x3003` with segments `1` and `0`; rows `0x0100` and `0x0101`
     queue selector `0x1003`; row `0x0181` queues selector `0x3003` with only
-    segments `1` and `0`. Visible output is unknown for the wrapped-row cases
-    because the fixture stops at the page-record producer boundary.
+    segments `1` and `0`. Derived render state uses the canonical installed row
+    words after selector choice: rows `0x0100` and `0x0101` dispatch through
+    `0x1f0d2` and split `80/176` and `80/177`; row `0x0181` dispatches only
+    produced `0x1f264` segment objects, with segment `1` splitting `32/96` and
+    segment `0` splitting `80/48`.
   - `0x782842..0x782851` and `0x782856`: optional symbol bytes and count
     staged by `0x16fae`.
   - `0x1ed84` render-record work words `+0x10/+0x16` copied from the
@@ -4229,8 +4235,9 @@ rows matching the installed bitmap; the same fixture makes high-span probes `33`
 High for the width-byte producer boundary because fixture `downloaded glyph
 width-byte boundary truncates page-record span` asserts spans `0x00ff`,
 `0x0100`, `0x0101`, and `0x020d`, the canonical installed width words, the
-one-byte source records, and the resulting `0x12f2e` selectors. It does not
-raise confidence for wrapped-width pixel output.
+one-byte source records, the resulting `0x12f2e` selectors, and the first
+render edge. The wrapped spans select compact mode-0 helper entries `0x1f48e`,
+`0x1f492`, and `0x1f8c2`, whose targets are not decoded row-copy helper heads.
 High for segmented-wide downloaded rendering because
 fixture `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
 asserts spans `17..32`, rows `0x81`, mode-byte parity, split-plane copies for odd spans,
@@ -4247,8 +4254,9 @@ band words `0..9` through `0x1ef6a` and preserves the same visible row. High for
 the segmented-wide row-byte producer boundary because fixture `downloaded
 segmented-wide row-byte boundary truncates page-record segments` asserts row
 words `0x0081`, `0x00ff`, `0x0100`, `0x0101`, and `0x0181`, the one-byte
-source records, and the resulting `0x12f2e` selectors/segments. It does not
-raise confidence for wrapped-row pixel output. High for
+source records, the resulting `0x12f2e` selectors/segments, the `0x1f0d2`
+splits for rows `0x0100` and `0x0101`, and the produced `0x1f264` segment
+splits for row `0x0181`. High for
 downloaded-glyph/rule/raster render composition because fixture `host-fetched downloaded
 glyph composes with rule and raster through 0x1ef6a` asserts the `ESC )s18W` install
 fields, bucket-5 glyph/raster objects, bridged selector-7 rule object, `0x1ef6a` call

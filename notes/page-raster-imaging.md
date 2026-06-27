@@ -1624,9 +1624,11 @@ Output effect:
   `0x1068`, but the current unflagged printable source record supplies only
   byte `+0` to `0x12f2e`. The resulting source width bytes are `0xff`,
   `0x00`, `0x01`, and `0x0d`; only `0x00ff` keeps selector `0x1003`, while
-  the wrapped spans queue selector `0x0003`. This fixture documents the
-  producer boundary and does not claim rendered pixels for those wrapped-width
-  cases.
+  the wrapped spans queue selector `0x0003`. The same fixture now carries the
+  first render decision: `0x00ff` stays on `0x1f0d2`; wrapped spans dispatch
+  through compact mode-0 at `0x1effe`, reading helper entries `0x1f48e`,
+  `0x1f492`, and `0x1f8c2` that point to `0x20700000`, `0x4e90202c`, and
+  `0x4e904cdf`, outside decoded row-copy helper heads.
 - Fixture `downloaded glyph segmented-wide matrix publishes and renders
   compact chunks` proves parser-produced downloaded-character spans `17..32`
   with rows `0x81` install widths `136..256`, publish buckets `0` and `8` as
@@ -1644,9 +1646,11 @@ Output effect:
   unflagged printable source record supplies only byte `+1` to `0x12f2e`.
   Rows `0x0081` and `0x00ff` queue selector `0x3003` for segments `1` and
   `0`; rows `0x0100` and `0x0101` wrap to selector `0x1003`; row `0x0181`
-  wraps to source row byte `0x81` and queues only segments `1` and `0`.
-  This fixture documents the producer boundary and does not claim rendered
-  pixels for the wrapped-row cases.
+  wraps to source row byte `0x81` and queues only segments `1` and `0`. The
+  same fixture now pins the first render split: `0x0100` and `0x0101` dispatch
+  through `0x1f0d2` with canonical row words, splitting `80/176` and
+  `80/177`; `0x0181` reaches `0x1f264` only for produced segment `1`
+  (`32/96`) and segment `0` (`80/48`).
 - Fixture `host-fetched rows-0x102 downloaded glyph FF publication truncates
   page-record rows` proves the failure boundary: installed row count `0x0102`
   reaches `0x1f414`, but fallback row count `200` indexes past the valid
@@ -1667,9 +1671,9 @@ Confidence:
   segmented-wide row checks through span `64`, the legal metric matrix, and
   many downloaded row-count cases are fixture-backed. The span `0x0100..0x020d`
   printable handoff is now classified as an 8-bit source-record producer
-  boundary, not a renderer row-copy claim. Remaining renderer risk is broader
-  visible behavior after those wrapped width/row selector choices and untested
-  metric combinations.
+  boundary whose wrapped cases select non-helper mode-0 row-copy entries.
+  Remaining renderer risk is broader physical/pixel comparison past that
+  invalid helper boundary and untested metric combinations.
 
 Fixture evidence:
 

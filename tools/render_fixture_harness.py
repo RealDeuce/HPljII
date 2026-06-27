@@ -55862,6 +55862,124 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
     ))
 
+    def compact_mode0_render_boundary(glyph: dict[str, object]) -> dict[str, object]:
+        render_span = int(glyph["render_span"])
+        helper_entry = 0x1F08E + render_span * 4
+        helper_target = u32(data, helper_entry)
+        target_in_rom = 0 <= helper_target + 1 < len(data)
+        helper_opcode = u16(data, helper_target) if target_in_rom else 0
+        return {
+            "renderer": 0x01EFFE,
+            "mode": "compact-mode0",
+            "render_span": render_span,
+            "helper_entry": helper_entry,
+            "helper_target": helper_target,
+            "helper_target_in_rom": target_in_rom,
+            "helper_opcode": helper_opcode,
+            "pixel_claim": "none: helper table entry is outside decoded row-copy helper heads",
+        }
+
+    def compact_wide_render_boundary(
+        selector: int,
+        coord: int,
+        glyph: dict[str, object],
+        bucket_index: int,
+    ) -> dict[str, object]:
+        render_span = int(glyph["render_span"])
+        rows = int(glyph["rows"])
+        setup = compute_render_band_state_via_1ef86({
+            "word_04": 0x0020,
+            "word_06": 0x0005,
+            "word_08": 0,
+            "word_0a": 0,
+            "word_10": int(bucket_index),
+        })
+        split = split_row_count_via_1f414(
+            int(coord),
+            rows,
+            int(setup["band_rows_scaled_783a20"]),
+        )
+        remainder = render_span & 0x0F
+        return {
+            "renderer": 0x01F0D2,
+            "mode": "compact-wide",
+            "selector": int(selector),
+            "bucket_index": int(bucket_index),
+            "render_span": render_span,
+            "rows_word": rows,
+            "setup": {
+                key: setup[key]
+                for key in (
+                    "input_word_10",
+                    "divisor_word_06",
+                    "remainder_783a22",
+                    "band_rows_scaled_783a20",
+                )
+            },
+            "split": split,
+            "full_chunks": render_span >> 4,
+            "remainder": remainder,
+            "full_chunk_helper": 0x2F27C,
+            "remainder_helper": u32(data, 0x1F1AC + remainder * 4)
+            if remainder
+            else 0,
+        }
+
+    def compact_segmented_wide_render_boundary(
+        glyph: dict[str, object],
+        segments: list[dict[str, object]],
+    ) -> list[dict[str, object]]:
+        render_span = int(glyph["render_span"])
+        rows_total = int(glyph["rows"])
+        remainder = render_span & 0x0F
+        reports = []
+        for segment in segments:
+            bucket_index = int(segment["bucket_index"])
+            segment_byte = int(segment["segment"])
+            row_skip = segment_byte << 7
+            rows_here = min(rows_total - row_skip, 0x80)
+            setup = compute_render_band_state_via_1ef86({
+                "word_04": 0x0020,
+                "word_06": 0x0005,
+                "word_08": 0,
+                "word_0a": 0,
+                "word_10": bucket_index,
+            })
+            obj = bytes(segment["object"])
+            coord = u16(obj, 10)
+            split = split_row_count_via_1f414(
+                coord,
+                rows_here,
+                int(setup["band_rows_scaled_783a20"]),
+            )
+            reports.append({
+                "renderer": 0x01F264,
+                "mode": "compact-segmented-wide",
+                "bucket_index": bucket_index,
+                "segment": segment_byte,
+                "row_skip": row_skip,
+                "rows_here": rows_here,
+                "render_span": render_span,
+                "rows_word": rows_total,
+                "setup": {
+                    key: setup[key]
+                    for key in (
+                        "input_word_10",
+                        "divisor_word_06",
+                        "remainder_783a22",
+                        "band_rows_scaled_783a20",
+                    )
+                },
+                "split": split,
+                "full_chunks": render_span >> 4,
+                "remainder": remainder,
+                "full_chunk_helper": 0x2F27C,
+                "remainder_helper": u32(data, 0x1F1AC + remainder * 4)
+                if remainder
+                else 0,
+            })
+        return reports
+
     def downloaded_width_byte_boundary_case(
         *,
         span: int,
@@ -55998,6 +56116,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "next_stream_prefix": tail_stream[:1],
                 "next_handler": tail_trace["events"][0]["handler"],
             },
+            "render_edge": (
+                compact_mode0_render_boundary(glyph)
+                if int(page_result["selector"]) & 0x3000 == 0
+                else compact_wide_render_boundary(
+                    int(page_result["selector"]),
+                    int(page_result["coord"]),
+                    glyph,
+                    int(page_result["bucket_index"]),
+                )
+            ),
             "visible_output_claim": "none: fixture stops at source-byte/page-record boundary",
         }
 
@@ -56034,6 +56162,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "page_width": case["page"]["width"],
                 "page_rows": case["page"]["rows"],
                 "return_boundary": case["return_boundary"],
+                "render_edge": case["render_edge"],
                 "visible_output_claim": case["visible_output_claim"],
             }
             for case in downloaded_width_byte_boundary
@@ -56088,6 +56217,53 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "next_stream_prefix": bytes([char_code]),
                     "next_handler": 0x00D04A,
                 },
+                "render_edge": (
+                    {
+                        "renderer": 0x01F0D2,
+                        "mode": "compact-wide",
+                        "selector": 0x1003,
+                        "bucket_index": 0,
+                        "render_span": span,
+                        "rows_word": 3,
+                        "setup": {
+                            "input_word_10": 0,
+                            "divisor_word_06": 5,
+                            "remainder_783a22": 0,
+                            "band_rows_scaled_783a20": 0x50,
+                        },
+                        "split": {
+                            "coord": 0,
+                            "row_index": 0,
+                            "input_rows": 3,
+                            "band_rows_scaled_783a20": 0x50,
+                            "rows_available": 0x50,
+                            "rows_in_band": 3,
+                            "remaining_after_band": 0,
+                            "returned_d3": 3,
+                        },
+                        "full_chunks": span >> 4,
+                        "remainder": span & 0x0F,
+                        "full_chunk_helper": 0x2F27C,
+                        "remainder_helper": u32(
+                            data,
+                            0x1F1AC + (span & 0x0F) * 4,
+                        ),
+                    }
+                    if span == 0x00FF
+                    else {
+                        "renderer": 0x01EFFE,
+                        "mode": "compact-mode0",
+                        "render_span": span,
+                        "helper_entry": 0x1F08E + span * 4,
+                        "helper_target": u32(data, 0x1F08E + span * 4),
+                        "helper_target_in_rom": False,
+                        "helper_opcode": 0,
+                        "pixel_claim": (
+                            "none: helper table entry is outside decoded "
+                            "row-copy helper heads"
+                        ),
+                    }
+                ),
                 "visible_output_claim": "none: fixture stops at source-byte/page-record boundary",
             }
             for span, char_code in (
@@ -56952,6 +57128,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "next_stream_prefix": tail_stream[:1],
                 "next_handler": tail_trace["events"][0]["handler"],
             },
+            "render_edge": (
+                compact_segmented_wide_render_boundary(glyph, page_segments)
+                if page_segments
+                else compact_wide_render_boundary(
+                    int(page_result["selector"]),
+                    int(page_result["coord"]),
+                    glyph,
+                    int(page_result["bucket_index"]),
+                )
+            ),
             "visible_output_claim": "none: fixture stops at source-byte/page-record boundary",
         }
 
@@ -56991,6 +57177,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "segments": case["page"]["segments"],
                 "object_prefix": case["page"]["object_prefix"],
                 "return_boundary": case["return_boundary"],
+                "render_edge": case["render_edge"],
                 "visible_output_claim": case["visible_output_claim"],
             }
             for case in downloaded_segmented_wide_row_byte_boundary
@@ -57089,6 +57276,58 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "next_stream_prefix": bytes([char_code]),
                     "next_handler": 0x00D04A,
                 },
+                "render_edge": (
+                    [
+                        {
+                            "renderer": 0x01F264,
+                            "mode": "compact-segmented-wide",
+                            "bucket_index": bucket_index,
+                            "segment": segment,
+                            "row_skip": segment << 7,
+                            "rows_here": min(rows - (segment << 7), 0x80),
+                            "render_span": 0x11,
+                            "rows_word": rows,
+                            "setup": {
+                                "input_word_10": bucket_index,
+                                "divisor_word_06": 5,
+                                "remainder_783a22": bucket_index % 5,
+                                "band_rows_scaled_783a20": (
+                                    (5 - (bucket_index % 5)) << 4
+                                ),
+                            },
+                            "split": split_row_count_via_1f414(
+                                0,
+                                min(rows - (segment << 7), 0x80),
+                                (5 - (bucket_index % 5)) << 4,
+                            ),
+                            "full_chunks": 1,
+                            "remainder": 1,
+                            "full_chunk_helper": 0x2F27C,
+                            "remainder_helper": u32(data, 0x1F1AC + 4),
+                        }
+                        for bucket_index, segment in ((8, 1), (0, 0))
+                    ]
+                    if (rows & 0xFF) > 0x80
+                    else {
+                        "renderer": 0x01F0D2,
+                        "mode": "compact-wide",
+                        "selector": 0x1003,
+                        "bucket_index": 0,
+                        "render_span": 0x11,
+                        "rows_word": rows,
+                        "setup": {
+                            "input_word_10": 0,
+                            "divisor_word_06": 5,
+                            "remainder_783a22": 0,
+                            "band_rows_scaled_783a20": 0x50,
+                        },
+                        "split": split_row_count_via_1f414(0, rows, 0x50),
+                        "full_chunks": 1,
+                        "remainder": 1,
+                        "full_chunk_helper": 0x2F27C,
+                        "remainder_helper": u32(data, 0x1F1AC + 4),
+                    }
+                ),
                 "visible_output_claim": "none: fixture stops at source-byte/page-record boundary",
             }
             for rows, char_code, _object_offset
@@ -87439,15 +87678,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "source record into `0x12f2e`. The source record exposes only byte "
         "`+0`: span `0xff` remains width byte `0xff` and selector `0x1003`, "
         "while spans `0x100`, `0x101`, and `0x20d` present width bytes "
-        "`0x00`, `0x01`, and `0x0d`, so they queue selector `0x0003`. No "
-        "pixel-output claim is made for the wrapped-width cases. Case "
-        "summaries `(span, width byte, selector, record)` are `%s`."
+        "`0x00`, `0x01`, and `0x0d`, so they queue selector `0x0003`. The "
+        "first render edge is now pinned too: `0x00ff` remains compact-wide "
+        "through `0x1f0d2`, while wrapped spans enter compact mode-0 at "
+        "`0x1effe` and read `0x1f08e + span * 4` entries `0x1f48e`, "
+        "`0x1f492`, and `0x1f8c2`, which target non-helper longwords "
+        "`0x20700000`, `0x4e90202c`, and `0x4e904cdf`. Case summaries "
+        "`(span, width byte, selector, render edge, record)` are `%s`."
         % (
             [
                 (
                     case["span"],
                     case["source"]["width_byte"],
                     "0x%04x" % case["page"]["selector"],
+                    case["render_edge"],
                     " ".join(f"{byte:02x}" for byte in case["install"]["record"]),
                 )
                 for case in downloaded_width_byte_boundary
@@ -87525,9 +87769,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "`1` and `0`; rows `0x0100` and `0x0101` wrap to row bytes `0x00` "
         "and `0x01` and queue selector `0x1003`; row `0x0181` wraps to "
         "row byte `0x81` and again queues only segments `1` and `0`, not "
-        "the higher canonical segments. No pixel-output claim is made for "
-        "the wrapped-row cases. Case summaries "
-        "`(rows, row byte, selector, path, segment ids)` are `%s`."
+        "the higher canonical segments. The render edge is pinned as "
+        "`0x1f0d2` for row words `0x0100` and `0x0101`, using the canonical "
+        "row words from the installed glyph and splitting them as `80/176` "
+        "and `80/177` current/fallback rows; row word `0x0181` reaches "
+        "`0x1f264` only for segment `1` (`32/96`) and segment `0` (`80/48`). "
+        "Case summaries `(rows, row byte, selector, path, render edge)` are "
+        "`%s`."
         % (
             [
                 (
@@ -87535,10 +87783,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     case["source"]["rows_byte"],
                     "0x%04x" % case["page"]["selector"],
                     case["page"]["path"],
-                    [
-                        segment["segment"]
-                        for segment in case["page"]["segments"]
-                    ],
+                    case["render_edge"],
                 )
                 for case in downloaded_segmented_wide_row_byte_boundary
             ],

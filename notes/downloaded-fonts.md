@@ -1308,8 +1308,12 @@ and `0x1068` in the object record at `+8`. The current unflagged printable
 source record presented to `0x12f2e` still exposes only byte `+0`: span
 `0x00ff` supplies width byte `0xff` and queues selector `0x1003`, while spans
 `0x0100`, `0x0101`, and `0x020d` supply width bytes `0x00`, `0x01`, and
-`0x0d` and queue selector `0x0003`. The fixture stops at this page-record
-producer boundary and makes no pixel-output claim for the wrapped-width cases.
+`0x0d` and queue selector `0x0003`. The render edge is now pinned for the same
+cases: span `0x00ff` remains compact-wide through `0x1f0d2`, but wrapped spans
+enter compact mode-0 at `0x1effe` and read helper-table entries
+`0x1f48e`, `0x1f492`, and `0x1f8c2`. Those entries target non-helper longwords
+`0x20700000`, `0x4e90202c`, and `0x4e904cdf`, so the model makes no pixel-row
+claim past that invalid helper selection.
 
 Fixture `downloaded glyph segmented-wide matrix publishes and renders compact
 chunks` covers the segmented-wide sibling. It drives host-fetched `ESC )s#W`
@@ -1344,9 +1348,12 @@ exposes only byte `+1`: rows `0x0081` and `0x00ff` supply row bytes `0x81`
 and `0xff` and queue selector `0x3003` for segments `1` and `0`; rows
 `0x0100` and `0x0101` supply row bytes `0x00` and `0x01` and queue selector
 `0x1003`; row `0x0181` supplies row byte `0x81` and again queues only
-segments `1` and `0`, not the higher canonical segments. The fixture stops at
-this page-record producer boundary and makes no pixel-output claim for the
-wrapped-row cases.
+segments `1` and `0`, not the higher canonical segments. The render edge keeps
+the canonical installed row word after selector choice: rows `0x0100` and
+`0x0101` dispatch to `0x1f0d2` and split as `80/176` and `80/177`
+current/fallback rows. Row `0x0181` dispatches only the produced `0x1f264`
+segment objects: segment `1` in bucket `8` splits `32/96`, segment `0` in
+bucket `0` splits `80/48`, and no segment above `1` is present for rendering.
 
 Fixture `downloaded glyph row-count matrix publishes and renders additional
 short/segmented counts` broadens the same command family. Short rows `0x0001`,

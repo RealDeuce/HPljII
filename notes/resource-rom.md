@@ -748,10 +748,15 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    if cartridge or external resource images become available.
 2. Finish naming the firmware-scanned record metadata fields rather than
    relying on string labels alone.
-3. Decide how to document the undocumented but parser-exposed `@0..@2`
-   table/copy variants. The default-font candidate and caller path is
-   now real-record backed through `0x1b250`, `0x1b50e`, `0x1ab84`,
-   `0x1b060`, and the ROM `0x120be` terminal path.
+3. Compose visible-output fixtures for parser-exposed `@0..@3` only if they
+   expose behavior not already covered by the symbol/fallback visible streams.
+   The parser/default-table boundary itself is now documented: `@0`/`@1` read
+   the `0x1ac0a` table at `0x782f1c/20/24/28`, `@2` copies the primary
+   requested word, and `@3` uses the current default-font word. Fixture
+   `real default-table caller stream uses ROM-backed words` routes
+   `ESC (0@ ESC )0@ ESC )1@ ESC )2@ ESC (3@` through the ROM `0x120be`
+   terminal handler and real-record-backed words from `0x1b250`, `0x1b50e`,
+   `0x1ab84`, and `0x1b060`.
 4. Replace the host-fetched font-control, descriptor, resource-payload,
    and downloaded-character boundaries with a full live parser-state run
    that populates current records/source objects; then replace

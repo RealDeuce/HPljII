@@ -1658,10 +1658,13 @@ because physical/self-test comparison is still open.
   for the first three actual rows.
   The standalone run-2 render fixture remains useful as an isolation control
   with context `0x44080418`, HMI `0x001e`, compact buckets `-1` and `0`, and
-  render-entry row hashes above. Emitted page objects for the complete font
-  printout remain to be modeled from remaining source headings, row fields
-  for every emitted row, all continuation branches, and page-placement state,
-  then compared against a known printed/self-test sample.
+  render-entry row hashes above. The complete font printout is now modeled as
+  eight source/class page-record segments, and
+  `font sample full printout segments render through 0x1ed84 and 0x1ef6a`
+  pins the aggregate rendered-surface digest
+  `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
+  The remaining sample-printout boundary is comparison against a known
+  printed/self-test page.
 - `record +0x28..+0x31`: these fields participate in height and chooser
   logic, but their final baseline/cell semantics need correlation against
   observed sample-page placement.
@@ -1705,6 +1708,19 @@ symbols through visible output for both slots. The primary cases append
 `0xc4080418`, and `0xc4080868`; the secondary cases append
 `ESC )s0p16h8v0s0b0T SO !!`, cross SO handler `0xc6b8`, and render from
 selected contexts `0xc00ae122`, `0xc40ad87a`, and `0xc40adcce`.
+The parser-exposed final-`@` variants are now a documented symbol-state
+contract, not an unresolved parser curiosity. Fixture
+`symbol-set parser trace covers X and @ special cases` proves that final `X`
+and final `@` use the same terminal handler `0x120be` after setup
+`0x1201e` / `0x12008`: `X` preserves the previous requested word while calling
+font-id helper `0x17708`, `@0`/`@1` read the default-symbol table,
+`@2` copies the current primary requested word to the target slot, and `@3`
+uses the current default-font word. Fixture
+`real default-table caller stream uses ROM-backed words` then drives real
+scanned built-in default words through `ESC (0@ ESC )0@ ESC )1@ ESC )2@
+ESC (3@`: the stream requests `[0x0005, 0x000e, 0x0005, 0x0005, 0x000e]`,
+leaves final requested words `[0x000e, 0x0005]`, and preserves the same active
+words after five common-refresh calls.
 Fixture `live primary current-font RAM install feeds SI page-record rows`
 proves the selected primary RAM record handoff: with
 `0x782ee6 = 0xc008004c` and an existing page root whose secondary slot is
@@ -1749,12 +1765,24 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     from `ESC (0N`, `ESC (10U`, and `ESC (11U`.
   - secondary non-Roman symbol request words `0x000e`, `0x0155`, and
     `0x0175` from `ESC )0N`, `ESC )10U`, and `ESC )11U`.
+  - final-`@` parser records:
+    `ESC (0@`, `ESC )0@`, `ESC )1@`, `ESC )2@`, and `ESC (3@` all route
+    through terminal handler `0x120be`; their six-byte records are
+    `80 40 00 00 00 00`, `80 40 00 00 00 01`,
+    `80 40 00 01 00 01`, `80 40 00 02 00 01`, and
+    `80 40 00 03 00 00`.
+  - real-backed final-`@` requested words:
+    `@0` reads table slots `0x0005` / `0x000e`, `@1` reads primary table word
+    `0x0005`, `@2` copies the primary requested word `0x0005` to secondary,
+    and `@3` reads current default-font word `0x000e`.
   - dirty flags `0x782f2c` and `0x782f2d`, set by handlers `0xc930`,
     `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a`.
   Evidence: fixture `parsed font-selection stream writes primary font-state
   fields`, fixture
   `primary symbol miss falls back before visible page-record rows`, and fixture
-  `secondary symbol miss falls back before visible SO page-record rows`.
+  `secondary symbol miss falls back before visible SO page-record rows`, plus
+  fixtures `symbol-set parser trace covers X and @ special cases` and
+  `real default-table caller stream uses ROM-backed words`.
 - Canonical selected context:
   - `0x782ee6 +0x00`: selected longword `0xc008004c`.
   - `0x782ee6 +0x04`: bit-30-derived byte `1`.
@@ -1827,10 +1855,17 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   - secondary selected candidate slot `0x782350`.
   - primary fallback active-word source: fallback table word `0x0115` after
     the requested pass misses word `0x9a55`.
+  - parser default-symbol table `0x782f1c/20/24/28`: built by `0x1ac0a` and
+    consumed by final-`@` subdispatches `@0` and `@1`. In the real-backed
+    caller fixture, the table words are `0x0005`, `0x000e`, `0x0155`, and
+    `0x000e`.
   - primary fallback survivor slot pointers: `0x782354`, `0x782364`, and
     `0x782374`.
   - secondary fallback active-word source: fallback table word `0x000e` after
     the requested pass misses word `0x9a55`.
+  - candidate fallback table `0x782f0c/10/14/18`: built by `0x1af36` and
+    consumed by `0x156de` only after requested symbol candidates miss. It is
+    not the final-`@` parser table.
   - secondary fallback survivor slot pointers: `0x782330`, `0x782340`, and
     `0x782350`.
   - `0x782f32`: rebuilt primary map, range `0x21..0xfe`, patch kind
@@ -1867,6 +1902,14 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   - non-Roman visible streams pair those primary commands with
     `ESC (s0p10h12v0s0b3T!!`, and pair secondary `ESC )0N`, `ESC )10U`, and
     `ESC )11U` with `ESC )s0p16h8v0s0b0T SO !!`.
+  - final-`@` real-backed stream
+    `ESC (0@ ESC )0@ ESC )1@ ESC )2@ ESC (3@` routes through
+    `0x11774 -> 0x1201e/0x12008 -> 0x120be` for each command and then through
+    final-`@` subdispatch targets
+    `0x1bed4`, `0x1bed4`, `0x1bf0a`, `0x1bf36`, and `0x1bf74`.
+  - final-`X` isolation stream `ESC (7X` routes through the same terminal
+    handler and calls font-id helper `0x17708` without replacing the previous
+    requested symbol word.
   - printable parser events are two `0xd04a` entries for the primary fixture,
     and `0xc6b8, 0xd04a, 0xd04a` for the secondary SO and fallback fixtures.
   - the live primary handoff stream is `SI !!` with current-font/page-root
@@ -1891,6 +1934,13 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     selections without entering the `0x14f16` Roman-8 patch-table path.
   - `0x14c64` rebuilds map `0x783032` for the secondary `0N`, `10U`, and
     `11U` selections before SO makes slot `1` active for printable bytes.
+  - `0x1ac0a` writes the parser default-symbol table
+    `0x782f1c/20/24/28`; `0x1af36` writes the separate candidate fallback
+    table `0x782f0c/10/14/18`.
+  - final-`@` subdispatch target `0x1bed4` reads table slot `0`, target
+    `0x1bf0a` reads the primary table word, target `0x1bf36` copies primary
+    to secondary, and target `0x1bf74` uses the current default-font word from
+    the `0x1b250` / `0x1b50e` / `0x1ab84` / `0x1b060` default-font path.
   - `0xc428` reads the selected longword from `0x782ee6` / `0x782ef6` and
     passes that longword to `0xc4fc`; `0xc4fc` stores the longword in the
     selected page-root slot.
@@ -1913,6 +1963,11 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   `ESC )1234U`, and writes `0x000e`, `0x0155`, and `0x0175` for primary
   `ESC (0N`, `ESC (10U`, and `ESC (11U`, plus the same words for secondary
   `ESC )0N`, `ESC )10U`, and `ESC )11U`.
+- `0x120be` / `0x1be22` also handle final `@`: `@0`/`@1` read
+  `0x782f1c/20/24/28`, `@2` copies the primary requested symbol word, and
+  `@3` writes the current default-font symbol word. The real-backed fixture
+  drives `ESC (0@ ESC )0@ ESC )1@ ESC )2@ ESC (3@` to final active words
+  primary `0x000e` and secondary `0x0005`.
 - `0x13eb8` filters active candidates through `0x1569c`, `0x156de`,
   `0x153c6`, `0x1519a`, `0x147b2`, `0x14758`, and `0x14398`.
 - `0x156de` writes fallback active word `0x0115` for the primary symbol miss
@@ -1969,6 +2024,10 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
 - The same renderer helpers consume the non-Roman visible fixture outputs:
   `0x1fe76` renders the primary Courier rows for `0N`/`10U`/`11U`, and
   `0x207ac` renders the secondary Line Printer rows for `0N`/`10U`/`11U`.
+- Final-`@` parser variants affect requested/active symbol words before later
+  font selection. The current evidence is parser/default-table state, not a
+  following visible-output stream; it proves the table/copy/default-font
+  boundary so a later visible fixture can start from exact requested words.
 
 ### Output Effect
 
@@ -2056,6 +2115,11 @@ High for primary and secondary visible-output handling of `0N`, `10U`, and
 `11U` because fixture `non-Roman symbol streams select visible built-ins`
 preserves symbol-set parsing, font-selection refresh, SO for secondary,
 compact object creation, bridge context slots, and rendered row digests.
+High for final-`@` parser/default-table behavior because the ROM parser
+records, terminal handler, subdispatch targets, real built-in default words,
+requested words, active words, and common-refresh count are fixture-pinned.
+Medium for final-`@` visible output because no following printable stream has
+yet been composed from those exact default-table requests.
 
 ### Fixtures
 
@@ -2074,6 +2138,8 @@ compact object creation, bridge context slots, and rendered row digests.
 - `secondary symbol miss falls back before visible SO page-record rows`
 - `live parser symbol-set streams select non-Roman built-ins`
 - `non-Roman symbol streams select visible built-ins`
+- `symbol-set parser trace covers X and @ special cases`
+- `real default-table caller stream uses ROM-backed words`
 
 ### Disassembly Evidence
 
@@ -2107,6 +2173,10 @@ compact object creation, bridge context slots, and rendered row digests.
   `0x120be..0x156de..0x14c64..0xd04a`, and
   `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` through
   `0x120be..0x156de..0x14c64..0xc6b8..0xd04a`.
+- Final-`@` parser variants are documented through the requested/active
+  symbol-state boundary and real default-table words. Remaining work is only a
+  compatibility-facing visible-output composition if `@0..@3` proves to affect
+  output differently from the already-covered symbol/fallback streams.
 
 ## Text Span Flush And Fixed-Width Spans
 

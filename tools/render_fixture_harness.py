@@ -42179,6 +42179,206 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "calls": ["0x172c0", "0x1b4c0", "0x158be", "0x1b2fe", "0x14c64"],
     }))
+    font_id_inline_visible_stream = b"\x1b)4660X\x0e!"
+    font_id_inline_visible_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(font_id_inline_visible_stream), direct_mode=0),
+        len(font_id_inline_visible_stream),
+    )
+    font_id_inline_symbol_bytes = font_id_inline_visible_fetch["stream"][:7]
+    font_id_inline_printable_bytes = font_id_inline_visible_fetch["stream"][7:]
+    font_id_inline_parser_trace = trace_symbol_set_parser_dispatch_via_11774(
+        data,
+        font_id_inline_symbol_bytes,
+    )
+    font_id_inline_printable_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        font_id_inline_printable_bytes,
+    )
+    font_id_inline_visible_select = font_id_select_via_17708(
+        data,
+        resources,
+        selected_inline_memory,
+        [{"id": 0x1234, "payload": selected_inline_context}],
+        [selected_inline_candidate],
+        slot=1,
+        font_id=0x1234,
+        previous_font_id_782f2e=0x2222,
+        class_selector_782da3=0,
+        current_selector_782f06=1,
+        active_symbols=[0x0115, 0x0005],
+        current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        page_root_context_slots=[0, selected_inline_context] + [0] * 14,
+        page_root_live_flags=[1, 1] + [0] * 14,
+    )
+    font_id_inline_visible_page = render_mixed_printable_control_page_record_stream(
+        data,
+        bytes(selected_inline_memory),
+        font_id_inline_printable_bytes,
+        0,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(20),
+            hmi=pack12(30),
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            text_map_selector_782f06=1,
+            text_source_form="unflagged",
+            printable_offset_782dc0=7,
+            source_x_offset=5,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            secondary_context_782ef6=selected_inline_context,
+        ),
+        default_advance=pack12(30),
+        secondary_context=selected_inline_context,
+    )
+    font_id_inline_visible_rendered = font_id_inline_visible_page["rendered"]
+    font_id_inline_visible_bridged = font_id_inline_visible_page["bridged_record"]
+    assert isinstance(font_id_inline_visible_rendered, dict)
+    assert isinstance(font_id_inline_visible_bridged, dict)
+    font_id_inline_visible_rows = font_id_inline_visible_rendered["rows"]
+    assert isinstance(font_id_inline_visible_rows, list)
+    font_id_inline_visible_events = font_id_inline_visible_page["events"]
+    font_id_inline_visible_printable = next(
+        event for event in font_id_inline_visible_events if event["kind"] == "printable"
+    )
+    checks.append(assert_equal("font-ID inline/downloaded selection feeds visible page-record rows", {
+        "combined_stream": font_id_inline_visible_fetch["stream"],
+        "fetch_sources": sorted(set(font_id_inline_visible_fetch["sources"])),
+        "symbol_parser_handlers": [
+            dispatch["handler"]
+            for command in font_id_inline_parser_trace["commands"]  # type: ignore[index]
+            for dispatch in command["dispatches"]  # type: ignore[index]
+        ],
+        "symbol_record": font_id_inline_parser_trace["commands"][0]["record"],  # type: ignore[index]
+        "font_id_helper": {
+            "status": font_id_inline_visible_select["status"],
+            "slot": font_id_inline_visible_select["slot"],
+            "font_id": font_id_inline_visible_select["font_id"],
+            "payload": font_id_inline_visible_select["payload"],
+            "selected_pointer_7828a8": font_id_inline_visible_select["selected_pointer_7828a8"],
+            "selected_longword": font_id_inline_visible_select["selected_longword"],
+            "bit30": font_id_inline_visible_select["bit30"],
+            "orientation_field": font_id_inline_visible_select["orientation_field"],
+            "class_byte": font_id_inline_visible_select["class_byte"],
+            "reader": font_id_inline_visible_select["reader"],
+            "symbol": font_id_inline_visible_select["symbol"],
+            "active_word_register": font_id_inline_visible_select["active_word_register"],
+            "active_symbols": font_id_inline_visible_select["active_symbols"],
+            "c4fc_result": font_id_inline_visible_select["c4fc_result"],
+            "c4fc_events": font_id_inline_visible_select["c4fc_events"],
+            "calls": font_id_inline_visible_select["calls"],
+        },
+        "printable_handlers": [
+            event["handler"]
+            for event in font_id_inline_printable_trace["events"]  # type: ignore[index]
+        ],
+        "font_shift_event": select_keys(font_id_inline_visible_events[0], (
+            "kind",
+            "handler",
+            "selector_before",
+            "selector_after",
+            "install_called",
+        )),
+        "printable_source": {
+            "context": font_id_inline_visible_printable["source"]["context"],
+            "host_char": font_id_inline_visible_printable["source"]["host_char"],
+            "mapped": font_id_inline_visible_printable["source"]["mapped"],
+            "glyph_entry": font_id_inline_visible_printable["source"]["glyph_entry"],
+            "glyph_width": font_id_inline_visible_printable["source"]["glyph_width"],
+            "glyph_rows": font_id_inline_visible_printable["source"]["glyph_rows"],
+            "context_slot": font_id_inline_visible_printable["source"]["context_slot"],
+            "inline_record": font_id_inline_visible_printable["source"]["inline_record"],
+            "bitmap": font_id_inline_visible_printable["source"]["bitmap"],
+        },
+        "positioned": {
+            "x": font_id_inline_visible_printable["positioned"]["source"]["x"],
+            "y": font_id_inline_visible_printable["positioned"]["source"]["y"],
+            "record0": font_id_inline_visible_printable["positioned"]["record0"],
+            "record1": font_id_inline_visible_printable["positioned"]["record1"],
+            "record2_signed": font_id_inline_visible_printable["positioned"]["record2_signed"],
+        },
+        "object_prefix": font_id_inline_visible_page["bucket_object"][:14],
+        "bridged_context_slots": font_id_inline_visible_bridged["context_slots"][:2],
+        "final_state": {
+            "cursor_x": font_id_inline_visible_page["final_state"]["cursor_x"],
+            "cursor_y": font_id_inline_visible_page["final_state"]["cursor_y"],
+            "hmi": font_id_inline_visible_page["final_state"]["hmi"],
+            "page_record_root_allocations": font_id_inline_visible_page["final_state"].get(
+                "page_record_root_allocations",
+                0,
+            ),
+        },
+        "rendered_row_digest": hashlib.sha256(
+            "\n".join(str(row) for row in font_id_inline_visible_rows).encode("ascii")
+        ).hexdigest(),
+    }, {
+        "combined_stream": b"\x1b)4660X\x0e!",
+        "fetch_sources": ["ring"],
+        "symbol_parser_handlers": [0x011EB6, 0x012008, 0x0120BE],
+        "symbol_record": bytes.fromhex("80 58 12 34 00 01"),
+        "font_id_helper": {
+            "status": "selected",
+            "slot": "secondary",
+            "font_id": 0x1234,
+            "payload": 0x000100,
+            "selected_pointer_7828a8": 0x782900,
+            "selected_longword": 0x00000100,
+            "bit30": False,
+            "orientation_field": "+0x16",
+            "class_byte": 0,
+            "reader": "0x158be",
+            "symbol": {"word": 0x0115, "reader": "0x158be", "source": "+0x14-word"},
+            "active_word_register": 0x783146,
+            "active_symbols": [0x0115, 0x0115],
+            "c4fc_result": 1,
+            "c4fc_events": [
+                {
+                    "helper": 0x00C4FC,
+                    "caller": "0x17708",
+                    "context_record": 0x000100,
+                    "selected_page_slot": 1,
+                    "reason": "existing-context",
+                },
+            ],
+            "calls": ["0x172c0", "0x1b4c0", "0xc4fc", "0x158be", "0x1b2fe", "0x14c64"],
+        },
+        "printable_handlers": [0x00C6B8, 0x00D04A],
+        "font_shift_event": {
+            "kind": "font-shift",
+            "handler": 0x00C6B8,
+            "selector_before": 1,
+            "selector_after": 1,
+            "install_called": False,
+        },
+        "printable_source": {
+            "context": 0x00000100,
+            "host_char": 0x21,
+            "mapped": 0x01,
+            "glyph_entry": 0x00000148,
+            "glyph_width": 0x02,
+            "glyph_rows": 0x03,
+            "context_slot": 1,
+            "inline_record": bytes.fromhex("02 03 04 00 00 00 00 80"),
+            "bitmap": 0x00000180,
+        },
+        "positioned": {
+            "x": 22,
+            "y": 22,
+            "record0": 0x02,
+            "record1": 0x03,
+            "record2_signed": 0x04,
+        },
+        "object_prefix": bytes.fromhex("00 00 00 00 00 01 00 01 01 66 01 00 00 00"),
+        "bridged_context_slots": (0, selected_inline_context),
+        "final_state": {
+            "cursor_x": pack12(40),
+            "cursor_y": pack12(20),
+            "hmi": pack12(30),
+            "page_record_root_allocations": 0,
+        },
+        "rendered_row_digest": "e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563",
+    }))
     checks.append(assert_equal("0x14e24-modeled inline/downloaded map entries", {
         "context": selected_inline_map["context"],
         "base": selected_inline_map["base"],
@@ -83150,6 +83350,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " ".join(f"{byte:02x}" for byte in font_id_builtin_visible_page["bucket_object"][:14]),
         hashlib.sha256(
             "\n".join(str(row) for row in font_id_builtin_visible_rows).encode("ascii")
+        ).hexdigest(),
+    ))
+    lines.append("- font-ID inline/downloaded visible selection: fixture `font-ID inline/downloaded selection feeds visible page-record rows` carries host-fetched stream `ESC )4660X SO !` through `0xa904`, parser handlers `0x11eb6` / `0x12008` / `0x120be`, `0x17708` selected context `0x%08x`, page-root context slot `%d`, SO handler `0xc6b8`, printable `0xd04a`, object prefix `%s`, and rendered-row digest `%s`." % (
+        font_id_inline_visible_select["selected_longword"],
+        font_id_inline_visible_select["c4fc_result"],
+        " ".join(f"{byte:02x}" for byte in font_id_inline_visible_page["bucket_object"][:14]),
+        hashlib.sha256(
+            "\n".join(str(row) for row in font_id_inline_visible_rows).encode("ascii")
         ).hexdigest(),
     ))
     lines.append("- height filter: `0x1519a` reads primary/secondary requested height from `0x782ef2`/`0x782f02`, keeps active candidates in requested +/- `0x19` when possible, otherwise uses `0x1533e` to select nearest lower/upper heights; class-zero requested `0x04b0` keeps `%d` slots `%s`, while requested `0x0384` falls back to nearest height `0x%04x` and keeps `%d` slots `%s`." % (

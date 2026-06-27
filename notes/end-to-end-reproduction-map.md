@@ -469,6 +469,11 @@ The next work should follow dataflow, not isolated handlers:
    stream: host-fetched `ESC (7X!!` reaches `0x120be`, selects context `0xc0089fb0`
    through `0x17708`, and renders row digest
    `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`. Fixture
+   `font-ID inline/downloaded selection feeds visible page-record rows` covers the
+   parallel bit-30-clear final-`X` stream: host-fetched `ESC )4660X SO !` reaches
+   `0x120be`, selects context `0x00000100` through `0x17708`, crosses SO `0xc6b8`,
+   and renders row digest
+   `e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`. Fixture
    `0x17708 font-ID non-selected exits preserve prior selection` covers the direct
    final-`X` helper exits for scan miss, candidate-slot miss, class mismatch, and
    context-full through the exact `0x17708` terminal status, with no `0x14c64` map

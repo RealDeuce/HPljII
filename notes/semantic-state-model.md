@@ -2087,6 +2087,14 @@ routes through parser handlers `0x11eb6`, `0x1201e`, and `0x120be`,
 `0x14c64` rebuilds primary map `0x782f32`, and the printable `!!` tail queues
 object `00 00 00 00 00 00 00 02 00 89 00 00 87 02` with rendered-row digest
 `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
+Fixture `font-ID inline/downloaded selection feeds visible page-record rows`
+carries the bit-30-clear final-`X` success path through visible output:
+host-fetched `ESC )4660X SO !` routes through parser handlers `0x11eb6`,
+`0x12008`, and `0x120be`, `0x17708` selects candidate pointer `0x782900` /
+context `0x00000100`, `0x14c64` rebuilds secondary map `0x783032`, SO handler
+`0xc6b8` leaves secondary selected, and printable `!` queues object
+`00 00 00 00 00 01 00 01 01 66 01 00 00 00` with rendered-row digest
+`e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`.
 Fixture `0x17708 font-ID non-selected exits preserve prior selection` covers
 the helper exits that deliberately stop before map dispatch: record scan miss,
 candidate-slot miss, class mismatch, and full page-root context table. These
@@ -2171,6 +2179,9 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     `ESC (7X` routes through `0x120be`, preserves the previous requested
     symbol word, writes transient current font ID `7` through `0x782f2e`, and
     calls `0x17708`.
+  - secondary inline/downloaded final-`X` font-ID request:
+    `ESC )4660X` routes through `0x120be`, stores transient current font ID
+    `0x1234` through `0x782f2e`, and calls `0x17708` for slot `1`.
   - final-`X` non-selected helper exits:
     `scan-miss`, `candidate-slot-miss`, `class-mismatch`, and `context-full`
     all restore saved font ID `0x2222` after the helper returns.
@@ -2195,6 +2206,10 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     `0x21..0xfe`, glyph entry `0x001088` for host byte `0x21`.
   - secondary built-in resource base `0x02e122`, first/last host range
     `0x21..0xff`, glyph entry `0x02e4f6` for host byte `0x21`.
+  - final-`X` inline/downloaded selected context:
+    synthetic context `0x00000100`, selected candidate pointer `0x782900`,
+    selected word `0x0115` from inline word `+0x14`, class byte `+0x16 = 0`,
+    and selected flag byte `+0x0e = 1`.
   - non-Roman primary selected longwords `0xc0080cb8`, `0xc4080418`, and
     `0xc4080868` for records `0x000cb8`, `0x000418`, and `0x000868`.
   - non-Roman secondary selected longwords `0xc00ae122`, `0xc40ad87a`, and
@@ -2256,6 +2271,9 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   - secondary selected candidate slot `0x782350`.
   - final-`X` selected built-in candidate slot: `0x782364` for resource
     payload `0x089fb0` / selected longword `0xc0089fb0`.
+  - final-`X` selected inline/downloaded candidate slot:
+    `0x782900` for payload `0x000100` / selected longword `0x00000100`.
+    With an existing page root, `0xc4fc` reuses context slot `1`.
   - final-`X` non-selected candidates:
     scan miss and candidate-slot miss leave selected pointer `0x7828a8 = 0`;
     class mismatch observes pointer `0x782364` and record class `0xff` but
@@ -2320,6 +2338,9 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     requested symbol word.
   - final-`X` visible stream `ESC (7X!!` ties that parser/helper boundary to
     selected context `0xc0089fb0` and two following `0xd04a` printable events.
+  - final-`X` inline/downloaded visible stream `ESC )4660X SO !` ties the
+    secondary parser/helper boundary to selected context `0x00000100`, SO
+    handler `0xc6b8`, and one following `0xd04a` printable event.
   - direct final-`X` error-state fixture cases use the same `0x17708` helper
     boundary without a following printable tail: no matching `0x172c0` record,
     no matching `0x1b4c0` candidate slot, class mismatch at `+0x20`, and
@@ -2353,6 +2374,10 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
     `0x172c0` and `0x1b4c0`; `class-mismatch` calls the same scan/slot
     helpers and stops before reader `0x15890`; `context-full` adds `0xc4fc`
     and stops when selected page slot is `0x11`.
+  - `0x17708` inline/downloaded selected bookkeeping:
+    the secondary final-`X` visible fixture calls `0x172c0`, `0x1b4c0`,
+    `0xc4fc`, `0x158be`, `0x1b2fe`, and `0x14c64`; `0x158be` reads the active
+    symbol from inline word `+0x14`, and `0x14c64` rebuilds map `0x783032`.
   - `0x1ac0a` writes the parser default-symbol table
     `0x782f1c/20/24/28`; `0x1af36` writes the separate candidate fallback
     table `0x782f0c/10/14/18`.
@@ -2457,6 +2482,12 @@ selection writes `0x782ef6 = 0xc00ae122`, SO handler `0xc6b8` selects slot
   `font-ID built-in selection feeds visible page-record rows` proves
   `0x1393a` consumes context `0xc0089fb0`, maps host byte `0x21` to glyph
   `0x00`, and emits glyph entry `0x00afec`.
+- Final-`X` inline/downloaded selection affects the secondary unflagged source
+  path before later printable bytes. Fixture
+  `font-ID inline/downloaded selection feeds visible page-record rows` proves
+  `0x1393a` consumes context `0x00000100`, maps host byte `0x21` to glyph
+  `0x01`, reads inline glyph record `02 03 04 00 00 00 00 80`, and emits
+  glyph entry `0x00000148`.
 - Final-`X` non-selected exits do not produce a new consumer context. Fixture
   `0x17708 font-ID non-selected exits preserve prior selection` proves the
   helper stops before `0x14c64`, so later `0xd04a` / `0x1393a` output remains
@@ -2557,6 +2588,14 @@ Its output effect is negative: after scan miss, candidate-slot miss,
 class-mismatch, or context-full, no new map dispatch occurs and the previous
 selection remains the font state that any later printable byte will consume.
 
+The final-`X` inline/downloaded visible fixture renders a synthetic secondary
+inline/downloaded record selected by font ID. Host-fetched `ESC )4660X SO !`
+selects context `0x00000100`, maps `!` to glyph `0x01`, positions the
+unflagged source at `(22,22)`, queues compact object prefix
+`00 00 00 00 00 01 00 01 01 66 01 00 00 00`, leaves final cursor x `40`, and
+renders row digest
+`e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`.
+
 ### Confidence
 
 High for parser handler routing, fallback table decision, selected built-in
@@ -2576,6 +2615,11 @@ High for final-`X` built-in visible output because fixture
 host-fetched bytes, ROM parser handlers, `0x17708` helper calls, selected
 context, printable source capture, object prefix, bridge context slots, and
 rendered row digest.
+High for final-`X` inline/downloaded visible output because fixture
+`font-ID inline/downloaded selection feeds visible page-record rows` composes
+host-fetched bytes, ROM parser handlers, the bit-30-clear `0x17708` helper
+path, selected inline context, SO, unflagged printable source capture, object
+prefix, bridge context slots, and rendered row digest.
 High for direct `0x17708` non-selected exits because fixture
 `0x17708 font-ID non-selected exits preserve prior selection` pins all four
 terminal statuses, call lists, restored font ID, selected pointer state, class
@@ -2610,6 +2654,7 @@ digests.
 - `non-Roman symbol streams select visible built-ins`
 - `symbol-set parser trace covers X and @ special cases`
 - `font-ID built-in selection feeds visible page-record rows`
+- `font-ID inline/downloaded selection feeds visible page-record rows`
 - `0x17708 font-ID non-selected exits preserve prior selection`
 - `real default-table caller stream uses ROM-backed words`
 - `real final-@ default-table streams select visible built-ins`
@@ -2646,8 +2691,10 @@ digests.
   `0x120be..0x156de..0x14c64..0xd04a`, and
   `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` through
   `0x120be..0x156de..0x14c64..0xc6b8..0xd04a`. The covered font-ID boundary
-  is `ESC (7X!!` through
-  `0x120be..0x17708..0x14c64..0xd04a`; the covered direct font-ID
+  includes built-in `ESC (7X!!` through
+  `0x120be..0x17708..0x14c64..0xd04a`, and inline/downloaded
+  `ESC )4660X SO !` through
+  `0x120be..0x17708..0x14c64..0xc6b8..0xd04a`; the covered direct font-ID
   non-selected boundaries stop at `0x17708` statuses `scan-miss`,
   `candidate-slot-miss`, `class-mismatch`, and `context-full`, with the
   `context-full` middle edge ending at `0x17708..0xc4fc = 0x11`.

@@ -1127,16 +1127,17 @@ Expected resource ROM contents:
 ROM work needed:
 
 - Extend the pinned visible `0xc580` branch outcomes into fuller upstream `0x1be22`
-  parser-state coverage around remaining `0x17708` inline/downloaded visible paths,
-  turn the parser-derived `0x156de` primary and secondary fallback fixtures into single
+  parser-state coverage around remaining font-selection visible variants, turn the
+  parser-derived `0x156de` primary and secondary fallback fixtures into single
   uninterrupted parser-to-page CPU-state traces, add other fallback/error font-selection
   visible-output streams beyond the now-pinned primary `ESC (s0p10h12v0s0b3T!!`,
   secondary `ESC )s0p16h8v0s0b0T SO !!`, primary fallback `ESC (1234U ESC
   (s0p10h12v0s0b3T!!`, secondary fallback `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`,
   primary `ESC (s0p10h12v0s0b3T SI !!`, and secondary `ESC )s0p16h8v0s0b0T SO !!`
   composed handoff cases, plus the real final-`@` default-table primary and secondary
-  visible streams and final-`X` built-in `ESC (7X!!` visible stream. The direct
-  `0x17708` error exits are now state-covered by fixture
+  visible streams, final-`X` built-in `ESC (7X!!` visible stream, and final-`X`
+  inline/downloaded `ESC )4660X SO !` visible stream. The direct `0x17708` error exits
+  are now state-covered by fixture
   `0x17708 font-ID non-selected exits preserve prior selection`: scan miss,
   candidate-slot miss, class mismatch, and context-full all restore `0x782f2e` and stop
   before `0x14c64`. Extend `0x13eb8` if later inline/downloaded or error-return branches

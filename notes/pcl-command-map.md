@@ -597,6 +597,13 @@ host-fetched `ESC (7X!!` reaches parser handlers `0x11eb6`, `0x1201e`, and
 `0x120be`, selects context `0xc0089fb0` through `0x17708`, queues compact
 object prefix `00 00 00 00 00 00 00 02 00 89 00 00 87 02`, and renders row
 digest `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
+Fixture `font-ID inline/downloaded selection feeds visible page-record rows`
+now carries the bit-30-clear success path through visible output too:
+host-fetched `ESC )4660X SO !` reaches parser handlers `0x11eb6`, `0x12008`,
+and `0x120be`, selects context `0x00000100` through `0x17708`, rebuilds
+secondary map `0x783032`, crosses SO handler `0xc6b8`, queues compact object
+prefix `00 00 00 00 00 01 00 01 01 66 01 00 00 00`, and renders row digest
+`e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`.
 Fixture `0x17708 font-ID non-selected exits preserve prior selection` covers
 the direct helper exits that stop before a new map is dispatched: scan miss
 after `0x172c0` status `1`, candidate-slot miss for payload `0x089fb0` with

@@ -738,7 +738,12 @@ cover successful font-ID selection for both bit-30 built-in and
 bit-30-clear inline/downloaded current records, including the `0x172c0`
 scan, `0x1b4c0` candidate-slot lookup, class-byte check, active-word
 write through `0x15890` or `0x158be`, `0x1b2fe`, and `0x14c64`
-dispatch. A table-builder fixture now pins `0x1ac0a`
+dispatch. Visible-output fixtures carry both selected forms farther:
+`font-ID built-in selection feeds visible page-record rows` renders
+`ESC (7X!!` from context `0xc0089fb0`, while
+`font-ID inline/downloaded selection feeds visible page-record rows`
+renders `ESC )4660X SO !` from synthetic inline/downloaded context
+`0x00000100`. A table-builder fixture now pins `0x1ac0a`
 current-candidate and synthesized writes to
 `0x782f1c/20/24/28` plus `0x1af36` fallback writes to
 `0x782f0c/10/14/18`; candidate-search fixtures pin `0x1b250`

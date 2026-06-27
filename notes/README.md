@@ -34,7 +34,8 @@ compatibility boundary.
   byte-source multiplexer, direct I/O handshakes, caller semantics, and
   semantic checkpoint.
 - [pcl-parser-core.md](pcl-parser-core.md) - documented parser byte
-  wrapper, tokenizer, dispatch loop, and delayed-payload handoff.
+  wrapper, tokenizer, dispatch loop, delayed-payload handoff, and semantic
+  checkpoint.
 - [transparent-print-data.md](transparent-print-data.md) - documented
   `ESC &p#X` delayed payload handling and printable text re-entry.
 - [raster-graphics.md](raster-graphics.md) - documented `ESC *t`,

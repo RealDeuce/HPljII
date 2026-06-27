@@ -6566,6 +6566,9 @@ def font_download_char_object_via_16498(
     stream: bytes,
     byte_budget: int,
     object_offset: int,
+    continuation: dict[str, int] | None = None,
+    active_primary_context: int | None = None,
+    active_secondary_context: int | None = None,
 ) -> dict[str, object]:
     updated = bytearray(header)
     base = 0
@@ -6576,9 +6579,29 @@ def font_download_char_object_via_16498(
     table_entry = base + 0x4A + char_code * 4
     if table_entry + 4 > len(updated):
         updated.extend(b"\x00" * (table_entry + 4 - len(updated)))
+    old_pointer = u32(updated, table_entry)
+    release = None
+    continuation_after_release = dict(continuation) if continuation else None
+    if old_pointer != 0:
+        release = font_resource_offset_table_release_via_17a24(
+            updated,
+            base=base,
+            char_code=char_code,
+            continuation=continuation_after_release,
+            active_primary_context=active_primary_context,
+            active_secondary_context=active_secondary_context,
+        )
+        updated = bytearray(release["header"])
+        continuation_after_release = release.get("continuation")
+        assert continuation_after_release is None or isinstance(continuation_after_release, dict)
     span = (int(width) + 7) >> 3
     if span <= 0 or rows <= 0 or mode != 1:
-        return {"status": 0, "reason": "unsupported-record-shape"}
+        return {
+            "status": 0,
+            "reason": "unsupported-record-shape",
+            "release": release,
+            "continuation": continuation_after_release,
+        }
     copy_result: dict[str, object]
     prefix = b""
     trailing = b""
@@ -6637,7 +6660,7 @@ def font_download_char_object_via_16498(
         updated.extend(b"\x00" * (object_offset + object_size - len(updated)))
     updated[object_offset:object_offset + object_size] = char_object
     updated[table_entry:table_entry + 4] = object_offset.to_bytes(4, "big")
-    continuation_after = None
+    continuation_after = continuation_after_release
     if copy_result["status"] == 2:
         copy_continuation = copy_result["continuation"]
         assert isinstance(copy_continuation, dict)
@@ -6682,6 +6705,7 @@ def font_download_char_object_via_16498(
         "span": span,
         "split_plane": split_plane,
         "copy": copy_result,
+        "release": release,
         "continuation": continuation_after,
     }
 
@@ -52036,8 +52060,41 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         byte_budget=6,
         object_offset=0x0900,
     )
+    downloaded_replacement_header = bytearray(table_payload_type2_bytes)
+    downloaded_replacement_header[0x08:0x0A] = (0x004A).to_bytes(2, "big")
+    downloaded_replacement_header[0x0E:0x10] = (0x0020).to_bytes(2, "big")
+    downloaded_replacement_header[0x10:0x12] = (0x007F).to_bytes(2, "big")
+    downloaded_replacement_table_entry = 0x004A + 0x2E * 4
+    downloaded_replacement_header[
+        downloaded_replacement_table_entry:downloaded_replacement_table_entry + 4
+    ] = (0x00000200).to_bytes(4, "big")
+    downloaded_replacement_continuation = {
+        "flag": 1,
+        "payload": 0,
+        "word_0x7827c8": 0x2E,
+        "dest": 0x0204,
+        "trailing_dest": 0,
+        "remaining": 2,
+        "d4_counter": 0,
+        "d3_counter": 0,
+    }
+    downloaded_replacement = font_download_char_object_via_16498(
+        downloaded_replacement_header,
+        0x2E,
+        (0x0000, 0x0000, 0x0003, 0x0000),
+        mode=1,
+        width=0x0010,
+        rows=0x0003,
+        stream=bytes.fromhex("11 22 33 44 55 66"),
+        byte_budget=6,
+        object_offset=0x0900,
+        continuation=downloaded_replacement_continuation,
+        active_primary_context=0,
+    )
+    downloaded_replacement_release = downloaded_replacement["release"]
+    assert isinstance(downloaded_replacement_release, dict)
     checks.append(assert_equal(
-        "0x16498 partial and rejected downloaded character exits preserve state",
+        "0x16498 replacement partial and rejected downloaded character exits preserve state",
         {
             "linear_partial": {
                 "status": downloaded_linear_partial["status"],
@@ -52110,6 +52167,42 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "header_unchanged": downloaded_range_reject.get("header", bytes(downloaded_range_reject_header))
                 == bytes(downloaded_range_reject_header),
             },
+            "replacement": {
+                "status": downloaded_replacement["status"],
+                "table_entry": downloaded_replacement["table_entry"],
+                "record_delta": downloaded_replacement["record_delta"],
+                "record": downloaded_replacement["record"],
+                "bitmap_offset": downloaded_replacement["bitmap_offset"],
+                "bitmap": downloaded_replacement["header"][
+                    downloaded_replacement["bitmap_offset"]:
+                    downloaded_replacement["bitmap_offset"]
+                    + downloaded_replacement["expected_bitmap_size"]
+                ],
+                "table_pointer": u32(
+                    downloaded_replacement["header"],
+                    downloaded_replacement["table_entry"],
+                ),
+                "continuation": downloaded_replacement["continuation"],
+                "release": {
+                    key: downloaded_replacement_release[key]
+                    for key in (
+                        "status",
+                        "handler",
+                        "base",
+                        "char_code",
+                        "first_char_0x0e",
+                        "last_char_0x10",
+                        "table_offset_0x08",
+                        "table_entry",
+                        "old_record",
+                        "new_record",
+                        "active_refresh",
+                        "continuation_cleared",
+                        "continuation",
+                        "calls",
+                    )
+                },
+            },
         },
         {
             "linear_partial": {
@@ -52178,6 +52271,50 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "status": 0,
                 "reason": "char-outside-header-type",
                 "header_unchanged": True,
+            },
+            "replacement": {
+                "status": 1,
+                "table_entry": 0x0102,
+                "record_delta": 0x0900,
+                "record": bytes.fromhex("00 00 00 00 0c 01 00 03 00 10 00 00"),
+                "bitmap_offset": 0x090C,
+                "bitmap": bytes.fromhex("11 22 33 44 55 66"),
+                "table_pointer": 0x0900,
+                "continuation": {
+                    "flag": 0,
+                    "payload": 0,
+                    "word_0x7827c8": 0,
+                    "dest": 0,
+                    "trailing_dest": 0,
+                    "remaining": 0,
+                    "d4_counter": 0,
+                    "d3_counter": 0,
+                },
+                "release": {
+                    "status": "released-offset-table",
+                    "handler": 0x17A24,
+                    "base": 0,
+                    "char_code": 0x2E,
+                    "first_char_0x0e": 0x0020,
+                    "last_char_0x10": 0x007F,
+                    "table_offset_0x08": 0x004A,
+                    "table_entry": 0x0102,
+                    "old_record": bytes.fromhex("00 00 02 00"),
+                    "new_record": bytes.fromhex("00 00 00 00"),
+                    "active_refresh": [{"slot": "primary", "word_0x7828de": 0}],
+                    "continuation_cleared": True,
+                    "continuation": {
+                        "flag": 0,
+                        "payload": 0,
+                        "word_0x7827c8": 0,
+                        "dest": 0,
+                        "trailing_dest": 0,
+                        "remaining": 0,
+                        "d4_counter": 0,
+                        "d3_counter": 0,
+                    },
+                    "calls": ["0x196c4", "0x17fa2", "0x1b4c0", "0x14c64"],
+                },
             },
         },
     ))
@@ -77664,13 +77801,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     append_wrapped(
         lines,
-        "- `0x16498` partial/rejected downloaded-character exits: linear "
+        "- `0x16498` replacement/partial/rejected downloaded-character exits: linear "
         "status-2 copy stores table `0x%04x -> 0x%04x`, copies `%d/%d` "
         "bitmap bytes, and saves continuation `%s`; split-plane status-2 "
         "copy stores table `0x%04x -> 0x%04x`, copies prefix `%s` and "
-        "trailing `%s`, and saves continuation `%s`; mode-0 and "
-        "header-type range rejects return `%s`/`%s` without changing their "
-        "headers."
+        "trailing `%s`, and saves continuation `%s`; replacement glyph "
+        "`0x2e` releases old record `%s` through `0x17a24`, clears "
+        "continuation `%s`, then stores new table pointer `0x%04x`; "
+        "mode-0 and header-type range rejects return `%s`/`%s` without "
+        "changing their headers."
         % (
             downloaded_linear_partial["table_entry"],
             downloaded_linear_partial["record_delta"],
@@ -77686,6 +77825,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 f"{byte:02x}" for byte in downloaded_split_partial["copy"]["trailing"]
             ),
             downloaded_split_partial["continuation"],
+            " ".join(f"{byte:02x}" for byte in downloaded_replacement_release["old_record"]),
+            downloaded_replacement_release["continuation_cleared"],
+            downloaded_replacement["record_delta"],
             downloaded_mode_reject["reason"],
             downloaded_range_reject["reason"],
         ),

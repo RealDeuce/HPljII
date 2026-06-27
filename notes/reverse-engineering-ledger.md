@@ -469,6 +469,16 @@ now proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
 `0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`; `d4ac`
 keeps its standard span digest, while `d8fc` keeps high-y `20` and row digest
 `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+The producer formula is now composed into the semantic notes rather than left
+as fixture output: `0x16fae..0x17016` walks table `0x16eae` into staged base
+`0x782862`, `0x17430..0x1749c` writes canonical `+0x14` and derives
+`+0x18 = +0x14 - +0x16 - 1`, `0x1757a..0x175b8` writes rounded/capped
+`+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`, `0x1762a..0x1763c`
+writes signed-byte offset word `+0x1a`, and `0x1719c..0x1725c` copies those
+staged fields into the allocated payload. The field grouping is canonical
+`+0x14/+0x16/+0x1a`, derived/cache `+0x18/+0x2c`, parser scratch
+`0x782862`/`0x783140`/`0x782842..0x782856`, and firmware bookkeeping
+`+0x0c`/`0x7827ba`/`+0x2b`.
 Fixture `0x16b1a descriptor width helper emits only mode 1/2` closes the
 downloaded-character helper-table mode-byte question for accepted widths:
 disassembly `0x16b36..0x16b6a` writes mode `1` for even byte spans and mode

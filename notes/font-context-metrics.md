@@ -125,6 +125,30 @@ Canonical span-metric consumers:
   `0xd8fc`.
 - flagged record `+0x1a`: alternate y offset consumed by `0xd8fc`.
 
+Parser-produced downloaded-font metric fields:
+
+- `0x16fae..0x17016` reads a 32-entry descriptor table at `0x16eae` and
+  writes staged fields under `0x782862`; `0x1719c..0x1725c` copies those
+  staged fields into the allocated `0x1719c` payload. The table readers are
+  `0x1599c` unsigned byte, `0x159b6` signed byte, `0x159d4` unsigned word,
+  and `0x159f6` signed word.
+- Canonical producer fields for the covered metric family are
+  `+0x16` first code/lower bound, `+0x14` range/count, and `+0x1a` signed
+  flagged offset. `0x17430..0x1749c` writes `+0x14` and derives/cache
+  `+0x18 = +0x14 - +0x16 - 1`; `0x1762a..0x1763c` writes the signed-byte
+  offset result into word `+0x1a`.
+- Derived unflagged field `+0x2c` is written by `0x1757a..0x175b8` as
+  `min((value + 2) >> 2, word(+0x14)) << 2`. Fixtures
+  `legal descriptor metric boundary values drive d4ac and d8fc consumers` and
+  `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+  prove the cap and rounding outcomes through visible `0xd4ac` and `0xd8fc`
+  rows.
+- Parser scratch for this producer path is the staged base `0x782862`,
+  validation cursor, payload budget `0x783140`, and optional symbol staging
+  `0x782842..0x782856`. Firmware bookkeeping includes type byte `+0x0c`,
+  allocation units `0x7827ba`, and byte `+0x2b`, which remains `0` in the
+  covered `0x1719c` metric fixtures.
+
 Derived/cache state:
 
 - `0x7828de`: selected primary/secondary target used by `0x144d2` and

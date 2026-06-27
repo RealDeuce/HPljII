@@ -3531,10 +3531,21 @@ Field groups:
   line/count word `+0x12`, range/count word `+0x14`, derived count word
   `+0x18`, and class byte `+0x20`. `0x16fae` writes only the fields reached
   before the failed predicate.
-- Derived/cache state: `+0x18` is derived by validation entry `6` from
-  range/count minus first code minus one. Optional symbol bytes
-  `0x782842..0x782851` and count `0x782856` remain empty on the covered
-  failure exits because validation fails before `0x16fe4`.
+- Metric field grouping: canonical fields are first code/lower bound
+  `+0x16`, range/count `+0x14`, and signed flagged offset `+0x1a`; derived
+  or cache fields are `+0x18` and rounded unflagged word `+0x2c`; parser
+  scratch is the staged base `0x782862`, validation cursor, payload budget
+  `0x783140`, and optional symbol staging `0x782842..0x782856`; firmware
+  bookkeeping includes type byte `+0x0c`, allocation units `0x7827ba`, and
+  byte `+0x2b` for the covered metric family.
+- Derived/cache state: `+0x18` is derived by validation entry `6` helper
+  `0x17430..0x1749c` as range/count minus first code minus one. Rounded
+  unflagged word `+0x2c` is derived by entry `12` helper `0x1757a..0x175b8`
+  as `min((value + 2) >> 2, word(+0x14)) << 2`; the boundary and low-nibble
+  metric fixtures prove both the cap and rounding behavior in page-visible
+  `0xd4ac`/`0xd8fc` output. Optional symbol bytes `0x782842..0x782851` and
+  count `0x782856` remain empty on the covered failure exits because
+  validation fails before `0x16fe4`.
 - Firmware bookkeeping: allocation status `0`, install state `None`, and the
   fully drained host source are failure bookkeeping. They are not printable
   page state, but they gate whether the subsequent `!` uses a downloaded font
@@ -3562,6 +3573,17 @@ Writers and readers:
   `+0x16 = 10`, value `5`, and high value `0x1069` fail at the
   twelve-byte boundary; the reversed-range fixture leaves `+0x14 = 5` and
   derived `+0x18 = 0`.
+- `0x1757a` is the entry-12 rounded-metric transform for unflagged
+  `0xd4ac` fields. It rounds `(value + 2) >> 2`, caps that result to
+  canonical range/count `+0x14`, shifts back left by two, and writes the word
+  to `+0x2c`; fixtures prove `0x0013 -> 0x0014`,
+  `0x1500/0x1508/0x15ff -> 0x0060`, and
+  `0x0001/0x0003/0x0004/0x0005/0x000f ->
+  0x0000/0x0004/0x0004/0x0004/0x0010`.
+- `0x1762a` is the entry-21 signed-offset writer for flagged `0xd8fc`.
+  It stores the signed-byte reader result as word `+0x1a`; fixtures prove
+  offset bytes `0x7f`, `0xfe`, and `0xff` become copied words
+  `0x007f`, `0xfffe`, and `0xffff`, which `0xd8fc` consumes directly.
 - `0x1749e` is the entry-7 class predicate. Class byte `2` fails after
   thirteen consumed bytes, after staging `+0x16 = 4`, `+0x12 = 6`,
   `+0x14 = 9`, and `+0x18 = 4`, but before writing `+0x20`.

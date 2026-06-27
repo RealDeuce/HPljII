@@ -276,6 +276,11 @@ pixels or byte-stream compatibility.
    copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, keep the standard
    `d4ac` span digest, and keep `d8fc` high-y `20` / digest
    `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+   The producer formula is documented from disassembly: `0x17430` derives
+   `+0x18 = +0x14 - +0x16 - 1`, `0x1757a` writes
+   `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`, `0x1762a` writes
+   signed offset word `+0x1a`, and `0x1719c` copies those staged fields into
+   the allocated payload.
    The open edge is additional metric-value combinations within the legal
    forms outside these lower/equality/upper, clamp, offset endpoint,
    rounded-transform, and low-nibble cases, plus validation/error forms beyond
@@ -407,10 +412,12 @@ The next work should follow dataflow, not isolated handlers:
    `descriptor metric fields match across inline and resource contexts` now
    pins the legal producer-form boundary: inline/unflagged reaches `d4ac`,
    resource/flagged reaches `d8fc`, and the swapped forms fail at concrete
-   map/render boundaries. The missing middle is now additional metric-value
-   combinations outside the pinned legal endpoints, plus page-visible behavior
-   for validation/error forms beyond the bounded predicate and short-budget
-   no-install fixtures.
+   map/render boundaries. The producer formulas are no longer the missing
+   middle: `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c` now define the
+   canonical, derived/cache, and copied metric fields. The missing middle is
+   now additional metric-value combinations outside the pinned legal endpoints,
+   plus page-visible behavior for validation/error forms beyond the bounded
+   predicate and short-budget no-install fixtures.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus secondary

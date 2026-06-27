@@ -307,6 +307,31 @@ Renderer-facing allocated payload fields:
   `+0x20`, `+0x21`, `+0x22`, `+0x24`, `+0x26`, `+0x28`, `+0x2a`, `+0x2c`,
   `+0x2f`, `+0x30`, and `+0x31`: sparse descriptor fields copied by
   `0x1719c`.
+- Descriptor metric producer model: `0x16fae..0x17016` walks the validation
+  table at `0x16eae`, using `0x1599c`/`0x159b6`/`0x159d4`/`0x159f6` to read
+  unsigned bytes, signed bytes, unsigned words, and signed words. Accepted
+  table entries write staging storage under `0x782862`; `0x1719c..0x1725c`
+  then copies the sparse staged fields into the allocated payload. In this
+  payload family, canonical metric fields are `+0x14` range/count,
+  `+0x16` first-code/lower bound, and `+0x1a` signed flagged offset;
+  derived/cache fields are `+0x18 = +0x14 - +0x16 - 1` and rounded
+  unflagged word `+0x2c`; parser scratch is the validation table cursor,
+  `0x783140` payload budget, staged base `0x782862`, and optional symbol
+  staging `0x782842..0x782856`; firmware bookkeeping includes type byte
+  `+0x0c`, allocation units `0x7827ba`, and byte `+0x2b`, which remains `0`
+  in the covered `0x1719c` metric fixtures.
+- Metric writer formulas: `0x17430..0x1749c` writes canonical `+0x14`, rejects
+  reversed or out-of-range values, and on success derives `+0x18 = value -
+  word(+0x16) - 1`; the reversed-range no-install fixture proves the rejected
+  branch can leave `+0x14 = 5` while `+0x18` remains `0`. `0x1757a..0x175b8`
+  computes `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`; the boundary
+  and low-nibble fixtures prove both the cap (`0x1500`, `0x1508`, and
+  `0x15ff` all become `0x0060` when `+0x14 = 0x0018`) and the low-nibble
+  rounding (`0x0001/0x0003/0x0004/0x0005/0x000f` become
+  `0x0000/0x0004/0x0004/0x0004/0x0010`). `0x1762a..0x1763c` writes the
+  signed byte reader result into payload word `+0x1a`; fixtures prove bytes
+  `0x7f`, `0xfe`, and `0xff` copy as `0x007f`, `0xfffe`, and `0xffff` and
+  are consumed by `0xd8fc` as words.
 - payload `+0x38`: optional-symbol block offset when `0x782856 != 0`.
 - glyph pointer table entry: relative offset from payload base to a
   downloaded character object, for example table entry `0x00de` points to

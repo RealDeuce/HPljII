@@ -2161,7 +2161,16 @@ map. The transient-context path follows `0x148f8`, `0x1569c`, `0x156de`,
 context `0xc008004c` for the page-root refresh byte `0x78298f`, restores saved
 active word `0x9999`, and stops before `0x144d2` / `0x14c64`. The cache-hit
 path returns immediately after `0x148f8`, preserving active words
-`[0x1111, 0x2222]`.
+`[0x1111, 0x2222]`. Fixture
+`0x13eb8 no-dispatch exits keep prior visible rows` carries both exits into
+visible output. The transient path stages `0xc008004c` in `0x782992` but the
+following `!!` tail still renders from prior context `0xc0089fb0`, object
+`00 00 00 00 00 00 00 02 00 89 00 00 87 02`, and row digest
+`73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`. The
+cache-hit path crosses SO and renders from prior secondary context
+`0xc40ad87a`, object
+`00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`, and row digest
+`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
 
 ### Field Groups
 
@@ -2271,6 +2280,14 @@ path returns immediately after `0x148f8`, preserving active words
     `0xc00ae122`.
   - primary compact coords: `0x6a00` and `0x6802`.
   - secondary compact coords after SO: `0xc900` and `0xcb01`.
+  - `0x13eb8` transient preserved-output prefix:
+    `00 00 00 00 00 00 00 02 00 89 00 00 87 02`, with prior primary context
+    `0xc0089fb0` and row digest
+    `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
+  - `0x13eb8` cache-hit preserved-output prefix:
+    `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`, with prior secondary context
+    `0xc40ad87a` and row digest
+    `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
   - final-`X` non-selected preserved-output compact prefix:
     `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, with render-record context
     slot `0xc008004c` and row digest
@@ -2295,7 +2312,9 @@ path returns immediately after `0x148f8`, preserving active words
   handoff fixtures reach the same primary and secondary fields after reading
   context slots `0` and `1` from the page-root slot table; fixture
   `font-ID non-selected exits keep prior visible rows` reaches the same
-  primary visible fields after failed final-`X` helper exits.
+  primary visible fields after failed final-`X` helper exits; fixture
+  `0x13eb8 no-dispatch exits keep prior visible rows` pins the distinct
+  transient and cache-hit preserved-output prefixes listed above.
 - Derived/cache state:
   - `0x7828a8`: selected candidate slot `0x782354`.
   - secondary selected candidate slot `0x782350`.
@@ -2307,10 +2326,13 @@ path returns immediately after `0x148f8`, preserving active words
   - transient `0x13eb8` selected context cache:
     `0x782992` receives selected longword `0xc008004c` after candidate slot
     `0x782354` / record `0x00004c` wins, but the normal current-font context
-    record `0x782ee6` is not written by this exit.
+    record `0x782ee6` is not written by this exit; following printable output
+    can therefore remain on prior context `0xc0089fb0`.
   - cache-hit `0x13eb8` derived state:
     no candidate-window activation or map rebuild occurs; the only confirmed
-    call is `0x148f8`, and the active words remain `[0x1111, 0x2222]`.
+    call is `0x148f8`, and the active words remain `[0x1111, 0x2222]`;
+    following SO output can therefore remain on prior secondary context
+    `0xc40ad87a`.
   - final-`X` non-selected candidates:
     scan miss and candidate-slot miss leave selected pointer `0x7828a8 = 0`;
     class mismatch observes pointer `0x782364` and record class `0xff` but
@@ -2422,7 +2444,9 @@ path returns immediately after `0x148f8`, preserving active words
     transient refresh with `0x78298f = 1` runs the normal candidate filters
     through chooser `0x14398`, stores only selected context `0x782992`, and
     does not call `0x144d2` or `0x14c64`; cache-hit returns after `0x148f8`
-    without activating candidate windows.
+    without activating candidate windows. Fixture
+    `0x13eb8 no-dispatch exits keep prior visible rows` confirms both paths
+    leave the following printable/SO tail on the prior render contexts.
   - `0x1ac0a` writes the parser default-symbol table
     `0x782f1c/20/24/28`; `0x1af36` writes the separate candidate fallback
     table `0x782f0c/10/14/18`.
@@ -2472,7 +2496,9 @@ path returns immediately after `0x148f8`, preserving active words
   `0x13eb8 transient and cache-hit exits avoid dispatch`: the transient path
   consumes the same candidate-filter chain but leaves visible output to the
   already-selected map, while the cache-hit path consumes only the `0x148f8`
-  cache probe and returns.
+  cache probe and returns. Fixture
+  `0x13eb8 no-dispatch exits keep prior visible rows` proves the following
+  printable/SO consumers remain on those prior maps and contexts.
 - `0x156de` writes fallback active word `0x0115` for the primary symbol miss
   and `0x000e` for the secondary symbol miss before pruning the active
   candidate window.
@@ -2650,10 +2676,16 @@ unflagged source at `(22,22)`, queues compact object prefix
 renders row digest
 `e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`.
 
-The `0x13eb8` no-dispatch fixture has no new rendered rows. Its output effect
-is preservation: the transient path prepares `0x782992 = 0xc008004c` for a
-page-root refresh without touching `0x782ee6` or rebuilding `0x782f32`, and
-the cache-hit path leaves the existing active words and maps in force.
+The `0x13eb8` no-dispatch visible fixture renders the prior font state. The
+transient path prepares `0x782992 = 0xc008004c` for a page-root refresh without
+touching `0x782ee6` or rebuilding `0x782f32`; the following `!!` still
+consumes prior context `0xc0089fb0`, queues object
+`00 00 00 00 00 00 00 02 00 89 00 00 87 02`, and renders row digest
+`73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`. The
+cache-hit path leaves the existing active words/maps in force; after SO the
+following `!!` consumes prior secondary context `0xc40ad87a`, queues object
+`00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`, and renders row digest
+`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
 
 ### Confidence
 
@@ -2682,9 +2714,10 @@ prefix, bridge context slots, and rendered row digest.
 High for the `0x13eb8` transient and cache-hit no-dispatch exits because
 fixture `0x13eb8 transient and cache-hit exits avoid dispatch` pins call
 lists, selected context cache, saved active word restoration, absence of
-`0x144d2` / `0x14c64`, and cache-hit early return. Medium for later visible
-output after these exits because the fixture documents the helper boundary and
-state preservation rather than appending a printable tail.
+`0x144d2` / `0x14c64`, and cache-hit early return. High for their visible
+output because fixture `0x13eb8 no-dispatch exits keep prior visible rows`
+appends printable/SO tails and pins prior contexts, object prefixes, bridge
+context slots, and rendered-row digests.
 High for direct `0x17708` non-selected exits because fixture
 `0x17708 font-ID non-selected exits preserve prior selection` pins all four
 terminal statuses, call lists, restored font ID, selected pointer state, class
@@ -2725,6 +2758,7 @@ digests.
 - `0x17708 font-ID non-selected exits preserve prior selection`
 - `font-ID non-selected exits keep prior visible rows`
 - `0x13eb8 transient and cache-hit exits avoid dispatch`
+- `0x13eb8 no-dispatch exits keep prior visible rows`
 - `real default-table caller stream uses ROM-backed words`
 - `real final-@ default-table streams select visible built-ins`
 
@@ -2744,10 +2778,11 @@ digests.
 - `0x1205a..0x13eb8`: parsed request to refresh is behaviorally composed and
   the resulting current-font context now stays in one mixed-stream state for
   the primary and secondary visible paths. The `0x13eb8` transient and
-  cache-hit no-dispatch exits are state-covered through their helper return
-  boundaries. Remaining risk is lower-level CPU-register fidelity inside the
-  modeled refresh, plus broader font-selection variants that need visible
-  tails after preserved-state exits.
+  cache-hit no-dispatch exits are now carried through preserved visible tails:
+  the transient path ends at prior primary context `0xc0089fb0`, and the
+  cache-hit path ends at prior secondary context `0xc40ad87a`. Remaining risk
+  is lower-level CPU-register fidelity inside the modeled refresh, plus broader
+  font-selection variants that expose new state boundaries.
 - `0x782ee6 +0x00..+0x0f` into `0xc68a..0xc428..0xc4fc..0xd04a..0x1393a`
   and `0x782ef6 +0x00..+0x0f` into
   `0xc6b8..0xc428..0xc4fc..0xd04a..0x1393a`: primary and secondary selected

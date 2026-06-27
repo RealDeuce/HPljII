@@ -497,10 +497,17 @@ The next work should follow dataflow, not isolated handlers:
    `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`. Fixture
    `0x13eb8 transient and cache-hit exits avoid dispatch` covers the selected-font
    refresh exits that stop before `0x144d2`/`0x14c64`: transient `0x78298f` stores
-   selected context `0xc008004c`, while cache-hit returns after `0x148f8`. Remaining
-   font-selection work is visible-output treatment for the `0x13eb8` transient/cache-hit
-   preserved-state exits, plus the transparent secondary segment-57 bitmap source
-   interpretation beyond the covered transparent data paths.
+   selected context `0xc008004c`, while cache-hit returns after `0x148f8`. Fixture
+   `0x13eb8 no-dispatch exits keep prior visible rows` carries both exits into
+   visible output: the transient path leaves following `!!` on prior context
+   `0xc0089fb0`, object `00 00 00 00 00 00 00 02 00 89 00 00 87 02`, and digest
+   `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`; the cache-hit
+   secondary path crosses SO and leaves following `!!` on prior context `0xc40ad87a`,
+   object `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`, and digest
+   `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`. Remaining
+   font-selection work is broader variants that expose new state boundaries; the
+   named high-value unresolved edge is now the transparent secondary segment-57 bitmap
+   source interpretation beyond the covered transparent data paths.
    Current transparent coverage includes the
    default-filtered C0/high-control fixed-space path,
    nonzero C0 plus high-control `0x80` printable path, primary interior samples `0x81`,

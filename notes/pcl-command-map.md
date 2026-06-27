@@ -558,7 +558,11 @@ selector `1`: symbol filtering keeps slots `0x782330`, `0x782340`, and
 `0x02e122`, context `0x782ef6`, and map `0x783032`. The transient
 `0x78298f` exit now proves selected-context staging plus active-word
 restore without `0x144d2`/`0x14c64`; the `0x148f8` cache-hit exit returns
-before list activation.
+before list activation. Fixture
+`0x13eb8 no-dispatch exits keep prior visible rows` carries those exits into
+visible output: the transient path stages `0xc008004c` but following `!!`
+renders from prior context `0xc0089fb0`, while the secondary cache-hit path
+crosses SO and renders from prior context `0xc40ad87a`.
 
 Primary and secondary font-designation commands use the same parser
 shape. `ESC (` calls setup `0x1201e`, which pushes slot word `0`;
@@ -1096,9 +1100,9 @@ handlers:
   remain unknown.
 - Broaden visible-output variants where they still change compatibility:
   font-selection fallback/error branches beyond the two symbol-miss and
-  final-`X` built-in/inline fixtures, with `0x17708` non-selected and
-  `0x13eb8` transient/cache-hit exits currently state-covered as preserved-output
-  paths; downloaded-glyph publication cross-products beyond the documented
+  final-`X` built-in/inline fixtures; the `0x17708` non-selected and
+  `0x13eb8` transient/cache-hit preserved-output paths now have visible tails.
+  Downloaded-glyph publication cross-products beyond the documented
   normal, non-boundary short, rows-`0x20` short, rows-`0x40` short,
   row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   low-byte-truncated short, linear-segmented, rows-`0x82` segmented,

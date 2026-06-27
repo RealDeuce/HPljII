@@ -1143,11 +1143,17 @@ ROM work needed:
   before `0x14c64`, and `font-ID non-selected exits keep prior visible rows`, where
   following `!!` renders from prior context `0xc008004c` with row digest
   `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
-  The direct `0x13eb8` no-dispatch exits are state-covered by
+  The direct `0x13eb8` no-dispatch exit states are pinned by
   fixture `0x13eb8 transient and cache-hit exits avoid dispatch`: transient `0x78298f`
   stores selected context `0xc008004c` without `0x144d2`/`0x14c64`, and cache-hit
-  returns after `0x148f8`. Add visible tails there only if later inline/downloaded or
-  error-return branches expose different preserved-state output.
+  returns after `0x148f8`. Fixture
+  `0x13eb8 no-dispatch exits keep prior visible rows` now carries those exits through
+  output: transient following `!!` stays on prior context `0xc0089fb0` with digest
+  `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`, while cache-hit
+  SO `!!` stays on prior secondary context `0xc40ad87a` with digest
+  `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`. Add more
+  visible tails here only if later inline/downloaded or error-return branches expose
+  different preserved-state output.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.

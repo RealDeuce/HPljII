@@ -34935,6 +34935,223 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "calls": ["0x148f8"],
         },
     }))
+    transient_preserved_context = 0xC0089FB0
+    transient_preserved_hmi = builtin_flagged_hmi_from_context(
+        resources,
+        transient_preserved_context,
+    )
+    transient_preserved_page = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"!!",
+        transient_preserved_context,
+        control_fixture_state(
+            cursor_x=pack12(0),
+            cursor_y=pack12(21),
+            hmi=transient_preserved_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=transient_preserved_hmi["hmi"],
+    )
+    transient_preserved_rendered = transient_preserved_page["rendered"]
+    transient_preserved_bridged = transient_preserved_page["bridged_record"]
+    assert isinstance(transient_preserved_rendered, dict)
+    assert isinstance(transient_preserved_bridged, dict)
+    transient_preserved_rows = transient_preserved_rendered["rows"]
+    assert isinstance(transient_preserved_rows, list)
+    cache_hit_prior_primary_context = 0xC008004C
+    cache_hit_prior_secondary_context = 0xC40AD87A
+    cache_hit_preserved_hmi = builtin_flagged_hmi_from_context(
+        resources,
+        cache_hit_prior_secondary_context,
+    )
+    cache_hit_preserved_page = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x0e!!",
+        cache_hit_prior_primary_context,
+        control_fixture_state(
+            cursor_x=pack12(30),
+            cursor_y=pack12(21),
+            hmi=cache_hit_preserved_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            text_map_selector_782f06=0,
+            font_context_install_success=1,
+        ),
+        default_advance=cache_hit_preserved_hmi["hmi"],
+        secondary_context=cache_hit_prior_secondary_context,
+    )
+    cache_hit_preserved_rendered = cache_hit_preserved_page["rendered"]
+    cache_hit_preserved_bridged = cache_hit_preserved_page["bridged_record"]
+    assert isinstance(cache_hit_preserved_rendered, dict)
+    assert isinstance(cache_hit_preserved_bridged, dict)
+    cache_hit_preserved_rows = cache_hit_preserved_rendered["rows"]
+    assert isinstance(cache_hit_preserved_rows, list)
+    cache_hit_shift_event = cache_hit_preserved_page["events"][0]
+    assert isinstance(cache_hit_shift_event, dict)
+    checks.append(assert_equal("0x13eb8 no-dispatch exits keep prior visible rows", {
+        "transient_exit": {
+            "status": transient_13eb8_refresh["status"],
+            "selected_context_record_782992": transient_13eb8_refresh["selected_context_record_782992"],
+            "has_context_update": "context_update" in transient_13eb8_refresh,
+            "has_dispatch": "dispatch" in transient_13eb8_refresh,
+            "calls": transient_13eb8_refresh["calls"],
+        },
+        "transient_visible": {
+            "prior_context": transient_preserved_context,
+            "printable_parser_handlers": [
+                event["handler"]
+                for event in trace_mixed_text_control_parser_path_via_11774(data, b"!!")["events"]
+            ],
+            "printable_sources": [
+                {
+                    "source_context": event["source"]["context"],
+                    "source_slot": event["source"]["context_slot"],
+                    "mapped": event["source"]["mapped"],
+                    "glyph_entry": event["source"]["glyph_entry"],
+                    "coord": event["page_result"]["coord"],
+                }
+                for event in transient_preserved_page["events"]
+                if event["kind"] == "printable"
+            ],
+            "object_prefix": transient_preserved_page["bucket_object"][:14],
+            "bridged_context_slots": transient_preserved_bridged["context_slots"][:2],
+            "rendered": {
+                "selector": transient_preserved_rendered["selector"],
+                "context_slot": transient_preserved_rendered["context_slot"],
+                "count": transient_preserved_rendered["count"],
+                "row_count": len(transient_preserved_rows),
+                "row_width": max((len(str(row)) for row in transient_preserved_rows), default=0),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(str(row) for row in transient_preserved_rows).encode("ascii")
+                ).hexdigest(),
+            },
+        },
+        "cache_hit_exit": cache_hit_13eb8_refresh,
+        "cache_hit_visible": {
+            "prior_primary_context": cache_hit_prior_primary_context,
+            "prior_secondary_context": cache_hit_prior_secondary_context,
+            "printable_parser_handlers": [
+                event["handler"]
+                for event in trace_mixed_text_control_parser_path_via_11774(data, b"\x0e!!")["events"]
+            ],
+            "shift": select_keys(cache_hit_shift_event, (
+                "handler",
+                "selector_before",
+                "selector_after",
+                "install_called",
+                "install_success",
+            )),
+            "printable_sources": [
+                {
+                    "source_context": event["source"]["context"],
+                    "source_slot": event["source"]["context_slot"],
+                    "mapped": event["source"]["mapped"],
+                    "glyph_entry": event["source"]["glyph_entry"],
+                    "coord": event["page_result"]["coord"],
+                }
+                for event in cache_hit_preserved_page["events"]
+                if event["kind"] == "printable"
+            ],
+            "object_prefix": cache_hit_preserved_page["bucket_object"][:14],
+            "bridged_context_slots": cache_hit_preserved_bridged["context_slots"][:2],
+            "rendered": {
+                "selector": cache_hit_preserved_rendered["selector"],
+                "context_slot": cache_hit_preserved_rendered["context_slot"],
+                "count": cache_hit_preserved_rendered["count"],
+                "row_count": len(cache_hit_preserved_rows),
+                "row_width": max((len(str(row)) for row in cache_hit_preserved_rows), default=0),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(str(row) for row in cache_hit_preserved_rows).encode("ascii")
+                ).hexdigest(),
+            },
+        },
+    }, {
+        "transient_exit": {
+            "status": "transient-context-only",
+            "selected_context_record_782992": 0xC008004C,
+            "has_context_update": False,
+            "has_dispatch": False,
+            "calls": [
+                "0x148f8",
+                "0x1569c",
+                "0x156de",
+                "0x153c6",
+                "0x1519a",
+                "0x147b2",
+                "0x14758",
+                "0x14398",
+            ],
+        },
+        "transient_visible": {
+            "prior_context": 0xC0089FB0,
+            "printable_parser_handlers": [0x00D04A, 0x00D04A],
+            "printable_sources": [
+                {
+                    "source_context": 0xC0089FB0,
+                    "source_slot": 0,
+                    "mapped": 0,
+                    "glyph_entry": 0x00AFEC,
+                    "coord": coord,
+                }
+                for coord in (0x8900, 0x8702)
+            ],
+            "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 02 00 89 00 00 87 02"),
+            "bridged_context_slots": (0xC0089FB0, 0),
+            "rendered": {
+                "selector": 0,
+                "context_slot": 0,
+                "count": 2,
+                "row_count": 39,
+                "row_width": 50,
+                "row_sha256": "73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631",
+            },
+        },
+        "cache_hit_exit": {
+            "helper": 0x013EB8,
+            "slot": "secondary",
+            "status": "cache-hit",
+            "saved_active_word": 0x2222,
+            "active_symbols": [0x1111, 0x2222],
+            "calls": ["0x148f8"],
+        },
+        "cache_hit_visible": {
+            "prior_primary_context": 0xC008004C,
+            "prior_secondary_context": 0xC40AD87A,
+            "printable_parser_handlers": [0x00C6B8, 0x00D04A, 0x00D04A],
+            "shift": {
+                "handler": 0x00C6B8,
+                "selector_before": 0,
+                "selector_after": 1,
+                "install_called": True,
+                "install_success": True,
+            },
+            "printable_sources": [
+                {
+                    "source_context": 0xC40AD87A,
+                    "source_slot": 1,
+                    "mapped": 0x20,
+                    "glyph_entry": 0x02E4F6,
+                    "coord": coord,
+                }
+                for coord in (0xC900, 0xCB01)
+            ],
+            "object_prefix": bytes.fromhex("00 00 00 00 00 01 00 02 20 c9 00 20 cb 01"),
+            "bridged_context_slots": (0xC008004C, 0xC40AD87A),
+            "rendered": {
+                "selector": 1,
+                "context_slot": 1,
+                "count": 2,
+                "row_count": 16,
+                "row_width": 49,
+                "row_sha256": "b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c",
+            },
+        },
+    }))
     checks.append(assert_equal("parsed font-selection stream writes primary font-state fields", {
         "events": [
             {
@@ -83906,6 +84123,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         transient_13eb8_refresh["saved_active_word"],
         ", ".join(cache_hit_13eb8_refresh["calls"]),
         cache_hit_13eb8_refresh["active_symbols"],
+    ))
+    lines.append("- `0x13eb8` preserved visible output: fixture `0x13eb8 no-dispatch exits keep prior visible rows` appends printable tails to both no-dispatch exits. The transient path selects `0x%08x` into `0x782992` but following `!!` renders prior context `0x%08x`, object `%s`, digest `%s`; the cache-hit secondary path returns after `0x148f8`, crosses SO, and renders prior context `0x%08x`, object `%s`, digest `%s`." % (
+        transient_13eb8_refresh["selected_context_record_782992"],
+        transient_preserved_context,
+        " ".join(f"{byte:02x}" for byte in transient_preserved_page["bucket_object"][:14]),
+        hashlib.sha256(
+            "\n".join(str(row) for row in transient_preserved_rows).encode("ascii")
+        ).hexdigest(),
+        cache_hit_prior_secondary_context,
+        " ".join(f"{byte:02x}" for byte in cache_hit_preserved_page["bucket_object"][:14]),
+        hashlib.sha256(
+            "\n".join(str(row) for row in cache_hit_preserved_rows).encode("ascii")
+        ).hexdigest(),
     ))
     lines.append("- selected font dispatch: `0x14c64` cache-miss handling for that selected built-in record updates primary range table `0x%06x` to `0x%04x..0x%04x`, selected flag `0x%06x = %d`, rebuilds map `0x%06x` through `0x14d9c`, applies active symbol `0x%04x` through `%s` handling, and snapshots state at `0x%06x` through `0x1440c`." % (
         dispatched_class_zero_primary["range_register"],

@@ -927,6 +927,12 @@ The secondary render-prefix fixture renders buckets `0..448` with aggregate
 digest `292eafb8b558bd36ca0caa5caa2771976c0e611456ac0b610ec8916b9d1f03f9`
 before the current source model reaches bucket `456`, glyph `0x5f`, segment
 `0x39`, source `0x03fe22`, needing `1280` bytes with `478` available.
+Disassembly pins the command-side unresolved edge more narrowly: `0x1f354`
+accepts the zero table entry for glyph `0x5f` as the secondary `LINE_PRINTER`
+record header at file offset `0x02e122`, and `0x1f1f0` advances segment `0x39`
+to file offset `0x03fe22` / firmware address `0x0bfe22`. The remaining gap is
+what resource bytes hardware supplies for `0x0bfe22..0x0c0321`, not the
+transparent parser route or compact renderer row-skip arithmetic.
 `ESC &p2X\x1aA!` covers the probe path where `1a 41` contributes payload byte
 `0x41`, not `0x1a`.
 

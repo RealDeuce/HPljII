@@ -157,6 +157,17 @@ Current confirmed record facts:
   byte `+4` is a bitmap delta, byte `+5` is a small mode/plane value,
   word `+6` is row count, and word `+8` is pixel width.
 
+The secondary `LINE_PRINTER` table also exposes a zero-offset edge through the
+same formula. Table index `0x5f` has relative offset `0`, and disassembly
+`generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst` shows
+`0x1f354` adding that table value without rejecting it. The resulting glyph
+entry is the record header at file offset `0x02e122`: bitmap delta `0`, mode
+`0`, rows `20062`, width `74`. In the transparent secondary segmented fixture,
+`0x1f1f0` then advances segment `0x39` to file offset `0x03fe22` / firmware
+address `0x0bfe22` and needs bytes through `0x0c0321`. That crosses the
+verified `IC32,IC15` image at `0x0c0000`, so the remaining question is
+resource-window decode after the pair boundary, not glyph-entry field layout.
+
 The executable harness now extracts deterministic metadata for all named
 header-like built-in records in the verified resource window: twelve
 `COURIER` records and six `LINE_PRINTER` records. The `COURIER` records

@@ -972,10 +972,15 @@ ROM work needed:
   `0x116f6` into named PCL commands.
 - Broaden the direct-control and printable stream fixtures into fuller
   live parser/register traces, the transparent secondary segment-57 bitmap
-  source interpretation beyond the page-record and render-prefix boundary
-  pinned by fixtures `transparent secondary high-control byte enters segmented
-  page-record path` and `transparent secondary segmented render prefix exposes
-  source boundary`, and dense parser-allocated page-object fixtures.
+  physical/resource-window source interpretation beyond the page-record and
+  render-prefix boundary pinned by fixtures `transparent secondary high-control
+  byte enters segmented page-record path` and `transparent secondary segmented
+  render prefix exposes source boundary`, and dense parser-allocated
+  page-object fixtures. The transparent segment-57 compact path is now narrowed
+  by disassembly to `0x1f354` accepting glyph `0x5f` table offset zero as entry
+  `0x02e122`, then `0x1f1f0` reading firmware range `0x0bfe22..0x0c0321`;
+  the unknown is what hardware maps after the verified resource-pair byte
+  range ends at `0x0bffff`.
   Command-family state is composed in `Text Cursor And Direct Controls`, and
   the
   printable source-object fields are composed in `Text Source Objects And

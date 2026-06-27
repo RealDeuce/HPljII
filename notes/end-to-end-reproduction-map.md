@@ -401,8 +401,11 @@ The next work should follow dataflow, not isolated handlers:
    top-of-range `0x9f`, the secondary segmented page-record boundary from
    `SO ESC &p3X!\x80!`, and the secondary renderable prefix through bucket
    `448`. The first unresolved secondary bucket is `456`, glyph `0x5f`,
-   segment `0x39`, source `0x03fe22`, needing `1280` bytes with `478`
-   available.
+   segment `0x39`, file source `0x03fe22`, firmware source `0x0bfe22`, and
+   required byte range `0x0bfe22..0x0c0321`; only `478` bytes are inside the
+   verified `IC32,IC15` resource-pair image. Disassembly of `0x1f354` and
+   `0x1f1f0` makes the unresolved part a physical/resource-window mapping
+   question after `0x0c0000`, not a transparent parser or row-skip question.
    The `ESC Y ... ESC Z` display-functions loop is now
    documented in `notes/pcl-parser-core.md` and
    `notes/semantic-state-model.md`; fixture

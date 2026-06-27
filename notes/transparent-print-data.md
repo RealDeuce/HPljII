@@ -410,6 +410,28 @@ until the current source model reaches a concrete bitmap-source boundary:
 - resolved glyph source: entry/bitmap `0x02e122`, delta `0`, mode `0`, rows
   `20062`, width `74`, render span `10`
 
+The segment-57 failure is no longer an unresolved compact-renderer arithmetic
+edge. Disassembly
+`generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst` shows
+`0x1f354` taking the bit-30 offset-table form, adding the selected table entry
+without checking for zero, then reading row count, width, mode, and bitmap delta
+from the resulting entry. For the secondary `LINE_PRINTER` table, index `0x5f`
+has relative offset `0`, so firmware resolves the glyph entry to the record
+header at file offset `0x02e122`. Segmented renderer `0x1f1f0` then computes
+`segment << 7`, subtracts that row skip from the row count, clamps the remaining
+rows to `0x80`, multiplies by even byte span `10`, and advances `A2` to file
+offset `0x03fe22`.
+
+The unresolved edge is therefore the physical/resource-window source supplied
+for the read crossing the verified `IC32,IC15` pair boundary. The built-in
+resource window maps file offset `N` to firmware address `0x080000 + N`, so the
+computed read starts at firmware address `0x0bfe22`. It needs bytes
+`0x0bfe22..0x0c0321`; only `0x0bfe22..0x0bffff` are inside the verified
+`0x40000`-byte resource-pair image. Firmware startup notes show scanner `0x41a`
+walking resource records through `0x0ae122` and terminating at `0x0b2f80`
+before the next `0x40000` probe, but they do not yet prove whether the physical
+decode wraps, mirrors, or maps another source at `0x0c0000..0x0c0321`.
+
 ## Semantic Composition
 
 Concept: transparent print data is a counted byte-stream splice, not a binary
@@ -491,10 +513,13 @@ Unresolved middle edges:
   `0x90`, and `0x97`), two primary bucket-crossing glyphs (`0x98` and
   top-of-range `0x9f`), and a secondary segmented page-record boundary
   (`SO ESC &p3X!\x80!`). The remaining high-control edge is the secondary
-  segment-57 bitmap source interpretation at bucket `456`: glyph `0x5f`,
-  segment `0x39`, source `0x03fe22`, needing `1280` bytes with `478`
-  available. It is not primary route polarity, sampled primary interior values,
-  or the renderable secondary prefix through bucket `448`.
+  segment-57 physical/resource-window source interpretation at bucket `456`.
+  The compact renderer path is disassembly-backed through `0x1f354` and
+  `0x1f1f0`: glyph `0x5f`, segment `0x39`, file source `0x03fe22`, firmware
+  source `0x0bfe22`, and required byte range `0x0bfe22..0x0c0321`. Only the
+  first `478` bytes are inside the verified `IC32,IC15` resource-pair image.
+  It is not primary route polarity, sampled primary interior values, or the
+  renderable secondary prefix through bucket `448`.
 
 ## Reproduction Contract
 

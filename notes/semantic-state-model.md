@@ -942,6 +942,21 @@ first failure is bucket `456`, selector `0x2001`, glyph `0x5f`, segment
 `478` bytes available. The resolved glyph source is entry/bitmap `0x02e122`,
 delta `0`, mode `0`, rows `20062`, width `74`, and render span `10`.
 
+Disassembly
+`generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst` moves
+this from a renderer-arithmetic uncertainty to a physical/resource-window
+uncertainty. Helper `0x1f354` uses the bit-30 offset-table form and adds the
+selected table entry directly; secondary `LINE_PRINTER` table index `0x5f` is
+zero, so firmware reads the record header at file offset `0x02e122` as the
+glyph entry. Segmented renderer `0x1f1f0` applies `segment << 7`, clamps to at
+most `0x80` rows, multiplies by even byte span `10`, and advances the bitmap
+pointer to file offset `0x03fe22`. Since `notes/resource-rom.md` maps resource
+file offset `N` to firmware address `0x080000 + N`, the unresolved source read
+is firmware address range `0x0bfe22..0x0c0321`; only `0x0bfe22..0x0bffff`
+comes from the verified `IC32,IC15` pair. `notes/firmware-startup.md` verifies
+scanner `0x41a` walking records through `0x0ae122` and terminating at
+`0x0b2f80`, but the hardware mapping at `0x0c0000..0x0c0321` remains unknown.
+
 ### Confidence
 
 High for delayed snapshot/restore, absolute payload count, `1a 58` and
@@ -986,11 +1001,13 @@ filter bytes.
   a short primary bucket (`0x80`), interior primary samples (`0x81`, `0x88`,
   `0x90`, and `0x97`), two taller primary bucket-crossing glyphs (`0x98` and
   top-of-range `0x9f`), and a secondary segmented page-record boundary
-  (`SO ESC &p3X!\x80!`). Remaining work is the secondary segment-57 bitmap
-  source interpretation at bucket `456`: glyph `0x5f`, segment `0x39`, source
-  `0x03fe22`, needing `1280` bytes with `478` available. It is not primary
-  route polarity, sampled primary interior values, or the renderable secondary
-  prefix through bucket `448`.
+  (`SO ESC &p3X!\x80!`). Remaining work is the secondary segment-57
+  physical/resource-window source interpretation at bucket `456`. The
+  disassembly-backed compact path reaches glyph `0x5f`, segment `0x39`, file
+  source `0x03fe22`, firmware source `0x0bfe22`, and required byte range
+  `0x0bfe22..0x0c0321`, with only `478` bytes inside the verified resource-pair
+  image. It is not primary route polarity, sampled primary interior values, or
+  the renderable secondary prefix through bucket `448`.
 
 ## Text Source Objects And Compact Buckets
 

@@ -975,8 +975,8 @@ handlers:
   pins the legal inline/unflagged `d4ac` and resource/flagged `d8fc`
   producer forms plus the two invalid swapped forms. The open middle is
   additional metric-value combinations within those legal forms, plus visible
-  behavior for validation/error forms beyond the seven bounded no-install
-  predicates.
+  behavior for validation/error forms beyond the bounded predicate and
+  short-budget no-install cases.
 - Replace remaining modeled producer-state handoffs with fuller
   parser-produced page objects. Current coverage includes direct text,
   direct controls, macro replay/overlay, reset/FF/page geometry

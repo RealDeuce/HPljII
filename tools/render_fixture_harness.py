@@ -46896,6 +46896,43 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     table_payload_invalid_class = resource_validation_failure_case(
         bytes(invalid_class_payload),
     )
+    table_payload_short_descriptor_stream = b"\x1b)s8W" + font_validate_stream[:8]
+    table_payload_short_descriptor_dispatch_trace = trace_font_parser_dispatch_via_11774(
+        data,
+        table_payload_short_descriptor_stream,
+    )
+    host_fetched_short_descriptor_stream = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(table_payload_short_descriptor_stream), direct_mode=0),
+        len(table_payload_short_descriptor_stream),
+    )
+    table_payload_short_descriptor_command = render_font_download_resource_command_stream_via_121cc_16c14(
+        table_payload_short_descriptor_stream,
+        records=[{"id": 0, "flags": 0, "payload": 0}],
+        current_id=0x1234,
+        new_payload_address=0,
+        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        cursors={
+            "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+        },
+        candidates=[0x00000100, 0x00000200, 0x00000300],
+    )
+    table_payload_short_descriptor_from_host = render_font_download_resource_command_stream_via_121cc_16c14(
+        host_fetched_short_descriptor_stream["stream"],
+        records=[{"id": 0, "flags": 0, "payload": 0}],
+        current_id=0x1234,
+        new_payload_address=0,
+        counters={"0x78278e": 3, "0x782790": 2, "0x782798": 1},
+        cursors={
+            "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 12,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 12,
+        },
+        candidates=[0x00000100, 0x00000200, 0x00000300],
+    )
     table_payload_resource_command_event = table_payload_resource_command["events"][0]
     assert isinstance(table_payload_resource_command_event, dict)
     table_payload_resource_command_allocation = table_payload_resource_command_event["allocation"]
@@ -46920,6 +46957,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(table_payload_reversed_range_allocation, dict)
     table_payload_reversed_range_host_event = table_payload_reversed_range_from_host["events"][0]
     assert isinstance(table_payload_reversed_range_host_event, dict)
+    table_payload_short_descriptor_event = table_payload_short_descriptor_command["events"][0]
+    assert isinstance(table_payload_short_descriptor_event, dict)
+    table_payload_short_descriptor_validation = table_payload_short_descriptor_event["validation"]
+    assert isinstance(table_payload_short_descriptor_validation, dict)
+    table_payload_short_descriptor_allocation = table_payload_short_descriptor_event["allocation"]
+    assert isinstance(table_payload_short_descriptor_allocation, dict)
+    table_payload_short_descriptor_host_event = table_payload_short_descriptor_from_host["events"][0]
+    assert isinstance(table_payload_short_descriptor_host_event, dict)
 
     def resource_validation_failure_report(case: dict[str, object]) -> dict[str, object]:
         event = case["event"]
@@ -63704,12 +63749,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "dispatch_trace": table_payload_reversed_range_dispatch_trace,
         },
         "invalid_class": table_payload_invalid_class,
+        "short_descriptor_budget": {
+            "stream": table_payload_short_descriptor_stream,
+            "event": table_payload_short_descriptor_event,
+            "validation": table_payload_short_descriptor_validation,
+            "allocation": table_payload_short_descriptor_allocation,
+            "dispatch_trace": table_payload_short_descriptor_dispatch_trace,
+        },
     }
     validation_failure_visible_reports = {
         name: validation_failure_visible_report(case)
         for name, case in validation_failure_visible_cases.items()
     }
-    checks.append(assert_equal("ESC )s80W validation failures preserve following printable output", {
+    checks.append(assert_equal("ESC )s#W validation failures preserve following printable output", {
         name: {
             "combined_length": report["combined_length"],
             "fetch_source_set": report["fetch_source_set"],
@@ -63725,7 +63777,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "remaining_ring": [],
             "resource": {
                 "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
-                "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+                "restored_record": restored_record,
                 "failed_index": failed_index,
                 "bytes_consumed": bytes_consumed,
                 "allocation_status": 0,
@@ -63743,14 +63795,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "matches_baseline_object": True,
             },
         }
-        for name, failed_index, bytes_consumed in (
-            ("invalid_type", 2, 4),
-            ("first_code_overflow", 4, 8),
-            ("zero_line_count", 5, 10),
-            ("line_count_overflow", 5, 10),
-            ("range_count_overflow", 6, 12),
-            ("reversed_range", 6, 12),
-            ("invalid_class", 7, 13),
+        for name, failed_index, bytes_consumed, restored_record in (
+            ("invalid_type", 2, 4, bytes.fromhex("80 57 00 50 00 00")),
+            ("first_code_overflow", 4, 8, bytes.fromhex("80 57 00 50 00 00")),
+            ("zero_line_count", 5, 10, bytes.fromhex("80 57 00 50 00 00")),
+            ("line_count_overflow", 5, 10, bytes.fromhex("80 57 00 50 00 00")),
+            ("range_count_overflow", 6, 12, bytes.fromhex("80 57 00 50 00 00")),
+            ("reversed_range", 6, 12, bytes.fromhex("80 57 00 50 00 00")),
+            ("invalid_class", 7, 13, bytes.fromhex("80 57 00 50 00 00")),
+            ("short_descriptor_budget", 5, 8, bytes.fromhex("80 57 00 08 00 00")),
         )
     }))
 
@@ -79555,19 +79608,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("The addressed paper-source fixture also pins `0xef62` side effects after publication: selected value `0x80`, `0x782da6 = 0x80`, `0x782998 = 1`, cursor x/y packed `5`/`92.1`, and paper-source output/control bytes `0x780e8f = 0x80` and `0x780e26 = 1`. The addressed copies fixture pins `0xeef0` storing copy count `2` in `0x782da4`, then the trailing FF publishes a pool record with header word `+0x0c = 2`.")
     lines.append("The published-record render-entry fixture then carries each of those six `0xff1e` records through `0x1ed84` active-record copy and the `0x1ef6a` call order, selecting the compact bucket through `0x1efc2` and rendering the same rows.")
     lines.append("A host-fetched direct text/control fixture now starts the plain, transparent-data, CR/LF, HT/BS, margin, cursor-position, dot-position, vertical-layout, and cursor-stack page-record streams from the modeled `0xa904` ring source, drains every byte, replays the same parser handlers or delayed payload handler, and lands on the same `0x1387c` page-record objects. The cursor-row case now also carries the nonzero bucket word through `0x1ef86`, clips compact text to `0x783a20 = 16` current-band rows, and records the continuation rows in the fallback buffer.")
-    lines.append("- validation-failure visible output: seven `ESC )s80W` no-install streams fail entries `%s`, then the following printable `!` routes to handler `0x%05x`, queues the default-font object `%s`, and matches the baseline rendered rows/object in every case." % (
+    short_budget_visible = validation_failure_visible_reports["short_descriptor_budget"]
+    lines.append("- validation-failure visible output: eight `ESC )s#W` no-install streams fail entries `%s`; the short-budget `ESC )s8W` case restores record `%s` and fails entry `%d` after `%d` bytes, then the following printable `!` routes to handler `0x%05x`, queues the default-font object `%s`, and matches the baseline rendered rows/object in every case." % (
         [
-            validation_failure_visible_reports[name]["resource"]["failed_index"]  # type: ignore[index]
-            for name in (
-                "invalid_type",
-                "first_code_overflow",
-                "zero_line_count",
-                "line_count_overflow",
-                "range_count_overflow",
-                "reversed_range",
-                "invalid_class",
-            )
+            report["resource"]["failed_index"]  # type: ignore[index]
+            for report in validation_failure_visible_reports.values()
         ],
+        " ".join(
+            f"{byte:02x}"
+            for byte in short_budget_visible["resource"]["restored_record"]  # type: ignore[index]
+        ),
+        short_budget_visible["resource"]["failed_index"],  # type: ignore[index]
+        short_budget_visible["resource"]["bytes_consumed"],  # type: ignore[index]
         validation_failure_visible_reports["invalid_type"]["printable"]["parser_handlers"][0],  # type: ignore[index]
         " ".join(f"{byte:02x}" for byte in validation_failure_visible_baseline["bucket_object"]),  # type: ignore[index]
     ))

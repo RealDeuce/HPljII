@@ -442,8 +442,9 @@ glyph `0x25` segmented page objects before `0x1edc6`, `0x1ed84`, and
 invalid type, first-code overflow, zero line/count, high line/count,
 reversed range, high range/count, and invalid class through the parser
 restore and `0x16c14` allocation boundary, and the same seven failed
-streams followed by printable `!` now preserve the default-font
-page-record object and rendered rows; fixture
+streams plus the short-budget `ESC )s8W` entry-5 failure followed by
+printable `!` now preserve the default-font page-record object and rendered
+rows; fixture
 `descriptor metric fields match across inline and resource contexts` now
 pins the legal metric producer forms and the two invalid swapped forms.
 Fixture `legal descriptor metric value matrix drives d4ac and d8fc consumers`
@@ -460,9 +461,10 @@ positive offset byte `0x7f`, normal rounded input `0x0013` storing copied
 rounded input `0x1508` stores the same `+0x2c = 0x0060`, so the descriptor
 transform discards that low byte before the same `d4ac` exit.
 Remaining work is additional metric-value combinations within the legal
-forms, validation/error page behavior beyond those seven no-install
-branches, remaining alternate character-mode/release variants, full
-live-parser raster edge cases, and final device-output page comparison.
+forms, validation/error page behavior beyond those bounded predicate and
+short-budget no-install branches, remaining alternate character-mode/release
+variants, full live-parser raster edge cases, and final device-output page
+comparison.
 
 Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md`
 collects the raster command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`,

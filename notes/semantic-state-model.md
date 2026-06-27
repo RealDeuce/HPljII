@@ -3358,16 +3358,16 @@ renders at x `22`.
 ### Downloaded Resource Validation No-Install
 
 Status: composed as the downloaded-resource error cluster from host-fetched
-`ESC )s80W` bytes through parser restore, descriptor validation, allocation
-skip, candidate no-install, and visible default-font output. The low-level
-ledger remains in `notes/downloaded-fonts.md` under `Descriptor Validation
-And Payload Header`.
+`ESC )s80W` and short-budget `ESC )s8W` bytes through parser restore,
+descriptor validation, allocation skip, candidate no-install, and visible
+default-font output. The low-level ledger remains in
+`notes/downloaded-fonts.md` under `Descriptor Validation And Payload Header`.
 
 Concept: `0x16fae` walks the 32-entry descriptor-validation table at
 `0x16eae`. When a predicate returns failure, `0x17026` receives validation
 status `0`, returns allocation status `0`, and `0x16c14` leaves the current
 downloaded-font records and candidate list unchanged. Fixture
-`ESC )s80W validation failures preserve following printable output` then
+`ESC )s#W validation failures preserve following printable output` then
 appends printable `!` and proves the parser resumes at `0xd04a`, queues the
 baseline default-font compact object, and renders the same rows as a stream
 without the failed font payload.
@@ -3379,10 +3379,11 @@ Field groups:
   `0x782790`, `0x782796`, `0x782798`, `0x78279e`, `0x7827a0`,
   `0x7827ac`, `0x7827b0`, and `0x7827b4`, and selected installed
   candidate longword. Writers on success are `0x16c14` and `0x1bc38`; the
-  seven validation-failure fixtures assert no install for this state.
-- Parser scratch: restored record `80 57 00 50 00 00`, payload byte budget
-  `0x783140`, parser record cursor `0x78299e`, host ring source `0xa904`,
-  and parser handlers `0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`.
+  eight validation-failure fixtures assert no install for this state.
+- Parser scratch: restored records `80 57 00 50 00 00` and short-budget
+  `80 57 00 08 00 00`, payload byte budget `0x783140`, parser record cursor
+  `0x78299e`, host ring source `0xa904`, and parser handlers `0x11eb6`,
+  `0x12008`, `0x11ff6`, and `0x11f96`.
 - Parser-owned staged descriptor fields: staged header `0x7827de`, staged
   pointer `0x782862`, type byte `+0x0c`, first-code word `+0x16`,
   line/count word `+0x12`, range/count word `+0x14`, derived count word
@@ -3397,9 +3398,9 @@ Field groups:
   page state, but they gate whether the subsequent `!` uses a downloaded font
   or the unchanged default font.
 - Unknown for this checkpoint: validation/error forms outside the bounded
-  entry `2`, `4`, `5`, `6`, and `7` predicate failures, and external HP
-  manual names for descriptor fields that the table consumes but does not
-  stage.
+  entry `2`, `4`, `5`, `6`, and `7` predicate failures and the short
+  byte-budget exhaustion at entry `5`, plus external HP manual names for
+  descriptor fields that the table consumes but does not stage.
 
 Writers and readers:
 
@@ -3411,7 +3412,10 @@ Writers and readers:
 - `0x173d0` is the entry-4 first-code predicate. Word `0x1068` fails after
   eight consumed bytes before writing payload word `+0x16`.
 - `0x173fe` is the entry-5 line/count predicate. Zero and `0x1069` both
-  fail after ten consumed bytes with no valid line/count payload.
+  fail after ten consumed bytes with no valid line/count payload. The
+  short-budget `ESC )s8W` case also reaches this predicate but exhausts the
+  byte budget before a line/count word exists, so the modeled reader supplies
+  zero and validation fails after eight descriptor bytes.
 - `0x17430` is the entry-6 range/count predicate. Reversed range
   `+0x16 = 10`, value `5`, and high value `0x1069` fail at the
   twelve-byte boundary; the reversed-range fixture leaves `+0x14 = 5` and
@@ -3425,19 +3429,20 @@ Writers and readers:
   following printable `!` on the default-font path after each failed payload.
 
 Output effect: invalid type, first-code overflow, zero line/count, high
-line/count, reversed range/count, high range/count, and invalid class all
-produce the same visible result for the following printable byte. No
-downloaded-font candidate is installed, no current-record payload is selected,
-the default-font compact object matches the baseline `!`, and the final
-rendered rows match the baseline rows.
+line/count, short descriptor budget, reversed range/count, high range/count,
+and invalid class all produce the same visible result for the following
+printable byte. No downloaded-font candidate is installed, no current-record
+payload is selected, the default-font compact object matches the baseline `!`,
+and the final rendered rows match the baseline rows.
 
 Confidence is high for the parser boundary, failed validation entries, last
 staged fields, allocation skip, no-install result, resumed printable handler,
 default compact object, and rendered rows because fixture
-`ESC )s80W validation failures preserve following printable output` asserts
-all seven no-install streams. Confidence is medium for untested descriptor
-error forms because the validation table has more entries than the covered
-predicate failures.
+`ESC )s#W validation failures preserve following printable output` asserts
+the seven bounded `ESC )s80W` no-install streams and short-budget
+`ESC )s8W` stream. Confidence is medium for untested descriptor error forms
+because the validation table has more entries than the covered predicate and
+budget-exhaustion failures.
 
 Fixtures:
 
@@ -3447,7 +3452,7 @@ Fixtures:
 - `ESC )s80W invalid resource type fails validation before allocation`
 - `ESC )s80W reversed resource range fails validation before allocation`
 - `ESC )s80W additional validation predicate failures skip allocation`
-- `ESC )s80W validation failures preserve following printable output`
+- `ESC )s#W validation failures preserve following printable output`
 
 Disassembly evidence:
 
@@ -3459,10 +3464,11 @@ Disassembly evidence:
 - `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
 
 Unresolved middle edges: `0x16fae..0x17016` is fixture-backed for the seven
-bounded no-install exits above, including resumed visible output. The
-remaining middle edge is not the tested allocation skip or default printable
-recovery; it is the untested descriptor-error cross-product outside entries
-`2`, `4`, `5`, `6`, and `7`, plus external naming for
+bounded `ESC )s80W` no-install exits above and the short-budget `ESC )s8W`
+entry-5 failure, including resumed visible output. The remaining middle edge
+is not the tested allocation skip or default printable recovery; it is the
+untested descriptor-error cross-product outside entries `2`, `4`, `5`, `6`,
+and `7` plus the covered short-budget boundary, and external naming for
 consumed-but-not-staged descriptor fields.
 
 ### Downloaded Glyph Rule/Raster Composition
@@ -3638,7 +3644,7 @@ combination have not been page-compared.
 - `ESC )s80W invalid resource type fails validation before allocation`
 - `ESC )s80W reversed resource range fails validation before allocation`
 - `ESC )s80W additional validation predicate failures skip allocation`
-- `ESC )s80W validation failures preserve following printable output`
+- `ESC )s#W validation failures preserve following printable output`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `host-fetched metric variant changes d4ac gate and d8fc rows`
@@ -3687,11 +3693,13 @@ combination have not been page-compared.
   host-fetched first-code overflow path proves entry `4`, the zero and high
   line/count paths prove entry `5`, the reversed and high range/count paths
   prove entry `6`, and the invalid-class path proves entry `7`. Fixture
-  `ESC )s80W validation failures preserve following printable output` proves
-  those seven no-install exits leave the next printable `!` on the unchanged
-  default-font page-record path with matching rendered rows. Remaining
-  descriptor error-form risk is now variants beyond those bounded predicate
-  branches, plus external HP manual naming for consumed-but-not-staged fields.
+  `ESC )s#W validation failures preserve following printable output` proves
+  those seven `ESC )s80W` no-install exits plus the short-budget `ESC )s8W`
+  entry-5 failure leave the next printable `!` on the unchanged default-font
+  page-record path with matching rendered rows. Remaining descriptor
+  error-form risk is now variants beyond those bounded predicate branches and
+  the short-budget boundary, plus external HP manual naming for
+  consumed-but-not-staged fields.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span wide,
   row-threshold `0x80` short, linear normal, linear segmented, and
   split-plane segmented downloaded-character paths are page-visible. Fixture
@@ -3776,7 +3784,8 @@ combination have not been page-compared.
   pins the legal inline/unflagged and resource/flagged producer forms plus the
   two invalid swapped forms. It still needs additional metric-value combinations
   within legal forms, plus producer-side validation/error page evidence beyond
-  the documented validation no-install and following-printable boundaries.
+  the documented bounded-predicate and short-budget validation no-install
+  following-printable boundaries.
 
 ## Macro Definition And Data-Chain Replay
 

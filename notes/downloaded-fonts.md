@@ -52,7 +52,7 @@ Primary fixtures:
 - `ESC )s80W invalid resource type fails validation before allocation`
 - `ESC )s80W reversed resource range fails validation before allocation`
 - `ESC )s80W additional validation predicate failures skip allocation`
-- `ESC )s80W validation failures preserve following printable output`
+- `ESC )s#W validation failures preserve following printable output`
 - `resource payload stream ties ROM parser dispatch to 0x16c14 install`
 - `host-fetched resource payload stream installs selected 0x1719c font`
 - `host-fetched font control state drives resource payload stream`
@@ -626,14 +626,17 @@ Its output effect is no downloaded-font state change; the fixture records the
 last staged fields before the no-install exit so later page-visible error
 comparisons can start from exact byte boundaries.
 
-Fixture `ESC )s80W validation failures preserve following printable output`
-then appends printable `!` to the seven no-install streams above. In each case
-the resource command restores record `80 57 00 50 00 00`, fails validation at
-entry `2`, `4`, `5`, `6`, or `7`, returns allocation status `0`, leaves
-install `None`, then the following printable byte routes through handler
-`0xd04a`, queues the same default-font compact object as baseline `!`, and
-renders identical page rows. Status: parser-produced validation error to
-visible default-font output for those seven forms.
+Fixture `ESC )s#W validation failures preserve following printable output`
+then appends printable `!` to the seven `ESC )s80W` no-install streams above
+and the short-budget `ESC )s8W` stream. The `ESC )s80W` cases restore record
+`80 57 00 50 00 00`; the short-budget case restores record
+`80 57 00 08 00 00`, exhausts the eight-byte descriptor budget before the
+entry-5 line/count word, and fails after eight descriptor bytes. In each case
+the resource command returns allocation status `0`, leaves install `None`,
+then the following printable byte routes through handler `0xd04a`, queues the
+same default-font compact object as baseline `!`, and renders identical page
+rows. Status: parser-produced validation error to visible default-font output
+for those eight forms.
 
 `0x17362` sets the staged type and payload units. Type `0` writes byte
 `+0x0c = 0` and units `0x80`; type `2` writes byte `+0x0c = 2` and units
@@ -1383,5 +1386,5 @@ A byte-stream renderer must preserve:
   `descriptor metric fields match across inline and resource contexts` now
   proves the legal producer forms and the two invalid swapped forms. The
   remaining producer gap is additional metric-value combinations within those
-  legal forms, plus validation/error forms beyond those seven bounded
-  predicate branches that still need parser-produced page evidence.
+  legal forms, plus validation/error forms beyond the bounded predicate and
+  short-budget branches that still need parser-produced page evidence.

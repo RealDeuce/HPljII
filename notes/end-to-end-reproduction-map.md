@@ -243,9 +243,10 @@ pixels or byte-stream compatibility.
    `+0x14 = 0x0040` derives/cache `+0x18 = 0x003b`, leaves unflagged
    `+0x2c/+0x2d = 0/0x20`, keeps `0xd4ac` span output, and makes `0xd8fc`
    exit `beyond-page-extent` at cursor y `21`. Seven bounded validation
-   no-install forms now prove parser-to-validation failure, allocation skip,
-   no candidate install, resumed default-font printable output, and matching
-   rows. Fixture `descriptor metric fields match across inline and resource
+   no-install forms plus the short-budget `ESC )s8W` entry-5 failure now prove
+   parser-to-validation failure, allocation skip, no candidate install,
+   resumed default-font printable output, and matching rows. Fixture
+   `descriptor metric fields match across inline and resource
    contexts` now proves inline/unflagged `d4ac`, resource/flagged `d8fc`, and
    the two invalid swapped forms. Fixture
    `legal descriptor metric value matrix drives d4ac and d8fc consumers`
@@ -265,7 +266,8 @@ pixels or byte-stream compatibility.
    `65534`, computes high-y `-65513`, and renders digest
    `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
    The open edge is additional metric-value combinations within the legal
-   forms, plus validation/error forms beyond those bounded predicate branches.
+   forms, plus validation/error forms beyond those bounded predicate and
+   short-budget branches.
    It is not the tested type-0/type-1/type-2 payloads, metric-variant,
    clamped-variant, lower-bound-variant, upper-bound-variant,
    legal-value-matrix, validation no-install, legal producer-form boundary, or
@@ -354,8 +356,8 @@ The next work should follow dataflow, not isolated handlers:
    resource/flagged reaches `d8fc`, and the swapped forms fail at concrete
    map/render boundaries. The missing middle is now additional metric-value
    combinations within the legal forms, plus page-visible behavior for
-   validation/error forms beyond the seven bounded predicate no-install
-   fixtures.
+   validation/error forms beyond the bounded predicate and short-budget
+   no-install fixtures.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus

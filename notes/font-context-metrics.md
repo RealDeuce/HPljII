@@ -150,7 +150,7 @@ Unknown:
   `0xd4ac`, resource/flagged feeds `0xd8fc`, and the swapped forms fail at
   concrete map/render boundaries. Remaining producer gaps are broader
   metric-value combinations inside those legal forms and validation/error
-  forms beyond the bounded no-install cases.
+  forms beyond the bounded predicate and short-budget no-install cases.
 
 ## Selection And Map Rebuild
 
@@ -875,8 +875,8 @@ the selected-context producer-form boundary: inline/unflagged `d4ac` and
 resource/flagged `d8fc` are visible, while resource/unflagged and
 inline/flagged are invalid cross-forms. The remaining producer-side work is
 additional descriptor metric combinations within those legal forms, plus
-validation/error forms beyond the seven bounded no-install predicates driven
-from parser bytes to page rows.
+validation/error forms beyond the bounded predicate and short-budget
+no-install cases driven from parser bytes to page rows.
 
 ## Macro And Control Re-entry
 
@@ -963,7 +963,8 @@ A byte-stream reproduction must preserve these behaviors:
   `0xd8fc` while `0xd4ac` still renders a span.
   Fixture `descriptor metric fields match across inline and resource contexts`
   now pins the legal producer-form boundary and both invalid swapped forms.
-  Seven bounded `0x16fae` validation no-install forms now preserve following
-  printable output. The remaining gap is additional metric-value combinations
-  within the legal inline/unflagged and resource/flagged forms, plus
-  validation/error forms beyond those bounded predicate branches.
+  Seven bounded `0x16fae` validation no-install forms plus the short-budget
+  `ESC )s8W` entry-5 failure now preserve following printable output. The
+  remaining gap is additional metric-value combinations within the legal
+  inline/unflagged and resource/flagged forms, plus validation/error forms
+  beyond those bounded predicate and byte-budget branches.

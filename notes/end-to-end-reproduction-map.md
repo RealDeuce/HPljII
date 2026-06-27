@@ -396,7 +396,11 @@ The next work should follow dataflow, not isolated handlers:
    C0/high-control fixed-space path, nonzero C0 plus high-control `0x80`
    printable path, primary tall bucket-crossing `0x98`, primary top-of-range
    `0x9f`, and secondary segmented page-record boundary from
-   `SO ESC &p3X!\x80!`. They should also broaden downloaded-glyph publication
+   `SO ESC &p3X!\x80!`. The `ESC Y ... ESC Z` display-functions loop is now
+   documented in `notes/pcl-parser-core.md` and
+   `notes/semantic-state-model.md`; the remaining suite gap is a dedicated
+   host-fetched page-output fixture for `0x12536..0x1261e`, not the loop
+   semantics. They should also broaden downloaded-glyph publication
    cross-products beyond the documented
    segmented-wide, normal, linear-segmented, row-threshold `0x80` short, and
    even-span wide selector families, especially other row counts, character

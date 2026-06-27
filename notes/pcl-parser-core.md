@@ -261,6 +261,50 @@ select which six-byte record the delayed handler later sees; this affects
 generic payload readers, raster payloads, downloaded-font payloads, and macro
 data-chain replay.
 
+## ESC Y Display Functions Readers
+
+`ESC Y` enters a reader loop that stays active until the byte stream supplies
+`ESC Z` or `0xa904` returns `-1`. The normal parser table dispatches `ESC Y`
+to `0x12536`; the alternate/data parser table dispatches it to `0x12120`.
+
+Shared loop rules:
+
+- seed an `ESC`-seen flag `D4 = 0`;
+- fetch bytes directly through `0xa904`, not `0xda9a`;
+- treat local byte pair `0x1a 0x58` as one value `0x7f` after calling
+  `0xd99a`;
+- set `D4 = 1` after a routed/appended value `0x1b`;
+- stop only when the next routed/appended value is `0x5a` while `D4 == 1`, or
+  when the fetch returns `-1`;
+- clear `D4` after any non-terminating value other than `0x1b`.
+
+The alternate/data handler `0x12120` first appends literal `ESC Y` through
+`0xe002`, then appends each normalized loop value through `0xe002`. It does
+not call the text imaging path. Its output effect is data-chain text append,
+including normalized `0x7f` for `0x1a 0x58`, until `ESC Z` terminates.
+
+The normal handler `0x12536` is display-functions text imaging. It derives the
+same selected context byte and high-control filtering word used by transparent
+print data:
+
+- selected slot `0x782f06` is scaled by `0x332ee`;
+- context byte `0x782eea + 0x10 * slot` is copied to `D3`;
+- fallback byte `0x782efa` supplies the local high-control filter when
+  `0x783132` and `0x783133` are clear.
+
+After the same `0xa904` / `0x1a 0x58` normalization, `0x12536` routes
+`0x00..0x1f` through `0xd0f0` only when `D3 == 0`, routes `0x80..0x9f`
+through `0xd0f0` only when the local filter word is zero, and routes all other
+values through `0xd04a`. If the routed value is CR (`0x0d`), it also calls
+`0xf054` after the text/control handler. Its output effect is visible text or
+fixed-space output using the same source-object and page-record consumers as
+direct text and transparent print data.
+
+Evidence: normal parser dispatch table mode 1 entry for byte `0x59` to
+`0x12536`, alternate/data mode 1 entry for byte `0x59` to `0x12120`, and
+disassembly `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`
+at `0x12120..0x1219c` and `0x12536..0x1261e`.
+
 ## Delayed Payload Scheduler
 
 `0x121cc` stores a pending payload call. It rewinds `0x78299e` by six to the current
@@ -317,17 +361,15 @@ A byte-stream reproduction must preserve these parser contracts:
 - Do not collapse command records and payload bytes into one parser event. The ROM
   stores the command record first and consumes payload bytes later.
 
-## Open Edges
+## Parser-Core Status
 
-The shared parser mechanism above is documented, but this edge still needs
-command-family notes before the model is complete:
+The shared parser mechanism and currently identified command-family parser
+edges in this note are documented.
 
-- `0x12120`: the `ESC Y` byte appender that reads through `0xa904`, echoes through
-  `0xe002`, treats `0x1a 0x58` as `0x7f`, and stops on `ESC Z`.
 - `0x12452` transparent print data is documented in
   [transparent-print-data.md](transparent-print-data.md). That command-family
   note covers delayed restore, `1a` probe handling, C0 and `0x80..0x9f`
   filtering, fixed-space output, nonzero-filter printable routing, and
   secondary-context segmented page-record output through concrete fixtures.
-- The command-family semantic notes must cite their terminal handlers and output effects
-  rather than citing parser-table membership alone.
+- New command-family semantic notes should keep citing terminal handlers and
+  output effects rather than parser-table membership alone.

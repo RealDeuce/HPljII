@@ -320,6 +320,108 @@ sections.
 - fixtures named in raster, transparent-data, downloaded-font, and macro
   sections that pass through `0x121cc` / `0x12218` before visible output.
 
+## Display Functions ESC Y Reader
+
+Status: composed as the `ESC Y` command-family reader from parser dispatch to
+append/text-routing loop. The low-level ledger remains in
+[pcl-parser-core.md](pcl-parser-core.md), with disassembly evidence in
+`generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`.
+
+Concept: `ESC Y` is not a one-byte mode bit in this firmware. It enters an
+`ESC Z`-terminated reader loop over subsequent host bytes. The normal parser
+table dispatches `ESC Y` to `0x12536`, which routes normalized bytes into text
+imaging. The alternate/data parser table dispatches `ESC Y` to `0x12120`,
+which appends normalized bytes through `0xe002`.
+
+### Field Groups
+
+- Canonical reader state:
+  - local flag `D4`: zero until the previous routed/appended value was `ESC`
+    (`0x1b`), one after `ESC`, and tested when the current value is `Z`
+    (`0x5a`) to terminate the loop.
+  - normalized payload value `D5`: fetched through `0xa904`, with local
+    `0x1a 0x58` normalized to `0x7f` after `0xd99a`.
+  Evidence: disassembly `0x12128..0x1219c` and `0x1253e..0x1261e`.
+- Parser scratch/filter state:
+  - selected slot `0x782f06`, scaled by `0x332ee`.
+  - selected context byte at `0x782eea + 0x10 * slot`, copied to `D3`.
+  - fallback high-control filter byte `0x782efa`, used when `0x783132` and
+    `0x783133` are clear.
+  - local stack word `A6-2` in `0x12536`, holding the high-control filter.
+  Evidence: disassembly `0x12540..0x12582`.
+- Firmware bookkeeping:
+  - `0xe002` append sink used by alternate/data handler `0x12120`.
+  - `0xd99a` side effect for local `0x1a 0x58` control reporting.
+  - `0xf054` CR post-handler called by `0x12536` after routed value `0x0d`.
+
+### Writers
+
+- `0x12120` writes the literal `ESC Y` prefix through `0xe002`, then appends
+  each normalized loop value through `0xe002` until `ESC Z` or `D7 = -1`.
+- `0x12536` writes visible text/fixed-space effects by calling `0xd04a` or
+  `0xd0f0` for each normalized loop value until `ESC Z` or `D7 = -1`.
+- Both handlers call `0xd99a` when local bytes `0x1a 0x58` are consumed and
+  substituted with routed/appended value `0x7f`.
+
+### Readers And Consumers
+
+- `0xa904` supplies the raw loop bytes from host, pushback, or data-chain
+  sources.
+- `0x12120` consumes the raw bytes for append-only output through `0xe002`.
+- `0x12536` consumes selected context/filter state, then routes C0 and
+  high-control ranges through the same `0xd0f0` / `0xd04a` consumers used by
+  transparent print data and direct text.
+- Downstream consumers of the normal path are source-object mapping,
+  cursor/spacing state, page-record queueing, bridge, and render entry.
+
+### Output Effect
+
+Alternate/data `0x12120` has no direct pixels in this checkpoint. It preserves
+the displayed byte stream by appending `ESC Y` and all normalized values
+through `0xe002`, with `0x1a 0x58` represented as `0x7f`, until `ESC Z`.
+
+Normal `0x12536` can produce pixels or spacing. Values `0x00..0x1f` route
+through `0xd0f0` only when the selected context byte is zero; values
+`0x80..0x9f` route through `0xd0f0` only when the high-control filter word is
+zero; all other values route through `0xd04a`. Therefore `ESC Y ... ESC Z`
+can expose control-looking bytes as visible text under nonzero filters, while
+default-filtered controls become fixed-space behavior.
+
+### Confidence
+
+High for the loop terminator, local `0x1a 0x58` normalization, alternate/data
+append behavior, normal-path C0/high-control routing predicates, and CR
+post-handler call because these are direct disassembly reads. Medium for
+page-visible `ESC Y` output as a whole until a dedicated host-fetched
+`ESC Y ... ESC Z` fixture is added; the downstream `0xd04a` / `0xd0f0`
+consumers are fixture-backed elsewhere, but the `ESC Y` loop itself is not yet
+fixture-backed.
+
+### Fixtures
+
+- No dedicated `ESC Y ... ESC Z` fixture yet.
+- Downstream route controls are shared with fixtures in `Transparent Print
+  Data` and `Text Cursor And Direct Controls`, including
+  `transparent data control payloads advance through fixed-space path` and
+  `transparent nonzero filters route controls through printable path`.
+
+### Evidence
+
+- `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`:
+  `0x12120..0x1219c` and `0x12536..0x1261e`.
+- `generated/analysis/ic30_ic13_parser_dispatch_tables.md`: normal and
+  alternate/data mode-1 `ESC Y` dispatch entries.
+- `notes/pcl-parser-core.md`: `ESC Y Display Functions Readers`.
+
+### Unresolved Middle Edges
+
+- `0x12536..0x1261e`: no dedicated parser-to-page-record fixture yet proves
+  host-fetched `ESC Y ... ESC Z` bytes through the reader loop into
+  `0xd04a` / `0xd0f0`, page-record queueing, and rendered rows.
+- `0x12120..0x1219c`: append-only path is disassembly-documented, but its
+  exact owning data-chain/frame context around `0xe002` is covered by macro
+  append fixtures rather than a dedicated `ESC Y` append fixture.
+
 ## Text Cursor And Direct Controls
 
 Status: composed as a parser-to-visible-output cluster for direct

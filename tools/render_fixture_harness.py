@@ -57661,6 +57661,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         else:
             render_bucket_word = int(page_result["bucket_index"])
             segment_summary = []
+        copy = install["copy"]
+        assert isinstance(copy, dict)
+        return_drain = consume_data_payload_count_via_12328(
+            int(copy["byte_budget"]),
+            tail_stream,
+        )
         tail_trace = trace_mixed_text_control_parser_path_via_11774(data, tail_stream)
         publication = finalize_page_record_via_ff1e(
             page_record,
@@ -57705,6 +57711,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "bitmap_size": install["bitmap_size"],
                 "allocation_size": install["allocation_size"],
                 "object_size": install["object_size"],
+            },
+            "return_boundary": {
+                "call_edge": (0x15DC6, 0x16498),
+                "return_edge": (0x16498, 0x15DCC),
+                "drain_edge": (0x15DCC, 0x12328),
+                "copy_status": copy["status"],
+                "remaining_budget_0x783140": copy["byte_budget"],
+                "drain": return_drain,
+                "next_stream_prefix": tail_stream[:1],
+                "next_handler": tail_trace["events"][0]["handler"],
             },
             "page": {
                 "path": page_result["path"],
@@ -57767,6 +57783,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "remaining_ring": case["remaining_ring"],
                 "payload_length": case["payload_length"],
                 "record": case["install"]["record"],
+                "return_boundary": case["return_boundary"],
                 "path": case["page"]["path"],
                 "selector": case["page"]["selector"],
                 "page_rows": case["page"]["rows"],
@@ -57786,6 +57803,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "remaining_ring": [],
                 "payload_length": 0x0008,
                 "record": bytes.fromhex("00 00 00 00 0c 01 00 04 00 10 00 00"),
+                "return_boundary": {
+                    "call_edge": (0x15DC6, 0x16498),
+                    "return_edge": (0x16498, 0x15DCC),
+                    "drain_edge": (0x15DCC, 0x12328),
+                    "copy_status": 1,
+                    "remaining_budget_0x783140": 0,
+                    "drain": {
+                        "status": 1,
+                        "values": [],
+                        "pos": 0,
+                        "remaining": 0,
+                        "control_hits": 0,
+                    },
+                    "next_stream_prefix": b"4",
+                    "next_handler": 0x00D04A,
+                },
                 "path": "short-page-record",
                 "selector": 0x0003,
                 "page_rows": 0x0004,
@@ -57802,6 +57835,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "remaining_ring": [],
                 "payload_length": 0x00FE,
                 "record": bytes.fromhex("00 00 00 00 0c 01 00 7f 00 10 00 00"),
+                "return_boundary": {
+                    "call_edge": (0x15DC6, 0x16498),
+                    "return_edge": (0x16498, 0x15DCC),
+                    "drain_edge": (0x15DCC, 0x12328),
+                    "copy_status": 1,
+                    "remaining_budget_0x783140": 0,
+                    "drain": {
+                        "status": 1,
+                        "values": [],
+                        "pos": 0,
+                        "remaining": 0,
+                        "control_hits": 0,
+                    },
+                    "next_stream_prefix": b"5",
+                    "next_handler": 0x00D04A,
+                },
                 "path": "short-page-record",
                 "selector": 0x0003,
                 "page_rows": 0x007F,
@@ -57818,6 +57867,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "remaining_ring": [],
                 "payload_length": 0x0106,
                 "record": bytes.fromhex("00 00 00 00 0c 01 00 83 00 10 00 00"),
+                "return_boundary": {
+                    "call_edge": (0x15DC6, 0x16498),
+                    "return_edge": (0x16498, 0x15DCC),
+                    "drain_edge": (0x15DCC, 0x12328),
+                    "copy_status": 1,
+                    "remaining_budget_0x783140": 0,
+                    "drain": {
+                        "status": 1,
+                        "values": [],
+                        "pos": 0,
+                        "remaining": 0,
+                        "control_hits": 0,
+                    },
+                    "next_stream_prefix": b"6",
+                    "next_handler": 0x00D04A,
+                },
                 "path": "segmented-page-record",
                 "selector": 0x2003,
                 "page_rows": 0x0083,
@@ -57834,6 +57899,22 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "remaining_ring": [],
                 "payload_length": 0x01FE,
                 "record": bytes.fromhex("00 00 00 00 0c 01 00 ff 00 10 00 00"),
+                "return_boundary": {
+                    "call_edge": (0x15DC6, 0x16498),
+                    "return_edge": (0x16498, 0x15DCC),
+                    "drain_edge": (0x15DCC, 0x12328),
+                    "copy_status": 1,
+                    "remaining_budget_0x783140": 0,
+                    "drain": {
+                        "status": 1,
+                        "values": [],
+                        "pos": 0,
+                        "remaining": 0,
+                        "control_hits": 0,
+                    },
+                    "next_stream_prefix": b"7",
+                    "next_handler": 0x00D04A,
+                },
                 "path": "segmented-page-record",
                 "selector": 0x2003,
                 "page_rows": 0x00FF,
@@ -85886,8 +85967,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(
         "- downloaded-glyph row-count matrix: additional rows `%s` all fetch "
         "through `ESC )s#W`, publish through printable+FF, and render through "
-        "`0x1ed84`/`0x1ef6a`; case summaries `(name, selector, buckets, "
-        "render bucket, row count, row sha256)` are `%s`." % (
+        "`0x1ed84`/`0x1ef6a`; all four return through "
+        "`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with `0x783140 = 0`, "
+        "zero drained bytes, and next handler `0xd04a`. Case summaries "
+        "`(name, selector, buckets, render bucket, row count, row sha256)` are "
+        "`%s`." % (
             ", ".join(
                 "0x%04x" % case["page"]["rows"]
                 for case in downloaded_row_count_matrix

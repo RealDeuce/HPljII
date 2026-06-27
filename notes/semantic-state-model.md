@@ -3289,9 +3289,11 @@ compact text renderer.
   - published downloaded-glyph page-record buckets copied by `0xff1e`: normal
     selector `0x0003` publishes bucket `1`, rows-`0x20` short selector
     `0x0003` publishes bucket `1`, rows-`0x40` short selector `0x0003`
-    publishes bucket `1`, linear-segmented selector `0x2003` publishes
-    buckets `1` and `9` for rows `0x81` and rows `0x82`, segmented-wide
-    selector `0x3003` publishes buckets `1` and `9`, rows-`0x0102`
+    publishes bucket `1`, row-count matrix short rows `0x04` and `0x7f`
+    publish bucket `1`, linear-segmented selector `0x2003` publishes
+    buckets `1` and `9` for rows `0x81` and rows `0x82`, row-count matrix
+    segmented rows `0x83` and `0xff` publish buckets `1` and `9`,
+    segmented-wide selector `0x3003` publishes buckets `1` and `9`, rows-`0x0102`
     downloaded installs publish only selector-`0x0003` bucket `1` because the
     printable inline source exposes row byte `0x02` to `0x12f2e`, and wide
     selector `0x1003` publishes bucket `1` for the even-span and
@@ -3302,7 +3304,8 @@ compact text renderer.
   - delayed `ESC )s#W` records restored by `0x11f96`/`0x16c14`: normal
     `80 57 00 06 00 00`, linear-segmented `80 57 01 02 00 00`, and even-span
     wide `80 57 00 12 00 00`; the rows-`0x0102` truncation fixture restores
-    `80 57 02 04 00 00`.
+    `80 57 02 04 00 00`; the row-count matrix restores `80 57 00 08 00 00`,
+    `80 57 00 fe 00 00`, `80 57 01 06 00 00`, and `80 57 01 fe 00 00`.
 - Derived/cache:
   - `0x7827c6`, `0x7827ca`, `0x7827ce`, `0x7827d2`, `0x7827d6`,
     `0x7827d8`, `0x7827da`, and `0x7827c8`: continuation state for
@@ -4180,6 +4183,9 @@ fields and every legal metric combination have not been page-compared.
   returns before handler `0xd04a`; fixture `downloaded normal row-0x80 and segmented
   glyph FF publications render page records` pins normal, row-`0x80`, and
   linear-segmented zero-drain publication returns before handler `0xd04a`; fixture
+  `downloaded glyph row-count matrix publishes and renders additional short/segmented
+  counts` pins row-count-matrix short/segmented zero-drain returns before handler
+  `0xd04a`; fixture
   `split-plane segmented downloaded glyph FF publication renders page record` pins the
   split-plane segmented zero-drain return before handler `0xd04a`; fixture `combined
   font download FF publishes installed glyph page record` pins the segmented-wide
@@ -4244,7 +4250,10 @@ fields and every legal metric combination have not been page-compared.
   compact target `0x1effe`/`0x1fe76`. Fixture `downloaded glyph row-count matrix
   publishes and renders additional short/segmented counts` adds rows `0x04`, `0x7f`,
   `0x83`, and `0xff` through the same printable+FF, `0xff1e`, and `0x1ed84`/`0x1ef6a`
-  boundary, with selectors `0x0003`, `0x0003`, `0x2003`, and `0x2003`. Fixture
+  boundary, with selectors `0x0003`, `0x0003`, `0x2003`, and `0x2003`. It also pins the
+  shared full-success return boundary for all four rows:
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, copy status `1`, `0x783140 = 0`, no
+  drained bytes, and next handler `0xd04a`. Fixture
   `host-fetched even-span downloaded glyph FF publishes rendered page record` renders
   the copied bucket-1 record through `0x1ed84`/`0x1ef6a` and compact target
   `0x1effe`/`0x1f0d2`. Fixture `host-fetched payload-control downloaded glyph FF

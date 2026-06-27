@@ -530,8 +530,9 @@ The next work should follow dataflow, not isolated handlers:
    short rows `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`, and `0x80` and segmented
    rows `0x81`, `0x82`, `0x83`, and `0xff`, descriptor grammar forms outside the covered
    helper-table path and full-success return-boundary siblings beyond the covered normal
-   even-span, no-install, status-`2`, linear-segmented publication, split-plane
-   segmented publication, and segmented-wide publication zero-drain cases plus the
+   even-span, no-install, status-`2`, row-count-matrix short/segmented,
+   linear-segmented publication, split-plane segmented publication, and
+   segmented-wide publication zero-drain cases plus the
    payload-control wide nonzero-drain `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` case.
    The accepted mode-byte boundary itself is covered by fixture `0x16b1a descriptor
    width helper emits only mode 1/2`, which pins `0x16b36..0x16b6a` accepted writes and
@@ -555,7 +556,10 @@ The next work should follow dataflow, not isolated handlers:
    downloaded-glyph row-count matrix now adds short rows `0x04` and `0x7f` on selector
    `0x0003`/bucket `1`, plus segmented rows `0x83` and `0xff` on selector
    `0x2003`/buckets `1` and `9`, all through printable+FF, `0xff1e`, and
-   `0x1ed84`/`0x1ef6a`; published row counts are `10`, `64`, `9`, and `16`. The
+   `0x1ed84`/`0x1ef6a`; published row counts are `10`, `64`, `9`, and `16`.
+   All four row-count matrix cases now also pin
+   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with copy status `1`,
+   `0x783140 = 0`, zero drained bytes, and next handler `0xd04a`. The
    `0x16498` replacement/allocation-failure/partial/reject fixture now has a
    rows-`0x0102` sibling: `ESC )s516W` installs record `00 00 00 00 0c 01 01 02 00 10 00
    00`, but the printable page source exposes row byte `0x02`, so `0x12f2e` queues
@@ -575,8 +579,11 @@ The next work should follow dataflow, not isolated handlers:
    trailing FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` with the same rows. Remaining
    downloaded-character publication risk is broader publication combinations beyond
    these payload-control, row-count-matrix, rows-`0x20` short, rows-`0x40` short,
-   rows-`0x82` segmented, no-install, and status-`2` compact bucket variants, not the
-   documented mode-byte-`0` visible recovery boundary. The publication-command
+   rows-`0x82` segmented, no-install, and status-`2` compact bucket variants, plus
+   full-success return-boundary siblings outside the now-pinned row-count-matrix,
+   normal, row-`0x80`, linear-segmented, split-plane segmented, segmented-wide, and
+   payload-control cases. It is not the documented mode-byte-`0` visible recovery
+   boundary. The publication-command
    checkpoint now covers host-fetched reset, FF, page-size, orientation, paper-source,
    and copies streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`,
    and final row comparison; reset, FF, page-size, orientation, paper-source, and copies

@@ -272,8 +272,8 @@ Published page-record state:
   matrix; it is row counts outside those sampled selector-family fixtures,
   broader publication cross-products, and live CPU continuity for full-success
   return siblings outside the pinned normal even-span, no-install, status-`2`,
-  linear-segmented publication, and split-plane segmented publication return
-  fixtures. Accepted
+  row-count-matrix, linear-segmented publication, split-plane segmented publication,
+  segmented-wide, and payload-control publication return fixtures. Accepted
   descriptor-record mode bytes are no longer a vague
   open edge for this helper table: fixture `0x16b1a descriptor width helper
   emits only mode 1/2` proves `0x16b1a` writes only mode `1`/`2`, while
@@ -1230,8 +1230,11 @@ Segmented rows `0x0083` and `0x00ff` install records
 `00 00 00 00 0c 01 00 83 00 10 00 00` and
 `00 00 00 00 0c 01 00 ff 00 10 00 00`, publish buckets `1` and `9`, keep
 selector `0x2003`, and render bucket word `9` through compact target `0x1effe`
-with object byte `0x20`. The published-row counts are `10`, `64`, `9`, and
-`16`; row hashes are respectively
+with object byte `0x20`. The published-row counts are `10`, `64`, `9`, and `16`. All
+four cases now also pin the full-success return boundary
+`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`: copy status is `1`, `0x783140` is
+`0`, `0x12328` drains no bytes, and the next parser handler is `0xd04a` for printable
+bytes `0x34`, `0x35`, `0x36`, and `0x37`. Row hashes are respectively
 `0c25b1b238e8805219f48c7b2cc034253fb84a7f3f0423fe68af1a2bba2b0498`,
 `5000f7a7c66dd0c0e520daafd9a3b2de08aa6b67196dc4623e3ee0ed673fa47c`,
 `1d737da9bde647abe8c186eba9dfa0253652aa4d929d7fd30055529083b40af4`, and
@@ -1775,14 +1778,18 @@ A byte-stream renderer must preserve:
   truncated, linear-segmented, rows-`0x82` segmented, split-plane segmented,
   segmented-wide, even-span wide, payload-control wide, no-install, and status-`2`
   compact bucket variants, and return-boundary variants beyond the covered
-  normal even-span, no-install, status-`2`, linear-segmented publication,
-  split-plane segmented publication, and segmented-wide publication fixtures. The
+  normal even-span, no-install, status-`2`, row-count-matrix short/segmented,
+  linear-segmented publication, split-plane segmented publication, and segmented-wide
+  publication fixtures. The
   normal even-span fixture pins
   the `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` boundary with zero remaining
   budget and next handler `0x10e68`; fixture `0x16498 no-install exits preserve
   following printable output` pins six-byte `0x12328` drains before handler
   `0xd04a`; fixture `0x16498 status-2 partial installs remain printable` pins
   the linear/split status-`2` zero-drain returns before handler `0xd04a`;
+  fixture `downloaded glyph row-count matrix publishes and renders additional
+  short/segmented counts` pins the rows-`0x04`, rows-`0x7f`, rows-`0x83`, and
+  rows-`0xff` zero-drain returns before handler `0xd04a`;
   fixture `downloaded normal row-0x80 and segmented glyph FF publications
   render page records` pins normal, row-`0x80`, and linear-segmented zero-drain
   returns before handler `0xd04a`; fixture `split-plane segmented downloaded

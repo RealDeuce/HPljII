@@ -56697,6 +56697,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_segmented_even_publication_tail,
         )
     )
+    downloaded_linear_publication_return_drain = consume_data_payload_count_via_12328(
+        int(downloaded_linear_payload["copy"]["byte_budget"]),  # type: ignore[index]
+        downloaded_linear_publication_tail,
+    )
+    downloaded_row80_publication_return_drain = consume_data_payload_count_via_12328(
+        int(downloaded_row80_payload_install["copy"]["byte_budget"]),  # type: ignore[index]
+        downloaded_row80_publication_tail,
+    )
+    downloaded_segmented_even_publication_return_drain = (
+        consume_data_payload_count_via_12328(
+            int(downloaded_segmented_even_payload_install["copy"]["byte_budget"]),  # type: ignore[index]
+            downloaded_segmented_even_publication_tail,
+        )
+    )
     downloaded_linear_publication = finalize_page_record_via_ff1e(
         downloaded_linear_page_record,
         reset_fixture_state(
@@ -56785,8 +56799,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "font_trace": downloaded_linear_dispatch_trace,
             "font_command": downloaded_linear_dispatch_command,
             "font_stream": downloaded_linear_command_stream,
+            "install": downloaded_linear_payload,
             "tail": downloaded_linear_publication_tail,
             "tail_trace": downloaded_linear_publication_tail_trace,
+            "return_drain": downloaded_linear_publication_return_drain,
             "publication": downloaded_linear_publication,
             "published_fields": downloaded_linear_published_fields,
             "published_render": downloaded_linear_published_render,
@@ -56797,8 +56813,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "font_trace": downloaded_row80_dispatch_trace,
             "font_command": downloaded_row80_dispatch_command,
             "font_stream": downloaded_row80_command_stream,
+            "install": downloaded_row80_payload_install,
             "tail": downloaded_row80_publication_tail,
             "tail_trace": downloaded_row80_publication_tail_trace,
+            "return_drain": downloaded_row80_publication_return_drain,
             "publication": downloaded_row80_publication,
             "published_fields": downloaded_row80_published_fields,
             "published_render": downloaded_row80_published_render,
@@ -56809,8 +56827,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "font_trace": downloaded_segmented_even_dispatch_trace,
             "font_command": downloaded_segmented_even_dispatch_command,
             "font_stream": downloaded_segmented_even_command_stream,
+            "install": downloaded_segmented_even_payload_install,
             "tail": downloaded_segmented_even_publication_tail,
             "tail_trace": downloaded_segmented_even_publication_tail_trace,
+            "return_drain": downloaded_segmented_even_publication_return_drain,
             "publication": downloaded_segmented_even_publication,
             "published_fields": downloaded_segmented_even_published_fields,
             "published_render": downloaded_segmented_even_published_render,
@@ -56843,6 +56863,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "restored_record": variant["font_command"]["restored_record"],
                     "payload_offset": variant["font_command"]["payload_offset"],
                     "payload_length": len(variant["font_command"]["payload"]),
+                    "return_boundary": {
+                        "call_edge": (0x15DC6, 0x16498),
+                        "return_edge": (0x16498, 0x15DCC),
+                        "drain_edge": (0x15DCC, 0x12328),
+                        "remaining_budget_0x783140": (
+                            variant["install"]["copy"]["byte_budget"]
+                        ),
+                        "drain": variant["return_drain"],
+                        "next_stream_prefix": variant["tail"][:1],
+                        "next_handler": variant["tail_trace"]["events"][0]["handler"],
+                    },
                 },
                 "tail": {
                     "stream": variant["tail"],
@@ -56927,6 +56958,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "restored_record": b"\x80W\x00\x06\x00\x00",
                     "payload_offset": 5,
                     "payload_length": 6,
+                    "return_boundary": {
+                        "call_edge": (0x15DC6, 0x16498),
+                        "return_edge": (0x16498, 0x15DCC),
+                        "drain_edge": (0x15DCC, 0x12328),
+                        "remaining_budget_0x783140": 0,
+                        "drain": {
+                            "status": 1,
+                            "values": [],
+                            "pos": 0,
+                            "remaining": 0,
+                            "control_hits": 0,
+                        },
+                        "next_stream_prefix": b"&",
+                        "next_handler": 0x00D04A,
+                    },
                 },
                 "tail": {
                     "stream": b"&\x0c",
@@ -57000,6 +57046,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "restored_record": b"\x80W\x01\x00\x00\x00",
                     "payload_offset": 7,
                     "payload_length": 256,
+                    "return_boundary": {
+                        "call_edge": (0x15DC6, 0x16498),
+                        "return_edge": (0x16498, 0x15DCC),
+                        "drain_edge": (0x15DCC, 0x12328),
+                        "remaining_budget_0x783140": 0,
+                        "drain": {
+                            "status": 1,
+                            "values": [],
+                            "pos": 0,
+                            "remaining": 0,
+                            "control_hits": 0,
+                        },
+                        "next_stream_prefix": b"*",
+                        "next_handler": 0x00D04A,
+                    },
                 },
                 "tail": {
                     "stream": b"*\x0c",
@@ -57073,6 +57134,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "restored_record": b"\x80W\x01\x02\x00\x00",
                     "payload_offset": 7,
                     "payload_length": 0x0102,
+                    "return_boundary": {
+                        "call_edge": (0x15DC6, 0x16498),
+                        "return_edge": (0x16498, 0x15DCC),
+                        "drain_edge": (0x15DCC, 0x12328),
+                        "remaining_budget_0x783140": 0,
+                        "drain": {
+                            "status": 1,
+                            "values": [],
+                            "pos": 0,
+                            "remaining": 0,
+                            "control_hits": 0,
+                        },
+                        "next_stream_prefix": b"'",
+                        "next_handler": 0x00D04A,
+                    },
                 },
                 "tail": {
                     "stream": b"'\x0c",
@@ -57495,6 +57571,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_split_segmented_publication_tail,
         )
     )
+    downloaded_split_segmented_publication_return_drain = (
+        consume_data_payload_count_via_12328(
+            int(downloaded_split_segmented_payload_install["copy"]["byte_budget"]),  # type: ignore[index]
+            downloaded_split_segmented_publication_tail,
+        )
+    )
     downloaded_split_segmented_publication = finalize_page_record_via_ff1e(
         downloaded_split_segmented_page_record,
         reset_fixture_state(
@@ -57551,6 +57633,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "payload_offset": downloaded_split_segmented_dispatch_command["payload_offset"],
                 "payload_length": len(downloaded_split_segmented_dispatch_command["payload"]),
                 "split_plane": downloaded_split_segmented_payload_install["split_plane"],
+                "return_boundary": {
+                    "call_edge": (0x15DC6, 0x16498),
+                    "return_edge": (0x16498, 0x15DCC),
+                    "drain_edge": (0x15DCC, 0x12328),
+                    "remaining_budget_0x783140": (
+                        downloaded_split_segmented_payload_install["copy"]["byte_budget"]
+                    ),
+                    "drain": downloaded_split_segmented_publication_return_drain,
+                    "next_stream_prefix": downloaded_split_segmented_publication_tail[:1],
+                    "next_handler": (
+                        downloaded_split_segmented_publication_tail_trace["events"][0][
+                            "handler"
+                        ]
+                    ),
+                },
             },
             "tail": {
                 "stream": downloaded_split_segmented_publication_tail,
@@ -57639,6 +57736,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "payload_offset": 7,
                 "payload_length": 0x0183,
                 "split_plane": True,
+                "return_boundary": {
+                    "call_edge": (0x15DC6, 0x16498),
+                    "return_edge": (0x16498, 0x15DCC),
+                    "drain_edge": (0x15DCC, 0x12328),
+                    "remaining_budget_0x783140": 0,
+                    "drain": {
+                        "status": 1,
+                        "values": [],
+                        "pos": 0,
+                        "remaining": 0,
+                        "control_hits": 0,
+                    },
+                    "next_stream_prefix": b"(",
+                    "next_handler": 0x00D04A,
+                },
             },
             "tail": {
                 "stream": b"(\x0c",
@@ -83539,12 +83651,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         lines,
         "- split-plane segmented downloaded glyph publication: appending "
         "printable `0x28` and FF after `ESC )s387W` routes tail handlers "
-        "`0x%04x` and `0x%04x`, publishes bucket `%d` through `0xff1e`, "
-        "preserves bucket-array entries `%s`, and renders through `0x1ed84` "
-        "/ `0x1ef6a` row `%s`."
+        "`0x%04x` and `0x%04x` after a zero-byte return drain to handler "
+        "`0x%05x`, publishes bucket `%d` through `0xff1e`, preserves "
+        "bucket-array entries `%s`, and renders through `0x1ed84` / "
+        "`0x1ef6a` row `%s`."
         % (
             downloaded_split_segmented_publication_tail_trace["events"][0]["handler"],
             downloaded_split_segmented_publication_tail_trace["events"][1]["handler"],
+            downloaded_split_segmented_publication_tail_trace["events"][0]["handler"],
             downloaded_split_segmented_publication["bucket_index"],
             ", ".join(
                 str(bucket)
@@ -84291,7 +84405,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "- normal/row-0x80/segmented downloaded-glyph FF publications: "
         "host-fetched `ESC )s6W` plus printable `&` and FF restores record "
         "`%s`; `ESC )s256W` plus printable `*` and FF restores record `%s`; "
-        "`ESC )s258W` plus printable `'` and FF restores record `%s`. Tail "
+        "`ESC )s258W` plus printable `'` and FF restores record `%s`. "
+        "Zero-byte return drains resume at handlers `%s`/`%s`/`%s`; tail "
         "handlers `%s`/`%s`/`%s` publish bucket entries `%s`/`%s`/`%s`, "
         "render bucket words `%d`/`%d`/`%d`, and dispatch object bytes "
         "`0x%02x`/`0x%02x`/`0x%02x` to `0x%05x` for "
@@ -84310,6 +84425,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "restored_record"
                 ]
             ),
+            "0x%05x" % downloaded_linear_publication_tail_trace["events"][0]["handler"],
+            "0x%05x" % downloaded_row80_publication_tail_trace["events"][0]["handler"],
+            "0x%05x"
+            % downloaded_segmented_even_publication_tail_trace["events"][0]["handler"],
             ", ".join(
                 "0x%05x" % event["handler"]
                 for event in downloaded_linear_publication_tail_trace["events"]

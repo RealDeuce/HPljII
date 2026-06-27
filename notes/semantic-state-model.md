@@ -3468,13 +3468,23 @@ and `0x11f96`; `0x16498` installs glyph `0x27` at table entry `0x00e6` with reco
 copied through `0x168dc`; `0x12f2e` queues selector `0x2003`; `0x1edc6` preserves the
 segment-1 object; and `0x1ef6a` reaches compact renderer `0x1f1f0`. The visible output
 is one segment-1 row from source offset `0x0100`, rendered at x `22` as
-`####........####`. Fixture `host-fetched split-plane segmented downloaded character
+`####........####`. Fixture `downloaded normal row-0x80 and segmented glyph FF
+publications render page records` now carries that linear segmented install through the
+parser return and publication path: after `ESC )s258W`, the return boundary is
+`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, `0x783140 = 0`, zero drained bytes, and
+next handler `0xd04a` for printable `'`; the derived published state is bucket word `9`
+with bucket entries `1` and `9`, empty rule/fixed lists, and context slots `(0,0,0,0)`.
+Fixture `host-fetched split-plane segmented downloaded character
 renders through 0x1f1f0` adds the odd-span A2/A3 sibling. Host fetch drains `ESC
 )s387W`; `0x16498` installs glyph `0x28` at table entry `0x00ea`, record delta `0x0700`,
 rows `0x0081`, width `0x0018`, bitmap offset `0x070c`, and `0x0183` bytes copied through
 `0x16942`. `0x12f2e` still queues selector `0x2003`, but `0x1f1f0` validates A2 source
 offset `0x0100` and A3 trailing offset `0x0080` for segment `1`. The visible output is
-`####........#####.#.#.#.` at x `22`. Fixture `host-fetched even-span wide downloaded
+`####........#####.#.#.#.` at x `22`. Fixture `split-plane segmented downloaded glyph
+FF publication renders page record` pins the same return/publication contract for the
+odd-span stream: `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, `0x783140 = 0`, zero-byte
+drain, and next handler `0xd04a` for printable `(` before `0xff1e` publishes bucket word
+`9`. Fixture `host-fetched even-span wide downloaded
 character renders through 0x1f0d2` covers the wide selector without payload-control
 normalization: `0xa904` fetches `ESC )s18W`, parser dispatch reaches delayed handler
 `0x16c14` with restored record `80 57 00 12 00 00`, `0x16498` installs glyph `0x29` at
@@ -3653,12 +3663,12 @@ Field groups:
 - Firmware bookkeeping: active-copy words reported by the fixture are
   zeroed source/render work words before the fixture sets render word `+0x10`
   for bucket `5`; no page publication or root clear occurs in this checkpoint.
-- Unknown for this checkpoint: split-plane and segmented full-success
-  return-boundary siblings outside the even-span downloaded-glyph plus
-  rule/raster stream and outside the separate no-install/status-`2` visible
-  fixtures. The page stream itself now drives the glyph, rule, and raster
-  producers together; the font payload install still enters the page phase as
-  a modeled resource image.
+- Unknown for this checkpoint: full-success return-boundary siblings outside
+  the even-span downloaded-glyph plus rule/raster stream and outside the
+  separate no-install/status-`2` and segmented-publication visible fixtures.
+  The page stream itself now drives the glyph, rule, and raster producers
+  together; the font payload install still enters the page phase as a modeled
+  resource image.
 
 The modeled resource image is now a pinned handoff, not an implicit fixture
 shortcut. The page-stream runner uses exactly
@@ -3674,9 +3684,10 @@ downloaded glyph rule raster stream composes through 0x1ef6a` now pins that
 even-span boundary as `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, with copy
 status `1`, copy stream position `18`, remaining `0x783140 = 0`, a zero-byte
 `0x12328` drain, and next handler `0x10e68`. The split-plane, segmented,
-no-install, and status-`2` return-boundary siblings are covered by separate
-visible-output fixtures only where cited below; split-plane and segmented
-full-success return siblings remain open cross-products.
+no-install, status-`2`, linear segmented, and split-plane segmented
+return-boundary siblings are covered by separate visible-output fixtures only
+where cited below; other full-success return siblings remain open
+cross-products.
 
 Readers and output effect: `0x1ef6a` runs call order `0x1ef86`, `0x1efc2`,
 `0x1f446`, `0x1f756`. The bucket dispatcher sends the raster object to
@@ -3875,15 +3886,21 @@ fields and every legal metric combination have not been page-compared.
   low-byte-truncated table-limit boundary, linear-segmented, rows-`0x82` segmented,
   split-plane segmented, segmented-wide, even-span wide, payload-control wide,
   no-install, and status-`2` compact bucket variants, and return-boundary siblings
-  outside the covered normal even-span, no-install, and status-`2` fixtures. The
-  normal even-span fixture `parser-driven downloaded glyph rule raster stream composes
-  through 0x1ef6a` pins
+  outside the covered normal even-span, no-install, status-`2`, linear segmented
+  publication, and split-plane segmented publication fixtures. The normal even-span
+  fixture `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
+  pins
   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with zero remaining budget and next
   handler `0x10e68`; fixture `0x16498 no-install exits preserve following printable
   output` pins six-byte `0x12328` drains before handler `0xd04a`; fixture `0x16498
   status-2 partial installs remain printable` pins linear/split status-`2` zero-drain
-  returns before handler `0xd04a`. Split-plane and segmented full-success
-  return-boundary siblings remain open cross-products. Accepted
+  returns before handler `0xd04a`; fixture `downloaded normal row-0x80 and segmented
+  glyph FF publications render page records` pins normal, row-`0x80`, and
+  linear-segmented zero-drain publication returns before handler `0xd04a`; fixture
+  `split-plane segmented downloaded glyph FF publication renders page record` pins the
+  split-plane segmented zero-drain return before handler `0xd04a`. Segmented-wide,
+  payload-control wide, and other uncomposed full-success return siblings remain open
+  cross-products. Accepted
   descriptor-record mode bytes are closed for the covered helper table by fixture
   `0x16b1a descriptor width helper emits only mode 1/2`: `0x16b36..0x16b6a` writes
   mode `1`/`2` from span parity, and `0x16b26..0x16b34` rejects invalid widths without

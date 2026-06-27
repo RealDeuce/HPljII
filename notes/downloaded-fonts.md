@@ -269,9 +269,10 @@ Published page-record state:
   wide bucket-1 streams. The remaining row-count risk is no longer the
   `0x80`/`0x81` selector boundary itself or the newly covered short/segmented
   matrix; it is row counts outside those sampled selector-family fixtures,
-  broader publication cross-products, and live CPU continuity for split-plane
-  and segmented full-success return siblings outside the pinned normal
-  even-span, no-install, and status-`2` return fixtures. Accepted
+  broader publication cross-products, and live CPU continuity for full-success
+  return siblings outside the pinned normal even-span, no-install, status-`2`,
+  linear-segmented publication, and split-plane segmented publication return
+  fixtures. Accepted
   descriptor-record mode bytes are no longer a vague
   open edge for this helper table: fixture `0x16b1a descriptor width helper
   emits only mode 1/2` proves `0x16b1a` writes only mode `1`/`2`, while
@@ -1036,7 +1037,9 @@ row at source offset `0x0100` as `####........####` beginning at x `22`.
 The same publication fixture covers the FF sibling for this linear-segmented
 selector. The host-fetched `ESC )s258W` stream plus printable `'` and FF
 restores record `80 57 01 02 00 00`, starts the payload at offset `7`, routes
-tail handlers `0xd04a` and `0xf0f0`, publishes bucket `9` object
+the return boundary through `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with
+`0x783140 = 0`, a zero-byte `0x12328` drain, and next handler `0xd04a` for
+printable `'`. Tail handlers `0xd04a` and `0xf0f0` publish bucket `9` object
 `00 00 00 00 20 03 00 01 27 01 66 01`, and also preserves the segment-0 bucket
 `1` entry. The published record has empty rule/fixed lists, context slots
 `(0, 0, 0, 0)`, cleared current root, render bucket word `9`, compact target
@@ -1105,8 +1108,10 @@ offset `0x0100` and A3 offset `0x0080`, then renders
 Fixture `split-plane segmented downloaded glyph FF publication renders page
 record` carries the same odd-span stream through the page-publication boundary.
 The host-fetched `ESC )s387W` stream plus printable `(` and FF restores record
-`80 57 01 83 00 00`, starts the payload at offset `7`, routes tail handlers
-`0xd04a` and `0xf0f0`, and publishes bucket `9` through `0xff1e`. The
+`80 57 01 83 00 00`, starts the payload at offset `7`, returns through
+`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with `0x783140 = 0`, a zero-byte
+`0x12328` drain, and handler `0xd04a` for printable `(`. Tail handlers
+`0xd04a` and `0xf0f0` publish bucket `9` through `0xff1e`. The
 published bucket root is `00 00 00 00 20 03 00 01 28 01 66 01` plus allocator
 padding, and the bucket array preserves both bucket `1`
 `00 00 00 00 20 03 00 01 28 00 66 01` and bucket `9`
@@ -1601,16 +1606,20 @@ A byte-stream renderer must preserve:
   truncated, linear-segmented, rows-`0x82` segmented, split-plane segmented,
   segmented-wide, even-span wide, payload-control wide, no-install, and status-`2`
   compact bucket variants, and return-boundary variants beyond the covered
-  normal even-span, no-install, and status-`2`
-  `parser-driven downloaded glyph rule raster stream composes through
-  0x1ef6a`/visible-output fixtures. The normal even-span fixture pins the
-  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` boundary with zero remaining
+  normal even-span, no-install, status-`2`, linear-segmented publication, and
+  split-plane segmented publication fixtures. The normal even-span fixture pins
+  the `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` boundary with zero remaining
   budget and next handler `0x10e68`; fixture `0x16498 no-install exits preserve
   following printable output` pins six-byte `0x12328` drains before handler
   `0xd04a`; fixture `0x16498 status-2 partial installs remain printable` pins
-  the linear/split status-`2` zero-drain returns before handler `0xd04a`.
-  Split-plane and segmented full-success return-boundary siblings are still
-  bounded cross-products. Accepted
+  the linear/split status-`2` zero-drain returns before handler `0xd04a`;
+  fixture `downloaded normal row-0x80 and segmented glyph FF publications
+  render page records` pins normal, row-`0x80`, and linear-segmented zero-drain
+  returns before handler `0xd04a`; fixture `split-plane segmented downloaded
+  glyph FF publication renders page record` pins the split-plane segmented
+  zero-drain return before handler `0xd04a`. Segmented-wide, payload-control
+  wide, and other uncomposed full-success return siblings are still bounded
+  cross-products. Accepted
   descriptor-record mode bytes are closed for the covered helper table by
   fixture `0x16b1a descriptor width helper emits only mode 1/2`: disassembly
   `0x16b36..0x16b6a` writes mode `1`/`2` from span parity, and

@@ -490,12 +490,20 @@ pins non-success no-install return edges through the same
 Fixture `0x16498 status-2 partial installs remain printable` pins the linear
 and split-plane partial-install siblings with `0x783140 = 0`, a zero-byte
 `0x12328` drain, and the same next printable handler `0xd04a`.
+Fixture `downloaded normal row-0x80 and segmented glyph FF publications render
+page records` now pins normal, row-`0x80`, and linear-segmented full-success
+publication returns through the same boundary with `0x783140 = 0`, zero-byte
+`0x12328` drains, and next printable handler `0xd04a`; fixture
+`split-plane segmented downloaded glyph FF publication renders page record`
+pins the corresponding split-plane segmented return before printable `(` and
+FF publication.
 Remaining work is additional metric-value combinations outside those pinned
 legal matrix, boundary, and low-nibble endpoints, validation/error page behavior
 beyond those bounded predicate and short-budget no-install branches, remaining
-release variants, split-plane/segmented full-success return-boundary siblings
-beyond the covered normal even-span, no-install, and status-`2` cases, broader
-publication combinations beyond the covered
+release variants, full-success return-boundary siblings beyond the covered
+normal even-span, no-install, status-`2`, linear-segmented publication, and
+split-plane segmented publication cases, broader publication combinations
+beyond the covered
 normal, nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented,
 rows-`0x20` short, rows-`0x40` short, row-count-matrix rows
 `0x04`/`0x7f`/`0x83`/`0xff`, rows-`0x82` segmented, rows-`0x0102`

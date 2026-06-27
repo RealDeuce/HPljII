@@ -325,9 +325,9 @@ pixels or byte-stream compatibility.
    fixture `0x16b1a descriptor width helper emits only mode 1/2`: `0x16b36..0x16b6a`
    writes only mode `1`/`2` from span parity, and `0x16b26..0x16b34` rejects invalid
    widths without scratch writes. The full soft-font descriptor grammar, other release
-   variants, split-plane/segmented full-success return-boundary siblings outside the
-   even-span rule/raster path, and page-visible behavior for descriptor error forms
-   beyond those no-install boundaries
+   variants, full-success return-boundary siblings outside the even-span rule/raster
+   path and outside the segmented-publication fixtures, and page-visible behavior for
+   descriptor error forms beyond those no-install boundaries
    are still not proven against every PCL form. The mode-byte-`0` no-install boundary is
    documented separately: fixture `0x16498 replacement allocation failure partial and
    rejected downloaded character exits preserve state` proves the unchanged table/header
@@ -344,6 +344,9 @@ pixels or byte-stream compatibility.
    The no-install visible-output fixture pins the same return edges with
    `0x783140 = 6`, six drained rejected-payload bytes, and next handler `0xd04a`;
    the status-`2` partial-install fixture pins the linear/split returns with
+   `0x783140 = 0`, zero drain, and next handler `0xd04a`.
+   The downloaded-glyph publication fixtures now also pin normal, row-`0x80`,
+   linear-segmented, and split-plane segmented full-success publication returns with
    `0x783140 = 0`, zero drain, and next handler `0xd04a`.
 5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
@@ -463,9 +466,10 @@ The next work should follow dataflow, not isolated handlers:
    payload-control wide selector families, especially row counts outside the covered
    short rows `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`, and `0x80` and segmented
    rows `0x81`, `0x82`, `0x83`, and `0xff`, descriptor grammar forms outside the
-   covered helper-table path and split-plane/segmented full-success return-boundary
-   siblings beyond the covered normal even-span, no-install, and status-`2`
-   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` cases.
+   covered helper-table path and full-success return-boundary siblings beyond the
+   covered normal even-span, no-install, status-`2`, linear-segmented publication, and
+   split-plane segmented publication `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`
+   cases.
    The accepted mode-byte boundary itself is covered by fixture
    `0x16b1a descriptor width helper emits only mode 1/2`, which pins
    `0x16b36..0x16b6a` accepted writes and `0x16b26..0x16b34` invalid no-writes. The

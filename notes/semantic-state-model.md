@@ -387,19 +387,27 @@ zero; all other values route through `0xd04a`. Therefore `ESC Y ... ESC Z`
 can expose control-looking bytes as visible text under nonzero filters, while
 default-filtered controls become fixed-space behavior.
 
+Fixture `ESC Y display-functions stream reaches page-record output` proves the
+normal parser-to-page-record boundary for `ESC Y!\x05! ESC Z`: handler
+`0x12536` consumes values `21 05 21 1b 5a`, routes them
+`d04a d0f0 d04a d0f0 d04a`, treats the terminating `ESC Z` bytes as routed
+values before exit, queues visible `!`, `!`, and `Z` entries at compact coords
+`0x0001`, `0x0403`, and `0x0405`, and renders row digest
+`c7d0fb0a66181acd591244aab0a7f450f895b3b89ea98d189a00a25c3de04d85`.
+
 ### Confidence
 
 High for the loop terminator, local `0x1a 0x58` normalization, alternate/data
 append behavior, normal-path C0/high-control routing predicates, and CR
-post-handler call because these are direct disassembly reads. Medium for
-page-visible `ESC Y` output as a whole until a dedicated host-fetched
-`ESC Y ... ESC Z` fixture is added; the downstream `0xd04a` / `0xd0f0`
-consumers are fixture-backed elsewhere, but the `ESC Y` loop itself is not yet
-fixture-backed.
+post-handler call because these are direct disassembly reads. High for the
+normal `0x12536` parser-to-page-record boundary because the dedicated
+host-fetched fixture now drives `ESC Y ... ESC Z` through `0xd04a`, `0xd0f0`,
+compact object queueing, bridge, and rendered rows. Medium for the
+alternate/data append path until it has a dedicated `ESC Y` append fixture.
 
 ### Fixtures
 
-- No dedicated `ESC Y ... ESC Z` fixture yet.
+- `ESC Y display-functions stream reaches page-record output`
 - Downstream route controls are shared with fixtures in `Transparent Print
   Data` and `Text Cursor And Direct Controls`, including
   `transparent data control payloads advance through fixed-space path` and
@@ -415,9 +423,6 @@ fixture-backed.
 
 ### Unresolved Middle Edges
 
-- `0x12536..0x1261e`: no dedicated parser-to-page-record fixture yet proves
-  host-fetched `ESC Y ... ESC Z` bytes through the reader loop into
-  `0xd04a` / `0xd0f0`, page-record queueing, and rendered rows.
 - `0x12120..0x1219c`: append-only path is disassembly-documented, but its
   exact owning data-chain/frame context around `0xe002` is covered by macro
   append fixtures rather than a dedicated `ESC Y` append fixture.

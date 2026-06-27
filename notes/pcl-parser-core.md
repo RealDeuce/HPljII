@@ -303,7 +303,10 @@ direct text and transparent print data.
 Evidence: normal parser dispatch table mode 1 entry for byte `0x59` to
 `0x12536`, alternate/data mode 1 entry for byte `0x59` to `0x12120`, and
 disassembly `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`
-at `0x12120..0x1219c` and `0x12536..0x1261e`.
+at `0x12120..0x1219c` and `0x12536..0x1261e`. Fixture
+`ESC Y display-functions stream reaches page-record output` proves the normal
+handler consumes `ESC Y!\x05! ESC Z`, routes values `21 05 21 1b 5a`, queues
+visible `!`, `!`, and `Z`, and renders the resulting page-record rows.
 
 ## Delayed Payload Scheduler
 

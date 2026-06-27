@@ -473,6 +473,79 @@ def consume_transparent_text_via_12452(
     }
 
 
+def consume_display_functions_text_via_12536(
+    payload: bytes,
+    selected_context_byte: int = 0,
+    local_filtering_word: int = 0,
+) -> dict[str, object]:
+    d3_context = int(selected_context_byte) & 0xFF
+    filtering_word = int(local_filtering_word) & 0xFFFF
+    host_state = host_byte_fetch_state(data_chain=list(payload))
+    values: list[int] = []
+    routes: list[int] = []
+    sources: list[str] = []
+    cr_post_handlers: list[int] = []
+    control_hits = 0
+    esc_seen = 0
+    status = 1
+    terminated = False
+    while True:
+        result = host_byte_fetch_via_a904(host_state)
+        value = int(result["d7"])
+        if value < 0:
+            status = 0
+            break
+        host_state = result["state"]
+        if not isinstance(host_state, dict):
+            raise AssertionError("0x12536 host fetch did not return a state dictionary")
+        sources.append(str(result["source"]))
+        value &= 0xFF
+        if value == 0x1A:
+            probe = host_byte_fetch_via_a904(host_state)
+            probe_value = int(probe["d7"])
+            if probe_value < 0:
+                status = 0
+                break
+            host_state = probe["state"]
+            if not isinstance(host_state, dict):
+                raise AssertionError("0x12536 control probe did not return a state dictionary")
+            sources.append(str(probe["source"]))
+            if (probe_value & 0xFF) == 0x58:
+                value = 0x7F
+                control_hits += 1
+            else:
+                value = probe_value & 0xFF
+        values.append(value)
+        if value <= 0x1F and d3_context == 0:
+            routes.append(0x00D0F0)
+        elif 0x80 <= value <= 0x9F and filtering_word == 0:
+            routes.append(0x00D0F0)
+        else:
+            routes.append(0x00D04A)
+        if value == 0x0D:
+            cr_post_handlers.append(len(values) - 1)
+        if value == 0x1B:
+            esc_seen = 1
+            continue
+        if value == 0x5A and esc_seen:
+            terminated = True
+            break
+        esc_seen = 0
+    remaining_chain = list(host_state.get("data_chain", []))
+    return {
+        "selected_context_byte": d3_context,
+        "local_filtering_word": filtering_word,
+        "status": status,
+        "terminated": terminated,
+        "values": values,
+        "routes": routes,
+        "sources": sources,
+        "remaining_payload": remaining_chain,
+        "control_hits": control_hits,
+        "cr_post_handlers": cr_post_handlers,
+    }
+
+
 def parser_dispatch_entry_via_11774(data: bytes, mode: int, byte: int, alternate: bool = False) -> dict[str, int | None]:
     pointer_table = 0x116F6 if alternate else 0x112A4
     start = u32(data, pointer_table + mode * 4)
@@ -544,6 +617,33 @@ def trace_mixed_text_control_parser_path_via_11774(data: bytes, stream: bytes) -
                     "handler": dispatches[-1]["handler"],
                     "mode_after": mode,
                 })
+                continue
+            if stream[pos] == ord("Y"):
+                dispatches.append(simplified_dispatch(stream[pos], pos))
+                pos += 1
+                consumed = consume_display_functions_text_via_12536(stream[pos:])
+                remaining_payload = consumed["remaining_payload"]
+                if not isinstance(remaining_payload, list):
+                    raise AssertionError("display-functions trace did not return remaining bytes")
+                payload_end = len(stream) - len(remaining_payload)
+                events.append({
+                    "kind": "display-functions",
+                    "sequence": stream[start:payload_end],
+                    "dispatches": dispatches,
+                    "handler": dispatches[-1]["handler"],
+                    "mode_after": mode,
+                    "payload_offset": pos,
+                    "raw_payload": stream[pos:payload_end],
+                    "selected_context_byte": consumed["selected_context_byte"],
+                    "local_filtering_word": consumed["local_filtering_word"],
+                    "values": consumed["values"],
+                    "routes": consumed["routes"],
+                    "control_hits": consumed["control_hits"],
+                    "cr_post_handlers": consumed["cr_post_handlers"],
+                    "terminated": consumed["terminated"],
+                    "status": consumed["status"],
+                })
+                pos = payload_end
                 continue
             if pos + 1 >= len(stream):
                 raise AssertionError("parser path trace expected ESC prefix/group bytes")
@@ -18385,6 +18485,68 @@ def render_mixed_printable_control_page_record_stream(
                     "reset_status": state["reset_status"],
                 })
                 pos += 2
+                continue
+            if pos + 1 < len(stream) and stream[pos + 1] == ord("Y"):
+                command_start = pos
+                pos += 2
+                payload_start = pos
+                consumed = consume_display_functions_text_via_12536(
+                    stream[payload_start:],
+                    selected_context_byte=int(
+                        state.get(
+                            "display_functions_selected_context_byte",
+                            state.get("transparent_selected_context_byte", 0),
+                        )
+                    ),
+                    local_filtering_word=int(
+                        state.get(
+                            "display_functions_filtering_word",
+                            state.get("transparent_filtering_word", 0),
+                        )
+                    ),
+                )
+                remaining_payload = consumed["remaining_payload"]
+                if not isinstance(remaining_payload, list):
+                    raise AssertionError("display-functions payload result did not return remaining bytes")
+                payload_end = len(stream) - len(remaining_payload)
+                raw_payload = stream[payload_start:payload_end]
+                pos = payload_end
+                payload_events: list[dict[str, object]] = []
+                for index, value in enumerate(consumed["values"]):
+                    route = int(consumed["routes"][index])
+                    byte_value = int(value) & 0xFF
+                    if route == 0x00D04A:
+                        queued_payload = queue_printable_byte(byte_value)
+                    elif route == 0x00D0F0:
+                        queued_payload = apply_fixed_space_control_byte(byte_value)
+                    else:
+                        raise AssertionError(
+                            f"page-record mixed stream display-functions fixture has unsupported route 0x{route:06x}"
+                        )
+                    payload_events.append({
+                        "index": index,
+                        "byte": byte_value,
+                        "route": route,
+                        "cr_post_handler": index in consumed["cr_post_handlers"],
+                        **queued_payload,
+                    })
+                events.append({
+                    "kind": "display-functions",
+                    "offset": command_start,
+                    "sequence": stream[command_start:payload_end],
+                    "handler": 0x012536,
+                    "payload_offset": payload_start,
+                    "raw_payload": raw_payload,
+                    "selected_context_byte": consumed["selected_context_byte"],
+                    "local_filtering_word": consumed["local_filtering_word"],
+                    "values": consumed["values"],
+                    "routes": consumed["routes"],
+                    "control_hits": consumed["control_hits"],
+                    "cr_post_handlers": consumed["cr_post_handlers"],
+                    "terminated": consumed["terminated"],
+                    "status": consumed["status"],
+                    "payload_events": payload_events,
+                })
                 continue
             if pos + 3 >= len(stream):
                 raise AssertionError(f"page-record mixed stream expected ESC command at offset {pos}")
@@ -63722,6 +63884,207 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "rendered_rows": metric_printable_rendered["rows"],
         "final_cursor_x": pack12(46),
     }))
+    display_functions_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1bY!\x05!\x1bZ",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    display_functions_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        b"\x1bY!\x05!\x1bZ",
+    )
+    display_functions_events = display_functions_stream["events"]
+    display_functions_object = display_functions_stream["bucket_object"]
+    display_functions_rendered = display_functions_stream["rendered"]
+    display_functions_bridged = display_functions_stream["bridged_record"]
+    assert isinstance(display_functions_events, list)
+    assert isinstance(display_functions_object, bytes)
+    assert isinstance(display_functions_rendered, dict)
+    assert isinstance(display_functions_bridged, dict)
+    if (
+        len(display_functions_events) != 1
+        or display_functions_events[0]["kind"] != "display-functions"
+    ):
+        raise AssertionError("display-functions stream expected one ESC Y event")
+    display_functions_event = display_functions_events[0]
+    assert isinstance(display_functions_event, dict)
+    display_functions_payload_summary: list[dict[str, object]] = []
+    display_functions_payload_events = display_functions_event["payload_events"]
+    assert isinstance(display_functions_payload_events, list)
+    for payload_event in display_functions_payload_events:
+        assert isinstance(payload_event, dict)
+        item: dict[str, object] = {
+            "index": payload_event["index"],
+            "byte": payload_event["byte"],
+            "route": payload_event["route"],
+            "cursor_before": payload_event["cursor_before"],
+            "cursor_after": payload_event["cursor_after"],
+        }
+        page_result = payload_event.get("page_result")
+        if isinstance(page_result, dict):
+            item.update({
+                "coord": page_result["coord"],
+                "allocated": page_result["allocated"],
+                "count_before": page_result["count_before"],
+                "count_after": page_result["count_after"],
+                "bucket_index": page_result["bucket_index"],
+            })
+        source = payload_event.get("source")
+        if isinstance(source, dict):
+            item.update({
+                "mapped": source.get("mapped"),
+                "glyph_entry": source.get("glyph_entry"),
+            })
+        display_functions_payload_summary.append(item)
+    display_functions_rows = display_functions_rendered["rows"]
+    assert isinstance(display_functions_rows, list)
+    checks.append(assert_equal("ESC Y display-functions stream reaches page-record output", {
+        "stream": display_functions_stream["stream"],
+        "parser_events": [
+            {
+                "kind": event["kind"],
+                "handler": event["handler"],
+                "mode_after": event["mode_after"],
+                "payload_offset": event["payload_offset"],
+                "raw_payload": event["raw_payload"],
+                "values": event["values"],
+                "routes": event["routes"],
+                "terminated": event["terminated"],
+            }
+            for event in display_functions_trace["events"]
+        ],
+        "event": {
+            "kind": display_functions_event["kind"],
+            "sequence": display_functions_event["sequence"],
+            "handler": display_functions_event["handler"],
+            "payload_offset": display_functions_event["payload_offset"],
+            "raw_payload": display_functions_event["raw_payload"],
+            "selected_context_byte": display_functions_event["selected_context_byte"],
+            "local_filtering_word": display_functions_event["local_filtering_word"],
+            "values": display_functions_event["values"],
+            "routes": display_functions_event["routes"],
+            "control_hits": display_functions_event["control_hits"],
+            "terminated": display_functions_event["terminated"],
+            "payload_events": display_functions_payload_summary,
+        },
+        "root_allocations": display_functions_stream["final_state"]["page_record_root_allocations"],
+        "bucket_index": display_functions_stream["bucket_index"],
+        "object_prefix": display_functions_object[:18],
+        "bridged_context_slots": display_functions_bridged["context_slots"][:2],
+        "row_count": len(display_functions_rows),
+        "row_width": max(len(str(row)) for row in display_functions_rows),
+        "row_sha256": hashlib.sha256(
+            "\n".join(str(row) for row in display_functions_rows).encode("ascii")
+        ).hexdigest(),
+        "final_cursor_x": display_functions_stream["final_state"]["cursor_x"],
+    }, {
+        "stream": b"\x1bY!\x05!\x1bZ",
+        "parser_events": [
+            {
+                "kind": "display-functions",
+                "handler": 0x012536,
+                "mode_after": 0,
+                "payload_offset": 2,
+                "raw_payload": b"!\x05!\x1bZ",
+                "values": [0x21, 0x05, 0x21, 0x1B, 0x5A],
+                "routes": [0x00D04A, 0x00D0F0, 0x00D04A, 0x00D0F0, 0x00D04A],
+                "terminated": True,
+            },
+        ],
+        "event": {
+            "kind": "display-functions",
+            "sequence": b"\x1bY!\x05!\x1bZ",
+            "handler": 0x012536,
+            "payload_offset": 2,
+            "raw_payload": b"!\x05!\x1bZ",
+            "selected_context_byte": 0,
+            "local_filtering_word": 0,
+            "values": [0x21, 0x05, 0x21, 0x1B, 0x5A],
+            "routes": [0x00D04A, 0x00D0F0, 0x00D04A, 0x00D0F0, 0x00D04A],
+            "control_hits": 0,
+            "terminated": True,
+            "payload_events": [
+                {
+                    "index": 0,
+                    "byte": 0x21,
+                    "route": 0x00D04A,
+                    "cursor_before": pack12(10),
+                    "cursor_after": pack12(28),
+                    "coord": 0x0001,
+                    "allocated": True,
+                    "count_before": 0,
+                    "count_after": 1,
+                    "bucket_index": 0,
+                    "mapped": 0x20,
+                    "glyph_entry": 0x015330,
+                },
+                {
+                    "index": 1,
+                    "byte": 0x05,
+                    "route": 0x00D0F0,
+                    "cursor_before": pack12(28),
+                    "cursor_after": pack12(46),
+                    "mapped": 0x1F,
+                    "glyph_entry": 0x0146B4,
+                },
+                {
+                    "index": 2,
+                    "byte": 0x21,
+                    "route": 0x00D04A,
+                    "cursor_before": pack12(46),
+                    "cursor_after": pack12(64),
+                    "coord": 0x0403,
+                    "allocated": False,
+                    "count_before": 1,
+                    "count_after": 2,
+                    "bucket_index": 0,
+                    "mapped": 0x20,
+                    "glyph_entry": 0x015330,
+                },
+                {
+                    "index": 3,
+                    "byte": 0x1B,
+                    "route": 0x00D0F0,
+                    "cursor_before": pack12(64),
+                    "cursor_after": pack12(82),
+                    "mapped": 0x1F,
+                    "glyph_entry": 0x0146B4,
+                },
+                {
+                    "index": 4,
+                    "byte": 0x5A,
+                    "route": 0x00D04A,
+                    "cursor_before": pack12(82),
+                    "cursor_after": pack12(100),
+                    "coord": 0x0405,
+                    "allocated": False,
+                    "count_before": 2,
+                    "count_after": 3,
+                    "bucket_index": 0,
+                    "mapped": 0x59,
+                    "glyph_entry": 0x015F2C,
+                },
+            ],
+        },
+        "root_allocations": 1,
+        "bucket_index": 0,
+        "object_prefix": bytes.fromhex("00 00 00 00 00 00 00 03 20 00 01 20 04 03 59 04 05 00"),
+        "bridged_context_slots": (0x440946B4, 0),
+        "row_count": 22,
+        "row_width": 98,
+        "row_sha256": "c7d0fb0a66181acd591244aab0a7f450f895b3b89ea98d189a00a25c3de04d85",
+        "final_cursor_x": pack12(100),
+    }))
     transparent_probe_page_record_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,
@@ -78220,6 +78583,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "`0x44094b08` and `0x440946b4`."
     )
     lines.append("- transparent parser-to-page-record boundary: stream `1b 26 70 32 58 21 21` routes `ESC &p2X` through handler `0x11f5a`, restores delayed handler `0x12452`, consumes the following two payload bytes through `0xa904`, queues both bytes through `0xd04a` into the same compact coords `0x0001` and `0x0202`, and renders the same real-HMI rows after the `0x1edc6` bridge.")
+    lines.append(
+        "- display-functions parser-to-page-record boundary: stream `1b 59 21 "
+        "05 21 1b 5a` routes normal-table `ESC Y` through handler `0x12536`, "
+        "consumes values `21 05 21 1b 5a` through the `0xa904` loop before "
+        "terminating, sends `0x05` and terminating `ESC` through `0xd0f0`, "
+        "queues visible `!`, `!`, and `Z` entries at compact coords `0x0001`, "
+        "`0x0403`, and `0x0405`, and renders row digest "
+        "`c7d0fb0a66181acd591244aab0a7f450f895b3b89ea98d189a00a25c3de04d85`."
+    )
     lines.append(
         "- transparent control-payload boundary: stream `1b 26 70 34 58 21 05 "
         "85 21` routes `0x21` bytes through `0xd04a` and default-filtered "

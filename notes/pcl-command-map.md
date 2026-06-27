@@ -984,6 +984,11 @@ handlers:
   proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
   `0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, preserving
   `d4ac` span output and `d8fc` high-y `20` output. Fixture
+  `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
+  now pins the `0x17430` first-code/range endpoints: first-code zero copies
+  `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017`, and first-code `range - 1`
+  copies `0x0015/0x0014/0x0000`, with both legal selected forms still
+  feeding the same documented visible span paths. Fixture
   `descriptor metric fields match across inline and resource contexts` now
   pins the legal inline/unflagged `d4ac` and resource/flagged `d8fc`
   producer forms plus the two invalid swapped forms. The producer formulas are
@@ -992,8 +997,8 @@ handlers:
   `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`, `0x1762a` writes signed
   offset word `+0x1a`, and `0x1719c` copies the staged fields into the
   allocated payload. The remaining open middle is additional metric-value
-  combinations outside those pinned legal matrix, boundary, and low-nibble
-  endpoints, plus visible behavior for validation/error forms beyond the
+  combinations outside those pinned legal matrix, boundary, range-endpoint,
+  and low-nibble fixtures, plus visible behavior for validation/error forms beyond the
   bounded predicate and short-budget no-install cases.
 - Treat non-Roman `0N` / `10U` / `11U` font-selection visible output as
   covered for the documented primary and secondary paths. Fixture

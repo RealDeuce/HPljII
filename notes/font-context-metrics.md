@@ -51,6 +51,7 @@ Evidence:
   - `descriptor metric fields match across inline and resource contexts`
   - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
   - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+  - `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
   - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
 
 ## Concept
@@ -139,10 +140,11 @@ Parser-produced downloaded-font metric fields:
   offset result into word `+0x1a`.
 - Derived unflagged field `+0x2c` is written by `0x1757a..0x175b8` as
   `min((value + 2) >> 2, word(+0x14)) << 2`. Fixtures
-  `legal descriptor metric boundary values drive d4ac and d8fc consumers` and
+  `legal descriptor metric boundary values drive d4ac and d8fc consumers`,
+  `legal descriptor metric range endpoints drive d4ac and d8fc consumers`, and
   `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
-  prove the cap and rounding outcomes through visible `0xd4ac` and `0xd8fc`
-  rows.
+  prove the cap, derived-height endpoints, and rounding outcomes through
+  visible `0xd4ac` and `0xd8fc` rows.
 - Parser scratch for this producer path is the staged base `0x782862`,
   validation cursor, payload budget `0x783140`, and optional symbol staging
   `0x782842..0x782856`. Firmware bookkeeping includes type byte `+0x0c`,
@@ -613,6 +615,21 @@ Fixture-pinned metric effects:
   same beyond-page exit while `d8fc` still consumes `+0x16/+0x18/+0x1a =
   0x0004/0x0013/0x0001` and renders digest
   `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+- Legal descriptor metric range endpoints: fixture
+  `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
+  holds the rounded metric and signed offset stable while varying the
+  `0x17430` first-code/range pair. The first-code-zero case copies
+  `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017`, proving the derived/cache word
+  is range minus one when the lower bound is zero. The range-minus-one case
+  copies `+0x14/+0x16/+0x18 = 0x0015/0x0014/0x0000`, proving the same helper
+  accepts the tightest legal derived height. In both cases `d4ac` consumes
+  `+0x2c = 0x0008`, queues object prefix
+  `00 00 00 00 40 00 00 01 a4 06 03 00 00 14`, and renders digest
+  `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`;
+  `d8fc` consumes the copied `+0x16/+0x18/+0x1a` fields, keeps high-y `20`,
+  queues object prefix `00 00 00 00 40 00 00 01 44 06 03 00 00 14`, and
+  renders digest
+  `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
 - Legal descriptor metric low-nibble rounding: fixture
   `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
   holds the legal resource/flagged and inline/unflagged forms steady while
@@ -880,6 +897,16 @@ work can close the right gap instead of re-tracing already-covered consumers.
   computes high-y `-65514`, and collapses to the same rendered row digest as
   the `0xfe` case. Status: parser-produced legal boundary values to consumer
   state, queued object prefix, and rendered row digest.
+- Claim: legal parser-produced descriptor metric range endpoints now cover the
+  `0x17430` derived-height extremes. Evidence: fixture
+  `legal descriptor metric range endpoints drive d4ac and d8fc consumers`;
+  first-code zero copies `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017`, and
+  first-code `range - 1` copies `0x0015/0x0014/0x0000`. Both cases keep
+  rounded word `+0x2c = 0x0008`, preserve the standard `d4ac` span digest,
+  and drive `d8fc` through high-y `20` with digest
+  `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+  Status: parser-produced legal range endpoint to copied field, consumer
+  state, queued object prefix, and rendered row digest.
 - Claim: legal parser-produced descriptor metric low-nibble samples follow the
   ROM-derived rounded-word transform and reach both span consumers. Evidence: fixture
   `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`;
@@ -1044,6 +1071,11 @@ Output effect:
   max positive offset byte `0x7f`, max negative offset byte `0xff`, normal
   rounded `0x0013 -> +0x2c = 0x0014`, and the `0x1500` / `0x1508` /
   `0x15ff -> +0x2c = 0x0060` rounded-transform family.
+- Fixture `legal descriptor metric range endpoints drive d4ac and d8fc
+  consumers` proves `0x17430` accepts first-code zero as
+  `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017` and the range-minus-one endpoint
+  as `0x0015/0x0014/0x0000`, with both legal forms still feeding the same
+  documented `d4ac` and `d8fc` visible output paths.
 - Fixture `legal descriptor metric low-nibble rounding drives d4ac and d8fc
   consumers` proves inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
   `0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010` and keep
@@ -1072,6 +1104,7 @@ Fixture evidence:
 - `descriptor metric fields match across inline and resource contexts`
 - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
 - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+- `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
 - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
 - `d4ac and d8fc span consumer branch family controls flush output`
 
@@ -1096,7 +1129,8 @@ Unresolved middle edges:
   remaining validation/error table combinations outside those predicates are
   not all page-visible.
 - `0x17430..0x1763c`: the covered legal matrix proves the main range/count,
-  rounded/clamped, signed-offset, equality, and low-byte-discard behavior.
+  first-code-zero and range-minus-one endpoints, rounded/clamped,
+  signed-offset, equality, and low-byte-discard behavior.
   Additional legal metric values remain cross-products rather than new
   semantic edges.
 - `0xd4ac..0xd992`: disabled, lower-bound, page-extent, high-x, exact extent,

@@ -2885,6 +2885,7 @@ fixtures.
 - `host-fetched upper-bound metric variant keeps d4ac span but suppresses d8fc`
 - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
 - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+- `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
 - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
 - `0x1354a portrait text span split queues adjacent buckets`
 - `0x12714 landscape span inserts into nonempty fixed list`
@@ -3008,6 +3009,14 @@ fixtures.
   `0xff` as word `+0x1a = 0xffff` and computes high-y `-65514`, and proves
   rounded inputs `0x1500`, `0x1508`, and `0x15ff` all store
   `+0x2c = 0x0060` before `d4ac` exits beyond page extent.
+  Fixture
+  `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
+  adds first-code/range endpoint coverage for the `0x17430` derived-height
+  formula: first-code zero copies `+0x14/+0x16/+0x18 =
+  0x0018/0x0000/0x0017`, and the range-minus-one endpoint copies
+  `0x0015/0x0014/0x0000`. Both cases keep `d4ac` on the standard span digest
+  through `+0x2c = 0x0008`, and keep `d8fc` on high-y `20` / digest
+  `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
   Fixture
   `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
   adds low-nibble transform coverage: rounded inputs `0x0001`, `0x0003`,
@@ -3382,6 +3391,12 @@ byte `0xfe`; canonical fields `+0x14/+0x16 = 0x0018/0x0004`, derived/cache field
 `+0x1a` as word `65534`, computes high-y `-65513`, queues span object prefix `00 00 00
 00 40 00 00 01 04 06 03 00 00 14`, and renders digest
 `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`. Fixture `legal
+descriptor metric range endpoints drive d4ac and d8fc consumers` adds the remaining
+`0x17430` endpoint evidence in this cluster: first-code zero copies
+`+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017`, while first-code `range - 1` copies
+`0x0015/0x0014/0x0000`. Both cases keep the rounded word `+0x2c = 0x0008`, keep the
+`d4ac` standard span digest, and keep `d8fc` high-y `20` with digest
+`f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`. Fixture `legal
 descriptor metric low-nibble rounding drives d4ac and d8fc consumers` narrows the
 remaining legal metric-value gap for the rounded `+0x2c` producer transform. It varies
 parser rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f` while keeping
@@ -3546,11 +3561,12 @@ Field groups:
 - Derived/cache state: `+0x18` is derived by validation entry `6` helper
   `0x17430..0x1749c` as range/count minus first code minus one. Rounded
   unflagged word `+0x2c` is derived by entry `12` helper `0x1757a..0x175b8`
-  as `min((value + 2) >> 2, word(+0x14)) << 2`; the boundary and low-nibble
-  metric fixtures prove both the cap and rounding behavior in page-visible
-  `0xd4ac`/`0xd8fc` output. Optional symbol bytes `0x782842..0x782851` and
-  count `0x782856` remain empty on the covered failure exits because
-  validation fails before `0x16fe4`.
+  as `min((value + 2) >> 2, word(+0x14)) << 2`; the boundary,
+  range-endpoint, and low-nibble metric fixtures prove the cap,
+  derived-height endpoints, and rounding behavior in page-visible `0xd4ac` /
+  `0xd8fc` output. Optional symbol bytes `0x782842..0x782851` and count
+  `0x782856` remain empty on the covered failure exits because validation
+  fails before `0x16fe4`.
 - Firmware bookkeeping: allocation status `0`, install state `None`, and the
   fully drained host source are failure bookkeeping. They are not printable
   page state, but they gate whether the subsequent `!` uses a downloaded font
@@ -4045,6 +4061,12 @@ fields and every legal metric combination have not been page-compared.
   while `d8fc` consumes `+0x16/+0x18/+0x1a = 0x0004/0x0013/0x0001` and renders digest
   `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
   Fixture
+  `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
+  proves first-code zero and first-code `range - 1` are legal parser-produced
+  endpoints for the `0x17430` formula, copying derived/cache `+0x18` values
+  `0x0017` and `0x0000` while both legal selected forms still feed the
+  documented visible span paths.
+  Fixture
   `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
   adds rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f`;
   they copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, preserving
@@ -4055,7 +4077,8 @@ fields and every legal metric combination have not been page-compared.
   pins the legal inline/unflagged and resource/flagged producer forms plus the
   two invalid swapped forms. The producer formulas are documented from
   `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c`; remaining work is additional
-  metric-value combinations within legal forms, plus producer-side
+  metric-value combinations within legal forms beyond the covered matrix,
+  boundary, range-endpoint, and low-nibble fixtures, plus producer-side
   validation/error page evidence beyond the documented bounded-predicate and
   short-budget validation no-install following-printable boundaries.
 

@@ -2608,9 +2608,9 @@ queues a fixed-width span through `0x136d2`.
   fixture-backed by `legal descriptor metric value matrix drives d4ac and
   d8fc consumers` and
   `legal descriptor metric boundary values drive d4ac and d8fc consumers`:
-  `+0x16 = 0x0015` is accepted at cursor y `21`, `+0x18 = 0x002b` reaches
-  exact page extent `64`, and offset bytes `0xfe`, `0xff`, and `0x7f` become
-  copied words `0xfffe`, `0xffff`, and `0x007f`.
+  `+0x16 = 0x0015` is accepted at cursor y `21`, derived/cache `+0x18 =
+  0x002b` reaches exact page extent `64`, and offset bytes `0xfe`, `0xff`,
+  and `0x7f` become copied words `0xfffe`, `0xffff`, and `0x007f`.
 - Canonical unflagged context inputs:
   - context `+0x2b`: alternate y offset added at `0xd4f8..0xd506`
     when `0x783185` is set and the byte is nonzero.
@@ -2623,7 +2623,12 @@ queues a fixed-width span through `0x136d2`.
   `0x783185=1` produce `high_y=28`. The descriptor boundary fixture proves
   rounded input `0x0013` copies `+0x2c = 0x0014`, while inputs `0x1500`,
   `0x1508`, and `0x15ff` all copy `+0x2c = 0x0060` before `d4ac` exits
-  `beyond-page-extent`.
+  `beyond-page-extent`. Fixture
+  `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+  proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f`
+  copy to canonical `+0x2c` words `0x0000`, `0x0004`, `0x0004`, `0x0004`,
+  and `0x0010`, matching the ROM-derived `min((value + 2) >> 2,
+  word(+0x14)) << 2` transform for these low-nibble samples.
 - Derived/cache producer state:
   - `0x782a7a` / `0x782a7b`: selector bytes for `0x1387c`; current
     fixtures pin `0x4000` for segment-list span objects.
@@ -2875,6 +2880,7 @@ fixtures.
 - `host-fetched upper-bound metric variant keeps d4ac span but suppresses d8fc`
 - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
 - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+- `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
 - `0x1354a portrait text span split queues adjacent buckets`
 - `0x12714 landscape span inserts into nonempty fixed list`
 - `0x12714 allocation failure publishes page and retries span`
@@ -2995,6 +3001,14 @@ fixtures.
   height `+0x18 = 0x002b`, copies input offset byte `0x7f` as word
   `+0x1a = 0x007f` and computes high-y `-106`, and proves rounded input
   `0x1500` stores `+0x2c = 0x0060` before `d4ac` exits beyond page extent.
+  Fixture
+  `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+  adds low-nibble transform coverage: rounded inputs `0x0001`, `0x0003`,
+  `0x0004`, `0x0005`, and `0x000f` copy to `+0x2c =
+  0x0000/0x0004/0x0004/0x0004/0x0010`, `d4ac` consumes those copied bytes
+  while keeping the standard span digest, and `d8fc` keeps unchanged
+  `+0x16/+0x18/+0x1a = 0x0004/0x0013/0x0001`, high-y `20`, and digest
+  `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
   Remaining producer gaps are additional metric values within legal forms;
   bounded validation no-install branches are composed below under
   `Downloaded Resource Validation No-Install`.
@@ -3366,6 +3380,18 @@ while `0xd8fc` consumes `+0x1a` as word `65534`, computes high-y `-65513`,
 queues span object prefix `00 00 00 00 40 00 00 01 04 06 03 00 00 14`, and
 renders digest
 `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
+Fixture `legal descriptor metric low-nibble rounding drives d4ac and d8fc
+consumers` narrows the remaining legal metric-value gap for the rounded
+`+0x2c` producer transform. It varies parser rounded inputs `0x0001`,
+`0x0003`, `0x0004`, `0x0005`, and `0x000f` while keeping the legal resource
+and inline forms fixed. `0x16fae` / `0x1719c` copy those words to `+0x2c =
+0x0000/0x0004/0x0004/0x0004/0x0010`; `0xd4ac` consumes the copied
+`+0x2c/+0x2d` bytes and keeps span digest
+`67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`, while
+`0xd8fc` consumes unchanged `+0x16/+0x18/+0x1a =
+0x0004/0x0013/0x0001`, keeps high-y `20`, queues object prefix
+`00 00 00 00 40 00 00 01 44 06 03 00 00 14`, and renders digest
+`f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
 Fixture `host-fetched row-0x80 downloaded character remains short compact`
 pins the downloaded-character row threshold immediately below segmented
 layout. Host fetch drains `ESC )s256W`; parser dispatch walks `0x11eb6`,
@@ -3958,6 +3984,12 @@ fields and every legal metric combination have not been page-compared.
   low byte and stores the same `+0x2c = 0x0060`; `d4ac` exits
   `beyond-page-extent`, while `d8fc` consumes `+0x16/+0x18/+0x1a =
   0x0004/0x0013/0x0001` and renders digest
+  `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+  Fixture
+  `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+  adds rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f`;
+  they copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, preserving
+  `d4ac` span rows and `d8fc` high-y `20` / digest
   `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
   Fixture
   `descriptor metric fields match across inline and resource contexts` now

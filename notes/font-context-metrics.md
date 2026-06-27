@@ -51,6 +51,7 @@ Evidence:
   - `descriptor metric fields match across inline and resource contexts`
   - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
   - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+  - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
 
 ## Concept
 
@@ -561,7 +562,7 @@ Fixture-pinned metric effects:
   `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
 - Legal descriptor metric boundary values: fixture
   `legal descriptor metric boundary values drive d4ac and d8fc consumers`
-  adds six parser-produced descriptors behind the same legal forms. The
+  adds parser-produced descriptors behind the same legal forms. The
   `d8fc-lower-equal` case copies `+0x16/+0x18/+0x1a =
   0x0015/0x0002/0x0001`; at cursor y `21`, `0xd8fc` treats lower equality as
   in range, publishes high-y `20`, queues object prefix
@@ -587,6 +588,21 @@ Fixture-pinned metric effects:
   transform: input `0x1508` also stores `+0x2c = 0x0060`, so `d4ac` takes the
   same beyond-page exit while `d8fc` still consumes `+0x16/+0x18/+0x1a =
   0x0004/0x0013/0x0001` and renders digest
+  `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+- Legal descriptor metric low-nibble rounding: fixture
+  `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+  holds the legal resource/flagged and inline/unflagged forms steady while
+  varying the rounded-metric input word through `0x0001`, `0x0003`, `0x0004`,
+  `0x0005`, and `0x000f`. `0x16fae` / `0x1719c` copy those inputs to
+  `+0x2c` words `0x0000`, `0x0004`, `0x0004`, `0x0004`, and `0x0010`,
+  matching the ROM-derived `min((value + 2) >> 2, word(+0x14)) << 2`
+  transform for these low-nibble samples.
+  In all five cases canonical fields `+0x14/+0x16/+0x18/+0x1a` remain
+  `0x0018/0x0004/0x0013/0x0001`. `0xd4ac` consumes the copied
+  `+0x2c/+0x2d` word and still renders span digest
+  `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`;
+  `0xd8fc` consumes `+0x16/+0x18/+0x1a`, keeps high-y `20`, queues object
+  prefix `00 00 00 00 40 00 00 01 44 06 03 00 00 14`, and renders digest
   `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
 - Span-consumer branch family: fixture
   `d4ac and d8fc span consumer branch family controls flush output` drives
@@ -840,6 +856,17 @@ work can close the right gap instead of re-tracing already-covered consumers.
   computes high-y `-65514`, and collapses to the same rendered row digest as
   the `0xfe` case. Status: parser-produced legal boundary values to consumer
   state, queued object prefix, and rendered row digest.
+- Claim: legal parser-produced descriptor metric low-nibble samples follow the
+  ROM-derived rounded-word transform and reach both span consumers. Evidence: fixture
+  `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`;
+  rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f` copy to
+  `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`. For every case, `d4ac`
+  consumes the copied `+0x2c/+0x2d` fields and renders the standard segment
+  span digest, while `d8fc` consumes unchanged `+0x16/+0x18/+0x1a =
+  0x0004/0x0013/0x0001`, keeps high-y `20`, and renders digest
+  `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+  Status: parser-produced legal low-nibble transform to copied field,
+  consumer state, queued object prefix, and rendered row digest.
 - Claim: descriptor metric producer forms are disjoint at the selected-context
   boundary. Evidence: fixture
   `descriptor metric fields match across inline and resource contexts`;
@@ -961,7 +988,9 @@ A byte-stream reproduction must preserve these behaviors:
   normal rounded input `0x0013` storing `+0x2c = 0x0014`, negative and
   max-positive offset copied words `0xfffe`/`0x007f`, `d8fc` lower-bound and
   page-extent equality, a midpoint `d8fc` state update without a span object,
-  rounded low-byte discard for `0x1508`, lower-bound
+  low-nibble rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
+  `0x000f` storing `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, rounded
+  low-byte discard for `0x1508`, lower-bound
   suppression for both consumers, and asymmetric upper-bound suppression of
   `0xd8fc` while `0xd4ac` still renders a span.
   Fixture `descriptor metric fields match across inline and resource contexts`

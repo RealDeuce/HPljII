@@ -52018,6 +52018,96 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         },
     ))
+
+    def rounded_metric_nibble_stream(value: int) -> bytearray:
+        stream = bytearray(font_validate_stream)
+        stream[10:12] = b"\x00\x18"
+        stream[20:22] = value.to_bytes(2, "big")
+        stream[30] = 0x01
+        return stream
+
+    metric_rounding_nibble_inputs = {
+        "rounded-0x0001-to-0x0000": (0x0001, 0x0000),
+        "rounded-0x0003-to-0x0004": (0x0003, 0x0004),
+        "rounded-0x0004-stays-0x0004": (0x0004, 0x0004),
+        "rounded-0x0005-to-0x0004": (0x0005, 0x0004),
+        "rounded-0x000f-to-0x0010": (0x000F, 0x0010),
+    }
+    metric_rounding_nibble_cases = {
+        label: compact_metric_boundary_case(rounded_metric_nibble_stream(input_word))
+        for label, (input_word, _copied_word) in metric_rounding_nibble_inputs.items()
+    }
+
+    def expected_metric_rounding_nibble_case(
+        input_word: int,
+        copied_word: int,
+    ) -> dict[str, object]:
+        return {
+            "input_metrics": {
+                "first_code_word_at_stream_6": 4,
+                "range_word_at_stream_10": 24,
+                "rounded_word_at_stream_20": input_word,
+                "flagged_offset_byte_at_stream_30": 1,
+            },
+            "copied_metrics": {
+                "word_0x14": 24,
+                "word_0x16": 4,
+                "word_0x18": 19,
+                "word_0x1a": 1,
+                "byte_0x2b": 0,
+                "byte_0x2c": copied_word >> 8,
+                "byte_0x2d": copied_word & 0xFF,
+                "word_0x2c": copied_word,
+            },
+            "d4ac": {
+                "span": {
+                    "updated": True,
+                    "cursor_y": 21,
+                    "handler": 0x00D4AC,
+                    "context_offset_002b": 0,
+                    "context_lower_002c": copied_word >> 8,
+                    "context_height_002d": copied_word & 0xFF,
+                    "high_y": 26,
+                },
+                "object_prefix": bytes.fromhex(
+                    "00 00 00 00 40 00 00 01 a4 06 03 00 00 14"
+                ),
+                "render": {
+                    "row_count": 13,
+                    "row_width": 116,
+                    "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                },
+            },
+            "d8fc": {
+                "span": {
+                    "updated": True,
+                    "cursor_y": 21,
+                    "handler": 0x00D8FC,
+                    "context_lower_0016": 4,
+                    "context_height_0018": 19,
+                    "context_offset_001a": 1,
+                    "metric_source": metric_boundary_context_source,
+                    "high_y": 20,
+                },
+                "object_prefix": bytes.fromhex(
+                    "00 00 00 00 40 00 00 01 44 06 03 00 00 14"
+                ),
+                "render": {
+                    "row_count": 8,
+                    "row_width": 116,
+                    "row_sha256": "f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab",
+                },
+            },
+        }
+
+    checks.append(assert_equal(
+        "legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers",
+        metric_rounding_nibble_cases,
+        {
+            label: expected_metric_rounding_nibble_case(input_word, copied_word)
+            for label, (input_word, copied_word) in metric_rounding_nibble_inputs.items()
+        },
+    ))
     metric_context_cross_product_cases: dict[str, dict[str, object]] = {}
     for label, selected_context, source_form, materializer, byte_value in (
         ("inline-d4ac", 0, "unflagged", "d4ac", b"!"),
@@ -82909,6 +82999,27 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             metric_boundary_cases["rounded-0x1500-transform"]["copied_metrics"]["word_0x2c"],  # type: ignore[index]
             metric_boundary_cases["rounded-0x1508-transform"]["copied_metrics"]["word_0x2c"],  # type: ignore[index]
             metric_boundary_cases["rounded-0x1500-transform"]["d4ac"]["span"]["reason"],  # type: ignore[index]
+        )
+    )
+    lines.append(
+        "- metric low-nibble rounding fixture: fixture `legal descriptor "
+        "metric low-nibble rounding drives d4ac and d8fc consumers` proves "
+        "rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f` "
+        "copy to `+0x2c` words `%s`; `d4ac` keeps row digest `%s`, and "
+        "`d8fc` keeps high-y `%d` / row digest `%s` for each case." % (
+            ", ".join(
+                "0x%04x" % metric_rounding_nibble_cases[label]["copied_metrics"]["word_0x2c"]  # type: ignore[index]
+                for label in metric_rounding_nibble_inputs
+            ),
+            metric_rounding_nibble_cases[
+                "rounded-0x000f-to-0x0010"
+            ]["d4ac"]["render"]["row_sha256"],  # type: ignore[index]
+            metric_rounding_nibble_cases[
+                "rounded-0x000f-to-0x0010"
+            ]["d8fc"]["span"]["high_y"],  # type: ignore[index]
+            metric_rounding_nibble_cases[
+                "rounded-0x000f-to-0x0010"
+            ]["d8fc"]["render"]["row_sha256"],  # type: ignore[index]
         )
     )
     lines.append(

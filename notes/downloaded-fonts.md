@@ -73,6 +73,7 @@ Primary fixtures:
 - `descriptor metric fields match across inline and resource contexts`
 - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
 - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+- `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
 - `0x16498-backed downloaded character object renders segmented-wide compact row`
 - `downloaded character stream ties ROM parser dispatch to rendered object`
 - `host-fetched downloaded character stream reaches rendered object`
@@ -371,6 +372,16 @@ Renderer-facing allocated payload fields:
   while `d8fc` consumes that word as `65534`, computes high-y `-65513`, and
   renders row digest
   `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
+- legal metric low-nibble rounding: fixture
+  `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+  varies rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f`
+  while leaving canonical `+0x14/+0x16 = 0x0018/0x0004`, derived/cache
+  `+0x18 = 0x0013`, and copied offset `+0x1a = 0x0001` fixed. `0x1719c`
+  copies the rounded words to `+0x2c =
+  0x0000/0x0004/0x0004/0x0004/0x0010`; `d4ac` consumes those
+  `+0x2c/+0x2d` bytes and keeps the default span digest, while `d8fc` keeps
+  high-y `20` and row digest
+  `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
 
 Unknown:
 
@@ -1451,12 +1462,13 @@ progression because `0xff1e` disassembly at `0xffc8` clears root `+0x18`,
 visible row.
 
 High for the covered parser-produced metric combinations because the type-0,
-type-1, type-2, metric-variant, clamped, lower-bound, and upper-bound fixtures
-all start from host-fetched `ESC )s80W`, run through `0x16fae`/`0x1719c`, and
-compare page-visible `0xd4ac`/`0xd8fc` output effects. Medium for the full PCL
-soft-font grammar because the validation table is executable but not every
-predicate has a manual-facing semantic name, and not every legal metric
-combination has a parser-produced page comparison.
+type-1, type-2, metric-variant, clamped, lower-bound, upper-bound, legal
+matrix, boundary, and low-nibble rounding fixtures all start from host-fetched
+`ESC )s80W`, run through `0x16fae`/`0x1719c`, and compare page-visible
+`0xd4ac`/`0xd8fc` output effects. Medium for the full PCL soft-font grammar
+because the validation table is executable but not every predicate has a
+manual-facing semantic name, and not every legal metric combination has a
+parser-produced page comparison.
 
 Medium for bit-30-clear fixed-record dispatch from a `0x1719c` payload: the
 isolation fixture proves `0x14e24`/`0x14eb6` map construction and rendering,
@@ -1596,10 +1608,14 @@ A byte-stream renderer must preserve:
   compact glyph output, and show rounded inputs `0x1500`, `0x1508`, and
   `0x15ff` all transform to copied `+0x2c = 0x0060` before `d4ac` exits
   beyond page extent. Fixture
+  `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+  proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f`
+  copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, while preserving
+  `d4ac` span output and `d8fc` high-y `20` output. Fixture
   `descriptor metric fields match across inline and resource contexts` now
   proves the legal producer forms and the two invalid swapped forms. The
   remaining producer gap is not these copied-field endpoints; it is
   additional legal descriptor combinations outside the pinned lower/equality/
-  upper/clamp/offset/rounded-transform cases, plus validation/error forms
-  beyond the bounded predicate and short-budget branches that still need
+  upper/clamp/offset/rounded-transform/low-nibble cases, plus validation/error
+  forms beyond the bounded predicate and short-budget branches that still need
   parser-produced page evidence.

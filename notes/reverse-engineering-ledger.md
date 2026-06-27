@@ -463,8 +463,15 @@ descriptor transform discards that low byte before the same `d4ac` exit. The
 same fixture proves offset byte `0xff` copies to word `+0x1a = 0xffff`, is
 consumed by `d8fc` as `65535`, and renders with the same digest as the
 `0xfffe` offset case.
+Fixture
+`legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+now proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
+`0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`; `d4ac`
+keeps its standard span digest, while `d8fc` keeps high-y `20` and row digest
+`f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
 Remaining work is additional metric-value combinations outside those pinned
-legal endpoints, validation/error page behavior beyond those bounded predicate
+legal matrix, boundary, and low-nibble endpoints, validation/error page behavior
+beyond those bounded predicate
 and short-budget no-install branches, any accepted downloaded-character
 descriptor mode-byte forms beyond the documented `0x16b1a` mode-byte-`1`
 even-span and mode-byte-`2` odd-span installs if ROM evidence proves such

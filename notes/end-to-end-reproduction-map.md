@@ -265,13 +265,19 @@ pixels or byte-stream compatibility.
    0x0018/0x0013/0xfffe/0x0008`; `d8fc` consumes the copied offset word as
    `65534`, computes high-y `-65513`, and renders digest
    `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
+   Fixture
+   `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+   proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f`
+   copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, keep the standard
+   `d4ac` span digest, and keep `d8fc` high-y `20` / digest
+   `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
    The open edge is additional metric-value combinations within the legal
    forms, plus validation/error forms beyond those bounded predicate and
    short-budget branches.
    It is not the tested type-0/type-1/type-2 payloads, metric-variant,
    clamped-variant, lower-bound-variant, upper-bound-variant,
-   legal-value-matrix, validation no-install, legal producer-form boundary, or
-   shared consumer branch family. Evidence:
+   legal-value-matrix, low-nibble rounding submatrix, validation no-install,
+   legal producer-form boundary, or shared consumer branch family. Evidence:
    `notes/semantic-state-model.md` under `Text Span Flush And Fixed-Width
    Spans`.
 2. VFC table definition and channel jumps now have a tracked command-family
@@ -364,10 +370,11 @@ The next work should follow dataflow, not isolated handlers:
    shifted `d8fc` visible rows, a zero rounded/offset case where both consumers
    publish spans, negative and max-positive copied offset words
    `0xfffe`/`0xffff`/`0x007f`, `d8fc` lower-bound and exact page-extent
-   equality, rounded transform inputs `0x1500`/`0x1508`/`0x15ff`, a midpoint
-   case where `d8fc` updates state but leaves compact-only output, a lower-bound
-   no-span output path for both consumers, and an upper-bound case where `d4ac`
-   still renders a span while `d8fc` exits `beyond-page-extent`.
+   equality, rounded transform inputs `0x1500`/`0x1508`/`0x15ff`, the
+   low-nibble rounded inputs `0x0001`/`0x0003`/`0x0004`/`0x0005`/`0x000f`, a
+   midpoint case where `d8fc` updates state but leaves compact-only output, a
+   lower-bound no-span output path for both consumers, and an upper-bound case where
+   `d4ac` still renders a span while `d8fc` exits `beyond-page-extent`.
    Fixture
    `descriptor metric fields match across inline and resource contexts` now
    pins the legal producer-form boundary: inline/unflagged reaches `d4ac`,

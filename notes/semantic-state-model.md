@@ -3733,9 +3733,10 @@ handlers `0xd04a` and `0xf0f0`, published bucket `1`, `0x1ed84` render word `1`,
 dispatch target `0x1effe`, and final `0x1f0d2` rows. High for the payload-control
 odd-span wide publication sibling because fixture `host-fetched payload-control
 downloaded glyph FF publishes page record` asserts the `1a 58` normalized payload,
-mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`, printable `&`, FF tail
-handlers `0xd04a`/`0xf0f0`, published bucket `1`, `0x1ed84` render word `1`, compact
-dispatch target `0x1effe`, and final `0x1f0d2` rows. High for the normal, non-boundary
+mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`, nonzero return drain
+`0x783140 = 1` consuming `&`, post-return FF handler `0xf0f0`, published bucket `1`,
+`0x1ed84` render word `1`, compact dispatch target `0x1effe`, and final modeled
+`0x1f0d2` rows. High for the normal, non-boundary
 short, rows-`0x20` short, rows-`0x40` short, row-`0x80`, segmented, rows-`0x82`
 segmented, and split-plane segmented publication siblings because fixtures `host-fetched
 nonboundary short downloaded glyph FF publication renders page record`, `host-fetched
@@ -3898,9 +3899,11 @@ fields and every legal metric combination have not been page-compared.
   glyph FF publications render page records` pins normal, row-`0x80`, and
   linear-segmented zero-drain publication returns before handler `0xd04a`; fixture
   `split-plane segmented downloaded glyph FF publication renders page record` pins the
-  split-plane segmented zero-drain return before handler `0xd04a`. Segmented-wide,
-  payload-control wide, and other uncomposed full-success return siblings remain open
-  cross-products. Accepted
+  split-plane segmented zero-drain return before handler `0xd04a`; fixture
+  `host-fetched payload-control downloaded glyph FF publishes page record` pins the
+  payload-control wide nonzero drain that consumes `&` and leaves FF for handler
+  `0xf0f0`. Segmented-wide and other uncomposed full-success return siblings remain
+  open cross-products. Accepted
   descriptor-record mode bytes are closed for the covered helper table by fixture
   `0x16b1a descriptor width helper emits only mode 1/2`: `0x16b36..0x16b6a` writes
   mode `1`/`2` from span parity, and `0x16b26..0x16b34` rejects invalid widths without
@@ -3961,11 +3964,16 @@ fields and every legal metric combination have not been page-compared.
   `host-fetched even-span downloaded glyph FF publishes rendered page record` renders
   the copied bucket-1 record through `0x1ed84`/`0x1ef6a` and compact target
   `0x1effe`/`0x1f0d2`. Fixture `host-fetched payload-control downloaded glyph FF
-  publishes page record` renders the odd-span wide/payload-control sibling through the
-  same boundary: `0x168dc` normalizes one `1a 58` escape, `0x16498` installs table entry
-  `0x00e2` with mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`, printable
-  `&` queues selector `0x1003`, trailing FF publishes bucket `1`, and
-  `0x1ed84`/`0x1ef6a` dispatches compact target `0x1effe`/`0x1f0d2`. Fixture `published
+  publishes page record` separates two effects for the odd-span wide/payload-control
+  sibling. Canonical state: `0x168dc` normalizes one `1a 58` escape, and `0x16498`
+  installs table entry `0x00e2` with mode-byte-`2` record
+  `00 00 00 00 0c 02 00 01 00 88 00 00`. Parser/firmware bookkeeping: copy leaves
+  `0x783140 = 1`, so the return boundary
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` drains following byte `0x26` (`&`) and
+  the post-return parser sees only FF at handler `0xf0f0`. Derived page-output state:
+  the modeled page-record publication for that installed object publishes bucket `1`,
+  and `0x1ed84`/`0x1ef6a` dispatches compact target `0x1effe`/`0x1f0d2`; this does not
+  prove that `&` survives as printable in the same live byte stream. Fixture `published
   downloaded glyph segmented buckets render across bands` renders published bucket words
   `1` and `9` from the copied record. Fixture `0x1eba4 scheduler band words render
   published downloaded glyph` proves `0xff1e`/`0x1ed84` seed render work `+0x10/+0x16`

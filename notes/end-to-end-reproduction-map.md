@@ -307,10 +307,12 @@ pixels or byte-stream compatibility.
    even-span wide, segmented, split-plane segmented, and segmented-wide compact render
    shapes, and the combined downloaded-glyph stream now reaches FF publication with both
    segmented buckets preserved and scheduler-produced band words `0..9` rendered. The
-   payload-control wide sibling now also publishes through FF: fixture `host-fetched
-   payload-control downloaded glyph FF publishes page record` carries normalized `1a
-   58`, selector `0x1003`, bucket `1`, `0xff1e`, `0x1ed84`, and `0x1ef6a` to the same
-   `0x1f0d2` row. The rows-`0x82` segmented sibling now publishes through FF as well:
+   payload-control wide sibling now has its nonzero return drain pinned: fixture
+   `host-fetched payload-control downloaded glyph FF publishes page record` carries
+   normalized `1a 58`, selector `0x1003`, bucket `1`, `0xff1e`, `0x1ed84`, and
+   `0x1ef6a` to the same `0x1f0d2` modeled row, while the live return leaves
+   `0x783140 = 1`, drains the following `&` through `0x12328`, and leaves FF for
+   handler `0xf0f0`. The rows-`0x82` segmented sibling now publishes through FF as well:
    fixture `host-fetched rows-0x82 segmented downloaded glyph FF publication renders
    page record` carries `ESC )s260W`, selector `0x2003`, buckets `1` and `9`, `0xff1e`,
    `0x1ed84`, and `0x1ef6a` to two `0x1f1f0` segment-1 rows. The rows-`0x20` short
@@ -348,6 +350,8 @@ pixels or byte-stream compatibility.
    The downloaded-glyph publication fixtures now also pin normal, row-`0x80`,
    linear-segmented, and split-plane segmented full-success publication returns with
    `0x783140 = 0`, zero drain, and next handler `0xd04a`.
+   The payload-control wide publication fixture pins the nonzero return sibling:
+   `0x783140 = 1`, drained byte `0x26`, and post-return handler `0xf0f0`.
 5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
    board-confirmed. This does not block a byte-stream renderer, but it blocks
@@ -468,8 +472,8 @@ The next work should follow dataflow, not isolated handlers:
    rows `0x81`, `0x82`, `0x83`, and `0xff`, descriptor grammar forms outside the
    covered helper-table path and full-success return-boundary siblings beyond the
    covered normal even-span, no-install, status-`2`, linear-segmented publication, and
-   split-plane segmented publication `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`
-   cases.
+   split-plane segmented publication zero-drain cases plus the payload-control wide
+   nonzero-drain `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` case.
    The accepted mode-byte boundary itself is covered by fixture
    `0x16b1a descriptor width helper emits only mode 1/2`, which pins
    `0x16b36..0x16b6a` accepted writes and `0x16b26..0x16b34` invalid no-writes. The

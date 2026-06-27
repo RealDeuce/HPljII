@@ -42392,6 +42392,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_wide_control_publication_tail,
         )
     )
+    downloaded_wide_control_publication_return_drain = consume_data_payload_count_via_12328(
+        int(downloaded_wide_control_install["copy"]["byte_budget"]),  # type: ignore[index]
+        downloaded_wide_control_publication_tail,
+    )
+    downloaded_wide_control_publication_post_return_tail = (
+        downloaded_wide_control_publication_tail[
+            int(downloaded_wide_control_publication_return_drain["pos"]):
+        ]
+    )
+    downloaded_wide_control_publication_post_return_trace = (
+        trace_mixed_text_control_parser_path_via_11774(
+            data,
+            downloaded_wide_control_publication_post_return_tail,
+        )
+    )
     downloaded_wide_control_publication = finalize_page_record_via_ff1e(
         downloaded_wide_control_page_record,
         reset_fixture_state(
@@ -42612,6 +42627,24 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "record": downloaded_wide_control_install["record"],
             "bitmap_size": downloaded_wide_control_install["bitmap_size"],
             "control_hits": downloaded_wide_control_install["copy"]["control_hits"],
+            "return_boundary": {
+                "call_edge": (0x15DC6, 0x16498),
+                "return_edge": (0x16498, 0x15DCC),
+                "drain_edge": (0x15DCC, 0x12328),
+                "remaining_budget_0x783140": (
+                    downloaded_wide_control_install["copy"]["byte_budget"]
+                ),
+                "drain": downloaded_wide_control_publication_return_drain,
+                "post_return_stream": (
+                    downloaded_wide_control_publication_post_return_tail
+                ),
+                "post_return_handlers": [
+                    event["handler"]
+                    for event in downloaded_wide_control_publication_post_return_trace[
+                        "events"
+                    ]
+                ],
+            },
         },
         "page": {
             key: downloaded_wide_control_page_result[key]
@@ -42704,6 +42737,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "record": bytes.fromhex("00 00 00 00 0c 02 00 01 00 88 00 00"),
             "bitmap_size": 17,
             "control_hits": 1,
+            "return_boundary": {
+                "call_edge": (0x15DC6, 0x16498),
+                "return_edge": (0x16498, 0x15DCC),
+                "drain_edge": (0x15DCC, 0x12328),
+                "remaining_budget_0x783140": 1,
+                "drain": {
+                    "status": 1,
+                    "values": [0x26],
+                    "pos": 1,
+                    "remaining": 0,
+                    "control_hits": 0,
+                },
+                "post_return_stream": b"\x0c",
+                "post_return_handlers": [0x00F0F0],
+            },
         },
         "page": {
             "path": "short-page-record",
@@ -43091,6 +43139,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_wide_even_publication_tail,
         )
     )
+    downloaded_wide_even_publication_return_drain = consume_data_payload_count_via_12328(
+        int(downloaded_wide_even_install["copy"]["byte_budget"]),  # type: ignore[index]
+        downloaded_wide_even_publication_tail,
+    )
     downloaded_wide_even_publication = finalize_page_record_via_ff1e(
         downloaded_wide_even_page_record,
         reset_fixture_state(
@@ -43145,6 +43197,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "table_entry": downloaded_wide_even_install["table_entry"],
                 "record_delta": downloaded_wide_even_install["record_delta"],
                 "bitmap_size": downloaded_wide_even_install["bitmap_size"],
+                "return_boundary": {
+                    "call_edge": (0x15DC6, 0x16498),
+                    "return_edge": (0x16498, 0x15DCC),
+                    "drain_edge": (0x15DCC, 0x12328),
+                    "remaining_budget_0x783140": (
+                        downloaded_wide_even_install["copy"]["byte_budget"]
+                    ),
+                    "drain": downloaded_wide_even_publication_return_drain,
+                    "next_stream_prefix": downloaded_wide_even_publication_tail[:1],
+                    "next_handler": downloaded_wide_even_publication_tail_trace[
+                        "events"
+                    ][0]["handler"],
+                },
             },
             "tail": {
                 "stream": downloaded_wide_even_publication_tail,
@@ -43233,6 +43298,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "table_entry": 0x00EE,
                 "record_delta": 0x0780,
                 "bitmap_size": 18,
+                "return_boundary": {
+                    "call_edge": (0x15DC6, 0x16498),
+                    "return_edge": (0x16498, 0x15DCC),
+                    "drain_edge": (0x15DCC, 0x12328),
+                    "remaining_budget_0x783140": 0,
+                    "drain": {
+                        "status": 1,
+                        "values": [],
+                        "pos": 0,
+                        "remaining": 0,
+                        "control_hits": 0,
+                    },
+                    "next_stream_prefix": b")",
+                    "next_handler": 0x00D04A,
+                },
             },
             "tail": {
                 "stream": b")\x0c",
@@ -83484,10 +83564,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(
         "- payload-control downloaded-glyph FF publication: host-fetched "
         "`ESC )s18W` plus printable `&` and FF stores table entry `0x%04x`, "
-        "normalizes one payload control escape, publishes bucket entries `%s`, "
+        "normalizes one payload control escape, leaves `0x783140 = %d`, "
+        "drains `%s` through `0x12328`, leaves post-return handlers `%s`, "
+        "and the modeled page-record publication publishes bucket entries `%s`, "
         "renders bucket word `%d`, and preserves the wide row through "
         "`0xff1e` / `0x1ed84` / `0x1ef6a`." % (
             downloaded_wide_control_install["table_entry"],
+            downloaded_wide_control_install["copy"]["byte_budget"],
+            downloaded_wide_control_publication_return_drain["values"],
+            [
+                "0x%05x" % event["handler"]
+                for event in downloaded_wide_control_publication_post_return_trace[
+                    "events"
+                ]
+            ],
             sorted(downloaded_wide_control_published_fields["bucket_array_1c"].keys()),
             downloaded_wide_control_published_render["render_record_fields"]["word_10"],
         )
@@ -84317,8 +84407,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(
         "- even-span downloaded-glyph FF publication: host-fetched `ESC )s18W` "
         "plus printable `)` and FF restores record `%s`, routes tail handlers "
-        "`%s`, publishes bucket entries `%s`, renders bucket word `%d` through "
-        "`0x1ed84`/`0x1ef6a`, and dispatches object byte `0x%02x` to "
+        "`%s` after a zero-byte return drain, publishes bucket entries `%s`, "
+        "renders bucket word `%d` through `0x1ed84`/`0x1ef6a`, and dispatches "
+        "object byte `0x%02x` to "
         "`0x%05x` / `0x1f0d2`." % (
             " ".join(f"{byte:02x}" for byte in downloaded_wide_even_command["restored_record"]),
             ", ".join(

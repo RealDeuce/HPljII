@@ -497,13 +497,19 @@ publication returns through the same boundary with `0x783140 = 0`, zero-byte
 `split-plane segmented downloaded glyph FF publication renders page record`
 pins the corresponding split-plane segmented return before printable `(` and
 FF publication.
+Fixture `host-fetched payload-control downloaded glyph FF publishes page
+record` now pins the contrasting nonzero-drain wide case: after `1a 58`
+normalization, copy leaves `0x783140 = 1`, `0x12328` drains following byte
+`0x26` (`&`), and the post-return parser sees FF at handler `0xf0f0`; the
+same fixture still documents the modeled published bucket-1 wide object through
+`0x1ed84`/`0x1ef6a`/`0x1f0d2`.
 Remaining work is additional metric-value combinations outside those pinned
 legal matrix, boundary, and low-nibble endpoints, validation/error page behavior
 beyond those bounded predicate and short-budget no-install branches, remaining
 release variants, full-success return-boundary siblings beyond the covered
 normal even-span, no-install, status-`2`, linear-segmented publication, and
-split-plane segmented publication cases, broader publication combinations
-beyond the covered
+split-plane segmented publication zero-drain cases plus the payload-control
+wide nonzero-drain case, broader publication combinations beyond the covered
 normal, nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented,
 rows-`0x20` short, rows-`0x40` short, row-count-matrix rows
 `0x04`/`0x7f`/`0x83`/`0xff`, rows-`0x82` segmented, rows-`0x0102`

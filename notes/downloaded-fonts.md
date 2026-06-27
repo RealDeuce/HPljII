@@ -1322,18 +1322,21 @@ linear downloaded-glyph row as the direct even-span fixture. Evidence: fixture
 `host-fetched even-span downloaded glyph FF publishes rendered page record`.
 
 The payload-control wide downloaded-glyph publication sibling proves the same
-boundary for the odd-span wide compact branch after data normalization. The
-fetched stream is `ESC )s18W` plus payload beginning `1a 58`, printable `&`,
-and FF, with the same byte boundaries `0..24`, `24..25`, and `25..26`.
-`0x168dc` normalizes `1a 58` to one zero payload byte, so `0x16498` installs
-glyph `0x26` at table entry `0x00e2` with mode-byte-`2` record
-`00 00 00 00 0c 02 00 01 00 88 00 00`, bitmap size `17`, and span `0x11`.
-The tail `& FF` routes to handlers `0xd04a` and `0xf0f0`. Publication copies
-bucket array entry `1`, preserves empty rule/fixed lists and context slots
-`0,0,0,0`, clears the current root, and renders bucket word `1` through
-`0x1ed84`/`0x1ef6a`, compact target `0x1effe`, and `0x1f0d2`. Evidence:
-fixture `host-fetched payload-control downloaded glyph FF publishes page
-record`.
+published-object boundary for the odd-span wide compact branch after data normalization.
+The fetched stream is `ESC )s18W` plus payload beginning `1a 58`, candidate printable
+byte `&`, and FF, with the same byte boundaries `0..24`, `24..25`, and `25..26`.
+`0x168dc` normalizes `1a 58` to one zero payload byte, so `0x16498` installs glyph
+`0x26` at table entry `0x00e2` with mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88
+00 00`, bitmap size `17`, and span `0x11`. The return boundary is not a zero-drain
+sibling: `0x783140 = 1`, so `0x15dcc -> 0x12328` drains the following byte `0x26` (`&`)
+as the final payload byte, leaving only FF for the post-return parser at handler
+`0xf0f0`. The modeled page-record publication part of fixture `host-fetched
+payload-control downloaded glyph FF publishes page record` still copies bucket array
+entry `1`, preserves empty rule/fixed lists and context slots `0,0,0,0`, clears the
+current root, and renders bucket word `1` through `0x1ed84`/`0x1ef6a`, compact target
+`0x1effe`, and `0x1f0d2`; it is evidence for the installed object and publication
+renderer, while the live same-stream printable handoff is the nonzero `0x12328` drain
+described above.
 
 Fixture `downloaded normal row-0x80 and segmented glyph FF publications
 render page records` extends that publication concept to the normal,
@@ -1513,9 +1516,10 @@ target `0x1effe`, and final `0x1f0d2` rows. High for the payload-control wide
 publication sibling because fixture
 `host-fetched payload-control downloaded glyph FF publishes page record`
 asserts the host-fetched `ESC )s18W` stream with `1a 58` normalization,
-mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`, tail handlers
-`0xd04a`/`0xf0f0`, published bucket `1`, `0x1ed84` render word `1`, compact
-dispatch target `0x1effe`, and final `0x1f0d2` rows. High for the modeled normal,
+mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`, nonzero return
+drain `0x783140 = 1` consuming `&`, post-return FF handler `0xf0f0`,
+published bucket `1`, `0x1ed84` render word `1`, compact dispatch target
+`0x1effe`, and final modeled `0x1f0d2` rows. High for the modeled normal,
 row-`0x80`, and segmented publication siblings because fixture
 `downloaded normal row-0x80 and segmented glyph FF publications render page records`
 asserts host-fetched `ESC )s6W` plus `&`/FF, `ESC )s256W` plus `*`/FF, and
@@ -1617,8 +1621,11 @@ A byte-stream renderer must preserve:
   render page records` pins normal, row-`0x80`, and linear-segmented zero-drain
   returns before handler `0xd04a`; fixture `split-plane segmented downloaded
   glyph FF publication renders page record` pins the split-plane segmented
-  zero-drain return before handler `0xd04a`. Segmented-wide, payload-control
-  wide, and other uncomposed full-success return siblings are still bounded
+  zero-drain return before handler `0xd04a`; fixture `host-fetched
+  payload-control downloaded glyph FF publishes page record` pins the
+  payload-control wide nonzero drain where `0x12328` consumes `&` and leaves FF
+  for handler `0xf0f0`. Segmented-wide and other uncomposed full-success return
+  siblings are still bounded
   cross-products. Accepted
   descriptor-record mode bytes are closed for the covered helper table by
   fixture `0x16b1a descriptor width helper emits only mode 1/2`: disassembly
@@ -1671,8 +1678,9 @@ A byte-stream renderer must preserve:
   downloaded glyph FF publishes page record` covers the odd-span wide sibling:
   host-fetched `ESC )s18W` normalizes one `1a 58` payload escape through the font
   payload reader, stores mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`,
-  queues printable `&` as selector `0x1003`, publishes bucket `1` through trailing FF,
-  and renders the published record through `0x1ed84`/`0x1ef6a` and compact target
+  leaves `0x783140 = 1`, drains following byte `&` through `0x12328`, and leaves FF for
+  handler `0xf0f0`. Its modeled page-record publication publishes bucket `1` and
+  renders the installed object through `0x1ed84`/`0x1ef6a` and compact target
   `0x1effe`/`0x1f0d2`. Fixture `published downloaded glyph segmented buckets render
   across bands` renders published bucket words `1` and `9` from the copied record.
   Fixture `0x1eba4 scheduler band words render published downloaded glyph` proves

@@ -51133,6 +51133,314 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         },
     ))
+
+    def compact_metric_boundary_case(stream: bytearray) -> dict[str, object]:
+        payload = build_metric_matrix_payload(stream)
+        memory = payload["memory"]
+        assert isinstance(memory, bytearray)
+        install = payload["install"]
+        assert isinstance(install, dict)
+
+        def compact_consumer(summary: dict[str, object]) -> dict[str, object]:
+            page_object = summary["page_object"]
+            assert isinstance(page_object, bytes)
+            return {
+                "span": summary["span"],
+                "object_prefix": page_object[:14],
+                "render": summary["render"],
+            }
+
+        return {
+            "input_metrics": {
+                "first_code_word_at_stream_6": u16(stream, 6),
+                "range_word_at_stream_10": u16(stream, 10),
+                "rounded_word_at_stream_20": u16(stream, 20),
+                "flagged_offset_byte_at_stream_30": s8(stream[30]),
+            },
+            "copied_metrics": {
+                "word_0x14": u16(memory, 0x14),
+                "word_0x16": u16(memory, 0x16),
+                "word_0x18": u16(memory, 0x18),
+                "word_0x1a": u16(memory, 0x1A),
+                "byte_0x2b": memory[0x2B],
+                "byte_0x2c": memory[0x2C],
+                "byte_0x2d": memory[0x2D],
+                "word_0x2c": u16(memory, 0x2C),
+            },
+            "d4ac": compact_consumer(
+                summarize_legal_metric_render(memory, 0, "d4ac"),
+            ),
+            "d8fc": compact_consumer(
+                summarize_legal_metric_render(
+                    memory,
+                    int(install["candidate_flags"]),
+                    "d8fc",
+                ),
+            ),
+        }
+
+    metric_lower_equal_stream = bytearray(font_validate_stream)
+    metric_lower_equal_stream[6:8] = b"\x00\x15"
+    metric_lower_equal_stream[10:12] = b"\x00\x18"
+    metric_lower_equal_stream[20:22] = b"\x15\x08"
+    metric_lower_equal_stream[30] = 0x01
+
+    metric_unflagged_lower_equal_stream = bytearray(font_validate_stream)
+    metric_unflagged_lower_equal_stream[10:12] = b"\x00\x18"
+    metric_unflagged_lower_equal_stream[20:22] = b"\x15\x00"
+    metric_unflagged_lower_equal_stream[30] = 0x01
+
+    metric_extent_equal_stream = bytearray(font_validate_stream)
+    metric_extent_equal_stream[10:12] = b"\x00\x30"
+    metric_extent_equal_stream[20:22] = b"\x00\x20"
+    metric_extent_equal_stream[30] = 0x00
+
+    metric_positive_offset_stream = bytearray(font_validate_stream)
+    metric_positive_offset_stream[10:12] = b"\x00\x18"
+    metric_positive_offset_stream[20:22] = b"\x00\x08"
+    metric_positive_offset_stream[30] = 0x7F
+
+    metric_boundary_cases = {
+        "d8fc-lower-equal": compact_metric_boundary_case(metric_lower_equal_stream),
+        "rounded-0x1500-transform": compact_metric_boundary_case(
+            metric_unflagged_lower_equal_stream,
+        ),
+        "extent-equal": compact_metric_boundary_case(metric_extent_equal_stream),
+        "positive-offset-max": compact_metric_boundary_case(
+            metric_positive_offset_stream,
+        ),
+    }
+    metric_boundary_context_source = {
+        "kind": "context",
+        "base": 0,
+        "context": 0x40000000,
+    }
+    checks.append(assert_equal(
+        "legal descriptor metric boundary values drive d4ac and d8fc consumers",
+        metric_boundary_cases,
+        {
+            "d8fc-lower-equal": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 21,
+                    "range_word_at_stream_10": 24,
+                    "rounded_word_at_stream_20": 5384,
+                    "flagged_offset_byte_at_stream_30": 1,
+                },
+                "copied_metrics": {
+                    "word_0x14": 24,
+                    "word_0x16": 21,
+                    "word_0x18": 2,
+                    "word_0x1a": 1,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 96,
+                    "word_0x2c": 96,
+                },
+                "d4ac": {
+                    "span": {
+                        "updated": False,
+                        "reason": "beyond-page-extent",
+                        "cursor_y": 21,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 00 00 00 01 01 7a 00 00 00 00"
+                    ),
+                    "render": {
+                        "row_count": 10,
+                        "row_width": 26,
+                        "row_sha256": "86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6",
+                    },
+                },
+                "d8fc": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D8FC,
+                        "context_lower_0016": 21,
+                        "context_height_0018": 2,
+                        "context_offset_001a": 1,
+                        "metric_source": metric_boundary_context_source,
+                        "high_y": 20,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 40 00 00 01 44 06 03 00 00 14"
+                    ),
+                    "render": {
+                        "row_count": 8,
+                        "row_width": 116,
+                        "row_sha256": "f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab",
+                    },
+                },
+            },
+            "rounded-0x1500-transform": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 4,
+                    "range_word_at_stream_10": 24,
+                    "rounded_word_at_stream_20": 5376,
+                    "flagged_offset_byte_at_stream_30": 1,
+                },
+                "copied_metrics": {
+                    "word_0x14": 24,
+                    "word_0x16": 4,
+                    "word_0x18": 19,
+                    "word_0x1a": 1,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 96,
+                    "word_0x2c": 96,
+                },
+                "d4ac": {
+                    "span": {
+                        "updated": False,
+                        "reason": "beyond-page-extent",
+                        "cursor_y": 21,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 00 00 00 01 01 7a 00 00 00 00"
+                    ),
+                    "render": {
+                        "row_count": 10,
+                        "row_width": 26,
+                        "row_sha256": "86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6",
+                    },
+                },
+                "d8fc": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D8FC,
+                        "context_lower_0016": 4,
+                        "context_height_0018": 19,
+                        "context_offset_001a": 1,
+                        "metric_source": metric_boundary_context_source,
+                        "high_y": 20,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 40 00 00 01 44 06 03 00 00 14"
+                    ),
+                    "render": {
+                        "row_count": 8,
+                        "row_width": 116,
+                        "row_sha256": "f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab",
+                    },
+                },
+            },
+            "extent-equal": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 4,
+                    "range_word_at_stream_10": 48,
+                    "rounded_word_at_stream_20": 32,
+                    "flagged_offset_byte_at_stream_30": 0,
+                },
+                "copied_metrics": {
+                    "word_0x14": 48,
+                    "word_0x16": 4,
+                    "word_0x18": 43,
+                    "word_0x1a": 0,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 32,
+                    "word_0x2c": 32,
+                },
+                "d4ac": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D4AC,
+                        "context_offset_002b": 0,
+                        "context_lower_002c": 0,
+                        "context_height_002d": 32,
+                        "high_y": 26,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 40 00 00 01 a4 06 03 00 00 14"
+                    ),
+                    "render": {
+                        "row_count": 13,
+                        "row_width": 116,
+                        "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                    },
+                },
+                "d8fc": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D8FC,
+                        "context_lower_0016": 4,
+                        "context_height_0018": 43,
+                        "context_offset_001a": 0,
+                        "metric_source": metric_boundary_context_source,
+                        "high_y": 21,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 40 00 00 01 54 06 03 00 00 14"
+                    ),
+                    "render": {
+                        "row_count": 8,
+                        "row_width": 116,
+                        "row_sha256": "47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8",
+                    },
+                },
+            },
+            "positive-offset-max": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 4,
+                    "range_word_at_stream_10": 24,
+                    "rounded_word_at_stream_20": 8,
+                    "flagged_offset_byte_at_stream_30": 127,
+                },
+                "copied_metrics": {
+                    "word_0x14": 24,
+                    "word_0x16": 4,
+                    "word_0x18": 19,
+                    "word_0x1a": 127,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 8,
+                    "word_0x2c": 8,
+                },
+                "d4ac": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D4AC,
+                        "context_offset_002b": 0,
+                        "context_lower_002c": 0,
+                        "context_height_002d": 8,
+                        "high_y": 26,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 40 00 00 01 a4 06 03 00 00 14"
+                    ),
+                    "render": {
+                        "row_count": 13,
+                        "row_width": 116,
+                        "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                    },
+                },
+                "d8fc": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D8FC,
+                        "context_lower_0016": 4,
+                        "context_height_0018": 19,
+                        "context_offset_001a": 127,
+                        "metric_source": metric_boundary_context_source,
+                        "high_y": -106,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 40 00 00 01 04 06 03 00 00 14"
+                    ),
+                    "render": {
+                        "row_count": 3,
+                        "row_width": 116,
+                        "row_sha256": "72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281",
+                    },
+                },
+            },
+        },
+    ))
     metric_context_cross_product_cases: dict[str, dict[str, object]] = {}
     for label, selected_context, source_form, materializer, byte_value in (
         ("inline-d4ac", 0, "unflagged", "d4ac", b"!"),
@@ -79516,6 +79824,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             metric_value_matrix_cases["midpoint-rounded"]["d4ac"]["render"]["row_sha256"],  # type: ignore[index]
             metric_value_matrix_cases["midpoint-rounded"]["d8fc"]["span"]["high_y"],  # type: ignore[index]
             metric_value_matrix_cases["midpoint-rounded"]["d8fc"]["render"]["row_sha256"],  # type: ignore[index]
+        )
+    )
+    lines.append(
+        "- metric boundary fixture: fixture `legal descriptor metric boundary "
+        "values drive d4ac and d8fc consumers` proves `d8fc` accepts lower "
+        "equality `+0x16 = 21`, accepts exact page extent with `+0x18 = 43`, "
+        "copies max positive offset byte `0x7f` as word `+0x1a = 0x007f` "
+        "and computes high-y `%d`, and maps rounded input `0x1500` to copied "
+        "`+0x2c = 0x%04x` so `d4ac` exits `%s`." % (
+            metric_boundary_cases["positive-offset-max"]["d8fc"]["span"]["high_y"],  # type: ignore[index]
+            metric_boundary_cases["rounded-0x1500-transform"]["copied_metrics"]["word_0x2c"],  # type: ignore[index]
+            metric_boundary_cases["rounded-0x1500-transform"]["d4ac"]["span"]["reason"],  # type: ignore[index]
         )
     )
     lines.append(

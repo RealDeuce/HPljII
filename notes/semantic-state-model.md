@@ -2554,18 +2554,19 @@ queues a fixed-width span through `0x136d2`.
     `+0x2c`, and `+0x2d` is documented in
     `notes/font-context-metrics.md`; the legal producer-form boundary is now
     fixture-backed by `descriptor metric fields match across inline and
-    resource contexts`, and the legal value matrix is fixture-backed by
-    `legal descriptor metric value matrix drives d4ac and d8fc consumers`, so
-    remaining gaps are additional metric values within legal forms, not the
-    fixture-backed type-0/type-1/type-2, low-bound, high-bound, clamped,
-    midpoint, or consumer branch cases.
+    resource contexts`, and the legal value matrix plus boundary endpoints are
+    fixture-backed by `legal descriptor metric value matrix drives d4ac and
+    d8fc consumers` and `legal descriptor metric boundary values drive d4ac and
+    d8fc consumers`, so remaining gaps are additional metric values within
+    legal forms, not the fixture-backed type-0/type-1/type-2, equality,
+    low-bound, high-bound, clamped, midpoint, or consumer branch cases.
   - selected-context ownership for flagged context fields `+0x16`,
     `+0x18`, and `+0x1a` is documented in
     `notes/font-context-metrics.md`; the same producer-form fixture proves
     resource/flagged `d8fc` is legal, inline/flagged is invalid, and remaining
     gaps are additional metric values within legal forms, not the
-    fixture-backed type-0/type-1/type-2, low-bound, high-bound, clamped,
-    midpoint, or consumer branch cases.
+    fixture-backed type-0/type-1/type-2, equality, low-bound, high-bound,
+    clamped, midpoint, offset-boundary, or consumer branch cases.
 
 ### Writers
 
@@ -2767,6 +2768,7 @@ fixtures.
 - `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`
 - `host-fetched upper-bound metric variant keeps d4ac span but suppresses d8fc`
 - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
+- `legal descriptor metric boundary values drive d4ac and d8fc consumers`
 - `0x1354a portrait text span split queues adjacent buckets`
 - `0x12714 landscape span inserts into nonempty fixed list`
 - `0x12714 allocation failure publishes page and retries span`
@@ -2880,6 +2882,13 @@ fixtures.
   `65534`, computes high-y `-65513`, and renders digest
   `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`,
   lower-bound exits before lower, and upper-bound exits beyond page extent.
+  Fixture
+  `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+  adds equality and offset endpoints: `d8fc` accepts copied lower word
+  `+0x16 = 0x0015` at cursor y `21`, accepts exact page extent with copied
+  height `+0x18 = 0x002b`, copies input offset byte `0x7f` as word
+  `+0x1a = 0x007f` and computes high-y `-106`, and proves rounded input
+  `0x1500` stores `+0x2c = 0x0060` before `d4ac` exits beyond page extent.
   Remaining producer gaps are additional metric values within legal forms;
   bounded validation no-install branches are composed below under
   `Downloaded Resource Validation No-Install`.
@@ -3683,7 +3692,11 @@ combination have not been page-compared.
   objects, preserves negative offset byte `0xfe` as copied word `0xfffe`,
   moves `d8fc` visible rows, updates `d8fc` without a span object, suppresses
   both span consumers through copied lower-bound fields, and preserves `d4ac`
-  span output while `d8fc` exits `beyond-page-extent`.
+  span output while `d8fc` exits `beyond-page-extent`. Fixture
+  `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+  adds `d8fc` lower-bound equality, exact page-extent equality, max positive
+  offset byte `0x7f`, and the rounded `0x1500` to copied `+0x2c = 0x0060`
+  transform that sends `d4ac` to `beyond-page-extent`.
   Fixture
   `descriptor metric fields match across inline and resource contexts` now
   pins the legal inline/unflagged and resource/flagged producer forms plus the

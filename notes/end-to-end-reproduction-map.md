@@ -340,11 +340,12 @@ The next work should follow dataflow, not isolated handlers:
    are now tracked. Host-fetched `0x1719c` type-0, type-1, and type-2 payloads
    reach both `d4ac` and `d8fc` span rows, and the shared
    disabled/lower/page/high-x consumer branch family is fixture-backed. The
-   seven-case legal descriptor metric matrix covers tight `d4ac` page-extent
-   gates, rounded-metric clamping into `+0x2c/+0x2d`, shifted `d8fc` visible
-   rows, a zero rounded/offset case where both consumers publish spans, a
-   negative-offset case where `d8fc` consumes copied word `0xfffe`, a midpoint
-   case where `d8fc` updates state but leaves compact-only output, a
+   seven-case legal descriptor metric matrix plus boundary fixture covers
+   tight `d4ac` page-extent gates, rounded-metric clamping into `+0x2c/+0x2d`,
+   shifted `d8fc` visible rows, a zero rounded/offset case where both consumers
+   publish spans, negative and max-positive copied offset words
+   `0xfffe`/`0x007f`, `d8fc` lower-bound and exact page-extent equality, a
+   midpoint case where `d8fc` updates state but leaves compact-only output, a
    lower-bound no-span output path for both consumers, and an upper-bound case
    where `d4ac` still renders a span while `d8fc` exits `beyond-page-extent`.
    Fixture

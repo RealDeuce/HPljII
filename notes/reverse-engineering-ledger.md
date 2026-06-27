@@ -452,6 +452,10 @@ negative-offset, lower-bound, and upper-bound legal metric values. The
 negative-offset row accepts descriptor byte `0xfe`, preserves it as copied word
 `+0x1a = 0xfffe`, and pins the resulting `d8fc` high-y `-65513` / render
 digest `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
+Fixture `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+now covers `d8fc` lower-bound equality, exact page-extent equality, max
+positive offset byte `0x7f`, and rounded input `0x1500` transforming to copied
+`+0x2c = 0x0060` before `d4ac` exits beyond page extent.
 Remaining work is additional metric-value combinations within the legal
 forms, validation/error page behavior beyond those seven no-install
 branches, remaining alternate character-mode/release variants, full

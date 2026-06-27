@@ -50,6 +50,7 @@ Evidence:
   - `host-fetched upper-bound metric variant keeps d4ac span but suppresses d8fc`
   - `descriptor metric fields match across inline and resource contexts`
   - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
+  - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
 
 ## Concept
 
@@ -558,6 +559,24 @@ Fixture-pinned metric effects:
   queues object prefix `00 00 00 00 40 00 00 01 04 06 03 00 00 14`, and
   renders row digest
   `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
+- Legal descriptor metric boundary values: fixture
+  `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+  adds four parser-produced descriptors behind the same legal forms. The
+  `d8fc-lower-equal` case copies `+0x16/+0x18/+0x1a =
+  0x0015/0x0002/0x0001`; at cursor y `21`, `0xd8fc` treats lower equality as
+  in range, publishes high-y `20`, queues object prefix
+  `00 00 00 00 40 00 00 01 44 06 03 00 00 14`, and renders digest
+  `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+  The `extent-equal` case copies `+0x18 = 0x002b`; at cursor y `21`,
+  `0xd8fc` accepts the exact page extent `64` boundary, publishes high-y
+  `21`, and renders the same digest as the zero-offset span. The
+  `positive-offset-max` case copies input offset byte `0x7f` as word
+  `+0x1a = 0x007f`; `0xd8fc` consumes it as `127`, computes high-y `-106`,
+  and renders the same three-row digest as the negative-offset boundary. The
+  `rounded-0x1500-transform` case shows rounded input `0x1500` is not copied
+  as a high-byte lower bound for `d4ac`: `0x1719c` stores `+0x2c = 0x0060`,
+  so `0xd4ac` exits `beyond-page-extent` and leaves the compact glyph digest
+  `86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6`.
 - Span-consumer branch family: fixture
   `d4ac and d8fc span consumer branch family controls flush output` drives
   printable `!` through both selected source forms. For both `0xd4ac` and
@@ -792,6 +811,18 @@ work can close the right gap instead of re-tracing already-covered consumers.
   becomes word `0xfffe` and `d8fc` computes high-y `-65513`. Status:
   parser-produced legal metric value cross-product to consumer state, queued
   object, and rendered row digest.
+- Claim: legal parser-produced descriptor metric boundary values now cover
+  equality and signed-offset endpoints. Evidence: fixture
+  `legal descriptor metric boundary values drive d4ac and d8fc consumers`;
+  `d8fc-lower-equal` proves current y `21` equals copied lower word
+  `+0x16 = 0x0015` and still publishes a span; `extent-equal` proves
+  current y `21` plus copied height `+0x18 = 0x002b` reaches page extent `64`
+  without taking the beyond-page exit; `positive-offset-max` proves input
+  byte `0x7f` copies as word `+0x1a = 0x007f` and computes high-y `-106`;
+  `rounded-0x1500-transform` proves rounded input `0x1500` stores
+  `+0x2c = 0x0060` and drives `d4ac` to `beyond-page-extent`. Status:
+  parser-produced legal boundary values to consumer state, queued object
+  prefix, and rendered row digest.
 - Claim: descriptor metric producer forms are disjoint at the selected-context
   boundary. Evidence: fixture
   `descriptor metric fields match across inline and resource contexts`;
@@ -814,15 +845,17 @@ The remaining unresolved middle edge is therefore not the tested `0x1719c`
 type-0, type-1, or type-2 metric paths into either `0xd4ac` or `0xd8fc`: all
 three payload forms now have host-fetched evidence through visible span rows,
 and the consumer-side disabled, lower-bound, page-extent, and high-x branches
-are fixture-backed for both selected source forms. The seven-case legal
-descriptor metric matrix now proves copied descriptor values can flip the
-`d4ac` page-extent gate, exercise rounded-metric clamping into
-`+0x2c/+0x2d`, preserve zero rounded/offset fields through visible `d4ac` and
-`d8fc` span objects, preserve a negative flagged offset byte as copied word
-`0xfffe`, move `d8fc` visible rows, update `d8fc` without publishing a span
-object, suppress both span consumers through descriptor-owned lower-bound
-fields, and suppress only `d8fc` through descriptor-owned upper-bound fields
-while preserving `d4ac` span output and compact glyph output. Fixture
+are fixture-backed for both selected source forms. The legal metric matrix and
+boundary fixture now prove copied descriptor values can flip the `d4ac`
+page-extent gate, exercise rounded-metric clamping into `+0x2c/+0x2d`,
+preserve zero rounded/offset fields through visible `d4ac` and `d8fc` span
+objects, preserve negative and max-positive flagged offset bytes as copied
+words `0xfffe` and `0x007f`, accept `d8fc` lower-bound equality and exact
+page-extent equality, move `d8fc` visible rows, update `d8fc` without
+publishing a span object, suppress both span consumers through descriptor-owned
+lower-bound fields, and suppress only `d8fc` through descriptor-owned
+upper-bound fields while preserving `d4ac` span output and compact glyph
+output. Fixture
 `descriptor metric fields match across inline and resource contexts` now pins
 the selected-context producer-form boundary: inline/unflagged `d4ac` and
 resource/flagged `d8fc` are visible, while resource/unflagged and
@@ -906,9 +939,10 @@ A byte-stream reproduction must preserve these behaviors:
   host-stream downloaded-font fixtures prove install, visible glyph rendering,
   and `0x1719c` type-0, type-1, and type-2 payloads feeding both `0xd4ac` and
   `0xd8fc` span rows; the shared span-consumer branch family is also
-  fixture-backed. The seven-case legal descriptor metric matrix now covers
-  visible extent flips, clamping, zero rounded/offset span publication, a
-  negative-offset copied word `0xfffe`, a midpoint `d8fc` state update without
+  fixture-backed. The legal descriptor metric matrix plus boundary fixture now
+  covers visible extent flips, clamping, zero rounded/offset span publication,
+  negative and max-positive offset copied words `0xfffe`/`0x007f`, `d8fc`
+  lower-bound and page-extent equality, a midpoint `d8fc` state update without
   a span object, lower-bound suppression for both consumers, and asymmetric
   upper-bound suppression of `0xd8fc` while `0xd4ac` still renders a span.
   Fixture `descriptor metric fields match across inline and resource contexts`

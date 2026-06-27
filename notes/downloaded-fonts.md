@@ -71,6 +71,7 @@ Primary fixtures:
 - `host-fetched upper-bound metric variant keeps d4ac span but suppresses d8fc`
 - `descriptor metric fields match across inline and resource contexts`
 - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
+- `legal descriptor metric boundary values drive d4ac and d8fc consumers`
 - `0x16498-backed downloaded character object renders segmented-wide compact row`
 - `downloaded character stream ties ROM parser dispatch to rendered object`
 - `host-fetched downloaded character stream reaches rendered object`
@@ -1363,15 +1364,18 @@ A byte-stream renderer must preserve:
   line/count, high line/count, reversed-range, high range/count, and
   invalid-class resource paths now have host-fetched
   parser/validation/no-install boundaries and following-printable page output.
-  The seven-case legal descriptor metric matrix now proves copied descriptor
-  fields can flip the `0xd4ac` page-extent gate, exercise rounded-metric
-  clamping into `+0x2c/+0x2d`, preserve zero rounded/offset fields through
-  visible `0xd4ac` and `0xd8fc` span objects, preserve a negative flagged
-  offset byte as copied word `0xfffe`, move `0xd8fc` rendered rows, update
-  `0xd8fc` without publishing a span object, suppress both span consumers
-  through parser-owned lower-bound fields, and suppress only `0xd8fc` through
+  The seven-case legal descriptor metric matrix plus the boundary-value
+  fixture now prove copied descriptor fields can flip the `0xd4ac`
+  page-extent gate, exercise rounded-metric clamping into `+0x2c/+0x2d`,
+  preserve zero rounded/offset fields through visible `0xd4ac` and `0xd8fc`
+  span objects, preserve negative and max-positive flagged offset bytes as
+  copied words `0xfffe` and `0x007f`, accept `d8fc` lower-bound equality and
+  exact page-extent equality, move `d8fc` rendered rows, update `0xd8fc`
+  without publishing a span object, suppress both span consumers through
+  parser-owned lower-bound fields, suppress only `0xd8fc` through
   parser-owned upper-bound fields while preserving `0xd4ac` span output and
-  compact glyph output. Fixture
+  compact glyph output, and show rounded input `0x1500` transforms to copied
+  `+0x2c = 0x0060` before `d4ac` exits beyond page extent. Fixture
   `descriptor metric fields match across inline and resource contexts` now
   proves the legal producer forms and the two invalid swapped forms. The
   remaining producer gap is additional metric-value combinations within those

@@ -1010,9 +1010,16 @@ handlers:
   direct controls, macro replay/overlay, reset/FF/page geometry
   publications, mixed text/rule/raster publication, downloaded-glyph FF
   publication, parser-driven downloaded-glyph/rule/raster composition,
-  and the modeled `0x1ef6a` band-crossing merge. The remaining gap is
-  live parser/register/memory capture for dense pages through real
-  allocator state, not the already-covered render-entry rows.
+  and the modeled `0x1ef6a` band-crossing merge. The most concrete
+  downloaded-glyph/rule/raster split is the `ESC )s18W` install stream:
+  fixture `parser-driven downloaded glyph rule raster stream composes through
+  0x1ef6a` uses the exact resource image emitted by
+  `host-fetched even-span wide downloaded character renders through 0x1f0d2`,
+  then starts the following page stream at byte `24`
+  (`ESC *c12a3b0P ) ESC *t300R ESC *r0A ESC *b2W c3 3c`). The remaining gap
+  is live parser/register/memory capture that keeps that installed memory in
+  one CPU run across the `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` return,
+  not the already-covered parser rule/raster producers or render-entry rows.
 - Compare the built-in font sample printout against observed paper output.
   The `0x1c334..0x1c5e4` row traversal is now
   decoded through `0x1b50e` candidate resolution, class filtering,
@@ -1042,12 +1049,15 @@ handlers:
 - Broaden visible-output variants where they still change compatibility:
   font-selection fallback/error branches beyond the two symbol-miss
   fixtures, downloaded-glyph publication cross-products beyond the documented
-  normal, row-`0x80`, linear-segmented, split-plane segmented,
-  segmented-wide, even-span wide, no-install, and status-`2` compact bucket
-  variants, the transparent secondary segment-57 fallback-row memory-map
-  interpretation beyond the now-pinned page-record, render-prefix, and
-  continuation-policy boundary, and final-`@` symbol table/copy variants only
-  if they need compatibility-facing visible-output behavior. The primary transparent
+  normal, non-boundary short, rows-`0x20` short, rows-`0x40` short,
+  row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
+  low-byte-truncated short, linear-segmented, rows-`0x82` segmented,
+  split-plane segmented, segmented-wide, even-span wide, payload-control
+  odd-span wide, no-install, and status-`2` compact bucket variants, the
+  transparent secondary segment-57 fallback-row memory-map interpretation
+  beyond the now-pinned page-record, render-prefix, and continuation-policy
+  boundary, and final-`@` symbol table/copy variants only if they need
+  compatibility-facing visible-output behavior. The primary transparent
   high-control path now includes boundary, interior-sample, tall-glyph, and
   top-of-range fixtures, and the parser/default-table state boundary for
   `@0..@3` is already pinned by fixture `real default-table caller stream uses

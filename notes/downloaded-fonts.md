@@ -1230,20 +1230,22 @@ and queues selector `0x2003`. Publication copies bucket array entries `1` and
 
 Fixture `downloaded glyph row-count matrix publishes and renders additional
 short/segmented counts` broadens the same command family. Short rows `0x0001`,
-`0x0004`, and `0x007f` restore fetched `ESC )s#W` records, install mode-byte-`1`
-records ending in row words `00 01`, `00 04`, and `00 7f`, publish only bucket
-`1`, keep selector `0x0003`, and dispatch compact target `0x1effe` with object
-byte `0x00`. Segmented rows `0x0083`, `0x0084`, `0x00fe`, and `0x00ff` install
-mode-byte-`1` records ending in row words `00 83`, `00 84`, `00 fe`, and
-`00 ff`, publish buckets `1` and `9`, keep selector `0x2003`, and render bucket
-word `9` through compact target `0x1effe` with object byte `0x20`. The
-published-row counts are `7`, `10`, `64`, `9`, `10`, `16`, and `16`. All seven
-cases now also pin the full-success return boundary
+`0x0002`, `0x0004`, `0x0008`, `0x0041`, and `0x007f` restore fetched
+`ESC )s#W` records, install mode-byte-`1` records ending in matching row words,
+publish only bucket `1`, keep selector `0x0003`, and dispatch compact target
+`0x1effe` with object byte `0x00`. Segmented rows `0x0083`, `0x0084`,
+`0x0085`, `0x00c0`, `0x00fd`, `0x00fe`, and `0x00ff` install matching
+mode-byte-`1` records, publish buckets `1` and `9`, keep selector `0x2003`,
+and render bucket word `9` through compact target `0x1effe` with object byte
+`0x20`. The published-row counts are `7`, `8`, `10`, `14`, `64`, `64`, `9`,
+`10`, `11`, `16`, `16`, `16`, and `16`. All thirteen cases now also pin the
+full-success return boundary
 `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`: copy status is `1`, `0x783140` is
 `0`, `0x12328` drains no bytes, and the next parser handler is `0xd04a` for
-printable bytes `0x38`, `0x34`, `0x35`, `0x36`, `0x39`, `0x3a`, and `0x37`.
-Rows `0x0083` and `0x0084` differ by one rendered row; rows `0x00fe` and
-`0x00ff` share the same 16-row digest
+printable bytes `0x38`, `0x3b`, `0x34`, `0x3c`, `0x3d`, `0x35`, `0x36`,
+`0x39`, `0x3e`, `0x3f`, `0x40`, `0x3a`, and `0x37`. Rows `0x0083`,
+`0x0084`, and `0x0085` differ by one rendered row each; rows `0x00c0`,
+`0x00fd`, `0x00fe`, and `0x00ff` share the same 16-row digest
 `a3dd16ea6b4509770b6c7859de6c059de5af91c05c9136e90f8daccc8acf5932`.
 
 Fixture `host-fetched rows-0x102 downloaded glyph FF publication truncates
@@ -1777,9 +1779,9 @@ A byte-stream renderer must preserve:
   split-plane status-`2` visible-output siblings and now carries both through
   trailing-FF `0xff1e` publication and published-record rendering. Remaining
   parser-produced comparisons are bounded cross-products: row counts outside the
-  covered short rows `0x01`, `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`,
-  and `0x80` and segmented rows `0x81`, `0x82`, `0x83`, `0x84`, `0xfe`, and
-  `0xff`, broader publication
+  covered short rows `0x01`, `0x02`, `0x03`, `0x04`, `0x08`, `0x10`, `0x20`,
+  `0x40`, `0x41`, `0x7f`, and `0x80` and segmented rows `0x81`, `0x82`,
+  `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`, broader publication
   combinations beyond the documented normal, nonboundary-short, rows-`0x20` short,
   rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   truncated, linear-segmented, rows-`0x82` segmented, split-plane segmented,
@@ -1795,8 +1797,9 @@ A byte-stream renderer must preserve:
   `0xd04a`; fixture `0x16498 status-2 partial installs remain printable` pins
   the linear/split status-`2` zero-drain returns before handler `0xd04a`;
   fixture `downloaded glyph row-count matrix publishes and renders additional
-  short/segmented counts` pins rows `0x01`, `0x04`, `0x7f`, `0x83`, `0x84`,
-  `0xfe`, and `0xff` zero-drain returns before handler `0xd04a`;
+  short/segmented counts` pins rows `0x01`, `0x02`, `0x04`, `0x08`, `0x41`,
+  `0x7f`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`
+  zero-drain returns before handler `0xd04a`;
   fixture `downloaded normal row-0x80 and segmented glyph FF publications
   render page records` pins normal, row-`0x80`, and linear-segmented zero-drain
   returns before handler `0xd04a`; fixture `split-plane segmented downloaded

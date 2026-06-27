@@ -932,6 +932,179 @@ additional descriptor metric combinations within those legal forms, plus
 validation/error forms beyond the bounded predicate and short-budget
 no-install cases driven from parser bytes to page rows.
 
+## Descriptor Metric Semantic Checkpoint
+
+This checkpoint covers the parser-produced downloaded-resource metric fields
+that feed the two text-span consumers. It composes the broad metric cluster
+from host-fetched `ESC )s#W` descriptor bytes through `0x16fae`, `0x1719c`,
+selected context form, `0xd4ac` / `0xd8fc`, page-record span objects, and
+visible rows.
+
+Field groups:
+
+- Canonical descriptor payload fields:
+  - payload `+0x14`: range/count word staged by the descriptor validator and
+    copied by `0x1719c`.
+  - payload `+0x16`: first-code/lower-bound word consumed by `0xd8fc`.
+  - payload `+0x18`: derived height/count cache, computed as
+    `+0x14 - +0x16 - 1` by `0x17430`, copied by `0x1719c`, and consumed by
+    `0xd8fc`.
+  - payload `+0x1a`: signed flagged offset word written by `0x1762a`, copied
+    by `0x1719c`, and consumed by `0xd8fc`.
+  - payload `+0x2c`: rounded/clamped unflagged metric word written by
+    `0x1757a`, copied by `0x1719c`, and consumed as bytes `+0x2c/+0x2d` by
+    `0xd4ac`.
+  - payload `+0x2b`: unflagged alternate-offset byte. It remains zero in the
+    covered `0x1719c` metric fixtures and is therefore firmware bookkeeping
+    for this checkpoint, not a proved canonical descriptor input.
+- Canonical selected-context forms:
+  - bit-30-clear inline/fixed-record context is the legal producer form for
+    unflagged `0xd4ac`.
+  - bit-30-set resource/offset-table context is the legal producer form for
+    flagged `0xd8fc`.
+  - fixture `descriptor metric fields match across inline and resource
+    contexts` proves the swapped resource/unflagged and inline/flagged forms
+    are invalid boundaries, not equivalent fallbacks.
+- Derived/cache state:
+  - staged descriptor base `0x782862` and optional symbol staging
+    `0x782842..0x782856` are temporary producer storage before `0x1719c`
+    allocation.
+  - `0x783184..0x78318a` are pending-span state updated by `0xd4ac` and
+    `0xd8fc` after metric consumption.
+  - page-record segment-list or fixed-list objects are derived output from
+    `0x12714`, not canonical descriptor state.
+- Parser scratch:
+  - restored `ESC )s#W` command records, payload budget `0x783140`, validation
+    cursor state, and consumed-but-not-staged descriptor bytes are parser
+    scratch for this checkpoint.
+- Firmware bookkeeping:
+  - payload type byte `+0x0c`, allocation units `0x7827ba`, and resource
+    allocation/free-list state control whether a payload exists; they do not
+    change the metric consumer formulas once the payload is installed.
+- Unknown:
+  - exact HP manual names for every consumed-but-not-staged descriptor table
+    field are still not correlated.
+
+Writers:
+
+- `0x16fae..0x17016` walks the 32-entry descriptor validation table at
+  `0x16eae`, reads bytes/words through `0x1599c`, `0x159b6`, `0x159d4`, and
+  `0x159f6`, and stages fields under `0x782862`.
+- `0x17430..0x1749c` writes canonical `+0x14` and derived/cache `+0x18`,
+  including the `+0x18 = +0x14 - +0x16 - 1` formula.
+- `0x1757a..0x175b8` writes `+0x2c` as
+  `min((value + 2) >> 2, word(+0x14)) << 2`.
+- `0x1762a..0x1763c` writes signed-byte offset input into word `+0x1a`.
+- `0x1719c..0x1725c` copies the staged sparse header and metric fields into
+  the allocated payload.
+- `0xd4ac` and `0xd8fc` consume the copied fields and update pending-span
+  state or exit through disabled, lower-bound, or page-extent branches.
+
+Readers and consumers:
+
+- `0xd4ac..0xd548` consumes unflagged bytes `+0x2b`, `+0x2c`, and `+0x2d`.
+  Visible effects include high-y changes, page-extent acceptance/rejection,
+  and later segment-list output through `0x12714` and `0x1f812`.
+- `0xd8fc..0xd992` consumes flagged words `+0x16`, `+0x18`, and `+0x1a`.
+  Visible effects include lower-bound equality, exact page-extent equality,
+  signed-offset high-y changes, and compact-only outcomes when no span object
+  is published.
+- `0x12714`, `0x13520` / `0x135f0`, `0x136d2`, `0x1f812`, and `0x1f756`
+  consume the pending-span result and turn it into rendered segment-list or
+  fixed-list rows.
+
+Output effect:
+
+- Fixtures `host-fetched 0x1719c payload metrics feed d4ac span rows` and
+  `host-fetched 0x1719c payload metrics feed d8fc span rows` prove the
+  type-0 host-fetched `ESC )s80W` payload reaches each legal consumer and
+  changes visible span rows.
+- Fixtures `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc
+  span rows` and `host-fetched type-2 0x1719c payload metrics feed d4ac and
+  d8fc span rows` prove the same metric contract survives type-1 and type-2
+  payload forms.
+- Fixture `host-fetched metric variant changes d4ac gate and d8fc rows` proves
+  changing parser-produced `+0x2c` and `+0x1a` flips the tight `d4ac` page
+  gate and moves the rendered `d8fc` span key.
+- Fixture `host-fetched clamped metric variant changes d4ac gate and d8fc
+  rows` proves a reduced range/count clamps `+0x2c` to `0x0014`, flips the
+  `d4ac` gate, and changes `d8fc` high-y.
+- Fixture `host-fetched lower-bound metric variant suppresses d4ac and d8fc
+  spans` proves descriptor-owned lower-bound fields can suppress both span
+  consumers while preserving compact glyph output.
+- Fixture `host-fetched upper-bound metric variant keeps d4ac span but
+  suppresses d8fc` proves a wider range/count can preserve unflagged span
+  output while `d8fc` exits `beyond-page-extent`.
+- Fixture `legal descriptor metric value matrix drives d4ac and d8fc
+  consumers` covers small-rounded, clamped-rounded, midpoint-rounded,
+  zero-rounded-offset, negative-offset, lower-bound, and upper-bound legal
+  descriptor values behind the two legal selected forms.
+- Fixture `legal descriptor metric boundary values drive d4ac and d8fc
+  consumers` proves `d8fc` lower-bound equality, exact page-extent equality,
+  max positive offset byte `0x7f`, max negative offset byte `0xff`, normal
+  rounded `0x0013 -> +0x2c = 0x0014`, and the `0x1500` / `0x1508` /
+  `0x15ff -> +0x2c = 0x0060` rounded-transform family.
+- Fixture `legal descriptor metric low-nibble rounding drives d4ac and d8fc
+  consumers` proves inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
+  `0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010` and keep
+  both consumers on the documented visible output paths.
+
+Confidence:
+
+- High for the copied-field formulas, selected-context legal forms, consumer
+  branch behavior, and visible span effects for the cited cases because each
+  claim is backed by host-fetched descriptor fixtures, disassembly, and
+  rendered row digests.
+- Medium for full descriptor compatibility because additional legal metric
+  value combinations and exact HP manual labels for non-staged fields remain
+  open.
+
+Fixture evidence:
+
+- `host-fetched 0x1719c payload metrics feed d4ac span rows`
+- `host-fetched 0x1719c payload metrics feed d8fc span rows`
+- `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
+- `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
+- `host-fetched metric variant changes d4ac gate and d8fc rows`
+- `host-fetched clamped metric variant changes d4ac gate and d8fc rows`
+- `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`
+- `host-fetched upper-bound metric variant keeps d4ac span but suppresses d8fc`
+- `descriptor metric fields match across inline and resource contexts`
+- `legal descriptor metric value matrix drives d4ac and d8fc consumers`
+- `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+- `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
+- `d4ac and d8fc span consumer branch family controls flush output`
+
+Disassembly evidence:
+
+- `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`:
+  descriptor table driver `0x16fae..0x17016`.
+- `generated/disasm/ic30_ic13_font_resource_validate_predicates_017358.lst`:
+  metric writers `0x17430`, `0x1757a`, and `0x1762a`.
+- `generated/disasm/ic30_ic13_font_resource_payload_initializer_01719c.lst`:
+  staged payload copy `0x1719c..0x1725c`.
+- `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`:
+  span consumers `0xd4ac..0xd548` and `0xd8fc..0xd992`.
+- `generated/disasm/ic30_ic13_text_span_flush_012714.lst` and
+  `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`:
+  pending-span output into page-record span objects.
+
+Unresolved middle edges:
+
+- `0x16fae..0x1719c`: seven bounded validation no-install forms and the
+  short-budget entry-5 failure preserve following printable output, but
+  remaining validation/error table combinations outside those predicates are
+  not all page-visible.
+- `0x17430..0x1763c`: the covered legal matrix proves the main range/count,
+  rounded/clamped, signed-offset, equality, and low-byte-discard behavior.
+  Additional legal metric values remain cross-products rather than new
+  semantic edges.
+- `0xd4ac..0xd992`: disabled, lower-bound, page-extent, high-x, exact extent,
+  and visible span branches are fixture-backed. Remaining risk is broader
+  selected-font combinations, not the consumer contract for the copied fields.
+- Manual descriptor labels: several consumed-but-not-staged fields are named
+  by ROM effect only; external HP documentation correlation remains open.
+
 ## Macro And Control Re-entry
 
 Macro replay shares this font-context bridge. `0xe65c` consumes either a

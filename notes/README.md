@@ -45,7 +45,8 @@ compatibility boundary.
 - [vertical-forms-control.md](vertical-forms-control.md) - documented
   `ESC &l#W` VFC table definition and `ESC &l#V` channel-jump output effects.
 - [font-context-metrics.md](font-context-metrics.md) - documented font
-  context selection, page-root slot install, glyph maps, and span metrics.
+  context selection, page-root slot install, glyph maps, and descriptor/span
+  metric checkpoints.
 - [downloaded-fonts.md](downloaded-fonts.md) - documented soft-font
   descriptor, payload, current-record, and downloaded-glyph render paths.
 - [pcl-parser-firmware.md](pcl-parser-firmware.md) - current host-byte

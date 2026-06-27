@@ -307,6 +307,12 @@ at `0x12120..0x1219c` and `0x12536..0x1261e`. Fixture
 `ESC Y display-functions stream reaches page-record output` proves the normal
 handler consumes `ESC Y!\x05! ESC Z`, routes values `21 05 21 1b 5a`, queues
 visible `!`, `!`, and `Z`, and renders the resulting page-record rows. Fixture
+`ESC Y display-functions filter-on routes controls as printable` proves the
+nonzero filter branch for the normal handler: with selected-context byte `1`
+and high-control filter `1`, stream `ESC Y\x05\x80\x1aX! ESC Z` normalizes
+`0x1a 0x58` to `0x7f`, routes values `05 80 7f 21 1b 5a` through `0xd04a`,
+queues six compact entries, and renders digest
+`1cdd8203b43944801ec8d1d01c6ab4fa3808fc1f81a7ebfa4d04452369193b63`. Fixture
 `0x12120 ESC Y alternate append stores normalized display bytes` proves the
 alternate/data handler consumes payload bytes `21 1a 58 1b 5a`, appends the
 literal prefix plus normalized loop values as `1b 59 21 7f 1b 5a`, and stores

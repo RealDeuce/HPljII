@@ -401,37 +401,38 @@ The next work should follow dataflow, not isolated handlers:
    inside the verified `IC32,IC15` resource-pair image. Disassembly of `0x1f354` and
    `0x1f1f0` makes the unresolved part a physical/resource-window mapping question after
    `0x0c0000`, not a transparent parser or row-skip question. The current-band
-   segment-57 rows are now pinned across mirror, code-pair, and zero-fill
-   continuation hypotheses with digest
-   `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`; the
-   fallback rows diverge, so the remaining requirement is board/emulator memory-map
-   evidence for `0x0c0000..0x0c0321`. The `ESC Y ... ESC Z`
-   display-functions loop is now documented in `notes/pcl-parser-core.md` and
-   `notes/semantic-state-model.md`; fixture `ESC Y display-functions stream reaches
-   page-record output` covers the normal `0x12536..0x1261e` page-output path, and
-   fixture `0x12120 ESC Y alternate append stores normalized display bytes` covers the
-   alternate/data append-only `0x12120..0x1219c` path around `0xe002`. Remaining
-   display-functions risk is fixture breadth across other context/filter combinations,
-   not the command-family loop boundary. They should also broaden downloaded-glyph
-   publication cross-products beyond the documented segmented-wide, normal,
-   linear-segmented, split-plane segmented, row-threshold `0x80` short, and even-span
-   wide selector families, especially other row counts, character modes, and non-success
-   exits. The row-threshold fixture closes the `0x80`/`0x81` selector boundary by
-   keeping rows `0x80` on selector `0x0003`, comparing it with the rows-`0x81` selector
-   `0x2003` fixture, and now publishing the row-`0x80` bucket-1 record through FF,
-   `0xff1e`, and `0x1ed84`/`0x1ef6a`. The split-plane segmented fixture now carries `ESC
-   )s387W` plus printable `(` and FF through `0xff1e`, preserves buckets `1` and `9`,
-   and renders bucket word `9` through `0x1ed84`/`0x1ef6a`. The `0x16498`
-   replacement/allocation-failure/partial/reject fixture now also covers old-pointer
-   release through `0x17a24`, object allocation failure through
-   `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear and split-plane continuation pointer
-   writes, and mode/header-type status-`0` rejects. The `0x16498` no-install
-   visible-output fixture now proves those failed installs leave the following printable
-   byte on the default-font compact object and rows, then publishes that default-font
-   bucket through trailing FF, `0xff1e`, and `0x1ed84`/`0x1ef6a`. The status-`2`
-   partial-install fixture now proves linear and split-plane partial glyphs remain
-   printable through their stored table pointers and zero-filled missing bytes, then
-   publishes both bucket-1 compact objects through trailing FF, `0xff1e`, and
+   segment-57 rows are now pinned across mirror, code-pair, and zero-fill continuation
+   hypotheses with digest
+   `f0c1127f9e6b203f9829ab43f159b89c3f7dda687a47d4c09971077eac55c96e`; the fallback rows
+   diverge, so the remaining requirement is board/emulator memory-map evidence for
+   `0x0c0000..0x0c0321`. The `ESC Y ... ESC Z` display-functions loop is now documented
+   in `notes/pcl-parser-core.md` and `notes/semantic-state-model.md`; fixture `ESC Y
+   display-functions stream reaches page-record output` covers the default-filter normal
+   `0x12536..0x1261e` page-output path, fixture `ESC Y display-functions filter-on
+   routes controls as printable` covers the complementary nonzero context/filter route
+   through `0xd04a`, and fixture `0x12120 ESC Y alternate append stores normalized
+   display bytes` covers the alternate/data append-only `0x12120..0x1219c` path around
+   `0xe002`. Remaining display-functions risk is broader physical/page comparison, not
+   the command-family loop boundary or the documented filter predicates. They should
+   also broaden downloaded-glyph publication cross-products beyond the documented
+   segmented-wide, normal, linear-segmented, split-plane segmented, row-threshold `0x80`
+   short, and even-span wide selector families, especially other row counts, character
+   modes, and non-success exits. The row-threshold fixture closes the `0x80`/`0x81`
+   selector boundary by keeping rows `0x80` on selector `0x0003`, comparing it with the
+   rows-`0x81` selector `0x2003` fixture, and now publishing the row-`0x80` bucket-1
+   record through FF, `0xff1e`, and `0x1ed84`/`0x1ef6a`. The split-plane segmented
+   fixture now carries `ESC )s387W` plus printable `(` and FF through `0xff1e`,
+   preserves buckets `1` and `9`, and renders bucket word `9` through
+   `0x1ed84`/`0x1ef6a`. The `0x16498` replacement/allocation-failure/partial/reject
+   fixture now also covers old-pointer release through `0x17a24`, object allocation
+   failure through `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear and split-plane
+   continuation pointer writes, and mode/header-type status-`0` rejects. The `0x16498`
+   no-install visible-output fixture now proves those failed installs leave the
+   following printable byte on the default-font compact object and rows, then publishes
+   that default-font bucket through trailing FF, `0xff1e`, and `0x1ed84`/`0x1ef6a`. The
+   status-`2` partial-install fixture now proves linear and split-plane partial glyphs
+   remain printable through their stored table pointers and zero-filled missing bytes,
+   then publishes both bucket-1 compact objects through trailing FF, `0xff1e`, and
    `0x1ed84`/`0x1ef6a` with the same rows. Remaining downloaded-character publication
    risk is broader publication combinations beyond these compact bucket-1
    no-install/status-`2` variants. The publication-command checkpoint now covers

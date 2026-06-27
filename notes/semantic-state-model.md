@@ -400,6 +400,14 @@ normal parser-to-page-record boundary for `ESC Y!\x05! ESC Z`: handler
 values before exit, queues visible `!`, `!`, and `Z` entries at compact coords
 `0x0001`, `0x0403`, and `0x0405`, and renders row digest
 `c7d0fb0a66181acd591244aab0a7f450f895b3b89ea98d189a00a25c3de04d85`.
+Fixture `ESC Y display-functions filter-on routes controls as printable`
+proves the complementary normal branch: with selected-context byte `1` and
+high-control filter `1`, stream `ESC Y\x05\x80\x1aX! ESC Z` normalizes
+`0x1a 0x58` to `0x7f`, routes values `05 80 7f 21 1b 5a` through `0xd04a`,
+queues six compact entries with object prefix
+`00 00 00 00 00 00 00 06 04 0b 00 7f 0e 01 7e 1f 02 20 06 04 1a 53 05 59
+06 06`, and renders row digest
+`1cdd8203b43944801ec8d1d01c6ab4fa3808fc1f81a7ebfa4d04452369193b63`.
 
 ### Confidence
 
@@ -416,6 +424,7 @@ macro chunk payload.
 ### Fixtures
 
 - `ESC Y display-functions stream reaches page-record output`
+- `ESC Y display-functions filter-on routes controls as printable`
 - `0x12120 ESC Y alternate append stores normalized display bytes`
 - Downstream route controls are shared with fixtures in `Transparent Print
   Data` and `Text Cursor And Direct Controls`, including
@@ -432,10 +441,10 @@ macro chunk payload.
 
 ### Unresolved Middle Edges
 
-- None remaining for the `0x12536..0x1261e` normal page-output loop or the
-  `0x12120..0x1219c` alternate/data append loop. Broader macro/data-chain
-  ownership remains covered in `Macro Definition And Replay`, not reopened
-  here.
+- None remaining for the `0x12536..0x1261e` normal page-output loop, its
+  default-filter and filter-on route predicates, or the `0x12120..0x1219c`
+  alternate/data append loop. Broader macro/data-chain ownership remains
+  covered in `Macro Definition And Replay`, not reopened here.
 
 ## Text Cursor And Direct Controls
 

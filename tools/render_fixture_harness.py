@@ -65410,6 +65410,225 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "row_sha256": "c7d0fb0a66181acd591244aab0a7f450f895b3b89ea98d189a00a25c3de04d85",
         "final_cursor_x": pack12(100),
     }))
+    display_functions_filter_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1bY\x05\x80\x1aX!\x1bZ",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            display_functions_selected_context_byte=1,
+            display_functions_filtering_word=1,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    display_functions_filter_events = display_functions_filter_stream["events"]
+    display_functions_filter_object = display_functions_filter_stream["bucket_object"]
+    display_functions_filter_rendered = display_functions_filter_stream["rendered"]
+    display_functions_filter_bridged = display_functions_filter_stream["bridged_record"]
+    assert isinstance(display_functions_filter_events, list)
+    assert isinstance(display_functions_filter_object, bytes)
+    assert isinstance(display_functions_filter_rendered, dict)
+    assert isinstance(display_functions_filter_bridged, dict)
+    if (
+        len(display_functions_filter_events) != 1
+        or display_functions_filter_events[0]["kind"] != "display-functions"
+    ):
+        raise AssertionError("display-functions filter stream expected one ESC Y event")
+    display_functions_filter_event = display_functions_filter_events[0]
+    assert isinstance(display_functions_filter_event, dict)
+    display_functions_filter_summary: list[dict[str, object]] = []
+    display_functions_filter_payload_events = display_functions_filter_event["payload_events"]
+    assert isinstance(display_functions_filter_payload_events, list)
+    for payload_event in display_functions_filter_payload_events:
+        assert isinstance(payload_event, dict)
+        page_result = payload_event.get("page_result")
+        source = payload_event.get("source")
+        assert isinstance(page_result, dict)
+        assert isinstance(source, dict)
+        display_functions_filter_summary.append({
+            "index": payload_event["index"],
+            "byte": payload_event["byte"],
+            "route": payload_event["route"],
+            "cursor_before": payload_event["cursor_before"],
+            "cursor_after": payload_event["cursor_after"],
+            "coord": page_result["coord"],
+            "allocated": page_result["allocated"],
+            "count_before": page_result["count_before"],
+            "count_after": page_result["count_after"],
+            "bucket_index": page_result["bucket_index"],
+            "mapped": source["mapped"],
+            "glyph_entry": source["glyph_entry"],
+        })
+    display_functions_filter_rows = display_functions_filter_rendered["rows"]
+    assert isinstance(display_functions_filter_rows, list)
+    checks.append(assert_equal(
+        "ESC Y display-functions filter-on routes controls as printable",
+        {
+            "stream": display_functions_filter_stream["stream"],
+            "event": {
+                "kind": display_functions_filter_event["kind"],
+                "sequence": display_functions_filter_event["sequence"],
+                "handler": display_functions_filter_event["handler"],
+                "payload_offset": display_functions_filter_event["payload_offset"],
+                "raw_payload": display_functions_filter_event["raw_payload"],
+                "selected_context_byte": display_functions_filter_event[
+                    "selected_context_byte"
+                ],
+                "local_filtering_word": display_functions_filter_event[
+                    "local_filtering_word"
+                ],
+                "values": display_functions_filter_event["values"],
+                "routes": display_functions_filter_event["routes"],
+                "control_hits": display_functions_filter_event["control_hits"],
+                "terminated": display_functions_filter_event["terminated"],
+                "payload_events": display_functions_filter_summary,
+            },
+            "root_allocations": display_functions_filter_stream["final_state"][
+                "page_record_root_allocations"
+            ],
+            "bucket_index": display_functions_filter_stream["bucket_index"],
+            "object_prefix": display_functions_filter_object[:30],
+            "bridged_context_slots": display_functions_filter_bridged[
+                "context_slots"
+            ][:2],
+            "row_count": len(display_functions_filter_rows),
+            "row_width": max(len(str(row)) for row in display_functions_filter_rows),
+            "row_sha256": hashlib.sha256(
+                "\n".join(str(row) for row in display_functions_filter_rows).encode(
+                    "ascii"
+                )
+            ).hexdigest(),
+            "final_cursor_x": display_functions_filter_stream["final_state"][
+                "cursor_x"
+            ],
+        },
+        {
+            "stream": b"\x1bY\x05\x80\x1aX!\x1bZ",
+            "event": {
+                "kind": "display-functions",
+                "sequence": b"\x1bY\x05\x80\x1aX!\x1bZ",
+                "handler": 0x012536,
+                "payload_offset": 2,
+                "raw_payload": b"\x05\x80\x1aX!\x1bZ",
+                "selected_context_byte": 1,
+                "local_filtering_word": 1,
+                "values": [0x05, 0x80, 0x7F, 0x21, 0x1B, 0x5A],
+                "routes": [
+                    0x00D04A,
+                    0x00D04A,
+                    0x00D04A,
+                    0x00D04A,
+                    0x00D04A,
+                    0x00D04A,
+                ],
+                "control_hits": 1,
+                "terminated": True,
+                "payload_events": [
+                    {
+                        "index": 0,
+                        "byte": 0x05,
+                        "route": 0x00D04A,
+                        "cursor_before": pack12(10),
+                        "cursor_after": pack12(10) + line_printer_hmi["hmi"],
+                        "coord": 0x0B00,
+                        "allocated": True,
+                        "count_before": 0,
+                        "count_after": 1,
+                        "bucket_index": 0,
+                        "mapped": 0x04,
+                        "glyph_entry": 0x0186C6,
+                    },
+                    {
+                        "index": 1,
+                        "byte": 0x80,
+                        "route": 0x00D04A,
+                        "cursor_before": pack12(10) + line_printer_hmi["hmi"],
+                        "cursor_after": pack12(10) + line_printer_hmi["hmi"] * 2,
+                        "coord": 0x0E01,
+                        "allocated": False,
+                        "count_before": 1,
+                        "count_after": 2,
+                        "bucket_index": 0,
+                        "mapped": 0x7F,
+                        "glyph_entry": 0x016ACA,
+                    },
+                    {
+                        "index": 2,
+                        "byte": 0x7F,
+                        "route": 0x00D04A,
+                        "cursor_before": pack12(10) + line_printer_hmi["hmi"] * 2,
+                        "cursor_after": pack12(10) + line_printer_hmi["hmi"] * 3,
+                        "coord": 0x1F02,
+                        "allocated": False,
+                        "count_before": 2,
+                        "count_after": 3,
+                        "bucket_index": 0,
+                        "mapped": 0x7E,
+                        "glyph_entry": 0x0166DE,
+                    },
+                    {
+                        "index": 3,
+                        "byte": 0x21,
+                        "route": 0x00D04A,
+                        "cursor_before": pack12(10) + line_printer_hmi["hmi"] * 3,
+                        "cursor_after": pack12(10) + line_printer_hmi["hmi"] * 4,
+                        "coord": 0x0604,
+                        "allocated": False,
+                        "count_before": 3,
+                        "count_after": 4,
+                        "bucket_index": 0,
+                        "mapped": 0x20,
+                        "glyph_entry": 0x015330,
+                    },
+                    {
+                        "index": 4,
+                        "byte": 0x1B,
+                        "route": 0x00D04A,
+                        "cursor_before": pack12(10) + line_printer_hmi["hmi"] * 4,
+                        "cursor_after": pack12(10) + line_printer_hmi["hmi"] * 5,
+                        "coord": 0x5305,
+                        "allocated": False,
+                        "count_before": 4,
+                        "count_after": 5,
+                        "bucket_index": 0,
+                        "mapped": 0x1A,
+                        "glyph_entry": 0x01832E,
+                    },
+                    {
+                        "index": 5,
+                        "byte": 0x5A,
+                        "route": 0x00D04A,
+                        "cursor_before": pack12(10) + line_printer_hmi["hmi"] * 5,
+                        "cursor_after": pack12(10) + line_printer_hmi["hmi"] * 6,
+                        "coord": 0x0606,
+                        "allocated": False,
+                        "count_before": 5,
+                        "count_after": 6,
+                        "bucket_index": 0,
+                        "mapped": 0x59,
+                        "glyph_entry": 0x015F2C,
+                    },
+                ],
+            },
+            "root_allocations": 1,
+            "bucket_index": 0,
+            "object_prefix": bytes.fromhex(
+                "00 00 00 00 00 00 00 06 04 0b 00 7f 0e 01 7e 1f "
+                "02 20 06 04 1a 53 05 59 06 06 00 00 00 00"
+            ),
+            "bridged_context_slots": (0x440946B4, 0),
+            "row_count": 27,
+            "row_width": 116,
+            "row_sha256": "1cdd8203b43944801ec8d1d01c6ab4fa3808fc1f81a7ebfa4d04452369193b63",
+            "final_cursor_x": pack12(10) + line_printer_hmi["hmi"] * 6,
+        },
+    ))
     transparent_probe_page_record_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,
@@ -80331,6 +80550,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "queues visible `!`, `!`, and `Z` entries at compact coords `0x0001`, "
         "`0x0403`, and `0x0405`, and renders row digest "
         "`c7d0fb0a66181acd591244aab0a7f450f895b3b89ea98d189a00a25c3de04d85`."
+    )
+    lines.append(
+        "- display-functions filter-on boundary: stream `1b 59 05 80 1a 58 21 "
+        "1b 5a` sets selected-context byte `1` and high-control filter `1`, "
+        "normalizes `1a 58` to `7f`, routes values `05 80 7f 21 1b 5a` "
+        "through `0xd04a`, queues six compact entries with prefix `%s`, and "
+        "renders row digest `%s`." % (
+            " ".join(f"{byte:02x}" for byte in display_functions_filter_object[:26]),
+            hashlib.sha256(
+                "\n".join(str(row) for row in display_functions_filter_rows).encode(
+                    "ascii"
+                )
+            ).hexdigest(),
+        )
     )
     lines.append(
         "- display-functions alternate append boundary: stream payload `21 1a "

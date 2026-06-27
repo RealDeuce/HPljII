@@ -497,6 +497,13 @@ publication returns through the same boundary with `0x783140 = 0`, zero-byte
 `split-plane segmented downloaded glyph FF publication renders page record`
 pins the corresponding split-plane segmented return before printable `(` and
 FF publication.
+Fixture `combined font download FF publishes installed glyph page record` now
+pins the segmented-wide full-success sibling: after the `ESC )s2193W` copy,
+record `00 00 00 00 0c 02 00 81 00 88 00 00`, table entry `0x00de`, bitmap
+size `0x0891`, and copy stream position `0x0891` are installed; the
+`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` return leaves `0x783140 = 0`,
+drains zero bytes, and resumes at printable handler `0xd04a` before FF
+publishes bucket entries `1` and `9`.
 Fixture `host-fetched payload-control downloaded glyph FF publishes page
 record` now pins the contrasting nonzero-drain wide case: after `1a 58`
 normalization, copy leaves `0x783140 = 1`, `0x12328` drains following byte
@@ -507,9 +514,10 @@ Remaining work is additional metric-value combinations outside those pinned
 legal matrix, boundary, and low-nibble endpoints, validation/error page behavior
 beyond those bounded predicate and short-budget no-install branches, remaining
 release variants, full-success return-boundary siblings beyond the covered
-normal even-span, no-install, status-`2`, linear-segmented publication, and
-split-plane segmented publication zero-drain cases plus the payload-control
-wide nonzero-drain case, broader publication combinations beyond the covered
+normal even-span, no-install, status-`2`, linear-segmented publication,
+split-plane segmented publication, and segmented-wide publication zero-drain
+cases plus the payload-control wide nonzero-drain case, broader publication
+combinations beyond the covered
 normal, nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented,
 rows-`0x20` short, rows-`0x40` short, row-count-matrix rows
 `0x04`/`0x7f`/`0x83`/`0xff`, rows-`0x82` segmented, rows-`0x0102`

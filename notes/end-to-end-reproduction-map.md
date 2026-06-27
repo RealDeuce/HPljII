@@ -307,7 +307,11 @@ pixels or byte-stream compatibility.
    even-span wide, segmented, split-plane segmented, and segmented-wide compact render
    shapes, and the combined downloaded-glyph stream now reaches FF publication with both
    segmented buckets preserved and scheduler-produced band words `0..9` rendered. The
-   payload-control wide sibling now has its nonzero return drain pinned: fixture
+   combined segmented-wide publication fixture now also pins the full-success return
+   boundary: `combined font download FF publishes installed glyph page record` leaves
+   `0x783140 = 0`, drains zero bytes through `0x12328`, and resumes at handler
+   `0xd04a` for printable `%` before FF publication. The payload-control wide sibling
+   now has its nonzero return drain pinned: fixture
    `host-fetched payload-control downloaded glyph FF publishes page record` carries
    normalized `1a 58`, selector `0x1003`, bucket `1`, `0xff1e`, `0x1ed84`, and
    `0x1ef6a` to the same `0x1f0d2` modeled row, while the live return leaves
@@ -328,7 +332,8 @@ pixels or byte-stream compatibility.
    writes only mode `1`/`2` from span parity, and `0x16b26..0x16b34` rejects invalid
    widths without scratch writes. The full soft-font descriptor grammar, other release
    variants, full-success return-boundary siblings outside the even-span rule/raster
-   path and outside the segmented-publication fixtures, and page-visible behavior for
+   path and outside the segmented, split-plane segmented, segmented-wide, and
+   payload-control publication fixtures, and page-visible behavior for
    descriptor error forms beyond those no-install boundaries
    are still not proven against every PCL form. The mode-byte-`0` no-install boundary is
    documented separately: fixture `0x16498 replacement allocation failure partial and
@@ -350,6 +355,8 @@ pixels or byte-stream compatibility.
    The downloaded-glyph publication fixtures now also pin normal, row-`0x80`,
    linear-segmented, and split-plane segmented full-success publication returns with
    `0x783140 = 0`, zero drain, and next handler `0xd04a`.
+   The combined segmented-wide publication fixture pins the same zero-drain return for
+   selector `0x3003`: `0x783140 = 0`, zero drain, and next handler `0xd04a`.
    The payload-control wide publication fixture pins the nonzero return sibling:
    `0x783140 = 1`, drained byte `0x26`, and post-return handler `0xf0f0`.
 5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
@@ -471,9 +478,10 @@ The next work should follow dataflow, not isolated handlers:
    short rows `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`, and `0x80` and segmented
    rows `0x81`, `0x82`, `0x83`, and `0xff`, descriptor grammar forms outside the
    covered helper-table path and full-success return-boundary siblings beyond the
-   covered normal even-span, no-install, status-`2`, linear-segmented publication, and
-   split-plane segmented publication zero-drain cases plus the payload-control wide
-   nonzero-drain `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` case.
+   covered normal even-span, no-install, status-`2`, linear-segmented publication,
+   split-plane segmented publication, and segmented-wide publication zero-drain cases
+   plus the payload-control wide nonzero-drain
+   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` case.
    The accepted mode-byte boundary itself is covered by fixture
    `0x16b1a descriptor width helper emits only mode 1/2`, which pins
    `0x16b36..0x16b6a` accepted writes and `0x16b26..0x16b34` invalid no-writes. The

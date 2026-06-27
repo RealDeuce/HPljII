@@ -1288,11 +1288,14 @@ downloaded segmented-wide row as the direct compact-object renderer.
 The FF publication variant proves the same installed-glyph page object across
 `0xff1e`. The fetched stream length is `2216` bytes, with control bytes
 `0..14`, payload bytes `14..2214`, printable byte `2214..2215`, and FF at
-`2215..2216`. The tail `% FF` routes to handlers `0xd04a` and `0xf0f0`.
-Publication keeps bucket root `00 00 00 00 30 03 00 01 25 01 66 01...`,
-publishes bucket array entries `9` and `1`, leaves rule and fixed lists empty,
-copies context slots `0,0,0,0`, clears the current root, and sets publication
-flag `1`. Fixture
+`2215..2216`. Fixture `combined font download FF publishes installed glyph page
+record` now pins the segmented-wide full-success return boundary too: after the
+payload copy, `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` leaves
+`0x783140 = 0`, drains zero bytes, and resumes at handler `0xd04a` for the
+printable `%` before FF reaches `0xf0f0`. Publication keeps bucket root
+`00 00 00 00 30 03 00 01 25 01 66 01...`, publishes bucket array entries `9`
+and `1`, leaves rule and fixed lists empty, copies context slots `0,0,0,0`,
+clears the current root, and sets publication flag `1`. Fixture
 `published downloaded glyph segmented buckets render across bands` copies that
 published record through `0x1ed84`, walks modeled band words `1` and `9`
 through `0x1ef6a`, dispatches both compact objects to `0x1effe`, leaves the
@@ -1610,8 +1613,9 @@ A byte-stream renderer must preserve:
   truncated, linear-segmented, rows-`0x82` segmented, split-plane segmented,
   segmented-wide, even-span wide, payload-control wide, no-install, and status-`2`
   compact bucket variants, and return-boundary variants beyond the covered
-  normal even-span, no-install, status-`2`, linear-segmented publication, and
-  split-plane segmented publication fixtures. The normal even-span fixture pins
+  normal even-span, no-install, status-`2`, linear-segmented publication,
+  split-plane segmented publication, and segmented-wide publication fixtures. The
+  normal even-span fixture pins
   the `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` boundary with zero remaining
   budget and next handler `0x10e68`; fixture `0x16498 no-install exits preserve
   following printable output` pins six-byte `0x12328` drains before handler
@@ -1621,12 +1625,13 @@ A byte-stream renderer must preserve:
   render page records` pins normal, row-`0x80`, and linear-segmented zero-drain
   returns before handler `0xd04a`; fixture `split-plane segmented downloaded
   glyph FF publication renders page record` pins the split-plane segmented
-  zero-drain return before handler `0xd04a`; fixture `host-fetched
+  zero-drain return before handler `0xd04a`; fixture `combined font download FF
+  publishes installed glyph page record` pins the segmented-wide zero-drain return
+  before handler `0xd04a`; fixture `host-fetched
   payload-control downloaded glyph FF publishes page record` pins the
   payload-control wide nonzero drain where `0x12328` consumes `&` and leaves FF
-  for handler `0xf0f0`. Segmented-wide and other uncomposed full-success return
-  siblings are still bounded
-  cross-products. Accepted
+  for handler `0xf0f0`. Other uncomposed full-success return siblings are still
+  bounded cross-products. Accepted
   descriptor-record mode bytes are closed for the covered helper table by
   fixture `0x16b1a descriptor width helper emits only mode 1/2`: disassembly
   `0x16b36..0x16b6a` writes mode `1`/`2` from span parity, and

@@ -58435,6 +58435,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     combined_publication_tail_stream = combined_font_download_publication_fetch["stream"][
         combined_payload_end:
     ]
+    combined_publication_return_drain = consume_data_payload_count_via_12328(
+        int(combined_payload_install["copy"]["byte_budget"]),  # type: ignore[index]
+        combined_publication_tail_stream,
+    )
     combined_publication_tail_trace = trace_mixed_text_control_parser_path_via_11774(
         data,
         combined_publication_tail_stream,
@@ -58473,6 +58477,31 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 combined_payload_end + 1,
                 len(combined_font_download_publication_stream),
             ),
+        },
+        "payload": {
+            "handlers": [
+                event["handler"]
+                for event in combined_payload_trace["dispatches"]
+            ],
+            "restored_record": combined_payload_trace["commands"][0]["restored_record"],
+            "install_record": combined_payload_install["record"],
+            "table_entry": combined_payload_install["table_entry"],
+            "bitmap_size": combined_payload_install["bitmap_size"],
+            "copy": {
+                key: combined_payload_install["copy"][key]
+                for key in ("status", "stream_pos", "byte_budget", "phase")
+            },
+            "return_boundary": {
+                "call_edge": (0x15DC6, 0x16498),
+                "return_edge": (0x16498, 0x15DCC),
+                "drain_edge": (0x15DCC, 0x12328),
+                "remaining_budget_0x783140": (
+                    combined_payload_install["copy"]["byte_budget"]
+                ),
+                "drain": combined_publication_return_drain,
+                "next_stream_prefix": combined_publication_tail_stream[:1],
+                "next_handler": combined_publication_tail_trace["events"][0]["handler"],
+            },
         },
         "tail": {
             "stream": combined_publication_tail_stream,
@@ -58543,6 +58572,34 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 len(b"\x1b*c4660d37e5F") + len(downloaded_segmented_wide_command_stream) + 1,
                 len(combined_font_download_publication_stream),
             ),
+        },
+        "payload": {
+            "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "restored_record": b"\x80W\x08\x91\x00\x00",
+            "install_record": bytes.fromhex("00 00 00 00 0c 02 00 81 00 88 00 00"),
+            "table_entry": 0x00DE,
+            "bitmap_size": 0x0891,
+            "copy": {
+                "status": 1,
+                "stream_pos": 0x0891,
+                "byte_budget": 0,
+                "phase": "done",
+            },
+            "return_boundary": {
+                "call_edge": (0x15DC6, 0x16498),
+                "return_edge": (0x16498, 0x15DCC),
+                "drain_edge": (0x15DCC, 0x12328),
+                "remaining_budget_0x783140": 0,
+                "drain": {
+                    "status": 1,
+                    "values": [],
+                    "pos": 0,
+                    "remaining": 0,
+                    "control_hits": 0,
+                },
+                "next_stream_prefix": b"%",
+                "next_handler": 0x00D04A,
+            },
         },
         "tail": {
             "stream": b"%\x0c",
@@ -84365,10 +84422,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     lines.append(
         "- combined stream FF publication: appending FF drains `%d` bytes "
-        "total, routes tail handlers `%s`, publishes bucket entries `%s` "
-        "through `0xff1e`, clears current root to `%d`, and keeps the "
-        "single-bucket render check pinned at bucket `%d`." % (
+        "total, leaves payload return `0x783140 = %d`, drains `%d` bytes "
+        "through `0x12328`, resumes at handler `0x%05x`, routes tail handlers "
+        "`%s`, publishes bucket entries `%s` through `0xff1e`, clears current "
+        "root to `%d`, and keeps the single-bucket render check pinned at "
+        "bucket `%d`." % (
             len(combined_font_download_publication_fetch["stream"]),
+            combined_payload_install["copy"]["byte_budget"],
+            len(combined_publication_return_drain["values"]),
+            combined_publication_tail_trace["events"][0]["handler"],
             ", ".join(
                 "0x%05x" % event["handler"]
                 for event in combined_publication_tail_trace["events"]

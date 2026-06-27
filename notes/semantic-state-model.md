@@ -3665,10 +3665,10 @@ Field groups:
   for bucket `5`; no page publication or root clear occurs in this checkpoint.
 - Unknown for this checkpoint: full-success return-boundary siblings outside
   the even-span downloaded-glyph plus rule/raster stream and outside the
-  separate no-install/status-`2` and segmented-publication visible fixtures.
-  The page stream itself now drives the glyph, rule, and raster producers
-  together; the font payload install still enters the page phase as a modeled
-  resource image.
+  separate no-install/status-`2`, segmented-publication, and combined
+  segmented-wide publication visible fixtures. The page stream itself now
+  drives the glyph, rule, and raster producers together; the font payload
+  install still enters the page phase as a modeled resource image.
 
 The modeled resource image is now a pinned handoff, not an implicit fixture
 shortcut. The page-stream runner uses exactly
@@ -3686,8 +3686,13 @@ status `1`, copy stream position `18`, remaining `0x783140 = 0`, a zero-byte
 `0x12328` drain, and next handler `0x10e68`. The split-plane, segmented,
 no-install, status-`2`, linear segmented, and split-plane segmented
 return-boundary siblings are covered by separate visible-output fixtures only
-where cited below; other full-success return siblings remain open
-cross-products.
+where cited below. Fixture `combined font download FF publishes installed glyph
+page record` now also pins the segmented-wide sibling: copied record
+`00 00 00 00 0c 02 00 81 00 88 00 00`, table entry `0x00de`, bitmap size
+`0x0891`, copy status `1`, copy stream position `0x0891`, remaining
+`0x783140 = 0`, zero-byte `0x12328` drain, and next handler `0xd04a` for the
+printable `%` before FF publication. Other full-success return siblings remain
+open cross-products.
 
 Readers and output effect: `0x1ef6a` runs call order `0x1ef86`, `0x1efc2`,
 `0x1f446`, `0x1f756`. The bucket dispatcher sends the raster object to
@@ -3888,8 +3893,9 @@ fields and every legal metric combination have not been page-compared.
   split-plane segmented, segmented-wide, even-span wide, payload-control wide,
   no-install, and status-`2` compact bucket variants, and return-boundary siblings
   outside the covered normal even-span, no-install, status-`2`, linear segmented
-  publication, and split-plane segmented publication fixtures. The normal even-span
-  fixture `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
+  publication, split-plane segmented publication, and segmented-wide publication
+  fixtures. The normal even-span fixture
+  `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
   pins
   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with zero remaining budget and next
   handler `0x10e68`; fixture `0x16498 no-install exits preserve following printable
@@ -3899,11 +3905,13 @@ fields and every legal metric combination have not been page-compared.
   glyph FF publications render page records` pins normal, row-`0x80`, and
   linear-segmented zero-drain publication returns before handler `0xd04a`; fixture
   `split-plane segmented downloaded glyph FF publication renders page record` pins the
-  split-plane segmented zero-drain return before handler `0xd04a`; fixture
+  split-plane segmented zero-drain return before handler `0xd04a`; fixture `combined
+  font download FF publishes installed glyph page record` pins the segmented-wide
+  zero-drain publication return before handler `0xd04a`; fixture
   `host-fetched payload-control downloaded glyph FF publishes page record` pins the
   payload-control wide nonzero drain that consumes `&` and leaves FF for handler
-  `0xf0f0`. Segmented-wide and other uncomposed full-success return siblings remain
-  open cross-products. Accepted
+  `0xf0f0`. Other uncomposed full-success return siblings remain open cross-products.
+  Accepted
   descriptor-record mode bytes are closed for the covered helper table by fixture
   `0x16b1a descriptor width helper emits only mode 1/2`: `0x16b36..0x16b6a` writes
   mode `1`/`2` from span parity, and `0x16b26..0x16b34` rejects invalid widths without

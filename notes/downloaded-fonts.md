@@ -260,8 +260,8 @@ Renderer-facing allocated payload fields:
 - legal metric-value matrix: fixture
   `legal descriptor metric value matrix drives d4ac and d8fc consumers`
   groups small-rounded, clamped-rounded, midpoint-rounded, zero-rounded-offset,
-  lower-bound, and upper-bound parser-produced descriptors. The
-  zero-rounded-offset descriptor copies canonical `+0x14/+0x16 =
+  negative-offset, lower-bound, and upper-bound parser-produced descriptors.
+  The zero-rounded-offset descriptor copies canonical `+0x14/+0x16 =
   0x0018/0x0004`, derived/cache `+0x18 = 0x0013`, and consumer fields
   `+0x1a/+0x2c = 0x0000/0x0000`; `d4ac` still emits the default span digest
   `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`,
@@ -271,6 +271,11 @@ Renderer-facing allocated payload fields:
   0x0018/0x0004/0x0013/0x0007/0x0018`; `d8fc` updates high-y to `14` and
   leaves the compact-only glyph digest
   `1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a`.
+  The negative-offset descriptor accepts input byte `0xfe`, which `0x1719c`
+  copies as word `+0x1a = 0xfffe`; `d4ac` still emits the default span digest,
+  while `d8fc` consumes that word as `65534`, computes high-y `-65513`, and
+  renders row digest
+  `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
 
 Unknown:
 
@@ -1250,14 +1255,15 @@ A byte-stream renderer must preserve:
   line/count, high line/count, reversed-range, high range/count, and
   invalid-class resource paths now have host-fetched
   parser/validation/no-install boundaries and following-printable page output.
-  The six-case legal descriptor metric matrix now proves copied descriptor
+  The seven-case legal descriptor metric matrix now proves copied descriptor
   fields can flip the `0xd4ac` page-extent gate, exercise rounded-metric
   clamping into `+0x2c/+0x2d`, preserve zero rounded/offset fields through
-  visible `0xd4ac` and `0xd8fc` span objects, move `0xd8fc` rendered rows,
-  update `0xd8fc` without publishing a span object, suppress both span
-  consumers through parser-owned lower-bound fields, and suppress only
-  `0xd8fc` through parser-owned upper-bound fields while preserving `0xd4ac`
-  span output and compact glyph output. Fixture
+  visible `0xd4ac` and `0xd8fc` span objects, preserve a negative flagged
+  offset byte as copied word `0xfffe`, move `0xd8fc` rendered rows, update
+  `0xd8fc` without publishing a span object, suppress both span consumers
+  through parser-owned lower-bound fields, and suppress only `0xd8fc` through
+  parser-owned upper-bound fields while preserving `0xd4ac` span output and
+  compact glyph output. Fixture
   `descriptor metric fields match across inline and resource contexts` now
   proves the legal producer forms and the two invalid swapped forms. The
   remaining producer gap is additional metric-value combinations within those

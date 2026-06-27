@@ -49977,6 +49977,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     metric_zero_offset_stream[30] = 0
     metric_zero_offset = build_metric_matrix_payload(metric_zero_offset_stream)
 
+    metric_negative_offset_stream = bytearray(font_validate_stream)
+    metric_negative_offset_stream[10:12] = b"\x00\x18"
+    metric_negative_offset_stream[20:22] = b"\x00\x08"
+    metric_negative_offset_stream[30] = 0xFE
+    metric_negative_offset = build_metric_matrix_payload(metric_negative_offset_stream)
+
     def summarize_legal_metric_render(
         memory: bytes | bytearray,
         selected_context: int,
@@ -50049,7 +50055,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             assert isinstance(queued, dict)
             page_object = queued["object"]
             render_entry = stream_result["render_entry"]
-            assert isinstance(render_entry, dict)
+            if not isinstance(render_entry, dict):
+                render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+                    data,
+                    memory,
+                    stream_result["page_record"],
+                    bucket_word=int(queued["bucket_index"]),
+                )
             rendered = render_entry["entry"]
             assert isinstance(rendered, dict)
         else:
@@ -50121,6 +50133,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             metric_zero_offset["allocation"],
             metric_zero_offset["install"],
             metric_zero_offset["memory"],
+        ),
+        (
+            "negative-offset",
+            metric_negative_offset["stream"],
+            metric_negative_offset["host_stream"],
+            metric_negative_offset["trace"],
+            metric_negative_offset["command_trace"],
+            metric_negative_offset["validation"],
+            metric_negative_offset["allocation"],
+            metric_negative_offset["install"],
+            metric_negative_offset["memory"],
         ),
         (
             "lower-bound",
@@ -50479,6 +50502,83 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "row_count": 8,
                         "row_width": 116,
                         "row_sha256": "47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8",
+                    },
+                },
+            },
+            "negative-offset": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 4,
+                    "range_word_at_stream_10": 24,
+                    "rounded_word_at_stream_20": 8,
+                    "flagged_offset_byte_at_stream_30": -2,
+                },
+                "resource_stream": {
+                    "fetched_stream_prefix": b"\x1b)s80W",
+                    "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                    "restored_record": bytes.fromhex("80 57 00 50 00 00"),
+                    "payload_length": 80,
+                    "validation_status": 1,
+                    "payload_units": 0x80,
+                    "allocation_size": 10,
+                    "candidate_flags": 0x40000000,
+                },
+                "copied_metrics": {
+                    "word_0x14": 24,
+                    "word_0x16": 4,
+                    "word_0x18": 19,
+                    "word_0x1a": 0xFFFE,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 8,
+                    "word_0x2c": 8,
+                },
+                "d4ac": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D4AC,
+                        "context_offset_002b": 0,
+                        "context_lower_002c": 0,
+                        "context_height_002d": 8,
+                        "high_y": 26,
+                    },
+                    "page_object": (
+                        bytes.fromhex(
+                            "00 00 00 00 40 00 00 01 a4 06 03 00 00 14"
+                        )
+                        + (b"\x00" * 0x18)
+                    ),
+                    "render": {
+                        "row_count": 13,
+                        "row_width": 116,
+                        "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                    },
+                },
+                "d8fc": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D8FC,
+                        "context_lower_0016": 4,
+                        "context_height_0018": 19,
+                        "context_offset_001a": 0xFFFE,
+                        "metric_source": {
+                            "kind": "context",
+                            "base": 0,
+                            "context": 0x40000000,
+                        },
+                        "high_y": -65513,
+                    },
+                    "page_object": (
+                        bytes.fromhex(
+                            "00 00 00 00 40 00 00 01 04 06 03 00 00 14"
+                        )
+                        + (b"\x00" * 0x18)
+                    ),
+                    "render": {
+                        "row_count": 3,
+                        "row_width": 116,
+                        "row_sha256": "72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281",
                     },
                 },
             },
@@ -77298,7 +77398,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         )
     )
     lines.append(
-        "- legal descriptor metric value matrix: fixture `legal descriptor metric value matrix drives d4ac and d8fc consumers` covers small-rounded, clamped-rounded, midpoint-rounded, zero-rounded-offset, lower-bound, and upper-bound parser-produced descriptors. The zero case copies `+0x14/+0x18/+0x1a/+0x2c = 0x%04x/0x%04x/0x%04x/0x%04x`, keeps `d4ac` row digest `%s`, and makes `d8fc` publish high-y `%d` / row digest `%s`." % (
+        "- legal descriptor metric value matrix: fixture `legal descriptor metric value matrix drives d4ac and d8fc consumers` covers small-rounded, clamped-rounded, midpoint-rounded, zero-rounded-offset, negative-offset, lower-bound, and upper-bound parser-produced descriptors. The zero case copies `+0x14/+0x18/+0x1a/+0x2c = 0x%04x/0x%04x/0x%04x/0x%04x`, keeps `d4ac` row digest `%s`, and makes `d8fc` publish high-y `%d` / row digest `%s`." % (
             metric_value_matrix_cases["zero-rounded-offset"]["copied_metrics"]["word_0x14"],  # type: ignore[index]
             metric_value_matrix_cases["zero-rounded-offset"]["copied_metrics"]["word_0x18"],  # type: ignore[index]
             metric_value_matrix_cases["zero-rounded-offset"]["copied_metrics"]["word_0x1a"],  # type: ignore[index]
@@ -77306,6 +77406,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             metric_value_matrix_cases["zero-rounded-offset"]["d4ac"]["render"]["row_sha256"],  # type: ignore[index]
             metric_value_matrix_cases["zero-rounded-offset"]["d8fc"]["span"]["high_y"],  # type: ignore[index]
             metric_value_matrix_cases["zero-rounded-offset"]["d8fc"]["render"]["row_sha256"],  # type: ignore[index]
+        )
+    )
+    lines.append(
+        "- negative-offset metric matrix case: input offset byte `0x%02x` is copied as word `+0x1a = 0x%04x`; `d4ac` keeps row digest `%s`, while `d8fc` consumes that word as `%d`, computes high-y `%d`, queues object `%s`, and renders row digest `%s`." % (
+            metric_negative_offset_stream[30],
+            metric_value_matrix_cases["negative-offset"]["copied_metrics"]["word_0x1a"],  # type: ignore[index]
+            metric_value_matrix_cases["negative-offset"]["d4ac"]["render"]["row_sha256"],  # type: ignore[index]
+            metric_value_matrix_cases["negative-offset"]["d8fc"]["span"]["context_offset_001a"],  # type: ignore[index]
+            metric_value_matrix_cases["negative-offset"]["d8fc"]["span"]["high_y"],  # type: ignore[index]
+            " ".join(
+                f"{byte:02x}"
+                for byte in metric_value_matrix_cases["negative-offset"]["d8fc"]["page_object"]  # type: ignore[index]
+            ),
+            metric_value_matrix_cases["negative-offset"]["d8fc"]["render"]["row_sha256"],  # type: ignore[index]
         )
     )
     lines.append(

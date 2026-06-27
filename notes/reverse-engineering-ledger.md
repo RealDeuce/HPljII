@@ -448,8 +448,11 @@ page-record object and rendered rows; fixture
 pins the legal metric producer forms and the two invalid swapped forms.
 Fixture `legal descriptor metric value matrix drives d4ac and d8fc consumers`
 now covers small-rounded, clamped-rounded, midpoint-rounded, zero-rounded-offset,
-lower-bound, and upper-bound legal metric values. Remaining work is additional
-metric-value combinations within the legal
+negative-offset, lower-bound, and upper-bound legal metric values. The
+negative-offset row accepts descriptor byte `0xfe`, preserves it as copied word
+`+0x1a = 0xfffe`, and pins the resulting `d8fc` high-y `-65513` / render
+digest `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
+Remaining work is additional metric-value combinations within the legal
 forms, validation/error page behavior beyond those seven no-install
 branches, remaining alternate character-mode/release variants, full
 live-parser raster edge cases, and final device-output page comparison.

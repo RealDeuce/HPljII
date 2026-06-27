@@ -248,9 +248,9 @@ pixels or byte-stream compatibility.
    the two invalid swapped forms. Fixture
    `legal descriptor metric value matrix drives d4ac and d8fc consumers`
    composes the legal small-rounded, clamped-rounded, midpoint-rounded,
-   zero-rounded-offset, lower-bound, and upper-bound values; the zero case
-   copies `+0x14/+0x18/+0x1a/+0x2c = 0x0018/0x0013/0x0000/0x0000`, preserves
-   the `d4ac` span digest
+   zero-rounded-offset, negative-offset, lower-bound, and upper-bound values;
+   the zero case copies `+0x14/+0x18/+0x1a/+0x2c =
+   0x0018/0x0013/0x0000/0x0000`, preserves the `d4ac` span digest
    `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`,
    and makes `d8fc` publish high-y `21` / row digest
    `47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8`. The
@@ -258,6 +258,10 @@ pixels or byte-stream compatibility.
    0x0018/0x0013/0x0007/0x0018` and makes `d8fc` update high-y `14` while
    leaving compact-only digest
    `1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a`.
+   The negative-offset case copies `+0x14/+0x18/+0x1a/+0x2c =
+   0x0018/0x0013/0xfffe/0x0008`; `d8fc` consumes the copied offset word as
+   `65534`, computes high-y `-65513`, and renders digest
+   `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
    The open edge is additional metric-value combinations within the legal
    forms, plus validation/error forms beyond those bounded predicate branches.
    It is not the tested type-0/type-1/type-2 payloads, metric-variant,
@@ -334,10 +338,11 @@ The next work should follow dataflow, not isolated handlers:
    are now tracked. Host-fetched `0x1719c` type-0, type-1, and type-2 payloads
    reach both `d4ac` and `d8fc` span rows, and the shared
    disabled/lower/page/high-x consumer branch family is fixture-backed. The
-   six-case legal descriptor metric matrix covers tight `d4ac` page-extent
+   seven-case legal descriptor metric matrix covers tight `d4ac` page-extent
    gates, rounded-metric clamping into `+0x2c/+0x2d`, shifted `d8fc` visible
    rows, a zero rounded/offset case where both consumers publish spans, a
-   midpoint case where `d8fc` updates state but leaves compact-only output, a
+   negative-offset case where `d8fc` consumes copied word `0xfffe`, a midpoint
+   case where `d8fc` updates state but leaves compact-only output, a
    lower-bound no-span output path for both consumers, and an upper-bound case
    where `d4ac` still renders a span while `d8fc` exits `beyond-page-extent`.
    Fixture

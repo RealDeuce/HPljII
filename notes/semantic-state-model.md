@@ -2600,9 +2600,10 @@ fixtures.
   adds the legal-value matrix: small, clamped, midpoint, and upper values
   leave `d4ac` span output visible, the zero-rounded-offset value preserves
   copied `+0x2c/+0x2d = 0/0` while still publishing the same `d4ac` span
-  object, and the lower-bound value makes `d4ac` exit before lower. Remaining
-  producer gaps are additional metric values within legal forms; bounded
-  validation no-install branches are composed below under
+  object, the negative-offset value copies `+0x2c/+0x2d = 0/8` while still
+  publishing that span, and the lower-bound value makes `d4ac` exit before
+  lower. Remaining producer gaps are additional metric values within legal
+  forms; bounded validation no-install branches are composed below under
   `Downloaded Resource Validation No-Install`.
 - `0xd8fc..0xd992`: flagged context fields `+0x16`, `+0x18`, and
   `+0x1a` are fixture-backed for the low-water success branch and tied
@@ -2641,6 +2642,9 @@ fixtures.
   `14` without a span object, zero-rounded-offset copies
   `+0x18/+0x1a = 0x0013/0x0000` and publishes high-y `21` with row digest
   `47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8`,
+  negative-offset copies `+0x18/+0x1a = 0x0013/0xfffe`, consumes the offset as
+  `65534`, computes high-y `-65513`, and renders digest
+  `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`,
   lower-bound exits before lower, and upper-bound exits beyond page extent.
   Remaining producer gaps are additional metric values within legal forms;
   bounded validation no-install branches are composed below under
@@ -2919,7 +2923,7 @@ Fixture `legal descriptor metric value matrix drives d4ac and d8fc consumers`
 composes the legal metric cases into one state-block matrix. It records
 parser input words, copied payload words, both consumer outcomes, queued page
 objects, and row digests for small-rounded, clamped-rounded, midpoint-rounded,
-zero-rounded-offset, lower-bound, and upper-bound descriptors. The
+zero-rounded-offset, negative-offset, lower-bound, and upper-bound descriptors. The
 zero-rounded-offset row records parser range/count `0x0018`, rounded input
 `0x0000`, and offset byte `0`; canonical fields `+0x14/+0x16 =
 0x0018/0x0004`, derived/cache field `+0x18 = 0x0013`, and consumer fields
@@ -2932,6 +2936,15 @@ midpoint row records descriptor range/count `0x0018`, rounded input `0x0018`,
 and signed offset byte `7`; `0xd8fc` updates high-y to `14` but leaves only
 compact glyph digest
 `1a73b5e7454202d800c69f626bcf34e7d0d583b459e04c0bd4250010bf3ba28a`.
+The negative-offset row records descriptor range/count `0x0018`, rounded
+input `0x0008`, and signed offset byte `0xfe`; canonical fields
+`+0x14/+0x16 = 0x0018/0x0004`, derived/cache field `+0x18 = 0x0013`, and
+consumer fields `+0x1a/+0x2c = 0xfffe/0x0008` survive the
+`0x16fae` / `0x1719c` copy. `0xd4ac` keeps the default visible span digest,
+while `0xd8fc` consumes `+0x1a` as word `65534`, computes high-y `-65513`,
+queues span object prefix `00 00 00 00 40 00 00 01 04 06 03 00 00 14`, and
+renders digest
+`72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
 Fixture `host-fetched segmented downloaded character renders through 0x1f1f0`
 connects the downloaded-character linear reader to the remaining segmented
 compact renderer shape. Host fetch drains `ESC )s258W`; parser dispatch walks
@@ -3331,13 +3344,14 @@ combination have not been page-compared.
   broader variant coverage, not this control-flow edge.
 - The span-metric bridge in `notes/font-context-metrics.md` now covers
   host-fetched type-0, type-1, and type-2 downloaded payloads for both span
-  consumers, the shared consumer branch family, and a six-case
+  consumers, the shared consumer branch family, and a seven-case
   parser-produced legal metric-value matrix that flips tight `d4ac`
   page-extent gates, exercises rounded-metric clamping into `+0x2c/+0x2d`,
   preserves zero rounded/offset fields through visible `d4ac` and `d8fc` span
-  objects, moves `d8fc` visible rows, updates `d8fc` without a span object,
-  suppresses both span consumers through copied lower-bound fields, and
-  preserves `d4ac` span output while `d8fc` exits `beyond-page-extent`.
+  objects, preserves negative offset byte `0xfe` as copied word `0xfffe`,
+  moves `d8fc` visible rows, updates `d8fc` without a span object, suppresses
+  both span consumers through copied lower-bound fields, and preserves `d4ac`
+  span output while `d8fc` exits `beyond-page-extent`.
   Fixture
   `descriptor metric fields match across inline and resource contexts` now
   pins the legal inline/unflagged and resource/flagged producer forms plus the

@@ -3764,7 +3764,12 @@ combination have not been page-compared.
   `legal descriptor metric boundary values drive d4ac and d8fc consumers`
   adds `d8fc` lower-bound equality, exact page-extent equality, max positive
   offset byte `0x7f`, and the rounded `0x1500` to copied `+0x2c = 0x0060`
-  transform that sends `d4ac` to `beyond-page-extent`.
+  transform that sends `d4ac` to `beyond-page-extent`. The same fixture now
+  adds `rounded-0x1508-transform`, proving the descriptor transform discards
+  the low byte and stores the same `+0x2c = 0x0060`; `d4ac` exits
+  `beyond-page-extent`, while `d8fc` consumes `+0x16/+0x18/+0x1a =
+  0x0004/0x0013/0x0001` and renders digest
+  `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
   Fixture
   `descriptor metric fields match across inline and resource contexts` now
   pins the legal inline/unflagged and resource/flagged producer forms plus the

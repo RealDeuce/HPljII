@@ -561,7 +561,7 @@ Fixture-pinned metric effects:
   `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
 - Legal descriptor metric boundary values: fixture
   `legal descriptor metric boundary values drive d4ac and d8fc consumers`
-  adds four parser-produced descriptors behind the same legal forms. The
+  adds five parser-produced descriptors behind the same legal forms. The
   `d8fc-lower-equal` case copies `+0x16/+0x18/+0x1a =
   0x0015/0x0002/0x0001`; at cursor y `21`, `0xd8fc` treats lower equality as
   in range, publishes high-y `20`, queues object prefix
@@ -576,7 +576,12 @@ Fixture-pinned metric effects:
   `rounded-0x1500-transform` case shows rounded input `0x1500` is not copied
   as a high-byte lower bound for `d4ac`: `0x1719c` stores `+0x2c = 0x0060`,
   so `0xd4ac` exits `beyond-page-extent` and leaves the compact glyph digest
-  `86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6`.
+  `86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6`. The
+  `rounded-0x1508-transform` case proves the low byte is discarded by the same
+  transform: input `0x1508` also stores `+0x2c = 0x0060`, so `d4ac` takes the
+  same beyond-page exit while `d8fc` still consumes `+0x16/+0x18/+0x1a =
+  0x0004/0x0013/0x0001` and renders digest
+  `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
 - Span-consumer branch family: fixture
   `d4ac and d8fc span consumer branch family controls flush output` drives
   printable `!` through both selected source forms. For both `0xd4ac` and
@@ -820,9 +825,11 @@ work can close the right gap instead of re-tracing already-covered consumers.
   without taking the beyond-page exit; `positive-offset-max` proves input
   byte `0x7f` copies as word `+0x1a = 0x007f` and computes high-y `-106`;
   `rounded-0x1500-transform` proves rounded input `0x1500` stores
-  `+0x2c = 0x0060` and drives `d4ac` to `beyond-page-extent`. Status:
-  parser-produced legal boundary values to consumer state, queued object
-  prefix, and rendered row digest.
+  `+0x2c = 0x0060` and drives `d4ac` to `beyond-page-extent`; and
+  `rounded-0x1508-transform` proves the descriptor transform discards the low
+  byte and stores the same `+0x2c = 0x0060`. Status: parser-produced legal
+  boundary values to consumer state, queued object prefix, and rendered row
+  digest.
 - Claim: descriptor metric producer forms are disjoint at the selected-context
   boundary. Evidence: fixture
   `descriptor metric fields match across inline and resource contexts`;
@@ -943,8 +950,9 @@ A byte-stream reproduction must preserve these behaviors:
   covers visible extent flips, clamping, zero rounded/offset span publication,
   negative and max-positive offset copied words `0xfffe`/`0x007f`, `d8fc`
   lower-bound and page-extent equality, a midpoint `d8fc` state update without
-  a span object, lower-bound suppression for both consumers, and asymmetric
-  upper-bound suppression of `0xd8fc` while `0xd4ac` still renders a span.
+  a span object, rounded low-byte discard for `0x1508`, lower-bound
+  suppression for both consumers, and asymmetric upper-bound suppression of
+  `0xd8fc` while `0xd4ac` still renders a span.
   Fixture `descriptor metric fields match across inline and resource contexts`
   now pins the legal producer-form boundary and both invalid swapped forms.
   Seven bounded `0x16fae` validation no-install forms now preserve following

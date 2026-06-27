@@ -966,6 +966,11 @@ handlers:
   host-fetched `0x1719c` type-0/type-1/type-2 payloads, the seven-case legal
   descriptor metric value matrix, the metric boundary-value fixture, and the
   shared `d4ac`/`d8fc` consumer branch family. Fixture
+  `legal descriptor metric boundary values drive d4ac and d8fc consumers` now
+  also proves rounded input `0x1508` stores the same copied `+0x2c = 0x0060`
+  as `0x1500`, so the low byte is discarded before `d4ac` takes the
+  beyond-page exit and `d8fc` renders from copied context words
+  `0x0004/0x0013/0x0001`. Fixture
   `descriptor metric fields match across inline and resource contexts` now
   pins the legal inline/unflagged `d4ac` and resource/flagged `d8fc`
   producer forms plus the two invalid swapped forms. The open middle is

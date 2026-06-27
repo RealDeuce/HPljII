@@ -87,6 +87,7 @@ Primary fixtures:
 - `host-fetched even-span wide downloaded character renders through 0x1f0d2`
 - `host-fetched row-0x80 downloaded character remains short compact`
 - `0x16b1a descriptor width helper emits only mode 1/2`
+- `downloaded glyph width-span matrix publishes and renders all main helpers`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
 - `0x16498 no-install exits preserve following printable output`
@@ -282,21 +283,19 @@ Published page-record state:
   emits only mode 1/2` proves `0x16b1a` writes only mode `1`/`2`, while
   mode-byte-`0` is documented as an unchanged-output object-boundary reject,
   not a parser-produced renderer mode. Fixture `downloaded normal row-0x80
-  and segmented glyph FF publications
-  render page records` covers the row-`0x80` bucket-1 publication sibling for the
-  `0x80`/`0x81` selector threshold. The covered publication fixtures are `downloaded
-  normal row-0x80 and segmented glyph FF publications render page records`, `split-plane
-  segmented downloaded glyph FF publication renders page record`, `host-fetched
-  even-span downloaded glyph FF publishes rendered page record`, `host-fetched rows-0x82
-  segmented downloaded glyph FF publication renders page record`, `host-fetched
-  rows-0x20 short downloaded glyph FF publication renders page record`,
-  `host-fetched rows-0x40 short downloaded glyph FF publication renders page record`,
-  `host-fetched rows-0x102 downloaded glyph FF publication truncates page-record rows`,
-  `downloaded glyph row-count matrix publishes and renders additional short/segmented
-  counts`,
-  `host-fetched payload-control downloaded glyph FF publishes page record`,
-  `published downloaded glyph segmented buckets render across bands`, and
-  `0x1eba4 scheduler band words render published downloaded glyph`.
+  and segmented glyph FF publications render page records` covers the row-`0x80`
+  bucket-1 publication sibling for the `0x80`/`0x81` selector threshold.
+  Fixture `downloaded glyph width-span matrix publishes and renders all main
+  helpers` closes the main compact helper indexes for downloaded-character
+  widths: host-fetched spans `1..16` install canonical widths `8..128`, mode
+  bytes alternate `2/1` by span parity, odd spans above one use the
+  `0x16942` split-plane copy path, all cases publish bucket `0` through FF,
+  and `0x1ed84`/`0x1ef6a` renders rows matching the installed bitmap through
+  the `0x1f08e` helper selected by `D1`. The covered publication fixture set
+  is the primary fixture ledger above, now including the width-span matrix,
+  row-count matrix, row-`0x80`, split-plane segmented, segmented-wide,
+  payload-control wide, no-install, status-`2`, and scheduler band-walk
+  siblings.
 
 Renderer-facing allocated payload fields:
 
@@ -1227,6 +1226,23 @@ and queues selector `0x2003`. Publication copies bucket array entries `1` and
 `9`; rendering bucket word `9` through `0x1ed84`/`0x1ef6a` and compact target
 `0x1effe`/`0x1f1f0` produces two segment-1 rows, `####........####` and
 `#.#.#.#..#.#.#.#`, at x `22`.
+
+Fixture `downloaded glyph width-span matrix publishes and renders all main
+helpers` covers the downloaded-character width/span side of the same command
+family. It drives sixteen host-fetched `ESC )s#W` streams whose descriptor
+widths produce spans `1..16`, canonical installed width words `0x0008..0x0080`,
+row word `0x0003`, and mode bytes `2` for odd spans or `1` for even spans.
+Parser scratch is the restored `80 57 #W` record and payload byte count;
+canonical state is the installed table entry, record, bitmap bytes, and
+split-plane flag; derived/cache state is the bucket-0 published page record and
+the `0x1f08e[D1]` helper. All sixteen cases return through
+`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with copy status `1`,
+`0x783140 = 0`, no drained bytes, and next handler `0xd04a`; `0x1ed84` /
+`0x1ef6a` then dispatches object byte `0x00` to compact target `0x1effe`.
+Rows rendered by helpers `0x1fa5c`, `0x1fe76`, `0x20290`, `0x207ac`,
+`0x20cc8`, `0x212e4`, `0x21900`, `0x2201c`, `0x22738`, `0x22f54`,
+`0x23770`, `0x24090`, `0x249b0`, `0x253d0`, `0x25df0`, and `0x26910` match
+the installed bitmap rows in the fixture.
 
 Fixture `downloaded glyph row-count matrix publishes and renders additional
 short/segmented counts` broadens the same command family. Short rows `0x0001`,

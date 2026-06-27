@@ -55482,6 +55482,282 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         ],
     ))
+
+    def downloaded_width_span_matrix_case(
+        *,
+        span: int,
+        char_code: int,
+        object_offset: int,
+    ) -> dict[str, object]:
+        width = span * 8
+        rows = 3
+        mode = 2 if span & 1 else 1
+        payload = bytes(
+            (
+                0x1B
+                if (((span * 17) + index * 23) & 0xFF) == 0x1A
+                else ((span * 17) + index * 23) & 0xFF
+            )
+            for index in range(rows * span)
+        )
+        command_stream = f"\x1b)s{len(payload)}W".encode("ascii") + payload
+        publication_stream = command_stream + bytes([char_code, 0x0C])
+        fetched = fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(publication_stream), direct_mode=0),
+            len(publication_stream),
+        )
+        font_stream = fetched["stream"][:len(command_stream)]
+        tail_stream = fetched["stream"][len(command_stream):]
+        font_trace = trace_font_parser_dispatch_via_11774(data, font_stream)
+        font_command = font_trace["commands"][0]
+        assert isinstance(font_command, dict)
+        install_command = render_font_download_char_command_stream_via_121cc_16498(
+            font_stream,
+            table_payload_type2_bytes,
+            char_code=char_code,
+            record_words=(0x0000, 0x0000, rows, 0x0000),
+            mode=mode,
+            width=width,
+            rows=rows,
+            object_offset=object_offset,
+        )
+        install_event = install_command["events"][0]
+        assert isinstance(install_event, dict)
+        install = install_event["install"]
+        assert isinstance(install, dict)
+        if "header" not in install:
+            raise AssertionError(f"width-span install failed for span {span}: {install}")
+        memory = bytearray(install["header"])
+        glyph = resolve_downloaded_pointer_glyph(memory, 0, char_code)
+        assert glyph is not None
+        page_record: dict[str, object] = {
+            "bucket_array": {},
+            "context_slots": [0, 0, 0, 0],
+        }
+        source = {
+            "context": 0,
+            "host_char": char_code,
+            "mapped": char_code,
+            "glyph_entry": glyph["entry"],
+            "glyph_width": glyph["width"],
+            "glyph_rows": glyph["rows"],
+            "flag": 0,
+            "x": 0,
+            "y": 0,
+            "context_slot": 3,
+            "inline_record": bytes([
+                int(glyph["render_span"]),
+                int(glyph["rows"]) & 0xFF,
+                0,
+            ]),
+        }
+        page_result = queue_text_source_to_page_record_via_12f2e(
+            memory,
+            page_record,
+            source,
+        )
+        copy = install["copy"]
+        assert isinstance(copy, dict)
+        return_drain = consume_data_payload_count_via_12328(
+            int(copy["byte_budget"]),
+            tail_stream,
+        )
+        tail_trace = trace_mixed_text_control_parser_path_via_11774(data, tail_stream)
+        publication = finalize_page_record_via_ff1e(
+            page_record,
+            reset_fixture_state(
+                page_root_present=1,
+                page_root_class=1,
+                current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+                page_root_clears=0,
+                publication_bucket_index=int(page_result["bucket_index"]),
+            ),
+        )
+        published_record = publication["published_pool_record"]
+        assert isinstance(published_record, dict)
+        published_fields = published_record["pool_record_fields"]
+        assert isinstance(published_fields, dict)
+        published_render = render_published_page_record_via_1ed84_1ef6a(
+            data,
+            memory,
+            published_record,
+            bucket_word=int(page_result["bucket_index"]),
+        )
+        published_entry = published_render["entry"]
+        assert isinstance(published_entry, dict)
+        bucket_rendered = published_entry["bucket_rendered"]
+        assert isinstance(bucket_rendered, list)
+        compact_rendered = bucket_rendered[0]["rendered"]
+        assert isinstance(compact_rendered, dict)
+        rows_out = compact_rendered["rows"]
+        assert isinstance(rows_out, list)
+        dispatch_entries = published_entry["dispatch"]["entries"]
+        assert isinstance(dispatch_entries, list)
+        first_dispatch = dispatch_entries[0]
+        assert isinstance(first_dispatch, dict)
+        rendered_entries = compact_rendered["rendered"]
+        assert isinstance(rendered_entries, list)
+        rendered_entry = rendered_entries[0]
+        assert isinstance(rendered_entry, dict)
+        source_bytes = glyph_source_bytes_for_rows(memory, glyph)
+        expected_rows = bitmap_bytes_to_rows(
+            source_bytes,
+            int(glyph["rows"]),
+            int(glyph["width"]),
+            int(glyph["render_span"]),
+        )
+        return {
+            "span": span,
+            "width": width,
+            "mode": mode,
+            "char_code": char_code,
+            "fetch_source_set": sorted(set(fetched["sources"])),
+            "remaining_ring": fetched["state"]["ring"],
+            "restored_record": font_command["restored_record"],
+            "payload_length": len(font_command["payload"]),
+            "install": {
+                "table_entry": install["table_entry"],
+                "record_delta": install["record_delta"],
+                "record": install["record"],
+                "bitmap_size": install["bitmap_size"],
+                "allocation_size": install["allocation_size"],
+                "split_plane": install["split_plane"],
+            },
+            "copy": {
+                "status": copy["status"],
+                "stream_pos": copy["stream_pos"],
+                "byte_budget": copy["byte_budget"],
+                "control_hits": copy["control_hits"],
+            },
+            "return_boundary": {
+                "call_edge": (0x15DC6, 0x16498),
+                "return_edge": (0x16498, 0x15DCC),
+                "drain_edge": (0x15DCC, 0x12328),
+                "copy_status": copy["status"],
+                "remaining_budget_0x783140": copy["byte_budget"],
+                "drain": return_drain,
+                "next_stream_prefix": tail_stream[:1],
+                "next_handler": tail_trace["events"][0]["handler"],
+            },
+            "page": {
+                "path": page_result["path"],
+                "selector": page_result["selector"],
+                "bucket_index": page_result["bucket_index"],
+                "coord": page_result["coord"],
+                "glyph": page_result["glyph"],
+                "rows": page_result["rows"],
+                "width": page_result["width"],
+            },
+            "published_bucket_keys": sorted(
+                published_fields["bucket_array_1c"].keys()
+            ),
+            "render_bucket_word": published_render["render_record_fields"]["word_10"],
+            "dispatch": {
+                "object_byte_4": first_dispatch["object_byte_4"],
+                "target": first_dispatch["target"],
+                "context_slot": first_dispatch["context_slot"],
+            },
+            "render": {
+                "helper": rendered_entry["helper"],
+                "span": rendered_entry["span"],
+                "rows": rendered_entry["rows"],
+                "width": rendered_entry["width"],
+                "source_layout": rendered_entry.get("source_layout", "linear"),
+            },
+            "rows_match_installed_bitmap": rows_out == expected_rows,
+            "row_count": len(rows_out),
+            "row_width": max((len(str(row)) for row in rows_out), default=0),
+            "row_sha256": hashlib.sha256(
+                "\n".join(str(row) for row in rows_out).encode("ascii")
+            ).hexdigest(),
+        }
+
+    downloaded_width_span_matrix = [
+        downloaded_width_span_matrix_case(
+            span=span,
+            char_code=0x50 + span - 1,
+            object_offset=0x1800 + span * 0x80,
+        )
+        for span in range(1, 17)
+    ]
+    checks.append(assert_equal(
+        "downloaded glyph width-span matrix publishes and renders all main helpers",
+        [
+            {
+                "span": case["span"],
+                "width": case["width"],
+                "mode": case["mode"],
+                "fetch_source_set": case["fetch_source_set"],
+                "remaining_ring": case["remaining_ring"],
+                "payload_length": case["payload_length"],
+                "record": case["install"]["record"],
+                "split_plane": case["install"]["split_plane"],
+                "copy": case["copy"],
+                "return_boundary": case["return_boundary"],
+                "path": case["page"]["path"],
+                "selector": case["page"]["selector"],
+                "bucket_keys": case["published_bucket_keys"],
+                "render_bucket_word": case["render_bucket_word"],
+                "object_byte_4": case["dispatch"]["object_byte_4"],
+                "target": case["dispatch"]["target"],
+                "helper": case["render"]["helper"],
+                "rows_match_installed_bitmap": case["rows_match_installed_bitmap"],
+                "row_count": case["row_count"],
+            }
+            for case in downloaded_width_span_matrix
+        ],
+        [
+            {
+                "span": span,
+                "width": span * 8,
+                "mode": 2 if span & 1 else 1,
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "payload_length": span * 3,
+                "record": (
+                    bytes.fromhex("00 00 00 00 0c")
+                    + bytes([2 if span & 1 else 1])
+                    + bytes.fromhex("00 03")
+                    + (span * 8).to_bytes(2, "big")
+                    + bytes.fromhex("00 00")
+                ),
+                "split_plane": bool(span & 1 and span > 1),
+                "copy": {
+                    "status": 1,
+                    "stream_pos": span * 3,
+                    "byte_budget": 0,
+                    "control_hits": 0,
+                },
+                "return_boundary": {
+                    "call_edge": (0x15DC6, 0x16498),
+                    "return_edge": (0x16498, 0x15DCC),
+                    "drain_edge": (0x15DCC, 0x12328),
+                    "copy_status": 1,
+                    "remaining_budget_0x783140": 0,
+                    "drain": {
+                        "status": 1,
+                        "values": [],
+                        "pos": 0,
+                        "remaining": 0,
+                        "control_hits": 0,
+                    },
+                    "next_stream_prefix": bytes([0x50 + span - 1]),
+                    "next_handler": 0x00D04A,
+                },
+                "path": "short-page-record",
+                "selector": 0x0003,
+                "bucket_keys": [0],
+                "render_bucket_word": 0,
+                "object_byte_4": 0x00,
+                "target": 0x01EFFE,
+                "helper": u32(data, 0x1F08E + span * 4),
+                "rows_match_installed_bitmap": True,
+                "row_count": 3,
+            }
+            for span in range(1, 17)
+        ],
+    ))
+
     downloaded_linear_partial = font_download_char_object_via_16498(
         table_payload_type2_bytes,
         0x2B,
@@ -85790,6 +86066,29 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 report["width"]
                 for report in downloaded_descriptor_width_modes
                 if report["status"] == 0
+            ],
+        ),
+    )
+    append_wrapped(
+        lines,
+        "- downloaded-glyph width-span matrix: host-fetched `ESC )s#W` "
+        "descriptors with spans `1..16` install widths `8..128`, publish "
+        "through printable+FF, and render bucket `0` through `0x1ed84` / "
+        "`0x1ef6a`; odd spans greater than one use split-plane copies at "
+        "`0x16498`, all cases return through "
+        "`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with `0x783140 = 0`, "
+        "and each published row set matches the installed bitmap. Case "
+        "summaries `(span, mode, split, helper, row sha256)` are `%s`."
+        % (
+            [
+                (
+                    case["span"],
+                    case["mode"],
+                    case["install"]["split_plane"],
+                    "0x%05x" % case["render"]["helper"],
+                    case["row_sha256"],
+                )
+                for case in downloaded_width_span_matrix
             ],
         ),
     )

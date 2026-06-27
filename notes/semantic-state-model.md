@@ -3400,6 +3400,14 @@ compact text renderer.
     value produced by the accepted `0x16336` helper table. This scratch buffer
     is reused by the `0x17026`/`0x1719c` resource-header route with a
     different interpretation.
+  - downloaded-character width-span matrix: fixture `downloaded glyph
+    width-span matrix publishes and renders all main helpers` installs
+    canonical width words `0x0008..0x0080`, row word `0x0003`, mode bytes
+    alternating `2/1` by span parity, and bitmap bytes for spans `1..16`.
+    Odd spans above one are canonical split-plane glyph layout; restored
+    `ESC )s#W` records and payload counts are parser scratch; bucket `0`,
+    render word `+0x10 = 0`, and the `0x1f08e[D1]` helper are derived
+    page/render state.
   - `0x782842..0x782851` and `0x782856`: optional symbol bytes and count
     staged by `0x16fae`.
   - `0x1ed84` render-record work words `+0x10/+0x16` copied from the
@@ -3475,7 +3483,10 @@ compact text renderer.
   `host-fetched split-plane segmented downloaded character renders through
   0x1f1f0` cover the visible even-span and odd-span object paths. The
   mode-byte-`0` fixture exercises the pre-copy record-shape reject and leaves
-  the table entry unchanged.
+  the table entry unchanged. Fixture `downloaded glyph width-span matrix
+  publishes and renders all main helpers` carries accepted spans `1..16`
+  through `0x16498` installs, including split-plane copies for odd spans above
+  one.
 
 ### Readers And Consumers
 
@@ -3568,6 +3579,17 @@ selector family. The host-fetched `ESC )s260W` plus printable `0` and FF restore
 `80 57 01 04 00 00`, installs record `00 00 00 00 0c 01 00 82 00 10 00 00`, publishes
 bucket-array entries `1` and `9`, renders bucket word `9`, and emits two segment-1 rows
 through `0x1ed84`/`0x1ef6a` and compact target `0x1effe` / renderer `0x1f1f0`. Fixture
+`downloaded glyph width-span matrix publishes and renders all main helpers` covers the
+downloaded-character width/span side of the same command family. Sixteen host-fetched
+`ESC )s#W` streams install canonical widths `8..128`, row word `0x0003`, and mode bytes
+`2` for odd spans or `1` for even spans. Parser scratch is the restored `80 57 #W`
+record and payload byte count; canonical state is the installed table entry, record,
+bitmap bytes, and split-plane flag; derived/cache state is the bucket-0 published page
+record and the `0x1f08e[D1]` helper. All sixteen cases return through
+`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with copy status `1`, `0x783140 = 0`, no
+drained bytes, and next handler `0xd04a`; `0x1ed84`/`0x1ef6a` dispatches object byte
+`0x00` to compact target `0x1effe`. Rendered rows from helpers `0x1fa5c` through
+`0x26910` match the installed bitmap rows in the fixture. Fixture
 `downloaded glyph row-count matrix publishes and renders additional short/segmented
 counts` adds thirteen more row-count siblings through the same fetched install,
 printable, FF-publication, and render-entry chain. Rows `0x0001`, `0x0002`,
@@ -4112,6 +4134,11 @@ published bucket entries `1` and `9`, selected render bucket words, compact targ
 `0x1effe`, row-`0x80` selector `0x0003`, rows `0x20` selector `0x0003`, rows `0x40`
 selector `0x0003`, rows `0x82` selector `0x2003`, split-plane A2/A3 source offsets,
 dispatch object bytes `0x00` and `0x20`, and final `0x1fe76`/`0x1f1f0` rows. High for
+main downloaded width-span rendering because fixture `downloaded glyph width-span matrix
+publishes and renders all main helpers` asserts spans `1..16`, mode-byte parity,
+split-plane copies for odd spans above one, zero-drain return boundaries, bucket-0 FF
+publication, `0x1ed84`/`0x1ef6a` dispatch, helper targets `0x1fa5c..0x26910`, and rows
+matching the installed bitmap. High for
 publication-to-scheduler band progression because `0xff1e` disassembly at `0xffc8`
 clears root `+0x18`, `0x1ed84` copies that word into render `+0x10/+0x16`, and fixture
 `0x1eba4 scheduler band words render published downloaded glyph` proves `0x1eba4` emits
@@ -4137,6 +4164,7 @@ fields and every legal metric combination have not been page-compared.
 - `combined font download FF publishes installed glyph page record`
 - `host-fetched even-span downloaded glyph FF publishes rendered page record`
 - `downloaded normal row-0x80 and segmented glyph FF publications render page records`
+- `downloaded glyph width-span matrix publishes and renders all main helpers`
 - `split-plane segmented downloaded glyph FF publication renders page record`
 - `published downloaded glyph segmented buckets render across bands`
 - `0x1eba4 scheduler band words render published downloaded glyph`
@@ -4225,12 +4253,16 @@ fields and every legal metric combination have not been page-compared.
   remaining validation edge is external HP manual naming for
   consumed-but-not-staged fields.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span wide,
-  row-threshold `0x80` short, linear normal, linear segmented, and split-plane segmented
-  downloaded-character paths are page-visible. Fixture `host-fetched row-0x80 downloaded
-  character remains short compact` closes the exact `0x80`/`0x81` selector boundary for
-  even-span copied glyphs: `0x12f2e` leaves rows `0x80` on selector `0x0003`, while
-  fixture `host-fetched segmented downloaded character renders through 0x1f1f0` puts
-  rows `0x81` on selector `0x2003`. Fixture `0x16498 replacement allocation failure
+  row-threshold `0x80` short, linear normal, linear segmented, split-plane
+  segmented, and main width-span downloaded-character paths are page-visible.
+  Fixture `host-fetched row-0x80 downloaded character remains short compact`
+  closes the exact `0x80`/`0x81` selector boundary for even-span copied
+  glyphs: `0x12f2e` leaves rows `0x80` on selector `0x0003`, while fixture
+  `host-fetched segmented downloaded character renders through 0x1f1f0` puts
+  rows `0x81` on selector `0x2003`. Fixture `downloaded glyph width-span
+  matrix publishes and renders all main helpers` closes parser-produced spans
+  `1..16` for the main `0x1f08e` helper table, including odd-span split-plane
+  copies and bucket-0 FF publication. Fixture `0x16498 replacement allocation failure
   partial and rejected downloaded character exits preserve state` covers old-pointer
   release through `0x17a24`, object allocation failure through
   `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear/split-plane continuation pointer
@@ -4245,7 +4277,7 @@ fields and every legal metric combination have not been page-compared.
   counts outside the covered short rows `0x01`, `0x02`, `0x03`, `0x04`, `0x08`,
   `0x10`, `0x20`, `0x40`, `0x41`, `0x7f`, and `0x80` and segmented rows
   `0x81`, `0x82`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`,
-  broader
+  legal widths beyond the main helper table, broader
   publication combinations beyond the documented normal, non-boundary short, rows-`0x20`
   short, rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   low-byte-truncated table-limit boundary, linear-segmented, rows-`0x82` segmented,
@@ -4296,8 +4328,11 @@ fields and every legal metric combination have not been page-compared.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both segmented
   buckets; the normal, non-boundary short, row-threshold `0x80`, rows-`0x20` short,
   rows-`0x40` short, linear-segmented, rows-`0x82` segmented, split-plane segmented,
-  even-span wide, payload-control odd-span wide, and rows-`0x0102` low-byte-truncated
-  short siblings now publish through the same boundary. Fixture `host-fetched
+  main width-span, even-span wide, payload-control odd-span wide, and rows-`0x0102`
+  low-byte-truncated short siblings now publish through the same boundary. Fixture
+  `downloaded glyph width-span matrix publishes and renders all main helpers` publishes
+  bucket `0` for spans `1..16`, renders through `0x1ed84`/`0x1ef6a`, and verifies helper
+  targets `0x1fa5c..0x26910` against installed bitmap rows. Fixture `host-fetched
   nonboundary short downloaded glyph FF publication renders page record` renders rows
   `0x10` on selector `0x0003` through `0x1ed84`/`0x1ef6a` and compact target
   `0x1effe`/`0x1fe76`, preserving digest
@@ -4329,32 +4364,29 @@ fields and every legal metric combination have not been page-compared.
   00 40 00 10 00 00`, renders bucket word `1`, and emits `64` current-band rows through
   compact target `0x1effe`/`0x1fe76`. Fixture `downloaded glyph row-count matrix
   publishes and renders additional short/segmented counts` adds rows `0x01`, `0x02`,
-  `0x04`, `0x08`, `0x41`, `0x7f`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`,
-  and `0xff` through the same printable+FF, `0xff1e`, and `0x1ed84`/`0x1ef6a`
-  boundary, with short selector `0x0003` for the first six and segmented selector
-  `0x2003` for the last seven. It also pins the shared full-success return boundary for
-  all thirteen rows:
+  `0x04`, `0x08`, `0x41`, `0x7f`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and
+  `0xff` through the same printable+FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` boundary, with
+  short selector `0x0003` for the first six and segmented selector `0x2003` for the last
+  seven. It also pins the shared full-success return boundary for all thirteen rows:
   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, copy status `1`, `0x783140 = 0`, no
-  drained bytes, and next handler `0xd04a`. Fixture
-  `host-fetched even-span downloaded glyph FF publishes rendered page record` renders
-  the copied bucket-1 record through `0x1ed84`/`0x1ef6a` and compact target
-  `0x1effe`/`0x1f0d2`. Fixture `host-fetched payload-control downloaded glyph FF
-  publishes page record` separates two effects for the odd-span wide/payload-control
-  sibling. Canonical state: `0x168dc` normalizes one `1a 58` escape, and `0x16498`
-  installs table entry `0x00e2` with mode-byte-`2` record
+  drained bytes, and next handler `0xd04a`. Fixture `host-fetched even-span downloaded
+  glyph FF publishes rendered page record` renders the copied bucket-1 record through
+  `0x1ed84`/`0x1ef6a` and compact target `0x1effe`/`0x1f0d2`. Fixture `host-fetched
+  payload-control downloaded glyph FF publishes page record` separates two effects for
+  the odd-span wide/payload-control sibling. Canonical state: `0x168dc` normalizes one
+  `1a 58` escape, and `0x16498` installs table entry `0x00e2` with mode-byte-`2` record
   `00 00 00 00 0c 02 00 01 00 88 00 00`. Parser/firmware bookkeeping: copy leaves
-  `0x783140 = 1`, so the return boundary
-  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` drains following byte `0x26` (`&`) and
-  the post-return parser sees only FF at handler `0xf0f0`. Derived page-output state:
-  the modeled page-record publication for that installed object publishes bucket `1`,
-  and `0x1ed84`/`0x1ef6a` dispatches compact target `0x1effe`/`0x1f0d2`; this does not
-  prove that `&` survives as printable in the same live byte stream. Fixture `published
-  downloaded glyph segmented buckets render across bands` renders published bucket words
-  `1` and `9` from the copied record. Fixture `0x1eba4 scheduler band words render
-  published downloaded glyph` proves `0xff1e`/`0x1ed84` seed render work `+0x10/+0x16`
-  from cleared source `+0x18 = 0`, then `0x1eba4` advances through band words `0..9`
-  until the published bucket-9 row is visible. The earlier first-band seed edge is now
-  closed for this published record.
+  `0x783140 = 1`, so the return boundary `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`
+  drains following byte `0x26` (`&`) and the post-return parser sees only FF at handler
+  `0xf0f0`. Derived page-output state: the modeled page-record publication for that
+  installed object publishes bucket `1`, and `0x1ed84`/`0x1ef6a` dispatches compact
+  target `0x1effe`/`0x1f0d2`; this does not prove that `&` survives as printable in the
+  same live byte stream. Fixture `published downloaded glyph segmented buckets render
+  across bands` renders published bucket words `1` and `9` from the copied record.
+  Fixture `0x1eba4 scheduler band words render published downloaded glyph` proves
+  `0xff1e`/`0x1ed84` seed render work `+0x10/+0x16` from cleared source `+0x18 = 0`,
+  then `0x1eba4` advances through band words `0..9` until the published bucket-9 row is
+  visible. The earlier first-band seed edge is now closed for this published record.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through

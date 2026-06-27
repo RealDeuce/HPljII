@@ -1601,6 +1601,11 @@ Output effect:
 - Fixture `0x16498-backed downloaded character object renders segmented-wide
   compact row` proves selector `0x3003` reaches `0x1f264`, uses one full
   16-byte chunk through `0x2f27c`, and uses a one-byte remainder.
+- Fixture `downloaded glyph width-span matrix publishes and renders all main
+  helpers` proves parser-produced downloaded-character spans `1..16` install
+  widths `8..128`, preserve odd-span split-plane copies where required, publish
+  bucket `0` through FF, and render rows matching the installed bitmap through
+  all sixteen main `0x1f08e` helpers from `0x1fa5c` through `0x26910`.
 - Fixture `host-fetched rows-0x102 downloaded glyph FF publication truncates
   page-record rows` proves the failure boundary: installed row count `0x0102`
   reaches `0x1f414`, but fallback row count `200` indexes past the valid
@@ -1616,9 +1621,10 @@ Confidence:
   downloaded, split-plane segmented, and segmented-wide examples because the
   named fixtures tie host bytes to installed records, queued compact objects,
   dispatch targets, and rendered rows.
-- Medium for exhaustive descriptor/font-width coverage because the legal
-  metric matrix and many downloaded row-count cases are fixture-backed, but
-  not every byte-width and metric combination has a page-visible comparison.
+- Medium for exhaustive descriptor/font-width coverage because downloaded
+  spans `1..16`, the legal metric matrix, and many downloaded row-count cases
+  are fixture-backed, but not every wide/remainder-table byte-width and metric
+  combination has a page-visible comparison.
 
 Fixture evidence:
 
@@ -1636,6 +1642,7 @@ Fixture evidence:
 - `0x1f0d2 renders wide inline compact payload row`
 - `0x1f1f0 renders segmented inline compact payload row`
 - `0x1f264 renders segmented wide inline compact payload row`
+- `downloaded glyph width-span matrix publishes and renders all main helpers`
 - `downloaded glyph row-count matrix publishes and renders additional
   short/segmented counts`
 - `host-fetched rows-0x102 downloaded glyph FF publication truncates
@@ -1662,13 +1669,13 @@ Unresolved middle edges:
   page-visible; remaining symbol-set and pitch/style combinations need
   comparison against physical or reference output.
 - `0x16498..0x1f354`: normal, wide, segmented, split-plane, segmented-wide,
-  partial, no-install, and row-count boundary cases are documented; not every
-  legal downloaded descriptor byte-width and metric combination has a visible
-  page comparison.
-- `0x1fa5c..0x2feb0`: helper behavior is decoded from disassembly and
-  synthetic fixtures, but only representative helper widths are tied to
-  parser-produced page rows. Broader width sampling should collapse any
-  remaining helper aliases.
+  partial, no-install, row-count boundary, and main width-span cases are
+  documented; not every legal downloaded wide/remainder-table byte-width and
+  metric combination has a visible page comparison.
+- `0x1fa5c..0x2feb0`: all sixteen main `0x1f08e` helper indexes now have
+  parser-produced downloaded-glyph page rows. Remaining helper risk is wider
+  selector `0x1000`/`0x3000` remainder-table coverage and broader physical
+  page comparisons, not the main helper aliases.
 - `0x1f414..0x7810b4`: current-band/fallback splitting is fixture-backed,
   including the row-`0x0102` invalid fallback boundary; device-level behavior
   after such invalid table targets is intentionally not claimed.

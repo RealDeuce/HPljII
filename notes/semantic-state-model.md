@@ -1278,7 +1278,8 @@ and the compact glyph renderers.
 - Unknown:
   - cartridge/external resource behavior outside the verified built-in
     window `0x080000..0x0ffffe`.
-  - final manual-facing names for record fields `+0x28..+0x31`.
+  - final manual-facing names for record fields `+0x28..+0x31`; their ROM
+    roles are pinned as decoded-height inputs and chooser tie-breakers.
 
 ### Writers
 
@@ -1364,9 +1365,11 @@ resources because no image is available in this repo.
 - `0x14398..0x156de`: visible-output coverage exists for primary,
   secondary, and two symbol-miss fallback streams; broader font-selection
   fallback/error combinations still need the same page-visible treatment.
-- Record `+0x28..+0x31` participates in height and chooser comparisons,
-  but final baseline/cell/manual semantics remain unresolved and are
-  tracked in [resource-rom.md](resource-rom.md).
+- Record `+0x28/+0x2a` is pinned as the decoded-height input consumed by
+  `0x1519a` through `0x13bca`; record `+0x2f..+0x31` is pinned as the
+  same-class `0x1428c` chooser tie-breaker tuple. Final
+  baseline/cell/manual terminology remains unresolved and is tracked in
+  [resource-rom.md](resource-rom.md).
 
 ## Built-In Font Sample Printout Loop
 
@@ -1915,9 +1918,10 @@ because physical/self-test comparison is still open.
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
   The remaining sample-printout boundary is comparison against a known
   printed/self-test page.
-- `record +0x28..+0x31`: these fields participate in height and chooser
-  logic, but their final baseline/cell semantics need correlation against
-  observed sample-page placement.
+- `record +0x28/+0x2a`: decoded-height input consumed by `0x1519a` through
+  `0x13bca`; physical baseline/cell correlation remains open.
+- `record +0x2f..+0x31`: same-class chooser tie-breakers consumed by
+  `0x1428c` after `0x14398` / `0x13c06`; manual-facing names remain open.
 
 ## Built-In Font Selection To Visible Text
 

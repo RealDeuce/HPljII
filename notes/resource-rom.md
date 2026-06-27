@@ -183,8 +183,13 @@ named record. Symbols repeat as six records each for `0x0155`,
 `0x0175`, and `0x000e`. Raw `+0x24/+0x26` pitch fields are
 `0x0078/0x00` for `COURIER` and `0x0048/0x00` for `LINE_PRINTER`. Raw
 `+0x28/+0x2a` height fields are `0x00c8/0x00` and `0x008d/0xab`.
-Comparator bytes `+0x2f..+0x31` are `(0,0,3)` or `(0,3,3)` for
-`COURIER`, and `(0,0,0)` for `LINE_PRINTER`.
+Those words are no longer merely extracted columns: `0x1519a` consumes the
+decoded value through `0x13bca`, producing the verified 1200-unit `COURIER`
+height group and 850-unit `LINE_PRINTER` height group. Comparator bytes
+`+0x2f..+0x31` are `(0,0,3)` or `(0,3,3)` for `COURIER`, and `(0,0,0)` for
+`LINE_PRINTER`; same-class chooser `0x1428c`, reached from
+`0x14398`/`0x13c06`, compares decoded height, byte `+0x2f`, signed byte
+`+0x30`, then byte `+0x31`.
 
 First-nonzero named glyph entries also have their positioning fields
 summarized against the `0xd824` model. Glyph-entry word `+0` is the
@@ -341,13 +346,14 @@ treated as semantic state, not just extraction columns:
   - The `0x783132` / `0x783133` selected-font flags and the
     `0x783134` / `0x78313a` range caches are map-selection state, not
     part of the resource payload.
-- Unknown or not yet semantically named:
-  - record words `+0x28/+0x2a` are repeatable height-like fields
-    (`0x00c8/0x00` for Courier and `0x008d/0xab` for Line Printer) but
-    still need a fixture that ties them to an observed baseline, cell
-    size, or font-printout column;
-  - comparator bytes `+0x2f..+0x31` are extracted and class-correlated,
-    but their manual-facing names remain unknown.
+- Still-open manual/physical naming:
+  - record words `+0x28/+0x2a` are decoded-height inputs for `0x1519a`
+    through `0x13bca`, with `COURIER` grouped at `1200` and `LINE_PRINTER`
+    grouped at `850`; they still need correlation against observed
+    baseline/cell placement on a known printed font/self-test sample.
+  - record bytes `+0x2f..+0x31` are same-class chooser tie-breakers consumed
+    by `0x1428c`; their ROM role is pinned, but their HP/manual-facing names
+    remain unknown.
 
 Writers are limited because these are ROM resource records. The firmware
 writers are bridge/cache writers: `0x13eb8` selects a current-font record,
@@ -774,12 +780,13 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    payload, and printable boundaries, restored record
    `80 57 08 91 00 00`, glyph `0x25`, selector `0x3003`, buckets `9`
    and `1`, and compact render dispatch target `0x1effe`.
-5. Finish semantic naming of the remaining built-in metadata fields,
-   especially record `+0x28..+0x31` now extracted for every named
-   `COURIER` and `LINE_PRINTER` record. Record `+0x24` is now pinned as
-   the `0xc428` / `0x10550` HMI source, and first-glyph placement
-   offsets are now pinned through the `0xd824` path, but the
-   header-level baseline/cell semantics still need broader correlation.
+5. Correlate the remaining built-in metadata names against physical sample
+   placement. Record `+0x24` is pinned as the `0xc428` / `0x10550` HMI
+   source, first-glyph placement offsets are pinned through the `0xd824`
+   path, `+0x28/+0x2a` are pinned as decoded-height inputs for `0x1519a`,
+   and `+0x2f..+0x31` are pinned as `0x1428c` chooser tie-breakers. What
+   remains is their manual-facing baseline/cell terminology and agreement
+   with observed paper output.
 6. Compare the modeled font-printout surfaces against a known
    printed/self-test sample. The `0x1c334..0x1c5e4` row traversal is decoded,
    including `0x1b50e` two-window candidate resolution, class filtering,

@@ -923,6 +923,10 @@ context `0xc00ae122`, maps to glyph `0x5f`, enters segmented selector
 `0x2001` page-record storage with `157` segment objects, bridges slots
 `(0x440946b4, 0xc00ae122)`, and selected bucket `0` renders digest
 `57bb3fd895be358ff325e26ae58a3b0dc526c5b08b382eb90e7273e6227fbfbb`.
+The secondary render-prefix fixture renders buckets `0..448` with aggregate
+digest `292eafb8b558bd36ca0caa5caa2771976c0e611456ac0b610ec8916b9d1f03f9`
+before the current source model reaches bucket `456`, glyph `0x5f`, segment
+`0x39`, source `0x03fe22`, needing `1280` bytes with `478` available.
 `ESC &p2X\x1aA!` covers the probe path where `1a 41` contributes payload byte
 `0x41`, not `0x1a`.
 
@@ -999,13 +1003,14 @@ handlers:
 - Broaden visible-output variants where they still change compatibility:
   font-selection fallback/error branches beyond the two symbol-miss
   fixtures, downloaded-glyph publication cross-products beyond the
-  documented selector families, full secondary segmented bitmap semantics
-  beyond the now-pinned transparent high-control page-record boundary, and
-  final-`@` symbol table/copy variants only if they need compatibility-facing
-  visible-output behavior. The primary transparent high-control path now
-  includes boundary, interior-sample, tall-glyph, and top-of-range fixtures,
-  and the parser/default-table state boundary for `@0..@3` is already pinned
-  by fixture `real default-table caller stream uses ROM-backed words`.
+  documented selector families, the transparent secondary segment-57 bitmap
+  source interpretation beyond the now-pinned page-record and render-prefix
+  boundary, and final-`@` symbol table/copy variants only if they need
+  compatibility-facing visible-output behavior. The primary transparent
+  high-control path now includes boundary, interior-sample, tall-glyph, and
+  top-of-range fixtures, and the parser/default-table state boundary for
+  `@0..@3` is already pinned by fixture `real default-table caller stream uses
+  ROM-backed words`.
 - Continue the active-render scheduler only at the remaining external
   boundary: `$8000.4`, `$a601`, `$a801`, `$aa01`, `0xfffe0001`, and
   `0xfffe0003` physical timing/MMIO correlation. The software-visible

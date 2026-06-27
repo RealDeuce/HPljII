@@ -66255,6 +66255,163 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "final_cursor_x": pack12(64),
         },
     ))
+    secondary_transparent_high_page_record = secondary_transparent_high_stream[
+        "page_record"
+    ]
+    assert isinstance(secondary_transparent_high_page_record, dict)
+    secondary_transparent_high_bucket_objects = page_record_bucket_objects(
+        secondary_transparent_high_page_record
+    )
+    secondary_segment_prefix_rendered: list[dict[str, object]] = []
+    secondary_segment_prefix_hash = hashlib.sha256()
+    secondary_segment_first_failure: dict[str, object] | None = None
+    for bucket_word in secondary_transparent_high_stream["nonempty_buckets"]:
+        assert isinstance(bucket_word, int)
+        try:
+            secondary_segment_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+                data,
+                resources,
+                secondary_transparent_high_page_record,
+                bucket_word=bucket_word,
+            )
+        except Exception as exc:
+            obj = secondary_transparent_high_bucket_objects[bucket_word][0]
+            glyph = resolve_compact_glyph(resources, 0xC00AE122, obj[8])
+            segment = obj[9]
+            row_skip = segment << 7
+            rows_here = min(int(glyph["rows"]) - row_skip, 0x80)
+            render_span = int(glyph["render_span"])
+            source_abs = int(glyph["bitmap"]) + row_skip * render_span
+            secondary_segment_first_failure = {
+                "bucket": bucket_word,
+                "error": type(exc).__name__,
+                "message": str(exc),
+                "object_prefix": obj[:16],
+                "glyph": obj[8],
+                "segment": segment,
+                "row_skip": row_skip,
+                "rows_here": rows_here,
+                "render_span": render_span,
+                "source_abs": source_abs,
+                "needed_bytes": rows_here * render_span,
+                "available_bytes": len(resources) - source_abs,
+                "glyph_entry": int(glyph["entry"]),
+                "glyph_bitmap": int(glyph["bitmap"]),
+                "glyph_rows": int(glyph["rows"]),
+                "glyph_width": int(glyph["width"]),
+                "glyph_delta": int(glyph["delta"]),
+                "glyph_mode": int(glyph["mode"]),
+            }
+            break
+        entry = secondary_segment_render_entry["entry"]
+        assert isinstance(entry, dict)
+        rows = entry["rows"]
+        assert isinstance(rows, list)
+        row_sha256 = hashlib.sha256(
+            "\n".join(str(row) for row in rows).encode("ascii")
+        ).hexdigest()
+        obj = secondary_transparent_high_bucket_objects[bucket_word][0]
+        summary = {
+            "bucket": bucket_word,
+            "object_count": len(secondary_transparent_high_bucket_objects[bucket_word]),
+            "segment": obj[9],
+            "row_count": len(rows),
+            "row_width": max((len(str(row)) for row in rows), default=0),
+            "row_sha256": row_sha256,
+        }
+        secondary_segment_prefix_rendered.append(summary)
+        secondary_segment_prefix_hash.update(
+            (
+                f"{summary['bucket']}:{summary['object_count']}:"
+                f"{summary['segment']}:{summary['row_count']}:"
+                f"{summary['row_width']}:{summary['row_sha256']}\n"
+            ).encode("ascii")
+        )
+    checks.append(assert_equal(
+        "transparent secondary segmented render prefix exposes source boundary",
+        {
+            "rendered_count": len(secondary_segment_prefix_rendered),
+            "rendered_buckets": [
+                secondary_segment_prefix_rendered[0]["bucket"],
+                secondary_segment_prefix_rendered[-1]["bucket"],
+            ],
+            "aggregate_sha256": secondary_segment_prefix_hash.hexdigest(),
+            "sample_buckets": [
+                secondary_segment_prefix_rendered[index]
+                for index in (0, 1, 2, 55, 56)
+            ],
+            "first_failure": secondary_segment_first_failure,
+        },
+        {
+            "rendered_count": 57,
+            "rendered_buckets": [0, 448],
+            "aggregate_sha256": "292eafb8b558bd36ca0caa5caa2771976c0e611456ac0b610ec8916b9d1f03f9",
+            "sample_buckets": [
+                {
+                    "bucket": 0,
+                    "object_count": 2,
+                    "segment": 0,
+                    "row_count": 80,
+                    "row_width": 256,
+                    "row_sha256": "57bb3fd895be358ff325e26ae58a3b0dc526c5b08b382eb90e7273e6227fbfbb",
+                },
+                {
+                    "bucket": 8,
+                    "object_count": 1,
+                    "segment": 1,
+                    "row_count": 32,
+                    "row_width": 102,
+                    "row_sha256": "0edd88bb88d77861a391e8b7ff68d0013f7e649f26dd3603bba23b85e143af52",
+                },
+                {
+                    "bucket": 16,
+                    "object_count": 1,
+                    "segment": 2,
+                    "row_count": 64,
+                    "row_width": 102,
+                    "row_sha256": "546c3473f61a2ae041c84ea466b17c61a9de50862f8751fee473134ac05d21a3",
+                },
+                {
+                    "bucket": 440,
+                    "object_count": 1,
+                    "segment": 55,
+                    "row_count": 80,
+                    "row_width": 102,
+                    "row_sha256": "7c088fa81d19a9fc0433340dd36313b2d1e5e16d6ccd8c091d37eb89b695b3f5",
+                },
+                {
+                    "bucket": 448,
+                    "object_count": 1,
+                    "segment": 56,
+                    "row_count": 32,
+                    "row_width": 102,
+                    "row_sha256": "823854dc77b9234cf90f71bebcc3da7280c72dfed2bf05315e757b2d1c58c4e3",
+                },
+            ],
+            "first_failure": {
+                "bucket": 456,
+                "error": "IndexError",
+                "message": "index out of range",
+                "object_prefix": bytes.fromhex(
+                    "00 00 00 00 20 01 00 01 5f 39 1c 01 00 00 00 00"
+                ),
+                "glyph": 0x5F,
+                "segment": 0x39,
+                "row_skip": 7296,
+                "rows_here": 128,
+                "render_span": 10,
+                "source_abs": 0x03FE22,
+                "needed_bytes": 1280,
+                "available_bytes": 478,
+                "glyph_entry": 0x02E122,
+                "glyph_bitmap": 0x02E122,
+                "glyph_rows": 20062,
+                "glyph_width": 74,
+                "glyph_delta": 0,
+                "glyph_mode": 0,
+            },
+        },
+    ))
     mixed_stream = render_mixed_printable_control_stream(
         data,
         resources,
@@ -79177,6 +79334,26 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "`0x9e`, uses glyph entry `0x016d1e`, queues compact coord `0xee01` "
         "in bucket `-1`, and renders selected bucket digest "
         f"`{transparent_high_limit_summary['selected_render']['row_sha256']}`."
+    )
+    secondary_segment_failure = secondary_segment_first_failure
+    assert isinstance(secondary_segment_failure, dict)
+    lines.append(
+        "- transparent secondary segmented render prefix: `SO ESC &p3X!\\x80!` "
+        "builds 157 nonempty buckets and the current model renders buckets "
+        "`0..448` (%d buckets) with aggregate digest `%s`; bucket `%d` "
+        "then fails at glyph `0x%02x` segment `0x%02x`, row skip `%d`, "
+        "source `0x%06x`, needing `%d` bytes with `%d` available."
+        % (
+            len(secondary_segment_prefix_rendered),
+            secondary_segment_prefix_hash.hexdigest(),
+            secondary_segment_failure["bucket"],
+            secondary_segment_failure["glyph"],
+            secondary_segment_failure["segment"],
+            secondary_segment_failure["row_skip"],
+            secondary_segment_failure["source_abs"],
+            secondary_segment_failure["needed_bytes"],
+            secondary_segment_failure["available_bytes"],
+        )
     )
     lines.append(
         "- transparent `1a` probe boundary: stream `1b 26 70 32 58 1a 41 21` "

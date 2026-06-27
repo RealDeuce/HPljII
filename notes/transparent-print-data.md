@@ -20,6 +20,7 @@ Evidence:
   - `transparent nonzero high-control interior samples remain printable`
   - `transparent nonzero high-control upper bound remains printable`
   - `transparent secondary high-control byte enters segmented page-record path`
+  - `transparent secondary segmented render prefix exposes source boundary`
 
 ## Command Boundary
 
@@ -393,6 +394,22 @@ transparent payload path:
   `57bb3fd895be358ff325e26ae58a3b0dc526c5b08b382eb90e7273e6227fbfbb`
 - final selector remains `1`; final cursor x is `pack12(64)`
 
+The secondary segmented render-prefix fixture renders the produced buckets
+until the current source model reaches a concrete bitmap-source boundary:
+
+- renderable prefix: buckets `0..448`, `57` buckets, aggregate digest
+  `292eafb8b558bd36ca0caa5caa2771976c0e611456ac0b610ec8916b9d1f03f9`
+- sample bucket `0`: object count `2`, segment `0`, row count `80`, row width
+  `256`, digest
+  `57bb3fd895be358ff325e26ae58a3b0dc526c5b08b382eb90e7273e6227fbfbb`
+- sample bucket `448`: segment `56`, row count `32`, row width `102`, digest
+  `823854dc77b9234cf90f71bebcc3da7280c72dfed2bf05315e757b2d1c58c4e3`
+- first failure: bucket `456`, selector `0x2001`, glyph `0x5f`, segment
+  `0x39`, row skip `7296`, source `0x03fe22`, needing `1280` bytes with
+  `478` available
+- resolved glyph source: entry/bitmap `0x02e122`, delta `0`, mode `0`, rows
+  `20062`, width `74`, render span `10`
+
 ## Semantic Composition
 
 Concept: transparent print data is a counted byte-stream splice, not a binary
@@ -464,7 +481,8 @@ sample fixture, and the upper-bound `0x9f` fixture. High for the secondary
 selector/routing/page-record boundary because fixture `transparent
 secondary high-control byte enters segmented page-record path` pins SO handler
 `0xc6b8`, source context `0xc00ae122`, segmented selector `0x2001`, bridge
-context slots, and a selected-bucket render digest.
+context slots, and a selected-bucket render digest. The render-prefix fixture
+pins buckets `0..448` and the first source-read boundary at bucket `456`.
 
 Unresolved middle edges:
 
@@ -472,9 +490,11 @@ Unresolved middle edges:
   short primary bucket (`0x80`), interior primary samples (`0x81`, `0x88`,
   `0x90`, and `0x97`), two primary bucket-crossing glyphs (`0x98` and
   top-of-range `0x9f`), and a secondary segmented page-record boundary
-  (`SO ESC &p3X!\x80!`). The remaining high-control edge is full secondary
-  segmented bitmap semantics, not primary route polarity or the sampled primary
-  interior values.
+  (`SO ESC &p3X!\x80!`). The remaining high-control edge is the secondary
+  segment-57 bitmap source interpretation at bucket `456`: glyph `0x5f`,
+  segment `0x39`, source `0x03fe22`, needing `1280` bytes with `478`
+  available. It is not primary route polarity, sampled primary interior values,
+  or the renderable secondary prefix through bucket `448`.
 
 ## Reproduction Contract
 
@@ -516,8 +536,8 @@ For `ESC &p#X`:
   `89629435e063529ce7150d603ed9be37a74658317db3e97a4ae01b1c8d64f9d9`.
 - Broader nonzero-filtering coverage now includes primary high-control samples
   `0x81`, `0x88`, `0x90`, and `0x97`, plus the tall primary bucket-crossing
-  cases `ESC &p3X!\x98!` and `ESC &p3X!\x9f!`. The remaining high-control
-  risk is the full visible semantics of the secondary segmented mapping; its
-  page-record boundary is covered by `SO ESC &p3X!\x80!`.
+  cases `ESC &p3X!\x98!` and `ESC &p3X!\x9f!`. The secondary segmented
+  mapping has a page-record boundary and renderable prefix; the remaining risk
+  is the segment-57 bitmap source interpretation named above.
 - The names for the active context filtering byte, fallback byte, and high-byte
   flags remain provisional.

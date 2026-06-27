@@ -724,8 +724,9 @@ modeled source/object structures rather than a full live CPU-memory run.
   `Transparent Print Data`. The C0 branch, `0x80..0x9f` branch, nonzero
   printable route, fixed-space route, primary tall bucket-crossing, and
   secondary segmented page-record boundaries are fixture-backed; remaining
-  work is full secondary segmented bitmap semantics, not primary high-control
-  value cross-products or the command-family parser-to-page-record boundary.
+  work is the secondary segment-57 bitmap source interpretation at bucket
+  `456`, not primary high-control value cross-products or the command-family
+  parser-to-page-record boundary.
 - `0x10084..0x1387c`: first-root allocation and compact text queueing
   are fixture-backed for this cluster, but a dense live parser page that
   exercises same-chunk and rollover allocation for all cursor variants
@@ -809,6 +810,10 @@ or fixed-space helper `0xd0f0`.
   slot `1`, maps to glyph `0x5f`, and queues segmented selector `0x2001`
   objects across `157` segment buckets; selected bucket `0` begins
   `00 00 00 00 20 01 00 01 5f 00 1c 01 00 00 00 00`.
+  The secondary segmented render-prefix fixture renders buckets `0..448`
+  (`57` buckets) with aggregate digest
+  `292eafb8b558bd36ca0caa5caa2771976c0e611456ac0b610ec8916b9d1f03f9`
+  before reaching the current bitmap-source boundary at bucket `456`.
 - Unknown for this checkpoint:
   - manual-facing names for the selected context filtering byte, fallback
     filtering byte, and high-character flags remain provisional.
@@ -926,6 +931,17 @@ segment/bucket `0`/`0`. The bridge carries context slots
 row width `256`, digest
 `57bb3fd895be358ff325e26ae58a3b0dc526c5b08b382eb90e7273e6227fbfbb`.
 
+Fixture `transparent secondary segmented render prefix exposes source
+boundary` renders the produced secondary segmented buckets until the current
+source model fails. Buckets `0..448` render as `57` buckets with aggregate
+digest `292eafb8b558bd36ca0caa5caa2771976c0e611456ac0b610ec8916b9d1f03f9`;
+bucket `448` is segment `56`, row count `32`, row width `102`, digest
+`823854dc77b9234cf90f71bebcc3da7280c72dfed2bf05315e757b2d1c58c4e3`. The
+first failure is bucket `456`, selector `0x2001`, glyph `0x5f`, segment
+`0x39`, row skip `7296`, source `0x03fe22`, needing `1280` bytes with only
+`478` bytes available. The resolved glyph source is entry/bitmap `0x02e122`,
+delta `0`, mode `0`, rows `20062`, width `74`, and render span `10`.
+
 ### Confidence
 
 High for delayed snapshot/restore, absolute payload count, `1a 58` and
@@ -936,8 +952,10 @@ high-control bucket-crossing glyphs because each is fixture-pinned against
 disassembly-backed helpers. High for the secondary selector/routing/page-record
 boundary because the SO plus transparent fixture pins handler `0xc6b8`, source
 context `0xc00ae122`, segmented selector `0x2001`, bridge context slots, and a
-selected-bucket render digest. Medium for full secondary segmented bitmap
-semantics and manual names for the filter bytes.
+selected-bucket render digest; the secondary render-prefix fixture pins
+buckets `0..448` and the first source-read boundary at bucket `456`. Medium
+for the source interpretation after that boundary and manual names for the
+filter bytes.
 
 ### Fixtures
 
@@ -952,6 +970,7 @@ semantics and manual names for the filter bytes.
 - `transparent nonzero high-control interior samples remain printable`
 - `transparent nonzero high-control upper bound remains printable`
 - `transparent secondary high-control byte enters segmented page-record path`
+- `transparent secondary segmented render prefix exposes source boundary`
 
 ### Disassembly Evidence
 
@@ -967,8 +986,11 @@ semantics and manual names for the filter bytes.
   a short primary bucket (`0x80`), interior primary samples (`0x81`, `0x88`,
   `0x90`, and `0x97`), two taller primary bucket-crossing glyphs (`0x98` and
   top-of-range `0x9f`), and a secondary segmented page-record boundary
-  (`SO ESC &p3X!\x80!`). Remaining work is full secondary segmented bitmap
-  semantics, not primary route polarity or the sampled primary interior values.
+  (`SO ESC &p3X!\x80!`). Remaining work is the secondary segment-57 bitmap
+  source interpretation at bucket `456`: glyph `0x5f`, segment `0x39`, source
+  `0x03fe22`, needing `1280` bytes with `478` available. It is not primary
+  route polarity, sampled primary interior values, or the renderable secondary
+  prefix through bucket `448`.
 
 ## Text Source Objects And Compact Buckets
 

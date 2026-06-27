@@ -971,11 +971,13 @@ ROM work needed:
 - Expand normal parser table `0x112a4` and alternate parser table
   `0x116f6` into named PCL commands.
 - Broaden the direct-control and printable stream fixtures into fuller
-  live parser/register traces, full secondary transparent-data segmented
-  bitmap semantics beyond the boundary pinned by fixture `transparent
-  secondary high-control byte enters segmented page-record path`, and dense
-  parser-allocated page-object fixtures. Command-family state is composed in
-  `Text Cursor And Direct Controls`, and the
+  live parser/register traces, the transparent secondary segment-57 bitmap
+  source interpretation beyond the page-record and render-prefix boundary
+  pinned by fixtures `transparent secondary high-control byte enters segmented
+  page-record path` and `transparent secondary segmented render prefix exposes
+  source boundary`, and dense parser-allocated page-object fixtures.
+  Command-family state is composed in `Text Cursor And Direct Controls`, and
+  the
   printable source-object fields are composed in `Text Source Objects And
   Compact Buckets`.
 - Trace binary payload modes, especially raster graphics and downloaded

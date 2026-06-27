@@ -1871,10 +1871,15 @@ A byte-stream renderer must preserve:
   proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f`
   copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, while preserving
   `d4ac` span output and `d8fc` high-y `20` output. Fixture
+  `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
+  proves first-code zero and first-code `range - 1` copy
+  `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017` and
+  `0x0015/0x0014/0x0000` while preserving the documented visible span paths.
+  Fixture
   `descriptor metric fields match across inline and resource contexts` now
   proves the legal producer forms and the two invalid swapped forms. The
   remaining producer gap is not these copied-field endpoints; it is additional
   legal descriptor combinations outside the pinned lower/equality/upper,
-  clamp, offset endpoint, rounded-transform, and low-nibble cases, plus
-  validation/error forms beyond the bounded predicate and short-budget branches
-  that still need parser-produced page evidence.
+  clamp, offset endpoint, range endpoint, rounded-transform, and low-nibble
+  cases, plus validation/error forms beyond the bounded predicate and
+  short-budget branches that still need parser-produced page evidence.

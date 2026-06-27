@@ -1946,14 +1946,15 @@ full live parser-state runs that populate current records, source/page
 objects, and raster/text buckets in CPU memory before imaging. The reset,
 FF, page-size, orientation, paper-source, and copies publication fixtures
 now start without a current page root and mark the first printable queue
-step as the modeled page-record root allocation point, but that is still
-not a full live parser allocation. Those six publication paths now also
-have addressed variants:
+step as the modeled page-record root allocation point. Those six
+publication paths now also have addressed variants:
 `!\x1bE`, `ESC &k2G!\f`, `!\x1b&l1A`, `!\x1b&l1O`, `!\x1b&l2H`, and
 `!\x1b&l2X\f` queue the printable byte through addressed
 `0x1387c`/`0x1381c`, materialize the page record, publish through the same
 `0xff1e` boundaries, and render through `0x1ed84`/`0x1ef6a` with the same
-rows. The host-fetched text/rule/raster fixture now also
+rows. That closes the software-visible compact-text publication contract while
+leaving live CPU allocation/register capture as the remaining fidelity edge.
+The host-fetched text/rule/raster fixture now also
 publishes its full bucket
 array, rule list, and context slots through modeled `0xff1e`, then
 renders the published record through `0x1ed84` and `0x1ef6a` with the

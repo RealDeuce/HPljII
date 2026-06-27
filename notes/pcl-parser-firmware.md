@@ -459,11 +459,13 @@ same publication streams from the modeled `0xa904` ring source and pin the
 same published pool header after `0xff1e`: state byte `+4 = 2`,
 status/environment fields including copies word `+0x0c`, `0x780ea6`,
 bucket-root prefix, and context-slot prefix. The `0x1387c` allocator
-fixtures queue short and
-segmented compact buckets under page-record storage rules, and the
-`0x1edc6` bridge fixture proves the render-record copy contract for that
-compact bucket. These fixtures still need a fuller parser-allocated page
-root before they can prove the full firmware reset path.
+fixtures queue short and segmented compact buckets under page-record storage
+rules, and the `0x1edc6` bridge fixture proves the render-record copy contract
+for that compact bucket. The addressed publication fixtures close the
+software-visible compact-text reset/FF/geometry/copies path through
+materialized page-record storage; the remaining parser-firmware gap is a live
+CPU memory/register capture that proves the same allocation and publication
+state without the modeled handoff layer.
 
 ## Parsed-Command Dispatch
 

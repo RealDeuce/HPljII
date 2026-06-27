@@ -405,6 +405,7 @@ The next work should follow dataflow, not isolated handlers:
    `0xfffe`/`0xffff`/`0x007f`, `d8fc` lower-bound and exact page-extent
    equality, rounded transform inputs `0x1500`/`0x1508`/`0x15ff`, the
    low-nibble rounded inputs `0x0001`/`0x0003`/`0x0004`/`0x0005`/`0x000f`, a
+   `0x17430` first-code-zero endpoint and first-code-`range - 1` endpoint, a
    midpoint case where `d8fc` updates state but leaves compact-only output, a
    lower-bound no-span output path for both consumers, and an upper-bound case where
    `d4ac` still renders a span while `d8fc` exits `beyond-page-extent`.
@@ -415,9 +416,10 @@ The next work should follow dataflow, not isolated handlers:
    map/render boundaries. The producer formulas are no longer the missing
    middle: `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c` now define the
    canonical, derived/cache, and copied metric fields. The missing middle is
-   now additional metric-value combinations outside the pinned legal endpoints,
-   plus page-visible behavior for validation/error forms beyond the bounded
-   predicate and short-budget no-install fixtures.
+   now additional metric-value combinations outside the pinned legal matrix,
+   boundary, range-endpoint, and low-nibble fixtures, plus page-visible
+   behavior for validation/error forms beyond the bounded predicate and
+   short-budget no-install fixtures.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus secondary

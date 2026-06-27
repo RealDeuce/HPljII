@@ -3257,9 +3257,11 @@ state, but the printable source record is parser/page scratch with only row
 byte `0x02`; `0x12f2e` therefore writes selector `0x0003` object
 `00 00 00 00 00 03 00 01 33 66 01`, publishes only bucket `1` through
 `0xff1e`, and leaves bucket words `9` and `17` absent. This fixture does not
-claim rendered pixels: the remaining middle edge is the published
-selector-`0x0003` tall normal-compact handoff through `0x1ed84`/`0x1ef6a`
-into target `0x1effe`.
+claim rendered pixels: `0x1ef86` computes `0x783a20 = 0x0040` and
+`0x783a28 = 0x00100800`, `0x1f414` splits coord `0x6601` and rows `0x0102`
+into `58` current-band rows plus `200` fallback rows, and span-2 row-copy
+helper `0x1fe76` has valid table entries only through index `128`; fallback
+index `200` reads target `0x329ad3c0`.
 Fixture
 `split-plane segmented downloaded glyph FF publication renders page record`
 adds the odd-span sibling: host-fetched `ESC )s387W` plus printable `(` and FF
@@ -3906,9 +3908,10 @@ fields and every legal metric combination have not been page-compared.
   mode-byte-`1` even-span and mode-byte-`2` odd-span bitmap installs, and
   broader publication combinations beyond the documented normal,
   non-boundary short, rows-`0x20` short, rows-`0x40` short, row-`0x80`,
-  linear-segmented, rows-`0x82` segmented, split-plane segmented,
-  segmented-wide, even-span wide, payload-control wide, no-install, and
-  status-`2` compact bucket variants. The mode-byte-`0` and high-character
+  rows-`0x0102` low-byte-truncated table-limit boundary, linear-segmented,
+  rows-`0x82` segmented, split-plane segmented, segmented-wide, even-span
+  wide, payload-control wide, no-install, and status-`2` compact bucket
+  variants. The mode-byte-`0` and high-character
   header-type status-`0` exits are already documented no-install boundaries:
   fixture `0x16498 replacement allocation failure partial and rejected
   downloaded character exits preserve state` proves no table/header write at
@@ -3956,8 +3959,9 @@ fields and every legal metric combination have not been page-compared.
   publishes bucket-array entry `1` for `ESC )s516W`, preserves installed
   record `00 00 00 00 0c 01 01 02 00 10 00 00`, but shows the printable source
   row byte as `0x02`, so `0x12f2e` writes selector `0x0003` object
-  `00 00 00 00 00 03 00 01 33 66 01` and leaves the visible render edge
-  `0x1ed84`/`0x1ef6a -> 0x1effe` unresolved.
+  `00 00 00 00 00 03 00 01 33 66 01`; `0x1f414` then splits rows `0x0102`
+  into `58` current rows and `200` fallback rows, exceeding the `0x1fe76`
+  row-copy table's valid maximum index `128` at fallback target `0x329ad3c0`.
   Fixture
   `host-fetched rows-0x20 short downloaded glyph FF publication renders page record`
   publishes bucket-array entry `1` for `ESC )s64W`, preserves record

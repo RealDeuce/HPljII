@@ -1041,10 +1041,14 @@ reads row byte `0x02`, so `0x12f2e` queues selector `0x0003`, short object
 `00 00 00 00 00 03 00 01 33 66 01` plus allocator padding, and bucket `1`
 instead of selector `0x2003` buckets `1`, `9`, and `17`. The trailing FF routes
 tail handlers `0xd04a` and `0xf0f0`, and `0xff1e` publishes only bucket `1`.
-The unresolved visible-output edge is the published selector-`0x0003` tall
-normal-compact render handoff through `0x1ed84`/`0x1ef6a` into target
-`0x1effe`; the current fixture therefore proves parser/install/page-record
-publication state, not pixel output for rows `0x0102`.
+The visible-output boundary is now exact: `0x1ed84`/`0x1ef6a` set render word
+`+0x10 = 1`, `0x1ef86` derives `0x783a20 = 0x0040` and
+`0x783a28 = 0x00100800`, `0x1f414` splits glyph rows `0x0102` at coord
+`0x6601` into `58` current-band rows and `200` fallback rows, and the
+span-2 row-copy helper `0x1fe76` has valid table entries only through index
+`128`. The fallback index `200` reads table target `0x329ad3c0`, so the
+fixture proves parser/install/page-record publication plus the exact invalid
+render boundary, not pixel output for rows `0x0102`.
 
 Fixture `host-fetched split-plane segmented downloaded character renders
 through 0x1f1f0` covers the odd-span sibling. The host-fetched `ESC )s387W`
@@ -1551,9 +1555,7 @@ A byte-stream renderer must preserve:
   parser-produced comparisons are bounded cross-products: additional non-boundary row
   counts inside the already-covered segmented selector family beyond the covered rows
   `0x81` and `0x82`, additional interior short-family row counts beyond the covered rows
-  `0x03`, `0x10`, `0x20`, `0x40`, and `0x80`, the visible-output continuation for the
-  rows-`0x0102` low-byte-truncated selector-`0x0003` case from
-  `0x1ed84`/`0x1ef6a` into `0x1effe`, no identified ROM helper path for accepted
+  `0x03`, `0x10`, `0x20`, `0x40`, and `0x80`, no identified ROM helper path for accepted
   descriptor-record mode bytes beyond the covered `0x16b1a` mode-byte-`1` even-span and
   mode-byte-`2` odd-span bitmap installs, and broader publication combinations beyond
   the documented normal, nonboundary-short, rows-`0x20` short, rows-`0x40` short,
@@ -1587,8 +1589,9 @@ A byte-stream renderer must preserve:
   rows` publishes bucket-array entry `1` for `ESC )s516W`, preserves installed record
   `00 00 00 00 0c 01 01 02 00 10 00 00`, but shows the printable source row byte as
   `0x02`, so `0x12f2e` writes selector `0x0003` object
-  `00 00 00 00 00 03 00 01 33 66 01` and leaves the visible render edge
-  `0x1ed84`/`0x1ef6a -> 0x1effe` unresolved.
+  `00 00 00 00 00 03 00 01 33 66 01`; `0x1f414` then splits rows `0x0102`
+  into `58` current rows and `200` fallback rows, exceeding the `0x1fe76`
+  row-copy table's valid maximum index `128` at fallback target `0x329ad3c0`.
   Fixture `host-fetched rows-0x20 short downloaded glyph FF publication renders page
   record` publishes bucket-array entry `1` for `ESC )s64W`, preserves record `00 00 00
   00 0c 01 00 20 00 10 00 00`, renders bucket word `1`, and emits `38` visible rows

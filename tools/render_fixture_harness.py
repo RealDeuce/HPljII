@@ -14396,6 +14396,26 @@ def compute_render_band_state_via_1ef86(render_record: dict[str, object]) -> dic
     }
 
 
+def split_row_count_via_1f414(coord: int, rows: int, band_rows_scaled: int) -> dict[str, int]:
+    """Model the 0x1f414 D3 split after 0x1f3d4 decodes a compact coordinate."""
+    row_index = (int(coord) >> 12) & 0x0F
+    requested = int(rows) & 0xFFFF
+    boundary = int(band_rows_scaled) & 0xFFFF
+    rows_available = max(boundary - row_index, 0)
+    rows_in_band = min(requested, rows_available)
+    remaining_after_band = requested - rows_in_band
+    return {
+        "coord": int(coord) & 0xFFFF,
+        "row_index": row_index,
+        "input_rows": requested,
+        "band_rows_scaled_783a20": boundary,
+        "rows_available": rows_available,
+        "rows_in_band": rows_in_band,
+        "remaining_after_band": remaining_after_band,
+        "returned_d3": ((remaining_after_band & 0xFFFF) << 16) | rows_in_band,
+    }
+
+
 def rectangle_rule_key_via_134d6(source: dict[str, int], vertical_offset: int = 0) -> dict[str, int]:
     x = (int(source["x"]) + int(vertical_offset)) & 0xFFFF
     y = int(source["y"]) & 0xFFFF
@@ -20885,6 +20905,44 @@ def simulate_row_copy(data: bytes, helper: int, rows: int, stride: int = 0x20, p
         else:
             raise AssertionError(f"unhandled row-copy tail opcode 0x{op:04x} at 0x{pos:06x}")
     raise AssertionError(f"row-copy tail from 0x{target:06x} did not reach RTS")
+
+
+def row_copy_table_limit(data: bytes, helper: int, max_probe: int = 0x400) -> dict[str, int]:
+    setup = row_copy_setup(data, helper)
+    table_base = int(setup["table_base"])
+    valid_opcodes = {
+        0x4E75,
+        0x4CDF,
+        0x129A,
+        0x12DA,
+        0x129B,
+        0x329A,
+        0x32DA,
+        0xD3C0,
+        0xD5C8,
+    }
+    last_valid = -1
+    first_invalid = 0
+    first_invalid_target = 0
+    first_invalid_opcode = 0
+    for index in range(max_probe + 1):
+        target = u32(data, table_base + index * 4)
+        opcode = u16(data, target) if 0 <= target + 1 < len(data) else 0
+        if 0 <= target < len(data) and opcode in valid_opcodes:
+            last_valid = index
+            continue
+        first_invalid = index
+        first_invalid_target = target
+        first_invalid_opcode = opcode
+        break
+    return {
+        "helper": int(helper),
+        "table_base": table_base,
+        "last_valid_index": last_valid,
+        "first_invalid_index": first_invalid,
+        "first_invalid_target": first_invalid_target,
+        "first_invalid_opcode": first_invalid_opcode,
+    }
 
 
 def assert_equal(name: str, actual: object, expected: object) -> str:
@@ -55889,6 +55947,54 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         downloaded_segmented_rows102_published_record["pool_record_fields"]
     )
     assert isinstance(downloaded_segmented_rows102_published_fields, dict)
+    downloaded_segmented_rows102_render_record = (
+        copy_active_page_record_to_render_record_via_1ed84(
+            downloaded_segmented_rows102_published_record
+        )
+    )
+    downloaded_segmented_rows102_render_fields = (
+        downloaded_segmented_rows102_render_record["render_record_fields"]
+    )
+    assert isinstance(downloaded_segmented_rows102_render_fields, dict)
+    downloaded_segmented_rows102_render_fields = dict(
+        downloaded_segmented_rows102_render_fields
+    )
+    downloaded_segmented_rows102_render_fields.update({
+        "long_00": 0x00100000,
+        "word_04": 0x0020,
+        "word_06": 0x0005,
+        "word_08": int(downloaded_segmented_rows102_render_fields.get("word_08", 0)),
+        "word_10": int(downloaded_segmented_rows102_page_result["bucket_index"]),
+    })
+    downloaded_segmented_rows102_render_record[
+        "render_record_fields"
+    ] = downloaded_segmented_rows102_render_fields
+    downloaded_segmented_rows102_render_setup = compute_render_band_state_via_1ef86(
+        downloaded_segmented_rows102_render_record
+    )
+    downloaded_segmented_rows102_render_split = split_row_count_via_1f414(
+        int(downloaded_segmented_rows102_page_result["coord"]),
+        int(downloaded_segmented_rows102_glyph["rows"]),
+        int(downloaded_segmented_rows102_render_setup["band_rows_scaled_783a20"]),
+    )
+    downloaded_segmented_rows102_row_copy_helper = u32(
+        data,
+        0x1F08E + int(downloaded_segmented_rows102_glyph["render_span"]) * 4,
+    )
+    downloaded_segmented_rows102_row_copy_limit = row_copy_table_limit(
+        data,
+        downloaded_segmented_rows102_row_copy_helper,
+    )
+    downloaded_segmented_rows102_current_row_target = u32(
+        data,
+        int(downloaded_segmented_rows102_row_copy_limit["table_base"])
+        + int(downloaded_segmented_rows102_render_split["rows_in_band"]) * 4,
+    )
+    downloaded_segmented_rows102_fallback_row_target = u32(
+        data,
+        int(downloaded_segmented_rows102_row_copy_limit["table_base"])
+        + int(downloaded_segmented_rows102_render_split["remaining_after_band"]) * 4,
+    )
     checks.append(assert_equal("host-fetched rows-0x102 downloaded glyph FF publication truncates page-record rows", {
         "fetch": {
             "stream_prefix": host_fetched_downloaded_segmented_rows102_stream["stream"][:7],
@@ -55957,7 +56063,26 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "published_bucket_array_keys": sorted(
             downloaded_segmented_rows102_published_fields["bucket_array_1c"].keys()
         ),
-        "unresolved_render_edge": "0x1ed84/0x1ef6a -> selector 0x0003 target 0x1effe",
+        "render_edge": {
+            "setup": {
+                key: downloaded_segmented_rows102_render_setup[key]
+                for key in (
+                    "input_word_10",
+                    "input_word_08",
+                    "input_word_0a",
+                    "divisor_word_06",
+                    "remainder_783a22",
+                    "band_rows_scaled_783a20",
+                    "destination_base_783a28",
+                )
+            },
+            "split": downloaded_segmented_rows102_render_split,
+            "row_copy_helper": downloaded_segmented_rows102_row_copy_helper,
+            "row_copy_limit": downloaded_segmented_rows102_row_copy_limit,
+            "current_row_target": downloaded_segmented_rows102_current_row_target,
+            "fallback_row_target": downloaded_segmented_rows102_fallback_row_target,
+            "unresolved": "fallback row count exceeds 0x1fe76 table limit",
+        },
     }, {
         "fetch": {
             "stream_prefix": b"\x1b)s516W",
@@ -56007,7 +56132,39 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "page_publication_flag": 1,
         },
         "published_bucket_array_keys": [1],
-        "unresolved_render_edge": "0x1ed84/0x1ef6a -> selector 0x0003 target 0x1effe",
+        "render_edge": {
+            "setup": {
+                "input_word_10": 1,
+                "input_word_08": 0,
+                "input_word_0a": 0,
+                "divisor_word_06": 5,
+                "remainder_783a22": 1,
+                "band_rows_scaled_783a20": 0x0040,
+                "destination_base_783a28": 0x00100800,
+            },
+            "split": {
+                "coord": 0x6601,
+                "row_index": 6,
+                "input_rows": 0x0102,
+                "band_rows_scaled_783a20": 0x0040,
+                "rows_available": 0x003A,
+                "rows_in_band": 0x003A,
+                "remaining_after_band": 0x00C8,
+                "returned_d3": 0x00C8003A,
+            },
+            "row_copy_helper": 0x01FE76,
+            "row_copy_limit": {
+                "helper": 0x01FE76,
+                "table_base": 0x01FE8A,
+                "last_valid_index": 0x0080,
+                "first_invalid_index": 0x0081,
+                "first_invalid_target": 0x329AD3C0,
+                "first_invalid_opcode": 0,
+            },
+            "current_row_target": 0x0201A6,
+            "fallback_row_target": 0x329AD3C0,
+            "unresolved": "fallback row count exceeds 0x1fe76 table limit",
+        },
     }))
 
     downloaded_linear_publication_stream = downloaded_linear_command_stream + b"&\x0c"
@@ -83633,8 +83790,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "`ESC )s516W` plus printable `3` and FF restores record `%s`, "
         "installs table entry `0x%04x` with record `%s`, but the printable "
         "page source exposes row byte `0x%02x`; `0x12f2e` queues selector "
-        "`0x%04x`, publishes bucket entries `%s`, and leaves render edge "
-        "`0x1ed84`/`0x1ef6a -> 0x1effe` unresolved." % (
+        "`0x%04x`, publishes bucket entries `%s`, and `0x1f414` splits "
+        "glyph rows `0x%04x` into current/fallback counts `%d`/`%d`; the "
+        "`0x1fe76` row-copy table is valid through `%d`, so fallback table "
+        "entry `0x%08x` remains the unresolved visible-output boundary." % (
             " ".join(
                 f"{byte:02x}"
                 for byte in downloaded_segmented_rows102_dispatch_command[
@@ -83652,6 +83811,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "bucket_array_1c"
                 ].keys()
             ),
+            downloaded_segmented_rows102_render_split["input_rows"],
+            downloaded_segmented_rows102_render_split["rows_in_band"],
+            downloaded_segmented_rows102_render_split["remaining_after_band"],
+            downloaded_segmented_rows102_row_copy_limit["last_valid_index"],
+            downloaded_segmented_rows102_fallback_row_target,
         )
     )
     lines.append("")

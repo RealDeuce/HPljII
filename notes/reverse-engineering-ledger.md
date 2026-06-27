@@ -491,8 +491,9 @@ rendering for both linear and split-plane compact objects.
 The rows-`0x0102` downloaded-glyph fixture proves accepted 16-bit install
 record `00 00 00 00 0c 01 01 02 00 10 00 00`, but the printable
 page-record source exposes row byte `0x02`, publishes selector `0x0003`
-bucket `1` only, and leaves `0x1ed84`/`0x1ef6a -> 0x1effe` as an
-unresolved visible-output edge.
+bucket `1` only, then `0x1f414` splits rows `0x0102` into `58` current rows
+and `200` fallback rows. The fallback exceeds `0x1fe76`'s valid table maximum
+index `128` and reads target `0x329ad3c0`.
 
 Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md`
 collects the raster command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`,

@@ -2992,6 +2992,17 @@ allocation failure and current-payload release, `0x1658e..0x16602` for copy
 status and table-pointer storage, `0x17a24..0x17b54` for old-pointer release,
 `0x1887a..0x18c4e` for current-payload teardown, and `0x168dc` / `0x16942` for
 continuation state.
+Fixture `0x16498 no-install exits preserve following printable output` carries
+those no-install exits through the next visible byte. Host fetch drains each
+`ESC )s6W` payload plus printable `!`; the resource side restores
+`80 57 00 06 00 00`, dispatches delayed handler `0x16c14`, and returns reasons
+`allocation-failed`, `unsupported-record-shape`, or
+`char-outside-header-type`. The following `!` then routes through `0xd04a`,
+queues the baseline default-font compact object, and renders the same rows as
+the standalone baseline `!`. Canonical renderer state is therefore unchanged
+by those failed downloaded-character installs; the mutable state is parser
+scratch plus firmware cleanup/bookkeeping from `0x1887a` for the allocation
+failure case.
 Fixture `host-fetched segmented downloaded character renders through 0x1f1f0`
 connects the downloaded-character linear reader to the remaining segmented
 compact renderer shape. Host fetch drains `ESC )s258W`; parser dispatch walks
@@ -3234,8 +3245,9 @@ payload control reaches wide render`, `host-fetched even-span wide downloaded
 character renders through 0x1f0d2`, `host-fetched row-0x80 downloaded
 character remains short compact`, `0x16498 replacement allocation failure
 partial and rejected downloaded character exits preserve state`,
-`host-fetched segmented downloaded
-character renders through 0x1f1f0`, `host-fetched split-plane segmented
+`0x16498 no-install exits preserve following printable output`,
+`host-fetched segmented downloaded character renders through 0x1f1f0`,
+`host-fetched split-plane segmented
 downloaded character renders through 0x1f1f0`, and
 `host-fetched downloaded character stream reaches rendered object`. High for
 the modeled FF publication boundary of the combined downloaded-glyph stream
@@ -3319,6 +3331,7 @@ combination have not been page-compared.
 - `host-fetched row-0x80 downloaded character remains short compact`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
+- `0x16498 no-install exits preserve following printable output`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
 - `host-fetched split-plane segmented downloaded character renders through
   0x1f1f0`
@@ -3367,9 +3380,13 @@ combination have not been page-compared.
   release through `0x17a24`, object allocation failure through
   `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear/split-plane continuation pointer
   writes, and the mode/header-type status-`0` rejects. Remaining parser-produced
-  comparisons are the cross-product variants not covered by those shapes, especially
-  other row counts, other character-mode behavior, and page-visible recovery from the
-  same selector families.
+  comparisons are narrowed by fixture
+  `0x16498 no-install exits preserve following printable output`, which proves
+  those no-install exits leave the next printable on the baseline default-font
+  object and rows. Still-open comparisons are cross-product variants not
+  covered by those shapes, especially other row counts, other character-mode
+  behavior, and status-`2` partial-install visibility from the same selector
+  families.
 - downloaded-glyph plus rule/raster producer schedule: fixture
   `parser-driven downloaded glyph rule raster stream composes through
   0x1ef6a` closes the page-stream boundary from parser-produced `0x10898` rule

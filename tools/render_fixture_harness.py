@@ -9602,6 +9602,8 @@ def render_font_download_char_command_stream_via_121cc_16498(
     width: int,
     rows: int,
     object_offset: int,
+    allocation_ok: bool = True,
+    allocation_failure_release: dict[str, object] | None = None,
 ) -> dict[str, object]:
     updated_header = bytes(header)
     pending: dict[str, object] = {"pending_flag": 0, "handler": 0, "snapshot_record": b""}
@@ -9696,6 +9698,8 @@ def render_font_download_char_command_stream_via_121cc_16498(
                 stream=payload,
                 byte_budget=byte_budget,
                 object_offset=object_offset,
+                allocation_ok=allocation_ok,
+                allocation_failure_release=allocation_failure_release,
             )
             if int(installed["status"]) == 1:
                 updated_header = bytes(installed["header"])
@@ -52157,6 +52161,33 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "d4_counter": 0,
         "d3_counter": 0,
     }
+    downloaded_allocation_failure_release_config: dict[str, object] = {
+        "records": [{"id": 0x1234, "flags": 0x40, "payload": 0x123456}],
+        "record_index": 0,
+        "payload": 0x123456,
+        "candidate_longword": 0x00123456,
+        "payload_byte_0x0e": 1,
+        "payload_byte_0x16": 1,
+        "counters": {
+            "0x78278e": 5,
+            "0x782790": 2,
+            "0x782796": 2,
+            "0x782798": 4,
+            "0x78279e": 4,
+            "0x78278a": 9,
+            "0x782782": 1,
+            "0x782786": 3,
+        },
+        "cursors": {"0x7827ac": 0x40, "0x7827b0": 0x50, "0x7827b4": 0x60},
+        "continuation": downloaded_allocation_failure_continuation,
+        "candidates": [0x00100000, 0x00123456, 0x00200000],
+        "active_secondary_context": 0x123456,
+        "context_stack": [
+            {"primary": 0x123456, "secondary": 0x654321},
+            {"primary": 0x222222, "secondary": 0x123456},
+        ],
+        "default_resolver_matches": True,
+    }
     downloaded_allocation_failure = font_download_char_object_via_16498(
         table_payload_type2_bytes,
         0x2F,
@@ -52168,33 +52199,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         byte_budget=6,
         object_offset=0x0940,
         allocation_ok=False,
-        allocation_failure_release={
-            "records": [{"id": 0x1234, "flags": 0x40, "payload": 0x123456}],
-            "record_index": 0,
-            "payload": 0x123456,
-            "candidate_longword": 0x00123456,
-            "payload_byte_0x0e": 1,
-            "payload_byte_0x16": 1,
-            "counters": {
-                "0x78278e": 5,
-                "0x782790": 2,
-                "0x782796": 2,
-                "0x782798": 4,
-                "0x78279e": 4,
-                "0x78278a": 9,
-                "0x782782": 1,
-                "0x782786": 3,
-            },
-            "cursors": {"0x7827ac": 0x40, "0x7827b0": 0x50, "0x7827b4": 0x60},
-            "continuation": downloaded_allocation_failure_continuation,
-            "candidates": [0x00100000, 0x00123456, 0x00200000],
-            "active_secondary_context": 0x123456,
-            "context_stack": [
-                {"primary": 0x123456, "secondary": 0x654321},
-                {"primary": 0x222222, "secondary": 0x123456},
-            ],
-            "default_resolver_matches": True,
-        },
+        allocation_failure_release=downloaded_allocation_failure_release_config,
     )
     downloaded_allocation_payload_release = downloaded_allocation_failure["payload_release"]
     assert isinstance(downloaded_allocation_payload_release, dict)
@@ -62726,6 +62731,203 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ("invalid_class", 7, 13),
         )
     }))
+
+    def downloaded_char_failure_visible_report(case: dict[str, object]) -> dict[str, object]:
+        stream = case["stream"]
+        assert isinstance(stream, bytes)
+        header = case["header"]
+        assert isinstance(header, (bytes, bytearray))
+        combined_stream = stream + b"!"
+        combined_fetch = fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(combined_stream), direct_mode=0),
+            len(combined_stream),
+        )
+        resource_stream = combined_fetch["stream"][:len(stream)]
+        printable_stream = combined_fetch["stream"][len(stream):]
+        resource_trace = trace_font_parser_dispatch_via_11774(data, resource_stream)
+        resource_command = render_font_download_char_command_stream_via_121cc_16498(
+            resource_stream,
+            header,
+            char_code=int(case["char_code"]),
+            record_words=case["record_words"],  # type: ignore[arg-type]
+            mode=int(case["mode"]),
+            width=int(case["width"]),
+            rows=int(case["rows"]),
+            object_offset=int(case["object_offset"]),
+            allocation_ok=bool(case.get("allocation_ok", True)),
+            allocation_failure_release=case.get("allocation_failure_release"),  # type: ignore[arg-type]
+        )
+        resource_event = resource_command["events"][0]
+        assert isinstance(resource_event, dict)
+        install = resource_event["install"]
+        assert isinstance(install, dict)
+        printable_trace = trace_mixed_text_control_parser_path_via_11774(
+            data,
+            printable_stream,
+        )
+        visible_page = render_mixed_printable_control_page_record_stream(
+            data,
+            resources,
+            printable_stream,
+            0x440946B4,
+            control_fixture_state(
+                cursor_x=pack12(10),
+                cursor_y=pack12(21),
+                hmi=line_printer_hmi["hmi"],
+                pending_width=1,
+                pending_text=0,
+                span_flush_enable=1,
+            ),
+            default_advance=line_printer_hmi["hmi"],
+        )
+        visible_rendered = visible_page["rendered"]
+        assert isinstance(visible_rendered, dict)
+        visible_event = visible_page["events"][0]
+        assert isinstance(visible_event, dict)
+        visible_page_result = visible_event["page_result"]
+        assert isinstance(visible_page_result, dict)
+        table_entry = int(case["table_entry"])
+        table_pointer = u32(header, table_entry) if table_entry + 4 <= len(header) else 0
+        trace_command = resource_trace["commands"][0]
+        assert isinstance(trace_command, dict)
+        return {
+            "combined_length": len(combined_fetch["stream"]),
+            "fetch_source_set": sorted(set(combined_fetch["sources"])),
+            "remaining_ring": combined_fetch["state"]["ring"],
+            "resource": {
+                "parser_handlers": [
+                    dispatch_event["handler"]
+                    for dispatch_event in resource_trace["dispatches"]
+                ],
+                "payload_handler": trace_command["font_payload_dispatch"]["handler"],  # type: ignore[index]
+                "restored_record": resource_event["restored_record"],
+                "payload_offset": resource_event["payload_offset"],
+                "payload_length": resource_event["payload_length"],
+                "install_status": install["status"],
+                "install_reason": install.get("reason"),
+                "table_entry": table_entry,
+                "table_pointer_before": table_pointer,
+                "table_pointer_after": (
+                    install.get("table_pointer")
+                    if "table_pointer" in install
+                    else table_pointer
+                ),
+                "copy": install.get("copy"),
+                "payload_release_handler": (
+                    install["payload_release"]["handler"]  # type: ignore[index]
+                    if isinstance(install.get("payload_release"), dict)
+                    else None
+                ),
+            },
+            "printable": {
+                "stream": printable_stream,
+                "parser_handlers": [
+                    trace_event["handler"]
+                    for trace_event in printable_trace["events"]
+                ],
+                "coord": visible_page_result["coord"],
+                "bucket_object": visible_page["bucket_object"],
+                "rendered_rows": visible_rendered["rows"],
+                "matches_baseline_rows": (
+                    visible_rendered["rows"]
+                    == validation_failure_visible_baseline_rendered["rows"]
+                ),
+                "matches_baseline_object": (
+                    visible_page["bucket_object"]
+                    == validation_failure_visible_baseline["bucket_object"]
+                ),
+            },
+        }
+
+    downloaded_char_failure_visible_cases: dict[str, dict[str, object]] = {
+        "allocation_failure": {
+            "stream": b"\x1b)s6W" + bytes.fromhex("de ad be ef ca fe"),
+            "header": table_payload_type2_bytes,
+            "char_code": 0x2F,
+            "record_words": (0x0000, 0x0000, 0x0003, 0x0000),
+            "mode": 1,
+            "width": 0x0010,
+            "rows": 0x0003,
+            "object_offset": 0x0940,
+            "table_entry": 0x0106,
+            "allocation_ok": False,
+            "allocation_failure_release": downloaded_allocation_failure_release_config,
+        },
+        "mode_reject": {
+            "stream": b"\x1b)s6W" + bytes.fromhex("f0 0f aa 55 3c c3"),
+            "header": table_payload_type2_bytes,
+            "char_code": 0x2D,
+            "record_words": (0x0000, 0x0000, 0x0003, 0x0000),
+            "mode": 0,
+            "width": 0x0010,
+            "rows": 0x0003,
+            "object_offset": 0x08C0,
+            "table_entry": 0x00FE,
+        },
+        "range_reject": {
+            "stream": b"\x1b)s6W" + bytes.fromhex("f0 0f aa 55 3c c3"),
+            "header": bytes(downloaded_range_reject_header),
+            "char_code": 0xA0,
+            "record_words": (0x0000, 0x0000, 0x0003, 0x0000),
+            "mode": 1,
+            "width": 0x0010,
+            "rows": 0x0003,
+            "object_offset": 0x0900,
+            "table_entry": 0x02CA,
+        },
+    }
+    downloaded_char_failure_visible_reports = {
+        name: downloaded_char_failure_visible_report(case)
+        for name, case in downloaded_char_failure_visible_cases.items()
+    }
+    checks.append(assert_equal(
+        "0x16498 no-install exits preserve following printable output",
+        {
+            name: {
+                "combined_length": report["combined_length"],
+                "fetch_source_set": report["fetch_source_set"],
+                "remaining_ring": report["remaining_ring"],
+                "resource": report["resource"],
+                "printable": report["printable"],
+            }
+            for name, report in downloaded_char_failure_visible_reports.items()
+        },
+        {
+            name: {
+                "combined_length": len(downloaded_char_failure_visible_cases[name]["stream"]) + 1,
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "resource": {
+                    "parser_handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+                    "payload_handler": 0x016C14,
+                    "restored_record": bytes.fromhex("80 57 00 06 00 00"),
+                    "payload_offset": 5,
+                    "payload_length": 6,
+                    "install_status": 0,
+                    "install_reason": reason,
+                    "table_entry": table_entry,
+                    "table_pointer_before": 0,
+                    "table_pointer_after": 0,
+                    "copy": None,
+                    "payload_release_handler": payload_release_handler,
+                },
+                "printable": {
+                    "stream": b"!",
+                    "parser_handlers": [0x00D04A],
+                    "coord": validation_failure_visible_baseline_event["page_result"]["coord"],  # type: ignore[index]
+                    "bucket_object": validation_failure_visible_baseline["bucket_object"],
+                    "rendered_rows": validation_failure_visible_baseline_rendered["rows"],
+                    "matches_baseline_rows": True,
+                    "matches_baseline_object": True,
+                },
+            }
+            for name, reason, table_entry, payload_release_handler in (
+                ("allocation_failure", "allocation-failed", 0x0106, 0x1887A),
+                ("mode_reject", "unsupported-record-shape", 0x00FE, None),
+                ("range_reject", "char-outside-header-type", 0x02CA, None),
+            )
+        },
+    ))
     hmi_page_record_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,
@@ -77846,6 +78048,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         validation_failure_visible_reports["invalid_type"]["printable"]["parser_handlers"][0],  # type: ignore[index]
         " ".join(f"{byte:02x}" for byte in validation_failure_visible_baseline["bucket_object"]),  # type: ignore[index]
+    ))
+    lines.append("- downloaded-character no-install visible recovery: cases `%s` return reasons `%s`, leave following printable `!` on handler `0x%05x`, queue the same default-font object `%s`, and match baseline rows `%s`." % (
+        sorted(downloaded_char_failure_visible_reports),
+        {
+            name: report["resource"]["install_reason"]  # type: ignore[index]
+            for name, report in downloaded_char_failure_visible_reports.items()
+        },
+        downloaded_char_failure_visible_reports["allocation_failure"]["printable"]["parser_handlers"][0],  # type: ignore[index]
+        " ".join(f"{byte:02x}" for byte in validation_failure_visible_baseline["bucket_object"]),  # type: ignore[index]
+        all(
+            bool(report["printable"]["matches_baseline_rows"])  # type: ignore[index]
+            and bool(report["printable"]["matches_baseline_object"])  # type: ignore[index]
+            for report in downloaded_char_failure_visible_reports.values()
+        ),
     ))
     lines.append("The same direct page-record group now crosses `0x1ed84` active-record copy and the `0x1ef6a` render-entry call order, including nonzero bucket selection for the vertical cursor/layout cases.")
     lines.append("A host-fetched text-plus-rectangle fixture now drains `! ESC *c12a5b0P`, queues the compact text bucket and selector-7 rule in the same page record, and carries that combined bucket/rule record through `0x1ed84` and `0x1ef6a`.")

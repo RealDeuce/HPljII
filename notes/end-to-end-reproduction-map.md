@@ -404,8 +404,11 @@ The next work should follow dataflow, not isolated handlers:
    replacement/allocation-failure/partial/reject fixture now also covers
    old-pointer release through `0x17a24`, object allocation failure through
    `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear and split-plane continuation
-   pointer writes, and mode/header-type status-`0` rejects; remaining
-   non-success risk is narrower page-visible recovery. The publication-command
+   pointer writes, and mode/header-type status-`0` rejects. The `0x16498`
+   no-install visible-output fixture now proves those failed installs leave
+   the following printable byte on the default-font compact object and rows;
+   remaining non-success risk is narrower status-`2` partial-install
+   visibility. The publication-command
    checkpoint now covers host-fetched reset, FF, page-size, orientation,
    paper-source, and copies streams through parser dispatch, `0xff1e`,
    `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF,

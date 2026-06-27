@@ -81,6 +81,7 @@ Primary fixtures:
 - `host-fetched row-0x80 downloaded character remains short compact`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
+- `0x16498 no-install exits preserve following printable output`
 - `host-fetched even-span downloaded glyph FF publishes rendered page record`
 - `downloaded normal row-0x80 and segmented glyph FF publications render page records`
 - `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
@@ -839,6 +840,18 @@ character with header type `0` both return status `0` before writing a table
 pointer, matching the `0x164f2..0x16540` range branch and the pre-copy shape
 guard.
 
+Fixture `0x16498 no-install exits preserve following printable output` carries
+the three no-install branches above to visible output. Each case starts from a
+host-fetched `ESC )s6W` command plus six payload bytes, restores record
+`80 57 00 06 00 00`, dispatches delayed handler `0x16c14`, and then appends
+printable `!`. The allocation-failure case returns reason
+`allocation-failed`, the mode-0 case returns `unsupported-record-shape`, and
+the `0xa0`/header-type case returns `char-outside-header-type`. In all three
+cases the following printable byte routes through `0xd04a`, queues the same
+default-font compact object as baseline `!`, and renders identical rows. This
+classifies the failed downloaded-character command as firmware bookkeeping and
+parser scratch, not canonical renderer state.
+
 Fixture `host-fetched segmented downloaded character renders through
 0x1f1f0` adds the even-span tall sibling. The host-fetched `ESC )s258W` stream
 uses parser record `80 57 01 02 00 00`, delayed handler `0x16c14`, payload
@@ -1290,10 +1303,13 @@ A byte-stream renderer must preserve:
   character exits preserve state` covers old-pointer release through
   `0x17a24`, object allocation failure through `0x170c`/`0x9b5e`/`0x1887a`,
   status-`2` linear/split-plane continuation pointer writes, and
-  mode/header-type rejects. Remaining parser-produced comparisons are the
-  cross-product variants not covered by those shapes, especially other row
-  counts, other character-mode behavior, and page-visible recovery from the
-  same selector families.
+  mode/header-type rejects. Fixture
+  `0x16498 no-install exits preserve following printable output` closes
+  page-visible recovery for those no-install exits by proving the following
+  printable byte stays on the default-font object and rows. Remaining
+  parser-produced comparisons are the cross-product variants not covered by
+  those shapes, especially other row counts, other character-mode behavior,
+  and status-`2` partial-install visibility from the same selector families.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets; the normal, linear-segmented, and even-span wide siblings
   now publish through the same boundary. Fixture

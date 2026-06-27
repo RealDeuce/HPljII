@@ -462,9 +462,12 @@ rounded input `0x1508` stores the same `+0x2c = 0x0060`, so the descriptor
 transform discards that low byte before the same `d4ac` exit.
 Remaining work is additional metric-value combinations within the legal
 forms, validation/error page behavior beyond those bounded predicate and
-short-budget no-install branches, remaining alternate character-mode/release
+short-budget no-install branches, no-install publication variants for
+downloaded-character failures, remaining alternate character-mode/release
 variants, full live-parser raster edge cases, and final device-output page
-comparison.
+comparison. The status-`2` downloaded-character partial-install branch is now
+carried through trailing-FF `0xff1e` publication and published-record
+rendering for both linear and split-plane compact objects.
 
 Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md`
 collects the raster command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`,

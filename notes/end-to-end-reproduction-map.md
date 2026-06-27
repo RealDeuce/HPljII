@@ -433,7 +433,10 @@ The next work should follow dataflow, not isolated handlers:
    the following printable byte on the default-font compact object and rows.
    The status-`2` partial-install fixture now proves linear and split-plane
    partial glyphs remain printable through their stored table pointers and
-   zero-filled missing bytes. The publication-command
+   zero-filled missing bytes, then publishes both bucket-1 compact objects
+   through trailing FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` with the same rows.
+   Remaining downloaded-character publication risk is the no-install variants,
+   not the status-`2` partial-install branch. The publication-command
    checkpoint now covers host-fetched reset, FF, page-size, orientation,
    paper-source, and copies streams through parser dispatch, `0xff1e`,
    `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF,

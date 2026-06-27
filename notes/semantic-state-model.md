@@ -3323,7 +3323,14 @@ layout `a0 a1 00 00 b0 00`, and A4/A3 continuation destinations
 `0x0003`, and renders the first row from prefix `a0 a1` plus trailing `b0`.
 Canonical state includes the partially installed table pointer, object record,
 and bitmap bytes; the continuation fields are firmware bookkeeping needed to
-complete the same glyph later.
+complete the same glyph later. The same fixture now carries both status-`2`
+objects through trailing-FF publication: `0xff1e` copies bucket `1`, the
+compact object root, empty rule/fixed lists, and context slots `(0,0,0,0)`
+into a published pool record, clears the current page root, and
+`0x1ed84`/`0x1ef6a` render the published rows from bucket word `1`. This
+classifies the published bucket root and bucket array as derived page-output
+state from the canonical partial downloaded glyph; the continuation fields
+remain firmware bookkeeping and are not consumed by the published record.
 Fixture `host-fetched segmented downloaded character renders through 0x1f1f0`
 connects the downloaded-character linear reader to the remaining segmented
 compact renderer shape. Host fetch drains `ESC )s258W`; parser dispatch walks
@@ -3717,11 +3724,13 @@ combination have not been page-compared.
   proves those no-install exits leave the next printable on the baseline
   default-font object and rows. Fixture
   `0x16498 status-2 partial installs remain printable` proves the status-`2`
-  linear and split-plane partial-install visibility contract. Still-open
-  comparisons are bounded cross-products: non-boundary row counts inside the
-  already-covered short and segmented selector families, character modes other
-  than the covered mode-1 bitmap records, and publication behavior for the
-  no-install/status-`2` variants rather than the next printable byte alone.
+  linear and split-plane partial-install visibility contract, and now carries
+  those two compact objects through trailing-FF `0xff1e` publication and
+  `0x1ed84`/`0x1ef6a` published-record rendering. Still-open comparisons are
+  bounded cross-products: non-boundary row counts inside the already-covered
+  short and segmented selector families, character modes other than the
+  covered mode-1 bitmap records, and publication behavior for the no-install
+  variants rather than the next printable byte alone.
 - downloaded-glyph plus rule/raster producer schedule: fixture
   `parser-driven downloaded glyph rule raster stream composes through
   0x1ef6a` closes the page-stream boundary from parser-produced `0x10898` rule

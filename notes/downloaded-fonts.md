@@ -867,12 +867,20 @@ record `80 57 00 04 00 00`, stores table entry `0x00f6 -> 0x0840`, leaves
 bitmap bytes `f0 0f aa 55 00 00`, and saves continuation state with
 destination `0x0850` and remaining count `2`. A following printable `+`
 resolves glyph `0x2b`, queues short selector `0x0003`, and renders rows from
-the copied bytes plus the zero-filled missing row. The split-plane case starts
-from `ESC )s3W a0 a1 b0`, stores table entry `0x00fa -> 0x0880`, leaves
-layout `a0 a1 00 00 b0 00`, saves A4/A3 continuation destinations
-`0x088e`/`0x0891`, and a following printable `,` resolves glyph `0x2c`,
-queues selector `0x0003`, and renders the first row from prefix bytes
-`a0 a1` plus trailing byte `b0`.
+the copied bytes plus the zero-filled missing row. The same page-record object
+now finalizes through `0xff1e` on a trailing FF: publication keeps bucket `1`,
+copies compact object `00 00 00 00 00 03 00 01 2b 66 01`, clears the current
+page root, and renders the published record through `0x1ed84`/`0x1ef6a` with
+the same rows.
+
+The split-plane case starts from `ESC )s3W a0 a1 b0`, stores table entry
+`0x00fa -> 0x0880`, leaves layout `a0 a1 00 00 b0 00`, saves A4/A3
+continuation destinations `0x088e`/`0x0891`, and a following printable `,`
+resolves glyph `0x2c`, queues selector `0x0003`, and renders the first row
+from prefix bytes `a0 a1` plus trailing byte `b0`. Its trailing-FF publication
+also keeps bucket `1`, copies compact object `00 00 00 00 00 03 00 01 2c 66
+01`, clears the current page root, and renders the published record through
+`0x1ed84`/`0x1ef6a` with the same rows.
 
 Fixture `host-fetched segmented downloaded character renders through
 0x1f1f0` adds the even-span tall sibling. The host-fetched `ESC )s258W` stream
@@ -1330,11 +1338,13 @@ A byte-stream renderer must preserve:
   page-visible recovery for those no-install exits by proving the following
   printable byte stays on the default-font object and rows. Fixture
   `0x16498 status-2 partial installs remain printable` covers the linear and
-  split-plane status-`2` visible-output siblings. Remaining parser-produced
-  comparisons are bounded cross-products: non-boundary row counts inside the
-  already-covered short and segmented selector families, character modes other
-  than the covered mode-1 bitmap records, and publication behavior for the
-  no-install/status-`2` variants rather than the next printable byte alone.
+  split-plane status-`2` visible-output siblings and now carries both through
+  trailing-FF `0xff1e` publication and published-record rendering. Remaining
+  parser-produced comparisons are bounded cross-products: non-boundary row
+  counts inside the already-covered short and segmented selector families,
+  character modes other than the covered mode-1 bitmap records, and
+  publication behavior for the no-install variants rather than the next
+  printable byte alone.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets; the normal, linear-segmented, and even-span wide siblings
   now publish through the same boundary. Fixture

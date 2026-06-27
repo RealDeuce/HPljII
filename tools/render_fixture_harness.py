@@ -52939,6 +52939,28 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         )
         entry = render_entry["entry"]
         assert isinstance(entry, dict)
+        finalized = finalize_page_record_via_ff1e(
+            page_record,
+            reset_fixture_state(
+                page_root_present=1,
+                page_root_class=1,
+                current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+                page_root_clears=0,
+                publication_bucket_index=int(page_result["bucket_index"]),
+            ),
+        )
+        published = finalized["published_pool_record"]
+        assert isinstance(published, dict)
+        published_fields = published["pool_record_fields"]
+        assert isinstance(published_fields, dict)
+        published_render = render_published_page_record_via_1ed84_1ef6a(
+            data,
+            memory,
+            published,
+            bucket_word=int(page_result["bucket_index"]),
+        )
+        published_entry = published_render["entry"]
+        assert isinstance(published_entry, dict)
         return {
             "combined_length": len(fetched["stream"]),
             "fetch_source_set": sorted(set(fetched["sources"])),
@@ -53000,6 +53022,53 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     for dispatch in entry["dispatch"]["entries"]
                 ],
                 "rows": entry["rows"],
+            },
+            "publication": {
+                "ff_handlers": [
+                    event["handler"]
+                    for event in trace_mixed_text_control_parser_path_via_11774(
+                        data,
+                        b"\x0c",
+                    )["events"]
+                ],
+                "finalized": {
+                    "published": finalized["published"],
+                    "bucket_index": finalized["bucket_index"],
+                    "current_page_root_after": finalized["current_page_root_after"],
+                    "page_root_clears": finalized["page_root_clears"],
+                    "page_publication_flag": finalized["page_publication_flag"],
+                },
+                "published_bucket_root": published_fields["bucket_root_1c"],
+                "published_bucket_array": published_fields["bucket_array_1c"],
+                "published_context_slots": published_fields["context_slots_2c"][:4],
+                "render_bucket_word": published_render["render_record_fields"]["word_10"],
+                "active_copy": published_render["active_copy"],
+                "setup": {
+                    key: published_entry["setup"][key]
+                    for key in (
+                        "dividend",
+                        "divisor_word_06",
+                        "remainder_783a22",
+                        "band_rows_scaled_783a20",
+                        "destination_base_783a28",
+                    )
+                },
+                "call_order": published_entry["call_order"],
+                "dispatch": [
+                    {
+                        key: dispatch[key]
+                        for key in (
+                            "chain_index",
+                            "object_byte_4",
+                            "class_mask",
+                            "branch",
+                            "target",
+                            "context_slot",
+                        )
+                    }
+                    for dispatch in published_entry["dispatch"]["entries"]
+                ],
+                "rows": published_entry["rows"],
             },
         }
 
@@ -53092,6 +53161,64 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "." * 38,
                     ],
                 },
+                "publication": {
+                    "ff_handlers": [0x00F0F0],
+                    "finalized": {
+                        "published": True,
+                        "bucket_index": 1,
+                        "current_page_root_after": 0,
+                        "page_root_clears": 1,
+                        "page_publication_flag": 1,
+                    },
+                    "published_bucket_root": (
+                        bytes.fromhex("00 00 00 00 00 03 00 01 2b 66 01")
+                        + bytes(0x1B)
+                    ),
+                    "published_bucket_array": {
+                        1: [
+                            bytes.fromhex("00 00 00 00 00 03 00 01 2b 66 01")
+                            + bytes(0x1B),
+                        ],
+                    },
+                    "published_context_slots": (0, 0, 0, 0),
+                    "render_bucket_word": 1,
+                    "active_copy": {
+                        "source_word_18": 0,
+                        "source_word_1a": 0,
+                        "render_word_0a": 0,
+                        "render_word_0c": 0,
+                        "render_word_0e": 0,
+                        "render_word_10": 0,
+                        "render_word_16": 0,
+                    },
+                    "setup": {
+                        "dividend": 1,
+                        "divisor_word_06": 5,
+                        "remainder_783a22": 1,
+                        "band_rows_scaled_783a20": 0x0040,
+                        "destination_base_783a28": 0x00100800,
+                    },
+                    "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+                    "dispatch": [{
+                        "chain_index": 0,
+                        "object_byte_4": 0x00,
+                        "class_mask": 0x00,
+                        "branch": "compact",
+                        "target": 0x01EFFE,
+                        "context_slot": 3,
+                    }],
+                    "rows": [
+                        "." * 38,
+                        "." * 38,
+                        "." * 38,
+                        "." * 38,
+                        "." * 38,
+                        "." * 38,
+                        "." * 22 + "####........####",
+                        "." * 22 + "#.#.#.#..#.#.#.#",
+                        "." * 38,
+                    ],
+                },
             },
             "split": {
                 "combined_length": 9,
@@ -53139,6 +53266,63 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "bucket_index": 1,
                     "object": bytes.fromhex("00 00 00 00 00 03 00 01 2c 66 01")
                     + bytes(0x1B),
+                    "dispatch": [{
+                        "chain_index": 0,
+                        "object_byte_4": 0x00,
+                        "class_mask": 0x00,
+                        "branch": "compact",
+                        "target": 0x01EFFE,
+                        "context_slot": 3,
+                    }],
+                    "rows": [
+                        "." * 46,
+                        "." * 46,
+                        "." * 46,
+                        "." * 46,
+                        "." * 46,
+                        "." * 46,
+                        "." * 22 + "#.#.....#.#....##.##....",
+                        "." * 46,
+                    ],
+                },
+                "publication": {
+                    "ff_handlers": [0x00F0F0],
+                    "finalized": {
+                        "published": True,
+                        "bucket_index": 1,
+                        "current_page_root_after": 0,
+                        "page_root_clears": 1,
+                        "page_publication_flag": 1,
+                    },
+                    "published_bucket_root": (
+                        bytes.fromhex("00 00 00 00 00 03 00 01 2c 66 01")
+                        + bytes(0x1B)
+                    ),
+                    "published_bucket_array": {
+                        1: [
+                            bytes.fromhex("00 00 00 00 00 03 00 01 2c 66 01")
+                            + bytes(0x1B),
+                        ],
+                    },
+                    "published_context_slots": (0, 0, 0, 0),
+                    "render_bucket_word": 1,
+                    "active_copy": {
+                        "source_word_18": 0,
+                        "source_word_1a": 0,
+                        "render_word_0a": 0,
+                        "render_word_0c": 0,
+                        "render_word_0e": 0,
+                        "render_word_10": 0,
+                        "render_word_16": 0,
+                    },
+                    "setup": {
+                        "dividend": 1,
+                        "divisor_word_06": 5,
+                        "remainder_783a22": 1,
+                        "band_rows_scaled_783a20": 0x0040,
+                        "destination_base_783a28": 0x00100800,
+                    },
+                    "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
                     "dispatch": [{
                         "chain_index": 0,
                         "object_byte_4": 0x00,
@@ -79851,10 +80035,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "- `0x16498` status-2 partial visible output: linear `ESC )s4W` "
         "stores table `0x%04x -> 0x%04x`, leaves bitmap `%s`, saves "
         "continuation `%s`, then printable `0x2b` queues selector `0x%04x` "
-        "and renders final rows `%s`; split-plane `ESC )s3W` stores table "
+        "and renders final rows `%s`; trailing FF publishes bucket `%d` "
+        "through `0xff1e` and renders the published rows with digest `%s`. "
+        "Split-plane `ESC )s3W` stores table "
         "`0x%04x -> 0x%04x`, leaves bitmap `%s`, saves continuation `%s`, "
         "then printable `0x2c` queues selector `0x%04x` and renders final "
-        "rows `%s`."
+        "rows `%s`; trailing FF publishes bucket `%d` through `0xff1e` "
+        "and renders the published rows with digest `%s`."
         % (
             downloaded_linear_partial_visible["resource"]["table_entry"],  # type: ignore[index]
             downloaded_linear_partial_visible["resource"]["table_pointer"],  # type: ignore[index]
@@ -79862,12 +80049,26 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_linear_partial_visible["resource"]["continuation"],  # type: ignore[index]
             downloaded_linear_partial_visible["printable"]["page"]["selector"],  # type: ignore[index]
             downloaded_linear_partial_visible["printable"]["rows"][-3:],  # type: ignore[index]
+            downloaded_linear_partial_visible["publication"]["finalized"]["bucket_index"],  # type: ignore[index]
+            hashlib.sha256(
+                "\n".join(
+                    str(row)
+                    for row in downloaded_linear_partial_visible["publication"]["rows"]  # type: ignore[index]
+                ).encode("ascii")
+            ).hexdigest(),
             downloaded_split_partial_visible["resource"]["table_entry"],  # type: ignore[index]
             downloaded_split_partial_visible["resource"]["table_pointer"],  # type: ignore[index]
             " ".join(f"{byte:02x}" for byte in downloaded_split_partial_visible["resource"]["bitmap"]),  # type: ignore[index]
             downloaded_split_partial_visible["resource"]["continuation"],  # type: ignore[index]
             downloaded_split_partial_visible["printable"]["page"]["selector"],  # type: ignore[index]
             downloaded_split_partial_visible["printable"]["rows"][-2:],  # type: ignore[index]
+            downloaded_split_partial_visible["publication"]["finalized"]["bucket_index"],  # type: ignore[index]
+            hashlib.sha256(
+                "\n".join(
+                    str(row)
+                    for row in downloaded_split_partial_visible["publication"]["rows"]  # type: ignore[index]
+                ).encode("ascii")
+            ).hexdigest(),
         ),
     )
     downloaded_segmented_even_rendered_row = downloaded_segmented_even_bridged_rendered["rows"][-1]

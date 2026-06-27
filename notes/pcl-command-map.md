@@ -986,11 +986,15 @@ handlers:
   `d4ac` span output and `d8fc` high-y `20` output. Fixture
   `descriptor metric fields match across inline and resource contexts` now
   pins the legal inline/unflagged `d4ac` and resource/flagged `d8fc`
-  producer forms plus the two invalid swapped forms. The open middle is
-  additional metric-value combinations outside those pinned legal matrix,
-  boundary, and low-nibble endpoints, plus visible behavior for
-  validation/error forms beyond the bounded
-  predicate and short-budget no-install cases.
+  producer forms plus the two invalid swapped forms. The producer formulas are
+  now documented from disassembly: `0x17430` derives `+0x18` as
+  `+0x14 - +0x16 - 1`, `0x1757a` writes
+  `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`, `0x1762a` writes signed
+  offset word `+0x1a`, and `0x1719c` copies the staged fields into the
+  allocated payload. The remaining open middle is additional metric-value
+  combinations outside those pinned legal matrix, boundary, and low-nibble
+  endpoints, plus visible behavior for validation/error forms beyond the
+  bounded predicate and short-budget no-install cases.
 - Treat non-Roman `0N` / `10U` / `11U` font-selection visible output as
   covered for the documented primary and secondary paths. Fixture
   `live parser symbol-set streams select non-Roman built-ins` proves primary

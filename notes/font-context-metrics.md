@@ -1019,6 +1019,11 @@ A byte-stream reproduction must preserve these behaviors:
   `0xd8fc` while `0xd4ac` still renders a span.
   Fixture `descriptor metric fields match across inline and resource contexts`
   now pins the legal producer-form boundary and both invalid swapped forms.
+  The producer formulas are documented from disassembly: `0x17430` derives
+  `+0x18 = +0x14 - +0x16 - 1`, `0x1757a` writes
+  `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`, `0x1762a` writes signed
+  offset word `+0x1a`, and `0x1719c` copies those staged fields into the
+  allocated payload.
   Seven bounded `0x16fae` validation no-install forms plus the short-budget
   `ESC )s8W` entry-5 failure now preserve following printable output. The
   remaining gap is additional metric-value combinations within the legal

@@ -726,8 +726,10 @@ modeled source/object structures rather than a full live CPU-memory run.
   state.
 - `0xd4ac..0xd8fc`: active font/context span update helpers are
   composed as watermark writers in `Text Span Flush And Fixed-Width
-  Spans`; remaining work is the untested descriptor metric producer
-  cross-product documented in `notes/font-context-metrics.md`.
+  Spans`; descriptor metric producer formulas are documented from `0x17430`,
+  `0x1757a`, `0x1762a`, and `0x1719c`. Remaining work is additional
+  descriptor metric value/error cross-products documented in
+  `notes/font-context-metrics.md`.
 - `0x11f5a..0x12452`: transparent-text delayed payload restore, control
   filtering, printable re-entry, and fixed-space output are composed in
   `Transparent Print Data`. The C0 branch, `0x80..0x9f` branch, nonzero
@@ -4048,10 +4050,11 @@ fields and every legal metric combination have not been page-compared.
   Fixture
   `descriptor metric fields match across inline and resource contexts` now
   pins the legal inline/unflagged and resource/flagged producer forms plus the
-  two invalid swapped forms. It still needs additional metric-value combinations
-  within legal forms, plus producer-side validation/error page evidence beyond
-  the documented bounded-predicate and short-budget validation no-install
-  following-printable boundaries.
+  two invalid swapped forms. The producer formulas are documented from
+  `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c`; remaining work is additional
+  metric-value combinations within legal forms, plus producer-side
+  validation/error page evidence beyond the documented bounded-predicate and
+  short-budget validation no-install following-printable boundaries.
 
 ## Macro Definition And Data-Chain Replay
 

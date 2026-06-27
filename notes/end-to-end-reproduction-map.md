@@ -303,10 +303,17 @@ pixels or byte-stream compatibility.
    split-plane segmented, and segmented-wide compact render shapes, and the
    combined downloaded-glyph stream now reaches FF publication with both
    segmented buckets preserved and scheduler-produced band words `0..9`
-   rendered. The full soft-font descriptor grammar, remaining alternate
-   character-mode cross-products, other release variants, and page-visible
-   behavior for descriptor error forms beyond those no-install boundaries are
-   still not proven against every PCL form. The even-span downloaded-glyph
+   rendered. The full soft-font descriptor grammar, accepted descriptor-record
+   mode bytes beyond the documented mode-byte-`1` bitmap installs, other
+   release variants, and page-visible behavior for descriptor error forms
+   beyond those no-install boundaries are still not proven against every PCL
+   form. The mode-byte-`0` no-install boundary is documented separately:
+   fixture `0x16498 replacement allocation failure partial and rejected
+   downloaded character exits preserve state` proves the unchanged
+   table/header at object boundary `0x16498`, and fixture
+   `0x16498 no-install exits preserve following printable output` proves the
+   following printable and FF publication stay on the unchanged default-font
+   page path. The even-span downloaded-glyph
    plus rule/raster composition now has an exact modeled install-to-page
    handoff: host-fetched `ESC )s18W` produces the resource image consumed by
    the parser-driven page stream, including glyph `0x29`, table entry
@@ -417,7 +424,8 @@ The next work should follow dataflow, not isolated handlers:
    also broaden downloaded-glyph publication cross-products beyond the documented
    segmented-wide, normal, nonboundary-short, linear-segmented, split-plane segmented,
    row-threshold `0x80` short, and even-span wide selector families, especially
-   additional row counts, character modes, and non-success exits. The nonboundary-short
+   additional row counts, accepted descriptor-record mode-byte forms, and
+   non-success exits. The nonboundary-short
    fixture now publishes rows `0x10` on selector `0x0003` through FF, `0xff1e`, and
    `0x1ed84`/`0x1ef6a` with digest
    `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The
@@ -430,7 +438,8 @@ The next work should follow dataflow, not isolated handlers:
    `0x1ed84`/`0x1ef6a`. The `0x16498` replacement/allocation-failure/partial/reject
    fixture now also covers old-pointer release through `0x17a24`, object allocation
    failure through `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear and split-plane
-   continuation pointer writes, and mode/header-type status-`0` rejects. The `0x16498`
+   continuation pointer writes, descriptor mode-byte-`0` status-`0` reject,
+   and high-character/header-type status-`0` reject. The `0x16498`
    no-install visible-output fixture now proves those failed installs leave the
    following printable byte on the default-font compact object and rows, then publishes
    that default-font bucket through trailing FF, `0xff1e`, and `0x1ed84`/`0x1ef6a`. The
@@ -439,7 +448,8 @@ The next work should follow dataflow, not isolated handlers:
    then publishes both bucket-1 compact objects through trailing FF, `0xff1e`, and
    `0x1ed84`/`0x1ef6a` with the same rows. Remaining downloaded-character publication
    risk is broader publication combinations beyond these compact bucket-1
-   no-install/status-`2` variants. The publication-command checkpoint now covers
+   no-install/status-`2` variants, not the documented mode-byte-`0` visible
+   recovery boundary. The publication-command checkpoint now covers
    host-fetched reset, FF, page-size, orientation, paper-source, and copies streams
    through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row
    comparison; reset, FF, page-size, orientation, paper-source, and copies also have

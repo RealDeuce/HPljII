@@ -142,8 +142,28 @@ Parser scratch and staged resource header:
 - `0x783140`: remaining payload byte budget. `0x15d0a` and `0x16c14` load it
   from the parsed `W` count; `0x1599c`, `0x168dc`, and `0x16942` decrement it
   while consuming payload bytes.
+- `0x7827be`: parsed downloaded-character bitmap byte count. `0x16336`
+  accumulates it from the descriptor helpers before `0x16498` rounds
+  `(0x7827be + 0x4b) >> 6` into the class-1 object allocation request at
+  `0x16558..0x1656e`.
+- `0x7827c2`: parsed byte span per row. `0x16050` writes the rounded
+  `(width + 7) >> 3` span; `0x16874` later chooses the linear reader
+  `0x168dc` or split-plane reader `0x16942` from this span.
+- `0x7827c4`: parsed row count copied by `0x16096` and consumed by
+  `0x16874`/`0x16942`.
+- `0x7827de..0x7827e9`: descriptor scratch records used by `0x16336` and
+  copied into the allocated character object by `0x163b8`. The covered
+  `0x16498` fixtures produce record bytes such as
+  `00 00 00 00 0c 01 00 03 00 10 00 00`; byte `+5` is the downloaded
+  bitmap-record mode byte, not the font-header type byte. This is the same
+  scratch buffer reused below by the `0x17026`/`0x1719c` resource-header path;
+  the active interpretation is selected by the parser route.
+- `0x782f30`: current character code/index written before descriptor
+  dispatch and used by `0x16498` for the object-table entry
+  `0x4a + 4 * char`.
 - `0x782862`: staging-record pointer, set by `0x17026` to `0x7827de`.
-- `0x7827de`: staged sparse font-resource header copied by `0x1719c`.
+- `0x7827de`: staged sparse font-resource header copied by `0x1719c` on the
+  resource-header route.
 - `0x7827ba`: payload unit count. `0x17362(0)` writes `0x80`; `0x17362(1)`
   and `0x17362(2)` write `0x100`.
 - `0x782842..0x782851`: optional symbol bytes copied by `0x16fae`.
@@ -187,8 +207,11 @@ Published page-record state:
   segmented-wide bucket-1/bucket-9, and even-span wide bucket-1 streams. The
   remaining row-count risk is no longer the `0x80`/`0x81` selector boundary
   itself; it is non-boundary row counts inside the same selector families,
-  character modes other than the covered mode-1 bitmap records, and additional
-  no-install/partial-install publication siblings.
+  accepted descriptor-record mode-byte forms beyond the covered mode-byte-`1`
+  bitmap installs if ROM evidence proves such accepted forms, and additional
+  no-install/partial-install publication siblings. The mode-byte-`0`
+  no-install path is documented as an unchanged-output reject, not an open
+  renderer mode.
   Fixture `downloaded normal row-0x80 and segmented glyph FF publications
   render page records` covers the row-`0x80` bucket-1 publication sibling for
   the `0x80`/`0x81` selector threshold.
@@ -825,7 +848,8 @@ bucket-1 band with digest
 Fixture `0x16498 replacement allocation failure partial and rejected
 downloaded character exits preserve state` pins the downloaded-character
 replacement, allocator-failure, partial-copy, and reject branches. The linear
-status-`2` case copies four of six bitmap bytes through `0x168dc`, stores
+status-`2` case parses a mode-byte-`1` bitmap descriptor through `0x16336`,
+copies four of six bitmap bytes through `0x168dc`, stores
 table entry `0x00f6 -> 0x0840`, writes record
 `00 00 00 00 0c 01 00 03 00 10 00 00`, leaves bitmap bytes
 `f0 0f aa 55 00 00`, and saves continuation fields equivalent to
@@ -847,10 +871,19 @@ zero, reports `0x9b5e(0x780e2e, 4)`, calls `0x1887a` on current payload
 That payload release clears the current-record id/payload, removes candidate
 slot `0x782328`, clears the matching continuation, marks primary/secondary
 context-stack bytes, refreshes the active secondary context, and leaves no new
-downloaded-character object. The mode-`0` record-shape reject and the `0xa0`
-character with header type `0` both return status `0` before writing a table
-pointer, matching the `0x164f2..0x16540` range branch and the pre-copy shape
-guard.
+downloaded-character object.
+
+The no-install rejects split into two different field families. A
+descriptor/object mode byte other than `1` is rejected by the pre-copy
+record-shape guard after the `0x16336` descriptor parse, so the mode-`0`
+fixture returns status `0`, reason `unsupported-record-shape`, and leaves
+table entry `0x00fe` at zero. A high character code is checked against the
+font-header type byte: `0x164f2..0x16540` allows `0x80..0xff` only when
+header byte `+0x0c >= 1`, so the `0xa0` fixture with header byte `+0x0c = 0`
+returns status `0`, reason `char-outside-header-type`, and leaves table entry
+`0x02ca` at zero. Both reject families return before `0x1658e..0x16602`
+stores the allocated-object pointer, so they are parser scratch/firmware
+bookkeeping exits rather than canonical renderer-state changes.
 
 Fixture `0x16498 no-install exits preserve following printable output` carries
 the three no-install branches above to visible output. Each case starts from a
@@ -1363,7 +1396,7 @@ A byte-stream renderer must preserve:
   character exits preserve state` covers old-pointer release through
   `0x17a24`, object allocation failure through `0x170c`/`0x9b5e`/`0x1887a`,
   status-`2` linear/split-plane continuation pointer writes, and
-  mode/header-type rejects. Fixture
+  descriptor mode-byte-`0` plus high-character/header-type rejects. Fixture
   `0x16498 no-install exits preserve following printable output` closes
   page-visible recovery for those no-install exits by proving the following
   printable byte stays on the default-font object and rows. Fixture
@@ -1373,11 +1406,18 @@ A byte-stream renderer must preserve:
   parser-produced comparisons are bounded cross-products: non-boundary row
   counts inside the already-covered segmented selector family, additional
   interior short-family row counts beyond the covered rows `0x03`, `0x10`,
-  and `0x80`, character modes other than the covered mode-1 bitmap records,
+  and `0x80`, accepted descriptor-record mode bytes beyond the covered
+  mode-byte-`1` bitmap installs if ROM evidence proves such accepted forms,
   and broader publication combinations beyond the documented normal,
   nonboundary-short, row-`0x80`, linear-segmented, split-plane segmented,
   segmented-wide, even-span wide, no-install, and status-`2` compact bucket
-  variants.
+  variants. The mode-byte-`0` no-install boundary itself is no longer a vague
+  open edge: fixture `0x16498 no-install exits preserve following printable
+  output` proves status `0`/`unsupported-record-shape` plus unchanged visible
+  output, and fixture
+  `0x16498 replacement allocation failure partial and rejected downloaded
+  character exits preserve state` proves the same table/header no-write
+  boundary at the object level.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets; the normal, linear-segmented, split-plane segmented, and
   even-span wide siblings now publish through the same boundary. Fixture

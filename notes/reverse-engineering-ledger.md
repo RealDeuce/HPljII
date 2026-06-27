@@ -465,8 +465,10 @@ consumed by `d8fc` as `65535`, and renders with the same digest as the
 `0xfffe` offset case.
 Remaining work is additional metric-value combinations outside those pinned
 legal endpoints, validation/error page behavior beyond those bounded predicate
-and short-budget no-install branches, remaining alternate character-mode/release
-variants, broader publication combinations beyond the covered
+and short-budget no-install branches, accepted downloaded-character
+descriptor mode-byte forms beyond the documented mode-byte-`1` installs if ROM
+evidence proves such forms, remaining release variants, broader publication
+combinations beyond the covered
 normal, nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented,
 split-plane segmented, segmented-wide, even-span wide, downloaded-character
 no-install, and status-`2` compact bucket variants, full live-parser raster

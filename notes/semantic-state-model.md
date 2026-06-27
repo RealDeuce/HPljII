@@ -3040,6 +3040,15 @@ compact text renderer.
   - `0x7827c6`, `0x7827ca`, `0x7827ce`, `0x7827d2`, `0x7827d6`,
     `0x7827d8`, `0x7827da`, and `0x7827c8`: continuation state for
     interrupted font payload reads.
+  - `0x7827be`, `0x7827c2`, `0x7827c4`, and
+    `0x7827de..0x7827e9`: downloaded-character descriptor scratch. `0x16336`
+    fills the parsed byte count, row span, row count, and staged 12-byte
+    character object record before `0x16498` allocates/copies the payload.
+    Byte `+5` of that staged record is the descriptor/object mode byte; the
+    covered accepted installs use mode byte `1`, while the mode-byte-`0`
+    fixture exits before object-pointer storage. This scratch buffer is reused
+    by the `0x17026`/`0x1719c` resource-header route with a different
+    interpretation.
   - `0x782842..0x782851` and `0x782856`: optional symbol bytes and count
     staged by `0x16fae`.
   - `0x1ed84` render-record work words `+0x10/+0x16` copied from the
@@ -3062,6 +3071,10 @@ compact text renderer.
   current-record bit `6` and transfer counts.
 - `0x15d0a` writes `0x783140`, reads descriptor bytes through `0x1599c`, and
   routes to `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`.
+- `0x16336` walks the downloaded-character descriptor helper table, writes
+  parser scratch `0x7827be`/`0x7827c2`/`0x7827c4`, and stages the record bytes
+  copied by `0x163b8`; `0x15a94` finalizes the parse before the bitmap payload
+  budget is subtracted.
 - `0x16c14` writes current-record ids/payloads, candidate flags/counters, and
   installed counts. For an existing-record replacement, it calls `0x1887a`
   before allocation; fixture
@@ -3092,6 +3105,13 @@ compact text renderer.
 - `0x17a24` releases bit-30 offset-table entries delegated by `0x17d7c`,
   clears the selected 4-byte glyph/object pointer, refreshes matching active
   contexts through `0x14c64`, and clears matching continuation state.
+- `0x16498` consumes the `0x16336` descriptor scratch for bit-30
+  downloaded-character payloads. Its range branch `0x164f2..0x16540` treats
+  high character codes as legal only when the font-header byte `+0x0c >= 1`;
+  its copy/allocation branch `0x16558..0x16602` stores the object pointer only
+  after allocation and `0x16874` return status. The mode-byte-`0` fixture
+  exercises the pre-copy record-shape reject and leaves the table entry
+  unchanged.
 
 ### Readers And Consumers
 
@@ -3346,12 +3366,15 @@ object allocation, receives zero from `0x170c`, reports
 copies no bitmap bytes, and leaves table entry `0x0106` zero. The `0x1887a`
 release clears current-record canonical state, candidate slot `0x782328`,
 continuation fields, and context-stack dirty bytes before the failed install
-returns with no replacement object. The mode-`0` shape reject and the
-header-type range reject for character `0xa0` both return status `0` without
-changing the header. Disassembly evidence is `0x164f2..0x16540` for range
-rejection, `0x1652a..0x1653e` for replacement release, `0x1656e..0x165d8` for
-allocation failure and current-payload release, `0x1658e..0x16602` for copy
-status and table-pointer storage, `0x17a24..0x17b54` for old-pointer release,
+returns with no replacement object. The descriptor/object mode-byte-`0` shape
+reject returns status `0` with no table write after the `0x16336` parse, while
+the header-type range reject for character `0xa0` returns status `0` because
+`0x164f2..0x16540` accepts high character codes only when font-header byte
+`+0x0c >= 1`. Disassembly evidence is `0x16336..0x163b6` for descriptor
+parse/finalization, `0x164f2..0x16540` for range rejection,
+`0x1652a..0x1653e` for replacement release, `0x1656e..0x165d8` for allocation
+failure and current-payload release, `0x1658e..0x16602` for copy status and
+table-pointer storage, `0x17a24..0x17b54` for old-pointer release,
 `0x1887a..0x18c4e` for current-payload teardown, and `0x168dc` / `0x16942` for
 continuation state.
 Fixture `0x16498 no-install exits preserve following printable output` carries
@@ -3780,7 +3803,8 @@ combination have not been page-compared.
   failure partial and rejected downloaded character exits preserve state`
   covers old-pointer release through `0x17a24`, object allocation failure
   through `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear/split-plane
-  continuation pointer writes, and the mode/header-type status-`0` rejects.
+  continuation pointer writes, and the descriptor mode-byte-`0` plus
+  high-character/header-type status-`0` rejects.
   Remaining parser-produced comparisons are narrowed by fixture
   `0x16498 no-install exits preserve following printable output`, which
   proves those no-install exits leave the next printable on the baseline
@@ -3791,11 +3815,18 @@ combination have not been page-compared.
   `0x1ed84`/`0x1ef6a` published-record rendering. Still-open comparisons are
   bounded cross-products: non-boundary row counts inside the already-covered
   segmented selector family, additional interior short-family row counts
-  beyond rows `0x03`, `0x10`, and `0x80`, character modes other than the
-  covered mode-1 bitmap records, and broader publication combinations beyond
-  the documented normal, non-boundary short, row-`0x80`, linear-segmented,
+  beyond rows `0x03`, `0x10`, and `0x80`, accepted descriptor-record mode
+  bytes beyond the covered mode-byte-`1` bitmap installs if the ROM parser
+  admits such forms, and broader publication combinations beyond the
+  documented normal, non-boundary short, row-`0x80`, linear-segmented,
   split-plane segmented, segmented-wide, even-span wide, no-install, and
-  status-`2` compact bucket variants.
+  status-`2` compact bucket variants. The mode-byte-`0` and high-character
+  header-type status-`0` exits are already documented no-install boundaries:
+  fixture `0x16498 replacement allocation failure partial and rejected
+  downloaded character exits preserve state` proves no table/header write at
+  the object boundary, and fixture
+  `0x16498 no-install exits preserve following printable output` proves the
+  next printable and FF publication use the unchanged default-font page path.
 - downloaded-glyph plus rule/raster producer schedule: fixture
   `parser-driven downloaded glyph rule raster stream composes through
   0x1ef6a` closes the page-stream boundary from parser-produced `0x10898` rule

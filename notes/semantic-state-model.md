@@ -3302,15 +3302,19 @@ status and table-pointer storage, `0x17a24..0x17b54` for old-pointer release,
 continuation state.
 Fixture `0x16498 no-install exits preserve following printable output` carries
 those no-install exits through the next visible byte. Host fetch drains each
-`ESC )s6W` payload plus printable `!`; the resource side restores
+`ESC )s6W` payload plus printable `!` and trailing FF; the resource side restores
 `80 57 00 06 00 00`, dispatches delayed handler `0x16c14`, and returns reasons
 `allocation-failed`, `unsupported-record-shape`, or
 `char-outside-header-type`. The following `!` then routes through `0xd04a`,
 queues the baseline default-font compact object, and renders the same rows as
-the standalone baseline `!`. Canonical renderer state is therefore unchanged
-by those failed downloaded-character installs; the mutable state is parser
-scratch plus firmware cleanup/bookkeeping from `0x1887a` for the allocation
-failure case.
+the standalone baseline `!`. Trailing FF routes through `0xf0f0`, publishes
+that default-font bucket through `0xff1e`, clears the current page root, and
+renders the published page record through `0x1ed84`/`0x1ef6a` with the same
+rows. Canonical renderer state is therefore unchanged by those failed
+downloaded-character installs; the mutable state is parser scratch plus
+firmware cleanup/bookkeeping from `0x1887a` for the allocation failure case,
+and the published bucket/root is derived page-output state from the unchanged
+default-font printable path.
 Fixture `0x16498 status-2 partial installs remain printable` proves that copy
 status `2` takes the opposite visible contract. The linear `ESC )s4W` case
 stores table entry `0x00f6 -> 0x0840`, bitmap `f0 0f aa 55 00 00`, and
@@ -3729,8 +3733,8 @@ combination have not been page-compared.
   `0x1ed84`/`0x1ef6a` published-record rendering. Still-open comparisons are
   bounded cross-products: non-boundary row counts inside the already-covered
   short and segmented selector families, character modes other than the
-  covered mode-1 bitmap records, and publication behavior for the no-install
-  variants rather than the next printable byte alone.
+  covered mode-1 bitmap records, and broader publication combinations beyond
+  the covered no-install and status-`2` compact bucket-1 variants.
 - downloaded-glyph plus rule/raster producer schedule: fixture
   `parser-driven downloaded glyph rule raster stream composes through
   0x1ef6a` closes the page-stream boundary from parser-produced `0x10898` rule

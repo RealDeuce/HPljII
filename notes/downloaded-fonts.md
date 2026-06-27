@@ -851,14 +851,18 @@ guard.
 Fixture `0x16498 no-install exits preserve following printable output` carries
 the three no-install branches above to visible output. Each case starts from a
 host-fetched `ESC )s6W` command plus six payload bytes, restores record
-`80 57 00 06 00 00`, dispatches delayed handler `0x16c14`, and then appends
-printable `!`. The allocation-failure case returns reason
+`80 57 00 06 00 00`, dispatches delayed handler `0x16c14`, appends printable
+`!`, and now appends trailing FF. The allocation-failure case returns reason
 `allocation-failed`, the mode-0 case returns `unsupported-record-shape`, and
 the `0xa0`/header-type case returns `char-outside-header-type`. In all three
 cases the following printable byte routes through `0xd04a`, queues the same
-default-font compact object as baseline `!`, and renders identical rows. This
-classifies the failed downloaded-character command as firmware bookkeeping and
-parser scratch, not canonical renderer state.
+default-font compact object as baseline `!`, and renders identical rows. The
+trailing FF routes through `0xf0f0`, publishes the default-font bucket through
+`0xff1e`, clears the current page root, and renders the published record
+through `0x1ed84`/`0x1ef6a` with the same rows. This classifies the failed
+downloaded-character command as firmware bookkeeping and parser scratch, not
+canonical renderer state; the published page-record bucket is derived output
+state from the unchanged default-font printable path.
 
 Fixture `0x16498 status-2 partial installs remain printable` covers the
 opposite non-success branch: status `2` is a partial install, not a no-install.
@@ -1342,9 +1346,9 @@ A byte-stream renderer must preserve:
   trailing-FF `0xff1e` publication and published-record rendering. Remaining
   parser-produced comparisons are bounded cross-products: non-boundary row
   counts inside the already-covered short and segmented selector families,
-  character modes other than the covered mode-1 bitmap records, and
-  publication behavior for the no-install variants rather than the next
-  printable byte alone.
+  character modes other than the covered mode-1 bitmap records, and broader
+  publication combinations beyond the covered no-install and status-`2`
+  compact bucket-1 variants.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets; the normal, linear-segmented, and even-span wide siblings
   now publish through the same boundary. Fixture

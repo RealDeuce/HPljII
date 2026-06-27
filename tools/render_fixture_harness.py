@@ -63815,6 +63815,91 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(validation_failure_visible_baseline_rendered, dict)
     validation_failure_visible_baseline_event = validation_failure_visible_baseline["events"][0]
     assert isinstance(validation_failure_visible_baseline_event, dict)
+    validation_failure_visible_baseline_publication = finalize_page_record_via_ff1e(
+        validation_failure_visible_baseline["page_record"],  # type: ignore[arg-type]
+        reset_fixture_state(
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            page_root_clears=0,
+            publication_bucket_index=int(validation_failure_visible_baseline["bucket_index"]),
+        ),
+    )
+    validation_failure_visible_baseline_published = (
+        validation_failure_visible_baseline_publication["published_pool_record"]
+    )
+    assert isinstance(validation_failure_visible_baseline_published, dict)
+    validation_failure_visible_baseline_published_fields = (
+        validation_failure_visible_baseline_published["pool_record_fields"]
+    )
+    assert isinstance(validation_failure_visible_baseline_published_fields, dict)
+    validation_failure_visible_baseline_published_render = (
+        render_published_page_record_via_1ed84_1ef6a(
+            data,
+            resources,
+            validation_failure_visible_baseline_published,
+            bucket_word=int(validation_failure_visible_baseline["bucket_index"]),
+        )
+    )
+    validation_failure_visible_baseline_published_entry = (
+        validation_failure_visible_baseline_published_render["entry"]
+    )
+    assert isinstance(validation_failure_visible_baseline_published_entry, dict)
+    validation_failure_visible_baseline_publication_summary = {
+        "ff_handlers": [0x00F0F0],
+        "finalized": {
+            "published": validation_failure_visible_baseline_publication["published"],
+            "bucket_index": validation_failure_visible_baseline_publication["bucket_index"],
+            "current_page_root_after": (
+                validation_failure_visible_baseline_publication["current_page_root_after"]
+            ),
+            "page_root_clears": validation_failure_visible_baseline_publication["page_root_clears"],
+            "page_publication_flag": (
+                validation_failure_visible_baseline_publication["page_publication_flag"]
+            ),
+        },
+        "published_bucket_root": (
+            validation_failure_visible_baseline_published_fields["bucket_root_1c"]
+        ),
+        "published_bucket_array": (
+            validation_failure_visible_baseline_published_fields["bucket_array_1c"]
+        ),
+        "published_context_slots": (
+            validation_failure_visible_baseline_published_fields["context_slots_2c"][:4]
+        ),
+        "render_bucket_word": (
+            validation_failure_visible_baseline_published_render["render_record_fields"]["word_10"]
+        ),
+        "active_copy": validation_failure_visible_baseline_published_render["active_copy"],
+        "setup": {
+            key: validation_failure_visible_baseline_published_entry["setup"][key]
+            for key in (
+                "dividend",
+                "divisor_word_06",
+                "remainder_783a22",
+                "band_rows_scaled_783a20",
+                "destination_base_783a28",
+            )
+        },
+        "call_order": validation_failure_visible_baseline_published_entry["call_order"],
+        "dispatch": [
+            {
+                key: dispatch[key]
+                for key in (
+                    "chain_index",
+                    "object_byte_4",
+                    "class_mask",
+                    "branch",
+                    "target",
+                    "context_slot",
+                )
+            }
+            for dispatch in validation_failure_visible_baseline_published_entry[
+                "dispatch"
+            ]["entries"]
+        ],
+        "rows": validation_failure_visible_baseline_published_entry["rows"],
+    }
 
     def validation_failure_visible_report(case: dict[str, object]) -> dict[str, object]:
         stream = case["stream"]
@@ -63996,13 +64081,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         assert isinstance(stream, bytes)
         header = case["header"]
         assert isinstance(header, (bytes, bytearray))
-        combined_stream = stream + b"!"
+        combined_stream = stream + b"!\x0c"
         combined_fetch = fetch_stream_via_a904(
             host_byte_fetch_state(ring=list(combined_stream), direct_mode=0),
             len(combined_stream),
         )
         resource_stream = combined_fetch["stream"][:len(stream)]
-        printable_stream = combined_fetch["stream"][len(stream):]
+        printable_stream = combined_fetch["stream"][len(stream):len(stream) + 1]
+        publication_stream = combined_fetch["stream"][len(stream) + 1:]
         resource_trace = trace_font_parser_dispatch_via_11774(data, resource_stream)
         resource_command = render_font_download_char_command_stream_via_121cc_16498(
             resource_stream,
@@ -64023,6 +64109,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         printable_trace = trace_mixed_text_control_parser_path_via_11774(
             data,
             printable_stream,
+        )
+        publication_trace = trace_mixed_text_control_parser_path_via_11774(
+            data,
+            publication_stream,
         )
         visible_page = render_mixed_printable_control_page_record_stream(
             data,
@@ -64045,6 +64135,28 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         assert isinstance(visible_event, dict)
         visible_page_result = visible_event["page_result"]
         assert isinstance(visible_page_result, dict)
+        publication = finalize_page_record_via_ff1e(
+            visible_page["page_record"],  # type: ignore[arg-type]
+            reset_fixture_state(
+                page_root_present=1,
+                page_root_class=1,
+                current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+                page_root_clears=0,
+                publication_bucket_index=int(visible_page["bucket_index"]),
+            ),
+        )
+        published = publication["published_pool_record"]
+        assert isinstance(published, dict)
+        published_fields = published["pool_record_fields"]
+        assert isinstance(published_fields, dict)
+        published_render = render_published_page_record_via_1ed84_1ef6a(
+            data,
+            resources,
+            published,
+            bucket_word=int(visible_page["bucket_index"]),
+        )
+        published_entry = published_render["entry"]
+        assert isinstance(published_entry, dict)
         table_entry = int(case["table_entry"])
         table_pointer = u32(header, table_entry) if table_entry + 4 <= len(header) else 0
         trace_command = resource_trace["commands"][0]
@@ -64094,6 +64206,61 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "matches_baseline_object": (
                     visible_page["bucket_object"]
                     == validation_failure_visible_baseline["bucket_object"]
+                ),
+            },
+            "publication": {
+                "stream": publication_stream,
+                "ff_handlers": [
+                    trace_event["handler"]
+                    for trace_event in publication_trace["events"]
+                ],
+                "finalized": {
+                    "published": publication["published"],
+                    "bucket_index": publication["bucket_index"],
+                    "current_page_root_after": publication["current_page_root_after"],
+                    "page_root_clears": publication["page_root_clears"],
+                    "page_publication_flag": publication["page_publication_flag"],
+                },
+                "published_bucket_root": published_fields["bucket_root_1c"],
+                "published_bucket_array": published_fields["bucket_array_1c"],
+                "published_context_slots": published_fields["context_slots_2c"][:4],
+                "render_bucket_word": published_render["render_record_fields"]["word_10"],
+                "active_copy": published_render["active_copy"],
+                "setup": {
+                    key: published_entry["setup"][key]
+                    for key in (
+                        "dividend",
+                        "divisor_word_06",
+                        "remainder_783a22",
+                        "band_rows_scaled_783a20",
+                        "destination_base_783a28",
+                    )
+                },
+                "call_order": published_entry["call_order"],
+                "dispatch": [
+                    {
+                        key: dispatch[key]
+                        for key in (
+                            "chain_index",
+                            "object_byte_4",
+                            "class_mask",
+                            "branch",
+                            "target",
+                            "context_slot",
+                        )
+                    }
+                    for dispatch in published_entry["dispatch"]["entries"]
+                ],
+                "rows": published_entry["rows"],
+                "matches_baseline_rows": (
+                    published_entry["rows"]
+                    == validation_failure_visible_baseline_publication_summary["rows"]
+                ),
+                "matches_baseline_bucket": (
+                    published_fields["bucket_root_1c"]
+                    == validation_failure_visible_baseline_publication_summary[
+                        "published_bucket_root"
+                    ]
                 ),
             },
         }
@@ -64148,12 +64315,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "remaining_ring": report["remaining_ring"],
                 "resource": report["resource"],
                 "printable": report["printable"],
+                "publication": report["publication"],
             }
             for name, report in downloaded_char_failure_visible_reports.items()
         },
         {
             name: {
-                "combined_length": len(downloaded_char_failure_visible_cases[name]["stream"]) + 1,
+                "combined_length": len(downloaded_char_failure_visible_cases[name]["stream"]) + 2,
                 "fetch_source_set": ["ring"],
                 "remaining_ring": [],
                 "resource": {
@@ -64178,6 +64346,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "rendered_rows": validation_failure_visible_baseline_rendered["rows"],
                     "matches_baseline_rows": True,
                     "matches_baseline_object": True,
+                },
+                "publication": {
+                    **validation_failure_visible_baseline_publication_summary,
+                    "stream": b"\x0c",
+                    "matches_baseline_rows": True,
+                    "matches_baseline_bucket": True,
                 },
             }
             for name, reason, table_entry, payload_release_handler in (
@@ -79807,7 +79981,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         validation_failure_visible_reports["invalid_type"]["printable"]["parser_handlers"][0],  # type: ignore[index]
         " ".join(f"{byte:02x}" for byte in validation_failure_visible_baseline["bucket_object"]),  # type: ignore[index]
     ))
-    lines.append("- downloaded-character no-install visible recovery: cases `%s` return reasons `%s`, leave following printable `!` on handler `0x%05x`, queue the same default-font object `%s`, and match baseline rows `%s`." % (
+    lines.append("- downloaded-character no-install visible recovery/publication: cases `%s` return reasons `%s`, leave following printable `!` on handler `0x%05x`, queue the same default-font object `%s`, then trailing FF reaches handler `0x%05x`, publishes bucket `%d` through `0xff1e`, and matches baseline rows/object `%s`." % (
         sorted(downloaded_char_failure_visible_reports),
         {
             name: report["resource"]["install_reason"]  # type: ignore[index]
@@ -79815,9 +79989,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         downloaded_char_failure_visible_reports["allocation_failure"]["printable"]["parser_handlers"][0],  # type: ignore[index]
         " ".join(f"{byte:02x}" for byte in validation_failure_visible_baseline["bucket_object"]),  # type: ignore[index]
+        downloaded_char_failure_visible_reports["allocation_failure"]["publication"]["ff_handlers"][0],  # type: ignore[index]
+        downloaded_char_failure_visible_reports["allocation_failure"]["publication"]["finalized"]["bucket_index"],  # type: ignore[index]
         all(
             bool(report["printable"]["matches_baseline_rows"])  # type: ignore[index]
             and bool(report["printable"]["matches_baseline_object"])  # type: ignore[index]
+            and bool(report["publication"]["matches_baseline_rows"])  # type: ignore[index]
+            and bool(report["publication"]["matches_baseline_bucket"])  # type: ignore[index]
             for report in downloaded_char_failure_visible_reports.values()
         ),
     ))

@@ -1612,14 +1612,21 @@ Output effect:
   object byte `0x10` through `0x1effe` to `0x1f0d2`, render full chunks through
   `0x2f27c`, render remainders `1..15` through `0x1f1ac[remainder]`, and
   match the installed bitmap rows. Span `32` is the no-remainder two-full-chunk
-  sibling and does not select a remainder helper.
+  sibling and does not select a remainder helper. The same fixture now probes
+  compact-wide spans `33`, `48`, `49`, `64`, and `255`; parser install,
+  selector `0x1003`, object byte `0x10`, bucket-0 publication, zero-drain
+  returns, and full-chunk/remainder metadata are pinned, but the fixture
+  intentionally records non-matching row comparisons for those high spans.
 - Fixture `downloaded glyph segmented-wide matrix publishes and renders
   compact chunks` proves parser-produced downloaded-character spans `17..32`
   with rows `0x81` install widths `136..256`, publish buckets `0` and `8` as
   selector `0x3003`, dispatch segment `1` object byte `0x30` through
   `0x1effe` to `0x1f264`, render full chunks through `0x2f27c`, render
   remainders `1..15` through `0x1f1ac[remainder]`, and match the installed
-  segment-1 bitmap rows. Span `32` is the segmented no-remainder sibling.
+  segment-1 bitmap rows. Span `32` is the segmented no-remainder sibling. The
+  same fixture now probes segmented-wide spans `33`, `48`, `49`, and `64` at
+  rows `0x81`; segment bucket/object metadata and chunk/remainder state are
+  pinned, but row comparisons remain non-matching above span `32`.
 - Fixture `host-fetched rows-0x102 downloaded glyph FF publication truncates
   page-record rows` proves the failure boundary: installed row count `0x0102`
   reaches `0x1f414`, but fallback row count `200` indexes past the valid
@@ -1636,10 +1643,12 @@ Confidence:
   named fixtures tie host bytes to installed records, queued compact objects,
   dispatch targets, and rendered rows.
 - Medium for exhaustive descriptor/font-width coverage because downloaded
-  spans `1..32`, the legal metric matrix, and many downloaded row-count cases
-  are fixture-backed, but not every segmented-wide row-count/segment variant,
-  unsampled width above span `32`, and metric combination has a page-visible
-  comparison.
+  spans `1..32`, high-span parser/install/publication probes through compact
+  span `255` and segmented-wide span `64`, the legal metric matrix, and many
+  downloaded row-count cases are fixture-backed. The remaining renderer risk
+  is exact row-copy equivalence above span `32`, printable handoff for
+  descriptor-accepted spans `0x0100..0x020d`, not every segmented-wide
+  row-count/segment variant, and untested metric combinations.
 
 Fixture evidence:
 
@@ -1688,15 +1697,22 @@ Unresolved middle edges:
 - `0x16498..0x1f354`: normal, wide, segmented, split-plane, segmented-wide,
   partial, no-install, row-count boundary, main width-span, and compact-wide
   remainder cases are documented; the segmented-wide matrix now covers spans
-  `17..32` at rows `0x81`, but not every legal downloaded segmented-wide
-  row-count/segment variant, unsampled width above span `32`, and metric
-  combination has a visible page comparison.
+  `17..32` at rows `0x81`. High-span probes now carry compact-wide spans
+  `33`, `48`, `49`, `64`, and `255` plus segmented-wide spans `33`, `48`,
+  `49`, and `64` through parser/install/publication/dispatch metadata, but not
+  row equivalence. Remaining gaps are exact span-`33+` row-copy semantics,
+  descriptor-accepted spans `0x0100..0x020d` at the printable handoff, every
+  legal downloaded segmented-wide row-count/segment variant, and untested
+  metric combinations.
 - `0x1fa5c..0x2feb0`: all sixteen main `0x1f08e` helper indexes now have
   parser-produced downloaded-glyph page rows, and compact-wide spans `17..32`
   plus segmented-wide spans `17..32` now cover selectors `0x1003` and
   `0x3003`, `0x2f27c`, remainders `1..15`, and their no-remainder two-chunk
-  siblings. Remaining helper risk is row-count/segment and broader physical
-  page comparisons, not the main helper aliases or sampled wide paths.
+  siblings. High-span probes now cover additional full-chunk counts through
+  `0x2f27c`, but row equivalence above span `32` remains unresolved. Remaining
+  helper risk is high-span source-walk semantics, row-count/segment variants,
+  and broader physical page comparisons, not the main helper aliases or
+  sampled matched wide paths.
 - `0x1f414..0x7810b4`: current-band/fallback splitting is fixture-backed,
   including the row-`0x0102` invalid fallback boundary; device-level behavior
   after such invalid table targets is intentionally not claimed.

@@ -15439,7 +15439,12 @@ def render_published_page_record_via_1ed84_1ef6a(
         else:
             fields["bucket_array_18"] = {bucket_word: []}
     render_record["render_record_fields"] = fields
-    entry = render_band_entry_via_1ef6a(data, resources, render_record)
+    entry = render_band_entry_via_1ef6a(
+        data,
+        resources,
+        render_record,
+        dest_stride=int(width_word),
+    )
     return {
         "active_copy": render_record["active_record_copy_fields"],
         "render_record_fields": fields,
@@ -55582,6 +55587,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             memory,
             published_record,
             bucket_word=int(page_result["bucket_index"]),
+            width_word=max(0x20, span),
         )
         published_entry = published_render["entry"]
         assert isinstance(published_entry, dict)
@@ -55751,7 +55757,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "object_byte_4": 0x00,
                 "target": 0x01EFFE,
                 "helper": u32(data, 0x1F08E + span * 4),
-                "rows_match_installed_bitmap": True,
+                "rows_match_installed_bitmap": span <= 32,
                 "row_count": 3,
             }
             for span in range(1, 17)
@@ -55956,13 +55962,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ).hexdigest(),
         }
 
+    downloaded_wide_remainder_spans = list(range(17, 33)) + [
+        33,
+        48,
+        49,
+        64,
+        0xFF,
+    ]
     downloaded_wide_remainder_matrix = [
         downloaded_wide_remainder_matrix_case(
             span=span,
-            char_code=0x60 + span - 17,
-            object_offset=0x3000 + (span - 17) * 0x100,
+            char_code=0x60 + index,
+            object_offset=0x3000 + index * 0x800,
         )
-        for span in range(17, 33)
+        for index, span in enumerate(downloaded_wide_remainder_spans)
     ]
     checks.append(assert_equal(
         "downloaded glyph wide-remainder matrix publishes and renders compact chunks",
@@ -56026,7 +56039,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "remaining": 0,
                         "control_hits": 0,
                     },
-                    "next_stream_prefix": bytes([0x60 + span - 17]),
+                    "next_stream_prefix": bytes([0x60 + index]),
                     "next_handler": 0x00D04A,
                 },
                 "path": "short-page-record",
@@ -56062,10 +56075,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     if span & 0x0F
                     else 0
                 ),
-                "rows_match_installed_bitmap": True,
+                "rows_match_installed_bitmap": span <= 32,
                 "row_count": 3,
             }
-            for span in range(17, 33)
+            for index, span in enumerate(downloaded_wide_remainder_spans)
         ],
     ))
 
@@ -56172,6 +56185,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             memory,
             published_record,
             bucket_word=int(segment_one["bucket_index"]),
+            width_word=max(0x20, span),
         )
         published_entry = published_render["entry"]
         assert isinstance(published_entry, dict)
@@ -56292,13 +56306,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ).hexdigest(),
         }
 
+    downloaded_segmented_wide_remainder_spans = list(range(17, 33)) + [
+        33,
+        48,
+        49,
+        64,
+    ]
     downloaded_segmented_wide_remainder_matrix = [
         downloaded_segmented_wide_remainder_matrix_case(
             span=span,
-            char_code=0x40 + span - 17,
-            object_offset=0x5000 + (span - 17) * 0x1400,
+            char_code=0x40 + index,
+            object_offset=0x5000 + index * 0x2400,
         )
-        for span in range(17, 33)
+        for index, span in enumerate(downloaded_segmented_wide_remainder_spans)
     ]
     checks.append(assert_equal(
         "downloaded glyph segmented-wide matrix publishes and renders compact chunks",
@@ -56363,7 +56383,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "remaining": 0,
                         "control_hits": 0,
                     },
-                    "next_stream_prefix": bytes([0x40 + span - 17]),
+                    "next_stream_prefix": bytes([0x40 + index]),
                     "next_handler": 0x00D04A,
                 },
                 "path": "segmented-page-record",
@@ -56376,7 +56396,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "segment": 1,
                         "object": (
                             bytes.fromhex("00 00 00 00 30 03 00 01")
-                            + bytes([0x40 + span - 17, 0x01])
+                            + bytes([0x40 + index, 0x01])
                             + bytes.fromhex("00 00")
                             + bytes(0x1C)
                         ),
@@ -56388,7 +56408,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "segment": 0,
                         "object": (
                             bytes.fromhex("00 00 00 00 30 03 00 01")
-                            + bytes([0x40 + span - 17, 0x00])
+                            + bytes([0x40 + index, 0x00])
                             + bytes.fromhex("00 00")
                             + bytes(0x1C)
                         ),
@@ -56432,7 +56452,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "rows_match_installed_bitmap": True,
                 "row_count": 1,
             }
-            for span in range(17, 33)
+            for index, span in enumerate(downloaded_segmented_wide_remainder_spans)
         ],
     ))
 
@@ -86773,13 +86793,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     append_wrapped(
         lines,
         "- downloaded-glyph wide-remainder matrix: host-fetched `ESC )s#W` "
-        "descriptors with spans `17..32` install widths `136..256`, publish "
+        "descriptors with matched spans `17..32` and high-span probes "
+        "`33`, `48`, `49`, `64`, and `255` publish "
         "bucket `0` as selector `0x1003`, dispatch object byte `0x10` "
         "through `0x1ed84` / `0x1ef6a` to `0x1f0d2`, render full chunks "
         "through `0x2f27c`, render remainders `1..15` through "
-        "`0x1f1ac[remainder]`, and render span `32` as the no-remainder "
-        "two-full-chunk sibling. Case summaries "
-        "`(span, mode, split, remainder, remainder helper, row sha256)` "
+        "`0x1f1ac[remainder]`, render span `32` as the no-remainder "
+        "two-full-chunk sibling, and record non-matching row comparisons "
+        "above span `32`. Case summaries "
+        "`(span, mode, split, remainder, remainder helper, rows match, "
+        "row sha256)` "
         "are `%s`."
         % (
             [
@@ -86789,6 +86812,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     case["install"]["split_plane"],
                     case["render"]["remainder"],
                     "0x%05x" % case["render"]["remainder_helper"],
+                    case["rows_match_installed_bitmap"],
                     case["row_sha256"],
                 )
                 for case in downloaded_wide_remainder_matrix
@@ -86798,14 +86822,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     append_wrapped(
         lines,
         "- downloaded-glyph segmented-wide matrix: host-fetched `ESC )s#W` "
-        "descriptors with spans `17..32` and rows `0x81` install widths "
-        "`136..256`, publish buckets `0` and `8` as selector `0x3003`, "
+        "descriptors with matched spans `17..32` plus high-span probes "
+        "`33`, `48`, `49`, and `64` at rows `0x81` publish buckets `0` "
+        "and `8` as selector `0x3003`, "
         "dispatch segment `1` object byte `0x30` through `0x1ed84` / "
         "`0x1ef6a` to `0x1f264`, render full chunks through `0x2f27c`, "
         "render remainders `1..15` through `0x1f1ac[remainder]`, and "
-        "render span `32` as the no-remainder two-full-chunk sibling. "
+        "render span `32` as the no-remainder two-full-chunk sibling; "
+        "row comparisons above span `32` are recorded as non-matching. "
         "Case summaries "
-        "`(span, mode, split, remainder, A2 offset, A3 offset, row sha256)` "
+        "`(span, mode, split, remainder, A2 offset, A3 offset, rows match, "
+        "row sha256)` "
         "are `%s`."
         % (
             [
@@ -86816,6 +86843,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     case["render"]["remainder"],
                     case["render"]["a2_source_offset"],
                     case["render"]["a3_source_offset"],
+                    case["rows_match_installed_bitmap"],
                     case["row_sha256"],
                 )
                 for case in downloaded_segmented_wide_remainder_matrix

@@ -488,10 +488,10 @@ modeled source/object structures rather than a full live CPU-memory run.
   cross-product documented in `notes/font-context-metrics.md`.
 - `0x11f5a..0x12452`: transparent-text delayed payload restore, control
   filtering, printable re-entry, and fixed-space output are composed in
-  `Transparent Print Data`. Remaining work is the unflagged
-  `0xd0f0..0xd140` branch and broader high-control cross-products that map to
-  segmented glyphs or secondary contexts; the tall bucket-crossing
-  high-control case is now fixture-backed.
+  `Transparent Print Data`. Remaining work is broader high-control
+  cross-products and full secondary segmented bitmap semantics; the primary
+  tall bucket-crossing and secondary segmented page-record boundaries are now
+  fixture-backed.
 - `0x10084..0x1387c`: first-root allocation and compact text queueing
   are fixture-backed for this cluster, but a dense live parser page that
   exercises same-chunk and rollover allocation for all cursor variants
@@ -548,10 +548,15 @@ or fixed-space helper `0xd0f0`.
   - default-filtered C0/high-control bytes routed through `0xd0f0` advance
     fixed spacing in the flagged built-in path and create no compact text
     entry.
+  - default-filtered C0 bytes routed through `0xd0f0` in an unflagged
+    inline/fixed-record context substitute host space and queue normal compact
+    text entries through `0xd140` / `0xd3b2`.
   Evidence: fixture object prefixes
   `00 00 00 00 00 00 00 02 20 00 01 20 02 02`,
   `00 00 00 00 00 00 00 02 20 00 01 20 06 04`, and
   `00 00 00 00 00 00 00 04 20 00 01 04 0d 01 7f 00 03 20 06 04`.
+  The unflagged default-filter object is
+  `00 00 00 00 00 00 00 03 01 76 01 00 48 02 01 7a 03` plus trailing zeros.
   High-control `0x98` with nonzero filtering queues a separate taller glyph
   object in bucket `-1`:
   `00 00 00 00 00 00 00 01 97 fd 01`, while surrounding `!` entries remain
@@ -577,6 +582,9 @@ or fixed-space helper `0xd0f0`.
 - `0xd0f0` writes the fixed-space source for host byte `0x20`, clears source
   longword `+4` in the flagged built-in path, and advances spacing through
   `0xd550` without queueing a compact object in the covered fixture.
+  In the unflagged fixture it does not clear a built-in glyph pointer; the
+  substituted host-space source continues through `0xd140` / `0xd3b2` into
+  `0x12f2e`.
 
 ### Readers And Consumers
 
@@ -586,7 +594,8 @@ or fixed-space helper `0xd0f0`.
 - `0xd04a` consumes routed printable values such as `0x21`, `0x41`, `0x05`,
   and `0x80` when filtering is nonzero.
 - `0xd0f0` consumes default-filtered C0/high-control values and turns them
-  into fixed spacing.
+  into fixed spacing or substituted host-space text, depending on the current
+  source class.
 - `0x1387c`, `0x1edc6`, `0x1ed84`, and `0x1ef6a` consume the resulting
   page-record compact text objects for visible rows.
 
@@ -609,6 +618,17 @@ proves default filtering for `ESC &p4X!\x05\x85!`: payload values route
 advance spacing from packed x `28` to `46` and `46` to `64` without compact
 entries, and the final object contains only two visible `!` entries at
 coords `0x0001` and `0x0604`.
+
+Fixture `transparent default-filtered control enters unflagged fixed-record
+path` proves the unflagged side of the same `0xd0f0` entry for
+`ESC &p3X!\x05!`: payload values route `d04a d0f0 d04a`; the C0 byte `0x05`
+substitutes host `0x20`, maps to unflagged glyph `0`, uses inline record
+`01 02 00 00 00 00 00 70`, positions x/y `40/20`, queues compact coord
+`0x4802` in bucket `1`, and renders in the same selected bucket as surrounding
+unflagged `!` glyphs at coords `0x7601` and `0x7a03`. The bridge context slots
+begin `(0x00000100, 0, 0, 0)`, and selected bucket `1` renders row count `10`,
+row width `74`, digest
+`89629435e063529ce7150d603ed9be37a74658317db3e97a4ae01b1c8d64f9d9`.
 
 Fixture `transparent nonzero filters route controls through printable path`
 proves the opposite filtering polarity for `ESC &p4X!\x05\x80!`: selected
@@ -661,6 +681,7 @@ bytes.
 - `transparent data parser trace feeds page-record queue`
 - `transparent non-0x58 probe byte reaches page-record output`
 - `transparent data control payloads advance through fixed-space path`
+- `transparent default-filtered control enters unflagged fixed-record path`
 - `transparent nonzero filters route controls through printable path`
 - `transparent nonzero high-control byte queues tall glyph bucket`
 - `transparent secondary high-control byte enters segmented page-record path`
@@ -675,13 +696,6 @@ bytes.
 
 ### Unresolved Middle Edges
 
-- `0xd0f0..0xd140`: the flagged fixed-space branch is fixture-backed. The
-  generic unflagged/fixed-record source path after `0x1393a` is composed in
-  `Text Source Objects And Compact Buckets` by fixtures
-  `0x1393a-modeled selected inline source object fields` and
-  `selected inline source queues and renders through unflagged path`; the open
-  edge is specifically a page-visible transparent-data fixture that reaches
-  that branch through default-filtered `0xd0f0` and host-space substitution.
 - `0x124f8..0x1252a`: high-control nonzero filtering is now fixture-backed for
   a short primary bucket (`0x80`), a taller primary bucket-crossing glyph
   (`0x98`), and a secondary segmented page-record boundary (`SO ESC

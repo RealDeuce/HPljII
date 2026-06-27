@@ -1088,6 +1088,11 @@ objects, and leave only the two visible `!` entries at compact coords
 `0x0001` and `0x0604`. `ESC &p4X!\x05\x80!` covers the nonzero-filter
 control path through `0xd04a`, queueing C0 glyph `0x04` at compact coord
 `0x0d01` and high-control glyph `0x7f` at compact coord `0x0003`.
+`ESC &p3X!\x05!` covers the default-filtered unflagged fixed-record path:
+`0xd0f0` substitutes host `0x20`, queues unflagged glyph `0` at compact coord
+`0x4802` between surrounding unflagged `!` coords `0x7601` and `0x7a03`,
+bridges context slot `0x00000100`, and renders bucket `1` with digest
+`89629435e063529ce7150d603ed9be37a74658317db3e97a4ae01b1c8d64f9d9`.
 `ESC &p3X!\x98!` extends that same nonzero-filter path to a taller
 high-control glyph: byte `0x98` maps to glyph `0x97`, queues bucket `-1`
 coord `0xfd01`, leaves surrounding `!` entries in bucket `0`, and renders

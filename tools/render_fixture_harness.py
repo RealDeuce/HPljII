@@ -18139,35 +18139,92 @@ def render_mixed_printable_control_page_record_stream(
     def apply_fixed_space_control_byte(payload_byte: int) -> dict[str, object]:
         active_context, active_context_slot = active_text_context()
         source_form = str(state.get("text_source_form", "flagged"))
-        if source_form != "flagged":
-            raise AssertionError(
-                "page-record fixed-space transparent fixture currently models flagged sources"
+        if source_form == "unflagged":
+            inline_map = inline_map_via_14e24(resources, active_context)
+            map_table = inline_map["table"]
+            assert isinstance(map_table, bytes)
+            source = build_inline_text_source_object_from_1393a(
+                resources,
+                active_context,
+                map_table,
+                0x20,
+                x=0,
+                y=0,
+                context_slot=active_context_slot,
             )
-        source = build_text_source_object_from_1393a(
-            resources,
-            active_context,
-            0x20,
-            x=0,
-            y=0,
-            context_slot=active_context_slot,
+            positioned = position_unflagged_text_source_via_d3b2(
+                source,
+                bytes(source["inline_record"]),
+                cursor_x=unpack12(state["cursor_x"])[0],
+                cursor_y=unpack12(state["cursor_y"])[0],
+                printable_offset=int(state.get("printable_offset_782dc0", 0)),
+                orientation=int(state.get("orientation", state.get("orientation_782da3", 0))),
+                orientation_extent=int(state.get("orientation_extent_782db2", 0)),
+                context_metric_flag=int(state.get("unflagged_context_metric_flag_0016", 0)),
+                source_x_offset=int(state.get("source_x_offset", 0)),
+            )
+            positioned_source = positioned["source"]
+            assert isinstance(positioned_source, dict)
+            page_root = ensure_page_record_root_for_queue(state)
+            page_result = queue_text_source_to_page_record_via_12f2e(
+                resources,
+                page_record,
+                positioned_source,
+            )
+            advance = advance_flagged_text_cursor_via_d550(
+                state["cursor_x"],
+                current_default_advance(),
+            )
+            state["cursor_x"] = advance["cursor_after"]
+            span_update_result = None
+            if int(state.get("materialize_d4ac_span_update", 0)):
+                span_update_result = update_unflagged_span_via_d4ac(
+                    resources,
+                    page_record,
+                    state,
+                    active_context,
+                )
+            return {
+                "payload_byte": payload_byte & 0xFF,
+                "substituted_host_byte": 0x20,
+                "cursor_before": advance["cursor_before"],
+                "cursor_after": advance["cursor_after"],
+                "source": source,
+                "positioned": positioned,
+                "page_result": page_result,
+                "page_root": page_root,
+                "span_update_result": span_update_result,
+            }
+        if source_form == "flagged":
+            source = build_text_source_object_from_1393a(
+                resources,
+                active_context,
+                0x20,
+                x=0,
+                y=0,
+                context_slot=active_context_slot,
+            )
+            source_with_cleared_pointer = dict(source)
+            source_with_cleared_pointer["glyph_entry"] = 0
+            advance = advance_flagged_text_cursor_via_d550(
+                state["cursor_x"],
+                current_default_advance(),
+            )
+            state["cursor_x"] = advance["cursor_after"]
+            return {
+                "payload_byte": payload_byte & 0xFF,
+                "substituted_host_byte": 0x20,
+                "cursor_before": advance["cursor_before"],
+                "cursor_after": advance["cursor_after"],
+                "source": source,
+                "source_after_d0f0_clear": source_with_cleared_pointer,
+                "page_result": None,
+                "page_root": state.get("current_page_root"),
+                "span_update_result": None,
+            }
+        raise AssertionError(
+            f"page-record fixed-space transparent fixture does not model {source_form!r}"
         )
-        source_with_cleared_pointer = dict(source)
-        source_with_cleared_pointer["glyph_entry"] = 0
-        advance = advance_flagged_text_cursor_via_d550(
-            state["cursor_x"],
-            current_default_advance(),
-        )
-        state["cursor_x"] = advance["cursor_after"]
-        return {
-            "payload_byte": payload_byte & 0xFF,
-            "cursor_before": advance["cursor_before"],
-            "cursor_after": advance["cursor_after"],
-            "source": source,
-            "source_after_d0f0_clear": source_with_cleared_pointer,
-            "page_result": None,
-            "page_root": state.get("current_page_root"),
-            "span_update_result": None,
-        }
 
     while pos < len(stream):
         byte = stream[pos]
@@ -62291,6 +62348,284 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         ],
         "final_cursor_x": pack12(82),
     }))
+    transparent_unflagged_memory = bytearray(selected_inline_memory)
+    transparent_unflagged_memory[selected_inline_context + 0x40:selected_inline_context + 0x48] = bytes.fromhex(
+        "01 02 00 00 00 00 00 70"
+    )
+    transparent_unflagged_memory[selected_inline_context + 0x70:selected_inline_context + 0x72] = bytes.fromhex(
+        "c0 80"
+    )
+    transparent_unflagged_resources = bytes(transparent_unflagged_memory)
+    transparent_unflagged_space_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        transparent_unflagged_resources,
+        b"\x1b&p3X!\x05!",
+        selected_inline_context,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            text_source_form="unflagged",
+            printable_offset_782dc0=7,
+            source_x_offset=5,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    transparent_unflagged_space_object = transparent_unflagged_space_stream[
+        "bucket_object"
+    ]
+    transparent_unflagged_space_rendered = transparent_unflagged_space_stream[
+        "rendered"
+    ]
+    transparent_unflagged_space_bridged = transparent_unflagged_space_stream[
+        "bridged_record"
+    ]
+    assert isinstance(transparent_unflagged_space_object, bytes)
+    assert isinstance(transparent_unflagged_space_rendered, dict)
+    assert isinstance(transparent_unflagged_space_bridged, dict)
+    transparent_unflagged_space_events = transparent_unflagged_space_stream["events"]
+    assert isinstance(transparent_unflagged_space_events, list)
+    if (
+        len(transparent_unflagged_space_events) != 1
+        or transparent_unflagged_space_events[0]["kind"] != "transparent-data"
+    ):
+        raise AssertionError(
+            "transparent unflagged fixed-space stream expected one transparent-data event"
+        )
+    transparent_unflagged_space_event = transparent_unflagged_space_events[0]
+    assert isinstance(transparent_unflagged_space_event, dict)
+    transparent_unflagged_space_payload_summary: list[dict[str, object]] = []
+    transparent_unflagged_space_payload_events = transparent_unflagged_space_event[
+        "payload_events"
+    ]
+    assert isinstance(transparent_unflagged_space_payload_events, list)
+    for payload_event in transparent_unflagged_space_payload_events:
+        assert isinstance(payload_event, dict)
+        source = payload_event["source"]
+        positioned = payload_event["positioned"]
+        page_result = payload_event["page_result"]
+        assert isinstance(source, dict)
+        assert isinstance(positioned, dict)
+        assert isinstance(page_result, dict)
+        positioned_source = positioned["source"]
+        assert isinstance(positioned_source, dict)
+        transparent_unflagged_space_payload_summary.append({
+            "index": payload_event["index"],
+            "byte": payload_event["byte"],
+            "route": payload_event["route"],
+            "substituted_host_byte": payload_event.get("substituted_host_byte"),
+            "cursor_before": payload_event["cursor_before"],
+            "cursor_after": payload_event["cursor_after"],
+            "source": {
+                key: source[key]
+                for key in (
+                    "host_char",
+                    "mapped",
+                    "flag",
+                    "context_slot",
+                    "inline_record",
+                    "valid_record",
+                )
+            },
+            "positioned_xy": (positioned_source["x"], positioned_source["y"]),
+            "path": page_result["path"],
+            "coord": page_result["coord"],
+            "glyph": page_result["glyph"],
+            "bucket_index": page_result["bucket_index"],
+            "allocated": page_result["allocated"],
+            "count_before": page_result["count_before"],
+            "count_after": page_result["count_after"],
+            "object_prefix": page_result["object"][:17],
+        })
+    transparent_unflagged_space_rows = transparent_unflagged_space_rendered["rows"]
+    assert isinstance(transparent_unflagged_space_rows, list)
+    checks.append(assert_equal(
+        "transparent default-filtered control enters unflagged fixed-record path",
+        {
+            "stream": transparent_unflagged_space_stream["stream"],
+            "event": {
+                "kind": transparent_unflagged_space_event["kind"],
+                "sequence": transparent_unflagged_space_event["sequence"],
+                "record": transparent_unflagged_space_event["record"],
+                "parameter": transparent_unflagged_space_event["parameter"],
+                "handler": transparent_unflagged_space_event["handler"],
+                "delayed_snapshot_bytes": transparent_unflagged_space_event[
+                    "delayed_snapshot_bytes"
+                ],
+                "restore_dispatch": transparent_unflagged_space_event[
+                    "restore_dispatch"
+                ],
+                "restored_record": transparent_unflagged_space_event[
+                    "restored_record"
+                ],
+                "payload_offset": transparent_unflagged_space_event[
+                    "payload_offset"
+                ],
+                "byte_count": transparent_unflagged_space_event["byte_count"],
+                "raw_payload": transparent_unflagged_space_event["raw_payload"],
+                "selected_context_byte": transparent_unflagged_space_event[
+                    "selected_context_byte"
+                ],
+                "local_filtering_word": transparent_unflagged_space_event[
+                    "local_filtering_word"
+                ],
+                "values": transparent_unflagged_space_event["values"],
+                "routes": transparent_unflagged_space_event["routes"],
+                "control_hits": transparent_unflagged_space_event["control_hits"],
+                "payload_events": transparent_unflagged_space_payload_summary,
+            },
+            "root_allocations": transparent_unflagged_space_stream["final_state"][
+                "page_record_root_allocations"
+            ],
+            "bucket_index": transparent_unflagged_space_stream["bucket_index"],
+            "object": transparent_unflagged_space_object,
+            "bridged_context_slots": transparent_unflagged_space_bridged[
+                "context_slots"
+            ][:4],
+            "render": {
+                "row_count": len(transparent_unflagged_space_rows),
+                "row_width": max(
+                    (len(str(row)) for row in transparent_unflagged_space_rows),
+                    default=0,
+                ),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(
+                        str(row) for row in transparent_unflagged_space_rows
+                    ).encode("ascii")
+                ).hexdigest(),
+            },
+            "final_cursor_x": transparent_unflagged_space_stream["final_state"][
+                "cursor_x"
+            ],
+        },
+        {
+            "stream": b"\x1b&p3X!\x05!",
+            "event": {
+                "kind": "transparent-data",
+                "sequence": b"\x1b&p3X!\x05!",
+                "record": bytes.fromhex("80 58 00 03 00 00"),
+                "parameter": 3,
+                "handler": 0x011F5A,
+                "delayed_snapshot_bytes": bytes.fromhex(
+                    "01 00 01 24 52 80 58 00 03 00 00"
+                ),
+                "restore_dispatch": {"kind": "direct-handler", "handler": 0x012452},
+                "restored_record": bytes.fromhex("80 58 00 03 00 00"),
+                "payload_offset": 5,
+                "byte_count": 3,
+                "raw_payload": b"!\x05!",
+                "selected_context_byte": 0,
+                "local_filtering_word": 0,
+                "values": [0x21, 0x05, 0x21],
+                "routes": [0x00D04A, 0x00D0F0, 0x00D04A],
+                "control_hits": 0,
+                "payload_events": [
+                    {
+                        "index": 0,
+                        "byte": 0x21,
+                        "route": 0x00D04A,
+                        "substituted_host_byte": None,
+                        "cursor_before": pack12(10),
+                        "cursor_after": pack12(28),
+                        "source": {
+                            "host_char": 0x21,
+                            "mapped": 0x01,
+                            "flag": 0,
+                            "context_slot": 0,
+                            "inline_record": bytes.fromhex(
+                                "02 03 04 00 00 00 00 80"
+                            ),
+                            "valid_record": True,
+                        },
+                        "positioned_xy": (22, 23),
+                        "path": "short-page-record",
+                        "coord": 0x7601,
+                        "glyph": 0x01,
+                        "bucket_index": 1,
+                        "allocated": True,
+                        "count_before": 0,
+                        "count_after": 1,
+                        "object_prefix": bytes.fromhex(
+                            "00 00 00 00 00 00 00 01 01 76 01 00 00 00 00 00 00"
+                        ),
+                    },
+                    {
+                        "index": 1,
+                        "byte": 0x05,
+                        "route": 0x00D0F0,
+                        "substituted_host_byte": 0x20,
+                        "cursor_before": pack12(28),
+                        "cursor_after": pack12(46),
+                        "source": {
+                            "host_char": 0x20,
+                            "mapped": 0x00,
+                            "flag": 0,
+                            "context_slot": 0,
+                            "inline_record": bytes.fromhex(
+                                "01 02 00 00 00 00 00 70"
+                            ),
+                            "valid_record": True,
+                        },
+                        "positioned_xy": (40, 20),
+                        "path": "short-page-record",
+                        "coord": 0x4802,
+                        "glyph": 0x00,
+                        "bucket_index": 1,
+                        "allocated": False,
+                        "count_before": 1,
+                        "count_after": 2,
+                        "object_prefix": bytes.fromhex(
+                            "00 00 00 00 00 00 00 02 01 76 01 00 48 02 00 00 00"
+                        ),
+                    },
+                    {
+                        "index": 2,
+                        "byte": 0x21,
+                        "route": 0x00D04A,
+                        "substituted_host_byte": None,
+                        "cursor_before": pack12(46),
+                        "cursor_after": pack12(64),
+                        "source": {
+                            "host_char": 0x21,
+                            "mapped": 0x01,
+                            "flag": 0,
+                            "context_slot": 0,
+                            "inline_record": bytes.fromhex(
+                                "02 03 04 00 00 00 00 80"
+                            ),
+                            "valid_record": True,
+                        },
+                        "positioned_xy": (58, 23),
+                        "path": "short-page-record",
+                        "coord": 0x7A03,
+                        "glyph": 0x01,
+                        "bucket_index": 1,
+                        "allocated": False,
+                        "count_before": 2,
+                        "count_after": 3,
+                        "object_prefix": bytes.fromhex(
+                            "00 00 00 00 00 00 00 03 01 76 01 00 48 02 01 7a 03"
+                        ),
+                    },
+                ],
+            },
+            "root_allocations": 1,
+            "bucket_index": 1,
+            "object": bytes.fromhex(
+                "00 00 00 00 00 00 00 03 01 76 01 00 48 02 01 7a 03"
+            ) + (b"\x00" * 21),
+            "bridged_context_slots": (0x00000100, 0, 0, 0),
+            "render": {
+                "row_count": 10,
+                "row_width": 74,
+                "row_sha256": "89629435e063529ce7150d603ed9be37a74658317db3e97a4ae01b1c8d64f9d9",
+            },
+            "final_cursor_x": pack12(64),
+        },
+    ))
     transparent_nonzero_filter_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,
@@ -75983,6 +76318,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "before `0xd550`, advances cursor spacing without queuing text objects, "
         "and leaves the two visible entries at compact coords `0x0001` and "
         "`0x0604`."
+    )
+    lines.append(
+        "- transparent unflagged fixed-record boundary: stream `1b 26 70 33 "
+        "58 21 05 21` routes C0 payload `0x05` through `0xd0f0`, substitutes "
+        "host byte `0x20`, enters `0xd140`/`0xd3b2`, queues unflagged glyph "
+        "`0` at compact coord `0x4802` between surrounding unflagged `!` "
+        "coords `0x7601` and `0x7a03`, bridges context slot `0x00000100`, "
+        "and renders bucket digest "
+        "`89629435e063529ce7150d603ed9be37a74658317db3e97a4ae01b1c8d64f9d9`."
     )
     lines.append(
         "- transparent nonzero-filter boundary: stream `1b 26 70 34 58 21 05 "

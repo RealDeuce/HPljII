@@ -899,6 +899,12 @@ plain `!!`. `ESC &p4X!\x05\x85!` now extends that evidence to the
 default-filtered control route: C0 byte `0x05` and high-control byte
 `0x85` route through `0xd0f0`, advance fixed spacing, queue no text
 object, and leave the next visible `!` at compact coord `0x0604`.
+`ESC &p3X!\x05!` now proves the same default-filtered C0 route in an
+unflagged inline/fixed-record context: `0xd0f0` substitutes host `0x20`,
+continues through `0xd140` / `0xd3b2`, maps glyph `0`, queues compact coord
+`0x4802` in bucket `1` between surrounding unflagged `!` coords `0x7601` and
+`0x7a03`, bridges context slot `0x00000100`, and renders digest
+`89629435e063529ce7150d603ed9be37a74658317db3e97a4ae01b1c8d64f9d9`.
 `ESC &p4X!\x05\x80!` covers the nonzero-filter route through `0xd04a`:
 byte `0x05` maps to glyph `0x04`, byte `0x80` maps to glyph `0x7f`,
 and both queue visible compact text entries. `ESC &p3X!\x98!` extends the

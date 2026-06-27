@@ -265,6 +265,11 @@ pixels or byte-stream compatibility.
    0x0018/0x0013/0xfffe/0x0008`; `d8fc` consumes the copied offset word as
    `65534`, computes high-y `-65513`, and renders digest
    `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
+   Fixture `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+   adds max positive and max negative copied offset words `0x007f` and `0xffff`,
+   lower-bound equality, exact page-extent equality, rounded input `0x0013` copying
+   `+0x2c = 0x0014`, and high-byte rounded inputs `0x1500`, `0x1508`, and `0x15ff`
+   all copying `+0x2c = 0x0060` before `d4ac` exits `beyond-page-extent`.
    Fixture
    `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
    proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f`
@@ -272,8 +277,9 @@ pixels or byte-stream compatibility.
    `d4ac` span digest, and keep `d8fc` high-y `20` / digest
    `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
    The open edge is additional metric-value combinations within the legal
-   forms, plus validation/error forms beyond those bounded predicate and
-   short-budget branches.
+   forms outside these lower/equality/upper, clamp, offset endpoint,
+   rounded-transform, and low-nibble cases, plus validation/error forms beyond
+   those bounded predicate and short-budget branches.
    It is not the tested type-0/type-1/type-2 payloads, metric-variant,
    clamped-variant, lower-bound-variant, upper-bound-variant,
    legal-value-matrix, low-nibble rounding submatrix, validation no-install,

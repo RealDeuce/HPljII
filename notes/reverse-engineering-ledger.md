@@ -510,14 +510,18 @@ normalization, copy leaves `0x783140 = 1`, `0x12328` drains following byte
 `0x26` (`&`), and the post-return parser sees FF at handler `0xf0f0`; the
 same fixture still documents the modeled published bucket-1 wide object through
 `0x1ed84`/`0x1ef6a`/`0x1f0d2`.
-Remaining work is additional metric-value combinations outside those pinned
-legal matrix, boundary, and low-nibble endpoints, validation/error page behavior
+Remaining work is additional metric-value combinations outside the pinned legal
+matrix, boundary, and low-nibble endpoints. Those pinned metric endpoints include
+rounded input `0x0013` copying `+0x2c = 0x0014`, high-byte rounded inputs
+`0x1500`/`0x1508`/`0x15ff` all copying `+0x2c = 0x0060`, max positive and max
+negative copied offset words `0x007f`/`0xffff`, lower-bound equality, and exact
+page-extent equality. Remaining work also includes validation/error page behavior
 beyond those bounded predicate and short-budget no-install branches, remaining
-release variants, full-success return-boundary siblings beyond the covered
-normal even-span, no-install, status-`2`, linear-segmented publication,
-split-plane segmented publication, and segmented-wide publication zero-drain
-cases plus the payload-control wide nonzero-drain case, broader publication
-combinations beyond the covered
+release variants, full-success return-boundary siblings beyond the covered normal
+even-span, no-install, status-`2`, linear-segmented publication, split-plane
+segmented publication, and segmented-wide publication zero-drain cases plus the
+payload-control wide nonzero-drain case, broader publication combinations beyond
+the covered
 normal, nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented,
 rows-`0x20` short, rows-`0x40` short, row-count-matrix rows
 `0x04`/`0x7f`/`0x83`/`0xff`, rows-`0x82` segmented, rows-`0x0102`

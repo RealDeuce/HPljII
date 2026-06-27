@@ -1719,17 +1719,17 @@ A byte-stream renderer must preserve:
   `0xd8fc` without publishing a span object, suppress both span consumers
   through parser-owned lower-bound fields, suppress only `0xd8fc` through
   parser-owned upper-bound fields while preserving `0xd4ac` span output and
-  compact glyph output, and show rounded inputs `0x1500`, `0x1508`, and
-  `0x15ff` all transform to copied `+0x2c = 0x0060` before `d4ac` exits
-  beyond page extent. Fixture
+  compact glyph output, round `0x0013` up to copied `+0x2c = 0x0014`, and show
+  rounded inputs `0x1500`, `0x1508`, and `0x15ff` all transform to copied
+  `+0x2c = 0x0060` before `d4ac` exits beyond page extent. Fixture
   `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
   proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f`
   copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, while preserving
   `d4ac` span output and `d8fc` high-y `20` output. Fixture
   `descriptor metric fields match across inline and resource contexts` now
   proves the legal producer forms and the two invalid swapped forms. The
-  remaining producer gap is not these copied-field endpoints; it is
-  additional legal descriptor combinations outside the pinned lower/equality/
-  upper/clamp/offset/rounded-transform/low-nibble cases, plus validation/error
-  forms beyond the bounded predicate and short-budget branches that still need
-  parser-produced page evidence.
+  remaining producer gap is not these copied-field endpoints; it is additional
+  legal descriptor combinations outside the pinned lower/equality/upper,
+  clamp, offset endpoint, rounded-transform, and low-nibble cases, plus
+  validation/error forms beyond the bounded predicate and short-budget branches
+  that still need parser-produced page evidence.

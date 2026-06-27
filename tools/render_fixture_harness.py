@@ -84206,14 +84206,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "values drive d4ac and d8fc consumers` proves `d8fc` accepts lower "
         "equality `+0x16 = 21`, accepts exact page extent with `+0x18 = 43`, "
         "copies max positive offset byte `0x7f` as word `+0x1a = 0x007f` "
-        "and computes high-y `%d`, rounds input `0x0013` up to copied "
-        "`+0x2c = 0x%04x`, and maps rounded input `0x1500` to copied "
-        "`+0x2c = 0x%04x`; rounded input `0x1508` maps to the same copied "
-        "`+0x2c = 0x%04x`, so `d4ac` exits `%s` in both high-byte cases." % (
+        "and max negative offset byte `0xff` as word `+0x1a = 0xffff`, with "
+        "high-y values `%d`/`%d`; it rounds input `0x0013` up to copied "
+        "`+0x2c = 0x%04x`, and maps rounded inputs `0x1500`, `0x1508`, and "
+        "`0x15ff` to copied `+0x2c = 0x%04x`/`0x%04x`/`0x%04x`, so `d4ac` "
+        "exits `%s` in all high-byte cases." % (
             metric_boundary_cases["positive-offset-max"]["d8fc"]["span"]["high_y"],  # type: ignore[index]
+            metric_boundary_cases["negative-offset-max"]["d8fc"]["span"]["high_y"],  # type: ignore[index]
             metric_boundary_cases["rounded-0x0013-up"]["copied_metrics"]["word_0x2c"],  # type: ignore[index]
             metric_boundary_cases["rounded-0x1500-transform"]["copied_metrics"]["word_0x2c"],  # type: ignore[index]
             metric_boundary_cases["rounded-0x1508-transform"]["copied_metrics"]["word_0x2c"],  # type: ignore[index]
+            metric_boundary_cases["rounded-0x15ff-transform"]["copied_metrics"]["word_0x2c"],  # type: ignore[index]
             metric_boundary_cases["rounded-0x1500-transform"]["d4ac"]["span"]["reason"],  # type: ignore[index]
         )
     )

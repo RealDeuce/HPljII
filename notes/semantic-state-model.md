@@ -2999,8 +2999,10 @@ fixtures.
   adds equality and offset endpoints: `d8fc` accepts copied lower word
   `+0x16 = 0x0015` at cursor y `21`, accepts exact page extent with copied
   height `+0x18 = 0x002b`, copies input offset byte `0x7f` as word
-  `+0x1a = 0x007f` and computes high-y `-106`, and proves rounded input
-  `0x1500` stores `+0x2c = 0x0060` before `d4ac` exits beyond page extent.
+  `+0x1a = 0x007f` and computes high-y `-106`, copies input offset byte
+  `0xff` as word `+0x1a = 0xffff` and computes high-y `-65514`, and proves
+  rounded inputs `0x1500`, `0x1508`, and `0x15ff` all store
+  `+0x2c = 0x0060` before `d4ac` exits beyond page extent.
   Fixture
   `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
   adds low-nibble transform coverage: rounded inputs `0x0001`, `0x0003`,
@@ -4008,13 +4010,12 @@ fields and every legal metric combination have not been page-compared.
   span output while `d8fc` exits `beyond-page-extent`. Fixture
   `legal descriptor metric boundary values drive d4ac and d8fc consumers`
   adds `d8fc` lower-bound equality, exact page-extent equality, max positive
-  offset byte `0x7f`, normal rounded input `0x0013` storing
-  `+0x2c = 0x0014`, and the rounded `0x1500` to copied `+0x2c = 0x0060`
-  transform that sends `d4ac` to `beyond-page-extent`. The same fixture adds
-  `rounded-0x1508-transform`, proving the descriptor transform discards the
-  low byte and stores the same `+0x2c = 0x0060`; `d4ac` exits
-  `beyond-page-extent`, while `d8fc` consumes `+0x16/+0x18/+0x1a =
-  0x0004/0x0013/0x0001` and renders digest
+  offset byte `0x7f`, max negative offset byte `0xff`, normal rounded input
+  `0x0013` storing `+0x2c = 0x0014`, and the rounded `0x1500`,
+  `0x1508`, and `0x15ff` transforms to copied `+0x2c = 0x0060` that send
+  `d4ac` to `beyond-page-extent`. Those high-byte rounded cases prove the
+  descriptor transform discards the low byte; `d4ac` exits `beyond-page-extent`,
+  while `d8fc` consumes `+0x16/+0x18/+0x1a = 0x0004/0x0013/0x0001` and renders digest
   `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
   Fixture
   `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`

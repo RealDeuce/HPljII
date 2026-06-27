@@ -458,11 +458,14 @@ now covers `d8fc` lower-bound equality, exact page-extent equality, max
 positive offset byte `0x7f`, normal rounded input `0x0013` storing copied
 `+0x2c = 0x0014`, and rounded input `0x1500` transforming to copied
 `+0x2c = 0x0060` before `d4ac` exits beyond page extent; it now also proves
-rounded input `0x1508` stores the same `+0x2c = 0x0060`, so the descriptor
-transform discards that low byte before the same `d4ac` exit.
-Remaining work is additional metric-value combinations within the legal
-forms, validation/error page behavior beyond those bounded predicate and
-short-budget no-install branches, remaining alternate character-mode/release
+rounded inputs `0x1508` and `0x15ff` store the same `+0x2c = 0x0060`, so the
+descriptor transform discards that low byte before the same `d4ac` exit. The
+same fixture proves offset byte `0xff` copies to word `+0x1a = 0xffff`, is
+consumed by `d8fc` as `65535`, and renders with the same digest as the
+`0xfffe` offset case.
+Remaining work is additional metric-value combinations outside those pinned
+legal endpoints, validation/error page behavior beyond those bounded predicate
+and short-budget no-install branches, remaining alternate character-mode/release
 variants, broader publication combinations beyond the covered
 normal, row-`0x80`, linear-segmented, split-plane segmented, segmented-wide,
 even-span wide, downloaded-character no-install, and status-`2` compact bucket

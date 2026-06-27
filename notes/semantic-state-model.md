@@ -2595,7 +2595,13 @@ queues a fixed-width span through `0x136d2`.
   Evidence: disassembly `0xd908..0xd992` and fixture
   `flagged printable d8fc low-watermark flush renders span`, where
   `cursor_y=21`, `+0x16=0`, `+0x18=10`, `+0x1a=18`, and
-  `0x783185=1` produce `high_y=3`.
+  `0x783185=1` produce `high_y=3`. The copied-field endpoints are
+  fixture-backed by `legal descriptor metric value matrix drives d4ac and
+  d8fc consumers` and
+  `legal descriptor metric boundary values drive d4ac and d8fc consumers`:
+  `+0x16 = 0x0015` is accepted at cursor y `21`, `+0x18 = 0x002b` reaches
+  exact page extent `64`, and offset bytes `0xfe`, `0xff`, and `0x7f` become
+  copied words `0xfffe`, `0xffff`, and `0x007f`.
 - Canonical unflagged context inputs:
   - context `+0x2b`: alternate y offset added at `0xd4f8..0xd506`
     when `0x783185` is set and the byte is nonzero.
@@ -2605,7 +2611,10 @@ queues a fixed-width span through `0x136d2`.
   Evidence: disassembly `0xd4b8..0xd548` and fixture
   `unflagged printable d4ac low-watermark flush renders span`, where
   `cursor_y=21`, `+0x2b=7`, `+0x2c=0`, `+0x2d=10`, and
-  `0x783185=1` produce `high_y=28`.
+  `0x783185=1` produce `high_y=28`. The descriptor boundary fixture proves
+  rounded input `0x0013` copies `+0x2c = 0x0014`, while inputs `0x1500`,
+  `0x1508`, and `0x15ff` all copy `+0x2c = 0x0060` before `d4ac` exits
+  `beyond-page-extent`.
 - Derived/cache producer state:
   - `0x782a7a` / `0x782a7b`: selector bytes for `0x1387c`; current
     fixtures pin `0x4000` for segment-list span objects.
@@ -2648,23 +2657,13 @@ queues a fixed-width span through `0x136d2`.
   - none owned by this cluster. The scratch object at `A5` in
     `0x12714` is a local producer source, not parser record storage.
 - Unknown:
-  - selected-context ownership for unflagged context fields `+0x2b`,
-    `+0x2c`, and `+0x2d` is documented in
-    `notes/font-context-metrics.md`; the legal producer-form boundary is now
-    fixture-backed by `descriptor metric fields match across inline and
-    resource contexts`, and the legal value matrix plus boundary endpoints are
-    fixture-backed by `legal descriptor metric value matrix drives d4ac and
-    d8fc consumers` and `legal descriptor metric boundary values drive d4ac and
-    d8fc consumers`, so remaining gaps are additional metric values within
-    legal forms, not the fixture-backed type-0/type-1/type-2, equality,
-    low-bound, high-bound, clamped, midpoint, or consumer branch cases.
-  - selected-context ownership for flagged context fields `+0x16`,
-    `+0x18`, and `+0x1a` is documented in
-    `notes/font-context-metrics.md`; the same producer-form fixture proves
-    resource/flagged `d8fc` is legal, inline/flagged is invalid, and remaining
-    gaps are additional metric values within legal forms, not the
-    fixture-backed type-0/type-1/type-2, equality, low-bound, high-bound,
-    clamped, midpoint, offset-boundary, or consumer branch cases.
+  - selected-context metric ownership is no longer the middle edge for this
+    cluster: `notes/font-context-metrics.md` documents the legal producer
+    forms, copied-field endpoints, and consumer branches. Remaining gaps are
+    additional legal descriptor combinations outside the pinned type-0/type-1/
+    type-2, lower/equality/upper, clamped, midpoint, offset-boundary, and
+    rounded-transform cases, plus validation/error forms beyond the bounded
+    no-install fixtures.
 
 ### Writers
 

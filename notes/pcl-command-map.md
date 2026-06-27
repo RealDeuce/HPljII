@@ -975,15 +975,17 @@ handlers:
   shared `d4ac`/`d8fc` consumer branch family. Fixture
   `legal descriptor metric boundary values drive d4ac and d8fc consumers` now
   also proves normal rounded input `0x0013` stores `+0x2c = 0x0014`, and that
-  rounded input `0x1508` stores the same copied `+0x2c = 0x0060` as `0x1500`,
-  so the low byte is discarded before `d4ac` takes the beyond-page exit and
-  `d8fc` renders from copied context words `0x0004/0x0013/0x0001`. Fixture
+  rounded inputs `0x1508` and `0x15ff` store the same copied
+  `+0x2c = 0x0060` as `0x1500`, so the low byte is discarded before `d4ac`
+  takes the beyond-page exit and `d8fc` renders from copied context words
+  `0x0004/0x0013/0x0001`. The same fixture proves offset byte `0xff` copies
+  to word `+0x1a = 0xffff` and is consumed by `d8fc` as `65535`. Fixture
   `descriptor metric fields match across inline and resource contexts` now
   pins the legal inline/unflagged `d4ac` and resource/flagged `d8fc`
   producer forms plus the two invalid swapped forms. The open middle is
-  additional metric-value combinations within those legal forms, plus visible
-  behavior for validation/error forms beyond the bounded predicate and
-  short-budget no-install cases.
+  additional metric-value combinations outside those pinned legal endpoints,
+  plus visible behavior for validation/error forms beyond the bounded
+  predicate and short-budget no-install cases.
 - Replace remaining modeled producer-state handoffs with fuller
   parser-produced page objects. Current coverage includes direct text,
   direct controls, macro replay/overlay, reset/FF/page geometry

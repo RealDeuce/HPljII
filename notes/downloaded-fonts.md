@@ -1414,15 +1414,18 @@ A byte-stream renderer must preserve:
   page-extent gate, exercise rounded-metric clamping into `+0x2c/+0x2d`,
   preserve zero rounded/offset fields through visible `0xd4ac` and `0xd8fc`
   span objects, preserve negative and max-positive flagged offset bytes as
-  copied words `0xfffe` and `0x007f`, accept `d8fc` lower-bound equality and
-  exact page-extent equality, move `d8fc` rendered rows, update `0xd8fc`
-  without publishing a span object, suppress both span consumers through
-  parser-owned lower-bound fields, suppress only `0xd8fc` through
+  copied words `0xfffe`, `0xffff`, and `0x007f`, accept `d8fc` lower-bound
+  equality and exact page-extent equality, move `d8fc` rendered rows, update
+  `0xd8fc` without publishing a span object, suppress both span consumers
+  through parser-owned lower-bound fields, suppress only `0xd8fc` through
   parser-owned upper-bound fields while preserving `0xd4ac` span output and
-  compact glyph output, and show rounded input `0x1500` transforms to copied
-  `+0x2c = 0x0060` before `d4ac` exits beyond page extent. Fixture
+  compact glyph output, and show rounded inputs `0x1500`, `0x1508`, and
+  `0x15ff` all transform to copied `+0x2c = 0x0060` before `d4ac` exits
+  beyond page extent. Fixture
   `descriptor metric fields match across inline and resource contexts` now
   proves the legal producer forms and the two invalid swapped forms. The
-  remaining producer gap is additional metric-value combinations within those
-  legal forms, plus validation/error forms beyond the bounded predicate and
-  short-budget branches that still need parser-produced page evidence.
+  remaining producer gap is not these copied-field endpoints; it is
+  additional legal descriptor combinations outside the pinned lower/equality/
+  upper/clamp/offset/rounded-transform cases, plus validation/error forms
+  beyond the bounded predicate and short-budget branches that still need
+  parser-produced page evidence.

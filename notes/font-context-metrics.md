@@ -833,10 +833,13 @@ work can close the right gap instead of re-tracing already-covered consumers.
   `rounded-0x0013-up` proves normal rounded input stores `+0x2c = 0x0014`;
   `rounded-0x1500-transform` proves rounded input `0x1500` stores
   `+0x2c = 0x0060` and drives `d4ac` to `beyond-page-extent`; and
-  `rounded-0x1508-transform` proves the descriptor transform discards the low
-  byte and stores the same `+0x2c = 0x0060`. Status: parser-produced legal
-  boundary values to consumer state, queued object prefix, and rendered row
-  digest.
+  `rounded-0x1508-transform` and `rounded-0x15ff-transform` prove the
+  descriptor transform discards that full low-byte range and stores the same
+  `+0x2c = 0x0060`. `negative-offset-max` proves input byte `0xff` copies as
+  word `+0x1a = 0xffff`; `d8fc` consumes that copied word as `65535`,
+  computes high-y `-65514`, and collapses to the same rendered row digest as
+  the `0xfe` case. Status: parser-produced legal boundary values to consumer
+  state, queued object prefix, and rendered row digest.
 - Claim: descriptor metric producer forms are disjoint at the selected-context
   boundary. Evidence: fixture
   `descriptor metric fields match across inline and resource contexts`;

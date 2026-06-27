@@ -51254,6 +51254,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     metric_rounded_0x1508_stream[20:22] = b"\x15\x08"
     metric_rounded_0x1508_stream[30] = 0x01
 
+    metric_rounded_0x15ff_stream = bytearray(font_validate_stream)
+    metric_rounded_0x15ff_stream[10:12] = b"\x00\x18"
+    metric_rounded_0x15ff_stream[20:22] = b"\x15\xff"
+    metric_rounded_0x15ff_stream[30] = 0x01
+
+    metric_negative_offset_max_stream = bytearray(font_validate_stream)
+    metric_negative_offset_max_stream[10:12] = b"\x00\x18"
+    metric_negative_offset_max_stream[20:22] = b"\x00\x08"
+    metric_negative_offset_max_stream[30] = 0xFF
+
     metric_boundary_cases = {
         "d8fc-lower-equal": compact_metric_boundary_case(metric_lower_equal_stream),
         "rounded-0x0013-up": compact_metric_boundary_case(
@@ -51262,12 +51272,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "rounded-0x1508-transform": compact_metric_boundary_case(
             metric_rounded_0x1508_stream,
         ),
+        "rounded-0x15ff-transform": compact_metric_boundary_case(
+            metric_rounded_0x15ff_stream,
+        ),
         "rounded-0x1500-transform": compact_metric_boundary_case(
             metric_unflagged_lower_equal_stream,
         ),
         "extent-equal": compact_metric_boundary_case(metric_extent_equal_stream),
         "positive-offset-max": compact_metric_boundary_case(
             metric_positive_offset_stream,
+        ),
+        "negative-offset-max": compact_metric_boundary_case(
+            metric_negative_offset_max_stream,
         ),
     }
     metric_boundary_context_source = {
@@ -51495,6 +51511,59 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     },
                 },
             },
+            "rounded-0x15ff-transform": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 4,
+                    "range_word_at_stream_10": 24,
+                    "rounded_word_at_stream_20": 5631,
+                    "flagged_offset_byte_at_stream_30": 1,
+                },
+                "copied_metrics": {
+                    "word_0x14": 24,
+                    "word_0x16": 4,
+                    "word_0x18": 19,
+                    "word_0x1a": 1,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 96,
+                    "word_0x2c": 96,
+                },
+                "d4ac": {
+                    "span": {
+                        "updated": False,
+                        "reason": "beyond-page-extent",
+                        "cursor_y": 21,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 00 00 00 01 01 7a 00 00 00 00"
+                    ),
+                    "render": {
+                        "row_count": 10,
+                        "row_width": 26,
+                        "row_sha256": "86e3bb70d51c66ac608345dc3bff6476447ebc500d7c271808a53d6638d59ad6",
+                    },
+                },
+                "d8fc": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D8FC,
+                        "context_lower_0016": 4,
+                        "context_height_0018": 19,
+                        "context_offset_001a": 1,
+                        "metric_source": metric_boundary_context_source,
+                        "high_y": 20,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 40 00 00 01 44 06 03 00 00 14"
+                    ),
+                    "render": {
+                        "row_count": 8,
+                        "row_width": 116,
+                        "row_sha256": "f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab",
+                    },
+                },
+            },
             "extent-equal": {
                 "input_metrics": {
                     "first_code_word_at_stream_6": 4,
@@ -51598,6 +51667,63 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                         "context_offset_001a": 127,
                         "metric_source": metric_boundary_context_source,
                         "high_y": -106,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 40 00 00 01 04 06 03 00 00 14"
+                    ),
+                    "render": {
+                        "row_count": 3,
+                        "row_width": 116,
+                        "row_sha256": "72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281",
+                    },
+                },
+            },
+            "negative-offset-max": {
+                "input_metrics": {
+                    "first_code_word_at_stream_6": 4,
+                    "range_word_at_stream_10": 24,
+                    "rounded_word_at_stream_20": 8,
+                    "flagged_offset_byte_at_stream_30": -1,
+                },
+                "copied_metrics": {
+                    "word_0x14": 24,
+                    "word_0x16": 4,
+                    "word_0x18": 19,
+                    "word_0x1a": 0xFFFF,
+                    "byte_0x2b": 0,
+                    "byte_0x2c": 0,
+                    "byte_0x2d": 8,
+                    "word_0x2c": 8,
+                },
+                "d4ac": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D4AC,
+                        "context_offset_002b": 0,
+                        "context_lower_002c": 0,
+                        "context_height_002d": 8,
+                        "high_y": 26,
+                    },
+                    "object_prefix": bytes.fromhex(
+                        "00 00 00 00 40 00 00 01 a4 06 03 00 00 14"
+                    ),
+                    "render": {
+                        "row_count": 13,
+                        "row_width": 116,
+                        "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                    },
+                },
+                "d8fc": {
+                    "span": {
+                        "updated": True,
+                        "cursor_y": 21,
+                        "handler": 0x00D8FC,
+                        "context_lower_0016": 4,
+                        "context_height_0018": 19,
+                        "context_offset_001a": 0xFFFF,
+                        "metric_source": metric_boundary_context_source,
+                        "high_y": -65514,
                     },
                     "object_prefix": bytes.fromhex(
                         "00 00 00 00 40 00 00 01 04 06 03 00 00 14"

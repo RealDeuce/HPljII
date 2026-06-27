@@ -346,17 +346,18 @@ The next work should follow dataflow, not isolated handlers:
    tight `d4ac` page-extent gates, rounded-metric clamping into `+0x2c/+0x2d`,
    shifted `d8fc` visible rows, a zero rounded/offset case where both consumers
    publish spans, negative and max-positive copied offset words
-   `0xfffe`/`0x007f`, `d8fc` lower-bound and exact page-extent equality, a
-   midpoint case where `d8fc` updates state but leaves compact-only output, a
-   lower-bound no-span output path for both consumers, and an upper-bound case
-   where `d4ac` still renders a span while `d8fc` exits `beyond-page-extent`.
+   `0xfffe`/`0xffff`/`0x007f`, `d8fc` lower-bound and exact page-extent
+   equality, rounded transform inputs `0x1500`/`0x1508`/`0x15ff`, a midpoint
+   case where `d8fc` updates state but leaves compact-only output, a lower-bound
+   no-span output path for both consumers, and an upper-bound case where `d4ac`
+   still renders a span while `d8fc` exits `beyond-page-extent`.
    Fixture
    `descriptor metric fields match across inline and resource contexts` now
    pins the legal producer-form boundary: inline/unflagged reaches `d4ac`,
    resource/flagged reaches `d8fc`, and the swapped forms fail at concrete
    map/render boundaries. The missing middle is now additional metric-value
-   combinations within the legal forms, plus page-visible behavior for
-   validation/error forms beyond the bounded predicate and short-budget
+   combinations outside the pinned legal endpoints, plus page-visible behavior
+   for validation/error forms beyond the bounded predicate and short-budget
    no-install fixtures.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,

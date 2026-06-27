@@ -43627,6 +43627,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         data,
         downloaded_wide_even_parser_page_fetched,
     )
+    downloaded_wide_even_return_drain = consume_data_payload_count_via_12328(
+        int(downloaded_wide_even_install["copy"]["byte_budget"]),
+        downloaded_wide_even_parser_page_fetched,
+    )
     downloaded_wide_even_parser_page_record_stream = (
         render_mixed_printable_control_page_record_stream(
             data,
@@ -43717,6 +43721,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "install_table_entry": downloaded_wide_even_install["table_entry"],
                 "install_record_delta": downloaded_wide_even_install["record_delta"],
                 "install_bitmap_offset": downloaded_wide_even_install["bitmap_offset"],
+            },
+            "return_boundary": {
+                "call_edge": (0x15DC6, 0x16498),
+                "return_edge": (0x16498, 0x15DCC),
+                "drain_edge": (0x15DCC, 0x12328),
+                "font_end": downloaded_wide_even_parser_font_end,
+                "copy_status": downloaded_wide_even_install["copy"]["status"],
+                "copy_stream_pos": downloaded_wide_even_install["copy"]["stream_pos"],
+                "remaining_budget_0x783140": downloaded_wide_even_install["copy"]["byte_budget"],
+                "drain": downloaded_wide_even_return_drain,
+                "next_stream_prefix": downloaded_wide_even_parser_page_fetched[:6],
+                "next_handler": downloaded_wide_even_parser_page_trace["events"][0]["handler"],
             },
             "page_parser": {
                 "stream": downloaded_wide_even_parser_page_record_stream["stream"],
@@ -43841,6 +43857,24 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "install_table_entry": 0x00EE,
                 "install_record_delta": 0x0780,
                 "install_bitmap_offset": 0x078C,
+            },
+            "return_boundary": {
+                "call_edge": (0x15DC6, 0x16498),
+                "return_edge": (0x16498, 0x15DCC),
+                "drain_edge": (0x15DCC, 0x12328),
+                "font_end": len(downloaded_wide_even_command_stream),
+                "copy_status": 1,
+                "copy_stream_pos": 18,
+                "remaining_budget_0x783140": 0,
+                "drain": {
+                    "status": 1,
+                    "values": [],
+                    "pos": 0,
+                    "remaining": 0,
+                    "control_hits": 0,
+                },
+                "next_stream_prefix": b"\x1b*c12a",
+                "next_handler": 0x010E68,
             },
             "page_parser": {
                 "stream": downloaded_wide_even_parser_page_stream,
@@ -84076,6 +84110,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_wide_even_published_render["render_record_fields"]["word_10"],
             downloaded_wide_even_published_entry["dispatch"]["entries"][0]["object_byte_4"],
             downloaded_wide_even_published_entry["dispatch"]["entries"][0]["target"],
+        )
+    )
+    lines.append(
+        "- even-span downloaded-glyph return boundary: `0x15dc6 -> 0x16498 -> "
+        "0x15dcc -> 0x12328` ends font bytes at `%d`, leaves remaining "
+        "`0x783140 = %d`, drains `%d` bytes through `0x12328`, and resumes "
+        "the following page stream at handler `0x%05x`." % (
+            downloaded_wide_even_parser_font_end,
+            downloaded_wide_even_install["copy"]["byte_budget"],
+            len(downloaded_wide_even_return_drain["values"]),
+            downloaded_wide_even_parser_page_trace["events"][0]["handler"],
         )
     )
     lines.append(

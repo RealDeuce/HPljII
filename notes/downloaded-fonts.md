@@ -907,11 +907,13 @@ bytes above. Parser scratch is the restored font payload record
 the later page parser range `24..54` and raster scratch record
 `80 57 00 02 00 00` at payload offset `28`. Derived/cache state is the page
 bucket chain, normalized rule object, `0x1ed84` active copy, and `0x1ef6a`
-dispatch fields. The unresolved middle edge is therefore exact: live CPU
-continuity from the `0x16c14` / `0x16498` install return after byte `24` back
-to the `0x11774` parser loop for the following `0x10e68` rectangle handler is
-not captured; the bytes and installed resource image on both sides of that
-boundary are fixture-pinned.
+dispatch fields. The return boundary is now fixture-pinned for this even-span
+path: fixture `parser-driven downloaded glyph rule raster stream composes
+through 0x1ef6a` records call edge `0x15dc6 -> 0x16498`, return edge
+`0x16498 -> 0x15dcc`, drain edge `0x15dcc -> 0x12328`, font end byte `24`,
+copy status `1`, copy stream position `18`, remaining `0x783140 = 0`, a
+zero-byte `0x12328` drain, and the next parser handler `0x10e68` for
+following bytes `ESC *c12a`.
 
 Fixture `host-fetched row-0x80 downloaded character remains short compact`
 pins the row-count threshold just below the segmented path. The host-fetched
@@ -1588,8 +1590,12 @@ A byte-stream renderer must preserve:
   rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   truncated, linear-segmented, rows-`0x82` segmented, split-plane segmented,
   segmented-wide, even-span wide, payload-control wide, no-install, and status-`2`
-  compact bucket variants, and live CPU continuity from `0x15dc6` into
-  `0x16498` back to `0x15dcc` after the install/payload skip. Accepted
+  compact bucket variants, and return-boundary variants beyond the even-span
+  `parser-driven downloaded glyph rule raster stream composes through
+  0x1ef6a` fixture. That fixture now pins the normal even-span
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` boundary with zero remaining
+  budget and next handler `0x10e68`; split-plane, segmented, no-install, and
+  status-`2` return-boundary siblings are still bounded cross-products. Accepted
   descriptor-record mode bytes are closed for the covered helper table by
   fixture `0x16b1a descriptor width helper emits only mode 1/2`: disassembly
   `0x16b36..0x16b6a` writes mode `1`/`2` from span parity, and

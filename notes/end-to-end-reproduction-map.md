@@ -325,7 +325,7 @@ pixels or byte-stream compatibility.
    fixture `0x16b1a descriptor width helper emits only mode 1/2`: `0x16b36..0x16b6a`
    writes only mode `1`/`2` from span parity, and `0x16b26..0x16b34` rejects invalid
    widths without scratch writes. The full soft-font descriptor grammar, other release
-   variants, live CPU continuity from `0x15dc6` into `0x16498` back to `0x15dcc`, and
+   variants, return-boundary siblings outside the even-span rule/raster path, and
    page-visible behavior for descriptor error forms beyond those no-install boundaries
    are still not proven against every PCL form. The mode-byte-`0` no-install boundary is
    documented separately: fixture `0x16498 replacement allocation failure partial and
@@ -337,9 +337,9 @@ pixels or byte-stream compatibility.
    install-to-page handoff: host-fetched `ESC )s18W` produces the resource image
    consumed by the parser-driven page stream, including glyph `0x29`, table entry
    `0x00ee`, record delta `0x0780`, bitmap offset `0x078c`, and the 18 copied bitmap
-   bytes. The still-open boundary is live CPU continuity from the `0x16c14` / `0x16498`
-   install return after stream byte `24` back into parser loop `0x11774` for the
-   following page bytes.
+   bytes. That fixture now pins the normal return boundary after stream byte `24`:
+   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, copy status `1`, copy stream position
+   `18`, remaining `0x783140 = 0`, zero-byte drain, and next parser handler `0x10e68`.
 5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
    board-confirmed. This does not block a byte-stream renderer, but it blocks
@@ -458,9 +458,10 @@ The next work should follow dataflow, not isolated handlers:
    payload-control wide selector families, especially row counts outside the covered
    short rows `0x03`, `0x04`, `0x10`, `0x20`, `0x40`, `0x7f`, and `0x80` and segmented
    rows `0x81`, `0x82`, `0x83`, and `0xff`, descriptor grammar forms outside the
-   covered helper-table path, live CPU continuity from `0x15dc6` into `0x16498` back to
-   `0x15dcc`, and non-success exits. The accepted mode-byte boundary itself is covered
-   by fixture `0x16b1a descriptor width helper emits only mode 1/2`, which pins
+   covered helper-table path, return-boundary siblings beyond the covered even-span
+   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` zero-drain case, and non-success exits.
+   The accepted mode-byte boundary itself is covered by fixture
+   `0x16b1a descriptor width helper emits only mode 1/2`, which pins
    `0x16b36..0x16b6a` accepted writes and `0x16b26..0x16b34` invalid no-writes. The
    nonboundary-short fixture now publishes rows `0x10` on
    selector `0x0003` through FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` with digest

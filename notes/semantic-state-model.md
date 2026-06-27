@@ -3646,10 +3646,10 @@ Field groups:
 - Firmware bookkeeping: active-copy words reported by the fixture are
   zeroed source/render work words before the fixture sets render word `+0x10`
   for bucket `5`; no page publication or root clear occurs in this checkpoint.
-- Unknown for this checkpoint: exact live parser scheduling between the font
-  download and the page stream inside real CPU memory. The page stream itself
-  now drives the glyph, rule, and raster producers together; the font payload
-  install still enters the page phase as a modeled resource image.
+- Unknown for this checkpoint: return-boundary siblings outside the even-span
+  downloaded-glyph plus rule/raster stream. The page stream itself now drives
+  the glyph, rule, and raster producers together; the font payload install
+  still enters the page phase as a modeled resource image.
 
 The modeled resource image is now a pinned handoff, not an implicit fixture
 shortcut. The page-stream runner uses exactly
@@ -3657,11 +3657,15 @@ shortcut. The page-stream runner uses exactly
 host-fetched `0x16c14` / `0x16498` install fixture. With that header, printable
 byte `0x29` resolves to glyph entry `0x0780`, bitmap `0x078c`, width `0x0090`,
 rows `1`, inline record `12 01 00`, and context slot `3` before `0x12f2e`
-queues selector `0x1003`. The unresolved address boundary is the live CPU
-continuation from the delayed install return at `0x16c14` / `0x16498` after
-stream byte `24` back into parser loop `0x11774`, where the next page byte
-starts the `0x10e68` rectangle handler; the bytes, installed resource image,
-and downstream rendered rows on both sides are fixture-pinned.
+queues selector `0x1003`. The formerly unresolved address boundary is the
+live CPU continuation from the delayed install return at `0x16c14` / `0x16498`
+after stream byte `24` back into parser loop `0x11774`, where the next page
+byte starts the `0x10e68` rectangle handler; fixture `parser-driven
+downloaded glyph rule raster stream composes through 0x1ef6a` now pins that
+even-span boundary as `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, with copy
+status `1`, copy stream position `18`, remaining `0x783140 = 0`, a zero-byte
+`0x12328` drain, and next handler `0x10e68`. The split-plane, segmented,
+no-install, and status-`2` return-boundary siblings remain open cross-products.
 
 Readers and output effect: `0x1ef6a` runs call order `0x1ef86`, `0x1efc2`,
 `0x1f446`, `0x1f756`. The bucket dispatcher sends the raster object to
@@ -3859,8 +3863,12 @@ fields and every legal metric combination have not been page-compared.
   short, rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   low-byte-truncated table-limit boundary, linear-segmented, rows-`0x82` segmented,
   split-plane segmented, segmented-wide, even-span wide, payload-control wide,
-  no-install, and status-`2` compact bucket variants, and live CPU continuity from
-  `0x15dc6` into `0x16498` back to `0x15dcc` after install/payload skip. Accepted
+  no-install, and status-`2` compact bucket variants, and return-boundary siblings
+  outside the even-span `parser-driven downloaded glyph rule raster stream composes
+  through 0x1ef6a` fixture. That fixture pins
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with zero remaining budget and next
+  handler `0x10e68`; split-plane, segmented, no-install, and status-`2`
+  return-boundary siblings remain open cross-products. Accepted
   descriptor-record mode bytes are closed for the covered helper table by fixture
   `0x16b1a descriptor width helper emits only mode 1/2`: `0x16b36..0x16b6a` writes
   mode `1`/`2` from span parity, and `0x16b26..0x16b34` rejects invalid widths without

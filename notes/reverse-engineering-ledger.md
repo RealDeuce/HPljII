@@ -476,11 +476,17 @@ disassembly `0x16b36..0x16b6a` writes mode `1` for even byte spans and mode
 `0x1069` without scratch writes. Mode-byte-`0` remains documented as an
 artificial `0x16498` object-boundary reject through the no-install fixtures,
 not as parser-produced descriptor output.
+Fixture `parser-driven downloaded glyph rule raster stream composes through
+0x1ef6a` now carries an explicit even-span downloaded-character return
+boundary: after stream byte `24`, it records `0x15dc6 -> 0x16498`,
+`0x16498 -> 0x15dcc`, `0x15dcc -> 0x12328`, copy status `1`, copy stream
+position `18`, remaining `0x783140 = 0`, a zero-byte `0x12328` drain, and
+next parser handler `0x10e68` for following bytes `ESC *c12a`.
 Remaining work is additional metric-value combinations outside those pinned
 legal matrix, boundary, and low-nibble endpoints, validation/error page behavior
 beyond those bounded predicate and short-budget no-install branches, remaining
-release variants, live CPU continuity from `0x15dc6` into `0x16498` back to
-`0x15dcc`, broader publication combinations beyond the covered
+release variants, return-boundary siblings beyond that covered even-span
+zero-drain case, broader publication combinations beyond the covered
 normal, nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented,
 rows-`0x20` short, rows-`0x40` short, row-count-matrix rows
 `0x04`/`0x7f`/`0x83`/`0xff`, rows-`0x82` segmented, rows-`0x0102`

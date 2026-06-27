@@ -53767,6 +53767,148 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     ))
 
+    metric_tight_value_inputs = {
+        "range-one-zero-rounded": (0x0000, 0x0001, 0x0000, 0x00),
+        "range-one-clamped-rounded": (0x0000, 0x0001, 0xFFFF, 0x00),
+        "range-two-positive-max-offset": (0x0001, 0x0002, 0x0003, 0x7F),
+        "range-two-negative-max-offset": (0x0001, 0x0002, 0x0003, 0xFF),
+    }
+    metric_tight_value_cases = {
+        label: compact_metric_boundary_case(
+            mixed_metric_stream(first_code, range_word, rounded_word, offset_byte),
+        )
+        for label, (
+            first_code,
+            range_word,
+            rounded_word,
+            offset_byte,
+        ) in metric_tight_value_inputs.items()
+    }
+
+    def expected_metric_tight_value_case(
+        first_code: int,
+        range_word: int,
+        rounded_word: int,
+        offset_byte: int,
+        copied_word: int,
+        d8fc_high_y: int,
+        d8fc_object_prefix: bytes,
+        d8fc_row_count: int,
+        d8fc_row_width: int,
+        d8fc_row_sha256: str,
+    ) -> dict[str, object]:
+        offset_word = offset_byte if offset_byte < 0x80 else offset_byte | 0xFF00
+        return {
+            "input_metrics": {
+                "first_code_word_at_stream_6": first_code,
+                "range_word_at_stream_10": range_word,
+                "rounded_word_at_stream_20": rounded_word,
+                "flagged_offset_byte_at_stream_30": s8(offset_byte),
+            },
+            "copied_metrics": {
+                "word_0x14": range_word,
+                "word_0x16": first_code,
+                "word_0x18": range_word - first_code - 1,
+                "word_0x1a": offset_word,
+                "byte_0x2b": 0,
+                "byte_0x2c": copied_word >> 8,
+                "byte_0x2d": copied_word & 0xFF,
+                "word_0x2c": copied_word,
+            },
+            "d4ac": {
+                "span": {
+                    "updated": True,
+                    "cursor_y": 21,
+                    "handler": 0x00D4AC,
+                    "context_offset_002b": 0,
+                    "context_lower_002c": copied_word >> 8,
+                    "context_height_002d": copied_word & 0xFF,
+                    "high_y": 26,
+                },
+                "object_prefix": bytes.fromhex(
+                    "00 00 00 00 40 00 00 01 a4 06 03 00 00 14"
+                ),
+                "render": {
+                    "row_count": 13,
+                    "row_width": 116,
+                    "row_sha256": "67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e",
+                },
+            },
+            "d8fc": {
+                "span": {
+                    "updated": True,
+                    "cursor_y": 21,
+                    "handler": 0x00D8FC,
+                    "context_lower_0016": first_code,
+                    "context_height_0018": range_word - first_code - 1,
+                    "context_offset_001a": offset_word,
+                    "metric_source": metric_boundary_context_source,
+                    "high_y": d8fc_high_y,
+                },
+                "object_prefix": d8fc_object_prefix,
+                "render": {
+                    "row_count": d8fc_row_count,
+                    "row_width": d8fc_row_width,
+                    "row_sha256": d8fc_row_sha256,
+                },
+            },
+        }
+
+    checks.append(assert_equal(
+        "legal descriptor metric tight range values drive d4ac and d8fc consumers",
+        metric_tight_value_cases,
+        {
+            "range-one-zero-rounded": expected_metric_tight_value_case(
+                0x0000,
+                0x0001,
+                0x0000,
+                0x00,
+                0x0000,
+                21,
+                bytes.fromhex("00 00 00 00 40 00 00 01 54 06 03 00 00 14"),
+                8,
+                116,
+                "47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8",
+            ),
+            "range-one-clamped-rounded": expected_metric_tight_value_case(
+                0x0000,
+                0x0001,
+                0xFFFF,
+                0x00,
+                0x0004,
+                21,
+                bytes.fromhex("00 00 00 00 40 00 00 01 54 06 03 00 00 14"),
+                8,
+                116,
+                "47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8",
+            ),
+            "range-two-positive-max-offset": expected_metric_tight_value_case(
+                0x0001,
+                0x0002,
+                0x0003,
+                0x7F,
+                0x0004,
+                -106,
+                bytes.fromhex("00 00 00 00 40 00 00 01 04 06 03 00 00 14"),
+                3,
+                116,
+                "72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281",
+            ),
+            "range-two-negative-max-offset": expected_metric_tight_value_case(
+                0x0001,
+                0x0002,
+                0x0003,
+                0xFF,
+                0x0004,
+                -65514,
+                bytes.fromhex("00 00 00 00 40 00 00 01 04 06 03 00 00 14"),
+                3,
+                116,
+                "72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281",
+            ),
+        },
+    ))
+
     def rounded_metric_nibble_stream(value: int) -> bytearray:
         stream = bytearray(font_validate_stream)
         stream[10:12] = b"\x00\x18"
@@ -86233,6 +86375,43 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             metric_mixed_value_cases["late-first-code-zero-height"]["d8fc"]["span"][
                 "reason"
             ],  # type: ignore[index]
+        )
+    )
+    lines.append(
+        "- metric tight-range fixture: fixture `legal descriptor metric tight "
+        "range values drive d4ac and d8fc consumers` proves range-one "
+        "zero/clamped rounded copies `+0x14/+0x16/+0x18 = 0x0001/0x0000/0x0000` "
+        "and `+0x2c = 0x%04x/0x%04x`, while range-two max-offset cases copy "
+        "`+0x14/+0x16/+0x18 = 0x0002/0x0001/0x0000` and `+0x1a = 0x%04x/0x%04x`; "
+        "`d4ac` keeps row digest `%s`, zero-offset `d8fc` keeps row digest `%s`, "
+        "and max-offset `d8fc` renders high-y `%d`/`%d` with row digest `%s`." % (
+            metric_tight_value_cases["range-one-zero-rounded"]["copied_metrics"][
+                "word_0x2c"
+            ],  # type: ignore[index]
+            metric_tight_value_cases["range-one-clamped-rounded"]["copied_metrics"][
+                "word_0x2c"
+            ],  # type: ignore[index]
+            metric_tight_value_cases["range-two-positive-max-offset"][
+                "copied_metrics"
+            ]["word_0x1a"],  # type: ignore[index]
+            metric_tight_value_cases["range-two-negative-max-offset"][
+                "copied_metrics"
+            ]["word_0x1a"],  # type: ignore[index]
+            metric_tight_value_cases["range-one-zero-rounded"]["d4ac"]["render"][
+                "row_sha256"
+            ],  # type: ignore[index]
+            metric_tight_value_cases["range-one-zero-rounded"]["d8fc"]["render"][
+                "row_sha256"
+            ],  # type: ignore[index]
+            metric_tight_value_cases["range-two-positive-max-offset"]["d8fc"][
+                "span"
+            ]["high_y"],  # type: ignore[index]
+            metric_tight_value_cases["range-two-negative-max-offset"]["d8fc"][
+                "span"
+            ]["high_y"],  # type: ignore[index]
+            metric_tight_value_cases["range-two-negative-max-offset"]["d8fc"][
+                "render"
+            ]["row_sha256"],  # type: ignore[index]
         )
     )
     lines.append(

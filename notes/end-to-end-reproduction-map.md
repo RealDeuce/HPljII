@@ -285,17 +285,21 @@ pixels or byte-stream compatibility.
    rounded-`0x00ff` sibling caps copied `+0x2c` to `0x00c0`; its offset byte `0x80`
    sibling sign-extends to `+0x1a = 0xff80` and computes `d8fc` high-y `-65387`; its
    late-first-code sibling derives `+0x18 = 0`, keeps `d4ac` visible, and makes `d8fc`
-   exit `before-context-lower`. The producer formula is documented from disassembly:
+   exit `before-context-lower`. Fixture `legal descriptor metric tight range values
+   drive d4ac and d8fc consumers` covers range-one zero/clamped rounded outputs and
+   range-two max positive/negative offset words at derived height zero. The producer
+   formula is documented from disassembly:
    `0x17430` derives `+0x18 = +0x14 - +0x16 - 1`, `0x1757a` writes `+0x2c = min((value +
    2) >> 2, word(+0x14)) << 2`, `0x1762a` writes signed offset word `+0x1a`, and
    `0x1719c` copies those staged fields into the allocated payload. The open edge is
    additional metric-value combinations within the legal forms outside these
    lower/equality/upper, clamp, offset endpoint, rounded-transform, range-endpoint,
-   mixed-value, low-nibble, and byte-boundary cases, plus external/manual naming for
-   consumed-but-not-staged validation fields. It is not the tested type-0/type-1/type-2
-   payloads, metric-variant, clamped-variant, lower-bound-variant, upper-bound-variant,
-   legal-value-matrix, low-nibble rounding submatrix, validation no-install, legal
-   producer-form boundary, mixed-value matrix, or shared consumer branch family.
+   mixed-value, tight-range, low-nibble, and byte-boundary cases, plus external/manual
+   naming for consumed-but-not-staged validation fields. It is not the tested
+   type-0/type-1/type-2 payloads, metric-variant, clamped-variant, lower-bound-variant,
+   upper-bound-variant, legal-value-matrix, low-nibble rounding submatrix, validation
+   no-install, legal producer-form boundary, mixed-value matrix, tight-range matrix, or
+   shared consumer branch family.
    Evidence: `notes/semantic-state-model.md` under `Text Span Flush And Fixed-Width
    Spans`.
 2. VFC table definition and channel jumps now have a tracked command-family
@@ -419,6 +423,8 @@ The next work should follow dataflow, not isolated handlers:
    byte-boundary rounded submatrix around `0x00fd..0x0102`,
    `0x17430` first-code-zero endpoint and first-code-`range - 1` endpoint, a
    mixed-value matrix that combines first-code/range/rounded/offset changes,
+   a tight-range matrix that combines range one/range two with zero/clamped
+   rounded outputs and max signed offsets,
    midpoint case where `d8fc` updates state but leaves compact-only output, a
    lower-bound no-span output path for both consumers, and an upper-bound case where
    `d4ac` still renders a span while `d8fc` exits `beyond-page-extent`.
@@ -430,8 +436,9 @@ The next work should follow dataflow, not isolated handlers:
    middle: `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c` now define the
    canonical, derived/cache, and copied metric fields. The missing middle is
    now additional metric-value combinations outside the pinned legal matrix,
-   boundary, range-endpoint, mixed-value, low-nibble, and byte-boundary fixtures, plus
-   external/manual naming for consumed-but-not-staged validation fields.
+   boundary, range-endpoint, mixed-value, tight-range, low-nibble, and
+   byte-boundary fixtures, plus external/manual naming for consumed-but-not-staged
+   validation fields.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus secondary

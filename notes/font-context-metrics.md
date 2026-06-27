@@ -53,6 +53,7 @@ Evidence:
   - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
   - `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
   - `legal descriptor metric mixed values drive d4ac and d8fc consumers`
+  - `legal descriptor metric tight range values drive d4ac and d8fc consumers`
   - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
   - `legal descriptor metric byte-boundary rounding drives d4ac and d8fc consumers`
 
@@ -632,6 +633,22 @@ Fixture-pinned metric effects:
   queues object prefix `00 00 00 00 40 00 00 01 44 06 03 00 00 14`, and
   renders digest
   `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`.
+- Legal descriptor metric tight ranges: fixture
+  `legal descriptor metric tight range values drive d4ac and d8fc consumers`
+  combines the smallest legal range/count forms with rounded and signed-offset
+  variation. Range one with first code zero copies
+  `+0x14/+0x16/+0x18 = 0x0001/0x0000/0x0000`; rounded input `0x0000`
+  copies `+0x2c = 0x0000`, while rounded input `0xffff` clamps to
+  `+0x2c = 0x0004`. Range two with first code one copies
+  `+0x14/+0x16/+0x18 = 0x0002/0x0001/0x0000`; offset bytes `0x7f` and
+  `0xff` copy to `+0x1a = 0x007f` and `0xffff`. All four cases keep the
+  legal inline/unflagged `d4ac` span digest
+  `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`.
+  The zero-offset range-one cases keep `d8fc` high-y `21` and digest
+  `47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8`;
+  the max-offset range-two cases compute high-y `-106` and `-65514` and
+  render digest
+  `72bfa14c2a84532e2bdf6fb8fddf26ed6904c49dcf4fdcb322592471b5d5b281`.
 - Legal descriptor metric low-nibble rounding: fixture
   `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
   holds the legal resource/flagged and inline/unflagged forms steady while
@@ -1085,6 +1102,11 @@ Output effect:
   `0x00ff` caps copied `+0x2c` to `0x00c0`; offset byte `0x80` sign-extends
   to `+0x1a = 0xff80`; and late first-code `0x002f` derives `+0x18 = 0`,
   keeping `d4ac` visible while `d8fc` exits before lower bound.
+- Fixture `legal descriptor metric tight range values drive d4ac and d8fc
+  consumers` proves the smallest legal range/count cross-products: range one
+  copies `+0x14/+0x16/+0x18 = 0x0001/0x0000/0x0000`, range two copies
+  `0x0002/0x0001/0x0000`, and both still feed visible `d4ac`/`d8fc` output
+  while varying rounded output and signed offset endpoints.
 - Fixture `legal descriptor metric low-nibble rounding drives d4ac and d8fc
   consumers` proves inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
   `0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010` and keep
@@ -1114,6 +1136,8 @@ Fixture evidence:
 - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
 - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
 - `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
+- `legal descriptor metric mixed values drive d4ac and d8fc consumers`
+- `legal descriptor metric tight range values drive d4ac and d8fc consumers`
 - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
 - `d4ac and d8fc span consumer branch family controls flush output`
 
@@ -1246,5 +1270,5 @@ A byte-stream reproduction must preserve these behaviors:
   every ROM-internal rejecting predicate family. The remaining gap is
   additional metric-value combinations within the legal inline/unflagged and
   resource/flagged forms outside the pinned matrix, boundary, range-endpoint,
-  mixed-value, low-nibble, and byte-boundary fixtures, plus external/manual naming for
-  consumed-but-not-staged fields.
+  mixed-value, tight-range, low-nibble, and byte-boundary fixtures, plus
+  external/manual naming for consumed-but-not-staged fields.

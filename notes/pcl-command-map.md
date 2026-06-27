@@ -1038,6 +1038,11 @@ handlers:
   `0x0102` back to `0x0100`. The copied `0x00fc` case leaves `d4ac` at
   `beyond-page-extent`, while crossing to copied `0x0100` restores the
   standard span digest. Fixture
+  `legal descriptor metric tight range values drive d4ac and d8fc consumers`
+  proves the tight legal range/count cross-products: range one copies
+  `+0x14/+0x16/+0x18 = 0x0001/0x0000/0x0000` with zero and clamped rounded
+  outputs, while range two copies `0x0002/0x0001/0x0000` with max positive and
+  max negative offset words. Fixture
   `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
   now pins the `0x17430` first-code/range endpoints: first-code zero copies
   `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017`, and first-code `range - 1`
@@ -1052,8 +1057,8 @@ handlers:
   offset word `+0x1a`, and `0x1719c` copies the staged fields into the
   allocated payload. The remaining open middle is additional metric-value
   combinations outside those pinned legal matrix, boundary, range-endpoint,
-  low-nibble, and byte-boundary fixtures, plus external/manual naming for
-  consumed-but-not-staged validation fields.
+  tight-range, low-nibble, and byte-boundary fixtures, plus external/manual
+  naming for consumed-but-not-staged validation fields.
 - Treat non-Roman `0N` / `10U` / `11U` font-selection visible output as
   covered for the documented primary and secondary paths. Fixture
   `live parser symbol-set streams select non-Roman built-ins` proves primary

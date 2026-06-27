@@ -74,6 +74,7 @@ Primary fixtures:
 - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
 - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
 - `legal descriptor metric mixed values drive d4ac and d8fc consumers`
+- `legal descriptor metric tight range values drive d4ac and d8fc consumers`
 - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
 - `legal descriptor metric byte-boundary rounding drives d4ac and d8fc consumers`
 - `0x16498-backed downloaded character object renders segmented-wide compact row`
@@ -1899,16 +1900,21 @@ A byte-stream renderer must preserve:
   and d8fc consumers` proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
   `0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, while preserving `d4ac`
   span output and `d8fc` high-y `20` output. Fixture `legal descriptor metric range
-  endpoints drive d4ac and d8fc consumers` proves first-code zero and first-code `range
-  - 1` copy `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017` and `0x0015/0x0014/0x0000` while
-  preserving the documented visible span paths. Fixture `legal descriptor metric mixed
-  values drive d4ac and d8fc consumers` proves the combined middle-range, range-capped,
-  sign-extended-offset, and zero-derived-height copied-field cases described above.
-  Fixture `descriptor metric fields match across inline and resource contexts` now
-  proves the legal producer forms and the two
-  invalid swapped forms. The remaining producer gap is not these copied-field endpoints;
-  it is additional legal descriptor combinations outside the pinned
-  lower/equality/upper, clamp, offset endpoint, range endpoint, rounded-transform,
-  mixed-value, low-nibble, and byte-boundary cases. All ROM-internal validation
-  no-install predicate families are already parser-produced and page-visible; remaining
-  validation work is external HP manual naming for consumed-but-not-staged fields.
+  endpoints drive d4ac and d8fc consumers` proves first-code zero and the
+  range-minus-one first-code copy `+0x14/+0x16/+0x18 =
+  0x0018/0x0000/0x0017` and `0x0015/0x0014/0x0000` while preserving the
+  documented visible span paths. Fixture `legal descriptor metric mixed
+  values drive d4ac and d8fc consumers` proves the combined middle-range,
+  range-capped, sign-extended-offset, and zero-derived-height copied-field cases
+  described above. Fixture `legal descriptor metric tight range values drive d4ac and
+  d8fc consumers` proves the smallest legal range/count cross-products: range one
+  copies `+0x14/+0x16/+0x18 = 0x0001/0x0000/0x0000` with zero and clamped rounded
+  `+0x2c` values, while range two copies `0x0002/0x0001/0x0000` with max positive and
+  max negative signed offsets. Fixture `descriptor metric fields match across inline
+  and resource contexts` now proves the legal producer forms and the two invalid
+  swapped forms. The remaining producer gap is not these copied-field endpoints; it is
+  additional legal descriptor combinations outside the pinned lower/equality/upper,
+  clamp, offset endpoint, range endpoint, rounded-transform, mixed-value, tight-range,
+  low-nibble, and byte-boundary cases. All ROM-internal validation no-install
+  predicate families are already parser-produced and page-visible; remaining validation
+  work is external HP manual naming for consumed-but-not-staged fields.

@@ -3173,6 +3173,7 @@ fixtures.
 - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
 - `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
 - `legal descriptor metric mixed values drive d4ac and d8fc consumers`
+- `legal descriptor metric tight range values drive d4ac and d8fc consumers`
 - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
 - `legal descriptor metric byte-boundary rounding drives d4ac and d8fc consumers`
 - `0x1354a portrait text span split queues adjacent buckets`
@@ -3244,8 +3245,14 @@ fixtures.
   copied `+0x2c/+0x2d = 0/0` while still publishing the same `d4ac` span
   object, the negative-offset value copies `+0x2c/+0x2d = 0/8` while still
   publishing that span, and the lower-bound value makes `d4ac` exit before
-  lower. Remaining producer gaps are additional metric values within legal
-  forms; bounded validation no-install branches are composed below under
+  lower. Fixture
+  `legal descriptor metric tight range values drive d4ac and d8fc consumers`
+  proves the smallest legal range/count cross-products: range one copies
+  `+0x14/+0x16/+0x18 = 0x0001/0x0000/0x0000`, range two copies
+  `0x0002/0x0001/0x0000`, and the same producer path carries zero/clamped
+  rounded words plus max positive/negative offset bytes to visible `d4ac` and
+  `d8fc` rows. Remaining producer gaps are additional metric values within
+  legal forms; bounded validation no-install branches are composed below under
   `Downloaded Resource Validation No-Install`.
 - `0xd8fc..0xd992`: flagged context fields `+0x16`, `+0x18`, and `+0x1a` are
   fixture-backed for the low-water success branch and tied to selected context records
@@ -3322,9 +3329,9 @@ fixtures.
   keeps `d8fc` at `beyond-page-extent` because derived/cache `+0x18 = 0x003d` or
   `0x003b` exceeds the page extent at cursor y `21`. Remaining producer gaps are
   additional metric values within legal forms outside the pinned legal matrix, boundary,
-  range-endpoint, mixed-value, low-nibble, and byte-boundary fixtures; bounded
-  validation no-install branches are composed below under `Downloaded Resource
-  Validation No-Install`.
+  range-endpoint, mixed-value, tight-range, low-nibble, and byte-boundary
+  fixtures; bounded validation no-install branches are composed below under
+  `Downloaded Resource Validation No-Install`.
 
 ## Downloaded Font Descriptor And Payload Chain
 
@@ -4397,14 +4404,20 @@ fields and every legal metric combination have not been page-compared.
   `+0x18/+0x1a/+0x2c = 0x0027/0x0002/0x002c`, suppresses `d4ac`, and renders
   `d8fc`; rounded `0x00ff` caps copied `+0x2c` to `0x00c0`; offset byte `0x80`
   sign-extends to `+0x1a = 0xff80`; and first-code `0x002f` derives `+0x18 = 0`.
+  Fixture `legal descriptor metric tight range values drive d4ac and d8fc consumers`
+  adds the smallest legal range/count cross-products: range one copies
+  `+0x14/+0x16/+0x18 = 0x0001/0x0000/0x0000`, range two copies
+  `0x0002/0x0001/0x0000`, and both still feed visible consumer rows while
+  varying rounded outputs and max signed offsets.
   Fixture
   `descriptor metric fields match across inline and resource contexts` now
   pins the legal inline/unflagged and resource/flagged producer forms plus the
   two invalid swapped forms. The producer formulas are documented from
   `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c`; remaining work is additional
   metric-value combinations within legal forms beyond the covered matrix,
-  boundary, range-endpoint, mixed-value, low-nibble, and byte-boundary fixtures, plus
-  external naming for consumed-but-not-staged validation fields.
+  boundary, range-endpoint, mixed-value, tight-range, low-nibble, and
+  byte-boundary fixtures, plus external naming for consumed-but-not-staged
+  validation fields.
 
 ## Macro Definition And Data-Chain Replay
 

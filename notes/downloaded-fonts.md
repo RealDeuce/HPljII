@@ -819,8 +819,6 @@ Field groups:
     drained host source are failure bookkeeping. They gate the next printable
     byte back to the unchanged default-font path.
 - Unknown:
-  - descriptor-error forms outside the bounded entry `2`, `4`, `5`, `6`, and
-    `7` predicate failures and the short entry-5 byte-budget exhaustion.
   - HP manual labels for consumed-but-not-staged descriptor fields.
 
 Writers:
@@ -863,8 +861,9 @@ Confidence:
   compact object, and rendered rows because
   `ESC )s#W validation failures preserve following printable output` asserts
   all eight visible recovery cases.
-- Medium for untested descriptor-error forms because the validation table has
-  more predicates than the covered failure and budget-exhaustion cases.
+- High for ROM-internal rejecting validation coverage because only entries
+  `2`, `4`, `5`, `6`, and `7` can return failure; the remaining validation
+  table entries are pass-through, clamps, or field writers.
 
 Fixture evidence:
 
@@ -889,9 +888,9 @@ Unresolved middle edges:
 
 - `0x16fae..0x17016`: fixture-backed for the seven bounded `ESC )s80W`
   no-install exits and the short-budget `ESC )s8W` entry-5 failure, including
-  resumed visible output. Remaining work is descriptor-error cross-products
-  outside entries `2`, `4`, `5`, `6`, and `7` plus the covered budget
-  boundary.
+  resumed visible output. This covers every ROM-internal rejecting predicate
+  family; remaining validation work is external HP manual naming for
+  consumed-but-not-staged fields.
 - `0x16eae` consumed-but-not-staged fields: currently named by ROM effect;
   external HP documentation correlation remains open.
 
@@ -1881,5 +1880,6 @@ A byte-stream renderer must preserve:
   remaining producer gap is not these copied-field endpoints; it is additional
   legal descriptor combinations outside the pinned lower/equality/upper,
   clamp, offset endpoint, range endpoint, rounded-transform, and low-nibble
-  cases, plus validation/error forms beyond the bounded predicate and
-  short-budget branches that still need parser-produced page evidence.
+  cases. All ROM-internal validation no-install predicate families are already
+  parser-produced and page-visible; remaining validation work is external HP
+  manual naming for consumed-but-not-staged fields.

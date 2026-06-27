@@ -283,8 +283,8 @@ pixels or byte-stream compatibility.
    the allocated payload.
    The open edge is additional metric-value combinations within the legal
    forms outside these lower/equality/upper, clamp, offset endpoint,
-   rounded-transform, and low-nibble cases, plus validation/error forms beyond
-   those bounded predicate and short-budget branches.
+   rounded-transform, and low-nibble cases, plus external/manual naming for
+   consumed-but-not-staged validation fields.
    It is not the tested type-0/type-1/type-2 payloads, metric-variant,
    clamped-variant, lower-bound-variant, upper-bound-variant,
    legal-value-matrix, low-nibble rounding submatrix, validation no-install,
@@ -417,9 +417,8 @@ The next work should follow dataflow, not isolated handlers:
    middle: `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c` now define the
    canonical, derived/cache, and copied metric fields. The missing middle is
    now additional metric-value combinations outside the pinned legal matrix,
-   boundary, range-endpoint, and low-nibble fixtures, plus page-visible
-   behavior for validation/error forms beyond the bounded predicate and
-   short-budget no-install fixtures.
+   boundary, range-endpoint, and low-nibble fixtures, plus external/manual
+   naming for consumed-but-not-staged validation fields.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus secondary

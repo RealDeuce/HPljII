@@ -1003,8 +1003,8 @@ handlers:
   offset word `+0x1a`, and `0x1719c` copies the staged fields into the
   allocated payload. The remaining open middle is additional metric-value
   combinations outside those pinned legal matrix, boundary, range-endpoint,
-  and low-nibble fixtures, plus visible behavior for validation/error forms beyond the
-  bounded predicate and short-budget no-install cases.
+  and low-nibble fixtures, plus external/manual naming for
+  consumed-but-not-staged validation fields.
 - Treat non-Roman `0N` / `10U` / `11U` font-selection visible output as
   covered for the documented primary and secondary paths. Fixture
   `live parser symbol-set streams select non-Roman built-ins` proves primary

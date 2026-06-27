@@ -2681,8 +2681,8 @@ queues a fixed-width span through `0x136d2`.
     forms, copied-field endpoints, and consumer branches. Remaining gaps are
     additional legal descriptor combinations outside the pinned type-0/type-1/
     type-2, lower/equality/upper, clamped, midpoint, offset-boundary, and
-    rounded-transform cases, plus validation/error forms beyond the bounded
-    no-install fixtures.
+    rounded-transform cases, plus external/manual naming for
+    consumed-but-not-staged validation fields.
 
 ### Writers
 
@@ -3571,10 +3571,10 @@ Field groups:
   fully drained host source are failure bookkeeping. They are not printable
   page state, but they gate whether the subsequent `!` uses a downloaded font
   or the unchanged default font.
-- Unknown for this checkpoint: validation/error forms outside the bounded
-  entry `2`, `4`, `5`, `6`, and `7` predicate failures and the short
-  byte-budget exhaustion at entry `5`, plus external HP manual names for
-  descriptor fields that the table consumes but does not stage.
+- Unknown for this checkpoint: external HP manual names for descriptor fields
+  that the table consumes but does not stage. The ROM-internal rejecting
+  predicate helpers are all in entries `2`, `4`, `5`, `6`, and `7`; the other
+  validation entries are pass-through, clamps, or field writers.
 
 Writers and readers:
 
@@ -3625,9 +3625,10 @@ staged fields, allocation skip, no-install result, resumed printable handler,
 default compact object, and rendered rows because fixture
 `ESC )s#W validation failures preserve following printable output` asserts
 the seven bounded `ESC )s80W` no-install streams and short-budget
-`ESC )s8W` stream. Confidence is medium for untested descriptor error forms
-because the validation table has more entries than the covered predicate and
-budget-exhaustion failures.
+`ESC )s8W` stream. Confidence is high for ROM-internal rejecting validation
+coverage because disassembly shows only predicate helpers `0x17362`,
+`0x173d0`, `0x173fe`, `0x17430`, and `0x1749e` can return failure; the
+remaining validation entries cannot create additional no-install error forms.
 
 Fixtures:
 
@@ -3648,12 +3649,11 @@ Disassembly evidence:
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
 - `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
 
-Unresolved middle edges: `0x16fae..0x17016` is fixture-backed for the seven
-bounded `ESC )s80W` no-install exits above and the short-budget `ESC )s8W`
-entry-5 failure, including resumed visible output. The remaining middle edge
-is not the tested allocation skip or default printable recovery; it is the
-untested descriptor-error cross-product outside entries `2`, `4`, `5`, `6`,
-and `7` plus the covered short-budget boundary, and external naming for
+Unresolved middle edges: `0x16fae..0x17016` is fixture-backed for every
+ROM-internal rejecting predicate family: entries `2`, `4`, `5`, `6`, and `7`
+plus the short-budget `ESC )s8W` entry-5 failure, including resumed visible
+output. There is no remaining ROM-internal validation no-install edge outside
+those predicates; the remaining edge is external naming for
 consumed-but-not-staged descriptor fields.
 
 ### Downloaded Glyph Rule/Raster Composition
@@ -3908,9 +3908,9 @@ fields and every legal metric combination have not been page-compared.
   `ESC )s#W validation failures preserve following printable output` proves
   those seven `ESC )s80W` no-install exits plus the short-budget `ESC )s8W`
   entry-5 failure leave the next printable `!` on the unchanged default-font
-  page-record path with matching rendered rows. Remaining descriptor
-  error-form risk is now variants beyond those bounded predicate branches and
-  the short-budget boundary, plus external HP manual naming for
+  page-record path with matching rendered rows. Disassembly of the predicate
+  helpers shows these are the complete ROM-internal rejecting families; the
+  remaining validation edge is external HP manual naming for
   consumed-but-not-staged fields.
 - `0x16498..0x16942`: split-plane segmented-wide, wide/control, even-span wide,
   row-threshold `0x80` short, linear normal, linear segmented, and split-plane segmented
@@ -4078,9 +4078,8 @@ fields and every legal metric combination have not been page-compared.
   two invalid swapped forms. The producer formulas are documented from
   `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c`; remaining work is additional
   metric-value combinations within legal forms beyond the covered matrix,
-  boundary, range-endpoint, and low-nibble fixtures, plus producer-side
-  validation/error page evidence beyond the documented bounded-predicate and
-  short-budget validation no-install following-printable boundaries.
+  boundary, range-endpoint, and low-nibble fixtures, plus external naming for
+  consumed-but-not-staged validation fields.
 
 ## Macro Definition And Data-Chain Replay
 

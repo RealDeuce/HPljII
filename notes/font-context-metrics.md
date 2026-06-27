@@ -956,8 +956,7 @@ the selected-context producer-form boundary: inline/unflagged `d4ac` and
 resource/flagged `d8fc` are visible, while resource/unflagged and
 inline/flagged are invalid cross-forms. The remaining producer-side work is
 additional descriptor metric combinations within those legal forms, plus
-validation/error forms beyond the bounded predicate and short-budget
-no-install cases driven from parser bytes to page rows.
+external/manual naming for consumed-but-not-staged validation fields.
 
 ## Descriptor Metric Semantic Checkpoint
 
@@ -1125,9 +1124,10 @@ Disassembly evidence:
 Unresolved middle edges:
 
 - `0x16fae..0x1719c`: seven bounded validation no-install forms and the
-  short-budget entry-5 failure preserve following printable output, but
-  remaining validation/error table combinations outside those predicates are
-  not all page-visible.
+  short-budget entry-5 failure preserve following printable output. These
+  cover every ROM-internal predicate helper that can reject a descriptor;
+  remaining validation work is external/manual naming for
+  consumed-but-not-staged fields.
 - `0x17430..0x1763c`: the covered legal matrix proves the main range/count,
   first-code-zero and range-minus-one endpoints, rounded/clamped,
   signed-offset, equality, and low-byte-discard behavior.
@@ -1232,7 +1232,8 @@ A byte-stream reproduction must preserve these behaviors:
   offset word `+0x1a`, and `0x1719c` copies those staged fields into the
   allocated payload.
   Seven bounded `0x16fae` validation no-install forms plus the short-budget
-  `ESC )s8W` entry-5 failure now preserve following printable output. The
-  remaining gap is additional metric-value combinations within the legal
-  inline/unflagged and resource/flagged forms, plus validation/error forms
-  beyond those bounded predicate and byte-budget branches.
+  `ESC )s8W` entry-5 failure now preserve following printable output and cover
+  every ROM-internal rejecting predicate family. The remaining gap is
+  additional metric-value combinations within the legal inline/unflagged and
+  resource/flagged forms, plus external/manual naming for
+  consumed-but-not-staged fields.

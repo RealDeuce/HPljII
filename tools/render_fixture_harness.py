@@ -6580,32 +6580,45 @@ def font_download_char_object_via_16498(
     if span <= 0 or rows <= 0 or mode != 1:
         return {"status": 0, "reason": "unsupported-record-shape"}
     copy_result: dict[str, object]
-    bitmap = bytearray()
+    prefix = b""
+    trailing = b""
     split_plane = bool(span & 1 and span > 1)
     if split_plane:
-        copy_result = font_payload_split_plane_copy_via_16942(stream, rows, span - 1, byte_budget)
-        if copy_result["status"] != 1:
+        prefix_span = span - 1
+        copy_result = font_payload_split_plane_copy_via_16942(
+            stream,
+            rows,
+            prefix_span,
+            byte_budget,
+        )
+        if copy_result["status"] == 0:
             return {
                 "status": copy_result["status"],
                 "reason": "payload-copy-incomplete",
                 "copy": copy_result,
             }
-        bitmap.extend(bytes(copy_result["prefix"]))
-        bitmap.extend(bytes(copy_result["trailing"]))
+        prefix = bytes(copy_result["prefix"])
+        trailing = bytes(copy_result["trailing"])
     else:
-        copy_result = font_payload_linear_copy_via_168dc(stream, rows * span, byte_budget)
-        if copy_result["status"] != 1:
+        prefix_span = span
+        copy_result = font_payload_linear_copy_via_168dc(
+            stream,
+            rows * span,
+            byte_budget,
+        )
+        if copy_result["status"] == 0:
             return {
                 "status": copy_result["status"],
                 "reason": "payload-copy-incomplete",
                 "copy": copy_result,
             }
-        bitmap.extend(bytes(copy_result["dest"]))
+        prefix = bytes(copy_result["dest"])
 
-    payload_bytes = len(bitmap)
-    allocation_size = (0x4B + payload_bytes) >> 6
+    expected_payload_bytes = rows * span
+    payload_bytes = len(prefix) + len(trailing)
+    allocation_size = (0x4B + expected_payload_bytes) >> 6
     object_size = allocation_size * 0x40
-    if object_size < 0x0C + payload_bytes:
+    if object_size < 0x0C + expected_payload_bytes:
         raise AssertionError("modeled 0x16498 allocation does not cover the copied payload")
     char_object = bytearray(object_size)
     word0, word2, word6, word10 = (value & 0xFFFF for value in record_words)
@@ -6616,24 +6629,60 @@ def font_download_char_object_via_16498(
     char_object[6:8] = word6.to_bytes(2, "big")
     char_object[8:10] = (width & 0xFFFF).to_bytes(2, "big")
     char_object[10:12] = word10.to_bytes(2, "big")
-    char_object[0x0C:0x0C + payload_bytes] = bitmap
+    char_object[0x0C:0x0C + len(prefix)] = prefix
+    if split_plane:
+        trailing_base = 0x0C + rows * prefix_span
+        char_object[trailing_base:trailing_base + len(trailing)] = trailing
     if object_offset + object_size > len(updated):
         updated.extend(b"\x00" * (object_offset + object_size - len(updated)))
     updated[object_offset:object_offset + object_size] = char_object
     updated[table_entry:table_entry + 4] = object_offset.to_bytes(4, "big")
+    continuation_after = None
+    if copy_result["status"] == 2:
+        copy_continuation = copy_result["continuation"]
+        assert isinstance(copy_continuation, dict)
+        if split_plane:
+            continuation_after = {
+                "flag": 1,
+                "payload": base,
+                "word_0x7827c8": char_code,
+                "dest": object_offset + 0x0C + int(copy_continuation["prefix_offset"]),
+                "trailing_dest": (
+                    object_offset
+                    + 0x0C
+                    + rows * prefix_span
+                    + int(copy_continuation["trailing_offset"])
+                ),
+                "remaining": 0,
+                "d4_counter": int(copy_continuation["prefix_remaining"]),
+                "d3_counter": int(copy_continuation["row_remaining"]),
+            }
+        else:
+            continuation_after = {
+                "flag": 1,
+                "payload": base,
+                "word_0x7827c8": char_code,
+                "dest": object_offset + 0x0C + int(copy_continuation["dest_offset"]),
+                "trailing_dest": 0,
+                "remaining": int(copy_continuation["remaining"]),
+                "d4_counter": 0,
+                "d3_counter": 0,
+            }
     return {
-        "status": 1,
+        "status": copy_result["status"],
         "header": bytes(updated),
         "table_entry": table_entry,
         "record_delta": object_offset,
         "record": bytes(char_object[:12]),
         "bitmap_offset": object_offset + 0x0C,
         "bitmap_size": payload_bytes,
+        "expected_bitmap_size": expected_payload_bytes,
         "allocation_size": allocation_size,
         "object_size": object_size,
         "span": span,
         "split_plane": split_plane,
         "copy": copy_result,
+        "continuation": continuation_after,
     }
 
 
@@ -51941,6 +51990,197 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         },
     ))
+    downloaded_linear_partial = font_download_char_object_via_16498(
+        table_payload_type2_bytes,
+        0x2B,
+        (0x0000, 0x0000, 0x0003, 0x0000),
+        mode=1,
+        width=0x0010,
+        rows=0x0003,
+        stream=bytes.fromhex("f0 0f aa 55"),
+        byte_budget=4,
+        object_offset=0x0840,
+    )
+    downloaded_split_partial = font_download_char_object_via_16498(
+        table_payload_type2_bytes,
+        0x2C,
+        (0x0000, 0x0000, 0x0002, 0x0000),
+        mode=1,
+        width=0x0018,
+        rows=0x0002,
+        stream=bytes.fromhex("a0 a1 b0"),
+        byte_budget=3,
+        object_offset=0x0880,
+    )
+    downloaded_mode_reject = font_download_char_object_via_16498(
+        table_payload_type2_bytes,
+        0x2D,
+        (0x0000, 0x0000, 0x0003, 0x0000),
+        mode=0,
+        width=0x0010,
+        rows=0x0003,
+        stream=bytes.fromhex("f0 0f aa 55 3c c3"),
+        byte_budget=6,
+        object_offset=0x08C0,
+    )
+    downloaded_range_reject_header = bytearray(table_payload_type2_bytes)
+    downloaded_range_reject_header[0x0C] = 0
+    downloaded_range_reject = font_download_char_object_via_16498(
+        downloaded_range_reject_header,
+        0xA0,
+        (0x0000, 0x0000, 0x0003, 0x0000),
+        mode=1,
+        width=0x0010,
+        rows=0x0003,
+        stream=bytes.fromhex("f0 0f aa 55 3c c3"),
+        byte_budget=6,
+        object_offset=0x0900,
+    )
+    checks.append(assert_equal(
+        "0x16498 partial and rejected downloaded character exits preserve state",
+        {
+            "linear_partial": {
+                "status": downloaded_linear_partial["status"],
+                "table_entry": downloaded_linear_partial["table_entry"],
+                "record_delta": downloaded_linear_partial["record_delta"],
+                "record": downloaded_linear_partial["record"],
+                "bitmap_offset": downloaded_linear_partial["bitmap_offset"],
+                "bitmap": downloaded_linear_partial["header"][
+                    downloaded_linear_partial["bitmap_offset"]:
+                    downloaded_linear_partial["bitmap_offset"]
+                    + downloaded_linear_partial["expected_bitmap_size"]
+                ],
+                "bitmap_size": downloaded_linear_partial["bitmap_size"],
+                "expected_bitmap_size": downloaded_linear_partial["expected_bitmap_size"],
+                "copy": {
+                    key: downloaded_linear_partial["copy"][key]
+                    for key in (
+                        "status",
+                        "dest",
+                        "stream_pos",
+                        "remaining",
+                        "byte_budget",
+                    )
+                },
+                "continuation": downloaded_linear_partial["continuation"],
+                "table_pointer": u32(
+                    downloaded_linear_partial["header"],
+                    downloaded_linear_partial["table_entry"],
+                ),
+            },
+            "split_partial": {
+                "status": downloaded_split_partial["status"],
+                "table_entry": downloaded_split_partial["table_entry"],
+                "record_delta": downloaded_split_partial["record_delta"],
+                "record": downloaded_split_partial["record"],
+                "bitmap_offset": downloaded_split_partial["bitmap_offset"],
+                "bitmap": downloaded_split_partial["header"][
+                    downloaded_split_partial["bitmap_offset"]:
+                    downloaded_split_partial["bitmap_offset"]
+                    + downloaded_split_partial["expected_bitmap_size"]
+                ],
+                "bitmap_size": downloaded_split_partial["bitmap_size"],
+                "expected_bitmap_size": downloaded_split_partial["expected_bitmap_size"],
+                "copy": {
+                    key: downloaded_split_partial["copy"][key]
+                    for key in (
+                        "status",
+                        "prefix",
+                        "trailing",
+                        "stream_pos",
+                        "byte_budget",
+                        "phase",
+                    )
+                },
+                "continuation": downloaded_split_partial["continuation"],
+                "table_pointer": u32(
+                    downloaded_split_partial["header"],
+                    downloaded_split_partial["table_entry"],
+                ),
+            },
+            "mode_reject": {
+                "status": downloaded_mode_reject["status"],
+                "reason": downloaded_mode_reject["reason"],
+                "header_unchanged": downloaded_mode_reject.get("header", table_payload_type2_bytes)
+                == table_payload_type2_bytes,
+            },
+            "range_reject": {
+                "status": downloaded_range_reject["status"],
+                "reason": downloaded_range_reject["reason"],
+                "header_unchanged": downloaded_range_reject.get("header", bytes(downloaded_range_reject_header))
+                == bytes(downloaded_range_reject_header),
+            },
+        },
+        {
+            "linear_partial": {
+                "status": 2,
+                "table_entry": 0x00F6,
+                "record_delta": 0x0840,
+                "record": bytes.fromhex("00 00 00 00 0c 01 00 03 00 10 00 00"),
+                "bitmap_offset": 0x084C,
+                "bitmap": bytes.fromhex("f0 0f aa 55 00 00"),
+                "bitmap_size": 4,
+                "expected_bitmap_size": 6,
+                "copy": {
+                    "status": 2,
+                    "dest": bytes.fromhex("f0 0f aa 55"),
+                    "stream_pos": 4,
+                    "remaining": 2,
+                    "byte_budget": 0,
+                },
+                "continuation": {
+                    "flag": 1,
+                    "payload": 0,
+                    "word_0x7827c8": 0x2B,
+                    "dest": 0x0850,
+                    "trailing_dest": 0,
+                    "remaining": 2,
+                    "d4_counter": 0,
+                    "d3_counter": 0,
+                },
+                "table_pointer": 0x0840,
+            },
+            "split_partial": {
+                "status": 2,
+                "table_entry": 0x00FA,
+                "record_delta": 0x0880,
+                "record": bytes.fromhex("00 00 00 00 0c 01 00 02 00 18 00 00"),
+                "bitmap_offset": 0x088C,
+                "bitmap": bytes.fromhex("a0 a1 00 00 b0 00"),
+                "bitmap_size": 3,
+                "expected_bitmap_size": 6,
+                "copy": {
+                    "status": 2,
+                    "prefix": bytes.fromhex("a0 a1"),
+                    "trailing": bytes.fromhex("b0"),
+                    "stream_pos": 3,
+                    "byte_budget": 0,
+                    "phase": "prefix",
+                },
+                "continuation": {
+                    "flag": 1,
+                    "payload": 0,
+                    "word_0x7827c8": 0x2C,
+                    "dest": 0x088E,
+                    "trailing_dest": 0x0891,
+                    "remaining": 0,
+                    "d4_counter": 1,
+                    "d3_counter": 0,
+                },
+                "table_pointer": 0x0880,
+            },
+            "mode_reject": {
+                "status": 0,
+                "reason": "unsupported-record-shape",
+                "header_unchanged": True,
+            },
+            "range_reject": {
+                "status": 0,
+                "reason": "char-outside-header-type",
+                "header_unchanged": True,
+            },
+        },
+    ))
     downloaded_segmented_even_payload = (b"\x00\x00" * 0x80) + bytes.fromhex("f0 0f")
     downloaded_segmented_even_command_stream = (
         b"\x1b)s258W" + downloaded_segmented_even_payload
@@ -77420,6 +77660,34 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             hashlib.sha256(
                 "\n".join(str(row) for row in downloaded_row80_rows).encode("ascii")
             ).hexdigest(),
+        ),
+    )
+    append_wrapped(
+        lines,
+        "- `0x16498` partial/rejected downloaded-character exits: linear "
+        "status-2 copy stores table `0x%04x -> 0x%04x`, copies `%d/%d` "
+        "bitmap bytes, and saves continuation `%s`; split-plane status-2 "
+        "copy stores table `0x%04x -> 0x%04x`, copies prefix `%s` and "
+        "trailing `%s`, and saves continuation `%s`; mode-0 and "
+        "header-type range rejects return `%s`/`%s` without changing their "
+        "headers."
+        % (
+            downloaded_linear_partial["table_entry"],
+            downloaded_linear_partial["record_delta"],
+            downloaded_linear_partial["bitmap_size"],
+            downloaded_linear_partial["expected_bitmap_size"],
+            downloaded_linear_partial["continuation"],
+            downloaded_split_partial["table_entry"],
+            downloaded_split_partial["record_delta"],
+            " ".join(
+                f"{byte:02x}" for byte in downloaded_split_partial["copy"]["prefix"]
+            ),
+            " ".join(
+                f"{byte:02x}" for byte in downloaded_split_partial["copy"]["trailing"]
+            ),
+            downloaded_split_partial["continuation"],
+            downloaded_mode_reject["reason"],
+            downloaded_range_reject["reason"],
         ),
     )
     downloaded_segmented_even_rendered_row = downloaded_segmented_even_bridged_rendered["rows"][-1]

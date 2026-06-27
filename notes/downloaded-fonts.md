@@ -79,6 +79,7 @@ Primary fixtures:
 - `host-fetched downloaded character payload control reaches wide render`
 - `host-fetched even-span wide downloaded character renders through 0x1f0d2`
 - `host-fetched row-0x80 downloaded character remains short compact`
+- `0x16498 partial and rejected downloaded character exits preserve state`
 - `host-fetched even-span downloaded glyph FF publishes rendered page record`
 - `downloaded normal row-0x80 and segmented glyph FF publications render page records`
 - `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
@@ -207,7 +208,10 @@ Renderer-facing allocated payload fields:
 - downloaded character object `+0x04`: bitmap delta `0x0c` written by
   `0x16498`.
 - downloaded character object `+0x05`: glyph bitmap mode. The modeled
-  downloaded-character fixtures use mode `1`.
+  page-visible downloaded-character fixtures use mode `1`; fixture
+  `0x16498 partial and rejected downloaded character exits preserve state`
+  proves mode `0` exits as `unsupported-record-shape` without changing the
+  header.
 - downloaded character object `+0x06/+0x08`: row count and width copied from
   the current character descriptor; the `ESC )s258W` segmented fixture uses
   rows `0x0081` and width `0x0010`.
@@ -805,6 +809,22 @@ dispatches compact target `0x1effe`, and mode-0 helper `0x1fe76` renders the
 bucket-1 band with digest
 `918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac`.
 
+Fixture `0x16498 partial and rejected downloaded character exits preserve
+state` pins the downloaded-character partial-copy and reject branches. The
+linear status-`2` case copies four of six bitmap bytes through `0x168dc`,
+stores table entry `0x00f6 -> 0x0840`, writes record
+`00 00 00 00 0c 01 00 03 00 10 00 00`, leaves bitmap bytes
+`f0 0f aa 55 00 00`, and saves continuation fields equivalent to
+`0x7827c6 = 1`, `0x7827da = 0`, `0x7827c8 = 0x2b`,
+`0x7827ca = 0x0850`, `0x7827d2 = 2`, and zero split-plane counters. The
+split-plane status-`2` case copies prefix bytes `a0 a1` and trailing byte
+`b0` through `0x16942`, stores table entry `0x00fa -> 0x0880`, leaves bitmap
+layout `a0 a1 00 00 b0 00`, and saves `0x7827ca = 0x088e`,
+`0x7827ce = 0x0891`, `0x7827d6 = 1`, and `0x7827d8 = 0`. The mode-`0`
+record-shape reject and the `0xa0` character with header type `0` both return
+status `0` before writing a table pointer, matching the `0x164f2..0x16540`
+range branch and the pre-copy shape guard.
+
 Fixture `host-fetched segmented downloaded character renders through
 0x1f1f0` adds the even-span tall sibling. The host-fetched `ESC )s258W` stream
 uses parser record `80 57 01 02 00 00`, delayed handler `0x16c14`, payload
@@ -1252,9 +1272,12 @@ A byte-stream renderer must preserve:
   the even-span `0x80`/`0x81` selector boundary: rows `0x80` stay on
   selector `0x0003`, while rows `0x81` enter selector `0x2003` in fixture
   `host-fetched segmented downloaded character renders through 0x1f1f0`.
-  Remaining parser-produced comparisons are the cross-product variants not
-  covered by those shapes, especially other row counts, character modes, and
-  non-success exits for the same selector families.
+  Fixture `0x16498 partial and rejected downloaded character exits preserve
+  state` covers status-`2` linear/split-plane continuation pointer writes plus
+  mode and header-type rejects. Remaining parser-produced comparisons are the
+  cross-product variants not covered by those shapes, especially other row
+  counts, other character-mode behavior, allocator/release failures, and
+  page-visible recovery from the same selector families.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
   segmented buckets; the normal, linear-segmented, and even-span wide siblings
   now publish through the same boundary. Fixture

@@ -400,8 +400,12 @@ The next work should follow dataflow, not isolated handlers:
    `0x80`/`0x81` selector boundary by keeping rows `0x80` on selector
    `0x0003`, comparing it with the rows-`0x81` selector `0x2003` fixture, and
    now publishing the row-`0x80` bucket-1 record through FF, `0xff1e`, and
-   `0x1ed84`/`0x1ef6a`. The publication-command checkpoint now covers
-   host-fetched reset, FF, page-size, orientation, paper-source, and copies
-   streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`,
-   and final row comparison; reset, FF, page-size, orientation, paper-source,
-   and copies also have addressed allocation variants.
+   `0x1ed84`/`0x1ef6a`. The `0x16498` partial/reject fixture now also covers
+   status-`2` linear and split-plane continuation pointer writes plus mode and
+   header-type status-`0` rejects; remaining non-success risk is narrower
+   allocator/release failure and page-visible recovery. The publication-command
+   checkpoint now covers host-fetched reset, FF, page-size, orientation,
+   paper-source, and copies streams through parser dispatch, `0xff1e`,
+   `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF,
+   page-size, orientation, paper-source, and copies also have addressed
+   allocation variants.

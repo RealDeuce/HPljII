@@ -206,18 +206,21 @@ broader frame-lifetime tracing.
 
 ## Parser Record And Delayed Payload State
 
-Status: composed as the stateful tokenizer-helper cluster for
-`0x11ba6..0x11ea2`. The low-level ledger remains in
+Status: composed as the parser setup and stateful tokenizer-helper cluster
+for `0x11ea4..0x11f4c`. The low-level ledger remains in
 [pcl-parser-core.md](pcl-parser-core.md), with disassembly evidence in
-`generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst` and
+`generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`,
+`generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`, and
 summary evidence in
 `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`.
 
 Concept: the parser does not treat a command final and its payload bytes as
-one event. Stateful helpers tokenize one or more six-byte records, rewind
-`0x78299e` when a lookahead byte belongs to the current record, arm delayed
-handler wrapper `0x1228a` for generic `W/w` payloads, and let `0x12218`
-restore the selected record before payload consumption.
+one event. Setup handlers select the active callback helper in `0x78299a` or
+append synthetic primary/secondary font-designation records. Stateful helpers
+then tokenize one or more six-byte records, rewind `0x78299e` when a lookahead
+byte belongs to the current record, arm delayed handler wrapper `0x1228a` for
+generic `W/w` payloads, and let `0x12218` restore the selected record before
+payload consumption.
 
 ### Field Groups
 
@@ -236,21 +239,33 @@ restore the selected record before payload consumption.
   Evidence: scheduler `0x121cc`, restore helper `0x12218`, and generic
   helper calls to `0x121cc(0x1228a)`.
 - Firmware bookkeeping:
-  - `0x78299a`: active callback helper pointer written by setup helpers such
-    as `0x11ec8`, `0x11eda`, and `0x11eec`.
+  - `0x78299a`: active callback helper pointer. Setup handler `0x11ea4`
+    writes default callback `0x11b8e` for mode-0 `0x1a`, `0x11eb6` writes
+    punctuation-prefixed helper `0x11ba6` for mode-0 `ESC`, `0x11ec8` writes
+    generic helper `0x11c6c`, `0x11eda` writes callback continuation helper
+    `0x11d0c`, and `0x11eec` writes font-refreshing continuation helper
+    `0x11dd2`.
   - `0x782c18`: normal versus alternate/data parser mode, used by `0x12218`
     and by callback helpers before appending through `0xe002`.
   - `0x782a56`: alternate/data terminal-append latch cleared by `0x11d0c` and
     `0x11dd2` before optional `0xe002` output.
   - local flag `D4`: distinguishes uppercase `W` terminal processing from
     other terminal bytes in `0x11d0c` and `0x11dd2`.
-- Unknown for this checkpoint:
-  - exact front-end side effects of adjacent setup handlers `0x11ea4` and
-    `0x11eb6` remain split from this helper-family disassembly window.
+- Derived parser records:
+  - `0x11efe` appends a synthetic record byte `0x80` with word `1` for
+    secondary `ESC )` font-designation parsing.
+  - `0x11f26` appends a synthetic record byte `0x80` with word `0` for
+    primary `ESC (` font-designation parsing.
+  - `0x11f4c` rewinds `0x78299e` by six for lowercase chaining finals.
 
 ### Writers
 
 - `0xdaf0` writes the parsed six-byte command record at `0x78299e`.
+- `0x11ea4`, `0x11eb6`, `0x11ec8`, `0x11eda`, and `0x11eec` write the active
+  callback helper pointer at `0x78299a`.
+- `0x11efe` and `0x11f26` append synthetic primary/secondary selector records
+  before `ESC )` and `ESC (` command-family tokenization.
+- `0x11f4c` rewinds `0x78299e` for lowercase chaining finals.
 - `0x11ba6` consumes one extra host byte through `0xda9a` for incoming
   `0x21..0x2f` punctuation-prefixed commands, echoes it through `0x9ec0`,
   then tokenizes at `0x11bdc` unless it is space.
@@ -286,15 +301,21 @@ will restore the wrong byte count or final byte before producing page objects.
 ### Confidence
 
 High for the `0x11ba6`, `0x11c6c`, `0x11d0c`, and `0x11dd2` helper variants,
-because the side effects are direct disassembly reads and the downstream
-payload contracts are fixture-backed in raster, transparent, downloaded-font,
-and macro sections. Medium for adjacent setup-handler semantics until
-`0x11ea4` and `0x11eb6` receive their own focused window.
+the `0x11ea4` / `0x11eb6` / `0x11ec8` / `0x11eda` / `0x11eec` callback
+selection stubs, the `0x11efe` / `0x11f26` synthetic font-designation records,
+and the `0x11f4c` rewind helper because the side effects are direct
+disassembly reads. High for downstream delayed-payload effects because the
+contracts are fixture-backed in raster, transparent, downloaded-font, and macro
+sections.
 
 ### Evidence
 
+- `generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`
 - `generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`
+- `generated/disasm/ic30_ic13_font_selector_setup_helpers_011ec8.lst`
 - `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`
+- `generated/analysis/ic30_ic13_parser_dispatch_tables.md`
+- `generated/analysis/ic30_ic13_active_symbol_set_flow.md`
 - `notes/pcl-parser-core.md`
 - fixtures named in raster, transparent-data, downloaded-font, and macro
   sections that pass through `0x121cc` / `0x12218` before visible output.

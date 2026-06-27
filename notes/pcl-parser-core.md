@@ -202,6 +202,31 @@ These helpers are why a stream such as `ESC *b4W` separates the parsed byte coun
 the four payload bytes. The `W` record is first saved by `0x121cc`; the payload reader
 is called later only after `0x12218` restores the saved record.
 
+Setup handlers:
+
+- `0x11ea4`: mode-0 `0x1a` setup. It writes callback pointer `0x11b8e` to
+  `0x78299a`. The next mode-2 byte decides whether the sequence is
+  `0x1a 0x58` (`0x1219e`) or nested `0x1a` (`0x120d2`).
+- `0x11eb6`: mode-0 `ESC` setup. It writes callback pointer `0x11ba6` to
+  `0x78299a`; mode 1 then routes `*`, `&`, `(`, `)`, `E`, `Y`, and other
+  top-level ESC finals.
+- `0x11ec8`, `0x11eda`, and `0x11eec`: write active callback pointers
+  `0x11c6c`, `0x11d0c`, and `0x11dd2` respectively for nested command-family
+  tokenization.
+- `0x11efe`: appends a synthetic six-byte record with byte `0x80` and word
+  `1`; normal parser `ESC )` uses this to mark the secondary font-designation
+  side before tokenization.
+- `0x11f26`: appends a synthetic six-byte record with byte `0x80` and word
+  `0`; normal parser `ESC (` uses this to mark the primary font-designation
+  side before tokenization.
+- `0x11f4c`: rewinds `0x78299e` by six for lowercase chaining finals.
+
+Evidence:
+`generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`,
+`generated/disasm/ic30_ic13_font_selector_setup_helpers_011ec8.lst`,
+`generated/analysis/ic30_ic13_parser_dispatch_tables.md`, and
+`generated/analysis/ic30_ic13_active_symbol_set_flow.md`.
+
 Variant behavior:
 
 - `0x11ba6`: punctuation-prefixed helper. Incoming bytes `0x21..0x2f`
@@ -294,11 +319,9 @@ A byte-stream reproduction must preserve these parser contracts:
 
 ## Open Edges
 
-The shared parser mechanism above is documented, but these edges still need
+The shared parser mechanism above is documented, but this edge still needs
 command-family notes before the model is complete:
 
-- `0x11eb6`, `0x11ea4`, and adjacent setup handlers: initial actions for `ESC` and
-  `0x1a` parser-table transitions.
 - `0x12120`: the `ESC Y` byte appender that reads through `0xa904`, echoes through
   `0xe002`, treats `0x1a 0x58` as `0x7f`, and stops on `ESC Z`.
 - `0x12452` transparent print data is documented in

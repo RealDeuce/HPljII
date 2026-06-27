@@ -79,6 +79,7 @@ Primary fixtures:
 - `host-fetched downloaded character object feeds 0x1ed84 and 0x1ef6a`
 - `host-fetched linear downloaded character stream renders through 0x168dc`
 - `host-fetched downloaded character payload control reaches wide render`
+- `host-fetched payload-control downloaded glyph FF publishes page record`
 - `host-fetched even-span wide downloaded character renders through 0x1f0d2`
 - `host-fetched row-0x80 downloaded character remains short compact`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
@@ -229,7 +230,8 @@ Published page-record state:
   `0x0003` publishes bucket `1`; linear-segmented selector `0x2003` publishes
   buckets `1` and `9`; split-plane segmented selector `0x2003` publishes
   buckets `1` and `9`; segmented-wide selector `0x3003` publishes buckets
-  `1` and `9`; even-span wide selector `0x1003` publishes bucket `1`.
+  `1` and `9`; wide selector `0x1003` publishes bucket `1` for both the
+  even-span and payload-control odd-span streams.
 - Canonical side lists copied by `0xff1e`: the covered downloaded-glyph
   publication fixtures leave rule and fixed lists empty.
 - Canonical context slots copied by `0xff1e`: the covered downloaded-glyph
@@ -245,7 +247,8 @@ Published page-record state:
 - Unknown for this checkpoint: downloaded-glyph publication cross-products
   outside the documented normal bucket-1, row-`0x80` short bucket-1,
   linear-segmented bucket-9, split-plane segmented bucket-9,
-  segmented-wide bucket-1/bucket-9, and even-span wide bucket-1 streams. The
+  segmented-wide bucket-1/bucket-9, even-span wide bucket-1, and
+  payload-control odd-span wide bucket-1 streams. The
   remaining row-count risk is no longer the `0x80`/`0x81` selector boundary
   itself; it is non-boundary row counts inside the same selector families,
   no identified ROM helper path for accepted descriptor-record mode bytes
@@ -260,6 +263,7 @@ Published page-record state:
   `downloaded normal row-0x80 and segmented glyph FF publications render page records`,
   `split-plane segmented downloaded glyph FF publication renders page record`,
   `host-fetched even-span downloaded glyph FF publishes rendered page record`,
+  `host-fetched payload-control downloaded glyph FF publishes page record`,
   `published downloaded glyph segmented buckets render across bands`, and
   `0x1eba4 scheduler band words render published downloaded glyph`.
 
@@ -1214,6 +1218,20 @@ bucket word `1`: `0x1ef86` computes remainder `1`, current-band rows
 linear downloaded-glyph row as the direct even-span fixture. Evidence: fixture
 `host-fetched even-span downloaded glyph FF publishes rendered page record`.
 
+The payload-control wide downloaded-glyph publication sibling proves the same
+boundary for the odd-span wide compact branch after data normalization. The
+fetched stream is `ESC )s18W` plus payload beginning `1a 58`, printable `&`,
+and FF, with the same byte boundaries `0..24`, `24..25`, and `25..26`.
+`0x168dc` normalizes `1a 58` to one zero payload byte, so `0x16498` installs
+glyph `0x26` at table entry `0x00e2` with mode-byte-`2` record
+`00 00 00 00 0c 02 00 01 00 88 00 00`, bitmap size `17`, and span `0x11`.
+The tail `& FF` routes to handlers `0xd04a` and `0xf0f0`. Publication copies
+bucket array entry `1`, preserves empty rule/fixed lists and context slots
+`0,0,0,0`, clears the current root, and renders bucket word `1` through
+`0x1ed84`/`0x1ef6a`, compact target `0x1effe`, and `0x1f0d2`. Evidence:
+fixture `host-fetched payload-control downloaded glyph FF publishes page
+record`.
+
 Fixture `downloaded normal row-0x80 and segmented glyph FF publications
 render page records` extends that publication concept to the normal,
 row-threshold, and linear-segmented branches. The normal stream is
@@ -1363,7 +1381,13 @@ publication sibling because fixture
 `host-fetched even-span downloaded glyph FF publishes rendered page record`
 asserts the host-fetched `ESC )s18W` payload, tail handlers `0xd04a` and
 `0xf0f0`, published bucket `1`, `0x1ed84` render word `1`, compact dispatch
-target `0x1effe`, and final `0x1f0d2` rows. High for the modeled normal,
+target `0x1effe`, and final `0x1f0d2` rows. High for the payload-control wide
+publication sibling because fixture
+`host-fetched payload-control downloaded glyph FF publishes page record`
+asserts the host-fetched `ESC )s18W` stream with `1a 58` normalization,
+mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88 00 00`, tail handlers
+`0xd04a`/`0xf0f0`, published bucket `1`, `0x1ed84` render word `1`, compact
+dispatch target `0x1effe`, and final `0x1f0d2` rows. High for the modeled normal,
 row-`0x80`, and segmented publication siblings because fixture
 `downloaded normal row-0x80 and segmented glyph FF publications render page records`
 asserts host-fetched `ESC )s6W` plus `&`/FF, `ESC )s256W` plus `*`/FF, and
@@ -1455,8 +1479,9 @@ A byte-stream renderer must preserve:
   mode-byte-`2` odd-span bitmap installs, and broader publication
   combinations beyond the documented normal,
   nonboundary-short, row-`0x80`, linear-segmented, split-plane segmented,
-  segmented-wide, even-span wide, no-install, and status-`2` compact bucket
-  variants. The mode-byte-`0` no-install boundary itself is no longer a vague
+  segmented-wide, even-span wide, payload-control wide, no-install, and
+  status-`2` compact bucket variants. The mode-byte-`0` no-install boundary
+  itself is no longer a vague
   open edge: fixture `0x16498 no-install exits preserve following printable
   output` proves status `0`/`unsupported-record-shape` plus unchanged visible
   output, and fixture
@@ -1464,8 +1489,9 @@ A byte-stream renderer must preserve:
   character exits preserve state` proves the same table/header no-write
   boundary at the object level.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both
-  segmented buckets; the normal, linear-segmented, split-plane segmented, and
-  even-span wide siblings now publish through the same boundary. Fixture
+  segmented buckets; the normal, linear-segmented, split-plane segmented,
+  even-span wide, and payload-control odd-span wide siblings now publish
+  through the same boundary. Fixture
   `downloaded normal row-0x80 and segmented glyph FF publications render page records`
   renders the normal bucket-1 record through `0x1ed84`/`0x1ef6a` and compact
   target `0x1effe`/`0x1fe76`, renders the row-`0x80` bucket-1 record through
@@ -1480,6 +1506,13 @@ A byte-stream renderer must preserve:
   `host-fetched even-span downloaded glyph FF publishes rendered page record`
   renders the copied bucket-1 record through `0x1ed84`/`0x1ef6a` and compact
   target `0x1effe`/`0x1f0d2`. Fixture
+  `host-fetched payload-control downloaded glyph FF publishes page record`
+  covers the odd-span wide sibling: host-fetched `ESC )s18W` normalizes one
+  `1a 58` payload escape through the font payload reader, stores mode-byte-`2`
+  record `00 00 00 00 0c 02 00 01 00 88 00 00`, queues printable `&` as
+  selector `0x1003`, publishes bucket `1` through trailing FF, and renders the
+  published record through `0x1ed84`/`0x1ef6a` and compact target
+  `0x1effe`/`0x1f0d2`. Fixture
   `published downloaded glyph segmented buckets render across bands` renders
   published bucket words `1` and `9` from the copied record. Fixture
   `0x1eba4 scheduler band words render published downloaded glyph` proves

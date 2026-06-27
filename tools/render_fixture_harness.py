@@ -42249,6 +42249,99 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         downloaded_wide_control_memory,
         downloaded_wide_control_active_render_record,
     )
+    downloaded_wide_control_page_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_wide_control_source = {
+        "context": 0,
+        "host_char": 0x26,
+        "mapped": 0x26,
+        "glyph_entry": downloaded_wide_control_glyph["entry"],
+        "glyph_width": downloaded_wide_control_glyph["width"],
+        "glyph_rows": downloaded_wide_control_glyph["rows"],
+        "flag": 0,
+        "x": 22,
+        "y": 22,
+        "context_slot": 3,
+        "inline_record": bytes([
+            int(downloaded_wide_control_glyph["render_span"]),
+            int(downloaded_wide_control_glyph["rows"]) & 0xFF,
+            0,
+        ]),
+    }
+    downloaded_wide_control_page_result = queue_text_source_to_page_record_via_12f2e(
+        downloaded_wide_control_memory,
+        downloaded_wide_control_page_record,
+        downloaded_wide_control_source,
+    )
+    downloaded_wide_control_page_render = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_wide_control_memory,
+        downloaded_wide_control_page_record,
+        bucket_word=int(downloaded_wide_control_page_result["bucket_index"]),
+    )
+    downloaded_wide_control_page_entry = downloaded_wide_control_page_render["entry"]
+    assert isinstance(downloaded_wide_control_page_entry, dict)
+    downloaded_wide_control_publication_stream = (
+        downloaded_wide_control_stream + b"&\x0c"
+    )
+    downloaded_wide_control_publication_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(downloaded_wide_control_publication_stream),
+            direct_mode=0,
+        ),
+        len(downloaded_wide_control_publication_stream),
+    )
+    downloaded_wide_control_publication_font_end = len(downloaded_wide_control_stream)
+    downloaded_wide_control_publication_tail = (
+        downloaded_wide_control_publication_fetch["stream"][
+            downloaded_wide_control_publication_font_end:
+        ]
+    )
+    downloaded_wide_control_publication_tail_trace = (
+        trace_mixed_text_control_parser_path_via_11774(
+            data,
+            downloaded_wide_control_publication_tail,
+        )
+    )
+    downloaded_wide_control_publication = finalize_page_record_via_ff1e(
+        downloaded_wide_control_page_record,
+        reset_fixture_state(
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+            page_root_clears=0,
+            publication_bucket_index=int(downloaded_wide_control_page_result["bucket_index"]),
+        ),
+    )
+    downloaded_wide_control_published_record = (
+        downloaded_wide_control_publication["published_pool_record"]
+    )
+    assert isinstance(downloaded_wide_control_published_record, dict)
+    downloaded_wide_control_published_fields = (
+        downloaded_wide_control_published_record["pool_record_fields"]
+    )
+    assert isinstance(downloaded_wide_control_published_fields, dict)
+    downloaded_wide_control_published_render = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_wide_control_memory,
+        downloaded_wide_control_published_record,
+        bucket_word=int(downloaded_wide_control_page_result["bucket_index"]),
+    )
+    downloaded_wide_control_published_entry = (
+        downloaded_wide_control_published_render["entry"]
+    )
+    assert isinstance(downloaded_wide_control_published_entry, dict)
+    expected_downloaded_wide_control_published_rows = [
+        "." * 158,
+        "." * 158,
+        "." * 158,
+        "." * 158,
+        "." * 158,
+        "." * 158,
+        "." * 22 + "........" + "#." * 60 + ".#.#.#.#",
+    ]
     checks.append(assert_equal("host-fetched downloaded character payload control reaches wide render", {
         "fetched_stream_prefix": host_fetched_downloaded_wide_control_stream["stream"][:6],
         "fetched_stream_length": len(host_fetched_downloaded_wide_control_stream["stream"]),
@@ -42404,6 +42497,178 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "........" + "#." * 60 + ".#.#.#.#",
             ],
         },
+    }))
+    checks.append(assert_equal("host-fetched payload-control downloaded glyph FF publishes page record", {
+        "stream_length": len(downloaded_wide_control_publication_fetch["stream"]),
+        "fetch_sources": sorted(set(downloaded_wide_control_publication_fetch["sources"])),
+        "remaining_ring": downloaded_wide_control_publication_fetch["state"]["ring"],
+        "boundaries": {
+            "font": (0, downloaded_wide_control_publication_font_end),
+            "printable": (
+                downloaded_wide_control_publication_font_end,
+                downloaded_wide_control_publication_font_end + 1,
+            ),
+            "publication": (
+                downloaded_wide_control_publication_font_end + 1,
+                len(downloaded_wide_control_publication_stream),
+            ),
+        },
+        "font": {
+            "handlers": [
+                event["handler"]
+                for event in downloaded_wide_control_trace["dispatches"]
+            ],
+            "restored_record": downloaded_wide_control_command["restored_record"],
+            "payload_offset": downloaded_wide_control_command["payload_offset"],
+            "payload_length": len(downloaded_wide_control_command["payload"]),
+            "table_entry": downloaded_wide_control_install["table_entry"],
+            "record": downloaded_wide_control_install["record"],
+            "bitmap_size": downloaded_wide_control_install["bitmap_size"],
+            "control_hits": downloaded_wide_control_install["copy"]["control_hits"],
+        },
+        "page": {
+            key: downloaded_wide_control_page_result[key]
+            for key in (
+                "path",
+                "object",
+                "bucket_index",
+                "selector",
+                "coord",
+                "glyph",
+                "rows",
+                "width",
+            )
+        },
+        "tail": {
+            "stream": downloaded_wide_control_publication_tail,
+            "handlers": [
+                event["handler"]
+                for event in downloaded_wide_control_publication_tail_trace["events"]
+            ],
+        },
+        "finalized": {
+            "published": downloaded_wide_control_publication["published"],
+            "bucket_index": downloaded_wide_control_publication["bucket_index"],
+            "current_page_root_after": (
+                downloaded_wide_control_publication["current_page_root_after"]
+            ),
+            "page_root_clears": downloaded_wide_control_publication["page_root_clears"],
+            "page_publication_flag": (
+                downloaded_wide_control_publication["page_publication_flag"]
+            ),
+        },
+        "published_bucket_array_keys": sorted(
+            downloaded_wide_control_published_fields["bucket_array_1c"].keys()
+        ),
+        "published_context_slots_2c_prefix": (
+            downloaded_wide_control_published_fields["context_slots_2c"][:4]
+        ),
+        "render_bucket_word": (
+            downloaded_wide_control_published_render["render_record_fields"]["word_10"]
+        ),
+        "active_copy": downloaded_wide_control_published_render["active_copy"],
+        "setup": {
+            key: downloaded_wide_control_published_entry["setup"][key]
+            for key in (
+                "dividend",
+                "divisor_word_06",
+                "remainder_783a22",
+                "band_rows_scaled_783a20",
+                "destination_base_783a28",
+            )
+        },
+        "call_order": downloaded_wide_control_published_entry["call_order"],
+        "dispatch": [
+            {
+                key: entry[key]
+                for key in (
+                    "chain_index",
+                    "object_byte_4",
+                    "class_mask",
+                    "branch",
+                    "target",
+                    "context_slot",
+                )
+            }
+            for entry in downloaded_wide_control_published_entry["dispatch"]["entries"]
+        ],
+        "rows": downloaded_wide_control_published_entry["rows"],
+    }, {
+        "stream_length": len(downloaded_wide_control_publication_stream),
+        "fetch_sources": ["ring"],
+        "remaining_ring": [],
+        "boundaries": {
+            "font": (0, len(downloaded_wide_control_stream)),
+            "printable": (
+                len(downloaded_wide_control_stream),
+                len(downloaded_wide_control_stream) + 1,
+            ),
+            "publication": (
+                len(downloaded_wide_control_stream) + 1,
+                len(downloaded_wide_control_publication_stream),
+            ),
+        },
+        "font": {
+            "handlers": [0x011EB6, 0x012008, 0x011FF6, 0x011F96],
+            "restored_record": b"\x80W\x00\x12\x00\x00",
+            "payload_offset": 6,
+            "payload_length": 18,
+            "table_entry": 0x00E2,
+            "record": bytes.fromhex("00 00 00 00 0c 02 00 01 00 88 00 00"),
+            "bitmap_size": 17,
+            "control_hits": 1,
+        },
+        "page": {
+            "path": "short-page-record",
+            "object": bytes.fromhex("00 00 00 00 10 03 00 01 26 66 01")
+            + bytes(0x1B),
+            "bucket_index": 1,
+            "selector": 0x1003,
+            "coord": 0x6601,
+            "glyph": 0x26,
+            "rows": 1,
+            "width": 0x11,
+        },
+        "tail": {
+            "stream": b"&\x0c",
+            "handlers": [0x00D04A, 0x00F0F0],
+        },
+        "finalized": {
+            "published": True,
+            "bucket_index": 1,
+            "current_page_root_after": 0,
+            "page_root_clears": 1,
+            "page_publication_flag": 1,
+        },
+        "published_bucket_array_keys": [1],
+        "published_context_slots_2c_prefix": (0, 0, 0, 0),
+        "render_bucket_word": 1,
+        "active_copy": {
+            "source_word_18": 0,
+            "source_word_1a": 0,
+            "render_word_0a": 0,
+            "render_word_0c": 0,
+            "render_word_0e": 0,
+            "render_word_10": 0,
+            "render_word_16": 0,
+        },
+        "setup": {
+            "dividend": 1,
+            "divisor_word_06": 5,
+            "remainder_783a22": 1,
+            "band_rows_scaled_783a20": 0x0040,
+            "destination_base_783a28": 0x00100800,
+        },
+        "call_order": [0x01EF86, 0x01EFC2, 0x01F446, 0x01F756],
+        "dispatch": [{
+            "chain_index": 0,
+            "object_byte_4": 0x10,
+            "class_mask": 0x00,
+            "branch": "compact",
+            "target": 0x01EFFE,
+            "context_slot": 3,
+        }],
+        "rows": expected_downloaded_wide_control_published_rows,
     }))
     downloaded_wide_even_payload = bytes.fromhex(
         "f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99"
@@ -81201,6 +81466,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     )
     lines.append("  rendered rows:")
     append_literal_rows(lines, downloaded_wide_control_rendered["rows"])
+    lines.append(
+        "- payload-control downloaded-glyph FF publication: host-fetched "
+        "`ESC )s18W` plus printable `&` and FF stores table entry `0x%04x`, "
+        "normalizes one payload control escape, publishes bucket entries `%s`, "
+        "renders bucket word `%d`, and preserves the wide row through "
+        "`0xff1e` / `0x1ed84` / `0x1ef6a`." % (
+            downloaded_wide_control_install["table_entry"],
+            sorted(downloaded_wide_control_published_fields["bucket_array_1c"].keys()),
+            downloaded_wide_control_published_render["render_record_fields"]["word_10"],
+        )
+    )
     append_wrapped(
         lines,
         "- host-fetched even-span wide downloaded character: `ESC )s18W` "

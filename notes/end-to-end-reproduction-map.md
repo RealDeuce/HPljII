@@ -303,7 +303,11 @@ pixels or byte-stream compatibility.
    split-plane segmented, and segmented-wide compact render shapes, and the
    combined downloaded-glyph stream now reaches FF publication with both
    segmented buckets preserved and scheduler-produced band words `0..9`
-   rendered. The full soft-font descriptor grammar, any accepted
+   rendered. The payload-control wide sibling now also publishes through FF:
+   fixture `host-fetched payload-control downloaded glyph FF publishes page record`
+   carries normalized `1a 58`, selector `0x1003`, bucket `1`, `0xff1e`,
+   `0x1ed84`, and `0x1ef6a` to the same `0x1f0d2` row. The full soft-font
+   descriptor grammar, any accepted
    descriptor-record mode bytes beyond the documented `0x16b1a`
    mode-byte-`1` even-span and mode-byte-`2` odd-span bitmap installs, other
    release variants, and page-visible behavior for descriptor error forms
@@ -424,11 +428,11 @@ The next work should follow dataflow, not isolated handlers:
    the command-family loop boundary or the documented filter predicates. They should
    also broaden downloaded-glyph publication cross-products beyond the documented
    segmented-wide, normal, nonboundary-short, linear-segmented, split-plane segmented,
-   row-threshold `0x80` short, and even-span wide selector families, especially
-   additional row counts, descriptor grammar forms outside the covered `0x16b1a`
-   mode-byte-`1`/`2` bitmap installs, and non-success exits. The nonboundary-short
-   fixture now publishes rows `0x10` on selector `0x0003` through FF, `0xff1e`, and
-   `0x1ed84`/`0x1ef6a` with digest
+   row-threshold `0x80` short, even-span wide, and payload-control wide selector
+   families, especially additional row counts, descriptor grammar forms outside the
+   covered `0x16b1a` mode-byte-`1`/`2` bitmap installs, and non-success exits. The
+   nonboundary-short fixture now publishes rows `0x10` on selector `0x0003` through FF,
+   `0xff1e`, and `0x1ed84`/`0x1ef6a` with digest
    `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The row-threshold
    fixture closes the `0x80`/`0x81` selector boundary by keeping rows `0x80` on selector
    `0x0003`, comparing it with the rows-`0x81` selector `0x2003` fixture, and now
@@ -448,9 +452,9 @@ The next work should follow dataflow, not isolated handlers:
    zero-filled missing bytes, then publishes both bucket-1 compact objects through
    trailing FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` with the same rows. Remaining
    downloaded-character publication risk is broader publication combinations beyond
-   these compact bucket-1 no-install/status-`2` variants, not the documented
-   mode-byte-`0` visible recovery boundary. The publication-command checkpoint now
-   covers host-fetched reset, FF, page-size, orientation, paper-source, and copies
-   streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final
-   row comparison; reset, FF, page-size, orientation, paper-source, and copies also have
-   addressed allocation variants.
+   these payload-control, no-install, and status-`2` compact bucket-1 variants, not the
+   documented mode-byte-`0` visible recovery boundary. The publication-command
+   checkpoint now covers host-fetched reset, FF, page-size, orientation, paper-source,
+   and copies streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`,
+   and final row comparison; reset, FF, page-size, orientation, paper-source, and copies
+   also have addressed allocation variants.

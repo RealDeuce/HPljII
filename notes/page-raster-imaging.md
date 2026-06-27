@@ -1312,7 +1312,10 @@ same bucket-9 row. The even-span wide downloaded-glyph sibling now publishes
 the host-fetched `ESC )s18W` + printable `)` + FF stream through the same
 `0xff1e` boundary: bucket `1` is copied into the published record, rendered
 through `0x1ed84`/`0x1ef6a`, dispatched to `0x1effe`, and decoded by
-`0x1f0d2` into the same 18-byte row. The normal `ESC )s6W` + `&` + FF and
+`0x1f0d2` into the same 18-byte row. The payload-control wide sibling now
+does the same for `ESC )s18W` + printable `&` + FF after `1a 58`
+normalization and mode-byte-`2` record
+`00 00 00 00 0c 02 00 01 00 88 00 00`. The normal `ESC )s6W` + `&` + FF and
 segmented `ESC )s258W` + `'` + FF siblings now publish through the same
 boundary: the normal case copies bucket `1` and renders through `0x1fe76`,
 while the segmented case copies buckets `1` and `9` and renders bucket `9`

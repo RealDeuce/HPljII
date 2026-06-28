@@ -34,7 +34,12 @@ executable fixture or generated analysis note.
 - Parser byte and command records:
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
   Reproduction evidence is `generated/analysis/ic30_ic13_parser_xrefs.md`
-  plus tokenizer and delayed-payload fixtures.
+  plus tokenizer and delayed-payload fixtures. The composed state contract is
+  `Parser Record And Delayed Payload State` in
+  `notes/semantic-state-model.md`: command finals and payload bytes are
+  separate events, six-byte records are saved through `0x121cc`, restored
+  through `0x12218`, and then consumed by raster, transparent text,
+  downloaded-font, generic payload, macro, and alternate/data handlers.
 - Parser dispatch tables:
   ROM evidence is normal table `0x112a4` and alternate table `0x116f6`.
   Reproduction evidence is `generated/analysis/ic30_ic13_pcl_command_map.md`
@@ -66,7 +71,11 @@ executable fixture or generated analysis note.
   ROM evidence is `0x10808`, `0x1075a`, `0x105d0`, `0x13070`, and
   `0x13250`.
   Reproduction evidence is `generated/analysis/ic30_ic13_raster_graphics_flow.md`
-  and host-fetched raster stream fixtures.
+  and host-fetched raster stream fixtures. The current raster command-family
+  checkpoint covers lower-resolution modes `1..3`, consecutive uppercase
+  `ESC *b#W` transfers, lowercase `ESC *b#w` same-family chaining, `ESC *rB`
+  active-byte clear, active-resolution ignore, `0x105d0` cap/drain gates,
+  page-record object bytes, bridge dispatch, and rendered rows.
 - Page publication:
   ROM evidence is `0xff1e..0x10080`.
   Reproduction evidence is
@@ -122,8 +131,9 @@ executable fixture or generated analysis note.
 - Raster graphics streams are covered for `ESC *t#R`, `ESC *r#A`, delayed
   `ESC *b#W`, lowercase transfer chaining, active-raster resolution behavior,
   row caps, beyond-extent drains, and modes 0/1/2/3. Evidence:
-  `generated/analysis/ic30_ic13_raster_graphics_flow.md` and host-fetched
-  raster fixtures.
+  `generated/analysis/ic30_ic13_raster_graphics_flow.md`, `notes/raster-graphics.md`,
+  `Raster Transfer Gate And Encoded Rows` in `notes/semantic-state-model.md`,
+  and host-fetched raster fixtures.
 - Rectangle/rule streams are covered for size commands, fill selectors,
   clipping, no-room retry, bridge normalization, solid/pattern rendering,
   selector-7 text/rule page records, all non-solid selector IDs in text/rule
@@ -193,7 +203,12 @@ executable fixture or generated analysis note.
   delayed handler snapshots, payload counters, and alternate/data mode state.
   Evidence: `Parser Record And Delayed Payload State` in
   `notes/semantic-state-model.md`, tokenizer fixtures, and
-  `generated/analysis/ic30_ic13_parser_xrefs.md`.
+  `generated/analysis/ic30_ic13_parser_xrefs.md`. The parser-record checkpoint
+  classifies canonical state (`0x782999`, `0x78299e`, `0x782c18`), tokenizer
+  scratch (`0x782a26`, `0x782a2a..`, `0x782a3e`, `0x782a42..`,
+  `0x783196..0x783199`), firmware bookkeeping (`0x78299a`, `0x782a1a`,
+  `0x782a1c`, `0x782a20..0x782a25`, `0x782a56`), and derived font-designation
+  records from `0x11efe` / `0x11f26`.
 - Canonical print environment: cursor words `0x782c8a` and `0x782c8e`,
   HMI/VMI words, margins, page geometry fields under `0x782da2..0x782dc0`,
   line-termination mode, cursor stack, and font slot state. Evidence:
@@ -205,7 +220,8 @@ executable fixture or generated analysis note.
   `Shared Page-Record Storage And Allocator`.
 - Derived/cache state: bucket/key bytes `0x782a7a..0x782a7e`, render-band
   fields `0x783a20`, `0x783a22`, `0x783a28`, pending span watermarks
-  `0x783184..0x78318a`, and raster mode/scale caches. Evidence:
+  `0x783184..0x78318a`, raster mode/scale caches, delayed raster row
+  coordinates, and mode-selected encoded raster object bytes. Evidence:
   `Text Span Flush And Fixed-Width Spans`,
   `generated/analysis/ic30_ic13_page_record_bridge.md`, and raster fixtures.
 - Firmware bookkeeping: publication flag `0x782996`, page/root transient

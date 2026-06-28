@@ -313,8 +313,11 @@ Published page-record state:
   page-record span` classifies the next handoff: installed spans `0x0100`,
   `0x0101`, and `0x020d` keep canonical width words, but the current
   printable source record gives `0x12f2e` width bytes `0x00`, `0x01`, and
-  `0x0d`, so the page-record producer queues selector `0x0003` and leaves
-  visible behavior unresolved.
+  `0x0d`, so the page-record producer queues selector `0x0003`. The first
+  render edge is also pinned: those wrapped spans enter compact mode-0 at
+  `0x1effe` and read helper-table entries `0x1f48e`, `0x1f492`, and
+  `0x1f8c2`, whose targets are non-helper longwords. The model therefore
+  makes no pixel-row claim past that invalid helper selection.
   Fixture `downloaded glyph segmented-wide matrix publishes and renders
   compact chunks` carries the matched span set through rows `0x81`: selector
   `0x3003` publishes buckets `0` and `8`, segment `1` dispatches object byte

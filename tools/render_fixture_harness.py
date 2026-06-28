@@ -27854,6 +27854,299 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "row_width": 30,
         "row_sha256": "bc21050018fd3e992709c704fff732499aa9d06565de31d7ae0340869971c5b3",
     }))
+    macro_overlay_span_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0x440946B4],
+    }
+    macro_overlay_span_rule = queue_rectangle_rule_via_13386(macro_overlay_span_record, {
+        "x": 36,
+        "y": 26,
+        "width": 7,
+        "height": 2,
+        "flags": 7,
+    })
+    macro_overlay_span_payload = b"\x1b&a6L!"
+    macro_overlay_span_state = apply_macro_control_via_dd08(
+        macro_state(
+            current_macro_id=127,
+            records=[macro_record(macro_overlay_span_payload, 127)]
+            + [macro_record() for _ in range(31)],
+        ),
+        4,
+    )
+    macro_overlay_span_publication = macro_overlay_publication_via_ff1e(
+        data,
+        resources,
+        macro_overlay_span_record,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            right_margin=pack12(300),
+            hmi=line_printer_hmi["hmi"],
+            pending_text=1,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            enabled_783184=1,
+            low_x_783186=2,
+            high_x_783188=18,
+            high_y_78318a=3,
+            orientation=0,
+            page_extent_782db6=64,
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        ),
+        macro_overlay_span_state,
+        0x440946B4,
+        line_printer_hmi["hmi"],
+    )
+    macro_overlay_span_path = macro_overlay_span_publication["overlay_path"]
+    assert isinstance(macro_overlay_span_path, dict)
+    macro_overlay_span_page_stream = macro_overlay_span_path["page_record_stream"]
+    assert isinstance(macro_overlay_span_page_stream, dict)
+    macro_overlay_span_events = macro_overlay_span_page_stream["events"]
+    assert isinstance(macro_overlay_span_events, list)
+    macro_overlay_span_margin_event = macro_overlay_span_events[0]
+    assert isinstance(macro_overlay_span_margin_event, dict)
+    macro_overlay_span_flush = macro_overlay_span_margin_event["span_flush_result"]
+    assert isinstance(macro_overlay_span_flush, dict)
+    macro_overlay_span_flush_queued = macro_overlay_span_flush["queued"]
+    assert isinstance(macro_overlay_span_flush_queued, dict)
+    macro_overlay_span_printable_event = macro_overlay_span_events[1]
+    assert isinstance(macro_overlay_span_printable_event, dict)
+    macro_overlay_span_render = macro_overlay_span_publication["published_render_entry"]
+    assert isinstance(macro_overlay_span_render, dict)
+    macro_overlay_span_entry = macro_overlay_span_render["entry"]
+    assert isinstance(macro_overlay_span_entry, dict)
+    macro_overlay_span_rows = macro_overlay_span_entry["rows"]
+    checks.append(assert_equal("macro overlay span-flush payload publishes with page rule", {
+        "overlay": {
+            "enabled": macro_overlay_span_path["enabled"],
+            "overlay_id": macro_overlay_span_path["overlay_id"],
+            "lookup": macro_overlay_span_path["lookup"],
+            "taken": macro_overlay_span_path["taken"],
+            "frame": macro_overlay_span_path["frame"],
+            "replay_stream": macro_overlay_span_path["replay"]["stream"],
+            "parser_handlers": [
+                event["handler"]
+                for event in macro_overlay_span_path["parser_trace"]["events"]
+            ],
+            "end_state": macro_overlay_span_path["end_state"],
+        },
+        "page_events": [
+            {
+                "kind": event["kind"],
+                "sequence": event.get("sequence"),
+                "handler": event.get("handler"),
+                "byte": event.get("byte"),
+                "span_flush_result": event.get("span_flush_result") is not None,
+            }
+            for event in macro_overlay_span_events
+        ],
+        "flush": {
+            "flushed": macro_overlay_span_flush["flushed"],
+            "path": macro_overlay_span_flush["path"],
+            "raw_source": macro_overlay_span_flush["raw_source"],
+            "queued": {
+                key: macro_overlay_span_flush_queued[key]
+                for key in ("path", "computed", "bucket_index", "selector", "object")
+            },
+            "rearm": macro_overlay_span_flush["rearm"],
+        },
+        "printable": {
+            "byte": macro_overlay_span_printable_event["byte"],
+            "cursor_before": macro_overlay_span_printable_event["cursor_before"],
+            "cursor_after": macro_overlay_span_printable_event["cursor_after"],
+            "coord": macro_overlay_span_printable_event["page_result"]["coord"],
+        },
+        "queued_rule": macro_overlay_span_rule["object"],
+        "bucket_array": {
+            bucket: [bytes(obj) for obj in chain]
+            for bucket, chain
+            in macro_overlay_span_publication["page_record"]["bucket_array"].items()
+        },
+        "rule_list": macro_overlay_span_publication["page_record"]["rule_list"],
+        "call_order": macro_overlay_span_entry["call_order"],
+        "dispatch_entries": [
+            {
+                key: entry.get(key)
+                for key in (
+                    "chain_index",
+                    "object_byte_4",
+                    "class_mask",
+                    "branch",
+                    "target",
+                    "selector",
+                    "context_slot",
+                )
+            }
+            for entry in macro_overlay_span_entry["dispatch"]["entries"]
+        ],
+        "bucket_rendered": [
+            {
+                "branch": item["branch"],
+                "selector": item["rendered"].get("selector"),
+                "row_count": len(item["rendered"]["rows"]),
+            }
+            for item in macro_overlay_span_entry["bucket_rendered"]
+        ],
+        "rule_rendered": [
+            {
+                key: entry[key]
+                for key in (
+                    "selector",
+                    "helper",
+                    "key",
+                    "bucket_delta",
+                    "decoded",
+                    "width",
+                    "remaining_before",
+                    "rows_drawn",
+                    "mutated_object",
+                )
+            }
+            for entry in macro_overlay_span_entry["rules"]["rendered"]
+        ],
+        "row_count": len(macro_overlay_span_rows),
+        "row_width": max(len(row) for row in macro_overlay_span_rows),
+        "row_sha256": hashlib.sha256(
+            "\n".join(macro_overlay_span_rows).encode("ascii")
+        ).hexdigest(),
+    }, {
+        "overlay": {
+            "enabled": True,
+            "overlay_id": 127,
+            "lookup": {"status": 1, "index": 0, "ptr": 0x782A98},
+            "taken": True,
+            "frame": {
+                "payload": b"\x1b&a6L!",
+                "byte_count": 6,
+                "byte_8": 4,
+                "byte_9": 4,
+                "environment": "non-replay",
+            },
+            "replay_stream": b"\x1b&a6L!",
+            "parser_handlers": [0x00EB58, 0x00D04A],
+            "end_state": {
+                "host_gate_bit1": 1,
+                "data_chain_slot": 1,
+                "page_parser_state_782a92": 0x63,
+            },
+        },
+        "page_events": [
+            {
+                "kind": "margin",
+                "sequence": b"\x1b&a6L",
+                "handler": 0x00EB58,
+                "byte": None,
+                "span_flush_result": True,
+            },
+            {
+                "kind": "printable",
+                "sequence": None,
+                "handler": None,
+                "byte": 0x21,
+                "span_flush_result": False,
+            },
+        ],
+        "flush": {
+            "flushed": True,
+            "path": "portrait-segment-list",
+            "raw_source": {
+                "orientation": 0,
+                "mode": 0,
+                "x": 2,
+                "y": 3,
+                "extent": 16,
+            },
+            "queued": {
+                "path": "text-span-segment-list",
+                "computed": {
+                    "x": 2,
+                    "y": 3,
+                    "bucket_index": 0,
+                    "key": 0x3200,
+                    "mode": 3,
+                    "selector_hi": 0x40,
+                    "selector_lo": 0x00,
+                },
+                "bucket_index": 0,
+                "selector": 0x4000,
+                "object": (
+                    bytes.fromhex("00 00 00 00 40 00 00 01 32 00 03 00 00 10")
+                    + (b"\x00" * 0x18)
+                ),
+            },
+            "rearm": {
+                "rearmed": True,
+                "enabled_783184": 1,
+                "low_x_783186": 108,
+                "high_x_783188": 108,
+                "high_y_78318a": 0,
+            },
+        },
+        "printable": {
+            "byte": 0x21,
+            "cursor_before": pack12(108),
+            "cursor_after": pack12(126),
+            "coord": 0x0207,
+        },
+        "queued_rule": bytes.fromhex("00 00 00 00 01 07 a4 02 00 07 00 02 00 00"),
+        "bucket_array": {
+            0: [
+                bytes.fromhex("00 00 00 00 00 00 00 01 20 02 07") + bytes(0x1B),
+                bytes.fromhex("00 00 00 00 40 00 00 01 32 00 03 00 00 10")
+                + bytes(0x18),
+            ],
+        },
+        "rule_list": [bytes.fromhex("00 00 00 00 01 07 a4 02 00 07 00 02 00 00")],
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "dispatch_entries": [
+            {
+                "chain_index": 0,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "selector": None,
+                "context_slot": 0,
+            },
+            {
+                "chain_index": 1,
+                "object_byte_4": 0x40,
+                "class_mask": 0x40,
+                "branch": "segment-list",
+                "target": 0x01F812,
+                "selector": None,
+                "context_slot": None,
+            },
+        ],
+        "bucket_rendered": [
+            {"branch": "compact", "selector": 0, "row_count": 22},
+            {"branch": "segment-list", "selector": 64, "row_count": 6},
+        ],
+        "rule_rendered": [{
+            "selector": 7,
+            "helper": 0x1F596,
+            "key": 0xA402,
+            "bucket_delta": 1,
+            "decoded": {
+                "x": 36,
+                "y": 26,
+                "row_low": 10,
+                "subbyte": 4,
+                "byte_pair_offset": 4,
+            },
+            "width": 7,
+            "remaining_before": 2,
+            "rows_drawn": 2,
+            "mutated_object": bytes.fromhex("00 00 00 00 01 07 a4 02 00 07 00 02 ff cc"),
+        }],
+        "row_count": 28,
+        "row_width": 118,
+        "row_sha256": "6775414374ba3c31f7846a180d93cc9b68e230ea6981ae722b32eb39081f9bca",
+    }))
     macro_with_payload = macro_state(
         current_macro_id=123,
         records=[macro_record(b"!\r", 123)] + [macro_record() for _ in range(31)],
@@ -89127,6 +89420,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         " ".join(f"{byte:02x}" for byte in macro_overlay_raster_rule["object"]),
         hashlib.sha256("\n".join(macro_overlay_raster_rows).encode("ascii")).hexdigest(),
     ))
+    lines.append(
+        "- macro overlay span-flush payload `%s` replays through `0xe4f4` / "
+        "`0x11774`, routes `0xeb58` before printable `0xd04a`, materializes "
+        "segment-list span object `%s`, keeps rule object `%s`, and renders "
+        "digest `%s`." % (
+            " ".join(f"{byte:02x}" for byte in macro_overlay_span_payload),
+            " ".join(f"{byte:02x}" for byte in macro_overlay_span_flush_queued["object"]),
+            " ".join(f"{byte:02x}" for byte in macro_overlay_span_rule["object"]),
+            hashlib.sha256("\n".join(macro_overlay_span_rows).encode("ascii")).hexdigest(),
+        )
+    )
     lines.append("- `0xe0a4` lookup statuses are existing/free/full = `%d/%d/%d`; it skips a matching id with zero head, reuses stale-id free slot index `%d`, and writes `0x782d7a = 0x%08x` for that allocation." % (
         int(macro_lookup_existing["status"]),
         int(macro_lookup_reuses_stale_free["status"]),

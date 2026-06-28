@@ -5291,6 +5291,13 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     text object plus one delayed `0x105d0` mode-0 raster object, preserves
     the existing selector-7 rule, and publishes/renders all three layers
     through `0xff1e` and `0x1ed84`/`0x1ef6a`.
+  - span-flush overlay publication uses overlay id `127` and payload
+    `ESC &a6L!`. The same non-replay `0xe4f4` frame routes parser loop
+    `0x11774` through `0xeb58` then `0xd04a`; the replayed left-margin
+    command materializes the pending span through `0x12714`, re-arms
+    `0x783186..0x78318a` through `0x126e2`, queues the following compact
+    printable object, preserves the existing selector-7 rule, and publishes
+    all three page-record layers through `0xff1e` and `0x1ed84`/`0x1ef6a`.
   Evidence: fixtures `macro execute data-chain parser trace feeds
   page-record stream`, `macro call data-chain parser trace feeds
   page-record stream`, `host-fetched macro replay payloads feed 0x1ed84
@@ -5298,7 +5305,8 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   publication`, plus `macro overlay replays across repeated page
   publications`, `macro overlay skip gates preserve base page publication`,
   `macro overlay mixed-control payload publishes with page rule`, and
-  `macro overlay raster payload publishes with page rule`.
+  `macro overlay raster payload publishes with page rule`, and
+  `macro overlay span-flush payload publishes with page rule`.
 - Unknown:
   - startup option source for the optional `0x80` addition to
     `0x780e5a` still needs board/config correlation, but the downstream
@@ -5306,12 +5314,12 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     pinned for the default path.
   - no remaining macro execute/call replay, font-context, first
     overlay-publication, repeated enabled-overlay publication, mixed-control
-    overlay payload, raster overlay payload, or overlay skip-gate middle edge
-    in this checkpoint. The next high-value macro edges are broader overlay
-    payload variants and
-    final device-output validation. Descriptor metric validation is tracked
-    separately as external/manual naming for consumed-but-not-staged fields,
-    not as a macro-cluster middle edge.
+    overlay payload, raster overlay payload, span-flush overlay payload, or
+    overlay skip-gate middle edge in this checkpoint. The next high-value
+    macro edges are broader overlay payload variants and final device-output
+    validation. Descriptor metric validation is tracked separately as
+    external/manual naming for consumed-but-not-staged fields, not as a
+    macro-cluster middle edge.
 
 ### Writers
 
@@ -5478,6 +5486,21 @@ frame with `+8 = 4` / `+9 = 4`, parser/page replay queues compact text object
 `00 00 00 00 01 07 44 01 00 0a 00 02 ff c6`. The composed page rows render
 through `0x1ed84`/`0x1ef6a` with digest
 `bc21050018fd3e992709c704fff732499aa9d06565de31d7ae0340869971c5b3`.
+Fixture `macro overlay span-flush payload publishes with page rule` covers a
+non-replay overlay payload that crosses from macro replay into the pending
+text-span machinery. Overlay id `127` stores `ESC &a6L!`; `0xe4f4` builds a
+6-byte non-replay frame with `+8 = 4` / `+9 = 4`, and parser loop `0x11774`
+routes the replay through `0xeb58` then `0xd04a`. `0xeb58` moves the left
+margin to packed x `108`, calls the `0xf34a` span-flush path, and
+`0x12714` queues selector-`0x4000` segment-list object
+`00 00 00 00 40 00 00 01 32 00 03 00 00 10 ...` from span bounds
+`low x = 2`, `high x = 18`, `high y = 3`; `0x126e2` re-arms
+`0x783186..0x78318a` to `108/108/0`. The following printable queues compact
+object `00 00 00 00 00 00 00 01 20 02 07 ...`, the preexisting selector-7
+rule `00 00 00 00 01 07 a4 02 00 07 00 02 00 00` mutates through `0x1f596`
+to `00 00 00 00 01 07 a4 02 00 07 00 02 ff cc`, and the published rows render
+through `0x1ed84`/`0x1ef6a` with digest
+`6775414374ba3c31f7846a180d93cc9b68e230ea6981ae722b32eb39081f9bca`.
 
 ### Confidence
 
@@ -5529,6 +5552,7 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 - `macro overlay skip gates preserve base page publication`
 - `macro overlay mixed-control payload publishes with page rule`
 - `macro overlay raster payload publishes with page rule`
+- `macro overlay span-flush payload publishes with page rule`
 
 ### Disassembly Evidence
 
@@ -5566,11 +5590,11 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 - None remaining for macro execute/call replay, macro font-context refresh,
   first overlay-publication, repeated enabled-overlay publication across two
   page boundaries, mixed-control overlay payload publication, raster overlay
-  payload publication, or the disabled/missing-record/retry-flag overlay skip
-  gates. Remaining macro risk is broader overlay payload variants beyond
-  `!\r`, `ESC &k1G!\r!`, and the covered raster payload, plus final-device
-  comparison, not the `0xdd08` selector-4 to `0xff1e` visible-output path or
-  its skip gates.
+  payload publication, span-flush overlay payload publication, or the
+  disabled/missing-record/retry-flag overlay skip gates. Remaining macro risk
+  is broader overlay payload variants beyond `!\r`, `ESC &k1G!\r!`, the
+  covered raster payload, and `ESC &a6L!`, plus final-device comparison, not
+  the `0xdd08` selector-4 to `0xff1e` visible-output path or its skip gates.
 
 ## Raster Transfer Gate And Encoded Rows
 

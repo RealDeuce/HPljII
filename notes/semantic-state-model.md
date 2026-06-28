@@ -1311,8 +1311,22 @@ full 68000 interpreter through every source class and allocator branch.
   are understood from disassembly, but not every reject/retry branch has
   a visible page-output fixture.
 - `0xd47a..0xd4a0` and `0xd8ca..0xd8f0`: allocation failure retry via
-  `0xff1e` / `0x10084` is identified in both source handoffs; broad
-  dense live-parser coverage remains under page-record allocator work.
+  `0xff1e` / `0x10084` is identified in both source handoffs. The covered
+  canonical state before the retry is the positioned source object
+  `0x782d7e`, selected slot byte `0x78297e`, live-slot byte
+  `0x78297f + slot`, and current root pointer `0x78297a`; the covered
+  derived state after success is the `0x12f2e` selector/key plus the
+  compact bucket object under page-root `+0x1c`. The unresolved middle
+  edge is the failure-return path from `0x12f2e`/`0x1387c` back into the
+  paired source writers: unflagged `0xd3b2` and flagged `0xd824` should
+  preserve the source fields, publish the full root through `0xff1e`,
+  ensure a fresh root through `0x10084`, and retry the same queued glyph.
+  Parser scratch is the original printable byte in `D5` and the source
+  object already written by `0x1393a`; firmware bookkeeping is the page
+  publication/root-allocation side effect. Closing this edge needs a live
+  parser or memory-backed fixture that forces `0x1387c` no-room for both
+  `0xd47a..0xd4a0` and `0xd8ca..0xd8f0`, then proves the retried compact
+  object and rows match the non-failure path.
 - `0xd4ac..0xd548` and `0xd8fc..0xd992`: span watermark writes and the
   downstream `0x12714` / `0x126e2` handoff are composed in
   `Text Span Flush And Fixed-Width Spans`. That section covers

@@ -661,6 +661,15 @@ reuses an object with matching selector word `+4` while count `+6` is
 below capacity, or allocates and links a new head object through the
 shared stream allocator. Its entries store mapped glyph payload data
 after a short object header, parallel to raster row payload storage.
+The remaining text-source allocation boundary is earlier than the
+already-covered span retry: unflagged writer `0xd3b2` and flagged writer
+`0xd824` both call `0x12f2e` with the positioned source object
+`0x782d7e`, and both have a retry path at `0xd47a..0xd4a0` /
+`0xd8ca..0xd8f0` after a no-room return. The intended visible contract is
+the same compact object and rows after publishing the full page through
+`0xff1e` and allocating a fresh root through `0x10084`, but the current
+fixtures do not yet force `0x1387c` no-room from those two live source
+handoffs.
 
 `generated/analysis/ic30_ic13_printable_text_path.md` anchors the live
 normal parser path into that source-object builder. Routine `0x11774`

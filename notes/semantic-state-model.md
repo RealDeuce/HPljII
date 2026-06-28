@@ -6220,6 +6220,11 @@ results rather than executing the full heap and page scheduler.
   Transfer Gate And Encoded Rows` and address-aware stream allocation is
   composed in this shared allocator checkpoint, but exact live
   register/memory state through the full raster producer remains unresolved.
+  The exact closure boundary is `0x12218 -> 0x105d0 -> 0x10084 -> 0x13070`:
+  parser scratch through the delayed `ESC *b#W` record and payload offset is
+  known, and canonical output after `0x13070` is known, but the live CPU
+  register/memory handoff into page-root allocation and encoded-row production
+  still needs a trace or memory snapshot.
 - `0x133aa..0x13472` and `0x136d2..0x13690`: ordered insertion is pinned
   for lower, higher, and equal bucket bytes; alternate no-room/failure
   returns need live CPU fixtures.

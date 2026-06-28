@@ -343,7 +343,19 @@ A byte-stream reproduction must preserve these behaviors:
 
 - `0x105d0..0x13250` is modeled and address-aware, but the mixed
   text/rule/raster stream still lacks a full live 68000 execution trace through
-  `0x105d0` into allocator memory.
+  `0x105d0` into allocator memory. The covered parser edge is exact through
+  `0x11f82` scheduling, `0x12218` restore, delayed handler `0x105d0`, and the
+  modeled calls into `0x10084` and `0x13070`; the uncovered middle edge is the
+  live register/memory handoff from the restored command record and payload
+  pointer into the page-root allocation and encoded-row producer. Canonical
+  output state is already fixture-pinned as the page-root `+0x1c` raster chain
+  and object bytes written by `0x13070`/`0x13250`; derived/cache state is the
+  bucket/key and render-record copy used by `0x1ed84`/`0x1ef6a`; parser scratch
+  is the delayed `80 57 ...` command record, snapshot, payload offset, and
+  drained payload bytes; firmware bookkeeping is the modeled allocation result
+  and stream-storage cursor. Closing this edge requires a live CPU trace or
+  memory snapshot across `0x12218 -> 0x105d0 -> 0x10084 -> 0x13070`, not more
+  isolated mode-0 row-render evidence.
 - `0x13250..0x1381c` addressed storage is documented by the mixed
   text/rule/raster publication fixture, but the heap allocator result is still
   a modeled fixture result rather than a memory snapshot from one live parser

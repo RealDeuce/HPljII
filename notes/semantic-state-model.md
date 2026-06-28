@@ -1122,14 +1122,18 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   - `0x782a5a`: latched previous width.
   - `0x782a5c`: latched previous advance.
   - `0x782a6e`: path precheck result from `0xd28a` or `0xd6bc`; a
-    nonzero value suppresses queue and span-update side effects.
+    nonzero value suppresses queue and span-update side effects. The
+    paired fixture `0xd28a and 0xd6bc prechecks share continue reject and
+    wrap decisions` covers result `0` continue, result `1` reject, and
+    wrap recovery through `0xf054`.
   - `0x78315c`: default HMI advance used when no source-specific
     advance is available.
   - `0x78318e`: alternate metrics / previous-width mode flag.
   Evidence: generated text-cursor report steps 1-4 and state scan;
   fixtures `two printable byte stream combines compact text entries`,
   `two printable byte stream with line-printer HMI renders subbyte
-  entry`, and `0xd824-positioned short bucket object fields`.
+  entry`, `0xd824-positioned short bucket object fields`, and
+  `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`.
 - Canonical page/root publication inputs:
   - `0x78297a`: current page root ensured through `0x10084` before
     drawable source queueing.
@@ -1266,6 +1270,16 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   `0xa0`, and builds glyph entry `0x017256`, while flags clear with selected
   secondary slot `1` still masks to host `0x21` but skips the primary
   `0xc6b8` / `0xc68a` wrapper.
+- Fixture `0xd28a and 0xd6bc prechecks share continue reject and wrap
+  decisions` covers the paired prequeue gate before `0xd3b2` or `0xd824`.
+  With packed current x `0x00020000`, remaining limit `0x00060000`,
+  measure `0x00040000`, y `5`, lower bound `2`, and extent `4`, both
+  handlers return `0` and allow queueing. With current x `0x00050000`,
+  remaining limit `0x00030000` is smaller than the same measure, so both
+  handlers return `1` and suppress queueing when `0x783190` is clear.
+  With `0x783190` set, the same horizontal reject calls `0xf054`, retries
+  from recovered x `0`, and returns `0`. With y `18` and page extent `20`,
+  both handlers return `1` from the vertical-extent check.
 
 ### Confidence
 
@@ -1284,6 +1298,7 @@ full 68000 interpreter through every source class and allocator branch.
 - `0xd824-negative-overflow short bucket object fields`
 - `0xd04a printable entry normalizes over-0xff and high-bit values`
 - `0xd04a high-character flags and selected slot choose mask behavior`
+- `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`
 - `0xd3b2-modeled unflagged source fields`
 - `0xd3b2-modeled unflagged overflow source fields`
 - `0x12f2e-modeled unflagged short bucket object fields`
@@ -1331,8 +1346,11 @@ full 68000 interpreter through every source class and allocator branch.
   coverage around the modeled branch, not these specific normalization
   outcomes.
 - `0xd28a..0xd3aa` and `0xd6bc..0xd81a`: precheck wrap/recovery paths
-  are understood from disassembly, but not every reject/retry branch has
-  a visible page-output fixture.
+  are fixture-backed for the paired result semantics of `0x782a6e`: ordinary
+  continue, horizontal reject with queue suppression, horizontal wrap recovery
+  through `0xf054`, and vertical-extent reject. Remaining risk is the full
+  live parser/output edge for every metric source, not the meaning of the
+  precheck result or the shared reject/retry gate.
 - `0xd47a..0xd4a0` and `0xd8ca..0xd8f0`: allocation failure retry via
   `0xff1e` / `0x10084` is identified in both source handoffs. The covered
   canonical state before the retry is the positioned source object

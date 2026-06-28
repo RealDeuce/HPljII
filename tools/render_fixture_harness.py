@@ -13466,6 +13466,217 @@ def position_unflagged_text_source_via_d3b2(
     }
 
 
+def packed_coord_add_via_10518(left: int, right: int) -> int:
+    return subunits_to_packed12(packed12_to_subunits(left) + packed12_to_subunits(right))
+
+
+def packed_coord_subtract_via_10510(left: int, right: int) -> int:
+    return subunits_to_packed12(packed12_to_subunits(left) - packed12_to_subunits(right))
+
+
+def text_precheck_common(
+    *,
+    handler: int,
+    path: str,
+    current_x: int,
+    current_y: int,
+    limit_x: int,
+    page_line_limit: int,
+    page_extent: int,
+    measure: int,
+    vertical_lower: int,
+    vertical_extent: int,
+    wrap_enabled: int = 0,
+    recovery_x: int = 0,
+    x_probe: int | None = None,
+) -> dict[str, object]:
+    probe_x = int(current_x if x_probe is None else x_probe)
+    wrap_flushes = 0
+    edges: list[str] = []
+
+    remaining = packed_coord_subtract_via_10510(limit_x, probe_x)
+    if remaining >= 0 and measure > remaining:
+        edges.append("horizontal-limit")
+        if not wrap_enabled:
+            return {
+                "handler": handler,
+                "path": path,
+                "result": 1,
+                "queue_allowed": False,
+                "reason": "horizontal-limit",
+                "wrap_flushes": wrap_flushes,
+                "probe_x": probe_x,
+                "measure": measure,
+                "remaining": remaining,
+                "edges": edges,
+            }
+        wrap_flushes += 1
+        edges.append("0xf054-wrap-recovery")
+        probe_x = int(recovery_x)
+
+    end_coord = packed_coord_add_via_10518(measure, probe_x)
+    end_whole, _ = unpack12(end_coord)
+    if end_whole > page_line_limit:
+        edges.append("page-line-limit")
+        if not wrap_enabled:
+            return {
+                "handler": handler,
+                "path": path,
+                "result": 1,
+                "queue_allowed": False,
+                "reason": "page-line-limit",
+                "wrap_flushes": wrap_flushes,
+                "probe_x": probe_x,
+                "measure": measure,
+                "end_coord": end_coord,
+                "end_whole": end_whole,
+                "edges": edges,
+            }
+        wrap_flushes += 1
+        edges.append("0xf054-wrap-recovery")
+        probe_x = int(recovery_x)
+        end_coord = packed_coord_add_via_10518(measure, probe_x)
+        end_whole, _ = unpack12(end_coord)
+        if end_whole > page_line_limit:
+            edges.append("page-line-limit-after-wrap")
+            return {
+                "handler": handler,
+                "path": path,
+                "result": 1,
+                "queue_allowed": False,
+                "reason": "page-line-limit-after-wrap",
+                "wrap_flushes": wrap_flushes,
+                "probe_x": probe_x,
+                "measure": measure,
+                "end_coord": end_coord,
+                "end_whole": end_whole,
+                "edges": edges,
+            }
+
+    if current_y < vertical_lower:
+        edges.append("vertical-lower-bound")
+        return {
+            "handler": handler,
+            "path": path,
+            "result": 1,
+            "queue_allowed": False,
+            "reason": "vertical-lower-bound",
+            "wrap_flushes": wrap_flushes,
+            "probe_x": probe_x,
+            "measure": measure,
+            "end_coord": end_coord,
+            "end_whole": end_whole,
+            "vertical_y": current_y,
+            "vertical_lower": vertical_lower,
+            "edges": edges,
+        }
+
+    vertical_end = current_y + vertical_extent
+    if vertical_end > page_extent:
+        edges.append("vertical-extent")
+        return {
+            "handler": handler,
+            "path": path,
+            "result": 1,
+            "queue_allowed": False,
+            "reason": "vertical-extent",
+            "wrap_flushes": wrap_flushes,
+            "probe_x": probe_x,
+            "measure": measure,
+            "end_coord": end_coord,
+            "end_whole": end_whole,
+            "vertical_y": current_y,
+            "vertical_end": vertical_end,
+            "page_extent": page_extent,
+            "edges": edges,
+        }
+
+    edges.append("continue")
+    return {
+        "handler": handler,
+        "path": path,
+        "result": 0,
+        "queue_allowed": True,
+        "reason": "continue",
+        "wrap_flushes": wrap_flushes,
+        "probe_x": probe_x,
+        "measure": measure,
+        "end_coord": end_coord,
+        "end_whole": end_whole,
+        "vertical_y": current_y,
+        "vertical_end": vertical_end,
+        "page_extent": page_extent,
+        "edges": edges,
+    }
+
+
+def text_precheck_unflagged_via_d28a(
+    *,
+    current_x: int,
+    current_y: int,
+    limit_x: int,
+    page_line_limit: int,
+    page_extent: int,
+    context_width_byte: int,
+    context_lower_byte: int,
+    context_extent_byte: int,
+    wrap_enabled: int = 0,
+    recovery_x: int = 0,
+) -> dict[str, object]:
+    return text_precheck_common(
+        handler=0x00D28A,
+        path="unflagged-inline",
+        current_x=current_x,
+        current_y=current_y,
+        limit_x=limit_x,
+        page_line_limit=page_line_limit,
+        page_extent=page_extent,
+        measure=(context_width_byte & 0xFF) << 16,
+        vertical_lower=context_lower_byte & 0xFF,
+        vertical_extent=context_extent_byte & 0xFF,
+        wrap_enabled=wrap_enabled,
+        recovery_x=recovery_x,
+    )
+
+
+def text_precheck_flagged_via_d6bc(
+    *,
+    current_x: int,
+    current_y: int,
+    limit_x: int,
+    page_line_limit: int,
+    page_extent: int,
+    context_advance_word: int,
+    context_lower_word: int,
+    context_extent_word: int,
+    source_x_offset: int = 0,
+    wrap_enabled: int = 0,
+    recovery_x: int = 0,
+) -> dict[str, object]:
+    source_offset = int(source_x_offset) << 16
+    measure = (context_advance_word & 0xFFFF) << 16
+    if source_offset < 0:
+        measure += source_offset
+    probe_x = int(current_x)
+    if probe_x + source_offset < 0:
+        probe_x = -source_offset
+    return text_precheck_common(
+        handler=0x00D6BC,
+        path="flagged-built-in",
+        current_x=current_x,
+        current_y=current_y,
+        limit_x=limit_x,
+        page_line_limit=page_line_limit,
+        page_extent=page_extent,
+        measure=measure,
+        vertical_lower=context_lower_word & 0xFFFF,
+        vertical_extent=context_extent_word & 0xFFFF,
+        wrap_enabled=wrap_enabled,
+        recovery_x=recovery_x,
+        x_probe=probe_x,
+    )
+
+
 def text_source_metrics_via_12f2e(resources: bytes, source: dict[str, object]) -> dict[str, int]:
     if int(source["flag"]):
         glyph_entry = int(source["glyph_entry"])
@@ -43037,6 +43248,233 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "x": 0,
                 "y": 0,
                 "context_slot": 0,
+            },
+        },
+    }))
+    precheck_success = {
+        "unflagged": text_precheck_unflagged_via_d28a(
+            current_x=pack12(2),
+            current_y=5,
+            limit_x=pack12(8),
+            page_line_limit=20,
+            page_extent=20,
+            context_width_byte=4,
+            context_lower_byte=2,
+            context_extent_byte=4,
+        ),
+        "flagged": text_precheck_flagged_via_d6bc(
+            current_x=pack12(2),
+            current_y=5,
+            limit_x=pack12(8),
+            page_line_limit=20,
+            page_extent=20,
+            context_advance_word=4,
+            context_lower_word=2,
+            context_extent_word=4,
+        ),
+    }
+    precheck_horizontal_reject = {
+        "unflagged": text_precheck_unflagged_via_d28a(
+            current_x=pack12(5),
+            current_y=5,
+            limit_x=pack12(8),
+            page_line_limit=20,
+            page_extent=20,
+            context_width_byte=4,
+            context_lower_byte=2,
+            context_extent_byte=4,
+        ),
+        "flagged": text_precheck_flagged_via_d6bc(
+            current_x=pack12(5),
+            current_y=5,
+            limit_x=pack12(8),
+            page_line_limit=20,
+            page_extent=20,
+            context_advance_word=4,
+            context_lower_word=2,
+            context_extent_word=4,
+        ),
+    }
+    precheck_horizontal_wrap = {
+        "unflagged": text_precheck_unflagged_via_d28a(
+            current_x=pack12(5),
+            current_y=5,
+            limit_x=pack12(8),
+            page_line_limit=20,
+            page_extent=20,
+            context_width_byte=4,
+            context_lower_byte=2,
+            context_extent_byte=4,
+            wrap_enabled=1,
+            recovery_x=pack12(0),
+        ),
+        "flagged": text_precheck_flagged_via_d6bc(
+            current_x=pack12(5),
+            current_y=5,
+            limit_x=pack12(8),
+            page_line_limit=20,
+            page_extent=20,
+            context_advance_word=4,
+            context_lower_word=2,
+            context_extent_word=4,
+            wrap_enabled=1,
+            recovery_x=pack12(0),
+        ),
+    }
+    precheck_vertical_reject = {
+        "unflagged": text_precheck_unflagged_via_d28a(
+            current_x=pack12(2),
+            current_y=18,
+            limit_x=pack12(8),
+            page_line_limit=20,
+            page_extent=20,
+            context_width_byte=4,
+            context_lower_byte=2,
+            context_extent_byte=4,
+        ),
+        "flagged": text_precheck_flagged_via_d6bc(
+            current_x=pack12(2),
+            current_y=18,
+            limit_x=pack12(8),
+            page_line_limit=20,
+            page_extent=20,
+            context_advance_word=4,
+            context_lower_word=2,
+            context_extent_word=4,
+        ),
+    }
+    checks.append(assert_equal("0xd28a and 0xd6bc prechecks share continue reject and wrap decisions", {
+        "success": precheck_success,
+        "horizontal_reject": precheck_horizontal_reject,
+        "horizontal_wrap": precheck_horizontal_wrap,
+        "vertical_reject": precheck_vertical_reject,
+    }, {
+        "success": {
+            "unflagged": {
+                "handler": 0x00D28A,
+                "path": "unflagged-inline",
+                "result": 0,
+                "queue_allowed": True,
+                "reason": "continue",
+                "wrap_flushes": 0,
+                "probe_x": 0x00020000,
+                "measure": 0x00040000,
+                "end_coord": 0x00060000,
+                "end_whole": 6,
+                "vertical_y": 5,
+                "vertical_end": 9,
+                "page_extent": 20,
+                "edges": ["continue"],
+            },
+            "flagged": {
+                "handler": 0x00D6BC,
+                "path": "flagged-built-in",
+                "result": 0,
+                "queue_allowed": True,
+                "reason": "continue",
+                "wrap_flushes": 0,
+                "probe_x": 0x00020000,
+                "measure": 0x00040000,
+                "end_coord": 0x00060000,
+                "end_whole": 6,
+                "vertical_y": 5,
+                "vertical_end": 9,
+                "page_extent": 20,
+                "edges": ["continue"],
+            },
+        },
+        "horizontal_reject": {
+            "unflagged": {
+                "handler": 0x00D28A,
+                "path": "unflagged-inline",
+                "result": 1,
+                "queue_allowed": False,
+                "reason": "horizontal-limit",
+                "wrap_flushes": 0,
+                "probe_x": 0x00050000,
+                "measure": 0x00040000,
+                "remaining": 0x00030000,
+                "edges": ["horizontal-limit"],
+            },
+            "flagged": {
+                "handler": 0x00D6BC,
+                "path": "flagged-built-in",
+                "result": 1,
+                "queue_allowed": False,
+                "reason": "horizontal-limit",
+                "wrap_flushes": 0,
+                "probe_x": 0x00050000,
+                "measure": 0x00040000,
+                "remaining": 0x00030000,
+                "edges": ["horizontal-limit"],
+            },
+        },
+        "horizontal_wrap": {
+            "unflagged": {
+                "handler": 0x00D28A,
+                "path": "unflagged-inline",
+                "result": 0,
+                "queue_allowed": True,
+                "reason": "continue",
+                "wrap_flushes": 1,
+                "probe_x": 0,
+                "measure": 0x00040000,
+                "end_coord": 0x00040000,
+                "end_whole": 4,
+                "vertical_y": 5,
+                "vertical_end": 9,
+                "page_extent": 20,
+                "edges": ["horizontal-limit", "0xf054-wrap-recovery", "continue"],
+            },
+            "flagged": {
+                "handler": 0x00D6BC,
+                "path": "flagged-built-in",
+                "result": 0,
+                "queue_allowed": True,
+                "reason": "continue",
+                "wrap_flushes": 1,
+                "probe_x": 0,
+                "measure": 0x00040000,
+                "end_coord": 0x00040000,
+                "end_whole": 4,
+                "vertical_y": 5,
+                "vertical_end": 9,
+                "page_extent": 20,
+                "edges": ["horizontal-limit", "0xf054-wrap-recovery", "continue"],
+            },
+        },
+        "vertical_reject": {
+            "unflagged": {
+                "handler": 0x00D28A,
+                "path": "unflagged-inline",
+                "result": 1,
+                "queue_allowed": False,
+                "reason": "vertical-extent",
+                "wrap_flushes": 0,
+                "probe_x": 0x00020000,
+                "measure": 0x00040000,
+                "end_coord": 0x00060000,
+                "end_whole": 6,
+                "vertical_y": 18,
+                "vertical_end": 22,
+                "page_extent": 20,
+                "edges": ["vertical-extent"],
+            },
+            "flagged": {
+                "handler": 0x00D6BC,
+                "path": "flagged-built-in",
+                "result": 1,
+                "queue_allowed": False,
+                "reason": "vertical-extent",
+                "wrap_flushes": 0,
+                "probe_x": 0x00020000,
+                "measure": 0x00040000,
+                "end_coord": 0x00060000,
+                "end_whole": 6,
+                "vertical_y": 18,
+                "vertical_end": 22,
+                "page_extent": 20,
+                "edges": ["vertical-extent"],
             },
         },
     }))
@@ -88540,6 +88978,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("")
     lines.append("This fixture starts one step earlier than the producer-modeled text bucket: the host byte stream is `21` (`!`). Under the documented normal parser conditions, that byte reaches `0xd04a`, enters `0x1393a`, maps through the active `LINE_PRINTER` character map to glyph byte `0x20`, takes the flagged/built-in `0xd824` path with cursor `(10,21)`, emits the same short `0x12f2e` compact object as the positioned fixture, and renders through `0x1effe` / `0x1f034`.")
     lines.append("The adjacent printable-entry normalization fixtures now pin the `0xd04a` over-`0xff` and high-bit branches: a nonzero `0xd99a` result exits before source build, a zero result substitutes host `0x7f` and builds glyph `0x7e`, primary high byte `0xa1` masks to host `0x21` while wrapping the source build with `0xc6b8`/`0xc68a`, either high-character flag preserves `0xa1` as glyph `0xa0`, and selected secondary slot masks without the primary wrapper.")
+    lines.append("The paired precheck fixture now pins `0xd28a` and `0xd6bc` result semantics before the queue handoff: ordinary success returns `0`, horizontal overflow with wrap disabled returns `1` and suppresses queueing, the same overflow with `0x783190` set calls `0xf054` and retries from recovered x `0`, and vertical-extent failure returns `1` on both source classes.")
     lines.append("")
     lines.append("- stream bytes: `21`")
     lines.append(f"- source object from `0x1393a`: context `0x{printable_stream_source['context']:08x}`, host `0x{printable_stream_source['host_char']:02x}`, mapped glyph `0x{printable_stream_source['mapped']:02x}`, glyph entry `0x{printable_stream_source['glyph_entry']:06x}`, flag `{printable_stream_source['flag']}`")

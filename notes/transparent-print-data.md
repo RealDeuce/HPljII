@@ -431,8 +431,11 @@ computed read starts at firmware address `0x0bfe22`. It needs bytes
 `0x0bfe22..0x0c0321`; only `0x0bfe22..0x0bffff` are inside the verified
 `0x40000`-byte resource-pair image. Firmware startup notes show scanner `0x41a`
 walking resource records through `0x0ae122` and terminating at `0x0b2f80`
-before the next `0x40000` probe, but they do not yet prove whether the physical
-decode wraps, mirrors, or maps another source at `0x0c0000..0x0c0321`.
+before the next `0x40000` probe. The mirror-scanner fixture below now proves a
+simple full mirror would be scanner-visible, but startup notes still do not
+prove whether the physical decode hides that mirror from scanner reads,
+zero-fills, exposes program ROM, or maps another source at
+`0x0c0000..0x0c0321`.
 
 Fixture `transparent secondary segment-57 continuation policies diverge after
 verified bytes` now makes the boundary policy-dependent rather than vaguely
@@ -466,9 +469,14 @@ only the four installed 128K x 8 ROM packages, with `IC32,IC15` providing the
 capacity can be 1 MB and that the address-controller gate array can alter ROM
 address regions through jumpers. Those hardware facts explain why the fixture
 keeps mirror, code-pair continuation, and zero-fill as named hypotheses instead
-of choosing one from disassembly alone. The exact unresolved boundary is
-`0x0c0000..0x0c0321`: closing it requires board/emulator memory-map evidence or
-an observed page result that matches one of the fallback-row digests above.
+of choosing one from disassembly alone. The mirror hypothesis is now constrained
+by fixture `0x41a HEAD scanner would duplicate records under simple resource
+mirror`: a full `IC32,IC15` mirror at `0x0c0000` would make scanner `0x41a`
+walk a second `HEAD` chain and `48` typed records, and `0x1a2e4` sets
+candidate-scan bounds through `0x0ffffe`. The exact unresolved boundary is
+`0x0c0000..0x0c0321`: closing it requires board/emulator memory-map evidence,
+live startup candidate counters, a direct bus read around `0x0c0000`, or an
+observed page result that matches one of the fallback-row digests above.
 
 ## Semantic Composition
 

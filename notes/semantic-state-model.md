@@ -920,12 +920,19 @@ or fixed-space helper `0xd0f0`.
   `e435e3b9d033e491b57282a88b0f321aa5fecae8128fa060844cc01379349563`,
   `90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16`, and
   `359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`.
+  Fixture `0x41a HEAD scanner would duplicate records under simple resource
+  mirror` constrains the mirror hypothesis: a full `IC32,IC15` mirror at
+  `0x0c0000` would expose a second `HEAD` chain to scanner `0x41a` and
+  duplicate typed records before the scan terminates at `0x80000`.
 - Unknown for this checkpoint:
   - manual-facing names for the selected context filtering byte, fallback
     filtering byte, and high-character flags remain provisional.
   - the board memory-map policy for firmware address `0x0c0000..0x0c0321`
     remains unknown; mirror, code-pair continuation, and zero-fill hypotheses
-    produce different fallback row digests in the harness. This is
+    produce different fallback row digests in the harness. A simple full mirror
+    would also duplicate `HEAD` scanner input, so the proof targets are live
+    startup candidate counters, direct bus reads around `0x0c0000`, emulator
+    gate-array decode, or physical output matching one fallback digest. This is
     firmware-address-map state, not parser state: `data/rom_manifest.json`
     accounts for the installed ROMs as four 128K x 8 packages with a
     `0x40000`-byte `IC32,IC15` resource pair, while
@@ -1085,6 +1092,10 @@ appending the code pair gives
 `dc58960aff83e718df147897de51944939626c4e8422a53da5443bca48a53df5`, and
 zero-fill gives
 `6373cecdf5f20d78b01abe5aa65c051d82ddef345b7cf7fe1504f93c9cb2c425`.
+Fixture `0x41a HEAD scanner would duplicate records under simple resource
+mirror` proves that the full-mirror continuation is scanner-visible: scanning
+`IC32,IC15 + IC32,IC15` would see `HEAD` at offsets `0` and `0x40000`, walk
+`48` typed records, and terminate at final probe `0x80000`.
 
 ### Confidence
 
@@ -1148,7 +1159,10 @@ for manual names for the filter bytes.
   bytes` proves mirror, code-pair continuation, and zero-fill all produce the
   same current-band digest but different fallback row digests, so the remaining
   requirement is board or emulator memory-map evidence for
-  `0x0c0000..0x0c0321`. The edge is explicitly outside the verified
+  `0x0c0000..0x0c0321`. The simple mirror candidate is constrained by fixture
+  `0x41a HEAD scanner would duplicate records under simple resource mirror`,
+  because a full mirror would duplicate scanner records unless hardware/gating
+  hides it from startup scanner reads. The edge is explicitly outside the verified
   `IC32,IC15` resource image in `data/rom_manifest.json`, and the hardware note
   in `notes/formatter-interface-pca.md` makes address-controller/jumper decode
   the candidate state to resolve. It is not primary route polarity, sampled

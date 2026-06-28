@@ -568,8 +568,13 @@ The next work should follow dataflow, not isolated handlers:
    `359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`, so the remaining
    requirement is board/emulator memory-map evidence for `0x0c0000..0x0c0321`. That
    range is outside the verified `IC32,IC15` resource-pair image described by
-   `data/rom_manifest.json`; the hardware evidence in `notes/formatter-interface-pca.md`
-   leaves address-controller/jumper ROM decode as the unresolved physical state. The
+   `data/rom_manifest.json`. Fixture `0x41a HEAD scanner would duplicate records under
+   simple resource mirror` now constrains one candidate: a full resource-pair mirror at
+   `0x0c0000` would make scanner `0x41a` see a second `HEAD` chain and walk `48` typed
+   records, so mirror cannot be treated as only a local fallback-row source unless
+   hardware/gating hides it from scanner reads. The hardware evidence in
+   `notes/formatter-interface-pca.md` leaves address-controller/jumper ROM decode as
+   the unresolved physical state. The
    `ESC Y ... ESC Z` display-functions loop is now documented in
    `notes/pcl-parser-core.md` and `notes/semantic-state-model.md`; fixture `ESC Y
    display-functions stream reaches page-record output` covers the default-filter normal

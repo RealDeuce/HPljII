@@ -29861,6 +29861,58 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "final_probe": 0x40000,
     }))
 
+    mirrored_resource_scan = resource_head_scan_via_041a(
+        resources + resources,
+        scan_span=0x80000,
+    )
+    mirrored_resource_records = mirrored_resource_scan["walked_records"]
+    assert isinstance(mirrored_resource_records, list)
+    mirrored_resource_events = mirrored_resource_scan["events"]
+    assert isinstance(mirrored_resource_events, list)
+    mirrored_resource_terminators = [
+        event
+        for event in mirrored_resource_events
+        if isinstance(event, dict) and event.get("kind") == "terminator"
+    ]
+    checks.append(assert_equal(
+        "0x41a HEAD scanner would duplicate records under simple resource mirror",
+        {
+            "status": mirrored_resource_scan["status"],
+            "heads": mirrored_resource_scan["head_offsets"],
+            "walked_count": len(mirrored_resource_records),
+            "first_second_head_record": {
+                key: mirrored_resource_records[24][key]  # type: ignore[index]
+                for key in ("offset", "marker", "length")
+            },
+            "last_record": {
+                key: mirrored_resource_records[-1][key]  # type: ignore[index]
+                for key in ("offset", "marker", "length")
+            },
+            "terminator_offsets": [
+                event["offset"]
+                for event in mirrored_resource_terminators
+            ],
+            "final_probe": mirrored_resource_scan["final_probe"],
+        },
+        {
+            "status": "end",
+            "heads": [0, 0x40000],
+            "walked_count": 48,
+            "first_second_head_record": {
+                "offset": 0x4004C,
+                "marker": 0x00000014,
+                "length": 0x000003CC,
+            },
+            "last_record": {
+                "offset": 0x06E122,
+                "marker": 0x00000014,
+                "length": 0x00004E5E,
+            },
+            "terminator_offsets": [0x032F80, 0x072F80],
+            "final_probe": 0x80000,
+        },
+    ))
+
     def put_long(buffer: bytearray, offset: int, value: int) -> None:
         buffer[offset:offset + 4] = (value & 0xFFFFFFFF).to_bytes(4, "big")
 
@@ -88531,6 +88583,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         resource_head_terminators[-1]["step"],  # type: ignore[index]
         resource_head_scan["final_probe"],
     ))
+    lines.append(
+        "- simple resource-pair mirror consequence: scanning `IC32,IC15 + "
+        "IC32,IC15` would see `HEAD` offsets %s, walk %d typed records, and "
+        "terminate at probes `0x%05x -> 0x%05x`; therefore a full mirror at "
+        "`0x0c0000` is not a local row-source detail, it would also duplicate "
+        "candidate-scan input unless hardware/gating hides it from the scanner." % (
+            ", ".join(
+                "0x%05x" % offset
+                for offset in mirrored_resource_scan["head_offsets"]  # type: ignore[index]
+            ),
+            len(mirrored_resource_records),
+            mirrored_resource_terminators[0]["offset"],  # type: ignore[index]
+            mirrored_resource_scan["final_probe"],
+        )
+    )
     lines.append("- boundary fixture: crossing the cumulative `0x40000` threshold at `0x%05x` raises the next probe units to `%d`, so a null terminator steps by `0x%05x` instead of the default `0x40000`." % (
         boundary_crossing_events[-1]["offset"],  # type: ignore[index]
         boundary_crossing_events[-1]["next_probe_units"],  # type: ignore[index]

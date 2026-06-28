@@ -192,9 +192,20 @@ can be 1 MB, the address-controller gate array can change the ROM address region
 through jumpers, and ROM is used in four separate sections. Therefore the three
 continuation candidates above are fixture hypotheses for the unverified
 `0x0c0000..0x0c0321` firmware-address window, not equivalent decoded glyph
-formats. Closing the fallback rows needs board/emulator evidence for that
-physical decode/window, or physical output that selects one of the fallback-row
-digests.
+formats.
+
+The fixture `0x41a HEAD scanner would duplicate records under simple resource
+mirror` adds an address-map constraint. If the whole `IC32,IC15` resource pair
+were simply mirrored at firmware address `0x0c0000`, the `0x41a` scanner model
+would see `HEAD` at offsets `0` and `0x40000`, walk `48` typed records, and
+terminate at `0x80000`. The later `0x1a2e4` / `0x1a616` font candidate scan also
+sets built-in bounds `0x080000..0x0ffffe`, so a full mirror in that range would
+not be only a local row-source detail: it would be visible to candidate
+discovery unless hardware or gate-array state hides the mirror from scanner
+reads. Closing the fallback rows therefore needs board/emulator evidence for
+that physical decode/window, live startup candidate counters after `0x1a2e4`, a
+direct bus read around `0x0c0000`, or physical output that selects one of the
+fallback-row digests.
 
 The executable harness now extracts deterministic metadata for all named
 header-like built-in records in the verified resource window: twelve

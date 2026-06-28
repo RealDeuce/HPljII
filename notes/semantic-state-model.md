@@ -66,10 +66,13 @@ before parser dispatch.
   - `0x7821cd`: service-needed flag checked before all byte sources.
   - `0x7821cc`: service-in-progress flag set around helper `0x10cc`.
   - `0x780e66`: source/pending flags. Observed bit roles are bit 3 for
-    first pushback stack probe, bit 2 for data-chain probe, bit 1 for active
-    data-chain frames, and bit 0 for second pushback stack probe.
+    the no-byte gate set with `0x780e3b` by `0x4322` / `0x622c`, bit 2 for
+    first pushback stack bytes appended by `0x9ec0`, bit 1 for active
+    data-chain frames, and bit 0 for second pushback stack bytes appended by
+    `0x9ec0`.
   - `0x780e3b`: no-byte gate that returns `D7 = -1` while
-    `0x780e66 != 0`.
+    `0x780e66 != 0`; the main parser loop observes and clears it at
+    `0x117dc..0x117ee`.
   - `0x7821c4`: timeout/handshake state cleared after direct hardware
     reads.
   - `0x7828ec`: direct-mode active byte, cleared or set by hardware
@@ -118,6 +121,12 @@ before parser dispatch.
   consumed by `0xa904`; the macro execute/call fixtures pin frame
   payload bytes `!\r` and mixed-control payload
   `ESC &k1G!\r!`.
+- Pushback/log helper `0x9ec0` writes `0x783e76` / `0x783e78` and sets
+  `0x780e66.0` when current frame byte `+9 == 0`; it writes `0x783e8c` /
+  `0x783e8e` and sets `0x780e66.2` when current frame byte `+9 != 0`.
+- Gate setters `0x4322..0x4332` and `0x622c..0x623c` write
+  `0x780e3b = 1` and set `0x780e66.3`; `0x117dc..0x117ee` clears
+  `0x780e3b` before entering the `0x10c8(0x780202)` wait/helper path.
 
 ### Readers And Consumers
 
@@ -205,10 +214,9 @@ broader frame-lifetime tracing.
   non-replay page-finalization frame from `0xe4f4` are documented. Remaining
   uncertainty is any producer for frame byte `+9` values outside observed
   `2`, `3`, and `4`.
-- `0x780e66` bit meanings: bit 1 is pinned as data-chain-active through
-  `0xe418` / `0xe4f4` / `0xe22c`; bits 3, 2, and 0 are pinned only at the
-  `0xa904` consumer side as first-stack, data-chain-probe, and second-stack
-  gates. External setter/owner names for those three bits remain unproven.
+- `0x4322..0x4332` and `0x622c..0x623c`: the local no-byte gate writes are
+  pinned, but the broader high-level routine names around those gate setters
+  remain provisional.
 
 ## Parser Record And Delayed Payload State
 

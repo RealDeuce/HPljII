@@ -39,6 +39,11 @@ This ordering matters for reproduction. Macro replay and other data-chain
 sources can feed bytes before live host input, and the two LIFO sources can
 override the ring or hardware sources.
 
+The individual `0x780e66` bits are advisory pending flags, not the source
+priority itself. `0xa904` still tests the concrete count/frame fields in the
+order above. The bits keep the routine on the buffered-source path until the
+producer state drains or a gate is cleared.
+
 ## Pseudocode
 
 The following is intentionally close to the ROM branch structure:
@@ -119,6 +124,12 @@ back to `0x783e8e`, decrements `0x783e8c`, and returns the byte in `D7`.
 The predecrement access means `0x783e8e` points one byte past the next byte
 to be returned.
 
+Helper `0x9ec0` is a producer for this stack. If `0x780e3b` is clear and the
+current data-chain frame byte `+9` is nonzero, `0x9ec0` appends its byte
+argument at `0x783e8e`, increments count `0x783e8c`, advances the pointer,
+and sets `0x780e66.2` at `0x9f56`. The later `0xa904` consumer clears that
+bit at `0xa94c` only after the first stack count has drained to zero.
+
 ### Active Data Chain
 
 Branch `0xa954..0xa97c` loads `A2 = long[0x782d76]` and inspects
@@ -146,6 +157,28 @@ non-replay frame.
 
 Branch `0xa980..0xa99e` is the same shape as the first LIFO source but
 uses count `0x783e76` and pointer `0x783e78`.
+
+The same helper `0x9ec0` is also the producer for this stack. If
+`0x780e3b` is clear and the current data-chain frame byte `+9` is zero,
+`0x9ec0` appends its byte argument at `0x783e78`, increments count
+`0x783e76`, advances the pointer, and sets `0x780e66.0` at `0x9f1a`.
+`0xa904` clears bit 0 at `0xa9a0` only after the second stack count is empty.
+
+If `0x780e3b` is already set, `0x9ec0` returns `D7 = 1` immediately and does
+not append to either stack. This prevents parser logging/replay helpers from
+building more pushback state while the no-byte gate is active.
+
+### No-Byte Gate Flag
+
+The no-byte gate is a paired state: byte `0x780e3b` carries the gate itself,
+and `0x780e66.3` keeps `0xa904` on the buffered-source branch long enough to
+observe it. The two observed gate setters are `0x4322..0x4332` and
+`0x622c..0x623c`; both write `0x780e3b = 1` and set `0x780e66.3`. While both
+`0x780e66` and `0x780e3b` are nonzero, `0xa904` returns `D7 = -1` at
+`0xa920` before checking any stack, data-chain, ring, or direct hardware
+source. The main parser loop `0x117dc..0x117ee` is the observed consumer of
+this gate: it tests `0x780e3b`, clears it at `0x117e8`, and then calls the
+`0x10c8(0x780202)` wait/helper path.
 
 ### Ring Source
 
@@ -280,11 +313,12 @@ Field groups:
   - `0x7821cd` is the service-needed gate;
   - `0x7821cc` is set while `0x10cc(0x780202)` runs;
   - `0x780e66` gates stacked/data-chain sources. The observed source bits are
-    bit 3 for the first pushback stack probe cleared by `0xa924`, bit 2 for
-    the data-chain probe cleared by `0xa94c`, bit 1 for active data-chain
+    bit 3 for the no-byte gate set by `0x4322` / `0x622c` with `0x780e3b`,
+    bit 2 for the first pushback stack set by `0x9ec0` and cleared by
+    `0xa904` after count `0x783e8c` drains, bit 1 for active data-chain
     frames set by `0xe418` / `0xe4f4` and cleared by `0xe22c` frame-end
-    paths, and bit 0 for the second pushback stack probe cleared by
-    `0xa9a0`;
+    paths, and bit 0 for the second pushback stack set by `0x9ec0` and
+    cleared by `0xa904` after count `0x783e76` drains;
   - `0x780e3b` forces the immediate `D7 = -1` return while
     `0x780e66` is set;
   - `0x7821c4`, `0x7828ec`, `0x7828fa`, `0x7828fb`, and `0x780e2e`
@@ -297,8 +331,8 @@ Field groups:
   - board-level names and timing for the direct MMIO banks;
   - data-chain frame-byte values outside the observed `+9 = 2`, `3`, and
     `4` producers, if any;
-  - external setter/owner names for `0x780e66` bits 3, 2, and 0 beyond the
-    observed `0xa904` source probes.
+  - full high-level owner names for the two gate-setter routines at
+    `0x4322..0x4332` and `0x622c..0x623c`.
 
 Writers:
 
@@ -313,6 +347,12 @@ Writers:
   `0x783e62`, and `$aa01`.
 - Macro setup helpers such as `0xe418` build data-chain frames that later
   replay through `0xa904`.
+- `0x9ec0` writes the two pushback stacks: frame byte `+9 == 0` selects
+  `0x783e76` / `0x783e78` and sets `0x780e66.0`; frame byte `+9 != 0`
+  selects `0x783e8c` / `0x783e8e` and sets `0x780e66.2`.
+- `0x4322..0x4332` and `0x622c..0x623c` set the no-byte gate pair
+  `0x780e3b = 1` plus `0x780e66.3`; the main parser loop
+  `0x117dc..0x117ee` observes and clears `0x780e3b`.
 
 Readers and consumers:
 
@@ -395,10 +435,9 @@ Unresolved middle edges:
   non-replay page-finalization producer `0xe4f4` are documented. Remaining
   uncertainty is any producer for frame byte `+9` values outside observed
   `2`, `3`, and `4`.
-- `0x780e66`: bit 1 is data-chain-active and is set/cleared by
-  `0xe418` / `0xe4f4` / `0xe22c`; bits 3, 2, and 0 are observed through
-  `0xa904` as first-stack, data-chain-probe, and second-stack source gates.
-  Their external setter/owner names remain unproven.
+- `0x4322..0x4332` and `0x622c..0x623c`: the local effect is proven as the
+  no-byte gate pair `0x780e3b = 1` plus `0x780e66.3`. Their broader
+  high-level caller names are still provisional.
 
 ## Reproduction Requirements
 

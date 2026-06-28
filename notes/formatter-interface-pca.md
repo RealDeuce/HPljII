@@ -66,8 +66,12 @@ and reset path. `data/rom_manifest.json` records initial SP
 disassembly at that reset PC. This board-specific evidence should not
 be generalized back onto every HP 33440 revision without inspection.
 
-Still-open board facts for emulator fidelity are the CPU clock source,
-gate-array markings, and exact memory/control-register decode.
+Still-open board facts for hardware-emulator fidelity are the CPU clock
+source, gate-array markings, and exact memory/control-register decode.
+The CPU clock source is not currently a page-bitmap reproduction
+dependency; it matters when cycle/time-dependent host I/O, engine
+handshake, video-buffer, timeout, or service-error behavior becomes part
+of the emulated formatter.
 
 ## ROM
 
@@ -245,9 +249,10 @@ Self-test printout reports:
 
 See [errors-and-status.md](errors-and-status.md) for a fuller table.
 
-## Open Questions for ROM Work
+## Open Hardware Questions
 
-- Exact CPU clock source for this board.
+- Exact CPU clock source for this board, for timing fidelity rather than
+  static page-bitmap reproduction.
 - Address map: ROM regions, NVRAM, SRAM, DRAM, gate array registers, I/O
   controller, video buffers, cartridge slots, control panel, and DC
   Controller port.

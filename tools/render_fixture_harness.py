@@ -42941,6 +42941,105 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         },
     }))
+    d04a_primary_flag_preserve = printable_entry_normalization_via_d04a(
+        resources,
+        0x440946B4,
+        0xA1,
+        primary_high_flag=1,
+        secondary_high_flag=0,
+        selected_slot=0,
+    )
+    d04a_secondary_flag_preserve = printable_entry_normalization_via_d04a(
+        resources,
+        0x440946B4,
+        0xA1,
+        primary_high_flag=0,
+        secondary_high_flag=1,
+        selected_slot=0,
+    )
+    d04a_secondary_slot_mask = printable_entry_normalization_via_d04a(
+        resources,
+        0x440946B4,
+        0xA1,
+        primary_high_flag=0,
+        secondary_high_flag=0,
+        selected_slot=1,
+    )
+    checks.append(assert_equal("0xd04a high-character flags and selected slot choose mask behavior", {
+        "primary_flag_preserve": d04a_primary_flag_preserve,
+        "secondary_flag_preserve": d04a_secondary_flag_preserve,
+        "secondary_slot_mask": d04a_secondary_slot_mask,
+    }, {
+        "primary_flag_preserve": {
+            "entry_value": 0xA1,
+            "path": "source-object",
+            "d99a_called": False,
+            "d99a_result": None,
+            "d99a_fallback": False,
+            "masked": False,
+            "primary_wrapper": False,
+            "c68a_restore": False,
+            "normalized": 0xA1,
+            "source": {
+                "context": 0x440946B4,
+                "host_char": 0xA1,
+                "mapped": 0xA0,
+                "glyph_entry": 0x017256,
+                "glyph_width": 9,
+                "glyph_rows": 24,
+                "flag": 1,
+                "x": 0,
+                "y": 0,
+                "context_slot": 0,
+            },
+        },
+        "secondary_flag_preserve": {
+            "entry_value": 0xA1,
+            "path": "source-object",
+            "d99a_called": False,
+            "d99a_result": None,
+            "d99a_fallback": False,
+            "masked": False,
+            "primary_wrapper": False,
+            "c68a_restore": False,
+            "normalized": 0xA1,
+            "source": {
+                "context": 0x440946B4,
+                "host_char": 0xA1,
+                "mapped": 0xA0,
+                "glyph_entry": 0x017256,
+                "glyph_width": 9,
+                "glyph_rows": 24,
+                "flag": 1,
+                "x": 0,
+                "y": 0,
+                "context_slot": 0,
+            },
+        },
+        "secondary_slot_mask": {
+            "entry_value": 0xA1,
+            "path": "source-object",
+            "d99a_called": False,
+            "d99a_result": None,
+            "d99a_fallback": False,
+            "masked": True,
+            "primary_wrapper": False,
+            "c68a_restore": False,
+            "normalized": 0x21,
+            "source": {
+                "context": 0x440946B4,
+                "host_char": 0x21,
+                "mapped": 0x20,
+                "glyph_entry": 0x015330,
+                "glyph_width": 4,
+                "glyph_rows": 22,
+                "flag": 1,
+                "x": 0,
+                "y": 0,
+                "context_slot": 0,
+            },
+        },
+    }))
     positioned_fixture = position_flagged_text_source_via_d824(resources, text_source, cursor_x=10, cursor_y=21)
     checks.append(assert_equal("0xd824-modeled positioned text source fields", positioned_fixture, {
         "source": {
@@ -88440,7 +88539,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("## Single Printable Byte Stream Fixture")
     lines.append("")
     lines.append("This fixture starts one step earlier than the producer-modeled text bucket: the host byte stream is `21` (`!`). Under the documented normal parser conditions, that byte reaches `0xd04a`, enters `0x1393a`, maps through the active `LINE_PRINTER` character map to glyph byte `0x20`, takes the flagged/built-in `0xd824` path with cursor `(10,21)`, emits the same short `0x12f2e` compact object as the positioned fixture, and renders through `0x1effe` / `0x1f034`.")
-    lines.append("The adjacent printable-entry normalization fixture now pins the `0xd04a` over-`0xff` and high-bit branches: a nonzero `0xd99a` result exits before source build, a zero result substitutes host `0x7f` and builds glyph `0x7e`, and primary high byte `0xa1` masks to host `0x21` while wrapping the source build with `0xc6b8`/`0xc68a`.")
+    lines.append("The adjacent printable-entry normalization fixtures now pin the `0xd04a` over-`0xff` and high-bit branches: a nonzero `0xd99a` result exits before source build, a zero result substitutes host `0x7f` and builds glyph `0x7e`, primary high byte `0xa1` masks to host `0x21` while wrapping the source build with `0xc6b8`/`0xc68a`, either high-character flag preserves `0xa1` as glyph `0xa0`, and selected secondary slot masks without the primary wrapper.")
     lines.append("")
     lines.append("- stream bytes: `21`")
     lines.append(f"- source object from `0x1393a`: context `0x{printable_stream_source['context']:08x}`, host `0x{printable_stream_source['host_char']:02x}`, mapped glyph `0x{printable_stream_source['mapped']:02x}`, glyph entry `0x{printable_stream_source['glyph_entry']:06x}`, flag `{printable_stream_source['flag']}`")

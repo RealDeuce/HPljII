@@ -1178,7 +1178,8 @@ short or segmented compact bucket entries consumed by `0x1387c`,
     affecting whether bytes above `0x7f` are masked before `0x1393a`.
   Evidence: disassembly `0xd04a..0xd0e8` and generated printable-text
   path steps 6-9; fixture
-  `0xd04a printable entry normalizes over-0xff and high-bit values`.
+  `0xd04a printable entry normalizes over-0xff and high-bit values`; fixture
+  `0xd04a high-character flags and selected slot choose mask behavior`.
 - Unknown:
   - live CPU register snapshots for every source class through the
     entire `0xd04a -> 0x1393a -> 0xd140/d550 -> 0x12f2e` chain.
@@ -1259,6 +1260,12 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   Primary high byte `0xa1` with both high-character flags clear masks to
   host `0x21`, wraps source-object build with `0xc6b8` / `0xc68a`, and
   reaches the same glyph `0x20` / entry `0x015330` as ordinary `!`.
+- Fixture `0xd04a high-character flags and selected slot choose mask
+  behavior` closes the sibling flag/slot cases for the same high byte:
+  either `0x783132` or `0x783133` set preserves host `0xa1`, maps to glyph
+  `0xa0`, and builds glyph entry `0x017256`, while flags clear with selected
+  secondary slot `1` still masks to host `0x21` but skips the primary
+  `0xc6b8` / `0xc68a` wrapper.
 
 ### Confidence
 
@@ -1276,6 +1283,7 @@ full 68000 interpreter through every source class and allocator branch.
 - `0xd824-positioned short bucket object fields`
 - `0xd824-negative-overflow short bucket object fields`
 - `0xd04a printable entry normalizes over-0xff and high-bit values`
+- `0xd04a high-character flags and selected slot choose mask behavior`
 - `0xd3b2-modeled unflagged source fields`
 - `0xd3b2-modeled unflagged overflow source fields`
 - `0x12f2e-modeled unflagged short bucket object fields`
@@ -1317,8 +1325,9 @@ full 68000 interpreter through every source class and allocator branch.
 - `0xd04a..0x1393a`: byte normalization and source-object build are
   disassembled and fixture-backed for ordinary printable entry,
   over-`0xff` nonzero `0xd99a` exit, over-`0xff` fallback to `0x7f`,
-  and the primary high-bit mask wrapper. Remaining risk is broader
-  high-character flag/secondary-slot combinations and live CPU-register
+  the primary high-bit mask wrapper, either high-character flag preserving
+  a high byte, and selected secondary slot masking without the primary
+  wrapper. Remaining risk is broader high-byte values and live CPU-register
   coverage around the modeled branch, not these specific normalization
   outcomes.
 - `0xd28a..0xd3aa` and `0xd6bc..0xd81a`: precheck wrap/recovery paths

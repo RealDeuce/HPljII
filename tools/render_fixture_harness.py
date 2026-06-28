@@ -65261,6 +65261,291 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "object_size": 0x26,
         "object_prefix": bytes.fromhex("00 00 00 00 00 03 00 01 01 66 01"),
     }))
+
+    selector_mode_matrix_resources = bytearray(0x2000)
+    selector_mode_matrix_context = 0x00000100
+    selector_mode_records = {
+        1: (0x02, 0x03, 0x0080),
+        2: (0x11, 0x03, 0x0100),
+        3: (0x02, 0x81, 0x0300),
+        4: (0x11, 0x81, 0x0600),
+    }
+    for glyph, (width_byte, row_byte, bitmap_delta) in selector_mode_records.items():
+        record_offset = selector_mode_matrix_context + 0x40 + glyph * 8
+        selector_mode_matrix_resources[record_offset] = width_byte
+        selector_mode_matrix_resources[record_offset + 1] = row_byte
+        selector_mode_matrix_resources[record_offset + 2] = 0x04
+        selector_mode_matrix_resources[record_offset + 4:record_offset + 8] = (
+            bitmap_delta.to_bytes(4, "big")
+        )
+    selector_mode_matrix_resources[
+        selector_mode_matrix_context + 0x0080:selector_mode_matrix_context + 0x0086
+    ] = bytes.fromhex("aa 55 ff 00 00 ff")
+    selector_mode_matrix_resources[
+        selector_mode_matrix_context + 0x0100:selector_mode_matrix_context + 0x0130
+    ] = (b"\xff" * 0x10) + (b"\x00" * 0x10) + (b"\xaa" * 0x10)
+    selector_mode_matrix_resources[
+        selector_mode_matrix_context + 0x0130:selector_mode_matrix_context + 0x0133
+    ] = bytes.fromhex("ff 00 55")
+    selector_mode_matrix_resources[
+        selector_mode_matrix_context + 0x0300 + 0x100:selector_mode_matrix_context + 0x0300 + 0x102
+    ] = bytes.fromhex("aa 55")
+    selector_mode_matrix_resources[
+        selector_mode_matrix_context + 0x0600 + 0x80 * 0x10:
+        selector_mode_matrix_context + 0x0600 + 0x81 * 0x10
+    ] = b"\xaa" * 0x10
+    selector_mode_matrix_resources[
+        selector_mode_matrix_context + 0x0600 + 0x81 * 0x10 + 0x80
+    ] = 0x55
+    selector_mode_matrix_state: dict[str, object] = {
+        "current_page_root": ABSTRACT_PAGE_ROOT_PTR,
+        "page_root_present": 1,
+        "page_root_class": 1,
+        "stream_bytes_remaining_782a70": 0,
+        "stream_link_ptr_782a72": 0,
+        "stream_next_free_782a76": 0,
+        "next_stream_chunk_ptr": 0x00D09000,
+        "stream_chunk_links": {},
+        "bucket_heads_1c": {},
+        "rule_head_24": 0,
+        "fixed_head_28": 0,
+        "stream_objects": {},
+        "context_slots": [0, 0, 0, selector_mode_matrix_context],
+    }
+    selector_mode_matrix_results: list[dict[str, object]] = []
+    for glyph in (1, 2, 3, 4):
+        record_offset = selector_mode_matrix_context + 0x40 + glyph * 8
+        width_byte, row_byte, _ = selector_mode_records[glyph]
+        selector_source = {
+            "context": selector_mode_matrix_context,
+            "host_char": 0x20 + glyph,
+            "mapped": glyph,
+            "glyph_entry": 0,
+            "glyph_width": width_byte,
+            "glyph_rows": row_byte,
+            "flag": 0,
+            "x": 22,
+            "y": 22,
+            "context_slot": 3,
+            "inline_record": bytes(
+                selector_mode_matrix_resources[record_offset:record_offset + 8]
+            ),
+        }
+        selector_mode_matrix_results.append(
+            queue_text_source_to_addressed_stream_via_12f2e(
+                selector_mode_matrix_resources,
+                selector_mode_matrix_state,
+                selector_source,
+            )
+        )
+    selector_mode_matrix_record = page_record_from_addressed_stream_state(
+        selector_mode_matrix_state,
+    )
+    selector_mode_bucket_1 = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        selector_mode_matrix_resources,
+        selector_mode_matrix_record,
+        bucket_word=1,
+    )["entry"]
+    selector_mode_bucket_9 = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        selector_mode_matrix_resources,
+        selector_mode_matrix_record,
+        bucket_word=9,
+    )["entry"]
+    checks.append(assert_equal("addressed 0x12f2e selector-mode matrix allocates and renders all compact modes", {
+        "queue_results": [
+            (
+                {
+                    key: result[key]
+                    for key in (
+                        "path",
+                        "allocation_failed",
+                        "selector",
+                        "coord",
+                        "glyph",
+                        "rows",
+                        "width",
+                        "object_size",
+                        "capacity",
+                        "entry_size",
+                    )
+                } | (
+                    {
+                        "object_ptr": result["object_ptr"],
+                        "bucket_index": result["bucket_index"],
+                        "object_prefix": result["object"][:12],
+                    }
+                    if result["path"] == "short-addressed-page-record"
+                    else {
+                        "events": [
+                            {
+                                "bucket_index": event["bucket_index"],
+                                "segment": event["segment"],
+                                "object_ptr": event["object_ptr"],
+                                "object_prefix": event["object"][:12],
+                            }
+                            for event in result["events"]
+                        ],
+                    }
+                )
+            )
+            for result in selector_mode_matrix_results
+        ],
+        "bucket_heads": sorted(selector_mode_matrix_state["bucket_heads_1c"].items()),
+        "stream": {
+            key: selector_mode_matrix_state[key]
+            for key in (
+                "stream_bytes_remaining_782a70",
+                "stream_next_free_782a76",
+                "next_stream_chunk_ptr",
+            )
+        },
+        "render": {
+            1: {
+                "dispatch": [
+                    {
+                        key: entry[key]
+                        for key in ("object_byte_4", "context_slot", "target")
+                    }
+                    for entry in selector_mode_bucket_1["dispatch"]["entries"]
+                ],
+                "bucket_rendered_count": len(selector_mode_bucket_1["bucket_rendered"]),
+                "row_count": len(selector_mode_bucket_1["rows"]),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(selector_mode_bucket_1["rows"]).encode("ascii")
+                ).hexdigest(),
+            },
+            9: {
+                "dispatch": [
+                    {
+                        key: entry[key]
+                        for key in ("object_byte_4", "context_slot", "target")
+                    }
+                    for entry in selector_mode_bucket_9["dispatch"]["entries"]
+                ],
+                "bucket_rendered_count": len(selector_mode_bucket_9["bucket_rendered"]),
+                "row_count": len(selector_mode_bucket_9["rows"]),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(selector_mode_bucket_9["rows"]).encode("ascii")
+                ).hexdigest(),
+            },
+        },
+    }, {
+        "queue_results": [
+            {
+                "path": "short-addressed-page-record",
+                "allocation_failed": False,
+                "selector": 0x0003,
+                "coord": 0x6601,
+                "glyph": 1,
+                "rows": 3,
+                "width": 2,
+                "object_size": 0x26,
+                "capacity": 0x0A,
+                "entry_size": 3,
+                "object_ptr": 0x00D09004,
+                "bucket_index": 1,
+                "object_prefix": bytes.fromhex("00 00 00 00 00 03 00 01 01 66 01 00"),
+            },
+            {
+                "path": "short-addressed-page-record",
+                "allocation_failed": False,
+                "selector": 0x1003,
+                "coord": 0x6601,
+                "glyph": 2,
+                "rows": 3,
+                "width": 0x11,
+                "object_size": 0x26,
+                "capacity": 0x0A,
+                "entry_size": 3,
+                "object_ptr": 0x00D0902A,
+                "bucket_index": 1,
+                "object_prefix": bytes.fromhex("00 d0 90 04 10 03 00 01 02 66 01 00"),
+            },
+            {
+                "path": "segmented-addressed-page-record",
+                "allocation_failed": False,
+                "selector": 0x2003,
+                "coord": 0x6601,
+                "glyph": 3,
+                "rows": 0x81,
+                "width": 2,
+                "object_size": 0x28,
+                "capacity": 0x08,
+                "entry_size": 4,
+                "events": [
+                    {
+                        "bucket_index": 9,
+                        "segment": 1,
+                        "object_ptr": 0x00D09050,
+                        "object_prefix": bytes.fromhex("00 00 00 00 20 03 00 01 03 01 66 01"),
+                    },
+                    {
+                        "bucket_index": 1,
+                        "segment": 0,
+                        "object_ptr": 0x00D09078,
+                        "object_prefix": bytes.fromhex("00 d0 90 2a 20 03 00 01 03 00 66 01"),
+                    },
+                ],
+            },
+            {
+                "path": "segmented-addressed-page-record",
+                "allocation_failed": False,
+                "selector": 0x3003,
+                "coord": 0x6601,
+                "glyph": 4,
+                "rows": 0x81,
+                "width": 0x11,
+                "object_size": 0x28,
+                "capacity": 0x08,
+                "entry_size": 4,
+                "events": [
+                    {
+                        "bucket_index": 9,
+                        "segment": 1,
+                        "object_ptr": 0x00D090A0,
+                        "object_prefix": bytes.fromhex("00 d0 90 50 30 03 00 01 04 01 66 01"),
+                    },
+                    {
+                        "bucket_index": 1,
+                        "segment": 0,
+                        "object_ptr": 0x00D090C8,
+                        "object_prefix": bytes.fromhex("00 d0 90 78 30 03 00 01 04 00 66 01"),
+                    },
+                ],
+            },
+        ],
+        "bucket_heads": [(1, 0x00D090C8), (9, 0x00D090A0)],
+        "stream": {
+            "stream_bytes_remaining_782a70": 0x10,
+            "stream_next_free_782a76": 0x00D090F0,
+            "next_stream_chunk_ptr": 0x00D09100,
+        },
+        "render": {
+            1: {
+                "dispatch": [
+                    {"object_byte_4": 0x30, "context_slot": 3, "target": 0x01EFFE},
+                    {"object_byte_4": 0x20, "context_slot": 3, "target": 0x01EFFE},
+                    {"object_byte_4": 0x10, "context_slot": 3, "target": 0x01EFFE},
+                    {"object_byte_4": 0x00, "context_slot": 3, "target": 0x01EFFE},
+                ],
+                "bucket_rendered_count": 4,
+                "row_count": 64,
+                "row_sha256": "c9de5a8a4ed4f2805e35e1a7c8bdad2f6f832fc129bd26f5ec49a82a6023b25b",
+            },
+            9: {
+                "dispatch": [
+                    {"object_byte_4": 0x30, "context_slot": 3, "target": 0x01EFFE},
+                    {"object_byte_4": 0x20, "context_slot": 3, "target": 0x01EFFE},
+                ],
+                "bucket_rendered_count": 2,
+                "row_count": 7,
+                "row_sha256": "dfd0b3d07e16f8d06a8ef12c1c51dedac61149493fb1e90981866da521e98e58",
+            },
+        },
+    }))
+
     unflagged_wide_source = dict(unflagged_positioned_source)
     unflagged_wide_source["inline_record"] = bytes.fromhex("11 03 04")
     unflagged_wide_bucket = queue_text_source_via_12f2e(resources, unflagged_wide_source)
@@ -91559,6 +91844,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- record byte `+0 = 0x11` sets selector bit `0x1000`, producing object bytes: `%s`" % (
         " ".join(f"{byte:02x}" for byte in unflagged_wide_bucket["object"]),
     ))
+    lines.append("- addressed selector-mode matrix: selectors `0x0003`, `0x1003`, `0x2003`, and `0x3003` allocate through `0x1381c`, leave bucket heads `1 -> 0x00d090c8` and `9 -> 0x00d090a0`, and render bucket words `1` and `9` through compact target `0x1effe`.")
     wide_rendered = unflagged_wide_rendered["rendered"]
     assert isinstance(wide_rendered, list)
     wide_render_entry = wide_rendered[0]

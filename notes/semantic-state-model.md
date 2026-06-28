@@ -1178,6 +1178,8 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   `0x12f2e-modeled unflagged tall inline bucket objects`, and
   `0x12f2e-modeled unflagged wide tall inline bucket objects`; addressed
   allocator/retry evidence is fixture-backed by
+  `addressed 0x12f2e selector-mode matrix allocates and renders all compact
+  modes`,
   `0xd3b2 and 0xd824 text queue no-room retry preserves source and rows`
   and `0xd3b2 and 0xd824 segmented text queue no-room retry preserves
   source and rows`.
@@ -1249,6 +1251,23 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   `0x3003`. The segmented cases emit two objects for segment `1` and
   segment `0`, with bucket indices `9/1` or `8/0` depending on the
   positioned y coordinate.
+- Fixture `addressed 0x12f2e selector-mode matrix allocates and renders all
+  compact modes` runs the four unflagged selector modes through real
+  addressed `0x1381c` storage in one page-record state block. Glyph `1`
+  queues selector `0x0003` short object
+  `00 00 00 00 00 03 00 01 01 66 01` at `0x00d09004`; glyph `2`
+  queues selector `0x1003` wide object
+  `00 d0 90 04 10 03 00 01 02 66 01` at `0x00d0902a`; glyph `3`
+  queues selector `0x2003` segmented objects for buckets `9/1`; glyph `4`
+  queues selector `0x3003` segmented-wide objects for buckets `9/1`.
+  The resulting bucket heads are bucket `1 -> 0x00d090c8` and bucket
+  `9 -> 0x00d090a0`; bucket word `1` dispatches object bytes
+  `0x30`, `0x20`, `0x10`, and `0x00` through `0x1effe`, while bucket word
+  `9` dispatches `0x30` and `0x20`. Render row digests are
+  `c9de5a8a4ed4f2805e35e1a7c8bdad2f6f832fc129bd26f5ec49a82a6023b25b`
+  for bucket `1` and
+  `dfd0b3d07e16f8d06a8ef12c1c51dedac61149493fb1e90981866da521e98e58`
+  for bucket `9`.
 - The selected inline/downloaded fixture starts at `0x1393a`: host
   `0x21` maps to glyph `0x01`, record `02 03 04 00 00 00 00 80`,
   source flag `0`, then queues and renders through the unflagged path
@@ -1346,6 +1365,8 @@ full 68000 interpreter through every source class and allocator branch.
   and rows`
 - `0xd3b2-modeled unflagged source fields`
 - `0xd3b2-modeled unflagged overflow source fields`
+- `addressed 0x12f2e selector-mode matrix allocates and renders all
+  compact modes`
 - `0x12f2e-modeled unflagged short bucket object fields`
 - `0x12f2e-modeled unflagged width byte selects compact mode bit`
 - `0x12f2e-modeled unflagged tall inline bucket objects`
@@ -1419,9 +1440,15 @@ full 68000 interpreter through every source class and allocator branch.
   `0x12714 landscape span inserts into nonempty fixed list`. The remaining
   unresolved edge here is broader span metric/source cross-products, not
   the earlier paired short-text source-handoff allocation failure path.
-- `0x12f2e..0x1306e`: short and segmented producer shapes are
-  fixture-backed, but a full live CPU/register trace through every
-  selector mode into real allocator memory remains open.
+- `0x12f2e..0x1306e`: short, wide, segmented, and segmented-wide producer
+  shapes are fixture-backed through both modeled object bytes and addressed
+  `0x1381c` allocator storage. The addressed selector-mode matrix proves
+  all four selector values `0x0003`, `0x1003`, `0x2003`, and `0x3003`
+  share page-record storage, bridge/render dispatch through `0x1effe`,
+  and stable row digests. Remaining risk is a full live CPU/register trace
+  through dense parser-produced allocator memory and broader legal font
+  descriptor cross-products, not the selector-mode object production
+  contract.
 
 ## Built-In Resource Scan And Candidate Windows
 

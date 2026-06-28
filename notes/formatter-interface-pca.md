@@ -58,10 +58,16 @@ The HP 33449 formatter is explicitly Motorola 68000-based, but that
 statement appears in the HP 33449 formatter section, not the HP 33440
 Interface PCA section.
 
-When the formatter board arrives, record the CPU package marking, clock
-source, ROM package markings, and any gate-array markings before dumping
-ROMs. Those will be needed to choose the disassembler CPU target and
-build the address map.
+Board evidence for this LaserJet II unit closes the CPU-family question:
+the installed CPU is a Motorola 68000-family processor, and the verified
+`IC30,IC13` ROM interleave starts with a coherent 68000 vector table
+and reset path. `data/rom_manifest.json` records initial SP
+`0x00800000`, reset PC `0x00000110`, and sane MAME `m68000`
+disassembly at that reset PC. This board-specific evidence should not
+be generalized back onto every HP 33440 revision without inspection.
+
+Still-open board facts for emulator fidelity are the CPU clock source,
+gate-array markings, and exact memory/control-register decode.
 
 ## ROM
 
@@ -74,6 +80,22 @@ build the address map.
 Disassembly implication: expect vectors, code, font data, command
 tables, and possibly multiple ROM regions selected or banked by the
 address controller.
+
+This unit has four dumped Toshiba `TC531000P` 128K x 8 mask ROM
+packages:
+
+- `IC30`, marking `SH7-9235-01`;
+- `IC13`, marking `SH7-9236-01`;
+- `IC32`, marking `SH7-9233-01`;
+- `IC15`, marking `SH7-9234-01`.
+
+The verified executable firmware pair is byte order `IC30,IC13`,
+producing a `0x40000`-byte 68000 image. The verified resource/font pair
+is byte order `IC32,IC15`, also `0x40000` bytes. The reverse orders were
+rejected: `IC13,IC30` does not produce valid 68000 startup vectors, and
+`IC15,IC32` garbles the resource header strings. The raw ROM images and
+generated interleaves remain local-only; checked-in evidence is in
+`data/rom_manifest.json` and [rom-dump-manifest.md](rom-dump-manifest.md).
 
 ## RAM
 
@@ -225,8 +247,7 @@ See [errors-and-status.md](errors-and-status.md) for a fuller table.
 
 ## Open Questions for ROM Work
 
-- Exact HP 33440 CPU type and clock.
-- Exact ROM package count and interleave/order for the incoming ROM set.
+- Exact CPU clock source for this board.
 - Address map: ROM regions, NVRAM, SRAM, DRAM, gate array registers, I/O
   controller, video buffers, cartridge slots, control panel, and DC
   Controller port.

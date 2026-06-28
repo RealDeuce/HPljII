@@ -659,19 +659,19 @@ The next work should follow dataflow, not isolated handlers:
    carries `ESC )s260W` plus printable `0` and FF through `0xff1e`, preserves buckets
    `1` and `9`, and renders bucket word `9` through `0x1ed84`/`0x1ef6a` to two `0x1f1f0`
    segment-1 rows. The downloaded-glyph row-count matrix now adds short rows `0x01`,
-   `0x02`, `0x03`, `0x04`, `0x08`, `0x41`, and `0x7f` on selector `0x0003`/bucket `1`,
-   plus segmented rows `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff` on
-   selector `0x2003`/buckets `1` and `9`, all through printable+FF, `0xff1e`, and
-   `0x1ed84`/`0x1ef6a`; published row counts are `7`, `8`, `9`, `10`, `14`, `64`, `64`,
-   `9`, `10`, `11`, `16`, `16`, `16`, and `16`. All fourteen row-count matrix cases now
-   also pin `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with copy status `1`, `0x783140 =
-   0`, zero drained bytes, and next handler `0xd04a`. The `0x16498`
-   replacement/allocation-failure/partial/reject fixture now has a rows-`0x0102`
-   sibling: `ESC )s516W` installs record `00 00 00 00 0c 01 01 02 00 10 00 00`, but the
-   printable page source exposes row byte `0x02`, so `0x12f2e` queues selector `0x0003`
-   and publishes only bucket `1`; `0x1f414` then splits rows `0x0102` into `58` current
-   rows and `200` fallback rows, exceeding the `0x1fe76` table's valid maximum index
-   `128` at fallback target `0x329ad3c0`. The `0x16498`
+   `0x02`, `0x03`, `0x04`, `0x08`, `0x3f`, `0x41`, and `0x7f` on selector
+   `0x0003`/bucket `1`, plus segmented rows `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`,
+   `0xfe`, and `0xff` on selector `0x2003`/buckets `1` and `9`, all through
+   printable+FF, `0xff1e`, and `0x1ed84`/`0x1ef6a`; published row counts are `7`, `8`,
+   `9`, `10`, `14`, `64`, `64`, `64`, `9`, `10`, `11`, `16`, `16`, `16`, and `16`. All
+   fifteen row-count matrix cases now also pin `0x15dc6 -> 0x16498 -> 0x15dcc ->
+   0x12328` with copy status `1`, `0x783140 = 0`, zero drained bytes, and next handler
+   `0xd04a`. The `0x16498` replacement/allocation-failure/partial/reject fixture now has
+   a rows-`0x0102` sibling: `ESC )s516W` installs record `00 00 00 00 0c 01 01 02 00 10
+   00 00`, but the printable page source exposes row byte `0x02`, so `0x12f2e` queues
+   selector `0x0003` and publishes only bucket `1`; `0x1f414` then splits rows `0x0102`
+   into `58` current rows and `200` fallback rows, exceeding the `0x1fe76` table's valid
+   maximum index `128` at fallback target `0x329ad3c0`. The `0x16498`
    replacement/allocation-failure/partial/reject fixture now also covers old-pointer
    release through `0x17a24`, object allocation failure through
    `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear and split-plane continuation pointer

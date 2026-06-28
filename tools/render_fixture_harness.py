@@ -62792,6 +62792,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             object_offset=0x1240,
         ),
         downloaded_row_count_matrix_case(
+            name="short rows-0x3f",
+            char_code=0x42,
+            rows=0x003F,
+            object_offset=0x1250,
+        ),
+        downloaded_row_count_matrix_case(
             name="short rows-0x41",
             char_code=0x3D,
             rows=0x0041,
@@ -62928,6 +62934,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 object_byte_4=0x00,
                 segment_count=0,
                 row_count=14,
+            ),
+            expected_row_count_matrix_entry(
+                name="short rows-0x3f",
+                char_code=0x42,
+                rows=0x003F,
+                path="short-page-record",
+                selector=0x0003,
+                bucket_keys=[1],
+                render_bucket_word=1,
+                object_byte_4=0x00,
+                segment_count=0,
+                row_count=64,
             ),
             expected_row_count_matrix_entry(
                 name="short rows-0x41",

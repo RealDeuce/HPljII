@@ -2290,7 +2290,12 @@ Other checked leads:
 - Broaden the narrow direct-control byte-stream fixtures into the full
   firmware parser path now that cursor variables `0x782c8a` and
   `0x782c8e` are named as horizontal and vertical respectively.
-- Extend rectangle/rule coverage from modeled handler state into
-  parser-produced full-page comparisons and physical placement checks.
+- Treat selector-7 rectangle/rule composition as covered for mixed
+  text/rule/raster page records: `notes/rectangle-graphics.md` now cites
+  `host-fetched text plus rectangle page record feeds 0x1ed84 and 0x1ef6a`,
+  `host-fetched text rectangle raster FF publishes rendered page record`, and
+  `addressed text/rule/raster field groups reach publication and render
+  entry`. Remaining rectangle work is alternate selector combinations in full
+  pages plus physical/reference placement checks.
 - Compare physical engine/self-test placement against the now-matched
   ROM/manual logical page and printable-area dimensions.

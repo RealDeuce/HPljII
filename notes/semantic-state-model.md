@@ -1176,7 +1176,11 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   and fixtures `0x12f2e-modeled unflagged short bucket object fields`,
   `0x12f2e-modeled unflagged width byte selects compact mode bit`,
   `0x12f2e-modeled unflagged tall inline bucket objects`, and
-  `0x12f2e-modeled unflagged wide tall inline bucket objects`.
+  `0x12f2e-modeled unflagged wide tall inline bucket objects`; addressed
+  allocator/retry evidence is fixture-backed by
+  `0xd3b2 and 0xd824 text queue no-room retry preserves source and rows`
+  and `0xd3b2 and 0xd824 segmented text queue no-room retry preserves
+  source and rows`.
 - Parser scratch:
   - `D5` enters `0xd04a` as the printable host byte.
   - `0xd04a` normalizes bytes above `0xff` through `0xd99a`, masks
@@ -1299,6 +1303,25 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   prefix `00 00 00 00 00 03 00 01 01 66 01`, dispatches bucket word `1`
   through `0x1effe`, and renders the same 22 rows with digest
   `d696456ad5c91a1a568d1b1c45fcf7e322fe15c12a3805783145ccc7074806e6`.
+- Fixture `0xd3b2 and 0xd824 segmented text queue no-room retry preserves
+  source and rows` closes the same no-room edge for segmented/tall compact
+  objects. The unflagged `0xd3b2` source `(mapped=0x01, flag=0, x=22,
+  y=22, slot=3)` fails first at bucket `9`, segment `1`, selector
+  `0x2003`, object size `0x28`; retry emits bucket `9` object
+  `00 00 00 00 20 03 00 01 01 01 66 01` and bucket `1` object
+  `00 00 00 00 20 03 00 01 01 00 66 01`, and published/retried rows
+  match for bucket words `9` and `1` with digests
+  `ab4ebb802552dc6ad497da75344f369876cc9f0fabbffdfc7801213b9a7ff372`
+  and `918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac`.
+  The flagged `0xd824` tall built-in source `(mapped=0x1f, flag=1, x=0,
+  y=0, slot=0)` fails first at bucket `64`, segment `8`, selector
+  `0x2000`; retry emits all nine bucket indexes
+  `[0, 8, 16, 24, 32, 40, 48, 56, 64]`, with first prefix
+  `00 00 00 00 20 00 00 01 1f 08 00 00` and last prefix
+  `00 00 00 00 20 00 00 01 1f 00 00 00`. Published/retried rows match
+  for bucket words `64` and `0` with digests
+  `c2c1504836f113d5a2c89168702ccb008dcc93126cfcf55a57964ba889170318`
+  and `15b6d4e1c1691ca7d6204259f3dfff5c96575588c0c71c8ff011898581be4f35`.
 
 ### Confidence
 
@@ -1319,6 +1342,8 @@ full 68000 interpreter through every source class and allocator branch.
 - `0xd04a high-character flags and selected slot choose mask behavior`
 - `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`
 - `0xd3b2 and 0xd824 text queue no-room retry preserves source and rows`
+- `0xd3b2 and 0xd824 segmented text queue no-room retry preserves source
+  and rows`
 - `0xd3b2-modeled unflagged source fields`
 - `0xd3b2-modeled unflagged overflow source fields`
 - `0x12f2e-modeled unflagged short bucket object fields`
@@ -1380,9 +1405,10 @@ full 68000 interpreter through every source class and allocator branch.
   selector/key plus the compact bucket object under page-root `+0x1c`;
   the fixture proves the old published bucket prefix, fresh-root allocation,
   retried object pointer/bytes, `0x1effe` dispatch, and row digest match
-  for flagged `0xd824` and unflagged `0xd3b2` short objects. Remaining risk
-  is segmented/tall text retry and a full live CPU-register trace, not the
-  paired short-text failure-return semantics.
+  for flagged `0xd824` and unflagged `0xd3b2` short and segmented/tall
+  objects. Remaining risk is a full live CPU-register trace and broader
+  selector-mode cross-products, not the paired failure-return semantics for
+  these object families.
 - `0xd4ac..0xd548` and `0xd8fc..0xd992`: span watermark writes and the
   downstream `0x12714` / `0x126e2` handoff are composed in
   `Text Span Flush And Fixed-Width Spans`. That section covers

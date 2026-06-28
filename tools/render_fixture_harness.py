@@ -14015,26 +14015,106 @@ def queue_text_source_to_addressed_stream_via_12f2e(
     state: dict[str, object],
     source: dict[str, object],
 ) -> dict[str, object]:
-    """Address-aware short text bucket queue through 0x1387c/0x1381c."""
+    """Address-aware text bucket queue through 0x1387c/0x1381c."""
     selector = int(source["context_slot"]) & 0x0F
     metrics = text_source_metrics_via_12f2e(resources, source)
     width = int(metrics["width"])
     rows = int(metrics["rows"])
     if width > int(metrics["wide_threshold"]):
         selector |= 0x1000
-    if rows > 0x80:
-        raise AssertionError("addressed text stream fixture currently pins short 0x12f2e objects")
 
     coord = compact_text_coord(int(source["x"]), int(source["y"]))
     bucket_index = int(source["y"]) >> 4
     glyph = int(source["mapped"]) & 0xFF
-    alloc = bucket_find_or_alloc_addressed_via_1387c(
-        state,
-        bucket_index,
-        selector,
-        0x0A,
-        0x26,
-    )
+
+    if rows > 0x80:
+        selector |= 0x2000
+        events: list[dict[str, object]] = []
+        segment = (rows - 1) >> 7
+        while segment >= 0:
+            segment_bucket_index = bucket_index + segment * 8
+            alloc = bucket_find_or_alloc_addressed_via_1387c(
+                state,
+                segment_bucket_index,
+                selector,
+                0x08,
+                0x28,
+            )
+            if bool(alloc.get("allocation_failed", False)):
+                failed_event = {
+                    "object_ptr": 0,
+                    "allocated": True,
+                    "allocation_failed": True,
+                    "bucket_index": segment_bucket_index,
+                    "segment": segment,
+                    "selector": selector,
+                    "capacity": 0x08,
+                    "object_size": 0x28,
+                    "old_bucket_head": alloc["old_bucket_head"],
+                    "new_bucket_head": alloc["new_bucket_head"],
+                    "visited": alloc["visited"],
+                    "stream_alloc": alloc["stream_alloc"],
+                }
+                return {
+                    "path": "segmented-addressed-page-record",
+                    "events": events,
+                    "failed_event": failed_event,
+                    "allocation_failed": True,
+                    "selector": selector,
+                    "coord": coord,
+                    "glyph": glyph,
+                    "rows": rows,
+                    "width": width,
+                    "object_size": 0x28,
+                    "capacity": 0x08,
+                    "entry_size": 4,
+                }
+            obj = alloc["object"]
+            if not isinstance(obj, bytearray):
+                raise AssertionError("addressed bucket allocator did not return a mutable object")
+            count = int(alloc["count_before"])
+            entry = 8 + count * 4
+            obj[6:8] = (count + 1).to_bytes(2, "big")
+            obj[entry] = glyph
+            obj[entry + 1] = segment & 0xFF
+            obj[entry + 2 : entry + 4] = coord.to_bytes(2, "big")
+            events.append({
+                key: alloc[key]
+                for key in (
+                    "object_ptr",
+                    "allocated",
+                    "count_before",
+                    "bucket_index",
+                    "selector",
+                    "capacity",
+                    "object_size",
+                    "old_bucket_head",
+                    "new_bucket_head",
+                    "next_ptr",
+                    "visited",
+                )
+            } | {
+                "allocation_failed": False,
+                "count_after": count + 1,
+                "segment": segment,
+                "object": bytes(obj),
+            })
+            segment -= 1
+        return {
+            "path": "segmented-addressed-page-record",
+            "events": events,
+            "allocation_failed": False,
+            "selector": selector,
+            "coord": coord,
+            "glyph": glyph,
+            "rows": rows,
+            "width": width,
+            "object_size": 0x28,
+            "capacity": 0x08,
+            "entry_size": 4,
+        }
+
+    alloc = bucket_find_or_alloc_addressed_via_1387c(state, bucket_index, selector, 0x0A, 0x26)
     if bool(alloc.get("allocation_failed", False)):
         return {
             "path": "short-addressed-page-record",
@@ -43966,6 +44046,341 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "rows_match": True,
                 "row_count": 22,
                 "row_sha256": "d696456ad5c91a1a568d1b1c45fcf7e322fe15c12a3805783145ccc7074806e6",
+            },
+        },
+    }))
+
+    def segmented_text_queue_retry_summary(
+        resources_for_queue: bytes | bytearray,
+        source: dict[str, object],
+        *,
+        handler: int,
+        context_slots: list[int],
+        publication_bucket_index: int,
+        retry_next_stream_chunk_ptr: int,
+        render_bucket_words: tuple[int, ...],
+    ) -> dict[str, object]:
+        old_page_record: dict[str, object] = {
+            "bucket_array": {},
+            "context_slots": context_slots,
+        }
+        queue_text_source_to_page_record_via_12f2e(resources_for_queue, old_page_record, source)
+        retry_state: dict[str, object] = {
+            "current_page_root": ABSTRACT_PAGE_ROOT_PTR,
+            "page_root_present": 1,
+            "page_root_class": 1,
+            "page_root_flags_14": 0,
+            "page_root_clears": 0,
+            "publication_bucket_index": publication_bucket_index,
+            "stream_bytes_remaining_782a70": 0,
+            "stream_link_ptr_782a72": 0,
+            "stream_next_free_782a76": 0,
+            "next_stream_chunk_ptr": 0,
+            "stream_chunk_links": {},
+            "bucket_heads_1c": {},
+            "rule_head_24": 0,
+            "fixed_head_28": 0,
+            "stream_objects": {},
+            "context_slots": context_slots,
+            "primary_context_782ee6": 0x440946B4,
+        }
+        retry = retry_text_source_after_no_room_via_d3b2_d824(
+            resources_for_queue,
+            old_page_record,
+            retry_state,
+            source,
+            retry_next_stream_chunk_ptr=retry_next_stream_chunk_ptr,
+            handler=handler,
+        )
+        first_failed = retry["first_attempt"]["failed_event"]
+        assert isinstance(first_failed, dict)
+        published = retry["finalized"]["published_pool_record"]
+        assert isinstance(published, dict)
+        events = retry["retry_result"]["events"]
+        assert isinstance(events, list)
+        rendered: dict[int, dict[str, object]] = {}
+        for bucket_word in render_bucket_words:
+            published_entry = render_published_page_record_via_1ed84_1ef6a(
+                data,
+                resources_for_queue,
+                published,
+                bucket_word=bucket_word,
+            )["entry"]
+            retry_entry = render_published_page_record_via_1ed84_1ef6a(
+                data,
+                resources_for_queue,
+                retry["retry_page_record"],
+                bucket_word=bucket_word,
+            )["entry"]
+            published_rows = published_entry["rows"]
+            retry_rows = retry_entry["rows"]
+            assert isinstance(published_rows, list)
+            assert isinstance(retry_rows, list)
+            dispatch = published_entry["dispatch"]
+            assert isinstance(dispatch, dict)
+            dispatch_entries = dispatch["entries"]
+            assert isinstance(dispatch_entries, list) and dispatch_entries
+            dispatch_entry = dispatch_entries[0]
+            assert isinstance(dispatch_entry, dict)
+            rendered[int(bucket_word)] = {
+                "rows_match": published_rows == retry_rows,
+                "row_count": len(published_rows),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(str(row) for row in published_rows).encode("ascii")
+                ).hexdigest(),
+                "dispatch_target": dispatch_entry["target"],
+                "context_slot": dispatch_entry["context_slot"],
+            }
+        return {
+            "handler": retry["handler"],
+            "first_failed": {
+                "allocation_failed": first_failed["allocation_failed"],
+                "bucket_index": first_failed["bucket_index"],
+                "segment": first_failed["segment"],
+                "selector": first_failed["selector"],
+                "object_size": first_failed["object_size"],
+                "byte_count": first_failed["stream_alloc"]["byte_count"],
+                "returned_ptr": first_failed["stream_alloc"]["returned_ptr"],
+            },
+            "retry_page_root_flags_14": retry["retry_page_root_flags_14"],
+            "published_bucket_prefix": published["bucket_root"][:12],
+            "retry_metadata": {
+                key: retry["retry_result"][key]
+                for key in (
+                    "path",
+                    "allocation_failed",
+                    "selector",
+                    "coord",
+                    "glyph",
+                    "rows",
+                    "width",
+                    "object_size",
+                    "capacity",
+                    "entry_size",
+                )
+            },
+            "retry_event_count": len(events),
+            "retry_events": [
+                {
+                    "bucket_index": event["bucket_index"],
+                    "segment": event["segment"],
+                    "object_ptr": event["object_ptr"],
+                    "object_prefix": event["object"][:12],
+                }
+                for event in events
+            ],
+            "retry_bucket_indexes": sorted(retry["retry_page_record"]["bucket_array"].keys()),
+            "source_after_retry": {
+                key: retry["source_after_retry"][key]
+                for key in ("mapped", "flag", "x", "y", "context_slot")
+            },
+            "render": rendered,
+        }
+
+    segmented_retry_inline_resources = bytearray(0x300)
+    segmented_retry_inline_context = 0x00000100
+    segmented_retry_record = segmented_retry_inline_context + 0x40 + 1 * 8
+    segmented_retry_delta = 0x80
+    segmented_retry_bitmap = segmented_retry_inline_context + segmented_retry_delta
+    segmented_retry_inline_resources[segmented_retry_record] = 0x02
+    segmented_retry_inline_resources[segmented_retry_record + 1] = 0x81
+    segmented_retry_inline_resources[segmented_retry_record + 4:segmented_retry_record + 8] = (
+        segmented_retry_delta.to_bytes(4, "big")
+    )
+    segmented_retry_inline_resources[segmented_retry_bitmap + 0x100:segmented_retry_bitmap + 0x102] = (
+        bytes.fromhex("aa 55")
+    )
+    segmented_retry_inline_record = bytes(
+        segmented_retry_inline_resources[segmented_retry_record:segmented_retry_record + 8]
+    )
+    segmented_retry_unflagged_source: dict[str, object] = {
+        "context": segmented_retry_inline_context,
+        "host_char": 0x21,
+        "mapped": 0x01,
+        "glyph_entry": 0,
+        "glyph_width": 2,
+        "glyph_rows": 0x81,
+        "flag": 0,
+        "x": 22,
+        "y": 22,
+        "context_slot": 3,
+        "inline_record": segmented_retry_inline_record,
+    }
+    segmented_retry_flagged_source = build_text_source_object_from_1393a(
+        resources,
+        0x440946B4,
+        0x20,
+        x=0,
+        y=0,
+        context_slot=0,
+    )
+    segmented_retry_flagged_summary = segmented_text_queue_retry_summary(
+        resources,
+        segmented_retry_flagged_source,
+        handler=0x00D824,
+        context_slots=[0x440946B4],
+        publication_bucket_index=64,
+        retry_next_stream_chunk_ptr=0x00D08000,
+        render_bucket_words=(64, 0),
+    )
+    segmented_retry_flagged_selected = dict(segmented_retry_flagged_summary)
+    flagged_events = segmented_retry_flagged_selected["retry_events"]
+    assert isinstance(flagged_events, list)
+    segmented_retry_flagged_selected["retry_events"] = (
+        flagged_events[:2] + flagged_events[-2:]
+    )
+    checks.append(assert_equal("0xd3b2 and 0xd824 segmented text queue no-room retry preserves source and rows", {
+        "unflagged": segmented_text_queue_retry_summary(
+            segmented_retry_inline_resources,
+            segmented_retry_unflagged_source,
+            handler=0x00D3B2,
+            context_slots=[0, 0, 0, segmented_retry_inline_context],
+            publication_bucket_index=9,
+            retry_next_stream_chunk_ptr=0x00D07000,
+            render_bucket_words=(9, 1),
+        ),
+        "flagged": segmented_retry_flagged_selected,
+    }, {
+        "unflagged": {
+            "handler": 0x00D3B2,
+            "first_failed": {
+                "allocation_failed": True,
+                "bucket_index": 9,
+                "segment": 1,
+                "selector": 0x2003,
+                "object_size": 0x28,
+                "byte_count": 0x28,
+                "returned_ptr": 0,
+            },
+            "retry_page_root_flags_14": 1,
+            "published_bucket_prefix": bytes.fromhex("00 00 00 00 20 03 00 01 01 01 66 01"),
+            "retry_metadata": {
+                "path": "segmented-addressed-page-record",
+                "allocation_failed": False,
+                "selector": 0x2003,
+                "coord": 0x6601,
+                "glyph": 0x01,
+                "rows": 0x81,
+                "width": 0x02,
+                "object_size": 0x28,
+                "capacity": 0x08,
+                "entry_size": 4,
+            },
+            "retry_event_count": 2,
+            "retry_events": [
+                {
+                    "bucket_index": 9,
+                    "segment": 1,
+                    "object_ptr": 0x00D07004,
+                    "object_prefix": bytes.fromhex("00 00 00 00 20 03 00 01 01 01 66 01"),
+                },
+                {
+                    "bucket_index": 1,
+                    "segment": 0,
+                    "object_ptr": 0x00D0702C,
+                    "object_prefix": bytes.fromhex("00 00 00 00 20 03 00 01 01 00 66 01"),
+                },
+            ],
+            "retry_bucket_indexes": [1, 9],
+            "source_after_retry": {
+                "mapped": 0x01,
+                "flag": 0,
+                "x": 22,
+                "y": 22,
+                "context_slot": 3,
+            },
+            "render": {
+                9: {
+                    "rows_match": True,
+                    "row_count": 7,
+                    "row_sha256": "ab4ebb802552dc6ad497da75344f369876cc9f0fabbffdfc7801213b9a7ff372",
+                    "dispatch_target": 0x01EFFE,
+                    "context_slot": 3,
+                },
+                1: {
+                    "rows_match": True,
+                    "row_count": 64,
+                    "row_sha256": "918ec4cca20024057ec1b82577b2ab5c039c6fc9a3f756be9bbb62a088bab7ac",
+                    "dispatch_target": 0x01EFFE,
+                    "context_slot": 3,
+                },
+            },
+        },
+        "flagged": {
+            "handler": 0x00D824,
+            "first_failed": {
+                "allocation_failed": True,
+                "bucket_index": 64,
+                "segment": 8,
+                "selector": 0x2000,
+                "object_size": 0x28,
+                "byte_count": 0x28,
+                "returned_ptr": 0,
+            },
+            "retry_page_root_flags_14": 1,
+            "published_bucket_prefix": bytes.fromhex("00 00 00 00 20 00 00 01 1f 08 00 00"),
+            "retry_metadata": {
+                "path": "segmented-addressed-page-record",
+                "allocation_failed": False,
+                "selector": 0x2000,
+                "coord": 0,
+                "glyph": 0x1F,
+                "rows": 1108,
+                "width": 74,
+                "object_size": 0x28,
+                "capacity": 0x08,
+                "entry_size": 4,
+            },
+            "retry_event_count": 9,
+            "retry_events": [
+                {
+                    "bucket_index": 64,
+                    "segment": 8,
+                    "object_ptr": 0x00D08004,
+                    "object_prefix": bytes.fromhex("00 00 00 00 20 00 00 01 1f 08 00 00"),
+                },
+                {
+                    "bucket_index": 56,
+                    "segment": 7,
+                    "object_ptr": 0x00D0802C,
+                    "object_prefix": bytes.fromhex("00 00 00 00 20 00 00 01 1f 07 00 00"),
+                },
+                {
+                    "bucket_index": 8,
+                    "segment": 1,
+                    "object_ptr": 0x00D0812C,
+                    "object_prefix": bytes.fromhex("00 00 00 00 20 00 00 01 1f 01 00 00"),
+                },
+                {
+                    "bucket_index": 0,
+                    "segment": 0,
+                    "object_ptr": 0x00D08154,
+                    "object_prefix": bytes.fromhex("00 00 00 00 20 00 00 01 1f 00 00 00"),
+                },
+            ],
+            "retry_bucket_indexes": [0, 8, 16, 24, 32, 40, 48, 56, 64],
+            "source_after_retry": {
+                "mapped": 0x1F,
+                "flag": 1,
+                "x": 0,
+                "y": 0,
+                "context_slot": 0,
+            },
+            "render": {
+                64: {
+                    "rows_match": True,
+                    "row_count": 16,
+                    "row_sha256": "c2c1504836f113d5a2c89168702ccb008dcc93126cfcf55a57964ba889170318",
+                    "dispatch_target": 0x01EFFE,
+                    "context_slot": 0,
+                },
+                0: {
+                    "rows_match": True,
+                    "row_count": 80,
+                    "row_sha256": "15b6d4e1c1691ca7d6204259f3dfff5c96575588c0c71c8ff011898581be4f35",
+                    "dispatch_target": 0x01EFFE,
+                    "context_slot": 0,
+                },
             },
         },
     }))
@@ -89326,6 +89741,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("The adjacent printable-entry normalization fixtures now pin the `0xd04a` over-`0xff` and high-bit branches: a nonzero `0xd99a` result exits before source build, a zero result substitutes host `0x7f` and builds glyph `0x7e`, primary high byte `0xa1` masks to host `0x21` while wrapping the source build with `0xc6b8`/`0xc68a`, either high-character flag preserves `0xa1` as glyph `0xa0`, and selected secondary slot masks without the primary wrapper.")
     lines.append("The paired precheck fixture now pins `0xd28a` and `0xd6bc` result semantics before the queue handoff: ordinary success returns `0`, horizontal overflow with wrap disabled returns `1` and suppresses queueing, the same overflow with `0x783190` set calls `0xf054` and retries from recovered x `0`, and vertical-extent failure returns `1` on both source classes.")
     lines.append("The paired text queue retry fixture now pins the short-object no-room path for both `0xd3b2` and `0xd824`: a failed addressed `0x12f2e` allocation sets page-root retry flag `+0x14.0`, publishes the old compact bucket through `0xff1e`, ensures a fresh root through `0x10084`, retries the preserved source at `0x00d06004`, and renders rows matching the published bucket through `0x1effe`.")
+    lines.append("The paired segmented retry fixture extends that no-room contract to tall objects: unflagged rows `0x81` retry bucket words `9` and `1`, while the flagged tall built-in space glyph retries all nine bucket indexes `0..64`; selected published and retried buckets render matching rows through `0x1effe`.")
     lines.append("")
     lines.append("- stream bytes: `21`")
     lines.append(f"- source object from `0x1393a`: context `0x{printable_stream_source['context']:08x}`, host `0x{printable_stream_source['host_char']:02x}`, mapped glyph `0x{printable_stream_source['mapped']:02x}`, glyph entry `0x{printable_stream_source['glyph_entry']:06x}`, flag `{printable_stream_source['flag']}`")

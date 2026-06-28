@@ -350,7 +350,13 @@ bridge contract and `0x1ed84`/`0x1ef6a` render-entry path pinned,
 host-fetched `ESC &k1G!\r!` mixed-control macro replay through
 `0xedf8`/ `0xd04a`/`0xf02c`/`0xd04a` into page-record output with the
 same bridge/render-entry path pinned, and macro-payload rule/raster band
-composition from command bytes
+composition from command bytes. The overlay path now also has a delayed
+raster payload fixture: stored `! ESC *t300R ESC *r0A ESC *b2W c3 3c`
+replays from selector-4 overlay id `126` through `0xe4f4` / `0x11774`,
+queues compact text plus mode-0 raster object
+`00 00 00 00 80 00 00 02 00 00 c3 3c`, preserves selector-7 rule
+`00 00 00 00 01 07 44 01 00 0a 00 02 00 00`, and renders digest
+`bc21050018fd3e992709c704fff732499aa9d06565de31d7ae0340869971c5b3`.
 
 ### Page geometry tables
 

@@ -332,22 +332,28 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    broader final-device image comparison, not an unresolved middle edge in the
    documented `ESC &l#W` / `ESC &l#V` path.
 3. Macro replay, overlay publication, repeated enabled-overlay publication,
-   mixed-control overlay payload, and overlay skip gates are anchored. The
-   covered overlay path is selector `4` state through `0xff1e` re-entry,
+   mixed-control and raster overlay payloads, and overlay skip gates are
+   anchored. The covered overlay path is selector `4` state through `0xff1e` re-entry,
    `0xe0a4`, `0xe4f4`, parser loop `0x11774`, and rendered page-record
    composition with selector-7 rectangle rules on two page boundaries. The
    mixed-control overlay fixture stores `ESC &k1G!\r!`, replays it through
    `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a`, queues two compact text entries, and
-   publishes them with a selector-7 rule. The skip path is covered for
-   disabled overlay mode, missing selected record, and page-root retry flag.
-   Remaining macro risk is broader overlay payload variants beyond `!\r` and
-   `ESC &k1G!\r!`, plus physical output comparison.
+   publishes them with a selector-7 rule. The raster overlay fixture stores
+   `! ESC *t300R ESC *r0A ESC *b2W c3 3c`, replays it through the non-replay
+   frame, queues compact text plus a mode-0 raster object, preserves the
+   existing selector-7 rule, and renders digest
+   `bc21050018fd3e992709c704fff732499aa9d06565de31d7ae0340869971c5b3`. The
+   skip path is covered for disabled overlay mode, missing selected record,
+   and page-root retry flag. Remaining macro risk is broader overlay payload
+   variants beyond `!\r`, `ESC &k1G!\r!`, and the covered raster payload, plus
+   physical output comparison.
    Evidence: `Macro Definition And Data-Chain Replay` in
    `notes/semantic-state-model.md`, fixture `macro overlay finalization
    replays before page publication`, fixture `macro overlay replays across
    repeated page publications`, and fixture `macro overlay skip gates preserve
-   base page publication`, and fixture `macro overlay mixed-control payload
-   publishes with page rule`.
+   base page publication`, fixture `macro overlay mixed-control payload
+   publishes with page rule`, and fixture
+   `macro overlay raster payload publishes with page rule`.
 4. Downloaded font support now has tracked documentation for descriptor,
    resource-payload, current-record, bit-30-clear resource-object, bit-30-clear
    even-span and split-plane continuation resume, status-0 fixed-record release, bit-30

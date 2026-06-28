@@ -27556,6 +27556,277 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "row_width": 36,
         "row_sha256": "04d32edf47d03c587abc0abaf750c6a2d634ceea80df9787681b618867136f52",
     }))
+    macro_overlay_raster_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0x440946B4],
+    }
+    macro_overlay_raster_rule = queue_rectangle_rule_via_13386(macro_overlay_raster_record, {
+        "x": 20,
+        "y": 20,
+        "width": 10,
+        "height": 2,
+        "flags": 7,
+    })
+    macro_overlay_raster_payload = (
+        b"!\x1b*t300R\x1b*r0A\x1b*b2W"
+        + bytes.fromhex("c3 3c")
+    )
+    macro_overlay_raster_state = apply_macro_control_via_dd08(
+        macro_state(
+            current_macro_id=126,
+            records=[macro_record(macro_overlay_raster_payload, 126)]
+            + [macro_record() for _ in range(31)],
+        ),
+        4,
+    )
+    macro_overlay_raster_page_state = control_fixture_state(
+        cursor_x=pack12(10),
+        cursor_y=pack12(21),
+        left_margin=pack12(5),
+        vmi=pack12(3),
+        hmi=line_printer_hmi["hmi"],
+        pending_width=1,
+        pending_text=0,
+        span_flush_enable=1,
+        page_root_present=1,
+        page_root_class=1,
+        current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+    )
+    macro_overlay_raster_page_state.update(raster_graphics_state(page_extent=255))
+    macro_overlay_raster_publication = macro_overlay_publication_via_ff1e(
+        data,
+        resources,
+        macro_overlay_raster_record,
+        macro_overlay_raster_page_state,
+        macro_overlay_raster_state,
+        0x440946B4,
+        line_printer_hmi["hmi"],
+    )
+    macro_overlay_raster_path = macro_overlay_raster_publication["overlay_path"]
+    assert isinstance(macro_overlay_raster_path, dict)
+    macro_overlay_raster_page_stream = macro_overlay_raster_path["page_record_stream"]
+    assert isinstance(macro_overlay_raster_page_stream, dict)
+    macro_overlay_raster_events = macro_overlay_raster_page_stream["events"]
+    assert isinstance(macro_overlay_raster_events, list)
+    macro_overlay_raster_transfer_events = [
+        event
+        for event in macro_overlay_raster_events
+        if event["kind"] == "raster-transfer"
+    ]
+    if len(macro_overlay_raster_transfer_events) != 1:
+        raise AssertionError("macro overlay raster fixture expected one raster transfer")
+    macro_overlay_raster_transfer = macro_overlay_raster_transfer_events[0]
+    macro_overlay_raster_render = macro_overlay_raster_publication["published_render_entry"]
+    assert isinstance(macro_overlay_raster_render, dict)
+    macro_overlay_raster_entry = macro_overlay_raster_render["entry"]
+    assert isinstance(macro_overlay_raster_entry, dict)
+    macro_overlay_raster_rows = macro_overlay_raster_entry["rows"]
+    checks.append(assert_equal("macro overlay raster payload publishes with page rule", {
+        "overlay": {
+            "enabled": macro_overlay_raster_path["enabled"],
+            "overlay_id": macro_overlay_raster_path["overlay_id"],
+            "lookup": macro_overlay_raster_path["lookup"],
+            "taken": macro_overlay_raster_path["taken"],
+            "frame": macro_overlay_raster_path["frame"],
+            "replay_stream": macro_overlay_raster_path["replay"]["stream"],
+            "end_state": macro_overlay_raster_path["end_state"],
+        },
+        "page_events": [
+            {
+                "kind": event["kind"],
+                "sequence": event.get("sequence"),
+                "handler": event.get("handler"),
+                "byte": event.get("byte"),
+            }
+            for event in macro_overlay_raster_events
+        ],
+        "raster_gate": {
+            "path": macro_overlay_raster_transfer["gate_path"],
+            "queued": macro_overlay_raster_transfer["gate_queued"],
+            "stored_byte_count": macro_overlay_raster_transfer["stored_byte_count"],
+            "overflow_count": macro_overlay_raster_transfer["overflow_count"],
+            "row_y": macro_overlay_raster_transfer["row_y"],
+            "limit": macro_overlay_raster_transfer["limit"],
+            "row_y_after": macro_overlay_raster_transfer["row_y_after"],
+        },
+        "raster_result": {
+            key: macro_overlay_raster_transfer["result"][key]
+            for key in (
+                "path",
+                "allocated",
+                "bucket_index",
+                "key",
+                "mode",
+                "byte_count_before",
+                "byte_count_after",
+                "capacity",
+                "object_size",
+            )
+        },
+        "queued_rule": macro_overlay_raster_rule["object"],
+        "bucket_array": {
+            bucket: [bytes(obj) for obj in chain]
+            for bucket, chain
+            in macro_overlay_raster_publication["page_record"]["bucket_array"].items()
+        },
+        "rule_list": macro_overlay_raster_publication["page_record"]["rule_list"],
+        "call_order": macro_overlay_raster_entry["call_order"],
+        "dispatch_entries": [
+            {
+                key: entry.get(key)
+                for key in (
+                    "chain_index",
+                    "object_byte_4",
+                    "class_mask",
+                    "branch",
+                    "target",
+                    "encoded_mode",
+                    "context_slot",
+                )
+            }
+            for entry in macro_overlay_raster_entry["dispatch"]["entries"]
+        ],
+        "bucket_rendered": [
+            {
+                "branch": item["branch"],
+                "mode": item["rendered"].get("mode"),
+                "selector": item["rendered"].get("selector"),
+                "rows": item["rendered"]["rows"],
+            }
+            for item in macro_overlay_raster_entry["bucket_rendered"]
+        ],
+        "rule_rendered": [
+            {
+                key: entry[key]
+                for key in (
+                    "selector",
+                    "helper",
+                    "key",
+                    "bucket_delta",
+                    "decoded",
+                    "width",
+                    "remaining_before",
+                    "rows_drawn",
+                    "mutated_object",
+                )
+            }
+            for entry in macro_overlay_raster_entry["rules"]["rendered"]
+        ],
+        "row_count": len(macro_overlay_raster_rows),
+        "row_width": max(len(row) for row in macro_overlay_raster_rows),
+        "row_sha256": hashlib.sha256(
+            "\n".join(macro_overlay_raster_rows).encode("ascii")
+        ).hexdigest(),
+    }, {
+        "overlay": {
+            "enabled": True,
+            "overlay_id": 126,
+            "lookup": {"status": 1, "index": 0, "ptr": 0x782A98},
+            "taken": True,
+            "frame": {
+                "payload": b"!\x1b*t300R\x1b*r0A\x1b*b2W\xc3\x3c",
+                "byte_count": 20,
+                "byte_8": 4,
+                "byte_9": 4,
+                "environment": "non-replay",
+            },
+            "replay_stream": b"!\x1b*t300R\x1b*r0A\x1b*b2W\xc3\x3c",
+            "end_state": {
+                "host_gate_bit1": 1,
+                "data_chain_slot": 1,
+                "page_parser_state_782a92": 0x63,
+            },
+        },
+        "page_events": [
+            {"kind": "printable", "sequence": None, "handler": None, "byte": 0x21},
+            {"kind": "raster-resolution", "sequence": b"\x1b*t300R", "handler": 0x010808, "byte": None},
+            {"kind": "start-raster", "sequence": b"\x1b*r0A", "handler": 0x01075A, "byte": None},
+            {"kind": "raster-transfer", "sequence": b"\x1b*b2W", "handler": 0x011F82, "byte": None},
+        ],
+        "raster_gate": {
+            "path": "queued",
+            "queued": True,
+            "stored_byte_count": 2,
+            "overflow_count": 0,
+            "row_y": 0,
+            "limit": 32,
+            "row_y_after": 1,
+        },
+        "raster_result": {
+            "path": "raster-page-record",
+            "allocated": True,
+            "bucket_index": 0,
+            "key": 0x0000,
+            "mode": 0,
+            "byte_count_before": 2,
+            "byte_count_after": 0,
+            "capacity": 2,
+            "object_size": 12,
+        },
+        "queued_rule": bytes.fromhex("00 00 00 00 01 07 44 01 00 0a 00 02 00 00"),
+        "bucket_array": {
+            0: [
+                bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01") + bytes(0x1B),
+            ],
+        },
+        "rule_list": [bytes.fromhex("00 00 00 00 01 07 44 01 00 0a 00 02 00 00")],
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "dispatch_entries": [
+            {
+                "chain_index": 0,
+                "object_byte_4": 0x80,
+                "class_mask": 0x80,
+                "branch": "encoded-span",
+                "target": 0x01F88E,
+                "encoded_mode": 0,
+                "context_slot": None,
+            },
+            {
+                "chain_index": 1,
+                "object_byte_4": 0x00,
+                "class_mask": 0x00,
+                "branch": "compact",
+                "target": 0x01EFFE,
+                "encoded_mode": None,
+                "context_slot": 0,
+            },
+        ],
+        "bucket_rendered": [
+            {
+                "branch": "encoded-span",
+                "mode": 0,
+                "selector": None,
+                "rows": ["##....##..####.."],
+            },
+            {
+                "branch": "compact",
+                "mode": None,
+                "selector": 0,
+                "rows": macro_payload_rendered["rows"],
+            },
+        ],
+        "rule_rendered": [{
+            "selector": 7,
+            "helper": 0x1F596,
+            "key": 0x4401,
+            "bucket_delta": 1,
+            "decoded": {
+                "x": 20,
+                "y": 20,
+                "row_low": 4,
+                "subbyte": 4,
+                "byte_pair_offset": 2,
+            },
+            "width": 10,
+            "remaining_before": 2,
+            "rows_drawn": 2,
+            "mutated_object": bytes.fromhex("00 00 00 00 01 07 44 01 00 0a 00 02 ff c6"),
+        }],
+        "row_count": 22,
+        "row_width": 30,
+        "row_sha256": "bc21050018fd3e992709c704fff732499aa9d06565de31d7ae0340869971c5b3",
+    }))
     macro_with_payload = macro_state(
         current_macro_id=123,
         records=[macro_record(b"!\r", 123)] + [macro_record() for _ in range(31)],
@@ -88421,6 +88692,12 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("- macro overlay stream `%s` enables overlay id `%d`, then disables parser overlay mode." % (
         " ".join(f"{byte:02x}" for byte in macro_stream_overlay["stream"]),
         macro_stream_overlay["state"]["overlay_macro_id"],
+    ))
+    lines.append("- macro overlay raster payload `%s` replays through `0xe4f4` / `0x11774`, queues compact text plus mode-0 raster object `%s`, keeps rule object `%s`, and renders digest `%s`." % (
+        " ".join(f"{byte:02x}" for byte in macro_overlay_raster_payload),
+        " ".join(f"{byte:02x}" for byte in macro_overlay_raster_publication["page_record"]["bucket_array"][0][0]),
+        " ".join(f"{byte:02x}" for byte in macro_overlay_raster_rule["object"]),
+        hashlib.sha256("\n".join(macro_overlay_raster_rows).encode("ascii")).hexdigest(),
     ))
     lines.append("- `0xe0a4` lookup statuses are existing/free/full = `%d/%d/%d`; it skips a matching id with zero head, reuses stale-id free slot index `%d`, and writes `0x782d7a = 0x%08x` for that allocation." % (
         int(macro_lookup_existing["status"]),

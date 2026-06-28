@@ -1177,7 +1177,8 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   - `0x783132` and `0x783133` are high-character/symbol-state flags
     affecting whether bytes above `0x7f` are masked before `0x1393a`.
   Evidence: disassembly `0xd04a..0xd0e8` and generated printable-text
-  path steps 6-9.
+  path steps 6-9; fixture
+  `0xd04a printable entry normalizes over-0xff and high-bit values`.
 - Unknown:
   - live CPU register snapshots for every source class through the
     entire `0xd04a -> 0x1393a -> 0xd140/d550 -> 0x12f2e` chain.
@@ -1250,6 +1251,14 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   advances the cursor through `0xd550`, reuses the same short object,
   and renders compact entries at `0x0001` and `0x0002`; the initialized
   HMI fixture renders the second glyph from coord `0x0202`.
+- Fixture `0xd04a printable entry normalizes over-0xff and high-bit
+  values` pins the printable-entry normalization boundary before source
+  placement. Entry value `0x100` with nonzero `0xd99a` result exits before
+  `0x1393a`; entry value `0x100` with zero `0xd99a` result substitutes
+  host `0x7f`, maps to glyph `0x7e`, and builds glyph entry `0x0166de`.
+  Primary high byte `0xa1` with both high-character flags clear masks to
+  host `0x21`, wraps source-object build with `0xc6b8` / `0xc68a`, and
+  reaches the same glyph `0x20` / entry `0x015330` as ordinary `!`.
 
 ### Confidence
 
@@ -1266,6 +1275,7 @@ full 68000 interpreter through every source class and allocator branch.
 - `0xd824-modeled negative-overflow positioned source fields`
 - `0xd824-positioned short bucket object fields`
 - `0xd824-negative-overflow short bucket object fields`
+- `0xd04a printable entry normalizes over-0xff and high-bit values`
 - `0xd3b2-modeled unflagged source fields`
 - `0xd3b2-modeled unflagged overflow source fields`
 - `0x12f2e-modeled unflagged short bucket object fields`
@@ -1305,8 +1315,12 @@ full 68000 interpreter through every source class and allocator branch.
 ### Unresolved Middle Edges
 
 - `0xd04a..0x1393a`: byte normalization and source-object build are
-  disassembled and fixture-backed, but high-character masking and every
-  `0xd99a` fallback path are not live-stream covered here.
+  disassembled and fixture-backed for ordinary printable entry,
+  over-`0xff` nonzero `0xd99a` exit, over-`0xff` fallback to `0x7f`,
+  and the primary high-bit mask wrapper. Remaining risk is broader
+  high-character flag/secondary-slot combinations and live CPU-register
+  coverage around the modeled branch, not these specific normalization
+  outcomes.
 - `0xd28a..0xd3aa` and `0xd6bc..0xd81a`: precheck wrap/recovery paths
   are understood from disassembly, but not every reject/retry branch has
   a visible page-output fixture.

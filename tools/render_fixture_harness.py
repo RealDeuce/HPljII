@@ -18030,6 +18030,65 @@ def render_bridged_encoded_raster_object(data: bytes, render_record: dict[str, o
     return render_encoded_raster_object_via_1f88e(data, obj)
 
 
+def printable_entry_normalization_via_d04a(
+    resources: bytes,
+    context: int,
+    value: int,
+    *,
+    d99a_result: int = 0,
+    primary_high_flag: int = 0,
+    secondary_high_flag: int = 0,
+    selected_slot: int = 0,
+    context_slot: int = 0,
+) -> dict[str, object]:
+    d5 = int(value) & 0xFFFFFFFF
+    d99a_called = False
+    d99a_fallback = False
+    if d5 > 0xFF:
+        d99a_called = True
+        if int(d99a_result) != 0:
+            return {
+                "entry_value": int(value),
+                "path": "d99a-nonzero-exit",
+                "d99a_called": True,
+                "d99a_result": int(d99a_result),
+                "source": None,
+            }
+        d5 = 0x7F
+        d99a_fallback = True
+
+    primary_wrapper = False
+    c68a_restore = False
+    masked = False
+    if d5 > 0x7F and not primary_high_flag and not secondary_high_flag:
+        d5 &= 0x7F
+        masked = True
+        if int(selected_slot) == 0:
+            primary_wrapper = True
+            c68a_restore = True
+
+    source = build_text_source_object_from_1393a(
+        resources,
+        context,
+        d5,
+        x=0,
+        y=0,
+        context_slot=context_slot,
+    )
+    return {
+        "entry_value": int(value),
+        "path": "source-object",
+        "d99a_called": d99a_called,
+        "d99a_result": int(d99a_result) if d99a_called else None,
+        "d99a_fallback": d99a_fallback,
+        "masked": masked,
+        "primary_wrapper": primary_wrapper,
+        "c68a_restore": c68a_restore,
+        "normalized": d5,
+        "source": source,
+    }
+
+
 def render_single_printable_stream(
     data: bytes,
     resources: bytes,
@@ -42803,6 +42862,85 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     }))
     page_record_bucket_fixture: dict[str, object] = {"bucket_array": {}, "context_slots": [0x440946B4]}
     page_record_first = queue_text_source_to_page_record_via_12f2e(resources, page_record_bucket_fixture, text_source)
+    d04a_over_ff_exit = printable_entry_normalization_via_d04a(
+        resources,
+        0x440946B4,
+        0x100,
+        d99a_result=1,
+    )
+    d04a_over_ff_fallback = printable_entry_normalization_via_d04a(
+        resources,
+        0x440946B4,
+        0x100,
+        d99a_result=0,
+    )
+    d04a_high_mask = printable_entry_normalization_via_d04a(
+        resources,
+        0x440946B4,
+        0xA1,
+        primary_high_flag=0,
+        secondary_high_flag=0,
+        selected_slot=0,
+    )
+    checks.append(assert_equal("0xd04a printable entry normalizes over-0xff and high-bit values", {
+        "over_ff_exit": d04a_over_ff_exit,
+        "over_ff_fallback": d04a_over_ff_fallback,
+        "high_mask": d04a_high_mask,
+    }, {
+        "over_ff_exit": {
+            "entry_value": 0x100,
+            "path": "d99a-nonzero-exit",
+            "d99a_called": True,
+            "d99a_result": 1,
+            "source": None,
+        },
+        "over_ff_fallback": {
+            "entry_value": 0x100,
+            "path": "source-object",
+            "d99a_called": True,
+            "d99a_result": 0,
+            "d99a_fallback": True,
+            "masked": False,
+            "primary_wrapper": False,
+            "c68a_restore": False,
+            "normalized": 0x7F,
+            "source": {
+                "context": 0x440946B4,
+                "host_char": 0x7F,
+                "mapped": 0x7E,
+                "glyph_entry": 0x0166DE,
+                "glyph_width": 15,
+                "glyph_rows": 21,
+                "flag": 1,
+                "x": 0,
+                "y": 0,
+                "context_slot": 0,
+            },
+        },
+        "high_mask": {
+            "entry_value": 0xA1,
+            "path": "source-object",
+            "d99a_called": False,
+            "d99a_result": None,
+            "d99a_fallback": False,
+            "masked": True,
+            "primary_wrapper": True,
+            "c68a_restore": True,
+            "normalized": 0x21,
+            "source": {
+                "context": 0x440946B4,
+                "host_char": 0x21,
+                "mapped": 0x20,
+                "glyph_entry": 0x015330,
+                "glyph_width": 4,
+                "glyph_rows": 22,
+                "flag": 1,
+                "x": 0,
+                "y": 0,
+                "context_slot": 0,
+            },
+        },
+    }))
     positioned_fixture = position_flagged_text_source_via_d824(resources, text_source, cursor_x=10, cursor_y=21)
     checks.append(assert_equal("0xd824-modeled positioned text source fields", positioned_fixture, {
         "source": {
@@ -88302,6 +88440,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("## Single Printable Byte Stream Fixture")
     lines.append("")
     lines.append("This fixture starts one step earlier than the producer-modeled text bucket: the host byte stream is `21` (`!`). Under the documented normal parser conditions, that byte reaches `0xd04a`, enters `0x1393a`, maps through the active `LINE_PRINTER` character map to glyph byte `0x20`, takes the flagged/built-in `0xd824` path with cursor `(10,21)`, emits the same short `0x12f2e` compact object as the positioned fixture, and renders through `0x1effe` / `0x1f034`.")
+    lines.append("The adjacent printable-entry normalization fixture now pins the `0xd04a` over-`0xff` and high-bit branches: a nonzero `0xd99a` result exits before source build, a zero result substitutes host `0x7f` and builds glyph `0x7e`, and primary high byte `0xa1` masks to host `0x21` while wrapping the source build with `0xc6b8`/`0xc68a`.")
     lines.append("")
     lines.append("- stream bytes: `21`")
     lines.append(f"- source object from `0x1393a`: context `0x{printable_stream_source['context']:08x}`, host `0x{printable_stream_source['host_char']:02x}`, mapped glyph `0x{printable_stream_source['mapped']:02x}`, glyph entry `0x{printable_stream_source['glyph_entry']:06x}`, flag `{printable_stream_source['flag']}`")

@@ -3470,8 +3470,9 @@ fixtures.
   `+0x14/+0x16/+0x18 = 0x0001/0x0000/0x0000`, range two copies
   `0x0002/0x0001/0x0000`, and the same producer path carries zero/clamped
   rounded words plus max positive/negative offset bytes to visible `d4ac` and
-  `d8fc` rows. Remaining producer gaps are additional metric values within
-  legal forms; bounded validation no-install branches are composed below under
+  `d8fc` rows. Additional metric values within legal forms are now
+  cross-products of the documented producer formulas and consumer gates;
+  bounded validation no-install branches are composed below under
   `Downloaded Resource Validation No-Install`.
 - `0xd8fc..0xd992`: flagged context fields `+0x16`, `+0x18`, and `+0x1a` are
   fixture-backed for the low-water success branch and tied to selected context records
@@ -3556,11 +3557,11 @@ fixtures.
   `0x00fe` restores the standard `d4ac` span digest
   `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`. The same submatrix
   keeps `d8fc` at `beyond-page-extent` because derived/cache `+0x18 = 0x003d` or
-  `0x003b` exceeds the page extent at cursor y `21`. Remaining producer gaps are
-  additional metric values within legal forms outside the pinned legal matrix, boundary,
-  extent-fence, range-endpoint, mixed-value, tight-range, low-nibble, and byte-boundary
-  fixtures; bounded validation no-install branches are composed below under
-  `Downloaded Resource Validation No-Install`.
+  `0x003b` exceeds the page extent at cursor y `21`. Additional metric values outside
+  the pinned legal matrix, boundary, extent-fence, range-endpoint, mixed-value,
+  tight-range, low-nibble, and byte-boundary fixtures are cross-products of the
+  documented producer formulas and consumer gates; bounded validation no-install
+  branches are composed below under `Downloaded Resource Validation No-Install`.
 
 ## Downloaded Font Descriptor And Payload Chain
 

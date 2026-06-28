@@ -231,15 +231,17 @@ executable fixture or generated analysis note.
 
 ## Pixel-Perfect Blockers
 
-These are the highest-value unresolved edges because each can change rendered
-pixels or byte-stream compatibility.
+These are the highest-value unresolved edges or residual risks because each
+can change rendered pixels, byte-stream compatibility, or final confidence.
 
-1. Font/context span metric producer ownership is documented, but the
-   parser-produced legal value space is not exhaustively page-compared. The consumers
-   are known: unflagged `0xd4ac` reads context `+0x2b`, `+0x2c`, `+0x2d`; flagged
-   `0xd8fc` reads `+0x16`, `+0x18`, `+0x1a`. The selected-context bridge and current
-   metric evidence boundary are documented in `notes/font-context-metrics.md`, and the
-   downloaded descriptor/payload producer side is documented in
+1. Font/context span metric producer ownership is documented, and the
+   parser-produced legal value space is now represented by ROM formulas plus
+   fixture-backed partitions rather than isolated per-value tracing. The
+   consumers are known: unflagged `0xd4ac` reads context `+0x2b`, `+0x2c`,
+   `+0x2d`; flagged `0xd8fc` reads `+0x16`, `+0x18`, `+0x1a`. The selected-context
+   bridge and current metric evidence boundary are documented in
+   `notes/font-context-metrics.md`, and the downloaded descriptor/payload producer side
+   is documented in
    `notes/downloaded-fonts.md`. Host-fetched `0x1719c` type-0, type-1, and type-2
    payloads now prove copied descriptor bytes feeding both `0xd4ac` and `0xd8fc`
    visible span rows. Fixture `d4ac and d8fc span consumer branch family controls flush
@@ -313,16 +315,18 @@ pixels or byte-stream compatibility.
    formula is documented from disassembly: `0x17430` derives `+0x18 = +0x14 - +0x16 -
    1`, `0x1757a` writes `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`, `0x1762a`
    writes signed offset word `+0x1a`, and `0x1719c` copies those staged fields into the
-   allocated payload. The open edge is additional metric-value combinations within the
-   legal forms outside these lower/equality/upper, clamp, offset endpoint,
-   rounded-transform, range-endpoint, extent-fence, mixed-value, tight-range,
-   low-nibble, and byte-boundary cases, plus external/manual naming for
-   consumed-but-not-staged validation fields. It is not the tested type-0/type-1/type-2
-   payloads, metric-variant, clamped-variant, lower-bound-variant, upper-bound-variant,
-   legal-value-matrix, low-nibble rounding submatrix, extent-fence matrix, validation
-   no-install, legal producer-form boundary, mixed-value matrix, tight-range matrix, or
-   shared consumer branch family. Evidence: `notes/semantic-state-model.md` under `Text
-   Span Flush And Fixed-Width Spans`.
+   allocated payload. The remaining metric work is no longer an unresolved middle edge
+   for the copied-field formulas: `notes/font-context-metrics.md` classifies additional
+   legal metric values as cross-products, and `notes/downloaded-fonts.md` says the
+   remaining validation work is external HP/manual naming for consumed-but-not-staged
+   fields. Future metric work should therefore be regression expansion or selected-font
+   cross-products only when they expose a new state boundary. It is not the tested
+   type-0/type-1/type-2 payloads, metric-variant, clamped-variant, lower-bound-variant,
+   upper-bound-variant, legal-value-matrix, low-nibble rounding submatrix,
+   byte-boundary rounding submatrix, extent-fence matrix, validation no-install, legal
+   producer-form boundary, mixed-value matrix, tight-range matrix, or shared consumer
+   branch family. Evidence: `notes/semantic-state-model.md` under `Text Span Flush And
+   Fixed-Width Spans`.
 2. VFC table definition and channel jumps now have a tracked command-family
    contract in `notes/vertical-forms-control.md`. The remaining VFC risk is
    broader final-device image comparison, not an unresolved middle edge in the
@@ -437,9 +441,10 @@ pixels or byte-stream compatibility.
 
 The next work should follow dataflow, not isolated handlers:
 
-1. Prove the remaining font metric-byte combinations with parser-produced pages. The
-   selected-context bridge, metric consumers, downloaded descriptor/payload producer
-   chain, and host-stream downloaded glyph output are now tracked. Host-fetched
+1. Treat font metric-byte combinations as regression expansion unless a new
+   state boundary appears. The selected-context bridge, metric consumers, downloaded
+   descriptor/payload producer chain, and host-stream downloaded glyph output are now
+   tracked. Host-fetched
    `0x1719c` type-0, type-1, and type-2 payloads reach both `d4ac` and `d8fc` span rows,
    and the shared disabled/lower/page/high-x consumer branch family is fixture-backed.
    The seven-case legal descriptor metric matrix plus boundary fixture covers tight
@@ -461,10 +466,12 @@ The next work should follow dataflow, not isolated handlers:
    reaches `d4ac`, resource/flagged reaches `d8fc`, and the swapped forms fail at
    concrete map/render boundaries. The producer formulas are no longer the missing
    middle: `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c` now define the canonical,
-   derived/cache, and copied metric fields. The missing middle is now additional
-   metric-value combinations outside the pinned legal matrix, boundary, extent-fence,
-   range-endpoint, mixed-value, tight-range, low-nibble, and byte-boundary fixtures,
-   plus external/manual naming for consumed-but-not-staged validation fields.
+   derived/cache, and copied metric fields. Additional legal metric values outside the
+   pinned legal matrix, boundary, extent-fence, range-endpoint, mixed-value,
+   tight-range, low-nibble, and byte-boundary fixtures are cross-products of those
+   formulas and consumer gates, not a new semantic middle edge by themselves. Remaining
+   metric-related work is external/manual naming for consumed-but-not-staged validation
+   fields or broader selected-font combinations that expose different state boundaries.
 2. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus secondary

@@ -2077,9 +2077,10 @@ A byte-stream renderer must preserve:
   values, while range two copies `0x0002/0x0001/0x0000` with max positive and max
   negative signed offsets. Fixture `descriptor metric fields match across inline and
   resource contexts` now proves the legal producer forms and the two invalid swapped
-  forms. The remaining producer gap is not these copied-field endpoints; it is
-  additional legal descriptor combinations outside the pinned lower/equality/upper,
-  clamp, offset endpoint, range endpoint, extent-fence, rounded-transform, mixed-value,
-  tight-range, low-nibble, and byte-boundary cases. All ROM-internal validation
-  no-install predicate families are already parser-produced and page-visible; remaining
-  validation work is external HP manual naming for consumed-but-not-staged fields.
+  forms. Additional legal descriptor combinations outside the pinned
+  lower/equality/upper, clamp, offset endpoint, range endpoint, extent-fence,
+  rounded-transform, mixed-value, tight-range, low-nibble, and byte-boundary cases are
+  cross-products of the documented producer formulas and consumer gates, not new
+  copied-field endpoints. All ROM-internal validation no-install predicate families are
+  already parser-produced and page-visible; remaining validation work is external HP
+  manual naming for consumed-but-not-staged fields.

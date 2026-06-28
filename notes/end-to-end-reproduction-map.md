@@ -234,14 +234,16 @@ executable fixture or generated analysis note.
 These are the highest-value unresolved edges because each can change rendered
 pixels or byte-stream compatibility.
 
-1. Font/context producer ownership for span metric fields remains incomplete. The
-   consumers are known: unflagged `0xd4ac` reads context `+0x2b`, `+0x2c`, `+0x2d`;
-   flagged `0xd8fc` reads `+0x16`, `+0x18`, `+0x1a`. The selected-context bridge and
-   current metric evidence boundary are documented in `notes/font-context-metrics.md`,
-   and the downloaded descriptor/payload producer side is documented in
+1. Font/context span metric producer ownership is documented, but the
+   parser-produced legal value space is not exhaustively page-compared. The consumers
+   are known: unflagged `0xd4ac` reads context `+0x2b`, `+0x2c`, `+0x2d`; flagged
+   `0xd8fc` reads `+0x16`, `+0x18`, `+0x1a`. The selected-context bridge and current
+   metric evidence boundary are documented in `notes/font-context-metrics.md`, and the
+   downloaded descriptor/payload producer side is documented in
    `notes/downloaded-fonts.md`. Host-fetched `0x1719c` type-0, type-1, and type-2
-   payloads now prove copied descriptor bytes feeding both `0xd4ac` and `0xd8fc` visible
-   span rows. Fixture `d4ac and d8fc span consumer branch family controls flush output`
+   payloads now prove copied descriptor bytes feeding both `0xd4ac` and `0xd8fc`
+   visible span rows. Fixture `d4ac and d8fc span consumer branch family controls flush
+   output`
    covers disabled, lower-bound, page-extent, and high-x consumer outcomes for both
    source forms. Fixture `host-fetched metric variant changes d4ac gate and d8fc rows`
    proves one parser-produced metric-value variant: copied `+0x2c/+0x2d` flips a tight

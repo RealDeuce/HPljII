@@ -14035,6 +14035,30 @@ def queue_text_source_to_addressed_stream_via_12f2e(
         0x0A,
         0x26,
     )
+    if bool(alloc.get("allocation_failed", False)):
+        return {
+            "path": "short-addressed-page-record",
+            "object_ptr": 0,
+            "allocated": True,
+            "allocation_failed": True,
+            "count_before": 0,
+            "count_after": 0,
+            "object": b"",
+            "object_size": 0x26,
+            "capacity": 0x0A,
+            "entry_size": 3,
+            "bucket_index": bucket_index,
+            "selector": selector,
+            "coord": coord,
+            "glyph": glyph,
+            "rows": rows,
+            "width": width,
+            "old_bucket_head": alloc["old_bucket_head"],
+            "new_bucket_head": alloc["new_bucket_head"],
+            "next_ptr": 0,
+            "visited": alloc["visited"],
+            "stream_alloc": alloc["stream_alloc"],
+        }
     obj = alloc["object"]
     if not isinstance(obj, bytearray):
         raise AssertionError("addressed bucket allocator did not return a mutable object")
@@ -14064,6 +14088,73 @@ def queue_text_source_to_addressed_stream_via_12f2e(
         "new_bucket_head": alloc["new_bucket_head"],
         "next_ptr": alloc["next_ptr"],
         "visited": alloc["visited"],
+    }
+
+
+def retry_text_source_after_no_room_via_d3b2_d824(
+    resources: bytes,
+    current_page_record: dict[str, object],
+    state: dict[str, object],
+    source: dict[str, object],
+    *,
+    retry_next_stream_chunk_ptr: int,
+    handler: int,
+) -> dict[str, object]:
+    """Model the 0xd47a/0xd8ca no-room retry after a 0x12f2e text queue call."""
+    if handler not in (0x00D3B2, 0x00D824):
+        raise AssertionError("text retry fixture only models 0xd3b2 and 0xd824")
+    first_attempt = queue_text_source_to_addressed_stream_via_12f2e(
+        resources,
+        state,
+        source,
+    )
+    if not bool(first_attempt.get("allocation_failed", False)):
+        raise AssertionError("text source retry fixture requires first queue allocation failure")
+
+    state["page_root_flags_14"] = int(state.get("page_root_flags_14", 0)) | 1
+    retry_flags_14 = int(state["page_root_flags_14"])
+    finalized = finalize_page_record_via_ff1e(
+        current_page_record,
+        state,  # type: ignore[arg-type]
+    )
+    if finalized["published"]:
+        state["page_publications"] = int(state.get("page_publications", 0)) + 1
+        state["published_pool_record"] = 1
+        state["page_publication_flag"] = int(finalized["page_publication_flag"])
+    state["current_page_root"] = int(finalized["current_page_root_after"])
+    state["page_root_present"] = 0
+    state["page_root_class"] = 0
+    state["page_root_clears"] = int(finalized["page_root_clears"])
+
+    context_slots = list(current_page_record.get("context_slots", state.get("context_slots", [])))
+    state["bucket_heads_1c"] = {}
+    state["rule_head_24"] = 0
+    state["fixed_head_28"] = 0
+    state["stream_objects"] = {}
+    state["stream_chunk_links"] = {}
+    state["context_slots"] = context_slots
+    state["next_stream_chunk_ptr"] = retry_next_stream_chunk_ptr
+
+    fresh_root = ensure_page_record_root_for_queue(state)  # type: ignore[arg-type]
+    retry_result = queue_text_source_to_addressed_stream_via_12f2e(
+        resources,
+        state,
+        source,
+    )
+    if bool(retry_result.get("allocation_failed", False)):
+        raise AssertionError("text source retry fixture requires retry allocation success")
+    retry_page_record = page_record_from_addressed_stream_state(state)
+    return {
+        "handler": handler,
+        "no_room": True,
+        "first_attempt": first_attempt,
+        "retry_page_root_flags_14": retry_flags_14,
+        "finalized": finalized,
+        "fresh_root": fresh_root,
+        "retry_result": retry_result,
+        "retry_page_record": retry_page_record,
+        "source_after_retry": dict(source),
+        "state": state,
     }
 
 
@@ -43622,6 +43713,261 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "glyph": 0x20,
         "rows": 22,
         "width": 4,
+    }))
+
+    def text_queue_retry_summary(handler: int, source: dict[str, object]) -> dict[str, object]:
+        context_slots = [0x440946B4] * max(1, int(source["context_slot"]) + 1)
+        old_page_record: dict[str, object] = {
+            "bucket_array": {},
+            "context_slots": context_slots,
+        }
+        queue_text_source_to_page_record_via_12f2e(resources, old_page_record, source)
+        retry_state: dict[str, object] = {
+            "current_page_root": ABSTRACT_PAGE_ROOT_PTR,
+            "page_root_present": 1,
+            "page_root_class": 1,
+            "page_root_flags_14": 0,
+            "page_root_clears": 0,
+            "stream_bytes_remaining_782a70": 0,
+            "stream_link_ptr_782a72": 0,
+            "stream_next_free_782a76": 0,
+            "next_stream_chunk_ptr": 0,
+            "stream_chunk_links": {},
+            "bucket_heads_1c": {},
+            "rule_head_24": 0,
+            "fixed_head_28": 0,
+            "stream_objects": {},
+            "context_slots": context_slots,
+            "primary_context_782ee6": 0x440946B4,
+        }
+        retry = retry_text_source_after_no_room_via_d3b2_d824(
+            resources,
+            old_page_record,
+            retry_state,
+            source,
+            retry_next_stream_chunk_ptr=0x00D06000,
+            handler=handler,
+        )
+        published = retry["finalized"]["published_pool_record"]
+        assert isinstance(published, dict)
+        bucket_word = int(retry["retry_result"]["bucket_index"])
+        published_entry = render_published_page_record_via_1ed84_1ef6a(
+            data,
+            resources,
+            published,
+            bucket_word=bucket_word,
+        )["entry"]
+        retry_entry = render_published_page_record_via_1ed84_1ef6a(
+            data,
+            resources,
+            retry["retry_page_record"],
+            bucket_word=bucket_word,
+        )["entry"]
+        published_rows = published_entry["rows"]
+        retry_rows = retry_entry["rows"]
+        assert isinstance(published_rows, list)
+        assert isinstance(retry_rows, list)
+        dispatch = published_entry["dispatch"]
+        assert isinstance(dispatch, dict)
+        dispatch_entries = dispatch["entries"]
+        assert isinstance(dispatch_entries, list) and dispatch_entries
+        dispatch_entry = dispatch_entries[0]
+        assert isinstance(dispatch_entry, dict)
+        return {
+            "handler": retry["handler"],
+            "first": {
+                key: retry["first_attempt"][key]
+                for key in ("allocation_failed", "object_ptr", "bucket_index", "selector", "coord", "glyph")
+            },
+            "stream_alloc": {
+                key: retry["first_attempt"]["stream_alloc"][key]
+                for key in ("allocation_failed", "byte_count", "returned_ptr", "allocated_chunk")
+            },
+            "retry_page_root_flags_14": retry["retry_page_root_flags_14"],
+            "published": {
+                "published": retry["finalized"]["published"],
+                "bucket_root_prefix": published["bucket_root"][:11],
+            },
+            "fresh_root": {
+                key: retry["fresh_root"][key]
+                for key in (
+                    "page_root_created",
+                    "current_page_root_before",
+                    "current_page_root_after",
+                    "page_record_root_allocations",
+                    "stream_link_ptr_782a72",
+                )
+            },
+            "retry": {
+                key: retry["retry_result"][key]
+                for key in (
+                    "allocation_failed",
+                    "object_ptr",
+                    "allocated",
+                    "count_after",
+                    "bucket_index",
+                    "selector",
+                    "coord",
+                    "glyph",
+                    "new_bucket_head",
+                )
+            },
+            "retry_object_prefix": retry["retry_result"]["object"][:11],
+            "source_after_retry": {
+                key: retry["source_after_retry"][key]
+                for key in ("mapped", "flag", "x", "y", "context_slot")
+            },
+            "render": {
+                "bucket_word": bucket_word,
+                "dispatch_target": dispatch_entry["target"],
+                "context_slot": dispatch_entry["context_slot"],
+                "rows_match": published_rows == retry_rows,
+                "row_count": len(published_rows),
+                "row_sha256": hashlib.sha256(
+                    "\n".join(str(row) for row in published_rows).encode("ascii")
+                ).hexdigest(),
+            },
+        }
+
+    retry_inline_record = bytes.fromhex("02 03 04 00 00 00 00 80")
+    retry_unflagged_base: dict[str, object] = {
+        "context": 0x440946B4,
+        "host_char": 0x21,
+        "mapped": 0x01,
+        "glyph_entry": 0,
+        "glyph_width": 2,
+        "glyph_rows": 3,
+        "flag": 0,
+        "x": 0,
+        "y": 0,
+        "context_slot": 3,
+        "inline_record": retry_inline_record,
+    }
+    retry_unflagged_positioned = position_unflagged_text_source_via_d3b2(
+        retry_unflagged_base,  # type: ignore[arg-type]
+        retry_inline_record,
+        cursor_x=10,
+        cursor_y=20,
+        printable_offset=7,
+        source_x_offset=5,
+    )["source"]
+    assert isinstance(retry_unflagged_positioned, dict)
+    checks.append(assert_equal("0xd3b2 and 0xd824 text queue no-room retry preserves source and rows", {
+        "flagged": text_queue_retry_summary(0x00D824, positioned_source),
+        "unflagged": text_queue_retry_summary(0x00D3B2, retry_unflagged_positioned),
+    }, {
+        "flagged": {
+            "handler": 0x00D824,
+            "first": {
+                "allocation_failed": True,
+                "object_ptr": 0,
+                "bucket_index": 0,
+                "selector": 0,
+                "coord": 0x0001,
+                "glyph": 0x20,
+            },
+            "stream_alloc": {
+                "allocation_failed": True,
+                "byte_count": 0x26,
+                "returned_ptr": 0,
+                "allocated_chunk": 0,
+            },
+            "retry_page_root_flags_14": 1,
+            "published": {
+                "published": True,
+                "bucket_root_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            },
+            "fresh_root": {
+                "page_root_created": True,
+                "current_page_root_before": 0,
+                "current_page_root_after": 1,
+                "page_record_root_allocations": 1,
+                "stream_link_ptr_782a72": 0x21,
+            },
+            "retry": {
+                "allocation_failed": False,
+                "object_ptr": 0x00D06004,
+                "allocated": True,
+                "count_after": 1,
+                "bucket_index": 0,
+                "selector": 0,
+                "coord": 0x0001,
+                "glyph": 0x20,
+                "new_bucket_head": 0x00D06004,
+            },
+            "retry_object_prefix": bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01"),
+            "source_after_retry": {
+                "mapped": 0x20,
+                "flag": 1,
+                "x": 16,
+                "y": 0,
+                "context_slot": 0,
+            },
+            "render": {
+                "bucket_word": 0,
+                "dispatch_target": 0x01EFFE,
+                "context_slot": 0,
+                "rows_match": True,
+                "row_count": 22,
+                "row_sha256": "235986bdd28abaaef315961960ac87d846cbb5228ca5c07ef560df56501a30e3",
+            },
+        },
+        "unflagged": {
+            "handler": 0x00D3B2,
+            "first": {
+                "allocation_failed": True,
+                "object_ptr": 0,
+                "bucket_index": 1,
+                "selector": 3,
+                "coord": 0x6601,
+                "glyph": 0x01,
+            },
+            "stream_alloc": {
+                "allocation_failed": True,
+                "byte_count": 0x26,
+                "returned_ptr": 0,
+                "allocated_chunk": 0,
+            },
+            "retry_page_root_flags_14": 1,
+            "published": {
+                "published": True,
+                "bucket_root_prefix": bytes.fromhex("00 00 00 00 00 03 00 01 01 66 01"),
+            },
+            "fresh_root": {
+                "page_root_created": True,
+                "current_page_root_before": 0,
+                "current_page_root_after": 1,
+                "page_record_root_allocations": 1,
+                "stream_link_ptr_782a72": 0x21,
+            },
+            "retry": {
+                "allocation_failed": False,
+                "object_ptr": 0x00D06004,
+                "allocated": True,
+                "count_after": 1,
+                "bucket_index": 1,
+                "selector": 3,
+                "coord": 0x6601,
+                "glyph": 0x01,
+                "new_bucket_head": 0x00D06004,
+            },
+            "retry_object_prefix": bytes.fromhex("00 00 00 00 00 03 00 01 01 66 01"),
+            "source_after_retry": {
+                "mapped": 0x01,
+                "flag": 0,
+                "x": 22,
+                "y": 22,
+                "context_slot": 3,
+            },
+            "render": {
+                "bucket_word": 1,
+                "dispatch_target": 0x01EFFE,
+                "context_slot": 3,
+                "rows_match": True,
+                "row_count": 22,
+                "row_sha256": "d696456ad5c91a1a568d1b1c45fcf7e322fe15c12a3805783145ccc7074806e6",
+            },
+        },
     }))
 
     selected_inline_context = 0x00000100
@@ -88979,6 +89325,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("This fixture starts one step earlier than the producer-modeled text bucket: the host byte stream is `21` (`!`). Under the documented normal parser conditions, that byte reaches `0xd04a`, enters `0x1393a`, maps through the active `LINE_PRINTER` character map to glyph byte `0x20`, takes the flagged/built-in `0xd824` path with cursor `(10,21)`, emits the same short `0x12f2e` compact object as the positioned fixture, and renders through `0x1effe` / `0x1f034`.")
     lines.append("The adjacent printable-entry normalization fixtures now pin the `0xd04a` over-`0xff` and high-bit branches: a nonzero `0xd99a` result exits before source build, a zero result substitutes host `0x7f` and builds glyph `0x7e`, primary high byte `0xa1` masks to host `0x21` while wrapping the source build with `0xc6b8`/`0xc68a`, either high-character flag preserves `0xa1` as glyph `0xa0`, and selected secondary slot masks without the primary wrapper.")
     lines.append("The paired precheck fixture now pins `0xd28a` and `0xd6bc` result semantics before the queue handoff: ordinary success returns `0`, horizontal overflow with wrap disabled returns `1` and suppresses queueing, the same overflow with `0x783190` set calls `0xf054` and retries from recovered x `0`, and vertical-extent failure returns `1` on both source classes.")
+    lines.append("The paired text queue retry fixture now pins the short-object no-room path for both `0xd3b2` and `0xd824`: a failed addressed `0x12f2e` allocation sets page-root retry flag `+0x14.0`, publishes the old compact bucket through `0xff1e`, ensures a fresh root through `0x10084`, retries the preserved source at `0x00d06004`, and renders rows matching the published bucket through `0x1effe`.")
     lines.append("")
     lines.append("- stream bytes: `21`")
     lines.append(f"- source object from `0x1393a`: context `0x{printable_stream_source['context']:08x}`, host `0x{printable_stream_source['host_char']:02x}`, mapped glyph `0x{printable_stream_source['mapped']:02x}`, glyph entry `0x{printable_stream_source['glyph_entry']:06x}`, flag `{printable_stream_source['flag']}`")

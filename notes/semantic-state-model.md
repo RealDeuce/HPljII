@@ -1140,10 +1140,14 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   - `0x78297e`: selected page-root font slot index copied into source
     `+0x16`.
   - `0x78297f + slot`: live flag set by both `0xd3b2` and `0xd824`.
-  Evidence: disassembly `0xd458..0xd47a` and `0xd8a8..0xd8ca`;
+  - page-root flags word `+0x14` bit `0`: retry/finalization marker set
+    by both text queue no-room paths before `0xff1e` publishes the old
+    root.
+  Evidence: disassembly `0xd458..0xd4a0` and `0xd8a8..0xd8f0`;
   fixtures `0x1387c page-record bucket allocator reuses matching short
-  object` and `selected inline source queues and renders through
-  unflagged path`.
+  object`, `selected inline source queues and renders through unflagged
+  path`, and `0xd3b2 and 0xd824 text queue no-room retry preserves source
+  and rows`.
 - Canonical span/bounds state:
   - `0x783184`: enables span/bounds updates in `0xd4ac` and `0xd8fc`.
   - `0x783185`: selects alternate y-offset handling.
@@ -1280,6 +1284,21 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   With `0x783190` set, the same horizontal reject calls `0xf054`, retries
   from recovered x `0`, and returns `0`. With y `18` and page extent `20`,
   both handlers return `1` from the vertical-extent check.
+- Fixture `0xd3b2 and 0xd824 text queue no-room retry preserves source and
+  rows` closes the paired short-text allocation-failure edge. For the
+  flagged `0xd824` source, the first addressed `0x12f2e` queue tries to
+  allocate object size `0x26`, receives pointer `0`, preserves source
+  `(mapped=0x20, flag=1, x=16, y=0, slot=0)`, sets page-root flag
+  `+0x14.0`, publishes the old bucket prefix
+  `00 00 00 00 00 00 00 01 20 00 01` through `0xff1e`, ensures a fresh
+  root through `0x10084`, retries at object pointer `0x00d06004`, and
+  renders the same 22 rows through `0x1effe` with digest
+  `235986bdd28abaaef315961960ac87d846cbb5228ca5c07ef560df56501a30e3`.
+  For the unflagged `0xd3b2` source, the same retry sequence preserves
+  `(mapped=0x01, flag=0, x=22, y=22, slot=3)`, publishes/retries bucket
+  prefix `00 00 00 00 00 03 00 01 01 66 01`, dispatches bucket word `1`
+  through `0x1effe`, and renders the same 22 rows with digest
+  `d696456ad5c91a1a568d1b1c45fcf7e322fe15c12a3805783145ccc7074806e6`.
 
 ### Confidence
 
@@ -1299,6 +1318,7 @@ full 68000 interpreter through every source class and allocator branch.
 - `0xd04a printable entry normalizes over-0xff and high-bit values`
 - `0xd04a high-character flags and selected slot choose mask behavior`
 - `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`
+- `0xd3b2 and 0xd824 text queue no-room retry preserves source and rows`
 - `0xd3b2-modeled unflagged source fields`
 - `0xd3b2-modeled unflagged overflow source fields`
 - `0x12f2e-modeled unflagged short bucket object fields`
@@ -1352,22 +1372,17 @@ full 68000 interpreter through every source class and allocator branch.
   live parser/output edge for every metric source, not the meaning of the
   precheck result or the shared reject/retry gate.
 - `0xd47a..0xd4a0` and `0xd8ca..0xd8f0`: allocation failure retry via
-  `0xff1e` / `0x10084` is identified in both source handoffs. The covered
-  canonical state before the retry is the positioned source object
-  `0x782d7e`, selected slot byte `0x78297e`, live-slot byte
-  `0x78297f + slot`, and current root pointer `0x78297a`; the covered
-  derived state after success is the `0x12f2e` selector/key plus the
-  compact bucket object under page-root `+0x1c`. The unresolved middle
-  edge is the failure-return path from `0x12f2e`/`0x1387c` back into the
-  paired source writers: unflagged `0xd3b2` and flagged `0xd824` should
-  preserve the source fields, publish the full root through `0xff1e`,
-  ensure a fresh root through `0x10084`, and retry the same queued glyph.
-  Parser scratch is the original printable byte in `D5` and the source
-  object already written by `0x1393a`; firmware bookkeeping is the page
-  publication/root-allocation side effect. Closing this edge needs a live
-  parser or memory-backed fixture that forces `0x1387c` no-room for both
-  `0xd47a..0xd4a0` and `0xd8ca..0xd8f0`, then proves the retried compact
-  object and rows match the non-failure path.
+  `0xff1e` / `0x10084` is fixture-backed for both paired short-text source
+  writers. The covered canonical state before the retry is the positioned
+  source object `0x782d7e`, selected slot byte `0x78297e`, live-slot byte
+  `0x78297f + slot`, current root pointer `0x78297a`, and root retry flag
+  `+0x14.0`. The covered derived state after success is the `0x12f2e`
+  selector/key plus the compact bucket object under page-root `+0x1c`;
+  the fixture proves the old published bucket prefix, fresh-root allocation,
+  retried object pointer/bytes, `0x1effe` dispatch, and row digest match
+  for flagged `0xd824` and unflagged `0xd3b2` short objects. Remaining risk
+  is segmented/tall text retry and a full live CPU-register trace, not the
+  paired short-text failure-return semantics.
 - `0xd4ac..0xd548` and `0xd8fc..0xd992`: span watermark writes and the
   downstream `0x12714` / `0x126e2` handoff are composed in
   `Text Span Flush And Fixed-Width Spans`. That section covers
@@ -1376,8 +1391,8 @@ full 68000 interpreter through every source class and allocator branch.
   with fixtures `0x12714 allocation failure publishes page and retries
   span`, `0x1354a portrait text span split queues adjacent buckets`, and
   `0x12714 landscape span inserts into nonempty fixed list`. The remaining
-  unresolved edge here is the earlier printable source-handoff allocation
-  failure path at `0xd47a..0xd4a0` / `0xd8ca..0xd8f0`.
+  unresolved edge here is broader span metric/source cross-products, not
+  the earlier paired short-text source-handoff allocation failure path.
 - `0x12f2e..0x1306e`: short and segmented producer shapes are
   fixture-backed, but a full live CPU/register trace through every
   selector mode into real allocator memory remains open.

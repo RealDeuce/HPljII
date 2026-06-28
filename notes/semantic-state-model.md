@@ -731,6 +731,15 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `ESC &a2c+1R!` route cursor-position handlers `0xf39e`, `0xf416`,
   `0xf560`, and `0xf60a` to compact coords `0x0a02`, `0x0402`,
   `0x1001`, `0x9001`, and `0x1a02`.
+- Fixture `vertical-cursor parser span flush materializes 0x12714 page object`
+  covers the pending-span sibling for parsed `ESC &a1R!`: host fetch drains
+  six ring bytes, parser handlers are `0xf560` then `0xd04a`, `0xf560`
+  flushes pending state before moving y to packed `95.1`, `0x12714`
+  publishes the same selector-`0x4000` segment-list object in bucket `0`,
+  `0x126e2` re-arms span bounds to x `10`, and the following printable
+  queues compact coord `0xa001` in bucket `4`; rendering bucket `0` produces
+  span rows `3..5`, and rendering bucket `4` produces the compact glyph rows
+  at x `16`.
 - `ESC *p30x30Y!` routes dot-position handlers `0xf48c` and `0xf692`
   to following `0xd04a` output at compact coord `0x9402`.
 - `ESC &l3E!`, `ESC &l1L!`, and `ESC &l66P!` route vertical-layout,
@@ -773,6 +782,7 @@ modeled source/object structures rather than a full live CPU-memory run.
 - `cursor-position parser trace feeds page-record queue`
 - `decipoint cursor parser trace feeds page-record queue`
 - `vertical cursor-position parser trace feeds page-record queue`
+- `vertical-cursor parser span flush materializes 0x12714 page object`
 - `vertical-decipoint cursor parser trace feeds page-record queue`
 - `chained cursor-position parser trace feeds page-record queue`
 - `cursor stack parser trace feeds page-record queue`
@@ -819,9 +829,12 @@ modeled source/object structures rather than a full live CPU-memory run.
   `0xeb58 -> 0xf34a -> 0x12714 -> 0x126e2 -> 0xd04a`, with host fetch, parser
   dispatch, materialized segment-list object, re-armed span state, compact
   printable object, and rendered rows pinned. The remaining direct-control
-  span edge is narrower: host-fetched cursor movement streams that cross the
-  same `0xf34a` span branch are still represented by composed helper state
-  rather than their own end-to-end parser fixtures.
+  span edge is narrower still: fixture
+  `vertical-cursor parser span flush materializes 0x12714 page object` now
+  drives `0xf560 -> 0xf34a -> 0x12714 -> 0x126e2 -> 0xd04a` from parsed
+  `ESC &a1R!`, producing separate span bucket `0` and compact glyph bucket
+  `4`. Other cursor-position variants that do not expose new state boundaries
+  are now regression cross-products rather than the named middle edge.
 - `0xd4ac..0xd8fc`: active font/context span update helpers are
   composed as watermark writers in `Text Span Flush And Fixed-Width
   Spans`; descriptor metric producer formulas are documented from `0x17430`,
@@ -3246,6 +3259,12 @@ queues a fixed-width span through `0x136d2`.
   sibling `0xf34a` path for parsed `ESC &a6L!`: after `0xeb58` moves
   `0x782c8a` to packed `108`, the pending span is packaged by `0x12714`
   before `0x126e2` re-arms bounds from the new x cursor.
+- `0xf560` handles vertical row positioning through helper `0xf6e2`. Fixture
+  `vertical-cursor parser span flush materializes 0x12714 page object` pins
+  the parsed cursor-position sibling: the pending span is packaged by
+  `0x12714`, `0x126e2` re-arms low/high x from the unchanged x cursor `10`,
+  then `0xd04a` queues the following printable in bucket `4` after y moves to
+  packed `95.1`.
 - `0x12714` clears `0x783184`, writes the local 8-byte source, calls
   `0x10084`, gates on `0x782db6`, calls `0x13520`, and retries after
   `0xff1e` on allocation failure. The retry path sets page-root
@@ -3328,6 +3347,15 @@ queues a fixed-width span through `0x136d2`.
   dispatches the compact object and the segment-list object from the same
   bucket, producing span rows `3..5` at pixels `0..15` beside the compact
   glyph at pixels `114..117`.
+- Fixture `vertical-cursor parser span flush materializes 0x12714 page object`
+  drives `ESC &a1R!` from `0xa904` host fetch through parser handlers
+  `0xf560` and `0xd04a`. The cursor-position command materializes pending
+  state `2..18 @ y=3` through `0x12714`, inserts the same segment-list object
+  in bucket `0`, re-arms `0x783186` and `0x783188` to x `10`, then moves y to
+  packed `95.1`. The following printable queues compact object
+  `00 00 00 00 00 00 00 01 20 a0 01 ...` in bucket `4`; bucket `0` renders
+  the three span rows, while bucket `4` renders the glyph rows after
+  `0x1ed84` selects that band.
 - Fixture `flagged printable d8fc low-watermark flush renders span`
   drives byte `0x21` through the mixed page-record model with
   `cursor_x=10`, `cursor_y=21`, `low_x=100`, `high_x=120`, and flagged
@@ -3426,6 +3454,7 @@ fixtures.
 - `mixed printable/control page-record stream queues through 0x1387c`
 - `live CR span flush materializes 0x12714 page object`
 - `left-margin parser span flush materializes 0x12714 page object`
+- `vertical-cursor parser span flush materializes 0x12714 page object`
 - `flagged printable d8fc low-watermark flush renders span`
 - `unflagged printable d4ac low-watermark flush renders span`
 - `d4ac and d8fc span consumer branch family controls flush output`

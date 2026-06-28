@@ -77713,6 +77713,199 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "high_y_78318a": 0,
         },
     }))
+    span_cursor_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&a1R!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            right_margin=pack12(300),
+            hmi=line_printer_hmi["hmi"],
+            vmi=pack12(3),
+            top_offset=pack12(90),
+            min_y=pack12(0),
+            max_y=pack12(3090),
+            pending_text=1,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            enabled_783184=1,
+            low_x_783186=2,
+            high_x_783188=18,
+            high_y_78318a=3,
+            orientation=0,
+            page_extent_782db6=64,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+        allow_multiple_buckets=True,
+    )
+    span_cursor_events = span_cursor_stream["events"]
+    assert isinstance(span_cursor_events, list)
+    span_cursor_event = span_cursor_events[0]
+    assert isinstance(span_cursor_event, dict)
+    span_cursor_flush = span_cursor_event["span_flush_result"]
+    assert isinstance(span_cursor_flush, dict)
+    span_cursor_queued = span_cursor_flush["queued"]
+    assert isinstance(span_cursor_queued, dict)
+    span_cursor_printable = span_cursor_events[1]
+    assert isinstance(span_cursor_printable, dict)
+    span_cursor_page_record = span_cursor_stream["page_record"]
+    assert isinstance(span_cursor_page_record, dict)
+    span_cursor_bucket_array = span_cursor_page_record["bucket_array"]
+    assert isinstance(span_cursor_bucket_array, dict)
+    span_cursor_bucket0 = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        span_cursor_page_record,
+        bucket_word=0,
+    )
+    span_cursor_bucket4 = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        span_cursor_page_record,
+        bucket_word=4,
+    )
+    span_cursor_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        b"\x1b&a1R!",
+    )
+    span_cursor_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(b"\x1b&a1R!"), direct_mode=0),
+        len(b"\x1b&a1R!"),
+    )
+    expected_span_cursor_glyph_rows = [
+        "." * 16 + "####" if 10 <= row_index < 16 and row_index % 2 == 0 else "." * 20
+        for row_index in range(16)
+    ]
+    checks.append(assert_equal("vertical-cursor parser span flush materializes 0x12714 page object", {
+        "stream": span_cursor_stream["stream"],
+        "fetch_sources": span_cursor_fetch["sources"],
+        "remaining_ring": span_cursor_fetch["state"]["ring"],
+        "parser_handlers": [
+            event["handler"]
+            for event in span_cursor_trace["events"]
+        ],
+        "cursor": {
+            "handler": span_cursor_event["handler"],
+            "sequence": span_cursor_event["sequence"],
+            "cursor_before": span_cursor_event["cursor_before"],
+            "cursor_after": span_cursor_event["cursor_after"],
+            "span_flushes": span_cursor_stream["final_state"]["span_flushes"],
+        },
+        "flush": {
+            "flushed": span_cursor_flush["flushed"],
+            "path": span_cursor_flush["path"],
+            "raw_source": span_cursor_flush["raw_source"],
+            "queued": {
+                key: span_cursor_queued[key]
+                for key in ("path", "computed", "bucket_index", "selector", "object")
+            },
+            "rearm": span_cursor_flush["rearm"],
+        },
+        "printable": {
+            "byte": span_cursor_printable["byte"],
+            "cursor_before": span_cursor_printable["cursor_before"],
+            "cursor_after": span_cursor_printable["cursor_after"],
+            "coord": span_cursor_printable["page_result"]["coord"],
+            "bucket_index": span_cursor_printable["page_result"]["bucket_index"],
+        },
+        "bucket0": {
+            "chain": span_cursor_bucket0["chain"],
+            "rows": span_cursor_bucket0["entry"]["rows"],
+        },
+        "bucket4": {
+            "chain": span_cursor_bucket4["chain"],
+            "rows": span_cursor_bucket4["entry"]["rows"],
+        },
+        "final_span_state": select_keys(
+            span_cursor_stream["final_state"],
+            ("enabled_783184", "low_x_783186", "high_x_783188", "high_y_78318a"),
+        ),
+    }, {
+        "stream": b"\x1b&a1R!",
+        "fetch_sources": ["ring"] * 6,
+        "remaining_ring": [],
+        "parser_handlers": [0x00F560, 0x00D04A],
+        "cursor": {
+            "handler": 0x00F560,
+            "sequence": b"\x1b&a1R",
+            "cursor_before": {"x": pack12(10), "y": pack12(21)},
+            "cursor_after": {"x": pack12(10), "y": pack12(95, 1)},
+            "span_flushes": 1,
+        },
+        "flush": {
+            "flushed": True,
+            "path": "portrait-segment-list",
+            "raw_source": {
+                "orientation": 0,
+                "mode": 0,
+                "x": 2,
+                "y": 3,
+                "extent": 16,
+            },
+            "queued": {
+                "path": "text-span-segment-list",
+                "computed": {
+                    "x": 2,
+                    "y": 3,
+                    "bucket_index": 0,
+                    "key": 0x3200,
+                    "mode": 3,
+                    "selector_hi": 0x40,
+                    "selector_lo": 0x00,
+                },
+                "bucket_index": 0,
+                "selector": 0x4000,
+                "object": (
+                    bytes.fromhex("00 00 00 00 40 00 00 01 32 00 03 00 00 10")
+                    + (b"\x00" * 0x18)
+                ),
+            },
+            "rearm": {
+                "rearmed": True,
+                "enabled_783184": 1,
+                "low_x_783186": 10,
+                "high_x_783188": 10,
+                "high_y_78318a": 0,
+            },
+        },
+        "printable": {
+            "byte": 0x21,
+            "cursor_before": pack12(10),
+            "cursor_after": pack12(28),
+            "coord": 0xA001,
+            "bucket_index": 4,
+        },
+        "bucket0": {
+            "chain": [
+                bytes.fromhex("00 00 00 00 40 00 00 01 32 00 03 00 00 10")
+                + (b"\x00" * 0x18),
+            ],
+            "rows": [
+                "................",
+                "................",
+                "................",
+                "################",
+                "################",
+                "################",
+            ],
+        },
+        "bucket4": {
+            "chain": [
+                bytes.fromhex("00 00 00 00 00 00 00 01 20 a0 01")
+                + (b"\x00" * 0x1b),
+            ],
+            "rows": expected_span_cursor_glyph_rows,
+        },
+        "final_span_state": {
+            "enabled_783184": 1,
+            "low_x_783186": 10,
+            "high_x_783188": 10,
+            "high_y_78318a": 0,
+        },
+    }))
     d8fc_materialized_stream = render_mixed_printable_control_page_record_stream(
         data,
         resources,

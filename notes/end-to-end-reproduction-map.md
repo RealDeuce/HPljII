@@ -56,7 +56,8 @@ executable fixture or generated analysis note.
   ROM evidence is `0xd4ac`, `0xd8fc`, `0x126e2`, `0x12714`, and
   `0x13520`.
   Reproduction evidence is `Text Span Flush And Fixed-Width Spans` plus
-  CR, left-margin parser, low-water, split, nonempty, and retry fixtures.
+  CR, left-margin parser, vertical-cursor parser, low-water, split,
+  nonempty, and retry fixtures.
 - Page-root storage:
   ROM evidence is `0x10084`, `0x10110`, `0x1381c`, and `0x1387c`.
   Reproduction evidence is `Shared Page-Record Storage And Allocator`,

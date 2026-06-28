@@ -692,12 +692,17 @@ replays before page publication`. Fixture `macro overlay replays across
 repeated page publications` reuses the same enabled overlay state across two
 modeled `0xff1e` page boundaries, proving that both publications replay
 `!\r` and compose with their page-specific selector-7 rule before publication.
+Fixture `macro overlay skip gates preserve base page publication` covers the
+same `0xff1e` branch when overlay replay is not allowed: disabled overlay
+mode, missing selected record, and page-root retry flag all publish the base
+printable/rule page record without adding a non-replay frame.
 The
 composed semantic checkpoint is
 `Macro Definition And Data-Chain Replay` in
 `notes/semantic-state-model.md`; no macro execute/call replay,
 font-context, first overlay-publication, or repeated enabled-overlay
-publication middle edge remains in that checkpoint.
+publication middle edge remains in that checkpoint, and the overlay skip gates
+are now fixture-backed there as well.
 
 Top-level `ESC &` enters mode 5. The normal table currently identifies
 these subfamilies:

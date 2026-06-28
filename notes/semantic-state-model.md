@@ -4976,22 +4976,28 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     record id `123` through `0xe0a4`, build the same non-replay `0xe4f4`
     frame for payload `!\r`, replay through `0xd04a`/`0xf02c`, and compose
     the replayed overlay text with each page's distinct selector-7 rule.
+  - overlay skip gates preserve the base page publication when selector `5`
+    has disabled overlay mode, when overlay id `123` has no nonempty macro
+    record, or when page-root retry flag bit `+0x14.0` is set. In those cases
+    `0xff1e` still publishes and renders the base printable/rule page record,
+    but no `0xe4f4` frame or replayed `!\r` text is added.
   Evidence: fixtures `macro execute data-chain parser trace feeds
   page-record stream`, `macro call data-chain parser trace feeds
   page-record stream`, `host-fetched macro replay payloads feed 0x1ed84
   and 0x1ef6a`, and `macro overlay finalization replays before page
   publication`, plus `macro overlay replays across repeated page
-  publications`.
+  publications` and `macro overlay skip gates preserve base page
+  publication`.
 - Unknown:
   - startup option source for the optional `0x80` addition to
     `0x780e5a` still needs board/config correlation, but the downstream
     `0x0b18` heap-limit math and `0x164a` allocator initialization are
     pinned for the default path.
   - no remaining macro execute/call replay, font-context, first
-    overlay-publication, or repeated enabled-overlay publication middle
-    edge in this checkpoint. The next high-value edges are broader overlay
-    variants, descriptor metric producer validation, and final
-    device-output validation.
+    overlay-publication, repeated enabled-overlay publication, or overlay
+    skip-gate middle edge in this checkpoint. The next high-value edges are
+    broader overlay payload variants, descriptor metric producer validation,
+    and final device-output validation.
 
 ### Writers
 
@@ -5131,6 +5137,14 @@ replay `!\r` before `0xff1e` publishes. The composed row digests are
 for the first page and
 `2d52675c52b22b80e87a379e32894c7a9638596770093d2fd80b64e25559977e`
 for the second.
+Fixture `macro overlay skip gates preserve base page publication` covers the
+other branch of the same `0xff1e` detour. A base page containing printable `?`
+and selector-7 rule object
+`00 00 00 00 01 07 a2 00 00 06 00 02 00 00` publishes to row digest
+`425e0a2abf918906a45f655b589c615108f72ca6b89dc1b280b99121e4405e43`. That
+same digest is preserved when overlay mode is disabled, when overlay id `123`
+has no nonempty record, and when the page-root retry flag blocks overlay
+re-entry.
 
 ### Confidence
 
@@ -5179,6 +5193,7 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 - `macro execute page-record layer composes with rule and raster band`
 - `macro overlay finalization replays before page publication`
 - `macro overlay replays across repeated page publications`
+- `macro overlay skip gates preserve base page publication`
 
 ### Disassembly Evidence
 
@@ -5214,10 +5229,11 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 ### Unresolved Middle Edges
 
 - None remaining for macro execute/call replay, macro font-context refresh,
-  first overlay-publication, or repeated enabled-overlay publication across
-  two page boundaries. Remaining macro risk is broader overlay variants
-  beyond the pinned selector-4/repeated-publication path and final-device
-  comparison, not the `0xdd08` selector-4 to `0xff1e` visible-output path.
+  first overlay-publication, repeated enabled-overlay publication across two
+  page boundaries, or the disabled/missing-record/retry-flag overlay skip
+  gates. Remaining macro risk is broader overlay payload variants and
+  final-device comparison, not the `0xdd08` selector-4 to `0xff1e`
+  visible-output path or its skip gates.
 
 ## Raster Transfer Gate And Encoded Rows
 

@@ -26788,6 +26788,137 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
         "second_rows": macro_overlay_second_expected_rows,
     }))
+    macro_overlay_skip_base_state = control_fixture_state(
+        cursor_x=pack12(10),
+        cursor_y=pack12(21),
+        left_margin=pack12(5),
+        vmi=pack12(3),
+        hmi=line_printer_hmi["hmi"],
+        pending_width=1,
+        pending_text=0,
+        span_flush_enable=1,
+        page_root_present=1,
+        page_root_class=1,
+        current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+    )
+    macro_overlay_skip_base_record = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"?",
+        0x440946B4,
+        dict(macro_overlay_skip_base_state),
+        default_advance=line_printer_hmi["hmi"],
+    )["page_record"]
+    macro_overlay_skip_rule = queue_rectangle_rule_via_13386(macro_overlay_skip_base_record, {
+        "x": 2,
+        "y": 26,
+        "width": 6,
+        "height": 2,
+        "flags": 7,
+    })
+    macro_overlay_skip_base_publication = finalize_page_record_via_ff1e(
+        macro_overlay_skip_base_record,
+        dict(macro_overlay_skip_base_state),
+    )
+    macro_overlay_skip_base_published = macro_overlay_skip_base_publication["published_pool_record"]
+    assert isinstance(macro_overlay_skip_base_published, dict)
+    macro_overlay_skip_base_render = render_published_page_record_via_1ed84_1ef6a(
+        data,
+        resources,
+        macro_overlay_skip_base_published,
+    )
+    macro_overlay_skip_base_rows = macro_overlay_skip_base_render["entry"]["rows"]
+    macro_overlay_disabled_state = apply_macro_control_via_dd08(macro_overlay_enabled_state, 5)
+    macro_overlay_missing_state = dict(macro_overlay_enabled_state)
+    macro_overlay_missing_state["records"] = [macro_record() for _ in range(32)]
+    macro_overlay_skip_cases = {
+        "disabled": {
+            "macro_state": macro_overlay_disabled_state,
+            "page_state": dict(macro_overlay_skip_base_state),
+            "expected_path": {
+                "enabled": False,
+                "root_retry_flag": 0,
+                "overlay_id": 123,
+                "lookup": {"status": 1, "index": 0, "ptr": 0x782A98},
+                "taken": False,
+            },
+        },
+        "missing_record": {
+            "macro_state": macro_overlay_missing_state,
+            "page_state": dict(macro_overlay_skip_base_state),
+            "expected_path": {
+                "enabled": True,
+                "root_retry_flag": 0,
+                "overlay_id": 123,
+                "lookup": {"status": 0, "index": 0, "ptr": 0x782A98},
+                "taken": False,
+            },
+        },
+        "root_retry_flag": {
+            "macro_state": macro_overlay_enabled_state,
+            "page_state": dict(macro_overlay_skip_base_state) | {"page_root_flags_14": 1},
+            "expected_path": {
+                "enabled": True,
+                "root_retry_flag": 1,
+                "overlay_id": 123,
+                "lookup": {"status": 1, "index": 0, "ptr": 0x782A98},
+                "taken": False,
+            },
+        },
+    }
+    macro_overlay_skip_summary = {}
+    for case_name, case in macro_overlay_skip_cases.items():
+        publication = macro_overlay_publication_via_ff1e(
+            data,
+            resources,
+            macro_overlay_skip_base_record,
+            case["page_state"],
+            case["macro_state"],
+            0x440946B4,
+            line_printer_hmi["hmi"],
+        )
+        render_entry = publication["published_render_entry"]
+        assert isinstance(render_entry, dict)
+        rows = render_entry["entry"]["rows"]
+        macro_overlay_skip_summary[case_name] = {
+            "overlay_path": publication["overlay_path"],
+            "published": publication["finalized"]["published"],
+            "queued_rule": macro_overlay_skip_rule["object"],
+            "row_count": len(rows),
+            "row_width": max(len(row) for row in rows),
+            "row_sha256": hashlib.sha256("\n".join(rows).encode("ascii")).hexdigest(),
+            "rows_match_base": rows == macro_overlay_skip_base_rows,
+        }
+    checks.append(assert_equal("macro overlay skip gates preserve base page publication", {
+        "base": {
+            "queued_rule": macro_overlay_skip_rule["object"],
+            "row_count": len(macro_overlay_skip_base_rows),
+            "row_width": max(len(row) for row in macro_overlay_skip_base_rows),
+            "row_sha256": hashlib.sha256(
+                "\n".join(macro_overlay_skip_base_rows).encode("ascii")
+            ).hexdigest(),
+        },
+        "cases": macro_overlay_skip_summary,
+    }, {
+        "base": {
+            "queued_rule": bytes.fromhex("00 00 00 00 01 07 a2 00 00 06 00 02 00 00"),
+            "row_count": 28,
+            "row_width": 25,
+            "row_sha256": "425e0a2abf918906a45f655b589c615108f72ca6b89dc1b280b99121e4405e43",
+        },
+        "cases": {
+            name: {
+                "overlay_path": case["expected_path"],
+                "published": True,
+                "queued_rule": bytes.fromhex("00 00 00 00 01 07 a2 00 00 06 00 02 00 00"),
+                "row_count": 28,
+                "row_width": 25,
+                "row_sha256": "425e0a2abf918906a45f655b589c615108f72ca6b89dc1b280b99121e4405e43",
+                "rows_match_base": True,
+            }
+            for name, case in macro_overlay_skip_cases.items()
+        },
+    }))
     macro_with_payload = macro_state(
         current_macro_id=123,
         records=[macro_record(b"!\r", 123)] + [macro_record() for _ in range(31)],

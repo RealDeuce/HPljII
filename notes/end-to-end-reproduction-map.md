@@ -310,15 +310,18 @@ pixels or byte-stream compatibility.
    contract in `notes/vertical-forms-control.md`. The remaining VFC risk is
    broader final-device image comparison, not an unresolved middle edge in the
    documented `ESC &l#W` / `ESC &l#V` path.
-3. Macro replay, first overlay publication, and repeated enabled-overlay
-   publication are anchored. The covered overlay path is selector `4` state
-   through `0xff1e` re-entry, `0xe0a4`, `0xe4f4`, parser loop `0x11774`, and
-   rendered page-record composition with selector-7 rectangle rules on two
-   page boundaries. Remaining macro risk is broader overlay variants and
-   physical output comparison. Evidence: `Macro Definition And Data-Chain
-   Replay` in `notes/semantic-state-model.md`, fixture `macro overlay
-   finalization replays before page publication`, and fixture `macro overlay
-   replays across repeated page publications`.
+3. Macro replay, overlay publication, repeated enabled-overlay publication,
+   and overlay skip gates are anchored. The covered overlay path is selector
+   `4` state through `0xff1e` re-entry, `0xe0a4`, `0xe4f4`, parser loop
+   `0x11774`, and rendered page-record composition with selector-7 rectangle
+   rules on two page boundaries. The skip path is covered for disabled overlay
+   mode, missing selected record, and page-root retry flag. Remaining macro
+   risk is broader overlay payload variants and physical output comparison.
+   Evidence: `Macro Definition And Data-Chain Replay` in
+   `notes/semantic-state-model.md`, fixture `macro overlay finalization
+   replays before page publication`, fixture `macro overlay replays across
+   repeated page publications`, and fixture `macro overlay skip gates preserve
+   base page publication`.
 4. Downloaded font support now has tracked documentation for descriptor,
    resource-payload, current-record, bit-30-clear resource-object, bit-30-clear
    even-span and split-plane continuation resume, status-0 fixed-record release, bit-30

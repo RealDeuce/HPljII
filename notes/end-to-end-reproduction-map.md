@@ -292,20 +292,19 @@ pixels or byte-stream compatibility.
    exit `before-context-lower`. Fixture `legal descriptor metric tight range values
    drive d4ac and d8fc consumers` covers range-one zero/clamped rounded outputs and
    range-two max positive/negative offset words at derived height zero. The producer
-   formula is documented from disassembly:
-   `0x17430` derives `+0x18 = +0x14 - +0x16 - 1`, `0x1757a` writes `+0x2c = min((value +
-   2) >> 2, word(+0x14)) << 2`, `0x1762a` writes signed offset word `+0x1a`, and
-   `0x1719c` copies those staged fields into the allocated payload. The open edge is
-   additional metric-value combinations within the legal forms outside these
-   lower/equality/upper, clamp, offset endpoint, rounded-transform, range-endpoint,
-   mixed-value, tight-range, low-nibble, and byte-boundary cases, plus external/manual
-   naming for consumed-but-not-staged validation fields. It is not the tested
-   type-0/type-1/type-2 payloads, metric-variant, clamped-variant, lower-bound-variant,
-   upper-bound-variant, legal-value-matrix, low-nibble rounding submatrix, validation
+   formula is documented from disassembly: `0x17430` derives `+0x18 = +0x14 - +0x16 -
+   1`, `0x1757a` writes `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`, `0x1762a`
+   writes signed offset word `+0x1a`, and `0x1719c` copies those staged fields into the
+   allocated payload. The open edge is additional metric-value combinations within the
+   legal forms outside these lower/equality/upper, clamp, offset endpoint,
+   rounded-transform, range-endpoint, extent-fence, mixed-value, tight-range,
+   low-nibble, and byte-boundary cases, plus external/manual naming for
+   consumed-but-not-staged validation fields. It is not the tested type-0/type-1/type-2
+   payloads, metric-variant, clamped-variant, lower-bound-variant, upper-bound-variant,
+   legal-value-matrix, low-nibble rounding submatrix, extent-fence matrix, validation
    no-install, legal producer-form boundary, mixed-value matrix, tight-range matrix, or
-   shared consumer branch family.
-   Evidence: `notes/semantic-state-model.md` under `Text Span Flush And Fixed-Width
-   Spans`.
+   shared consumer branch family. Evidence: `notes/semantic-state-model.md` under `Text
+   Span Flush And Fixed-Width Spans`.
 2. VFC table definition and channel jumps now have a tracked command-family
    contract in `notes/vertical-forms-control.md`. The remaining VFC risk is
    broader final-device image comparison, not an unresolved middle edge in the

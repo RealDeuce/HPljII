@@ -803,6 +803,10 @@ control-code anchor.
   rule, and raster objects materialize through addressed storage. A `0x1ef6a`
   page-band walker merges compact text, mode-0 raster, and a crossing patterned
   rule across bands `0` and `5`.
-- Extend the mixed-stream page-record fixture into real parser-produced
-  page-object allocation/finalization, then add a parser-driven macro
-  command/replay fixture.
+- Continue the mixed-stream page-record work at the remaining live
+  CPU/register-memory boundary for parser-produced heterogeneous page objects.
+  Parser-driven macro command/replay is no longer a separate target: the
+  host-fetched macro definition, execute, call, mixed-control replay, overlay,
+  repeated-overlay, skip-gate, and mixed-control overlay fixtures already route
+  through the ROM/alternate parser traces and `0xa904` replay before reaching
+  page-record and render-entry evidence.

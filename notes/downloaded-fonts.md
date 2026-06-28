@@ -73,6 +73,8 @@ Primary fixtures:
 - `descriptor metric fields match across inline and resource contexts`
 - `legal descriptor metric value matrix drives d4ac and d8fc consumers`
 - `legal descriptor metric boundary values drive d4ac and d8fc consumers`
+- `legal descriptor metric extent fenceposts drive d4ac and d8fc consumers`
+- `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
 - `legal descriptor metric mixed values drive d4ac and d8fc consumers`
 - `legal descriptor metric tight range values drive d4ac and d8fc consumers`
 - `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
@@ -2054,20 +2056,27 @@ A byte-stream renderer must preserve:
   `0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, while preserving `d4ac`
   span output and `d8fc` high-y `20` output. Fixture `legal descriptor metric range
   endpoints drive d4ac and d8fc consumers` proves first-code zero and the
-  range-minus-one first-code copy `+0x14/+0x16/+0x18 =
-  0x0018/0x0000/0x0017` and `0x0015/0x0014/0x0000` while preserving the
-  documented visible span paths. Fixture `legal descriptor metric mixed
-  values drive d4ac and d8fc consumers` proves the combined middle-range,
-  range-capped, sign-extended-offset, and zero-derived-height copied-field cases
-  described above. Fixture `legal descriptor metric tight range values drive d4ac and
-  d8fc consumers` proves the smallest legal range/count cross-products: range one
-  copies `+0x14/+0x16/+0x18 = 0x0001/0x0000/0x0000` with zero and clamped rounded
-  `+0x2c` values, while range two copies `0x0002/0x0001/0x0000` with max positive and
-  max negative signed offsets. Fixture `descriptor metric fields match across inline
-  and resource contexts` now proves the legal producer forms and the two invalid
-  swapped forms. The remaining producer gap is not these copied-field endpoints; it is
+  range-minus-one first-code copy `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017` and
+  `0x0015/0x0014/0x0000` while preserving the documented visible span paths. Fixture
+  `legal descriptor metric extent fenceposts drive d4ac and d8fc consumers` pins the
+  `d8fc` page-extent gate after the `0x17430` derived-height formula: first code `4`,
+  range words `0x002f`, `0x0031`, and `0x0032`, rounded word `0x0020`, and offsets `0`,
+  `1`, and `2` copy derived heights `42`, `44`, and `45`. The height-42 zero-offset case
+  renders high-y `21` with digest
+  `47361fc76bd6284f9d764c0377a3fda64edd3944b5cb2dff72acfd2224bc25e8`, while the
+  height-44 and height-45 cases exit `beyond-page-extent`, proving the gate uses derived
+  height before copied offset can recover a span. Fixture `legal descriptor metric mixed
+  values drive d4ac and d8fc consumers` proves the combined middle-range, range-capped,
+  sign-extended-offset, and zero-derived-height copied-field cases described above.
+  Fixture `legal descriptor metric tight range values drive d4ac and d8fc consumers`
+  proves the smallest legal range/count cross-products: range one copies
+  `+0x14/+0x16/+0x18 = 0x0001/0x0000/0x0000` with zero and clamped rounded `+0x2c`
+  values, while range two copies `0x0002/0x0001/0x0000` with max positive and max
+  negative signed offsets. Fixture `descriptor metric fields match across inline and
+  resource contexts` now proves the legal producer forms and the two invalid swapped
+  forms. The remaining producer gap is not these copied-field endpoints; it is
   additional legal descriptor combinations outside the pinned lower/equality/upper,
-  clamp, offset endpoint, range endpoint, rounded-transform, mixed-value, tight-range,
-  low-nibble, and byte-boundary cases. All ROM-internal validation no-install
-  predicate families are already parser-produced and page-visible; remaining validation
-  work is external HP manual naming for consumed-but-not-staged fields.
+  clamp, offset endpoint, range endpoint, extent-fence, rounded-transform, mixed-value,
+  tight-range, low-nibble, and byte-boundary cases. All ROM-internal validation
+  no-install predicate families are already parser-produced and page-visible; remaining
+  validation work is external HP manual naming for consumed-but-not-staged fields.

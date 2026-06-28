@@ -78850,6 +78850,278 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         }
         for name, expected in alternate_rectangle_selector_cases.items()
     }))
+    full_page_rectangle_selector_matrix_cases = {
+        "gray0": {
+            "stream": b"!\x1b*c12a5b2g2P",
+            "orientation": 0,
+            "selector": 0,
+            "page_rule": bytes.fromhex("00 00 00 00 01 00 5c 01 00 0c 00 05 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 01 10 5c 01 00 0c 00 05 00 05"),
+            "mutated_object": bytes.fromhex("00 00 00 00 01 00 5c 01 00 0c 00 05 ff ca"),
+            "row_count": 26,
+            "row_width": 40,
+            "row_sha256": "eca320d3774c23ea5d1e61d385b1fec3d0fbe1b492c00f7c02f522ad65d5b7a6",
+        },
+        "gray1": {
+            "stream": b"!\x1b*c12a5b10g2P",
+            "orientation": 0,
+            "selector": 1,
+            "page_rule": bytes.fromhex("00 00 00 00 01 01 5c 01 00 0c 00 05 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 01 11 5c 01 00 0c 00 05 00 05"),
+            "mutated_object": bytes.fromhex("00 00 00 00 01 01 5c 01 00 0c 00 05 ff ca"),
+            "row_count": 26,
+            "row_width": 40,
+            "row_sha256": "7bb24a898c20920125e145e3753c1e9c089bef64f72798f733285e0b79ea8841",
+        },
+        "gray2": {
+            "stream": b"!\x1b*c12a5b20g2P",
+            "orientation": 0,
+            "selector": 2,
+            "page_rule": bytes.fromhex("00 00 00 00 01 02 5c 01 00 0c 00 05 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 01 12 5c 01 00 0c 00 05 00 05"),
+            "mutated_object": bytes.fromhex("00 00 00 00 01 02 5c 01 00 0c 00 05 ff ca"),
+            "row_count": 26,
+            "row_width": 40,
+            "row_sha256": "0311bc8041f3aafaf5c6e847db96d32261b024d244c838a3be57c9d1c10d34a9",
+        },
+        "gray3": {
+            "stream": b"!\x1b*c12a5b35g2P",
+            "orientation": 0,
+            "selector": 3,
+            "page_rule": bytes.fromhex("00 00 00 00 01 03 5c 01 00 0c 00 05 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 01 13 5c 01 00 0c 00 05 00 05"),
+            "mutated_object": bytes.fromhex("00 00 00 00 01 03 5c 01 00 0c 00 05 ff ca"),
+            "row_count": 26,
+            "row_width": 40,
+            "row_sha256": "b4371c6478df8c0b2ced3c101c6c08f87966c7dd69de2307eb35e074100fe8f6",
+        },
+        "gray4": {
+            "stream": b"!\x1b*c12a5b50g2P",
+            "orientation": 0,
+            "selector": 4,
+            "page_rule": bytes.fromhex("00 00 00 00 01 04 5c 01 00 0c 00 05 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 01 14 5c 01 00 0c 00 05 00 05"),
+            "mutated_object": bytes.fromhex("00 00 00 00 01 04 5c 01 00 0c 00 05 ff ca"),
+            "row_count": 26,
+            "row_width": 40,
+            "row_sha256": "f7e8bc65420e95a1456db1f0673a164f8ae2f1919fb4b5b8964886354fc54fdf",
+        },
+        "gray5": {
+            "stream": b"!\x1b*c12a5b80g2P",
+            "orientation": 0,
+            "selector": 5,
+            "page_rule": bytes.fromhex("00 00 00 00 01 05 5c 01 00 0c 00 05 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 01 15 5c 01 00 0c 00 05 00 05"),
+            "mutated_object": bytes.fromhex("00 00 00 00 01 05 5c 01 00 0c 00 05 ff ca"),
+            "row_count": 26,
+            "row_width": 40,
+            "row_sha256": "7272f6d89dd3f30375bf6ce64a9c2941e2a6337c1df1dd0d51a609a628e53f4a",
+        },
+        "gray6": {
+            "stream": b"!\x1b*c12a5b99g2P",
+            "orientation": 0,
+            "selector": 6,
+            "page_rule": bytes.fromhex("00 00 00 00 01 06 5c 01 00 0c 00 05 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 01 16 5c 01 00 0c 00 05 00 05"),
+            "mutated_object": bytes.fromhex("00 00 00 00 01 06 5c 01 00 0c 00 05 ff ca"),
+            "row_count": 26,
+            "row_width": 40,
+            "row_sha256": "e39bae1465bc0c7f94e1b6d5392035424a8512d6829895ed408cef03c6bff135",
+        },
+        "pattern1_portrait": {
+            "stream": b"!\x1b*c12a5b1g3P",
+            "orientation": 0,
+            "selector": 8,
+            "page_rule": bytes.fromhex("00 00 00 00 01 08 5c 01 00 0c 00 05 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 01 18 5c 01 00 0c 00 05 00 05"),
+            "mutated_object": bytes.fromhex("00 00 00 00 01 08 5c 01 00 0c 00 05 ff ca"),
+            "row_count": 26,
+            "row_width": 40,
+            "row_sha256": "29bdaec9e9b18919da254a6c5529ad5b364e988b7dc4e95daed5adbfbc6ba043",
+        },
+        "pattern2_portrait": {
+            "stream": b"!\x1b*c12a5b2g3P",
+            "orientation": 0,
+            "selector": 9,
+            "page_rule": bytes.fromhex("00 00 00 00 01 09 5c 01 00 0c 00 05 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 01 19 5c 01 00 0c 00 05 00 05"),
+            "mutated_object": bytes.fromhex("00 00 00 00 01 09 5c 01 00 0c 00 05 ff ca"),
+            "row_count": 26,
+            "row_width": 40,
+            "row_sha256": "c981832502ee7ed97b339959027448f878d591e3909519a3b9233e31200ac599",
+        },
+        "pattern3_portrait": {
+            "stream": b"!\x1b*c12a5b3g3P",
+            "orientation": 0,
+            "selector": 10,
+            "page_rule": bytes.fromhex("00 00 00 00 01 0a 5c 01 00 0c 00 05 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 01 1a 5c 01 00 0c 00 05 00 05"),
+            "mutated_object": bytes.fromhex("00 00 00 00 01 0a 5c 01 00 0c 00 05 ff ca"),
+            "row_count": 26,
+            "row_width": 40,
+            "row_sha256": "ed80e984fdb1316b2d961d2e396e880ee83d8b4108e682d3bd15fe267ff0bec2",
+        },
+        "pattern4_portrait": {
+            "stream": b"!\x1b*c12a5b4g3P",
+            "orientation": 0,
+            "selector": 11,
+            "page_rule": bytes.fromhex("00 00 00 00 01 0b 5c 01 00 0c 00 05 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 01 1b 5c 01 00 0c 00 05 00 05"),
+            "mutated_object": bytes.fromhex("00 00 00 00 01 0b 5c 01 00 0c 00 05 ff ca"),
+            "row_count": 26,
+            "row_width": 40,
+            "row_sha256": "dfacebf15b5ddda16aaa7e60151e66ec024c8e625fd807f89a9d70528d66271b",
+        },
+        "pattern5_portrait": {
+            "stream": b"!\x1b*c12a5b5g3P",
+            "orientation": 0,
+            "selector": 12,
+            "page_rule": bytes.fromhex("00 00 00 00 01 0c 5c 01 00 0c 00 05 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 01 1c 5c 01 00 0c 00 05 00 05"),
+            "mutated_object": bytes.fromhex("00 00 00 00 01 0c 5c 01 00 0c 00 05 ff ca"),
+            "row_count": 26,
+            "row_width": 40,
+            "row_sha256": "2be4f66489f51464f314a03dce8e924c27645fe66186d1dc6b6fa71e15fe59fc",
+        },
+        "pattern6_portrait": {
+            "stream": b"!\x1b*c12a5b6g3P",
+            "orientation": 0,
+            "selector": 13,
+            "page_rule": bytes.fromhex("00 00 00 00 01 0d 5c 01 00 0c 00 05 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 01 1d 5c 01 00 0c 00 05 00 05"),
+            "mutated_object": bytes.fromhex("00 00 00 00 01 0d 5c 01 00 0c 00 05 ff ca"),
+            "row_count": 26,
+            "row_width": 40,
+            "row_sha256": "ca889706062cb848ffd98577398979043e01cd8c6f4e8ae97cd0ee23fc48618d",
+        },
+        "pattern1_landscape": {
+            "stream": b"!\x1b*c12a5b1g3P",
+            "orientation": 1,
+            "selector": 9,
+            "page_rule": bytes.fromhex("00 00 00 00 03 09 c5 01 00 05 00 0c 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 03 19 c5 01 00 05 00 0c 00 0c"),
+            "mutated_object": bytes.fromhex("00 00 00 00 03 09 c5 01 00 05 00 0c ff f8"),
+            "row_count": 72,
+            "row_width": 26,
+            "row_sha256": "3a868ff4aa968dd82d9f59a8d990adaadc53661666994914ebca7eae5dfcee32",
+        },
+        "pattern2_landscape": {
+            "stream": b"!\x1b*c12a5b2g3P",
+            "orientation": 1,
+            "selector": 8,
+            "page_rule": bytes.fromhex("00 00 00 00 03 08 c5 01 00 05 00 0c 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 03 18 c5 01 00 05 00 0c 00 0c"),
+            "mutated_object": bytes.fromhex("00 00 00 00 03 08 c5 01 00 05 00 0c ff f8"),
+            "row_count": 72,
+            "row_width": 26,
+            "row_sha256": "5429ddbd8f416580c6ef50603d300a22b1ede24bbae700ea7f5d814abda9eb47",
+        },
+        "pattern3_landscape": {
+            "stream": b"!\x1b*c12a5b3g3P",
+            "orientation": 1,
+            "selector": 11,
+            "page_rule": bytes.fromhex("00 00 00 00 03 0b c5 01 00 05 00 0c 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 03 1b c5 01 00 05 00 0c 00 0c"),
+            "mutated_object": bytes.fromhex("00 00 00 00 03 0b c5 01 00 05 00 0c ff f8"),
+            "row_count": 72,
+            "row_width": 26,
+            "row_sha256": "01663fda71f1a0e90f893e7a2cfe4f449227d6872bd0174f0418185f025be591",
+        },
+        "pattern4_landscape": {
+            "stream": b"!\x1b*c12a5b4g3P",
+            "orientation": 1,
+            "selector": 10,
+            "page_rule": bytes.fromhex("00 00 00 00 03 0a c5 01 00 05 00 0c 00 00"),
+            "bridged_rule": bytes.fromhex("00 00 00 00 03 1a c5 01 00 05 00 0c 00 0c"),
+            "mutated_object": bytes.fromhex("00 00 00 00 03 0a c5 01 00 05 00 0c ff f8"),
+            "row_count": 72,
+            "row_width": 26,
+            "row_sha256": "c83282b25f756d4aed18445627cbcd765b78fb74626624093c5a690017e05b2c",
+        },
+    }
+    full_page_rectangle_selector_matrix = {}
+    for case_name, expected in full_page_rectangle_selector_matrix_cases.items():
+        stream = expected["stream"]
+        matrix_state = dict(text_rectangle_state)
+        matrix_state["orientation"] = expected["orientation"]
+        if expected["orientation"]:
+            matrix_state["orientation_extent_782db2"] = 100
+        page_record_stream = render_mixed_printable_control_page_record_stream(
+            data,
+            resources,
+            stream,
+            0x440946B4,
+            matrix_state,
+            default_advance=line_printer_hmi["hmi"],
+        )
+        rectangle_trace = trace_rectangle_parser_dispatch_via_11774(
+            data,
+            stream[1:],
+            rectangle_command_state(
+                cursor_x=pack12(28),
+                cursor_y=pack12(21),
+                page_width=100,
+                page_height=80,
+                orientation=expected["orientation"],
+                orientation_extent_782db2=100,
+            ),
+        )
+        matrix_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+            data,
+            resources,
+            page_record_stream["page_record"],
+            bucket_word=page_record_stream["bucket_index"],
+        )
+        rendered_rule = matrix_render_entry["entry"]["rules"]["rendered"][0]
+        rows = matrix_render_entry["entry"]["rows"]
+        full_page_rectangle_selector_matrix[case_name] = {
+            "stream": stream,
+            "orientation": expected["orientation"],
+            "parser_handlers": [0x00D04A] + [
+                command["final_dispatch"]["handler"]
+                for command in rectangle_trace["commands"]
+            ],
+            "selector": rendered_rule["selector"],
+            "page_rule": page_record_stream["page_record"]["rule_list"][0],
+            "bridged_rule": page_record_stream["bridged_record"]["rule_list"][0],
+            "helper": rendered_rule["helper"],
+            "mutated_object": rendered_rule["mutated_object"],
+            "row_count": len(rows),
+            "row_width": max(len(row) for row in rows),
+            "row_sha256": hashlib.sha256("\n".join(rows).encode("ascii")).hexdigest(),
+        }
+    checks.append(assert_equal("host-fetched rectangle selector matrix feeds full page records", {
+        "selectors_covered": sorted({
+            case["selector"]
+            for case in full_page_rectangle_selector_matrix.values()
+            if not case["orientation"]
+        }),
+        "landscape_remaps": {
+            int(name.removeprefix("pattern").removesuffix("_landscape")): case["selector"]
+            for name, case in full_page_rectangle_selector_matrix.items()
+            if name.endswith("_landscape")
+        },
+        "cases": full_page_rectangle_selector_matrix,
+    }, {
+        "selectors_covered": [0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13],
+        "landscape_remaps": {1: 9, 2: 8, 3: 11, 4: 10},
+        "cases": {
+            name: {
+                "stream": expected["stream"],
+                "orientation": expected["orientation"],
+                "parser_handlers": [0x00D04A, 0x010E68, 0x010E22, 0x010DCE, 0x010898],
+                "selector": expected["selector"],
+                "page_rule": expected["page_rule"],
+                "bridged_rule": expected["bridged_rule"],
+                "helper": 0x1F4E0,
+                "mutated_object": expected["mutated_object"],
+                "row_count": expected["row_count"],
+                "row_width": expected["row_width"],
+                "row_sha256": expected["row_sha256"],
+            }
+            for name, expected in full_page_rectangle_selector_matrix_cases.items()
+        },
+    }))
     text_rectangle_addressed = render_text_rectangle_addressed_page_record_stream(
         data,
         resources,

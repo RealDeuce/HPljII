@@ -5529,6 +5529,16 @@ selector `4` and
 `c981832502ee7ed97b339959027448f878d591e3909519a3b9233e31200ac599` for
 selector `9`.
 
+Fixture `host-fetched rectangle selector matrix feeds full page records`
+extends that composition to every non-solid selector id and the landscape
+pattern remap. It covers portrait gray selectors `0..6` through
+`! ESC *c12a5b#g2P`, portrait pattern selectors `8..13` through
+`! ESC *c12a5b#g3P`, and landscape pattern remaps `1 -> 9`, `2 -> 8`,
+`3 -> 11`, and `4 -> 10`. For each case, the fixture asserts parser handlers
+`0xd04a`, `0x10e68`, `0x10e22`, `0x10dce`, and `0x10898`, the canonical page
+rule object, the `0x1edc6` bridged rule object, `0x1f4e0` helper dispatch,
+the mutated continuation object, and a composed page-row digest.
+
 Fixture `0x10b80 rectangle fill clips right/top/bottom edges and ignores
 off-page fills` proves negative-left clipping from start x `-3`, width `10`
 to queued x `0`, width `7`, plus right-edge, top-edge, bottom-edge,
@@ -5562,6 +5572,7 @@ models allocator results rather than executing the full heap/free-list path.
 - `0x1f446/0x1f596 renders solid black rectangle rule pixels`
 - `0x1f4e0 renders gray and HP pattern selector matrix`
 - `host-fetched alternate rectangle selectors feed full page records`
+- `host-fetched rectangle selector matrix feeds full page records`
 - `0x10b80 rectangle fill clips right/top/bottom edges and ignores off-page
   fills`
 - `0x10d22 rectangle/rule no-room retry finalizes root then retries span`
@@ -5582,12 +5593,13 @@ models allocator results rather than executing the full heap/free-list path.
   bytes, bridge normalization, render rows, and no-room retry are
   fixture-backed. The remaining edge is full live 68000 execution through
   parser, `0x10b80`, `0x1381c`, and real allocator memory.
-- Non-solid selector `4` from `50g2P` and selector `9` from portrait `2g3P`
-  now have page-visible comparisons through compact text, bridge
-  normalization, `0x1f446`, and `0x1f4e0`. Remaining alternate-selector edges
-  are broader full-page combinations for the other selector ids/orientations
-  together with font selection, downloaded glyphs, geometry changes, and
-  physical output.
+- Non-solid selectors `0..6` and `8..13` plus landscape pattern remaps
+  `1 -> 9`, `2 -> 8`, `3 -> 11`, and `4 -> 10` now have page-visible
+  comparisons through compact text, bridge normalization, `0x1f446`, and
+  `0x1f4e0`. Remaining rectangle selector risk is broader cross-feature
+  combinations with font selection, downloaded glyphs, geometry changes, and
+  physical output, not the selector mapping or page-record render dispatch
+  itself.
 
 ## Mixed Text/Rule/Raster Page Record
 

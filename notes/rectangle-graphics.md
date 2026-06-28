@@ -33,6 +33,7 @@ Evidence:
   - `rectangle parser trace feeds no-room retry path`
   - `host-fetched text plus rectangle page record feeds 0x1ed84 and 0x1ef6a`
   - `host-fetched alternate rectangle selectors feed full page records`
+  - `host-fetched rectangle selector matrix feeds full page records`
   - `host-fetched text rectangle and raster page record feeds 0x1ed84 and
     0x1ef6a`
   - `host-fetched text rectangle raster FF publishes rendered page record`
@@ -455,6 +456,18 @@ x `28`, y `21`, row-low `5`, subbyte `12`, byte-pair offset `2`, width `12`,
 and draws five rule rows into the same 40-pixel-wide composed page band as the
 compact text rows.
 
+Fixture `host-fetched rectangle selector matrix feeds full page records`
+extends the same page-record path to every non-solid selector id. Portrait
+streams `! ESC *c12a5b#g2P` cover gray selectors `0..6` with area-fill ids
+`2`, `10`, `20`, `35`, `50`, `80`, and `99`. Portrait streams
+`! ESC *c12a5b#g3P` cover pattern selectors `8..13` with pattern ids `1..6`.
+Landscape streams for pattern ids `1..4` pin the ROM remap as
+`1 -> 9`, `2 -> 8`, `3 -> 11`, and `4 -> 10`. Each case asserts the fetched
+stream, parser handlers `0xd04a`, `0x10e68`, `0x10e22`, `0x10dce`, and
+`0x10898`, the pre-bridge rule object, the `0x1edc6` bridged rule object,
+`0x1f4e0` helper dispatch, mutated continuation object, rendered row count,
+rendered row width, and composed row SHA-256.
+
 Fixture `host-fetched text rectangle and raster page record feeds 0x1ed84 and
 0x1ef6a` extends that stream with `ESC *t300R ESC *r0A ESC *b2W c3 3c`, so
 the same current page record contains:
@@ -487,11 +500,11 @@ publication and render entry` classifies these fields:
 - unknown: exact live 68000 heap/register continuity for the full
   parser-to-allocator path.
 
-The alternate selector fixture classifies `0x78316e` as canonical fill state:
-`0x10dce` writes it from `50g` and `2g`, and `0x10898` consumes it for `2P`
-and `3P`. The selector byte in each page rule object is canonical page content
-before bridge normalization and derived render content after `0x1edc6` ORs
-bit `0x10` and copies height into continuation word `+0x0c`. The SHA-256 row
+The alternate selector fixtures classify `0x78316e` as canonical fill state:
+`0x10dce` writes it from `#g`, and `0x10898` consumes it for `2P` and `3P`.
+The selector byte in each page rule object is canonical page content before
+bridge normalization and derived render content after `0x1edc6` ORs bit
+`0x10` and copies height into continuation word `+0x0c`. The SHA-256 row
 digests are derived/cache evidence for the composed software-visible output,
 not firmware state.
 
@@ -539,11 +552,14 @@ A byte-stream reproduction must preserve these behaviors:
   a complete parser-produced page comparison with selector-7 rule output,
   mode-0 raster output, compact text, publication, and render-entry rows;
   `host-fetched alternate rectangle selectors feed full page records` adds
-  page-record comparisons for gray selector `4` from `50g2P` and portrait
-  pattern selector `9` from `2g3P`;
+  detailed page-record comparisons for gray selector `4` from `50g2P` and
+  portrait pattern selector `9` from `2g3P`, and `host-fetched rectangle
+  selector matrix feeds full page records` extends that coverage to non-solid
+  selectors `0..6` and `8..13` plus the landscape pattern remaps for ids
+  `1..4`;
   checked-in coverage also includes font-selection streams, downloaded-glyph
   FF publication, geometry-changing publication streams, and a parser-driven
   downloaded-glyph/rule/raster page. The remaining comparison gap is broader
-  physical/reference-output validation and full-page combinations for the
-  other non-solid selector ids/orientations, not the software-visible
-  selector-7, selector-4, or selector-9 rule objects.
+  physical/reference-output validation and cross-feature full-page
+  combinations, not the software-visible rectangle selector ids or landscape
+  remap logic.

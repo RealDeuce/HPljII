@@ -5546,11 +5546,14 @@ page root for queued rows, and passes the state block to `0x13070` /
   `raster multi-row parser trace feeds consecutive queued objects`, and
   `host-fetched raster mode streams feed 0x1ed84 and 0x1ef6a`.
 - Firmware bookkeeping:
-  - `0x78297a`: current page root ensured by `0x10084` only for queued rows.
+  - `0x78297a`: current page root ensured by `0x10084` after the
+    beyond-extent gate and before either negative-row drain or queued-row
+    object insertion.
   - `0x782a70`, `0x782a72`, and `0x782a76`: stream allocator state consumed
     by addressed raster/page-record fixtures.
-  - skipped beyond-extent and negative rows drain input but do not create page
-    roots in the gate fixture.
+  - beyond-extent rows drain input and return before `0x10084`; negative rows
+    store accepted/overflow counts, ensure a root, drain input, and advance
+    without creating a raster object.
 - Unknown for this checkpoint:
   - exact live CPU register/memory trace through `0x105d0` into the dense
     mixed text/rule/raster stream. Addressed `0x1381c` storage is fixture-backed
@@ -5573,7 +5576,8 @@ page root for queued rows, and passes the state block to `0x13070` /
   delayed record and dispatches it.
 - `0x105d0` writes active byte `+0x12`, current row `+0x02`, accepted count
   `+0x04`, overflow count `+0x06`, and post-transfer cursor state. It calls
-  `0x10084` only when a row is queued.
+  `0x10084` for rows that pass the beyond-extent gate; negative rows therefore
+  ensure a root before draining without `0x13070`.
 - `0x13070` computes bucket/key fields, and `0x13250` allocates and links the
   encoded-span object under page-root `+0x1c`.
 - `0x138de` copies the accepted payload bytes into object `+0x0a` and
@@ -5590,8 +5594,10 @@ page root for queued rows, and passes the state block to `0x13070` /
   pin those handler sequences.
 - `0x105d0` consumes the restored command record byte count and raster state
   fields. Beyond-extent rows drain the full count without queueing or row
-  advance; negative rows drain the full count without queueing and advance
-  from `-1` to `0`; capped rows queue only the accepted bytes.
+  advance and return before `0x10084`; negative rows store the capped
+  accepted count and overflow, ensure a root, drain the full count without
+  queueing, and advance from `-1` to `0`; capped rows queue only the accepted
+  bytes.
 - `0x138de` consumes queued payload through `0xa904` and locally maps control
   pair `1a 58` to copied byte `00`.
 - `0x1edc6` copies the queued bucket object into render-record bucket roots.
@@ -5611,10 +5617,13 @@ The primary parser-derived stream queues object
 
 The capped transfer fixture proves byte count `4` with limit `2` stores
 `+0x04 = 2`, stores overflow `+0x06 = 2`, queues payload `f0 0f`, and renders
-`####........####`. The beyond-extent and negative-row fixtures drain four
-bytes and queue no object. The mode fixtures prove byte-aligned mode `0`,
-non-byte-aligned mode `0`, mode `1`, mode `2`, shifted mode `2`, band-clipped
-mode `2`, and mode `3` object/render contracts through `0x1f88e`.
+`####........####`. The beyond-extent fixture drains four bytes, queues no
+object, and leaves the root unensured; the negative-row fixture drains four
+bytes, queues no object, stores the same capped count/overflow pair as the
+in-range capped case, ensures a root, and advances to row zero. The mode
+fixtures prove byte-aligned mode `0`, non-byte-aligned mode `0`, mode `1`,
+mode `2`, shifted mode `2`, band-clipped mode `2`, and mode `3` object/render
+contracts through `0x1f88e`.
 
 Lower-resolution parser fixtures now prove the same host-fetched command/data
 boundary for modes `1`, `2`, and `3`: each stream drains through the modeled
@@ -5641,9 +5650,10 @@ object.
 ### Confidence
 
 High for parser handler order, delayed snapshot bytes, `0x105d0` gate
-outcomes, page-root creation only for queued rows, encoded object layout,
-bridge preservation, mode dispatch helpers, and rendered rows because those
-are asserted by named harness fixtures. High for the covered raster-state
+outcomes, the corrected root boundary for beyond-extent versus negative rows,
+encoded object layout, bridge preservation, mode dispatch helpers, and
+rendered rows because those are asserted by named harness fixtures and by
+disassembly addresses `0x1065c..0x106cc`. High for the covered raster-state
 effects of `ESC *rB`, active-resolution ignore, lower-resolution mode
 selection, consecutive transfers, and lowercase same-family `*b` chaining
 because each has parser-dispatch, restored-record, object, and render-entry

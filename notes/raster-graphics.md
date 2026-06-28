@@ -154,19 +154,43 @@ Setup behavior:
 Gate behavior:
 
 - If the row is beyond the page extent, drain the parsed byte count through
-  `0xdace` and return without queueing or advancing the row.
-- If the row is negative, drain the parsed byte count through `0xdace`, return
-  without queueing, and advance the row from `-1` to `0`.
+  `0xdace` at `0x1065c..0x10698` and return before the `0x10084`
+  ensure-root call. It does not queue or advance the row.
 - If the row is in range and byte count is larger than limit `+0x10`, store the
   capped count in `+0x04`, store overflow in `+0x06`, and queue only the capped
   bytes.
 - If the row is in range and byte count fits, store the full count in `+0x04`,
   clear `+0x06`, and queue the row.
+- If the row is negative, this test occurs after the count stores and after
+  `0x10084`: `0x106a4` ensures the root, `0x106ae` writes the row word, and
+  `0x106b2..0x106c8` drains the parsed byte count through `0xdace` without
+  calling `0x13070`. The later cursor-update path still advances the modeled
+  row from `-1` to `0`.
 
-For queued rows, `0x105d0` ensures a page root through `0x10084`, writes current
-row word `+0x02`, and calls `0x13070` with the raster state block. If `0x13070`
-reports no room, it marks the current page root, publishes through `0xff1e`,
-ensures a fresh root, and continues.
+For rows that pass the beyond-extent test, `0x105d0` ensures a page root through
+`0x10084`, writes current row word `+0x02`, and either drains a negative row or
+calls `0x13070` with the raster state block. If `0x13070` reports no room, it
+marks the current page root, publishes through `0xff1e`, ensures a fresh root,
+and continues.
+
+Instruction-level transfer outline:
+
+- `0x105d8..0x10600`: select raster state block `0x783170`, flush text through
+  `0xf34a`, rewind `0x78299e` by six bytes, load absolute byte count, and set
+  active byte `+0x12`.
+- `0x10606..0x10632`: choose the orientation-specific row coordinate source.
+  Portrait uses `0x782c8e`; landscape derives it from `0x782c8a` and
+  `0x782db2` through helper `0x10510`.
+- `0x10634..0x10658`: add scale `+0x0e` through `0x10518` and compare against
+  `(0x782db2 + 1) << 16`.
+- `0x10670..0x106a0`: store accepted count `+0x04` and overflow `+0x06`
+  before the root allocation boundary.
+- `0x106a4..0x106cc`: ensure root, store row word `+0x02`, skip negative rows,
+  or call `0x13070`.
+- `0x106d2..0x106f2`: on `0x13070` no-room return, mark current root
+  `+0x15.0`, publish through `0xff1e`, and ensure a fresh root.
+- `0x106f8..0x10752`: update portrait or landscape cursor state unless the
+  transfer failed with `D5 = -1`.
 
 After a non-`-1` transfer result, `0x105d0` advances cursor state:
 

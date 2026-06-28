@@ -17857,6 +17857,9 @@ def raster_transfer_gate_via_105d0(
             "state_after": state,
         }
 
+    stored_byte_count = min(byte_count, limit)
+    overflow_count = byte_count - stored_byte_count
+    page_root = ensure_page_record_root_for_queue(state)
     if row_y < 0:
         return {
             "path": "skip-negative-row",
@@ -17864,17 +17867,17 @@ def raster_transfer_gate_via_105d0(
             "drained": byte_count,
             "active": state["active"],
             "byte_count": byte_count,
-            "stored_byte_count": 0,
-            "overflow_count": 0,
+            "stored_byte_count": stored_byte_count,
+            "overflow_count": overflow_count,
             "row_y": row_y,
             "page_extent": page_extent,
-            "page_root": None,
+            "limit": limit,
+            "transfer_state": None,
+            "result": None,
+            "page_root": page_root,
             "state_after": state,
         }
 
-    stored_byte_count = min(byte_count, limit)
-    overflow_count = byte_count - stored_byte_count
-    page_root = ensure_page_record_root_for_queue(state)
     transfer_state = {
         "x": int(state["baseline_word"]),
         "y": row_y,
@@ -17931,6 +17934,9 @@ def raster_transfer_gate_addressed_via_105d0(
             "state_after": state,
         }
 
+    stored_byte_count = min(byte_count, limit)
+    overflow_count = byte_count - stored_byte_count
+    page_root = ensure_page_record_root_for_queue(state)
     if row_y < 0:
         return {
             "path": "skip-negative-row",
@@ -17938,17 +17944,17 @@ def raster_transfer_gate_addressed_via_105d0(
             "drained": byte_count,
             "active": state["active"],
             "byte_count": byte_count,
-            "stored_byte_count": 0,
-            "overflow_count": 0,
+            "stored_byte_count": stored_byte_count,
+            "overflow_count": overflow_count,
             "row_y": row_y,
             "page_extent": page_extent,
-            "page_root": None,
+            "limit": limit,
+            "transfer_state": None,
+            "result": None,
+            "page_root": page_root,
             "state_after": state,
         }
 
-    stored_byte_count = min(byte_count, limit)
-    overflow_count = byte_count - stored_byte_count
-    page_root = ensure_page_record_root_for_queue(state)
     transfer_state = {
         "x": int(state["baseline_word"]),
         "y": row_y,
@@ -68330,7 +68336,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             for key in ("path", "queued", "drained", "byte_count", "stored_byte_count", "overflow_count", "row_y", "page_extent", "limit")
         },
         "beyond_page_root": raster_gate_beyond["page_root"],
-        "negative_page_root": raster_gate_negative["page_root"],
+        "negative_page_root": {
+            key: raster_gate_negative["page_root"][key]
+            for key in ("page_root_created", "current_page_root_after", "page_record_root_allocations", "page_root_byte_4", "stream_link_ptr_782a72", "page_root_bucket_clear_longwords")
+        },
         "capped_page_root": {
             key: raster_gate_capped["page_root"][key]
             for key in ("page_root_created", "current_page_root_after", "page_record_root_allocations", "page_root_byte_4", "stream_link_ptr_782a72", "page_root_bucket_clear_longwords")
@@ -68358,7 +68367,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "queued": False,
             "drained": 4,
             "byte_count": 4,
-            "stored_byte_count": 0,
+            "stored_byte_count": 4,
             "overflow_count": 0,
             "row_y": -1,
             "page_extent": 15,
@@ -68375,7 +68384,14 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "limit": 2,
         },
         "beyond_page_root": None,
-        "negative_page_root": None,
+        "negative_page_root": {
+            "page_root_created": True,
+            "current_page_root_after": ABSTRACT_PAGE_ROOT_PTR,
+            "page_record_root_allocations": 1,
+            "page_root_byte_4": 1,
+            "stream_link_ptr_782a72": ABSTRACT_PAGE_ROOT_PTR + 0x20,
+            "page_root_bucket_clear_longwords": 0x100,
+        },
         "capped_page_root": {
             "page_root_created": True,
             "current_page_root_after": ABSTRACT_PAGE_ROOT_PTR,
@@ -69025,10 +69041,10 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "gate_path": "skip-negative-row",
             "gate_queued": False,
             "gate_drained": 4,
-            "stored_byte_count": 0,
-            "overflow_count": 0,
+            "stored_byte_count": 2,
+            "overflow_count": 2,
             "page_extent": 15,
-            "gate_limit": None,
+            "gate_limit": 2,
             "transfer_state": None,
             "row_advanced": True,
             "row_y_after": 0,
@@ -69161,9 +69177,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "gate_path": "skip-negative-row",
             "gate_queued": False,
             "gate_drained": 4,
-            "stored_byte_count": 0,
-            "overflow_count": 0,
-            "gate_limit": None,
+            "stored_byte_count": 2,
+            "overflow_count": 2,
+            "gate_limit": 2,
             "row_advanced": True,
             "row_y_after": 0,
         },
@@ -69306,9 +69322,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "gate_path": "skip-negative-row",
                 "gate_queued": False,
                 "gate_drained": 4,
-                "stored_byte_count": 0,
-                "overflow_count": 0,
-                "gate_limit": None,
+                "stored_byte_count": 2,
+                "overflow_count": 2,
+                "gate_limit": 2,
                 "row_advanced": True,
                 "row_y_after": 0,
             },
@@ -89533,7 +89549,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         f"- parser-derived transfer object bytes: "
         f"`{' '.join(f'{byte:02x}' for byte in parser_raster_object)}`"
     )
-    lines.append("- `0x105d0` transfer gate fixture: row beyond extent drains `%d` bytes without queueing, negative row drains `%d` bytes without queueing, and byte count `%d` with limit `%d` ensures a page root through modeled `0x10084`, queues only `%d` bytes as object `%s`, and records overflow `%d`." % (
+    lines.append("- `0x105d0` transfer gate fixture: row beyond extent drains `%d` bytes before `0x10084`, negative row drains `%d` bytes after root ensure and count stores, and byte count `%d` with limit `%d` queues only `%d` bytes as object `%s`, recording overflow `%d`." % (
         raster_gate_beyond["drained"],
         raster_gate_negative["drained"],
         raster_gate_capped["byte_count"],
@@ -89590,8 +89606,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("the gate-accepted byte count. The page-extent boundary stream still queues at")
     lines.append("`row_y == page_extent` and advances to the next row. The beyond-extent stream")
     lines.append("drains payload bytes without queueing or advancing the modeled row state, while")
-    lines.append("the negative-row stream drains without queueing but advances the modeled row state")
-    lines.append("to zero. Same-group lowercase-final")
+    lines.append("the negative-row stream stores the capped count/overflow pair, ensures a root,")
+    lines.append("drains without queueing, and advances the modeled row state to zero.")
+    lines.append("Same-group lowercase-final")
     lines.append("sequences now stay in the firmware parser mode until the final uppercase command byte.")
     lines.append("")
     lines.append(f"- stream bytes: `{' '.join(f'{byte:02x}' for byte in raster_command_stream)}`")
@@ -89689,6 +89706,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         raster_negative_transfer["gate_drained"],
         raster_negative_transfer["gate_queued"],
     ))
+    lines.append("  Stored `%d`, overflow `%d`, limit `%s`." % (
+        raster_negative_transfer["stored_byte_count"],
+        raster_negative_transfer["overflow_count"],
+        raster_negative_transfer["gate_limit"],
+    ))
     lines.append("  Row advance `%s`, row after `%d`, object length `%d`." % (
         raster_negative_transfer["row_advanced"],
         raster_negative_transfer["row_y_after"],
@@ -89699,7 +89721,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("  restores handler `0x105d0`, then the capped fixture stores only the first two payload")
     lines.append("  bytes, the page-extent fixture queues y `15` then advances to `16`, the")
     lines.append("  beyond-extent fixture drains all four bytes without advancing `row_y`, and the")
-    lines.append("  negative-row fixture drains all four bytes while advancing `row_y` from `-1` to `0`.")
+    lines.append("  negative-row fixture stores the capped count/overflow pair, drains all four bytes,")
+    lines.append("  and advances `row_y` from `-1` to `0`.")
     lines.append("- host-fetched raster gate edge: the same edge stream drains `%d` bytes from `0xa904` before matching the capped object `%s`, extent-boundary object `%s`, beyond-extent drain `%d`, and negative-row drain `%d`." % (
         len(host_fetched_raster_capped_stream["stream"]),
         " ".join(f"{byte:02x}" for byte in raster_capped_stream_result["object"]),

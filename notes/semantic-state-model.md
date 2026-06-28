@@ -4433,6 +4433,12 @@ Field groups:
   `00 00 00 00 20 03 00 01 27 01 66 01...`, bucket `1` segment-0 object
   `00 00 00 00 20 03 00 01 27 00 66 01...`, and bucket `9` raster object
   `00 00 00 00 80 00 00 02 00 00 c3 3c`.
+  The split-plane segmented-raster sibling uses table entry `0x00ea`,
+  record delta `0x0700`, bitmap offset `0x070c`, bitmap size `0x0183`,
+  selector `0x2003`, bucket `9` segment-1 object
+  `00 00 00 00 20 03 00 01 28 01 66 01...`, bucket `1` segment-0 object
+  `00 00 00 00 20 03 00 01 28 00 66 01...`, split-plane copy prefix/trailing
+  bytes ending `f0 0f` / `aa`, and the same bucket `9` raster object.
 - Firmware bookkeeping: active-copy words reported by the fixture are
   zeroed source/render work words before the fixture sets render word `+0x10`
   for bucket `5`; no page publication or root clear occurs in this checkpoint.
@@ -4480,6 +4486,11 @@ object to `0x1f88e`, dispatches the selector-`0x2003` segment-1 glyph object to
 compact target `0x1effe` / renderer `0x1f1f0`, and compares seven composed rows
 with digest
 `0b5440d6733ab9a072e0c14d1a470e6bc944dc98ddbf789152cf65c945dd0f01`.
+Fixture `split-plane segmented downloaded glyph composes with raster through
+0x1ef6a` proves the same call order and dispatch targets for the split-plane
+copy reader, with selector-`0x2003` glyph `0x28`, A2/A3 segment-1 source
+offsets `0x0100` / `0x0080`, and row digest
+`a380045041433910619b809637eda41e81842a3516acb83b488d07f1d3c68872`.
 
 Confidence is high for the installed glyph resource fields, page-record object
 bytes, render call order, dispatch targets, rule helper, and composed rows
@@ -4492,7 +4503,10 @@ raster scratch, queue bytes, dispatch targets, and final rows. Confidence is
 high for segmented-glyph/raster composition because fixture
 `segmented downloaded glyph composes with raster through 0x1ef6a` asserts the
 installed `0x2003` segment objects, bucket-9 raster object, dispatch targets,
-and composed row digest. Confidence is
+and composed row digest. High for split-plane segmented-glyph/raster composition
+because fixture `split-plane segmented downloaded glyph composes with raster
+through 0x1ef6a` asserts the split-plane copied payload layout, segment objects,
+same raster object, dispatch targets, and composed row digest. Confidence is
 medium for the live CPU memory handoff between the font-install phase and the
 page-stream phase.
 
@@ -4607,6 +4621,7 @@ fields and every legal metric combination have not been page-compared.
 - `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
 - `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
 - `segmented downloaded glyph composes with raster through 0x1ef6a`
+- `split-plane segmented downloaded glyph composes with raster through 0x1ef6a`
 - `host-fetched font control stream feeds descriptor and character payload
   state`
 - `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`

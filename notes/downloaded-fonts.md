@@ -115,6 +115,7 @@ Primary fixtures:
 - `segmented downloaded glyph composes with raster through 0x1ef6a`
 - `host-fetched split-plane segmented downloaded character renders through
   0x1f1f0`
+- `split-plane segmented downloaded glyph composes with raster through 0x1ef6a`
 - `host-fetched printable byte uses installed downloaded glyph page object`
 - `combined host-fetched font download stream prints installed glyph`
 - `host-fetched font control stream feeds descriptor and character payload state`
@@ -1093,6 +1094,20 @@ closes the segmented-glyph plus raster composition edge; selector-7 rule
 composition remains covered by the even-span wide fixture and by separate
 rectangle/rule render fixtures.
 
+Fixture `split-plane segmented downloaded glyph composes with raster through
+0x1ef6a` proves the same composition for the split-plane reader. It reuses the
+host-fetched `ESC )s387W` install for glyph `0x28`: table entry `0x00ea`,
+record delta `0x0700`, bitmap offset `0x070c`, bitmap size `0x0183`, span `3`,
+and split-plane copy layout with prefix bytes ending `f0 0f` plus trailing
+byte `aa`. `0x12f2e` queues selector `0x2003` segment objects in bucket `9`
+(`00 00 00 00 20 03 00 01 28 01 66 01...`) and bucket `1`
+(`00 00 00 00 20 03 00 01 28 00 66 01...`). The same page record also carries
+mode-0 raster object `00 00 00 00 80 00 00 02 00 00 c3 3c` in bucket `9`.
+Render entry `0x1ed84`/`0x1ef6a` for bucket word `9` dispatches the raster
+object to `0x1f88e`, then dispatches the split-plane segment-1 glyph object to
+`0x1effe` / `0x1f1f0`, and compares the seven composed rows with digest
+`a380045041433910619b809637eda41e81842a3516acb83b488d07f1d3c68872`.
+
 Fixture `parser-driven downloaded glyph rule raster stream composes through
 0x1ef6a` then makes the rule and raster producers parser-driven in the same
 page stream. The fetched stream is 54 bytes: font bytes `0..24` are the
@@ -1935,9 +1950,10 @@ A byte-stream renderer must preserve:
   source row field, broader publication combinations beyond the documented normal,
   nonboundary-short, rows-`0x20` short, rows-`0x40` short, row-`0x80`, row-count-matrix
   short/segmented, rows-`0x0102` truncated, linear-segmented, rows-`0x82` segmented,
-  split-plane segmented, segmented-glyph plus raster, segmented-wide, even-span wide,
-  payload-control wide, wide-remainder matrix, segmented-wide matrix, no-install, and
-  status-`2` compact bucket variants, and return-boundary variants beyond the covered
+  split-plane segmented, segmented-glyph plus raster, split-plane segmented-glyph plus
+  raster, segmented-wide, even-span wide, payload-control wide, wide-remainder matrix,
+  segmented-wide matrix, no-install, and status-`2` compact bucket variants, and
+  return-boundary variants beyond the covered
   normal even-span, no-install, status-`2`, row-count-matrix short/segmented,
   linear-segmented publication, split-plane segmented publication, and segmented-wide
   publication fixtures. The normal even-span fixture pins the `0x15dc6 -> 0x16498 ->

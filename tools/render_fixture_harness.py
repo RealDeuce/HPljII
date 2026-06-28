@@ -64527,6 +64527,274 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "rows": expected_downloaded_split_segmented_rows,
         },
     }))
+    downloaded_split_segmented_raster_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_split_segmented_raster_page_result = (
+        queue_text_source_to_page_record_via_12f2e(
+            downloaded_split_segmented_memory,
+            downloaded_split_segmented_raster_record,
+            downloaded_split_segmented_source,
+        )
+    )
+    downloaded_split_segmented_raster_result = queue_raster_row_to_page_record_via_13070(
+        downloaded_split_segmented_raster_record,
+        {"x": 0, "y": 144, "byte_count": 2, "mode": 0},
+        bytes.fromhex("c3 3c"),
+    )
+    downloaded_split_segmented_raster_render = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_split_segmented_memory,
+        downloaded_split_segmented_raster_record,
+        bucket_word=9,
+    )
+    downloaded_split_segmented_raster_entry = downloaded_split_segmented_raster_render[
+        "entry"
+    ]
+    assert isinstance(downloaded_split_segmented_raster_entry, dict)
+    downloaded_split_segmented_raster_rows = downloaded_split_segmented_raster_entry[
+        "rows"
+    ]
+    expected_downloaded_split_segmented_raster_rows = [
+        "##....##..####................................",
+        "." * 46,
+        "." * 46,
+        "." * 46,
+        "." * 46,
+        "." * 46,
+        "." * 22 + "####........#####.#.#.#.",
+    ]
+    checks.append(assert_equal(
+        "split-plane segmented downloaded glyph composes with raster through 0x1ef6a",
+        {
+            "fetch": {
+                "stream_prefix": host_fetched_downloaded_split_segmented_stream[
+                    "stream"
+                ][:7],
+                "stream_length": len(host_fetched_downloaded_split_segmented_stream["stream"]),
+                "source_set": sorted(set(host_fetched_downloaded_split_segmented_stream["sources"])),
+                "remaining_ring": host_fetched_downloaded_split_segmented_stream["state"]["ring"],
+            },
+            "install": {
+                key: downloaded_split_segmented_payload_install[key]
+                for key in (
+                    "table_entry",
+                    "record_delta",
+                    "bitmap_offset",
+                    "bitmap_size",
+                    "span",
+                    "split_plane",
+                )
+            },
+            "copy": {
+                key: downloaded_split_segmented_payload_install["copy"][key]
+                for key in (
+                    "prefix",
+                    "trailing",
+                    "stream_pos",
+                    "byte_budget",
+                )
+            },
+            "text": {
+                "selector": downloaded_split_segmented_raster_page_result["selector"],
+                "coord": downloaded_split_segmented_raster_page_result["coord"],
+                "glyph": downloaded_split_segmented_raster_page_result["glyph"],
+                "rows": downloaded_split_segmented_raster_page_result["rows"],
+                "width": downloaded_split_segmented_raster_page_result["width"],
+                "segments": [
+                    {
+                        key: event[key]
+                        for key in (
+                            "bucket_index",
+                            "selector",
+                            "segment",
+                            "object",
+                        )
+                    }
+                    for event in downloaded_split_segmented_raster_page_result["events"]
+                ],
+            },
+            "raster": {
+                key: downloaded_split_segmented_raster_result[key]
+                for key in (
+                    "path",
+                    "object",
+                    "bucket_index",
+                    "key",
+                    "mode",
+                    "byte_count_before",
+                    "byte_count_after",
+                    "payload",
+                )
+            },
+            "entry": {
+                "chain": downloaded_split_segmented_raster_render["chain"],
+                "active_copy": downloaded_split_segmented_raster_render["active_copy"],
+                "band_word": downloaded_split_segmented_raster_entry["band_word"],
+                "setup": {
+                    key: downloaded_split_segmented_raster_entry["setup"][key]
+                    for key in (
+                        "dividend",
+                        "divisor_word_06",
+                        "remainder_783a22",
+                        "band_rows_scaled_783a20",
+                        "destination_base_783a28",
+                    )
+                },
+                "call_order": downloaded_split_segmented_raster_entry["call_order"],
+                "dispatch": [
+                    {
+                        key: entry.get(key)
+                        for key in (
+                            "chain_index",
+                            "object_byte_4",
+                            "class_mask",
+                            "branch",
+                            "target",
+                            "context_slot",
+                        )
+                    }
+                    for entry in downloaded_split_segmented_raster_entry["dispatch"][
+                        "entries"
+                    ]
+                ],
+                "bucket_rendered": [
+                    {
+                        "branch": item["branch"],
+                        "object": item["object"],
+                        "rows": item["rendered"]["rows"],
+                    }
+                    for item in downloaded_split_segmented_raster_entry["bucket_rendered"]
+                ],
+                "rows": downloaded_split_segmented_raster_rows,
+                "row_sha256": hashlib.sha256(
+                    "\n".join(downloaded_split_segmented_raster_rows).encode("ascii")
+                ).hexdigest(),
+            },
+        },
+        {
+            "fetch": {
+                "stream_prefix": b"\x1b)s387W",
+                "stream_length": len(downloaded_split_segmented_command_stream),
+                "source_set": ["ring"],
+                "remaining_ring": [],
+            },
+            "install": {
+                "table_entry": 0x00EA,
+                "record_delta": 0x0700,
+                "bitmap_offset": 0x070C,
+                "bitmap_size": 0x0183,
+                "span": 3,
+                "split_plane": True,
+            },
+            "copy": {
+                "prefix": (b"\x00\x00" * 0x80) + bytes.fromhex("f0 0f"),
+                "trailing": (b"\x00" * 0x80) + bytes.fromhex("aa"),
+                "stream_pos": 0x0183,
+                "byte_budget": 0,
+            },
+            "text": {
+                "selector": 0x2003,
+                "coord": 0x6601,
+                "glyph": 0x28,
+                "rows": 0x81,
+                "width": 3,
+                "segments": [
+                    {
+                        "bucket_index": 9,
+                        "selector": 0x2003,
+                        "segment": 1,
+                        "object": (
+                            bytes.fromhex("00 00 00 00 20 03 00 01 28 01 66 01")
+                            + bytes(0x1C)
+                        ),
+                    },
+                    {
+                        "bucket_index": 1,
+                        "selector": 0x2003,
+                        "segment": 0,
+                        "object": (
+                            bytes.fromhex("00 00 00 00 20 03 00 01 28 00 66 01")
+                            + bytes(0x1C)
+                        ),
+                    },
+                ],
+            },
+            "raster": {
+                "path": "raster-page-record",
+                "object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                "bucket_index": 9,
+                "key": 0,
+                "mode": 0,
+                "byte_count_before": 2,
+                "byte_count_after": 0,
+                "payload": bytes.fromhex("c3 3c"),
+            },
+            "entry": {
+                "chain": [
+                    bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                    bytes.fromhex("00 00 00 00 20 03 00 01 28 01 66 01")
+                    + bytes(0x1C),
+                ],
+                "active_copy": {
+                    "source_word_18": 0,
+                    "source_word_1a": 0,
+                    "render_word_0a": 0,
+                    "render_word_0c": 0,
+                    "render_word_0e": 0,
+                    "render_word_10": 0,
+                    "render_word_16": 0,
+                },
+                "band_word": 9,
+                "setup": {
+                    "dividend": 9,
+                    "divisor_word_06": 5,
+                    "remainder_783a22": 4,
+                    "band_rows_scaled_783a20": 0x0010,
+                    "destination_base_783a28": 0x00102000,
+                },
+                "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+                "dispatch": [
+                    {
+                        "chain_index": 0,
+                        "object_byte_4": 0x80,
+                        "class_mask": 0x80,
+                        "branch": "encoded-span",
+                        "target": 0x01F88E,
+                        "context_slot": None,
+                    },
+                    {
+                        "chain_index": 1,
+                        "object_byte_4": 0x20,
+                        "class_mask": 0x00,
+                        "branch": "compact",
+                        "target": 0x01EFFE,
+                        "context_slot": 3,
+                    },
+                ],
+                "bucket_rendered": [
+                    {
+                        "branch": "encoded-span",
+                        "object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                        "rows": ["##....##..####.."],
+                    },
+                    {
+                        "branch": "compact",
+                        "object": (
+                            bytes.fromhex("00 00 00 00 20 03 00 01 28 01 66 01")
+                            + bytes(0x1C)
+                        ),
+                        "rows": expected_downloaded_split_segmented_rows,
+                    },
+                ],
+                "rows": expected_downloaded_split_segmented_raster_rows,
+                "row_sha256": (
+                    "a380045041433910619b809637eda41e81842a3516acb83b488d07f1d3c68872"
+                ),
+            },
+        },
+    ))
     downloaded_split_segmented_publication_stream = (
         downloaded_split_segmented_command_stream + b"(\x0c"
     )
@@ -92138,6 +92406,24 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_split_segmented_page_result["selector"],
             downloaded_split_segmented_segment1["segment"],
             downloaded_split_segmented_rendered_row,
+        ),
+    )
+    append_wrapped(
+        lines,
+        "- split-plane segmented downloaded glyph plus raster composition: "
+        "the same `ESC )s387W` install queues selector `0x%04x` segment "
+        "objects in buckets `%s`, adds mode-0 raster object `%s` to bucket "
+        "`9`, and renders digest `%s` through `0x1ed84`/`0x1ef6a`."
+        % (
+            downloaded_split_segmented_raster_page_result["selector"],
+            [
+                event["bucket_index"]
+                for event in downloaded_split_segmented_raster_page_result["events"]
+            ],
+            " ".join(f"{byte:02x}" for byte in downloaded_split_segmented_raster_result["object"]),
+            hashlib.sha256(
+                "\n".join(downloaded_split_segmented_raster_rows).encode("ascii")
+            ).hexdigest(),
         ),
     )
     append_wrapped(

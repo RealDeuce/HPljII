@@ -1362,19 +1362,19 @@ bucket `0` splits `80/48`, and no segment above `1` is present for rendering.
 
 Fixture `downloaded glyph row-count matrix publishes and renders additional
 short/segmented counts` broadens the same command family. Short rows `0x0001`,
-`0x0002`, `0x0004`, `0x0008`, `0x0041`, and `0x007f` restore fetched
+`0x0002`, `0x0003`, `0x0004`, `0x0008`, `0x0041`, and `0x007f` restore fetched
 `ESC )s#W` records, install mode-byte-`1` records ending in matching row words,
 publish only bucket `1`, keep selector `0x0003`, and dispatch compact target
 `0x1effe` with object byte `0x00`. Segmented rows `0x0083`, `0x0084`,
 `0x0085`, `0x00c0`, `0x00fd`, `0x00fe`, and `0x00ff` install matching
 mode-byte-`1` records, publish buckets `1` and `9`, keep selector `0x2003`,
 and render bucket word `9` through compact target `0x1effe` with object byte
-`0x20`. The published-row counts are `7`, `8`, `10`, `14`, `64`, `64`, `9`,
-`10`, `11`, `16`, `16`, `16`, and `16`. All thirteen cases now also pin the
+`0x20`. The published-row counts are `7`, `8`, `9`, `10`, `14`, `64`, `64`,
+`9`, `10`, `11`, `16`, `16`, `16`, and `16`. All fourteen cases now also pin the
 full-success return boundary
 `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`: copy status is `1`, `0x783140` is
 `0`, `0x12328` drains no bytes, and the next parser handler is `0xd04a` for
-printable bytes `0x38`, `0x3b`, `0x34`, `0x3c`, `0x3d`, `0x35`, `0x36`,
+printable bytes `0x38`, `0x3b`, `0x41`, `0x34`, `0x3c`, `0x3d`, `0x35`, `0x36`,
 `0x39`, `0x3e`, `0x3f`, `0x40`, `0x3a`, and `0x37`. Rows `0x0083`,
 `0x0084`, and `0x0085` differ by one rendered row each; rows `0x00c0`,
 `0x00fd`, `0x00fe`, and `0x00ff` share the same 16-row digest
@@ -1933,7 +1933,7 @@ A byte-stream renderer must preserve:
   `0xd04a`; fixture `0x16498 status-2 partial installs remain printable` pins
   the linear/split status-`2` zero-drain returns before handler `0xd04a`;
   fixture `downloaded glyph row-count matrix publishes and renders additional
-  short/segmented counts` pins rows `0x01`, `0x02`, `0x04`, `0x08`, `0x41`,
+  short/segmented counts` pins rows `0x01`, `0x02`, `0x03`, `0x04`, `0x08`, `0x41`,
   `0x7f`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`
   zero-drain returns before handler `0xd04a`;
   fixture `downloaded glyph wide-remainder matrix publishes and renders
@@ -2003,8 +2003,10 @@ A byte-stream renderer must preserve:
   for `ESC )s128W`, preserves record `00 00 00 00 0c 01 00 40 00 10 00 00`, renders
   bucket word `1`, and emits `64` current-band rows through compact target
   `0x1effe`/`0x1fe76`. Fixture `downloaded glyph row-count matrix publishes and renders
-  additional short/segmented counts` adds short rows `0x01`, `0x04`, and `0x7f`
-  on selector `0x0003`/bucket `1`, and segmented rows `0x83`, `0x84`, `0xfe`,
+  additional short/segmented counts` adds short rows `0x01`, `0x02`, `0x03`,
+  `0x04`, `0x08`, `0x41`, and `0x7f`
+  on selector `0x0003`/bucket `1`, and segmented rows `0x83`, `0x84`, `0x85`,
+  `0xc0`, `0xfd`, `0xfe`,
   and `0xff` on selector `0x2003`/buckets `1` and `9`, all through
   printable+FF, `0xff1e`, and
   `0x1ed84`/`0x1ef6a`. Fixture `host-fetched even-span downloaded glyph FF publishes

@@ -230,14 +230,21 @@ payload consumption.
     words consumed by terminal handlers and payload readers.
   - `0x782999`: parser mode byte cleared by helper exits and tested by
     `0x11c6c` to bypass generic `W/w` scheduling in mode `4`.
+  - `0x782c18`: normal versus alternate/data parser mode. Normal mode routes
+    parser finals to terminal handlers; alternate/data mode redirects
+    printable/payload bytes through append helpers such as `0xe002` and
+    `0x12358`.
   Evidence: `pcl-parser-core.md` and the `0x11ba6`, `0x11c6c`,
   `0x11d0c`, and `0x11dd2` helper bodies.
 - Parser scratch:
-  - `0x782a1a`: delayed-payload pending flag.
-  - `0x782a1c`: delayed handler pointer.
-  - `0x782a20..0x782a25`: saved six-byte command record.
-  Evidence: scheduler `0x121cc`, restore helper `0x12218`, and generic
-  helper calls to `0x121cc(0x1228a)`.
+  - `0x782a26` and `0x782a2a..`: nonnumeric command-byte scratch collected by
+    the tokenizer.
+  - `0x782a3e` and `0x782a42..`: sign, digit, and fractional-token scratch
+    used while deriving the canonical command-record words.
+  - `0x783196..0x783199`: local matched-byte accumulation buffer used by the
+    main parser loop.
+  Evidence: tokenizer `0xdb74`, command combiner `0xdaf0`, and main parser
+  loop `0x11774`.
 - Firmware bookkeeping:
   - `0x78299a`: active callback helper pointer. Setup handler `0x11ea4`
     writes default callback `0x11b8e` for mode-0 `0x1a`, `0x11eb6` writes
@@ -245,27 +252,39 @@ payload consumption.
     generic helper `0x11c6c`, `0x11eda` writes callback continuation helper
     `0x11d0c`, and `0x11eec` writes font-refreshing continuation helper
     `0x11dd2`.
-  - `0x782c18`: normal versus alternate/data parser mode, used by `0x12218`
-    and by callback helpers before appending through `0xe002`.
+  - `0x782a1a`: delayed-payload pending flag.
+  - `0x782a1c`: delayed handler pointer.
+  - `0x782a20..0x782a25`: saved six-byte command record.
   - `0x782a56`: alternate/data terminal-append latch cleared by `0x11d0c` and
     `0x11dd2` before optional `0xe002` output.
   - local flag `D4`: distinguishes uppercase `W` terminal processing from
     other terminal bytes in `0x11d0c` and `0x11dd2`.
+  Evidence: scheduler `0x121cc`, restore helper `0x12218`, and generic helper
+  calls to `0x121cc(0x1228a)`.
 - Derived parser records:
   - `0x11efe` appends a synthetic record byte `0x80` with word `1` for
     secondary `ESC )` font-designation parsing.
   - `0x11f26` appends a synthetic record byte `0x80` with word `0` for
     primary `ESC (` font-designation parsing.
   - `0x11f4c` rewinds `0x78299e` by six for lowercase chaining finals.
+- Unknown:
+  - no unresolved parser-record fields remain in this checkpoint. Remaining
+    unknowns after the restored record reaches a terminal handler are owned by
+    the command-family sections below.
 
 ### Writers
 
-- `0xdaf0` writes the parsed six-byte command record at `0x78299e`.
+- `0xdb74` writes command-record fields and numeric scratch. `0xdaf0`
+  combines records in one PCL escape family and rewinds the record cursor when
+  lookahead still belongs to that family.
 - `0x11ea4`, `0x11eb6`, `0x11ec8`, `0x11eda`, and `0x11eec` write the active
   callback helper pointer at `0x78299a`.
 - `0x11efe` and `0x11f26` append synthetic primary/secondary selector records
   before `ESC )` and `ESC (` command-family tokenization.
 - `0x11f4c` rewinds `0x78299e` for lowercase chaining finals.
+- `0x11774` initializes parser state, dispatches by normal or alternate/data
+  parser tables, writes parser mode transitions, and triggers `0x12218` when a
+  state transition returns to mode zero.
 - `0x11ba6` consumes one extra host byte through `0xda9a` for incoming
   `0x21..0x2f` punctuation-prefixed commands, echoes it through `0x9ec0`,
   then tokenizes at `0x11bdc` unless it is space.
@@ -281,37 +300,75 @@ payload consumption.
 
 ### Readers And Consumers
 
-- Terminal command handlers consume the six-byte record selected by the helper
-  and cursor rewind behavior.
+- Terminal command handlers consume the active six-byte record selected by the
+  helper and cursor rewind behavior.
 - Generic payload wrapper `0x1228a`, raster payload reader `0x105d0`,
   transparent payload reader `0x12452`, and downloaded-font payload readers
   depend on the same delayed-record restore contract.
-- Alternate/data parser mode consumes `0x782a56` and may append terminal bytes
-  through `0xe002` before delayed restore.
+- Downloaded-font payload handlers `0x15d0a` and `0x16c14` consume restored
+  descriptor/resource records before installing or rejecting font data.
+- Macro definition mode and alternate/data mode consume parser records but
+  redirect payload bytes through `0xe002` / `0x12358` rather than immediate
+  imaging.
 
 ### Output Effect
 
-The helper cluster has no pixels by itself. Its output effect is preserving
-the command/payload boundary that later pixel-producing handlers consume. If a
-reimplementation does not preserve the `0x78299e` rewind and `0x121cc` /
+The helper cluster has no pixels by itself. Its output effect is preserving the
+command/payload boundary that later pixel-producing handlers consume.
+
+Fixture `0x11774 ROM dispatch table routes raster stream to delayed transfer`
+proves the parser reaches `0x11f82` and stores the delayed raster transfer
+record before payload bytes are consumed. Fixture `modeled raster command
+stream parses ESC *t300R / ESC *r1A / ESC *b4W payload boundary` proves
+`0x12218` restores that saved `W` record before the payload reader consumes the
+following bytes. Fixture `raster chained transfer parser trace preserves
+lowercase delayed record` proves a lowercase `w` record remains pending until
+the uppercase terminator restores it.
+
+Fixture `transparent data parser trace feeds page-record queue` proves delayed
+transparent text restores through `0x12452` before routing payload bytes into
+text/fixed-space output. Fixtures `resource payload stream ties ROM parser
+dispatch to 0x16c14 install` and `downloaded character stream ties ROM parser
+dispatch to rendered object` prove the same delayed-record contract feeds
+downloaded-font payload handlers before visible glyph output.
+
+If a reimplementation does not preserve the `0x78299e` rewind and `0x121cc` /
 `0x12218` delayed snapshot behavior, streams such as `ESC *b4W`, `ESC &p#X`,
 generic `W/w` payloads, downloaded-font payloads, and macro data-chain replay
 will restore the wrong byte count or final byte before producing page objects.
 
 ### Confidence
 
-High for the `0x11ba6`, `0x11c6c`, `0x11d0c`, and `0x11dd2` helper variants,
-the `0x11ea4` / `0x11eb6` / `0x11ec8` / `0x11eda` / `0x11eec` callback
-selection stubs, the `0x11efe` / `0x11f26` synthetic font-designation records,
-and the `0x11f4c` rewind helper because the side effects are direct
-disassembly reads. High for downstream delayed-payload effects because the
-contracts are fixture-backed in raster, transparent, downloaded-font, and macro
-sections.
+High for tokenizer record layout, cursor rewind, helper selection, delayed
+snapshot/restore, alternate/data redirection, the `0x11ea4` / `0x11eb6` /
+`0x11ec8` / `0x11eda` / `0x11eec` callback selection stubs, the `0x11efe` /
+`0x11f26` synthetic font-designation records, and the `0x11f4c` rewind helper
+because these are direct disassembly reads and fixture-backed across raster,
+transparent text, downloaded-font, and macro paths. Medium only for
+command-family semantics beyond the restored-record boundary.
+
+### Fixtures
+
+- `0x11774 ROM dispatch table routes raster stream to delayed transfer`
+- `modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W
+  payload boundary`
+- `raster chained transfer parser trace preserves lowercase delayed record`
+- `transparent data parser trace feeds page-record queue`
+- `resource payload stream ties ROM parser dispatch to 0x16c14 install`
+- `downloaded character stream ties ROM parser dispatch to rendered object`
+- `macro execute frame payload feeds 0xa904 data-chain bytes`
+- Macro execute/call replay fixtures documented in
+  [pcl-parser-firmware.md](pcl-parser-firmware.md).
 
 ### Evidence
 
 - `generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`
 - `generated/disasm/ic30_ic13_tokenizer_stateful_helpers_011ba6.lst`
+- `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`
+- `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`
+- `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`
+- `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`
+- `generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`
 - `generated/disasm/ic30_ic13_font_selector_setup_helpers_011ec8.lst`
 - `generated/analysis/ic30_ic13_tokenizer_macro_callers.md`
 - `generated/analysis/ic30_ic13_parser_dispatch_tables.md`
@@ -319,6 +376,14 @@ sections.
 - `notes/pcl-parser-core.md`
 - fixtures named in raster, transparent-data, downloaded-font, and macro
   sections that pass through `0x121cc` / `0x12218` before visible output.
+
+### Unresolved Middle Edges
+
+- None for parser-record layout, tokenizer rewind, delayed scheduler
+  snapshot, alternate/data payload redirection, or `0x12218`
+  restore/dispatch. Open work after this boundary is command-family specific:
+  terminal handler effects, page-object allocation, font/raster payload
+  interpretation, macro data-chain lifecycle, and final rendered output.
 
 ## Display Functions ESC Y Reader
 

@@ -604,8 +604,13 @@ Unresolved middle edges:
   rollover are fixture-backed, but not captured from live 68000 memory during
   a dense parser-produced page.
 - `0x13250..0x1381c`: raster encoded-span allocation is composed here and in
-  the raster transfer section, but exact live register/memory state through
-  the full raster producer remains unresolved.
+  [raster-graphics.md](raster-graphics.md). Parser dispatch, delayed record
+  restore, gate outcomes, addressed `0x13250` storage, and render-entry rows
+  are fixture-backed; the remaining closure boundary is specifically live
+  CPU/register memory across
+  `0x12218 -> 0x105d0 -> 0x10084 -> 0x13070`, where the modeled page-root
+  allocation and encoded-row production would need to be replaced by a live
+  trace or memory snapshot.
 - `0x133aa..0x13472` and `0x136d2..0x13690`: ordered insertion is pinned for
   lower, higher, and equal bucket bytes; alternate no-room/failure returns
   still need live CPU fixtures.

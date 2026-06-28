@@ -982,7 +982,10 @@ mirror/code-pair/zero-fill continuation candidates as
 `90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16`, and
 `359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`, so the
 unresolved command-map edge is specifically the memory map at
-`0x0c0000..0x0c0321`.
+`0x0c0000..0x0c0321`. `data/rom_manifest.json` shows that range is beyond the
+verified `IC32,IC15` resource image, and `notes/formatter-interface-pca.md`
+records address-controller/jumper ROM-region behavior as the hardware state
+that can resolve it.
 `ESC &p2X\x1aA!` covers the probe path where `1a 41` contributes payload byte
 `0x41`, not `0x1a`.
 

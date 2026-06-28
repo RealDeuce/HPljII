@@ -1083,7 +1083,10 @@ ROM work needed:
   `90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16`, and
   `359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`, and
   diverge only in fallback rows. The unknown is what hardware maps after the
-  verified resource-pair byte range ends at `0x0bffff`.
+  verified resource-pair byte range ends at `0x0bffff`; `data/rom_manifest.json`
+  accounts for the installed four-package ROM set, while
+  `notes/formatter-interface-pca.md` records the formatter's larger ROM capacity
+  and address-controller/jumper ROM-region control.
   Command-family state is composed in `Text Cursor And Direct Controls`, and
   the
   printable source-object fields are composed in `Text Source Objects And

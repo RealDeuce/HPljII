@@ -458,6 +458,18 @@ code-pair digest
 zero-fill digest
 `6373cecdf5f20d78b01abe5aa65c051d82ddef345b7cf7fe1504f93c9cb2c425`.
 
+The state class for that remaining edge is physical ROM decode, not transparent
+parser state. `data/rom_manifest.json` proves the verified local image contains
+only the four installed 128K x 8 ROM packages, with `IC32,IC15` providing the
+`0x40000`-byte resource pair that ends at firmware address `0x0bffff`.
+`notes/formatter-interface-pca.md` separately records that the formatter ROM
+capacity can be 1 MB and that the address-controller gate array can alter ROM
+address regions through jumpers. Those hardware facts explain why the fixture
+keeps mirror, code-pair continuation, and zero-fill as named hypotheses instead
+of choosing one from disassembly alone. The exact unresolved boundary is
+`0x0c0000..0x0c0321`: closing it requires board/emulator memory-map evidence or
+an observed page result that matches one of the fallback-row digests above.
+
 ## Semantic Composition
 
 Concept: transparent print data is a counted byte-stream splice, not a binary

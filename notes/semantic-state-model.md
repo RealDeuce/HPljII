@@ -841,7 +841,12 @@ or fixed-space helper `0xd0f0`.
     filtering byte, and high-character flags remain provisional.
   - the board memory-map policy for firmware address `0x0c0000..0x0c0321`
     remains unknown; mirror, code-pair continuation, and zero-fill hypotheses
-    produce different fallback row digests in the harness.
+    produce different fallback row digests in the harness. This is
+    firmware-address-map state, not parser state: `data/rom_manifest.json`
+    accounts for the installed ROMs as four 128K x 8 packages with a
+    `0x40000`-byte `IC32,IC15` resource pair, while
+    `notes/formatter-interface-pca.md` records a possible 1 MB HP 33440 ROM
+    capacity and address-controller/jumper-controlled ROM regions.
 
 ### Writers
 
@@ -1012,8 +1017,11 @@ buckets `0..448` and the first source-read boundary at bucket `456`. High for
 the conclusion that segment-57 fallback rows depend on an unverified memory-map
 policy, because the mirror, code-pair, and zero-fill continuation fixtures all
 share the same current-band digest and diverge only in fallback row digests.
-Medium for the actual hardware source interpretation after that boundary and
-manual names for the filter bytes.
+Medium for the actual hardware source interpretation after that boundary: the
+verified `IC32,IC15` resource pair ends at `0x0bffff`, but
+`notes/formatter-interface-pca.md` records formatter ROM capacity and
+address-controller facts that allow a larger or altered ROM region. Medium also
+for manual names for the filter bytes.
 
 ### Fixtures
 
@@ -1056,8 +1064,12 @@ manual names for the filter bytes.
   bytes` proves mirror, code-pair continuation, and zero-fill all produce the
   same current-band digest but different fallback row digests, so the remaining
   requirement is board or emulator memory-map evidence for
-  `0x0c0000..0x0c0321`. It is not primary route polarity, sampled primary
-  interior values, or the renderable secondary prefix through bucket `448`.
+  `0x0c0000..0x0c0321`. The edge is explicitly outside the verified
+  `IC32,IC15` resource image in `data/rom_manifest.json`, and the hardware note
+  in `notes/formatter-interface-pca.md` makes address-controller/jumper decode
+  the candidate state to resolve. It is not primary route polarity, sampled
+  primary interior values, or the renderable secondary prefix through bucket
+  `448`.
 
 ## Text Source Objects And Compact Buckets
 

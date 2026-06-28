@@ -183,6 +183,19 @@ the fallback rows diverge with digests
 `dc58960aff83e718df147897de51944939626c4e8422a53da5443bca48a53df5`, and
 `6373cecdf5f20d78b01abe5aa65c051d82ddef345b7cf7fe1504f93c9cb2c425`.
 
+This is now a ROM/address-map boundary rather than a resource-record boundary.
+`data/rom_manifest.json` accounts for the installed ROM set as four 128K x 8
+TC531000P packages: the `IC30,IC13` firmware interleave and the `IC32,IC15`
+resource interleave are each `0x40000` bytes. `notes/formatter-interface-pca.md`
+records the service-manual-derived hardware facts that the HP 33440 ROM capacity
+can be 1 MB, the address-controller gate array can change the ROM address region
+through jumpers, and ROM is used in four separate sections. Therefore the three
+continuation candidates above are fixture hypotheses for the unverified
+`0x0c0000..0x0c0321` firmware-address window, not equivalent decoded glyph
+formats. Closing the fallback rows needs board/emulator evidence for that
+physical decode/window, or physical output that selects one of the fallback-row
+digests.
+
 The executable harness now extracts deterministic metadata for all named
 header-like built-in records in the verified resource window: twelve
 `COURIER` records and six `LINE_PRINTER` records. The `COURIER` records

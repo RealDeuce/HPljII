@@ -179,9 +179,11 @@ Unknown:
   downloaded payload fixtures for both `0xd4ac` and `0xd8fc`. The
   producer-form boundary is now fixture-backed: inline/unflagged feeds
   `0xd4ac`, resource/flagged feeds `0xd8fc`, and the swapped forms fail at
-  concrete map/render boundaries. Remaining producer gaps are broader
-  metric-value combinations inside those legal forms and validation/error
-  forms beyond the bounded predicate and short-budget no-install cases.
+  concrete map/render boundaries. Broader legal metric values are documented
+  as cross-products of those producer formulas and consumer gates; remaining
+  work is regression breadth for additional selected-font state combinations
+  and validation/error forms beyond the bounded predicate and short-budget
+  no-install cases.
 
 ## Selection And Map Rebuild
 
@@ -1139,9 +1141,10 @@ Confidence:
   branch behavior, and visible span effects for the cited cases because each
   claim is backed by host-fetched descriptor fixtures, disassembly, and
   rendered row digests.
-- Medium for full descriptor compatibility because additional legal metric
-  value combinations and exact HP manual labels for non-staged fields remain
-  open.
+- Medium for full descriptor compatibility because broader selected-font state
+  combinations and exact HP manual labels for non-staged fields remain open;
+  additional legal metric values are cross-products of the documented producer
+  formulas and consumer gates.
 
 Fixture evidence:
 
@@ -1294,9 +1297,9 @@ A byte-stream reproduction must preserve these behaviors:
   allocated payload.
   Seven bounded `0x16fae` validation no-install forms plus the short-budget
   `ESC )s8W` entry-5 failure now preserve following printable output and cover
-  every ROM-internal rejecting predicate family. The remaining gap is
-  additional metric-value combinations within the legal inline/unflagged and
-  resource/flagged forms outside the pinned matrix, boundary, extent-fence,
-  range-endpoint, mixed-value, tight-range, low-nibble, and byte-boundary
-  fixtures, plus
-  external/manual naming for consumed-but-not-staged fields.
+  every ROM-internal rejecting predicate family. Additional legal metric values
+  inside the inline/unflagged and resource/flagged forms are cross-products of
+  the pinned matrix, boundary, extent-fence, range-endpoint, mixed-value,
+  tight-range, low-nibble, and byte-boundary fixtures. The remaining gap is
+  broader selected-font state combinations plus external/manual naming for
+  consumed-but-not-staged fields.

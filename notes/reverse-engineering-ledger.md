@@ -508,9 +508,11 @@ downloaded glyph FF publishes page record` now pins the contrasting nonzero-drai
 case: after `1a 58` normalization, copy leaves `0x783140 = 1`, `0x12328` drains
 following byte `0x26` (`&`), and the post-return parser sees FF at handler `0xf0f0`; the
 same fixture still documents the modeled published bucket-1 wide object through
-`0x1ed84`/`0x1ef6a`/`0x1f0d2`. Remaining work is additional metric-value combinations
-outside the pinned legal matrix, boundary, range-endpoint, mixed-value, low-nibble, and
-byte-boundary endpoints.
+`0x1ed84`/`0x1ef6a`/`0x1f0d2`. Additional legal metric values are now classified as
+cross-products of the pinned legal matrix, boundary, range-endpoint, mixed-value,
+low-nibble, and byte-boundary endpoints; remaining descriptor work is broader
+selected-font state combinations and external/manual naming for consumed-but-not-staged
+fields.
 Those pinned metric endpoints include rounded input `0x0013` copying `+0x2c = 0x0014`,
 high-byte rounded inputs `0x1500`/`0x1508`/`0x15ff` all copying `+0x2c = 0x0060`, max
 positive and max negative copied offset words `0x007f`/`0xffff`, lower-bound equality,

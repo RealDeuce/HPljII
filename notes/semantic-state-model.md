@@ -4858,10 +4858,11 @@ fields and every legal metric combination have not been page-compared.
   `descriptor metric fields match across inline and resource contexts` now
   pins the legal inline/unflagged and resource/flagged producer forms plus the
   two invalid swapped forms. The producer formulas are documented from
-  `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c`; remaining work is additional
-  metric-value combinations within legal forms beyond the covered matrix,
+  `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c`; additional legal metric
+  values are cross-products of those formulas and the covered matrix,
   boundary, range-endpoint, extent-fence, mixed-value, tight-range,
-  low-nibble, and byte-boundary fixtures, plus external naming for
+  low-nibble, and byte-boundary fixtures. Remaining descriptor work is broader
+  selected-font state combinations plus external naming for
   consumed-but-not-staged validation fields.
 
 ## Macro Definition And Data-Chain Replay

@@ -5424,7 +5424,10 @@ page root for queued rows, and passes the state block to `0x13070` /
   - `+0x12`: raster-active flag.
   Evidence: fixtures
   `parser-derived ESC *t300R / ESC *r1A state queues mode-0 raster row`,
-  `0x105d0-modeled raster transfer skip and cap gate`, and
+  `0x105d0-modeled raster transfer skip and cap gate`,
+  `modeled raster command stream parses ESC *rB and re-enables resolution
+  changes`, `raster active resolution parser trace preserves current mode`,
+  and
   [raster-graphics.md](raster-graphics.md).
 - Canonical page-record object:
   - object `+0x00`: next pointer in bucket chain.
@@ -5443,14 +5446,34 @@ page root for queued rows, and passes the state block to `0x13070` /
     `01 00 01 05 d0 80 57 00 04 00 00`.
   - payload offset for the primary stream is byte `17`, payload
     `f0 0f aa 55`.
+  - lower-resolution streams carry the same three-record command family but
+    substitute `ESC *t150R`, `ESC *t100R`, or `ESC *t75R`; the restored
+    transfer record still reaches `0x105d0` before payload consumption.
+  - same-family lowercase chaining keeps parser mode live: `ESC *b2w2W`
+    preserves delayed record `80 77 00 02 00 00` until uppercase `W` restores
+    it at payload offset `19`.
   Evidence: fixture
-  `0x11774 ROM dispatch table routes raster stream to delayed transfer`.
+  `0x11774 ROM dispatch table routes raster stream to delayed transfer`,
+  `raster mode streams tie ROM parser dispatch to modeled queued objects`,
+  and
+  `raster chained transfer parser trace preserves lowercase delayed record`.
 - Derived/cache producer keys:
   - `0x782a7c`: bucket index derived from row coordinate.
   - `0x782a7e`: packed x/y key copied into object `+0x08`.
   - `0x782a80`: allocation capacity selected by `0x132b6`.
   These are derived from current transfer state and consumed by `0x13250`,
   not persistent parser fields.
+- Derived/cache command effects:
+  - `ESC *t150R`, `ESC *t100R`, and `ESC *t75R` select encoded modes `1`, `2`,
+    and `3`; each mode then flows through the same delayed-transfer and
+    render-record path as the primary mode-0 stream.
+  - Two consecutive uppercase `ESC *b2W` transfers restore independent
+    records, consume payloads at offsets `17` and `24`, queue coordinates
+    `0x0000` and `0x1000`, and advance modeled `row_y` to `2`.
+  Evidence: fixtures
+  `modeled raster command stream queues consecutive ESC *b#W rows`,
+  `raster multi-row parser trace feeds consecutive queued objects`, and
+  `host-fetched raster mode streams feed 0x1ed84 and 0x1ef6a`.
 - Firmware bookkeeping:
   - `0x78297a`: current page root ensured by `0x10084` only for queued rows.
   - `0x782a70`, `0x782a72`, and `0x782a76`: stream allocator state consumed
@@ -5471,6 +5494,10 @@ page root for queued rows, and passes the state block to `0x13070` /
   `ESC *r#A`; parameter `1` seeds from the active cursor axis, while other
   parameters clear the origin to the left edge.
 - `0x107fa` clears only active byte `+0x12` for `ESC *r#B`.
+  Fixture
+  `modeled raster command stream parses ESC *rB and re-enables resolution
+  changes` proves the later `ESC *t150R` can update mode and scale after
+  this clear.
 - `0x11f82` stores delayed transfer handler `0x105d0`; `0x12218` restores the
   delayed record and dispatches it.
 - `0x105d0` writes active byte `+0x12`, current row `+0x02`, accepted count
@@ -5485,6 +5512,11 @@ page root for queued rows, and passes the state block to `0x13070` /
 
 - Parser loop `0x11774` routes the primary raster stream through final
   handlers `0x10808`, `0x1075a`, and `0x11f82`.
+- The same parser loop routes lower-resolution streams to `0x10808`,
+  `0x1075a`, and `0x11f82`, and routes `ESC *rB` to `0x107fa`.
+  Fixtures `host-fetched raster mode streams reach parser and rendered rows`
+  and `raster end parser trace feeds active-clear and resolution re-enable`
+  pin those handler sequences.
 - `0x105d0` consumes the restored command record byte count and raster state
   fields. Beyond-extent rows drain the full count without queueing or row
   advance; negative rows drain the full count without queueing and advance
@@ -5513,15 +5545,40 @@ bytes and queue no object. The mode fixtures prove byte-aligned mode `0`,
 non-byte-aligned mode `0`, mode `1`, mode `2`, shifted mode `2`, band-clipped
 mode `2`, and mode `3` object/render contracts through `0x1f88e`.
 
+Lower-resolution parser fixtures now prove the same host-fetched command/data
+boundary for modes `1`, `2`, and `3`: each stream drains through the modeled
+`0xa904` ring source, reaches parser handlers `0x10808`, `0x1075a`, and
+`0x11f82`, restores the delayed transfer record, queues the mode-specific
+encoded object, crosses `0x1ed84` / `0x1ef6a`, and renders rows through
+`0x1f88e`.
+
+The multi-row and chained-transfer fixtures cover the repeated-transfer state
+block. Two uppercase `ESC *b2W` records restore independently, consume payloads
+at offsets `17` and `24`, advance `row_y` to `2`, and queue objects at packed
+coords `0x0000` and `0x1000`. The lowercase `ESC *b2w2W` stream keeps parser
+mode in the `*b` family, preserves delayed record `80 77 00 02 00 00`, consumes
+payload only after the uppercase terminator at offset `19`, and renders through
+the same bucket/render entry path.
+
+The raster-active fixtures split two related state effects. `ESC *rB` clears
+active byte `+0x12`, so the following `ESC *t150R` changes mode/scale again.
+While active, `ESC *t75R` is ignored: fixture
+`raster active resolution parser trace preserves current mode` leaves the
+current mode and scale unchanged before the next `ESC *b2W` queues a mode-0
+object.
+
 ### Confidence
 
 High for parser handler order, delayed snapshot bytes, `0x105d0` gate
 outcomes, page-root creation only for queued rows, encoded object layout,
 bridge preservation, mode dispatch helpers, and rendered rows because those
-are asserted by named harness fixtures. Medium for live CPU/register fidelity
-inside `0x105d0..0x13250` during a dense parser-produced page because the
-current evidence is modeled/address-aware rather than a full 68000 execution
-trace.
+are asserted by named harness fixtures. High for the covered raster-state
+effects of `ESC *rB`, active-resolution ignore, lower-resolution mode
+selection, consecutive transfers, and lowercase same-family `*b` chaining
+because each has parser-dispatch, restored-record, object, and render-entry
+fixtures. Medium for live CPU/register fidelity inside `0x105d0..0x13250`
+during a dense parser-produced page because the current evidence is
+modeled/address-aware rather than a full 68000 execution trace.
 
 ### Fixtures
 
@@ -5529,9 +5586,18 @@ trace.
 - `modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W`
 - `host-fetched raster stream reaches parser and queued pixels`
 - `raster payload reader normalizes 0xdace controls before queueing pixels`
+- `host-fetched raster control payload normalizes before queueing pixels`
 - `parser-derived ESC *t300R / ESC *r1A state queues mode-0 raster row`
 - `0x105d0-modeled raster transfer skip and cap gate`
+- `modeled raster command stream applies 0x105d0 byte-count cap`
+- `modeled raster command stream queues inclusive page-extent row`
+- `modeled raster command stream drains beyond-extent transfer without
+  queueing`
+- `modeled raster command stream drains negative-row transfer and advances`
+- `raster parser trace feeds capped and drained transfer gates`
+- `host-fetched raster gate stream reaches capped and drained paths`
 - `raster transfer ensures page root before queueing row object`
+- `raster stream ties parser dispatch to queued page object`
 - `0x13070/0x13250 raster row queues encoded-span object`
 - `0x1f88e mode-0 raster object renders queued literal row`
 - `0x1edc6 page-record bridge preserves queued raster object`
@@ -5549,6 +5615,30 @@ trace.
   fallback buffer`
 - `0x13070/0x13250 raster mode-3 row queues encoded-span object`
 - `0x1f88e mode-3 raster object expands queued bytes into four rows`
+- `raster mode streams tie ROM parser dispatch to modeled queued objects`
+- `host-fetched raster mode streams reach parser and rendered rows`
+- `host-fetched raster mode streams feed 0x1ed84 and 0x1ef6a`
+- `modeled raster command stream queues consecutive ESC *b#W rows`
+- `modeled raster command stream renders consecutive queued rows`
+- `raster multi-row parser trace feeds consecutive queued objects`
+- `host-fetched raster multi-row stream reaches consecutive queued rows`
+- `modeled raster command stream parses ESC *rB and re-enables resolution
+  changes`
+- `raster end parser trace feeds active-clear and resolution re-enable`
+- `host-fetched raster end stream clears active state and re-enables
+  resolution`
+- `raster active resolution parser trace preserves current mode`
+- `host-fetched active raster resolution stream preserves current mode`
+- `modeled raster command stream accepts lowercase same-group resolution
+  chaining`
+- `host-fetched raster chained resolution stays in same parser family`
+- `modeled raster command stream defers lowercase ESC *b w payload until
+  uppercase terminator`
+- `raster chained transfer parser trace preserves lowercase delayed record`
+- `host-fetched raster chained transfer preserves lowercase delayed record`
+- `host-fetched raster multi-row and chained streams preserve 0x1edc6 bridge
+  contract`
+- `host-fetched raster streams feed 0x1ed84 and 0x1ef6a`
 
 ### Disassembly Evidence
 
@@ -5561,8 +5651,10 @@ trace.
 ### Unresolved Middle Edges
 
 - `0x105d0..0x13250`: delayed record restore, gate outcomes, encoded object
-  layout, and rendered mode contracts are fixture-backed; the remaining edge
-  is full live 68000 register/memory capture for a dense parser-produced page.
+  layout, rendered mode contracts, resolution-active interactions,
+  consecutive transfers, and same-family lowercase chaining are
+  fixture-backed. The remaining edge is full live 68000 register/memory
+  capture for a dense parser-produced page.
 - `0x13250..0x1381c`: addressed allocation is covered in the shared
   page-record allocator checkpoint and in the addressed text/rule/raster
   fixture, where the raster object lives at `0x00d0c038` and publishes as

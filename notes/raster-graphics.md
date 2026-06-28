@@ -319,6 +319,44 @@ dispatch `0x1effe`, and rule dispatch `0x1f446`. The output effect is one
 published text/rule/raster page image whose rows match the non-published
 current-page render for the same byte stream.
 
+## Additional Command-Family Coverage
+
+The same raster command/data model is fixture-backed beyond the primary
+300-dpi mode-0 stream.
+
+Lower-resolution streams prove the resolution thresholds through visible rows:
+
+- `ESC *t150R ESC *r0A ESC *b#W` selects encoded mode `1`;
+- `ESC *t100R ESC *r0A ESC *b#W` selects encoded mode `2`;
+- `ESC *t75R ESC *r0A ESC *b#W` selects encoded mode `3`.
+
+Fixtures `raster mode streams tie ROM parser dispatch to modeled queued
+objects`, `host-fetched raster mode streams reach parser and rendered rows`,
+and `host-fetched raster mode streams feed 0x1ed84 and 0x1ef6a` prove each
+stream drains from the modeled `0xa904` ring source, routes through
+`0x10808`, `0x1075a`, and `0x11f82`, restores the delayed transfer record,
+queues the expected encoded object, and renders through the page-record bridge.
+
+Multi-row and chained-transfer fixtures cover repeated use of the same state
+block. Two uppercase `ESC *b2W` commands restore independent
+`80 57 00 02 00 00` records, consume payloads at offsets `17` and `24`,
+advance modeled `row_y` to `2`, and queue objects at coords `0x0000` and
+`0x1000`. The lowercase stream `ESC *b2w2W` stays in the `*b` parser family,
+preserves delayed record `80 77 00 02 00 00`, and consumes payload only after
+the uppercase terminator at offset `19`. Fixtures
+`host-fetched raster multi-row and chained streams preserve 0x1edc6 bridge
+contract` and `host-fetched raster streams feed 0x1ed84 and 0x1ef6a` prove both
+bucket chains survive render-record copying and dispatch through `0x1ef6a`.
+
+The active-state fixtures separate two resolution effects. `ESC *rB` clears
+only active byte `+0x12`, so a later `ESC *t150R` can update mode and scale
+again. While the active byte is still set, `ESC *t75R` is ignored, and the
+following `ESC *b2W` queues a mode-0 object. The fixture evidence is
+`raster end parser trace feeds active-clear and resolution re-enable`,
+`host-fetched raster end stream clears active state and re-enables resolution`,
+`raster active resolution parser trace preserves current mode`, and
+`host-fetched active raster resolution stream preserves current mode`.
+
 ## Reproduction Contract
 
 A byte-stream reproduction must preserve these behaviors:
@@ -329,6 +367,10 @@ A byte-stream reproduction must preserve these behaviors:
   set.
 - `ESC *r#B` clears only active byte `+0x12`; it does not reset mode, scale,
   origin, or byte limit.
+- Lowercase same-family `ESC *b#w` records remain pending until an uppercase
+  terminator restores that record and consumes payload bytes.
+- Consecutive uppercase `ESC *b#W` commands restore separate records and
+  advance the raster row for each queued transfer.
 - Off-page transfer bytes are still consumed. Beyond-extent rows drain without
   row advance; negative rows drain and advance to row zero.
 - Queued payload bytes use the `0x138de` local `1a 58 -> 00` behavior.

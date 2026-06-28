@@ -4971,21 +4971,27 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     text object into an existing page record that already contains a
     selector-7 rectangle rule, and publishes/render-composes both layers
     through `0xff1e` and `0x1ed84`/`0x1ef6a`.
+  - repeated overlay publication keeps the selector-4 overlay state live
+    across two modeled `0xff1e` page boundaries. Both publications resolve
+    record id `123` through `0xe0a4`, build the same non-replay `0xe4f4`
+    frame for payload `!\r`, replay through `0xd04a`/`0xf02c`, and compose
+    the replayed overlay text with each page's distinct selector-7 rule.
   Evidence: fixtures `macro execute data-chain parser trace feeds
   page-record stream`, `macro call data-chain parser trace feeds
   page-record stream`, `host-fetched macro replay payloads feed 0x1ed84
   and 0x1ef6a`, and `macro overlay finalization replays before page
-  publication`.
+  publication`, plus `macro overlay replays across repeated page
+  publications`.
 - Unknown:
   - startup option source for the optional `0x80` addition to
     `0x780e5a` still needs board/config correlation, but the downstream
     `0x0b18` heap-limit math and `0x164a` allocator initialization are
     pinned for the default path.
-  - no remaining macro execute/call replay, font-context, or first
-    overlay-publication middle edge in this checkpoint. The next
-    high-value edges are broader overlay page-boundary interactions,
-    descriptor metric producer validation, and final device-output
-    validation.
+  - no remaining macro execute/call replay, font-context, first
+    overlay-publication, or repeated enabled-overlay publication middle
+    edge in this checkpoint. The next high-value edges are broader overlay
+    variants, descriptor metric producer validation, and final
+    device-output validation.
 
 ### Writers
 
@@ -5115,6 +5121,16 @@ existing font bridge:
 `0xe65c` refresh slots `0/1` rebuild maps `0x782f32` / `0x783032`, and
 the final `0xc428` install exposes the selected context record through a
 page-root font slot for later text objects.
+Fixture `macro overlay replays across repeated page publications` now
+reuses the same enabled overlay macro for two page-record publications:
+the first page has selector-7 rule object
+`00 00 00 00 01 07 88 01 00 0c 00 03 00 00`, the second has
+`00 00 00 00 01 07 e4 00 00 08 00 04 00 00`, and both publications
+replay `!\r` before `0xff1e` publishes. The composed row digests are
+`0629159c6a0f5c4a23508d5bfab14b725e13f0bfa32b82efca091aec425fa4c0`
+for the first page and
+`2d52675c52b22b80e87a379e32894c7a9638596770093d2fd80b64e25559977e`
+for the second.
 
 ### Confidence
 
@@ -5162,6 +5178,7 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 - `host-fetched macro replay payloads feed 0x1ed84 and 0x1ef6a`
 - `macro execute page-record layer composes with rule and raster band`
 - `macro overlay finalization replays before page publication`
+- `macro overlay replays across repeated page publications`
 
 ### Disassembly Evidence
 
@@ -5197,11 +5214,10 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 ### Unresolved Middle Edges
 
 - None remaining for macro execute/call replay, macro font-context refresh,
-  or the first overlay-publication path. Remaining macro risk is broader
-  overlay interaction coverage, such as multiple overlays across page
-  boundaries and final-device comparison, not the `0xdd08` selector-4 to
-  `0xff1e` visible-output path pinned by fixture `macro overlay
-  finalization replays before page publication`.
+  first overlay-publication, or repeated enabled-overlay publication across
+  two page boundaries. Remaining macro risk is broader overlay variants
+  beyond the pinned selector-4/repeated-publication path and final-device
+  comparison, not the `0xdd08` selector-4 to `0xff1e` visible-output path.
 
 ## Raster Transfer Gate And Encoded Rows
 

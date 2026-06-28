@@ -310,14 +310,15 @@ pixels or byte-stream compatibility.
    contract in `notes/vertical-forms-control.md`. The remaining VFC risk is
    broader final-device image comparison, not an unresolved middle edge in the
    documented `ESC &l#W` / `ESC &l#V` path.
-3. Macro replay and the first overlay-publication path are anchored. The
-   covered overlay path is selector `4` state through `0xff1e` re-entry,
-   `0xe0a4`, `0xe4f4`, parser loop `0x11774`, and rendered page-record
-   composition with an existing selector-7 rectangle rule. Remaining macro
-   risk is broader overlay interaction coverage, such as repeated overlays
-   across page boundaries and physical output comparison. Evidence: `Macro
-   Definition And Data-Chain Replay` in `notes/semantic-state-model.md` and
-   fixture `macro overlay finalization replays before page publication`.
+3. Macro replay, first overlay publication, and repeated enabled-overlay
+   publication are anchored. The covered overlay path is selector `4` state
+   through `0xff1e` re-entry, `0xe0a4`, `0xe4f4`, parser loop `0x11774`, and
+   rendered page-record composition with selector-7 rectangle rules on two
+   page boundaries. Remaining macro risk is broader overlay variants and
+   physical output comparison. Evidence: `Macro Definition And Data-Chain
+   Replay` in `notes/semantic-state-model.md`, fixture `macro overlay
+   finalization replays before page publication`, and fixture `macro overlay
+   replays across repeated page publications`.
 4. Downloaded font support now has tracked documentation for descriptor,
    resource-payload, current-record, bit-30-clear resource-object, bit-30-clear
    even-span and split-plane continuation resume, status-0 fixed-record release, bit-30

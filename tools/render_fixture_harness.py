@@ -26651,6 +26651,143 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "published": True,
         "published_rows": macro_overlay_expected_rows,
     }))
+    macro_overlay_second_record: dict[str, object] = {"bucket_array": {}, "context_slots": [0x440946B4]}
+    macro_overlay_second_rule = queue_rectangle_rule_via_13386(macro_overlay_second_record, {
+        "x": 4,
+        "y": 30,
+        "width": 8,
+        "height": 4,
+        "flags": 7,
+    })
+    macro_overlay_second_publication = macro_overlay_publication_via_ff1e(
+        data,
+        resources,
+        macro_overlay_second_record,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            vmi=pack12(3),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        ),
+        macro_overlay_enabled_state,
+        0x440946B4,
+        line_printer_hmi["hmi"],
+    )
+    macro_overlay_second_path = macro_overlay_second_publication["overlay_path"]
+    assert isinstance(macro_overlay_second_path, dict)
+    macro_overlay_second_render = macro_overlay_second_publication["published_render_entry"]
+    assert isinstance(macro_overlay_second_render, dict)
+    macro_overlay_second_entry = macro_overlay_second_render["entry"]
+    assert isinstance(macro_overlay_second_entry, dict)
+    macro_overlay_second_rows = list(macro_overlay_second_entry["rows"])
+    macro_overlay_second_rule_rows = [
+        (
+            "." * 4
+            + "#" * 8
+            + "." * max(0, 20 - 12)
+            if 30 <= row < 34
+            else "." * 20
+        )
+        for row in range(34)
+    ]
+    macro_overlay_second_expected_rows = compose_set_pixel_rows(
+        [
+            macro_payload_rendered["rows"],
+            macro_overlay_second_rule_rows,
+        ],
+        width=20,
+        rows=34,
+    )
+    checks.append(assert_equal("macro overlay replays across repeated page publications", {
+        "first": {
+            "taken": macro_overlay_path["taken"],
+            "lookup": macro_overlay_path["lookup"],
+            "frame": macro_overlay_path["frame"],
+            "parser_handlers": [
+                event["handler"]
+                for event in macro_overlay_path["parser_trace"]["events"]
+            ],
+            "queued_rule": macro_overlay_rule["object"],
+            "row_count": len(macro_overlay_published_rows),
+            "row_width": macro_overlay_width,
+            "row_sha256": hashlib.sha256(
+                "\n".join(macro_overlay_published_rows).encode("ascii")
+            ).hexdigest(),
+        },
+        "second": {
+            "taken": macro_overlay_second_path["taken"],
+            "lookup": macro_overlay_second_path["lookup"],
+            "frame": macro_overlay_second_path["frame"],
+            "parser_handlers": [
+                event["handler"]
+                for event in macro_overlay_second_path["parser_trace"]["events"]
+            ],
+            "queued_rule": macro_overlay_second_rule["object"],
+            "row_count": len(macro_overlay_second_rows),
+            "row_width": len(macro_overlay_second_rows[0]),
+            "row_sha256": hashlib.sha256(
+                "\n".join(macro_overlay_second_rows).encode("ascii")
+            ).hexdigest(),
+        },
+        "overlay_state_after_reuse": {
+            "parser_mode": macro_overlay_enabled_state["parser_mode"],
+            "overlay_macro_id": macro_overlay_enabled_state["overlay_macro_id"],
+        },
+        "second_rows": macro_overlay_second_rows,
+    }, {
+        "first": {
+            "taken": True,
+            "lookup": {
+                "status": 1,
+                "index": 0,
+                "ptr": 0x782A98,
+            },
+            "frame": {
+                "payload": b"!\r",
+                "byte_count": 2,
+                "byte_8": 4,
+                "byte_9": 4,
+                "environment": "non-replay",
+            },
+            "parser_handlers": [0x00D04A, 0x00F02C],
+            "queued_rule": bytes.fromhex("00 00 00 00 01 07 88 01 00 0c 00 03 00 00"),
+            "row_count": 27,
+            "row_width": 36,
+            "row_sha256": "0629159c6a0f5c4a23508d5bfab14b725e13f0bfa32b82efca091aec425fa4c0",
+        },
+        "second": {
+            "taken": True,
+            "lookup": {
+                "status": 1,
+                "index": 0,
+                "ptr": 0x782A98,
+            },
+            "frame": {
+                "payload": b"!\r",
+                "byte_count": 2,
+                "byte_8": 4,
+                "byte_9": 4,
+                "environment": "non-replay",
+            },
+            "parser_handlers": [0x00D04A, 0x00F02C],
+            "queued_rule": bytes.fromhex("00 00 00 00 01 07 e4 00 00 08 00 04 00 00"),
+            "row_count": 34,
+            "row_width": 20,
+            "row_sha256": "2d52675c52b22b80e87a379e32894c7a9638596770093d2fd80b64e25559977e",
+        },
+        "overlay_state_after_reuse": {
+            "parser_mode": 1,
+            "overlay_macro_id": 123,
+        },
+        "second_rows": macro_overlay_second_expected_rows,
+    }))
     macro_with_payload = macro_state(
         current_macro_id=123,
         records=[macro_record(b"!\r", 123)] + [macro_record() for _ in range(31)],

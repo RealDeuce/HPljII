@@ -688,12 +688,16 @@ covered selector-4 case: `0xff1e` resolves saved id `0x782a94` through
 `0xe0a4`, builds a non-replay `0xe4f4` frame, re-enters parser loop
 `0x11774`, and publishes the replayed `!\r` payload with an existing
 selector-7 rectangle rule. Evidence: fixture `macro overlay finalization
-replays before page publication`. The
+replays before page publication`. Fixture `macro overlay replays across
+repeated page publications` reuses the same enabled overlay state across two
+modeled `0xff1e` page boundaries, proving that both publications replay
+`!\r` and compose with their page-specific selector-7 rule before publication.
+The
 composed semantic checkpoint is
 `Macro Definition And Data-Chain Replay` in
 `notes/semantic-state-model.md`; no macro execute/call replay,
-font-context, or first overlay-publication middle edge remains in that
-checkpoint.
+font-context, first overlay-publication, or repeated enabled-overlay
+publication middle edge remains in that checkpoint.
 
 Top-level `ESC &` enters mode 5. The normal table currently identifies
 these subfamilies:

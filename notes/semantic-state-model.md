@@ -5246,8 +5246,10 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   - no remaining macro execute/call replay, font-context, first
     overlay-publication, repeated enabled-overlay publication, mixed-control
     overlay payload, or overlay skip-gate middle edge in this checkpoint. The
-    next high-value edges are broader overlay payload variants, descriptor
-    metric producer validation, and final device-output validation.
+    next high-value macro edges are broader overlay payload variants and
+    final device-output validation. Descriptor metric validation is tracked
+    separately as external/manual naming for consumed-but-not-staged fields,
+    not as a macro-cluster middle edge.
 
 ### Writers
 

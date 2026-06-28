@@ -31,6 +31,13 @@ Evidence:
     off-page fills`
   - `0x10d22 rectangle/rule no-room retry finalizes root then retries span`
   - `rectangle parser trace feeds no-room retry path`
+  - `host-fetched text plus rectangle page record feeds 0x1ed84 and 0x1ef6a`
+  - `host-fetched text rectangle and raster page record feeds 0x1ed84 and
+    0x1ef6a`
+  - `host-fetched text rectangle raster FF publishes rendered page record`
+  - `addressed text rectangle raster FF publishes rendered page record`
+  - `addressed text/rule/raster field groups reach publication and render
+    entry`
 
 ## Parser Boundary
 
@@ -401,6 +408,63 @@ Rendered shifted HP-pattern rows:
 ...........####.........
 ```
 
+## Mixed Page-Record Composition
+
+The rectangle/rule producer has been composed with adjacent page producers in
+the checked-in fixture suite, not only as an isolated rule object. Fixture
+`host-fetched text plus rectangle page record feeds 0x1ed84 and 0x1ef6a`
+drains:
+
+```text
+21 1b 2a 63 31 32 61 35 62 30 50
+```
+
+That is printable `!` followed by `ESC *c12a5b0P`. The resulting page record
+contains a compact text bucket and selector-7 rule list; `0x1ed84` /
+`0x1edc6` bridge the record, and `0x1ef6a` calls bucket dispatch `0x1efc2`,
+rule dispatch `0x1f446`, and fixed-list dispatch `0x1f756` in the pinned
+order.
+
+Fixture `host-fetched text rectangle and raster page record feeds 0x1ed84 and
+0x1ef6a` extends that stream with `ESC *t300R ESC *r0A ESC *b2W c3 3c`, so
+the same current page record contains:
+
+- compact text through `0xd04a` / `0x12f2e` / `0x1387c`;
+- selector-7 rectangle rule through `0x10898` / `0x10b80` /
+  `0x13386` / `0x133aa`;
+- mode-0 raster through delayed `0x11f82` / `0x12218` / `0x105d0` /
+  `0x13070` / `0x13250`.
+
+The addressed FF publication fixtures pin the page-record storage for that
+mixed stream. Fixture `addressed text/rule/raster field groups reach
+publication and render entry` classifies these fields:
+
+- canonical fields: text object `0x00d0c004`, rule object `0x00d0c02a`,
+  raster object `0x00d0c038`, bucket head `+0x1c = 0x00d0c038`, rule head
+  `+0x24 = 0x00d0c02a`, context slot 0 `0x440946b4`, and published rule list
+  `00 00 00 00 01 07 5c 01 00 0c 00 05 00 00`;
+- parser scratch: rectangle records for `ESC *c12a`, `5b`, and `0P`, plus
+  restored raster record `80 57 00 02 00 00`, delayed raster snapshot
+  `01 00 01 05 d0 80 57 00 02 00 00`, payload offset `28`, and payload
+  `c3 3c`;
+- derived/cache fields: rule bucket/key from `0x782a7c` / `0x782a7e`,
+  render band height `0x783a20 = 0x0050`, band base `0x783a22 = 0`, and
+  active row origin `0x783a28 = 0x00100000`;
+- firmware bookkeeping: stream allocator state
+  `0x782a70 = 0x00bc`, `0x782a72 = 0x00d0c000`,
+  `0x782a76 = 0x00d0c044`, one page-root allocation, one stream allocation,
+  one publication, one root clear, and publication flag `1`;
+- unknown: exact live 68000 heap/register continuity for the full
+  parser-to-allocator path.
+
+Writers are the parser handlers and producers listed above, plus `0xff1e`
+when fixtures `host-fetched text rectangle raster FF publishes rendered page
+record` and `addressed text rectangle raster FF publishes rendered page
+record` finalize the heterogeneous current page. Readers are `0x1ed84` /
+`0x1edc6`, `0x1ef6a`, compact bucket dispatch `0x1efc2`, rule dispatch
+`0x1f446`, raster dispatch `0x1f88e`, compact text dispatch `0x1effe`, and
+rule helper `0x1f596`.
+
 ## Reproduction Contract
 
 A byte-stream reproduction must preserve these behaviors:
@@ -436,5 +500,9 @@ A byte-stream reproduction must preserve these behaviors:
   band crossing. The initial mixed text/rule/raster/FF byte stream now provides
   a complete parser-produced page comparison with selector-7 rule output,
   mode-0 raster output, compact text, publication, and render-entry rows;
-  broader comparisons still need font-selection, downloaded-glyph, geometry,
-  and alternate selector coverage together.
+  checked-in coverage also includes font-selection streams, downloaded-glyph
+  FF publication, geometry-changing publication streams, and a parser-driven
+  downloaded-glyph/rule/raster page. The remaining comparison gap is broader
+  physical/reference-output validation and alternate selector combinations in
+  full pages, not the software-visible selector-7 rule object or mixed
+  text/rule/raster publication path.

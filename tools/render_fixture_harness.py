@@ -64795,6 +64795,234 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         },
     ))
+    segmented_raster_publication_cases: dict[str, dict[str, object]] = {}
+    for case_name, case_record, expected_rows in (
+        (
+            "linear",
+            downloaded_segmented_even_raster_record,
+            expected_downloaded_segmented_even_raster_rows,
+        ),
+        (
+            "split_plane",
+            downloaded_split_segmented_raster_record,
+            expected_downloaded_split_segmented_raster_rows,
+        ),
+    ):
+        publication = finalize_page_record_via_ff1e(
+            case_record,
+            reset_fixture_state(
+                page_root_present=1,
+                page_root_class=1,
+                current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+                page_root_clears=0,
+                publication_bucket_index=9,
+            ),
+        )
+        published_record = publication["published_pool_record"]
+        assert isinstance(published_record, dict)
+        published_fields = published_record["pool_record_fields"]
+        assert isinstance(published_fields, dict)
+        published_render = render_published_page_record_via_1ed84_1ef6a(
+            data,
+            (
+                downloaded_segmented_even_memory
+                if case_name == "linear"
+                else downloaded_split_segmented_memory
+            ),
+            published_record,
+            bucket_word=9,
+        )
+        published_entry = published_render["entry"]
+        assert isinstance(published_entry, dict)
+        published_rows = published_entry["rows"]
+        segmented_raster_publication_cases[case_name] = {
+            "finalized": {
+                "published": publication["published"],
+                "bucket_index": publication["bucket_index"],
+                "current_page_root_after": publication["current_page_root_after"],
+                "page_root_clears": publication["page_root_clears"],
+                "page_publication_flag": publication["page_publication_flag"],
+            },
+            "published_bucket_root_1c": published_fields["bucket_root_1c"],
+            "published_bucket_array_1c": published_fields["bucket_array_1c"],
+            "published_rule_list_24": published_fields["rule_list_24"],
+            "published_fixed_list_28": published_fields["fixed_list_28"],
+            "published_context_slots_2c_prefix": (
+                published_fields["context_slots_2c"][:4]
+            ),
+            "render_bucket_word": published_render["render_record_fields"]["word_10"],
+            "active_copy": published_render["active_copy"],
+            "setup": {
+                key: published_entry["setup"][key]
+                for key in (
+                    "dividend",
+                    "divisor_word_06",
+                    "remainder_783a22",
+                    "band_rows_scaled_783a20",
+                    "destination_base_783a28",
+                )
+            },
+            "call_order": published_entry["call_order"],
+            "dispatch": [
+                {
+                    key: entry.get(key)
+                    for key in (
+                        "chain_index",
+                        "object_byte_4",
+                        "class_mask",
+                        "branch",
+                        "target",
+                        "context_slot",
+                    )
+                }
+                for entry in published_entry["dispatch"]["entries"]
+            ],
+            "rows": published_rows,
+            "row_sha256": hashlib.sha256(
+                "\n".join(published_rows).encode("ascii")
+            ).hexdigest(),
+            "rows_match_active": published_rows == expected_rows,
+        }
+    checks.append(assert_equal(
+        "segmented downloaded glyph raster FF publications render page records",
+        segmented_raster_publication_cases,
+        {
+            "linear": {
+                "finalized": {
+                    "published": True,
+                    "bucket_index": 9,
+                    "current_page_root_after": 0,
+                    "page_root_clears": 1,
+                    "page_publication_flag": 1,
+                },
+                "published_bucket_root_1c": bytes.fromhex(
+                    "00 00 00 00 80 00 00 02 00 00 c3 3c"
+                ),
+                "published_bucket_array_1c": {
+                    9: [
+                        bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                        bytes.fromhex("00 00 00 00 20 03 00 01 27 01 66 01")
+                        + bytes(0x1C),
+                    ],
+                    1: [
+                        bytes.fromhex("00 00 00 00 20 03 00 01 27 00 66 01")
+                        + bytes(0x1C),
+                    ],
+                },
+                "published_rule_list_24": [],
+                "published_fixed_list_28": [],
+                "published_context_slots_2c_prefix": (0, 0, 0, 0),
+                "render_bucket_word": 9,
+                "active_copy": {
+                    "source_word_18": 0,
+                    "source_word_1a": 0,
+                    "render_word_0a": 0,
+                    "render_word_0c": 0,
+                    "render_word_0e": 0,
+                    "render_word_10": 0,
+                    "render_word_16": 0,
+                },
+                "setup": {
+                    "dividend": 9,
+                    "divisor_word_06": 5,
+                    "remainder_783a22": 4,
+                    "band_rows_scaled_783a20": 0x0010,
+                    "destination_base_783a28": 0x00102000,
+                },
+                "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+                "dispatch": [
+                    {
+                        "chain_index": 0,
+                        "object_byte_4": 0x80,
+                        "class_mask": 0x80,
+                        "branch": "encoded-span",
+                        "target": 0x01F88E,
+                        "context_slot": None,
+                    },
+                    {
+                        "chain_index": 1,
+                        "object_byte_4": 0x20,
+                        "class_mask": 0x00,
+                        "branch": "compact",
+                        "target": 0x01EFFE,
+                        "context_slot": 3,
+                    },
+                ],
+                "rows": expected_downloaded_segmented_even_raster_rows,
+                "row_sha256": (
+                    "0b5440d6733ab9a072e0c14d1a470e6bc944dc98ddbf789152cf65c945dd0f01"
+                ),
+                "rows_match_active": True,
+            },
+            "split_plane": {
+                "finalized": {
+                    "published": True,
+                    "bucket_index": 9,
+                    "current_page_root_after": 0,
+                    "page_root_clears": 1,
+                    "page_publication_flag": 1,
+                },
+                "published_bucket_root_1c": bytes.fromhex(
+                    "00 00 00 00 80 00 00 02 00 00 c3 3c"
+                ),
+                "published_bucket_array_1c": {
+                    9: [
+                        bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                        bytes.fromhex("00 00 00 00 20 03 00 01 28 01 66 01")
+                        + bytes(0x1C),
+                    ],
+                    1: [
+                        bytes.fromhex("00 00 00 00 20 03 00 01 28 00 66 01")
+                        + bytes(0x1C),
+                    ],
+                },
+                "published_rule_list_24": [],
+                "published_fixed_list_28": [],
+                "published_context_slots_2c_prefix": (0, 0, 0, 0),
+                "render_bucket_word": 9,
+                "active_copy": {
+                    "source_word_18": 0,
+                    "source_word_1a": 0,
+                    "render_word_0a": 0,
+                    "render_word_0c": 0,
+                    "render_word_0e": 0,
+                    "render_word_10": 0,
+                    "render_word_16": 0,
+                },
+                "setup": {
+                    "dividend": 9,
+                    "divisor_word_06": 5,
+                    "remainder_783a22": 4,
+                    "band_rows_scaled_783a20": 0x0010,
+                    "destination_base_783a28": 0x00102000,
+                },
+                "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+                "dispatch": [
+                    {
+                        "chain_index": 0,
+                        "object_byte_4": 0x80,
+                        "class_mask": 0x80,
+                        "branch": "encoded-span",
+                        "target": 0x01F88E,
+                        "context_slot": None,
+                    },
+                    {
+                        "chain_index": 1,
+                        "object_byte_4": 0x20,
+                        "class_mask": 0x00,
+                        "branch": "compact",
+                        "target": 0x01EFFE,
+                        "context_slot": 3,
+                    },
+                ],
+                "rows": expected_downloaded_split_segmented_raster_rows,
+                "row_sha256": (
+                    "a380045041433910619b809637eda41e81842a3516acb83b488d07f1d3c68872"
+                ),
+                "rows_match_active": True,
+            },
+        },
+    ))
     downloaded_split_segmented_publication_stream = (
         downloaded_split_segmented_command_stream + b"(\x0c"
     )
@@ -92424,6 +92652,34 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             hashlib.sha256(
                 "\n".join(downloaded_split_segmented_raster_rows).encode("ascii")
             ).hexdigest(),
+        ),
+    )
+    append_wrapped(
+        lines,
+        "- segmented downloaded glyph raster FF publications: linear and "
+        "split-plane segmented+raster records publish through `0xff1e` with "
+        "selected bucket `%d`, preserve bucket-array entries `%s` and `%s`, "
+        "and render published rows with digests `%s` and `%s`."
+        % (
+            segmented_raster_publication_cases["linear"]["render_bucket_word"],
+            ", ".join(
+                str(bucket)
+                for bucket in sorted(
+                    segmented_raster_publication_cases["linear"][
+                        "published_bucket_array_1c"
+                    ]
+                )
+            ),
+            ", ".join(
+                str(bucket)
+                for bucket in sorted(
+                    segmented_raster_publication_cases["split_plane"][
+                        "published_bucket_array_1c"
+                    ]
+                )
+            ),
+            segmented_raster_publication_cases["linear"]["row_sha256"],
+            segmented_raster_publication_cases["split_plane"]["row_sha256"],
         ),
     )
     append_wrapped(

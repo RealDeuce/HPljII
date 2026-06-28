@@ -197,6 +197,11 @@ executable fixture or generated analysis note.
   buckets `9` and `1`, the same bucket-9 raster object, dispatch targets
   `0x1f88e` and `0x1f1f0`, and digest
   `a380045041433910619b809637eda41e81842a3516acb83b488d07f1d3c68872`.
+  Fixture `segmented downloaded glyph raster FF publications render page
+  records` then publishes both segmented+raster records through `0xff1e`,
+  preserves bucket `9` raster plus segment-1 objects and bucket `1`
+  segment-0 objects, and renders the published records with the same two
+  digests.
 - Built-in and downloaded text rendering is covered for selected offset-table,
   inline/downloaded fixed records, segmented records, segmented-wide records,
   font descriptors, resource payloads, downloaded character payloads, and
@@ -704,13 +709,13 @@ The next work should follow dataflow, not isolated handlers:
    downloaded-character publication risk is broader publication combinations beyond
    these payload-control, width-span-matrix, wide-remainder-matrix,
    segmented-wide-matrix, row-count-matrix, rows-`0x20` short, rows-`0x40` short,
-   rows-`0x82` segmented, segmented-glyph plus raster, split-plane segmented-glyph
-   plus raster, no-install, and status-`2` compact bucket variants, plus full-success
-   return-boundary siblings outside the now-pinned row-count-matrix,
-   wide-remainder-matrix, segmented-wide-matrix, normal, row-`0x80`, linear-segmented,
-   split-plane segmented, segmented-wide, and payload-control cases. It is not the
-   documented mode-byte-`0` visible recovery boundary. The publication-command
-   checkpoint now covers host-fetched reset, FF, page-size, orientation, paper-source,
-   and copies streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`,
-   and final row comparison; reset, FF, page-size, orientation, paper-source, and copies
-   also have addressed allocation variants.
+   rows-`0x82` segmented, segmented-glyph plus raster, split-plane segmented-glyph plus
+   raster, segmented-glyph/raster FF publication, no-install, and status-`2` compact
+   bucket variants, plus full-success return-boundary siblings outside the now-pinned
+   row-count-matrix, wide-remainder-matrix, segmented-wide-matrix, normal, row-`0x80`,
+   linear-segmented, split-plane segmented, segmented-wide, and payload-control cases.
+   It is not the documented mode-byte-`0` visible recovery boundary. The
+   publication-command checkpoint now covers host-fetched reset, FF, page-size,
+   orientation, paper-source, and copies streams through parser dispatch, `0xff1e`,
+   `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF, page-size,
+   orientation, paper-source, and copies also have addressed allocation variants.

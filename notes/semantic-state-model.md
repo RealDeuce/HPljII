@@ -4491,6 +4491,12 @@ Fixture `split-plane segmented downloaded glyph composes with raster through
 copy reader, with selector-`0x2003` glyph `0x28`, A2/A3 segment-1 source
 offsets `0x0100` / `0x0080`, and row digest
 `a380045041433910619b809637eda41e81842a3516acb83b488d07f1d3c68872`.
+Fixture `segmented downloaded glyph raster FF publications render page records`
+then proves `0xff1e` preserves both segment buckets and the bucket-9 raster
+object for the linear and split-plane segmented+raster records. The published
+pool record keeps bucket word `9`, empty rule/fixed lists, context prefix
+`(0, 0, 0, 0)`, and the same `0x1ed84`/`0x1ef6a` row digests as the active
+records.
 
 Confidence is high for the installed glyph resource fields, page-record object
 bytes, render call order, dispatch targets, rule helper, and composed rows
@@ -4506,7 +4512,11 @@ installed `0x2003` segment objects, bucket-9 raster object, dispatch targets,
 and composed row digest. High for split-plane segmented-glyph/raster composition
 because fixture `split-plane segmented downloaded glyph composes with raster
 through 0x1ef6a` asserts the split-plane copied payload layout, segment objects,
-same raster object, dispatch targets, and composed row digest. Confidence is
+same raster object, dispatch targets, and composed row digest. High for
+segmented-glyph/raster FF publication because fixture `segmented downloaded
+glyph raster FF publications render page records` asserts the `0xff1e` bucket
+arrays, published bucket word, render dispatch, and digest equality with the
+active records. Confidence is
 medium for the live CPU memory handoff between the font-install phase and the
 page-stream phase.
 
@@ -4622,6 +4632,7 @@ fields and every legal metric combination have not been page-compared.
 - `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
 - `segmented downloaded glyph composes with raster through 0x1ef6a`
 - `split-plane segmented downloaded glyph composes with raster through 0x1ef6a`
+- `segmented downloaded glyph raster FF publications render page records`
 - `host-fetched font control stream feeds descriptor and character payload
   state`
 - `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`

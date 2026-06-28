@@ -4981,23 +4981,30 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     record, or when page-root retry flag bit `+0x14.0` is set. In those cases
     `0xff1e` still publishes and renders the base printable/rule page record,
     but no `0xe4f4` frame or replayed `!\r` text is added.
+  - mixed-control overlay publication uses the same selector-4 state, now
+    with overlay id `125` and payload `ESC &k1G!\r!`. `0xff1e` resolves the
+    record through `0xe0a4`, `0xe4f4` builds a non-replay frame
+    `+8 = 4` / `+9 = 4`, parser loop `0x11774` routes the payload through
+    `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, and the replay queues two
+    compact text entries into the same published page record as a selector-7
+    rectangle rule.
   Evidence: fixtures `macro execute data-chain parser trace feeds
   page-record stream`, `macro call data-chain parser trace feeds
   page-record stream`, `host-fetched macro replay payloads feed 0x1ed84
   and 0x1ef6a`, and `macro overlay finalization replays before page
   publication`, plus `macro overlay replays across repeated page
-  publications` and `macro overlay skip gates preserve base page
-  publication`.
+  publications`, `macro overlay skip gates preserve base page publication`,
+  and `macro overlay mixed-control payload publishes with page rule`.
 - Unknown:
   - startup option source for the optional `0x80` addition to
     `0x780e5a` still needs board/config correlation, but the downstream
     `0x0b18` heap-limit math and `0x164a` allocator initialization are
     pinned for the default path.
   - no remaining macro execute/call replay, font-context, first
-    overlay-publication, repeated enabled-overlay publication, or overlay
-    skip-gate middle edge in this checkpoint. The next high-value edges are
-    broader overlay payload variants, descriptor metric producer validation,
-    and final device-output validation.
+    overlay-publication, repeated enabled-overlay publication, mixed-control
+    overlay payload, or overlay skip-gate middle edge in this checkpoint. The
+    next high-value edges are broader overlay payload variants, descriptor
+    metric producer validation, and final device-output validation.
 
 ### Writers
 
@@ -5145,6 +5152,15 @@ and selector-7 rule object
 same digest is preserved when overlay mode is disabled, when overlay id `123`
 has no nonempty record, and when the page-root retry flag blocks overlay
 re-entry.
+Fixture `macro overlay mixed-control payload publishes with page rule` covers
+the non-replay overlay path with stored payload `ESC &k1G!\r!`. The replayed
+escape sequence stores line-termination mode `0x80`, then the two printable
+bytes and CR produce compact text payload
+`00 02 20 00 01 20 3b 00` plus the context slot copied by `0x1edc6`. The
+same published page record carries selector-7 rule object
+`00 00 00 00 01 07 cc 01 00 08 00 02 00 00`, rendered through `0x1f596` and
+mutated to `00 00 00 00 01 07 cc 01 00 08 00 02 ff ce`. The composed page rows
+have digest `04d32edf47d03c587abc0abaf750c6a2d634ceea80df9787681b618867136f52`.
 
 ### Confidence
 
@@ -5194,6 +5210,7 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 - `macro overlay finalization replays before page publication`
 - `macro overlay replays across repeated page publications`
 - `macro overlay skip gates preserve base page publication`
+- `macro overlay mixed-control payload publishes with page rule`
 
 ### Disassembly Evidence
 
@@ -5230,8 +5247,9 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 
 - None remaining for macro execute/call replay, macro font-context refresh,
   first overlay-publication, repeated enabled-overlay publication across two
-  page boundaries, or the disabled/missing-record/retry-flag overlay skip
-  gates. Remaining macro risk is broader overlay payload variants and
+  page boundaries, mixed-control overlay payload publication, or the
+  disabled/missing-record/retry-flag overlay skip gates. Remaining macro risk
+  is broader overlay payload variants beyond `!\r` and `ESC &k1G!\r!`, plus
   final-device comparison, not the `0xdd08` selector-4 to `0xff1e`
   visible-output path or its skip gates.
 

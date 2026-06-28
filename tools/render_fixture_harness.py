@@ -26919,6 +26919,196 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             for name, case in macro_overlay_skip_cases.items()
         },
     }))
+    macro_overlay_mixed_record: dict[str, object] = {"bucket_array": {}, "context_slots": [0x440946B4]}
+    macro_overlay_mixed_rule = queue_rectangle_rule_via_13386(macro_overlay_mixed_record, {
+        "x": 28,
+        "y": 28,
+        "width": 8,
+        "height": 2,
+        "flags": 7,
+    })
+    macro_overlay_mixed_state = apply_macro_control_via_dd08(
+        macro_state(
+            current_macro_id=125,
+            records=[macro_record(b"\x1b&k1G!\r!", 125)] + [macro_record() for _ in range(31)],
+        ),
+        4,
+    )
+    macro_overlay_mixed_publication = macro_overlay_publication_via_ff1e(
+        data,
+        resources,
+        macro_overlay_mixed_record,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            vmi=pack12(3),
+            hmi=line_printer_hmi["hmi"],
+            pending_width=1,
+            pending_text=0,
+            span_flush_enable=1,
+            page_root_present=1,
+            page_root_class=1,
+            current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+        ),
+        macro_overlay_mixed_state,
+        0x440946B4,
+        line_printer_hmi["hmi"],
+    )
+    macro_overlay_mixed_path = macro_overlay_mixed_publication["overlay_path"]
+    assert isinstance(macro_overlay_mixed_path, dict)
+    macro_overlay_mixed_page_stream = macro_overlay_mixed_path["page_record_stream"]
+    assert isinstance(macro_overlay_mixed_page_stream, dict)
+    macro_overlay_mixed_render = macro_overlay_mixed_publication["published_render_entry"]
+    assert isinstance(macro_overlay_mixed_render, dict)
+    macro_overlay_mixed_entry = macro_overlay_mixed_render["entry"]
+    assert isinstance(macro_overlay_mixed_entry, dict)
+    macro_overlay_mixed_rows = macro_overlay_mixed_entry["rows"]
+    checks.append(assert_equal("macro overlay mixed-control payload publishes with page rule", {
+        "overlay": {
+            "enabled": macro_overlay_mixed_path["enabled"],
+            "overlay_id": macro_overlay_mixed_path["overlay_id"],
+            "lookup": macro_overlay_mixed_path["lookup"],
+            "taken": macro_overlay_mixed_path["taken"],
+            "frame": macro_overlay_mixed_path["frame"],
+            "replay_stream": macro_overlay_mixed_path["replay"]["stream"],
+            "parser_handlers": [
+                event["handler"]
+                for event in macro_overlay_mixed_path["parser_trace"]["events"]
+            ],
+            "end_state": macro_overlay_mixed_path["end_state"],
+        },
+        "page_events": [
+            {
+                "kind": event["kind"],
+                "sequence": event.get("sequence"),
+                "byte": event.get("byte"),
+                "line_termination": event.get("line_termination"),
+            }
+            for event in macro_overlay_mixed_page_stream["events"]
+        ],
+        "queued_rule": macro_overlay_mixed_rule["object"],
+        "bucket_root": macro_overlay_mixed_publication["page_record"]["bucket_array"][0][0],
+        "rule_list": macro_overlay_mixed_publication["page_record"]["rule_list"],
+        "call_order": macro_overlay_mixed_entry["call_order"],
+        "dispatch_entries": [
+            {
+                key: entry[key]
+                for key in (
+                    "chain_index",
+                    "object_byte_4",
+                    "class_mask",
+                    "branch",
+                    "target",
+                    "context_slot",
+                )
+            }
+            for entry in macro_overlay_mixed_entry["dispatch"]["entries"]
+        ],
+        "bucket_rendered": [
+            {
+                "branch": item["branch"],
+                "selector": item["rendered"].get("selector"),
+                "context_slot": item["rendered"].get("context_slot"),
+                "count": item["rendered"].get("count"),
+                "payload": item["rendered"].get("payload"),
+                "rows": item["rendered"]["rows"],
+            }
+            for item in macro_overlay_mixed_entry["bucket_rendered"]
+        ],
+        "rule_rendered": [
+            {
+                key: entry[key]
+                for key in (
+                    "selector",
+                    "helper",
+                    "key",
+                    "bucket_delta",
+                    "decoded",
+                    "width",
+                    "remaining_before",
+                    "rows_drawn",
+                    "mutated_object",
+                )
+            }
+            for entry in macro_overlay_mixed_entry["rules"]["rendered"]
+        ],
+        "row_count": len(macro_overlay_mixed_rows),
+        "row_width": max(len(row) for row in macro_overlay_mixed_rows),
+        "row_sha256": hashlib.sha256(
+            "\n".join(macro_overlay_mixed_rows).encode("ascii")
+        ).hexdigest(),
+    }, {
+        "overlay": {
+            "enabled": True,
+            "overlay_id": 125,
+            "lookup": {"status": 1, "index": 0, "ptr": 0x782A98},
+            "taken": True,
+            "frame": {
+                "payload": b"\x1b&k1G!\r!",
+                "byte_count": 8,
+                "byte_8": 4,
+                "byte_9": 4,
+                "environment": "non-replay",
+            },
+            "replay_stream": b"\x1b&k1G!\r!",
+            "parser_handlers": [0x00EDF8, 0x00D04A, 0x00F02C, 0x00D04A],
+            "end_state": {
+                "host_gate_bit1": 1,
+                "data_chain_slot": 1,
+                "page_parser_state_782a92": 0x63,
+            },
+        },
+        "page_events": [
+            {"kind": "escape", "sequence": b"\x1b&k1G", "byte": None, "line_termination": 0x80},
+            {"kind": "printable", "sequence": None, "byte": 0x21, "line_termination": None},
+            {"kind": "control", "sequence": None, "byte": 0x0D, "line_termination": None},
+            {"kind": "printable", "sequence": None, "byte": 0x21, "line_termination": None},
+        ],
+        "queued_rule": bytes.fromhex("00 00 00 00 01 07 cc 01 00 08 00 02 00 00"),
+        "bucket_root": (
+            bytes.fromhex("00 00 00 00 00 00 00 02 20 00 01 20 3b 00")
+            + bytes(0x18)
+        ),
+        "rule_list": [bytes.fromhex("00 00 00 00 01 07 cc 01 00 08 00 02 00 00")],
+        "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+        "dispatch_entries": [{
+            "chain_index": 0,
+            "object_byte_4": 0x00,
+            "class_mask": 0x00,
+            "branch": "compact",
+            "target": 0x01EFFE,
+            "context_slot": 0,
+        }],
+        "bucket_rendered": [{
+            "branch": "compact",
+            "selector": 0,
+            "context_slot": 0,
+            "count": 2,
+            "payload": bytes.fromhex("00 02 20 00 01 20 3b 00") + bytes(0x18),
+            "rows": macro_control_payload_direct_rendered["rows"],
+        }],
+        "rule_rendered": [{
+            "selector": 7,
+            "helper": 0x1F596,
+            "key": 0xCC01,
+            "bucket_delta": 1,
+            "decoded": {
+                "x": 28,
+                "y": 28,
+                "row_low": 12,
+                "subbyte": 12,
+                "byte_pair_offset": 2,
+            },
+            "width": 8,
+            "remaining_before": 2,
+            "rows_drawn": 2,
+            "mutated_object": bytes.fromhex("00 00 00 00 01 07 cc 01 00 08 00 02 ff ce"),
+        }],
+        "row_count": 30,
+        "row_width": 36,
+        "row_sha256": "04d32edf47d03c587abc0abaf750c6a2d634ceea80df9787681b618867136f52",
+    }))
     macro_with_payload = macro_state(
         current_macro_id=123,
         records=[macro_record(b"!\r", 123)] + [macro_record() for _ in range(31)],

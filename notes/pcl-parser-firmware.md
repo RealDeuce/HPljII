@@ -696,13 +696,16 @@ Fixture `macro overlay skip gates preserve base page publication` covers the
 same `0xff1e` branch when overlay replay is not allowed: disabled overlay
 mode, missing selected record, and page-root retry flag all publish the base
 printable/rule page record without adding a non-replay frame.
-The
-composed semantic checkpoint is
-`Macro Definition And Data-Chain Replay` in
-`notes/semantic-state-model.md`; no macro execute/call replay,
-font-context, first overlay-publication, or repeated enabled-overlay
-publication middle edge remains in that checkpoint, and the overlay skip gates
-are now fixture-backed there as well.
+Fixture `macro overlay mixed-control payload publishes with page rule` covers
+the same non-replay overlay publication path for stored payload `ESC &k1G!\r!`:
+`0xff1e` resolves overlay id `125`, `0xe4f4` builds the non-replay frame,
+parser loop `0x11774` dispatches `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`,
+and publication renders the replayed compact text entries with an existing
+selector-7 rectangle rule. The composed semantic checkpoint is
+`Macro Definition And Data-Chain Replay` in `notes/semantic-state-model.md`;
+no macro execute/call replay, font-context, first overlay-publication,
+repeated enabled-overlay publication, mixed-control overlay payload, or overlay
+skip-gate middle edge remains in that checkpoint.
 
 Top-level `ESC &` enters mode 5. The normal table currently identifies
 these subfamilies:

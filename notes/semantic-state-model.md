@@ -791,10 +791,15 @@ modeled source/object structures rather than a full live CPU-memory run.
 - `0xf34a..0x12714` and `0xf34a..0x126e2`: pending span flush and
   re-arm state are composed in `Text Span Flush And Fixed-Width Spans`;
   allocation-failure retry publication and nonempty fixed-list insertion are
-  fixture-backed there. The remaining direct-control edge is a broader
-  host-fetched stream that reaches those two span branches from real CR,
-  margin, or cursor movement instead of starting at the composed span helper
-  state.
+  fixture-backed there. The real-CR entry is no longer open: fixture
+  `live CR span flush materializes 0x12714 page object` drives
+  `0xf02c -> 0xf06e -> 0xf34a -> 0x12714 -> 0x126e2` from parsed
+  `ESC &k1G!\r`, queues the segment-list object, re-arms the span state,
+  and renders the span rows beside the compact text object. The remaining
+  direct-control span edge is narrower: host-fetched margin or cursor
+  movement streams that cross the same `0xf34a` span branch are still
+  represented by composed helper state rather than their own end-to-end
+  parser fixtures.
 - `0xd4ac..0xd8fc`: active font/context span update helpers are
   composed as watermark writers in `Text Span Flush And Fixed-Width
   Spans`; descriptor metric producer formulas are documented from `0x17430`,

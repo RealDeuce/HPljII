@@ -62218,6 +62218,257 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "rows": expected_downloaded_segmented_even_rows,
         },
     }))
+    downloaded_segmented_even_raster_record: dict[str, object] = {
+        "bucket_array": {},
+        "context_slots": [0, 0, 0, 0],
+    }
+    downloaded_segmented_even_raster_page_result = (
+        queue_text_source_to_page_record_via_12f2e(
+            downloaded_segmented_even_memory,
+            downloaded_segmented_even_raster_record,
+            downloaded_segmented_even_source,
+        )
+    )
+    downloaded_segmented_even_raster_result = queue_raster_row_to_page_record_via_13070(
+        downloaded_segmented_even_raster_record,
+        {"x": 0, "y": 144, "byte_count": 2, "mode": 0},
+        bytes.fromhex("c3 3c"),
+    )
+    downloaded_segmented_even_raster_render = render_bucket_page_record_via_1ed84_1ef6a(
+        data,
+        downloaded_segmented_even_memory,
+        downloaded_segmented_even_raster_record,
+        bucket_word=9,
+    )
+    downloaded_segmented_even_raster_entry = downloaded_segmented_even_raster_render[
+        "entry"
+    ]
+    assert isinstance(downloaded_segmented_even_raster_entry, dict)
+    downloaded_segmented_even_raster_rows = downloaded_segmented_even_raster_entry[
+        "rows"
+    ]
+    expected_downloaded_segmented_even_raster_rows = [
+        "##....##..####........................",
+        "." * 38,
+        "." * 38,
+        "." * 38,
+        "." * 38,
+        "." * 38,
+        "." * 22 + "####........####",
+    ]
+    checks.append(assert_equal(
+        "segmented downloaded glyph composes with raster through 0x1ef6a",
+        {
+            "fetch": {
+                "stream_prefix": host_fetched_downloaded_segmented_even_stream[
+                    "stream"
+                ][:7],
+                "stream_length": len(host_fetched_downloaded_segmented_even_stream["stream"]),
+                "source_set": sorted(set(host_fetched_downloaded_segmented_even_stream["sources"])),
+                "remaining_ring": host_fetched_downloaded_segmented_even_stream["state"]["ring"],
+            },
+            "install": {
+                key: downloaded_segmented_even_payload_install[key]
+                for key in (
+                    "table_entry",
+                    "record_delta",
+                    "bitmap_offset",
+                    "bitmap_size",
+                    "span",
+                )
+            },
+            "text": {
+                "selector": downloaded_segmented_even_raster_page_result["selector"],
+                "coord": downloaded_segmented_even_raster_page_result["coord"],
+                "glyph": downloaded_segmented_even_raster_page_result["glyph"],
+                "rows": downloaded_segmented_even_raster_page_result["rows"],
+                "width": downloaded_segmented_even_raster_page_result["width"],
+                "segments": [
+                    {
+                        key: event[key]
+                        for key in (
+                            "bucket_index",
+                            "selector",
+                            "segment",
+                            "object",
+                        )
+                    }
+                    for event in downloaded_segmented_even_raster_page_result["events"]
+                ],
+            },
+            "raster": {
+                key: downloaded_segmented_even_raster_result[key]
+                for key in (
+                    "path",
+                    "object",
+                    "bucket_index",
+                    "key",
+                    "mode",
+                    "byte_count_before",
+                    "byte_count_after",
+                    "payload",
+                )
+            },
+            "entry": {
+                "chain": downloaded_segmented_even_raster_render["chain"],
+                "active_copy": downloaded_segmented_even_raster_render["active_copy"],
+                "band_word": downloaded_segmented_even_raster_entry["band_word"],
+                "setup": {
+                    key: downloaded_segmented_even_raster_entry["setup"][key]
+                    for key in (
+                        "dividend",
+                        "divisor_word_06",
+                        "remainder_783a22",
+                        "band_rows_scaled_783a20",
+                        "destination_base_783a28",
+                    )
+                },
+                "call_order": downloaded_segmented_even_raster_entry["call_order"],
+                "dispatch": [
+                    {
+                        key: entry.get(key)
+                        for key in (
+                            "chain_index",
+                            "object_byte_4",
+                            "class_mask",
+                            "branch",
+                            "target",
+                            "context_slot",
+                        )
+                    }
+                    for entry in downloaded_segmented_even_raster_entry["dispatch"][
+                        "entries"
+                    ]
+                ],
+                "bucket_rendered": [
+                    {
+                        "branch": item["branch"],
+                        "object": item["object"],
+                        "rows": item["rendered"]["rows"],
+                    }
+                    for item in downloaded_segmented_even_raster_entry["bucket_rendered"]
+                ],
+                "rows": downloaded_segmented_even_raster_rows,
+                "row_sha256": hashlib.sha256(
+                    "\n".join(downloaded_segmented_even_raster_rows).encode("ascii")
+                ).hexdigest(),
+            },
+        },
+        {
+            "fetch": {
+                "stream_prefix": b"\x1b)s258W",
+                "stream_length": len(downloaded_segmented_even_command_stream),
+                "source_set": ["ring"],
+                "remaining_ring": [],
+            },
+            "install": {
+                "table_entry": 0x00E6,
+                "record_delta": 0x0580,
+                "bitmap_offset": 0x058C,
+                "bitmap_size": 0x0102,
+                "span": 2,
+            },
+            "text": {
+                "selector": 0x2003,
+                "coord": 0x6601,
+                "glyph": 0x27,
+                "rows": 0x81,
+                "width": 2,
+                "segments": [
+                    {
+                        "bucket_index": 9,
+                        "selector": 0x2003,
+                        "segment": 1,
+                        "object": (
+                            bytes.fromhex("00 00 00 00 20 03 00 01 27 01 66 01")
+                            + bytes(0x1C)
+                        ),
+                    },
+                    {
+                        "bucket_index": 1,
+                        "selector": 0x2003,
+                        "segment": 0,
+                        "object": (
+                            bytes.fromhex("00 00 00 00 20 03 00 01 27 00 66 01")
+                            + bytes(0x1C)
+                        ),
+                    },
+                ],
+            },
+            "raster": {
+                "path": "raster-page-record",
+                "object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                "bucket_index": 9,
+                "key": 0,
+                "mode": 0,
+                "byte_count_before": 2,
+                "byte_count_after": 0,
+                "payload": bytes.fromhex("c3 3c"),
+            },
+            "entry": {
+                "chain": [
+                    bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                    bytes.fromhex("00 00 00 00 20 03 00 01 27 01 66 01")
+                    + bytes(0x1C),
+                ],
+                "active_copy": {
+                    "source_word_18": 0,
+                    "source_word_1a": 0,
+                    "render_word_0a": 0,
+                    "render_word_0c": 0,
+                    "render_word_0e": 0,
+                    "render_word_10": 0,
+                    "render_word_16": 0,
+                },
+                "band_word": 9,
+                "setup": {
+                    "dividend": 9,
+                    "divisor_word_06": 5,
+                    "remainder_783a22": 4,
+                    "band_rows_scaled_783a20": 0x0010,
+                    "destination_base_783a28": 0x00102000,
+                },
+                "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+                "dispatch": [
+                    {
+                        "chain_index": 0,
+                        "object_byte_4": 0x80,
+                        "class_mask": 0x80,
+                        "branch": "encoded-span",
+                        "target": 0x01F88E,
+                        "context_slot": None,
+                    },
+                    {
+                        "chain_index": 1,
+                        "object_byte_4": 0x20,
+                        "class_mask": 0x00,
+                        "branch": "compact",
+                        "target": 0x01EFFE,
+                        "context_slot": 3,
+                    },
+                ],
+                "bucket_rendered": [
+                    {
+                        "branch": "encoded-span",
+                        "object": bytes.fromhex("00 00 00 00 80 00 00 02 00 00 c3 3c"),
+                        "rows": ["##....##..####.."],
+                    },
+                    {
+                        "branch": "compact",
+                        "object": (
+                            bytes.fromhex("00 00 00 00 20 03 00 01 27 01 66 01")
+                            + bytes(0x1C)
+                        ),
+                        "rows": expected_downloaded_segmented_even_rows,
+                    },
+                ],
+                "rows": expected_downloaded_segmented_even_raster_rows,
+                "row_sha256": (
+                    "0b5440d6733ab9a072e0c14d1a470e6bc944dc98ddbf789152cf65c945dd0f01"
+                ),
+            },
+        },
+    ))
 
     downloaded_segmented_rows82_payload = (
         (b"\x00\x00" * 0x80)
@@ -91853,6 +92104,24 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_segmented_even_page_result["selector"],
             downloaded_segmented_even_segment1["segment"],
             downloaded_segmented_even_rendered_row,
+        ),
+    )
+    append_wrapped(
+        lines,
+        "- segmented downloaded glyph plus raster composition: the same "
+        "`ESC )s258W` install queues selector `0x%04x` segment objects in "
+        "buckets `%s`, adds mode-0 raster object `%s` to bucket `9`, and "
+        "renders digest `%s` through `0x1ed84`/`0x1ef6a`."
+        % (
+            downloaded_segmented_even_raster_page_result["selector"],
+            [
+                event["bucket_index"]
+                for event in downloaded_segmented_even_raster_page_result["events"]
+            ],
+            " ".join(f"{byte:02x}" for byte in downloaded_segmented_even_raster_result["object"]),
+            hashlib.sha256(
+                "\n".join(downloaded_segmented_even_raster_rows).encode("ascii")
+            ).hexdigest(),
         ),
     )
     downloaded_split_segmented_rendered_row = downloaded_split_segmented_bridged_rendered["rows"][-1]

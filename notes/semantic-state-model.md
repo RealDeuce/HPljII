@@ -4427,15 +4427,22 @@ Field groups:
   record is `80 57 00 02 00 00`, snapshot
   `01 00 01 05 d0 80 57 00 02 00 00`, payload offset `28`, and payload
   `c3 3c`.
+  The segmented-raster sibling uses downloaded glyph table entry `0x00e6`,
+  record delta `0x0580`, bitmap offset `0x058c`, bitmap size `0x0102`,
+  selector `0x2003`, bucket `9` segment-1 object
+  `00 00 00 00 20 03 00 01 27 01 66 01...`, bucket `1` segment-0 object
+  `00 00 00 00 20 03 00 01 27 00 66 01...`, and bucket `9` raster object
+  `00 00 00 00 80 00 00 02 00 00 c3 3c`.
 - Firmware bookkeeping: active-copy words reported by the fixture are
   zeroed source/render work words before the fixture sets render word `+0x10`
   for bucket `5`; no page publication or root clear occurs in this checkpoint.
 - Unknown for this checkpoint: full-success return-boundary siblings outside
-  the even-span downloaded-glyph plus rule/raster stream and outside the
-  separate no-install/status-`2`, segmented-publication, and combined
-  segmented-wide publication visible fixtures. The page stream itself now
-  drives the glyph, rule, and raster producers together; the font payload
-  install still enters the page phase as a modeled resource image.
+  the even-span downloaded-glyph plus rule/raster stream, outside the
+  segmented downloaded-glyph plus raster stream, and outside the separate
+  no-install/status-`2`, segmented-publication, and combined segmented-wide
+  publication visible fixtures. The even-span page stream itself now drives
+  the glyph, rule, and raster producers together; the font payload install
+  still enters the page phase as a modeled resource image.
 
 The modeled resource image is now a pinned handoff, not an implicit fixture
 shortcut. The page-stream runner uses exactly
@@ -4467,6 +4474,12 @@ Readers and output effect: `0x1ef6a` runs call order `0x1ef86`, `0x1efc2`,
 solid helper `0x1f596`. The fixture compares three final composed rows: row 0
 contains raster payload `c3 3c`, the downloaded glyph row at x `22`, and the
 rule from x `24` through x `35`; rows 1 and 2 contain the rule only.
+Fixture `segmented downloaded glyph composes with raster through 0x1ef6a`
+uses the same call order for bucket word `9`, dispatches the bucket-9 raster
+object to `0x1f88e`, dispatches the selector-`0x2003` segment-1 glyph object to
+compact target `0x1effe` / renderer `0x1f1f0`, and compares seven composed rows
+with digest
+`0b5440d6733ab9a072e0c14d1a470e6bc944dc98ddbf789152cf65c945dd0f01`.
 
 Confidence is high for the installed glyph resource fields, page-record object
 bytes, render call order, dispatch targets, rule helper, and composed rows
@@ -4476,6 +4489,10 @@ Confidence is high for the page-stream producer schedule because fixture
 `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
 asserts fetch boundaries, page parser handlers, glyph source fields, delayed
 raster scratch, queue bytes, dispatch targets, and final rows. Confidence is
+high for segmented-glyph/raster composition because fixture
+`segmented downloaded glyph composes with raster through 0x1ef6a` asserts the
+installed `0x2003` segment objects, bucket-9 raster object, dispatch targets,
+and composed row digest. Confidence is
 medium for the live CPU memory handoff between the font-install phase and the
 page-stream phase.
 
@@ -4589,6 +4606,7 @@ fields and every legal metric combination have not been page-compared.
 - `0x1eba4 scheduler band words render published downloaded glyph`
 - `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
 - `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
+- `segmented downloaded glyph composes with raster through 0x1ef6a`
 - `host-fetched font control stream feeds descriptor and character payload
   state`
 - `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`

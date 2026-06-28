@@ -186,6 +186,12 @@ executable fixture or generated analysis note.
   `0x11f82`, the `0x12f2e` glyph object, bridged selector-7 rule object,
   `0x13070` raster object, `0x1ed84`/`0x1ef6a` call order, dispatch targets
   `0x1f88e` and `0x1effe`, rule helper `0x1f596`, and final composed rows.
+  Fixture `segmented downloaded glyph composes with raster through 0x1ef6a`
+  extends the composition evidence to the `ESC )s258W` selector-`0x2003`
+  segmented glyph family: bucket `9` contains the segment-1 object plus a
+  mode-0 raster object, dispatches through `0x1f88e` and `0x1f1f0`, and
+  renders digest
+  `0b5440d6733ab9a072e0c14d1a470e6bc944dc98ddbf789152cf65c945dd0f01`.
 - Built-in and downloaded text rendering is covered for selected offset-table,
   inline/downloaded fixed records, segmented records, segmented-wide records,
   font descriptors, resource payloads, downloaded character payloads, and
@@ -693,8 +699,9 @@ The next work should follow dataflow, not isolated handlers:
    downloaded-character publication risk is broader publication combinations beyond
    these payload-control, width-span-matrix, wide-remainder-matrix,
    segmented-wide-matrix, row-count-matrix, rows-`0x20` short, rows-`0x40` short,
-   rows-`0x82` segmented, no-install, and status-`2` compact bucket variants, plus
-   full-success return-boundary siblings outside the now-pinned row-count-matrix,
+   rows-`0x82` segmented, segmented-glyph plus raster, no-install, and status-`2`
+   compact bucket variants, plus full-success return-boundary siblings outside the
+   now-pinned row-count-matrix,
    wide-remainder-matrix, segmented-wide-matrix, normal, row-`0x80`, linear-segmented,
    split-plane segmented, segmented-wide, and payload-control cases. It is not the
    documented mode-byte-`0` visible recovery boundary. The publication-command

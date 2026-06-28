@@ -718,6 +718,15 @@ VMI state before object queueing, then cross the same `0x1387c`,
 - `ESC &a1L!`, `ESC &a1M!`, and `ESC &a6l9M!` route margin handlers
   `0xeb58` / `0xec0c` into following `0xd04a` output at compact coords
   `0x0801`, `0x0a02`, and `0x0207`.
+- Fixture `left-margin parser span flush materializes 0x12714 page object`
+  covers the pending-span sibling for parsed `ESC &a6L!`: host fetch drains
+  six ring bytes, parser handlers are `0xeb58` then `0xd04a`, `0xeb58` moves
+  `0x782c8a` from packed `10` to packed `108`, its `0xf34a` path materializes
+  a selector-`0x4000` segment-list object
+  `00 00 00 00 40 00 00 01 32 00 03 00 00 10` through `0x12714`, `0x126e2`
+  re-arms span bounds to `low/high x = 108`, and the following printable `!`
+  queues compact coord `0x0207`; `0x1ed84`/`0x1ef6a` renders the span rows
+  `3..5` beside the compact glyph at x `114`.
 - `ESC &a2C!`, `ESC &a72H!`, `ESC &a1R!`, `ESC &a72V!`, and
   `ESC &a2c+1R!` route cursor-position handlers `0xf39e`, `0xf416`,
   `0xf560`, and `0xf60a` to compact coords `0x0a02`, `0x0402`,
@@ -760,6 +769,7 @@ modeled source/object structures rather than a full live CPU-memory run.
 - `margin command parser trace feeds page-record queue`
 - `right margin command parser trace feeds page-record queue`
 - `chained margin command parser trace feeds page-record queue`
+- `left-margin parser span flush materializes 0x12714 page object`
 - `cursor-position parser trace feeds page-record queue`
 - `decipoint cursor parser trace feeds page-record queue`
 - `vertical cursor-position parser trace feeds page-record queue`
@@ -803,11 +813,15 @@ modeled source/object structures rather than a full live CPU-memory run.
   `live CR span flush materializes 0x12714 page object` drives
   `0xf02c -> 0xf06e -> 0xf34a -> 0x12714 -> 0x126e2` from parsed
   `ESC &k1G!\r`, queues the segment-list object, re-arms the span state,
-  and renders the span rows beside the compact text object. The remaining
-  direct-control span edge is narrower: host-fetched margin or cursor
-  movement streams that cross the same `0xf34a` span branch are still
-  represented by composed helper state rather than their own end-to-end
-  parser fixtures.
+  and renders the span rows beside the compact text object. Fixture
+  `left-margin parser span flush materializes 0x12714 page object` now drives
+  the parsed margin sibling through
+  `0xeb58 -> 0xf34a -> 0x12714 -> 0x126e2 -> 0xd04a`, with host fetch, parser
+  dispatch, materialized segment-list object, re-armed span state, compact
+  printable object, and rendered rows pinned. The remaining direct-control
+  span edge is narrower: host-fetched cursor movement streams that cross the
+  same `0xf34a` span branch are still represented by composed helper state
+  rather than their own end-to-end parser fixtures.
 - `0xd4ac..0xd8fc`: active font/context span update helpers are
   composed as watermark writers in `Text Span Flush And Fixed-Width
   Spans`; descriptor metric producer formulas are documented from `0x17430`,
@@ -3227,6 +3241,11 @@ queues a fixed-width span through `0x136d2`.
   `live CR span flush materializes 0x12714 page object` pins this
   order by re-arming `0x783186` / `0x783188` from the post-CR x cursor
   before the LF y advance is visible in final cursor state.
+- `0xeb58` handles left-margin updates. Fixture
+  `left-margin parser span flush materializes 0x12714 page object` pins the
+  sibling `0xf34a` path for parsed `ESC &a6L!`: after `0xeb58` moves
+  `0x782c8a` to packed `108`, the pending span is packaged by `0x12714`
+  before `0x126e2` re-arms bounds from the new x cursor.
 - `0x12714` clears `0x783184`, writes the local 8-byte source, calls
   `0x10084`, gates on `0x782db6`, calls `0x13520`, and retries after
   `0xff1e` on allocation failure. The retry path sets page-root
@@ -3298,6 +3317,17 @@ queues a fixed-width span through `0x136d2`.
   object in bucket `0`, re-arms `0x783186` and `0x783188` to x `5`,
   and renders rows where the three span rows occupy pixels `0..15`
   while the text glyph remains at pixels `16..19`.
+- Fixture `left-margin parser span flush materializes 0x12714 page object`
+  drives `ESC &a6L!` from `0xa904` host fetch through parser handlers
+  `0xeb58` and `0xd04a`. The margin command moves the x cursor from packed
+  `10` to packed `108`, materializes pending state `2..18 @ y=3` through
+  `0x12714`, inserts segment-list object
+  `00 00 00 00 40 00 00 01 32 00 03 00 00 10 ...` in bucket `0`, re-arms
+  `0x783186` and `0x783188` to x `108`, then the following printable queues
+  compact object `00 00 00 00 00 00 00 01 20 02 07 ...`. The render entry
+  dispatches the compact object and the segment-list object from the same
+  bucket, producing span rows `3..5` at pixels `0..15` beside the compact
+  glyph at pixels `114..117`.
 - Fixture `flagged printable d8fc low-watermark flush renders span`
   drives byte `0x21` through the mixed page-record model with
   `cursor_x=10`, `cursor_y=21`, `low_x=100`, `high_x=120`, and flagged
@@ -3395,6 +3425,7 @@ fixtures.
 - `0x1edc6 page-record bridge normalizes rule and fixed lists`
 - `mixed printable/control page-record stream queues through 0x1387c`
 - `live CR span flush materializes 0x12714 page object`
+- `left-margin parser span flush materializes 0x12714 page object`
 - `flagged printable d8fc low-watermark flush renders span`
 - `unflagged printable d4ac low-watermark flush renders span`
 - `d4ac and d8fc span consumer branch family controls flush output`

@@ -12108,6 +12108,35 @@ def control_text_flush_helper(state: dict[str, int]) -> None:
         state["post_flushes"] += 1
 
 
+def materialize_text_span_flush_after_counter(
+    state: dict[str, object],
+    page_record: dict[str, object],
+) -> dict[str, object]:
+    span_state = {
+        "enabled_783184": int(state.get("enabled_783184", 0)),
+        "low_x_783186": int(state.get("low_x_783186", 0)),
+        "high_x_783188": int(state.get("high_x_783188", 0)),
+        "high_y_78318a": int(state.get("high_y_78318a", 0)),
+        "orientation_782da3": int(state.get("orientation", state.get("orientation_782da3", 0))),
+        "orientation_extent_782db2": int(state.get("orientation_extent_782db2", 0)),
+        "page_extent_782db6": int(state.get("page_extent_782db6", 0xFFFF)),
+    }
+    flushed = flush_text_span_via_12714(
+        page_record,
+        span_state,
+        vertical_offset=int(state.get("span_vertical_offset_782dc0", 0)),
+    )
+    flushed_state = flushed.get("state", {})
+    if isinstance(flushed_state, dict):
+        state["enabled_783184"] = int(flushed_state.get("enabled_783184", 0))
+        state["low_x_783186"] = int(flushed_state.get("low_x_783186", span_state["low_x_783186"]))
+        state["high_x_783188"] = int(flushed_state.get("high_x_783188", span_state["high_x_783188"]))
+        state["high_y_78318a"] = int(flushed_state.get("high_y_78318a", span_state["high_y_78318a"]))
+    rearmed = rearm_text_span_via_126e2(state)
+    flushed["rearm"] = rearmed
+    return flushed
+
+
 def rearm_text_span_via_126e2(state: dict[str, object]) -> dict[str, object]:
     if int(state.get("enabled_783184", 0)):
         return {
@@ -12143,29 +12172,7 @@ def control_text_flush_helper_with_page_record(
     ):
         return None
 
-    span_state = {
-        "enabled_783184": int(state.get("enabled_783184", 0)),
-        "low_x_783186": int(state.get("low_x_783186", 0)),
-        "high_x_783188": int(state.get("high_x_783188", 0)),
-        "high_y_78318a": int(state.get("high_y_78318a", 0)),
-        "orientation_782da3": int(state.get("orientation", state.get("orientation_782da3", 0))),
-        "orientation_extent_782db2": int(state.get("orientation_extent_782db2", 0)),
-        "page_extent_782db6": int(state.get("page_extent_782db6", 0xFFFF)),
-    }
-    flushed = flush_text_span_via_12714(
-        page_record,
-        span_state,
-        vertical_offset=int(state.get("span_vertical_offset_782dc0", 0)),
-    )
-    flushed_state = flushed.get("state", {})
-    if isinstance(flushed_state, dict):
-        state["enabled_783184"] = int(flushed_state.get("enabled_783184", 0))
-        state["low_x_783186"] = int(flushed_state.get("low_x_783186", span_state["low_x_783186"]))
-        state["high_x_783188"] = int(flushed_state.get("high_x_783188", span_state["high_x_783188"]))
-        state["high_y_78318a"] = int(flushed_state.get("high_y_78318a", span_state["high_y_78318a"]))
-    rearmed = rearm_text_span_via_126e2(state)
-    flushed["rearm"] = rearmed
-    return flushed
+    return materialize_text_span_flush_after_counter(state, page_record)
 
 
 def update_flagged_span_via_d8fc(
@@ -19302,10 +19309,17 @@ def render_mixed_printable_control_page_record_stream(
                     pos += 1
                     final_upper = final & ~0x20 if ord("a") <= final <= ord("z") else final
                     before = dict(state)
+                    before_span_flushes = int(state.get("span_flushes", 0))
+                    span_flush_result: dict[str, object] | None = None
                     if final_upper == ord("L"):
                         if fraction != 0:
                             raise AssertionError("page-record mixed stream margin command does not model fractions")
                         state = apply_left_margin_via_eb58(state, integer)
+                        if (
+                            int(state.get("materialize_span_flush", 0))
+                            and int(state.get("span_flushes", 0)) > before_span_flushes
+                        ):
+                            span_flush_result = materialize_text_span_flush_after_counter(state, page_record)
                         events.append({
                             "kind": "margin",
                             "offset": command_start,
@@ -19321,12 +19335,18 @@ def render_mixed_printable_control_page_record_stream(
                             "left_margin": state["left_margin"],
                             "right_margin": state["right_margin"],
                             "events": state["events"][len(before.get("events", [])):],
+                            "span_flush_result": span_flush_result,
                             "chained": bool(ord("a") <= final <= ord("z")),
                         })
                     elif final_upper == ord("M"):
                         if fraction != 0:
                             raise AssertionError("page-record mixed stream margin command does not model fractions")
                         state = apply_right_margin_via_ec0c(state, integer)
+                        if (
+                            int(state.get("materialize_span_flush", 0))
+                            and int(state.get("span_flushes", 0)) > before_span_flushes
+                        ):
+                            span_flush_result = materialize_text_span_flush_after_counter(state, page_record)
                         events.append({
                             "kind": "margin",
                             "offset": command_start,
@@ -19342,10 +19362,16 @@ def render_mixed_printable_control_page_record_stream(
                             "left_margin": state["left_margin"],
                             "right_margin": state["right_margin"],
                             "events": state["events"][len(before.get("events", [])):],
+                            "span_flush_result": span_flush_result,
                             "chained": bool(ord("a") <= final <= ord("z")),
                         })
                     elif final_upper in (ord("C"), ord("H"), ord("R"), ord("V")):
                         state = apply_cursor_position_command(state, chr(final_upper), integer, fraction, relative=relative)
+                        if (
+                            int(state.get("materialize_span_flush", 0))
+                            and int(state.get("span_flushes", 0)) > before_span_flushes
+                        ):
+                            span_flush_result = materialize_text_span_flush_after_counter(state, page_record)
                         events.append({
                             "kind": "cursor-position",
                             "offset": command_start,
@@ -19361,6 +19387,7 @@ def render_mixed_printable_control_page_record_stream(
                             "cursor_before": {"x": before["cursor_x"], "y": before["cursor_y"]},
                             "cursor_after": {"x": state["cursor_x"], "y": state["cursor_y"]},
                             "event": state["events"][-1],
+                            "span_flush_result": span_flush_result,
                             "chained": bool(ord("a") <= final <= ord("z")),
                         })
                     else:
@@ -77511,6 +77538,178 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "enabled_783184": 1,
             "low_x_783186": 5,
             "high_x_783188": 5,
+            "high_y_78318a": 0,
+        },
+    }))
+    span_margin_stream = render_mixed_printable_control_page_record_stream(
+        data,
+        resources,
+        b"\x1b&a6L!",
+        0x440946B4,
+        control_fixture_state(
+            cursor_x=pack12(10),
+            cursor_y=pack12(21),
+            left_margin=pack12(5),
+            right_margin=pack12(300),
+            hmi=line_printer_hmi["hmi"],
+            pending_text=1,
+            span_flush_enable=1,
+            materialize_span_flush=1,
+            enabled_783184=1,
+            low_x_783186=2,
+            high_x_783188=18,
+            high_y_78318a=3,
+            orientation=0,
+            page_extent_782db6=64,
+        ),
+        default_advance=line_printer_hmi["hmi"],
+    )
+    span_margin_events = span_margin_stream["events"]
+    assert isinstance(span_margin_events, list)
+    span_margin_event = span_margin_events[0]
+    assert isinstance(span_margin_event, dict)
+    span_margin_flush = span_margin_event["span_flush_result"]
+    assert isinstance(span_margin_flush, dict)
+    span_margin_queued = span_margin_flush["queued"]
+    assert isinstance(span_margin_queued, dict)
+    span_margin_printable = span_margin_events[1]
+    assert isinstance(span_margin_printable, dict)
+    span_margin_page_record = span_margin_stream["page_record"]
+    assert isinstance(span_margin_page_record, dict)
+    span_margin_bucket_array = span_margin_page_record["bucket_array"]
+    assert isinstance(span_margin_bucket_array, dict)
+    span_margin_chain = [
+        bytes(obj)
+        for obj in span_margin_bucket_array[0]
+    ]
+    span_margin_render_entry = span_margin_stream["render_entry"]
+    assert isinstance(span_margin_render_entry, dict)
+    span_margin_rendered = span_margin_render_entry["entry"]
+    assert isinstance(span_margin_rendered, dict)
+    span_margin_trace = trace_mixed_text_control_parser_path_via_11774(
+        data,
+        b"\x1b&a6L!",
+    )
+    span_margin_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(ring=list(b"\x1b&a6L!"), direct_mode=0),
+        len(b"\x1b&a6L!"),
+    )
+    expected_span_margin_rows: list[str] = []
+    for row_index, glyph_row in enumerate(line_printer_glyph32_rows):
+        row_bits = [False] * 118
+        if 3 <= row_index < 6:
+            for bit in range(16):
+                row_bits[bit] = True
+        if glyph_row == "####":
+            for bit in range(4):
+                row_bits[114 + bit] = True
+        expected_span_margin_rows.append(
+            "".join("#" if bit else "." for bit in row_bits)
+        )
+    checks.append(assert_equal("left-margin parser span flush materializes 0x12714 page object", {
+        "stream": span_margin_stream["stream"],
+        "fetch_sources": span_margin_fetch["sources"],
+        "remaining_ring": span_margin_fetch["state"]["ring"],
+        "parser_handlers": [
+            event["handler"]
+            for event in span_margin_trace["events"]
+        ],
+        "margin": {
+            "handler": span_margin_event["handler"],
+            "sequence": span_margin_event["sequence"],
+            "cursor_before": span_margin_event["cursor_before"],
+            "cursor_after": span_margin_event["cursor_after"],
+            "left_margin": span_margin_event["left_margin"],
+            "span_flushes": span_margin_stream["final_state"]["span_flushes"],
+        },
+        "flush": {
+            "flushed": span_margin_flush["flushed"],
+            "path": span_margin_flush["path"],
+            "raw_source": span_margin_flush["raw_source"],
+            "queued": {
+                key: span_margin_queued[key]
+                for key in ("path", "computed", "bucket_index", "selector", "object")
+            },
+            "rearm": span_margin_flush["rearm"],
+        },
+        "printable": {
+            "byte": span_margin_printable["byte"],
+            "cursor_before": span_margin_printable["cursor_before"],
+            "cursor_after": span_margin_printable["cursor_after"],
+            "coord": span_margin_printable["page_result"]["coord"],
+        },
+        "chain": span_margin_chain,
+        "render_rows": span_margin_rendered["rows"],
+        "final_span_state": select_keys(
+            span_margin_stream["final_state"],
+            ("enabled_783184", "low_x_783186", "high_x_783188", "high_y_78318a"),
+        ),
+    }, {
+        "stream": b"\x1b&a6L!",
+        "fetch_sources": ["ring"] * 6,
+        "remaining_ring": [],
+        "parser_handlers": [0x00EB58, 0x00D04A],
+        "margin": {
+            "handler": 0x00EB58,
+            "sequence": b"\x1b&a6L",
+            "cursor_before": pack12(10),
+            "cursor_after": pack12(108),
+            "left_margin": pack12(108),
+            "span_flushes": 1,
+        },
+        "flush": {
+            "flushed": True,
+            "path": "portrait-segment-list",
+            "raw_source": {
+                "orientation": 0,
+                "mode": 0,
+                "x": 2,
+                "y": 3,
+                "extent": 16,
+            },
+            "queued": {
+                "path": "text-span-segment-list",
+                "computed": {
+                    "x": 2,
+                    "y": 3,
+                    "bucket_index": 0,
+                    "key": 0x3200,
+                    "mode": 3,
+                    "selector_hi": 0x40,
+                    "selector_lo": 0x00,
+                },
+                "bucket_index": 0,
+                "selector": 0x4000,
+                "object": (
+                    bytes.fromhex("00 00 00 00 40 00 00 01 32 00 03 00 00 10")
+                    + (b"\x00" * 0x18)
+                ),
+            },
+            "rearm": {
+                "rearmed": True,
+                "enabled_783184": 1,
+                "low_x_783186": 108,
+                "high_x_783188": 108,
+                "high_y_78318a": 0,
+            },
+        },
+        "printable": {
+            "byte": 0x21,
+            "cursor_before": pack12(108),
+            "cursor_after": pack12(126),
+            "coord": 0x0207,
+        },
+        "chain": [
+            bytes.fromhex("00 00 00 00 00 00 00 01 20 02 07")
+            + (b"\x00" * 0x1b),
+            bytes.fromhex("00 00 00 00 40 00 00 01 32 00 03 00 00 10")
+            + (b"\x00" * 0x18),
+        ],
+        "render_rows": expected_span_margin_rows,
+        "final_span_state": {
+            "enabled_783184": 1,
+            "low_x_783186": 108,
+            "high_x_783188": 108,
             "high_y_78318a": 0,
         },
     }))

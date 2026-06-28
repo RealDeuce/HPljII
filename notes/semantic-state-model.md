@@ -199,8 +199,10 @@ broader frame-lifetime tracing.
 - `0xa6cc..0xa810`: software ring/status bridge effects are modeled, but
   the physical names and timing for `0xfffe0001`, `0xfffe0003`, and
   `$aa01` are not identified.
-- `0x782d76 frame +0x00..+0x0d`: non-macro data-chain owners and frame
-  lifecycle outside the `0xe418` macro replay fields already pinned.
+- `0x782d76 frame +0x00..+0x0d`: execute/call frames from `0xe418` and the
+  non-replay page-finalization frame from `0xe4f4` are documented. Remaining
+  uncertainty is any producer for frame byte `+9` values outside observed
+  `2`, `3`, and `4`.
 - `0x780e66` bit meanings: source-empty/active bits are observed by
   behavior, but not yet fully named.
 

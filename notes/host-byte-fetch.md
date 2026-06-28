@@ -130,9 +130,17 @@ Branch `0xa954..0xa97c` loads `A2 = long[0x782d76]` and inspects
 - If the longword is `-1`, it clears the longword, calls `0xe22c`, and
   restarts `0xa904`.
 
-Macro execute/call replay uses this mechanism: replay payload bytes are
-visible to the parser as ordinary host bytes, and `0xe22c` runs when the
-frame reaches its end marker.
+Macro/data-chain replay uses this mechanism: replay payload bytes are visible
+to the parser as ordinary host bytes, and `0xe22c` runs when the frame reaches
+its end marker. The known 14-byte frame classes are now tied to concrete
+producers and consumers in `notes/semantic-state-model.md` under `Macro
+Definition And Data-Chain Replay`: `0xe418` advances `0x782d76` and writes
+execute/call frames with byte `+9 = 2` or `3`, while `0xe4f4` writes the
+non-replay page-finalization frame at `0x782d4c` with byte `+9 = 4`.
+Frame `+0x00/+0x04` hold the payload/chunk pointer and byte count consumed by
+`0xa904` / `0x9f6a`; frame byte `+8` is `4`; frame `+0x0a` is the
+environment-snapshot pointer for execute/call frames and zero for the
+non-replay frame.
 
 ### Second LIFO Source
 
@@ -250,7 +258,9 @@ Field groups:
 - Canonical byte-source state:
   - first pushback stack: count `0x783e8c`, pointer `0x783e8e`;
   - data-chain source: current frame pointer `0x782d76`, with frame
-    `+4 == -1` meaning end transition through `0xe22c`;
+    `+4 == -1` meaning end transition through `0xe22c`; known frame byte
+    `+9` values are execute `2`, call `3`, and non-replay page-finalization
+    frame `4`;
   - second pushback stack: count `0x783e76`, pointer `0x783e78`;
   - ring source: count `0x783e54`, read pointer `0x783e56`, write
     pointer `0x783e5a`, and bounds `0x783a4c..0x783e53`.
@@ -281,8 +291,8 @@ Field groups:
     reaches `0xda9a`, `0x11774`, `0x12218`, or the payload readers.
 - Unknown:
   - board-level names and timing for the direct MMIO banks;
-  - non-macro data-chain frame owners outside the fields used by current
-    macro replay fixtures;
+  - data-chain frame-byte values outside the observed `+9 = 2`, `3`, and
+    `4` producers, if any;
   - final names for individual `0x780e66` bits beyond observed source
     gating behavior.
 
@@ -377,8 +387,10 @@ Unresolved middle edges:
 - `0xa6cc..0xa810`: software ring/status bridge effects are modeled, but
   physical names and timing for `0xfffe0001`, `0xfffe0003`, and `$aa01`
   remain unassigned.
-- `0x782d76 frame +0x00..+0x0d`: non-macro data-chain owners and frame
-  lifecycle outside the macro replay fields already pinned.
+- `0x782d76 frame +0x00..+0x0d`: execute/call producers `0xe418` and
+  non-replay page-finalization producer `0xe4f4` are documented. Remaining
+  uncertainty is any producer for frame byte `+9` values outside observed
+  `2`, `3`, and `4`.
 - `0x780e66`: bit meanings are behaviorally observed as source gates, but
   the full bit-name map is not yet proven.
 

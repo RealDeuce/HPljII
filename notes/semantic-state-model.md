@@ -811,9 +811,11 @@ modeled source/object structures rather than a full live CPU-memory run.
 - `0xd4ac..0xd8fc`: active font/context span update helpers are
   composed as watermark writers in `Text Span Flush And Fixed-Width
   Spans`; descriptor metric producer formulas are documented from `0x17430`,
-  `0x1757a`, `0x1762a`, and `0x1719c`. Remaining work is additional
-  descriptor metric value/error cross-products documented in
-  `notes/font-context-metrics.md`.
+  `0x1757a`, `0x1762a`, and `0x1719c`. Additional legal descriptor metric
+  values are cross-products of those formulas and the documented consumer
+  gates; remaining work is broader selected-font state combinations and
+  external/manual naming for consumed-but-not-staged validation fields, as
+  tracked in `notes/font-context-metrics.md`.
 - `0x11f5a..0x12452`: transparent-text delayed payload restore, control
   filtering, printable re-entry, and fixed-space output are composed in
   `Transparent Print Data`. The C0 branch, `0x80..0x9f` branch, nonzero
@@ -4064,10 +4066,10 @@ descriptor metric range endpoints drive d4ac and d8fc consumers` adds the remain
 cases keep the rounded word `+0x2c = 0x0008`, keep the `d4ac` standard span digest, and
 keep `d8fc` high-y `20` with digest
 `f830d30ea60a61f0b74a489c4b7df1bb25dc464b6765d170c19e7278a0267eab`. Fixture `legal
-descriptor metric low-nibble rounding drives d4ac and d8fc consumers` narrows the
-remaining legal metric-value gap for the rounded `+0x2c` producer transform. It varies
-parser rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f` while keeping
-the legal resource and inline forms fixed. `0x16fae` / `0x1719c` copy those words to
+descriptor metric low-nibble rounding drives d4ac and d8fc consumers` adds low-nibble
+evidence for the rounded `+0x2c` producer transform. It varies parser rounded inputs
+`0x0001`, `0x0003`, `0x0004`, `0x0005`, and `0x000f` while keeping the legal resource
+and inline forms fixed. `0x16fae` / `0x1719c` copy those words to
 `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`; `0xd4ac` consumes the copied `+0x2c/+0x2d`
 bytes and keeps span digest
 `67554ea70d7cfd9b11c0777e3cf65d51600a44301a4f93bd4d9b0c0fbc23c00e`, while `0xd8fc`

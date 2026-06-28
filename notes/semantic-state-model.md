@@ -5512,6 +5512,23 @@ non-solid selector table and pattern starts. Selector `0` uses pattern base
 y `3`, width `19`, row-low `3`, pattern start `0x0306c4`, left mask
 `0x07ff`, and right mask `0xff00`.
 
+Fixture `host-fetched alternate rectangle selectors feed full page records`
+composes two non-solid selector paths with compact text and the page-record
+renderer. Stream `! ESC *c12a5b50g2P` routes through `0xd04a`, `0x10e68`,
+`0x10e22`, `0x10dce`, and `0x10898`; `50g` writes canonical fill state
+`0x78316e = 50`, `2P` maps it to gray selector `4`, `0x1edc6` bridges object
+`00 00 00 00 01 04 5c 01 00 0c 00 05 00 00` to
+`00 00 00 00 01 14 5c 01 00 0c 00 05 00 05`, and `0x1f446` dispatches
+selector `4` to `0x1f4e0`. Stream `! ESC *c12a5b2g3P` uses the same handlers;
+`2g` writes fill state `2`, `3P` maps it to portrait HP-pattern selector `9`,
+`0x1edc6` bridges `00 00 00 00 01 09 5c 01 00 0c 00 05 00 00` to
+`00 00 00 00 01 19 5c 01 00 0c 00 05 00 05`, and `0x1f446` again dispatches
+to `0x1f4e0`. The derived row digests are
+`f7e8bc65420e95a1456db1f0673a164f8ae2f1919fb4b5b8964886354fc54fdf` for
+selector `4` and
+`c981832502ee7ed97b339959027448f878d591e3909519a3b9233e31200ac599` for
+selector `9`.
+
 Fixture `0x10b80 rectangle fill clips right/top/bottom edges and ignores
 off-page fills` proves negative-left clipping from start x `-3`, width `10`
 to queued x `0`, width `7`, plus right-edge, top-edge, bottom-edge,
@@ -5544,6 +5561,7 @@ models allocator results rather than executing the full heap/free-list path.
   normalization`
 - `0x1f446/0x1f596 renders solid black rectangle rule pixels`
 - `0x1f4e0 renders gray and HP pattern selector matrix`
+- `host-fetched alternate rectangle selectors feed full page records`
 - `0x10b80 rectangle fill clips right/top/bottom edges and ignores off-page
   fills`
 - `0x10d22 rectangle/rule no-room retry finalizes root then retries span`
@@ -5564,9 +5582,12 @@ models allocator results rather than executing the full heap/free-list path.
   bytes, bridge normalization, render rows, and no-room retry are
   fixture-backed. The remaining edge is full live 68000 execution through
   parser, `0x10b80`, `0x1381c`, and real allocator memory.
-- Alternate selector combinations beyond the pinned selector/mask matrix still
-  need broader page-visible comparisons together with font selection,
-  downloaded glyphs, geometry changes, and physical output.
+- Non-solid selector `4` from `50g2P` and selector `9` from portrait `2g3P`
+  now have page-visible comparisons through compact text, bridge
+  normalization, `0x1f446`, and `0x1f4e0`. Remaining alternate-selector edges
+  are broader full-page combinations for the other selector ids/orientations
+  together with font selection, downloaded glyphs, geometry changes, and
+  physical output.
 
 ## Mixed Text/Rule/Raster Page Record
 

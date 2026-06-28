@@ -32,6 +32,7 @@ Evidence:
   - `0x10d22 rectangle/rule no-room retry finalizes root then retries span`
   - `rectangle parser trace feeds no-room retry path`
   - `host-fetched text plus rectangle page record feeds 0x1ed84 and 0x1ef6a`
+  - `host-fetched alternate rectangle selectors feed full page records`
   - `host-fetched text rectangle and raster page record feeds 0x1ed84 and
     0x1ef6a`
   - `host-fetched text rectangle raster FF publishes rendered page record`
@@ -425,6 +426,35 @@ contains a compact text bucket and selector-7 rule list; `0x1ed84` /
 rule dispatch `0x1f446`, and fixed-list dispatch `0x1f756` in the pinned
 order.
 
+Fixture `host-fetched alternate rectangle selectors feed full page records`
+keeps the same compact `!` text producer and rectangle origin, then drives two
+additional full page-record streams through fetched host bytes, parser
+dispatch, rule production, bridge normalization, and render rows:
+
+- `21 1b 2a 63 31 32 61 35 62 35 30 67 32 50` =
+  `! ESC *c12a5b50g2P`. Parser handlers are `0xd04a`, `0x10e68`,
+  `0x10e22`, `0x10dce`, and `0x10898`. `50g` writes area-fill id `50`, and
+  `2P` maps it to gray selector `4`. The page rule object is
+  `00 00 00 00 01 04 5c 01 00 0c 00 05 00 00`; after `0x1edc6` bridge
+  normalization it is `00 00 00 00 01 14 5c 01 00 0c 00 05 00 05`.
+  `0x1f446` dispatches selector `4` to pattern helper `0x1f4e0`; the full
+  26-row composed page digest is
+  `f7e8bc65420e95a1456db1f0673a164f8ae2f1919fb4b5b8964886354fc54fdf`.
+- `21 1b 2a 63 31 32 61 35 62 32 67 33 50` =
+  `! ESC *c12a5b2g3P`. The same parser handlers run, `2g` writes area-fill id
+  `2`, and `3P` maps it to HP-pattern selector `9` in portrait orientation.
+  The page rule object is `00 00 00 00 01 09 5c 01 00 0c 00 05 00 00`; after
+  bridge normalization it is `00 00 00 00 01 19 5c 01 00 0c 00 05 00 05`.
+  `0x1f446` dispatches selector `9` to `0x1f4e0`; the full 26-row composed
+  page digest is
+  `c981832502ee7ed97b339959027448f878d591e3909519a3b9233e31200ac599`.
+
+For both alternate selector streams, `0x1ef6a` executes call order
+`0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`, decodes rule key `0x5c01` as
+x `28`, y `21`, row-low `5`, subbyte `12`, byte-pair offset `2`, width `12`,
+and draws five rule rows into the same 40-pixel-wide composed page band as the
+compact text rows.
+
 Fixture `host-fetched text rectangle and raster page record feeds 0x1ed84 and
 0x1ef6a` extends that stream with `ESC *t300R ESC *r0A ESC *b2W c3 3c`, so
 the same current page record contains:
@@ -457,13 +487,21 @@ publication and render entry` classifies these fields:
 - unknown: exact live 68000 heap/register continuity for the full
   parser-to-allocator path.
 
+The alternate selector fixture classifies `0x78316e` as canonical fill state:
+`0x10dce` writes it from `50g` and `2g`, and `0x10898` consumes it for `2P`
+and `3P`. The selector byte in each page rule object is canonical page content
+before bridge normalization and derived render content after `0x1edc6` ORs
+bit `0x10` and copies height into continuation word `+0x0c`. The SHA-256 row
+digests are derived/cache evidence for the composed software-visible output,
+not firmware state.
+
 Writers are the parser handlers and producers listed above, plus `0xff1e`
 when fixtures `host-fetched text rectangle raster FF publishes rendered page
 record` and `addressed text rectangle raster FF publishes rendered page
 record` finalize the heterogeneous current page. Readers are `0x1ed84` /
 `0x1edc6`, `0x1ef6a`, compact bucket dispatch `0x1efc2`, rule dispatch
-`0x1f446`, raster dispatch `0x1f88e`, compact text dispatch `0x1effe`, and
-rule helper `0x1f596`.
+`0x1f446`, raster dispatch `0x1f88e`, compact text dispatch `0x1effe`, solid
+rule helper `0x1f596`, and pattern rule helper `0x1f4e0`.
 
 ## Reproduction Contract
 
@@ -500,9 +538,12 @@ A byte-stream reproduction must preserve these behaviors:
   band crossing. The initial mixed text/rule/raster/FF byte stream now provides
   a complete parser-produced page comparison with selector-7 rule output,
   mode-0 raster output, compact text, publication, and render-entry rows;
+  `host-fetched alternate rectangle selectors feed full page records` adds
+  page-record comparisons for gray selector `4` from `50g2P` and portrait
+  pattern selector `9` from `2g3P`;
   checked-in coverage also includes font-selection streams, downloaded-glyph
   FF publication, geometry-changing publication streams, and a parser-driven
   downloaded-glyph/rule/raster page. The remaining comparison gap is broader
-  physical/reference-output validation and alternate selector combinations in
-  full pages, not the software-visible selector-7 rule object or mixed
-  text/rule/raster publication path.
+  physical/reference-output validation and full-page combinations for the
+  other non-solid selector ids/orientations, not the software-visible
+  selector-7, selector-4, or selector-9 rule objects.

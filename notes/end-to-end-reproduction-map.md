@@ -59,7 +59,8 @@ executable fixture or generated analysis note.
 - Rule/rectangle producers:
   ROM evidence is `0x10898`, `0x10b80`, `0x13386`, and `0x133aa`.
   Reproduction evidence is `notes/rectangle-graphics.md` and
-  parser-to-rule fixtures.
+  parser-to-rule fixtures, including
+  `host-fetched alternate rectangle selectors feed full page records`.
 - Raster producers:
   ROM evidence is `0x10808`, `0x1075a`, `0x105d0`, `0x13070`, and
   `0x13250`.
@@ -123,9 +124,10 @@ executable fixture or generated analysis note.
   `generated/analysis/ic30_ic13_raster_graphics_flow.md` and host-fetched
   raster fixtures.
 - Rectangle/rule streams are covered for size commands, fill selectors,
-  clipping, no-room retry, bridge normalization, and solid/pattern rendering.
-  Evidence: `notes/rectangle-graphics.md` and parser trace fixtures for
-  `ESC *c` rule streams.
+  clipping, no-room retry, bridge normalization, solid/pattern rendering,
+  selector-7 text/rule page records, and selector-4/selector-9 text/rule page
+  records. Evidence: `notes/rectangle-graphics.md` and parser trace fixtures
+  for `ESC *c` rule streams.
 - Reset, FF, page-size, orientation, paper-source, copies, and VFC publication
   paths are covered through `0xff1e` for current modeled page records.
   Evidence: `generated/analysis/ic30_ic13_esc_e_reset_flow.md`,

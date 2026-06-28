@@ -2291,11 +2291,14 @@ Other checked leads:
   firmware parser path now that cursor variables `0x782c8a` and
   `0x782c8e` are named as horizontal and vertical respectively.
 - Treat selector-7 rectangle/rule composition as covered for mixed
-  text/rule/raster page records: `notes/rectangle-graphics.md` now cites
+  text/rule/raster page records, and selector-4/selector-9 rectangle/rule
+  composition as covered for text/rule page records:
+  `notes/rectangle-graphics.md` now cites
   `host-fetched text plus rectangle page record feeds 0x1ed84 and 0x1ef6a`,
+  `host-fetched alternate rectangle selectors feed full page records`,
   `host-fetched text rectangle raster FF publishes rendered page record`, and
   `addressed text/rule/raster field groups reach publication and render
-  entry`. Remaining rectangle work is alternate selector combinations in full
-  pages plus physical/reference placement checks.
+  entry`. Remaining rectangle work is the other non-solid selector
+  ids/orientations in full pages plus physical/reference placement checks.
 - Compare physical engine/self-test placement against the now-matched
   ROM/manual logical page and printable-area dimensions.

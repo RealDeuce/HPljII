@@ -78682,6 +78682,173 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         }],
         "rows": text_rectangle_expected_rows,
     }))
+    alternate_rectangle_selector_cases = {
+        "gray50": {
+            "stream": b"!\x1b*c12a5b50g2P",
+            "rule_list": [bytes.fromhex("00 00 00 00 01 14 5c 01 00 0c 00 05 00 05")],
+            "page_rule_list": [bytes.fromhex("00 00 00 00 01 04 5c 01 00 0c 00 05 00 00")],
+            "selector": 4,
+            "mutated_object": bytes.fromhex("00 00 00 00 01 04 5c 01 00 0c 00 05 ff ca"),
+            "row_sha256": "f7e8bc65420e95a1456db1f0673a164f8ae2f1919fb4b5b8964886354fc54fdf",
+            "rows_tail": [
+                "............................#.#####.#.##",
+                "...............................###.....#",
+                "............................#...#...#...",
+                "............................##.....###..",
+                "............................###.#.#####.",
+            ],
+            "events": [
+                {"kind": "printable", "sequence": None, "handler": None},
+                {"kind": "rectangle", "sequence": b"\x1b*c12a", "handler": 0x010E68},
+                {"kind": "rectangle", "sequence": b"5b", "handler": 0x010E22},
+                {"kind": "rectangle", "sequence": b"50g", "handler": 0x010DCE},
+                {"kind": "rectangle", "sequence": b"2P", "handler": 0x010898},
+            ],
+        },
+        "pattern2": {
+            "stream": b"!\x1b*c12a5b2g3P",
+            "rule_list": [bytes.fromhex("00 00 00 00 01 19 5c 01 00 0c 00 05 00 05")],
+            "page_rule_list": [bytes.fromhex("00 00 00 00 01 09 5c 01 00 0c 00 05 00 00")],
+            "selector": 9,
+            "mutated_object": bytes.fromhex("00 00 00 00 01 09 5c 01 00 0c 00 05 ff ca"),
+            "row_sha256": "c981832502ee7ed97b339959027448f878d591e3909519a3b9233e31200ac599",
+            "rows_tail": [
+                "...................................##...",
+                "...................................##...",
+                "...................................##...",
+                "...................................##...",
+                "...................................##...",
+            ],
+            "events": [
+                {"kind": "printable", "sequence": None, "handler": None},
+                {"kind": "rectangle", "sequence": b"\x1b*c12a", "handler": 0x010E68},
+                {"kind": "rectangle", "sequence": b"5b", "handler": 0x010E22},
+                {"kind": "rectangle", "sequence": b"2g", "handler": 0x010DCE},
+                {"kind": "rectangle", "sequence": b"3P", "handler": 0x010898},
+            ],
+        },
+    }
+    alternate_rectangle_selector_summary = {}
+    for case_name, expected in alternate_rectangle_selector_cases.items():
+        stream = expected["stream"]
+        page_record_stream = render_mixed_printable_control_page_record_stream(
+            data,
+            resources,
+            stream,
+            0x440946B4,
+            dict(text_rectangle_state),
+            default_advance=line_printer_hmi["hmi"],
+        )
+        host_fetch = fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(stream), direct_mode=0),
+            len(stream),
+        )
+        rectangle_trace = trace_rectangle_parser_dispatch_via_11774(
+            data,
+            stream[1:],
+            rectangle_command_state(
+                cursor_x=pack12(28),
+                cursor_y=pack12(21),
+                page_width=100,
+                page_height=80,
+            ),
+        )
+        alternate_render_entry = render_bucket_page_record_via_1ed84_1ef6a(
+            data,
+            resources,
+            page_record_stream["page_record"],
+            bucket_word=page_record_stream["bucket_index"],
+        )
+        rows = alternate_render_entry["entry"]["rows"]
+        alternate_rectangle_selector_summary[case_name] = {
+            "fetched_stream": host_fetch["stream"],
+            "fetch_source_count": len(host_fetch["sources"]),
+            "fetch_source_set": sorted(set(host_fetch["sources"])),
+            "remaining_ring": host_fetch["state"]["ring"],
+            "parser_handlers": [0x00D04A] + [
+                command["final_dispatch"]["handler"]
+                for command in rectangle_trace["commands"]
+            ],
+            "stream_events": [
+                {
+                    "kind": event["kind"],
+                    "sequence": event.get("sequence"),
+                    "handler": event.get("handler"),
+                }
+                for event in page_record_stream["events"]
+            ],
+            "rule_list": page_record_stream["bridged_record"]["rule_list"],
+            "page_rule_list": page_record_stream["page_record"]["rule_list"],
+            "call_order": alternate_render_entry["entry"]["call_order"],
+            "rule_rendered": [
+                {
+                    key: entry[key]
+                    for key in (
+                        "selector",
+                        "helper",
+                        "key",
+                        "bucket_delta",
+                        "decoded",
+                        "width",
+                        "remaining_before",
+                        "rows_drawn",
+                        "mutated_object",
+                    )
+                }
+                for entry in alternate_render_entry["entry"]["rules"]["rendered"]
+            ],
+            "row_count": len(rows),
+            "row_width": max(len(row) for row in rows),
+            "row_sha256": hashlib.sha256("\n".join(rows).encode("ascii")).hexdigest(),
+            "rows_tail": rows[-5:],
+        }
+    checks.append(assert_equal("host-fetched alternate rectangle selectors feed full page records", {
+        name: {
+            **summary,
+            "rule_rendered": [
+                {
+                    **entry,
+                    "helper": entry["helper"],
+                }
+                for entry in summary["rule_rendered"]
+            ],
+        }
+        for name, summary in alternate_rectangle_selector_summary.items()
+    }, {
+        name: {
+            "fetched_stream": expected["stream"],
+            "fetch_source_count": len(expected["stream"]),
+            "fetch_source_set": ["ring"],
+            "remaining_ring": [],
+            "parser_handlers": [0x00D04A, 0x010E68, 0x010E22, 0x010DCE, 0x010898],
+            "stream_events": expected["events"],
+            "rule_list": expected["rule_list"],
+            "page_rule_list": expected["page_rule_list"],
+            "call_order": [0x1EF86, 0x1EFC2, 0x1F446, 0x1F756],
+            "rule_rendered": [{
+                "selector": expected["selector"],
+                "helper": 0x1F4E0,
+                "key": 0x5C01,
+                "bucket_delta": 1,
+                "decoded": {
+                    "x": 28,
+                    "y": 21,
+                    "row_low": 5,
+                    "subbyte": 12,
+                    "byte_pair_offset": 2,
+                },
+                "width": 12,
+                "remaining_before": 5,
+                "rows_drawn": 5,
+                "mutated_object": expected["mutated_object"],
+            }],
+            "row_count": 26,
+            "row_width": 40,
+            "row_sha256": expected["row_sha256"],
+            "rows_tail": expected["rows_tail"],
+        }
+        for name, expected in alternate_rectangle_selector_cases.items()
+    }))
     text_rectangle_addressed = render_text_rectangle_addressed_page_record_stream(
         data,
         resources,

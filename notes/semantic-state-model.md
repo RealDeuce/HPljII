@@ -5724,8 +5724,14 @@ modeled/address-aware rather than a full 68000 execution trace.
 - `0x105d0..0x13250`: delayed record restore, gate outcomes, encoded object
   layout, rendered mode contracts, resolution-active interactions,
   consecutive transfers, and same-family lowercase chaining are
-  fixture-backed. The remaining edge is full live 68000 register/memory
-  capture for a dense parser-produced page.
+  fixture-backed. Parser scratch is the delayed `80 57 ...` record,
+  snapshot, payload offset, and drained bytes; canonical output is the
+  page-root `+0x1c` raster chain plus object bytes from `0x13070` /
+  `0x13250`; derived/cache state is the bucket/key and render-record copy
+  consumed by `0x1ed84` / `0x1ef6a`. The remaining edge is specifically live
+  CPU/register memory across
+  `0x12218 -> 0x105d0 -> 0x10084 -> 0x13070`, not parser dispatch,
+  encoded-object layout, or mode renderer behavior.
 - `0x13250..0x1381c`: addressed allocation is covered in the shared
   page-record allocator checkpoint and in the addressed text/rule/raster
   fixture, where the raster object lives at `0x00d0c038` and publishes as
@@ -6122,10 +6128,11 @@ the parser and allocator.
   lacks full live parser-to-allocator CPU memory capture for this producer.
 - `0x105d0..0x13250`: delayed restore, gate outcomes, encoded object layout,
   bridge preservation, and mode `0..3` render contracts are composed in
-  `Raster Transfer Gate And Encoded Rows`. The mixed stream still lacks a full
-  68000 execution through `0x105d0`, but its addressed raster object storage is
-  pinned by fixture `addressed text/rule/raster field groups reach publication
-  and render entry`.
+  `Raster Transfer Gate And Encoded Rows`. The mixed stream still lacks live
+  CPU/register memory across
+  `0x12218 -> 0x105d0 -> 0x10084 -> 0x13070`, but its addressed raster object
+  storage is pinned by fixture `addressed text/rule/raster field groups reach
+  publication and render entry`.
 - `0x10084..0x1381c`: first root allocation and stream-chunk allocation
   are modeled with exact side effects, including a multi-writer chunk
   rollover fixture in the shared allocator checkpoint, but not captured

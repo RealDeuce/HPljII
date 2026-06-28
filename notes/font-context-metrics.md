@@ -1281,7 +1281,10 @@ A byte-stream reproduction must preserve these behaviors:
   `0x000f` storing `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, rounded
   low-byte discard for `0x1508`, lower-bound
   suppression for both consumers, and asymmetric upper-bound suppression of
-  `0xd8fc` while `0xd4ac` still renders a span.
+  `0xd8fc` while `0xd4ac` still renders a span. The extent-fence matrix
+  proves derived heights `42`, `44`, and `45` at the `d8fc` page-extent gate:
+  height `42` with offset `0` renders high-y `21`, while heights `44` and
+  `45` exit `beyond-page-extent` even with offsets `1` and `2`.
   Fixture `descriptor metric fields match across inline and resource contexts`
   now pins the legal producer-form boundary and both invalid swapped forms.
   The producer formulas are documented from disassembly: `0x17430` derives

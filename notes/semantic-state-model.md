@@ -4614,15 +4614,21 @@ fields and every legal metric combination have not been page-compared.
   `+0x14/+0x16/+0x18 = 0x0001/0x0000/0x0000`, range two copies
   `0x0002/0x0001/0x0000`, and both still feed visible consumer rows while
   varying rounded outputs and max signed offsets.
+  Fixture `legal descriptor metric extent fenceposts drive d4ac and d8fc
+  consumers` proves the `d8fc` page-extent fence after the derived-height
+  formula: range words `0x002f`, `0x0031`, and `0x0032` copy derived heights
+  `42`, `44`, and `45`; height `42` with offset `0` renders high-y `21`,
+  while heights `44` and `45` exit `beyond-page-extent` even with offsets
+  `1` and `2`.
   Fixture
   `descriptor metric fields match across inline and resource contexts` now
   pins the legal inline/unflagged and resource/flagged producer forms plus the
   two invalid swapped forms. The producer formulas are documented from
   `0x17430`, `0x1757a`, `0x1762a`, and `0x1719c`; remaining work is additional
   metric-value combinations within legal forms beyond the covered matrix,
-  boundary, range-endpoint, mixed-value, tight-range, low-nibble, and
-  byte-boundary fixtures, plus external naming for consumed-but-not-staged
-  validation fields.
+  boundary, range-endpoint, extent-fence, mixed-value, tight-range,
+  low-nibble, and byte-boundary fixtures, plus external naming for
+  consumed-but-not-staged validation fields.
 
 ## Macro Definition And Data-Chain Replay
 

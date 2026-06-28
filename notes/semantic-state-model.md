@@ -65,7 +65,9 @@ before parser dispatch.
 - Firmware bookkeeping:
   - `0x7821cd`: service-needed flag checked before all byte sources.
   - `0x7821cc`: service-in-progress flag set around helper `0x10cc`.
-  - `0x780e66`: source/pending flags cleared as stacked sources empty.
+  - `0x780e66`: source/pending flags. Observed bit roles are bit 3 for
+    first pushback stack probe, bit 2 for data-chain probe, bit 1 for active
+    data-chain frames, and bit 0 for second pushback stack probe.
   - `0x780e3b`: no-byte gate that returns `D7 = -1` while
     `0x780e66 != 0`.
   - `0x7821c4`: timeout/handshake state cleared after direct hardware
@@ -203,8 +205,10 @@ broader frame-lifetime tracing.
   non-replay page-finalization frame from `0xe4f4` are documented. Remaining
   uncertainty is any producer for frame byte `+9` values outside observed
   `2`, `3`, and `4`.
-- `0x780e66` bit meanings: source-empty/active bits are observed by
-  behavior, but not yet fully named.
+- `0x780e66` bit meanings: bit 1 is pinned as data-chain-active through
+  `0xe418` / `0xe4f4` / `0xe22c`; bits 3, 2, and 0 are pinned only at the
+  `0xa904` consumer side as first-stack, data-chain-probe, and second-stack
+  gates. External setter/owner names for those three bits remain unproven.
 
 ## Parser Record And Delayed Payload State
 

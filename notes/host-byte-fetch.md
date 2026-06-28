@@ -279,8 +279,12 @@ Field groups:
 - Firmware bookkeeping:
   - `0x7821cd` is the service-needed gate;
   - `0x7821cc` is set while `0x10cc(0x780202)` runs;
-  - `0x780e66` gates stacked/data-chain sources and is cleared as those
-    sources drain;
+  - `0x780e66` gates stacked/data-chain sources. The observed source bits are
+    bit 3 for the first pushback stack probe cleared by `0xa924`, bit 2 for
+    the data-chain probe cleared by `0xa94c`, bit 1 for active data-chain
+    frames set by `0xe418` / `0xe4f4` and cleared by `0xe22c` frame-end
+    paths, and bit 0 for the second pushback stack probe cleared by
+    `0xa9a0`;
   - `0x780e3b` forces the immediate `D7 = -1` return while
     `0x780e66` is set;
   - `0x7821c4`, `0x7828ec`, `0x7828fa`, `0x7828fb`, and `0x780e2e`
@@ -293,8 +297,8 @@ Field groups:
   - board-level names and timing for the direct MMIO banks;
   - data-chain frame-byte values outside the observed `+9 = 2`, `3`, and
     `4` producers, if any;
-  - final names for individual `0x780e66` bits beyond observed source
-    gating behavior.
+  - external setter/owner names for `0x780e66` bits 3, 2, and 0 beyond the
+    observed `0xa904` source probes.
 
 Writers:
 
@@ -391,8 +395,10 @@ Unresolved middle edges:
   non-replay page-finalization producer `0xe4f4` are documented. Remaining
   uncertainty is any producer for frame byte `+9` values outside observed
   `2`, `3`, and `4`.
-- `0x780e66`: bit meanings are behaviorally observed as source gates, but
-  the full bit-name map is not yet proven.
+- `0x780e66`: bit 1 is data-chain-active and is set/cleared by
+  `0xe418` / `0xe4f4` / `0xe22c`; bits 3, 2, and 0 are observed through
+  `0xa904` as first-stack, data-chain-probe, and second-stack source gates.
+  Their external setter/owner names remain unproven.
 
 ## Reproduction Requirements
 

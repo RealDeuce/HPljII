@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import re
 import textwrap
@@ -89480,13 +89481,43 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     return lines
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run ROM-derived renderer fixtures and refresh the generated "
+            "Markdown report. Success is concise by default."
+        ),
+    )
+    parser.add_argument(
+        "--report",
+        action="store_true",
+        help="print the full Markdown report after writing it",
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="print nothing on success",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
+    args = parse_args()
     data = require_firmware()
     resources = require_resources()
-    report = wrap_markdown("\n".join(run_selftest(data, resources)))
+    lines = run_selftest(data, resources)
+    report = wrap_markdown("\n".join(lines))
     ANALYSIS.mkdir(parents=True, exist_ok=True)
-    (ANALYSIS / "ic30_ic13_renderer_fixture_harness.md").write_text(report, encoding="utf-8")
-    print(report)
+    report_path = ANALYSIS / "ic30_ic13_renderer_fixture_harness.md"
+    report_path.write_text(report, encoding="utf-8")
+    if args.report:
+        print(report)
+    elif not args.quiet:
+        check_count = next(
+            (line.removeprefix("checks: ").strip() for line in lines if line.startswith("checks: ")),
+            "unknown",
+        )
+        print(f"ok: {check_count} fixture checks; report written to {report_path.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

@@ -296,7 +296,11 @@ Run it after the generated ROM artifacts exist:
 tools/render_fixture_harness.py
 ```
 
-It emits or refreshes local reports under `generated/analysis/`.
+It emits or refreshes local reports under `generated/analysis/` and prints
+only a one-line success summary by default. Use
+`tools/render_fixture_harness.py --quiet` for no success output, or
+`tools/render_fixture_harness.py --report` when the full Markdown report
+should be printed to stdout.
 
 ## How this should be used by Dreamulator work
 

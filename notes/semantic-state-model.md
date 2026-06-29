@@ -2397,6 +2397,16 @@ and the compact glyph renderers.
 - `0x1a9be` writes candidate flags, increments `0x78278e`, partitions
   records by class/address range, and advances the relevant
   `0x7827a0..0x7827b4` cursor windows.
+- `0x1bc38` inserts an inline/downloaded payload candidate into the same
+  pointer-list model. It rejects full lists at `0x78278e >= 0x00c0`, chooses
+  class from payload byte `+0x20` for flagged/resource records or byte
+  `+0x16` for inline/downloaded records, shifts the class-specific tail, and
+  returns the inserted slot pointer in `D7`.
+- `0x1bd2e` deletes one candidate slot from the same shared list. Its caller
+  passes the slot pointer in argument `+8`; it computes the last occupied slot
+  as `0x782324 + 4 * 0x78278e - 4`, copies each later longword down one slot,
+  and clears the old tail longword. Counter and class-window decrements are
+  performed by callers such as `0x1ba92` and `0x1887a`, not by `0x1bd2e`.
 - `0x1569c` writes `0x78287c` / `0x7827b8` from the selected class
   window and sets active bit `0x80000000` in the chosen entries.
 - `0x156de`, `0x1519a`, `0x153c6`, `0x14758`, and related filters
@@ -2421,6 +2431,10 @@ and the compact glyph renderers.
 - `0x13eb8` consumes the selected candidate state and writes current
   context records `0x782ee6` / `0x782ef6`; `0x14c64` then rebuilds the
   active character map for printable text.
+- `0x1bd2e` is consumed by the optional-window refresh path
+  `0x19dd2 -> 0x1ba92` and by current-record teardown through `0x1887a`; both
+  callers are responsible for deciding which slot is removed and how counters
+  are adjusted.
 
 ### Output Effect
 
@@ -2460,6 +2474,7 @@ resources because no image is available in this repo.
 - `generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`
 - `generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst`
+- `generated/disasm/ic30_ic13_font_candidate_object_alloc_01bc38.lst`
 - `generated/analysis/ic32_ic15_font_records.md`
 - `generated/analysis/ic32_ic15_resource_glyph_probe.md`
 
@@ -8521,7 +8536,7 @@ leaves those names unresolved.
 
 ### Unresolved Middle Edges
 
-- `0x1bd2e`, `0x1887a`, `0x1a616`, `0x1b04c`, `0x1b4c0`, and `0x179aa`:
+- `0x1887a`, `0x1a616`, `0x1b04c`, `0x1b4c0`, and `0x179aa`:
   nested helper interiors remain separate composed checkpoints. This section
   names the predicates and state handoff into them.
 - `0x1b9c0`: resource-record classifier return names are inferred only by the

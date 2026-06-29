@@ -133,6 +133,7 @@ def generate_disassembly(firmware: Path) -> None:
         ("ic30_ic13_reset_000110.lst", "0x110", "0x110", "0x500"),
         ("ic30_ic13_cart_resource_scan_0003e8.lst", "0x3e8", "0x3e8", "0x260"),
         ("ic30_ic13_trampoline_handlers_000c7e.lst", "0xc7e", "0xc7e", "0x280"),
+        ("ic30_ic13_timer_status_trampoline_000d52.lst", "0xd52", "0xd52", "0x22c"),
         ("ic30_ic13_scan_status_interrupt_000f84.lst", "0xf84", "0xf84", "0x170"),
         ("ic30_ic13_scheduler_trap_handlers_00110c.lst", "0x110c", "0x110c", "0x180"),
         ("ic30_ic13_scheduler_dispatch_00123a.lst", "0x123a", "0x123a", "0x50"),

@@ -1078,8 +1078,10 @@ ROM work needed:
   physical board interfaces. The local no-byte gate is now narrowed to
   quiesce/reset branches `0x4218..0x44d2` and `0x61e4..0x6362`; their exact
   user-facing trigger names remain provisional.
-- Trace the handler at `0x00000d52`, which polls low MMIO/status
-  addresses and updates many `0x0078xxxx` state bytes.
+- Correlate the now-traced periodic handler `0x00000d52` with board-level
+  signal names. Its software-visible latches, output strobes, counters, and
+  wait-object effects are documented; remaining work is physical meaning and
+  timing for `$8000` bits, `$8a01`, `$a200`, `$a400`, and `0xffff2000`.
 - Identify input buffer structures in RAM.
 - Decode tokenizer records rooted at `0x78299e` and the 32-entry
   command/data pool at `0x782a98`.
@@ -1366,11 +1368,14 @@ ROM work needed:
   150/100/75-dpi raster streams now carry encoded modes 1/2/3 through
   `0x1ed84` and `0x1ef6a`.
 - Continue the active-render scheduler from the remaining physical
-  feedback and pacing edges: `$8000.4` selection at `0x0f84..0x0f8e`
-  and `0x1020..0x102e`, physical meaning and timing for `$a601 = 0xfd`,
-  `$a801`, `$aa01`, `0xfffe0001`, and `0xfffe0003`, and the timing
-  relation between those MMIO/helper events and the now-modeled
-  wait-object states behind traps `#0..#7`. The software-visible
+  feedback and pacing edges: low-MMIO/status meanings for the periodic
+  `0x0d52..0x0f7a` trampoline (`$8000` bits, `$8a01`, `$a200`, `$a400`,
+  `0xffff2000`), `$8000.4` selection at `0x0f84..0x0f8e` and
+  `0x1020..0x102e`, physical meaning and timing for `$a601 = 0xfd`, `$a801`,
+  `$aa01`, `0xfffe0001`, and `0xfffe0003`, and the timing relation between
+  those MMIO/helper events and the now-modeled wait-object states behind traps
+  `#0..#7`. The software-visible timer/status latches and output strobes,
+  wait-object effects,
   `0xa620`/`0xa638`/`0xa650`/`0xa668`/`0xa680` `$a801` shadow helper
   effects and `0xa6cc` ring/status bridge effects are now fixture
   covered and composed into the semantic model.

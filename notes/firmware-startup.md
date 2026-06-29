@@ -150,8 +150,14 @@ destinations include:
     `0xa601`
 - `0x0078009c`
   - Destination: `0x00000d52`
-  - Current interpretation: status/tick-looking handler; polls `0x8000`
-    bits and `0x8a01`, updates many `0x0078xxxx` state bytes
+  - Current interpretation: periodic timer/status trampoline; acknowledges
+    through `0xffff2000`, increments `0x780e04`, divides work through
+    `0x78017f`/`0x780180`/`0x780181`, debounces `$8000.6/.7` and `$8a01.4`,
+    rotates `$a200`/`$a400` output tables, and feeds wait-object scheduling
+    before the shared `0x1064` exit. See
+    `generated/disasm/ic30_ic13_timer_status_trampoline_000d52.lst` and
+    `Published Record To Active Render Scheduler` in
+    [semantic-state-model.md](semantic-state-model.md).
 
 The exception-like paths write a severity/status byte to `0x783eef` and
 branch to `0x128c`, which appears to emit or display a two-byte

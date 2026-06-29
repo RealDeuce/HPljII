@@ -860,6 +860,12 @@ Field groups:
     `0x7839ac`, `0x7828f9`, `0x780e32`, `0x780e36`, `0x7821f9.2`,
     `0x780e6d`, and `0x780e67`: active-pool copy/status and engine-shadow
     bookkeeping.
+  - `0x78017f`, `0x780180`, and `0x780181`: timer/status trampoline
+    dividers for the `$8000.6/7`, `$8000.5`, and `$a200`/`$a400` phases.
+  - `0x783edc`, `0x783edd`, `0x780e35`, `0x780e69`, `0x782900`,
+    `0x782914`, `0x78296c`, `0x7828fe`, `0x782904`, and `0x7828f6`:
+    software-visible timer/status latches and output-table cursors written by
+    `0x0d52..0x0f7a`.
   - wait-object records signaled by `0x1036` and selected by `0x123a`:
     next pointer `+0`, priority `+8`, scheduler state `+0a`, wait argument
     `+0c`, restart payload `+0x12`, private stack base `+0x16`, and saved
@@ -897,6 +903,12 @@ Writers:
   `0x1cf8..0x1ea8` update status/copy pacing and engine-shadow state.
 - `0x1036..0x1282` and trap handlers `0x1144..0x11f8` update wait-object
   scheduler state.
+- `0x0d52..0x0f7a` acknowledges the periodic status tick through
+  `0xffff2000`, increments `0x780e04`, debounces `$8000.6`/`$8000.7` into
+  `0x783edc`/`0x783edd` plus `0x78017e.2/3`, latches `$8a01.4` and
+  `$8000.5` conditions into `0x78017e.0`, `0x780e35.0`, and `0x780e69`, rotates
+  `$a200`/`$a400` output tables, and updates wait-object countdowns before the
+  shared `0x1064` exit.
 - `0x1eba4..0x1ecd2` advances active render bands, calls `0x1ef6a` when
   capacity is sufficient, throttles/yields when it is not, and performs
   cleanup when active work is done.
@@ -962,6 +974,8 @@ Disassembly evidence:
   `0x1958..0x1fa2`.
 - `generated/disasm/ic30_ic13_scan_status_interrupt_000f84.lst`:
   `0x0f84..0x10f2`.
+- `generated/disasm/ic30_ic13_timer_status_trampoline_000d52.lst`:
+  `0x0d52..0x0f7a`.
 - `generated/disasm/ic30_ic13_scheduler_trap_handlers_00110c.lst`:
   `0x110c..0x1282`.
 - `generated/disasm/ic30_ic13_page_pool_candidate_insert_001c04.lst`:
@@ -987,9 +1001,11 @@ Disassembly evidence:
 
 Unresolved middle edges:
 
-- `0x0f84..0x0fa0` and `0x1020..0x102e`: `$8000.4` selection and the
-  physical timing/effect of `$a601`, `$a801`, `$aa01`, `0xfffe0001`, and
-  `0xfffe0003` still need board-level engine correlation.
+- `0x0d52..0x0f7a`, `0x0f84..0x0fa0`, and `0x1020..0x102e`: the
+  software-visible timer/status latches, output strobes, wait-object effects,
+  and scheduler selection are modeled; physical names and timing for `$8000`
+  bits, `$8a01`, `$a200`, `$a400`, `0xffff2000`, `$a601`, `$a801`, `$aa01`,
+  `0xfffe0001`, and `0xfffe0003` still need board-level correlation.
 - `0x10bc..0x11f8` and `0x123a..0x1282`: trap veneers, copied trap vectors,
   wait-state transitions, and scheduler selection are modeled; the remaining
   gap is their timing relation to physical engine/MMIO events.

@@ -7009,8 +7009,35 @@ record.
     pointer.
   - `0x78017e`: scheduler pending/event bits. Bit 1 is the wait-object
     pending bit set by `0x1036` and cleared by `0x1064` or `0x108e`
-    before `0x123a` dispatch; bits 0, 2, and 3 are set/cleared by the
-    timer/status trampoline around `0x0d52..0x0e86`.
+    before `0x123a` dispatch; bits 0, 2, and 3 are low-MMIO/timer status
+    latches set/cleared by the timer/status trampoline `0x0d52..0x0f7a`.
+  - `0x78017f`, `0x780180`, and `0x780181`: countdown dividers for the
+    `0x0d52` timer/status trampoline. They reload to `4`, `2`, and `5`
+    before running the `$8000.6/7` debounce, `$8000.5` latch, and
+    `$a200`/`$a400` output phases.
+  - `0x783edc` and `0x783edd`: debounce/current-state bytes for
+    `$8000.6` and `$8000.7`. The set side writes `1` and clears
+    `0x78017e.2/3`; the cleared side writes `0` and clears the same bits.
+  - `0x780e8b`: enable gate for turning stable `$8000.6/7` highs into
+    `0x78017e.2/3` events. If the bit was already pending, the handler exits
+    through the error/status report at `0x129e` with table `0xb2c4`.
+  - `0x8a01.4`, `0x780e6b`, `0x780e35.0`, and `0x78017e.0`: a separate
+    low-MMIO status latch. When `$8a01.4` is low and `0x780e6b` is nonzero,
+    the trampoline sets `0x78017e.0`; if it was already set, it clears the
+    bit, raises the interrupt mask, sets `0x780e35.0`, lowers the mask, and
+    signals wait object `0x780202` through `0x1036`.
+  - `0x780e69`: one-shot latch for `$8000.5` low when its two-tick divider
+    expires. The handler writes `0xff` and signals `0x780202` when the latch
+    was previously clear.
+  - `0x782900` and table `0x782914`: four-word rotating output table written
+    to `$a200` every five timer ticks unless `0x783eee` is set or
+    `0x780e08 == 0x10`.
+  - `0x78296c`, `0x7828fe`, table `0x782904`, and shadow word
+    `0x7828f6`: optional three-pulse `$a400` output sequence. When enabled,
+    the trampoline selects an entry pointer from `0x782904[0x7828fe]`, masks
+    three words through `0x7828f6 | 0xff18`, writes each to `$a400`, sets bit
+    4, writes `$a400` again, delays through `0x14c6(0x27)`, saves the last
+    word back to `0x7828f6`, and advances `0x7828fe` modulo `0x10`.
   - `0x78017a`: pending wait-object pointer chosen by `0x1036`;
     `0x780176`: active wait-object pointer updated by `0x123a`;
     `0x780174`: active priority word copied from selected object `+8`.
@@ -7088,6 +7115,20 @@ record.
   longword consumption.
 - `0x2456..0x247a` computes the next source pointer as
   `base + (((row + 0x7839ce) % work +0x06) * work +0x04 << 6)`.
+- `0x0d52..0x0f7a` is the timer/status trampoline. It acknowledges the tick
+  by writing word `0xffff` to `0xffff2000`, increments global counter
+  `0x780e04`, then runs three divider-controlled phases: every four ticks it
+  debounces `$8000.6` into `0x783edc` / `0x78017e.2`, debounces `$8000.7`
+  into `0x783edd` / `0x78017e.3`, and handles `$8a01.4` plus `0x780e6b` as
+  `0x78017e.0` / `0x780e35.0`; every two ticks it latches `$8000.5` low into
+  `0x780e69 = 0xff` and signals wait object `0x780202`; every five ticks it
+  rotates `$a200` output words through `0x782900` / `0x782914` and, when
+  `0x78296c == 1`, emits the three-pulse `$a400` sequence from
+  `0x782904[0x7828fe]`. Its final loop walks wait objects starting at
+  `0x780182`: state bit 7 plus a countdown in `+0x0c` changes the object to
+  state `2`, sets `0x78017e.1`, and updates `0x78017a` if this object has the
+  lower address. The exit then falls through `0x1064`, so normal pending
+  wait-object dispatch rules still apply.
 - `0x0fa2..0x101e` increments `0x78398c`. At or after `0x78398e`, it
   signals `0x780182` through helper `0x1036`; before `0x783998`, it
   sets pending byte `0x78399e` when no pending status exists. If
@@ -7208,6 +7249,12 @@ record.
   work word `+16` through the `0x7839b2/ba/c6` aliases.
 - `0x0fa2..0x101e` reads `0x78398e`, `0x783998`, and pending byte
   `0x78399e` while producing the next status state.
+- `0x0d52..0x0f7a` reads low MMIO/status bits `$8000.5`, `$8000.6`,
+  `$8000.7`, and `$8a01.4`, plus enable/latch bytes `0x780e8b`,
+  `0x780e6b`, `0x780e69`, `0x783eee`, `0x780e08`, and `0x78296c`.
+  It consumes output tables `0x782914` and `0x782904`, wait-object state
+  words `+0x08/+0x0a/+0x0c`, and the linked wait-object list rooted at
+  `0x780182`.
 - `0x1036..0x1062` reads the signaled object's word `+0x0a` and
   compares the target pointer against `0x78017a` when `0x78017e.1` was
   already set.
@@ -7406,6 +7453,20 @@ side models helper `0xa680` as nonzero with `0x780e32 = 0`,
 `0x10e0(0x7801a2, 3)` and loops without producing a terminal `D7` in the
 bounded fixture.
 
+The timer/status trampoline at `0x0d52..0x0f7a` is now decoded as the periodic
+low-MMIO/status producer for that same wait-object machinery. It writes
+`0xffff` to `0xffff2000`, increments `0x780e04`, divides work across
+`0x78017f = 4`, `0x780180 = 2`, and `0x780181 = 5`, debounces `$8000.6` and
+`$8000.7` into `0x783edc`/`0x783edd` plus event bits `0x78017e.2/3`, converts
+`$8a01.4` with enable byte `0x780e6b` into `0x78017e.0` and `0x780e35.0`, and
+latches `$8000.5` low into `0x780e69 = 0xff`. Its output phase rotates words
+from `0x782914` to `$a200` and optionally drives three `$a400` strobes from
+the table pointed to by `0x782904[0x7828fe]`. Its final wait-object countdown
+loop is the local producer for `0x78017e.1` when a state-bit-7 object reaches
+countdown zero. The exact physical names for `$8000` bits, `$8a01`, `$a200`,
+`$a400`, and `0xffff2000` remain board-level work; the software-visible latch,
+counter, output, and wait-object effects are no longer an untraced handler.
+
 The scheduler-loop fixture
 `0x1eba4/0x1ef6a active render loop advances or yields bands` starts
 with active selector `0x7820bc = 1`, so the active work record is
@@ -7488,6 +7549,8 @@ covered.
   `0x1958..0x1fa2`
 - `generated/disasm/ic30_ic13_scan_status_interrupt_000f84.lst`:
   `0x0f84..0x10f2`
+- `generated/disasm/ic30_ic13_timer_status_trampoline_000d52.lst`:
+  `0x0d52..0x0f7a`
 - `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`:
   `0xa620..0xa680` for `$a801` bit helpers and `0xa6cc..0xa810` for
   the alternate ring/status bridge.
@@ -7518,10 +7581,11 @@ covered.
 
 ### Unresolved Middle Edges
 
-- `0x0f84..0x0fa0` and `0x1020..0x102e`: `$8000.4` selection between
-  scan/status handling and helper `0xa6cc`, plus the physical effect and
-  timing of `$a601 = 0xfd`, `$a801`, `$aa01`, `0xfffe0001`, and
-  `0xfffe0003`, still need board-level engine correlation.
+- `0x0d52..0x0f7a`, `0x0f84..0x0fa0`, and `0x1020..0x102e`: software-visible
+  timer/status latches, counters, output strobes, wait-object effects, and
+  scheduler selection are documented; the remaining edge is physical meaning
+  and timing for `$8000` bits, `$8a01`, `$a200`, `$a400`, `0xffff2000`,
+  `$a601 = 0xfd`, `$a801`, `$aa01`, `0xfffe0001`, and `0xfffe0003`.
 - `0x10bc..0x11f8` and `0x123a..0x1282`: trap veneers, copied trap
   vectors, wait-state transitions, and scheduler selection are modeled;
   the remaining gap is the timing relation between those firmware

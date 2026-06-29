@@ -8248,8 +8248,154 @@ proves startup bulk load and active-record failure reporting through
   register traffic is bounded, but the physical device and pin-level meaning of
   `$fffee00*`, `$a200`, and `$a801` are not identified.
 - `0xba48 -> normal rendering`: the loop exits through `0xc108`, `0x19dd2`,
-  and `0x36e4`, but no fixture proves how a modeled external-ready session
-  resumes host parsing or whether it can perturb page state.
+  and `0x36e4`. The `0x19dd2` scheduler handoff is now bounded in
+  `Page/Font Scheduler Handoff`, but no fixture proves how a modeled
+  external-ready session resumes host parsing or whether it can perturb page
+  state.
+
+## Page/Font Scheduler Handoff
+
+Status: bounded for routine `0x19dd2..0x19eb4` as an orchestration checkpoint
+between external/host quiesce callers and the font/resource maintenance
+helpers that can run before normal rendering resumes. This is not a renderer
+entry and does not emit pixels directly. It matters for byte-stream
+reproduction because it can raise a status bit, update font/resource
+bookkeeping through helper calls, and decide whether its caller sees success
+or a zero/status return before page work continues.
+
+Concept: `0x19dd2` creates a local scratch block at `A6-0x28`, publishes its
+address through global longword `0x782894`, initializes that block through
+`0x19eb6`, then samples two helper predicates: `0x1a042` into local byte
+`A6-0x29` and `0x19f08` into local byte `A6-0x2a`. If both predicate bytes
+are zero, it calls `0x19fb8(0)`, runs shared font/default refresh
+`0x1b04c`, and returns `D7 = 1`. If at least one predicate byte is nonzero,
+it probes `0x72a2`; when that probe returns zero and the first predicate byte
+is nonzero, it writes the first predicate to `0x780e8d`, raises mask
+`0x00000200` at status root `0x780e2e` through `0x9bee`, calls
+`0x19fb8(first_predicate)`, and returns `D7 = 0`. Otherwise it runs the
+longer refresh chain `0x1ba92(first_predicate)`,
+`0x178fa(first_predicate)`, `0x19d9c()`, `0x1a4fa(second_predicate)`,
+`0x1a900()`, and `0x19fb8(first_predicate)`, then returns `D7 = 1`.
+
+### Field Groups
+
+- Canonical state:
+  - `0x780e2e`: status longword root. The early status branch raises bit mask
+    `0x00000200` through generic OR helper `0x9bee`.
+  - `0x780e8d`: byte copy of the first predicate on the early status branch.
+    Its exact user-visible name is not assigned in this checkpoint.
+- Derived/cache state:
+  - `0x782894`: pointer to the current stack scratch block at `A6-0x28`.
+    `0x19dd2` publishes it before calling helper `0x19eb6`; helper internals
+    downstream of that pointer remain to be lifted.
+- Parser scratch:
+  - `A6-0x29`: first predicate byte returned in `D7` by `0x1a042`.
+  - `A6-0x2a`: second predicate byte returned in `D7` by `0x19f08`.
+  - `A6-0x28..A6-0x01`: local scratch frame initialized through `0x19eb6`.
+- Firmware bookkeeping:
+  - Return `D7`: `1` for the both-zero refresh path and the long refresh path;
+    `0` only for the status-raise branch after `0x72a2 == 0` and first
+    predicate nonzero.
+  - Stack argument slot `(A7)`: reused to pass extended predicate bytes to
+    `0x19fb8`, `0x1ba92`, `0x178fa`, and `0x1a4fa`; `0x19e40` pushes
+    address `0x780e2e` before calling `0x9bee`.
+- Unknown:
+  - Semantic names for the two predicate bytes, the contents of the scratch
+    block behind `0x782894`, and the full state written by helpers `0x19eb6`,
+    `0x1a042`, `0x19f08`, `0x19fb8`, `0x1ba92`, `0x178fa`, `0x19d9c`,
+    `0x1a4fa`, and `0x1a900`.
+
+### Writers
+
+- `0x19dd6..0x19dda` computes `A6-0x28` and writes it to `0x782894`.
+- `0x19de0` calls `0x19eb6` after publishing the scratch pointer.
+- `0x19de6..0x19df6` stores helper returns from `0x1a042` and `0x19f08` into
+  local predicate bytes `A6-0x29` and `A6-0x2a`.
+- `0x19e32..0x19e46` writes `0x780e8d = first_predicate` and calls
+  `0x9bee(0x780e2e, 0x00000200)` on the status-raise branch.
+- `0x19e5e..0x19e62` returns `D7 = 0` from that status branch.
+- `0x19e1c..0x19e20` and `0x19eb0..0x19eb4` return `D7 = 1` from the
+  refresh/success branches.
+
+### Readers And Consumers
+
+- Callers found by generated cross-reference analysis are `0x00447a`,
+  `0x004760`, `0x007164`, `0x00bb16`, and `0x01a3c2`.
+- `0x19dfa..0x19e04` consumes the two predicate bytes to select the both-zero
+  path versus the nonzero predicate paths.
+- `0x19e22..0x19e30` consumes the `0x72a2` return and first predicate byte to
+  select the status-raise path.
+- `0x19e06..0x19e16`, `0x19e4e..0x19e58`, and `0x19ea0..0x19eaa` consume the
+  first predicate as the argument to `0x19fb8`.
+- `0x19e64..0x19e84` consumes the first predicate as the argument to
+  `0x1ba92` and `0x178fa`, then calls `0x19d9c`.
+- `0x19e8a..0x19e9a` consumes the second predicate as the argument to
+  `0x1a4fa`, then calls `0x1a900`.
+- External-ready teardown at `0xba48 -> 0xbb16` consumes only the routine's
+  side effects before continuing to status aggregation through `0x36e4`;
+  host-input quiesce callers at `0x447a` and siblings are not yet composed
+  with this return value.
+
+### Output Effect
+
+For pixel reproduction from a supplied byte stream, this checkpoint has no
+direct page-record or bitmap output. Its visible risks are indirect: status bit
+`0x780e2e.9`, byte `0x780e8d`, and the helper-driven font/resource refresh
+chain can change whether callers resume normal host parsing/rendering, report
+status, or refresh font/resource bookkeeping before later page objects are
+generated. The branch and return contract is now known for `0x19dd2` itself;
+the helper internals remain separate edges.
+
+### Confidence
+
+High for the `0x19dd2..0x19eb4` call order, local predicate branching,
+`0x782894` scratch-pointer write, `0x780e8d` write, `0x9bee` status-mask call,
+and the three return paths because they are direct 68000 disassembly evidence.
+Medium for treating the routine as a page/font scheduler handoff: caller
+locations and callee names support that role, but the helper interiors are not
+fully lifted in this checkpoint. Low for any user-visible name assigned to
+`0x780e8d` or status mask `0x00000200`; this note deliberately leaves those
+names unresolved.
+
+### Fixtures
+
+- No dedicated fixture currently executes `0x19dd2` end to end.
+- Existing external-ready fixtures cover adjacent consumers in
+  `External Ready And Service Status Loop`, but they do not drive `0xba48`
+  through `0xc108 -> 0x19dd2 -> 0x36e4` as one modeled session.
+- Existing font/default fixtures cover shared callee `0x1b04c` in other
+  contexts, but they do not prove which `0x19dd2` branch selected that callee.
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_page_scheduler_019dd2.lst`:
+  `0x19dd2..0x19eb4`.
+- `generated/analysis/ic30_ic13_parser_xrefs.md`: callers
+  `0x00447a`, `0x004760`, `0x007164`, `0x00bb16`, and `0x01a3c2`.
+- `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`:
+  caller `0x00447a`.
+- `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst`:
+  caller `0x00bb16`.
+- `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`:
+  caller `0x01a3c2`.
+- `generated/disasm/ic30_ic13_status_bit_helpers_009ba2.lst`:
+  `0x9bee` generic status-bit OR helper.
+- `generated/analysis/ic30_ic13_active_symbol_set_flow.md` and
+  `generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`: current
+  evidence for shared `0x1b04c` refresh behavior in sibling contexts.
+
+### Unresolved Middle Edges
+
+- `0x19eb6..0x1a900`: helper interiors still need lifting before the
+  predicate names, scratch-block fields, and full font/resource side effects
+  can be classified beyond the call-order contract above.
+- `0x00447a` and `0x004760` host-input quiesce callers: not yet composed with
+  the `D7` return contract from `0x19dd2`.
+- `0x00bb16 -> 0x19dd2 -> 0x36e4`: external-ready teardown still lacks a
+  single fixture proving whether `0x19dd2` can perturb page/font state during
+  a modeled external session.
+- `0x01a3c2 -> 0x19dd2`: font-resource scan caller is not yet composed with
+  the predicate and status paths here.
 
 ## ESC E Reset And Default Environment
 

@@ -1279,7 +1279,13 @@ ROM work needed:
   `$fffee005` status-bit publication boundary and the `0xc1c6` consumer
   branches for `68 SERVICE` and pending external-ready message replay; the
   full live `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0` scenario remains
-  unexecuted. Startup retained-record bulk load is now bounded through
+  unexecuted. The external-ready teardown's normal-render handoff through
+  `0xc108 -> 0x19dd2 -> 0x36e4` is now bounded by the
+  `Page/Font Scheduler Handoff` semantic checkpoint: `0x19dd2` publishes
+  `0x782894`, samples `0x1a042` and `0x19f08` predicate bytes, raises
+  `0x9bee(0x780e2e, 0x00000200)` plus `0x780e8d` only on its status branch,
+  and otherwise runs the font/resource refresh call chain before returning
+  `D7 = 1`. Startup retained-record bulk load is now bounded through
   `0x5a16 -> 0x97e4`, and invalid active-record state reports `67 SERVICE`
   through `0x56c2 -> 0x1284`; a ROM edge from failed startup load into the
   factory-default table writers has not been found.

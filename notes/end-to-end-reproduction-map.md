@@ -66,10 +66,15 @@ the board-facing boundary is tracked in
   `0x780e36 & 0x00000008`, and `0xc1c6` replaying pending buffer
   `0x782312` through `0x8c7a` when no status bits are active. This cluster
   is not a page-imaging producer, but it can stop or defer normal parsing
-  before page objects are generated. Remaining risk is the board-level
-  external-register identity and a single live execution of
-  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`, not the documented consumer
-  branch behavior.
+  before page objects are generated. The teardown handoff through
+  `0xc108 -> 0x19dd2 -> 0x36e4` is now bounded in
+  `Page/Font Scheduler Handoff`: `0x19dd2` publishes scratch pointer
+  `0x782894`, samples predicate bytes from `0x1a042` and `0x19f08`, can
+  raise `0x9bee(0x780e2e, 0x00000200)` with byte `0x780e8d`, and otherwise
+  runs the font/resource refresh call chain ending in `0x19fb8`. Remaining
+  risk is the board-level external-register identity, one live execution of
+  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`, and composition of
+  `0x19dd2` helper interiors, not the documented consumer branch behavior.
 - Parser byte and command records:
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
   Reproduction evidence is `generated/analysis/ic30_ic13_parser_xrefs.md`

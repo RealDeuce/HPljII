@@ -578,7 +578,8 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `mixed printable/control parser trace feeds page-record queue`,
   `HT/BS parser trace feeds page-record queue`, `margin command parser
   trace feeds page-record queue`, `right margin command parser trace
-  feeds page-record queue`, and the cursor-position parser traces.
+  feeds page-record queue`, `0xf48c/0xf692 ESC *p#X/#Y use whole-dot packed
+  cursor commits`, and the cursor-position/dot-position parser traces.
 - Canonical cursor stack:
   - `0x782c96..0x782d36`: PCL cursor-stack storage used by
     `ESC &f#S`.
@@ -692,6 +693,11 @@ VMI state before object queueing, then cross the same `0x1387c`,
 - `0xf39e`, `0xf416`, and `0xf48c` write horizontal cursor state
   through helper `0xf4ca`; `0xf560`, `0xf60a`, and `0xf692` write
   vertical cursor state through helper `0xf6e2`.
+  `0xf48c` and `0xf692` are the `ESC *p#X/#Y` dot-unit variants: they
+  rewind `0x78299e`, sign-extend record word `+2`, shift it left 16 bits
+  to produce a whole-dot packed coordinate, and pass record flag bit 0 as
+  the relative/absolute selector to the same commit helpers used by the
+  `ESC &a` cursor commands.
 - `0xcb00`, `0xc992`, `0xece2`, `0xea9e`, `0xee64`, and `0xf9e8` write
   VMI, vertical layout, perforation skip, and page-length state.
 - `0xf75e` writes cursor-stack entries and restores cursor state.
@@ -797,6 +803,8 @@ modeled source/object structures rather than a full live CPU-memory run.
 - `vertical-cursor parser span flush materializes 0x12714 page object`
 - `vertical-decipoint cursor parser trace feeds page-record queue`
 - `chained cursor-position parser trace feeds page-record queue`
+- `0xf48c/0xf692 ESC *p#X/#Y use whole-dot packed cursor commits`
+- `dot position parser trace feeds page-record queue`
 - `cursor stack parser trace feeds page-record queue`
 - `host-fetched direct text/control streams reach page-record render`
 - `host-fetched direct text/control streams preserve 0x1edc6 bridge

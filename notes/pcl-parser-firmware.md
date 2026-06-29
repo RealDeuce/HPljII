@@ -779,12 +779,16 @@ control-code anchor.
 
 ## Next RE Targets
 
-- Correlate the direct-input MMIO names and indirect buffer producers
-  for `0xa904` with board/manual evidence.
-- Decode all normal and alternate parser table handlers into PCL command
-  names.
-- Decode the six-byte tokenizer records and 12-byte command/data pool
-  records.
+- Correlate the direct-input MMIO names for `0xa904` with board/manual
+  evidence. The RAM byte-source structures and `0xa6cc` ring producer are
+  documented in [host-byte-fetch.md](host-byte-fetch.md).
+- Decode any remaining normal and alternate parser table handlers that are
+  not already composed into command-family semantic notes.
+- Treat the six-byte tokenizer records and the 12-byte macro/data-chain pool
+  as documented structures: the shared record boundary is in
+  [pcl-parser-core.md](pcl-parser-core.md), and the pool rooted at
+  `0x782a98` is composed in `Macro Definition And Data-Chain Replay` in
+  [semantic-state-model.md](semantic-state-model.md).
 - Continue from parser-produced heterogeneous page-object rendering and
   final device-output validation now that the macro replay/font-context
   checkpoint is composed through `0xe65c`, `0xe860`, `0x13eb8`,

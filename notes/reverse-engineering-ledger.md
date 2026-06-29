@@ -1082,11 +1082,17 @@ ROM work needed:
   signal names. Its software-visible latches, output strobes, counters, and
   wait-object effects are documented; remaining work is physical meaning and
   timing for `$8000` bits, `$8a01`, `$a200`, `$a400`, and `0xffff2000`.
-- Identify input buffer structures in RAM.
-- Decode tokenizer records rooted at `0x78299e` and the 32-entry
-  command/data pool at `0x782a98`.
-- Expand normal parser table `0x112a4` and alternate parser table
-  `0x116f6` into named PCL commands.
+- Continue host/interface work from the physical correlation boundary:
+  the RAM byte-source structures (`0x783e54` ring, pushback stacks, and
+  `0x782d76` data-chain frames) are documented in
+  [host-byte-fetch.md](host-byte-fetch.md); remaining work is the board/manual
+  identity of the direct MMIO banks and their timing.
+- Continue parser-table naming only where a command family is not already
+  composed into a semantic note. The shared six-byte command records rooted
+  at `0x78299e` are documented in [pcl-parser-core.md](pcl-parser-core.md),
+  and the 32-entry macro/data-chain pool at `0x782a98` is composed in
+  `Macro Definition And Data-Chain Replay` in
+  [semantic-state-model.md](semantic-state-model.md).
 - Broaden the direct-control and printable stream fixtures into fuller
   live parser/register traces, the transparent secondary segment-57 bitmap
   physical/resource-window source interpretation beyond the page-record and

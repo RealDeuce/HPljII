@@ -242,7 +242,11 @@ handshake, timeout, and physical registration fidelity.
 - Canonical print environment: cursor words `0x782c8a` and `0x782c8e`,
   HMI/VMI words, margins, page geometry fields under `0x782da2..0x782dc0`,
   line-termination mode, cursor stack, and font slot state. Evidence:
-  `Text Cursor And Direct Controls` and page-geometry fixtures.
+  `Text Cursor And Direct Controls` and page-geometry fixtures, including
+  the `ESC *p#X/#Y` dot-position path through handlers `0xf48c` and
+  `0xf692`. Those handlers convert parsed integer dot units to packed
+  whole-dot cursor coordinates with `parameter << 16`, then share the
+  `0xf4ca` / `0xf6e2` commit helpers before printable output is queued.
 - Canonical page model: current page root `0x78297a`, page-root class byte
   `+4`, bucket array `+0x1c`, rule list `+0x24`, fixed-width list `+0x28`,
   context slots `+0x2c`, and stream allocator fields `0x782a70`,

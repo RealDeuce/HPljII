@@ -553,6 +553,10 @@ Output effect:
   render entry` proves text object `0x00d0c004`, rule object `0x00d0c02a`,
   and raster object `0x00d0c038` share the addressed page-record state, then
   publish and render into the expected mixed rows.
+- Fixture `addressed text/rule/multi-row raster publication preserves
+  bucket chain` extends that addressed state to two consecutive raster
+  objects at `0x00d0d038` and `0x00d0d044`, preserving bucket-chain order
+  through publication and render.
 - Fixture `addressed page-record writers share 0x1381c across chunk
   rollover` proves one page-root stream crosses a chunk boundary:
   `root + 0x20 -> 0x00d05000 -> 0x00d05100`, final bookkeeping
@@ -581,6 +585,7 @@ Fixture evidence:
 - `addressed page-record writers share 0x1381c across chunk rollover`
 - `addressed text/rule/raster field groups reach publication and render
   entry`
+- `addressed text/rule/multi-row raster publication preserves bucket chain`
 
 Disassembly evidence:
 
@@ -2078,6 +2083,18 @@ bookkeeping leaves `0x782a70 = 0x00bc`, `0x782a72 = 0x00d0c000`,
 and `0x782a76 = 0x00d0c044`; derived render caches include
 `0x783a20 = 0x0050`, `0x783a22 = 0`, and
 `0x783a28 = 0x00100000`.
+The same mixed stream cluster now has a consecutive-raster-row sibling.
+Fixture `host-fetched text rectangle multi-row raster FF publishes
+rendered page record` drives `! ESC *c12a5b0P ESC *t300R ESC *r0A
+ESC *b2W f0 0f ESC *b2W 0f f0 FF` through the mixed page-record runner,
+publishes bucket `0` as second raster row, first raster row, then compact
+text, and renders both encoded-span dispatches before the compact glyph.
+Fixture `addressed text/rule/multi-row raster publication preserves
+bucket chain` pins the addressed storage form: raster objects are
+allocated at `0x00d0d038` and `0x00d0d044`; the bucket chain is
+`0x00d0d044 -> 0x00d0d038 -> 0x00d0d004`; allocator bookkeeping ends at
+`0x782a70 = 0x00b0`, `0x782a72 = 0x00d0d000`, and
+`0x782a76 = 0x00d0d050`; and the final raster row counter is `2`.
 A `0x1ef6a` page-band walker now also merges compact text, mode-0
 raster, and a crossing patterned rule across bands `0` and `5`, carrying
 the mutated rule node into the second band.
@@ -2324,7 +2341,11 @@ Other checked leads:
   `host-fetched rectangle selector matrix feeds full page records`,
   `host-fetched text rectangle raster FF publishes rendered page record`, and
   `addressed text/rule/raster field groups reach publication and render
-  entry`. Remaining rectangle work is cross-feature full-page combinations
+  entry`; the same mixed cluster now also includes
+  `host-fetched text rectangle multi-row raster FF publishes rendered page
+  record` and
+  `addressed text/rule/multi-row raster publication preserves bucket
+  chain`. Remaining rectangle work is cross-feature full-page combinations
   plus physical/reference placement checks.
 - Compare physical engine/self-test placement against the now-matched
   ROM/manual logical page and printable-area dimensions.

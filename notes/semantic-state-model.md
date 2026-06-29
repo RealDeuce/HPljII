@@ -6219,6 +6219,30 @@ lists through `0x1ef6a`, and only then composes visible pixels.
   and
   `addressed text/rule/raster field groups reach publication and render
   entry`.
+- Consecutive-raster sibling:
+  - fixture
+    `host-fetched text rectangle multi-row raster FF publishes rendered page record`
+    drives the same text/rule prefix followed by two delayed `ESC *b2W`
+    transfers and FF.
+  - fixture
+    `addressed text/rule/multi-row raster publication preserves bucket chain`
+    stores raster row objects at `0x00d0d038` and `0x00d0d044`.
+  - canonical bucket `+0x1c` chain is
+    `0x00d0d044 -> 0x00d0d038 -> 0x00d0d004`: second raster row, first
+    raster row, then compact text.
+  - published bucket objects are
+    `00 d0 d0 38 80 00 00 02 10 00 0f f0`,
+    `00 d0 d0 04 80 00 00 02 00 00 f0 0f`, and the compact text object.
+  - parser scratch has two restored transfer records
+    `80 57 00 02 00 00`, payload offsets `28` and `35`, and payloads
+    `f0 0f` and `0f f0`.
+  - firmware bookkeeping ends at `0x782a70 = 0x00b0`,
+    `0x782a72 = 0x00d0d000`, `0x782a76 = 0x00d0d050`, one stream
+    allocation, one page-root allocation, one publication, one root clear,
+    and raster `row_y = 2`.
+  - output dispatch targets are `0x1f88e`, `0x1f88e`, and `0x1effe`,
+    with the bridged selector-7 rule list rendered in the same published
+    page record.
 - Parser scratch:
   - raster parsed/restored record: `80 57 00 02 00 00`.
   - delayed snapshot: `01 00 01 05 d0 80 57 00 02 00 00`.
@@ -6279,7 +6303,7 @@ lists through `0x1ef6a`, and only then composes visible pixels.
   the published pool record.
 - `0x1ef6a` consumes the render record in call order
   `0x1ef86`, `0x1efc2`, `0x1f446`, `0x1f756`. It dispatches the raster
-  object to `0x1f88e` and the compact text object to `0x1effe`.
+  object chain to `0x1f88e` and the compact text object to `0x1effe`.
 
 ### Output Effect
 
@@ -6288,6 +6312,10 @@ mode-0 raster row from payload `c3 3c`, and the rectangle rule. The
 published render-entry fixture proves the same rows before and after the
 `0xff1e` publication boundary, with dispatch targets `0x1f88e` and
 `0x1effe`.
+The consecutive-row sibling preserves the same text/rule objects while
+adding two delayed raster transfers. It proves the published bucket chain
+dispatches encoded row `0f f0`, encoded row `f0 0f`, and compact text in
+that order, while raster `row_y` advances to `2`.
 The page-band walker fixture extends this render-entry contract across
 bands `0` and `5`: it dispatches compact text and mode-0 raster objects
 from bucket array `+0x18`, carries a patterned rule's mutated node from
@@ -6309,6 +6337,10 @@ the parser and allocator.
 - `addressed text rectangle raster FF publishes rendered page record`
 - `addressed text/rule/raster field groups reach publication and render
   entry`
+- `host-fetched text rectangle multi-row raster FF publishes rendered page
+  record`
+- `addressed text/rule/multi-row raster publication preserves bucket
+  chain`
 - `0x1ef6a page-band walk merges text raster and crossing rule`
 - Supporting fixtures:
   `host-fetched text rectangle and raster page record feeds 0x1ed84 and

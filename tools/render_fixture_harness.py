@@ -84763,6 +84763,457 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             },
         },
     ))
+    text_rectangle_raster_multirow_ff_stream = (
+        b"!\x1b*c12a5b0P" + raster_multirow_command_stream + b"\x0c"
+    )
+    text_rectangle_raster_multirow_ff_host_fetch = fetch_stream_via_a904(
+        host_byte_fetch_state(
+            ring=list(text_rectangle_raster_multirow_ff_stream),
+            direct_mode=0,
+        ),
+        len(text_rectangle_raster_multirow_ff_stream),
+    )
+    text_rectangle_raster_multirow_ff_state = control_fixture_state(
+        cursor_x=pack12(10),
+        cursor_y=pack12(21),
+        hmi=line_printer_hmi["hmi"],
+        pending_width=1,
+        pending_text=1,
+        span_flush_enable=1,
+        page_width=100,
+        page_height=80,
+        orientation=0,
+        width=pack12(0),
+        height=pack12(0),
+        area_fill_id=0,
+        fill_selector=7,
+        page_root_present=0,
+        page_root_class=1,
+        current_page_root=0,
+        page_publications=0,
+        page_root_clears=0,
+        published_pool_record=0,
+        page_publication_flag=0,
+        transient_page_byte=1,
+        cursor_transient_a=1,
+        cursor_transient_b=1,
+    )
+    text_rectangle_raster_multirow_ff_state.update(
+        raster_graphics_state(page_extent=255)
+    )
+    text_rectangle_raster_multirow_ff_page_record_stream = (
+        render_mixed_printable_control_page_record_stream(
+            data,
+            resources,
+            text_rectangle_raster_multirow_ff_stream,
+            0x440946B4,
+            text_rectangle_raster_multirow_ff_state,
+            default_advance=line_printer_hmi["hmi"],
+        )
+    )
+    text_rectangle_raster_multirow_ff_published_record = (
+        text_rectangle_raster_multirow_ff_page_record_stream["published_page_record"]
+    )
+    text_rectangle_raster_multirow_ff_published_render = (
+        text_rectangle_raster_multirow_ff_page_record_stream["published_render_entry"]
+    )
+    assert isinstance(text_rectangle_raster_multirow_ff_published_record, dict)
+    assert isinstance(text_rectangle_raster_multirow_ff_published_render, dict)
+    text_rectangle_raster_multirow_ff_pool_fields = (
+        text_rectangle_raster_multirow_ff_published_record["pool_record_fields"]
+    )
+    assert isinstance(text_rectangle_raster_multirow_ff_pool_fields, dict)
+    text_rectangle_raster_multirow_ff_transfers = [
+        event
+        for event in text_rectangle_raster_multirow_ff_page_record_stream["events"]
+        if event["kind"] == "raster-transfer"
+    ]
+    if len(text_rectangle_raster_multirow_ff_transfers) != 2:
+        raise AssertionError("multi-row text+rule+raster fixture expected two transfers")
+    text_rectangle_raster_multirow_ff_control = next(
+        event
+        for event in text_rectangle_raster_multirow_ff_page_record_stream["events"]
+        if event["kind"] == "control" and event["byte"] == 0x0C
+    )
+    text_rectangle_raster_multirow_ff_finalized = (
+        text_rectangle_raster_multirow_ff_control["finalized_page_record"]
+    )
+    assert isinstance(text_rectangle_raster_multirow_ff_finalized, dict)
+    text_rectangle_raster_multirow_expected_rows = compose_set_pixel_rows(
+        [
+            text_rectangle_page_record_stream["rendered"]["rows"],
+            text_rectangle_rules["rows"],
+            *[rendered["rows"] for rendered in raster_multirow_rendered],
+        ],
+        width=40,
+        rows=26,
+    )
+    checks.append(assert_equal(
+        "host-fetched text rectangle multi-row raster FF publishes rendered page record",
+        {
+            "fetched_stream": text_rectangle_raster_multirow_ff_host_fetch["stream"],
+            "fetch_source_count": len(
+                text_rectangle_raster_multirow_ff_host_fetch["sources"]
+            ),
+            "remaining_ring": (
+                text_rectangle_raster_multirow_ff_host_fetch["state"]["ring"]
+            ),
+            "event_kinds": [
+                event["kind"]
+                for event in text_rectangle_raster_multirow_ff_page_record_stream[
+                    "events"
+                ]
+            ],
+            "transfer_summaries": [
+                {
+                    "restored_record": event["restored_record"],
+                    "payload_offset": event["payload_offset"],
+                    "payload": event["payload"],
+                    "row_y": event["row_y"],
+                    "row_y_after": event["row_y_after"],
+                    "result_object": event["result"]["object"],
+                }
+                for event in text_rectangle_raster_multirow_ff_transfers
+            ],
+            "finalized": {
+                "published": text_rectangle_raster_multirow_ff_finalized["published"],
+                "bucket_index": (
+                    text_rectangle_raster_multirow_ff_finalized["bucket_index"]
+                ),
+                "current_page_root_after": (
+                    text_rectangle_raster_multirow_ff_finalized[
+                        "current_page_root_after"
+                    ]
+                ),
+                "page_root_clears": (
+                    text_rectangle_raster_multirow_ff_finalized["page_root_clears"]
+                ),
+                "page_publication_flag": (
+                    text_rectangle_raster_multirow_ff_finalized[
+                        "page_publication_flag"
+                    ]
+                ),
+            },
+            "published_bucket_array_1c": (
+                text_rectangle_raster_multirow_ff_pool_fields["bucket_array_1c"]
+            ),
+            "published_rule_list_24": (
+                text_rectangle_raster_multirow_ff_pool_fields["rule_list_24"]
+            ),
+            "published_context_slots_2c_prefix": (
+                text_rectangle_raster_multirow_ff_pool_fields["context_slots_2c"][:2]
+            ),
+            "published_dispatch_entries": [
+                {
+                    "chain_index": entry["chain_index"],
+                    "object_byte_4": entry["object_byte_4"],
+                    "class_mask": entry["class_mask"],
+                    "branch": entry["branch"],
+                    "target": entry["target"],
+                    "context_slot": entry.get("context_slot"),
+                    "encoded_mode": entry.get("encoded_mode"),
+                }
+                for entry in (
+                    text_rectangle_raster_multirow_ff_published_render["entry"][
+                        "dispatch"
+                    ]["entries"]
+                )
+            ],
+            "published_rows": (
+                text_rectangle_raster_multirow_ff_published_render["entry"]["rows"]
+            ),
+            "final_state": select_keys(
+                text_rectangle_raster_multirow_ff_page_record_stream["final_state"],
+                (
+                    "current_page_root",
+                    "page_publications",
+                    "page_root_clears",
+                    "page_roots",
+                    "page_finalizes",
+                    "page_publication_flag",
+                    "page_record_root_allocations",
+                    "row_y",
+                ),
+            ),
+        },
+        {
+            "fetched_stream": text_rectangle_raster_multirow_ff_stream,
+            "fetch_source_count": len(text_rectangle_raster_multirow_ff_stream),
+            "remaining_ring": [],
+            "event_kinds": [
+                "printable",
+                "rectangle",
+                "rectangle",
+                "rectangle",
+                "raster-resolution",
+                "start-raster",
+                "raster-transfer",
+                "raster-transfer",
+                "control",
+            ],
+            "transfer_summaries": [
+                {
+                    "restored_record": bytes.fromhex("80 57 00 02 00 00"),
+                    "payload_offset": 28,
+                    "payload": bytes.fromhex("f0 0f"),
+                    "row_y": 0,
+                    "row_y_after": 1,
+                    "result_object": (
+                        bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f")
+                    ),
+                },
+                {
+                    "restored_record": bytes.fromhex("80 57 00 02 00 00"),
+                    "payload_offset": 35,
+                    "payload": bytes.fromhex("0f f0"),
+                    "row_y": 1,
+                    "row_y_after": 2,
+                    "result_object": (
+                        bytes.fromhex("00 00 00 00 80 00 00 02 10 00 0f f0")
+                    ),
+                },
+            ],
+            "finalized": {
+                "published": True,
+                "bucket_index": 0,
+                "current_page_root_after": 0,
+                "page_root_clears": 1,
+                "page_publication_flag": 1,
+            },
+            "published_bucket_array_1c": {
+                0: [
+                    bytes.fromhex("00 00 00 00 80 00 00 02 10 00 0f f0"),
+                    bytes.fromhex("00 00 00 00 80 00 00 02 00 00 f0 0f"),
+                    bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                    + bytes(0x1B),
+                ],
+            },
+            "published_rule_list_24": [
+                bytes.fromhex("00 00 00 00 01 07 5c 01 00 0c 00 05 00 00"),
+            ],
+            "published_context_slots_2c_prefix": (0x440946B4, 0),
+            "published_dispatch_entries": [
+                {
+                    "chain_index": 0,
+                    "object_byte_4": 0x80,
+                    "class_mask": 0x80,
+                    "branch": "encoded-span",
+                    "target": 0x01F88E,
+                    "context_slot": None,
+                    "encoded_mode": 0,
+                },
+                {
+                    "chain_index": 1,
+                    "object_byte_4": 0x80,
+                    "class_mask": 0x80,
+                    "branch": "encoded-span",
+                    "target": 0x01F88E,
+                    "context_slot": None,
+                    "encoded_mode": 0,
+                },
+                {
+                    "chain_index": 2,
+                    "object_byte_4": 0x00,
+                    "class_mask": 0x00,
+                    "branch": "compact",
+                    "target": 0x01EFFE,
+                    "context_slot": 0,
+                    "encoded_mode": None,
+                },
+            ],
+            "published_rows": text_rectangle_raster_multirow_expected_rows,
+            "final_state": {
+                "current_page_root": 0,
+                "page_publications": 1,
+                "page_root_clears": 1,
+                "page_roots": 2,
+                "page_finalizes": 1,
+                "page_publication_flag": 1,
+                "page_record_root_allocations": 1,
+                "row_y": 2,
+            },
+        },
+    ))
+    text_rectangle_raster_multirow_ff_addressed = (
+        render_text_rectangle_raster_addressed_ff_publication_stream(
+            data,
+            resources,
+            text_rectangle_raster_multirow_ff_stream,
+            0x440946B4,
+            dict(text_rectangle_raster_multirow_ff_state)
+            | {"next_stream_chunk_ptr": 0x00D0D000},
+            default_advance=line_printer_hmi["hmi"],
+        )
+    )
+    text_rectangle_raster_multirow_ff_addressed_published = (
+        text_rectangle_raster_multirow_ff_addressed["published_page_record"]
+    )
+    assert isinstance(text_rectangle_raster_multirow_ff_addressed_published, dict)
+    text_rectangle_raster_multirow_ff_addressed_fields = (
+        text_rectangle_raster_multirow_ff_addressed_published["pool_record_fields"]
+    )
+    assert isinstance(text_rectangle_raster_multirow_ff_addressed_fields, dict)
+    text_rectangle_raster_multirow_ff_addressed_render = (
+        text_rectangle_raster_multirow_ff_addressed["published_render_entry"]
+    )
+    assert isinstance(text_rectangle_raster_multirow_ff_addressed_render, dict)
+    text_rectangle_raster_multirow_ff_addressed_transfers = [
+        event
+        for event in text_rectangle_raster_multirow_ff_addressed["events"]
+        if event["kind"] == "raster-transfer"
+    ]
+    if len(text_rectangle_raster_multirow_ff_addressed_transfers) != 2:
+        raise AssertionError("addressed multi-row fixture expected two transfers")
+    text_rectangle_raster_multirow_ff_addressed_finalized = (
+        text_rectangle_raster_multirow_ff_addressed["finalized_page_record"]
+    )
+    assert isinstance(text_rectangle_raster_multirow_ff_addressed_finalized, dict)
+    checks.append(assert_equal(
+        "addressed text/rule/multi-row raster publication preserves bucket chain",
+        {
+            "parser_handlers": text_rectangle_raster_multirow_ff_addressed[
+                "parser_handlers"
+            ],
+            "transfer_objects": [
+                event["result"]["object"]
+                for event in text_rectangle_raster_multirow_ff_addressed_transfers
+            ],
+            "transfer_object_ptrs": [
+                event["result"]["object_ptr"]
+                for event in text_rectangle_raster_multirow_ff_addressed_transfers
+            ],
+            "published_bucket_array_1c": (
+                text_rectangle_raster_multirow_ff_addressed_fields[
+                    "bucket_array_1c"
+                ]
+            ),
+            "published_rule_list_24": (
+                text_rectangle_raster_multirow_ff_addressed_fields["rule_list_24"]
+            ),
+            "published_dispatch_entries": [
+                {
+                    "chain_index": entry["chain_index"],
+                    "object_byte_4": entry["object_byte_4"],
+                    "class_mask": entry["class_mask"],
+                    "branch": entry["branch"],
+                    "target": entry["target"],
+                    "context_slot": entry.get("context_slot"),
+                    "encoded_mode": entry.get("encoded_mode"),
+                }
+                for entry in (
+                    text_rectangle_raster_multirow_ff_addressed_render["entry"][
+                        "dispatch"
+                    ]["entries"]
+                )
+            ],
+            "published_rows": (
+                text_rectangle_raster_multirow_ff_addressed_render["entry"]["rows"]
+            ),
+            "stream_state": {
+                key: text_rectangle_raster_multirow_ff_addressed[
+                    "addressed_state"
+                ][key]
+                for key in (
+                    "stream_bytes_remaining_782a70",
+                    "stream_link_ptr_782a72",
+                    "stream_next_free_782a76",
+                    "next_stream_chunk_ptr",
+                    "stream_chunk_links",
+                    "stream_allocations",
+                )
+            },
+            "final_state": select_keys(
+                text_rectangle_raster_multirow_ff_addressed["final_state"],
+                (
+                    "current_page_root",
+                    "page_publications",
+                    "page_root_clears",
+                    "page_roots",
+                    "page_finalizes",
+                    "page_publication_flag",
+                    "page_record_root_allocations",
+                    "row_y",
+                ),
+            ),
+        },
+        {
+            "parser_handlers": [
+                0x00D04A,
+                0x010E68,
+                0x010E22,
+                0x010898,
+                0x010808,
+                0x01075A,
+                0x011F82,
+                0x011F82,
+                0x00F0F0,
+            ],
+            "transfer_objects": [
+                bytes.fromhex("00 d0 d0 04 80 00 00 02 00 00 f0 0f"),
+                bytes.fromhex("00 d0 d0 38 80 00 00 02 10 00 0f f0"),
+            ],
+            "transfer_object_ptrs": [0x00D0D038, 0x00D0D044],
+            "published_bucket_array_1c": {
+                0: [
+                    bytes.fromhex("00 d0 d0 38 80 00 00 02 10 00 0f f0"),
+                    bytes.fromhex("00 d0 d0 04 80 00 00 02 00 00 f0 0f"),
+                    bytes.fromhex("00 00 00 00 00 00 00 01 20 00 01")
+                    + bytes(0x1B),
+                ],
+            },
+            "published_rule_list_24": [
+                bytes.fromhex("00 00 00 00 01 07 5c 01 00 0c 00 05 00 00"),
+            ],
+            "published_dispatch_entries": [
+                {
+                    "chain_index": 0,
+                    "object_byte_4": 0x80,
+                    "class_mask": 0x80,
+                    "branch": "encoded-span",
+                    "target": 0x01F88E,
+                    "context_slot": None,
+                    "encoded_mode": 0,
+                },
+                {
+                    "chain_index": 1,
+                    "object_byte_4": 0x80,
+                    "class_mask": 0x80,
+                    "branch": "encoded-span",
+                    "target": 0x01F88E,
+                    "context_slot": None,
+                    "encoded_mode": 0,
+                },
+                {
+                    "chain_index": 2,
+                    "object_byte_4": 0x00,
+                    "class_mask": 0x00,
+                    "branch": "compact",
+                    "target": 0x01EFFE,
+                    "context_slot": 0,
+                    "encoded_mode": None,
+                },
+            ],
+            "published_rows": text_rectangle_raster_multirow_expected_rows,
+            "stream_state": {
+                "stream_bytes_remaining_782a70": 0x00B0,
+                "stream_link_ptr_782a72": 0x00D0D000,
+                "stream_next_free_782a76": 0x00D0D050,
+                "next_stream_chunk_ptr": 0x00D0D100,
+                "stream_chunk_links": {ABSTRACT_PAGE_ROOT_PTR + 0x20: 0x00D0D000},
+                "stream_allocations": 1,
+            },
+            "final_state": {
+                "current_page_root": 0,
+                "page_publications": 1,
+                "page_root_clears": 1,
+                "page_roots": 1,
+                "page_finalizes": 1,
+                "page_publication_flag": 1,
+                "page_record_root_allocations": 1,
+                "row_y": 2,
+            },
+        },
+    ))
     mixed_publication_parser_trace = {
         "reset": trace_mixed_text_control_parser_path_via_11774(data, b"!\x1bE"),
         "ff": trace_mixed_text_control_parser_path_via_11774(data, b"\x1b&k2G!\f"),
@@ -92706,6 +93157,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append("A host-fetched text-plus-rectangle-plus-raster fixture now drains `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W` through the same mixed page-record stream runner. That runner queues compact text, the selector-7 rule, and the delayed `0x105d0` mode-0 raster transfer in one page record before rendering the combined bucket/rule/raster record through `0x1ed84` and `0x1ef6a`.")
     lines.append("Adding FF to that same stream now publishes the heterogeneous text/rule/raster page record through the modeled `0xff1e` boundary, clears the current root, and renders the published record through `0x1ed84` and `0x1ef6a` with the same rows. The addressed variant now proves the same trailing-FF publication after text, rule, and raster objects materialize through addressed storage.")
     lines.append("The addressed text/rule/raster composition checkpoint classifies the stream objects for that same byte stream: canonical page-record fields include text object `0x00d0c004`, rule object `0x00d0c02a`, raster object `0x00d0c038`, bucket head `+0x1c = 0x00d0c038`, rule head `+0x24 = 0x00d0c02a`, and context slot 0 `0x440946b4`; parser scratch includes restored raster record `80 57 00 02 00 00`, delayed snapshot `01 00 01 05 d0 80 57 00 02 00 00`, payload offset `28`, and payload `c3 3c`; firmware bookkeeping includes `0x782a70 = 0x00bc`, `0x782a72 = 0x00d0c000`, `0x782a76 = 0x00d0c044`, one stream allocation, one page-root allocation, one publication, one root clear, and publication flag `1`; derived render caches include `0x783a20 = 0x0050`, `0x783a22 = 0`, and `0x783a28 = 0x00100000` before dispatch targets `0x1f88e` and `0x1effe` compose the visible rows.")
+    lines.append("The multi-row text/rule/raster sibling drives `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W f0 0f ESC *b2W 0f f0 FF` through the same mixed page-record runner. The modeled publication preserves bucket `0` as second raster row, first raster row, then compact text; the addressed variant stores raster objects at `0x00d0d038` and `0x00d0d044`, links `0x00d0d044 -> 0x00d0d038 -> 0x00d0d004`, advances `row_y` to `2`, and renders dispatch targets `0x1f88e`, `0x1f88e`, and `0x1effe` with the bridged rule list.")
     lines.append("")
     lines.append("A mixed printable/reset stream fixture drives printable `!` followed by `ESC E`. It keeps the pre-reset compact text object renderable, then applies the reset publication path from the same byte stream: pending text is flushed, the valid current page root is published and cleared, the environment is rebuilt, and HMI is refreshed from the selected current-font metric. The page-record variant now starts without a current page root, marks the first printable as the page-record root allocation point, models the `0xff1e` publication record for that queued compact bucket before reset clears the current root, then bridges and renders the published record through `0x1edc6`. The addressed reset variant queues the same printable byte through addressed `0x1387c`/`0x1381c`, materializes the page record, publishes it through `0xff1e`, and renders the published record through `0x1ed84`/`0x1ef6a` with the same rows.")
     lines.append("")

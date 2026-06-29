@@ -101,8 +101,12 @@ executable fixture or generated analysis note.
   `notes/semantic-state-model.md` plus fixtures
   `host-fetched text rectangle raster FF publishes rendered page record`,
   `addressed text rectangle raster FF publishes rendered page record`,
-  and `addressed text/rule/raster field groups reach publication and
-  render entry`.
+  `addressed text/rule/raster field groups reach publication and render
+  entry`,
+  `host-fetched text rectangle multi-row raster FF publishes rendered page
+  record`, and
+  `addressed text/rule/multi-row raster publication preserves bucket
+  chain`.
 - Built-in glyph data:
   ROM evidence is the IC32/IC15 resource ROM tables and bitmap records.
   Reproduction evidence is

@@ -82,6 +82,73 @@ The startup then calls routines at:
 On success it clears `0x2000` longwords at `0x00780000`, then enters the
 next initialization phase at `0x00000240`.
 
+The three formerly opaque calls are now classified from focused listings
+`generated/disasm/ic30_ic13_startup_memory_probe_00073a.lst` and
+`generated/disasm/ic30_ic13_startup_memory_tests_0008a2.lst`:
+
+- `0x0978(A0)` maps a tested RAM address back to an address-control
+  register: it subtracts `0x4000`, shifts right by 13, ORs
+  `0x00ff0000`, and writes word `0xffff` to that computed address. The
+  reset path first calls it with `A0 = 0x00c00000`, so the computed
+  write is `0xffff` to `0x00ffffe0`.
+- `0x08a2(A0, D0)` is a destructive longword RAM test over `D0 >> 2`
+  longwords, run twice with swapped pattern `0x5555aaaa` /
+  `0xaaaa5555`. Failure sets `D7 = 0x0000b407`.
+- `0x08dc(A0, D0)` is an address-line/style byte test. It writes and
+  verifies 256 sequential bytes from base `A0`, 255 bytes spaced by
+  `0x100`, and seven bytes spaced by `0x10000`, seeded from input byte
+  `D0`. Failure also sets `D7 = 0x0000b407`.
+
+The second initialization phase starts at `0x0240`:
+
+- `0x0266..0x0296` seeds MMIO shadow defaults
+  `0x7828fa = 0xf1`, `0x7828f9 = 0x7e`, and `0x7828f6 = 0xf348`, copies
+  the RAM trampoline table through `0x0298`, probes optional `PROG`
+  extension signatures through `0x03e8`, calls `0x071c`, derives
+  board/config memory defaults through `0x02b2`, and calls `0x2c84`.
+- `0x02b2..0x031e` derives startup memory-size fields. It writes
+  `0x780e59` from `$8000.5`, initializes `0x780e5a = 0x20` and
+  `0x780e60 = 6`, reads `$8c01 >> 3`, optionally calls `0x05ba`, and
+  adds `0x80`, `0x40`, or `0x100` to `0x780e5a` for selected
+  nonzero/strap values.
+- `0x0320..0x038c` calls `0xa16a`, acknowledges interrupt/status
+  registers through `0x0336`, then calls allocator/reset helpers
+  `0x164a`, `0x2feb6`, `0x3178`, and `0x31d6`.
+- `0x038e..0x03e6` initializes timer/status divider state:
+  `0x78017f = 4`, `0x780180 = 2`, `0x780181 = 5`, clears
+  `0x782900` and `0x7828fe`, and seeds debounce bytes `0x783edc` and
+  `0x783edd` from `$8000.6/.7`.
+
+Startup verifier `0x073a` then runs with `0x783eee.5` set. It clears
+`$a200`, optionally checks ROM/data byte sums at `0x000000..0x03ffff`
+and `0x080000..0x0bffff`, tests RAM/resource windows, sets up heap and
+resource bounds through `0x099e` / `0x0b18`, and finally returns through
+`D7`. Failure code `0x0000b3e5` identifies the code-pair byte-sum
+check, `0x0000b3f6` identifies the resource-pair byte-sum check,
+`0x0000b407` identifies memory/address-line tests, `0x0000b418`
+identifies the `0xffc000` scratch/video-memory test, and `0x0000b429`
+identifies resource-window alias/pattern tests.
+
+Routine `0x0c24` is the scheduler bootstrap, not parser code. It reads
+an eight-record table at `0x15d0`, writes wait-object links and
+metadata into `0x780182..0x780262`, allocates private stacks downward
+from `0x00ffe000`, stores restart PCs in each stack frame, closes the
+ring by pointing the final record back to `0x780182`, and tail-enters
+the priority switch at `0x1266` with `A1 = 0x780262`.
+
+Decoded `0x15d0` wait-object rows:
+
+| Record | Priority | Stack bytes | Restart PC |
+| --- | ---: | ---: | --- |
+| `0x780182` | 7 | `0x0180` | `0x001958` |
+| `0x7801a2` | 6 | `0x0180` | `0x01eb2a` |
+| `0x7801c2` | 5 | `0x0200` | `0x002828` |
+| `0x7801e2` | 4 | `0x0180` | `0x00ae2c` |
+| `0x780202` | 3 | `0x0200` | `0x002de4` |
+| `0x780222` | 2 | `0x0280` | `0x00645a` |
+| `0x780242` | 1 | `0x0200` | `0x01174e` |
+| `0x780262` | 0 | `0x0080` | `0x0015b2` |
+
 Later setup calls `0x00000b18` before reset subroutine `0x00000370`
 enters the heap allocator initializer at `0x0000164a`. With the observed
 reset defaults `0x780e5a = 0x20` and `0x780e60 = 6`, `0x0b18` writes:
@@ -246,8 +313,11 @@ before treating any startup defaults as fixed.
 - Name each MMIO address touched before `0x00000400`.
 - Correlate the now-classified copied trampoline entries with the physical
   IRQ/MMIO sources that select each RAM stub.
-- Follow initialization calls `0x00000978`, `0x000008a2`, `0x000008dc`,
-  `0x0000073a`, and `0x00000c24`.
+- Follow remaining startup callees `0x000005ba..0x0000071a`,
+  `0x0000071c`, `0x00002c84`, `0x0002feb6`, `0x00003178`, and
+  `0x000031d6`. Startup helpers `0x0000073a`, `0x000008a2`,
+  `0x000008dc`, `0x00000978`, `0x00000b18`, and `0x00000c24` are now
+  documented as memory/resource/scheduler setup.
 - Extend the `HEAD`/`0x000000be` record model beyond the verified
   built-in resource window if cartridge or external resource images are
   available.

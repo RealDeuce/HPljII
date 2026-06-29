@@ -37,6 +37,23 @@ entries to `0x0c7e..0x0cde` and `0x128c`, interface/timer entries to
 `0xa4e8`, `0xcfc`, `0xd52`, `0xa812`, and `0xf84`, and
 trap/scheduler entries to `0x1032` or `0x110c..0x11f8`.
 
+### Startup Memory And Scheduler Bootstrap
+
+Status: Anchored for ROM-visible memory/resource bounds and wait-object
+setup; physical config-signal names still need board correlation
+
+Evidence: [firmware-startup.md](firmware-startup.md) now decodes
+startup helpers `0x073a`, `0x08a2`, `0x08dc`, `0x0978`, `0x099e`,
+`0x0b18`, `0x0b78`, and `0x0c24`. The semantic model checkpoint
+`Startup Memory Sizing And Scheduler Bootstrap` groups startup fields
+`0x780e5a`, `0x780e60`, `0x780efa`, `0x780efe`, `0x7810b4`,
+`0x7810b8`, timer divider seeds, MMIO shadows, and eight wait-object
+records `0x780182..0x780262` into canonical, derived/cache, firmware
+bookkeeping, and unknown state. Remaining startup work is the optional
+board/config helper `0x05ba..0x071a`, later callees `0x071c`, `0x2c84`,
+`0x2feb6`, `0x3178`, and `0x31d6`, and physical naming for the
+startup MMIO/config inputs.
+
 ### Extension probing
 
 Status: Built-in `HEAD` chain anchored; external cartridge/resource

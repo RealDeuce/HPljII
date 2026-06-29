@@ -5,6 +5,169 @@ concepts. It complements the low-level ledger in
 `notes/reverse-engineering-ledger.md`; it does not replace address-level
 notes, disassembly windows, or executable fixtures.
 
+## Startup Memory Sizing And Scheduler Bootstrap
+
+Status: anchored as a ROM startup checkpoint. This cluster covers reset
+RAM tests, startup-derived memory/resource bounds, scratch/video RAM
+probes, heap allocator inputs, timer divider seed state, and the
+initial wait-object scheduler ring. It does not name the physical
+meaning of `$8000`, `$8c01`, `$a200`, `$a801`, or the computed
+address-control writes.
+
+Concept: reset first proves the small SRAM/scratch region at
+`0x00ffe000`, clears it, and installs RAM trampolines. Startup then uses
+`0x02b2`, `0x073a`, `0x08a2`, `0x08dc`, `0x0978`, `0x099e`,
+`0x0b18`, `0x0b78`, and `0x0c24` to derive formatter memory layout,
+validate address/resource windows, seed the heap allocator inputs, and
+construct the wait-object scheduler records later consumed by the
+active render scheduler. These fields are firmware setup state for
+host/parser/render reproduction; they are not PCL parser scratch.
+
+### Field Groups
+
+- Canonical startup memory fields:
+  - `0x780e5a`: formatter memory-size/code word. Reset helper
+    `0x02b2` seeds it to `0x20` and may add `0x80`, `0x40`, or `0x100`
+    from `$8c01 >> 3` after the optional `0x05ba` call.
+  - `0x780e60`: resource/window segment count. Reset helper `0x02b2`
+    seeds it to `6`; `0x0b18` multiplies it by `0x4000` to derive the
+    resource-window byte span.
+  - `0x7810b4`: resource/fallback window base. `0x0b18` computes it as
+    `0x780000 + 0x4000 * 0x780e5a - 0x4000 * 0x780e60`.
+  - `0x7810b8`: resource/fallback window size minus two. `0x0b18`
+    writes `0x4000 * 0x780e60 - 2`.
+  - `0x780efa`: heap start input, fixed to `0x783f4a` by `0x0b18`.
+  - `0x780efe`: available heap byte count, computed by `0x0b18` as
+    `0x7810b4 - 0x783f4a`.
+  Evidence: [firmware-startup.md](firmware-startup.md),
+  `generated/disasm/ic30_ic13_startup_memory_probe_00073a.lst`,
+  `generated/disasm/ic30_ic13_startup_heap_window_000b18.lst`, and
+  `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`.
+- Canonical scheduler records:
+  - `0x780182`, `0x7801a2`, `0x7801c2`, `0x7801e2`, `0x780202`,
+    `0x780222`, `0x780242`, and `0x780262`: eight wait-object records
+    initialized by `0x0c24` from table `0x15d0`.
+  - each record uses long `+0` as next pointer, long `+4` as a secondary
+    link written into the previous record during construction, word `+8`
+    as priority, word `+0x10` as stack byte allocation input,
+    long `+0x12` as restart PC, long `+0x16` as private stack base, and
+    long `+0x1a` as the initial saved stack pointer.
+  - decoded restart PCs are `0x1958`, `0x1eb2a`, `0x2828`,
+    `0xae2c`, `0x2de4`, `0x645a`, `0x1174e`, and `0x15b2`.
+  Evidence:
+  `generated/disasm/ic30_ic13_startup_scheduler_bootstrap_000c24.lst`
+  and the decoded `0x15d0` table in [firmware-startup.md](firmware-startup.md).
+- Derived/cache startup fields:
+  - `0x7828fa = 0xf1`, `0x7828f9 = 0x7e`, and `0x7828f6 = 0xf348`
+    are seeded by `0x0266..0x027e` as MMIO shadow defaults before the
+    trampoline and scheduler paths use `$aa01`, `$a801`, and `$a400`.
+  - `0x78017f = 4`, `0x780180 = 2`, and `0x780181 = 5` are the timer
+    divider seed values for the later `0x0d52` periodic handler.
+  - `0x782900` and `0x7828fe` are cleared by `0x038e..0x03ac` as the
+    `$a200` and `$a400` rotating-output cursors.
+  - `0x783edc` and `0x783edd` are seeded from current `$8000.6/.7`
+    state before the periodic debounce handler starts.
+  - `0x783eee.5` is a startup-test gate set during `0x073a` and cleared
+    on exit; `0x783eee.7` selects alternate expanded-memory tests in the
+    same cluster.
+- Firmware bookkeeping:
+  - `0x0978(A0)` computes and writes a control word for the memory
+    region containing `A0`; it is used before destructive tests and
+    before consuming the resource/fallback window.
+  - `0x08a2(A0, D0)` destructively tests `D0 >> 2` longwords with
+    swapped `0x5555aaaa` patterns.
+  - `0x08dc(A0, D0)` writes and verifies address-line byte patterns at
+    base, `0x100`-spaced, and `0x10000`-spaced offsets.
+  - `0x0b78` tests `0x00ffc000` using `0xa1b1` and `0x5e4e` while
+    toggling `0x7828f9.7` through `$a801`.
+  - `0x0bd0` selects a probe depth from `0x780e5a` values `0x60`,
+    `0xa0`, or `0x120` before alias-testing `0x00800000`.
+- Parser scratch:
+  - none. No PCL parser records or host byte sources are built in this
+    checkpoint.
+- Unknown:
+  - board/config identity for `$8000.5/.6/.7` and `$8c01 >> 3`.
+  - physical role of the computed `0x00ffxxxx` memory-control write from
+    `0x0978`.
+  - physical distinction between normal and `0x783eee.7` expanded-memory
+    startup test mode.
+
+### Writers
+
+- `0x02b2..0x031e` writes `0x780e59`, `0x780e5a`, and `0x780e60` from
+  `$8000.5`, `$8c01 >> 3`, and the optional helper `0x05ba`.
+- `0x0266..0x027e` writes `0x7828fa`, `0x7828f9`, and `0x7828f6`.
+- `0x038e..0x03e6` writes timer dividers `0x78017f..0x780181`, output
+  cursors `0x782900`/`0x7828fe`, and debounce bytes
+  `0x783edc`/`0x783edd`.
+- `0x073a` sets and clears `0x783eee.5`; its callees set failure codes
+  in `D7`.
+- `0x0b18` writes `0x780efa`, `0x780efe`, `0x7810b4`, and `0x7810b8`.
+- `0x0c24` writes the eight wait-object records from table `0x15d0`,
+  builds their private stacks below `0x00ffe000`, closes the ring, and
+  tail-enters `0x1266`.
+
+### Readers And Consumers
+
+- `0x164a` consumes `0x780efa` and `0x780efe` to initialize the heap
+  allocator bitmap and payload base.
+- `0x1ee9e`, `0x1f414`, compact glyph renderers, and encoded raster
+  renderers consume `0x7810b4` / `0x7810b8` as fallback/resource buffer
+  bounds after page records reach rendering.
+- `0x0d52` consumes timer dividers, debounce bytes, and output cursors
+  seeded by `0x038e`.
+- `0x1036`, `0x1064`, `0x108e`, `0x110c..0x11f8`, and `0x123a..0x1282`
+  consume the wait-object records built by `0x0c24`.
+- `0x073a` and its helpers consume `0x780e5a`, `0x780e60`,
+  `0x783eee.7`, and the computed resource-window fields to choose which
+  RAM/resource windows to test.
+
+### Output Effect
+
+This checkpoint has no direct page bitmap output. Its pixel-reproduction
+effect is that later heap allocation, resource/fallback rendering,
+periodic scheduler timing state, and wait-object dispatch begin from the
+same RAM layout and object records as the ROM. A mismatch here can move
+render buffers or change which scheduler object runs, but it does not
+interpret host PCL bytes by itself.
+
+### Confidence
+
+High for the default-path formulas and wait-object table shape: the
+disassembly gives direct writes and a fixed `0x15d0` table. Medium for
+board/config interpretation of `$8000` and `$8c01`, because the branch
+effects are known but the physical signal names are not.
+
+### Fixtures
+
+- No new executable fixture is introduced for this checkpoint. The
+  verification source is focused disassembly plus the existing allocator
+  fixture `0x164a initializes heap allocator bitmap and payload base`.
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_reset_000110.lst`: reset call sites and
+  early SRAM test at `0x0110..0x03e8`.
+- `generated/disasm/ic30_ic13_startup_memory_probe_00073a.lst`:
+  `0x073a..0x0a0e` startup verifier and memory-test call graph.
+- `generated/disasm/ic30_ic13_startup_memory_tests_0008a2.lst`:
+  `0x08a2..0x0976` destructive longword and address-line tests.
+- `generated/disasm/ic30_ic13_startup_heap_window_000b18.lst`:
+  `0x0b18..0x0c22` heap/resource bounds, scratch RAM, and alias tests.
+- `generated/disasm/ic30_ic13_startup_scheduler_bootstrap_000c24.lst`:
+  `0x0c24..0x0c7a` wait-object table consumer.
+- `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`:
+  `0x164a..0x170a` allocator consumer for `0x780efa`/`0x780efe`.
+
+### Unresolved Middle Edges
+
+- `0x05ba..0x071a`: optional board/config helper called by `0x02b2`
+  still needs composition.
+- `0x071c`, `0x2c84`, `0x2feb6`, `0x3178`, and `0x31d6`: startup
+  callees remain outside this checkpoint except where their downstream
+  state is already covered by allocator, host-input, or renderer notes.
+- Physical names for the startup MMIO/config inputs remain unresolved.
+
 ## Host Byte Fetch And Data-Chain Input
 
 Status: anchored as the normalized byte-source boundary feeding the main
@@ -5254,8 +5417,10 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     `0x17ffe`, and available heap bytes `0x640b6`.
   - reset path `0x0370` calls allocator initializer `0x164a` before the
     later setup calls at `0x2feb6`, `0x3178`, and `0x31d6`.
-  Evidence: disassembly `0x0320..0x0376`, `0x0b18..0x0b70`, and fixture
-  `0x164a initializes heap allocator bitmap and payload base`.
+  Evidence: disassembly
+  `generated/disasm/ic30_ic13_startup_heap_window_000b18.lst`,
+  semantic checkpoint `Startup Memory Sizing And Scheduler Bootstrap`,
+  and fixture `0x164a initializes heap allocator bitmap and payload base`.
 - Canonical heap objects and chains:
   - allocator entries `0x170c` and `0x1710` both manage 64-byte heap
     allocation units. `0x170c` scans from the low side; `0x1710` scans
@@ -5458,10 +5623,10 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   `macro overlay multi-row raster payload publishes with page rule`, and
   `macro overlay span-flush payload publishes with page rule`.
 - Unknown:
-  - startup option source for the optional `0x80` addition to
-    `0x780e5a` still needs board/config correlation, but the downstream
-    `0x0b18` heap-limit math and `0x164a` allocator initialization are
-    pinned for the default path.
+  - board/config names for the `$8c01 >> 3` startup options that add
+    `0x80`, `0x40`, or `0x100` to `0x780e5a` still need correlation, but
+    the downstream `0x0b18` heap-limit math and `0x164a` allocator
+    initialization are pinned for the default path.
   - no remaining macro execute/call replay, font-context, first
     overlay-publication, repeated enabled-overlay publication, mixed-control
     overlay payload, raster overlay payload, multi-row raster overlay payload,

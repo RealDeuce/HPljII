@@ -1297,10 +1297,13 @@ ROM work needed:
   `Built-In Resource Scan And Candidate Windows`, current-record teardown
   `0x1887a` and lookup `0x1b4c0` are modeled in `Downloaded Font Descriptor
   And Payload Chain`, and `0x1b04c` / `0x179aa` are modeled in the
-  macro/font-context checkpoints. The remaining scheduler-specific edge is one
-  live optional-window change sequence through
-  `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900` before the caller
-  resumes.
+  macro/font-context checkpoints. Fixture `0x19dd2 optional-window change
+  composes refresh helpers` now drives a synthetic changed-window sequence
+  through `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900`, proving the
+  candidate prune, current-record release, dirty mark, rescan handoff, and
+  canonical-slot commit effects for modeled inputs. The remaining
+  scheduler-specific edge is a live optional-window change sequence from
+  physical resource-window contents before the caller resumes.
   Startup retained-record bulk load is now bounded through
   `0x5a16 -> 0x97e4`, and invalid active-record state reports `67 SERVICE`
   through `0x56c2 -> 0x1284`; a ROM edge from failed startup load into the

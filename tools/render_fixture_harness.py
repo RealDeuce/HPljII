@@ -8600,6 +8600,274 @@ def classify_scanned_font_candidates_via_1a9be(
     }
 
 
+def page_font_window_compare_via_1a042_or_19f08(
+    source_slots: list[list[int]],
+    target_slots: list[list[int]],
+) -> int:
+    predicate = 0
+    for index, source in enumerate(source_slots[:2]):
+        if not any(int(word) & 0xFFFF for word in source[:9]):
+            continue
+        target = target_slots[index] if index < len(target_slots) else []
+        source_words = [int(word) & 0xFFFF for word in source[:9]]
+        target_words = [int(word) & 0xFFFF for word in target[:9]]
+        if source_words != target_words:
+            predicate |= 1 << index
+    return predicate
+
+
+def optional_window_for_scheduler_predicate(predicate: int) -> tuple[int, int]:
+    if int(predicate) == 1:
+        return (0x200000, 0x3FFFFE)
+    if int(predicate) == 2:
+        return (0x400000, 0x5FFFFE)
+    return (0x200000, 0x5FFFFE)
+
+
+def page_font_candidate_prune_via_1ba92(
+    candidates: list[int],
+    predicate: int,
+    *,
+    candidate_classes: dict[int, int],
+    counters: dict[str, int],
+    cursors: dict[str, int],
+    base: int = FONT_CANDIDATE_LIST_BASE,
+) -> dict[str, object]:
+    start, end = optional_window_for_scheduler_predicate(predicate)
+    updated_candidates = [int(candidate) & 0xFFFFFFFF for candidate in candidates]
+    updated_counters = dict(counters)
+    updated_cursors = dict(cursors)
+    removals: list[dict[str, int]] = []
+    index = 0
+    while index < len(updated_candidates):
+        candidate = updated_candidates[index]
+        address = candidate & 0x00FFFFFF
+        if start <= address <= end:
+            removed = updated_candidates.pop(index)
+            d4_class = int(candidate_classes.get(address, 0))
+            updated_counters["0x78278e"] = int(updated_counters.get("0x78278e", 0)) - 1
+            if d4_class == 1:
+                updated_counters["0x782790"] = int(updated_counters.get("0x782790", 0)) - 1
+                updated_counters["0x782794"] = int(updated_counters.get("0x782794", 0)) - 1
+                for key in ("0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4"):
+                    updated_cursors[key] = int(updated_cursors.get(key, base)) - 4
+            else:
+                updated_counters["0x782798"] = int(updated_counters.get("0x782798", 0)) - 1
+                updated_counters["0x78279c"] = int(updated_counters.get("0x78279c", 0)) - 1
+                updated_cursors["0x7827b4"] = int(updated_cursors.get("0x7827b4", base)) - 4
+            removals.append({
+                "helper": 0x1BD2E,
+                "index": index,
+                "slot_pointer": base + index * 4,
+                "removed": removed,
+                "d4_class": d4_class,
+            })
+            continue
+        index += 1
+    return {
+        "helper": 0x1BA92,
+        "range": (start, end),
+        "removals": removals,
+        "candidates": updated_candidates,
+        "counters": updated_counters,
+        "cursors": updated_cursors,
+    }
+
+
+def page_font_current_record_release_via_178fa(
+    records: list[dict[str, int]],
+    predicate: int,
+    *,
+    candidate_longwords_by_payload: dict[int, int],
+    candidates: list[int],
+    counters: dict[str, int],
+    cursors: dict[str, int],
+    active_primary_context: int | None = None,
+    active_secondary_context: int | None = None,
+) -> dict[str, object]:
+    start, end = optional_window_for_scheduler_predicate(predicate)
+    updated_records = [dict(record) for record in records]
+    updated_candidates = [int(candidate) & 0xFFFFFFFF for candidate in candidates]
+    updated_counters = dict(counters)
+    updated_cursors = dict(cursors)
+    releases: list[dict[str, object]] = []
+    for index, record in enumerate(updated_records[:32]):
+        flags_long = int(record.get("flags_long", 0)) & 0xFFFFFFFF
+        payload = int(record.get("payload", 0)) & 0x00FFFFFF
+        if not (flags_long & 0x80000000) or not payload or not (start <= payload <= end):
+            continue
+        release = font_resource_payload_release_via_1887a(
+            updated_records,
+            record_index=index,
+            payload=payload,
+            candidate_longword=candidate_longwords_by_payload.get(payload, payload),
+            payload_byte_0x16=int(record.get("payload_byte_0x16", 0)),
+            payload_byte_0x20=int(record.get("payload_byte_0x20", 0)),
+            counters=updated_counters,
+            cursors=updated_cursors,
+            candidates=updated_candidates,
+            active_primary_context=active_primary_context,
+            active_secondary_context=active_secondary_context,
+        )
+        updated_records = [dict(item) for item in release["records"]]  # type: ignore[index]
+        updated_counters = dict(release["counters"])  # type: ignore[arg-type]
+        updated_cursors = dict(release["cursors"])  # type: ignore[arg-type]
+        updated_candidates = list(release["candidates"] or [])  # type: ignore[arg-type]
+        releases.append(release)
+    return {
+        "helper": 0x178FA,
+        "range": (start, end),
+        "records": updated_records,
+        "candidates": updated_candidates,
+        "counters": updated_counters,
+        "cursors": updated_cursors,
+        "releases": releases,
+    }
+
+
+def page_font_mark_candidates_dirty_via_19d9c(candidates: list[int], count: int) -> dict[str, object]:
+    updated = [int(candidate) & 0xFFFFFFFF for candidate in candidates]
+    dirty_indexes: list[int] = []
+    for index in range(min(int(count), len(updated))):
+        updated[index] |= 0x00000008
+        dirty_indexes.append(index)
+    return {
+        "helper": 0x19D9C,
+        "dirty_indexes": dirty_indexes,
+        "candidates": updated,
+    }
+
+
+def page_font_optional_rescan_via_1a4fa(
+    predicate: int,
+    records: list[dict[str, int]],
+) -> dict[str, object]:
+    start, end = optional_window_for_scheduler_predicate(predicate)
+    accepted = [
+        record
+        for record in records
+        if start <= (int(record["address"]) & 0x00FFFFFF) <= end
+    ]
+    partition = classify_scanned_font_candidates_via_1a9be(accepted)
+    return {
+        "helper": 0x1A4FA,
+        "range": (start, end),
+        "scan_helper": 0x1A616,
+        "partition": partition,
+    }
+
+
+def page_font_commit_scheduler_scan_via_1a900(
+    scratch_slots: list[list[int]],
+    candidate_slots: list[dict[str, int]],
+    active_contexts: tuple[int, int],
+) -> dict[str, object]:
+    refreshes: list[dict[str, object]] = []
+    lookups: list[dict[str, object]] = []
+    for slot, context in enumerate(active_contexts):
+        lookup = candidate_slot_lookup_via_1b4c0(context, candidate_slots)
+        lookups.append(lookup)
+        selected_slot = int(lookup["slot_pointer"])
+        selected = next(
+            (
+                candidate
+                for candidate in candidate_slots
+                if int(candidate["slot_pointer"]) == selected_slot
+            ),
+            None,
+        )
+        if selected is None or not (int(selected["longword"]) & 0x08000000):
+            refreshes.append({"helper": 0x179AA, "argument": slot})
+    canonical_slots = [[int(word) & 0xFFFF for word in slot[:10]] for slot in scratch_slots[:2]]
+    return {
+        "helper": 0x1A900,
+        "refresh_helper": 0x1B04C,
+        "lookups": lookups,
+        "active_refreshes": refreshes,
+        "canonical_slots": canonical_slots,
+    }
+
+
+def page_font_scheduler_changed_window_via_19dd2(
+    *,
+    canonical_slots: list[list[int]],
+    scratch_slots: list[list[int]],
+    candidates: list[int],
+    candidate_classes: dict[int, int],
+    counters: dict[str, int],
+    cursors: dict[str, int],
+    records: list[dict[str, int]],
+    candidate_longwords_by_payload: dict[int, int],
+    rescan_records: list[dict[str, int]],
+    active_contexts: tuple[int, int],
+    candidate_slots_for_commit: list[dict[str, int]],
+    status_probe_zero: bool = False,
+) -> dict[str, object]:
+    first_predicate = page_font_window_compare_via_1a042_or_19f08(canonical_slots, scratch_slots)
+    second_predicate = page_font_window_compare_via_1a042_or_19f08(scratch_slots, canonical_slots)
+    if first_predicate == 0 and second_predicate == 0:
+        return {
+            "handler": 0x19DD2,
+            "branch": "unchanged",
+            "first_predicate": 0,
+            "second_predicate": 0,
+            "return_d7": 1,
+            "calls": ["0x19fb8", "0x1b04c"],
+        }
+    if status_probe_zero and first_predicate != 0:
+        return {
+            "handler": 0x19DD2,
+            "branch": "status",
+            "first_predicate": first_predicate,
+            "second_predicate": second_predicate,
+            "status_byte_780e8d": first_predicate,
+            "status_mask": 0x00000200,
+            "return_d7": 0,
+            "calls": ["0x72a2", "0x9bee", "0x19fb8"],
+        }
+
+    prune = page_font_candidate_prune_via_1ba92(
+        candidates,
+        first_predicate,
+        candidate_classes=candidate_classes,
+        counters=counters,
+        cursors=cursors,
+    )
+    release = page_font_current_record_release_via_178fa(
+        records,
+        first_predicate,
+        candidate_longwords_by_payload=candidate_longwords_by_payload,
+        candidates=prune["candidates"],  # type: ignore[arg-type]
+        counters=prune["counters"],  # type: ignore[arg-type]
+        cursors=prune["cursors"],  # type: ignore[arg-type]
+        active_primary_context=active_contexts[0],
+        active_secondary_context=active_contexts[1],
+    )
+    dirty = page_font_mark_candidates_dirty_via_19d9c(
+        release["candidates"],  # type: ignore[arg-type]
+        int(release["counters"]["0x78278e"]),  # type: ignore[index]
+    )
+    rescan = page_font_optional_rescan_via_1a4fa(second_predicate, rescan_records)
+    commit = page_font_commit_scheduler_scan_via_1a900(
+        scratch_slots,
+        candidate_slots_for_commit,
+        active_contexts,
+    )
+    return {
+        "handler": 0x19DD2,
+        "branch": "changed-refresh",
+        "first_predicate": first_predicate,
+        "second_predicate": second_predicate,
+        "prune": prune,
+        "release": release,
+        "dirty": dirty,
+        "rescan": rescan,
+        "commit": commit,
+        "return_d7": 1,
+        "calls": ["0x1ba92", "0x178fa", "0x19d9c", "0x1a4fa", "0x1a900", "0x19fb8"],
+    }
+
+
 def firmware_scanned_builtin_candidates(resources: bytes) -> list[dict[str, int]]:
     records: list[dict[str, int]] = []
     cursor = 0
@@ -52252,6 +52520,174 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    page_font_scheduler_refresh = page_font_scheduler_changed_window_via_19dd2(
+        canonical_slots=[
+            [0x1111, 0, 0, 0, 0, 0, 0, 0, 0, 0x00AA],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        ],
+        scratch_slots=[
+            [0x2222, 0, 0, 0, 0, 0, 0, 0, 0, 0x0055],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        ],
+        candidates=[0x40210000, 0x00410000],
+        candidate_classes={0x210000: 1, 0x410000: 0},
+        counters={
+            "0x78278e": 3,
+            "0x782790": 1,
+            "0x782794": 1,
+            "0x782798": 2,
+            "0x78279c": 2,
+            "0x78278a": 2,
+            "0x782782": 2,
+            "0x78279e": 2,
+        },
+        cursors={
+            "0x7827a0": FONT_CANDIDATE_LIST_BASE,
+            "0x7827a4": FONT_CANDIDATE_LIST_BASE,
+            "0x7827a8": FONT_CANDIDATE_LIST_BASE + 4,
+            "0x7827ac": FONT_CANDIDATE_LIST_BASE + 8,
+            "0x7827b0": FONT_CANDIDATE_LIST_BASE + 8,
+            "0x7827b4": FONT_CANDIDATE_LIST_BASE + 8,
+        },
+        records=[
+            {
+                "id": 0x1200,
+                "flags": 0x00,
+                "flags_long": 0x90000000,
+                "payload": 0x203333,
+                "payload_byte_0x16": 0,
+            },
+            {"id": 0, "flags": 0, "flags_long": 0, "payload": 0},
+        ],
+        candidate_longwords_by_payload={0x203333: 0x00203333},
+        rescan_records=[
+            {
+                "address": 0x203000,
+                "d4_class": 0,
+                "source_arg": 1,
+                "initial_flags": 0x00203000,
+                "type_byte_0x0c": 2,
+                "type_byte_0x0d": 0,
+            }
+        ],
+        active_contexts=(0x203333, 0x410000),
+        candidate_slots_for_commit=[
+            {"slot_pointer": FONT_CANDIDATE_LIST_BASE, "longword": 0x00410000}
+        ],
+    )
+    page_font_scheduler_release = page_font_scheduler_refresh["release"]
+    assert isinstance(page_font_scheduler_release, dict)
+    page_font_scheduler_releases = page_font_scheduler_release["releases"]
+    assert isinstance(page_font_scheduler_releases, list)
+    page_font_scheduler_rescan = page_font_scheduler_refresh["rescan"]
+    assert isinstance(page_font_scheduler_rescan, dict)
+    page_font_scheduler_partition = page_font_scheduler_rescan["partition"]
+    assert isinstance(page_font_scheduler_partition, dict)
+    page_font_scheduler_events = page_font_scheduler_partition["events"]
+    assert isinstance(page_font_scheduler_events, list)
+    checks.append(assert_equal("0x19dd2 optional-window change composes refresh helpers", {
+        "branch": page_font_scheduler_refresh["branch"],
+        "predicates": (
+            page_font_scheduler_refresh["first_predicate"],
+            page_font_scheduler_refresh["second_predicate"],
+        ),
+        "prune": {
+            "range": page_font_scheduler_refresh["prune"]["range"],  # type: ignore[index]
+            "removals": page_font_scheduler_refresh["prune"]["removals"],  # type: ignore[index]
+            "candidates": page_font_scheduler_refresh["prune"]["candidates"],  # type: ignore[index]
+        },
+        "release": {
+            "record": page_font_scheduler_release["records"][0],  # type: ignore[index]
+            "release_count": len(page_font_scheduler_releases),
+            "active_refresh": page_font_scheduler_releases[0]["active_refresh"],
+            "candidate_delete": page_font_scheduler_releases[0]["candidate_delete"],
+        },
+        "dirty": page_font_scheduler_refresh["dirty"],
+        "rescan": {
+            "range": page_font_scheduler_rescan["range"],
+            "counters": page_font_scheduler_partition["counters"],
+            "event": page_font_scheduler_events[0],
+        },
+        "commit": {
+            "active_refreshes": page_font_scheduler_refresh["commit"]["active_refreshes"],  # type: ignore[index]
+            "canonical_slots": page_font_scheduler_refresh["commit"]["canonical_slots"],  # type: ignore[index]
+        },
+        "return_d7": page_font_scheduler_refresh["return_d7"],
+        "calls": page_font_scheduler_refresh["calls"],
+    }, {
+        "branch": "changed-refresh",
+        "predicates": (1, 1),
+        "prune": {
+            "range": (0x200000, 0x3FFFFE),
+            "removals": [
+                {
+                    "helper": 0x1BD2E,
+                    "index": 0,
+                    "slot_pointer": FONT_CANDIDATE_LIST_BASE,
+                    "removed": 0x40210000,
+                    "d4_class": 1,
+                }
+            ],
+            "candidates": [0x00410000],
+        },
+        "release": {
+            "record": {
+                "id": 0,
+                "flags": 0,
+                "flags_long": 0x90000000,
+                "payload": 0,
+                "payload_byte_0x16": 0,
+            },
+            "release_count": 1,
+            "active_refresh": [{"slot": "primary", "helper": "0x179aa", "argument": 0}],
+            "candidate_delete": None,
+        },
+        "dirty": {
+            "helper": 0x19D9C,
+            "dirty_indexes": [0],
+            "candidates": [0x00410008],
+        },
+        "rescan": {
+            "range": (0x200000, 0x3FFFFE),
+            "counters": {
+                "0x78278e": 1,
+                "0x782790": 0,
+                "0x782792": 0,
+                "0x782794": 0,
+                "0x782796": 0,
+                "0x782798": 1,
+                "0x78279a": 0,
+                "0x78279c": 1,
+                "0x78279e": 0,
+            },
+            "event": {
+                "helper": 0x01A9BE,
+                "index": 0,
+                "address": 0x203000,
+                "d4_class": 0,
+                "source_arg": 1,
+                "flag_source": "HEAD-type/+0x0d",
+                "candidate_flags": 0x44203000,
+                "low_resource_window": False,
+                "extension_window": True,
+                "counter_branch": "class-zero",
+                "cursor_advances": ["0x7827b4"],
+            },
+        },
+        "commit": {
+            "active_refreshes": [
+                {"helper": 0x179AA, "argument": 0},
+                {"helper": 0x179AA, "argument": 1},
+            ],
+            "canonical_slots": [
+                [0x2222, 0, 0, 0, 0, 0, 0, 0, 0, 0x0055],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+        },
+        "return_d7": 1,
+        "calls": ["0x1ba92", "0x178fa", "0x19d9c", "0x1a4fa", "0x1a900", "0x19fb8"],
+    }))
+
     font_payload_lookup_hit = font_payload_record_lookup_via_170be(font_records, 0x99123456)
     font_payload_lookup_miss = font_payload_record_lookup_via_170be(font_records, 0x00AAAAAA)
     checks.append(assert_equal("0x170be-modeled font payload record lookup", {
@@ -93829,6 +94265,25 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         actual_candidate_events[0]["candidate_flags"],
         actual_candidate_events[-1]["candidate_flags"],
     ))
+    lines.append(
+        "- page/font scheduler optional-window fixture: `0x19dd2` predicates "
+        "`%s` run long refresh helpers `%s`, prune `%d` candidate through "
+        "`0x1ba92`/`0x1bd2e`, release `%d` current record through "
+        "`0x178fa`/`0x1887a`, mark dirty indexes `%s`, rescan range `%s` "
+        "through `0x1a4fa`/`0x1a616`, and commit canonical slot zero to `%s` "
+        "through `0x1a900`." % (
+            (
+                page_font_scheduler_refresh["first_predicate"],
+                page_font_scheduler_refresh["second_predicate"],
+            ),
+            page_font_scheduler_refresh["calls"],
+            len(page_font_scheduler_refresh["prune"]["removals"]),  # type: ignore[index]
+            len(page_font_scheduler_release["releases"]),  # type: ignore[arg-type]
+            page_font_scheduler_refresh["dirty"]["dirty_indexes"],  # type: ignore[index]
+            page_font_scheduler_rescan["range"],
+            page_font_scheduler_refresh["commit"]["canonical_slots"][0],  # type: ignore[index]
+        )
+    )
     lines.append("- font sample row fields: `0x1cabe` over first `COURIER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152` before the sample bytes." % (
         courier_sample_row_fields["record_start"],
         " ".join(f"{byte:02x}" for byte in courier_sample_row_fields["printed"]),

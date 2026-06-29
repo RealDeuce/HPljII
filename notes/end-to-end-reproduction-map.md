@@ -75,11 +75,13 @@ the board-facing boundary is tracked in
   `0x7828b6`, and the status branch can raise
   `0x9bee(0x780e2e, 0x00000200)` with byte `0x780e8d`. Remaining risk is the
   board-level external-register identity, one live execution of
-  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`, and one changed optional-window
-  scheduler sequence through
-  `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900` that proves the
-  resulting candidate-list, current-record, canonical-window, active-context,
-  and status state before the caller resumes. Candidate-slot
+  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`, plus a live physical-resource version
+  of the changed optional-window scheduler sequence now modeled by fixture
+  `0x19dd2 optional-window change composes refresh helpers`. That fixture drives
+  `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900` and proves candidate-list,
+  current-record, canonical-window, and active-context effects for synthetic
+  inputs; status-branch and physical optional-window contents remain open.
+  Candidate-slot
   deletion/compaction through `0x1bd2e`, scanner behavior through `0x1a616`,
   teardown through `0x1887a`, active-context lookup through `0x1b4c0`, and
   font/default refresh through `0x1b04c` / `0x179aa` are documented in sibling

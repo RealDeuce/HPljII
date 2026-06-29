@@ -8499,17 +8499,28 @@ and canonical-table copy, `0x782894` scratch-pointer write, `0x780e8d` write,
 68000 disassembly evidence.
 Medium for treating the routine as a page/font scheduler handoff: caller
 locations and callee names support that role, and the shared helper interiors
-are covered by named sibling checkpoints, but no live fixture drives this
-routine through a changed optional-window state. Low for any user-visible name
-assigned to `0x780e8d`, status mask `0x00000200`, or `$8000.14/15`; this note
-deliberately leaves those names unresolved.
+are covered by named sibling checkpoints. Fixture `0x19dd2 optional-window
+change composes refresh helpers` now drives a synthetic changed-window path
+through the long refresh chain, but no live CPU fixture or physical optional
+resource image proves the same state from hardware-visible inputs. Low for any
+user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
+`$8000.14/15`; this note deliberately leaves those names unresolved.
 
 ### Fixtures
 
-- No dedicated fixture currently executes `0x19dd2` end to end.
-- No dedicated fixture currently executes `0x19eb6`, `0x1a042`, `0x19f08`,
-  `0x19fb8`, `0x1a0f2`, `0x1ba92`, `0x178fa`, `0x19d9c`, `0x1a4fa`, or
-  `0x1a900` against modeled optional resource-window records.
+- Fixture `0x19dd2 optional-window change composes refresh helpers` drives a
+  synthetic long refresh path through predicates `(1, 1)`: `0x1ba92` prunes a
+  `0x200000..0x3ffffe` candidate through `0x1bd2e`, `0x178fa` releases a
+  matching current-record payload through `0x1887a`, `0x19d9c` marks the
+  remaining candidate dirty, `0x1a4fa` hands a synthetic record to the
+  `0x1a616`/`0x1a9be` scanner model, and `0x1a900` commits scratch slot zero to
+  canonical `0x7828b6`.
+- No dedicated fixture currently executes `0x19dd2` from live 68000 state or
+  from physical optional resource-window contents. The scratch construction and
+  optional-window record in the fixture are modeled inputs.
+- No dedicated fixture currently executes the unchanged branch, status branch,
+  `0x19eb6`, `0x1a042`, `0x19f08`, `0x19fb8`, or `0x1a0f2` against physical
+  optional resource-window records.
 - Existing external-ready fixtures cover adjacent consumers in
   `External Ready And Service Status Loop`, but they do not drive `0xba48`
   through `0xc108 -> 0x19dd2 -> 0x36e4` as one modeled session.
@@ -8546,10 +8557,11 @@ deliberately leaves those names unresolved.
 
 ### Unresolved Middle Edges
 
-- `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900`: no live fixture yet
-  drives one changed optional-window state through the full chain and proves the
-  resulting `0x782324`, `0x782640`, `0x7828b6`, active-context, and status
-  state before the caller resumes.
+- `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900`: the synthetic fixture
+  now proves one changed optional-window state through the full chain and pins
+  resulting `0x782324`, `0x782640`, `0x7828b6`, and active-context effects.
+  Remaining work is a live CPU/physical-resource version of that sequence and
+  the status-byte effect when the `0x72a2` branch returns zero.
 - `0x1a616` is composed for the built-in `0x080000..0x0ffffe` resource window in
   `Built-In Resource Scan And Candidate Windows`; optional windows
   `0x200000..0x3ffffe` and `0x400000..0x5ffffe` remain unverified physical

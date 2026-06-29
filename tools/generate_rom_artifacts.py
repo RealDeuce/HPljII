@@ -153,6 +153,7 @@ def generate_disassembly(firmware: Path) -> None:
         ("ic30_ic13_panel_service_dispatch_003dae.lst", "0x3d66", "0x3d66", "0x210"),
         ("ic30_ic13_page_pool_init_003100.lst", "0x3100", "0x3100", "0x80"),
         ("ic30_ic13_host_input_quiesce_004200.lst", "0x4200", "0x4200", "0x2d4"),
+        ("ic30_ic13_host_scheduler_caller_004700.lst", "0x4700", "0x4700", "0x230"),
         ("ic30_ic13_host_input_quiesce_0061e4.lst", "0x61e4", "0x61e4", "0x180"),
         ("ic30_ic13_host_byte_fetch_00a904.lst", "0xa904", "0xa904", "0x2f0"),
         ("ic30_ic13_interface_output_mmio_00a1b0.lst", "0xa1b0", "0xa1b0", "0x90"),

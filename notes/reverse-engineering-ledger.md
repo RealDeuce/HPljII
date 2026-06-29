@@ -1305,8 +1305,12 @@ ROM work needed:
   unchanged and status branch exits` pins the both-zero predicate return and the
   `0x72a2 == 0` status branch that writes `0x780e8d`, raises
   `0x00000200` through `0x9bee`, and returns `D7 = 0`. The remaining
-  scheduler-specific edge is live optional-window execution from physical
-  resource-window contents before the caller resumes.
+  host-quiesce caller contract is now fixture-backed too:
+  `0x447a/0x4760 consume scheduler return differently` proves `0x447a` ignores
+  scheduler `D7`, while `0x4760` returns immediately for `D7 = 0` and writes
+  menu/default state for `D7 != 0`. The remaining scheduler-specific edge is
+  live optional-window execution from physical resource-window contents before
+  external-ready or font-resource-scan callers resume.
   Startup retained-record bulk load is now bounded through
   `0x5a16 -> 0x97e4`, and invalid active-record state reports `67 SERVICE`
   through `0x56c2 -> 0x1284`; a ROM edge from failed startup load into the

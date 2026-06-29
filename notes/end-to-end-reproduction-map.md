@@ -86,8 +86,11 @@ the board-facing boundary is tracked in
   deletion/compaction through `0x1bd2e`, scanner behavior through `0x1a616`,
   teardown through `0x1887a`, active-context lookup through `0x1b4c0`, and
   font/default refresh through `0x1b04c` / `0x179aa` are documented in sibling
-  semantic checkpoints; the scheduler-specific live caller context remains
-  open.
+  semantic checkpoints. Fixture `0x447a/0x4760 consume scheduler return
+  differently` now pins the host-quiesce caller contract: `0x447a` ignores
+  `D7`, while `0x4760` returns immediately for `D7 = 0` and enters menu/default
+  state setup for `D7 != 0`. External-ready and font-resource-scan caller
+  contexts remain open.
 - Parser byte and command records:
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
   Reproduction evidence is `generated/analysis/ic30_ic13_parser_xrefs.md`

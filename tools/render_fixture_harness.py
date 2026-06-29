@@ -8868,6 +8868,87 @@ def page_font_scheduler_changed_window_via_19dd2(
     }
 
 
+def host_quiesce_tail_via_447a(scheduler_d7: int, default_byte_7821a2: int) -> dict[str, object]:
+    return {
+        "caller": 0x447A,
+        "scheduler_d7": int(scheduler_d7),
+        "scheduler_d7_consumed": False,
+        "default_loader_arg_6b5c": int(default_byte_7821a2) & 0xFF,
+        "writes": {
+            "0x780e3a": 1,
+            "0x7821cd_bit0": 1,
+            "0x7821b0": 1,
+            "0x780e68": 0,
+        },
+        "calls_after_scheduler": [
+            "0x6b5c",
+            "0x15a6",
+            "0x15ac",
+            "0x70ca",
+            "0x15a6",
+            "0x15ac",
+        ],
+        "return": "normal-tail",
+    }
+
+
+def host_scheduler_menu_caller_via_4760(
+    scheduler_d7: int,
+    *,
+    helper_byte_1bd64: int = 0,
+    helper_word_1bd64: int = 0,
+    default_word_78219e: int = 0,
+    converted_default_cfb2: int = 0,
+    input_byte_a3ca: int = 0xFF,
+    repeat_byte_7821aa: int = 0,
+    elapsed_timeout: bool = False,
+) -> dict[str, object]:
+    if int(scheduler_d7) == 0:
+        return {
+            "caller": 0x4760,
+            "scheduler_d7": 0,
+            "branch": "return-immediate",
+            "writes": {},
+            "calls_after_scheduler": [],
+            "return": "0x476a",
+        }
+
+    state_byte = 0x03
+    menu_index = 0
+    if elapsed_timeout:
+        state_byte |= 0x80
+        menu_index = 5
+    cleared_by_new_input = (
+        int(input_byte_a3ca) != 0xFF
+        and (int(input_byte_a3ca) & 0xFF) != (int(repeat_byte_7821aa) & 0xFF)
+    )
+    if cleared_by_new_input:
+        state_byte = 0
+    calls = ["0x1bd64"]
+    if int(helper_word_1bd64) >= 0x64:
+        calls.append("0x1284")
+    calls.extend(["0x6d92", "0xcfb2", "0xa3ca"])
+
+    return {
+        "caller": 0x4760,
+        "scheduler_d7": int(scheduler_d7),
+        "branch": "state-setup",
+        "error": (0xE2, 0x20) if int(helper_word_1bd64) >= 0x64 else None,
+        "writes": {
+            "0x782272": state_byte,
+            "0x782278": menu_index,
+            "0x782288": int(helper_byte_1bd64) & 0xFF,
+            "0x78228c": int(helper_word_1bd64) & 0xFFFF,
+            "0x782290": int(converted_default_cfb2) & 0xFFFFFFFF,
+            "0x7822de": int(default_word_78219e) & 0xFFFF,
+        },
+        "calls_after_scheduler": calls,
+        "input_byte": int(input_byte_a3ca) & 0xFF,
+        "cleared_by_new_input": cleared_by_new_input,
+        "return": "0x48c8" if cleared_by_new_input else "0x48d0-loop",
+    }
+
+
 def firmware_scanned_builtin_candidates(resources: bytes) -> list[dict[str, int]]:
     records: list[dict[str, int]] = []
     cursor = 0
@@ -52763,6 +52844,134 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    host_quiesce_447a_zero = host_quiesce_tail_via_447a(0, 0x12)
+    host_quiesce_447a_nonzero = host_quiesce_tail_via_447a(1, 0x34)
+    host_quiesce_4760_zero = host_scheduler_menu_caller_via_4760(0)
+    host_quiesce_4760_nonzero = host_scheduler_menu_caller_via_4760(
+        1,
+        helper_byte_1bd64=0x07,
+        helper_word_1bd64=0x0064,
+        default_word_78219e=0x1234,
+        converted_default_cfb2=0x00045678,
+        input_byte_a3ca=0xFF,
+    )
+    host_quiesce_4760_new_input = host_scheduler_menu_caller_via_4760(
+        1,
+        helper_byte_1bd64=0x02,
+        helper_word_1bd64=0x0009,
+        default_word_78219e=0x0030,
+        converted_default_cfb2=0x00000044,
+        input_byte_a3ca=0x41,
+        repeat_byte_7821aa=0x40,
+    )
+    checks.append(assert_equal("0x447a/0x4760 consume scheduler return differently", {
+        "0x447a_zero": {
+            key: host_quiesce_447a_zero[key]
+            for key in (
+                "scheduler_d7",
+                "scheduler_d7_consumed",
+                "default_loader_arg_6b5c",
+                "writes",
+                "return",
+            )
+        },
+        "0x447a_nonzero": {
+            key: host_quiesce_447a_nonzero[key]
+            for key in (
+                "scheduler_d7",
+                "scheduler_d7_consumed",
+                "default_loader_arg_6b5c",
+                "writes",
+                "return",
+            )
+        },
+        "0x4760_zero": {
+            key: host_quiesce_4760_zero[key]
+            for key in (
+                "scheduler_d7",
+                "branch",
+                "writes",
+                "calls_after_scheduler",
+                "return",
+            )
+        },
+        "0x4760_nonzero": {
+            key: host_quiesce_4760_nonzero[key]
+            for key in (
+                "scheduler_d7",
+                "branch",
+                "error",
+                "writes",
+                "calls_after_scheduler",
+                "return",
+            )
+        },
+        "0x4760_new_input": {
+            key: host_quiesce_4760_new_input[key]
+            for key in ("branch", "writes", "cleared_by_new_input", "return")
+        },
+    }, {
+        "0x447a_zero": {
+            "scheduler_d7": 0,
+            "scheduler_d7_consumed": False,
+            "default_loader_arg_6b5c": 0x12,
+            "writes": {
+                "0x780e3a": 1,
+                "0x7821cd_bit0": 1,
+                "0x7821b0": 1,
+                "0x780e68": 0,
+            },
+            "return": "normal-tail",
+        },
+        "0x447a_nonzero": {
+            "scheduler_d7": 1,
+            "scheduler_d7_consumed": False,
+            "default_loader_arg_6b5c": 0x34,
+            "writes": {
+                "0x780e3a": 1,
+                "0x7821cd_bit0": 1,
+                "0x7821b0": 1,
+                "0x780e68": 0,
+            },
+            "return": "normal-tail",
+        },
+        "0x4760_zero": {
+            "scheduler_d7": 0,
+            "branch": "return-immediate",
+            "writes": {},
+            "calls_after_scheduler": [],
+            "return": "0x476a",
+        },
+        "0x4760_nonzero": {
+            "scheduler_d7": 1,
+            "branch": "state-setup",
+            "error": (0xE2, 0x20),
+            "writes": {
+                "0x782272": 0x03,
+                "0x782278": 0,
+                "0x782288": 0x07,
+                "0x78228c": 0x0064,
+                "0x782290": 0x00045678,
+                "0x7822de": 0x1234,
+            },
+            "calls_after_scheduler": ["0x1bd64", "0x1284", "0x6d92", "0xcfb2", "0xa3ca"],
+            "return": "0x48d0-loop",
+        },
+        "0x4760_new_input": {
+            "branch": "state-setup",
+            "writes": {
+                "0x782272": 0,
+                "0x782278": 0,
+                "0x782288": 0x02,
+                "0x78228c": 0x0009,
+                "0x782290": 0x00000044,
+                "0x7822de": 0x0030,
+            },
+            "cleared_by_new_input": True,
+            "return": "0x48c8",
+        },
+    }))
+
     font_payload_lookup_hit = font_payload_record_lookup_via_170be(font_records, 0x99123456)
     font_payload_lookup_miss = font_payload_record_lookup_via_170be(font_records, 0x00AAAAAA)
     checks.append(assert_equal("0x170be-modeled font payload record lookup", {
@@ -94370,6 +94579,17 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             page_font_scheduler_status["status_mask"],
             page_font_scheduler_status["return_d7"],
             page_font_scheduler_status["calls"],
+        )
+    )
+    lines.append(
+        "- host quiesce scheduler callers: `0x447a` ignores scheduler `D7` and "
+        "always writes tail bytes `%s`, while `0x4760` returns immediately for "
+        "`D7=0` and, for `D7!=0`, writes `%s`, optionally reports `%s`, and "
+        "loops through the menu/default byte path unless a new input byte clears "
+        "`0x782272`." % (
+            host_quiesce_447a_zero["writes"],
+            host_quiesce_4760_nonzero["writes"],
+            host_quiesce_4760_nonzero["error"],
         )
     )
     lines.append("- font sample row fields: `0x1cabe` over first `COURIER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152` before the sample bytes." % (

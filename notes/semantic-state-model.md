@@ -8364,6 +8364,14 @@ missing or not bit-27 marked, and finally copies all ten scratch longwords from
   - `0x782f2c` and `0x782f2d`: active-font refresh/dirty bytes set by
     `0x179aa` when `0x1a900` finds the primary or secondary active context
     missing or not bit-27 marked.
+  - `0x780e3a`, `0x7821cd.0`, `0x7821b0`, and `0x780e68`: host-input
+    quiesce-tail bookkeeping written by caller `0x447a` after `0x19dd2`;
+    caller `0x447a` does not branch on scheduler `D7`.
+  - `0x782272`, `0x782278`, `0x782288`, `0x78228c`, `0x782290`, and
+    `0x7822de`: host/menu caller bookkeeping written by the `0x4760`
+    `D7 != 0` path after `0x19dd2`. `0x782272` is set to `3`, or later
+    cleared if `0xa3ca` returns a new non-`0xff` byte different from
+    `0x7821aa`; bit 7 is set and `0x782278 = 5` on the modeled timeout path.
   - Return `D7`: `1` for the both-zero refresh path and the long refresh path;
     `0` only for the status-raise branch after `0x72a2 == 0` and first
     predicate nonzero.
@@ -8464,10 +8472,19 @@ missing or not bit-27 marked, and finally copies all ten scratch longwords from
 - `0x1a900` consumes active context longwords `0x782ee6` and `0x782ef6`,
   helper `0x1b4c0` return records, bit 27 of those records, and scratch
   longwords at `0x782894`.
+- Host-input quiesce caller `0x447a` ignores the scheduler `D7` return and
+  always continues through `0x6b5c(0x7821a2)`, writes `0x780e3a = 1`, sets
+  `0x7821cd.0`, calls `0x70ca`, writes `0x7821b0 = 1`, clears `0x780e68`, and
+  returns through the quiesce tail.
+- Host/menu caller `0x4760` consumes the scheduler `D7` return: `D7 = 0`
+  returns immediately through `0x476a`, while `D7 != 0` writes
+  `0x782272 = 3`, clears `0x782278`, copies `0x1bd64` outputs into
+  `0x782288` and `0x78228c`, optionally reports `0xe2/0x20` through
+  `0x1284` when `0x78228c >= 0x64`, calls `0x6d92(0x780e8e)`, converts
+  `0x78219e` through `0xcfb2` into `0x782290`, mirrors `0x78219e` to
+  `0x7822de`, and then polls host/service byte helper `0xa3ca`.
 - External-ready teardown at `0xba48 -> 0xbb16` consumes only the routine's
-  side effects before continuing to status aggregation through `0x36e4`;
-  host-input quiesce callers at `0x447a` and siblings are not yet composed
-  with this return value.
+  side effects before continuing to status aggregation through `0x36e4`.
 
 ### Output Effect
 
@@ -8522,6 +8539,10 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
   and the modeled `0x72a2 == 0` path writing `0x780e8d = 1`, raising
   `0x9bee(0x780e2e, 0x00000200)`, calling `0x19fb8(1)`, and returning
   `D7 = 0`.
+- Fixture `0x447a/0x4760 consume scheduler return differently` pins the two
+  host-side caller contracts: `0x447a` ignores `D7`, while `0x4760` returns
+  immediately for `D7 = 0` and enters the menu/default state setup path for
+  `D7 != 0`.
 - No dedicated fixture currently executes `0x19dd2` from live 68000 state or
   from physical optional resource-window contents. The scratch construction and
   optional-window record in the fixture are modeled inputs.
@@ -8551,6 +8572,8 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
   `0x00447a`, `0x004760`, `0x007164`, `0x00bb16`, and `0x01a3c2`.
 - `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`:
   caller `0x00447a`.
+- `generated/disasm/ic30_ic13_host_scheduler_caller_004700.lst`:
+  caller `0x004760` and the `D7` branch at `0x4766..0x47d4`.
 - `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst`:
   caller `0x00bb16`.
 - `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`:
@@ -8581,8 +8604,6 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
 - `0x1b9c0`: resource-record classifier return names are inferred only by the
   `0x1a0f2` branches here. Deeper classification belongs with the existing
   resource scanner notes.
-- `0x00447a` and `0x004760` host-input quiesce callers: not yet composed with
-  the `D7` return contract from `0x19dd2`.
 - `0x00bb16 -> 0x19dd2 -> 0x36e4`: external-ready teardown still lacks a
   single fixture proving whether `0x19dd2` can perturb page/font state during
   a modeled external session.

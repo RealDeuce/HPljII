@@ -231,8 +231,11 @@ but the physical signal names are not.
 
 ### Unresolved Middle Edges
 
-- `0x2c84`: startup callee remains covered in the default-environment
-  checkpoint rather than this startup-memory checkpoint.
+- `0x2c84`: startup callee is intentionally covered in the
+  default-environment checkpoint rather than this startup-memory
+  checkpoint. Its software edge is not open here; the remaining boundary
+  is the external `$8000.w` service-byte source and retained-storage
+  device naming.
 - Physical names for the startup MMIO/config inputs remain unresolved.
 
 ## Host Byte Fetch And Data-Chain Input
@@ -7605,6 +7608,15 @@ Phase pairs `1 -> 3` encode a zero bit, `5 -> 7` encode a one bit, and
   - `0x7828fa`, `0x7828f9`, and `0x7828f6`: startup serial/control shadows set
     by `0x266..0x276` before reset helpers run. `0x7828f6` later acts as the
     `$a400` serial retained-storage control shadow.
+  - `0x780e44`, `0x780e45`, `0x780e46`, `0x780e47`,
+    `0x780e4e..0x780e55`, `0x780e57`, and `0x780e58`:
+    startup/default-environment seed bytes written after `0x2c84` calls
+    `0x5f96`. Listing
+    `generated/disasm/ic30_ic13_service_default_reset_entry_002c84.lst`
+    shows `0x02cd4..0x02d3c` writing `0x780e47 = 0`,
+    `0x780e44 = 1`, `0x780e46 = 1`, `0x780e45 = 0`,
+    `0x780e4e..0x780e54 = 0`, `0x780e55 = 2`,
+    `0x780e57 = 1`, and `0x780e58 = 1`.
   - `0x780eba`, `0x780ebc`, and `0x780ebe`: per-selected-record dirty/change
     words set by the handlers after updating record fields.
   - `0x780e55`: set to `2` by `0x5e80` after the form/line default refresh.
@@ -7687,7 +7699,10 @@ Phase pairs `1 -> 3` encode a zero bit, `5 -> 7` encode a one bit, and
 - `0x2c84` calls `0x5a16` to mark all 16 default records dirty, reads one byte
   through `0xa3ca`, calls `0x5a62` for byte `0xdf`, and displays message table
   `0xb1a3` (`08 COLD RESET`) through `0x9182`. It later calls `0x5f96`, which
-  reaches active-record validation through `0x56c2`.
+  reaches active-record validation through `0x56c2`, then writes the
+  startup/default seed bytes `0x780e44`, `0x780e45`, `0x780e46`,
+  `0x780e47`, `0x780e4e..0x780e55`, `0x780e57`, and `0x780e58` at
+  `0x02cd4..0x02d3c`.
 - `0x3dae` dispatches changed panel/service bytes through the table at
   `0x3d66`. The default-store family uses `0xef -> 0x3ef8`,
   `0xfd -> 0x3f6a`, and `0xbf -> 0x4922`.

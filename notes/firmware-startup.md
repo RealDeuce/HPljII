@@ -106,6 +106,17 @@ The second initialization phase starts at `0x0240`:
   the RAM trampoline table through `0x0298`, probes optional `PROG`
   extension signatures through `0x03e8`, calls `0x071c`, derives
   board/config memory defaults through `0x02b2`, and calls `0x2c84`.
+- `0x2c84` is the startup/default-environment entry cross-linked in
+  [semantic-state-model.md](semantic-state-model.md) under
+  `Default Environment Record Producers`. It calls `0x5a16` to bulk-read
+  retained default records through `0x97e4`, samples the debounced
+  panel/service byte through `0xa3ca`, enters the cold-reset fallback
+  through `0x5a62` when that byte is `0xdf`, optionally checks the
+  `0x9d` service path through `0x5d2a`, displays `0xb15f` or `0xb1a3`
+  through `0x9182`, calls `0x5f96` to load/validate the active default
+  record, and seeds environment bytes `0x780e44`, `0x780e45`,
+  `0x780e46`, `0x780e47`, `0x780e4e..0x780e55`, `0x780e57`, and
+  `0x780e58` at `0x02cd4..0x02d3c`.
 - `0x071c` reads word `$ff8000`, inverts it, extracts bits `0x0f00`, shifts
   them down, and stores the resulting nibble in `0x780e4c`.
 - `0x02b2..0x031e` derives startup memory-size fields. It writes
@@ -343,12 +354,15 @@ before treating any startup defaults as fixed.
 - Name each MMIO address touched before `0x00000400`.
 - Correlate the now-classified copied trampoline entries with the physical
   IRQ/MMIO sources that select each RAM stub.
-- Follow remaining startup callee `0x00002c84`. Startup helpers
-  `0x000005ba`, `0x0000071c`, `0x0000073a`, `0x000008a2`,
-  `0x000008dc`, `0x00000978`, `0x00000b18`, and `0x00000c24` are now
-  documented as config/memory/resource/scheduler setup; startup helpers
-  `0x0002feb6`, `0x00003178`, and `0x000031d6` are now documented as
-  render-work and byte/status-buffer setup.
+- Keep startup cross-linked to the default-environment checkpoint for
+  `0x00002c84`. Startup helpers `0x000005ba`, `0x0000071c`,
+  `0x0000073a`, `0x000008a2`, `0x000008dc`, `0x00000978`,
+  `0x00000b18`, and `0x00000c24` are documented as
+  config/memory/resource/scheduler setup; startup helpers `0x0002feb6`,
+  `0x00003178`, and `0x000031d6` are documented as render-work and
+  byte/status-buffer setup. The remaining startup boundary is physical
+  naming for MMIO/config inputs and retained-storage/control-panel
+  devices, not an untraced software callee in this cluster.
 - Extend the `HEAD`/`0x000000be` record model beyond the verified
   built-in resource window if cartridge or external resource images are
   available.

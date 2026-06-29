@@ -54,9 +54,14 @@ canonical, derived/cache, firmware bookkeeping, and unknown state.
 The optional board/config helper is now classified too: `0x071c` writes
 `0x780e4c` from `$ff8000`, `0x02b2` tests `0x780e4c.3`, and `0x05ba`
 samples `$8c01 >> 3` twelve times through probe addresses derived from
-`0x19a78`. Remaining startup work is callee `0x2c84` where it overlaps
-default-environment loading, plus physical naming for the startup
-MMIO/config inputs.
+`0x19a78`. The startup call to `0x2c84` is now cross-linked to the
+`Default Environment Record Producers` checkpoint: it bulk-loads retained
+default records through `0x5a16 -> 0x97e4`, handles the `0xdf`
+cold-reset byte through `0x5a62`, refreshes active defaults through
+`0x5f96`, and seeds `0x780e44`, `0x780e45`, `0x780e46`, `0x780e47`,
+`0x780e4e..0x780e55`, `0x780e57`, and `0x780e58`. Remaining startup work
+is physical naming for the MMIO/config inputs, panel/service byte source,
+and retained-storage device.
 
 ### Extension probing
 

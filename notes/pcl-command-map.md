@@ -825,10 +825,12 @@ raster stream through its raster bridge fields,
 pins `0xdaf0`/`0xdb74` tokenizer records, `0x121cc`
 delayed-payload snapshots, and `0x1228a`/`0x12358` alternate payload
 byte-count consumers, pins synthetic direct control-code packed-state
-behavior for `ESC &k#G` plus CR/LF/FF/HT/BS, adds narrow direct-control
+behavior for `ESC &k#G` plus CR/LF/FF/HT/BS, adds direct-control
 byte-stream fixtures for `ESC &k1G`+CR, `ESC &k2G`+LF, `ESC &k2G`+FF,
 `ESC &k3G`+CR/LF/FF, `ESC &k0G`+HT/BS, `ESC &f0S`/`ESC &f1S`, chained
 `ESC &l8c6d3e2F`, `ESC &l1L!`, `ESC &a3.5c+1R`, and `ESC &a6l9M`,
+then groups the direct text/control family through host fetch,
+page-record allocation, `0x1edc6`, `0x1ed84`, and `0x1ef6a`. It also
 adds a cursor-stack page-record boundary for
 `ESC &f0S ESC &a2C ESC &f1S!`, adds synthetic
 `ESC E` reset byte-stream fixtures for valid-page-root publication and

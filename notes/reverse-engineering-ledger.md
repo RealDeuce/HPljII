@@ -245,8 +245,8 @@ fixtures for those effects plus `ESC &f#S` push/pop/clamp/bounds cases,
 `ESC &l#C/#D/#E/#F` conversion/reject/default cases,
 `ESC &l#L` selector cases, `ESC &a#L/#M`
 conversion/reject/cursor-move cases, `ESC &a#C/#H/#R/#V`
-conversion/relative/clamp cases, and narrow direct-control byte-stream
-fixtures for `ESC &k1G`+CR, `ESC &k2G`+LF, `ESC &k2G`+FF,
+conversion/relative/clamp cases, and direct-control byte-stream fixtures
+for `ESC &k1G`+CR, `ESC &k2G`+LF, `ESC &k2G`+FF,
 `ESC &k3G`+CR/LF/FF, `ESC &k0G`+HT/BS, `ESC &k6H!!`,
 `ESC &f0S`/`ESC &f1S`, chained `ESC &l8c6d3e2F`,
 chained `ESC &a3.5c+1R`, and chained `ESC &a6l9M`;
@@ -1181,13 +1181,15 @@ ROM work needed:
   and the 32-entry macro/data-chain pool at `0x782a98` is composed in
   `Macro Definition And Data-Chain Replay` in
   [semantic-state-model.md](semantic-state-model.md).
-- Broaden the direct-control and printable stream fixtures into fuller
-  live parser/register traces, the transparent secondary segment-57 bitmap
-  physical/resource-window source interpretation beyond the page-record and
-  render-prefix boundary pinned by fixtures `transparent secondary high-control
-  byte enters segmented page-record path` and `transparent secondary segmented
-  render prefix exposes source boundary`, and dense parser-allocated
-  page-object fixtures. The transparent segment-57 compact path is now narrowed
+- Broaden the already documented direct-control and printable stream
+  fixtures only where they still lack full live parser/register traces across
+  every `0xd04a` source-object write. The transparent secondary segment-57
+  bitmap physical/resource-window source interpretation remains open beyond
+  the page-record and render-prefix boundary pinned by fixtures `transparent
+  secondary high-control byte enters segmented page-record path` and
+  `transparent secondary segmented render prefix exposes source boundary`,
+  as do dense parser-allocated page-object fixtures. The transparent
+  segment-57 compact path is now narrowed
   by disassembly to `0x1f354` accepting glyph `0x5f` table offset zero as entry
   `0x02e122`, then `0x1f1f0` reading firmware range `0x0bfe22..0x0c0321`;
   fixture `transparent secondary segment-57 continuation policies diverge

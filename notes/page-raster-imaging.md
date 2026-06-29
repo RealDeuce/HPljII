@@ -2427,9 +2427,22 @@ Other checked leads:
   root, and render through `0x1ed84`/`0x1ef6a`. Remaining reset work is live
   CPU allocation/state capture, not the software-visible reset-to-render
   contract for this compact-text case.
-- Broaden the narrow direct-control byte-stream fixtures into the full
-  firmware parser path now that cursor variables `0x782c8a` and
-  `0x782c8e` are named as horizontal and vertical respectively.
+- Treat the direct-control command family as composed from host fetch to
+  rendered rows for the currently named cursor/layout variants. The
+  `Text Cursor And Direct Control State` checkpoint in
+  `notes/semantic-state-model.md` groups canonical cursor state
+  `0x782c8a` / `0x782c8e`, margins, HMI, VMI, page limits, control
+  modes, parser scratch `0x78299e`, derived compact coordinates, and
+  render-entry caches. Fixtures `host-fetched direct text/control streams
+  reach page-record render`, `host-fetched direct text/control streams
+  preserve 0x1edc6 bridge contract`, and `host-fetched direct
+  text/control streams feed 0x1ed84 and 0x1ef6a` now start those streams
+  at `0xa904`, replay the ROM parser handlers, queue compact page-record
+  objects through `0x1387c`, bridge through `0x1edc6`, and render through
+  `0x1ed84` / `0x1ef6a`. Remaining work is a fuller live
+  CPU-register/memory trace across every `0xd04a` source-object write and
+  additional cursor-state cross-products, not the command-family
+  parser-to-render boundary.
 - Treat selector-7 rectangle/rule composition as covered for mixed
   text/rule/raster page records, and the non-solid selector matrix as covered
   for text/rule page records:

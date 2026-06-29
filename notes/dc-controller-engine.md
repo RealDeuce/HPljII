@@ -141,6 +141,43 @@ the likely physical meanings behind some combination of `$8000`,
 `$8a01`, `$a200`, `$a400`, `$a601`, `$a801`, `$aa01`, `0xfffe0001`, and
 `0xfffe0003`, but no exact one-to-one mapping is checked in yet.
 
+## Clock Source And Pixel-Reproduction Boundary
+
+The exact CPU oscillator is still a board-level fact, not a ROM-semantic
+field. Current disassembly and fixture evidence localizes where that fact
+can affect pixels:
+
+- Host input timing can matter before bytes enter the normalized source
+  priority at `0xa904..0xab8a`. Once the same host bytes are admitted in
+  the same order, parser records and page objects are deterministic ROM
+  state.
+- The scan/status interrupt at `0x0f84..0x10f2` is timing-sensitive. It
+  tests `$8000.4`, writes `$a601 = 0xfd` on the active branch, advances
+  counter `0x78398c`, compares thresholds `0x78398e` and `0x783998`,
+  sets pending bytes `0x78399e` / `0x78399f`, toggles shadow byte
+  `0x7828f9`, writes `$a801`, and signals wait object `0x780182`
+  through `0x1036`.
+- The wait-object and trap layer at `0x10bc..0x1282` converts those
+  timing events into scheduler-visible state: pending bit `0x78017e.1`,
+  pending object pointer `0x78017a`, active object `0x780176`, active
+  priority `0x780174`, object state word `+0x0a`, wait argument `+0x0c`,
+  and saved stack `+0x1a`.
+- The active render path at `0x1eb2a..0x1ed84` then selects source record
+  `0x780eae`, toggles render work records through `0x7820bc`, writes
+  active work pointer `0x783a18`, and reaches the render entry
+  `0x1ef6a`.
+
+For byte-stream-to-pixel reproduction, the contract is therefore the
+sequence of firmware-visible fields above, not the absolute oscillator
+frequency. The clock becomes pixel-relevant only if it changes host byte
+admission, ready/busy result, timeout branch, wait-object wake order, or
+which published page/control record reaches `0x1ed84` / `0x1ef6a`.
+
+For cycle-accurate hardware emulation, the clock source remains required
+because it sets the wall-clock relation between CPU polling, `$8000` /
+`$8a01` inputs, `$a200` / `$a400` / `$a601` / `$a801` / `$aa01` outputs,
+and the manual-correlated `J205` signals.
+
 ## Main Motor and +24 V Control
 
 Power connector `J212` includes:

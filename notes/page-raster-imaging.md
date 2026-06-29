@@ -1068,6 +1068,11 @@ unless hardware timing causes a different sequence of those fields, such
 as a dropped host byte, a timeout branch, a different ready/busy result,
 or an engine handoff that changes which published record reaches the
 active render path.
+The board-facing version of this boundary is recorded in
+[dc-controller-engine.md](dc-controller-engine.md): the clock source is
+required for cycle-accurate formatter/DC timing, while the current logical
+renderer depends on the firmware-visible field sequence after host bytes
+and engine events have been admitted.
 
 The first confirmed bitmap-writing routines are in `0x1f4e0..0x1fa5a`.
 They write 16-bit words to destinations derived from `0x783a28` or

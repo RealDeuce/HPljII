@@ -28,12 +28,16 @@ contract except where it changes firmware-visible event order. The
 bounded timing surfaces are host fetch/polling (`0xa904..0xab8a`),
 scan/status interrupt and wait-object dispatch (`0x0f84..0x1282`), and
 active render scheduling (`0x1eb2a..0x1ed84`). The current fixtures prove
-the state effects after those events are observed; exact oscillator
-identity remains board-level work for cycle-accurate host I/O, engine
-handshake, timeout, and physical registration fidelity. The named
-physical formatter/DC edge is connector `J205`: `BD`, `VDO`, `VSREQ`,
-`VSYNC`, `PRNT`, command/status strobes, and ready signals. Current ROM
-evidence does not yet map those signals to exact MMIO bits.
+the state effects after those events are observed: pending bytes
+`0x78399e/0x78399f`, shadow byte `0x7828f9`, wait-object state, active
+source `0x780eae`, active work pointer `0x783a18`, and band words.
+Exact oscillator identity remains board-level work for cycle-accurate
+host I/O, engine handshake, timeout, and physical registration fidelity.
+The named physical formatter/DC edge is connector `J205`: `BD`, `VDO`,
+`VSREQ`, `VSYNC`, `PRNT`, command/status strobes, and ready signals.
+Current ROM evidence does not yet map those signals to exact MMIO bits;
+the board-facing boundary is tracked in
+[dc-controller-engine.md](dc-controller-engine.md).
 
 ## Current End-To-End Coverage
 

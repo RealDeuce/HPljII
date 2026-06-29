@@ -8360,7 +8360,11 @@ missing or not bit-27 marked, and finally copies all ten scratch longwords from
     from `0x200000..0x3ffffe`.
   - `A6-0x14..A6-0x01`: fresh slot `1` for optional window `2`, populated
     from `0x400000..0x5ffffe`.
+  - `A6-0x02`: local output word passed by caller `0x1a3c8..0x1a3e0` to
+    resolver `0x1b50e` after the scheduler call.
 - Firmware bookkeeping:
+  - `0x782780`: candidate-count snapshot written by font-resource scan caller
+    `0x1a3b8` from `0x78278e` immediately before it calls `0x19dd2`.
   - `0x782640..0x782776`: 32 current downloaded-font records, each 10 bytes.
     `0x178fa` checks longword `+0x02` bit 31 and bit 28, then releases nonzero
     low-24-bit payload pointer `+0x06` through `0x1887a` when the predicate
@@ -8440,6 +8444,15 @@ missing or not bit-27 marked, and finally copies all ten scratch longwords from
   calls `0x179aa(0)` or `0x179aa(1)` when a context is missing or lacks
   bit 27, and copies ten longwords from scratch pointer `0x782894` to
   canonical table `0x7828b6`.
+- `0x1a2e4..0x1a390` clears the built-in candidate counters, initializes
+  candidate cursor windows `0x7827b4..0x7827a0` to `0x782324`, clears
+  `0x78287b`, and sets the built-in scan window
+  `0x78288c..0x782890 = 0x080000..0x0ffffe` before calling `0x1a616`.
+- `0x1a3a8..0x1a3b6` reports `0xe7/0x39` through `0x1284` when the built-in
+  scan leaves `0x78278e == 0`, but then still continues to the count snapshot
+  and scheduler call.
+- `0x1a3b8` copies `0x78278e` to `0x782780`; `0x1a3c2` then calls
+  `0x19dd2`.
 
 ### Readers And Consumers
 
@@ -8491,6 +8504,11 @@ missing or not bit-27 marked, and finally copies all ten scratch longwords from
   `0x7822de`, and then polls host/service byte helper `0xa3ca`.
 - External-ready teardown at `0xba48 -> 0xbb16` consumes only the routine's
   side effects before continuing to status aggregation through `0x36e4`.
+- Font-resource scan caller `0x1a2e4 -> 0x1a3c2` consumes the scheduler side
+  effects but ignores scheduler `D7`. After `0x19dd2` returns, the caller
+  pushes local output slot `A6-0x02`, byte `0x78219c`, and byte `0x78219b` to
+  resolver `0x1b50e`; only resolver `D7 == 0` selects the following `0x6364`
+  default refresh call at `0x1a3ee`.
 
 ### Output Effect
 
@@ -8504,10 +8522,11 @@ through `0x179aa`. Those effects can change whether callers resume normal
 host parsing/rendering, report status, or refresh font/resource bookkeeping
 before later page objects are generated. The branch, scratch-scan, comparison,
 immediate refresh-helper predicates, `0x19fb8`, `0x1a900` canonical-table
-commit, and return contract are now known. Shared helper interiors are
-documented in sibling checkpoints; the open output edge is whether one live
-`0x19dd2` optional-window change sequence changes the page/font state that
-callers later hand to rendering.
+commit, scheduler return contract, and font-resource scan caller resume
+contract are now known. Shared helper interiors are documented in sibling
+checkpoints; the open output edge is whether one live `0x19dd2`
+optional-window change sequence changes the page/font state that callers later
+hand to rendering.
 
 ### Confidence
 
@@ -8526,8 +8545,10 @@ are covered by named sibling checkpoints. Fixture `0x19dd2 optional-window
 change composes refresh helpers` now drives a synthetic changed-window path
 through the long refresh chain, and fixture
 `0x19dd2 modeled unchanged and status branch exits` pins the unchanged and
-status-return contracts. No live CPU fixture or physical optional resource
-image proves the same state from hardware-visible inputs. Low for any
+status-return contracts. Fixture `0x1a2e4 font scan ignores scheduler return`
+pins the font-resource scan caller after both scheduler `D7` polarities and the
+zero-candidate pre-scheduler error. No live CPU fixture or physical optional
+resource image proves the same state from hardware-visible inputs. Low for any
 user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
 `$8000.14/15`; this note deliberately leaves those names unresolved.
 
@@ -8553,6 +8574,12 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
   external-ready teardown caller: `0xc108 -> 0x19dd2 -> 0x36e4` records
   scheduler side effects but does not consume scheduler `D7`; final
   `0x780e08` comes from the following status aggregate.
+- Fixture `0x1a2e4 font scan ignores scheduler return` pins the font-resource
+  scan caller: candidate counts are snapshotted from `0x78278e` to `0x782780`,
+  both scheduler `D7 = 0` and `D7 = 1` are ignored, `0x1b50e` receives
+  `0x78219b`, `0x78219c`, and local output `A6-0x02`, and only resolver
+  `D7 == 0` calls `0x6364`. Its zero-candidate case reports `0xe7/0x39` before
+  still reaching `0x19dd2`.
 - No dedicated fixture currently executes `0x19dd2` from live 68000 state or
   from physical optional resource-window contents. The scratch construction and
   optional-window record in the fixture are modeled inputs.
@@ -8587,7 +8614,7 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
 - `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst`:
   caller `0x00bb16`.
 - `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`:
-  caller `0x01a3c2`.
+  caller `0x01a3c2` and resume sequence `0x1a2e4..0x1a3f4`.
 - `generated/disasm/ic30_ic13_status_bit_helpers_009ba2.lst`:
   `0x9bee` generic status-bit OR helper.
 - `generated/analysis/ic30_ic13_active_symbol_set_flow.md` and
@@ -8608,14 +8635,12 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
   resource inputs.
 - `0x1887a`, `0x1b4c0`, `0x1b04c`, and `0x179aa` have documented interiors in
   `Downloaded Font Descriptor And Payload Chain`, `Macro Definition And
-  Data-Chain Replay`, and font-selection checkpoints. The remaining middle edge
-  here is their scheduler-specific caller context, not their generic helper
-  behavior.
+  Data-Chain Replay`, and font-selection checkpoints. Remaining work here is
+  live physical-resource execution through those callees, not their generic
+  helper behavior or the already-modeled font-scan caller return contract.
 - `0x1b9c0`: resource-record classifier return names are inferred only by the
   `0x1a0f2` branches here. Deeper classification belongs with the existing
   resource scanner notes.
-- `0x01a3c2 -> 0x19dd2`: font-resource scan caller is not yet composed with
-  the predicate and status paths here.
 
 ## ESC E Reset And Default Environment
 

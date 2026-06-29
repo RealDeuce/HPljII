@@ -8971,6 +8971,83 @@ def host_scheduler_menu_caller_via_4760(
     }
 
 
+def font_resource_scan_scheduler_caller_via_1a2e4(
+    *,
+    candidate_count_78278e: int,
+    scheduler_d7: int,
+    default_index_78219c: int,
+    mode_78219b: int,
+    resolver_d7_1b50e: int,
+    resolver_word_a6_minus_2: int,
+) -> dict[str, object]:
+    events: list[dict[str, object]] = [
+        {
+            "address": "0x1a2e8..0x1a390",
+            "effect": "clear candidate counters and initialize built-in scan window",
+            "writes": {
+                "0x78278e": 0,
+                "0x78279e..0x782790": 0,
+                "0x7827b4..0x7827a0": FONT_CANDIDATE_LIST_BASE,
+                "0x78287b": 0,
+                "0x78288c": 0x00080000,
+                "0x782890": 0x000FFFFE,
+                "0x782888": 0x00040000,
+            },
+        },
+        {"address": "0x1a39a", "call": "0x1a616"},
+    ]
+    if int(candidate_count_78278e) == 0:
+        events.append({"address": "0x1a3a8", "call": "0x1284", "error": (0xE7, 0x39)})
+    events.extend([
+        {
+            "address": "0x1a3b8",
+            "write": "0x782780",
+            "value": int(candidate_count_78278e) & 0xFFFF,
+        },
+        {
+            "address": "0x1a3c2",
+            "call": "0x19dd2",
+            "return_d7": int(scheduler_d7),
+            "return_consumed": False,
+        },
+        {
+            "address": "0x1a3c8..0x1a3e0",
+            "call": "0x1b50e",
+            "args": {
+                "mode_78219b": int(mode_78219b) & 0xFF,
+                "default_index_78219c": int(default_index_78219c) & 0xFF,
+                "out_word": "A6-2",
+            },
+            "return_d7": int(resolver_d7_1b50e),
+            "out_word": int(resolver_word_a6_minus_2) & 0xFFFF,
+        },
+    ])
+    calls_after_scheduler = ["0x1b50e"]
+    if int(resolver_d7_1b50e) == 0:
+        events.append({"address": "0x1a3ee", "call": "0x6364"})
+        calls_after_scheduler.append("0x6364")
+
+    return {
+        "caller": 0x1A2E4,
+        "scheduler_call": 0x19DD2,
+        "scheduler_call_site": 0x1A3C2,
+        "scheduler_d7": int(scheduler_d7),
+        "scheduler_d7_consumed": False,
+        "candidate_count_snapshot_782780": int(candidate_count_78278e) & 0xFFFF,
+        "pre_scheduler_error": (0xE7, 0x39) if int(candidate_count_78278e) == 0 else None,
+        "resolver_args_1b50e": {
+            "mode_78219b": int(mode_78219b) & 0xFF,
+            "default_index_78219c": int(default_index_78219c) & 0xFF,
+            "out_word": "A6-2",
+        },
+        "resolver_d7": int(resolver_d7_1b50e),
+        "resolver_word_a6_minus_2": int(resolver_word_a6_minus_2) & 0xFFFF,
+        "default_refresh_called": int(resolver_d7_1b50e) == 0,
+        "calls_after_scheduler": calls_after_scheduler,
+        "events": events,
+    }
+
+
 def firmware_scanned_builtin_candidates(resources: bytes) -> list[dict[str, int]]:
     records: list[dict[str, int]] = []
     cursor = 0
@@ -53038,6 +53115,109 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    font_scan_scheduler_zero = font_resource_scan_scheduler_caller_via_1a2e4(
+        candidate_count_78278e=3,
+        scheduler_d7=0,
+        default_index_78219c=0x12,
+        mode_78219b=1,
+        resolver_d7_1b50e=1,
+        resolver_word_a6_minus_2=0x3456,
+    )
+    font_scan_scheduler_one = font_resource_scan_scheduler_caller_via_1a2e4(
+        candidate_count_78278e=4,
+        scheduler_d7=1,
+        default_index_78219c=0x34,
+        mode_78219b=2,
+        resolver_d7_1b50e=0,
+        resolver_word_a6_minus_2=0x789A,
+    )
+    font_scan_no_candidates = font_resource_scan_scheduler_caller_via_1a2e4(
+        candidate_count_78278e=0,
+        scheduler_d7=1,
+        default_index_78219c=0x56,
+        mode_78219b=3,
+        resolver_d7_1b50e=1,
+        resolver_word_a6_minus_2=0x0000,
+    )
+    checks.append(assert_equal("0x1a2e4 font scan ignores scheduler return", {
+        "scheduler_zero": {
+            key: font_scan_scheduler_zero[key]
+            for key in (
+                "scheduler_call_site",
+                "scheduler_d7",
+                "scheduler_d7_consumed",
+                "candidate_count_snapshot_782780",
+                "pre_scheduler_error",
+                "resolver_args_1b50e",
+                "resolver_d7",
+                "default_refresh_called",
+                "calls_after_scheduler",
+            )
+        },
+        "scheduler_one": {
+            key: font_scan_scheduler_one[key]
+            for key in (
+                "scheduler_call_site",
+                "scheduler_d7",
+                "scheduler_d7_consumed",
+                "candidate_count_snapshot_782780",
+                "pre_scheduler_error",
+                "resolver_args_1b50e",
+                "resolver_d7",
+                "resolver_word_a6_minus_2",
+                "default_refresh_called",
+                "calls_after_scheduler",
+            )
+        },
+        "no_candidates": {
+            key: font_scan_no_candidates[key]
+            for key in (
+                "candidate_count_snapshot_782780",
+                "pre_scheduler_error",
+                "scheduler_d7_consumed",
+                "calls_after_scheduler",
+            )
+        },
+    }, {
+        "scheduler_zero": {
+            "scheduler_call_site": 0x1A3C2,
+            "scheduler_d7": 0,
+            "scheduler_d7_consumed": False,
+            "candidate_count_snapshot_782780": 3,
+            "pre_scheduler_error": None,
+            "resolver_args_1b50e": {
+                "mode_78219b": 1,
+                "default_index_78219c": 0x12,
+                "out_word": "A6-2",
+            },
+            "resolver_d7": 1,
+            "default_refresh_called": False,
+            "calls_after_scheduler": ["0x1b50e"],
+        },
+        "scheduler_one": {
+            "scheduler_call_site": 0x1A3C2,
+            "scheduler_d7": 1,
+            "scheduler_d7_consumed": False,
+            "candidate_count_snapshot_782780": 4,
+            "pre_scheduler_error": None,
+            "resolver_args_1b50e": {
+                "mode_78219b": 2,
+                "default_index_78219c": 0x34,
+                "out_word": "A6-2",
+            },
+            "resolver_d7": 0,
+            "resolver_word_a6_minus_2": 0x789A,
+            "default_refresh_called": True,
+            "calls_after_scheduler": ["0x1b50e", "0x6364"],
+        },
+        "no_candidates": {
+            "candidate_count_snapshot_782780": 0,
+            "pre_scheduler_error": (0xE7, 0x39),
+            "scheduler_d7_consumed": False,
+            "calls_after_scheduler": ["0x1b50e"],
+        },
+    }))
+
     font_payload_lookup_hit = font_payload_record_lookup_via_170be(font_records, 0x99123456)
     font_payload_lookup_miss = font_payload_record_lookup_via_170be(font_records, 0x00AAAAAA)
     checks.append(assert_equal("0x170be-modeled font payload record lookup", {
@@ -94656,6 +94836,18 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             host_quiesce_447a_zero["writes"],
             host_quiesce_4760_nonzero["writes"],
             host_quiesce_4760_nonzero["error"],
+        )
+    )
+    lines.append(
+        "- font-resource scan scheduler caller: `0x1a2e4` snapshots candidate "
+        "count `%d` into `0x782780`, ignores scheduler `D7=%d/%d`, then calls "
+        "`0x1b50e` with `0x78219b/0x78219c`; only the `0x1b50e` return drives "
+        "the following `0x6364` default refresh. The zero-candidate case reports "
+        "`%s` before still reaching the scheduler call." % (
+            font_scan_scheduler_zero["candidate_count_snapshot_782780"],
+            font_scan_scheduler_zero["scheduler_d7"],
+            font_scan_scheduler_one["scheduler_d7"],
+            font_scan_no_candidates["pre_scheduler_error"],
         )
     )
     lines.append("- font sample row fields: `0x1cabe` over first `COURIER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152` before the sample bytes." % (

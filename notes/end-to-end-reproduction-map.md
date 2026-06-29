@@ -92,8 +92,12 @@ the board-facing boundary is tracked in
   state setup for `D7 != 0`. Fixture `0xbb0a external-ready teardown ignores
   scheduler return` pins the external-ready caller contract:
   `0xc108 -> 0x19dd2 -> 0x36e4` ignores scheduler `D7` and writes `0x780e08`
-  from the following status aggregate. The font-resource-scan caller context
-  remains open.
+  from the following status aggregate. Fixture
+  `0x1a2e4 font scan ignores scheduler return` pins the font-resource-scan
+  caller contract: `0x1a3b8` snapshots `0x78278e` into `0x782780`,
+  `0x1a3c2` ignores scheduler `D7`, `0x1a3c8..0x1a3e0` passes
+  `0x78219b/0x78219c` plus local `A6-0x02` to `0x1b50e`, and only resolver
+  `D7 == 0` reaches `0x6364`.
 - Parser byte and command records:
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
   Reproduction evidence is `generated/analysis/ic30_ic13_parser_xrefs.md`

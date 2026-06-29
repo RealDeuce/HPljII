@@ -215,6 +215,16 @@ The ring source is the cleanest abstraction for a byte-stream renderer:
 fixtures can seed the ring with a PCL byte stream and exercise parser,
 page-object, and renderer behavior without modeling electrical I/O.
 
+Startup/reset initializer `0x3178` is the canonical producer for the
+empty byte-source state. It clears ring count `0x783e54`, second LIFO
+count `0x783e76`, and first LIFO count `0x783e8c`; sets ring read and
+write pointers `0x783e56`/`0x783e5a` to `0x783a4c`; sets low-water
+threshold `0x783e5e = 0x40`; sets sequence cursor
+`0x783e62 = 0xa8a4`; mirrors the write pointer into `0x7821c4`; and
+sets LIFO pointers `0x783e78 = 0x783e66` and
+`0x783e8e = 0x783e7c`. The same initializer is called during reset and
+by both host-input quiesce/reset branches before byte fetching resumes.
+
 ## Direct Mode 1
 
 Direct mode 1 starts at `0xa9f0` when `0x780e40 == 1`.
@@ -381,6 +391,8 @@ Writers:
   page/control pool records through `0x18b4`, set `0x780e3a` and service-needed
   bit `0x7821cd.0`, and clear `0x780e68`; the main parser loop
   `0x117dc..0x117ee` observes and clears `0x780e3b`.
+- Startup initializer `0x3178` writes the same empty ring and pushback-stack
+  baseline used after quiesce/reset cleanup.
 
 Readers and consumers:
 
@@ -443,6 +455,8 @@ Disassembly evidence:
 - `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`:
   `0xa6cc..0xa810` bridge behavior and `0xa846..0xa8c8` ring/sequence
   helpers.
+- `generated/disasm/ic30_ic13_startup_byte_source_init_003178.lst`:
+  `0x3178..0x31d4` startup and quiesce/reset byte-source initialization.
 - `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`:
   `0x4218..0x44d2` no-byte gate, direct-status wait, byte-source reset,
   and pool cleanup branch.

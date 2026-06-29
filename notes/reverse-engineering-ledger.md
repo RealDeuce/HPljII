@@ -44,15 +44,16 @@ setup; physical config-signal names still need board correlation
 
 Evidence: [firmware-startup.md](firmware-startup.md) now decodes
 startup helpers `0x073a`, `0x08a2`, `0x08dc`, `0x0978`, `0x099e`,
-`0x0b18`, `0x0b78`, and `0x0c24`. The semantic model checkpoint
-`Startup Memory Sizing And Scheduler Bootstrap` groups startup fields
-`0x780e5a`, `0x780e60`, `0x780efa`, `0x780efe`, `0x7810b4`,
-`0x7810b8`, timer divider seeds, MMIO shadows, and eight wait-object
-records `0x780182..0x780262` into canonical, derived/cache, firmware
-bookkeeping, and unknown state. Remaining startup work is the optional
-board/config helper `0x05ba..0x071a`, later callees `0x071c`, `0x2c84`,
-`0x2feb6`, `0x3178`, and `0x31d6`, and physical naming for the
-startup MMIO/config inputs.
+`0x0b18`, `0x0b78`, `0x0c24`, `0x2feb6`, `0x3178`, and `0x31d6`.
+The semantic model checkpoint `Startup Memory Sizing And Scheduler
+Bootstrap` groups startup fields `0x780e5a`, `0x780e60`, `0x780efa`,
+`0x780efe`, `0x7810b4`, `0x7810b8`, timer divider seeds, MMIO shadows,
+eight wait-object records `0x780182..0x780262`, render-work selector
+seeds, host byte-source buffers, and status/event ring fields into
+canonical, derived/cache, firmware bookkeeping, and unknown state.
+Remaining startup work is the optional board/config helper
+`0x05ba..0x071a`, later callees `0x071c` and `0x2c84`, status/event
+ring consumers, and physical naming for the startup MMIO/config inputs.
 
 ### Extension probing
 

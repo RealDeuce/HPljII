@@ -17,11 +17,12 @@ address-control writes.
 Concept: reset first proves the small SRAM/scratch region at
 `0x00ffe000`, clears it, and installs RAM trampolines. Startup then uses
 `0x02b2`, `0x073a`, `0x08a2`, `0x08dc`, `0x0978`, `0x099e`,
-`0x0b18`, `0x0b78`, and `0x0c24` to derive formatter memory layout,
-validate address/resource windows, seed the heap allocator inputs, and
-construct the wait-object scheduler records later consumed by the
-active render scheduler. These fields are firmware setup state for
-host/parser/render reproduction; they are not PCL parser scratch.
+`0x0b18`, `0x0b78`, `0x0c24`, `0x2feb6`, `0x3178`, and `0x31d6` to
+derive formatter memory layout, validate address/resource windows, seed
+the heap allocator inputs, construct the wait-object scheduler records,
+seed render-work selectors, and initialize host/status byte buffers.
+These fields are firmware setup state for host/parser/render
+reproduction; they are not PCL parser scratch.
 
 ### Field Groups
 
@@ -70,6 +71,24 @@ host/parser/render reproduction; they are not PCL parser scratch.
   - `0x783eee.5` is a startup-test gate set during `0x073a` and cleared
     on exit; `0x783eee.7` selects alternate expanded-memory tests in the
     same cluster.
+  - `0x7820bc = 1` and `0x7820c0 = 1` are render-work selector seeds
+    written by `0x2feb6` before the active render scheduler alternates
+    between work records `0x7820c4` and `0x782128`.
+  - `0x7820c8` and `0x78212c` are cleared by `0x2feb6`; they are header
+    words inside the two render work records.
+- Canonical startup byte/status buffers:
+  - host ring buffer: count `0x783e54`, read pointer `0x783e56`, write
+    pointer `0x783e5a`, low-water threshold `0x783e5e`, sequence cursor
+    `0x783e62`, and write-pointer mirror `0x7821c4`.
+  - second LIFO byte source: count `0x783e76` and pointer `0x783e78`.
+  - first LIFO byte source: count `0x783e8c` and pointer `0x783e8e`.
+  - sibling status/event ring: count `0x783ed2`, read pointer
+    `0x783ed4`, and write pointer `0x783ed8`.
+  Evidence:
+  `generated/disasm/ic30_ic13_startup_byte_source_init_003178.lst`,
+  `generated/disasm/ic30_ic13_startup_status_ring_init_0031d6.lst`,
+  [host-byte-fetch.md](host-byte-fetch.md), and `Host Byte Fetch And
+  Data-Chain Input` below.
 - Firmware bookkeeping:
   - `0x0978(A0)` computes and writes a control word for the memory
     region containing `A0`; it is used before destructive tests and
@@ -106,6 +125,15 @@ host/parser/render reproduction; they are not PCL parser scratch.
 - `0x0c24` writes the eight wait-object records from table `0x15d0`,
   builds their private stacks below `0x00ffe000`, closes the ring, and
   tail-enters `0x1266`.
+- `0x2feb6` consumes the resource/fallback window once, then writes
+  `0x7820bc = 1`, `0x7820c0 = 1`, and clears `0x7820c8` and
+  `0x78212c`.
+- `0x3178` clears byte-source counts `0x783e54`, `0x783e76`, and
+  `0x783e8c`, initializes their pointers, writes low-water threshold
+  `0x783e5e = 0x40`, writes sequence cursor `0x783e62 = 0xa8a4`, and
+  mirrors the ring write pointer into `0x7821c4`.
+- `0x31d6` clears status/event count `0x783ed2` and initializes
+  pointers `0x783ed4` and `0x783ed8` to `0x783e92`.
 
 ### Readers And Consumers
 
@@ -121,22 +149,32 @@ host/parser/render reproduction; they are not PCL parser scratch.
 - `0x073a` and its helpers consume `0x780e5a`, `0x780e60`,
   `0x783eee.7`, and the computed resource-window fields to choose which
   RAM/resource windows to test.
+- `0xa904`, `0xa6cc`, `0xa846`, and `0x9ec0` consume or update the
+  byte-source buffers initialized by `0x3178`.
+- consumers of the `0x783ed2` status/event ring are outside this
+  checkpoint but are bounded by cross-reference scans to the `0xae3a`
+  and `0xb030..0xb0fe` families.
+- `0x1eb2a..0x1ed84` and `0x2126` consume render-work selector state
+  seeded by `0x2feb6`.
 
 ### Output Effect
 
 This checkpoint has no direct page bitmap output. Its pixel-reproduction
 effect is that later heap allocation, resource/fallback rendering,
 periodic scheduler timing state, and wait-object dispatch begin from the
-same RAM layout and object records as the ROM. A mismatch here can move
-render buffers or change which scheduler object runs, but it does not
-interpret host PCL bytes by itself.
+same RAM layout, byte-source buffers, render selectors, and object
+records as the ROM. A mismatch here can move render buffers, change
+which scheduler object runs, or leave stale input bytes visible, but it
+does not interpret host PCL bytes by itself.
 
 ### Confidence
 
 High for the default-path formulas and wait-object table shape: the
-disassembly gives direct writes and a fixed `0x15d0` table. Medium for
-board/config interpretation of `$8000` and `$8c01`, because the branch
-effects are known but the physical signal names are not.
+disassembly gives direct writes and a fixed `0x15d0` table. High for
+`0x2feb6`, `0x3178`, and `0x31d6` initializer writes because the focused
+listings are straight-line stores. Medium for board/config
+interpretation of `$8000` and `$8c01`, because the branch effects are
+known but the physical signal names are not.
 
 ### Fixtures
 
@@ -156,6 +194,12 @@ effects are known but the physical signal names are not.
   `0x0b18..0x0c22` heap/resource bounds, scratch RAM, and alias tests.
 - `generated/disasm/ic30_ic13_startup_scheduler_bootstrap_000c24.lst`:
   `0x0c24..0x0c7a` wait-object table consumer.
+- `generated/disasm/ic30_ic13_startup_render_work_init_02feb6.lst`:
+  `0x2feb6..0x2fefc` render-work selector and header-word seeds.
+- `generated/disasm/ic30_ic13_startup_byte_source_init_003178.lst`:
+  `0x3178..0x31d4` host byte-source buffer initialization.
+- `generated/disasm/ic30_ic13_startup_status_ring_init_0031d6.lst`:
+  `0x31d6..0x31f6` status/event ring initialization.
 - `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`:
   `0x164a..0x170a` allocator consumer for `0x780efa`/`0x780efe`.
 
@@ -163,9 +207,11 @@ effects are known but the physical signal names are not.
 
 - `0x05ba..0x071a`: optional board/config helper called by `0x02b2`
   still needs composition.
-- `0x071c`, `0x2c84`, `0x2feb6`, `0x3178`, and `0x31d6`: startup
-  callees remain outside this checkpoint except where their downstream
-  state is already covered by allocator, host-input, or renderer notes.
+- `0x071c` and `0x2c84`: startup callees remain outside this checkpoint
+  except where their downstream state is already covered by allocator,
+  host-input, or renderer notes.
+- `0x783ed2` status/event ring consumers need a separate checkpoint
+  before assigning its user-facing role.
 - Physical names for the startup MMIO/config inputs remain unresolved.
 
 ## Host Byte Fetch And Data-Chain Input
@@ -7175,6 +7221,10 @@ record.
     to `1` by `0x1ea8`.
   - `0x7820bc`, `0x780ea4`, `0x780ea5`, `0x780eaa`, `0x780eae`, and
     `0x783a18` are scheduler/render bookkeeping, not page-object fields.
+  - `0x2feb6` seeds `0x7820bc = 1` and `0x7820c0 = 1` at startup before
+    the active render scheduler starts toggling those selectors. It also
+    clears header words `0x7820c8` and `0x78212c` in the paired render
+    work records.
   - wait-object records signaled by `0x1036` and selected by `0x123a`:
     long `+0` next pointer, word `+8` priority, word `+0a` scheduler
     state, word `+0c` wait argument, long `+0x12` restart payload,
@@ -7242,6 +7292,9 @@ record.
 
 - `0x3144..0x3162` initializes `0x780ea6`, `0x780eaa`, `0x780eae`,
   `0x780eb2`, and `0x780eb6` to pool base `0x780f02`.
+- `0x2feb6` initializes render-work selector state by writing
+  `0x7820bc = 1` and `0x7820c0 = 1`, then clearing `0x7820c8` and
+  `0x78212c`.
 - `0xff1e` writes state byte `+4 = 2`, copies root longword `+0` to
   `0x780ea6`, sets `0x782996 = 1`, and clears `0x78297a`.
 - `0x21b8..0x223c` gates candidate staging. A ready `0x7839d2` returns
@@ -7770,6 +7823,8 @@ covered.
   `0x22f4..0x247a`
 - `generated/disasm/ic30_ic13_page_pool_init_003100.lst`:
   `0x3144..0x3162`
+- `generated/disasm/ic30_ic13_startup_render_work_init_02feb6.lst`:
+  `0x2feb6..0x2fefc`
 - `generated/disasm/ic30_ic13_page_pool_candidate_select_007ec6.lst`:
   `0x7ece..0x7f90`
 - `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`:

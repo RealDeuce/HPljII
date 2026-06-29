@@ -866,6 +866,10 @@ Field groups:
     `0x782914`, `0x78296c`, `0x7828fe`, `0x782904`, and `0x7828f6`:
     software-visible timer/status latches and output-table cursors written by
     `0x0d52..0x0f7a`.
+  - `0x2feb6` seeds `0x7820bc = 1` and `0x7820c0 = 1` at startup before
+    the active render scheduler starts toggling those selectors. It also
+    clears header words `0x7820c8` and `0x78212c` in the paired render
+    work records.
   - wait-object records signaled by `0x1036` and selected by `0x123a`:
     next pointer `+0`, priority `+8`, scheduler state `+0a`, wait argument
     `+0c`, restart payload `+0x12`, private stack base `+0x16`, and saved
@@ -885,6 +889,9 @@ Writers:
   `0x780ea6`, sets publication flag `0x782996`, and clears the current root.
 - `0x3144..0x3162` initializes `0x780ea6`, `0x780eaa`, `0x780eae`,
   `0x780eb2`, and `0x780eb6` to pool base `0x780f02`.
+- `0x2feb6` initializes render-work selector state by writing
+  `0x7820bc = 1` and `0x7820c0 = 1`, then clearing `0x7820c8` and
+  `0x78212c`.
 - `0x1c04..0x2016` stages a current pool record, writes deadline/status
   fields, inserts it into `0x780e6e[]`, and releases it to selectable state
   through `0x1eea`.
@@ -986,6 +993,8 @@ Disassembly evidence:
   `0x22f4..0x247a`.
 - `generated/disasm/ic30_ic13_page_pool_init_003100.lst`:
   `0x3144..0x3162`.
+- `generated/disasm/ic30_ic13_startup_render_work_init_02feb6.lst`:
+  `0x2feb6..0x2fefc`.
 - `generated/disasm/ic30_ic13_page_pool_candidate_select_007ec6.lst`:
   `0x7ece..0x7f90`.
 - `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`:

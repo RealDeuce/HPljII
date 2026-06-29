@@ -149,6 +149,27 @@ Decoded `0x15d0` wait-object rows:
 | `0x780242` | 1 | `0x0200` | `0x01174e` |
 | `0x780262` | 0 | `0x0080` | `0x0015b2` |
 
+The later setup helpers immediately after `0x164a` are now classified
+from focused listings
+`generated/disasm/ic30_ic13_startup_render_work_init_02feb6.lst`,
+`generated/disasm/ic30_ic13_startup_byte_source_init_003178.lst`, and
+`generated/disasm/ic30_ic13_startup_status_ring_init_0031d6.lst`:
+
+- `0x2feb6` walks the resource/fallback window
+  `0x7810b4..0x7810b4 + 0x7810b8` once, then seeds render work selectors
+  `0x7820bc = 1` and `0x7820c0 = 1`, and clears words
+  `0x7820c8` and `0x78212c`.
+- `0x3178` initializes the host byte-source buffers: it clears ring
+  count `0x783e54`, second LIFO count `0x783e76`, and first LIFO count
+  `0x783e8c`; sets ring read/write pointers `0x783e56` and `0x783e5a`
+  to `0x783a4c`; sets ring low-water threshold `0x783e5e = 0x40`;
+  sets sequence cursor `0x783e62 = 0xa8a4`; mirrors the ring write
+  pointer into `0x7821c4`; sets second LIFO pointer `0x783e78` to
+  `0x783e66`; and sets first LIFO pointer `0x783e8e` to `0x783e7c`.
+- `0x31d6` initializes a sibling status/event ring by clearing count
+  `0x783ed2` and setting both pointers `0x783ed4` and `0x783ed8` to
+  `0x783e92`.
+
 Later setup calls `0x00000b18` before reset subroutine `0x00000370`
 enters the heap allocator initializer at `0x0000164a`. With the observed
 reset defaults `0x780e5a = 0x20` and `0x780e60 = 6`, `0x0b18` writes:
@@ -314,10 +335,11 @@ before treating any startup defaults as fixed.
 - Correlate the now-classified copied trampoline entries with the physical
   IRQ/MMIO sources that select each RAM stub.
 - Follow remaining startup callees `0x000005ba..0x0000071a`,
-  `0x0000071c`, `0x00002c84`, `0x0002feb6`, `0x00003178`, and
-  `0x000031d6`. Startup helpers `0x0000073a`, `0x000008a2`,
+  `0x0000071c` and `0x00002c84`. Startup helpers `0x0000073a`, `0x000008a2`,
   `0x000008dc`, `0x00000978`, `0x00000b18`, and `0x00000c24` are now
-  documented as memory/resource/scheduler setup.
+  documented as memory/resource/scheduler setup; startup helpers
+  `0x0002feb6`, `0x00003178`, and `0x000031d6` are now documented as
+  render-work and byte/status-buffer setup.
 - Extend the `HEAD`/`0x000000be` record model beyond the verified
   built-in resource window if cartridge or external resource images are
   available.

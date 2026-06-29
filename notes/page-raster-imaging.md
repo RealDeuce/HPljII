@@ -2345,14 +2345,13 @@ Other checked leads:
 ## Next Targets
 
 - Replace the host-fetched font-control, descriptor, resource-payload,
-  and downloaded-character boundaries with a full live parser-state run
-  that populates current records/source objects; then replace the
-  remaining producer-modeled text bucket fixtures with full
-  parser-produced page-object payloads. The downloaded-character path
-  now has one combined fetched stream driving font-control state,
-  payload install, and printable output into segmented page-record
-  buckets, but it is still family-split modeling rather than a full
-  live parser-state interpreter.
+  and downloaded-character boundaries with a full live parser-state run that
+  populates current records/source objects. The downloaded-character path now
+  has checked-in normal, wide, segmented, split-plane, segmented-wide,
+  FF-publication, and rule/raster composition evidence; the remaining edge is
+  the live parser/register handoff across the install-to-page transition and
+  broader physical/full-page validation, not missing selector-family
+  documentation.
 - Treat the `ESC E` reset publication boundary as covered for
   parser-produced compact text page objects. Fixtures
   `mixed printable/reset page-record stream queues through 0x1387c before

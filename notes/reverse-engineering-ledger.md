@@ -1126,8 +1126,13 @@ ROM work needed:
   chained transfers, cap/drain gates, page-object bytes, and render dispatch;
   its remaining edge is a live parser-state memory trace across
   `0x12218 -> 0x105d0 -> 0x10084 -> 0x13070`, not command-family decoding.
-  Downloaded-font payloads still need broader live parser/register coverage for
-  selected wide/segmented cases and final output validation.
+  Downloaded-font payloads already cover normal, wide, segmented,
+  split-plane, segmented-wide, FF-publication, and rule/raster composition
+  cases in [downloaded-fonts.md](downloaded-fonts.md) and
+  `Downloaded Glyph Rule/Raster Composition` in
+  [semantic-state-model.md](semantic-state-model.md). Remaining work is live
+  parser/register continuity across the install-to-page transition, broader
+  cross-product validation, and comparison against physical/full-page output.
 - Use `notes/pcl-command-map.md` to prioritize page geometry, raster,
   rectangle, font, and macro handlers.
 - Record malformed/combined escape behavior that is not explicit in the

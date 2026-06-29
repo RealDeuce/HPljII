@@ -111,18 +111,18 @@ discards them in mode `1`, or sends them through `0xa1d6` to
 the mode-0 status path at `0xaece..0xaf74`: bridge service sends literal
 `0x13`, and pending status sends base `0x30` plus bits from `0x780e12`,
 `0x780e90`, `0x780e2a`, `0x780e0a`, and `0x783e60`; producers are
-bounded to `0xa8c8`, `0xa6cc`, and aggregate helper `0x36e4`. The
-`0x780e90`
-source is now composed in `Page Environment Status And Pool Cursor Gate`:
-`0x2888..0x2a80` compares selected pool-record bytes with
-`0x780e8e`, can publish `0x780e8f`, set `0x780e90`, cache
-`0x780e98`, and OR `0x10` into `0x780e2a`; `0x7612..0x7834` consumes
-that flag to choose the page-pool cursor service helper, and
-`0x2c08..0x2c3a` clears the service flags. The service-helper split is
-now composed: when `0x780e90` is set, `0x8a48` formats media-feed
-messages from `0x780e8e`, `0x780e98`, and table `0xb490`, emitting
-`PF FEED`, `PE FEED`, or `PE FEED ENVELOPE`; when the flag is clear,
-`0x8656` runs the normal service-message selector, updating
+bounded to `0xa8c8`, `0xa6cc`, aggregate helper `0x36e4`, and the now
+fixture-backed `0x780e90` producer. `Page Environment Status And Pool Cursor
+Gate` composes that source: `0x2888..0x2a80` compares selected pool-record
+bytes with `0x780e8e`, can publish `0x780e8f`, set `0x780e90`, cache
+`0x780e98`, and OR `0x10` into `0x780e2a`; fixture coverage now carries that
+flag into the `0xaece` status byte. `0x7612..0x7834` consumes `0x780e90` to
+choose the page-pool cursor service helper, and `0x2c08..0x2c3a` clears the
+service flags. The service-helper split is also fixture-backed: when
+`0x780e90` is set, `0x8a48` formats media-feed messages from `0x780e8e`,
+`0x780e98`, and table `0xb490`, emitting `PF FEED`, `PE FEED`, or
+`PE FEED ENVELOPE`; when the flag is clear, `0x8656` runs the normal
+service-message selector, updating
 `0x780e3e`/`0x7822e6`, dispatching `0x780e8a` through the table at
 `0x8626`, and selecting strings such as `16 TONER LOW`, `SERVICE MODE`,
 `UC`, `LC`, `04 SELF TEST`, `05 SELF TEST`, `06 PRINTING TEST`, and

@@ -355,6 +355,12 @@ status byte from base `0x30`: `0x780e12` or `0x780e90` sets bit 0,
 into the byte. Only after `0xa1b0` accepts that byte does the firmware
 clear `0x783e60` and decrement `0x780e22`.
 
+The page-environment source of status bit 0 is fixture-backed through
+`0x2888 sets page-environment status consumed by 0xaece`: an eligible
+selected pool record can set `0x780e90`, cache `0x780e98`, OR
+`0x10` into `0x780e2a`, and make `0xaece` emit the corresponding
+combined status byte.
+
 The observed producers are bounded. `0xa8c8` increments `0x780e22` and
 signals wait object `0x7801e2` when sequence dispatch is enabled by
 `0x780e42`; overflow instead ORs `0x2` into `0x780e2e`, restores the

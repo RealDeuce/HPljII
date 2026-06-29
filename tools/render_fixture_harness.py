@@ -507,6 +507,132 @@ def interface_output_worker_via_ae2c(state: dict[str, object]) -> dict[str, obje
     }
 
 
+def page_environment_status_via_2888(
+    state: dict[str, object],
+    selected_record: dict[str, int],
+) -> dict[str, object]:
+    events: list[dict[str, object]] = []
+    state_byte = int(selected_record.get("byte_4", 0)) & 0xFF
+    record_status = int(selected_record.get("byte_6", 0)) & 0xFF
+    record_environment = int(selected_record.get("byte_7", 0)) & 0xFF
+    record_service = int(selected_record.get("byte_8", 0)) & 0xFF
+    active_environment = int(state.get("active_environment_780e8e", 0)) & 0xFF
+
+    if state_byte not in (2, 3):
+        return {"d7": 0, "path": "ineligible-state", "events": events, "state": state}
+    if int(state.get("active_pool_attention_780e6d", 0)) != 0:
+        return {"d7": 0, "path": "attention-active", "events": events, "state": state}
+
+    state["page_environment_status_780e90"] = 0
+
+    if record_environment != active_environment:
+        force_publish = False
+        if int(state.get("environment_gate_780e02", 0)) == 0:
+            force_publish = True
+        elif int(state.get("environment_gate_780e91", 0)) == 0:
+            force_publish = True
+        elif active_environment & 0x80:
+            force_publish = True
+        elif record_environment & 0x80:
+            force_publish = True
+
+        if force_publish:
+            state["output_environment_780e8f"] = record_environment
+            state["status_bits_780e29"] = int(state.get("status_bits_780e29", 0)) | 0x01
+            events.append({"helper": 0x2A14, "byte": record_environment})
+            return {
+                "d7": 0,
+                "path": "publish-environment",
+                "events": events,
+                "state": state,
+            }
+
+    if active_environment & 0x80:
+        state["status_code_cache_780e98"] = record_status
+        state["page_environment_status_780e90"] = 1
+        state["warning_status_780e2a"] = int(state.get("warning_status_780e2a", 0)) | 0x10
+        events.append({"helper": 0x9BEE, "address": 0x780E2A, "mask": 0x10})
+        return {
+            "d7": 1,
+            "path": "page-environment-status",
+            "events": events,
+            "state": state,
+        }
+
+    default_status = int(state.get("default_status_780e97", 0)) & 0xFF
+    state["status_code_cache_780e98"] = (
+        default_status if default_status else int(state.get("fallback_status_780e55", 0)) & 0xFF
+    )
+    if record_service != 0:
+        return {
+            "d7": 1,
+            "path": "service-byte-present",
+            "events": events,
+            "state": state,
+        }
+
+    if record_status == default_status:
+        return {
+            "d7": 1,
+            "path": "status-matches-default",
+            "events": events,
+            "state": state,
+        }
+
+    state["status_code_cache_780e98"] = record_status
+    if int(state.get("environment_gate_780e02", 0)) and int(state.get("environment_gate_780e91", 0)):
+        state["status_bits_780e29"] = int(state.get("status_bits_780e29", 0)) | 0x08
+        path = "status-cache-780e29"
+    else:
+        state["status_bits_780e30"] = int(state.get("status_bits_780e30", 0)) | 0x01
+        path = "status-cache-780e30"
+    events.append({"helper": 0x29B2, "byte": record_status})
+    return {"d7": 0, "path": path, "events": events, "state": state}
+
+
+def page_pool_cursor_message_choice_via_7612(state: dict[str, object]) -> dict[str, object]:
+    if int(state.get("page_environment_status_780e90", 0)) != 0:
+        return {"helper": 0x8A48, "path": "page-environment-message"}
+    return {"helper": 0x8656, "path": "normal-service-message"}
+
+
+def page_environment_message_via_8a48(state: dict[str, object]) -> dict[str, object]:
+    if int(state.get("a46e_return", 0)) != 0:
+        return {"path": "hardware-busy", "events": []}
+
+    environment = int(state.get("active_environment_780e8e", 0)) & 0xFF
+    status_code = int(state.get("status_code_cache_780e98", 0)) & 0xFF
+    high = bool(status_code & 0x80)
+    table_index = status_code & 0x7F if high else status_code
+    if environment == 0x80:
+        string = 0xB291 if high else 0xB280
+        return {
+            "path": "manual-paper-feed",
+            "events": [{
+                "helper": 0x9112,
+                "string": string,
+                "table": 0xB490,
+                "table_index": table_index,
+            }],
+        }
+    if environment == 0x90:
+        if high:
+            return {
+                "path": "manual-envelope-feed-table",
+                "events": [{
+                    "helper": 0x9112,
+                    "string": 0xB291,
+                    "table": 0xB490,
+                    "table_index": table_index,
+                }],
+            }
+        return {
+            "path": "manual-envelope-feed",
+            "events": [{"helper": 0x8C90, "string": 0xB2A2}],
+        }
+    return {"path": "no-media-message", "events": []}
+
+
 def fetch_stream_via_a904(initial: dict[str, object], byte_count: int) -> dict[str, object]:
     state = dict(initial)
     values: list[int] = []
@@ -24233,6 +24359,132 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "alternate_output": [0x61],
             "discarded_mode1": [],
             "count": 0,
+        },
+    ]))
+
+    page_env_status_state = interface_output_fifo_state(
+        active_environment_780e8e=0x80,
+        pending_status_count_780e22=1,
+    )
+    page_env_status = page_environment_status_via_2888(
+        page_env_status_state,
+        {"byte_4": 2, "byte_6": 0x44, "byte_7": 0x80, "byte_8": 0},
+    )
+    page_env_status_output = interface_output_status_via_aece(page_env_status_state)
+    checks.append(assert_equal("0x2888 sets page-environment status consumed by 0xaece", {
+        "d7": page_env_status["d7"],
+        "path": page_env_status["path"],
+        "events": page_env_status["events"],
+        "page_environment_status_780e90": page_env_status["state"]["page_environment_status_780e90"],
+        "status_code_cache_780e98": page_env_status["state"]["status_code_cache_780e98"],
+        "warning_status_780e2a": page_env_status["state"]["warning_status_780e2a"],
+        "status_emitted": page_env_status_output["emitted"],
+    }, {
+        "d7": 1,
+        "path": "page-environment-status",
+        "events": [{"helper": 0x9BEE, "address": 0x780E2A, "mask": 0x10}],
+        "page_environment_status_780e90": 1,
+        "status_code_cache_780e98": 0x44,
+        "warning_status_780e2a": 0x10,
+        "status_emitted": [0x33],
+    }))
+
+    page_env_publish_state = interface_output_fifo_state(
+        active_environment_780e8e=0x80,
+        environment_gate_780e02=1,
+        environment_gate_780e91=1,
+    )
+    page_env_publish = page_environment_status_via_2888(
+        page_env_publish_state,
+        {"byte_4": 3, "byte_6": 0x07, "byte_7": 0x90, "byte_8": 0},
+    )
+    page_env_cache_state = interface_output_fifo_state(
+        active_environment_780e8e=0x10,
+        default_status_780e97=0,
+        fallback_status_780e55=2,
+        environment_gate_780e02=0,
+        environment_gate_780e91=1,
+    )
+    page_env_cache = page_environment_status_via_2888(
+        page_env_cache_state,
+        {"byte_4": 2, "byte_6": 0x05, "byte_7": 0x10, "byte_8": 0},
+    )
+    checks.append(assert_equal("0x2888 publishes environment mismatch or status-cache changes", [
+        {
+            "d7": page_env_publish["d7"],
+            "path": page_env_publish["path"],
+            "events": page_env_publish["events"],
+            "output_environment_780e8f": page_env_publish["state"]["output_environment_780e8f"],
+            "status_bits_780e29": page_env_publish["state"]["status_bits_780e29"],
+            "page_environment_status_780e90": page_env_publish["state"]["page_environment_status_780e90"],
+        },
+        {
+            "d7": page_env_cache["d7"],
+            "path": page_env_cache["path"],
+            "events": page_env_cache["events"],
+            "status_code_cache_780e98": page_env_cache["state"]["status_code_cache_780e98"],
+            "status_bits_780e30": page_env_cache["state"]["status_bits_780e30"],
+        },
+    ], [
+        {
+            "d7": 0,
+            "path": "publish-environment",
+            "events": [{"helper": 0x2A14, "byte": 0x90}],
+            "output_environment_780e8f": 0x90,
+            "status_bits_780e29": 0x01,
+            "page_environment_status_780e90": 0,
+        },
+        {
+            "d7": 0,
+            "path": "status-cache-780e30",
+            "events": [{"helper": 0x29B2, "byte": 0x05}],
+            "status_code_cache_780e98": 0x05,
+            "status_bits_780e30": 0x01,
+        },
+    ]))
+
+    checks.append(assert_equal("0x7612 selects page-environment or normal service helper", [
+        page_pool_cursor_message_choice_via_7612({"page_environment_status_780e90": 1}),
+        page_pool_cursor_message_choice_via_7612({"page_environment_status_780e90": 0}),
+    ], [
+        {"helper": 0x8A48, "path": "page-environment-message"},
+        {"helper": 0x8656, "path": "normal-service-message"},
+    ]))
+
+    page_env_message_matrix = [
+        page_environment_message_via_8a48({
+            "active_environment_780e8e": 0x80,
+            "status_code_cache_780e98": 0x81,
+        }),
+        page_environment_message_via_8a48({
+            "active_environment_780e8e": 0x80,
+            "status_code_cache_780e98": 0x02,
+        }),
+        page_environment_message_via_8a48({
+            "active_environment_780e8e": 0x90,
+            "status_code_cache_780e98": 0x81,
+        }),
+        page_environment_message_via_8a48({
+            "active_environment_780e8e": 0x90,
+            "status_code_cache_780e98": 0x02,
+        }),
+    ]
+    checks.append(assert_equal("0x8a48 maps page environment bytes to media-feed messages", page_env_message_matrix, [
+        {
+            "path": "manual-paper-feed",
+            "events": [{"helper": 0x9112, "string": 0xB291, "table": 0xB490, "table_index": 1}],
+        },
+        {
+            "path": "manual-paper-feed",
+            "events": [{"helper": 0x9112, "string": 0xB280, "table": 0xB490, "table_index": 2}],
+        },
+        {
+            "path": "manual-envelope-feed-table",
+            "events": [{"helper": 0x9112, "string": 0xB291, "table": 0xB490, "table_index": 1}],
+        },
+        {
+            "path": "manual-envelope-feed",
+            "events": [{"helper": 0x8C90, "string": 0xB2A2}],
         },
     ]))
 

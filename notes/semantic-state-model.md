@@ -845,20 +845,38 @@ composition.
 
 High for `0x780e90`, `0x780e98`, `0x780e8f`, `0x780e29`, `0x780e30`,
 `0x780e2a.4`, and `0x7839d3` writes because the focused listings show
-direct stores and bit operations. High for the service-message string
-addresses and `0x8626` selector table because the literals and table
-bytes are direct ROM data. Medium for physical/user-facing status names
-for the selected record bytes and the hardware bits behind `$8a01` and
-`$a801`.
+direct stores and bit operations, and the `0x2888` producer boundary now
+has executable fixture coverage. High for the service-message string
+addresses, the `0x7612` helper choice, and the `0x8a48` media-feed
+message matrix because the literals, table indexes, and helper calls are
+direct ROM data and are fixture-backed. Medium for physical/user-facing
+status names for the selected record bytes and the hardware bits behind
+`$8a01` and `$a801`.
 
 ### Fixtures
 
-- No new executable fixture is introduced for this checkpoint. Evidence
-  is disassembly-only; a future fixture should drive a selected pool
-  record through `0x2888`, then observe the `0xaece` outbound status bit
-  and the `0x7612` helper choice. A second fixture should drive
-  `0x8a48` with `0x780e8e` values `0x80` and `0x90`, plus high-bit and
-  clear `0x780e98` values, and assert the `0x9112` / `0x8c90` calls.
+- `tools/render_fixture_harness.py`: `0x2888 sets page-environment
+  status consumed by 0xaece` covers an eligible selected record with
+  state byte `2`, matching active environment byte `0x80`, selected
+  status byte `0x44`, `0x780e90 = 1`, `0x780e98 = 0x44`,
+  `0x9bee(0x780e2a, 0x10)`, and the resulting `0xaece` outbound status
+  byte `0x33`.
+- `tools/render_fixture_harness.py`: `0x2888 publishes environment
+  mismatch or status-cache changes` covers the mismatch path that writes
+  selected record byte `+7 = 0x90` to `0x780e8f` through `0x2a14`, sets
+  `0x780e29.0`, and leaves `0x780e90 = 0`; it also covers the low-bit
+  active-environment path where helper `0x29b2` writes record byte
+  `+6 = 0x05` into `0x780e98` and sets `0x780e30.0`.
+- `tools/render_fixture_harness.py`: `0x7612 selects page-environment or
+  normal service helper` covers the `0x780e90` branch to `0x8a48` and the
+  clear branch to `0x8656`.
+- `tools/render_fixture_harness.py`: `0x8a48 maps page environment bytes
+  to media-feed messages` covers `0x780e8e = 0x80` with high-bit
+  `0x780e98` selecting `PE FEED` (`0xb291`) through `0x9112`, `0x80`
+  with clear `0x780e98` selecting `PF FEED` (`0xb280`) through
+  `0x9112`, `0x780e8e = 0x90` with high-bit `0x780e98` selecting
+  `PE FEED` through `0x9112`, and `0x90` with clear `0x780e98`
+  selecting `PE FEED ENVELOPE` (`0xb2a2`) through `0x8c90`.
 
 ### Disassembly Evidence
 

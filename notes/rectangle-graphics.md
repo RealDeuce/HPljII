@@ -40,6 +40,10 @@ Evidence:
   - `addressed text rectangle raster FF publishes rendered page record`
   - `addressed text/rule/raster field groups reach publication and render
     entry`
+  - `host-fetched text rectangle multi-row raster FF publishes rendered page
+    record`
+  - `addressed text/rule/multi-row raster publication preserves bucket
+    chain`
 
 ## Parser Boundary
 
@@ -508,10 +512,41 @@ bridge normalization and derived render content after `0x1edc6` ORs bit
 digests are derived/cache evidence for the composed software-visible output,
 not firmware state.
 
+Fixture `host-fetched text rectangle multi-row raster FF publishes rendered
+page record` broadens the same mixed stream to two delayed raster transfers:
+
+```text
+21 1b 2a 63 31 32 61 35 62 30 50 1b 2a 74 33 30 30 52
+1b 2a 72 30 41 1b 2a 62 32 57 f0 0f 1b 2a 62 32 57 0f f0 0c
+```
+
+That is printable `!`, selector-7 rule `ESC *c12a5b0P`, raster setup
+`ESC *t300R ESC *r0A`, two delayed `ESC *b2W` transfers, and FF. The modeled
+publication preserves bucket `0` as newest-first raster row, prior raster row,
+then compact text; the bridged rule list is the same selector-7 rule path
+documented above. Fixture
+`addressed text/rule/multi-row raster publication preserves bucket chain`
+pins the addressed storage shape:
+
+- raster objects at `0x00d0d038` and `0x00d0d044`;
+- bucket chain `0x00d0d044 -> 0x00d0d038 -> 0x00d0d004`;
+- published raster objects
+  `00 d0 d0 38 80 00 00 02 10 00 0f f0` and
+  `00 d0 d0 04 80 00 00 02 00 00 f0 0f`;
+- parser scratch records `80 57 00 02 00 00` at payload offsets `28`
+  and `35`;
+- allocator bookkeeping ending at `0x782a70 = 0x00b0`,
+  `0x782a72 = 0x00d0d000`, and `0x782a76 = 0x00d0d050`;
+- raster `row_y = 2` and render dispatch targets `0x1f88e`, `0x1f88e`,
+  and `0x1effe`, with the selector-7 rule rendered in the same published
+  page record.
+
 Writers are the parser handlers and producers listed above, plus `0xff1e`
 when fixtures `host-fetched text rectangle raster FF publishes rendered page
 record` and `addressed text rectangle raster FF publishes rendered page
-record` finalize the heterogeneous current page. Readers are `0x1ed84` /
+record` finalize the heterogeneous current page. The multi-row sibling uses
+the same writers but calls the delayed raster transfer path twice before FF.
+Readers are `0x1ed84` /
 `0x1edc6`, `0x1ef6a`, compact bucket dispatch `0x1efc2`, rule dispatch
 `0x1f446`, raster dispatch `0x1f88e`, compact text dispatch `0x1effe`, solid
 rule helper `0x1f596`, and pattern rule helper `0x1f4e0`.
@@ -556,7 +591,9 @@ A byte-stream reproduction must preserve these behaviors:
   portrait pattern selector `9` from `2g3P`, and `host-fetched rectangle
   selector matrix feeds full page records` extends that coverage to non-solid
   selectors `0..6` and `8..13` plus the landscape pattern remaps for ids
-  `1..4`;
+  `1..4`; the multi-row mixed text/rule/raster sibling now also proves the
+  same rule list can be published with two delayed raster objects in the
+  bucket chain;
   checked-in coverage also includes font-selection streams, downloaded-glyph
   FF publication, geometry-changing publication streams, and a parser-driven
   downloaded-glyph/rule/raster page. The remaining comparison gap is broader

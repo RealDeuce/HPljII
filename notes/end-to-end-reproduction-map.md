@@ -601,9 +601,12 @@ The next work should follow dataflow, not isolated handlers:
    simple resource mirror` now constrains one candidate: a full resource-pair mirror at
    `0x0c0000` would make scanner `0x41a` see a second `HEAD` chain and walk `48` typed
    records, so mirror cannot be treated as only a local fallback-row source unless
-   hardware/gating hides it from scanner reads. The hardware evidence in
-   `notes/formatter-interface-pca.md` leaves address-controller/jumper ROM decode as the
-   unresolved physical state. The `ESC Y ... ESC Z` display-functions loop is now
+   hardware/gating hides it from scanner reads. Fixture `0x41a HEAD scanner rejects
+   non-HEAD 0x40000 continuations` constrains the code-pair and zero-fill candidates:
+   their second-probe markers are `0x00800000` and `0x00000000`, so neither duplicates
+   `HEAD` records for startup scanning. The hardware evidence in
+   `notes/formatter-interface-pca.md` leaves address-controller/jumper ROM decode as
+   the unresolved physical state. The `ESC Y ... ESC Z` display-functions loop is now
    documented in `notes/pcl-parser-core.md` and `notes/semantic-state-model.md`; fixture
    `ESC Y display-functions stream reaches page-record output` covers the default-filter
    normal `0x12536..0x1261e` page-output path, fixture `ESC Y display-functions

@@ -207,6 +207,13 @@ that physical decode/window, live startup candidate counters after `0x1a2e4`, a
 direct bus read around `0x0c0000`, or physical output that selects one of the
 fallback-row digests.
 
+Fixture `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations` constrains
+the other two local continuation hypotheses against the same startup scanner.
+If the code pair follows `IC32,IC15`, the second probe at offset `0x40000`
+sees marker `0x00800000`; if zero-fill follows it, the marker is
+`0x00000000`. Both variants keep a single `HEAD` chain, walk the same 24 typed
+records, and skip to final probe `0x80000` without duplicating scanner input.
+
 The executable harness now extracts deterministic metadata for all named
 header-like built-in records in the verified resource window: twelve
 `COURIER` records and six `LINE_PRINTER` records. The `COURIER` records

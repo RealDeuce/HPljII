@@ -183,6 +183,10 @@ The verified `IC32,IC15` built-in resource window has `HEAD` at
 and terminates at `0x0b2f80` before the next `0x40000` probe. This
 links the firmware's extension/resource probing to the same `HEAD`
 signature found at the start of the resource ROM pair.
+The scanner constraint fixtures also compare candidate bytes after the verified
+resource pair: a simple resource-pair mirror would expose a second `HEAD` at
+offset `0x40000`, while code-pair and zero-fill continuations present markers
+`0x00800000` and `0x00000000` and therefore skip that probe.
 
 ## Configuration Inputs Seen Early
 

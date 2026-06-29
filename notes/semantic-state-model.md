@@ -953,15 +953,21 @@ or fixed-space helper `0xd0f0`.
   mirror` constrains the mirror hypothesis: a full `IC32,IC15` mirror at
   `0x0c0000` would expose a second `HEAD` chain to scanner `0x41a` and
   duplicate typed records before the scan terminates at `0x80000`.
+  Fixture `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations`
+  constrains the other two local continuation hypotheses: `IC32,IC15 +
+  IC30,IC13` leaves the second probe marker as `0x00800000`, while zero-fill
+  leaves marker `0x00000000`; both keep one `HEAD` chain, walk the same 24
+  typed records, and skip from probe `0x40000` to final probe `0x80000`.
 - Unknown for this checkpoint:
   - manual-facing names for the selected context filtering byte, fallback
     filtering byte, and high-character flags remain provisional.
   - the board memory-map policy for firmware address `0x0c0000..0x0c0321`
     remains unknown; mirror, code-pair continuation, and zero-fill hypotheses
     produce different fallback row digests in the harness. A simple full mirror
-    would also duplicate `HEAD` scanner input, so the proof targets are live
-    startup candidate counters, direct bus reads around `0x0c0000`, emulator
-    gate-array decode, or physical output matching one fallback digest. This is
+    would also duplicate `HEAD` scanner input; code-pair and zero-fill
+    continuations would not. The proof targets are live startup candidate
+    counters, direct bus reads around `0x0c0000`, emulator gate-array decode,
+    or physical output matching one fallback digest. This is
     firmware-address-map state, not parser state: `data/rom_manifest.json`
     accounts for the installed ROMs as four 128K x 8 packages with a
     `0x40000`-byte `IC32,IC15` resource pair, while
@@ -1125,6 +1131,10 @@ Fixture `0x41a HEAD scanner would duplicate records under simple resource
 mirror` proves that the full-mirror continuation is scanner-visible: scanning
 `IC32,IC15 + IC32,IC15` would see `HEAD` at offsets `0` and `0x40000`, walk
 `48` typed records, and terminate at final probe `0x80000`.
+Fixture `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations` proves
+that the code-pair and zero-fill continuations are not `HEAD`-visible to that
+same startup scanner: the second probe markers are `0x00800000` and
+`0x00000000`, so both variants keep one `HEAD` chain and 24 walked records.
 
 ### Confidence
 
@@ -1163,6 +1173,7 @@ for manual names for the filter bytes.
 - `transparent secondary segmented render prefix exposes source boundary`
 - `transparent secondary segment-57 continuation policies diverge after verified
   bytes`
+- `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations`
 
 ### Disassembly Evidence
 
@@ -1191,8 +1202,11 @@ for manual names for the filter bytes.
   `0x0c0000..0x0c0321`. The simple mirror candidate is constrained by fixture
   `0x41a HEAD scanner would duplicate records under simple resource mirror`,
   because a full mirror would duplicate scanner records unless hardware/gating
-  hides it from startup scanner reads. The edge is explicitly outside the verified
-  `IC32,IC15` resource image in `data/rom_manifest.json`, and the hardware note
+  hides it from startup scanner reads. Fixture `0x41a HEAD scanner rejects
+  non-HEAD 0x40000 continuations` adds that the code-pair and zero-fill
+  candidates do not duplicate startup scanner records. The edge is explicitly
+  outside the verified `IC32,IC15` resource image in `data/rom_manifest.json`,
+  and the hardware note
   in `notes/formatter-interface-pca.md` makes address-controller/jumper decode
   the candidate state to resolve. It is not primary route polarity, sampled
   primary interior values, or the renderable secondary prefix through bucket

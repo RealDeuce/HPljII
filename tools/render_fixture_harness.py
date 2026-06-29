@@ -30504,6 +30504,64 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     ))
 
+    resource_boundary_scan_variants = {}
+    for name, continuation in (
+        ("code-pair-after-resource", data),
+        ("zero-fill-after-resource", bytes(len(resources))),
+    ):
+        candidate_scan = resource_head_scan_via_041a(
+            resources + continuation,
+            scan_span=0x80000,
+        )
+        candidate_records = candidate_scan["walked_records"]
+        assert isinstance(candidate_records, list)
+        candidate_events = candidate_scan["events"]
+        assert isinstance(candidate_events, list)
+        probe_misses = [
+            event
+            for event in candidate_events
+            if isinstance(event, dict) and event.get("kind") == "probe-miss"
+        ]
+        resource_boundary_scan_variants[name] = {
+            "status": candidate_scan["status"],
+            "heads": candidate_scan["head_offsets"],
+            "walked_count": len(candidate_records),
+            "second_probe": {
+                "offset": probe_misses[-1]["offset"],
+                "marker": u32(resources + continuation, probe_misses[-1]["offset"]),
+                "step": probe_misses[-1]["step"],
+            },
+            "final_probe": candidate_scan["final_probe"],
+        }
+    checks.append(assert_equal(
+        "0x41a HEAD scanner rejects non-HEAD 0x40000 continuations",
+        resource_boundary_scan_variants,
+        {
+            "code-pair-after-resource": {
+                "status": "end",
+                "heads": [0],
+                "walked_count": 24,
+                "second_probe": {
+                    "offset": 0x40000,
+                    "marker": 0x00800000,
+                    "step": 0x40000,
+                },
+                "final_probe": 0x80000,
+            },
+            "zero-fill-after-resource": {
+                "status": "end",
+                "heads": [0],
+                "walked_count": 24,
+                "second_probe": {
+                    "offset": 0x40000,
+                    "marker": 0x00000000,
+                    "step": 0x40000,
+                },
+                "final_probe": 0x80000,
+            },
+        },
+    ))
+
     def put_long(buffer: bytearray, offset: int, value: int) -> None:
         buffer[offset:offset + 4] = (value & 0xFFFFFFFF).to_bytes(4, "big")
 
@@ -90352,6 +90410,23 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             len(mirrored_resource_records),
             mirrored_resource_terminators[0]["offset"],  # type: ignore[index]
             mirrored_resource_scan["final_probe"],
+        )
+    )
+    lines.append(
+        "- non-HEAD continuation scan consequence: appending the code pair or "
+        "zero-fill after `IC32,IC15` keeps the `0x41a` scan to one `HEAD` chain "
+        "and %d typed records; the second probe at `0x40000` sees markers "
+        "`0x%08x` and `0x%08x`, so both variants skip to final probe "
+        "`0x80000` instead of duplicating records." % (
+            resource_boundary_scan_variants["code-pair-after-resource"][
+                "walked_count"
+            ],
+            resource_boundary_scan_variants["code-pair-after-resource"][
+                "second_probe"
+            ]["marker"],
+            resource_boundary_scan_variants["zero-fill-after-resource"][
+                "second_probe"
+            ]["marker"],
         )
     )
     lines.append("- boundary fixture: crossing the cumulative `0x40000` threshold at `0x%05x` raises the next probe units to `%d`, so a null terminator steps by `0x%05x` instead of the default `0x40000`." % (

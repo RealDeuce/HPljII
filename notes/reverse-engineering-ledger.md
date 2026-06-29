@@ -1310,19 +1310,25 @@ ROM work needed:
   The widened `0x1b50e` resolver now pins first/second scan windows for
   modes `0..3`, fast-probe fallback through `0x1b8ea`, and Roman-8
   duplicate/substitution state through `0x7828ac` and `0x7821a0`.
-- Replace the host-fetched font-control, descriptor, resource-payload,
-  and downloaded-character boundaries with a full live parser-state run
-  that populates current records/source objects, then replace
-  producer-modeled fixtures with full parser/page-object rendering.
-  Current boundary coverage already chains fetched `ESC *c4660d37e5F`
-  state into fetched `ESC )s0W` and `ESC )s80W` and `ESC )s2193W`
-  streams, and a combined fetched font-control / downloaded-character /
-  printable stream now drives the installed downloaded glyph into
-  segmented page-record buckets and through the `0x1edc6` /
-  `0x1ed84` / `0x1ef6a` render boundary. The combined stream is pinned
-  as one 2,215-byte `0xa904` ring source with restored record
-  `80 57 08 91 00 00`, glyph `0x25`, selector `0x3003`, buckets `9`
-  and `1`, and compact dispatch target `0x1effe`.
+- Keep downloaded-font work focused on live continuity gaps, not
+  selector-family rediscovery. Current boundary coverage already chains
+  fetched `ESC *c4660d37e5F` state into fetched `ESC )s0W`,
+  `ESC )s80W`, and `ESC )s2193W` streams. Fixtures `combined
+  host-fetched font download stream prints installed glyph` and
+  `combined font download FF publishes installed glyph page record`
+  drive one 2,215-byte `0xa904` ring source through font-control state,
+  restored record `80 57 08 91 00 00`, glyph `0x25`, selector
+  `0x3003`, buckets `9` and `1`, compact dispatch target `0x1effe`,
+  `0xff1e`, `0x1ed84`, and `0x1ef6a`. Fixture `parser-driven
+  downloaded glyph rule raster stream composes through 0x1ef6a` closes
+  the page-stream side for the even-span rule/raster case, but still
+  supplies the page phase with
+  `bytearray(downloaded_wide_even_install["header"])` from the prior
+  install fixture. The precise remaining ROM-side edge is one live CPU
+  memory run carrying the even-span `ESC )s18W` install return at
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, stream byte `24`,
+  directly into the following `0x10e68` rectangle/page stream without
+  that fixture handoff.
 - Model the font-printout loop's emitted page objects from the ROM sample
   byte runs. The internal-font source group is decoded for both class passes
   and documented in `notes/resource-rom.md`: request index `0` fast-probes or
@@ -1402,19 +1408,18 @@ Known renderer boundary:
 
 ROM work needed:
 
-- Replace the host-fetched font-control, descriptor, resource-payload,
-  and downloaded-character boundaries with a full live parser-state run
-  that populates current records/source objects. Current boundary
-  coverage already chains fetched `ESC *c4660d37e5F` state into fetched
-  `ESC )s0W`, `ESC )s80W`, and `ESC )s2193W` streams, and a combined
-  fetched font-control / downloaded-character / printable stream now
-  drives the installed downloaded glyph into segmented page-record
-  buckets and through the `0x1edc6` / `0x1ed84` / `0x1ef6a` render
-  boundary. The combined stream is pinned as one 2,215-byte `0xa904`
-  ring source with restored record `80 57 08 91 00 00`, glyph `0x25`,
-  selector `0x3003`, buckets `9` and `1`, and compact dispatch target
-  `0x1effe`; the verified built-in scan does not provide normal built-in
-  entries for these renderer modes.
+- Keep downloaded-font live-continuity work scoped to the exact remaining
+  handoff. Current boundary coverage already chains fetched
+  `ESC *c4660d37e5F` state into fetched `ESC )s0W`, `ESC )s80W`, and
+  `ESC )s2193W` streams, and the combined font-download fixtures now
+  drive the installed downloaded glyph into segmented page-record
+  buckets and through `0xff1e`, `0x1edc6`, `0x1ed84`, and `0x1ef6a`.
+  The unresolved ROM-side continuity edge is not the segmented printable
+  or FF publication stream; it is the even-span `ESC )s18W` rule/raster
+  composition case where the page phase still uses
+  `bytearray(downloaded_wide_even_install["header"])` instead of one
+  live CPU memory run from the `0x16498` return at stream byte `24` into
+  the following `0x10e68` handler.
 - Integrate executable row-copy behavior with real page objects from the
   parser/imaging path.
 - Broaden the documented printable and inline/downloaded `0x1393a` /

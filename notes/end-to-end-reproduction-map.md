@@ -598,7 +598,18 @@ The next work should follow dataflow, not isolated handlers:
    built-in font-selection visible-output streams, inline primary and secondary
    parser-to-printable streams, the primary and secondary symbol fallbacks, plus
    primary/secondary current-font-RAM handoff and composed selection-to-RAM handoff
-   visible-output streams. The primary built-in case proves `ESC (s0p10h12v0s0b3T!!`
+   visible-output streams. Downloaded-font live-continuity work is now narrowed:
+   fixtures `combined host-fetched font download stream prints installed glyph` and
+   `combined font download FF publishes installed glyph page record` already drive one
+   2,215-byte `0xa904` stream through font-control state, `ESC )s2193W` install,
+   printable `%`, FF, bucket entries `1` and `9`, and `0x1ed84`/`0x1ef6a`. The remaining
+   ROM-side continuity edge is the even-span `ESC )s18W` rule/raster composition case,
+   where `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
+   still supplies the page phase with
+   `bytearray(downloaded_wide_even_install["header"])` instead of one live CPU memory
+   run from `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, stream byte `24`, into the
+   following `0x10e68` page handler. The primary built-in case proves
+   `ESC (s0p10h12v0s0b3T!!`
    through parsed selection handlers, selected context `0xc008004c`, printable `0xd04a`
    entries, object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record
    context slot `0xc008004c`, and final Courier glyph rows. The secondary case proves

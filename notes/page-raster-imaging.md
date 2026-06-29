@@ -2389,14 +2389,21 @@ Other checked leads:
 
 ## Next Targets
 
-- Replace the host-fetched font-control, descriptor, resource-payload,
-  and downloaded-character boundaries with a full live parser-state run that
-  populates current records/source objects. The downloaded-character path now
-  has checked-in normal, wide, segmented, split-plane, segmented-wide,
-  FF-publication, and rule/raster composition evidence; the remaining edge is
-  the live parser/register handoff across the install-to-page transition and
-  broader physical/full-page validation, not missing selector-family
-  documentation.
+- Keep downloaded-font work focused on live continuity gaps, not selector-family
+  rediscovery. Fixtures `combined host-fetched font download stream prints
+  installed glyph` and `combined font download FF publishes installed glyph
+  page record` already run one `0xa904` fetched stream through font-control
+  state, `ESC )s2193W` downloaded-character install, printable `%`, FF
+  publication, bucket entries `1` and `9`, and `0x1ed84`/`0x1ef6a` rendering.
+  Fixture `parser-driven downloaded glyph rule raster stream composes through
+  0x1ef6a` closes the page-stream side for the even-span rule/raster case, but
+  still supplies the page phase with
+  `bytearray(downloaded_wide_even_install["header"])` from the prior install
+  fixture. The precise remaining ROM-side edge is one live CPU memory run that
+  carries the even-span `ESC )s18W` install return at
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, stream byte `24`, directly into
+  the following `0x10e68` rectangle/page stream without that fixture handoff.
+  Broader physical/full-page validation remains separate.
 - Treat the `ESC E` reset publication boundary as covered for
   parser-produced compact text page objects. Fixtures
   `mixed printable/reset page-record stream queues through 0x1387c before

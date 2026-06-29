@@ -621,17 +621,31 @@ page records, `0x1ed84`, or `0x1ef6a`.
 ### Confidence
 
 High for FIFO capacity, pointer wrap, enqueue/dequeue side effects,
-`0x7801e2` wait-object coupling, and output-backend register writes: the
-focused listings are direct stores, tests, and calls. Medium for
-physical connector naming and the protocol meaning of the `0x12280`
-literal bytes.
+`0x7801e2` wait-object coupling, status-byte composition, and
+output-backend branch behavior: the focused listings are direct stores,
+tests, and calls, and the FIFO helper boundaries now have executable
+fixtures. Medium for physical connector naming and the protocol meaning
+of the `0x12280` literal bytes.
 
 ### Fixtures
 
-- No executable fixture currently covers this output FIFO. Evidence is
-  disassembly-only in this checkpoint, and the unresolved fixture gap is a
-  small synthetic run that fills and drains `0x783e92..0x783ed1` through
-  `0xb090`, `0xb022`, and `0xae2c`.
+- `tools/render_fixture_harness.py`: `0xb0c0/0xb022 output FIFO wraps
+  and preserves order` covers nonblocking enqueue, read/write pointer
+  wrap after offset `0x3f`, count updates, ordered dequeue, and the empty
+  `D7 = 0` return.
+- `tools/render_fixture_harness.py`: `0xb090 waits on full FIFO then
+  enqueues after drain` covers the full-FIFO `0xb0c0` failure, wait/yield
+  through `0x10c8(0x7801e2)`, later space creation, successful enqueue,
+  and post-success `0x10c8(0x7801e2)`.
+- `tools/render_fixture_harness.py`: `0xaece emits service byte and
+  combined status byte` covers service byte `0x13`, status-byte base
+  `0x30`, bit 0 from `0x780e90`, bit 1 from `0x780e2a`, bit 2 from
+  `0x780e0a`, ORed reason byte `0x783e60`, clearing `0x783e61` /
+  `0x783e60`, and decrementing `0x780e22`.
+- `tools/render_fixture_harness.py`: `0xae2c drains FIFO by configured
+  output mode` covers mode `0` output through the `0xaf7c` path, mode `1`
+  dequeue-and-discard, and alternate nonzero output through the `0xafcc`
+  path.
 
 ### Disassembly Evidence
 

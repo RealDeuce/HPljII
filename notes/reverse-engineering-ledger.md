@@ -106,11 +106,13 @@ initializes `0x783ed2` / `0x783ed4` / `0x783ed8`; `0xb0c0`, `0xb090`,
 and `0xb022` enqueue, block/yield on `0x7801e2`, and dequeue; worker
 `0xae2c` drains bytes through mode-0 helper `0xa1b0` to `0xfffe0003`,
 discards them in mode `1`, or sends them through `0xa1d6` to
-`0xfffee003` in other nonzero modes. The mode-0 status path now pins
-`0xaece..0xaf74`: bridge service sends literal `0x13`, and pending
-status sends base `0x30` plus bits from `0x780e12`, `0x780e90`,
-`0x780e2a`, `0x780e0a`, and `0x783e60`; producers are bounded to
-`0xa8c8`, `0xa6cc`, and aggregate helper `0x36e4`. The `0x780e90`
+`0xfffee003` in other nonzero modes. Fixture coverage now proves
+64-byte wrap/order, full-FIFO wait/retry, mode-selected worker drain, and
+the mode-0 status path at `0xaece..0xaf74`: bridge service sends literal
+`0x13`, and pending status sends base `0x30` plus bits from `0x780e12`,
+`0x780e90`, `0x780e2a`, `0x780e0a`, and `0x783e60`; producers are
+bounded to `0xa8c8`, `0xa6cc`, and aggregate helper `0x36e4`. The
+`0x780e90`
 source is now composed in `Page Environment Status And Pool Cursor Gate`:
 `0x2888..0x2a80` compares selected pool-record bytes with
 `0x780e8e`, can publish `0x780e8f`, set `0x780e90`, cache

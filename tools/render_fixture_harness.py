@@ -325,6 +325,188 @@ def external_service_dispatch_via_c1c6(initial: dict[str, object]) -> dict[str, 
     return {"d7": 0, "path": "idle", "events": events, "state": state}
 
 
+def interface_output_fifo_state(**overrides: object) -> dict[str, object]:
+    state: dict[str, object] = {
+        "fifo": [0] * 0x40,
+        "fifo_count_783ed2": 0,
+        "fifo_read_offset_783ed4": 0,
+        "fifo_write_offset_783ed8": 0,
+        "wait_events": [],
+        "mode0_output": [],
+        "alternate_output": [],
+        "discarded_mode1": [],
+    }
+    state.update(overrides)
+    return state
+
+
+def interface_output_enqueue_via_b0c0(
+    state: dict[str, object],
+    value: int,
+) -> dict[str, object]:
+    fifo = list(state.get("fifo", [0] * 0x40))
+    count = int(state.get("fifo_count_783ed2", 0)) & 0xFFFF
+    write_offset = int(state.get("fifo_write_offset_783ed8", 0)) % 0x40
+    if count >= 0x40:
+        return {
+            "d7": 0,
+            "accepted": False,
+            "count": count,
+            "write_offset": write_offset,
+            "state": state,
+        }
+
+    fifo[write_offset] = int(value) & 0xFF
+    write_after = (write_offset + 1) % 0x40
+    state["fifo"] = fifo
+    state["fifo_write_offset_783ed8"] = write_after
+    state["fifo_count_783ed2"] = count + 1
+    return {
+        "d7": 1,
+        "accepted": True,
+        "stored_byte": int(value) & 0xFF,
+        "count": count + 1,
+        "write_offset": write_after,
+        "state": state,
+    }
+
+
+def interface_output_dequeue_via_b022(state: dict[str, object]) -> dict[str, object]:
+    fifo = list(state.get("fifo", [0] * 0x40))
+    count = int(state.get("fifo_count_783ed2", 0)) & 0xFFFF
+    read_offset = int(state.get("fifo_read_offset_783ed4", 0)) % 0x40
+    if count == 0:
+        return {
+            "d7": 0,
+            "accepted": False,
+            "byte": 0,
+            "count": 0,
+            "read_offset": read_offset,
+            "state": state,
+        }
+
+    value = int(fifo[read_offset]) & 0xFF
+    read_after = (read_offset + 1) % 0x40
+    state["fifo_read_offset_783ed4"] = read_after
+    state["fifo_count_783ed2"] = count - 1
+    return {
+        "d7": 1,
+        "accepted": True,
+        "byte": value,
+        "count": count - 1,
+        "read_offset": read_after,
+        "state": state,
+    }
+
+
+def interface_output_enqueue_blocking_via_b090(
+    state: dict[str, object],
+    value: int,
+) -> dict[str, object]:
+    events: list[dict[str, object]] = []
+    for _ in range(4):
+        enqueue = interface_output_enqueue_via_b0c0(state, value)
+        if bool(enqueue["accepted"]):
+            events.append({"helper": 0x10C8, "target": 0x007801E2, "reason": "accepted"})
+            state["wait_events"] = list(state.get("wait_events", [])) + events
+            return {
+                "d7": 1,
+                "events": events,
+                "enqueue": enqueue,
+                "state": state,
+            }
+
+        events.append({"helper": 0x10C8, "target": 0x007801E2, "reason": "full"})
+        if bool(state.get("drain_one_on_wait", False)):
+            drained = interface_output_dequeue_via_b022(state)
+            events.append({
+                "helper": 0xB022,
+                "reason": "wait-drain",
+                "byte": drained["byte"],
+            })
+
+    raise AssertionError("0xb090 fixture did not make FIFO space")
+
+
+def interface_output_status_via_aece(state: dict[str, object]) -> dict[str, object]:
+    emitted: list[int] = []
+    events: list[dict[str, object]] = []
+    if int(state.get("service_pending_783e61", 0)) != 0:
+        if bool(state.get("mode0_output_ready", True)):
+            emitted.append(0x13)
+            state["status_byte_780e62"] = 0x13
+            state["service_pending_783e61"] = 0
+            events.append({"helper": 0xA1B0, "byte": 0x13, "source": "service"})
+
+    if int(state.get("pending_status_count_780e22", 0)) != 0:
+        status = 0x30
+        if int(state.get("aggregate_error_780e12", 0)) != 0:
+            status |= 0x01
+        if int(state.get("page_environment_status_780e90", 0)) != 0:
+            status |= 0x01
+        if int(state.get("warning_status_780e2a", 0)) != 0:
+            status |= 0x02
+        if int(state.get("active_status_780e0a", 0)) != 0:
+            status |= 0x04
+        status |= int(state.get("service_reason_783e60", 0)) & 0xFF
+        if bool(state.get("mode0_output_ready", True)):
+            emitted.append(status & 0xFF)
+            state["service_reason_783e60"] = 0
+            state["pending_status_count_780e22"] = (
+                int(state.get("pending_status_count_780e22", 0)) - 1
+            )
+            events.append({"helper": 0xA1B0, "byte": status & 0xFF, "source": "status"})
+
+    mode0_output = list(state.get("mode0_output", []))
+    mode0_output.extend(emitted)
+    state["mode0_output"] = mode0_output
+    return {"emitted": emitted, "events": events, "state": state}
+
+
+def interface_output_worker_via_ae2c(state: dict[str, object]) -> dict[str, object]:
+    mode = int(state.get("direct_mode_780e40", 0)) & 0xFF
+    events: list[dict[str, object]] = []
+    if mode == 0:
+        status = interface_output_status_via_aece(state)
+        events.extend(status["events"])
+
+    drained: list[int] = []
+    while int(state.get("fifo_count_783ed2", 0)) != 0:
+        item = interface_output_dequeue_via_b022(state)
+        if not bool(item["accepted"]):
+            break
+        value = int(item["byte"]) & 0xFF
+        drained.append(value)
+        if mode == 0:
+            output = list(state.get("mode0_output", []))
+            output.append(value)
+            state["mode0_output"] = output
+            events.append({"helper": 0xAF7C, "byte": value})
+        elif mode == 1:
+            discarded = list(state.get("discarded_mode1", []))
+            discarded.append(value)
+            state["discarded_mode1"] = discarded
+            events.append({"helper": 0xB022, "byte": value, "mode": 1})
+        else:
+            output = list(state.get("alternate_output", []))
+            output.append(value)
+            state["alternate_output"] = output
+            events.append({"helper": 0xAFCC, "byte": value})
+
+    if not events:
+        events.append({"helper": 0x10D0, "argument": 0x15, "reason": "idle"})
+
+    return {
+        "mode": mode,
+        "drained": drained,
+        "events": events,
+        "mode0_output": list(state.get("mode0_output", [])),
+        "alternate_output": list(state.get("alternate_output", [])),
+        "discarded_mode1": list(state.get("discarded_mode1", [])),
+        "state": state,
+    }
+
+
 def fetch_stream_via_a904(initial: dict[str, object], byte_count: int) -> dict[str, object]:
     state = dict(initial)
     values: list[int] = []
@@ -23878,6 +24060,181 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "events": [{"helper": 0x8C7A, "source": 0x782312}],
         "message_pending_782301": 0,
     }))
+
+    fifo_wrap_state = interface_output_fifo_state(
+        fifo_read_offset_783ed4=0x3F,
+        fifo_write_offset_783ed8=0x3F,
+    )
+    fifo_wrap_first = interface_output_enqueue_via_b0c0(fifo_wrap_state, 0x41)
+    fifo_wrap_second = interface_output_enqueue_via_b0c0(fifo_wrap_state, 0x42)
+    fifo_wrap_dequeue_1 = interface_output_dequeue_via_b022(fifo_wrap_state)
+    fifo_wrap_dequeue_2 = interface_output_dequeue_via_b022(fifo_wrap_state)
+    fifo_wrap_dequeue_empty = interface_output_dequeue_via_b022(fifo_wrap_state)
+    checks.append(assert_equal("0xb0c0/0xb022 output FIFO wraps and preserves order", {
+        "enqueue": [
+            {
+                "d7": fifo_wrap_first["d7"],
+                "count": fifo_wrap_first["count"],
+                "write_offset": fifo_wrap_first["write_offset"],
+            },
+            {
+                "d7": fifo_wrap_second["d7"],
+                "count": fifo_wrap_second["count"],
+                "write_offset": fifo_wrap_second["write_offset"],
+            },
+        ],
+        "dequeue": [
+            {
+                "d7": fifo_wrap_dequeue_1["d7"],
+                "byte": fifo_wrap_dequeue_1["byte"],
+                "count": fifo_wrap_dequeue_1["count"],
+                "read_offset": fifo_wrap_dequeue_1["read_offset"],
+            },
+            {
+                "d7": fifo_wrap_dequeue_2["d7"],
+                "byte": fifo_wrap_dequeue_2["byte"],
+                "count": fifo_wrap_dequeue_2["count"],
+                "read_offset": fifo_wrap_dequeue_2["read_offset"],
+            },
+            {
+                "d7": fifo_wrap_dequeue_empty["d7"],
+                "byte": fifo_wrap_dequeue_empty["byte"],
+                "count": fifo_wrap_dequeue_empty["count"],
+                "read_offset": fifo_wrap_dequeue_empty["read_offset"],
+            },
+        ],
+    }, {
+        "enqueue": [
+            {"d7": 1, "count": 1, "write_offset": 0},
+            {"d7": 1, "count": 2, "write_offset": 1},
+        ],
+        "dequeue": [
+            {"d7": 1, "byte": 0x41, "count": 1, "read_offset": 0},
+            {"d7": 1, "byte": 0x42, "count": 0, "read_offset": 1},
+            {"d7": 0, "byte": 0, "count": 0, "read_offset": 1},
+        ],
+    }))
+
+    fifo_full_wait_state = interface_output_fifo_state(
+        fifo=[index for index in range(0x40)],
+        fifo_count_783ed2=0x40,
+        fifo_read_offset_783ed4=0,
+        fifo_write_offset_783ed8=0,
+        drain_one_on_wait=True,
+    )
+    fifo_full_wait = interface_output_enqueue_blocking_via_b090(
+        fifo_full_wait_state,
+        0x99,
+    )
+    checks.append(assert_equal("0xb090 waits on full FIFO then enqueues after drain", {
+        "d7": fifo_full_wait["d7"],
+        "events": fifo_full_wait["events"],
+        "count": fifo_full_wait["state"]["fifo_count_783ed2"],
+        "read_offset": fifo_full_wait["state"]["fifo_read_offset_783ed4"],
+        "write_offset": fifo_full_wait["state"]["fifo_write_offset_783ed8"],
+        "stored_at_0": fifo_full_wait["state"]["fifo"][0],
+    }, {
+        "d7": 1,
+        "events": [
+            {"helper": 0x10C8, "target": 0x007801E2, "reason": "full"},
+            {"helper": 0xB022, "reason": "wait-drain", "byte": 0},
+            {"helper": 0x10C8, "target": 0x007801E2, "reason": "accepted"},
+        ],
+        "count": 0x40,
+        "read_offset": 1,
+        "write_offset": 1,
+        "stored_at_0": 0x99,
+    }))
+
+    fifo_status_state = interface_output_fifo_state(
+        service_pending_783e61=1,
+        pending_status_count_780e22=1,
+        page_environment_status_780e90=1,
+        warning_status_780e2a=1,
+        active_status_780e0a=1,
+        service_reason_783e60=8,
+    )
+    fifo_status = interface_output_status_via_aece(fifo_status_state)
+    checks.append(assert_equal("0xaece emits service byte and combined status byte", {
+        "emitted": fifo_status["emitted"],
+        "events": fifo_status["events"],
+        "service_pending_783e61": fifo_status["state"]["service_pending_783e61"],
+        "status_byte_780e62": fifo_status["state"]["status_byte_780e62"],
+        "pending_status_count_780e22": fifo_status["state"]["pending_status_count_780e22"],
+        "service_reason_783e60": fifo_status["state"]["service_reason_783e60"],
+    }, {
+        "emitted": [0x13, 0x3F],
+        "events": [
+            {"helper": 0xA1B0, "byte": 0x13, "source": "service"},
+            {"helper": 0xA1B0, "byte": 0x3F, "source": "status"},
+        ],
+        "service_pending_783e61": 0,
+        "status_byte_780e62": 0x13,
+        "pending_status_count_780e22": 0,
+        "service_reason_783e60": 0,
+    }))
+
+    fifo_worker_mode0_state = interface_output_fifo_state()
+    interface_output_enqueue_via_b0c0(fifo_worker_mode0_state, 0x41)
+    interface_output_enqueue_via_b0c0(fifo_worker_mode0_state, 0x42)
+    fifo_worker_mode0 = interface_output_worker_via_ae2c(fifo_worker_mode0_state)
+    fifo_worker_mode1_state = interface_output_fifo_state(direct_mode_780e40=1)
+    interface_output_enqueue_via_b0c0(fifo_worker_mode1_state, 0x51)
+    fifo_worker_mode1 = interface_output_worker_via_ae2c(fifo_worker_mode1_state)
+    fifo_worker_mode2_state = interface_output_fifo_state(direct_mode_780e40=2)
+    interface_output_enqueue_via_b0c0(fifo_worker_mode2_state, 0x61)
+    fifo_worker_mode2 = interface_output_worker_via_ae2c(fifo_worker_mode2_state)
+    checks.append(assert_equal("0xae2c drains FIFO by configured output mode", [
+        {
+            "mode": fifo_worker_mode0["mode"],
+            "drained": fifo_worker_mode0["drained"],
+            "mode0_output": fifo_worker_mode0["mode0_output"],
+            "alternate_output": fifo_worker_mode0["alternate_output"],
+            "discarded_mode1": fifo_worker_mode0["discarded_mode1"],
+            "count": fifo_worker_mode0["state"]["fifo_count_783ed2"],
+        },
+        {
+            "mode": fifo_worker_mode1["mode"],
+            "drained": fifo_worker_mode1["drained"],
+            "mode0_output": fifo_worker_mode1["mode0_output"],
+            "alternate_output": fifo_worker_mode1["alternate_output"],
+            "discarded_mode1": fifo_worker_mode1["discarded_mode1"],
+            "count": fifo_worker_mode1["state"]["fifo_count_783ed2"],
+        },
+        {
+            "mode": fifo_worker_mode2["mode"],
+            "drained": fifo_worker_mode2["drained"],
+            "mode0_output": fifo_worker_mode2["mode0_output"],
+            "alternate_output": fifo_worker_mode2["alternate_output"],
+            "discarded_mode1": fifo_worker_mode2["discarded_mode1"],
+            "count": fifo_worker_mode2["state"]["fifo_count_783ed2"],
+        },
+    ], [
+        {
+            "mode": 0,
+            "drained": [0x41, 0x42],
+            "mode0_output": [0x41, 0x42],
+            "alternate_output": [],
+            "discarded_mode1": [],
+            "count": 0,
+        },
+        {
+            "mode": 1,
+            "drained": [0x51],
+            "mode0_output": [],
+            "alternate_output": [],
+            "discarded_mode1": [0x51],
+            "count": 0,
+        },
+        {
+            "mode": 2,
+            "drained": [0x61],
+            "mode0_output": [],
+            "alternate_output": [0x61],
+            "discarded_mode1": [],
+            "count": 0,
+        },
+    ]))
 
     tokenizer_chained_resolution = parse_pcl_numeric_records_via_daf0(b"300r150R\x1b")
     tokenizer_chained_records = tokenizer_chained_resolution["records"]

@@ -372,6 +372,12 @@ can stall the parser-side enqueue caller through `0xb090`, and a
 bidirectional host might react to the emitted bytes. No observed FIFO
 consumer feeds `0xda9a`, page records, or bitmap renderers.
 
+Fixture coverage now pins the software-visible FIFO boundary:
+`0xb0c0/0xb022 output FIFO wraps and preserves order`,
+`0xb090 waits on full FIFO then enqueues after drain`,
+`0xaece emits service byte and combined status byte`, and
+`0xae2c drains FIFO by configured output mode`.
+
 ## Caller Semantics
 
 `0xa904` is called by parser wrappers and by binary/text payload readers.
@@ -516,6 +522,10 @@ Output effect:
 - Fixture `0xa620/0xa668/0xa6cc engine shadow and byte bridge` proves
   the bridge can place byte `0x41` in the ring and the next `0xa904`
   fetch returns `D7 = 0x41`.
+- FIFO fixtures prove the sibling output direction: `0xb0c0` / `0xb022`
+  preserve order across the 64-byte wrap, `0xb090` waits on
+  `0x7801e2` when full, `0xaece` emits service/status bytes, and
+  `0xae2c` drains through the mode-selected backend.
 
 Confidence:
 
@@ -535,6 +545,10 @@ Fixture evidence:
 - `0xa904 direct mode 1 preserves 0x1a and clears handshake state`
 - `0xa904 direct mode 2 reads ready byte and sets control-shadow bit 6`
 - `0xa620/0xa668/0xa6cc engine shadow and byte bridge`
+- `0xb0c0/0xb022 output FIFO wraps and preserves order`
+- `0xb090 waits on full FIFO then enqueues after drain`
+- `0xaece emits service byte and combined status byte`
+- `0xae2c drains FIFO by configured output mode`
 - `macro execute frame payload feeds 0xa904 data-chain bytes`
 - `host-fetched mixed control stream reaches parser and page-record render`
 - `combined host-fetched font download stream prints installed glyph`

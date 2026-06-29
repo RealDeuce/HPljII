@@ -4000,19 +4000,22 @@ remainder helper. All matched cases return through `0x15dc6 -> 0x16498 -> 0x15dc
 rendered segment-1 rows match the installed bitmap rows. The same fixture probes spans
 `33`, `48`, `49`, and `64` at rows `0x81` through the same upstream metadata and return
 boundary, and those segment-1 rows match the installed bitmap. Fixture `downloaded glyph
-row-count matrix publishes and renders additional short/segmented counts` adds fifteen
-more row-count siblings through the same fetched install, printable, FF-publication, and
-render-entry chain. Rows `0x0001`, `0x0002`, `0x0003`, `0x0004`, `0x0008`, `0x003f`,
-`0x0041`, and `0x007f` are canonical installed record fields that derive selector
-`0x0003`, bucket `1`, object byte `0x00`, and compact target `0x1effe`; rows `0x0083`,
-`0x0084`, `0x0085`, `0x00c0`, `0x00fd`, `0x00fe`, and `0x00ff` derive selector `0x2003`,
-buckets `1` and `9`, object byte `0x20`, and compact target `0x1effe` for render bucket
-word `9`. Parser scratch is limited to the fetched `ESC )s#W` restored record and
-payload byte count; derived/cache state is the `0xff1e` bucket array plus
-`0x1ed84`/`0x1ef6a` dispatch. Published row counts for the fifteen cases are `7`, `8`,
-`9`, `10`, `14`, `64`, `64`, `64`, `9`, `10`, `11`, `16`, `16`, `16`, and `16`; rows
-`0x00c0`, `0x00fd`, `0x00fe`, and `0x00ff` intentionally share the same rendered-row
-digest. Fixture `host-fetched rows-0x102 downloaded glyph FF publication truncates
+row-count matrix publishes and renders additional short/segmented counts` adds
+twenty-two more row-count siblings through the same fetched install, printable,
+FF-publication, and render-entry chain. Rows `0x0001`, `0x0002`, `0x0003`, `0x0004`,
+`0x0005`, `0x0008`, `0x0009`, `0x003e`, `0x003f`, `0x0041`, `0x0042`, and `0x007f`
+are canonical installed record fields that derive selector `0x0003`, bucket `1`,
+object byte `0x00`, and compact target `0x1effe`; rows `0x0083`, `0x0084`,
+`0x0085`, `0x0086`, `0x00bf`, `0x00c0`, `0x00c1`, `0x00fd`, `0x00fe`, and `0x00ff`
+derive selector `0x2003`, buckets `1` and `9`, object byte `0x20`, and compact target
+`0x1effe` for render bucket word `9`. Parser scratch is limited to the fetched
+`ESC )s#W` restored record and payload byte count; derived/cache state is the `0xff1e`
+bucket array plus `0x1ed84`/`0x1ef6a` dispatch. Published row counts for the
+twenty-two cases are `7`, `8`, `9`, `10`, `11`, `14`, `15`, `64`, `64`, `64`, `64`,
+`64`, `9`, `10`, `11`, `12`, `16`, `16`, `16`, `16`, `16`, and `16`; rows `0x00bf`,
+`0x00c0`, `0x00c1`, `0x00fd`, `0x00fe`, and `0x00ff` intentionally share the same
+rendered-row digest. Fixture `host-fetched rows-0x102 downloaded glyph FF publication
+truncates
 page-record rows` adds the first nonzero-high-byte downloaded row count in this family.
 The host-fetched `ESC )s516W` plus printable `3` and FF restores record `80 57 02 04 00
 00`, installs record `00 00 00 00 0c 01 01 02 00 10 00 00`, and copies `0x0204` linear

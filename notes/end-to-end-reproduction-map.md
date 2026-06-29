@@ -621,8 +621,9 @@ The next work should follow dataflow, not isolated handlers:
    split-plane segmented, row-threshold `0x80` short, rows-`0x0102` low-byte-truncated
    short publication, even-span wide, and payload-control wide selector families,
    especially row counts outside the covered short rows `0x01`, `0x02`, `0x03`, `0x04`,
-   `0x08`, `0x10`, `0x20`, `0x40`, `0x41`, `0x7f`, and `0x80` and segmented rows `0x81`,
-   `0x82`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`, descriptor
+   `0x05`, `0x08`, `0x09`, `0x10`, `0x20`, `0x3e`, `0x3f`, `0x40`, `0x41`, `0x42`,
+   `0x7f`, and `0x80` and segmented rows `0x81`, `0x82`, `0x83`, `0x84`, `0x85`,
+   `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff`, descriptor
    grammar forms outside the covered helper-table path, full pixel-row behavior past the
    wrapped-width invalid helper entries, broader physical comparison for segmented-wide
    row words above `0x00ff`, and full-success return-boundary siblings beyond the
@@ -688,12 +689,14 @@ The next work should follow dataflow, not isolated handlers:
    carries `ESC )s260W` plus printable `0` and FF through `0xff1e`, preserves buckets
    `1` and `9`, and renders bucket word `9` through `0x1ed84`/`0x1ef6a` to two `0x1f1f0`
    segment-1 rows. The downloaded-glyph row-count matrix now adds short rows `0x01`,
-   `0x02`, `0x03`, `0x04`, `0x08`, `0x3f`, `0x41`, and `0x7f` on selector
-   `0x0003`/bucket `1`, plus segmented rows `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`,
-   `0xfe`, and `0xff` on selector `0x2003`/buckets `1` and `9`, all through
-   printable+FF, `0xff1e`, and `0x1ed84`/`0x1ef6a`; published row counts are `7`, `8`,
-   `9`, `10`, `14`, `64`, `64`, `64`, `9`, `10`, `11`, `16`, `16`, `16`, and `16`. All
-   fifteen row-count matrix cases now also pin `0x15dc6 -> 0x16498 -> 0x15dcc ->
+   `0x02`, `0x03`, `0x04`, `0x05`, `0x08`, `0x09`, `0x3e`, `0x3f`, `0x41`, `0x42`, and
+   `0x7f` on selector `0x0003`/bucket `1`, plus segmented rows `0x83`, `0x84`,
+   `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff` on selector
+   `0x2003`/buckets `1` and `9`, all through printable+FF, `0xff1e`, and
+   `0x1ed84`/`0x1ef6a`; published row counts are `7`, `8`, `9`, `10`, `11`, `14`,
+   `15`, `64`, `64`, `64`, `64`, `64`, `9`, `10`, `11`, `12`, `16`, `16`, `16`, `16`,
+   `16`, and `16`. All twenty-two row-count matrix cases now also pin
+   `0x15dc6 -> 0x16498 -> 0x15dcc ->
    0x12328` with copy status `1`, `0x783140 = 0`, zero drained bytes, and next handler
    `0xd04a`. The `0x16498` replacement/allocation-failure/partial/reject fixture now has
    a rows-`0x0102` sibling: `ESC )s516W` installs record `00 00 00 00 0c 01 01 02 00 10

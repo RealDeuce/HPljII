@@ -1418,21 +1418,23 @@ for rendering.
 
 Fixture `downloaded glyph row-count matrix publishes and renders additional
 short/segmented counts` broadens the same command family. Short rows `0x0001`,
-`0x0002`, `0x0003`, `0x0004`, `0x0008`, `0x003f`, `0x0041`, and `0x007f` restore fetched
-`ESC )s#W` records, install mode-byte-`1` records ending in matching row words,
-publish only bucket `1`, keep selector `0x0003`, and dispatch compact target
-`0x1effe` with object byte `0x00`. Segmented rows `0x0083`, `0x0084`,
-`0x0085`, `0x00c0`, `0x00fd`, `0x00fe`, and `0x00ff` install matching
-mode-byte-`1` records, publish buckets `1` and `9`, keep selector `0x2003`,
-and render bucket word `9` through compact target `0x1effe` with object byte
-`0x20`. The published-row counts are `7`, `8`, `9`, `10`, `14`, `64`, `64`, `64`,
-`9`, `10`, `11`, `16`, `16`, `16`, and `16`. All fifteen cases now also pin the
-full-success return boundary
+`0x0002`, `0x0003`, `0x0004`, `0x0005`, `0x0008`, `0x0009`, `0x003e`,
+`0x003f`, `0x0041`, `0x0042`, and `0x007f` restore fetched `ESC )s#W`
+records, install mode-byte-`1` records ending in matching row words, publish only
+bucket `1`, keep selector `0x0003`, and dispatch compact target `0x1effe` with
+object byte `0x00`. Segmented rows `0x0083`, `0x0084`, `0x0085`, `0x0086`,
+`0x00bf`, `0x00c0`, `0x00c1`, `0x00fd`, `0x00fe`, and `0x00ff` install matching
+mode-byte-`1` records, publish buckets `1` and `9`, keep selector `0x2003`, and
+render bucket word `9` through compact target `0x1effe` with object byte `0x20`.
+The published-row counts are `7`, `8`, `9`, `10`, `11`, `14`, `15`, `64`, `64`,
+`64`, `64`, `64`, `9`, `10`, `11`, `12`, `16`, `16`, `16`, `16`, `16`, and `16`.
+All twenty-two cases now also pin the full-success return boundary
 `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`: copy status is `1`, `0x783140` is
 `0`, `0x12328` drains no bytes, and the next parser handler is `0xd04a` for
-printable bytes `0x38`, `0x3b`, `0x41`, `0x34`, `0x3c`, `0x42`, `0x3d`, `0x35`, `0x36`,
-`0x39`, `0x3e`, `0x3f`, `0x40`, `0x3a`, and `0x37`. Rows `0x0083`,
-`0x0084`, and `0x0085` differ by one rendered row each; rows `0x00c0`,
+printable bytes `0x38`, `0x3b`, `0x41`, `0x34`, `0x43`, `0x3c`, `0x44`, `0x45`,
+`0x42`, `0x3d`, `0x46`, `0x35`, `0x36`, `0x39`, `0x3e`, `0x47`, `0x48`, `0x3f`,
+`0x49`, `0x40`, `0x3a`, and `0x37`. Rows `0x0083`, `0x0084`, `0x0085`, and
+`0x0086` differ by one rendered row each; rows `0x00bf`, `0x00c0`, `0x00c1`,
 `0x00fd`, `0x00fe`, and `0x00ff` share the same 16-row digest
 `a3dd16ea6b4509770b6c7859de6c059de5af91c05c9136e90f8daccc8acf5932`.
 

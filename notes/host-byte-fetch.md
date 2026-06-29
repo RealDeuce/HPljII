@@ -182,6 +182,11 @@ quiesce/reset branches:
   the branch clears service-needed bit `0x7821cd.0`, waits through trap veneer
   `0x10d8(0x15)`, and either polls alternate direct status `0xfffee005.2` or
   takes the shared gate path.
+- The sibling branch at `0x426c` calls `0x571e` before looping back to the same
+  setup helpers. That helper performs the selected default-record maintenance
+  described in `Default Environment Record Producers`: it copies three-word
+  record groups under `0x780eda`, updates dirty/active flags, and advances the
+  selected bank.
 - `0x61e4..0x6362` runs the same setup helper family, clears `0x7821cd.0`,
   waits through `0x10d8(0x15)`, and then enters the same gate path without the
   `0xfffee005.2` polling loop.

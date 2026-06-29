@@ -543,11 +543,14 @@ The next work should follow dataflow, not isolated handlers:
    selected `0x780eda` backing records feed `0x78219d`, `0x7821a2`, and
    `0x78219e` through loader `0x5e80`, while menu/update handlers `0x5060`,
    `0x50be`, and `0x52ba` update the same records and canonical defaults. The
-   remaining middle edge is not the software-reset consumer path or the
-   immediate default-byte writer. It is the retained-storage side that fills
-   `0x780eda` from panel reset, cold reset, NVRAM/user defaults, or
-   factory-default fallback. Continue from `0x780eda` outward, not by re-tracing
-   `ESC E`.
+   same records and canonical defaults. Record-maintenance helpers `0x56c2`,
+   `0x571e`, and `0x5a62` now cover active-bank selection, three-word
+   record-group copy, dirty-flag maintenance, and ROM-table fallback from
+   `0xba3e`/`0xba44` into `0x780eda`. The remaining middle edge is not the
+   software-reset consumer path, immediate default-byte writer, or ROM-table
+   fallback. It is the physical/control-panel/NVRAM trigger semantics that
+   reach `0x4162`/`0x571e`/`0x5a62`. Continue from those entry conditions
+   outward, not by re-tracing `ESC E`.
 2. Treat font metric-byte combinations as regression expansion unless a new
    state boundary appears. The selected-context bridge, metric consumers, downloaded
    descriptor/payload producer chain, and host-stream downloaded glyph output are now

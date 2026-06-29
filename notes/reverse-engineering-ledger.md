@@ -362,7 +362,10 @@ scratch `0x782a26`, cursor-stack top `0x782d36`, HMI `0x78315c`, reset VMI
 `Default Environment Record Producers` now composes the immediate producer
 side from selected `0x780eda` records and menu/update handlers `0x5e80`,
 `0x5060`, `0x50be`, and `0x52ba` into those reset-consumed defaults, leaving
-only the earlier retained-storage writer into `0x780eda` unresolved
+only the external trigger/protocol for the retained-storage writer into
+`0x780eda` unresolved; the same checkpoint now also documents `0x56c2`
+active-bank selection, `0x571e` record rotation/copy, and `0x5a62` record
+clear/ROM-table fallback from `0xba3e`/`0xba44`
 
 ### PCL command map
 
@@ -1221,14 +1224,14 @@ Known from manuals:
 
 ROM work needed:
 
-- Continue locating retained-storage producers for `0x780eda` default
-  records. Semantic checkpoints `Default Environment Record Producers` and
-  `ESC E Reset And Default Environment` now compose the chain
-  `0x780eda -> 0x78219d/0x78219e/0x7821a2 -> 0xcda2`, including
-  page/control pool rebuild, cursor-stack reset, HMI/VMI recompute,
-  line-termination clearing, raster reset, and parser/data-chain reset; the
-  remaining work is the exact panel/power-on/NVRAM writer boundary into the
-  backing records.
+- Continue locating the physical/control-panel trigger for default-record
+  maintenance. Semantic checkpoints `Default Environment Record Producers` and
+  `ESC E Reset And Default Environment` now compose
+  `0xba3e/0xba44 -> 0x780eda -> 0x78219d/0x78219e/0x7821a2 -> 0xcda2`,
+  including record-bank selection, record rotation/copy, page/control pool
+  rebuild, cursor-stack reset, HMI/VMI recompute, line-termination clearing,
+  raster reset, and parser/data-chain reset; the remaining work is exact
+  panel/power-on/NVRAM trigger semantics before `0x4162`/`0x571e`/`0x5a62`.
 - Compare physical engine/self-test placement against the matched
   ROM/manual logical page and printable-area dimensions.
 - Trace panel reset, power-on reset, and NVRAM/user-default producer paths

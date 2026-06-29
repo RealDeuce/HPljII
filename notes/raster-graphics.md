@@ -71,6 +71,21 @@ The parser loop `0x11774` routes it through:
 When parser mode returns to zero, `0x12218` restores the saved record and calls
 `0x105d0`. The raw payload begins at byte offset `17` in the fixture stream.
 
+The delayed handoff is now pinned at the instruction level rather than only by
+fixture bytes:
+
+- `0x121cc` rewinds `0x78299e` by six, sets pending byte `0x782a1a = 1`,
+  stores the handler longword at `0x782a1c`, and copies the six-byte parsed
+  command record into `0x782a20..0x782a25`.
+- `0x12218` requires pending byte `0x782a1a == 1`, clears it, copies
+  `0x782a20..0x782a25` back to the current `0x78299e` record slot, advances
+  `0x78299e` by six, and directly calls the saved handler longword when
+  `0x782c18 == 0`.
+- The direct raster case therefore reaches `0x105d0` through `jsr (A2)` from
+  `0x12262`, not through a separate parser table lookup. `0x105d0` immediately
+  rewinds `0x78299e` by six again and reads record word `+2` as the transfer
+  byte count.
+
 ## Raster State Block
 
 Raster handlers use the state block rooted at `0x783170`.
@@ -99,8 +114,11 @@ Related canonical page/cursor fields:
 Parser scratch:
 
 - `0x78299e`: command-record cursor rewound by raster handlers.
-- `0x782a1a`, `0x782a1c`, `0x782a20..0x782a25`: delayed transfer state for
-  `ESC *b#W`.
+- `0x782a1a`: delayed-payload pending byte set by `0x121cc` and cleared by
+  `0x12218`.
+- `0x782a1c`: saved handler longword; raster transfer stores `0x105d0`.
+- `0x782a20..0x782a25`: saved six-byte parsed command record restored before
+  the payload handler consumes bytes.
 
 Derived/cache fields:
 
@@ -183,6 +201,13 @@ For rows that pass the beyond-extent test, `0x105d0` ensures a page root through
 calls `0x13070` with the raster state block. If `0x13070` reports no room, it
 marks the current page root, publishes through `0xff1e`, ensures a fresh root,
 and continues.
+
+This removes one ambiguous middle edge: the restored command record is not
+passed to `0x105d0` through volatile registers. `0x12218` materializes it back
+into the parser-record buffer, and `0x105d0` re-opens that buffer at
+`0x105e4..0x105f2`. The live state that crosses into the page object producer
+is the raster state block at `0x783170`, the current payload source consumed by
+`0xa904` / `0xdace`, and the page-root allocator state rooted at `0x78297a`.
 
 Instruction-level transfer outline:
 
@@ -423,18 +448,19 @@ A byte-stream reproduction must preserve these behaviors:
 - `0x105d0..0x13250` is modeled and address-aware, but the mixed
   text/rule/raster stream still lacks a full live 68000 execution trace through
   `0x105d0` into allocator memory. The covered parser edge is exact through
-  `0x11f82` scheduling, `0x12218` restore, delayed handler `0x105d0`, and the
-  modeled calls into `0x10084` and `0x13070`; the uncovered middle edge is the
-  live register/memory handoff from the restored command record and payload
-  pointer into the page-root allocation and encoded-row producer. Canonical
-  output state is already fixture-pinned as the page-root `+0x1c` raster chain
-  and object bytes written by `0x13070`/`0x13250`; derived/cache state is the
+  `0x11f82` scheduling, `0x121cc` snapshot layout, `0x12218` restore and
+  direct dispatch, and `0x105d0` re-reading the restored six-byte record from
+  `0x78299e - 6`. The remaining closure edge is a live memory/register snapshot
+  of the dense stream after `0x105d0` has written `0x783170` fields and around
+  the `0x10084` / `0x13070` page-root mutations. Canonical output
+  state is already fixture-pinned as the page-root `+0x1c` raster chain and
+  object bytes written by `0x13070`/`0x13250`; derived/cache state is the
   bucket/key and render-record copy used by `0x1ed84`/`0x1ef6a`; parser scratch
   is the delayed `80 57 ...` command record, snapshot, payload offset, and
   drained payload bytes; firmware bookkeeping is the modeled allocation result
   and stream-storage cursor. Closing this edge requires a live CPU trace or
-  memory snapshot across `0x12218 -> 0x105d0 -> 0x10084 -> 0x13070`, not more
-  isolated mode-0 row-render evidence.
+  memory snapshot across `0x105d0 -> 0x10084 -> 0x13070`, not more isolated
+  mode-0 row-render evidence.
 - `0x13250..0x1381c` addressed storage is documented by the mixed
   text/rule/raster publication fixture, but the heap allocator result is still
   a modeled fixture result rather than a memory snapshot from one live parser

@@ -346,6 +346,15 @@ reader as the generic payload fixtures: a raw row payload
 `f0 00 aa 55`, with `1a 58` counted as one control hit before
 page-object queueing and rendering.
 
+The restore handoff is no longer an opaque register edge. Disassembly
+`generated/disasm/ic30_ic13_payload_dispatch_011f82.lst` shows `0x121cc`
+storing pending byte `0x782a1a`, handler longword `0x782a1c`, and saved
+record bytes `0x782a20..0x782a25`. `0x12218` restores those bytes to the
+parser-record buffer, advances `0x78299e`, and directly calls the saved
+handler through `jsr (A2)` when wrapper byte `0x782c18` is clear. The
+handler `0x105d0` then rewinds `0x78299e` by six at `0x105e4..0x105ec`
+and reads the restored record word `+2` as the byte count at `0x105f2`.
+
 The transfer routine at `0x0105d0`:
 
 - reads the byte count parameter from the parsed command record;
@@ -611,11 +620,12 @@ Unresolved middle edges:
 - `0x13250..0x1381c`: raster encoded-span allocation is composed here and in
   [raster-graphics.md](raster-graphics.md). Parser dispatch, delayed record
   restore, gate outcomes, addressed `0x13250` storage, and render-entry rows
-  are fixture-backed; the remaining closure boundary is specifically live
-  CPU/register memory across
-  `0x12218 -> 0x105d0 -> 0x10084 -> 0x13070`, where the modeled page-root
-  allocation and encoded-row production would need to be replaced by a live
-  trace or memory snapshot.
+  are fixture-backed. The parser-to-handler record handoff is disassembly-pinned
+  through `0x121cc`, `0x12218`, and `0x105d0` re-reading `0x78299e - 6`; the
+  remaining closure boundary is specifically live CPU/register memory across
+  `0x105d0 -> 0x10084 -> 0x13070`, where the modeled page-root allocation and
+  encoded-row production would need to be replaced by a live trace or memory
+  snapshot.
 - `0x133aa..0x13472` and `0x136d2..0x13690`: ordered insertion is pinned for
   lower, higher, and equal bucket bytes; alternate no-room/failure returns
   still need live CPU fixtures.

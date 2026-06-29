@@ -1183,8 +1183,12 @@ ROM work needed:
   `ESC *t#R` / `ESC *r#A/B` / `ESC *b#W` is documented in
   [raster-graphics.md](raster-graphics.md), including lower-resolution modes,
   chained transfers, cap/drain gates, page-object bytes, and render dispatch;
-  its remaining edge is a live parser-state memory trace across
-  `0x12218 -> 0x105d0 -> 0x10084 -> 0x13070`, not command-family decoding.
+  the delayed record handoff itself is now disassembly-pinned through
+  `0x121cc` saving `0x782a1a` / `0x782a1c` / `0x782a20..0x782a25`, `0x12218`
+  restoring that record and calling the saved handler, and `0x105d0`
+  re-reading `0x78299e - 6`. The remaining raster edge is a live
+  parser-state memory trace across `0x105d0 -> 0x10084 -> 0x13070`, not
+  command-family decoding or parser-to-handler dispatch.
   Downloaded-font payloads already cover normal, wide, segmented,
   split-plane, segmented-wide, FF-publication, and rule/raster composition
   cases in [downloaded-fonts.md](downloaded-fonts.md) and

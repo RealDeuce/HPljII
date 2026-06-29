@@ -6435,6 +6435,13 @@ page root for queued rows, and passes the state block to `0x13070` /
   - same-family lowercase chaining keeps parser mode live: `ESC *b2w2W`
     preserves delayed record `80 77 00 02 00 00` until uppercase `W` restores
     it at payload offset `19`.
+  - `0x121cc` records delayed-payload state as pending byte `0x782a1a`,
+    handler longword `0x782a1c`, and saved command-record bytes
+    `0x782a20..0x782a25`.
+  - `0x12218` clears `0x782a1a`, restores `0x782a20..0x782a25` to the current
+    parser-record slot at `0x78299e`, advances `0x78299e` by six, and directly
+    dispatches the saved `0x782a1c` handler when wrapper byte `0x782c18` is
+    clear.
   Evidence: fixture
   `0x11774 ROM dispatch table routes raster stream to delayed transfer`,
   `raster mode streams tie ROM parser dispatch to modeled queued objects`,
@@ -6485,7 +6492,10 @@ page root for queued rows, and passes the state block to `0x13070` /
   changes` proves the later `ESC *t150R` can update mode and scale after
   this clear.
 - `0x11f82` stores delayed transfer handler `0x105d0`; `0x12218` restores the
-  delayed record and dispatches it.
+  delayed record and dispatches it. Disassembly pins the exact scratch layout:
+  `0x121cc` writes `0x782a1a`, `0x782a1c`, and `0x782a20..0x782a25`; `0x12218`
+  copies the record back into the parser-record buffer and calls the saved
+  handler through `jsr (A2)`.
 - `0x105d0` writes active byte `+0x12`, current row `+0x02`, accepted count
   `+0x04`, overflow count `+0x06`, and post-transfer cursor state. It calls
   `0x10084` for rows that pass the beyond-extent gate; negative rows therefore
@@ -6505,8 +6515,11 @@ page root for queued rows, and passes the state block to `0x13070` /
   and `raster end parser trace feeds active-clear and resolution re-enable`
   pin those handler sequences.
 - `0x105d0` consumes the restored command record byte count and raster state
-  fields. Beyond-extent rows drain the full count without queueing or row
-  advance and return before `0x10084`; negative rows store the capped
+  fields. The command record is not held only in call registers:
+  `0x12218` restores it into the parser-record buffer, then `0x105d0`
+  rewinds `0x78299e` by six at `0x105e4..0x105ec` and reads record word
+  `+2` at `0x105f2`. Beyond-extent rows drain the full count without queueing
+  or row advance and return before `0x10084`; negative rows store the capped
   accepted count and overflow, ensure a root, drain the full count without
   queueing, and advance from `-1` to `0`; capped rows queue only the accepted
   bytes.
@@ -6561,11 +6574,12 @@ object.
 
 ### Confidence
 
-High for parser handler order, delayed snapshot bytes, `0x105d0` gate
-outcomes, the corrected root boundary for beyond-extent versus negative rows,
-encoded object layout, bridge preservation, mode dispatch helpers, and
-rendered rows because those are asserted by named harness fixtures and by
-disassembly addresses `0x1065c..0x106cc`. High for the covered raster-state
+High for parser handler order, delayed snapshot bytes, delayed scratch layout,
+direct `0x12218 -> 0x105d0` dispatch, `0x105d0` gate outcomes, the corrected
+root boundary for beyond-extent versus negative rows, encoded object layout,
+bridge preservation, mode dispatch helpers, and rendered rows because those are
+asserted by named harness fixtures and by disassembly addresses
+`0x121cc..0x12262` and `0x105e4..0x106cc`. High for the covered raster-state
 effects of `ESC *rB`, active-resolution ignore, lower-resolution mode
 selection, consecutive transfers, and lowercase same-family `*b` chaining
 because each has parser-dispatch, restored-record, object, and render-entry
@@ -6636,6 +6650,7 @@ modeled/address-aware rather than a full 68000 execution trace.
 ### Disassembly Evidence
 
 - `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`
+- `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`
 - `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`
 - `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`
 - `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
@@ -6647,19 +6662,24 @@ modeled/address-aware rather than a full 68000 execution trace.
   layout, rendered mode contracts, resolution-active interactions,
   consecutive transfers, and same-family lowercase chaining are
   fixture-backed. Parser scratch is the delayed `80 57 ...` record,
-  snapshot, payload offset, and drained bytes; canonical output is the
+  `0x782a1a` pending byte, `0x782a1c` handler longword, `0x782a20..0x782a25`
+  saved record, payload offset, and drained bytes; canonical output is the
   page-root `+0x1c` raster chain plus object bytes from `0x13070` /
   `0x13250`; derived/cache state is the bucket/key and render-record copy
-  consumed by `0x1ed84` / `0x1ef6a`. The remaining edge is specifically live
-  CPU/register memory across
-  `0x12218 -> 0x105d0 -> 0x10084 -> 0x13070`, not parser dispatch,
-  encoded-object layout, or mode renderer behavior.
+  consumed by `0x1ed84` / `0x1ef6a`. The remaining edge is no longer the
+  parser-to-handler record handoff: disassembly pins `0x12218` restoring the
+  record and `0x105d0` re-reading it from `0x78299e - 6`. The exact remaining
+  closure boundary is live CPU/register memory across
+  `0x105d0 -> 0x10084 -> 0x13070` during a dense parser-produced page, where
+  the current model should be replaced or confirmed by one 68000 trace.
 - `0x13250..0x1381c`: addressed allocation is covered in the shared
   page-record allocator checkpoint and in the addressed text/rule/raster
   fixture, where the raster object lives at `0x00d0c038` and publishes as
   `00 d0 c0 04 80 00 00 02 00 00 c3 3c`. The remaining gap is not object
   layout or addressed storage; it is live 68000 heap/register capture for the
-  complete parser-produced stream.
+  complete parser-produced stream, especially chunk rollover
+  `0x132b6..0x13382` and early payload stop when `0x782996` flips during
+  `0x138de`.
 
 ## Rectangle Rule Producer And Renderer
 

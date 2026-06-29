@@ -362,12 +362,12 @@ scratch `0x782a26`, cursor-stack top `0x782d36`, HMI `0x78315c`, reset VMI
 `Default Environment Record Producers` now composes the immediate producer
 side from selected `0x780eda` records and menu/update handlers `0x5e80`,
 `0x5060`, `0x50be`, and `0x52ba` into those reset-consumed defaults, leaving
-only the electrical byte-source and external persistence semantics below
-`0xa3ca` unresolved; the same checkpoint now also documents `0x56c2`
-active-bank selection, `0x571e` record rotation/copy, `0x5a62` record
-clear/ROM-table fallback from `0xba3e`/`0xba44`, cold-reset service entry
-`0x2c84`, panel/service byte dispatcher `0x3dae`, and menu/default commit
-path `0x4922`
+only the external panel protocol into `$8000.w` and external persistence
+semantics for dirty records unresolved; the same checkpoint now also documents
+`0x56c2` active-bank selection, `0x571e` record rotation/copy, `0x5a62`
+record clear/ROM-table fallback from `0xba3e`/`0xba44`, cold-reset service
+entry `0x2c84`, panel/service byte dispatcher `0x3dae`, menu/default commit
+path `0x4922`, and stable `$8000.w` byte source `0xa3ca`
 
 ### PCL command map
 

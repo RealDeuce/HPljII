@@ -548,10 +548,12 @@ The next work should follow dataflow, not isolated handlers:
    and ROM-table fallback from `0xba3e`/`0xba44` into `0x780eda`.
    Panel/service entry points `0x2c84`, `0x3dae`, and `0x4922` now identify
    the cold-reset/menu-reset byte paths that reach `0x5a62`, `0x4162`, and
-   `0x4fb0`. The remaining middle edge is not the software-reset consumer path,
-   immediate default-byte writer, ROM-table fallback, or panel/service dispatch.
-   It is the physical byte source below `0xa3ca` and any external NVRAM
-   persistence semantics behind those bytes.
+   `0x4fb0`; byte-source helper `0xa3ca` now identifies `$8000.w & 0xff` as
+   the debounced service/panel byte source. The remaining middle edge is not the
+   software-reset consumer path, immediate default-byte writer, ROM-table
+   fallback, panel/service dispatch, or `0xa3ca` itself. It is the external
+   device/protocol that drives `$8000.w` and any external NVRAM persistence
+   semantics for dirty `0x780eda` records.
 2. Treat font metric-byte combinations as regression expansion unless a new
    state boundary appears. The selected-context bridge, metric consumers, downloaded
    descriptor/payload producer chain, and host-stream downloaded glyph output are now

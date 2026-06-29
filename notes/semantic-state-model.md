@@ -7415,8 +7415,10 @@ reset defaults. This closes the immediate producer edge for `0x78219d`,
 canonical default byte/word. It also identifies the firmware paths that select
 an active record bank, rotate/copy three-word default groups, mark dirty
 records, reset records from ROM tables, and enter those paths from panel/service
-bytes. The remaining provenance edge is the physical byte-source and exact
-retained-storage protocol below helper `0xa3ca`.
+bytes. The panel/service byte source itself is now bounded to helper `0xa3ca`,
+which returns a stable low byte from hardware word `$8000.w`. The remaining
+provenance edge is the external device/protocol that drives `$8000.w` and the
+exact retained-storage persistence path for dirty records.
 
 Concept: control-panel/user-default state is represented as compact records
 selected by `0x7822d5`. The ROM scales that selector through `0x332ee(..., 3)`
@@ -7433,7 +7435,9 @@ state `0x7821aa` and maps service bytes through the table at `0x3d66`, including
 `0xef -> 0x3ef8`, `0xfd -> 0x3f6a`, and `0xbf -> 0x4922`. Cold-reset/service
 entry `0x2c84` reaches `0x5a62` when the first input byte is `0xdf`; menu
 commit `0x4922` can set temporary commit flag `0x7822d4` and call `0x4162` after
-the input byte remains equal to `0x7821aa` for timer delta `0x2a`.
+the input byte remains equal to `0x7821aa` for timer delta `0x2a`. Helper
+`0xa3ca` samples `$8000.w & 0xff`, waits through `0x8bea(0x14)`, and repeats
+until two samples match before returning the byte in `D7`.
 
 ### Field Groups
 
@@ -7502,6 +7506,14 @@ the input byte remains equal to `0x7821aa` for timer delta `0x2a`.
   Evidence: `generated/disasm/ic30_ic13_panel_service_dispatch_003dae.lst`,
   `generated/disasm/ic30_ic13_panel_menu_commit_004922.lst`, and
   `generated/disasm/ic30_ic13_service_default_reset_entry_002c84.lst`.
+- Physical/service byte source:
+  - `$8000.w`: hardware word whose low byte is the service/panel byte returned
+    by `0xa3ca`.
+  - `0xa3ca`: stable-byte sampler. It reads `$8000.w & 0xff`, waits through
+    `0x8bea(0x14)`, rereads, and loops until the reread equals the saved byte.
+  - `0xa39a`: readiness/status helper. In mode `0x780e40 == 1`, it returns
+    `$8e01 & 0x10`; otherwise it returns `$fffee005 & 0x01`.
+  Evidence: `generated/disasm/ic30_ic13_panel_service_byte_source_00a39a.lst`.
 - Parser/menu scratch:
   - `0x7822274`: menu/handler table pointer used by `0x4fb0` to dispatch the
     current selection update through the longword at offset `+0x12`.
@@ -7521,8 +7533,9 @@ the input byte remains equal to `0x7821aa` for timer delta `0x2a`.
   Evidence: the two focused default-environment listings.
 - Unknown/provenance:
   - firmware table fallback, record-maintenance writers, and panel/service
-    byte dispatch into `0x780eda` updates are known. The electrical/MMIO origin
-    of `0xa3ca` bytes and whether these paths persist to external NVRAM remain
+    byte dispatch into `0x780eda` updates are known. The immediate byte source
+    is `$8000.w & 0xff` through `0xa3ca`; the external device/protocol behind
+    `$8000.w` and whether these paths persist to external NVRAM remain
     unresolved.
   - external names for each staged field are inferred from manual defaults and
     consumers, but the exact panel menu labels are not yet assigned for every
@@ -7551,6 +7564,8 @@ the input byte remains equal to `0x7821aa` for timer delta `0x2a`.
   `0x782272.4` is set, stages handler-table updates through `0x782274` when
   the bit is clear, or sets `0x7822d4` and calls `0x4162` after a stable input
   byte is held for timer delta `0x2a`.
+- `0xa3ca` does not consume the normal PCL host ring. It returns a debounced
+  service/panel byte from `$8000.w & 0xff`, using `0x8bea(0x14)` between reads.
 - `0x4fb0` compares current candidate value `0x782227c` against staged
   entries under `0x782280` and dispatches an update handler when the value
   changes.
@@ -7573,8 +7588,8 @@ the input byte remains equal to `0x7821aa` for timer delta `0x2a`.
   selected `0x780eda` records, merge in ROM table words from `0xba3e`, mark
   `0x780eba`, and call `0x571e`.
 - Service dispatch `0x3dae` consumes the previous byte in `0x7821aa` and the
-  current byte from `0xa3ca`, then reaches default-store consumers through
-  `0x3ef8`, `0x3f6a`, and `0x4922`.
+  current debounced `$8000.w` byte from `0xa3ca`, then reaches default-store
+  consumers through `0x3ef8`, `0x3f6a`, and `0x4922`.
 - `0x4fb0` and `0x5a62` consume the active record selected by `0x56c2`.
 - HMI/VMI and orientation/page-geometry helpers consume `0x78219e` through
   the same normalization helpers used by reset.
@@ -7599,10 +7614,11 @@ High for the immediate RAM producer edge from `0x780eda` records to
 from `0xba3e`/`0xba44` into `0x780eda`, because the writes are direct in the
 focused disassembly windows. Medium for naming the record family as
 control-panel/user defaults, because callers and manual behavior support that
-role. High for the panel/service-byte dispatch into the default-store cluster,
-because `0x2c84`, `0x3dae`, and `0x4922` directly reach `0x5a62`, `0x4162`,
-and `0x4fb0`. Low for the electrical/MMIO source below `0xa3ca` and for
-external retained-storage persistence.
+role. High for the panel/service-byte dispatch into the default-store cluster
+and for the immediate `$8000.w` byte source, because `0x2c84`, `0x3dae`,
+`0x4922`, and `0xa3ca` directly connect those edges. Low for the external
+device/protocol that drives `$8000.w` and for external retained-storage
+persistence.
 
 ### Fixtures
 
@@ -7629,6 +7645,8 @@ external retained-storage persistence.
 - `generated/disasm/ic30_ic13_panel_menu_commit_004922.lst`: menu/default
   commit path that calls `0x4fb0`, stages handler-table updates, or sets
   `0x7822d4` and calls `0x4162`.
+- `generated/disasm/ic30_ic13_panel_service_byte_source_00a39a.lst`: readiness
+  probe `0xa39a` and debounced `$8000.w` byte sampler `0xa3ca`.
 - `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`: caller path
   that invokes `0x571e`, `0x5e80`, and `0x5f96` around host-input
   quiesce/reset state.
@@ -7637,9 +7655,12 @@ external retained-storage persistence.
 
 ### Unresolved Middle Edges
 
-- `0xa3ca physical source -> service byte stream`: service-byte dispatch into
-  `0x4162`/`0x571e`/`0x5a62` is identified, but the hardware source and any
-  external NVRAM persistence behind those bytes remain unresolved.
+- `external service/panel device -> $8000.w`: `0xa3ca` identifies the immediate
+  hardware word used for the service byte stream, but the external device or
+  panel protocol that drives `$8000.w` remains unresolved.
+- `0x780eda dirty records -> external NVRAM`: dirty marking, ROM-table reload,
+  and record maintenance are identified; the external retained-storage commit
+  device/protocol remains unresolved.
 - `0x780eda field names -> HP panel labels`: exact user-visible names remain
   inferred except where consumers identify paper/default environment and
   line-spacing behavior.

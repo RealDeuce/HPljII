@@ -2302,8 +2302,9 @@ full 68000 interpreter through every source class and allocator branch.
   with fixtures `0x12714 allocation failure publishes page and retries
   span`, `0x1354a portrait text span split queues adjacent buckets`, and
   `0x12714 landscape span inserts into nonempty fixed list`. The remaining
-  unresolved edge here is broader span metric/source cross-products, not
-  the earlier paired short-text source-handoff allocation failure path.
+  unresolved edge here is broader selected-font state combinations that feed
+  those span metrics, not legal metric value behavior or the earlier paired
+  short-text source-handoff allocation failure path.
 - `0x12f2e..0x1306e`: short, wide, segmented, and segmented-wide producer
   shapes are fixture-backed through both modeled object bytes and addressed
   `0x1381c` allocator storage. The addressed selector-mode matrix proves
@@ -4044,11 +4045,12 @@ queues a fixed-width span through `0x136d2`.
 - Unknown:
   - selected-context metric ownership is no longer the middle edge for this
     cluster: `notes/font-context-metrics.md` documents the legal producer
-    forms, copied-field endpoints, and consumer branches. Remaining gaps are
-    additional legal descriptor combinations outside the pinned type-0/type-1/
-    type-2, lower/equality/upper, clamped, midpoint, offset-boundary, and
-    rounded-transform cases, plus external/manual naming for
-    consumed-but-not-staged validation fields.
+    forms, copied-field endpoints, and consumer branches. The pinned legal
+    matrix, boundary, extent-fence, range-endpoint, mixed-value, tight-range,
+    low-nibble, and byte-boundary fixtures make descriptor metric values a
+    composed producer/consumer cross-product. Remaining gaps are broader
+    selected-font state combinations that feed these consumers, plus
+    external/manual naming for consumed-but-not-staged validation fields.
 
 ### Writers
 
@@ -5498,7 +5500,7 @@ ROM-effect names and failure behavior of every `0x16fae` validation-table entry,
 including the host-fetched invalid-type, first-code overflow, zero/high line-count,
 reversed/high range-count, and invalid-class no-install boundaries. Medium for the
 complete soft-font grammar because exact HP manual labels for pass-through descriptor
-fields and every legal metric combination have not been page-compared.
+fields and broader selected-font state combinations have not been page-compared.
 
 ### Fixtures
 

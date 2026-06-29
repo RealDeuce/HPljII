@@ -1341,8 +1341,8 @@ Confidence:
 - High for parser-produced raster and rule objects because their command-family
   checkpoints trace handlers to page-record objects and then to rendered rows.
 - Medium for all compact downloaded-glyph producer cross-products because
-  many selectors are fixture-pinned, but not every legal downloaded-font
-  descriptor combination has a parser-produced page comparison.
+  many selectors are fixture-pinned, but broader selected-font state
+  combinations and physical/reference page comparisons remain open.
 - Medium for physical device output timing because the bitmap bands are
   fixture-rendered before the engine-facing copy path.
 
@@ -1656,8 +1656,8 @@ Field groups:
     fallback index through helper `0x1fe76`, are firmware failure boundaries
     rather than pixel output.
 - Unknown:
-  - complete physical page comparison for every legal downloaded descriptor
-    metric and byte-width combination remains open.
+  - complete physical page comparison for legal downloaded descriptor
+    metric, selected-font state, and byte-width combinations remains open.
 
 Writers:
 
@@ -1787,7 +1787,8 @@ Confidence:
   printable handoff is now classified as an 8-bit source-record producer
   boundary whose wrapped cases select non-helper mode-0 row-copy entries.
   Remaining renderer risk is broader physical/pixel comparison past that
-  invalid helper boundary and untested metric combinations.
+  invalid helper boundary and selected-font state combinations not represented
+  in current visible fixtures.
 
 Fixture evidence:
 
@@ -1853,7 +1854,8 @@ Unresolved middle edges:
   causes selector `0x1003`, `0x1003`, and `0x3003` with only segments `1` and
   `0`; the first render splits for those sampled rows are also documented.
   Remaining gaps are broader physical/full-row comparison for boundary cases
-  and untested metric combinations.
+  and selected-font state combinations not represented in current visible
+  fixtures.
 - `0x1fa5c..0x2feb0`: all sixteen main `0x1f08e` helper indexes now have
   parser-produced downloaded-glyph page rows, and compact-wide spans `17..32`
   plus segmented-wide spans `17..32` now cover selectors `0x1003` and

@@ -1008,7 +1008,7 @@ output. Fixture
 the selected-context producer-form boundary: inline/unflagged `d4ac` and
 resource/flagged `d8fc` are visible, while resource/unflagged and
 inline/flagged are invalid cross-forms. The remaining producer-side work is
-additional descriptor metric combinations within those legal forms, plus
+broader selected-font state combinations that feed those legal forms, plus
 external/manual naming for consumed-but-not-staged validation fields.
 
 ## Descriptor Metric Semantic Checkpoint

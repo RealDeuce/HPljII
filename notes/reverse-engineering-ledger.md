@@ -1186,9 +1186,15 @@ ROM work needed:
   the delayed record handoff itself is now disassembly-pinned through
   `0x121cc` saving `0x782a1a` / `0x782a1c` / `0x782a20..0x782a25`, `0x12218`
   restoring that record and calling the saved handler, and `0x105d0`
-  re-reading `0x78299e - 6`. The remaining raster edge is a live
-  parser-state memory trace across `0x105d0 -> 0x10084 -> 0x13070`, not
-  command-family decoding or parser-to-handler dispatch.
+  re-reading `0x78299e - 6`. The `0x105d0 -> 0x10084 -> 0x13070` field
+  handoff is now documented as a disassembly-derived register/memory ledger:
+  `A4 = 0x783170`, `A5 = 0x78299e - 6`, accepted/overflow words
+  `+0x04/+0x06`, row word `+0x02`, root `0x78297a`, bucket/key caches
+  `0x782a7c/0x782a7e`, stream chunk state `0x782a70/0x782a76/0x782a80`,
+  and stop flag `0x782996`. The remaining raster edge is live parser-state
+  confirmation of that ledger in one dense text/rule/raster 68000 run, not
+  command-family decoding, parser-to-handler dispatch, or object-field
+  discovery.
   Downloaded-font payloads already cover normal, wide, segmented,
   split-plane, segmented-wide, FF-publication, and rule/raster composition
   cases in [downloaded-fonts.md](downloaded-fonts.md) and

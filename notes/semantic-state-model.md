@@ -6479,8 +6479,21 @@ page root for queued rows, and passes the state block to `0x13070` /
   - `0x78297a`: current page root ensured by `0x10084` after the
     beyond-extent gate and before either negative-row drain or queued-row
     object insertion.
+  - `0x782c72` / `0x782c73`: pending publication/service bytes that make
+    `0x10084` call `0x9ac2` before allocating a new root.
+  - root `+0x04`: root-active byte set to `1` by `0x10084`.
+  - root `+0x06`, `+0x09`, `+0x16`, and `+0x2c`: geometry/current-context
+    fields initialized by `0x10110` from `0x782da2`, `0x782db2`,
+    `0x782db4`, `0x782dc0`, `0x782f06`, and the selected-font RAM window
+    at `0x782ee6`.
+  - root `+0x15.0`: retry/publication bit set by `0x105d0` after a
+    no-room `0x13070` return before `0xff1e` publishes the old root.
   - `0x782a70`, `0x782a72`, and `0x782a76`: stream allocator state consumed
     by addressed raster/page-record fixtures.
+  - `0x782996`: allocation/copy stop flag cleared by `0x13070` before
+    object allocation and read after `0x138de` to decide whether another
+    segment is needed or the remaining payload should be drained through
+    `0x12328`.
   - beyond-extent rows drain input and return before `0x10084`; negative rows
     store accepted/overflow counts, ensure a root, drain input, and advance
     without creating a raster object.
@@ -6515,6 +6528,55 @@ page root for queued rows, and passes the state block to `0x13070` /
   encoded-span object under page-root `+0x1c`.
 - `0x138de` copies the accepted payload bytes into object `+0x0a` and
   decrements raster state field `+0x04`.
+
+### Register And Memory Handoff
+
+This is the concrete handoff now known inside the remaining
+`0x105d0 -> 0x10084 -> 0x13070` boundary.
+
+- `0x105d8..0x105f2`: `A4` is the raster state block `0x783170`; `A5` is
+  restored parser record `0x78299e - 6`; `D5` is the absolute parsed byte
+  count from record word `+2`; `0x78299e` is rewound to that record.
+- `0x10606..0x10658`: `D4` is the long row coordinate. Portrait reads
+  `0x782c8e`; landscape derives the row from `0x782c8a`,
+  `0x782db2 << 16`, and helper `0x10510`. Helper `0x10518` then applies
+  raster scale `+0x0e` before the page-extent comparison.
+- `0x10670..0x106a0`: accepted payload count and overflow are committed to
+  state words `+0x04` and `+0x06` before any page-root mutation.
+- `0x106a4..0x106cc`: `0x10084` is called only after the beyond-extent gate.
+  The row word stored at state `+0x02` is `D4 >> 16`; negative rows drain
+  payload through `0xdace` and skip `0x13070`; nonnegative rows pass `A4`
+  as the sole `0x13070` argument.
+- `0x10084..0x1010e`: an existing `0x78297a` root returns unchanged. A
+  missing root optionally publishes/service-flushes through `0x9ac2`,
+  allocates through `0x9a9a`, marks root byte `+0x04 = 1`, clears
+  `0x782a70`, seeds `0x782a72 = root + 0x20`, stores `0x78297a`, calls
+  `0x10110`, clears `0x782990`, and zeroes 256 bucket heads through the
+  pointer at root `+0x1c`.
+- `0x10110..0x10218`: root initialization clears publication/retry fields,
+  caches geometry words, clears 16 context slots and their byte flags, and
+  copies the current selected-font context from `0x782ee6 + 16 *
+  byte(0x782f06)` into root slot `+0x2c`.
+- `0x13070..0x1313c`: `0x13070` consumes the same state pointer. State
+  `+0x02` selects bucket `0x782a7c = row >> 4`; state `+0x00` plus page
+  x-offset `0x782dc0` and row low bits form key `0x782a7e`; state `+0x04`
+  is rounded up if odd, then size `accepted + 0x0a` and mode state `+0x08`
+  are passed to `0x13250`.
+- `0x13250..0x132ae`: `0x13250` calls allocator helper `0x132b6`, links the
+  returned object into page-root bucket array `root+0x1c[0x782a7c]`, writes
+  class byte `+0x04 = 0x80`, copies the mode byte to `+0x05`, and returns
+  the object pointer in `D7`.
+- `0x132b6..0x13382`: `0x132b6` allocates from current stream chunk state
+  `0x782a70` / `0x782a76`; if fewer than 12 bytes remain it allocates a new
+  `0x100`-byte chunk through `0x1710`, links it via `0x782a72`, seeds
+  payload cursor `0x782a76 = chunk + 4`, and records object payload capacity
+  in `0x782a80`.
+- `0x13146..0x13220`: after allocation, `0x13070` writes object `+0x06`
+  from `0x782a80`, object `+0x08` from `0x782a7e`, calls `0x138de` with the
+  state pointer, object payload pointer, and copy count, then loops for
+  remaining bytes unless `0x782996 == 1` or `0x138de` returns `-1`.
+- `0x1317e..0x1324e`: zero-length, no-room, or copy-stop exits drain the
+  remaining transfer through `0x12328` using state words `+0x04 + +0x06`.
 
 ### Readers And Consumers
 
@@ -6590,13 +6652,15 @@ direct `0x12218 -> 0x105d0` dispatch, `0x105d0` gate outcomes, the corrected
 root boundary for beyond-extent versus negative rows, encoded object layout,
 bridge preservation, mode dispatch helpers, and rendered rows because those are
 asserted by named harness fixtures and by disassembly addresses
-`0x121cc..0x12262` and `0x105e4..0x106cc`. High for the covered raster-state
+`0x121cc..0x12262`, `0x105e4..0x106cc`, `0x10084..0x10218`,
+`0x13070..0x13250`, and `0x132b6..0x13382`. High for the covered raster-state
 effects of `ESC *rB`, active-resolution ignore, lower-resolution mode
 selection, consecutive transfers, and lowercase same-family `*b` chaining
 because each has parser-dispatch, restored-record, object, and render-entry
 fixtures. Medium for live CPU/register fidelity inside `0x105d0..0x13250`
-during a dense parser-produced page because the current evidence is
-modeled/address-aware rather than a full 68000 execution trace.
+during a dense parser-produced page because the register/memory contract above
+is disassembly-derived and fixture-correlated, but still not captured from one
+live 68000 execution trace.
 
 ### Fixtures
 
@@ -6680,9 +6744,12 @@ modeled/address-aware rather than a full 68000 execution trace.
   consumed by `0x1ed84` / `0x1ef6a`. The remaining edge is no longer the
   parser-to-handler record handoff: disassembly pins `0x12218` restoring the
   record and `0x105d0` re-reading it from `0x78299e - 6`. The exact remaining
-  closure boundary is live CPU/register memory across
-  `0x105d0 -> 0x10084 -> 0x13070` during a dense parser-produced page, where
-  the current model should be replaced or confirmed by one 68000 trace.
+  closure boundary is live CPU/register confirmation, not field discovery:
+  the disassembly-derived handoff ledger now covers `0x105d8..0x10752`,
+  `0x10084..0x10218`, `0x13070..0x13250`, and `0x132b6..0x13382`, but a dense
+  parser-produced page still needs one 68000 trace or memory snapshot to prove
+  the modeled register values and heap chunk choices are the values produced in
+  that full run.
 - `0x13250..0x1381c`: addressed allocation is covered in the shared
   page-record allocator checkpoint and in the addressed text/rule/raster
   fixture, where the raster object lives at `0x00d0c038` and publishes as

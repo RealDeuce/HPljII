@@ -450,17 +450,27 @@ A byte-stream reproduction must preserve these behaviors:
   `0x105d0` into allocator memory. The covered parser edge is exact through
   `0x11f82` scheduling, `0x121cc` snapshot layout, `0x12218` restore and
   direct dispatch, and `0x105d0` re-reading the restored six-byte record from
-  `0x78299e - 6`. The remaining closure edge is a live memory/register snapshot
-  of the dense stream after `0x105d0` has written `0x783170` fields and around
-  the `0x10084` / `0x13070` page-root mutations. Canonical output
-  state is already fixture-pinned as the page-root `+0x1c` raster chain and
-  object bytes written by `0x13070`/`0x13250`; derived/cache state is the
-  bucket/key and render-record copy used by `0x1ed84`/`0x1ef6a`; parser scratch
-  is the delayed `80 57 ...` command record, snapshot, payload offset, and
-  drained payload bytes; firmware bookkeeping is the modeled allocation result
-  and stream-storage cursor. Closing this edge requires a live CPU trace or
-  memory snapshot across `0x105d0 -> 0x10084 -> 0x13070`, not more isolated
-  mode-0 row-render evidence.
+  `0x78299e - 6`.
+- The disassembly-derived handoff inside that remaining edge is now known: `0x105d0`
+  carries state pointer `A4 = 0x783170`, restored parser record `A5 = 0x78299e - 6`,
+  absolute byte count `D5`, orientation-derived row longword `D4`, accepted count
+  `+0x04`, overflow `+0x06`, and stored row `+0x02`; `0x10084` either returns an
+  existing `0x78297a` root or allocates, initializes, and bucket-clears a new root;
+  `0x13070` consumes the same state pointer, derives `0x782a7c` / `0x782a7e`, passes
+  size and mode to `0x13250`, and uses `0x132b6` stream-chunk state `0x782a70` /
+  `0x782a76` / `0x782a80` before `0x138de` copies payload bytes. The composed semantic
+  ledger is in
+  [semantic-state-model.md](semantic-state-model.md#raster-transfer-gate-and-encoded-rows).
+- The remaining closure edge is no longer field discovery; it is live
+  confirmation. We still need a 68000 trace or memory snapshot proving that a
+  dense parser-produced stream arrives at `0x105d0`, `0x10084`, `0x13070`,
+  `0x13250`, and `0x132b6` with the modeled register values, heap chunk choices,
+  and page-root pointers. Canonical output state is already fixture-pinned as
+  the page-root `+0x1c` raster chain and object bytes written by
+  `0x13070`/`0x13250`; derived/cache state is the bucket/key and render-record
+  copy used by `0x1ed84`/`0x1ef6a`; parser scratch is the delayed `80 57 ...`
+  command record, snapshot, payload offset, and drained payload bytes; firmware
+  bookkeeping is the modeled allocation result and stream-storage cursor.
 - `0x13250..0x1381c` addressed storage is documented by the mixed
   text/rule/raster publication fixture, but the heap allocator result is still
   a modeled fixture result rather than a memory snapshot from one live parser

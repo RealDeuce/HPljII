@@ -92,7 +92,15 @@ the board-facing boundary is tracked in
   checkpoint covers lower-resolution modes `1..3`, consecutive uppercase
   `ESC *b#W` transfers, lowercase `ESC *b#w` same-family chaining, `ESC *rB`
   active-byte clear, active-resolution ignore, `0x105d0` cap/drain gates,
-  page-record object bytes, bridge dispatch, and rendered rows.
+  page-record object bytes, bridge dispatch, and rendered rows. The current
+  handoff ledger also pins the field ownership across `0x105d0`, `0x10084`,
+  `0x13070`, `0x13250`, and `0x132b6`: `A4 = 0x783170`, restored record
+  `A5 = 0x78299e - 6`, accepted/overflow words `+0x04/+0x06`, row word
+  `+0x02`, current root `0x78297a`, bucket/key caches `0x782a7c/0x782a7e`,
+  stream chunk state `0x782a70/0x782a76/0x782a80`, and copy-stop flag
+  `0x782996`. The remaining raster gap is live-trace confirmation of those
+  values in one dense parser-produced text/rule/raster page, not discovery of
+  another raster object field.
 - Page publication:
   ROM evidence is `0xff1e..0x10080`.
   Reproduction evidence is

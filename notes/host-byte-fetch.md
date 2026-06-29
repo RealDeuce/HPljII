@@ -172,13 +172,37 @@ building more pushback state while the no-byte gate is active.
 
 The no-byte gate is a paired state: byte `0x780e3b` carries the gate itself,
 and `0x780e66.3` keeps `0xa904` on the buffered-source branch long enough to
-observe it. The two observed gate setters are `0x4322..0x4332` and
-`0x622c..0x623c`; both write `0x780e3b = 1` and set `0x780e66.3`. While both
-`0x780e66` and `0x780e3b` are nonzero, `0xa904` returns `D7 = -1` at
-`0xa920` before checking any stack, data-chain, ring, or direct hardware
-source. The main parser loop `0x117dc..0x117ee` is the observed consumer of
-this gate: it tests `0x780e3b`, clears it at `0x117e8`, and then calls the
-`0x10c8(0x780202)` wait/helper path.
+observe it. The two observed gate setters are now bounded as host-input
+quiesce/reset branches:
+
+- `0x4218..0x44d2` reaches the gate after setup helpers
+  `0x8c7a`, `0x5e80`, `0x5f96`, `0x2d46`, and `0xa16a`, clears service-needed
+  bit `0x7821cd.0`, waits through trap veneer `0x10d8(0x15)`, and then either
+  polls alternate direct status `0xfffee005.2` or takes the shared gate path.
+- `0x61e4..0x6362` runs the same setup helper family, clears `0x7821cd.0`,
+  waits through `0x10d8(0x15)`, and then enters the same gate path without the
+  `0xfffee005.2` polling loop.
+
+Both write `0x780e3b = 1` and set `0x780e66.3`. While both `0x780e66` and
+`0x780e3b` are nonzero, `0xa904` returns `D7 = -1` at `0xa920` before checking
+any stack, data-chain, ring, or direct hardware source. If the gate is still
+set, both branches wait on scheduler object `0x780242` through
+`0x10e0(0x780242, 5)`, clear byte-source buffers through `0x3178`, clear
+`0x780e32`, copy that cleared longword to `0x780e2e`, clear `0x780e29.0`, and
+mask status accumulator `0x780e2a` (`0xffffff67` on the `0x4322` path,
+`0xffffff77` on the `0x622c` path). They then scan page/control pool records
+from `0x780f02` to `0x7810b2` in 0x6c-byte steps: records in state byte `1`,
+`2`, or `4` are cleared and free their `+0x20` chunk list through
+`0x18b4(size 0x100, fill 0)`. The shared tail calls `0x30e2`, passes
+`0x7821a2` to `0x6b5c`, sets `0x780e3a = 1`, sets service-needed bit
+`0x7821cd.0`, calls `0x70ca`, sets `0x7821b0 = 1`, and clears `0x780e68`.
+
+The main parser loop `0x117dc..0x117ee` is the observed consumer of this gate:
+it tests `0x780e3b`, clears it at `0x117e8`, and then calls the
+`0x10c8(0x780202)` wait/helper path. The exact user-facing trigger for the
+two quiesce/reset branches is still provisional, but the reproduction contract
+is concrete: while the gate is active, no live byte source is consumed, and the
+next parser-visible fetch returns `-1` before service work is re-enabled.
 
 ### Ring Source
 
@@ -313,8 +337,9 @@ Field groups:
   - `0x7821cd` is the service-needed gate;
   - `0x7821cc` is set while `0x10cc(0x780202)` runs;
   - `0x780e66` gates stacked/data-chain sources. The observed source bits are
-    bit 3 for the no-byte gate set by `0x4322` / `0x622c` with `0x780e3b`,
-    bit 2 for the first pushback stack set by `0x9ec0` and cleared by
+    bit 3 for the no-byte gate set by quiesce/reset branches
+    `0x4218..0x44d2` and `0x61e4..0x6362` with `0x780e3b`, bit 2 for the
+    first pushback stack set by `0x9ec0` and cleared by
     `0xa904` after count `0x783e8c` drains, bit 1 for active data-chain
     frames set by `0xe418` / `0xe4f4` and cleared by `0xe22c` frame-end
     paths, and bit 0 for the second pushback stack set by `0x9ec0` and
@@ -331,8 +356,8 @@ Field groups:
   - board-level names and timing for the direct MMIO banks;
   - data-chain frame-byte values outside the observed `+9 = 2`, `3`, and
     `4` producers, if any;
-  - full high-level owner names for the two gate-setter routines at
-    `0x4322..0x4332` and `0x622c..0x623c`.
+  - exact user-facing trigger names for quiesce/reset branches
+    `0x4218..0x44d2` and `0x61e4..0x6362`.
 
 Writers:
 
@@ -350,8 +375,11 @@ Writers:
 - `0x9ec0` writes the two pushback stacks: frame byte `+9 == 0` selects
   `0x783e76` / `0x783e78` and sets `0x780e66.0`; frame byte `+9 != 0`
   selects `0x783e8c` / `0x783e8e` and sets `0x780e66.2`.
-- `0x4322..0x4332` and `0x622c..0x623c` set the no-byte gate pair
-  `0x780e3b = 1` plus `0x780e66.3`; the main parser loop
+- Host-input quiesce/reset branches `0x4218..0x44d2` and `0x61e4..0x6362`
+  set the no-byte gate pair `0x780e3b = 1` plus `0x780e66.3`, wait on
+  `0x780242`, clear byte-source buffers through `0x3178`, release selected
+  page/control pool records through `0x18b4`, set `0x780e3a` and service-needed
+  bit `0x7821cd.0`, and clear `0x780e68`; the main parser loop
   `0x117dc..0x117ee` observes and clears `0x780e3b`.
 
 Readers and consumers:
@@ -415,6 +443,12 @@ Disassembly evidence:
 - `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`:
   `0xa6cc..0xa810` bridge behavior and `0xa846..0xa8c8` ring/sequence
   helpers.
+- `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`:
+  `0x4218..0x44d2` no-byte gate, direct-status wait, byte-source reset,
+  and pool cleanup branch.
+- `generated/disasm/ic30_ic13_host_input_quiesce_0061e4.lst`:
+  `0x61e4..0x6362` sibling no-byte gate, byte-source reset, and pool
+  cleanup branch.
 - `generated/disasm/ic30_ic13_pcl_escape_parser_00da9a.lst`:
   parser wrapper consumers.
 - `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
@@ -435,9 +469,10 @@ Unresolved middle edges:
   non-replay page-finalization producer `0xe4f4` are documented. Remaining
   uncertainty is any producer for frame byte `+9` values outside observed
   `2`, `3`, and `4`.
-- `0x4322..0x4332` and `0x622c..0x623c`: the local effect is proven as the
-  no-byte gate pair `0x780e3b = 1` plus `0x780e66.3`. Their broader
-  high-level caller names are still provisional.
+- `0x4218..0x44d2` and `0x61e4..0x6362`: the no-byte gate, byte-source
+  reset, selected pool-record cleanup, and service-needed tail are documented;
+  the exact user-facing trigger names for these two quiesce/reset branches are
+  still provisional.
 
 ## Reproduction Requirements
 

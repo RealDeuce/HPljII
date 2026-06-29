@@ -1072,9 +1072,12 @@ Known from manuals:
 
 ROM work needed:
 
-- Expand named roles for byte-fetch routine `0x0000a904` callers and
-  correlate the host I/O register banks `0x8e01/0x8801/0x8c01` and
-  `0xfffee005/0xfffee001/0xfffee009` with the physical board interfaces.
+- Expand the remaining named roles for byte-fetch routine `0x0000a904`
+  callers and correlate the host I/O register banks
+  `0x8e01/0x8801/0x8c01` and `0xfffee005/0xfffee001/0xfffee009` with the
+  physical board interfaces. The local no-byte gate is now narrowed to
+  quiesce/reset branches `0x4218..0x44d2` and `0x61e4..0x6362`; their exact
+  user-facing trigger names remain provisional.
 - Trace the handler at `0x00000d52`, which polls low MMIO/status
   addresses and updates many `0x0078xxxx` state bytes.
 - Identify input buffer structures in RAM.

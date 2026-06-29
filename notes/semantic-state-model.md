@@ -66,10 +66,10 @@ before parser dispatch.
   - `0x7821cd`: service-needed flag checked before all byte sources.
   - `0x7821cc`: service-in-progress flag set around helper `0x10cc`.
   - `0x780e66`: source/pending flags. Observed bit roles are bit 3 for
-    the no-byte gate set with `0x780e3b` by `0x4322` / `0x622c`, bit 2 for
-    first pushback stack bytes appended by `0x9ec0`, bit 1 for active
-    data-chain frames, and bit 0 for second pushback stack bytes appended by
-    `0x9ec0`.
+    the no-byte gate set with `0x780e3b` by host-input quiesce/reset branches
+    `0x4218..0x44d2` and `0x61e4..0x6362`, bit 2 for first pushback stack
+    bytes appended by `0x9ec0`, bit 1 for active data-chain frames, and bit
+    0 for second pushback stack bytes appended by `0x9ec0`.
   - `0x780e3b`: no-byte gate that returns `D7 = -1` while
     `0x780e66 != 0`; the main parser loop observes and clears it at
     `0x117dc..0x117ee`.
@@ -92,6 +92,9 @@ before parser dispatch.
   - `0x780e62`: status byte copy written with `0x13` when a service path
     observes status bit 1.
   - `0x780e49`: OR mask merged into `0x7828fa` before `$aa01` writes.
+  - `0x780e3a`, `0x7821b0`, and `0x780e68`: quiesce/reset tail bookkeeping
+    written after the no-byte gate branches finish their pool cleanup.
+    `0x780e3a` and `0x7821b0` are set to `1`; `0x780e68` is cleared.
   Evidence: disassembly `0xa904..0xab8a`, `0xa6cc..0xa810`, and host
   fetch/bridge fixtures above.
 - Parser scratch:
@@ -124,8 +127,16 @@ before parser dispatch.
 - Pushback/log helper `0x9ec0` writes `0x783e76` / `0x783e78` and sets
   `0x780e66.0` when current frame byte `+9 == 0`; it writes `0x783e8c` /
   `0x783e8e` and sets `0x780e66.2` when current frame byte `+9 != 0`.
-- Gate setters `0x4322..0x4332` and `0x622c..0x623c` write
-  `0x780e3b = 1` and set `0x780e66.3`; `0x117dc..0x117ee` clears
+- Host-input quiesce/reset branches `0x4218..0x44d2` and `0x61e4..0x6362`
+  write `0x780e3b = 1` and set `0x780e66.3`. If the gate remains set, both
+  wait through `0x10e0(0x780242, 5)`, call `0x3178` to clear ring and pushback
+  byte-source counts/pointers, clear `0x780e32`, copy that cleared longword to
+  `0x780e2e`, clear `0x780e29.0`, mask `0x780e2a`, and scan pool records
+  `0x780f02..0x7810b2` in 0x6c-byte steps. State-byte `1`, `2`, and `4`
+  records are cleared and free their `+0x20` chunk list through `0x18b4`.
+  The shared tail calls `0x30e2`, passes `0x7821a2` to `0x6b5c`, sets
+  `0x780e3a = 1`, sets service-needed bit `0x7821cd.0`, calls `0x70ca`, sets
+  `0x7821b0 = 1`, and clears `0x780e68`. `0x117dc..0x117ee` clears
   `0x780e3b` before entering the `0x10c8(0x780202)` wait/helper path.
 
 ### Readers And Consumers
@@ -214,9 +225,10 @@ broader frame-lifetime tracing.
   non-replay page-finalization frame from `0xe4f4` are documented. Remaining
   uncertainty is any producer for frame byte `+9` values outside observed
   `2`, `3`, and `4`.
-- `0x4322..0x4332` and `0x622c..0x623c`: the local no-byte gate writes are
-  pinned, but the broader high-level routine names around those gate setters
-  remain provisional.
+- `0x4218..0x44d2` and `0x61e4..0x6362`: no-byte gate writes, byte-source
+  reset, selected pool-record cleanup, and service-needed tail are pinned; the
+  exact user-facing trigger names for the two quiesce/reset branches remain
+  provisional.
 
 ## Parser Record And Delayed Payload State
 

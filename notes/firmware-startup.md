@@ -166,7 +166,7 @@ from focused listings
   sets sequence cursor `0x783e62 = 0xa8a4`; mirrors the ring write
   pointer into `0x7821c4`; sets second LIFO pointer `0x783e78` to
   `0x783e66`; and sets first LIFO pointer `0x783e8e` to `0x783e7c`.
-- `0x31d6` initializes a sibling status/event ring by clearing count
+- `0x31d6` initializes a 64-byte interface-output FIFO by clearing count
   `0x783ed2` and setting both pointers `0x783ed4` and `0x783ed8` to
   `0x783e92`.
 

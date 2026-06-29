@@ -49,11 +49,11 @@ The semantic model checkpoint `Startup Memory Sizing And Scheduler
 Bootstrap` groups startup fields `0x780e5a`, `0x780e60`, `0x780efa`,
 `0x780efe`, `0x7810b4`, `0x7810b8`, timer divider seeds, MMIO shadows,
 eight wait-object records `0x780182..0x780262`, render-work selector
-seeds, host byte-source buffers, and status/event ring fields into
+seeds, host byte-source buffers, and interface-output FIFO fields into
 canonical, derived/cache, firmware bookkeeping, and unknown state.
 Remaining startup work is the optional board/config helper
-`0x05ba..0x071a`, later callees `0x071c` and `0x2c84`, status/event
-ring consumers, and physical naming for the startup MMIO/config inputs.
+`0x05ba..0x071a`, later callees `0x071c` and `0x2c84`, and physical
+naming for the startup MMIO/config inputs.
 
 ### Extension probing
 
@@ -90,6 +90,17 @@ consumers, output effect, and unresolved physical-interface edges under
 from `0xfffe0001`/`0xfffe0003` into the `0x783e54` ring is now
 composed with low-water, full-service, status-escape, and `0xa904`
 consumer fixture coverage.
+
+The sibling interface-output FIFO is now composed in
+`Host Interface Output FIFO` in [semantic-state-model.md](semantic-state-model.md)
+and [host-byte-fetch.md](host-byte-fetch.md). Startup helper `0x31d6`
+initializes `0x783ed2` / `0x783ed4` / `0x783ed8`; `0xb0c0`, `0xb090`,
+and `0xb022` enqueue, block/yield on `0x7801e2`, and dequeue; worker
+`0xae2c` drains bytes through mode-0 helper `0xa1b0` to `0xfffe0003`,
+discards them in mode `1`, or sends them through `0xa1d6` to
+`0xfffee003` in other nonzero modes. Remaining work is protocol naming
+for the `0x12280` response bytes and physical naming/timing for the
+output MMIO banks.
 
 ### Main PCL parser
 

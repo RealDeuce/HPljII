@@ -76,14 +76,14 @@ reproduction; they are not PCL parser scratch.
     between work records `0x7820c4` and `0x782128`.
   - `0x7820c8` and `0x78212c` are cleared by `0x2feb6`; they are header
     words inside the two render work records.
-- Canonical startup byte/status buffers:
+- Canonical startup byte and interface-output buffers:
   - host ring buffer: count `0x783e54`, read pointer `0x783e56`, write
     pointer `0x783e5a`, low-water threshold `0x783e5e`, sequence cursor
     `0x783e62`, and write-pointer mirror `0x7821c4`.
   - second LIFO byte source: count `0x783e76` and pointer `0x783e78`.
   - first LIFO byte source: count `0x783e8c` and pointer `0x783e8e`.
-  - sibling status/event ring: count `0x783ed2`, read pointer
-    `0x783ed4`, and write pointer `0x783ed8`.
+  - interface-output FIFO: count `0x783ed2`, read pointer `0x783ed4`,
+    write pointer `0x783ed8`, and byte storage `0x783e92..0x783ed1`.
   Evidence:
   `generated/disasm/ic30_ic13_startup_byte_source_init_003178.lst`,
   `generated/disasm/ic30_ic13_startup_status_ring_init_0031d6.lst`,
@@ -132,8 +132,8 @@ reproduction; they are not PCL parser scratch.
   `0x783e8c`, initializes their pointers, writes low-water threshold
   `0x783e5e = 0x40`, writes sequence cursor `0x783e62 = 0xa8a4`, and
   mirrors the ring write pointer into `0x7821c4`.
-- `0x31d6` clears status/event count `0x783ed2` and initializes
-  pointers `0x783ed4` and `0x783ed8` to `0x783e92`.
+- `0x31d6` clears interface-output FIFO count `0x783ed2` and
+  initializes pointers `0x783ed4` and `0x783ed8` to `0x783e92`.
 
 ### Readers And Consumers
 
@@ -151,9 +151,9 @@ reproduction; they are not PCL parser scratch.
   RAM/resource windows to test.
 - `0xa904`, `0xa6cc`, `0xa846`, and `0x9ec0` consume or update the
   byte-source buffers initialized by `0x3178`.
-- consumers of the `0x783ed2` status/event ring are outside this
-  checkpoint but are bounded by cross-reference scans to the `0xae3a`
-  and `0xb030..0xb0fe` families.
+- `0xae2c`, `0xb022`, `0xb090`, and `0xb0c0` consume or update the
+  interface-output FIFO initialized by `0x31d6`; the composed semantics
+  are in `Host Interface Output FIFO` below.
 - `0x1eb2a..0x1ed84` and `0x2126` consume render-work selector state
   seeded by `0x2feb6`.
 
@@ -199,7 +199,7 @@ known but the physical signal names are not.
 - `generated/disasm/ic30_ic13_startup_byte_source_init_003178.lst`:
   `0x3178..0x31d4` host byte-source buffer initialization.
 - `generated/disasm/ic30_ic13_startup_status_ring_init_0031d6.lst`:
-  `0x31d6..0x31f6` status/event ring initialization.
+  `0x31d6..0x31f6` interface-output FIFO initialization.
 - `generated/disasm/ic30_ic13_heap_allocator_init_00164a.lst`:
   `0x164a..0x170a` allocator consumer for `0x780efa`/`0x780efe`.
 
@@ -210,8 +210,6 @@ known but the physical signal names are not.
 - `0x071c` and `0x2c84`: startup callees remain outside this checkpoint
   except where their downstream state is already covered by allocator,
   host-input, or renderer notes.
-- `0x783ed2` status/event ring consumers need a separate checkpoint
-  before assigning its user-facing role.
 - Physical names for the startup MMIO/config inputs remain unresolved.
 
 ## Host Byte Fetch And Data-Chain Input
@@ -438,6 +436,157 @@ broader frame-lifetime tracing.
   reset, selected pool-record cleanup, and service-needed tail are pinned; the
   exact user-facing trigger names for the two quiesce/reset branches remain
   provisional.
+
+## Host Interface Output FIFO
+
+Status: composed as the bidirectional host/interface output queue behind
+wait object `0x7801e2`. This checkpoint covers the queue initialized by
+startup helper `0x31d6`, parser-side enqueue helper `0xb090`, FIFO
+helpers `0xb022` / `0xb0c0`, worker `0xae2c`, and output-register
+helpers `0xa1b0` / `0xa1d6`. It does not claim physical connector names
+for the MMIO banks.
+
+Concept: `0x783ed2` is the count for a 64-byte FIFO at
+`0x783e92..0x783ed1`. Parser/resource-payload code can enqueue bytes
+through blocking wrapper `0xb090`. Wait object `0x7801e2` restarts at
+`0xae2c`, wakes when the FIFO or related interface-status bytes are
+pending, and drains queued bytes to the interface selected by
+`0x780e40`.
+
+### Field Groups
+
+- Canonical interface-output FIFO:
+  - `0x783ed2`: FIFO byte count.
+  - `0x783ed4`: read pointer, wrapped from after `0x783ed1` to
+    `0x783e92` by `0xb022`.
+  - `0x783ed8`: write pointer, wrapped from after `0x783ed1` to
+    `0x783e92` by `0xb0c0`.
+  - `0x783e92..0x783ed1`: 64-byte FIFO storage.
+  Evidence: `generated/disasm/ic30_ic13_startup_status_ring_init_0031d6.lst`
+  and `generated/disasm/ic30_ic13_host_output_fifo_00b022.lst`.
+- Canonical output backends:
+  - mode `0x780e40 == 0`: helper `0xa1b0` tests `0xfffe0001.1` and
+    writes one byte to `0xfffe0003`; retry helper `0xaf7c` attempts this
+    up to `0x4e20` times before error report `0x1284(0xe2, 4)`.
+  - mode `0x780e40 != 0 && != 1`: helper `0xa1d6` tests
+    `0xfffee005.1` and writes one byte to `0xfffee003`; retry helper
+    `0xafcc` waits through `0x10d0(0x0b)` when more than `0x0b` ticks
+    elapse without output readiness.
+  - mode `0x780e40 == 1`: `0xae90..0xaeaa` dequeues FIFO bytes and loops
+    without a visible output-register write.
+  Evidence: `generated/disasm/ic30_ic13_interface_output_mmio_00a1b0.lst`,
+  `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`, and
+  `generated/disasm/ic30_ic13_host_output_retry_00af7c.lst`.
+- Derived/cache interface status:
+  - `0x780e22`: pending status count checked by `0xae2c` and consumed by
+    `0xaece`; status byte base `0x30` is combined with bits derived from
+    `0x780e12`, `0x780e90`, `0x780e2a`, `0x780e0a`, and `0x783e60`.
+  - `0x783e61`: bridge-service byte checked by `0xae2c` and cleared by
+    `0xaece` after byte `0x13` is accepted by `0xa1b0`.
+  - `0x780e62`: last accepted status byte from `0xaece`; observed writes
+    are `0x13` and the status byte assembled from `0x780e22`.
+  - `0x780e2e`: alternate-mode status accumulator updated by `0xa1d6`
+    from `0xfffee005.7` and `0xfffee005.6`.
+- Parser scratch:
+  - none owned by the FIFO. The observed producer at
+    `0x122be..0x12326` consumes parser/resource-payload scratch around
+    `0x78299e` and enqueues response bytes through `0xb090`.
+- Firmware bookkeeping:
+  - `0x7801e2`: wait object whose startup table entry restarts at
+    `0xae2c`; `0xb090` calls `0x10c8(0x7801e2)` while waiting for space
+    and after a successful enqueue.
+  - critical-section helpers `0x15a6` and `0x15ac` guard FIFO count and
+    pointer mutation in `0xb022`, `0xb0c0`, and the worker status paths.
+- Unknown:
+  - physical connector names for `0xfffe0001` / `0xfffe0003` and
+    `0xfffee005` / `0xfffee003`.
+  - user-visible meaning of the literal response string at `0x12280` and
+    the exact protocol condition represented by `0xda9a` returning
+    `0x11` with record word `+2` equal to `1` or `-1`.
+
+### Writers
+
+- `0x31d6` initializes the FIFO by clearing `0x783ed2` and setting
+  `0x783ed4 = 0x783ed8 = 0x783e92`.
+- `0xb0c0` enqueues one byte when `0x783ed2 < 0x40`, advances and wraps
+  `0x783ed8`, increments `0x783ed2`, and returns `D7 = 1`; otherwise it
+  returns `D7 = 0`.
+- `0xb090` retries `0xb0c0` until the byte is accepted, using
+  `0x10c8(0x7801e2)` as the full-FIFO wait/yield path.
+- `0xb022` dequeues one byte when `0x783ed2 != 0`, advances and wraps
+  `0x783ed4`, decrements `0x783ed2`, and returns `D7 = 1`; when empty it
+  clears the caller byte and returns `D7 = 0`.
+- `0xaece` clears `0x783e61`, decrements `0x780e22`, and writes
+  `0x780e62` after a status byte is accepted by `0xa1b0`.
+- `0xa1d6` ORs `0x80` or `0x40` into `0x780e2e` when alternate output
+  status bits `0xfffee005.7` or `0xfffee005.6` are set.
+
+### Readers And Consumers
+
+- `0x122be..0x12326` is the only observed `0xb090` caller. When `0xda9a`
+  returns byte `0x11` and the active six-byte record word `+2` is `1` or
+  `-1`, it walks the zero-terminated bytes at `0x12280` and enqueues each
+  byte through `0xb090`; otherwise it reports the byte through `0x9ec0`.
+- `0xae2c` is the `0x7801e2` worker. It sleeps through `0x10d0(0x15)`
+  only when `0x783ed2`, `0x780e22`, and `0x783e61` are all zero, then
+  drains or discards FIFO bytes according to `0x780e40`.
+- `0xaf7c` consumes FIFO bytes in mode `0` and writes them through
+  `0xa1b0` to `0xfffe0003`.
+- `0xafcc` consumes FIFO bytes in alternate nonzero mode and writes them
+  through `0xa1d6` to `0xfffee003`.
+
+### Output Effect
+
+This checkpoint has no direct page bitmap output. Its reproduction effect
+is host-protocol and scheduling fidelity: if the FIFO fills, `0xb090`
+stalls the parser-side producer through wait object `0x7801e2`; if a
+bidirectional host reacts to the emitted bytes, subsequent host input may
+change. For a closed byte-stream-to-page renderer that ignores
+bidirectional host responses, no observed FIFO consumer feeds `0xda9a`,
+page records, `0x1ed84`, or `0x1ef6a`.
+
+### Confidence
+
+High for FIFO capacity, pointer wrap, enqueue/dequeue side effects,
+`0x7801e2` wait-object coupling, and output-backend register writes: the
+focused listings are direct stores, tests, and calls. Medium for
+physical connector naming and the protocol meaning of the `0x12280`
+literal bytes.
+
+### Fixtures
+
+- No executable fixture currently covers this output FIFO. Evidence is
+  disassembly-only in this checkpoint, and the unresolved fixture gap is a
+  small synthetic run that fills and drains `0x783e92..0x783ed1` through
+  `0xb090`, `0xb022`, and `0xae2c`.
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_startup_status_ring_init_0031d6.lst`:
+  `0x31d6..0x31f6` FIFO initialization.
+- `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`:
+  `0xae2c..0xaf2c` wait-object worker, status send path, and mode split.
+- `generated/disasm/ic30_ic13_interface_output_mmio_00a1b0.lst`:
+  `0xa1b0..0xa23c` mode-0 and alternate-mode output-register helpers.
+- `generated/disasm/ic30_ic13_host_output_retry_00af7c.lst`:
+  `0xaf7c..0xb020` output retry loops.
+- `generated/disasm/ic30_ic13_host_output_fifo_00b022.lst`:
+  `0xb022..0xb12a` dequeue, blocking enqueue wrapper, and enqueue.
+- `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`:
+  `0x122be..0x12326` parser/resource-payload producer.
+- `generated/analysis/ic30_ic13_long_reference_scan.md`: references for
+  `0x783ed2`, `0x783ed4`, `0x783ed8`, `0x783e92`, and `0x783ed1`.
+
+### Unresolved Middle Edges
+
+- `0x122be..0x12326`: producer control flow is bounded, but the protocol
+  meaning of `0x11` plus record word `+2 == 1` or `-1` remains unnamed.
+- `0xaece..0xaf74`: status-byte construction is decoded, but the
+  user-visible meanings of `0x780e22`, `0x780e12`, `0x780e90`,
+  `0x780e2a`, `0x780e0a`, and `0x783e60` need a separate interface
+  status checkpoint.
+- `0xa1b0` and `0xa1d6`: register readiness and byte writes are pinned,
+  but physical interface names and timing remain board-level work.
 
 ## Parser Record And Delayed Payload State
 

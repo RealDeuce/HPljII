@@ -292,6 +292,50 @@ state after external code has run.
   `0x7828fb`.
 - Other selector values return without changing these handshake fields.
 
+## Interface Output FIFO
+
+Startup helper `0x31d6` initializes a separate 64-byte interface output
+FIFO at `0x783e92..0x783ed1`. It clears count `0x783ed2` and sets both
+read pointer `0x783ed4` and write pointer `0x783ed8` to `0x783e92`.
+
+Helper `0xb0c0` is the nonblocking enqueue primitive. Under the
+`0x15a6` / `0x15ac` critical section, it accepts one byte when
+`0x783ed2 < 0x40`, writes through `0x783ed8`, wraps the write pointer
+after `0x783ed1` back to `0x783e92`, increments `0x783ed2`, and
+returns `D7 = 1`. If the FIFO is full, it returns `D7 = 0` without
+writing.
+
+Helper `0xb022` is the dequeue primitive. It returns `D7 = 1` after
+copying one byte through `0x783ed4`, wrapping the read pointer after
+`0x783ed1`, and decrementing `0x783ed2`. If the FIFO is empty, it clears
+the caller byte and returns `D7 = 0`.
+
+Helper `0xb090` is the blocking enqueue wrapper used by parser/resource
+payload code at `0x122be..0x12326`. It retries `0xb0c0` until the byte is
+accepted, using `0x10c8(0x7801e2)` while the FIFO is full and again after
+success to wake or yield the interface-output wait object.
+
+Wait object `0x7801e2` restarts at `0xae2c`. The worker first sleeps
+through `0x10d0(0x15)` when FIFO count `0x783ed2`, pending status count
+`0x780e22`, and bridge-service byte `0x783e61` are all zero. It then
+drains bytes according to interface selector `0x780e40`:
+
+- mode `0`: `0xaece` may emit status bytes through `0xa1b0`; queued FIFO
+  bytes are dequeued by `0xb022` and sent through retry helper `0xaf7c`
+  to `0xfffe0003` when `0xfffe0001.1` says the output register is ready.
+- mode `1`: queued FIFO bytes are dequeued and discarded by the worker;
+  no output-register write is visible in this branch.
+- other nonzero modes: queued FIFO bytes are dequeued and sent through
+  helper `0xafcc` / `0xa1d6` to `0xfffee003` when `0xfffee005.1` says
+  the output register is ready. Status bits `0xfffee005.7` and
+  `0xfffee005.6` OR `0x80` or `0x40` into `0x780e2e`.
+
+This FIFO is host/interface backchannel state, not input state and not a
+page-object field. Its pixel-reproduction risk is indirect: a full FIFO
+can stall the parser-side enqueue caller through `0xb090`, and a
+bidirectional host might react to the emitted bytes. No observed FIFO
+consumer feeds `0xda9a`, page records, or bitmap renderers.
+
 ## Caller Semantics
 
 `0xa904` is called by parser wrappers and by binary/text payload readers.
@@ -452,11 +496,22 @@ Disassembly evidence:
 
 - `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`:
   `0xa904..0xab8a`.
+- `generated/disasm/ic30_ic13_interface_output_mmio_00a1b0.lst`:
+  `0xa1b0..0xa23c` mode-0 and alternate-mode output-register writes.
 - `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`:
   `0xa6cc..0xa810` bridge behavior and `0xa846..0xa8c8` ring/sequence
   helpers.
+- `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`:
+  `0xae2c..0xaf2c` interface-output wait-object worker and mode split.
+- `generated/disasm/ic30_ic13_host_output_retry_00af7c.lst`:
+  `0xaf7c..0xb020` output retry loops.
+- `generated/disasm/ic30_ic13_host_output_fifo_00b022.lst`:
+  `0xb022..0xb12a` FIFO dequeue, blocking enqueue wrapper, and
+  nonblocking enqueue.
 - `generated/disasm/ic30_ic13_startup_byte_source_init_003178.lst`:
   `0x3178..0x31d4` startup and quiesce/reset byte-source initialization.
+- `generated/disasm/ic30_ic13_startup_status_ring_init_0031d6.lst`:
+  `0x31d6..0x31f6` interface-output FIFO initialization.
 - `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`:
   `0x4218..0x44d2` no-byte gate, direct-status wait, byte-source reset,
   and pool cleanup branch.

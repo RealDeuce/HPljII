@@ -2229,17 +2229,17 @@ rule raster stream composes through 0x1ef6a`: after the same fetched
 handlers `0x10e68`, `0x10e22`, `0x10898`, `0xd04a`, `0x10808`, `0x1075a`, and
 `0x11f82`, then delayed `0x105d0` queues the raster object. That fixture
 produces the same bucket-5 glyph/raster chain, the same bridged rule list, and
-the same `0x1ef6a` rows. The remaining caveat is the font-install split: the
-font payload phase still uses the modeled `0x16c14` install output as the
-resource image for the parser-driven page phase. That split is now documented
-as an exact handoff: the page phase consumes
-`bytearray(downloaded_wide_even_install["header"])`, whose host-fetched
-install fixture pins glyph `0x29`, table entry `0x00ee`, record delta
-`0x0780`, bitmap offset `0x078c`, record bytes
-`00 00 00 00 0c 01 00 01 00 90 00 00`, and the 18 copied bitmap bytes. The
-remaining open edge is live CPU continuity from the `0x16c14` / `0x16498`
-install return after byte `24` back to parser loop `0x11774` for the following
-`0x10e68` rectangle handler.
+the same `0x1ef6a` rows. The modeled font-install split is now documented as
+an exact memory handoff: the page phase consumes
+`font_command_final_header`, the final resource image returned by the same
+host-fetched `0x16c14` / `0x16498` font-command helper, and the fixture asserts
+that image matches the install event header. It pins glyph `0x29`, table entry
+`0x00ee` with pointer bytes `00 00 07 80`, record delta `0x0780`, bitmap offset
+`0x078c`, record bytes `00 00 00 00 0c 01 00 01 00 90 00 00`, and the 18 copied
+bitmap bytes. The residual edge is replacing this modeled handoff with a full
+live 68000 register/memory capture across the `0x16c14` / `0x16498` return
+after byte `24` into parser loop `0x11774` for the following `0x10e68`
+rectangle handler.
 The fetched `ESC )s2193W` downloaded-pointer object
 now also crosses `0x1edc6` plus the `0x1ed84`/`0x1ef6a` render-entry
 path before rendering the same segmented-wide row. A fetched printable
@@ -2396,17 +2396,16 @@ Other checked leads:
   state, `ESC )s2193W` downloaded-character install, printable `%`, FF
   publication, bucket entries `1` and `9`, and `0x1ed84`/`0x1ef6a` rendering.
   Fixture `parser-driven downloaded glyph rule raster stream composes through
-  0x1ef6a` closes the page-stream side for the even-span rule/raster case, but
-  still supplies the page phase with
-  `bytearray(downloaded_wide_even_install["header"])` from the prior install
-  fixture. The byte-source and post-install return are no longer the open parts:
-  the same fixture proves one 54-byte `0xa904` ring fetch, and disassembly plus
-  fixture evidence pins the shared
-  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` drain. The precise remaining
-  ROM-side edge is a captured live CPU memory image carrying the installed
-  even-span `ESC )s18W` glyph from stream byte `24` directly into the following
-  `0x10e68` rectangle/page stream without the fixture handoff.
-  Broader physical/full-page validation remains separate.
+  0x1ef6a` closes the page-stream side for the even-span rule/raster case and now
+  consumes `font_command_final_header` from the same host-fetched font-command
+  helper as the page memory image. The byte-source, post-install return, and
+  modeled memory handoff are no longer the open parts: the same fixture proves
+  one 54-byte `0xa904` ring fetch, asserts the final-header table pointer
+  `00 00 07 80`, installed record, and bitmap bytes, and disassembly plus fixture
+  evidence pins the shared `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` drain. The
+  remaining edge is a stronger full live 68000 register/memory capture across
+  the same byte-`24` boundary. Broader physical/full-page validation remains
+  separate.
 - Treat the `ESC E` reset publication boundary as covered for
   parser-produced compact text page objects. Fixtures
   `mixed printable/reset page-record stream queues through 0x1387c before

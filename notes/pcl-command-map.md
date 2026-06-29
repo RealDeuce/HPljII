@@ -1091,10 +1091,12 @@ handlers:
   then starts the following page stream at byte `24`
   (`ESC *c12a3b0P ) ESC *t300R ESC *r0A ESC *b2W c3 3c`). That fixture now also
   proves one 54-byte `0xa904` ring fetch, and the ROM listing plus fixture
-  evidence pins the shared `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` drain.
-  The remaining gap is live parser/register/memory capture that keeps the
-  installed memory image in one CPU run, not the already-covered byte source,
-  parser rule/raster producers, return drain, or render-entry rows.
+  evidence pins the shared `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` drain. It
+  now consumes `font_command_final_header` from the same font-command helper and
+  asserts the table pointer, record, and bitmap bytes used by the page phase. The
+  remaining gap is live parser/register/memory capture in one CPU run, not the
+  already-covered byte source, modeled memory handoff, parser rule/raster
+  producers, return drain, or render-entry rows.
 - Compare the built-in font sample printout against observed paper output.
   The `0x1c334..0x1c5e4` row traversal is now
   decoded through `0x1b50e` candidate resolution, class filtering,

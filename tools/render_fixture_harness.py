@@ -47029,7 +47029,11 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     assert isinstance(downloaded_wide_even_event, dict)
     downloaded_wide_even_install = downloaded_wide_even_event["install"]
     assert isinstance(downloaded_wide_even_install, dict)
-    downloaded_wide_even_memory = bytearray(downloaded_wide_even_install["header"])
+    downloaded_wide_even_install_header = downloaded_wide_even_install["header"]
+    assert isinstance(downloaded_wide_even_install_header, bytes)
+    downloaded_wide_even_final_header = downloaded_wide_even_result["final_header"]
+    assert isinstance(downloaded_wide_even_final_header, bytes)
+    downloaded_wide_even_memory = bytearray(downloaded_wide_even_final_header)
     downloaded_wide_even_glyph = resolve_downloaded_pointer_glyph(
         downloaded_wide_even_memory,
         0,
@@ -47994,6 +47998,35 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "install_record_delta": downloaded_wide_even_install["record_delta"],
                 "install_bitmap_offset": downloaded_wide_even_install["bitmap_offset"],
             },
+            "memory_handoff": {
+                "source": "font_command_final_header",
+                "matches_install_event": (
+                    downloaded_wide_even_final_header
+                    == downloaded_wide_even_install_header
+                ),
+                "table_entry": downloaded_wide_even_install["table_entry"],
+                "table_pointer": bytes(
+                    downloaded_wide_even_final_header[
+                        int(downloaded_wide_even_install["table_entry"]):
+                        int(downloaded_wide_even_install["table_entry"]) + 4
+                    ]
+                ),
+                "record_delta": downloaded_wide_even_install["record_delta"],
+                "record": bytes(
+                    downloaded_wide_even_final_header[
+                        int(downloaded_wide_even_install["record_delta"]):
+                        int(downloaded_wide_even_install["record_delta"]) + 12
+                    ]
+                ),
+                "bitmap_offset": downloaded_wide_even_install["bitmap_offset"],
+                "bitmap": bytes(
+                    downloaded_wide_even_final_header[
+                        int(downloaded_wide_even_install["bitmap_offset"]):
+                        int(downloaded_wide_even_install["bitmap_offset"])
+                        + int(downloaded_wide_even_install["bitmap_size"])
+                    ]
+                ),
+            },
             "return_boundary": {
                 "call_edge": (0x15DC6, 0x16498),
                 "return_edge": (0x16498, 0x15DCC),
@@ -48129,6 +48162,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "install_table_entry": 0x00EE,
                 "install_record_delta": 0x0780,
                 "install_bitmap_offset": 0x078C,
+            },
+            "memory_handoff": {
+                "source": "font_command_final_header",
+                "matches_install_event": True,
+                "table_entry": 0x00EE,
+                "table_pointer": bytes.fromhex("00 00 07 80"),
+                "record_delta": 0x0780,
+                "record": bytes.fromhex("00 00 00 00 0c 01 00 01 00 90 00 00"),
+                "bitmap_offset": 0x078C,
+                "bitmap": downloaded_wide_even_payload,
             },
             "return_boundary": {
                 "call_edge": (0x15DC6, 0x16498),
@@ -95298,6 +95341,35 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_wide_even_install["copy"]["byte_budget"],
             len(downloaded_wide_even_return_drain["values"]),
             downloaded_wide_even_parser_page_trace["events"][0]["handler"],
+        )
+    )
+    lines.append(
+        "- even-span downloaded-glyph memory handoff: page parsing consumes "
+        "`font_command_final_header`, matches the install event header `%s`, "
+        "and sees table pointer `%s`, record `%s`, and bitmap `%s`." % (
+            downloaded_wide_even_final_header == downloaded_wide_even_install_header,
+            " ".join(
+                f"{byte:02x}"
+                for byte in downloaded_wide_even_final_header[
+                    int(downloaded_wide_even_install["table_entry"]):
+                    int(downloaded_wide_even_install["table_entry"]) + 4
+                ]
+            ),
+            " ".join(
+                f"{byte:02x}"
+                for byte in downloaded_wide_even_final_header[
+                    int(downloaded_wide_even_install["record_delta"]):
+                    int(downloaded_wide_even_install["record_delta"]) + 12
+                ]
+            ),
+            " ".join(
+                f"{byte:02x}"
+                for byte in downloaded_wide_even_final_header[
+                    int(downloaded_wide_even_install["bitmap_offset"]):
+                    int(downloaded_wide_even_install["bitmap_offset"])
+                    + int(downloaded_wide_even_install["bitmap_size"])
+                ]
+            ),
         )
     )
     lines.append(

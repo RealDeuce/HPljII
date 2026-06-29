@@ -1140,9 +1140,10 @@ boundary. The page parser routes through `0x10e68`, `0x10e22`, `0x10898`,
 `00 00 00 00 80 00 00 02 00 00 c3 3c`. Render entry `0x1ed84`/`0x1ef6a`
 dispatches the raster object to `0x1f88e`, the glyph object to
 `0x1effe`/`0x1f0d2`, the rule to `0x1f596`, and compares the same three composed
-rows. The remaining limitation is not byte fetch; it is the modeled font install
-memory boundary. The fixture uses the existing font-payload model to produce the
-installed memory image before the parser-driven page stream runs.
+rows. The remaining limitation is not byte fetch; the modeled font-install
+memory boundary is now explicit. The fixture uses the font-command helper's
+`final_header` as the parser-driven page memory image and asserts that it matches
+the install event header before resolving the printable downloaded glyph.
 
 The modeled install-to-page handoff is now documented as a concrete resource
 image contract rather than a vague fixture split. In fixture
@@ -1152,12 +1153,16 @@ parser handlers `0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`. Handler
 `0x16498` installs glyph `0x29` by writing table entry `0x00ee`, record delta
 `0x0780`, record bytes `00 00 00 00 0c 01 00 01 00 90 00 00`, bitmap offset
 `0x078c`, bitmap size `18`, and the 18 linear bitmap bytes
-`f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99`. The page-stream
-fixture then uses exactly `bytearray(downloaded_wide_even_install["header"])`
-as its resource image: printable byte `0x29` resolves to glyph entry `0x0780`,
-bitmap `0x078c`, width `0x0090`, rows `1`, source kind
-`downloaded-pointer`, inline record `12 01 00`, and context slot `3` before
-`0x12f2e` queues selector `0x1003`.
+`f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99`. Fixture
+`parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
+then uses `font_command_final_header` from that same host-fetched font-command
+helper as its resource image. The fixture asserts that `final_header` matches
+the install event header and contains pointer bytes `00 00 07 80` at table entry
+`0x00ee`, the installed record at `0x0780`, and the bitmap bytes at `0x078c`.
+With that image, printable byte `0x29` resolves to glyph entry `0x0780`, bitmap
+`0x078c`, width `0x0090`, rows `1`, source kind `downloaded-pointer`, inline
+record `12 01 00`, and context slot `3` before `0x12f2e` queues selector
+`0x1003`.
 
 That handoff divides canonical state from parser scratch. Canonical resource
 state is the installed glyph table entry, record, bitmap, and copied bitmap

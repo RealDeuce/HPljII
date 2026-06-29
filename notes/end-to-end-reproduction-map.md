@@ -610,13 +610,13 @@ The next work should follow dataflow, not isolated handlers:
    printable `%`, FF, bucket entries `1` and `9`, and `0x1ed84`/`0x1ef6a`. The remaining
    ROM-side continuity edge is the even-span `ESC )s18W` rule/raster composition case,
    where `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
-   already proves one 54-byte `0xa904` ring fetch and the shared
-   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` post-install drain. What remains is
-   memory-image continuity: the page phase still receives
-   `bytearray(downloaded_wide_even_install["header"])` instead of a captured live CPU
-   memory image carried from stream byte `24` into the following `0x10e68` page handler.
-   The primary built-in case proves
-   `ESC (s0p10h12v0s0b3T!!`
+   already proves one 54-byte `0xa904` ring fetch and the shared `0x15dc6 -> 0x16498 ->
+   0x15dcc -> 0x12328` post-install drain. It now also proves the modeled memory-image
+   handoff: the page phase consumes `font_command_final_header` from the same
+   font-command helper, asserts it matches the install event header, and reports pointer
+   bytes `00 00 07 80`, record bytes, and bitmap bytes. What remains is the stronger
+   live-68000 capture of the same memory state from stream byte `24` into the following
+   `0x10e68` page handler. The primary built-in case proves `ESC (s0p10h12v0s0b3T!!`
    through parsed selection handlers, selected context `0xc008004c`, printable `0xd04a`
    entries, object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record
    context slot `0xc008004c`, and final Courier glyph rows. The secondary case proves
@@ -710,23 +710,22 @@ The next work should follow dataflow, not isolated handlers:
    resource scanner covers `0x080000..0x0ffffe` in `0x40000` steps, while optional
    cartridge/resource scans are separate `$8000.14/15`-gated windows at
    `0x200000..0x5ffffe`; the segment-57 read is therefore a built-in decode question
-   after the verified pair, not a cartridge-window read. Fixture
-   `0x41a HEAD scanner would duplicate records under
-   simple resource mirror` now constrains one candidate: a full resource-pair mirror at
-   `0x0c0000` would make scanner `0x41a` see a second `HEAD` chain and walk `48` typed
-   records, so mirror cannot be treated as only a local fallback-row source unless
-   hardware/gating hides it from scanner reads. Fixture `0x41a HEAD scanner rejects
-   non-HEAD 0x40000 continuations` constrains the code-pair and zero-fill candidates:
-   their second-probe markers are `0x00800000` and `0x00000000`, so neither duplicates
-   `HEAD` records for startup scanning. The hardware evidence in
-   `notes/formatter-interface-pca.md` leaves address-controller/jumper ROM decode as the
-   unresolved physical state. The `ESC Y ... ESC Z` display-functions loop is now
-   documented in `notes/pcl-parser-core.md` and `notes/semantic-state-model.md`; fixture
-   `ESC Y display-functions stream reaches page-record output` covers the default-filter
-   normal `0x12536..0x1261e` page-output path, fixture `ESC Y display-functions
-   filter-on routes controls as printable` covers the complementary nonzero
-   context/filter route through `0xd04a`, and fixture `0x12120 ESC Y alternate append
-   stores normalized display bytes` covers the alternate/data append-only
+   after the verified pair, not a cartridge-window read. Fixture `0x41a HEAD scanner
+   would duplicate records under simple resource mirror` now constrains one candidate: a
+   full resource-pair mirror at `0x0c0000` would make scanner `0x41a` see a second
+   `HEAD` chain and walk `48` typed records, so mirror cannot be treated as only a local
+   fallback-row source unless hardware/gating hides it from scanner reads. Fixture
+   `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations` constrains the code-pair
+   and zero-fill candidates: their second-probe markers are `0x00800000` and
+   `0x00000000`, so neither duplicates `HEAD` records for startup scanning. The hardware
+   evidence in `notes/formatter-interface-pca.md` leaves address-controller/jumper ROM
+   decode as the unresolved physical state. The `ESC Y ... ESC Z` display-functions loop
+   is now documented in `notes/pcl-parser-core.md` and `notes/semantic-state-model.md`;
+   fixture `ESC Y display-functions stream reaches page-record output` covers the
+   default-filter normal `0x12536..0x1261e` page-output path, fixture `ESC Y
+   display-functions filter-on routes controls as printable` covers the complementary
+   nonzero context/filter route through `0xd04a`, and fixture `0x12120 ESC Y alternate
+   append stores normalized display bytes` covers the alternate/data append-only
    `0x12120..0x1219c` path around `0xe002`. Remaining display-functions risk is broader
    physical/page comparison, not the command-family loop boundary or the documented
    filter predicates. They should also broaden downloaded-glyph publication
@@ -736,15 +735,14 @@ The next work should follow dataflow, not isolated handlers:
    low-byte-truncated short publication, even-span wide, and payload-control wide
    selector families, especially row counts outside the covered short rows `0x01`,
    `0x02`, `0x03`, `0x04`, `0x05`, `0x06`, `0x07`, `0x08`, `0x09`, `0x0a`, `0x0b`,
-   `0x0c`, `0x0d`, `0x0e`, `0x0f`, `0x10`, `0x11`, `0x12`, `0x13`, `0x14`,
-   `0x15`, `0x16`, `0x17`, `0x18`, `0x19`, `0x1a`, `0x1b`, `0x1c`, `0x1d`,
-   `0x1e`, `0x1f`, `0x20`, `0x3e`, `0x3f`, `0x40`, `0x41`, `0x42`, `0x7f`, and
-   `0x80` and segmented rows `0x81`, `0x82`, `0x83`, `0x84`, `0x85`, `0x86`,
-   `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff`,
-   descriptor grammar forms outside the covered helper-table path, full pixel-row
-   behavior past the wrapped-width invalid helper entries, broader physical comparison
-   for segmented-wide row words above `0x00ff`, and full-success return-boundary
-   siblings beyond the covered normal even-span, no-install, status-`2`,
+   `0x0c`, `0x0d`, `0x0e`, `0x0f`, `0x10`, `0x11`, `0x12`, `0x13`, `0x14`, `0x15`,
+   `0x16`, `0x17`, `0x18`, `0x19`, `0x1a`, `0x1b`, `0x1c`, `0x1d`, `0x1e`, `0x1f`,
+   `0x20`, `0x3e`, `0x3f`, `0x40`, `0x41`, `0x42`, `0x7f`, and `0x80` and segmented rows
+   `0x81`, `0x82`, `0x83`, `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`,
+   `0xfe`, and `0xff`, descriptor grammar forms outside the covered helper-table path,
+   full pixel-row behavior past the wrapped-width invalid helper entries, broader
+   physical comparison for segmented-wide row words above `0x00ff`, and full-success
+   return-boundary siblings beyond the covered normal even-span, no-install, status-`2`,
    row-count-matrix short/segmented, linear-segmented publication, split-plane segmented
    publication, segmented-wide publication, wide-remainder-matrix, and
    segmented-wide-matrix zero-drain cases plus the payload-control wide nonzero-drain
@@ -808,21 +806,18 @@ The next work should follow dataflow, not isolated handlers:
    `1` and `9`, and renders bucket word `9` through `0x1ed84`/`0x1ef6a` to two `0x1f1f0`
    segment-1 rows. The downloaded-glyph row-count matrix now adds short rows `0x01`,
    `0x02`, `0x03`, `0x04`, `0x05`, `0x06`, `0x07`, `0x08`, `0x09`, `0x0a`, `0x0b`,
-   `0x0c`, `0x0d`, `0x0e`, `0x0f`, `0x10`, `0x11`, `0x12`, `0x13`, `0x14`,
-   `0x15`, `0x16`, `0x17`, `0x18`, `0x19`, `0x1a`, `0x1b`, `0x1c`, `0x1d`,
-   `0x1e`, `0x1f`, `0x3e`, `0x3f`, `0x41`, `0x42`, and `0x7f` on selector
-   `0x0003`/bucket `1`, plus segmented rows `0x83`, `0x84`, `0x85`, `0x86`,
-   `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff` on selector
-   `0x2003`/buckets `1` and `9`, all through printable+FF, `0xff1e`, and
-   `0x1ed84`/`0x1ef6a`; published row counts are `7`, `8`, `9`, `10`, `11`, `12`, `13`,
-   `14`, `15`, `16`, `17`, `18`, `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`,
-   `27`, `28`, `29`, `30`, `31`, `32`, `33`, `34`, `35`, `36`, `37`, `64`, `64`,
-   `64`, `64`, `64`, `9`, `10`, `11`, `12`, `16`, `16`, `16`, `16`, `16`, and `16`.
-   All forty-six row-count
-   matrix cases now also pin
-   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with copy status `1`, `0x783140 = 0`,
-   zero drained bytes, and next handler `0xd04a`. The `0x16498`
-   replacement/allocation-failure/partial/reject
+   `0x0c`, `0x0d`, `0x0e`, `0x0f`, `0x10`, `0x11`, `0x12`, `0x13`, `0x14`, `0x15`,
+   `0x16`, `0x17`, `0x18`, `0x19`, `0x1a`, `0x1b`, `0x1c`, `0x1d`, `0x1e`, `0x1f`,
+   `0x3e`, `0x3f`, `0x41`, `0x42`, and `0x7f` on selector `0x0003`/bucket `1`, plus
+   segmented rows `0x83`, `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`,
+   `0xfe`, and `0xff` on selector `0x2003`/buckets `1` and `9`, all through
+   printable+FF, `0xff1e`, and `0x1ed84`/`0x1ef6a`; published row counts are `7`, `8`,
+   `9`, `10`, `11`, `12`, `13`, `14`, `15`, `16`, `17`, `18`, `19`, `20`, `21`, `22`,
+   `23`, `24`, `25`, `26`, `27`, `28`, `29`, `30`, `31`, `32`, `33`, `34`, `35`, `36`,
+   `37`, `64`, `64`, `64`, `64`, `64`, `9`, `10`, `11`, `12`, `16`, `16`, `16`, `16`,
+   `16`, and `16`. All forty-six row-count matrix cases now also pin `0x15dc6 -> 0x16498
+   -> 0x15dcc -> 0x12328` with copy status `1`, `0x783140 = 0`, zero drained bytes, and
+   next handler `0xd04a`. The `0x16498` replacement/allocation-failure/partial/reject
    fixture now has a high-row truncation matrix for rows `0x0101`, `0x0102`, and
    `0x0103`: `ESC )s#W` installs canonical records ending in row words `0x0101`,
    `0x0102`, and `0x0103`, but the printable page source exposes low row bytes `0x01`,

@@ -1331,13 +1331,14 @@ ROM work needed:
   downloaded glyph rule raster stream composes through 0x1ef6a` closes
   the page-stream side for the even-span rule/raster case, proves one
   54-byte `0xa904` ring fetch, and pins the
-  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` post-install drain, but still
-  supplies the page phase with
-  `bytearray(downloaded_wide_even_install["header"])` from the prior
-  install fixture. The precise remaining ROM-side edge is live memory
-  continuity: carrying the installed even-span `ESC )s18W` glyph image
-  from stream byte `24` directly into the following `0x10e68`
-  rectangle/page stream without that fixture handoff.
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` post-install drain, and consumes
+  `font_command_final_header` from the same host-fetched font-command helper as
+  the page memory image. The fixture asserts that this final header matches the
+  install event header and reports table pointer, record, and bitmap bytes. The
+  remaining edge is stronger live-68000 memory continuity: carrying the
+  installed even-span `ESC )s18W` glyph image from stream byte `24` directly into
+  the following `0x10e68` rectangle/page stream without the modeled helper
+  boundary.
 - Model the font-printout loop's emitted page objects from the ROM sample
   byte runs. The internal-font source group is decoded for both class passes
   and documented in `notes/resource-rom.md`: request index `0` fast-probes or
@@ -1425,11 +1426,10 @@ ROM work needed:
   buckets and through `0xff1e`, `0x1edc6`, `0x1ed84`, and `0x1ef6a`.
   The unresolved ROM-side continuity edge is not the segmented printable
   or FF publication stream; it is the even-span `ESC )s18W` rule/raster
-  composition case where the byte fetch and post-install drain are
-  already pinned, but the page phase still uses
-  `bytearray(downloaded_wide_even_install["header"])` instead of a live
-  CPU memory image captured at stream byte `24` and carried into the
-  following `0x10e68` handler.
+  composition case where the byte fetch, post-install drain, and modeled
+  `font_command_final_header` memory handoff are already pinned. The remaining
+  proof is a live CPU memory image captured at stream byte `24` and carried into
+  the following `0x10e68` handler.
 - Integrate executable row-copy behavior with real page objects from the
   parser/imaging path.
 - Broaden the documented printable and inline/downloaded `0x1393a` /

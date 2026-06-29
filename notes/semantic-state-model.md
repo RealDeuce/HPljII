@@ -5165,6 +5165,13 @@ Field groups:
   `f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99`. Consumer:
   `0x1393a` / `0x12f2e` during page-object production and compact renderer
   `0x1f0d2` after `0x1ef6a` dispatches target `0x1effe`.
+- Canonical modeled memory handoff: fixture
+  `parser-driven downloaded glyph rule raster stream composes through
+  0x1ef6a` uses the font-command helper's `final_header` as the parser-driven
+  page memory image and asserts it matches the install event header. The
+  reported image has table entry `0x00ee`, pointer bytes `00 00 07 80`, record
+  delta `0x0780`, the installed record bytes above, bitmap offset `0x078c`, and
+  the 18 copied bitmap bytes above.
 - Canonical page-record state: bucket `5` chain contains mode-0 raster object
   `00 00 00 00 80 00 00 02 00 00 c3 3c` followed by downloaded glyph object
   `00 00 00 00 10 03 00 01 29 06 01...`; rule list contains queued selector-7
@@ -5207,16 +5214,17 @@ Field groups:
   segmented downloaded-glyph plus raster stream, and outside the separate
   no-install/status-`2`, segmented-publication, and combined segmented-wide
   publication visible fixtures. The even-span page stream itself now drives
-  the glyph, rule, and raster producers together; the font payload install
-  still enters the page phase as a modeled resource image.
+  the glyph, rule, and raster producers together from a modeled `final_header`
+  memory handoff; the residual gap is a full live 68000 register/memory capture
+  across the same font/page boundary.
 
 The modeled resource image is now a pinned handoff, not an implicit fixture
-shortcut. The page-stream runner uses exactly
-`bytearray(downloaded_wide_even_install["header"])`, the header produced by the
-host-fetched `0x16c14` / `0x16498` install fixture. With that header, printable
-byte `0x29` resolves to glyph entry `0x0780`, bitmap `0x078c`, width `0x0090`,
-rows `1`, inline record `12 01 00`, and context slot `3` before `0x12f2e`
-queues selector `0x1003`.
+shortcut. The page-stream runner uses `font_command_final_header`, the final
+header returned by the host-fetched `0x16c14` / `0x16498` font-command helper,
+and asserts that it matches the install event header. With that header,
+printable byte `0x29` resolves to glyph entry `0x0780`, bitmap `0x078c`, width
+`0x0090`, rows `1`, inline record `12 01 00`, and context slot `3` before
+`0x12f2e` queues selector `0x1003`.
 
 The formerly unresolved address boundary is narrowed by ROM control flow.
 `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst` shows the
@@ -5284,9 +5292,9 @@ same raster object, dispatch targets, and composed row digest. High for
 segmented-glyph/raster FF publication because fixture `segmented downloaded
 glyph raster FF publications render page records` asserts the `0xff1e` bucket
 arrays, published bucket word, render dispatch, and digest equality with the
-active records. Confidence is
-medium for the live CPU memory handoff between the font-install phase and the
-page-stream phase.
+active records. Confidence is high for the modeled final-header handoff between
+the font-install phase and the page-stream phase; confidence remains medium for
+replacing that modeled handoff with a full live 68000 register/memory capture.
 
 ### Confidence
 
@@ -5586,12 +5594,11 @@ fields and every legal metric combination have not been page-compared.
   into font bytes `0..24` and page bytes `24..54`, with no remaining ring bytes.
   ROM control flow for the post-install drain is now documented at
   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` and its shared
-  `0x16c68 -> 0x12328` resource-side sibling. Remaining risk is the earlier
-  font-install-to-page memory handoff: the supplied memory image is named as
-  the exact
-  `bytearray(downloaded_wide_even_install["header"])` emitted by the
-  host-fetched `0x16c14` / `0x16498` install fixture, but it is still supplied
-  to the page-stream runner instead of captured from one live CPU memory run.
+  `0x16c68 -> 0x12328` resource-side sibling. The modeled
+  font-install-to-page memory handoff is now fixture-pinned as
+  `font_command_final_header`, including table pointer, record, and bitmap
+  bytes; remaining risk is only the stronger proof of capturing the same state
+  from one live CPU memory run.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both segmented
   buckets; the normal, non-boundary short, row-threshold `0x80`, rows-`0x20` short,
   rows-`0x40` short, linear-segmented, rows-`0x82` segmented, split-plane segmented,

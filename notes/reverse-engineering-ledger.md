@@ -43,7 +43,7 @@ Status: Anchored for ROM-visible memory/resource bounds and wait-object
 setup; physical config-signal names still need board correlation
 
 Evidence: [firmware-startup.md](firmware-startup.md) now decodes
-startup helpers `0x073a`, `0x08a2`, `0x08dc`, `0x0978`, `0x099e`,
+startup helpers `0x05ba`, `0x071c`, `0x073a`, `0x08a2`, `0x08dc`, `0x0978`, `0x099e`,
 `0x0b18`, `0x0b78`, `0x0c24`, `0x2feb6`, `0x3178`, and `0x31d6`.
 The semantic model checkpoint `Startup Memory Sizing And Scheduler
 Bootstrap` groups startup fields `0x780e5a`, `0x780e60`, `0x780efa`,
@@ -51,9 +51,12 @@ Bootstrap` groups startup fields `0x780e5a`, `0x780e60`, `0x780efa`,
 eight wait-object records `0x780182..0x780262`, render-work selector
 seeds, host byte-source buffers, and interface-output FIFO fields into
 canonical, derived/cache, firmware bookkeeping, and unknown state.
-Remaining startup work is the optional board/config helper
-`0x05ba..0x071a`, later callees `0x071c` and `0x2c84`, and physical
-naming for the startup MMIO/config inputs.
+The optional board/config helper is now classified too: `0x071c` writes
+`0x780e4c` from `$ff8000`, `0x02b2` tests `0x780e4c.3`, and `0x05ba`
+samples `$8c01 >> 3` twelve times through probe addresses derived from
+`0x19a78`. Remaining startup work is callee `0x2c84` where it overlaps
+default-environment loading, plus physical naming for the startup
+MMIO/config inputs.
 
 ### Extension probing
 

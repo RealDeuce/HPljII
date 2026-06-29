@@ -106,11 +106,20 @@ The second initialization phase starts at `0x0240`:
   the RAM trampoline table through `0x0298`, probes optional `PROG`
   extension signatures through `0x03e8`, calls `0x071c`, derives
   board/config memory defaults through `0x02b2`, and calls `0x2c84`.
+- `0x071c` reads word `$ff8000`, inverts it, extracts bits `0x0f00`, shifts
+  them down, and stores the resulting nibble in `0x780e4c`.
 - `0x02b2..0x031e` derives startup memory-size fields. It writes
   `0x780e59` from `$8000.5`, initializes `0x780e5a = 0x20` and
-  `0x780e60 = 6`, reads `$8c01 >> 3`, optionally calls `0x05ba`, and
-  adds `0x80`, `0x40`, or `0x100` to `0x780e5a` for selected
-  nonzero/strap values.
+  `0x780e60 = 6`, reads `$8c01 >> 3`, optionally calls `0x05ba` when
+  `0x780e4c.3` is clear, and adds `0x80`, `0x40`, or `0x100` to
+  `0x780e5a` for selected nonzero/strap values.
+- `0x05ba` is the optional startup config probe. It reconstructs an encoded
+  probe word through `0x19a78`, uses constants `0xd6`, `0x50`, `0xad`, and
+  the reconstructed byte as four `$800000 + 2 * value` probe addresses,
+  samples `$8c01 >> 3` twelve times into a 24-bit shift register, decodes a
+  selector through the lookup table at `0x070c`, and returns either low-two
+  bits or `-1`. `0x02b2` masks that result with `3` before deciding whether
+  to add `0x80`, `0x40`, `0x100`, or no increment to `0x780e5a`.
 - `0x0320..0x038c` calls `0xa16a`, acknowledges interrupt/status
   registers through `0x0336`, then calls allocator/reset helpers
   `0x164a`, `0x2feb6`, `0x3178`, and `0x31d6`.
@@ -334,10 +343,10 @@ before treating any startup defaults as fixed.
 - Name each MMIO address touched before `0x00000400`.
 - Correlate the now-classified copied trampoline entries with the physical
   IRQ/MMIO sources that select each RAM stub.
-- Follow remaining startup callees `0x000005ba..0x0000071a`,
-  `0x0000071c` and `0x00002c84`. Startup helpers `0x0000073a`, `0x000008a2`,
+- Follow remaining startup callee `0x00002c84`. Startup helpers
+  `0x000005ba`, `0x0000071c`, `0x0000073a`, `0x000008a2`,
   `0x000008dc`, `0x00000978`, `0x00000b18`, and `0x00000c24` are now
-  documented as memory/resource/scheduler setup; startup helpers
+  documented as config/memory/resource/scheduler setup; startup helpers
   `0x0002feb6`, `0x00003178`, and `0x000031d6` are now documented as
   render-work and byte/status-buffer setup.
 - Extend the `HEAD`/`0x000000be` record model beyond the verified

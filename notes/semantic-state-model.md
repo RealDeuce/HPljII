@@ -16,7 +16,7 @@ address-control writes.
 
 Concept: reset first proves the small SRAM/scratch region at
 `0x00ffe000`, clears it, and installs RAM trampolines. Startup then uses
-`0x02b2`, `0x073a`, `0x08a2`, `0x08dc`, `0x0978`, `0x099e`,
+`0x02b2`, `0x05ba`, `0x071c`, `0x073a`, `0x08a2`, `0x08dc`, `0x0978`, `0x099e`,
 `0x0b18`, `0x0b78`, `0x0c24`, `0x2feb6`, `0x3178`, and `0x31d6` to
 derive formatter memory layout, validate address/resource windows, seed
 the heap allocator inputs, construct the wait-object scheduler records,
@@ -29,7 +29,7 @@ reproduction; they are not PCL parser scratch.
 - Canonical startup memory fields:
   - `0x780e5a`: formatter memory-size/code word. Reset helper
     `0x02b2` seeds it to `0x20` and may add `0x80`, `0x40`, or `0x100`
-    from `$8c01 >> 3` after the optional `0x05ba` call.
+    from `$8c01 >> 3` or the optional `0x05ba` decoded config result.
   - `0x780e60`: resource/window segment count. Reset helper `0x02b2`
     seeds it to `6`; `0x0b18` multiplies it by `0x4000` to derive the
     resource-window byte span.
@@ -76,6 +76,15 @@ reproduction; they are not PCL parser scratch.
     between work records `0x7820c4` and `0x782128`.
   - `0x7820c8` and `0x78212c` are cleared by `0x2feb6`; they are header
     words inside the two render work records.
+  - `0x780e4c`: startup config nibble. `0x071c` writes
+    `(~word($ff8000) & 0x0f00) >> 8`; `0x02b2` tests bit `3` to decide
+    whether to trust the direct `$8c01 >> 3` sample or call optional probe
+    `0x05ba`.
+  - `0x780ef4`, `0x780ef6`, and `0x780ef8`: encoded startup config probe
+    fields consumed by `0x19a78`. `0x19a78` reconstructs a byte-like probe
+    value by combining `0x780ef4 << 6` with a run-length/bit position
+    decoded from `0x780ef6:0x780ef8`; `0x05ba` uses that value as one of
+    four probe-address selectors.
 - Canonical startup byte and interface-output buffers:
   - host ring buffer: count `0x783e54`, read pointer `0x783e56`, write
     pointer `0x783e5a`, low-water threshold `0x783e5e`, sequence cursor
@@ -113,8 +122,11 @@ reproduction; they are not PCL parser scratch.
 
 ### Writers
 
+- `0x071c` writes startup config nibble `0x780e4c` from `$ff8000`.
 - `0x02b2..0x031e` writes `0x780e59`, `0x780e5a`, and `0x780e60` from
-  `$8000.5`, `$8c01 >> 3`, and the optional helper `0x05ba`.
+  `$8000.5`, `$8c01 >> 3`, `0x780e4c.3`, and optional helper `0x05ba`.
+- `0x05ba` writes no persistent startup state itself in the covered path; it
+  returns the low-two-bit decoded option or `-1` in `D7`.
 - `0x0266..0x027e` writes `0x7828fa`, `0x7828f9`, and `0x7828f6`.
 - `0x038e..0x03e6` writes timer dividers `0x78017f..0x780181`, output
   cursors `0x782900`/`0x7828fe`, and debounce bytes
@@ -146,6 +158,12 @@ reproduction; they are not PCL parser scratch.
   seeded by `0x038e`.
 - `0x1036`, `0x1064`, `0x108e`, `0x110c..0x11f8`, and `0x123a..0x1282`
   consume the wait-object records built by `0x0c24`.
+- `0x02b2` consumes `0x780e4c`, the direct `$8c01 >> 3` sample, and the
+  optional `0x05ba` result to choose the final `0x780e5a` increment.
+- `0x05ba` consumes the `0x19a78` reconstruction of
+  `0x780ef4`/`0x780ef6`/`0x780ef8`, writes probe words to four
+  `$800000 + 2 * value` addresses, samples `$8c01 >> 3` twelve times, and
+  decodes the result through table `0x070c`.
 - `0x073a` and its helpers consume `0x780e5a`, `0x780e60`,
   `0x783eee.7`, and the computed resource-window fields to choose which
   RAM/resource windows to test.
@@ -172,9 +190,11 @@ does not interpret host PCL bytes by itself.
 High for the default-path formulas and wait-object table shape: the
 disassembly gives direct writes and a fixed `0x15d0` table. High for
 `0x2feb6`, `0x3178`, and `0x31d6` initializer writes because the focused
-listings are straight-line stores. Medium for board/config
-interpretation of `$8000` and `$8c01`, because the branch effects are
-known but the physical signal names are not.
+listings are straight-line stores. High for the software-visible `0x071c`
+and `0x05ba` branch effects on `0x780e4c` and `0x780e5a`; medium for
+physical interpretation of `$8000`, `$ff8000`, `$8c01`, and the
+`$800000 + 2 * value` probe addresses, because the branch effects are known
+but the physical signal names are not.
 
 ### Fixtures
 
@@ -186,6 +206,12 @@ known but the physical signal names are not.
 
 - `generated/disasm/ic30_ic13_reset_000110.lst`: reset call sites and
   early SRAM test at `0x0110..0x03e8`.
+- `generated/disasm/ic30_ic13_startup_config_init_00071c.lst`:
+  `0x071c..0x0738` startup config-nibble sampler.
+- `generated/disasm/ic30_ic13_startup_config_probe_0005ba.lst`:
+  `0x05ba..0x071a` optional startup config probe.
+- `generated/disasm/ic30_ic13_startup_config_code_019a78.lst`:
+  `0x19a78..0x19b40` encoded probe-value reconstruction.
 - `generated/disasm/ic30_ic13_startup_memory_probe_00073a.lst`:
   `0x073a..0x0a0e` startup verifier and memory-test call graph.
 - `generated/disasm/ic30_ic13_startup_memory_tests_0008a2.lst`:
@@ -205,11 +231,8 @@ known but the physical signal names are not.
 
 ### Unresolved Middle Edges
 
-- `0x05ba..0x071a`: optional board/config helper called by `0x02b2`
-  still needs composition.
-- `0x071c` and `0x2c84`: startup callees remain outside this checkpoint
-  except where their downstream state is already covered by allocator,
-  host-input, or renderer notes.
+- `0x2c84`: startup callee remains covered in the default-environment
+  checkpoint rather than this startup-memory checkpoint.
 - Physical names for the startup MMIO/config inputs remain unresolved.
 
 ## Host Byte Fetch And Data-Chain Input

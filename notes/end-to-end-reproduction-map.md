@@ -497,9 +497,14 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    install-to-page handoff: host-fetched `ESC )s18W` produces the resource image
    consumed by the parser-driven page stream, including glyph `0x29`, table entry
    `0x00ee`, record delta `0x0780`, bitmap offset `0x078c`, and the 18 copied bitmap
-   bytes. That fixture now pins the normal return boundary after stream byte `24`:
-   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, copy status `1`, copy stream position
-   `18`, remaining `0x783140 = 0`, zero-byte drain, and next parser handler `0x10e68`.
+   bytes. The same fixture proves the byte source is one 54-byte `0xa904` ring fetch:
+   font bytes `0..24`, page bytes `24..54`, and no remaining ring bytes. ROM control
+   flow now narrows the post-install return boundary: disassembly
+   `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst` shows
+   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, where `0x15dcc` passes the remaining
+   `0x783140` count to `0x12328`; the fixture pins this instance with copy status `1`,
+   copy stream position `18`, remaining `0x783140 = 0`, zero-byte drain, and next parser
+   handler `0x10e68`.
    The no-install visible-output fixture pins the same return edges with
    `0x783140 = 6`, six drained rejected-payload bytes, and next handler `0xd04a`;
    the status-`2` partial-install fixture pins the linear/split returns with

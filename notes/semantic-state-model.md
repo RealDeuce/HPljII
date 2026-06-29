@@ -5190,18 +5190,26 @@ shortcut. The page-stream runner uses exactly
 host-fetched `0x16c14` / `0x16498` install fixture. With that header, printable
 byte `0x29` resolves to glyph entry `0x0780`, bitmap `0x078c`, width `0x0090`,
 rows `1`, inline record `12 01 00`, and context slot `3` before `0x12f2e`
-queues selector `0x1003`. The formerly unresolved address boundary is the
-live CPU continuation from the delayed install return at `0x16c14` / `0x16498`
-after stream byte `24` back into parser loop `0x11774`, where the next page
-byte starts the `0x10e68` rectangle handler; fixture `parser-driven
-downloaded glyph rule raster stream composes through 0x1ef6a` now pins that
-even-span boundary as `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, with copy
-status `1`, copy stream position `18`, remaining `0x783140 = 0`, a zero-byte
-`0x12328` drain, and next handler `0x10e68`. The split-plane, segmented,
-no-install, status-`2`, linear segmented, and split-plane segmented
-return-boundary siblings are covered by separate visible-output fixtures only
-where cited below. Fixture `combined font download FF publishes installed glyph
-page record` now also pins the segmented-wide sibling: copied record
+queues selector `0x1003`.
+
+The formerly unresolved address boundary is narrowed by ROM control flow.
+`generated/disasm/ic30_ic13_font_payload_setup_015b80.lst` shows the
+downloaded-character branch at `0x15dc2..0x15dcc`: it passes the current record
+to `0x16498` at `0x15dc6`, then falls through to `0x15dcc`, where it passes the
+remaining `0x783140` byte count to `0x12328`. The same listing sends
+bit-30-clear object handling through `0x16606` and continuation handlers
+`0x15b9a` / `0x15c4c`, then joins the same `0x15dcc -> 0x12328` drain.
+`generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst` has the
+nonzero `W` resource side's equivalent join at `0x16c68`, which passes
+`0x783140` to `0x12328` before returning. The even-span rule/raster fixture
+pins the downloaded-character instance of that shared join as
+`0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, with copy status `1`, copy stream
+position `18`, remaining `0x783140 = 0`, a zero-byte `0x12328` drain, and next
+handler `0x10e68`. The split-plane, segmented, no-install, status-`2`, linear
+segmented, and split-plane segmented return-boundary siblings are covered by
+separate visible-output fixtures only where cited below. Fixture `combined font
+download FF publishes installed glyph page record` now also pins the
+segmented-wide sibling: copied record
 `00 00 00 00 0c 02 00 81 00 88 00 00`, table entry `0x00de`, bitmap size
 `0x0891`, copy status `1`, copy stream position `0x0891`, remaining
 `0x783140 = 0`, zero-byte `0x12328` drain, and next handler `0xd04a` for the
@@ -5550,8 +5558,11 @@ fields and every legal metric combination have not been page-compared.
   `0x105d0` / `0x13070` raster transfer into one bucket-5 render entry.
   The byte source is continuous: the same 54-byte `0xa904` ring fetch is split
   into font bytes `0..24` and page bytes `24..54`, with no remaining ring bytes.
-  Remaining risk is the earlier font-install-to-page memory handoff: the
-  supplied memory image is now named as the exact
+  ROM control flow for the post-install drain is now documented at
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` and its shared
+  `0x16c68 -> 0x12328` resource-side sibling. Remaining risk is the earlier
+  font-install-to-page memory handoff: the supplied memory image is named as
+  the exact
   `bytearray(downloaded_wide_even_install["header"])` emitted by the
   host-fetched `0x16c14` / `0x16498` install fixture, but it is still supplied
   to the page-stream runner instead of captured from one live CPU memory run.

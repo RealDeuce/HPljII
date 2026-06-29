@@ -353,6 +353,17 @@ absolute value, and calls `0x12328`. `0x12328` consumes that many bytes through
 `0xdace`. It returns `D7 = -1` if `0xdace` reports `-1`; otherwise it returns `D7 = 1`
 when the count has been consumed.
 
+The downloaded-font delayed handlers use the same drain contract after their
+own install work. In `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
+`0x15d0a` stores the absolute count in `0x783140`, follows bit-30
+downloaded-character records through `0x15dc6 -> 0x16498`, then falls through
+to `0x15dcc`, where it passes the remaining `0x783140` value to `0x12328`.
+The alternate `0x15b9a`, `0x15c4c`, and `0x16606` branches also join the same
+`0x15dcc -> 0x12328` drain before returning. In
+`generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`, nonzero
+`ESC )s#W` resource installs converge on `0x16c68`, which likewise calls
+`0x12328` with `0x783140` before returning to the parser loop.
+
 `0x12358` is the alternate/data-mode path. If the saved handler pointer equals the
 argument passed to `0x12358`, it calls `0x1228a`. Otherwise it consumes a positive count
 through `0xdace` and echoes each normalized byte through `0xe002`.

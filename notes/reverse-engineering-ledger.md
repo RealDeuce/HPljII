@@ -98,9 +98,14 @@ initializes `0x783ed2` / `0x783ed4` / `0x783ed8`; `0xb0c0`, `0xb090`,
 and `0xb022` enqueue, block/yield on `0x7801e2`, and dequeue; worker
 `0xae2c` drains bytes through mode-0 helper `0xa1b0` to `0xfffe0003`,
 discards them in mode `1`, or sends them through `0xa1d6` to
-`0xfffee003` in other nonzero modes. Remaining work is protocol naming
-for the `0x12280` response bytes and physical naming/timing for the
-output MMIO banks.
+`0xfffee003` in other nonzero modes. The mode-0 status path now pins
+`0xaece..0xaf74`: bridge service sends literal `0x13`, and pending
+status sends base `0x30` plus bits from `0x780e12`, `0x780e90`,
+`0x780e2a`, `0x780e0a`, and `0x783e60`; producers are bounded to
+`0xa8c8`, `0xa6cc`, and aggregate helper `0x36e4`. Remaining work is
+protocol naming for the `0x12280` response bytes, user-facing names for
+the folded status categories, and physical naming/timing for the output
+MMIO banks.
 
 ### Main PCL parser
 

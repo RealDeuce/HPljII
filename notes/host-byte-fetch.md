@@ -330,6 +330,26 @@ drains bytes according to interface selector `0x780e40`:
   the output register is ready. Status bits `0xfffee005.7` and
   `0xfffee005.6` OR `0x80` or `0x40` into `0x780e2e`.
 
+In mode `0`, `0xaece` also builds outbound status bytes. If
+`0x783e61` is set, it first tries to send literal byte `0x13` through
+`0xa1b0`; on success it writes `0x780e62 = 0x13` and clears
+`0x783e61`. If pending status count `0x780e22` is nonzero, it builds a
+status byte from base `0x30`: `0x780e12` or `0x780e90` sets bit 0,
+`0x780e2a` sets bit 1, `0x780e0a` sets bit 2, and `0x783e60` is ORed
+into the byte. Only after `0xa1b0` accepts that byte does the firmware
+clear `0x783e60` and decrement `0x780e22`.
+
+The observed producers are bounded. `0xa8c8` increments `0x780e22` and
+signals wait object `0x7801e2` when sequence dispatch is enabled by
+`0x780e42`; overflow instead ORs `0x2` into `0x780e2e`, restores the
+count, and signals `0x780202`. The bridge path `0xa6cc` sets
+`0x783e61`, writes service reason `0x783e60 = 8` on full/status cases,
+and ORs low-water bit `0x2` into `0x780e2a`. Status aggregate helper
+`0x36e4` derives `0x780e12 = 0x780e32 | 0x780e2e | 0x780e36`,
+`0x780e0e = 0x780e12 | 0x780e2a`, and
+`0x780e0a = 0x780e68 | 0x780e12`, then mirrors nonzero `0x780e0a` as
+byte `0xff` in `0x780e68`.
+
 This FIFO is host/interface backchannel state, not input state and not a
 page-object field. Its pixel-reproduction risk is indirect: a full FIFO
 can stall the parser-side enqueue caller through `0xb090`, and a
@@ -498,11 +518,15 @@ Disassembly evidence:
   `0xa904..0xab8a`.
 - `generated/disasm/ic30_ic13_interface_output_mmio_00a1b0.lst`:
   `0xa1b0..0xa23c` mode-0 and alternate-mode output-register writes.
+- `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`:
+  `0x36e4..0x37fa` status aggregate fields used by outbound status
+  bytes.
 - `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`:
-  `0xa6cc..0xa810` bridge behavior and `0xa846..0xa8c8` ring/sequence
-  helpers.
+  `0xa6cc..0xa810` bridge behavior and `0xa846..0xa902` ring, sequence,
+  and pending-status helpers.
 - `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`:
-  `0xae2c..0xaf2c` interface-output wait-object worker and mode split.
+  `0xae2c..0xaf7a` interface-output wait-object worker, status-byte
+  builder, and mode split.
 - `generated/disasm/ic30_ic13_host_output_retry_00af7c.lst`:
   `0xaf7c..0xb020` output retry loops.
 - `generated/disasm/ic30_ic13_host_output_fifo_00b022.lst`:

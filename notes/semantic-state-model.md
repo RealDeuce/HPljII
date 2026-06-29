@@ -479,14 +479,31 @@ pending, and drains queued bytes to the interface selected by
   `generated/disasm/ic30_ic13_host_output_retry_00af7c.lst`.
 - Derived/cache interface status:
   - `0x780e22`: pending status count checked by `0xae2c` and consumed by
-    `0xaece`; status byte base `0x30` is combined with bits derived from
-    `0x780e12`, `0x780e90`, `0x780e2a`, `0x780e0a`, and `0x783e60`.
+    `0xaece`. `0xa8c8` increments it when sequence dispatch is enabled
+    by `0x780e42`; overflow ORs `0x2` into `0x780e2e`, restores the
+    count, and signals wait object `0x780202`.
   - `0x783e61`: bridge-service byte checked by `0xae2c` and cleared by
     `0xaece` after byte `0x13` is accepted by `0xa1b0`.
   - `0x780e62`: last accepted status byte from `0xaece`; observed writes
     are `0x13` and the status byte assembled from `0x780e22`.
+  - `0x783e60`: status reason byte ORed into the outbound base `0x30`
+    status byte by `0xaece`; `0xa6cc` writes `8` on full/status bridge
+    cases, and `0xaece` clears it after a successful `0xa1b0` send.
+  - `0x780e12`: aggregate error/status longword written by `0x36e4` as
+    `0x780e32 | 0x780e2e | 0x780e36`.
+  - `0x780e0e`: aggregate warning/error longword written by `0x36e4` as
+    `0x780e12 | 0x780e2a`.
+  - `0x780e0a`: aggregate active status longword written by `0x36e4` as
+    `0x780e68 | 0x780e12`; `0x36e4` mirrors nonzero status back into
+    byte `0x780e68 = 0xff`.
+  - `0x780e90`: page/pool-side status byte set by the `0x2888..0x2a80`
+    family and consumed by the outbound status byte formula.
+  - `0x780e2a`: warning/status accumulator; `0xa6cc` ORs bit `1` on
+    low-water bridge capacity, and `0x36e4` folds it into `0x780e0e`.
   - `0x780e2e`: alternate-mode status accumulator updated by `0xa1d6`
-    from `0xfffee005.7` and `0xfffee005.6`.
+    from `0xfffee005.7` and `0xfffee005.6`; other bridge and interface
+    paths also OR status bits into it before `0x36e4` folds it into
+    `0x780e12`.
 - Parser scratch:
   - none owned by the FIFO. The observed producer at
     `0x122be..0x12326` consumes parser/resource-payload scratch around
@@ -520,6 +537,12 @@ pending, and drains queued bytes to the interface selected by
   `0x780e62` after a status byte is accepted by `0xa1b0`.
 - `0xa1d6` ORs `0x80` or `0x40` into `0x780e2e` when alternate output
   status bits `0xfffee005.7` or `0xfffee005.6` are set.
+- `0xa8c8` increments pending status count `0x780e22` and signals
+  `0x7801e2` when `0x780e42` enables sequence-dispatch status output.
+- `0xa6cc` writes `0x783e61`, `0x783e60`, `0x780e2a`, and `0x780e2e`
+  on bridge low-water, full-buffer, and status-service paths.
+- `0x36e4` derives `0x780e12`, `0x780e0e`, `0x780e0a`, `0x780e68`, and
+  `0x780e1a` from the current warning/error/status accumulators.
 
 ### Readers And Consumers
 
@@ -530,6 +553,10 @@ pending, and drains queued bytes to the interface selected by
 - `0xae2c` is the `0x7801e2` worker. It sleeps through `0x10d0(0x15)`
   only when `0x783ed2`, `0x780e22`, and `0x783e61` are all zero, then
   drains or discards FIFO bytes according to `0x780e40`.
+- `0xaece` consumes `0x783e61` and `0x780e22` in mode `0`. It sends
+  literal `0x13` for bridge service, then builds a status byte from
+  base `0x30`: `0x780e12` or `0x780e90` sets bit 0, `0x780e2a` sets
+  bit 1, `0x780e0a` sets bit 2, and `0x783e60` is ORed into the byte.
 - `0xaf7c` consumes FIFO bytes in mode `0` and writes them through
   `0xa1b0` to `0xfffe0003`.
 - `0xafcc` consumes FIFO bytes in alternate nonzero mode and writes them
@@ -565,9 +592,16 @@ literal bytes.
 - `generated/disasm/ic30_ic13_startup_status_ring_init_0031d6.lst`:
   `0x31d6..0x31f6` FIFO initialization.
 - `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`:
-  `0xae2c..0xaf2c` wait-object worker, status send path, and mode split.
+  `0xae2c..0xaf7a` wait-object worker, status send path, status-byte
+  builder, and mode split.
 - `generated/disasm/ic30_ic13_interface_output_mmio_00a1b0.lst`:
   `0xa1b0..0xa23c` mode-0 and alternate-mode output-register helpers.
+- `generated/disasm/ic30_ic13_interface_status_aggregate_0036e4.lst`:
+  `0x36e4..0x37fa` status aggregate fields used by the outbound status
+  byte formula.
+- `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`:
+  `0xa6cc..0xa902` bridge, sequence, service-reason, and pending-status
+  producers.
 - `generated/disasm/ic30_ic13_host_output_retry_00af7c.lst`:
   `0xaf7c..0xb020` output retry loops.
 - `generated/disasm/ic30_ic13_host_output_fifo_00b022.lst`:
@@ -581,10 +615,13 @@ literal bytes.
 
 - `0x122be..0x12326`: producer control flow is bounded, but the protocol
   meaning of `0x11` plus record word `+2 == 1` or `-1` remains unnamed.
-- `0xaece..0xaf74`: status-byte construction is decoded, but the
-  user-visible meanings of `0x780e22`, `0x780e12`, `0x780e90`,
-  `0x780e2a`, `0x780e0a`, and `0x783e60` need a separate interface
+- `0x2888..0x2a80`: `0x780e90` producer side is bounded, but its
+  user-visible paper/page-status meaning needs a separate page-pool
   status checkpoint.
+- `0x36e4..0x37fa`: aggregate formulas are pinned, but physical or
+  user-facing names for `0x780e32`, `0x780e36`, `0x780e2e`,
+  `0x780e2a`, and their folded status categories remain board/manual
+  correlation work.
 - `0xa1b0` and `0xa1d6`: register readiness and byte writes are pinned,
   but physical interface names and timing remain board-level work.
 

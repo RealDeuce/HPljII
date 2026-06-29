@@ -8218,6 +8218,11 @@ proves startup bulk load and active-record failure reporting through
 - `tools/render_fixture_harness.py`: `0xc1c6 displays pending external-ready
   message` covers the no-status branch where `0x782301 == 1` displays buffer
   `0x782312` through `0x8c7a`, clears `0x782301`, and returns `D7 = 0`.
+- `tools/render_fixture_harness.py`: `0xbb0a external-ready teardown ignores
+  scheduler return` covers the loop tear-down handoff
+  `0xc06e -> 0xc108 -> 0x19dd2 -> 0x36e4`: scheduler `D7` values `0` and `1`
+  are recorded but ignored by the caller, and final byte `0x780e08` is written
+  from the following `0x36e4` aggregate result.
 - No harness fixture currently executes the full `0xba48` loop, drives
   `$fffee00b` through the outer live-condition transition, or runs
   `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0` as one continuous upstream NVRAM
@@ -8262,11 +8267,12 @@ proves startup bulk load and active-record failure reporting through
 - `external-ready hardware registers -> board-level device`: the ROM-visible
   register traffic is bounded, but the physical device and pin-level meaning of
   `$fffee00*`, `$a200`, and `$a801` are not identified.
-- `0xba48 -> normal rendering`: the loop exits through `0xc108`, `0x19dd2`,
-  and `0x36e4`. The `0x19dd2` scheduler handoff is now bounded in
-  `Page/Font Scheduler Handoff`, but no fixture proves how a modeled
-  external-ready session resumes host parsing or whether it can perturb page
-  state.
+- `0xba48 -> normal rendering`: the loop exit sequence
+  `0xc108 -> 0x19dd2 -> 0x36e4` is now fixture-backed at the caller contract:
+  scheduler side effects may perturb page/font state, but scheduler `D7` is not
+  consumed before the status aggregate writes `0x780e08`. Remaining work is a
+  full live loop execution with physical `$fffee00b` transition, not the ROM
+  caller handoff.
 
 ## Page/Font Scheduler Handoff
 
@@ -8543,6 +8549,10 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
   host-side caller contracts: `0x447a` ignores `D7`, while `0x4760` returns
   immediately for `D7 = 0` and enters the menu/default state setup path for
   `D7 != 0`.
+- Fixture `0xbb0a external-ready teardown ignores scheduler return` pins the
+  external-ready teardown caller: `0xc108 -> 0x19dd2 -> 0x36e4` records
+  scheduler side effects but does not consume scheduler `D7`; final
+  `0x780e08` comes from the following status aggregate.
 - No dedicated fixture currently executes `0x19dd2` from live 68000 state or
   from physical optional resource-window contents. The scratch construction and
   optional-window record in the fixture are modeled inputs.
@@ -8604,9 +8614,6 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
 - `0x1b9c0`: resource-record classifier return names are inferred only by the
   `0x1a0f2` branches here. Deeper classification belongs with the existing
   resource scanner notes.
-- `0x00bb16 -> 0x19dd2 -> 0x36e4`: external-ready teardown still lacks a
-  single fixture proving whether `0x19dd2` can perturb page/font state during
-  a modeled external session.
 - `0x01a3c2 -> 0x19dd2`: font-resource scan caller is not yet composed with
   the predicate and status paths here.
 

@@ -89,8 +89,11 @@ the board-facing boundary is tracked in
   semantic checkpoints. Fixture `0x447a/0x4760 consume scheduler return
   differently` now pins the host-quiesce caller contract: `0x447a` ignores
   `D7`, while `0x4760` returns immediately for `D7 = 0` and enters menu/default
-  state setup for `D7 != 0`. External-ready and font-resource-scan caller
-  contexts remain open.
+  state setup for `D7 != 0`. Fixture `0xbb0a external-ready teardown ignores
+  scheduler return` pins the external-ready caller contract:
+  `0xc108 -> 0x19dd2 -> 0x36e4` ignores scheduler `D7` and writes `0x780e08`
+  from the following status aggregate. The font-resource-scan caller context
+  remains open.
 - Parser byte and command records:
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
   Reproduction evidence is `generated/analysis/ic30_ic13_parser_xrefs.md`

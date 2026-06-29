@@ -1308,9 +1308,12 @@ ROM work needed:
   host-quiesce caller contract is now fixture-backed too:
   `0x447a/0x4760 consume scheduler return differently` proves `0x447a` ignores
   scheduler `D7`, while `0x4760` returns immediately for `D7 = 0` and writes
-  menu/default state for `D7 != 0`. The remaining scheduler-specific edge is
-  live optional-window execution from physical resource-window contents before
-  external-ready or font-resource-scan callers resume.
+  menu/default state for `D7 != 0`. Fixture `0xbb0a external-ready teardown
+  ignores scheduler return` proves the external-ready teardown runs
+  `0xc108 -> 0x19dd2 -> 0x36e4`, ignores scheduler `D7`, and writes
+  `0x780e08` from the aggregate result. The remaining scheduler-specific edge
+  is live optional-window execution from physical resource-window contents
+  before the font-resource-scan caller resumes.
   Startup retained-record bulk load is now bounded through
   `0x5a16 -> 0x97e4`, and invalid active-record state reports `67 SERVICE`
   through `0x56c2 -> 0x1284`; a ROM edge from failed startup load into the

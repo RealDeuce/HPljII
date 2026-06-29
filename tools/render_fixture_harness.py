@@ -240,6 +240,28 @@ def external_status_publish_via_c0ae(initial: dict[str, object]) -> dict[str, ob
     return {"d7": 0, "path": "clear", "events": events, "state": state}
 
 
+def external_ready_teardown_via_bb0a(
+    *,
+    scheduler_d7: int,
+    aggregate_d7_36e4: int,
+    c108_path: str = "final-reset",
+) -> dict[str, object]:
+    return {
+        "path": "loop-teardown",
+        "scheduler_d7": int(scheduler_d7),
+        "scheduler_d7_consumed": False,
+        "aggregate_d7_36e4": int(aggregate_d7_36e4) & 0xFF,
+        "writes": {"0x780e08": int(aggregate_d7_36e4) & 0xFF},
+        "events": [
+            {"helper": 0xC06E},
+            {"helper": 0xC108, "path": c108_path},
+            {"helper": 0x19DD2, "d7": int(scheduler_d7)},
+            {"helper": 0x36E4, "d7": int(aggregate_d7_36e4) & 0xFF},
+        ],
+        "return": "rts",
+    }
+
+
 def external_service_dispatch_via_c1c6(initial: dict[str, object]) -> dict[str, object]:
     state = dict(initial)
     events: list[dict[str, object]] = []
@@ -24821,6 +24843,50 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "path": "display-pending-message",
         "events": [{"helper": 0x8C7A, "source": 0x782312}],
         "message_pending_782301": 0,
+    }))
+
+    external_teardown_scheduler_zero = external_ready_teardown_via_bb0a(
+        scheduler_d7=0,
+        aggregate_d7_36e4=0x12,
+        c108_path="status-clear",
+    )
+    external_teardown_scheduler_one = external_ready_teardown_via_bb0a(
+        scheduler_d7=1,
+        aggregate_d7_36e4=0x34,
+        c108_path="final-mark",
+    )
+    checks.append(assert_equal("0xbb0a external-ready teardown ignores scheduler return", {
+        "scheduler_zero": external_teardown_scheduler_zero,
+        "scheduler_one": external_teardown_scheduler_one,
+    }, {
+        "scheduler_zero": {
+            "path": "loop-teardown",
+            "scheduler_d7": 0,
+            "scheduler_d7_consumed": False,
+            "aggregate_d7_36e4": 0x12,
+            "writes": {"0x780e08": 0x12},
+            "events": [
+                {"helper": 0xC06E},
+                {"helper": 0xC108, "path": "status-clear"},
+                {"helper": 0x19DD2, "d7": 0},
+                {"helper": 0x36E4, "d7": 0x12},
+            ],
+            "return": "rts",
+        },
+        "scheduler_one": {
+            "path": "loop-teardown",
+            "scheduler_d7": 1,
+            "scheduler_d7_consumed": False,
+            "aggregate_d7_36e4": 0x34,
+            "writes": {"0x780e08": 0x34},
+            "events": [
+                {"helper": 0xC06E},
+                {"helper": 0xC108, "path": "final-mark"},
+                {"helper": 0x19DD2, "d7": 1},
+                {"helper": 0x36E4, "d7": 0x34},
+            ],
+            "return": "rts",
+        },
     }))
 
     fifo_wrap_state = interface_output_fifo_state(

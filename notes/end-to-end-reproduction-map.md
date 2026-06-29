@@ -539,11 +539,15 @@ The next work should follow dataflow, not isolated handlers:
    font-derived HMI refresh through `0xcbd4`, parser/data-chain reset through
    `0xe146`, valid-page publication fixtures, missing-root reset fixtures, and
    addressed compact-bucket publication through `0x1387c`/`0x1381c`. The
-   remaining middle edge is not the software-reset consumer path. It is the
-   producer side for defaults `0x78219d`, `0x78219e`, and `0x7821a2`: exact ROM
-   writers from panel reset, cold reset, NVRAM/user defaults, or factory-default
-   fallback remain unknown. Continue from those default bytes outward, not by
-   re-tracing `ESC E`.
+   reset-consumed defaults through `Default Environment Record Producers`: the
+   selected `0x780eda` backing records feed `0x78219d`, `0x7821a2`, and
+   `0x78219e` through loader `0x5e80`, while menu/update handlers `0x5060`,
+   `0x50be`, and `0x52ba` update the same records and canonical defaults. The
+   remaining middle edge is not the software-reset consumer path or the
+   immediate default-byte writer. It is the retained-storage side that fills
+   `0x780eda` from panel reset, cold reset, NVRAM/user defaults, or
+   factory-default fallback. Continue from `0x780eda` outward, not by re-tracing
+   `ESC E`.
 2. Treat font metric-byte combinations as regression expansion unless a new
    state boundary appears. The selected-context bridge, metric consumers, downloaded
    descriptor/payload producer chain, and host-stream downloaded glyph output are now

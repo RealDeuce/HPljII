@@ -176,9 +176,12 @@ observe it. The two observed gate setters are now bounded as host-input
 quiesce/reset branches:
 
 - `0x4218..0x44d2` reaches the gate after setup helpers
-  `0x8c7a`, `0x5e80`, `0x5f96`, `0x2d46`, and `0xa16a`, clears service-needed
-  bit `0x7821cd.0`, waits through trap veneer `0x10d8(0x15)`, and then either
-  polls alternate direct status `0xfffee005.2` or takes the shared gate path.
+  `0x8c7a`, `0x5e80`, `0x5f96`, `0x2d46`, and `0xa16a`. The `0x5e80` and
+  `0x5f96` helpers refresh selected default records into canonical
+  environment bytes documented in `Default Environment Record Producers`, then
+  the branch clears service-needed bit `0x7821cd.0`, waits through trap veneer
+  `0x10d8(0x15)`, and either polls alternate direct status `0xfffee005.2` or
+  takes the shared gate path.
 - `0x61e4..0x6362` runs the same setup helper family, clears `0x7821cd.0`,
   waits through `0x10d8(0x15)`, and then enters the same gate path without the
   `0xfffee005.2` polling loop.

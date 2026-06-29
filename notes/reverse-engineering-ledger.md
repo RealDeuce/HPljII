@@ -358,7 +358,11 @@ environment-default writes, including four 0x6c-byte page/control records
 rooted at `0x780f02`, bucket backings at `0x7810bc + 0x400*n`, parser
 scratch `0x782a26`, cursor-stack top `0x782d36`, HMI `0x78315c`, reset VMI
 `0x783160`, line-termination byte `0x78318f`, and default inputs
-`0x78219d`/`0x78219e`/`0x7821a2`
+`0x78219d`/`0x78219e`/`0x7821a2`; semantic checkpoint
+`Default Environment Record Producers` now composes the immediate producer
+side from selected `0x780eda` records and menu/update handlers `0x5e80`,
+`0x5060`, `0x50be`, and `0x52ba` into those reset-consumed defaults, leaving
+only the earlier retained-storage writer into `0x780eda` unresolved
 
 ### PCL command map
 
@@ -1217,19 +1221,20 @@ Known from manuals:
 
 ROM work needed:
 
-- Continue locating producers of the default bytes consumed by `ESC E`.
-  Semantic checkpoint `ESC E Reset And Default Environment` now composes
-  `0xcc52 -> 0xcc70 -> 0xcda2` consumption of
-  `0x78219d`/`0x78219e`/`0x7821a2`, page/control pool rebuild, cursor-stack
-  reset, HMI/VMI recompute, line-termination clearing, raster reset, and
-  parser/data-chain reset; the remaining work is the exact
-  panel/power-on/NVRAM writer boundary for those defaults.
+- Continue locating retained-storage producers for `0x780eda` default
+  records. Semantic checkpoints `Default Environment Record Producers` and
+  `ESC E Reset And Default Environment` now compose the chain
+  `0x780eda -> 0x78219d/0x78219e/0x7821a2 -> 0xcda2`, including
+  page/control pool rebuild, cursor-stack reset, HMI/VMI recompute,
+  line-termination clearing, raster reset, and parser/data-chain reset; the
+  remaining work is the exact panel/power-on/NVRAM writer boundary into the
+  backing records.
 - Compare physical engine/self-test placement against the matched
   ROM/manual logical page and printable-area dimensions.
-- Trace panel reset, power-on reset, and NVRAM/user-default producer paths.
-  The `ESC E` software-reset consumer path is composed through handler
-  `0xcc52`, helper `0xcda2`, metric refresh `0xcbd4`, parser reset
-  `0xe146`, page finalizer `0xff1e`, and the reset fixtures.
+- Trace panel reset, power-on reset, and NVRAM/user-default producer paths
+  into `0x780eda`. The `ESC E` software-reset consumer path is composed
+  through handler `0xcc52`, helper `0xcda2`, metric refresh `0xcbd4`, parser
+  reset `0xe146`, page finalizer `0xff1e`, and the reset fixtures.
 - Cursor-stack push/pop, bounds, and restored-origin text output are now
   composed in `Text Cursor And Direct Controls`; remaining print
   environment work is reset/default provenance and primary/secondary font

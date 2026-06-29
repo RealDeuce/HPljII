@@ -7405,6 +7405,153 @@ because each is fixture-pinned.
   commands, but physical-device comparison remains outside the ROM-internal
   reproduction contract.
 
+## Default Environment Record Producers
+
+Status: composed for the RAM record and menu/update producer side that feeds
+the `ESC E` reset defaults. This closes the immediate producer edge for
+`0x78219d`, `0x78219e`, and `0x7821a2`: they are copied from selected records
+under `0x780eda`, with update handlers that write both the backing record and
+the canonical default byte/word. The remaining provenance edge is one level
+earlier: how cold reset, panel reset, NVRAM load, or factory fallback populate
+the `0x780eda` record set.
+
+Concept: control-panel/user-default state is represented as compact records
+selected by `0x7822d5`. The ROM scales that selector through `0x332ee(..., 3)`
+and uses `0x780eda + 2*scaled_index` as the active record base. Loader
+`0x5e80` copies fields from that record into reset-consumed defaults, while
+menu/update handlers around `0x4fb0` rewrite individual fields and mark dirty
+state under `0x780eba..0x780ebe`.
+
+### Field Groups
+
+- Canonical default outputs:
+  - `0x78219d`: display/page default byte. `0x5e80` loads it from staged byte
+    `0x782283`; handler `0x5060` writes the same byte after updating the
+    selected record.
+  - `0x7821a2`: paper/environment default byte. `0x5e80` derives it from
+    selected-record byte `+5` bit 2 as `0x80` or `0`; handler `0x50be` writes
+    the same derived byte after updating that bit.
+  - `0x78219e`: default line-spacing word. `0x5e80` copies selected-record word
+    `+2`; handler `0x52ba` writes a clamped value through `0xcf52` back to
+    record `+2` and to `0x78219e`.
+  Evidence: `generated/disasm/ic30_ic13_default_env_load_005e80.lst` and
+  `generated/disasm/ic30_ic13_default_env_menu_update_004fb0.lst`.
+- Canonical backing records:
+  - active record base: `0x780eda + 2*scaled(0x7822d5)`, where the scaling is
+    helper `0x332ee` with argument `3`.
+  - record byte `+0`: source for `0x782280` and low byte `0x782283`, then
+    canonical default `0x78219d`.
+  - record word `+2`: source for staged line spacing `0x782290` and canonical
+    word `0x78219e`.
+  - record byte `+5`: bit 2 drives staged long `0x782284` and canonical byte
+    `0x7821a2`; low two bits also feed adjacent default byte `0x78219b`.
+  Evidence: `0x5e80..0x5f62`, `0x5060..0x511c`, and `0x52ba..0x5312`.
+- Derived/cache state:
+  - `0x782280`, `0x782284`, `0x782288`, `0x78228c`, `0x782290`,
+    `0x782294`, and `0x782298`: staged menu/default values loaded by
+    `0x5e80` and `0x5f96`.
+  - `0x7821a3`: `0x87 + (record byte +4 low nibble)`, copied to `0x780e97`.
+  - `0x7821a0`: table-derived word selected from `0x1df70` by high bits of
+    `0x780eec` in `0x5f96` and updated by `0x533a`.
+  Evidence: `generated/disasm/ic30_ic13_default_env_load_005e80.lst`.
+- Parser/menu scratch:
+  - `0x7822274`: menu/handler table pointer used by `0x4fb0` to dispatch the
+    current selection update through the longword at offset `+0x12`.
+  - `0x7822278`: current menu/default selector index.
+  - `0x782227c`: current candidate value compared against staged values.
+  - `0x7822d5`: selected default-record bank/index consumed by both the load
+    and update handlers.
+  Evidence: `0x4fb0..0x5014`, `0x5060..0x50ba`, `0x50be..0x514c`,
+  `0x52ba..0x5338`, and `0x5e80..0x5f62`.
+- Firmware bookkeeping:
+  - `0x780eba`, `0x780ebc`, and `0x780ebe`: per-selected-record dirty/change
+    words set by the handlers after updating record fields.
+  - `0x780e55`: set to `2` by `0x5e80` after the form/line default refresh.
+  - `0x780e97`: receives derived byte `0x7821a3`.
+  - `0x780eec`, `0x782294`, `0x782298`, and `0x780e41`: related panel/config
+    bitfield state loaded by `0x5f96` and updated by `0x533a..0x53be`.
+  Evidence: the two focused default-environment listings.
+- Unknown/provenance:
+  - the writer that initially fills `0x780eda` records from NVRAM, factory
+    defaults, or panel cold-reset logic remains unresolved.
+  - external names for each staged field are inferred from manual defaults and
+    consumers, but the exact panel menu labels are not yet assigned for every
+    record byte.
+
+### Writers
+
+- `0x5e80` loads canonical reset-consumed defaults from the selected
+  `0x780eda` record: `0x78219d`, `0x7821a2`, and `0x78219e`.
+- `0x5f96` loads adjacent staged/default bytes from the same selected-record
+  family, including `0x78219b`, `0x78219c`, `0x7821a0`, and `0x780e41`.
+- `0x4fb0` compares current candidate value `0x782227c` against staged
+  entries under `0x782280` and dispatches an update handler when the value
+  changes.
+- `0x5060` updates selected-record byte `+0`, writes `0x78219d`, and marks
+  `0x780eba`.
+- `0x50be` updates selected-record byte `+5` bit 2, writes `0x7821a2`, and
+  marks `0x780ebe`.
+- `0x52ba` updates selected-record word `+2`, writes `0x78219e`, and marks
+  `0x780ebc`.
+
+### Readers And Consumers
+
+- `0xcda2` consumes `0x78219d`, `0x7821a2`, and `0x78219e` during `ESC E`
+  reset/default environment rebuild.
+- `0xcc70` consumes `0x7821a2` for `0x780e8f` when `0x780e3c == 1`.
+- Paper-source handler `0xef62` consumes `0x7821a2` as its default fallback.
+- Host-input quiesce/reset branches `0x4218..0x44d2` and `0x61e4..0x6362`
+  call `0x5e80` and `0x5f96` before passing `0x7821a2` to `0x6b5c`.
+- HMI/VMI and orientation/page-geometry helpers consume `0x78219e` through
+  the same normalization helpers used by reset.
+
+### Output Effect
+
+After `0x5e80` or an individual update handler writes the canonical defaults,
+the next `ESC E` consumes those bytes through `0xcda2` and changes
+page/default environment state without re-reading the backing record. For
+pixel reproduction this means `0x78219d`, `0x7821a2`, and `0x78219e` are
+canonical runtime defaults, while `0x780eda` records are their retained or
+control-panel backing store inside ROM state.
+
+### Confidence
+
+High for the immediate RAM producer edge from `0x780eda` records to
+`0x78219d`, `0x7821a2`, and `0x78219e`, because the writes are direct in the
+focused disassembly windows. Medium for naming the record family as
+control-panel/user defaults, because callers and manual behavior support that
+role but the physical panel/NVRAM source is still not traced. Low for the
+earlier retained-storage edge into `0x780eda`.
+
+### Fixtures
+
+- None yet for this producer cluster. Existing reset fixtures consume the
+  resulting canonical defaults through `0xcda2`, but they do not execute
+  `0x5e80`, `0x5060`, `0x50be`, or `0x52ba`.
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_default_env_load_005e80.lst`: selected-record
+  load into staged defaults and canonical bytes.
+- `generated/disasm/ic30_ic13_default_env_menu_update_004fb0.lst`: change
+  detection and field-specific update handlers for `0x78219d`, `0x7821a2`,
+  and `0x78219e`.
+- `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`: caller path
+  that invokes `0x5e80` and `0x5f96` before host-input quiesce/reset tail.
+- `generated/disasm/ic30_ic13_host_input_quiesce_0061e4.lst`: sibling caller
+  path with the same setup helper family.
+
+### Unresolved Middle Edges
+
+- `NVRAM/factory/panel source -> 0x780eda`: the selected-record backing store
+  is now identified, but its retained-storage producer is not.
+- `0x780eda field names -> HP panel labels`: exact user-visible names remain
+  inferred except where consumers identify paper/default environment and
+  line-spacing behavior.
+- `0x5e80/0x4fb0 -> reset fixtures`: reset fixtures consume the canonical
+  defaults after setup, but no fixture yet executes the producer handlers and
+  then proves the changed reset output end to end.
+
 ## ESC E Reset And Default Environment
 
 Status: composed for the PCL software-reset command family. This checkpoint
@@ -7489,10 +7636,13 @@ paths that supply default bytes before `ESC E` consumes them.
   - `0x782a93` is cleared by the top-level `0xcc52` exit.
   Evidence: reset-flow state-reference scan and the listed disassembly files.
 - Unknown/provenance:
-  - the producer of defaults `0x78219d`, `0x78219e`, and
-    `0x7821a2` before `ESC E` remains unresolved.
-  - panel `07 RESET`, `09 MENU RESET`, cold reset, and NVRAM failure
-    paths are manual-known behavior but are not yet tied to ROM writers.
+  - producer checkpoint `Default Environment Record Producers` identifies
+    `0x780eda` records and menu/update handlers as the immediate writers for
+    defaults `0x78219d`, `0x78219e`, and `0x7821a2`; the earlier
+    retained-storage source into `0x780eda` remains unresolved.
+  - panel `07 RESET`, `09 MENU RESET`, cold reset, and NVRAM failure paths are
+    manual-known behavior but are not yet tied to ROM writers into
+    `0x780eda`.
   - exact physical page output after reset still needs device comparison;
     ROM-internal reset publication rows are fixture-backed.
 
@@ -7546,9 +7696,9 @@ High for `ESC E` handler order, page-root publication versus missing-root
 clearing, named reset writers, grouped RAM fields, and fixture-visible compact
 text publication. Medium for field naming where roles are inferred from reset
 side effects rather than external HP terminology. Low for the upstream
-default-provenance path, because the current evidence does not yet identify
-which panel, NVRAM, power-on, or factory-default routines write
-`0x78219d`, `0x78219e`, and `0x7821a2`.
+retained-storage path, because the current evidence does not yet identify
+which panel, NVRAM, power-on, or factory-default routines write the selected
+records under `0x780eda`.
 
 ### Fixtures
 
@@ -7578,12 +7728,13 @@ which panel, NVRAM, power-on, or factory-default routines write
 
 ### Unresolved Middle Edges
 
-- `0x78219d/0x78219e/0x7821a2 -> 0xcda2`: `ESC E` consumption is composed,
-  but the writers that load these defaults from factory tables, panel state,
-  or NVRAM remain unresolved.
-- `panel/cold-reset/NVRAM entry -> 0x78219d/0x78219e/0x7821a2`: manual notes
-  in `notes/control-panel-nvram-selftest.md` describe user-default behavior,
-  but ROM address boundaries for those producers are not yet known.
+- `0x780eda -> 0x78219d/0x78219e/0x7821a2 -> 0xcda2`: the immediate
+  producer/consumer chain is composed through `Default Environment Record
+  Producers`; the unresolved edge is earlier retained-storage provenance into
+  `0x780eda`.
+- `panel/cold-reset/NVRAM entry -> 0x780eda`: manual notes in
+  `notes/control-panel-nvram-selftest.md` describe user-default behavior, but
+  ROM address boundaries for those producers are not yet known.
 - `0xcc52..0x1ef6a`: ROM-internal publication/render output is fixture-backed
   for compact text, but physical-device page comparison remains outside this
   checkpoint.

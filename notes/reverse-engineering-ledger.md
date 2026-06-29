@@ -1308,10 +1308,16 @@ ROM work needed:
   final-`@` default-table primary and secondary visible streams, final-`X`
   built-in `ESC (7X!!`, final-`X` inline/downloaded `ESC )4660X SO !`,
   direct `0x17708` non-selected exits, and direct `0x13eb8` transient/cache-hit
-  no-dispatch exits with preserved visible output. Remaining work is broader
+  no-dispatch exits with preserved visible output. The same checkpoint now
+  includes the `0xc580` common-refresh branch cluster: dirty-1 first-clear,
+  full-live reuse, full-live/no-match, selector-mismatch, dirty-2
+  selector-match, and dirty-2 selector-mismatch outcomes are grouped into
+  canonical fields, derived branch state, writers, readers, output effect,
+  confidence, fixtures, and unresolved edges. Remaining work is broader
   font-selection fallback/error combinations that produce different state, and
   live parser/register continuity inside `0x13eb8` / `0x156de` / `0x14c64`
-  refresh paths, not the listed visible-output streams.
+  refresh paths, not the listed visible-output streams or the documented
+  `0xc580` branch choices.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.

@@ -707,8 +707,15 @@ The next work should follow dataflow, not isolated handlers:
    `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`; the cache-hit
    secondary path crosses SO and leaves following `!!` on prior context `0xc40ad87a`,
    object `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`, and digest
-   `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`. Remaining
-   font-selection work is broader variants that expose new state boundaries; the named
+   `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`. The common
+   refresh gate `0xc580` is now a composed branch cluster rather than a hidden
+   font-selection middle edge: dirty-1 primary/secondary first-clear installs,
+   full-live matching-context reuse, full-live/no-match `0xc4fc = 0x11` skip,
+   dirty-1 selector-mismatch refresh-only, dirty-2 primary/secondary
+   selector-match installs, and dirty-2 selector-mismatch remembered-word-only
+   paths are documented in `notes/semantic-state-model.md` with fixture names
+   and field groups. Remaining font-selection work is broader variants that expose new
+   state boundaries; the named
    high-value unresolved edge is now the transparent secondary segment-57 bitmap source
    interpretation beyond the covered transparent data paths. Current transparent
    coverage includes the default-filtered C0/high-control fixed-space path, nonzero C0

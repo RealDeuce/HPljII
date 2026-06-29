@@ -5467,9 +5467,9 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     overlay payload, raster overlay payload, multi-row raster overlay payload,
     span-flush overlay payload, or overlay skip-gate middle edge in this
     checkpoint. The next high-value macro edges are broader overlay payload
-    variants and final device-output validation. Descriptor metric validation is tracked separately as
-    external/manual naming for consumed-but-not-staged fields, not as a
-    macro-cluster middle edge.
+    variants and final device-output validation. Descriptor metric validation
+    is tracked separately as external/manual naming for
+    consumed-but-not-staged fields, not as a macro-cluster middle edge.
 
 ### Writers
 
@@ -7015,6 +7015,22 @@ record.
     state, word `+0c` wait argument, long `+0x12` restart payload,
     long `+0x16` private stack base, and long `+0x1a` saved stack
     pointer.
+  - reset-copied RAM stubs at `0x780000..0x780173`: startup routine
+    `0x298` copies 62 `JMP absolute long` stubs from the table at
+    `0x4c0`. The stubs route exception/status entries
+    `0x780000..0x780084` and `0x780114..0x78016e` to the `0x0c7e..0x0cde`
+    status-code family and `0x128c`; route interface/timer entries
+    `0x78008a`, `0x780096`, `0x78009c`, `0x7800a2`, and `0x7800a8` to
+    `0xa4e8`, `0xcfc`, `0xd52`, `0xa812`, and `0xf84`; and route
+    scheduler/trap entries `0x7800ae..0x78010e` to `0x1032` or
+    `0x110c..0x11f8`. These copied stubs are firmware bookkeeping that
+    connects the hardware vector table to the wait-object and
+    render-scheduler state below; they are not page-object fields.
+    Evidence: [firmware-startup.md](firmware-startup.md),
+    `generated/analysis/ic30_ic13_startup_tables.txt`,
+    `generated/disasm/ic30_ic13_trampoline_handlers_000c7e.lst`,
+    `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`, and
+    `generated/disasm/ic30_ic13_scheduler_trap_handlers_00110c.lst`.
   - `0x78017e`: scheduler pending/event bits. Bit 1 is the wait-object
     pending bit set by `0x1036` and cleared by `0x1064` or `0x108e`
     before `0x123a` dispatch; bits 0, 2, and 3 are low-MMIO/timer status
@@ -7150,6 +7166,14 @@ record.
 - `0x1c5a..0x1c90` calls the `$a801` helpers while staging a candidate
   record, and `0x1d42`, `0x1e80`, and `0x1ea8` consume helper
   `0xa680`/`0xa668` during wrapper/attention/timeout paths.
+- Reset routine `0x298` installs the copied RAM vector stubs that call
+  this scheduler machinery. The startup table maps exception entries to
+  the `0x0c7e..0x0cde` status-code family, maps interface and
+  timer/status entries to `0xa4e8`, `0xcfc`, `0xd52`, `0xa812`, and
+  `0xf84`, and maps trap/scheduler entries to `0x1032` or
+  `0x110c..0x11f8`. This copied-vector layer explains how hardware or
+  trap entry points reach the modeled wait-object state without assigning
+  physical IRQ names to the board signals yet.
 - `0x1036..0x1062` is the shared wait-object signal helper used by the
   scan/status and scheduler loops. When target word `+0x0a == 0x8006`,
   it writes `+0x0a = 2`, sets `0x78017e.1`, and writes `0x78017a` to
@@ -7559,9 +7583,16 @@ covered.
   `0x0f84..0x10f2`
 - `generated/disasm/ic30_ic13_timer_status_trampoline_000d52.lst`:
   `0x0d52..0x0f7a`
+- `generated/analysis/ic30_ic13_startup_tables.txt`: reset-copied
+  trampoline table at `0x4c0`, including all 62 RAM stubs
+  `0x780000..0x780173`.
+- `generated/disasm/ic30_ic13_trampoline_handlers_000c7e.lst`:
+  `0x0c7e..0x0cfc` exception/status, no-op, and interface interrupt
+  handlers reached by copied RAM stubs.
 - `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`:
   `0xa620..0xa680` for `$a801` bit helpers and `0xa6cc..0xa810` for
-  the alternate ring/status bridge.
+  the alternate ring/status bridge, plus `0xa812..0xa844` for the direct
+  interface-status copied-stub target.
 - `generated/disasm/ic30_ic13_scheduler_trap_handlers_00110c.lst`:
   `0x110c..0x1282`
 - `generated/disasm/ic30_ic13_scheduler_dispatch_00123a.lst`:

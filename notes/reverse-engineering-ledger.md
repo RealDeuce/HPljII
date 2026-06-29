@@ -24,11 +24,18 @@ Status: Anchored
 
 Evidence: 68000 reset PC `0x00000110` in `IC30,IC13`
 
-### Exception handling
+### Reset Copied Vectors And Exception Handling
 
-Status: Early hypothesis
+Status: Anchored as copied-stub dispatch; physical IRQ/vector source
+names still need board correlation
 
-Evidence: vector table targets RAM trampolines at `0x00780000`
+Evidence: vector table targets RAM trampolines at `0x00780000`, and
+startup routine `0x298` copies 62 `JMP absolute long` stubs from table
+`0x4c0` into `0x780000..0x780173`. The checked table in
+[firmware-startup.md](firmware-startup.md) maps the exception/status
+entries to `0x0c7e..0x0cde` and `0x128c`, interface/timer entries to
+`0xa4e8`, `0xcfc`, `0xd52`, `0xa812`, and `0xf84`, and
+trap/scheduler entries to `0x1032` or `0x110c..0x11f8`.
 
 ### Extension probing
 
@@ -725,6 +732,9 @@ copied vector slots 32..39 route traps `#0..#7` to
 `0x1144`/`0x1154`/`0x1174`/`0x118a`/`0x11be`/`0x11ca`/`0x11e8`/
 `0x11f8` and those handlers wake, block, mark, read, or clear
 wait-object states `0`, `2`, `9`, `0xff`, `0x8006`, and `0x8007`, a
+copied-vector ledger where startup table `0x4c0` installs all 62 RAM
+stubs and classifies exception/status, interface/timer, no-op, and
+trap/scheduler destinations, a
 render-loop fixture where `0x1eba4` selects cleanup, throttle,
 capacity-wait, or `0x1ef6a` render-call advance from work words `+6`,
 `+0c`, `+0e`, `+10`, and `+16`, a

@@ -112,56 +112,90 @@ Routine `0x00000298` copies a table from ROM address `0x000004c0` into
 This explains why the exception vectors point into `0x00780000` in
 six-byte increments.
 
-The table count word is `0x003d`, so 62 jump stubs are copied. Early
-destinations include:
+The table count word is `0x003d`, so 62 jump stubs are copied. The full
+destination ledger from
+`generated/analysis/ic30_ic13_startup_tables.txt` and focused listings
+`generated/disasm/ic30_ic13_trampoline_handlers_000c7e.lst`,
+`generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`,
+`generated/disasm/ic30_ic13_timer_status_trampoline_000d52.lst`, and
+`generated/disasm/ic30_ic13_scheduler_trap_handlers_00110c.lst` is:
 
-- `0x00780000`
-  - Destination: `0x00000c7e`
-  - Current interpretation: bus-error style exception path; sets code
-    byte `1`, then branches to `0x128c`
-- `0x00780006`
-  - Destination: `0x00000c8c`
-  - Current interpretation: address-error style exception path; sets
-    code byte `2`, then branches to `0x128c`
-- `0x0078000c`
-  - Destination: `0x00000c9a`
-  - Current interpretation: illegal-instruction style exception path;
-    sets code byte `3`, then branches to `0x128c`
-- `0x00780018`
-  - Destination: `0x00000cb6`
-  - Current interpretation: exception path; sets code byte `5` then
-    branches to `0x128c`
-- `0x00780024` and many unused vectors
-  - Destination: `0x00000cd2`
-  - Current interpretation: default exception path; sets code byte `7`
-    then branches to `0x128c`
-- `0x0078008a`
-  - Destination: `0x00000ce6`
-  - Current interpretation: saves registers and calls `0x0000a4e8`
-    before
-    returning
-    through
-    `0x1064`
-- `0x00780096`
-  - Destination: `0x00000cfc`
-  - Current interpretation: tests `0x8e01`, updates state under
-    `0x7839d2/0x7839d3`, and
-    touches
-    `0xa601`
-- `0x0078009c`
-  - Destination: `0x00000d52`
-  - Current interpretation: periodic timer/status trampoline; acknowledges
-    through `0xffff2000`, increments `0x780e04`, divides work through
-    `0x78017f`/`0x780180`/`0x780181`, debounces `$8000.6/.7` and `$8a01.4`,
-    rotates `$a200`/`$a400` output tables, and feeds wait-object scheduling
-    before the shared `0x1064` exit. See
-    `generated/disasm/ic30_ic13_timer_status_trampoline_000d52.lst` and
-    `Published Record To Active Render Scheduler` in
-    [semantic-state-model.md](semantic-state-model.md).
+- `0x780000 -> 0x000c7e`: exception/status report with `D1 = 1`,
+  `0x783eef = 0xc0`, then `D0 = 0xe0` and `0x128c`.
+- `0x780006 -> 0x000c8c`: exception/status report with `D1 = 2`,
+  `0x783eef = 0xc0`, then `D0 = 0xe0` and `0x128c`.
+- `0x78000c -> 0x000c9a`: exception/status report with `D1 = 3`,
+  `0x783eef = 0x80`, then `D0 = 0xe0` and `0x128c`.
+- `0x780012 -> 0x000ca8`: exception/status report with `D1 = 4`,
+  `0x783eef = 0x80`, then `D0 = 0xe0` and `0x128c`.
+- `0x780018 -> 0x000cb6`: exception/status report with `D1 = 5`,
+  `0x783eef = 0x80`, then `D0 = 0xe0` and `0x128c`.
+- `0x78001e -> 0x000cc4`: exception/status report with `D1 = 6`,
+  `0x783eef = 0x80`, then `D0 = 0xe0` and `0x128c`.
+- `0x780024..0x780084` and `0x780114..0x78016e -> 0x000cd2`:
+  default exception/status report with `D1 = 7`, `0x783eef = 0x80`,
+  then `D0 = 0xe0` and `0x128c`.
+- `0x78008a -> 0x000ce6`: saves all registers, calls host/interface
+  helper `0xa4e8`, restores all registers, then exits through `0x1064`.
+- `0x780090 -> 0x000cf8`: explicit no-op interrupt, `NOP; RTE`.
+- `0x780096 -> 0x000cfc`: tests `$8e01.2`; on the asserted path it
+  gates `0x7839d3` into `0x7839d2`, signals wait object `0x780182`,
+  writes `$a601 = 0xef`, and exits through `0x1064`. The other path
+  calls `0xac88` and exits through `0x1064`.
+- `0x78009c -> 0x000d52`: periodic timer/status trampoline. It
+  acknowledges through `0xffff2000`, increments `0x780e04`, divides
+  work through `0x78017f`/`0x780180`/`0x780181`, debounces
+  `$8000.6/.7` and `$8a01.4`, rotates `$a200`/`$a400` output tables,
+  and feeds wait-object scheduling before the shared `0x1064` exit.
+- `0x7800a2 -> 0x00a812`: direct interface-status interrupt. It writes
+  `$a601 = 0x9f` when `0x780e40 != 1`, writes `$a601 = 0xbf` when
+  `$8e01.5` is set, otherwise writes `$a601 = 0xdf`, ORs `0x20` into
+  `0x780e2e`, and returns with `RTE`.
+- `0x7800a8 -> 0x000f84`: scan/status interrupt entry documented in
+  `Published Record To Active Render Scheduler`; it drives `0x78398c`,
+  pending bytes `0x78399e/0x78399f`, `$a801` shadow updates, and
+  wait-object signals before the scheduler exit.
+- `0x7800ae` and `0x7800f0..0x78010e -> 0x001032`: shared
+  wait/scheduler entry around `0x1036`, currently documented by the
+  `0x1036/0x108e/0x123a` fixture and semantic model.
+- `0x7800b4 -> 0x00110c`: trap/status check. It raises the interrupt
+  mask, returns immediately unless wait-object word `+0x0a` is zero,
+  then enters the `0x1230` scheduler path.
+- `0x7800ba -> 0x00111c`: wait-object restart path. It clears the
+  active object's state word `+0x0a`, pushes saved restart payload and
+  SR on its private stack, stores stack pointer `+0x1a`, then enters
+  `0x125a`.
+- `0x7800c0 -> 0x001144`: trap/status check. It returns unless
+  wait-object word `+0x0a == 0x8006`, then enters the `0x1230`
+  scheduler path.
+- `0x7800c6 -> 0x001154`: saves all registers, writes active
+  wait-object state `0x8006`, saves `D0` in word `+0x0c`, saves stack
+  pointer `+0x1a`, then enters `0x125a`.
+- `0x7800cc -> 0x001174`: saves all registers, writes active
+  wait-object state `0x8007`, then shares the `0x1154` save path.
+- `0x7800d2 -> 0x00118a`: saves all registers, normalizes an existing
+  `0x8006` state to `2`, writes active wait-object state `0x8006`,
+  saves `D0` and stack pointer, targets wait object `0x780182`, then
+  enters `0x125a`.
+- `0x7800d8 -> 0x0011be`: raises interrupt mask, returns wait-object
+  word `+0x0a` in `D7`, then `RTE`.
+- `0x7800de -> 0x0011ca`: raises interrupt mask; zero state returns,
+  state `0xff` branches to the `0x111c` restart path, and any other
+  state writes `9` and returns.
+- `0x7800e4 -> 0x0011e8`: raises interrupt mask; state `9` enters the
+  `0x1230` scheduler path, and other states return.
+- `0x7800ea -> 0x0011f8`: raises interrupt mask; zero state returns,
+  nonzero inactive objects are reset to state `0` and get a
+  private-stack restart frame, and the active object redirects to
+  `0x111c`.
 
 The exception-like paths write a severity/status byte to `0x783eef` and
-branch to `0x128c`, which appears to emit or display a two-byte
-error/status code through lower-level output routines.
+branch to `0x128c`, which emits or displays a two-byte error/status code
+through lower-level output routines. The software-visible scheduler and
+wait-object effects are composed in `Published Record To Active Render
+Scheduler` in [semantic-state-model.md](semantic-state-model.md); the
+unresolved part is still the board-level identity and timing of the
+physical IRQ/MMIO sources that enter these copied stubs.
 
 ## Extension and Resource Probing
 
@@ -210,8 +244,8 @@ before treating any startup defaults as fixed.
 ## Next RE Targets
 
 - Name each MMIO address touched before `0x00000400`.
-- Extend the trampoline destination annotations beyond the early sampled
-  handlers.
+- Correlate the now-classified copied trampoline entries with the physical
+  IRQ/MMIO sources that select each RAM stub.
 - Follow initialization calls `0x00000978`, `0x000008a2`, `0x000008dc`,
   `0x0000073a`, and `0x00000c24`.
 - Extend the `HEAD`/`0x000000be` record model beyond the verified

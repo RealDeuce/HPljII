@@ -2399,10 +2399,13 @@ Other checked leads:
   0x1ef6a` closes the page-stream side for the even-span rule/raster case, but
   still supplies the page phase with
   `bytearray(downloaded_wide_even_install["header"])` from the prior install
-  fixture. The precise remaining ROM-side edge is one live CPU memory run that
-  carries the even-span `ESC )s18W` install return at
-  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, stream byte `24`, directly into
-  the following `0x10e68` rectangle/page stream without that fixture handoff.
+  fixture. The byte-source and post-install return are no longer the open parts:
+  the same fixture proves one 54-byte `0xa904` ring fetch, and disassembly plus
+  fixture evidence pins the shared
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` drain. The precise remaining
+  ROM-side edge is a captured live CPU memory image carrying the installed
+  even-span `ESC )s18W` glyph from stream byte `24` directly into the following
+  `0x10e68` rectangle/page stream without the fixture handoff.
   Broader physical/full-page validation remains separate.
 - Treat the `ESC E` reset publication boundary as covered for
   parser-produced compact text page objects. Fixtures

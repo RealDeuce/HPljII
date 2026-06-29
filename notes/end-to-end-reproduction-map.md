@@ -610,10 +610,12 @@ The next work should follow dataflow, not isolated handlers:
    printable `%`, FF, bucket entries `1` and `9`, and `0x1ed84`/`0x1ef6a`. The remaining
    ROM-side continuity edge is the even-span `ESC )s18W` rule/raster composition case,
    where `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
-   still supplies the page phase with
-   `bytearray(downloaded_wide_even_install["header"])` instead of one live CPU memory
-   run from `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, stream byte `24`, into the
-   following `0x10e68` page handler. The primary built-in case proves
+   already proves one 54-byte `0xa904` ring fetch and the shared
+   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` post-install drain. What remains is
+   memory-image continuity: the page phase still receives
+   `bytearray(downloaded_wide_even_install["header"])` instead of a captured live CPU
+   memory image carried from stream byte `24` into the following `0x10e68` page handler.
+   The primary built-in case proves
    `ESC (s0p10h12v0s0b3T!!`
    through parsed selection handlers, selected context `0xc008004c`, printable `0xd04a`
    entries, object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record

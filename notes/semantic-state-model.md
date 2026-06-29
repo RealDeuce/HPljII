@@ -3773,11 +3773,14 @@ compact text renderer.
     `0x12f2e` selector and segment list: rows `0x0081` and `0x00ff` queue
     selector `0x3003` with segments `1` and `0`; rows `0x0100` and `0x0101`
     queue selector `0x1003`; row `0x0181` queues selector `0x3003` with only
-    segments `1` and `0`. Derived render state uses the canonical installed row
-    words after selector choice: rows `0x0100` and `0x0101` dispatch through
-    `0x1f0d2` and split `80/176` and `80/177`; row `0x0181` dispatches only
-    produced `0x1f264` segment objects, with segment `1` splitting `32/96` and
-    segment `0` splitting `80/48`.
+    segments `1` and `0`. Publication state is fixture-backed for both outcomes:
+    segmented cases publish buckets `0` and `8` with selected bucket `8`, while
+    rows `0x0100` and `0x0101` publish only bucket `0`; all keep empty rule/fixed
+    lists and context prefix `(0, 0, 0, 0)`. Derived render state uses the
+    canonical installed row words after selector choice: rows `0x0100` and
+    `0x0101` dispatch through `0x1f0d2` and split `80/176` and `80/177`; row
+    `0x0181` dispatches only produced `0x1f264` segment objects, with segment
+    `1` splitting `32/96` and segment `0` splitting `80/48`.
   - `0x782842..0x782851` and `0x782856`: optional symbol bytes and count
     staged by `0x16fae`.
   - `0x1ed84` render-record work words `+0x10/+0x16` copied from the

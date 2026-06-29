@@ -59888,6 +59888,28 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             tail_stream,
         )
         tail_trace = trace_mixed_text_control_parser_path_via_11774(data, tail_stream)
+        render_bucket_word = (
+            int(page_segments[0]["bucket_index"])
+            if page_segments
+            else int(page_result["bucket_index"])
+        )
+        publication = finalize_page_record_via_ff1e(
+            page_record,
+            reset_fixture_state(
+                page_root_present=1,
+                page_root_class=1,
+                current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+                page_root_clears=0,
+                publication_bucket_index=render_bucket_word,
+            ),
+        )
+        published_record = publication["published_pool_record"]
+        assert isinstance(published_record, dict)
+        published_fields = published_record["pool_record_fields"]
+        assert isinstance(published_fields, dict)
+        queued_root = bytes(
+            page_segments[0]["object"] if page_segments else page_result["object"]
+        )
         return {
             "rows": rows,
             "span": span,
@@ -59943,6 +59965,24 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "next_stream_prefix": tail_stream[:1],
                 "next_handler": tail_trace["events"][0]["handler"],
             },
+            "finalized": {
+                "published": publication["published"],
+                "bucket_index": publication["bucket_index"],
+                "current_page_root_after": publication["current_page_root_after"],
+                "page_root_clears": publication["page_root_clears"],
+                "page_publication_flag": publication["page_publication_flag"],
+            },
+            "publication": {
+                "bucket_root_matches_selected_object": (
+                    published_fields["bucket_root_1c"] == queued_root
+                ),
+                "bucket_keys": sorted(published_fields["bucket_array_1c"].keys()),
+                "rule_list_24": published_fields["rule_list_24"],
+                "fixed_list_28": published_fields["fixed_list_28"],
+                "context_slots_2c_prefix": (
+                    published_fields["context_slots_2c"][:4]
+                ),
+            },
             "render_edge": (
                 compact_segmented_wide_render_boundary(glyph, page_segments)
                 if page_segments
@@ -59992,6 +60032,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "segments": case["page"]["segments"],
                 "object_prefix": case["page"]["object_prefix"],
                 "return_boundary": case["return_boundary"],
+                "finalized": case["finalized"],
+                "publication": case["publication"],
                 "render_edge": case["render_edge"],
                 "visible_output_claim": case["visible_output_claim"],
             }
@@ -60090,6 +60132,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     },
                     "next_stream_prefix": bytes([char_code]),
                     "next_handler": 0x00D04A,
+                },
+                "finalized": {
+                    "published": True,
+                    "bucket_index": 8 if (rows & 0xFF) > 0x80 else 0,
+                    "current_page_root_after": 0,
+                    "page_root_clears": 1,
+                    "page_publication_flag": 1,
+                },
+                "publication": {
+                    "bucket_root_matches_selected_object": True,
+                    "bucket_keys": [0, 8] if (rows & 0xFF) > 0x80 else [0],
+                    "rule_list_24": [],
+                    "fixed_list_28": [],
+                    "context_slots_2c_prefix": (0, 0, 0, 0),
                 },
                 "render_edge": (
                     [
@@ -92528,7 +92584,9 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "`1` and `0`; rows `0x0100` and `0x0101` wrap to row bytes `0x00` "
         "and `0x01` and queue selector `0x1003`; row `0x0181` wraps to "
         "row byte `0x81` and again queues only segments `1` and `0`, not "
-        "the higher canonical segments. The render edge is pinned as "
+        "the higher canonical segments. Segmented outcomes publish buckets "
+        "`0` and `8` through `0xff1e`, while wrapped compact-wide outcomes "
+        "publish bucket `0`. The render edge is pinned as "
         "`0x1f0d2` for row words `0x0100` and `0x0101`, using the canonical "
         "row words from the installed glyph and splitting them as `80/176` "
         "and `80/177` current/fallback rows; row word `0x0181` reaches "

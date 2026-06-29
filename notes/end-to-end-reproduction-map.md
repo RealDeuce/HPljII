@@ -47,6 +47,14 @@ the board-facing boundary is tracked in
   Reproduction evidence is
   `generated/analysis/ic30_ic13_host_byte_fetch_flow.md` and fixtures
   for no-byte, service retry, LIFO, data-chain, ring, and direct modes.
+  The observed data-chain frame layout is now composed with the byte-source
+  checkpoint: `0x782d76` points at frame `+0x00` payload/chunk pointer,
+  `+0x04` byte count or `-1` end marker, byte `+0x08 = 4`, byte `+0x09`
+  as execute `2`, call `3`, or non-replay page-finalization `4`, and
+  longword `+0x0a` as snapshot pointer or zero. Remaining host-input risk is
+  physical MMIO naming/timing and any producer for other frame `+0x09`
+  values, not the normal byte-source priority or observed macro/data-chain
+  replay path.
 - Parser byte and command records:
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
   Reproduction evidence is `generated/analysis/ic30_ic13_parser_xrefs.md`
@@ -242,8 +250,11 @@ the board-facing boundary is tracked in
 
 - Host/input canonical state: `0x780e40`, `0x780e66`, `0x780e3b`,
   `0x783e54`, `0x783e56`, `0x783e76`, `0x783e78`, `0x783e8c`,
-  `0x783e8e`, and `0x782d76`. Evidence:
-  `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
+  `0x783e8e`, and `0x782d76` frame fields `+0x00`, `+0x04`, `+0x08`,
+  `+0x09`, and `+0x0a`. Evidence:
+  `generated/analysis/ic30_ic13_host_byte_fetch_flow.md` and
+  `Host Byte Fetch And Data-Chain Input` in
+  `notes/semantic-state-model.md`.
 - Parser scratch: six-byte command records at `0x78299e..0x7829a7`,
   delayed handler snapshots, payload counters, and alternate/data mode state.
   Evidence: `Parser Record And Delayed Payload State` in

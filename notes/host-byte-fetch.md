@@ -125,7 +125,7 @@ The predecrement access means `0x783e8e` points one byte past the next byte
 to be returned.
 
 Helper `0x9ec0` is a producer for this stack. If `0x780e3b` is clear and the
-current data-chain frame byte `+9` is nonzero, `0x9ec0` appends its byte
+current data-chain frame byte `+0x09` is nonzero, `0x9ec0` appends its byte
 argument at `0x783e8e`, increments count `0x783e8c`, advances the pointer,
 and sets `0x780e66.2` at `0x9f56`. The later `0xa904` consumer clears that
 bit at `0xa94c` only after the first stack count has drained to zero.
@@ -159,7 +159,7 @@ Branch `0xa980..0xa99e` is the same shape as the first LIFO source but
 uses count `0x783e76` and pointer `0x783e78`.
 
 The same helper `0x9ec0` is also the producer for this stack. If
-`0x780e3b` is clear and the current data-chain frame byte `+9` is zero,
+`0x780e3b` is clear and the current data-chain frame byte `+0x09` is zero,
 `0x9ec0` appends its byte argument at `0x783e78`, increments count
 `0x783e76`, advances the pointer, and sets `0x780e66.0` at `0x9f1a`.
 `0xa904` clears bit 0 at `0xa9a0` only after the second stack count is empty.
@@ -389,8 +389,11 @@ Field groups:
 - Canonical byte-source state:
   - first pushback stack: count `0x783e8c`, pointer `0x783e8e`;
   - data-chain source: current frame pointer `0x782d76`, with frame
-    `+4 == -1` meaning end transition through `0xe22c`; known frame byte
-    `+9` values are execute `2`, call `3`, and non-replay page-finalization
+    `+0x00` as payload/chunk pointer, `+0x04` as byte count or `-1` end
+    marker, byte `+0x08 = 4`, byte `+0x09` as frame-end selector, and
+    longword `+0x0a` as execute/call environment-snapshot pointer or zero
+    for the non-replay page-finalization frame. Known frame byte `+0x09`
+    values are execute `2`, call `3`, and non-replay page-finalization
     frame `4`;
   - second pushback stack: count `0x783e76`, pointer `0x783e78`;
   - ring source: count `0x783e54`, read pointer `0x783e56`, write
@@ -428,7 +431,7 @@ Field groups:
     reaches `0xda9a`, `0x11774`, `0x12218`, or the payload readers.
 - Unknown:
   - board-level names and timing for the direct MMIO banks;
-  - data-chain frame-byte values outside the observed `+9 = 2`, `3`, and
+  - data-chain frame-byte values outside the observed `+0x09 = 2`, `3`, and
     `4` producers, if any;
   - exact user-facing trigger names for quiesce/reset branches
     `0x4218..0x44d2` and `0x61e4..0x6362`.
@@ -444,10 +447,13 @@ Writers:
   `0xa6cc` also writes low-water, full-buffer, and status-service fields
   including `0x780e2a`, `0x780e2e`, `0x783e60`, `0x783e61`,
   `0x783e62`, and `$aa01`.
-- Macro setup helpers such as `0xe418` build data-chain frames that later
-  replay through `0xa904`.
-- `0x9ec0` writes the two pushback stacks: frame byte `+9 == 0` selects
-  `0x783e76` / `0x783e78` and sets `0x780e66.0`; frame byte `+9 != 0`
+- Macro setup helper `0xe418` builds execute/call data-chain frames that later replay
+  through `0xa904`; `0xe4f4` builds the non-replay page-finalization frame. The concrete
+  frame fields and `0xe22c` frame-end consumers are composed in
+  [semantic-state-model.md](semantic-state-model.md#host-byte-fetch-and-data-chain-input)
+  and `Macro Definition And Data-Chain Replay`.
+- `0x9ec0` writes the two pushback stacks: frame byte `+0x09 == 0` selects
+  `0x783e76` / `0x783e78` and sets `0x780e66.0`; frame byte `+0x09 != 0`
   selects `0x783e8c` / `0x783e8e` and sets `0x780e66.2`.
 - Host-input quiesce/reset branches `0x4218..0x44d2` and `0x61e4..0x6362`
   set the no-byte gate pair `0x780e3b = 1` plus `0x780e66.3`, wait on
@@ -559,9 +565,10 @@ Unresolved middle edges:
   physical names and timing for `0xfffe0001`, `0xfffe0003`, and `$aa01`
   remain unassigned.
 - `0x782d76 frame +0x00..+0x0d`: execute/call producers `0xe418` and
-  non-replay page-finalization producer `0xe4f4` are documented. Remaining
-  uncertainty is any producer for frame byte `+9` values outside observed
-  `2`, `3`, and `4`.
+  non-replay page-finalization producer `0xe4f4` are documented, and their
+  frame fields are tied to `0xa904`, `0x9f6a`, and `0xe22c` consumers.
+  Remaining uncertainty is any producer for frame byte `+0x09` values outside
+  observed `2`, `3`, and `4`.
 - `0x4218..0x44d2` and `0x61e4..0x6362`: the no-byte gate, byte-source
   reset, selected pool-record cleanup, and service-needed tail are documented;
   the exact user-facing trigger names for these two quiesce/reset branches are

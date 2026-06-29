@@ -231,7 +231,12 @@ before parser dispatch.
 - Canonical byte sources:
   - first pushback stack: `0x783e8c` count and `0x783e8e` pointer.
   - active data-chain source: `0x782d76` points to the current frame;
-    frame `+4 == -1` triggers end transition through `0xe22c`.
+    frame `+0x00` is the payload/chunk pointer consumed by `0x9f6a`;
+    frame `+0x04` is the byte count, with `-1` triggering end transition
+    through `0xe22c`; byte `+0x08` is `4`; byte `+0x09` selects the
+    frame-end path; longword `+0x0a` is the environment-snapshot pointer
+    for execute/call frames and zero for the non-replay page-finalization
+    frame.
   - second pushback stack: `0x783e76` count and `0x783e78` pointer.
   - ring buffer: `0x783e54` count, `0x783e56` read pointer, and
     `0x783e5a` write pointer, wrapped between `0x783a4c` and
@@ -241,7 +246,10 @@ before parser dispatch.
   `0xa904 services pending work then prefers first LIFO source`,
   `0xa904 data-chain end marker retries before second LIFO source`, and
   `0xa904 buffered ring source wins before direct hardware in mode 0`,
-  plus `0xa620/0xa668/0xa6cc engine shadow and byte bridge`.
+  plus `0xa620/0xa668/0xa6cc engine shadow and byte bridge`,
+  `0xe418 frame metadata distinguishes execute and call context`,
+  `0xe4f4/0xe22c produce and end data-chain frames`, and
+  `0xe22c restores macro frames and consumes call context`.
 - Canonical direct hardware sources:
   - mode `0x780e40 == 1`: status byte `0x8e01`, data byte `0x8801`,
     wait/ack byte `0x8c01`, handshake outputs `0xa601` and `0xaa01`.
@@ -311,8 +319,8 @@ before parser dispatch.
 - Unknown:
   - physical names for the `0x8e01`/`0x8801`/`0x8c01` bank and the
     `0xfffee005`/`0xfffee001`/`0xfffee009` bank.
-  - exact RAM structure for the current data-chain frame beyond fields
-    already used by macro replay fixtures.
+  - data-chain frame byte `+0x09` values outside the observed execute `2`,
+    call `3`, and non-replay page-finalization `4` producers, if any.
 
 ### Writers
 
@@ -327,13 +335,20 @@ before parser dispatch.
   `0xa904`. `0xa6cc` also writes `0x780e2a`, `0x780e2e`, `0x783e60`,
   `0x783e61`, `0x783e62`, `0x780e62`, and `$aa01` during low-water,
   full-buffer, and status service paths.
-- Macro setup helpers such as `0xe418` write data-chain frames later
-  consumed by `0xa904`; the macro execute/call fixtures pin frame
-  payload bytes `!\r` and mixed-control payload
-  `ESC &k1G!\r!`.
+- Macro setup helper `0xe418` writes execute/call data-chain frames later
+  consumed by `0xa904`: it advances `0x782d76` by `0x0e`, copies macro
+  record `+0x00/+0x04` into frame `+0x00/+0x04`, writes byte `+0x08 = 4`,
+  writes byte `+0x09 = 2` for execute or `3` for call, and stores the
+  environment-snapshot chain pointer at `+0x0a`.
+- Page-finalization helper `0xe4f4` writes the non-replay frame at
+  `0x782d4c`, stores `0x782d76 = 0x782d4c`, copies selected record
+  `+0x00/+0x04` into frame `+0x00/+0x04`, writes byte `+0x08 = 4`, writes
+  byte `+0x09 = 4`, writes longword `+0x0a = 0`, and sets `0x780e66.1`
+  when the byte count is positive.
 - Pushback/log helper `0x9ec0` writes `0x783e76` / `0x783e78` and sets
-  `0x780e66.0` when current frame byte `+9 == 0`; it writes `0x783e8c` /
-  `0x783e8e` and sets `0x780e66.2` when current frame byte `+9 != 0`.
+  `0x780e66.0` when current frame byte `+0x09 == 0`; it writes `0x783e8c`
+  / `0x783e8e` and sets `0x780e66.2` when current frame byte
+  `+0x09 != 0`.
 - Host-input quiesce/reset branches `0x4218..0x44d2` and `0x61e4..0x6362`
   write `0x780e3b = 1` and set `0x780e66.3`. If the gate remains set, both
   wait through `0x10e0(0x780242, 5)`, call `0x3178` to clear ring and pushback
@@ -359,6 +374,11 @@ before parser dispatch.
   helper `0xd0f0`.
 - Macro execute/call replay consumes data-chain bytes through `0xa904`,
   then re-enters the same parser/page-record path as direct host bytes.
+- Frame-end helper `0xe22c` consumes the current `0x782d76` frame when
+  `0xa904` sees count `+0x04 == -1`: byte `+0x09 = 2` restores execute
+  snapshots, byte `+0x09 = 3` restores call snapshots and pops one context
+  entry, and other observed nonzero values take the non-replay
+  page-finalization restore path.
 - Font descriptor, resource-payload, downloaded-character, and combined
   downloaded-glyph streams are fixture-backed as modeled `0xa904` ring
   streams before they reach parser/object/render boundaries.
@@ -382,11 +402,10 @@ state rather than pixels directly.
 
 High for byte-source priority, no-byte gating, data-chain end retry,
 ring/direct source selection, `0x1a` reporting, direct-mode state side
-effects, and the software-visible `0xa6cc` ring/status bridge because
-they are covered by executable fixtures and the `0xa904`/`0xa6cc`
-disassembly. Medium for physical interface naming and full data-chain
-frame ownership because those require board/manual correlation and
-broader frame-lifetime tracing.
+effects, the software-visible `0xa6cc` ring/status bridge, and the observed
+data-chain frame layout because those are covered by executable fixtures and
+the `0xa904`/`0xa6cc`/`0xe418`/`0xe4f4`/`0xe22c` disassembly. Medium for
+physical interface naming because that requires board/manual correlation.
 
 ### Fixtures
 
@@ -429,9 +448,9 @@ broader frame-lifetime tracing.
   the physical names and timing for `0xfffe0001`, `0xfffe0003`, and
   `$aa01` are not identified.
 - `0x782d76 frame +0x00..+0x0d`: execute/call frames from `0xe418` and the
-  non-replay page-finalization frame from `0xe4f4` are documented. Remaining
-  uncertainty is any producer for frame byte `+9` values outside observed
-  `2`, `3`, and `4`.
+  non-replay page-finalization frame from `0xe4f4` are documented and tied to
+  `0xa904`, `0x9f6a`, and `0xe22c` consumers. Remaining uncertainty is any
+  producer for frame byte `+0x09` values outside observed `2`, `3`, and `4`.
 - `0x4218..0x44d2` and `0x61e4..0x6362`: no-byte gate writes, byte-source
   reset, selected pool-record cleanup, and service-needed tail are pinned; the
   exact user-facing trigger names for the two quiesce/reset branches remain

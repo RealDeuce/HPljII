@@ -552,13 +552,17 @@ partial-install branch is carried through trailing-FF publication and published-
 rendering for both linear and split-plane compact objects. The downloaded-glyph
 row-count matrix fixture adds fetched `ESC )s#W` install, printable, FF-publication, and
 render-entry coverage for short rows `0x01`, `0x02`, `0x03`, `0x04`, `0x05`, `0x06`,
-`0x07`, `0x08`, `0x09`, `0x0a`, `0x0b`, `0x0c`, `0x0d`, `0x0e`, `0x0f`, `0x3e`,
-`0x3f`, `0x41`, `0x42`, and `0x7f` on selector `0x0003`/bucket `1`, plus segmented
-rows `0x83`, `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and
+`0x07`, `0x08`, `0x09`, `0x0a`, `0x0b`, `0x0c`, `0x0d`, `0x0e`, `0x0f`,
+`0x10`, `0x11`, `0x12`, `0x13`, `0x14`, `0x15`, `0x16`, `0x17`, `0x18`,
+`0x19`, `0x1a`, `0x1b`, `0x1c`, `0x1d`, `0x1e`, `0x1f`, `0x3e`, `0x3f`,
+`0x41`, `0x42`, and `0x7f` on selector `0x0003`/bucket `1`, plus segmented rows
+`0x83`, `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and
 `0xff` on selector `0x2003`/buckets `1` and `9`.
 The published render row counts are `7`, `8`, `9`, `10`, `11`, `12`, `13`, `14`, `15`,
-`16`, `17`, `18`, `19`, `20`, `21`, `64`, `64`, `64`, `64`, `64`, `9`, `10`, `11`,
-`12`, `16`, `16`, `16`, `16`, `16`, and `16`; all thirty row-count matrix cases now
+`16`, `17`, `18`, `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, `27`, `28`,
+`29`, `30`, `31`, `32`, `33`, `34`, `35`, `36`, `37`, `64`, `64`, `64`, `64`,
+`64`, `9`, `10`, `11`, `12`, `16`, `16`, `16`, `16`, `16`, and `16`; all
+forty-six row-count matrix cases now
 return through
 `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with copy status `1`, `0x783140 = 0`, zero
 drained bytes, and next handler `0xd04a`. The rows-`0x0102`

@@ -1420,24 +1420,30 @@ Fixture `downloaded glyph row-count matrix publishes and renders additional
 short/segmented counts` broadens the same command family. Short rows `0x0001`,
 `0x0002`, `0x0003`, `0x0004`, `0x0005`, `0x0006`, `0x0007`, `0x0008`,
 `0x0009`, `0x000a`, `0x000b`, `0x000c`, `0x000d`, `0x000e`, `0x000f`,
-`0x003e`, `0x003f`, `0x0041`, `0x0042`, and `0x007f` restore fetched `ESC )s#W`
-records, install mode-byte-`1` records ending in matching row words, publish only
-bucket `1`, keep selector `0x0003`, and dispatch compact target `0x1effe` with
-object byte `0x00`. Segmented rows `0x0083`, `0x0084`, `0x0085`, `0x0086`,
-`0x00bf`, `0x00c0`, `0x00c1`, `0x00fd`, `0x00fe`, and `0x00ff` install matching
-mode-byte-`1` records, publish buckets `1` and `9`, keep selector `0x2003`, and
-render bucket word `9` through compact target `0x1effe` with object byte `0x20`.
+`0x0010`, `0x0011`, `0x0012`, `0x0013`, `0x0014`, `0x0015`, `0x0016`,
+`0x0017`, `0x0018`, `0x0019`, `0x001a`, `0x001b`, `0x001c`, `0x001d`,
+`0x001e`, `0x001f`, `0x003e`, `0x003f`, `0x0041`, `0x0042`, and `0x007f`
+restore fetched `ESC )s#W` records, install mode-byte-`1` records ending in
+matching row words, publish only bucket `1`, keep selector `0x0003`, and
+dispatch compact target `0x1effe` with object byte `0x00`. Segmented rows
+`0x0083`, `0x0084`, `0x0085`, `0x0086`, `0x00bf`, `0x00c0`, `0x00c1`,
+`0x00fd`, `0x00fe`, and `0x00ff` install matching mode-byte-`1` records,
+publish buckets `1` and `9`, keep selector `0x2003`, and render bucket word
+`9` through compact target `0x1effe` with object byte `0x20`.
 The published-row counts are `7`, `8`, `9`, `10`, `11`, `12`, `13`, `14`, `15`,
-`16`, `17`, `18`, `19`, `20`, `21`, `64`, `64`, `64`, `64`, `64`, `9`, `10`,
-`11`, `12`, `16`, `16`, `16`, `16`, `16`, and `16`.
-All thirty cases now also pin the full-success return boundary
+`16`, `17`, `18`, `19`, `20`, `21`, `22`, `23`, `24`, `25`, `26`, `27`, `28`,
+`29`, `30`, `31`, `32`, `33`, `34`, `35`, `36`, `37`, `64`, `64`, `64`, `64`,
+`64`, `9`, `10`, `11`, `12`, `16`, `16`, `16`, `16`, `16`, and `16`.
+All forty-six cases now also pin the full-success return boundary
 `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`: copy status is `1`, `0x783140` is
 `0`, `0x12328` drains no bytes, and the next parser handler is `0xd04a` for
 printable bytes `0x38`, `0x3b`, `0x41`, `0x34`, `0x43`, `0x4a`, `0x4b`,
 `0x3c`, `0x44`, `0x4c`, `0x4d`, `0x4e`, `0x4f`, `0x50`, `0x51`, `0x45`,
-`0x42`, `0x3d`, `0x46`, `0x35`, `0x36`, `0x39`, `0x3e`, `0x47`, `0x48`,
-`0x3f`, `0x49`, `0x40`, `0x3a`, and `0x37`. Rows `0x0006` and `0x0007` render
-`12` and `13` rows with digests
+`0x52`, `0x53`, `0x54`, `0x55`, `0x56`, `0x57`, `0x58`, `0x59`, `0x5a`,
+`0x5b`, `0x5c`, `0x5d`, `0x5e`, `0x5f`, `0x60`, `0x61`, `0x42`, `0x3d`,
+`0x46`, `0x35`, `0x36`, `0x39`, `0x3e`, `0x47`, `0x48`, `0x3f`, `0x49`,
+`0x40`, `0x3a`, and `0x37`. Rows `0x0006` and `0x0007` render `12` and
+`13` rows with digests
 `b791b24072d4758b9a4e40ae7600cd7e0b2bbbe3757dd001f8819dc6d94a5b7a` and
 `d2beea9dbf9a604abeb5fe8cc87636002405da8f46d6cbbf585af7e7481cd088`; rows
 `0x000a` through `0x000f` render `16` through `21` rows with digests
@@ -1447,6 +1453,23 @@ printable bytes `0x38`, `0x3b`, `0x41`, `0x34`, `0x43`, `0x4a`, `0x4b`,
 `d85196db9e646951a3df3ae39725bda5d759fc37a54885e6ea7b87c697c52198`,
 `bc0243b6594c80656ae2a00f04d072afaba854c4b892a73893a4df144b55f40c`, and
 `4fb2a253d67451397844fa77e3f41949a6ef5d7542d64609710f0dfdd371fd0e`. Rows
+`0x0010` through `0x001f` render `22` through `37` rows with digests
+`f7c5a4f154a9515a9787f30676de81c1b248f2aacc0b7c2df0f66042689e7900`,
+`f0bcf79ee5c12cfb0b1e02660e080073f58b6a24aca83943fb81ba01330358ce`,
+`75ad70f7657d7d88bfad58baa76c0dd1597e4807a5e5c7f469e2060153133e4d`,
+`87d3ee023ae18013588aa0fce57a9fc87cc3371e24aa97e72abb29339dd3deb1`,
+`ec555b603447b8cd160cad7fd11441bc102f2b7ec2dc411d4b0681c53de68115`,
+`ae1590bd859a8a26f066f72cb2813185cc07539d0d0f9a83ef07c02209ed9b46`,
+`578b85379140fee69877d7cf26219aa9adf3435f4cd8a1a02c888025ca635bb5`,
+`7bc251b074515f3ba67f8023b9b229db47e3b5e345f3eeedb00177d7c300696d`,
+`124edc88ff7756abf3c5a7a141b8efcab5b974eb3938cc67f74d336c27a0fbe1`,
+`915780de2b3b4aa763ddf64cf93e5fd701c2174f3c748b822445c8ac92594988`,
+`1dc650da3d15d919c8b0c1b35de9347c5543c728ec06c55177258f2180ad5cca`,
+`6961ed6d2c76089849c830e2461cf07ccd67d72090b1ef72040a9357a83e7096`,
+`ee5e29521c7ce7aed815bb985c73e28ac1bce501cf996d50ec0f5215a1d206c2`,
+`862c30777fd3a9ff4311ee3b0d0ce10720cd7d55adc14774b0d9f4307ebc7f92`,
+`51fd53d04461a766dc36438634c2d908bc6d5681d9419fab6d2dcc0e9b37e0ed`, and
+`1b5d7f126bba9cf60712a0d75804b68cea26419e49c5240fe3592546902ce283`. Rows
 `0x0083`, `0x0084`, `0x0085`, and `0x0086` differ by one rendered row each; rows
 `0x00bf`, `0x00c0`, `0x00c1`, `0x00fd`, `0x00fe`, and `0x00ff` share the same
 16-row digest
@@ -1999,8 +2022,10 @@ A byte-stream renderer must preserve:
   rendering. Remaining parser-produced comparisons are bounded cross-products: row
   counts outside the covered short rows `0x01`, `0x02`, `0x03`, `0x04`, `0x05`,
   `0x06`, `0x07`, `0x08`, `0x09`, `0x0a`, `0x0b`, `0x0c`, `0x0d`, `0x0e`,
-  `0x0f`, `0x10`, `0x20`, `0x3e`, `0x3f`, `0x40`, `0x41`, `0x42`, `0x7f`, and
-  `0x80` and segmented rows `0x81`, `0x82`, `0x83`, `0x84`, `0x85`, `0x86`,
+  `0x0f`, `0x10`, `0x11`, `0x12`, `0x13`, `0x14`, `0x15`, `0x16`, `0x17`,
+  `0x18`, `0x19`, `0x1a`, `0x1b`, `0x1c`, `0x1d`, `0x1e`, `0x1f`, `0x20`,
+  `0x3e`, `0x3f`, `0x40`, `0x41`, `0x42`, `0x7f`, and `0x80` and segmented
+  rows `0x81`, `0x82`, `0x83`, `0x84`, `0x85`, `0x86`,
   `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff`,
   visible behavior after
   segmented-wide row words above `0x00ff` wrap through the current one-byte printable
@@ -2091,11 +2116,13 @@ A byte-stream renderer must preserve:
   `0x1effe`/`0x1fe76`. Fixture `downloaded glyph row-count matrix publishes and renders
   additional short/segmented counts` adds short rows `0x01`, `0x02`, `0x03`,
   `0x04`, `0x05`, `0x06`, `0x07`, `0x08`, `0x09`, `0x0a`, `0x0b`, `0x0c`,
-  `0x0d`, `0x0e`, `0x0f`, `0x3e`, `0x3f`, `0x41`, `0x42`, and `0x7f` on selector
-  `0x0003`/bucket `1`, and segmented rows `0x83`, `0x84`, `0x85`, `0x86`,
-  `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff` on selector
-  `0x2003`/buckets `1` and `9`, all through printable+FF, `0xff1e`, and
-  `0x1ed84`/`0x1ef6a`. Fixture `host-fetched even-span downloaded glyph FF publishes
+  `0x0d`, `0x0e`, `0x0f`, `0x10`, `0x11`, `0x12`, `0x13`, `0x14`, `0x15`,
+  `0x16`, `0x17`, `0x18`, `0x19`, `0x1a`, `0x1b`, `0x1c`, `0x1d`, `0x1e`,
+  `0x1f`, `0x3e`, `0x3f`, `0x41`, `0x42`, and `0x7f` on selector `0x0003`/bucket
+  `1`, and segmented rows `0x83`, `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`,
+  `0xc1`, `0xfd`, `0xfe`, and `0xff` on selector `0x2003`/buckets `1` and `9`,
+  all through printable+FF, `0xff1e`, and `0x1ed84`/`0x1ef6a`. Fixture
+  `host-fetched even-span downloaded glyph FF publishes
   rendered page record` renders the copied bucket-1 record through `0x1ed84`/`0x1ef6a`
   and compact target `0x1effe`/`0x1f0d2`. Fixture `downloaded glyph segmented-wide
   matrix publishes and renders compact chunks` publishes bucket-array entries `0` and

@@ -46,6 +46,16 @@ on a null record at `0x032f80`. The harness also pins the scanner's
 boundary behavior: if the cumulative walked length crosses `0x40000`,
 the next probe step becomes `0x80000` instead of the default `0x40000`.
 
+The firmware scan windows make the remaining high-address resource edge a
+hardware decode question. `0x1a2e4` initializes the built-in font scan with
+start `0x080000`, end `0x0ffffe`, and step `0x40000`, then calls
+`0x1a616`. Optional cartridge/resource scans reuse the same `0x1a616`
+walker with windows selected by `$8000.14` / `$8000.15`: `0x200000..0x3ffffe`
+or `0x400000..0x5ffffe`. The earlier cartridge boot probe at `0x003e8` also
+tests `$8000.6` / `$8000.7` before looking for `PROG` at `0x200000` or
+`0x400000`. Those ROM paths prove that `0x0c0000..0x0ffffe` is inside the
+built-in resource scan range, while cartridge windows live elsewhere.
+
 At the end of the resource interleave, the chip tail markers overlap as
 interleaved bytes:
 
@@ -198,14 +208,15 @@ The fixture `0x41a HEAD scanner would duplicate records under simple resource
 mirror` adds an address-map constraint. If the whole `IC32,IC15` resource pair
 were simply mirrored at firmware address `0x0c0000`, the `0x41a` scanner model
 would see `HEAD` at offsets `0` and `0x40000`, walk `48` typed records, and
-terminate at `0x80000`. The later `0x1a2e4` / `0x1a616` font candidate scan also
+terminate at `0x80000`. The `0x1a2e4` / `0x1a616` font candidate scan explicitly
 sets built-in bounds `0x080000..0x0ffffe`, so a full mirror in that range would
 not be only a local row-source detail: it would be visible to candidate
 discovery unless hardware or gate-array state hides the mirror from scanner
-reads. Closing the fallback rows therefore needs board/emulator evidence for
-that physical decode/window, live startup candidate counters after `0x1a2e4`, a
-direct bus read around `0x0c0000`, or physical output that selects one of the
-fallback-row digests.
+reads. The separate `$8000.14` / `$8000.15` cartridge scan windows at
+`0x200000..0x5ffffe` do not explain the `0x0c0000` read. Closing the fallback
+rows therefore needs board/emulator evidence for that physical decode/window,
+live startup candidate counters after `0x1a2e4`, a direct bus read around
+`0x0c0000`, or physical output that selects one of the fallback-row digests.
 
 Fixture `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations` constrains
 the other two local continuation hypotheses against the same startup scanner.

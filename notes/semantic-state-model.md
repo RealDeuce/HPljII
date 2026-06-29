@@ -1770,6 +1770,14 @@ Fixture `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations` proves
 that the code-pair and zero-fill continuations are not `HEAD`-visible to that
 same startup scanner: the second probe markers are `0x00800000` and
 `0x00000000`, so both variants keep one `HEAD` chain and 24 walked records.
+Disassembly `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst` pins the
+scan windows behind that fixture evidence: `0x1a2e4` seeds built-in start
+`0x080000`, end `0x0ffffe`, and step `0x40000` before calling `0x1a616`, while
+the `$8000.14` / `$8000.15` cartridge paths select `0x200000..0x3ffffe` or
+`0x400000..0x5ffffe`. `generated/disasm/ic30_ic13_cart_resource_scan_0003e8.lst`
+also probes `PROG` at `0x200000` and `0x400000`. Therefore the segment-57
+fallback-byte read at `0x0c0000..0x0c0321` is inside the built-in scan range but
+outside the verified resource pair, not an optional cartridge-window read.
 
 ### Confidence
 
@@ -1817,6 +1825,8 @@ for manual names for the filter bytes.
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
 - `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`
 - `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+- `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`
+- `generated/disasm/ic30_ic13_cart_resource_scan_0003e8.lst`
 
 ### Unresolved Middle Edges
 
@@ -1843,9 +1853,10 @@ for manual names for the filter bytes.
   outside the verified `IC32,IC15` resource image in `data/rom_manifest.json`,
   and the hardware note
   in `notes/formatter-interface-pca.md` makes address-controller/jumper decode
-  the candidate state to resolve. It is not primary route polarity, sampled
-  primary interior values, or the renderable secondary prefix through bucket
-  `448`.
+  the candidate state to resolve. The cartridge-window paths are separately
+  gated at `0x200000..0x5ffffe`, so they do not explain this built-in
+  `0x0c0000` read. It is not primary route polarity, sampled primary interior
+  values, or the renderable secondary prefix through bucket `448`.
 
 ## Text Source Objects And Compact Buckets
 

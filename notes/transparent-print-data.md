@@ -478,6 +478,16 @@ candidate-scan bounds through `0x0ffffe`. The exact unresolved boundary is
 live startup candidate counters, a direct bus read around `0x0c0000`, or an
 observed page result that matches one of the fallback-row digests above.
 
+`0x1a2e4` / `0x1a616` make the built-in side of that boundary exact: built-in
+resource discovery starts at `0x080000`, ends at `0x0ffffe`, and scans in
+`0x40000` steps. Optional cartridge/resource scans are separate windows selected
+by `$8000.14` / `$8000.15`, using `0x200000..0x3ffffe` and
+`0x400000..0x5ffffe`; the cartridge boot probe at `0x003e8` likewise looks for
+`PROG` at `0x200000` or `0x400000` after testing `$8000.6` / `$8000.7`. Those
+paths do not supply a ROM-only answer for `0x0c0000`; they instead prove that
+the segment-57 read falls inside the built-in resource scan range but beyond
+the verified `IC32,IC15` pair.
+
 ## Semantic Composition
 
 Concept: transparent print data is a counted byte-stream splice, not a binary
@@ -568,7 +578,9 @@ Unresolved middle edges:
   The current-band rows are pinned across mirror, code-pair, and zero-fill
   continuation policies; only the fallback rows diverge. It is not primary
   route polarity, sampled primary interior values, or the renderable secondary
-  prefix through bucket `448`.
+  prefix through bucket `448`. It is also not cartridge-window discovery:
+  disassembly separates the built-in scan range `0x080000..0x0ffffe` from the
+  optional cartridge windows at `0x200000..0x5ffffe`.
 
 ## Reproduction Contract
 

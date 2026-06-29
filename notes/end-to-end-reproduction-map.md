@@ -641,7 +641,12 @@ The next work should follow dataflow, not isolated handlers:
    `359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`, so the remaining
    requirement is board/emulator memory-map evidence for `0x0c0000..0x0c0321`. That
    range is outside the verified `IC32,IC15` resource-pair image described by
-   `data/rom_manifest.json`. Fixture `0x41a HEAD scanner would duplicate records under
+   `data/rom_manifest.json`. Disassembly of `0x1a2e4` / `0x1a616` shows the built-in
+   resource scanner covers `0x080000..0x0ffffe` in `0x40000` steps, while optional
+   cartridge/resource scans are separate `$8000.14/15`-gated windows at
+   `0x200000..0x5ffffe`; the segment-57 read is therefore a built-in decode question
+   after the verified pair, not a cartridge-window read. Fixture
+   `0x41a HEAD scanner would duplicate records under
    simple resource mirror` now constrains one candidate: a full resource-pair mirror at
    `0x0c0000` would make scanner `0x41a` see a second `HEAD` chain and walk `48` typed
    records, so mirror cannot be treated as only a local fallback-row source unless

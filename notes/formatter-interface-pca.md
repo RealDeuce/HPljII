@@ -129,6 +129,16 @@ rejected: `IC13,IC30` does not produce valid 68000 startup vectors, and
 generated interleaves remain local-only; checked-in evidence is in
 `data/rom_manifest.json` and [rom-dump-manifest.md](rom-dump-manifest.md).
 
+One current pixel-fidelity edge depends on the board ROM decode beyond that
+verified resource pair. The secondary transparent segment-57 path reads
+firmware addresses `0x0bfe22..0x0c0321`; the first `478` bytes are inside
+`IC32,IC15`, and the remaining bytes start at `0x0c0000`. Firmware scan
+routine `0x1a2e4` treats `0x080000..0x0ffffe` as the built-in resource scan
+range, while optional cartridge windows are separate regions at
+`0x200000..0x3ffffe` and `0x400000..0x5ffffe`. Resolving the fallback rows
+therefore requires board or emulator evidence for the built-in region after
+`0x0bffff`, not just cartridge-slot mapping.
+
 ## RAM
 
 - Onboard DRAM: 512 KB max.
@@ -284,6 +294,9 @@ See [errors-and-status.md](errors-and-status.md) for a fuller table.
 - Address map: ROM regions, NVRAM, SRAM, DRAM, gate array registers, I/O
   controller, video buffers, cartridge slots, control panel, and DC
   Controller port.
+- Built-in resource decode at firmware `0x0c0000..0x0c0321`, needed for the
+  transparent secondary segment-57 fallback rows documented in
+  [transparent-print-data.md](transparent-print-data.md).
 - Whether scan buffers are memory-mapped, port-mapped, DMA-fed, or
   gate-array mediated.
 - How optional I/O and cartridge ROM overlay are decoded.

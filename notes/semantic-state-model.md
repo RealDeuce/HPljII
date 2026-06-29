@@ -3683,10 +3683,12 @@ compact text renderer.
     selector `0x0003` publishes bucket `1`, rows-`0x20` short selector
     `0x0003` publishes bucket `1`, rows-`0x40` short selector `0x0003`
     publishes bucket `1`, row-count matrix short rows `0x01`, `0x02`,
-    `0x04`, `0x08`, `0x41`, and `0x7f` publish bucket `1`,
+    `0x03`, `0x04`, `0x05`, `0x06`, `0x07`, `0x08`, `0x09`, `0x3e`,
+    `0x3f`, `0x41`, `0x42`, and `0x7f` publish bucket `1`,
     linear-segmented selector `0x2003` publishes buckets `1` and `9` for rows
     `0x81` and rows `0x82`, row-count matrix segmented rows `0x83`, `0x84`,
-    `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff` publish buckets `1` and `9`,
+    `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff`
+    publish buckets `1` and `9`,
     segmented-wide selector `0x3003` publishes buckets `1` and `9`, rows-`0x0102`
     downloaded installs publish only selector-`0x0003` bucket `1` because the
     printable inline source exposes row byte `0x02` to `0x12f2e`, and wide
@@ -4001,18 +4003,22 @@ rendered segment-1 rows match the installed bitmap rows. The same fixture probes
 `33`, `48`, `49`, and `64` at rows `0x81` through the same upstream metadata and return
 boundary, and those segment-1 rows match the installed bitmap. Fixture `downloaded glyph
 row-count matrix publishes and renders additional short/segmented counts` adds
-twenty-two more row-count siblings through the same fetched install, printable,
+twenty-four more row-count siblings through the same fetched install, printable,
 FF-publication, and render-entry chain. Rows `0x0001`, `0x0002`, `0x0003`, `0x0004`,
-`0x0005`, `0x0008`, `0x0009`, `0x003e`, `0x003f`, `0x0041`, `0x0042`, and `0x007f`
-are canonical installed record fields that derive selector `0x0003`, bucket `1`,
-object byte `0x00`, and compact target `0x1effe`; rows `0x0083`, `0x0084`,
-`0x0085`, `0x0086`, `0x00bf`, `0x00c0`, `0x00c1`, `0x00fd`, `0x00fe`, and `0x00ff`
-derive selector `0x2003`, buckets `1` and `9`, object byte `0x20`, and compact target
-`0x1effe` for render bucket word `9`. Parser scratch is limited to the fetched
+`0x0005`, `0x0006`, `0x0007`, `0x0008`, `0x0009`, `0x003e`, `0x003f`, `0x0041`,
+`0x0042`, and `0x007f` are canonical installed record fields that derive selector
+`0x0003`, bucket `1`, object byte `0x00`, and compact target `0x1effe`; rows
+`0x0083`, `0x0084`, `0x0085`, `0x0086`, `0x00bf`, `0x00c0`, `0x00c1`, `0x00fd`,
+`0x00fe`, and `0x00ff` derive selector `0x2003`, buckets `1` and `9`, object byte
+`0x20`, and compact target `0x1effe` for render bucket word `9`. Parser scratch is
+limited to the fetched
 `ESC )s#W` restored record and payload byte count; derived/cache state is the `0xff1e`
 bucket array plus `0x1ed84`/`0x1ef6a` dispatch. Published row counts for the
-twenty-two cases are `7`, `8`, `9`, `10`, `11`, `14`, `15`, `64`, `64`, `64`, `64`,
-`64`, `9`, `10`, `11`, `12`, `16`, `16`, `16`, `16`, `16`, and `16`; rows `0x00bf`,
+twenty-four cases are `7`, `8`, `9`, `10`, `11`, `12`, `13`, `14`, `15`, `64`, `64`,
+`64`, `64`, `64`, `9`, `10`, `11`, `12`, `16`, `16`, `16`, `16`, `16`, and `16`; rows
+`0x0006` and `0x0007` render `12` and `13` rows with digests
+`b791b24072d4758b9a4e40ae7600cd7e0b2bbbe3757dd001f8819dc6d94a5b7a` and
+`d2beea9dbf9a604abeb5fe8cc87636002405da8f46d6cbbf585af7e7481cd088`. Rows `0x00bf`,
 `0x00c0`, `0x00c1`, `0x00fd`, `0x00fe`, and `0x00ff` intentionally share the same
 rendered-row digest. Fixture `host-fetched rows-0x102 downloaded glyph FF publication
 truncates
@@ -4788,9 +4794,11 @@ fields and every legal metric combination have not been page-compared.
   split-plane partial-install visibility contract, and now carries those two compact
   objects through trailing-FF `0xff1e` publication and `0x1ed84`/`0x1ef6a`
   published-record rendering. Still-open comparisons are bounded cross-products: row
-  counts outside the covered short rows `0x01`, `0x02`, `0x03`, `0x04`, `0x08`,
-  `0x10`, `0x20`, `0x40`, `0x41`, `0x7f`, and `0x80` and segmented rows
-  `0x81`, `0x82`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`,
+  counts outside the covered short rows `0x01`, `0x02`, `0x03`, `0x04`, `0x05`,
+  `0x06`, `0x07`, `0x08`, `0x09`, `0x10`, `0x20`, `0x3e`, `0x3f`, `0x40`,
+  `0x41`, `0x42`, `0x7f`, and `0x80` and segmented rows
+  `0x81`, `0x82`, `0x83`, `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`,
+  `0xfd`, `0xfe`, and `0xff`,
   pixel rows after printable downloaded spans `0x0100..0x020d` wrap in the
   current one-byte page source span field and select invalid helper-table
   targets, visible behavior after
@@ -4903,11 +4911,12 @@ fields and every legal metric combination have not been page-compared.
   preserves record `00 00 00 00 0c 01 00 40 00 10 00 00`, renders bucket word `1`, and
   emits `64` current-band rows through compact target `0x1effe`/`0x1fe76`. Fixture
   `downloaded glyph row-count matrix publishes and renders additional short/segmented
-  counts` adds short rows `0x01`, `0x02`, `0x03`, `0x04`, `0x05`, `0x08`, `0x09`,
-  `0x3e`, `0x3f`, `0x41`, `0x42`, and `0x7f`, plus segmented rows `0x83`, `0x84`,
-  `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff` through the same
-  printable+FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` boundary. It also pins the shared
-  full-success return boundary for all twenty-two rows: `0x15dc6 -> 0x16498 ->
+  counts` adds short rows `0x01`, `0x02`, `0x03`, `0x04`, `0x05`, `0x06`, `0x07`,
+  `0x08`, `0x09`, `0x3e`, `0x3f`, `0x41`, `0x42`, and `0x7f`, plus segmented rows
+  `0x83`, `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff`
+  through the same printable+FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` boundary. It also
+  pins the shared full-success return boundary for all twenty-four rows:
+  `0x15dc6 -> 0x16498 ->
   0x15dcc -> 0x12328`, copy status `1`, `0x783140 = 0`, no drained bytes, and next
   handler `0xd04a`. Fixture `host-fetched even-span downloaded glyph FF publishes
   rendered page record` renders the copied bucket-1 record through `0x1ed84`/`0x1ef6a`

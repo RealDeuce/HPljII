@@ -382,7 +382,26 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    raster payload publishes with page rule`, fixture `macro overlay multi-row raster
    payload publishes with page rule`, and fixture `macro overlay span-flush payload
    publishes with page rule`.
-4. Downloaded font support now has tracked documentation for descriptor,
+4. Active-record selection and render-band scheduling are documented as a
+   ROM-internal reproduction boundary, rather than a page-object gap. Fixture
+   `0x1eb2a/0x1ecd6 selects published record for render entry` proves
+   `0x780eaa -> 0x780eae`, work-record alternation through `0x7820bc`, active render
+   pointer `0x783a18`, and `0x1ed84`/`0x1ef6a` output for a published page/control
+   record. Fixture `0x1958/0x1c04/0x1eea staged candidate reaches render scheduler`
+   proves candidate staging, `0x1fd4` slot insertion, state-4 release, candidate
+   promotion through `0x7ec6..0x7f90`, and the same rendered rows. Fixture
+   `0x1eba4/0x1ef6a active render loop advances or yields bands` covers cleanup,
+   throttle, capacity-wait, and render-call branches, while fixture `0x1eba4 scheduler
+   band words render published downloaded glyph` proves scheduler-produced band words
+   `0..9` against a published downloaded-glyph record. The remaining scheduler risk is
+   not a ROM object/rendering middle edge: it is board-level timing for `$8000.4`
+   selection at `0x0f84..0x0fa0` and `0x1020..0x102e`, MMIO effects around `$a601 =
+   0xfd`, `$a801`, `$aa01`, `0xfffe0001`, and `0xfffe0003`, and the physical event
+   timing that drives modeled wait-object/trap states through `0x10bc..0x11f8` and
+   `0x123a..0x1282`. Evidence: `Published Record To Active Render Scheduler` in
+   `notes/semantic-state-model.md` and `Active Render Scheduler` in
+   `notes/page-raster-imaging.md`.
+5. Downloaded font support now has tracked documentation for descriptor,
    resource-payload, current-record, bit-30-clear resource-object, bit-30-clear
    even-span and split-plane continuation resume, status-0 fixed-record release, bit-30
    offset-table release delegate, split-plane character-object, linear character-object,
@@ -626,9 +645,10 @@ The next work should follow dataflow, not isolated handlers:
    split-plane segmented, row-threshold `0x80` short, rows-`0x0101..0x0103`
    low-byte-truncated short publication, even-span wide, and payload-control wide
    selector families, especially row counts outside the covered short rows `0x01`,
-   `0x02`, `0x03`, `0x04`, `0x05`, `0x08`, `0x09`, `0x10`, `0x20`, `0x3e`, `0x3f`,
-   `0x40`, `0x41`, `0x42`, `0x7f`, and `0x80` and segmented rows `0x81`, `0x82`, `0x83`,
-   `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff`,
+   `0x02`, `0x03`, `0x04`, `0x05`, `0x06`, `0x07`, `0x08`, `0x09`, `0x10`, `0x20`,
+   `0x3e`, `0x3f`, `0x40`, `0x41`, `0x42`, `0x7f`, and `0x80` and segmented rows
+   `0x81`, `0x82`, `0x83`, `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`,
+   `0xfe`, and `0xff`,
    descriptor grammar forms outside the covered helper-table path, full pixel-row
    behavior past the wrapped-width invalid helper entries, broader physical comparison
    for segmented-wide row words above `0x00ff`, and full-success return-boundary
@@ -695,15 +715,16 @@ The next work should follow dataflow, not isolated handlers:
    carries `ESC )s260W` plus printable `0` and FF through `0xff1e`, preserves buckets
    `1` and `9`, and renders bucket word `9` through `0x1ed84`/`0x1ef6a` to two `0x1f1f0`
    segment-1 rows. The downloaded-glyph row-count matrix now adds short rows `0x01`,
-   `0x02`, `0x03`, `0x04`, `0x05`, `0x08`, `0x09`, `0x3e`, `0x3f`, `0x41`, `0x42`, and
-   `0x7f` on selector `0x0003`/bucket `1`, plus segmented rows `0x83`, `0x84`, `0x85`,
-   `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff` on selector
-   `0x2003`/buckets `1` and `9`, all through printable+FF, `0xff1e`, and
-   `0x1ed84`/`0x1ef6a`; published row counts are `7`, `8`, `9`, `10`, `11`, `14`, `15`,
-   `64`, `64`, `64`, `64`, `64`, `9`, `10`, `11`, `12`, `16`, `16`, `16`, `16`, `16`,
-   and `16`. All twenty-two row-count matrix cases now also pin `0x15dc6 -> 0x16498 ->
-   0x15dcc -> 0x12328` with copy status `1`, `0x783140 = 0`, zero drained bytes, and
-   next handler `0xd04a`. The `0x16498` replacement/allocation-failure/partial/reject
+   `0x02`, `0x03`, `0x04`, `0x05`, `0x06`, `0x07`, `0x08`, `0x09`, `0x3e`, `0x3f`,
+   `0x41`, `0x42`, and `0x7f` on selector `0x0003`/bucket `1`, plus segmented rows
+   `0x83`, `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff`
+   on selector `0x2003`/buckets `1` and `9`, all through printable+FF, `0xff1e`, and
+   `0x1ed84`/`0x1ef6a`; published row counts are `7`, `8`, `9`, `10`, `11`, `12`, `13`,
+   `14`, `15`, `64`, `64`, `64`, `64`, `64`, `9`, `10`, `11`, `12`, `16`, `16`, `16`,
+   `16`, `16`, and `16`. All twenty-four row-count matrix cases now also pin
+   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with copy status `1`, `0x783140 = 0`,
+   zero drained bytes, and next handler `0xd04a`. The `0x16498`
+   replacement/allocation-failure/partial/reject
    fixture now has a high-row truncation matrix for rows `0x0101`, `0x0102`, and
    `0x0103`: `ESC )s#W` installs canonical records ending in row words `0x0101`,
    `0x0102`, and `0x0103`, but the printable page source exposes low row bytes `0x01`,

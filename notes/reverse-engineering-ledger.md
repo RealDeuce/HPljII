@@ -1175,8 +1175,7 @@ ROM work needed:
   `notes/formatter-interface-pca.md` records the formatter's larger ROM capacity
   and address-controller/jumper ROM-region control.
   Command-family state is composed in `Text Cursor And Direct Controls`, and
-  the
-  printable source-object fields are composed in `Text Source Objects And
+  the printable source-object fields are composed in `Text Source Objects And
   Compact Buckets`.
 - Continue binary payload work only where the command family is not already
   composed or where live CPU continuity is still missing. Raster graphics
@@ -1467,8 +1466,15 @@ ROM work needed:
   wrapper predicate selection, `0x1144..0x11f8` trap-handler wait-state
   transitions, and `0x1eba4..0x1ecd2` render-loop predicate selection
   are now fixture-covered.
-- Determine the remaining live-parser wide/segmented text, raster
-  edge-case, and final device-output clipping behavior exactly.
+- Continue live-parser confirmation only where a page-object family still
+  lacks one full parser/register run: wide/segmented text cross-products,
+  the dense raster producer handoff already narrowed to
+  `0x105d0 -> 0x10084 -> 0x13070`, and final physical-device comparison.
+  The covered ROM-side bitmap behavior is no longer an open generic
+  clipping question: rectangle fill clipping, compact current-band/fallback
+  row splitting, synthetic wide/segmented fallback splitting, raster mode
+  `1..3` expansion, and the `0x1ef6a` compact/raster/crossing-rule band
+  merge are all fixture-backed for the documented cases.
 - Identify any banding/compression structures used internally; reproduce
   final pixel result rather than formatter timing.
 

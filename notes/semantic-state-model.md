@@ -7213,8 +7213,10 @@ the parser and allocator.
   fixture-checked. Active-record selection through `0x1eb2a..0x1ed84`
   is covered by the published-render scheduler checkpoint, and the
   modeled `0x1ef6a` per-band merge carries a patterned rule from band
-  `0` to band `5`. Remaining gaps are live engine pacing and multi-band
-  loop timing.
+  `0` to band `5`. Remaining gaps are live engine pacing and the exact
+  relation between scheduler loop timing and physical engine events, not
+  the fixture-backed per-band bitmap merge for compact text, mode-0 raster,
+  and a crossing rule.
 
 ## Publication Commands To Rendered Page Records
 

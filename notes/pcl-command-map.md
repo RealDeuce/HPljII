@@ -1065,10 +1065,12 @@ handlers:
   `+0x14 - +0x16 - 1`, `0x1757a` writes
   `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`, `0x1762a` writes signed
   offset word `+0x1a`, and `0x1719c` copies the staged fields into the
-  allocated payload. The remaining open middle is additional metric-value
-  combinations outside those pinned legal matrix, boundary, range-endpoint,
-  tight-range, low-nibble, and byte-boundary fixtures, plus external/manual
-  naming for consumed-but-not-staged validation fields.
+  allocated payload. Metric-value behavior is now a fixture-backed
+  cross-product of the pinned legal matrix, boundary, extent-fence,
+  range-endpoint, mixed-value, tight-range, low-nibble, and byte-boundary
+  cases. The remaining open middle is broader selected-font state
+  combinations plus external/manual naming for consumed-but-not-staged
+  validation fields.
 - Treat non-Roman `0N` / `10U` / `11U` font-selection visible output as
   covered for the documented primary and secondary paths. Fixture
   `live parser symbol-set streams select non-Roman built-ins` proves primary

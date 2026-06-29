@@ -496,8 +496,9 @@ pending, and drains queued bytes to the interface selected by
   - `0x780e0a`: aggregate active status longword written by `0x36e4` as
     `0x780e68 | 0x780e12`; `0x36e4` mirrors nonzero status back into
     byte `0x780e68 = 0xff`.
-  - `0x780e90`: page/pool-side status byte set by the `0x2888..0x2a80`
-    family and consumed by the outbound status byte formula.
+  - `0x780e90`: derived page-environment mismatch/status flag composed in
+    `Page Environment Status And Pool Cursor Gate` below. It is consumed
+    by the outbound status byte formula as bit 0.
   - `0x780e2a`: warning/status accumulator; `0xa6cc` ORs bit `1` on
     low-water bridge capacity, and `0x36e4` folds it into `0x780e0e`.
   - `0x780e2e`: alternate-mode status accumulator updated by `0xa1d6`
@@ -615,15 +616,158 @@ literal bytes.
 
 - `0x122be..0x12326`: producer control flow is bounded, but the protocol
   meaning of `0x11` plus record word `+2 == 1` or `-1` remains unnamed.
-- `0x2888..0x2a80`: `0x780e90` producer side is bounded, but its
-  user-visible paper/page-status meaning needs a separate page-pool
-  status checkpoint.
 - `0x36e4..0x37fa`: aggregate formulas are pinned, but physical or
   user-facing names for `0x780e32`, `0x780e36`, `0x780e2e`,
   `0x780e2a`, and their folded status categories remain board/manual
   correlation work.
 - `0xa1b0` and `0xa1d6`: register readiness and byte writes are pinned,
   but physical interface names and timing remain board-level work.
+
+## Page Environment Status And Pool Cursor Gate
+
+Status: composed as the page-environment status bridge between the active
+page/control pool record, interface status byte `0x780e90`, and the
+page-pool cursor service path. This checkpoint covers producer
+`0x2888..0x2a80`, cleanup `0x2c08..0x2c3a`, and consumers in
+`0x7612..0x7834` plus the host-interface output status formula.
+
+Concept: `0x2888` compares the selected scheduler record at `0x780eaa`
+against the current page-environment state. It can publish a pending
+environment byte through `0x780e8f`, update page/status latches
+`0x780e90`, `0x780e98`, `0x780e29`, `0x780e30`, and `0x780e2a`, and
+return whether the record needs page-environment service. The cursor loop
+at `0x7612` treats `0x780e90` as the selector between service helpers
+`0x8a48` and `0x8656`; the host-interface output worker reports the same
+flag as bit 0 of the outbound base `0x30` status byte.
+
+### Field Groups
+
+- Canonical page-environment bytes:
+  - `0x780e8e`: active page-environment byte compared with selected
+    record byte `+7` by `0x2888`.
+  - `0x780e8f`: output page-environment byte written by `0x2a14` from
+    selected record byte `+7`.
+  - selected record bytes `+6`, `+7`, and `+8`: status candidate,
+    page-environment candidate, and service-needed byte consumed by
+    `0x2888`.
+  Evidence:
+  `generated/disasm/ic30_ic13_page_environment_status_002888.lst`.
+- Derived/cache status fields:
+  - `0x780e90`: page-environment status flag. `0x2888` clears it before
+    evaluating an eligible state-2/state-3 record, sets it when active
+    byte `0x780e8e.7` is set and selected record byte `+7` matches
+    `0x780e8e`, and `0x2a38` / `0x2c08..0x2c3a` clear it after service
+    cleanup.
+  - `0x780e98`: status-code cache. `0x2888` writes it from selected
+    record byte `+6` in the high-bit-active path, otherwise from
+    `0x780e97` when nonzero, fallback byte `0x780e55`, or helper
+    `0x29b2` argument byte.
+  - `0x780e2a.4`: warning/status bit set by `0x2888` through
+    `0x9bee(0x780e2a, 0x10)` when it sets `0x780e90`.
+  - `0x7839d3`: service-pending byte set by `0x2a38` after helper
+    predicates `0xa46e` true and `0xa5f2` false; copied-stub handler
+    `0x0d12..0x0d24` and cleanup `0x2c08..0x2c3a` clear it.
+- Firmware bookkeeping:
+  - `0x780e6d`: active-pool attention/status flag. If set, `0x2888`
+    exits without changing `0x780e90`.
+  - `0x780e02` and `0x780e91`: gates for whether mismatch handling
+    publishes selected record byte `+7` through `0x2a14` or falls back to
+    default/status-code handling.
+  - `0x780e97` and `0x780e55`: default/status code sources for
+    `0x780e98`.
+  - `0x780e29.0`: set by `0x2a14` when publishing `0x780e8f`;
+    `0x780e29.3`: set by `0x29b2` when `0x780e02` and `0x780e91` are set;
+    `0x780e30.0`: set by `0x29b2` otherwise.
+- Parser scratch:
+  - none. These fields are pool/page-environment and interface-status
+    bookkeeping after parser handlers have already created or selected a
+    page/control pool record.
+- Unknown:
+  - user-facing names for record bytes `+6`, `+7`, and `+8` outside the
+    existing page-environment interpretation.
+  - physical status meaning of service helpers `0x8a48`, `0x8656`,
+    `0xa46e`, `0xa5c2`, and `0xa5da`.
+
+### Writers
+
+- `0x2888` first requires selected record state byte `+4` to be `2` or
+  `3`, and `0x780e6d == 0`. It clears `0x780e90`, then compares selected
+  record byte `+7` with `0x780e8e`.
+- `0x2a14` writes selected record byte `+7` to `0x780e8f` and sets
+  `0x780e29.0` when mismatch handling chooses the output-environment
+  path.
+- `0x2888` sets `0x780e90 = 1`, copies selected record byte `+6` to
+  `0x780e98`, and ORs `0x10` into `0x780e2a` when active byte
+  `0x780e8e.7` is set.
+- `0x29b2` writes `0x780e98` from its argument when that byte differs
+  from `0x780e97`, then sets either `0x780e29.3` or `0x780e30.0`
+  depending on `0x780e02` / `0x780e91`.
+- `0x2a38` sets `0x7839d3 = 1`, calls `0xa5c2`, then clears
+  `0x780e90` when the `0xa46e` / `0xa5f2` predicate pair allows service.
+- `0x2c08..0x2c3a` clears `0x7839d2`, optionally runs `0x2c44`, clears
+  `0x7839d3`, calls `0xa5da`, and clears `0x780e90`.
+
+### Readers And Consumers
+
+- `0xaece` consumes `0x780e90` as one source for outbound status bit 0
+  in the interface status byte.
+- `0x7612..0x7834` consumes `0x780e90` in the page-pool cursor loop. In
+  the observed cursor cases it calls `0x8a48` when the flag is set and
+  `0x8656` when clear; after releasing or advancing records it can clear
+  `0x780e90` at `0x77b0`.
+- `0x0d12..0x0d24` consumes and clears `0x7839d3` in a copied-stub status
+  handler, then signals wait object `0x780182`.
+
+### Output Effect
+
+This checkpoint does not draw pixels directly. It can affect
+reproduction in two indirect ways: host-facing status bit 0 can change
+bidirectional protocol behavior, and the page-pool cursor loop chooses
+different service helpers while `0x780e90` is set. The render-entry path
+still depends on published page records, `0x780eaa -> 0x780eae`, and
+`0x1ed84` / `0x1ef6a`; this checkpoint only explains the status/service
+flag that can run alongside that cursor movement.
+
+### Confidence
+
+High for `0x780e90`, `0x780e98`, `0x780e8f`, `0x780e29`, `0x780e30`,
+`0x780e2a.4`, and `0x7839d3` writes because the focused listings show
+direct stores and bit operations. Medium for physical/user-facing status
+names for the selected record bytes and service helpers.
+
+### Fixtures
+
+- No new executable fixture is introduced for this checkpoint. Evidence
+  is disassembly-only; a future fixture should drive a selected pool
+  record through `0x2888`, then observe the `0xaece` outbound status bit
+  and the `0x7612` helper choice.
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_page_environment_status_002888.lst`:
+  `0x2888..0x2a80` producer, helper `0x29b2`, environment output helper
+  `0x2a14`, and service cleanup gate `0x2a38`.
+- `generated/disasm/ic30_ic13_page_status_cleanup_002c00.lst`:
+  `0x2c08..0x2c3a` service cleanup that clears `0x7839d3` and
+  `0x780e90`.
+- `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`:
+  `0x763a..0x77d0` consumers and clear path in the cursor loop.
+- `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`:
+  `0xaf34..0xaf40` outbound status-byte bit-0 consumer.
+- `generated/disasm/ic30_ic13_trampoline_handlers_000c7e.lst`:
+  `0x0d12..0x0d24` copied-stub `0x7839d3` consumer.
+
+### Unresolved Middle Edges
+
+- `0x8a48` versus `0x8656`: the cursor-loop branch on `0x780e90` is
+  pinned, but the physical/page-service meaning of those helpers remains
+  unnamed.
+- `0x780e98` source bytes: selected record byte `+6`, `0x780e97`,
+  `0x780e55`, and helper `0x29b2` are bounded, but their user-facing
+  status names remain unresolved.
+- `0x2a38`: helper predicates `0xa46e`, `0xa5f2`, `0xa5c2`, and
+  `0xa5da` are not lifted here beyond their effects on `0x7839d3` and
+  `0x780e90`.
 
 ## Parser Record And Delayed Payload State
 

@@ -102,10 +102,16 @@ discards them in mode `1`, or sends them through `0xa1d6` to
 `0xaece..0xaf74`: bridge service sends literal `0x13`, and pending
 status sends base `0x30` plus bits from `0x780e12`, `0x780e90`,
 `0x780e2a`, `0x780e0a`, and `0x783e60`; producers are bounded to
-`0xa8c8`, `0xa6cc`, and aggregate helper `0x36e4`. Remaining work is
-protocol naming for the `0x12280` response bytes, user-facing names for
-the folded status categories, and physical naming/timing for the output
-MMIO banks.
+`0xa8c8`, `0xa6cc`, and aggregate helper `0x36e4`. The `0x780e90`
+source is now composed in `Page Environment Status And Pool Cursor Gate`:
+`0x2888..0x2a80` compares selected pool-record bytes with
+`0x780e8e`, can publish `0x780e8f`, set `0x780e90`, cache
+`0x780e98`, and OR `0x10` into `0x780e2a`; `0x7612..0x7834` consumes
+that flag to choose the page-pool cursor service helper, and
+`0x2c08..0x2c3a` clears the service flags. Remaining work is protocol
+naming for the `0x12280` response bytes, user-facing names for the
+folded status categories and selected record bytes, and physical
+naming/timing for the output MMIO banks.
 
 ### Main PCL parser
 

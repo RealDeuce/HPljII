@@ -1392,9 +1392,10 @@ Disassembly evidence:
 Unresolved middle edges:
 
 - `0x12f2e..0x1f264`: compact built-in and downloaded glyph objects have
-  broad fixture coverage, but the full legal font descriptor matrix still
-  needs parser-produced page comparisons for every selector/metric
-  combination.
+  broad fixture coverage. Remaining compact-glyph work is broader
+  selected-font state combinations, wrapped-width boundary behavior, and
+  physical/reference page comparisons, not the copied descriptor metric
+  formulas.
 - `0x12714..0x1f812`: segment-list producer and consumer are connected for
   portrait text spans; broader orientation/page-size cross-checks still need
   visible page comparisons.
@@ -1407,7 +1408,8 @@ Unresolved middle edges:
   selector/page-visible matrix and physical-device comparison.
 - `0x1fa5c..0x207ac`: compact row-copy table targets are composed in the
   compact glyph row-copy checkpoint below. Remaining work is broader
-  page-visible comparison for every legal descriptor/font-width cross-product.
+  page-visible comparison for row-count, segment, wrapped-width, and physical
+  page variants outside the sampled helper matrix.
 
 ### Subrenderer Payloads
 

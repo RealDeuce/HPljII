@@ -800,19 +800,26 @@ the remainder in `0x783a22`, stores `(word +0x06 - remainder) << 4` in
 `0x783a20`, and stores `long +0x00 + ((remainder << 6) * word +0x04)` in
 both `0x783a28` and render-record long `+0x12`.
 
-The executable `0x1ef6a` coverage now feeds one synthetic render record
+The executable `0x1ef6a` coverage first fed one synthetic render record
 through that entry sequence, with compact text and encoded raster bucket
 objects selected from render-record `+0x18`, a selector-7 rule list from
-`+0x1c`, and a fixed-width list from `+0x20`. It verifies the firmware
-call order (`0x1ef86`, `0x1efc2`, `0x1f446`, `0x1f756`) and composes
-those layers without claiming the full parser-produced page-root merge
-is decoded.
+`+0x1c`, and a fixed-width list from `+0x20`. It verified the firmware
+call order (`0x1ef86`, `0x1efc2`, `0x1f446`, `0x1f756`) and the per-band
+composition rules.
 
-A `0x1ef6a` page-band walker now merges compact text, mode-0 raster,
-and a crossing patterned rule across bands `0` and `5`, carrying the
-mutated rule node into the second band. The remaining gap is therefore
-parser-produced heterogeneous page objects and final device-output
-validation, not the modeled per-band merge itself.
+That synthetic boundary is no longer the only heterogeneous-page evidence.
+Fixture `addressed text/rule/raster field groups reach publication and
+render entry` now stores compact text, selector-7 rule, and mode-0 raster
+objects through addressed `0x1387c` / `0x1381c` page-record storage,
+publishes the page record, and renders it through `0x1ed84` / `0x1ef6a`.
+Fixture `addressed text/rule/multi-row raster publication preserves
+bucket chain` adds the two-raster-row sibling. A `0x1ef6a` page-band
+walker separately merges compact text, mode-0 raster, and a crossing
+patterned rule across bands `0` and `5`, carrying the mutated rule node
+into the second band. The remaining edge is therefore full live 68000
+register/memory capture through the same parser/page-record producers
+and final device-output validation, not parser-produced heterogeneous
+page objects or the modeled per-band merge itself.
 
 Published-record coverage now also takes the reset, FF, page-size, and
 orientation `0xff1e` records from the host-fetched publication fixtures

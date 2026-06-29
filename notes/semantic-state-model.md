@@ -8051,21 +8051,35 @@ shared with control-panel/default paths.
 
 High for the `0xba48` loop structure, `01 EXT READY` string identity,
 `0x85c0`/`68 SERVICE` display boundary, retained-storage commit-failure writer
-`0x571e -> 0x9bee(0x780e36, 0x00000008)`, status-shadow fields, and register
-writes, because they are direct in the focused disassembly windows and string
-table. Medium for calling the external register family a service/external
-interface, because the strings and loop behavior support that role but the
-board-level device is not identified. Low for reconciling the manual
-NVRAM-failure wording with ROM behavior: this checkpoint proves the
-failed-commit `68 SERVICE` status path, while `Default Environment Record
-Producers` proves startup bulk load and active-record failure reporting through
+`0x571e -> 0x9bee(0x780e36, 0x00000008)`, status-shadow fields, register
+writes, and the `0xc0ae`/`0xc1c6` consumer behavior now exercised by
+`tools/render_fixture_harness.py`. Medium for calling the external register
+family a service/external interface, because the strings and loop behavior
+support that role but the board-level device is not identified. Low for
+reconciling the manual NVRAM-failure wording with ROM behavior: this
+checkpoint proves the failed-commit writer and the `0xc1c6 -> 0x85c0`
+consumer boundary separately, while `Default Environment Record Producers`
+proves startup bulk load and active-record failure reporting through
 `67 SERVICE`.
 
 ### Fixtures
 
-- None yet. This cluster is documented from ROM disassembly and strings only.
-  No harness fixture currently executes `0xba48`, drives `$fffee00b`, or proves
-  `0xc1c6 -> 0x85c0` from an upstream NVRAM validation failure.
+- `tools/render_fixture_harness.py`: `0xc0ae publishes external status bits
+  through 0x9bee` covers the `$fffee005.7 -> 0x9bee(0x780e2e, 0x80)` path, the
+  `$fffee005.6 -> 0x9bee(0x780e2e, 0x40)` path, and the no-bit return path
+  with `D7 = 0`.
+- `tools/render_fixture_harness.py`: `0xc1c6 dispatches 68 SERVICE from
+  retained-status bit` covers the consumer boundary for
+  `0x780e36 & 0x00000008`: `0xc284`, clearing `0x7822fd`, stable service-byte
+  sampling through `0xc2b8`, and non-returning call `0x85c0` using string
+  `0xb45c` (`68 SERVICE`).
+- `tools/render_fixture_harness.py`: `0xc1c6 displays pending external-ready
+  message` covers the no-status branch where `0x782301 == 1` displays buffer
+  `0x782312` through `0x8c7a`, clears `0x782301`, and returns `D7 = 0`.
+- No harness fixture currently executes the full `0xba48` loop, drives
+  `$fffee00b` through the outer live-condition transition, or runs
+  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0` as one continuous upstream NVRAM
+  validation failure scenario.
 
 ### Disassembly Evidence
 
@@ -8094,6 +8108,9 @@ Producers` proves startup bulk load and active-record failure reporting through
 
 - `retained-storage commit failure -> 0x780e39.3 -> 0x85c0`: this edge is
   composed through `0x571e`, `0x9bee`, and the `0x836e`/`0xc1c6` consumers.
+  The writer and consumer boundaries are documented and fixture-backed
+  separately; a single live execution fixture covering the whole path is still
+  absent.
 - `startup retained-load failure -> default fallback into 0x780eda`: the
   power-on load path is now bounded through `0x5a16 -> 0x97e4`, and invalid
   active records are bounded through `0x56c2 -> 0x1284` (`67 SERVICE`).

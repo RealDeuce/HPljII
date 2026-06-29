@@ -1263,10 +1263,14 @@ ROM work needed:
   `68 SERVICE` display boundary at `0xc1c6 -> 0x85c0`. It also resolves the
   failed retained-storage commit writer: `0x571e` raises
   `0x780e39.3` through `0x9bee(0x780e36, 0x00000008)` after `0x96c4` commit
-  retries are exhausted. Startup retained-record bulk load is now bounded
-  through `0x5a16 -> 0x97e4`, and invalid active-record state reports
-  `67 SERVICE` through `0x56c2 -> 0x1284`; a ROM edge from failed startup load
-  into the factory-default table writers has not been found.
+  retries are exhausted. The fixture harness now covers the `0xc0ae`
+  `$fffee005` status-bit publication boundary and the `0xc1c6` consumer
+  branches for `68 SERVICE` and pending external-ready message replay; the
+  full live `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0` scenario remains
+  unexecuted. Startup retained-record bulk load is now bounded through
+  `0x5a16 -> 0x97e4`, and invalid active-record state reports `67 SERVICE`
+  through `0x56c2 -> 0x1284`; a ROM edge from failed startup load into the
+  factory-default table writers has not been found.
 - Cursor-stack push/pop, bounds, and restored-origin text output are now
   composed in `Text Cursor And Direct Controls`; remaining print
   environment work is reset/default provenance and primary/secondary font

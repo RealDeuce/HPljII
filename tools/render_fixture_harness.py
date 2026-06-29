@@ -218,6 +218,113 @@ def host_byte_fetch_via_a904(initial: dict[str, object]) -> dict[str, object]:
     raise AssertionError("host byte fetch model did not converge")
 
 
+def external_status_publish_via_c0ae(initial: dict[str, object]) -> dict[str, object]:
+    state = dict(initial)
+    events: list[dict[str, object]] = []
+    status_byte = int(state.get("fffee005", 0)) & 0xFF
+    status_long = int(state.get("external_status_780e2e", 0)) & 0xFFFFFFFF
+
+    if status_byte & 0x80:
+        status_long |= 0x80
+        state["external_status_780e2e"] = status_long
+        events.append({"helper": 0x9BEE, "address": 0x780E2E, "mask": 0x80})
+        return {"d7": 1, "path": "fffee005.7", "events": events, "state": state}
+
+    if status_byte & 0x40:
+        status_long |= 0x40
+        state["external_status_780e2e"] = status_long
+        events.append({"helper": 0x9BEE, "address": 0x780E2E, "mask": 0x40})
+        return {"d7": 1, "path": "fffee005.6", "events": events, "state": state}
+
+    state["external_status_780e2e"] = status_long
+    return {"d7": 0, "path": "clear", "events": events, "state": state}
+
+
+def external_service_dispatch_via_c1c6(initial: dict[str, object]) -> dict[str, object]:
+    state = dict(initial)
+    events: list[dict[str, object]] = []
+    status_long = int(state.get("status_780e36", 0)) & 0xFFFFFFFF
+    external_status = int(state.get("external_status_780e2e", 0)) & 0xFFFFFFFF
+    status_byte_780e31 = int(state.get("status_780e31", 0)) & 0xFF
+
+    if (status_long & 0x18) != 0 or (external_status & 0xC0) != 0:
+        events.append({"helper": 0xC284})
+        state["poll_enabled_7822fd"] = 0
+
+        service_byte = int(
+            state.get("service_byte", state.get("last_service_byte_7821aa", 0))
+        ) & 0xFF
+        last_service_byte = int(state.get("last_service_byte_7821aa", 0)) & 0xFF
+        state["service_latch_7821b0"] = 0
+        if service_byte != last_service_byte:
+            state["last_service_byte_7821aa"] = service_byte
+            if service_byte == 0xFD:
+                state["service_latch_7821b0"] = 1
+        events.append({"helper": 0xC2B8, "sampled_byte": service_byte})
+
+        if status_long & 0x00000008:
+            events.append({
+                "helper": 0x85C0,
+                "string": 0xB45C,
+                "non_returning": True,
+            })
+            return {
+                "d7": None,
+                "path": "68-service",
+                "events": events,
+                "state": state,
+            }
+
+        if status_long & 0x00000010:
+            state["message_pending_782301"] = 1
+            state["poll_enabled_7822fd"] = 1
+            events.append({"helper": 0x85D2})
+            return {
+                "d7": 1,
+                "path": "69-service",
+                "events": events,
+                "state": state,
+            }
+
+        if status_byte_780e31 & 0x80:
+            state["message_pending_782301"] = 1
+            state["poll_enabled_7822fd"] = 1
+            events.extend([{"helper": 0xC2F8}, {"helper": 0x79DA}])
+            return {
+                "d7": 1,
+                "path": "status-780e31.7",
+                "events": events,
+                "state": state,
+            }
+
+        if status_byte_780e31 & 0x40:
+            state["message_pending_782301"] = 1
+            state["poll_enabled_7822fd"] = 1
+            events.extend([{"helper": 0xC2F8}, {"helper": 0x7AC8}])
+            return {
+                "d7": 1,
+                "path": "status-780e31.6",
+                "events": events,
+                "state": state,
+            }
+
+        state["message_pending_782301"] = 1
+        state["poll_enabled_7822fd"] = 1
+        return {"d7": 1, "path": "status-resume", "events": events, "state": state}
+
+    if int(state.get("message_pending_782301", 0)) == 1:
+        state["message_pending_782301"] = 0
+        events.append({"helper": 0x8C7A, "source": 0x782312})
+        return {
+            "d7": 0,
+            "path": "display-pending-message",
+            "events": events,
+            "state": state,
+        }
+
+    return {"d7": 0, "path": "idle", "events": events, "state": state}
+
+
 def fetch_stream_via_a904(initial: dict[str, object], byte_count: int) -> dict[str, object]:
     state = dict(initial)
     values: list[int] = []
@@ -23677,6 +23784,99 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "handshake_state": 1,
         "timeout_state": 0,
         "mode2_control_shadow": 0x60,
+    }))
+
+    external_status_fault = external_status_publish_via_c0ae({
+        "fffee005": 0x80,
+        "external_status_780e2e": 0,
+    })
+    external_status_warning = external_status_publish_via_c0ae({
+        "fffee005": 0x40,
+        "external_status_780e2e": 0,
+    })
+    external_status_clear = external_status_publish_via_c0ae({
+        "fffee005": 0,
+        "external_status_780e2e": 0,
+    })
+    checks.append(assert_equal("0xc0ae publishes external status bits through 0x9bee", [
+        {
+            "d7": external_status_fault["d7"],
+            "path": external_status_fault["path"],
+            "events": external_status_fault["events"],
+            "status": external_status_fault["state"]["external_status_780e2e"],
+        },
+        {
+            "d7": external_status_warning["d7"],
+            "path": external_status_warning["path"],
+            "events": external_status_warning["events"],
+            "status": external_status_warning["state"]["external_status_780e2e"],
+        },
+        {
+            "d7": external_status_clear["d7"],
+            "path": external_status_clear["path"],
+            "events": external_status_clear["events"],
+            "status": external_status_clear["state"]["external_status_780e2e"],
+        },
+    ], [
+        {
+            "d7": 1,
+            "path": "fffee005.7",
+            "events": [{"helper": 0x9BEE, "address": 0x780E2E, "mask": 0x80}],
+            "status": 0x80,
+        },
+        {
+            "d7": 1,
+            "path": "fffee005.6",
+            "events": [{"helper": 0x9BEE, "address": 0x780E2E, "mask": 0x40}],
+            "status": 0x40,
+        },
+        {"d7": 0, "path": "clear", "events": [], "status": 0},
+    ]))
+
+    external_68_service = external_service_dispatch_via_c1c6({
+        "status_780e36": 0x00000008,
+        "external_status_780e2e": 0,
+        "poll_enabled_7822fd": 1,
+        "last_service_byte_7821aa": 0x7E,
+        "service_byte": 0x7E,
+    })
+    external_68_service_state = external_68_service["state"]
+    assert isinstance(external_68_service_state, dict)
+    checks.append(assert_equal("0xc1c6 dispatches 68 SERVICE from retained-status bit", {
+        "d7": external_68_service["d7"],
+        "path": external_68_service["path"],
+        "events": external_68_service["events"],
+        "poll_enabled_7822fd": external_68_service_state["poll_enabled_7822fd"],
+        "service_latch_7821b0": external_68_service_state["service_latch_7821b0"],
+    }, {
+        "d7": None,
+        "path": "68-service",
+        "events": [
+            {"helper": 0xC284},
+            {"helper": 0xC2B8, "sampled_byte": 0x7E},
+            {"helper": 0x85C0, "string": 0xB45C, "non_returning": True},
+        ],
+        "poll_enabled_7822fd": 0,
+        "service_latch_7821b0": 0,
+    }))
+
+    external_pending_message = external_service_dispatch_via_c1c6({
+        "status_780e36": 0,
+        "external_status_780e2e": 0,
+        "message_pending_782301": 1,
+    })
+    external_pending_state = external_pending_message["state"]
+    assert isinstance(external_pending_state, dict)
+    checks.append(assert_equal("0xc1c6 displays pending external-ready message", {
+        "d7": external_pending_message["d7"],
+        "path": external_pending_message["path"],
+        "events": external_pending_message["events"],
+        "message_pending_782301": external_pending_state["message_pending_782301"],
+    }, {
+        "d7": 0,
+        "path": "display-pending-message",
+        "events": [{"helper": 0x8C7A, "source": 0x782312}],
+        "message_pending_782301": 0,
     }))
 
     tokenizer_chained_resolution = parse_pcl_numeric_records_via_daf0(b"300r150R\x1b")

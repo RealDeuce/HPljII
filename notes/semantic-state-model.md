@@ -3745,7 +3745,10 @@ compact text renderer.
     current unflagged printable source record byte `+0`, which contains
     `0xff`, `0x00`, `0x01`, and `0x0d`. Derived/cache state is the `0x12f2e`
     selector choice: only span `0x00ff` remains selector `0x1003`; the wrapped
-    spans queue selector `0x0003`. Derived render state now includes the first
+    spans queue selector `0x0003`. Publication state is now fixture-backed:
+    `0xff1e` publishes bucket `0`, clears the current root, keeps empty
+    rule/fixed lists and context prefix `(0, 0, 0, 0)`, and preserves the queued
+    object as published bucket root. Derived render state now includes the first
     dispatch edge: `0x00ff` stays on compact-wide renderer `0x1f0d2`, while
     wrapped spans enter compact mode-0 at `0x1effe` and read helper-table
     entries `0x1f48e`, `0x1f492`, and `0x1f8c2`, targeting `0x20700000`,
@@ -4773,8 +4776,9 @@ fields and every legal metric combination have not been page-compared.
   counts outside the covered short rows `0x01`, `0x02`, `0x03`, `0x04`, `0x08`,
   `0x10`, `0x20`, `0x40`, `0x41`, `0x7f`, and `0x80` and segmented rows
   `0x81`, `0x82`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff`,
-  visible behavior after printable downloaded spans `0x0100..0x020d` wrap in
-  the current one-byte page source span field, visible behavior after
+  pixel rows after printable downloaded spans `0x0100..0x020d` wrap in the
+  current one-byte page source span field and select invalid helper-table
+  targets, visible behavior after
   segmented-wide row words above `0x00ff` wrap in the current one-byte page
   source row field, broader
   publication combinations beyond the documented normal, non-boundary short, rows-`0x20`

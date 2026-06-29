@@ -636,9 +636,12 @@ The next work should follow dataflow, not isolated handlers:
    boundary truncates page-record span` pins the current printable source-byte wrap for
    spans `0x00ff`, `0x0100`, `0x0101`, and `0x020d`: canonical width words survive in
    the installed object, but `0x12f2e` sees width bytes `0xff`, `0x00`, `0x01`, and
-   `0x0d`, so only `0x00ff` remains selector `0x1003`; the wrapped spans dispatch
-   through `0x1effe` and read helper entries `0x1f48e`, `0x1f492`, and `0x1f8c2`, which
-   target non-helper longwords `0x20700000`, `0x4e90202c`, and `0x4e904cdf`. Fixture
+   `0x0d`, so only `0x00ff` remains selector `0x1003`. The same fixture now carries
+   all four page objects through `0xff1e` publication with bucket `0`, root clear, empty
+   rule/fixed lists, and the queued object preserved as published bucket root; the
+   wrapped spans then dispatch through `0x1effe` and read helper entries `0x1f48e`,
+   `0x1f492`, and `0x1f8c2`, which target non-helper longwords `0x20700000`,
+   `0x4e90202c`, and `0x4e904cdf`. Fixture
    `downloaded segmented-wide row-byte boundary truncates page-record segments` pins the
    row-byte sibling for span `0x11`: canonical row words `0x0081`, `0x00ff`, `0x0100`,
    `0x0101`, and `0x0181` survive in the installed object, but `0x12f2e` sees row bytes

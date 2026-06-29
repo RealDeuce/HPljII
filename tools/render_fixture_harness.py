@@ -58831,6 +58831,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             tail_stream,
         )
         tail_trace = trace_mixed_text_control_parser_path_via_11774(data, tail_stream)
+        publication = finalize_page_record_via_ff1e(
+            page_record,
+            reset_fixture_state(
+                page_root_present=1,
+                page_root_class=1,
+                current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+                page_root_clears=0,
+                publication_bucket_index=int(page_result["bucket_index"]),
+            ),
+        )
+        published_record = publication["published_pool_record"]
+        assert isinstance(published_record, dict)
+        published_fields = published_record["pool_record_fields"]
+        assert isinstance(published_fields, dict)
         return {
             "span": span,
             "width": width,
@@ -58883,6 +58897,24 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "next_stream_prefix": tail_stream[:1],
                 "next_handler": tail_trace["events"][0]["handler"],
             },
+            "finalized": {
+                "published": publication["published"],
+                "bucket_index": publication["bucket_index"],
+                "current_page_root_after": publication["current_page_root_after"],
+                "page_root_clears": publication["page_root_clears"],
+                "page_publication_flag": publication["page_publication_flag"],
+            },
+            "publication": {
+                "bucket_root_matches_page_object": (
+                    published_fields["bucket_root_1c"] == page_result["object"]
+                ),
+                "bucket_keys": sorted(published_fields["bucket_array_1c"].keys()),
+                "rule_list_24": published_fields["rule_list_24"],
+                "fixed_list_28": published_fields["fixed_list_28"],
+                "context_slots_2c_prefix": (
+                    published_fields["context_slots_2c"][:4]
+                ),
+            },
             "render_edge": (
                 compact_mode0_render_boundary(glyph)
                 if int(page_result["selector"]) & 0x3000 == 0
@@ -58929,6 +58961,8 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "page_width": case["page"]["width"],
                 "page_rows": case["page"]["rows"],
                 "return_boundary": case["return_boundary"],
+                "finalized": case["finalized"],
+                "publication": case["publication"],
                 "render_edge": case["render_edge"],
                 "visible_output_claim": case["visible_output_claim"],
             }
@@ -58983,6 +59017,20 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     },
                     "next_stream_prefix": bytes([char_code]),
                     "next_handler": 0x00D04A,
+                },
+                "finalized": {
+                    "published": True,
+                    "bucket_index": 0,
+                    "current_page_root_after": 0,
+                    "page_root_clears": 1,
+                    "page_publication_flag": 1,
+                },
+                "publication": {
+                    "bucket_root_matches_page_object": True,
+                    "bucket_keys": [0],
+                    "rule_list_24": [],
+                    "fixed_list_28": [],
+                    "context_slots_2c_prefix": (0, 0, 0, 0),
                 },
                 "render_edge": (
                     {
@@ -92388,11 +92436,13 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "`+0`: span `0xff` remains width byte `0xff` and selector `0x1003`, "
         "while spans `0x100`, `0x101`, and `0x20d` present width bytes "
         "`0x00`, `0x01`, and `0x0d`, so they queue selector `0x0003`. The "
-        "first render edge is now pinned too: `0x00ff` remains compact-wide "
-        "through `0x1f0d2`, while wrapped spans enter compact mode-0 at "
-        "`0x1effe` and read `0x1f08e + span * 4` entries `0x1f48e`, "
-        "`0x1f492`, and `0x1f8c2`, which target non-helper longwords "
-        "`0x20700000`, `0x4e90202c`, and `0x4e904cdf`. Case summaries "
+        "all four cases publish bucket `0` through `0xff1e`, clear the "
+        "current root, and preserve the queued object as published bucket "
+        "root. The first render edge is pinned too: `0x00ff` remains "
+        "compact-wide through `0x1f0d2`, while wrapped spans enter compact "
+        "mode-0 at `0x1effe` and read `0x1f08e + span * 4` entries "
+        "`0x1f48e`, `0x1f492`, and `0x1f8c2`, which target non-helper "
+        "longwords `0x20700000`, `0x4e90202c`, and `0x4e904cdf`. Case summaries "
         "`(span, width byte, selector, render edge, record)` are `%s`."
         % (
             [

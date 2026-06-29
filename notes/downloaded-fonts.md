@@ -317,10 +317,13 @@ Published page-record state:
   `0x0101`, and `0x020d` keep canonical width words, but the current
   printable source record gives `0x12f2e` width bytes `0x00`, `0x01`, and
   `0x0d`, so the page-record producer queues selector `0x0003`. The first
-  render edge is also pinned: those wrapped spans enter compact mode-0 at
-  `0x1effe` and read helper-table entries `0x1f48e`, `0x1f492`, and
-  `0x1f8c2`, whose targets are non-helper longwords. The model therefore
-  makes no pixel-row claim past that invalid helper selection.
+  `0xff1e` publication edge is pinned too: all four cases publish bucket `0`,
+  clear the current root, preserve empty rule/fixed lists and context prefix
+  `(0, 0, 0, 0)`, and keep the published bucket root equal to the queued page
+  object. The first render edge is also pinned: those wrapped spans enter compact
+  mode-0 at `0x1effe` and read helper-table entries `0x1f48e`, `0x1f492`, and
+  `0x1f8c2`, whose targets are non-helper longwords. The model therefore makes
+  no pixel-row claim past that invalid helper selection.
   Fixture `downloaded glyph segmented-wide matrix publishes and renders
   compact chunks` carries the matched span set through rows `0x81`: selector
   `0x3003` publishes buckets `0` and `8`, segment `1` dispatches object byte
@@ -1359,12 +1362,15 @@ and `0x1068` in the object record at `+8`. The current unflagged printable
 source record presented to `0x12f2e` still exposes only byte `+0`: span
 `0x00ff` supplies width byte `0xff` and queues selector `0x1003`, while spans
 `0x0100`, `0x0101`, and `0x020d` supply width bytes `0x00`, `0x01`, and
-`0x0d` and queue selector `0x0003`. The render edge is now pinned for the same
-cases: span `0x00ff` remains compact-wide through `0x1f0d2`, but wrapped spans
-enter compact mode-0 at `0x1effe` and read helper-table entries
-`0x1f48e`, `0x1f492`, and `0x1f8c2`. Those entries target non-helper longwords
-`0x20700000`, `0x4e90202c`, and `0x4e904cdf`, so the model makes no pixel-row
-claim past that invalid helper selection.
+`0x0d` and queue selector `0x0003`. All four cases then publish bucket `0`
+through `0xff1e`; the current root clears, rule/fixed lists stay empty, context
+prefix stays `(0, 0, 0, 0)`, and the published bucket root matches the queued
+page object. The render edge is now pinned for the same cases: span `0x00ff`
+remains compact-wide through `0x1f0d2`, but wrapped spans enter compact mode-0
+at `0x1effe` and read helper-table entries `0x1f48e`, `0x1f492`, and
+`0x1f8c2`. Those entries target non-helper longwords `0x20700000`,
+`0x4e90202c`, and `0x4e904cdf`, so the model makes no pixel-row claim past that
+invalid helper selection.
 
 Fixture `downloaded glyph segmented-wide matrix publishes and renders compact
 chunks` covers the segmented-wide sibling. It drives host-fetched `ESC )s#W`

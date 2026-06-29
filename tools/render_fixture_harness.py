@@ -633,6 +633,165 @@ def page_environment_message_via_8a48(state: dict[str, object]) -> dict[str, obj
     return {"path": "no-media-message", "events": []}
 
 
+def default_record_index(state: dict[str, object]) -> int:
+    return int(state.get("default_record_selector_7822d5", 0)) & 0xFF
+
+
+def default_record_table(state: dict[str, object]) -> list[bytearray]:
+    records = state.get("default_records_780eda")
+    if not isinstance(records, list):
+        raise AssertionError("default environment fixture needs default_records_780eda")
+    return [bytearray(record) for record in records]
+
+
+def put_default_record_table(state: dict[str, object], records: list[bytearray]) -> None:
+    state["default_records_780eda"] = [bytes(record) for record in records]
+
+
+def selected_default_record_offset(state: dict[str, object]) -> int:
+    return default_record_index(state) * 6
+
+
+def default_record_word(record: bytearray, offset: int) -> int:
+    return int.from_bytes(record[offset : offset + 2], "big")
+
+
+def set_default_record_word(record: bytearray, offset: int, value: int) -> None:
+    record[offset : offset + 2] = (int(value) & 0xFFFF).to_bytes(2, "big")
+
+
+def load_default_environment_via_5e80(state: dict[str, object]) -> dict[str, object]:
+    records = default_record_table(state)
+    index = default_record_index(state)
+    record = records[index]
+    record_byte_0 = int(record[0]) & 0xFF
+    record_word_2 = default_record_word(record, 2)
+    record_byte_4 = int(record[4]) & 0xFF
+    record_byte_5 = int(record[5]) & 0xFF
+
+    state["staged_display_782280"] = record_byte_0
+    state["display_default_78219d"] = record_byte_0
+    state["staged_paper_environment_782284"] = 1 if (record_byte_5 & 0x04) else 0
+    state["paper_environment_default_7821a2"] = (
+        0x80 if int(state["staged_paper_environment_782284"]) else 0
+    )
+    state["status_default_780e55"] = 2
+    state["staged_line_spacing_782290"] = record_word_2
+    state["line_spacing_default_78219e"] = record_word_2
+    state["derived_status_7821a3"] = 0x87 + (record_byte_4 & 0x0F)
+    state["default_status_780e97"] = int(state["derived_status_7821a3"]) & 0xFF
+    put_default_record_table(state, records)
+    return {
+        "record_index": index,
+        "record_offset": selected_default_record_offset(state),
+        "record_bytes": bytes(record),
+        "display_default_78219d": int(state["display_default_78219d"]),
+        "paper_environment_default_7821a2": int(state["paper_environment_default_7821a2"]),
+        "line_spacing_default_78219e": int(state["line_spacing_default_78219e"]),
+        "derived_status_7821a3": int(state["derived_status_7821a3"]),
+        "default_status_780e97": int(state["default_status_780e97"]),
+        "status_default_780e55": int(state["status_default_780e55"]),
+    }
+
+
+def update_display_default_via_5060(state: dict[str, object]) -> dict[str, object]:
+    records = default_record_table(state)
+    index = default_record_index(state)
+    record = records[index]
+    value = int(state.get("staged_display_782283", 0)) & 0xFF
+    record[0] = value
+    state["display_default_78219d"] = value
+    dirty = dict(state.get("dirty_flags_780eba", {}))
+    dirty[index * 3] = 1
+    state["dirty_flags_780eba"] = dirty
+    put_default_record_table(state, records)
+    return {
+        "record_index": index,
+        "record_byte_0": value,
+        "display_default_78219d": value,
+        "dirty_flags": dirty,
+    }
+
+
+def update_paper_environment_default_via_50be(state: dict[str, object]) -> dict[str, object]:
+    records = default_record_table(state)
+    index = default_record_index(state)
+    record = records[index]
+    staged = int(state.get("staged_paper_environment_782284", 0)) & 0xFF
+    record[5] = (int(record[5]) & 0xFB) | ((staged & 1) << 2)
+    state["paper_environment_default_7821a2"] = 0x80 if staged else 0
+    dirty = dict(state.get("dirty_flags_780eba", {}))
+    dirty[index * 3 + 2] = 1
+    state["dirty_flags_780eba"] = dirty
+    put_default_record_table(state, records)
+    return {
+        "record_index": index,
+        "record_byte_5": int(record[5]),
+        "paper_environment_default_7821a2": int(state["paper_environment_default_7821a2"]),
+        "dirty_flags": dirty,
+    }
+
+
+def update_line_spacing_default_via_52ba(state: dict[str, object]) -> dict[str, object]:
+    records = default_record_table(state)
+    index = default_record_index(state)
+    record = records[index]
+    value = int(state.get("staged_line_spacing_782290", 0)) & 0xFFFF
+    set_default_record_word(record, 2, value)
+    state["line_spacing_default_78219e"] = value
+    dirty = dict(state.get("dirty_flags_780eba", {}))
+    dirty[index * 3 + 1] = 1
+    state["dirty_flags_780eba"] = dirty
+    put_default_record_table(state, records)
+    return {
+        "record_index": index,
+        "record_word_2": value,
+        "line_spacing_default_78219e": value,
+        "dirty_flags": dirty,
+    }
+
+
+def retained_record_bulk_load_mask_via_5a16(state: dict[str, object]) -> dict[str, object]:
+    dirty_before = dict(state.get("dirty_flags_780eba", {}))
+    forced_mask = {index: 1 for index in range(16)}
+    state["dirty_flags_during_97e4"] = forced_mask
+    state["read_helper_97e4_called"] = True
+    state["dirty_flags_780eba"] = {index: 0 for index in range(16)}
+    return {
+        "dirty_before": dirty_before,
+        "dirty_during_read": forced_mask,
+        "read_helper_97e4_called": True,
+        "dirty_after": dict(state["dirty_flags_780eba"]),
+    }
+
+
+def active_default_record_select_via_56c2(state: dict[str, object]) -> dict[str, object]:
+    records = default_record_table(state)
+    events: list[dict[str, object]] = []
+    for index in range(3):
+        word_4 = default_record_word(records[index], 4)
+        if word_4 & 0x8000:
+            state["default_record_selector_7822d5"] = index
+            return {
+                "d7": 0,
+                "path": "active-record",
+                "record_index": index,
+                "record_word_4": word_4,
+                "events": events,
+                "state": state,
+            }
+        events.append({"record_index": index, "record_word_4": word_4})
+    state["default_record_selector_7822d5"] = 3
+    events.append({"helper": 0x1284, "args": (0xE2, 0x21), "string": 0xB44B})
+    return {
+        "d7": 0,
+        "path": "67-service",
+        "record_index": 3,
+        "events": events,
+        "state": state,
+    }
+
+
 def fetch_stream_via_a904(initial: dict[str, object], byte_count: int) -> dict[str, object]:
     state = dict(initial)
     values: list[int] = []
@@ -24487,6 +24646,149 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             "events": [{"helper": 0x8C90, "string": 0xB2A2}],
         },
     ]))
+
+    default_load_state = {
+        "default_record_selector_7822d5": 1,
+        "default_records_780eda": [
+            bytes.fromhex("00 00 00 00 00 00"),
+            bytes.fromhex("12 34 01 2c 8a 04"),
+            bytes.fromhex("00 00 00 00 00 00"),
+        ],
+    }
+    default_load = load_default_environment_via_5e80(default_load_state)
+    checks.append(assert_equal("0x5e80 loads selected default record into canonical defaults", default_load, {
+        "record_index": 1,
+        "record_offset": 6,
+        "record_bytes": bytes.fromhex("12 34 01 2c 8a 04"),
+        "display_default_78219d": 0x12,
+        "paper_environment_default_7821a2": 0x80,
+        "line_spacing_default_78219e": 0x012C,
+        "derived_status_7821a3": 0x91,
+        "default_status_780e97": 0x91,
+        "status_default_780e55": 2,
+    }))
+
+    default_update_state = {
+        "default_record_selector_7822d5": 1,
+        "default_records_780eda": [
+            bytes.fromhex("00 00 00 00 00 00"),
+            bytes.fromhex("12 34 01 2c 8a 00"),
+            bytes.fromhex("00 00 00 00 00 00"),
+        ],
+        "dirty_flags_780eba": {},
+        "staged_display_782283": 0x34,
+        "staged_paper_environment_782284": 1,
+        "staged_line_spacing_782290": 0x0180,
+    }
+    default_display_update = update_display_default_via_5060(default_update_state)
+    default_paper_update = update_paper_environment_default_via_50be(default_update_state)
+    default_line_update = update_line_spacing_default_via_52ba(default_update_state)
+    default_update_records = default_update_state["default_records_780eda"]
+    checks.append(assert_equal("0x5060/0x50be/0x52ba update default record and dirty flags", {
+        "display": {
+            "record_index": default_display_update["record_index"],
+            "record_byte_0": default_display_update["record_byte_0"],
+            "display_default_78219d": default_display_update["display_default_78219d"],
+        },
+        "paper": {
+            "record_index": default_paper_update["record_index"],
+            "record_byte_5": default_paper_update["record_byte_5"],
+            "paper_environment_default_7821a2": default_paper_update["paper_environment_default_7821a2"],
+        },
+        "line": {
+            "record_index": default_line_update["record_index"],
+            "record_word_2": default_line_update["record_word_2"],
+            "line_spacing_default_78219e": default_line_update["line_spacing_default_78219e"],
+        },
+        "record_bytes": default_update_records[1],
+        "dirty_flags": default_update_state["dirty_flags_780eba"],
+    }, {
+        "display": {
+            "record_index": 1,
+            "record_byte_0": 0x34,
+            "display_default_78219d": 0x34,
+        },
+        "paper": {
+            "record_index": 1,
+            "record_byte_5": 0x04,
+            "paper_environment_default_7821a2": 0x80,
+        },
+        "line": {
+            "record_index": 1,
+            "record_word_2": 0x0180,
+            "line_spacing_default_78219e": 0x0180,
+        },
+        "record_bytes": bytes.fromhex("34 34 01 80 8a 04"),
+        "dirty_flags": {3: 1, 5: 1, 4: 1},
+    }))
+
+    retained_load_mask = retained_record_bulk_load_mask_via_5a16({
+        "dirty_flags_780eba": {0: 0, 7: 1},
+    })
+    checks.append(assert_equal("0x5a16 forces retained-record read mask then clears it", {
+        "dirty_before": retained_load_mask["dirty_before"],
+        "dirty_during_read_count": sum(retained_load_mask["dirty_during_read"].values()),
+        "first_dirty_during_read": retained_load_mask["dirty_during_read"][0],
+        "last_dirty_during_read": retained_load_mask["dirty_during_read"][15],
+        "read_helper_97e4_called": retained_load_mask["read_helper_97e4_called"],
+        "dirty_after_count": sum(retained_load_mask["dirty_after"].values()),
+    }, {
+        "dirty_before": {0: 0, 7: 1},
+        "dirty_during_read_count": 16,
+        "first_dirty_during_read": 1,
+        "last_dirty_during_read": 1,
+        "read_helper_97e4_called": True,
+        "dirty_after_count": 0,
+    }))
+
+    active_record_select = active_default_record_select_via_56c2({
+        "default_records_780eda": [
+            bytes.fromhex("00 00 00 00 00 00"),
+            bytes.fromhex("00 00 00 00 80 01"),
+            bytes.fromhex("00 00 00 00 00 00"),
+        ],
+    })
+    service_record_select = active_default_record_select_via_56c2({
+        "default_records_780eda": [
+            bytes.fromhex("00 00 00 00 00 00"),
+            bytes.fromhex("00 00 00 00 00 01"),
+            bytes.fromhex("00 00 00 00 7f ff"),
+        ],
+    })
+    checks.append(assert_equal("0x56c2 selects active retained record or reports 67 SERVICE", {
+        "active": {
+            "path": active_record_select["path"],
+            "record_index": active_record_select["record_index"],
+            "record_word_4": active_record_select["record_word_4"],
+            "selector": active_record_select["state"]["default_record_selector_7822d5"],
+            "events": active_record_select["events"],
+        },
+        "service": {
+            "path": service_record_select["path"],
+            "record_index": service_record_select["record_index"],
+            "selector": service_record_select["state"]["default_record_selector_7822d5"],
+            "events": service_record_select["events"],
+        },
+    }, {
+        "active": {
+            "path": "active-record",
+            "record_index": 1,
+            "record_word_4": 0x8001,
+            "selector": 1,
+            "events": [{"record_index": 0, "record_word_4": 0}],
+        },
+        "service": {
+            "path": "67-service",
+            "record_index": 3,
+            "selector": 3,
+            "events": [
+                {"record_index": 0, "record_word_4": 0},
+                {"record_index": 1, "record_word_4": 1},
+                {"record_index": 2, "record_word_4": 0x7FFF},
+                {"helper": 0x1284, "args": (0xE2, 0x21), "string": 0xB44B},
+            ],
+        },
+    }))
 
     tokenizer_chained_resolution = parse_pcl_numeric_records_via_daf0(b"300r150R\x1b")
     tokenizer_chained_records = tokenizer_chained_resolution["records"]

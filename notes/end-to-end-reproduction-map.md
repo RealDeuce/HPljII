@@ -562,10 +562,12 @@ The next work should follow dataflow, not isolated handlers:
    reset-consumed defaults through `Default Environment Record Producers`: the
    selected `0x780eda` backing records feed `0x78219d`, `0x7821a2`, and
    `0x78219e` through loader `0x5e80`, while menu/update handlers `0x5060`,
-   `0x50be`, and `0x52ba` update the same records and canonical defaults.
+   `0x50be`, and `0x52ba` update the same records and canonical defaults; the
+   executable fixtures now cover those producer writes and dirty-flag slots.
    Record-maintenance helpers `0x56c2`, `0x571e`, and `0x5a62` now cover
    active-bank selection, three-word record-group copy, dirty-flag maintenance,
-   and ROM-table fallback from `0xba3e`/`0xba44` into `0x780eda`.
+   and ROM-table fallback from `0xba3e`/`0xba44` into `0x780eda`, with fixture
+   coverage for the `0x56c2` active-record and `67 SERVICE` boundaries.
    Panel/service entry points `0x2c84`, `0x3dae`, and `0x4922` now identify
    the cold-reset/menu-reset byte paths that reach `0x5a62`, `0x4162`, and
    `0x4fb0`; byte-source helper `0xa3ca` now identifies `$8000.w & 0xff` as
@@ -577,10 +579,14 @@ The next work should follow dataflow, not isolated handlers:
    writer, ROM-table fallback, panel/service dispatch, `0xa3ca`, generic NVRAM
    persistence, `$a400` phase encoding, startup retained-record bulk load
    through `0x5a16 -> 0x97e4`, or invalid active-record reporting through
-   `0x56c2 -> 0x1284` (`67 SERVICE`). It is the external device/protocol that
-   drives `$8000.w`, the physical retained-storage device and board-level
-   serial pin names behind `$a400`/`$8c01`, and reconciling the manual
-   NVRAM-failure fallback wording with the ROM paths found so far.
+   `0x56c2 -> 0x1284` (`67 SERVICE`); the fixture harness now covers the
+   default-record producer boundary, the startup read-mask behavior, and the
+   active-record/error scan. The remaining middle edge is the external
+   device/protocol that drives `$8000.w`, the physical retained-storage device
+   and board-level serial pin names behind `$a400`/`$8c01`, reconciling the
+   manual NVRAM-failure fallback wording with the ROM paths found so far, and
+   one full integration fixture from a producer update into `0xcda2` reset
+   output.
 2. Treat font metric-byte combinations as regression expansion unless a new
    state boundary appears. The selected-context bridge, metric consumers, downloaded
    descriptor/payload producer chain, and host-stream downloaded glyph output are now

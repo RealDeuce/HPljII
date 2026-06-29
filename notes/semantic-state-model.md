@@ -7810,26 +7810,47 @@ renderer can still start from already materialized canonical defaults.
 ### Confidence
 
 High for the immediate RAM producer edge from `0x780eda` records to
-`0x78219d`, `0x7821a2`, and `0x78219e`, and high for ROM-table fallback writes
-from `0xba3e`/`0xba44` into `0x780eda`, because the writes are direct in the
-focused disassembly windows. Medium for naming the record family as
-control-panel/user defaults, because callers and manual behavior support that
-role. High for the panel/service-byte dispatch into the default-store cluster,
-the immediate `$8000.w` byte source, startup bulk-load through `0x5a16`, the
-retained-storage serial commit/readback register interface, active-record
-failure reporting through `0x56c2 -> 0x1284`, and the software-visible `$a400`
-phase encoding, because `0x2c84`, `0x3dae`, `0x4922`, `0xa3ca`, `0x5a16`,
-`0x56c2`, `0x96c4`, `0x97e4`, `0x1284`, and `0x9a4a` directly connect those
-edges. Low for the external device/protocol that drives `$8000.w`, for the
-physical identity/pin names of the serial retained-storage device behind
-`$a400`/`$8c01`, and for reconciling manual NVRAM-failure fallback wording with
-the ROM paths found here.
+`0x78219d`, `0x7821a2`, and `0x78219e`, because the writes are direct in the
+focused disassembly windows and fixture `0x5e80 loads selected default record
+into canonical defaults` exercises the selected-record load. High for
+field-specific producer writes through `0x5060`, `0x50be`, and `0x52ba`,
+because fixture `0x5060/0x50be/0x52ba update default record and dirty flags`
+proves the record byte/word updates, canonical default mirrors, and dirty-flag
+slots. High for ROM-table fallback writes from `0xba3e`/`0xba44` into
+`0x780eda`, because the writes are direct in the focused disassembly windows.
+Medium for naming the record family as control-panel/user defaults, because
+callers and manual behavior support that role. High for the panel/service-byte
+dispatch into the default-store cluster, the immediate `$8000.w` byte source,
+startup bulk-load through `0x5a16`, the retained-storage serial
+commit/readback register interface, active-record failure reporting through
+`0x56c2 -> 0x1284`, and the software-visible `$a400` phase encoding, because
+`0x2c84`, `0x3dae`, `0x4922`, `0xa3ca`, `0x5a16`, `0x56c2`, `0x96c4`,
+`0x97e4`, `0x1284`, and `0x9a4a` directly connect those edges. Fixtures
+`0x5a16 forces retained-record read mask then clears it` and `0x56c2 selects
+active retained record or reports 67 SERVICE` now execute the bulk-read mask
+and active-record/error boundaries. Low for the external device/protocol that
+drives `$8000.w`, for the physical identity/pin names of the serial
+retained-storage device behind `$a400`/`$8c01`, and for reconciling manual
+NVRAM-failure fallback wording with the ROM paths found here.
 
 ### Fixtures
 
-- None yet for this producer cluster. Existing reset fixtures consume the
-  resulting canonical defaults through `0xcda2`, but they do not execute
-  `0x5e80`, `0x5060`, `0x50be`, `0x52ba`, `0x5a16`, or `0x56c2`.
+- `0x5e80 loads selected default record into canonical defaults`: selects
+  record index `1`, copies record byte `+0` to `0x78219d`, derives
+  `0x7821a2 = 0x80` from record byte `+5` bit 2, copies record word `+2` to
+  `0x78219e`, derives `0x7821a3 = 0x91` from record byte `+4`, mirrors it to
+  `0x780e97`, and sets `0x780e55 = 2`.
+- `0x5060/0x50be/0x52ba update default record and dirty flags`: updates
+  selected-record byte `+0`, byte `+5` bit 2, and word `+2`; mirrors the same
+  values to `0x78219d`, `0x7821a2`, and `0x78219e`; and marks selected-record
+  dirty slots `3`, `5`, and `4`.
+- `0x5a16 forces retained-record read mask then clears it`: proves startup
+  retained-record load treats `0x780eba..0x780ed8` as a temporary all-ones
+  read mask for `0x97e4`, then clears all 16 flags after the read helper.
+- `0x56c2 selects active retained record or reports 67 SERVICE`: proves the
+  active record scan returns selector `1` when word `+4` has bit 15 set, and
+  proves the no-active-record boundary calls `0x1284(0xe2, 0x21)` with string
+  `0xb44b` (`67 SERVICE`) after scanning all three retained-record groups.
 
 ### Disassembly Evidence
 
@@ -7902,9 +7923,11 @@ the ROM paths found here.
 - `0x780eda field names -> HP panel labels`: exact user-visible names remain
   inferred except where consumers identify paper/default environment and
   line-spacing behavior.
-- `0x5e80/0x4fb0 -> reset fixtures`: reset fixtures consume the canonical
-  defaults after setup, but no fixture yet executes the producer handlers and
-  then proves the changed reset output end to end.
+- `0x5e80/0x4fb0 -> 0xcda2 integration fixture`: producer fixtures now
+  execute `0x5e80`, `0x5060`, `0x50be`, and `0x52ba`, and reset fixtures
+  consume canonical defaults through `0xcda2`. A single fixture that changes a
+  retained record through a producer handler and then proves the resulting
+  reset output remains unexecuted.
 
 ## External Ready And Service Status Loop
 

@@ -99,8 +99,47 @@ Scanner motor connector `J203`:
 - The DC Controller converts this light pulse into `BD`, the beam detect
   / horizontal sync pulse.
 - `BD` synchronizes one scan line of video data.
+- Once beam-detect synchronization is established, video data from the
+  Interface PCA can be transferred to modulate the laser diode. The
+  service manual describes the print period as beginning when the DC
+  Controller receives `VDO` from the Interface/Formatter PCA and ending
+  when the last line of print data is transmitted.
 - Loss of beam detect is associated with `41 ERROR` first; if it cannot
   recover after about two seconds, `51 ERROR` occurs.
+
+The beam-detect timing window is owned by the DC Controller. For ROM
+pixel reproduction, this means `BD` is a physical pacing/sync input to
+the formatter-side video path rather than a PCL or page-object semantic
+field. A hardware emulator needs to provide plausible `BD` and
+ready/status timing; a byte-stream renderer only needs the resulting
+formatter-visible state when that timing changes which page record or
+band is rendered.
+
+## ROM Timing Boundary
+
+Current ROM work has named the software-visible side of the formatter/DC
+timing boundary, but not the register-to-pin decode:
+
+- `0x0d52..0x0f7a`: periodic timer/status trampoline. It acknowledges a
+  tick through `0xffff2000`, debounces low-MMIO inputs, rotates `$a200`
+  / `$a400` output tables, and updates wait-object countdowns.
+- `0x0f84..0x10f2`: scan/status interrupt path. It updates
+  `0x78398c`, `0x78399e`, `0x78399f`, and `$a801` shadow byte
+  `0x7828f9`, then signals wait object `0x780182`.
+- `0x10bc..0x1282`: trap veneers and wait-object scheduler used by
+  those events.
+- `0x1cf8..0x1ea8`: active-pool wrapper that consumes pending
+  `0x78399e` / `0x78399f`, `$a801.6` readiness via `0xa680`, and
+  timeout/attention flags.
+- `0x1eba4..0x1ecd2`: active render loop that renders, throttles,
+  yields, or cleans up bands before `0x1ef6a`.
+
+Manual-correlated physical signals still requiring board/register
+correlation are `BD`, `VDO`, `VSREQ`, `VSYNC`, `PRNT`, `CMND`, `CCLK`,
+`CBSY`, `STATS`, `PCLK`, `SBSY`, `RDY`, `PPRDY`, and `CPRDY`. These are
+the likely physical meanings behind some combination of `$8000`,
+`$8a01`, `$a200`, `$a400`, `$a601`, `$a801`, `$aa01`, `0xfffe0001`, and
+`0xfffe0003`, but no exact one-to-one mapping is checked in yet.
 
 ## Main Motor and +24 V Control
 

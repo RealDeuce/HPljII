@@ -30,7 +30,10 @@ scan/status interrupt and wait-object dispatch (`0x0f84..0x1282`), and
 active render scheduling (`0x1eb2a..0x1ed84`). The current fixtures prove
 the state effects after those events are observed; exact oscillator
 identity remains board-level work for cycle-accurate host I/O, engine
-handshake, timeout, and physical registration fidelity.
+handshake, timeout, and physical registration fidelity. The named
+physical formatter/DC edge is connector `J205`: `BD`, `VDO`, `VSREQ`,
+`VSYNC`, `PRNT`, command/status strobes, and ready signals. Current ROM
+evidence does not yet map those signals to exact MMIO bits.
 
 ## Current End-To-End Coverage
 

@@ -7683,6 +7683,12 @@ record.
     three words through `0x7828f6 | 0xff18`, writes each to `$a400`, sets bit
     4, writes `$a400` again, delays through `0x14c6(0x27)`, saves the last
     word back to `0x7828f6`, and advances `0x7828fe` modulo `0x10`.
+  - formatter/DC physical timing boundary, manual-correlated but not yet
+    MMIO-decoded: connector `J205` names `BD`, `VDO`, `VSREQ`, `VSYNC`,
+    `PRNT`, `CMND`, `CCLK`, `CBSY`, `STATS`, `PCLK`, `SBSY`, `RDY`,
+    `PPRDY`, and `CPRDY`. These are likely represented in the low-MMIO
+    inputs and output strobes above, but no checked evidence yet maps one
+    register bit to one connector signal.
   - `0x78017a`: pending wait-object pointer chosen by `0x1036`;
     `0x780176`: active wait-object pointer updated by `0x123a`;
     `0x780174`: active priority word copied from selected object `+8`.
@@ -7911,6 +7917,12 @@ record.
   It consumes output tables `0x782914` and `0x782904`, wait-object state
   words `+0x08/+0x0a/+0x0c`, and the linked wait-object list rooted at
   `0x780182`.
+- The physical engine consumes formatter/DC connector signals rather
+  than ROM fields directly. Service-manual evidence names `BD` as the
+  beam-detect horizontal sync pulse and states that the print period
+  starts when the DC Controller receives formatter `VDO`; current ROM
+  evidence only reaches the software-visible fields and MMIO strobes
+  that plausibly drive or observe those signals.
 - `0x1036..0x1062` reads the signaled object's word `+0x0a` and
   compares the target pointer against `0x78017a` when `0x78017e.1` was
   already set.
@@ -8149,6 +8161,16 @@ the loop-flag cleanup through `0x1ef38`, clears `0x780ea4`, signals
 `0x10c8`/`0x10c4`, records the row-bound cleanup and repeats that
 signal pair, then clears active word `+0e` and calls `0x10d8(2)`.
 
+Manual timing evidence now narrows what remains outside the ROM-derived
+pixel model. The service manual places `BD`, `VDO`, `VSREQ`, `VSYNC`,
+and `PRNT` on formatter/DC connector `J205`; describes `BD` as the
+horizontal sync pulse; states that video transfer follows beam-detect
+synchronization; and defines the print period as starting when the DC
+Controller receives formatter `VDO`. The ROM-side effects above are
+therefore the checked software contract for active rendering, while the
+unmapped connector signals are the physical contract a hardware emulator
+must satisfy.
+
 ### Confidence
 
 High for the distinction between protected pool head `0x780ea6` and
@@ -8243,14 +8265,19 @@ covered.
   `0x1ee9e..0x1ef38`
 - `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`:
   `0x1ef6a..0x1effc`
+- [dc-controller-engine.md](dc-controller-engine.md): manual-correlated
+  formatter/DC connector signals and beam-detect/video timing boundary.
 
 ### Unresolved Middle Edges
 
 - `0x0d52..0x0f7a`, `0x0f84..0x0fa0`, and `0x1020..0x102e`: software-visible
   timer/status latches, counters, output strobes, wait-object effects, and
-  scheduler selection are documented; the remaining edge is physical meaning
-  and timing for `$8000` bits, `$8a01`, `$a200`, `$a400`, `0xffff2000`,
-  `$a601 = 0xfd`, `$a801`, `$aa01`, `0xfffe0001`, and `0xfffe0003`.
+  scheduler selection are documented; the remaining edge is mapping
+  `$8000` bits, `$8a01`, `$a200`, `$a400`, `0xffff2000`,
+  `$a601 = 0xfd`, `$a801`, `$aa01`, `0xfffe0001`, and `0xfffe0003` to
+  manual connector signals such as `BD`, `VDO`, `VSREQ`, `VSYNC`,
+  `PRNT`, `CMND`, `CCLK`, `CBSY`, `STATS`, `PCLK`, `SBSY`, `RDY`,
+  `PPRDY`, and `CPRDY`.
 - `0x10bc..0x11f8` and `0x123a..0x1282`: trap veneers, copied trap
   vectors, wait-state transitions, and scheduler selection are modeled;
   the remaining gap is the timing relation between those firmware

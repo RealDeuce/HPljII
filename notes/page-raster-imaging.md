@@ -866,6 +866,12 @@ Field groups:
     `0x782914`, `0x78296c`, `0x7828fe`, `0x782904`, and `0x7828f6`:
     software-visible timer/status latches and output-table cursors written by
     `0x0d52..0x0f7a`.
+  - manual-correlated formatter/DC timing signals: `BD`, `VDO`,
+    `VSREQ`, `VSYNC`, `PRNT`, `CMND`, `CCLK`, `CBSY`, `STATS`,
+    `PCLK`, `SBSY`, `RDY`, `PPRDY`, and `CPRDY` on connector `J205`.
+    These are not yet mapped one-to-one to `$8000`, `$8a01`, `$a200`,
+    `$a400`, `$a601`, `$a801`, `$aa01`, `0xfffe0001`, or
+    `0xfffe0003`.
   - `0x2feb6` seeds `0x7820bc = 1` and `0x7820c0 = 1` at startup before
     the active render scheduler starts toggling those selectors. It also
     clears header words `0x7820c8` and `0x78212c` in the paired render
@@ -950,6 +956,14 @@ Output effect:
   proves scheduler-produced band words `0..9` drive published downloaded-glyph
   buckets through the copied render record; only buckets `1` and `9` dispatch
   compact objects, and bucket `9` still produces visible row `86`.
+- Service-manual evidence puts beam detect `BD`, formatter video `VDO`,
+  vertical sync request/pulse, and print command `PRNT` at the physical
+  formatter/DC boundary. It describes `BD` as horizontal sync for one
+  scan line, says video transfer follows beam-detect synchronization,
+  and defines the print period as beginning when the DC Controller
+  receives formatter `VDO`. Current ROM evidence documents the
+  software-visible consequences of those events; it does not yet map
+  each physical signal to an MMIO bit.
 
 Confidence:
 
@@ -1007,14 +1021,20 @@ Disassembly evidence:
   `0x1ee9e..0x1ef38`.
 - `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`:
   `0x1ef6a..0x1effc`.
+- [dc-controller-engine.md](dc-controller-engine.md): formatter/DC
+  connector signals and beam-detect/video timing boundary from the
+  service manual.
 
 Unresolved middle edges:
 
 - `0x0d52..0x0f7a`, `0x0f84..0x0fa0`, and `0x1020..0x102e`: the
   software-visible timer/status latches, output strobes, wait-object effects,
-  and scheduler selection are modeled; physical names and timing for `$8000`
-  bits, `$8a01`, `$a200`, `$a400`, `0xffff2000`, `$a601`, `$a801`, `$aa01`,
-  `0xfffe0001`, and `0xfffe0003` still need board-level correlation.
+  and scheduler selection are modeled; mapping `$8000` bits, `$8a01`,
+  `$a200`, `$a400`, `0xffff2000`, `$a601`, `$a801`, `$aa01`,
+  `0xfffe0001`, and `0xfffe0003` to connector signals such as `BD`,
+  `VDO`, `VSREQ`, `VSYNC`, `PRNT`, `CMND`, `CCLK`, `CBSY`, `STATS`,
+  `PCLK`, `SBSY`, `RDY`, `PPRDY`, and `CPRDY` still needs
+  board-level correlation.
 - `0x10bc..0x11f8` and `0x123a..0x1282`: trap veneers, copied trap vectors,
   wait-state transitions, and scheduler selection are modeled; the remaining
   gap is their timing relation to physical engine/MMIO events.

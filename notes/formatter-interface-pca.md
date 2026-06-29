@@ -56,7 +56,9 @@ figure 5-17 labels the block simply as `CPU`.
 Do not assume it is the same as the HP 33449 without board inspection.
 The HP 33449 formatter is explicitly Motorola 68000-based, but that
 statement appears in the HP 33449 formatter section, not the HP 33440
-Interface PCA section.
+Interface PCA section. The same HP 33449-only subsection gives a
+9.83 MHz processor clock; that value is not evidence for this HP 33440
+Interface PCA board.
 
 Board evidence for this LaserJet II unit closes the CPU-family question:
 the installed CPU is a Motorola 68000-family processor, and the verified
@@ -89,6 +91,15 @@ cycle-accurate hardware emulation, host/engine timeout fidelity, and
 physical registration work; do not treat it as required for current
 logical pixel reproduction unless a traced timing branch drops,
 duplicates, reorders, or alters page-record data.
+
+The service-manual timing boundary is now named in
+[dc-controller-engine.md](dc-controller-engine.md). Formatter/DC
+connector `J205` carries beam detect `BD`, video `VDO`, vertical sync
+request/pulse, print command `PRNT`, command/status strobes, and ready
+signals. Current ROM tracing has not mapped those connector signals to
+specific MMIO bits; it has only pinned the software-visible state changes
+around the timer/status trampoline, scan/status interrupt, wait-object
+scheduler, and active render loop.
 
 ## ROM
 

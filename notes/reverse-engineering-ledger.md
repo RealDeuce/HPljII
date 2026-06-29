@@ -1441,6 +1441,15 @@ ROM work needed:
   `0xa620`/`0xa638`/`0xa650`/`0xa668`/`0xa680` `$a801` shadow helper
   effects and `0xa6cc` ring/status bridge effects are now fixture
   covered and composed into the semantic model.
+  Manual correlation now names the physical side of this unresolved edge:
+  formatter/DC connector `J205` carries `BD`, `VDO`, `VSREQ`, `VSYNC`,
+  `PRNT`, `CMND`, `CCLK`, `CBSY`, `STATS`, `PCLK`, `SBSY`, `RDY`,
+  `PPRDY`, and `CPRDY`. The service manual describes `BD` as the
+  horizontal sync pulse, says video transfer follows beam-detect
+  synchronization, and defines the print period as beginning when the DC
+  Controller receives formatter `VDO`. This checkpoint narrows the
+  remaining task to register-to-signal mapping and measured/derived
+  timing, not additional byte-to-bitmap semantics.
   Candidate-slot insertion, active-pool staging, pool-cursor alias
   movement, same-geometry work-record reuse, copy-window setup, `0x2456`
   source selection, `0x22f4` row-copy semantics, `0x78399e/9f` status

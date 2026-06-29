@@ -792,7 +792,98 @@ def active_default_record_select_via_56c2(state: dict[str, object]) -> dict[str,
     }
 
 
+def line_spacing_page_span_via_cfea_cf52(data: bytes, state: dict[str, int]) -> dict[str, object]:
+    status = int(state.get("default_status_780e97", 0)) & 0xFF
+    status_source = "0x780e97"
+    if status == 0:
+        status = int(state.get("status_default_780e55", state.get("fallback_status_780e55", 0))) & 0xFF
+        status_source = "0x780e55"
+    orientation_selector = int(state.get("font_default_orientation_1bdba", 0))
+    table = "landscape_margin" if orientation_selector else "portrait_margin"
+    table_helper = 0x9D86 if orientation_selector else 0x9DBE
+    table_value = page_geometry_lookup_via_9dxx(data, table, status)
+    page_span = signed_divide_trunc_via_3324a((int(table_value) - 0x12C) * 12, 1)
+    return {
+        "status": status,
+        "status_source": status_source,
+        "orientation_selector_1bdba": orientation_selector,
+        "table": table,
+        "table_helper": table_helper,
+        "table_value": table_value,
+        "page_span": page_span,
+    }
+
+
+def line_count_from_spacing_via_cfea(
+    data: bytes,
+    state: dict[str, int],
+    line_spacing: int,
+) -> dict[str, object]:
+    base = line_spacing_page_span_via_cfea_cf52(data, state)
+    line_count = signed_divide_trunc_via_3324a(int(base["page_span"]), int(line_spacing))
+    return {
+        **base,
+        "helper": 0xCFEA,
+        "line_spacing": int(line_spacing),
+        "line_count": line_count,
+    }
+
+
+def line_spacing_from_line_count_via_cf52(
+    data: bytes,
+    state: dict[str, int],
+    line_count: int,
+) -> dict[str, object]:
+    base = line_spacing_page_span_via_cfea_cf52(data, state)
+    line_spacing = signed_divide_trunc_via_3324a(int(base["page_span"]), int(line_count))
+    return {
+        **base,
+        "helper": 0xCF52,
+        "line_count": int(line_count),
+        "line_spacing": line_spacing,
+    }
+
+
+def coordinate_long_to_packed_via_104d8(value: int) -> int:
+    limited = max(-0x5FFFF, min(0x5FFFF, int(value)))
+    quotient = trunc_div(limited, 12)
+    remainder = limited - quotient * 12
+    result = ((quotient & 0xFFFF) << 16) | (remainder & 0xFFFF)
+    if remainder < 0:
+        result = (result - 0x1FFF4) & 0xFFFFFFFF
+    return result
+
+
+def reset_vmi_from_default_line_spacing_via_cda2(
+    data: bytes,
+    state: dict[str, int],
+    line_spacing: int,
+) -> dict[str, object]:
+    normalized = line_count_from_spacing_via_cfea(data, state, line_spacing)
+    normalized_count = int(normalized["line_count"])
+    clamp: dict[str, object] | None = None
+    if normalized_count < 5:
+        clamp = line_spacing_from_line_count_via_cf52(data, state, 5)
+        selected_spacing = int(clamp["line_spacing"])
+        path = "low-clamp-5"
+    elif normalized_count > 0x80:
+        clamp = line_spacing_from_line_count_via_cf52(data, state, 0x80)
+        selected_spacing = int(clamp["line_spacing"])
+        path = "high-clamp-128"
+    else:
+        selected_spacing = int(line_spacing) & 0xFFFF
+        path = "direct"
+    return {
+        "path": path,
+        "normalized": normalized,
+        "clamp": clamp,
+        "selected_line_spacing": selected_spacing,
+        "vmi_783160": coordinate_long_to_packed_via_104d8(selected_spacing),
+    }
+
+
 def reset_from_loaded_default_record_via_5e80_cda2(
+    data: bytes,
     default_state: dict[str, object],
     reset_state: dict[str, int],
 ) -> dict[str, object]:
@@ -802,6 +893,17 @@ def reset_from_loaded_default_record_via_5e80_cda2(
     reset_input["default_paper_source_7821a2"] = int(default_state["paper_environment_default_7821a2"])
     reset_input["default_line_spacing_78219e"] = int(default_state["line_spacing_default_78219e"])
     reset_output = apply_esc_e_reset(reset_input)
+    conversion = reset_vmi_from_default_line_spacing_via_cda2(
+        data,
+        {
+            "default_status_780e97": int(default_state.get("default_status_780e97", 0)),
+            "status_default_780e55": int(default_state.get("status_default_780e55", 0)),
+            "font_default_orientation_1bdba": int(reset_input.get("font_default_orientation_1bdba", 0)),
+        },
+        int(default_state["line_spacing_default_78219e"]),
+    )
+    reset_output["vmi_783160"] = int(conversion["vmi_783160"])
+    reset_output["line_spacing_conversion"] = conversion
     return {
         "default_load": default_load,
         "reset_input": reset_input,
@@ -24817,17 +24919,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     }))
 
     default_record_reset = reset_from_loaded_default_record_via_5e80_cda2(
+        data,
         {
             "default_record_selector_7822d5": 1,
             "default_records_780eda": [
                 bytes.fromhex("00 00 00 00 00 00"),
-                bytes.fromhex("12 34 01 2c 8a 04"),
+                bytes.fromhex("12 34 01 2c 80 04"),
                 bytes.fromhex("00 00 00 00 00 00"),
             ],
         },
         reset_fixture_state(page_root_present=0, current_page_root=0),
     )
     default_record_reset_gate_set = reset_from_loaded_default_record_via_5e80_cda2(
+        data,
         {
             "default_record_selector_7822d5": 1,
             "default_records_780eda": [
@@ -24864,8 +24968,16 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "pending_status_782997",
                     "pending_status_782998",
                     "vmi_conversion_input_78219e",
+                    "vmi_783160",
                     "reset_status",
                 )
+            },
+            "line_spacing_conversion": {
+                "path": default_record_reset["reset_output"]["line_spacing_conversion"]["path"],
+                "line_count": default_record_reset["reset_output"]["line_spacing_conversion"]["normalized"]["line_count"],
+                "table": default_record_reset["reset_output"]["line_spacing_conversion"]["normalized"]["table"],
+                "table_value": default_record_reset["reset_output"]["line_spacing_conversion"]["normalized"]["table_value"],
+                "selected_line_spacing": default_record_reset["reset_output"]["line_spacing_conversion"]["selected_line_spacing"],
             },
         },
         "gate_set": {
@@ -24886,13 +24998,21 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "pending_status_782997",
                     "pending_status_782998",
                     "vmi_conversion_input_78219e",
+                    "vmi_783160",
                     "reset_status",
                 )
+            },
+            "line_spacing_conversion": {
+                "path": default_record_reset_gate_set["reset_output"]["line_spacing_conversion"]["path"],
+                "line_count": default_record_reset_gate_set["reset_output"]["line_spacing_conversion"]["normalized"]["line_count"],
+                "table": default_record_reset_gate_set["reset_output"]["line_spacing_conversion"]["normalized"]["table"],
+                "table_value": default_record_reset_gate_set["reset_output"]["line_spacing_conversion"]["normalized"]["table_value"],
+                "selected_line_spacing": default_record_reset_gate_set["reset_output"]["line_spacing_conversion"]["selected_line_spacing"],
             },
         },
     }, {
         "normal": {
-            "record_bytes": bytes.fromhex("12 34 01 2c 8a 04"),
+            "record_bytes": bytes.fromhex("12 34 01 2c 80 04"),
             "loaded_defaults": {
                 "display_default_78219d": 0x12,
                 "paper_environment_default_7821a2": 0x80,
@@ -24904,7 +25024,15 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "pending_status_782997": 1,
                 "pending_status_782998": 1,
                 "vmi_conversion_input_78219e": 0x012C,
+                "vmi_783160": pack12(25),
                 "reset_status": 0,
+            },
+            "line_spacing_conversion": {
+                "path": "direct",
+                "line_count": 102,
+                "table": "portrait_margin",
+                "table_value": 2850,
+                "selected_line_spacing": 0x012C,
             },
         },
         "gate_set": {
@@ -24920,8 +25048,126 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 "pending_status_782997": 0,
                 "pending_status_782998": 0,
                 "vmi_conversion_input_78219e": 0x0180,
+                "vmi_783160": pack12(32),
                 "reset_status": 0,
             },
+            "line_spacing_conversion": {
+                "path": "direct",
+                "line_count": 79,
+                "table": "portrait_margin",
+                "table_value": 2850,
+                "selected_line_spacing": 0x0180,
+            },
+        },
+    }))
+
+    line_spacing_cases = {
+        "direct": reset_vmi_from_default_line_spacing_via_cda2(
+            data,
+            {"default_status_780e97": 0x87, "status_default_780e55": 2},
+            300,
+        ),
+        "low_clamp": reset_vmi_from_default_line_spacing_via_cda2(
+            data,
+            {"default_status_780e97": 0x87, "status_default_780e55": 2},
+            10000,
+        ),
+        "high_clamp": reset_vmi_from_default_line_spacing_via_cda2(
+            data,
+            {"default_status_780e97": 0x87, "status_default_780e55": 2},
+            1,
+        ),
+        "fallback_status": reset_vmi_from_default_line_spacing_via_cda2(
+            data,
+            {"default_status_780e97": 0, "status_default_780e55": 2},
+            600,
+        ),
+        "landscape_table": reset_vmi_from_default_line_spacing_via_cda2(
+            data,
+            {
+                "default_status_780e97": 0x87,
+                "status_default_780e55": 2,
+                "font_default_orientation_1bdba": 1,
+            },
+            100,
+        ),
+    }
+    checks.append(assert_equal("0xcfea/0xcf52/0x104d8 convert default line spacing to reset VMI", {
+        name: {
+            "path": result["path"],
+            "status": result["normalized"]["status"],
+            "status_source": result["normalized"]["status_source"],
+            "table": result["normalized"]["table"],
+            "table_value": result["normalized"]["table_value"],
+            "page_span": result["normalized"]["page_span"],
+            "line_count": result["normalized"]["line_count"],
+            "selected_line_spacing": result["selected_line_spacing"],
+            "vmi_783160": result["vmi_783160"],
+            "clamp_line_count": (
+                result["clamp"]["line_count"] if result["clamp"] is not None else None
+            ),
+        }
+        for name, result in line_spacing_cases.items()
+    }, {
+        "direct": {
+            "path": "direct",
+            "status": 0x87,
+            "status_source": "0x780e97",
+            "table": "portrait_margin",
+            "table_value": 2850,
+            "page_span": 30600,
+            "line_count": 102,
+            "selected_line_spacing": 300,
+            "vmi_783160": pack12(25),
+            "clamp_line_count": None,
+        },
+        "low_clamp": {
+            "path": "low-clamp-5",
+            "status": 0x87,
+            "status_source": "0x780e97",
+            "table": "portrait_margin",
+            "table_value": 2850,
+            "page_span": 30600,
+            "line_count": 3,
+            "selected_line_spacing": 6120,
+            "vmi_783160": pack12(510),
+            "clamp_line_count": 5,
+        },
+        "high_clamp": {
+            "path": "high-clamp-128",
+            "status": 0x87,
+            "status_source": "0x780e97",
+            "table": "portrait_margin",
+            "table_value": 2850,
+            "page_span": 30600,
+            "line_count": 30600,
+            "selected_line_spacing": 239,
+            "vmi_783160": pack12(19, 11),
+            "clamp_line_count": 128,
+        },
+        "fallback_status": {
+            "path": "direct",
+            "status": 2,
+            "status_source": "0x780e55",
+            "table": "portrait_margin",
+            "table_value": 3300,
+            "page_span": 36000,
+            "line_count": 60,
+            "selected_line_spacing": 600,
+            "vmi_783160": pack12(50),
+            "clamp_line_count": None,
+        },
+        "landscape_table": {
+            "path": "direct",
+            "status": 0x87,
+            "status_source": "0x780e97",
+            "table": "landscape_margin",
+            "table_value": 1237,
+            "page_span": 11244,
+            "line_count": 112,
+            "selected_line_spacing": 100,
+            "vmi_783160": pack12(8, 4),
+            "clamp_line_count": None,
         },
     }))
 

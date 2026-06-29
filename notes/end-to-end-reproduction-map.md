@@ -566,8 +566,10 @@ The next work should follow dataflow, not isolated handlers:
    executable fixtures now cover those producer writes and dirty-flag slots.
    Fixture `0x5e80 -> 0xcda2 reset consumes default record outputs` now joins
    that producer side to the reset consumer, including the reset-gate behavior
-   for `0x7821a2 -> 0x782da6` and the `0x78219e` line-spacing conversion
-   input.
+   for `0x7821a2 -> 0x782da6` and the `0x78219e -> 0x783160` line-spacing
+   conversion. Fixture `0xcfea/0xcf52/0x104d8 convert default line spacing to
+   reset VMI` covers the direct, low-clamp, high-clamp, fallback-status, and
+   landscape-table branches of that conversion.
    Record-maintenance helpers `0x56c2`, `0x571e`, and `0x5a62` now cover
    active-bank selection, three-word record-group copy, dirty-flag maintenance,
    and ROM-table fallback from `0xba3e`/`0xba44` into `0x780eda`, with fixture
@@ -589,7 +591,7 @@ The next work should follow dataflow, not isolated handlers:
    device/protocol that drives `$8000.w`, the physical retained-storage device
    and board-level serial pin names behind `$a400`/`$8c01`, reconciling the
    manual NVRAM-failure fallback wording with the ROM paths found so far, and
-   the exact `0xcfea -> 0xcf52 -> 0x104d8` line-spacing conversion arithmetic.
+   physical engine/self-test placement against known output.
 2. Treat font metric-byte combinations as regression expansion unless a new
    state boundary appears. The selected-context bridge, metric consumers, downloaded
    descriptor/payload producer chain, and host-stream downloaded glyph output are now

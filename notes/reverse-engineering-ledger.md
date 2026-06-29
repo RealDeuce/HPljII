@@ -375,11 +375,12 @@ side from selected `0x780eda` records and menu/update handlers `0x5e80`,
 harness checks now execute those producer writes, the `0x5a16 -> 0x97e4`
 startup read mask, and the `0x56c2 -> 0x1284` active-record/`67 SERVICE`
 boundary; fixture `0x5e80 -> 0xcda2 reset consumes default record outputs`
-now joins selected-record defaults to the reset consumer and leaves only the
-external panel protocol into `$8000.w`, physical identity of the serial
-retained-storage device behind `$a400`/`$8c01`, and exact
-`0xcfea -> 0xcf52 -> 0x104d8` line-spacing conversion arithmetic unresolved;
-the same checkpoint now also documents `0x56c2` active-bank selection,
+now joins selected-record defaults to the reset consumer; fixture
+`0xcfea/0xcf52/0x104d8 convert default line spacing to reset VMI` pins the
+default line-spacing conversion into `0x783160`, leaving only the external
+panel protocol into `$8000.w` and physical identity of the serial retained-storage
+device behind `$a400`/`$8c01` unresolved in this default/reset provenance
+cluster; the same checkpoint now also documents `0x56c2` active-bank selection,
 `0x571e` record rotation/copy, `0x5a62` record clear/ROM-table fallback from
 `0xba3e`/`0xba44`, cold-reset service entry `0x2c84`, panel/service byte
 dispatcher `0x3dae`, menu/default commit path `0x4922`, stable `$8000.w` byte
@@ -1257,11 +1258,12 @@ ROM work needed:
   `0x56c2 -> 0x1284` (`67 SERVICE`), and panel/cold-reset byte triggers; the
   fixture harness now covers the default-record producer writes, the startup
   read-mask behavior, the active-record/error scan, and the producer-to-`0xcda2`
-  reset-output boundary. The remaining work is the external panel protocol into
+  reset-output boundary, including the `0xcfea/0xcf52/0x104d8` conversion into
+  reset VMI `0x783160`. The remaining work is the external panel protocol into
   `$8000.w`, the physical retained-storage device and board-level serial pin
   names behind `$a400`/`$8c01`, reconciling manual NVRAM-failure fallback
-  wording with the ROM paths found so far, and exact
-  `0xcfea -> 0xcf52 -> 0x104d8` line-spacing conversion arithmetic.
+  wording with the ROM paths found so far, and physical engine/self-test
+  placement against known output.
 - Compare physical engine/self-test placement against the matched
   ROM/manual logical page and printable-area dimensions.
 - Trace the remaining physical panel, power-on, and NVRAM failure edges around

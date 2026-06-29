@@ -7855,9 +7855,10 @@ NVRAM-failure fallback wording with the ROM paths found here.
   records through `0x5e80`, then runs the modeled `0xcda2` reset consumer. The
   normal reset-gate-clear case copies `0x78219d -> 0x782da4`, copies
   `0x7821a2 -> 0x782da6`, sets `0x782997` and `0x782998`, and carries
-  `0x78219e` to the VMI conversion boundary. The reset-gate-set case still
-  copies `0x78219d -> 0x782da4` and carries `0x78219e`, but preserves the
-  previous `0x782da6` byte and does not set the two pending-status bytes.
+  `0x78219e` through `0xcfea -> 0x104d8` to VMI `0x783160 = 0x00190000`.
+  The reset-gate-set case still copies `0x78219d -> 0x782da4` and derives VMI
+  `0x783160 = 0x00200000` from `0x78219e`, but preserves the previous
+  `0x782da6` byte and does not set the two pending-status bytes.
 
 ### Disassembly Evidence
 
@@ -7930,11 +7931,12 @@ NVRAM-failure fallback wording with the ROM paths found here.
 - `0x780eda field names -> HP panel labels`: exact user-visible names remain
   inferred except where consumers identify paper/default environment and
   line-spacing behavior.
-- `0xcda2 line-spacing conversion internals`: fixture
-  `0x5e80 -> 0xcda2 reset consumes default record outputs` proves the selected
-  record's `0x78219e` value reaches the reset VMI conversion boundary, but the
-  arithmetic inside helper chain `0xcfea -> 0xcf52 -> 0x104d8` remains
-  documented from disassembly rather than fixture-modeled.
+- `0xcda2 line-spacing conversion`: fixture
+  `0xcfea/0xcf52/0x104d8 convert default line spacing to reset VMI` proves the
+  direct, low-clamp, high-clamp, fallback-status, and landscape-table branches
+  that derive `0x783160` from `0x78219e`. Fixture
+  `0x5e80 -> 0xcda2 reset consumes default record outputs` composes the same
+  arithmetic with the selected retained/default record producer.
 
 ## External Ready And Service Status Loop
 
@@ -8236,7 +8238,11 @@ checkpoint only consumes their canonical outputs.
     `0x782ee6` by `0xcda2` at `0xce84..0xcec8` and refreshed again
     by `0xcbd4` at `0xcbd4..0xcc36`.
   - `0x783160`: reset VMI derived from default line spacing
-    `0x78219e`, not stored as an independent canonical default.
+    `0x78219e`, not stored as an independent canonical default. Fixture
+    `0xcfea/0xcf52/0x104d8 convert default line spacing to reset VMI` covers
+    the direct path, low clamp to 5 lines, high clamp to 128 lines,
+    `0x780e97 == 0` fallback to `0x780e55`, and the orientation-selected
+    `0x9dbe`/`0x9d86` page-table branch.
   - `0x782dce`: vertical/top offset recomputed by `0xcc70` as
     `0x96 - 0x782dbe`; `0x782dd0` is cleared.
   - raster block `0x783170`: `0xcc70` clears byte `+0x12`,
@@ -8332,7 +8338,12 @@ handler `0xcc52`. Fixture `0x5e80 -> 0xcda2 reset consumes default record
 outputs` connects the retained/default-record producer side to the reset
 consumer: the selected record's `0x78219d`, `0x7821a2`, and `0x78219e` outputs
 become the modeled `0xcda2` environment word, gated paper-source byte, pending
-status bytes, and VMI conversion input.
+status bytes, and VMI `0x783160`. Fixture
+`0xcfea/0xcf52/0x104d8 convert default line spacing to reset VMI` separately
+pins the line-spacing arithmetic: `0xcfea` computes a line count from
+`(page_table_value - 0x12c) * 12 / 0x78219e`, `0xcda2` clamps outside
+`5..128` lines by calling `0xcf52`, and `0x104d8` converts the selected
+line-spacing longword into packed 12-subunit VMI.
 
 ### Confidence
 
@@ -8351,6 +8362,7 @@ the physical retained-storage device identity behind `$a400`/`$8c01`.
 - `addressed printable reset publishes rendered page record`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`
 - `0x5e80 -> 0xcda2 reset consumes default record outputs`
+- `0xcfea/0xcf52/0x104d8 convert default line spacing to reset VMI`
 
 ### Disassembly Evidence
 
@@ -8372,11 +8384,6 @@ the physical retained-storage device identity behind `$a400`/`$8c01`.
 
 ### Unresolved Middle Edges
 
-- `0xcda2 line-spacing conversion internals`: the producer/consumer chain
-  `0x780eda -> 0x78219d/0x78219e/0x7821a2 -> 0xcda2` is fixture-backed for
-  default copies and the line-spacing conversion input. The remaining
-  ROM-internal detail is the exact arithmetic through
-  `0xcfea -> 0xcf52 -> 0x104d8`.
 - `$a400/$8c01 -> physical retained-storage device`: ROM address boundaries for
   the dirty-record serial protocol and software-visible phase meanings are
   known, but the physical device identity and board-level pin names remain

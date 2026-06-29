@@ -187,6 +187,12 @@ quiesce/reset branches:
   described in `Default Environment Record Producers`: it copies three-word
   record groups under `0x780eda`, updates dirty/active flags, and advances the
   selected bank.
+- The surrounding panel/service byte paths are now bounded in
+  `Default Environment Record Producers`: `0x2c84` selects cold-reset default
+  reload for `a3ca` byte `0xdf`, `0x3dae` dispatches changed bytes through the
+  service table at `0x3d66`, and `0x4922` can set `0x7822d4` before re-entering
+  `0x4162`. The unresolved boundary is the physical source and persistence
+  semantics below `0xa3ca`, not the software call edge into `0x571e`.
 - `0x61e4..0x6362` runs the same setup helper family, clears `0x7821cd.0`,
   waits through `0x10d8(0x15)`, and then enters the same gate path without the
   `0xfffee005.2` polling loop.

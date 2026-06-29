@@ -7408,14 +7408,15 @@ because each is fixture-pinned.
 ## Default Environment Record Producers
 
 Status: composed for the RAM record, ROM-table fallback, record-maintenance,
-and menu/update producer side that feeds the `ESC E` reset defaults. This
-closes the immediate producer edge for `0x78219d`, `0x78219e`, and
-`0x7821a2`: they are copied from selected records under `0x780eda`, with
-update handlers that write both the backing record and the canonical default
-byte/word. It also identifies the firmware paths that select an active record
-bank, rotate/copy three-word default groups, mark dirty records, and reset
-records from ROM tables. The remaining provenance edge is the physical or
-retained-storage source that triggers and feeds those maintenance paths.
+panel/service trigger, and menu/update producer side that feeds the `ESC E`
+reset defaults. This closes the immediate producer edge for `0x78219d`,
+`0x78219e`, and `0x7821a2`: they are copied from selected records under
+`0x780eda`, with update handlers that write both the backing record and the
+canonical default byte/word. It also identifies the firmware paths that select
+an active record bank, rotate/copy three-word default groups, mark dirty
+records, reset records from ROM tables, and enter those paths from panel/service
+bytes. The remaining provenance edge is the physical byte-source and exact
+retained-storage protocol below helper `0xa3ca`.
 
 Concept: control-panel/user-default state is represented as compact records
 selected by `0x7822d5`. The ROM scales that selector through `0x332ee(..., 3)`
@@ -7427,7 +7428,12 @@ record bank whose word-2 entry has bit 15 set. Helper `0x571e` clears dirty
 flags, copies three-word record groups between banks, and advances
 `0x7822d5`. Helper `0x5a62` handles a control/input byte `0xde` by clearing
 all 16 backing records, and otherwise repopulates records from ROM tables
-`0xba3e` and `0xba44`.
+`0xba3e` and `0xba44`. Panel/service byte dispatcher `0x3dae` updates last-byte
+state `0x7821aa` and maps service bytes through the table at `0x3d66`, including
+`0xef -> 0x3ef8`, `0xfd -> 0x3f6a`, and `0xbf -> 0x4922`. Cold-reset/service
+entry `0x2c84` reaches `0x5a62` when the first input byte is `0xdf`; menu
+commit `0x4922` can set temporary commit flag `0x7822d4` and call `0x4162` after
+the input byte remains equal to `0x7821aa` for timer delta `0x2a`.
 
 ### Field Groups
 
@@ -7480,6 +7486,22 @@ all 16 backing records, and otherwise repopulates records from ROM tables
   - `0x780eb8`: 16-word auxiliary flag block cleared by `0x571e` after
     maintenance completes.
   Evidence: `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst`.
+- Parser/service trigger state:
+  - `0x7821aa`: last panel/service byte seen by `0x3dae`, `0x5d2a`, `0x3f6a`,
+    and `0x4922`. Dispatch happens only when a new byte differs from this
+    value and the previous value was `0xff`.
+  - `0x7822dc`: service/menu latch set by `0x5d2a` after sequence
+    `0xfd, 0xff, 0xbf`; cleared by `0x3e48` and `0x4922` after the reset/menu
+    path drains.
+  - `0x7822d4`: temporary menu-commit flag. `0x4922` sets it before calling
+    `0x4162`, and `0x4162` uses it to choose between immediate reset/default
+    reload and the three-record ROM-table merge loop.
+  - `0x782272`: panel/menu progress bitfield. `0x4922` tests bit 4 to decide
+    whether to call `0x4fb0` immediately or stage the current selection through
+    the handler table at `0x782274 + 0x12`.
+  Evidence: `generated/disasm/ic30_ic13_panel_service_dispatch_003dae.lst`,
+  `generated/disasm/ic30_ic13_panel_menu_commit_004922.lst`, and
+  `generated/disasm/ic30_ic13_service_default_reset_entry_002c84.lst`.
 - Parser/menu scratch:
   - `0x7822274`: menu/handler table pointer used by `0x4fb0` to dispatch the
     current selection update through the longword at offset `+0x12`.
@@ -7498,9 +7520,10 @@ all 16 backing records, and otherwise repopulates records from ROM tables
     bitfield state loaded by `0x5f96` and updated by `0x533a..0x53be`.
   Evidence: the two focused default-environment listings.
 - Unknown/provenance:
-  - the firmware table fallback and record-maintenance writers into
-    `0x780eda` are known; the physical/NVRAM/control-panel trigger that
-    selects those paths remains unresolved.
+  - firmware table fallback, record-maintenance writers, and panel/service
+    byte dispatch into `0x780eda` updates are known. The electrical/MMIO origin
+    of `0xa3ca` bytes and whether these paths persist to external NVRAM remain
+    unresolved.
   - external names for each staged field are inferred from manual defaults and
     consumers, but the exact panel menu labels are not yet assigned for every
     record byte.
@@ -7518,6 +7541,16 @@ all 16 backing records, and otherwise repopulates records from ROM tables
 - `0x5a62` clears all 16 `0x780eda` records and marks all `0x780eba` flags
   when the input byte is `0xde`; otherwise it reloads records from ROM tables
   `0xba3e` and `0xba44` and calls `0x571e`.
+- `0x2c84` calls `0x5a16` to mark all 16 default records dirty, reads one byte
+  through `0xa3ca`, calls `0x5a62` for byte `0xdf`, and displays message table
+  `0xb1a3` (`08 COLD RESET`) through `0x9182`.
+- `0x3dae` dispatches changed panel/service bytes through the table at
+  `0x3d66`. The default-store family uses `0xef -> 0x3ef8`,
+  `0xfd -> 0x3f6a`, and `0xbf -> 0x4922`.
+- `0x4922` commits menu/default changes: it calls `0x4fb0` when
+  `0x782272.4` is set, stages handler-table updates through `0x782274` when
+  the bit is clear, or sets `0x7822d4` and calls `0x4162` after a stable input
+  byte is held for timer delta `0x2a`.
 - `0x4fb0` compares current candidate value `0x782227c` against staged
   entries under `0x782280` and dispatches an update handler when the value
   changes.
@@ -7539,6 +7572,9 @@ all 16 backing records, and otherwise repopulates records from ROM tables
 - Host-input branch `0x4162..0x42cc` can preserve existing `0x0f00` bits from
   selected `0x780eda` records, merge in ROM table words from `0xba3e`, mark
   `0x780eba`, and call `0x571e`.
+- Service dispatch `0x3dae` consumes the previous byte in `0x7821aa` and the
+  current byte from `0xa3ca`, then reaches default-store consumers through
+  `0x3ef8`, `0x3f6a`, and `0x4922`.
 - `0x4fb0` and `0x5a62` consume the active record selected by `0x56c2`.
 - HMI/VMI and orientation/page-geometry helpers consume `0x78219e` through
   the same normalization helpers used by reset.
@@ -7552,9 +7588,9 @@ pixel reproduction this means `0x78219d`, `0x7821a2`, and `0x78219e` are
 canonical runtime defaults, while `0x780eda` records are their retained or
 control-panel backing store inside ROM state. The ROM-table fallback path
 means an emulator must also model `0xba3e`/`0xba44` defaults and record-bank
-maintenance if it emulates control-panel or cold-reset behavior, even though a
-pure byte-stream renderer can start from already materialized canonical
-defaults.
+maintenance plus the `0xdf`/`0xde` cold-reset byte path if it emulates
+control-panel or cold-reset behavior, even though a pure byte-stream renderer
+can start from already materialized canonical defaults.
 
 ### Confidence
 
@@ -7563,8 +7599,10 @@ High for the immediate RAM producer edge from `0x780eda` records to
 from `0xba3e`/`0xba44` into `0x780eda`, because the writes are direct in the
 focused disassembly windows. Medium for naming the record family as
 control-panel/user defaults, because callers and manual behavior support that
-role but the physical panel/NVRAM source is still not traced. Low for the
-external retained-storage/control-panel trigger into this cluster.
+role. High for the panel/service-byte dispatch into the default-store cluster,
+because `0x2c84`, `0x3dae`, and `0x4922` directly reach `0x5a62`, `0x4162`,
+and `0x4fb0`. Low for the electrical/MMIO source below `0xa3ca` and for
+external retained-storage persistence.
 
 ### Fixtures
 
@@ -7582,6 +7620,15 @@ external retained-storage/control-panel trigger into this cluster.
 - `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst`:
   active-bank selection, record rotation/copy, dirty-flag clearing, and
   ROM-table fallback into `0x780eda`.
+- `generated/disasm/ic30_ic13_service_default_reset_entry_002c84.lst`:
+  service reset entry that calls `0x5a16`, selects `0x5a62` for input byte
+  `0xdf`, and displays cold-reset text from `0xb1a3`.
+- `generated/disasm/ic30_ic13_panel_service_dispatch_003dae.lst`: service-byte
+  dispatch table and `0x7821aa` last-byte gate for `0xef`, `0xfd`, `0xbf`, and
+  sibling panel/service handlers.
+- `generated/disasm/ic30_ic13_panel_menu_commit_004922.lst`: menu/default
+  commit path that calls `0x4fb0`, stages handler-table updates, or sets
+  `0x7822d4` and calls `0x4162`.
 - `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`: caller path
   that invokes `0x571e`, `0x5e80`, and `0x5f96` around host-input
   quiesce/reset state.
@@ -7590,9 +7637,9 @@ external retained-storage/control-panel trigger into this cluster.
 
 ### Unresolved Middle Edges
 
-- `physical panel/NVRAM trigger -> 0x4162/0x571e/0x5a62`: ROM table fallback
-  and record maintenance are identified, but the physical/control-panel
-  protocol that selects those paths remains unresolved.
+- `0xa3ca physical source -> service byte stream`: service-byte dispatch into
+  `0x4162`/`0x571e`/`0x5a62` is identified, but the hardware source and any
+  external NVRAM persistence behind those bytes remain unresolved.
 - `0x780eda field names -> HP panel labels`: exact user-visible names remain
   inferred except where consumers identify paper/default environment and
   line-spacing behavior.

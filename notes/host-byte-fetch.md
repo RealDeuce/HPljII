@@ -508,6 +508,11 @@ Output effect:
 - Fixture `combined host-fetched font download stream prints installed
   glyph` proves a long `0xa904` byte stream can cross font-control,
   payload, printable, publication, bridge, and render-entry boundaries.
+- Fixture `parser-driven downloaded glyph rule raster stream composes through
+  0x1ef6a` proves the even-span `ESC )s18W` font payload and following
+  mixed page stream are fetched as one 54-byte `0xa904` ring sequence before
+  the page bytes route through rectangle, printable, raster, and render-entry
+  handlers.
 - Fixture `0xa620/0xa668/0xa6cc engine shadow and byte bridge` proves
   the bridge can place byte `0x41` in the ring and the next `0xa904`
   fetch returns `D7 = 0x41`.
@@ -533,6 +538,7 @@ Fixture evidence:
 - `macro execute frame payload feeds 0xa904 data-chain bytes`
 - `host-fetched mixed control stream reaches parser and page-record render`
 - `combined host-fetched font download stream prints installed glyph`
+- `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
 
 Disassembly evidence:
 

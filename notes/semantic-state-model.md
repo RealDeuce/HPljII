@@ -5122,7 +5122,10 @@ Fixture `parser-driven downloaded glyph rule raster stream composes through
 0x1ef6a` narrows that edge: the fetched stream is split at byte `24` after the
 same font payload, then page bytes
 `ESC *c12a3b0P ) ESC *t300R ESC *r0A ESC *b2W c3 3c` route through the mixed
-parser/page-record runner before rendering.
+parser/page-record runner before rendering. The 54-byte stream is still one
+`0xa904` ring fetch, not two host sources: fixture evidence records source set
+`["ring"]`, no remaining ring bytes, font boundary `(0, 24)`, page boundary
+`(24, 54)`, and next handler `0x10e68` after the zero-byte post-install drain.
 
 Field groups:
 
@@ -5149,12 +5152,13 @@ Field groups:
   canonical parser state.
 - Parser scratch: the font payload command record is `80 57 00 12 00 00` at
   payload offset `6`, and payload bytes are
-  `f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99`. In the
-  parser-driven page stream, rectangle handlers `0x10e68`, `0x10e22`, and
-  `0x10898` consume `ESC *c12a3b0P`; printable handler `0xd04a` consumes byte
-  `0x29`; raster handlers `0x10808`, `0x1075a`, and delayed `0x11f82` /
-  `0x105d0` consume `ESC *t300R ESC *r0A ESC *b2W c3 3c`. The delayed raster
-  record is `80 57 00 02 00 00`, snapshot
+  `f0 0f aa 55 3c c3 81 7e ff 00 18 e7 24 db 42 bd 66 99`. The scratch byte
+  ranges are font bytes `0..24` and page bytes `24..54` within the same fetched
+  stream. In the parser-driven page stream, rectangle handlers `0x10e68`,
+  `0x10e22`, and `0x10898` consume `ESC *c12a3b0P`; printable handler `0xd04a`
+  consumes byte `0x29`; raster handlers `0x10808`, `0x1075a`, and delayed
+  `0x11f82` / `0x105d0` consume `ESC *t300R ESC *r0A ESC *b2W c3 3c`. The
+  delayed raster record is `80 57 00 02 00 00`, snapshot
   `01 00 01 05 d0 80 57 00 02 00 00`, payload offset `28`, and payload
   `c3 3c`.
   The segmented-raster sibling uses downloaded glyph table entry `0x00e6`,
@@ -5544,9 +5548,11 @@ fields and every legal metric combination have not been page-compared.
   0x1ef6a` closes the page-stream boundary from parser-produced `0x10898` rule
   insertion, downloaded-current printable queue through `0x12f2e`, and delayed
   `0x105d0` / `0x13070` raster transfer into one bucket-5 render entry.
-  Remaining risk is the earlier font-install-to-page handoff: the same fetched
-  byte stream is split at byte `24`; the supplied memory image is now named as
-  the exact `bytearray(downloaded_wide_even_install["header"])` emitted by the
+  The byte source is continuous: the same 54-byte `0xa904` ring fetch is split
+  into font bytes `0..24` and page bytes `24..54`, with no remaining ring bytes.
+  Remaining risk is the earlier font-install-to-page memory handoff: the
+  supplied memory image is now named as the exact
+  `bytearray(downloaded_wide_even_install["header"])` emitted by the
   host-fetched `0x16c14` / `0x16498` install fixture, but it is still supplied
   to the page-stream runner instead of captured from one live CPU memory run.
 - `0xff1e..0x1ed84`: the combined downloaded-glyph stream now publishes both segmented

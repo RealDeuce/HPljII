@@ -1129,17 +1129,20 @@ Fixture `parser-driven downloaded glyph rule raster stream composes through
 0x1ef6a` then makes the rule and raster producers parser-driven in the same
 page stream. The fetched stream is 54 bytes: font bytes `0..24` are the
 `ESC )s18W` command and payload above, and page bytes `24..54` are
-`ESC *c12a3b0P ) ESC *t300R ESC *r0A ESC *b2W c3 3c`. The page parser routes
-through `0x10e68`, `0x10e22`, `0x10898`, `0xd04a`, `0x10808`, `0x1075a`, and
-delayed raster handler `0x11f82` / `0x105d0`. It queues the same bucket-5
-downloaded glyph object `00 00 00 00 10 03 00 01 29 06 01...`, the same bridged
-selector-7 rule `00 00 00 00 05 17 08 01 00 0c 00 03 00 03`, and the same
-mode-0 raster object `00 00 00 00 80 00 00 02 00 00 c3 3c`. Render entry
-`0x1ed84`/`0x1ef6a` dispatches the raster object to `0x1f88e`, the glyph object
-to `0x1effe`/`0x1f0d2`, the rule to `0x1f596`, and compares the same three
-composed rows. The remaining limitation is the modeled font install boundary:
-the fixture fetches one stream and uses the existing font-payload model to
-produce the installed memory image before the parser-driven page stream runs.
+`ESC *c12a3b0P ) ESC *t300R ESC *r0A ESC *b2W c3 3c`. The whole 54-byte stream
+is fetched through one `0xa904` ring source, with source set `["ring"]` and no
+remaining ring bytes, so the byte-source side is continuous across the font/page
+boundary. The page parser routes through `0x10e68`, `0x10e22`, `0x10898`,
+`0xd04a`, `0x10808`, `0x1075a`, and delayed raster handler `0x11f82` /
+`0x105d0`. It queues the same bucket-5 downloaded glyph object
+`00 00 00 00 10 03 00 01 29 06 01...`, the same bridged selector-7 rule
+`00 00 00 00 05 17 08 01 00 0c 00 03 00 03`, and the same mode-0 raster object
+`00 00 00 00 80 00 00 02 00 00 c3 3c`. Render entry `0x1ed84`/`0x1ef6a`
+dispatches the raster object to `0x1f88e`, the glyph object to
+`0x1effe`/`0x1f0d2`, the rule to `0x1f596`, and compares the same three composed
+rows. The remaining limitation is not byte fetch; it is the modeled font install
+memory boundary. The fixture uses the existing font-payload model to produce the
+installed memory image before the parser-driven page stream runs.
 
 The modeled install-to-page handoff is now documented as a concrete resource
 image contract rather than a vague fixture split. In fixture
@@ -1168,8 +1171,8 @@ path: fixture `parser-driven downloaded glyph rule raster stream composes
 through 0x1ef6a` records call edge `0x15dc6 -> 0x16498`, return edge
 `0x16498 -> 0x15dcc`, drain edge `0x15dcc -> 0x12328`, font end byte `24`,
 copy status `1`, copy stream position `18`, remaining `0x783140 = 0`, a
-zero-byte `0x12328` drain, and the next parser handler `0x10e68` for
-following bytes `ESC *c12a`.
+zero-byte `0x12328` drain, next stream prefix `ESC *c12a`, and the next parser
+handler `0x10e68`.
 
 Fixture `host-fetched row-0x80 downloaded character remains short compact`
 pins the row-count threshold just below the segmented path. The host-fetched

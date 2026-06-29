@@ -369,7 +369,8 @@ rotation/copy, `0x5a62` record clear/ROM-table fallback from `0xba3e`/`0xba44`,
 cold-reset service entry `0x2c84`, panel/service byte dispatcher `0x3dae`,
 menu/default commit path `0x4922`, stable `$8000.w` byte source `0xa3ca`,
 dirty-record commit/readback helpers `0x96c4`/`0x97e4`, and serial bit helpers
-`0x9860`/`0x98ae`/`0x994e`/`0x9a4a`
+`0x9860`/`0x98ae`/`0x994e`/`0x9a4a`, including `$a400` phase pairs
+`1 -> 3`, `5 -> 7`, and `1 -> 0`
 
 ### PCL command map
 
@@ -1238,7 +1239,8 @@ ROM work needed:
   raster reset, parser/data-chain reset, dirty-record commit/readback through
   `$a400`/`$8c01`, and panel/cold-reset byte triggers; the remaining work is the
   external panel protocol into `$8000.w`, the physical retained-storage device
-  behind `$a400`/`$8c01`, and NVRAM failure entry semantics.
+  and board-level serial pin names behind `$a400`/`$8c01`, and NVRAM failure
+  entry semantics.
 - Compare physical engine/self-test placement against the matched
   ROM/manual logical page and printable-area dimensions.
 - Trace the remaining physical panel, power-on, and NVRAM failure edges around

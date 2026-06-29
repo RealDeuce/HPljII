@@ -7440,7 +7440,11 @@ the input byte remains equal to `0x7821aa` for timer delta `0x2a`. Helper
 until two samples match before returning the byte in `D7`. Retained-storage
 helper `0x96c4` serializes dirty records through command class `0x83`, calls
 `0x97e4` to read the same dirty record slots back through command class `0x86`,
-and restores the pre-read RAM image if verification succeeds.
+and restores the pre-read RAM image if verification succeeds. The
+software-visible serial phases are now bounded: helper `0x9a4a` writes two
+successive low-three-bit phase values to `$a400` through shadow `0x7828f6`.
+Phase pairs `1 -> 3` encode a zero bit, `5 -> 7` encode a one bit, and
+`1 -> 0` terminates/deasserts the serial exchange.
 
 ### Field Groups
 
@@ -7505,6 +7509,10 @@ and restores the pre-read RAM image if verification succeeds.
     low three bits of shadow word `0x7828f6`.
   - `$8c01`: serial input/status byte read by `0x994e`; bit 1 is shifted into
     the destination record word during readback.
+  - `$a400` low three bits, as inferred from phase pairs:
+    bit 0 is the active serial-enable level held high during bit clocks; bit 1
+    is the clock/strobe bit toggled low-to-high; bit 2 is the outbound data bit
+    that distinguishes `1 -> 3` zero-bit clocks from `5 -> 7` one-bit clocks.
   Evidence:
   `generated/disasm/ic30_ic13_nvram_default_record_commit_0096c4.lst` and
   `generated/disasm/ic30_ic13_nvram_serial_bit_helpers_009860.lst`.
@@ -7588,7 +7596,10 @@ and restores the pre-read RAM image if verification succeeds.
   `0x994e`.
 - `0x9860`, `0x98ae`, and `0x994e` encode retained-storage bits into
   two-phase calls to `0x9a4a`; `0x994e` samples `$8c01.1` into readback words.
-- `0x9a4a` writes serial phases to `$a400` through shadow `0x7828f6`.
+- `0x9a4a` writes serial phases to `$a400` through shadow `0x7828f6`. Its first
+  argument is written as the low three bits, then its second argument is written
+  as the next low-three-bit phase. The observed retained-storage callers use
+  `1 -> 3` for zero bits, `5 -> 7` for one bits, and `1 -> 0` for deassert.
 - `0x5a62` clears all 16 `0x780eda` records and marks all `0x780eba` flags
   when the input byte is `0xde`; otherwise it reloads records from ROM tables
   `0xba3e` and `0xba44` and calls `0x571e`.
@@ -7658,11 +7669,12 @@ from `0xba3e`/`0xba44` into `0x780eda`, because the writes are direct in the
 focused disassembly windows. Medium for naming the record family as
 control-panel/user defaults, because callers and manual behavior support that
 role. High for the panel/service-byte dispatch into the default-store cluster,
-the immediate `$8000.w` byte source, and the retained-storage serial
-commit/readback register interface, because `0x2c84`, `0x3dae`, `0x4922`,
-`0xa3ca`, `0x96c4`, and `0x97e4` directly connect those edges. Low for the
-external device/protocol that drives `$8000.w` and for the physical identity of
-the serial retained-storage device behind `$a400`/`$8c01`.
+the immediate `$8000.w` byte source, the retained-storage serial
+commit/readback register interface, and the software-visible `$a400` phase
+encoding, because `0x2c84`, `0x3dae`, `0x4922`, `0xa3ca`, `0x96c4`, `0x97e4`,
+and `0x9a4a` directly connect those edges. Low for the external device/protocol
+that drives `$8000.w` and for the physical identity/pin names of the serial
+retained-storage device behind `$a400`/`$8c01`.
 
 ### Fixtures
 
@@ -7709,9 +7721,9 @@ the serial retained-storage device behind `$a400`/`$8c01`.
   hardware word used for the service byte stream, but the external device or
   panel protocol that drives `$8000.w` remains unresolved.
 - `$a400/$8c01 -> physical retained-storage device`: dirty retained-record
-  commit and readback are identified through serial register traffic, but the
-  physical device identity and wire-level meaning of the phase values
-  `0/1/3/5/7` remain unresolved.
+  commit/readback and software-visible phase meanings are identified through
+  serial register traffic, but the physical device identity and board-level pin
+  names remain unresolved.
 - `0x780eda field names -> HP panel labels`: exact user-visible names remain
   inferred except where consumers identify paper/default environment and
   line-spacing behavior.
@@ -7900,8 +7912,9 @@ the physical retained-storage device identity behind `$a400`/`$8c01`.
   Producers`; retained-storage commit/readback is also composed through
   `0x96c4`/`0x97e4`.
 - `$a400/$8c01 -> physical retained-storage device`: ROM address boundaries for
-  the dirty-record serial protocol are known, but the physical device identity
-  and exact wire meaning remain unresolved.
+  the dirty-record serial protocol and software-visible phase meanings are
+  known, but the physical device identity and board-level pin names remain
+  unresolved.
 - `NVRAM failure entry -> 0x780eda`: manual notes in
   `notes/control-panel-nvram-selftest.md` describe fallback behavior, but ROM
   address boundaries for the failure path are not yet known.

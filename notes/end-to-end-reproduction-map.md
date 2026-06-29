@@ -551,12 +551,13 @@ The next work should follow dataflow, not isolated handlers:
    `0x4fb0`; byte-source helper `0xa3ca` now identifies `$8000.w & 0xff` as
    the debounced service/panel byte source. Dirty-record commit/readback helpers
    `0x96c4` and `0x97e4` now identify the retained-storage serial interface
-   through `$a400` writes and `$8c01.1` reads. The remaining middle edge is not
-   the software-reset consumer path, immediate default-byte writer, ROM-table
-   fallback, panel/service dispatch, `0xa3ca`, or generic NVRAM persistence. It
-   is the external device/protocol that drives `$8000.w`, the physical
-   retained-storage device behind `$a400`/`$8c01`, and the NVRAM failure entry
-   path.
+   through `$a400` writes and `$8c01.1` reads; `0x9a4a` now identifies the
+   software-visible phase pairs for zero, one, and deassert. The remaining
+   middle edge is not the software-reset consumer path, immediate default-byte
+   writer, ROM-table fallback, panel/service dispatch, `0xa3ca`, generic NVRAM
+   persistence, or `$a400` phase encoding. It is the external device/protocol
+   that drives `$8000.w`, the physical retained-storage device and board-level
+   serial pin names behind `$a400`/`$8c01`, and the NVRAM failure entry path.
 2. Treat font metric-byte combinations as regression expansion unless a new
    state boundary appears. The selected-context bridge, metric consumers, downloaded
    descriptor/payload producer chain, and host-stream downloaded glyph output are now

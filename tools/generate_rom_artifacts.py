@@ -172,7 +172,7 @@ def generate_disassembly(firmware: Path) -> None:
         ("ic30_ic13_message_dispatch_wrappers_008c7a.lst", "0x8c7a", "0x8c7a", "0x60"),
         ("ic30_ic13_panel_menu_commit_004922.lst", "0x4922", "0x4922", "0x160"),
         ("ic30_ic13_nvram_default_record_commit_0096c4.lst", "0x96c4", "0x96c4", "0x1a0"),
-        ("ic30_ic13_nvram_serial_bit_helpers_009860.lst", "0x9860", "0x9860", "0x200"),
+        ("ic30_ic13_nvram_serial_bit_helpers_009860.lst", "0x9860", "0x9860", "0x260"),
         ("ic30_ic13_nvram_service_poll_00bbb2.lst", "0xbbb2", "0xbbb2", "0x126"),
         ("ic30_ic13_default_env_menu_update_004fb0.lst", "0x4fb0", "0x4fb0", "0x430"),
         ("ic30_ic13_default_env_record_maintenance_0056c2.lst", "0x56c2", "0x56c2", "0x670"),

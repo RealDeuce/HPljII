@@ -352,12 +352,13 @@ header fields plus the `0x1edc6` published bucket/context copy before
 render, and with addressed reset, FF, page-size, orientation,
 paper-source, and copies allocation variants now proving the same compact
 bucket materialization through `0x1387c`/`0x1381c`;
-`generated/analysis/ic30_ic13_esc_e_reset_flow.md` now also
-names `0xcda2` environment-default writes, including four 0x6c-byte
-page/control records rooted at `0x780f02`, bucket backings at
-`0x7810bc + 0x400*n`, parser scratch `0x782a26`, cursor-stack top
-`0x782d36`, HMI `0x78315c`, reset VMI `0x783160`, line-termination byte
-`0x78318f`, and default inputs `0x78219d`/`0x78219e`/`0x7821a2`
+`generated/analysis/ic30_ic13_esc_e_reset_flow.md` and semantic checkpoint
+`ESC E Reset And Default Environment` now name the `0xcda2`
+environment-default writes, including four 0x6c-byte page/control records
+rooted at `0x780f02`, bucket backings at `0x7810bc + 0x400*n`, parser
+scratch `0x782a26`, cursor-stack top `0x782d36`, HMI `0x78315c`, reset VMI
+`0x783160`, line-termination byte `0x78318f`, and default inputs
+`0x78219d`/`0x78219e`/`0x7821a2`
 
 ### PCL command map
 
@@ -1216,16 +1217,19 @@ Known from manuals:
 
 ROM work needed:
 
-- Continue locating default environment tables. The `ESC E` path now
-  names the reset/default environment helper `0xcda2`, including
-  page/control pool setup, cursor-stack reset, HMI/VMI recompute,
-  line-termination clearing, and default bytes
-  `0x78219d`/`0x78219e`/`0x7821a2`; the remaining work is broader
-  panel/power-on/NVRAM provenance for those defaults.
+- Continue locating producers of the default bytes consumed by `ESC E`.
+  Semantic checkpoint `ESC E Reset And Default Environment` now composes
+  `0xcc52 -> 0xcc70 -> 0xcda2` consumption of
+  `0x78219d`/`0x78219e`/`0x7821a2`, page/control pool rebuild, cursor-stack
+  reset, HMI/VMI recompute, line-termination clearing, raster reset, and
+  parser/data-chain reset; the remaining work is the exact
+  panel/power-on/NVRAM writer boundary for those defaults.
 - Compare physical engine/self-test placement against the matched
   ROM/manual logical page and printable-area dimensions.
-- Trace reset paths for `ESC E`, panel reset, power-on reset, and
-  NVRAM/user defaults.
+- Trace panel reset, power-on reset, and NVRAM/user-default producer paths.
+  The `ESC E` software-reset consumer path is composed through handler
+  `0xcc52`, helper `0xcda2`, metric refresh `0xcbd4`, parser reset
+  `0xe146`, page finalizer `0xff1e`, and the reset fixtures.
 - Cursor-stack push/pop, bounds, and restored-origin text output are now
   composed in `Text Cursor And Direct Controls`; remaining print
   environment work is reset/default provenance and primary/secondary font

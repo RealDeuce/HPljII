@@ -7405,6 +7405,189 @@ because each is fixture-pinned.
   commands, but physical-device comparison remains outside the ROM-internal
   reproduction contract.
 
+## ESC E Reset And Default Environment
+
+Status: composed for the PCL software-reset command family. This checkpoint
+keeps the lower-level ledger in
+`generated/analysis/ic30_ic13_esc_e_reset_flow.md`, but promotes the state
+model needed for byte-stream reproduction: `ESC E` is not a blind clear. It
+finalizes the current page root through `0xff1e`, rebuilds the page/control
+pool and print-environment defaults through `0xcda2`, refreshes font-derived
+motion through `0xcbd4`, resets parser/data records through `0xe146`, and
+clears the top-level reset completion byte at `0x782a93`.
+
+Concept: the host-visible reset boundary has two output effects. First, any
+active current page root can publish before the environment is rebuilt. Second,
+the current modified print environment is replaced by the ROM's current
+user/default environment copies. The ROM evidence covers the `ESC E` software
+reset path; it does not yet prove the panel reset, cold-reset, or NVRAM load
+paths that supply default bytes before `ESC E` consumes them.
+
+### Field Groups
+
+- Canonical environment/default inputs:
+  - `0x78219d`: default byte copied to word `0x782da4` by
+    `0xcda2` at `0xce02..0xce0a`.
+  - `0x78219e`: default line-spacing word read by `0xcda2` at
+    `0xcec8..0xcf32`, normalized by `0xcfea`, clamped by
+    `0xcf52`, converted through `0x104d8`, and stored as VMI
+    `0x783160`.
+  - `0x7821a2`: default environment byte copied to `0x782da6`
+    by `0xcda2` at `0xce10..0xce28` when reset gate
+    `0x7810b2` permits it; `0xcc70` also copies it to
+    `0x780e8f` at `0xccb6` when `0x780e3c == 1`.
+  Evidence: `generated/disasm/ic30_ic13_esc_e_environment_reset_00cda2.lst`
+  and `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`.
+- Canonical page/control pool:
+  - four 0x6c-byte records rooted at `0x780f02`.
+  - each record's `+0x1c` bucket-array pointer is rebuilt as
+    `0x7810bc + 0x400*n` by `0xcdaa..0xcddc`.
+  - `0xff1e` publishes the active current root by copying the
+    backing pool record to `0x780ea6`, setting `0x782996 = 1`,
+    and clearing current root `0x78297a`.
+  Evidence: reset-flow report and fixtures `ESC E stream publishes valid page
+  root and resets environment/parser state` and
+  `ESC E stream clears missing page root without publication`.
+- Derived/cache state:
+  - `0x78315c`: reset HMI recomputed from current-font context
+    `0x782ee6` by `0xcda2` at `0xce84..0xcec8` and refreshed again
+    by `0xcbd4` at `0xcbd4..0xcc36`.
+  - `0x783160`: reset VMI derived from default line spacing
+    `0x78219e`, not stored as an independent canonical default.
+  - `0x782dce`: vertical/top offset recomputed by `0xcc70` as
+    `0x96 - 0x782dbe`; `0x782dd0` is cleared.
+  - raster block `0x783170`: `0xcc70` clears byte `+0x12`,
+    word `+0x00`, and long `+0x0a`, writes scale-minus-one
+    `+0x08 = 3`, scale `+0x0e = 4`, and derives word `+0x10`
+    from page extent `0x782db4`.
+  Evidence: reset-flow report rows `0xcc70`, `0xcda2`, and `0xcbd4`.
+- Parser scratch:
+  - `0x782a26` reset to scratch base `0x782a2a`.
+  - `0x782d36` reset to cursor-stack top/base `0x782c96`.
+  - `0x782d76` reset to data-chain base `0x782d3e`;
+    `0x782d7a` cleared.
+  - eight 10-byte parser/control records at `0x782c1e` are cleared,
+    and cursor `0x782c6e` is reset to `0x782c1e`.
+  - text accumulation bytes `0x783196..0x783199` are cleared.
+  Evidence: `0xcddc..0xcdf0` in `0xcda2` and
+  `0xe146..0xe1e2` in
+  `generated/disasm/ic30_ic13_esc_e_parser_state_reset_00e146.lst`.
+- Firmware bookkeeping:
+  - reset/environment gate `0x7810b2` controls whether
+    `0x782c18` is cleared early and whether `0x7821a2` reloads
+    `0x782da6` inside `0xcda2`.
+  - `0x782997` and `0x782998` are set when the gated
+    `0x7821a2 -> 0x782da6` reload runs.
+  - `0x782990`, `0x78297e`, `0x782c72`, `0x782c73`,
+    `0x783184`, `0x783185`, `0x782f2c`, `0x78318f`, and
+    `0x783190` are cleared; `0x782a6d` and `0x783191` are set.
+  - `0x782f06` is cleared by `0xcbd4`; active symbol words
+    `0x783144` and `0x783146` are copied to snapshots
+    `0x782f08` and `0x782f0a`.
+  - `0x783164`, `0x782c18`, `0x782c19`, and `0x782a92` are
+    cleared by `0xe146`.
+  - `0x782a93` is cleared by the top-level `0xcc52` exit.
+  Evidence: reset-flow state-reference scan and the listed disassembly files.
+- Unknown/provenance:
+  - the producer of defaults `0x78219d`, `0x78219e`, and
+    `0x7821a2` before `ESC E` remains unresolved.
+  - panel `07 RESET`, `09 MENU RESET`, cold reset, and NVRAM failure
+    paths are manual-known behavior but are not yet tied to ROM writers.
+  - exact physical page output after reset still needs device comparison;
+    ROM-internal reset publication rows are fixture-backed.
+
+### Writers
+
+- Parser dispatch sends `ESC E` to handler `0xcc52`.
+- `0xcc52` calls `0xcc70`, `0xcbd4`, and `0xe146`, then clears
+  `0x782a93`.
+- `0xcc70` flushes pending text through `0xf34a`, calls page-root finalizer
+  `0xff1e`, waits through `0x9ac2`, clears orientation byte `0x782da3`,
+  invokes `0xcda2`, and rebuilds raster/page-derived state.
+- `0xcda2` rebuilds page/control records, default environment copies,
+  parser scratch, VMI/HMI, and reset bookkeeping bytes.
+- `0xcbd4` refreshes HMI and active-symbol snapshots from current-font
+  context state.
+- `0xe146` resets parser/data-chain records and clears parser/text
+  accumulation state.
+
+### Readers And Consumers
+
+- `0xff1e` consumes current page root `0x78297a`, root state byte `+4`,
+  parser/page state `0x782a92`, and saved key `0x782a94` before publication.
+- `0xcda2` consumes default inputs `0x78219d`, `0x78219e`, `0x7821a2`,
+  reset gate `0x7810b2`, and current-font context `0x782ee6`.
+- `0xcbd4` consumes current-font context `0x782ee6` and active symbol words
+  `0x783144`/`0x783146`.
+- `0xe146` consumes the parser/data-chain block at `0x782d3e..0x782d68`
+  while freeing any 0x100-byte allocations through `0x18b4`.
+- Later parser, geometry, text, and raster handlers consume the rebuilt
+  environment bytes and derived HMI/VMI values; publication fixtures show the
+  reset case can feed `0x1ed84` and `0x1ef6a` before the rebuild clears the
+  current root.
+
+### Output Effect
+
+For a valid active page root, `ESC E` publishes the current page before
+resetting environment/parser state. Fixture
+`ESC E stream publishes valid page root and resets environment/parser state`
+asserts the publication plus environment/parser side effects. Fixture
+`addressed printable reset publishes rendered page record` ties the same reset
+publication to addressed compact-bucket materialization through
+`0x1387c`/`0x1381c` and rendered rows through `0x1ed84`/`0x1ef6a`. For a
+missing root, fixtures `ESC E stream clears missing page root without
+publication` and `host-fetched publication streams reach parser and published
+rows` pin the no-publication reset path from modeled `0xa904` host bytes to
+handler `0xcc52`.
+
+### Confidence
+
+High for `ESC E` handler order, page-root publication versus missing-root
+clearing, named reset writers, grouped RAM fields, and fixture-visible compact
+text publication. Medium for field naming where roles are inferred from reset
+side effects rather than external HP terminology. Low for the upstream
+default-provenance path, because the current evidence does not yet identify
+which panel, NVRAM, power-on, or factory-default routines write
+`0x78219d`, `0x78219e`, and `0x7821a2`.
+
+### Fixtures
+
+- `ESC E stream publishes valid page root and resets environment/parser state`
+- `ESC E stream clears missing page root without publication`
+- `host-fetched publication streams reach parser and published rows`
+- `addressed printable reset publishes rendered page record`
+- `published page records feed 0x1ed84 and 0x1ef6a render entry`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`: top-level reset entry,
+  main reset helper, page finalization call, raster reset, and final status
+  clear.
+- `generated/disasm/ic30_ic13_esc_e_environment_reset_00cda2.lst`: page/control
+  pool rebuild, default environment copies, HMI/VMI recompute, and reset
+  bookkeeping fields.
+- `generated/disasm/ic30_ic13_esc_e_metric_refresh_00cbd4.lst`: font-derived
+  HMI refresh and symbol snapshots.
+- `generated/disasm/ic30_ic13_esc_e_parser_state_reset_00e146.lst`: data-chain
+  reset, parser scratch clearing, allocation freeing, and text accumulation
+  clearing.
+- `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`: publication and
+  missing-root clear behavior.
+- `generated/analysis/ic30_ic13_esc_e_reset_flow.md`: detailed low-level
+  ledger and state-reference scan.
+
+### Unresolved Middle Edges
+
+- `0x78219d/0x78219e/0x7821a2 -> 0xcda2`: `ESC E` consumption is composed,
+  but the writers that load these defaults from factory tables, panel state,
+  or NVRAM remain unresolved.
+- `panel/cold-reset/NVRAM entry -> 0x78219d/0x78219e/0x7821a2`: manual notes
+  in `notes/control-panel-nvram-selftest.md` describe user-default behavior,
+  but ROM address boundaries for those producers are not yet known.
+- `0xcc52..0x1ef6a`: ROM-internal publication/render output is fixture-backed
+  for compact text, but physical-device page comparison remains outside this
+  checkpoint.
+
 ## Shared Page-Record Storage And Allocator
 
 Status: anchored as the shared storage model beneath compact text, rule,

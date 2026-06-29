@@ -533,7 +533,18 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
 
 The next work should follow dataflow, not isolated handlers:
 
-1. Treat font metric-byte combinations as regression expansion unless a new
+1. Continue reset/default provenance from the composed `ESC E` consumer path.
+   Semantic checkpoint `ESC E Reset And Default Environment` now covers
+   `0xcc52 -> 0xcc70 -> 0xcda2`, page-root finalization through `0xff1e`,
+   font-derived HMI refresh through `0xcbd4`, parser/data-chain reset through
+   `0xe146`, valid-page publication fixtures, missing-root reset fixtures, and
+   addressed compact-bucket publication through `0x1387c`/`0x1381c`. The
+   remaining middle edge is not the software-reset consumer path. It is the
+   producer side for defaults `0x78219d`, `0x78219e`, and `0x7821a2`: exact ROM
+   writers from panel reset, cold reset, NVRAM/user defaults, or factory-default
+   fallback remain unknown. Continue from those default bytes outward, not by
+   re-tracing `ESC E`.
+2. Treat font metric-byte combinations as regression expansion unless a new
    state boundary appears. The selected-context bridge, metric consumers, downloaded
    descriptor/payload producer chain, and host-stream downloaded glyph output are now
    tracked. Host-fetched
@@ -564,7 +575,7 @@ The next work should follow dataflow, not isolated handlers:
    formulas and consumer gates, not a new semantic middle edge by themselves. Remaining
    metric-related work is external/manual naming for consumed-but-not-staged validation
    fields or broader selected-font combinations that expose different state boundaries.
-2. Broaden the page-image fixture suite beyond the current complete
+3. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus secondary
    built-in font-selection visible-output streams, inline primary and secondary

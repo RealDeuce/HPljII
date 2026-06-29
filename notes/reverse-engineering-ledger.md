@@ -374,16 +374,18 @@ side from selected `0x780eda` records and menu/update handlers `0x5e80`,
 `0x5060`, `0x50be`, and `0x52ba` into those reset-consumed defaults; fixture
 harness checks now execute those producer writes, the `0x5a16 -> 0x97e4`
 startup read mask, and the `0x56c2 -> 0x1284` active-record/`67 SERVICE`
-boundary, leaving only the external panel protocol into `$8000.w`, physical
-identity of the serial retained-storage device behind `$a400`/`$8c01`, and one
-producer-to-`0xcda2` integration fixture unresolved; the same checkpoint now
-also documents `0x56c2` active-bank selection, `0x571e` record rotation/copy,
-`0x5a62` record clear/ROM-table fallback from `0xba3e`/`0xba44`, cold-reset
-service entry `0x2c84`, panel/service byte dispatcher `0x3dae`, menu/default
-commit path `0x4922`, stable `$8000.w` byte source `0xa3ca`, dirty-record
-commit/readback helpers `0x96c4`/`0x97e4`, and serial bit helpers
-`0x9860`/`0x98ae`/`0x994e`/`0x9a4a`, including `$a400` phase pairs `1 -> 3`,
-`5 -> 7`, and `1 -> 0`
+boundary; fixture `0x5e80 -> 0xcda2 reset consumes default record outputs`
+now joins selected-record defaults to the reset consumer and leaves only the
+external panel protocol into `$8000.w`, physical identity of the serial
+retained-storage device behind `$a400`/`$8c01`, and exact
+`0xcfea -> 0xcf52 -> 0x104d8` line-spacing conversion arithmetic unresolved;
+the same checkpoint now also documents `0x56c2` active-bank selection,
+`0x571e` record rotation/copy, `0x5a62` record clear/ROM-table fallback from
+`0xba3e`/`0xba44`, cold-reset service entry `0x2c84`, panel/service byte
+dispatcher `0x3dae`, menu/default commit path `0x4922`, stable `$8000.w` byte
+source `0xa3ca`, dirty-record commit/readback helpers `0x96c4`/`0x97e4`, and
+serial bit helpers `0x9860`/`0x98ae`/`0x994e`/`0x9a4a`, including `$a400`
+phase pairs `1 -> 3`, `5 -> 7`, and `1 -> 0`
 
 ### PCL command map
 
@@ -1254,11 +1256,12 @@ ROM work needed:
   `0x5a16 -> 0x97e4`, invalid active-record reporting through
   `0x56c2 -> 0x1284` (`67 SERVICE`), and panel/cold-reset byte triggers; the
   fixture harness now covers the default-record producer writes, the startup
-  read-mask behavior, and the active-record/error scan. The remaining work is
-  the external panel protocol into `$8000.w`, the physical retained-storage
-  device and board-level serial pin names behind `$a400`/`$8c01`, reconciling
-  manual NVRAM-failure fallback wording with the ROM paths found so far, and a
-  full producer-to-`0xcda2` reset-output integration fixture.
+  read-mask behavior, the active-record/error scan, and the producer-to-`0xcda2`
+  reset-output boundary. The remaining work is the external panel protocol into
+  `$8000.w`, the physical retained-storage device and board-level serial pin
+  names behind `$a400`/`$8c01`, reconciling manual NVRAM-failure fallback
+  wording with the ROM paths found so far, and exact
+  `0xcfea -> 0xcf52 -> 0x104d8` line-spacing conversion arithmetic.
 - Compare physical engine/self-test placement against the matched
   ROM/manual logical page and printable-area dimensions.
 - Trace the remaining physical panel, power-on, and NVRAM failure edges around

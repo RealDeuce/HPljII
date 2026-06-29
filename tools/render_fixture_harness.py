@@ -792,6 +792,23 @@ def active_default_record_select_via_56c2(state: dict[str, object]) -> dict[str,
     }
 
 
+def reset_from_loaded_default_record_via_5e80_cda2(
+    default_state: dict[str, object],
+    reset_state: dict[str, int],
+) -> dict[str, object]:
+    default_load = load_default_environment_via_5e80(default_state)
+    reset_input = dict(reset_state)
+    reset_input["default_page_env_word_78219d"] = int(default_state["display_default_78219d"])
+    reset_input["default_paper_source_7821a2"] = int(default_state["paper_environment_default_7821a2"])
+    reset_input["default_line_spacing_78219e"] = int(default_state["line_spacing_default_78219e"])
+    reset_output = apply_esc_e_reset(reset_input)
+    return {
+        "default_load": default_load,
+        "reset_input": reset_input,
+        "reset_output": reset_output,
+    }
+
+
 def fetch_stream_via_a904(initial: dict[str, object], byte_count: int) -> dict[str, object]:
     state = dict(initial)
     values: list[int] = []
@@ -13044,6 +13061,9 @@ def reset_fixture_state(**overrides: int) -> dict[str, int]:
         "font_metric_flag_set": 0x34,
         "font_hmi_clear": pack12(1),
         "font_hmi_set": pack12(2),
+        "default_page_env_word_78219d": 0,
+        "default_paper_source_7821a2": 0,
+        "default_line_spacing_78219e": 0,
         "active_primary_symbol": 0x0115,
         "active_secondary_symbol": 0x0125,
         "glyph_map_selector": 1,
@@ -13116,6 +13136,12 @@ def apply_esc_e_reset(state: dict[str, int]) -> dict[str, int]:
     state["raster_scale"] = 4
     raster_denominator = state["raster_scale"] << 3
     state["raster_limit"] = ((state["page_extent"] - state["raster_origin"]) + 1 + raster_denominator - 1) // raster_denominator
+    state["page_env_word_782da4"] = int(state.get("default_page_env_word_78219d", 0)) & 0xFF
+    if state["environment_gate"] == 0:
+        state["page_env_byte_782da6"] = int(state.get("default_paper_source_7821a2", 0)) & 0xFF
+        state["pending_status_782997"] = 1
+        state["pending_status_782998"] = 1
+    state["vmi_conversion_input_78219e"] = int(state.get("default_line_spacing_78219e", 0)) & 0xFFFF
 
     state["glyph_map_selector"] = 0
     if state["font_context_flag"]:
@@ -24787,6 +24813,115 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                 {"record_index": 2, "record_word_4": 0x7FFF},
                 {"helper": 0x1284, "args": (0xE2, 0x21), "string": 0xB44B},
             ],
+        },
+    }))
+
+    default_record_reset = reset_from_loaded_default_record_via_5e80_cda2(
+        {
+            "default_record_selector_7822d5": 1,
+            "default_records_780eda": [
+                bytes.fromhex("00 00 00 00 00 00"),
+                bytes.fromhex("12 34 01 2c 8a 04"),
+                bytes.fromhex("00 00 00 00 00 00"),
+            ],
+        },
+        reset_fixture_state(page_root_present=0, current_page_root=0),
+    )
+    default_record_reset_gate_set = reset_from_loaded_default_record_via_5e80_cda2(
+        {
+            "default_record_selector_7822d5": 1,
+            "default_records_780eda": [
+                bytes.fromhex("00 00 00 00 00 00"),
+                bytes.fromhex("22 00 01 80 80 04"),
+                bytes.fromhex("00 00 00 00 00 00"),
+            ],
+        },
+        reset_fixture_state(
+            environment_gate=1,
+            page_root_present=0,
+            current_page_root=0,
+            page_env_byte_782da6=0x55,
+            pending_status_782997=0,
+            pending_status_782998=0,
+        ),
+    )
+    checks.append(assert_equal("0x5e80 -> 0xcda2 reset consumes default record outputs", {
+        "normal": {
+            "record_bytes": default_record_reset["default_load"]["record_bytes"],
+            "loaded_defaults": {
+                key: default_record_reset["default_load"][key]
+                for key in (
+                    "display_default_78219d",
+                    "paper_environment_default_7821a2",
+                    "line_spacing_default_78219e",
+                )
+            },
+            "reset_outputs": {
+                key: default_record_reset["reset_output"][key]
+                for key in (
+                    "page_env_word_782da4",
+                    "page_env_byte_782da6",
+                    "pending_status_782997",
+                    "pending_status_782998",
+                    "vmi_conversion_input_78219e",
+                    "reset_status",
+                )
+            },
+        },
+        "gate_set": {
+            "record_bytes": default_record_reset_gate_set["default_load"]["record_bytes"],
+            "loaded_defaults": {
+                key: default_record_reset_gate_set["default_load"][key]
+                for key in (
+                    "display_default_78219d",
+                    "paper_environment_default_7821a2",
+                    "line_spacing_default_78219e",
+                )
+            },
+            "reset_outputs": {
+                key: default_record_reset_gate_set["reset_output"].get(key, 0)
+                for key in (
+                    "page_env_word_782da4",
+                    "page_env_byte_782da6",
+                    "pending_status_782997",
+                    "pending_status_782998",
+                    "vmi_conversion_input_78219e",
+                    "reset_status",
+                )
+            },
+        },
+    }, {
+        "normal": {
+            "record_bytes": bytes.fromhex("12 34 01 2c 8a 04"),
+            "loaded_defaults": {
+                "display_default_78219d": 0x12,
+                "paper_environment_default_7821a2": 0x80,
+                "line_spacing_default_78219e": 0x012C,
+            },
+            "reset_outputs": {
+                "page_env_word_782da4": 0x12,
+                "page_env_byte_782da6": 0x80,
+                "pending_status_782997": 1,
+                "pending_status_782998": 1,
+                "vmi_conversion_input_78219e": 0x012C,
+                "reset_status": 0,
+            },
+        },
+        "gate_set": {
+            "record_bytes": bytes.fromhex("22 00 01 80 80 04"),
+            "loaded_defaults": {
+                "display_default_78219d": 0x22,
+                "paper_environment_default_7821a2": 0x80,
+                "line_spacing_default_78219e": 0x0180,
+            },
+            "reset_outputs": {
+                "page_env_word_782da4": 0x22,
+                "page_env_byte_782da6": 0x55,
+                "pending_status_782997": 0,
+                "pending_status_782998": 0,
+                "vmi_conversion_input_78219e": 0x0180,
+                "reset_status": 0,
+            },
         },
     }))
 

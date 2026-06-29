@@ -7851,6 +7851,13 @@ NVRAM-failure fallback wording with the ROM paths found here.
   active record scan returns selector `1` when word `+4` has bit 15 set, and
   proves the no-active-record boundary calls `0x1284(0xe2, 0x21)` with string
   `0xb44b` (`67 SERVICE`) after scanning all three retained-record groups.
+- `0x5e80 -> 0xcda2 reset consumes default record outputs`: loads selected
+  records through `0x5e80`, then runs the modeled `0xcda2` reset consumer. The
+  normal reset-gate-clear case copies `0x78219d -> 0x782da4`, copies
+  `0x7821a2 -> 0x782da6`, sets `0x782997` and `0x782998`, and carries
+  `0x78219e` to the VMI conversion boundary. The reset-gate-set case still
+  copies `0x78219d -> 0x782da4` and carries `0x78219e`, but preserves the
+  previous `0x782da6` byte and does not set the two pending-status bytes.
 
 ### Disassembly Evidence
 
@@ -7923,11 +7930,11 @@ NVRAM-failure fallback wording with the ROM paths found here.
 - `0x780eda field names -> HP panel labels`: exact user-visible names remain
   inferred except where consumers identify paper/default environment and
   line-spacing behavior.
-- `0x5e80/0x4fb0 -> 0xcda2 integration fixture`: producer fixtures now
-  execute `0x5e80`, `0x5060`, `0x50be`, and `0x52ba`, and reset fixtures
-  consume canonical defaults through `0xcda2`. A single fixture that changes a
-  retained record through a producer handler and then proves the resulting
-  reset output remains unexecuted.
+- `0xcda2 line-spacing conversion internals`: fixture
+  `0x5e80 -> 0xcda2 reset consumes default record outputs` proves the selected
+  record's `0x78219e` value reaches the reset VMI conversion boundary, but the
+  arithmetic inside helper chain `0xcfea -> 0xcf52 -> 0x104d8` remains
+  documented from disassembly rather than fixture-modeled.
 
 ## External Ready And Service Status Loop
 
@@ -8321,7 +8328,11 @@ publication to addressed compact-bucket materialization through
 missing root, fixtures `ESC E stream clears missing page root without
 publication` and `host-fetched publication streams reach parser and published
 rows` pin the no-publication reset path from modeled `0xa904` host bytes to
-handler `0xcc52`.
+handler `0xcc52`. Fixture `0x5e80 -> 0xcda2 reset consumes default record
+outputs` connects the retained/default-record producer side to the reset
+consumer: the selected record's `0x78219d`, `0x7821a2`, and `0x78219e` outputs
+become the modeled `0xcda2` environment word, gated paper-source byte, pending
+status bytes, and VMI conversion input.
 
 ### Confidence
 
@@ -8339,6 +8350,7 @@ the physical retained-storage device identity behind `$a400`/`$8c01`.
 - `host-fetched publication streams reach parser and published rows`
 - `addressed printable reset publishes rendered page record`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`
+- `0x5e80 -> 0xcda2 reset consumes default record outputs`
 
 ### Disassembly Evidence
 
@@ -8360,10 +8372,11 @@ the physical retained-storage device identity behind `$a400`/`$8c01`.
 
 ### Unresolved Middle Edges
 
-- `0x780eda -> 0x78219d/0x78219e/0x7821a2 -> 0xcda2`: the immediate
-  producer/consumer chain is composed through `Default Environment Record
-  Producers`; retained-storage commit/readback is also composed through
-  `0x96c4`/`0x97e4`.
+- `0xcda2 line-spacing conversion internals`: the producer/consumer chain
+  `0x780eda -> 0x78219d/0x78219e/0x7821a2 -> 0xcda2` is fixture-backed for
+  default copies and the line-spacing conversion input. The remaining
+  ROM-internal detail is the exact arithmetic through
+  `0xcfea -> 0xcf52 -> 0x104d8`.
 - `$a400/$8c01 -> physical retained-storage device`: ROM address boundaries for
   the dirty-record serial protocol and software-visible phase meanings are
   known, but the physical device identity and board-level pin names remain

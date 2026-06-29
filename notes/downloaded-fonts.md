@@ -758,6 +758,11 @@ helpers are `0x1599c` for unsigned bytes, `0x159b6` for signed bytes,
   `0x159d4` word reads plus `0x17358` consume descriptor words without
   staging them.
 
+For reproduction, the consumed-but-not-staged entries are not hidden state:
+their ROM effect is complete when the reader advances the descriptor stream and
+the pass predicate returns success. They remain unknown only as HP/manual field
+names.
+
 The table-driven fixture consumes 64 bytes and stages these renderer-facing
 fields:
 
@@ -947,10 +952,9 @@ Unresolved middle edges:
 - `0x16fae..0x17016`: fixture-backed for the seven bounded `ESC )s80W`
   no-install exits and the short-budget `ESC )s8W` entry-5 failure, including
   resumed visible output. This covers every ROM-internal rejecting predicate
-  family; remaining validation work is external HP manual naming for
-  consumed-but-not-staged fields.
-- `0x16eae` consumed-but-not-staged fields: currently named by ROM effect;
-  external HP documentation correlation remains open.
+  family. No ROM-internal validation no-install edge remains; the remaining
+  validation work is external HP manual naming for consumed-but-not-staged
+  fields already named by ROM effect in the table above.
 
 `0x17362` sets the staged type and payload units. Type `0` writes byte
 `+0x0c = 0` and units `0x80`; type `2` writes byte `+0x0c = 2` and units

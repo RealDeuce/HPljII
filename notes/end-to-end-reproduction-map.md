@@ -420,9 +420,10 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    writes signed offset word `+0x1a`, and `0x1719c` copies those staged fields into the
    allocated payload. The remaining metric work is no longer an unresolved middle edge
    for the copied-field formulas: `notes/font-context-metrics.md` classifies additional
-   legal metric values as cross-products, and `notes/downloaded-fonts.md` says the
-   remaining validation work is external HP/manual naming for consumed-but-not-staged
-   fields. Future metric work should therefore be regression expansion or selected-font
+   legal metric values as cross-products, and `notes/downloaded-fonts.md` names the
+   consumed-but-not-staged validation entries by ROM effect. The remaining validation
+   work is external HP/manual field naming, not hidden firmware state. Future metric
+   work should therefore be regression expansion or selected-font
    cross-products only when they expose a new state boundary. It is not the tested
    type-0/type-1/type-2 payloads, metric-variant, clamped-variant, lower-bound-variant,
    upper-bound-variant, legal-value-matrix, low-nibble rounding submatrix,

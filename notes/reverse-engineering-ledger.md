@@ -1173,35 +1173,20 @@ Expected resource ROM contents:
 
 ROM work needed:
 
-- Extend the pinned visible `0xc580` branch outcomes into fuller upstream `0x1be22`
-  parser-state coverage around remaining font-selection visible variants, turn the
-  parser-derived `0x156de` primary and secondary fallback fixtures into single
-  uninterrupted parser-to-page CPU-state traces, add other fallback/error font-selection
-  visible-output streams beyond the now-pinned primary `ESC (s0p10h12v0s0b3T!!`,
-  secondary `ESC )s0p16h8v0s0b0T SO !!`, primary fallback `ESC (1234U ESC
-  (s0p10h12v0s0b3T!!`, secondary fallback `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`,
-  primary `ESC (s0p10h12v0s0b3T SI !!`, and secondary `ESC )s0p16h8v0s0b0T SO !!`
-  composed handoff cases, plus the real final-`@` default-table primary and secondary
-  visible streams, final-`X` built-in `ESC (7X!!` visible stream, final-`X`
-  inline/downloaded `ESC )4660X SO !` visible stream, and final-`X` non-selected
-  `ESC (7X!!` preserved-output stream. The direct `0x17708` error exits
-  are now state- and output-covered by fixtures
-  `0x17708 font-ID non-selected exits preserve prior selection`: scan miss,
-  candidate-slot miss, class mismatch, and context-full all restore `0x782f2e` and stop
-  before `0x14c64`, and `font-ID non-selected exits keep prior visible rows`, where
-  following `!!` renders from prior context `0xc008004c` with row digest
-  `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
-  The direct `0x13eb8` no-dispatch exit states are pinned by
-  fixture `0x13eb8 transient and cache-hit exits avoid dispatch`: transient `0x78298f`
-  stores selected context `0xc008004c` without `0x144d2`/`0x14c64`, and cache-hit
-  returns after `0x148f8`. Fixture
-  `0x13eb8 no-dispatch exits keep prior visible rows` now carries those exits through
-  output: transient following `!!` stays on prior context `0xc0089fb0` with digest
-  `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`, while cache-hit
-  SO `!!` stays on prior secondary context `0xc40ad87a` with digest
-  `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`. Add more
-  visible tails here only if later inline/downloaded or error-return branches expose
-  different preserved-state output.
+- Continue font-selection work only where a stream exposes a new state
+  boundary or needs live CPU continuity. The composed checkpoint
+  `Built-In Font Selection, Symbol-State, And Font-ID Selection` in
+  [semantic-state-model.md](semantic-state-model.md) already covers primary
+  `ESC (s0p10h12v0s0b3T!!`, secondary `ESC )s0p16h8v0s0b0T SO !!`, primary
+  and secondary `ESC (/)1234U` fallback through `0x156de`, current-font RAM
+  handoffs through SI/SO, non-Roman `0N` / `10U` / `11U` symbol streams, real
+  final-`@` default-table primary and secondary visible streams, final-`X`
+  built-in `ESC (7X!!`, final-`X` inline/downloaded `ESC )4660X SO !`,
+  direct `0x17708` non-selected exits, and direct `0x13eb8` transient/cache-hit
+  no-dispatch exits with preserved visible output. Remaining work is broader
+  font-selection fallback/error combinations that produce different state, and
+  live parser/register continuity inside `0x13eb8` / `0x156de` / `0x14c64`
+  refresh paths, not the listed visible-output streams.
 - Extend the modeled `HEAD` record scanner beyond the verified built-in
   resource window if cartridge or external resource images become
   available.

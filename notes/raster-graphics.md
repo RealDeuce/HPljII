@@ -18,6 +18,17 @@ Evidence:
   - `modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W`
   - `host-fetched raster stream reaches parser and queued pixels`
   - `raster payload reader normalizes 0xdace controls before queueing pixels`
+  - `raster mode streams tie ROM parser dispatch to modeled queued objects`
+  - `host-fetched raster mode streams reach parser and rendered rows`
+  - `host-fetched raster mode streams feed 0x1ed84 and 0x1ef6a`
+  - `host-fetched raster multi-row and chained streams preserve 0x1edc6 bridge
+    contract`
+  - `host-fetched raster streams feed 0x1ed84 and 0x1ef6a`
+  - `raster end parser trace feeds active-clear and resolution re-enable`
+  - `host-fetched raster end stream clears active state and re-enables
+    resolution`
+  - `raster active resolution parser trace preserves current mode`
+  - `host-fetched active raster resolution stream preserves current mode`
   - `host-fetched raster gate stream reaches capped and drained paths`
   - `host-fetched text rectangle and raster page record feeds 0x1ed84 and
     0x1ef6a`
@@ -360,6 +371,8 @@ and `host-fetched raster mode streams feed 0x1ed84 and 0x1ef6a` prove each
 stream drains from the modeled `0xa904` ring source, routes through
 `0x10808`, `0x1075a`, and `0x11f82`, restores the delayed transfer record,
 queues the expected encoded object, and renders through the page-record bridge.
+Those modes are therefore part of the command-family contract, not separate
+untraced raster variants.
 
 Multi-row and chained-transfer fixtures cover repeated use of the same state
 block. Two uppercase `ESC *b2W` commands restore independent

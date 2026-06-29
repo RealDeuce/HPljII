@@ -1119,8 +1119,15 @@ ROM work needed:
   the
   printable source-object fields are composed in `Text Source Objects And
   Compact Buckets`.
-- Trace binary payload modes, especially raster graphics and downloaded
-  font data.
+- Continue binary payload work only where the command family is not already
+  composed or where live CPU continuity is still missing. Raster graphics
+  `ESC *t#R` / `ESC *r#A/B` / `ESC *b#W` is documented in
+  [raster-graphics.md](raster-graphics.md), including lower-resolution modes,
+  chained transfers, cap/drain gates, page-object bytes, and render dispatch;
+  its remaining edge is a live parser-state memory trace across
+  `0x12218 -> 0x105d0 -> 0x10084 -> 0x13070`, not command-family decoding.
+  Downloaded-font payloads still need broader live parser/register coverage for
+  selected wide/segmented cases and final output validation.
 - Use `notes/pcl-command-map.md` to prioritize page geometry, raster,
   rectangle, font, and macro handlers.
 - Record malformed/combined escape behavior that is not explicit in the

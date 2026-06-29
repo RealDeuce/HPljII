@@ -232,7 +232,7 @@ def generate_disassembly(firmware: Path) -> None:
         ("ic30_ic13_active_object_scan_014398.lst", "0x14398", "0x14398", "0x300"),
         ("ic30_ic13_active_object_dispatch_014ba4.lst", "0x14ba4", "0x14ba4", "0x580"),
         ("ic30_ic13_page_root_font_slot_scan_0196c4.lst", "0x196c4", "0x196c4", "0x70"),
-        ("ic30_ic13_page_scheduler_019dd2.lst", "0x19dd2", "0x19dd2", "0xf0"),
+        ("ic30_ic13_page_scheduler_019dd2.lst", "0x19dd2", "0x19dd2", "0x510"),
         ("ic30_ic13_font_sample_page_01c170.lst", "0x1c170", "0x1c170", "0x1200"),
         ("ic30_ic13_font_sample_row_helpers_01d198.lst", "0x1d198", "0x1d198", "0x1000"),
         ("ic30_ic13_font_candidate_filters_01519a.lst", "0x1519a", "0x1519a", "0x6b0"),

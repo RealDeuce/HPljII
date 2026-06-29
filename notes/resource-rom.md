@@ -838,11 +838,9 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    `ESC (0@ ESC )0@ ESC )1@ ESC )2@ ESC (3@` through the ROM `0x120be`
    terminal handler and real-record-backed words from `0x1b250`, `0x1b50e`,
    `0x1ab84`, and `0x1b060`.
-4. Replace the host-fetched font-control, descriptor, resource-payload,
-   and downloaded-character boundaries with a full live parser-state run
-   that populates current records/source objects; then replace
-   producer-modeled text bucket fixtures with full parser-produced
-   page-object payloads. The current boundary coverage already chains
+4. Replace only the residual modeled handoff boundaries with a full live
+   parser-state run that populates current records, source objects, and
+   page-record memory in one CPU execution. The current boundary coverage already chains
    fetched `ESC *c4660d37e5F` state into fetched `ESC )s0W`,
    `ESC )s80W`, and `ESC )s2193W` streams, with fetched `ESC )s2193W`
    now crossing `0x1ed84`/`0x1ef6a`; the fetched
@@ -854,7 +852,11 @@ The first `COURIER` and `LINE_PRINTER` records have base ranges
    now pinned as a 2,215-byte single `0xa904` ring source with control,
    payload, and printable boundaries, restored record
    `80 57 08 91 00 00`, glyph `0x25`, selector `0x3003`, buckets `9`
-   and `1`, and compact render dispatch target `0x1effe`.
+   and `1`, and compact render dispatch target `0x1effe`. The even-span
+   `ESC )s18W` rule/raster composition also has its modeled
+   `font_command_final_header` handoff pinned; the remaining proof is a live
+   CPU memory image across that same font/page boundary, not a missing
+   parser-produced page-object payload for the documented variants.
 5. Correlate the remaining built-in metadata names against physical sample
    placement. Record `+0x24` is pinned as the `0xc428` / `0x10550` HMI
    source, first-glyph placement offsets are pinned through the `0xd824`

@@ -1430,8 +1430,11 @@ ROM work needed:
   `font_command_final_header` memory handoff are already pinned. The remaining
   proof is a live CPU memory image captured at stream byte `24` and carried into
   the following `0x10e68` handler.
-- Integrate executable row-copy behavior with real page objects from the
-  parser/imaging path.
+- Treat executable row-copy behavior with real page objects from the
+  parser/imaging path as covered for the documented mixed text/rule/raster,
+  downloaded-glyph, and publication streams. Remaining row-copy work is
+  broader cross-feature/full-page variants and live CPU/register capture,
+  not the basic parser-produced page-object integration.
 - Broaden the documented printable and inline/downloaded `0x1393a` /
   `0xd824` / `0xd3b2` / `0xd550` / `0x12f2e` source-object and compact
   bucket fixtures into full live parser/register runs with real

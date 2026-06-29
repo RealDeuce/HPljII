@@ -1703,6 +1703,24 @@ Output effect:
 - Fixture `parsed secondary built-in font selection feeds visible SO
   page-record rows` proves secondary context `0xc00ae122` reaches compact
   helper `0x207ac`.
+- Fixture `non-Roman symbol streams select visible built-ins` proves the
+  primary `0N` / `10U` / `11U` symbol streams render from selected contexts
+  `0xc0080cb8`, `0xc4080418`, and `0xc4080868`, while the secondary
+  `0N` / `10U` / `11U` streams cross SO and render from contexts
+  `0xc00ae122`, `0xc40ad87a`, and `0xc40adcce`.
+- Fixture `real final-@ default-table streams select visible built-ins`
+  proves the ROM-backed `@0` / `@1` / `@2` / `@3` symbol defaults feed later
+  font-selection tails into visible compact rows: the primary tail renders
+  from context `0xc0080cb8`, and the secondary tail renders from context
+  `0xc00ad4aa` after SO.
+- Fixtures `font-ID built-in selection feeds visible page-record rows` and
+  `font-ID inline/downloaded selection feeds visible page-record rows` prove
+  final-`X` font-ID selection reaches compact output for both the bit-30
+  built-in path and the bit-30-clear inline/downloaded path.
+- Fixtures `font-ID non-selected exits keep prior visible rows` and
+  `0x13eb8 no-dispatch exits keep prior visible rows` prove the corresponding
+  helper exits preserve the prior selected context before the following
+  printable/SO tail reaches compact rendering.
 - Fixture `host-fetched linear downloaded character stream renders through
   0x168dc` proves parser-produced `ESC )s6W` installs glyph `0x26`, queues
   selector `0x0003`, and renders three rows through mode-0 helper `0x1fe76`.
@@ -1782,6 +1800,11 @@ Confidence:
   downloaded, split-plane segmented, and segmented-wide examples because the
   named fixtures tie host bytes to installed records, queued compact objects,
   dispatch targets, and rendered rows.
+- High for the documented symbol-selection variants because non-Roman
+  `0N` / `10U` / `11U`, real final-`@` default-table streams, final-`X`
+  success paths, final-`X` non-selected exits, and `0x13eb8` no-dispatch exits
+  all carry host-fetched parser state through selected contexts, compact
+  object prefixes, bridge context slots, and rendered-row digests.
 - Medium for exhaustive descriptor/font-width coverage because downloaded
   spans `1..32`, high-span compact-wide row checks through span `255`,
   segmented-wide row checks through span `64`, the legal metric matrix, and
@@ -1796,6 +1819,12 @@ Fixture evidence:
 
 - `parsed primary built-in font selection feeds visible page-record rows`
 - `parsed secondary built-in font selection feeds visible SO page-record rows`
+- `non-Roman symbol streams select visible built-ins`
+- `real final-@ default-table streams select visible built-ins`
+- `font-ID built-in selection feeds visible page-record rows`
+- `font-ID inline/downloaded selection feeds visible page-record rows`
+- `font-ID non-selected exits keep prior visible rows`
+- `0x13eb8 no-dispatch exits keep prior visible rows`
 - `compact text bucket object fixture metadata`
 - `compact text bucket object fixture rendered rows`
 - `0x1f034 compact text splits current band and fallback rows`
@@ -1835,9 +1864,13 @@ Disassembly evidence:
 
 Unresolved middle edges:
 
-- `0x14c64..0x1f354`: built-in primary/secondary context examples are
-  page-visible; remaining symbol-set and pitch/style combinations need
-  comparison against physical or reference output.
+- `0x14c64..0x1f354`: primary/secondary built-in selection, symbol-miss
+  fallback, non-Roman `0N` / `10U` / `11U`, real final-`@` defaults, final-`X`
+  built-in and inline/downloaded success, final-`X` non-selected exits, and
+  `0x13eb8` no-dispatch exits are page-visible through compact rendering.
+  Remaining ROM-internal work is broader command combinations only where they
+  expose new selected-context, map, or page-root slot states; physical or
+  reference-output comparison remains separate.
 - `0x16498..0x1f354`: normal, wide, segmented, split-plane, segmented-wide,
   partial, no-install, row-count boundary, main width-span, and compact-wide
   remainder cases are documented; the segmented-wide matrix now covers spans

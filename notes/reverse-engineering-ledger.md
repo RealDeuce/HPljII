@@ -1301,9 +1301,12 @@ ROM work needed:
   composes refresh helpers` now drives a synthetic changed-window sequence
   through `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900`, proving the
   candidate prune, current-record release, dirty mark, rescan handoff, and
-  canonical-slot commit effects for modeled inputs. The remaining
-  scheduler-specific edge is a live optional-window change sequence from
-  physical resource-window contents before the caller resumes.
+  canonical-slot commit effects for modeled inputs. Fixture `0x19dd2 modeled
+  unchanged and status branch exits` pins the both-zero predicate return and the
+  `0x72a2 == 0` status branch that writes `0x780e8d`, raises
+  `0x00000200` through `0x9bee`, and returns `D7 = 0`. The remaining
+  scheduler-specific edge is live optional-window execution from physical
+  resource-window contents before the caller resumes.
   Startup retained-record bulk load is now bounded through
   `0x5a16 -> 0x97e4`, and invalid active-record state reports `67 SERVICE`
   through `0x56c2 -> 0x1284`; a ROM edge from failed startup load into the

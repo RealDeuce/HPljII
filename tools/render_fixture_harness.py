@@ -52688,6 +52688,81 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         "calls": ["0x1ba92", "0x178fa", "0x19d9c", "0x1a4fa", "0x1a900", "0x19fb8"],
     }))
 
+    page_font_scheduler_unchanged = page_font_scheduler_changed_window_via_19dd2(
+        canonical_slots=[
+            [0x1111, 0, 0, 0, 0, 0, 0, 0, 0, 0x00AA],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        ],
+        scratch_slots=[
+            [0x1111, 0, 0, 0, 0, 0, 0, 0, 0, 0x0055],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        ],
+        candidates=[],
+        candidate_classes={},
+        counters={},
+        cursors={},
+        records=[],
+        candidate_longwords_by_payload={},
+        rescan_records=[],
+        active_contexts=(0, 0),
+        candidate_slots_for_commit=[],
+    )
+    page_font_scheduler_status = page_font_scheduler_changed_window_via_19dd2(
+        canonical_slots=[
+            [0x1111, 0, 0, 0, 0, 0, 0, 0, 0, 0x00AA],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        ],
+        scratch_slots=[
+            [0x2222, 0, 0, 0, 0, 0, 0, 0, 0, 0x0055],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        ],
+        candidates=[],
+        candidate_classes={},
+        counters={},
+        cursors={},
+        records=[],
+        candidate_longwords_by_payload={},
+        rescan_records=[],
+        active_contexts=(0, 0),
+        candidate_slots_for_commit=[],
+        status_probe_zero=True,
+    )
+    checks.append(assert_equal("0x19dd2 modeled unchanged and status branch exits", {
+        "unchanged": {
+            key: page_font_scheduler_unchanged[key]
+            for key in ("branch", "first_predicate", "second_predicate", "return_d7", "calls")
+        },
+        "status": {
+            key: page_font_scheduler_status[key]
+            for key in (
+                "branch",
+                "first_predicate",
+                "second_predicate",
+                "status_byte_780e8d",
+                "status_mask",
+                "return_d7",
+                "calls",
+            )
+        },
+    }, {
+        "unchanged": {
+            "branch": "unchanged",
+            "first_predicate": 0,
+            "second_predicate": 0,
+            "return_d7": 1,
+            "calls": ["0x19fb8", "0x1b04c"],
+        },
+        "status": {
+            "branch": "status",
+            "first_predicate": 1,
+            "second_predicate": 1,
+            "status_byte_780e8d": 1,
+            "status_mask": 0x00000200,
+            "return_d7": 0,
+            "calls": ["0x72a2", "0x9bee", "0x19fb8"],
+        },
+    }))
+
     font_payload_lookup_hit = font_payload_record_lookup_via_170be(font_records, 0x99123456)
     font_payload_lookup_miss = font_payload_record_lookup_via_170be(font_records, 0x00AAAAAA)
     checks.append(assert_equal("0x170be-modeled font payload record lookup", {
@@ -94282,6 +94357,19 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             page_font_scheduler_refresh["dirty"]["dirty_indexes"],  # type: ignore[index]
             page_font_scheduler_rescan["range"],
             page_font_scheduler_refresh["commit"]["canonical_slots"][0],  # type: ignore[index]
+        )
+    )
+    lines.append(
+        "- page/font scheduler branch-exit fixture: unchanged predicates return "
+        "`D7=%d` after `%s`, while the modeled `0x72a2 == 0` status branch "
+        "writes `0x780e8d = %d`, raises mask `0x%08x`, returns `D7=%d`, and "
+        "calls `%s`." % (
+            page_font_scheduler_unchanged["return_d7"],
+            page_font_scheduler_unchanged["calls"],
+            page_font_scheduler_status["status_byte_780e8d"],
+            page_font_scheduler_status["status_mask"],
+            page_font_scheduler_status["return_d7"],
+            page_font_scheduler_status["calls"],
         )
     )
     lines.append("- font sample row fields: `0x1cabe` over first `COURIER` record `0x%06x` emits printable bytes `%s`, with prefix `%s`, name `%s`, pitch `%s`, height `%s`, symbol `%s`, `%d` fixed-space calls through `0xd0f0`, and `%d` explicit horizontal units through `0x1d152` before the sample bytes." % (

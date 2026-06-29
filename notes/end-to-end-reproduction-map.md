@@ -80,8 +80,9 @@ the board-facing boundary is tracked in
   `0x19dd2 optional-window change composes refresh helpers`. That fixture drives
   `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900` and proves candidate-list,
   current-record, canonical-window, and active-context effects for synthetic
-  inputs; status-branch and physical optional-window contents remain open.
-  Candidate-slot
+  inputs; fixture `0x19dd2 modeled unchanged and status branch exits` pins the
+  both-zero and `0x72a2 == 0` status-return contracts for modeled predicates.
+  Physical optional-window contents remain open. Candidate-slot
   deletion/compaction through `0x1bd2e`, scanner behavior through `0x1a616`,
   teardown through `0x1887a`, active-context lookup through `0x1b4c0`, and
   font/default refresh through `0x1b04c` / `0x179aa` are documented in sibling

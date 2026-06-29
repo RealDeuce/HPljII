@@ -7113,11 +7113,12 @@ the parser and allocator.
   lacks full live parser-to-allocator CPU memory capture for this producer.
 - `0x105d0..0x13250`: delayed restore, gate outcomes, encoded object layout,
   bridge preservation, and mode `0..3` render contracts are composed in
-  `Raster Transfer Gate And Encoded Rows`. The mixed stream still lacks live
-  CPU/register memory across
-  `0x12218 -> 0x105d0 -> 0x10084 -> 0x13070`, but its addressed raster object
-  storage is pinned by fixture `addressed text/rule/raster field groups reach
-  publication and render entry`.
+  `Raster Transfer Gate And Encoded Rows`. The parser-to-handler record handoff
+  is disassembly-pinned through `0x121cc`, `0x12218`, and `0x105d0` re-reading
+  `0x78299e - 6`; the mixed stream still lacks live CPU/register memory across
+  `0x105d0 -> 0x10084 -> 0x13070`, but its addressed raster object storage is
+  pinned by fixture `addressed text/rule/raster field groups reach publication
+  and render entry`.
 - `0x10084..0x1381c`: first root allocation and stream-chunk allocation
   are modeled with exact side effects, including a multi-writer chunk
   rollover fixture in the shared allocator checkpoint, but not captured
@@ -7498,11 +7499,11 @@ results rather than executing the full heap and page scheduler.
   Transfer Gate And Encoded Rows` and address-aware stream allocation is
   composed in this shared allocator checkpoint, but exact live
   register/memory state through the full raster producer remains unresolved.
-  The exact closure boundary is `0x12218 -> 0x105d0 -> 0x10084 -> 0x13070`:
-  parser scratch through the delayed `ESC *b#W` record and payload offset is
-  known, and canonical output after `0x13070` is known, but the live CPU
-  register/memory handoff into page-root allocation and encoded-row production
-  still needs a trace or memory snapshot.
+  The exact closure boundary is `0x105d0 -> 0x10084 -> 0x13070`: parser scratch
+  through the delayed `ESC *b#W` record, `0x121cc` snapshot, `0x12218` restore,
+  handler dispatch, and payload offset is known, and canonical output after
+  `0x13070` is known, but the live CPU register/memory handoff into page-root
+  allocation and encoded-row production still needs a trace or memory snapshot.
 - `0x133aa..0x13472` and `0x136d2..0x13690`: ordered insertion is pinned
   for lower, higher, and equal bucket bytes; alternate no-room/failure
   returns need live CPU fixtures.

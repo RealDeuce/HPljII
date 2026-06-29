@@ -2191,10 +2191,11 @@ are composed in [raster-graphics.md](raster-graphics.md): lower-resolution
 streams now start from modeled `0xa904` host bytes, cross the ROM parser table
 and delayed `0x105d0` restore, queue encoded raster modes 1/2/3, then render
 through `0x1ed84` / `0x1ef6a`. The remaining raster edge is narrower: a full
-CPU/parser-state fixture that executes `0x12218 -> 0x105d0 -> 0x10084 ->
-0x13070` in one live 68000 memory image. The dense text/rule/raster stream
-already has addressed `0x1381c` page/control storage for the raster object and
-published record fields.
+CPU/parser-state fixture that executes `0x105d0 -> 0x10084 -> 0x13070` in one
+live 68000 memory image after the already pinned `0x121cc` / `0x12218` delayed
+record restore. The dense text/rule/raster stream already has addressed
+`0x1381c` page/control storage for the raster object and published record
+fields.
 The `0x1f0d2` and `0x1f1f0` inline cases now also have type-2 `0x1719c`
 payload-backed fixed-record coverage; the selected inline/downloaded
 page-record object now crosses `0x1edc6` with context slot `3` intact

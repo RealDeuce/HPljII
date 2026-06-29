@@ -75,11 +75,16 @@ the board-facing boundary is tracked in
   `0x7828b6`, and the status branch can raise
   `0x9bee(0x780e2e, 0x00000200)` with byte `0x780e8d`. Remaining risk is the
   board-level external-register identity, one live execution of
-  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`, and nested-helper composition below
-  the now-pinned handoffs into `0x1887a`, `0x1a616`, `0x1b04c`, `0x1b4c0`,
-  and `0x179aa`, not the documented consumer branch behavior. Candidate-slot
-  deletion/compaction through `0x1bd2e` is now folded into the shared
-  candidate-list model.
+  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`, and one changed optional-window
+  scheduler sequence through
+  `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900` that proves the
+  resulting candidate-list, current-record, canonical-window, active-context,
+  and status state before the caller resumes. Candidate-slot
+  deletion/compaction through `0x1bd2e`, scanner behavior through `0x1a616`,
+  teardown through `0x1887a`, active-context lookup through `0x1b4c0`, and
+  font/default refresh through `0x1b04c` / `0x179aa` are documented in sibling
+  semantic checkpoints; the scheduler-specific live caller context remains
+  open.
 - Parser byte and command records:
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
   Reproduction evidence is `generated/analysis/ic30_ic13_parser_xrefs.md`

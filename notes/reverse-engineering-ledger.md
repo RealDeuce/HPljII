@@ -1292,6 +1292,15 @@ ROM work needed:
   `0x178fa`, marks candidate entries dirty through `0x19d9c`, hands the
   fresh-side range to `0x1a616` through `0x1a4fa`, and commits scratch slots
   to canonical `0x7828b6` through `0x1a900` before returning `D7 = 1`.
+  The helper interiors named by that chain are not generic unknowns:
+  candidate-slot deletion `0x1bd2e` and scanner `0x1a616` are modeled in
+  `Built-In Resource Scan And Candidate Windows`, current-record teardown
+  `0x1887a` and lookup `0x1b4c0` are modeled in `Downloaded Font Descriptor
+  And Payload Chain`, and `0x1b04c` / `0x179aa` are modeled in the
+  macro/font-context checkpoints. The remaining scheduler-specific edge is one
+  live optional-window change sequence through
+  `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900` before the caller
+  resumes.
   Startup retained-record bulk load is now bounded through
   `0x5a16 -> 0x97e4`, and invalid active-record state reports `67 SERVICE`
   through `0x56c2 -> 0x1284`; a ROM edge from failed startup load into the

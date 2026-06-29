@@ -8375,9 +8375,12 @@ missing or not bit-27 marked, and finally copies all ten scratch longwords from
     that clear bits enable optional resource-window scans.
   - Full semantic names for the resource records classified by `0x1b9c0` and
     by the direct signature skips in `0x1a254`.
-  - Deeper side effects inside `0x1bd2e`, `0x1887a`, `0x1a616`, `0x1b04c`,
-    `0x1b4c0`, and `0x179aa`; this checkpoint pins the immediate call
-    predicates and state handoff, not the full interiors of those helpers.
+  - Scheduler-specific external evidence for optional-window resource contents
+    and `$8000.14/15` physical meaning. The shared helper interiors are not
+    anonymous unknowns here: `0x1bd2e` and `0x1a616` are documented in
+    `Built-In Resource Scan And Candidate Windows`, `0x1887a` and `0x1b4c0`
+    are documented in `Downloaded Font Descriptor And Payload Chain`, and
+    `0x1b04c` / `0x179aa` are documented in macro/font-context checkpoints.
 
 ### Writers
 
@@ -8478,8 +8481,10 @@ through `0x179aa`. Those effects can change whether callers resume normal
 host parsing/rendering, report status, or refresh font/resource bookkeeping
 before later page objects are generated. The branch, scratch-scan, comparison,
 immediate refresh-helper predicates, `0x19fb8`, `0x1a900` canonical-table
-commit, and return contract are now known; deeper helper internals remain
-separate edges.
+commit, and return contract are now known. Shared helper interiors are
+documented in sibling checkpoints; the open output edge is whether one live
+`0x19dd2` optional-window change sequence changes the page/font state that
+callers later hand to rendering.
 
 ### Confidence
 
@@ -8493,10 +8498,11 @@ and canonical-table copy, `0x782894` scratch-pointer write, `0x780e8d` write,
 `0x9bee` status-mask call, and the three return paths because they are direct
 68000 disassembly evidence.
 Medium for treating the routine as a page/font scheduler handoff: caller
-locations and callee names support that role, but nested helper interiors are
-not fully lifted in this checkpoint. Low for any user-visible name assigned to
-`0x780e8d`, status mask `0x00000200`, or `$8000.14/15`; this note deliberately
-leaves those names unresolved.
+locations and callee names support that role, and the shared helper interiors
+are covered by named sibling checkpoints, but no live fixture drives this
+routine through a changed optional-window state. Low for any user-visible name
+assigned to `0x780e8d`, status mask `0x00000200`, or `$8000.14/15`; this note
+deliberately leaves those names unresolved.
 
 ### Fixtures
 
@@ -8509,6 +8515,10 @@ leaves those names unresolved.
   through `0xc108 -> 0x19dd2 -> 0x36e4` as one modeled session.
 - Existing font/default fixtures cover shared callee `0x1b04c` in other
   contexts, but they do not prove which `0x19dd2` branch selected that callee.
+- Existing downloaded-font fixtures cover `0x1887a` current-record teardown and
+  its `0x1bd2e`, `0x179aa`, and `0x1b04c` side effects in replacement/failure
+  paths, but they do not prove the `0x178fa(predicate)` caller sequence from
+  this scheduler checkpoint.
 
 ### Disassembly Evidence
 
@@ -8536,9 +8546,19 @@ leaves those names unresolved.
 
 ### Unresolved Middle Edges
 
-- `0x1887a`, `0x1a616`, `0x1b04c`, `0x1b4c0`, and `0x179aa`:
-  nested helper interiors remain separate composed checkpoints. This section
-  names the predicates and state handoff into them.
+- `0x19dd2 -> 0x1ba92/0x178fa/0x19d9c/0x1a4fa/0x1a900`: no live fixture yet
+  drives one changed optional-window state through the full chain and proves the
+  resulting `0x782324`, `0x782640`, `0x7828b6`, active-context, and status
+  state before the caller resumes.
+- `0x1a616` is composed for the built-in `0x080000..0x0ffffe` resource window in
+  `Built-In Resource Scan And Candidate Windows`; optional windows
+  `0x200000..0x3ffffe` and `0x400000..0x5ffffe` remain unverified physical
+  resource inputs.
+- `0x1887a`, `0x1b4c0`, `0x1b04c`, and `0x179aa` have documented interiors in
+  `Downloaded Font Descriptor And Payload Chain`, `Macro Definition And
+  Data-Chain Replay`, and font-selection checkpoints. The remaining middle edge
+  here is their scheduler-specific caller context, not their generic helper
+  behavior.
 - `0x1b9c0`: resource-record classifier return names are inferred only by the
   `0x1a0f2` branches here. Deeper classification belongs with the existing
   resource scanner notes.

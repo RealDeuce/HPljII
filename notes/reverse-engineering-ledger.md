@@ -1286,9 +1286,12 @@ ROM work needed:
   `0x400000..0x5ffffe` when `$8000.14/15` permit it, `0x1a042` and
   `0x19f08` compare those scratch slots against canonical `0x7828b6`
   slots, raises `0x9bee(0x780e2e, 0x00000200)` plus `0x780e8d` only on its
-  status branch, and otherwise reaches downstream font/resource refresh
-  helpers before returning `D7 = 1`. Startup retained-record bulk load is now
-  bounded through
+  status branch, otherwise prunes affected `0x782324` candidate-list entries
+  through `0x1ba92`, releases affected `0x782640` current-record payloads
+  through `0x178fa`, marks candidate entries dirty through `0x19d9c`, hands
+  the fresh-side range to `0x1a616` through `0x1a4fa`, and commits scratch
+  slots to canonical `0x7828b6` through `0x1a900` before returning `D7 = 1`.
+  Startup retained-record bulk load is now bounded through
   `0x5a16 -> 0x97e4`, and invalid active-record state reports `67 SERVICE`
   through `0x56c2 -> 0x1284`; a ROM edge from failed startup load into the
   factory-default table writers has not been found.

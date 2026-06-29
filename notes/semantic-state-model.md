@@ -8255,14 +8255,17 @@ proves startup bulk load and active-record failure reporting through
 
 ## Page/Font Scheduler Handoff
 
-Status: composed for routine `0x19dd2..0x1a2e2` as an orchestration checkpoint
-between external/host quiesce callers and the font/resource maintenance
-helpers that can run before normal rendering resumes. This is not a renderer
-entry and does not emit pixels directly. It matters for byte-stream
-reproduction because it can scan the optional resource windows, compare the
-fresh scan against the canonical window table at `0x7828b6`, raise a status
-bit, update font/resource bookkeeping through helper calls, and decide whether
-its caller sees success or a zero/status return before page work continues.
+Status: composed for routine `0x19dd2..0x1a2e2` and its immediate
+font/resource refresh helpers `0x1ba92`, `0x178fa`, `0x19d9c`, `0x1a4fa`, and
+`0x1a900`. This checkpoint sits between external/host quiesce callers and the
+font/resource maintenance helpers that can run before normal rendering
+resumes. It is not a renderer entry and does not emit pixels directly. It
+matters for byte-stream reproduction because it can scan the optional resource
+windows, compare the fresh scan against the canonical window table at
+`0x7828b6`, prune candidate-list entries, release affected downloaded-font
+payload objects, raise a status bit, commit the fresh scan as the new canonical
+table, refresh active font slots, and decide whether its caller sees success or
+a zero/status return before page work continues.
 
 Concept: `0x19dd2` creates a local 40-byte scratch block at `A6-0x28`,
 publishes its address through global longword `0x782894`, and initializes that
@@ -8284,17 +8287,30 @@ returns `D7 = 1`. If at least one predicate byte is nonzero, it probes
 `0x72a2`; when that probe returns zero and the canonical-side predicate byte
 is nonzero, it writes the predicate to `0x780e8d`, raises mask `0x00000200`
 at status root `0x780e2e` through `0x9bee`, calls `0x19fb8(predicate)`, and
-returns `D7 = 0`. Otherwise it runs the longer refresh chain
-`0x1ba92(predicate)`, `0x178fa(predicate)`, `0x19d9c()`,
-`0x1a4fa(fresh_side_predicate)`, `0x1a900()`, and `0x19fb8(predicate)`, then
-returns `D7 = 1`.
+returns `D7 = 0`.
+
+Otherwise it runs the longer refresh chain. `0x1ba92(predicate)` removes
+candidate-list entries whose low-24-bit address falls inside the affected
+optional window range, using `0x1bd2e` to remove the selected entry and
+adjusting the candidate-list counts and window pointers. `0x178fa(predicate)`
+walks the 32 current downloaded-font records at `0x782640`; for matching
+predicate bits it releases nonzero payload pointers through `0x1887a`.
+`0x19d9c()` marks the first `0x78278e` candidate-list entries dirty by setting
+bit 3 at `0x782324 + 4 * index`. `0x1a4fa(fresh_side_predicate)` sets
+`0x78288c/0x782890` and calls `0x1a616` to rescan the affected resource
+candidate region. `0x1a900()` refreshes shared font/default state through
+`0x1b04c`, verifies active primary and secondary contexts from `0x782ee6` and
+`0x782ef6` through `0x1b4c0`, calls `0x179aa(0/1)` when an active context is
+missing or not bit-27 marked, and finally copies all ten scratch longwords from
+`0x782894` into canonical table `0x7828b6`. The wrapper then calls
+`0x19fb8(predicate)` and returns `D7 = 1`.
 
 ### Field Groups
 
 - Canonical state:
   - `0x7828b6..0x7828dd`: two 20-byte canonical resource-window table slots.
     `0x1a042` and `0x19f08` compare their first nine words against the fresh
-    scratch slots.
+    scratch slots; `0x1a900` replaces all ten longwords from `0x782894`.
   - `0x780e2e`: status longword root. The early status branch raises bit mask
     `0x00000200` through generic OR helper `0x9bee`.
   - `0x780e8d`: byte copy of the canonical-side mismatch predicate on the
@@ -8312,6 +8328,10 @@ returns `D7 = 1`.
   - `0x782898`: byte copied from record offset `+0x0c` by `0x1a220` or from
     record offset `+0x05` by `0x1a254`, then copied to scratch slot word
     `+0x10`.
+  - `0x7827a8`, `0x7827ac`, `0x7827b0`, `0x7827b4`, and counts
+    `0x782790`, `0x782794`, `0x782798`, `0x78279c`: candidate-list window
+    pointers/counts decremented by `0x1ba92` when an entry is removed from the
+    affected optional-resource address range.
 - Parser scratch:
   - `A6-0x29`: canonical-side mismatch byte returned in `D7` by `0x1a042`.
   - `A6-0x2a`: fresh-scan-side mismatch byte returned in `D7` by `0x19f08`.
@@ -8320,6 +8340,15 @@ returns `D7 = 1`.
   - `A6-0x14..A6-0x01`: fresh slot `1` for optional window `2`, populated
     from `0x400000..0x5ffffe`.
 - Firmware bookkeeping:
+  - `0x782640..0x782776`: 32 current downloaded-font records, each 10 bytes.
+    `0x178fa` checks longword `+0x02` bit 31 and bit 28, then releases nonzero
+    low-24-bit payload pointer `+0x06` through `0x1887a` when the predicate
+    applies.
+  - `0x782324..`: candidate pointer-list entries. `0x19d9c` sets bit 3 in
+    the first `0x78278e` entries after the optional-window change path.
+  - `0x782f2c` and `0x782f2d`: active-font refresh/dirty bytes set by
+    `0x179aa` when `0x1a900` finds the primary or secondary active context
+    missing or not bit-27 marked.
   - Return `D7`: `1` for the both-zero refresh path and the long refresh path;
     `0` only for the status-raise branch after `0x72a2 == 0` and first
     predicate nonzero.
@@ -8331,8 +8360,9 @@ returns `D7 = 1`.
     that clear bits enable optional resource-window scans.
   - Full semantic names for the resource records classified by `0x1b9c0` and
     by the direct signature skips in `0x1a254`.
-  - Full state written by downstream refresh helpers `0x1ba92`, `0x178fa`,
-    `0x19d9c`, `0x1a4fa`, and `0x1a900`.
+  - Deeper side effects inside `0x1bd2e`, `0x1887a`, `0x1a616`, `0x1b04c`,
+    `0x1b4c0`, and `0x179aa`; this checkpoint pins the immediate call
+    predicates and state handoff, not the full interiors of those helpers.
 
 ### Writers
 
@@ -8358,6 +8388,26 @@ returns `D7 = 1`.
 - `0x19e5e..0x19e62` returns `D7 = 0` from that status branch.
 - `0x19e1c..0x19e20` and `0x19eb0..0x19eb4` return `D7 = 1` from the
   refresh/success branches.
+- `0x1ba92..0x1bb9c` prunes `0x782324` candidate-list entries in the selected
+  optional-resource address range. Predicate `1` selects
+  `0x200000..0x3ffffe`, predicate `2` selects `0x400000..0x5ffffe`, and other
+  nonzero predicates select `0x200000..0x5ffffe`. Each removal calls
+  `0x1bd2e`, decrements `0x78278e`, and decrements the relevant list counts
+  and pointer windows.
+- `0x178fa..0x179a8` walks current downloaded-font records
+  `0x782640..0x782776`; when record longword `+0x02` has bit 31 set, the
+  predicate permits the record, and low-24-bit payload pointer `+0x06` is
+  nonzero, it calls `0x1887a(payload, record)`.
+- `0x19d9c..0x19dca` walks the first `0x78278e` candidate-list entries from
+  `0x782324` and sets bit 3 in each longword.
+- `0x1a4fa..0x1a612` selects an optional-resource scan range from the
+  fresh-side predicate and `$8000.14/15`, writes `0x78288c`, `0x782890`, and
+  `0x782888 = 0x40000`, then calls `0x1a616`.
+- `0x1a900..0x1a9b6` calls `0x1b04c`, validates active contexts
+  `0x782ee6 & 0x00ffffff` and `0x782ef6 & 0x00ffffff` through `0x1b4c0`,
+  calls `0x179aa(0)` or `0x179aa(1)` when a context is missing or lacks
+  bit 27, and copies ten longwords from scratch pointer `0x782894` to
+  canonical table `0x7828b6`.
 
 ### Readers And Consumers
 
@@ -8385,6 +8435,17 @@ returns `D7 = 1`.
   `0x1ba92` and `0x178fa`, then calls `0x19d9c`.
 - `0x19e8a..0x19e9a` consumes the second predicate as the argument to
   `0x1a4fa`, then calls `0x1a900`.
+- `0x1ba92` consumes low-24-bit candidate pointers from the list rooted at
+  `0x782324`, count `0x78278e`, range window pointers, and the helper
+  `0x1bd2e`.
+- `0x178fa` consumes the 32 current downloaded-font records at
+  `0x782640..0x782776`, predicate bits, and release helper `0x1887a`.
+- `0x19d9c` consumes count `0x78278e` and writes candidate entry bit 3.
+- `0x1a4fa` consumes `$8000.14/15` and the fresh-side predicate to decide
+  which scan range is handed to `0x1a616`.
+- `0x1a900` consumes active context longwords `0x782ee6` and `0x782ef6`,
+  helper `0x1b4c0` return records, bit 27 of those records, and scratch
+  longwords at `0x782894`.
 - External-ready teardown at `0xba48 -> 0xbb16` consumes only the routine's
   side effects before continuing to status aggregation through `0x36e4`;
   host-input quiesce callers at `0x447a` and siblings are not yet composed
@@ -8395,31 +8456,39 @@ returns `D7 = 1`.
 For pixel reproduction from a supplied byte stream, this checkpoint has no
 direct page-record or bitmap output. Its visible risks are indirect: optional
 resource-window scan results can diverge from the canonical table at
-`0x7828b6`, status bit `0x780e2e.9` can be raised with byte `0x780e8d`, and
-the helper-driven font/resource refresh chain can change whether callers
-resume normal host parsing/rendering, report status, or refresh font/resource
-bookkeeping before later page objects are generated. The branch, scratch-scan,
-comparison, `0x19fb8`, and return contract is now known through `0x1a2e2`; the
-deeper refresh helpers remain separate edges.
+`0x7828b6`, status bit `0x780e2e.9` can be raised with byte `0x780e8d`,
+candidate entries can be removed or marked dirty, downloaded-font payloads in
+the affected window can be released, and active font slots can be forced
+through `0x179aa`. Those effects can change whether callers resume normal
+host parsing/rendering, report status, or refresh font/resource bookkeeping
+before later page objects are generated. The branch, scratch-scan, comparison,
+immediate refresh-helper predicates, `0x19fb8`, `0x1a900` canonical-table
+commit, and return contract are now known; deeper helper internals remain
+separate edges.
 
 ### Confidence
 
 High for the `0x19dd2..0x1a2e2` call order, local predicate branching,
 scratch-slot clearing, optional resource-window bases and limits, canonical
 versus scratch comparison predicates, `0x19fb8` trigger predicates,
-`0x782894` scratch-pointer write, `0x780e8d` write, `0x9bee` status-mask call,
-and the three return paths because they are direct 68000 disassembly evidence.
+`0x1ba92` range selection and candidate-list counter/pointer decrements,
+`0x178fa` current-record release predicates, `0x19d9c` candidate dirty-bit
+writer, `0x1a4fa` range handoff to `0x1a616`, `0x1a900` active-context checks
+and canonical-table copy, `0x782894` scratch-pointer write, `0x780e8d` write,
+`0x9bee` status-mask call, and the three return paths because they are direct
+68000 disassembly evidence.
 Medium for treating the routine as a page/font scheduler handoff: caller
-locations and callee names support that role, but downstream refresh helpers
-are not fully lifted in this checkpoint. Low for any user-visible name assigned
-to `0x780e8d`, status mask `0x00000200`, or `$8000.14/15`; this note
-deliberately leaves those names unresolved.
+locations and callee names support that role, but nested helper interiors are
+not fully lifted in this checkpoint. Low for any user-visible name assigned to
+`0x780e8d`, status mask `0x00000200`, or `$8000.14/15`; this note deliberately
+leaves those names unresolved.
 
 ### Fixtures
 
 - No dedicated fixture currently executes `0x19dd2` end to end.
 - No dedicated fixture currently executes `0x19eb6`, `0x1a042`, `0x19f08`,
-  `0x19fb8`, or `0x1a0f2` against modeled optional resource-window records.
+  `0x19fb8`, `0x1a0f2`, `0x1ba92`, `0x178fa`, `0x19d9c`, `0x1a4fa`, or
+  `0x1a900` against modeled optional resource-window records.
 - Existing external-ready fixtures cover adjacent consumers in
   `External Ready And Service Status Loop`, but they do not drive `0xba48`
   through `0xc108 -> 0x19dd2 -> 0x36e4` as one modeled session.
@@ -8430,6 +8499,12 @@ deliberately leaves those names unresolved.
 
 - `generated/disasm/ic30_ic13_page_scheduler_019dd2.lst`:
   `0x19dd2..0x1a2e2`.
+- `generated/disasm/ic30_ic13_font_resource_refresh_helpers_0178fa.lst`:
+  `0x178fa..0x17a22`, including `0x179aa`.
+- `generated/disasm/ic30_ic13_font_scheduler_commit_01a4fa.lst`:
+  `0x1a4fa..0x1a9bc`.
+- `generated/disasm/ic30_ic13_font_candidate_window_prune_01ba92.lst`:
+  `0x1ba92..0x1bb9c`.
 - `generated/analysis/ic30_ic13_parser_xrefs.md`: callers
   `0x00447a`, `0x004760`, `0x007164`, `0x00bb16`, and `0x01a3c2`.
 - `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`:
@@ -8446,9 +8521,9 @@ deliberately leaves those names unresolved.
 
 ### Unresolved Middle Edges
 
-- `0x1ba92`, `0x178fa`, `0x19d9c`, `0x1a4fa`, and `0x1a900`: downstream
-  refresh helper interiors still need lifting before the full font/resource
-  side effects can be classified beyond the scan/compare contract above.
+- `0x1bd2e`, `0x1887a`, `0x1a616`, `0x1b04c`, `0x1b4c0`, and `0x179aa`:
+  nested helper interiors remain separate composed checkpoints. This section
+  names the predicates and state handoff into them.
 - `0x1b9c0`: resource-record classifier return names are inferred only by the
   `0x1a0f2` branches here. Deeper classification belongs with the existing
   resource scanner notes.

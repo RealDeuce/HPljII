@@ -23,6 +23,15 @@ host bytes
 Every reproduction claim below requires both a ROM address boundary and an
 executable fixture or generated analysis note.
 
+CPU clock source is outside the current logical byte-stream-to-pixels
+contract except where it changes firmware-visible event order. The
+bounded timing surfaces are host fetch/polling (`0xa904..0xab8a`),
+scan/status interrupt and wait-object dispatch (`0x0f84..0x1282`), and
+active render scheduling (`0x1eb2a..0x1ed84`). The current fixtures prove
+the state effects after those events are observed; exact oscillator
+identity remains board-level work for cycle-accurate host I/O, engine
+handshake, timeout, and physical registration fidelity.
+
 ## Current End-To-End Coverage
 
 - Host byte source priority:

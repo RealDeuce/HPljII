@@ -73,6 +73,23 @@ dependency; it matters when cycle/time-dependent host I/O, engine
 handshake, video-buffer, timeout, or service-error behavior becomes part
 of the emulated formatter.
 
+Current ROM evidence bounds that clock-source risk to timing gates, not
+to the byte-to-bitmap algorithms themselves. Host-byte polling is
+documented at `0xa904..0xab8a` in [host-byte-fetch.md](host-byte-fetch.md).
+Published-record scheduling and active render work are documented in the
+`Active Render Scheduler Semantic Checkpoint` in
+[page-raster-imaging.md](page-raster-imaging.md): interrupt/status
+handling at `0x0f84..0x10f2`, wait-object traps at `0x10bc..0x1282`,
+and active-band dispatch at `0x1eb2a..0x1ed84` can change when work is
+accepted, yielded, or signaled. The checked fixture evidence still shows
+that, once bytes and page records are admitted in the same order, the
+rendered rows are determined by ROM state and render helpers rather than
+by the absolute CPU frequency. Treat the exact clock as required for
+cycle-accurate hardware emulation, host/engine timeout fidelity, and
+physical registration work; do not treat it as required for current
+logical pixel reproduction unless a traced timing branch drops,
+duplicates, reorders, or alters page-record data.
+
 ## ROM
 
 - Maximum HP 33440 ROM capacity: 1 MB.

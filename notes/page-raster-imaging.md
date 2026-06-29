@@ -997,6 +997,23 @@ Unresolved middle edges:
   are modeled; the unresolved edge is external engine timing that makes
   `0x7828f9.6` ready or busy.
 
+CPU-clock impact: the exact oscillator remains a board-level unknown, but
+the covered ROM evidence localizes its current pixel-reproduction risk.
+Clock rate can change how often the scan/status path
+`0x0f84..0x10f2` observes `$8000.4`, reaches thresholds such as
+`0x78398e` and `0x783998`, and signals wait objects through
+`0x1036`. It can also change wall-clock timeout behavior in
+`0x1cf8..0x1ea8`. The scheduler fixtures above prove the semantic
+effects after those events occur: pending bytes `0x78399e/0x78399f`,
+shadow byte `0x7828f9`, wait-object state, active source `0x780eae`,
+work pointer `0x783a18`, and band words are the fields that determine
+whether `0x1ef6a` renders, yields, throttles, or cleans up. Therefore the
+clock source is not part of the current byte-stream-to-pixels contract
+unless hardware timing causes a different sequence of those fields, such
+as a dropped host byte, a timeout branch, a different ready/busy result,
+or an engine handoff that changes which published record reaches the
+active render path.
+
 The first confirmed bitmap-writing routines are in `0x1f4e0..0x1fa5a`.
 They write 16-bit words to destinations derived from `0x783a28` or
 `0x7810b4`, advance rows by stride `0x783a1c`, and use mask/expansion

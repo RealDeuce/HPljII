@@ -8122,8 +8122,10 @@ Concept: the host-visible reset boundary has two output effects. First, any
 active current page root can publish before the environment is rebuilt. Second,
 the current modified print environment is replaced by the ROM's current
 user/default environment copies. The ROM evidence covers the `ESC E` software
-reset path; it does not yet prove the panel reset, cold-reset, or NVRAM load
-paths that supply default bytes before `ESC E` consumes them.
+reset consumer path. The panel reset, cold-reset, startup retained-load, and
+NVRAM commit/readback producers that supply default bytes before `ESC E`
+consumes them are covered in `Default Environment Record Producers`; this
+checkpoint only consumes their canonical outputs.
 
 ### Field Groups
 

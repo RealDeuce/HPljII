@@ -93132,8 +93132,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append("- a `0x1ef6a` page-band walk now merges compact text, a mode-0 raster row, and a crossing patterned rule across bands `0` and `5`, carrying the mutated rule node into the second band.")
     lines.append("- a published text+rule+raster fixture now snapshots the full bucket array, rule list, and context slots through modeled `0xff1e`, then renders that published record through `0x1ed84` and `0x1ef6a` with the same rows.")
-    lines.append("- remaining gap: broaden this from modeled state into parser-produced heterogeneous")
-    lines.append("  page objects and final device-output validation.")
+    lines.append("- remaining gap: the parser-produced heterogeneous page-object path is covered by the later addressed text/rule/raster fixtures; what remains here is full live 68000 register/memory capture and final device-output validation.")
     lines.append("")
 
     lines.append("## Parser-Derived Raster State Fixture")
@@ -93176,7 +93175,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append("- parser-derived rendered row:")
     lines.extend(f"`{row}`" for row in parser_raster_rendered["rows"])
-    lines.append("- remaining gap: replace the modeled command/data stream fixture below with a full CPU/parser-state run through `0x121cc` / `0x105d0`.")
+    lines.append("- remaining gap: the later host-fetched raster fixtures cover parser dispatch, delayed-record restore, queued objects, and render rows; full CPU/register capture through `0x121cc` / `0x105d0` remains the stronger proof.")
     lines.append("")
 
     lines.append("## ROM Parser Dispatch Trace Fixture")
@@ -93577,7 +93576,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             ))
     lines.append("- chained `ESC *b` queued chain, newest first:")
     lines.extend(f"`{' '.join(f'{byte:02x}' for byte in obj)}`" for obj in raster_chained_transfer_chain)
-    lines.append("- remaining gap: run the same byte stream through the live parser/data-chain machinery instead of this modeled command recognizer.")
+    lines.append("- remaining gap: the same command family now has host-fetched parser/data-chain fixtures for lower-resolution modes, consecutive transfers, active-resolution ignore, and lowercase `*b` chaining; full live CPU/register capture remains outside this command recognizer.")
     lines.append("")
 
     lines.append("## Raster Row Page-Record Fixture")
@@ -93620,7 +93619,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- mode-3 queued raster object bytes: `{' '.join(f'{byte:02x}' for byte in raster_mode3_object)}`")
     lines.append("- rendered mode-3 expanded rows:")
     append_literal_rows(lines, raster_mode3_rendered["rows"])
-    lines.append("- remaining gap: replace the modeled raster command/data stream with a full live parser/data-chain run through `0x121cc` / `0x105d0`.")
+    lines.append("- remaining gap: parser/data-chain handoff is fixture-backed through restored records, queued objects, and render rows; full live CPU/register capture through `0x121cc` / `0x105d0` remains the residual proof.")
     lines.append("")
 
     lines.append("## `0xd824` Positioned Text Bucket Fixture")
@@ -93671,7 +93670,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     lines.append(f"- source object from `0x1393a`: context `0x{printable_stream_source['context']:08x}`, host `0x{printable_stream_source['host_char']:02x}`, mapped glyph `0x{printable_stream_source['mapped']:02x}`, glyph entry `0x{printable_stream_source['glyph_entry']:06x}`, flag `{printable_stream_source['flag']}`")
     lines.append(f"- compact object bytes: `{' '.join(f'{byte:02x}' for byte in positioned_text_object)}`")
     lines.append("- rendered rows match the `0xd824` positioned text fixture above.")
-    lines.append("- remaining gap: broaden this from fixture-only source/bucket state into full parser-produced page objects.")
+    lines.append("- remaining gap: parser-produced page objects are covered by the adjacent printable/control stream fixtures; this source/bucket fixture still does not provide full live CPU-memory capture for the producer internals.")
     lines.append("")
 
     lines.append("## Two Printable Byte Stream Fixture")
@@ -93987,7 +93986,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     ))
     lines.append(f"- published FF page-record bucket bytes: `{' '.join(f'{byte:02x}' for byte in ff_published_page_record['bucket_root'])}`")
     lines.append("- published FF page-record bridge rows match the pre-eject compact text rows.")
-    lines.append("- remaining gap: replace the fixture-only source and bucket states with fuller live-parser page objects and decode the final full-page merge; reset, FF, page-size, orientation, paper-source, and copies records now run from parser trace through publication, `0x1ed84`, and `0x1ef6a`.")
+    lines.append("- remaining gap: reset, FF, page-size, orientation, paper-source, and copies records now run from parser trace through publication, `0x1ed84`, and `0x1ef6a`; residual work is broader full-page merge/device comparison and full live CPU-memory capture for additional source/bucket variants.")
     lines.append("")
 
     lines.append("## `0xd3b2` Unflagged Positioning Fixture")
@@ -95653,7 +95652,7 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
     unflagged_overflow_source_report = unflagged_overflow_fixture["source"]
     assert isinstance(unflagged_overflow_source_report, dict)
     lines.append(f"- context metric flag set plus left overflow: cursor `(10,20)`, printable offset `20`, source x-offset `-15` -> x `{unflagged_overflow_source_report['x']}`, y `{unflagged_overflow_source_report['y']}`, context slot `{unflagged_overflow_source_report['context_slot']}`, overflow correction `0x{int(unflagged_overflow_fixture['overflow_correction']):08x}`")
-    lines.append("- remaining gap: replace the modeled font command/data wrappers with a full live parser-state run that populates current records and source/page objects before carrying them into the bridge/render path.")
+    lines.append("- remaining gap: parser-produced font command/data streams now populate current records, source/page objects, and visible render rows for the covered variants; full live parser-state CPU capture remains the residual proof before the bridge/render path.")
     lines.append("")
 
     lines.append("## Segmented Text Bucket Producer Fixture")

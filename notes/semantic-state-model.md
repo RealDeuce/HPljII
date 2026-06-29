@@ -7408,17 +7408,17 @@ because each is fixture-pinned.
 ## Default Environment Record Producers
 
 Status: composed for the RAM record, ROM-table fallback, record-maintenance,
-panel/service trigger, and menu/update producer side that feeds the `ESC E`
-reset defaults. This closes the immediate producer edge for `0x78219d`,
-`0x78219e`, and `0x7821a2`: they are copied from selected records under
-`0x780eda`, with update handlers that write both the backing record and the
-canonical default byte/word. It also identifies the firmware paths that select
-an active record bank, rotate/copy three-word default groups, mark dirty
-records, reset records from ROM tables, and enter those paths from panel/service
-bytes. The panel/service byte source itself is now bounded to helper `0xa3ca`,
-which returns a stable low byte from hardware word `$8000.w`. The remaining
-provenance edge is the external device/protocol that drives `$8000.w` and the
-exact retained-storage persistence path for dirty records.
+retained-storage commit/readback, panel/service trigger, and menu/update
+producer side that feeds the `ESC E` reset defaults. This closes the immediate
+producer edge for `0x78219d`, `0x78219e`, and `0x7821a2`: they are copied from
+selected records under `0x780eda`, with update handlers that write both the
+backing record and the canonical default byte/word. It also identifies the
+firmware paths that select an active record bank, rotate/copy three-word default
+groups, mark dirty records, reset records from ROM tables, serialize dirty
+records through the `$a400`/`$8c01` retained-storage interface, verify readback,
+and enter those paths from panel/service bytes. The remaining provenance edge is
+the external device/protocol that drives `$8000.w` and the physical identity of
+the serial retained-storage device behind `$a400`/`$8c01`.
 
 Concept: control-panel/user-default state is represented as compact records
 selected by `0x7822d5`. The ROM scales that selector through `0x332ee(..., 3)`
@@ -7437,7 +7437,10 @@ entry `0x2c84` reaches `0x5a62` when the first input byte is `0xdf`; menu
 commit `0x4922` can set temporary commit flag `0x7822d4` and call `0x4162` after
 the input byte remains equal to `0x7821aa` for timer delta `0x2a`. Helper
 `0xa3ca` samples `$8000.w & 0xff`, waits through `0x8bea(0x14)`, and repeats
-until two samples match before returning the byte in `D7`.
+until two samples match before returning the byte in `D7`. Retained-storage
+helper `0x96c4` serializes dirty records through command class `0x83`, calls
+`0x97e4` to read the same dirty record slots back through command class `0x86`,
+and restores the pre-read RAM image if verification succeeds.
 
 ### Field Groups
 
@@ -7490,6 +7493,21 @@ until two samples match before returning the byte in `D7`.
   - `0x780eb8`: 16-word auxiliary flag block cleared by `0x571e` after
     maintenance completes.
   Evidence: `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst`.
+- Retained-storage commit/readback state:
+  - `0x780eba..0x780ed8`: dirty flags for 16 retained words. `0x96c4` and
+    `0x97e4` walk the same flag block and skip clean entries.
+  - `0x782252..0x782270`: readback buffer populated from `0x780eda` before
+    `0x97e4`, then overwritten by serial reads. After verification, `0x96c4`
+    copies `0x782252..0x782270` back over `0x780eda`.
+  - `0x782232..0x782250`: pre-read snapshot used to compare the original RAM
+    records against the readback buffer for dirty entries.
+  - `$a400`: serial control/output register written by `0x9a4a` after changing
+    low three bits of shadow word `0x7828f6`.
+  - `$8c01`: serial input/status byte read by `0x994e`; bit 1 is shifted into
+    the destination record word during readback.
+  Evidence:
+  `generated/disasm/ic30_ic13_nvram_default_record_commit_0096c4.lst` and
+  `generated/disasm/ic30_ic13_nvram_serial_bit_helpers_009860.lst`.
 - Parser/service trigger state:
   - `0x7821aa`: last panel/service byte seen by `0x3dae`, `0x5d2a`, `0x3f6a`,
     and `0x4922`. Dispatch happens only when a new byte differs from this
@@ -7530,13 +7548,20 @@ until two samples match before returning the byte in `D7`.
   - `0x780e97`: receives derived byte `0x7821a3`.
   - `0x780eec`, `0x782294`, `0x782298`, and `0x780e41`: related panel/config
     bitfield state loaded by `0x5f96` and updated by `0x533a..0x53be`.
+  - `0x7828f6`: serial retained-storage control shadow. `0x9a4a` masks low
+    three bits, ORs a caller-provided phase value, and writes the result to
+    `$a400`.
+  - `0x7822fd`, `0x7822fe`, `0x7822ff`, `0x7822eb`, `0x7822ec`, `0x782302`,
+    `0x78230a`, and `0x78230e`: service/poll bookkeeping maintained by
+    `0xbbb2`, `0xbc56`, and `0xbc88` around retained-storage serial traffic.
   Evidence: the two focused default-environment listings.
 - Unknown/provenance:
   - firmware table fallback, record-maintenance writers, and panel/service
     byte dispatch into `0x780eda` updates are known. The immediate byte source
-    is `$8000.w & 0xff` through `0xa3ca`; the external device/protocol behind
-    `$8000.w` and whether these paths persist to external NVRAM remain
-    unresolved.
+    is `$8000.w & 0xff` through `0xa3ca`; retained-record persistence is
+    serialized through `$a400` and read back through `$8c01`. The external
+    device/protocol behind `$8000.w` and the physical identity of the serial
+    retained-storage device remain unresolved.
   - external names for each staged field are inferred from manual defaults and
     consumers, but the exact panel menu labels are not yet assigned for every
     record byte.
@@ -7551,6 +7576,19 @@ until two samples match before returning the byte in `D7`.
   `0x780eda + 2*D5` for word bit 15, stepping record groups in threes.
 - `0x571e` copies three selected words from one bank into another, clears and
   sets dirty/active flags, updates `0x780ef0`, and clears `0x780eb8`.
+- `0x96c4` commits dirty retained words: it sends command byte `0x84`, then
+  for each dirty index sends a 24-bit packet combining command/address
+  `((index << 3) | 0x83) << 16` with the selected `0x780eda` word. It then sends
+  `0x81`, delays through `0x8bea(0x0a)`, sends `0x80`, snapshots the written
+  image into `0x782252`, calls `0x97e4` for readback, restores `0x780eda` from
+  `0x782252`, and compares dirty readback words against `0x782232`.
+- `0x97e4` reads dirty retained words: it sends command byte `0x85`, delays
+  through `0x8bea(1)`, then for each dirty index sends/readbacks command
+  `((index << 3) | 0x86) << 16` into the corresponding `0x780eda` word through
+  `0x994e`.
+- `0x9860`, `0x98ae`, and `0x994e` encode retained-storage bits into
+  two-phase calls to `0x9a4a`; `0x994e` samples `$8c01.1` into readback words.
+- `0x9a4a` writes serial phases to `$a400` through shadow `0x7828f6`.
 - `0x5a62` clears all 16 `0x780eda` records and marks all `0x780eba` flags
   when the input byte is `0xde`; otherwise it reloads records from ROM tables
   `0xba3e` and `0xba44` and calls `0x571e`.
@@ -7590,6 +7628,10 @@ until two samples match before returning the byte in `D7`.
 - Service dispatch `0x3dae` consumes the previous byte in `0x7821aa` and the
   current debounced `$8000.w` byte from `0xa3ca`, then reaches default-store
   consumers through `0x3ef8`, `0x3f6a`, and `0x4922`.
+- Retained-storage commit helper `0x96c4` consumes `0x780eda` words and dirty
+  flags `0x780eba..0x780ed8`; readback helper `0x97e4` consumes the same dirty
+  flag block and replaces temporary `0x780eda` contents with external serial
+  storage data before `0x96c4` restores the write image.
 - `0x4fb0` and `0x5a62` consume the active record selected by `0x56c2`.
 - HMI/VMI and orientation/page-geometry helpers consume `0x78219e` through
   the same normalization helpers used by reset.
@@ -7603,9 +7645,10 @@ pixel reproduction this means `0x78219d`, `0x7821a2`, and `0x78219e` are
 canonical runtime defaults, while `0x780eda` records are their retained or
 control-panel backing store inside ROM state. The ROM-table fallback path
 means an emulator must also model `0xba3e`/`0xba44` defaults and record-bank
-maintenance plus the `0xdf`/`0xde` cold-reset byte path if it emulates
-control-panel or cold-reset behavior, even though a pure byte-stream renderer
-can start from already materialized canonical defaults.
+maintenance, retained-storage commit/readback, and the `0xdf`/`0xde`
+cold-reset byte path if it emulates control-panel, cold-reset, or power-cycle
+behavior. A pure byte-stream renderer can still start from already materialized
+canonical defaults.
 
 ### Confidence
 
@@ -7614,11 +7657,12 @@ High for the immediate RAM producer edge from `0x780eda` records to
 from `0xba3e`/`0xba44` into `0x780eda`, because the writes are direct in the
 focused disassembly windows. Medium for naming the record family as
 control-panel/user defaults, because callers and manual behavior support that
-role. High for the panel/service-byte dispatch into the default-store cluster
-and for the immediate `$8000.w` byte source, because `0x2c84`, `0x3dae`,
-`0x4922`, and `0xa3ca` directly connect those edges. Low for the external
-device/protocol that drives `$8000.w` and for external retained-storage
-persistence.
+role. High for the panel/service-byte dispatch into the default-store cluster,
+the immediate `$8000.w` byte source, and the retained-storage serial
+commit/readback register interface, because `0x2c84`, `0x3dae`, `0x4922`,
+`0xa3ca`, `0x96c4`, and `0x97e4` directly connect those edges. Low for the
+external device/protocol that drives `$8000.w` and for the physical identity of
+the serial retained-storage device behind `$a400`/`$8c01`.
 
 ### Fixtures
 
@@ -7647,6 +7691,12 @@ persistence.
   `0x7822d4` and calls `0x4162`.
 - `generated/disasm/ic30_ic13_panel_service_byte_source_00a39a.lst`: readiness
   probe `0xa39a` and debounced `$8000.w` byte sampler `0xa3ca`.
+- `generated/disasm/ic30_ic13_nvram_default_record_commit_0096c4.lst`: dirty
+  retained-record write, readback, restore, and verification path.
+- `generated/disasm/ic30_ic13_nvram_serial_bit_helpers_009860.lst`: serial
+  write/read bit helpers that drive `$a400` and sample `$8c01.1`.
+- `generated/disasm/ic30_ic13_nvram_service_poll_00bbb2.lst`: service polling
+  and status-shadow updates interleaved with retained-storage serial traffic.
 - `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`: caller path
   that invokes `0x571e`, `0x5e80`, and `0x5f96` around host-input
   quiesce/reset state.
@@ -7658,9 +7708,10 @@ persistence.
 - `external service/panel device -> $8000.w`: `0xa3ca` identifies the immediate
   hardware word used for the service byte stream, but the external device or
   panel protocol that drives `$8000.w` remains unresolved.
-- `0x780eda dirty records -> external NVRAM`: dirty marking, ROM-table reload,
-  and record maintenance are identified; the external retained-storage commit
-  device/protocol remains unresolved.
+- `$a400/$8c01 -> physical retained-storage device`: dirty retained-record
+  commit and readback are identified through serial register traffic, but the
+  physical device identity and wire-level meaning of the phase values
+  `0/1/3/5/7` remain unresolved.
 - `0x780eda field names -> HP panel labels`: exact user-visible names remain
   inferred except where consumers identify paper/default environment and
   line-spacing behavior.
@@ -7754,11 +7805,12 @@ paths that supply default bytes before `ESC E` consumes them.
 - Unknown/provenance:
   - producer checkpoint `Default Environment Record Producers` identifies
     `0x780eda` records and menu/update handlers as the immediate writers for
-    defaults `0x78219d`, `0x78219e`, and `0x7821a2`; the earlier
-    retained-storage source into `0x780eda` remains unresolved.
-  - panel `07 RESET`, `09 MENU RESET`, cold reset, and NVRAM failure paths are
-    manual-known behavior but are not yet tied to ROM writers into
-    `0x780eda`.
+    defaults `0x78219d`, `0x78219e`, and `0x7821a2`; it also identifies
+    panel/service trigger paths and the `$a400`/`$8c01` retained-storage
+    commit/readback interface. The physical retained-storage device identity
+    remains unresolved.
+  - panel `07 RESET`, `09 MENU RESET`, and cold reset are tied to ROM writers
+    into `0x780eda`; NVRAM failure behavior is still only manually known.
   - exact physical page output after reset still needs device comparison;
     ROM-internal reset publication rows are fixture-backed.
 
@@ -7809,12 +7861,11 @@ handler `0xcc52`.
 ### Confidence
 
 High for `ESC E` handler order, page-root publication versus missing-root
-clearing, named reset writers, grouped RAM fields, and fixture-visible compact
-text publication. Medium for field naming where roles are inferred from reset
-side effects rather than external HP terminology. Low for the upstream
-retained-storage path, because the current evidence does not yet identify
-which panel, NVRAM, power-on, or factory-default routines write the selected
-records under `0x780eda`.
+clearing, named reset writers, grouped RAM fields, fixture-visible compact text
+publication, and the immediate default-producer chain summarized by
+`Default Environment Record Producers`. Medium for field naming where roles are
+inferred from reset side effects rather than external HP terminology. Low for
+the physical retained-storage device identity behind `$a400`/`$8c01`.
 
 ### Fixtures
 
@@ -7846,11 +7897,14 @@ records under `0x780eda`.
 
 - `0x780eda -> 0x78219d/0x78219e/0x7821a2 -> 0xcda2`: the immediate
   producer/consumer chain is composed through `Default Environment Record
-  Producers`; the unresolved edge is earlier retained-storage provenance into
-  `0x780eda`.
-- `panel/cold-reset/NVRAM entry -> 0x780eda`: manual notes in
-  `notes/control-panel-nvram-selftest.md` describe user-default behavior, but
-  ROM address boundaries for those producers are not yet known.
+  Producers`; retained-storage commit/readback is also composed through
+  `0x96c4`/`0x97e4`.
+- `$a400/$8c01 -> physical retained-storage device`: ROM address boundaries for
+  the dirty-record serial protocol are known, but the physical device identity
+  and exact wire meaning remain unresolved.
+- `NVRAM failure entry -> 0x780eda`: manual notes in
+  `notes/control-panel-nvram-selftest.md` describe fallback behavior, but ROM
+  address boundaries for the failure path are not yet known.
 - `0xcc52..0x1ef6a`: ROM-internal publication/render output is fixture-backed
   for compact text, but physical-device page comparison remains outside this
   checkpoint.

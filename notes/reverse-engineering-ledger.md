@@ -362,12 +362,14 @@ scratch `0x782a26`, cursor-stack top `0x782d36`, HMI `0x78315c`, reset VMI
 `Default Environment Record Producers` now composes the immediate producer
 side from selected `0x780eda` records and menu/update handlers `0x5e80`,
 `0x5060`, `0x50be`, and `0x52ba` into those reset-consumed defaults, leaving
-only the external panel protocol into `$8000.w` and external persistence
-semantics for dirty records unresolved; the same checkpoint now also documents
-`0x56c2` active-bank selection, `0x571e` record rotation/copy, `0x5a62`
-record clear/ROM-table fallback from `0xba3e`/`0xba44`, cold-reset service
-entry `0x2c84`, panel/service byte dispatcher `0x3dae`, menu/default commit
-path `0x4922`, and stable `$8000.w` byte source `0xa3ca`
+only the external panel protocol into `$8000.w` and physical identity of the
+serial retained-storage device behind `$a400`/`$8c01` unresolved; the same
+checkpoint now also documents `0x56c2` active-bank selection, `0x571e` record
+rotation/copy, `0x5a62` record clear/ROM-table fallback from `0xba3e`/`0xba44`,
+cold-reset service entry `0x2c84`, panel/service byte dispatcher `0x3dae`,
+menu/default commit path `0x4922`, stable `$8000.w` byte source `0xa3ca`,
+dirty-record commit/readback helpers `0x96c4`/`0x97e4`, and serial bit helpers
+`0x9860`/`0x98ae`/`0x994e`/`0x9a4a`
 
 ### PCL command map
 
@@ -1226,20 +1228,24 @@ Known from manuals:
 
 ROM work needed:
 
-- Continue locating the physical/control-panel trigger for default-record
-  maintenance. Semantic checkpoints `Default Environment Record Producers` and
-  `ESC E Reset And Default Environment` now compose
+- Continue locating the physical/control-panel trigger and retained-storage
+  device identity for default-record maintenance. Semantic checkpoints
+  `Default Environment Record Producers` and `ESC E Reset And Default
+  Environment` now compose
   `0xba3e/0xba44 -> 0x780eda -> 0x78219d/0x78219e/0x7821a2 -> 0xcda2`,
   including record-bank selection, record rotation/copy, page/control pool
   rebuild, cursor-stack reset, HMI/VMI recompute, line-termination clearing,
-  raster reset, and parser/data-chain reset; the remaining work is exact
-  panel/power-on/NVRAM trigger semantics before `0x4162`/`0x571e`/`0x5a62`.
+  raster reset, parser/data-chain reset, dirty-record commit/readback through
+  `$a400`/`$8c01`, and panel/cold-reset byte triggers; the remaining work is the
+  external panel protocol into `$8000.w`, the physical retained-storage device
+  behind `$a400`/`$8c01`, and NVRAM failure entry semantics.
 - Compare physical engine/self-test placement against the matched
   ROM/manual logical page and printable-area dimensions.
-- Trace panel reset, power-on reset, and NVRAM/user-default producer paths
-  into `0x780eda`. The `ESC E` software-reset consumer path is composed
-  through handler `0xcc52`, helper `0xcda2`, metric refresh `0xcbd4`, parser
-  reset `0xe146`, page finalizer `0xff1e`, and the reset fixtures.
+- Trace the remaining physical panel, power-on, and NVRAM failure edges around
+  the already-composed `0x780eda` producer path. The `ESC E` software-reset
+  consumer path is composed through handler `0xcc52`, helper `0xcda2`, metric
+  refresh `0xcbd4`, parser reset `0xe146`, page finalizer `0xff1e`, and the
+  reset fixtures.
 - Cursor-stack push/pop, bounds, and restored-origin text output are now
   composed in `Text Cursor And Direct Controls`; remaining print
   environment work is reset/default provenance and primary/secondary font

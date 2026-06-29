@@ -549,11 +549,14 @@ The next work should follow dataflow, not isolated handlers:
    Panel/service entry points `0x2c84`, `0x3dae`, and `0x4922` now identify
    the cold-reset/menu-reset byte paths that reach `0x5a62`, `0x4162`, and
    `0x4fb0`; byte-source helper `0xa3ca` now identifies `$8000.w & 0xff` as
-   the debounced service/panel byte source. The remaining middle edge is not the
-   software-reset consumer path, immediate default-byte writer, ROM-table
-   fallback, panel/service dispatch, or `0xa3ca` itself. It is the external
-   device/protocol that drives `$8000.w` and any external NVRAM persistence
-   semantics for dirty `0x780eda` records.
+   the debounced service/panel byte source. Dirty-record commit/readback helpers
+   `0x96c4` and `0x97e4` now identify the retained-storage serial interface
+   through `$a400` writes and `$8c01.1` reads. The remaining middle edge is not
+   the software-reset consumer path, immediate default-byte writer, ROM-table
+   fallback, panel/service dispatch, `0xa3ca`, or generic NVRAM persistence. It
+   is the external device/protocol that drives `$8000.w`, the physical
+   retained-storage device behind `$a400`/`$8c01`, and the NVRAM failure entry
+   path.
 2. Treat font metric-byte combinations as regression expansion unless a new
    state boundary appears. The selected-context bridge, metric consumers, downloaded
    descriptor/payload producer chain, and host-stream downloaded glyph output are now

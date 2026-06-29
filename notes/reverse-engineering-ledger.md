@@ -1249,8 +1249,11 @@ ROM work needed:
   refresh `0xcbd4`, parser reset `0xe146`, page finalizer `0xff1e`, and the
   reset fixtures. `External Ready And Service Status Loop` now separates
   external-ready handler `0xba48` (`01 EXT READY`) from the hard-loop
-  `68 SERVICE` display boundary at `0xc1c6 -> 0x85c0`; the upstream writer of
-  `0x780e39.3` and failed-NVRAM fallback into `0x780eda` remain unresolved.
+  `68 SERVICE` display boundary at `0xc1c6 -> 0x85c0`. It also resolves the
+  failed retained-storage commit writer: `0x571e` raises
+  `0x780e39.3` through `0x9bee(0x780e36, 0x00000008)` after `0x96c4` commit
+  retries are exhausted. Failed-NVRAM power-on fallback into `0x780eda` remains
+  unresolved.
 - Cursor-stack push/pop, bounds, and restored-origin text output are now
   composed in `Text Cursor And Direct Controls`; remaining print
   environment work is reset/default provenance and primary/secondary font

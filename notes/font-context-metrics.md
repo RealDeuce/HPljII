@@ -24,6 +24,11 @@ Evidence:
   - `0xc580 dirty primary branch installs page-root font context`
   - `0xc580 dirty secondary branch installs page-root font context`
   - `0xc580 full live-slot branch reuses matching page-root font context`
+  - `0xc580 full live-slot branch skips install when c4fc reports full`
+  - `0xc580 selector-mismatch branch refreshes candidate without context install`
+  - `0xc580 dirty-2 selector-match branch installs current context only`
+  - `0xc580 dirty-2 secondary selector-match branch installs current context only`
+  - `0xc580 dirty-2 selector-mismatch branch only copies remembered word`
   - `0x13eb8 refresh carries parsed primary font selection to dispatch`
   - `0x13eb8 refresh carries parsed secondary font selection to dispatch`
   - `parsed primary built-in font selection feeds visible page-record rows`
@@ -403,9 +408,11 @@ selected context/resource longword.
 
 - It compares the low 24 bits of each existing context longword with the
   selected context longword.
-- It skips live slots where `0x78297f+n == 1`.
-- It accepts an existing matching context or the first inactive slot.
-- It returns `0x11` if all 16 slots are live and none match.
+- It accepts an existing matching context before testing whether the slot is
+  live.
+- If no existing context matches, it accepts the first slot where
+  `0x78297f+n != 1`.
+- It returns `0x11` only when all 16 slots are live and none match.
 - On success, it writes the selected context longword into the selected root
   slot and returns the slot number.
 
@@ -419,6 +426,16 @@ Dirty-map fixture results:
 - Full-live matching-context refresh reuses existing slot `3` for
   `0xc008004c`, temporarily toggles the transient refresh path, calls
   `0x13eb8(0)` twice, and leaves `0xc428` selecting slot `3`.
+- Full-live/no-match refresh sees `0xc4fc` return `0x11`, leaves the existing
+  16 live page-root slots unchanged, skips the second `0x13eb8` call, and
+  skips `0xc428`.
+- Dirty-1 selector mismatch calls only `0x13eb8(D5)`, copies the refreshed
+  active word to the remembered word, and installs no page-root context.
+- Dirty-2 selector match skips `0x13eb8`, calls only `0xc428(D5)`, installs
+  the current selected context, and copies the active word to the remembered
+  word.
+- Dirty-2 selector mismatch skips both `0x13eb8` and `0xc428`; it only copies
+  the active word to the remembered word and clears the dirty flags.
 
 `0xc428` also refreshes HMI/cache state from the selected context:
 

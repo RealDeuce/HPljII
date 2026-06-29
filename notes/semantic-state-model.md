@@ -3177,6 +3177,24 @@ cache-hit path crosses SO and renders from prior secondary context
 `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`, and row digest
 `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
 
+The common refresh gate `0xc580` is the branch that decides whether parsed
+font-selection state becomes a page-root font slot before later printable
+bytes. Its fixture cluster now covers both dirty classes and the page-root
+slot-capacity cases. With dirty flag `0x782f2c = 1` and selector match, a
+clear page-root slot installs the selected context through `0xc4fc`, calls
+`0x13eb8`, then calls `0xc428`; the primary case installs `0xc008004c` and
+the secondary case installs `0xc00ae122`, both into page-root slot `0`.
+When all 16 page-root live flags are set but the selected context already
+exists, `0xc580` reuses that matching slot, calls `0x13eb8` twice around
+`0xc4fc`, and leaves `0xc428` selecting the existing page-root slot. When all
+16 live flags are set and no slot matches, `0xc4fc` returns `0x11`; `0xc580`
+does not make the second `0x13eb8` call and does not run `0xc428`, so no new
+page-root context is installed. A dirty-1 selector mismatch refreshes the
+candidate with `0x13eb8(D5)` but skips `0xc4fc` and `0xc428`. Dirty flag
+`0x782f2c = 2` is the font-ID/default-symbol shortcut: selector match calls
+only `0xc428(D5)` before copying the active word to the remembered word, while
+selector mismatch only copies the remembered word and installs no context.
+
 ### Field Groups
 
 - Canonical selection request fields:
@@ -3221,6 +3239,12 @@ cache-hit path crosses SO and renders from prior secondary context
     saved active primary word `0x9999`, and page-root transient flag
     `0x78298f = 1`; cache-hit uses selected slot `1` with active words
     `[0x1111, 0x2222]`.
+  - `0xc580` common-refresh inputs:
+    dirty flag `0x782f2c`, setup slot `D5`, current selector `0x782f06`,
+    active words `0x783144/0x783146`, remembered words
+    `0x782f08/0x782f0a`, selected contexts `0x782ee6/0x782ef6`, page-root
+    context slots at root `+0x2c + 4*n`, and page-root live flags
+    `0x78297f+n`.
   - dirty flags `0x782f2c` and `0x782f2d`, set by handlers `0xc930`,
     `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a`.
   Evidence: fixture `parsed font-selection stream writes primary font-state
@@ -3344,6 +3368,14 @@ cache-hit path crosses SO and renders from prior secondary context
     rejects wanted class `0x00`; context-full observes the same pointer but
     stops when `0xc4fc` returns `0x11`. None of these cases replaces the
     prior printable context `0xc008004c`.
+  - `0xc580` branch-derived state:
+    dirty-1 selector-match creates `candidate_refresh_calls` with
+    `post-c4fc`; the full-live matching-context branch adds
+    `full-live-page-root` plus `post-c4fc`; the full-live/no-match branch
+    records only the first `full-live-page-root` refresh and `0xc4fc` result
+    `0x11`; the selector-mismatch branch records only `selector-mismatch`;
+    dirty-2 selector-match records only the `0xc428` install event; dirty-2
+    selector-mismatch records no refresh or install event.
   - primary fallback active-word source: fallback table word `0x0115` after
     the requested pass misses word `0x9a55`.
   - parser default-symbol table `0x782f1c/20/24/28`: built by `0x1ac0a` and
@@ -3514,6 +3546,15 @@ cache-hit path crosses SO and renders from prior secondary context
   `0xc00ae122` into page-root/render context slots; the live primary handoff
   fixture pins `0xc428(0)` selecting page-root slot `0`, and the live
   secondary handoff fixture pins `0xc428(1)` selecting page-root slot `1`.
+- `0xc580` writes active words from requested words, remembered words from
+  active words, dirty flag `0x782f2c = 0`, and dirty-map flag `0x782f2d = 0`.
+  Depending on dirty flag, selector match, and page-root slot capacity, it
+  calls `0x13eb8`, `0xc4fc`, and/or `0xc428`, or skips all three and only
+  performs the remembered-word copy.
+- `0xc4fc` writes page-root context slots on successful first-inactive or
+  existing-context selection and returns `0x11` on the full/no-match branch.
+  `0xc428` writes selected page-root context slot `0x78297e` after a
+  successful install/reuse.
 - SI handler `0xc68a` selects primary slot 0 before the primary printable
   bytes are consumed, and in the live handoff fixture it performs the modeled
   `0xc428(0)` install before changing `0x782f06` to `0`.
@@ -3580,6 +3621,11 @@ cache-hit path crosses SO and renders from prior secondary context
   `real final-@ default-table streams select visible built-ins` proves those
   exact requested words feed primary `0x1393a` from context `0xc0080cb8` and
   secondary `0x1393a` from context `0xc00ad4aa`.
+- `0xc580` consumes dirty flag `0x782f2c`, current selector `0x782f06`,
+  setup slot `D5`, page-root live flags, and selected contexts
+  `0x782ee6/0x782ef6`. Its install branches feed the same page-root
+  context-slot consumer path used by SO/SI; its no-install branches preserve
+  the prior page-root/font-map state for later printable consumers.
 
 ### Output Effect
 
@@ -3739,6 +3785,13 @@ High for final-`@` visible output because fixture
 exact default-table requests with primary and secondary font-selection tails,
 printable sources, object prefixes, bridge context slots, and rendered row
 digests.
+High for the `0xc580` common-refresh branch cluster because the dirty-1
+primary/secondary install branches, full-live matching-context reuse,
+full-live/no-match `0xc4fc = 0x11` skip, selector-mismatch refresh-only path,
+dirty-2 primary/secondary selector-match installs, and dirty-2
+selector-mismatch remembered-word-only path are all fixture-pinned with active
+words, remembered words, dirty flags, page-root slots, refresh calls, and
+install events.
 
 ### Fixtures
 
@@ -3764,6 +3817,14 @@ digests.
 - `font-ID non-selected exits keep prior visible rows`
 - `0x13eb8 transient and cache-hit exits avoid dispatch`
 - `0x13eb8 no-dispatch exits keep prior visible rows`
+- `0xc580 dirty primary branch installs page-root font context`
+- `0xc580 dirty secondary branch installs page-root font context`
+- `0xc580 full live-slot branch reuses matching page-root font context`
+- `0xc580 full live-slot branch skips install when c4fc reports full`
+- `0xc580 selector-mismatch branch refreshes candidate without context install`
+- `0xc580 dirty-2 selector-match branch installs current context only`
+- `0xc580 dirty-2 secondary selector-match branch installs current context only`
+- `0xc580 dirty-2 selector-mismatch branch only copies remembered word`
 - `real default-table caller stream uses ROM-backed words`
 - `real final-@ default-table streams select visible built-ins`
 
@@ -3788,6 +3849,11 @@ digests.
   cache-hit path ends at prior secondary context `0xc40ad87a`. Remaining risk
   is lower-level CPU-register fidelity inside the modeled refresh, plus broader
   font-selection variants that expose new state boundaries.
+- `0xc580..0xc428`: the common-refresh branch cluster is now modeled for
+  dirty-1 install/reuse/full/selector-mismatch paths and dirty-2
+  selector-match/mismatch paths. The remaining risk is not which branch writes
+  page-root context slots; it is broader command combinations that reach those
+  branches with different selected contexts before visible output.
 - `0x782ee6 +0x00..+0x0f` into `0xc68a..0xc428..0xc4fc..0xd04a..0x1393a`
   and `0x782ef6 +0x00..+0x0f` into
   `0xc6b8..0xc428..0xc4fc..0xd04a..0x1393a`: primary and secondary selected

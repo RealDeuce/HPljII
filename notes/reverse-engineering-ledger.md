@@ -1237,10 +1237,13 @@ ROM work needed:
   including record-bank selection, record rotation/copy, page/control pool
   rebuild, cursor-stack reset, HMI/VMI recompute, line-termination clearing,
   raster reset, parser/data-chain reset, dirty-record commit/readback through
-  `$a400`/`$8c01`, and panel/cold-reset byte triggers; the remaining work is the
-  external panel protocol into `$8000.w`, the physical retained-storage device
-  and board-level serial pin names behind `$a400`/`$8c01`, and NVRAM failure
-  entry semantics.
+  `$a400`/`$8c01`, startup retained-record bulk load through
+  `0x5a16 -> 0x97e4`, invalid active-record reporting through
+  `0x56c2 -> 0x1284` (`67 SERVICE`), and panel/cold-reset byte triggers; the
+  remaining work is the external panel protocol into `$8000.w`, the physical
+  retained-storage device and board-level serial pin names behind
+  `$a400`/`$8c01`, and reconciling manual NVRAM-failure fallback wording with
+  the ROM paths found so far.
 - Compare physical engine/self-test placement against the matched
   ROM/manual logical page and printable-area dimensions.
 - Trace the remaining physical panel, power-on, and NVRAM failure edges around
@@ -1252,8 +1255,10 @@ ROM work needed:
   `68 SERVICE` display boundary at `0xc1c6 -> 0x85c0`. It also resolves the
   failed retained-storage commit writer: `0x571e` raises
   `0x780e39.3` through `0x9bee(0x780e36, 0x00000008)` after `0x96c4` commit
-  retries are exhausted. Failed-NVRAM power-on fallback into `0x780eda` remains
-  unresolved.
+  retries are exhausted. Startup retained-record bulk load is now bounded
+  through `0x5a16 -> 0x97e4`, and invalid active-record state reports
+  `67 SERVICE` through `0x56c2 -> 0x1284`; a ROM edge from failed startup load
+  into the factory-default table writers has not been found.
 - Cursor-stack push/pop, bounds, and restored-origin text output are now
   composed in `Text Cursor And Direct Controls`; remaining print
   environment work is reset/default provenance and primary/secondary font

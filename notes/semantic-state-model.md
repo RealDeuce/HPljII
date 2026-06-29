@@ -7408,19 +7408,21 @@ because each is fixture-pinned.
 ## Default Environment Record Producers
 
 Status: composed for the RAM record, ROM-table fallback, record-maintenance,
-retained-storage commit/readback, panel/service trigger, and menu/update
-producer side that feeds the `ESC E` reset defaults. This closes the immediate
-producer edge for `0x78219d`, `0x78219e`, and `0x7821a2`: they are copied from
-selected records under `0x780eda`, with update handlers that write both the
-backing record and the canonical default byte/word. It also identifies the
-firmware paths that select an active record bank, rotate/copy three-word default
-groups, mark dirty records, reset records from ROM tables, serialize dirty
-records through the `$a400`/`$8c01` retained-storage interface, verify readback,
-raise the `68 SERVICE` status bit when retained-storage commit retries are
-exhausted, and enter those paths from panel/service bytes. The remaining
-provenance edge is the external device/protocol that drives `$8000.w`, the
-physical identity of the serial retained-storage device behind `$a400`/`$8c01`,
-and the exact failed-NVRAM factory-fallback entry.
+startup retained-record bulk load, retained-storage commit/readback,
+panel/service trigger, and menu/update producer side that feeds the `ESC E`
+reset defaults. This closes the immediate producer edge for `0x78219d`,
+`0x78219e`, and `0x7821a2`: they are copied from selected records under
+`0x780eda`, with update handlers that write both the backing record and the
+canonical default byte/word. It also identifies the firmware paths that select
+an active record bank, rotate/copy three-word default groups, mark dirty
+records, reset records from ROM tables, bulk-load retained records through
+`0x97e4`, serialize dirty records through the `$a400`/`$8c01`
+retained-storage interface, verify commit readback, raise the `68 SERVICE`
+status bit when retained-storage commit retries are exhausted, and enter those
+paths from startup or panel/service bytes. The remaining provenance edge is the
+external device/protocol that drives `$8000.w`, the physical identity of the
+serial retained-storage device behind `$a400`/`$8c01`, and the external/manual
+scenario that maps an NVRAM failure to a factory-default user experience.
 
 Concept: control-panel/user-default state is represented as compact records
 selected by `0x7822d5`. The ROM scales that selector through `0x332ee(..., 3)`
@@ -7442,7 +7444,9 @@ the input byte remains equal to `0x7821aa` for timer delta `0x2a`. Helper
 until two samples match before returning the byte in `D7`. Retained-storage
 helper `0x96c4` serializes dirty records through command class `0x83`, calls
 `0x97e4` to read the same dirty record slots back through command class `0x86`,
-and restores the pre-read RAM image if verification succeeds. The
+and restores the pre-read RAM image if verification succeeds. Startup bulk-load
+helper `0x5a16` marks all 16 retained-record flags dirty, calls read helper
+`0x97e4`, and clears the flags without inspecting a success value. The
 software-visible serial phases are now bounded: helper `0x9a4a` writes two
 successive low-three-bit phase values to `$a400` through shadow `0x7828f6`.
 Phase pairs `1 -> 3` encode a zero bit, `5 -> 7` encode a one bit, and
@@ -7475,7 +7479,10 @@ Phase pairs `1 -> 3` encode a zero bit, `5 -> 7` encode a one bit, and
 - Canonical ROM fallback tables:
   - `0xba3e`: three-word base table used by `0x4162`, `0x5a62`, and the
     `0x5cba` loop to seed selected `0x780eda` records while preserving the
-    current record's `0x0f00` bits.
+    current record's `0x0f00` bits. Startup does not enter this ROM-table
+    fallback just because `0x5a16` readback has no explicit success result; the
+    observed startup path reaches it only through the explicit `0xdf`
+    cold-reset byte branch in `0x2c84`.
   - `0xba44`: two extra fallback words copied into records `9` and `10` by
     `0x5c74..0x5cb8`.
   Evidence: `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst`
@@ -7501,7 +7508,9 @@ Phase pairs `1 -> 3` encode a zero bit, `5 -> 7` encode a one bit, and
   Evidence: `generated/disasm/ic30_ic13_default_env_record_maintenance_0056c2.lst`.
 - Retained-storage commit/readback state:
   - `0x780eba..0x780ed8`: dirty flags for 16 retained words. `0x96c4` and
-    `0x97e4` walk the same flag block and skip clean entries.
+    `0x97e4` walk the same flag block and skip clean entries. Startup helper
+    `0x5a16` temporarily writes all 16 flags to `1`, calls `0x97e4` to read
+    every retained word into `0x780eda`, then clears all 16 flags.
   - `0x782252..0x782270`: readback buffer populated from `0x780eda` before
     `0x97e4`, then overwritten by serial reads. After verification, `0x96c4`
     copies `0x782252..0x782270` back over `0x780eda`.
@@ -7517,6 +7526,7 @@ Phase pairs `1 -> 3` encode a zero bit, `5 -> 7` encode a one bit, and
     that distinguishes `1 -> 3` zero-bit clocks from `5 -> 7` one-bit clocks.
   Evidence:
   `generated/disasm/ic30_ic13_nvram_default_record_commit_0096c4.lst` and
+  `generated/disasm/ic30_ic13_retained_record_bulk_load_005a16.lst` and
   `generated/disasm/ic30_ic13_nvram_serial_bit_helpers_009860.lst`.
 - Parser/service trigger state:
   - `0x7821aa`: last panel/service byte seen by `0x3dae`, `0x5d2a`, `0x3f6a`,
@@ -7552,6 +7562,9 @@ Phase pairs `1 -> 3` encode a zero bit, `5 -> 7` encode a one bit, and
   Evidence: `0x4fb0..0x5014`, `0x5060..0x50ba`, `0x50be..0x514c`,
   `0x52ba..0x5338`, and `0x5e80..0x5f62`.
 - Firmware bookkeeping:
+  - `0x7828fa`, `0x7828f9`, and `0x7828f6`: startup serial/control shadows set
+    by `0x266..0x276` before reset helpers run. `0x7828f6` later acts as the
+    `$a400` serial retained-storage control shadow.
   - `0x780eba`, `0x780ebc`, and `0x780ebe`: per-selected-record dirty/change
     words set by the handlers after updating record fields.
   - `0x780e55`: set to `2` by `0x5e80` after the form/line default refresh.
@@ -7577,12 +7590,22 @@ Phase pairs `1 -> 3` encode a zero bit, `5 -> 7` encode a one bit, and
     serialized through `$a400` and read back through `$8c01`. The external
     device/protocol behind `$8000.w` and the physical identity of the serial
     retained-storage device remain unresolved.
+  - startup retained-record load is bounded through
+    `0x266 -> 0x2c84 -> 0x5a16 -> 0x97e4`. A missing active-record marker is
+    bounded through `0x5f96 -> 0x56c2 -> 0x1284` and selects string `0xb44b`
+    (`67 SERVICE`). A ROM path that silently treats a failed power-on retained
+    load as the same as the explicit cold-reset ROM-table fallback has not been
+    found in this cluster.
   - external names for each staged field are inferred from manual defaults and
     consumers, but the exact panel menu labels are not yet assigned for every
     record byte.
 
 ### Writers
 
+- Startup path `0x266..0x296` initializes serial/control shadows
+  `0x7828fa`, `0x7828f9`, and `0x7828f6`, installs early vectors, probes
+  cartridge/resource state, initializes board/config defaults, and calls
+  `0x2c84`.
 - `0x5e80` loads canonical reset-consumed defaults from the selected
   `0x780eda` record: `0x78219d`, `0x7821a2`, and `0x78219e`.
 - `0x5f96` loads adjacent staged/default bytes from the same selected-record
@@ -7608,6 +7631,10 @@ Phase pairs `1 -> 3` encode a zero bit, `5 -> 7` encode a one bit, and
   through `0x8bea(1)`, then for each dirty index sends/readbacks command
   `((index << 3) | 0x86) << 16` into the corresponding `0x780eda` word through
   `0x994e`.
+- `0x5a16` is the startup/bulk retained-record loader. It writes every
+  `0x780eba..0x780ed8` flag to `1`, calls `0x97e4`, then clears every flag. It
+  returns no success value and `0x2c84` does not branch on any readback status
+  from this helper.
 - `0x9860`, `0x98ae`, and `0x994e` encode retained-storage bits into
   two-phase calls to `0x9a4a`; `0x994e` samples `$8c01.1` into readback words.
 - `0x9a4a` writes serial phases to `$a400` through shadow `0x7828f6`. Its first
@@ -7619,7 +7646,8 @@ Phase pairs `1 -> 3` encode a zero bit, `5 -> 7` encode a one bit, and
   `0xba3e` and `0xba44` and calls `0x571e`.
 - `0x2c84` calls `0x5a16` to mark all 16 default records dirty, reads one byte
   through `0xa3ca`, calls `0x5a62` for byte `0xdf`, and displays message table
-  `0xb1a3` (`08 COLD RESET`) through `0x9182`.
+  `0xb1a3` (`08 COLD RESET`) through `0x9182`. It later calls `0x5f96`, which
+  reaches active-record validation through `0x56c2`.
 - `0x3dae` dispatches changed panel/service bytes through the table at
   `0x3d66`. The default-store family uses `0xef -> 0x3ef8`,
   `0xfd -> 0x3f6a`, and `0xbf -> 0x4922`.
@@ -7657,6 +7685,13 @@ Phase pairs `1 -> 3` encode a zero bit, `5 -> 7` encode a one bit, and
   flags `0x780eba..0x780ed8`; readback helper `0x97e4` consumes the same dirty
   flag block and replaces temporary `0x780eda` contents with external serial
   storage data before `0x96c4` restores the write image.
+- Startup bulk-load helper `0x5a16` consumes the same dirty flag block as a
+  read mask, not as a commit request: it forces all flags on before `0x97e4` so
+  every retained word is read into `0x780eda`.
+- Active-record validator `0x56c2` consumes record word-2 entries starting at
+  `0x780eda + 2*D5` for `D5 = 2, 5, 8, ...`, looking for bit 15. When no active
+  marker has been found after `D5 > 8`, it calls `0x1284` with arguments
+  `0xe2` and `0x21`.
 - `0x4fb0` and `0x5a62` consume the active record selected by `0x56c2`.
 - HMI/VMI and orientation/page-geometry helpers consume `0x78219e` through
   the same normalization helpers used by reset.
@@ -7672,8 +7707,11 @@ control-panel backing store inside ROM state. The ROM-table fallback path
 means an emulator must also model `0xba3e`/`0xba44` defaults and record-bank
 maintenance, retained-storage commit/readback, and the `0xdf`/`0xde`
 cold-reset byte path if it emulates control-panel, cold-reset, or power-cycle
-behavior. A pure byte-stream renderer can still start from already materialized
-canonical defaults.
+behavior. Startup power-on behavior first bulk-loads retained words into
+`0x780eda` through `0x5a16 -> 0x97e4`; if active-record validation later fails,
+the visible ROM outcome found in this cluster is `0x56c2 -> 0x1284`, with
+`0x1284` selecting `67 SERVICE` from string `0xb44b`. A pure byte-stream
+renderer can still start from already materialized canonical defaults.
 
 ### Confidence
 
@@ -7683,18 +7721,21 @@ from `0xba3e`/`0xba44` into `0x780eda`, because the writes are direct in the
 focused disassembly windows. Medium for naming the record family as
 control-panel/user defaults, because callers and manual behavior support that
 role. High for the panel/service-byte dispatch into the default-store cluster,
-the immediate `$8000.w` byte source, the retained-storage serial
-commit/readback register interface, and the software-visible `$a400` phase
-encoding, because `0x2c84`, `0x3dae`, `0x4922`, `0xa3ca`, `0x96c4`, `0x97e4`,
-and `0x9a4a` directly connect those edges. Low for the external device/protocol
-that drives `$8000.w` and for the physical identity/pin names of the serial
-retained-storage device behind `$a400`/`$8c01`.
+the immediate `$8000.w` byte source, startup bulk-load through `0x5a16`, the
+retained-storage serial commit/readback register interface, active-record
+failure reporting through `0x56c2 -> 0x1284`, and the software-visible `$a400`
+phase encoding, because `0x2c84`, `0x3dae`, `0x4922`, `0xa3ca`, `0x5a16`,
+`0x56c2`, `0x96c4`, `0x97e4`, `0x1284`, and `0x9a4a` directly connect those
+edges. Low for the external device/protocol that drives `$8000.w`, for the
+physical identity/pin names of the serial retained-storage device behind
+`$a400`/`$8c01`, and for reconciling manual NVRAM-failure fallback wording with
+the ROM paths found here.
 
 ### Fixtures
 
 - None yet for this producer cluster. Existing reset fixtures consume the
   resulting canonical defaults through `0xcda2`, but they do not execute
-  `0x5e80`, `0x5060`, `0x50be`, or `0x52ba`.
+  `0x5e80`, `0x5060`, `0x50be`, `0x52ba`, `0x5a16`, or `0x56c2`.
 
 ### Disassembly Evidence
 
@@ -7709,6 +7750,16 @@ retained-storage device behind `$a400`/`$8c01`.
 - `generated/disasm/ic30_ic13_service_default_reset_entry_002c84.lst`:
   service reset entry that calls `0x5a16`, selects `0x5a62` for input byte
   `0xdf`, and displays cold-reset text from `0xb1a3`.
+- `generated/disasm/ic30_ic13_startup_retained_load_000266.lst`: startup
+  caller that initializes serial/control shadows and reaches `0x2c84`.
+- `generated/disasm/ic30_ic13_retained_record_bulk_load_005a16.lst`: bulk
+  retained-record read mask that forces all dirty flags, calls `0x97e4`, and
+  clears the flags.
+- `generated/disasm/ic30_ic13_error_report_entry_001284.lst`: error-report
+  entry that reads two stack bytes, selects string `0xb44b`, and displays it
+  through `0x8c7a`.
+- `generated/analysis/ic30_ic13_strings.txt`: identifies `0xb44b` as
+  `67 SERVICE` and `0xb45c` as `68 SERVICE`.
 - `generated/disasm/ic30_ic13_panel_service_dispatch_003dae.lst`: service-byte
   dispatch table and `0x7821aa` last-byte gate for `0xef`, `0xfd`, `0xbf`, and
   sibling panel/service handlers.
@@ -7744,8 +7795,16 @@ retained-storage device behind `$a400`/`$8c01`.
 - `retained-storage commit failure -> 68 SERVICE`: `0x571e` now proves the
   failed-commit writer for `0x780e39.3` through
   `0x9bee(0x780e36, 0x00000008)`, and `External Ready And Service Status Loop`
-  composes the consumers into `0x85c0`. The exact upstream read-validation path
-  for failed NVRAM power-on load remains unresolved.
+  composes the consumers into `0x85c0`. This is distinct from startup
+  retained-record bulk load: `0x5a16 -> 0x97e4` has no explicit success result,
+  and the active-record validation failure found after load is
+  `0x56c2 -> 0x1284`, which reports `67 SERVICE`.
+- `power-on retained-load failure -> factory defaults`: startup bulk load is
+  bounded through `0x266 -> 0x2c84 -> 0x5a16 -> 0x97e4`, and invalid active
+  records are bounded through `0x5f96 -> 0x56c2 -> 0x1284`. A ROM edge from a
+  failed power-on retained load into the `0xba3e`/`0xba44` factory-default
+  fallback has not been found; the ROM-table fallback remains tied to explicit
+  cold-reset/menu-reset paths in this cluster.
 - `0x780eda field names -> HP panel labels`: exact user-visible names remain
   inferred except where consumers identify paper/default environment and
   line-spacing behavior.
@@ -7764,8 +7823,9 @@ The ROM now bounds the service-display entry as `0xc1c6 -> 0x85c0` when
 `0x780e39.3` is set. The direct writer is also resolved for retained-storage
 commit failure: `0x571e` calls `0x9bee(0x780e36, 0x00000008)` after its `0x96c4`
 commit retries are exhausted, and that longword mask sets bit 3 in the low byte
-`0x780e39`. This still does not prove how a failed retained-storage load falls
-back into `0x780eda`.
+`0x780e39`. Startup retained-record bulk load is now bounded separately through
+`0x5a16 -> 0x97e4`; invalid active records report `67 SERVICE` through
+`0x56c2 -> 0x1284`, and no silent ROM-table fallback edge has been found there.
 
 Concept: `0xba48` is an external-interface ready loop, not the retained-record
 commit helper itself. Entry setup calls `0x3620`, `0x3502`, sets `0x7822da`,
@@ -7840,10 +7900,12 @@ status through `0x36e4`, writes `0x780e08`, and returns.
   - `0x6f32(0x4c)`, `0x780e39.3`, `0x780e39.4`, and `0x780e31.6/7`
     identify service/error branch conditions. The retained-storage
     commit-failure writer for `0x780e39.3` is composed here; sibling service
-    bits and the power-on retained-load failure writer are not.
+    bits are not.
   - manual notes tie `68 SERVICE` to NVRAM failure, but this checkpoint only
     proves the failed-commit status writer and display handler boundary
-    `0x85c0`; it does not prove fallback writes into `0x780eda`.
+    `0x85c0`. The startup retained-load validation edge is documented in
+    `Default Environment Record Producers` as `0x5a16 -> 0x97e4` followed by
+    `0x56c2 -> 0x1284` (`67 SERVICE`) when no active record marker is found.
 
 ### Writers
 
@@ -7931,9 +7993,11 @@ High for the `0xba48` loop structure, `01 EXT READY` string identity,
 writes, because they are direct in the focused disassembly windows and string
 table. Medium for calling the external register family a service/external
 interface, because the strings and loop behavior support that role but the
-board-level device is not identified. Low for power-on NVRAM-failure
-provenance: manual notes identify the user-visible meaning of `68 SERVICE`, but
-the ROM path that reloads failed retained defaults remains unresolved.
+board-level device is not identified. Low for reconciling the manual
+NVRAM-failure wording with ROM behavior: this checkpoint proves the
+failed-commit `68 SERVICE` status path, while `Default Environment Record
+Producers` proves startup bulk load and active-record failure reporting through
+`67 SERVICE`.
 
 ### Fixtures
 
@@ -7968,9 +8032,12 @@ the ROM path that reloads failed retained defaults remains unresolved.
 
 - `retained-storage commit failure -> 0x780e39.3 -> 0x85c0`: this edge is
   composed through `0x571e`, `0x9bee`, and the `0x836e`/`0xc1c6` consumers.
-- `NVRAM failure -> default fallback into 0x780eda`: manual notes say panel
-  values revert to factory defaults on NVRAM failure, but the ROM address
-  boundary for fallback writes remains unresolved.
+- `startup retained-load failure -> default fallback into 0x780eda`: the
+  power-on load path is now bounded through `0x5a16 -> 0x97e4`, and invalid
+  active records are bounded through `0x56c2 -> 0x1284` (`67 SERVICE`).
+  Fallback writes from a failed startup load into `0xba3e`/`0xba44` defaults
+  have not been found; those writes remain tied to explicit cold-reset/menu
+  paths in `Default Environment Record Producers`.
 - `external-ready hardware registers -> board-level device`: the ROM-visible
   register traffic is bounded, but the physical device and pin-level meaning of
   `$fffee00*`, `$a200`, and `$a801` are not identified.
@@ -8069,7 +8136,10 @@ paths that supply default bytes before `ESC E` consumes them.
     commit/readback interface. The physical retained-storage device identity
     remains unresolved.
   - panel `07 RESET`, `09 MENU RESET`, and cold reset are tied to ROM writers
-    into `0x780eda`; NVRAM failure behavior is still only manually known.
+    into `0x780eda`. Startup retained-record load is bounded through
+    `0x5a16 -> 0x97e4`, and invalid active-record state reaches
+    `0x56c2 -> 0x1284` (`67 SERVICE`); the remaining gap is reconciling that
+    ROM behavior with manual NVRAM-failure fallback wording.
   - exact physical page output after reset still needs device comparison;
     ROM-internal reset publication rows are fixture-backed.
 
@@ -8163,8 +8233,11 @@ the physical retained-storage device identity behind `$a400`/`$8c01`.
   known, but the physical device identity and board-level pin names remain
   unresolved.
 - `NVRAM failure entry -> 0x780eda`: manual notes in
-  `notes/control-panel-nvram-selftest.md` describe fallback behavior, but ROM
-  address boundaries for the failure path are not yet known.
+  `notes/control-panel-nvram-selftest.md` describe fallback behavior. The
+  startup retained-load edge is now bounded through `0x5a16 -> 0x97e4`, and the
+  invalid active-record edge reaches `0x56c2 -> 0x1284` (`67 SERVICE`), but no
+  ROM edge has been found from a failed startup load into the factory-default
+  ROM-table writers.
 - `0xcc52..0x1ef6a`: ROM-internal publication/render output is fixture-backed
   for compact text, but physical-device page comparison remains outside this
   checkpoint.

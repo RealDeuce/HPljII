@@ -555,9 +555,12 @@ The next work should follow dataflow, not isolated handlers:
    software-visible phase pairs for zero, one, and deassert. The remaining
    middle edge is not the software-reset consumer path, immediate default-byte
    writer, ROM-table fallback, panel/service dispatch, `0xa3ca`, generic NVRAM
-   persistence, or `$a400` phase encoding. It is the external device/protocol
-   that drives `$8000.w`, the physical retained-storage device and board-level
-   serial pin names behind `$a400`/`$8c01`, and the NVRAM failure entry path.
+   persistence, `$a400` phase encoding, startup retained-record bulk load
+   through `0x5a16 -> 0x97e4`, or invalid active-record reporting through
+   `0x56c2 -> 0x1284` (`67 SERVICE`). It is the external device/protocol that
+   drives `$8000.w`, the physical retained-storage device and board-level
+   serial pin names behind `$a400`/`$8c01`, and reconciling the manual
+   NVRAM-failure fallback wording with the ROM paths found so far.
 2. Treat font metric-byte combinations as regression expansion unless a new
    state boundary appears. The selected-context bridge, metric consumers, downloaded
    descriptor/payload producer chain, and host-stream downloaded glyph output are now

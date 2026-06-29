@@ -628,17 +628,19 @@ literal bytes.
 Status: composed as the page-environment status bridge between the active
 page/control pool record, interface status byte `0x780e90`, and the
 page-pool cursor service path. This checkpoint covers producer
-`0x2888..0x2a80`, cleanup `0x2c08..0x2c3a`, and consumers in
-`0x7612..0x7834` plus the host-interface output status formula.
+`0x2888..0x2a80`, cleanup `0x2c08..0x2c3a`, consumers in
+`0x7612..0x7834`, the `0x8a48` / `0x8656` service-message split, and
+the host-interface output status formula.
 
 Concept: `0x2888` compares the selected scheduler record at `0x780eaa`
 against the current page-environment state. It can publish a pending
 environment byte through `0x780e8f`, update page/status latches
 `0x780e90`, `0x780e98`, `0x780e29`, `0x780e30`, and `0x780e2a`, and
 return whether the record needs page-environment service. The cursor loop
-at `0x7612` treats `0x780e90` as the selector between service helpers
-`0x8a48` and `0x8656`; the host-interface output worker reports the same
-flag as bit 0 of the outbound base `0x30` status byte.
+at `0x7612` treats `0x780e90` as the selector between a
+page-environment media-feed formatter at `0x8a48` and the normal
+service-message selector at `0x8656`; the host-interface output worker
+reports the same flag as bit 0 of the outbound base `0x30` status byte.
 
 ### Field Groups
 
@@ -667,6 +669,23 @@ flag as bit 0 of the outbound base `0x30` status byte.
   - `0x7839d3`: service-pending byte set by `0x2a38` after helper
     predicates `0xa46e` true and `0xa5f2` false; copied-stub handler
     `0x0d12..0x0d24` and cleanup `0x2c08..0x2c3a` clear it.
+  - `0x780e3e`: toner-low/service latch maintained by `0x8656`. The
+    helper polls `0x6e32(0x1f)` when timer `0x780e04` reaches
+    `0x7822e6`; return bit 2 sets the latch and a clear bit clears it.
+  - `0x7822e6`: next `0x8656` service poll deadline, written as
+    `0x780e04 + 0x65` after the `0x6e32(0x1f)` bit-2 check runs.
+  - `0x780e8a`: service-message selector for the `0x8656` jump table at
+    `0x8626`. The decoded `{target, match}` pairs are `0x8928 <- 4`,
+    `0x8888 <- 3`, `0x87e8 <- 2`, `0x8780 <- 1`, and `0x86dc <- 0`,
+    with default target `0x877c`.
+  - `0x7821b8` and `0x7821b9`: self-test/font-print variant selectors
+    consumed by the `0x8656` jump-table branches to choose among
+    strings `0xb14e` (`04 SELF TEST`), `0xb15f` (`05 SELF TEST`),
+    `0xb170` (`06 PRINTING TEST`), and `0xb181`
+    (`06 FONT PRINTOUT`).
+  - `0x7822dc`: normal-service fallback flag; when set and the
+    `0x780e3e` toner-low path is clear, `0x8656` emits string `0xb62a`
+    (`SERVICE MODE`) through wrapper `0x8c7a`.
 - Firmware bookkeeping:
   - `0x780e6d`: active-pool attention/status flag. If set, `0x2888`
     exits without changing `0x780e90`.
@@ -678,6 +697,15 @@ flag as bit 0 of the outbound base `0x30` status byte.
   - `0x780e29.0`: set by `0x2a14` when publishing `0x780e8f`;
     `0x780e29.3`: set by `0x29b2` when `0x780e02` and `0x780e91` are set;
     `0x780e30.0`: set by `0x29b2` otherwise.
+  - `0x8c7a` and `0x8c90`: display/message wrappers. `0x8c7a(arg)`
+    calls `0x9182(arg, 0)`, and `0x8c90(arg)` calls `0x9182(arg, 1)`.
+  - `0x9112`: formatted display/message helper used by `0x8a48` for
+    media-feed strings with a table entry from `0xb490`.
+  - `0xb490`: longword table indexed by `0x780e98 << 2`, or by
+    `(0x780e98 & 0x7f) << 2` when `0x780e98.7` is set.
+  - `0x7828f9.2` and `$a801`: service-strobe shadow bit. `0xa5c2`
+    clears it, `0xa5da` sets it, and `0xa5f2` returns `1` only when the
+    shadow bit is clear.
 - Parser scratch:
   - none. These fields are pool/page-environment and interface-status
     bookkeeping after parser handlers have already created or selected a
@@ -685,8 +713,10 @@ flag as bit 0 of the outbound base `0x30` status byte.
 - Unknown:
   - user-facing names for record bytes `+6`, `+7`, and `+8` outside the
     existing page-environment interpretation.
-  - physical status meaning of service helpers `0x8a48`, `0x8656`,
-    `0xa46e`, `0xa5c2`, and `0xa5da`.
+  - physical signal names for `$8a01.5`, `$8a01.3`, and `$a801.2`.
+  - exact UI/display distinction between wrapper flag `0` from `0x8c7a`
+    and wrapper flag `1` from `0x8c90`.
+  - semantic names for the entries in table `0xb490`.
 
 ### Writers
 
@@ -706,6 +736,15 @@ flag as bit 0 of the outbound base `0x30` status byte.
   `0x780e90` when the `0xa46e` / `0xa5f2` predicate pair allows service.
 - `0x2c08..0x2c3a` clears `0x7839d2`, optionally runs `0x2c44`, clears
   `0x7839d3`, calls `0xa5da`, and clears `0x780e90`.
+- `0x8656` writes `0x780e3e` from `0x6e32(0x1f)` bit 2, writes
+  `0x7822e6 = 0x780e04 + 0x65`, and emits service/status strings through
+  `0x8c7a` or `0x8c90`.
+- `0x8a48` emits media-feed strings through `0x9112` or `0x8c90`; it
+  reads `0x780e8e`, `0x780e98`, `$8a01.5` via `0xa46e`, and table
+  `0xb490`, but the focused listing shows no page-record or
+  `0x780e90` write in this helper.
+- `0xa5c2` clears `0x7828f9.2` and writes the shadow byte to `$a801`;
+  `0xa5da` sets the same shadow bit and writes `$a801`.
 
 ### Readers And Consumers
 
@@ -715,6 +754,19 @@ flag as bit 0 of the outbound base `0x30` status byte.
   the observed cursor cases it calls `0x8a48` when the flag is set and
   `0x8656` when clear; after releasing or advancing records it can clear
   `0x780e90` at `0x77b0`.
+- `0x8a48` consumes `0x780e8e == 0x80` or `0x90` with `0x780e98` to
+  select media-feed display output. For `0x780e8e == 0x80`,
+  `0x780e98.7` chooses `PE FEED` (`0xb291`) and the clear case chooses
+  `PF FEED` (`0xb280`). For `0x780e8e == 0x90`, the set case also
+  chooses `PE FEED`, while the clear case emits `PE FEED ENVELOPE`
+  (`0xb2a2`) through `0x8c90`.
+- `0x8656` consumes `0x780e2d.3`, `0x780e8a`, `0x780e3e`, `0x7822dc`,
+  `0x780e02`, `0x780e8e.7`, `0x7821b8`, `0x7821b9`, and
+  `0x6f32(0x2a)` return bits 6 and 5 to select normal service/status
+  strings. Known string outputs in the focused range are `16 TONER LOW`
+  (`0xb21a`), `SERVICE MODE` (`0xb62a`), `UC` (`0xb23c`), `LC`
+  (`0xb24d`), and the `04`/`05`/`06` self-test/font-printing strings
+  listed above.
 - `0x0d12..0x0d24` consumes and clears `0x7839d3` in a copied-stub status
   handler, then signals wait object `0x780182`.
 
@@ -723,24 +775,31 @@ flag as bit 0 of the outbound base `0x30` status byte.
 This checkpoint does not draw pixels directly. It can affect
 reproduction in two indirect ways: host-facing status bit 0 can change
 bidirectional protocol behavior, and the page-pool cursor loop chooses
-different service helpers while `0x780e90` is set. The render-entry path
-still depends on published page records, `0x780eaa -> 0x780eae`, and
-`0x1ed84` / `0x1ef6a`; this checkpoint only explains the status/service
-flag that can run alongside that cursor movement.
+display/service-message output while `0x780e90` is set or clear. The
+covered `0x8a48` and `0x8656` paths emit operator-panel/status strings;
+they do not draw pixels, modify page records, or enter the render path in
+the focused listings. Pixel effects remain indirect through host
+protocol decisions and scheduler/service timing, not through bitmap
+composition.
 
 ### Confidence
 
 High for `0x780e90`, `0x780e98`, `0x780e8f`, `0x780e29`, `0x780e30`,
 `0x780e2a.4`, and `0x7839d3` writes because the focused listings show
-direct stores and bit operations. Medium for physical/user-facing status
-names for the selected record bytes and service helpers.
+direct stores and bit operations. High for the service-message string
+addresses and `0x8626` selector table because the literals and table
+bytes are direct ROM data. Medium for physical/user-facing status names
+for the selected record bytes and the hardware bits behind `$8a01` and
+`$a801`.
 
 ### Fixtures
 
 - No new executable fixture is introduced for this checkpoint. Evidence
   is disassembly-only; a future fixture should drive a selected pool
   record through `0x2888`, then observe the `0xaece` outbound status bit
-  and the `0x7612` helper choice.
+  and the `0x7612` helper choice. A second fixture should drive
+  `0x8a48` with `0x780e8e` values `0x80` and `0x90`, plus high-bit and
+  clear `0x780e98` values, and assert the `0x9112` / `0x8c90` calls.
 
 ### Disassembly Evidence
 
@@ -752,6 +811,20 @@ names for the selected record bytes and service helpers.
   `0x780e90`.
 - `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`:
   `0x763a..0x77d0` consumers and clear path in the cursor loop.
+- `generated/disasm/ic30_ic13_page_service_messages_008656.lst`:
+  `0x8656..0x8a46` normal service-message selector, timer poll, and
+  display string dispatches.
+- `generated/disasm/ic30_ic13_page_environment_message_008a48.lst`:
+  `0x8a48..0x8b3e` media-feed message formatter for the `0x780e90`
+  service path.
+- `generated/disasm/ic30_ic13_message_dispatch_wrappers_008c7a.lst`:
+  `0x8c7a..0x8ca6` wrapper calls into `0x9182`.
+- `generated/disasm/ic30_ic13_8a01_a801_status_bits_00a42c.lst`:
+  `0xa46e`, `0xa5b0`, `0xa5c2`, `0xa5da`, and `0xa5f2` hardware
+  bit/shadow helpers.
+- `generated/analysis/ic30_ic13_strings.txt`: string labels at
+  `0xb14e`, `0xb15f`, `0xb170`, `0xb181`, `0xb21a`, `0xb23c`,
+  `0xb24d`, `0xb280`, `0xb291`, `0xb2a2`, and `0xb62a`.
 - `generated/disasm/ic30_ic13_host_output_worker_00ae2c.lst`:
   `0xaf34..0xaf40` outbound status-byte bit-0 consumer.
 - `generated/disasm/ic30_ic13_trampoline_handlers_000c7e.lst`:
@@ -759,15 +832,18 @@ names for the selected record bytes and service helpers.
 
 ### Unresolved Middle Edges
 
-- `0x8a48` versus `0x8656`: the cursor-loop branch on `0x780e90` is
-  pinned, but the physical/page-service meaning of those helpers remains
-  unnamed.
 - `0x780e98` source bytes: selected record byte `+6`, `0x780e97`,
   `0x780e55`, and helper `0x29b2` are bounded, but their user-facing
   status names remain unresolved.
-- `0x2a38`: helper predicates `0xa46e`, `0xa5f2`, `0xa5c2`, and
-  `0xa5da` are not lifted here beyond their effects on `0x7839d3` and
-  `0x780e90`.
+- `0x8c7a` / `0x8c90` -> `0x9182`: wrapper argument `0` versus `1` is
+  pinned at `0x8c7a..0x8ca6`, but the exact operator-panel behavior of
+  that flag remains unresolved until `0x9182` is lifted.
+- `0x9112` and table `0xb490`: `0x8a48` argument order and table index
+  boundaries are pinned at `0x8a74..0x8b24`, but the table entries and
+  formatted-message engine remain unresolved.
+- `0x6e32(0x1f)` and `0x6f32(0x2a)`: `0x8656` consumers and bit tests are
+  pinned at `0x866c..0x86b2` and `0x89f0..0x8a3a`, but the physical
+  sensors behind the returned bits still need composition.
 
 ## Parser Record And Delayed Payload State
 

@@ -108,10 +108,19 @@ source is now composed in `Page Environment Status And Pool Cursor Gate`:
 `0x780e8e`, can publish `0x780e8f`, set `0x780e90`, cache
 `0x780e98`, and OR `0x10` into `0x780e2a`; `0x7612..0x7834` consumes
 that flag to choose the page-pool cursor service helper, and
-`0x2c08..0x2c3a` clears the service flags. Remaining work is protocol
-naming for the `0x12280` response bytes, user-facing names for the
-folded status categories and selected record bytes, and physical
-naming/timing for the output MMIO banks.
+`0x2c08..0x2c3a` clears the service flags. The service-helper split is
+now composed: when `0x780e90` is set, `0x8a48` formats media-feed
+messages from `0x780e8e`, `0x780e98`, and table `0xb490`, emitting
+`PF FEED`, `PE FEED`, or `PE FEED ENVELOPE`; when the flag is clear,
+`0x8656` runs the normal service-message selector, updating
+`0x780e3e`/`0x7822e6`, dispatching `0x780e8a` through the table at
+`0x8626`, and selecting strings such as `16 TONER LOW`, `SERVICE MODE`,
+`UC`, `LC`, `04 SELF TEST`, `05 SELF TEST`, `06 PRINTING TEST`, and
+`06 FONT PRINTOUT` through wrappers `0x8c7a` / `0x8c90`. Remaining work
+is protocol naming for the `0x12280` response bytes, user-facing names
+for the folded status categories and selected record bytes, the
+`0x9182` / `0x9112` display-engine internals, and physical naming/timing
+for the output MMIO banks.
 
 ### Main PCL parser
 

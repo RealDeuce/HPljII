@@ -63270,6 +63270,260 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
         },
     }))
 
+    def downloaded_high_row_truncation_matrix_case(
+        *,
+        name: str,
+        char_code: int,
+        rows: int,
+        object_offset: int,
+    ) -> dict[str, object]:
+        span = 2
+        payload = bytearray(rows * span)
+        payload[0x100:0x102] = bytes.fromhex("f0 0f")
+        command_stream = f"\x1b)s{len(payload)}W".encode("ascii") + bytes(payload)
+        publication_stream = command_stream + bytes([char_code, 0x0C])
+        fetched = fetch_stream_via_a904(
+            host_byte_fetch_state(ring=list(publication_stream), direct_mode=0),
+            len(publication_stream),
+        )
+        font_stream = fetched["stream"][:len(command_stream)]
+        tail_stream = fetched["stream"][len(command_stream):]
+        font_trace = trace_font_parser_dispatch_via_11774(data, font_stream)
+        font_command = font_trace["commands"][0]
+        assert isinstance(font_command, dict)
+        install_command = render_font_download_char_command_stream_via_121cc_16498(
+            font_stream,
+            table_payload_type2_bytes,
+            char_code=char_code,
+            record_words=(0x0000, 0x0000, rows, 0x0000),
+            mode=1,
+            width=0x0010,
+            rows=rows,
+            object_offset=object_offset,
+        )
+        install_event = install_command["events"][0]
+        assert isinstance(install_event, dict)
+        install = install_event["install"]
+        assert isinstance(install, dict)
+        memory = bytearray(install["header"])
+        glyph = resolve_downloaded_pointer_glyph(memory, 0, char_code)
+        assert glyph is not None
+        source = {
+            "context": 0,
+            "host_char": char_code,
+            "mapped": char_code,
+            "glyph_entry": glyph["entry"],
+            "glyph_width": glyph["width"],
+            "glyph_rows": glyph["rows"],
+            "flag": 0,
+            "x": 22,
+            "y": 22,
+            "context_slot": 3,
+            "inline_record": bytes([
+                int(glyph["render_span"]),
+                int(glyph["rows"]) & 0xFF,
+                0,
+            ]),
+        }
+        page_record: dict[str, object] = {
+            "bucket_array": {},
+            "context_slots": [0, 0, 0, 0],
+        }
+        page_result = queue_text_source_to_page_record_via_12f2e(
+            memory,
+            page_record,
+            source,
+        )
+        tail_trace = trace_mixed_text_control_parser_path_via_11774(data, tail_stream)
+        publication = finalize_page_record_via_ff1e(
+            page_record,
+            reset_fixture_state(
+                page_root_present=1,
+                page_root_class=1,
+                current_page_root=ABSTRACT_PAGE_ROOT_PTR,
+                page_root_clears=0,
+                publication_bucket_index=int(page_result["bucket_index"]),
+            ),
+        )
+        published_record = publication["published_pool_record"]
+        assert isinstance(published_record, dict)
+        published_fields = published_record["pool_record_fields"]
+        assert isinstance(published_fields, dict)
+        render_record = copy_active_page_record_to_render_record_via_1ed84(
+            published_record
+        )
+        render_fields = render_record["render_record_fields"]
+        assert isinstance(render_fields, dict)
+        render_fields = dict(render_fields)
+        render_fields.update({
+            "long_00": 0x00100000,
+            "word_04": 0x0020,
+            "word_06": 0x0005,
+            "word_08": int(render_fields.get("word_08", 0)),
+            "word_10": int(page_result["bucket_index"]),
+        })
+        render_record["render_record_fields"] = render_fields
+        render_setup = compute_render_band_state_via_1ef86(render_record)
+        render_split = split_row_count_via_1f414(
+            int(page_result["coord"]),
+            int(glyph["rows"]),
+            int(render_setup["band_rows_scaled_783a20"]),
+        )
+        row_copy_helper = u32(data, 0x1F08E + int(glyph["render_span"]) * 4)
+        row_copy_limit = row_copy_table_limit(data, row_copy_helper)
+        return {
+            "name": name,
+            "fetch_source_set": sorted(set(fetched["sources"])),
+            "remaining_ring": fetched["state"]["ring"],
+            "restored_record": font_command["restored_record"],
+            "payload_length": len(font_command["payload"]),
+            "install_record": install["record"],
+            "page_path": page_result["path"],
+            "page_selector": page_result["selector"],
+            "page_rows": page_result["rows"],
+            "published_bucket_keys": sorted(
+                published_fields["bucket_array_1c"].keys()
+            ),
+            "tail_handlers": [event["handler"] for event in tail_trace["events"]],
+            "render_setup": {
+                "word_10": render_setup["input_word_10"],
+                "band_rows_scaled_783a20": render_setup[
+                    "band_rows_scaled_783a20"
+                ],
+                "destination_base_783a28": render_setup[
+                    "destination_base_783a28"
+                ],
+            },
+            "split": {
+                "coord": render_split["coord"],
+                "row_index": render_split["row_index"],
+                "input_rows": render_split["input_rows"],
+                "rows_in_band": render_split["rows_in_band"],
+                "remaining_after_band": render_split["remaining_after_band"],
+                "returned_d3": render_split["returned_d3"],
+            },
+            "row_copy_helper": row_copy_helper,
+            "row_copy_last_valid_index": row_copy_limit["last_valid_index"],
+            "fallback_exceeds_helper_table": (
+                int(render_split["remaining_after_band"])
+                > int(row_copy_limit["last_valid_index"])
+            ),
+        }
+
+    high_row_truncation_matrix = [
+        downloaded_high_row_truncation_matrix_case(
+            name="high rows-0x0101",
+            char_code=0x4A,
+            rows=0x0101,
+            object_offset=0x1800,
+        ),
+        downloaded_high_row_truncation_matrix_case(
+            name="high rows-0x0102",
+            char_code=0x4B,
+            rows=0x0102,
+            object_offset=0x1A20,
+        ),
+        downloaded_high_row_truncation_matrix_case(
+            name="high rows-0x0103",
+            char_code=0x4C,
+            rows=0x0103,
+            object_offset=0x1C40,
+        ),
+    ]
+    checks.append(assert_equal(
+        "downloaded glyph high-row truncation matrix preserves installed rows",
+        high_row_truncation_matrix,
+        [
+            {
+                "name": "high rows-0x0101",
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "restored_record": bytes.fromhex("80 57 02 02 00 00"),
+                "payload_length": 0x0202,
+                "install_record": bytes.fromhex("00 00 00 00 0c 01 01 01 00 10 00 00"),
+                "page_path": "short-page-record",
+                "page_selector": 0x0003,
+                "page_rows": 0x01,
+                "published_bucket_keys": [1],
+                "tail_handlers": [0x00D04A, 0x00F0F0],
+                "render_setup": {
+                    "word_10": 1,
+                    "band_rows_scaled_783a20": 0x0040,
+                    "destination_base_783a28": 0x00100800,
+                },
+                "split": {
+                    "coord": 0x6601,
+                    "row_index": 6,
+                    "input_rows": 0x0101,
+                    "rows_in_band": 0x003A,
+                    "remaining_after_band": 0x00C7,
+                    "returned_d3": 0x00C7003A,
+                },
+                "row_copy_helper": 0x01FE76,
+                "row_copy_last_valid_index": 0x0080,
+                "fallback_exceeds_helper_table": True,
+            },
+            {
+                "name": "high rows-0x0102",
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "restored_record": bytes.fromhex("80 57 02 04 00 00"),
+                "payload_length": 0x0204,
+                "install_record": bytes.fromhex("00 00 00 00 0c 01 01 02 00 10 00 00"),
+                "page_path": "short-page-record",
+                "page_selector": 0x0003,
+                "page_rows": 0x02,
+                "published_bucket_keys": [1],
+                "tail_handlers": [0x00D04A, 0x00F0F0],
+                "render_setup": {
+                    "word_10": 1,
+                    "band_rows_scaled_783a20": 0x0040,
+                    "destination_base_783a28": 0x00100800,
+                },
+                "split": {
+                    "coord": 0x6601,
+                    "row_index": 6,
+                    "input_rows": 0x0102,
+                    "rows_in_band": 0x003A,
+                    "remaining_after_band": 0x00C8,
+                    "returned_d3": 0x00C8003A,
+                },
+                "row_copy_helper": 0x01FE76,
+                "row_copy_last_valid_index": 0x0080,
+                "fallback_exceeds_helper_table": True,
+            },
+            {
+                "name": "high rows-0x0103",
+                "fetch_source_set": ["ring"],
+                "remaining_ring": [],
+                "restored_record": bytes.fromhex("80 57 02 06 00 00"),
+                "payload_length": 0x0206,
+                "install_record": bytes.fromhex("00 00 00 00 0c 01 01 03 00 10 00 00"),
+                "page_path": "short-page-record",
+                "page_selector": 0x0003,
+                "page_rows": 0x03,
+                "published_bucket_keys": [1],
+                "tail_handlers": [0x00D04A, 0x00F0F0],
+                "render_setup": {
+                    "word_10": 1,
+                    "band_rows_scaled_783a20": 0x0040,
+                    "destination_base_783a28": 0x00100800,
+                },
+                "split": {
+                    "coord": 0x6601,
+                    "row_index": 6,
+                    "input_rows": 0x0103,
+                    "rows_in_band": 0x003A,
+                    "remaining_after_band": 0x00C9,
+                    "returned_d3": 0x00C9003A,
+                },
+                "row_copy_helper": 0x01FE76,
+                "row_copy_last_valid_index": 0x0080,
+                "fallback_exceeds_helper_table": True,
+            },
+        ],
+    ))
+
     def downloaded_row_count_matrix_case(
         *,
         name: str,
@@ -94026,6 +94280,30 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
             downloaded_segmented_rows102_render_split["remaining_after_band"],
             downloaded_segmented_rows102_row_copy_limit["last_valid_index"],
             downloaded_segmented_rows102_fallback_row_target,
+        )
+    )
+    lines.append(
+        "- downloaded-glyph high-row truncation matrix: rows `%s` install "
+        "canonical 16-bit row words, but the printable page source exposes "
+        "low-byte rows `%s`; all publish bucket `1`, split through `0x1f414` "
+        "into `(current, fallback)` counts `%s`, and exceed the `0x1fe76` "
+        "row-copy table limit `%d` on fallback." % (
+            ", ".join(
+                "0x%04x" % case["split"]["input_rows"]
+                for case in high_row_truncation_matrix
+            ),
+            ", ".join(
+                "0x%02x" % case["page_rows"]
+                for case in high_row_truncation_matrix
+            ),
+            [
+                (
+                    case["split"]["rows_in_band"],
+                    case["split"]["remaining_after_band"],
+                )
+                for case in high_row_truncation_matrix
+            ],
+            high_row_truncation_matrix[0]["row_copy_last_valid_index"],
         )
     )
     lines.append(

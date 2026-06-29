@@ -278,7 +278,7 @@ Published page-record state:
   publication flag after copying the record.
 - Unknown for this checkpoint: downloaded-glyph publication cross-products outside the
   documented normal bucket-1, rows-`0x01`/`0x04`/`0x20`/`0x40`/`0x7f` short
-  bucket-1, row-`0x80` short bucket-1, rows-`0x0102` low-byte-truncated
+  bucket-1, row-`0x80` short bucket-1, rows-`0x0101..0x0103` low-byte-truncated
   bucket-1 publication, linear-segmented bucket-9,
   rows-`0x82`/`0x83`/`0x84`/`0xfe`/`0xff` segmented bucket-1/bucket-9,
   split-plane segmented bucket-9, segmented-wide
@@ -1458,6 +1458,20 @@ span-2 row-copy helper `0x1fe76` has valid table entries only through index
 fixture proves parser/install/page-record publication plus the exact invalid
 render boundary, not pixel output for rows `0x0102`.
 
+Fixture `downloaded glyph high-row truncation matrix preserves installed rows`
+composes the adjacent nonzero-high-byte siblings. Rows `0x0101`, `0x0102`,
+and `0x0103` restore fetched `ESC )s#W` records with byte budgets `0x0202`,
+`0x0204`, and `0x0206`, install mode-byte-`1` records ending in the matching
+16-bit row words, and keep those installed row words as canonical downloaded
+glyph state. The printable/page source still carries only the low row byte:
+`0x12f2e` sees rows `0x01`, `0x02`, and `0x03`, derives selector `0x0003`,
+and publishes only bucket `1` through `0xff1e`. The render split uses the full
+installed glyph row words: `0x1f414` splits all three at coord `0x6601` into
+`58` current-band rows plus fallback rows `199`, `200`, and `201`. Those
+fallback counts exceed the span-2 row-copy helper `0x1fe76` valid maximum
+index `128`, so the matrix deliberately documents the same unresolved
+visible-output boundary instead of claiming pixels for these high-row cases.
+
 Fixture `host-fetched split-plane segmented downloaded character renders
 through 0x1f1f0` covers the odd-span sibling. The host-fetched `ESC )s387W`
 stream uses parser record `80 57 01 83 00 00`, delayed handler `0x16c14`,
@@ -2023,7 +2037,7 @@ A byte-stream renderer must preserve:
   buckets; the normal, rows-`0x20` short, rows-`0x40` short, linear-segmented,
   rows-`0x82` segmented, split-plane segmented, compact-wide matrix,
   segmented-wide matrix, even-span wide, payload-control odd-span wide, and
-  rows-`0x0102` low-byte-truncated short siblings now publish through the same
+  rows-`0x0101..0x0103` low-byte-truncated short siblings now publish through the same
   boundary. Fixture `downloaded
   normal row-0x80 and segmented glyph FF publications render page records` renders the
   normal bucket-1 record through `0x1ed84`/`0x1ef6a` and compact target
@@ -2044,6 +2058,12 @@ A byte-stream renderer must preserve:
   `00 00 00 00 00 03 00 01 33 66 01`; `0x1f414` then splits rows `0x0102`
   into `58` current rows and `200` fallback rows, exceeding the `0x1fe76`
   row-copy table's valid maximum index `128` at fallback target `0x329ad3c0`.
+  Fixture `downloaded glyph high-row truncation matrix preserves installed rows`
+  covers rows `0x0101`, `0x0102`, and `0x0103`: installed row words are canonical,
+  printable/page source rows are low bytes `0x01`, `0x02`, and `0x03`, `0x12f2e`
+  publishes selector `0x0003` bucket `1`, and `0x1f414` splits full installed rows
+  into `58` current rows plus fallback rows `199`, `200`, and `201`, all beyond the
+  `0x1fe76` valid index `128`.
   Fixture `host-fetched rows-0x20 short downloaded glyph FF publication renders page
   record` publishes bucket-array entry `1` for `ESC )s64W`, preserves record `00 00 00
   00 0c 01 00 20 00 10 00 00`, renders bucket word `1`, and emits `38` visible rows

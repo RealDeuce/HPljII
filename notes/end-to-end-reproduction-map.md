@@ -618,62 +618,63 @@ The next work should follow dataflow, not isolated handlers:
    filter predicates. They should also broaden downloaded-glyph publication
    cross-products beyond the documented segmented-wide, normal, nonboundary-short,
    rows-`0x20` short, rows-`0x40` short, linear-segmented, rows-`0x82` segmented,
-   split-plane segmented, row-threshold `0x80` short, rows-`0x0102` low-byte-truncated
-   short publication, even-span wide, and payload-control wide selector families,
-   especially row counts outside the covered short rows `0x01`, `0x02`, `0x03`, `0x04`,
-   `0x05`, `0x08`, `0x09`, `0x10`, `0x20`, `0x3e`, `0x3f`, `0x40`, `0x41`, `0x42`,
-   `0x7f`, and `0x80` and segmented rows `0x81`, `0x82`, `0x83`, `0x84`, `0x85`,
-   `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff`, descriptor
-   grammar forms outside the covered helper-table path, full pixel-row behavior past the
-   wrapped-width invalid helper entries, broader physical comparison for segmented-wide
-   row words above `0x00ff`, and full-success return-boundary siblings beyond the
-   covered normal even-span, no-install, status-`2`, row-count-matrix short/segmented,
-   linear-segmented publication, split-plane segmented publication, segmented-wide
-   publication, wide-remainder-matrix, and segmented-wide-matrix zero-drain cases plus
-   the payload-control wide nonzero-drain `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`
-   case. The accepted mode-byte boundary itself is covered by fixture `0x16b1a
-   descriptor width helper emits only mode 1/2`, which pins `0x16b36..0x16b6a` accepted
-   writes and `0x16b26..0x16b34` invalid no-writes. Fixture `downloaded glyph width-byte
-   boundary truncates page-record span` pins the current printable source-byte wrap for
-   spans `0x00ff`, `0x0100`, `0x0101`, and `0x020d`: canonical width words survive in
-   the installed object, but `0x12f2e` sees width bytes `0xff`, `0x00`, `0x01`, and
-   `0x0d`, so only `0x00ff` remains selector `0x1003`. The same fixture now carries all
-   four page objects through `0xff1e` publication with bucket `0`, root clear, empty
-   rule/fixed lists, and the queued object preserved as published bucket root; the
-   wrapped spans then dispatch through `0x1effe` and read helper entries `0x1f48e`,
-   `0x1f492`, and `0x1f8c2`, which target non-helper longwords `0x20700000`,
-   `0x4e90202c`, and `0x4e904cdf`. Fixture `downloaded segmented-wide row-byte boundary
-   truncates page-record segments` pins the row-byte sibling for span `0x11`: canonical
-   row words `0x0081`, `0x00ff`, `0x0100`, `0x0101`, and `0x0181` survive in the
-   installed object, but `0x12f2e` sees row bytes `0x81`, `0xff`, `0x00`, `0x01`, and
-   `0x81`; rows `0x0100` and `0x0101` become selector `0x1003`, publish bucket key
-   `[0]`, and split through `0x1f0d2` as `80/176` and `80/177`, while row `0x0181`
-   queues only segments `1` and `0`, publishes bucket keys `[0, 8]` with selected bucket
-   `8`, and splits through `0x1f264` as `32/96` and `80/48`. Fixture `downloaded glyph
-   width-span matrix publishes and renders all main helpers` now covers parser-produced
-   spans `1..16`: host-fetched `ESC )s#W` descriptors install width words
-   `0x0008..0x0080`, preserve odd-span split-plane copies, publish bucket `0` through
-   FF, dispatch object byte `0x00` through `0x1ed84`/`0x1ef6a`, and render rows matching
-   installed bitmaps through helpers `0x1fa5c..0x26910`. The `downloaded glyph
-   wide-remainder matrix publishes and renders compact chunks` fixture now covers
-   matched parser-produced spans `17..32`: host-fetched `ESC )s#W` descriptors install
-   width words `0x0088..0x0100`, publish bucket `0` as selector `0x1003`, dispatch
-   object byte `0x10` through `0x1ed84`/`0x1ef6a` and compact target `0x1effe` /
-   `0x1f0d2`, render full chunks through `0x2f27c`, render remainders `1..15` through
-   `0x1f1ac[remainder]`, and cover span `32` as the no-remainder two-full-chunk sibling.
-   The same fixture now probes compact-wide spans `33`, `48`, `49`, `64`, and `255`
-   through the same upstream metadata and return boundary, including matched installed
-   bitmap rows. The `downloaded glyph segmented-wide matrix publishes and renders
-   compact chunks` fixture now covers matched parser-produced spans `17..32` with rows
-   `0x81`: host-fetched `ESC )s#W` descriptors install width words `0x0088..0x0100`,
-   publish buckets `0` and `8` as selector `0x3003`, dispatch segment `1` object byte
-   `0x30` through `0x1ed84`/`0x1ef6a` and compact target `0x1effe` / `0x1f264`, render
-   full chunks through `0x2f27c`, render remainders `1..15` through
-   `0x1f1ac[remainder]`, and cover span `32` as the segmented no-remainder sibling. The
-   same fixture probes segmented-wide spans `33`, `48`, `49`, and `64` through the same
-   upstream metadata and return boundary, including matched segment-1 rows. The
-   nonboundary-short fixture now publishes rows `0x10` on selector `0x0003` through FF,
-   `0xff1e`, and `0x1ed84`/`0x1ef6a` with digest
+   split-plane segmented, row-threshold `0x80` short, rows-`0x0101..0x0103`
+   low-byte-truncated short publication, even-span wide, and payload-control wide
+   selector families, especially row counts outside the covered short rows `0x01`,
+   `0x02`, `0x03`, `0x04`, `0x05`, `0x08`, `0x09`, `0x10`, `0x20`, `0x3e`, `0x3f`,
+   `0x40`, `0x41`, `0x42`, `0x7f`, and `0x80` and segmented rows `0x81`, `0x82`, `0x83`,
+   `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff`,
+   descriptor grammar forms outside the covered helper-table path, full pixel-row
+   behavior past the wrapped-width invalid helper entries, broader physical comparison
+   for segmented-wide row words above `0x00ff`, and full-success return-boundary
+   siblings beyond the covered normal even-span, no-install, status-`2`,
+   row-count-matrix short/segmented, linear-segmented publication, split-plane segmented
+   publication, segmented-wide publication, wide-remainder-matrix, and
+   segmented-wide-matrix zero-drain cases plus the payload-control wide nonzero-drain
+   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` case. The accepted mode-byte boundary
+   itself is covered by fixture `0x16b1a descriptor width helper emits only mode 1/2`,
+   which pins `0x16b36..0x16b6a` accepted writes and `0x16b26..0x16b34` invalid
+   no-writes. Fixture `downloaded glyph width-byte boundary truncates page-record span`
+   pins the current printable source-byte wrap for spans `0x00ff`, `0x0100`, `0x0101`,
+   and `0x020d`: canonical width words survive in the installed object, but `0x12f2e`
+   sees width bytes `0xff`, `0x00`, `0x01`, and `0x0d`, so only `0x00ff` remains
+   selector `0x1003`. The same fixture now carries all four page objects through
+   `0xff1e` publication with bucket `0`, root clear, empty rule/fixed lists, and the
+   queued object preserved as published bucket root; the wrapped spans then dispatch
+   through `0x1effe` and read helper entries `0x1f48e`, `0x1f492`, and `0x1f8c2`, which
+   target non-helper longwords `0x20700000`, `0x4e90202c`, and `0x4e904cdf`. Fixture
+   `downloaded segmented-wide row-byte boundary truncates page-record segments` pins the
+   row-byte sibling for span `0x11`: canonical row words `0x0081`, `0x00ff`, `0x0100`,
+   `0x0101`, and `0x0181` survive in the installed object, but `0x12f2e` sees row bytes
+   `0x81`, `0xff`, `0x00`, `0x01`, and `0x81`; rows `0x0100` and `0x0101` become
+   selector `0x1003`, publish bucket key `[0]`, and split through `0x1f0d2` as `80/176`
+   and `80/177`, while row `0x0181` queues only segments `1` and `0`, publishes bucket
+   keys `[0, 8]` with selected bucket `8`, and splits through `0x1f264` as `32/96` and
+   `80/48`. Fixture `downloaded glyph width-span matrix publishes and renders all main
+   helpers` now covers parser-produced spans `1..16`: host-fetched `ESC )s#W`
+   descriptors install width words `0x0008..0x0080`, preserve odd-span split-plane
+   copies, publish bucket `0` through FF, dispatch object byte `0x00` through
+   `0x1ed84`/`0x1ef6a`, and render rows matching installed bitmaps through helpers
+   `0x1fa5c..0x26910`. The `downloaded glyph wide-remainder matrix publishes and renders
+   compact chunks` fixture now covers matched parser-produced spans `17..32`:
+   host-fetched `ESC )s#W` descriptors install width words `0x0088..0x0100`, publish
+   bucket `0` as selector `0x1003`, dispatch object byte `0x10` through
+   `0x1ed84`/`0x1ef6a` and compact target `0x1effe` / `0x1f0d2`, render full chunks
+   through `0x2f27c`, render remainders `1..15` through `0x1f1ac[remainder]`, and cover
+   span `32` as the no-remainder two-full-chunk sibling. The same fixture now probes
+   compact-wide spans `33`, `48`, `49`, `64`, and `255` through the same upstream
+   metadata and return boundary, including matched installed bitmap rows. The
+   `downloaded glyph segmented-wide matrix publishes and renders compact chunks` fixture
+   now covers matched parser-produced spans `17..32` with rows `0x81`: host-fetched `ESC
+   )s#W` descriptors install width words `0x0088..0x0100`, publish buckets `0` and `8`
+   as selector `0x3003`, dispatch segment `1` object byte `0x30` through
+   `0x1ed84`/`0x1ef6a` and compact target `0x1effe` / `0x1f264`, render full chunks
+   through `0x2f27c`, render remainders `1..15` through `0x1f1ac[remainder]`, and cover
+   span `32` as the segmented no-remainder sibling. The same fixture probes
+   segmented-wide spans `33`, `48`, `49`, and `64` through the same upstream metadata
+   and return boundary, including matched segment-1 rows. The nonboundary-short fixture
+   now publishes rows `0x10` on selector `0x0003` through FF, `0xff1e`, and
+   `0x1ed84`/`0x1ef6a` with digest
    `28220dd2ecafaf07afc095fa0cc3cb6ed070984b3e3da6762b49ebda582d492b`. The rows-`0x20`
    short fixture now carries `ESC )s64W` plus printable `1` and FF through `0xff1e`,
    preserves bucket `1`, and renders bucket word `1` through `0x1ed84`/`0x1ef6a` to `38`
@@ -690,22 +691,22 @@ The next work should follow dataflow, not isolated handlers:
    `1` and `9`, and renders bucket word `9` through `0x1ed84`/`0x1ef6a` to two `0x1f1f0`
    segment-1 rows. The downloaded-glyph row-count matrix now adds short rows `0x01`,
    `0x02`, `0x03`, `0x04`, `0x05`, `0x08`, `0x09`, `0x3e`, `0x3f`, `0x41`, `0x42`, and
-   `0x7f` on selector `0x0003`/bucket `1`, plus segmented rows `0x83`, `0x84`,
-   `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff` on selector
+   `0x7f` on selector `0x0003`/bucket `1`, plus segmented rows `0x83`, `0x84`, `0x85`,
+   `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff` on selector
    `0x2003`/buckets `1` and `9`, all through printable+FF, `0xff1e`, and
-   `0x1ed84`/`0x1ef6a`; published row counts are `7`, `8`, `9`, `10`, `11`, `14`,
-   `15`, `64`, `64`, `64`, `64`, `64`, `9`, `10`, `11`, `12`, `16`, `16`, `16`, `16`,
-   `16`, and `16`. All twenty-two row-count matrix cases now also pin
-   `0x15dc6 -> 0x16498 -> 0x15dcc ->
-   0x12328` with copy status `1`, `0x783140 = 0`, zero drained bytes, and next handler
-   `0xd04a`. The `0x16498` replacement/allocation-failure/partial/reject fixture now has
-   a rows-`0x0102` sibling: `ESC )s516W` installs record `00 00 00 00 0c 01 01 02 00 10
-   00 00`, but the printable page source exposes row byte `0x02`, so `0x12f2e` queues
-   selector `0x0003` and publishes only bucket `1`; `0x1f414` then splits rows `0x0102`
-   into `58` current rows and `200` fallback rows, exceeding the `0x1fe76` table's valid
-   maximum index `128` at fallback target `0x329ad3c0`. The `0x16498`
-   replacement/allocation-failure/partial/reject fixture now also covers old-pointer
-   release through `0x17a24`, object allocation failure through
+   `0x1ed84`/`0x1ef6a`; published row counts are `7`, `8`, `9`, `10`, `11`, `14`, `15`,
+   `64`, `64`, `64`, `64`, `64`, `9`, `10`, `11`, `12`, `16`, `16`, `16`, `16`, `16`,
+   and `16`. All twenty-two row-count matrix cases now also pin `0x15dc6 -> 0x16498 ->
+   0x15dcc -> 0x12328` with copy status `1`, `0x783140 = 0`, zero drained bytes, and
+   next handler `0xd04a`. The `0x16498` replacement/allocation-failure/partial/reject
+   fixture now has a high-row truncation matrix for rows `0x0101`, `0x0102`, and
+   `0x0103`: `ESC )s#W` installs canonical records ending in row words `0x0101`,
+   `0x0102`, and `0x0103`, but the printable page source exposes low row bytes `0x01`,
+   `0x02`, and `0x03`, so `0x12f2e` queues selector `0x0003` and publishes only bucket
+   `1`; `0x1f414` then splits the full installed rows into `58` current rows plus
+   fallback rows `199`, `200`, and `201`, exceeding the `0x1fe76` table's valid maximum
+   index `128`. The `0x16498` replacement/allocation-failure/partial/reject fixture now
+   also covers old-pointer release through `0x17a24`, object allocation failure through
    `0x170c`/`0x9b5e`/`0x1887a`, status-`2` linear and split-plane continuation pointer
    writes, descriptor mode-byte-`0` status-`0` reject, and high-character/header-type
    status-`0` reject. The `0x16498` no-install visible-output fixture now proves those

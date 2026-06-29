@@ -4027,12 +4027,21 @@ This fixture does not claim rendered pixels: `0x1ef86` computes `0x783a20 = 0x00
 `0x783a28 = 0x00100800`, `0x1f414` splits coord `0x6601` and rows `0x0102` into `58`
 current-band rows plus `200` fallback rows, and span-2 row-copy helper `0x1fe76` has
 valid table entries only through index `128`; fallback index `200` reads target
-`0x329ad3c0`. Fixture `split-plane segmented downloaded glyph FF publication renders
-page record` adds the odd-span sibling: host-fetched `ESC )s387W` plus printable `(` and
-FF restores record `80 57 01 83 00 00`, publishes bucket `9` object `00 00 00 00 20 03
-00 01 28 01 66 01` plus the segment-0 bucket `1` entry `00 00 00 00 20 03 00 01 28 00 66
-01`, clears the current root, copies empty rule/fixed lists and context prefix
-`0,0,0,0`, and renders bucket word `9` through `0x1ed84`/`0x1ef6a` to compact target
+`0x329ad3c0`. Fixture `downloaded glyph high-row truncation matrix preserves installed
+rows` adds rows `0x0101`, `0x0102`, and `0x0103` as adjacent nonzero-high-byte siblings.
+The installed row words remain canonical downloaded-glyph state, while the printable
+source record is parser/page scratch carrying low row bytes `0x01`, `0x02`, and `0x03`.
+`0x12f2e` derives selector `0x0003` and bucket `1` for all three; `0xff1e` publishes
+only bucket `1`; `0x1ef86` keeps render bucket word `1` and band height `0x0040`; and
+`0x1f414` splits the full installed row words into `58` current-band rows plus fallback
+rows `199`, `200`, and `201`. All three fallback counts exceed the span-2 `0x1fe76`
+helper table's valid maximum index `128`, so their pixel rows remain unresolved at the
+same render-helper boundary. Fixture `split-plane segmented downloaded glyph FF
+publication renders page record` adds the odd-span sibling: host-fetched `ESC )s387W`
+plus printable `(` and FF restores record `80 57 01 83 00 00`, publishes bucket `9`
+and segment-0 bucket `1` objects, clears the current root, copies empty rule/fixed
+lists and context prefix `0,0,0,0`, and renders bucket word `9` through
+`0x1ed84`/`0x1ef6a` to compact target
 `0x1effe` / renderer `0x1f1f0` with A2 source offset `0x0100` and A3 trailing offset
 `0x0080`. Fixture `host-fetched linear downloaded character stream renders through
 0x168dc` drives `ESC )s6W` through the same parser-delayed `0x16c14` boundary, installs
@@ -4842,9 +4851,9 @@ fields and every legal metric combination have not been page-compared.
   buckets; the normal, non-boundary short, row-threshold `0x80`, rows-`0x20` short,
   rows-`0x40` short, linear-segmented, rows-`0x82` segmented, split-plane segmented,
   main width-span, compact-wide remainder, segmented-wide matrix, even-span wide,
-  payload-control odd-span wide, and rows-`0x0102` low-byte-truncated short siblings now
-  publish through the same boundary. Fixture `downloaded glyph width-span matrix
-  publishes and renders all main helpers` publishes bucket `0` for spans `1..16`,
+  payload-control odd-span wide, and rows-`0x0101..0x0103` low-byte-truncated short
+  siblings now publish through the same boundary. Fixture `downloaded glyph width-span
+  matrix publishes and renders all main helpers` publishes bucket `0` for spans `1..16`,
   renders through `0x1ed84`/`0x1ef6a`, and verifies helper targets `0x1fa5c..0x26910`
   against installed bitmap rows. Fixture `downloaded glyph wide-remainder matrix
   publishes and renders compact chunks` publishes bucket `0` for spans `17..32`,
@@ -4880,39 +4889,44 @@ fields and every legal metric combination have not been page-compared.
   `0x02`, so `0x12f2e` writes selector `0x0003` object `00 00 00 00 00 03 00 01 33 66
   01`; `0x1f414` then splits rows `0x0102` into `58` current rows and `200` fallback
   rows, exceeding the `0x1fe76` row-copy table's valid maximum index `128` at fallback
-  target `0x329ad3c0`. Fixture `host-fetched rows-0x20 short downloaded glyph FF
-  publication renders page record` publishes bucket-array entry `1` for `ESC )s64W`,
-  preserves record `00 00 00 00 0c 01 00 20 00 10 00 00`, renders bucket word `1`, and
-  emits `38` visible rows through compact target `0x1effe`/`0x1fe76`. Fixture
-  `host-fetched rows-0x40 short downloaded glyph FF publication renders page record`
-  publishes bucket-array entry `1` for `ESC )s128W`, preserves record `00 00 00 00 0c 01
-  00 40 00 10 00 00`, renders bucket word `1`, and emits `64` current-band rows through
-  compact target `0x1effe`/`0x1fe76`. Fixture `downloaded glyph row-count matrix
-  publishes and renders additional short/segmented counts` adds rows `0x01`, `0x02`,
-  `0x03`, `0x04`, `0x08`, `0x3f`, `0x41`, `0x7f`, `0x83`, `0x84`, `0x85`, `0xc0`,
-  `0xfd`, `0xfe`, and `0xff` through the same printable+FF, `0xff1e`, and
-  `0x1ed84`/`0x1ef6a` boundary, with short selector `0x0003` for the first eight and
-  segmented selector `0x2003` for the last seven. It also pins the shared full-success
-  return boundary for all fifteen rows: `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, copy
-  status `1`, `0x783140 = 0`, no drained bytes, and next handler `0xd04a`. Fixture
-  `host-fetched even-span downloaded glyph FF publishes rendered page record` renders
-  the copied bucket-1 record through `0x1ed84`/`0x1ef6a` and compact target
-  `0x1effe`/`0x1f0d2`. Fixture `host-fetched payload-control downloaded glyph FF
-  publishes page record` separates two effects for the odd-span wide/payload-control
-  sibling. Canonical state: `0x168dc` normalizes one `1a 58` escape, and `0x16498`
-  installs table entry `0x00e2` with mode-byte-`2` record `00 00 00 00 0c 02 00 01 00 88
-  00 00`. Parser/firmware bookkeeping: copy leaves `0x783140 = 1`, so the return
-  boundary `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` drains following byte `0x26` (`&`)
-  and the post-return parser sees only FF at handler `0xf0f0`. Derived page-output
-  state: the modeled page-record publication for that installed object publishes bucket
-  `1`, and `0x1ed84`/`0x1ef6a` dispatches compact target `0x1effe`/`0x1f0d2`; this does
-  not prove that `&` survives as printable in the same live byte stream. Fixture
-  `published downloaded glyph segmented buckets render across bands` renders published
-  bucket words `1` and `9` from the copied record. Fixture `0x1eba4 scheduler band words
-  render published downloaded glyph` proves `0xff1e`/`0x1ed84` seed render work
-  `+0x10/+0x16` from cleared source `+0x18 = 0`, then `0x1eba4` advances through band
-  words `0..9` until the published bucket-9 row is visible. The earlier first-band seed
-  edge is now closed for this published record.
+  target `0x329ad3c0`. Fixture `downloaded glyph high-row truncation matrix preserves
+  installed rows` covers the adjacent rows `0x0101`, `0x0102`, and `0x0103`: installed
+  row words are canonical, printable/page source rows are low bytes `0x01`, `0x02`, and
+  `0x03`, `0x12f2e` publishes only selector `0x0003` bucket `1`, and `0x1f414` splits
+  full installed rows into `58` current rows plus fallback rows `199`, `200`, and `201`,
+  all beyond the `0x1fe76` valid index `128`. Fixture `host-fetched rows-0x20 short
+  downloaded glyph FF publication renders page record` publishes bucket-array entry `1`
+  for `ESC )s64W`, preserves record `00 00 00 00 0c 01 00 20 00 10 00 00`, renders
+  bucket word `1`, and emits `38` visible rows through compact target
+  `0x1effe`/`0x1fe76`. Fixture `host-fetched rows-0x40 short downloaded glyph FF
+  publication renders page record` publishes bucket-array entry `1` for `ESC )s128W`,
+  preserves record `00 00 00 00 0c 01 00 40 00 10 00 00`, renders bucket word `1`, and
+  emits `64` current-band rows through compact target `0x1effe`/`0x1fe76`. Fixture
+  `downloaded glyph row-count matrix publishes and renders additional short/segmented
+  counts` adds short rows `0x01`, `0x02`, `0x03`, `0x04`, `0x05`, `0x08`, `0x09`,
+  `0x3e`, `0x3f`, `0x41`, `0x42`, and `0x7f`, plus segmented rows `0x83`, `0x84`,
+  `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff` through the same
+  printable+FF, `0xff1e`, and `0x1ed84`/`0x1ef6a` boundary. It also pins the shared
+  full-success return boundary for all twenty-two rows: `0x15dc6 -> 0x16498 ->
+  0x15dcc -> 0x12328`, copy status `1`, `0x783140 = 0`, no drained bytes, and next
+  handler `0xd04a`. Fixture `host-fetched even-span downloaded glyph FF publishes
+  rendered page record` renders the copied bucket-1 record through `0x1ed84`/`0x1ef6a`
+  and compact target `0x1effe`/`0x1f0d2`. Fixture `host-fetched payload-control
+  downloaded glyph FF publishes page record` separates two effects for the odd-span
+  wide/payload-control sibling. Canonical state: `0x168dc` normalizes one `1a 58`
+  escape, and `0x16498` installs table entry `0x00e2` with mode-byte-`2` record `00 00
+  00 00 0c 02 00 01 00 88 00 00`. Parser/firmware bookkeeping: copy leaves `0x783140 =
+  1`, so the return boundary `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` drains following
+  byte `0x26` (`&`) and the post-return parser sees only FF at handler `0xf0f0`. Derived
+  page-output state: the modeled page-record publication for that installed object
+  publishes bucket `1`, and `0x1ed84`/`0x1ef6a` dispatches compact target
+  `0x1effe`/`0x1f0d2`; this does not prove that `&` survives as printable in the same
+  live byte stream. Fixture `published downloaded glyph segmented buckets render across
+  bands` renders published bucket words `1` and `9` from the copied record. Fixture
+  `0x1eba4 scheduler band words render published downloaded glyph` proves
+  `0xff1e`/`0x1ed84` seed render work `+0x10/+0x16` from cleared source `+0x18 = 0`,
+  then `0x1eba4` advances through band words `0..9` until the published bucket-9 row is
+  visible. The earlier first-band seed edge is now closed for this published record.
 - `0x15c4c`: the even-span and split-plane fixed-record resume routes are
   page-visible, and the status-0 fixed-record release exit is fixture-backed.
   The bit-30 offset-table release delegate is fixture-backed through

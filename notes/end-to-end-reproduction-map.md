@@ -55,6 +55,21 @@ the board-facing boundary is tracked in
   physical MMIO naming/timing and any producer for other frame `+0x09`
   values, not the normal byte-source priority or observed macro/data-chain
   replay path.
+- External service/status preemption:
+  ROM evidence is `0xba48..0xc36e` in
+  `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst` and
+  `generated/disasm/ic30_ic13_external_service_reset_00c06e.lst`.
+  Reproduction evidence is `External Ready And Service Status Loop` in
+  `notes/semantic-state-model.md`, plus fixtures for `0xc0ae` publishing
+  `$fffee005.7/.6` through `0x9bee(0x780e2e, 0x80/0x40)`, `0xc1c6`
+  entering non-returning `68 SERVICE` at `0x85c0` from
+  `0x780e36 & 0x00000008`, and `0xc1c6` replaying pending buffer
+  `0x782312` through `0x8c7a` when no status bits are active. This cluster
+  is not a page-imaging producer, but it can stop or defer normal parsing
+  before page objects are generated. Remaining risk is the board-level
+  external-register identity and a single live execution of
+  `0x571e -> 0x9bee -> 0xc1c6 -> 0x85c0`, not the documented consumer
+  branch behavior.
 - Parser byte and command records:
   ROM evidence is `0xda9a`, `0xdaf0`, `0xdb74`, and `0x11774`.
   Reproduction evidence is `generated/analysis/ic30_ic13_parser_xrefs.md`

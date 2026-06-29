@@ -277,66 +277,57 @@ Published page-record state:
 - Firmware bookkeeping: `0xff1e` clears the current page root and sets the
   publication flag after copying the record.
 - Unknown for this checkpoint: downloaded-glyph publication cross-products outside the
-  documented normal bucket-1, rows-`0x01`/`0x04`/`0x20`/`0x40`/`0x7f` short
-  bucket-1, row-`0x80` short bucket-1, rows-`0x0101..0x0103` low-byte-truncated
-  bucket-1 publication, linear-segmented bucket-9,
-  rows-`0x82`/`0x83`/`0x84`/`0xfe`/`0xff` segmented bucket-1/bucket-9,
-  split-plane segmented bucket-9, segmented-wide
-  bucket-1/bucket-9, even-span wide bucket-1, and payload-control odd-span
-  wide bucket-1 streams. The remaining row-count risk is no longer the
-  `0x80`/`0x81` selector boundary itself or the newly covered short/segmented
-  matrix; it is row counts outside those sampled selector-family fixtures,
-  broader publication cross-products, and live CPU continuity for full-success
-  return siblings outside the pinned normal even-span, no-install, status-`2`,
-  row-count-matrix, linear-segmented publication, split-plane segmented publication,
-  segmented-wide, and payload-control publication return fixtures. Accepted
-  descriptor-record mode bytes are no longer a vague
-  open edge for this helper table: fixture `0x16b1a descriptor width helper
-  emits only mode 1/2` proves `0x16b1a` writes only mode `1`/`2`, while
-  mode-byte-`0` is documented as an unchanged-output object-boundary reject,
-  not a parser-produced renderer mode. Fixture `downloaded normal row-0x80
-  and segmented glyph FF publications render page records` covers the row-`0x80`
-  bucket-1 publication sibling for the `0x80`/`0x81` selector threshold.
-  Fixture `downloaded glyph width-span matrix publishes and renders all main
-  helpers` closes the main compact helper indexes for downloaded-character
-  widths: host-fetched spans `1..16` install canonical widths `8..128`, mode
-  bytes alternate `2/1` by span parity, odd spans above one use the
-  `0x16942` split-plane copy path, all cases publish bucket `0` through FF,
-  and `0x1ed84`/`0x1ef6a` renders rows matching the installed bitmap through
-  the `0x1f08e` helper selected by `D1`. Fixture
-  `downloaded glyph wide-remainder matrix publishes and renders
-  compact chunks` extends this to spans `17..32`: selector `0x1003` publishes
-  bucket `0`, object byte `0x10` dispatches to compact target `0x1effe` /
-  `0x1f0d2`, full 16-byte chunks render through `0x2f27c`, remainders
-  `1..15` select `0x1f1ac[remainder]`, and span `32` proves the
-  no-remainder two-chunk case. The same fixture probes compact-wide spans
-  `33`, `48`, `49`, `64`, and `255` through the parser/install/publication
-  and chunk metadata boundary, with matched rendered rows for those sampled
-  high spans. Fixture `downloaded glyph width-byte boundary truncates
-  page-record span` classifies the next handoff: installed spans `0x0100`,
-  `0x0101`, and `0x020d` keep canonical width words, but the current
-  printable source record gives `0x12f2e` width bytes `0x00`, `0x01`, and
-  `0x0d`, so the page-record producer queues selector `0x0003`. The first
-  `0xff1e` publication edge is pinned too: all four cases publish bucket `0`,
-  clear the current root, preserve empty rule/fixed lists and context prefix
-  `(0, 0, 0, 0)`, and keep the published bucket root equal to the queued page
-  object. The first render edge is also pinned: those wrapped spans enter compact
-  mode-0 at `0x1effe` and read helper-table entries `0x1f48e`, `0x1f492`, and
-  `0x1f8c2`, whose targets are non-helper longwords. The model therefore makes
-  no pixel-row claim past that invalid helper selection.
-  Fixture `downloaded glyph segmented-wide matrix publishes and renders
-  compact chunks` carries the matched span set through rows `0x81`: selector
-  `0x3003` publishes buckets `0` and `8`, segment `1` dispatches object byte
-  `0x30` to compact target `0x1effe` / `0x1f264`, full chunks render through
-  `0x2f27c`, remainders `1..15` select `0x1f1ac[remainder]`, and span `32`
-  proves the segmented no-remainder sibling. The same fixture probes
-  segmented-wide spans `33`, `48`, `49`, and `64` through the same upstream
-  boundary, while leaving their row equivalence open. The covered publication
-  fixture set is the primary fixture ledger above, now including the
-  width-span matrix, wide-remainder matrix, segmented-wide matrix, row-count
-  matrix, row-`0x80`, split-plane segmented, segmented-wide,
-  payload-control wide, no-install, status-`2`, and scheduler band-walk
-  siblings.
+  documented normal bucket-1, rows-`0x01`/`0x04`/`0x20`/`0x40`/`0x7f` short bucket-1,
+  row-`0x80` short bucket-1, rows-`0x0101..0x0103` low-byte-truncated bucket-1
+  publication, linear-segmented bucket-9, rows-`0x82`/`0x83`/`0x84`/`0xfe`/`0xff`
+  segmented bucket-1/bucket-9, split-plane segmented bucket-9, segmented-wide
+  bucket-1/bucket-9, even-span wide bucket-1, and payload-control odd-span wide bucket-1
+  streams. The remaining row-count risk is no longer the `0x80`/`0x81` selector boundary
+  itself or the newly covered short/segmented matrix; it is row counts outside those
+  sampled selector-family fixtures, broader publication cross-products, and live CPU
+  continuity for full-success return siblings outside the pinned normal even-span,
+  no-install, status-`2`, row-count-matrix, linear-segmented publication, split-plane
+  segmented publication, segmented-wide, and payload-control publication return
+  fixtures. Accepted descriptor-record mode bytes are no longer a vague open edge for
+  this helper table: fixture `0x16b1a descriptor width helper emits only mode 1/2`
+  proves `0x16b1a` writes only mode `1`/`2`, while mode-byte-`0` is documented as an
+  unchanged-output object-boundary reject, not a parser-produced renderer mode. Fixture
+  `downloaded normal row-0x80 and segmented glyph FF publications render page records`
+  covers the row-`0x80` bucket-1 publication sibling for the `0x80`/`0x81` selector
+  threshold. Fixture `downloaded glyph width-span matrix publishes and renders all main
+  helpers` closes the main compact helper indexes for downloaded-character widths:
+  host-fetched spans `1..16` install canonical widths `8..128`, mode bytes alternate
+  `2/1` by span parity, odd spans above one use the `0x16942` split-plane copy path, all
+  cases publish bucket `0` through FF, and `0x1ed84`/`0x1ef6a` renders rows matching the
+  installed bitmap through the `0x1f08e` helper selected by `D1`. Fixture `downloaded
+  glyph wide-remainder matrix publishes and renders compact chunks` extends this to
+  spans `17..32`: selector `0x1003` publishes bucket `0`, object byte `0x10` dispatches
+  to compact target `0x1effe` / `0x1f0d2`, full 16-byte chunks render through `0x2f27c`,
+  remainders `1..15` select `0x1f1ac[remainder]`, and span `32` proves the no-remainder
+  two-chunk case. The same fixture probes compact-wide spans `33`, `48`, `49`, `64`, and
+  `255` through the parser/install/publication and chunk metadata boundary, with matched
+  rendered rows for those sampled high spans. Fixture `downloaded glyph width-byte
+  boundary truncates page-record span` classifies the next handoff: installed spans
+  `0x0100`, `0x0101`, and `0x020d` keep canonical width words, but the current printable
+  source record gives `0x12f2e` width bytes `0x00`, `0x01`, and `0x0d`, so the
+  page-record producer queues selector `0x0003`. The first `0xff1e` publication edge is
+  pinned too: all four cases publish bucket `0`, clear the current root, preserve empty
+  rule/fixed lists and context prefix `(0, 0, 0, 0)`, and keep the published bucket root
+  equal to the queued page object. The first render edge is also pinned: those wrapped
+  spans enter compact mode-0 at `0x1effe` and read helper-table entries `0x1f48e`,
+  `0x1f492`, and `0x1f8c2`, whose targets are non-helper longwords. The model therefore
+  makes no pixel-row claim past that invalid helper selection. Fixture `downloaded glyph
+  segmented-wide matrix publishes and renders compact chunks` carries the matched span
+  set through rows `0x81`: selector `0x3003` publishes buckets `0` and `8`, segment `1`
+  dispatches object byte `0x30` to compact target `0x1effe` / `0x1f264`, full chunks
+  render through `0x2f27c`, remainders `1..15` select `0x1f1ac[remainder]`, and span
+  `32` proves the segmented no-remainder sibling. The same fixture probes segmented-wide
+  spans `33`, `48`, `49`, and `64` through the same upstream boundary and compares the
+  segment-1 rendered rows with the installed bitmap rows. The covered publication
+  fixture set is the primary fixture ledger above, now including the width-span matrix,
+  wide-remainder matrix, segmented-wide matrix, row-count matrix, row-`0x80`,
+  split-plane segmented, segmented-wide, payload-control wide, no-install, status-`2`,
+  and scheduler band-walk siblings.
 
 Renderer-facing allocated payload fields:
 

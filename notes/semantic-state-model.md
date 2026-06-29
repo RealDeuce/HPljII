@@ -4566,36 +4566,33 @@ compact text renderer.
 - `0x17a24` releases bit-30 offset-table entries delegated by `0x17d7c`,
   clears the selected 4-byte glyph/object pointer, refreshes matching active
   contexts through `0x14c64`, and clears matching continuation state.
-- `0x16498` consumes the `0x16336` descriptor scratch for bit-30
-  downloaded-character payloads. Its range branch `0x164f2..0x16540` treats
-  high character codes as legal only when the font-header byte `+0x0c >= 1`;
-  its copy/allocation branch `0x16558..0x16602` stores the object pointer only
-  after allocation and `0x16874` return status. Accepted parser-produced
-  descriptors stage mode byte `1` for even byte spans and mode byte `2` for
-  odd byte spans through helper `0x16b1a`; resolver `0x1f354` consumes that
-  byte on bit-30 offset-table glyphs to keep the odd-span trailing plane
-  instead of padding the span. Fixture `0x16b1a descriptor width helper emits
-  only mode 1/2` pins the helper write edges at `0x16b36..0x16b6a` and the
-  invalid no-write edge at `0x16b26..0x16b34`. Fixtures
-  `host-fetched even-span wide downloaded character renders through 0x1f0d2`,
-  `host-fetched segmented downloaded character renders through 0x1f1f0`, and
-  `host-fetched split-plane segmented downloaded character renders through
-  0x1f1f0` cover the visible even-span and odd-span object paths. The
-  mode-byte-`0` fixture exercises the pre-copy record-shape reject and leaves
-  the table entry unchanged. Fixture `downloaded glyph width-span matrix
-  publishes and renders all main helpers` carries accepted spans `1..16`
-  through `0x16498` installs, including split-plane copies for odd spans above
-  one. Fixture `downloaded glyph wide-remainder matrix publishes and renders
-  compact chunks` carries accepted spans `17..32` through the same install and
-  zero-drain return boundary before selector `0x1003` renders through
-  `0x1f0d2`; the same fixture now probes accepted spans `33`, `48`, `49`,
-  `64`, and `255` through the install/publication/dispatch boundary while
-  leaving row equivalence open. Fixture `downloaded glyph segmented-wide
-  matrix publishes and renders compact chunks` carries accepted spans `17..32`
-  with rows `0x81` through the same install and zero-drain return boundary
-  before selector `0x3003` renders segment `1` through `0x1f264`; the same
-  fixture probes accepted spans `33`, `48`, `49`, and `64` through the
-  upstream boundary while leaving segment-row equivalence open.
+- `0x16498` consumes the `0x16336` descriptor scratch for bit-30 downloaded-character
+  payloads. Its range branch `0x164f2..0x16540` treats high character codes as legal
+  only when the font-header byte `+0x0c >= 1`; its copy/allocation branch
+  `0x16558..0x16602` stores the object pointer only after allocation and `0x16874`
+  return status. Accepted parser-produced descriptors stage mode byte `1` for even byte
+  spans and mode byte `2` for odd byte spans through helper `0x16b1a`; resolver
+  `0x1f354` consumes that byte on bit-30 offset-table glyphs to keep the odd-span
+  trailing plane instead of padding the span. Fixture `0x16b1a descriptor width helper
+  emits only mode 1/2` pins the helper write edges at `0x16b36..0x16b6a` and the invalid
+  no-write edge at `0x16b26..0x16b34`. Fixtures `host-fetched even-span wide downloaded
+  character renders through 0x1f0d2`, `host-fetched segmented downloaded character
+  renders through 0x1f1f0`, and `host-fetched split-plane segmented downloaded character
+  renders through 0x1f1f0` cover the visible even-span and odd-span object paths. The
+  mode-byte-`0` fixture exercises the pre-copy record-shape reject and leaves the table
+  entry unchanged. Fixture `downloaded glyph width-span matrix publishes and renders all
+  main helpers` carries accepted spans `1..16` through `0x16498` installs, including
+  split-plane copies for odd spans above one. Fixture `downloaded glyph wide-remainder
+  matrix publishes and renders compact chunks` carries accepted spans `17..32` through
+  the same install and zero-drain return boundary before selector `0x1003` renders
+  through `0x1f0d2`; the same fixture now probes accepted spans `33`, `48`, `49`, `64`,
+  and `255` through the install/publication/dispatch boundary and compares rendered rows
+  with the installed bitmap rows. Fixture `downloaded glyph segmented-wide matrix
+  publishes and renders compact chunks` carries accepted spans `17..32` with rows `0x81`
+  through the same install and zero-drain return boundary before selector `0x3003`
+  renders segment `1` through `0x1f264`; the same fixture probes accepted spans `33`,
+  `48`, `49`, and `64` through the upstream boundary and compares segment-1 rendered
+  rows with the installed bitmap rows.
 
 ### Readers And Consumers
 
@@ -5542,16 +5539,16 @@ fields and every legal metric combination have not been page-compared.
   same fixture now probes parser-produced compact-wide spans `33`, `48`,
   `49`, `64`, and `255`: canonical installed records, bucket-0 publication,
   selector `0x1003`, object byte `0x10`, `0x2f27c` full-chunk counts,
-  remainder helpers, and zero-drain return boundaries are pinned, while row
-  equivalence remains open above span `32`. Fixture `downloaded glyph
+  remainder helpers, zero-drain return boundaries, and rows matching the
+  installed bitmap are pinned. Fixture `downloaded glyph
   segmented-wide matrix publishes and renders compact chunks` closes
   parser-produced spans `17..32` at rows `0x81` for selector `0x3003`,
   including buckets `0` and `8`, segment-1 row skip `0x80`, A2/A3 source
   offsets, `0x2f27c` full chunks, `0x1f1ac` remainders `1..15`, span-`32`
   no-remainder rendering, zero-drain returns, and bucket-8 FF publication. The
   same fixture now probes segmented-wide spans `33`, `48`, `49`, and `64`
-  through the same parser/install/publication/dispatch metadata while leaving
-  row equivalence open. Fixture
+  through the same parser/install/publication/dispatch metadata and matches
+  segment-1 rows against the installed bitmap. Fixture
   `0x16498 replacement allocation failure
   partial and rejected downloaded character exits preserve state` covers old-pointer
   release through `0x17a24`, object allocation failure through

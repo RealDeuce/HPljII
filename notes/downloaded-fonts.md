@@ -1358,6 +1358,14 @@ reloads saved glyph `0x2c`, reads record
 `2`, resumes through `0x16942` with saved destinations `0x088e`/`0x0891` and
 D4/D3 counters `1/0`, copies prefix bytes `c0 c1` plus trailing byte `d0`, and
 clears continuation state after completing layout `a0 a1 c0 c1 b0 d0`.
+
+The same fixture now pins the successful return boundary for both resume shapes.
+Disassembly `0x15e22..0x15e28` calls `0x15b9a` and then branches to the
+common `0x15dcc` payload drain. The linear case returns copy status `1`, stream
+position `2`, and remaining budget `0`; the split-plane case returns copy
+status `1`, stream position `3`, and remaining budget `0`. In both cases the
+fixture's `0x15dcc -> 0x12328` drain consumes no bytes and leaves the following
+`!` byte on the normal parser path as printable handler `0xd04a`.
 Disassembly evidence is `0x15b9a..0x15bdc` for table/object lookup and scratch
 span/row writes, `0x15bdc..0x15bec` for the resume-mode `0x16874` call,
 `0x15bee..0x15c18` for status dispatch, and `0x15c18..0x15c4a` for

@@ -5188,8 +5188,13 @@ split-plane object, canonical state is table entry `0x00fa -> 0x0880`, saved gly
 `0x2c`, record `00 00 00 00 0c 02 00 02 00 18 00 00`, width `0x0018`, rows `2`, prefix
 destination `0x088e`, trailing destination `0x0891`, and D4/D3 counters `1/0`; `0x16942`
 copies prefix `c0 c1` and trailing `d0`, completing layout `a0 a1 c0 c1 b0 d0`, then
-clears continuation fields. Disassembly evidence is `0x15b9a..0x15bdc`,
-`0x15bdc..0x15bec`, `0x15bee..0x15c18`, and `0x15c18..0x15c4a`; fixture evidence is
+clears continuation fields. The same fixture classifies the successful return boundary:
+disassembly `0x15e22..0x15e28` calls `0x15b9a` and rejoins `0x15dcc`, and fixture
+fields `linear_return_boundary` and `split_return_boundary` prove that the common
+`0x15dcc -> 0x12328` drain sees remaining budget `0` after stream positions `2` and
+`3`, respectively, leaving the next `!` byte to dispatch as printable handler
+`0xd04a`. Disassembly evidence is `0x15b9a..0x15bdc`, `0x15bdc..0x15bec`,
+`0x15bee..0x15c18`, `0x15c18..0x15c4a`, and `0x15e22..0x15e28`; fixture evidence is
 `0x15b9a resumes downloaded-character continuation objects`. Fixture `0x15b9a partial
 and failed resumes update continuation or release object` covers the sibling status
 exits. A linear status-`2` resume copies only `c3`, leaves bitmap `f0 0f aa 55 c3 00`,

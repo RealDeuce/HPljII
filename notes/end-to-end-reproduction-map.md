@@ -1002,10 +1002,12 @@ The next work should follow dataflow, not isolated handlers:
    `0x16498 status-2 partial installs remain printable` proves linear and split-plane
    status-`2` partial glyphs remain printable and publish the same rows, fixture
    `0x15b9a resumes downloaded-character continuation objects` proves that the saved
-   continuation state can complete those linear and split-plane object bitmaps, and
-   fixture `0x15b9a partial and failed resumes update continuation or release object`
-   proves status-`2` resave and status-`0` offset-table release from the same
-   continuation state. Remaining downloaded-character publication work is limited to row
+   continuation state can complete those linear and split-plane object bitmaps and that
+   the `0x15e22 -> 0x15b9a -> 0x15e28 -> 0x15dcc -> 0x12328` success return boundary
+   drains zero bytes before the next printable byte, and fixture `0x15b9a partial and
+   failed resumes update continuation or release object` proves status-`2` resave and
+   status-`0` offset-table release from the same continuation state. Remaining
+   downloaded-character publication work is limited to row
    counts outside the covered short rows `0x01..0x80` and segmented rows `0x81..0xff`,
    descriptor syntax outside the covered `0x15d0a` route and `0x16336` helper-table
    paths, pixel-row behavior beyond the wrapped-width source-byte boundary,

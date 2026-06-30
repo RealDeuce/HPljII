@@ -663,7 +663,11 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    fixed-record current-record and linear/split-plane continuation full-success
    boundaries now pin `0x15e42 -> 0x16606 -> 0x15dcc -> 0x12328` and
    `0x15e64 -> 0x15c4c -> 0x15dcc -> 0x12328` with zero drains before handler
-   `0xd04a`. Other release variants and full-success return-boundary siblings outside
+   `0xd04a`. The field grouping, writers, consumers, output effect, and exact
+   unresolved variant boundaries for those resource-object fixtures are composed in
+   `notes/semantic-state-model.md` under
+   `Fixed-Record Resource Object Checkpoint`. Other release variants and
+   full-success return-boundary siblings outside
    the even-span rule/raster path and outside the segmented, split-plane segmented,
    segmented-wide, payload-control publication, and bit-30-clear fixed-record fixtures
    are still not proven against every PCL form. Fixture `0x15c4c

@@ -305,9 +305,11 @@ Published page-record state:
   publication cross-products that combine those row words with split-plane, wide,
   segmented-wide, and payload-control selector families. Live CPU continuity also
   remains for full-success return siblings outside the pinned normal even-span,
-  no-install, status-`2`, row-count-matrix, linear-segmented publication, split-plane
-  segmented publication, segmented-wide, and payload-control publication return
-  fixtures. Accepted descriptor-record mode bytes are no longer a vague open edge for
+  no-install, status-`2`, bit-30-clear fixed-record current-record,
+  bit-30-clear fixed-record continuation, row-count-matrix, linear-segmented
+  publication, split-plane segmented publication, segmented-wide, and
+  payload-control publication return fixtures. Accepted descriptor-record mode
+  bytes are no longer a vague open edge for
   this helper table: fixture `0x16b1a descriptor width helper emits only mode 1/2`
   proves `0x16b1a` writes only mode `1`/`2`, while mode-byte-`0` is documented as an
   unchanged-output object-boundary reject, not a parser-produced renderer mode. Fixture
@@ -2270,6 +2272,11 @@ A byte-stream renderer must preserve:
   pins normal, row-`0x80`, and linear-segmented zero-drain returns before handler
   `0xd04a`; fixture `split-plane segmented downloaded glyph FF publication renders page
   record` pins the split-plane segmented zero-drain return before handler `0xd04a`;
+  fixtures `host-fetched 0x15d0a current-record resource object feeds fixed-record
+  render`, `host-fetched 0x15d0a continuation resource object resumes fixed-record
+  render`, and `host-fetched 0x15d0a split-plane continuation resource object resumes
+  fixed-record render` pin the bit-30-clear fixed-record current-record and
+  continuation zero-drain returns before handler `0xd04a`;
   fixture `combined font download FF publishes installed glyph page record` pins the
   segmented-wide zero-drain return before handler `0xd04a`; fixture `host-fetched
   payload-control downloaded glyph FF publishes page record` pins the payload-control

@@ -5920,6 +5920,83 @@ modeled final-header handoff between the font-install phase and the page-stream
 phase; confidence remains medium for replacing that modeled handoff with a full
 live 68000 register/memory capture.
 
+### Fixed-Record Resource Object Checkpoint
+
+This checkpoint composes the bit-30-clear resource-object path that starts at
+the parsed `ESC )s0W` descriptor and ends in visible compact text rows. It is
+backed by fixtures `host-fetched 0x15d0a current-record resource object feeds
+fixed-record render`, `host-fetched 0x15d0a continuation resource object
+resumes fixed-record render`, `host-fetched 0x15d0a split-plane continuation
+resource object resumes fixed-record render`, `0x15c4c partial resource
+resumes update continuation state`, and `0x15c4c failed resource resume
+releases fixed-record object`. The ROM control-flow evidence is
+`generated/disasm/ic30_ic13_font_payload_setup_015b80.lst` for
+`0x15e42 -> 0x16606 -> 0x15dcc -> 0x12328` and
+`0x15e64 -> 0x15c4c -> 0x15dcc -> 0x12328`, plus
+`generated/disasm/ic30_ic13_font_payload_object_path_016040.lst` for the
+`0x16606` fixed-record install exits.
+
+Canonical state in this cluster is the current character word `0x782f30`, the
+selected bit-30-clear payload pointer from `0x78285e`, the fixed-record table
+entry at payload `+0x48`, and the object bitmap bytes at payload `+0x0200`.
+The one-piece fixture writes record `02 03 04 00 00 00 02 00` and bitmap
+`aa 55 f0 0f c3 3c`; the split-plane continuation fixture writes record
+`03 02 04 00 00 00 02 00` and completed bitmap layout
+`a0 a1 c0 c1 b0 d0`. These payload bytes are canonical because `0x14e24`,
+`0x1393a`, `0x12f2e`, `0x1edc6`, and `0x1ef6a` consume them after the parser
+has returned.
+
+Derived/cache state is the active map rebuilt by `0x14c64` / `0x14e24`, the
+source object emitted by `0x1393a`, the compact bucket object emitted by
+`0x12f2e`, and the bridged page context emitted by `0x1edc6`. The
+current-record fixture proves the map resolves printable `!` to glyph `1`,
+source width `2`, rows `3`, context slot `3`, page object prefix
+`00 00 00 00 00 03 00 01 01 66 01`, and selector `0x0003`. The split-plane
+fixture proves the same derived path with width `3`, rows `2`, object prefix
+`00 00 00 00 00 03 00 01 01 76 01`, and rows reconstructed from source bytes
+`a0 a1 b0` and `c0 c1 d0`.
+
+Parser scratch is the restored delayed-handler descriptor record
+`80 57 00 00 00 00`, payload byte budget `0x783140`, and continuation block
+`0x7827c6`, `0x7827da`, `0x7827c8`, `0x7827ca`, `0x7827ce`, `0x7827d2`,
+`0x7827d6`, and `0x7827d8`. `0x15d0a` writes the budget and selects either
+`0x16606` for current-record status `1` or `0x15c4c` for continuation status
+`2`. `0x16606` clears stale continuation state before validating the object;
+`0x15c4c` consumes saved payload, glyph/table index, destination pointers,
+remaining byte count, and split-plane counters, then clears or resaves the
+same block based on copy status.
+
+Firmware bookkeeping is the route edge, copy status, stream position, reject
+reason, and active-context refresh marker. The success fixtures pin copy status
+`1`, remaining `0x783140 = 0`, zero drained bytes at `0x12328`, and next parser
+handler `0xd04a`. The partial fixture pins status `2` resaves for both the
+linear byte `f0` case and the split-plane byte `c1` case. The failure fixture
+pins status `0`: `0x15c4c` takes `0x15cb8..0x15ccc`, calls `0x17d7c`, rewrites
+payload `+0x48` to `01 02 00 fa 00 00 00 00`, writes side-table bytes `fa 00`
+at payload `+0x340`, records active-primary refresh `0x7828de = 0`, and clears
+the continuation fields at `0x15cd6..0x15d08`.
+
+The visible output effect is page text, not an immediate draw by the font
+command. After the current-record fixture installs glyph `0x21`, printable `!`
+queues selector `0x0003` and renders three mode-0 rows beginning at x `22`.
+The linear continuation fixture renders the same three rows after the bitmap is
+split across two descriptor packets. The split-plane continuation fixture
+renders two rows beginning at x `22`, y `7`, proving that saved prefix/trailing
+destinations and D4/D3 counters are sufficient for the later compact renderer
+to recover the odd-width bitmap layout.
+
+Unresolved middle edges after this checkpoint are exact variant boundaries, not
+the documented bit-30-clear current-record/continuation path itself. The
+nonzero-count resource add path `0x16c14..0x16c68 -> 0x12328` is still only a
+ROM-control-flow join in
+`generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`; it is not yet
+paired with a page-visible resource-object fixture. Broader object-shape
+coverage also remains for fixed-record resource objects outside the fixture
+records above, specifically the unmodeled current-record variants between
+`0x16606..0x16770` and continuation variants between `0x15c4c..0x15d08` that
+are not the named one-piece, linear-continuation, split-plane-continuation,
+partial-resave, or failed-release cases.
+
 ### Confidence
 
 High for command dispatch, current-record state, existing-record release ordering before
@@ -6212,7 +6289,12 @@ fields and broader selected-font state combinations have not been page-compared.
   `0xd04a`; fixture `downloaded glyph wide-remainder matrix publishes and renders
   compact chunks` pins compact-wide zero-drain returns before handler `0xd04a`;
   fixture `downloaded glyph segmented-wide matrix publishes and renders compact
-  chunks` pins segmented-wide matrix zero-drain returns before handler `0xd04a`; fixture
+  chunks` pins segmented-wide matrix zero-drain returns before handler `0xd04a`;
+  fixtures `host-fetched 0x15d0a current-record resource object feeds fixed-record
+  render`, `host-fetched 0x15d0a continuation resource object resumes fixed-record
+  render`, and `host-fetched 0x15d0a split-plane continuation resource object resumes
+  fixed-record render` pin the bit-30-clear fixed-record current-record and
+  continuation zero-drain returns before handler `0xd04a`; fixture
   `split-plane segmented downloaded glyph FF publication renders page record` pins the
   split-plane segmented zero-drain return before handler `0xd04a`; fixture `combined
   font download FF publishes installed glyph page record` pins the segmented-wide

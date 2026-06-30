@@ -992,8 +992,9 @@ The next work should follow dataflow, not isolated handlers:
    that default bucket through trailing FF; fixture `0x16498 status-2 partial installs
    remain printable` proves linear and split-plane status-`2` partial glyphs remain
    printable and publish the same rows. Remaining downloaded-character publication work
-   is limited to row counts outside the matrix above, descriptor grammar forms outside
-   the covered helper-table path, pixel-row behavior beyond wrapped-width invalid helper
+   is limited to row counts outside the matrix plus named row-`0x20`, row-`0x40`,
+   row-`0x80`, and row-`0x82` boundary fixtures, descriptor grammar forms outside the
+   covered helper-table path, pixel-row behavior beyond wrapped-width invalid helper
    entries, segmented-wide row words outside the source-byte-wrap matrix, broader
    publication combinations, and full-success return-boundary siblings outside the named
    row-count, wide-remainder, segmented-wide, normal, row-`0x80`, linear-segmented,

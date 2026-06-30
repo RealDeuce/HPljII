@@ -975,7 +975,7 @@ The next work should follow dataflow, not isolated handlers:
    segment `1` in bucket `8` and segment `0` in bucket `0`; low row bytes `0x00` and
    `0x01` select wide bucket `0`.
    The short/segmented row-count matrix now covers short rows `0x01..0x1f`,
-   `0x21..0x3f`, `0x41`, `0x42`, and `0x7f`, plus segmented rows `0x83`, `0x84`,
+   `0x21..0x3f`, and `0x41..0x7f`, plus segmented rows `0x83`, `0x84`,
    `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff`; the named
    row-`0x80`, rows-`0x20`, rows-`0x40`, and rows-`0x82` publication fixtures cover
    their boundary siblings through FF, `0xff1e`, `0x1ed84`, and `0x1ef6a`. The same
@@ -992,9 +992,10 @@ The next work should follow dataflow, not isolated handlers:
    that default bucket through trailing FF; fixture `0x16498 status-2 partial installs
    remain printable` proves linear and split-plane status-`2` partial glyphs remain
    printable and publish the same rows. Remaining downloaded-character publication work
-   is limited to row counts outside the matrix plus named row-`0x20`, row-`0x40`,
-   row-`0x80`, and row-`0x82` boundary fixtures, descriptor grammar forms outside the
-   covered helper-table path, pixel-row behavior beyond wrapped-width invalid helper
+   is limited to short row counts outside the matrix plus named row-`0x20`, row-`0x40`,
+   and row-`0x80` boundary fixtures, segmented row counts outside the matrix plus named
+   row-`0x82`, descriptor grammar forms outside the covered helper-table path,
+   pixel-row behavior beyond wrapped-width invalid helper
    entries, segmented-wide row words outside the source-byte-wrap matrix, broader
    publication combinations, and full-success return-boundary siblings outside the named
    row-count, wide-remainder, segmented-wide, normal, row-`0x80`, linear-segmented,

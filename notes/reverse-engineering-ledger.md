@@ -624,8 +624,8 @@ row-count-matrix short/segmented, linear-segmented publication, split-plane segm
 publication, and segmented-wide publication zero-drain cases plus the payload-control
 wide nonzero-drain case, broader publication combinations beyond the covered normal,
 nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented, rows-`0x20` short,
-rows-`0x40` short, row-count-matrix short rows `0x01..0x1f`, `0x21..0x3f`, `0x41`,
-`0x42`, and `0x7f`, row-count-matrix segmented rows `0x83`, `0x84`, `0x85`, `0x86`,
+rows-`0x40` short, row-count-matrix short rows `0x01..0x1f`, `0x21..0x3f`, and
+`0x41..0x7f`, row-count-matrix segmented rows `0x83`, `0x84`, `0x85`, `0x86`,
 `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff`, rows-`0x82` segmented, rows-`0x0102`
 low-byte-truncated publication, split-plane segmented, segmented-wide, even-span wide,
 payload-control wide, downloaded-character no-install, and status-`2` compact bucket
@@ -635,12 +635,13 @@ through trailing-FF `0xff1e`, while the status-`2` partial-install branch is car
 through trailing-FF publication and published-record rendering for both linear and
 split-plane compact objects. The downloaded-glyph row-count matrix fixture adds fetched
 `ESC )s#W` install, printable, FF-publication, and render-entry coverage for short rows
-`0x01..0x1f`, `0x21..0x3f`, `0x41`, `0x42`, and `0x7f` on selector `0x0003`/bucket `1`,
+`0x01..0x1f`, `0x21..0x3f`, and `0x41..0x7f` on selector `0x0003`/bucket `1`,
 plus segmented rows `0x83`, `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`,
 `0xfe`, and `0xff` on selector `0x2003`/buckets `1` and `9`. Short rows publish visible
-row counts `rows + 6` through row `0x39`, then cap at `64`; segmented rows publish `9`,
-`10`, `11`, `12`, then `16` for rows `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff`.
-All seventy-five row-count matrix cases now return through `0x15dc6 -> 0x16498 ->
+row counts `rows + 6` through row `0x39`, then cap at `64` through `0x7f`; segmented
+rows publish `9`, `10`, `11`, `12`, then `16` for rows `0xbf`, `0xc0`, `0xc1`, `0xfd`,
+`0xfe`, and `0xff`. All one hundred thirty-five row-count matrix cases now return
+through `0x15dc6 -> 0x16498 ->
 0x15dcc -> 0x12328` with copy status `1`, `0x783140 = 0`, zero drained bytes, and next
 handler `0xd04a`. The rows-`0x0102` downloaded-glyph fixture proves accepted 16-bit
 install record `00 00 00 00 0c 01 01 02 00 10 00 00`, but the printable page-record

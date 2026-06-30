@@ -630,6 +630,14 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    host-fetched invalid-resource-type, first-code overflow, zero line/count, high
    line/count, reversed-range, high range/count, and invalid-class paths prove
    parser-to-validation no-install boundaries plus following-printable default output.
+   The nonzero `ESC )s#W` resource-payload path is composed in
+   `notes/semantic-state-model.md` under `Nonzero Resource Payload Checkpoint`:
+   the documented state now spans ROM parser restore, `0x16fae` validation,
+   `0x17026`/`0x1719c` allocation, `0x16c14`/`0x1bc38` candidate insertion,
+   `0x14c64` consumption, and page-visible `d4ac`/`d8fc` metric consumers; the
+   remaining boundary is a fully integrated host stream that installs this
+   bit-30 offset-table candidate and then supplies the downloaded-character
+   glyph pointer/bitmap data without fixture-side mutation.
    Downloaded-character coverage now includes parser-produced normal, wide/control,
    even-span wide, segmented, split-plane segmented, and segmented-wide compact render
    shapes, and the combined downloaded-glyph stream now reaches FF publication with both

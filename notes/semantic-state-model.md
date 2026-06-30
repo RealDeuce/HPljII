@@ -5920,6 +5920,82 @@ modeled final-header handoff between the font-install phase and the page-stream
 phase; confidence remains medium for replacing that modeled handoff with a full
 live 68000 register/memory capture.
 
+### Nonzero Resource Payload Checkpoint
+
+This checkpoint composes the nonzero `ESC )s#W` resource-payload path from ROM
+parser dispatch through resource allocation, installed candidate state, font
+selection, and the page-visible consumers of the resulting payload fields. The
+low-level ledger remains in [downloaded-fonts.md](downloaded-fonts.md) under
+`Resource Payload Installation`. The fixture cluster is
+`resource payload stream ties ROM parser dispatch to 0x16c14 install`,
+`ESC )s80W resource stream installs 0x1719c payload through 0x16c14`,
+`host-fetched resource payload stream installs selected 0x1719c font`,
+`host-fetched font control state drives resource payload stream`,
+`0x16c14-installed 0x1719c payload dispatches as bit-30 resource form`,
+`0x1719c-backed inline payload dispatches through 0x14c64`,
+`0x16fae/0x1719c-backed inline payload maps, queues, and renders one fixed
+record`, `host-fetched 0x1719c payload metrics feed d4ac span rows`, and
+`host-fetched 0x1719c payload metrics feed d8fc span rows`.
+
+Canonical state for the installed nonzero resource path is the current-record
+pool `0x782640..0x782776`, selected current id `0x782f2e`, payload pointer in
+record `+6`, candidate list rooted at `0x7827a0`, candidate counters
+`0x78278e`/`0x782790`/`0x782796`/`0x782798`/`0x78279e`, and the allocated
+`0x1719c` payload header. The host-fetched `ESC )s80W` fixture proves parser
+record `80 57 00 50 00 00`, payload length `80`, validation status `1`,
+allocation size `10`, current id `0x1234`, replacement release of old payload
+`0x456789`, installed candidate longword `0x40000000`, and class-one insertion
+at the candidate-list head.
+
+Parser scratch is the delayed handler snapshot and restored record produced by
+`0x11f96`, the byte budget `0x783140` loaded by `0x16c14`, staged descriptor
+state written by `0x16fae`, optional symbol staging, and the post-handler drain
+through `0x16c68 -> 0x12328`. The command-stream fixture pins parser handlers
+`0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`, modes
+`1 -> 4 -> 13 -> 0`, restored handler `0x16c14`, payload offset `6`, and
+payload prefix `00 01 02 00 ff ff 00 04 00 06 00 09 01 05 12 34`.
+
+Derived/cache state is the selected font map and printable source path. For the
+real `0x16c14` installed candidate, `0x14c64` takes the bit-30 offset-table
+branch, writes selected symbol `0x1234`, range `0x0000..0x007f`, map address
+`0x782f32`, and the `0x15890` snapshot from payload word `+0x22`. The
+bit-30-clear fixed-record dispatch using the same `0x1719c` payload is an
+isolation control, not the integrated `0x16c14` install form: forcing a
+bit-30-clear slot selects `0x14e24`/`0x14eb6`, maps host `0x21` to glyph `1`,
+and snapshots `0x158be` from byte `+0x17`. That control case is still useful
+because the following fixture proves the allocated payload's fixed-record table
+can queue selector `0x0003` and render three mode-0 rows from bitmap
+`0x00a0`.
+
+Firmware bookkeeping is candidate insertion through `0x1bc38`, candidate flag
+normalization by `0x16c14`, current-record replacement/release, installed-count
+updates, class-one counter/cursor shifts, and final selection refresh through
+`0x1b04c`. The allocation-failure and direct release fixtures cover the shared
+teardown path separately; this checkpoint consumes those results rather than
+repeating their cleanup matrix.
+
+The page-visible effects are split by consumer. The fixed-record isolation
+fixture proves payload bytes at table entry `+0x48` can map printable `!`,
+queue bucket object `00 00 00 00 00 03 00 01 01 66 01`, and render rows
+`#.#.#.#..#.#.#.#`, `####........####`, and `##....##..####..` beginning at
+x `22`. The `d4ac` metric fixture consumes the same host-fetched resource
+stream as an unflagged context: payload bytes `+0x2b = 0`, `+0x2c = 0`,
+`+0x2d = 0x20` drive high-y `26`, segment-list key `0xa406`, and visible rows
+combining the fixed-record glyph with span-fill pixels. The `d8fc` metric
+fixture consumes the bit-30 offset-table form after installing a glyph pointer
+for printable `!`: payload words `+0x16 = 4`, `+0x18 = 4`, and `+0x1a = 5`
+drive high-y `16`, segment-list key `0x0406`, record delta `0x0180`, bitmap
+`f0 f0 f0`, and visible rows from the flagged glyph plus span-fill pixels.
+
+Unresolved middle edges after this checkpoint are no longer the parser restore,
+allocation, candidate insertion, or page-visible metric consumers. The exact
+remaining boundary is a fully integrated host byte stream that first installs
+this bit-30 offset-table candidate, then supplies the downloaded-character
+glyph pointer/bitmap data without fixture-side mutation before printable
+output. The bit-30-clear fixed-record render remains deliberately classified as
+an isolation control for the `0x1719c` payload layout, not as the real
+`0x16c14` installed resource form.
+
 ### Fixed-Record Resource Object Checkpoint
 
 This checkpoint composes the bit-30-clear resource-object path that starts at
@@ -5987,12 +6063,11 @@ to recover the odd-width bitmap layout.
 
 Unresolved middle edges after this checkpoint are exact variant boundaries, not
 the documented bit-30-clear current-record/continuation path itself. The
-nonzero-count resource add path `0x16c14..0x16c68 -> 0x12328` is still only a
-ROM-control-flow join in
-`generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`; it is not yet
-paired with a page-visible resource-object fixture. Broader object-shape
-coverage also remains for fixed-record resource objects outside the fixture
-records above, specifically the unmodeled current-record variants between
+nonzero-count `0x16c14..0x16c68 -> 0x12328` resource-payload path is composed
+separately in `Nonzero Resource Payload Checkpoint`; it should not be merged
+with this zero-count bit-30-clear object route. Broader object-shape coverage
+also remains for fixed-record resource objects outside the fixture records
+above, specifically the unmodeled current-record variants between
 `0x16606..0x16770` and continuation variants between `0x15c4c..0x15d08` that
 are not the named one-piece, linear-continuation, split-plane-continuation,
 partial-resave, or failed-release cases.

@@ -701,6 +701,14 @@ the modeled `0xa904` ring source and reaches the same restored record,
 validation status, allocation size, candidate longword, and selected
 `0x14c64` dispatch.
 
+The composed semantic checkpoint for this cluster is `Nonzero Resource Payload
+Checkpoint` in [semantic-state-model.md](semantic-state-model.md). It groups
+the `0x16c14` current-record/candidate state as canonical, the restored
+handler record and `0x16fae` staging as parser scratch, `0x14c64` maps and
+source objects as derived/cache state, and the remaining fully integrated
+bit-30 offset-table font-header plus downloaded-character glyph data stream as
+the open middle edge.
+
 The invalid-resource-type sibling uses a full host-fetched `ESC )s80W` stream
 whose descriptor bytes begin `00 01 02 03`. Parser dispatch walks `0x11eb6`,
 `0x12008`, `0x11ff6`, and `0x11f96`; delayed restore reaches record

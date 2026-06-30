@@ -799,45 +799,33 @@ The next work should follow dataflow, not isolated handlers:
    primary high-control bytes, secondary buckets through `448`, or compact
    renderer arithmetic unless new decode evidence contradicts the current
    fixture boundaries.
-2. Continue reset/default provenance from the composed `ESC E` consumer path.
-   Semantic checkpoint `ESC E Reset And Default Environment` now covers
+2. Do not treat reset/default provenance as an open ROM-internal tracing
+   target unless new evidence contradicts the composed checkpoints. Semantic
+   checkpoint `ESC E Reset And Default Environment` covers
    `0xcc52 -> 0xcc70 -> 0xcda2`, page-root finalization through `0xff1e`,
    font-derived HMI refresh through `0xcbd4`, parser/data-chain reset through
    `0xe146`, valid-page publication fixtures, missing-root reset fixtures, and
-   addressed compact-bucket publication through `0x1387c`/`0x1381c`. The
-   reset-consumed defaults through `Default Environment Record Producers`: the
-   selected `0x780eda` backing records feed `0x78219d`, `0x7821a2`, and
-   `0x78219e` through loader `0x5e80`, while menu/update handlers `0x5060`,
-   `0x50be`, and `0x52ba` update the same records and canonical defaults; the
-   executable fixtures now cover those producer writes and dirty-flag slots.
-   Fixture `0x5e80 -> 0xcda2 reset consumes default record outputs` now joins
-   that producer side to the reset consumer, including the reset-gate behavior
-   for `0x7821a2 -> 0x782da6` and the `0x78219e -> 0x783160` line-spacing
-   conversion. Fixture `0xcfea/0xcf52/0x104d8 convert default line spacing to
-   reset VMI` covers the direct, low-clamp, high-clamp, fallback-status, and
-   landscape-table branches of that conversion.
-   Record-maintenance helpers `0x56c2`, `0x571e`, and `0x5a62` now cover
-   active-bank selection, three-word record-group copy, dirty-flag maintenance,
-   and ROM-table fallback from `0xba3e`/`0xba44` into `0x780eda`, with fixture
-   coverage for the `0x56c2` active-record and `67 SERVICE` boundaries.
-   Panel/service entry points `0x2c84`, `0x3dae`, and `0x4922` now identify
-   the cold-reset/menu-reset byte paths that reach `0x5a62`, `0x4162`, and
-   `0x4fb0`; byte-source helper `0xa3ca` now identifies `$8000.w & 0xff` as
-   the debounced service/panel byte source. Dirty-record commit/readback helpers
-   `0x96c4` and `0x97e4` now identify the retained-storage serial interface
-   through `$a400` writes and `$8c01.1` reads; `0x9a4a` now identifies the
-   software-visible phase pairs for zero, one, and deassert. The remaining
-   middle edge is not the software-reset consumer path, immediate default-byte
-   writer, ROM-table fallback, panel/service dispatch, `0xa3ca`, generic NVRAM
-   persistence, `$a400` phase encoding, startup retained-record bulk load
-   through `0x5a16 -> 0x97e4`, or invalid active-record reporting through
-   `0x56c2 -> 0x1284` (`67 SERVICE`); the fixture harness now covers the
-   default-record producer boundary, the startup read-mask behavior, and the
-   active-record/error scan. The remaining middle edge is the external
-   device/protocol that drives `$8000.w`, the physical retained-storage device
-   and board-level serial pin names behind `$a400`/`$8c01`, reconciling the
-   manual NVRAM-failure fallback wording with the ROM paths found so far, and
-   physical engine/self-test placement against known output.
+   addressed compact-bucket publication through `0x1387c`/`0x1381c`.
+   `Default Environment Record Producers` covers the selected `0x780eda`
+   backing records feeding `0x78219d`, `0x7821a2`, and `0x78219e` through
+   loader `0x5e80`; update handlers `0x5060`, `0x50be`, and `0x52ba` writing
+   the same backing records and canonical defaults; record-maintenance helpers
+   `0x56c2`, `0x571e`, and `0x5a62`; ROM-table fallback from `0xba3e` /
+   `0xba44`; panel/service entry points `0x2c84`, `0x3dae`, and `0x4922`;
+   debounced `$8000.w & 0xff` byte source `0xa3ca`; retained-record
+   commit/readback helpers `0x96c4` and `0x97e4`; and software-visible
+   `$a400` phase pairs from `0x9a4a`. Fixture
+   `0x5e80 -> 0xcda2 reset consumes default record outputs` joins the producer
+   side to the reset consumer, including the reset-gate behavior for
+   `0x7821a2 -> 0x782da6` and line-spacing conversion
+   `0x78219e -> 0x783160`. Fixture
+   `0xcfea/0xcf52/0x104d8 convert default line spacing to reset VMI` covers
+   direct, low-clamp, high-clamp, fallback-status, and landscape-table
+   branches. The remaining work is external: the device/protocol that drives
+   `$8000.w`, physical retained-storage identity and board-level serial pin
+   names behind `$a400`/`$8c01`, reconciling manual NVRAM-failure wording with
+   the ROM paths found so far, and physical engine/self-test placement against
+   known output.
 3. Treat font metric-byte combinations as regression expansion unless a new
    state boundary appears. The selected-context bridge, metric consumers, downloaded
    descriptor/payload producer chain, and host-stream downloaded glyph output are now

@@ -857,13 +857,22 @@ The next work should follow dataflow, not isolated handlers:
    formulas and consumer gates, not a new semantic middle edge by themselves. Remaining
    metric-related work is external/manual naming for consumed-but-not-staged validation
    fields or broader selected-font combinations that expose different state boundaries.
-4. Broaden the page-image fixture suite beyond the current complete
-   text/rule/raster/publication stream, downloaded-glyph FF publication stream,
-   parser-driven downloaded-glyph/rule/raster page stream, primary plus secondary
-   built-in font-selection visible-output streams, inline primary and secondary
-   parser-to-printable streams, the primary and secondary symbol fallbacks, plus
-   primary/secondary current-font-RAM handoff and composed selection-to-RAM handoff
-   visible-output streams. Downloaded-font live-continuity work is now narrowed:
+4. Keep page-image expansion focused on new pixel-affecting state boundaries,
+   not on re-running already-composed visible streams. The current suite covers
+   the complete text/rule/raster/publication stream, downloaded-glyph FF
+   publication stream, parser-driven downloaded-glyph/rule/raster page stream,
+   primary plus secondary built-in font-selection visible-output streams,
+   inline primary and secondary parser-to-printable streams, the primary and
+   secondary symbol fallbacks, primary/secondary current-font-RAM handoff, and
+   composed selection-to-RAM handoff visible-output streams. The highest-value
+   ROM-only expansion target is now the bounded downloaded-character matrix:
+   pixel rows after wrapped source-width bytes choose compact-wide or invalid
+   compact mode-0 helpers, broader segmented-wide high-row fallback
+   row/span cross-products beyond rows `0x0181`, `0x0182`, and `0x01ff`, and
+   publication/return-boundary siblings outside the named row-count,
+   wide-remainder, segmented-wide, no-install, status-`2`, payload-control, and
+   bit-30-clear fixed-record cases. Downloaded-font live-continuity work is a
+   separate proof target:
    fixtures `combined host-fetched font download stream prints installed glyph` and
    `combined font download FF publishes installed glyph page record` already drive one
    2,215-byte `0xa904` stream through font-control state, `ESC )s2193W` install,

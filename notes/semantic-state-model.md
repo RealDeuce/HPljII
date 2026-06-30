@@ -10420,6 +10420,10 @@ proves startup bulk load and active-record failure reporting through
 
 ## Page/Font Scheduler Handoff
 
+The standalone page/font scheduler contract is in
+[page-font-scheduler.md](page-font-scheduler.md). This section preserves the
+full low-level ledger and fixture evidence.
+
 Status: composed for routine `0x19dd2..0x1a2e2` and its immediate
 font/resource refresh helpers `0x1ba92`, `0x178fa`, `0x19d9c`, `0x1a4fa`, and
 `0x1a900`. This checkpoint sits between external/host quiesce callers and the

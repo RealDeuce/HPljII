@@ -29,6 +29,9 @@ compatibility boundary.
 - [external-ready-service.md](external-ready-service.md) - documented
   external-ready/service loop status bits, messages, register shadows, and
   scheduler/status teardown.
+- [page-font-scheduler.md](page-font-scheduler.md) - documented
+  optional-resource page/font scheduler handoff, refresh helpers, return paths,
+  and caller contracts.
 - [rom-dump-manifest.md](rom-dump-manifest.md) - verified ROM dump
   hashes, package markings, interleave order, and rejected order probes.
 - [firmware-startup.md](firmware-startup.md) - first annotated 68000

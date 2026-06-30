@@ -70,6 +70,7 @@ the board-facing boundary is tracked in
   is not a page-imaging producer, but it can stop or defer normal parsing
   before page objects are generated. The teardown handoff through
   `0xc108 -> 0x19dd2 -> 0x36e4` is now bounded in
+  [page-font-scheduler.md](page-font-scheduler.md) and
   `Page/Font Scheduler Handoff`: `0x19dd2` publishes scratch pointer
   `0x782894`, `0x19eb6` scans optional windows `0x200000..0x3ffffe` and
   `0x400000..0x5ffffe` when `$8000.14/15` permit it, `0x1a042` and

@@ -243,7 +243,9 @@ Expected ROM-only unknowns:
   firmware `0x0c0000..0x0c0321`, which affects the secondary transparent
   segment-57 fallback rows documented in
   [transparent-print-data.md](transparent-print-data.md) and
-  [resource-rom.md](resource-rom.md).
+  [resource-rom.md](resource-rom.md). The startup resource-pair byte-sum covers
+  `0x080000..0x0bffff`, so checksum success does not resolve those continuation
+  bytes.
 - Manual-facing baseline/cell terminology and physical paper comparison for
   the full internal-font printout, after the ROM-side sample page and
   rendered-surface digest already documented in

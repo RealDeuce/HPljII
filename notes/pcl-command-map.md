@@ -994,7 +994,9 @@ unresolved command-map edge is specifically the memory map at
 `0x0c0000..0x0c0321`. `data/rom_manifest.json` shows that range is beyond the
 verified `IC32,IC15` resource image, and `notes/formatter-interface-pca.md`
 records address-controller/jumper ROM-region behavior as the hardware state
-that can resolve it.
+that can resolve it. Startup checksum evidence does not choose a continuation:
+`notes/firmware-startup.md` bounds the resource-pair byte-sum self-test at
+`0x080000..0x0bffff`, before the fallback-row bytes at `0x0c0000`.
 `ESC &p2X\x1aA!` covers the probe path where `1a 41` contributes payload byte
 `0x41`, not `0x1a`.
 
@@ -1086,8 +1088,9 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   `0x1a2e4 -> 0x1a616 -> 0x1a9be` candidate windows and selection state. The
   remaining resource-ROM boundary is the firmware address window
   `0x0c0000..0x0c0321` used by the transparent secondary segment-57 fallback
-  rows, which needs board/emulator memory-map evidence or physical output that
-  selects one of the documented fallback-row digests.
+  rows. Startup checksum evidence covers only `0x080000..0x0bffff`, so this
+  boundary still needs board/emulator memory-map evidence or physical output
+  that selects one of the documented fallback-row digests.
 - Continue active-render scheduler work only at the external device boundary.
   The software-visible scheduler, wait-object, trap, render-work, per-band
   merge, and page-record bridge states are already modeled. Remaining work is

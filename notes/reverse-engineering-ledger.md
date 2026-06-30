@@ -1204,7 +1204,10 @@ ROM work needed:
   verified resource-pair byte range ends at `0x0bffff`; `data/rom_manifest.json`
   accounts for the installed four-package ROM set, while
   `notes/formatter-interface-pca.md` records the formatter's larger ROM capacity
-  and address-controller/jumper ROM-region control.
+  and address-controller/jumper ROM-region control. Startup checksum evidence
+  does not choose among those candidates because the resource-pair byte-sum
+  self-test covers `0x080000..0x0bffff`, stopping before the `0x0c0000`
+  continuation.
   Command-family state is composed in `Text Cursor And Direct Controls`, and
   the printable source-object fields are composed in `Text Source Objects And
   Compact Buckets`.

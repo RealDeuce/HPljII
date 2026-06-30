@@ -4490,8 +4490,10 @@ compact text renderer.
     `0x0003` publishes bucket `1`, rows-`0x40` short selector `0x0003`
     publishes bucket `1`, row-count matrix short rows `0x01`, `0x02`,
     `0x03`, `0x04`, `0x05`, `0x06`, `0x07`, `0x08`, `0x09`, `0x0a`,
-    `0x0b`, `0x0c`, `0x0d`, `0x0e`, `0x0f`, `0x3e`, `0x3f`, `0x41`,
-    `0x42`, and `0x7f` publish bucket `1`,
+    `0x0b`, `0x0c`, `0x0d`, `0x0e`, `0x0f`, `0x10`, `0x11`, `0x12`,
+    `0x13`, `0x14`, `0x15`, `0x16`, `0x17`, `0x18`, `0x19`, `0x1a`,
+    `0x1b`, `0x1c`, `0x1d`, `0x1e`, `0x1f`, `0x20`, `0x3e`, `0x3f`,
+    `0x41`, `0x42`, and `0x7f` publish bucket `1`,
     linear-segmented selector `0x2003` publishes buckets `1` and `9` for rows
     `0x81` and rows `0x82`, row-count matrix segmented rows `0x83`, `0x84`,
     `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff`
@@ -4508,7 +4510,7 @@ compact text renderer.
     `80 57 00 06 00 00`, linear-segmented `80 57 01 02 00 00`, and even-span
     wide `80 57 00 12 00 00`; the rows-`0x0102` truncation fixture restores
     `80 57 02 04 00 00`; the row-count matrix restores records from
-    `80 57 00 02 00 00` through `80 57 01 fe 00 00` for the thirteen short
+    `80 57 00 02 00 00` through `80 57 01 fe 00 00` for the documented short
     and segmented row-count siblings.
 - Derived/cache:
   - `0x7827c6`, `0x7827ca`, `0x7827ce`, `0x7827d2`, `0x7827d6`,

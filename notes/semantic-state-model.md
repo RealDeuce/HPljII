@@ -4612,20 +4612,21 @@ compact text renderer.
   - downloaded-character segmented-wide row-byte boundary: fixture
     `downloaded segmented-wide row-byte boundary truncates page-record
     segments` installs canonical row words `0x0081`, `0x00ff`, `0x0100`,
-    `0x0101`, and `0x0181` for span `0x11`. Parser/page-record scratch is the
-    current unflagged printable source record byte `+1`, which contains
-    `0x81`, `0xff`, `0x00`, `0x01`, and `0x81`. Derived/cache state is the
-    `0x12f2e` selector and segment list: rows `0x0081` and `0x00ff` queue
-    selector `0x3003` with segments `1` and `0`; rows `0x0100` and `0x0101`
-    queue selector `0x1003`; row `0x0181` queues selector `0x3003` with only
-    segments `1` and `0`. Publication state is fixture-backed for both outcomes:
-    segmented cases publish buckets `0` and `8` with selected bucket `8`, while
-    rows `0x0100` and `0x0101` publish only bucket `0`; all keep empty rule/fixed
-    lists and context prefix `(0, 0, 0, 0)`. Derived render state uses the
-    canonical installed row words after selector choice: rows `0x0100` and
-    `0x0101` dispatch through `0x1f0d2` and split `80/176` and `80/177`; row
-    `0x0181` dispatches only produced `0x1f264` segment objects, with segment
-    `1` splitting `32/96` and segment `0` splitting `80/48`.
+    `0x0101`, `0x0181`, `0x0182`, `0x01ff`, `0x0200`, and `0x0201` for span
+    `0x11`. Parser/page-record scratch is the current unflagged printable
+    source record byte `+1`, which contains `0x81`, `0xff`, `0x00`, `0x01`,
+    `0x81`, `0x82`, `0xff`, `0x00`, and `0x01`. Derived/cache state is the
+    `0x12f2e` selector and segment list: low row bytes above `0x80` queue
+    selector `0x3003` with segments `1` and `0`, while low row bytes `0x00`
+    and `0x01` queue selector `0x1003`. Publication state is fixture-backed
+    for both outcomes: segmented cases publish buckets `0` and `8` with
+    selected bucket `8`, while compact-wide cases publish only bucket `0`; all
+    keep empty rule/fixed lists and context prefix `(0, 0, 0, 0)`. Derived
+    render state uses the canonical installed row words after selector choice:
+    compact-wide rows `0x0100`, `0x0101`, `0x0200`, and `0x0201` dispatch
+    through `0x1f0d2`; segmented rows dispatch only produced `0x1f264`
+    segment objects, and the fixture records the per-case `0x1f414` splits
+    rather than claiming visible output for the wrapped source-byte cases.
   - `0x782842..0x782851` and `0x782856`: optional symbol bytes and count
     staged by `0x16fae`.
   - `0x1ed84` render-record work words `+0x10/+0x16` copied from the
@@ -5519,10 +5520,11 @@ clears root `+0x18`, `0x1ed84` copies that word into render `+0x10/+0x16`, and f
 band words `0..9` through `0x1ef6a` and preserves the same visible row. High for
 the segmented-wide row-byte producer boundary because fixture `downloaded
 segmented-wide row-byte boundary truncates page-record segments` asserts row
-words `0x0081`, `0x00ff`, `0x0100`, `0x0101`, and `0x0181`, the one-byte
-source records, the resulting `0x12f2e` selectors/segments, the `0x1f0d2`
-splits for rows `0x0100` and `0x0101`, and the produced `0x1f264` segment
-splits for row `0x0181`. High for
+words `0x0081`, `0x00ff`, `0x0100`, `0x0101`, `0x0181`, `0x0182`, `0x01ff`,
+`0x0200`, and `0x0201`, the one-byte source records, the resulting `0x12f2e`
+selectors/segments, the `0x1f0d2` render boundary for low row bytes `0x00`
+and `0x01`, and the produced `0x1f264` segment-boundary records for low row
+bytes `0x81`, `0x82`, and `0xff`. High for
 downloaded-glyph/rule/raster render composition because fixture `host-fetched downloaded
 glyph composes with rule and raster through 0x1ef6a` asserts the `ESC )s18W` install
 fields, bucket-5 glyph/raster objects, bridged selector-7 rule object, `0x1ef6a` call
@@ -5690,8 +5692,8 @@ fields and broader selected-font state combinations have not been page-compared.
   pixel rows after printable downloaded spans `0x0100..0x020d` wrap in the
   current one-byte page source span field and select invalid helper-table
   targets, visible behavior after
-  segmented-wide row words above `0x00ff` wrap in the current one-byte page
-  source row field, broader
+  segmented-wide row words outside the source-byte-wrap matrix produce the
+  current one-byte page source row field, broader
   publication combinations beyond the documented normal, non-boundary short, rows-`0x20`
   short, rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   low-byte-truncated table-limit boundary, linear-segmented, rows-`0x82` segmented,

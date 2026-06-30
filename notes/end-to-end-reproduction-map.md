@@ -964,10 +964,13 @@ The next work should follow dataflow, not isolated handlers:
    spans publish bucket `0` and dispatch through helper-table entries that resolve to
    non-helper longwords. Fixture `downloaded segmented-wide row-byte boundary truncates
    page-record segments` pins the row-byte sibling for installed row words `0x0081`,
-   `0x00ff`, `0x0100`, `0x0101`, and `0x0181`: `0x12f2e` sees row bytes `0x81`, `0xff`,
-   `0x00`, `0x01`, and `0x81`; rows `0x0100` and `0x0101` select wide bucket `0`, while
-   row `0x0181` produces only segment buckets `1` and `0`. The short/segmented row-count
-   matrix now covers short rows `0x01..0x1f`, `0x3e`, `0x3f`, `0x41`, `0x42`, and
+   `0x00ff`, `0x0100`, `0x0101`, `0x0181`, `0x0182`, `0x01ff`, `0x0200`, and
+   `0x0201`: `0x12f2e` sees only source row bytes `0x81`, `0xff`, `0x00`, `0x01`,
+   `0x81`, `0x82`, `0xff`, `0x00`, and `0x01`. Low row bytes above `0x80` produce
+   segment `1` in bucket `8` and segment `0` in bucket `0`; low row bytes `0x00` and
+   `0x01` select wide bucket `0`.
+   The short/segmented row-count matrix now covers short rows `0x01..0x1f`, `0x3e`,
+   `0x3f`, `0x41`, `0x42`, and
    `0x7f`, plus segmented rows `0x83`, `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`,
    `0xfd`, `0xfe`, and `0xff`; the named row-`0x80`, rows-`0x20`, rows-`0x40`, and
    rows-`0x82` publication fixtures cover their boundary siblings through FF, `0xff1e`,
@@ -986,7 +989,7 @@ The next work should follow dataflow, not isolated handlers:
    printable and publish the same rows. Remaining downloaded-character publication work
    is limited to row counts outside the matrix above, descriptor grammar forms outside
    the covered helper-table path, pixel-row behavior beyond wrapped-width invalid helper
-   entries, segmented-wide row words above `0x00ff` after source-byte wrap, broader
+   entries, segmented-wide row words outside the source-byte-wrap matrix, broader
    publication combinations, and full-success return-boundary siblings outside the named
    row-count, wide-remainder, segmented-wide, normal, row-`0x80`, linear-segmented,
    split-plane segmented, segmented-wide, no-install, status-`2`, and payload-control

@@ -700,9 +700,13 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    `notes/semantic-state-model.md` under
    `Fixed-Record Resource Object Checkpoint`. Other release variants and
    full-success return-boundary siblings outside
-   the even-span rule/raster path and outside the segmented, split-plane segmented,
-   segmented-wide, payload-control publication, and bit-30-clear fixed-record fixtures
-   are still not proven against every PCL form. Fixture `0x15c4c
+   the even-span rule/raster path and outside the row-count matrix, wide-remainder
+   matrix, segmented-wide matrix, high-row segmented-wide matrix, segmented,
+   split-plane segmented, segmented-wide, payload-control publication, and
+   bit-30-clear fixed-record fixtures are still not proven against every PCL form. The
+   wrapped source-width-byte branch is now fully classified for `0x00..0x10` and
+   `0x11..0xff`; remaining work there is physical/device behavior after the documented
+   invalid compact-mode-0 helper targets, not parser-state discovery. Fixture `0x15c4c
    partial resource resumes update continuation state` covers the fixed-record
    continuation route's status-`2` resave behavior for linear and split-plane
    bit-30-clear resource objects.
@@ -866,12 +870,13 @@ The next work should follow dataflow, not isolated handlers:
    secondary symbol fallbacks, primary/secondary current-font-RAM handoff, and
    composed selection-to-RAM handoff visible-output streams. The highest-value
    ROM-only expansion target is now the bounded downloaded-character matrix:
-   pixel rows after wrapped source-width bytes choose compact-wide or invalid
+   physical/device behavior after wrapped source-width bytes choose invalid
    compact mode-0 helpers, broader segmented-wide high-row fallback
-   row/span cross-products beyond rows `0x0181`, `0x0182`, and `0x01ff`, and
-   publication/return-boundary siblings outside the named row-count,
-   wide-remainder, segmented-wide, no-install, status-`2`, payload-control, and
-   bit-30-clear fixed-record cases. Downloaded-font live-continuity work is a
+   row/span cross-products beyond rows `0x0181`, `0x0182`, `0x01ff`, `0x0281`,
+   `0x0282`, and `0x02ff`, and publication/return-boundary siblings outside
+   the named row-count, wide-remainder, segmented-wide, high-row segmented-wide,
+   no-install, status-`2`, payload-control, and bit-30-clear fixed-record cases.
+   Downloaded-font live-continuity work is a
    separate proof target:
    fixtures `combined host-fetched font download stream prints installed glyph` and
    `combined font download FF publishes installed glyph page record` already drive one

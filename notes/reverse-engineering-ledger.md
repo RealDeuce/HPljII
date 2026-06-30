@@ -627,16 +627,23 @@ fixture-backed `0x15c4c` status-`0` fixed-record release, `0x17d7c` extended-tab
 rewrite, `0x17d7c -> 0x17a24` bit-30 offset-table delegate, `0x17d7c` reject exits,
 and `0x1887a` cleanup-branch matrix, full-success return-boundary siblings beyond the
 covered normal even-span, no-install, status-`2`, row-count-matrix short/segmented,
-linear-segmented publication, split-plane segmented publication, and segmented-wide
-publication zero-drain cases plus the payload-control wide nonzero-drain case, broader
-publication combinations beyond the covered normal,
-nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented, rows-`0x20` short,
-rows-`0x40` short, row-count-matrix short rows `0x01..0x1f`, `0x21..0x3f`, and
-`0x41..0x7f`, row-count-matrix segmented rows `0x83..0xff`, rows-`0x82` segmented,
-rows-`0x0102` low-byte-truncated publication, split-plane segmented, segmented-wide,
-even-span wide, payload-control wide, downloaded-character no-install, and status-`2`
-compact bucket variants, full live-parser raster edge cases, and final device-output
-page comparison. Downloaded-character no-install failures now publish the following
+linear-segmented publication, split-plane segmented publication, segmented-wide
+publication, wide-remainder matrix, segmented-wide matrix, high-row segmented-wide
+matrix, and payload-control wide nonzero-drain cases, broader publication combinations
+beyond the covered normal, nonboundary-short rows-`0x10`, row-`0x80`,
+linear-segmented, rows-`0x20` short, rows-`0x40` short, row-count-matrix short rows
+`0x01..0x1f`, `0x21..0x3f`, and `0x41..0x7f`, row-count-matrix segmented rows
+`0x83..0xff`, rows-`0x82` segmented, rows-`0x0102` low-byte-truncated publication,
+split-plane segmented, segmented-wide, even-span wide, payload-control wide,
+downloaded-character no-install, and status-`2` compact bucket variants, full
+live-parser raster edge cases, and final device-output page comparison. The
+source-width wrap boundary is no longer a broad parser/render unknown: fixture
+`downloaded glyph width-byte boundary truncates page-record span` preserves canonical
+width words for `0x00ff`, every span `0x0100..0x0111`, `0x017f`, `0x0180`, `0x01fe`,
+and `0x020d`, proves `0x12f2e` sees only the low width byte, carries `0x11..0xff`
+source bytes through compact-wide `0x1f0d2` rows, and classifies every `0x00..0x10`
+source byte as a compact mode-0 helper-table target outside decoded row-copy helpers.
+Downloaded-character no-install failures now publish the following
 default printable through trailing-FF `0xff1e`, while the status-`2` partial-install
 branch is carried through trailing-FF publication and published-record rendering for
 both linear and split-plane compact objects. The downloaded-glyph row-count matrix

@@ -6558,8 +6558,10 @@ Field groups:
   `80 57 00 12 00 00`.
 - Unknown for this checkpoint: full-success return-boundary siblings outside
   the segmented downloaded-glyph plus raster stream and outside the separate
-  no-install/status-`2`, segmented-publication, combined segmented-wide
-  publication, and even-span glyph/rule/raster publication visible fixtures.
+  no-install/status-`2`, row-count matrix, wide-remainder matrix,
+  segmented-wide matrix, high-row segmented-wide matrix, segmented-publication,
+  combined segmented-wide publication, payload-control, bit-30-clear
+  fixed-record, and even-span glyph/rule/raster publication visible fixtures.
   The even-span page stream itself now drives the glyph, rule, and raster
   producers together from a fixture-backed byte-24 `final_header` memory
   handoff. The residual gap is only stronger live 68000 register/memory capture

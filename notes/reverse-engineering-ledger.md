@@ -126,11 +126,12 @@ service-message selector, updating
 `0x780e3e`/`0x7822e6`, dispatching `0x780e8a` through the table at
 `0x8626`, and selecting strings such as `16 TONER LOW`, `SERVICE MODE`,
 `UC`, `LC`, `04 SELF TEST`, `05 SELF TEST`, `06 PRINTING TEST`, and
-`06 FONT PRINTOUT` through wrappers `0x8c7a` / `0x8c90`. Remaining work
-is protocol naming for the `0x12280` response bytes, user-facing names
-for the folded status categories and selected record bytes, the
-`0x9182` / `0x9112` display-engine internals, and physical naming/timing
-for the output MMIO banks.
+`06 FONT PRINTOUT` through wrappers `0x8c7a` / `0x8c90`. The
+`0x122be..0x12326` output producer now pins model-ID bytes
+`33440A\r\n` from `0x12280`; remaining work is the external protocol name
+for that `0x11` query, user-facing names for the folded status categories
+and selected record bytes, the `0x9182` / `0x9112` display-engine
+internals, and physical naming/timing for the output MMIO banks.
 
 ### Main PCL parser
 

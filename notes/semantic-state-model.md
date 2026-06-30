@@ -621,6 +621,14 @@ pending, and drains queued bytes to the interface selected by
   - none owned by the FIFO. The observed producer at
     `0x122be..0x12326` consumes parser/resource-payload scratch around
     `0x78299e` and enqueues response bytes through `0xb090`.
+- Canonical response literal:
+  - `0x12280..0x12288`: zero-terminated ASCII `33440A\r\n`. Handler
+    `0x122be` emits this literal through `0xb090` only after `0xda9a`
+    returns byte `0x11` and the active six-byte parser record word `+2`
+    is `1` or `-1`.
+    Evidence:
+    `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst` and
+    `generated/analysis/ic30_ic13_strings.txt`.
 - Firmware bookkeeping:
   - `0x7801e2`: wait object whose startup table entry restarts at
     `0xae2c`; `0xb090` calls `0x10c8(0x7801e2)` while waiting for space
@@ -630,9 +638,8 @@ pending, and drains queued bytes to the interface selected by
 - Unknown:
   - physical connector names for `0xfffe0001` / `0xfffe0003` and
     `0xfffee005` / `0xfffee003`.
-  - user-visible meaning of the literal response string at `0x12280` and
-    the exact protocol condition represented by `0xda9a` returning
-    `0x11` with record word `+2` equal to `1` or `-1`.
+  - external protocol name for the `0x11` query that requests model-ID
+    literal `33440A\r\n` when record word `+2` is `1` or `-1`.
 
 ### Writers
 
@@ -661,8 +668,9 @@ pending, and drains queued bytes to the interface selected by
 
 - `0x122be..0x12326` is the only observed `0xb090` caller. When `0xda9a`
   returns byte `0x11` and the active six-byte record word `+2` is `1` or
-  `-1`, it walks the zero-terminated bytes at `0x12280` and enqueues each
-  byte through `0xb090`; otherwise it reports the byte through `0x9ec0`.
+  `-1`, it walks the zero-terminated bytes `33440A\r\n` at `0x12280`
+  and enqueues each byte through `0xb090`; otherwise it reports the byte
+  through `0x9ec0`.
 - `0xae2c` is the `0x7801e2` worker. It sleeps through `0x10d0(0x15)`
   only when `0x783ed2`, `0x780e22`, and `0x783e61` are all zero, then
   drains or discards FIFO bytes according to `0x780e40`.
@@ -688,11 +696,11 @@ page records, `0x1ed84`, or `0x1ef6a`.
 ### Confidence
 
 High for FIFO capacity, pointer wrap, enqueue/dequeue side effects,
-`0x7801e2` wait-object coupling, status-byte composition, and
-output-backend branch behavior: the focused listings are direct stores,
-tests, and calls, and the FIFO helper boundaries now have executable
-fixtures. Medium for physical connector naming and the protocol meaning
-of the `0x12280` literal bytes.
+`0x7801e2` wait-object coupling, status-byte composition, output-backend
+branch behavior, and the `0x122be` model-ID literal bytes: the focused
+listings are direct stores, tests, calls, and a string-table hit. Medium
+for physical connector naming and the external protocol name of the
+`0x11` query.
 
 ### Fixtures
 
@@ -740,8 +748,10 @@ of the `0x12280` literal bytes.
 
 ### Unresolved Middle Edges
 
-- `0x122be..0x12326`: producer control flow is bounded, but the protocol
-  meaning of `0x11` plus record word `+2 == 1` or `-1` remains unnamed.
+- `0x122be..0x12326`: producer control flow and emitted bytes are pinned:
+  `0x11` plus record word `+2 == 1` or `-1` emits `33440A\r\n` through
+  `0xb090`. The remaining edge is the external protocol name for that
+  query, not the ROM response behavior.
 - `0x36e4..0x37fa`: aggregate formulas are pinned, but physical or
   user-facing names for `0x780e32`, `0x780e36`, `0x780e2e`,
   `0x780e2a`, and their folded status categories remain board/manual

@@ -180,10 +180,10 @@ Disassembly evidence:
 Unresolved middle edges:
 
 - No unresolved ROM object/rendering edge remains in these status paths.
-- Remaining work is protocol naming for the `0x12280` response bytes,
-  user-facing names for folded status categories and selected record bytes,
-  `0x9182` / `0x9112` display-engine internals, and physical naming/timing for
-  the output MMIO banks.
+- Remaining work is the external protocol name for the `0x11` query that
+  emits `33440A\r\n` from `0x12280`, user-facing names for folded status
+  categories and selected record bytes, `0x9182` / `0x9112` display-engine
+  internals, and physical naming/timing for the output MMIO banks.
 
 ## Attendance / User Action
 

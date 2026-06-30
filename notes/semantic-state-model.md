@@ -4684,9 +4684,9 @@ compact text renderer.
 - `0x15c4c` resumes bit-30-clear fixed-record bitmap copies from continuation
   fields, including split-plane A4/A3 destinations and D4/D3 counters. On
   status `1` it clears continuation state and leaves the completed fixed-record
-  payload consumable by the active context path. On status `0` it calls
-  `0x17d7c` to release/rewrite the fixed-record entry, then clears
-  continuation state.
+  payload consumable by the active context path. On status `2` it resaves
+  advanced continuation state. On status `0` it calls `0x17d7c` to
+  release/rewrite the fixed-record entry, then clears continuation state.
 - `0x17d7c` rewrites released bit-30-clear fixed-record entries, writes
   fallback side-table bytes, refreshes matching active contexts through
   `0x14c64`, and clears matching continuation state.
@@ -4944,12 +4944,17 @@ payload `0x000100`, glyph/table index `0x21`, prefix destination `0x000303`, tra
 destination `0x000305`, and D4/D3 counters `0/0`; `0x15c4c` copies bytes `c1 d0`, clears
 continuation state, leaves bitmap layout `a0 a1 c0 c1 b0 d0`, queues object prefix `00
 00 00 00 00 03 00 01 01 76 01`, and renders rows reconstructed from `a0 a1 b0` and `c0
-c1 d0`. Fixture `0x15c4c failed resource resume releases fixed-record object` proves the
-status-`0` sibling: a partial `0x16606` copy saves the same payload and glyph/table
-index, a short resume copies only bytes `f0 0f`, then `0x15c4c` calls `0x17d7c`. The
-release helper rewrites payload `+0x48` from `02 03 04 00 00 00 02 00` to `01 02 00 fa
-00 00 00 00`, writes side-table bytes `fa 00` at payload `+0x340`, records
-active-primary refresh `0x7828de = 0`, and clears the matching continuation fields.
+c1 d0`. Fixture `0x15c4c partial resource resumes update continuation state` proves the
+status-`2` sibling: a linear resume copies byte `f0`, advances destination
+`0x000302 -> 0x000303`, and resaves remaining count `3`; a split-plane resume copies
+prefix byte `c1`, advances prefix destination `0x000303 -> 0x000304`, keeps trailing
+destination `0x000305`, and resaves D4/D3 counters `1/0`. Fixture `0x15c4c failed
+resource resume releases fixed-record object` proves the status-`0` sibling: a partial
+`0x16606` copy saves the same payload and glyph/table index, a short resume copies only
+bytes `f0 0f`, then `0x15c4c` calls `0x17d7c`. The release helper rewrites payload
+`+0x48` from `02 03 04 00 00 00 02 00` to `01 02 00 fa 00 00 00 00`, writes side-table
+bytes `fa 00` at payload `+0x340`, records active-primary refresh `0x7828de = 0`, and
+clears the matching continuation fields.
 
 Fixture `0x15d0a descriptor grammar exits and handler matrix` composes the route
 front end with the state model. Canonical input state is the parsed byte budget
@@ -5638,6 +5643,7 @@ fields and broader selected-font state combinations have not been page-compared.
 - `host-fetched 0x15d0a continuation resource object resumes fixed-record
   render`
 - `0x15c4c failed resource resume releases fixed-record object`
+- `0x15c4c partial resource resumes update continuation state`
 - `0x17d7c releases extended fixed-record table with secondary refresh`
 - `0x17d7c delegates bit-30 release to offset-table helper`
 - `0x16c14 allocation failure releases existing payload through 0x1887a`

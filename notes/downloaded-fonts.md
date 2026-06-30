@@ -39,6 +39,7 @@ Primary fixtures:
 - `host-fetched 0x15d0a current-record resource object feeds fixed-record render`
 - `host-fetched 0x15d0a continuation resource object resumes fixed-record render`
 - `0x15c4c failed resource resume releases fixed-record object`
+- `0x15c4c partial resource resumes update continuation state`
 - `0x17d7c releases extended fixed-record table with secondary refresh`
 - `0x17d7c delegates bit-30 release to offset-table helper`
 - `host-fetched 0x15d0a split-plane continuation resource object resumes
@@ -1683,6 +1684,17 @@ slot `3` through `0x1edc6`, and renders two mode-0 rows beginning at x `22`,
 y `7`. This closes the split-plane continuation-counter middle edge for one
 bit-30-clear fixed-record resource object.
 
+Fixture `0x15c4c partial resource resumes update continuation state` covers the
+status-`2` sibling for the same continuation handler. The linear partial starts
+from saved destination `0x000302` and remaining count `4`, copies one byte
+`f0`, advances destination to `0x000303`, and resaves remaining count `3`.
+The split-plane partial starts from saved prefix destination `0x000303`,
+trailing destination `0x000305`, and D4/D3 counters `0/0`, copies only prefix
+byte `c1`, advances prefix destination to `0x000304`, keeps trailing
+destination `0x000305`, and resaves D4/D3 counters `1/0`. Both cases return
+status `2` from `0x16874`, leave `0x7827c6 = 1`, and preserve the payload and
+glyph/table index for a later descriptor-selected resume.
+
 The failure companion fixture
 `0x15c4c failed resource resume releases fixed-record object` starts from the
 same partial even-span install but supplies only two of the four remaining
@@ -1909,8 +1921,9 @@ buckets `1` and `9`, and renders bucket word `9` through compact target
   continuation fields, including split-plane A4/A3 destinations and D4/D3
   counters. On status `1` it clears continuation state and leaves the completed
   fixed-record payload renderable through the same active context path. On
-  status `0` it calls `0x17d7c` to release/rewrite the fixed-record entry, then
-  clears continuation state.
+  status `2` it resaves advanced continuation state. On status `0` it calls
+  `0x17d7c` to release/rewrite the fixed-record entry, then clears
+  continuation state.
 - `0x17d7c` rewrites released bit-30-clear fixed-record entries, writes the
   side-table bytes used by the fallback record, refreshes matching active
   primary/secondary contexts through `0x14c64`, and clears matching

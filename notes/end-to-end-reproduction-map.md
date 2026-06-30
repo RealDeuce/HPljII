@@ -656,7 +656,10 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    current-record/continuation by bit-30 handler polarities. Other release variants and
    full-success return-boundary siblings outside the even-span rule/raster path and
    outside the segmented, split-plane segmented, segmented-wide, and payload-control
-   publication fixtures are still not proven against every PCL form.
+   publication fixtures are still not proven against every PCL form. Fixture `0x15c4c
+   partial resource resumes update continuation state` covers the fixed-record
+   continuation route's status-`2` resave behavior for linear and split-plane
+   bit-30-clear resource objects.
    ROM-internal descriptor-validation error visibility is documented at the rejecting
    predicate boundary instead: fixture `ESC )s#W validation failures preserve following
    printable output` carries the seven `ESC )s80W` predicate failures plus the

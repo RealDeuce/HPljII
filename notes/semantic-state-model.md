@@ -1852,6 +1852,11 @@ Fixture `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations` proves
 that the code-pair and zero-fill continuations are not `HEAD`-visible to that
 same startup scanner: the second probe markers are `0x00800000` and
 `0x00000000`, so both variants keep one `HEAD` chain and 24 walked records.
+Fixture `0x1a616 candidate scan continuation policy changes built-in counts`
+adds the candidate-window consequence of those same policies: a visible mirror
+would double `0x78278e`, `0x782792`, `0x78279a`, and the related
+`0x7827a4..0x7827b4` cursor advances, while code-pair and zero-fill
+continuations keep the verified candidate windows.
 Disassembly `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst` pins the
 scan windows behind that fixture evidence: `0x1a2e4` seeds built-in start
 `0x080000`, end `0x0ffffe`, and step `0x40000` before calling `0x1a616`, while
@@ -1899,6 +1904,7 @@ for manual names for the filter bytes.
 - `transparent secondary segment-57 continuation policies diverge after verified
   bytes`
 - `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations`
+- `0x1a616 candidate scan continuation policy changes built-in counts`
 
 ### Disassembly Evidence
 
@@ -2384,6 +2390,16 @@ and the compact glyph renderers.
     resource records but serve different phases. `0x41a` validates the
     `HEAD` chain and executable-record behavior; `0x1a616` /
     `0x1a9be` build font candidate windows.
+  - Fixture `0x1a616 candidate scan continuation policy changes built-in
+    counts` constrains the segment-57 continuation hypotheses against
+    candidate-window state. A visible `IC32,IC15` mirror at offset
+    `0x40000` would double total `0x78278e` to `48`, double low class
+    counters `0x782792` and `0x78279a` to `24` each, move
+    `0x7827a4`/`0x7827a8`/`0x7827ac` to `0x782384`, and move
+    `0x7827b0`/`0x7827b4` to `0x7823e4`. Code-pair and zero-fill
+    continuations keep the verified `24` total, low counts `12`/`12`,
+    `0x7827a4`/`0x7827a8`/`0x7827ac = 0x782354`, and
+    `0x7827b0`/`0x7827b4 = 0x782384`.
   - initializer-cleared counters `0x782796` and `0x78279e` are not
     incremented by the decoded built-in `0x1a9be` body for the verified
     window; similarly named changes in downloaded-font fixtures belong
@@ -2467,6 +2483,7 @@ resources because no image is available in this repo.
 
 - `0x1a9be scanned font candidate list partitioning`
 - `actual IC32/IC15 built-in records feed 0x1a9be partitions`
+- `0x1a616 candidate scan continuation policy changes built-in counts`
 - `0x1569c activates concrete built-in candidate windows`
 - `0x1519a filters concrete active candidates by height`
 - `0x153c6 filters concrete active candidates by spacing and pitch`

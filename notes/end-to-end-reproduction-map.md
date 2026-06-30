@@ -712,13 +712,17 @@ The next work should follow dataflow, not isolated handlers:
    physical/resource-window data for firmware addresses `0x0c0000..0x0c0321`
    after the verified `IC32,IC15` suffix at `0x0bfe22..0x0bffff`. The next
    useful evidence is one of: board/emulator decode evidence for that range, a
-   startup candidate-counter trace that proves whether a second `HEAD` window
-   is visible to `0x41a` / `0x1a616`, a direct bus/memory read around
-   `0x0c0000`, or physical output matching one of the mirror/code-pair/zero-fill
-   fallback-row digests already recorded in `notes/resource-rom.md`. Do not
-   re-trace `0x12452`, sampled primary high-control bytes, secondary buckets
-   through `448`, or compact renderer arithmetic unless new decode evidence
-   contradicts the current fixture boundaries.
+   live startup candidate-counter trace after `0x1a2e4`, a direct bus/memory
+   read around `0x0c0000`, or physical output matching one of the
+   mirror/code-pair/zero-fill fallback-row digests already recorded in
+   `notes/resource-rom.md`. The modeled `0x41a` / `0x1a616` continuation
+   fixtures now define the expected candidate-counter split: a visible mirror
+   would double total `0x78278e` to `48` and low class counts `0x782792` /
+   `0x78279a` to `24` each, while code-pair and zero-fill continuations keep
+   the verified `24` / `12` / `12` state. Do not re-trace `0x12452`, sampled
+   primary high-control bytes, secondary buckets through `448`, or compact
+   renderer arithmetic unless new decode evidence contradicts the current
+   fixture boundaries.
 2. Continue reset/default provenance from the composed `ESC E` consumer path.
    Semantic checkpoint `ESC E Reset And Default Environment` now covers
    `0xcc52 -> 0xcc70 -> 0xcda2`, page-root finalization through `0xff1e`,

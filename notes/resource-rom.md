@@ -212,15 +212,21 @@ the resource-pair checksum proves the verified suffix through `0x0bffff` but
 does not validate, reject, or select among the mirror, code-pair, and zero-fill
 continuation policies for the fallback rows.
 
-The fixture `0x41a HEAD scanner would duplicate records under simple resource
-mirror` adds an address-map constraint. If the whole `IC32,IC15` resource pair
+The fixtures `0x41a HEAD scanner would duplicate records under simple resource
+mirror` and `0x1a616 candidate scan continuation policy changes built-in
+counts` add address-map constraints. If the whole `IC32,IC15` resource pair
 were simply mirrored at firmware address `0x0c0000`, the `0x41a` scanner model
 would see `HEAD` at offsets `0` and `0x40000`, walk `48` typed records, and
 terminate at `0x80000`. The `0x1a2e4` / `0x1a616` font candidate scan explicitly
-sets built-in bounds `0x080000..0x0ffffe`, so a full mirror in that range would
-not be only a local row-source detail: it would be visible to candidate
-discovery unless hardware or gate-array state hides the mirror from scanner
-reads. The separate `$8000.14` / `$8000.15` cartridge scan windows at
+sets built-in bounds `0x080000..0x0ffffe`; under the same mirror hypothesis,
+the modeled candidate scan sees `48` accepted built-in records instead of
+`24`, doubles class-one low count `0x782792` from `12` to `24`, doubles
+class-zero low count `0x78279a` from `12` to `24`, advances
+`0x7827a4`/`0x7827a8`/`0x7827ac` to `0x782384`, and advances
+`0x7827b0`/`0x7827b4` to `0x7823e4`. A full mirror in that range would
+therefore not be only a local row-source detail: it would be visible to
+candidate discovery unless hardware or gate-array state hides the mirror from
+scanner reads. The separate `$8000.14` / `$8000.15` cartridge scan windows at
 `0x200000..0x5ffffe` do not explain the `0x0c0000` read. Closing the fallback
 rows therefore needs board/emulator evidence for that physical decode/window,
 live startup candidate counters after `0x1a2e4`, a direct bus read around
@@ -232,6 +238,11 @@ If the code pair follows `IC32,IC15`, the second probe at offset `0x40000`
 sees marker `0x00800000`; if zero-fill follows it, the marker is
 `0x00000000`. Both variants keep a single `HEAD` chain, walk the same 24 typed
 records, and skip to final probe `0x80000` without duplicating scanner input.
+The `0x1a616` continuation fixture shows the same candidate-list result for
+both non-`HEAD` variants: total `0x78278e = 24`, class-one low
+`0x782792 = 12`, class-zero low `0x78279a = 12`, final
+`0x7827a4`/`0x7827a8`/`0x7827ac = 0x782354`, and final
+`0x7827b0`/`0x7827b4 = 0x782384`.
 
 The executable harness now extracts deterministic metadata for all named
 header-like built-in records in the verified resource window: twelve
@@ -1239,6 +1250,7 @@ Fixtures:
 - `font sample full printout source placement follows firmware order`
 - `font sample full printout rows reuse ROM sample byte runs`
 - `font sample full printout segments render through 0x1ed84 and 0x1ef6a`
+- `0x1a616 candidate scan continuation policy changes built-in counts`
 
 Disassembly evidence:
 

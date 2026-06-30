@@ -12219,6 +12219,97 @@ def resource_head_scan_via_041a(
     raise AssertionError("0x41a HEAD scanner model exceeded iteration limit")
 
 
+def font_candidate_scan_via_1a616(
+    memory: bytes | bytearray,
+    *,
+    base_address: int = 0x080000,
+    scan_span: int | None = None,
+) -> dict[str, object]:
+    head_scan = resource_head_scan_via_041a(
+        memory,
+        base_address=base_address,
+        scan_span=scan_span,
+    )
+    candidates: list[dict[str, int]] = []
+    counters = {
+        "0x78278e": 0,
+        "0x782790": 0,
+        "0x782792": 0,
+        "0x782794": 0,
+        "0x782798": 0,
+        "0x78279a": 0,
+        "0x78279c": 0,
+    }
+    cursor_advances = {
+        "0x7827a4": 0,
+        "0x7827a8": 0,
+        "0x7827ac": 0,
+        "0x7827b0": 0,
+        "0x7827b4": 0,
+    }
+
+    walked_records = head_scan["walked_records"]
+    assert isinstance(walked_records, list)
+    for record in walked_records:
+        assert isinstance(record, dict)
+        marker = int(record["marker"])
+        offset = int(record["offset"])
+        if marker not in (0x14, 0x15):
+            continue
+        if offset + 0x21 > len(memory):
+            continue
+        address = base_address + offset
+        class_byte = int(memory[offset + 0x20])
+        counters["0x78278e"] += 1
+        candidates.append({
+            "offset": offset,
+            "address": address,
+            "marker": marker,
+            "class": class_byte,
+            "byte_0c": int(memory[offset + 0x0C]),
+            "byte_0d": int(memory[offset + 0x0D]),
+        })
+        is_low_builtin = 0x080000 <= address <= 0x0FFFFE
+        is_optional = 0x200000 <= address <= 0x5FFFFE
+        if class_byte == 1:
+            counters["0x782790"] += 1
+            if is_low_builtin:
+                counters["0x782792"] += 1
+                for key in ("0x7827a4", "0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4"):
+                    cursor_advances[key] += 4
+            if is_optional:
+                counters["0x782794"] += 1
+                for key in ("0x7827a8", "0x7827ac", "0x7827b0", "0x7827b4"):
+                    cursor_advances[key] += 4
+        elif class_byte == 0:
+            counters["0x782798"] += 1
+            if is_low_builtin:
+                counters["0x78279a"] += 1
+                for key in ("0x7827b0", "0x7827b4"):
+                    cursor_advances[key] += 4
+            if is_optional:
+                counters["0x78279c"] += 1
+                cursor_advances["0x7827b4"] += 4
+
+    cursor_base = 0x782324
+    cursors = {
+        "0x7827a0": cursor_base,
+        **{
+            key: cursor_base + advance
+            for key, advance in cursor_advances.items()
+        },
+    }
+    return {
+        "status": head_scan["status"],
+        "head_offsets": head_scan["head_offsets"],
+        "candidate_count": len(candidates),
+        "counters": counters,
+        "cursors": cursors,
+        "first_candidate": candidates[0] if candidates else None,
+        "last_candidate": candidates[-1] if candidates else None,
+    }
+
+
 def scanned_builtin_record_bases(resources: bytes) -> list[int]:
     bases: list[int] = []
     cursor = 0
@@ -32821,6 +32912,185 @@ def run_selftest(data: bytes, resources: bytes) -> list[str]:
                     "step": 0x40000,
                 },
                 "final_probe": 0x80000,
+            },
+        },
+    ))
+
+    candidate_scan_variants = {}
+    for name, candidate_memory in (
+        ("verified-resource-pair", resources),
+        ("mirror-after-resource", resources + resources),
+        ("code-pair-after-resource", resources + data),
+        ("zero-fill-after-resource", resources + bytes(len(resources))),
+    ):
+        candidate_scan = font_candidate_scan_via_1a616(
+            candidate_memory,
+            scan_span=0x80000 if len(candidate_memory) > len(resources) else 0x40000,
+        )
+        candidate_scan_variants[name] = {
+            "status": candidate_scan["status"],
+            "heads": candidate_scan["head_offsets"],
+            "candidate_count": candidate_scan["candidate_count"],
+            "counters": candidate_scan["counters"],
+            "cursors": candidate_scan["cursors"],
+            "first_candidate": candidate_scan["first_candidate"],
+            "last_candidate": candidate_scan["last_candidate"],
+        }
+    checks.append(assert_equal(
+        "0x1a616 candidate scan continuation policy changes built-in counts",
+        candidate_scan_variants,
+        {
+            "verified-resource-pair": {
+                "status": "end",
+                "heads": [0],
+                "candidate_count": 24,
+                "counters": {
+                    "0x78278e": 24,
+                    "0x782790": 12,
+                    "0x782792": 12,
+                    "0x782794": 0,
+                    "0x782798": 12,
+                    "0x78279a": 12,
+                    "0x78279c": 0,
+                },
+                "cursors": {
+                    "0x7827a0": 0x782324,
+                    "0x7827a4": 0x782354,
+                    "0x7827a8": 0x782354,
+                    "0x7827ac": 0x782354,
+                    "0x7827b0": 0x782384,
+                    "0x7827b4": 0x782384,
+                },
+                "first_candidate": {
+                    "offset": 0x00004C,
+                    "address": 0x08004C,
+                    "marker": 0x14,
+                    "class": 0,
+                    "byte_0c": 1,
+                    "byte_0d": 0,
+                },
+                "last_candidate": {
+                    "offset": 0x02E122,
+                    "address": 0x0AE122,
+                    "marker": 0x14,
+                    "class": 1,
+                    "byte_0c": 1,
+                    "byte_0d": 0,
+                },
+            },
+            "mirror-after-resource": {
+                "status": "end",
+                "heads": [0, 0x40000],
+                "candidate_count": 48,
+                "counters": {
+                    "0x78278e": 48,
+                    "0x782790": 24,
+                    "0x782792": 24,
+                    "0x782794": 0,
+                    "0x782798": 24,
+                    "0x78279a": 24,
+                    "0x78279c": 0,
+                },
+                "cursors": {
+                    "0x7827a0": 0x782324,
+                    "0x7827a4": 0x782384,
+                    "0x7827a8": 0x782384,
+                    "0x7827ac": 0x782384,
+                    "0x7827b0": 0x7823E4,
+                    "0x7827b4": 0x7823E4,
+                },
+                "first_candidate": {
+                    "offset": 0x00004C,
+                    "address": 0x08004C,
+                    "marker": 0x14,
+                    "class": 0,
+                    "byte_0c": 1,
+                    "byte_0d": 0,
+                },
+                "last_candidate": {
+                    "offset": 0x06E122,
+                    "address": 0x0EE122,
+                    "marker": 0x14,
+                    "class": 1,
+                    "byte_0c": 1,
+                    "byte_0d": 0,
+                },
+            },
+            "code-pair-after-resource": {
+                "status": "end",
+                "heads": [0],
+                "candidate_count": 24,
+                "counters": {
+                    "0x78278e": 24,
+                    "0x782790": 12,
+                    "0x782792": 12,
+                    "0x782794": 0,
+                    "0x782798": 12,
+                    "0x78279a": 12,
+                    "0x78279c": 0,
+                },
+                "cursors": {
+                    "0x7827a0": 0x782324,
+                    "0x7827a4": 0x782354,
+                    "0x7827a8": 0x782354,
+                    "0x7827ac": 0x782354,
+                    "0x7827b0": 0x782384,
+                    "0x7827b4": 0x782384,
+                },
+                "first_candidate": {
+                    "offset": 0x00004C,
+                    "address": 0x08004C,
+                    "marker": 0x14,
+                    "class": 0,
+                    "byte_0c": 1,
+                    "byte_0d": 0,
+                },
+                "last_candidate": {
+                    "offset": 0x02E122,
+                    "address": 0x0AE122,
+                    "marker": 0x14,
+                    "class": 1,
+                    "byte_0c": 1,
+                    "byte_0d": 0,
+                },
+            },
+            "zero-fill-after-resource": {
+                "status": "end",
+                "heads": [0],
+                "candidate_count": 24,
+                "counters": {
+                    "0x78278e": 24,
+                    "0x782790": 12,
+                    "0x782792": 12,
+                    "0x782794": 0,
+                    "0x782798": 12,
+                    "0x78279a": 12,
+                    "0x78279c": 0,
+                },
+                "cursors": {
+                    "0x7827a0": 0x782324,
+                    "0x7827a4": 0x782354,
+                    "0x7827a8": 0x782354,
+                    "0x7827ac": 0x782354,
+                    "0x7827b0": 0x782384,
+                    "0x7827b4": 0x782384,
+                },
+                "first_candidate": {
+                    "offset": 0x00004C,
+                    "address": 0x08004C,
+                    "marker": 0x14,
+                    "class": 0,
+                    "byte_0c": 1,
+                    "byte_0d": 0,
+                },
+                "last_candidate": {
+                    "offset": 0x02E122,
+                    "address": 0x0AE122,
+                    "marker": 0x14,
+                    "class": 1,
+                    "byte_0c": 1,
+                    "byte_0d": 0,
+                },
             },
         },
     ))

@@ -1179,6 +1179,10 @@ command-family semantics beyond the restored-record boundary.
 
 ## Display Functions ESC Y Reader
 
+The standalone command-family contract is in
+[display-functions.md](display-functions.md). This section preserves the
+unified state block and fixture ledger.
+
 Status: composed as the `ESC Y` command-family reader from parser dispatch to
 append/text-routing loop. The low-level ledger remains in
 [pcl-parser-core.md](pcl-parser-core.md), with disassembly evidence in

@@ -138,6 +138,7 @@ the board-facing boundary is tracked in
   ROM evidence is normal handler `0x12536..0x1261e`, alternate/data handler
   `0x12120..0x1219c`, and parser-table entries in normal table `0x112a4`
   and alternate table `0x116f6`. Reproduction evidence is
+  [display-functions.md](display-functions.md),
   `Display Functions ESC Y Reader` in `notes/semantic-state-model.md`,
   `ESC Y Display Functions Readers` in `notes/pcl-parser-core.md`, and
   disassembly

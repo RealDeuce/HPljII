@@ -274,6 +274,11 @@ data-chain replay.
 
 ## ESC Y Display Functions Readers
 
+See [display-functions.md](display-functions.md) for the composed
+renderer-facing contract for the normal output loop, alternate append loop,
+Control-Z siblings, and `ESC z` status edge. This section preserves parser-core
+details.
+
 `ESC Y` enters a reader loop that stays active until the byte stream supplies
 `ESC Z` or `0xa904` returns `-1`. The normal parser table dispatches `ESC Y`
 to `0x12536`; the alternate/data parser table dispatches it to `0x12120`.

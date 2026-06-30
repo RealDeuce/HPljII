@@ -1078,7 +1078,11 @@ the selected record start; `0x11774` now traces chained primary and
 secondary font-selection streams through `(s` / `)s` mode 13, proving
 spacing `0xc930`, pitch `0xc89c`, point-size `0xc6ec`, style `0xc780`,
 stroke `0xc840`, and typeface wrapper `0x1205a` routing while preserving
-slot setup records distinct from terminal fraction words; a modeled
+slot setup records distinct from terminal fraction words; pitch-mode
+handler `0xc390` is now documented as a selector table that rewrites the
+parser record into synthetic `0xc89c` pitch updates for selectors `0`,
+`2`, and `4`, with selector `0` running a second `0xc89c` / `0xc580`
+refresh after advancing `0x78299e`; a modeled
 bridge now feeds parsed primary `0p10h12v0s0b3T` updater writes at
 `0x782eec..0x782ef2` plus dirty flags `0x782f2c/2d` into the concrete
 class-zero built-in candidate filters as an isolation control; the full

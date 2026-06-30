@@ -4346,7 +4346,10 @@ selector mismatch only copies the remembered word and installs no context.
   absolute selector values `0`, `2`, and `4`, synthesizes pitch records with
   constants `10`, `16` plus fractional word `0x19c8`, or `12`, then reaches the
   same `0xc89c` pitch writer and `0xc580` refresh path. Other selector values
-  return through the default table exit without changing pitch.
+  return through the default table exit without changing pitch. Selector `0`
+  is the only observed two-step pitch-mode path: after the `10.0000`
+  synthetic pitch update it writes word `1` into the next synthetic record,
+  advances `0x78299e` by `0x0c`, and calls `0xc89c` / `0xc580` a second time.
 - `0xc780` and `0xc7e0` fold style and typeface to positive bytes capped at
   `0xff`, writing `0x782eed + 0x10*slot` and
   `0x782eec + 0x10*slot`; `0xc840` clamps stroke weight to signed range

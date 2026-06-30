@@ -15,6 +15,7 @@ Evidence:
 
 - `generated/disasm/ic30_ic13_font_context_install_00c428.lst`
 - `generated/disasm/ic30_ic13_font_update_common_00c580.lst`
+- `generated/disasm/ic30_ic13_pitch_mode_handler_00c390.lst`
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`
 - `generated/disasm/ic30_ic13_font_id_select_017708.lst`
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`
@@ -177,6 +178,15 @@ Parser scratch:
 
 - `0x78299e`: command-record cursor rewound by font request/update handlers
   such as `0xc580`, `0x15a56`, and `0x15a18`.
+- `ESC &k#S/s` pitch-mode handler `0xc390` treats the active parsed record
+  as scratch: it reads the absolute selector from the previous record word,
+  rewrites record words `+2/+4` with a synthetic pitch value, advances
+  `0x78299e` to let `0xc89c` read that synthetic record, and then refreshes
+  through `0xc580`.
+- For selector `0`, `0xc390` synthesizes pitch `10.0000`; for selector `2`,
+  pitch `16.6600`; for selector `4`, pitch `12.0000`. The jump table at
+  `0xc370` falls through to `0xc420` for other selectors without calling
+  `0xc89c` or `0xc580`.
 
 Unknown:
 
@@ -190,6 +200,45 @@ Unknown:
   work is regression breadth for additional selected-font state combinations
   and validation/error forms beyond the bounded predicate and short-budget
   no-install cases.
+
+## Pitch Mode Command
+
+`ESC &k#S/s` is a compatibility pitch-mode command, not an independent
+metric store. Handler `0xc390` reads the absolute selector from the parsed
+record behind `0x78299e`, dispatches through the table at `0xc370`, and for
+selectors `0`, `2`, or `4` rewrites the active parser record into the same
+numeric form consumed by the normal pitch handler `0xc89c`.
+
+Selector effects:
+
+| Selector | Synthetic pitch record | Writer path |
+| ---: | --- | --- |
+| `0` | integer `10`, fraction `0` | `0xc390 -> 0xc89c -> 0xc580` |
+| `2` | integer `16`, fraction `0x19c8` | `0xc390 -> 0xc89c -> 0xc580` |
+| `4` | integer `12`, fraction `0` | `0xc390 -> 0xc89c -> 0xc580` |
+| other | unchanged | default exit `0xc420` |
+
+The extra record manipulation in the selector-`0` path matters for
+reproduction. After writing `10.0000`, `0xc390` clears an adjacent synthetic
+record word, calls `0xc89c` and `0xc580`, then writes word `1` into the next
+record and calls the same pair again after advancing `0x78299e` by `0x0c`.
+Selectors `2` and `4` take only the first synthetic-record path. The visible
+effect is therefore still the same selected-font refresh pipeline documented
+below: changed pitch state can alter candidate selection, HMI, printable
+cursor advance, page-root context slots, and rendered compact text rows only
+after `0xc580` lets the updated font request reach `0x13eb8` and `0xc428`.
+
+Evidence:
+
+- `generated/disasm/ic30_ic13_pitch_mode_handler_00c390.lst`: handler body
+  `0xc390..0xc426`.
+- ROM table bytes at firmware address `0xc370`:
+  `0000 c414 0000 0004 0000 c406 0000 0002
+  0000 c3ba 0000 0000 0000 0000 0000 c420`.
+  These encode jump-table entries `0xc414 <- 4`, `0xc406 <- 2`,
+  `0xc3ba <- 0`, and default `0xc420`.
+- `notes/semantic-state-model.md`: `Built-In Font Selection To Visible Text`
+  field groups and writer/consumer model for `0xc89c` and `0xc580`.
 
 ## Selection And Map Rebuild
 

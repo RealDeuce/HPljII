@@ -139,19 +139,42 @@ the board-facing boundary is tracked in
   ROM evidence is `0x10808`, `0x1075a`, `0x105d0`, `0x13070`, and
   `0x13250`.
   Reproduction evidence is `generated/analysis/ic30_ic13_raster_graphics_flow.md`
-  and host-fetched raster stream fixtures. The current raster command-family
-  checkpoint covers lower-resolution modes `1..3`, consecutive uppercase
-  `ESC *b#W` transfers, lowercase `ESC *b#w` same-family chaining, `ESC *rB`
-  active-byte clear, active-resolution ignore, `0x105d0` cap/drain gates,
-  page-record object bytes, bridge dispatch, and rendered rows. The current
-  handoff ledger also pins the field ownership across `0x105d0`, `0x10084`,
-  `0x13070`, `0x13250`, and `0x132b6`: `A4 = 0x783170`, restored record
-  `A5 = 0x78299e - 6`, accepted/overflow words `+0x04/+0x06`, row word
-  `+0x02`, current root `0x78297a`, bucket/key caches `0x782a7c/0x782a7e`,
-  stream chunk state `0x782a70/0x782a76/0x782a80`, and copy-stop flag
-  `0x782996`. The remaining raster gap is live-trace confirmation of those
-  values in one dense parser-produced text/rule/raster page, not discovery of
-  another raster object field.
+  and host-fetched raster stream fixtures. The tracked command-family
+  checkpoint in [raster-graphics.md](raster-graphics.md) covers
+  lower-resolution modes `1..3`, consecutive uppercase `ESC *b#W` transfers,
+  lowercase `ESC *b#w` same-family chaining, `ESC *rB` active-byte clear,
+  active-resolution ignore, `0x105d0` cap/drain gates, page-record object
+  bytes, bridge dispatch, and rendered rows.
+
+  The mixed page-image cluster is now composed in `Mixed Text/Rule/Raster Page
+  Record`: fixture
+  `host-fetched text rectangle raster FF publishes rendered page record`
+  drives `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF` from the
+  modeled `0xa904` host source through parser handlers, delayed `0x105d0`,
+  `0xff1e`, `0x1ed84`/`0x1edc6`, and final row comparison. Fixture
+  `addressed text/rule/raster field groups reach publication and render entry`
+  names the same materialized objects: text object `0x00d0c004`, rule object
+  `0x00d0c02a`, raster object `0x00d0c038`, restored raster record
+  `80 57 00 02 00 00`, payload `c3 3c` at offset `28`, stream allocator
+  bookkeeping `0x782a70 = 0x00bc`, `0x782a72 = 0x00d0c000`,
+  `0x782a76 = 0x00d0c044`, and render caches `0x783a20 = 0x0050`,
+  `0x783a22 = 0`, `0x783a28 = 0x00100000`. Fixture
+  `addressed text/rule/multi-row raster publication preserves bucket chain`
+  covers the sibling with two delayed raster transfers, raster objects
+  `0x00d0d038` and `0x00d0d044`, bucket chain
+  `0x00d0d044 -> 0x00d0d038 -> 0x00d0d004`, allocator bookkeeping
+  `0x782a70 = 0x00b0`, `0x782a72 = 0x00d0d000`,
+  `0x782a76 = 0x00d0d050`, and final raster row counter `2`.
+
+  The current handoff ledger pins field ownership across `0x105d0`,
+  `0x10084`, `0x13070`, `0x13250`, and `0x132b6`: `A4 = 0x783170`,
+  restored record `A5 = 0x78299e - 6`, accepted/overflow words
+  `+0x04/+0x06`, row word `+0x02`, current root `0x78297a`, bucket/key caches
+  `0x782a7c/0x782a7e`, stream chunk state `0x782a70/0x782a76/0x782a80`, and
+  copy-stop flag `0x782996`. The exact remaining raster boundary is live CPU
+  continuity through `0x105d0 -> 0x10084 -> 0x13070 -> 0x13250 -> 0x132b6` in
+  one dense parser-produced memory image. It is not an unresolved
+  software-visible raster-object field, bridge field, or render dispatch.
 - Page publication:
   ROM evidence is `0xff1e..0x10080`.
   Reproduction evidence is

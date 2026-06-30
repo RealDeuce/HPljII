@@ -5032,7 +5032,11 @@ share a current downloaded-font state block. `0x11f96` selects descriptor
 handler `0x15d0a` for zero `W` counts and payload handler `0x16c14` for
 nonzero counts. The installed payload can become a font-resource candidate
 selected by `0x14c64`, or a downloaded character object consumed by the
-compact text renderer.
+compact text renderer. Fixture
+`0x11774 ROM dispatch table routes ESC *c font-control chain` pins the
+parser-mode-16 chain that writes current id, current character, and the
+font-control command record before the shared downloaded-font state is
+consumed by descriptor and character payload routes.
 
 ### Field Groups
 
@@ -5059,6 +5063,12 @@ compact text renderer.
     printable inline source exposes row byte `0x02` to `0x12f2e`, and wide
     selector `0x1003` publishes bucket `1` for the even-span and
     payload-control odd-span streams.
+  Evidence: fixtures
+  `0x11774 ROM dispatch table routes ESC *c font-control chain`,
+  `0x16df6-modeled font-control dispatch mark/unmark and suppression`,
+  `font control stream state feeds descriptor route and character payload`,
+  and
+  `host-fetched font control state drives descriptor and character streams`.
 - Parser scratch:
   - `0x78299e`: six-byte parsed-record cursor rewound by font handlers.
   - `0x783140`: payload byte budget used by descriptor and payload readers.
@@ -5068,6 +5078,12 @@ compact text renderer.
     `80 57 02 04 00 00`; the row-count matrix restores records from
     `80 57 00 02 00 00` through `80 57 01 fe 00 00` for the documented short
     and segmented row-count siblings.
+  Evidence: fixtures `0x15d0a-modeled font descriptor route`,
+  `0x121cc/0x15d0a-modeled font descriptor command stream`,
+  `font descriptor stream ties ROM parser dispatch to 0x15d0a routes`,
+  `host-fetched font descriptor streams route through 0x15d0a`,
+  and `host-fetched font control stream feeds descriptor and character
+  payload state`.
 - Derived/cache:
   - `0x7827c6`, `0x7827ca`, `0x7827ce`, `0x7827d2`, `0x7827d6`,
     `0x7827d8`, `0x7827da`, and `0x7827c8`: continuation state for
@@ -5206,9 +5222,16 @@ compact text renderer.
 
 - `0x15a56` and `0x15a18` write current id and character state.
 - `0x16df6` dispatches font-control values; `0x17108` and `0x17150` toggle
-  current-record bit `6` and transfer counts.
+  current-record bit `6` and transfer counts. Fixture
+  `0x16df6-modeled font-control dispatch mark/unmark and suppression`
+  proves the mark-current, unmark-current, parser-mode-suppressed, and
+  out-of-range no-op branches.
 - `0x15d0a` writes `0x783140`, reads descriptor bytes through `0x1599c`, and
   routes to `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`. Fixture
+  `0x15d0a-modeled font descriptor route` pins the current-record and
+  continuation route selectors. Fixture
+  `0x121cc/0x15d0a-modeled font descriptor command stream` pins the delayed
+  `W` command record restore before that route. Fixture
   `0x15d0a descriptor grammar exits and handler matrix` proves early drains
   for budgets below three, parser mode `2`, exhausted descriptor input,
   missing current records, and missing continuation state, plus all four
@@ -5346,6 +5369,16 @@ compact text renderer.
   consume the installed glyph path until visible compact text rows exist.
 
 ### Output Effect
+
+The font-control fixture family separates state setup from payload effects.
+`ESC *c4660d37e5F` writes current font id `0x1234`, current character
+`0x25`, and marks the current downloaded-font record through `0x16df6`.
+Fixture `font control stream state feeds descriptor route and character
+payload` proves that the same state makes `ESC )s0W` route descriptor bytes
+to current-record handler `0x16498`, and makes the later character payload
+install table entry `0x00de`. Fixture
+`host-fetched font control state drives descriptor and character streams`
+adds the `0xa904` ring-source boundary for the same state-to-payload edge.
 
 The combined host-fetched stream `ESC *c4660d37e5F` plus `ESC )s2193W` payload plus `%`
 sets current id `0x1234`, sets current character `0x25`, installs a split-plane
@@ -6465,6 +6498,14 @@ fields and broader selected-font state combinations have not been page-compared.
 - `0x14c64 dispatches selected inline/downloaded font`
 - `0x17708 font-ID selects inline/downloaded candidate`
 - `0x14e24-modeled inline/downloaded map entries`
+- `0x11774 ROM dispatch table routes ESC *c font-control chain`
+- `0x16df6-modeled font-control dispatch mark/unmark and suppression`
+- `0x15d0a-modeled font descriptor route`
+- `0x121cc/0x15d0a-modeled font descriptor command stream`
+- `font descriptor stream ties ROM parser dispatch to 0x15d0a routes`
+- `host-fetched font descriptor streams route through 0x15d0a`
+- `host-fetched font control state drives descriptor and character streams`
+- `font control stream state feeds descriptor route and character payload`
 - `combined host-fetched font download stream prints installed glyph`
 - `combined font download FF publishes installed glyph page record`
 - `host-fetched even-span downloaded glyph FF publishes rendered page record`

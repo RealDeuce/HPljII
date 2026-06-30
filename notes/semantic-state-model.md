@@ -8200,6 +8200,10 @@ page root for queued rows, and passes the state block to `0x13070` /
   encoded-span object under page-root `+0x1c`.
 - `0x138de` copies the accepted payload bytes into object `+0x0a` and
   decrements raster state field `+0x04`.
+  Generated flow report `generated/analysis/ic30_ic13_raster_graphics_flow.md`
+  anchors the same producer calls at `0x0106a4` / `0x0106ec` for root
+  allocation, `0x0106cc` for `0x13070`, `0x013136` for `0x13250`, and
+  `0x01320c` for `0x138de`.
 
 ### Register And Memory Handoff
 
@@ -8445,6 +8449,10 @@ live 68000 execution trace.
 
 ### Disassembly Evidence
 
+- `generated/analysis/ic30_ic13_raster_graphics_flow.md`: command/payload
+  edge, delayed `0x105d0` restore, `0x10084` root boundary, `0x13070` /
+  `0x13250` encoded object queueing, `0x138de` payload copy, render dispatch,
+  state-reference scan, and call-site anchors.
 - `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst`
 - `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`
 - `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`
@@ -10853,6 +10861,11 @@ the variable-size object stream under that root. `0x1387c`, `0x133aa`,
 `0x136d2`, and the raster queue path consume the stream allocator and
 link typed objects into canonical root fields. Publication and rendering
 consume those root fields without changing their producer semantics.
+The generated page-root reference scan
+`generated/analysis/ic30_ic13_page_root_references.md` classifies direct
+`0x78297a` references into page-root font-slot paths, text/raster/rule
+producers, finalization, and allocator roots; it is a lead index for producer
+ownership, not a separate renderer.
 
 ### Field Groups
 
@@ -10957,6 +10970,11 @@ consume those root fields without changing their producer semantics.
 - `0x1387c` writes root `+0x1c` bucket heads and compact/raster bucket
   objects; it reuses matching selector objects while count `+6` is below
   capacity and links a new head when the matching object is full.
+  Generated allocator report
+  `generated/analysis/ic30_ic13_compact_bucket_allocator.md` pins the
+  producer inputs from `0x12f2e`, the selector/capacity comparison at
+  `0x138a2..0x138b2`, new-head insertion at `0x138b6..0x138ca`, and shared
+  chunk accounting in `0x1381c`.
 - `0x133aa` writes root `+0x24` and inserts rectangle/rule objects by
   bucket byte order. Equal bucket bytes insert after the existing equal
   node in the fixture. If `0x1381c` returns zero at
@@ -11081,6 +11099,12 @@ results rather than executing the full heap and page scheduler.
   `0x10084..0x1021e`
 - `generated/analysis/ic30_ic13_page_root_allocation.md`:
   ensure-root contract, initializer fields, and call-site groups.
+- `generated/analysis/ic30_ic13_page_root_references.md`: direct page-root
+  and page/control pool reference classifications for producers, finalization,
+  font-slot scans, and allocator roots.
+- `generated/analysis/ic30_ic13_compact_bucket_allocator.md`: `0x12f2e`
+  producer inputs, `0x1387c` bucket reuse/new-head behavior, `0x1381c`
+  stream-chunk accounting, and addressed allocator reproduction contract.
 - `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`:
   `0x13386..0x1387a` and `0x1387c..0x138de`
 - `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`:

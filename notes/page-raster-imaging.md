@@ -2223,6 +2223,12 @@ lists, and copies the selected context slot into the render record. Fixture
 and the published page record composes coord `0x0a02` compact text with
 selector-7 rule `00 00 00 00 01 07 82 02 00 07 00 02 00 00`, rendering digest
 `ba32af7d183a956b2abd821b2143e9c7c3eecf87a7b1403fa086cfe6bf89c8ae`. The
+fixture `macro overlay chained cursor-position payload publishes with page rule`
+carries `ESC &a2c+1R!` through the same overlay path: `0x11774` routes
+`0xf39e`, parser-mode continuation bytes, `0xf560`, then `0xd04a`; the
+published page record composes coord `0x3a02` compact text with selector-7 rule
+`00 00 00 00 01 07 a6 02 00 06 00 02 00 00`, rendering digest
+`0275857ffbcc11aa5234644930ebcd31571c2178eaf52b79590989d31b39f653`. The
 host-fetched
 missing-root `ESC E` case drains from the same ring source, reaches
 handler `0xcc52`, and lands on the no-publication reset state. The

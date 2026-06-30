@@ -4673,6 +4673,10 @@ compact text renderer.
   and initialize font-resource payload headers.
 - `0x168dc` and `0x16942` copy downloaded glyph bitmap bytes and save
   continuation state.
+- `0x15b9a` resumes bit-30 downloaded-character bitmap copies from
+  continuation fields. On status `1` it clears continuation state after
+  completing the object bitmap. On status `0` it calls `0x17a24` to clear the
+  offset-table entry and matching continuation state.
 - `0x16606` clears stale continuation state, writes bit-30-clear fixed-record
   table entries, copies bitmap bytes through `0x16874`, and refreshes selected
   contexts through `0x14c64` when the installed payload is active.
@@ -4721,6 +4725,11 @@ compact text renderer.
 - `0x11f96` reads the parsed `W` count and schedules delayed font handlers.
 - `0x172c0` scans the current-record pool by `0x782f2e`.
 - `0x1b4c0` resolves payload pointers for descriptor routes.
+- `0x15b9a` reads saved payload `0x7827da`, saved glyph/table index
+  `0x7827c8`, saved destination `0x7827ca`, saved trailing-plane destination
+  `0x7827ce`, saved remaining count `0x7827d2`, saved split-plane counters
+  `0x7827d6`/`0x7827d8`, and the selected bit-30 object-table entry plus
+  downloaded-character record.
 - `0x16606` reads current character `0x782f30`, selected payload base
   `0x78285e`, byte budget `0x783140`, fixed-record entries, and continuation
   fields.
@@ -4951,10 +4960,12 @@ and scan status. Firmware bookkeeping is the shared final drain through
 output effect is handler selection, not pixel output: selector `0` plus object
 bit `30` set calls `0x16498`, selector `0` plus bit `30` clear calls `0x16606`,
 continuation plus bit `30` set calls `0x15b9a`, and continuation plus bit `30`
-clear calls `0x15c4c`. The unresolved middle edges after this checkpoint start
-at the selected object handlers: `0x15dc6 -> 0x16498`, `0x15e3c -> 0x16606`,
-`0x15e18 -> 0x15b9a`, and `0x15e5c -> 0x15c4c`, where handler-specific payload
-semantics determine visible output.
+clear calls `0x15c4c`. Fixture `0x15b9a resumes downloaded-character
+continuation objects` now covers the `0x15e18 -> 0x15b9a` success edge for
+linear and split-plane downloaded-character objects. The remaining middle
+edges after this checkpoint are handler-specific success/error variants outside
+that fixture, plus `0x15e3c -> 0x16606` and `0x15e5c -> 0x15c4c` variants not
+already covered by the fixed-record render fixtures.
 Fixture `0x17d7c releases extended fixed-record table with secondary refresh` proves the
 direct extended fixed-record form: payload byte `+0x0e = 1` admits char `0xa1`, the
 helper indexes table entry `payload + 0x40 + (0xa1 - 0x40) * 8`, rewrites it from `04 05
@@ -5122,7 +5133,19 @@ published pool record, clears the current page root, and `0x1ed84`/`0x1ef6a` ren
 published rows from bucket word `1`. This classifies the published bucket root and
 bucket array as derived page-output state from the canonical partial downloaded glyph;
 the continuation fields remain firmware bookkeeping and are not consumed by the
-published record. Fixture `host-fetched segmented downloaded character renders through
+published record. Fixture `0x15b9a resumes downloaded-character continuation objects`
+then consumes that firmware bookkeeping. For the linear object, canonical state is table
+entry `0x00f6 -> 0x0840`, saved glyph `0x2b`, record `00 00 00 00 0c 01 00 03 00 10 00
+00`, width `0x0010`, rows `3`, and destination `0x0850`; `0x168dc` copies `c3 3c`, the
+object bitmap becomes `f0 0f aa 55 c3 3c`, and continuation fields clear. For the
+split-plane object, canonical state is table entry `0x00fa -> 0x0880`, saved glyph
+`0x2c`, record `00 00 00 00 0c 02 00 02 00 18 00 00`, width `0x0018`, rows `2`, prefix
+destination `0x088e`, trailing destination `0x0891`, and D4/D3 counters `1/0`; `0x16942`
+copies prefix `c0 c1` and trailing `d0`, completing layout `a0 a1 c0 c1 b0 d0`, then
+clears continuation fields. Disassembly evidence is `0x15b9a..0x15bdc`,
+`0x15bdc..0x15bec`, `0x15bee..0x15c18`, and `0x15c18..0x15c4a`; fixture evidence is
+`0x15b9a resumes downloaded-character continuation objects`. Fixture `host-fetched
+segmented downloaded character renders through
 0x1f1f0` connects the downloaded-character linear reader to the remaining segmented
 compact renderer shape. Host fetch drains `ESC )s258W`; parser dispatch walks `0x11eb6`,
 `0x12008`, `0x11ff6`, and `0x11f96`; `0x16498` installs glyph `0x27` at table entry
@@ -5636,6 +5659,7 @@ fields and broader selected-font state combinations have not been page-compared.
   exits preserve state`
 - `0x16498 no-install exits preserve following printable output`
 - `0x16498 status-2 partial installs remain printable`
+- `0x15b9a resumes downloaded-character continuation objects`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
 - `host-fetched split-plane segmented downloaded character renders through
   0x1f1f0`

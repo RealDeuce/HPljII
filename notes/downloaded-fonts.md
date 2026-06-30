@@ -99,6 +99,7 @@ Primary fixtures:
   exits preserve state`
 - `0x16498 no-install exits preserve following printable output`
 - `0x16498 status-2 partial installs remain printable`
+- `0x15b9a resumes downloaded-character continuation objects`
 - `host-fetched even-span downloaded glyph FF publishes rendered page record`
 - `host-fetched rows-0x20 short downloaded glyph FF publication renders page
   record`
@@ -1308,6 +1309,25 @@ also keeps bucket `1`, copies compact
 object `00 00 00 00 00 03 00 01 2c 66 01`, clears the current page root, and
 renders the published record through `0x1ed84`/`0x1ef6a` with the same rows.
 
+Fixture `0x15b9a resumes downloaded-character continuation objects` covers the
+descriptor-selected continuation success sibling. The linear case starts from
+the previous `0x16498` status-`2` object at table entry `0x00f6 -> 0x0840`:
+`0x15b9a` reloads saved glyph `0x2b`, reads record
+`00 00 00 00 0c 01 00 03 00 10 00 00`, derives span `2` from width `0x0010`,
+copies resume bytes `c3 3c` through `0x168dc` into destination `0x0850`, and
+clears continuation state after completing bitmap `f0 0f aa 55 c3 3c`.
+
+The split-plane case starts from table entry `0x00fa -> 0x0880`: `0x15b9a`
+reloads saved glyph `0x2c`, reads record
+`00 00 00 00 0c 02 00 02 00 18 00 00`, derives byte span `3` and prefix span
+`2`, resumes through `0x16942` with saved destinations `0x088e`/`0x0891` and
+D4/D3 counters `1/0`, copies prefix bytes `c0 c1` plus trailing byte `d0`, and
+clears continuation state after completing layout `a0 a1 c0 c1 b0 d0`.
+Disassembly evidence is `0x15b9a..0x15bdc` for table/object lookup and scratch
+span/row writes, `0x15bdc..0x15bec` for the resume-mode `0x16874` call,
+`0x15bee..0x15c18` for status dispatch, and `0x15c18..0x15c4a` for
+continuation clearing.
+
 Fixture `host-fetched segmented downloaded character renders through
 0x1f1f0` adds the even-span tall sibling. The host-fetched `ESC )s258W` stream
 uses parser record `80 57 01 02 00 00`, delayed handler `0x16c14`, payload
@@ -1858,6 +1878,10 @@ buckets `1` and `9`, and renders bucket word `9` through compact target
 - `0x17026` writes staged type/size and allocates the payload.
 - `0x1719c` writes allocated payload header fields and optional symbol block.
 - `0x168dc` and `0x16942` write glyph bitmap bytes and continuation state.
+- `0x15b9a` resumes bit-30 downloaded-character bitmap copies from saved
+  continuation fields. On status `1` it clears continuation state after
+  completing the object bitmap. On status `0` it calls `0x17a24` to clear the
+  offset-table entry, then clears continuation state.
 - `0x16606` clears stale continuation state, writes fixed-record table entries
   in bit-30-clear resource payloads, copies bitmap bytes through `0x16874`,
   and refreshes selected contexts through `0x14c64` when the payload matches
@@ -1885,6 +1909,9 @@ buckets `1` and `9`, and renders bucket word `9` through compact target
 - `0x172c0` reads the current-record pool by current font id.
 - `0x1b4c0` resolves payload pointers from current records or continuation
   state.
+- `0x15b9a` reads `0x7827c6`, `0x7827da`, `0x7827c8`, `0x7827ca`,
+  `0x7827ce`, `0x7827d2`, `0x7827d6`, `0x7827d8`, and the selected bit-30
+  object-table entry plus downloaded-character record.
 - `0x16606` reads `0x7827c6`, `0x7827da`, `0x7827c8`, `0x7827ca`,
   `0x7827ce`, `0x7827d2`, `0x7827d6`, `0x7827d8`, current character
   `0x782f30`, selected payload base `0x78285e`, and byte budget `0x783140`.

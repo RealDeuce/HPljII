@@ -722,9 +722,12 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    Fixtures `font sample heading continuation emits fresh source heading page
    record` and `font sample row continuation emits fresh source heading page
    record` now cover the heading-preflight and row-overrun `I01` forced
-   page-record objects; remaining sample-printout gaps are the other forced
-   continuation variants and physical baseline/cell placement comparison against
-   a known font/self-test page.
+   page-record objects. The next exact internal sample-printout gap is the
+   alternate-row caller edge after `0x1d868` returns D7 `1`:
+   `0x1c4a4 -> 0x1d868 -> 0x1c4b6 -> 0x1c9f6 -> 0x1c4ca -> 0x1ca2c ->
+   0x1c4d4 -> 0xf06e -> 0x1c4e8 -> 0x1d050 -> 0x1c4f2 -> 0x1cabe`.
+   Broader forced-continuation variants and physical baseline/cell placement
+   comparison against a known font/self-test page remain separate gaps.
 
 ## Next Disassembly Targets
 

@@ -678,10 +678,14 @@ The modeled class-zero segments top out at row width `2219`; the modeled
 class-one segments top out at row width `4097`, so that width/baseline
 interpretation is now pinned but not yet validated against paper output.
 
-The still-open boundaries are alternate-row and broader source/class
-forced-continuation page-record variants, plus physical comparison of those
+The still-open forced-continuation boundary is now narrower than a generic
+page-break note. The alternate-row fit gate fixture proves the trigger at
+`0x1d868`, but the following caller sequence still needs a page-record object
+fixture: `0x1c4a4 -> 0x1d868 -> 0x1c4b6 -> 0x1c9f6 -> 0x1c4ca -> 0x1ca2c ->
+0x1c4d4 -> 0xf06e -> 0x1c4e8 -> 0x1d050 -> 0x1c4f2 -> 0x1cabe`. Broader
+source/class forced-continuation variants and physical comparison of the
 rendered source/class surfaces against a known printed/self-test sample,
-including baseline and cell placement agreement after `0x1ed84`.
+including baseline and cell placement agreement after `0x1ed84`, remain open.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record
@@ -1189,9 +1193,10 @@ Unknown:
   especially the exact baseline/cell terminology behind `+0x28/+0x2a`
   and tie-breaker bytes `+0x2f..+0x31`;
 - forced continuation-page object bytes beyond the covered heading-preflight
-  and row-overrun `I01` cases and physical output comparison for the full
-  internal-font sample page remain open even though the ROM-side candidate
-  order and rendered-surface digest are fixture-backed;
+  and row-overrun `I01` cases remain open first at the alternate-row caller
+  edge `0x1c4a4..0x1c4f2`; physical output comparison for the full
+  internal-font sample page also remains open even though the ROM-side
+  candidate order and rendered-surface digest are fixture-backed;
 - optional cartridge/resource candidate windows are bounded by ROM addresses,
   but no physical cartridge image is present in this repo.
 

@@ -3395,6 +3395,15 @@ states, then renders the printable `!!` tail from the previously selected
 primary context `0xc008004c`, object
 `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and row digest
 `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
+Fixture `font-ID secondary non-selected exits keep prior SO visible rows`
+carries the secondary sibling through visible output. Host-fetched
+`ESC )8X SO !!` routes through `0x11eb6`, `0x12008`, and `0x120be`; the
+slot-1 `0x17708` terminal states are again scan miss, candidate-slot miss,
+class mismatch, and context-full, with no `0x14c64` map dispatch. The
+following SO/printable tail consumes preserved secondary context
+`0xc40ad87a`, maps `!` to byte `0x20`, queues object
+`00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`, and renders row digest
+`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
 Fixture
 `real default-table caller stream uses ROM-backed words` then drives real
 scanned built-in default words through `ESC (0@ ESC )0@ ESC )1@ ESC )2@
@@ -4121,10 +4130,11 @@ High for direct `0x17708` non-selected exits because fixture
 `0x17708 font-ID non-selected exits preserve prior selection` pins all four
 terminal statuses, call lists, restored font ID, selected pointer state, class
 comparison, and `0xc4fc` full-table result. High for carrying those exits
-through later visible output because fixture
-`font-ID non-selected exits keep prior visible rows` appends the parsed
-printable tail and pins prior context `0xc008004c`, object prefix, bridge
-context slots, and row digest.
+through later visible output because fixtures `font-ID non-selected exits keep
+prior visible rows` and `font-ID secondary non-selected exits keep prior SO
+visible rows` append the parsed printable/SO tails and pin prior contexts
+`0xc008004c` and `0xc40ad87a`, object prefixes, bridge context slots, and row
+digests.
 High for final-`@` parser/default-table behavior because the ROM parser
 records, terminal handler, subdispatch targets, real built-in default words,
 requested words, active words, and common-refresh count are fixture-pinned.
@@ -4166,6 +4176,7 @@ install events.
 - `font-ID inline/downloaded selection feeds visible page-record rows`
 - `0x17708 font-ID non-selected exits preserve prior selection`
 - `font-ID non-selected exits keep prior visible rows`
+- `font-ID secondary non-selected exits keep prior SO visible rows`
 - `0x13eb8 transient and cache-hit exits avoid dispatch`
 - `0x13eb8 no-dispatch exits keep prior visible rows`
 - `0xc580 dirty primary branch installs page-root font context`
@@ -4235,9 +4246,10 @@ install events.
   `0x120be..0x17708..0x14c64..0xc6b8..0xd04a`; the covered direct font-ID
   non-selected boundaries now run from `0x120be..0x17708` statuses
   `scan-miss`, `candidate-slot-miss`, `class-mismatch`, and `context-full`
-  into preserved-context `0xd04a` output. The `context-full` helper edge still
-  ends at `0x17708..0xc4fc = 0x11` before the printable tail consumes prior
-  context `0xc008004c`.
+  into preserved-context `0xd04a` output for primary `ESC (7X!!` and secondary
+  `ESC )8X SO !!`. The `context-full` helper edge still ends at
+  `0x17708..0xc4fc = 0x11` before the printable tail consumes prior context
+  `0xc008004c` or prior secondary context `0xc40ad87a`.
 - Final-`@` parser variants are documented through requested/active
   symbol-state, real default-table words, and primary/secondary visible-output
   streams. No unresolved middle edge remains for `@0..@3` inside the current

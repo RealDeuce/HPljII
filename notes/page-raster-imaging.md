@@ -1753,9 +1753,14 @@ Output effect:
   final-`X` font-ID selection reaches compact output for both the bit-30
   built-in path and the bit-30-clear inline/downloaded path.
 - Fixtures `font-ID non-selected exits keep prior visible rows` and
-  `0x13eb8 no-dispatch exits keep prior visible rows` prove the corresponding
-  helper exits preserve the prior selected context before the following
-  printable/SO tail reaches compact rendering.
+  `font-ID secondary non-selected exits keep prior SO visible rows` prove the
+  corresponding final-`X` helper exits preserve prior primary/secondary
+  selected contexts before the following printable/SO tail reaches compact
+  rendering. The secondary preserved path renders object prefix
+  `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01` from context `0xc40ad87a`.
+- Fixture `0x13eb8 no-dispatch exits keep prior visible rows` proves the
+  selected-font-refresh exits preserve the prior selected context before the
+  following printable/SO tail reaches compact rendering.
 - Fixture `host-fetched linear downloaded character stream renders through
   0x168dc` proves parser-produced `ESC )s6W` installs glyph `0x26`, queues
   selector `0x0003`, and renders three rows through mode-0 helper `0x1fe76`.

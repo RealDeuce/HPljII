@@ -959,7 +959,13 @@ The next work should follow dataflow, not isolated handlers:
    same host-fetched `ESC (7X!!` printable tail to those preserved-state outcomes:
    following `!!` consumes prior context `0xc008004c`, queues object prefix `00 00 00 00
    00 00 00 02 00 6a 00 00 68 02`, and renders row digest
-   `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`. Fixture `0x13eb8
+   `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`. Fixture `font-ID
+   secondary non-selected exits keep prior SO visible rows` covers the slot-1 sibling:
+   host-fetched `ESC )8X SO !!` reaches the same four terminal `0x17708` statuses, no
+   `0x14c64` dispatch occurs, and the SO/printable tail consumes preserved secondary
+   context `0xc40ad87a`, queues object prefix `00 00 00 00 00 01 00 02 20 c9 00 20 cb
+   01`, and renders digest
+   `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`. Fixture `0x13eb8
    transient and cache-hit exits avoid dispatch` covers the selected-font refresh exits
    that stop before `0x144d2`/`0x14c64`: transient `0x78298f` stores selected context
    `0xc008004c`, while cache-hit returns after `0x148f8`. Fixture `0x13eb8 no-dispatch
@@ -1104,15 +1110,15 @@ The next work should follow dataflow, not isolated handlers:
    offset `+0xb50`. Fixtures `downloaded segmented-wide row-0x01ff fallbacks render
    selected segment` and `downloaded segmented-wide row-0x01ff span-31 fallback hits
    source boundary` repeat that split for row `0x01ff`, the highest sampled
-   low-byte-above-`0x80` row. Remaining downloaded-character publication work
-   is therefore limited to pixel-row behavior beyond wrapped source-byte helper-table
+   low-byte-above-`0x80` row. Remaining downloaded-character publication work is
+   therefore limited to pixel-row behavior beyond wrapped source-byte helper-table
    boundaries, broader higher-row segmented-wide fallback combinations beyond sampled
-   rows `0x0181`, `0x0182`, and `0x01ff`, broader
-   publication combinations, and full-success return-boundary siblings outside the named
-   row-count, wide-remainder, segmented-wide, normal, row-`0x80`, linear-segmented,
-   split-plane segmented, segmented-wide, no-install, status-`2`, and payload-control
-   cases. It is not the documented mode-byte-`0` visible recovery boundary. The
-   publication-command checkpoint now covers host-fetched reset, FF, page-size,
-   orientation, paper-source, and copies streams through parser dispatch, `0xff1e`,
-   `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF, page-size,
-   orientation, paper-source, and copies also have addressed allocation variants.
+   rows `0x0181`, `0x0182`, and `0x01ff`, broader publication combinations, and
+   full-success return-boundary siblings outside the named row-count, wide-remainder,
+   segmented-wide, normal, row-`0x80`, linear-segmented, split-plane segmented,
+   segmented-wide, no-install, status-`2`, and payload-control cases. It is not the
+   documented mode-byte-`0` visible recovery boundary. The publication-command
+   checkpoint now covers host-fetched reset, FF, page-size, orientation, paper-source,
+   and copies streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`,
+   and final row comparison; reset, FF, page-size, orientation, paper-source, and copies
+   also have addressed allocation variants.

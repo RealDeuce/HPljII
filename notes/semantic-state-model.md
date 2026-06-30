@@ -3306,6 +3306,8 @@ because physical/self-test comparison is still open.
 - `font sample full printout source placement follows firmware order`
 - `font sample full printout rows reuse ROM sample byte runs`
 - `font sample full printout segments render through 0x1ed84 and 0x1ef6a`
+- `font sample first internal source group follows 0x1c334 row loop`
+- `font sample internal class-one source group follows 0x1c334 row loop`
 - `font sample heading continuation emits fresh source heading page record`
 - `font sample cartridge heading continuations emit source-specific page records`
 - `font sample row continuation emits fresh source heading page record`
@@ -4201,6 +4203,12 @@ primary tail selects context `0xc0080cb8` and the same primary digest as
 `ESC (0N`; the secondary tail selects context `0xc00ad4aa`, applies the
 Roman Extension map path for active word `0x0005`, crosses SO `0xc6b8`, and
 matches the secondary digest above.
+The default-font helper fixtures pin the producer side of that state:
+`0x1ac0a/0x1af36 default-font table builders` fills the parser default-symbol
+and fallback candidate tables, `0x1b250 current-default candidate lookup` and
+`0x1b50e current-default resolver scan and predicates` pin the current-default
+resolver contract, and the real/synthesized default-search fixtures pin the
+built-in candidate fallback sources used by final `@3`.
 
 The final-`X` visible fixture renders a distinct built-in record selected by
 font ID. Host-fetched `ESC (7X!!` selects context `0xc0089fb0`, HMI `30`, glyph
@@ -4343,6 +4351,12 @@ install events.
 - `0xc580 dirty-2 selector-match branch installs current context only`
 - `0xc580 dirty-2 secondary selector-match branch installs current context only`
 - `0xc580 dirty-2 selector-mismatch branch only copies remembered word`
+- `0x1ac0a/0x1af36 default-font table builders`
+- `0x1b250 current-default candidate lookup`
+- `0x1b50e current-default resolver scan and predicates`
+- `0x1b250 real current-default candidate lookup`
+- `0x1ab84 synthesized default-font search`
+- `0x1ad66/0x1adaa/0x1ae7e default-font candidate search`
 - `real default-table caller stream uses ROM-backed words`
 - `real final-@ default-table streams select visible built-ins`
 

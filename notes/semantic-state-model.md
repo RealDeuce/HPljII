@@ -2451,6 +2451,13 @@ and the compact glyph renderers.
 - `0x14398` consumes active survivors and uses `0x13c06` / `0x1428c`
   to rank resource window, decoded height, byte `+0x2f`, signed byte
   `+0x30`, and byte `+0x31`.
+- `0x13a48` compares the selected slot `0x7828a8` against the primary or
+  secondary selected-resource snapshot at `0x783148` / `0x783152`. For
+  built-in/resource records it rechecks symbol word through `0x15890`,
+  record words `+0x0e/+0x10`, active symbol word `0x783144/0x783146`, and
+  the ROM-vs-RAM address flag; for inline/downloaded records it rechecks
+  symbol word through `0x158be`, byte `+0x0e`, active symbol word, and the
+  same address flag.
 - `0x13eb8` consumes the selected candidate state and writes current
   context records `0x782ee6` / `0x782ef6`; `0x14c64` then rebuilds the
   active character map for printable text.
@@ -2499,6 +2506,8 @@ resources because no image is available in this repo.
 - `generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`
 - `generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst`
+- `generated/disasm/ic30_ic13_object_compare_013a48.lst`
+- `generated/disasm/ic30_ic13_active_object_scan_014398.lst`
 - `generated/disasm/ic30_ic13_font_candidate_object_alloc_01bc38.lst`
 - `generated/analysis/ic32_ic15_font_records.md`
 - `generated/analysis/ic32_ic15_resource_glyph_probe.md`

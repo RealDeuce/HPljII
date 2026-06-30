@@ -622,6 +622,15 @@ The fresh continuation segment emits only the `INTERNAL FONTS` heading from
 context `0x4008004c`, queues bucket `0`, ends at cursor
 `0x00000000,0x00520000`, and pins bucket digest
 `e43b602451f3f31ea84e49c7be1d12b34ae3d1b7369b5dd7096aa7e96db1268c`.
+Fixture
+`font sample cartridge heading continuations emit source-specific page records`
+uses that same `0x1ca2c -> 0x1c9f6` pre-heading overrun for non-internal
+source labels. Source `1` class-zero context `0x4008004c` emits
+`LEFT FONT CARTRIDGE` with bucket digest
+`a4c3a808dd2430bc463e091a57e0462bdff94e50a5e8a5b21f615764e9f6a63d`;
+source `2` class-one context `0x40099d18` emits
+`RIGHT FONT CARTRIDGE` with bucket digest
+`03025c4239ec3d130bff4f4e05362b1c9730b9848e7e99a2934c4868b600badb`.
 Fixture `font sample row continuation emits fresh source heading page record`
 now carries that row-overrun branch into the page-record producer. The fresh
 continuation segment emits the `INTERNAL FONTS` heading and row
@@ -687,11 +696,12 @@ The modeled class-zero segments top out at row width `2219`; the modeled
 class-one segments top out at row width `4097`, so that width/baseline
 interpretation is now pinned but not yet validated against paper output.
 
-The covered forced-continuation page-record objects now include the
-heading-preflight, row-overrun `I01`, and alternate-row `I01` caller forms.
-Broader source/class forced-continuation variants and physical comparison of
-the rendered source/class surfaces against a known printed/self-test sample,
-including baseline and cell placement agreement after `0x1ed84`, remain open.
+The covered forced-continuation page-record objects now include internal and
+cartridge heading-preflight forms, row-overrun `I01`, and alternate-row `I01`
+caller forms. Broader source/class row-overrun variants and physical
+comparison of the rendered source/class surfaces against a known
+printed/self-test sample, including baseline and cell placement agreement
+after `0x1ed84`, remain open.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record
@@ -1280,6 +1290,7 @@ Fixtures:
 - `font sample full printout rows reuse ROM sample byte runs`
 - `font sample full printout segments render through 0x1ed84 and 0x1ef6a`
 - `font sample heading continuation emits fresh source heading page record`
+- `font sample cartridge heading continuations emit source-specific page records`
 - `font sample row continuation emits fresh source heading page record`
 - `font sample alternate-row continuation emits preadvanced row page record`
 - `0x1a616 candidate scan continuation policy changes built-in counts`

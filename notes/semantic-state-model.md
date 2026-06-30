@@ -2866,6 +2866,15 @@ for how resource records become ordinary page-record text.
     segment from context `0x4008004c`, bucket `0`, final cursor
     `0x00000000,0x00520000`, and bucket digest
     `e43b602451f3f31ea84e49c7be1d12b34ae3d1b7369b5dd7096aa7e96db1268c`.
+    Fixture
+    `font sample cartridge heading continuations emit source-specific page records`
+    covers the same pre-heading continuation boundary for non-internal
+    source labels: source `1` class-zero context `0x4008004c` emits
+    `LEFT FONT CARTRIDGE` with bucket digest
+    `a4c3a808dd2430bc463e091a57e0462bdff94e50a5e8a5b21f615764e9f6a63d`,
+    and source `2` class-one context `0x40099d18` emits
+    `RIGHT FONT CARTRIDGE` with bucket digest
+    `03025c4239ec3d130bff4f4e05362b1c9730b9848e7e99a2934c4868b600badb`.
     Fixture `font sample row continuation emits fresh source heading page record`
     closes the first row-overrun object case: the tight-limit
     `0x1d050 -> 0x1c9f6 -> 0x1ca2c` branch for source `3`, row `1`, current
@@ -2875,10 +2884,11 @@ for how resource records become ordinary page-record text.
     `[0, 2, 3, 6, 7, 8, 16, 24, 32, 40, 48, 56, 64]`, final cursor
     `0x08ac0000,0x00900000`, and bucket digest
     `2dc6c3326aad3118d2b96c44cf0ab727ee2926069c5035722cceef470db8b7ef`.
-    Forced continuation-page object bytes are now covered for the
-    heading-preflight, first row-overrun, and alternate-row caller forms.
-    Broader source/class tight-limit variants remain open; the normal full
-    source/class placement is composed as eight page-record segments.
+    Forced continuation-page object bytes are now covered for the internal
+    and cartridge heading-preflight forms, first internal row-overrun, and
+    alternate-row caller forms. Broader source/class row-overrun variants
+    remain open; the normal full source/class placement is composed as eight
+    page-record segments.
   - record `+0x28/+0x2a` and `+0x2f..+0x31` are already correlated with
     emitted page objects for their ROM roles: `0x1519a` consumes
     `+0x28/+0x2a` as decoded-height inputs before `0x13bca`, and
@@ -3243,11 +3253,12 @@ because physical/self-test comparison is still open.
   surface digest
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
   Fixtures `font sample heading continuation emits fresh source heading page record`,
+  `font sample cartridge heading continuations emit source-specific page records`,
   `font sample row continuation emits fresh source heading page record`, and
   `font sample alternate-row continuation emits preadvanced row page record`
-  cover the heading-preflight, first row-overrun, and alternate-row
-  forced page-record objects. Remaining gaps are broader source/class
-  forced-continuation page-record variants and physical baseline/cell
+  cover the internal/cartridge heading-preflight, first row-overrun, and
+  alternate-row forced page-record objects. Remaining gaps are broader
+  source/class row-overrun page-record variants and physical baseline/cell
   comparison against a known printed/self-test sample.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are

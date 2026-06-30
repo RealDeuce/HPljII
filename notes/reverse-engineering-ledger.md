@@ -1453,15 +1453,17 @@ ROM work needed:
   bridge and band renderer, with aggregate rendered-surface digest
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
   Fixtures `font sample heading continuation emits fresh source heading page
-  record` and `font sample row continuation emits fresh source heading page
-  record` cover the heading-preflight and row-overrun `I01`
-  forced-continuation page objects. Fixture
+  record` and
+  `font sample cartridge heading continuations emit source-specific page
+  records` cover internal and cartridge heading-preflight page objects.
+  Fixture `font sample row continuation emits fresh source heading page record`
+  covers the row-overrun `I01` forced-continuation page object. Fixture
   `font sample alternate-row continuation emits preadvanced row page record`
   now covers the `0x1d868` D7=1 caller sequence through `0x1cabe`, emits
   row `I01COURIER101210U` after pre-row y advance
   `0x00520000 -> 0x00900000`, and pins bucket digest
   `c6f0cbe07a7681d3ecfd3447b8296e97cbf8042d6d962d825f6018d980d5396b`.
-  The next boundaries are broader tight-limit continuation variants and
+  The next boundaries are broader source/class row-overrun variants and
   physical baseline/cell comparison against a known printed/self-test sample.
 - Fixture `live parser symbol-set streams select non-Roman built-ins` now
   broadens the named `0N` / `10U` / `11U` samples from static map evidence

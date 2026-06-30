@@ -144,12 +144,15 @@ Fixture evidence:
 - `0xa904 direct mode 1 preserves 0x1a and clears handshake state`
 - `0xa904 direct mode 2 reads ready byte and sets control-shadow bit 6`
 - `0xa620/0xa668/0xa6cc engine shadow and byte bridge`
+- `macro execute frame payload feeds 0xa904 data-chain bytes`
 - `host-fetched mixed control stream reaches parser and page-record render`
 - `combined host-fetched font download stream prints installed glyph`
 - `parser-driven downloaded glyph rule raster stream composes through
   0x1ef6a`
 - `0xb0c0/0xb022 output FIFO wraps and preserves order`
 - `0xb090 waits on full FIFO then enqueues after drain`
+- `0x2888 publishes environment mismatch or status-cache changes`
+- `0x2888 sets page-environment status consumed by 0xaece`
 - `0xaece emits service byte and combined status byte`
 - `0xae2c drains FIFO by configured output mode`
 

@@ -2363,6 +2363,16 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   `0x3003`. The segmented cases emit two objects for segment `1` and
   segment `0`, with bucket indices `9/1` or `8/0` depending on the
   positioned y coordinate.
+- Fixture `0x12f2e-modeled short bucket object fields` pins the default
+  flagged short object from source glyph `0x20`: path `short`, object size
+  `0x26`, capacity `0x0a`, entry size `3`, bucket `0`, selector `0`, coord
+  `0`, rows `22`, width `4`, and object prefix
+  `00 00 00 00 00 00 00 01 20 00 00`.
+- Fixtures `0x12f2e-modeled segmented bucket metadata` and
+  `0x12f2e-modeled segmented bucket objects` pin the tall built-in source
+  path: selector `0x2000`, glyph `0x1f`, rows `1108`, width `74`, object size
+  `0x28`, capacity `8`, and nine segment objects for buckets
+  `64,56,48,40,32,24,16,8,0` with segment bytes `8..0`.
 - Fixture `addressed 0x12f2e selector-mode matrix allocates and renders all
   compact modes` runs the four unflagged selector modes through real
   addressed `0x1381c` storage in one page-record state block. Glyph `1`
@@ -2518,7 +2528,10 @@ full 68000 interpreter through every source class and allocator branch.
 - `addressed 0x12f2e selector-mode matrix allocates and renders all
   compact modes`
 - `0x12f2e-modeled unflagged short bucket object fields`
+- `0x12f2e-modeled short bucket object fields`
 - `0x12f2e-modeled unflagged width byte selects compact mode bit`
+- `0x12f2e-modeled segmented bucket metadata`
+- `0x12f2e-modeled segmented bucket objects`
 - `0x12f2e-modeled unflagged tall inline bucket objects`
 - `0x12f2e-modeled unflagged wide tall inline bucket objects`
 - `0x1393a-modeled selected inline source object fields`
@@ -2767,7 +2780,10 @@ startup-visible typed-record chain that bounds this built-in window.
   pointer-list model. It rejects full lists at `0x78278e >= 0x00c0`, chooses
   class from payload byte `+0x20` for flagged/resource records or byte
   `+0x16` for inline/downloaded records, shifts the class-specific tail, and
-  returns the inserted slot pointer in `D7`.
+  returns the inserted slot pointer in `D7`. Fixture
+  `0x1bc38-modeled candidate insertion branches` pins class-zero insertion,
+  class-one insertion with one tail entry shifted, and invalid-class status
+  `(0xe7, 0x31)`.
 - `0x1bd2e` deletes one candidate slot from the same shared list. Its caller
   passes the slot pointer in argument `+8`; it computes the last occupied slot
   as `0x782324 + 4 * 0x78278e - 4`, copies each later longword down one slot,
@@ -2885,6 +2901,7 @@ resources because no image is available in this repo.
 - `0x1a616 candidate scan continuation policy changes built-in counts`
 - `0x1569c activates concrete built-in candidate windows`
 - `0x156de filters concrete active candidate windows`
+- `0x1bc38-modeled candidate insertion branches`
 - `0x1519a filters concrete active candidates by height`
 - `0x153c6 filters concrete active candidates by spacing and pitch`
 - `0x14398 chooses concrete active built-in candidate`
@@ -8180,6 +8197,16 @@ fixtures prove byte-aligned mode `0`, non-byte-aligned mode `0`, mode `1`,
 mode `2`, shifted mode `2`, band-clipped mode `2`, and mode `3` object/render
 contracts through `0x1f88e`.
 
+The encoded-raster primitive fixtures pin the helper math behind those row
+fixtures. `mode 0 literal words` copies payload bytes to literal 16-bit words;
+`mode 1 byte expansion`, `mode 2 byte expansion`, and
+`mode 3 cascaded expansion` pin the ROM expansion tables for sampled bytes.
+`coordinate decode 0x1234` decodes row index `1`, byte-pair offset `0x68`,
+subbyte flag `0x12`, and destination pointer `0x1000c8`. `band clip 0x7000
+count 5` returns split word `0x00040001`. `destination shifted current band`
+selects the shifted current-band destination branch, and `destination fallback
+buffer` selects the fallback-buffer branch.
+
 Lower-resolution parser fixtures now prove the same host-fetched command/data
 boundary for modes `1`, `2`, and `3`: each stream drains through the modeled
 `0xa904` ring source, reaches parser handlers `0x10808`, `0x1075a`, and
@@ -8256,6 +8283,14 @@ live 68000 execution trace.
 - `raster transfer ensures page root before queueing row object`
 - `raster stream ties parser dispatch to queued page object`
 - `0x13070/0x13250 raster row queues encoded-span object`
+- `mode 0 literal words`
+- `mode 1 byte expansion`
+- `mode 2 byte expansion`
+- `mode 3 cascaded expansion`
+- `coordinate decode 0x1234`
+- `band clip 0x7000 count 5`
+- `destination shifted current band`
+- `destination fallback buffer`
 - `0x1f88e mode-0 raster object renders queued literal row`
 - `0x1edc6 page-record bridge preserves queued raster object`
 - `0x13070/0x13250 raster row queues non-byte-aligned encoded-span object`
@@ -8920,6 +8955,10 @@ bucket through `0x1387c`/`0x1381c` before publication.
     publication copies that value to pool-header word `+0x0c`; the addressed
     variant leaves cursor x/y at packed `28`/`21`, clears the current page
     root, keeps `page_root_present = 1`, and leaves `0x782990 = 0`.
+  - `0xeef0 ESC &l#X stores absolute clamped copy count` pins the direct
+    copy-count write rules: parameter `0` leaves the prior count unchanged,
+    negative parameter `-3` stores absolute count `3`, and parameter `150`
+    clamps to `99`.
   Evidence: fixtures `addressed page geometry publications render page
   records`, `host-fetched FF geometry and paper-source publications preserve
   0xff1e pool header defaults`,
@@ -9064,6 +9103,7 @@ because each is fixture-pinned.
 - `host-fetched ESC E clears missing page root without publication`
 - `host-fetched copies publication preserves 0xeef0 pool header word`
 - `mixed printable/copies/FF stream publishes copy count`
+- `0xeef0 ESC &l#X stores absolute clamped copy count`
 - `host-fetched publication streams preserve 0x1edc6 bridge contract`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`
 

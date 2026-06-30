@@ -1984,11 +1984,11 @@ Unresolved middle edges:
   causes selector `0x1003`, `0x1003`, and `0x3003` with only segments `1` and
   `0`; the first render splits for those sampled rows are also documented. The
   high-row fallback fixtures now extend that selected-segment render evidence
-  across installed row words `0x0181`, `0x0182`, `0x01ff`, and `0x0281`: spans
-  `17`, `18`, and `32` render bucket-8 segment `1` as `32` current rows and
-  `96` fallback rows matching the installed bitmap, while the span-31 siblings
-  are explicit A2 source boundaries at `+0xb50`. Remaining gaps are broader
-  physical/full-row comparison for boundary cases
+  across installed row words `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`,
+  and `0x02ff`: spans `17`, `18`, and `32` render bucket-8 segment `1` as
+  `32` current rows and `96` fallback rows matching the installed bitmap,
+  while the span-31 siblings are explicit A2 source boundaries at `+0xb50`.
+  Remaining gaps are broader physical/full-row comparison for boundary cases
   and selected-font state combinations not represented in current visible
   fixtures.
 - `0x1fa5c..0x2feb0`: all sixteen main `0x1f08e` helper indexes now have

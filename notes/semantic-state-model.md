@@ -5557,7 +5557,15 @@ mode-byte suppression for values `0`, `1`, `2`, `3`, and `6` when
     `0x1f264`, and selected segment `1` still renders `32` current rows plus
     `96` fallback rows for spans `17`, `18`, and `32`. The adjacent span-31
     fixture stops at the same `validate_wide_compact_row_copy` fallback A2
-    source-read boundary `+0xb50`.
+    source-read boundary `+0xb50`. Fixtures `downloaded segmented-wide
+    high-row 0x02xx matrix renders selected segment` and `downloaded
+    segmented-wide high-row 0x02xx span-31 matrix hits source boundary`
+    broaden that state split to row words `0x0282` and `0x02ff`: the
+    canonical installed row words survive `0x16498`, the source record exposes
+    low bytes `0x82` and `0xff`, `0x12f2e` still queues only selector `0x3003`
+    segments `1` and `0`, and bucket `8` segment `1` renders `32` current rows
+    plus `96` fallback rows for spans `17`, `18`, and `32`. Span `31` for both
+    rows stops at the same fallback A2 source-read boundary `+0xb50`.
   - downloaded-character segmented-wide row-byte boundary: fixture
     `downloaded segmented-wide row-byte boundary truncates page-record
     segments` installs canonical row words `0x0002`, `0x007f`, `0x0080`,
@@ -5902,6 +5910,10 @@ boundary` repeat that success/boundary split for row word `0x0182`. Fixtures
 `downloaded segmented-wide row-0x01ff fallbacks render selected segment` and
 `downloaded segmented-wide row-0x01ff span-31 fallback hits source boundary` repeat the
 same split for row word `0x01ff`.
+Fixtures `downloaded segmented-wide high-row 0x02xx matrix renders selected segment`
+and `downloaded segmented-wide high-row 0x02xx span-31 matrix hits source boundary`
+repeat that selected-segment success/source-boundary split for row words `0x0282` and
+`0x02ff`.
 Fixture `downloaded glyph
 row-count matrix publishes and renders additional short/segmented counts` adds two
 hundred fifty row-count siblings through the same fetched install, printable,
@@ -6901,7 +6913,11 @@ A2 source read at `+0xb50`. High for the row-`0x0182` sibling because fixtures
 same selected-segment success/boundary split. High for the row-`0x01ff` sibling because
 fixtures `downloaded segmented-wide row-0x01ff fallbacks render selected segment` and
 `downloaded segmented-wide row-0x01ff span-31 fallback hits source boundary` assert the
-same selected-segment success/boundary split. High for
+same selected-segment success/boundary split. High for the row-`0x0282`/`0x02ff`
+matrix because fixtures `downloaded segmented-wide high-row 0x02xx matrix renders
+selected segment` and `downloaded segmented-wide high-row 0x02xx span-31 matrix hits
+source boundary` assert the same selected-segment success/boundary split across both row
+words. High for
 publication-to-scheduler band progression because `0xff1e` disassembly at `0xffc8`
 clears root `+0x18`, `0x1ed84` copies that word into render `+0x10/+0x16`, and fixture
 `0x1eba4 scheduler band words render published downloaded glyph` proves `0x1eba4` emits
@@ -7151,7 +7167,7 @@ fields and broader selected-font state combinations have not been page-compared.
   span field into compact mode-0 invalid helper-table targets, visible
   behavior for segmented-wide row words and spans
   outside the sampled row `0x0082`, `0x0083`, `0x0181`, `0x0182`, `0x01ff`,
-  and `0x0281` matrix, broader
+  `0x0281`, `0x0282`, and `0x02ff` matrix, broader
   publication combinations beyond the documented normal, non-boundary short, rows-`0x20`
   short, rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   low-byte-truncated table-limit boundary, linear-segmented, rows-`0x82` segmented,

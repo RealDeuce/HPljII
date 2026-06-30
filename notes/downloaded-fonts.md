@@ -1595,6 +1595,16 @@ segment `1` through `0x1f264`; spans `17`, `18`, and `32` render `32` current
 rows plus `96` fallback rows matching the installed bitmap, while adjacent
 span `31` stops at the same fallback A2 source read boundary `+0xb50`.
 
+Fixtures `downloaded segmented-wide high-row 0x02xx matrix renders selected
+segment` and `downloaded segmented-wide high-row 0x02xx span-31 matrix hits
+source boundary` broaden that same state split to row words `0x0282` and
+`0x02ff`. Both row words preserve the full installed value at `0x16498`, expose
+only low source bytes `0x82` and `0xff` to `0x12f2e`, queue selector `0x3003`
+segments `1` and `0`, and render selected bucket-8 segment `1` through
+`0x1f264`. Spans `17`, `18`, and `32` again produce `32` current rows plus
+`96` fallback rows matching the installed bitmap; span `31` for both rows
+stops at the same fallback A2 source read boundary `+0xb50`.
+
 Fixture `downloaded segmented-wide row-byte boundary truncates page-record
 segments` classifies the row-count side of that cross-product for span `0x11`.
 It installs canonical row words `0x0002`, `0x007f`, `0x0080`, `0x0081`,
@@ -2314,9 +2324,12 @@ A byte-stream renderer must preserve:
   span-31 fallback hits source boundary` prove the same success/boundary split for row
   `0x0182`. Fixtures `downloaded segmented-wide row-0x01ff fallbacks render selected
   segment` and `downloaded segmented-wide row-0x01ff span-31 fallback hits source
-  boundary` prove the same split for row `0x01ff`. Remaining parser-produced
-  comparisons are bounded cross-products:
-  visible pixel rows beyond those documented wrapped source-byte helper-table
+  boundary` prove the same split for row `0x01ff`. Fixtures `downloaded segmented-wide
+  high-row 0x02xx matrix renders selected segment` and `downloaded segmented-wide
+  high-row 0x02xx span-31 matrix hits source boundary` prove the same split for rows
+  `0x0282` and `0x02ff`. Remaining parser-produced comparisons are bounded
+  cross-products:
+  visible pixel rows beyond those documented wrapped source-byte mode-0 helper-table
   boundaries, broader publication combinations beyond the documented normal,
   nonboundary-short, rows-`0x20` short, rows-`0x40` short, row-`0x80`, row-count-matrix
   short/segmented, rows-`0x0102` truncated, linear-segmented, rows-`0x82` segmented,

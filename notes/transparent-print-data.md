@@ -23,6 +23,8 @@ Evidence:
   - `transparent secondary segmented render prefix exposes source boundary`
   - `transparent secondary segment-57 continuation policies diverge after
     verified bytes`
+  - `0x41a HEAD scanner would duplicate records under simple resource mirror`
+  - `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations`
 
 ## Command Boundary
 
@@ -477,6 +479,16 @@ candidate-scan bounds through `0x0ffffe`. The exact unresolved boundary is
 `0x0c0000..0x0c0321`: closing it requires board/emulator memory-map evidence,
 live startup candidate counters, a direct bus read around `0x0c0000`, or an
 observed page result that matches one of the fallback-row digests above.
+Fixture `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations` constrains
+the other two continuation hypotheses at the same scanner boundary:
+code-pair-after-resource presents marker `0x00800000` at probe offset
+`0x40000`, while zero-fill-after-resource presents marker `0x00000000`. Both
+variants keep one `HEAD` chain, walk the same `24` typed records as the
+verified `IC32,IC15` image, and continue to final probe `0x80000`. Therefore
+mirror is the only modeled local continuation that would change startup
+candidate discovery unless hardware hides it from scanner reads; code-pair and
+zero-fill remain possible physical decode policies for the fallback rows, not
+additional resource records.
 
 `0x1a2e4` / `0x1a616` make the built-in side of that boundary exact: built-in
 resource discovery starts at `0x080000`, ends at `0x0ffffe`, and scans in
@@ -580,7 +592,11 @@ Unresolved middle edges:
   route polarity, sampled primary interior values, or the renderable secondary
   prefix through bucket `448`. It is also not cartridge-window discovery:
   disassembly separates the built-in scan range `0x080000..0x0ffffe` from the
-  optional cartridge windows at `0x200000..0x5ffffe`.
+  optional cartridge windows at `0x200000..0x5ffffe`. The scanner fixtures
+  further split the physical hypotheses: a full resource mirror would expose a
+  second `HEAD` chain and `48` records to `0x41a`, while code-pair and
+  zero-fill continuations expose non-`HEAD` markers at offset `0x40000`, keep a
+  single `HEAD` chain, and walk the same `24` records.
 
 ## Reproduction Contract
 
@@ -626,6 +642,7 @@ For `ESC &p#X`:
   mapping has a page-record boundary and renderable prefix. The remaining risk
   is the segment-57 fallback-row source interpretation named above; the
   current-band rows are already pinned across mirror, code-pair, and zero-fill
-  continuation policies.
+  continuation policies, and the startup scanner consequence is pinned for all
+  three policies.
 - The names for the active context filtering byte, fallback byte, and high-byte
   flags remain provisional.

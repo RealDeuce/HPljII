@@ -629,6 +629,15 @@ continuation segment emits the `INTERNAL FONTS` heading and row
 `[0, 2, 3, 6, 7, 8, 16, 24, 32, 40, 48, 56, 64]`, ends at cursor
 `0x08ac0000,0x00900000`, and pins bucket digest
 `2dc6c3326aad3118d2b96c44cf0ab727ee2926069c5035722cceef470db8b7ef`.
+Fixture `font sample alternate-row continuation emits preadvanced row page
+record` carries the sibling `0x1d868` D7=1 branch into the page-record
+producer. The caller sequence
+`0x1c4a4 -> 0x1d868 -> 0x1c4b6 -> 0x1c9f6 -> 0x1c4ca -> 0x1ca2c ->
+0x1c4d4 -> 0xf06e -> 0x1c4e8 -> 0x1d050 -> 0x1c4f2 -> 0x1cabe` emits the
+same `I01COURIER101210U` row after pre-row y advance
+`0x00520000 -> 0x00900000`, queues buckets
+`[0, 7, 8, 16, 24, 32, 40, 48, 56, 64]`, and pins bucket digest
+`c6f0cbe07a7681d3ecfd3447b8296e97cbf8042d6d962d825f6018d980d5396b`.
 Fixture `font sample alternate row fit gate follows 0x1d868` covers the
 separate selected/alternate gate at `0x1d868..0x1d8b8`. The disassembly reads
 `0x783132` at `0x1d886..0x1d894` after calling `0x1cece(selected,row=1)` and
@@ -678,13 +687,10 @@ The modeled class-zero segments top out at row width `2219`; the modeled
 class-one segments top out at row width `4097`, so that width/baseline
 interpretation is now pinned but not yet validated against paper output.
 
-The still-open forced-continuation boundary is now narrower than a generic
-page-break note. The alternate-row fit gate fixture proves the trigger at
-`0x1d868`, but the following caller sequence still needs a page-record object
-fixture: `0x1c4a4 -> 0x1d868 -> 0x1c4b6 -> 0x1c9f6 -> 0x1c4ca -> 0x1ca2c ->
-0x1c4d4 -> 0xf06e -> 0x1c4e8 -> 0x1d050 -> 0x1c4f2 -> 0x1cabe`. Broader
-source/class forced-continuation variants and physical comparison of the
-rendered source/class surfaces against a known printed/self-test sample,
+The covered forced-continuation page-record objects now include the
+heading-preflight, row-overrun `I01`, and alternate-row `I01` caller forms.
+Broader source/class forced-continuation variants and physical comparison of
+the rendered source/class surfaces against a known printed/self-test sample,
 including baseline and cell placement agreement after `0x1ed84`, remain open.
 
 The old high-word interpretation was wrong. The entries are not absolute
@@ -1192,11 +1198,11 @@ Unknown:
 - manual-facing names for several record metadata fields remain open,
   especially the exact baseline/cell terminology behind `+0x28/+0x2a`
   and tie-breaker bytes `+0x2f..+0x31`;
-- forced continuation-page object bytes beyond the covered heading-preflight
-  and row-overrun `I01` cases remain open first at the alternate-row caller
-  edge `0x1c4a4..0x1c4f2`; physical output comparison for the full
-  internal-font sample page also remains open even though the ROM-side
-  candidate order and rendered-surface digest are fixture-backed;
+- forced continuation-page object bytes beyond the covered heading-preflight,
+  row-overrun `I01`, and alternate-row `I01` cases remain open; physical
+  output comparison for the full internal-font sample page also remains open
+  even though the ROM-side candidate order and rendered-surface digest are
+  fixture-backed;
 - optional cartridge/resource candidate windows are bounded by ROM addresses,
   but no physical cartridge image is present in this repo.
 
@@ -1273,6 +1279,9 @@ Fixtures:
 - `font sample full printout source placement follows firmware order`
 - `font sample full printout rows reuse ROM sample byte runs`
 - `font sample full printout segments render through 0x1ed84 and 0x1ef6a`
+- `font sample heading continuation emits fresh source heading page record`
+- `font sample row continuation emits fresh source heading page record`
+- `font sample alternate-row continuation emits preadvanced row page record`
 - `0x1a616 candidate scan continuation policy changes built-in counts`
 
 Disassembly evidence:

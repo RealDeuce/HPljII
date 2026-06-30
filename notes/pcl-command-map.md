@@ -1122,14 +1122,18 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   segments. Fixtures `font sample heading continuation emits fresh source
   heading page record` and `font sample row continuation emits fresh source
   heading page record` cover the heading-preflight and row-overrun `I01`
-  forced-continuation objects; the first exact open tight-limit object is the
-  alternate-row caller sequence after `0x1d868` returns D7 `1`:
+  forced-continuation objects; fixture
+  `font sample alternate-row continuation emits preadvanced row page record`
+  covers the alternate-row caller sequence after `0x1d868` returns D7 `1`:
   `0x1c4a4 -> 0x1d868 -> 0x1c4b6 -> 0x1c9f6 -> 0x1c4ca -> 0x1ca2c ->
-  0x1c4d4 -> 0xf06e -> 0x1c4e8 -> 0x1d050 -> 0x1c4f2 -> 0x1cabe`. Broader
-  continuation variants and physical baseline/cell/page placement against a
-  known self-test or font sample remain open. The record fields consumed by
-  `0x1519a` and `0x1428c` are documented as decoded-height inputs and
-  same-class chooser tie-breakers; only their external/manual names remain
+  0x1c4d4 -> 0xf06e -> 0x1c4e8 -> 0x1d050 -> 0x1c4f2 -> 0x1cabe`, emits
+  `I01COURIER101210U` after pre-row y advance
+  `0x00520000 -> 0x00900000`, and pins bucket digest
+  `c6f0cbe07a7681d3ecfd3447b8296e97cbf8042d6d962d825f6018d980d5396b`.
+  Broader continuation variants and physical baseline/cell/page placement
+  against a known self-test or font sample remain open. The record fields
+  consumed by `0x1519a` and `0x1428c` are documented as decoded-height inputs
+  and same-class chooser tie-breakers; only their external/manual names remain
   unknown.
 - Keep resource-window work focused on the exact physical decode gap.
   [resource-rom.md](resource-rom.md) now composes the

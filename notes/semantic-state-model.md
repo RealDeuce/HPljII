@@ -2756,14 +2756,17 @@ for how resource records become ordinary page-record text.
     `0x1d8ba` projects first-`COURIER` y `0x00900000 -> 0x00ce0000`, derives
     projected bottom `219`, fits at page limit `300`, and returns D7 `1` when
     `0x782db6` equals `219`.
-    The caller-side continuation edge is bounded but not page-record
-    fixture-backed: `0x1c4a4` calls `0x1d868`; when D7 is `1`, `0x1c4b6`
-    calls `0x1c9f6`, `0x1c4ca` calls `0x1ca2c`, `0x1c4d4` flushes through
-    `0xf06e`, `0x1c4e8` calls `0x1d050`, and `0x1c4f2` then emits the row
-    through `0x1cabe`. Because that second `0x1d050` can move y and re-enter
-    continuation logic before the row fields are emitted, this is distinct
-    from the already fixture-backed `0x1d050 -> 0x1c9f6 -> 0x1ca2c`
-    first-row continuation page.
+    Fixture
+    `font sample alternate-row continuation emits preadvanced row page record`
+    now carries the caller-side continuation edge through the row-field object:
+    `0x1c4a4` calls `0x1d868`; when D7 is `1`, `0x1c4b6` calls `0x1c9f6`,
+    `0x1c4ca` calls `0x1ca2c`, `0x1c4d4` flushes through `0xf06e`,
+    `0x1c4e8` calls `0x1d050`, and `0x1c4f2` emits row
+    `I01COURIER101210U` through `0x1cabe`. The second `0x1d050` advances y
+    from `0x00520000` to `0x00900000`, does not re-enter continuation at page
+    limit `219`, and the resulting page record queues buckets
+    `[0, 7, 8, 16, 24, 32, 40, 48, 56, 64]` with digest
+    `c6f0cbe07a7681d3ecfd3447b8296e97cbf8042d6d962d825f6018d980d5396b`.
   - `0x1dcf2` uses shared calculator `0x1dc38` to probe current-y, optional
     second-selected-row, reset-y, and final selected-row placements. Fixture
     `font sample multi-probe preflight follows 0x1dcf2` pins mode `0`
@@ -2872,11 +2875,10 @@ for how resource records become ordinary page-record text.
     `[0, 2, 3, 6, 7, 8, 16, 24, 32, 40, 48, 56, 64]`, final cursor
     `0x08ac0000,0x00900000`, and bucket digest
     `2dc6c3326aad3118d2b96c44cf0ab727ee2926069c5035722cceef470db8b7ef`.
-    Forced continuation-page object bytes remain open for the alternate-row
-    caller edge `0x1c4a4..0x1c4f2`, where the exact unresolved boundary is the
-    post-reset `0x1c4ca -> 0x1ca2c -> 0xf06e -> 0x1d050 -> 0x1cabe` object
-    emission, and for broader source/class tight-limit variants; the normal
-    full source/class placement is composed as eight page-record segments.
+    Forced continuation-page object bytes are now covered for the
+    heading-preflight, first row-overrun, and alternate-row caller forms.
+    Broader source/class tight-limit variants remain open; the normal full
+    source/class placement is composed as eight page-record segments.
   - record `+0x28/+0x2a` and `+0x2f..+0x31` are already correlated with
     emitted page objects for their ROM roles: `0x1519a` consumes
     `+0x28/+0x2a` as decoded-height inputs before `0x13bca`, and
@@ -3240,12 +3242,12 @@ because physical/self-test comparison is still open.
   0x1ef6a` renders those segment records through the output bridge and pins
   surface digest
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
-  Fixtures `font sample heading continuation emits fresh source heading page record`
-  and `font sample row continuation emits fresh source heading page record`
-  cover the heading-preflight and first row-overrun forced page-record objects.
-  Remaining gaps are the alternate-row forced-continuation page-record object
-  after `0x1c4a4 -> 0x1d868` returns D7 `1`, broader source/class
-  forced-continuation page-record variants, and physical baseline/cell
+  Fixtures `font sample heading continuation emits fresh source heading page record`,
+  `font sample row continuation emits fresh source heading page record`, and
+  `font sample alternate-row continuation emits preadvanced row page record`
+  cover the heading-preflight, first row-overrun, and alternate-row
+  forced page-record objects. Remaining gaps are broader source/class
+  forced-continuation page-record variants and physical baseline/cell
   comparison against a known printed/self-test sample.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
@@ -3272,12 +3274,9 @@ because physical/self-test comparison is still open.
   pins the aggregate rendered-surface digest
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
   The remaining sample-printout boundaries are forced continuation-page object
-  variants beyond the covered heading-preflight and row-overrun `I01` cases.
-  The first exact open object edge is the alternate-row caller sequence
-  `0x1c4a4 -> 0x1d868 -> 0x1c4b6 -> 0x1c9f6 -> 0x1c4ca -> 0x1ca2c ->
-  0x1c4d4 -> 0xf06e -> 0x1c4e8 -> 0x1d050 -> 0x1c4f2 -> 0x1cabe`;
-  comparison against a known printed/self-test page remains a separate
-  external validation boundary.
+  variants beyond the covered heading-preflight, row-overrun `I01`, and
+  alternate-row `I01` cases; comparison against a known printed/self-test page
+  remains a separate external validation boundary.
 - `record +0x28/+0x2a`: decoded-height input consumed by `0x1519a` through
   `0x13bca`; physical baseline/cell correlation remains open.
 - `record +0x2f..+0x31`: same-class chooser tie-breakers consumed by

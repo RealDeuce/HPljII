@@ -5,6 +5,21 @@ concepts. It complements the low-level ledger in
 `notes/reverse-engineering-ledger.md`; it does not replace address-level
 notes, disassembly windows, or executable fixtures.
 
+## Generated Lead Reports
+
+Status: indexed as lead-only artifacts. These reports are useful for search
+coverage, false-positive elimination, and choosing the next disassembly window,
+but they do not by themselves define renderer-facing state fields.
+
+- `generated/analysis/ic30_ic13_cmpi_byte_candidates.md`: linear
+  `cmpi.b #imm,<ea>` opcode scan, including table/data false positives.
+- `generated/analysis/ic30_ic13_literal_patterns.md`: raw byte-pattern scan
+  for selected ESC-command literals.
+- `generated/analysis/ic30_ic13_reset_absolute_refs.md`: reset-window
+  absolute-reference index generated from the reset disassembly.
+- `generated/analysis/signature_scan.md`: firmware/resource scan for `PROG`,
+  `HEAD`, ESC bytes, and form-feed byte occurrences.
+
 ## Startup Memory Sizing And Scheduler Bootstrap
 
 Status: anchored as a ROM startup checkpoint. This cluster covers reset

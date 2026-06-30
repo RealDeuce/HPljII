@@ -1800,10 +1800,12 @@ Output effect:
   keep canonical installed width words, but the current unflagged printable
   source record supplies only byte `+0` to `0x12f2e`. Source width bytes
   `0x00..0x10` queue selector `0x0003`; source width bytes `0x11..0xff` queue
-  selector `0x1003`. The same fixture now carries the first render decision:
-  high source bytes stay on `0x1f0d2`, while low source bytes dispatch through
-  compact mode-0 at `0x1effe`, reading helper entries outside decoded row-copy
-  helper heads, including targets `0x20700000`, `0x4e90202c`, and `0x4e904cdf`.
+  selector `0x1003`. The same fixture now carries valid compact-wide wrapped
+  cases to pixels: spans `0x00ff`, `0x0111`, `0x017f`, `0x0180`, and `0x01fe`
+  render through `0x1f0d2` and match the installed bitmap rows. Low source
+  bytes still dispatch through compact mode-0 at `0x1effe`, reading helper
+  entries outside decoded row-copy helper heads, including targets
+  `0x20700000`, `0x4e90202c`, and `0x4e904cdf`.
 - Fixture `downloaded glyph segmented-wide matrix publishes and renders
   compact chunks` proves parser-produced downloaded-character spans `17..32`
   with rows `0x81` install widths `136..256`, publish buckets `0` and `8` as

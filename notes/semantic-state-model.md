@@ -5494,12 +5494,14 @@ mode-byte suppression for values `0`, `1`, `2`, `3`, and `6` when
     `0x1003`. Publication state is now fixture-backed:
     `0xff1e` publishes bucket `0`, clears the current root, keeps empty
     rule/fixed lists and context prefix `(0, 0, 0, 0)`, and preserves the queued
-    object as published bucket root. Derived render state now includes the
-    first dispatch edge: source width bytes `0x11..0xff` stay on compact-wide
-    renderer `0x1f0d2`, while source width bytes `0x00..0x10` enter compact
-    mode-0 at `0x1effe` and read helper-table entries outside the decoded
-    row-copy helper heads, including targets `0x20700000`,
-    `0x4e90202c`, and `0x4e904cdf` outside decoded row-copy helper heads.
+    object as published bucket root. Derived render state is now split by the
+    wrapped source width byte: source width bytes `0x11..0xff` stay on
+    compact-wide renderer `0x1f0d2`, render bucket `0`, and produce visible
+    rows matching the installed bitmap for spans `0x00ff`, `0x0111`,
+    `0x017f`, `0x0180`, and `0x01fe`; source width bytes `0x00..0x10` enter
+    compact mode-0 at `0x1effe` and read helper-table entries outside the
+    decoded row-copy helper heads, including targets `0x20700000`,
+    `0x4e90202c`, and `0x4e904cdf`.
   - downloaded-character segmented-wide matrix: fixture `downloaded glyph
     segmented-wide matrix publishes and renders compact chunks` installs
     canonical width words `0x0088..0x0100`, row word `0x0081`, mode bytes
@@ -6868,10 +6870,10 @@ High for the width-byte producer boundary because fixture `downloaded glyph
 width-byte boundary truncates page-record span` asserts spans `0x00ff`,
 `0x0100`, `0x0101`, `0x0102`, `0x010f`, `0x0110`, `0x0111`, `0x017f`, `0x0180`,
 `0x01fe`, and `0x020d`, the canonical installed width words, the one-byte
-source records, the resulting `0x12f2e` selectors, and the first render edge.
-Source width bytes `0x11..0xff` select compact-wide `0x1f0d2`; source width
-bytes `0x00..0x10` select compact mode-0 helper entries outside the decoded
-row-copy helper heads.
+source records, the resulting `0x12f2e` selectors, and the render split.
+Source width bytes `0x11..0xff` select compact-wide `0x1f0d2` and now render
+rows matching the installed bitmap; source width bytes `0x00..0x10` select
+compact mode-0 helper entries outside the decoded row-copy helper heads.
 High for segmented-wide downloaded rendering because
 fixture `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
 asserts spans `17..32`, rows `0x81`, mode-byte parity, split-plane copies for odd spans,
@@ -7146,8 +7148,8 @@ fields and broader selected-font state combinations have not been page-compared.
   separate fixtures cover `0x0020`, `0x0040`, `0x0080`, `0x0081`, and `0x0082`.
   Still-open comparisons are bounded cross-products: pixel rows after printable
   downloaded spans wrap in the current one-byte page source
-  span field, including compact-wide wrapped spans and compact mode-0 invalid
-  helper-table targets, visible behavior for segmented-wide row words and spans
+  span field into compact mode-0 invalid helper-table targets, visible
+  behavior for segmented-wide row words and spans
   outside the sampled row `0x0082`, `0x0083`, `0x0181`, `0x0182`, `0x01ff`,
   and `0x0281` matrix, broader
   publication combinations beyond the documented normal, non-boundary short, rows-`0x20`

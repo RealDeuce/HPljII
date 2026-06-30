@@ -344,10 +344,10 @@ Published page-record state:
   `0x1003`. The first `0xff1e` publication edge is pinned too: all cases publish bucket
   `0`, clear the current root, preserve empty rule/fixed lists and context prefix
   `(0, 0, 0, 0)`, and keep the published bucket root equal to the queued page object.
-  The first render edge is also pinned: high source bytes stay on compact-wide
-  `0x1f0d2`, while low source bytes enter compact mode-0 at `0x1effe` and read helper
-  entries outside decoded row-copy helper heads. The model therefore makes no pixel-row
-  claim past that wrapped-width source-byte boundary. Fixture `downloaded glyph
+  The render edge is split by source byte: high source bytes stay on compact-wide
+  `0x1f0d2` and now produce rows matching the installed bitmap, while low source bytes
+  enter compact mode-0 at `0x1effe` and read helper entries outside decoded row-copy
+  helper heads. Fixture `downloaded glyph
   segmented-wide matrix publishes and renders compact chunks` carries the matched span
   set through rows `0x81`: selector `0x3003` publishes buckets `0` and `8`, segment `1`
   dispatches object byte `0x30` to compact target `0x1effe` / `0x1f264`, full chunks
@@ -1507,11 +1507,13 @@ source width bytes `0x11..0xff` queue selector `0x1003`. All cases then
 publish bucket `0` through `0xff1e`; the current root clears, rule/fixed lists
 stay empty, context prefix stays `(0, 0, 0, 0)`, and the published bucket root
 matches the queued page object. The render edge is now pinned for the same
-cases: source width bytes `0x11..0xff` remain compact-wide through `0x1f0d2`,
-but source width bytes `0x00..0x10` enter compact mode-0 at `0x1effe` and read
-helper-table entries outside decoded row-copy helper heads, including
-`0x20700000`, `0x4e90202c`, and `0x4e904cdf`. The model makes no pixel-row
-claim past the wrapped-width source-byte boundary.
+cases and carries the valid compact-wide side to pixels: source width bytes
+`0x11..0xff` remain compact-wide through `0x1f0d2`, render bucket `0`, and
+produce visible rows matching the installed bitmap for spans `0x00ff`,
+`0x0111`, `0x017f`, `0x0180`, and `0x01fe`. Source width bytes `0x00..0x10`
+enter compact mode-0 at `0x1effe` and read helper-table entries outside decoded
+row-copy helper heads, including `0x20700000`, `0x4e90202c`, and `0x4e904cdf`;
+those low-byte cases remain explicit non-pixel invalid-helper boundaries.
 
 Fixture `downloaded glyph segmented-wide matrix publishes and renders compact
 chunks` covers the segmented-wide sibling. It drives host-fetched `ESC )s#W`

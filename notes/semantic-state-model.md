@@ -2752,9 +2752,11 @@ full 68000 interpreter through every source class and allocator branch.
 
 Status: composed as the built-in resource producer state that feeds font
 selection. The low-level record layout and glyph payload ledger remain in
-[resource-rom.md](resource-rom.md); this section names the candidate-list
-state consumed by `0x1569c`, `0x156de`, `0x1519a`, `0x153c6`, `0x14398`,
-and the parsed font-selection checkpoints below.
+[resource-rom.md](resource-rom.md). The standalone scan contract is in
+[built-in-resource-scan.md](built-in-resource-scan.md); this section
+preserves the detailed field ledger for the candidate-list state consumed
+by `0x1569c`, `0x156de`, `0x1519a`, `0x153c6`, `0x14398`, and the parsed
+font-selection checkpoints below.
 
 Concept: the `IC32,IC15` resource ROM does not become visible pixels by
 itself. Firmware first scans `HEAD`/typed records, classifies accepted

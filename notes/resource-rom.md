@@ -24,6 +24,9 @@ with a `HEAD` signature and contains repeated built-in font names and
 dense offset tables. Treat it as the current source for built-in font
 directories, metrics, and glyph data.
 
+The firmware-facing scan and candidate-window contract for these records
+is documented in [built-in-resource-scan.md](built-in-resource-scan.md).
+
 ## Header
 
 The first bytes reconstruct a readable resource header:

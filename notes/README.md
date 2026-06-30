@@ -65,6 +65,9 @@ compatibility boundary.
 - [font-context-metrics.md](font-context-metrics.md) - documented font
   context selection, page-root slot install, glyph maps, and descriptor/span
   metric checkpoints.
+- [built-in-resource-scan.md](built-in-resource-scan.md) - documented
+  IC32/IC15 resource scan, candidate windows, built-in record filters, and
+  glyph-row evidence.
 - [downloaded-fonts.md](downloaded-fonts.md) - documented soft-font
   descriptor, payload, validation/no-install, current-record, and
   downloaded-glyph render paths.

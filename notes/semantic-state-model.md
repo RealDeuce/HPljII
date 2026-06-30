@@ -1661,6 +1661,11 @@ or fixed-space helper `0xd0f0`.
   `e435e3b9d033e491b57282a88b0f321aa5fecae8128fa060844cc01379349563`,
   `90934acf59d9e8519c9149dc5df228f8fec2bff8451427be265489be967cdd16`, and
   `359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`.
+  Startup checksum evidence narrows the verified part but does not choose a
+  continuation policy: [firmware-startup.md](firmware-startup.md) records the
+  resource-pair byte-sum range as `0x080000..0x0bffff`, so the self-test covers
+  the verified suffix and stops before the first byte that makes the fallback
+  row candidates diverge.
   Fixture `0x41a HEAD scanner would duplicate records under simple resource
   mirror` constrains the mirror hypothesis: a full `IC32,IC15` mirror at
   `0x0c0000` would expose a second `HEAD` chain to scanner `0x41a` and
@@ -1928,6 +1933,7 @@ for manual names for the filter bytes.
   non-HEAD 0x40000 continuations` adds that the code-pair and zero-fill
   candidates do not duplicate startup scanner records. The edge is explicitly
   outside the verified `IC32,IC15` resource image in `data/rom_manifest.json`,
+  outside the startup resource-pair byte-sum range `0x080000..0x0bffff`,
   and the hardware note
   in `notes/formatter-interface-pca.md` makes address-controller/jumper decode
   the candidate state to resolve. The cartridge-window paths are separately

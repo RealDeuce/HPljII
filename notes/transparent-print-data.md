@@ -433,11 +433,13 @@ computed read starts at firmware address `0x0bfe22`. It needs bytes
 `0x0bfe22..0x0c0321`; only `0x0bfe22..0x0bffff` are inside the verified
 `0x40000`-byte resource-pair image. Firmware startup notes show scanner `0x41a`
 walking resource records through `0x0ae122` and terminating at `0x0b2f80`
-before the next `0x40000` probe. The mirror-scanner fixture below now proves a
-simple full mirror would be scanner-visible, but startup notes still do not
-prove whether the physical decode hides that mirror from scanner reads,
-zero-fills, exposes program ROM, or maps another source at
-`0x0c0000..0x0c0321`.
+before the next `0x40000` probe. The same startup notes bound byte-sum
+self-test coverage to `0x080000..0x0bffff` for the resource pair, so the
+checksum proves the verified suffix but does not validate or reject the
+continuation bytes starting at `0x0c0000`. The mirror-scanner fixture below now
+proves a simple full mirror would be scanner-visible, but startup notes still
+do not prove whether the physical decode hides that mirror from scanner reads,
+zero-fills, exposes program ROM, or maps another source at `0x0c0000..0x0c0321`.
 
 Fixture `transparent secondary segment-57 continuation policies diverge after
 verified bytes` now makes the boundary policy-dependent rather than vaguely
@@ -596,7 +598,8 @@ Unresolved middle edges:
   further split the physical hypotheses: a full resource mirror would expose a
   second `HEAD` chain and `48` records to `0x41a`, while code-pair and
   zero-fill continuations expose non-`HEAD` markers at offset `0x40000`, keep a
-  single `HEAD` chain, and walk the same `24` records.
+  single `HEAD` chain, and walk the same `24` records. Startup checksum
+  coverage also stops at `0x0bffff`, before the fallback-row continuation.
 
 ## Reproduction Contract
 

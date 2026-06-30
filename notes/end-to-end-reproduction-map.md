@@ -107,6 +107,30 @@ the board-facing boundary is tracked in
   separate events, six-byte records are saved through `0x121cc`, restored
   through `0x12218`, and then consumed by raster, transparent text,
   downloaded-font, generic payload, macro, and alternate/data handlers.
+- Transparent print data:
+  ROM evidence is `0x11f5a`, `0x12452`, `0xd04a`, `0xd0f0`, and `0xd550`,
+  plus disassembly
+  `generated/disasm/ic30_ic13_transparent_data_handler_011f5a.lst`.
+  Reproduction evidence is [transparent-print-data.md](transparent-print-data.md).
+  The tracked semantic contract is that `ESC &p#X` is a counted delayed
+  byte-stream splice, not an opaque skip. Handler `0x11f5a` schedules
+  `0x12452` through `0x121cc`; `0x12218` restores command record
+  `80 58 ...`; `0x12452` consumes the absolute record word `+2` count from
+  `0xa904`, preserves local `1a 58 -> 7f` and `1a xx -> xx` behavior, and
+  routes normalized payload bytes through `0xd04a` or `0xd0f0` according to
+  context filtering. Canonical fields are the command-record count, selected
+  context slot `0x782f06`, and text cursor `0x782c8a`; parser scratch is
+  `0x782a1a`, `0x782a1c`, and `0x782a20..0x782a25`; derived/filtering state
+  is `0x782eea + 0x10 * 0x782f06`, `0x782efa`, and high-byte flags
+  `0x783132`/`0x783133`. Remaining risk is the secondary segment-57
+  resource-window continuation: fixture
+  `transparent secondary segment-57 continuation policies diverge after
+  verified bytes` pins glyph `0x5f`, segment `0x39`, firmware source
+  `0x0bfe22`, required range `0x0bfe22..0x0c0321`, and the first `478`
+  bytes inside the verified `IC32,IC15` resource-pair image. Scanner fixtures
+  `0x41a HEAD scanner would duplicate records under simple resource mirror`
+  and `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations` constrain
+  the physical continuation hypotheses.
 - Parser dispatch tables:
   ROM evidence is normal table `0x112a4` and alternate table `0x116f6`.
   Reproduction evidence is `generated/analysis/ic30_ic13_pcl_command_map.md`
@@ -223,6 +247,23 @@ the board-facing boundary is tracked in
   Evidence: fixtures `plain printable parser trace feeds page-record queue`,
   `host-fetched mixed control stream reaches parser and page-record render`,
   and `host-fetched direct text/control streams feed 0x1ed84 and 0x1ef6a`.
+- Transparent print data streams are covered for printable bytes,
+  default-filtered C0/high-control bytes, nonzero-filtered C0/high-control
+  bytes, `1a 58` and non-`0x58` probe handling, primary high-control samples
+  `0x81`, `0x88`, `0x90`, `0x97`, `0x98`, and `0x9f`, and the secondary
+  segmented page-record boundary. Evidence: fixtures
+  `transparent data parser trace feeds page-record queue`,
+  `transparent non-0x58 probe byte reaches page-record output`,
+  `transparent data control payloads advance through fixed-space path`,
+  `transparent default-filtered control enters unflagged fixed-record path`,
+  `transparent nonzero filters route controls through printable path`,
+  `transparent nonzero high-control byte queues tall glyph bucket`,
+  `transparent nonzero high-control interior samples remain printable`,
+  `transparent nonzero high-control upper bound remains printable`, and
+  `transparent secondary high-control byte enters segmented page-record path`.
+  The renderer-visible secondary prefix is covered through bucket `448`;
+  bucket `456` is bounded as the physical resource-window continuation issue
+  above.
 - Page-geometry streams are covered for page size, orientation, nonzero
   page length, and the `ESC &l0P` zero-length default-page branch. Evidence:
   fixture

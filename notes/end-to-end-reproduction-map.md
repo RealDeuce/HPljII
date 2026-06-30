@@ -262,8 +262,8 @@ the board-facing boundary is tracked in
 - Built-in glyph data:
   ROM evidence is the IC32/IC15 resource ROM tables and bitmap records.
   Reproduction evidence is
-  `generated/analysis/ic32_ic15_builtin_glyph_payloads.md` and compact
-  glyph fixtures.
+  `generated/analysis/ic32_ic15_builtin_glyph_payloads.md`,
+  [font-sample-page.md](font-sample-page.md), and compact glyph fixtures.
 - Downloaded font payloads:
   ROM evidence is `0x15d0a`, `0x168dc`, `0x16942`, `0x16c14`, and
   `0x1719c`.

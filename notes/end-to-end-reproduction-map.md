@@ -837,7 +837,7 @@ The next work should follow dataflow, not isolated handlers:
    `0x81`, `0xff`, `0x00`, `0x01`, and `0x81`; rows `0x0100` and `0x0101`
    select wide bucket `0`, while row `0x0181` produces only segment buckets
    `1` and `0`.
-   The short/segmented row-count matrix now covers short rows `0x01..0x20`,
+   The short/segmented row-count matrix now covers short rows `0x01..0x1f`,
    `0x3e`, `0x3f`, `0x41`, `0x42`, and `0x7f`, plus segmented rows `0x83`,
    `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and
    `0xff`; the named row-`0x80`, rows-`0x20`, rows-`0x40`, and rows-`0x82`

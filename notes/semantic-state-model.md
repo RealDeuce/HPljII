@@ -5807,9 +5807,13 @@ fields and broader selected-font state combinations have not been page-compared.
   `0x16498 status-2 partial installs remain printable` proves the status-`2` linear and
   split-plane partial-install visibility contract, and now carries those two compact
   objects through trailing-FF `0xff1e` publication and `0x1ed84`/`0x1ef6a`
-  published-record rendering. Still-open comparisons are bounded cross-products: row
-  counts outside the covered short rows `0x01..0x80` and segmented rows `0x81..0xff`,
-  pixel rows after printable downloaded spans wrap in the current one-byte page source
+  published-record rendering. Row-count coverage no longer has a parser-produced gap
+  for rows `0x0001..0x00ff`: fixture `downloaded glyph row-count matrix publishes and
+  renders additional short/segmented counts` covers short ranges `0x0001..0x001f`,
+  `0x0021..0x003f`, and `0x0041..0x007f`, and segmented range `0x0083..0x00ff`;
+  separate fixtures cover `0x0020`, `0x0040`, `0x0080`, `0x0081`, and `0x0082`.
+  Still-open comparisons are bounded cross-products: pixel rows after printable
+  downloaded spans wrap in the current one-byte page source
   span field, including compact-wide wrapped spans and compact mode-0 invalid
   helper-table targets, visible behavior after
   segmented-wide row words outside the source-byte-wrap matrix produce the
@@ -5928,8 +5932,10 @@ fields and broader selected-font state combinations have not been page-compared.
   `downloaded glyph row-count matrix publishes and renders additional short/segmented
   counts` adds short rows `0x01..0x1f`, `0x21..0x3f`, and `0x41..0x7f`,
   plus segmented rows `0x83..0xff` through the same printable+FF, `0xff1e`, and
-  `0x1ed84`/`0x1ef6a` boundary. It also pins the shared full-success return boundary
-  for all two hundred fifty rows:
+  `0x1ed84`/`0x1ef6a` boundary. Together with the named `0x20`, `0x40`, `0x80`,
+  `0x81`, and `0x82` fixtures, this closes parser-produced row words
+  `0x0001..0x00ff` for the downloaded-glyph publication family. It also pins the shared
+  full-success return boundary for all two hundred fifty matrix rows:
   `0x15dc6 -> 0x16498 ->
   0x15dcc -> 0x12328`, copy status `1`, `0x783140 = 0`, no drained bytes, and next
   handler `0xd04a`. Fixture `host-fetched even-span downloaded glyph FF publishes

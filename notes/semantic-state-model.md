@@ -1419,6 +1419,27 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `vertical-decipoint parser trace feeds page-record queue`,
   `vertical layout parser trace feeds page-record queue`, and
   page-length `ESC &l66P!` and `ESC &l0P` notes in the ledger.
+- Canonical page-size/orientation geometry:
+  - `0x782da2`: internal page code written by `ESC &l#A` handler `0xfc74`.
+  - `0x782da3`: orientation byte written by `ESC &l#O` handler `0x10220`.
+  - `0x782db2` and `0x782db4`: page-size table outputs loaded through
+    `0x9d4e` and `0x9d16` before orientation-dependent extent refresh.
+  - ROM tables `0x00a112`, `0x00a128`, `0x00a13e`, and `0x00a154` are read
+    by lookup helpers `0x9d16`, `0x9d4e`, `0x9d86`, and `0x9dbe`; all four
+    helpers mask the input page code with `0x7f`, accept indexes `0..10`, and
+    otherwise return zero.
+  - supported PCL page-size values `1`, `2`, `3`, `26`, `80`, `81`, `90`, and
+    `91` map to internal indexes whose table values match the PCL4 manual
+    logical dimensions and printable-area margin sums.
+  Evidence: fixtures
+  `0x9d16/0x9d4e/0x9d86/0x9dbe page geometry lookups mask page code`,
+  `ROM page geometry tables match manual logical dimensions`,
+  `ROM page geometry tables recover manual printable-area margins`,
+  `0xfc74 ESC &l#A maps page size and recomputes portrait geometry`,
+  `0x10220 ESC &l#O swaps active extents and selects orientation margins`,
+  generated report `generated/analysis/ic30_ic13_page_geometry_tables.md`,
+  and disassembly
+  `generated/disasm/ic30_ic13_page_geometry_tables_009d16.lst`.
 - Canonical/default page environment:
   - `0x782da6`: pending page-environment byte copied by the `ESC &l0P`
     zero-parameter branch when it differs from active byte `0x780e8e`.
@@ -1530,6 +1551,11 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `ESC &a` cursor commands.
 - `0xcb00`, `0xc992`, `0xece2`, `0xea9e`, `0xee64`, and `0xf9e8` write
   VMI, vertical layout, perforation skip, and page-length state.
+- `0xfc74` writes the internal page code and reloads page-size table outputs
+  through `0x9d16` / `0x9d4e`; `0x10220` writes orientation and reuses the
+  same geometry/margin refresh family. Coordinate helpers
+  `0x104d8..0x10550` convert between packed 12-subunit cursor values and
+  integer coordinates for vertical layout and raster-origin math.
 - `0xf75e` writes cursor-stack entries and restores cursor state.
 - `0x11f5a` arms transparent-text delayed payload state; `0x12452`
   consumes the payload and routes printable bytes back into `0xd04a`.
@@ -1776,6 +1802,12 @@ disassembly `0xf36c..0xf398`.
   `0xf176..0xf1c2` half-line-feed handler.
 - `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`:
   dot-position and cursor-stack handlers.
+- `generated/disasm/ic30_ic13_page_geometry_tables_009d16.lst`:
+  page-code masking, table bounds check, word table lookups, and derived
+  modulo helpers around `0x9d16..0x9e56`.
+- `generated/disasm/ic30_ic13_coordinate_math_0104d8.lst`:
+  packed 12-subunit coordinate clamp, decomposition, recomposition, sign
+  adjustment, and raster/vertical-layout conversion helpers.
 - `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`:
   `0x12622..0x126e2` underline/text-attribute tokenizer, pending-span
   flush edge, `0x783185` writer, and span re-arm call.
@@ -1786,6 +1818,9 @@ disassembly `0xf36c..0xf398`.
 - `generated/analysis/ic30_ic13_direct_control_code_flow.md`:
   handler table, field-reference scan, shared-helper table, and current
   reproduction contract.
+- `generated/analysis/ic30_ic13_page_geometry_tables.md`: page-code table
+  values, manual logical-dimension cross-check, printable-area margin
+  cross-check, and geometry consumer list.
 - `generated/analysis/ic30_ic13_printable_text_path.md`:
   parser-to-page-record fixture evidence and compact-coordinate outputs.
 

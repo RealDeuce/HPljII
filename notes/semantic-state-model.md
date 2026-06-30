@@ -1344,7 +1344,10 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `HT/BS parser trace feeds page-record queue`, `margin command parser
   trace feeds page-record queue`, `right margin command parser trace
   feeds page-record queue`, `0xf48c/0xf692 ESC *p#X/#Y use whole-dot packed
-  cursor commits`, and the cursor-position/dot-position parser traces.
+  cursor commits`, `cursor position parser trace feeds page-record queue`,
+  `vertical cursor position parser trace feeds page-record queue`,
+  `chained cursor position parser trace feeds page-record queue`, and
+  `dot position parser trace feeds page-record queue`.
 - Canonical cursor stack:
   - `0x782c96..0x782d36`: PCL cursor-stack storage used by
     `ESC &f#S`.
@@ -1540,6 +1543,13 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `ESC &a2c+1R!` route cursor-position handlers `0xf39e`, `0xf416`,
   `0xf560`, and `0xf60a` to compact coords `0x0a02`, `0x0402`,
   `0x1001`, `0x9001`, and `0x1a02`.
+  Fixtures `cursor position parser trace feeds page-record queue`,
+  `horizontal decipoint parser trace feeds page-record queue`,
+  `vertical cursor position parser trace feeds page-record queue`,
+  `vertical decipoint parser trace feeds page-record queue`, and
+  `chained cursor position parser trace feeds page-record queue` pin the
+  parser handlers, page-record prefixes, bridged context slots, and rendered
+  rows for those cursor-position streams.
 - Fixture `vertical-cursor parser span flush materializes 0x12714 page object`
   covers the pending-span sibling for parsed `ESC &a1R!`: host fetch drains
   six ring bytes, parser handlers are `0xf560` then `0xd04a`, `0xf560`
@@ -1588,7 +1598,10 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `00 00 00 00 40 00 00 01 3a 00 03 00 00 12` beside the compact glyph.
 - `ESC &l3E!`, `ESC &l1L!`, and `ESC &l66P!` route vertical-layout,
   perforation-skip, and page-length state into following printable
-  output; the top-margin case queues at `0x9001` in bucket `6`.
+  output; the top-margin case queues at `0x9001` in bucket `6`. Fixture
+  `mixed page-length stream refreshes cursor before printable page-record
+  queue` pins the `ESC &l66P!` parser path through `0xf9e8` and `0xd04a`,
+  including the refreshed cursor y and compact text object.
 - `ESC &f0S ESC &a2C ESC &f1S!` routes `0xf75e`, `0xf39e`, `0xf75e`,
   and `0xd04a`; the pop restores the original cursor and the glyph
   queues at compact coord `0x0001`.
@@ -7719,15 +7732,21 @@ page root for queued rows, and passes the state block to `0x13070` /
 ### Writers
 
 - `0x10808` writes raster scale/mode from `ESC *t#R` when raster active byte
-  `+0x12` is clear.
+  `+0x12` is clear. Fixture
+  `0x10808 ESC *t#R selects raster mode and scale thresholds` pins the
+  accepted resolution thresholds and ignored-active behavior.
 - `0x1075a` writes origin/baseline, active byte, and byte limit from
   `ESC *r#A`; parameter `1` seeds from the active cursor axis, while other
-  parameters clear the origin to the left edge.
+  parameters clear the origin to the left edge. Fixtures
+  `0x1075a ESC *r#A seeds raster baseline from cursor or left edge` and
+  `0x1075a raster origin source follows orientation` pin the cursor-source
+  and orientation split.
 - `0x107fa` clears only active byte `+0x12` for `ESC *r#B`.
   Fixture
   `modeled raster command stream parses ESC *rB and re-enables resolution
   changes` proves the later `ESC *t150R` can update mode and scale after
-  this clear.
+  this clear; fixture `0x107fa ESC *r#B clears raster active flag only`
+  pins the direct state write.
 - `0x11f82` stores delayed transfer handler `0x105d0`; `0x12218` restores the
   delayed record and dispatches it. Disassembly pins the exact scratch layout:
   `0x121cc` writes `0x782a1a`, `0x782a1c`, and `0x782a20..0x782a25`; `0x12218`
@@ -7887,6 +7906,10 @@ live 68000 execution trace.
 ### Fixtures
 
 - `0x11774 ROM dispatch table routes raster stream to delayed transfer`
+- `0x10808 ESC *t#R selects raster mode and scale thresholds`
+- `0x1075a ESC *r#A seeds raster baseline from cursor or left edge`
+- `0x1075a raster origin source follows orientation`
+- `0x107fa ESC *r#B clears raster active flag only`
 - `modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W`
 - `modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W
   payload boundary`

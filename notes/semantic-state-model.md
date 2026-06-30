@@ -1183,6 +1183,13 @@ waiting for `0x780e2d.3` to clear, it sets `0x7821cc` and `0x7822db`, signals
 bit `0x8` in warning/status accumulator `0x780e2a` through `0x9b5e`, then
 clears `0x7821cc`.
 
+The neighboring Control-Z handlers are mode-specific consumers, not a global
+byte-source rewrite. Handler `0x120d2` reads the selected context byte at
+`0x782eeb + 0x10 * byte(0x782f06)` and emits `0xd04a(0x1a)` only when that
+byte equals `1`. Handler `0x1210c` appends literal `0x1a` through `0xe002`.
+Handler `0x1219e` emits `0xd04a(0x100)`. Handler `0x121b2` calls `0xd99a`
+and appends `0x7f` through `0xe002`.
+
 ### Field Groups
 
 - Canonical reader state:
@@ -1202,6 +1209,10 @@ clears `0x7821cc`.
 - Firmware bookkeeping:
   - `0xe002` append sink used by alternate/data handler `0x12120`.
   - `0xd99a` side effect for local `0x1a 0x58` control reporting.
+  - Control-Z handler siblings: `0x120d2` conditionally routes `0x1a` through
+    printable text, `0x1210c` appends literal `0x1a`, `0x1219e` routes
+    synthetic value `0x100` through printable text, and `0x121b2` reports
+    through `0xd99a` before appending `0x7f`.
   - `0xf054` CR post-handler called by `0x12536` after routed value `0x0d`.
   - macro/data-chain chunk `0x783988`, populated by `0xe002` in the append
     fixture for the byte stream preserved by alternate/data `ESC Y`.
@@ -1232,6 +1243,9 @@ clears `0x7821cc`.
   `0xd0f0` for each normalized loop value until `ESC Z` or `D7 = -1`.
 - Both handlers call `0xd99a` when local bytes `0x1a 0x58` are consumed and
   substituted with routed/appended value `0x7f`.
+- `0x120d2`, `0x1210c`, `0x1219e`, and `0x121b2` are the local Control-Z
+  terminal siblings: they write through `0xd04a`, `0xe002`, `0xd04a`, and
+  `0xd99a` plus `0xe002`, respectively.
 - `0xcd86` performs the `ESC z` terminal action by conditionally calling
   `0x9c2c` when the active data-chain frame byte `+9` is zero.
 - `0x9c2c` waits for `0x780e2d.3` to clear, sets `0x7821cc` and
@@ -1321,6 +1335,9 @@ of the `0x7822db` marker and the external status consumer of `0x780e2a.3`.
 
 - `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`:
   `0x12120..0x1219c` and `0x12536..0x1261e`.
+- `generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`:
+  `0x120d2`, `0x1210c`, `0x1219e`, and `0x121b2` local Control-Z terminal
+  handlers.
 - `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`: `0xcd86..0xcda0`
   guarded `ESC z` helper call.
 - `generated/disasm/ic30_ic13_status_signal_helpers_009b5e.lst`:

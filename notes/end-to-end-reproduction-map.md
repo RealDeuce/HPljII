@@ -642,12 +642,12 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    selector `0x3003`: `0x783140 = 0`, zero drain, and next handler `0xd04a`.
    The payload-control wide publication fixture pins the nonzero return sibling:
    `0x783140 = 1`, drained byte `0x26`, and post-return handler `0xf0f0`.
-5. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
+6. Hardware-facing host modes are behaviorally modeled above `0xa904`, but
    MMIO identity and electrical timing for Centronics/serial/RS-422 are not
    board-confirmed. This does not block a byte-stream renderer, but it blocks
    claims about hardware-level emulation. Evidence:
    `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`.
-6. Final device-output validation is not yet a real printer comparison. The
+7. Final device-output validation is not yet a real printer comparison. The
    harness proves ROM-derived rows internally, but pixel-perfect confidence
    ultimately needs rendered page images compared against known LaserJet II
    output for representative byte streams. The initial mixed page-image
@@ -664,7 +664,21 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
 
 The next work should follow dataflow, not isolated handlers:
 
-1. Continue reset/default provenance from the composed `ESC E` consumer path.
+1. Resolve or further constrain the transparent secondary segment-57 resource
+   decode boundary. The parser, filtering, page-record, bridge, and renderer
+   sides are already documented in `notes/transparent-print-data.md` and
+   `Transparent Print Data` above. The remaining pixel-affecting boundary is
+   physical/resource-window data for firmware addresses `0x0c0000..0x0c0321`
+   after the verified `IC32,IC15` suffix at `0x0bfe22..0x0bffff`. The next
+   useful evidence is one of: board/emulator decode evidence for that range, a
+   startup candidate-counter trace that proves whether a second `HEAD` window
+   is visible to `0x41a` / `0x1a616`, a direct bus/memory read around
+   `0x0c0000`, or physical output matching one of the mirror/code-pair/zero-fill
+   fallback-row digests already recorded in `notes/resource-rom.md`. Do not
+   re-trace `0x12452`, sampled primary high-control bytes, secondary buckets
+   through `448`, or compact renderer arithmetic unless new decode evidence
+   contradicts the current fixture boundaries.
+2. Continue reset/default provenance from the composed `ESC E` consumer path.
    Semantic checkpoint `ESC E Reset And Default Environment` now covers
    `0xcc52 -> 0xcc70 -> 0xcda2`, page-root finalization through `0xff1e`,
    font-derived HMI refresh through `0xcbd4`, parser/data-chain reset through
@@ -703,7 +717,7 @@ The next work should follow dataflow, not isolated handlers:
    and board-level serial pin names behind `$a400`/`$8c01`, reconciling the
    manual NVRAM-failure fallback wording with the ROM paths found so far, and
    physical engine/self-test placement against known output.
-2. Treat font metric-byte combinations as regression expansion unless a new
+3. Treat font metric-byte combinations as regression expansion unless a new
    state boundary appears. The selected-context bridge, metric consumers, downloaded
    descriptor/payload producer chain, and host-stream downloaded glyph output are now
    tracked. Host-fetched
@@ -734,7 +748,7 @@ The next work should follow dataflow, not isolated handlers:
    formulas and consumer gates, not a new semantic middle edge by themselves. Remaining
    metric-related work is external/manual naming for consumed-but-not-staged validation
    fields or broader selected-font combinations that expose different state boundaries.
-3. Broaden the page-image fixture suite beyond the current complete
+4. Broaden the page-image fixture suite beyond the current complete
    text/rule/raster/publication stream, downloaded-glyph FF publication stream,
    parser-driven downloaded-glyph/rule/raster page stream, primary plus secondary
    built-in font-selection visible-output streams, inline primary and secondary

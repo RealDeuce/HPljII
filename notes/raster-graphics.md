@@ -14,13 +14,43 @@ Evidence:
 - `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`
 - `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
 - `tools/render_fixture_harness.py`, fixtures:
+  - `0x10808 ESC *t#R selects raster mode and scale thresholds`
+  - `0x1075a ESC *r#A seeds raster baseline from cursor or left edge`
+  - `0x1075a raster origin source follows orientation`
+  - `0x107fa ESC *r#B clears raster active flag only`
+  - `0x105d0-modeled raster transfer skip and cap gate`
   - `0x11774 ROM dispatch table routes raster stream to delayed transfer`
-  - `modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W`
+  - `modeled raster command stream parses ESC *t300R / ESC *r1A /
+    ESC *b4W payload boundary`
+  - `modeled raster command stream queues and renders ESC *b4W payload`
+  - `modeled raster command stream bridges queued ESC *b4W page object`
+  - `raster stream ties parser dispatch to queued page object`
   - `host-fetched raster stream reaches parser and queued pixels`
+  - `host-fetched raster stream preserves 0x1edc6 bridge contract`
   - `raster payload reader normalizes 0xdace controls before queueing pixels`
+  - `modeled raster command stream applies 0x105d0 byte-count cap`
+  - `modeled raster command stream queues inclusive page-extent row`
+  - `modeled raster command stream drains beyond-extent transfer without
+    queueing`
+  - `modeled raster command stream drains negative-row transfer and advances`
+  - `raster parser trace feeds capped and drained transfer gates`
   - `raster mode streams tie ROM parser dispatch to modeled queued objects`
   - `host-fetched raster mode streams reach parser and rendered rows`
   - `host-fetched raster mode streams feed 0x1ed84 and 0x1ef6a`
+  - `modeled raster command stream selects 150-dpi mode-1 state`
+  - `modeled raster command stream queues and renders 150-dpi mode-1 payload`
+  - `modeled raster command stream selects 100-dpi mode-2 state`
+  - `modeled raster command stream queues and renders 100-dpi mode-2 payload`
+  - `modeled raster command stream selects 75-dpi mode-3 state`
+  - `modeled raster command stream queues and renders 75-dpi mode-3 payload`
+  - `modeled raster command stream queues consecutive ESC *b#W rows`
+  - `modeled raster command stream renders consecutive queued rows`
+  - `modeled raster command stream parses ESC *rB and re-enables resolution
+    changes`
+  - `modeled raster command stream accepts lowercase same-group resolution
+    chaining`
+  - `modeled raster command stream defers lowercase ESC *b w payload until
+    uppercase terminator`
   - `host-fetched raster multi-row and chained streams preserve 0x1edc6 bridge
     contract`
   - `host-fetched raster streams feed 0x1ed84 and 0x1ef6a`
@@ -38,6 +68,22 @@ Evidence:
     entry`
   - `0x13070/0x13250 raster row queues encoded-span object`
   - `0x1f88e mode-0 raster object renders queued literal row`
+  - `0x13070/0x13250 raster row queues non-byte-aligned encoded-span object`
+  - `0x1f88e mode-0 raster object renders sub-byte shifted literal row`
+  - `0x13070/0x13250 raster mode-1 row queues encoded-span object`
+  - `0x1f88e mode-1 raster object expands queued bytes into two rows`
+  - `0x13070/0x13250 raster mode-2 row queues encoded-span object`
+  - `0x1f88e mode-2 raster object expands queued byte pair into three rows`
+  - `0x13070/0x13250 raster mode-2 row queues non-byte-aligned encoded-span
+    object`
+  - `0x1f88e mode-2 raster object renders sub-byte shifted expanded rows`
+  - `0x13070/0x13250 raster mode-2 row queues band-clipped encoded-span
+    object`
+  - `0x1f88e mode-2 raster object clips current-band rows and continues in
+    fallback buffer`
+  - `0x13070/0x13250 raster mode-3 row queues encoded-span object`
+  - `0x1f88e mode-3 raster object expands queued bytes into four rows`
+  - `addressed text rectangle raster stream matches page-record output`
 
 ## Parser Boundary
 
@@ -70,6 +116,13 @@ The parser loop `0x11774` routes it through:
 
 When parser mode returns to zero, `0x12218` restores the saved record and calls
 `0x105d0`. The raw payload begins at byte offset `17` in the fixture stream.
+Fixtures `modeled raster command stream parses ESC *t300R / ESC *r1A /
+ESC *b4W payload boundary`, `modeled raster command stream queues and renders
+ESC *b4W payload`, and `raster stream ties parser dispatch to queued page
+object` bind this boundary to the queued object and rendered row for the same
+byte stream. `host-fetched raster stream preserves 0x1edc6 bridge contract`
+then proves that the object still crosses the page-record-to-render-record
+copy before `0x1ef6a` dispatch.
 
 The delayed handoff is now pinned at the instruction level rather than only by
 fixture bytes:
@@ -143,6 +196,13 @@ When raster is not active, it takes the absolute parsed parameter and maps it:
 It then computes the row byte limit at `+0x10` from active page extent,
 baseline word, and `scale * 8`.
 
+Fixture `0x10808 ESC *t#R selects raster mode and scale thresholds` pins the
+threshold table at the handler boundary. The lower-resolution parser fixtures
+`modeled raster command stream selects 150-dpi mode-1 state`, `modeled raster
+command stream selects 100-dpi mode-2 state`, and `modeled raster command
+stream selects 75-dpi mode-3 state` prove those same handler writes are the
+state consumed by later `ESC *b#W` transfers.
+
 ## Start And End Raster
 
 `0x1075a` handles `ESC *r#A`. It rewinds the current command record, reads the
@@ -161,11 +221,17 @@ The active cursor axis depends on orientation:
 
 After origin selection, `0x1075a` copies the origin word to `+0x00` and
 computes byte limit `+0x10`.
+Fixtures `0x1075a ESC *r#A seeds raster baseline from cursor or left edge` and
+`0x1075a raster origin source follows orientation` pin both origin sources and
+the left-edge fallback.
 
 `0x107fa` handles `ESC *r#B`. It clears only active byte `0x783182`
 (`state+0x12`). It leaves origin, mode, scale, limit, and row state intact.
 That is why a following `ESC *t150R` can update resolution after `ESC *rB`,
 while an in-raster `ESC *t75R` is ignored.
+Fixtures `0x107fa ESC *r#B clears raster active flag only` and `modeled raster
+command stream parses ESC *rB and re-enables resolution changes` cover the
+clear-and-reenable case.
 
 ## Transfer Gate At 0x105d0
 
@@ -195,6 +261,16 @@ Gate behavior:
   `0x106b2..0x106c8` drains the parsed byte count through `0xdace` without
   calling `0x13070`. The later cursor-update path still advances the modeled
   row from `-1` to `0`.
+
+Fixtures `0x105d0-modeled raster transfer skip and cap gate`, `modeled raster
+command stream applies 0x105d0 byte-count cap`, `modeled raster command stream
+queues inclusive page-extent row`, `modeled raster command stream drains
+beyond-extent transfer without queueing`, `modeled raster command stream
+drains negative-row transfer and advances`, and `raster parser trace feeds
+capped and drained transfer gates` divide these outcomes at the handler
+boundary. The writer set is therefore `0x105d0` for `+0x02`, `+0x04`,
+`+0x06`, and `+0x12`; the consumers are `0xdace` for discarded bytes,
+`0x10084` for page-root availability, and `0x13070` for accepted rows.
 
 For rows that pass the beyond-extent test, `0x105d0` ensures a page root through
 `0x10084`, writes current row word `+0x02`, and either drains a negative row or
@@ -291,6 +367,17 @@ Fields:
 - packed coordinate: `0x0001`
 - payload: `f0 0f aa 55`
 
+The row-object fixtures extend this layout beyond the primary byte-aligned
+mode-0 row. `0x13070/0x13250 raster row queues non-byte-aligned encoded-span
+object` proves the packed coordinate and payload capacity still describe a
+shifted row. `0x13070/0x13250 raster mode-1 row queues encoded-span object`,
+`0x13070/0x13250 raster mode-2 row queues encoded-span object`, and
+`0x13070/0x13250 raster mode-3 row queues encoded-span object` prove that
+object byte `+0x05` carries the encoded mode selected earlier by `0x10808`.
+The mode-2 clipped fixture,
+`0x13070/0x13250 raster mode-2 row queues band-clipped encoded-span object`,
+keeps the same object contract while the renderer clips destination rows.
+
 ## Render Dispatch
 
 Raster transfer does not draw directly into the final bitmap. It creates a page
@@ -318,6 +405,15 @@ For the primary mode-0 object above, the rendered row is:
 ```text
 ................####........#####.#.#.#..#.#.#.#
 ```
+
+Fixture `0x1f88e mode-0 raster object renders sub-byte shifted literal row`
+proves mode 0 still uses literal payload bytes when the packed x coordinate is
+not byte-aligned. Fixtures `0x1f88e mode-1 raster object expands queued bytes
+into two rows`, `0x1f88e mode-2 raster object expands queued byte pair into
+three rows`, `0x1f88e mode-2 raster object renders sub-byte shifted expanded
+rows`, `0x1f88e mode-2 raster object clips current-band rows and continues in
+fallback buffer`, and `0x1f88e mode-3 raster object expands queued bytes into
+four rows` bind each expansion helper to visible output rows.
 
 ## Mixed Page-Record Composition
 
@@ -377,7 +473,9 @@ record` finalizes the heterogeneous page record. Readers are `0x1ed84` /
 `0x1edc6`, `0x1ef6a`, `0x1efc2`, raster dispatch `0x1f88e`, compact text
 dispatch `0x1effe`, and rule dispatch `0x1f446`. The output effect is one
 published text/rule/raster page image whose rows match the non-published
-current-page render for the same byte stream.
+current-page render for the same byte stream. Fixture `addressed text
+rectangle raster stream matches page-record output` verifies that the
+addressed storage model and page-record renderer agree for this composition.
 
 ## Additional Command-Family Coverage
 
@@ -390,6 +488,11 @@ Lower-resolution streams prove the resolution thresholds through visible rows:
 - `ESC *t100R ESC *r0A ESC *b#W` selects encoded mode `2`;
 - `ESC *t75R ESC *r0A ESC *b#W` selects encoded mode `3`.
 
+The specific render fixtures are `modeled raster command stream queues and
+renders 150-dpi mode-1 payload`, `modeled raster command stream queues and
+renders 100-dpi mode-2 payload`, and `modeled raster command stream queues and
+renders 75-dpi mode-3 payload`.
+
 Fixtures `raster mode streams tie ROM parser dispatch to modeled queued
 objects`, `host-fetched raster mode streams reach parser and rendered rows`,
 and `host-fetched raster mode streams feed 0x1ed84 and 0x1ef6a` prove each
@@ -400,12 +503,18 @@ Those modes are therefore part of the command-family contract, not separate
 untraced raster variants.
 
 Multi-row and chained-transfer fixtures cover repeated use of the same state
-block. Two uppercase `ESC *b2W` commands restore independent
+block. Fixtures `modeled raster command stream queues consecutive ESC *b#W
+rows` and `modeled raster command stream renders consecutive queued rows`
+prove that two uppercase `ESC *b2W` commands restore independent
 `80 57 00 02 00 00` records, consume payloads at offsets `17` and `24`,
 advance modeled `row_y` to `2`, and queue objects at coords `0x0000` and
-`0x1000`. The lowercase stream `ESC *b2w2W` stays in the `*b` parser family,
-preserves delayed record `80 77 00 02 00 00`, and consumes payload only after
-the uppercase terminator at offset `19`. Fixtures
+`0x1000`. Fixture `modeled raster command stream accepts lowercase same-group
+resolution chaining` covers lowercase same-family command accumulation before
+an uppercase final byte. The lowercase stream `ESC *b2w2W` stays in the `*b`
+parser family, preserves delayed record `80 77 00 02 00 00`, and consumes
+payload only after the uppercase terminator at offset `19`. Fixture `modeled
+raster command stream defers lowercase ESC *b w payload until uppercase
+terminator` covers that delayed payload boundary. Fixtures
 `host-fetched raster multi-row and chained streams preserve 0x1edc6 bridge
 contract` and `host-fetched raster streams feed 0x1ed84 and 0x1ef6a` prove both
 bucket chains survive render-record copying and dispatch through `0x1ef6a`.

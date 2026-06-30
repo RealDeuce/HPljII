@@ -621,6 +621,11 @@ pending, and drains queued bytes to the interface selected by
   - none owned by the FIFO. The observed producer at
     `0x122be..0x12326` consumes parser/resource-payload scratch around
     `0x78299e` and enqueues response bytes through `0xb090`.
+  - command-table entry `0x12034` reaches this producer from `ESC *r#K` and
+    `ESC *s#^`. It first calls `0x11efe`, which appends the synthetic
+    secondary/setup six-byte record with word `+2 = 1`, then calls `0x122be`.
+    `0x122be` rewinds `0x78299e` to that synthetic record before fetching the
+    following byte.
 - Canonical response literal:
   - `0x12280..0x12288`: zero-terminated ASCII `33440A\r\n`. Handler
     `0x122be` emits this literal through `0xb090` only after `0xda9a`
@@ -671,6 +676,11 @@ pending, and drains queued bytes to the interface selected by
   `-1`, it walks the zero-terminated bytes `33440A\r\n` at `0x12280`
   and enqueues each byte through `0xb090`; otherwise it reports the byte
   through `0x9ec0`.
+- Parser-table handler `0x12034` is the observed command entry for the
+  `0x122be` producer. Normal table commands `ESC *r#K` and `ESC *s#^` both
+  call `0x12034`, which appends the `0x11efe` synthetic setup record before
+  entering `0x122be`; this makes the subsequent `0x11` byte satisfy the
+  record-word `+2 == 1` response gate.
 - `0xae2c` is the `0x7801e2` worker. It sleeps through `0x10d0(0x15)`
   only when `0x783ed2`, `0x780e22`, and `0x783e61` are all zero, then
   drains or discards FIFO bytes according to `0x780e40`.
@@ -742,16 +752,21 @@ for physical connector naming and the external protocol name of the
 - `generated/disasm/ic30_ic13_host_output_fifo_00b022.lst`:
   `0xb022..0xb12a` dequeue, blocking enqueue wrapper, and enqueue.
 - `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`:
-  `0x122be..0x12326` parser/resource-payload producer.
+  `0x12034` command-table wrapper and `0x122be..0x12326`
+  parser/resource-payload producer.
+- `generated/analysis/ic30_ic13_parser_dispatch_tables.md` and
+  `generated/analysis/ic30_ic13_pcl_command_map.md`: parser-table evidence
+  that `ESC *r#K` in mode 7 and `ESC *s#^` in mode 6 reach `0x12034`.
 - `generated/analysis/ic30_ic13_long_reference_scan.md`: references for
   `0x783ed2`, `0x783ed4`, `0x783ed8`, `0x783e92`, and `0x783ed1`.
 
 ### Unresolved Middle Edges
 
-- `0x122be..0x12326`: producer control flow and emitted bytes are pinned:
-  `0x11` plus record word `+2 == 1` or `-1` emits `33440A\r\n` through
-  `0xb090`. The remaining edge is the external protocol name for that
-  query, not the ROM response behavior.
+- `0x12034 -> 0x122be..0x12326`: producer entry, control flow, and emitted
+  bytes are pinned. `ESC *r#K` and `ESC *s#^` enter through `0x12034`, append
+  the synthetic setup record, then `0x11` plus record word `+2 == 1` or `-1`
+  emits `33440A\r\n` through `0xb090`. The remaining edge is the external
+  protocol name for that query, not the ROM response behavior.
 - `0x36e4..0x37fa`: aggregate formulas are pinned, but physical or
   user-facing names for `0x780e32`, `0x780e36`, `0x780e2e`,
   `0x780e2a`, and their folded status categories remain board/manual

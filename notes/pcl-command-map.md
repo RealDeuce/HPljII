@@ -123,6 +123,10 @@ pixel-perfect rendering:
 - `ESC *t#R`, handler `0x010808`: raster resolution.
 - `ESC *r#A`, handler `0x01075a`: start raster graphics.
 - `ESC *r#B`, handler `0x0107fa`: end raster graphics.
+- `ESC *r#K` and `ESC *s#^`, handler `0x012034`: model-ID response wrapper.
+  The wrapper appends the `0x11efe` setup record and calls `0x122be`, which
+  emits `33440A\r\n` through the interface-output FIFO only when the next
+  parser byte is `0x11` and the active record word is `1` or `-1`.
 - `ESC *b#W`, handler `0x011f82`: transfer raster row bytes.
 - `ESC *p#X`, handler `0x00f48c`: horizontal dot position.
 - `ESC *p#Y`, handler `0x00f692`: vertical dot position.

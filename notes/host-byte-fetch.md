@@ -327,18 +327,23 @@ copying one byte through `0x783ed4`, wrapping the read pointer after
 the caller byte and returns `D7 = 0`.
 
 Helper `0xb090` is the blocking enqueue wrapper used by parser/resource
-payload code at `0x122be..0x12326`. It retries `0xb0c0` until the byte is
-accepted, using `0x10c8(0x7801e2)` while the FIFO is full and again after
-success to wake or yield the interface-output wait object.
+payload code at `0x122be..0x12326`. Parser-table handler `0x12034` reaches
+that producer from `ESC *r#K` and `ESC *s#^`: it calls `0x11efe` to append a
+synthetic setup record with word `+2 = 1`, then enters `0x122be`. `0xb090`
+retries `0xb0c0` until the byte is accepted, using `0x10c8(0x7801e2)` while
+the FIFO is full and again after success to wake or yield the interface-output
+wait object.
 
 The observed producer at `0x122be..0x12326` emits the ROM literal
 `33440A\r\n` from `0x12280` through `0xb090` only when `0xda9a` returns
 byte `0x11` and the active six-byte parser record word `+2` is `1` or
 `-1`. Other returned bytes are reported through `0x9ec0` instead of
 entering the output FIFO. The external protocol name for that `0x11`
-query remains unidentified, but the ROM response bytes and FIFO producer
-path are pinned by `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`
-and `generated/analysis/ic30_ic13_strings.txt`.
+query remains unidentified, but the ROM response bytes, `0x12034` command
+entry, and FIFO producer path are pinned by
+`generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`,
+`generated/analysis/ic30_ic13_parser_dispatch_tables.md`, and
+`generated/analysis/ic30_ic13_strings.txt`.
 
 Wait object `0x7801e2` restarts at `0xae2c`. The worker first sleeps
 through `0x10d0(0x15)` when FIFO count `0x783ed2`, pending status count

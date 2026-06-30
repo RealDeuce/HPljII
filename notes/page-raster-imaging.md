@@ -594,9 +594,10 @@ Confidence:
 - High for page-root creation side effects, stream allocator accounting,
   bucket reuse/new-head behavior, rule/fixed insertion order, root
   publication, render-record field copies, and final rendered rows.
-- Medium for heap allocator internals and render-scheduler timing, because
-  current fixtures model `0x1710` results and active-record handoff instead
-  of executing the entire heap/scheduler path.
+- Medium for live render-scheduler timing, because current fixtures model
+  active-record handoff rather than executing the entire scheduler path. The
+  shared `0x170c` / `0x1710` / `0x18b4` heap contract is covered in
+  [pcl-parser-firmware.md](pcl-parser-firmware.md) and the semantic model.
 
 Fixture evidence:
 
@@ -631,8 +632,6 @@ Disassembly evidence:
 
 Unresolved middle edges:
 
-- `0x1710..0x1385e`: heap allocation results are modeled; heap free-list
-  internals behind `0x1710` are not lifted here.
 - `0x10084..0x1381c`: first-root setup, same-chunk reuse, and second-chunk
   rollover are fixture-backed, but not captured from live 68000 memory during
   a dense parser-produced page.

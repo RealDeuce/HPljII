@@ -8933,7 +8933,9 @@ ignore gates, rule object bytes, ordered insertion, bridge normalization,
 solid and pattern dispatch, continuation mutation across bands, and no-room
 retry output because each is fixture-pinned. Medium for live CPU/register
 fidelity inside parser-to-allocator no-room retry because the current evidence
-models allocator results rather than executing the full heap/free-list path.
+models allocator return values rather than executing the full parser and
+page-root allocation sequence in one live CPU trace. The shared heap/free-list
+contract is documented in `Macro Definition And Data-Chain Replay`.
 
 ### Fixtures
 
@@ -11228,8 +11230,6 @@ ownership, not a separate renderer.
     through upstream command records such as the raster delayed record
     documented in the mixed text/rule/raster section.
 - Unknown:
-  - exact ownership/lifetime of heap allocator `0x1710` chunks outside the
-    page-record stream.
   - exact live scheduler handoff from a published pool record to the active
     render record.
 
@@ -11251,6 +11251,10 @@ ownership, not a separate renderer.
   `+20/+24/+28`, and selected current-font context slot `+2c`.
 - `0x1381c` writes `0x782a70`, `0x782a72`, and `0x782a76`; on a new
   chunk it links the new chunk through the prior `0x782a72` target.
+  Shared heap allocator entries `0x170c` and `0x1710` are composed in
+  `Macro Definition And Data-Chain Replay`. This page-record checkpoint owns
+  the `0x1381c` page-root stream-link side effects after `0x1710` succeeds or
+  fails; it does not duplicate the allocator bitmap contract.
 - `0x1387c` writes root `+0x1c` bucket heads and compact/raster bucket
   objects; it reuses matching selector objects while count `+6` is below
   capacity and links a new head when the matching object is full.
@@ -11349,9 +11353,11 @@ pages; it is not an unknown object layout or bridge-field problem.
 
 High for page-root creation side effects, stream allocator accounting,
 bucket reuse/new-head behavior, rule/fixed insertion order, root
-publication, and render-record field copies. Medium for heap allocator
-chunk lifetime and scheduler handoff because fixtures model `0x1710`
-results rather than executing the full heap and page scheduler.
+publication, and render-record field copies. High for the shared heap
+allocator contract by reference to `Macro Definition And Data-Chain Replay`,
+where `0x170c`, `0x1710`, and `0x18b4` are fixture-backed. Medium for
+scheduler handoff because fixtures model page-record allocation results rather
+than executing the full page scheduler in one dense live CPU trace.
 
 ### Fixtures
 
@@ -11404,8 +11410,6 @@ results rather than executing the full heap and page scheduler.
 
 ### Unresolved Middle Edges
 
-- `0x1710..0x1385e`: the heap allocation result is modeled; the internal
-  heap free-list behavior behind `0x1710` is not lifted here.
 - `0x10084..0x1381c`: first-root setup, same-chunk reuse, and
   second-chunk rollover are modeled, but not captured from live 68000
   memory during a dense parser-produced page.

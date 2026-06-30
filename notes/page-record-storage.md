@@ -114,8 +114,6 @@ Derived render bridge state:
 
 Unknown:
 
-- Exact lifetime of heap allocator `0x1710` chunks outside the modeled
-  page-record stream.
 - Full live CPU-memory continuity for dense parser-produced pages that cross
   root allocation, multiple producer families, publication, and scheduler
   handoff in one trace.
@@ -131,6 +129,12 @@ Unknown:
 - `0x1381c` allocates variable-size stream objects and updates
   `0x782a70`, `0x782a72`, and `0x782a76`. On a new chunk it links that chunk
   through the prior `0x782a72` target.
+- Shared heap allocator entries `0x170c` and `0x1710` are documented in
+  [pcl-parser-firmware.md](pcl-parser-firmware.md) and
+  [semantic-state-model.md](semantic-state-model.md). Page-record storage
+  uses the high-side `0x1710` path when `0x1381c` needs a fresh 0x100-byte
+  stream chunk; this checkpoint owns the page-root link and stream bookkeeping
+  after the allocation succeeds or fails.
 - `0x1387c` writes compact/raster bucket heads under root `+0x1c`, reuses
   matching selector objects while count `+6` is below capacity, and links a new
   head when the matching object is full.
@@ -229,9 +233,10 @@ bucket reuse/new-head behavior, rule/fixed insertion order, no-room returns,
 publication root/header fields, and render-record bridge copies because each is
 backed by disassembly and named fixtures.
 
-Medium for heap chunk lifetime and full live scheduler handoff because current
-fixtures model allocation results and bridge state but do not execute every
-heap/scheduler path in one dense live CPU trace.
+Medium for full live scheduler handoff because current fixtures model the
+allocator result and bridge state but do not execute every scheduler path in
+one dense live CPU trace. The shared `0x170c` / `0x1710` / `0x18b4` heap
+contract itself is covered by the macro/parser firmware checkpoint.
 
 ## Remaining Edges
 
@@ -240,5 +245,4 @@ heap/scheduler path in one dense live CPU trace.
   local no-room returns, `0xff1e` publication fields, or `0x1ed84` /
   `0x1edc6` bridge fields.
 - Remaining work is live CPU/register-memory continuity for dense mixed pages,
-  heap allocator internals behind `0x1710`, and physical engine/scheduler
-  pacing after the render-record bridge.
+  plus physical engine/scheduler pacing after the render-record bridge.

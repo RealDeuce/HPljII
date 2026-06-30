@@ -21,6 +21,18 @@ Primary disassembly evidence:
 Executable evidence is in `tools/render_fixture_harness.py`, especially the parser trace
 helpers and the `0x121cc` / `0x12218` delayed-payload helpers.
 
+Primary parser-core fixtures:
+
+- `0xdaf0 tokenizes lowercase-final numeric chain into two six-byte records`
+- `0xdb74 parses sign, capped fraction digits, and final byte`
+- `0xdb74 returns D7 zero for semicolon continuation final`
+- `0x121cc snapshots delayed payload handler and parsed record`
+- `0x12218 restores delayed parsed record and dispatches saved handler`
+- `0x11f5a/0x12452 transparent text restores and consumes counted bytes`
+- `0x12452 transparent text probe keeps non-0x58 byte`
+- `0x1228a consumes absolute delayed payload count without echo`
+- `0x12358 direct alternate path echoes positive payload bytes only`
+
 ## State Blocks
 
 The parser initializes these fields at `0x11774` before entering the byte loop:
@@ -105,6 +117,13 @@ Its behavior:
 The digit bytes copied into `0x782a42..0x782a3e` are parser scratch, not the canonical
 numeric value. The record words at `+2` and `+4` are the fields that handlers consume.
 
+Fixture `0xdb74 parses sign, capped fraction digits, and final byte` pins the
+record layout with signed integer and fractional fields, including the cap at
+six integer digits and four stored fractional digits. Fixture `0xdb74 returns
+D7 zero for semicolon continuation final` pins the tokenizer return contract:
+semicolon and colon continuation finals store the final byte in the record but
+return `D7 = 0` to the caller.
+
 ## Angle Helper At 0xdb46
 
 `0xdb46` is called by `0xdaf0` after a byte has been fetched. If the byte is not `<`, it
@@ -141,6 +160,12 @@ The combiner then decides whether more records belong to the same command family
 This means lowercase PCL finals such as `c` or `b` can leave a record pending for the
 uppercase final in the same family, while the final uppercase byte is what causes
 command dispatch or delayed payload restore.
+
+Fixture `0xdaf0 tokenizes lowercase-final numeric chain into two six-byte
+records` proves this command-family combine behavior directly. The lowercase
+record remains in the six-byte record stream, the cursor is positioned so the
+uppercase sibling can be parsed as a second record, and later handlers see the
+same canonical record sequence that the ROM parser built.
 
 ## Main Parser Loop At 0x11774
 
@@ -369,6 +394,15 @@ absolute value, and calls `0x12328`. `0x12328` consumes that many bytes through
 `0xdace`. It returns `D7 = -1` if `0xdace` reports `-1`; otherwise it returns `D7 = 1`
 when the count has been consumed.
 
+Fixtures `0x121cc snapshots delayed payload handler and parsed record` and
+`0x12218 restores delayed parsed record and dispatches saved handler` pin the
+bookkeeping fields: pending flag `0x782a1a`, handler pointer `0x782a1c`, saved
+record `0x782a20..0x782a25`, restored active record at `0x78299e`, and handler
+clear after dispatch. Fixture `0x1228a consumes absolute delayed payload count
+without echo` proves generic wrapper `0x1228a` uses the absolute value of
+record word `+2`, drains bytes through `0x12328` / `0xdace`, and does not echo
+payload bytes through the alternate/data append path.
+
 The downloaded-font delayed handlers use the same drain contract after their
 own install work. In `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`,
 `0x15d0a` stores the absolute count in `0x783140`, follows bit-30
@@ -383,6 +417,21 @@ The alternate `0x15b9a`, `0x15c4c`, and `0x16606` branches also join the same
 `0x12358` is the alternate/data-mode path. If the saved handler pointer equals the
 argument passed to `0x12358`, it calls `0x1228a`. Otherwise it consumes a positive count
 through `0xdace` and echoes each normalized byte through `0xe002`.
+
+Fixture `0x12358 direct alternate path echoes positive payload bytes only`
+pins that alternate/data split. Positive counts are consumed through `0xdace`
+and appended through `0xe002`; zero and negative counts do not append bytes.
+When the saved handler matches the wrapper argument, the path delegates to
+`0x1228a` instead of echoing bytes itself.
+
+Transparent print data is the direct parser-core delayed-payload sibling at
+`0x11f5a`. It schedules handler `0x12452` through `0x121cc`; after
+`0x12218` restores the saved count record, `0x12452` consumes the absolute
+byte count and routes bytes into text/fixed-space output. Fixture
+`0x11f5a/0x12452 transparent text restores and consumes counted bytes` pins
+that restore/consume boundary. Fixture `0x12452 transparent text probe keeps
+non-0x58 byte` pins the local Control-Z probe edge: `0x1a 0x58` is the
+normalized special pair, while a non-`0x58` second byte remains payload data.
 
 ## Parser Record Semantic Checkpoint
 
@@ -481,6 +530,15 @@ Confidence:
 
 Fixture evidence:
 
+- `0xdaf0 tokenizes lowercase-final numeric chain into two six-byte records`
+- `0xdb74 parses sign, capped fraction digits, and final byte`
+- `0xdb74 returns D7 zero for semicolon continuation final`
+- `0x121cc snapshots delayed payload handler and parsed record`
+- `0x12218 restores delayed parsed record and dispatches saved handler`
+- `0x11f5a/0x12452 transparent text restores and consumes counted bytes`
+- `0x12452 transparent text probe keeps non-0x58 byte`
+- `0x1228a consumes absolute delayed payload count without echo`
+- `0x12358 direct alternate path echoes positive payload bytes only`
 - `0x11774 ROM dispatch table routes raster stream to delayed transfer`
 - `modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W
   payload boundary`

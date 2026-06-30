@@ -4277,6 +4277,25 @@ selector mismatch only copies the remembered word and installs no context.
   - `0x783032` for non-Roman secondary selection: rebuilt map with patch kind
     `selected-symbol-not-roman8`; contexts are `0xc00ae122` for `0N`,
     `0xc40ad87a` for `10U`, and `0xc40adcce` for `11U`.
+  - `0x783148`: primary selected-font snapshot/cache key written by
+    `0x1440c` after `0x14c64` rebuilds the map and compared by `0x13a48`
+    before a later rebuild.
+  - `0x783152`: secondary selected-font snapshot/cache key written and
+    compared by the same helpers when `0x7828de != 0`.
+  - snapshot byte `+0`: record form, `1` for bit-30 resource/offset-table
+    selected records and `0` for bit-30-clear inline/downloaded selected
+    records.
+  - snapshot word `+0x02`: selected symbol word returned by `0x15890` for
+    resource records or `0x158be` for inline/downloaded records.
+  - snapshot word `+0x04`: active symbol word copied from `0x783144` or
+    `0x783146`.
+  - resource snapshot bytes `+0x06/+0x07`: resource record words
+    `+0x0e/+0x10` truncated to bytes by `0x1440c` and rechecked by
+    `0x13a48`.
+  - inline/downloaded snapshot byte `+0x08`: selected record byte `+0x0e`
+    copied by `0x1440c` and rechecked by `0x13a48`.
+  - snapshot byte `+0x09`: provenance flag; `0x1440c` writes `1` when the
+    selected record address is below `0x780efa`, otherwise `0`.
   - `0x783134`: primary mapped range register, `0x21..0xfe`.
   - HMI/default advance: built-in byte `+0x21 = 0`, long
     `+0x24 = 0x00780000`, converted by `0x10550` to packed advance `30`.
@@ -4360,6 +4379,18 @@ selector mismatch only copies the remembered word and installs no context.
     while `0x14c64` dispatches bit-30 resource records through the
     offset-table path and bit-30-clear fixed records through the inline map
     path before `0x1440c` snapshots selected-font state.
+  - `0x13a48` is the selected-font map cache guard. For bit-30 resource
+    records, it requires snapshot form `1`, matching resource bytes
+    `+0x06/+0x07`, snapshot provenance byte `1`, matching active-symbol word
+    `+0x04`, and matching `0x15890` symbol word `+0x02`. For bit-30-clear
+    inline/downloaded records, it requires snapshot form `0`, matching byte
+    `+0x08`, the same provenance and active-symbol checks, and matching
+    `0x158be` symbol word `+0x02`.
+  - When `0x13a48` returns nonzero, `0x14c64` returns without rebuilding the
+    map or rewriting the snapshot. When it returns zero, `0x14c64` rebuilds
+    `0x782f32` or `0x783032`, applies `0x14f16`, and calls `0x1440c` to
+    publish the new cache key. The map arrays are therefore derived/cache
+    state, not independent parser state.
   - `0x1be22` writes requested symbol/default/font-ID state and dirties
     `0x782f2c`/`0x782f2d` for ordinary symbol/default paths; final `X` instead
     restores the previous symbol word, calls `0x17708`, then sets dirty flag

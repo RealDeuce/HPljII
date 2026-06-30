@@ -101,6 +101,25 @@ Canonical glyph maps:
 - `0x782f08`: remembered primary symbol-set word.
 - `0x782f0a`: remembered secondary symbol-set word.
 
+Canonical selected-font snapshots:
+
+- `0x783148`: primary selected-resource snapshot written by `0x1440c` and
+  compared by `0x13a48`.
+- `0x783152`: secondary selected-resource snapshot written by `0x1440c` and
+  compared by `0x13a48`.
+- Snapshot byte `+0`: record form, `1` for bit-30 offset-table/resource
+  records and `0` for bit-30-clear inline/downloaded records.
+- Snapshot word `+0x02`: selected symbol word returned by `0x15890` or
+  `0x158be` when the map was last rebuilt.
+- Snapshot word `+0x04`: active symbol word copied from `0x783144` or
+  `0x783146`.
+- Resource snapshot bytes `+0x06/+0x07`: copies of selected resource record
+  words `+0x0e/+0x10` truncated to bytes by `0x1440c`.
+- Inline/downloaded snapshot byte `+0x08`: copy of selected inline record
+  byte `+0x0e` by `0x1440c`.
+- Snapshot byte `+0x09`: ROM/RAM provenance flag. `0x1440c` writes `1` when
+  the selected record address is below `0x780efa`, otherwise `0`.
+
 Canonical page-root/render context fields:
 
 - page root `+0x2c..+0x68`: 16 font context slots. These hold selected
@@ -288,6 +307,29 @@ Fixture-pinned secondary result:
   then applies `0x14f16` symbol-set patching and `0x1440c` state snapshot.
 - bit-30 clear / fixed-record form: rebuilds through `0x14e24` and
   `0x14eb6`, then applies the same `0x14f16` / `0x1440c` tail.
+
+The snapshot is the cache key for skipping redundant map rebuilds. Helper
+`0x13a48` selects `0x783148` or `0x783152` from `0x7828de`, loads selected
+candidate slot `0x7828a8`, and compares the selected record against the
+snapshot before `0x14c64` rebuilds anything.
+
+For bit-30 resource records, `0x13a48` requires snapshot form byte `+0 == 1`,
+resource words `+0x0e/+0x10` matching snapshot bytes `+0x06/+0x07`, selected
+record address not above `0x780efa`, snapshot provenance byte `+0x09 == 1`,
+active symbol word `0x783144` or `0x783146` matching snapshot word `+0x04`,
+and `0x15890(selected_record)` matching snapshot word `+0x02`. For bit-30
+clear inline/downloaded records, it requires snapshot form byte `+0 == 0`,
+record byte `+0x0e` matching snapshot byte `+0x08`, the same address
+provenance and active-symbol checks, and `0x158be(selected_record)` matching
+snapshot word `+0x02`.
+
+If every check passes, `0x14c64` exits after `0x13a48`; the prior glyph map
+and selected context remain canonical. If any check fails, `0x14c64` rebuilds
+the selected map through the resource or inline path, calls `0x14f16`, then
+`0x1440c` records the new cache key. This means a renderer must not treat
+`0x782f32` and `0x783032` as pure parser outputs. They are derived caches
+validated against selected candidate `0x7828a8`, active symbol words, and the
+snapshot fields above.
 
 ## Visible Built-In Selection Boundary
 

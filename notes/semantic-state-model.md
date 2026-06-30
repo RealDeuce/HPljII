@@ -447,10 +447,18 @@ physical interface naming because that requires board/manual correlation.
 - `combined host-fetched font download stream prints installed glyph`
 - `host-fetched text rectangle raster FF publishes rendered page record`
 
+Adjacent no-byte gate setters at `0x4300` and `0x6200` feed the same byte-source
+model: both set no-byte flag `0x780e3b`, set `0x780e66.3`, call byte-source
+reset `0x3178`, clear `0x780e32`/`0x780e2e`, and mask status bits in
+`0x780e2a` before returning to their caller-specific path.
+
 ### Disassembly Evidence
 
 - `generated/disasm/ic30_ic13_host_byte_fetch_00a904.lst`:
   `0xa904..0xab8a`
+- `generated/disasm/ic30_ic13_no_byte_gate_setter_004300.lst` and
+  `generated/disasm/ic30_ic13_no_byte_gate_setter_006200.lst`:
+  no-byte flag setters and byte-source reset callers.
 - `generated/disasm/ic30_ic13_a801_a601_io_00a4e8.lst`:
   `0xa6cc..0xa810` for the alternate bridge and `0xa846..0xa8c8` for
   ring append / sequence dispatch helpers.
@@ -8242,6 +8250,9 @@ NVRAM-failure fallback wording with the ROM paths found here.
 - `generated/disasm/ic30_ic13_error_report_entry_001284.lst`: error-report
   entry that reads two stack bytes, selects string `0xb44b`, and displays it
   through `0x8c7a`.
+- `generated/disasm/ic30_ic13_error_report_00128c.lst`: `0x128c` report body
+  that copies the selected string into `0x783ef0`, emits character timing
+  loops, and formats the two status-code nibbles.
 - `generated/analysis/ic30_ic13_strings.txt`: identifies `0xb44b` as
   `67 SERVICE` and `0xb45c` as `68 SERVICE`.
 - `generated/disasm/ic30_ic13_panel_service_dispatch_003dae.lst`: service-byte
@@ -8888,6 +8899,9 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
   `0x1a4fa..0x1a9bc`.
 - `generated/disasm/ic30_ic13_font_candidate_window_prune_01ba92.lst`:
   `0x1ba92..0x1bb9c`.
+- `generated/disasm/ic30_ic13_font_default_update_01ba40.lst`: signature
+  filter `0x1ba40`, publication/default refresh helper `0x1ba6c`, and the
+  adjacent `0x1ba92` prune entry.
 - `generated/analysis/ic30_ic13_parser_xrefs.md`: callers
   `0x00447a`, `0x004760`, `0x007164`, `0x00bb16`, and `0x01a3c2`.
 - `generated/disasm/ic30_ic13_host_input_quiesce_004200.lst`:

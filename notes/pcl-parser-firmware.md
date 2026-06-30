@@ -707,7 +707,8 @@ the same non-replay overlay publication path for stored payload `ESC &k1G!\r!`:
 `0xff1e` resolves overlay id `125`, `0xe4f4` builds the non-replay frame,
 parser loop `0x11774` dispatches `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`,
 and publication renders the replayed compact text entries with an existing
-selector-7 rectangle rule. The composed semantic checkpoint is
+selector-7 rectangle rule. The composed semantic contract is
+[macro-data-chain.md](macro-data-chain.md), mirrored in
 `Macro Definition And Data-Chain Replay` in `notes/semantic-state-model.md`;
 no macro execute/call replay, font-context, first overlay-publication,
 repeated enabled-overlay publication, mixed-control overlay payload, or overlay

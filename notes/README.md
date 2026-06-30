@@ -39,6 +39,9 @@ compatibility boundary.
 - [direct-control-codes.md](direct-control-codes.md) - documented
   CR/LF/FF/HT/BS, line-termination mode, cursor stack, and cursor/margin
   control paths to page-record output.
+- [macro-data-chain.md](macro-data-chain.md) - documented macro definition,
+  execute/call replay, overlay publication, and data-chain byte replay to
+  page-record output.
 - [transparent-print-data.md](transparent-print-data.md) - documented
   `ESC &p#X` delayed payload handling and printable text re-entry.
 - [raster-graphics.md](raster-graphics.md) - documented `ESC *t`,

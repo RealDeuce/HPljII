@@ -7396,6 +7396,10 @@ fields and broader selected-font state combinations have not been page-compared.
 
 ## Macro Definition And Data-Chain Replay
 
+The standalone command-family contract is in
+[macro-data-chain.md](macro-data-chain.md). This section preserves the unified
+state block and detailed fixture ledger.
+
 Status: anchored as one command-family and end-to-end replay cluster.
 The low-level handler ledger is preserved in
 `notes/reverse-engineering-ledger.md`; this section composes the macro

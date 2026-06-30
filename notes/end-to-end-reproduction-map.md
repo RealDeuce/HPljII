@@ -611,7 +611,8 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    Remaining macro risk is broader overlay payload variants beyond `!\r`, `ESC
    &k1G!\r!`, `ESC &a2C!`, `ESC &a2c+1R!`, `ESC &a6l9M!`, `ESC &p2X!!`, the covered
    raster payloads, and `ESC &a6L!`, plus physical output comparison. Evidence:
-   `Macro Definition And Data-Chain Replay` in `notes/semantic-state-model.md`,
+   [macro-data-chain.md](macro-data-chain.md), `Macro Definition And Data-Chain
+   Replay` in `notes/semantic-state-model.md`,
    fixture `macro overlay finalization replays before page publication`, fixture
    `macro overlay replays across repeated page publications`, fixture `macro overlay
    skip gates preserve base page publication`, fixture `macro overlay mixed-control

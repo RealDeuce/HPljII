@@ -1127,7 +1127,10 @@ The separate normal-mode `ESC z` terminal handler at `0xcd86` is the
 ROM-visible display-functions-off/reset edge: it tests byte `+9` in the
 active data-chain frame addressed by `0x782d76`, calls helper `0x9c2c` only
 when that byte is zero, and otherwise returns without entering either
-`ESC Y` reader loop.
+`ESC Y` reader loop. Helper `0x9c2c` is a status/service signal edge: after
+waiting for `0x780e2d.3` to clear, it sets `0x7821cc` and `0x7822db`, signals
+bit `0x8` in warning/status accumulator `0x780e2a` through `0x9b5e`, then
+clears `0x7821cc`.
 
 ### Field Groups
 
@@ -1154,9 +1157,20 @@ when that byte is zero, and otherwise returns without entering either
 - Parser/data-chain guard state:
   - active data-chain frame pointer `0x782d76`, with frame byte `+9` read by
     `ESC z` handler `0xcd86` before the conditional call to `0x9c2c`.
+  - `0x780e2d.3`: service/status busy bit tested by `0x9c2c`; when set,
+    `0x9c2c` runs `0x10c8(0x780202)` and `0x10d0(5)` before retrying the
+    test.
+  - `0x7821cc`: service-in-progress marker set during the `0x9b5e`
+    status-signal call and cleared before `0x9c2c` returns.
+  - `0x7822db`: service/status marker set by `0x9c2c` before signaling
+    `0x780e2a.3`.
+  - `0x780e2a.3`: warning/status accumulator bit ORed by
+    `0x9b5e(0x780e2a, 0x8)`.
   Evidence: disassembly `0xcd86..0xcda0` in
-  `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst` and the normal parser
-  command-map row for `ESC z` in
+  `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`,
+  `0x9b5e..0x9c8e` in
+  `generated/disasm/ic30_ic13_status_signal_helpers_009b5e.lst`, and the
+  normal parser command-map row for `ESC z` in
   `generated/analysis/ic30_ic13_pcl_command_map.md`.
 
 ### Writers
@@ -1169,6 +1183,8 @@ when that byte is zero, and otherwise returns without entering either
   substituted with routed/appended value `0x7f`.
 - `0xcd86` performs the `ESC z` terminal action by conditionally calling
   `0x9c2c` when the active data-chain frame byte `+9` is zero.
+- `0x9c2c` waits for `0x780e2d.3` to clear, sets `0x7821cc` and
+  `0x7822db`, calls `0x9b5e(0x780e2a, 0x8)`, and clears `0x7821cc`.
 
 ### Readers And Consumers
 
@@ -1180,6 +1196,9 @@ when that byte is zero, and otherwise returns without entering either
   transparent print data and direct text.
 - `0xcd86` consumes only the active data-chain frame guard byte before the
   `0x9c2c` display-functions-off/reset helper boundary.
+- `0x9c2c` consumes status/busy bit `0x780e2d.3` and the status-signal helper
+  `0x9b5e`; `0x9b5e` consumes accumulator `0x780e2a`, ORs the requested
+  mask, and runs the normal service polling loop while the bit remains set.
 - Downstream consumers of the normal path are source-object mapping,
   cursor/spacing state, page-record queueing, bridge, and render entry.
 
@@ -1194,8 +1213,11 @@ chunk `0x783988`; the fixture records allocation plus six `0xe002` byte
 appends with raw counts `4..10`.
 
 `ESC z` has no direct page-record output in this checkpoint. Its documented
-ROM effect is the guarded helper boundary at `0xcd86..0xcda0`: if
-`byte[long[0x782d76] + 9] == 0`, call `0x9c2c`; otherwise return.
+ROM effect is the guarded status-service path at `0xcd86..0xcda0` and
+`0x9c2c..0x9c8e`: if `byte[long[0x782d76] + 9] == 0`, wait for
+`0x780e2d.3` to clear, set `0x7821cc` / `0x7822db`, OR bit `0x8` into
+`0x780e2a` through `0x9b5e`, clear `0x7821cc`, and return; if the frame byte
+is nonzero, return without the signal.
 
 Normal `0x12536` can produce pixels or spacing. Values `0x00..0x1f` route
 through `0xd0f0` only when the selected context byte is zero; values
@@ -1231,8 +1253,8 @@ drives `ESC Y ... ESC Z` through `0xd04a`, `0xd0f0`, compact object queueing,
 bridge, and rendered rows. High for the alternate/data append boundary because
 the append fixture drives `0x12120` loop output through `0xe002` into the
 macro chunk payload. High for the `ESC z` guard and `0x9c2c` call boundary
-because it is a direct disassembly read; medium for the manual-facing name of
-the `0x9c2c` side effect until that helper is separately composed.
+because they are direct disassembly reads. Medium for the manual-facing name
+of the `0x7822db` marker and the external status consumer of `0x780e2a.3`.
 
 ### Fixtures
 
@@ -1250,6 +1272,9 @@ the `0x9c2c` side effect until that helper is separately composed.
   `0x12120..0x1219c` and `0x12536..0x1261e`.
 - `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`: `0xcd86..0xcda0`
   guarded `ESC z` helper call.
+- `generated/disasm/ic30_ic13_status_signal_helpers_009b5e.lst`:
+  `0x9b5e..0x9c8e` status-signal helper family and `0x9c2c` service/status
+  side effect.
 - `generated/analysis/ic30_ic13_parser_dispatch_tables.md`: normal and
   alternate/data mode-1 `ESC Y` dispatch entries.
 - `generated/analysis/ic30_ic13_pcl_command_map.md`: normal `ESC z`
@@ -1259,11 +1284,12 @@ the `0x9c2c` side effect until that helper is separately composed.
 ### Unresolved Middle Edges
 
 - None remaining for the `0x12536..0x1261e` normal page-output loop, its
-  default-filter and filter-on route predicates, or the `0x12120..0x1219c`
-  alternate/data append loop. Broader macro/data-chain ownership remains
-  covered in `Macro Definition And Replay`, not reopened here.
-- `0x9c2c`: display-functions-off/reset helper internals are still an
-  unresolved middle edge beyond the `0xcd86` command boundary.
+  default-filter and filter-on route predicates, the `0x12120..0x1219c`
+  alternate/data append loop, or the `0xcd86 -> 0x9c2c` display-functions-off
+  status-signal boundary. Broader macro/data-chain ownership remains covered
+  in `Macro Definition And Replay`, and external status consumption of
+  `0x780e2a.3` remains covered in the status/I/O sections rather than
+  reopened here.
 
 ## Text Cursor And Direct Controls
 

@@ -1079,10 +1079,15 @@ The next work should follow dataflow, not isolated handlers:
    `18`, and `32`, through segment `1`, bucket `8`, `0x1f264`, a `32/96`
    current/fallback split, and installed-bitmap row comparison; fixture `downloaded
    segmented-wide high-row span-31 fallback hits source boundary` pins the adjacent
-   large-remainder source-read boundary at fallback A2 offset `+0xb50`. Remaining
-   downloaded-character publication work
+   large-remainder source-read boundary at fallback A2 offset `+0xb50`. Fixtures
+   `downloaded segmented-wide row-0x0182 fallbacks render selected segment` and
+   `downloaded segmented-wide row-0x0182 span-31 fallback hits source boundary` repeat
+   that success/boundary split for row `0x0182`: spans `17`, `18`, and `32` render the
+   selected segment with the same `32/96` split, while span `31` stops at fallback A2
+   offset `+0xb50`. Remaining downloaded-character publication work
    is therefore limited to pixel-row behavior beyond wrapped source-byte helper-table
-   boundaries, broader higher-row segmented-wide fallback combinations, broader
+   boundaries, broader higher-row segmented-wide fallback combinations beyond sampled
+   rows `0x0181` and `0x0182`, broader
    publication combinations, and full-success return-boundary siblings outside the named
    row-count, wide-remainder, segmented-wide, normal, row-`0x80`, linear-segmented,
    split-plane segmented, segmented-wide, no-install, status-`2`, and payload-control

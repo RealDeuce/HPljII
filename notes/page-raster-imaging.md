@@ -1830,6 +1830,13 @@ Output effect:
   boundary` pins the adjacent large-remainder boundary: the same selected
   segment path reaches `validate_wide_compact_row_copy`, which reports
   fallback A2 source read past the modeled bitmap at `+0xb50`.
+- Fixtures `downloaded segmented-wide row-0x0182 fallbacks render selected
+  segment` and `downloaded segmented-wide row-0x0182 span-31 fallback hits
+  source boundary` repeat that higher-row fallback split for the next row word.
+  Row `0x0182` succeeds at spans `17`, `18`, and `32` through bucket `8`
+  segment `1`, `0x1f264`, and the `0x1f414` `32/96` current/fallback split;
+  the adjacent span-31 case reaches the same selected segment path and stops at
+  fallback A2 source offset `+0xb50`.
 - Fixture `downloaded segmented-wide row-byte boundary truncates page-record
   segments` proves span-`0x11` downloaded glyphs keep canonical installed row
   words `0x0002`, `0x007f`, `0x0080`, `0x0081`, `0x0083`, `0x00fe`,
@@ -1903,6 +1910,8 @@ Fixture evidence:
   segment`
 - `downloaded segmented-wide high-row span-31 fallback hits source boundary`
 - `downloaded segmented-wide high-row span-32 fallback renders selected segment`
+- `downloaded segmented-wide row-0x0182 span-31 fallback hits source boundary`
+- `downloaded segmented-wide row-0x0182 fallbacks render selected segment`
 - `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `downloaded glyph row-count matrix publishes and renders additional
   short/segmented counts`

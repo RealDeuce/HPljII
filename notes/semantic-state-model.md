@@ -2650,10 +2650,25 @@ startup-visible typed-record chain that bounds this built-in window.
     `0x440946b4` for glyph `0`, plus context `0x440946b4` glyph `32`, with
     entry pointer, bitmap pointer, delta, mode, row count, width, render span,
     and decoded bitmap rows.
+  - `firmware-scanned built-in glyph coverage summary` counts 24 record bases,
+    5730 glyph records, 5310 mode-1 bitmap entries, 420 mode-0 tall entries,
+    maximum mode-1 width/rows `50`/`50`, and no wide render span above 16
+    bytes for the verified built-ins.
+  - `firmware-scanned tall built-in glyph target summary` identifies the
+    mode-0/tall subset as 420 targets across 24 bases, all with delta `0`,
+    mode `0`, width `74`, and row counts from `972` through `38600`.
   - named built-in record fields expose the selector byte `+0x20`, spacing
     byte `+0x21`, symbol word `+0x22`, pitch fields `+0x24/+0x26`, height
     fields `+0x28/+0x2a`, and comparator tuple `+0x2f..+0x31` consumed by
     the font-selection filters and chooser.
+  - `named COURIER and LINE_PRINTER records expose deterministic metadata`
+    enumerates 18 named records: 12 Courier records and 6 Line Printer
+    records, with class, context, symbol, pitch, height, first/last character,
+    nonzero entry count, and first-glyph record metadata.
+  - `named built-in first glyphs expose positioning offsets` pins first-glyph
+    bitmap delta `10`, mode `1`, selector-0 x offsets `1..10`, selector-1 x
+    offsets `-31..-18`, and the `(x offset, y offset, rows, width)` tuples
+    later consumed by printable positioning.
   Evidence: fixtures `0x41a HEAD scanner walks verified IC32/IC15 resource
   chain`, `resource context 0x4008004c glyph 0 fields`,
   `resource context 0x4008004c glyph 0 bitmap sample`,
@@ -2696,11 +2711,28 @@ startup-visible typed-record chain that bounds this built-in window.
     windows, not part of the resource scan itself.
   - `ESC (` / `ESC )` symbol words are parser-produced inputs to
     `0x156de`, not resource-record fields.
+  - `0x120be/0x1be22 symbol-set stream updates active words and 0x14f16 glyph
+    maps` models `ESC (2U ESC )0E`: primary requested/active word becomes
+    `0x0055`, secondary becomes `0x0005`, refresh count reaches `2`, the
+    primary map takes the patch-table path, and the secondary map takes the
+    Roman-extension path.
+  - `symbol-set parser trace feeds active map patches` ties that same stream
+    to parser handlers `[0x11eb6, 0x1201e, 0x120be]` for primary and
+    `[0x11eb6, 0x12008, 0x120be]` for secondary, then verifies the modeled map
+    patches from those parser-produced records.
 - Firmware bookkeeping:
   - startup scanner `0x41a` and candidate scanner `0x1a616` both walk
     resource records but serve different phases. `0x41a` validates the
     `HEAD` chain and executable-record behavior; `0x1a616` /
     `0x1a9be` build font candidate windows.
+  - `0x41a HEAD scanner advances next probe after 0x40000 boundary` covers a
+    synthetic `HEAD` chain whose last record ends exactly at `0x40000`; the
+    scanner records the boundary crossing, probes the next `0x40000` unit, and
+    terminates with final probe `0x80000`.
+  - `0x41a HEAD scanner handles 0xbe executable records` covers the executable
+    record branch: a valid record returns status `jump` and target
+    `0x200010`, while an invalid short record reports the `0x128c` error with
+    `D0 = 0xe0` and `D1 = 0x10`.
   - Fixture `0x1a616 candidate scan continuation policy changes built-in
     counts` constrains the segment-57 continuation hypotheses against
     candidate-window state. A visible `IC32,IC15` mirror at offset
@@ -2788,6 +2820,15 @@ Parsed secondary `0p16h8v0s0b0T` filters the class-one window to context
 miss fixtures prove fallback words `0x0115` and `0x000e` can still
 select visible primary/secondary rows through these same windows.
 
+The helper-level filter and chooser fixtures pin the middle edge behind those
+visible selections. `0x156de filters concrete active candidate windows` keeps
+three class-zero primary survivors for requested word `0x0115`, and keeps
+three class-one secondary fallback survivors after `ESC )1234U` requests
+`0x9a55` and falls back to `0x000e`. `0x14398 chooses concrete active
+built-in candidate` then chooses slot `0x782364`, longword `0xc0089fb0`, by
+replacing the seed `0xc008004c` on the same-class comparator tuple and keeping
+it against the next lower-ranked candidate.
+
 The resource glyph fixtures connect canonical bitmap payloads to the compact
 row-copy layer before page-record rendering. For contexts `0x4008004c`,
 `0x44080418`, and `0x440946b4`, the `... main row-copy rendered rows`
@@ -2796,6 +2837,11 @@ glyph `0`; the Line Printer glyph-32 sibling proves the same for the default
 printable glyph used by page-record text fixtures. Fixture
 `resource glyph row-copy span matrix matches direct decode` broadens that
 edge across target spans `1`, `2`, `4`, `6`, and `8`.
+
+Fixture `line-printer built-in base map host 0x21 to glyph 32` pins the
+default Line Printer source map used by the printable fixtures: context
+`0x440946b4`, first/last host range `0x01..0xff`, host byte `0x21`, mapped
+glyph `0x20`.
 
 ### Confidence
 
@@ -2810,7 +2856,12 @@ resources because no image is available in this repo.
 
 - `0x1a9be scanned font candidate list partitioning`
 - `0x41a HEAD scanner walks verified IC32/IC15 resource chain`
+- `0x41a HEAD scanner advances next probe after 0x40000 boundary`
+- `0x41a HEAD scanner handles 0xbe executable records`
 - `actual IC32/IC15 built-in records feed 0x1a9be partitions`
+- `firmware-scanned built-in glyph coverage summary`
+- `firmware-scanned tall built-in glyph target summary`
+- `line-printer built-in base map host 0x21 to glyph 32`
 - `resource context 0x4008004c glyph 0 fields`
 - `resource context 0x4008004c glyph 0 bitmap sample`
 - `resource context 0x4008004c glyph 0 full bitmap rows`
@@ -2825,11 +2876,18 @@ resources because no image is available in this repo.
 - `resource context 0x440946b4 glyph 32 full bitmap rows`
 - `resource context 0x440946b4 glyph 32 main row-copy rendered rows`
 - `resource glyph row-copy span matrix matches direct decode`
+- `0x120be/0x1be22 symbol-set stream updates active words and 0x14f16 glyph
+  maps`
+- `symbol-set parser trace feeds active map patches`
+- `named COURIER and LINE_PRINTER records expose deterministic metadata`
 - `named built-in records expose firmware selection fields`
+- `named built-in first glyphs expose positioning offsets`
 - `0x1a616 candidate scan continuation policy changes built-in counts`
 - `0x1569c activates concrete built-in candidate windows`
+- `0x156de filters concrete active candidate windows`
 - `0x1519a filters concrete active candidates by height`
 - `0x153c6 filters concrete active candidates by spacing and pitch`
+- `0x14398 chooses concrete active built-in candidate`
 - `parsed primary built-in font selection feeds visible page-record rows`
 - `parsed secondary built-in font selection feeds visible SO page-record rows`
 - `remembered primary symbol feeds visible page-record rows`
@@ -3984,6 +4042,9 @@ selector mismatch only copies the remembered word and installs no context.
     `+0x24 = 0x00780000`, converted by `0x10550` to packed advance `30`.
   - secondary HMI/default advance: built-in byte `+0x21 = 0`, long
     `+0x24 = 0x00480000`, converted by `0x10550` to packed advance `18`.
+  - `line-printer flagged HMI metric via 0x10550` pins the default Line Printer
+    case directly: base `0x0146b4`, metric flag `0`, raw metric
+    `0x00480000`, and packed HMI `18`.
 - Parser scratch:
   - fetched stream bytes are split at byte 20: selection bytes
     `ESC (s0p10h12v0s0b3T`, printable bytes `!!`.
@@ -4452,6 +4513,7 @@ install events.
 - `inline primary font selection stream renders visible rows`
 - `parsed secondary built-in font selection feeds visible SO page-record rows`
 - `inline secondary font selection stream renders SO visible rows`
+- `line-printer flagged HMI metric via 0x10550`
 - `remembered primary symbol feeds visible page-record rows`
 - `remembered secondary symbol feeds visible SO page-record rows`
 - `primary symbol miss falls back before visible page-record rows`

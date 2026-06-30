@@ -1393,13 +1393,17 @@ VMI state before object queueing, then cross the same `0x1387c`,
   - `0x783190`: end-of-line wrap flag written by `ESC &s#C` handler
     `0xedb0` and consumed by printable overflow paths.
   - `0x783191`: perforation-skip byte written by `ESC &l#L` handler
-    `0xee64` and consumed by `0xf36c`.
+    `0xee64` and consumed by `0xf36c`. When the vertical cursor
+    `0x782c8e` is greater than nonzero limit/cache `0x782dc2`,
+    `0xf36c` calls page-eject helper `0xf124` and returns `D7 = 0` only
+    when `0x783191` is nonzero; otherwise it returns `D7 = 1`.
   Evidence: generated direct-control report line-termination and wrap
   sections; fixtures `control stream ESC &k1G then CR applies CR+LF`,
   `control stream ESC &k2G then LF applies CR+LF`,
   `control stream ESC &k2G then FF applies CR+page-eject`,
   `control stream ESC &k3G applies CR/LF/FF combined line termination`,
-  and `host-fetched direct text/control streams reach page-record render`.
+  `0xf36c perforation skip gates vertical overflow page eject`, and
+  `host-fetched direct text/control streams reach page-record render`.
 - Derived/cache placement state:
   - compact text coordinates are derived after cursor conversion and are
     queued into page-record text objects; examples include `0x3b00` for
@@ -1564,6 +1568,14 @@ VMI state before object queueing, then cross the same `0x1387c`,
   ensures the page root, flushes pending span state, converts VMI packed `3`
   into half-line amount packed `1.6`, advances y from packed `21` to
   `22.6`, and the following printable queues compact coord `0x1001`.
+- Perforation skip affects vertical overflow recovery, not the immediate
+  glyph origin. Fixture
+  `0xf36c perforation skip gates vertical overflow page eject` pins the
+  consumer predicate from `0xf36c..0xf398`: below-limit cursor, zero
+  `0x782dc2`, and disabled `0x783191` all return `D7 = 1` without page
+  ejection; enabled overflow with `cursor_y > 0x782dc2` calls the modeled
+  `0xf124` page-eject effect, increments page finalization, clears pending
+  text, recomputes y from top offset and VMI, and returns `D7 = 0`.
 - `ESC &d` terminal records have no immediate glyph payload in this
   checkpoint. Handler `0x12622..0x126e2` either publishes pending span state
   through `0x12714` or writes `0x783185` and re-arms span bounds; subsequent
@@ -1598,6 +1610,9 @@ helper boundaries, and representative downstream visible-output effects
 because those are direct disassembly reads plus dedicated host-fetched
 page-record/render fixtures. Medium remains only for their complete
 manual-facing names outside the PCL labels already cited here.
+High for `0xf36c` perforation-skip gating because the fixture covers all
+three non-eject predicates and the enabled-overflow eject predicate against
+disassembly `0xf36c..0xf398`.
 
 ### Fixtures
 
@@ -1657,6 +1672,7 @@ manual-facing names outside the PCL labels already cited here.
 - `0xea9e ESC &l#F sets text length bottom or restores default`
 - `0xece2 ESC &l#E sets top margin, default text length, and pending cursor`
 - `0xee64 ESC &l#L toggles perforation skip for selectors 0 and 1 only`
+- `0xf36c perforation skip gates vertical overflow page eject`
 - `0xcb00/0xc992/0xece2/0xea9e chained ESC &l stream selects vertical layout
   handlers`
 - `0xeb58 ESC &a#L sets left margin and moves cursor only when needed`

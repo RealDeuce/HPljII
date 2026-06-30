@@ -303,10 +303,13 @@ parser record, takes the absolute value of the parsed word, clears byte
 `0x783191` for selector `0`, sets byte `0x783191` for selector `1`, and
 leaves the byte unchanged for other selectors. The same byte is tested in
 the vertical overflow/recovery path at `0xf36c`, making it part of page
-advance behavior rather than printable glyph placement. The
-`ESC &l1L!` fixture proves the normal parser reaches `0xee64`, records
-`0x783191` changing from `0` to `1`, then queues the following printable
-`!` through `0xd04a` at the unchanged origin.
+advance behavior rather than printable glyph placement. Fixture
+`0xf36c perforation skip gates vertical overflow page eject` pins the
+consumer predicate: `0xf36c` calls `0xf124` and returns `D7 = 0` only
+when `0x782c8e > 0x782dc2`, `0x782dc2` is nonzero, and `0x783191` is
+nonzero. The `ESC &l1L!` fixture proves the normal parser reaches
+`0xee64`, records `0x783191` changing from `0` to `1`, then queues the
+following printable `!` through `0xd04a` at the unchanged origin.
 
 `ESC &l#X` at `0x00eef0` handles number of copies. It rewinds to the
 parser record, takes the absolute value of the parsed word, ignores zero,

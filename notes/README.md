@@ -42,6 +42,9 @@ compatibility boundary.
 - [macro-data-chain.md](macro-data-chain.md) - documented macro definition,
   execute/call replay, overlay publication, and data-chain byte replay to
   page-record output.
+- [reset-default-environment.md](reset-default-environment.md) - documented
+  `ESC E` reset, default-record producers, retained-record paths, and reset
+  publication behavior.
 - [transparent-print-data.md](transparent-print-data.md) - documented
   `ESC &p#X` delayed payload handling and printable text re-entry.
 - [raster-graphics.md](raster-graphics.md) - documented `ESC *t`,

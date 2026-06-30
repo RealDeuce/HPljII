@@ -9692,6 +9692,10 @@ state combinations and physical/reference page comparisons.
 
 ## Default Environment Record Producers
 
+The standalone reset/default contract is in
+[reset-default-environment.md](reset-default-environment.md). This section
+preserves the producer-side state block in the unified model.
+
 Status: composed for the RAM record, ROM-table fallback, record-maintenance,
 startup retained-record bulk load, retained-storage commit/readback,
 panel/service trigger, and menu/update producer side that feeds the `ESC E`
@@ -10778,6 +10782,10 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
   resource scanner notes.
 
 ## ESC E Reset And Default Environment
+
+The standalone reset/default contract is in
+[reset-default-environment.md](reset-default-environment.md). This section
+preserves the reset consumer-side state block in the unified model.
 
 Status: composed for the PCL software-reset command family. This checkpoint
 keeps the lower-level ledger in

@@ -807,7 +807,8 @@ The next work should follow dataflow, not isolated handlers:
    fixture boundaries.
 2. Do not treat reset/default provenance as an open ROM-internal tracing
    target unless new evidence contradicts the composed checkpoints. Semantic
-   checkpoint `ESC E Reset And Default Environment` covers
+   checkpoint [reset-default-environment.md](reset-default-environment.md)
+   covers
    `0xcc52 -> 0xcc70 -> 0xcda2`, page-root finalization through `0xff1e`,
    font-derived HMI refresh through `0xcbd4`, parser/data-chain reset through
    `0xe146`, valid-page publication fixtures, missing-root reset fixtures, and

@@ -42,15 +42,51 @@ Primary fixtures:
 - `control stream ESC &k2G then FF applies CR+page-eject`
 - `control stream ESC &k3G applies CR/LF/FF combined line termination`
 - `control stream HT then BS updates tab and previous-width state`
+- `plain printable parser trace feeds page-record queue`
+- `HMI parser trace feeds page-record queue`
+- `mixed printable/control stream applies CR+LF before second glyph`
+- `mixed printable/control stream renders post-CR glyph rows`
 - `mixed printable/control parser trace feeds page-record queue`
+- `mixed printable/control page-record stream queues through 0x1387c`
 - `mixed printable/control page-record bridge renders post-CR glyph rows`
 - `LF parser trace feeds page-record queue`
 - `HT/BS parser trace feeds page-record queue`
 - `ESC 9 clear margins feeds CR and page-record output`
 - `ESC = half-line feed reaches shifted page-record output`
+- `0xf75e ESC &f0S pushes cursor with vertical offset`
+- `0xf75e ESC &f1S pops cursor and clears pending flags`
+- `cursor stack stream ESC &f0S / ESC &f1S selects 0xf75e push/pop`
+- `0xf75e cursor stack bounds and pop clamps to current extents`
 - `cursor stack parser trace feeds page-record queue`
+- `0xf39e ESC &a#C converts columns through HMI and relative flag`
+- `0xf416 ESC &a#H converts decipoints and clamps horizontal cursor`
+- `0xf560 ESC &a#R uses VMI with absolute top offset and relative cursor base`
+- `cursor position stream ESC &a3.5c+1R selects 0xf39e then 0xf560`
+- `0xf60a ESC &a#V converts decipoints and clamps vertical cursor`
+- `0xf48c/0xf692 ESC *p#X/#Y use whole-dot packed cursor commits`
+- `cursor position parser trace feeds page-record queue`
+- `horizontal decipoint parser trace feeds page-record queue`
+- `vertical cursor position parser trace feeds page-record queue`
+- `vertical decipoint parser trace feeds page-record queue`
+- `dot position parser trace feeds page-record queue`
+- `chained cursor position parser trace feeds page-record queue`
+- `0xeb58 ESC &a#L sets left margin and moves cursor only when needed`
+- `0xec0c ESC &a#M applies plus-one column, clamps, and moves cursor at right edge`
+- `margin stream ESC &a6l9M selects 0xeb58 then 0xec0c`
+- `margin command parser trace feeds page-record queue`
+- `right margin command parser trace feeds page-record queue`
+- `chained margin command parser trace feeds page-record queue`
 - `left-margin parser span flush materializes 0x12714 page object`
 - `vertical-cursor parser span flush materializes 0x12714 page object`
+- `0xc992 ESC &l#D accepts ROM LPI set and refreshes pending vertical cursor`
+- `0xcb00 ESC &l#C converts 1/48-inch VMI and keeps zero unmodified`
+- `0xea9e ESC &l#F sets text length bottom or restores default`
+- `0xece2 ESC &l#E sets top margin, default text length, and pending cursor`
+- `0xee64 ESC &l#L toggles perforation skip for selectors 0 and 1 only`
+- `0xcb00/0xc992/0xece2/0xea9e chained ESC &l stream selects vertical layout
+  handlers`
+- `vertical layout parser trace feeds page-record queue`
+- `transparent data parser trace feeds page-record queue`
 - `ESC &d underline selector materializes span output`
 - `perforation skip parser trace feeds page-record queue`
 
@@ -217,6 +253,13 @@ compact coord `0x0a01` / pixel x `26`.
 value stores packed advance `15` in `0x78315c`, moving the second glyph to
 compact coord `0x0501`.
 
+The plain and HMI parser fixtures pin the baseline consumer path. Fixture
+`plain printable parser trace feeds page-record queue` proves a printable
+byte reaches `0xd04a`, queues a compact text object through `0x1387c`, and
+survives bridge/render entry. Fixture `HMI parser trace feeds page-record
+queue` proves the `0xca8c` HMI writer changes the following compact
+coordinates without changing the downstream page-record contract.
+
 `ESC 9 CR !` has visible effect only through later text. Fixture `ESC 9 clear
 margins feeds CR and page-record output` proves `0xe9ba` clears left margin
 to `0`, copies page width `120` into the right margin, lets CR move x from
@@ -232,6 +275,32 @@ output. Fixture `cursor stack parser trace feeds page-record queue` routes
 `0xf75e`, `0xf39e`, `0xf75e`, and `0xd04a`; the pop restores the original
 cursor before the glyph queues at compact coord `0x0001`.
 
+The direct helper fixtures bound the cursor-stack internals before visible
+output: `0xf75e ESC &f0S pushes cursor with vertical offset`,
+`0xf75e ESC &f1S pops cursor and clears pending flags`, and
+`0xf75e cursor stack bounds and pop clamps to current extents` pin the stored
+entry format, pointer bounds, vertical-offset subtraction, and clamp rules.
+
+The cursor-position helper fixtures pin the conversion layer that feeds those
+visible page-record streams. `0xf39e ESC &a#C converts columns through HMI and
+relative flag` and `0xf416 ESC &a#H converts decipoints and clamps horizontal
+cursor` cover the horizontal `ESC &a` family. `0xf560 ESC &a#R uses VMI with
+absolute top offset and relative cursor base` and `0xf60a ESC &a#V converts
+decipoints and clamps vertical cursor` cover the vertical family. Fixture
+`cursor position stream ESC &a3.5c+1R selects 0xf39e then 0xf560` pins
+lowercase chaining across horizontal and vertical handlers. Fixture
+`0xf48c/0xf692 ESC *p#X/#Y use whole-dot packed cursor commits` covers the
+dot-position siblings. The parser-to-page-record fixtures named above then
+carry each converted cursor state through the following printable byte.
+
+Margin helper fixtures similarly separate helper semantics from visible
+output. `0xeb58 ESC &a#L sets left margin and moves cursor only when needed`
+and `0xec0c ESC &a#M applies plus-one column, clamps, and moves cursor at
+right edge` pin the left/right margin writers. Fixture `margin stream
+ESC &a6l9M selects 0xeb58 then 0xec0c` pins lowercase chaining across the
+margin family; the margin parser traces then prove following printable bytes
+queue through the same compact text path.
+
 `ESC &a6L!` and `ESC &a1R!` also have pending-span siblings. Fixtures
 `left-margin parser span flush materializes 0x12714 page object` and
 `vertical-cursor parser span flush materializes 0x12714 page object` prove
@@ -243,6 +312,19 @@ same span machinery. Fixture `ESC &d underline selector materializes span
 output` writes `0x783185 = 1`, lets the printable update the flagged text
 span through alternate offset fields, and flushes a selector-`0x4000` span
 object beside the compact glyph.
+
+Vertical-layout helper fixtures pin the shared VMI/text-boundary state that
+feeds both direct controls and later printable placement. `0xc992 ESC &l#D
+accepts ROM LPI set and refreshes pending vertical cursor` and
+`0xcb00 ESC &l#C converts 1/48-inch VMI and keeps zero unmodified` pin the
+VMI writers. `0xea9e ESC &l#F sets text length bottom or restores default`,
+`0xece2 ESC &l#E sets top margin, default text length, and pending cursor`,
+and `0xee64 ESC &l#L toggles perforation skip for selectors 0 and 1 only`
+pin the vertical layout writers. Fixture
+`0xcb00/0xc992/0xece2/0xea9e chained ESC &l stream selects vertical layout
+handlers` pins same-family chaining; fixture
+`vertical layout parser trace feeds page-record queue` carries the resulting
+state into following printable output.
 
 ## Reproduction Contract
 

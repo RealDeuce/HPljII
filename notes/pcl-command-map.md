@@ -1072,18 +1072,21 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   delayed record restore, capped/drained rows, lower-resolution modes,
   consecutive rows, same-family lowercase `*b` chaining, bridge fields, and
   final rows.
-- Close the downloaded-font install-to-page live handoff. `Downloaded Glyph
+- Close the downloaded-font install-to-page hardware-capture residual.
+  `Downloaded Glyph
   Rule/Raster Composition` in [semantic-state-model.md](semantic-state-model.md)
   documents the current exact split: the `ESC )s18W` install fixture emits the
-  resource image, the page fixture consumes `font_command_final_header`, glyph
-  `0x29`, table entry `0x00ee`, pointer bytes `00 00 07 80`, record delta
-  `0x0780`, bitmap offset `0x078c`, and the 18 copied bitmap bytes before
-  page handlers `0x10e68`, `0x10e22`, `0x10898`, `0xd04a`, `0x10808`,
-  `0x1075a`, and delayed `0x105d0` render through `0x1ef6a`. The remaining
-  boundary is live CPU/register/memory capture across the
-  `0x16c14` / `0x16498` return after byte `24` into parser loop `0x11774`,
-  not byte-source identity, modeled resource bytes, rule/raster producers, or
-  render-entry rows.
+  resource image, and fixture `downloaded glyph byte-24 state handoff feeds
+  following page handler` consumes `font_command_final_header` at byte `24`.
+  It pins glyph `0x29`, table entry `0x00ee`, pointer bytes `00 00 07 80`,
+  record delta `0x0780`, bitmap offset `0x078c`, the 18 copied bitmap bytes,
+  next handler `0x10e68`, page object bytes, raster payload offset `28`, and
+  the composed-row digest before page handlers `0x10e68`, `0x10e22`,
+  `0x10898`, `0xd04a`, `0x10808`, `0x1075a`, and delayed `0x105d0` render
+  through `0x1ef6a`. The remaining boundary is stronger live
+  CPU/register/memory capture across the `0x16c14` / `0x16498` return after
+  byte `24` into parser loop `0x11774`, not byte-source identity, modeled
+  resource bytes, rule/raster producers, or render-entry rows.
 - Broaden visible-output compatibility only when a new selected-font state
   boundary is exposed. `Built-In Font Selection To Visible Text` already
   covers primary and secondary built-in selection, primary/secondary

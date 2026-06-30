@@ -1389,14 +1389,14 @@ ROM work needed:
   downloaded glyph rule raster stream composes through 0x1ef6a` closes
   the page-stream side for the even-span rule/raster case, proves one
   54-byte `0xa904` ring fetch, and pins the
-  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` post-install drain, and consumes
-  `font_command_final_header` from the same host-fetched font-command helper as
-  the page memory image. The fixture asserts that this final header matches the
-  install event header and reports table pointer, record, and bitmap bytes. The
-  remaining edge is stronger live-68000 memory continuity: carrying the
-  installed even-span `ESC )s18W` glyph image from stream byte `24` directly into
-  the following `0x10e68` rectangle/page stream without the modeled helper
-  boundary.
+  `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` post-install drain. Fixture
+  `downloaded glyph byte-24 state handoff feeds following page handler`
+  consumes `font_command_final_header` from the same host-fetched font-command
+  helper as the page memory image at stream byte `24`. The fixture asserts that
+  this final header matches the install event header, reports table pointer,
+  record, bitmap bytes, next handler `0x10e68`, and the rendered-row digest.
+  The remaining edge is stronger live-68000 register/memory capture across the
+  same already-modeled byte-24 handoff.
 - Model the font-printout loop's emitted page objects from the ROM sample
   byte runs. The internal-font source group is decoded for both class passes
   and documented in `notes/resource-rom.md`: request index `0` fast-probes or
@@ -1489,9 +1489,10 @@ ROM work needed:
   The unresolved ROM-side continuity edge is not the segmented printable
   or FF publication stream; it is the even-span `ESC )s18W` rule/raster
   composition case where the byte fetch, post-install drain, and modeled
-  `font_command_final_header` memory handoff are already pinned. The remaining
-  proof is a live CPU memory image captured at stream byte `24` and carried into
-  the following `0x10e68` handler.
+  `font_command_final_header` memory handoff are already pinned through fixture
+  `downloaded glyph byte-24 state handoff feeds following page handler`. The
+  remaining proof is stronger live CPU register/memory capture of that same
+  byte-24 state entering `0x10e68`.
 - Treat executable row-copy behavior with real page objects from the
   parser/imaging path as covered for the documented mixed text/rule/raster,
   downloaded-glyph, and publication streams. Remaining row-copy work is

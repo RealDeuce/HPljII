@@ -5623,6 +5623,13 @@ parser/page-record runner before rendering. The 54-byte stream is still one
 `0xa904` ring fetch, not two host sources: fixture evidence records source set
 `["ring"]`, no remaining ring bytes, font boundary `(0, 24)`, page boundary
 `(24, 54)`, and next handler `0x10e68` after the zero-byte post-install drain.
+Fixture `downloaded glyph byte-24 state handoff feeds following page handler`
+promotes that split into an explicit state handoff: the font-command runner
+stops at stream position `24`, its final header matches the install event
+header, pending handler state is clear while retaining snapshot record
+`80 57 00 12 00 00`, and the following page consumer at `0x10e68` reads glyph
+entry `0x0780`, bitmap `0x078c`, and the same rendered row digest
+`84762454e8bba9ce22aa5922b598fc5aed7c3ef9dfe9e55223a178c567f612d3`.
 Fixture `even-span downloaded glyph rule raster FF publication renders page
 record` then carries the same active bucket `5` page record through `0xff1e`
 publication and back through `0x1ed84`/`0x1ef6a`, proving the published pool
@@ -5641,12 +5648,15 @@ Field groups:
   `0x1393a` / `0x12f2e` during page-object production and compact renderer
   `0x1f0d2` after `0x1ef6a` dispatches target `0x1effe`.
 - Canonical modeled memory handoff: fixture
-  `parser-driven downloaded glyph rule raster stream composes through
-  0x1ef6a` uses the font-command helper's `final_header` as the parser-driven
-  page memory image and asserts it matches the install event header. The
-  reported image has table entry `0x00ee`, pointer bytes `00 00 07 80`, record
-  delta `0x0780`, the installed record bytes above, bitmap offset `0x078c`, and
-  the 18 copied bitmap bytes above.
+  `downloaded glyph byte-24 state handoff feeds following page handler` uses
+  the font-command helper's `final_header` as the parser-driven page memory
+  image at stream byte `24` and asserts it matches the install event header.
+  The reported image has table entry `0x00ee`, pointer bytes `00 00 07 80`,
+  record delta `0x0780`, the installed record bytes above, bitmap offset
+  `0x078c`, and the 18 copied bitmap bytes above. Consumer evidence in the
+  same fixture shows the following page handler path resolves glyph `0x29`
+  from that image before queuing object
+  `00 00 00 00 10 03 00 01 29 06 01...`.
 - Canonical page-record state: bucket `5` chain contains mode-0 raster object
   `00 00 00 00 80 00 00 02 00 00 c3 3c` followed by downloaded glyph object
   `00 00 00 00 10 03 00 01 29 06 01...`; rule list contains queued selector-7
@@ -5691,22 +5701,26 @@ Field groups:
   zeroed source/render work words before the fixture sets render word `+0x10`
   for bucket `5`; the FF-publication sibling reports
   `current_page_root_after = 0`, one page-root clear, and publication flag `1`.
+  The byte-24 handoff fixture records the delayed-payload bookkeeping after the
+  font install as `pending_flag = 0`, handler `0`, and retained snapshot record
+  `80 57 00 12 00 00`.
 - Unknown for this checkpoint: full-success return-boundary siblings outside
   the segmented downloaded-glyph plus raster stream and outside the separate
   no-install/status-`2`, segmented-publication, combined segmented-wide
   publication, and even-span glyph/rule/raster publication visible fixtures.
   The even-span page stream itself now drives the glyph, rule, and raster
-  producers together from a modeled `final_header` memory handoff; the residual
-  gap is a full live 68000 register/memory capture across the same font/page
-  boundary.
+  producers together from a fixture-backed byte-24 `final_header` memory
+  handoff. The residual gap is only stronger live 68000 register/memory capture
+  across the same font/page boundary.
 
-The modeled resource image is now a pinned handoff, not an implicit fixture
-shortcut. The page-stream runner uses `font_command_final_header`, the final
-header returned by the host-fetched `0x16c14` / `0x16498` font-command helper,
-and asserts that it matches the install event header. With that header,
-printable byte `0x29` resolves to glyph entry `0x0780`, bitmap `0x078c`, width
-`0x0090`, rows `1`, inline record `12 01 00`, and context slot `3` before
-`0x12f2e` queues selector `0x1003`.
+The modeled resource image is now a pinned byte-24 handoff, not an implicit
+fixture shortcut. Fixture `downloaded glyph byte-24 state handoff feeds
+following page handler` uses `font_command_final_header`, the final header
+returned by the host-fetched `0x16c14` / `0x16498` font-command helper, and
+asserts that it matches the install event header at stream position `24`. With
+that header, printable byte `0x29` resolves to glyph entry `0x0780`, bitmap
+`0x078c`, width `0x0090`, rows `1`, inline record `12 01 00`, and context slot
+`3` before `0x12f2e` queues selector `0x1003`.
 
 The formerly unresolved address boundary is narrowed by ROM control flow.
 `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst` shows the
@@ -5769,7 +5783,12 @@ Confidence is high for the page-stream producer schedule because fixture
 `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
 asserts fetch boundaries, page parser handlers, glyph source fields, delayed
 raster scratch, queue bytes, dispatch targets, and final rows. Confidence is
-high for segmented-glyph/raster composition because fixture
+high for the byte-24 modeled install-to-page state handoff because fixture
+`downloaded glyph byte-24 state handoff feeds following page handler` asserts
+stream position `24`, final-header/install-header equality, post-install drain,
+next handler `0x10e68`, glyph source fields, page object bytes, raster payload
+offset `28`, and the rendered-row digest. Confidence is high for
+segmented-glyph/raster composition because fixture
 `segmented downloaded glyph composes with raster through 0x1ef6a` asserts the
 installed `0x2003` segment objects, bucket-9 raster object, dispatch targets,
 and composed row digest. High for split-plane segmented-glyph/raster composition
@@ -5900,6 +5919,7 @@ fields and broader selected-font state combinations have not been page-compared.
 - `published downloaded glyph segmented buckets render across bands`
 - `0x1eba4 scheduler band words render published downloaded glyph`
 - `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
+- `downloaded glyph byte-24 state handoff feeds following page handler`
 - `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
 - `even-span downloaded glyph rule raster FF publication renders page record`
 - `segmented downloaded glyph composes with raster through 0x1ef6a`

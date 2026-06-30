@@ -28,6 +28,7 @@ Primary parser-core fixtures:
 - `0xdb74 returns D7 zero for semicolon continuation final`
 - `0x121cc snapshots delayed payload handler and parsed record`
 - `0x12218 restores delayed parsed record and dispatches saved handler`
+- `0x121cc/0x15d0a-modeled font descriptor command stream`
 - `0x11f5a/0x12452 transparent text restores and consumes counted bytes`
 - `0x12452 transparent text probe keeps non-0x58 byte`
 - `0x1228a consumes absolute delayed payload count without echo`
@@ -514,6 +515,9 @@ Output effect:
 - Fixture `transparent data parser trace feeds page-record queue` proves
   delayed transparent text restores through `0x12452` before routing
   payload bytes into text/fixed-space output.
+- Fixture `0x121cc/0x15d0a-modeled font descriptor command stream` proves
+  zero-count font descriptor `W` commands use the same scheduler fields before
+  handler `0x15d0a` consumes the restored record.
 - Fixtures `resource payload stream ties ROM parser dispatch to 0x16c14
   install` and `downloaded character stream ties ROM parser dispatch to
   rendered object` prove the same delayed-record contract feeds
@@ -535,6 +539,7 @@ Fixture evidence:
 - `0xdb74 returns D7 zero for semicolon continuation final`
 - `0x121cc snapshots delayed payload handler and parsed record`
 - `0x12218 restores delayed parsed record and dispatches saved handler`
+- `0x121cc/0x15d0a-modeled font descriptor command stream`
 - `0x11f5a/0x12452 transparent text restores and consumes counted bytes`
 - `0x12452 transparent text probe keeps non-0x58 byte`
 - `0x1228a consumes absolute delayed payload count without echo`

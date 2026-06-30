@@ -4917,6 +4917,15 @@ compact text renderer.
     `0x1f1ac[1..15]` remainder helpers, and the span-`32` segmented
     no-remainder path; segment-1 source-walk rows now match the installed
     bitmap above span `32`.
+  - downloaded-character segmented-wide row/span cross-products: fixture
+    `downloaded segmented-wide row-span cross-products render selected segment`
+    installs row words `0x0082` and `0x0083` crossed with spans `17`, `18`,
+    `31`, and `32`. Canonical installed state includes the full row word,
+    width word, mode byte parity, and bitmap payload; derived page/render state
+    remains selector `0x3003`, buckets `0` and `8`, object byte `0x30`,
+    segment `1`, `0x2f27c` full chunks, `0x1f1ac` remainders for nonzero
+    spans, and no-remainder span `32`. The selected segment rows match the
+    installed bitmap for all eight cases.
   - downloaded-character segmented-wide row-byte boundary: fixture
     `downloaded segmented-wide row-byte boundary truncates page-record
     segments` installs canonical row words `0x0002`, `0x007f`, `0x0080`,
@@ -5038,7 +5047,10 @@ compact text renderer.
   through the same install and zero-drain return boundary before selector `0x3003`
   renders segment `1` through `0x1f264`; the same fixture probes accepted spans `33`,
   `48`, `49`, and `64` through the upstream boundary and compares segment-1 rendered
-  rows with the installed bitmap rows.
+  rows with the installed bitmap rows. Fixture `downloaded segmented-wide row-span
+  cross-products render selected segment` extends the same path to row words `0x0082`
+  and `0x0083` crossed with spans `17`, `18`, `31`, and `32`, preserving the zero-drain
+  return boundary and matching selected segment rows against the installed bitmap.
 
 ### Readers And Consumers
 
@@ -5173,7 +5185,12 @@ remainder helper. All matched cases return through `0x15dc6 -> 0x16498 -> 0x15dc
 `0xd04a`; `0x1ed84`/`0x1ef6a` dispatches compact target `0x1effe` / `0x1f264`, and
 rendered segment-1 rows match the installed bitmap rows. The same fixture probes spans
 `33`, `48`, `49`, and `64` at rows `0x81` through the same upstream metadata and return
-boundary, and those segment-1 rows match the installed bitmap. Fixture `downloaded glyph
+boundary, and those segment-1 rows match the installed bitmap. Fixture `downloaded
+segmented-wide row-span cross-products render selected segment` adds row words `0x0082`
+and `0x0083` crossed with spans `17`, `18`, `31`, and `32`; all eight cases install and
+publish selector `0x3003` buckets `0` and `8`, dispatch segment `1` through `0x1f264`,
+keep the full-success zero-drain return boundary, and match selected segment rows to the
+installed bitmap. Fixture `downloaded glyph
 row-count matrix publishes and renders additional short/segmented counts` adds two
 hundred fifty row-count siblings through the same fetched install, printable,
 FF-publication, and render-entry chain. Short rows `0x0001..0x001f`, `0x0021..0x003f`,
@@ -5973,7 +5990,11 @@ full-chunk helper `0x2f27c`, `0x1f1ac` remainders `1..15`, the no-remainder span
 sibling, zero-drain return boundaries, bucket-0/bucket-8 FF publication,
 `0x1ed84`/`0x1ef6a` dispatch, and segment-1 rows matching the installed bitmap; the same
 fixture makes high-span probes `33`, `48`, `49`, and `64` high-confidence for upstream
-metadata and row equivalence. High for
+metadata and row equivalence. High for segmented-wide row/span cross-products because
+fixture `downloaded segmented-wide row-span cross-products render selected segment`
+asserts row words `0x0082` and `0x0083` crossed with spans `17`, `18`, `31`, and `32`,
+selected segment `1`, zero-drain returns, bucket-8 publication, `0x1f264` dispatch, and
+selected segment rows matching the installed bitmap. High for
 publication-to-scheduler band progression because `0xff1e` disassembly at `0xffc8`
 clears root `+0x18`, `0x1ed84` copies that word into render `+0x10/+0x16`, and fixture
 `0x1eba4 scheduler band words render published downloaded glyph` proves `0x1eba4` emits
@@ -6010,6 +6031,7 @@ fields and broader selected-font state combinations have not been page-compared.
 - `downloaded glyph wide-remainder matrix publishes and renders compact chunks`
 - `downloaded glyph width-byte boundary truncates page-record span`
 - `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
+- `downloaded segmented-wide row-span cross-products render selected segment`
 - `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `split-plane segmented downloaded glyph FF publication renders page record`
 - `published downloaded glyph segmented buckets render across bands`
@@ -6141,6 +6163,9 @@ fields and broader selected-font state combinations have not been page-compared.
   same fixture now probes segmented-wide spans `33`, `48`, `49`, and `64`
   through the same parser/install/publication/dispatch metadata and matches
   segment-1 rows against the installed bitmap. Fixture
+  `downloaded segmented-wide row-span cross-products render selected segment`
+  covers rows `0x0082` and `0x0083` crossed with spans `17`, `18`, `31`, and
+  `32` through the same selected segment `1` render path. Fixture
   `0x16498 replacement allocation failure
   partial and rejected downloaded character exits preserve state` covers old-pointer
   release through `0x17a24`, object allocation failure through

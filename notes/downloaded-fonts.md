@@ -104,6 +104,7 @@ Primary fixtures:
 - `downloaded glyph wide-remainder matrix publishes and renders compact chunks`
 - `downloaded glyph width-byte boundary truncates page-record span`
 - `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
+- `downloaded segmented-wide row-span cross-products render selected segment`
 - `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
@@ -1514,8 +1515,15 @@ segment `0`, object byte `0x30`, segment row skip `0x80`, A2/A3 offsets, and
 full-chunk/remainder metadata through the same zero-drain return boundary.
 Their segment-1 rendered rows now match installed bitmap rows through
 `0x1f264`, `0x2f27c`, and the selected `0x1f1ac` remainder helper, so the
-remaining segmented-wide gaps are broader row-count/segment cross-products, not
-the sampled high-span source walk.
+remaining segmented-wide gaps are no longer the sampled high-span source walk.
+
+Fixture `downloaded segmented-wide row-span cross-products render selected
+segment` adds the next bounded cross-product: row words `0x0082` and `0x0083`
+crossed with spans `17`, `18`, `31`, and `32`. All eight cases preserve the
+same full-success return boundary, publish buckets `0` and `8` as selector
+`0x3003`, dispatch segment `1` through `0x1ed84` / `0x1ef6a` to `0x1f264`,
+and match selected segment rows against the installed bitmap. This leaves
+higher-row segmented-wide fallback behavior as the relevant row/segment gap.
 
 Fixture `downloaded segmented-wide row-byte boundary truncates page-record
 segments` classifies the row-count side of that cross-product for span `0x11`.
@@ -2222,7 +2230,10 @@ A byte-stream renderer must preserve:
   page-record rows` plus fixture `downloaded glyph high-row truncation matrix preserves
   installed rows` covers short span-`2` row words `0x0101..0x0103`, publishes only the
   low-byte selector/bucket state, and stops at the exact `0x1fe76` fallback row-copy
-  table overflow. Remaining parser-produced comparisons are bounded cross-products:
+  table overflow. Fixture `downloaded segmented-wide row-span cross-products render
+  selected segment` covers rows `0x0082` and `0x0083` crossed with spans `17`, `18`,
+  `31`, and `32` through segment-1 `0x1f264` rows. Remaining parser-produced
+  comparisons are bounded cross-products:
   visible pixel rows beyond those documented wrapped source-byte helper-table
   boundaries, broader publication combinations beyond the documented normal,
   nonboundary-short, rows-`0x20` short, rows-`0x40` short, row-`0x80`, row-count-matrix
@@ -2252,6 +2263,9 @@ A byte-stream renderer must preserve:
   skip `0x80`, A2/A3 source offsets, remainders `1..15`, and the no-remainder span-`32`
   case through the same zero-drain return boundary, and probes spans `33`, `48`, `49`,
   and `64` through the same upstream boundary with matching segment-1 rows; fixture
+  `downloaded segmented-wide row-span cross-products render selected segment` pins
+  rows `0x0082` and `0x0083` crossed with spans `17`, `18`, `31`, and `32` through the
+  same zero-drain return boundary; fixture
   `downloaded normal row-0x80 and segmented glyph FF publications render page records`
   pins normal, row-`0x80`, and linear-segmented zero-drain returns before handler
   `0xd04a`; fixture `split-plane segmented downloaded glyph FF publication renders page

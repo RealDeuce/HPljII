@@ -1808,6 +1808,11 @@ Output effect:
   rows `0x81`; segment bucket/object metadata and chunk/remainder state are
   pinned, and segment-1 rendered rows match the installed bitmap rows above
   span `32`.
+- Fixture `downloaded segmented-wide row-span cross-products render selected
+  segment` extends that path beyond row `0x81`: row words `0x0082` and
+  `0x0083` crossed with spans `17`, `18`, `31`, and `32` publish selector
+  `0x3003` buckets `0` and `8`, dispatch segment `1` through `0x1f264`, and
+  match selected segment rows to the installed bitmap.
 - Fixture `downloaded segmented-wide row-byte boundary truncates page-record
   segments` proves span-`0x11` downloaded glyphs keep canonical installed row
   words `0x0002`, `0x007f`, `0x0080`, `0x0081`, `0x0083`, `0x00fe`,
@@ -1875,6 +1880,7 @@ Fixture evidence:
 - `downloaded glyph wide-remainder matrix publishes and renders compact chunks`
 - `downloaded glyph width-byte boundary truncates page-record span`
 - `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
+- `downloaded segmented-wide row-span cross-products render selected segment`
 - `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `downloaded glyph row-count matrix publishes and renders additional
   short/segmented counts`
@@ -1911,7 +1917,10 @@ Unresolved middle edges:
   `17..32` at rows `0x81`. High-span probes now carry compact-wide spans
   `33`, `48`, `49`, `64`, and `255` plus segmented-wide spans `33`, `48`,
   `49`, and `64` through parser/install/publication/dispatch metadata and
-  matched rendered rows. Fixture `downloaded glyph width-byte boundary
+  matched rendered rows. Fixture `downloaded segmented-wide row-span
+  cross-products render selected segment` covers segmented-wide rows `0x0082`
+  and `0x0083` crossed with spans `17`, `18`, `31`, and `32` through selected
+  segment rows. Fixture `downloaded glyph width-byte boundary
   truncates page-record span` now classifies descriptor-accepted spans
   `0x00ff` and sampled wrapped spans through `0x020d` at the current printable
   handoff: canonical installed width words survive, but `0x12f2e` consumes

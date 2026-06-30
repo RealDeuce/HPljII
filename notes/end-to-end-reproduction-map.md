@@ -1056,15 +1056,18 @@ The next work should follow dataflow, not isolated handlers:
    rows-0x102 downloaded glyph FF publication truncates page-record rows` plus
    `downloaded glyph high-row truncation matrix preserves installed rows` cover short
    span-`2` row words `0x0101..0x0103` through the same source-byte truncation and
-   identify the exact `0x1fe76` helper-table overflow boundary. Remaining
-   downloaded-character publication work is therefore limited to pixel-row behavior
-   beyond those wrapped source-byte helper-table boundaries, segmented-wide row/segment
-   cross-products outside the sampled matrix, broader publication combinations, and
-   full-success return-boundary siblings outside the named row-count, wide-remainder,
-   segmented-wide, normal, row-`0x80`, linear-segmented, split-plane segmented,
-   segmented-wide, no-install, status-`2`, and payload-control cases. It is not the
-   documented mode-byte-`0` visible recovery boundary. The publication-command
-   checkpoint now covers host-fetched reset, FF, page-size, orientation, paper-source,
-   and copies streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`,
-   and final row comparison; reset, FF, page-size, orientation, paper-source, and copies
-   also have addressed allocation variants.
+   identify the exact `0x1fe76` helper-table overflow boundary. Fixture `downloaded
+   segmented-wide row-span cross-products render selected segment` now covers
+   segmented-wide rows `0x0082` and `0x0083` crossed with spans `17`, `18`, `31`, and
+   `32` through selected segment `1`, bucket `8`, `0x1f264`, and installed-bitmap row
+   comparison. Remaining downloaded-character publication work is therefore limited to
+   pixel-row behavior beyond wrapped source-byte helper-table boundaries, higher-row
+   segmented-wide fallback behavior outside the row-`0x0082`/`0x0083` matrix, broader
+   publication combinations, and full-success return-boundary siblings outside the named
+   row-count, wide-remainder, segmented-wide, normal, row-`0x80`, linear-segmented,
+   split-plane segmented, segmented-wide, no-install, status-`2`, and payload-control
+   cases. It is not the documented mode-byte-`0` visible recovery boundary. The
+   publication-command checkpoint now covers host-fetched reset, FF, page-size,
+   orientation, paper-source, and copies streams through parser dispatch, `0xff1e`,
+   `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF, page-size,
+   orientation, paper-source, and copies also have addressed allocation variants.

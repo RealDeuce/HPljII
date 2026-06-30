@@ -779,37 +779,53 @@ control-code anchor.
 
 ## Next RE Targets
 
-- Correlate the direct-input MMIO names for `0xa904` with board/manual
-  evidence. The RAM byte-source structures and `0xa6cc` ring producer are
-  documented in [host-byte-fetch.md](host-byte-fetch.md).
-- Decode any remaining normal and alternate parser table handlers that are
-  not already composed into command-family semantic notes.
+- Treat the normal and alternate parser tables as decoded enough for current
+  byte-stream reproduction. The command map, parser-core note, and semantic
+  model compose the pixel-facing terminal handlers from `0xa904` host fetch
+  through text, transparent data, font selection/downloads, macro replay,
+  raster rows, rectangle rules, VFC, publication, and render-entry paths. New
+  parser-table work should start only when it exposes a new
+  byte-stream-to-pixel state boundary, not merely another terminal address.
 - Treat the six-byte tokenizer records and the 12-byte macro/data-chain pool
   as documented structures: the shared record boundary is in
   [pcl-parser-core.md](pcl-parser-core.md), and the pool rooted at
   `0x782a98` is composed in `Macro Definition And Data-Chain Replay` in
   [semantic-state-model.md](semantic-state-model.md).
-- Continue from parser-produced heterogeneous page-object rendering and
-  final device-output validation now that the macro replay/font-context
-  checkpoint is composed through `0xe65c`, `0xe860`, `0x13eb8`,
-  `0x144d2`, `0x14c64`, and `0xc428`.
+- Continue parser-produced heterogeneous page-object work only at the exact
+  live continuity boundary now named in the semantic model:
+  `0x105d0 -> 0x10084 -> 0x13070 -> 0x13250 -> 0x132b6`. The page-record
+  object layouts, parser scratch, allocator bookkeeping, publication, bridge,
+  and rendered rows are documented for the mixed text/rule/raster fixtures;
+  the remaining proof is a live 68000 trace or memory snapshot of one dense
+  parser-produced stream carrying the modeled registers and heap pointers
+  through that boundary.
+- Keep transparent secondary segment-57 work classified as a physical
+  resource-window problem. Disassembly of `0x1f354` and `0x1f1f0` fixes the
+  zero-offset glyph-entry interpretation, segment skip, and byte range
+  `0x0bfe22..0x0c0321`; fixtures bound mirror, code-pair continuation, and
+  zero-fill fallback rows. Closing it needs board/emulator memory-map evidence
+  for `0x0c0000..0x0c0321`, not more parser tracing.
+- Correlate the direct-input MMIO names for `0xa904` with board/manual
+  evidence only when host-interface fidelity is the target. The RAM
+  byte-source structures, `0xa6cc` ring producer, direct-mode status/data
+  behavior, and payload-reader consumers are documented in
+  [host-byte-fetch.md](host-byte-fetch.md) and the `Host Byte Fetch And
+  Data-Chain Input` semantic checkpoint.
 - Treat compact-text `ESC E` publication as covered through page-record and
   addressed allocation fixtures; keep pursuing live CPU allocation/state
   capture for broader heterogeneous streams. The current host-fetched
-  publication fixtures already prove the modeled `0xff1e` publication
-  headers, bridge, and rendered queued compact buckets before reset, FF,
-  page-size, and orientation consume the current page root. The text/rule/raster
-  page-record fixture now carries its full bucket array, rule list, and context
-  slots through `0xff1e` before rendering after one mixed stream runner handles
-  text, `ESC *c`, and delayed raster transfer commands. The trailing-FF variant
-  now drives that publication from the host byte stream, and the addressed
+  publication fixtures already prove the modeled `0xff1e` publication headers,
+  bridge, and rendered queued compact buckets before reset, FF, page-size, and
+  orientation consume the current page root. The text/rule/raster page-record
+  fixture now carries its full bucket array, rule list, and context slots
+  through `0xff1e` before rendering after one mixed stream runner handles text,
+  `ESC *c`, and delayed raster transfer commands. The trailing-FF variant now
+  drives that publication from the host byte stream, and the addressed
   trailing-FF variant proves the same heterogeneous publication after text,
   rule, and raster objects materialize through addressed storage. A `0x1ef6a`
-  page-band walker merges compact text, mode-0 raster, and a crossing patterned
-  rule across bands `0` and `5`.
-- Continue the mixed-stream page-record work at the remaining live
-  CPU/register-memory boundary for parser-produced heterogeneous page objects.
-  Parser-driven macro command/replay is no longer a separate target: the
+  page-band walker merges compact text, mode-0 raster, and a crossing
+  patterned rule across bands `0` and `5`.
+- Parser-driven macro command/replay is no longer a separate target: the
   host-fetched macro definition, execute, call, mixed-control replay, overlay,
   repeated-overlay, skip-gate, and mixed-control overlay fixtures already route
   through the ROM/alternate parser traces and `0xa904` replay before reaching

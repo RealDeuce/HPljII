@@ -9019,11 +9019,15 @@ user-visible name assigned to `0x780e8d`, status mask `0x00000200`, or
   `External Ready And Service Status Loop`, but they do not drive `0xba48`
   through `0xc108 -> 0x19dd2 -> 0x36e4` as one modeled session.
 - Existing font/default fixtures cover shared callee `0x1b04c` in other
-  contexts, but they do not prove which `0x19dd2` branch selected that callee.
+  contexts; fixture `0x19dd2 modeled unchanged and status branch exits` now
+  proves the both-zero scheduler branch that selects it here.
 - Existing downloaded-font fixtures cover `0x1887a` current-record teardown and
   its `0x1bd2e`, `0x179aa`, and `0x1b04c` side effects in replacement/failure
-  paths, but they do not prove the `0x178fa(predicate)` caller sequence from
-  this scheduler checkpoint.
+  paths. Fixture `0x19dd2 optional-window change composes refresh helpers` now
+  proves this scheduler checkpoint's `0x178fa(predicate)` caller sequence for
+  one changed optional-window path. The remaining release uncertainty is live
+  CPU/physical-resource execution of that same path, not the ROM-local caller
+  boundary.
 
 ### Disassembly Evidence
 

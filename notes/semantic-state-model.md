@@ -4140,6 +4140,13 @@ selector mismatch only copies the remembered word and installs no context.
     `0x000cb8/0x00ac1c/0x014f5c` for `0N`,
     `0x000418/0x00a37c/0x0146b4` for `10U`, and
     `0x000868/0x00a7cc/0x014b08` for `11U`.
+  - `0x14f16` Roman-8 map patch path: entered only when the selected built-in
+    font normalizes to active word `0x0115` (`8U`). Requested active words
+    `0x0005` (`0E`) copy upper-half map bytes down and clear the upper half;
+    `0x0015` (`0U`) preserves the lower half and clears the upper half;
+    table hits under `0x14fce` apply `(dst, src)` byte pairs as
+    `map[dst] = map[src]`; misses keep the map initialized by
+    `0x14d9c`/`0x14e24`.
   - `0x783032`: rebuilt secondary map, range `0x21..0xff`, patch kind
     `selected-symbol-not-roman8`.
   - `0x783032` for non-Roman secondary selection: rebuilt map with patch kind
@@ -4175,6 +4182,11 @@ selector mismatch only copies the remembered word and installs no context.
     `0x11774 -> 0x1201e/0x12008 -> 0x120be` for each command and then through
     final-`@` subdispatch targets
     `0x1bed4`, `0x1bed4`, `0x1bf0a`, `0x1bf36`, and `0x1bf74`.
+  - terminal handler `0x1be22` rewinds `0x78299e` by six, reads final byte
+    `D3`, clamps the absolute parameter to `0x7fff`, rejects non-`X`
+    parameters above `0x07ff`, computes target symbol word
+    `((abs(param) << 5) + final_byte - 0x40)`, and writes it to
+    `0x782ef4 + 2 * slot` before final-specific dispatch.
   - final-`X` isolation stream `ESC (7X` routes through the same terminal
     handler and calls font-id helper `0x17708` without replacing the previous
     requested symbol word.
@@ -4223,6 +4235,10 @@ selector mismatch only copies the remembered word and installs no context.
     while `0x14c64` dispatches bit-30 resource records through the
     offset-table path and bit-30-clear fixed records through the inline map
     path before `0x1440c` snapshots selected-font state.
+  - `0x1be22` writes requested symbol/default/font-ID state and dirties
+    `0x782f2c`/`0x782f2d` for ordinary symbol/default paths; final `X` instead
+    restores the previous symbol word, calls `0x17708`, then sets dirty flag
+    `0x782f2c = 2` before returning through the shared dirty-marker exit.
   - `0x17708` non-selected bookkeeping:
     `scan-miss` calls only `0x172c0`; `candidate-slot-miss` calls
     `0x172c0` and `0x1b4c0`; `class-mismatch` calls the same scan/slot
@@ -4688,9 +4704,15 @@ install events.
   gate that decides whether dirty parsed font state reaches page-root slots.
 - `generated/disasm/ic30_ic13_font_id_select_017708.lst`: final-`X` font-ID
   selected and non-selected paths.
+- `generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`: terminal
+  symbol-set parser handler, final `@` default-table dispatches, final `X`
+  font-ID dispatch, dirty flag writes, and symbol word normalization.
 - `generated/analysis/ic30_ic13_font_context_bridge.md`: selected candidate
   to current-font record, page-root slot, render slot, and `0x1f354` context
   interpretation.
+- `generated/analysis/ic30_ic13_symbol_set_patch_tables.md`: `0x14f16`
+  Roman-8-only patch path, `0x14fce` patch-table index, and `(dst, src)`
+  map-copy pairs for the PCL symbol sets documented there.
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`: printable
   consumer path.
 - `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`: compact object

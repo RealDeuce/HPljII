@@ -1898,6 +1898,7 @@ Fixture evidence:
 - `font-ID built-in selection feeds visible page-record rows`
 - `font-ID inline/downloaded selection feeds visible page-record rows`
 - `font-ID non-selected exits keep prior visible rows`
+- `font-ID secondary non-selected exits keep prior SO visible rows`
 - `0x13eb8 no-dispatch exits keep prior visible rows`
 - `compact text bucket object fixture metadata`
 - `compact text bucket object fixture rendered rows`

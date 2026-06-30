@@ -3526,7 +3526,9 @@ selector mismatch only copies the remembered word and installs no context.
     `scan-miss`, `candidate-slot-miss`, `class-mismatch`, and `context-full`
     all restore saved font ID `0x2222` after the helper returns. In the
     visible preserved-state stream, the following `!!` bytes consume the
-    previously selected primary context `0xc008004c`.
+    previously selected primary context `0xc008004c`; in the secondary
+    preserved-state stream, the following `SO !!` tail consumes prior
+    secondary context `0xc40ad87a`.
   - `0x13eb8` no-dispatch exit inputs:
     transient refresh uses selected slot `0`, requested primary `0x0115`,
     saved active primary word `0x9999`, and page-root transient flag
@@ -3551,7 +3553,9 @@ selector mismatch only copies the remembered word and installs no context.
   `0x17708 font-ID non-selected exits preserve prior selection` pins the
   non-selected final-`X` helper exits, and fixture
   `font-ID non-selected exits keep prior visible rows` pins their following
-  printable output. Disassembly
+  primary printable output. Fixture
+  `font-ID secondary non-selected exits keep prior SO visible rows` pins the
+  secondary SO/printable sibling. Disassembly
   `generated/disasm/ic30_ic13_font_selection_update_handlers_00c6ec.lst`
   identifies the request-field writers and their dirty-flag stores.
 - Canonical selected context:
@@ -3620,6 +3624,10 @@ selector mismatch only copies the remembered word and installs no context.
     `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, with render-record context
     slot `0xc008004c` and row digest
     `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
+  - final-`X` secondary non-selected preserved-output compact prefix:
+    `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`, with render-record secondary
+    context slot `0xc40ad87a` and row digest
+    `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
   - non-Roman primary compact prefixes:
     `0N` uses `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, while `10U` and
     `11U` use `00 00 00 00 00 00 00 02 20 6a 00 20 68 02`.
@@ -3641,6 +3649,9 @@ selector mismatch only copies the remembered word and installs no context.
   context slots `0` and `1` from the page-root slot table; fixture
   `font-ID non-selected exits keep prior visible rows` reaches the same
   primary visible fields after failed final-`X` helper exits; fixture
+  `font-ID secondary non-selected exits keep prior SO visible rows` reaches the
+  same secondary visible fields after failed slot-1 final-`X` helper exits;
+  fixture
   `0x13eb8 no-dispatch exits keep prior visible rows` pins the distinct
   transient and cache-hit preserved-output prefixes listed above.
 - Derived/cache state:
@@ -3954,6 +3965,12 @@ selector mismatch only copies the remembered word and installs no context.
   `font-ID non-selected exits keep prior visible rows` proves the following
   `0xd04a` / `0x1393a` events consume prior context `0xc008004c`, map `!` to
   glyph `0x00`, and emit glyph entry `0x001088`.
+- Final-`X` secondary non-selected exits likewise preserve the prior class-one
+  consumer context. Fixture
+  `font-ID secondary non-selected exits keep prior SO visible rows` proves the
+  following `0xc6b8` / `0xd04a` / `0x1393a` path consumes prior secondary
+  context `0xc40ad87a`, maps `!` to byte `0x20`, and emits glyph entry
+  `0x02e4f6`.
 - Final-`@` parser variants affect requested/active symbol words before later
   font selection. Fixture
   `real final-@ default-table streams select visible built-ins` proves those

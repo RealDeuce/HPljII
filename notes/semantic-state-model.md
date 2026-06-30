@@ -2676,9 +2676,10 @@ resource candidate windows to printable sample bytes and an internal
 page-object/rendered-surface checkpoint. It composes the ROM helpers that
 replace the older direct `LASERJETII` smoke sample for built-in
 baseline/cell correlation. The normal source/class printout is modeled as
-rendered page-record segments; remaining boundaries are forced continuation
-page-object variants and physical comparison against a known font/self-test
-page.
+rendered page-record segments. Forced continuation page-object variants are
+fixture-backed for heading-preflight, class-zero/class-one row-overrun, and
+alternate-row caller forms; remaining gaps are broader row-overrun
+cross-products and physical comparison against a known font/self-test page.
 
 Concept: the sample printout is firmware-generated text, not host input.
 Routine `0x1c204` checks whether font records exist, runs class-zero and
@@ -3211,6 +3212,24 @@ because physical/self-test comparison is still open.
 
 ### Fixtures And Reports
 
+- `font sample built-in row fields format through 0x1cabe`
+- `font sample Courier row fields cross page-record placement`
+- `font sample Courier row fields and run 1 share page-record state`
+- `font sample Courier row fields carry run 1 through 0x1d050 to run 2`
+- `font sample carried run 2 buckets render through 0x1ed84 and 0x1ef6a`
+- `font sample source heading carries default plus first two Courier rows`
+- `font sample resolver carries first two Courier rows`
+- `font sample run 1 prefix crosses page-record render entry`
+- `font sample run 1 full row spans compact buckets`
+- `font sample run 2 full row spans compact buckets`
+- `font sample full printout source placement follows firmware order`
+- `font sample full printout rows reuse ROM sample byte runs`
+- `font sample full printout segments render through 0x1ed84 and 0x1ef6a`
+- `font sample heading continuation emits fresh source heading page record`
+- `font sample cartridge heading continuations emit source-specific page records`
+- `font sample row continuation emits fresh source heading page record`
+- `font sample class-one row continuation emits fresh source heading page record`
+- `font sample alternate-row continuation emits preadvanced row page record`
 - `generated/analysis/ic30_ic13_font_sample_page.md`
 - `generated/analysis/ic30_ic13_renderer_fixture_harness.md`
 - `generated/analysis/ic32_ic15_builtin_font_samples.md`
@@ -3294,8 +3313,9 @@ because physical/self-test comparison is still open.
   `font sample full printout segments render through 0x1ed84 and 0x1ef6a`
   pins the aggregate rendered-surface digest
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
-  The remaining sample-printout boundaries are forced continuation-page object
-  variants beyond the covered heading-preflight, row-overrun `I01`, and
+  The remaining sample-printout boundaries are broader row-overrun
+  cross-products beyond the covered heading-preflight, internal/cartridge
+  headings, class-zero row-overrun `I01`, class-one row-overrun `I16`, and
   alternate-row `I01` cases; comparison against a known printed/self-test page
   remains a separate external validation boundary.
 - `record +0x28/+0x2a`: decoded-height input consumed by `0x1519a` through

@@ -31,6 +31,8 @@ reproduction even though they do not draw pixels themselves:
 The low-level ledger remains in `notes/semantic-state-model.md` under
 `Interface Output FIFO And Status Bytes` and
 `Page Environment Status And Pool Cursor Gate`.
+The external-ready/service loop and retained-storage `68 SERVICE` path are
+documented in [external-ready-service.md](external-ready-service.md).
 
 ### Field Groups
 

@@ -28,6 +28,8 @@ pushback stack, or direct hardware backend.
 The detailed low-level ledger is in [host-byte-fetch.md](host-byte-fetch.md).
 Status/backchannel fields are also composed in
 [errors-and-status.md](errors-and-status.md).
+External-ready/service register traffic is documented in
+[external-ready-service.md](external-ready-service.md).
 
 ### Field Groups
 

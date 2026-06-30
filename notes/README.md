@@ -26,6 +26,9 @@ compatibility boundary.
   stream-to-PDF renderer, and what ROMs are expected to contribute.
 - [errors-and-status.md](errors-and-status.md) - status, attendance,
   error, and service codes useful during ROM tracing.
+- [external-ready-service.md](external-ready-service.md) - documented
+  external-ready/service loop status bits, messages, register shadows, and
+  scheduler/status teardown.
 - [rom-dump-manifest.md](rom-dump-manifest.md) - verified ROM dump
   hashes, package markings, interleave order, and rejected order probes.
 - [firmware-startup.md](firmware-startup.md) - first annotated 68000

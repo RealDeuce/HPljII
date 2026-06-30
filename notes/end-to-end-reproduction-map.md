@@ -59,8 +59,10 @@ the board-facing boundary is tracked in
   ROM evidence is `0xba48..0xc36e` in
   `generated/disasm/ic30_ic13_external_ready_service_loop_00ba48.lst` and
   `generated/disasm/ic30_ic13_external_service_reset_00c06e.lst`.
-  Reproduction evidence is `External Ready And Service Status Loop` in
-  `notes/semantic-state-model.md`, plus fixtures for `0xc0ae` publishing
+  Reproduction evidence is
+  [external-ready-service.md](external-ready-service.md),
+  `External Ready And Service Status Loop` in `notes/semantic-state-model.md`,
+  plus fixtures for `0xc0ae` publishing
   `$fffee005.7/.6` through `0x9bee(0x780e2e, 0x80/0x40)`, `0xc1c6`
   entering non-returning `68 SERVICE` at `0x85c0` from
   `0x780e36 & 0x00000008`, and `0xc1c6` replaying pending buffer

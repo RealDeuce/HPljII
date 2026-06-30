@@ -4391,6 +4391,15 @@ selector mismatch only copies the remembered word and installs no context.
     `0x782f32` or `0x783032`, applies `0x14f16`, and calls `0x1440c` to
     publish the new cache key. The map arrays are therefore derived/cache
     state, not independent parser state.
+  - Uppercase font-selection terminal wrappers call one request writer and then
+    common refresh immediately: `0x12046` calls point-size writer `0xc6ec`,
+    `0x1206e` calls style writer `0xc780`, `0x12082` calls spacing writer
+    `0xc930`, `0x12096` calls pitch writer `0xc89c`, `0x120aa` calls
+    stroke-weight writer `0xc840`, and `0x1205a` calls typeface writer
+    `0xc7e0`. Each wrapper then calls `0xc580` before returning to parser
+    mode zero. Lowercase chaining finals bypass these wrappers and call the
+    underlying writer directly while mode 13 remains active until the terminal
+    uppercase final.
   - `0x1be22` writes requested symbol/default/font-ID state and dirties
     `0x782f2c`/`0x782f2d` for ordinary symbol/default paths; final `X` instead
     restores the previous symbol word, calls `0x17708`, then sets dirty flag
@@ -4455,8 +4464,12 @@ selector mismatch only copies the remembered word and installs no context.
   `0x782eec + 0x10*slot`; `0xc840` clamps stroke weight to signed range
   `-7..7` and writes `0x782eee + 0x10*slot`. These byte handlers set dirty
   flag `0x782f2c`.
-- `0x1205a` is the typeface finalizer reached by final `T`; it calls
-  `0xc7e0` for the typeface write, then enters common refresh `0xc580`.
+- Uppercase font-selection wrappers `0x12046`, `0x1206e`, `0x12082`,
+  `0x12096`, `0x120aa`, and `0x1205a` call one request writer and then
+  common refresh `0xc580`. The covered primary and secondary streams use
+  lowercase `p/h/v/s/b` records to update the fields while staying in mode 13,
+  then uppercase `T` reaches `0x1205a`; direct uppercase `P/H/V/S/B/T`
+  records would refresh after their single writer by the same wrapper shape.
 - `0x120be` writes the requested symbol word `0x9a55` for `ESC (1234U` and
   `ESC )1234U`, and writes `0x000e`, `0x0155`, and `0x0175` for primary
   `ESC (0N`, `ESC (10U`, and `ESC (11U`, plus the same words for secondary
@@ -4848,6 +4861,10 @@ install events.
   pitch-mode selector table and synthesized `0xc89c` pitch updates.
 - `generated/disasm/ic30_ic13_font_selection_update_handlers_00c6ec.lst`:
   spacing, pitch, point-size, style, typeface, and stroke request writers.
+- `generated/disasm/ic30_ic13_payload_dispatch_011f82.lst`: uppercase
+  font-selection terminal wrappers `0x12046`, `0x1206e`, `0x12082`,
+  `0x12096`, `0x120aa`, and `0x1205a`, each calling one writer followed by
+  `0xc580`.
 - `generated/disasm/ic30_ic13_inline_symbol_helpers_015850.lst`: special
   symbol-word lookup plus built-in and inline/downloaded symbol readers
   `0x15890` and `0x158be`.

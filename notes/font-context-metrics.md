@@ -336,9 +336,15 @@ snapshot fields above.
 Fixture `parsed primary built-in font selection feeds visible page-record rows`
 now composes the primary font-selection command family into visible compact
 text output. One modeled `0xa904` ring stream contains
-`ESC (s0p10h12v0s0b3T!!`; the selection phase routes through handlers
-`0xc930`, `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a`, then the
-existing `0x13eb8` refresh chooses selected longword `0xc008004c`.
+`ESC (s0p10h12v0s0b3T!!`; the lowercase selection phase routes directly
+through writers `0xc930`, `0xc89c`, `0xc6ec`, `0xc780`, and `0xc840` while
+parser mode 13 stays active, then final uppercase `T` reaches wrapper
+`0x1205a`, which calls `0xc7e0` and common refresh `0xc580`. The sibling
+uppercase wrappers in
+`generated/disasm/ic30_ic13_payload_dispatch_011f82.lst` have the same
+single-writer-plus-refresh shape: `0x12046` for point size, `0x1206e` for
+style, `0x12082` for spacing, `0x12096` for pitch, and `0x120aa` for stroke
+weight. The refresh chooses selected longword `0xc008004c`.
 
 That selected built-in record is the first Courier offset-table record at
 resource base `0x00004c`. Its HMI source is byte `+0x21 = 0` and long
@@ -411,7 +417,7 @@ Fixture
 `parsed secondary built-in font selection feeds visible SO page-record rows`
 does the same for the secondary selection and SI/SO bridge. The modeled ring
 stream contains `ESC )s0p16h8v0s0b0T SO !!`; the selection handlers are the
-same `0xc930`, `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a` family,
+same lowercase writer family and final uppercase `0x1205a` refresh boundary,
 but `0x13eb8` writes secondary context record `0x782ef6` with selected
 longword `0xc00ae122`.
 

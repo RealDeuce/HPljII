@@ -567,9 +567,14 @@ attribute finals stay in mode 13, and the upper-case typeface final
 returns to mode 0. The lower-case finals route directly to spacing
 `p` handler `0xc930`, pitch `h` handler `0xc89c`, point-size `v`
 handler `0xc6ec`, style `s` handler `0xc780`, and stroke `b` handler
-`0xc840`. The final upper-case `T` routes through wrapper `0x1205a`,
-which calls the typeface updater at `0xc7e0` and common refresh
-`0xc580`. The primary/secondary selector is not the terminal record
+`0xc840`. Upper-case terminal wrappers refresh after one writer:
+`V` routes through `0x12046 -> 0xc6ec -> 0xc580`, `S` through
+`0x1206e -> 0xc780 -> 0xc580`, `P` through
+`0x12082 -> 0xc930 -> 0xc580`, `H` through
+`0x12096 -> 0xc89c -> 0xc580`, `B` through
+`0x120aa -> 0xc840 -> 0xc580`, and final `T` through
+`0x1205a -> 0xc7e0 -> 0xc580`. The primary/secondary selector is not the
+terminal record
 fraction word: `0x11f26` / `0x11efe` first create a setup record whose
 word `+2` is slot `0` / `1`, and the update handlers recover that setup
 word while the terminal record word `+4` remains the decimal fraction.

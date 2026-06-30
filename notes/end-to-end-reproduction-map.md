@@ -719,11 +719,12 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    segments render through 0x1ed84 and 0x1ef6a` renders all eight source/class
    page-record segments with aggregate digest
    `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
-   Fixture `font sample row continuation emits fresh source heading page record`
-   now covers the row-overrun `0x1d050 -> 0x1c9f6 -> 0x1ca2c` page-record
-   object for internal row `I01`; remaining sample-printout gaps are the other
-   forced continuation variants and physical baseline/cell placement comparison
-   against a known font/self-test page.
+   Fixtures `font sample heading continuation emits fresh source heading page
+   record` and `font sample row continuation emits fresh source heading page
+   record` now cover the heading-preflight and row-overrun `I01` forced
+   page-record objects; remaining sample-printout gaps are the other forced
+   continuation variants and physical baseline/cell placement comparison against
+   a known font/self-test page.
 
 ## Next Disassembly Targets
 

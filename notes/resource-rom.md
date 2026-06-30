@@ -616,6 +616,12 @@ continuation-page path, while limit `95` does not. At row advance,
 then `0x1ca2c(source=3,row=1,current=0x4008004c,selected=0x44080418)`, and
 schedules a second `0x1cfe4` advance of `744` subunits. With page limit
 `1010`, the same row transition stays on the no-continuation path.
+Fixture `font sample heading continuation emits fresh source heading page
+record` now carries the heading-preflight overrun into the page-record producer.
+The fresh continuation segment emits only the `INTERNAL FONTS` heading from
+context `0x4008004c`, queues bucket `0`, ends at cursor
+`0x00000000,0x00520000`, and pins bucket digest
+`e43b602451f3f31ea84e49c7be1d12b34ae3d1b7369b5dd7096aa7e96db1268c`.
 Fixture `font sample row continuation emits fresh source heading page record`
 now carries that row-overrun branch into the page-record producer. The fresh
 continuation segment emits the `INTERNAL FONTS` heading and row
@@ -672,10 +678,10 @@ The modeled class-zero segments top out at row width `2219`; the modeled
 class-one segments top out at row width `4097`, so that width/baseline
 interpretation is now pinned but not yet validated against paper output.
 
-The still-open boundaries are heading-preflight, alternate-row, and broader
-source/class forced-continuation page-record variants, plus physical comparison
-of those rendered source/class surfaces against a known printed/self-test
-sample, including baseline and cell placement agreement after `0x1ed84`.
+The still-open boundaries are alternate-row and broader source/class
+forced-continuation page-record variants, plus physical comparison of those
+rendered source/class surfaces against a known printed/self-test sample,
+including baseline and cell placement agreement after `0x1ed84`.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record
@@ -1180,10 +1186,10 @@ Unknown:
 - manual-facing names for several record metadata fields remain open,
   especially the exact baseline/cell terminology behind `+0x28/+0x2a`
   and tie-breaker bytes `+0x2f..+0x31`;
-- forced continuation-page object bytes beyond the covered row-overrun `I01`
-  case and physical output comparison for the full internal-font sample page
-  remain open even though the ROM-side candidate order and rendered-surface
-  digest are fixture-backed;
+- forced continuation-page object bytes beyond the covered heading-preflight
+  and row-overrun `I01` cases and physical output comparison for the full
+  internal-font sample page remain open even though the ROM-side candidate
+  order and rendered-surface digest are fixture-backed;
 - optional cartridge/resource candidate windows are bounded by ROM addresses,
   but no physical cartridge image is present in this repo.
 

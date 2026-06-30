@@ -3603,6 +3603,11 @@ selector mismatch only copies the remembered word and installs no context.
   `0x028f`, convert `(integer * 10000 + fraction) / 100`, and write pitch word
   `0x782ef0 + 0x10*slot` or point-size word `0x782ef2 + 0x10*slot`; both set
   dirty flags `0x782f2c` and `0x782f2d`.
+- `0xc390` is the `ESC &k#S/s` pitch-mode terminal. Its ROM jump table accepts
+  absolute selector values `0`, `2`, and `4`, synthesizes pitch records with
+  constants `10`, `16` plus fractional word `0x19c8`, or `12`, then reaches the
+  same `0xc89c` pitch writer and `0xc580` refresh path. Other selector values
+  return through the default table exit without changing pitch.
 - `0xc780` and `0xc7e0` fold style and typeface to positive bytes capped at
   `0xff`, writing `0x782eed + 0x10*slot` and
   `0x782eec + 0x10*slot`; `0xc840` clamps stroke weight to signed range
@@ -3933,6 +3938,8 @@ install events.
 ### Disassembly Evidence
 
 - `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`: parser dispatch.
+- `generated/disasm/ic30_ic13_pitch_mode_handler_00c390.lst`: `ESC &k#S/s`
+  pitch-mode selector table and synthesized `0xc89c` pitch updates.
 - `generated/disasm/ic30_ic13_font_selection_update_handlers_00c6ec.lst`:
   spacing, pitch, point-size, style, typeface, and stroke request writers.
 - `generated/disasm/ic30_ic13_inline_symbol_helpers_015850.lst`: special

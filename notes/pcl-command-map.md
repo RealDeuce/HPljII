@@ -83,6 +83,9 @@ pixel-perfect rendering:
 - `ESC &k#H`, handler `0x00ca8c`: HMI; absolute value scaled as
   30 packed subunits per 1/120-inch unit into `0x78315c`.
 - `ESC &k#G`, handler `0x00edf8`: CR/LF/FF line-termination mode.
+- `ESC &k#S`, handler `0x00c390`: pitch mode; ROM-confirmed selectors
+  `0`, `2`, and `4` synthesize pitch-update records and feed the existing
+  `0xc89c` / `0xc580` font-selection refresh path.
 - `ESC &f#S`, handler `0x00f75e`: cursor stack at `0x782c96..0x782d36`;
   selector `0` pushes, selector `1` pops.
 - `ESC &f#Y`, handler `0x00e112`: macro ID; stores absolute parsed word

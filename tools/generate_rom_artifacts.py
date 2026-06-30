@@ -191,6 +191,7 @@ def generate_disassembly(firmware: Path) -> None:
         ("ic30_ic13_page_pool_candidate_select_007ec6.lst", "0x7ec6", "0x7ec6", "0xd2"),
         ("ic30_ic13_startup_config_code_019a78.lst", "0x19a78", "0x19a78", "0x180"),
         ("ic30_ic13_font_update_common_00c580.lst", "0xc580", "0xc580", "0x160"),
+        ("ic30_ic13_pitch_mode_handler_00c390.lst", "0xc390", "0xc390", "0x98"),
         ("ic30_ic13_font_selection_update_handlers_00c6ec.lst", "0xc6ec", "0xc6ec", "0x340"),
         ("ic30_ic13_hmi_vmi_handlers_00ca8c.lst", "0xca8c", "0xca8c", "0x140"),
         ("ic30_ic13_esc_e_metric_refresh_00cbd4.lst", "0xcbd4", "0xcbd4", "0x80"),

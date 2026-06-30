@@ -2562,6 +2562,12 @@ for how resource records become ordinary page-record text.
     first-three-internal-rows fixture assigns slot 0 to `0x4008004c`, slot 1
     to `0x44080418`, and slot 2 to `0x44080868`.
 - Canonical page/text environment:
+  - sample-page setup entry `0x1e0b2`: requires at least one font record via
+    `0x782798`, reports status `0xe3/0x51` through `0x1284` when none exist,
+    then forces one copy at `0x782da4`, clears line wrap `0x783190` and
+    perforation skip `0x783191`, rebuilds orientation/page-root state through
+    `0x1d76c`, `0x10084`, and `0x1e9a0`, and returns the published page-root
+    pointer from A5 in D7.
   - current page root ensured through `0x10084`.
   - current vertical cursor `0x782c8e`, initialized by `0x1c916` to
     `0x0024`.
@@ -2573,6 +2579,13 @@ for how resource records become ordinary page-record text.
     and VMI are installed through the same `0xc428` / `0x14c64`
     bridge used by parsed font selection.
 - Derived/cache state:
+  - `0x1e0b2` forces sample-page VMI `0x783160 = 0x0032` and HMI
+    `0x78315c = 0x001e`, clearing their fractional words. If page limit
+    `0x782db6` is at least `0x0bd6`, it calls `0x1e84c(2)`, sets current y
+    `0x782c8e = 0x007e`, and calls `0x1e1e0`; otherwise it starts at
+    `0x782c8e = 0x0024`. It then computes remaining 50-unit rows from
+    `0x782db6 - 1 - 0x782c8e`, divides by `0x32`, adds one, and passes the
+    count to `0x1ea4e`.
   - `0x1c916` forces VMI/HMI defaults `0x0032` / `0x001e` and chooses
     portrait/landscape header text from `0x782da3`.
   - `0x1d050` derives the larger current/alternate row height and can
@@ -2701,6 +2714,11 @@ for how resource records become ordinary page-record text.
 
 ### Writers
 
+- `0x1e0b2` is the normal sample-page setup entry: it checks font-record
+  availability, resets copies/wrap/perforation state, calls the orientation
+  and page-root setup helpers, writes forced sample-page VMI/HMI defaults,
+  chooses the starting vertical cursor from page limit `0x782db6`, and passes
+  the derived remaining-row count to `0x1ea4e`.
 - `0x1c204` starts the sample printout and reports status `0xe3/0x51`
   if no font records exist.
 - `0x1c28e..0x1c344` run class-zero and class-one passes, skipping empty
@@ -3009,6 +3027,7 @@ because physical/self-test comparison is still open.
 
 - `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`
 - `generated/disasm/ic30_ic13_font_resource_object_lookup_01b4c0.lst`
+- `generated/disasm/ic30_ic13_font_page_setup_01e0b2.lst`
 - `generated/disasm/ic30_ic13_font_page_setup_alt_01e8e6.lst`
 - `generated/disasm/ic30_ic13_font_sample_page_01c170.lst`
 - `generated/disasm/ic30_ic13_font_sample_row_helpers_01d198.lst`

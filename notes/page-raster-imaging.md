@@ -1,6 +1,7 @@
 # Page Geometry and Raster Imaging Notes
 
 Sources: `generated/analysis/ic30_ic13_page_geometry_tables.md`;
+`generated/disasm/ic30_ic13_page_geometry_tables_009d16.lst`;
 `generated/analysis/ic30_ic13_parser_xrefs.md`;
 `generated/analysis/ic30_ic13_page_root_references.md`;
 `generated/analysis/ic30_ic13_page_root_allocation.md`;

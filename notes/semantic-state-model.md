@@ -5545,7 +5545,17 @@ mode-byte suppression for values `0`, `1`, `2`, `3`, and `6` when
     Fixtures `downloaded segmented-wide row-0x01ff fallbacks render selected
     segment` and `downloaded segmented-wide row-0x01ff span-31 fallback hits
     source boundary` repeat that split for installed row word `0x01ff`, the
-    highest sampled low-byte-above-`0x80` row.
+    highest sampled `0x01xx` low-byte-above-`0x80` row. Fixtures `downloaded
+    segmented-wide row-0x0281 fallbacks render selected segment` and
+    `downloaded segmented-wide row-0x0281 span-31 fallback hits source
+    boundary` repeat the same split after the canonical installed row word
+    advances beyond `0x01ff`: `0x16498` preserves row word `0x0281`, the
+    printable source record exposes low byte `0x81`, `0x12f2e` queues only
+    selector `0x3003` segments `1` and `0`, bucket `8` dispatches through
+    `0x1f264`, and selected segment `1` still renders `32` current rows plus
+    `96` fallback rows for spans `17`, `18`, and `32`. The adjacent span-31
+    fixture stops at the same `validate_wide_compact_row_copy` fallback A2
+    source-read boundary `+0xb50`.
   - downloaded-character segmented-wide row-byte boundary: fixture
     `downloaded segmented-wide row-byte boundary truncates page-record
     segments` installs canonical row words `0x0002`, `0x007f`, `0x0080`,
@@ -7137,9 +7147,9 @@ fields and broader selected-font state combinations have not been page-compared.
   Still-open comparisons are bounded cross-products: pixel rows after printable
   downloaded spans wrap in the current one-byte page source
   span field, including compact-wide wrapped spans and compact mode-0 invalid
-  helper-table targets, visible behavior after
-  segmented-wide row words outside the source-byte-wrap matrix produce the
-  current one-byte page source row field, broader
+  helper-table targets, visible behavior for segmented-wide row words and spans
+  outside the sampled row `0x0082`, `0x0083`, `0x0181`, `0x0182`, `0x01ff`,
+  and `0x0281` matrix, broader
   publication combinations beyond the documented normal, non-boundary short, rows-`0x20`
   short, rows-`0x40` short, row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
   low-byte-truncated table-limit boundary, linear-segmented, rows-`0x82` segmented,

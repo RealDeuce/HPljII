@@ -1980,12 +1980,13 @@ Unresolved middle edges:
   now classifies the sampled row side: row words `0x0100`, `0x0101`, and
   `0x0181` survive in the installed glyph, but the current source row byte
   causes selector `0x1003`, `0x1003`, and `0x3003` with only segments `1` and
-  `0`; the first render splits for those sampled rows are also documented, and
-  the high-row fallback fixtures confirm the `0x0181`/span-17, span-18, and
-  span-32 bucket-8 segments render `32` current rows and `96` fallback rows
-  matching the installed bitmap; the span-31 sibling is an explicit A2 source
-  boundary at `+0xb50`. Remaining gaps are broader physical/full-row comparison
-  for boundary cases
+  `0`; the first render splits for those sampled rows are also documented. The
+  high-row fallback fixtures now extend that selected-segment render evidence
+  across installed row words `0x0181`, `0x0182`, `0x01ff`, and `0x0281`: spans
+  `17`, `18`, and `32` render bucket-8 segment `1` as `32` current rows and
+  `96` fallback rows matching the installed bitmap, while the span-31 siblings
+  are explicit A2 source boundaries at `+0xb50`. Remaining gaps are broader
+  physical/full-row comparison for boundary cases
   and selected-font state combinations not represented in current visible
   fixtures.
 - `0x1fa5c..0x2feb0`: all sixteen main `0x1f08e` helper indexes now have

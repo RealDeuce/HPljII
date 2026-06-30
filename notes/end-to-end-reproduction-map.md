@@ -1119,10 +1119,17 @@ The next work should follow dataflow, not isolated handlers:
    offset `+0xb50`. Fixtures `downloaded segmented-wide row-0x01ff fallbacks render
    selected segment` and `downloaded segmented-wide row-0x01ff span-31 fallback hits
    source boundary` repeat that split for row `0x01ff`, the highest sampled
-   low-byte-above-`0x80` row. Remaining downloaded-character publication work is
-   therefore limited to pixel-row behavior beyond wrapped source-byte helper-table
-   boundaries, broader higher-row segmented-wide fallback combinations beyond sampled
-   rows `0x0181`, `0x0182`, and `0x01ff`, broader publication combinations, and
+   `0x01xx` low-byte-above-`0x80` row. Fixtures `downloaded segmented-wide
+   row-0x0281 fallbacks render selected segment` and `downloaded segmented-wide
+   row-0x0281 span-31 fallback hits source boundary` repeat that split after the
+   installed row word advances beyond `0x01ff`: the installed glyph preserves row
+   `0x0281`, the printable source row byte is `0x81`, `0x12f2e` emits only segments
+   `1` and `0`, and selected segment `1` renders the same `32/96` current/fallback
+   rows for spans `17`, `18`, and `32`, while span `31` stops at fallback A2 offset
+   `+0xb50`. Remaining downloaded-character publication work is therefore limited to
+   pixel-row behavior beyond wrapped source-byte helper-table boundaries, broader
+   higher-row segmented-wide fallback combinations beyond sampled rows `0x0181`,
+   `0x0182`, `0x01ff`, and `0x0281`, broader publication combinations, and
    full-success return-boundary siblings outside the named row-count, wide-remainder,
    segmented-wide, normal, row-`0x80`, linear-segmented, split-plane segmented,
    segmented-wide, no-install, status-`2`, and payload-control cases. It is not the

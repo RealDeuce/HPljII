@@ -1575,11 +1575,23 @@ read boundary `+0xb50`.
 
 Fixtures `downloaded segmented-wide row-0x01ff fallbacks render selected
 segment` and `downloaded segmented-wide row-0x01ff span-31 fallback hits source
-boundary` repeat that split for the highest sampled low-byte-above-`0x80` row
-word. Row `0x01ff` succeeds at spans `17`, `18`, and `32`, preserving the same
-selected segment, zero-drain return boundary, and `32` current / `96` fallback
-row split with installed-bitmap matches. The adjacent span-31 case reaches
-`0x1f264` and stops at fallback A2 source read boundary `+0xb50`.
+boundary` repeat that split for the highest sampled `0x01xx`
+low-byte-above-`0x80` row word. Row `0x01ff` succeeds at spans `17`, `18`, and
+`32`, preserving the same selected segment, zero-drain return boundary, and
+`32` current / `96` fallback row split with installed-bitmap matches. The
+adjacent span-31 case reaches `0x1f264` and stops at fallback A2 source read
+boundary `+0xb50`.
+
+Fixtures `downloaded segmented-wide row-0x0281 fallbacks render selected
+segment` and `downloaded segmented-wide row-0x0281 span-31 fallback hits source
+boundary` carry that same split past the previously sampled `0x01xx` row
+range. `0x16498` installs and preserves canonical row word `0x0281`, but the
+current unflagged printable source record still exposes only low byte `0x81`
+to `0x12f2e`; the page-record producer therefore queues selector `0x3003`
+segments `1` and `0`, not a segment above `1`. Bucket `8` dispatches selected
+segment `1` through `0x1f264`; spans `17`, `18`, and `32` render `32` current
+rows plus `96` fallback rows matching the installed bitmap, while adjacent
+span `31` stops at the same fallback A2 source read boundary `+0xb50`.
 
 Fixture `downloaded segmented-wide row-byte boundary truncates page-record
 segments` classifies the row-count side of that cross-product for span `0x11`.

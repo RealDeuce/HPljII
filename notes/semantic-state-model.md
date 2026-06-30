@@ -1594,10 +1594,30 @@ manual-facing names outside the PCL labels already cited here.
 
 ### Fixtures
 
+- `0x9d16/0x9d4e/0x9d86/0x9dbe page geometry lookups mask page code`
+- `ROM page geometry tables match manual logical dimensions`
+- `ROM page geometry tables recover manual printable-area margins`
+- `0xfc74 ESC &l#A maps page size and recomputes portrait geometry`
+- `0x10220 ESC &l#O swaps active extents and selects orientation margins`
+- `0xfc74/0x10220 chained ESC &l stream selects page size then orientation
+  handlers`
+- `0xf9e8 ESC &l#P converts VMI lines to page length and selects internal
+  page code`
+- `0xf9e8 ESC &l#P stream reaches page-length handler`
 - `control stream ESC &k1G then CR applies CR+LF`
 - `control stream ESC &k2G then LF applies CR+LF`
 - `control stream ESC &k2G then FF applies CR+page-eject`
 - `control stream ESC &k3G applies CR/LF/FF combined line termination`
+- `ESC &k#G line termination mode bits`
+- `CR resets horizontal cursor and flushes pending text span`
+- `CR line-termination mode 1 also advances vertical cursor`
+- `LF line-termination mode 2 resets horizontal cursor`
+- `FF line-termination mode 2 resets horizontal cursor and marks page eject`
+- `HT advances to next eight-column stop`
+- `HT clamps to page width when already beyond right limit`
+- `BS subtracts HMI and sets pending previous-width latch`
+- `BS clamps at left margin when crossing it`
+- `BS alternate metrics subtracts previous width word`
 - `control stream HT then BS updates tab and previous-width state`
 - `0xca8c ESC &k#H stores packed HMI for in-range absolute values only`
 - `HMI parser trace feeds page-record queue`
@@ -1618,7 +1638,24 @@ manual-facing names outside the PCL labels already cited here.
 - `ESC &d underline selector materializes span output`
 - `vertical-decipoint cursor parser trace feeds page-record queue`
 - `chained cursor-position parser trace feeds page-record queue`
+- `cursor stack stream ESC &f0S / ESC &f1S selects 0xf75e push/pop`
+- `0xf39e ESC &a#C converts columns through HMI and relative flag`
+- `0xf416 ESC &a#H converts decipoints and clamps horizontal cursor`
+- `0xf560 ESC &a#R uses VMI with absolute top offset and relative cursor base`
+- `cursor position stream ESC &a3.5c+1R selects 0xf39e then 0xf560`
+- `0xf60a ESC &a#V converts decipoints and clamps vertical cursor`
 - `0xf48c/0xf692 ESC *p#X/#Y use whole-dot packed cursor commits`
+- `0xc992 ESC &l#D accepts ROM LPI set and refreshes pending vertical cursor`
+- `0xcb00 ESC &l#C converts 1/48-inch VMI and keeps zero unmodified`
+- `0xea9e ESC &l#F sets text length bottom or restores default`
+- `0xece2 ESC &l#E sets top margin, default text length, and pending cursor`
+- `0xee64 ESC &l#L toggles perforation skip for selectors 0 and 1 only`
+- `0xcb00/0xc992/0xece2/0xea9e chained ESC &l stream selects vertical layout
+  handlers`
+- `0xeb58 ESC &a#L sets left margin and moves cursor only when needed`
+- `0xec0c ESC &a#M applies plus-one column, clamps, and moves cursor at right
+  edge`
+- `margin stream ESC &a6l9M selects 0xeb58 then 0xec0c`
 - `dot position parser trace feeds page-record queue`
 - `cursor stack parser trace feeds page-record queue`
 - `host-fetched direct text/control streams reach page-record render`

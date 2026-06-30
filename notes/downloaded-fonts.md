@@ -1661,8 +1661,12 @@ render` covers:
 - `0x1edc6` context-slot prefix `(0, 0, 0, 0x000100)`; and
 - rendered mode-0 fixed-record rows beginning at x `22`, y `6`.
 
-This closes the current-record bit-30-clear `0x15e3c..0x15e46` middle edge for
-one page-visible fixed-record resource object.
+The same fixture now also pins the full-success return boundary:
+`0x15e42 -> 0x16606 -> 0x15dcc -> 0x12328`, copy status `1`, copy stream
+position `6`, remaining `0x783140 = 0`, zero drained bytes, and next parser
+handler `0xd04a` for following printable `!`. This closes the current-record
+bit-30-clear `0x15e3c..0x15e46` middle edge for one page-visible fixed-record
+resource object and one full-success return sibling.
 
 Fixture
 `0x16606 no-install exits clear stale continuation without payload writes`
@@ -1702,9 +1706,12 @@ the remaining bytes `f0 0f c3 3c` through the linear `0x16874`/`0x168dc` path
 at destination `0x000302`, clears `0x7827c6`, `0x7827da`, `0x7827c8`,
 `0x7827ca`, `0x7827ce`, `0x7827d2`, `0x7827d6`, and `0x7827d8`, then renders
 the same source object, page-record object prefix, bridge context slots, and
-three mode-0 rows as the one-piece `0x16606` fixture. This closes the
-bit-30-clear continuation middle edge for one even-span fixed-record resource
-object.
+three mode-0 rows as the one-piece `0x16606` fixture. Its return boundary is
+`0x15e64 -> 0x15c4c -> 0x15dcc -> 0x12328`, copy status `1`, copy stream
+position `4`, remaining `0x783140 = 0`, zero drained bytes, and next parser
+handler `0xd04a`. This closes the bit-30-clear continuation middle edge for
+one even-span fixed-record resource object and one linear continuation
+full-success return sibling.
 
 The split-plane companion fixture
 `host-fetched 0x15d0a split-plane continuation resource object resumes
@@ -1732,8 +1739,12 @@ The continuation descriptor `ESC )s0W 04 01 cc` again routes through
 rows `a0 a1 b0` and `c0 c1 d0`. The page path maps host `!` to glyph `1`,
 queues object prefix `00 00 00 00 00 03 00 01 01 76 01`, preserves context
 slot `3` through `0x1edc6`, and renders two mode-0 rows beginning at x `22`,
-y `7`. This closes the split-plane continuation-counter middle edge for one
-bit-30-clear fixed-record resource object.
+y `7`. The split-plane success returns through the same
+`0x15e64 -> 0x15c4c -> 0x15dcc -> 0x12328` boundary with copy status `1`,
+copy stream position `2`, remaining `0x783140 = 0`, zero drained bytes, and
+next parser handler `0xd04a`. This closes the split-plane
+continuation-counter middle edge for one bit-30-clear fixed-record resource
+object and one split-plane continuation full-success return sibling.
 
 Fixture `0x15c4c partial resource resumes update continuation state` covers the
 status-`2` sibling for the same continuation handler. The linear partial starts

@@ -4940,24 +4940,31 @@ current-record resource object feeds fixed-record render` also proves a host-fet
 `ESC )s0W` descriptor can route bit-30-clear current-record payload `0x000100` through
 `0x16606`, install fixed-record glyph `0x21` at payload table entry `+0x48`, queue
 selector `0x0003`, preserve context slot `3` through `0x1edc6`, and render three mode-0
-rows. Fixture `0x16606 no-install exits clear stale continuation without payload writes`
-proves the sibling no-install exits at `0x16612..0x16770`: char `0xa0` with type byte
-`+0x0e = 0`, short two-byte record prefix, byte budget `0x0d`, zero span `00 01 04 00`,
-and copy failure after only byte `aa` all clear stale continuation state and leave
-payload memory unchanged. Canonical table/object state is unchanged, parser scratch is
-the cleared continuation block, firmware bookkeeping is the reject reason, and output
-effect is no installed glyph. Fixture `host-fetched 0x15d0a continuation resource object
-resumes fixed-record render` proves the sibling status-`2` descriptor route through
-`0x15c4c`: a partial `0x16606` copy saves payload `0x000100`, glyph/table index `0x21`,
-destination `0x000302`, and remaining count `4`; `0x15c4c` copies bytes `f0 0f c3 3c`,
-clears the continuation fields, and renders the same fixed record and rows. Fixture
-`host-fetched 0x15d0a split-plane continuation resource object resumes fixed-record
-render` proves the odd-width sibling: a partial `0x16606` copy of record `03 02 04 00 00
-00 02 00` saves payload `0x000100`, glyph/table index `0x21`, prefix destination
-`0x000303`, trailing destination `0x000305`, and D4/D3 counters `0/0`; `0x15c4c` copies
-bytes `c1 d0`, clears continuation state, leaves bitmap layout `a0 a1 c0 c1 b0 d0`,
-queues object prefix `00 00 00 00 00 03 00 01 01 76 01`, and renders rows reconstructed
-from `a0 a1 b0` and `c0 c1 d0`. Fixture `0x15c4c partial resource resumes update
+rows. The same fixture pins return boundary `0x15e42 -> 0x16606 -> 0x15dcc -> 0x12328`
+with copy status `1`, copy stream position `6`, remaining `0x783140 = 0`, zero drained
+bytes, and next parser handler `0xd04a`. Fixture `0x16606 no-install exits clear stale
+continuation without payload writes` proves the sibling no-install exits at
+`0x16612..0x16770`: char `0xa0` with type byte `+0x0e = 0`, short two-byte record
+prefix, byte budget `0x0d`, zero span `00 01 04 00`, and copy failure after only byte
+`aa` all clear stale continuation state and leave payload memory unchanged. Canonical
+table/object state is unchanged, parser scratch is the cleared continuation block,
+firmware bookkeeping is the reject reason, and output effect is no installed glyph.
+Fixture `host-fetched 0x15d0a continuation resource object resumes fixed-record render`
+proves the sibling status-`2` descriptor route through `0x15c4c`: a partial `0x16606`
+copy saves payload `0x000100`, glyph/table index `0x21`, destination `0x000302`, and
+remaining count `4`; `0x15c4c` copies bytes `f0 0f c3 3c`, clears the continuation
+fields, renders the same fixed record and rows, and pins `0x15e64 -> 0x15c4c -> 0x15dcc
+-> 0x12328` with copy status `1`, copy stream position `4`, remaining `0x783140 = 0`,
+zero drained bytes, and next handler `0xd04a`. Fixture `host-fetched 0x15d0a split-plane
+continuation resource object resumes fixed-record render` proves the odd-width sibling:
+a partial `0x16606` copy of record `03 02 04 00 00 00 02 00` saves payload `0x000100`,
+glyph/table index `0x21`, prefix destination `0x000303`, trailing destination
+`0x000305`, and D4/D3 counters `0/0`; `0x15c4c` copies bytes `c1 d0`, clears
+continuation state, leaves bitmap layout `a0 a1 c0 c1 b0 d0`, queues object prefix `00
+00 00 00 00 03 00 01 01 76 01`, and renders rows reconstructed from `a0 a1 b0` and `c0
+c1 d0`. It also pins the split-plane `0x15e64 -> 0x15c4c -> 0x15dcc -> 0x12328` return
+with copy status `1`, copy stream position `2`, remaining `0x783140 = 0`, zero drained
+bytes, and next handler `0xd04a`. Fixture `0x15c4c partial resource resumes update
 continuation state` proves the status-`2` sibling: a linear resume copies byte `f0`,
 advances destination `0x000302 -> 0x000303`, and resaves remaining count `3`; a
 split-plane resume copies prefix byte `c1`, advances prefix destination `0x000303 ->
@@ -5492,7 +5499,9 @@ segmented-wide sibling: copied record
 `0x0891`, copy status `1`, copy stream position `0x0891`, remaining
 `0x783140 = 0`, zero-byte `0x12328` drain, and next handler `0xd04a` for the
 printable `%` before FF publication. Other full-success return siblings remain
-open cross-products.
+open cross-products. The bit-30-clear fixed-record current-record and
+linear/split-plane continuation siblings are pinned by the `0x16606`/`0x15c4c`
+fixtures above.
 
 Readers and output effect: `0x1ef6a` runs call order `0x1ef86`, `0x1efc2`,
 `0x1f446`, `0x1f756`. The bucket dispatcher sends the raster object to
@@ -5806,9 +5815,10 @@ fields and broader selected-font state combinations have not been page-compared.
   split-plane segmented, segmented-wide, compact-wide matrix,
   segmented-wide matrix, even-span wide, payload-control wide, no-install, and
   status-`2` compact bucket variants, and return-boundary siblings
-  outside the covered normal even-span, no-install, status-`2`, linear segmented
-  publication, split-plane segmented publication, and segmented-wide publication
-  fixtures. The normal even-span fixture
+  outside the covered normal even-span, no-install, status-`2`, bit-30-clear
+  fixed-record current-record, bit-30-clear fixed-record continuation,
+  linear-segmented publication, split-plane segmented publication, and segmented-wide
+  publication fixtures. The normal even-span fixture
   `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
   pins
   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with zero remaining budget and next

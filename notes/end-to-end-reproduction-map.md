@@ -656,10 +656,14 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    writes only mode `1`/`2` from span parity, and `0x16b26..0x16b34` rejects invalid
    widths without scratch writes. Fixture `0x15d0a descriptor grammar exits and handler
    matrix` covers the zero-count descriptor route's early drains and all four
-   current-record/continuation by bit-30 handler polarities. Other release variants and
-   full-success return-boundary siblings outside the even-span rule/raster path and
-   outside the segmented, split-plane segmented, segmented-wide, and payload-control
-   publication fixtures are still not proven against every PCL form. Fixture `0x15c4c
+   current-record/continuation by bit-30 handler polarities. The bit-30-clear
+   fixed-record current-record and linear/split-plane continuation full-success
+   boundaries now pin `0x15e42 -> 0x16606 -> 0x15dcc -> 0x12328` and
+   `0x15e64 -> 0x15c4c -> 0x15dcc -> 0x12328` with zero drains before handler
+   `0xd04a`. Other release variants and full-success return-boundary siblings outside
+   the even-span rule/raster path and outside the segmented, split-plane segmented,
+   segmented-wide, payload-control publication, and bit-30-clear fixed-record fixtures
+   are still not proven against every PCL form. Fixture `0x15c4c
    partial resource resumes update continuation state` covers the fixed-record
    continuation route's status-`2` resave behavior for linear and split-plane
    bit-30-clear resource objects.

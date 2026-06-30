@@ -2657,11 +2657,11 @@ resources because no image is available in this repo.
 - `0x14398..0x156de`: visible-output coverage exists for primary,
   secondary, remembered-primary symbol recovery, two symbol-miss fallback
   streams, non-Roman symbol selections, the real final-`@`
-  default-table/copy/default-font streams, and the final-`X` built-in and
-  inline/downloaded font-ID streams. The `0x13eb8` transient/cache-hit exits
-  are state-covered as preserved-output paths, while broader font-selection
-  fallback/error combinations still need the same page-visible treatment when
-  they change output.
+  default-table/copy/default-font streams, and the final-`X` primary built-in,
+  secondary built-in, and inline/downloaded font-ID streams. The `0x13eb8`
+  transient/cache-hit exits are state-covered as preserved-output paths, while
+  broader font-selection fallback/error combinations still need the same
+  page-visible treatment when they change output.
 - Record `+0x28/+0x2a` is pinned as the decoded-height input consumed by
   `0x1519a` through `0x13bca`; record `+0x2f..+0x31` is pinned as the
   same-class `0x1428c` chooser tie-breaker tuple. Final
@@ -3322,6 +3322,15 @@ routes through parser handlers `0x11eb6`, `0x1201e`, and `0x120be`,
 `0x14c64` rebuilds primary map `0x782f32`, and the printable `!!` tail queues
 object `00 00 00 00 00 00 00 02 00 89 00 00 87 02` with rendered-row digest
 `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
+Fixture `font-ID secondary built-in selection feeds visible SO page-record
+rows` carries the class-one built-in final-`X` sibling through visible output:
+host-fetched `ESC )8X SO !!` routes through parser handlers `0x11eb6`,
+`0x12008`, and `0x120be`, `0x17708` selects candidate pointer `0x782350` /
+context `0xc00ae122`, reuses page-root slot `1` through `0xc4fc`, `0x14c64`
+rebuilds secondary map `0x783032`, SO handler `0xc6b8` is a selector no-op,
+and the printable `!!` tail queues object
+`00 00 00 00 00 01 00 02 00 c9 00 00 cb 01` with rendered-row digest
+`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
 Fixture `font-ID inline/downloaded selection feeds visible page-record rows`
 carries the bit-30-clear final-`X` success path through visible output:
 host-fetched `ESC )4660X SO !` routes through parser handlers `0x11eb6`,
@@ -3861,6 +3870,11 @@ selector mismatch only copies the remembered word and installs no context.
   `font-ID built-in selection feeds visible page-record rows` proves
   `0x1393a` consumes context `0xc0089fb0`, maps host byte `0x21` to glyph
   `0x00`, and emits glyph entry `0x00afec`.
+- Final-`X` secondary built-in selection affects the class-one context before
+  later printable bytes. Fixture `font-ID secondary built-in selection feeds
+  visible SO page-record rows` proves `0x17708` selects context `0xc00ae122`
+  through candidate slot `0x782350`, `0x1393a` consumes that context after SO,
+  maps host byte `0x21` to glyph `0x00`, and emits glyph entry `0x02e4f6`.
 - Final-`X` inline/downloaded selection affects the secondary unflagged source
   path before later printable bytes. Fixture
   `font-ID inline/downloaded selection feeds visible page-record rows` proves
@@ -3969,6 +3983,12 @@ entry `0x00afec`, object prefix
 `00 00 00 00 00 00 00 02 00 89 00 00 87 02`, and rendered-row digest
 `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
 
+The secondary final-`X` built-in visible fixture renders the class-one
+Line Printer record selected by font ID. Host-fetched `ESC )8X SO !!` selects
+context `0xc00ae122`, HMI `18`, glyph entry `0x02e4f6`, object prefix
+`00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and rendered-row digest
+`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
+
 The final-`X` non-selected visible fixture renders the previous primary font,
 not the requested font ID. After scan miss, candidate-slot miss,
 class-mismatch, or context-full, no new map dispatch occurs; the following
@@ -4014,6 +4034,11 @@ High for final-`X` built-in visible output because fixture
 host-fetched bytes, ROM parser handlers, `0x17708` helper calls, selected
 context, printable source capture, object prefix, bridge context slots, and
 rendered row digest.
+High for secondary final-`X` built-in visible output because fixture
+`font-ID secondary built-in selection feeds visible SO page-record rows`
+composes host-fetched bytes, ROM parser handlers, the class-one `0x17708`
+helper path, selected context `0xc00ae122`, SO, printable source capture,
+object prefix, bridge context slots, and rendered row digest.
 High for final-`X` inline/downloaded visible output because fixture
 `font-ID inline/downloaded selection feeds visible page-record rows` composes
 host-fetched bytes, ROM parser handlers, the bit-30-clear `0x17708` helper
@@ -4070,6 +4095,7 @@ install events.
 - `non-Roman symbol streams select visible built-ins`
 - `symbol-set parser trace covers X and @ special cases`
 - `font-ID built-in selection feeds visible page-record rows`
+- `font-ID secondary built-in selection feeds visible SO page-record rows`
 - `font-ID inline/downloaded selection feeds visible page-record rows`
 - `0x17708 font-ID non-selected exits preserve prior selection`
 - `font-ID non-selected exits keep prior visible rows`
@@ -4133,8 +4159,9 @@ install events.
   `0x120be..0x156de..0x14c64..0xd04a`, and
   `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` through
   `0x120be..0x156de..0x14c64..0xc6b8..0xd04a`. The covered font-ID boundary
-  includes built-in `ESC (7X!!` through
-  `0x120be..0x17708..0x14c64..0xd04a`, and inline/downloaded
+  includes primary built-in `ESC (7X!!` through
+  `0x120be..0x17708..0x14c64..0xd04a`, secondary built-in `ESC )8X SO !!`
+  through `0x120be..0x17708..0x14c64..0xc6b8..0xd04a`, and inline/downloaded
   `ESC )4660X SO !` through
   `0x120be..0x17708..0x14c64..0xc6b8..0xd04a`; the covered direct font-ID
   non-selected boundaries now run from `0x120be..0x17708` statuses

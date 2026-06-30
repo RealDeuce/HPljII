@@ -1342,9 +1342,10 @@ ROM work needed:
   and secondary `ESC (/)1234U` fallback through `0x156de`, current-font RAM
   handoffs through SI/SO, non-Roman `0N` / `10U` / `11U` symbol streams, real
   final-`@` default-table primary and secondary visible streams, final-`X`
-  built-in `ESC (7X!!`, final-`X` inline/downloaded `ESC )4660X SO !`,
-  direct `0x17708` non-selected exits, and direct `0x13eb8` transient/cache-hit
-  no-dispatch exits with preserved visible output. The same checkpoint now
+  primary built-in `ESC (7X!!`, final-`X` secondary built-in `ESC )8X SO !!`,
+  final-`X` inline/downloaded `ESC )4660X SO !`, direct `0x17708`
+  non-selected exits, and direct `0x13eb8` transient/cache-hit no-dispatch
+  exits with preserved visible output. The same checkpoint now
   includes the `0xc580` common-refresh branch cluster: dirty-1 first-clear,
   full-live reuse, full-live/no-match, selector-mismatch, dirty-2
   selector-match, and dirty-2 selector-mismatch outcomes are grouped into

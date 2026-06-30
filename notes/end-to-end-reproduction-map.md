@@ -838,43 +838,43 @@ The next work should follow dataflow, not isolated handlers:
    `font_command_final_header` from the same font-command helper, asserts it matches the
    install event header, reports pointer bytes `00 00 07 80`, record bytes, bitmap
    bytes, next handler `0x10e68`, and the composed-row digest. Fixture `even-span
-   downloaded glyph rule raster FF publication renders
-   page record` carries the same bucket `5` raster+glyph chain and selector-7 rule
-   through `0xff1e`, then renders the published pool record with digest
+   downloaded glyph rule raster FF publication renders page record` carries the same
+   bucket `5` raster+glyph chain and selector-7 rule through `0xff1e`, then renders the
+   published pool record with digest
    `84762454e8bba9ce22aa5922b598fc5aed7c3ef9dfe9e55223a178c567f612d3`. What remains is
    stronger live-68000 register/memory capture of the same already-fixture-backed state.
-   The primary built-in case proves `ESC
-   (s0p10h12v0s0b3T!!` through parsed selection handlers, selected context `0xc008004c`,
-   printable `0xd04a` entries, object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68
-   02`, render-record context slot `0xc008004c`, and final Courier glyph rows. The
-   secondary case proves `ESC )s0p16h8v0s0b0T SO !!` through selected context
-   `0xc00ae122`, SO handler `0xc6b8`, object prefix `00 00 00 00 00 01 00 02 00 c9 00 00
-   cb 01`, render-record context slots `(0xc008004c, 0xc00ae122)`, and final secondary
-   Line Printer rows. The primary fallback case proves `ESC (1234U ESC
-   (s0p10h12v0s0b3T!!`: requested word `0x9a55` misses in `0x156de`, fallback word
-   `0x0115` survives, and the final selected context, map, object prefix, context slot,
-   and rows match the primary case. The remembered-primary case proves the middle source
-   between requested and fallback: with requested word `0x9a55` and remembered word
-   `0x0115`, fixture `remembered primary symbol feeds visible page-record rows` takes
-   the `0x156de` remembered branch, selects context `0xc008004c`, rebuilds map
-   `0x782f32`, queues object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and
-   renders digest `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
-   The secondary fallback case proves `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`: requested
-   word `0x9a55` misses in `0x156de`, fallback word `0x000e` survives, and the final
-   selected context, map, object prefix, context slots, and rows match the secondary SO
-   case. The primary RAM handoff case proves seeded `0x782ee6 = 0xc008004c` through SI
-   `0xc68a`, `0xc428(0)`, `0xc4fc`, page-root slot `0`, and following `!!` visible rows
-   on an existing root. The secondary RAM handoff case proves seeded `0x782ef6 =
-   0xc00ae122` through SO `0xc6b8`, `0xc428(1)`, `0xc4fc`, page-root slot `1`, and
-   following `!!` visible rows on an existing root. The composed handoff cases prove
-   `ESC (s0p10h12v0s0b3T SI !!` and `ESC )s0p16h8v0s0b0T SO !!` from host-fetched
-   selection bytes to selected current-font RAM, page-root slot install, and rows
-   matching the pinned visible fixtures. The inline cases prove `ESC (s0p10h12v0s0b3T!!`
-   and `ESC )s0p16h8v0s0b0T SO !!` in one mixed-stream state from selection handlers to
-   printable source capture, HMI, object prefix, bridge context slots, and rows. The
-   non-Roman symbol cluster is now part of the visible-output suite too: fixture `live
-   parser symbol-set streams select non-Roman built-ins` proves primary `ESC (0N`, `ESC
-   (10U`, and `ESC (11U` through parser handlers `0x11eb6`, `0x1201e`, and `0x120be`,
+   The primary built-in case proves `ESC (s0p10h12v0s0b3T!!` through parsed selection
+   handlers, selected context `0xc008004c`, printable `0xd04a` entries, object prefix
+   `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record context slot `0xc008004c`,
+   and final Courier glyph rows. The secondary case proves `ESC )s0p16h8v0s0b0T SO !!`
+   through selected context `0xc00ae122`, SO handler `0xc6b8`, object prefix `00 00 00
+   00 00 01 00 02 00 c9 00 00 cb 01`, render-record context slots `(0xc008004c,
+   0xc00ae122)`, and final secondary Line Printer rows. The primary fallback case proves
+   `ESC (1234U ESC (s0p10h12v0s0b3T!!`: requested word `0x9a55` misses in `0x156de`,
+   fallback word `0x0115` survives, and the final selected context, map, object prefix,
+   context slot, and rows match the primary case. The remembered-primary case proves the
+   middle source between requested and fallback: with requested word `0x9a55` and
+   remembered word `0x0115`, fixture `remembered primary symbol feeds visible
+   page-record rows` takes the `0x156de` remembered branch, selects context
+   `0xc008004c`, rebuilds map `0x782f32`, queues object prefix `00 00 00 00 00 00 00 02
+   00 6a 00 00 68 02`, and renders digest
+   `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`. The secondary
+   fallback case proves `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`: requested word `0x9a55`
+   misses in `0x156de`, fallback word `0x000e` survives, and the final selected context,
+   map, object prefix, context slots, and rows match the secondary SO case. The primary
+   RAM handoff case proves seeded `0x782ee6 = 0xc008004c` through SI `0xc68a`,
+   `0xc428(0)`, `0xc4fc`, page-root slot `0`, and following `!!` visible rows on an
+   existing root. The secondary RAM handoff case proves seeded `0x782ef6 = 0xc00ae122`
+   through SO `0xc6b8`, `0xc428(1)`, `0xc4fc`, page-root slot `1`, and following `!!`
+   visible rows on an existing root. The composed handoff cases prove `ESC
+   (s0p10h12v0s0b3T SI !!` and `ESC )s0p16h8v0s0b0T SO !!` from host-fetched selection
+   bytes to selected current-font RAM, page-root slot install, and rows matching the
+   pinned visible fixtures. The inline cases prove `ESC (s0p10h12v0s0b3T!!` and `ESC
+   )s0p16h8v0s0b0T SO !!` in one mixed-stream state from selection handlers to printable
+   source capture, HMI, object prefix, bridge context slots, and rows. The non-Roman
+   symbol cluster is now part of the visible-output suite too: fixture `live parser
+   symbol-set streams select non-Roman built-ins` proves primary `ESC (0N`, `ESC (10U`,
+   and `ESC (11U` through parser handlers `0x11eb6`, `0x1201e`, and `0x120be`,
    selected-font refresh, record choices `0x000cb8`, `0x000418`, and `0x000868`, and map
    rebuild path `selected-symbol-not-roman8`. Fixture `non-Roman symbol streams select
    visible built-ins` then carries primary `0N`/`10U`/`11U` streams through matching
@@ -893,6 +893,11 @@ The next work should follow dataflow, not isolated handlers:
    page-record rows` covers that final-`X` stream: host-fetched `ESC (7X!!` reaches
    `0x120be`, selects context `0xc0089fb0` through `0x17708`, and renders row digest
    `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`. Fixture `font-ID
+   secondary built-in selection feeds visible SO page-record rows` covers the class-one
+   built-in final-`X` sibling: host-fetched `ESC )8X SO !!` reaches `0x120be`, selects
+   context `0xc00ae122` through `0x17708`, reuses page-root slot `1` through `0xc4fc`,
+   crosses SO `0xc6b8`, and renders row digest
+   `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`. Fixture `font-ID
    inline/downloaded selection feeds visible page-record rows` covers the parallel
    bit-30-clear final-`X` stream: host-fetched `ESC )4660X SO !` reaches `0x120be`,
    selects context `0x00000100` through `0x17708`, crosses SO `0xc6b8`, and renders row
@@ -1022,15 +1027,15 @@ The next work should follow dataflow, not isolated handlers:
    `0x15d0a descriptor grammar exits and handler matrix` covers early drains and all
    four current-record/continuation by bit-30 polarities, while fixture `0x16b1a
    descriptor width helper emits only mode 1/2` covers the accepted helper-table
-   mode-byte writer and invalid-width no-write branch. The sampled nonzero-high-byte
-   row publication boundary is now classified rather than remaining generic:
-   `downloaded segmented-wide row-byte boundary truncates page-record segments` covers
-   span-`0x11` row words `0x0100`, `0x0101`, `0x0181`, `0x0182`, `0x01ff`, `0x0200`,
-   and `0x0201` through install, `0x12f2e`, `0xff1e`, and the first render split;
-   `host-fetched rows-0x102 downloaded glyph FF publication truncates page-record
-   rows` plus `downloaded glyph high-row truncation matrix preserves installed rows`
-   cover short span-`2` row words `0x0101..0x0103` through the same source-byte
-   truncation and identify the exact `0x1fe76` helper-table overflow boundary. Remaining
+   mode-byte writer and invalid-width no-write branch. The sampled nonzero-high-byte row
+   publication boundary is now classified rather than remaining generic: `downloaded
+   segmented-wide row-byte boundary truncates page-record segments` covers span-`0x11`
+   row words `0x0100`, `0x0101`, `0x0181`, `0x0182`, `0x01ff`, `0x0200`, and `0x0201`
+   through install, `0x12f2e`, `0xff1e`, and the first render split; `host-fetched
+   rows-0x102 downloaded glyph FF publication truncates page-record rows` plus
+   `downloaded glyph high-row truncation matrix preserves installed rows` cover short
+   span-`2` row words `0x0101..0x0103` through the same source-byte truncation and
+   identify the exact `0x1fe76` helper-table overflow boundary. Remaining
    downloaded-character publication work is therefore limited to pixel-row behavior
    beyond those wrapped source-byte helper-table boundaries, segmented-wide row/segment
    cross-products outside the sampled matrix, broader publication combinations, and
@@ -1039,6 +1044,6 @@ The next work should follow dataflow, not isolated handlers:
    segmented-wide, no-install, status-`2`, and payload-control cases. It is not the
    documented mode-byte-`0` visible recovery boundary. The publication-command
    checkpoint now covers host-fetched reset, FF, page-size, orientation, paper-source,
-   and copies streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`,
-   `0x1ef6a`, and final row comparison; reset, FF, page-size, orientation,
-   paper-source, and copies also have addressed allocation variants.
+   and copies streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`,
+   and final row comparison; reset, FF, page-size, orientation, paper-source, and copies
+   also have addressed allocation variants.

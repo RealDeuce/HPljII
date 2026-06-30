@@ -636,6 +636,14 @@ host-fetched `ESC (7X!!` reaches parser handlers `0x11eb6`, `0x1201e`, and
 `0x120be`, selects context `0xc0089fb0` through `0x17708`, queues compact
 object prefix `00 00 00 00 00 00 00 02 00 89 00 00 87 02`, and renders row
 digest `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
+Fixture `font-ID secondary built-in selection feeds visible SO page-record
+rows` carries the class-one bit-30 built-in sibling through visible output:
+host-fetched `ESC )8X SO !!` reaches parser handlers `0x11eb6`, `0x12008`,
+and `0x120be`, selects context `0xc00ae122` through `0x17708`, reuses
+page-root slot `1` through `0xc4fc`, crosses SO handler `0xc6b8`, queues
+compact object prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and
+renders row digest
+`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
 Fixture `font-ID inline/downloaded selection feeds visible page-record rows`
 now carries the bit-30-clear success path through visible output too:
 host-fetched `ESC )4660X SO !` reaches parser handlers `0x11eb6`, `0x12008`,
@@ -1091,13 +1099,13 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   boundary is exposed. `Built-In Font Selection To Visible Text` already
   covers primary and secondary built-in selection, primary/secondary
   symbol-miss fallback, non-Roman `0N` / `10U` / `11U` streams, final-`X`
-  built-in and inline/downloaded success, final-`X` non-selected exits,
-  final-`@` default-table streams, `0x13eb8` transient/cache-hit no-dispatch
-  exits, and the `0xc580` common-refresh branch cluster. New work should add
-  command combinations that exercise different `0x13eb8`, `0x156de`,
-  `0x17708`, or `0xc580` state transitions before visible output, not repeat
-  the already documented six non-Roman streams or the current final-`X` /
-  final-`@` cases.
+  primary built-in, secondary built-in, and inline/downloaded success,
+  final-`X` non-selected exits, final-`@` default-table streams, `0x13eb8`
+  transient/cache-hit no-dispatch exits, and the `0xc580` common-refresh
+  branch cluster. New work should add command combinations that exercise
+  different `0x13eb8`, `0x156de`, `0x17708`, or `0xc580` state transitions
+  before visible output, not repeat the already documented six non-Roman
+  streams or the current final-`X` / final-`@` cases.
 - Treat font metric producer behavior as regression expansion unless it
   exposes a new page-visible selected-font boundary. The metric formulas and
   producer/consumer cross-products are documented in

@@ -822,6 +822,8 @@ write through `0x15890` or `0x158be`, `0x1b2fe`, and `0x14c64`
 dispatch. Visible-output fixtures carry both selected forms farther:
 `font-ID built-in selection feeds visible page-record rows` renders
 `ESC (7X!!` from context `0xc0089fb0`, while
+`font-ID secondary built-in selection feeds visible SO page-record rows`
+renders `ESC )8X SO !!` from class-one context `0xc00ae122`, and
 `font-ID inline/downloaded selection feeds visible page-record rows`
 renders `ESC )4660X SO !` from synthetic inline/downloaded context
 `0x00000100`. A table-builder fixture now pins `0x1ac0a`
@@ -1255,6 +1257,7 @@ Fixtures:
 - `real default-table caller stream uses ROM-backed words`
 - `real final-@ default-table streams select visible built-ins`
 - `font-ID built-in selection feeds visible page-record rows`
+- `font-ID secondary built-in selection feeds visible SO page-record rows`
 - `font-ID inline/downloaded selection feeds visible page-record rows`
 - `0x17708 font-ID non-selected exits preserve prior selection`
 - `font-ID non-selected exits keep prior visible rows`

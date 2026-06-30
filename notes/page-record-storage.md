@@ -34,6 +34,11 @@ Primary fixtures:
 - `0x1381c stream allocator chunks display-list storage`
 - `0x1387c address-aware bucket allocation uses 0x1381c storage`
 - `0x1387c page-record bucket allocator links new head when full`
+- `0x1387c page-record bucket allocator reuses matching short object`
+- `0x1387c page-record unflagged short bucket object`
+- `0x1387c page-record segmented allocator places tall glyph buckets`
+- `0x1387c page-record segmented allocator reuses tall glyph buckets`
+- `0x1387c page-record queued short object renders reused entries`
 - `0x133aa address-aware rule-list insertion uses 0x1381c storage`
 - `0x133aa no-room return preserves rule-list head`
 - `0x136d2 address-aware fixed-list insertion uses 0x1381c storage`
@@ -42,6 +47,7 @@ Primary fixtures:
 - `addressed page-record writers share 0x1381c across chunk rollover`
 - `addressed text/rule/raster field groups reach publication and render entry`
 - `0x1edc6 page-record bridge copies compact bucket and context slots`
+- `0x1edc6 page-record bridge normalizes rule and fixed lists`
 - `0x1edc6 bridge records render-record destination offsets`
 - `0x1ed84 active page-record copy seeds render-record header words`
 
@@ -170,6 +176,17 @@ proves the shared stream state across producer families. `0x10084` seeds
 two chunks and publication preserves the bucket root before render entry
 dispatches all compact objects.
 
+The compact-bucket fixtures divide the shared `0x1387c` behavior into object
+shapes and reuse rules. Fixture `0x1387c page-record bucket allocator reuses
+matching short object` proves a matching short object is reused while count
+`+6` is below capacity. Fixture `0x1387c page-record unflagged short bucket
+object` pins the unflagged compact object shape. Fixtures `0x1387c page-record
+segmented allocator places tall glyph buckets` and `0x1387c page-record
+segmented allocator reuses tall glyph buckets` pin segmented/tall glyph
+placement and reuse. Fixture `0x1387c page-record queued short object renders
+reused entries` ties the reused short object to rendered rows, proving this is
+canonical page content and not only allocator bookkeeping.
+
 The no-room fixtures prove negative output behavior: if `0x1381c` returns zero
 inside `0x133aa`, root `+0x24` and existing rule nodes remain unchanged; if
 `0x1381c` returns zero inside `0x136d2`, root `+0x28` and existing fixed nodes
@@ -181,6 +198,12 @@ copies compact bucket and context slots` proves the compact bucket root and
 selected-font context slots survive into render-record fields. `0x1ed84 active
 page-record copy seeds render-record header words` proves the active-copy
 header words consumed before `0x1ef6a`.
+Fixture `0x1edc6 page-record bridge normalizes rule and fixed lists` proves
+the rule list `+0x24` and fixed list `+0x28` are copied to render-record
+`+0x1c` and `+0x20`, then normalized in place before rule/fixed dispatch.
+Fixture `0x1edc6 bridge records render-record destination offsets` classifies
+the copied destination offsets as derived bridge/cache state, not producer
+state.
 
 ## Reproduction Contract
 
@@ -191,6 +214,7 @@ A byte-stream renderer must preserve:
   meanings;
 - `0x1381c` chunk accounting and link behavior;
 - `0x1387c` bucket object reuse/new-head behavior;
+- short versus segmented compact bucket object shapes;
 - ordered rule/fixed-list insertion through `0x133aa` and `0x136d2`;
 - no-room returns that leave existing visible lists unchanged;
 - publication through `0xff1e` before commands such as reset, FF, page-size,

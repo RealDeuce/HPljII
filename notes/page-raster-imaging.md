@@ -1813,6 +1813,12 @@ Output effect:
   `0x0083` crossed with spans `17`, `18`, `31`, and `32` publish selector
   `0x3003` buckets `0` and `8`, dispatch segment `1` through `0x1f264`, and
   match selected segment rows to the installed bitmap.
+- Fixture `downloaded segmented-wide high-row fallback renders selected
+  segment` proves the first sampled higher-row fallback sibling: row word
+  `0x0181` at span `17` publishes selector `0x3003`, dispatches bucket `8`
+  segment `1` through `0x1f264`, splits through `0x1f414` into `32` current
+  rows and `96` fallback rows, and matches both row groups to the installed
+  bitmap.
 - Fixture `downloaded segmented-wide row-byte boundary truncates page-record
   segments` proves span-`0x11` downloaded glyphs keep canonical installed row
   words `0x0002`, `0x007f`, `0x0080`, `0x0081`, `0x0083`, `0x00fe`,
@@ -1881,6 +1887,7 @@ Fixture evidence:
 - `downloaded glyph width-byte boundary truncates page-record span`
 - `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
 - `downloaded segmented-wide row-span cross-products render selected segment`
+- `downloaded segmented-wide high-row fallback renders selected segment`
 - `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `downloaded glyph row-count matrix publishes and renders additional
   short/segmented counts`
@@ -1932,8 +1939,11 @@ Unresolved middle edges:
   now classifies the sampled row side: row words `0x0100`, `0x0101`, and
   `0x0181` survive in the installed glyph, but the current source row byte
   causes selector `0x1003`, `0x1003`, and `0x3003` with only segments `1` and
-  `0`; the first render splits for those sampled rows are also documented.
-  Remaining gaps are broader physical/full-row comparison for boundary cases
+  `0`; the first render splits for those sampled rows are also documented, and
+  `downloaded segmented-wide high-row fallback renders selected segment`
+  confirms the `0x0181`/span-17 bucket-8 segment renders `32` current rows and
+  `96` fallback rows matching the installed bitmap. Remaining gaps are broader
+  physical/full-row comparison for boundary cases
   and selected-font state combinations not represented in current visible
   fixtures.
 - `0x1fa5c..0x2feb0`: all sixteen main `0x1f08e` helper indexes now have

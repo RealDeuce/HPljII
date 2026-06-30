@@ -4926,6 +4926,15 @@ compact text renderer.
     segment `1`, `0x2f27c` full chunks, `0x1f1ac` remainders for nonzero
     spans, and no-remainder span `32`. The selected segment rows match the
     installed bitmap for all eight cases.
+  - downloaded-character segmented-wide high-row fallback: fixture
+    `downloaded segmented-wide high-row fallback renders selected segment`
+    installs row word `0x0181` at span `17` with split-plane mode `2`.
+    Canonical state is the full installed row word, width word `0x0088`, and
+    bitmap payload; derived page/render state is selector `0x3003`, buckets
+    `0` and `8`, selected segment `1`, row skip `0x80`, `0x2f27c`, and
+    `0x1f1ac[1]`. `0x1f414` splits the selected segment into `32` current
+    rows and `96` fallback rows, and both row groups match the installed
+    bitmap.
   - downloaded-character segmented-wide row-byte boundary: fixture
     `downloaded segmented-wide row-byte boundary truncates page-record
     segments` installs canonical row words `0x0002`, `0x007f`, `0x0080`,
@@ -5190,7 +5199,11 @@ segmented-wide row-span cross-products render selected segment` adds row words `
 and `0x0083` crossed with spans `17`, `18`, `31`, and `32`; all eight cases install and
 publish selector `0x3003` buckets `0` and `8`, dispatch segment `1` through `0x1f264`,
 keep the full-success zero-drain return boundary, and match selected segment rows to the
-installed bitmap. Fixture `downloaded glyph
+installed bitmap. Fixture `downloaded segmented-wide high-row fallback renders selected
+segment` adds high-row word `0x0181` at span `17`; the same parser/install/publication
+path dispatches bucket `8` segment `1` through `0x1f264`, and the `0x1f414` split
+produces `32` current rows plus `96` fallback rows that both match the installed bitmap.
+Fixture `downloaded glyph
 row-count matrix publishes and renders additional short/segmented counts` adds two
 hundred fifty row-count siblings through the same fetched install, printable,
 FF-publication, and render-entry chain. Short rows `0x0001..0x001f`, `0x0021..0x003f`,
@@ -6146,7 +6159,11 @@ metadata and row equivalence. High for segmented-wide row/span cross-products be
 fixture `downloaded segmented-wide row-span cross-products render selected segment`
 asserts row words `0x0082` and `0x0083` crossed with spans `17`, `18`, `31`, and `32`,
 selected segment `1`, zero-drain returns, bucket-8 publication, `0x1f264` dispatch, and
-selected segment rows matching the installed bitmap. High for
+selected segment rows matching the installed bitmap. High for high-row segmented-wide
+fallback at the sampled boundary because fixture `downloaded segmented-wide high-row
+fallback renders selected segment` asserts row word `0x0181`, span `17`, selected
+segment `1`, `0x1f414` split `32/96`, and current plus fallback rows matching the
+installed bitmap. High for
 publication-to-scheduler band progression because `0xff1e` disassembly at `0xffc8`
 clears root `+0x18`, `0x1ed84` copies that word into render `+0x10/+0x16`, and fixture
 `0x1eba4 scheduler band words render published downloaded glyph` proves `0x1eba4` emits
@@ -6318,6 +6335,9 @@ fields and broader selected-font state combinations have not been page-compared.
   `downloaded segmented-wide row-span cross-products render selected segment`
   covers rows `0x0082` and `0x0083` crossed with spans `17`, `18`, `31`, and
   `32` through the same selected segment `1` render path. Fixture
+  `downloaded segmented-wide high-row fallback renders selected segment`
+  covers row `0x0181`, span `17`, segment `1`, and its `32/96`
+  current/fallback row split through the same selected render path. Fixture
   `0x16498 replacement allocation failure
   partial and rejected downloaded character exits preserve state` covers old-pointer
   release through `0x17a24`, object allocation failure through

@@ -1072,9 +1072,12 @@ The next work should follow dataflow, not isolated handlers:
    segmented-wide row-span cross-products render selected segment` now covers
    segmented-wide rows `0x0082` and `0x0083` crossed with spans `17`, `18`, `31`, and
    `32` through selected segment `1`, bucket `8`, `0x1f264`, and installed-bitmap row
-   comparison. Remaining downloaded-character publication work is therefore limited to
-   pixel-row behavior beyond wrapped source-byte helper-table boundaries, higher-row
-   segmented-wide fallback behavior outside the row-`0x0082`/`0x0083` matrix, broader
+   comparison. Fixture `downloaded segmented-wide high-row fallback renders selected
+   segment` now covers the first sampled higher-row fallback case, row `0x0181` at span
+   `17`, through segment `1`, bucket `8`, `0x1f264`, a `32/96` current/fallback split,
+   and installed-bitmap row comparison. Remaining downloaded-character publication work
+   is therefore limited to pixel-row behavior beyond wrapped source-byte helper-table
+   boundaries, broader higher-row segmented-wide fallback combinations, broader
    publication combinations, and full-success return-boundary siblings outside the named
    row-count, wide-remainder, segmented-wide, normal, row-`0x80`, linear-segmented,
    split-plane segmented, segmented-wide, no-install, status-`2`, and payload-control

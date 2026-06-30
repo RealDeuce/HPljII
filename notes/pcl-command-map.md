@@ -611,10 +611,13 @@ visible output: the transient path stages `0xc008004c` but following `!!`
 renders from prior context `0xc0089fb0`, while the secondary cache-hit path
 crosses SO and renders from prior context `0xc40ad87a`.
 
-Primary and secondary font-designation commands use the same parser
+Primary and secondary font-designation commands use the normal parser
 shape. `ESC (` calls setup `0x1201e`, which pushes slot word `0`;
 `ESC )` calls setup `0x12008`, which pushes slot word `1`; final bytes
-`@` through `^` dispatch to `0x120be`. That wrapper calls `0x1be22`,
+`@` through `^` dispatch to `0x120be`. In alternate/data mode, table entries
+`0x11fe4` and `0x11fd2` only call generic setup `0x11ec8` and then tokenize
+through `0xdaf0`; they do not append the synthetic primary/secondary slot
+record before tokenization. The normal terminal wrapper calls `0x1be22`,
 which computes the provisional PCL symbol word as
 `(parameter << 5) + final_byte - 0x40` and stores it at
 `0x782ef4 + 0x10*slot`. Normal symbol-set finals keep that word and call

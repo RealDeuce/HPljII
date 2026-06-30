@@ -1140,9 +1140,12 @@ payload consumption.
   calls to `0x121cc(0x1228a)`.
 - Derived parser records:
   - `0x11efe` appends a synthetic record byte `0x80` with word `1` for
-    secondary `ESC )` font-designation parsing.
+    secondary `ESC )` font-designation parsing in normal parser mode.
   - `0x11f26` appends a synthetic record byte `0x80` with word `0` for
-    primary `ESC (` font-designation parsing.
+    primary `ESC (` font-designation parsing in normal parser mode.
+  - alternate/data wrappers `0x11fd2` for `ESC )` and `0x11fe4` for `ESC (`
+    call generic setup `0x11ec8` and tokenize through `0xdaf0` without first
+    appending the `0x11efe` / `0x11f26` synthetic slot record.
   - `0x11f4c` rewinds `0x78299e` by six for lowercase chaining finals.
 - Unknown:
   - no unresolved parser-record fields remain in this checkpoint. Remaining
@@ -1157,7 +1160,10 @@ payload consumption.
 - `0x11ea4`, `0x11eb6`, `0x11ec8`, `0x11eda`, and `0x11eec` write the active
   callback helper pointer at `0x78299a`.
 - `0x11efe` and `0x11f26` append synthetic primary/secondary selector records
-  before `ESC )` and `ESC (` command-family tokenization.
+  before normal-mode `ESC )` and `ESC (` command-family tokenization.
+- `0x11fd2` and `0x11fe4` are the alternate/data `ESC )` / `ESC (` wrappers:
+  they call `0x11ec8` and then `0xdaf0`, so alternate/data tokenization does
+  not get the normal synthetic slot record.
 - `0x11f4c` rewinds `0x78299e` for lowercase chaining finals.
 - `0x11774` initializes parser state, dispatches by normal or alternate/data
   parser tables, writes parser mode transitions, and triggers `0x12218` when a

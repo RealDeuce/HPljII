@@ -245,6 +245,10 @@ Setup handlers:
 - `0x11f26`: appends a synthetic six-byte record with byte `0x80` and word
   `0`; normal parser `ESC (` uses this to mark the primary font-designation
   side before tokenization.
+- `0x11fd2` and `0x11fe4`: alternate/data parser `ESC )` / `ESC (` wrappers.
+  They call `0x11ec8` and then tokenize through `0xdaf0`; unlike normal
+  wrappers `0x12008` and `0x1201e`, they do not append the synthetic slot
+  record first.
 - `0x11f4c`: rewinds `0x78299e` by six for lowercase chaining finals.
 
 Evidence:

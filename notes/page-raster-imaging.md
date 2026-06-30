@@ -1748,10 +1748,12 @@ Output effect:
   font-selection tails into visible compact rows: the primary tail renders
   from context `0xc0080cb8`, and the secondary tail renders from context
   `0xc00ad4aa` after SO.
-- Fixtures `font-ID built-in selection feeds visible page-record rows` and
-  `font-ID inline/downloaded selection feeds visible page-record rows` prove
-  final-`X` font-ID selection reaches compact output for both the bit-30
-  built-in path and the bit-30-clear inline/downloaded path.
+- Fixtures `font-ID built-in selection feeds visible page-record rows`,
+  `font-ID primary inline/downloaded selection feeds visible page-record rows`,
+  and `font-ID inline/downloaded selection feeds visible page-record rows`
+  prove final-`X` font-ID selection reaches compact output for the bit-30
+  built-in path and both primary/secondary bit-30-clear inline/downloaded
+  paths.
 - Fixtures `font-ID non-selected exits keep prior visible rows` and
   `font-ID secondary non-selected exits keep prior SO visible rows` prove the
   corresponding final-`X` helper exits preserve prior primary/secondary
@@ -1896,6 +1898,7 @@ Fixture evidence:
 - `non-Roman symbol streams select visible built-ins`
 - `real final-@ default-table streams select visible built-ins`
 - `font-ID built-in selection feeds visible page-record rows`
+- `font-ID primary inline/downloaded selection feeds visible page-record rows`
 - `font-ID inline/downloaded selection feeds visible page-record rows`
 - `font-ID non-selected exits keep prior visible rows`
 - `font-ID secondary non-selected exits keep prior SO visible rows`

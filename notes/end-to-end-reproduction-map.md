@@ -948,12 +948,17 @@ The next work should follow dataflow, not isolated handlers:
    selects context `0xc00ae122` through `0x17708`, reuses page-root slot `1` through
    `0xc4fc`, crosses SO `0xc6b8`, and renders row digest
    `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`. Fixture `font-ID
-   inline/downloaded selection feeds visible page-record rows` covers the parallel
-   bit-30-clear final-`X` stream: host-fetched `ESC )4660X SO !` reaches `0x120be`,
-   selects context `0x00000100` through `0x17708`, crosses SO `0xc6b8`, and renders row
-   digest `e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`. Fixture
-   `0x17708 font-ID non-selected exits preserve prior selection` covers the direct
-   final-`X` helper exits for scan miss, candidate-slot miss, class mismatch, and
+   primary inline/downloaded selection feeds visible page-record rows` covers the
+   primary bit-30-clear final-`X` stream: host-fetched `ESC (4660X!` reaches `0x120be`,
+   selects context `0x00000100` through `0x17708`, reuses page-root slot `0`, queues
+   object prefix `00 00 00 00 00 00 00 01 01 66 01 00 00 00`, and renders row digest
+   `e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`. Fixture `font-ID
+   inline/downloaded selection feeds visible page-record rows` covers the secondary
+   sibling: host-fetched `ESC )4660X SO !` reaches `0x120be`, selects the same context
+   through `0x17708`, reuses page-root slot `1`, crosses SO `0xc6b8`, queues object
+   prefix `00 00 00 00 00 01 00 01 01 66 01 00 00 00`, and renders the same row digest.
+   Fixture `0x17708 font-ID non-selected exits preserve prior selection` covers the
+   direct final-`X` helper exits for scan miss, candidate-slot miss, class mismatch, and
    context-full through the exact `0x17708` terminal status, with no `0x14c64` map
    dispatch. Fixture `font-ID non-selected exits keep prior visible rows` appends the
    same host-fetched `ESC (7X!!` printable tail to those preserved-state outcomes:

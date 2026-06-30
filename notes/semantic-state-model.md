@@ -3377,13 +3377,20 @@ and the printable `!!` tail queues object
 `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01` with rendered-row digest
 `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
 Fixture `font-ID inline/downloaded selection feeds visible page-record rows`
-carries the bit-30-clear final-`X` success path through visible output:
-host-fetched `ESC )4660X SO !` routes through parser handlers `0x11eb6`,
-`0x12008`, and `0x120be`, `0x17708` selects candidate pointer `0x782900` /
-context `0x00000100`, `0x14c64` rebuilds secondary map `0x783032`, SO handler
-`0xc6b8` leaves secondary selected, and printable `!` queues object
-`00 00 00 00 00 01 00 01 01 66 01 00 00 00` with rendered-row digest
-`e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`.
+carries the secondary bit-30-clear final-`X` success path through visible
+output: host-fetched `ESC )4660X SO !` routes through parser handlers
+`0x11eb6`, `0x12008`, and `0x120be`, `0x17708` selects candidate pointer
+`0x782900` / context `0x00000100`, `0x14c64` rebuilds secondary map
+`0x783032`, SO handler `0xc6b8` leaves secondary selected, and printable `!`
+queues object `00 00 00 00 00 01 00 01 01 66 01 00 00 00` with rendered-row
+digest `e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`.
+Fixture `font-ID primary inline/downloaded selection feeds visible page-record
+rows` covers the slot-0 sibling: host-fetched `ESC (4660X!` routes through
+`0x11eb6`, `0x1201e`, and `0x120be`; `0x17708` selects the same candidate
+pointer `0x782900` / context `0x00000100`, reuses page-root slot `0` through
+`0xc4fc`, rebuilds primary map `0x782f32`, and the following printable `!`
+queues object `00 00 00 00 00 00 00 01 01 66 01 00 00 00` with the same
+rendered-row digest.
 Fixture `0x17708 font-ID non-selected exits preserve prior selection` covers
 the helper exits that deliberately stop before map dispatch: record scan miss,
 candidate-slot miss, class mismatch, and full page-root context table. These
@@ -3519,6 +3526,9 @@ selector mismatch only copies the remembered word and installs no context.
     `ESC (7X` routes through `0x120be`, preserves the previous requested
     symbol word, writes transient current font ID `7` through `0x782f2e`, and
     calls `0x17708`.
+  - primary inline/downloaded final-`X` font-ID request:
+    `ESC (4660X` routes through `0x120be`, stores transient current font ID
+    `0x1234` through `0x782f2e`, and calls `0x17708` for slot `0`.
   - secondary inline/downloaded final-`X` font-ID request:
     `ESC )4660X` routes through `0x120be`, stores transient current font ID
     `0x1234` through `0x782f2e`, and calls `0x17708` for slot `1`.
@@ -3572,7 +3582,11 @@ selector mismatch only copies the remembered word and installs no context.
   - final-`X` inline/downloaded selected context:
     synthetic context `0x00000100`, selected candidate pointer `0x782900`,
     selected word `0x0115` from inline word `+0x14`, class byte `+0x16 = 0`,
-    and selected flag byte `+0x0e = 1`.
+    and selected flag byte `+0x0e = 1`. The primary final-`X` path writes
+    active word register `0x783144`, rebuilds map `0x782f32`, and reuses
+    page-root slot `0`; the secondary final-`X` path writes active word
+    register `0x783146`, rebuilds map `0x783032`, and reuses page-root slot
+    `1`.
   - non-Roman primary selected longwords `0xc0080cb8`, `0xc4080418`, and
     `0xc4080868` for records `0x000cb8`, `0x000418`, and `0x000868`.
   - non-Roman secondary selected longwords `0xc00ae122`, `0xc40ad87a`, and
@@ -3624,6 +3638,14 @@ selector mismatch only copies the remembered word and installs no context.
     `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, with render-record context
     slot `0xc008004c` and row digest
     `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
+  - final-`X` primary inline/downloaded compact prefix:
+    `00 00 00 00 00 00 00 01 01 66 01 00 00 00`, with render-record context
+    slot `0x00000100` and row digest
+    `e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`.
+  - final-`X` secondary inline/downloaded compact prefix:
+    `00 00 00 00 00 01 00 01 01 66 01 00 00 00`, with render-record context
+    slot `0x00000100` and row digest
+    `e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`.
   - final-`X` secondary non-selected preserved-output compact prefix:
     `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`, with render-record secondary
     context slot `0xc40ad87a` and row digest
@@ -3759,9 +3781,13 @@ selector mismatch only copies the remembered word and installs no context.
     requested symbol word.
   - final-`X` visible stream `ESC (7X!!` ties that parser/helper boundary to
     selected context `0xc0089fb0` and two following `0xd04a` printable events.
-  - final-`X` inline/downloaded visible stream `ESC )4660X SO !` ties the
-    secondary parser/helper boundary to selected context `0x00000100`, SO
-    handler `0xc6b8`, and one following `0xd04a` printable event.
+  - final-`X` primary inline/downloaded visible stream `ESC (4660X!` ties the
+    primary parser/helper boundary to selected context `0x00000100` and one
+    following `0xd04a` printable event.
+  - final-`X` secondary inline/downloaded visible stream `ESC )4660X SO !`
+    ties the secondary parser/helper boundary to selected context
+    `0x00000100`, SO handler `0xc6b8`, and one following `0xd04a` printable
+    event.
   - direct final-`X` error-state fixture cases use the same `0x17708` helper
     boundary and now append a following printable tail: no matching `0x172c0`
     record, no matching `0x1b4c0` candidate slot, class mismatch at `+0x20`,
@@ -3953,12 +3979,18 @@ selector mismatch only copies the remembered word and installs no context.
   visible SO page-record rows` proves `0x17708` selects context `0xc00ae122`
   through candidate slot `0x782350`, `0x1393a` consumes that context after SO,
   maps host byte `0x21` to glyph `0x00`, and emits glyph entry `0x02e4f6`.
-- Final-`X` inline/downloaded selection affects the secondary unflagged source
-  path before later printable bytes. Fixture
+- Final-`X` inline/downloaded selection affects both unflagged source paths
+  before later printable bytes. Fixture
+  `font-ID primary inline/downloaded selection feeds visible page-record rows`
+  proves the primary `ESC (4660X!` path: `0x17708` selects context
+  `0x00000100`, `0xc4fc` reuses page-root slot `0`, and `0x1393a` consumes
+  that context through map `0x782f32`. Fixture
   `font-ID inline/downloaded selection feeds visible page-record rows` proves
-  `0x1393a` consumes context `0x00000100`, maps host byte `0x21` to glyph
-  `0x01`, reads inline glyph record `02 03 04 00 00 00 00 80`, and emits
-  glyph entry `0x00000148`.
+  the secondary `ESC )4660X SO !` sibling: `0x17708` selects the same context,
+  `0xc4fc` reuses page-root slot `1`, SO `0xc6b8` selects the secondary
+  source, and `0x1393a` consumes it through map `0x783032`. Both fixtures map
+  host byte `0x21` to glyph `0x01`, read inline glyph record
+  `02 03 04 00 00 00 00 80`, and emit glyph entry `0x00000148`.
 - Final-`X` non-selected exits do not produce a new consumer context. Fixture
   `0x17708 font-ID non-selected exits preserve prior selection` proves the
   helper stops before `0x14c64`, and fixture
@@ -4088,13 +4120,16 @@ class-mismatch, or context-full, no new map dispatch occurs; the following
 `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and renders row digest
 `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
 
-The final-`X` inline/downloaded visible fixture renders a synthetic secondary
-inline/downloaded record selected by font ID. Host-fetched `ESC )4660X SO !`
-selects context `0x00000100`, maps `!` to glyph `0x01`, positions the
-unflagged source at `(22,22)`, queues compact object prefix
-`00 00 00 00 00 01 00 01 01 66 01 00 00 00`, leaves final cursor x `40`, and
+The final-`X` inline/downloaded visible fixtures render a synthetic unflagged
+record selected by font ID in both slots. Host-fetched `ESC (4660X!` selects
+context `0x00000100`, maps `!` to glyph `0x01`, positions the unflagged source
+at `(22,22)`, queues compact object prefix
+`00 00 00 00 00 00 00 01 01 66 01 00 00 00`, leaves final cursor x `40`, and
 renders row digest
-`e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`.
+`e0c6cbbf133aaaf522868ef7f28856f06b0d54b4dd9368a090fe7c85e7b1d563`. The
+secondary sibling `ESC )4660X SO !` crosses SO first, queues compact object
+prefix `00 00 00 00 00 01 00 01 01 66 01 00 00 00`, and renders the same row
+digest.
 
 The `0x13eb8` no-dispatch visible fixture renders the prior font state. The
 transient path prepares `0x782992 = 0xc008004c` for a page-root refresh without
@@ -4131,11 +4166,13 @@ High for secondary final-`X` built-in visible output because fixture
 composes host-fetched bytes, ROM parser handlers, the class-one `0x17708`
 helper path, selected context `0xc00ae122`, SO, printable source capture,
 object prefix, bridge context slots, and rendered row digest.
-High for final-`X` inline/downloaded visible output because fixture
-`font-ID inline/downloaded selection feeds visible page-record rows` composes
-host-fetched bytes, ROM parser handlers, the bit-30-clear `0x17708` helper
-path, selected inline context, SO, unflagged printable source capture, object
-prefix, bridge context slots, and rendered row digest.
+High for final-`X` inline/downloaded visible output because fixtures
+`font-ID primary inline/downloaded selection feeds visible page-record rows`
+and `font-ID inline/downloaded selection feeds visible page-record rows`
+compose host-fetched bytes, ROM parser handlers, the bit-30-clear `0x17708`
+helper path, selected inline context, page-root slots `0` and `1`, optional
+SO, unflagged printable source capture, object prefixes, bridge context slots,
+and rendered row digest.
 High for the `0x13eb8` transient and cache-hit no-dispatch exits because
 fixture `0x13eb8 transient and cache-hit exits avoid dispatch` pins call
 lists, selected context cache, saved active word restoration, absence of
@@ -4190,6 +4227,7 @@ install events.
 - `symbol-set parser trace covers X and @ special cases`
 - `font-ID built-in selection feeds visible page-record rows`
 - `font-ID secondary built-in selection feeds visible SO page-record rows`
+- `font-ID primary inline/downloaded selection feeds visible page-record rows`
 - `font-ID inline/downloaded selection feeds visible page-record rows`
 - `0x17708 font-ID non-selected exits preserve prior selection`
 - `font-ID non-selected exits keep prior visible rows`
@@ -4247,7 +4285,13 @@ install events.
   parser-selection-to-visible fixtures cover
   `ESC (s0p10h12v0s0b3T SI !!` and `ESC )s0p16h8v0s0b0T SO !!`. The inline
   fixtures now cover the primary and secondary no-root visible streams in one
-  mixed-stream state.
+  mixed-stream state, while fixtures
+  `font-ID primary inline/downloaded selection feeds visible page-record rows`
+  and `font-ID inline/downloaded selection feeds visible page-record rows`
+  close the bit-30-clear final-`X` paths from `ESC (4660X!` and
+  `ESC )4660X SO !` through `0x120be..0x17708..0x14c64..0xd04a`. Remaining
+  risk is broader command combinations that dirty or reuse those selected RAM
+  fields before the printable consumer.
 - Other primary/secondary font-selection combinations and fallback/error
   branches still need the same visible-output treatment; the exact covered
   remembered/fallback boundaries are `ESC (1234U ESC (s0p10h12v0s0b3T!!`

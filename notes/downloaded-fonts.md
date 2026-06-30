@@ -287,15 +287,20 @@ Published page-record state:
 - Firmware bookkeeping: `0xff1e` clears the current page root and sets the
   publication flag after copying the record.
 - Unknown for this checkpoint: downloaded-glyph publication cross-products outside the
-  documented normal bucket-1, rows-`0x01`/`0x04`/`0x20`/`0x40`/`0x7f` short bucket-1,
-  row-`0x80` short bucket-1, rows-`0x0101..0x0103` low-byte-truncated bucket-1
-  publication, linear-segmented bucket-9, rows-`0x82`/`0x83`/`0x84`/`0xfe`/`0xff`
-  segmented bucket-1/bucket-9, split-plane segmented bucket-9, segmented-wide
-  bucket-1/bucket-9, even-span wide bucket-1, and payload-control odd-span wide bucket-1
-  streams. The remaining row-count risk is no longer the `0x80`/`0x81` selector boundary
-  itself or the newly covered short/segmented matrix; it is row counts outside those
-  sampled selector-family fixtures, broader publication cross-products, and live CPU
-  continuity for full-success return siblings outside the pinned normal even-span,
+  documented selector families. Fixture `downloaded glyph row-count matrix publishes and
+  renders additional short/segmented counts` closes parser-produced row words
+  `0x0001..0x00ff` for the short selector `0x0003` and segmented selector `0x2003`;
+  fixtures `host-fetched rows-0x20 short downloaded glyph FF publication renders page
+  record`, `host-fetched rows-0x40 short downloaded glyph FF publication renders page
+  record`, `host-fetched row-0x80 downloaded character remains short compact`,
+  `host-fetched segmented downloaded character renders through 0x1f1f0`, and
+  `host-fetched rows-0x82 segmented downloaded glyph FF publication renders page record`
+  cover the omitted threshold rows. The remaining row-count risk is therefore not the
+  `0x80`/`0x81` selector boundary or the short/segmented row-count matrix; it is row
+  words above `0x00ff` that cross the one-byte printable source-row field, plus broader
+  publication cross-products that combine those row words with split-plane, wide,
+  segmented-wide, and payload-control selector families. Live CPU continuity also
+  remains for full-success return siblings outside the pinned normal even-span,
   no-install, status-`2`, row-count-matrix, linear-segmented publication, split-plane
   segmented publication, segmented-wide, and payload-control publication return
   fixtures. Accepted descriptor-record mode bytes are no longer a vague open edge for
@@ -2221,9 +2226,9 @@ A byte-stream renderer must preserve:
   `0x12328` drains before handler `0xd04a`; fixture `0x16498 status-2 partial installs
   remain printable` pins the linear/split status-`2` zero-drain returns before handler
   `0xd04a`; fixture `downloaded glyph row-count matrix publishes and renders additional
-  short/segmented counts` pins rows `0x01`, `0x02`, `0x03`, `0x04`, `0x08`, `0x3f`,
-  `0x41`, `0x7f`, `0x83`, `0x84`, `0x85`, `0xc0`, `0xfd`, `0xfe`, and `0xff` zero-drain
-  returns before handler `0xd04a`; fixture `downloaded glyph wide-remainder matrix
+  short/segmented counts` pins short rows `0x0001..0x001f`, `0x0021..0x003f`, and
+  `0x0041..0x007f`, plus segmented rows `0x0083..0x00ff`, through zero-drain returns
+  before handler `0xd04a`; fixture `downloaded glyph wide-remainder matrix
   publishes and renders compact chunks` pins spans `17..32`, selector `0x1003`, object
   byte `0x10`, compact target `0x1effe` / `0x1f0d2`, remainders `1..15`, and the
   no-remainder span-`32` case through the same zero-drain return boundary, and probes

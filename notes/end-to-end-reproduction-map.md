@@ -238,6 +238,11 @@ the board-facing boundary is tracked in
   ROM evidence is `0x1ed84`, `0x1edc6`, and `0x1ef86`.
   Reproduction evidence is `generated/analysis/ic30_ic13_page_record_bridge.md`
   and published-record render-entry fixtures.
+- Active render scheduler:
+  ROM evidence is `0x1eb2a`, `0x1ecd6`, `0x1ed84`, and `0x1eba4`.
+  Reproduction evidence is
+  [active-render-scheduler.md](active-render-scheduler.md) plus
+  scheduler-produced band-word fixtures.
 - Render dispatch:
   ROM evidence is `0x1ef6a`, `0x1efc2`, `0x1f446`, `0x1f756`,
   `0x1f812`, and `0x1f88e`.

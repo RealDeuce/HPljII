@@ -11313,6 +11313,10 @@ results rather than executing the full heap and page scheduler.
 
 ## Published Record To Active Render Scheduler
 
+The standalone scheduler contract is in
+[active-render-scheduler.md](active-render-scheduler.md). This section
+preserves the detailed low-level ledger and fixture evidence.
+
 Status: anchored as a composition checkpoint from a published
 page/control record to the active render-entry path. This checkpoint does
 not claim full engine pacing; it pins the state handoff that selects the

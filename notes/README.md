@@ -76,6 +76,9 @@ compatibility boundary.
 - [page-record-storage.md](page-record-storage.md) - documented page-root,
   stream allocator, object-list, publication, and render-record bridge
   contracts.
+- [active-render-scheduler.md](active-render-scheduler.md) - documented
+  published-record selection, render-work alternation, wait-object state, and
+  band-render scheduler contracts.
 - [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) -
   top-level host-byte-to-rendered-pixel coverage map and remaining
   reproduction blockers.

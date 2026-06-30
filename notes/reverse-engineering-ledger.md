@@ -625,30 +625,27 @@ publication, and segmented-wide publication zero-drain cases plus the payload-co
 wide nonzero-drain case, broader publication combinations beyond the covered normal,
 nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented, rows-`0x20` short,
 rows-`0x40` short, row-count-matrix short rows `0x01..0x1f`, `0x21..0x3f`, and
-`0x41..0x7f`, row-count-matrix segmented rows `0x83`, `0x84`, `0x85`, `0x86`,
-`0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and `0xff`, rows-`0x82` segmented, rows-`0x0102`
-low-byte-truncated publication, split-plane segmented, segmented-wide, even-span wide,
-payload-control wide, downloaded-character no-install, and status-`2` compact bucket
-variants, full live-parser raster edge cases, and final device-output page comparison.
-Downloaded-character no-install failures now publish the following default printable
-through trailing-FF `0xff1e`, while the status-`2` partial-install branch is carried
-through trailing-FF publication and published-record rendering for both linear and
-split-plane compact objects. The downloaded-glyph row-count matrix fixture adds fetched
-`ESC )s#W` install, printable, FF-publication, and render-entry coverage for short rows
-`0x01..0x1f`, `0x21..0x3f`, and `0x41..0x7f` on selector `0x0003`/bucket `1`,
-plus segmented rows `0x83`, `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`,
-`0xfe`, and `0xff` on selector `0x2003`/buckets `1` and `9`. Short rows publish visible
-row counts `rows + 6` through row `0x39`, then cap at `64` through `0x7f`; segmented
-rows publish `9`, `10`, `11`, `12`, then `16` for rows `0xbf`, `0xc0`, `0xc1`, `0xfd`,
-`0xfe`, and `0xff`. All one hundred thirty-five row-count matrix cases now return
-through `0x15dc6 -> 0x16498 ->
-0x15dcc -> 0x12328` with copy status `1`, `0x783140 = 0`, zero drained bytes, and next
-handler `0xd04a`. The rows-`0x0102` downloaded-glyph fixture proves accepted 16-bit
-install record `00 00 00 00 0c 01 01 02 00 10 00 00`, but the printable page-record
-source exposes row byte `0x02`, publishes selector `0x0003` bucket `1` only, then
-`0x1f414` splits rows `0x0102` into `58` current rows and `200` fallback rows. The
-fallback exceeds `0x1fe76`'s valid table maximum index `128` and reads target
-`0x329ad3c0`.
+`0x41..0x7f`, row-count-matrix segmented rows `0x83..0xff`, rows-`0x82` segmented,
+rows-`0x0102` low-byte-truncated publication, split-plane segmented, segmented-wide,
+even-span wide, payload-control wide, downloaded-character no-install, and status-`2`
+compact bucket variants, full live-parser raster edge cases, and final device-output
+page comparison. Downloaded-character no-install failures now publish the following
+default printable through trailing-FF `0xff1e`, while the status-`2` partial-install
+branch is carried through trailing-FF publication and published-record rendering for
+both linear and split-plane compact objects. The downloaded-glyph row-count matrix
+fixture adds fetched `ESC )s#W` install, printable, FF-publication, and render-entry
+coverage for short rows `0x01..0x1f`, `0x21..0x3f`, and `0x41..0x7f` on selector
+`0x0003`/bucket `1`, plus segmented rows `0x83..0xff` on selector `0x2003`/buckets `1`
+and `9`. Short rows publish visible row counts `rows + 6` through row `0x39`, then cap
+at `64` through `0x7f`; segmented rows publish `rows - 0x7a` through row `0x89`, then
+cap at `16` through `0xff`. All two hundred fifty row-count matrix cases now return
+through `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with copy status `1`, `0x783140 = 0`,
+zero drained bytes, and next handler `0xd04a`. The rows-`0x0102` downloaded-glyph
+fixture proves accepted 16-bit install record `00 00 00 00 0c 01 01 02 00 10 00 00`, but
+the printable page-record source exposes row byte `0x02`, publishes selector `0x0003`
+bucket `1` only, then `0x1f414` splits rows `0x0102` into `58` current rows and `200`
+fallback rows. The fallback exceeds `0x1fe76`'s valid table maximum index `128` and
+reads target `0x329ad3c0`.
 
 Evidence: `generated/analysis/ic30_ic13_raster_graphics_flow.md`
 collects the raster command edge: `ESC *t#R`, `ESC *r#A`, `ESC *r#B`,

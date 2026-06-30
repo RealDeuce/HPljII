@@ -40,6 +40,7 @@ Primary fixtures:
 - `font descriptor stream ties ROM parser dispatch to 0x15d0a routes`
 - `host-fetched font descriptor streams route through 0x15d0a`
 - `host-fetched 0x15d0a current-record resource object feeds fixed-record render`
+- `0x16606 no-install exits clear stale continuation without payload writes`
 - `host-fetched 0x15d0a continuation resource object resumes fixed-record render`
 - `0x15c4c failed resource resume releases fixed-record object`
 - `0x15c4c partial resource resumes update continuation state`
@@ -1663,6 +1664,24 @@ render` covers:
 This closes the current-record bit-30-clear `0x15e3c..0x15e46` middle edge for
 one page-visible fixed-record resource object.
 
+Fixture
+`0x16606 no-install exits clear stale continuation without payload writes`
+covers the front-end no-install exits for the same handler. Disassembly
+`generated/disasm/ic30_ic13_font_payload_object_path_016040.lst` clears stale
+continuation state at `0x16612..0x1664e` before range validation and before
+the object-prefix/copy exits. The fixture proves five no-install cases: char
+`0xa0` with payload type byte `+0x0e = 0` exits as
+`char-outside-resource-range`; a two-byte prefix exits as
+`short-resource-record-prefix`; byte budget `0x0d` exits as
+`budget-below-0x16606-object-minimum`; prefix `00 01 04 00` exits as
+`zero-resource-span`; and a short bitmap stream for prefix `02 02 04 00` exits
+as `payload-copy-failed` after copying only `aa` with three bytes still
+remaining. In every case the stale continuation record is cleared and the
+resource payload memory remains byte-for-byte unchanged. Canonical table/object
+state is therefore unchanged, parser scratch is the cleared continuation
+record, firmware bookkeeping is the failed branch reason, and output effect is
+no new glyph becoming visible.
+
 The companion fixture
 `host-fetched 0x15d0a continuation resource object resumes fixed-record render`
 starts with the same host-fetched descriptor but gives `0x16606` only budget
@@ -1966,7 +1985,10 @@ buckets `1` and `9`, and renders bucket word `9` through compact target
 - `0x16606` clears stale continuation state, writes fixed-record table entries
   in bit-30-clear resource payloads, copies bitmap bytes through `0x16874`,
   and refreshes selected contexts through `0x14c64` when the payload matches
-  an active primary or secondary context.
+  an active primary or secondary context. Fixture
+  `0x16606 no-install exits clear stale continuation without payload writes`
+  proves its range, short-prefix, short-budget, zero-span, and copy-failure
+  exits clear stale continuation state without changing payload memory.
 - `0x15c4c` resumes bit-30-clear fixed-record bitmap copies from saved
   continuation fields, including split-plane A4/A3 destinations and D4/D3
   counters. On status `1` it clears continuation state and leaves the completed

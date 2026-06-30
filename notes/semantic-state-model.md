@@ -4683,7 +4683,10 @@ compact text renderer.
   offset-table entry and matching continuation state.
 - `0x16606` clears stale continuation state, writes bit-30-clear fixed-record
   table entries, copies bitmap bytes through `0x16874`, and refreshes selected
-  contexts through `0x14c64` when the installed payload is active.
+  contexts through `0x14c64` when the installed payload is active. Fixture
+  `0x16606 no-install exits clear stale continuation without payload writes`
+  proves its range, short-prefix, short-budget, zero-span, and copy-failure
+  exits clear stale continuation state without changing payload memory.
 - `0x15c4c` resumes bit-30-clear fixed-record bitmap copies from continuation
   fields, including split-plane A4/A3 destinations and D4/D3 counters. On
   status `1` it clears continuation state and leaves the completed fixed-record
@@ -4860,20 +4863,19 @@ remainder helper. All matched cases return through `0x15dc6 -> 0x16498 -> 0x15dc
 rendered segment-1 rows match the installed bitmap rows. The same fixture probes spans
 `33`, `48`, `49`, and `64` at rows `0x81` through the same upstream metadata and return
 boundary, and those segment-1 rows match the installed bitmap. Fixture `downloaded glyph
-row-count matrix publishes and renders additional short/segmented counts` adds
-two hundred fifty row-count siblings through the same fetched install, printable,
-FF-publication, and render-entry chain. Short rows `0x0001..0x001f`,
-`0x0021..0x003f`, and `0x0041..0x007f` are canonical installed record fields that
-derive selector `0x0003`, bucket `1`, object byte `0x00`, and compact
-target `0x1effe`; rows `0x0083..0x00ff` derive selector `0x2003`, buckets `1` and
-`9`, object byte `0x20`, and compact target `0x1effe` for render bucket word `9`.
-Parser scratch is limited to the fetched `ESC )s#W` restored record and payload byte
-count; derived/cache state is the `0xff1e` bucket array plus `0x1ed84`/`0x1ef6a`
-dispatch. The short rows publish visible row counts `rows + 6` through row `0x0039`,
-then cap at `64` for rows `0x003a`, `0x003b`, `0x003c`, `0x003d`, `0x003e`, `0x003f`,
-and `0x0041..0x007f`; segmented rows publish visible row counts `rows - 0x007a`
-through row `0x0089`, then cap at `16` for rows `0x008a..0x00ff`. Rows
-`0x0006` and `0x0007` render `12` and `13` rows with digests
+row-count matrix publishes and renders additional short/segmented counts` adds two
+hundred fifty row-count siblings through the same fetched install, printable,
+FF-publication, and render-entry chain. Short rows `0x0001..0x001f`, `0x0021..0x003f`,
+and `0x0041..0x007f` are canonical installed record fields that derive selector
+`0x0003`, bucket `1`, object byte `0x00`, and compact target `0x1effe`; rows
+`0x0083..0x00ff` derive selector `0x2003`, buckets `1` and `9`, object byte `0x20`, and
+compact target `0x1effe` for render bucket word `9`. Parser scratch is limited to the
+fetched `ESC )s#W` restored record and payload byte count; derived/cache state is the
+`0xff1e` bucket array plus `0x1ed84`/`0x1ef6a` dispatch. The short rows publish visible
+row counts `rows + 6` through row `0x0039`, then cap at `64` for rows `0x003a`,
+`0x003b`, `0x003c`, `0x003d`, `0x003e`, `0x003f`, and `0x0041..0x007f`; segmented rows
+publish visible row counts `rows - 0x007a` through row `0x0089`, then cap at `16` for
+rows `0x008a..0x00ff`. Rows `0x0006` and `0x0007` render `12` and `13` rows with digests
 `b791b24072d4758b9a4e40ae7600cd7e0b2bbbe3757dd001f8819dc6d94a5b7a` and
 `d2beea9dbf9a604abeb5fe8cc87636002405da8f46d6cbbf585af7e7481cd088`; rows `0x000a`
 through `0x000f` render `16` through `21` rows with digests
@@ -4938,28 +4940,34 @@ current-record resource object feeds fixed-record render` also proves a host-fet
 `ESC )s0W` descriptor can route bit-30-clear current-record payload `0x000100` through
 `0x16606`, install fixed-record glyph `0x21` at payload table entry `+0x48`, queue
 selector `0x0003`, preserve context slot `3` through `0x1edc6`, and render three mode-0
-rows. Fixture `host-fetched 0x15d0a continuation resource object resumes fixed-record
-render` proves the sibling status-`2` descriptor route through `0x15c4c`: a partial
-`0x16606` copy saves payload `0x000100`, glyph/table index `0x21`, destination
-`0x000302`, and remaining count `4`; `0x15c4c` copies bytes `f0 0f c3 3c`, clears the
-continuation fields, and renders the same fixed record and rows. Fixture `host-fetched
-0x15d0a split-plane continuation resource object resumes fixed-record render` proves the
-odd-width sibling: a partial `0x16606` copy of record `03 02 04 00 00 00 02 00` saves
-payload `0x000100`, glyph/table index `0x21`, prefix destination `0x000303`, trailing
-destination `0x000305`, and D4/D3 counters `0/0`; `0x15c4c` copies bytes `c1 d0`, clears
-continuation state, leaves bitmap layout `a0 a1 c0 c1 b0 d0`, queues object prefix `00
-00 00 00 00 03 00 01 01 76 01`, and renders rows reconstructed from `a0 a1 b0` and `c0
-c1 d0`. Fixture `0x15c4c partial resource resumes update continuation state` proves the
-status-`2` sibling: a linear resume copies byte `f0`, advances destination
-`0x000302 -> 0x000303`, and resaves remaining count `3`; a split-plane resume copies
-prefix byte `c1`, advances prefix destination `0x000303 -> 0x000304`, keeps trailing
-destination `0x000305`, and resaves D4/D3 counters `1/0`. Fixture `0x15c4c failed
-resource resume releases fixed-record object` proves the status-`0` sibling: a partial
-`0x16606` copy saves the same payload and glyph/table index, a short resume copies only
-bytes `f0 0f`, then `0x15c4c` calls `0x17d7c`. The release helper rewrites payload
-`+0x48` from `02 03 04 00 00 00 02 00` to `01 02 00 fa 00 00 00 00`, writes side-table
-bytes `fa 00` at payload `+0x340`, records active-primary refresh `0x7828de = 0`, and
-clears the matching continuation fields.
+rows. Fixture `0x16606 no-install exits clear stale continuation without payload writes`
+proves the sibling no-install exits at `0x16612..0x16770`: char `0xa0` with type byte
+`+0x0e = 0`, short two-byte record prefix, byte budget `0x0d`, zero span `00 01 04 00`,
+and copy failure after only byte `aa` all clear stale continuation state and leave
+payload memory unchanged. Canonical table/object state is unchanged, parser scratch is
+the cleared continuation block, firmware bookkeeping is the reject reason, and output
+effect is no installed glyph. Fixture `host-fetched 0x15d0a continuation resource object
+resumes fixed-record render` proves the sibling status-`2` descriptor route through
+`0x15c4c`: a partial `0x16606` copy saves payload `0x000100`, glyph/table index `0x21`,
+destination `0x000302`, and remaining count `4`; `0x15c4c` copies bytes `f0 0f c3 3c`,
+clears the continuation fields, and renders the same fixed record and rows. Fixture
+`host-fetched 0x15d0a split-plane continuation resource object resumes fixed-record
+render` proves the odd-width sibling: a partial `0x16606` copy of record `03 02 04 00 00
+00 02 00` saves payload `0x000100`, glyph/table index `0x21`, prefix destination
+`0x000303`, trailing destination `0x000305`, and D4/D3 counters `0/0`; `0x15c4c` copies
+bytes `c1 d0`, clears continuation state, leaves bitmap layout `a0 a1 c0 c1 b0 d0`,
+queues object prefix `00 00 00 00 00 03 00 01 01 76 01`, and renders rows reconstructed
+from `a0 a1 b0` and `c0 c1 d0`. Fixture `0x15c4c partial resource resumes update
+continuation state` proves the status-`2` sibling: a linear resume copies byte `f0`,
+advances destination `0x000302 -> 0x000303`, and resaves remaining count `3`; a
+split-plane resume copies prefix byte `c1`, advances prefix destination `0x000303 ->
+0x000304`, keeps trailing destination `0x000305`, and resaves D4/D3 counters `1/0`.
+Fixture `0x15c4c failed resource resume releases fixed-record object` proves the
+status-`0` sibling: a partial `0x16606` copy saves the same payload and glyph/table
+index, a short resume copies only bytes `f0 0f`, then `0x15c4c` calls `0x17d7c`. The
+release helper rewrites payload `+0x48` from `02 03 04 00 00 00 02 00` to `01 02 00 fa
+00 00 00 00`, writes side-table bytes `fa 00` at payload `+0x340`, records
+active-primary refresh `0x7828de = 0`, and clears the matching continuation fields.
 
 Fixture `0x15d0a descriptor grammar exits and handler matrix` composes the route front
 end with the state model. Canonical input state is the parsed byte budget in `0x783140`,
@@ -5662,6 +5670,7 @@ fields and broader selected-font state combinations have not been page-compared.
 - `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`
 - `host-fetched 0x15d0a current-record resource object feeds fixed-record
   render`
+- `0x16606 no-install exits clear stale continuation without payload writes`
 - `host-fetched 0x15d0a continuation resource object resumes fixed-record
   render`
 - `0x15c4c failed resource resume releases fixed-record object`

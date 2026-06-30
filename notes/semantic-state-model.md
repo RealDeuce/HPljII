@@ -5485,8 +5485,8 @@ mode-byte suppression for values `0`, `1`, `2`, `3`, and `6` when
     source-walk rows now match the installed bitmap above span `32`.
   - downloaded-character width-byte boundary: fixture `downloaded glyph
     width-byte boundary truncates page-record span` installs canonical width
-    words for spans `0x00ff`, `0x0100`, `0x0101`, `0x0102`, `0x010f`,
-    `0x0110`, `0x0111`, `0x017f`, `0x0180`, `0x01fe`, and `0x020d`.
+    words for spans `0x00ff`, every span `0x0100..0x0111`, `0x017f`,
+    `0x0180`, `0x01fe`, and `0x020d`.
     Parser/page-record scratch is the current unflagged printable source
     record byte `+0`, so `0x12f2e` sees only the low width byte. Derived/cache
     state is the selector choice: source width bytes `0x00..0x10` queue
@@ -5499,8 +5499,9 @@ mode-byte suppression for values `0`, `1`, `2`, `3`, and `6` when
     compact-wide renderer `0x1f0d2`, render bucket `0`, and produce visible
     rows matching the installed bitmap for spans `0x00ff`, `0x0111`,
     `0x017f`, `0x0180`, and `0x01fe`; source width bytes `0x00..0x10` enter
-    compact mode-0 at `0x1effe` and read helper-table entries outside the
-    decoded row-copy helper heads, including targets `0x20700000`,
+    compact mode-0 at `0x1effe` across the full low-byte range and read
+    helper-table entries outside the decoded row-copy helper heads, including
+    targets `0x20700000`,
     `0x4e90202c`, and `0x4e904cdf`.
   - downloaded-character segmented-wide matrix: fixture `downloaded glyph
     segmented-wide matrix publishes and renders compact chunks` installs
@@ -6879,9 +6880,9 @@ zero-drain return boundaries, bucket-0 FF publication, `0x1ed84`/`0x1ef6a` dispa
 rows matching the installed bitmap; the same fixture makes high-span probes `33`, `48`,
 `49`, `64`, and `255` high-confidence for upstream metadata and row equivalence.
 High for the width-byte producer boundary because fixture `downloaded glyph
-width-byte boundary truncates page-record span` asserts spans `0x00ff`,
-`0x0100`, `0x0101`, `0x0102`, `0x010f`, `0x0110`, `0x0111`, `0x017f`, `0x0180`,
-`0x01fe`, and `0x020d`, the canonical installed width words, the one-byte
+width-byte boundary truncates page-record span` asserts spans `0x00ff`, every span
+`0x0100..0x0111`, `0x017f`, `0x0180`, `0x01fe`, and `0x020d`, the canonical
+installed width words, the one-byte
 source records, the resulting `0x12f2e` selectors, and the render split.
 Source width bytes `0x11..0xff` select compact-wide `0x1f0d2` and now render
 rows matching the installed bitmap; source width bytes `0x00..0x10` select
@@ -7162,10 +7163,10 @@ fields and broader selected-font state combinations have not been page-compared.
   renders additional short/segmented counts` covers short ranges `0x0001..0x001f`,
   `0x0021..0x003f`, and `0x0041..0x007f`, and segmented range `0x0083..0x00ff`;
   separate fixtures cover `0x0020`, `0x0040`, `0x0080`, `0x0081`, and `0x0082`.
-  Still-open comparisons are bounded cross-products: pixel rows after printable
-  downloaded spans wrap in the current one-byte page source
-  span field into compact mode-0 invalid helper-table targets, visible
-  behavior for segmented-wide row words and spans
+  Still-open comparisons are bounded cross-products: physical/pixel behavior after
+  printable downloaded spans wrap in the current one-byte page source span field into
+  fully classified compact mode-0 invalid helper-table targets, visible behavior for
+  segmented-wide row words and spans
   outside the sampled row `0x0082`, `0x0083`, `0x0181`, `0x0182`, `0x01ff`,
   `0x0281`, `0x0282`, and `0x02ff` matrix, broader
   publication combinations beyond the documented normal, non-boundary short, rows-`0x20`

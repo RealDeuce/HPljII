@@ -1053,13 +1053,13 @@ The next work should follow dataflow, not isolated handlers:
    `0x30`, `0x2f27c` full chunks, `0x1f1ac` remainders `1..15`, the span-`32`
    no-remainder sibling, zero-drain returns, and probes segmented-wide spans `33`, `48`,
    `49`, and `64`. Fixture `downloaded glyph width-byte boundary truncates page-record
-   span` pins source-width wrapping for spans `0x00ff`, `0x0100`, `0x0101`, `0x0102`,
-   `0x010f`, `0x0110`, `0x0111`, `0x017f`, `0x0180`, `0x01fe`, and `0x020d`: installed
-   width words survive, but `0x12f2e` sees only the low width byte. Source width bytes
-   `0x11..0xff` select compact-wide `0x1f0d2` and now render rows matching the
-   installed bitmap for spans `0x00ff`, `0x0111`, `0x017f`, `0x0180`, and `0x01fe`;
-   source width bytes `0x00..0x10` select compact mode-0 helper entries outside decoded
-   row-copy helper heads. Fixture
+   span` pins source-width wrapping for spans `0x00ff`, every span `0x0100..0x0111`,
+   `0x017f`, `0x0180`, `0x01fe`, and `0x020d`: installed width words survive, but
+   `0x12f2e` sees only the low width byte. Source width bytes `0x11..0xff` select
+   compact-wide `0x1f0d2` and now render rows matching the installed bitmap for spans
+   `0x00ff`, `0x0111`, `0x017f`, `0x0180`, and `0x01fe`; every source width byte
+   `0x00..0x10` selects compact mode-0 helper entries outside decoded row-copy helper
+   heads. Fixture
    `downloaded segmented-wide row-byte boundary truncates page-record segments` pins the
    row-byte sibling for installed row words `0x0002`, `0x007f`, `0x0080`, `0x0081`,
    `0x0083`, `0x00fe`, `0x00ff`, `0x0100`, `0x0101`, `0x0181`, `0x0182`, `0x01ff`,
@@ -1134,7 +1134,8 @@ The next work should follow dataflow, not isolated handlers:
    words `0x0282` and `0x02ff`: spans `17`, `18`, and `32` render the same `32/96`
    current/fallback rows, while span `31` stops at fallback A2 offset `+0xb50`.
    Remaining downloaded-character publication work is therefore limited to
-   pixel-row behavior beyond wrapped source-byte mode-0 helper-table boundaries, broader
+   physical/pixel behavior after the fully documented wrapped source-byte mode-0
+   invalid-helper boundaries, broader
    higher-row segmented-wide fallback combinations beyond sampled rows `0x0181`,
    `0x0182`, `0x01ff`, `0x0281`, `0x0282`, and `0x02ff`, broader publication
    combinations, and

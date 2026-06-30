@@ -9255,6 +9255,18 @@ band setup `0x1ef86`, bucket-chain dispatch `0x1efc2`, rule-list dispatch
 class byte `+0x04`: compact glyph/text objects use `0x1effe`, segment-list
 objects use `0x1f812`, and encoded raster objects use `0x1f88e`.
 
+The pixel destination edge is now part of the semantic contract, not only a
+fixture detail. Helper `0x1f3d4` treats packed coordinate `D1` as row index
+`D1 >> 12`, subbyte phase `(D1 >> 8) & 0x0f`, and byte-pair offset
+`(D1 & 0xff) * 2`; it writes the phase, with bit `0x10` set when nonzero, to
+MMIO byte `0xa001`, then computes `A1` from `0x783a28`, the row-offset table,
+the byte-pair offset, and the caller-supplied x offset. Helper `0x1f414`
+clips a requested row count against `0x783a20 - row_index` and returns
+remaining-after-band in the high word and rows-in-current-band in the low
+word. Helper `0x1f626` repeats the same coordinate decode for later spans and
+chooses current-band, shifted-current-band, or fallback-buffer destinations
+from `D2`, `0x783a20`, `0x783a1c`, and `0x7810b4`.
+
 ### Field Groups
 
 - Canonical render roots:
@@ -9279,6 +9291,14 @@ Evidence: fixtures `published page records feed 0x1ed84 and 0x1ef6a render entry
   - object word `+0x08`: packed destination coordinate/key.
   - object `+0x0a..`: compact glyph entries, segment-list entries, or raster
     payload bytes.
+  - compact payload entries start with a glyph/resource byte consumed by
+    `0x1f354`; short and wide compact modes then read a coordinate word, while
+    segmented modes also read a vertical/plane byte before the coordinate.
+    Evidence: `generated/analysis/ic30_ic13_render_subrenderers.md`.
+  - encoded raster payload starts at object `+0x0a`; object byte `+0x05 & 3`
+    selects mode `0` literal words, mode `1` byte-to-word expansion, mode `2`
+    byte-to-long expansion with a skipped payload byte between lookups, or
+    mode `3` cascaded byte expansion.
 - Canonical rule/fixed-list fields:
   - rule object `+0x05`: bridged fill selector with bit `0x10` set by
     `0x1edc6`; low nibble `7` selects solid helper `0x1f596`, while selectors
@@ -9294,6 +9314,8 @@ Evidence: fixtures `published page records feed 0x1ed84 and 0x1ef6a render entry
     remainder, and destination base written by `0x1ef86`.
   - `0x783a1c` and `0x7839f8..`: line stride and offset table written by
     `0x1ee9e` before object rendering.
+  - `0xa001`: subbyte destination phase written by `0x1f3d4` /
+    `0x1f626`; nonzero phases are stored with bit `0x10` set.
   - `0x783a2c`: compact glyph context/resource cache written by `0x1f008`.
   - `0x7810b4 + D2`: fallback buffer used when compact glyph or encoded raster
     rows continue beyond the active band.
@@ -9304,6 +9326,11 @@ Evidence: fixtures `published page records feed 0x1ed84 and 0x1ef6a render entry
     main-helper width, `remainder row-copy width 1 rows 3 writes` pins the
     one-byte remainder table, and `chunk row-copy width 16 rows 3 write count`
     pins the wide full-chunk helper used by compact-wide paths.
+  - encoded raster expansion tables `0x30914` and `0x30b14`: mode `1` and
+    mode `3` use `0x30914`, while mode `2` uses `0x30b14`; fixtures in
+    `generated/analysis/ic30_ic13_render_expansion_fixtures.md` pin example
+    expansions such as `0x55 -> 0x3333`, `0xaa -> 0xcccc`, and cascaded
+    `0xaa -> 0xf0f0f0f0`.
 - Parser scratch:
   - none in this shared dispatch layer. Parser-family scratch has already been
     converted into page-record objects by upstream producers such as
@@ -9337,6 +9364,9 @@ Evidence: fixtures `published page records feed 0x1ed84 and 0x1ef6a render entry
   `+0x04 & 0xc0`.
 - `0x1effe` handles compact objects and selects `0x1f034`, `0x1f0d2`,
   `0x1f1f0`, or `0x1f264` from object byte `+0x04` bits `0x10` and `0x20`.
+  `0x1f034` and `0x1f1f0` select table `0x1f08e` by glyph span; `0x1f0d2`
+  and `0x1f264` render full 16-byte chunks through `0x2f27c` and select
+  remainder table `0x1f1ac`.
 - `0x1f812` consumes segment-list objects and writes counted mask spans.
 - `0x1f88e` consumes encoded raster objects and selects helpers `0x1f8da`,
   `0x1f8e6`, `0x1f920`, or `0x1f9c6` from object byte `+0x05 & 0x03`.
@@ -9368,6 +9398,15 @@ fixture records the shifted full-chunk helper used after the first 16-byte
 span. Resource glyph row-copy fixtures then prove those helpers reproduce
 directly decoded bitmap rows for sampled built-in contexts.
 
+The row-copy tables are concrete ROM dataflow. Table `0x1f08e` indexes compact
+main helpers for byte spans `1..16`; table `0x1f1ac` indexes wide-glyph
+remainders `1..16`; and helper `0x2f27c` uses table `0x2f2ac` after phasing
+`A1` and `A2` by `0x783a46`. Odd byte-width spans copy their trailing byte
+from `A3`, while even byte-width spans are word copies from `A2`. The
+generated row-copy report
+`generated/analysis/ic30_ic13_render_row_copy_fixtures.md` records the helper
+addresses, row-count tables, and representative multi-row write traces.
+
 Compact text fixture names in this section identify the visible output edge,
 not a separate parser concept. `compact text bucket object fixture rendered
 rows`, `0xd824-positioned compact text rendered rows`,
@@ -9388,13 +9427,25 @@ helper `0x1f4e0`, uses pattern base `0x02ff3e`, writes four rows from pattern
 words starting with `0x8080`, and mutates the continuation height field to
 `0xffb4`.
 
+Encoded raster output is pinned at the same destination layer. Mode `0`
+copies literal payload words through `0x1f8da`; mode `1` expands each payload
+byte through `0x30914` and writes the same word to two row/band destinations;
+mode `2` expands payload bytes through `0x30b14` while advancing by two bytes
+per lookup; and mode `3` expands through `0x30914` twice to produce one
+longword written across four row/band destinations. The fixtures named
+`0x1f88e mode-0 raster object renders queued literal row` through
+`0x1f88e mode-3 raster object expands queued bytes into four rows`, plus
+`generated/analysis/ic30_ic13_render_expansion_fixtures.md`, tie those table
+semantics to rendered rows and compact expansion vectors.
+
 ### Confidence
 
 High for render-root ownership, `0x1ef6a` call order, bucket class split,
 compact subdispatch, segment-list layout, encoded raster mode split,
-rule-list selector dispatch, fixed-list consumption, and row-level output for
-the cited fixtures. Medium for broader compact downloaded-glyph state
-combinations and physical/reference page comparisons.
+rule-list selector dispatch, fixed-list consumption, destination pointer
+arithmetic, row-copy table targets, raster expansion tables, and row-level
+output for the cited fixtures. Medium for broader compact downloaded-glyph
+state combinations and physical/reference page comparisons.
 
 ### Fixtures
 
@@ -9448,6 +9499,21 @@ combinations and physical/reference page comparisons.
 
 ### Disassembly Evidence
 
+- `generated/analysis/ic30_ic13_render_path_references.md`: lead index tying
+  `0x1ed84`, `0x1edc6`, `0x1ee9e`, `0x1ef6a`, `0x1f446`, `0x1f756`,
+  `0x1f812`, `0x1f88e`, `0x7810b4`, and `0x783a18..0x783a28` references to
+  the render path.
+- `generated/analysis/ic30_ic13_render_destination_fixtures.md`: synthetic
+  fixture table for `0x1f3d4`, `0x1f414`, and `0x1f626` destination and band
+  clipping arithmetic.
+- `generated/analysis/ic30_ic13_render_row_copy_fixtures.md`: compact main,
+  wide remainder, and `0x2f27c` row-copy helper tables and write traces.
+- `generated/analysis/ic30_ic13_render_subrenderers.md`: `0x1f354` context
+  resolver, compact subrenderer entry shapes, encoded raster mode dispatch,
+  and row-copy table map.
+- `generated/analysis/ic30_ic13_render_expansion_fixtures.md`: encoded raster
+  modes `0..3` literal/expanded vector expectations from ROM tables
+  `0x30914` and `0x30b14`.
 - `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
 - `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`
 - `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`

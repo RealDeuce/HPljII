@@ -2215,7 +2215,13 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   `0xd824-modeled negative-overflow positioned source fields`,
   `0xd3b2-modeled unflagged source fields`,
   `0xd3b2-modeled unflagged overflow source fields`, and
-  `0x1393a-modeled selected inline source object fields`.
+  `0x1393a-modeled selected inline source object fields`. The direct
+  `0x1393a` modeled fixtures also pin selected built-in fields:
+  `0x1393a-modeled text source object fields` maps host `0x21` to glyph
+  `0x20`, built-in glyph pointer `0x015330`, flag `1`, x/y `0`, and
+  context slot `0`; `0x1393a-modeled tall text source object fields` maps
+  host `0x20` to glyph `0x1f`, glyph pointer `0x0146b4`, width `74`, rows
+  `1108`, flag `1`, and the same context slot.
 - Canonical cursor/metric inputs:
   - `0x782c8a`: current horizontal cursor read by `0xd140`,
     `0xd550`, `0xd3b2`, and `0xd824`, then committed after queue/limit
@@ -2374,6 +2380,18 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   for bucket `1` and
   `dfd0b3d07e16f8d06a8ef12c1c51dedac61149493fb1e90981866da521e98e58`
   for bucket `9`.
+- Fixture `compact text bucket object fixture metadata` pins the short
+  renderer-facing metadata for the ordinary built-in compact object:
+  selector `0`, context slot `0`, count `1`, glyph `0x20`, coord `0x0001`,
+  rows `22`, width `4`, helper `0x01fa5c`, and payload
+  `00 01 20 00 01`. Fixture `compact text bucket object fixture rendered rows`
+  proves those metadata fields render the Line Printer glyph rows.
+- Fixtures `0xd824-positioned compact text rendered rows` and
+  `0xd824-negative-overflow compact text rendered rows` connect the
+  `0xd824` positioned source coordinates to visible rows. The ordinary
+  positioned case renders the Line Printer glyph at x `16`; the negative
+  overflow case renders the same glyph after the wider x correction at x
+  `32`.
 - The selected inline/downloaded fixture starts at `0x1393a`: host
   `0x21` maps to glyph `0x01`, record `02 03 04 00 00 00 00 80`,
   source flag `0`, then queues and renders through the unflagged path
@@ -2394,6 +2412,21 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   advances the cursor through `0xd550`, reuses the same short object,
   and renders compact entries at `0x0001` and `0x0002`; the initialized
   HMI fixture renders the second glyph from coord `0x0202`.
+- Fixtures `single printable byte stream renders expected rows`,
+  `two printable byte stream renders advanced glyph rows`, and
+  `two printable byte stream with line-printer HMI renders subbyte rows`
+  close the direct byte-stream-to-pixels edge for the same compact object.
+  The first stream renders the positioned `!` rows, the second places two
+  glyphs at ordinary cursor advances, and the HMI case uses the selected
+  Line Printer metric to shift the second glyph to subbyte coord `0x0202`.
+- Split-row compact renderer fixtures prove the band-boundary carry
+  contract for all non-short compact classes. `0x1f0d2 wide compact text
+  splits current band and fallback rows` splits glyph `1` at coord
+  `0xe601` into two active-band rows plus one fallback row. `0x1f1f0
+  segmented compact text splits current band and fallback rows` applies the
+  same split to selector `0x2003`, segment `1`. `0x1f264 segmented-wide
+  compact text splits current band and fallback rows` applies it to selector
+  `0x3003`, segment `1`, with the wide trailing-plane source layout.
 - Fixture `0xd04a printable entry normalizes over-0xff and high-bit
   values` pins the printable-entry normalization boundary before source
   placement. Entry value `0x100` with nonzero `0xd99a` result exits before
@@ -2489,6 +2522,8 @@ full 68000 interpreter through every source class and allocator branch.
 - `0x12f2e-modeled unflagged tall inline bucket objects`
 - `0x12f2e-modeled unflagged wide tall inline bucket objects`
 - `0x1393a-modeled selected inline source object fields`
+- `0x1393a-modeled text source object fields`
+- `0x1393a-modeled tall text source object fields`
 - `selected inline source queues and renders through unflagged path`
 - `selected inline page-record object preserves context through 0x1edc6
   bridge`
@@ -2497,12 +2532,22 @@ full 68000 interpreter through every source class and allocator branch.
 - `constructed inline/downloaded segmented-wide glyph maps through 0x1f264`
 - `unflagged printable d4ac low-watermark flush renders span`
 - `single printable byte stream builds positioned compact text object`
+- `single printable byte stream renders expected rows`
 - `two printable byte stream combines compact text entries`
+- `two printable byte stream renders advanced glyph rows`
 - `two printable byte stream with line-printer HMI renders subbyte
   entry`
+- `two printable byte stream with line-printer HMI renders subbyte rows`
+- `compact text bucket object fixture metadata`
+- `compact text bucket object fixture rendered rows`
+- `0xd824-positioned compact text rendered rows`
+- `0xd824-negative-overflow compact text rendered rows`
 - `0x1f0d2 renders wide inline compact payload row`
+- `0x1f0d2 wide compact text splits current band and fallback rows`
 - `0x1f1f0 renders segmented inline compact payload row`
+- `0x1f1f0 segmented compact text splits current band and fallback rows`
 - `0x1f264 renders segmented wide inline compact payload row`
+- `0x1f264 segmented-wide compact text splits current band and fallback rows`
 
 ### Disassembly Evidence
 
@@ -8894,6 +8939,20 @@ orientation publish before `0xfc74` or `0x10220` installs the new geometry.
 Their finalization fixtures prove the published bucket root and context slots
 bridge through `0x1edc6` and render the pre-command rows.
 
+The direct modeled stream fixture `mixed printable/reset stream publishes page
+root after text` covers the shorter `! ESC E` path before page-record
+materialization: printable byte `0x21` advances cursor x from packed `10` to
+packed `28`, positions the compact text at `(16,0)`, then reset `0xcc52`
+publishes one current page root, clears it, flushes pending span/post state,
+refreshes HMI from the Line Printer metric, leaves orientation `0`, and sets
+data-chain pointer `0x782d3e`. Fixture `mixed printable/reset stream keeps
+pre-reset text rows renderable` proves that the compact rows survive the
+reset publication boundary. Fixture `mixed printable/copies/FF stream
+publishes copy count` pins the sibling copies stream `! ESC &l2X FF`: handler
+`0xeef0` stores copy count `2`, FF `0xf0f0` publishes the current page root,
+and the published pool header carries environment word `+0x0c = 2` while the
+pre-command text rows remain renderable.
+
 The reset-specific missing-root fixture proves the opposite output boundary:
 `host-fetched ESC E clears missing page root without publication` reaches reset
 handler `0xcc52`, clears the missing current page root state, and does not
@@ -8916,6 +8975,8 @@ because each is fixture-pinned.
 - `0x11774 parser path routes geometry publication streams`
 - `mixed printable/reset page-record stream queues through 0x1387c before
   reset`
+- `mixed printable/reset stream publishes page root after text`
+- `mixed printable/reset stream keeps pre-reset text rows renderable`
 - `mixed printable/reset page-record bridge keeps pre-reset rows renderable`
 - `mixed printable/reset page-record finalization publishes bridged record`
 - `mixed printable/FF page-record stream publishes queued text`
@@ -8940,6 +9001,7 @@ because each is fixture-pinned.
 - `host-fetched reset publication preserves 0xff1e pool header defaults`
 - `host-fetched ESC E clears missing page root without publication`
 - `host-fetched copies publication preserves 0xeef0 pool header word`
+- `mixed printable/copies/FF stream publishes copy count`
 - `host-fetched publication streams preserve 0x1edc6 bridge contract`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`
 
@@ -9106,6 +9168,26 @@ fixture records the shifted full-chunk helper used after the first 16-byte
 span. Resource glyph row-copy fixtures then prove those helpers reproduce
 directly decoded bitmap rows for sampled built-in contexts.
 
+Compact text fixture names in this section identify the visible output edge,
+not a separate parser concept. `compact text bucket object fixture rendered
+rows`, `0xd824-positioned compact text rendered rows`,
+`0xd824-negative-overflow compact text rendered rows`, `single printable byte
+stream renders expected rows`, `two printable byte stream renders advanced
+glyph rows`, and `two printable byte stream with line-printer HMI renders
+subbyte rows` all consume compact bucket objects through `0x1effe` and
+row-copy helper `0x01fa5c`. `0x1f0d2 wide compact text splits current band and
+fallback rows`, `0x1f1f0 segmented compact text splits current band and
+fallback rows`, and `0x1f264 segmented-wide compact text splits current band
+and fallback rows` pin the corresponding non-short compact subdispatch carry
+to fallback rows at the band boundary.
+
+Fixture `0x1f446/0x1f4e0 renders gray selector pattern pixels` pins the rule
+selector side of the same render dispatch. A fill rectangle with selector `2`
+is bridged to rule selector `0`, dispatches through `0x1f446` to patterned
+helper `0x1f4e0`, uses pattern base `0x02ff3e`, writes four rows from pattern
+words starting with `0x8080`, and mutates the continuation height field to
+`0xffb4`.
+
 ### Confidence
 
 High for render-root ownership, `0x1ef6a` call order, bucket class split,
@@ -9130,6 +9212,7 @@ combinations and physical/reference page comparisons.
 - `0x1f446/0x1f596 renders solid black rectangle rule pixels`
 - `0x1f596 carries solid rule remainder across render bands`
 - `0x1f4e0 renders gray and HP pattern selector matrix`
+- `0x1f446/0x1f4e0 renders gray selector pattern pixels`
 - `0x1f4e0 carries patterned rule remainder across render bands`
 - `0x1f446 page-band walk assembles patterned rule rows`
 - `0x1f4e0 renders sub-byte shifted HP pattern rule pixels`
@@ -9140,6 +9223,12 @@ combinations and physical/reference page comparisons.
   fallback buffer`
 - `0x1f88e mode-3 raster object expands queued bytes into four rows`
 - `0x1f034 compact text splits current band and fallback rows`
+- `compact text bucket object fixture rendered rows`
+- `0xd824-positioned compact text rendered rows`
+- `0xd824-negative-overflow compact text rendered rows`
+- `single printable byte stream renders expected rows`
+- `two printable byte stream renders advanced glyph rows`
+- `two printable byte stream with line-printer HMI renders subbyte rows`
 - `main row-copy width 3 rows 3 writes`
 - `main row-copy width 3 final registers`
 - `main row-copy width 16 rows 3 write count`
@@ -9151,8 +9240,11 @@ combinations and physical/reference page comparisons.
 - `chunk row-copy width 16 first/last writes`
 - `chunk row-copy width 16 final registers`
 - `0x1f0d2 renders wide inline compact payload row`
+- `0x1f0d2 wide compact text splits current band and fallback rows`
 - `0x1f1f0 renders segmented inline compact payload row`
+- `0x1f1f0 segmented compact text splits current band and fallback rows`
 - `0x1f264 renders segmented wide inline compact payload row`
+- `0x1f264 segmented-wide compact text splits current band and fallback rows`
 
 ### Disassembly Evidence
 

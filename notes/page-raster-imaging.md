@@ -1820,6 +1820,16 @@ Output effect:
   bucket `8` segment `1` through `0x1f264`, splits through `0x1f414` into
   `32` current rows and `96` fallback rows, and matches both row groups to the
   installed bitmap.
+- Fixture `downloaded segmented-wide high-row span-32 fallback renders
+  selected segment` proves the no-remainder large-span sibling for the same
+  row word `0x0181`: span `32` dispatches bucket `8` segment `1` through
+  `0x1f264`, uses two full chunks with no remainder helper, splits into `32`
+  current rows and `96` fallback rows, and matches both row groups to the
+  installed bitmap.
+- Fixture `downloaded segmented-wide high-row span-31 fallback hits source
+  boundary` pins the adjacent large-remainder boundary: the same selected
+  segment path reaches `validate_wide_compact_row_copy`, which reports
+  fallback A2 source read past the modeled bitmap at `+0xb50`.
 - Fixture `downloaded segmented-wide row-byte boundary truncates page-record
   segments` proves span-`0x11` downloaded glyphs keep canonical installed row
   words `0x0002`, `0x007f`, `0x0080`, `0x0081`, `0x0083`, `0x00fe`,
@@ -1891,6 +1901,8 @@ Fixture evidence:
 - `downloaded segmented-wide high-row fallback renders selected segment`
 - `downloaded segmented-wide high-row even-span fallback renders selected
   segment`
+- `downloaded segmented-wide high-row span-31 fallback hits source boundary`
+- `downloaded segmented-wide high-row span-32 fallback renders selected segment`
 - `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `downloaded glyph row-count matrix publishes and renders additional
   short/segmented counts`
@@ -1943,9 +1955,10 @@ Unresolved middle edges:
   `0x0181` survive in the installed glyph, but the current source row byte
   causes selector `0x1003`, `0x1003`, and `0x3003` with only segments `1` and
   `0`; the first render splits for those sampled rows are also documented, and
-  the high-row fallback fixtures confirm the `0x0181`/span-17 and span-18
-  bucket-8 segments render `32` current rows and `96` fallback rows matching
-  the installed bitmap. Remaining gaps are broader physical/full-row comparison
+  the high-row fallback fixtures confirm the `0x0181`/span-17, span-18, and
+  span-32 bucket-8 segments render `32` current rows and `96` fallback rows
+  matching the installed bitmap; the span-31 sibling is an explicit A2 source
+  boundary at `+0xb50`. Remaining gaps are broader physical/full-row comparison
   for boundary cases
   and selected-font state combinations not represented in current visible
   fixtures.

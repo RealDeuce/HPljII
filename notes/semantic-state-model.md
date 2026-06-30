@@ -4989,37 +4989,42 @@ selector `0` plus bit `30` clear calls `0x16606`, continuation plus bit `30` set
 resumes downloaded-character continuation objects` and fixture `0x15b9a partial and
 failed resumes update continuation or release object` now cover the `0x15e18 -> 0x15b9a`
 success, status-`2`, and status-`0` edges for linear and split-plane
-downloaded-character continuation objects. The remaining middle edges after this
-checkpoint are handler-specific object-shape/range variants outside those fixtures, plus
-`0x15e3c -> 0x16606` and `0x15e5c -> 0x15c4c` variants not already covered by the
-fixed-record render fixtures. Fixture `0x17d7c releases extended fixed-record table with
-secondary refresh` proves the direct extended fixed-record form: payload byte `+0x0e =
-1` admits char `0xa1`, the helper indexes table entry `payload + 0x40 + (0xa1 - 0x40) *
-8`, rewrites it from `04 05 06 07 00 00 04 00` to `01 02 00 2c 00 00 03 00`, writes
-side-table bytes `2c 00` at payload `+0x702`, records active-secondary refresh `0x7828de
-= 1`, and clears the matching continuation fields. Fixture `0x17d7c delegates bit-30
-release to offset-table helper` proves the bit-30 sibling: `0x17d7c` dispatches to
-`0x17a24`, which validates range words `+0x0e/+0x10 = 0x0020/0x007f`, uses table offset
-word `+0x08 = 0x004a`, clears char `0x21` table entry `00 00 02 40` to zero at payload
-`+0x004a + 4 * 0x21`, records active-secondary refresh `0x7828de = 1`, and clears the
-matching continuation fields. Fixture `0x17d7c release reject exits preserve table and
-continuation state` proves the no-rewrite siblings: base outside the modeled payload,
-fixed-record chars `0x20` and `0xa1` outside the admitted ranges, and bit-30 delegate
-char `0x80` outside offset-table range all return without changing the table bytes or
-continuation fields. Fixture `0x16c14 allocation failure releases existing payload
-through 0x1887a` has no direct pixel output because it is a failed replacement path. Its
-output contract is state cleanup: old current-record payload `0x123456` is cleared,
-candidate slot `0x782328` is deleted, extended fixed-record cleanup runs through
-`0x18bf2`/`0x18090` for characters `0x21..0x7f` and `0xa0..0xff`, continuation state is
-zeroed, context stack bytes `+8` and `+9` are marked for matching primary/secondary
-entries, secondary active context refreshes through `0x179aa(1)`, and no new candidate
-or payload is installed. Fixture `0x1887a release variant matrix covers cleanup
-branches` proves the shared-exit siblings at `0x1887a..0x18b84`: bit-30-set class-one
-payload `0x40123456` releases chars `0x30..0x32` through `0x18b92`/`0x17fa2`, decrements
-unmarked and class-one counters, shifts class-one cursors by four, clears matching
-continuation, marks context-stack primary byte `+8`, and refreshes the active primary
-context through `0x179aa(0)`; bit-30-set class-zero marked payload `0x40234567` with
-reversed range `0x44..0x42` routes through `0x18b92` with zero released chars,
+downloaded-character continuation objects. Fixtures `host-fetched 0x15d0a current-record
+resource object feeds fixed-record render`, `host-fetched 0x15d0a continuation resource
+object resumes fixed-record render`, `host-fetched 0x15d0a split-plane continuation
+resource object resumes fixed-record render`, `0x15c4c partial resource resumes update
+continuation state`, and `0x15c4c failed resource resume releases fixed-record object`
+cover the bit-30-clear `0x15e3c -> 0x16606` and `0x15e5c -> 0x15c4c` fixed-record
+success, status-`2`, and status-`0` siblings. The remaining middle edges after this
+checkpoint are handler-specific object-shape/range variants outside those named
+character and fixed-record fixtures. Fixture `0x17d7c releases extended fixed-record
+table with secondary refresh` proves the direct extended fixed-record form: payload byte
+`+0x0e = 1` admits char `0xa1`, the helper indexes table entry `payload + 0x40 + (0xa1 -
+0x40) * 8`, rewrites it from `04 05 06 07 00 00 04 00` to `01 02 00 2c 00 00 03 00`,
+writes side-table bytes `2c 00` at payload `+0x702`, records active-secondary refresh
+`0x7828de = 1`, and clears the matching continuation fields. Fixture `0x17d7c delegates
+bit-30 release to offset-table helper` proves the bit-30 sibling: `0x17d7c` dispatches
+to `0x17a24`, which validates range words `+0x0e/+0x10 = 0x0020/0x007f`, uses table
+offset word `+0x08 = 0x004a`, clears char `0x21` table entry `00 00 02 40` to zero at
+payload `+0x004a + 4 * 0x21`, records active-secondary refresh `0x7828de = 1`, and
+clears the matching continuation fields. Fixture `0x17d7c release reject exits preserve
+table and continuation state` proves the no-rewrite siblings: base outside the modeled
+payload, fixed-record chars `0x20` and `0xa1` outside the admitted ranges, and bit-30
+delegate char `0x80` outside offset-table range all return without changing the table
+bytes or continuation fields. Fixture `0x16c14 allocation failure releases existing
+payload through 0x1887a` has no direct pixel output because it is a failed replacement
+path. Its output contract is state cleanup: old current-record payload `0x123456` is
+cleared, candidate slot `0x782328` is deleted, extended fixed-record cleanup runs
+through `0x18bf2`/`0x18090` for characters `0x21..0x7f` and `0xa0..0xff`, continuation
+state is zeroed, context stack bytes `+8` and `+9` are marked for matching
+primary/secondary entries, secondary active context refreshes through `0x179aa(1)`, and
+no new candidate or payload is installed. Fixture `0x1887a release variant matrix covers
+cleanup branches` proves the shared-exit siblings at `0x1887a..0x18b84`: bit-30-set
+class-one payload `0x40123456` releases chars `0x30..0x32` through `0x18b92`/`0x17fa2`,
+decrements unmarked and class-one counters, shifts class-one cursors by four, clears
+matching continuation, marks context-stack primary byte `+8`, and refreshes the active
+primary context through `0x179aa(0)`; bit-30-set class-zero marked payload `0x40234567`
+with reversed range `0x44..0x42` routes through `0x18b92` with zero released chars,
 decrements marked and class-zero counters, leaves class-one cursors and nonmatching
 continuation intact, marks context-stack secondary byte `+9`, and performs no active
 refresh; bit-30-clear class-zero payload `0x00345678` with byte `+0x0e = 0` releases
@@ -5189,16 +5194,16 @@ split-plane object, canonical state is table entry `0x00fa -> 0x0880`, saved gly
 destination `0x088e`, trailing destination `0x0891`, and D4/D3 counters `1/0`; `0x16942`
 copies prefix `c0 c1` and trailing `d0`, completing layout `a0 a1 c0 c1 b0 d0`, then
 clears continuation fields. The same fixture classifies the successful return boundary:
-disassembly `0x15e22..0x15e28` calls `0x15b9a` and rejoins `0x15dcc`, and fixture
-fields `linear_return_boundary` and `split_return_boundary` prove that the common
-`0x15dcc -> 0x12328` drain sees remaining budget `0` after stream positions `2` and
-`3`, respectively, leaving the next `!` byte to dispatch as printable handler
-`0xd04a`. Disassembly evidence is `0x15b9a..0x15bdc`, `0x15bdc..0x15bec`,
-`0x15bee..0x15c18`, `0x15c18..0x15c4a`, and `0x15e22..0x15e28`; fixture evidence is
-`0x15b9a resumes downloaded-character continuation objects`. Fixture `0x15b9a partial
-and failed resumes update continuation or release object` covers the sibling status
-exits. A linear status-`2` resume copies only `c3`, leaves bitmap `f0 0f aa 55 c3 00`,
-advances destination `0x0850 -> 0x0851`, and resaves remaining count `1`. A split-plane
+disassembly `0x15e22..0x15e28` calls `0x15b9a` and rejoins `0x15dcc`, and fixture fields
+`linear_return_boundary` and `split_return_boundary` prove that the common `0x15dcc ->
+0x12328` drain sees remaining budget `0` after stream positions `2` and `3`,
+respectively, leaving the next `!` byte to dispatch as printable handler `0xd04a`.
+Disassembly evidence is `0x15b9a..0x15bdc`, `0x15bdc..0x15bec`, `0x15bee..0x15c18`,
+`0x15c18..0x15c4a`, and `0x15e22..0x15e28`; fixture evidence is `0x15b9a resumes
+downloaded-character continuation objects`. Fixture `0x15b9a partial and failed resumes
+update continuation or release object` covers the sibling status exits. A linear
+status-`2` resume copies only `c3`, leaves bitmap `f0 0f aa 55 c3 00`, advances
+destination `0x0850 -> 0x0851`, and resaves remaining count `1`. A split-plane
 status-`2` resume copies only prefix byte `c0`, leaves layout `a0 a1 c0 00 b0 00`,
 advances prefix destination `0x088e -> 0x088f`, keeps trailing destination `0x0891`, and
 resaves D4/D3 counters `0/0`. The status-`0` sibling copies one byte, then reaches

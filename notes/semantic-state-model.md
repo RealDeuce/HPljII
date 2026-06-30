@@ -3286,8 +3286,10 @@ selector mismatch only copies the remembered word and installs no context.
     `0x782f08/0x782f0a`, selected contexts `0x782ee6/0x782ef6`, page-root
     context slots at root `+0x2c + 4*n`, and page-root live flags
     `0x78297f+n`.
-  - dirty flags `0x782f2c` and `0x782f2d`, set by handlers `0xc930`,
-    `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a`.
+  - dirty flags `0x782f2c` and `0x782f2d`, set by spacing handler
+    `0xc930`, pitch handler `0xc89c`, point-size handler `0xc6ec`, style
+    handler `0xc780`, stroke-weight handler `0xc840`, and typeface finalizer
+    `0x1205a`.
   Evidence: fixture `parsed font-selection stream writes primary font-state
   fields`, fixture
   `primary symbol miss falls back before visible page-record rows`, and fixture
@@ -3297,7 +3299,9 @@ selector mismatch only copies the remembered word and installs no context.
   `0x17708 font-ID non-selected exits preserve prior selection` pins the
   non-selected final-`X` helper exits, and fixture
   `font-ID non-selected exits keep prior visible rows` pins their following
-  printable output.
+  printable output. Disassembly
+  `generated/disasm/ic30_ic13_font_selection_update_handlers_00c6ec.lst`
+  identifies the request-field writers and their dirty-flag stores.
 - Canonical selected context:
   - `0x782ee6 +0x00`: selected longword `0xc008004c`.
   - `0x782ee6 +0x04`: bit-30-derived byte `1`.
@@ -3556,8 +3560,20 @@ selector mismatch only copies the remembered word and installs no context.
 
 ### Writers
 
-- `0xc930`, `0xc89c`, `0xc6ec`, `0xc780`, `0xc840`, and `0x1205a` write the
-  primary request fields and dirty flags.
+- `0xc930` writes spacing byte `0x782eef + 0x10*slot` only for parsed values
+  `0` and `1`, then sets dirty flags `0x782f2c` and `0x782f2d`.
+- `0xc89c` and `0xc6ec` rewind the parsed numeric record at `0x78299e`, fold
+  signed integer/fractional values to positive, clamp integer values at
+  `0x028f`, convert `(integer * 10000 + fraction) / 100`, and write pitch word
+  `0x782ef0 + 0x10*slot` or point-size word `0x782ef2 + 0x10*slot`; both set
+  dirty flags `0x782f2c` and `0x782f2d`.
+- `0xc780` and `0xc7e0` fold style and typeface to positive bytes capped at
+  `0xff`, writing `0x782eed + 0x10*slot` and
+  `0x782eec + 0x10*slot`; `0xc840` clamps stroke weight to signed range
+  `-7..7` and writes `0x782eee + 0x10*slot`. These byte handlers set dirty
+  flag `0x782f2c`.
+- `0x1205a` is the typeface finalizer reached by final `T`; it calls
+  `0xc7e0` for the typeface write, then enters common refresh `0xc580`.
 - `0x120be` writes the requested symbol word `0x9a55` for `ESC (1234U` and
   `ESC )1234U`, and writes `0x000e`, `0x0155`, and `0x0175` for primary
   `ESC (0N`, `ESC (10U`, and `ESC (11U`, plus the same words for secondary
@@ -3881,6 +3897,11 @@ install events.
 ### Disassembly Evidence
 
 - `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`: parser dispatch.
+- `generated/disasm/ic30_ic13_font_selection_update_handlers_00c6ec.lst`:
+  spacing, pitch, point-size, style, typeface, and stroke request writers.
+- `generated/disasm/ic30_ic13_inline_symbol_helpers_015850.lst`: special
+  symbol-word lookup plus built-in and inline/downloaded symbol readers
+  `0x15890` and `0x158be`.
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`: candidate
   activation.
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`: printable

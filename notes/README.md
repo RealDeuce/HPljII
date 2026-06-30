@@ -54,6 +54,9 @@ compatibility boundary.
 - [reset-default-environment.md](reset-default-environment.md) - documented
   `ESC E` reset, default-record producers, retained-record paths, and reset
   publication behavior.
+- [publication-commands.md](publication-commands.md) - documented reset, FF,
+  page-size, orientation, paper-source, and copies publication streams to
+  rendered page records.
 - [transparent-print-data.md](transparent-print-data.md) - documented
   `ESC &p#X` delayed payload handling and printable text re-entry.
 - [raster-graphics.md](raster-graphics.md) - documented `ESC *t`,

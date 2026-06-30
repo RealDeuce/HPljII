@@ -651,10 +651,12 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    descriptor-record mode-byte boundary for this helper table is now documented by
    fixture `0x16b1a descriptor width helper emits only mode 1/2`: `0x16b36..0x16b6a`
    writes only mode `1`/`2` from span parity, and `0x16b26..0x16b34` rejects invalid
-   widths without scratch writes. The full soft-font descriptor grammar, other release
-   variants and full-success return-boundary siblings outside the even-span rule/raster
-   path and outside the segmented, split-plane segmented, segmented-wide, and
-   payload-control publication fixtures are still not proven against every PCL form.
+   widths without scratch writes. Fixture `0x15d0a descriptor grammar exits and handler
+   matrix` covers the zero-count descriptor route's early drains and all four
+   current-record/continuation by bit-30 handler polarities. Other release variants and
+   full-success return-boundary siblings outside the even-span rule/raster path and
+   outside the segmented, split-plane segmented, segmented-wide, and payload-control
+   publication fixtures are still not proven against every PCL form.
    ROM-internal descriptor-validation error visibility is documented at the rejecting
    predicate boundary instead: fixture `ESC )s#W validation failures preserve following
    printable output` carries the seven `ESC )s80W` predicate failures plus the
@@ -993,9 +995,10 @@ The next work should follow dataflow, not isolated handlers:
    remain printable` proves linear and split-plane status-`2` partial glyphs remain
    printable and publish the same rows. Remaining downloaded-character publication work
    is limited to row counts outside the covered short rows `0x01..0x80` and segmented
-   rows `0x81..0xff`, descriptor grammar forms outside the covered helper-table path,
-   pixel-row behavior beyond the wrapped-width source-byte boundary, segmented-wide
-   row words outside the source-byte-wrap matrix, broader
+   rows `0x81..0xff`, descriptor syntax outside the covered `0x15d0a` route and
+   `0x16336` helper-table paths, pixel-row behavior beyond the wrapped-width
+   source-byte boundary, segmented-wide row words outside the source-byte-wrap matrix,
+   broader
    publication combinations, and full-success return-boundary siblings outside the named
    row-count, wide-remainder, segmented-wide, normal, row-`0x80`, linear-segmented,
    split-plane segmented, segmented-wide, no-install, status-`2`, and payload-control

@@ -4646,7 +4646,11 @@ compact text renderer.
 - `0x16df6` dispatches font-control values; `0x17108` and `0x17150` toggle
   current-record bit `6` and transfer counts.
 - `0x15d0a` writes `0x783140`, reads descriptor bytes through `0x1599c`, and
-  routes to `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`.
+  routes to `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`. Fixture
+  `0x15d0a descriptor grammar exits and handler matrix` proves early drains
+  for budgets below three, parser mode `2`, exhausted descriptor input,
+  missing current records, and missing continuation state, plus all four
+  current-record/continuation and bit-30-set/clear handler polarities.
 - `0x16336` walks the downloaded-character descriptor helper table, writes
   parser scratch `0x7827be`/`0x7827c2`/`0x7827c4`, and stages the record bytes
   copied by `0x163b8`. Its helper pairs validate descriptor size, version,
@@ -4936,6 +4940,21 @@ index, a short resume copies only bytes `f0 0f`, then `0x15c4c` calls `0x17d7c`.
 release helper rewrites payload `+0x48` from `02 03 04 00 00 00 02 00` to `01 02 00 fa
 00 00 00 00`, writes side-table bytes `fa 00` at payload `+0x340`, records
 active-primary refresh `0x7828de = 0`, and clears the matching continuation fields.
+
+Fixture `0x15d0a descriptor grammar exits and handler matrix` composes the route
+front end with the state model. Canonical input state is the parsed byte budget
+in `0x783140`, current id `0x782f2e`, parser mode `0x782a92`, descriptor bytes
+from `0x1599c`, current-record scan result from `0x172c0`, and continuation
+fields `0x7827c6`/`0x7827da`. Parser scratch is limited to the descriptor prefix
+and scan status. Firmware bookkeeping is the shared final drain through
+`0x12328`; every skip/route case reaches remaining budget `0`. The covered
+output effect is handler selection, not pixel output: selector `0` plus object
+bit `30` set calls `0x16498`, selector `0` plus bit `30` clear calls `0x16606`,
+continuation plus bit `30` set calls `0x15b9a`, and continuation plus bit `30`
+clear calls `0x15c4c`. The unresolved middle edges after this checkpoint start
+at the selected object handlers: `0x15dc6 -> 0x16498`, `0x15e3c -> 0x16606`,
+`0x15e18 -> 0x15b9a`, and `0x15e5c -> 0x15c4c`, where handler-specific payload
+semantics determine visible output.
 Fixture `0x17d7c releases extended fixed-record table with secondary refresh` proves the
 direct extended fixed-record form: payload byte `+0x0e = 1` admits char `0xa1`, the
 helper indexes table entry `payload + 0x40 + (0xa1 - 0x40) * 8`, rewrites it from `04 05

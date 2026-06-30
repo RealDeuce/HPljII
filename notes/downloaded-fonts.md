@@ -32,6 +32,7 @@ glyph.
 Primary fixtures:
 
 - `0x15d0a-modeled font descriptor route`
+- `0x15d0a descriptor grammar exits and handler matrix`
 - `0x121cc/0x15d0a-modeled font descriptor command stream`
 - `font descriptor stream ties ROM parser dispatch to 0x15d0a routes`
 - `host-fetched font descriptor streams route through 0x15d0a`
@@ -535,6 +536,33 @@ The parser trace fixtures show the same dispatch path for `ESC )s0W`,
 - `0x15e5c..0x15e68`: status `2` sends bit-30-clear records to `0x15c4c`.
 - `0x15dcc..0x15dd2`: all exits drain the remaining `0x783140` bytes through
   `0x12328`.
+
+Fixture `0x15d0a descriptor grammar exits and handler matrix` pins the
+parser-front exits before any object handler runs:
+
+- `count-below-three`: byte budget `2` is drained without reading descriptor
+  bytes.
+- `parser-mode-2`: byte budget `3` is drained while `0x782a92 == 2`.
+- `source-exhausted-before-descriptor`: descriptor byte `0` is fetched, then
+  the remaining two budget bytes drain when descriptor byte `1` is unavailable.
+- `current-record-not-found`: descriptor `04 00 aa` consumes the descriptor
+  prefix, `0x172c0` reports scan status `2`, and the final byte drains.
+- `missing-continuation`: descriptor `04 01 cc` consumes the descriptor
+  prefix, finds no continuation state, and drains the final byte.
+
+The same fixture pins all four route polarities:
+
+- current-record selector `0`, object bit `30` set: payload `0x456789` routes
+  to `0x16498`.
+- current-record selector `0`, object bit `30` clear: payload `0x456789`
+  routes to `0x16606`.
+- continuation selector nonzero, object bit `30` set: saved payload
+  `0x654321` routes to `0x15b9a`.
+- continuation selector nonzero, object bit `30` clear: saved payload
+  `0x654321` routes to `0x15c4c`.
+
+In each fixture case the remaining budget reaches `0` at the route/drain
+boundary, so the next parser byte is not consumed by the descriptor route.
 
 Fixture values:
 
@@ -1817,7 +1845,11 @@ buckets `1` and `9`, and renders bucket word `9` through compact target
 - `0x17150` clears current-record bit `6` and transfers one count from
   `0x782786` to `0x782782`.
 - `0x15d0a` writes `0x783140`, consumes descriptor bytes through `0x1599c`,
-  and routes to `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`.
+  and routes to `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`. Fixture
+  `0x15d0a descriptor grammar exits and handler matrix` covers early drains
+  for short budgets, parser mode `2`, exhausted descriptor input, missing
+  current records, and missing continuation state, plus all four
+  current-record/continuation and bit-30-set/clear handler polarities.
 - `0x16c14` writes `0x783140`, current-record ids/payload pointers,
   candidate flags, candidate counters, and installed counts.
 - `0x16fae` writes staged descriptor fields, optional symbol bytes, and

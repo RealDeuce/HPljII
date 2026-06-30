@@ -4948,6 +4948,10 @@ compact text renderer.
     segment` and `downloaded segmented-wide row-0x0182 span-31 fallback hits
     source boundary` repeat the same success/boundary split for installed row
     word `0x0182`.
+    Fixtures `downloaded segmented-wide row-0x01ff fallbacks render selected
+    segment` and `downloaded segmented-wide row-0x01ff span-31 fallback hits
+    source boundary` repeat that split for installed row word `0x01ff`, the
+    highest sampled low-byte-above-`0x80` row.
   - downloaded-character segmented-wide row-byte boundary: fixture
     `downloaded segmented-wide row-byte boundary truncates page-record
     segments` installs canonical row words `0x0002`, `0x007f`, `0x0080`,
@@ -5223,7 +5227,10 @@ fallback hits source boundary` pins the neighboring large-remainder boundary at
 `validate_wide_compact_row_copy`, where fallback A2 source offset `+0xb50` exceeds the
 modeled bitmap. Fixtures `downloaded segmented-wide row-0x0182 fallbacks render selected
 segment` and `downloaded segmented-wide row-0x0182 span-31 fallback hits source
-boundary` repeat that success/boundary split for row word `0x0182`.
+boundary` repeat that success/boundary split for row word `0x0182`. Fixtures
+`downloaded segmented-wide row-0x01ff fallbacks render selected segment` and
+`downloaded segmented-wide row-0x01ff span-31 fallback hits source boundary` repeat the
+same split for row word `0x01ff`.
 Fixture `downloaded glyph
 row-count matrix publishes and renders additional short/segmented counts` adds two
 hundred fifty row-count siblings through the same fetched install, printable,
@@ -6192,6 +6199,9 @@ fallback hits source boundary` reaches the same renderer and reports the exact f
 A2 source read at `+0xb50`. High for the row-`0x0182` sibling because fixtures
 `downloaded segmented-wide row-0x0182 fallbacks render selected segment` and
 `downloaded segmented-wide row-0x0182 span-31 fallback hits source boundary` assert the
+same selected-segment success/boundary split. High for the row-`0x01ff` sibling because
+fixtures `downloaded segmented-wide row-0x01ff fallbacks render selected segment` and
+`downloaded segmented-wide row-0x01ff span-31 fallback hits source boundary` assert the
 same selected-segment success/boundary split. High for
 publication-to-scheduler band progression because `0xff1e` disassembly at `0xffc8`
 clears root `+0x18`, `0x1ed84` copies that word into render `+0x10/+0x16`, and fixture
@@ -6373,7 +6383,9 @@ fields and broader selected-font state combinations have not been page-compared.
   adjacent span-31 fallback A2 source-read boundary at `+0xb50`. Fixtures
   `downloaded segmented-wide row-0x0182 fallbacks render selected segment` and
   `downloaded segmented-wide row-0x0182 span-31 fallback hits source boundary` repeat
-  that split for row `0x0182`. Fixture
+  that split for row `0x0182`. Fixtures `downloaded segmented-wide row-0x01ff
+  fallbacks render selected segment` and `downloaded segmented-wide row-0x01ff span-31
+  fallback hits source boundary` repeat that split for row `0x01ff`. Fixture
   `0x16498 replacement allocation failure
   partial and rejected downloaded character exits preserve state` covers old-pointer
   release through `0x17a24`, object allocation failure through

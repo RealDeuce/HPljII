@@ -1837,6 +1837,12 @@ Output effect:
   segment `1`, `0x1f264`, and the `0x1f414` `32/96` current/fallback split;
   the adjacent span-31 case reaches the same selected segment path and stops at
   fallback A2 source offset `+0xb50`.
+- Fixtures `downloaded segmented-wide row-0x01ff fallbacks render selected
+  segment` and `downloaded segmented-wide row-0x01ff span-31 fallback hits
+  source boundary` repeat that split for row word `0x01ff`, the highest
+  sampled low-byte-above-`0x80` row. Spans `17`, `18`, and `32` render bucket
+  `8` segment `1` with the same `32/96` split; span `31` stops at fallback A2
+  source offset `+0xb50`.
 - Fixture `downloaded segmented-wide row-byte boundary truncates page-record
   segments` proves span-`0x11` downloaded glyphs keep canonical installed row
   words `0x0002`, `0x007f`, `0x0080`, `0x0081`, `0x0083`, `0x00fe`,
@@ -1912,6 +1918,8 @@ Fixture evidence:
 - `downloaded segmented-wide high-row span-32 fallback renders selected segment`
 - `downloaded segmented-wide row-0x0182 span-31 fallback hits source boundary`
 - `downloaded segmented-wide row-0x0182 fallbacks render selected segment`
+- `downloaded segmented-wide row-0x01ff span-31 fallback hits source boundary`
+- `downloaded segmented-wide row-0x01ff fallbacks render selected segment`
 - `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `downloaded glyph row-count matrix publishes and renders additional
   short/segmented counts`

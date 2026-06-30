@@ -112,6 +112,8 @@ Primary fixtures:
 - `downloaded segmented-wide high-row span-32 fallback renders selected segment`
 - `downloaded segmented-wide row-0x0182 span-31 fallback hits source boundary`
 - `downloaded segmented-wide row-0x0182 fallbacks render selected segment`
+- `downloaded segmented-wide row-0x01ff span-31 fallback hits source boundary`
+- `downloaded segmented-wide row-0x01ff fallbacks render selected segment`
 - `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
@@ -1571,6 +1573,14 @@ row split with installed-bitmap matches. The adjacent span-31 case reaches the
 same `0x1f264` selected-segment path and stops at the same fallback A2 source
 read boundary `+0xb50`.
 
+Fixtures `downloaded segmented-wide row-0x01ff fallbacks render selected
+segment` and `downloaded segmented-wide row-0x01ff span-31 fallback hits source
+boundary` repeat that split for the highest sampled low-byte-above-`0x80` row
+word. Row `0x01ff` succeeds at spans `17`, `18`, and `32`, preserving the same
+selected segment, zero-drain return boundary, and `32` current / `96` fallback
+row split with installed-bitmap matches. The adjacent span-31 case reaches
+`0x1f264` and stops at fallback A2 source read boundary `+0xb50`.
+
 Fixture `downloaded segmented-wide row-byte boundary truncates page-record
 segments` classifies the row-count side of that cross-product for span `0x11`.
 It installs canonical row words `0x0002`, `0x007f`, `0x0080`, `0x0081`,
@@ -2288,7 +2298,10 @@ A byte-stream renderer must preserve:
   read boundary at `+0xb50`. Fixtures `downloaded segmented-wide row-0x0182
   fallbacks render selected segment` and `downloaded segmented-wide row-0x0182
   span-31 fallback hits source boundary` prove the same success/boundary split for row
-  `0x0182`. Remaining parser-produced comparisons are bounded cross-products:
+  `0x0182`. Fixtures `downloaded segmented-wide row-0x01ff fallbacks render selected
+  segment` and `downloaded segmented-wide row-0x01ff span-31 fallback hits source
+  boundary` prove the same split for row `0x01ff`. Remaining parser-produced
+  comparisons are bounded cross-products:
   visible pixel rows beyond those documented wrapped source-byte helper-table
   boundaries, broader publication combinations beyond the documented normal,
   nonboundary-short, rows-`0x20` short, rows-`0x40` short, row-`0x80`, row-count-matrix
@@ -2329,7 +2342,10 @@ A byte-stream renderer must preserve:
   boundary` pins the neighboring span-31 source-read boundary at `+0xb50`; fixtures
   `downloaded segmented-wide row-0x0182 fallbacks render selected segment` and
   `downloaded segmented-wide row-0x0182 span-31 fallback hits source boundary` pin the
-  same return/boundary split for row `0x0182`; fixture
+  same return/boundary split for row `0x0182`; fixtures `downloaded segmented-wide
+  row-0x01ff fallbacks render selected segment` and `downloaded segmented-wide
+  row-0x01ff span-31 fallback hits source boundary` pin the same return/boundary split
+  for row `0x01ff`; fixture
   `downloaded normal row-0x80 and segmented glyph FF publications render page records`
   pins normal, row-`0x80`, and linear-segmented zero-drain returns before handler
   `0xd04a`; fixture `split-plane segmented downloaded glyph FF publication renders page

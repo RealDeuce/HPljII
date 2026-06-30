@@ -57,6 +57,18 @@ pixel-perfect rendering:
 - FF `0x0c`, handler `0x00f0f0`: page eject and page-buffer boundary.
 - HT `0x09`, handler `0x00f1cc`: tab and horizontal cursor positioning.
 - BS `0x08`, handler `0x00f2a8`: backspace cursor behavior.
+- `ESC 9`, handler `0x00e9ba`: clear horizontal margins; clears left
+  margin, copies page width to right margin, and clears the right-margin
+  fractional companion.
+- `ESC =`, handler `0x00f176`: half-line feed; ensures the page root,
+  flushes pending text span state, and advances vertical cursor by half
+  the current VMI.
+- `ESC Y`, handlers `0x012536` normal and `0x012120` alternate/data:
+  display-functions reader loop; the normal path routes normalized bytes
+  into text/fixed-space output, while the alternate path appends them.
+- `ESC z`, handler `0x00cd86`: display-functions off/reset terminal;
+  tests the active data-chain frame byte at `0x782d76 + 9` and calls
+  helper `0x9c2c` only when that byte is zero.
 - `ESC &l#A`, handler `0x00fc74`: page size; maps PCL values to internal
   paper codes.
 - `ESC &l#P`, handler `0x00f9e8`: page length in lines; converts current
@@ -103,6 +115,10 @@ pixel-perfect rendering:
 - `ESC &f#X`, handler `0x00dd08`: macro control; selectors `0..10`
   dispatch through the macro record/data-chain table.
 - `ESC &p#X`, handler `0x011f5a`: transparent print data boundary.
+- `ESC &d...`, handler `0x012622`: underline/text-attribute tokenizer;
+  schedules `W/w` payloads, flushes pending span state for bit-2-clear
+  terminal bytes, and writes selector `0x783185` before re-arming span
+  bounds for the `3D` alternate-offset case.
 - `ESC &s#C`, handler `0x00edb0`: end-of-line wrap mode.
 - `ESC *t#R`, handler `0x010808`: raster resolution.
 - `ESC *r#A`, handler `0x01075a`: start raster graphics.

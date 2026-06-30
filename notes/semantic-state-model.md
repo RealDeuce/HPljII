@@ -1123,6 +1123,11 @@ Concept: `ESC Y` is not a one-byte mode bit in this firmware. It enters an
 table dispatches `ESC Y` to `0x12536`, which routes normalized bytes into text
 imaging. The alternate/data parser table dispatches `ESC Y` to `0x12120`,
 which appends normalized bytes through `0xe002`.
+The separate normal-mode `ESC z` terminal handler at `0xcd86` is the
+ROM-visible display-functions-off/reset edge: it tests byte `+9` in the
+active data-chain frame addressed by `0x782d76`, calls helper `0x9c2c` only
+when that byte is zero, and otherwise returns without entering either
+`ESC Y` reader loop.
 
 ### Field Groups
 
@@ -1146,6 +1151,13 @@ which appends normalized bytes through `0xe002`.
   - `0xf054` CR post-handler called by `0x12536` after routed value `0x0d`.
   - macro/data-chain chunk `0x783988`, populated by `0xe002` in the append
     fixture for the byte stream preserved by alternate/data `ESC Y`.
+- Parser/data-chain guard state:
+  - active data-chain frame pointer `0x782d76`, with frame byte `+9` read by
+    `ESC z` handler `0xcd86` before the conditional call to `0x9c2c`.
+  Evidence: disassembly `0xcd86..0xcda0` in
+  `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst` and the normal parser
+  command-map row for `ESC z` in
+  `generated/analysis/ic30_ic13_pcl_command_map.md`.
 
 ### Writers
 
@@ -1155,6 +1167,8 @@ which appends normalized bytes through `0xe002`.
   `0xd0f0` for each normalized loop value until `ESC Z` or `D7 = -1`.
 - Both handlers call `0xd99a` when local bytes `0x1a 0x58` are consumed and
   substituted with routed/appended value `0x7f`.
+- `0xcd86` performs the `ESC z` terminal action by conditionally calling
+  `0x9c2c` when the active data-chain frame byte `+9` is zero.
 
 ### Readers And Consumers
 
@@ -1164,6 +1178,8 @@ which appends normalized bytes through `0xe002`.
 - `0x12536` consumes selected context/filter state, then routes C0 and
   high-control ranges through the same `0xd0f0` / `0xd04a` consumers used by
   transparent print data and direct text.
+- `0xcd86` consumes only the active data-chain frame guard byte before the
+  `0x9c2c` display-functions-off/reset helper boundary.
 - Downstream consumers of the normal path are source-object mapping,
   cursor/spacing state, page-record queueing, bridge, and render entry.
 
@@ -1176,6 +1192,10 @@ Fixture `0x12120 ESC Y alternate append stores normalized display bytes`
 proves payload `21 1a 58 1b 5a` is stored as `1b 59 21 7f 1b 5a` in macro
 chunk `0x783988`; the fixture records allocation plus six `0xe002` byte
 appends with raw counts `4..10`.
+
+`ESC z` has no direct page-record output in this checkpoint. Its documented
+ROM effect is the guarded helper boundary at `0xcd86..0xcda0`: if
+`byte[long[0x782d76] + 9] == 0`, call `0x9c2c`; otherwise return.
 
 Normal `0x12536` can produce pixels or spacing. Values `0x00..0x1f` route
 through `0xd0f0` only when the selected context byte is zero; values
@@ -1210,7 +1230,9 @@ dedicated fixtures for both `0x12120` and `0x12536`. High for the normal
 drives `ESC Y ... ESC Z` through `0xd04a`, `0xd0f0`, compact object queueing,
 bridge, and rendered rows. High for the alternate/data append boundary because
 the append fixture drives `0x12120` loop output through `0xe002` into the
-macro chunk payload.
+macro chunk payload. High for the `ESC z` guard and `0x9c2c` call boundary
+because it is a direct disassembly read; medium for the manual-facing name of
+the `0x9c2c` side effect until that helper is separately composed.
 
 ### Fixtures
 
@@ -1226,8 +1248,12 @@ macro chunk payload.
 
 - `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`:
   `0x12120..0x1219c` and `0x12536..0x1261e`.
+- `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`: `0xcd86..0xcda0`
+  guarded `ESC z` helper call.
 - `generated/analysis/ic30_ic13_parser_dispatch_tables.md`: normal and
   alternate/data mode-1 `ESC Y` dispatch entries.
+- `generated/analysis/ic30_ic13_pcl_command_map.md`: normal `ESC z`
+  terminal command-map row.
 - `notes/pcl-parser-core.md`: `ESC Y Display Functions Readers`.
 
 ### Unresolved Middle Edges
@@ -1236,6 +1262,8 @@ macro chunk payload.
   default-filter and filter-on route predicates, or the `0x12120..0x1219c`
   alternate/data append loop. Broader macro/data-chain ownership remains
   covered in `Macro Definition And Replay`, not reopened here.
+- `0x9c2c`: display-functions-off/reset helper internals are still an
+  unresolved middle edge beyond the `0xcd86` command boundary.
 
 ## Text Cursor And Direct Controls
 
@@ -1266,6 +1294,9 @@ VMI state before object queueing, then cross the same `0x1387c`,
   - `0x782dda`: right margin / horizontal limit written by
     `ESC &a#M` handler `0xec0c` and consumed by HT and horizontal
     commit helper `0xf4ca`.
+  - `0x782ddc`: right-margin fractional companion cleared by margin-reset
+    helper `0xe9ba` when `ESC 9` or environment refresh restores the
+    horizontal limits to full page width.
   - `0x78315c`: HMI/default horizontal motion written by `ESC &k#H`
     handler `0xca8c`, read by HT/BS, margin handlers, column
     positioning, and printable advance fixtures.
@@ -1273,7 +1304,8 @@ VMI state before object queueing, then cross the same `0x1387c`,
     `0xcb00` and `0xc992`, read by LF/FF, `ESC &a#R`, VFC, and
     page-length/top-margin fixtures.
   Evidence: generated direct-control report state scan entries for
-  `0x782c8a`, `0x782c8e`, `0x782dd6`, `0x782dda`, `0x78315c`, and
+  `0x782c8a`, `0x782c8e`, `0x782dd6`, `0x782dda`, `0x782ddc`,
+  `0x78315c`, and
   `0x783160`; fixtures `HMI parser trace feeds page-record queue`,
   `mixed printable/control parser trace feeds page-record queue`,
   `HT/BS parser trace feeds page-record queue`, `margin command parser
@@ -1369,10 +1401,14 @@ VMI state before object queueing, then cross the same `0x1387c`,
     set to `0xff` by FF after page eject.
   - `0x783184`: pending text span flush enable tested by helper
     `0xf34a`.
+  - `0x783185`: alternate y-offset/span selector written by `ESC &d`
+    terminal handler `0x12622` for the absolute `3D` case and consumed
+    by text source span consumers documented in
+    `Text Source Objects And Compact Buckets`.
   - `0x78318e`: alternate previous-width mode tested by BS.
   Evidence: generated direct-control report state scan and shared-helper
-  table; fixtures for CR/LF/FF/HT/BS, cursor-stack pop, and horizontal
-  commit helpers.
+  table; disassembly `0x12622..0x126e2` for the `0x783185` writer; fixtures
+  for CR/LF/FF/HT/BS, cursor-stack pop, and horizontal commit helpers.
 - Unknown:
   - exact manual-facing names for some pending-text latches
     `0x782a57`, `0x782a58`, `0x782a5a`, and `0x782a6d`.
@@ -1388,6 +1424,14 @@ VMI state before object queueing, then cross the same `0x1387c`,
   glyph to compact coord `0x0501`.
 - `0xf02c`, `0xf08c`, `0xf0f0`, `0xf1cc`, and `0xf2a8` write cursor and
   pending-span state for CR/LF/FF/HT/BS.
+- `0xe9ba` implements `ESC 9` / horizontal-margin reset by clearing
+  `0x782dd6`, copying page width `0x782db8` into `0x782dda`, and clearing
+  `0x782ddc`.
+- `0xf176` implements `ESC =` / half-line feed by ensuring page root
+  `0x10084`, flushing pending span state through `0xf34a`, converting half
+  of current VMI `0x783160` through the coordinate helpers, adding it to
+  vertical cursor `0x782c8e`, and then running perforation-skip helper
+  `0xf36c`.
 - `0xeb58` and `0xec0c` write left/right margins and can move
   `0x782c8a`.
 - `0xf39e`, `0xf416`, and `0xf48c` write horizontal cursor state
@@ -1403,6 +1447,12 @@ VMI state before object queueing, then cross the same `0x1387c`,
 - `0xf75e` writes cursor-stack entries and restores cursor state.
 - `0x11f5a` arms transparent-text delayed payload state; `0x12452`
   consumes the payload and routes printable bytes back into `0xd04a`.
+- `0x12622` tokenizes `ESC &d` underline/text-attribute commands. It
+  schedules `W/w` payloads through `0x121cc`, rewinds parser record cursor
+  `0x78299e` for lookahead that belongs to the current record, calls
+  `0x12218` for terminal bytes `0x40..0x5e`, flushes pending span state via
+  `0x12714` when terminal bit 2 is clear, and otherwise writes
+  `0x783185 = 1` only for absolute selector `3D` before calling `0x126e2`.
 
 ### Readers And Consumers
 
@@ -1420,6 +1470,10 @@ VMI state before object queueing, then cross the same `0x1387c`,
   top-offset, text-bottom, and vertical-cursor state with this cluster;
   see the `Vertical Forms Control Channels` section for its composed
   channel semantics.
+- Text source span consumers `0xd4ac` and `0xd8fc` read `0x783185` to
+  decide whether alternate y-offset fields participate in span bounds; see
+  `Text Source Objects And Compact Buckets` for the visible-output
+  consumers at `0xd4f8..0xd506` and `0xd940..0xd954`.
 
 ### Output Effect
 
@@ -1460,6 +1514,17 @@ VMI state before object queueing, then cross the same `0x1387c`,
   at x `16`.
 - `ESC *p30x30Y!` routes dot-position handlers `0xf48c` and `0xf692`
   to following `0xd04a` output at compact coord `0x9402`.
+- `ESC 9` has no pixels by itself. Its ROM-visible effect at
+  `0xe9ba..0xe9d6` is to reset left/right horizontal limits to
+  `0` / page width and clear the fractional companion before later text,
+  CR, HT, and horizontal commit helpers consume those margins.
+- `ESC =` has no glyph bytes by itself. Its ROM-visible effect at
+  `0xf176..0xf1c2` is a half-VMI vertical advance with the same pending-span
+  flush and perforation-skip checks used by other vertical movement paths.
+- `ESC &d` terminal records have no immediate glyph payload in this
+  checkpoint. Handler `0x12622..0x126e2` either publishes pending span state
+  through `0x12714` or writes `0x783185` and re-arms span bounds; subsequent
+  text source consumers turn that selector into alternate y-offset behavior.
 - `ESC &l3E!`, `ESC &l1L!`, and `ESC &l66P!` route vertical-layout,
   perforation-skip, and page-length state into following printable
   output; the top-margin case queues at `0x9001` in bucket `6`.
@@ -1479,6 +1544,10 @@ fixtures that start at `0xa904` and reach rendered rows. Medium for the
 exact names of pending-text latches and every internal write between
 `0xd04a` and `0x12f2e`, because several page-object fixtures still use
 modeled source/object structures rather than a full live CPU-memory run.
+High for the ROM-visible `ESC 9`, `ESC =`, and `ESC &d` field writes and
+helper boundaries because those are direct disassembly reads; medium for
+their complete manual-facing names and every downstream visible-output case
+until dedicated host-fetched fixtures cover those terminal commands.
 
 ### Fixtures
 
@@ -1518,8 +1587,16 @@ modeled source/object structures rather than a full live CPU-memory run.
   `0xf34a`, `0xf36c`, `0xf4ca`, and `0xf6e2`.
 - `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`:
   HMI/VMI, vertical layout, margin, and line-termination handlers.
+- `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`:
+  `0xe9ba..0xe9d6` horizontal-margin reset used by `ESC 9` and environment
+  refresh.
+- `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`:
+  `0xf176..0xf1c2` half-line-feed handler.
 - `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`:
   dot-position and cursor-stack handlers.
+- `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`:
+  `0x12622..0x126e2` underline/text-attribute tokenizer, pending-span
+  flush edge, `0x783185` writer, and span re-arm call.
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`:
   printable text consumers of cursor/font state.
 - `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`:
@@ -1576,6 +1653,13 @@ modeled source/object structures rather than a full live CPU-memory run.
   exercises same-chunk and rollover allocation for all cursor variants
   is still covered by the shared page-record storage checkpoint rather
   than this section.
+- `0xe9ba`, `0xf176`, and `0x12622`: the ROM-visible terminal effects for
+  `ESC 9`, `ESC =`, and `ESC &d` are documented through their field writes
+  and helper boundaries. Dedicated host-fetched page-record fixtures for
+  those exact command streams remain open, with boundaries
+  `0xe9ba -> next margin-consuming text/control`, `0xf176 -> 0xf36c ->
+  next text/page-boundary effect`, and `0x12622 -> 0x12714/0x126e2 ->
+  later 0xd4ac/0xd8fc span consumers`.
 
 ## Transparent Print Data
 

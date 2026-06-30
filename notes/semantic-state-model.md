@@ -8063,7 +8063,8 @@ selector `7` to `0x1f596` or non-solid selectors to `0x1f4e0`.
   - `+0x04`: queued width.
   - `+0x06`: queued height.
   - `+0x08`: fill selector.
-  Evidence: `0x10b80 rectangle fill clips right/top/bottom edges and ignores
+  Evidence: `0x10b80 rectangle fill clips negative left edge before queueing`
+  and `0x10b80 rectangle fill clips right/top/bottom edges and ignores
   off-page fills`.
 - Canonical rule-list object under page-root `+0x24`:
   - object `+0x00`: next pointer.
@@ -8147,13 +8148,19 @@ Fixture `0x1f446/0x1f596 renders solid black rectangle rule pixels` decodes
 key `0x4a00` as x `10`, y `20`, width `12`, rows `5`, partial mask `0xfff0`,
 and renders five solid rows. The band-crossing solid fixture starts at y `78`,
 draws two rows in the first band, leaves three rows in object `+0x0c`, and
-draws those remaining rows at y `0` in the next band.
+draws those remaining rows at y `0` in the next band. Fixture
+`0x1f596 carries solid rule remainder across render bands` pins the exact
+mutated object and second-band rows for that continuation.
 
 Fixture `0x1f4e0 renders gray and HP pattern selector matrix` pins the
 non-solid selector table and pattern starts. Selector `0` uses pattern base
 `0x02ff3e`; shifted HP pattern selector `13` with key `0x3500` decodes x `5`,
 y `3`, width `19`, row-low `3`, pattern start `0x0306c4`, left mask
-`0x07ff`, and right mask `0xff00`.
+`0x07ff`, and right mask `0xff00`. Fixtures `0x1f4e0 carries patterned rule
+remainder across render bands`, `0x1f446 page-band walk assembles patterned
+rule rows`, and `0x1f4e0 renders sub-byte shifted HP pattern rule pixels`
+pin the non-solid continuation object, page-band assembly, and sub-byte
+shifted HP-pattern row masks.
 
 Fixture `host-fetched alternate rectangle selectors feed full page records`
 composes two non-solid selector paths with compact text and the page-record
@@ -8186,7 +8193,16 @@ Fixture `0x10b80 rectangle fill clips right/top/bottom edges and ignores
 off-page fills` proves negative-left clipping from start x `-3`, width `10`
 to queued x `0`, width `7`, plus right-edge, top-edge, bottom-edge,
 landscape-right-edge, horizontal-outside, vertical-outside, and
-empty-after-clip outcomes.
+empty-after-clip outcomes. Fixture
+`0x10b80 rectangle fill clips negative left edge before queueing` separately
+pins the negative-left source-record case before object queueing.
+
+Fixture `host-fetched rectangle rule feeds 0x1ed84 and 0x1ef6a` proves the
+host-fetched `ESC *c12a5b0P` rule object enters the active render copy, runs
+`0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`, and renders the selector-7 tail
+rows. Fixtures `host-fetched text plus rectangle page record feeds 0x1ed84
+and 0x1ef6a` and `addressed text plus rectangle stream matches page-record
+output` pin the same rule object composed with compact text before render.
 
 Fixture `rectangle parser trace feeds no-room retry path` proves the parser
 trace reaches `0x10e68`, `0x10e22`, and `0x10898`; the no-room path publishes
@@ -8210,14 +8226,22 @@ models allocator results rather than executing the full heap/free-list path.
 - `rectangle command stream queues chained ESC *c rule object`
 - `0x11774 ROM dispatch table routes chained ESC *c rule stream`
 - `host-fetched rectangle rule stream preserves 0x1edc6 bridge contract`
+- `host-fetched rectangle rule feeds 0x1ed84 and 0x1ef6a`
 - `0x13386/0x133aa-modeled rectangle/rule list object and bridge
   normalization`
 - `0x1f446/0x1f596 renders solid black rectangle rule pixels`
+- `0x1f596 carries solid rule remainder across render bands`
 - `0x1f4e0 renders gray and HP pattern selector matrix`
+- `0x1f4e0 carries patterned rule remainder across render bands`
+- `0x1f446 page-band walk assembles patterned rule rows`
+- `0x1f4e0 renders sub-byte shifted HP pattern rule pixels`
 - `host-fetched alternate rectangle selectors feed full page records`
 - `host-fetched rectangle selector matrix feeds full page records`
+- `0x10b80 rectangle fill clips negative left edge before queueing`
 - `0x10b80 rectangle fill clips right/top/bottom edges and ignores off-page
   fills`
+- `host-fetched text plus rectangle page record feeds 0x1ed84 and 0x1ef6a`
+- `addressed text plus rectangle stream matches page-record output`
 - `0x10d22 rectangle/rule no-room retry finalizes root then retries span`
 - `rectangle parser trace feeds no-room retry path`
 
@@ -8806,7 +8830,10 @@ compose across two bands while rule continuation carries state. Fixture
 parser-shaped bucket/rule/raster objects merge after `0x1edc6`. Fixture
 `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
 proves a host-fetched downloaded glyph, rule, and raster page stream reaches
-the same dispatch layer.
+the same dispatch layer. Fixtures `0x1f596 carries solid rule remainder across
+render bands`, `0x1f4e0 carries patterned rule remainder across render bands`,
+and `0x1f446 page-band walk assembles patterned rule rows` pin the standalone
+rule-list continuation contract used by the mixed-page fixtures.
 
 ### Confidence
 
@@ -8830,7 +8857,11 @@ combinations and physical/reference page comparisons.
 - `0x1f812 segment-list object renders counted mask spans`
 - `0x1f756 fixed-width list renders bridged +0x20 object`
 - `0x1f446/0x1f596 renders solid black rectangle rule pixels`
+- `0x1f596 carries solid rule remainder across render bands`
 - `0x1f4e0 renders gray and HP pattern selector matrix`
+- `0x1f4e0 carries patterned rule remainder across render bands`
+- `0x1f446 page-band walk assembles patterned rule rows`
+- `0x1f4e0 renders sub-byte shifted HP pattern rule pixels`
 - `0x1f88e mode-0 raster object renders queued literal row`
 - `0x1f88e mode-1 raster object expands queued bytes into two rows`
 - `0x1f88e mode-2 raster object expands queued byte pair into three rows`

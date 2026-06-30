@@ -4580,18 +4580,20 @@ compact text renderer.
     source-walk rows now match the installed bitmap above span `32`.
   - downloaded-character width-byte boundary: fixture `downloaded glyph
     width-byte boundary truncates page-record span` installs canonical width
-    words `0x07f8`, `0x0800`, `0x0808`, and `0x1068` for spans `0x00ff`,
-    `0x0100`, `0x0101`, and `0x020d`. Parser/page-record scratch is the
-    current unflagged printable source record byte `+0`, which contains
-    `0xff`, `0x00`, `0x01`, and `0x0d`. Derived/cache state is the `0x12f2e`
-    selector choice: only span `0x00ff` remains selector `0x1003`; the wrapped
-    spans queue selector `0x0003`. Publication state is now fixture-backed:
+    words for spans `0x00ff`, `0x0100`, `0x0101`, `0x0102`, `0x010f`,
+    `0x0110`, `0x0111`, `0x017f`, `0x0180`, `0x01fe`, and `0x020d`.
+    Parser/page-record scratch is the current unflagged printable source
+    record byte `+0`, so `0x12f2e` sees only the low width byte. Derived/cache
+    state is the selector choice: source width bytes `0x00..0x10` queue
+    selector `0x0003`, while source width bytes `0x11..0xff` queue selector
+    `0x1003`. Publication state is now fixture-backed:
     `0xff1e` publishes bucket `0`, clears the current root, keeps empty
     rule/fixed lists and context prefix `(0, 0, 0, 0)`, and preserves the queued
-    object as published bucket root. Derived render state now includes the first
-    dispatch edge: `0x00ff` stays on compact-wide renderer `0x1f0d2`, while
-    wrapped spans enter compact mode-0 at `0x1effe` and read helper-table
-    entries `0x1f48e`, `0x1f492`, and `0x1f8c2`, targeting `0x20700000`,
+    object as published bucket root. Derived render state now includes the
+    first dispatch edge: source width bytes `0x11..0xff` stay on compact-wide
+    renderer `0x1f0d2`, while source width bytes `0x00..0x10` enter compact
+    mode-0 at `0x1effe` and read helper-table entries outside the decoded
+    row-copy helper heads, including targets `0x20700000`,
     `0x4e90202c`, and `0x4e904cdf` outside decoded row-copy helper heads.
   - downloaded-character segmented-wide matrix: fixture `downloaded glyph
     segmented-wide matrix publishes and renders compact chunks` installs
@@ -5512,10 +5514,12 @@ rows matching the installed bitmap; the same fixture makes high-span probes `33`
 `49`, `64`, and `255` high-confidence for upstream metadata and row equivalence.
 High for the width-byte producer boundary because fixture `downloaded glyph
 width-byte boundary truncates page-record span` asserts spans `0x00ff`,
-`0x0100`, `0x0101`, and `0x020d`, the canonical installed width words, the
-one-byte source records, the resulting `0x12f2e` selectors, and the first
-render edge. The wrapped spans select compact mode-0 helper entries `0x1f48e`,
-`0x1f492`, and `0x1f8c2`, whose targets are not decoded row-copy helper heads.
+`0x0100`, `0x0101`, `0x0102`, `0x010f`, `0x0110`, `0x0111`, `0x017f`, `0x0180`,
+`0x01fe`, and `0x020d`, the canonical installed width words, the one-byte
+source records, the resulting `0x12f2e` selectors, and the first render edge.
+Source width bytes `0x11..0xff` select compact-wide `0x1f0d2`; source width
+bytes `0x00..0x10` select compact mode-0 helper entries outside the decoded
+row-copy helper heads.
 High for segmented-wide downloaded rendering because
 fixture `downloaded glyph segmented-wide matrix publishes and renders compact chunks`
 asserts spans `17..32`, rows `0x81`, mode-byte parity, split-plane copies for odd spans,
@@ -5695,9 +5699,9 @@ fields and broader selected-font state combinations have not been page-compared.
   objects through trailing-FF `0xff1e` publication and `0x1ed84`/`0x1ef6a`
   published-record rendering. Still-open comparisons are bounded cross-products: row
   counts outside the covered short rows `0x01..0x80` and segmented rows `0x81..0xff`,
-  pixel rows after printable downloaded spans `0x0100..0x020d` wrap in the
-  current one-byte page source span field and select invalid helper-table
-  targets, visible behavior after
+  pixel rows after printable downloaded spans wrap in the current one-byte page source
+  span field, including compact-wide wrapped spans and compact mode-0 invalid
+  helper-table targets, visible behavior after
   segmented-wide row words outside the source-byte-wrap matrix produce the
   current one-byte page source row field, broader
   publication combinations beyond the documented normal, non-boundary short, rows-`0x20`

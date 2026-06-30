@@ -963,11 +963,12 @@ The next work should follow dataflow, not isolated handlers:
    `0x30`, `0x2f27c` full chunks, `0x1f1ac` remainders `1..15`, the span-`32`
    no-remainder sibling, zero-drain returns, and probes segmented-wide spans `33`, `48`,
    `49`, and `64`. Fixture `downloaded glyph width-byte boundary truncates page-record
-   span` pins source-width wrapping for spans `0x00ff`, `0x0100`, `0x0101`, and
-   `0x020d`: installed width words survive, but `0x12f2e` sees width bytes `0xff`,
-   `0x00`, `0x01`, and `0x0d`; only `0x00ff` remains selector `0x1003`, while wrapped
-   spans publish bucket `0` and dispatch through helper-table entries that resolve to
-   non-helper longwords. Fixture `downloaded segmented-wide row-byte boundary truncates
+   span` pins source-width wrapping for spans `0x00ff`, `0x0100`, `0x0101`,
+   `0x0102`, `0x010f`, `0x0110`, `0x0111`, `0x017f`, `0x0180`, `0x01fe`, and
+   `0x020d`: installed width words survive, but `0x12f2e` sees only the low width byte.
+   Source width bytes `0x11..0xff` select compact-wide `0x1f0d2`; source width bytes
+   `0x00..0x10` select compact mode-0 helper entries outside decoded row-copy helper
+   heads. Fixture `downloaded segmented-wide row-byte boundary truncates
    page-record segments` pins the row-byte sibling for installed row words `0x0002`,
    `0x007f`, `0x0080`, `0x0081`, `0x0083`, `0x00fe`, `0x00ff`, `0x0100`, `0x0101`,
    `0x0181`, `0x0182`, `0x01ff`, `0x0200`, and `0x0201`: `0x12f2e` sees only the low
@@ -993,8 +994,8 @@ The next work should follow dataflow, not isolated handlers:
    printable and publish the same rows. Remaining downloaded-character publication work
    is limited to row counts outside the covered short rows `0x01..0x80` and segmented
    rows `0x81..0xff`, descriptor grammar forms outside the covered helper-table path,
-   pixel-row behavior beyond wrapped-width invalid helper
-   entries, segmented-wide row words outside the source-byte-wrap matrix, broader
+   pixel-row behavior beyond the wrapped-width source-byte boundary, segmented-wide
+   row words outside the source-byte-wrap matrix, broader
    publication combinations, and full-success return-boundary siblings outside the named
    row-count, wide-remainder, segmented-wide, normal, row-`0x80`, linear-segmented,
    split-plane segmented, segmented-wide, no-install, status-`2`, and payload-control

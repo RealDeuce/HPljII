@@ -1753,16 +1753,15 @@ Output effect:
   render-record width words `>= span` are pinned, and rendered rows match the
   installed bitmap rows for those high spans.
 - Fixture `downloaded glyph width-byte boundary truncates page-record span`
-  proves descriptor-accepted spans `0x00ff`, `0x0100`, `0x0101`, and `0x020d`
-  keep canonical installed width words `0x07f8`, `0x0800`, `0x0808`, and
-  `0x1068`, but the current unflagged printable source record supplies only
-  byte `+0` to `0x12f2e`. The resulting source width bytes are `0xff`,
-  `0x00`, `0x01`, and `0x0d`; only `0x00ff` keeps selector `0x1003`, while
-  the wrapped spans queue selector `0x0003`. The same fixture now carries the
-  first render decision: `0x00ff` stays on `0x1f0d2`; wrapped spans dispatch
-  through compact mode-0 at `0x1effe`, reading helper entries `0x1f48e`,
-  `0x1f492`, and `0x1f8c2` that point to `0x20700000`, `0x4e90202c`, and
-  `0x4e904cdf`, outside decoded row-copy helper heads.
+  proves descriptor-accepted spans `0x00ff`, `0x0100`, `0x0101`, `0x0102`,
+  `0x010f`, `0x0110`, `0x0111`, `0x017f`, `0x0180`, `0x01fe`, and `0x020d`
+  keep canonical installed width words, but the current unflagged printable
+  source record supplies only byte `+0` to `0x12f2e`. Source width bytes
+  `0x00..0x10` queue selector `0x0003`; source width bytes `0x11..0xff` queue
+  selector `0x1003`. The same fixture now carries the first render decision:
+  high source bytes stay on `0x1f0d2`, while low source bytes dispatch through
+  compact mode-0 at `0x1effe`, reading helper entries outside decoded row-copy
+  helper heads, including targets `0x20700000`, `0x4e90202c`, and `0x4e904cdf`.
 - Fixture `downloaded glyph segmented-wide matrix publishes and renders
   compact chunks` proves parser-produced downloaded-character spans `17..32`
   with rows `0x81` install widths `136..256`, publish buckets `0` and `8` as
@@ -1879,10 +1878,12 @@ Unresolved middle edges:
   `49`, and `64` through parser/install/publication/dispatch metadata and
   matched rendered rows. Fixture `downloaded glyph width-byte boundary
   truncates page-record span` now classifies descriptor-accepted spans
-  `0x0100..0x020d` at the current printable handoff: canonical installed width
-  words survive, but `0x12f2e` consumes only the low source byte, so spans
-  `0x0100`, `0x0101`, and `0x020d` queue selector `0x0003` and read
-  non-helper compact mode-0 row-copy entries. Fixture
+  `0x00ff` and sampled wrapped spans through `0x020d` at the current printable
+  handoff: canonical installed width words survive, but `0x12f2e` consumes
+  only the low source byte. Source width bytes `0x00..0x10` queue selector
+  `0x0003` and read compact mode-0 helper entries outside decoded row-copy
+  helper heads; source width bytes `0x11..0xff` queue selector `0x1003` and
+  stay on compact-wide `0x1f0d2`. Fixture
   `downloaded segmented-wide row-byte boundary truncates page-record segments`
   now classifies the sampled row side: row words `0x0100`, `0x0101`, and
   `0x0181` survive in the installed glyph, but the current source row byte

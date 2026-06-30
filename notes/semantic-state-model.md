@@ -5121,7 +5121,9 @@ consumed by descriptor and character payload routes.
     `80 57 02 04 00 00`; the row-count matrix restores records from
     `80 57 00 02 00 00` through `80 57 01 fe 00 00` for the documented short
     and segmented row-count siblings.
-  Evidence: fixtures `0x15d0a-modeled font descriptor route`,
+  Evidence: fixtures `0x15a18/0x11f96-modeled font payload command edge`,
+  `0x11774 ROM dispatch table routes font W streams to delayed handlers`,
+  `0x15d0a-modeled font descriptor route`,
   `0x121cc/0x15d0a-modeled font descriptor command stream`,
   `font descriptor stream ties ROM parser dispatch to 0x15d0a routes`,
   `host-fetched font descriptor streams route through 0x15d0a`,
@@ -5263,12 +5265,27 @@ consumed by descriptor and character payload routes.
 
 ### Writers
 
-- `0x15a56` and `0x15a18` write current id and character state.
+- `0x15a56` and `0x15a18` write current id and character state. Fixture
+  `0x15a56-modeled assign font ID normalization` proves zero remains zero,
+  negative ids become positive, and values outside the signed range clamp to
+  `0x7fff`.
+- `0x11f96` consumes the parsed `W` count and snapshots the delayed handler.
+  Fixture `0x15a18/0x11f96-modeled font payload command edge` proves that
+  `ESC *c#E` stores current character/code word `0x7fff`, zero-count
+  `ESC )s0W` selects handler `0x15d0a`, and nonzero `ESC )s#W` selects
+  handler `0x16c14` with byte budget `0x0891`. Fixture
+  `0x11774 ROM dispatch table routes font W streams to delayed handlers`
+  pins the parser modes, delayed snapshot bytes, restored records, descriptor
+  offset, and payload offset for `ESC )s0W` and `ESC )s4W`.
 - `0x16df6` dispatches font-control values; `0x17108` and `0x17150` toggle
   current-record bit `6` and transfer counts. Fixture
   `0x16df6-modeled font-control dispatch mark/unmark and suppression`
   proves the mark-current, unmark-current, parser-mode-suppressed, and
-  out-of-range no-op branches.
+  out-of-range no-op branches. Fixture
+  `0x17108-modeled current font record mark/count transfer` pins the mark
+  branch, already-marked no-op, and missing-record no-op. Fixture
+  `0x17150-modeled current font record unmark/count transfer` pins the inverse
+  unmark branch and already-unmarked no-op.
 - `0x15d0a` writes `0x783140`, reads descriptor bytes through `0x1599c`, and
   routes to `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`. Fixture
   `0x15d0a-modeled font descriptor route` pins the current-record and
@@ -5313,7 +5330,16 @@ consumed by descriptor and character payload routes.
   full-pool miss leaves records and counters unchanged and reports the
   skip-no-record-slot budget action.
 - `0x168dc` and `0x16942` copy downloaded glyph bitmap bytes and save
-  continuation state.
+  continuation state. Fixtures
+  `0x168dc-modeled font payload linear copy handles 0x1a58` and
+  `0x168dc-modeled font payload linear copy continuation state` pin the
+  linear reader's `0x1a 0x58` control-byte substitution and status-`2`
+  continuation save. Fixtures
+  `0x16942-modeled font payload split-plane copy layout`,
+  `0x16942-modeled font payload split-plane continuation state`, and
+  `0x16942-modeled font payload split-plane copy handles 0x1a58` pin the
+  odd-span prefix/trailing-plane layout, trailing-phase continuation save, and
+  the same control-byte substitution in split-plane copies.
 - `0x15b9a` resumes bit-30 downloaded-character bitmap copies from
   continuation fields. On status `1` it clears continuation state after
   completing the object bitmap. On status `2` it resaves the advanced
@@ -5374,6 +5400,11 @@ consumed by descriptor and character payload routes.
 
 - `0x11f96` reads the parsed `W` count and schedules delayed font handlers.
 - `0x172c0` scans the current-record pool by `0x782f2e`.
+- `0x170be` scans the same current-record pool by masked payload pointer.
+  Fixture `0x170be-modeled font payload record lookup` proves that a longword
+  such as `0x99123456` is masked to payload `0x123456`, returns current id
+  `0x1234`, and stores the record pointer, while a missing masked payload
+  returns `-1`.
 - `0x1b4c0` resolves payload pointers for descriptor routes.
 - `0x15b9a` reads saved payload `0x7827da`, saved glyph/table index
   `0x7827c8`, saved destination `0x7827ca`, saved trailing-plane destination
@@ -6570,7 +6601,13 @@ fields and broader selected-font state combinations have not been page-compared.
 - `0x17708 font-ID selects inline/downloaded candidate`
 - `0x14e24-modeled inline/downloaded map entries`
 - `0x11774 ROM dispatch table routes ESC *c font-control chain`
+- `0x15a18/0x11f96-modeled font payload command edge`
+- `0x11774 ROM dispatch table routes font W streams to delayed handlers`
+- `0x15a56-modeled assign font ID normalization`
 - `0x16df6-modeled font-control dispatch mark/unmark and suppression`
+- `0x17108-modeled current font record mark/count transfer`
+- `0x17150-modeled current font record unmark/count transfer`
+- `0x170be-modeled font payload record lookup`
 - `0x15d0a-modeled font descriptor route`
 - `0x121cc/0x15d0a-modeled font descriptor command stream`
 - `font descriptor stream ties ROM parser dispatch to 0x15d0a routes`
@@ -6578,6 +6615,11 @@ fields and broader selected-font state combinations have not been page-compared.
 - `host-fetched font control state drives descriptor and character streams`
 - `font control stream state feeds descriptor route and character payload`
 - `combined host-fetched font download stream prints installed glyph`
+- `0x168dc-modeled font payload linear copy handles 0x1a58`
+- `0x168dc-modeled font payload linear copy continuation state`
+- `0x16942-modeled font payload split-plane copy layout`
+- `0x16942-modeled font payload split-plane continuation state`
+- `0x16942-modeled font payload split-plane copy handles 0x1a58`
 - `combined font download FF publishes installed glyph page record`
 - `host-fetched even-span downloaded glyph FF publishes rendered page record`
 - `host-fetched downloaded payload-control object feeds 0x1ed84 and 0x1ef6a`

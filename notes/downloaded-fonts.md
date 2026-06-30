@@ -100,6 +100,7 @@ Primary fixtures:
 - `0x16498 no-install exits preserve following printable output`
 - `0x16498 status-2 partial installs remain printable`
 - `0x15b9a resumes downloaded-character continuation objects`
+- `0x15b9a partial and failed resumes update continuation or release object`
 - `host-fetched even-span downloaded glyph FF publishes rendered page record`
 - `host-fetched rows-0x20 short downloaded glyph FF publication renders page
   record`
@@ -1328,6 +1329,23 @@ span/row writes, `0x15bdc..0x15bec` for the resume-mode `0x16874` call,
 `0x15bee..0x15c18` for status dispatch, and `0x15c18..0x15c4a` for
 continuation clearing.
 
+Fixture `0x15b9a partial and failed resumes update continuation or release
+object` covers the other copy-status exits from the same handler. A second
+linear partial copies only resume byte `c3`, leaves bitmap
+`f0 0f aa 55 c3 00`, advances destination from `0x0850` to `0x0851`, and
+resaves remaining count `1`. A split-plane partial copies only prefix byte
+`c0`, leaves layout `a0 a1 c0 00 b0 00`, advances prefix destination from
+`0x088e` to `0x088f`, keeps trailing destination `0x0891`, and resaves D4/D3
+counters `0/0`.
+
+The failure sibling copies the same single linear byte `c3` but then exhausts
+the source before completing the remaining byte, so `0x15bee..0x15c18` takes
+the status-`0` release path. `0x17a24` clears offset-table entry `0x00f6`
+from old record `00 00 08 40` to `00 00 00 00`, records an active-primary
+refresh through `0x1b4c0`/`0x14c64`, and clears the matching continuation
+fields. That makes the partially rewritten object body unreachable from the
+font table.
+
 Fixture `host-fetched segmented downloaded character renders through
 0x1f1f0` adds the even-span tall sibling. The host-fetched `ESC )s258W` stream
 uses parser record `80 57 01 02 00 00`, delayed handler `0x16c14`, payload
@@ -1880,7 +1898,8 @@ buckets `1` and `9`, and renders bucket word `9` through compact target
 - `0x168dc` and `0x16942` write glyph bitmap bytes and continuation state.
 - `0x15b9a` resumes bit-30 downloaded-character bitmap copies from saved
   continuation fields. On status `1` it clears continuation state after
-  completing the object bitmap. On status `0` it calls `0x17a24` to clear the
+  completing the object bitmap. On status `2` it resaves the advanced
+  destination/counter state. On status `0` it calls `0x17a24` to clear the
   offset-table entry, then clears continuation state.
 - `0x16606` clears stale continuation state, writes fixed-record table entries
   in bit-30-clear resource payloads, copies bitmap bytes through `0x16874`,

@@ -4675,7 +4675,8 @@ compact text renderer.
   continuation state.
 - `0x15b9a` resumes bit-30 downloaded-character bitmap copies from
   continuation fields. On status `1` it clears continuation state after
-  completing the object bitmap. On status `0` it calls `0x17a24` to clear the
+  completing the object bitmap. On status `2` it resaves the advanced
+  destination/counter state. On status `0` it calls `0x17a24` to clear the
   offset-table entry and matching continuation state.
 - `0x16606` clears stale continuation state, writes bit-30-clear fixed-record
   table entries, copies bitmap bytes through `0x16874`, and refreshes selected
@@ -4961,10 +4962,12 @@ output effect is handler selection, not pixel output: selector `0` plus object
 bit `30` set calls `0x16498`, selector `0` plus bit `30` clear calls `0x16606`,
 continuation plus bit `30` set calls `0x15b9a`, and continuation plus bit `30`
 clear calls `0x15c4c`. Fixture `0x15b9a resumes downloaded-character
-continuation objects` now covers the `0x15e18 -> 0x15b9a` success edge for
-linear and split-plane downloaded-character objects. The remaining middle
-edges after this checkpoint are handler-specific success/error variants outside
-that fixture, plus `0x15e3c -> 0x16606` and `0x15e5c -> 0x15c4c` variants not
+continuation objects` and fixture `0x15b9a partial and failed resumes update
+continuation or release object` now cover the `0x15e18 -> 0x15b9a` success,
+status-`2`, and status-`0` edges for linear and split-plane
+downloaded-character continuation objects. The remaining middle edges after
+this checkpoint are handler-specific object-shape/range variants outside those
+fixtures, plus `0x15e3c -> 0x16606` and `0x15e5c -> 0x15c4c` variants not
 already covered by the fixed-record render fixtures.
 Fixture `0x17d7c releases extended fixed-record table with secondary refresh` proves the
 direct extended fixed-record form: payload byte `+0x0e = 1` admits char `0xa1`, the
@@ -5144,8 +5147,18 @@ destination `0x088e`, trailing destination `0x0891`, and D4/D3 counters `1/0`; `
 copies prefix `c0 c1` and trailing `d0`, completing layout `a0 a1 c0 c1 b0 d0`, then
 clears continuation fields. Disassembly evidence is `0x15b9a..0x15bdc`,
 `0x15bdc..0x15bec`, `0x15bee..0x15c18`, and `0x15c18..0x15c4a`; fixture evidence is
-`0x15b9a resumes downloaded-character continuation objects`. Fixture `host-fetched
-segmented downloaded character renders through
+`0x15b9a resumes downloaded-character continuation objects`. Fixture `0x15b9a partial
+and failed resumes update continuation or release object` covers the sibling status
+exits. A linear status-`2` resume copies only `c3`, leaves bitmap `f0 0f aa 55 c3 00`,
+advances destination `0x0850 -> 0x0851`, and resaves remaining count `1`. A split-plane
+status-`2` resume copies only prefix byte `c0`, leaves layout `a0 a1 c0 00 b0 00`,
+advances prefix destination `0x088e -> 0x088f`, keeps trailing destination `0x0891`, and
+resaves D4/D3 counters `0/0`. The status-`0` sibling copies one byte, then reaches
+source exhaustion with one byte still remaining; `0x15b9a` calls `0x17a24`, which clears
+offset-table entry `0x00f6` from `00 00 08 40` to `00 00 00 00`, refreshes the active
+primary context, clears continuation fields, and leaves the partially rewritten object
+body unreachable from the table. Fixture `host-fetched segmented downloaded character
+renders through
 0x1f1f0` connects the downloaded-character linear reader to the remaining segmented
 compact renderer shape. Host fetch drains `ESC )s258W`; parser dispatch walks `0x11eb6`,
 `0x12008`, `0x11ff6`, and `0x11f96`; `0x16498` installs glyph `0x27` at table entry
@@ -5660,6 +5673,7 @@ fields and broader selected-font state combinations have not been page-compared.
 - `0x16498 no-install exits preserve following printable output`
 - `0x16498 status-2 partial installs remain printable`
 - `0x15b9a resumes downloaded-character continuation objects`
+- `0x15b9a partial and failed resumes update continuation or release object`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
 - `host-fetched split-plane segmented downloaded character renders through
   0x1f1f0`

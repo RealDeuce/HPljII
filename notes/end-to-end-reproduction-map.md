@@ -812,11 +812,11 @@ The next work should follow dataflow, not isolated handlers:
    `combined font download FF publishes installed glyph page record` already drive one
    2,215-byte `0xa904` stream through font-control state, `ESC )s2193W` install,
    printable `%`, FF, bucket entries `1` and `9`, and `0x1ed84`/`0x1ef6a`. The remaining
-   ROM-side continuity edge is now narrowed to live-state capture for the even-span
-   `ESC )s18W` rule/raster composition case. Fixture `parser-driven downloaded glyph
-   rule raster stream composes through 0x1ef6a` proves one 54-byte `0xa904` ring fetch
-   and the shared `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` post-install drain. It
-   also proves the modeled memory-image handoff: the page phase consumes
+   ROM-side continuity edge is now narrowed to live-state capture for the even-span `ESC
+   )s18W` rule/raster composition case. Fixture `parser-driven downloaded glyph rule
+   raster stream composes through 0x1ef6a` proves one 54-byte `0xa904` ring fetch and
+   the shared `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` post-install drain. It also
+   proves the modeled memory-image handoff: the page phase consumes
    `font_command_final_header` from the same font-command helper, asserts it matches the
    install event header, and reports pointer bytes `00 00 07 80`, record bytes, and
    bitmap bytes. Fixture `even-span downloaded glyph rule raster FF publication renders
@@ -824,39 +824,38 @@ The next work should follow dataflow, not isolated handlers:
    through `0xff1e`, then renders the published pool record with digest
    `84762454e8bba9ce22aa5922b598fc5aed7c3ef9dfe9e55223a178c567f612d3`. What remains is
    the stronger live-68000 capture of the same memory state from stream byte `24` into
-   the following `0x10e68` page handler. The primary built-in case proves
-   `ESC (s0p10h12v0s0b3T!!`
-   through parsed selection handlers, selected context `0xc008004c`, printable `0xd04a`
-   entries, object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record
-   context slot `0xc008004c`, and final Courier glyph rows. The secondary case proves
-   `ESC )s0p16h8v0s0b0T SO !!` through selected context `0xc00ae122`, SO handler
-   `0xc6b8`, object prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, render-record
-   context slots `(0xc008004c, 0xc00ae122)`, and final secondary Line Printer rows. The
-   primary fallback case proves `ESC (1234U ESC (s0p10h12v0s0b3T!!`: requested word
-   `0x9a55` misses in `0x156de`, fallback word `0x0115` survives, and the final selected
-   context, map, object prefix, context slot, and rows match the primary case. The
-   remembered-primary case proves the middle source between requested and fallback: with
-   requested word `0x9a55` and remembered word `0x0115`, fixture `remembered primary
-   symbol feeds visible page-record rows` takes the `0x156de` remembered branch, selects
-   context `0xc008004c`, rebuilds map `0x782f32`, queues object prefix `00 00 00 00 00
-   00 00 02 00 6a 00 00 68 02`, and renders digest
-   `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`. The secondary
-   fallback case proves `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`: requested word `0x9a55`
-   misses in `0x156de`, fallback word `0x000e` survives, and the final selected context,
-   map, object prefix, context slots, and rows match the secondary SO case. The primary
-   RAM handoff case proves seeded `0x782ee6 = 0xc008004c` through SI `0xc68a`,
-   `0xc428(0)`, `0xc4fc`, page-root slot `0`, and following `!!` visible rows on an
-   existing root. The secondary RAM handoff case proves seeded `0x782ef6 = 0xc00ae122`
-   through SO `0xc6b8`, `0xc428(1)`, `0xc4fc`, page-root slot `1`, and following `!!`
-   visible rows on an existing root. The composed handoff cases prove `ESC
-   (s0p10h12v0s0b3T SI !!` and `ESC )s0p16h8v0s0b0T SO !!` from host-fetched selection
-   bytes to selected current-font RAM, page-root slot install, and rows matching the
-   pinned visible fixtures. The inline cases prove `ESC (s0p10h12v0s0b3T!!` and `ESC
-   )s0p16h8v0s0b0T SO !!` in one mixed-stream state from selection handlers to printable
-   source capture, HMI, object prefix, bridge context slots, and rows. The non-Roman
-   symbol cluster is now part of the visible-output suite too: fixture `live parser
-   symbol-set streams select non-Roman built-ins` proves primary `ESC (0N`, `ESC (10U`,
-   and `ESC (11U` through parser handlers `0x11eb6`, `0x1201e`, and `0x120be`,
+   the following `0x10e68` page handler. The primary built-in case proves `ESC
+   (s0p10h12v0s0b3T!!` through parsed selection handlers, selected context `0xc008004c`,
+   printable `0xd04a` entries, object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68
+   02`, render-record context slot `0xc008004c`, and final Courier glyph rows. The
+   secondary case proves `ESC )s0p16h8v0s0b0T SO !!` through selected context
+   `0xc00ae122`, SO handler `0xc6b8`, object prefix `00 00 00 00 00 01 00 02 00 c9 00 00
+   cb 01`, render-record context slots `(0xc008004c, 0xc00ae122)`, and final secondary
+   Line Printer rows. The primary fallback case proves `ESC (1234U ESC
+   (s0p10h12v0s0b3T!!`: requested word `0x9a55` misses in `0x156de`, fallback word
+   `0x0115` survives, and the final selected context, map, object prefix, context slot,
+   and rows match the primary case. The remembered-primary case proves the middle source
+   between requested and fallback: with requested word `0x9a55` and remembered word
+   `0x0115`, fixture `remembered primary symbol feeds visible page-record rows` takes
+   the `0x156de` remembered branch, selects context `0xc008004c`, rebuilds map
+   `0x782f32`, queues object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and
+   renders digest `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
+   The secondary fallback case proves `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`: requested
+   word `0x9a55` misses in `0x156de`, fallback word `0x000e` survives, and the final
+   selected context, map, object prefix, context slots, and rows match the secondary SO
+   case. The primary RAM handoff case proves seeded `0x782ee6 = 0xc008004c` through SI
+   `0xc68a`, `0xc428(0)`, `0xc4fc`, page-root slot `0`, and following `!!` visible rows
+   on an existing root. The secondary RAM handoff case proves seeded `0x782ef6 =
+   0xc00ae122` through SO `0xc6b8`, `0xc428(1)`, `0xc4fc`, page-root slot `1`, and
+   following `!!` visible rows on an existing root. The composed handoff cases prove
+   `ESC (s0p10h12v0s0b3T SI !!` and `ESC )s0p16h8v0s0b0T SO !!` from host-fetched
+   selection bytes to selected current-font RAM, page-root slot install, and rows
+   matching the pinned visible fixtures. The inline cases prove `ESC (s0p10h12v0s0b3T!!`
+   and `ESC )s0p16h8v0s0b0T SO !!` in one mixed-stream state from selection handlers to
+   printable source capture, HMI, object prefix, bridge context slots, and rows. The
+   non-Roman symbol cluster is now part of the visible-output suite too: fixture `live
+   parser symbol-set streams select non-Roman built-ins` proves primary `ESC (0N`, `ESC
+   (10U`, and `ESC (11U` through parser handlers `0x11eb6`, `0x1201e`, and `0x120be`,
    selected-font refresh, record choices `0x000cb8`, `0x000418`, and `0x000868`, and map
    rebuild path `selected-symbol-not-roman8`. Fixture `non-Roman symbol streams select
    visible built-ins` then carries primary `0N`/`10U`/`11U` streams through matching
@@ -965,48 +964,47 @@ The next work should follow dataflow, not isolated handlers:
    `0x30`, `0x2f27c` full chunks, `0x1f1ac` remainders `1..15`, the span-`32`
    no-remainder sibling, zero-drain returns, and probes segmented-wide spans `33`, `48`,
    `49`, and `64`. Fixture `downloaded glyph width-byte boundary truncates page-record
-   span` pins source-width wrapping for spans `0x00ff`, `0x0100`, `0x0101`,
-   `0x0102`, `0x010f`, `0x0110`, `0x0111`, `0x017f`, `0x0180`, `0x01fe`, and
-   `0x020d`: installed width words survive, but `0x12f2e` sees only the low width byte.
-   Source width bytes `0x11..0xff` select compact-wide `0x1f0d2`; source width bytes
-   `0x00..0x10` select compact mode-0 helper entries outside decoded row-copy helper
-   heads. Fixture `downloaded segmented-wide row-byte boundary truncates
-   page-record segments` pins the row-byte sibling for installed row words `0x0002`,
-   `0x007f`, `0x0080`, `0x0081`, `0x0083`, `0x00fe`, `0x00ff`, `0x0100`, `0x0101`,
-   `0x0181`, `0x0182`, `0x01ff`, `0x0200`, and `0x0201`: `0x12f2e` sees only the low
-   source row byte. Low row bytes above `0x80` produce segment `1` in bucket `8` and
-   segment `0` in bucket `0`; low row bytes `0x00..0x80` select wide bucket `0`.
-   The short/segmented row-count matrix now covers short rows `0x01..0x1f`,
-   `0x21..0x3f`, and `0x41..0x7f`, plus segmented rows `0x83..0xff`; the named
-   rows-`0x20`, rows-`0x40`, row-`0x80`, linear-segmented row-`0x81`, and
-   rows-`0x82` publication fixtures cover their boundary siblings through FF,
-   `0xff1e`, `0x1ed84`, and `0x1ef6a`. The same row-count matrix pins
-   `0x15dc6 -> 0x16498 ->
-   0x15dcc -> 0x12328` with copy status `1`, `0x783140 = 0`, zero drained bytes, and
-   next handler `0xd04a`. The high-row truncation matrix covers rows `0x0101`, `0x0102`,
-   and `0x0103`: installed row words remain canonical, but the printable source exposes
-   low row bytes `0x01`, `0x02`, and `0x03`, queues selector `0x0003`, and exceeds the
-   `0x1fe76` table's valid maximum index `128` after `0x1f414` splits fallback rows
-   `199`, `200`, and `201`. No-install and partial-install recovery are page-visible:
-   fixture `0x16498 no-install exits preserve following printable output` proves
-   allocation failure, descriptor mode-byte-`0`, and high-character/header-type
-   status-`0` rejects leave the next printable byte on the default-font path and publish
-   that default bucket through trailing FF; fixture `0x16498 status-2 partial installs
-   remain printable` proves linear and split-plane status-`2` partial glyphs remain
-   printable and publish the same rows, and fixture `0x15b9a resumes
-   downloaded-character continuation objects` proves that the saved continuation state
-   can complete those linear and split-plane object bitmaps. Remaining
-   downloaded-character publication work
-   is limited to row counts outside the covered short rows `0x01..0x80` and segmented
-   rows `0x81..0xff`, descriptor syntax outside the covered `0x15d0a` route and
-   `0x16336` helper-table paths, pixel-row behavior beyond the wrapped-width
-   source-byte boundary, segmented-wide row words outside the source-byte-wrap matrix,
-   broader
-   publication combinations, and full-success return-boundary siblings outside the named
-   row-count, wide-remainder, segmented-wide, normal, row-`0x80`, linear-segmented,
-   split-plane segmented, segmented-wide, no-install, status-`2`, and payload-control
-   cases. It is not the documented mode-byte-`0` visible recovery boundary. The
-   publication-command checkpoint now covers host-fetched reset, FF, page-size,
-   orientation, paper-source, and copies streams through parser dispatch, `0xff1e`,
-   `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF, page-size,
-   orientation, paper-source, and copies also have addressed allocation variants.
+   span` pins source-width wrapping for spans `0x00ff`, `0x0100`, `0x0101`, `0x0102`,
+   `0x010f`, `0x0110`, `0x0111`, `0x017f`, `0x0180`, `0x01fe`, and `0x020d`: installed
+   width words survive, but `0x12f2e` sees only the low width byte. Source width bytes
+   `0x11..0xff` select compact-wide `0x1f0d2`; source width bytes `0x00..0x10` select
+   compact mode-0 helper entries outside decoded row-copy helper heads. Fixture
+   `downloaded segmented-wide row-byte boundary truncates page-record segments` pins the
+   row-byte sibling for installed row words `0x0002`, `0x007f`, `0x0080`, `0x0081`,
+   `0x0083`, `0x00fe`, `0x00ff`, `0x0100`, `0x0101`, `0x0181`, `0x0182`, `0x01ff`,
+   `0x0200`, and `0x0201`: `0x12f2e` sees only the low source row byte. Low row bytes
+   above `0x80` produce segment `1` in bucket `8` and segment `0` in bucket `0`; low row
+   bytes `0x00..0x80` select wide bucket `0`. The short/segmented row-count matrix now
+   covers short rows `0x01..0x1f`, `0x21..0x3f`, and `0x41..0x7f`, plus segmented rows
+   `0x83..0xff`; the named rows-`0x20`, rows-`0x40`, row-`0x80`, linear-segmented
+   row-`0x81`, and rows-`0x82` publication fixtures cover their boundary siblings
+   through FF, `0xff1e`, `0x1ed84`, and `0x1ef6a`. The same row-count matrix pins
+   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with copy status `1`, `0x783140 = 0`, zero
+   drained bytes, and next handler `0xd04a`. The high-row truncation matrix covers rows
+   `0x0101`, `0x0102`, and `0x0103`: installed row words remain canonical, but the
+   printable source exposes low row bytes `0x01`, `0x02`, and `0x03`, queues selector
+   `0x0003`, and exceeds the `0x1fe76` table's valid maximum index `128` after `0x1f414`
+   splits fallback rows `199`, `200`, and `201`. No-install and partial-install recovery
+   are page-visible: fixture `0x16498 no-install exits preserve following printable
+   output` proves allocation failure, descriptor mode-byte-`0`, and
+   high-character/header-type status-`0` rejects leave the next printable byte on the
+   default-font path and publish that default bucket through trailing FF; fixture
+   `0x16498 status-2 partial installs remain printable` proves linear and split-plane
+   status-`2` partial glyphs remain printable and publish the same rows, fixture
+   `0x15b9a resumes downloaded-character continuation objects` proves that the saved
+   continuation state can complete those linear and split-plane object bitmaps, and
+   fixture `0x15b9a partial and failed resumes update continuation or release object`
+   proves status-`2` resave and status-`0` offset-table release from the same
+   continuation state. Remaining downloaded-character publication work is limited to row
+   counts outside the covered short rows `0x01..0x80` and segmented rows `0x81..0xff`,
+   descriptor syntax outside the covered `0x15d0a` route and `0x16336` helper-table
+   paths, pixel-row behavior beyond the wrapped-width source-byte boundary,
+   segmented-wide row words outside the source-byte-wrap matrix, broader publication
+   combinations, and full-success return-boundary siblings outside the named row-count,
+   wide-remainder, segmented-wide, normal, row-`0x80`, linear-segmented, split-plane
+   segmented, segmented-wide, no-install, status-`2`, and payload-control cases. It is
+   not the documented mode-byte-`0` visible recovery boundary. The publication-command
+   checkpoint now covers host-fetched reset, FF, page-size, orientation, paper-source,
+   and copies streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`,
+   and final row comparison; reset, FF, page-size, orientation, paper-source, and copies
+   also have addressed allocation variants.

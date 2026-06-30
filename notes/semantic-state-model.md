@@ -3302,12 +3302,16 @@ for how resource records become ordinary page-record text.
   - local page-break word `-6(A6)`: receives the return flag from
     `0x1cf34`.
   - class-pass counter in the `0x1c28e..0x1c344` loop.
-- Unknown:
-  - exact continuation-page object bytes emitted by the full `0x1c204`
-    printout loop have not yet been modeled from forced page-break cases
-    across every source heading and both class passes. The internal-font
-    class-zero
-    source group is fixture-backed from request indexes `0..14`: `0x1b8ea`
+- Covered continuation and remaining unknowns:
+  - The normal full `0x1c204` printout loop is modeled as eight
+    source/class page-record segments; forced continuation-page object bytes
+    are fixture-backed for the internal and cartridge heading-preflight forms,
+    internal class-zero `I01` and class-one `I16` row-overrun forms, and the
+    alternate-row caller form. The remaining ROM-side gap is broader
+    row-overrun cross-products outside those covered forms; the remaining
+    output gap is physical baseline/cell comparison against a known printed
+    sample. The internal-font class-zero source group is fixture-backed from
+    request indexes `0..14`: `0x1b8ea`
     fast-probes class-zero row `I00`, `0x1b50e` scans later rows, `0x1c746`
     maps low-24 addresses back to candidate longwords, `0x1c710` finds
     request `14` is class one, and `0x1c3f8..0x1c400` branches directly to
@@ -3370,11 +3374,9 @@ for how resource records become ordinary page-record text.
     `I16COURIER101210U`, queues buckets
     `[0, 3, 4, 7, 8, 16, 24, 32, 40, 48, 56, 64]`, and pins bucket digest
     `842dd781a1093819f918e128999786f94f16cc3562ca25c3a82503ced74f3f3c`.
-    Forced continuation-page object bytes are now covered for the internal
-    and cartridge heading-preflight forms, internal class-zero `I01` and
-    class-one `I16` row-overrun forms, and alternate-row caller forms.
-    Broader row-overrun cross-products remain open; the normal full
-    source/class placement is composed as eight page-record segments.
+    The normal full source/class placement is composed as eight page-record
+    segments; broader forced-continuation cross-products remain open only
+    outside the covered page-record object forms listed above.
   - record `+0x28/+0x2a` and `+0x2f..+0x31` are already correlated with
     emitted page objects for their ROM roles: `0x1519a` consumes
     `+0x28/+0x2a` as decoded-height inputs before `0x13bca`, and

@@ -1227,7 +1227,8 @@ Unknown:
   especially the exact baseline/cell terminology behind `+0x28/+0x2a`
   and tie-breaker bytes `+0x2f..+0x31`;
 - forced continuation-page object bytes beyond the covered heading-preflight,
-  row-overrun `I01`, and alternate-row `I01` cases remain open; physical
+  cartridge heading, internal class-zero `I01`, internal class-one `I16`, and
+  alternate-row caller cases remain open as broader cross-products; physical
   output comparison for the full internal-font sample page also remains open
   even though the ROM-side candidate order and rendered-surface digest are
   fixture-backed;

@@ -33,6 +33,16 @@ many final handlers. That is consistent with a mode that must still
 parse or collect PCL syntax while deferring normal side effects.
 Lowercase finals that keep the parser in the same command family are
 reported as chaining forms of the matching uppercase PCL command.
+Rows labeled as parser prefixes are setup/scaffolding entries, not terminal
+imaging commands: the handler records the family transition and leaves the
+final command byte to a later mode. Examples are `ESC`, `ESC &`, `ESC &l`,
+`ESC *c`, and the primary/secondary font family prefixes. Rows labeled as
+font-designation terminals are the `ESC (#A..^` / `ESC )#A..^` family handled
+by `0x120be`; their command-specific effects are documented with the
+symbol-set and font-selection state in `notes/semantic-state-model.md`.
+The `ESC &lT/t` table slot is intentionally labeled as unimplemented: normal
+uppercase `T` has no terminal handler, while lowercase `t` only reaches the
+generic `0x11f4c` rewind used by lowercase chaining rows.
 
 ## High-Value Normal-Mode Handlers
 

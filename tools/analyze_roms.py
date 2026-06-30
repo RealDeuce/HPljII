@@ -4177,6 +4177,11 @@ KNOWN_PCL_COMMANDS = {
     (0x0A,): "Line feed",
     (0x0C,): "Form feed",
     (0x0D,): "Carriage return",
+    (0x0E,): "SO selects secondary text slot",
+    (0x0F,): "SI selects primary text slot",
+    (0x1A,): "Control-Z parser prefix",
+    (0x1A, 0x1A): "Control-Z nested byte",
+    (0x1A, 0x58): "Control-Z X control pair",
     (0x1b, 0x45): "Printer reset",
     (0x1b, 0x39): "Clear horizontal margins",
     (0x1b, 0x59): "Display functions on",
@@ -4192,6 +4197,8 @@ KNOWN_PCL_COMMANDS = {
     (0x1b, 0x26, 0x6c, 0x4c): "Perforation skip",
     (0x1b, 0x26, 0x6c, 0x43): "VMI",
     (0x1b, 0x26, 0x6c, 0x44): "Lines per inch",
+    (0x1b, 0x26, 0x6c, 0x54): "Unimplemented page-layout T slot",
+    (0x1b, 0x26, 0x6c, 0x56): "Vertical forms control channel",
     (0x1b, 0x26, 0x61, 0x4c): "Left margin",
     (0x1b, 0x26, 0x61, 0x4d): "Right margin",
     (0x1b, 0x26, 0x61, 0x43): "Horizontal column position",
@@ -4243,10 +4250,43 @@ KNOWN_PCL_COMMANDS = {
 }
 
 
+PCL_PREFIXES = {
+    (0x1b,): "ESC parser prefix",
+    (0x1b, 0x26): "Parameterized '&' family prefix",
+    (0x1b, 0x2a): "Parameterized '*' family prefix",
+    (0x1b, 0x28): "Primary font family prefix",
+    (0x1b, 0x29): "Secondary font family prefix",
+    (0x1b, 0x26, 0x61): "Cursor-position '&a' family prefix",
+    (0x1b, 0x26, 0x66): "Macro/cursor-stack '&f' family prefix",
+    (0x1b, 0x26, 0x6b): "Text-motion '&k' family prefix",
+    (0x1b, 0x26, 0x6c): "Page-layout '&l' family prefix",
+    (0x1b, 0x26, 0x70): "Transparent-data '&p' family prefix",
+    (0x1b, 0x26, 0x73): "Wrap-mode '&s' family prefix",
+    (0x1b, 0x28, 0x73): "Primary font-selection '(s' family prefix",
+    (0x1b, 0x29, 0x73): "Secondary font-selection ')s' family prefix",
+    (0x1b, 0x2a, 0x62): "Raster-transfer '*b' family prefix",
+    (0x1b, 0x2a, 0x63): "Rectangle/font-control '*c' family prefix",
+    (0x1b, 0x2a, 0x70): "Dot-position '*p' family prefix",
+    (0x1b, 0x2a, 0x72): "Raster-control '*r' family prefix",
+    (0x1b, 0x2a, 0x73): "Stateful '*s' family prefix",
+    (0x1b, 0x2a, 0x74): "Raster-resolution '*t' family prefix",
+}
+
+
 def known_pcl_meaning(seq: tuple[int, ...], next_mode: int) -> str:
     meaning = KNOWN_PCL_COMMANDS.get(seq)
     if meaning is not None:
         return meaning
+    meaning = PCL_PREFIXES.get(seq)
+    if meaning is not None:
+        return meaning
+    if (
+        len(seq) == 3
+        and seq[:2] in ((0x1b, 0x28), (0x1b, 0x29))
+        and 0x40 <= seq[2] <= 0x5E
+    ):
+        side = "Primary" if seq[1] == 0x28 else "Secondary"
+        return f"{side} font-designation terminal"
     if seq and 0x61 <= seq[-1] <= 0x7A:
         uppercase_seq = seq[:-1] + (seq[-1] - 0x20,)
         meaning = KNOWN_PCL_COMMANDS.get(uppercase_seq)

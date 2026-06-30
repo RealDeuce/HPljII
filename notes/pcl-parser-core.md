@@ -223,9 +223,20 @@ Setup handlers:
 
 Evidence:
 `generated/disasm/ic30_ic13_parser_setup_handlers_011ea4.lst`,
+`generated/disasm/ic30_ic13_control_z_handlers_0120d2.lst`,
 `generated/disasm/ic30_ic13_font_selector_setup_helpers_011ec8.lst`,
 `generated/analysis/ic30_ic13_parser_dispatch_tables.md`, and
 `generated/analysis/ic30_ic13_active_symbol_set_flow.md`.
+
+Control-Z terminal behavior is table-dependent. In the normal parser table,
+`0x120d2` handles nested `0x1a`: it checks selected context byte
+`0x782eeb + 0x10 * 0x782f06` and only routes printable value `0x1a` through
+`0xd04a` when that byte is `1`. Normal `0x1a X` reaches `0x1219e`, which routes
+value `0x100` through `0xd04a`. In the alternate/data table, nested `0x1a`
+reaches `0x1210c` and appends byte `0x1a` through `0xe002`; alternate
+`0x1a X` reaches `0x121b2`, calls `0xd99a`, and appends normalized byte `0x7f`
+through `0xe002`. These rows are therefore parser-control terminals, not PCL
+imaging commands.
 
 Variant behavior:
 

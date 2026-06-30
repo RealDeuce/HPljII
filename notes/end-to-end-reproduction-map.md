@@ -1014,14 +1014,16 @@ The next work should follow dataflow, not isolated handlers:
    four current-record/continuation by bit-30 polarities, while fixture `0x16b1a
    descriptor width helper emits only mode 1/2` covers the accepted helper-table
    mode-byte writer and invalid-width no-write branch. Remaining downloaded-character
-   publication work is limited to row words above `0x00ff` that cross the one-byte
-   printable source-row field, pixel-row behavior beyond the wrapped-width source-byte
-   boundary, segmented-wide row words outside the source-byte-wrap matrix, broader
-   publication combinations, and full-success return-boundary siblings outside the named
-   row-count, wide-remainder, segmented-wide, normal, row-`0x80`, linear-segmented,
-   split-plane segmented, segmented-wide, no-install, status-`2`, and payload-control
-   cases. It is not the documented mode-byte-`0` visible recovery boundary. The
-   publication-command checkpoint now covers host-fetched reset, FF, page-size,
-   orientation, paper-source, and copies streams through parser dispatch, `0xff1e`,
-   `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF, page-size,
-   orientation, paper-source, and copies also have addressed allocation variants.
+   publication work is limited to row words above `0x00ff` outside the sampled
+   segmented-wide source-row-byte matrix (`0x0100`, `0x0101`, `0x0181`, `0x0182`,
+   `0x01ff`, `0x0200`, and `0x0201`), pixel-row behavior beyond the wrapped-width
+   source-byte boundary, segmented-wide row/segment cross-products outside that matrix,
+   broader publication combinations, and full-success return-boundary siblings outside
+   the named row-count, wide-remainder, segmented-wide, normal, row-`0x80`,
+   linear-segmented, split-plane segmented, segmented-wide, no-install, status-`2`, and
+   payload-control cases. It is not the documented mode-byte-`0` visible recovery
+   boundary. The publication-command checkpoint now covers host-fetched reset, FF,
+   page-size, orientation, paper-source, and copies streams through parser dispatch,
+   `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF,
+   page-size, orientation, paper-source, and copies also have addressed allocation
+   variants.

@@ -5,6 +5,11 @@ forms control. It composes the `ESC &l#W` VFC table-definition payload path,
 the `ESC &l#V` channel-jump consumer, the default-table builder, and the
 visible output effects through cursor movement and page publication.
 
+Status: composed for the documented `ESC &l#W` and `ESC &l#V`
+command-family paths. The low-level ledger is preserved in
+`notes/reverse-engineering-ledger.md`; this note is the semantic contract
+for byte-stream reproduction.
+
 The detailed low-level ledger remains in
 `notes/reverse-engineering-ledger.md`, and the field inventory is mirrored in
 `notes/semantic-state-model.md` under `Vertical Forms Control`.
@@ -231,6 +236,35 @@ VFC does not draw by itself. Its visible effects are:
 The covered fixtures prove both non-publishing movement and publishing splits
 where the pre-VFC printable remains renderable on the old page and the
 post-VFC printable is queued on a fresh page.
+
+The canonical output effects are fixture-backed as follows:
+
+- `ESC &l4W 00 00 00 02 !`: delayed payload bytes are consumed by
+  `0x12cfe` / `0xdace` before printable parsing resumes; `!` queues at
+  compact coord `0x9001`.
+- `ESC &l2V!`: `0x1280a` finds channel 2 at line `1`, resets x through
+  `0xf06e`, writes y `176`, and queues `!` at compact coord `0xb001`.
+- before-top `ESC &l2V!`: `0x128ae..0x128f4` normalizes y `89` against top
+  offset `90`, then reaches the same line-1 output at compact coord
+  `0xb001`.
+- `ESC &l0V!`: `0x12966..0x1299a` computes the top-of-form target, leaves
+  the already-matching cursor in place, and queues `!` at compact coord
+  `0x9e02`.
+- `!\x1b&l0V!`: `0x1299c..0x129c4` publishes the old compact-text page
+  through `0xf124` / `0xff1e`, resets to top of form, and queues the next
+  `!` on a fresh page at compact coord `0x9001`.
+- `!\x1b&l2V!` wrap hit: `0x129c6..0x12af8` publishes the old page, wraps to
+  line `1`, writes y `176`, and queues the next `!` at compact coord
+  `0xb001`.
+- `!\x1b&l2V!` wrap no-hit: `0x12a22..0x12a78` publishes the old page and
+  returns to top-of-form output at compact coord `0x9001`.
+- target-after-text `!\x1b&l2V!`: `0x129ee..0x12b5a` publishes the old page
+  from bucket `198`, recovers y to `104`, and queues the next `!` at compact
+  coord `0x3001`.
+- non-publishing recovery fixtures cover before-top target-after-text,
+  empty-table start-after-text, default-table wrap, line-63 recovery,
+  selector-zero start-after-text, and the alternate high-start entries without
+  adding a new page-root publication edge.
 
 ## Confidence
 

@@ -221,7 +221,14 @@ the board-facing boundary is tracked in
   `notes/rectangle-graphics.md` and parser trace fixtures for `ESC *c` rule
   streams.
 - Reset, FF, page-size, orientation, paper-source, copies, and VFC publication
-  paths are covered through `0xff1e` for current modeled page records.
+  paths are covered through `0xff1e` for current modeled page records. VFC
+  coverage includes `ESC &l#W` delayed table payloads, lowercase
+  same-family delayed-record preservation, channel-2 forward and before-top
+  jumps, selector-zero top-of-form, selector-zero page eject, wrap hit,
+  wrap no-hit, target-after-text publication, and non-publishing recovery
+  paths. Evidence is tracked in `notes/vertical-forms-control.md` with
+  branch boundaries `0x128ae..0x128f4`, `0x12966..0x129c4`,
+  `0x129c6..0x12af8`, `0x12a22..0x12a78`, and `0x129ee..0x12b5a`.
   Evidence: `generated/analysis/ic30_ic13_esc_e_reset_flow.md`,
   `generated/analysis/ic30_ic13_page_root_finalization.md`, and publication
   fixtures in the harness.
@@ -432,9 +439,20 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    branch family. Evidence: `notes/semantic-state-model.md` under `Text Span Flush And
    Fixed-Width Spans`.
 2. VFC table definition and channel jumps now have a tracked command-family
-   contract in `notes/vertical-forms-control.md`. The remaining VFC risk is
-   broader final-device image comparison, not an unresolved middle edge in the
-   documented `ESC &l#W` / `ESC &l#V` path.
+   contract in `notes/vertical-forms-control.md`. That contract groups
+   canonical VFC state `0x782dde..0x782edd`, canonical layout inputs
+   `0x783160`, `0x782dce`, `0x782c8e`, `0x782c8a`, and margins
+   `0x782dd6`/`0x782dda`; derived line caches `0x782dd2`, `0x782dc2`,
+   `0x782ede`, `0x782edf`, and `0x782ee0`; parser scratch `0x78299e`;
+   and firmware bookkeeping `0x782ee1`, `0x782a58`, `0x782a6d`,
+   `0x783184`, and `0x78297a`. The documented output effects cover delayed
+   payload consumption before printable text, cursor-only channel jumps,
+   top-of-form no-op, selector-zero publication, wrap-hit publication,
+   wrap-no-hit publication, target-after-text publication, and
+   non-publishing recovery. The remaining VFC risk is broader final-device
+   image comparison and HP/manual names for the derived line-count fields,
+   not an unresolved middle edge in the documented `ESC &l#W` / `ESC &l#V`
+   path.
 3. Macro replay, overlay publication, repeated enabled-overlay publication,
    mixed-control, raster, multi-row raster, and span-flush overlay payloads, and overlay
    skip gates are anchored. The covered overlay path is selector `4` state through

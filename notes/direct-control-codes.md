@@ -19,6 +19,7 @@ renderer-facing documentation checkpoint.
 - `generated/analysis/ic30_ic13_page_record_bridge.md`
 - `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`
 - `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`
+- `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`
 - `generated/disasm/ic30_ic13_dot_position_handlers_00f48c.lst`
 - `notes/pcl-command-map.md`
 - `notes/pcl-parser-firmware.md`
@@ -89,6 +90,8 @@ Primary fixtures:
 - `transparent data parser trace feeds page-record queue`
 - `ESC &d underline selector materializes span output`
 - `perforation skip parser trace feeds page-record queue`
+- `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1 only`
+- `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`
 
 ## Field Groups
 
@@ -117,6 +120,10 @@ Canonical control modes:
   CR `0xf02c` tests bit `7`, LF `0xf08c` tests bit `6`, and FF `0xf0f0`
   tests bit `5`.
 - `0x783190`: end-of-line wrap flag written by `ESC &s#C` handler `0xedb0`.
+  Selector `0` stores `1`, selector `1` clears it, and other selectors leave
+  the byte unchanged. Printable prechecks `0xd28a` and `0xd6bc` consume the
+  byte before deciding whether horizontal overflow rejects the glyph or
+  recovers through `0xf054`.
 - `0x783191`: perforation-skip byte written by `ESC &l#L` handler `0xee64`
   and consumed by `0xf36c`.
 
@@ -182,6 +189,9 @@ Unknown:
 
 - `0xedf8` writes line-termination byte `0x78318f`. The bit map is
   `0 -> 0x00`, `1 -> 0x80`, `2 -> 0x60`, and `3 -> 0xe0`.
+- `0xedb0` writes end-of-line wrap byte `0x783190` for `ESC &s#C`: absolute
+  selector `0` enables wrap, selector `1` disables it, and all other selectors
+  keep the previous mode.
 - `0xf02c` handles CR by resetting x through `0xf06e`, flushing pending span
   state through `0xf34a`, and optionally calling LF helper `0xf0b2`.
 - `0xf08c` handles LF by optionally applying CR-style x reset, then advancing
@@ -212,6 +222,11 @@ Unknown:
 
 - `0xd04a` consumes current cursor, HMI, font context, and pending-width state
   to create the next text source object.
+- `0xd28a` and `0xd6bc` consume `0x783190` inside the printable text
+  prechecks. When horizontal overflow is detected, a clear flag returns
+  precheck result `1` and suppresses queueing; a set flag calls `0xf054`,
+  retries from the recovered cursor, and can return `0` so the glyph continues
+  into the queue path.
 - `0x12f2e`, `0x1387c`, and shared page-record storage consume compact
   coordinates derived from direct-control state.
 - `0x12714` / `0x126e2` consume pending span state when CR, margin, vertical
@@ -252,6 +267,17 @@ compact coord `0x0a01` / pixel x `26`.
 `ESC &k6H!!` routes `0xca8c` before two printable bytes. The accepted HMI
 value stores packed advance `15` in `0x78315c`, moving the second glyph to
 compact coord `0x0501`.
+
+`ESC &s#C` has no immediate page object, but it changes the acceptance boundary
+for later printable text. Disassembly `0xedb0..0xedf6` rewinds the parsed
+record, normalizes the absolute selector, and writes only selectors `0` and
+`1`. Fixture `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1
+only` pins the command byte. Fixture `0xd28a and 0xd6bc prechecks share
+continue reject and wrap decisions` then pins the downstream effect: horizontal
+overflow with `0x783190` clear returns precheck result `1`, while the same
+overflow with `0x783190` set calls `0xf054`, retries from recovered x `0`, and
+returns `0` when the retried placement fits. Vertical extent failure still
+returns `1`.
 
 The plain and HMI parser fixtures pin the baseline consumer path. Fixture
 `plain printable parser trace feeds page-record queue` proves a printable
@@ -332,6 +358,8 @@ A byte-stream renderer must preserve:
 
 - normal-mode direct-control dispatch for CR, LF, FF, HT, and BS;
 - the `ESC &k#G` mode byte and its per-control-bit consumption;
+- the `ESC &s#C` wrap byte and its prequeue effect on `0xd28a` / `0xd6bc`
+  horizontal overflow decisions;
 - CR reset through left margin before optional LF movement;
 - LF and FF optional CR-style reset behavior;
 - HT eight-column stop arithmetic using left margin and HMI;
@@ -354,6 +382,10 @@ modeled host byte fetch and reach `0x1387c`, `0x1edc6`, `0x1ed84`, and
 High for `ESC 9`, `ESC =`, cursor-stack, underline/span, and perforation-skip
 representative output effects because each has a named parser/page-record
 fixture and concrete handler evidence.
+
+High for `ESC &s#C` selector handling and printable precheck consumption,
+because the `0xedb0` writer and paired `0xd28a` / `0xd6bc` consumers are pinned
+by fixtures and by disassembly reads of `0x783190`.
 
 Medium for manual-facing latch names and complete live CPU-memory continuity
 inside every `0xd04a -> 0x12f2e` source-object write. The documented fixtures

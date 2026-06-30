@@ -382,7 +382,8 @@ vertical dot positioning commits through `0xf6e2` and clamps to
 `ESC &s#C` at `0x00edb0` rewinds the parsed record and writes the
 end-of-line wrap flag at `0x783190`: selector `0` stores `1`, selector
 `1` clears it, and other values leave the previous state untouched.
-Printable text overflow paths test this flag, so wrap mode is part of
+Printable prechecks `0xd28a` and `0xd6bc` test this flag and call
+`0xf054` for enabled-wrap horizontal recovery, so wrap mode is part of
 the page text-layout state rather than parser-only metadata.
 
 `ESC &p#X` at `0x011f5a` is a delayed transparent-print-data boundary.

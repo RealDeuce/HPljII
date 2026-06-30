@@ -1598,7 +1598,10 @@ VMI state before object queueing, then cross the same `0x1387c`,
   - `0x78318f`: line-termination mode written by `ESC &k#G` handler
     `0xedf8`; CR tests bit 7, LF tests bit 6, and FF tests bit 5.
   - `0x783190`: end-of-line wrap flag written by `ESC &s#C` handler
-    `0xedb0` and consumed by printable overflow paths.
+    `0xedb0`. Selector `0` stores `1`, selector `1` clears it, and
+    other selectors leave the byte unchanged. Printable prechecks
+    `0xd28a` and `0xd6bc` consume this byte before deciding whether
+    horizontal overflow rejects the glyph or recovers through `0xf054`.
   - `0x783191`: perforation-skip byte written by `ESC &l#L` handler
     `0xee64` and consumed by `0xf36c`. When the vertical cursor
     `0x782c8e` is greater than nonzero limit/cache `0x782dc2`,
@@ -1609,6 +1612,8 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `control stream ESC &k2G then LF applies CR+LF`,
   `control stream ESC &k2G then FF applies CR+page-eject`,
   `control stream ESC &k3G applies CR/LF/FF combined line termination`,
+  `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1 only`,
+  `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`,
   `0xf36c perforation skip gates vertical overflow page eject`,
   `host-fetched direct text/control streams reach page-record render`, and
   `perforation skip parser trace feeds page-record queue`.
@@ -1664,6 +1669,9 @@ VMI state before object queueing, then cross the same `0x1387c`,
 
 - `0xedf8` writes line-termination byte `0x78318f` for `ESC &k#G`;
   CR `0xf02c`, LF `0xf08c`, and FF `0xf0f0` consume it at runtime.
+- `0xedb0` writes end-of-line wrap byte `0x783190` for `ESC &s#C`.
+  The absolute selector is normalized before dispatch: `0` enables wrap,
+  `1` disables it, and all other selectors preserve the prior byte.
 - `0xca8c` writes HMI `0x78315c` for accepted `ESC &k#H` values; the
   `ESC &k6H!!` fixture stores packed HMI `15` and moves the second
   glyph to compact coord `0x0501`.
@@ -1709,6 +1717,11 @@ VMI state before object queueing, then cross the same `0x1387c`,
 - `0xd04a` consumes cursor, HMI, font context, and pending-width state
   to create the next text source object before `0x12f2e` queues compact
   text.
+- `0xd28a` and `0xd6bc` consume `0x783190` inside the printable text
+  prechecks. With the flag clear, horizontal overflow returns precheck
+  result `1` and suppresses queueing. With the flag set, the same
+  horizontal overflow calls `0xf054`, retries from the recovered cursor,
+  and can return `0` when the retried placement fits.
 - `0x12f2e`, `0x1387c`, and shared page-record storage consume the
   compact text coordinates produced from cursor state.
 - Raster-start command paths consume `0x782c8a` or `0x782c8e` depending
@@ -1746,6 +1759,15 @@ VMI state before object queueing, then cross the same `0x1387c`,
   compact coord `0x0a01` / pixel x `26`.
 - `ESC &k6H!!` routes `0xca8c` and two `0xd04a` events; packed HMI
   `15` queues glyphs at `0x0600` and `0x0501`.
+- `ESC &s#C` has no immediate page object. It changes the later printable
+  acceptance boundary: `0xedb0..0xedf6` writes only selector `0`/`1`
+  changes to `0x783190`, while prechecks `0xd28a` and `0xd6bc` read that
+  byte at the horizontal-overflow branches. Fixture
+  `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1 only`
+  pins the command write, and fixture `0xd28a and 0xd6bc prechecks share
+  continue reject and wrap decisions` pins disabled-wrap rejection,
+  enabled-wrap recovery through `0xf054`, and unchanged vertical-extent
+  rejection.
 - `ESC &a1L!`, `ESC &a1M!`, and `ESC &a6l9M!` route margin handlers
   `0xeb58` / `0xec0c` into following `0xd04a` output at compact coords
   `0x0801`, `0x0a02`, and `0x0207`.
@@ -1848,6 +1870,10 @@ manual-facing names outside the PCL labels already cited here.
 High for `0xf36c` perforation-skip gating because the fixture covers all
 three non-eject predicates and the enabled-overflow eject predicate against
 disassembly `0xf36c..0xf398`.
+High for `0xedb0` wrap-mode writes and the `0xd28a` / `0xd6bc`
+prequeue consumer effect because both command-side selector handling and
+consumer-side continue/reject/recover decisions are fixture-pinned against
+their disassembly reads of `0x783190`.
 
 ### Fixtures
 
@@ -1877,6 +1903,8 @@ disassembly `0xf36c..0xf398`.
 - `BS alternate metrics subtracts previous width word`
 - `control stream HT then BS updates tab and previous-width state`
 - `0xca8c ESC &k#H stores packed HMI for in-range absolute values only`
+- `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1 only`
+- `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`
 - `HMI parser trace feeds page-record queue`
 - `plain printable parser trace feeds page-record queue`
 - `mixed printable/control stream applies CR+LF before second glyph`
@@ -1933,6 +1961,8 @@ disassembly `0xf36c..0xf398`.
   `0xf34a`, `0xf36c`, `0xf4ca`, and `0xf6e2`.
 - `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`:
   HMI/VMI, vertical layout, margin, and line-termination handlers.
+- `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`:
+  `ESC &s#C` wrap-mode byte writer.
 - `generated/disasm/ic30_ic13_macro_environment_snapshot_helpers_00e65c.lst`:
   `0xe9ba..0xe9d6` horizontal-margin reset used by `ESC 9` and environment
   refresh.
@@ -1950,7 +1980,8 @@ disassembly `0xf36c..0xf398`.
   `0x12622..0x126e2` underline/text-attribute tokenizer, pending-span
   flush edge, `0x783185` writer, and span re-arm call.
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`:
-  printable text consumers of cursor/font state.
+  printable text consumers of cursor/font state, including `0xd28a` /
+  `0xd6bc` precheck reads of `0x783190`.
 - `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`:
   compact text page-record producer.
 - `generated/analysis/ic30_ic13_direct_control_code_flow.md`:

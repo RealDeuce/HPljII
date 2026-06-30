@@ -260,7 +260,11 @@ result; `ESC &k6H!!`, `ESC &k2G!\n!`, `ESC &k0G HT BS !`,
 lowercase-chained margin, horizontal-column, horizontal-decipoint,
 vertical-row, vertical-decipoint, lowercase-chained cursor-position,
 top-margin, and perforation-skip handlers to shifted or unchanged
-page-record text output; `ESC &l66P!` now ties page-length handler
+page-record text output; fixture
+`0xf36c perforation skip gates vertical overflow page eject` ties the
+perforation-skip byte `0x783191` to its later vertical-overflow consumer:
+only `0x782c8e > 0x782dc2`, nonzero `0x782dc2`, and nonzero `0x783191`
+calls `0xf124` and returns `D7 = 0`; `ESC &l66P!` now ties page-length handler
 `0xf9e8` to page extent `3300`, refreshed cursor y `126`, and following
 printable `!` at compact coord `0x9001`;
 `ESC &l4W 00 00 00 02 !` now ties parser handler `0x11f6e`, delayed

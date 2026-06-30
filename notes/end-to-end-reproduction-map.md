@@ -561,6 +561,13 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    image comparison and HP/manual names for the derived line-count fields,
    not an unresolved middle edge in the documented `ESC &l#W` / `ESC &l#V`
    path.
+   The adjacent perforation-skip command is also no longer only a parser-state
+   toggle: `ESC &l#L` writes `0x783191` through handler `0xee64`, and fixture
+   `0xf36c perforation skip gates vertical overflow page eject` proves the
+   visible consumer at `0xf36c`. Page ejection through `0xf124` occurs only
+   when `0x782c8e > 0x782dc2`, `0x782dc2` is nonzero, and `0x783191` is
+   nonzero; below-limit, zero-limit, and disabled-skip cases return `D7 = 1`
+   without publication.
 3. Macro replay, overlay publication, repeated enabled-overlay publication,
    mixed-control, chained cursor-position, chained margin, transparent-data, raster,
    multi-row raster, and span-flush overlay payloads, and overlay skip gates are

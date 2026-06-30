@@ -2142,7 +2142,13 @@ bucket `3`, `ESC &l3E!` routes top-margin handler `0xece2` into the
 page-record path and renders the vertically shifted glyph at compact
 coord `0x9001` in bucket `6`, `ESC &l1L!` routes perforation-skip
 handler `0xee64`, sets byte `0x783191`, and then queues printable `!`
-through `0xd04a` at the unchanged compact coord `0x0001`, and
+through `0xd04a` at the unchanged compact coord `0x0001`. The pixel-affecting
+consumer is later vertical overflow helper `0xf36c`: fixture
+`0xf36c perforation skip gates vertical overflow page eject` proves that
+`0xf36c` calls `0xf124` and returns `D7 = 0` only when cursor y
+`0x782c8e` exceeds nonzero limit/cache `0x782dc2` while `0x783191` is
+nonzero; below-limit, zero-limit, and disabled-skip cases continue with
+`D7 = 1`.
 `ESC &f0S ESC &a2C ESC &f1S!` routes cursor-stack handlers `0xf75e`
 around cursor-position handler `0xf39e`, restores the original cursor,
 then queues printable `!` through `0xd04a` at compact coord `0x0001`. A

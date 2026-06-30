@@ -8562,8 +8562,11 @@ bucket through `0x1387c`/`0x1381c` before publication.
 - Parser scratch:
   - all six host-fetched publication streams drain entirely from the modeled
     `0xa904` ring source and leave an empty ring.
-  Evidence: fixture `host-fetched publication streams reach parser and
-  published rows`.
+  - mixed publication streams and geometry publication streams both route
+    through parser loop `0x11774` before their final publication handlers.
+  Evidence: fixtures `host-fetched publication streams reach parser and
+  published rows`, `0x11774 parser path routes mixed publication streams`, and
+  `0x11774 parser path routes geometry publication streams`.
 - Unknown:
   - this cluster proves rendered rows, not physical printer output.
 
@@ -8603,6 +8606,11 @@ paper-source, and copies. The reset, FF, page-size, orientation,
 paper-source, and copies addressed fixtures also assert that their
 materialized page records render those same rows after `0xff1e`.
 
+The reset-specific missing-root fixture proves the opposite output boundary:
+`host-fetched ESC E clears missing page root without publication` reaches reset
+handler `0xcc52`, clears the missing current page root state, and does not
+create a published page record.
+
 ### Confidence
 
 High for parser handler order, `0xa904` host-fetch draining, published pool
@@ -8616,12 +8624,18 @@ because each is fixture-pinned.
 - `publication streams tie parser handlers to page-record publication
   boundary`
 - `host-fetched publication streams reach parser and published rows`
+- `0x11774 parser path routes mixed publication streams`
+- `0x11774 parser path routes geometry publication streams`
 - `addressed printable reset publishes rendered page record`
 - `addressed printable FF publishes rendered page record`
 - `addressed page geometry publications render page records`
 - `addressed paper-source and copies publications render page records`
 - `host-fetched FF geometry and paper-source publications preserve 0xff1e pool
   header defaults`
+- `mixed printable/reset publication records 0xff1e pool header defaults`
+- `0xff1e-modeled publication copies status and environment header fields`
+- `host-fetched reset publication preserves 0xff1e pool header defaults`
+- `host-fetched ESC E clears missing page root without publication`
 - `host-fetched copies publication preserves 0xeef0 pool header word`
 - `host-fetched publication streams preserve 0x1edc6 bridge contract`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`
@@ -10065,9 +10079,9 @@ asserts the publication plus environment/parser side effects. Fixture
 publication to addressed compact-bucket materialization through
 `0x1387c`/`0x1381c` and rendered rows through `0x1ed84`/`0x1ef6a`. For a
 missing root, fixtures `ESC E stream clears missing page root without
-publication` and `host-fetched publication streams reach parser and published
-rows` pin the no-publication reset path from modeled `0xa904` host bytes to
-handler `0xcc52`. Fixture `0x5e80 -> 0xcda2 reset consumes default record
+publication` and `host-fetched ESC E clears missing page root without
+publication` pin the no-publication reset path from modeled `0xa904` host bytes
+to handler `0xcc52`. Fixture `0x5e80 -> 0xcda2 reset consumes default record
 outputs` connects the retained/default-record producer side to the reset
 consumer: the selected record's `0x78219d`, `0x7821a2`, and `0x78219e` outputs
 become the modeled `0xcda2` environment word, gated paper-source byte, pending
@@ -10091,6 +10105,7 @@ the physical retained-storage device identity behind `$a400`/`$8c01`.
 
 - `ESC E stream publishes valid page root and resets environment/parser state`
 - `ESC E stream clears missing page root without publication`
+- `host-fetched ESC E clears missing page root without publication`
 - `host-fetched publication streams reach parser and published rows`
 - `addressed printable reset publishes rendered page record`
 - `published page records feed 0x1ed84 and 0x1ef6a render entry`

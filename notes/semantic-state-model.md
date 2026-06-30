@@ -7454,9 +7454,20 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 - `0xdd08 starts and stops empty macro definitions`
 - `0xe0a4 macro record lookup uses head presence and first free slot`
 - `0x11774 ROM dispatch table routes chained ESC &f macro stream`
+- `macro command stream assigns id and starts/stops empty definition`
+- `0x116f6 alternate parser routes macro stop but suppresses payload
+  controls`
+- `host-fetched macro definition stream routes alternate parser table`
 - `macro command stream defines payload and executes data-chain frame`
+- `macro command stream defines payload and calls data-chain frame`
 - `host-fetched macro execute stream builds replay frame`
 - `host-fetched macro call stream builds replay frame`
+- `macro command stream enables and disables overlay state`
+- `macro command stream toggles permanence before delete-temporary`
+- `macro command stream deletes current record or all records`
+- `macro command stream respects definition and active-chain guards`
+- `host-fetched macro command streams update records and frames`
+- `0xdd08 overlay and temporary/permanent macro controls`
 - `0xe418 frame metadata distinguishes execute and call context`
 - `macro snapshot helpers copy linked and flat environment ranges`
 - `0x164a initializes heap allocator bitmap and payload base`
@@ -7478,6 +7489,10 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 - `host-fetched macro replay payloads preserve 0x1edc6 bridge contract`
 - `host-fetched macro replay payloads feed 0x1ed84 and 0x1ef6a`
 - `macro execute page-record layer composes with rule and raster band`
+- `macro execute payload queues printable glyph then applies CR`
+- `macro execute payload page-record bridge renders queued glyph`
+- `macro execute data-chain replay feeds page-record stream`
+- `macro execute mixed control payload replays through page-record stream`
 - `macro overlay finalization replays before page publication`
 - `macro overlay replays across repeated page publications`
 - `macro overlay skip gates preserve base page publication`

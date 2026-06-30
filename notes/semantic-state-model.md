@@ -9232,10 +9232,14 @@ results rather than executing the full heap and page scheduler.
 - `0x133aa..0x13472` and `0x136d2..0x13690`: ordered insertion is pinned
   for lower, higher, and equal bucket bytes; alternate no-room/failure
   returns need live CPU fixtures.
-- `0xff1e..0x1ed84`: pool-record publication and render bridge are
-  modeled, and `0x1eb2a..0x1ed84` active-record selection is now
-  fixture-backed. Remaining scheduler work is engine pacing and
-  multi-band loop timing around `0x1eba4..0x1ecd2`.
+- `0xff1e..0x1ed84`: pool-record publication, render bridge, active-record
+  selection, and scheduler-produced multi-band render calls are fixture-backed.
+  Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands` covers
+  render, capacity-wait, throttle, and cleanup branches around
+  `0x1eba4..0x1ecd2`; fixture `0x1eba4 scheduler band words render published
+  downloaded glyph` feeds scheduler-produced band words `0..9` into `0x1ef6a`.
+  Remaining scheduler work is physical engine pacing and live CPU/MMIO
+  correlation for the events that wake or stall those modeled branches.
 
 ## Published Record To Active Render Scheduler
 

@@ -7823,6 +7823,15 @@ While active, `ESC *t75R` is ignored: fixture
 current mode and scale unchanged before the next `ESC *b2W` queues a mode-0
 object.
 
+The mixed composition fixtures prove raster rows share the same page-record
+publication path as text and rule objects. Fixture `bridged text, rule, and
+raster layers compose into one page band` renders the copied render-record
+layers together after `0x1ed84` / `0x1ef6a`; fixtures `host-fetched text
+rectangle and raster page record feeds 0x1ed84 and 0x1ef6a`, `published text
+rectangle and raster page record feeds 0x1ed84 and 0x1ef6a`, and `addressed
+text/rule/raster field groups reach publication and render entry` pin the
+host-fetched and addressed publication forms of that same page-record contract.
+
 ### Confidence
 
 High for parser handler order, delayed snapshot bytes, delayed scratch layout,
@@ -7844,7 +7853,12 @@ live 68000 execution trace.
 
 - `0x11774 ROM dispatch table routes raster stream to delayed transfer`
 - `modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W`
+- `modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W
+  payload boundary`
+- `modeled raster command stream queues and renders ESC *b4W payload`
+- `modeled raster command stream bridges queued ESC *b4W page object`
 - `host-fetched raster stream reaches parser and queued pixels`
+- `host-fetched raster stream preserves 0x1edc6 bridge contract`
 - `raster payload reader normalizes 0xdace controls before queueing pixels`
 - `host-fetched raster control payload normalizes before queueing pixels`
 - `parser-derived ESC *t300R / ESC *r1A state queues mode-0 raster row`
@@ -7863,8 +7877,12 @@ live 68000 execution trace.
 - `0x1edc6 page-record bridge preserves queued raster object`
 - `0x13070/0x13250 raster row queues non-byte-aligned encoded-span object`
 - `0x1f88e mode-0 raster object renders sub-byte shifted literal row`
+- `modeled raster command stream selects 150-dpi mode-1 state`
+- `modeled raster command stream queues and renders 150-dpi mode-1 payload`
 - `0x13070/0x13250 raster mode-1 row queues encoded-span object`
 - `0x1f88e mode-1 raster object expands queued bytes into two rows`
+- `modeled raster command stream selects 100-dpi mode-2 state`
+- `modeled raster command stream queues and renders 100-dpi mode-2 payload`
 - `0x13070/0x13250 raster mode-2 row queues encoded-span object`
 - `0x1f88e mode-2 raster object expands queued byte pair into three rows`
 - `0x13070/0x13250 raster mode-2 row queues non-byte-aligned encoded-span
@@ -7873,6 +7891,8 @@ live 68000 execution trace.
 - `0x13070/0x13250 raster mode-2 row queues band-clipped encoded-span object`
 - `0x1f88e mode-2 raster object clips current-band rows and continues in
   fallback buffer`
+- `modeled raster command stream selects 75-dpi mode-3 state`
+- `modeled raster command stream queues and renders 75-dpi mode-3 payload`
 - `0x13070/0x13250 raster mode-3 row queues encoded-span object`
 - `0x1f88e mode-3 raster object expands queued bytes into four rows`
 - `raster mode streams tie ROM parser dispatch to modeled queued objects`
@@ -7899,6 +7919,13 @@ live 68000 execution trace.
 - `host-fetched raster multi-row and chained streams preserve 0x1edc6 bridge
   contract`
 - `host-fetched raster streams feed 0x1ed84 and 0x1ef6a`
+- `bridged text, rule, and raster layers compose into one page band`
+- `host-fetched text rectangle and raster page record feeds 0x1ed84 and
+  0x1ef6a`
+- `addressed text rectangle raster publication renders rows`
+- `published text rectangle and raster page record feeds 0x1ed84 and
+  0x1ef6a`
+- `addressed text/rule/raster field groups reach publication and render entry`
 
 ### Disassembly Evidence
 

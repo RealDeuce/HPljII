@@ -629,9 +629,14 @@ Unresolved middle edges:
 - `0x133aa..0x13472` and `0x136d2..0x13690`: ordered insertion is pinned for
   lower, higher, and equal bucket bytes; alternate no-room/failure returns
   still need live CPU fixtures.
-- `0xff1e..0x1ed84`: pool-record publication and render bridge are modeled;
-  remaining scheduler work is engine pacing and multi-band loop timing around
-  `0x1eba4..0x1ecd2`.
+- `0xff1e..0x1ed84`: pool-record publication, render bridge, and the
+  scheduler-produced multi-band render loop are modeled. Fixture
+  `0x1eba4/0x1ef6a active render loop advances or yields bands` covers render,
+  capacity-wait, throttle, and cleanup branches around `0x1eba4..0x1ecd2`, and
+  fixture `0x1eba4 scheduler band words render published downloaded glyph` feeds
+  scheduler-produced band words `0..9` into `0x1ef6a`. The remaining scheduler
+  work is physical engine pacing and live CPU/MMIO correlation for the events
+  that wake or stall those modeled branches.
 
 `0x13070` converts the raster state block into bucket coordinates:
 

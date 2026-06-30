@@ -1451,8 +1451,9 @@ ROM work needed:
   0x1ef6a` now carries all eight source/class page-record segments through the
   bridge and band renderer, with aggregate rendered-surface digest
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`. The
-  next boundary is physical baseline/cell comparison against a known
-  printed/self-test sample.
+  next boundaries are forced continuation-page object variants for tight page
+  limits and physical baseline/cell comparison against a known printed/self-test
+  sample.
 - Fixture `live parser symbol-set streams select non-Roman built-ins` now
   broadens the named `0N` / `10U` / `11U` samples from static map evidence
   into primary parser/font-selection evidence. Streams `ESC (0N`,

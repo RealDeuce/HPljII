@@ -1108,9 +1108,10 @@ unresolved byte-stream-to-pixel edges, not already-composed handlers.
   [resource-rom.md](resource-rom.md) documents the candidate sequence and
   [semantic-state-model.md](semantic-state-model.md) composes the sample-page
   source placement, sample-run reuse, and `0x1ed84` / `0x1ef6a` rendered
-  segments. The open boundary is physical baseline/cell/page placement against
-  a known self-test or font sample. The record fields consumed by `0x1519a`
-  and `0x1428c` are documented as decoded-height inputs and same-class chooser
+  segments. The open boundaries are forced continuation-page object variants
+  for tight page limits and physical baseline/cell/page placement against a
+  known self-test or font sample. The record fields consumed by `0x1519a` and
+  `0x1428c` are documented as decoded-height inputs and same-class chooser
   tie-breakers; only their external/manual names remain unknown.
 - Keep resource-window work focused on the exact physical decode gap.
   [resource-rom.md](resource-rom.md) now composes the

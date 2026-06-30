@@ -665,7 +665,8 @@ The modeled class-zero segments top out at row width `2219`; the modeled
 class-one segments top out at row width `4097`, so that width/baseline
 interpretation is now pinned but not yet validated against paper output.
 
-The still-open boundary is physical comparison of those rendered source/class
+The still-open boundaries are forced continuation-page object bytes for tight
+page-limit variants, plus physical comparison of those rendered source/class
 surfaces against a known printed/self-test sample, including baseline and cell
 placement agreement after `0x1ed84`.
 
@@ -1172,7 +1173,8 @@ Unknown:
 - manual-facing names for several record metadata fields remain open,
   especially the exact baseline/cell terminology behind `+0x28/+0x2a`
   and tie-breaker bytes `+0x2f..+0x31`;
-- physical output comparison for the full internal-font sample page remains
+- forced continuation-page object bytes for tight page-limit variants and
+  physical output comparison for the full internal-font sample page remain
   open even though the ROM-side candidate order and rendered-surface digest
   are fixture-backed;
 - optional cartridge/resource candidate windows are bounded by ROM addresses,

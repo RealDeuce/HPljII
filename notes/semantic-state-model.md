@@ -2674,8 +2674,10 @@ Status: anchored as the firmware font-sample page generator from
 resource candidate windows to printable sample bytes and an internal
 page-object/rendered-surface checkpoint. It composes the ROM helpers that
 replace the older direct `LASERJETII` smoke sample for built-in
-baseline/cell correlation; the remaining boundary is physical comparison
-against a known font/self-test page.
+baseline/cell correlation. The normal source/class printout is modeled as
+rendered page-record segments; remaining boundaries are forced continuation
+page-object variants and physical comparison against a known font/self-test
+page.
 
 Concept: the sample printout is firmware-generated text, not host input.
 Routine `0x1c204` checks whether font records exist, runs class-zero and
@@ -2847,9 +2849,10 @@ for how resource records become ordinary page-record text.
     and source `2` class-zero/class-one digests
     `eaf10ca6b5b5716170b313ce542df82a6974c1ac22ee0e87308dead7be22c6a1` /
     `3d23d5c6c5320d406d1db34523d3ad01c819d4e938e3dee4fa0a5d20747ed152`.
-    Forced continuation-page object bytes remain open for every source-heading
-    and class-pass combination, but the normal full source/class placement is
-    now composed as eight page-record segments.
+    Forced continuation-page object bytes remain open for artificially tight
+    page-limit cases across source-heading and class-pass combinations; the
+    normal full source/class placement is now composed as eight page-record
+    segments.
   - record `+0x28/+0x2a` and `+0x2f..+0x31` are already correlated with
     emitted page objects for their ROM roles: `0x1519a` consumes
     `+0x28/+0x2a` as decoded-height inputs before `0x13bca`, and
@@ -3213,7 +3216,8 @@ because physical/self-test comparison is still open.
   0x1ef6a` renders those segment records through the output bridge and pins
   surface digest
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
-  Remaining gap is physical baseline/cell comparison against a known
+  Remaining gaps are forced continuation-page object bytes for artificially
+  tight page-limit cases and physical baseline/cell comparison against a known
   printed/self-test sample.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
@@ -3239,8 +3243,9 @@ because physical/self-test comparison is still open.
   `font sample full printout segments render through 0x1ed84 and 0x1ef6a`
   pins the aggregate rendered-surface digest
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
-  The remaining sample-printout boundary is comparison against a known
-  printed/self-test page.
+  The remaining sample-printout boundaries are forced continuation-page object
+  variants for tight page limits and comparison against a known printed/self-test
+  page.
 - `record +0x28/+0x2a`: decoded-height input consumed by `0x1519a` through
   `0x13bca`; physical baseline/cell correlation remains open.
 - `record +0x2f..+0x31`: same-class chooser tie-breakers consumed by

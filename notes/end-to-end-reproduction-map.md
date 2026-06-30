@@ -719,7 +719,8 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    segments render through 0x1ed84 and 0x1ef6a` renders all eight source/class
    page-record segments with aggregate digest
    `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
-   The remaining sample-printout gap is physical baseline/cell placement
+   The remaining sample-printout gaps are forced continuation-page object
+   variants for tight page limits and physical baseline/cell placement
    comparison against a known font/self-test page.
 
 ## Next Disassembly Targets

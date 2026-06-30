@@ -32,15 +32,36 @@ Primary fixtures:
 - `0xe112 stores absolute parsed macro id`
 - `0xe0a4 macro record lookup uses head presence and first free slot`
 - `0xdd08 starts and stops empty macro definitions`
+- `0x11774 ROM dispatch table routes chained ESC &f macro stream`
+- `macro command stream assigns id and starts/stops empty definition`
 - `0x116f6 alternate parser routes macro stop but suppresses payload controls`
 - `host-fetched macro definition stream routes alternate parser table`
 - `macro command stream defines payload and executes data-chain frame`
 - `macro command stream defines payload and calls data-chain frame`
+- `macro command stream enables and disables overlay state`
+- `macro command stream toggles permanence before delete-temporary`
+- `macro command stream deletes current record or all records`
+- `macro command stream respects definition and active-chain guards`
+- `host-fetched macro command streams update records and frames`
+- `0xdd08 overlay and temporary/permanent macro controls`
 - `host-fetched macro execute stream builds replay frame`
 - `host-fetched macro call stream builds replay frame`
+- `0xdd08 execute and call push macro data-chain frames`
+- `0xe418 frame metadata distinguishes execute and call context`
+- `0xe146/e418/e4f4/e65c macro context stack has eight records and no guard`
+- `macro snapshot helpers copy linked and flat environment ranges`
+- `0xe002 appends macro definition bytes into 0x100 chunks`
+- `0xe4f4/0xe22c produce and end data-chain frames`
+- `0xe65c refreshes macro font context entries`
+- `0xe65c refresh composes with font context bridge`
 - `macro execute frame payload feeds 0xa904 data-chain bytes`
 - `macro execute data-chain parser trace feeds page-record stream`
 - `macro call data-chain parser trace feeds page-record stream`
+- `macro execute payload queues printable glyph then applies CR`
+- `macro execute payload page-record bridge renders queued glyph`
+- `macro execute data-chain replay feeds page-record stream`
+- `macro execute mixed control payload replays through page-record stream`
+- `macro execute page-record layer composes with rule and raster band`
 - `host-fetched mixed-control macro execute stream builds replay frame`
 - `macro mixed-control data-chain parser trace feeds page-record stream`
 - `host-fetched macro replay payloads preserve 0x1edc6 bridge contract`
@@ -161,25 +182,50 @@ Unknown:
   into record `+0x08`.
 - `0xdd08` rewinds `0x78299e`, dispatches selectors `0..10`, and writes
   definition, execute/call, overlay, delete, temporary, and permanent state.
+- Fixture `0xdd08 overlay and temporary/permanent macro controls` pins the
+  selector branches that enable/disable overlay, mark a record permanent, clear
+  temporary records, and delete current/all records. Fixture `macro command
+  stream respects definition and active-chain guards` pins the guard behavior:
+  definition-mode and active data-chain state suppress the selectors that the
+  ROM refuses to run in those states.
 - `0xdd86..0xde7a` starts/stops definition mode, seeds lowercase `ESC &f`
   auto-prefix bytes through `0xe002`, normalizes counts, and clears empty or
   auto-prefix-only records through `0xdfba`.
 - `0xe002` appends definition bytes into linked 0x100-byte chunks, links new
   chunks, updates record raw count `+0x04`, and sets `0x782c19` on allocation
   failure.
+- Fixture `0xe002 appends macro definition bytes into 0x100 chunks` pins the
+  chunk format: a longword next pointer followed by 252 payload bytes, raw
+  counts including four header bytes per chunk, and the transition to a linked
+  second chunk after the first 252 payload bytes.
 - `0xe418` writes execute/call data-chain frames, environment snapshot pointer
   `+0x0a`, and the call-only context-stack entry.
+- Fixtures `0xdd08 execute and call push macro data-chain frames` and
+  `0xe418 frame metadata distinguishes execute and call context` pin frame
+  bytes `+8 = 4`, `+9 = 2` for execute, `+9 = 3` for call, and the call-only
+  context push.
 - `0xe4f4` writes the non-replay overlay frame at `0x782d4c`, writes
   `0x782d76`, saves cursor longword `0x782c92`, snapshots flat state, and may
   set host gate bit 1.
 - `0xe22c` unwinds frames, frees snapshot chunks, rewinds `0x782d76` for
   execute/call frames, and writes `0x782a92 = 0x63` on non-execute/non-call
   frame return.
+- Fixture `0xe4f4/0xe22c produce and end data-chain frames` pins the
+  non-replay frame producer and the matching end-frame cleanup. Fixture
+  `macro snapshot helpers copy linked and flat environment ranges` pins the
+  linked `0xe8f0` / `0xe8a2` snapshot chain and flat `0xe972` / `0xe996`
+  copy helpers used by those frame paths.
 - `0x164a` initializes the heap bitmap and allocator fields.
 - `0x170c` / `0x1710` allocate 64-byte heap units; `0x18b4` frees linked
   macro/snapshot chains when count is zero.
 - `0xe65c(0)` pops macro call-context entries; `0xe65c(1)` consumes static
   context record `0x782c64`.
+- Fixtures `0xe65c refreshes macro font context entries` and `0xe65c refresh
+  composes with font context bridge` pin the bridge from macro context flags
+  through `0x13eb8`, `0x144d2`, `0x14c64`, and final `0xc428` page-root
+  font-slot install. Fixture `0xe146/e418/e4f4/e65c macro context stack has
+  eight records and no guard` pins the reset-cleared stack bounds and the lack
+  of ROM-side push/pop guard checks.
 
 ## Readers And Consumers
 
@@ -211,6 +257,27 @@ an execute frame, drains replay bytes through `0xa904`, dispatches `0xd04a`
 then `0xf02c`, queues the same text object as direct host bytes, and renders
 the same rows. The call selector `3` follows the same visible path for the
 covered text payload.
+
+The parser-facing macro command stream is fixture-backed at both the handler
+and host-fetched levels. Fixture
+`0x11774 ROM dispatch table routes chained ESC &f macro stream` pins normal
+mode 17 dispatch to `0xe112` and `0xdd08`. Fixture `macro command stream
+assigns id and starts/stops empty definition` pins `ESC &f#Y`, selector `0`
+start, selector `1` stop, and empty-definition cleanup. Fixture
+`host-fetched macro command streams update records and frames` proves the same
+state updates from a real `0xa904` ring source.
+
+Replay output is also fixture-backed in page terms, not only frame terms.
+Fixture `macro execute payload queues printable glyph then applies CR` proves
+stored `!\r` re-enters `0xd04a` and `0xf02c`. Fixture `macro execute payload
+page-record bridge renders queued glyph` carries that queued object through
+`0x1edc6` and render entry. Fixture `macro execute data-chain replay feeds
+page-record stream` proves the replayed data-chain bytes feed the same
+page-record stream as host bytes. Fixture `macro execute mixed control payload
+replays through page-record stream` covers the mixed-control sibling
+`ESC &k1G!\r!`. Fixture `macro execute page-record layer composes with rule
+and raster band` proves macro-replayed text can compose with selector-7 rule
+and mode-0 raster output in one rendered band.
 
 The mixed-control execute fixture stores `ESC &k1G!\r!`, builds an execute
 frame, replays through `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`, then

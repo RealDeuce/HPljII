@@ -2605,6 +2605,10 @@ startup-visible typed-record chain that bounds this built-in window.
     `0x440946b4` for glyph `0`, plus context `0x440946b4` glyph `32`, with
     entry pointer, bitmap pointer, delta, mode, row count, width, render span,
     and decoded bitmap rows.
+  - named built-in record fields expose the selector byte `+0x20`, spacing
+    byte `+0x21`, symbol word `+0x22`, pitch fields `+0x24/+0x26`, height
+    fields `+0x28/+0x2a`, and comparator tuple `+0x2f..+0x31` consumed by
+    the font-selection filters and chooser.
   Evidence: fixtures `0x41a HEAD scanner walks verified IC32/IC15 resource
   chain`, `resource context 0x4008004c glyph 0 fields`,
   `resource context 0x4008004c glyph 0 bitmap sample`,
@@ -2613,8 +2617,9 @@ startup-visible typed-record chain that bounds this built-in window.
   `resource context 0x44080418 glyph 0 full bitmap rows`,
   `resource context 0x440946b4 glyph 0 fields`,
   `resource context 0x440946b4 glyph 0 full bitmap rows`,
-  `resource context 0x440946b4 glyph 32 fields`, and
-  `resource context 0x440946b4 glyph 32 full bitmap rows`.
+  `resource context 0x440946b4 glyph 32 fields`,
+  `resource context 0x440946b4 glyph 32 full bitmap rows`, and
+  `named built-in records expose firmware selection fields`.
 - Canonical candidate-list state:
   - `0x782324`: shared candidate pointer-list base.
   - `0x78278e`: total accepted candidate count.
@@ -2775,6 +2780,7 @@ resources because no image is available in this repo.
 - `resource context 0x440946b4 glyph 32 full bitmap rows`
 - `resource context 0x440946b4 glyph 32 main row-copy rendered rows`
 - `resource glyph row-copy span matrix matches direct decode`
+- `named built-in records expose firmware selection fields`
 - `0x1a616 candidate scan continuation policy changes built-in counts`
 - `0x1569c activates concrete built-in candidate windows`
 - `0x1519a filters concrete active candidates by height`
@@ -3490,7 +3496,11 @@ glyph map through `0x14c64`, and supplies selected context `0xc008004c` to the
 same printable/page-record/render path used by ordinary text. Appending `!!`
 therefore queues two Courier glyph-0 compact entries and renders pixels from
 the selected built-in resource record, not from the default Line Printer
-context. `ESC )s0p16h8v0s0b0T SO !!` follows the secondary version of the
+context. Fixtures `0x11774 ROM dispatch table routes chained font selection
+streams` and `parsed font-selection metrics feed concrete candidate filters`
+pin the parser handler sequence, parsed request fields, candidate filters, and
+selected candidate that feed this primary path.
+`ESC )s0p16h8v0s0b0T SO !!` follows the secondary version of the
 same contract: the secondary selection writes context `0xc00ae122`, SO selects
 slot 1 through `0xc6b8`, and the two printable bytes render from that
 class-one Line Printer context.
@@ -3537,6 +3547,11 @@ routes through parser handlers `0x11eb6`, `0x1201e`, and `0x120be`,
 `0x14c64` rebuilds primary map `0x782f32`, and the printable `!!` tail queues
 object `00 00 00 00 00 00 00 02 00 89 00 00 87 02` with rendered-row digest
 `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`.
+Fixtures `0x17708 font-ID selects concrete built-in candidate` and
+`0x14c64 dispatches concrete selected built-in font` pin the helper-level
+selected pointer, candidate longword, selected symbol, range reason, map
+address, Roman-extension patch, snapshot fields, and call list behind that
+visible final-`X` path.
 Fixture `font-ID secondary built-in selection feeds visible SO page-record
 rows` carries the class-one built-in final-`X` sibling through visible output:
 host-fetched `ESC )8X SO !!` routes through parser handlers `0x11eb6`,
@@ -4384,6 +4399,8 @@ install events.
 ### Fixtures
 
 - `parsed font-selection stream writes primary font-state fields`
+- `0x11774 ROM dispatch table routes chained font selection streams`
+- `parsed font-selection metrics feed concrete candidate filters`
 - `0x13eb8 refresh carries parsed primary font selection to dispatch`
 - `0x13eb8 refresh carries parsed secondary font selection to dispatch`
 - `parsed primary built-in font selection feeds visible page-record rows`
@@ -4401,6 +4418,8 @@ install events.
 - `live parser symbol-set streams select non-Roman built-ins`
 - `non-Roman symbol streams select visible built-ins`
 - `symbol-set parser trace covers X and @ special cases`
+- `0x17708 font-ID selects concrete built-in candidate`
+- `0x14c64 dispatches concrete selected built-in font`
 - `font-ID built-in selection feeds visible page-record rows`
 - `font-ID secondary built-in selection feeds visible SO page-record rows`
 - `font-ID primary inline/downloaded selection feeds visible page-record rows`

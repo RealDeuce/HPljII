@@ -3963,9 +3963,21 @@ selector mismatch only copies the remembered word and installs no context.
     writes `0xc008004c`, and sets `0x78297e = 0`.
   - SO install result: `0xc428(1)` / `0xc4fc` selects page-root slot `1`,
     writes `0xc00ae122`, and sets `0x78297e = 1`.
+  - context slots store pointers to current-font context records, not raw glyph
+    bitmap pointers. `0xc428` scales the selected slot by `0x10` into the
+    `0x782ee6`/`0x782ef6` record family, `0xc4fc` scans 16 page-root slots by
+    masked low-24-bit context plus live flags `0x78297f+n`, `0x1edc6` copies
+    those page-root slots into render-record `+0x24..+0x60`, `0x1f008` caches
+    the selected render slot in `0x783a2c`, and `0x1f354` interprets bit 30
+    plus the low 24 bits to resolve the glyph entry.
   Evidence: fixtures
   `live primary current-font RAM install feeds SI page-record rows` and
-  `live secondary current-font RAM install feeds SO page-record rows`.
+  `live secondary current-font RAM install feeds SO page-record rows`;
+  generated report
+  `generated/analysis/ic30_ic13_font_context_bridge.md`; and disassembly
+  `generated/disasm/ic30_ic13_font_context_install_00c428.lst`,
+  `generated/disasm/ic30_ic13_page_root_font_slot_scan_0196c4.lst`, and
+  `generated/disasm/ic30_ic13_glyph_row_copy_helper_02f27c.lst`.
 - Canonical visible page-record fields:
   - primary compact text object prefix:
     `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`.
@@ -4171,6 +4183,11 @@ selector mismatch only copies the remembered word and installs no context.
     selections without entering the `0x14f16` Roman-8 patch-table path.
   - `0x14c64` rebuilds map `0x783032` for the secondary `0N`, `10U`, and
     `11U` selections before SO makes slot `1` active for printable bytes.
+  - `0x144d2` writes the chosen selected candidate longword into either
+    primary `0x782ee6` or secondary `0x782ef6` based on the active selector,
+    while `0x14c64` dispatches bit-30 resource records through the
+    offset-table path and bit-30-clear fixed records through the inline map
+    path before `0x1440c` snapshots selected-font state.
   - `0x17708` non-selected bookkeeping:
     `scan-miss` calls only `0x172c0`; `candidate-slot-miss` calls
     `0x172c0` and `0x1b4c0`; `class-mismatch` calls the same scan/slot
@@ -4626,6 +4643,19 @@ install events.
   `0x15890` and `0x158be`.
 - `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`: candidate
   activation.
+- `generated/disasm/ic30_ic13_active_object_dispatch_014ba4.lst`: selected
+  object dispatch, map rebuild, and active context update.
+- `generated/disasm/ic30_ic13_font_context_install_00c428.lst`: current-font
+  context record install into page-root slots.
+- `generated/disasm/ic30_ic13_page_root_font_slot_scan_0196c4.lst`: page-root
+  font-slot scan and reuse/full behavior.
+- `generated/disasm/ic30_ic13_font_update_common_00c580.lst`: common refresh
+  gate that decides whether dirty parsed font state reaches page-root slots.
+- `generated/disasm/ic30_ic13_font_id_select_017708.lst`: final-`X` font-ID
+  selected and non-selected paths.
+- `generated/analysis/ic30_ic13_font_context_bridge.md`: selected candidate
+  to current-font record, page-root slot, render slot, and `0x1f354` context
+  interpretation.
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`: printable
   consumer path.
 - `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`: compact object
@@ -5268,6 +5298,14 @@ parser-mode-16 chain that writes current id, current character, and the
 font-control command record before the shared downloaded-font state is
 consumed by descriptor and character payload routes.
 
+The command edge is not just a parser table entry. `0x15a56` and `0x15a18`
+rewind the six-byte parser record cursor and store absolute/clamped current
+font id and character words in `0x782f2e` and `0x782f30`; `0x11f96` uses the
+same restored record shape to choose delayed descriptor versus payload
+handlers; `0x16df6` dispatches `ESC *c#F` values through a ROM jump table with
+mode-byte suppression for values `0`, `1`, `2`, `3`, and `6` when
+`0x782a92 == 2`.
+
 ### Field Groups
 
 - Canonical:
@@ -5302,6 +5340,9 @@ consumed by descriptor and character payload routes.
 - Parser scratch:
   - `0x78299e`: six-byte parsed-record cursor rewound by font handlers.
   - `0x783140`: payload byte budget used by descriptor and payload readers.
+  - `0x782a92`: mode/status byte that suppresses destructive/control
+    font-control values `0`, `1`, `2`, `3`, and `6`; mark/unmark values `4`
+    and `5` remain live.
   - delayed `ESC )s#W` records restored by `0x11f96`/`0x16c14`: normal
     `80 57 00 06 00 00`, linear-segmented `80 57 01 02 00 00`, and even-span
     wide `80 57 00 12 00 00`; the rows-`0x0102` truncation fixture restores
@@ -5473,6 +5514,10 @@ consumed by descriptor and character payload routes.
   branch, already-marked no-op, and missing-record no-op. Fixture
   `0x17150-modeled current font record unmark/count transfer` pins the inverse
   unmark branch and already-unmarked no-op.
+  The decoded jump table at `0x16db6` maps values `0`, `1`, `2`, `3`, `4`,
+  `5`, and `6` to all-record delete/release, current-record release,
+  current-character clear, unmark, mark, and active/current-resource refresh
+  families; all other values fall through to `0x16eaa`.
 - `0x15d0a` writes `0x783140`, reads descriptor bytes through `0x1599c`, and
   routes to `0x16498`, `0x16606`, `0x15b9a`, or `0x15c4c`. Fixture
   `0x15d0a-modeled font descriptor route` pins the current-record and
@@ -6897,6 +6942,11 @@ fields and broader selected-font state combinations have not been page-compared.
 
 ### Disassembly Evidence
 
+- `generated/analysis/ic30_ic13_font_control_flow.md`: parser-record
+  restoration, current font id/character writes, `W` delayed-handler
+  selection, `ESC *c#F` jump-table targets, and state-reference scan.
+- `generated/disasm/ic30_ic13_assign_font_id_015a56.lst`: `ESC *c#D` current
+  font-id normalization.
 - `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`
 - `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`
 - `generated/disasm/ic30_ic13_font_stream_byte_helpers_01599c.lst`
@@ -6908,6 +6958,10 @@ fields and broader selected-font state combinations have not been page-compared.
 - `generated/disasm/ic30_ic13_font_resource_release_018b92.lst`
 - `generated/disasm/ic30_ic13_font_resource_release_alt_018bf2.lst`
 - `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`
+- `generated/disasm/ic30_ic13_font_resource_classify_0172c0.lst`: current
+  downloaded-font record scan and statuses.
+- `generated/disasm/ic30_ic13_font_resource_payload_record_lookup_0170be.lst`:
+  low-24-bit payload pointer to current-record lookup.
 - `generated/disasm/ic30_ic13_font_resource_validate_predicates_017358.lst`
 - `generated/disasm/ic30_ic13_font_resource_setup_type_017362.lst`
 - `generated/disasm/ic30_ic13_font_resource_find_017026.lst`

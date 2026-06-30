@@ -850,10 +850,16 @@ reports the same flag as bit 0 of the outbound base `0x30` status byte.
     argument before optional `0x9406` setup.
   - `0x782970` / `0x782971`: prior display-mode byte and once-per-mode
     strobe latch maintained by `0x952a` and `0x949c`.
-  - `0x9112`: formatted display/message helper used by `0x8a48` for
-    media-feed strings with a table entry from `0xb490`.
-  - `0xb490`: longword table indexed by `0x780e98 << 2`, or by
-    `(0x780e98 & 0x7f) << 2` when `0x780e98.7` is set.
+  - `0x9112`: formatted display/message helper used by `0x8a48`. It
+    clears desired buffer `0x78292c`, inserts a base message at a
+    one-based caller offset, inserts a table-selected suffix at a second
+    one-based caller offset, then calls `0x9182(0x78292c, flag)`.
+  - `0xb490`: longword suffix table indexed by `0x780e98 << 2`, or by
+    `(0x780e98 & 0x7f) << 2` when `0x780e98.7` is set. Observed entries
+    map low indexes to paper/envelope strings:
+    `0 -> LETTER`, `1 -> A4`, `2 -> LETTER`, `3 -> B5`,
+    `4 -> MINI`, `5 -> LEGAL`, `6 -> EXEC`, `7 -> COM-10`,
+    `8 -> MONARCH`, `9 -> DL`, and `10 -> C5`.
   - `0x7828f9.2` and `$a801`: service-strobe shadow bit. `0xa5c2`
     clears it, `0xa5da` sets it, and `0xa5f2` returns `1` only when the
     shadow bit is clear.
@@ -867,7 +873,8 @@ reports the same flag as bit 0 of the outbound base `0x30` status byte.
   - physical signal names for `$8a01.5`, `$8a01.3`, and `$a801.2`.
   - exact physical panel effect of the flag-`1` path after `0x9406` builds
     output table pointers from the first two shadow-message bytes.
-  - semantic names for the entries in table `0xb490`.
+  - manual/user-facing reason names for selected record byte `+6` /
+    `0x780e98` beyond the suffix strings already identified in `0xb490`.
 
 ### Writers
 
@@ -894,6 +901,13 @@ reports the same flag as bit 0 of the outbound base `0x30` status byte.
   reads `0x780e8e`, `0x780e98`, `$8a01.5` via `0xa46e`, and table
   `0xb490`, but the focused listing shows no page-record or
   `0x780e90` write in this helper.
+- `0x9112` is the formatted display-message helper. It calls `0x955a` to
+  clear desired buffer `0x78292c`; if base offset argument `+8` is zero,
+  it replaces it with current counter `0x78296d`, then copies base string
+  argument `+0x0c` through `0x95ae(offset - 1, base)`. It repeats the same
+  default-offset and `0x95ae(offset - 1, suffix)` pattern for suffix offset
+  argument `+0x10` and suffix pointer argument `+0x14`, then calls
+  `0x9182(0x78292c, argument +0x18)`.
 - `0x9182` is the shared display-message installer behind `0x8c7a` and
   `0x8c90`. Unless the source pointer is already `0x78292c`, it clears the
   desired buffer through `0x955a`, copies the source string into
@@ -938,6 +952,11 @@ reports the same flag as bit 0 of the outbound base `0x30` status byte.
   `1`. The flag participates in the unchanged-message predicate at
   `0x95fa`; flag `1` also selects the `0x9406` table/pointer setup after
   the text copy.
+- `0x8a48` consumes `0x780e98` as both a high-bit mode and a suffix-table
+  index. High-bit cases mask with `0x7f`; clear cases use the full byte.
+  The table pointer becomes `0x9112` suffix argument `+0x14`, inserted at
+  one-based offset `9`, after base strings `PF FEED` or `PE FEED` at
+  one-based offset `1`.
 - `0x0d12..0x0d24` consumes and clears `0x7839d3` in a copied-stub status
   handler, then signals wait object `0x780182`.
 
@@ -1012,6 +1031,9 @@ status names for the selected record bytes and the hardware bits behind
   service path.
 - `generated/disasm/ic30_ic13_message_dispatch_wrappers_008c7a.lst`:
   `0x8c7a..0x8ca6` wrapper calls into `0x9182`.
+- `generated/disasm/ic30_ic13_formatted_message_helper_009112.lst`:
+  `0x9112..0x9180` base/suffix formatter for desired display buffer
+  `0x78292c`.
 - `generated/disasm/ic30_ic13_display_message_core_009182.lst`:
   `0x9182..0x96a0` display-message buffer, flag, compare, panel-mask, and
   flag-`1` table setup helpers.
@@ -1036,9 +1058,10 @@ status names for the selected record bytes and the hardware bits behind
   `0x78293d` / `0x78293e`. The remaining edge is the physical panel effect
   of the masks written through `0x949c`, table roots `0x782904` /
   `0x78290c`, and cursor `0x7828fe`.
-- `0x9112` and table `0xb490`: `0x8a48` argument order and table index
-  boundaries are pinned at `0x8a74..0x8b24`, but the table entries and
-  formatted-message engine remain unresolved.
+- `0x9112..0x9182`: formatted-message engine and table entries are lifted:
+  `0x9112` builds `0x78292c` from base and suffix strings before entering
+  `0x9182`. Remaining uncertainty is the user-facing reason names that select
+  each `0x780e98` value, not the suffix strings or formatter mechanics.
 - `0x6e32(0x1f)` and `0x6f32(0x2a)`: `0x8656` consumers and bit tests are
   pinned at `0x866c..0x86b2` and `0x89f0..0x8a3a`, but the physical
   sensors behind the returned bits still need composition.

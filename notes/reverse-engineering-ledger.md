@@ -121,7 +121,12 @@ choose the page-pool cursor service helper, and `0x2c08..0x2c3a` clears the
 service flags. The service-helper split is also fixture-backed: when
 `0x780e90` is set, `0x8a48` formats media-feed messages from `0x780e8e`,
 `0x780e98`, and table `0xb490`, emitting `PF FEED`, `PE FEED`, or
-`PE FEED ENVELOPE`; when the flag is clear, `0x8656` runs the normal
+`PE FEED ENVELOPE`. The formatted-message helper `0x9112` clears desired
+display buffer `0x78292c`, inserts the base string at a one-based caller
+offset, inserts the `0xb490` suffix at one-based offset `9`, and calls
+`0x9182(0x78292c, flag)`. The observed `0xb490` suffix entries map to
+`LETTER`, `A4`, `B5`, `MINI`, `LEGAL`, `EXEC`, `COM-10`, `MONARCH`, `DL`,
+and `C5`. When the flag is clear, `0x8656` runs the normal
 service-message selector, updating
 `0x780e3e`/`0x7822e6`, dispatching `0x780e8a` through the table at
 `0x8626`, and selecting strings such as `16 TONER LOW`, `SERVICE MODE`,
@@ -138,8 +143,8 @@ physical panel effect of those masks, not the wrapper argument semantics. The
 `0x122be..0x12326` output producer now pins model-ID bytes
 `33440A\r\n` from `0x12280`; remaining work is the external protocol name
 for that `0x11` query, user-facing names for the folded status categories
-and selected record bytes, `0x9112` formatted-message internals, and
-physical naming/timing for the output MMIO banks.
+and selected record bytes, and physical naming/timing for the output MMIO
+banks.
 
 ### Main PCL parser
 

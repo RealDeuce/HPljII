@@ -134,6 +134,32 @@ the board-facing boundary is tracked in
   does not close the edge: [firmware-startup.md](firmware-startup.md) records
   the resource-pair byte-sum range as `0x080000..0x0bffff`, so it covers the
   verified suffix but not the `0x0c0000` continuation bytes.
+- Display functions:
+  ROM evidence is normal handler `0x12536..0x1261e`, alternate/data handler
+  `0x12120..0x1219c`, and parser-table entries in normal table `0x112a4`
+  and alternate table `0x116f6`. Reproduction evidence is
+  `Display Functions ESC Y Reader` in `notes/semantic-state-model.md`,
+  `ESC Y Display Functions Readers` in `notes/pcl-parser-core.md`, and
+  disassembly
+  `generated/disasm/ic30_ic13_text_payload_repeat_readers_012120.lst`.
+  The covered command-family contract is `ESC Y ... ESC Z` as a direct
+  `0xa904` reader loop with local `1a 58 -> 7f` normalization, loop-local
+  `ESC`-seen scratch in `D4`, normalized payload byte in `D7`, and termination
+  when routed/appended `ESC Z` is seen or fetch returns `-1`. Normal handler
+  `0x12536` routes normalized bytes through `0xd04a` or `0xd0f0` according to
+  selected-context filtering state: canonical `0x782c18`, `0x782f06`, and
+  parser dispatch state; derived/filtering state
+  `0x782eea + 0x10 * 0x782f06`, `0x782efa`, `0x783132`, and `0x783133`; and
+  parser scratch stack word `A6-2`. Alternate/data handler `0x12120` appends
+  literal `ESC Y` plus normalized loop bytes through firmware bookkeeping sink
+  `0xe002` into macro/data-chain chunk `0x783988`; normal CR output also uses
+  bookkeeping helper `0xf054`. Fixtures
+  `ESC Y display-functions stream reaches page-record output`,
+  `ESC Y display-functions filter-on routes controls as printable`, and
+  `0x12120 ESC Y alternate append stores normalized display bytes` cover the
+  default-filter page-output path, nonzero context/filter page-output path,
+  and alternate/data append-only path. No unresolved middle edge remains for
+  this command-family loop.
 - Parser dispatch tables:
   ROM evidence is normal table `0x112a4` and alternate table `0x116f6`.
   Reproduction evidence is `generated/analysis/ic30_ic13_pcl_command_map.md`
@@ -267,6 +293,18 @@ the board-facing boundary is tracked in
   The renderer-visible secondary prefix is covered through bucket `448`;
   bucket `456` is bounded as the physical resource-window continuation issue
   above.
+- Display-functions streams are covered for normal page output and
+  alternate/data append. Normal fixture `ESC Y display-functions stream
+  reaches page-record output` drives `ESC Y!\x05! ESC Z` through handler
+  `0x12536`, queues visible text including the terminating `Z`, and renders
+  the resulting page records. Fixture `ESC Y display-functions filter-on routes
+  controls as printable` sets nonzero context/high-control filters, normalizes
+  `1a 58` to `7f`, routes `05 80 7f 21 1b 5a` through `0xd04a`, queues six
+  compact entries, and renders digest
+  `1cdd8203b43944801ec8d1d01c6ab4fa3808fc1f81a7ebfa4d04452369193b63`.
+  Alternate/data fixture `0x12120 ESC Y alternate append stores normalized
+  display bytes` proves append-only output `1b 59 21 7f 1b 5a` through
+  `0xe002` without text imaging.
 - Page-geometry streams are covered for page size, orientation, nonzero
   page length, and the `ESC &l0P` zero-length default-page branch. Evidence:
   fixture

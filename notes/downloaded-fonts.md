@@ -125,6 +125,10 @@ Primary fixtures:
 - `downloaded segmented-wide row-0x0182 fallbacks render selected segment`
 - `downloaded segmented-wide row-0x01ff span-31 fallback hits source boundary`
 - `downloaded segmented-wide row-0x01ff fallbacks render selected segment`
+- `downloaded segmented-wide row-0x0281 span-31 fallback hits source boundary`
+- `downloaded segmented-wide row-0x0281 fallbacks render selected segment`
+- `downloaded segmented-wide high-row 0x02xx matrix renders selected segment`
+- `downloaded segmented-wide high-row 0x02xx span-31 matrix hits source boundary`
 - `downloaded segmented-wide row-byte boundary truncates page-record segments`
 - `0x16498 replacement allocation failure partial and rejected downloaded character
   exits preserve state`
@@ -1759,6 +1763,95 @@ installed glyph row words: `0x1f414` splits all three at coord `0x6601` into
 fallback counts exceed the span-2 row-copy helper `0x1fe76` valid maximum
 index `128`, so the matrix deliberately documents the same unresolved
 visible-output boundary instead of claiming pixels for these high-row cases.
+
+### Downloaded Glyph Row-Count Publication Checkpoint
+
+This checkpoint composes the downloaded-character row-count path from
+parser-restored `ESC )s#W` payload records through printable page-record
+publication and the compact renderer. It covers one state block with multiple
+writers and consumers: `0x16498` writes the downloaded object record and bitmap,
+`0x12f2e` converts the selected glyph into a page object, `0xff1e` publishes
+bucket-array state, and `0x1ed84` / `0x1ef6a` dispatch the published object to
+`0x1fe76`, `0x1f1f0`, or `0x1f264`.
+
+Field groups:
+
+- Canonical downloaded glyph state:
+  - glyph pointer-table entries such as `0x010a` and `0x0116`;
+  - downloaded character object byte `+5` mode, word `+6` row count, word
+    `+8` width, and bitmap bytes at `+0x0c`;
+  - linear versus split-plane bitmap layout from `0x168dc` / `0x16942`.
+- Derived page-record state:
+  - selector `0x0003` for short compact rows;
+  - selector `0x2003` for segmented rows with buckets `1` and `9`;
+  - selector `0x3003` for segmented-wide selected segment `1` with buckets
+    `0` and `8`;
+  - render bucket word chosen by `0x1ed84` / `0x1ef6a`.
+- Parser scratch and firmware bookkeeping:
+  - restored records such as `80 57 01 04 00 00` and
+    `80 57 02 04 00 00`;
+  - return edge `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`;
+  - copy status `1`, `0x783140 = 0`, zero-byte drain, and next handler
+    `0xd04a` for the row-count matrix.
+- Unknown:
+  - rows above `0x00ff` are no longer unknown as installed object state, but
+    short compact high-row fallback pixels past the `0x1fe76` valid table
+    index remain an exact visible-output boundary, not a solved render.
+
+Writers and readers:
+
+- `0x16498` writes the object record and preserves canonical 16-bit row words
+  in fixtures `host-fetched rows-0x102 downloaded glyph FF publication
+  truncates page-record rows` and `downloaded glyph high-row truncation matrix
+  preserves installed rows`.
+- `0x12f2e` reads only the printable source row byte for selector choice. For
+  rows `0x0101..0x0103`, fixtures prove it sees low bytes `0x01..0x03` and
+  publishes only selector `0x0003` bucket `1`.
+- `0xff1e` copies the bucket array to the published record. The row-count
+  matrix proves bucket `1` for short rows and buckets `1` / `9` for segmented
+  rows `0x0083..0x00ff`.
+- `0x1ed84` / `0x1ef6a` consume the published bucket word and dispatch to
+  `0x1fe76` for short rows, `0x1f1f0` for segmented rows, and `0x1f264` for
+  segmented-wide row/span cross-products.
+
+Output effect:
+
+- Rows `0x0001..0x00ff` are page-visible through the downloaded-glyph
+  publication family. Fixture `downloaded glyph row-count matrix publishes and
+  renders additional short/segmented counts`, plus the named `0x0020`,
+  `0x0040`, `0x0080`, `0x0081`, and `0x0082` fixtures, covers the continuous
+  short-to-segmented selector transition.
+- Rows `0x0101..0x0103` preserve canonical installed row words, publish only
+  low-byte short selector state, and split through `0x1f414` into `58`
+  current rows plus fallback counts `199`, `200`, and `201`.
+- The short compact high-row fallback boundary is exact: span-2 helper
+  `0x1fe76` is valid through index `128`, while row `0x0102` would read
+  fallback target `0x329ad3c0` at index `200`.
+- Segmented-wide high-row selected-segment pixels are fixture-backed at rows
+  `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`, and `0x02ff` for spans
+  `17`, `18`, and `32`; the adjacent span-31 cases stop at the exact A2 source
+  boundary `+0xb50`.
+
+Confidence:
+
+- High for rows `0x0001..0x00ff`, because the row-count matrix and threshold
+  fixtures assert parser restore, installed records, publication buckets,
+  render buckets, helper dispatch, row counts, and row digests.
+- High for the nonzero-high-byte selector truncation and short compact invalid
+  boundary, because the `0x0101..0x0103` fixtures preserve installed rows while
+  proving the low-byte page source and the `0x1fe76` overflow boundary.
+- High for the sampled segmented-wide high-row selected segment, because the
+  row-`0x0281` and `0x02xx` fixtures extend the same `0x1f264` success /
+  span-31 boundary split beyond the earlier `0x01xx` samples.
+
+Unresolved middle edges:
+
+- None remain for parser-produced rows `0x0001..0x00ff` in the documented
+  short/segmented publication family.
+- `0x1fe76` fallback table indices above `128` remain the exact unresolved
+  visible-output boundary for the short compact rows `0x0101..0x0103`.
+- Broader high-row segmented-wide row/span combinations outside the sampled
+  rows and spans remain bounded cross-products, not unknown field state.
 
 Fixture `host-fetched split-plane segmented downloaded character renders
 through 0x1f1f0` covers the odd-span sibling. The host-fetched `ESC )s387W`

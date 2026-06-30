@@ -455,12 +455,25 @@ buckets insert before the current head, higher buckets append after
 lower entries, and equal-bucket entries are inserted after the existing
 equal entry.
 
+Fixture `0x133aa no-room return preserves rule-list head` pins the local
+allocation-failure branch at `0x133c2..0x133d0`: when `0x1381c` returns
+zero, `D7` returns zero, root `+0x24` stays at `0x00d02f00`, the existing
+14-byte node is unchanged, and stream bookkeeping
+`0x782a70`/`0x782a72`/`0x782a76` is unchanged.
+
 An address-aware `0x136d2` fixture now pins the paired list rooted at
 page offset `+0x28`. It uses the same 14-byte `0x1381c` allocation
 contract, writes byte `+5` from the normalized fixed/rule mode, and
 confirms the same bucket-byte ordering for lower, higher, and equal
 entries before the `0x1edc6` bridge converts it into render-record
 `+0x20` fixed-list shape.
+
+Fixture `0x136d2 no-room return preserves fixed-list head after search`
+pins the paired local failure branch at `0x1371a..0x13734`: the
+non-empty list is searched first through `0x13690`, visiting
+`0x00d03f00` and `0x00d03f10`; when `0x1381c` then returns zero, `D7`
+returns zero, root `+0x28` stays at `0x00d03f00`, both existing nodes
+are unchanged, and stream bookkeeping remains unchanged.
 
 The addressed storage fixtures now also compose into a single page-record
 shape before publication: one compact text bucket under `+0x1c`, one
@@ -589,7 +602,9 @@ Fixture evidence:
 - `0x1381c stream allocator chunks display-list storage`
 - `0x1387c address-aware bucket allocation uses 0x1381c storage`
 - `0x133aa address-aware rule-list insertion uses 0x1381c storage`
+- `0x133aa no-room return preserves rule-list head`
 - `0x136d2 address-aware fixed-list insertion uses 0x1381c storage`
+- `0x136d2 no-room return preserves fixed-list head after search`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
 - `addressed page-record writers share 0x1381c across chunk rollover`
 - `addressed text/rule/raster field groups reach publication and render
@@ -626,9 +641,13 @@ Unresolved middle edges:
   `0x105d0 -> 0x10084 -> 0x13070`, where the modeled page-root allocation and
   encoded-row production would need to be replaced by a live trace or memory
   snapshot.
-- `0x133aa..0x13472` and `0x136d2..0x13690`: ordered insertion is pinned for
-  lower, higher, and equal bucket bytes; alternate no-room/failure returns
-  still need live CPU fixtures.
+- `0x133aa..0x13472` and `0x136d2..0x13734`: ordered insertion is pinned for
+  lower, higher, and equal bucket bytes, and local no-room returns are
+  fixture-backed for both root `+0x24` and root `+0x28`. The remaining
+  closure boundary is not the local return; it is live CPU/register memory
+  through the full parser-produced allocation chain
+  `0x10898 -> 0x13386 -> 0x133aa -> 0x1381c` and
+  `0x12714 -> 0x136d2 -> 0x1381c`.
 - `0xff1e..0x1ed84`: pool-record publication, render bridge, and the
   scheduler-produced multi-band render loop are modeled. Fixture
   `0x1eba4/0x1ef6a active render loop advances or yields bands` covers render,

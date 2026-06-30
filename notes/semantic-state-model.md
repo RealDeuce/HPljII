@@ -9100,7 +9100,9 @@ consume those root fields without changing their producer semantics.
   Evidence: fixtures
   `0x1387c address-aware bucket allocation uses 0x1381c storage`,
   `0x133aa address-aware rule-list insertion uses 0x1381c storage`,
+  `0x133aa no-room return preserves rule-list head`,
   `0x136d2 address-aware fixed-list insertion uses 0x1381c storage`,
+  `0x136d2 no-room return preserves fixed-list head after search`,
   `addressed page-record writers share 0x1381c across chunk rollover`,
   and `0x13070/0x13250 raster row queues encoded-span object`.
 - Derived/cache render fields:
@@ -9133,9 +9135,16 @@ consume those root fields without changing their producer semantics.
   capacity and links a new head when the matching object is full.
 - `0x133aa` writes root `+0x24` and inserts rectangle/rule objects by
   bucket byte order. Equal bucket bytes insert after the existing equal
-  node in the fixture.
+  node in the fixture. If `0x1381c` returns zero at
+  `0x133c2..0x133d0`, fixture
+  `0x133aa no-room return preserves rule-list head` proves root `+0x24`,
+  the existing node, and stream bookkeeping are unchanged.
 - `0x136d2` writes root `+0x28` and inserts fixed-rule objects with the
-  same ordered-list contract.
+  same ordered-list contract. Fixture
+  `0x136d2 no-room return preserves fixed-list head after search` proves
+  the non-empty list search at `0x13690` happens before the failing
+  `0x1381c` call at `0x1371a..0x13734`, and root `+0x28` plus existing
+  nodes remain unchanged when `D7` returns zero.
 - `0xff1e` publishes these roots into pool-record fields, and `0x1edc6`
   copies them into render-record fields `+0x18`, `+0x1c`, and `+0x20`.
 
@@ -9161,6 +9170,14 @@ addressed text/rule/raster fixture proves one chunk contains text object
 then the published render path composes those objects into the visible
 rows. The separate allocator fixture proves first chunk allocation,
 same-chunk reuse, and second-chunk linking.
+
+The two local no-room fixtures prove the opposite output effect for
+allocation failure: `0x133aa no-room return preserves rule-list head`
+returns zero before modifying root `+0x24`, and
+`0x136d2 no-room return preserves fixed-list head after search` returns
+zero after the `0x13690` search but before modifying root `+0x28`. Both
+paths leave the existing visible page objects unchanged for later
+publication/rendering.
 
 The `addressed page-record writers share 0x1381c across chunk rollover`
 fixture composes those allocator facts into one page-record state block:
@@ -9193,7 +9210,9 @@ results rather than executing the full heap and page scheduler.
 - `0x1381c stream allocator chunks display-list storage`
 - `0x1387c address-aware bucket allocation uses 0x1381c storage`
 - `0x133aa address-aware rule-list insertion uses 0x1381c storage`
+- `0x133aa no-room return preserves rule-list head`
 - `0x136d2 address-aware fixed-list insertion uses 0x1381c storage`
+- `0x136d2 no-room return preserves fixed-list head after search`
 - `addressed stream page record materializes through 0xff1e and 0x1ed84`
 - `addressed page-record writers share 0x1381c across chunk rollover`
 - `addressed text/rule/raster field groups reach publication and render
@@ -9229,9 +9248,13 @@ results rather than executing the full heap and page scheduler.
   handler dispatch, and payload offset is known, and canonical output after
   `0x13070` is known, but the live CPU register/memory handoff into page-root
   allocation and encoded-row production still needs a trace or memory snapshot.
-- `0x133aa..0x13472` and `0x136d2..0x13690`: ordered insertion is pinned
-  for lower, higher, and equal bucket bytes; alternate no-room/failure
-  returns need live CPU fixtures.
+- `0x133aa..0x13472` and `0x136d2..0x13734`: ordered insertion is pinned
+  for lower, higher, and equal bucket bytes, and local no-room returns are
+  fixture-backed for both root `+0x24` and root `+0x28`. The remaining
+  closure boundary is live CPU/register memory through the full
+  parser-produced allocation chain
+  `0x10898 -> 0x13386 -> 0x133aa -> 0x1381c` and
+  `0x12714 -> 0x136d2 -> 0x1381c`, not the local no-room return.
 - `0xff1e..0x1ed84`: pool-record publication, render bridge, active-record
   selection, and scheduler-produced multi-band render calls are fixture-backed.
   Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands` covers

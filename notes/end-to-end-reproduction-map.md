@@ -810,15 +810,20 @@ The next work should follow dataflow, not isolated handlers:
    `combined font download FF publishes installed glyph page record` already drive one
    2,215-byte `0xa904` stream through font-control state, `ESC )s2193W` install,
    printable `%`, FF, bucket entries `1` and `9`, and `0x1ed84`/`0x1ef6a`. The remaining
-   ROM-side continuity edge is the even-span `ESC )s18W` rule/raster composition case,
-   where `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
-   already proves one 54-byte `0xa904` ring fetch and the shared `0x15dc6 -> 0x16498 ->
-   0x15dcc -> 0x12328` post-install drain. It now also proves the modeled memory-image
-   handoff: the page phase consumes `font_command_final_header` from the same
-   font-command helper, asserts it matches the install event header, and reports pointer
-   bytes `00 00 07 80`, record bytes, and bitmap bytes. What remains is the stronger
-   live-68000 capture of the same memory state from stream byte `24` into the following
-   `0x10e68` page handler. The primary built-in case proves `ESC (s0p10h12v0s0b3T!!`
+   ROM-side continuity edge is now narrowed to live-state capture for the even-span
+   `ESC )s18W` rule/raster composition case. Fixture `parser-driven downloaded glyph
+   rule raster stream composes through 0x1ef6a` proves one 54-byte `0xa904` ring fetch
+   and the shared `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` post-install drain. It
+   also proves the modeled memory-image handoff: the page phase consumes
+   `font_command_final_header` from the same font-command helper, asserts it matches the
+   install event header, and reports pointer bytes `00 00 07 80`, record bytes, and
+   bitmap bytes. Fixture `even-span downloaded glyph rule raster FF publication renders
+   page record` carries the same bucket `5` raster+glyph chain and selector-7 rule
+   through `0xff1e`, then renders the published pool record with digest
+   `84762454e8bba9ce22aa5922b598fc5aed7c3ef9dfe9e55223a178c567f612d3`. What remains is
+   the stronger live-68000 capture of the same memory state from stream byte `24` into
+   the following `0x10e68` page handler. The primary built-in case proves
+   `ESC (s0p10h12v0s0b3T!!`
    through parsed selection handlers, selected context `0xc008004c`, printable `0xd04a`
    entries, object prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, render-record
    context slot `0xc008004c`, and final Courier glyph rows. The secondary case proves

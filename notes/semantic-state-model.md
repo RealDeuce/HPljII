@@ -5301,6 +5301,10 @@ parser/page-record runner before rendering. The 54-byte stream is still one
 `0xa904` ring fetch, not two host sources: fixture evidence records source set
 `["ring"]`, no remaining ring bytes, font boundary `(0, 24)`, page boundary
 `(24, 54)`, and next handler `0x10e68` after the zero-byte post-install drain.
+Fixture `even-span downloaded glyph rule raster FF publication renders page
+record` then carries the same active bucket `5` page record through `0xff1e`
+publication and back through `0x1ed84`/`0x1ef6a`, proving the published pool
+record renders the same rows as the active composition.
 
 Field groups:
 
@@ -5327,6 +5331,12 @@ Field groups:
   object `00 00 00 00 05 07 08 01 00 0c 00 03 00 00`; context slots are
   `(0, 0, 0, 0)`. Writers: `0x12f2e` for the glyph object, `0x13386` for the
   rule object, and `0x13070` for the raster object.
+- Canonical published page-record state: `0xff1e` copies that bucket `5`
+  chain and selector-7 rule into the published pool record, clears the current
+  page root, and preserves empty fixed-list and context-slot prefix
+  `(0, 0, 0, 0)`. The published record has bucket root
+  `00 00 00 00 80 00 00 02 00 00 c3 3c`, bucket array key `5`, and rule list
+  entry `00 00 00 00 05 07 08 01 00 0c 00 03 00 00`.
 - Derived/cache render fields: `0x1ed84` copies the active record and seeds
   render word `+0x10 = 5`; `0x1edc6` normalizes the rule to
   `00 00 00 00 05 17 08 01 00 0c 00 03 00 03`; `0x1ef86` derives per-band
@@ -5357,15 +5367,16 @@ Field groups:
   bytes ending `f0 0f` / `aa`, and the same bucket `9` raster object.
 - Firmware bookkeeping: active-copy words reported by the fixture are
   zeroed source/render work words before the fixture sets render word `+0x10`
-  for bucket `5`; no page publication or root clear occurs in this checkpoint.
+  for bucket `5`; the FF-publication sibling reports
+  `current_page_root_after = 0`, one page-root clear, and publication flag `1`.
 - Unknown for this checkpoint: full-success return-boundary siblings outside
-  the even-span downloaded-glyph plus rule/raster stream, outside the
-  segmented downloaded-glyph plus raster stream, and outside the separate
-  no-install/status-`2`, segmented-publication, and combined segmented-wide
-  publication visible fixtures. The even-span page stream itself now drives
-  the glyph, rule, and raster producers together from a modeled `final_header`
-  memory handoff; the residual gap is a full live 68000 register/memory capture
-  across the same font/page boundary.
+  the segmented downloaded-glyph plus raster stream and outside the separate
+  no-install/status-`2`, segmented-publication, combined segmented-wide
+  publication, and even-span glyph/rule/raster publication visible fixtures.
+  The even-span page stream itself now drives the glyph, rule, and raster
+  producers together from a modeled `final_header` memory handoff; the residual
+  gap is a full live 68000 register/memory capture across the same font/page
+  boundary.
 
 The modeled resource image is now a pinned handoff, not an implicit fixture
 shortcut. The page-stream runner uses `font_command_final_header`, the final
@@ -5405,6 +5416,9 @@ Readers and output effect: `0x1ef6a` runs call order `0x1ef86`, `0x1efc2`,
 solid helper `0x1f596`. The fixture compares three final composed rows: row 0
 contains raster payload `c3 3c`, the downloaded glyph row at x `22`, and the
 rule from x `24` through x `35`; rows 1 and 2 contain the rule only.
+The FF-publication fixture keeps the same bucket `5` chain and selector-7 rule,
+then renders the published pool record to the same three rows with digest
+`84762454e8bba9ce22aa5922b598fc5aed7c3ef9dfe9e55223a178c567f612d3`.
 Fixture `segmented downloaded glyph composes with raster through 0x1ef6a`
 uses the same call order for bucket word `9`, dispatches the bucket-9 raster
 object to `0x1f88e`, dispatches the selector-`0x2003` segment-1 glyph object to
@@ -5441,9 +5455,14 @@ same raster object, dispatch targets, and composed row digest. High for
 segmented-glyph/raster FF publication because fixture `segmented downloaded
 glyph raster FF publications render page records` asserts the `0xff1e` bucket
 arrays, published bucket word, render dispatch, and digest equality with the
-active records. Confidence is high for the modeled final-header handoff between
-the font-install phase and the page-stream phase; confidence remains medium for
-replacing that modeled handoff with a full live 68000 register/memory capture.
+active records. High for even-span glyph/rule/raster FF publication because
+fixture `even-span downloaded glyph rule raster FF publication renders page
+record` asserts the `0xff1e` bucket array and rule list, render bucket word
+`5`, rule mutation through `0x1f596`, dispatch to `0x1f88e` and `0x1effe`,
+and row-digest equality with the active record. Confidence is high for the
+modeled final-header handoff between the font-install phase and the page-stream
+phase; confidence remains medium for replacing that modeled handoff with a full
+live 68000 register/memory capture.
 
 ### Confidence
 
@@ -5556,6 +5575,7 @@ fields and broader selected-font state combinations have not been page-compared.
 - `0x1eba4 scheduler band words render published downloaded glyph`
 - `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
 - `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
+- `even-span downloaded glyph rule raster FF publication renders page record`
 - `segmented downloaded glyph composes with raster through 0x1ef6a`
 - `split-plane segmented downloaded glyph composes with raster through 0x1ef6a`
 - `segmented downloaded glyph raster FF publications render page records`

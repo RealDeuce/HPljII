@@ -568,10 +568,14 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    rendered page-record composition with selector-7 rectangle rules on two page
    boundaries. The mixed-control overlay fixture stores `ESC &k1G!\r!`, replays it
    through `0xedf8`/`0xd04a`/`0xf02c`/`0xd04a`, queues two compact text entries, and
-   publishes them with a selector-7 rule. The transparent-data overlay fixture stores
-   `ESC &p2X!!`, replays command handler `0x11f5a`, restores delayed handler `0x12452`,
-   routes payload `21 21` through `0xd04a`, queues compact text object `00 00 00 00 00
-   00 00 02 20 00 01 20 02 02 ...`, preserves the selector-7 rule, and renders digest
+   publishes them with a selector-7 rule. The cursor-position overlay fixture stores
+   `ESC &a2C!`, replays `0xf39e` then `0xd04a`, queues compact text at coord `0x0a02`,
+   preserves selector-7 rule object `00 00 00 00 01 07 82 02 00 07 00 02 00 00`, and
+   renders digest `ba32af7d183a956b2abd821b2143e9c7c3eecf87a7b1403fa086cfe6bf89c8ae`.
+   The transparent-data overlay fixture stores `ESC &p2X!!`, replays command handler
+   `0x11f5a`, restores delayed handler `0x12452`, routes payload `21 21` through
+   `0xd04a`, queues compact text object `00 00 00 00 00 00 00 02 20 00 01 20 02 02 ...`,
+   preserves the selector-7 rule, and renders digest
    `1ee999b850b4a35aa2b01b72ae01da961ee4084f0369f4ded5c8e8152464dac8`. The raster
    overlay fixture stores `! ESC *t300R ESC *r0A ESC *b2W c3 3c`, replays it through the
    non-replay frame, queues compact text plus a mode-0 raster object, preserves the
@@ -587,16 +591,17 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    `6775414374ba3c31f7846a180d93cc9b68e230ea6981ae722b32eb39081f9bca`. The skip path is
    covered for disabled overlay mode, missing selected record, and page-root retry flag.
    Remaining macro risk is broader overlay payload variants beyond `!\r`, `ESC
-   &k1G!\r!`, `ESC &p2X!!`, the covered raster payloads, and `ESC &a6L!`, plus physical
-   output comparison. Evidence: `Macro Definition And Data-Chain Replay` in
-   `notes/semantic-state-model.md`, fixture `macro overlay finalization replays before
-   page publication`, fixture `macro overlay replays across repeated page publications`,
-   fixture `macro overlay skip gates preserve base page publication`, fixture `macro
-   overlay mixed-control payload publishes with page rule`, fixture `macro overlay
-   transparent payload publishes with page rule`, fixture `macro overlay raster payload
-   publishes with page rule`, fixture `macro overlay multi-row raster payload publishes
-   with page rule`, and fixture `macro overlay span-flush payload publishes with page
-   rule`.
+   &k1G!\r!`, `ESC &a2C!`, `ESC &p2X!!`, the covered raster payloads, and `ESC &a6L!`,
+   plus physical output comparison. Evidence: `Macro Definition And Data-Chain Replay`
+   in `notes/semantic-state-model.md`, fixture `macro overlay finalization replays
+   before page publication`, fixture `macro overlay replays across repeated page
+   publications`, fixture `macro overlay skip gates preserve base page publication`,
+   fixture `macro overlay mixed-control payload publishes with page rule`, fixture
+   `macro overlay cursor-position payload publishes with page rule`, fixture `macro
+   overlay transparent payload publishes with page rule`, fixture `macro overlay raster
+   payload publishes with page rule`, fixture `macro overlay multi-row raster payload
+   publishes with page rule`, and fixture `macro overlay span-flush payload publishes
+   with page rule`.
 4. Active-record selection and render-band scheduling are documented as a
    ROM-internal reproduction boundary, rather than a page-object gap. Fixture
    `0x1eb2a/0x1ecd6 selects published record for render entry` proves

@@ -7027,6 +7027,7 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   publication`, plus `macro overlay replays across repeated page
   publications`, `macro overlay skip gates preserve base page publication`,
   `macro overlay mixed-control payload publishes with page rule`,
+  `macro overlay cursor-position payload publishes with page rule`,
   `macro overlay raster payload publishes with page rule`,
   `macro overlay multi-row raster payload publishes with page rule`, and
   `macro overlay span-flush payload publishes with page rule`, and
@@ -7038,8 +7039,9 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     initialization are pinned for the default path.
   - no remaining macro execute/call replay, font-context, first
     overlay-publication, repeated enabled-overlay publication, mixed-control
-    overlay payload, raster overlay payload, multi-row raster overlay payload,
-    span-flush overlay payload, transparent-data overlay payload, or overlay
+    overlay payload, cursor-position overlay payload, raster overlay payload,
+    multi-row raster overlay payload, span-flush overlay payload, transparent-data
+    overlay payload, or overlay
     skip-gate middle edge in this checkpoint. The next high-value macro edges
     are broader overlay payload variants and final device-output validation.
     Descriptor metric validation is tracked separately as external/manual naming for
@@ -7200,6 +7202,15 @@ same published page record carries selector-7 rule object
 `00 00 00 00 01 07 cc 01 00 08 00 02 00 00`, rendered through `0x1f596` and
 mutated to `00 00 00 00 01 07 cc 01 00 08 00 02 ff ce`. The composed page rows
 have digest `04d32edf47d03c587abc0abaf750c6a2d634ceea80df9787681b618867136f52`.
+Fixture `macro overlay cursor-position payload publishes with page rule` covers
+the same non-replay overlay path with stored payload `ESC &a2C!`. The replayed
+cursor command routes through `0xf39e`, moves horizontal cursor state from
+packed `10` to packed `36`, and the following printable `!` queues compact text
+payload `00 01 20 0a 02` plus context padding at coord `0x0a02`. The same
+published page record carries selector-7 rule object
+`00 00 00 00 01 07 82 02 00 07 00 02 00 00`, rendered through `0x1f596` and
+mutated to `00 00 00 00 01 07 82 02 00 07 00 02 ff ca`. The composed page rows
+have digest `ba32af7d183a956b2abd821b2143e9c7c3eecf87a7b1403fa086cfe6bf89c8ae`.
 Fixture `macro overlay transparent payload publishes with page rule` covers
 the same non-replay overlay frame with stored payload `ESC &p2X!!`, but the
 parser command is the delayed transparent-data path instead of immediate
@@ -7297,6 +7308,7 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 - `macro overlay replays across repeated page publications`
 - `macro overlay skip gates preserve base page publication`
 - `macro overlay mixed-control payload publishes with page rule`
+- `macro overlay cursor-position payload publishes with page rule`
 - `macro overlay transparent payload publishes with page rule`
 - `macro overlay raster payload publishes with page rule`
 - `macro overlay multi-row raster payload publishes with page rule`
@@ -7335,17 +7347,16 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 
 ### Unresolved Middle Edges
 
-- None remaining for macro execute/call replay, macro font-context refresh,
-  first overlay-publication, repeated enabled-overlay publication across two
-  page boundaries, mixed-control overlay payload publication, raster overlay
-  payload publication, multi-row raster overlay payload publication,
-  span-flush overlay payload publication, transparent-data overlay payload
-  publication, or the
-  disabled/missing-record/retry-flag overlay skip gates. Remaining macro risk
-  is broader overlay payload variants beyond `!\r`, `ESC &k1G!\r!`, `ESC
-  &p2X!!`, the covered raster payloads, and `ESC &a6L!`, plus final-device
-  comparison, not the `0xdd08` selector-4 to `0xff1e` visible-output path or
-  its skip gates.
+- None remaining for macro execute/call replay, macro font-context refresh, first
+  overlay-publication, repeated enabled-overlay publication across two page boundaries,
+  mixed-control overlay payload publication, cursor-position overlay payload
+  publication, raster overlay payload publication, multi-row raster overlay payload
+  publication, span-flush overlay payload publication, transparent-data overlay payload
+  publication, or the disabled/missing-record/retry-flag overlay skip gates. Remaining
+  macro risk is broader overlay payload variants beyond `!\r`, `ESC &k1G!\r!`, `ESC
+  &a2C!`, `ESC &p2X!!`, the covered raster payloads, and `ESC &a6L!`, plus final-device
+  comparison, not the `0xdd08` selector-4 to `0xff1e` visible-output path or its skip
+  gates.
 
 ## Raster Transfer Gate And Encoded Rows
 

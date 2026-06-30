@@ -2216,7 +2216,13 @@ The host-fetch publication fixture now starts those same six streams from
 the modeled `0xa904` ring source, drains the ring bytes, replays the same
 parser handlers, lands on the same published rows, and now pins that the
 `0x1edc6` bridge preserves the published bucket root, clears rule/fixed
-lists, and copies the selected context slot into the render record. The
+lists, and copies the selected context slot into the render record. Fixture
+`macro overlay cursor-position payload publishes with page rule` carries
+`ESC &a2C!` through the overlay replay path: `0xff1e` resolves macro id `130`,
+`0xe4f4` builds the non-replay frame, `0x11774` routes `0xf39e` then `0xd04a`,
+and the published page record composes coord `0x0a02` compact text with
+selector-7 rule `00 00 00 00 01 07 82 02 00 07 00 02 00 00`, rendering digest
+`ba32af7d183a956b2abd821b2143e9c7c3eecf87a7b1403fa086cfe6bf89c8ae`. The
 host-fetched
 missing-root `ESC E` case drains from the same ring source, reaches
 handler `0xcc52`, and lands on the no-publication reset state. The

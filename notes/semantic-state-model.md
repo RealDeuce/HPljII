@@ -1075,6 +1075,13 @@ command-family semantics beyond the restored-record boundary.
 
 ### Fixtures
 
+- `0xdaf0 tokenizes lowercase-final numeric chain into two six-byte records`
+- `0xdb74 parses sign, capped fraction digits, and final byte`
+- `0xdb74 returns D7 zero for semicolon continuation final`
+- `0x121cc snapshots delayed payload handler and parsed record`
+- `0x12218 restores delayed parsed record and dispatches saved handler`
+- `0x1228a consumes absolute delayed payload count without echo`
+- `0x12358 direct alternate path echoes positive payload bytes only`
 - `0x11774 ROM dispatch table routes raster stream to delayed transfer`
 - `modeled raster command stream parses ESC *t300R / ESC *r1A / ESC *b4W
   payload boundary`

@@ -1450,10 +1450,11 @@ ROM work needed:
   Fixture `font sample full printout segments render through 0x1ed84 and
   0x1ef6a` now carries all eight source/class page-record segments through the
   bridge and band renderer, with aggregate rendered-surface digest
-  `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`. The
-  next boundaries are forced continuation-page object variants for tight page
-  limits and physical baseline/cell comparison against a known printed/self-test
-  sample.
+  `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
+  Fixture `font sample row continuation emits fresh source heading page record`
+  covers the row-overrun `I01` forced-continuation page object; the next
+  boundaries are the other tight-limit continuation variants and physical
+  baseline/cell comparison against a known printed/self-test sample.
 - Fixture `live parser symbol-set streams select non-Roman built-ins` now
   broadens the named `0N` / `10U` / `11U` samples from static map evidence
   into primary parser/font-selection evidence. Streams `ESC (0N`,

@@ -2849,10 +2849,18 @@ for how resource records become ordinary page-record text.
     and source `2` class-zero/class-one digests
     `eaf10ca6b5b5716170b313ce542df82a6974c1ac22ee0e87308dead7be22c6a1` /
     `3d23d5c6c5320d406d1db34523d3ad01c819d4e938e3dee4fa0a5d20747ed152`.
-    Forced continuation-page object bytes remain open for artificially tight
-    page-limit cases across source-heading and class-pass combinations; the
-    normal full source/class placement is now composed as eight page-record
-    segments.
+    Fixture `font sample row continuation emits fresh source heading page record`
+    closes the first row-overrun object case: the tight-limit
+    `0x1d050 -> 0x1c9f6 -> 0x1ca2c` branch for source `3`, row `1`, current
+    context `0x4008004c`, and selected context `0x44080418` emits a fresh
+    `INTERNAL FONTS` source-heading segment plus row `I01COURIER101210U`.
+    Its page record uses context slot `0x44080418`, buckets
+    `[0, 2, 3, 6, 7, 8, 16, 24, 32, 40, 48, 56, 64]`, final cursor
+    `0x08ac0000,0x00900000`, and bucket digest
+    `2dc6c3326aad3118d2b96c44cf0ab727ee2926069c5035722cceef470db8b7ef`.
+    Forced continuation-page object bytes remain open for heading-preflight,
+    alternate-row, and broader source/class tight-limit variants; the normal
+    full source/class placement is composed as eight page-record segments.
   - record `+0x28/+0x2a` and `+0x2f..+0x31` are already correlated with
     emitted page objects for their ROM roles: `0x1519a` consumes
     `+0x28/+0x2a` as decoded-height inputs before `0x13bca`, and
@@ -3216,9 +3224,12 @@ because physical/self-test comparison is still open.
   0x1ef6a` renders those segment records through the output bridge and pins
   surface digest
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
-  Remaining gaps are forced continuation-page object bytes for artificially
-  tight page-limit cases and physical baseline/cell comparison against a known
-  printed/self-test sample.
+  Fixture `font sample row continuation emits fresh source heading page record`
+  covers the first forced row-continuation page-record object after the
+  `0x1d050` tight-limit branch. Remaining gaps are heading-preflight,
+  alternate-row, and broader source/class forced-continuation page-record
+  variants plus physical baseline/cell comparison against a known printed/self-test
+  sample.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are
   identified. First `COURIER` and first `LINE_PRINTER` row-field
@@ -3244,8 +3255,8 @@ because physical/self-test comparison is still open.
   pins the aggregate rendered-surface digest
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
   The remaining sample-printout boundaries are forced continuation-page object
-  variants for tight page limits and comparison against a known printed/self-test
-  page.
+  variants beyond the covered row-overrun `I01` case and comparison against a
+  known printed/self-test page.
 - `record +0x28/+0x2a`: decoded-height input consumed by `0x1519a` through
   `0x13bca`; physical baseline/cell correlation remains open.
 - `record +0x2f..+0x31`: same-class chooser tie-breakers consumed by

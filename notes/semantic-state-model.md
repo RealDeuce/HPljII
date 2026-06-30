@@ -2584,7 +2584,9 @@ itself. Firmware first scans `HEAD`/typed records, classifies accepted
 font records into candidate pointer windows, activates a class-specific
 window, then filters and chooses one selected context longword. That
 selected longword later feeds `0xc428`, `0x1393a`, `0xd824`, `0x12f2e`,
-and the compact glyph renderers.
+and the compact glyph renderers. Fixture
+`0x41a HEAD scanner walks verified IC32/IC15 resource chain` pins the
+startup-visible typed-record chain that bounds this built-in window.
 
 ### Field Groups
 
@@ -2598,6 +2600,21 @@ and the compact glyph renderers.
     `+0x21`, HMI source longword `+0x24`, height-like words
     `+0x28/+0x2a`, and comparator bytes `+0x2f..+0x31` are the
     record fields consumed by the candidate filters and chooser.
+  - glyph-table entries and bitmap payloads are canonical resource data. The
+    covered fixtures pin contexts `0x4008004c`, `0x44080418`, and
+    `0x440946b4` for glyph `0`, plus context `0x440946b4` glyph `32`, with
+    entry pointer, bitmap pointer, delta, mode, row count, width, render span,
+    and decoded bitmap rows.
+  Evidence: fixtures `0x41a HEAD scanner walks verified IC32/IC15 resource
+  chain`, `resource context 0x4008004c glyph 0 fields`,
+  `resource context 0x4008004c glyph 0 bitmap sample`,
+  `resource context 0x4008004c glyph 0 full bitmap rows`,
+  `resource context 0x44080418 glyph 0 fields`,
+  `resource context 0x44080418 glyph 0 full bitmap rows`,
+  `resource context 0x440946b4 glyph 0 fields`,
+  `resource context 0x440946b4 glyph 0 full bitmap rows`,
+  `resource context 0x440946b4 glyph 32 fields`, and
+  `resource context 0x440946b4 glyph 32 full bitmap rows`.
 - Canonical candidate-list state:
   - `0x782324`: shared candidate pointer-list base.
   - `0x78278e`: total accepted candidate count.
@@ -2721,6 +2738,15 @@ Parsed secondary `0p16h8v0s0b0T` filters the class-one window to context
 miss fixtures prove fallback words `0x0115` and `0x000e` can still
 select visible primary/secondary rows through these same windows.
 
+The resource glyph fixtures connect canonical bitmap payloads to the compact
+row-copy layer before page-record rendering. For contexts `0x4008004c`,
+`0x44080418`, and `0x440946b4`, the `... main row-copy rendered rows`
+fixtures prove the row-copy helpers reproduce the direct bitmap decode for
+glyph `0`; the Line Printer glyph-32 sibling proves the same for the default
+printable glyph used by page-record text fixtures. Fixture
+`resource glyph row-copy span matrix matches direct decode` broadens that
+edge across target spans `1`, `2`, `4`, `6`, and `8`.
+
 ### Confidence
 
 High for the verified built-in scan, class/range counters, cursor
@@ -2733,7 +2759,22 @@ resources because no image is available in this repo.
 ### Fixtures
 
 - `0x1a9be scanned font candidate list partitioning`
+- `0x41a HEAD scanner walks verified IC32/IC15 resource chain`
 - `actual IC32/IC15 built-in records feed 0x1a9be partitions`
+- `resource context 0x4008004c glyph 0 fields`
+- `resource context 0x4008004c glyph 0 bitmap sample`
+- `resource context 0x4008004c glyph 0 full bitmap rows`
+- `resource context 0x4008004c glyph 0 main row-copy rendered rows`
+- `resource context 0x44080418 glyph 0 fields`
+- `resource context 0x44080418 glyph 0 full bitmap rows`
+- `resource context 0x44080418 glyph 0 main row-copy rendered rows`
+- `resource context 0x440946b4 glyph 0 fields`
+- `resource context 0x440946b4 glyph 0 full bitmap rows`
+- `resource context 0x440946b4 glyph 0 main row-copy rendered rows`
+- `resource context 0x440946b4 glyph 32 fields`
+- `resource context 0x440946b4 glyph 32 full bitmap rows`
+- `resource context 0x440946b4 glyph 32 main row-copy rendered rows`
+- `resource glyph row-copy span matrix matches direct decode`
 - `0x1a616 candidate scan continuation policy changes built-in counts`
 - `0x1569c activates concrete built-in candidate windows`
 - `0x1519a filters concrete active candidates by height`
@@ -8898,6 +8939,13 @@ Evidence: fixtures `published page records feed 0x1ed84 and 0x1ef6a render entry
   - `0x783a2c`: compact glyph context/resource cache written by `0x1f008`.
   - `0x7810b4 + D2`: fallback buffer used when compact glyph or encoded raster
     rows continue beyond the active band.
+  - compact row-copy helper tables under `0x1fa5c..0x207ac` copy decoded glyph
+    source bytes into the current band or fallback rows. Fixture
+    `main row-copy width 3 rows 3 writes` pins mixed word/byte writes for
+    narrow spans, `main row-copy width 16 rows 3 write count` pins the full
+    main-helper width, `remainder row-copy width 1 rows 3 writes` pins the
+    one-byte remainder table, and `chunk row-copy width 16 rows 3 write count`
+    pins the wide full-chunk helper used by compact-wide paths.
 - Parser scratch:
   - none in this shared dispatch layer. Parser-family scratch has already been
     converted into page-record objects by upstream producers such as
@@ -8954,6 +9002,14 @@ render bands`, `0x1f4e0 carries patterned rule remainder across render bands`,
 and `0x1f446 page-band walk assembles patterned rule rows` pin the standalone
 rule-list continuation contract used by the mixed-page fixtures.
 
+The compact row-copy helper fixtures pin the low-level copy side beneath
+compact text rendering. The width-3 and width-16 main helper fixtures record
+source/destination write sequences and final `A1/A2/A3` registers; the
+remainder-width-1 fixture records the byte-tail helper; and the chunk-width-16
+fixture records the shifted full-chunk helper used after the first 16-byte
+span. Resource glyph row-copy fixtures then prove those helpers reproduce
+directly decoded bitmap rows for sampled built-in contexts.
+
 ### Confidence
 
 High for render-root ownership, `0x1ef6a` call order, bucket class split,
@@ -8988,6 +9044,16 @@ combinations and physical/reference page comparisons.
   fallback buffer`
 - `0x1f88e mode-3 raster object expands queued bytes into four rows`
 - `0x1f034 compact text splits current band and fallback rows`
+- `main row-copy width 3 rows 3 writes`
+- `main row-copy width 3 final registers`
+- `main row-copy width 16 rows 3 write count`
+- `main row-copy width 16 first/last writes`
+- `main row-copy width 16 final registers`
+- `remainder row-copy width 1 rows 3 writes`
+- `remainder row-copy width 1 final registers`
+- `chunk row-copy width 16 rows 3 write count`
+- `chunk row-copy width 16 first/last writes`
+- `chunk row-copy width 16 final registers`
 - `0x1f0d2 renders wide inline compact payload row`
 - `0x1f1f0 renders segmented inline compact payload row`
 - `0x1f264 renders segmented wide inline compact payload row`

@@ -4882,6 +4882,8 @@ fixtures.
 - `d4ac and d8fc span consumer branch family controls flush output`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
+- `0x16fae/0x1719c-backed type-2 inline payload maps constructed compact
+  renderer records`
 - `host-fetched metric variant changes d4ac gate and d8fc rows`
 - `host-fetched clamped metric variant changes d4ac gate and d8fc rows`
 - `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`
@@ -5934,7 +5936,12 @@ downloaded-font records and candidate list unchanged. Fixture
 `ESC )s#W validation failures preserve following printable output` then
 appends printable `!` and proves the parser resumes at `0xd04a`, queues the
 baseline default-font compact object, and renders the same rows as a stream
-without the failed font payload.
+without the failed font payload. The local setup fixtures
+`0x16fae-modeled font resource validation and symbol-byte staging`,
+`0x17362-modeled font resource setup type`, and
+`0x17026/0x1719c-modeled font resource allocation and header initialization`
+pin the successful validation, setup, allocation, and sparse header-copy
+contracts consumed by both the no-install and install paths.
 
 Field groups:
 
@@ -5952,7 +5959,9 @@ Field groups:
   pointer `0x782862`, type byte `+0x0c`, first-code word `+0x16`,
   line/count word `+0x12`, range/count word `+0x14`, derived count word
   `+0x18`, and class byte `+0x20`. `0x16fae` writes only the fields reached
-  before the failed predicate.
+  before the failed predicate. Evidence: fixtures
+  `0x16fae-modeled font resource validation and symbol-byte staging` and
+  `0x16fae table-driven validation predicates populate staged header fields`.
 - Metric field grouping: canonical fields are first code/lower bound
   `+0x16`, range/count `+0x14`, and signed flagged offset `+0x1a`; derived
   or cache fields are `+0x18` and rounded unflagged word `+0x2c`; parser
@@ -5972,7 +5981,10 @@ Field groups:
 - Firmware bookkeeping: allocation status `0`, install state `None`, and the
   fully drained host source are failure bookkeeping. They are not printable
   page state, but they gate whether the subsequent `!` uses a downloaded font
-  or the unchanged default font.
+  or the unchanged default font. The successful sibling fixture
+  `0x17026/0x1719c-modeled font resource allocation and header initialization`
+  pins the allocation size calculation, staged type/size words, sparse header
+  copy, and optional symbol-byte append used when validation does not fail.
 - Unknown for this checkpoint: external HP manual names for descriptor fields
   that the table consumes but does not stage. The ROM-internal rejecting
   predicate helpers are all in entries `2`, `4`, `5`, `6`, and `7`; the other
@@ -5990,7 +6002,8 @@ Writers and readers:
   `generated/disasm/ic30_ic13_font_resource_setup_type_017362.lst` shows type
   `0` writing staged byte `+0x0c = 0` and `0x7827ba = 0x80`, types `1`/`2`
   writing staged byte `1`/`2` and `0x7827ba = 0x100`, and other values
-  returning failure.
+  returning failure. Fixture `0x17362-modeled font resource setup type`
+  pins those type-0, type-2, and invalid-type outcomes.
 - `0x173d0` is the entry-4 first-code predicate. Word `0x1068` fails after
   eight consumed bytes before writing payload word `+0x16`.
 - `0x173fe` is the entry-5 line/count predicate. Zero and `0x1069` both
@@ -6040,9 +6053,12 @@ remaining validation entries cannot create additional no-install error forms.
 
 Fixtures:
 
+- `0x16fae-modeled font resource validation and symbol-byte staging`
 - `0x16fae validation table semantic map covers staged and pass-through
   entries`
 - `0x16fae table-driven validation predicates populate staged header fields`
+- `0x17362-modeled font resource setup type`
+- `0x17026/0x1719c-modeled font resource allocation and header initialization`
 - `ESC )s80W invalid resource type fails validation before allocation`
 - `ESC )s80W reversed resource range fails validation before allocation`
 - `ESC )s80W additional validation predicate failures skip allocation`
@@ -6291,7 +6307,13 @@ record `+6`, candidate list rooted at `0x7827a0`, candidate counters
 record `80 57 00 50 00 00`, payload length `80`, validation status `1`,
 allocation size `10`, current id `0x1234`, replacement release of old payload
 `0x456789`, installed candidate longword `0x40000000`, and class-one insertion
-at the candidate-list head.
+at the candidate-list head. Fixture
+`0x172c0-modeled font resource record scan statuses` pins the current-record
+scan outcomes that feed this install path: existing id status `0`, missing id
+with a free record status `1`, and missing id with no free record status `2`.
+Fixture `0x16c14 routes installed font resource through 0x1bc38 slot` pins the
+successful installed-resource candidate longword `0x44220000`, class-one
+insert slot, shifted candidate list, and updated counters/cursors.
 
 Parser scratch is the delayed handler snapshot and restored record produced by
 `0x11f96`, the byte budget `0x783140` loaded by `0x16c14`, staged descriptor
@@ -6311,14 +6333,22 @@ bit-30-clear slot selects `0x14e24`/`0x14eb6`, maps host `0x21` to glyph `1`,
 and snapshots `0x158be` from byte `+0x17`. That control case is still useful
 because the following fixture proves the allocated payload's fixed-record table
 can queue selector `0x0003` and render three mode-0 rows from bitmap
-`0x00a0`.
+`0x00a0`. Fixture
+`0x16fae/0x1719c-backed type-2 inline payload maps constructed compact
+renderer records` is the type-2 sibling of that isolation control: it proves
+setup type `2` allocates payload units `0x100`, copies symbol bytes at
+payload offset `0x044a`, maps host bytes `0x23` and `0x24` through the
+constructed inline table, queues wide selector `0x1003` and segmented selector
+`0x2003`, and renders through the compact-wide and segmented compact helpers.
 
 Firmware bookkeeping is candidate insertion through `0x1bc38`, candidate flag
 normalization by `0x16c14`, current-record replacement/release, installed-count
 updates, class-one counter/cursor shifts, and final selection refresh through
-`0x1b04c`. The allocation-failure and direct release fixtures cover the shared
-teardown path separately; this checkpoint consumes those results rather than
-repeating their cleanup matrix.
+`0x1b04c`. The `0x16c14 routes installed font resource through 0x1bc38 slot`
+fixture is the canonical successful insertion sibling for this checkpoint. The
+allocation-failure and direct release fixtures cover the shared teardown path
+separately; this checkpoint consumes those results rather than repeating their
+cleanup matrix.
 
 The page-visible effects are split by consumer. The fixed-record isolation
 fixture proves payload bytes at table entry `+0x48` can map printable `!`,
@@ -6572,6 +6602,11 @@ fields and broader selected-font state combinations have not been page-compared.
 - `segmented downloaded glyph raster FF publications render page records`
 - `host-fetched font control stream feeds descriptor and character payload
   state`
+- `0x172c0-modeled font resource record scan statuses`
+- `0x16fae-modeled font resource validation and symbol-byte staging`
+- `0x17362-modeled font resource setup type`
+- `0x17026/0x1719c-modeled font resource allocation and header initialization`
+- `0x16c14 routes installed font resource through 0x1bc38 slot`
 - `ESC )s80W resource stream installs 0x1719c payload through 0x16c14`
 - `host-fetched 0x15d0a current-record resource object feeds fixed-record
   render`

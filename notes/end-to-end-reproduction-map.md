@@ -1016,17 +1016,23 @@ The next work should follow dataflow, not isolated handlers:
    `0x15d0a descriptor grammar exits and handler matrix` covers early drains and all
    four current-record/continuation by bit-30 polarities, while fixture `0x16b1a
    descriptor width helper emits only mode 1/2` covers the accepted helper-table
-   mode-byte writer and invalid-width no-write branch. Remaining downloaded-character
-   publication work is limited to row words above `0x00ff` outside the sampled
-   segmented-wide source-row-byte matrix (`0x0100`, `0x0101`, `0x0181`, `0x0182`,
-   `0x01ff`, `0x0200`, and `0x0201`), pixel-row behavior beyond the wrapped-width
-   source-byte boundary, segmented-wide row/segment cross-products outside that matrix,
-   broader publication combinations, and full-success return-boundary siblings outside
-   the named row-count, wide-remainder, segmented-wide, normal, row-`0x80`,
-   linear-segmented, split-plane segmented, segmented-wide, no-install, status-`2`, and
-   payload-control cases. It is not the documented mode-byte-`0` visible recovery
-   boundary. The publication-command checkpoint now covers host-fetched reset, FF,
-   page-size, orientation, paper-source, and copies streams through parser dispatch,
-   `0xff1e`, `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF,
-   page-size, orientation, paper-source, and copies also have addressed allocation
-   variants.
+   mode-byte writer and invalid-width no-write branch. The sampled nonzero-high-byte
+   row publication boundary is now classified rather than remaining generic:
+   `downloaded segmented-wide row-byte boundary truncates page-record segments` covers
+   span-`0x11` row words `0x0100`, `0x0101`, `0x0181`, `0x0182`, `0x01ff`, `0x0200`,
+   and `0x0201` through install, `0x12f2e`, `0xff1e`, and the first render split;
+   `host-fetched rows-0x102 downloaded glyph FF publication truncates page-record
+   rows` plus `downloaded glyph high-row truncation matrix preserves installed rows`
+   cover short span-`2` row words `0x0101..0x0103` through the same source-byte
+   truncation and identify the exact `0x1fe76` helper-table overflow boundary. Remaining
+   downloaded-character publication work is therefore limited to pixel-row behavior
+   beyond those wrapped source-byte helper-table boundaries, segmented-wide row/segment
+   cross-products outside the sampled matrix, broader publication combinations, and
+   full-success return-boundary siblings outside the named row-count, wide-remainder,
+   segmented-wide, normal, row-`0x80`, linear-segmented, split-plane segmented,
+   segmented-wide, no-install, status-`2`, and payload-control cases. It is not the
+   documented mode-byte-`0` visible recovery boundary. The publication-command
+   checkpoint now covers host-fetched reset, FF, page-size, orientation, paper-source,
+   and copies streams through parser dispatch, `0xff1e`, `0x1ed84`/`0x1edc6`,
+   `0x1ef6a`, and final row comparison; reset, FF, page-size, orientation,
+   paper-source, and copies also have addressed allocation variants.

@@ -2213,10 +2213,18 @@ A byte-stream renderer must preserve:
   `0x0001..0x00ff`: the row-count matrix covers short rows
   `0x0001..0x001f`, `0x0021..0x003f`, `0x0041..0x007f`, and segmented rows
   `0x0083..0x00ff`, while separate named fixtures cover `0x0020`, `0x0040`,
-  `0x0080`, `0x0081`, and `0x0082`. Remaining parser-produced comparisons are
-  bounded cross-products: visible behavior after
-  segmented-wide row words above `0x00ff` wrap through the current one-byte printable
-  source row field, broader publication combinations beyond the documented normal,
+  `0x0080`, `0x0081`, and `0x0082`. Nonzero-high-byte row publication is no longer an
+  undifferentiated parser-produced gap. Fixture `downloaded segmented-wide row-byte
+  boundary truncates page-record segments` covers span-`0x11` row words `0x0100`,
+  `0x0101`, `0x0181`, `0x0182`, `0x01ff`, `0x0200`, and `0x0201` through install,
+  one-byte `0x12f2e` source metrics, `0xff1e` publication, and first render splits.
+  Fixture `host-fetched rows-0x102 downloaded glyph FF publication truncates
+  page-record rows` plus fixture `downloaded glyph high-row truncation matrix preserves
+  installed rows` covers short span-`2` row words `0x0101..0x0103`, publishes only the
+  low-byte selector/bucket state, and stops at the exact `0x1fe76` fallback row-copy
+  table overflow. Remaining parser-produced comparisons are bounded cross-products:
+  visible pixel rows beyond those documented wrapped source-byte helper-table
+  boundaries, broader publication combinations beyond the documented normal,
   nonboundary-short, rows-`0x20` short, rows-`0x40` short, row-`0x80`, row-count-matrix
   short/segmented, rows-`0x0102` truncated, linear-segmented, rows-`0x82` segmented,
   split-plane segmented, segmented-glyph plus raster, split-plane segmented-glyph plus

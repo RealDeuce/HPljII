@@ -275,7 +275,10 @@ the board-facing boundary is tracked in
   bytes through parser, compact bucket objects, bridge, and rendered rows.
   Evidence: fixtures `plain printable parser trace feeds page-record queue`,
   `host-fetched mixed control stream reaches parser and page-record render`,
-  and `host-fetched direct text/control streams feed 0x1ed84 and 0x1ef6a`.
+  `host-fetched direct text/control streams feed 0x1ed84 and 0x1ef6a`,
+  `ESC 9 clear margins feeds CR and page-record output`,
+  `ESC = half-line feed reaches shifted page-record output`, and
+  `ESC &d underline selector materializes span output`.
 - Transparent print data streams are covered for printable bytes,
   default-filtered C0/high-control bytes, nonzero-filtered C0/high-control
   bytes, `1a 58` and non-`0x58` probe handling, primary high-control samples

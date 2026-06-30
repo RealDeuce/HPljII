@@ -1544,13 +1544,29 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `0xe9ba..0xe9d6` is to reset left/right horizontal limits to
   `0` / page width and clear the fractional companion before later text,
   CR, HT, and horizontal commit helpers consume those margins.
+  Fixture `ESC 9 clear margins feeds CR and page-record output` drives
+  host-fetched `ESC 9 CR !` through handlers `0xe9ba`, `0xf02c`, and
+  `0xd04a`: `0xe9ba` clears left margin from packed `5` to `0`, copies
+  page width `120` into the right margin, CR moves x from packed `50` to
+  `0`, and the following printable queues compact coord `0x0600`.
 - `ESC =` has no glyph bytes by itself. Its ROM-visible effect at
   `0xf176..0xf1c2` is a half-VMI vertical advance with the same pending-span
   flush and perforation-skip checks used by other vertical movement paths.
+  Fixture `ESC = half-line feed reaches shifted page-record output` drives
+  host-fetched `ESC = !` through handlers `0xf176` and `0xd04a`: `0xf176`
+  ensures the page root, flushes pending span state, converts VMI packed `3`
+  into half-line amount packed `1.6`, advances y from packed `21` to
+  `22.6`, and the following printable queues compact coord `0x1001`.
 - `ESC &d` terminal records have no immediate glyph payload in this
   checkpoint. Handler `0x12622..0x126e2` either publishes pending span state
   through `0x12714` or writes `0x783185` and re-arms span bounds; subsequent
   text source consumers turn that selector into alternate y-offset behavior.
+  Fixture `ESC &d underline selector materializes span output` drives
+  host-fetched `ESC &d3D! ESC &d@` through handlers `0x12622`, `0xd04a`, and
+  `0x12622`: `3D` writes `0x783185 = 1` and re-arms span bounds at x `10`,
+  the printable updates `0xd8fc` high-y to `3` through alternate offset
+  word `+0x1a = 18`, and `&d@` flushes a selector-`0x4000` span object
+  `00 00 00 00 40 00 00 01 3a 00 03 00 00 12` beside the compact glyph.
 - `ESC &l3E!`, `ESC &l1L!`, and `ESC &l66P!` route vertical-layout,
   perforation-skip, and page-length state into following printable
   output; the top-margin case queues at `0x9001` in bucket `6`.
@@ -1570,10 +1586,11 @@ fixtures that start at `0xa904` and reach rendered rows. Medium for the
 exact names of pending-text latches and every internal write between
 `0xd04a` and `0x12f2e`, because several page-object fixtures still use
 modeled source/object structures rather than a full live CPU-memory run.
-High for the ROM-visible `ESC 9`, `ESC =`, and `ESC &d` field writes and
-helper boundaries because those are direct disassembly reads; medium for
-their complete manual-facing names and every downstream visible-output case
-until dedicated host-fetched fixtures cover those terminal commands.
+High for the ROM-visible `ESC 9`, `ESC =`, and `ESC &d` field writes,
+helper boundaries, and representative downstream visible-output effects
+because those are direct disassembly reads plus dedicated host-fetched
+page-record/render fixtures. Medium remains only for their complete
+manual-facing names outside the PCL labels already cited here.
 
 ### Fixtures
 
@@ -1596,6 +1613,9 @@ until dedicated host-fetched fixtures cover those terminal commands.
 - `decipoint cursor parser trace feeds page-record queue`
 - `vertical cursor-position parser trace feeds page-record queue`
 - `vertical-cursor parser span flush materializes 0x12714 page object`
+- `ESC 9 clear margins feeds CR and page-record output`
+- `ESC = half-line feed reaches shifted page-record output`
+- `ESC &d underline selector materializes span output`
 - `vertical-decipoint cursor parser trace feeds page-record queue`
 - `chained cursor-position parser trace feeds page-record queue`
 - `0xf48c/0xf692 ESC *p#X/#Y use whole-dot packed cursor commits`
@@ -1679,13 +1699,12 @@ until dedicated host-fetched fixtures cover those terminal commands.
   exercises same-chunk and rollover allocation for all cursor variants
   is still covered by the shared page-record storage checkpoint rather
   than this section.
-- `0xe9ba`, `0xf176`, and `0x12622`: the ROM-visible terminal effects for
-  `ESC 9`, `ESC =`, and `ESC &d` are documented through their field writes
-  and helper boundaries. Dedicated host-fetched page-record fixtures for
-  those exact command streams remain open, with boundaries
-  `0xe9ba -> next margin-consuming text/control`, `0xf176 -> 0xf36c ->
-  next text/page-boundary effect`, and `0x12622 -> 0x12714/0x126e2 ->
-  later 0xd4ac/0xd8fc span consumers`.
+- `0xe9ba`, `0xf176`, and `0x12622`: representative host-fetched
+  page-record/render streams are now fixture-backed for the exact terminal
+  commands `ESC 9`, `ESC =`, and `ESC &d`. Remaining work here is
+  cross-product coverage, not an unresolved middle edge: additional
+  combinations such as nonzero fractions, alternate page geometry, and
+  selected-font metric variants should reuse the same documented boundaries.
 
 ## Transparent Print Data
 

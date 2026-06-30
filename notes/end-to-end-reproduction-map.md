@@ -130,7 +130,10 @@ the board-facing boundary is tracked in
   bytes inside the verified `IC32,IC15` resource-pair image. Scanner fixtures
   `0x41a HEAD scanner would duplicate records under simple resource mirror`
   and `0x41a HEAD scanner rejects non-HEAD 0x40000 continuations` constrain
-  the physical continuation hypotheses.
+  the physical continuation hypotheses. Startup checksum evidence narrows but
+  does not close the edge: [firmware-startup.md](firmware-startup.md) records
+  the resource-pair byte-sum range as `0x080000..0x0bffff`, so it covers the
+  verified suffix but not the `0x0c0000` continuation bytes.
 - Parser dispatch tables:
   ROM evidence is normal table `0x112a4` and alternate table `0x116f6`.
   Reproduction evidence is `generated/analysis/ic30_ic13_pcl_command_map.md`
@@ -864,7 +867,8 @@ The next work should follow dataflow, not isolated handlers:
    `359f38eef400e2fa3924a3258652e74ee19cd46cb92e47bce91f1194fce25e9e`, so the remaining
    requirement is board/emulator memory-map evidence for `0x0c0000..0x0c0321`. That
    range is outside the verified `IC32,IC15` resource-pair image described by
-   `data/rom_manifest.json`. Disassembly of `0x1a2e4` / `0x1a616` shows the built-in
+   `data/rom_manifest.json`, and startup byte-sum evidence only covers
+   `0x080000..0x0bffff`. Disassembly of `0x1a2e4` / `0x1a616` shows the built-in
    resource scanner covers `0x080000..0x0ffffe` in `0x40000` steps, while optional
    cartridge/resource scans are separate `$8000.14/15`-gated windows at
    `0x200000..0x5ffffe`; the segment-57 read is therefore a built-in decode question

@@ -204,6 +204,14 @@ continuation candidates above are fixture hypotheses for the unverified
 `0x0c0000..0x0c0321` firmware-address window, not equivalent decoded glyph
 formats.
 
+Startup checksum coverage further narrows what can be inferred locally.
+`notes/firmware-startup.md` documents the startup verifier byte-sum ranges as
+`0x000000..0x03ffff` for the code pair and `0x080000..0x0bffff` for the
+resource pair. The secondary segment-57 continuation starts at `0x0c0000`, so
+the resource-pair checksum proves the verified suffix through `0x0bffff` but
+does not validate, reject, or select among the mirror, code-pair, and zero-fill
+continuation policies for the fallback rows.
+
 The fixture `0x41a HEAD scanner would duplicate records under simple resource
 mirror` adds an address-map constraint. If the whole `IC32,IC15` resource pair
 were simply mirrored at firmware address `0x0c0000`, the `0x41a` scanner model

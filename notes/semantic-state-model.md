@@ -2345,6 +2345,11 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   `0x21` maps to glyph `0x01`, record `02 03 04 00 00 00 00 80`,
   source flag `0`, then queues and renders through the unflagged path
   with context slot `3`.
+- The constructed inline/downloaded map fixtures extend that same selected-map
+  source through the other compact classes. Host bytes `0x23`, `0x24`, and
+  `0x25` map to fixed records that drive `0x1393a`, `0xd3b2`, and `0x12f2e`
+  into compact-wide `0x1f0d2`, segmented `0x1f1f0`, and segmented-wide
+  `0x1f264` output.
 - Fixture `unflagged printable d4ac low-watermark flush renders span`
   uses the same inline/downloaded source class with context bytes
   `+0x2b=7`, `+0x2c=0`, and `+0x2d=10`. It queues host byte `0x21`
@@ -2448,6 +2453,9 @@ full 68000 interpreter through every source class and allocator branch.
 - `selected inline source queues and renders through unflagged path`
 - `selected inline page-record object preserves context through 0x1edc6
   bridge`
+- `constructed inline/downloaded wide glyph maps through 0x1f0d2`
+- `constructed inline/downloaded segmented glyph maps through 0x1f1f0`
+- `constructed inline/downloaded segmented-wide glyph maps through 0x1f264`
 - `unflagged printable d4ac low-watermark flush renders span`
 - `single printable byte stream builds positioned compact text object`
 - `two printable byte stream combines compact text entries`
@@ -5175,6 +5183,16 @@ compact text renderer.
   class-zero payloads.
 - `0x16fae`, `0x17362`, `0x17026`, and `0x1719c` validate, stage, allocate,
   and initialize font-resource payload headers.
+- `0x16c14` installs the staged font-resource payload into the current
+  downloaded-font record table. Fixture
+  `0x16c14-modeled downloaded font replacement bookkeeping` proves the
+  replacement path releases the old payload, clears matching continuation
+  state, updates candidate flags, and moves marked/unmarked counters. Fixture
+  `0x16c14-modeled downloaded font free-slot bookkeeping` proves a free slot
+  receives the new id/payload and increments the byte-`+0x20` class counters.
+  Fixture `0x16c14-modeled downloaded font no-slot budget skip` proves the
+  full-pool miss leaves records and counters unchanged and reports the
+  skip-no-record-slot budget action.
 - `0x168dc` and `0x16942` copy downloaded glyph bitmap bytes and save
   continuation state.
 - `0x15b9a` resumes bit-30 downloaded-character bitmap copies from
@@ -5266,6 +5284,11 @@ compact text renderer.
 - `0x1bc38` inserts installed payloads into the candidate list.
 - `0x14c64` consumes installed candidate longwords and payload headers to
   build active maps.
+- `0x17708` can select a bit-30-clear inline/downloaded candidate by font id;
+  fixture `0x17708 font-ID selects inline/downloaded candidate` proves that
+  the selected path reaches `0x14c64`. Fixture
+  `0x14c64 dispatches selected inline/downloaded font` proves the selected
+  context rebuilds its map through `0x14e24` / `0x14eb6`.
 - `0x1393a`, `0x12f2e`, `0x1387c`, `0x1edc6`, `0x1ed84`, and `0x1ef6a`
   consume the installed glyph path until visible compact text rows exist.
 
@@ -6386,9 +6409,15 @@ fields and broader selected-font state combinations have not been page-compared.
 
 ### Fixtures
 
+- `0x14c64 dispatches selected inline/downloaded font`
+- `0x17708 font-ID selects inline/downloaded candidate`
+- `0x14e24-modeled inline/downloaded map entries`
 - `combined host-fetched font download stream prints installed glyph`
 - `combined font download FF publishes installed glyph page record`
 - `host-fetched even-span downloaded glyph FF publishes rendered page record`
+- `host-fetched downloaded payload-control object feeds 0x1ed84 and 0x1ef6a`
+- `host-fetched downloaded payload-control object preserves 0x1edc6 bridge
+  contract`
 - `downloaded normal row-0x80 and segmented glyph FF publications render page records`
 - `downloaded glyph width-span matrix publishes and renders all main helpers`
 - `downloaded glyph wide-remainder matrix publishes and renders compact chunks`
@@ -6419,6 +6448,9 @@ fields and broader selected-font state combinations have not been page-compared.
 - `0x17d7c releases extended fixed-record table with secondary refresh`
 - `0x17d7c delegates bit-30 release to offset-table helper`
 - `0x17d7c release reject exits preserve table and continuation state`
+- `0x16c14-modeled downloaded font replacement bookkeeping`
+- `0x16c14-modeled downloaded font free-slot bookkeeping`
+- `0x16c14-modeled downloaded font no-slot budget skip`
 - `0x16c14 allocation failure releases existing payload through 0x1887a`
 - `0x1887a release variant matrix covers cleanup branches`
 - `host-fetched 0x15d0a split-plane continuation resource object resumes
@@ -6435,6 +6467,9 @@ fields and broader selected-font state combinations have not been page-compared.
 - `host-fetched upper-bound metric variant keeps d4ac span but suppresses d8fc`
 - `0x16498-backed downloaded character object renders segmented-wide compact
   row`
+- `host-fetched downloaded character object feeds 0x1ed84 and 0x1ef6a`
+- `host-fetched downloaded character object preserves 0x1edc6 bridge contract`
+- `host-fetched printable byte uses installed downloaded glyph page object`
 - `host-fetched linear downloaded character stream renders through 0x168dc`
 - `host-fetched downloaded character payload control reaches wide render`
 - `host-fetched payload-control downloaded glyph FF publishes page record`

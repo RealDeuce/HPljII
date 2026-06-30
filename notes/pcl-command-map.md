@@ -1026,131 +1026,71 @@ leaves parser mode in the `*b` family, while uppercase `W` triggers the
 ## Next RE Targets
 
 The next work should follow the dataflow checkpoints in
-[semantic-state-model.md](semantic-state-model.md), not isolated command
-handlers:
-- Prove the remaining font metric producer cross-products with
-  parser-produced pages. The covered evidence already includes
-  host-fetched `0x1719c` type-0/type-1/type-2 payloads, the seven-case legal
-  descriptor metric value matrix, the metric boundary-value fixture, and the
-  shared `d4ac`/`d8fc` consumer branch family. Fixture
-  `legal descriptor metric boundary values drive d4ac and d8fc consumers` now
-  also proves normal rounded input `0x0013` stores `+0x2c = 0x0014`, and that
-  rounded inputs `0x1508` and `0x15ff` store the same copied
-  `+0x2c = 0x0060` as `0x1500`, so the low byte is discarded before `d4ac`
-  takes the beyond-page exit and `d8fc` renders from copied context words
-  `0x0004/0x0013/0x0001`. The same fixture proves offset byte `0xff` copies
-  to word `+0x1a = 0xffff` and is consumed by `d8fc` as `65535`. Fixture
-  `legal descriptor metric low-nibble rounding drives d4ac and d8fc consumers`
-  proves rounded inputs `0x0001`, `0x0003`, `0x0004`, `0x0005`, and
-  `0x000f` copy to `+0x2c = 0x0000/0x0004/0x0004/0x0004/0x0010`, preserving
-  `d4ac` span output and `d8fc` high-y `20` output. Fixture
-  `legal descriptor metric byte-boundary rounding drives d4ac and d8fc
-  consumers` proves rounded inputs `0x00fd`, `0x00fe`, `0x0101`, and `0x0102`
-  copy to `+0x2c = 0x00fc/0x0100/0x0100/0x0104`, with range `0x0040` capping
-  `0x0102` back to `0x0100`. The copied `0x00fc` case leaves `d4ac` at
-  `beyond-page-extent`, while crossing to copied `0x0100` restores the
-  standard span digest. Fixture
-  `legal descriptor metric tight range values drive d4ac and d8fc consumers`
-  proves the tight legal range/count cross-products: range one copies
-  `+0x14/+0x16/+0x18 = 0x0001/0x0000/0x0000` with zero and clamped rounded
-  outputs, while range two copies `0x0002/0x0001/0x0000` with max positive and
-  max negative offset words. Fixture
-  `legal descriptor metric range endpoints drive d4ac and d8fc consumers`
-  now pins the `0x17430` first-code/range endpoints: first-code zero copies
-  `+0x14/+0x16/+0x18 = 0x0018/0x0000/0x0017`, and first-code `range - 1`
-  copies `0x0015/0x0014/0x0000`, with both legal selected forms still
-  feeding the same documented visible span paths. Fixture
-  `descriptor metric fields match across inline and resource contexts` now
-  pins the legal inline/unflagged `d4ac` and resource/flagged `d8fc`
-  producer forms plus the two invalid swapped forms. The producer formulas are
-  now documented from disassembly: `0x17430` derives `+0x18` as
-  `+0x14 - +0x16 - 1`, `0x1757a` writes
-  `+0x2c = min((value + 2) >> 2, word(+0x14)) << 2`, `0x1762a` writes signed
-  offset word `+0x1a`, and `0x1719c` copies the staged fields into the
-  allocated payload. Metric-value behavior is now a fixture-backed
-  cross-product of the pinned legal matrix, boundary, extent-fence,
-  range-endpoint, mixed-value, tight-range, low-nibble, and byte-boundary
-  cases. The remaining open middle is broader selected-font state
-  combinations plus external/manual naming for consumed-but-not-staged
-  validation fields.
-- Treat non-Roman `0N` / `10U` / `11U` font-selection visible output as
-  covered for the documented primary and secondary paths. Fixture
-  `live parser symbol-set streams select non-Roman built-ins` proves primary
-  parser streams select records `0x000cb8`, `0x000418`, and `0x000868` through
-  the `selected-symbol-not-roman8` map path; fixture
-  `non-Roman symbol streams select visible built-ins` carries the primary and
-  secondary `0N`/`10U`/`11U` streams through matching font-selection commands,
-  SO for secondary, compact text objects, bridge context slots, and rendered-row
-  digests. Further font-selection work should target command combinations that
-  expose new state boundaries, not these six visible streams.
-- Replace remaining modeled producer-state handoffs with fuller
-  parser-produced page objects. Current coverage includes direct text,
-  direct controls, macro replay/overlay, reset/FF/page geometry
-  publications, mixed text/rule/raster publication, downloaded-glyph FF
-  publication, parser-driven downloaded-glyph/rule/raster composition,
-  and the modeled `0x1ef6a` band-crossing merge. The most concrete
-  downloaded-glyph/rule/raster split is the `ESC )s18W` install stream:
-  fixture `parser-driven downloaded glyph rule raster stream composes through
-  0x1ef6a` uses the exact resource image emitted by
-  `host-fetched even-span wide downloaded character renders through 0x1f0d2`,
-  then starts the following page stream at byte `24`
-  (`ESC *c12a3b0P ) ESC *t300R ESC *r0A ESC *b2W c3 3c`). That fixture now also
-  proves one 54-byte `0xa904` ring fetch, and the ROM listing plus fixture
-  evidence pins the shared `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` drain. It
-  now consumes `font_command_final_header` from the same font-command helper and
-  asserts the table pointer, record, and bitmap bytes used by the page phase. The
-  remaining gap is live parser/register/memory capture in one CPU run, not the
-  already-covered byte source, modeled memory handoff, parser rule/raster
-  producers, return drain, or render-entry rows.
-- Compare the built-in font sample printout against observed paper output.
-  The `0x1c334..0x1c5e4` row traversal is now
-  decoded through `0x1b50e` candidate resolution, class filtering,
-  continuation-page entry, row-index advance, and recent-context
-  duplicate suppression. The concrete internal-font candidate sequence is
-  documented in `notes/resource-rom.md`. Fixture `font sample full printout
-  source placement follows firmware order` composes all eight source/class
-  segments after the `0x1d76c` / `0x10084` / `0x1e9a0` / `0x1c9b8` /
-  `0x1c916` / `0x1cfb4` pass setup sequence, with row counts
-  `[0,1,1,14,0,1,1,14]` and aggregate segment digest
-  `f4105538bd1506731f04810ed2f50cce23815751c4f979ed6f60efab4cde08c7`.
-  Fixture `font sample full printout rows reuse ROM sample byte runs` proves
-  every non-empty row queues sample-run tables `0x1c1cf` and `0x1c1e9`, with
-  correlation digest
-  `4f664dc44f9ad98cbe25d4bdead651a2902bec1f90367c650bb2d1352d6f3e8a`.
-  Fixture `font sample full printout segments render through 0x1ed84 and
-  0x1ef6a` renders the eight source/class page-record segments through the
-  bridge and band renderer, with aggregate surface digest
-  `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
-  The open boundary is physical baseline/cell/page placement agreement
-  against a known font/self-test sample. The ROM roles for record
-  `+0x28/+0x2a` and `+0x2f..+0x31` are no longer part of that open edge:
-  `0x1519a` consumes `+0x28/+0x2a` as decoded-height inputs before
-  `0x13bca`, and `0x1428c` consumes `+0x2f..+0x31` as same-class chooser
-  tie-breakers after `0x14398` / `0x13c06`. Their HP/manual-facing names
-  remain unknown.
-- Broaden visible-output variants where they still change compatibility:
-  font-selection fallback/error branches beyond the two symbol-miss and
-  final-`X` built-in/inline fixtures; the `0x17708` non-selected and
-  `0x13eb8` transient/cache-hit preserved-output paths now have visible tails.
-  Downloaded-glyph publication cross-products beyond the documented
-  normal, non-boundary short, rows-`0x20` short, rows-`0x40` short,
-  row-`0x80`, row-count-matrix short/segmented, rows-`0x0102`
-  low-byte-truncated short, linear-segmented, rows-`0x82` segmented,
-  split-plane segmented, segmented-wide, even-span wide, payload-control
-  odd-span wide, no-install, and status-`2` compact bucket variants, the
-  transparent secondary segment-57 fallback-row memory-map interpretation
-  beyond the now-pinned page-record, render-prefix, and continuation-policy
-  boundary. The primary transparent high-control path now includes boundary,
-  interior-sample, tall-glyph, and top-of-range fixtures. The final-`@`
-  table/copy/default-font variants are now pinned through parser state and
-  visible output by fixtures `real default-table caller stream uses
-  ROM-backed words` and `real final-@ default-table streams select visible
-  built-ins`.
-- Continue the active-render scheduler only at the remaining external
-  boundary: `$8000.4`, `$a601`, `$a801`, `$aa01`, `0xfffe0001`, and
-  `0xfffe0003` physical timing/MMIO correlation. The software-visible
-  scheduler, wait-object, trap, render-work, and per-band merge states
-  are already modeled.
-- Use the matched ROM/manual logical page and printable-area dimensions
-  as the baseline for physical engine/self-test placement checks and
-  final device-output validation.
+[semantic-state-model.md](semantic-state-model.md) and should start at
+unresolved byte-stream-to-pixel edges, not already-composed handlers.
+
+- Close the remaining dense raster live-memory boundary. The semantic
+  checkpoint `Raster Transfer Gate And Encoded Rows` already documents the
+  parser scratch, field groups, writers, consumers, output rows, fixtures, and
+  disassembly for `0x11f82 -> 0x121cc -> 0x12218 -> 0x105d0 -> 0x10084 ->
+  0x13070 -> 0x13250 -> 0x1f88e`. The next useful proof is one live 68000
+  trace or memory snapshot for a parser-produced dense page that confirms the
+  disassembly-derived register/memory handoff across
+  `0x105d0..0x10752`, `0x10084..0x10218`, `0x13070..0x13250`, and
+  `0x132b6..0x13382`. Existing fixtures already cover parser dispatch,
+  delayed record restore, capped/drained rows, lower-resolution modes,
+  consecutive rows, same-family lowercase `*b` chaining, bridge fields, and
+  final rows.
+- Close the downloaded-font install-to-page live handoff. `Downloaded Glyph
+  Rule/Raster Composition` in [semantic-state-model.md](semantic-state-model.md)
+  documents the current exact split: the `ESC )s18W` install fixture emits the
+  resource image, the page fixture consumes `font_command_final_header`, glyph
+  `0x29`, table entry `0x00ee`, pointer bytes `00 00 07 80`, record delta
+  `0x0780`, bitmap offset `0x078c`, and the 18 copied bitmap bytes before
+  page handlers `0x10e68`, `0x10e22`, `0x10898`, `0xd04a`, `0x10808`,
+  `0x1075a`, and delayed `0x105d0` render through `0x1ef6a`. The remaining
+  boundary is live CPU/register/memory capture across the
+  `0x16c14` / `0x16498` return after byte `24` into parser loop `0x11774`,
+  not byte-source identity, modeled resource bytes, rule/raster producers, or
+  render-entry rows.
+- Broaden visible-output compatibility only when a new selected-font state
+  boundary is exposed. `Built-In Font Selection To Visible Text` already
+  covers primary and secondary built-in selection, primary/secondary
+  symbol-miss fallback, non-Roman `0N` / `10U` / `11U` streams, final-`X`
+  built-in and inline/downloaded success, final-`X` non-selected exits,
+  final-`@` default-table streams, `0x13eb8` transient/cache-hit no-dispatch
+  exits, and the `0xc580` common-refresh branch cluster. New work should add
+  command combinations that exercise different `0x13eb8`, `0x156de`,
+  `0x17708`, or `0xc580` state transitions before visible output, not repeat
+  the already documented six non-Roman streams or the current final-`X` /
+  final-`@` cases.
+- Treat font metric producer behavior as regression expansion unless it
+  exposes a new page-visible selected-font boundary. The metric formulas and
+  producer/consumer cross-products are documented in
+  [font-context-metrics.md](font-context-metrics.md) and composed under
+  `Selected-Font Metric Producer/Consumer Contract` in
+  [semantic-state-model.md](semantic-state-model.md). The exact remaining risk
+  is broader selected-font state combinations plus manual-facing names for
+  consumed-but-not-staged validation fields, not the already pinned rounding,
+  range, offset, inline/resource, `d4ac`, or `d8fc` behavior.
+- Compare the built-in font sample printout against observed device output.
+  [resource-rom.md](resource-rom.md) documents the candidate sequence and
+  [semantic-state-model.md](semantic-state-model.md) composes the sample-page
+  source placement, sample-run reuse, and `0x1ed84` / `0x1ef6a` rendered
+  segments. The open boundary is physical baseline/cell/page placement against
+  a known self-test or font sample. The record fields consumed by `0x1519a`
+  and `0x1428c` are documented as decoded-height inputs and same-class chooser
+  tie-breakers; only their external/manual names remain unknown.
+- Keep resource-window work focused on the exact physical decode gap.
+  [resource-rom.md](resource-rom.md) now composes the
+  `0x1a2e4 -> 0x1a616 -> 0x1a9be` candidate windows and selection state. The
+  remaining resource-ROM boundary is the firmware address window
+  `0x0c0000..0x0c0321` used by the transparent secondary segment-57 fallback
+  rows, which needs board/emulator memory-map evidence or physical output that
+  selects one of the documented fallback-row digests.
+- Continue active-render scheduler work only at the external device boundary.
+  The software-visible scheduler, wait-object, trap, render-work, per-band
+  merge, and page-record bridge states are already modeled. Remaining work is
+  correlation of the active-render/device handoff with the physical formatter
+  signals and final paper output, using the ROM/manual logical page and
+  printable-area dimensions already recorded in the reproduction map.

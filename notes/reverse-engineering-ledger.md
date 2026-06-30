@@ -1458,13 +1458,18 @@ ROM work needed:
   records` cover internal and cartridge heading-preflight page objects.
   Fixture `font sample row continuation emits fresh source heading page record`
   covers the row-overrun `I01` forced-continuation page object. Fixture
+  `font sample class-one row continuation emits fresh source heading page
+  record` covers the class-one `I16` sibling from `0x40099d18` to
+  `0x4409a0e4` with bucket digest
+  `842dd781a1093819f918e128999786f94f16cc3562ca25c3a82503ced74f3f3c`.
+  Fixture
   `font sample alternate-row continuation emits preadvanced row page record`
   now covers the `0x1d868` D7=1 caller sequence through `0x1cabe`, emits
   row `I01COURIER101210U` after pre-row y advance
   `0x00520000 -> 0x00900000`, and pins bucket digest
   `c6f0cbe07a7681d3ecfd3447b8296e97cbf8042d6d962d825f6018d980d5396b`.
-  The next boundaries are broader source/class row-overrun variants and
-  physical baseline/cell comparison against a known printed/self-test sample.
+  The next boundaries are broader row-overrun cross-products and physical
+  baseline/cell comparison against a known printed/self-test sample.
 - Fixture `live parser symbol-set streams select non-Roman built-ins` now
   broadens the named `0N` / `10U` / `11U` samples from static map evidence
   into primary parser/font-selection evidence. Streams `ESC (0N`,

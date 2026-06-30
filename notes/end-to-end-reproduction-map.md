@@ -725,7 +725,12 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    records` now cover internal and cartridge heading-preflight
    page-record objects. Fixture `font sample row continuation emits fresh
    source heading page record` covers the row-overrun `I01` forced
-   page-record object. Fixture
+   page-record object; fixture
+   `font sample class-one row continuation emits fresh source heading page
+   record` covers the class-one `I16` sibling from `0x40099d18` to
+   `0x4409a0e4` with bucket digest
+   `842dd781a1093819f918e128999786f94f16cc3562ca25c3a82503ced74f3f3c`.
+   Fixture
    `font sample alternate-row continuation emits preadvanced row page record`
    now covers the alternate-row caller edge after `0x1d868` returns D7 `1`:
    `0x1c4a4 -> 0x1d868 -> 0x1c4b6 -> 0x1c9f6 -> 0x1c4ca -> 0x1ca2c ->
@@ -733,9 +738,8 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    It emits `I01COURIER101210U` after pre-row y advance
    `0x00520000 -> 0x00900000` and pins bucket digest
    `c6f0cbe07a7681d3ecfd3447b8296e97cbf8042d6d962d825f6018d980d5396b`.
-   Broader source/class row-overrun variants and physical baseline/cell
-   placement comparison against a known font/self-test page remain separate
-   gaps.
+   Broader row-overrun cross-products and physical baseline/cell placement
+   comparison against a known font/self-test page remain separate gaps.
 
 ## Next Disassembly Targets
 

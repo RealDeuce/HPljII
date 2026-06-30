@@ -2884,11 +2884,19 @@ for how resource records become ordinary page-record text.
     `[0, 2, 3, 6, 7, 8, 16, 24, 32, 40, 48, 56, 64]`, final cursor
     `0x08ac0000,0x00900000`, and bucket digest
     `2dc6c3326aad3118d2b96c44cf0ab727ee2926069c5035722cceef470db8b7ef`.
+    Fixture
+    `font sample class-one row continuation emits fresh source heading page record`
+    closes the class-one row-overrun sibling: the same tight-limit
+    `0x1d050 -> 0x1c9f6 -> 0x1ca2c` branch from current context
+    `0x40099d18` to selected context `0x4409a0e4` emits
+    `I16COURIER101210U`, queues buckets
+    `[0, 3, 4, 7, 8, 16, 24, 32, 40, 48, 56, 64]`, and pins bucket digest
+    `842dd781a1093819f918e128999786f94f16cc3562ca25c3a82503ced74f3f3c`.
     Forced continuation-page object bytes are now covered for the internal
-    and cartridge heading-preflight forms, first internal row-overrun, and
-    alternate-row caller forms. Broader source/class row-overrun variants
-    remain open; the normal full source/class placement is composed as eight
-    page-record segments.
+    and cartridge heading-preflight forms, internal class-zero `I01` and
+    class-one `I16` row-overrun forms, and alternate-row caller forms.
+    Broader row-overrun cross-products remain open; the normal full
+    source/class placement is composed as eight page-record segments.
   - record `+0x28/+0x2a` and `+0x2f..+0x31` are already correlated with
     emitted page objects for their ROM roles: `0x1519a` consumes
     `+0x28/+0x2a` as decoded-height inputs before `0x13bca`, and
@@ -3254,11 +3262,12 @@ because physical/self-test comparison is still open.
   `5e5e735b4fb2a2a4dff4794099a02eaf23fa2dd3e469df8d053db88a321ea6f2`.
   Fixtures `font sample heading continuation emits fresh source heading page record`,
   `font sample cartridge heading continuations emit source-specific page records`,
-  `font sample row continuation emits fresh source heading page record`, and
+  `font sample row continuation emits fresh source heading page record`,
+  `font sample class-one row continuation emits fresh source heading page record`, and
   `font sample alternate-row continuation emits preadvanced row page record`
-  cover the internal/cartridge heading-preflight, first row-overrun, and
-  alternate-row forced page-record objects. Remaining gaps are broader
-  source/class row-overrun page-record variants and physical baseline/cell
+  cover the internal/cartridge heading-preflight, internal class-zero/class-one
+  row-overrun, and alternate-row forced page-record objects. Remaining gaps are
+  broader row-overrun cross-products and physical baseline/cell
   comparison against a known printed/self-test sample.
 - `0x1c5e8..0x1ed84`: selected resource setup, row formatting,
   printable-byte emission, and downstream text/page/render consumers are

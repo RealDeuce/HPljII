@@ -638,6 +638,15 @@ continuation segment emits the `INTERNAL FONTS` heading and row
 `[0, 2, 3, 6, 7, 8, 16, 24, 32, 40, 48, 56, 64]`, ends at cursor
 `0x08ac0000,0x00900000`, and pins bucket digest
 `2dc6c3326aad3118d2b96c44cf0ab727ee2926069c5035722cceef470db8b7ef`.
+Fixture
+`font sample class-one row continuation emits fresh source heading page record`
+now carries the class-one row-overrun sibling into the page-record producer.
+The trigger advances from current context `0x40099d18` to selected context
+`0x4409a0e4`; the fresh continuation segment emits the `INTERNAL FONTS`
+heading and row `I16COURIER101210U`, queues buckets
+`[0, 3, 4, 7, 8, 16, 24, 32, 40, 48, 56, 64]`, ends at cursor
+`0x08ac0000,0x00900000`, and pins bucket digest
+`842dd781a1093819f918e128999786f94f16cc3562ca25c3a82503ced74f3f3c`.
 Fixture `font sample alternate-row continuation emits preadvanced row page
 record` carries the sibling `0x1d868` D7=1 branch into the page-record
 producer. The caller sequence
@@ -697,11 +706,11 @@ class-one segments top out at row width `4097`, so that width/baseline
 interpretation is now pinned but not yet validated against paper output.
 
 The covered forced-continuation page-record objects now include internal and
-cartridge heading-preflight forms, row-overrun `I01`, and alternate-row `I01`
-caller forms. Broader source/class row-overrun variants and physical
-comparison of the rendered source/class surfaces against a known
-printed/self-test sample, including baseline and cell placement agreement
-after `0x1ed84`, remain open.
+cartridge heading-preflight forms, class-zero row-overrun `I01`, class-one
+row-overrun `I16`, and alternate-row `I01` caller forms. Broader row-overrun
+cross-products and physical comparison of the rendered source/class surfaces
+against a known printed/self-test sample, including baseline and cell
+placement agreement after `0x1ed84`, remain open.
 
 The old high-word interpretation was wrong. The entries are not absolute
 high words; they are full relative long offsets from the selected record
@@ -1292,6 +1301,7 @@ Fixtures:
 - `font sample heading continuation emits fresh source heading page record`
 - `font sample cartridge heading continuations emit source-specific page records`
 - `font sample row continuation emits fresh source heading page record`
+- `font sample class-one row continuation emits fresh source heading page record`
 - `font sample alternate-row continuation emits preadvanced row page record`
 - `0x1a616 candidate scan continuation policy changes built-in counts`
 

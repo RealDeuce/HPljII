@@ -620,7 +620,9 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    character-object, linear character-object, and downloaded-glyph render paths in
    `notes/downloaded-fonts.md`. The `0x16c14`
    existing-record allocation-failure teardown through `0x1887a` is fixture-backed for
-   the bit-30-clear extended fixed-record case. The `0x16fae` validation table now has
+   the bit-30-clear extended fixed-record case, and the direct `0x1887a` release
+   variant matrix now covers bit-30-set class-one, bit-30-set class-zero, and
+   bit-30-clear class-zero cleanup branches. The `0x16fae` validation table now has
    ROM-effect names for all 32 entries plus concrete success and failure fixtures, and
    host-fetched invalid-resource-type, first-code overflow, zero line/count, high
    line/count, reversed-range, high range/count, and invalid-class paths prove

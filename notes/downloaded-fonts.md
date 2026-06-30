@@ -23,6 +23,9 @@ glyph.
 - `generated/disasm/ic30_ic13_font_resource_payload_initializer_01719c.lst`
 - `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`
 - `generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`
+- `generated/disasm/ic30_ic13_font_resource_payload_link_01887a.lst`
+- `generated/disasm/ic30_ic13_font_resource_release_018b92.lst`
+- `generated/disasm/ic30_ic13_font_resource_release_alt_018bf2.lst`
 - `generated/disasm/ic30_ic13_font_resource_classify_0172c0.lst`
 - `generated/disasm/ic30_ic13_font_resource_payload_record_lookup_0170be.lst`
 - `generated/disasm/ic30_ic13_font_fixed_record_release_017a24.lst`
@@ -47,6 +50,7 @@ Primary fixtures:
   fixed-record render`
 - `0x16c14-modeled downloaded font replacement bookkeeping`
 - `0x16c14 routes installed font resource through 0x1bc38 slot`
+- `0x1887a release variant matrix covers cleanup branches`
 - `0x16c14-modeled downloaded font free-slot bookkeeping`
 - `0x16c14-modeled downloaded font no-slot budget skip`
 - `0x16fae-modeled font resource validation and symbol-byte staging`
@@ -652,6 +656,33 @@ matching candidate slot through `0x1bd2e`, clears matching continuation fields
 `+8` and secondary byte `+9`, refreshes the matching secondary active context
 through `0x179aa(1)`, and calls `0x1b04c`. No new candidate or record payload
 is installed on this failure exit.
+
+Fixture `0x1887a release variant matrix covers cleanup branches` extends the
+same shared exit beyond the allocation-failure fixture. A bit-30-set class-one
+payload `0x40123456` with range words `+0x0e/+0x10 = 0x0030/0x0032` dispatches
+through `0x18b92`, calls `0x17fa2` for chars `0x30..0x32`, decrements the
+unmarked-record count `0x782782`, total counters `0x78278e`/`0x78278a`,
+class-one counters `0x782796`/`0x782790`, shifts cursors
+`0x7827ac/0x7827b0/0x7827b4` by four, clears matching continuation state,
+marks context-stack primary byte `+8`, refreshes the active primary context
+through `0x179aa(0)`, and joins `0x1b04c`. A bit-30-set class-zero marked
+payload `0x40234567` with reversed range `0x0044..0x0042` still routes through
+`0x18b92` but has zero character cleanup calls, decrements marked-record count
+`0x782786`, total counters `0x78278e`/`0x78278a`, and class-zero counters
+`0x78279e`/`0x782798`, leaves class-one cursors unchanged, leaves nonmatching
+continuation state intact, marks context-stack secondary byte `+9`, and joins
+`0x1b04c` without active refresh. A bit-30-clear class-zero payload
+`0x00345678` with payload byte `+0x0e = 0` dispatches through `0x18bf2`, calls
+`0x18090` for fixed-record chars `0x21..0x7f`, decrements unmarked-record,
+total, and class-zero counters, leaves class-one cursors unchanged, refreshes
+the active secondary context through `0x179aa(1)`, and joins `0x1b04c`.
+Canonical state is the cleared current-record id/payload and released
+payload-table entries. Derived/cache state is the active-context refresh.
+Parser scratch is the continuation record, which is cleared only when
+`0x7827da` matches the released payload. Firmware bookkeeping is the
+candidate/counter/cursor/context-stack/default-refresh work. No direct output
+pixels change on this release path; the visible effect is preventing later
+printable bytes from selecting the released payload.
 
 The same fixture path from host fetch drains the full `ESC )s80W` stream from
 the modeled `0xa904` ring source and reaches the same restored record,
@@ -1913,6 +1944,14 @@ buckets `1` and `9`, and renders bucket word `9` through compact target
   current-record/continuation and bit-30-set/clear handler polarities.
 - `0x16c14` writes `0x783140`, current-record ids/payload pointers,
   candidate flags, candidate counters, and installed counts.
+- `0x1887a` clears released current-record ids/payload pointers and flag bits
+  `4..7`, decrements marked/unmarked and class counters, shifts class-one
+  cursors for class-one payloads, clears matching continuation state, marks
+  matching context-stack primary/secondary dirty bytes, deletes matching
+  candidate slots, refreshes matching active contexts, and finishes at
+  `0x1b04c`. Fixture
+  `0x1887a release variant matrix covers cleanup branches` proves bit-30-set
+  class-one, bit-30-set class-zero, and bit-30-clear class-zero variants.
 - `0x16fae` writes staged descriptor fields, optional symbol bytes, and
   optional symbol count.
 - `0x17362` writes staged type byte and payload units.

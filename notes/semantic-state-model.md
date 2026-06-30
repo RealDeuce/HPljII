@@ -4668,7 +4668,10 @@ compact text renderer.
   decrements marked/unmarked and class counters, shifts class-one cursors,
   clears matching continuation fields, marks matching context-stack bytes,
   deletes the candidate slot through `0x1bd2e`, refreshes matching active
-  contexts through `0x179aa`, and finishes with `0x1b04c`.
+  contexts through `0x179aa`, and finishes with `0x1b04c`. Fixture
+  `0x1887a release variant matrix covers cleanup branches` proves the branch
+  matrix for bit-30-set class-one, bit-30-set class-zero, and bit-30-clear
+  class-zero payloads.
 - `0x16fae`, `0x17362`, `0x17026`, and `0x1719c` validate, stage, allocate,
   and initialize font-resource payload headers.
 - `0x168dc` and `0x16942` copy downloaded glyph bitmap bytes and save
@@ -4958,46 +4961,60 @@ bytes `f0 0f`, then `0x15c4c` calls `0x17d7c`. The release helper rewrites paylo
 bytes `fa 00` at payload `+0x340`, records active-primary refresh `0x7828de = 0`, and
 clears the matching continuation fields.
 
-Fixture `0x15d0a descriptor grammar exits and handler matrix` composes the route
-front end with the state model. Canonical input state is the parsed byte budget
-in `0x783140`, current id `0x782f2e`, parser mode `0x782a92`, descriptor bytes
-from `0x1599c`, current-record scan result from `0x172c0`, and continuation
-fields `0x7827c6`/`0x7827da`. Parser scratch is limited to the descriptor prefix
-and scan status. Firmware bookkeeping is the shared final drain through
-`0x12328`; every skip/route case reaches remaining budget `0`. The covered
-output effect is handler selection, not pixel output: selector `0` plus object
-bit `30` set calls `0x16498`, selector `0` plus bit `30` clear calls `0x16606`,
-continuation plus bit `30` set calls `0x15b9a`, and continuation plus bit `30`
-clear calls `0x15c4c`. Fixture `0x15b9a resumes downloaded-character
-continuation objects` and fixture `0x15b9a partial and failed resumes update
-continuation or release object` now cover the `0x15e18 -> 0x15b9a` success,
-status-`2`, and status-`0` edges for linear and split-plane
-downloaded-character continuation objects. The remaining middle edges after
-this checkpoint are handler-specific object-shape/range variants outside those
-fixtures, plus `0x15e3c -> 0x16606` and `0x15e5c -> 0x15c4c` variants not
-already covered by the fixed-record render fixtures.
-Fixture `0x17d7c releases extended fixed-record table with secondary refresh` proves the
-direct extended fixed-record form: payload byte `+0x0e = 1` admits char `0xa1`, the
-helper indexes table entry `payload + 0x40 + (0xa1 - 0x40) * 8`, rewrites it from `04 05
-06 07 00 00 04 00` to `01 02 00 2c 00 00 03 00`, writes side-table bytes `2c 00` at
-payload `+0x702`, records active-secondary refresh `0x7828de = 1`, and clears the
-matching continuation fields. Fixture `0x17d7c delegates bit-30 release to offset-table
-helper` proves the bit-30 sibling: `0x17d7c` dispatches to `0x17a24`, which validates
-range words `+0x0e/+0x10 = 0x0020/0x007f`, uses table offset word `+0x08 = 0x004a`,
-clears char `0x21` table entry `00 00 02 40` to zero at payload `+0x004a + 4 * 0x21`,
-records active-secondary refresh `0x7828de = 1`, and clears the matching continuation
-fields. Fixture `0x17d7c release reject exits preserve table and continuation state`
-proves the no-rewrite siblings: base outside the modeled payload, fixed-record chars
-`0x20` and `0xa1` outside the admitted ranges, and bit-30 delegate char `0x80` outside
-offset-table range all return without changing the table bytes or continuation fields.
-Fixture `0x16c14 allocation failure releases existing payload through 0x1887a`
-has no direct pixel output because it is a failed replacement path. Its output contract
-is state cleanup: old current-record payload `0x123456` is cleared, candidate slot
-`0x782328` is deleted, extended fixed-record cleanup runs through `0x18bf2`/`0x18090`
-for characters `0x21..0x7f` and `0xa0..0xff`, continuation state is zeroed, context
-stack bytes `+8` and `+9` are marked for matching primary/secondary entries, secondary
-active context refreshes through `0x179aa(1)`, and no new candidate or payload is
-installed. Fixture `0x16fae validation table semantic map covers staged and pass-through
+Fixture `0x15d0a descriptor grammar exits and handler matrix` composes the route front
+end with the state model. Canonical input state is the parsed byte budget in `0x783140`,
+current id `0x782f2e`, parser mode `0x782a92`, descriptor bytes from `0x1599c`,
+current-record scan result from `0x172c0`, and continuation fields
+`0x7827c6`/`0x7827da`. Parser scratch is limited to the descriptor prefix and scan
+status. Firmware bookkeeping is the shared final drain through `0x12328`; every
+skip/route case reaches remaining budget `0`. The covered output effect is handler
+selection, not pixel output: selector `0` plus object bit `30` set calls `0x16498`,
+selector `0` plus bit `30` clear calls `0x16606`, continuation plus bit `30` set calls
+`0x15b9a`, and continuation plus bit `30` clear calls `0x15c4c`. Fixture `0x15b9a
+resumes downloaded-character continuation objects` and fixture `0x15b9a partial and
+failed resumes update continuation or release object` now cover the `0x15e18 -> 0x15b9a`
+success, status-`2`, and status-`0` edges for linear and split-plane
+downloaded-character continuation objects. The remaining middle edges after this
+checkpoint are handler-specific object-shape/range variants outside those fixtures, plus
+`0x15e3c -> 0x16606` and `0x15e5c -> 0x15c4c` variants not already covered by the
+fixed-record render fixtures. Fixture `0x17d7c releases extended fixed-record table with
+secondary refresh` proves the direct extended fixed-record form: payload byte `+0x0e =
+1` admits char `0xa1`, the helper indexes table entry `payload + 0x40 + (0xa1 - 0x40) *
+8`, rewrites it from `04 05 06 07 00 00 04 00` to `01 02 00 2c 00 00 03 00`, writes
+side-table bytes `2c 00` at payload `+0x702`, records active-secondary refresh `0x7828de
+= 1`, and clears the matching continuation fields. Fixture `0x17d7c delegates bit-30
+release to offset-table helper` proves the bit-30 sibling: `0x17d7c` dispatches to
+`0x17a24`, which validates range words `+0x0e/+0x10 = 0x0020/0x007f`, uses table offset
+word `+0x08 = 0x004a`, clears char `0x21` table entry `00 00 02 40` to zero at payload
+`+0x004a + 4 * 0x21`, records active-secondary refresh `0x7828de = 1`, and clears the
+matching continuation fields. Fixture `0x17d7c release reject exits preserve table and
+continuation state` proves the no-rewrite siblings: base outside the modeled payload,
+fixed-record chars `0x20` and `0xa1` outside the admitted ranges, and bit-30 delegate
+char `0x80` outside offset-table range all return without changing the table bytes or
+continuation fields. Fixture `0x16c14 allocation failure releases existing payload
+through 0x1887a` has no direct pixel output because it is a failed replacement path. Its
+output contract is state cleanup: old current-record payload `0x123456` is cleared,
+candidate slot `0x782328` is deleted, extended fixed-record cleanup runs through
+`0x18bf2`/`0x18090` for characters `0x21..0x7f` and `0xa0..0xff`, continuation state is
+zeroed, context stack bytes `+8` and `+9` are marked for matching primary/secondary
+entries, secondary active context refreshes through `0x179aa(1)`, and no new candidate
+or payload is installed. Fixture `0x1887a release variant matrix covers cleanup
+branches` proves the shared-exit siblings at `0x1887a..0x18b84`: bit-30-set class-one
+payload `0x40123456` releases chars `0x30..0x32` through `0x18b92`/`0x17fa2`, decrements
+unmarked and class-one counters, shifts class-one cursors by four, clears matching
+continuation, marks context-stack primary byte `+8`, and refreshes the active primary
+context through `0x179aa(0)`; bit-30-set class-zero marked payload `0x40234567` with
+reversed range `0x44..0x42` routes through `0x18b92` with zero released chars,
+decrements marked and class-zero counters, leaves class-one cursors and nonmatching
+continuation intact, marks context-stack secondary byte `+9`, and performs no active
+refresh; bit-30-clear class-zero payload `0x00345678` with byte `+0x0e = 0` releases
+chars `0x21..0x7f` through `0x18bf2`/`0x18090`, decrements unmarked and class-zero
+counters, leaves class-one cursors unchanged, and refreshes the active secondary context
+through `0x179aa(1)`. Canonical state is the cleared current record and released payload
+table. Parser scratch is the continuation block, cleared only on payload match. Firmware
+bookkeeping is the counters, cursors, candidate deletion, context-stack dirty bytes,
+default resolver refresh, and final `0x1b04c`. Derived/cache state is the active-context
+refresh. Fixture `0x16fae validation table semantic map covers staged and pass-through
 entries` names all 32 validation-table entries by ROM effect. Fixture `0x16fae
 table-driven validation predicates populate staged header fields` then proves the
 success path plus two predicate failures: invalid resource type fails entry `2` after
@@ -5169,40 +5186,39 @@ source exhaustion with one byte still remaining; `0x15b9a` calls `0x17a24`, whic
 offset-table entry `0x00f6` from `00 00 08 40` to `00 00 00 00`, refreshes the active
 primary context, clears continuation fields, and leaves the partially rewritten object
 body unreachable from the table. Fixture `host-fetched segmented downloaded character
-renders through
-0x1f1f0` connects the downloaded-character linear reader to the remaining segmented
-compact renderer shape. Host fetch drains `ESC )s258W`; parser dispatch walks `0x11eb6`,
-`0x12008`, `0x11ff6`, and `0x11f96`; `0x16498` installs glyph `0x27` at table entry
-`0x00e6` with record delta `0x0580`, rows `0x0081`, width `0x0010`, bitmap offset
-`0x058c`, and `0x0102` bytes copied through `0x168dc`; `0x12f2e` queues selector
-`0x2003`; `0x1edc6` preserves the segment-1 object; and `0x1ef6a` reaches compact
-renderer `0x1f1f0`. The visible output is one segment-1 row from source offset `0x0100`,
-rendered at x `22` as `####........####`. Fixture `downloaded normal row-0x80 and
-segmented glyph FF publications render page records` now carries that linear segmented
-install through the parser return and publication path: after `ESC )s258W`, the return
-boundary is `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, `0x783140 = 0`, zero drained
-bytes, and next handler `0xd04a` for printable `'`; the derived published state is
-bucket word `9` with bucket entries `1` and `9`, empty rule/fixed lists, and context
-slots `(0,0,0,0)`. Fixture `host-fetched split-plane segmented downloaded character
-renders through 0x1f1f0` adds the odd-span A2/A3 sibling. Host fetch drains `ESC
-)s387W`; `0x16498` installs glyph `0x28` at table entry `0x00ea`, record delta `0x0700`,
-rows `0x0081`, width `0x0018`, bitmap offset `0x070c`, and `0x0183` bytes copied through
-`0x16942`. `0x12f2e` still queues selector `0x2003`, but `0x1f1f0` validates A2 source
-offset `0x0100` and A3 trailing offset `0x0080` for segment `1`. The visible output is
-`####........#####.#.#.#.` at x `22`. Fixture `split-plane segmented downloaded glyph FF
-publication renders page record` pins the same return/publication contract for the
-odd-span stream: `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, `0x783140 = 0`, zero-byte
-drain, and next handler `0xd04a` for printable `(` before `0xff1e` publishes bucket word
-`9`. Fixture `host-fetched even-span wide downloaded character renders through 0x1f0d2`
-covers the wide selector without payload-control normalization: `0xa904` fetches `ESC
-)s18W`, parser dispatch reaches delayed handler `0x16c14` with restored record `80 57 00
-12 00 00`, `0x16498` installs glyph `0x29` at table entry `0x00ee`, record delta
-`0x0780`, rows `1`, width `0x0090`, bitmap offset `0x078c`, and split-plane flag
-`false`, and `0x168dc` copies all 18 bytes with `control_hits = 0`. `0x12f2e` queues
-selector `0x1003` and bucket object `00 00 00 00 10 03 00 01 29 66 01` plus allocator
-padding; `0x1edc6` preserves it; and `0x1ef6a` reaches compact renderer `0x1f0d2`, where
-the linear source row uses one full 16-byte chunk plus a 2-byte remainder and renders at
-x `22`.
+renders through 0x1f1f0` connects the downloaded-character linear reader to the
+remaining segmented compact renderer shape. Host fetch drains `ESC )s258W`; parser
+dispatch walks `0x11eb6`, `0x12008`, `0x11ff6`, and `0x11f96`; `0x16498` installs glyph
+`0x27` at table entry `0x00e6` with record delta `0x0580`, rows `0x0081`, width
+`0x0010`, bitmap offset `0x058c`, and `0x0102` bytes copied through `0x168dc`; `0x12f2e`
+queues selector `0x2003`; `0x1edc6` preserves the segment-1 object; and `0x1ef6a`
+reaches compact renderer `0x1f1f0`. The visible output is one segment-1 row from source
+offset `0x0100`, rendered at x `22` as `####........####`. Fixture `downloaded normal
+row-0x80 and segmented glyph FF publications render page records` now carries that
+linear segmented install through the parser return and publication path: after `ESC
+)s258W`, the return boundary is `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328`, `0x783140 =
+0`, zero drained bytes, and next handler `0xd04a` for printable `'`; the derived
+published state is bucket word `9` with bucket entries `1` and `9`, empty rule/fixed
+lists, and context slots `(0,0,0,0)`. Fixture `host-fetched split-plane segmented
+downloaded character renders through 0x1f1f0` adds the odd-span A2/A3 sibling. Host
+fetch drains `ESC )s387W`; `0x16498` installs glyph `0x28` at table entry `0x00ea`,
+record delta `0x0700`, rows `0x0081`, width `0x0018`, bitmap offset `0x070c`, and
+`0x0183` bytes copied through `0x16942`. `0x12f2e` still queues selector `0x2003`, but
+`0x1f1f0` validates A2 source offset `0x0100` and A3 trailing offset `0x0080` for
+segment `1`. The visible output is `####........#####.#.#.#.` at x `22`. Fixture
+`split-plane segmented downloaded glyph FF publication renders page record` pins the
+same return/publication contract for the odd-span stream: `0x15dc6 -> 0x16498 -> 0x15dcc
+-> 0x12328`, `0x783140 = 0`, zero-byte drain, and next handler `0xd04a` for printable
+`(` before `0xff1e` publishes bucket word `9`. Fixture `host-fetched even-span wide
+downloaded character renders through 0x1f0d2` covers the wide selector without
+payload-control normalization: `0xa904` fetches `ESC )s18W`, parser dispatch reaches
+delayed handler `0x16c14` with restored record `80 57 00 12 00 00`, `0x16498` installs
+glyph `0x29` at table entry `0x00ee`, record delta `0x0780`, rows `1`, width `0x0090`,
+bitmap offset `0x078c`, and split-plane flag `false`, and `0x168dc` copies all 18 bytes
+with `control_hits = 0`. `0x12f2e` queues selector `0x1003` and bucket object `00 00 00
+00 10 03 00 01 29 66 01` plus allocator padding; `0x1edc6` preserves it; and `0x1ef6a`
+reaches compact renderer `0x1f0d2`, where the linear source row uses one full 16-byte
+chunk plus a 2-byte remainder and renders at x `22`.
 
 ### Downloaded Resource Validation No-Install
 
@@ -5654,6 +5670,7 @@ fields and broader selected-font state combinations have not been page-compared.
 - `0x17d7c delegates bit-30 release to offset-table helper`
 - `0x17d7c release reject exits preserve table and continuation state`
 - `0x16c14 allocation failure releases existing payload through 0x1887a`
+- `0x1887a release variant matrix covers cleanup branches`
 - `host-fetched 0x15d0a split-plane continuation resource object resumes
   fixed-record render`
 - `ESC )s80W invalid resource type fails validation before allocation`

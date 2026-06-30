@@ -618,11 +618,14 @@ fixtures `ESC )s80W additional validation predicate failures skip allocation` an
 object-level no-install/status-`2` exits are covered by fixtures `0x16498 no-install
 exits preserve following printable output` and `0x16498 status-2 partial installs remain
 printable`. Remaining work instead includes external HP/manual names for
-consumed-but-not-staged validation fields, remaining release variants, full-success
-return-boundary siblings beyond the covered normal even-span, no-install, status-`2`,
-row-count-matrix short/segmented, linear-segmented publication, split-plane segmented
-publication, and segmented-wide publication zero-drain cases plus the payload-control
-wide nonzero-drain case, broader publication combinations beyond the covered normal,
+consumed-but-not-staged validation fields, release shape/range cross-products beyond the
+fixture-backed `0x15c4c` status-`0` fixed-record release, `0x17d7c` extended-table
+rewrite, `0x17d7c -> 0x17a24` bit-30 offset-table delegate, `0x17d7c` reject exits,
+and `0x1887a` cleanup-branch matrix, full-success return-boundary siblings beyond the
+covered normal even-span, no-install, status-`2`, row-count-matrix short/segmented,
+linear-segmented publication, split-plane segmented publication, and segmented-wide
+publication zero-drain cases plus the payload-control wide nonzero-drain case, broader
+publication combinations beyond the covered normal,
 nonboundary-short rows-`0x10`, row-`0x80`, linear-segmented, rows-`0x20` short,
 rows-`0x40` short, row-count-matrix short rows `0x01..0x1f`, `0x21..0x3f`, and
 `0x41..0x7f`, row-count-matrix segmented rows `0x83..0xff`, rows-`0x82` segmented,

@@ -70,6 +70,9 @@ compatibility boundary.
   lookup tables, orientation state, page-record storage, active-render,
   bitmap object-dispatch, compact row-copy checkpoints, and raster graphics
   imaging path.
+- [page-record-storage.md](page-record-storage.md) - documented page-root,
+  stream allocator, object-list, publication, and render-record bridge
+  contracts.
 - [end-to-end-reproduction-map.md](end-to-end-reproduction-map.md) -
   top-level host-byte-to-rendered-pixel coverage map and remaining
   reproduction blockers.

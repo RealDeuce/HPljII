@@ -11002,6 +11002,10 @@ the physical retained-storage device identity behind `$a400`/`$8c01`.
 
 ## Shared Page-Record Storage And Allocator
 
+The standalone storage/publication contract is in
+[page-record-storage.md](page-record-storage.md). This section preserves the
+unified state block and detailed fixture ledger.
+
 Status: anchored as the shared storage model beneath compact text, rule,
 fixed-rule, raster, publication, and render-bridge fixtures. This section
 collapses allocator concepts that were previously repeated in text,

@@ -437,6 +437,7 @@ the board-facing boundary is tracked in
   `+4`, bucket array `+0x1c`, rule list `+0x24`, fixed-width list `+0x28`,
   context slots `+0x2c`, and stream allocator fields `0x782a70`,
   `0x782a72`, `0x782a76`. Evidence:
+  [page-record-storage.md](page-record-storage.md) and
   `Shared Page-Record Storage And Allocator`.
 - Derived/cache state: bucket/key bytes `0x782a7a..0x782a7e`, render-band
   fields `0x783a20`, `0x783a22`, `0x783a28`, pending span watermarks

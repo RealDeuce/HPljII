@@ -494,6 +494,9 @@ text, rule, fixed-rule, raster, publication, and render-entry paths. It is a
 software-visible boundary: it documents how producers build canonical page
 objects, not how the engine eventually clocks paper.
 
+See [page-record-storage.md](page-record-storage.md) for the standalone
+renderer-facing storage and publication contract.
+
 Field groups:
 
 - Canonical page root:

@@ -252,6 +252,15 @@ replay, raster payload readers, and font download streams. Higher-level
 byte-stream reproduction should model all input as one of these sources
 before parser dispatch.
 
+The routine is not allowed to be treated as a simple stream read. Its
+software-visible priority is service work, immediate no-byte gate, first
+pushback stack, active data-chain frame, second pushback stack, ring buffer,
+direct mode 1, then alternate direct mode. The consumer family then decides
+whether `D7 = -1` is a stop/error, a parser-level condition, or unreachable for
+that path. The same returned byte can also be reinterpreted by local
+`0x1a 0x58` probes before it becomes text, raster, or downloaded-font payload
+data.
+
 ### Field Groups
 
 - Canonical byte sources:
@@ -342,6 +351,10 @@ before parser dispatch.
   - none owned by `0xa904`. Parser scratch starts after a returned byte
     enters `0xda9a`/`0x11774`, or when payload readers consume byte counts
     from already-restored command records.
+  - the generated caller classification in
+    `generated/analysis/ic30_ic13_host_byte_fetch_flow.md` identifies every
+    direct `JSR 0xa904` site and is part of this checkpoint's evidence, not a
+    separate parser model.
 - Unknown:
   - physical names for the `0x8e01`/`0x8801`/`0x8c01` bank and the
     `0xfffee005`/`0xfffee001`/`0xfffee009` bank.
@@ -392,12 +405,31 @@ before parser dispatch.
 - The main parser loop `0x11774` consumes `0xa904` bytes for normal host
   streams and routes them to handlers such as `0xd04a`, `0xf02c`,
   `0xedf8`, and raster/font command finals.
+- Parser wrapper `0xda9a` fetches the first normal byte. Its siblings
+  `0xdaa6` and `0xdab2` inspect the bytes after `ESC` and `ESC ?`; `0xdab2`
+  loops over `0x11`, otherwise reports the byte through `0x9ec0` and returns
+  `ESC`. These wrappers do not locally stop on `D7 = -1`; the surrounding
+  parser state owns that decision.
+- Control probe `0xdace` fetches one byte and, only for `0x1a`, fetches a
+  second byte at `0xdada`; exact pair `0x1a 0x58` calls `0xd99a` and returns
+  normalized zero. Raster and font payload readers reuse this family behavior
+  when storing payload bytes.
 - Delayed payload readers consume bytes through `0xa904` or payload
   wrappers after `0x12218` restores the saved command record.
 - Transparent text handler `0x12452` consumes `ESC &p#X` payload bytes
   through `0xa904`, routing printable bytes back to `0xd04a` and
   default-filtered C0/high-control payload bytes through fixed-space
   helper `0xd0f0`.
+- Text repeat readers at `0x12142`, `0x124bc`, and `0x12582` stop on
+  `D7 = -1`. Their local `0x1a 0x58` probes call `0xd99a` but substitute
+  text byte `0x7f`, not stored zero.
+- Raster payload reader calls at `0x138fa` / `0x13904` copy normalized bytes
+  into encoded raster object storage for delayed transfer handler `0x105d0`;
+  negative `D7` exits through the raster reader status path.
+- Downloaded-font payload readers at `0x168dc`, `0x168fe`, `0x16960`,
+  `0x1697a`, `0x169ca`, and `0x169e0` consume `0xa904` bytes for linear and
+  split-plane glyph payloads. Negative `D7` returns failure status; exact
+  `0x1a 0x58` calls `0xd99a` and stores zero.
 - Macro execute/call replay consumes data-chain bytes through `0xa904`,
   then re-enters the same parser/page-record path as direct host bytes.
 - Frame-end helper `0xe22c` consumes the current `0x782d76` frame when
@@ -423,6 +455,15 @@ and render-entry boundaries. The bridge fixture proves `0xa6cc` can place
 byte `0x41` into the ring and the next `0xa904` fetch returns it as
 `D7 = 0x41`; low-water and full-buffer paths affect scheduler/status
 state rather than pixels directly.
+
+The direct caller classification defines the byte-level reproduction contract
+for consumers below the parser. Parser wrappers may pass `D7 = -1` upward; text
+repeat readers terminate; raster and downloaded-font payload readers treat it
+as end/error. Exact `0x1a 0x58` is not a single global transform: the control
+probe returns zero, text repeat readers substitute `0x7f`, and raster/font
+payload readers store zero. Reproducing downloaded glyphs or raster rows from
+the same byte stream therefore requires modeling the consumer-local probe, not
+pre-normalizing the host byte stream.
 
 ### Confidence
 
@@ -464,6 +505,9 @@ reset `0x3178`, clear `0x780e32`/`0x780e2e`, and mask status bits in
   ring append / sequence dispatch helpers.
 - `generated/disasm/ic30_ic13_main_parser_loop_011774.lst`:
   parser consumers of returned `D7`
+- `generated/analysis/ic30_ic13_host_byte_fetch_flow.md`:
+  source priority, direct hardware modes, all direct `0xa904` callers, and
+  consumer-specific `D7 = -1` / `0x1a 0x58` handling.
 - `generated/analysis/ic30_ic13_tokenizer_macro_callers.md` plus
   executable macro fixtures in
   [harness](/usr/home/admin/T400/ljII/tools/render_fixture_harness.py:15396)

@@ -15,6 +15,7 @@ glyph.
 - `generated/analysis/ic30_ic13_font_control_flow.md`
 - `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`
 - `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`
+- `generated/disasm/ic30_ic13_font_stream_byte_helpers_01599c.lst`
 - `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`
 - `generated/disasm/ic30_ic13_font_payload_descriptor_helpers_016a10.lst`
 - `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`
@@ -22,7 +23,9 @@ glyph.
 - `generated/disasm/ic30_ic13_font_resource_find_017026.lst`
 - `generated/disasm/ic30_ic13_font_resource_payload_initializer_01719c.lst`
 - `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`
+- `generated/disasm/ic30_ic13_font_payload_readers_016880.lst`
 - `generated/disasm/ic30_ic13_font_payload_readers_0168dc.lst`
+- `generated/disasm/ic30_ic13_font_resource_setup_type_017362.lst`
 - `generated/disasm/ic30_ic13_font_resource_payload_link_01887a.lst`
 - `generated/disasm/ic30_ic13_font_resource_release_018b92.lst`
 - `generated/disasm/ic30_ic13_font_resource_release_alt_018bf2.lst`
@@ -1010,8 +1013,10 @@ Fixture evidence:
 
 Disassembly evidence:
 
+- `generated/disasm/ic30_ic13_font_stream_byte_helpers_01599c.lst`
 - `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`
 - `generated/disasm/ic30_ic13_font_resource_validate_predicates_017358.lst`
+- `generated/disasm/ic30_ic13_font_resource_setup_type_017362.lst`
 - `generated/disasm/ic30_ic13_font_resource_find_017026.lst`
 - `generated/disasm/ic30_ic13_font_resource_object_add_016c14.lst`
 - `generated/disasm/ic30_ic13_printable_text_path_00d04a.lst`

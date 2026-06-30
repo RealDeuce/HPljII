@@ -5348,9 +5348,15 @@ Writers and readers:
 
 - `0x16fae` reads descriptor bytes/words through `0x1599c`, `0x159b6`,
   `0x159d4`, and `0x159f6`, dispatches predicates from table `0x16eae`,
-  and writes staged fields only for accepted entries.
+  and writes staged fields only for accepted entries. Disassembly
+  `generated/disasm/ic30_ic13_font_stream_byte_helpers_01599c.lst` identifies
+  the byte/word readers and their `0x783140` budget consumption.
 - `0x17362` is the entry-2 type writer/predicate. Invalid type byte `3`
-  fails after four consumed bytes before allocation size exists.
+  fails after four consumed bytes before allocation size exists. Disassembly
+  `generated/disasm/ic30_ic13_font_resource_setup_type_017362.lst` shows type
+  `0` writing staged byte `+0x0c = 0` and `0x7827ba = 0x80`, types `1`/`2`
+  writing staged byte `1`/`2` and `0x7827ba = 0x100`, and other values
+  returning failure.
 - `0x173d0` is the entry-4 first-code predicate. Word `0x1068` fails after
   eight consumed bytes before writing payload word `+0x16`.
 - `0x173fe` is the entry-5 line/count predicate. Zero and `0x1069` both
@@ -5783,6 +5789,7 @@ fields and broader selected-font state combinations have not been page-compared.
 
 - `generated/disasm/ic30_ic13_font_control_dispatch_016df6.lst`
 - `generated/disasm/ic30_ic13_font_payload_setup_015b80.lst`
+- `generated/disasm/ic30_ic13_font_stream_byte_helpers_01599c.lst`
 - `generated/disasm/ic30_ic13_font_payload_object_path_016040.lst`
 - `generated/disasm/ic30_ic13_font_payload_descriptor_helpers_016a10.lst`
 - `generated/disasm/ic30_ic13_font_fixed_record_release_017a24.lst`
@@ -5792,9 +5799,11 @@ fields and broader selected-font state combinations have not been page-compared.
 - `generated/disasm/ic30_ic13_font_resource_release_alt_018bf2.lst`
 - `generated/disasm/ic30_ic13_font_resource_validate_016fae.lst`
 - `generated/disasm/ic30_ic13_font_resource_validate_predicates_017358.lst`
+- `generated/disasm/ic30_ic13_font_resource_setup_type_017362.lst`
 - `generated/disasm/ic30_ic13_font_resource_find_017026.lst`
 - `generated/disasm/ic30_ic13_font_resource_payload_initializer_01719c.lst`
 - `generated/disasm/ic30_ic13_font_payload_readers_016874.lst`
+- `generated/disasm/ic30_ic13_font_payload_readers_016880.lst`
 
 ### Unresolved Middle Edges
 

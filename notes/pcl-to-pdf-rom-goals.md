@@ -90,6 +90,92 @@ Suggested renderer components:
   - simplest path: one compressed image per rendered page.
   - later path: emit text/vector primitives where compatible.
 
+## Current ROM-Derived Renderer Contract
+
+The implementation-facing pipeline is now documented in
+[end-to-end-reproduction-map.md](end-to-end-reproduction-map.md):
+
+```text
+host bytes
+  -> 0xa904 normalized byte fetch
+  -> 0xda9a / 0xdaf0 / 0xdb74 parser and six-byte command records
+  -> command handlers and delayed payload handlers
+  -> page-root/display-list objects
+  -> 0xff1e publication
+  -> 0x1ed84 / 0x1edc6 render-record bridge
+  -> 0x1ef6a band render dispatch
+  -> compact text, segment-list, rule, fixed-width, and raster renderers
+```
+
+Concrete software contracts already exist for these renderer components:
+
+- Byte stream reader:
+  `0xa904` byte-source priority, data-chain frame layout, pushback stacks,
+  ring buffer, direct hardware modes, and host/status output FIFO are
+  composed in [host-byte-fetch.md](host-byte-fetch.md),
+  [io-interfaces.md](io-interfaces.md), and
+  [semantic-state-model.md](semantic-state-model.md).
+- Parser:
+  six-byte parser records, dispatch tables, alternate/data mode, and
+  delayed-payload restore through `0x121cc` / `0x12218` are composed in
+  [pcl-parser-core.md](pcl-parser-core.md) and
+  [pcl-command-map.md](pcl-command-map.md).
+- Print environment:
+  cursor/HMI/VMI/margins, direct controls, line termination, cursor stack,
+  transparent data, display-functions mode, VFC, reset/default records, and
+  macro data-chain replay are composed in
+  [semantic-state-model.md](semantic-state-model.md),
+  [transparent-print-data.md](transparent-print-data.md), and
+  [vertical-forms-control.md](vertical-forms-control.md).
+- Font state:
+  built-in resource scans, candidate windows, primary/secondary selected
+  contexts, symbol fallbacks, final-`@`, final-`X`, page-root context-slot
+  installs, downloaded descriptors, downloaded glyph payloads, and span
+  metrics are composed in [resource-rom.md](resource-rom.md),
+  [font-context-metrics.md](font-context-metrics.md), and
+  [downloaded-fonts.md](downloaded-fonts.md).
+- Page model:
+  page-root allocation `0x10084`, stream allocator `0x1381c`, compact text
+  buckets `0x1387c`, rule/fixed lists `0x133aa` / `0x136d2`, publication
+  `0xff1e`, and render bridge `0x1ed84` / `0x1edc6` are composed in
+  [page-raster-imaging.md](page-raster-imaging.md) and
+  [semantic-state-model.md](semantic-state-model.md).
+- Renderers:
+  compact text, built-in and downloaded glyphs, raster modes `0..3`,
+  rectangle/rule fills, band walking, and mixed text/rule/raster page
+  streams are documented in [page-raster-imaging.md](page-raster-imaging.md),
+  [raster-graphics.md](raster-graphics.md), and
+  [rectangle-graphics.md](rectangle-graphics.md).
+
+The strongest current byte-stream fixtures include:
+
+- plain and direct-control text from `0xa904` through `0x1ed84` /
+  `0x1ef6a`: `plain printable parser trace feeds page-record queue`,
+  `host-fetched mixed control stream reaches parser and page-record render`,
+  and `host-fetched direct text/control streams feed 0x1ed84 and 0x1ef6a`;
+- reset, FF, page-size, orientation, paper-source, copies, and VFC
+  publication through `0xff1e`: `host-fetched publication streams reach parser
+  and published rows`, `published page records feed 0x1ed84 and 0x1ef6a render
+  entry`, and the VFC fixtures named in
+  [vertical-forms-control.md](vertical-forms-control.md);
+- mixed text/selector-7 rule/raster/FF publication through page-record
+  storage and final rows: `host-fetched text rectangle raster FF publishes
+  rendered page record` and
+  `host-fetched text rectangle multi-row raster FF publishes rendered page
+  record`;
+- primary and secondary built-in font-selection visible-output streams,
+  including symbol fallback, final-`@`, and final-`X` variants:
+  `inline primary font selection stream renders visible rows`,
+  `inline secondary font selection stream renders SO visible rows`,
+  `real final-@ default-table streams select visible built-ins`, and
+  `font-ID built-in selection feeds visible page-record rows`;
+- downloaded-glyph FF publication, downloaded-glyph/rule/raster composition,
+  and segmented downloaded-glyph band rendering:
+  `combined font download FF publishes installed glyph page record`,
+  `parser-driven downloaded glyph rule raster stream composes through
+  0x1ef6a`, and
+  `0x1eba4 scheduler band words render published downloaded glyph`.
+
 ## ROM Analysis Milestones
 
 1. Photograph/record formatter board markings.
@@ -111,6 +197,21 @@ Suggested renderer components:
 11. Write extraction scripts for built-in fonts and tables.
 12. Build behavioral tests from ROM-derived edge cases.
 
+Current milestone status:
+
+- ROM dumping and interleave are settled in
+  [rom-dump-manifest.md](rom-dump-manifest.md) and
+  `data/rom_manifest.json`: `IC30,IC13` is the executable 68000 firmware
+  pair, and `IC32,IC15` is the resource/font pair. Raw images remain
+  local-only.
+- Reset/startup, scheduler bootstrap, host byte fetch, parser dispatch,
+  page geometry, font/resource records, downloaded fonts, page records,
+  publication, render bridge, and render dispatch all have tracked notes.
+- Behavioral fixtures now cover the major parser-to-render command families
+  named above. Remaining fixture work is targeted at live CPU/register
+  continuity or broader cross-product validation, not first discovery of the
+  main byte-to-pixel path.
+
 ## Documentation Status
 
 The current notes should be enough to avoid routine PDF lookup for:
@@ -122,6 +223,10 @@ The current notes should be enough to avoid routine PDF lookup for:
 - host I/O protocol facts.
 - formatter versus DC-controller responsibility split.
 - major status/error codes.
+- ROM-backed byte-source/parser/page-record/render state needed for the
+  covered byte-stream families.
+- Built-in and downloaded-font candidate/context/glyph payload semantics for
+  the documented visible-output fixtures.
 
 Expected remaining PDF lookups:
 
@@ -134,8 +239,19 @@ Expected remaining PDF lookups:
 
 Expected ROM-only unknowns:
 
-- HP 33440 CPU identity and exact address map.
-- ROM package order/interleave.
-- Remaining built-in font baseline/placement semantics beyond the
-  extracted glyph payloads and known metrics.
-- Firmware edge cases and mode interactions not specified by manuals.
+- Exact board address decode after the verified resource pair at
+  firmware `0x0c0000..0x0c0321`, which affects the secondary transparent
+  segment-57 fallback rows documented in
+  [transparent-print-data.md](transparent-print-data.md) and
+  [resource-rom.md](resource-rom.md).
+- Manual-facing baseline/cell terminology and physical paper comparison for
+  the full internal-font printout, after the ROM-side sample page and
+  rendered-surface digest already documented in
+  [resource-rom.md](resource-rom.md).
+- Physical identity and pin mapping for retained-storage, panel/service,
+  host-interface, optional-resource, and formatter/DC MMIO registers.
+- Live CPU/register continuity for a few already-modeled handoffs, especially
+  dense raster producer state `0x105d0 -> 0x10084 -> 0x13070` and the
+  downloaded-font install-to-page boundary after `ESC )s18W`.
+- Broader command cross-products only where they expose a new state boundary;
+  already-covered command families should be treated as regression expansion.

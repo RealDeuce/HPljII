@@ -10263,7 +10263,11 @@ consume those root fields without changing their producer semantics.
     `0x1387c` callers.
   Evidence: rule key writers `0x134d6`, fixed-rule key writer `0x137a2`,
   text bucket fixture `0x1387c address-aware bucket allocation uses
-  0x1381c storage`, and rule-list fixtures for `0x133aa`/`0x136d2`.
+  0x1381c storage`, compact bucket fixtures
+  `0x1387c page-record bucket allocator links new head when full`,
+  `0x1387c page-record segmented allocator places tall glyph buckets`, and
+  `0x1387c page-record segmented allocator reuses tall glyph buckets`,
+  plus rule-list fixtures for `0x133aa`/`0x136d2`.
 - Canonical object fields:
   - compact/raster bucket objects: `+0` next pointer, `+4` selector or
     class byte, `+6` count/capacity, payload from `+8` or `+0a`.
@@ -10271,6 +10275,8 @@ consume those root fields without changing their producer semantics.
     `+5` selector/mode, `+6` key, dimensions or extent from `+8`.
   Evidence: fixtures
   `0x1387c address-aware bucket allocation uses 0x1381c storage`,
+  `0x1387c page-record unflagged short bucket object`,
+  `0x1387c page-record queued short object renders reused entries`,
   `0x133aa address-aware rule-list insertion uses 0x1381c storage`,
   `0x133aa no-room return preserves rule-list head`,
   `0x136d2 address-aware fixed-list insertion uses 0x1381c storage`,
@@ -10366,6 +10372,14 @@ through `0xff1e` preserves bucket index `0`; render entry
 `0x1ef6a` dispatches all seven compact objects to `0x1effe` and produces
 the `LINE_PRINTER` glyph-32 rows.
 
+The bridge fixtures split publication from rendering:
+`0x1edc6 page-record bridge copies compact bucket and context slots`
+proves the compact bucket root and selected-font context slots survive
+into render-record fields, `0x1edc6 bridge records render-record
+destination offsets` pins the derived destination offset fields, and
+`0x1ed84 active page-record copy seeds render-record header words` pins
+the active-copy header words consumed before `0x1ef6a`.
+
 ### Confidence
 
 High for page-root creation side effects, stream allocator accounting,
@@ -10381,6 +10395,11 @@ results rather than executing the full heap and page scheduler.
 - `0x10110 page-root initializer copies geometry fields`
 - `0x1381c stream allocator chunks display-list storage`
 - `0x1387c address-aware bucket allocation uses 0x1381c storage`
+- `0x1387c page-record bucket allocator links new head when full`
+- `0x1387c page-record unflagged short bucket object`
+- `0x1387c page-record segmented allocator places tall glyph buckets`
+- `0x1387c page-record segmented allocator reuses tall glyph buckets`
+- `0x1387c page-record queued short object renders reused entries`
 - `0x133aa address-aware rule-list insertion uses 0x1381c storage`
 - `0x133aa no-room return preserves rule-list head`
 - `0x136d2 address-aware fixed-list insertion uses 0x1381c storage`
@@ -10389,6 +10408,9 @@ results rather than executing the full heap and page scheduler.
 - `addressed page-record writers share 0x1381c across chunk rollover`
 - `addressed text/rule/raster field groups reach publication and render
   entry`
+- `0x1edc6 page-record bridge copies compact bucket and context slots`
+- `0x1edc6 bridge records render-record destination offsets`
+- `0x1ed84 active page-record copy seeds render-record header words`
 
 ### Disassembly Evidence
 

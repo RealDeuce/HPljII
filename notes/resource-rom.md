@@ -1094,3 +1094,163 @@ style, `0x14758` filters stroke with exact matching pinned so far, and
 `0x147f4` filters typeface. This directly affects text rendering because
 it determines the built-in font record used for glyph metrics and
 bitmaps.
+
+### Candidate-Window Composition Checkpoint
+
+Semantic role: `0x1a2e4 -> 0x1a616 -> 0x1a9be` turns the scanned built-in
+resource records into RAM candidate windows. `0x1569c`, `0x156de`,
+`0x14398`, and `0x13eb8` then reduce one of those windows to the selected
+primary or secondary context consumed by text imaging. This is a resource
+selection checkpoint, not a page-object writer by itself.
+
+Canonical fields:
+
+- candidate pointer-list base `0x782324`;
+- total candidate count `0x78278e`;
+- class/range counts `0x782790`, `0x782792`, `0x782794`, `0x782798`,
+  `0x78279a`, and `0x78279c`;
+- cursor/window starts `0x7827a0`, `0x7827a4`, `0x7827a8`,
+  `0x7827ac`, `0x7827b0`, and `0x7827b4`;
+- active candidate window pointer/count `0x78287c` / `0x7827b8`;
+- selected candidate slot pointer `0x7828a8`;
+- primary and secondary selected context records `0x782ee6` and
+  `0x782ef6`.
+
+Derived/cache state:
+
+- scan cursor `0x782884` and scan bounds `0x78288c` / `0x782890`;
+- active symbol words `0x783144` and `0x783146`;
+- candidate fallback table `0x782f0c`, `0x782f10`, `0x782f14`,
+  and `0x782f18`, built by `0x1af36` and consumed by `0x156de`;
+- parser default-symbol table `0x782f1c`, `0x782f20`, `0x782f24`,
+  and `0x782f28`, built by `0x1ac0a` and consumed by final-`@`
+  subdispatches;
+- rebuilt maps `0x782f32` and `0x783032`;
+- HMI/cache values derived from selected records, including built-in
+  longword `+0x24` through `0x10550` and height words `+0x28/+0x2a`
+  through `0x13bca`.
+
+Parser scratch:
+
+- requested primary/secondary symbol words in `0x782ef4` / `0x782f04`;
+- font-selection request fields under `0x782eec..0x782f06`;
+- final-`X` transient font ID saved around `0x17708`;
+- final-`@` records routed through `0x120be` before they read table words
+  or copy requested words.
+
+Firmware bookkeeping:
+
+- candidate high active bit `0x80000000`, set by `0x1569c` and cleared on
+  rejected candidates by later filters;
+- bit-30 built-in context flag from `HEAD`/typed records;
+- bit-26 flag mirroring record byte `+0x0c == 2` for `HEAD`/typed records;
+- dirty/refresh bytes `0x782f2c` and `0x782f2d`, consumed by `0xc580`;
+- page-root context install state written by `0xc428` / `0xc4fc` after a
+  selected context exists.
+
+Unknown:
+
+- manual-facing names for several record metadata fields remain open,
+  especially the exact baseline/cell terminology behind `+0x28/+0x2a`
+  and tie-breaker bytes `+0x2f..+0x31`;
+- physical output comparison for the full internal-font sample page remains
+  open even though the ROM-side candidate order and rendered-surface digest
+  are fixture-backed;
+- optional cartridge/resource candidate windows are bounded by ROM addresses,
+  but no physical cartridge image is present in this repo.
+
+Writers:
+
+- `0x1a2e4` clears candidate counters, seeds all cursor windows to
+  `0x782324`, and sets built-in scan bounds `0x080000..0x0ffffe`.
+- `0x1a616` scans records and calls `0x1a9be` for accepted font records.
+- `0x1a9be` creates candidate entries, sets bit flags from the resource
+  record shape, increments total count `0x78278e`, and advances the
+  class/range cursor windows.
+- `0x1569c` activates the selected class window, writes `0x78287c` /
+  `0x7827b8`, and sets the active bit in each selected entry.
+- `0x156de` filters symbol candidates, writes active symbol words, shrinks
+  the active window, and uses `0x782f0c..0x782f18` only after requested
+  candidates miss.
+- `0x14398` writes the selected slot pointer after comparator `0x13c06`.
+- `0x144d2` writes selected context records at `0x782ee6` and `0x782ef6`.
+- `0x14c64` rebuilds the active glyph maps consumed by printable text.
+
+Readers and consumers:
+
+- `0x1b50e` consumes the candidate windows for default-font lookup and the
+  font sample page, including the Roman-8 duplicate/substitution state
+  through `0x7828ac`, `0x7821a0`, and `0x1b8b6`.
+- `0x13eb8` consumes request fields, candidate windows, filters, chooser
+  output, and selected context writers for normal primary/secondary font
+  selection.
+- `0x17708` consumes scanned record ids and candidate slots for final-`X`
+  font-ID selection.
+- `0xc580`, `0xc428`, and `0xc4fc` consume selected context records and
+  decide whether they become page-root context slots for later printable
+  bytes.
+- `0x1393a`, `0xd824`, `0x12f2e`, `0x1ed84`, and `0x1ef6a` consume the
+  selected context indirectly when printable bytes become compact objects
+  and rendered rows.
+
+Output effect:
+
+This checkpoint changes pixels only by choosing which context longword and
+glyph map later text uses. For the verified resource pair, the primary
+Roman-8 selection for `ESC (s0p10h12v0s0b3T!!` resolves to slot `0x782354`
+and context `0xc008004c`; secondary Line Printer selection for
+`ESC )s0p16h8v0s0b0T SO !!` resolves to slot `0x782350` and context
+`0xc00ae122`. Final-`@`, final-`X`, symbol fallback, and non-Roman symbol
+streams are covered as separate visible-output fixtures in the semantic
+model, but they all consume the same candidate-window state summarized here.
+
+Confidence:
+
+High for built-in scan bounds, candidate count/window partitioning,
+verified `IC32,IC15` candidate order, active-window selection, symbol
+fallback, final-`@` table consumption, final-`X` success/non-selected exits,
+selected context writes, map rebuilds, and visible primary/secondary text
+output because those are fixture-backed and cited in
+[semantic-state-model.md](semantic-state-model.md). Medium for manual
+metadata names and physical sample-page comparison.
+
+Fixtures:
+
+- `live parser symbol-set streams select non-Roman built-ins`
+- `non-Roman symbol streams select visible built-ins`
+- `real default-table caller stream uses ROM-backed words`
+- `real final-@ default-table streams select visible built-ins`
+- `font-ID built-in selection feeds visible page-record rows`
+- `font-ID inline/downloaded selection feeds visible page-record rows`
+- `0x17708 font-ID non-selected exits preserve prior selection`
+- `font-ID non-selected exits keep prior visible rows`
+- `0x13eb8 refresh carries parsed primary font selection to dispatch`
+- `0x13eb8 refresh carries parsed secondary font selection to dispatch`
+- `inline primary font selection stream renders visible rows`
+- `inline secondary font selection stream renders SO visible rows`
+- `font sample full printout source placement follows firmware order`
+- `font sample full printout rows reuse ROM sample byte runs`
+- `font sample full printout segments render through 0x1ed84 and 0x1ef6a`
+
+Disassembly evidence:
+
+- `generated/disasm/ic30_ic13_font_resource_scan_01a2e4.lst`
+- `generated/disasm/ic30_ic13_font_candidate_classify_01a9be.lst`
+- `generated/disasm/ic30_ic13_font_candidate_activate_01569c.lst`
+- `generated/disasm/ic30_ic13_font_candidate_filters_01519a.lst`
+- `generated/disasm/ic30_ic13_font_id_select_017708.lst`
+- `generated/disasm/ic30_ic13_default_font_tables_01ab84.lst`
+- `generated/disasm/ic30_ic13_symbol_set_handler_01be22.lst`
+- `generated/disasm/ic30_ic13_font_update_common_00c580.lst`
+
+Unresolved middle edges:
+
+- `0x1a616` optional cartridge windows `0x200000..0x5ffffe` remain
+  software-bounded but physically unverified because no cartridge/resource
+  image is present.
+- `0x13eb8` lower-level CPU-register flow is still modeled at fixture
+  boundaries; parser-to-visible primary and secondary output is covered, but
+  a single live CPU capture across all filter calls remains useful.
+- physical sample-page comparison is still needed to assign manual-facing
+  baseline/cell names and validate paper placement outside the ROM-internal
+  rendered-surface digest.

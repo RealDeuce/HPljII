@@ -1776,15 +1776,15 @@ Output effect:
   span `32`.
 - Fixture `downloaded segmented-wide row-byte boundary truncates page-record
   segments` proves span-`0x11` downloaded glyphs keep canonical installed row
-  words `0x0081`, `0x00ff`, `0x0100`, `0x0101`, and `0x0181`, but the current
-  unflagged printable source record supplies only byte `+1` to `0x12f2e`.
-  Rows `0x0081` and `0x00ff` queue selector `0x3003` for segments `1` and
-  `0`; rows `0x0100` and `0x0101` wrap to selector `0x1003`; row `0x0181`
-  wraps to source row byte `0x81` and queues only segments `1` and `0`. The
-  same fixture now pins the first render split: `0x0100` and `0x0101` dispatch
-  through `0x1f0d2` with canonical row words, splitting `80/176` and
-  `80/177`; `0x0181` reaches `0x1f264` only for produced segment `1`
-  (`32/96`) and segment `0` (`80/48`).
+  words `0x0002`, `0x007f`, `0x0080`, `0x0081`, `0x0083`, `0x00fe`,
+  `0x00ff`, `0x0100`, `0x0101`, `0x0181`, `0x0182`, `0x01ff`, `0x0200`,
+  and `0x0201`, but the current unflagged printable source record supplies
+  only byte `+1` to `0x12f2e`. Low row bytes above `0x80` queue selector
+  `0x3003` for segments `1` and `0`; low row bytes `0x00..0x80` queue
+  selector `0x1003`. The same fixture now pins the first render split:
+  `0x0100` and `0x0101` dispatch through `0x1f0d2` with canonical row words,
+  splitting `80/176` and `80/177`; `0x0181` reaches `0x1f264` only for
+  produced segment `1` (`32/96`) and segment `0` (`80/48`).
 - Fixture `host-fetched rows-0x102 downloaded glyph FF publication truncates
   page-record rows` proves the failure boundary: installed row count `0x0102`
   reaches `0x1f414`, but fallback row count `200` indexes past the valid

@@ -968,12 +968,11 @@ The next work should follow dataflow, not isolated handlers:
    `0x00`, `0x01`, and `0x0d`; only `0x00ff` remains selector `0x1003`, while wrapped
    spans publish bucket `0` and dispatch through helper-table entries that resolve to
    non-helper longwords. Fixture `downloaded segmented-wide row-byte boundary truncates
-   page-record segments` pins the row-byte sibling for installed row words `0x0081`,
-   `0x00ff`, `0x0100`, `0x0101`, `0x0181`, `0x0182`, `0x01ff`, `0x0200`, and
-   `0x0201`: `0x12f2e` sees only source row bytes `0x81`, `0xff`, `0x00`, `0x01`,
-   `0x81`, `0x82`, `0xff`, `0x00`, and `0x01`. Low row bytes above `0x80` produce
-   segment `1` in bucket `8` and segment `0` in bucket `0`; low row bytes `0x00` and
-   `0x01` select wide bucket `0`.
+   page-record segments` pins the row-byte sibling for installed row words `0x0002`,
+   `0x007f`, `0x0080`, `0x0081`, `0x0083`, `0x00fe`, `0x00ff`, `0x0100`, `0x0101`,
+   `0x0181`, `0x0182`, `0x01ff`, `0x0200`, and `0x0201`: `0x12f2e` sees only the low
+   source row byte. Low row bytes above `0x80` produce segment `1` in bucket `8` and
+   segment `0` in bucket `0`; low row bytes `0x00..0x80` select wide bucket `0`.
    The short/segmented row-count matrix now covers short rows `0x01..0x1f`,
    `0x21..0x3f`, and `0x41..0x7f`, plus segmented rows `0x83..0xff`; the named
    rows-`0x20`, rows-`0x40`, row-`0x80`, linear-segmented row-`0x81`, and

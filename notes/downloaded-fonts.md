@@ -1401,23 +1401,21 @@ the sampled high-span source walk.
 
 Fixture `downloaded segmented-wide row-byte boundary truncates page-record
 segments` classifies the row-count side of that cross-product for span `0x11`.
-It installs canonical row words `0x0081`, `0x00ff`, `0x0100`, `0x0101`, and
-`0x0181` through `0x16498`, preserving those words in the object record at
-`+6`. The current unflagged printable source record presented to `0x12f2e`
-exposes only byte `+1`: rows `0x0081` and `0x00ff` supply row bytes `0x81`
-and `0xff` and queue selector `0x3003` for segments `1` and `0`; rows
-`0x0100` and `0x0101` supply row bytes `0x00` and `0x01` and queue selector
-`0x1003`; row `0x0181` supplies row byte `0x81` and again queues only
-segments `1` and `0`, not the higher canonical segments. The same cases now
-publish through `0xff1e`: segmented cases publish buckets `0` and `8` with
-selected bucket `8`, while the `0x0100` and `0x0101` compact-wide cases publish
-only bucket `0`; all preserve empty rule/fixed lists and context prefix
-`(0, 0, 0, 0)`. The render edge keeps the canonical installed row word after
-selector choice: rows `0x0100` and `0x0101` dispatch to `0x1f0d2` and split as
-`80/176` and `80/177` current/fallback rows. Row `0x0181` dispatches only the
-produced `0x1f264` segment objects: segment `1` in bucket `8` splits `32/96`,
-segment `0` in bucket `0` splits `80/48`, and no segment above `1` is present
-for rendering.
+It installs canonical row words `0x0002`, `0x007f`, `0x0080`, `0x0081`,
+`0x0083`, `0x00fe`, `0x00ff`, `0x0100`, `0x0101`, `0x0181`, `0x0182`,
+`0x01ff`, `0x0200`, and `0x0201` through `0x16498`, preserving those words in
+the object record at `+6`. The current unflagged printable source record
+presented to `0x12f2e` exposes only byte `+1`: low row bytes above `0x80`
+queue selector `0x3003` for segments `1` and `0`, while low row bytes
+`0x00..0x80` queue selector `0x1003`. The same cases publish through
+`0xff1e`: segmented cases publish buckets `0` and `8` with selected bucket
+`8`, while compact-wide cases publish only bucket `0`; all preserve empty
+rule/fixed lists and context prefix `(0, 0, 0, 0)`. The render edge keeps the
+canonical installed row word after selector choice: rows `0x0100` and
+`0x0101` dispatch to `0x1f0d2` and split as `80/176` and `80/177`
+current/fallback rows. Row `0x0181` dispatches only the produced `0x1f264`
+segment objects: segment `1` in bucket `8` splits `32/96`, segment `0` in
+bucket `0` splits `80/48`, and no segment above `1` is present for rendering.
 
 Fixture `downloaded glyph row-count matrix publishes and renders additional
 short/segmented counts` broadens the same command family. Short rows `0x0001`,

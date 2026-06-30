@@ -2489,6 +2489,7 @@ resources because no image is available in this repo.
 - `0x153c6 filters concrete active candidates by spacing and pitch`
 - `parsed primary built-in font selection feeds visible page-record rows`
 - `parsed secondary built-in font selection feeds visible SO page-record rows`
+- `remembered primary symbol feeds visible page-record rows`
 - `primary symbol miss falls back before visible page-record rows`
 - `secondary symbol miss falls back before visible SO page-record rows`
 
@@ -2508,12 +2509,13 @@ resources because no image is available in this repo.
   resource window; cartridge/external windows remain unverified until
   images are available.
 - `0x14398..0x156de`: visible-output coverage exists for primary,
-  secondary, two symbol-miss fallback streams, non-Roman symbol selections,
-  the real final-`@` default-table/copy/default-font streams, and the
-  final-`X` built-in and inline/downloaded font-ID streams. The `0x13eb8`
-  transient/cache-hit exits are state-covered as preserved-output paths, while
-  broader font-selection fallback/error combinations still need the same
-  page-visible treatment when they change output.
+  secondary, remembered-primary symbol recovery, two symbol-miss fallback
+  streams, non-Roman symbol selections, the real final-`@`
+  default-table/copy/default-font streams, and the final-`X` built-in and
+  inline/downloaded font-ID streams. The `0x13eb8` transient/cache-hit exits
+  are state-covered as preserved-output paths, while broader font-selection
+  fallback/error combinations still need the same page-visible treatment when
+  they change output.
 - Record `+0x28/+0x2a` is pinned as the decoded-height input consumed by
   `0x1519a` through `0x13bca`; record `+0x2f..+0x31` is pinned as the
   same-class `0x1428c` chooser tie-breaker tuple. Final
@@ -3417,6 +3419,12 @@ selector mismatch only copies the remembered word and installs no context.
     selector-mismatch records no refresh or install event.
   - primary fallback active-word source: fallback table word `0x0115` after
     the requested pass misses word `0x9a55`.
+  - primary remembered active-word source: remembered word `0x0115` after the
+    requested pass misses word `0x9a55`; fixture
+    `remembered primary symbol feeds visible page-record rows` carries that
+    `0x156de` branch through `0x13eb8`, `0x144d2`, `0x14c64`, compact object
+    prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and rendered row
+    digest `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
   - parser default-symbol table `0x782f1c/20/24/28`: built by `0x1ac0a` and
     consumed by final-`@` subdispatches `@0` and `@1`. In the real-backed
     caller fixture, the table words are `0x0005`, `0x000e`, `0x0155`, and
@@ -3498,6 +3506,8 @@ selector mismatch only copies the remembered word and installs no context.
 - Firmware bookkeeping:
   - `0x144d2` writes current-font context record `0x782ee6`.
   - `0x14c64` rebuilds map `0x782f32` and snapshots selected font state.
+  - `0x156de` uses remembered primary word `0x0115` before `0x14c64`
+    rebuilds map `0x782f32` in the remembered-primary stream.
   - `0x156de` uses fallback table word `0x0115` before `0x14c64` rebuilds
     primary map `0x782f32` in the primary fallback stream.
   - `0x156de` uses fallback table word `0x000e` before `0x14c64` rebuilds
@@ -3841,6 +3851,7 @@ install events.
 - `inline primary font selection stream renders visible rows`
 - `parsed secondary built-in font selection feeds visible SO page-record rows`
 - `inline secondary font selection stream renders SO visible rows`
+- `remembered primary symbol feeds visible page-record rows`
 - `primary symbol miss falls back before visible page-record rows`
 - `parsed primary selection current-font RAM feeds SI visible rows`
 - `parsed secondary selection current-font RAM feeds SO visible rows`

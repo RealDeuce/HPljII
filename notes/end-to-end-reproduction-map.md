@@ -822,10 +822,16 @@ The next work should follow dataflow, not isolated handlers:
    primary fallback case proves `ESC (1234U ESC (s0p10h12v0s0b3T!!`: requested word
    `0x9a55` misses in `0x156de`, fallback word `0x0115` survives, and the final selected
    context, map, object prefix, context slot, and rows match the primary case. The
-   secondary fallback case proves `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`: requested word
-   `0x9a55` misses in `0x156de`, fallback word `0x000e` survives, and the final selected
-   context, map, object prefix, context slots, and rows match the secondary SO case. The
-   primary RAM handoff case proves seeded `0x782ee6 = 0xc008004c` through SI `0xc68a`,
+   remembered-primary case proves the middle source between requested and fallback: with
+   requested word `0x9a55` and remembered word `0x0115`, fixture `remembered primary
+   symbol feeds visible page-record rows` takes the `0x156de` remembered branch, selects
+   context `0xc008004c`, rebuilds map `0x782f32`, queues object prefix `00 00 00 00 00
+   00 00 02 00 6a 00 00 68 02`, and renders digest
+   `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`. The secondary
+   fallback case proves `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`: requested word `0x9a55`
+   misses in `0x156de`, fallback word `0x000e` survives, and the final selected context,
+   map, object prefix, context slots, and rows match the secondary SO case. The primary
+   RAM handoff case proves seeded `0x782ee6 = 0xc008004c` through SI `0xc68a`,
    `0xc428(0)`, `0xc4fc`, page-root slot `0`, and following `!!` visible rows on an
    existing root. The secondary RAM handoff case proves seeded `0x782ef6 = 0xc00ae122`
    through SO `0xc6b8`, `0xc428(1)`, `0xc4fc`, page-root slot `1`, and following `!!`
@@ -850,11 +856,11 @@ The next work should follow dataflow, not isolated handlers:
    context `0xc0080cb8` with the primary non-Roman row digest, while the secondary tail
    renders from context `0xc00ad4aa` after SO with the secondary row digest. Remaining
    suite cases should add other fallback/error font-selection visible-output variants
-   beyond the two symbol misses, the `0N`/`10U`/`11U` primary/secondary streams, the
-   real final-`@` primary/secondary streams, and the covered final-`X` streams. Fixture
-   `font-ID built-in selection feeds visible page-record rows` covers that final-`X`
-   stream: host-fetched `ESC (7X!!` reaches `0x120be`, selects context `0xc0089fb0`
-   through `0x17708`, and renders row digest
+   beyond the remembered-primary path, the two symbol misses, the `0N`/`10U`/`11U`
+   primary/secondary streams, the real final-`@` primary/secondary streams, and the
+   covered final-`X` streams. Fixture `font-ID built-in selection feeds visible
+   page-record rows` covers that final-`X` stream: host-fetched `ESC (7X!!` reaches
+   `0x120be`, selects context `0xc0089fb0` through `0x17708`, and renders row digest
    `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`. Fixture `font-ID
    inline/downloaded selection feeds visible page-record rows` covers the parallel
    bit-30-clear final-`X` stream: host-fetched `ESC )4660X SO !` reaches `0x120be`,
@@ -879,13 +885,12 @@ The next work should follow dataflow, not isolated handlers:
    object `00 00 00 00 00 01 00 02 20 c9 00 20 cb 01`, and digest
    `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`. The common
    refresh gate `0xc580` is now a composed branch cluster rather than a hidden
-   font-selection middle edge: dirty-1 primary/secondary first-clear installs,
-   full-live matching-context reuse, full-live/no-match `0xc4fc = 0x11` skip,
-   dirty-1 selector-mismatch refresh-only, dirty-2 primary/secondary
-   selector-match installs, and dirty-2 selector-mismatch remembered-word-only
-   paths are documented in `notes/semantic-state-model.md` with fixture names
-   and field groups. Remaining font-selection work is broader variants that expose new
-   state boundaries; the named
+   font-selection middle edge: dirty-1 primary/secondary first-clear installs, full-live
+   matching-context reuse, full-live/no-match `0xc4fc = 0x11` skip, dirty-1
+   selector-mismatch refresh-only, dirty-2 primary/secondary selector-match installs,
+   and dirty-2 selector-mismatch remembered-word-only paths are documented in
+   `notes/semantic-state-model.md` with fixture names and field groups. Remaining
+   font-selection work is broader variants that expose new state boundaries; the named
    high-value unresolved edge is now the transparent secondary segment-57 bitmap source
    interpretation beyond the covered transparent data paths. Current transparent
    coverage includes the default-filtered C0/high-control fixed-space path, nonzero C0
@@ -932,64 +937,54 @@ The next work should follow dataflow, not isolated handlers:
    append stores normalized display bytes` covers the alternate/data append-only
    `0x12120..0x1219c` path around `0xe002`. Remaining display-functions risk is broader
    physical/page comparison, not the command-family loop boundary or the documented
-   filter predicates. Downloaded-glyph publication is now composed as a bounded
-   matrix rather than a generic open edge. Fixture `0x16b1a descriptor width
-   helper emits only mode 1/2` pins the accepted mode-byte writer at
-   `0x16b36..0x16b6a` and the invalid no-write branch at `0x16b26..0x16b34`.
-   Fixture `downloaded glyph width-span matrix publishes and renders all main
-   helpers` covers parser-produced spans `1..16`, odd-span split-plane copies,
-   bucket-0 FF publication, and all main `0x1f08e` helpers
-   `0x1fa5c..0x26910`. Fixture `downloaded glyph wide-remainder matrix
-   publishes and renders compact chunks` covers matched spans `17..32`,
-   `0x2f27c` full chunks, `0x1f1ac` remainders `1..15`, the span-`32`
-   no-remainder sibling, zero-drain returns, and probes spans `33`, `48`,
-   `49`, `64`, and `255` with matched rows. Fixture `downloaded glyph
-   segmented-wide matrix publishes and renders compact chunks` covers matched
-   spans `17..32` at rows `0x81`, buckets `0` and `8`, segment-1 object byte
-   `0x30`, `0x2f27c` full chunks, `0x1f1ac` remainders `1..15`, the
-   span-`32` no-remainder sibling, zero-drain returns, and probes
-   segmented-wide spans `33`, `48`, `49`, and `64`.
-   Fixture `downloaded glyph width-byte boundary truncates page-record span`
-   pins source-width wrapping for spans `0x00ff`, `0x0100`, `0x0101`, and
-   `0x020d`: installed width words survive, but `0x12f2e` sees width bytes
-   `0xff`, `0x00`, `0x01`, and `0x0d`; only `0x00ff` remains selector
-   `0x1003`, while wrapped spans publish bucket `0` and dispatch through
-   helper-table entries that resolve to non-helper longwords. Fixture
-   `downloaded segmented-wide row-byte boundary truncates page-record
-   segments` pins the row-byte sibling for installed row words `0x0081`,
-   `0x00ff`, `0x0100`, `0x0101`, and `0x0181`: `0x12f2e` sees row bytes
-   `0x81`, `0xff`, `0x00`, `0x01`, and `0x81`; rows `0x0100` and `0x0101`
-   select wide bucket `0`, while row `0x0181` produces only segment buckets
-   `1` and `0`.
-   The short/segmented row-count matrix now covers short rows `0x01..0x1f`,
-   `0x3e`, `0x3f`, `0x41`, `0x42`, and `0x7f`, plus segmented rows `0x83`,
-   `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`, `0xfd`, `0xfe`, and
-   `0xff`; the named row-`0x80`, rows-`0x20`, rows-`0x40`, and rows-`0x82`
-   publication fixtures cover their boundary siblings through FF, `0xff1e`,
-   `0x1ed84`, and `0x1ef6a`. The same row-count matrix pins
-   `0x15dc6 -> 0x16498 -> 0x15dcc -> 0x12328` with copy status `1`,
-   `0x783140 = 0`, zero drained bytes, and next handler `0xd04a`.
-   The high-row truncation matrix covers rows `0x0101`, `0x0102`, and
-   `0x0103`: installed row words remain canonical, but the printable source
-   exposes low row bytes `0x01`, `0x02`, and `0x03`, queues selector
-   `0x0003`, and exceeds the `0x1fe76` table's valid maximum index `128`
-   after `0x1f414` splits fallback rows `199`, `200`, and `201`.
-   No-install and partial-install recovery are page-visible: fixture
-   `0x16498 no-install exits preserve following printable output` proves
+   filter predicates. Downloaded-glyph publication is now composed as a bounded matrix
+   rather than a generic open edge. Fixture `0x16b1a descriptor width helper emits only
+   mode 1/2` pins the accepted mode-byte writer at `0x16b36..0x16b6a` and the invalid
+   no-write branch at `0x16b26..0x16b34`. Fixture `downloaded glyph width-span matrix
+   publishes and renders all main helpers` covers parser-produced spans `1..16`,
+   odd-span split-plane copies, bucket-0 FF publication, and all main `0x1f08e` helpers
+   `0x1fa5c..0x26910`. Fixture `downloaded glyph wide-remainder matrix publishes and
+   renders compact chunks` covers matched spans `17..32`, `0x2f27c` full chunks,
+   `0x1f1ac` remainders `1..15`, the span-`32` no-remainder sibling, zero-drain returns,
+   and probes spans `33`, `48`, `49`, `64`, and `255` with matched rows. Fixture
+   `downloaded glyph segmented-wide matrix publishes and renders compact chunks` covers
+   matched spans `17..32` at rows `0x81`, buckets `0` and `8`, segment-1 object byte
+   `0x30`, `0x2f27c` full chunks, `0x1f1ac` remainders `1..15`, the span-`32`
+   no-remainder sibling, zero-drain returns, and probes segmented-wide spans `33`, `48`,
+   `49`, and `64`. Fixture `downloaded glyph width-byte boundary truncates page-record
+   span` pins source-width wrapping for spans `0x00ff`, `0x0100`, `0x0101`, and
+   `0x020d`: installed width words survive, but `0x12f2e` sees width bytes `0xff`,
+   `0x00`, `0x01`, and `0x0d`; only `0x00ff` remains selector `0x1003`, while wrapped
+   spans publish bucket `0` and dispatch through helper-table entries that resolve to
+   non-helper longwords. Fixture `downloaded segmented-wide row-byte boundary truncates
+   page-record segments` pins the row-byte sibling for installed row words `0x0081`,
+   `0x00ff`, `0x0100`, `0x0101`, and `0x0181`: `0x12f2e` sees row bytes `0x81`, `0xff`,
+   `0x00`, `0x01`, and `0x81`; rows `0x0100` and `0x0101` select wide bucket `0`, while
+   row `0x0181` produces only segment buckets `1` and `0`. The short/segmented row-count
+   matrix now covers short rows `0x01..0x1f`, `0x3e`, `0x3f`, `0x41`, `0x42`, and
+   `0x7f`, plus segmented rows `0x83`, `0x84`, `0x85`, `0x86`, `0xbf`, `0xc0`, `0xc1`,
+   `0xfd`, `0xfe`, and `0xff`; the named row-`0x80`, rows-`0x20`, rows-`0x40`, and
+   rows-`0x82` publication fixtures cover their boundary siblings through FF, `0xff1e`,
+   `0x1ed84`, and `0x1ef6a`. The same row-count matrix pins `0x15dc6 -> 0x16498 ->
+   0x15dcc -> 0x12328` with copy status `1`, `0x783140 = 0`, zero drained bytes, and
+   next handler `0xd04a`. The high-row truncation matrix covers rows `0x0101`, `0x0102`,
+   and `0x0103`: installed row words remain canonical, but the printable source exposes
+   low row bytes `0x01`, `0x02`, and `0x03`, queues selector `0x0003`, and exceeds the
+   `0x1fe76` table's valid maximum index `128` after `0x1f414` splits fallback rows
+   `199`, `200`, and `201`. No-install and partial-install recovery are page-visible:
+   fixture `0x16498 no-install exits preserve following printable output` proves
    allocation failure, descriptor mode-byte-`0`, and high-character/header-type
-   status-`0` rejects leave the next printable byte on the default-font path
-   and publish that default bucket through trailing FF; fixture
-   `0x16498 status-2 partial installs remain printable` proves linear and
-   split-plane status-`2` partial glyphs remain printable and publish the same
-   rows. Remaining downloaded-character publication work is limited to row
-   counts outside the matrix above, descriptor grammar forms outside the
-   covered helper-table path, pixel-row behavior beyond wrapped-width invalid
-   helper entries, segmented-wide row words above `0x00ff` after source-byte
-   wrap, broader publication combinations, and full-success return-boundary
-   siblings outside the named row-count, wide-remainder, segmented-wide,
-   normal, row-`0x80`, linear-segmented, split-plane segmented, segmented-wide,
-   no-install, status-`2`, and payload-control cases. It is not the
-   documented mode-byte-`0` visible recovery boundary. The
+   status-`0` rejects leave the next printable byte on the default-font path and publish
+   that default bucket through trailing FF; fixture `0x16498 status-2 partial installs
+   remain printable` proves linear and split-plane status-`2` partial glyphs remain
+   printable and publish the same rows. Remaining downloaded-character publication work
+   is limited to row counts outside the matrix above, descriptor grammar forms outside
+   the covered helper-table path, pixel-row behavior beyond wrapped-width invalid helper
+   entries, segmented-wide row words above `0x00ff` after source-byte wrap, broader
+   publication combinations, and full-success return-boundary siblings outside the named
+   row-count, wide-remainder, segmented-wide, normal, row-`0x80`, linear-segmented,
+   split-plane segmented, segmented-wide, no-install, status-`2`, and payload-control
+   cases. It is not the documented mode-byte-`0` visible recovery boundary. The
    publication-command checkpoint now covers host-fetched reset, FF, page-size,
    orientation, paper-source, and copies streams through parser dispatch, `0xff1e`,
    `0x1ed84`/`0x1edc6`, `0x1ef6a`, and final row comparison; reset, FF, page-size,

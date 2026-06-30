@@ -21,11 +21,13 @@ The detailed low-level ledger remains in
 - `generated/analysis/ic30_ic13_direct_control_code_flow.md`
 - `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`
 - `generated/disasm/ic30_ic13_hmi_vmi_handlers_00ca8c.lst`
+- `generated/disasm/ic30_ic13_macro_record_chain_helpers_00dfba.lst`
 - `notes/page-raster-imaging.md`
 - `notes/semantic-state-model.md`
 
 Primary fixtures:
 
+- `0xe5e2 refreshes page layout, default VFC table, and static font context`
 - `0x12cfe ESC &l#W loads vertical forms control state`
 - `mixed VFC definition stream consumes payload before printable page-record queue`
 - `mixed VFC lowercase delayed record survives until uppercase W`
@@ -76,6 +78,21 @@ Derived/cache line bounds:
 - `0x782ede`: last VFC/page line index. The Letter fixture uses `63`.
 - `0x782edf`: last text line index used by `0x12b96`.
 - `0x782ee0`: last printable text line. The Letter fixture uses `62`.
+
+Layout-refresh fields:
+
+- `0xe5e2` writes top offset `0x782dce`, clears layout scratch `0x782dd0`,
+  resets left/right margins `0x782dd6` / `0x782dda`, clears right-margin
+  fraction `0x782ddc`, refreshes cursor y `0x782c8e`, recomputes text bottom
+  `0x782dd2`, and rebuilds the default VFC table through `0x12b96`.
+- The same fixture pins the normal-page line caches as
+  `0x782edf = 2`, `0x782ee0 = 2`, `0x782ede = 3`, and
+  `0x782dc2 = pack12(240)`. The short-page case pins negative top/text-bottom
+  outputs, `0x782edf = 0`, and `0x782ede = 2`.
+- The static-font side of this helper refreshes remembered secondary symbol
+  `0x782f0a = 5`, dirties and clears `0x782f2d`, clears the static context,
+  and calls the context helpers represented by fixture events `call-13eb8`,
+  `call-c428`, and `call-1b04c`.
 
 Parser scratch and firmware bookkeeping:
 
@@ -140,6 +157,13 @@ For `0x782ee0 = 62` and `0x782ede = 63`, the default-table fixture proves:
 - channels 10 and 11 are not set by this builder;
 - channel 12 marks line `0`;
 - channels 13, 14, 15, and 16 mark multiples of `7`, `6`, `5`, and `4`.
+
+Fixture `0xe5e2 refreshes page layout, default VFC table, and static font
+context` proves the default builder is part of the shared page-layout refresh,
+not only the explicit VFC command family. For the normal-page case the default
+table prefix is `f8 fd 00 46 01 6e 00 44 00 00 00 00 00 00 00 00`; for the
+short-page case it is `f9 ff 00 60 00 04 00 00 00 00 00 00 00 00 00 00`.
+These bytes are canonical VFC table state consumed later by `0x1280a`.
 
 ## Channel Jump Consumer
 
@@ -207,6 +231,10 @@ top-of-form y `126`.
 - `0x12cfe` writes `0x782dde`, clears unused table bytes, derives `0x782dc2`,
   copies `0x782dd2`, and clears `0x782ee1`.
 - `0x12b96` writes the default VFC table at `0x782dde`.
+- `0xe5e2` is a shared page-layout refresh writer. It recomputes top offset,
+  margins, cursor y, text-bottom cache, VFC line caches, default VFC table,
+  modified-layout flag, and static secondary font context before later VFC or
+  macro consumers run.
 - `0xfe54` writes `0x782edf`, `0x782ee0`, and `0x782ede`.
 - `0x1280a` writes cursor state through forward, wrap, recovery, and
   selector-zero paths.
@@ -217,6 +245,9 @@ top-of-form y `126`.
 
 - `0x1280a` consumes selector, VMI, top offset, current y, line-bound caches,
   and the VFC table.
+- `0xe5e2` output is consumed by `0x1280a`, `0xf36c`, printable placement,
+  and macro replay paths that need a refreshed default layout before rendering
+  or publication.
 - `0xf36c` consumes `0x782dc2` during vertical overflow/perforation handling.
 - Printable text consumes the resulting x/y cursor state through `0xd04a` and
   page-record queueing.
@@ -227,6 +258,8 @@ top-of-form y `126`.
 
 VFC does not draw by itself. Its visible effects are:
 
+- refreshing default layout state and VFC table through `0xe5e2` before later
+  page-record producers consume the state;
 - changing text-bottom cache after `ESC &l#W`;
 - consuming delayed payload before later printable bytes;
 - moving x/y before a printable byte is queued;
@@ -236,6 +269,14 @@ VFC does not draw by itself. Its visible effects are:
 The covered fixtures prove both non-publishing movement and publishing splits
 where the pre-VFC printable remains renderable on the old page and the
 post-VFC printable is queued on a fresh page.
+
+The `0xe5e2` layout-refresh fixture has no immediate page-record output. Its
+output effect is state preparation: normal-page refresh produces top offset
+`pack12(90)`, text bottom `pack12(240)`, margins `0..240`, cursor y
+`pack12(126)`, VFC limit `pack12(240)`, clears modified-layout state, and
+rebuilds the default VFC table prefix listed above. Those fields are then read
+by VFC jumps, vertical overflow handling, printable placement, and macro
+layout replay.
 
 The canonical output effects are fixture-backed as follows:
 
@@ -284,6 +325,8 @@ A byte-stream renderer must preserve:
 
 - delayed `ESC &l#W` record restoration, including lowercase `w...W`
   behavior;
+- shared `0xe5e2` layout refresh when page/macro paths rebuild default VFC
+  and static font-context state;
 - `0xdace` payload-byte normalization during VFC table load;
 - the 128-word VFC table and selector-to-bit convention;
 - VMI, top offset, current x/y, and line-bound caches before `ESC &l#V`;

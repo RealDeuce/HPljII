@@ -7667,6 +7667,27 @@ bucket through `0x1387c`/`0x1381c` before publication.
   0xff1e pool header defaults`,
   `addressed paper-source and copies publications render page records`, and
   `host-fetched copies publication preserves 0xeef0 pool header word`.
+- Layout-command side effects outside the six publication streams:
+  - page-length `ESC &l66P` writes page extent `0x782dba = 3300`, selects
+    internal page code `2`, recomputes geometry/text-bottom state, and
+    refreshes the following printable cursor to compact coord `0x9001`.
+  - page-length `ESC &l0P` takes the default-page branch, publishes pending
+    state, optionally mirrors paper-source byte `0x782da6` to `0x780e8f`,
+    signals control word `0x780e26`, and selects default/fallback page code.
+  - perforation-skip `ESC &l1L` sets `0x783191 = 1`; selector `0` clears it,
+    and other selectors leave it unchanged.
+  - wrap-mode `ESC &s0C` sets `0x783190 = 1`, while `ESC &s1C` clears it;
+    printable overflow paths consume this byte before deciding whether to
+    wrap.
+  Evidence: disassembly listings
+  `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`,
+  `generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`, and
+  `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`; fixtures
+  `0xf9e8 ESC &l#P converts VMI lines to page length and selects internal
+  page code`, `perforation-skip parser-to-page-record boundary`,
+  `0xedb0 ESC &s#C toggles end-of-line wrap for selectors 0 and 1 only`,
+  and
+  `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`.
 - Parser scratch:
   - all six host-fetched publication streams drain entirely from the modeled
     `0xa904` ring source and leave an empty ring.
@@ -7682,6 +7703,8 @@ bucket through `0x1387c`/`0x1381c` before publication.
 - `0xcc52`, `0xf0f0`, `0xfc74`, `0x10220`, `0xef62`, and `0xeef0` trigger
   command-family publication or state updates for reset, FF, page-size,
   orientation, paper source, and copies.
+- `0xf9e8`, `0xee64`, and `0xedb0` write page-length, perforation-skip, and
+  wrap-mode layout state used by later printable/page-boundary paths.
 - `0xff1e` copies the current root into the published pool record, clears the
   current page root, writes state byte `+4 = 2`, and preserves command-specific
   pool-header fields such as copy count `+0x0c`.
@@ -7739,10 +7762,22 @@ because each is fixture-pinned.
   object path.
 - `generated/disasm/ic30_ic13_esc_e_reset_00cc52.lst`: reset publication
   entry.
+- `generated/disasm/ic30_ic13_control_code_handlers_00f02c.lst`: FF and line
+  termination control dispatch around `0xf0f0`/`0xedf8`.
 - `generated/disasm/ic30_ic13_page_size_handler_00fc74.lst`: page-size
   geometry and publication.
 - `generated/disasm/ic30_ic13_orientation_handler_010220.lst`: orientation
   geometry and publication.
+- `generated/disasm/ic30_ic13_page_length_handler_00f9e8.lst`: page-length
+  geometry, default branch, and paper-source mirroring.
+- `generated/disasm/ic30_ic13_perforation_skip_handler_00ee64.lst`:
+  perforation-skip byte writer.
+- `generated/disasm/ic30_ic13_wrap_mode_handler_00edb0.lst`: wrap-mode byte
+  writer.
+- `generated/disasm/ic30_ic13_paper_source_handler_00ef62.lst`: page eject,
+  paper-source state, and output/control byte side effects.
+- `generated/disasm/ic30_ic13_copies_handler_00eef0.lst`: copy-count state
+  consumed by publication header word `+0x0c`.
 - `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst`: publication.
 - `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`:
   render-record bridge.

@@ -8825,13 +8825,13 @@ models allocator results rather than executing the full heap/free-list path.
 
 ## Mixed Text/Rule/Raster Page Record
 
-Status: anchored as a parser-to-render composition checkpoint, but still
-modeled at the CPU live-state boundary. The byte stream
-`! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF` now has
-host-fetched, addressed-storage, publication, and render-entry coverage.
-The fixture proves the same semantic page record carries compact text,
-a selector-7 rectangle rule, and one mode-0 raster row through `0xff1e`,
-`0x1ed84`, and `0x1ef6a`.
+Status: anchored as a parser-to-render composition checkpoint. The byte stream
+`! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF` is documented from
+host fetch through addressed page-record storage, `0xff1e` publication,
+`0x1ed84`/`0x1edc6` render-record bridge, and `0x1ef6a` render dispatch. The
+remaining boundary is live 68000 continuity across the parser-created raster
+handoff and allocator path, not discovery of the page-record fields already
+asserted by fixtures.
 
 Concept: page output is not a direct raster operation per command. The
 parser first builds typed page-record lists under the current page root,
@@ -8909,7 +8909,17 @@ lists through `0x1ef6a`, and only then composes visible pixels.
   rule`.
 - Unknown for this cluster:
   - the exact live CPU stack/register handoff between the modeled parser
-    runner and real memory-backed page-root objects is still unknown.
+    runner and real memory-backed page-root objects is still unknown at
+    `0x105d0 -> 0x10084 -> 0x13070 -> 0x13250 -> 0x132b6`.
+  - the disassembly-derived values expected at that handoff are known from
+    `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst` and
+    `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`: `0x105d0`
+    carries state pointer `A4 = 0x783170`, restored parser record
+    `A5 = 0x78299e - 6`, absolute byte count `D5`, orientation-derived row
+    longword `D4`, accepted count `+0x04`, overflow `+0x06`, and stored row
+    `+0x02`; `0x10084` returns or allocates page root `0x78297a`; `0x13070`
+    derives `0x782a7c` / `0x782a7e`; `0x13250` builds the encoded object; and
+    `0x132b6` consumes stream-chunk state before `0x138de` copies payload bytes.
   - no additional named semantic field is assigned to `0x782a70`,
     `0x782a72`, or `0x782a76` beyond stream allocator bookkeeping.
 
@@ -8946,7 +8956,7 @@ lists through `0x1ef6a`, and only then composes visible pixels.
 
 ### Output Effect
 
-The covered stream produces rows containing the first compact `!`, the
+The documented stream produces rows containing the first compact `!`, the
 mode-0 raster row from payload `c3 3c`, and the rectangle rule. The
 published render-entry fixture proves the same rows before and after the
 `0xff1e` publication boundary, with dispatch targets `0x1f88e` and
@@ -9024,10 +9034,13 @@ the parser and allocator.
   bridge preservation, and mode `0..3` render contracts are composed in
   `Raster Transfer Gate And Encoded Rows`. The parser-to-handler record handoff
   is disassembly-pinned through `0x121cc`, `0x12218`, and `0x105d0` re-reading
-  `0x78299e - 6`; the mixed stream still lacks live CPU/register memory across
-  `0x105d0 -> 0x10084 -> 0x13070`, but its addressed raster object storage is
-  pinned by fixture `addressed text/rule/raster field groups reach publication
-  and render entry`.
+  `0x78299e - 6`. The remaining proof target is a 68000 trace or memory
+  snapshot showing the dense parser-produced stream arriving at `0x105d0`,
+  `0x10084`, `0x13070`, `0x13250`, and `0x132b6` with the modeled register
+  values, heap chunk choices, and page-root pointers. Its addressed raster
+  object storage is already pinned by fixture
+  `addressed text/rule/raster field groups reach publication and render
+  entry`.
 - `0x10084..0x1381c`: first root allocation and stream-chunk allocation
   are modeled with exact side effects, including a multi-writer chunk
   rollover fixture in the shared allocator checkpoint, but not captured

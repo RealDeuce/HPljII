@@ -1376,6 +1376,10 @@ of the `0x7822db` marker and the external status consumer of `0x780e2a.3`.
 
 ## Text Cursor And Direct Controls
 
+The standalone command-family contract is in
+[direct-control-codes.md](direct-control-codes.md). This section preserves
+the shared cursor/layout state block in the unified model.
+
 Status: composed as a parser-to-visible-output cluster for direct
 controls, HMI, margins, cursor positioning, dot positioning, vertical
 layout, transparent text, and cursor stack. The detailed handler ledger

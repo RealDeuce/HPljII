@@ -426,7 +426,8 @@ the board-facing boundary is tracked in
 - Canonical print environment: cursor words `0x782c8a` and `0x782c8e`,
   HMI/VMI words, margins, page geometry fields under `0x782da2..0x782dc0`,
   line-termination mode, cursor stack, and font slot state. Evidence:
-  `Text Cursor And Direct Controls` and page-geometry fixtures, including
+  [direct-control-codes.md](direct-control-codes.md),
+  `Text Cursor And Direct Controls`, and page-geometry fixtures, including
   the `ESC *p#X/#Y` dot-position path through handlers `0xf48c` and
   `0xf692`. Those handlers convert parsed integer dot units to packed
   whole-dot cursor coordinates with `parameter << 16`, then share the

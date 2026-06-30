@@ -36,6 +36,9 @@ compatibility boundary.
 - [pcl-parser-core.md](pcl-parser-core.md) - documented parser byte
   wrapper, tokenizer, dispatch loop, delayed-payload handoff, and semantic
   checkpoint.
+- [direct-control-codes.md](direct-control-codes.md) - documented
+  CR/LF/FF/HT/BS, line-termination mode, cursor stack, and cursor/margin
+  control paths to page-record output.
 - [transparent-print-data.md](transparent-print-data.md) - documented
   `ESC &p#X` delayed payload handling and printable text re-entry.
 - [raster-graphics.md](raster-graphics.md) - documented `ESC *t`,

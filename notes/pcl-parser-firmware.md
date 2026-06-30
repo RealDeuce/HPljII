@@ -140,6 +140,12 @@ normalized bytes through `0xe002`.
 
 ## Direct Control Codes
 
+See [direct-control-codes.md](direct-control-codes.md) for the composed
+renderer-facing contract for CR/LF/FF/HT/BS, line-termination mode, cursor
+stack, margin, cursor-position, dot-position, underline/span, and related
+visible-output effects. The section below preserves parser-table and tracing
+anchors.
+
 Normal mode 0 has these direct control-code entries:
 
 | Byte | Meaning | Handler |

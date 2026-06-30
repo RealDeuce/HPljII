@@ -1341,6 +1341,7 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `0x78315c`, and
   `0x783160`; fixtures `HMI parser trace feeds page-record queue`,
   `mixed printable/control parser trace feeds page-record queue`,
+  `LF parser trace feeds page-record queue`,
   `HT/BS parser trace feeds page-record queue`, `margin command parser
   trace feeds page-record queue`, `right margin command parser trace
   feeds page-record queue`, `0xf48c/0xf692 ESC *p#X/#Y use whole-dot packed
@@ -1405,8 +1406,9 @@ VMI state before object queueing, then cross the same `0x1387c`,
   `control stream ESC &k2G then LF applies CR+LF`,
   `control stream ESC &k2G then FF applies CR+page-eject`,
   `control stream ESC &k3G applies CR/LF/FF combined line termination`,
-  `0xf36c perforation skip gates vertical overflow page eject`, and
-  `host-fetched direct text/control streams reach page-record render`.
+  `0xf36c perforation skip gates vertical overflow page eject`,
+  `host-fetched direct text/control streams reach page-record render`, and
+  `perforation skip parser trace feeds page-record queue`.
 - Derived/cache placement state:
   - compact text coordinates are derived after cursor conversion and are
     queued into page-record text objects; examples include `0x3b00` for
@@ -1519,9 +1521,18 @@ VMI state before object queueing, then cross the same `0x1387c`,
 
 - `ESC &k1G!\r!` routes `0xedf8`, `0xd04a`, `0xf02c`, and `0xd04a`;
   the second glyph queues at compact coord `0x3b00` after CR+LF and
-  renders the shifted rows through `0x1edc6`.
+  renders the shifted rows through `0x1edc6`. Fixtures
+  `mixed printable/control stream applies CR+LF before second glyph` and
+  `mixed printable/control stream renders post-CR glyph rows` pin the
+  local control effect before the page-record variant. Fixtures
+  `mixed printable/control parser trace feeds page-record queue` and
+  `mixed printable/control page-record bridge renders post-CR glyph rows`
+  pin the parser handlers, `0x1387c` compact object, bridged context slots,
+  and shifted visible rows.
 - `ESC &k2G!\n!` routes LF handler `0xf08c`, applies mode `0x60`
-  CR+LF, and also queues the second glyph at `0x3b00`.
+  CR+LF, and also queues the second glyph at `0x3b00`. Fixture
+  `LF parser trace feeds page-record queue` pins the LF parser event,
+  compact object prefix, bridged context slots, and rendered rows.
 - `ESC &k0G HT BS !` routes `0xedf8`, `0xf1cc`, `0xf2a8`, and `0xd04a`;
   HT advances to x `21`, BS backs up to x `20`, and the glyph queues at
   compact coord `0x0a01` / pixel x `26`.
@@ -1599,6 +1610,9 @@ VMI state before object queueing, then cross the same `0x1387c`,
 - `ESC &l3E!`, `ESC &l1L!`, and `ESC &l66P!` route vertical-layout,
   perforation-skip, and page-length state into following printable
   output; the top-margin case queues at `0x9001` in bucket `6`. Fixture
+  `perforation skip parser trace feeds page-record queue` pins the
+  `0xee64` writer, following printable queue, compact object prefix, and
+  rendered rows for `ESC &l1L!`. Fixture
   `mixed page-length stream refreshes cursor before printable page-record
   queue` pins the `ESC &l66P!` parser path through `0xf9e8` and `0xd04a`,
   including the refreshed cursor y and compact text object.
@@ -1657,8 +1671,12 @@ disassembly `0xf36c..0xf398`.
 - `0xca8c ESC &k#H stores packed HMI for in-range absolute values only`
 - `HMI parser trace feeds page-record queue`
 - `plain printable parser trace feeds page-record queue`
+- `mixed printable/control stream applies CR+LF before second glyph`
+- `mixed printable/control stream renders post-CR glyph rows`
 - `mixed printable/control parser trace feeds page-record queue`
+- `mixed printable/control page-record bridge renders post-CR glyph rows`
 - `LF parser-to-page-record boundary`
+- `LF parser trace feeds page-record queue`
 - `HT/BS parser trace feeds page-record queue`
 - `margin command parser trace feeds page-record queue`
 - `right margin command parser trace feeds page-record queue`
@@ -1686,6 +1704,7 @@ disassembly `0xf36c..0xf398`.
 - `0xece2 ESC &l#E sets top margin, default text length, and pending cursor`
 - `0xee64 ESC &l#L toggles perforation skip for selectors 0 and 1 only`
 - `0xf36c perforation skip gates vertical overflow page eject`
+- `perforation skip parser trace feeds page-record queue`
 - `0xcb00/0xc992/0xece2/0xea9e chained ESC &l stream selects vertical layout
   handlers`
 - `0xeb58 ESC &a#L sets left margin and moves cursor only when needed`
@@ -2279,7 +2298,8 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   Evidence: disassembly `0xd04a..0xd0e8` and generated printable-text
   path steps 6-9; fixture
   `0xd04a printable entry normalizes over-0xff and high-bit values`; fixture
-  `0xd04a high-character flags and selected slot choose mask behavior`.
+  `0xd04a high-character flags and selected slot choose mask behavior`;
+  fixture `SI/SO parser trace selects page-record text contexts`.
 - Unknown:
   - live CPU register snapshots for every source class through the
     entire `0xd04a -> 0x1393a -> 0xd140/d550 -> 0x12f2e` chain.
@@ -2388,6 +2408,11 @@ short or segmented compact bucket entries consumed by `0x1387c`,
   `0xa0`, and builds glyph entry `0x017256`, while flags clear with selected
   secondary slot `1` still masks to host `0x21` but skips the primary
   `0xc6b8` / `0xc68a` wrapper.
+- Fixture `SI/SO parser trace selects page-record text contexts` drives SI
+  and SO control bytes through parser dispatch before printable text. It
+  pins selected context slot changes, `0xc428` install calls, compact object
+  prefixes, bridged context slots, and the render dispatch context slots
+  consumed by `0x1effe`.
 - Fixture `0xd28a and 0xd6bc prechecks share continue reject and wrap
   decisions` covers the paired prequeue gate before `0xd3b2` or `0xd824`.
   With packed current x `0x00020000`, remaining limit `0x00060000`,
@@ -2450,6 +2475,7 @@ full 68000 interpreter through every source class and allocator branch.
 - `0xd824-negative-overflow short bucket object fields`
 - `0xd04a printable entry normalizes over-0xff and high-bit values`
 - `0xd04a high-character flags and selected slot choose mask behavior`
+- `SI/SO parser trace selects page-record text contexts`
 - `0xd28a and 0xd6bc prechecks share continue reject and wrap decisions`
 - `0xd3b2 and 0xd824 text queue no-room retry preserves source and rows`
 - `0xd3b2 and 0xd824 segmented text queue no-room retry preserves source
@@ -8530,7 +8556,15 @@ bucket through `0x1387c`/`0x1381c` before publication.
   - copies: `! ESC &l2X FF`, handlers `0xd04a`, `0xeef0`, `0xf0f0`.
   Evidence: fixtures `publication streams tie parser handlers to page-record
   publication boundary` and `host-fetched publication streams reach parser and
-  published rows`.
+  published rows`; page-record stream fixtures
+  `mixed printable/reset page-record stream queues through 0x1387c before
+  reset`,
+  `mixed printable/FF page-record stream publishes queued text`,
+  `mixed printable/paper-source page-record stream publishes queued text`,
+  `mixed printable/page-size page-record stream publishes queued text before
+  geometry change`, and
+  `mixed printable/orientation page-record stream publishes queued text before
+  landscape change`.
 - Canonical published page-record fields:
   - bucket-root prefix for all six streams:
     `00 00 00 00 00 00 00 01 20 00 01`.
@@ -8543,7 +8577,14 @@ bucket through `0x1387c`/`0x1381c` before publication.
   Evidence: fixtures
   `host-fetched FF geometry and paper-source publications preserve 0xff1e pool
   header defaults` and
-  `host-fetched copies publication preserves 0xeef0 pool header word`.
+  `host-fetched copies publication preserves 0xeef0 pool header word`;
+  page-record finalization fixtures
+  `mixed printable/reset page-record finalization publishes bridged record`,
+  `mixed printable/FF page-record finalization publishes bridged record`,
+  `mixed printable/page-size page-record finalization publishes bridged
+  record`, and
+  `mixed printable/orientation page-record finalization publishes bridged
+  record`.
 - Canonical addressed publication fields:
   - reset addressed stream `! ESC E` allocates one stream chunk at
     `0x00d08000`, links it from `root + 0x20`, and ends with
@@ -8667,6 +8708,14 @@ paper-source, and copies. The reset, FF, page-size, orientation,
 paper-source, and copies addressed fixtures also assert that their
 materialized page records render those same rows after `0xff1e`.
 
+The mixed page-record fixtures split the command boundary from rendering:
+reset queues the printable object through `0x1387c` before `0xcc52` clears
+the current root, FF publishes the queued text through `0xf0f0`, paper source
+publishes before `0xef62` leaves its output/control bytes, and page-size /
+orientation publish before `0xfc74` or `0x10220` installs the new geometry.
+Their finalization fixtures prove the published bucket root and context slots
+bridge through `0x1edc6` and render the pre-command rows.
+
 The reset-specific missing-root fixture proves the opposite output boundary:
 `host-fetched ESC E clears missing page root without publication` reaches reset
 handler `0xcc52`, clears the missing current page root state, and does not
@@ -8687,6 +8736,21 @@ because each is fixture-pinned.
 - `host-fetched publication streams reach parser and published rows`
 - `0x11774 parser path routes mixed publication streams`
 - `0x11774 parser path routes geometry publication streams`
+- `mixed printable/reset page-record stream queues through 0x1387c before
+  reset`
+- `mixed printable/reset page-record bridge keeps pre-reset rows renderable`
+- `mixed printable/reset page-record finalization publishes bridged record`
+- `mixed printable/FF page-record stream publishes queued text`
+- `mixed printable/FF page-record finalization publishes bridged record`
+- `mixed printable/paper-source page-record stream publishes queued text`
+- `mixed printable/page-size page-record stream publishes queued text before
+  geometry change`
+- `mixed printable/page-size page-record finalization publishes bridged
+  record`
+- `mixed printable/orientation page-record stream publishes queued text before
+  landscape change`
+- `mixed printable/orientation page-record finalization publishes bridged
+  record`
 - `addressed printable reset publishes rendered page record`
 - `addressed printable FF publishes rendered page record`
 - `addressed page geometry publications render page records`

@@ -71,10 +71,18 @@ Primary fixtures:
 - `0x16c14-installed 0x1719c payload dispatches as bit-30 resource form`
 - `0x1719c-backed inline payload dispatches through 0x14c64`
 - `0x16fae/0x1719c-backed inline payload maps, queues, and renders one fixed record`
+- `0x17708 font-ID selects inline/downloaded candidate`
+- `0x14c64 dispatches selected inline/downloaded font`
+- `0x14e24-modeled inline/downloaded map entries`
+- `font-ID primary inline/downloaded selection feeds visible page-record rows`
+- `font-ID inline/downloaded selection feeds visible page-record rows`
 - `host-fetched 0x1719c payload metrics feed d4ac span rows`
 - `host-fetched 0x1719c payload metrics feed d8fc span rows`
 - `0x16fae/0x1719c-backed type-2 inline payload maps constructed compact renderer
   records`
+- `constructed inline/downloaded wide glyph maps through 0x1f0d2`
+- `constructed inline/downloaded segmented glyph maps through 0x1f1f0`
+- `constructed inline/downloaded segmented-wide glyph maps through 0x1f264`
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `host-fetched metric variant changes d4ac gate and d8fc rows`
@@ -94,8 +102,11 @@ Primary fixtures:
 - `downloaded character stream ties ROM parser dispatch to rendered object`
 - `host-fetched downloaded character stream reaches rendered object`
 - `host-fetched downloaded character object feeds 0x1ed84 and 0x1ef6a`
+- `host-fetched downloaded character object preserves 0x1edc6 bridge contract`
 - `host-fetched linear downloaded character stream renders through 0x168dc`
 - `host-fetched downloaded character payload control reaches wide render`
+- `host-fetched downloaded payload-control object feeds 0x1ed84 and 0x1ef6a`
+- `host-fetched downloaded payload-control object preserves 0x1edc6 bridge contract`
 - `host-fetched payload-control downloaded glyph FF publishes page record`
 - `host-fetched even-span wide downloaded character renders through 0x1f0d2`
 - `host-fetched row-0x80 downloaded character remains short compact`
@@ -134,6 +145,8 @@ Primary fixtures:
 - `split-plane segmented downloaded glyph FF publication renders page record`
 - `host-fetched downloaded glyph composes with rule and raster through 0x1ef6a`
 - `parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
+- `downloaded glyph byte-24 state handoff feeds following page handler`
+- `even-span downloaded glyph rule raster FF publication renders page record`
 - `host-fetched segmented downloaded character renders through 0x1f1f0`
 - `segmented downloaded glyph composes with raster through 0x1ef6a`
 - `host-fetched split-plane segmented downloaded character renders through
@@ -654,6 +667,21 @@ The `ESC )s80W` fixture proves the parser-to-install boundary:
 - `0x14c64` later dispatches that candidate as an offset-table resource,
   selecting symbol `0x1234` and range `0x0000..0x007f`.
 
+The selected inline/downloaded path is also fixture-backed through final-`X`
+font-ID selection, not only by direct `0x16c14` installation. Fixture
+`0x17708 font-ID selects inline/downloaded candidate` proves a bit-30-clear
+candidate can be selected by id and reaches the same `0x14c64` active-object
+dispatch. Fixture `0x14c64 dispatches selected inline/downloaded font` proves
+that dispatch rebuilds the selected map through `0x14e24` / `0x14eb6`, and
+fixture `0x14e24-modeled inline/downloaded map entries` pins the resulting
+map entries. The visible primary and secondary final-`X` cases are
+`font-ID primary inline/downloaded selection feeds visible page-record rows`
+and `font-ID inline/downloaded selection feeds visible page-record rows`:
+host-fetched `ESC (4660X!` and `ESC )4660X SO !` reach
+`0x120be..0x17708..0x14c64..0xd04a`, reuse page-root slots `0` and `1`,
+queue unflagged object prefixes, preserve bridge context slots, and render
+the selected inline/downloaded rows.
+
 The allocation-failure fixture
 `0x16c14 allocation failure releases existing payload through 0x1887a` starts
 with a current-record hit for id `0x1234`, record flags `0x40`, old payload
@@ -1125,6 +1153,14 @@ through compact target `0x1effe` and mode-0 helper `0x1fe76` as three visible
 rows beginning at x `22`.
 - destination x `22`, y `6`, and `$a001 = 0x16`.
 
+Fixture `host-fetched downloaded character object preserves 0x1edc6 bridge
+contract` isolates the bridge side of the same installed-character path. It
+pins the bucket-root object bytes, context-slot prefix, empty rule/fixed
+lists, and render dispatch inputs before `0x1ed84` / `0x1ef6a` consume the
+object. Fixture `host-fetched downloaded character object feeds 0x1ed84 and
+0x1ef6a` then proves the bridged object reaches the compact renderer with the
+same visible rows as the direct installed-glyph fixture.
+
 Fixture `downloaded normal row-0x80 and segmented glyph FF publications
 render page records` adds the publication siblings for the normal and
 row-threshold short selectors. The host-fetched `ESC )s6W` stream plus
@@ -1172,6 +1208,17 @@ object to `0x1f88e`, dispatches the downloaded glyph object to `0x1effe` /
 `0x1f0d2`, renders the rule through selector helper `0x1f596`, and compares the
 three composed output rows. This closes the downloaded-glyph plus rule/raster
 composition fixture gap for the even-span wide downloaded glyph path.
+
+Fixture `host-fetched downloaded payload-control object feeds 0x1ed84 and
+0x1ef6a` covers the sibling wide path where payload-control normalization is
+part of the downloaded character stream. The companion fixture
+`host-fetched downloaded payload-control object preserves 0x1edc6 bridge
+contract` pins the same bridge invariant: page-record object bytes,
+bucket-root preservation, context-slot prefix, and empty side lists are stable
+before the render entry consumes the object. The FF publication sibling is
+`host-fetched payload-control downloaded glyph FF publishes page record`,
+which proves the published record keeps that wide downloaded object through
+`0xff1e`.
 
 Fixture `segmented downloaded glyph composes with raster through 0x1ef6a`
 extends the same composition contract to the segmented selector family. It
@@ -1954,6 +2001,19 @@ fixed lists empty, and copies the context-slot prefix. Render entry
 `0x1f756`, dispatches the compact object to `0x1effe`, and produces the same
 downloaded segmented-wide row as the direct compact-object renderer.
 
+The parser-driven even-span wide composition fixture has an explicit
+install-to-page handoff at byte `24`. Fixture
+`downloaded glyph byte-24 state handoff feeds following page handler` asserts
+that the font-command runner's final header matches the install event header,
+that pending handler state is clear while restored record
+`80 57 00 12 00 00` remains available, and that the following page handler at
+`0x10e68` resolves glyph `0x29` from table entry `0x00ee`, record delta
+`0x0780`, and bitmap offset `0x078c`. Fixture
+`even-span downloaded glyph rule raster FF publication renders page record`
+then carries the same active bucket-5 rule/raster/glyph record through
+`0xff1e` publication and back through `0x1ed84` / `0x1ef6a`, proving the
+published pool record renders the same rows as the active composition.
+
 The FF publication variant proves the same installed-glyph page object across
 `0xff1e`. The fetched stream length is `2216` bytes, with control bytes
 `0..14`, payload bytes `14..2214`, printable byte `2214..2215`, and FF at
@@ -2146,6 +2206,10 @@ buckets `1` and `9`, and renders bucket word `9` through compact target
 - `0x1bc38` reads payload class byte `+0x20` and inserts candidate longwords.
 - `0x14c64` consumes installed candidate longwords and payload header fields
   to build active glyph maps.
+- `0x17708` consumes the candidate list and current font id to select a
+  bit-30-clear inline/downloaded candidate for final-`X` streams.
+- `0x14e24` / `0x14eb6` consume fixed-record payload table entries when
+  building the selected inline/downloaded map used by `0x1393a`.
 - `0x1393a` consumes the active map and selected context to build printable
   source objects.
 - `0x12f2e`, `0x1387c`, `0xff1e`, `0x1edc6`, `0x1ed84`, and `0x1ef6a`
@@ -2183,6 +2247,18 @@ The failed-resume fixture proves that a short resumed payload does not leave
 the half-copied fixed record installed: `0x15c4c` calls `0x17d7c`, replaces the
 table entry with `01 02 00 fa 00 00 00 00`, updates side-table bytes `fa 00`,
 refreshes the active primary context, and clears the same continuation fields.
+
+Inline/downloaded map construction is covered across the compact render
+families. The selected inline fixture maps host `0x21` to glyph `0x01`, fixed
+record `02 03 04 00 00 00 00 80`, source flag `0`, and context slot `3`.
+Fixtures `constructed inline/downloaded wide glyph maps through 0x1f0d2`,
+`constructed inline/downloaded segmented glyph maps through 0x1f1f0`, and
+`constructed inline/downloaded segmented-wide glyph maps through 0x1f264`
+extend that selected-map source to host bytes `0x23`, `0x24`, and `0x25`.
+Those bytes drive `0x1393a`, `0xd3b2`, and `0x12f2e` into compact-wide,
+segmented, and segmented-wide output without changing the selected
+inline/downloaded context contract.
+
 The extended fixed-record fixture proves the direct release form for type-byte
 `1` extended characters: char `0xa1` rewrites the extended table entry to
 `01 02 00 2c 00 00 03 00`, writes side-table bytes `2c 00`, refreshes the

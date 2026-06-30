@@ -7012,6 +7012,14 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     `0x783186..0x78318a` through `0x126e2`, queues the following compact
     printable object, preserves the existing selector-7 rule, and publishes
     all three page-record layers through `0xff1e` and `0x1ed84`/`0x1ef6a`.
+  - chained-margin overlay publication uses overlay id `132` and payload
+    `ESC &a6l9M!`. The same non-replay `0xe4f4` frame routes parser loop
+    `0x11774` through `0xeb58`, mode-12 continuation byte `9`, `0xec0c`,
+    and `0xd04a`. The replayed commands write canonical left margin
+    packed `108` and right margin packed `180`, queue compact text object
+    `00 00 00 00 00 00 00 01 20 02 07 ...`, preserve selector-7 rule
+    `00 00 00 00 01 07 6c 02 00 05 00 02 00 00`, and publish/render both
+    page-record layers through `0xff1e` and `0x1ed84`/`0x1ef6a`.
   - transparent-data overlay publication uses overlay id `129` and payload
     `ESC &p2X!!`. The same non-replay `0xe4f4` frame routes parser loop
     `0x11774` through transparent command handler `0x11f5a`, restores the
@@ -7029,6 +7037,7 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
   `macro overlay mixed-control payload publishes with page rule`,
   `macro overlay cursor-position payload publishes with page rule`,
   `macro overlay chained cursor-position payload publishes with page rule`,
+  `macro overlay chained margin payload publishes with page rule`,
   `macro overlay raster payload publishes with page rule`,
   `macro overlay multi-row raster payload publishes with page rule`, and
   `macro overlay span-flush payload publishes with page rule`, and
@@ -7040,9 +7049,9 @@ macro bytes re-enter the same parser/page-record path as normal host bytes.
     initialization are pinned for the default path.
   - no remaining macro execute/call replay, font-context, first
     overlay-publication, repeated enabled-overlay publication, mixed-control
-    overlay payload, cursor-position overlay payload family, raster overlay
-    payload, multi-row raster overlay payload, span-flush overlay payload,
-    transparent-data overlay payload, or overlay
+    overlay payload, cursor-position overlay payload family, chained-margin
+    overlay payload, raster overlay payload, multi-row raster overlay payload,
+    span-flush overlay payload, transparent-data overlay payload, or overlay
     skip-gate middle edge in this checkpoint. The next high-value macro edges
     are broader overlay payload variants and final device-output validation.
     Descriptor metric validation is tracked separately as external/manual naming for
@@ -7224,6 +7233,19 @@ rule object `00 00 00 00 01 07 a6 02 00 06 00 02 00 00`, rendered through
 `0x1f596` and mutated to `00 00 00 00 01 07 a6 02 00 06 00 02 ff cc`.
 The composed page rows have digest
 `0275857ffbcc11aa5234644930ebcd31571c2178eaf52b79590989d31b39f653`.
+Fixture `macro overlay chained margin payload publishes with page rule` covers
+the chained margin sibling with stored payload `ESC &a6l9M!`. `0x11774`
+routes lowercase-final left-margin command `ESC &a6l` through `0xeb58`,
+keeps parser mode `12` across parameter byte `9`, then routes right-margin
+command `9M` through `0xec0c` before printable handler `0xd04a`. `0xeb58`
+moves cursor and canonical left-margin state from packed `10` / `5` to
+packed `108`; `0xec0c` writes canonical right-margin state packed `180`.
+The printable `!` queues compact text payload `00 01 20 02 07` plus context
+padding at coord `0x0207`. The same published page record carries selector-7
+rule object `00 00 00 00 01 07 6c 02 00 05 00 02 00 00`, rendered through
+`0x1f596` and mutated to `00 00 00 00 01 07 6c 02 00 05 00 02 ff c8`.
+The composed page rows have digest
+`ecae0043ee656ceba42d4d6e052e3d56a365eeb4a847b3b430f80eed72b5a199`.
 Fixture `macro overlay transparent payload publishes with page rule` covers
 the same non-replay overlay frame with stored payload `ESC &p2X!!`, but the
 parser command is the delayed transparent-data path instead of immediate
@@ -7323,6 +7345,7 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 - `macro overlay mixed-control payload publishes with page rule`
 - `macro overlay cursor-position payload publishes with page rule`
 - `macro overlay chained cursor-position payload publishes with page rule`
+- `macro overlay chained margin payload publishes with page rule`
 - `macro overlay transparent payload publishes with page rule`
 - `macro overlay raster payload publishes with page rule`
 - `macro overlay multi-row raster payload publishes with page rule`
@@ -7364,13 +7387,14 @@ High for the `0xe860` `+0x16` / `+0x20` class-selector distinction.
 - None remaining for macro execute/call replay, macro font-context refresh, first
   overlay-publication, repeated enabled-overlay publication across two page boundaries,
   mixed-control overlay payload publication, cursor-position overlay payload family
-  publication, raster overlay payload publication, multi-row raster overlay payload
-  publication, span-flush overlay payload publication, transparent-data overlay payload
-  publication, or the disabled/missing-record/retry-flag overlay skip gates. Remaining
-  macro risk is broader overlay payload variants beyond `!\r`, `ESC &k1G!\r!`,
-  `ESC &a2C!`, `ESC &a2c+1R!`, `ESC &p2X!!`, the covered raster payloads, and
-  `ESC &a6L!`, plus final-device comparison, not the `0xdd08` selector-4 to `0xff1e`
-  visible-output path or its skip gates.
+  publication, chained-margin overlay payload publication, raster overlay payload
+  publication, multi-row raster overlay payload publication, span-flush overlay payload
+  publication, transparent-data overlay payload publication, or the
+  disabled/missing-record/retry-flag overlay skip gates. Remaining macro risk is
+  broader overlay payload variants beyond `!\r`, `ESC &k1G!\r!`, `ESC &a2C!`,
+  `ESC &a2c+1R!`, `ESC &a6l9M!`, `ESC &p2X!!`, the covered raster payloads, and
+  `ESC &a6L!`, plus final-device comparison, not the `0xdd08` selector-4 to
+  `0xff1e` visible-output path or its skip gates.
 
 ## Raster Transfer Gate And Encoded Rows
 

@@ -2229,6 +2229,13 @@ carries `ESC &a2c+1R!` through the same overlay path: `0x11774` routes
 published page record composes coord `0x3a02` compact text with selector-7 rule
 `00 00 00 00 01 07 a6 02 00 06 00 02 00 00`, rendering digest
 `0275857ffbcc11aa5234644930ebcd31571c2178eaf52b79590989d31b39f653`. The
+fixture `macro overlay chained margin payload publishes with page rule` carries
+`ESC &a6l9M!` through the same overlay path: `0x11774` routes `0xeb58`, a
+mode-12 continuation byte, `0xec0c`, then `0xd04a`; the margin commands write
+packed left/right margins `108`/`180`, and the published page record composes
+coord `0x0207` compact text with selector-7 rule
+`00 00 00 00 01 07 6c 02 00 05 00 02 00 00`, rendering digest
+`ecae0043ee656ceba42d4d6e052e3d56a365eeb4a847b3b430f80eed72b5a199`. The
 host-fetched
 missing-root `ESC E` case drains from the same ring source, reaches
 handler `0xcc52`, and lands on the no-publication reset state. The

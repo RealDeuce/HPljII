@@ -2634,6 +2634,7 @@ resources because no image is available in this repo.
 - `parsed primary built-in font selection feeds visible page-record rows`
 - `parsed secondary built-in font selection feeds visible SO page-record rows`
 - `remembered primary symbol feeds visible page-record rows`
+- `remembered secondary symbol feeds visible SO page-record rows`
 - `primary symbol miss falls back before visible page-record rows`
 - `secondary symbol miss falls back before visible SO page-record rows`
 
@@ -2655,7 +2656,7 @@ resources because no image is available in this repo.
   resource window; cartridge/external windows remain unverified until
   images are available.
 - `0x14398..0x156de`: visible-output coverage exists for primary,
-  secondary, remembered-primary symbol recovery, two symbol-miss fallback
+  secondary, remembered primary/secondary symbol recovery, two symbol-miss fallback
   streams, non-Roman symbol selections, the real final-`@`
   default-table/copy/default-font streams, and the final-`X` primary built-in,
   secondary built-in, and inline/downloaded font-ID streams. The `0x13eb8`
@@ -3306,6 +3307,7 @@ because physical/self-test comparison is still open.
 
 Status: composed as parsed command-family to visible-output checkpoints for
 primary and secondary inline mixed streams, primary/secondary symbol-fallback,
+primary/secondary remembered-symbol recovery,
 primary/secondary live current-font-RAM handoff, and
 parsed-selection-to-current-font-RAM handoff streams. The low-level
 font-selection ledger remains in
@@ -3330,6 +3332,15 @@ plus printable output still render through context `0xc008004c`.
 secondary contract: the symbol-set request writes word `0x9a55`, no class-one
 candidate matches, `0x156de` takes fallback table word `0x000e`, and the later
 secondary selection plus SO output still render through context `0xc00ae122`.
+Fixture `remembered secondary symbol feeds visible SO page-record rows` proves
+the remembered middle source for that secondary contract. With requested word
+`0x9a55` and remembered secondary word `0x000e`, `0x156de` rejects requested
+candidates, first probes remembered slot `0x782324` / record `0x019d18`
+without a match, then accepts remembered slot `0x782330` / record `0x01a984`.
+The later selection still writes secondary context `0xc00ae122`, rebuilds map
+`0x783032`, crosses SO handler `0xc6b8`, queues object prefix
+`00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and renders row digest
+`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
 Fixture `live parser symbol-set streams select non-Roman built-ins` proves the
 primary non-Roman form before visible text: `ESC (0N`, `ESC (10U`, and
 `ESC (11U` pass through the ROM parser and selected-font refresh, select
@@ -3474,7 +3485,9 @@ selector mismatch only copies the remembered word and installs no context.
   - primary symbol request word `0x9a55` from `ESC (1234U`; fallback active
     word `0x0115` before the primary `ESC (s...T` selection.
   - secondary symbol request word `0x9a55` from `ESC )1234U`; fallback active
-    word `0x000e` before the secondary `ESC )s...T` selection.
+    word `0x000e` before the secondary `ESC )s...T` selection, or remembered
+    active word `0x000e` when `0x782f0a` supplies the middle source before the
+    fallback table.
   - primary non-Roman symbol request words `0x000e`, `0x0155`, and `0x0175`
     from `ESC (0N`, `ESC (10U`, and `ESC (11U`.
   - secondary non-Roman symbol request words `0x000e`, `0x0155`, and
@@ -3563,7 +3576,9 @@ selector mismatch only copies the remembered word and installs no context.
   selected;
   fallback fixture
   `secondary symbol miss falls back before visible SO page-record rows` reaches
-  the same secondary context after active word `0x000e` is selected.
+  the same secondary context after active word `0x000e` is selected; fixture
+  `remembered secondary symbol feeds visible SO page-record rows` reaches it
+  through the remembered-word source instead of the fallback table.
 - Canonical installed page-root font slots:
   - seeded primary current-font RAM: `0x782ee6 = 0xc008004c`.
   - seeded secondary current-font RAM: `0x782ef6 = 0xc00ae122`.
@@ -3659,6 +3674,14 @@ selector mismatch only copies the remembered word and installs no context.
     `0x156de` branch through `0x13eb8`, `0x144d2`, `0x14c64`, compact object
     prefix `00 00 00 00 00 00 00 02 00 6a 00 00 68 02`, and rendered row
     digest `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`.
+  - secondary remembered active-word source: remembered word `0x000e` after
+    the requested pass misses word `0x9a55`; fixture
+    `remembered secondary symbol feeds visible SO page-record rows` records
+    the first remembered probe at slot `0x782324` / record `0x019d18`, the
+    first remembered match at slot `0x782330` / record `0x01a984`, compact
+    object prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and rendered
+    row digest
+    `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
   - parser default-symbol table `0x782f1c/20/24/28`: built by `0x1ac0a` and
     consumed by final-`@` subdispatches `@0` and `@1`. In the real-backed
     caller fixture, the table words are `0x0005`, `0x000e`, `0x0155`, and
@@ -3838,7 +3861,8 @@ selector mismatch only copies the remembered word and installs no context.
   printable/SO consumers remain on those prior maps and contexts.
 - `0x156de` writes fallback active word `0x0115` for the primary symbol miss
   and `0x000e` for the secondary symbol miss before pruning the active
-  candidate window.
+  candidate window. The same helper writes remembered active word `0x000e`
+  for the secondary remembered fixture before falling through to fallback.
 - `0x144d2` writes selected context state at `0x782ee6`.
 - `0x144d2` writes secondary selected context state at `0x782ef6`.
 - `0x14c64` rebuilds maps `0x782f32` and `0x783032`.
@@ -3965,6 +3989,14 @@ requested word `0x9a55` is replaced by active word `0x000e`, then the final
 object prefix, context slots, rendered rows, cursor x `66`, HMI `18`,
 selector `1`, install count `1`, and page-root allocation count `1` match the
 secondary SO fixture.
+
+The remembered secondary fixture has the same output effect before the
+fallback table is consulted: requested word `0x9a55` is replaced by remembered
+word `0x000e`; the first remembered probe observes class-zero record
+`0xc0099d18` and rejects it, the first remembered match observes
+`0xc009a984`, and the final context slots, object prefix, rendered rows,
+cursor x `66`, HMI `18`, selector `1`, install count `1`, and page-root
+allocation count `1` match the secondary SO fixture.
 
 The live secondary current-font RAM handoff fixture has the same secondary
 rows and compact object prefix, but uses an existing page root. Its SO event
@@ -4119,6 +4151,7 @@ install events.
 - `parsed secondary built-in font selection feeds visible SO page-record rows`
 - `inline secondary font selection stream renders SO visible rows`
 - `remembered primary symbol feeds visible page-record rows`
+- `remembered secondary symbol feeds visible SO page-record rows`
 - `primary symbol miss falls back before visible page-record rows`
 - `parsed primary selection current-font RAM feeds SI visible rows`
 - `parsed secondary selection current-font RAM feeds SO visible rows`
@@ -4189,9 +4222,11 @@ install events.
   mixed-stream state.
 - Other primary/secondary font-selection combinations and fallback/error
   branches still need the same visible-output treatment; the exact covered
-  fallback boundaries are `ESC (1234U ESC (s0p10h12v0s0b3T!!` through
-  `0x120be..0x156de..0x14c64..0xd04a`, and
-  `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` through
+  remembered/fallback boundaries are `ESC (1234U ESC (s0p10h12v0s0b3T!!`
+  through the remembered-primary and fallback-primary variants at
+  `0x120be..0x156de..0x14c64..0xd04a`,
+  and `ESC )1234U ESC )s0p16h8v0s0b0T SO !!` through the
+  remembered-secondary and fallback-secondary variants at
   `0x120be..0x156de..0x14c64..0xc6b8..0xd04a`. The covered font-ID boundary
   includes primary built-in `ESC (7X!!` through
   `0x120be..0x17708..0x14c64..0xd04a`, secondary built-in `ESC )8X SO !!`

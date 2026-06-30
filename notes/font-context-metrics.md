@@ -36,6 +36,7 @@ Evidence:
   - `parsed secondary built-in font selection feeds visible SO page-record rows`
   - `inline secondary font selection stream renders SO visible rows`
   - `primary symbol miss falls back before visible page-record rows`
+  - `remembered secondary symbol feeds visible SO page-record rows`
   - `parsed primary selection current-font RAM feeds SI visible rows`
   - `parsed secondary selection current-font RAM feeds SO visible rows`
   - `live primary current-font RAM install feeds SI page-record rows`
@@ -390,6 +391,22 @@ prune event matching record `0x02e122`. The following secondary font-selection
 command reuses the same selected context `0xc00ae122`, secondary map
 `0x783032`, and HMI `18`. SO and two printable `!` bytes then produce the same
 compact object prefix, context slots, coords, and first visible row as the
+secondary fixture above.
+
+Fixture
+`remembered secondary symbol feeds visible SO page-record rows` covers the
+remembered source before that fallback table. The modeled stream is still
+`ESC )1234U ESC )s0p16h8v0s0b0T SO !!`, but the fixture seeds remembered
+secondary word `0x000e` at `0x782f0a`. The `0x156de` requested pass misses
+word `0x9a55`; the remembered pass first probes slot pointer `0x782324`,
+record `0x019d18`, candidate word `0x0115`, and rejects it, then matches
+slot pointer `0x782330`, record `0x01a984`, candidate word `0x000e`. That
+sets active secondary word `0x000e` at `0x783146`, keeps survivor slot
+pointers `0x782330`, `0x782340`, and `0x782350`, writes selected context
+`0xc00ae122` through `0x144d2`, rebuilds map `0x783032` through `0x14c64`,
+crosses SO handler `0xc6b8`, and renders the same compact object prefix and
+row digest
+`b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c` as the
 secondary fixture above.
 
 ## Page-Root Context Install
@@ -809,6 +826,19 @@ work can close the right gap instead of re-tracing already-covered consumers.
   `.........################..################...###`. Status:
   parser-produced symbol fallback and selection plus modeled selected-context
   handoff to visible-output fixture.
+- Claim: a secondary symbol-set miss can recover from remembered word
+  `0x782f0a` before using the fallback table and still reach visible SO
+  output. Evidence: fixture
+  `remembered secondary symbol feeds visible SO page-record rows`; stream
+  `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`; requested word `0x9a55`;
+  remembered word `0x000e`; first remembered probe slot `0x782324` / record
+  `0x019d18` rejects candidate `0x0115`; first remembered match slot
+  `0x782330` / record `0x01a984` accepts candidate `0x000e`; selected context
+  `0xc00ae122`; map `0x783032`; SO handler `0xc6b8`; queued object prefix
+  `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`; row digest
+  `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
+  Status: parser-produced symbol recovery and selection plus modeled
+  selected-context handoff to visible-output fixture.
 - Claim: selected built-in context supplies HMI/default advance. Evidence:
   fixture `line-printer flagged HMI metric via 0x10550`; selected context
   `0x440946b4`, resource base `0x0146b4`, byte `+0x21 = 0x00`, long

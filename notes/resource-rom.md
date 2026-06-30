@@ -1106,8 +1106,14 @@ words `0x0115`, `0x0155`, `0x0175`, and `0x000e` repeating; a primary
 `0x0115` filter keeps the three Roman-8 entries in the selected class
 window. A parser-derived miss now drives the fallback side:
 `ESC )1234U` reaches `0x120be`, produces requested word `0x9a55`, misses
-all class-one candidates, then falls through to fallback-table word
-`0x000e` and keeps the three secondary symbol `0x000e` records.
+all class-one candidates, then either recovers through remembered word
+`0x000e` at `0x782f0a` before fallback or falls through to fallback-table
+word `0x000e`, keeping the three secondary symbol `0x000e` records. Fixture
+`remembered secondary symbol feeds visible SO page-record rows` pins the
+remembered pass: slot `0x782324` / record `0x019d18` rejects candidate
+`0x0115`, slot `0x782330` / record `0x01a984` accepts candidate `0x000e`,
+and the following selected context, SO path, compact object prefix, and row
+digest match the secondary visible-output fixture.
 
 `0x14398` chooses the selected active slot. It seeds the first
 still-negative active slot, then calls comparator `0x13c06` for each

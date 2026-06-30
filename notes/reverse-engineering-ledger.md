@@ -1111,6 +1111,13 @@ word `0x9a55` misses in `0x156de`, fallback table word `0x0115` survives,
 survivor slots `0x782354`, `0x782364`, and `0x782374` remain active, and the
 final selected context, primary map, object prefix, render-context slot, and
 rows match the primary case; fixture
+`remembered secondary symbol feeds visible SO page-record rows` covers the
+secondary remembered-word sibling for `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`:
+requested word `0x9a55` misses in `0x156de`, remembered word `0x000e` rejects
+slot `0x782324` / record `0x019d18`, then matches slot `0x782330` / record
+`0x01a984`, and the final selected context, secondary map, SO transition,
+object prefix, render-context slots, and row digest match the secondary SO
+case; fixture
 `secondary symbol miss falls back before visible SO page-record rows` now
 extends that boundary through `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`, where
 requested word `0x9a55` misses in `0x156de`, fallback table word `0x000e`
@@ -1339,7 +1346,8 @@ ROM work needed:
   `Built-In Font Selection, Symbol-State, And Font-ID Selection` in
   [semantic-state-model.md](semantic-state-model.md) already covers primary
   `ESC (s0p10h12v0s0b3T!!`, secondary `ESC )s0p16h8v0s0b0T SO !!`, primary
-  and secondary `ESC (/)1234U` fallback through `0x156de`, current-font RAM
+  and secondary `ESC (/)1234U` fallback through `0x156de`, secondary
+  `ESC )1234U` remembered recovery through `0x156de`, current-font RAM
   handoffs through SI/SO, non-Roman `0N` / `10U` / `11U` symbol streams, real
   final-`@` default-table primary and secondary visible streams, final-`X`
   primary built-in `ESC (7X!!`, final-`X` secondary built-in `ESC )8X SO !!`,

@@ -1510,6 +1510,16 @@ the same secondary visible rows after `ESC )1234U` requests symbol word
 fallback table word `0x000e`, keeps slots `0x782330`, `0x782340`, and
 `0x782350`, then selects the same context `0xc00ae122`, map `0x783032`, and
 compact object prefix as the secondary SO fixture.
+
+Fixture
+`remembered secondary symbol feeds visible SO page-record rows` proves the
+same secondary visible rows when remembered word `0x000e` at `0x782f0a`
+recovers before the fallback table. The requested word `0x9a55` still misses
+in `0x156de`; the remembered pass rejects slot `0x782324` / record
+`0x019d18`, then matches slot `0x782330` / record `0x01a984`. The following
+selection reaches context `0xc00ae122`, map `0x783032`, SO handler `0xc6b8`,
+compact object prefix `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and row
+digest `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`.
 The generated `ic30_ic13_active_symbol_set_flow.md` report traces
 `ESC (` / `ESC )` through `0x120be` and `0x1be22`: normal symbol-set
 finals compute PCL codes as `(parameter << 5) + suffix`, store requested

@@ -874,10 +874,16 @@ The next work should follow dataflow, not isolated handlers:
    `0xc008004c`, rebuilds map `0x782f32`, queues object prefix `00 00 00 00 00 00 00 02
    00 6a 00 00 68 02`, and renders digest
    `8b36cfd64d818c0982b172982156f8be9687388c9679cd83538c9d1098d9bb2c`. The secondary
-   fallback case proves `ESC )1234U ESC )s0p16h8v0s0b0T SO !!`: requested word `0x9a55`
-   misses in `0x156de`, fallback word `0x000e` survives, and the final selected context,
-   map, object prefix, context slots, and rows match the secondary SO case. The primary
-   RAM handoff case proves seeded `0x782ee6 = 0xc008004c` through SI `0xc68a`,
+   remembered case proves the parallel middle source for `ESC )1234U ESC )s0p16h8v0s0b0T
+   SO !!`: requested word `0x9a55` misses in `0x156de`, remembered word `0x000e` first
+   rejects slot `0x782324` / record `0x019d18`, then matches slot `0x782330` / record
+   `0x01a984`, selects context `0xc00ae122`, crosses SO `0xc6b8`, queues object prefix
+   `00 00 00 00 00 01 00 02 00 c9 00 00 cb 01`, and renders digest
+   `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`. The secondary
+   fallback case proves the fallback-table sibling for the same stream: requested word
+   `0x9a55` misses in `0x156de`, fallback word `0x000e` survives, and the final selected
+   context, map, object prefix, context slots, and rows match the secondary SO case. The
+   primary RAM handoff case proves seeded `0x782ee6 = 0xc008004c` through SI `0xc68a`,
    `0xc428(0)`, `0xc4fc`, page-root slot `0`, and following `!!` visible rows on an
    existing root. The secondary RAM handoff case proves seeded `0x782ef6 = 0xc00ae122`
    through SO `0xc6b8`, `0xc428(1)`, `0xc4fc`, page-root slot `1`, and following `!!`
@@ -902,16 +908,16 @@ The next work should follow dataflow, not isolated handlers:
    context `0xc0080cb8` with the primary non-Roman row digest, while the secondary tail
    renders from context `0xc00ad4aa` after SO with the secondary row digest. Remaining
    suite cases should add other fallback/error font-selection visible-output variants
-   beyond the remembered-primary path, the two symbol misses, the `0N`/`10U`/`11U`
-   primary/secondary streams, the real final-`@` primary/secondary streams, and the
-   covered final-`X` streams. Fixture `font-ID built-in selection feeds visible
-   page-record rows` covers that final-`X` stream: host-fetched `ESC (7X!!` reaches
-   `0x120be`, selects context `0xc0089fb0` through `0x17708`, and renders row digest
-   `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`. Fixture `font-ID
-   secondary built-in selection feeds visible SO page-record rows` covers the class-one
-   built-in final-`X` sibling: host-fetched `ESC )8X SO !!` reaches `0x120be`, selects
-   context `0xc00ae122` through `0x17708`, reuses page-root slot `1` through `0xc4fc`,
-   crosses SO `0xc6b8`, and renders row digest
+   beyond the remembered primary/secondary paths, the two symbol misses, the
+   `0N`/`10U`/`11U` primary/secondary streams, the real final-`@` primary/secondary
+   streams, and the covered final-`X` streams. Fixture `font-ID built-in selection feeds
+   visible page-record rows` covers that final-`X` stream: host-fetched `ESC (7X!!`
+   reaches `0x120be`, selects context `0xc0089fb0` through `0x17708`, and renders row
+   digest `73cbb28bfab786807b9a3186eb3946efae550cde2e5448f0549f88ebf8c8a631`. Fixture
+   `font-ID secondary built-in selection feeds visible SO page-record rows` covers the
+   class-one built-in final-`X` sibling: host-fetched `ESC )8X SO !!` reaches `0x120be`,
+   selects context `0xc00ae122` through `0x17708`, reuses page-root slot `1` through
+   `0xc4fc`, crosses SO `0xc6b8`, and renders row digest
    `b8ee0f8dd3e6ed70afa219bc00605d75249ae047a67fb67189693057d7936e6c`. Fixture `font-ID
    inline/downloaded selection feeds visible page-record rows` covers the parallel
    bit-30-clear final-`X` stream: host-fetched `ESC )4660X SO !` reaches `0x120be`,

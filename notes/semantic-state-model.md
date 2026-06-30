@@ -10743,11 +10743,18 @@ consume those root fields without changing their producer semantics.
   - root `+0x24`: rectangle/rule list head.
   - root `+0x28`: fixed-rule list head.
   - root `+0x2c..+0x68`: 16 current-font context slots.
+  - `0x10084` reuses an existing `0x78297a` root without reinitializing these
+    fields. On first allocation it optionally runs `0x9ac2` when pending
+    latches `0x782c72` or `0x782c73` are set, allocates the root through
+    `0x9a9a`, marks root byte `+4 = 1`, seeds `0x782a72 = root + 0x20`, calls
+    `0x10110`, clears `0x782990`, and zeroes the 256 bucket heads at root
+    `+0x1c`.
   Evidence: fixtures
   `0x10084-modeled page-root allocation side effects`,
   `addressed stream page record materializes through 0xff1e and 0x1ed84`,
   `addressed page-record writers share 0x1381c across chunk rollover`,
-  and disassembly `0x10084..0x1021e`.
+  disassembly `0x10084..0x1021e`, and
+  `generated/analysis/ic30_ic13_page_root_allocation.md`.
 - Firmware bookkeeping:
   - `0x782a70`: bytes remaining in the current stream chunk.
   - `0x782a72`: pointer to the current chunk link field.
@@ -10791,8 +10798,14 @@ consume those root fields without changing their producer semantics.
 - Derived/cache render fields:
   - `0x783a20`, `0x783a22`, and `0x783a28` are render-band outputs of
     `0x1ef86`, not canonical page-record state.
+  - `0x1ed84` active-copy entry reads source active page/control record pointer
+    `0x780eae`, copies source words `+0x18/+0x1a` to render words
+    `+0x0a/+0x0c/+0x10/+0x16`, clears render word `+0x0e`, then calls
+    `0x1edc6` to copy roots and context slots.
   Evidence: fixture
-  `0x1ef86 render band setup computes remainder and destination base`.
+  `0x1ef86 render band setup computes remainder and destination base`,
+  `0x1ed84 active page-record copy seeds render-record header words`, and
+  `generated/analysis/ic30_ic13_page_record_bridge.md`.
 - Parser scratch:
   - none newly assigned in this allocator cluster. Parser scratch enters
     through upstream command records such as the raster delayed record
@@ -10808,6 +10821,14 @@ consume those root fields without changing their producer semantics.
 - `0x10084` writes `0x78297a`, clears `0x782a70`, seeds
   `0x782a72 = root + 0x20`, clears `0x782990`, and calls `0x10110`.
   It leaves `0x782a76` unchanged until `0x1381c` allocates a chunk.
+  Generated call-site grouping shows this same ensure-root boundary is shared
+  by flagged/unflagged printable text (`0xd20a`, `0xd49a`, `0xd63c`,
+  `0xd8ea`), display-function/recovery paths (`0xd9ec`, `0xda4c`,
+  `0xff9a`), direct controls (`0xf0b6`, `0xf10c`, `0xf17a`, `0xf2b0`,
+  `0xf576`, `0xf6ee`), raster and rectangle producers (`0x106a4`,
+  `0x106ec`, `0x10d0a`, `0x10d38`), and span/sample-page setup paths
+  (`0x12788`, `0x127c4`, `0x12912`, `0x1c2d2`, `0x1ca08`, `0x1e0ee`,
+  `0x1e922`).
 - `0x10110` writes page code byte `+6`, status/flag fields
   `+8/+0a/+14`, dimension/band fields `+09/+16`, list heads
   `+20/+24/+28`, and selected current-font context slot `+2c`.
@@ -10830,6 +10851,10 @@ consume those root fields without changing their producer semantics.
   nodes remain unchanged when `D7` returns zero.
 - `0xff1e` publishes these roots into pool-record fields, and `0x1edc6`
   copies them into render-record fields `+0x18`, `+0x1c`, and `+0x20`.
+- `0x1ed84` is the active-record copy entry before render dispatch. It chooses
+  the source from `0x780eae`, writes render header words from source
+  `+0x18/+0x1a`, clears render `+0x0e`, and then delegates queue/list/context
+  copying to `0x1edc6`.
 
 ### Readers And Consumers
 
@@ -10843,6 +10868,11 @@ consume those root fields without changing their producer semantics.
 - Rendering through `0x1ed84`/`0x1edc6`/`0x1ef6a` consumes the published
   or active page record and dispatches compact, encoded-span, rule, and
   fixed-list objects.
+- `0x1edc6` is a bridge, not a renderer: it copies source root `+0x1c` to
+  render `+0x18`, source rule list `+0x24` to render `+0x1c`, source fixed
+  list `+0x28` to render `+0x20`, normalizes rule/fixed-list objects in place,
+  and copies 16 source context slots `+0x2c..+0x68` to render
+  `+0x24..+0x60`.
 
 ### Output Effect
 
@@ -10885,6 +10915,14 @@ destination offsets` pins the derived destination offset fields, and
 `0x1ed84 active page-record copy seeds render-record header words` pins
 the active-copy header words consumed before `0x1ef6a`.
 
+This checkpoint narrows the repeated "parser-produced page roots" gap. The
+root allocation, object stream allocator, root fields, publication fields,
+active-copy header words, bridge roots, and render dispatch roots are
+field-discovered and fixture-pinned. The remaining stronger proof is a live
+CPU/parser-state run that reaches the same `0x10084 -> producer -> 0xff1e or
+0x1ed84 -> 0x1edc6 -> 0x1ef6a` chain with real pool pointers for dense mixed
+pages; it is not an unknown object layout or bridge-field problem.
+
 ### Confidence
 
 High for page-root creation side effects, stream allocator accounting,
@@ -10921,6 +10959,8 @@ results rather than executing the full heap and page scheduler.
 
 - `generated/disasm/ic30_ic13_page_root_allocate_010084.lst`:
   `0x10084..0x1021e`
+- `generated/analysis/ic30_ic13_page_root_allocation.md`:
+  ensure-root contract, initializer fields, and call-site groups.
 - `generated/disasm/ic30_ic13_display_list_helpers_013386.lst`:
   `0x13386..0x1387a` and `0x1387c..0x138de`
 - `generated/disasm/ic30_ic13_text_object_queue_012f2e.lst`:
@@ -10930,6 +10970,9 @@ results rather than executing the full heap and page scheduler.
 - `generated/disasm/ic30_ic13_page_root_finalize_00ff1e.lst` and
   `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`:
   publication and render bridge consumers
+- `generated/analysis/ic30_ic13_page_record_bridge.md`:
+  active-record copy entry, `0x1edc6` queue/list/context copy contract,
+  render-band setup, and render-entry call order.
 
 ### Unresolved Middle Edges
 

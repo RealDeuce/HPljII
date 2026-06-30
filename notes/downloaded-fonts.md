@@ -42,6 +42,7 @@ Primary fixtures:
 - `0x15c4c partial resource resumes update continuation state`
 - `0x17d7c releases extended fixed-record table with secondary refresh`
 - `0x17d7c delegates bit-30 release to offset-table helper`
+- `0x17d7c release reject exits preserve table and continuation state`
 - `host-fetched 0x15d0a split-plane continuation resource object resumes
   fixed-record render`
 - `0x16c14-modeled downloaded font replacement bookkeeping`
@@ -1734,6 +1735,16 @@ entry at payload `+0x004a + 4 * 0x21` from `00 00 02 40` to
 `00 00 00 00`, refreshes the matching active secondary context with
 `0x7828de = 1`, and clears matching continuation state.
 
+Fixture `0x17d7c release reject exits preserve table and continuation state`
+covers the no-rewrite release exits. A base outside the modeled payload returns
+`base-outside-header`. Fixed-record char `0x20` with type byte `0`, and
+extended char `0xa1` with type byte `0`, both return
+`char-outside-fixed-record-range`. The bit-30 delegate case enters `0x17a24`
+with range `0x20..0x7f` and char `0x80`, returning
+`char-outside-offset-table-range`. In all four cases the fixture keeps the
+release input memory and continuation state unchanged, so no table entry is
+cleared and no active-context refresh is requested.
+
 The current-record allocation-failure release fixture named above covers the
 remaining `0x1887a` teardown edge for a bit-30-clear extended fixed-record
 payload: it proves record clearing, candidate deletion, continuation clearing,
@@ -1927,11 +1938,13 @@ buckets `1` and `9`, and renders bucket word `9` through compact target
 - `0x17d7c` rewrites released bit-30-clear fixed-record entries, writes the
   side-table bytes used by the fallback record, refreshes matching active
   primary/secondary contexts through `0x14c64`, and clears matching
-  continuation state.
+  continuation state. Its range/base reject exits leave table and continuation
+  state unchanged.
 - `0x17a24` releases bit-30 offset-table entries delegated by `0x17d7c`,
   clears the selected 4-byte glyph/object pointer, refreshes matching active
   primary/secondary contexts through `0x14c64`, and clears matching
-  continuation state.
+  continuation state. Its offset-table range reject leaves table and
+  continuation state unchanged.
 - `0x12f2e`/`0x1387c` write compact text bucket objects for the installed
   glyph.
 

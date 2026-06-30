@@ -616,8 +616,9 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
 5. Downloaded font support now has tracked documentation for descriptor,
    resource-payload, current-record, bit-30-clear resource-object, bit-30-clear
    even-span and split-plane continuation resume, status-0 fixed-record release, bit-30
-   offset-table release delegate, split-plane character-object, linear character-object,
-   and downloaded-glyph render paths in `notes/downloaded-fonts.md`. The `0x16c14`
+   offset-table release delegate, release reject no-rewrite exits, split-plane
+   character-object, linear character-object, and downloaded-glyph render paths in
+   `notes/downloaded-fonts.md`. The `0x16c14`
    existing-record allocation-failure teardown through `0x1887a` is fixture-backed for
    the bit-30-clear extended fixed-record case. The `0x16fae` validation table now has
    ROM-effect names for all 32 entries plus concrete success and failure fixtures, and

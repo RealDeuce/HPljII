@@ -4689,10 +4689,12 @@ compact text renderer.
   release/rewrite the fixed-record entry, then clears continuation state.
 - `0x17d7c` rewrites released bit-30-clear fixed-record entries, writes
   fallback side-table bytes, refreshes matching active contexts through
-  `0x14c64`, and clears matching continuation state.
+  `0x14c64`, and clears matching continuation state. Its base/range reject
+  exits leave table and continuation state unchanged.
 - `0x17a24` releases bit-30 offset-table entries delegated by `0x17d7c`,
   clears the selected 4-byte glyph/object pointer, refreshes matching active
-  contexts through `0x14c64`, and clears matching continuation state.
+  contexts through `0x14c64`, and clears matching continuation state. Its
+  range reject leaves table and continuation state unchanged.
 - `0x16498` consumes the `0x16336` descriptor scratch for bit-30 downloaded-character
   payloads. Its range branch `0x164f2..0x16540` treats high character codes as legal
   only when the font-header byte `+0x0c >= 1`; its copy/allocation branch
@@ -4984,7 +4986,11 @@ helper` proves the bit-30 sibling: `0x17d7c` dispatches to `0x17a24`, which vali
 range words `+0x0e/+0x10 = 0x0020/0x007f`, uses table offset word `+0x08 = 0x004a`,
 clears char `0x21` table entry `00 00 02 40` to zero at payload `+0x004a + 4 * 0x21`,
 records active-secondary refresh `0x7828de = 1`, and clears the matching continuation
-fields. Fixture `0x16c14 allocation failure releases existing payload through 0x1887a`
+fields. Fixture `0x17d7c release reject exits preserve table and continuation state`
+proves the no-rewrite siblings: base outside the modeled payload, fixed-record chars
+`0x20` and `0xa1` outside the admitted ranges, and bit-30 delegate char `0x80` outside
+offset-table range all return without changing the table bytes or continuation fields.
+Fixture `0x16c14 allocation failure releases existing payload through 0x1887a`
 has no direct pixel output because it is a failed replacement path. Its output contract
 is state cleanup: old current-record payload `0x123456` is cleared, candidate slot
 `0x782328` is deleted, extended fixed-record cleanup runs through `0x18bf2`/`0x18090`
@@ -5646,6 +5652,7 @@ fields and broader selected-font state combinations have not been page-compared.
 - `0x15c4c partial resource resumes update continuation state`
 - `0x17d7c releases extended fixed-record table with secondary refresh`
 - `0x17d7c delegates bit-30 release to offset-table helper`
+- `0x17d7c release reject exits preserve table and continuation state`
 - `0x16c14 allocation failure releases existing payload through 0x1887a`
 - `host-fetched 0x15d0a split-plane continuation resource object resumes
   fixed-record render`

@@ -4302,7 +4302,9 @@ install events.
   `0x120be..0x156de..0x14c64..0xc6b8..0xd04a`. The covered font-ID boundary
   includes primary built-in `ESC (7X!!` through
   `0x120be..0x17708..0x14c64..0xd04a`, secondary built-in `ESC )8X SO !!`
-  through `0x120be..0x17708..0x14c64..0xc6b8..0xd04a`, and inline/downloaded
+  through `0x120be..0x17708..0x14c64..0xc6b8..0xd04a`, primary
+  inline/downloaded `ESC (4660X!` through
+  `0x120be..0x17708..0x14c64..0xd04a`, and secondary inline/downloaded
   `ESC )4660X SO !` through
   `0x120be..0x17708..0x14c64..0xc6b8..0xd04a`; the covered direct font-ID
   non-selected boundaries now run from `0x120be..0x17708` statuses

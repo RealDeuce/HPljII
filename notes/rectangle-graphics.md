@@ -23,18 +23,40 @@ Evidence:
   - `rectangle command stream queues chained ESC *c rule object`
   - `0x11774 ROM dispatch table routes chained ESC *c rule stream`
   - `host-fetched rectangle rule stream preserves 0x1edc6 bridge contract`
+  - `host-fetched rectangle rule feeds 0x1ed84 and 0x1ef6a`
   - `0x13386/0x133aa-modeled rectangle/rule list object and bridge
     normalization`
+  - `0x133aa address-aware rule-list insertion uses 0x1381c storage`
+  - `0x133aa no-room return preserves rule-list head`
+  - `0x1edc6 page-record bridge normalizes rule and fixed lists`
+  - `0x137a2/0x136d2-modeled fixed-rule list object and bridge
+    normalization`
   - `0x1f446/0x1f596 renders solid black rectangle rule pixels`
+  - `0x1f596 carries solid rule remainder across render bands`
   - `0x1f4e0 renders gray and HP pattern selector matrix`
+  - `0x1f4e0 carries patterned rule remainder across render bands`
+  - `0x1f446 page-band walk assembles patterned rule rows`
+  - `0x1f446/0x1f4e0 renders gray selector pattern pixels`
+  - `0x1f4e0 renders sub-byte shifted HP pattern rule pixels`
+  - `0x10b80 rectangle fill clips negative left edge before queueing`
   - `0x10b80 rectangle fill clips right/top/bottom edges and ignores
     off-page fills`
   - `0x10d22 rectangle/rule no-room retry finalizes root then retries span`
   - `rectangle parser trace feeds no-room retry path`
+  - `bridged compact text and rule objects compose into one page band`
+  - `bridged text, rule, and raster layers compose into one page band`
+  - `0x1ef6a render entry composes bucket, rule, and fixed-width lists in call
+    order`
+  - `0x1ef6a page-band walk merges text raster and crossing rule`
   - `host-fetched text plus rectangle page record feeds 0x1ed84 and 0x1ef6a`
+  - `addressed text plus rectangle stream matches page-record output`
   - `host-fetched alternate rectangle selectors feed full page records`
   - `host-fetched rectangle selector matrix feeds full page records`
   - `host-fetched text rectangle and raster page record feeds 0x1ed84 and
+    0x1ef6a`
+  - `addressed text rectangle raster stream matches page-record output`
+  - `addressed text rectangle raster publication renders rows`
+  - `published text rectangle and raster page record feeds 0x1ed84 and
     0x1ef6a`
   - `host-fetched text rectangle raster FF publishes rendered page record`
   - `addressed text rectangle raster FF publishes rendered page record`
@@ -228,6 +250,10 @@ Concrete negative-left clipping fixture:
 
 The harness also pins right-edge, top-edge, bottom-edge, landscape
 right-edge, horizontal-outside, vertical-outside, and empty-after-clip cases.
+Fixture `0x10b80 rectangle fill clips negative left edge before queueing`
+separates the negative-left source-record case from later rule-list insertion.
+Fixture `0x10b80 rectangle fill clips right/top/bottom edges and ignores
+off-page fills` covers the remaining clipping and reject outcomes.
 
 ## Rule Object At 0x13386 / 0x133aa
 
@@ -280,6 +306,20 @@ Address-aware storage fixture:
 - A smaller bucket inserts at the head.
 - A larger bucket inserts at the tail.
 - An equal bucket inserts after the existing equal bucket.
+
+Fixture `0x133aa address-aware rule-list insertion uses 0x1381c storage`
+pins the allocator state and ordered insertion cases. Fixture `0x133aa
+no-room return preserves rule-list head` covers the failure return consumed by
+the `0x10d22` retry path: the old `+0x24` head remains canonical until the
+retry publishes the old root and allocates a fresh one.
+
+The shared bridge fixture `0x1edc6 page-record bridge normalizes rule and
+fixed lists` proves that page-root rule list `+0x24` is copied to
+render-record `+0x1c` and normalized in place. It also covers the sibling
+fixed-list normalization path; fixture `0x137a2/0x136d2-modeled fixed-rule
+list object and bridge normalization` keeps that sibling list out of
+rectangle semantics except where `0x1ef6a` must walk both lists in a fixed
+call order.
 
 ## No-Room Retry At 0x10d22
 
@@ -350,6 +390,10 @@ Band-crossing solid fixture:
 - object `+0x0c` carries `3` remaining rows
 - next band draws `3` rows from y `0`
 
+Fixture `0x1f596 carries solid rule remainder across render bands` pins the
+mutated continuation object and the second-band rows. The continuation word is
+canonical render state after `0x1edc6`, not parser scratch.
+
 ### Pattern Rules
 
 `0x1f4e0` handles non-solid selectors through the pointer table at
@@ -414,6 +458,14 @@ Rendered shifted HP-pattern rows:
 ...........####.........
 ```
 
+Fixture `0x1f446/0x1f4e0 renders gray selector pattern pixels` isolates the
+gray-selector helper path, while `0x1f4e0 renders sub-byte shifted HP pattern
+rule pixels` isolates the shifted HP-pattern path. Fixtures `0x1f4e0 carries
+patterned rule remainder across render bands` and `0x1f446 page-band walk
+assembles patterned rule rows` prove that non-solid rule continuation mutates
+the bridged node between bands and that the walker resumes from the carried
+node on the next band.
+
 ## Mixed Page-Record Composition
 
 The rectangle/rule producer has been composed with adjacent page producers in
@@ -430,6 +482,10 @@ contains a compact text bucket and selector-7 rule list; `0x1ed84` /
 `0x1edc6` bridge the record, and `0x1ef6a` calls bucket dispatch `0x1efc2`,
 rule dispatch `0x1f446`, and fixed-list dispatch `0x1f756` in the pinned
 order.
+Fixture `addressed text plus rectangle stream matches page-record output`
+adds the addressed storage form for the same stream: compact text is in bucket
+array `+0x1c`, the selector-7 rule is in rule list `+0x24`, context slot 0 is
+`0x440946b4`, and the rendered rows match the page-record runner.
 
 Fixture `host-fetched alternate rectangle selectors feed full page records`
 keeps the same compact `!` text producer and rectangle origin, then drives two
@@ -482,6 +538,15 @@ the same current page record contains:
 - mode-0 raster through delayed `0x11f82` / `0x12218` / `0x105d0` /
   `0x13070` / `0x13250`.
 
+The lower-level composition fixtures prove the same renderer layering without
+the full parser front end. `bridged compact text and rule objects compose into
+one page band` composes compact text with a selector-7 rule after the
+`0x1edc6` bridge. `bridged text, rule, and raster layers compose into one page
+band` adds the mode-0 raster layer. `0x1ef6a render entry composes bucket,
+rule, and fixed-width lists in call order` pins the dispatcher order as
+`0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`; the fixed-list slot may be empty
+for rectangle-only streams, but it is still part of the render-entry contract.
+
 The addressed FF publication fixtures pin the page-record storage for that
 mixed stream. Fixture `addressed text/rule/raster field groups reach
 publication and render entry` classifies these fields:
@@ -503,6 +568,14 @@ publication and render entry` classifies these fields:
   one publication, one root clear, and publication flag `1`;
 - unknown: exact live 68000 heap/register continuity for the full
   parser-to-allocator path.
+
+Fixture `addressed text rectangle raster stream matches page-record output`
+checks the addressed current-page form before FF publication. Fixture
+`addressed text rectangle raster publication renders rows` checks the
+published addressed form after modeled `0xff1e`. Fixture `published text
+rectangle and raster page record feeds 0x1ed84 and 0x1ef6a` verifies that the
+published record crosses the same render-entry bridge as the current-page
+form.
 
 The alternate selector fixtures classify `0x78316e` as canonical fill state:
 `0x10dce` writes it from `#g`, and `0x10898` consumes it for `2P` and `3P`.
@@ -540,6 +613,11 @@ pins the addressed storage shape:
 - raster `row_y = 2` and render dispatch targets `0x1f88e`, `0x1f88e`,
   and `0x1effe`, with the selector-7 rule rendered in the same published
   page record.
+
+Fixture `0x1ef6a page-band walk merges text raster and crossing rule` extends
+this mixed composition across render bands. It carries a mutated patterned
+rule node from band `0` to band `5`, while compact text and mode-0 raster
+bucket entries continue to dispatch through `0x1efc2`.
 
 Writers are the parser handlers and producers listed above, plus `0xff1e`
 when fixtures `host-fetched text rectangle raster FF publishes rendered page

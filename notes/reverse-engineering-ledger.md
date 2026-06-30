@@ -126,12 +126,20 @@ service-message selector, updating
 `0x780e3e`/`0x7822e6`, dispatching `0x780e8a` through the table at
 `0x8626`, and selecting strings such as `16 TONER LOW`, `SERVICE MODE`,
 `UC`, `LC`, `04 SELF TEST`, `05 SELF TEST`, `06 PRINTING TEST`, and
-`06 FONT PRINTOUT` through wrappers `0x8c7a` / `0x8c90`. The
+`06 FONT PRINTOUT` through wrappers `0x8c7a` / `0x8c90`. The wrapper
+edge is now lifted through `0x9182`: `0x8c7a` supplies flag `0`, `0x8c90`
+supplies flag `1`, `0x9182` copies source text to desired buffer
+`0x78292c`, compares it with shadow buffer `0x78293d` plus current flag
+`0x78296c`, returns unchanged messages without panel writes, and on changes
+refreshes the shadow buffer and current flag. Flag `1` additionally runs
+`0x9406`, which builds output table roots `0x782904` / `0x78290c` from the
+first two shadow-message bytes; the remaining part of that edge is the
+physical panel effect of those masks, not the wrapper argument semantics. The
 `0x122be..0x12326` output producer now pins model-ID bytes
 `33440A\r\n` from `0x12280`; remaining work is the external protocol name
 for that `0x11` query, user-facing names for the folded status categories
-and selected record bytes, the `0x9182` / `0x9112` display-engine
-internals, and physical naming/timing for the output MMIO banks.
+and selected record bytes, `0x9112` formatted-message internals, and
+physical naming/timing for the output MMIO banks.
 
 ### Main PCL parser
 

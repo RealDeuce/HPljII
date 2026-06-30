@@ -835,6 +835,21 @@ reports the same flag as bit 0 of the outbound base `0x30` status byte.
     `0x780e30.0`: set by `0x29b2` otherwise.
   - `0x8c7a` and `0x8c90`: display/message wrappers. `0x8c7a(arg)`
     calls `0x9182(arg, 0)`, and `0x8c90(arg)` calls `0x9182(arg, 1)`.
+  - `0x78292c..0x78293c`: desired 16-character operator-panel message
+    buffer. `0x955a` fills it with spaces and a terminator; `0x95ae`
+    copies the source string into it, capped at 16 bytes.
+  - `0x78293d..0x78294d`: displayed/shadow message buffer. `0x9584`
+    clears it, `0x92f8` copies nonzero bytes from the selected source,
+    and `0x95fa` compares it against `0x78292c`.
+  - `0x78296c`: current display/message mode flag. `0x95fa` compares it
+    with the wrapper argument flag, and `0x9182` updates it after a
+    changed message is installed.
+  - `0x78296d`: one-based display character counter used by `0x92f8`.
+    Values above `0x10`, or a zero source byte, terminate the copy.
+  - `0x78296e`: pending wrapper flag copied from the `0x9182` second
+    argument before optional `0x9406` setup.
+  - `0x782970` / `0x782971`: prior display-mode byte and once-per-mode
+    strobe latch maintained by `0x952a` and `0x949c`.
   - `0x9112`: formatted display/message helper used by `0x8a48` for
     media-feed strings with a table entry from `0xb490`.
   - `0xb490`: longword table indexed by `0x780e98 << 2`, or by
@@ -850,8 +865,8 @@ reports the same flag as bit 0 of the outbound base `0x30` status byte.
   - user-facing names for record bytes `+6`, `+7`, and `+8` outside the
     existing page-environment interpretation.
   - physical signal names for `$8a01.5`, `$8a01.3`, and `$a801.2`.
-  - exact UI/display distinction between wrapper flag `0` from `0x8c7a`
-    and wrapper flag `1` from `0x8c90`.
+  - exact physical panel effect of the flag-`1` path after `0x9406` builds
+    output table pointers from the first two shadow-message bytes.
   - semantic names for the entries in table `0xb490`.
 
 ### Writers
@@ -879,6 +894,21 @@ reports the same flag as bit 0 of the outbound base `0x30` status byte.
   reads `0x780e8e`, `0x780e98`, `$8a01.5` via `0xa46e`, and table
   `0xb490`, but the focused listing shows no page-record or
   `0x780e90` write in this helper.
+- `0x9182` is the shared display-message installer behind `0x8c7a` and
+  `0x8c90`. Unless the source pointer is already `0x78292c`, it clears the
+  desired buffer through `0x955a`, copies the source string into
+  `0x78292c` through `0x95ae`, compares desired text plus wrapper flag
+  against `0x78293d` / `0x78296c` through `0x95fa`, and returns without
+  hardware writes when unchanged. On a change it calls `0x952a`, writes
+  hardware masks through `0x949c`, waits through `0x8bea(5)`, clears the
+  shadow buffer through `0x9584`, copies the new text through `0x92f8`,
+  writes `0x78296e`, optionally calls `0x9406` when the wrapper flag is
+  nonzero, and then stores that flag in `0x78296c`.
+- `0x9406` handles the flag-`1` display path. When `0x78296e == 1`, it
+  initializes words at `0x78291c..0x78292a`, derives two masks from
+  shadow-message bytes `0x78293d` and `0x78293e`, points `0x782904` and
+  `0x78290c` at those word pairs, clears `0x782908` and `0x782910`, and
+  resets output-table cursor `0x7828fe`.
 - `0xa5c2` clears `0x7828f9.2` and writes the shadow byte to `$a801`;
   `0xa5da` sets the same shadow bit and writes `$a801`.
 
@@ -903,6 +933,11 @@ reports the same flag as bit 0 of the outbound base `0x30` status byte.
   (`0xb21a`), `SERVICE MODE` (`0xb62a`), `UC` (`0xb23c`), `LC`
   (`0xb24d`), and the `04`/`05`/`06` self-test/font-printing strings
   listed above.
+- `0x8c7a` and `0x8c90` consume a string pointer and select the second
+  argument to `0x9182`: `0x8c7a` uses flag `0`, while `0x8c90` uses flag
+  `1`. The flag participates in the unchanged-message predicate at
+  `0x95fa`; flag `1` also selects the `0x9406` table/pointer setup after
+  the text copy.
 - `0x0d12..0x0d24` consumes and clears `0x7839d3` in a copied-stub status
   handler, then signals wait object `0x780182`.
 
@@ -914,7 +949,9 @@ bidirectional protocol behavior, and the page-pool cursor loop chooses
 display/service-message output while `0x780e90` is set or clear. The
 covered `0x8a48` and `0x8656` paths emit operator-panel/status strings;
 they do not draw pixels, modify page records, or enter the render path in
-the focused listings. Pixel effects remain indirect through host
+the focused listings. The `0x9182` helper installs the selected status
+string into panel buffers and drives panel-output masks, but it still
+does not modify page records. Pixel effects remain indirect through host
 protocol decisions and scheduler/service timing, not through bitmap
 composition.
 
@@ -924,11 +961,13 @@ High for `0x780e90`, `0x780e98`, `0x780e8f`, `0x780e29`, `0x780e30`,
 `0x780e2a.4`, and `0x7839d3` writes because the focused listings show
 direct stores and bit operations, and the `0x2888` producer boundary now
 has executable fixture coverage. High for the service-message string
-addresses, the `0x7612` helper choice, and the `0x8a48` media-feed
-message matrix because the literals, table indexes, and helper calls are
-direct ROM data and are fixture-backed. Medium for physical/user-facing
+addresses, the `0x7612` helper choice, the `0x8a48` media-feed message
+matrix, and the `0x9182` desired/shadow buffer contract because the
+literals, table indexes, helper calls, stores, and comparison predicate
+are direct ROM data; the first three are fixture-backed, while `0x9182`
+is disassembly-backed in this checkpoint. Medium for physical/user-facing
 status names for the selected record bytes and the hardware bits behind
-`$8a01` and `$a801`.
+`$8a01`, `$a801`, and the `0x9406` flag-`1` panel table.
 
 ### Fixtures
 
@@ -973,6 +1012,9 @@ status names for the selected record bytes and the hardware bits behind
   service path.
 - `generated/disasm/ic30_ic13_message_dispatch_wrappers_008c7a.lst`:
   `0x8c7a..0x8ca6` wrapper calls into `0x9182`.
+- `generated/disasm/ic30_ic13_display_message_core_009182.lst`:
+  `0x9182..0x96a0` display-message buffer, flag, compare, panel-mask, and
+  flag-`1` table setup helpers.
 - `generated/disasm/ic30_ic13_8a01_a801_status_bits_00a42c.lst`:
   `0xa46e`, `0xa5b0`, `0xa5c2`, `0xa5da`, and `0xa5f2` hardware
   bit/shadow helpers.
@@ -989,9 +1031,11 @@ status names for the selected record bytes and the hardware bits behind
 - `0x780e98` source bytes: selected record byte `+6`, `0x780e97`,
   `0x780e55`, and helper `0x29b2` are bounded, but their user-facing
   status names remain unresolved.
-- `0x8c7a` / `0x8c90` -> `0x9182`: wrapper argument `0` versus `1` is
-  pinned at `0x8c7a..0x8ca6`, but the exact operator-panel behavior of
-  that flag remains unresolved until `0x9182` is lifted.
+- `0x9182..0x9406 -> physical panel output`: wrapper flag `0` versus `1`
+  is now lifted as normal display install versus extra table setup from
+  `0x78293d` / `0x78293e`. The remaining edge is the physical panel effect
+  of the masks written through `0x949c`, table roots `0x782904` /
+  `0x78290c`, and cursor `0x7828fe`.
 - `0x9112` and table `0xb490`: `0x8a48` argument order and table index
   boundaries are pinned at `0x8a74..0x8b24`, but the table entries and
   formatted-message engine remain unresolved.

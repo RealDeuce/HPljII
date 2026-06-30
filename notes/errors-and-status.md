@@ -80,6 +80,14 @@ Firmware bookkeeping:
 - `0x780e8a`: normal service-message selector for the `0x8656` table.
 - `0x7821b8` / `0x7821b9`: self-test/font-print selectors consumed by
   `0x8656`.
+- `0x78292c..0x78293c`: desired 16-character operator-panel message buffer
+  maintained by `0x9182`, `0x955a`, and `0x95ae`.
+- `0x78293d..0x78294d`: displayed/shadow message buffer cleared by
+  `0x9584`, populated by `0x92f8`, and compared against the desired buffer
+  by `0x95fa`.
+- `0x78296c`: current display/message mode flag. Wrapper `0x8c7a` supplies
+  flag `0`; wrapper `0x8c90` supplies flag `1`.
+- `0x78296d` / `0x78296e`: display character counter and pending wrapper flag.
 
 Parser scratch:
 
@@ -93,8 +101,7 @@ Unknown:
   `0xfffee003`, `$8a01`, and `$a801`;
 - user-facing names for selected record byte `+6`, `0x780e98`, and the folded
   aggregate status categories beyond the strings already listed below;
-- the display-engine distinction between wrapper `0x8c7a` flag `0` and
-  wrapper `0x8c90` flag `1`.
+- the physical panel effect of the flag-`1` display table built by `0x9406`.
 
 ### Writers
 
@@ -117,6 +124,13 @@ Unknown:
 - `0x8656` updates `0x780e3e` / `0x7822e6` and emits normal service strings.
 - `0x8a48` emits media-feed strings from `0x780e8e`, `0x780e98`, and table
   `0xb490`.
+- `0x9182` installs operator-panel messages. It copies source text to
+  `0x78292c`, compares text plus wrapper flag against `0x78293d` /
+  `0x78296c`, returns unchanged messages without hardware writes, and on
+  change refreshes the shadow buffer and stores the new flag in `0x78296c`.
+- `0x9406` is the flag-`1` path selected by `0x8c90`: it derives output masks
+  from the first two shadow-message bytes, initializes words
+  `0x78291c..0x78292a`, and points `0x782904` / `0x78290c` at those words.
 
 ### Readers And Consumers
 
@@ -133,6 +147,9 @@ Unknown:
 - `0x8656` selects normal status strings such as `16 TONER LOW`,
   `SERVICE MODE`, `04 SELF TEST`, `05 SELF TEST`, `06 PRINTING TEST`, and
   `06 FONT PRINTOUT`.
+- `0x8c7a` and `0x8c90` select the `0x9182` wrapper flag. Flag `0` is the
+  normal install path; flag `1` also arms the `0x9406` display-output table
+  after the text has changed.
 
 ### Output Effect
 
@@ -176,14 +193,17 @@ Disassembly evidence:
 - `generated/disasm/ic30_ic13_page_pool_cursor_007612.lst`
 - `generated/disasm/ic30_ic13_page_service_messages_008656.lst`
 - `generated/disasm/ic30_ic13_page_environment_message_008a48.lst`
+- `generated/disasm/ic30_ic13_message_dispatch_wrappers_008c7a.lst`
+- `generated/disasm/ic30_ic13_display_message_core_009182.lst`
 
 Unresolved middle edges:
 
 - No unresolved ROM object/rendering edge remains in these status paths.
 - Remaining work is the external protocol name for the `0x11` query that
   emits `33440A\r\n` from `0x12280`, user-facing names for folded status
-  categories and selected record bytes, `0x9182` / `0x9112` display-engine
-  internals, and physical naming/timing for the output MMIO banks.
+  categories and selected record bytes, `0x9112` formatted-message internals,
+  physical panel behavior after `0x9406`, and physical naming/timing for the
+  output MMIO banks.
 
 ## Attendance / User Action
 

@@ -8626,6 +8626,179 @@ because each is fixture-pinned.
   commands, but physical-device comparison remains outside the ROM-internal
   reproduction contract.
 
+## Bitmap Render Dispatch Contract
+
+Status: composed as the shared render-entry checkpoint after page-record publication or
+active-record bridging. The low-level ledger remains in
+[page-raster-imaging.md](page-raster-imaging.md#bitmap-object-dispatch-semantic-checkpoint);
+this section records the semantic contract needed to reproduce pixels from already
+queued page-record objects.
+
+Concept: `0x1ed84` and `0x1edc6` copy a page/control record into the active
+render record, then `0x1ef6a` renders the selected band in fixed call order:
+band setup `0x1ef86`, bucket-chain dispatch `0x1efc2`, rule-list dispatch
+`0x1f446`, and fixed-list dispatch `0x1f756`. Bucket objects are selected by
+class byte `+0x04`: compact glyph/text objects use `0x1effe`, segment-list
+objects use `0x1f812`, and encoded raster objects use `0x1f88e`.
+
+### Field Groups
+
+- Canonical render roots:
+  - render `+0x18`: bucket-head array copied from page/control source
+    `+0x1c`, consumed by `0x1efc2`.
+  - render `+0x1c`: rule-list root copied from source `+0x24`, consumed by
+    `0x1f446`.
+  - render `+0x20`: fixed-list root copied from source `+0x28`, consumed by
+    `0x1f756`.
+  - render `+0x24..+0x60`: context/resource slots copied from source
+    `+0x2c..+0x68`; compact glyph dispatch selects a slot through object byte
+    `+0x05`.
+Evidence: fixtures `published page records feed 0x1ed84 and 0x1ef6a render entry`,
+`0x1ef6a render entry composes bucket, rule, and fixed-width lists in call order`, and
+[page-raster-imaging.md](page-raster-imaging.md#bitmap-object-dispatch-semantic-checkpoint).
+- Canonical bucket object fields:
+  - object `+0x00`: next pointer in the selected bucket chain.
+  - object byte `+0x04`: class selector; `0x00..0x3f` is compact glyph/text,
+    `0x40..0x7f` is segment-list, and `0x80..0xff` is encoded raster.
+  - object byte `+0x05`: compact context selector or encoded raster mode.
+  - object word `+0x06`: compact/segment count or raster payload capacity.
+  - object word `+0x08`: packed destination coordinate/key.
+  - object `+0x0a..`: compact glyph entries, segment-list entries, or raster
+    payload bytes.
+- Canonical rule/fixed-list fields:
+  - rule object `+0x05`: bridged fill selector with bit `0x10` set by
+    `0x1edc6`; low nibble `7` selects solid helper `0x1f596`, while selectors
+    `0..6` and `8..13` select pattern helper `0x1f4e0`.
+  - rule object `+0x06`, `+0x08`, `+0x0a`, and `+0x0c`: packed key, width,
+    original height, and continuation height.
+  - fixed-list object `+0x04`, `+0x05`, `+0x06`, `+0x08`, `+0x0a`,
+    `+0x0c`, and `+0x0d`: band byte, selector/pattern byte, packed key,
+    width, remaining rows, bridge count, and bridge width marker.
+- Derived/cache render state:
+  - `0x783a18`: active render-record pointer loaded by `0x1ef6a`.
+  - `0x783a20`, `0x783a22`, and `0x783a28`: current-band split count,
+    remainder, and destination base written by `0x1ef86`.
+  - `0x783a1c` and `0x7839f8..`: line stride and offset table written by
+    `0x1ee9e` before object rendering.
+  - `0x783a2c`: compact glyph context/resource cache written by `0x1f008`.
+  - `0x7810b4 + D2`: fallback buffer used when compact glyph or encoded raster
+    rows continue beyond the active band.
+- Parser scratch:
+  - none in this shared dispatch layer. Parser-family scratch has already been
+    converted into page-record objects by upstream producers such as
+    `0x12f2e`, `0x13070`, `0x133aa`, `0x13520`, `0x135f0`, or `0x136d2`.
+- Firmware bookkeeping:
+  - continuation fields such as rule `+0x0c` and fixed-list `+0x0a` are
+    mutated by render helpers so later bands resume the same object.
+  - `0x783a46` is horizontal phase used by compact row-copy helper `0x2f27c`.
+- Unknown:
+  - physical engine consumption of the already-rendered band buffer remains
+    outside this checkpoint.
+
+### Writers
+
+- `0x1edc6` writes render roots `+0x18`, `+0x1c`, and `+0x20`, normalizes
+  rule/fixed-list fields, and copies context slots.
+- `0x1ef86` writes current-band destination caches before object dispatch.
+- Page producers write the canonical object inputs: `0x12f2e` / `0x1387c`
+  for compact bucket objects, `0x12714` / `0x13520` / `0x135f0` for
+  segment-list objects, `0x13070` / `0x13250` for encoded raster,
+  `0x13386` / `0x133aa` for rule lists, and `0x136d2` for fixed lists.
+- `0x1f446`, `0x1f4e0`, `0x1f596`, `0x1f756`, `0x1f812`, `0x1f88e`, and the
+  compact helpers mutate continuation or count fields while rendering.
+
+### Readers And Consumers
+
+- `0x1ef6a` consumes `0x783a18` and calls
+  `0x1ef86 -> 0x1efc2 -> 0x1f446 -> 0x1f756`.
+- `0x1efc2` consumes render `+0x18`, indexes the active bucket from render word
+  `+0x10`, walks each bucket object, and dispatches by object byte
+  `+0x04 & 0xc0`.
+- `0x1effe` handles compact objects and selects `0x1f034`, `0x1f0d2`,
+  `0x1f1f0`, or `0x1f264` from object byte `+0x04` bits `0x10` and `0x20`.
+- `0x1f812` consumes segment-list objects and writes counted mask spans.
+- `0x1f88e` consumes encoded raster objects and selects helpers `0x1f8da`,
+  `0x1f8e6`, `0x1f920`, or `0x1f9c6` from object byte `+0x05 & 0x03`.
+- `0x1f446` consumes rule-list objects from render `+0x1c`.
+- `0x1f756` consumes fixed-list objects from render `+0x20` on five-band
+  boundaries.
+
+### Output Effect
+
+Fixture `0x1ef6a render entry composes bucket, rule, and fixed-width lists in
+call order` proves the layer order for bucket, rule, and fixed-list roots.
+Fixture `0x1ef6a page-band walk merges text raster and crossing rule` proves
+a compact text object, mode-0 raster object, and crossing patterned rule
+compose across two bands while rule continuation carries state. Fixture
+`bridged text, rule, and raster layers compose into one page band` proves
+parser-shaped bucket/rule/raster objects merge after `0x1edc6`. Fixture
+`parser-driven downloaded glyph rule raster stream composes through 0x1ef6a`
+proves a host-fetched downloaded glyph, rule, and raster page stream reaches
+the same dispatch layer.
+
+### Confidence
+
+High for render-root ownership, `0x1ef6a` call order, bucket class split,
+compact subdispatch, segment-list layout, encoded raster mode split,
+rule-list selector dispatch, fixed-list consumption, and row-level output for
+the cited fixtures. Medium for broader compact downloaded-glyph state
+combinations and physical/reference page comparisons.
+
+### Fixtures
+
+- `0x1ef86 render band setup computes remainder and destination base`
+- `0x1efc2 bucket-chain dispatcher selects bucket and object classes`
+- `0x1ef6a render entry composes bucket, rule, and fixed-width lists in call
+  order`
+- `0x1ef6a page-band walk merges text raster and crossing rule`
+- `bridged compact text and rule objects compose into one page band`
+- `bridged text, rule, and raster layers compose into one page band`
+- `parser-driven downloaded glyph rule raster stream composes through
+  0x1ef6a`
+- `0x1f812 segment-list object renders counted mask spans`
+- `0x1f756 fixed-width list renders bridged +0x20 object`
+- `0x1f446/0x1f596 renders solid black rectangle rule pixels`
+- `0x1f4e0 renders gray and HP pattern selector matrix`
+- `0x1f88e mode-0 raster object renders queued literal row`
+- `0x1f88e mode-1 raster object expands queued bytes into two rows`
+- `0x1f88e mode-2 raster object expands queued byte pair into three rows`
+- `0x1f88e mode-2 raster object clips current-band rows and continues in
+  fallback buffer`
+- `0x1f88e mode-3 raster object expands queued bytes into four rows`
+- `0x1f034 compact text splits current band and fallback rows`
+- `0x1f0d2 renders wide inline compact payload row`
+- `0x1f1f0 renders segmented inline compact payload row`
+- `0x1f264 renders segmented wide inline compact payload row`
+
+### Disassembly Evidence
+
+- `generated/disasm/ic30_ic13_page_record_to_render_record_01ed84.lst`
+- `generated/disasm/ic30_ic13_bitmap_state_setup_01ee9e.lst`
+- `generated/disasm/ic30_ic13_bitmap_bucket_walk_01ef6a.lst`
+- `generated/disasm/ic30_ic13_bitmap_compact_object_renderers_01f024.lst`
+- `generated/disasm/ic30_ic13_bitmap_draw_core_01f3d4.lst`
+- `generated/disasm/ic30_ic13_bitmap_encoded_span_modes_01f88e.lst`
+- `generated/disasm/ic30_ic13_bitmap_row_copy_tables_01fa5c.lst`
+
+### Unresolved Middle Edges
+
+- `0x12f2e..0x1f264`: compact built-in and downloaded glyph object rendering
+  has broad fixture coverage. Remaining work is selected-font combinations,
+  wrapped-width boundaries, and physical/reference page comparisons.
+- `0x12714..0x1f812`: segment-list producer and consumer are connected for
+  portrait text spans; broader orientation/page-size cross-checks still need
+  visible page comparisons.
+- `0x13070..0x1f88e`: raster producers and encoded renderers are connected for
+  modes `0..3`; the live CPU/register edge through dense mixed pages remains
+  modeled/address-aware rather than captured as one full 68000 trace.
+- `0x13386..0x1f4e0` and `0x136d2..0x1f756`: rule and fixed-list output is
+  pinned for the cited selectors. Remaining work is broader selector/page
+  combinations and physical-device comparison.
+- `0x1fa5c..0x207ac`: compact row-copy table targets are composed in the
+  compact glyph row-copy checkpoint. Remaining work is broader page-visible
+  comparison for row-count, segment, wrapped-width, and physical variants
+  outside the sampled helper matrix.
+
 ## Default Environment Record Producers
 
 Status: composed for the RAM record, ROM-table fallback, record-maintenance,

@@ -1375,14 +1375,16 @@ ROM work needed:
   `Built-In Font Selection, Symbol-State, And Font-ID Selection` in
   [semantic-state-model.md](semantic-state-model.md) already covers primary
   `ESC (s0p10h12v0s0b3T!!`, secondary `ESC )s0p16h8v0s0b0T SO !!`, primary
-  and secondary `ESC (/)1234U` fallback through `0x156de`, secondary
+  `ESC (1234U` and secondary `ESC )1234U` fallback through `0x156de`, secondary
   `ESC )1234U` remembered recovery through `0x156de`, current-font RAM
   handoffs through SI/SO, non-Roman `0N` / `10U` / `11U` symbol streams, real
   final-`@` default-table primary and secondary visible streams, final-`X`
   primary built-in `ESC (7X!!`, final-`X` secondary built-in `ESC )8X SO !!`,
-  final-`X` inline/downloaded `ESC )4660X SO !`, direct `0x17708`
-  non-selected exits, and direct `0x13eb8` transient/cache-hit no-dispatch
-  exits with preserved visible output. The same checkpoint now
+  final-`X` primary inline/downloaded `ESC (4660X!`, final-`X` secondary
+  inline/downloaded `ESC )4660X SO !`, direct `0x17708` primary non-selected
+  exits preserving `ESC (7X!!`, direct `0x17708` secondary non-selected exits
+  preserving `ESC )8X SO !!`, and direct `0x13eb8` transient/cache-hit
+  no-dispatch exits with preserved visible output. The same checkpoint now
   includes the `0xc580` common-refresh branch cluster: dirty-1 first-clear,
   full-live reuse, full-live/no-match, selector-mismatch, dirty-2
   selector-match, and dirty-2 selector-mismatch outcomes are grouped into

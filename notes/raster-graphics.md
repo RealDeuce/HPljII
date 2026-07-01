@@ -378,6 +378,48 @@ The mode-2 clipped fixture,
 `0x13070/0x13250 raster mode-2 row queues band-clipped encoded-span object`,
 keeps the same object contract while the renderer clips destination rows.
 
+### Allocation Capacity And Dense Rows
+
+`0x13250` delegates byte storage to `0x132b6`, so dense raster rows can be
+split by stream-chunk capacity before `0x138de` copies payload bytes:
+
+- `0x132be..0x13320`: if the requested object size fits in remaining stream
+  bytes `0x782a70`, `0x132b6` stores payload capacity
+  `requested_size - 0x0a` in `0x782a80`, advances next-free pointer
+  `0x782a76`, and subtracts from `0x782a70`.
+- `0x132ce..0x132fc`: if the request does not fit but at least `12` bytes
+  remain, the helper uses the current chunk tail. It stores capacity
+  `0x782a70 - 0x0a` in `0x782a80`, clears `0x782a70`, and returns the
+  current `0x782a76` without allocating a fresh chunk.
+- `0x13328..0x13382`: if fewer than `12` bytes remain, the helper allocates a
+  new `0x100`-byte chunk through `0x1710`, links it through `0x782a72`, seeds
+  `0x782a76 = chunk + 4`, and then either allocates the requested object from
+  the fresh chunk or, for requests above `0xfc`, returns a capped object with
+  capacity `0x00f2` and clears remaining space.
+
+After allocation, `0x13070` writes object word `+0x06` from `0x782a80`, writes
+object word `+0x08` from `0x782a7e`, and calls `0x138de` with copy count
+`min(accepted_count, 0x782a80)`. If bytes remain, `0x1319e..0x131d0`
+subtracts the copied capacity from raster state `+0x04`, advances the packed
+key by `0x332ee(0x782a80, mode + 1)`, and loops back to allocate the next
+encoded-span object. The zero-length, no-room, and copy-stop exits at
+`0x1317e..0x1324e` drain the remaining accepted plus overflow byte counts
+through `0x12328`.
+
+Field grouping for this dense-row split:
+
+- canonical: one or more encoded raster objects under page-root `+0x1c`, each
+  with class byte `0x80`, mode byte `+0x05`, capacity word `+0x06`, packed key
+  `+0x08`, and copied payload bytes at `+0x0a`;
+- derived/cache: `0x782a7c`, `0x782a7e`, and `0x782a80`, which choose bucket,
+  packed coordinate, and per-object payload capacity;
+- parser scratch: the restored delayed `ESC *b#W` record and current payload
+  source consumed through `0xa904` / `0x138de` or drained through `0x12328`;
+- firmware bookkeeping: stream allocator state `0x782a70`, `0x782a72`, and
+  `0x782a76`, plus copy-stop/publication flag `0x782996`;
+- unknown: no ROM-local split rule remains unresolved at `0x132b6`; remaining
+  work is byte streams that force these split paths and change rendered rows.
+
 ## Render Dispatch
 
 Raster transfer does not draw directly into the final bitmap. It creates a page
@@ -567,7 +609,8 @@ A byte-stream reproduction must preserve these behaviors:
   initializes, and bucket-clears a new root; `0x13070` consumes the same state pointer,
   derives `0x782a7c` / `0x782a7e`, passes size and mode to `0x13250`, and uses `0x132b6`
   stream-chunk state `0x782a70` / `0x782a76` / `0x782a80` before `0x138de` copies
-  payload bytes. The composed semantic ledger is in
+  payload bytes. The dense-row split rule through `0x132b6` is documented above. The
+  composed semantic ledger is in
   [semantic-state-model.md](semantic-state-model.md#raster-transfer-gate-and-encoded-rows).
 - Additional work through `0x105d0`, `0x10084`, `0x13070`, `0x13250`, and
   `0x132b6` should target new byte streams that change the raster chain,

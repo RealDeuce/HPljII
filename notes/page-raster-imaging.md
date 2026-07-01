@@ -1867,17 +1867,20 @@ Output effect:
   segment`, `downloaded segmented-wide high-row 0x03xx matrix renders selected
   segment`, and `downloaded segmented-wide high-row 0x04xx matrix renders
   selected segment`, plus `downloaded segmented-wide high-row 0x05xx matrix
-  renders selected segment`, extend the selected-segment render evidence through row
-  words `0x0281`, `0x0282`, `0x02ff`, `0x0381`, `0x0382`, `0x03ff`,
-  `0x0481`, `0x0482`, `0x04ff`, `0x0581`, `0x0582`, and `0x05ff`. The
-  corresponding `0x0281`, `0x02xx`, and `0x03xx` span-31 fixtures stop at
+  renders selected segment` and `downloaded segmented-wide high-row
+  parser-limit matrix renders selected segment`, extend the selected-segment
+  render evidence through row words `0x0281`, `0x0282`, `0x02ff`, `0x0381`,
+  `0x0382`, `0x03ff`, `0x0481`, `0x0482`, `0x04ff`, `0x0581`, `0x0582`,
+  `0x05ff`, `0x0681`, `0x0682`, `0x06ff`, `0x0781`, `0x0782`, and `0x0787`.
+  The corresponding `0x0281`, `0x02xx`, and `0x03xx` span-31 fixtures stop at
   fallback A2 offset `+0xb50`; fixtures
   `downloaded segmented-wide high-row 0x04xx oversized payload counts stop
   before renderer` and
   `downloaded segmented-wide high-row 0x05xx oversized payload counts stop
-  before renderer` classify the `0x04xx` span-31/span-32 and `0x05xx`
-  span-24-or-above cases as parser payload-count boundaries before renderer
-  entry.
+  before renderer`, plus `downloaded segmented-wide high-row parser-limit
+  oversized counts stop before renderer`, classify the `0x04xx` span-31/span-32,
+  `0x05xx` span-24-or-above, and final span-17 parser-limit cases as
+  payload-count boundaries before renderer entry.
 - Fixture `downloaded segmented-wide row-byte boundary truncates page-record
   segments` proves span-`0x11` downloaded glyphs keep canonical installed row
   words `0x0002`, `0x007f`, `0x0080`, `0x0081`, `0x0083`, `0x00fe`,
@@ -2023,14 +2026,16 @@ Unresolved middle edges:
   high-row fallback fixtures now extend that selected-segment render evidence
   across installed row words `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`,
   `0x02ff`, `0x0381`, `0x0382`, `0x03ff`, `0x0481`, `0x0482`, `0x04ff`,
-  `0x0581`, `0x0582`, and `0x05ff`: spans `17`, `18`, and `32` through
-  `0x03ff`, spans `17`, `18`, and `24` for `0x04xx`, spans `17`, `18`, and
-  `23` for `0x0581`/`0x0582`, and spans `17`, `18`, and `21` for `0x05ff`
-  render bucket-8 segment `1` as `32` current rows and `96` fallback rows
-  matching the installed bitmap. The span-31 siblings through `0x03ff` are
-  explicit A2 source boundaries at `+0xb50`; the `0x04xx` and `0x05xx`
-  oversized siblings stop at the parser payload-count cap before renderer
-  entry.
+  `0x0581`, `0x0582`, `0x05ff`, `0x0681`, `0x0682`, `0x06ff`, `0x0781`,
+  `0x0782`, and `0x0787`: spans `17`, `18`, and `32` through `0x03ff`,
+  spans `17`, `18`, and `24` for `0x04xx`, spans `17`, `18`, and `23` for
+  `0x0581`/`0x0582`, spans `17`, `18`, and `21` for `0x05ff`, spans `17`,
+  `18`, and `19` for `0x0681`/`0x0682`, spans `17` and `18` for `0x06ff`,
+  and span `17` for `0x0781`, `0x0782`, and `0x0787` render bucket-8 segment
+  `1` as `32` current rows and `96` fallback rows matching the installed
+  bitmap. The span-31 siblings through `0x03ff` are explicit A2 source
+  boundaries at `+0xb50`; higher oversized siblings stop at the parser
+  payload-count cap before renderer entry, including `0x0788*17`.
   Remaining gaps are broader physical/full-row comparison for boundary cases
   and selected-font state combinations not represented in current visible
   fixtures.

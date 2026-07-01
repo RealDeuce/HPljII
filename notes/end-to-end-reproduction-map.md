@@ -895,10 +895,8 @@ The next work should follow dataflow, not isolated handlers:
    composed selection-to-RAM handoff visible-output streams. The highest-value
    ROM-only expansion target is now the bounded downloaded-character matrix:
    physical/device behavior after wrapped source-width bytes choose invalid
-   compact mode-0 helpers, broader segmented-wide high-row fallback
-   row/span cross-products beyond rows `0x0181`, `0x0182`, `0x01ff`, `0x0281`,
-   `0x0282`, `0x02ff`, `0x0381`, `0x0382`, `0x03ff`, `0x0481`, `0x0482`, and
-   `0x04ff` below the parser payload-count cap, and
+   compact mode-0 helpers, broader segmented-wide high-row fallback row/span
+   cross-products below the parser-limit row `0x0787`, and
    publication/return-boundary siblings outside the named row-count,
    wide-remainder, segmented-wide, high-row segmented-wide, no-install,
    status-`2`, payload-control, and bit-30-clear fixed-record cases.
@@ -1188,14 +1186,22 @@ The next work should follow dataflow, not isolated handlers:
    renderer` continue that cap split: rows `0x0581` and `0x0582` render spans `17`,
    `18`, and `23`; row `0x05ff` renders spans `17`, `18`, and `21`; adjacent
    `0x0581`/`0x0582` span-24/span-32 and `0x05ff` span-22/span-32 payloads exceed
-   `0x7fff` before renderer entry.
+   `0x7fff` before renderer entry. Fixtures
+   `downloaded segmented-wide high-row parser-limit matrix renders selected segment`
+   and `downloaded segmented-wide high-row parser-limit oversized counts stop before
+   renderer` close the same family at the absolute span-17 byte-count limit:
+   `0x0681`/`0x0682` render spans `17`, `18`, and `19`; `0x06ff` renders spans
+   `17` and `18`; `0x0781`, `0x0782`, and `0x0787` render span `17`; and
+   `0x0788*17` stops before renderer entry. Rows above `0x0787` therefore cannot
+   reach segmented-wide rendering in this host-fetched `ESC )s#W` shape.
    Remaining downloaded-character publication work is therefore limited to
    physical/pixel behavior after the fully documented wrapped source-byte mode-0
    invalid-helper boundaries, broader higher-row segmented-wide fallback combinations
    outside the sampled rows `0x0181`, `0x0182`, `0x01ff`, `0x0281`, `0x0282`,
    `0x02ff`, `0x0381`, `0x0382`, `0x03ff`, `0x0481`, `0x0482`, `0x04ff`,
-   `0x0581`, `0x0582`, and `0x05ff` below the payload-count cap, broader
-   publication combinations, and full-success
+   `0x0581`, `0x0582`, `0x05ff`, `0x0681`, `0x0682`, `0x06ff`, `0x0781`,
+   `0x0782`, and `0x0787` below the payload-count cap, broader publication
+   combinations, and full-success
    return-boundary siblings outside the named row-count, wide-remainder,
    segmented-wide matrix, high-row segmented-wide matrix, normal, row-`0x80`,
    linear-segmented, split-plane segmented, segmented-wide publication, no-install,

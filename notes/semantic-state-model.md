@@ -8801,9 +8801,9 @@ page root for queued rows, and passes the state block to `0x13070` /
     without creating a raster object.
 - Unknown for this checkpoint:
   - no unresolved software-visible raster object, bridge, or render-dispatch
-    field remains for the covered dense text/rule/raster stream. A live
-    CPU/register trace would be provenance for the addressed fixture, not a
-    separate reproduction requirement.
+    field remains for the covered dense text/rule/raster stream. Additional
+    work should target byte streams that expose new gate outcomes, object
+    fields, bridge state, or visible rows.
 
 ### Writers
 
@@ -9107,21 +9107,18 @@ fields, bridge fields, or rendered rows.
   `0x13250`; derived/cache state is the bucket/key and render-record copy
   consumed by `0x1ed84` / `0x1ef6a`. The remaining edge is no longer the
   parser-to-handler record handoff: disassembly pins `0x12218` restoring the
-  record and `0x105d0` re-reading it from `0x78299e - 6`. The exact remaining
-  closure boundary is live CPU/register confirmation, not field discovery:
-  the disassembly-derived handoff ledger now covers `0x105d8..0x10752`,
-  `0x10084..0x10218`, `0x13070..0x13250`, and `0x132b6..0x13382`, but a dense
-  parser-produced page still needs one 68000 trace or memory snapshot to prove
-  the modeled register values and heap chunk choices are the values produced in
-  that full run.
+  record and `0x105d0` re-reading it from `0x78299e - 6`. The remaining work is
+  dense parser-produced byte streams that change the
+  `0x105d8..0x10752`, `0x10084..0x10218`, `0x13070..0x13250`, or
+  `0x132b6..0x13382` gate outcomes, allocation fields, object bytes, bridge
+  state, or rendered rows.
 - `0x13250..0x1381c`: addressed allocation is covered in the shared
   page-record allocator checkpoint and in the addressed text/rule/raster
   fixture, where the raster object lives at `0x00d0c038` and publishes as
   `00 d0 c0 04 80 00 00 02 00 00 c3 3c`. The remaining gap is not object
-  layout or addressed storage; it is live 68000 heap/register capture for the
-  complete parser-produced stream, especially chunk rollover
-  `0x132b6..0x13382` and early payload stop when `0x782996` flips during
-  `0x138de`.
+  layout or addressed storage; it is parser-produced stream variants that
+  change chunk rollover `0x132b6..0x13382`, early payload stop when
+  `0x782996` flips during `0x138de`, or the rendered rows.
 
 ## Rectangle Rule Producer And Renderer
 
@@ -9195,8 +9192,8 @@ selector `7` to `0x1f596` or non-solid selectors to `0x1f4e0`.
     `0xff1e` publishes the old root.
   - no-room retry uses `0xff1e` then `0x10084` before retrying the same source.
 - Unknown for this checkpoint:
-  - complete live 68000 parser-to-allocator trace for no-room retry and real
-    heap/free-list memory.
+  - parser-to-allocator no-room variants that change retry publication fields,
+    heap/free-list effects, bridge state, or rendered rows.
 
 ### Writers
 
@@ -9315,11 +9312,11 @@ selector-7 object, bridges it through `0x1edc6`, and renders the retried rule.
 High for parser handler order, dimension/fill selector mapping, clipping and
 ignore gates, rule object bytes, ordered insertion, bridge normalization,
 solid and pattern dispatch, continuation mutation across bands, and no-room
-retry output because each is fixture-pinned. Medium for live CPU/register
-fidelity inside parser-to-allocator no-room retry because the current evidence
-models allocator return values rather than executing the full parser and
-page-root allocation sequence in one live CPU trace. The shared heap/free-list
-contract is documented in `Macro Definition And Data-Chain Replay`.
+retry output because each is fixture-pinned. Medium for broader
+parser-to-allocator no-room retry variants that could expose new retry
+publication fields, heap/free-list effects, bridge state, or rendered rows. The
+shared heap/free-list contract is documented in
+`Macro Definition And Data-Chain Replay`.
 
 ### Fixtures
 
@@ -9361,8 +9358,9 @@ contract is documented in `Macro Definition And Data-Chain Replay`.
 
 - `0x10898..0x133aa`: command routing, clipping, selector mapping, rule object
   bytes, bridge normalization, render rows, and no-room retry are
-  fixture-backed. The remaining edge is full live 68000 execution through
-  parser, `0x10b80`, `0x1381c`, and real allocator memory.
+  fixture-backed. Remaining work is parser, `0x10b80`, and `0x1381c` variants
+  that change clipping output, allocator retry state, rule object bytes, bridge
+  state, or rendered rows.
 - Non-solid selectors `0..6` and `8..13` plus landscape pattern remaps
   `1 -> 9`, `2 -> 8`, `3 -> 11`, and `4 -> 10` now have page-visible
   comparisons through compact text, bridge normalization, `0x1f446`, and
@@ -9377,9 +9375,9 @@ Status: anchored as a parser-to-render composition checkpoint. The byte stream
 `! ESC *c12a5b0P ESC *t300R ESC *r0A ESC *b2W c3 3c FF` is documented from
 host fetch through addressed page-record storage, `0xff1e` publication,
 `0x1ed84`/`0x1edc6` render-record bridge, and `0x1ef6a` render dispatch. The
-remaining boundary is live 68000 continuity across the parser-created raster
-handoff and allocator path, not discovery of the page-record fields already
-asserted by fixtures.
+remaining boundary is byte streams that change parser-created text, rule, or
+raster objects, allocator transitions, bridge state, or rendered rows, not
+discovery of the page-record fields already asserted by fixtures.
 
 Concept: page output is not a direct raster operation per command. The
 parser first builds typed page-record lists under the current page root,
@@ -9456,9 +9454,9 @@ lists through `0x1ef6a`, and only then composes visible pixels.
   plus fixture `0x1ef6a page-band walk merges text raster and crossing
   rule`.
 - Unknown for this cluster:
-  - the exact live CPU stack/register handoff between the modeled parser
-    runner and real memory-backed page-root objects is still unknown at
-    `0x105d0 -> 0x10084 -> 0x13070 -> 0x13250 -> 0x132b6`.
+  - byte-stream variants that change the
+    `0x105d0 -> 0x10084 -> 0x13070 -> 0x13250 -> 0x132b6` gate outcome,
+    allocation fields, object bytes, bridge state, or rendered rows.
   - the disassembly-derived values expected at that handoff are known from
     `generated/disasm/ic30_ic13_raster_handlers_0105d0.lst` and
     `generated/disasm/ic30_ic13_raster_object_queue_013070.lst`: `0x105d0`
@@ -9523,10 +9521,9 @@ rows in the second band with no leftover rule or fixed-list state.
 
 High for parser handler order, delayed raster scratch, addressed stream
 object addresses, published page-record fields, render-entry call order,
-and visible rows because they are executable fixture assertions. Medium
-for exact live CPU state at the page-root/display-list handoff because
-the current fixture is address-aware but not a full 68000 run through
-the parser and allocator.
+and visible rows because they are executable fixture assertions. Medium for
+broader page-root/display-list variants that could expose new allocator
+transitions, object fields, bridge state, or visible rows.
 
 ### Fixtures
 
@@ -9572,27 +9569,28 @@ the parser and allocator.
 
 - `0xd04a..0x12f2e`: source-object fields, paired queue handoffs, and
   compact producer semantics are composed in `Text Source Objects And
-  Compact Buckets`; this mixed stream still lacks a full live
-  CPU/register trace for the complete parser-produced dense page.
+  Compact Buckets`. Remaining work is dense-page variants that change source
+  fields, bucket shapes, retry behavior, or visible rows.
 - `0x10898..0x133aa`: selector mapping, clipping, addressed rule insertion,
   bridge normalization, solid/pattern rendering, and no-room retry are
-  composed in `Rectangle Rule Producer And Renderer`. The mixed stream still
-  lacks full live parser-to-allocator CPU memory capture for this producer.
+  composed in `Rectangle Rule Producer And Renderer`. Remaining work is mixed
+  stream variants that change clipping output, allocator retry state, rule
+  object bytes, bridge state, or rendered rows.
 - `0x105d0..0x13250`: delayed restore, gate outcomes, encoded object layout,
   bridge preservation, and mode `0..3` render contracts are composed in
   `Raster Transfer Gate And Encoded Rows`. The parser-to-handler record handoff
   is disassembly-pinned through `0x121cc`, `0x12218`, and `0x105d0` re-reading
-  `0x78299e - 6`. The remaining proof target is a 68000 trace or memory
-  snapshot showing the dense parser-produced stream arriving at `0x105d0`,
-  `0x10084`, `0x13070`, `0x13250`, and `0x132b6` with the modeled register
-  values, heap chunk choices, and page-root pointers. Its addressed raster
-  object storage is already pinned by fixture
+  `0x78299e - 6`. Remaining work is dense parser-produced streams that change
+  gate outcomes, allocation fields, object bytes, bridge state, or rows at
+  `0x105d0`, `0x10084`, `0x13070`, `0x13250`, or `0x132b6`. Its addressed
+  raster object storage is already pinned by fixture
   `addressed text/rule/raster field groups reach publication and render
   entry`.
 - `0x10084..0x1381c`: first root allocation and stream-chunk allocation
   are modeled with exact side effects, including a multi-writer chunk
-  rollover fixture in the shared allocator checkpoint, but not captured
-  from live CPU memory for the complete text/rule/raster stream.
+  rollover fixture in the shared allocator checkpoint. Remaining work is
+  complete text/rule/raster streams that change root fields, chunk rollover,
+  object storage, or visible rows.
 - `0xff1e..0x1ed84`: publication and render-entry are modeled and
   fixture-checked. Active-record selection through `0x1eb2a..0x1ed84`
   is covered by the published-render scheduler checkpoint, and the

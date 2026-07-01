@@ -151,9 +151,8 @@ Parser scratch:
 
 Unknown:
 
-- The live heap allocator path beneath `0x1381c` is modeled by fixtures, but
-  the complete 68000 parser-to-allocator run for no-room retry has not been
-  captured from live CPU memory.
+- Parser-to-allocator no-room variants that change retry publication fields,
+  heap/free-list effects, bridge state, or rendered rows.
 
 ## Size Commands
 
@@ -566,8 +565,8 @@ publication and render entry` classifies these fields:
   `0x782a70 = 0x00bc`, `0x782a72 = 0x00d0c000`,
   `0x782a76 = 0x00d0c044`, one page-root allocation, one stream allocation,
   one publication, one root clear, and publication flag `1`;
-- unknown: exact live 68000 heap/register continuity for the full
-  parser-to-allocator path.
+- unknown: parser-to-allocator variants that change clipping output, allocator
+  retry state, rule object bytes, bridge state, or rendered rows.
 
 Fixture `addressed text rectangle raster stream matches page-record output`
 checks the addressed current-page form before FF publication. Fixture
@@ -658,8 +657,9 @@ A byte-stream reproduction must preserve these behaviors:
 ## Remaining Edges
 
 - `0x10898..0x133aa` is documented and fixture-backed, including host-fetched
-  streams and no-room retry, but a full live 68000 execution through parser,
-  `0x10b80`, `0x1381c`, and real allocator memory has not been captured.
+  streams and no-room retry. Remaining work is parser, `0x10b80`, and
+  `0x1381c` variants that change clipping output, allocator retry state, rule
+  object bytes, bridge state, or rendered rows.
 - Pattern rendering is fixture-pinned for selectors, masks, shifted rows, and
   band crossing. The initial mixed text/rule/raster/FF byte stream now provides
   a complete parser-produced page comparison with selector-7 rule output,

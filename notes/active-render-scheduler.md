@@ -179,6 +179,38 @@ proves scheduler-produced band words `0..9` drive a published downloaded-glyph
 record through `0x1ef6a`: only buckets `1` and `9` dispatch compact objects,
 and bucket `9` produces visible row `86`.
 
+### Active Loop Branches
+
+The active render loop at `0x1eba4..0x1ecd2` is a software scheduler over the
+selected render work record, not a bitmap dispatcher by itself. The selected
+record is `0x782128` when `0x7820bc` is nonzero and `0x7820c4` when it is
+zero; the paired record is selected the same way from `0x7820c0`.
+
+Branch effects:
+
+- If `0x780ea5 == 1`, the loop calls `0x1ef38`, clears active-render flag
+  `0x780ea4`, and signals wait object `0x780182` through `0x10c8` /
+  `0x10c4` before continuing.
+- If active work word `+0x0c` is less than active band word `+0x10`, the loop
+  takes the same cleanup/signal path. This is a stale/out-of-range work
+  cleanup, not a render call.
+- If throttle word `+0x0e > 0x28`, the loop clears `+0x0e`, signals
+  `0x780182` through `0x10c8`, and yields through `0x10d8(2)`.
+- Otherwise it computes available capacity as work `+0x06` minus the active
+  remaining rows `(+0x10 - +0x16)`, and subtracts the paired record's
+  remaining rows when `0x7820bc != 0x7820c0`.
+- If that available count is at least `9`, the loop calls `0x1ef6a`, then
+  increments active work `+0x10` and throttle word `+0x0e`.
+- If available count is less than `9`, the loop clears `+0x0e`, signals
+  `0x780182` through `0x10c8`, and waits through `0x10d0(2)`.
+
+Fixture `0x1eba4/0x1ef6a active render loop advances or yields bands` pins
+these branch effects against the render-work fields. Fixture
+`0x1eba4 scheduler band words render published downloaded glyph` composes the
+render branch with a published page record: ten successive render calls use
+band words `0..9`, and the visible output remains tied to the buckets selected
+by `0x1ef6a`, not to any external timing source.
+
 ## Reproduction Contract
 
 A pixel-accurate ROM-derived renderer must preserve:

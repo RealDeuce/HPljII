@@ -696,9 +696,15 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    through `0x1f812`, dispatches compact-wide object byte `0x10` through
    `0x1effe` to `0x1f0d2`, and renders digest
    `3985c4c7f33d361e0673e7361ce58aa1b9ba12bd003a2b9166eaddb93888e11e`.
+   Fixture `type-1 and type-2 resource segmented glyph FF publications render
+   page records` adds the legal segmented sibling: `ESC )s258W` plus printable
+   `!` and FF publishes bucket `9`, preserves bucket `1` as span plus segment
+   `0`, dispatches compact object byte `0x20` through `0x1effe` to `0x1f1f0`,
+   and renders digest
+   `f449349d69d7acaff44a3f753253e4ef626057d41a5c8f6d827ce871bfc089b4`.
    Remaining work for this cluster is now broader glyph row/span/continuation
-   shapes beyond the covered short and wide glyphs and publication variants
-   outside those legal type-1/type-2 span+glyph page-record shapes.
+   shapes beyond the covered short, wide, and segmented glyphs and publication
+   variants outside those legal type-1/type-2 span+glyph page-record shapes.
    Downloaded-character coverage now includes parser-produced normal, wide/control,
    even-span wide, segmented, split-plane segmented, and segmented-wide compact render
    shapes, and the combined downloaded-glyph stream now reaches FF publication with both

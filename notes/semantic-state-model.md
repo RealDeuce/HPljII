@@ -6939,6 +6939,8 @@ glyph`,
 `type-1 and type-2 resource headers accept downloaded glyph payload stream`,
 `type-1 and type-2 resource glyph FF publications render page records`,
 `type-1 and type-2 resource wide glyph FF publications render page records`,
+`type-1 and type-2 resource segmented glyph FF publications render page
+records`,
 `0x1719c-backed inline payload dispatches through 0x14c64`,
 `0x16fae/0x1719c-backed inline payload maps, queues, and renders one fixed
 record`, `host-fetched 0x1719c payload metrics feed d4ac span rows`, and
@@ -6976,6 +6978,13 @@ printable `!`, and FF. It installs record
 `0x0340`, bitmap offset `0x034c`, bucket `1` publication, and the same
 context prefixes `(0x40000000, 0, 0, 0)` and `(0x44000000, 0, 0, 0)`.
 Fixture
+`type-1 and type-2 resource segmented glyph FF publications render page
+records` carries those legal headers through `ESC )s258W` plus 258 bitmap
+bytes, printable `!`, and FF. It installs record
+`00 00 00 00 0c 01 00 81 00 10 00 00`, table entry `0x00ce`, record delta
+`0x0360`, bitmap offset `0x036c`, bitmap size `0x0102`, bucket `9`
+publication, and the same context prefixes `(0x40000000, 0, 0, 0)` and
+`(0x44000000, 0, 0, 0)`. Fixture
 `0x172c0-modeled font resource record scan statuses` pins the current-record
 scan outcomes that feed this install path: existing id status `0`, missing id
 with a free record status `1`, and missing id with no free record status `2`.
@@ -7032,6 +7041,15 @@ the glyph object becomes compact-wide
 glyph object through compact target `0x1effe`, and then reaches wide renderer
 `0x1f0d2`; the six-row output digest is
 `3985c4c7f33d361e0673e7361ce58aa1b9ba12bd003a2b9166eaddb93888e11e`.
+The segmented publication sibling keeps the same span object and context slots,
+but splits the downloaded glyph into selector `0x2000` segment objects:
+bucket `9` contains segment `1`
+`00 00 00 00 20 00 00 01 21 01 5a 00...`, while bucket `1` contains the
+`d8fc` span object followed by segment `0`
+`00 00 00 00 20 00 00 01 21 00 5a 00...`. Rendering bucket `9` enters
+`0x1ed84`/`0x1ef6a`, dispatches the segment object through compact target
+`0x1effe`, reaches segmented renderer `0x1f1f0`, and produces row digest
+`f449349d69d7acaff44a3f753253e4ef626057d41a5c8f6d827ce871bfc089b4`.
 Fixture
 `0x16fae/0x1719c-backed type-2 inline payload maps constructed compact
 renderer records` is the type-2 sibling of that isolation control: it proves
@@ -7074,6 +7092,10 @@ The wide sibling adds the same page-eject path for selector `0x1003`: the
 published bucket contains the unchanged span/context fields plus compact-wide
 object byte `0x10`, and the visible glyph reaches `0x1f0d2` after the shared
 `0x1ed84`/`0x1ef6a` and `0x1effe` dispatch boundaries.
+The segmented sibling adds the same page-eject path for selector `0x2000`:
+`0xf0f0`/`0xff1e` publishes bucket `9` as the root while preserving bucket `1`
+with the span plus segment `0`; the visible segment reaches `0x1f1f0` after
+the shared `0x1ed84`/`0x1ef6a` and `0x1effe` dispatch boundaries.
 
 Confidence is high for the integrated bit-30 resource-header plus
 downloaded-pointer glyph path because fixture
@@ -7097,14 +7119,21 @@ asserts `ESC )s18W`, the zero-drain return, selector `0x1003`, compact-wide
 object byte `0x10`, render target `0x1f0d2`, candidate context prefixes, and
 the six-row digest
 `3985c4c7f33d361e0673e7361ce58aa1b9ba12bd003a2b9166eaddb93888e11e`.
+High for the legal type-1/type-2 segmented-publication sibling because fixture
+`type-1 and type-2 resource segmented glyph FF publications render page
+records` asserts `ESC )s258W`, restored record `80 57 01 02 00 00`, zero-drain
+return, selector `0x2000`, buckets `1` and `9`, render target `0x1f1f0`,
+candidate context prefixes, and row digest
+`f449349d69d7acaff44a3f753253e4ef626057d41a5c8f6d827ce871bfc089b4`.
 
 Unresolved middle edges after this checkpoint are no longer the parser restore,
 allocation, candidate insertion, selected-map dispatch, basic integrated
 bit-30 downloaded-pointer glyph install for legal type-0/type-1/type-2
 headers, legal type-1/type-2 page publication, or page-visible metric
 consumers. The remaining boundaries are variant breadth: downloaded-pointer
-glyph row/span/continuation shapes beyond the covered short and wide glyphs,
-and publication variants outside these legal type-1/type-2 span+glyph records.
+glyph row/span/continuation shapes beyond the covered short, wide, and
+segmented glyphs, and publication variants outside these legal type-1/type-2
+span+glyph records.
 The bit-30-clear fixed-record render remains
 deliberately classified as an isolation control for the `0x1719c` payload
 layout, not as the real `0x16c14` installed resource form.
@@ -7388,6 +7417,8 @@ fields and broader selected-font state combinations have not been page-compared.
 - `type-1 and type-2 resource headers accept downloaded glyph payload stream`
 - `type-1 and type-2 resource glyph FF publications render page records`
 - `type-1 and type-2 resource wide glyph FF publications render page records`
+- `type-1 and type-2 resource segmented glyph FF publications render page
+  records`
 - `host-fetched 0x15d0a current-record resource object feeds fixed-record
   render`
 - `0x16606 no-install exits clear stale continuation without payload writes`

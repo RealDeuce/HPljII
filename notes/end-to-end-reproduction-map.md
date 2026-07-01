@@ -677,9 +677,14 @@ can change rendered pixels, byte-stream compatibility, or final confidence.
    downloaded glyph` closes the basic type-0 `ESC )s80W` plus linear three-row
    glyph boundary without fixture-side mutation. Fixture
    `type-1 and type-2 resource headers accept downloaded glyph payload stream`
-   closes the same fetched-glyph boundary for legal type-1 and type-2 headers;
-   remaining work is broader glyph row/span/continuation shapes and
-   publication variants beyond that page-record checkpoint.
+   closes the same fetched-glyph boundary for legal type-1 and type-2 headers.
+   Fixture `type-1 and type-2 resource glyph FF publications render page
+   records` now adds the legal type-1/type-2 publication sibling: `ESC )s3W`
+   plus printable `!` and FF publishes bucket `1`, preserves candidate contexts
+   `0x40000000` and `0x44000000`, dispatches the span through `0x1f812` and the
+   glyph through `0x1effe`, and renders the same rows. Remaining work is broader
+   glyph row/span/continuation shapes and publication variants outside that
+   span+glyph page-record shape.
    Downloaded-character coverage now includes parser-produced normal, wide/control,
    even-span wide, segmented, split-plane segmented, and segmented-wide compact render
    shapes, and the combined downloaded-glyph stream now reaches FF publication with both

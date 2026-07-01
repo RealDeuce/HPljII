@@ -6891,6 +6891,7 @@ low-level ledger remains in [downloaded-fonts.md](downloaded-fonts.md) under
 `host-fetched resource header plus glyph payload renders offset-table downloaded
 glyph`,
 `type-1 and type-2 resource headers accept downloaded glyph payload stream`,
+`type-1 and type-2 resource glyph FF publications render page records`,
 `0x1719c-backed inline payload dispatches through 0x14c64`,
 `0x16fae/0x1719c-backed inline payload maps, queues, and renders one fixed
 record`, `host-fetched 0x1719c payload metrics feed d4ac span rows`, and
@@ -6916,6 +6917,11 @@ type-1 and type-2 headers both allocate payload units `0x100`, allocation size
 `18`, write table entry `0x00ce`, record delta `0x0300`, bitmap offset
 `0x030c`, span `1`, width `4`, and row count `3`. Type-1 installs candidate
 `0x40000000`; type-2 installs candidate `0x44000000`. Fixture
+`type-1 and type-2 resource glyph FF publications render page records` carries
+those same legal headers through `ESC )s3W f0 f0 f0 ! FF`: glyph stream bytes
+`0..8`, printable/FF bytes `8..10`, table entry `0x00ce`, record delta
+`0x0300`, bitmap offset `0x030c`, bucket `1` publication, and context slot
+prefixes `(0x40000000, 0, 0, 0)` and `(0x44000000, 0, 0, 0)`. Fixture
 `0x172c0-modeled font resource record scan statuses` pins the current-record
 scan outcomes that feed this install path: existing id status `0`, missing id
 with a free record status `1`, and missing id with no free record status `2`.
@@ -6959,6 +6965,12 @@ proves the same derived lookup for legal setup types `1` and `2`: printable
 `!` resolves through contexts `0x40000000` and `0x44000000` to record
 `0x0300`, and both render the same span/glyph rows as the type-0 integrated
 case.
+The type-1/type-2 publication fixture proves the derived page-record cache is
+also preserved across `0xff1e`: bucket `1` keeps the segment-list span object
+`00 00 00 00 40 00 00 01 04 06 03 00 00 14...` followed by compact glyph
+object `00 00 00 00 00 00 00 01 21 5a 00...`, rule and fixed lists stay empty,
+and `0x1ed84`/`0x1ef6a` renders the published rows through segment-list target
+`0x1f812` and compact target `0x1effe`.
 Fixture
 `0x16fae/0x1719c-backed type-2 inline payload maps constructed compact
 renderer records` is the type-2 sibling of that isolation control: it proves
@@ -6993,6 +7005,10 @@ manual glyph-table mutation used by the metric fixture: the fetched glyph
 payload writes the table entry, record, and bitmap first, then the following
 printable byte and `d8fc` span consumer produce the same compact object and span
 object chain.
+The type-1/type-2 FF-publication sibling adds the same output effect after page
+eject: `0xf0f0`/`0xff1e` publishes the existing span+glyph bucket, clears the
+current page root, sets the publication flag, and the published record renders
+identically to the active pre-publication page record.
 
 Confidence is high for the integrated bit-30 resource-header plus
 downloaded-pointer glyph path because fixture
@@ -7006,14 +7022,19 @@ asserts setup bytes `1` and `2`, payload units `0x100`, allocation size `18`,
 candidate flags `0x40000000` and `0x44000000`, the same fetched glyph record,
 the installed table entry, resolved downloaded-pointer state, and rendered
 rows.
+High for legal type-1/type-2 FF publication because fixture
+`type-1 and type-2 resource glyph FF publications render page records` asserts
+the fetched glyph/tail boundaries, `0xd04a`/`0xf0f0` tail handlers,
+`0xff1e` bucket/context fields, render dispatch targets, and row equality.
 
 Unresolved middle edges after this checkpoint are no longer the parser restore,
 allocation, candidate insertion, selected-map dispatch, basic integrated
 bit-30 downloaded-pointer glyph install for legal type-0/type-1/type-2
-headers, or page-visible metric consumers. The remaining boundaries are
-variant breadth: downloaded-pointer glyph row/span/continuation shapes beyond
-the covered three-row linear glyph, and publication variants beyond this
-page-record render checkpoint. The bit-30-clear fixed-record render remains
+headers, legal type-1/type-2 page publication, or page-visible metric
+consumers. The remaining boundaries are variant breadth: downloaded-pointer
+glyph row/span/continuation shapes beyond the covered three-row linear glyph,
+and publication variants outside these legal type-1/type-2 span+glyph records.
+The bit-30-clear fixed-record render remains
 deliberately classified as an isolation control for the `0x1719c` payload
 layout, not as the real `0x16c14` installed resource form.
 
@@ -7275,6 +7296,7 @@ fields and broader selected-font state combinations have not been page-compared.
 - `host-fetched resource header plus glyph payload renders offset-table
   downloaded glyph`
 - `type-1 and type-2 resource headers accept downloaded glyph payload stream`
+- `type-1 and type-2 resource glyph FF publications render page records`
 - `host-fetched 0x15d0a current-record resource object feeds fixed-record
   render`
 - `0x16606 no-install exits clear stale continuation without payload writes`

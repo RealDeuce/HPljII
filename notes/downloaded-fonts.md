@@ -88,6 +88,7 @@ Primary fixtures:
 - `host-fetched type-2 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `host-fetched type-1 0x1719c payload metrics feed d4ac and d8fc span rows`
 - `type-1 and type-2 resource headers accept downloaded glyph payload stream`
+- `type-1 and type-2 resource glyph FF publications render page records`
 - `host-fetched metric variant changes d4ac gate and d8fc rows`
 - `host-fetched clamped metric variant changes d4ac gate and d8fc rows`
 - `host-fetched lower-bound metric variant suppresses d4ac and d8fc spans`
@@ -1139,6 +1140,25 @@ Fixture values:
 - type-0 optional-symbol offset is `0x024a`.
 - type-1 optional-symbol offset is `0x044a`.
 - type-2 optional-symbol offset is `0x044a`.
+
+Fixture `type-1 and type-2 resource glyph FF publications render page records`
+adds the page-publication sibling for the legal type-1/type-2 resource headers.
+For each header, the fetched glyph stream is `ESC )s3W f0 f0 f0 ! FF`, with
+glyph bytes `0..8` and printable/FF tail bytes `8..10`. The glyph phase
+restores record `80 57 00 03 00 00`, writes table entry `0x00ce`, record
+delta `0x0300`, bitmap offset `0x030c`, and leaves `0x783140 = 0`. The tail
+routes through `0xd04a` and `0xf0f0`, publishes bucket `1`, clears the current
+page root, and sets the publication flag.
+
+The published bucket array keeps the `d8fc` span object
+`00 00 00 00 40 00 00 01 04 06 03 00 00 14...` followed by the downloaded
+glyph object `00 00 00 00 00 00 00 01 21 5a 00...`. Rule and fixed lists are
+empty. The canonical context-slot prefix preserves the installed candidate:
+`(0x40000000, 0, 0, 0)` for type 1 and `(0x44000000, 0, 0, 0)` for type 2.
+Rendering the published record with bucket word `1` dispatches the span object
+through segment-list target `0x1f812` and the glyph object through compact
+target `0x1effe`, reproducing the same span/glyph rows as the active
+pre-publication record.
 
 ## Downloaded Character Payload And Rendering
 
